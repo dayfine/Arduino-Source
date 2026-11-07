@@ -389,8 +389,12 @@ UnitTestResult test_teach_variant(){
     if (!by_slot || by_slot->member != 1 || by_slot->forget_slot != 3u){
         return "\"teach tm28 dig slot=2 forget_slot=4\" didn't read back.";
     }
+    const std::optional<TeachPlan> tutor = parse_teach_variant("teach tutor mega-kick slot=1 forget=withdraw");
+    if (!tutor || tutor->item != TEACH_TUTOR || tutor->move != "mega-kick" || tutor->forget_move != "withdraw"){
+        return "\"teach tutor mega-kick slot=1 forget=withdraw\" didn't read back.";
+    }
     for (std::string_view bad : {
-        "teach", "teach hm03 surf", "teach potion surf slot=1", "teach hm03 surf slot=7",
+        "teach", "teach hm03 surf", "teach potion surf slot=1", "teach hm03 surf slot=7", "teach tutors mega-kick slot=1",
         "teach hm03 surf slot=1 forget_slot=5", "teach hm03 slot=1", "mart PewterCity_Mart potion=1",
     }){
         if (parse_teach_variant(bad)){

@@ -68,6 +68,11 @@ struct RouteStep{
     Direction facing_after = Direction::NORTH;
     //  Where the player is after the step.
     MapPosition end;
+    //  WALK: the steps (from 1) onto a connected map. The game holds the
+    //  player up a tile before each while it loads the map: a hold timed
+    //  by the tiles alone ended a tile short (console B, 2026-11-03, rows
+    //  00.14, 00.16 and 00.20).
+    std::vector<int> connection_steps = {};
 };
 //  Formats a RouteStep as a string.
 std::string to_string(const RouteStep& step);

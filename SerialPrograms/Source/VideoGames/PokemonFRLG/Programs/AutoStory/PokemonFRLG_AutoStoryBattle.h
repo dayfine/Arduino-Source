@@ -200,6 +200,16 @@ void recover_after_battle(
 );
 
 
+//  From a message on the overworld: advances it until the overworld is back
+//  and, when a battle starts after it (a trainer who saw the player),
+//  fights it and recovers after it. A battle lost (a blackout) throws
+//  OperationFailedException.
+void clear_overworld_message(
+    ConsoleHandle& console, ProControllerContext& context,
+    Supplies& supplies, StoryChecks checks, Language language
+);
+
+
 //  The interrupts for walking story routes. Wild battles are run from, or
 //  fought if `fight_wild`. A message is advanced until the overworld is
 //  back; a battle that starts after it (a trainer who saw the player) is

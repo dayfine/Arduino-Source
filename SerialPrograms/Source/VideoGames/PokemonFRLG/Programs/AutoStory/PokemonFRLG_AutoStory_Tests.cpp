@@ -23,6 +23,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecovery.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_AutoStoryActions.h"
+#include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
 #include "PokemonFRLG_AutoStoryPcStorage.h"
 #include "PokemonFRLG_AutoStoryTable.h"
@@ -229,8 +230,8 @@ UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& po
 
 UnitTestResult test_routes_and_chain(){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
-    if (checkpoints.size() != 23 || checkpoints[0].start){
-        return "Expected 23 checkpoints, the first from a new game.";
+    if (checkpoints.size() != 27 || checkpoints[0].start){
+        return "Expected 27 checkpoints, the first from a new game.";
     }
     StoryPose pose;
     for (size_t c = 0; c < checkpoints.size(); c++){
@@ -476,7 +477,9 @@ std::vector<std::optional<MapPosition>> wanderer_stops(const StoryPose& pose, co
 //  Where a leg of a ROUTE or LEGS `step` from `pose` crosses the sight of a
 //  trainer who looks around, the leg ends on a wall: if the trainer looks
 //  the player's way, they walk up beside the leg, and the walker holds it
-//  on to its wall after the battle. Empty if so, else the leg that doesn't.
+//  on to its wall after the battle. Or the leg is one tile: the trainer
+//  sees the player when the step is done, on its end. Empty if so, else
+//  the leg that doesn't.
 std::string held_past_lookers(const StoryPose& pose, const StoryStep& step){
     MapPosition from{pose.map, pose.tile};
     for (const RouteStep& leg : legs_walked(pose, step)){
@@ -487,7 +490,7 @@ std::string held_past_lookers(const StoryPose& pose, const StoryStep& step){
                 crosses |= looks_around(object) && trainer_may_see(*map, object, tile.point);
             }
         }
-        if (crosses && !leg.to_wall){
+        if (crosses && !leg.to_wall && leg.tiles != 1){
             return "crosses a trainer's sight on " + to_string(leg) + ", not a leg to a wall.";
         }
         from = leg.end;
@@ -556,8 +559,9 @@ UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<const Map
         const StoryStep& step = checkpoint.steps[c];
         const std::string where = checkpoint.id + "/" + step.name + ": ";
         const bool walks = step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS;
-        //  A GRIND's patch is grass: the route there may end on it.
-        const bool to_patch = step.target && c + 1 < checkpoint.steps.size() && parse_grind_variant(checkpoint.steps[c + 1].variant);
+        //  A GRIND's or a capture's patch is grass: the route there may end on it.
+        const bool to_patch = step.target && c + 1 < checkpoint.steps.size()
+            && (parse_grind_variant(checkpoint.steps[c + 1].variant) || parse_capture_variant(checkpoint.steps[c + 1].variant));
         for (const MapPosition& tile : walks ? tiles_walked(pose, step) : std::vector<MapPosition>{}){
             const StoryPose end = to_patch ? one_tile(*step.target) : StoryPose{};
             const bool patch = to_patch && tile.map == end.map && tile.point == end.tile;
@@ -588,10 +592,10 @@ UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<const Map
 }
 
 //  From the Running Shoes on, routes and legs keep out of the grass (but
-//  in caves, which are all grass, and onto a GRIND's patch), off warps to maps not loaded and out of
+//  in caves, which are all grass, and onto a GRIND's or a capture's patch), off warps to maps not loaded and out of
 //  trainers' lines, but for the three Route 3 trainers, Mt. Moon's Grunt
-//  at (12, 20) and Nugget Bridge's five the table steps in front of to
-//  fight; where they cross a wandering trainer's sight, the walk can place
+//  at (12, 20), Nugget Bridge's five and Route 25's four the table steps
+//  in front of to fight; where they cross a wandering trainer's sight, the walk can place
 //  the player if the trainer stops them; and where they cross the sight of
 //  one who looks around, on a leg to a wall.
 UnitTestResult test_trainer_lines(){
@@ -605,8 +609,9 @@ UnitTestResult test_trainer_lines(){
         }
         has_shoes = has_shoes || checkpoint.id == "00.10";
     }
-    if (beaten.size() != 9){
-        return "Expected to fight Colton, Greg and James on Route 3, the Grunt at (12, 20) in Mt. Moon and Nugget Bridge's five; the table fights "
+    if (beaten.size() != 13){
+        return "Expected to fight Colton, Greg and James on Route 3, the Grunt at (12, 20) in Mt. Moon, Nugget Bridge's five"
+            " and Franklin, Kelsey, Nob and Haley on Route 25; the table fights "
             + std::to_string(beaten.size()) + " trainers.";
     }
     return true;
@@ -750,7 +755,10 @@ UnitTestResult test_save_places(){
         return "Wrong save card place in Cerulean City.";
     }
     //  Not Route 2's or Route 4's: a map name is a place's or a building's in it.
-    if (!save_card_place("Route22").empty() || !save_card_place("Route24").empty() || !save_card_place("Route2").empty()){
+    if (save_card_place("Route24") != "route-24" || save_card_place("Route25_SeaCottage") != "route-25"){
+        return "Wrong save card places on Route 24 and 25.";
+    }
+    if (!save_card_place("Route22").empty() || !save_card_place("Route2").empty()){
         return "A place for a map the table doesn't use.";
     }
     return true;
@@ -812,31 +820,12 @@ UnitTestResult test_save_dialog(){
         std::vector<std::pair<SaveScreen, SaveAction>> screens;
     };
     const std::vector<Case> CASES = {
-        {
-            .name = "first save",
-            .screens = {{S::YES_NO, A::ANSWER_YES}, {S::TEXT, A::WAIT}, {S::TEXT, A::WAIT}, {S::NOTHING, A::WAIT}, {S::NOTHING, A::CHECK_OVERWORLD}},
-        },
-        {
-            .name = "over this game's save",
-            .screens = {{S::YES_NO, A::ANSWER_YES}, {S::TEXT, A::WAIT}, {S::YES_NO, A::ANSWER_YES}, {S::TEXT, A::WAIT}, {S::NOTHING, A::WAIT}, {S::NOTHING, A::CHECK_OVERWORLD}},
-        },
-        {
-            //  WARNING!, four pages, then the YES/NO that starts on NO.
-            .name = "a new game over another game's save",
-            .screens = {
-                {S::YES_NO, A::ANSWER_YES},
-                {S::PAGED_TEXT, A::NEXT_PAGE}, {S::NOTHING, A::WAIT}, {S::PAGED_TEXT, A::NEXT_PAGE}, {S::PAGED_TEXT, A::NEXT_PAGE},
-                {S::TEXT, A::WAIT}, {S::YES_NO, A::ANSWER_YES}, {S::TEXT, A::WAIT}, {S::NOTHING, A::WAIT}, {S::NOTHING, A::CHECK_OVERWORLD},
-            },
-        },
-        {
-            .name = "cancelled: the START menu is back",
-            .screens = {{S::YES_NO, A::ANSWER_YES}, {S::TEXT, A::WAIT}, {S::START_MENU, A::FAIL_CANCELLED}},
-        },
-        {
-            .name = "Save error.",
-            .screens = {{S::YES_NO, A::ANSWER_YES}, {S::TEXT, A::WAIT}, {S::PAGED_TEXT, A::NEXT_PAGE}, {S::NOTHING, A::WAIT}, {S::NOTHING, A::FAIL_ERROR}},
-        },
+        {.name = "first save", .screens = {{S::YES_NO, A::ANSWER_YES}, {S::TEXT, A::WAIT}, {S::TEXT, A::WAIT}, {S::NOTHING, A::WAIT}, {S::NOTHING, A::CHECK_OVERWORLD}}},
+        {.name = "over this game's save", .screens = {{S::YES_NO, A::ANSWER_YES}, {S::TEXT, A::WAIT}, {S::YES_NO, A::ANSWER_YES}, {S::TEXT, A::WAIT}, {S::NOTHING, A::WAIT}, {S::NOTHING, A::CHECK_OVERWORLD}}},
+        //  WARNING!, four pages, then the YES/NO that starts on NO.
+        {.name = "a new game over another game's save", .screens = {{S::YES_NO, A::ANSWER_YES}, {S::PAGED_TEXT, A::NEXT_PAGE}, {S::NOTHING, A::WAIT}, {S::PAGED_TEXT, A::NEXT_PAGE}, {S::PAGED_TEXT, A::NEXT_PAGE}, {S::TEXT, A::WAIT}, {S::YES_NO, A::ANSWER_YES}, {S::TEXT, A::WAIT}, {S::NOTHING, A::WAIT}, {S::NOTHING, A::CHECK_OVERWORLD}}},
+        {.name = "cancelled: the START menu is back", .screens = {{S::YES_NO, A::ANSWER_YES}, {S::TEXT, A::WAIT}, {S::START_MENU, A::FAIL_CANCELLED}}},
+        {.name = "Save error.", .screens = {{S::YES_NO, A::ANSWER_YES}, {S::TEXT, A::WAIT}, {S::PAGED_TEXT, A::NEXT_PAGE}, {S::NOTHING, A::WAIT}, {S::NOTHING, A::FAIL_ERROR}}},
     };
     for (const Case& c : CASES){
         SaveDialog dialog;

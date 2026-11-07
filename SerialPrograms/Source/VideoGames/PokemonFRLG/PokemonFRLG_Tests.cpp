@@ -47,6 +47,7 @@
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryAbilities.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryBattle.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryCapture.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryPaceSim.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryPcStorage.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRngLoop.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryTable.h"
@@ -64,7 +65,6 @@
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
-
 
 namespace{
 
@@ -289,7 +289,6 @@ void add_tests_ExitWildBattle(UnitTestDatabase& database){
         database.add<Test_ExitWildBattle>(scenario);
     }
 }
-
 
 //  Naming screen keyboard: cursor moves, plans and text checks, against pokefirered's
 //  src/naming_screen.c.
@@ -518,7 +517,6 @@ void add_tests_NamingCursor(UnitTestDatabase& database){
     }
 }
 
-
 struct NamingPlanInput{
     std::string name = "";
     std::string text = "";
@@ -693,7 +691,6 @@ void add_tests_NamingPlan(UnitTestDatabase& database){
     }
 }
 
-
 struct NamingKeysInput{
     std::string name = "";
     std::string text = "";
@@ -762,7 +759,6 @@ void add_tests_NamingKeys(UnitTestDatabase& database){
         database.add<Test_NamingKeys>(scenario);
     }
 }
-
 
 struct NamingTextInput{
     std::string name = "";
@@ -934,6 +930,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_PlayerFacingReader(database);
     add_tests_AutoStory(database);
     add_tests_AutoStorySimulation(database);
+    add_tests_AutoStoryPaceSim(database);
     add_tests_AutoStoryItems(database);
     add_tests_AutoStoryRngLoop(database);
     add_tests_AutoStoryCapture(database);
@@ -945,7 +942,6 @@ void add_tests(UnitTestDatabase& database){
     add_tests_NamingText(database);
     add_tests_RngManipulation(database);
 }
-
 
 UnitTestResult check_against_golden_file(
     const std::string& image_path,
@@ -993,7 +989,6 @@ UnitTestResult check_against_golden_file(
     }
     return true;
 }
-
 
 }
 }

@@ -166,6 +166,21 @@ UnitTestResult test_learn_prompts(Logger&){
     return true;
 }
 
+//  Mega Kick, from Route 4's tutor over Withdraw: no level-up rule takes
+//  its slot, so Rapid Spin and Protect are declined.
+UnitTestResult test_mega_kick_kept(Logger&){
+    const std::vector<std::string> moves{"bite", "water-pulse", "bubble", "mega-kick"};
+    for (const auto& [level, offered] : {std::pair<uint8_t, std::string>{24, "rapid-spin"}, {30, "protect"}}){
+        PartyMember member = with_moves("wartortle", moves, level);
+        const LearnDecision decision = learn_move(member);
+        if (decision.move != offered || decision.forget_slot || move_names(member) != moves){
+            return std::format("Lv{}: expected {} declined, leaving {}; got {}, leaving {}.",
+                level + 1, offered, joined(moves), decision.move.value_or("nothing"), joined(move_names(member)));
+        }
+    }
+    return true;
+}
+
 //  NO to "Delete a move?" is followed by YES to "Stop learning?" (B there
 //  asks "Delete a move?" again, console B 2026-11-01); a move the plan
 //  wants is YES with the slot to forget.
@@ -823,6 +838,10 @@ const AutoStoryPartyTestCase AUTO_STORY_PARTY_CASES[] = {
     {
         .input = {.name = "move offered and slot forgotten", .body = test_learn_prompts},
         .expectation = {.description = "determines move learning replacements and prompts"},
+    },
+    {
+        .input = {.name = "Mega Kick kept over later level-up moves", .body = test_mega_kick_kept},
+        .expectation = {.description = "keeps Mega Kick over later level-up moves"},
     },
     {
         .input = {.name = "YES/NO answers to move prompts", .body = test_prompt_answers},

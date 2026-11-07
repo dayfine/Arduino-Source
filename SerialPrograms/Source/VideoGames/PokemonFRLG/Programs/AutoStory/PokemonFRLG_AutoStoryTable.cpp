@@ -45,6 +45,8 @@ const char* const CERULEAN_CENTER = "CeruleanCity_PokemonCenter_1F";
 const char* const CERULEAN_MART = "CeruleanCity_Mart";
 const char* const CERULEAN_GYM = "CeruleanCity_Gym";
 const char* const ROUTE24 = "Route24";
+const char* const ROUTE25 = "Route25";
+const char* const SEA_COTTAGE = "Route25_SeaCottage";
 
 Pokemon::Pose at(const char* map, int x, int y, std::optional<Direction> facing = std::nullopt){
     return to_pose(StoryPose{map, {x, y}, facing});
@@ -503,6 +505,15 @@ StoryCheckpoint mt_moon(){
 //  over row 3 from x 76 to 79; the way east keeps out of her line and off
 //  the grass south of the road (75..87, 11..17).
 //
+//  On the way, the Mega Kick tutor (Black Belt (50, 3), facing west,
+//  Route4_EventScript_MegaKickTutor) stands in a pen (46..51, 2..4) north
+//  of the road, beside the Mega Punch tutor (47, 3); the pen opens south
+//  only on (48, 5) and (49, 5), the rest of row 5 ledges out of it. From
+//  Mt. Moon's exit the walk goes east and up into the pen to (50, 4),
+//  below the tutor, and Mega Kick takes Withdraw's slot. Cerulean can't
+//  be walked back to Route 4's upper road without Surf, so it is now or
+//  much later.
+//
 //  The open leg east across the city's edge ended a tile short on the
 //  console (2026-11-03: on (6, 20), not (7, 20)), and no hold to a wall
 //  in the city's west end finds the player from there: the next hold
@@ -514,7 +525,10 @@ StoryCheckpoint mt_moon(){
 //  door (22, 19). The way keeps out of the boy's (16, 18..24) and the
 //  balding man's (8..10, 22..24) wander boxes.
 StoryCheckpoint route4_to_cerulean(){
-    return row("00.14", "Route 4 east to Cerulean's Pokemon Center", at(ROUTE4, 32, 6, SOUTH), after_brock(), StartMenu::FULL, {
+    const TeachPlan mega_kick{.item = std::string(TEACH_TUTOR), .move = "mega-kick", .member = 0, .forget_move = "withdraw"};
+    return row("00.14", "Route 4: Mega Kick from its tutor, then east to Cerulean's Pokemon Center", at(ROUTE4, 32, 6, SOUTH), after_brock(), StartMenu::FULL, {
+        running(route("mega_kick_tutor", at(ROUTE4, 50, 4, NORTH), "east and up through (48, 5) into the tutors' pen, below the Mega Kick tutor (50, 3)")),
+        teach_step("teach_mega_kick", "the tutor's Mega Kick in place of Withdraw, unless the lead knows it", mega_kick),
         running(route("above_ledge", at(ROUTE4, 93, 8, SOUTH), "east along Route 4's upper road to above the ledge row 9")),
         hop("ledge_hop", SOUTH, at(ROUTE4, 93, 10, SOUTH), "down the ledge (93, 9) to the lower road"),
         running(route("cerulean_entry", at(CERULEAN, 9, 20, EAST), "east into Cerulean City, to (9, 20) below column 9")),
@@ -710,6 +724,157 @@ StoryCheckpoint nugget_bridge(){
     });
 }
 
+//  Route 24 north of Nugget Bridge (Route24 map.json) joins Route 25 by
+//  its rows 7..9; the ledges on Route 25's row 6 (x 0..9) leave the way
+//  north at x 12..13. Route 25 (Route25 map.json, scripts.inc) to Bill's
+//  Sea Cottage door (51, 4): of its nine trainers, four can't be walked
+//  around.
+//  - Hiker Franklin (11, 4) faces east, sight 4, over (12..15, 4), and
+//    Hiker Wayne (17, 7) east over (18..19, 7): the only ways east past
+//    x 15. Franklin is fought, from (15, 5) on the step onto (15, 4), the
+//    end of his line: he walks up to (14, 4).
+//  - Youngster Joey (18, 2) faces south over (18, 3..4): the way keeps
+//    off column 18, south round Wayne to (19, 6) and up to (19, 4).
+//  - Youngster Dan (22, 4) looks around, sight 2, over the only way east,
+//    (20..21, 4). On (20, 4), a one-tile leg, he may see the player and
+//    walk up to (21, 4); so the way goes north from there to row 2, east,
+//    and down column 23 past him to (23, 5), off every tile he may walk
+//    up to. Where his sight is crossed, the leg ends on a wall or is one
+//    tile; if he looks the player's way, story_interrupts() fight him.
+//  - Picnicker Kelsey (22, 8) faces east over (23..24, 8), across the
+//    only way on: fought on the step onto (24, 8); she walks up to (23, 8).
+//  - Hiker Nob (27, 9) faces north over (27, 6..8), Camper Flint (28, 4)
+//    south over (28, 5..7): every way east crosses one. Nob is fought on
+//    the step onto (27, 8), beside him; the way on keeps off Flint's
+//    column, by one-tile legs and legs to walls.
+//  - Youngster Chad (36, 4) walks up and down column 36 (rows 2..7), so
+//    he may see any tile of it down to row 9. The way crosses his column
+//    on row 9, a leg to the water at (42, 9), where he can only walk up
+//    beside it.
+//  - Lass Haley (42, 5) faces south over (42, 6..8), the only way east of
+//    x 42: fought on the step onto (42, 8); she walks up to (42, 7).
+//  The row saves inside the Sea Cottage, which the save card names
+//  ROUTE 25.
+StoryCheckpoint route25(){
+    return row("00.17", "Route 24 and 25 to Bill's Sea Cottage: Franklin, Kelsey, Nob and Haley", at(ROUTE24, 11, 15, EAST), after_brock(), StartMenu::FULL, {
+        running(route("below_franklin_line", at(ROUTE25, 15, 5, NORTH), "north off Nugget Bridge, east into Route 25, round its ledges to (15, 5), below the end of Franklin's line")),
+        into_line("franklin_line", NORTH, "onto (15, 4), at the end of Franklin's line"),
+        battle("hiker_franklin", at(ROUTE25, 15, 4, NORTH), false, "Machop and Geodude, Lv15; Franklin stops at (14, 4)"),
+        running(legs("west_of_dan", {{EAST, 2}, {SOUTH, 2}, {EAST, 2}, {NORTH, 2}}, "to (17, 4), short of Joey's (18, 4); round Wayne (17, 7) to (19, 6); up to (19, 4)")),
+        running(legs("round_dan", {
+            {EAST, 1}, {NORTH, 2}, {EAST, 4}, {WEST, 1}, {SOUTH, 3}, {EAST, 1}, {SOUTH, 2},
+        }, "onto (20, 4); up to (20, 2), east to (24, 2), down column 23 past Dan to (23, 5), to (24, 7) above Kelsey's line")),
+        into_line("kelsey_line", SOUTH, "onto (24, 8), at the end of Kelsey's line"),
+        battle("picnicker_kelsey", at(ROUTE25, 24, 8, SOUTH), false, "Nidoran M and Nidoran F, Lv15; Kelsey stops at (23, 8)"),
+        running(legs("west_of_nob_line", {{EAST, 2}}, "along row 8 to (26, 8)")),
+        into_line("nob_line", EAST, "onto (27, 8), above Nob"),
+        battle("hiker_nob", at(ROUTE25, 27, 8, EAST), false, "three Geodude and a Machop, Lv13"),
+        running(legs("below_haley_line", {
+            {EAST, 1}, {SOUTH, 1}, {EAST, 1}, {NORTH, 3}, {EAST, 5}, {SOUTH, 3}, {EAST, 8},
+        }, "below Flint's column to (29, 9), up to (29, 6), east to (34, 6), down to (34, 9), east along row 9 past Chad's column to the water, (42, 9)")),
+        into_line("haley_line", NORTH, "onto (42, 8), at the end of Haley's line"),
+        battle("lass_haley", at(ROUTE25, 42, 8, NORTH), false, "Oddish, Pidgey and Oddish, Lv13; Haley stops at (42, 7)"),
+        running(route("sea_cottage", at(SEA_COTTAGE, 7, 8, NORTH), "east along row 8, up column 51 into the Sea Cottage (51, 4), a step in from its mat")),
+    });
+}
+
+//  Bill's Sea Cottage (Route25_SeaCottage scripts.inc). Bill is the
+//  Clefairy at (10, 6) (FLAG_HELPED_BILL_IN_SEA_COTTAGE unset): talked to
+//  from (10, 7), below him, he asks "Help me out!" (YES/NO; NO goes on the
+//  same), says to run the Cell Separation on the PC, and walks up into
+//  the right teleporter (10, 3); with the player facing north he walks
+//  straight up. The PC (4, 5) answers only from the south, (4, 6). Its
+//  scene: the teleporters run, Bill comes out of the left one (3, 3) and
+//  walks to (7, 6) (BillWalkToMiddleOfRoom); the player isn't moved.
+//  Talked to from (6, 6), Bill gives the S.S. TICKET, no YES/NO, and goes
+//  on about the S.S. ANNE (FLAG_GOT_SS_TICKET, which also hides Nugget
+//  Bridge's Rocket). Out by the mat (7, 9); the door puts the player on
+//  (51, 5), facing south. The maps keep Bill at (7, 5), but after his
+//  scene he stands on (7, 6), in the way from (6, 6) to the mat (console
+//  B, 2026-11-03), so the walk out goes around him to (7, 8) first.
+StoryCheckpoint bill(){
+    return row("00.18", "Bill's Sea Cottage: the Cell Separator and the S.S. Ticket", at(SEA_COTTAGE, 7, 8, NORTH), after_brock(), StartMenu::FULL, {
+        running(route("below_bill_clefairy", at(SEA_COTTAGE, 10, 7, NORTH), "below the Clefairy (10, 6), facing it")),
+        talk("bill_clefairy", "\"Hiya! I'm a POKEMON... ...No I'm not!\" ... \"Help me out!\""),
+        answer("help_bill", true, "YES: \"run the Cell Separation on the PC\""),
+        scene("bill_into_teleporter", at(SEA_COTTAGE, 10, 7, NORTH), "the Clefairy walks up into the right teleporter"),
+        running(route("pc_front", at(SEA_COTTAGE, 4, 6, NORTH), "below the PC (4, 5), facing it")),
+        talk("cell_separator", "the PC: \"<player> initiated the TELEPORTER's CELL SEPARATOR!\""),
+        scene("bill_comes_out", at(SEA_COTTAGE, 4, 6, NORTH), "the teleporters run; Bill comes out of the left one and walks to (7, 6)"),
+        running(legs("beside_bill", {{EAST, 2}}, "to (6, 6), west of Bill, facing him")),
+        talk("thank_bill", "\"Thanks, bud! ... take this\""),
+        scene("ss_ticket", at(SEA_COTTAGE, 6, 6, EAST), "the S.S. TICKET; \"... the S.S. ANNE ... go instead\""),
+        running(legs("around_bill", {{SOUTH, 2}, {EAST, 1}}, "to (7, 8), above the mat; Bill stands on (7, 6) after his scene")),
+        running(route("out_of_cottage", at(ROUTE25, 51, 5, SOUTH), "down to the mat and out; the door puts the player below it")),
+    });
+}
+
+//  Back to Cerulean by Route 25's south path (Route25 map.json): from
+//  below the cottage down column 51 to row 12, west along row 12 and row
+//  11 into Route 24 (x 14..23, row 11), and down its column 14..16 east
+//  of Nugget Bridge to Cerulean's north edge (x 26..28, offset 12). No
+//  trainer stands on it. Cerulean's row 1 there is a ledge (26..28, 1),
+//  hopped south from (27, 0); then on into the city to the Pokemon Center.
+StoryCheckpoint back_to_cerulean(){
+    return row("00.19", "Route 25's south path back to Cerulean's Pokemon Center", at(ROUTE25, 51, 5, SOUTH), after_brock(), StartMenu::FULL, {
+        running(route("above_cerulean_ledge", at(CERULEAN, 27, 0, SOUTH), "Route 25's south path west, Route 24 east of the bridge south, to above Cerulean's ledge (27, 1)")),
+        hop("cerulean_ledge_hop", SOUTH, at(CERULEAN, 27, 2, SOUTH), "down the ledge (27, 1)"),
+        running(route("cerulean_nurse", at(CERULEAN_CENTER, 7, 4, NORTH), "into the city to the Pokemon Center")),
+        heal("heal_cerulean"),
+    });
+}
+
+//  Stopgap for console B's save, which caught nothing on Route 1. A new
+//  playthrough should instead catch a Rattata on Route 1 or 22 early, as
+//  its Cut user and spare member, and drop this row (and its walk over
+//  Nugget Bridge and back).
+//
+//  An Oddish for HM01 Cut, and a second member behind the lead
+//  (docs/design/AutoStory-FRLG-FutureEvents.md, "Console B run choices").
+//  Route 24's grass (Route24 map.json: x 3..5, rows 19..31, west of Nugget
+//  Bridge) is the nearest to the Center with Oddish: FireRed's
+//  sRoute24_FireRed (pokefirered wild_encounters.json) has it in 25% of
+//  battles, Lv12..14, as Route 25's grass; Routes 5 and 6 aren't on the
+//  story's maps yet. Up the bridge, whose trainers 00.16 beat, west along
+//  rows 10..15 to the cliff (3, 15) and down column 3 to the grass's first
+//  row, (3, 19); the step paces east to (4, 19) and back. Camper Shane
+//  (5, 21) faces north, sight 5, over (5, 16..20): column 5 is kept off.
+//  The leg west ends on the cliff, not open: on console B (m63) an open
+//  leg west to (4, 15) ended a tile short, and the walk down column 5
+//  came into Shane's sight.
+//
+//  First 7 Poke Balls at the Mart (row 1, 200 each; the bag isn't read, so
+//  the step buys them whatever the bag holds). The floor, from 00.15's
+//  1500 less its 1400: the rival's 288 (4 x 18 x 4), the Rocket's 480 (4
+//  x 15 x 8), Franklin's 540 and Nob's 468 (hikers, 9) alone make 1876
+//  (pokefirered gTrainerMoneyTable). An Oddish at full HP (catch rate 255)
+//  stays in a Poke Ball about 1 time in 3 (Gen 3: a = 85, four shakes of
+//  0.76), so 7 balls catch it about 94% of the time; the step throws 7 at
+//  most, in 30 battles (none an Oddish: 0.02%). Nothing weakens it: the HP
+//  bar isn't read on the console yet.
+//
+//  The Oddish joins the party second. Battles keep the lead in
+//  (PokemonFRLG_AutoStoryBattleDecisions.h): the Oddish is sent only when
+//  the lead faints in a trainer's battle, which counts as lost. Back to
+//  the nurse, and the save in the Center.
+StoryCheckpoint oddish(){
+    const MartPlan balls{
+        .map = CERULEAN_MART,
+        .lines = {{.item = "poke-ball", .quantity = 7}},
+        .budget = 1400,
+        .money_floor = 1500,
+    };
+    const CapturePlan catch_oddish{.species = "oddish", .catches = 1, .max_encounters = 30, .max_balls = 7, .pace = EAST};
+    return row("00.20", "Route 24's grass: an Oddish for Cut, then the Center", at(CERULEAN_CENTER, 7, 4, NORTH), after_brock(), StartMenu::FULL, {
+        running(route("mart_clerk", at(CERULEAN_MART, 4, 3, WEST), "out of the Center to the Mart's clerk")),
+        mart_step("buy_poke_balls", "7 Poke Balls for the Oddish", balls),
+        running(route("oddish_patch", at(ROUTE24, 3, 19), "north over Nugget Bridge, west to the cliff and down column 3 onto the grass's first row, out of Shane's column 5")),
+        capture_step("catch_oddish", "wild battles until an Oddish, then Poke Balls; any other species is run from", catch_oddish),
+        running(route("cerulean_nurse", at(CERULEAN_CENTER, 7, 4, NORTH), "back over the bridge to the Center")),
+        heal("heal_cerulean"),
+    });
+}
+
 } // namespace
 
 
@@ -718,6 +883,7 @@ const std::vector<StoryCheckpoint>& story_checkpoints(){
         new_game(), after_sid_helper(), leave_house(), oaks_trigger(), to_starter_ball(), starter(), parcel(), pokedex(), shopping(), forest(), brock(),
         running_shoes(), route3(), magikarp_salesman(), after_gift_rng(), magikarp_to_box(), mt_moon(),
         route4_to_cerulean(), cerulean_gym(), misty(), cerulean_grind(), cerulean_rival(), nugget_bridge(),
+        route25(), bill(), back_to_cerulean(), oddish(),
     };
     return checkpoints;
 }

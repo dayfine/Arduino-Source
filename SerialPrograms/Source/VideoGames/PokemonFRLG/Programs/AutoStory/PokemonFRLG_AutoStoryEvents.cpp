@@ -12,6 +12,7 @@
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "Pokemon/Navigation/Pokemon_RouteLog.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldReanchor.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecoveryWalk.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
@@ -19,6 +20,7 @@
 #include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryGrind.h"
 #include "PokemonFRLG_AutoStorySummary.h"
 #include "PokemonFRLG_AutoStoryTeachScreens.h"
 #include "PokemonFRLG_AutoStoryWinChance.h"
@@ -88,33 +90,47 @@ WallCheck wall_check(const StoryEnv& env){
     return env.checks == StoryChecks::THOROUGH ? WallCheck::TAP : WallCheck::SKIP;
 }
 
+//  Where a ROUTE from `pose` starts: its tile, or nothing for a set of
+//  tiles (paced_pose()), which the route's first holds bring together.
+std::optional<MapPosition> route_start(const Pokemon::Pose& pose){
+    const std::vector<TilePos> tiles = Pokemon::tiles_of(pose);
+    if (tiles.size() != 1){
+        return std::nullopt;
+    }
+    return MapPosition{pose.map, tiles[0]};
+}
+
 Outcome walk_route(StoryEnv& env, RunState& state, const StoryStep& step){
     const std::vector<TilePos> tiles = Pokemon::tiles_of(state.pose);
-    if (tiles.size() != 1 || state.pose.certainty != Pokemon::PoseCertainty::TILE){
+    const bool known = state.pose.certainty == Pokemon::PoseCertainty::TILE
+        || (state.pose.certainty == Pokemon::PoseCertainty::SET && tiles.size() > 1);
+    if (tiles.empty() || !known){
         return Pokemon::outcome_failed("no_pose", Pokemon::to_string(state.pose));
     }
-    const MapPosition start{state.pose.map, tiles[0]};
+    const std::optional<MapPosition> start = route_start(state.pose);
     std::optional<Direction> facing = facing_of(state.pose);
-    if (!facing){
-        facing = face_a_wall(env, start);
+    if (!facing && start){
+        facing = face_a_wall(env, *start);
     }
-    if (!facing){
-        return Pokemon::outcome_failed("unknown_facing", to_string(start));
+    if (!facing && start){
+        return Pokemon::outcome_failed("unknown_facing", to_string(*start));
     }
     const std::optional<StoryPose> target = step.target ? story_pose(*step.target) : std::nullopt;
     if (!target){
         return Pokemon::outcome_failed("bad_target", step.target ? Pokemon::to_string(*step.target) : "none");
     }
     const RouteGoal goal{{target->map, target->tile}, target->facing};
-    const std::optional<std::vector<RouteStep>> route = plan_overworld_route(
-        story_maps(), start, goal, default_route_costs(), facing
-    );
+    const std::optional<std::vector<RouteStep>> route = plan_story_route(story_maps(), state.pose, facing, goal);
     if (!route){
-        return Pokemon::outcome_failed("no_route", to_string(start) + " to " + to_string(goal.position));
+        return Pokemon::outcome_failed("no_route", Pokemon::to_string(state.pose) + " to " + to_string(goal.position));
+    }
+    if (!start){
+        env.console.log("Story: " + step.name + ": on one of " + Pokemon::to_string(state.pose) + "; holds to walls first, to one tile.");
     }
     const OverworldInterruptSet interrupts = story_interrupts(env.supplies, step.fight_wild, env.checks, env.language);
     //  Planning lets the walker recover a stopped open leg: it plans back to
-    //  the leg's end, then walks the rest as given.
+    //  the leg's end, then walks the rest as given. From a set of tiles
+    //  the start isn't known: the walker reads the facing.
     const RoutePlanning planning{.maps = &story_maps(), .costs = default_route_costs(), .start = start, .label = step.name, .wall_check = wall_check(env)};
     walk_overworld_route_with_recovery(env.console, env.context, *route, planning, facing, interrupts, move_speed(step));
     log_arrival(env, step.name, target->map, target->tile);
@@ -340,6 +356,8 @@ std::string save_card_place(const std::string& map){
         {"Route3", "route-3"},
         {"Route4", "route-4"},
         {"CeruleanCity", "cerulean-city"},
+        {"Route24", "route-24"},
+        {"Route25", "route-25"},
     };
     for (const auto& [prefix, place] : PLACES){
         if (map == prefix || map.rfind(prefix + "_", 0) == 0){
@@ -389,6 +407,43 @@ std::optional<std::vector<RouteStep>> fixed_route(
         step.to_wall = classify_step(*map, player, leg.direction) == StepKind::BLOCKED;
         step.end = MapPosition{map->name, player.position};
         route.push_back(step);
+    }
+    return route;
+}
+
+Pokemon::Pose paced_pose(const Pokemon::Pose& patch, const StoryStep& step){
+    std::optional<Direction> pace;
+    if (const std::optional<GrindPlan> grind = parse_grind_variant(step.variant)){
+        pace = grind->pace;
+    }else if (const std::optional<CapturePlan> capture = parse_capture_variant(step.variant)){
+        pace = capture->pace;
+    }
+    const std::vector<TilePos> tiles = Pokemon::tiles_of(patch);
+    if (!pace || tiles.size() != 1){
+        return patch;
+    }
+    return Pokemon::tile_pose(patch.map, {tiles[0], tiles[0].next(*pace)}, std::nullopt);
+}
+
+std::optional<std::vector<RouteStep>> plan_story_route(
+    const std::vector<MapData>& maps, const Pokemon::Pose& pose,
+    std::optional<Direction> facing, const RouteGoal& goal
+){
+    std::vector<MapPosition> tiles;
+    for (const TilePos& tile : Pokemon::tiles_of(pose)){
+        tiles.push_back(MapPosition{pose.map, tile});
+    }
+    const std::optional<std::vector<RouteStep>> holds = holds_to_one_tile(maps, tiles);
+    if (!holds){
+        return std::nullopt;
+    }
+    const MapPosition from = holds->empty() ? tiles[0] : holds->back().end;
+    if (!holds->empty()){
+        facing = holds->back().facing_after;
+    }
+    std::optional<std::vector<RouteStep>> route = plan_overworld_route(maps, from, goal, default_route_costs(), facing);
+    if (route){
+        route->insert(route->begin(), holds->begin(), holds->end());
     }
     return route;
 }
@@ -505,6 +560,25 @@ bool grind_heal_trip(StoryEnv& env, RunState& state, const StoryStep& step, cons
     return walked(env, state, walk);
 }
 
+//  A trainer saw the player pacing `step` on `patch` (console B,
+//  2026-11-03, m63: Camper Shane on Route 24): fights them, then walks back
+//  onto the patch from either of pacing's tiles (see PaceTrainerBattle).
+void pace_trainer_battle(StoryEnv& env, RunState& state, const StoryStep& step, const Pokemon::Pose& patch){
+    clear_overworld_message(env.console, env.context, env.supplies, env.checks, env.language);
+    state.pose = paced_pose(patch, step);
+    StoryStep walk;
+    walk.kind = StoryStepKind::ROUTE;
+    walk.name = step.name + "_back_after_trainer";
+    walk.target = patch;
+    if (!walked(env, state, walk)){
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::SEND_ERROR_REPORT,
+            "Pacing: no way back onto the patch after a trainer's battle.",
+            env.console
+        );
+    }
+}
+
 //  A MART, TEACH, LEVEL, GRIND or fossil step on the console; nothing for
 //  another variant.
 std::optional<Outcome> run_abilities(StoryEnv& env, RunState& state, const StoryStep& step){
@@ -516,6 +590,9 @@ std::optional<Outcome> run_abilities(StoryEnv& env, RunState& state, const Story
         env.console, env.context, env.language, env.supplies, env.checks,
         [&](const GrindSpot& spot){
             return grind_heal_trip(env, state, step, patch, spot);
+        },
+        [&]{
+            pace_trainer_battle(env, state, step, patch);
         }
     );
     ConsoleChoiceActions choice(env.console, env.context);
@@ -534,15 +611,21 @@ Outcome StoryExecutor::game(RunState& state, const StoryStep& step){
         leave_gift_summary(m_env.console, m_env.context);
         return Pokemon::outcome_ok();
     }
-    ConsoleCaptureActions capture(m_env.console, m_env.context, m_env.language);
+    const Pokemon::Pose patch = state.pose;
+    ConsoleCaptureActions capture(m_env.console, m_env.context, m_env.language, [&]{
+        pace_trainer_battle(m_env, state, step, patch);
+    });
     ConsolePcStorageActions pc(m_env.console, m_env.context);
-    const std::optional<Outcome> stored = run_storage_game_step(m_env.console.logger(), &m_env.console, step, capture, pc);
-    if (stored){
-        return *stored;
+    std::optional<Outcome> done = run_storage_game_step(m_env.console.logger(), &m_env.console, step, capture, pc);
+    if (!done){
+        done = run_abilities(m_env, state, step);
     }
-    const std::optional<Outcome> ability = run_abilities(m_env, state, step);
-    if (ability){
-        return *ability;
+    if (done && done->succeeded() && !done->pose){
+        //  Pacing leaves the player on either of its tiles.
+        done->pose = paced_pose(state.pose, step);
+    }
+    if (done){
+        return *done;
     }
     return Pokemon::unsupported_step(step);
 }

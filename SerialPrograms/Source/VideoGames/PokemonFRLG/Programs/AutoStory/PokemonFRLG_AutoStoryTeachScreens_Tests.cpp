@@ -55,6 +55,8 @@ enum class FakeScreen{
     DELETE_YES_NO,
     STOP_YES_NO,
     KNOWN_MOVES,
+    //  A tutor's last line in the overworld, after its party menu.
+    TUTOR_TEXT,
 };
 
 //  The bag, TM CASE and party menu as console B showed them.
@@ -65,7 +67,11 @@ struct FakeTeachGame{
     size_t bag_cursor = 0;
     std::vector<FakeTm> tms{{"water-pulse", 1}, {"rock-tomb", 1}};
     std::vector<std::string> moves{"bite", "tail-whip", "bubble", "withdraw"};
-    std::set<std::string> compatible{"water-pulse", "rock-tomb"};
+    std::set<std::string> compatible{"water-pulse", "rock-tomb", "mega-kick"};
+    //  The move of the tutor the player faces; empty: none.
+    std::string tutor_move = {};
+    //  The party menu is the tutor's.
+    bool tutoring = false;
 
     FakeScreen screen = FakeScreen::OVERWORLD;
     size_t cursor = 0;
@@ -107,12 +113,23 @@ void move_cursor(FakeTeachGame& game, TeachPress press, size_t rows){
     }
 }
 
+//  Where the party menu goes once done: the TM CASE, or a tutor's last line.
+FakeScreen after_party(const FakeTeachGame& game){
+    return game.tutoring ? FakeScreen::TUTOR_TEXT : FakeScreen::TM_CASE;
+}
+
 std::string tm_move(const FakeTeachGame& game){
+    if (game.tutoring){
+        return game.tutor_move;
+    }
     const std::vector<std::string> rows = tm_rows(game);
     return game.tm < rows.size() ? rows[game.tm] : "";
 }
 
 void use_up(FakeTeachGame& game){
+    if (game.tutoring){
+        return;
+    }
     const std::string move = tm_move(game);
     for (FakeTm& tm : game.tms){
         if (tm.move == move && tm.count > 0){
@@ -132,7 +149,7 @@ void choose_member(FakeTeachGame& game){
         game.moves.push_back(move);
         use_up(game);
         game.cursor = 0;
-        show_texts(game, {TeachText::WANTS_TO_LEARN, TeachText::UNKNOWN}, FakeScreen::TM_CASE);
+        show_texts(game, {TeachText::WANTS_TO_LEARN, TeachText::UNKNOWN}, after_party(game));
         return;
     }
     show_texts(game, {TeachText::WANTS_TO_LEARN, TeachText::KNOWS_FOUR}, FakeScreen::DELETE_YES_NO);
@@ -211,7 +228,7 @@ void press_yes_no(FakeTeachGame& game, TeachPress press){
         show_texts(game, {TeachText::WHICH_MOVE}, FakeScreen::KNOWN_MOVES);
         game.cursor = 0;
     }else if (game.screen == FakeScreen::STOP_YES_NO && yes){
-        show_texts(game, {TeachText::DID_NOT_LEARN}, FakeScreen::TM_CASE);
+        show_texts(game, {TeachText::DID_NOT_LEARN}, after_party(game));
         game.cursor = game.tm;
     }else if (no){
         game.screen = game.screen == FakeScreen::DELETE_YES_NO ? FakeScreen::STOP_YES_NO : FakeScreen::DELETE_YES_NO;
@@ -231,7 +248,7 @@ void press_known_moves(FakeTeachGame& game, TeachPress press){
         }
         game.moves[game.cursor] = tm_move(game);
         use_up(game);
-        show_texts(game, {TeachText::UNKNOWN, TeachText::UNKNOWN, TeachText::UNKNOWN}, FakeScreen::TM_CASE);
+        show_texts(game, {TeachText::UNKNOWN, TeachText::UNKNOWN, TeachText::UNKNOWN}, after_party(game));
         if (game.forget_texts_unread){
             game.screen = FakeScreen::UNREAD_TEXT;
         }
@@ -258,9 +275,12 @@ void press_game(FakeTeachGame& game, TeachPress press){
         if (press == TeachPress::A){
             choose_member(game);
         }else if (press == TeachPress::B){
-            game.screen = FakeScreen::TM_CASE;
+            game.screen = after_party(game);
             game.cursor = game.tm;
         }
+        return;
+    case FakeScreen::TUTOR_TEXT:
+        game.screen = FakeScreen::OVERWORLD;
         return;
     case FakeScreen::TEXT:
     case FakeScreen::UNREAD_TEXT:
@@ -277,6 +297,7 @@ TeachView view_of(const FakeTeachGame& game){
     case FakeScreen::OVERWORLD:
     case FakeScreen::START_MENU:
     case FakeScreen::UNREAD_TEXT:
+    case FakeScreen::TUTOR_TEXT:
         return {};
     case FakeScreen::BAG:{
         const bool key_items = game.pockets[game.pocket] == "key-items";
@@ -317,6 +338,16 @@ public:
         m_game.cursor = 0;
         return true;
     }
+    virtual bool talk_to_tutor() override{
+        if (m_game.screen != FakeScreen::OVERWORLD || m_game.tutor_move.empty()){
+            m_game.error = "talked to no tutor";
+            return false;
+        }
+        m_game.tutoring = true;
+        m_game.screen = FakeScreen::PROMPT;
+        m_game.cursor = 0;
+        return true;
+    }
     virtual TeachView look() override{
         return view_of(m_game);
     }
@@ -328,7 +359,11 @@ public:
         press_game(m_game, press);
     }
     virtual bool to_overworld() override{
-        if (m_game.screen == FakeScreen::START_MENU || m_game.screen == FakeScreen::OVERWORLD){
+        //  B pages through a tutor's lines too.
+        const bool tutor_lines = m_game.screen == FakeScreen::TUTOR_TEXT
+            || (m_game.tutoring && m_game.after_texts == FakeScreen::TUTOR_TEXT
+                && (m_game.screen == FakeScreen::TEXT || m_game.screen == FakeScreen::UNREAD_TEXT));
+        if (tutor_lines || m_game.screen == FakeScreen::START_MENU || m_game.screen == FakeScreen::OVERWORLD){
             m_game.screen = FakeScreen::OVERWORLD;
             return true;
         }
@@ -342,6 +377,8 @@ private:
     FakeTeachGame& m_game;
 };
 
+
+const TeachPlan MEGA_KICK{.item = std::string(TEACH_TUTOR), .move = "mega-kick", .member = 0, .forget_move = "withdraw"};
 
 struct ScreensCase{
     std::string name = {};
@@ -366,6 +403,23 @@ void forget_texts_unread(FakeTeachGame& game){
     game.forget_texts_unread = true;
 }
 void nothing_compatible(FakeTeachGame& game){
+    game.compatible.clear();
+}
+//  Route 4's Mega Kick tutor, the party as console B's (2026-11-03).
+void mega_kick_tutor(FakeTeachGame& game){
+    game.tutor_move = "mega-kick";
+    game.moves = {"bite", "water-pulse", "bubble", "withdraw"};
+}
+void mega_kick_tutor_unread(FakeTeachGame& game){
+    mega_kick_tutor(game);
+    game.forget_texts_unread = true;
+}
+void mega_kick_tutor_room(FakeTeachGame& game){
+    mega_kick_tutor(game);
+    game.moves = {"bite", "water-pulse", "bubble"};
+}
+void mega_kick_tutor_incompatible(FakeTeachGame& game){
+    mega_kick_tutor(game);
     game.compatible.clear();
 }
 
@@ -399,6 +453,41 @@ std::vector<ScreensCase> screens_cases(){
             .setup = nothing_compatible,
             .end = TeachEnd::REFUSED,
             .moves = {"bite", "tail-whip", "bubble", "withdraw"},
+            .tm03 = 1,
+        },
+    };
+}
+
+//  Route 4's Mega Kick tutor: the TM03 still in the TM CASE after each.
+std::vector<ScreensCase> tutor_screens_cases(){
+    return {
+        {
+            .name = "the Mega Kick tutor: over WITHDRAW, back to the overworld past his line",
+            .setup = mega_kick_tutor,
+            .plan = MEGA_KICK,
+            .moves = {"bite", "water-pulse", "bubble", "mega-kick"},
+            .tm03 = 1,
+        },
+        {
+            .name = "the Mega Kick tutor, the texts after the forget read as other",
+            .setup = mega_kick_tutor_unread,
+            .plan = MEGA_KICK,
+            .moves = {"bite", "water-pulse", "bubble", "mega-kick"},
+            .tm03 = 1,
+        },
+        {
+            .name = "the Mega Kick tutor, a free slot",
+            .setup = mega_kick_tutor_room,
+            .plan = MEGA_KICK,
+            .moves = {"bite", "water-pulse", "bubble", "mega-kick"},
+            .tm03 = 1,
+        },
+        {
+            .name = "the Mega Kick tutor, not compatible: given up past his line",
+            .setup = mega_kick_tutor_incompatible,
+            .plan = MEGA_KICK,
+            .end = TeachEnd::REFUSED,
+            .moves = {"bite", "water-pulse", "bubble", "withdraw"},
             .tm03 = 1,
         },
     };
@@ -443,10 +532,12 @@ UnitTestResult check_screens_case(const ScreensCase& item){
 }
 
 UnitTestResult test_screens(){
-    for (const ScreensCase& item : screens_cases()){
-        const UnitTestResult result = check_screens_case(item);
-        if (result.result != UnitTestResult::PASSED){
-            return result;
+    for (const std::vector<ScreensCase>& cases : {screens_cases(), tutor_screens_cases()}){
+        for (const ScreensCase& item : cases){
+            const UnitTestResult result = check_screens_case(item);
+            if (result.result != UnitTestResult::PASSED){
+                return result;
+            }
         }
     }
     return true;
