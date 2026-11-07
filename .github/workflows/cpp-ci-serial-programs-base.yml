@@ -260,7 +260,9 @@ jobs:
         uses: actions/checkout@v7
         if: inputs.run-tests
         with:
-          repository: 'PokemonAutomation/CommandLineTests'
+          # Complete fork fixtures include pending FRLG image submissions.
+          repository: 'dayfine/CommandLineTests'
+          ref: '49e507fde8c3a54cd0264db0dbea7c3ee3618085'
           path: 'CommandLineTests'
 
       # The unit tests assume the downloadable resources they need are already downloaded
