@@ -181,6 +181,10 @@ See [pokemon_sv/PR_WORKFLOW.md](pokemon_sv/PR_WORKFLOW.md). In short:
   `dayfine/Arduino-Source`**, including changes ready for review. Hand anything
   intended for upstream to the user. This replaces the former Claude-publishes
   workflow, per the user's global instructions on 2026-10-23.
+- **Every upstream PR must be created personally by the user, with a description
+  written personally by the user** (2026-11-06). Agents must not create upstream
+  PRs or draft, write, rewrite or publish their descriptions. Agents may prepare
+  code, tests and factual handoff notes; the user authors and submits the PR.
 - We keep **at most three open upstream PRs, drafts included** (the user's
   call on 2026-11-03; upstream CONTRIBUTING.md asks new contributors for two). This limit does not authorize agents to publish upstream.
 - Use `gh` through `~/.local/bin/gh`, first on PATH. Do not bypass the guard

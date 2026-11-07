@@ -11,6 +11,10 @@ restriction on 2026-10-23. It applies to every agent, including Codex and Claude
 user.** A successful build, completed validation or merged parent does not
 authorize an agent to publish upstream.
 
+- **Every upstream PR must be created personally by the user, and its
+  description must be written personally by the user** (2026-11-06). Agents must
+  not draft, write, rewrite or publish upstream PR descriptions. Prepare code,
+  tests and factual handoff notes; leave PR authorship and submission to the user.
 - **At most three open upstream PRs from us, drafts included** (the user's
   call on 2026-11-03; upstream CONTRIBUTING.md asks new contributors for two). This is a limit for the user's upstream handoff, not
   permission for an agent to create a PR.
@@ -52,7 +56,10 @@ authorize an agent to publish upstream.
   comment on the closed upstream PR, linking the fork PR. That PR's review
   threads stay readable upstream.
 
-## Writing the PR description
+## Writing the fork PR description
+
+These instructions apply to fork PRs only. The user writes all upstream PR
+descriptions personally.
 
 Write the description so a reviewer knows what to read and what to skim.
 Maintainers review on github.com, which does not mark moved code.
