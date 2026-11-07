@@ -11,6 +11,7 @@
 #include "Tests/ImageUnitTest.h"
 #include "VideoGames/PokemonSV/Inference/PokemonSV_BlueberryPointsReader.h"
 #include "VideoGames/PokemonSV/Options/PokemonSV_BBQuests.h"
+#include "PokemonSV_BBQLogger_Tests.h"
 #include "PokemonSV_BlueberryQuests.h"
 #include "PokemonSV_BBQSoloFarmer.h"
 #include "PokemonSV_BBQTests.h"
@@ -130,6 +131,13 @@ namespace{
 class NullLogger : public Logger{
 public:
     virtual void log(const std::string&, Color) override{}
+};
+class RecordingLogger : public Logger{
+public:
+    std::vector<std::string> lines;
+    virtual void log(const std::string& line, Color) override{
+        lines.push_back(line);
+    }
 };
 
 // A singleplayer quest panel that behaves like the game's: 3 blue quests,
@@ -592,9 +600,18 @@ public:
         panel.out_of_bp = m_scenario.out_of_bp;
         panel.missed_reads = m_scenario.missed_reads;
 
-        NullLogger logger;
+        RecordingLogger logger;
         std::vector<BBQuests> quests = m_scenario.quests;
         const BBQRerollResult result = reroll_quest(logger, panel, quests, m_scenario.slot);
+        //Each reroll logs one line naming its slot and quest, whatever the result.
+        const std::string reroll_line = "Rerolling quest " + std::to_string(m_scenario.slot + 1)
+            + " (" + BBQuests_enum_to_string(m_scenario.quests[m_scenario.slot]) + ").";
+        const size_t reroll_lines = std::count_if(logger.lines.begin(), logger.lines.end(), [](const std::string& line){
+            return line.starts_with("Rerolling quest ");
+        });
+        if (reroll_lines != 1 || std::find(logger.lines.begin(), logger.lines.end(), reroll_line) == logger.lines.end()){
+            return "Expected one log line \"" + reroll_line + "\", got " + std::to_string(reroll_lines) + " reroll lines.";
+        }
         if (result != m_scenario.expected){
             return "Expected " + reroll_result_to_string(m_scenario.expected)
                 + ", got " + reroll_result_to_string(result);
@@ -800,6 +817,7 @@ void add_tests_BBQ(UnitTestDatabase& database){
     add_tests_BBQuestPlan(database);
     add_tests_BBQFarmerRounds(database);
     add_tests_TeraEncounterAction(database);
+    add_tests_BBQDiagnosticLogs(database);
 }
 
 
