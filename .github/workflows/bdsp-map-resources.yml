@@ -1,0 +1,14 @@
+name: BDSP map resources
+on:
+  pull_request:
+  workflow_dispatch:
+jobs:
+  integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Prepare and check the approved BDSP resource pin
+        uses: dayfine/PokemonSimulation/integrations/arduino-source/verify-map-packs@f12af546d98f453e005c3116442423dcbdcda347
+        with:
+          layout: resources
+          operation: prepare
