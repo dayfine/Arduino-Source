@@ -210,10 +210,9 @@ include(cmake/SourceFiles.cmake)
 # add extract_discord_sdk(), which unpacks the per-platform Discord Social SDK zips
 include(cmake/ExtractDiscordSDK.cmake)
 
-# Organize source files in IDE project view
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/../../ FILES ${CORE_LIBRARY_SOURCES})
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/../../ FILES ${LIBRARY_SOURCES})
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/../../ FILES ${EXECUTABLE_SOURCES})
+# Organize source files in IDE project view, including external build outputs.
+include(cmake/SourceGroups.cmake)
+pa_source_groups("${CMAKE_CURRENT_SOURCE_DIR}/../../" ${CORE_LIBRARY_SOURCES} ${LIBRARY_SOURCES} ${EXECUTABLE_SOURCES})
 
 # Create GUI-free Controller library, CoreLib
 include(cmake/CoreLib.cmake)
