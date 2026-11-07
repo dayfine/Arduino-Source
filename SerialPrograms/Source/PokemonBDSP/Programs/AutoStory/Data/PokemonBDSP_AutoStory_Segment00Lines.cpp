@@ -29,12 +29,12 @@ const char* const MAP_VERITY_LAKEFRONT = "Verity Lakefront";
 //  cell.
 const StoryWorld& segment00_maps(){
     static const StoryWorld maps = []{
-        StoryWorld maps;
-        maps.add(MAP_TWINLEAF_TOWN, story_map("TwinleafTown"), {96, 864});
-        maps.add(MAP_ROUTE_201, story_map("Route201"), {96, 839});
-        maps.add(MAP_VERITY_LAKEFRONT, story_map("VerityLakefront"), {64, 832});
-        maps.add(MAP_SANDGEM_TOWN, story_map("SandgemTown"), {160, 832});
-        return maps;
+        StoryWorld world;
+        world.add(MAP_TWINLEAF_TOWN, story_map("TwinleafTown"), {96, 864});
+        world.add(MAP_ROUTE_201, story_map("Route201"), {96, 839});
+        world.add(MAP_VERITY_LAKEFRONT, story_map("VerityLakefront"), {64, 832});
+        world.add(MAP_SANDGEM_TOWN, story_map("SandgemTown"), {160, 832});
+        return world;
     }();
     return maps;
 }
