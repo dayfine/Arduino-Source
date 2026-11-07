@@ -1,0 +1,86 @@
+quest_slug,variant,tier,reward_bp,reroll_bp,reroll_note
+auto-10,,blue,20,10,
+make-tm,,blue,20,10,
+pickup-10,,blue,20,10,
+sneak-up,,blue,20,10,
+photo-fly,,blue,30,10,
+photo-swim,,blue,30,10,
+photo-canyon,,blue,30,10,
+photo-coastal,,blue,30,10,
+photo-polar,,blue,30,10,
+photo-savanna,,blue,30,10,
+tera-self-defeat,,blue,30,10,
+travel-500,,blue,20,10,
+catch-any,,blue,20,10,
+catch-normal,,blue,40,10,
+catch-fighting,,blue,40,10,
+catch-flying,,blue,40,10,
+catch-poison,,blue,40,10,
+catch-ground,,blue,40,10,
+catch-rock,,blue,40,10,
+catch-bug,,blue,40,10,
+catch-ghost,,blue,40,10,
+catch-steel,,blue,40,10,
+catch-fire,,blue,40,10,
+catch-water,,blue,40,10,
+catch-grass,,blue,40,10,
+catch-electric,,blue,40,10,
+catch-psychic,,blue,40,10,
+catch-ice,,blue,40,10,
+catch-dragon,,blue,40,10,
+catch-dark,,blue,40,10,
+catch-fairy,,blue,40,10,
+wash-pokemon,,red,100,50,
+wild-tera,,red,100,50,
+auto-30,,red,130,50,
+tera-raid,,red,150,50,
+sandwich-three,,red,130,50,
+bitter-sandwich,,red,150,50,
+sweet-sandwich,,red,150,50,
+salty-sandwich,,red,150,50,
+sour-sandwich,,red,150,50,
+spicy-sandwich,,red,150,50,
+hatch-egg,,red,200,50,
+photo-normal,,red,150,50,
+photo-fighting,,red,150,50,
+photo-flying,,red,150,50,
+photo-poison,,red,150,50,
+photo-ground,,red,150,50,
+photo-rock,,red,150,50,
+photo-bug,,red,150,50,
+photo-ghost,,red,150,50,
+photo-steel,,red,150,50,
+photo-fire,,red,150,50,
+photo-water,,red,150,50,
+photo-grass,,red,150,50,
+photo-electric,,red,150,50,
+photo-psychic,,red,150,50,
+photo-ice,,red,150,50,
+photo-dragon,,red,150,50,
+photo-dark,,red,150,50,
+photo-fairy,,red,150,50,
+ditto-central,3,gold,500,,gold cannot be individually rerolled (see report sources)
+ditto-central,4,gold,550,,gold cannot be individually rerolled (see report sources)
+ditto-central,5,gold,600,,gold cannot be individually rerolled (see report sources)
+ditto-canyon,3,gold,500,,gold cannot be individually rerolled (see report sources)
+ditto-canyon,4,gold,550,,gold cannot be individually rerolled (see report sources)
+ditto-canyon,5,gold,600,,gold cannot be individually rerolled (see report sources)
+ditto-coastal,3,gold,500,,gold cannot be individually rerolled (see report sources)
+ditto-coastal,4,gold,550,,gold cannot be individually rerolled (see report sources)
+ditto-coastal,5,gold,600,,gold cannot be individually rerolled (see report sources)
+ditto-polar,3,gold,500,,gold cannot be individually rerolled (see report sources)
+ditto-polar,4,gold,550,,gold cannot be individually rerolled (see report sources)
+ditto-polar,5,gold,600,,gold cannot be individually rerolled (see report sources)
+ditto-savanna,3,gold,500,,gold cannot be individually rerolled (see report sources)
+ditto-savanna,4,gold,550,,gold cannot be individually rerolled (see report sources)
+ditto-savanna,5,gold,600,,gold cannot be individually rerolled (see report sources)
+group-canyon,,gold,400,,gold cannot be individually rerolled (see report sources)
+group-coastal,,gold,400,,gold cannot be individually rerolled (see report sources)
+group-polar,,gold,400,,gold cannot be individually rerolled (see report sources)
+group-savanna,,gold,400,,gold cannot be individually rerolled (see report sources)
+group-eyewear,,gold,400,,gold cannot be individually rerolled (see report sources)
+group-nonuniform,,gold,400,,gold cannot be individually rerolled (see report sources)
+group-masks,,gold,400,,gold cannot be individually rerolled (see report sources)
+sandwich-four,,gold,500,,gold cannot be individually rerolled (see report sources)
+catch-hint,,gold,500,,gold cannot be individually rerolled (see report sources)
+catch-hint2,,gold,600,,gold cannot be individually rerolled (see report sources)

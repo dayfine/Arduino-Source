@@ -1,0 +1,15 @@
+{
+  "note": "Current log may continue growing. BBQ reconstruction ends at 2026-10-20 08:17:27; later Flying Trial records are excluded.",
+  "inputs": [
+    {
+      "filename": "SerialPrograms-20261020-032023983416.log",
+      "bytes_at_hash_time": 52439179,
+      "sha256_at_hash_time": "8db344d1f12fec5750a8e572228970876960e98348cf0e580d29709ca0343fde"
+    },
+    {
+      "filename": "SerialPrograms.log",
+      "bytes_at_hash_time": 4832421,
+      "sha256_at_hash_time": "e9889ce8a6467d9d56a10279aff5978690de33a03871a080fb9bb5493203a459"
+    }
+  ]
+}
