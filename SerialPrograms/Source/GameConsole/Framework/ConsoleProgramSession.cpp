@@ -39,6 +39,7 @@ ConsoleProgramSession::ConsoleProgramSession(
     , m_descriptor(descriptor)
     , m_system_option(1, std::move(extra_option))
     , m_system(
+        run_logger(),
         m_system_option,
         descriptor.allow_commands_while_running(),
         0,
@@ -61,6 +62,9 @@ void ConsoleProgramSession::restore_defaults(){
     }
     logger().log("Restoring settings to defaults...");
     m_instance->restore_defaults();
+}
+std::string ConsoleProgramSession::settings_json() const{
+    return to_json().dump();
 }
 JsonValue ConsoleProgramSession::to_json() const{
     JsonObject obj = std::move(*m_instance->to_json().to_object());

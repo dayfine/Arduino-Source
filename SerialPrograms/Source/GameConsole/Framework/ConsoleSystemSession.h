@@ -66,7 +66,11 @@ public:
     virtual bool try_shutdown() noexcept override;
     ~ConsoleSystemSession();
 
+    //  `base_logger` is what this console's logger writes through: a
+    //  program session passes its run logger (ProgramSession::run_logger()),
+    //  so the console's lines land in the run's record.
     ConsoleSystemSession(
+        Logger& base_logger,
         ConsoleSystemOption& option,
         bool allow_commands_while_locked,
         size_t console_number,
