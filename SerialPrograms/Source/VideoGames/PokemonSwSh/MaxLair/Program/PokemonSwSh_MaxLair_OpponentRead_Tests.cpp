@@ -107,6 +107,25 @@ private:
 // did not repair it. The original OCR/frame error is not reproduced here.
 // Other rows are synthetic control-flow boundaries, not recorded console reads.
 const TestCase CASES[] = {
+    // Lab-A, 2026-11-07 01:09..02:05, revision 0e5eae18e: all 14
+    // resets followed this same header/summary ambiguity at battle two.
+    {
+        .input = {.name = "recorded Lycanroc form ambiguity continues after summary", .wins = 1, .previous = {}, .boss = "nihilego", .header = {"lycanroc-midday", "lycanroc-midnight"}, .summary = {"lycanroc-midday", "lycanroc-midnight"}},
+        .expectation = {.accepted = true, .opponent = {"lycanroc-midday", "lycanroc-midnight"}, .boss = "nihilego", .calls = {Call::HEADER, Call::OPEN, Call::WAIT, Call::SUMMARY, Call::CLOSE, Call::WAIT}},
+    },
+    {
+        .input = {.name = "Basculin forms continue after summary", .wins = 2, .previous = {}, .boss = "nihilego", .header = {"basculin-blue-striped", "basculin-red-striped"}, .summary = {"basculin-blue-striped", "basculin-red-striped"}},
+        .expectation = {.accepted = true, .opponent = {"basculin-blue-striped", "basculin-red-striped"}, .boss = "nihilego", .calls = {Call::HEADER, Call::OPEN, Call::WAIT, Call::SUMMARY, Call::CLOSE, Call::WAIT}},
+    },
+    {
+        .input = {.name = "different rental species still reject after summary", .wins = 1, .previous = {}, .boss = "nihilego", .header = {"lycanroc-midday", "magmar"}, .summary = {"lycanroc-midday", "magmar"}},
+        .expectation = {.accepted = false, .opponent = {"lycanroc-midday", "magmar"}, .boss = "nihilego", .calls = {Call::HEADER, Call::OPEN, Call::WAIT, Call::SUMMARY, Call::CLOSE, Call::WAIT, Call::INVALID}},
+    },
+    {
+        .input = {.name = "boss and rental candidates still reject", .wins = 1, .previous = {}, .boss = "nihilego", .header = {"lycanroc-midday", "nihilego"}, .summary = {"lycanroc-midday", "nihilego"}},
+        .expectation = {.accepted = false, .opponent = {"lycanroc-midday", "nihilego"}, .boss = "nihilego", .calls = {Call::HEADER, Call::OPEN, Call::WAIT, Call::SUMMARY, Call::CLOSE, Call::WAIT, Call::INVALID}},
+    },
+
     {
         .input = {.name = "valid rental skips summary", .wins = 2, .previous = {}, .boss = "", .header = {"mimikyu-disguised"}, .summary = {}},
         .expectation = {.accepted = true, .opponent = {"mimikyu-disguised"}, .boss = "", .calls = {Call::HEADER, Call::WAIT}},
