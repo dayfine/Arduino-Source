@@ -238,6 +238,37 @@ RngHelper::RngHelper()
     PA_ADD_OPTION(NOTIFICATIONS);
 }
 
+size_t RngHelper::free_party_slots_needed() const{
+    //  The targets whose shiny check reads the Pokemon received from the end of
+    //  the party (see check_for_shiny()) need a free slot for it. The others
+    //  only watch the encounter, and before the starter the party is empty.
+    switch (TARGET){
+    case PokemonFRLG_RngTarget::magikarp:
+    case PokemonFRLG_RngTarget::hitmon:
+    case PokemonFRLG_RngTarget::hitmonchan:
+    case PokemonFRLG_RngTarget::hitmonlee:
+    case PokemonFRLG_RngTarget::eevee:
+    case PokemonFRLG_RngTarget::lapras:
+    case PokemonFRLG_RngTarget::fossils:
+    case PokemonFRLG_RngTarget::omanyte:
+    case PokemonFRLG_RngTarget::kabuto:
+    case PokemonFRLG_RngTarget::aerodactyl:
+    case PokemonFRLG_RngTarget::gamecornerabra:
+    case PokemonFRLG_RngTarget::gamecornerclefairy:
+    case PokemonFRLG_RngTarget::gamecornerdratinifr:
+    case PokemonFRLG_RngTarget::gamecornerdratinilg:
+    case PokemonFRLG_RngTarget::gamecornerscyther:
+    case PokemonFRLG_RngTarget::gamecornerpinsir:
+    case PokemonFRLG_RngTarget::gamecornerporygon:
+    case PokemonFRLG_RngTarget::togepi:
+    case PokemonFRLG_RngTarget::togepifast:
+    case PokemonFRLG_RngTarget::eggpickup:
+        return 1;
+    default:
+        return 0;
+    }
+}
+
 void RngHelper::program(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
     /*
     * Settings: Text Speed fast
