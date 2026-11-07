@@ -64,6 +64,19 @@ use the script from its review worktree instead of the path above.
    selected source and profile; an unbound/default build is refused rather than
    repurposed. Use separate build directories outside each source checkout.
 
+   On Apple Silicon, keep CMake's processor selection and compiler target
+   consistent. For a native ARM64 build, include both
+   `-DCMAKE_APPLE_SILICON_PROCESSOR=arm64` and
+   `-DCMAKE_OSX_ARCHITECTURES=arm64` in `cmake_args`. An existing build configured
+   under Rosetta can retain `CMAKE_SYSTEM_PROCESSOR=x86_64` even when its compiler
+   targets ARM64, selecting Intel flags such as `-march=nehalem`. Changing only
+   the target architecture does not refresh that saved system detection. After
+   the launcher/build has stopped, reconfigure with `cmake --fresh` and the
+   complete original slot/profile/dependency arguments, or use a new dedicated
+   build directory. Do not edit generated flags or remove architecture checks
+   from game code. Verify the regenerated `CMakeSystem.cmake` reports `arm64`
+   and the library compile flags contain no Intel `-march` options.
+
 4. Save `~/.config/pokemonautomation/dev-labs.json`. Paths below are examples;
    choose your dedicated directories. A one-slot file is valid: omit B until it
    has been prepared.
