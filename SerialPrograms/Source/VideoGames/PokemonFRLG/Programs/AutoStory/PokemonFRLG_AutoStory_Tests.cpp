@@ -230,8 +230,8 @@ UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& po
 
 UnitTestResult test_routes_and_chain(){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
-    if (checkpoints.size() != 32 || checkpoints[0].start){
-        return "Expected 32 checkpoints, the first from a new game.";
+    if (checkpoints.size() != 34 || checkpoints[0].start){
+        return "Expected 34 checkpoints, the first from a new game.";
     }
     StoryPose pose;
     for (size_t c = 0; c < checkpoints.size(); c++){
@@ -600,7 +600,7 @@ UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<const Map
 //  From the Running Shoes on, routes and legs keep out of the grass (but
 //  in caves, which are all grass, onto a GRIND's or a capture's patch, and on legs held to walls round Route 6's trainers), off warps to maps not loaded and out of
 //  trainers' lines, but for the three Route 3 trainers, Mt. Moon's Grunt
-//  at (12, 20), Nugget Bridge's five, Route 25's four, Route 6's Jeff and Vermilion Gym's three the table steps
+//  at (12, 20), Nugget Bridge's five, Route 25's four, Route 6's Jeff, Vermilion Gym's three and Route 9's three the table steps
 //  in front of to fight; where they cross a wandering trainer's sight, the walk can place
 //  the player if the trainer stops them; and where they cross the sight of
 //  one who looks around, on a leg to a wall.
@@ -615,9 +615,9 @@ UnitTestResult test_trainer_lines(){
         }
         has_shoes = has_shoes || checkpoint.id == "00.10";
     }
-    if (beaten.size() != 17){
+    if (beaten.size() != 20){
         return "Expected to fight Colton, Greg and James on Route 3, the Grunt at (12, 20) in Mt. Moon, Nugget Bridge's five"
-            ", Franklin, Kelsey, Nob and Haley on Route 25, Jeff on Route 6 and Dwayne, Baily and Tucker in Vermilion Gym; the table fights "
+            ", Franklin, Kelsey, Nob and Haley on Route 25, Jeff on Route 6, Dwayne, Baily and Tucker in Vermilion Gym and Alicia, Jeremy and Conner on Route 9; the table fights "
             + std::to_string(beaten.size()) + " trainers.";
     }
     return true;

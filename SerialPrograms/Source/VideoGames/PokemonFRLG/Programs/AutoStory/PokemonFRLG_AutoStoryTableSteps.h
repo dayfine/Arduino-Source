@@ -91,6 +91,16 @@ inline constexpr const char* SS_ANNE_1F = "SSAnne_1F_Corridor";
 inline constexpr const char* SS_ANNE_2F = "SSAnne_2F_Corridor";
 //  Captain's Office map.
 inline constexpr const char* CAPTAINS_OFFICE = "SSAnne_CaptainsOffice";
+//  Vermilion City Pokemon Fan Club map.
+inline constexpr const char* FAN_CLUB = "VermilionCity_PokemonFanClub";
+//  Cerulean City Bike Shop map.
+inline constexpr const char* BIKE_SHOP = "CeruleanCity_BikeShop";
+//  Route 9 overworld map.
+inline constexpr const char* ROUTE9 = "Route9";
+//  Route 10 overworld map.
+inline constexpr const char* ROUTE10 = "Route10";
+//  Route 10 Pokemon Center map.
+inline constexpr const char* ROUTE10_CENTER = "Route10_PokemonCenter_1F";
 
 //  Constructs pose at map coordinates.
 Pokemon::Pose at(const char* map, int x, int y, std::optional<Direction> facing = std::nullopt);
@@ -133,6 +143,9 @@ StoryStep into_sight(std::string name, Direction direction, std::string why);
 //  ledge (they hold into walls, and a held ledge hops), so where the only
 //  way on is down a ledge the table takes it as this one step.
 StoryStep hop(std::string name, Direction direction, Pokemon::Pose landing, std::string why);
+//  One step `direction` onto `tile`, the next one, where a walk's hold
+//  would go on: onto the tile before a ledge, which a held leg hops.
+StoryStep step_onto(std::string name, Direction direction, Pokemon::Pose tile, std::string why);
 //  Constructs a dialog answer step.
 StoryStep answer(std::string name, bool yes, std::string why);
 //  Constructs an in-game cutscene or dialog interaction step.
@@ -163,12 +176,17 @@ StoryStep options_step();
 StoryStep cut_tree(std::string name, Pokemon::Pose tree, std::string why);
 
 
-//  Rows in files of their own (PokemonFRLG_AutoStoryTableVermilionGym.cpp).
+//  Rows in files of their own (PokemonFRLG_AutoStoryTableVermilionGym.cpp,
+//  PokemonFRLG_AutoStoryTableCeladon.cpp).
 StoryCheckpoint vermilion_gym();
 //  Route navigation step towards Lt. Surge battle.
 StoryCheckpoint to_lt_surge();
 //  Lt. Surge gym leader battle checkpoint.
 StoryCheckpoint lt_surge();
+//  Bike Voucher retrieval checkpoint in Vermilion City Fan Club.
+StoryCheckpoint bike_voucher();
+//  Route 10 Pokemon Center navigation checkpoint.
+StoryCheckpoint route10_center();
 
 
 
