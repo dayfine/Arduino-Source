@@ -17,4 +17,4 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: cmake -S SerialPrograms/cmake/tests/source-groups -B ../external-source-group-tests
-      - run: ctest --test-dir ../external-source-group-tests --output-on-failure
+      - run: ctest --test-dir ../external-source-group-tests -C Debug --output-on-failure

@@ -1,6 +1,6 @@
 # Configure-only regression tests; no Qt, compiler or hardware is needed.
 # cmake -S SerialPrograms/cmake/tests/source-groups -B /external/path/source-group-tests
-# ctest --test-dir /external/path/source-group-tests --output-on-failure
+# ctest --test-dir /external/path/source-group-tests -C Debug --output-on-failure
 cmake_minimum_required(VERSION 3.24)
 project(SourceGroupTests NONE)
 enable_testing()
