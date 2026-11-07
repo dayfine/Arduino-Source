@@ -4,6 +4,7 @@
  *
  */
 
+#include <format>
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/FatalProgramException.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
@@ -203,6 +204,9 @@ StateMachineAction run_caught_screen(
 
 
     const std::string boss = state_tracker[console_index].boss_if_caught();
+    console.log(std::format("[MaxLair][outcome] console={}, wins={}, lives_left={}, identified_boss={}, boss_if_caught={}, shiny_count={}, boss_is_shiny={}; only boss_if_caught is passed to end_adventure_action",
+        console_index, state_tracker[console_index].wins, (int)state_tracker[console_index].lives_left,
+        state_tracker[console_index].boss, boss, shinies.size(), boss_is_shiny));
     CaughtScreenAction action =
         decider.end_adventure_action(
             console_index, boss,

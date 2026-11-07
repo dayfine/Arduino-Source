@@ -4,6 +4,8 @@
  *
  */
 
+#include <format>
+#include "Common/Cpp/PrettyPrint.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonFramework/Tools/ErrorDumper.h"
@@ -37,15 +39,18 @@ public:
         return m_reader.read_opponent(m_stream.logger(), m_context, m_stream.video());
     }
     virtual void open_summary() override{
+        m_stream.log("[MaxLair][opponent] queuing summary-open inputs (Y, up, A).");
         pbf_press_button(m_context, BUTTON_Y, 80ms, 1000ms);
         pbf_press_dpad(m_context, DPAD_UP, 80ms, 400ms);
         pbf_press_button(m_context, BUTTON_A, 80ms, 2000ms);
     }
     virtual std::set<std::string> read_summary() override{
+        m_stream.log("[MaxLair][opponent] summary-open inputs completed; reading snapshot (screen not independently confirmed).");
         m_summary = m_stream.video().snapshot();
         return m_reader.read_opponent_in_summary(m_stream.logger(), m_summary);
     }
     virtual void close_summary() override{
+        m_stream.log("[MaxLair][opponent] queuing summary-close inputs (B).");
         pbf_mash_button(m_context, BUTTON_B, 3000ms);
     }
     virtual void wait_for_inputs() override{
@@ -72,6 +77,8 @@ bool read_battle_menu(
     bool currently_dmaxed, bool cheer_only
 ){
     PlayerState& player = state.players[player_index];
+    stream.log(std::format("[MaxLair][battle] menu read: player={}, wins={}, dmax_screen={}, cheer_only={}, saved_player={}",
+        player_index, state.wins, currently_dmaxed, cheer_only, player.dump()));
 
     VideoOverlaySet boxes(stream.overlay());
     BattleMenuReader reader(stream.overlay(), settings.language, ocr_watchdog);
@@ -80,13 +87,17 @@ bool read_battle_menu(
 
     ConsoleOpponentRead opponent_read(stream, context, reader);
     if (!read_battle_opponent(stream.logger(), state, opponent_read)){
+        stream.log("[MaxLair][battle] opponent read rejected; returning failure before move selection.", COLOR_ORANGE);
         return false;
     }
 
     //  Read misc.
     VideoSnapshot screen = stream.video().snapshot();
     state.opponent_hp = reader.read_opponent_hp(stream.logger(), screen);
+    stream.log(std::format("[MaxLair][battle] accepted opponent={}, boss={}, opponent_hp={}",
+        set_to_str(state.opponent), state.boss, state.opponent_hp.value));
     if (cheer_only){
+        stream.log("[MaxLair][battle] cheer-only path: marking player dead and skipping HP/PP/move-slot reads.");
         player.dmax_turns_left = 0;
         player.health = Health{0, 1};
         player.can_dmax = false;
@@ -103,6 +114,7 @@ bool read_battle_menu(
         }
     }else{
         std::string name = reader.read_own_mon(stream.logger(), screen);
+        stream.log(std::format("[MaxLair][battle] own Pokemon: raw={}, cached={}; empty read retains cache", name, player.pokemon));
         if (!name.empty()){
             state.players[player_index].pokemon = std::move(name);
         }
@@ -125,7 +137,9 @@ bool read_battle_menu(
     if (health[3].hp >= 0) state.players[3].health = health[3];
 
 
+    stream.log("[MaxLair][battle] after HP/Dmax update: " + player.dump());
     for (size_t attempts = 0; attempts < 5; attempts++){
+        stream.log(std::format("[MaxLair][battle] move-menu read attempt {}/5; clearing blocked-move flags", attempts + 1));
         //  Enter move selection to read PP.
         pbf_press_button(context, BUTTON_A, 80ms, 1000ms);
         context.wait_for_all_requests();
@@ -151,6 +165,8 @@ bool read_battle_menu(
         //  Read move slot.
     //    int8_t move_slot = arrow_finder.get_slot();
         int8_t move_slot = arrow_finder.detect(screen);
+        stream.log(std::format("[MaxLair][battle] move-menu read: detected_slot={}, cached_slot={}, player={}",
+            (int)move_slot, state.move_slot, player.dump()));
         if (move_slot < 0){
             stream.log("Unable to detect move slot.", COLOR_RED);
 //            dump_image(stream.logger(), MODULE_NAME, "MoveSlot", screen);
@@ -174,6 +190,8 @@ bool read_battle_menu(
         return true;
     }
 
+    stream.log(std::format("[MaxLair][battle] all 5 move-slot reads failed; existing behavior continues with cached_slot={} (unconfirmed)",
+        state.move_slot), COLOR_ORANGE);
     dump_image(stream.logger(), MODULE_NAME, "MoveSlot", screen);
     return true;
 }
@@ -198,11 +216,15 @@ StateMachineAction run_move_select(
         state, settings,
         currently_dmaxed, cheer_only
     )){
+        stream.log(std::format("[MaxLair][battle] RESET_RECOVER: console={}, player={}, wins={}, boss={}, opponent={}",
+            console_index, player_index, state.wins, state.boss, set_to_str(state.opponent)), COLOR_ORANGE);
         return StateMachineAction::RESET_RECOVER;
     }
 
 
     GlobalState inferred = state_tracker.synchronize(stream.logger(), console_index);
+    stream.log(std::format("[MaxLair][battle] synchronized: console={}, local_wins={}, inferred_wins={}, local_opponent={}, inferred_opponent={}, local_boss={}, inferred_boss={}",
+        console_index, state.wins, inferred.wins, set_to_str(state.opponent), set_to_str(inferred.opponent), state.boss, inferred.boss));
 
     bool all_moves_blocked = false;
 
@@ -259,6 +281,7 @@ StateMachineAction run_move_select(
         );
 
         //  No battle menu detected, we're good.
+        stream.log(std::format("[MaxLair][battle] after move input: slot={}, battle_menu_result={}; absence of menu is treated as accepted, not independently confirmed", state.move_slot, result));
         if (result < 0){
             player.move_blocked[state.move_slot] = false;
             break;
@@ -311,6 +334,8 @@ StateMachineAction throw_balls(
     const EndBattleDecider& decider
 ){
     GlobalState& state = state_tracker[console_index];
+    stream.log(std::format("[MaxLair][battle] catch screen: console={}, wins_before={}, boss={}, opponent={}; clearing battle state then incrementing wins",
+        console_index, state.wins, state.boss, set_to_str(state.opponent)));
     state.clear_battle_state();
 
     state.wins++;
@@ -332,6 +357,8 @@ StateMachineAction throw_balls(
         ball = decider.normal_ball(console_index);
     }
 
+    stream.log(std::format("[MaxLair][battle] ball decision: console={}, local_wins={}, inferred_wins={}, inferred_boss={}, boss_ball={}, ball={}, boss_if_caught={}",
+        console_index, state.wins, inferred.wins, inferred.boss, boss, ball, inferred.boss_if_caught()));
     BattleBallReader reader(stream, language);
     pbf_press_button(context, BUTTON_A, 400ms, 600ms);
     context.wait_for_all_requests();

@@ -81,7 +81,13 @@ std::vector<PanelEntry> PanelListFactory::make_panels() const{
     ret.emplace_back(GameConsole::make_ConsoleProgram<GameConsole::SnapshotDumper>());
     ret.emplace_back(make_SingleSwitchProgram<CommandFileRunner>());
 
-    if (STATIC_GLOBALS.DEVELOPER_MODE){
+#ifdef PA_LAB_DEVELOPER_TOOLS
+    //  Lab builds expose diagnostic panels without changing developer-mode timing.
+    constexpr bool show_developer_tools = true;
+#else
+    const bool show_developer_tools = STATIC_GLOBALS.DEVELOPER_MODE;
+#endif
+    if (show_developer_tools){
         ret.emplace_back("---- Developer Tools ----");
         ret.emplace_back(make_SingleSwitchProgram<MenuStabilityTester>());
         ret.emplace_back(make_ComputerProgram<TestProgramComputer>());

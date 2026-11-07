@@ -209,6 +209,10 @@ if (APPLE)
             message(FATAL_ERROR "PA_LAB_PROFILE must contain only ASCII letters, digits, '_' or '-'.")
         endif()
         target_compile_definitions(SerialPrograms PRIVATE PA_LAB_PROFILE="${PA_LAB_PROFILE}")
+        # Expose diagnostic programs in profile-bound lab builds only.
+        # Keep the broader developer-mode behavior and timing token-gated.
+        set_property(SOURCE Source/NintendoSwitch/NintendoSwitch_Panels.cpp APPEND PROPERTY
+            COMPILE_DEFINITIONS PA_LAB_DEVELOPER_TOOLS)
     endif()
 
     # Receipt binds packaging to the linked binary, not just a CMake cache value.
