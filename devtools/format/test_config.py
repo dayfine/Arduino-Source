@@ -28,7 +28,7 @@ class FormatterConfigTests(unittest.TestCase):
         format_cpp(b'void f();\n')
 
     def test_exact_compact_braces_and_control_parentheses(self):
-        source = b'namespace Example {\nvoid f() {\nif(ready()) {\nrun();\n} else {\nstop();\n}\n}\n}\n'
+        source = b'namespace Example {\nvoid f(){\nif(ready()) {\nrun();\n} else {\nstop();\n}\n}\n}\n'
         expected = b'namespace Example{\nvoid f(){\n    if (ready()){\n        run();\n    }else{\n        stop();\n    }\n}\n}\n'
         self.assertEqual(expected, format_cpp(source))
         self.assertEqual(expected, format_cpp(expected))
@@ -117,3 +117,79 @@ class FormatterConfigTests(unittest.TestCase):
         self.assertNotIn(b'constType', result)
         self.assertIn(b'Holder<int>>>', result)
         self.assertEqual(result, format_cpp(result))
+
+    def test_preserves_short_functions_and_empty_constructor(self):
+        source = (
+            b'class Value{\npublic:\n'
+            b'    Value()\n        : m_value(0)\n    {}\n'
+            b'    int get() const{ return m_value; }\n'
+            b'    void clear(){ m_value = 0; }\n'
+            b'private:\n    int m_value;\n};\n'
+        )
+        self.assertEqual(source, format_cpp(source))
+
+    def test_preserves_manual_spacing_within_overloads(self):
+        source = (
+            b'class Value{\npublic:\n'
+            b'    const Type& get() const{ return m_value; }\n'
+            b'    Type& get()      { return m_value; }\n'
+            b'    const Type* data() const;\n'
+            b'    Type* data();\n};\n'
+        )
+        self.assertEqual(source, format_cpp(source))
+
+    def test_preserves_multiline_argument_and_closing_parenthesis_layout(self):
+        source = (
+            b'void f(){\n    call(\n        first,\n        second\n    );\n'
+            b'    auto value = build(\n        Params{\n            .count = 2,\n        }\n    );\n}\n'
+        )
+        self.assertEqual(source, format_cpp(source))
+
+    def test_preserves_template_parameter_pack_spelling(self):
+        source = b'template <class... Args>\nvoid f(Args&&... args);\n'
+        self.assertEqual(source, format_cpp(source))
+
+    def test_known_leading_overload_alignment_gap(self):
+        source = (
+            b'class Value{\npublic:\n'
+            b'    const Type* data() const;\n'
+            b'          Type* data();\n};\n'
+        )
+        result = format_cpp(source)
+        self.assertIn(b'\n    Type* data();', result)
+        self.assertNotEqual(source, result)
+
+    def test_explicitly_protected_alignment_table_is_unchanged(self):
+        source = (
+            b'class Value{\npublic:\n'
+            b'// *INDENT-OFF*\n'
+            b'    const Type& get() const{ return m_value; }\n'
+            b'          Type& get()      { return m_value; }\n'
+            b'// *INDENT-ON*\n};\n'
+        )
+        self.assertEqual(source, format_cpp(source))
+
+    def test_preserves_lambda_body_inside_call(self):
+        source = (
+            b'void f(){\n    ScopeExit cleanup([]{\n        stop();\n    });\n}\n'
+        )
+        self.assertEqual(source, format_cpp(source))
+
+    def test_preserves_attached_catch_chain(self):
+        source = (
+            b'void f(){\n    try{\n        run();\n    }catch (const First& error){\n'
+            b'        log(error);\n    }catch (const Second& error){\n'
+            b'        log(error);\n    }\n}\n'
+        )
+        self.assertEqual(source, format_cpp(source))
+
+    def test_nested_lambda_and_initializer_table_are_stable(self):
+        sources = [
+            b'void f(){\n    dispatch<T>(\n        scope,\n        [](Handle& h){\n        run(h);\n    }\n    );\n    done();\n}\n',
+            b'void f(){\n    static const Database<T> value({\n        {A, "a"},\n        {B, "b"},\n    });\n}\n',
+            b'void f(){\n    try{\n        run();\n    }catch (Error& e){\n        report(\n            "message");\n    }\n}\n',
+        ]
+        for source in sources:
+            with self.subTest(source=source):
+                result = format_cpp(source)
+                self.assertEqual(result, format_cpp(result))

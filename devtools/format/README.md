@@ -52,10 +52,14 @@ not source-wide compliance. Do not enable a broad format-on-save hook yet.
 - Four spaces, no indentation tabs, unindented namespaces/access labels and
   type-attached pointers/references.
 - Compact control/namespace braces and spaced control parentheses. Existing
-  standalone class brace spacing and nested-template `>>` spelling are preserved. Existing braced
-  single-line `if`/`for`/`while` bodies expand onto multiple lines.
+  standalone class brace spacing and nested-template `>>` spelling are preserved.
+  Braced single-line `if`/`for`/`while` bodies expand onto multiple lines;
+  ordinary short functions and empty constructors stay compact.
 - Existing LF or CRLF style, include order (including own-header-last and
   registration-order exceptions), comment text and unlimited line width.
+- Existing spacing within aligned declarations/overloads, parameter-pack
+  spelling (`class... Args`), four-space continuation layout and existing
+  closing-parenthesis columns. Lambdas inside calls keep their ordinary body indentation.
 - No brace insertion/removal, statement removal, include sorting or generated
   namespace comments. Missing-brace and namespace/API documentation requirements
   remain the responsibility of review and existing code-health checks.
@@ -73,6 +77,12 @@ commit is proposed. Known limitations are recorded in the fork PR/run record:
   configurable spacing rule for this case. Restore the repository's compact
   spelling when reviewing output; this formatter is not a complete code-health
   compliance check.
+- Leading spaces used to align const/non-const overloads are still normalized
+  to the block indentation. `align_keep_extra_space` preserves spacing between
+  tokens, not arbitrary leading columns. Protect a deliberate table explicitly
+  with the tool's `// *INDENT-OFF*` / `// *INDENT-ON*` markers, or leave that
+  region unformatted. Tests expose this limitation and verify protected tables
+  remain byte-identical. No markers are added to application sources by this PR.
 - Function-definition brace line breaks are preserved to avoid moving a
   constructor's brace across comments or commented-out initializer entries.
 - Missing braces stay missing. Formatting is not a substitute for the existing
@@ -95,7 +105,10 @@ UNCRUSTIFY=/path/to/uncrustify python3 -m unittest discover -s devtools/format -
 Coverage includes exact brace spelling, indentation, pointers, includes,
 line-ending preservation, comment/long-line preservation, templates/designated
 initializers, raw strings, macro continuations/token pasting, constructor-comment placement and idempotence.
-Regressions also preserve conversion-operator tokens and expose the
-inherited-class spacing gap explicitly.
+Regressions also preserve conversion-operator tokens, short functions, empty
+constructors, intra-line alignment, argument/closing-parenthesis layouts, lambdas,
+attached catch chains, parameter packs and repeated-pass stability for nested
+lambdas/initializer tables. Known inherited-class spacing and
+leading-overload alignment gaps are tested explicitly rather than claimed fixed.
 
 Reference: [Uncrustify 0.83.0 options](https://github.com/uncrustify/uncrustify/blob/uncrustify-0.83.0/documentation/htdocs/default.cfg).
