@@ -24,7 +24,7 @@
 #include <functional>
 #include <map>
 #include <string>
-#include "PokemonBDSP_AutoStory_StoryExecutor.h"
+#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryExecutor.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

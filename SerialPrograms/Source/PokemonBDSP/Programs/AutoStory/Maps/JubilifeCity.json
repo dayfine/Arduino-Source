@@ -1,6 +1,11 @@
 {
+    "format": "pokesim-runtime-map/2",
     "name": "JubilifeCity",
-    "source": {"decomp_file": "pret/pokediamond: files/fielddata/land_data/land_data_release/narc_0015.bin, files/fielddata/land_data/land_data_release/narc_0016.bin, files/fielddata/land_data/land_data_release/narc_0017.bin, files/fielddata/land_data/land_data_release/narc_0018.bin; zone_event narc_0002", "revision": "default branch", "date": "2026-10-31"},
+    "source": {
+        "decomp_file": "pret/pokediamond: files/fielddata/land_data/land_data_release/narc_0015.bin, files/fielddata/land_data/land_data_release/narc_0016.bin, files/fielddata/land_data/land_data_release/narc_0017.bin, files/fielddata/land_data/land_data_release/narc_0018.bin; zone_event narc_0002",
+        "revision": "default branch",
+        "date": "2026-10-31"
+    },
     "tiles": [
         "##########################################..............########",
         "##########################################..............########",
@@ -119,28 +124,68 @@
         "north_road.24": [47, 20],
         "north_road.25": [48, 20]
     },
-    "objects": [
-        {"name": "ace_trainer_f_0", "kind": "npc", "x": 22, "y": 20, "wander": {"x0": 21, "y0": 20, "x1": 23, "y1": 20}},
-        {"name": "ace_trainer_m_1", "kind": "npc", "x": 46, "y": 21, "wander": {"x0": 45, "y0": 21, "x1": 47, "y1": 21}},
-        {"name": "school_kid_m_2", "kind": "npc", "x": 17, "y": 55},
-        {"name": "twin_3", "kind": "npc", "x": 33, "y": 18, "wander": {"x0": 32, "y0": 17, "x1": 34, "y1": 19}},
-        {"name": "expert_m_4", "kind": "npc", "x": 44, "y": 44},
-        {"name": "school_kid_m_5", "kind": "npc", "x": 51, "y": 34, "wander": {"x0": 51, "y0": 33, "x1": 51, "y1": 35}},
-        {"name": "pokefan_m_6", "kind": "npc", "x": 41, "y": 30, "wander": {"x0": 40, "y0": 29, "x1": 42, "y1": 31}},
-        {"name": "ace_trainer_m_22", "kind": "npc", "x": 36, "y": 25},
-        {"name": "poketch_president", "kind": "npc", "x": 46, "y": 35},
-        {"name": "clown_mart", "kind": "npc", "x": 55, "y": 33},
-        {"name": "clown_poketch_company", "kind": "npc", "x": 15, "y": 18},
-        {"name": "cashier_m_27", "kind": "npc", "x": 26, "y": 42},
-        {"name": "clown_tv_station", "kind": "npc", "x": 36, "y": 16},
-        {"name": "kid_with_nds_29", "kind": "npc", "x": 52, "y": 46},
-        {"name": "kid_with_nds_30", "kind": "npc", "x": 54, "y": 46}
-    ],
     "coord_events": [
-        {"name": "dawn_at_the_steps", "x": 45, "y": 60, "width": 4, "length": 1, "var": "VAR_JUBILIFE_CITY_STATE", "value": 0, "source": "pret/pokediamond files/fielddata/eventdata/zone_event_release/narc_0002.bin coord_events[0] (173, 796), script 2"},
-        {"name": "coord_event_1", "x": 45, "y": 7, "width": 3, "length": 1, "var": "VAR_JUBILIFE_CITY_STATE", "value": 3, "source": "pret/pokediamond files/fielddata/eventdata/zone_event_release/narc_0002.bin coord_events[1] (173, 743), script 4"},
-        {"name": "coord_event_2", "x": 60, "y": 21, "width": 1, "length": 4, "var": "VAR_JUBILIFE_CITY_STATE", "value": 1, "source": "pret/pokediamond files/fielddata/eventdata/zone_event_release/narc_0002.bin coord_events[2] (188, 757), script 3"},
-        {"name": "coord_event_3", "x": 27, "y": 43, "width": 1, "length": 3, "var": "VAR_GTS_ACCESS_STATE", "value": 0, "source": "pret/pokediamond files/fielddata/eventdata/zone_event_release/narc_0002.bin coord_events[3] (155, 779), script 19"},
-        {"name": "poketch_president", "x": 44, "y": 40, "width": 5, "length": 1, "var": "VAR_POKETCH_CAMPAIGN_STATE", "value": 1, "source": "pret/pokediamond files/fielddata/eventdata/zone_event_release/narc_0002.bin coord_events[4] (172, 776), script 17"}
+        {
+            "name": "dawn_at_the_steps",
+            "coord": [45, 60],
+            "width": 4,
+            "length": 1,
+            "var": "VAR_JUBILIFE_CITY_STATE",
+            "value": 0,
+            "source": "pret/pokediamond files/fielddata/eventdata/zone_event_release/narc_0002.bin coord_events[0] (173, 796), script 2"
+        },
+        {
+            "name": "coord_event_1",
+            "coord": [45, 7],
+            "width": 3,
+            "length": 1,
+            "var": "VAR_JUBILIFE_CITY_STATE",
+            "value": 3,
+            "source": "pret/pokediamond files/fielddata/eventdata/zone_event_release/narc_0002.bin coord_events[1] (173, 743), script 4"
+        },
+        {
+            "name": "coord_event_2",
+            "coord": [60, 21],
+            "width": 1,
+            "length": 4,
+            "var": "VAR_JUBILIFE_CITY_STATE",
+            "value": 1,
+            "source": "pret/pokediamond files/fielddata/eventdata/zone_event_release/narc_0002.bin coord_events[2] (188, 757), script 3"
+        },
+        {
+            "name": "coord_event_3",
+            "coord": [27, 43],
+            "width": 1,
+            "length": 3,
+            "var": "VAR_GTS_ACCESS_STATE",
+            "value": 0,
+            "source": "pret/pokediamond files/fielddata/eventdata/zone_event_release/narc_0002.bin coord_events[3] (155, 779), script 19"
+        },
+        {
+            "name": "poketch_president",
+            "coord": [44, 40],
+            "width": 5,
+            "length": 1,
+            "var": "VAR_POKETCH_CAMPAIGN_STATE",
+            "value": 1,
+            "source": "pret/pokediamond files/fielddata/eventdata/zone_event_release/narc_0002.bin coord_events[4] (172, 776), script 17"
+        }
+    ],
+    "npcs": [
+        {"name": "ace_trainer_f_0", "coord": [22, 20], "wander": {"min": [21, 20], "max": [23, 20]}},
+        {"name": "ace_trainer_m_1", "coord": [46, 21], "wander": {"min": [45, 21], "max": [47, 21]}},
+        {"name": "school_kid_m_2", "coord": [17, 55]},
+        {"name": "twin_3", "coord": [33, 18], "wander": {"min": [32, 17], "max": [34, 19]}},
+        {"name": "expert_m_4", "coord": [44, 44]},
+        {"name": "school_kid_m_5", "coord": [51, 34], "wander": {"min": [51, 33], "max": [51, 35]}},
+        {"name": "pokefan_m_6", "coord": [41, 30], "wander": {"min": [40, 29], "max": [42, 31]}},
+        {"name": "ace_trainer_m_22", "coord": [36, 25]},
+        {"name": "poketch_president", "coord": [46, 35]},
+        {"name": "clown_mart", "coord": [55, 33]},
+        {"name": "clown_poketch_company", "coord": [15, 18]},
+        {"name": "cashier_m_27", "coord": [26, 42]},
+        {"name": "clown_tv_station", "coord": [36, 16]},
+        {"name": "kid_with_nds_29", "coord": [52, 46]},
+        {"name": "kid_with_nds_30", "coord": [54, 46]}
     ]
 }

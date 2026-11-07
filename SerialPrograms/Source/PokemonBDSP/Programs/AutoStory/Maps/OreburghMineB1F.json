@@ -1,6 +1,11 @@
 {
+    "format": "pokesim-runtime-map/2",
     "name": "OreburghMineB1F",
-    "source": {"decomp_file": "pret/pokediamond: files/fielddata/land_data/land_data_release/narc_0313.bin; zone_event narc_0196", "revision": "default branch", "date": "2026-10-31"},
+    "source": {
+        "decomp_file": "pret/pokediamond: files/fielddata/land_data/land_data_release/narc_0313.bin; zone_event narc_0196",
+        "revision": "default branch",
+        "date": "2026-10-31"
+    },
     "tiles": [
         "################################",
         "###########DDD##################",
@@ -23,7 +28,7 @@
         "##########.....#################",
         "##########.....#################",
         "##########.....#################",
-        "##########.....#################",
+        "##########.DDD.#################",
         "############D###################",
         "################################",
         "################################",
@@ -35,9 +40,11 @@
         "################################",
         "################################"
     ],
-    "objects": [
-        {"name": "worker_0", "kind": "npc", "x": 7, "y": 4},
-        {"name": "item_1", "kind": "item", "x": 19, "y": 4},
-        {"name": "twin_2", "kind": "npc", "x": 6, "y": 3}
+    "npcs": [
+        {"name": "worker_0", "coord": [7, 4]},
+        {"name": "twin_2", "coord": [6, 3]}
+    ],
+    "items": [
+        {"name": "item_1", "coord": [19, 4]}
     ]
 }

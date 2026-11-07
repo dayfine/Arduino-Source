@@ -1669,29 +1669,29 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h
     Source/PokemonBDSP/PokemonBDSP_Tests.cpp
     Source/PokemonBDSP/PokemonBDSP_Tests.h
-    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Actions.cpp
-    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Actions.h
-    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Actions_Tests.cpp
-    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Actions_Tests.h
-    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Bag.cpp
-    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Bag.h
-    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Battle.cpp
-    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Battle.h
-    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_BattleMoves.cpp
-    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_BattleMoves.h
-    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Center.cpp
-    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Center.h
-    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Events.cpp
-    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Events.h
-    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Events_Jubilife.cpp
-    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Events_Lake.cpp
-    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Events_Oreburgh.cpp
-    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Events_Route204.cpp
-    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Events_Sandgem.cpp
-    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_NewGame.cpp
-    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_NewGame.h
-    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Settings.cpp
-    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Settings.h
+    Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Actions.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Actions.h
+    Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Actions_Tests.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Actions_Tests.h
+    Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Bag.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Bag.h
+    Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Battle.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Battle.h
+    Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_BattleMoves.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_BattleMoves.h
+    Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Center.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Center.h
+    Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Events.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Events.h
+    Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Events_Jubilife.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Events_Lake.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Events_Oreburgh.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Events_Route204.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Events_Sandgem.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_NewGame.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_NewGame.h
+    Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Settings.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Settings.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryExecutor.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryExecutor.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryStepIO.cpp
@@ -1704,15 +1704,18 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StorySim_Tests.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryTable_Tests.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryTable_Tests.h
-    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Talks.cpp
-    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Talks.h
+    Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Talks.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Talks.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Walks.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Walks.h
-    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_WildBattle.cpp
-    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_WildBattle.h
+    Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_WildBattle.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_WildBattle.h
+    Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_BattleMenuReader.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_BattleMenuReader.h
+    Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_MenuCursorDetector.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_MenuCursorDetector.h
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_CoordEvents.cpp
-    Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_CoordEvents.h
-    Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_CoordEvents.h    Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.cpp
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RoutePlanner.cpp
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RoutePlanner.h

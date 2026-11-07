@@ -17,7 +17,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Walk.h"
 #include "PokemonBDSP_AutoStory_Talks.h"
-#include "PokemonBDSP_AutoStory_Walks.h"
+#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Walks.h"
 #include "PokemonBDSP_AutoStory_WildBattle.h"
 #include "PokemonBDSP_AutoStory_Events.h"
 
