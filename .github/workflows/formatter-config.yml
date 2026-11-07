@@ -1,0 +1,36 @@
+name: Formatter configuration
+on:
+  pull_request:
+    paths:
+      - '.uncrustify.cfg'
+      - 'devtools/format/**'
+      - 'SerialPrograms/CMakeLists.txt'
+      - 'SerialPrograms/cmake/Formatting.cmake'
+      - 'SerialPrograms/cmake/RunFormatting.cmake'
+      - '.github/workflows/formatter-config.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  config-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Build pinned Uncrustify
+        shell: bash
+        working-directory: ${{ runner.temp }}
+        run: |
+          curl --fail --location --silent --show-error \
+            https://github.com/uncrustify/uncrustify/archive/refs/tags/uncrustify-0.83.0.tar.gz \
+            --output uncrustify.tar.gz
+          printf '%s  %s\n' \
+            1d4d3ab3a991c66eb24cb0a3e690573b4882fd98bc6ec64a01c283998c20dc87 \
+            uncrustify.tar.gz | sha256sum --check --status
+          tar -xzf uncrustify.tar.gz
+          cmake -S uncrustify-uncrustify-0.83.0 -B uncrustify-build -DCMAKE_BUILD_TYPE=Release
+          cmake --build uncrustify-build --parallel 4
+          echo "$RUNNER_TEMP/uncrustify-build" >> "$GITHUB_PATH"
+      - run: python -m unittest discover -s devtools/format -v
