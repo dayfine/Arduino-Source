@@ -12,6 +12,7 @@
 #include "VideoGames/PokemonSV/Inference/PokemonSV_BlueberryPointsReader.h"
 #include "VideoGames/PokemonSV/Options/PokemonSV_BBQuests.h"
 #include "PokemonSV_BBQLogger_Tests.h"
+#include "PokemonSV_BBQSnapshot_Tests.h"
 #include "PokemonSV_BlueberryQuests.h"
 #include "PokemonSV_BBQSoloFarmer.h"
 #include "PokemonSV_BBQTests.h"
@@ -818,6 +819,7 @@ void add_tests_BBQ(UnitTestDatabase& database){
     add_tests_BBQFarmerRounds(database);
     add_tests_TeraEncounterAction(database);
     add_tests_BBQDiagnosticLogs(database);
+    add_tests_BBQSnapshot(database);
 }
 
 

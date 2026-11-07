@@ -44,6 +44,7 @@
 #include "VideoGames/PokemonSV/Programs/Farming/PokemonSV_BlueberryCatchPhoto.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_Terarium.h"
 #include "PokemonSV_BBQLogger.h"
+#include "PokemonSV_BBQSnapshot.h"
 
 #include "PokemonSV_BlueberryQuests.h"
 
@@ -570,7 +571,10 @@ bool process_and_do_quest(
             quest_completed = true;
         }
 
-        attempt_log.result(/*completed=*/quest_completed);
+        record_bbq_attempt_result(
+            console, attempt_log, current_quest,
+            quest_completed ? BBQAttemptOutcome::Completed : BBQAttemptOutcome::StillOnBoard
+        );
         if (quest_attempts > BBQ_OPTIONS.NUM_RETRIES){
             BBQLogger(console.logger()).retry_exhausted(current_quest);
             break;
