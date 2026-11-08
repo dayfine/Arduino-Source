@@ -4,6 +4,7 @@
  *
  */
 
+#include <algorithm>
 #include <format>
 #include "Pokemon_LegWalker.h"
 
@@ -17,10 +18,16 @@ std::string to_string(const LegSpec& leg){
 
 
 Milliseconds leg_hold(const LegSpec& leg, int tiles){
+    const int first = leg.tiles - tiles + 1;
+    const int stalls = (int)std::count_if(
+        leg.stalled_steps.begin(), leg.stalled_steps.end(),
+        [&](int step){ return step >= first && step <= leg.tiles; }
+    );
+    const Milliseconds stalled = leg.tile_time * stalls;
     if (leg.to_wall){
-        return leg.tile_time * (tiles + 2);
+        return leg.tile_time * (tiles + 2) + stalled;
     }
-    return leg.tile_time * (tiles - 1) + leg.tile_time / 2;
+    return leg.tile_time * (tiles - 1) + leg.tile_time / 2 + stalled;
 }
 
 int tiles_before_interrupt(const LegSpec& leg, Milliseconds elapsed, Milliseconds detection_delay, int remaining){
@@ -63,9 +70,16 @@ LegResult walk_leg_with(const LegSpec& leg, const LegCalls& calls, size_t max_in
         calls.clear(outcome->interrupt);
         const std::string seen = std::format("{} after {}ms", calls.name(outcome->interrupt), outcome->elapsed.count());
         if (stops_here(leg, result, *outcome)){
-            calls.log(seen + ", stopping the leg.");
             result.exact = false;
             result.stopped = true;
+            if (leg.to_wall){
+                calls.log(seen + ", stopping the leg.");
+                return result;
+            }
+            //  The caller finds the player again, near where the timing says.
+            result.tiles = leg.tiles - remaining
+                + tiles_before_interrupt(leg, outcome->elapsed, calls.detection_delay(outcome->interrupt), remaining);
+            calls.log(std::format("{}, about {} of {} tiles walked, stopping the leg.", seen, result.tiles, leg.tiles));
             return result;
         }
         if (leg.to_wall){
