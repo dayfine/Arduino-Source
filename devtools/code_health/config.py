@@ -27,4 +27,4 @@ GAME_MODULES = ('Pokemon', 'PokemonBDSP', 'VideoGames')
 # the console layer; shared code including it is not a game dependency.
 PLATFORM_MODULES = ('CommandLine', 'CommonFramework', 'CommonTools', 'ComputerPrograms',
                     'ControllerInput', 'Controllers', 'GameConsole', 'Integrations',
-                    'Kernels', 'ML', 'NintendoSwitch', 'Tests')
+                    'Kernels', 'ML', 'NintendoSwitch', 'PythonBindings', 'Tests')
