@@ -729,10 +729,15 @@ std::vector<StoryLeg> legs_out_of_coal_room(){
 
 //  01.02b: the welcome leaves the party as Route 203 left it (2026-11-07 runs:
 //  the lead paralysed, its water move out of PP, and every reload of 01.03
-//  replayed that). The Center first, so 01.03's save is a healed party on
-//  the doorstep.
+//  replayed that). Barry's lines first, as before the split (he blocks the
+//  street east from his doorstep until then: lab-B 2026-11-08), then the
+//  Center, so 01.03's save is a healed party on the doorstep.
 StoryCheckpoint oreburgh_center_heal(){
     return row("01.02b", "Oreburgh Center heal", after_the_welcome(), {
+        anchored(legs("below_barry", {{.direction = SOUTH, .tiles = 1}, {.direction = EAST, .tiles = 3}, {.direction = NORTH, .tiles = 2}},
+            "south 1 around the guide, east 3 to Barry's column, north 2 to below Barry"), below_barry()),
+        talk("barry", "Barry in the Gym's door"),
+        scene("barrys_lines", below_barry(), "Roark has gone to the mine"),
         route("below_the_centers_door", below_oreburghs_center(), "east along the street to below the Center's door", "town"),
         heal("heal_oreburgh_first", "the nurse; out onto the doorstep, where 01.03 starts", out_of_oreburgh_center()),
     });
@@ -741,9 +746,6 @@ StoryCheckpoint oreburgh_center_heal(){
 StoryCheckpoint oreburgh_mine_to_roark(){
     const Pose below_roark = next_to(MINE, "roark", SOUTH, NORTH);
     return row("01.03", "Oreburgh Mine to Roark", out_of_oreburgh_center(), {
-        route("below_barry", below_barry(), "west from the Center to below Barry in the Gym's door", "town"),
-        talk("barry", "Barry in the Gym's door"),
-        scene("barrys_lines", below_barry(), "Roark has gone to the mine"),
         route("above_the_mine", at(OREBURGH, 46, 58, SOUTH), "down the door's column to above the mine's warp tiles", "town"),
         step_into("into_the_mine", SOUTH, "the warp tile (46, 59)", at(MINE_HALL, 12, 1, SOUTH)),
         step_into("into_the_coal_room", SOUTH, "down the entrance hall through the cave mouth", at(MINE, 15, 2, SOUTH)),

@@ -329,7 +329,7 @@ std::vector<SimPerson> sim_people(){
         //  Mom stands a row above the decomp's (7, 8) from 00.04 on (r43).
         {.name = "mom", .map = "PlayerHouse1F", .tile = {7, 7}, .row = "00.04"},
         //  Barry in the Gym's door, from the welcome (lab-B 2026-11-08) to his lines (r101, r104).
-        {.name = "barry", .map = "OreburghCity", .tile = {26, 21}, .row = "01.02b", .until_row = "01.03", .until = "barrys_lines"},
+        {.name = "barry", .map = "OreburghCity", .tile = {26, 21}, .row = "01.02b", .until_row = "01.02b", .until = "barrys_lines"},
     };
 }
 
@@ -952,7 +952,7 @@ const AutoStoryStorySimCase AUTO_STORY_STORY_SIM_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"01.02b, to the Center round Barry on the Gym's doorstep (lab-B, 2026-11-08)", [](Logger& logger){
+        .input = {"01.02b, Barry's lines, then the Center past his doorstep (lab-B, 2026-11-08)", [](Logger& logger){
             return run_rows(logger, {.from = "01.02b", .to = "01.02b"});
         }},
         .expectation = {},
