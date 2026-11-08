@@ -302,6 +302,11 @@ const CornerCase CORNER_CASES[] = {
         .battle = {{.label = "to_roarks_corner", .direction = Direction::EAST, .requested_tiles = 14, .tap = 7}}}, .expectation = {}},
     {.input = {.name = "battle on south 10 tap 4",
         .battle = {{.label = "to_roarks_corner", .direction = Direction::SOUTH, .requested_tiles = 10, .tap = 4}}}, .expectation = {}},
+    //  On a leg's first tap the battle may have begun before it (MC seed 90037).
+    {.input = {.name = "battle on east 14 tap 1",
+        .battle = {{.label = "to_roarks_corner", .direction = Direction::EAST, .requested_tiles = 14, .tap = 1}}}, .expectation = {}},
+    {.input = {.name = "battle on south 10 tap 1",
+        .battle = {{.label = "to_roarks_corner", .direction = Direction::SOUTH, .requested_tiles = 10, .tap = 1}}}, .expectation = {}},
 };
 
 //  The Oreburgh Mine's warps, from the decomp's warp events (Platinum's
@@ -502,8 +507,10 @@ void add_tests_AutoStory_RecoveryWalk(UnitTestDatabase& database){
         //  (MC seeds 717266 and 331438): the walk plans again to the step's end.
         {.input = {.name = "battle on the recovery's first tap", .taps = {5}, .recovery_battle = RecoveryBattle::FIRST_TAP}, .expectation = {.failure = ""}},
         {.input = {.name = "battle on the recovery's first hold", .taps = {5}, .recovery_battle = RecoveryBattle::FIRST_HOLD}, .expectation = {.failure = ""}},
-        {.input = {.name = "first input may belong to previous leg", .taps = {1}}, .expectation = {.failure = "encounter_origin_unknown"}},
-        {.input = {.name = "late encounter origin unknown", .taps = {5}, .origin = WalkOrigin::MAY_PRECEDE_LEG}, .expectation = {.failure = "encounter_origin_unknown"}},
+        //  A battle that may have begun before the leg: localized from the
+        //  leg's tiles all the same, and re-planned to the step's end.
+        {.input = {.name = "first input may belong to previous leg", .taps = {1}}, .expectation = {.failure = ""}},
+        {.input = {.name = "late encounter origin unknown", .taps = {5}, .origin = WalkOrigin::MAY_PRECEDE_LEG}, .expectation = {.failure = ""}},
     };
     for (const RecoveryCase& scenario : CASES){
         database.add<Test_RecoveryWalk>(scenario);

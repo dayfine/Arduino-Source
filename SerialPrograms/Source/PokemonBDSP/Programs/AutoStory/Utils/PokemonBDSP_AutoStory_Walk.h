@@ -44,7 +44,9 @@ const char* walk_stop_name(WalkStop stop);
 using WalkArrived = std::function<bool(const ImageViewRGB32& screen)>;
 
 //  An encounter already active at the first input, or found only after a
-//  leg, may belong to earlier movement. Never localize from this leg alone.
+//  leg, may belong to earlier movement: it began on the tile that movement
+//  ended on, so the leg's tiles from its start, none moved to all, still
+//  hold where we are.
 enum class WalkOrigin{ CURRENT_LEG, MAY_PRECEDE_LEG };
 
 //  Result metrics and terminal state returned by automated walking execution.
