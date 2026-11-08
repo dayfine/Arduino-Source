@@ -5,9 +5,11 @@
  */
 
 #include <chrono>
+#include <algorithm>
 #include <QSharedPointer>
 #include <QTimer>
 #include <QTcpSocket>
+#include <QMetaObject>
 #include "Common/Qt/QtThreadPool.h"
 #include "Common/Qt/GlobalThreadPoolsQt.h"
 #include "ClientSocket_Qt.h"
@@ -20,7 +22,7 @@ namespace PokemonAutomation{
 
 
 
-void ClientSocket_Qt::close() noexcept{
+void ClientSocket_Qt::close_and_wait() noexcept{
     QTcpSocket* socket;
     {
         std::lock_guard<Mutex> lg(m_lock);
@@ -30,28 +32,61 @@ void ClientSocket_Qt::close() noexcept{
         }
         m_state.store(State::DESTRUCTING, std::memory_order_release);
         m_success_pending = false;
-        m_cv.notify_all();
         socket = m_socket;
         m_socket = nullptr;
     }
 
-    //  Wait for in-flight "send()" calls to finish so we don't destroy
-    //  the socket out from under them.
-    {
-        std::unique_lock<Mutex> lg(m_lock);
-        m_cv.wait(lg, [this]{
-            return m_sends_in_flight.load(std::memory_order_acquire) == 0;
-        });
-    }
+    //  Cancel the in-flight "send()" calls so their callers return
+    //  promptly with the best-effort byte count, instead of waiting for
+    //  the event thread to finish the writes.
+    cancel_inflight_sends();
 
     //  Destroy the socket on its event thread. This blocks until the
-    //  destruction has happened.
+    //  destruction has happened. A queued "send()" call still runs before
+    //  the destruction (the event loop is FIFO), but it is already
+    //  cancelled and finishes without writing.
     GlobalThreadPools::qt_event_threadpool().remove_object(socket);
 
     std::lock_guard<Mutex> lg(m_lock);
     m_state.store(State::NOT_RUNNING, std::memory_order_release);
 }
+void ClientSocket_Qt::close() noexcept{
+    QTcpSocket* socket;
+    {
+        std::lock_guard<Mutex> lg(m_lock);
+        if (m_socket == nullptr){
+            return;
+        }
+        m_state.store(State::DESTRUCTING, std::memory_order_release);
+        m_success_pending = false;
+        socket = m_socket;
+    }
+
+    //  Immediately break the connection. QTcpSocket::abort() must run on the
+    //  socket's event thread, but "close()" may be called from any thread
+    //  (including a listener callback, which runs on that event thread), so
+    //  post the abort to the socket's event thread instead of calling it here
+    //  - a cross-thread call would trip Qt's QSocketNotifier thread check.
+    //  This stays non-blocking: close() returns immediately, and the socket is
+    //  aborted as soon as the event thread reaches the queued call. The
+    //  resulting "disconnected"/"errorOccurred" signals see State::DESTRUCTING
+    //  and are no-ops. The destructor's close_and_wait() destroys the socket
+    //  and returns it to NOT_RUNNING.
+    cancel_inflight_sends();
+    QMetaObject::invokeMethod(
+        socket,
+        [socket]{ socket->abort(); },
+        Qt::QueuedConnection
+    );
+}
 void ClientSocket_Qt::connect(const std::string& address, uint16_t port){
+    //  Complete any in-progress connection or a requested-but-unfinished
+    //  close() before starting a new one. close() is non-blocking (it leaves
+    //  the socket DESTRUCTING), so reconnecting on the same socket destroys the
+    //  old QTcpSocket here (on its event thread) to get back to NOT_RUNNING.
+    //  No-op if the socket is already NOT_RUNNING.
+    close_and_wait();
+
     QTcpSocket* old_socket;
     {
         std::lock_guard<Mutex> lg(m_lock);
@@ -62,6 +97,12 @@ void ClientSocket_Qt::connect(const std::string& address, uint16_t port){
         m_socket = nullptr;
     }
     if (old_socket != nullptr){
+        //  Cancel the in-flight sends before destroying the socket: a
+        //  call still queued is discarded with the socket, and its
+        //  caller must not be left waiting for a "done" that never
+        //  comes.
+        cancel_inflight_sends();
+
         //  Destroy the socket from the previous connection. This blocks
         //  until the destruction has happened.
         GlobalThreadPools::qt_event_threadpool().remove_object(old_socket);
@@ -103,38 +144,80 @@ size_t ClientSocket_Qt::send(const void* data, size_t bytes, std::chrono::millis
             ? std::chrono::steady_clock::time_point::max()
             : std::chrono::steady_clock::now() + timeout;
 
+    //  Register the send atomically with respect to "close()"/"connect()":
+    //  both detach "m_socket" under this same lock before they cancel the
+    //  in-flight sends. The packet copy above can take a while for large
+    //  payloads, so without this re-check a send could register *after*
+    //  "close()" already cancelled an (empty) list and queued the socket's
+    //  destruction: its "internal_send" call would then be posted after the
+    //  destruction event, Qt would silently discard it, and the wait below
+    //  (unbounded for the infinite default timeout) would never end. With
+    //  the re-check, a send either registers before the cancel (and gets
+    //  cancelled, waking the wait below) or sees the detached socket and
+    //  returns without queueing anything.
+    bool registered;
+    {
+        std::lock_guard<Mutex> lg(m_lock);
+        registered = (m_socket != nullptr);
+        if (registered){
+            m_inflight_sends.push_back(send_data);
+        }
+    }
+    if (!registered){
+        return 0;
+    }
+
     emit internal_send(send_data);
 
-    //  Wait for the socket's event thread to finish writing the packet.
-    //  A finite "timeout" waits for the deadline plus 1 s of queueing
-    //  margin: the write loop stops at the deadline, so anything beyond
-    //  that is just the queued call waiting to start.
+    //  Wait for the socket's event thread to finish writing the packet,
+    //  or for "close()"/"connect()" to cancel the send. A finite
+    //  "timeout" waits for the deadline plus 1 s of queueing margin: the
+    //  write loop stops at the deadline, so anything beyond that is just
+    //  the queued call waiting to start.
     //
-    //  The infinite default cannot wait indefinitely - a limitation of
-    //  this wrapper, not of Qt: if "close()" runs from another thread
-    //  and the event loop is destroyed while this call is still queued
-    //  (posted after the destruction event), Qt silently discards the
-    //  pending event, the handler never runs, and "done" is never set;
-    //  an unbounded wait would then hang the caller forever. A send
-    //  queued before close() is safe: the event loop is FIFO, so it
-    //  runs first. The 5 s bound turns that post-close race into a
-    //  "0 bytes written" result instead of a hang. The shared
-    //  ownership keeps the packet alive until the queued call runs
-    //  (or is discarded with the socket).
-    const std::chrono::milliseconds wait_time =
-        (timeout == std::chrono::milliseconds::max())
-            ? std::chrono::milliseconds(5000)
-            : timeout + std::chrono::milliseconds(1000);
+    //  The infinite default waits without a time bound. The registration
+    //  above is atomic with the "close()"/"connect()" detach, so "done" is
+    //  set by either the event-thread write loop (which stops at the
+    //  deadline, on a socket error, or when Qt's userspace buffer accepts
+    //  the packet; it runs before the queued socket destruction, since the
+    //  event loop is FIFO) or by "close()"/"connect()" cancelling the
+    //  registered send - even when Qt discards the queued write loop with
+    //  the socket - so the wait always ends. The shared ownership keeps
+    //  the packet alive until the queued call runs (or is discarded with
+    //  the socket).
     {
         std::unique_lock<Mutex> lg(send_data->lock);
-        send_data->cv.wait_for(
-            lg,
-            wait_time,
-            [&send_data]{ return send_data->done; }
-        );
+        if (timeout == std::chrono::milliseconds::max()){
+            send_data->cv.wait(
+                lg,
+                [&send_data]{ return send_data->done; }
+            );
+        }else{
+            send_data->cv.wait_for(
+                lg,
+                timeout + std::chrono::milliseconds(1000),
+                [&send_data]{ return send_data->done; }
+            );
+        }
     }
 
     return send_data->bytes_sent;
+}
+
+void ClientSocket_Qt::cancel_inflight_sends(){
+    std::vector<QSharedPointer<SendData>> cancelled;
+    {
+        std::lock_guard<Mutex> lg(m_lock);
+        cancelled = std::move(m_inflight_sends);
+    }
+    for (const auto& send_data : cancelled){
+        {
+            std::lock_guard<Mutex> lg(send_data->lock);
+            send_data->cancelled = true;
+            send_data->done = true;
+        }
+        send_data->cv.notify_all();
+    }
 }
 
 void ClientSocket_Qt::connection_failed(const std::string& error_message){
@@ -263,9 +346,12 @@ std::unique_ptr<QTcpSocket> ClientSocket_Qt::make_socket(){
         this, &ClientSocket_Qt::internal_send,
         socket.get(), [this, sock = socket.get()](QSharedPointer<SendData> send_data){
             {
-                std::lock_guard<Mutex> lg(m_lock);
-                m_sends_in_flight.fetch_add(1, std::memory_order_acq_rel);
-                m_cv.notify_all();
+                std::lock_guard<Mutex> lg(send_data->lock);
+                if (send_data->cancelled){
+                    //  "close()"/"connect()" already cancelled this send
+                    //  and woken its caller; finish without writing.
+                    return;
+                }
             }
 
             size_t bytes_sent = 0;
@@ -280,6 +366,15 @@ std::unique_ptr<QTcpSocket> ClientSocket_Qt::make_socket(){
                     && sock->state() == QAbstractSocket::ConnectedState
                     && std::chrono::steady_clock::now() < send_data->deadline
                 ){
+                    {
+                        std::lock_guard<Mutex> lg(send_data->lock);
+                        if (send_data->cancelled){
+                            //  "close()" cancelled the send mid-write; its
+                            //  caller has already been woken with the
+                            //  count written so far.
+                            break;
+                        }
+                    }
                     qint64 current_sent = sock->write(ptr, remaining);
                     if (current_sent <= 0){
                         //  The kernel's send buffer is full. Wait for
@@ -289,14 +384,29 @@ std::unique_ptr<QTcpSocket> ClientSocket_Qt::make_socket(){
                     }
                     ptr += current_sent;
                     remaining -= (size_t)current_sent;
+                    //  Track the running count, so a "close()" that
+                    //  cancels this send mid-write reports the bytes
+                    //  written so far.
+                    {
+                        std::lock_guard<Mutex> lg(send_data->lock);
+                        send_data->bytes_sent = send_data->packet.size() - remaining;
+                    }
                 }
                 bytes_sent = send_data->packet.size() - remaining;
             }
 
             {
                 std::lock_guard<Mutex> lg(m_lock);
-                m_sends_in_flight.fetch_sub(1, std::memory_order_acq_rel);
-                m_cv.notify_all();
+                //  "close()"/"connect()" may already have claimed this
+                //  send; only remove it if it still owns its slot.
+                m_inflight_sends.erase(
+                    std::remove(
+                        m_inflight_sends.begin(),
+                        m_inflight_sends.end(),
+                        send_data
+                    ),
+                    m_inflight_sends.end()
+                );
             }
 
             {

@@ -110,7 +110,7 @@ DpadPosition dpad_toward(Direction direction){
 
 bool run_into_door(VideoStream& stream, ProControllerContext& context, Direction direction, bool run, Milliseconds timeout){
     const DpadPosition dpad = dpad_toward(direction);
-    BlackScreenWatcher dark(COLOR_RED, {0.1, 0.1, 0.8, 0.8}, 3 * FADE_DARKNESS, 60);
+    BlackScreenWatcher dark(COLOR_RED, {0.1, 0.1, 0.8, 0.8}, 3 * FADE_DARKNESS, 60, BlackScreenWatcher::FinderType::PRESENT, 50ms);
     WhiteScreenWatcher white(COLOR_BLUE, {0.1, 0.1, 0.8, 0.8}, WhiteScreenWatcher::FinderType::PRESENT, 60ms);
     ShortDialogWatcher dialog(COLOR_YELLOW);
     BattleMenuWatcher battle(BattleType::STANDARD, COLOR_YELLOW);
@@ -120,10 +120,18 @@ bool run_into_door(VideoStream& stream, ProControllerContext& context, Direction
         }
         pbf_press_dpad(context, dpad, timeout, 0ms);
     }, {{dark}, {white}, {dialog}, {battle}});
-    if (ret == 3){
+    if (ret == 0){
+        stream.log("[Story] run_into_door: black screen fade detected.");
+    }else if (ret == 1){
+        stream.log("[Story] run_into_door: white screen fade detected.");
+    }else if (ret == 2){
+        stream.log("[Story] run_into_door: dialog detected.");
+    }else if (ret == 3){
         stream.log("[Story] run_into_door: wild battle; fleeing.");
         run_from_wild_battle(stream, context);
         return false;
+    }else{
+        stream.log("[Story] run_into_door: timed out without detecting fade.");
     }
     return ret == 0 || ret == 1;
 }

@@ -598,9 +598,9 @@ Pose after_the_welcome(){
 Pose below_barry(){
     return at(OREBURGH, 26, 22, NORTH);
 }
-//  Below Oreburgh's Pokemon Center's door (47, 20), facing it.
+//  Below Oreburgh's Pokemon Center's door, facing it.
 Pose below_oreburghs_center(){
-    return at(OREBURGH, 47, 21, NORTH);
+    return at(OREBURGH, "pokemon_center_doorstep", NORTH);
 }
 //  Out of Oreburgh's Pokemon Center, facing south: below its door, or on
 //  the map's doorstep (46, 21), from which 01.04's 20 taps west reach the
@@ -726,11 +726,21 @@ std::vector<StoryLeg> legs_out_of_coal_room(){
     };
 }
 
+//  01.02b: the welcome leaves the party as Route 203 left it (2026-11-07 runs:
+//  the lead paralysed, its water move out of PP, and every reload of 01.03
+//  replayed that). The Center first, so 01.03's save is a healed party on
+//  the doorstep.
+StoryCheckpoint oreburgh_center_heal(){
+    return row("01.02b", "Oreburgh Center heal", after_the_welcome(), {
+        route("below_the_centers_door", below_oreburghs_center(), "east along the street to below the Center's door", "town"),
+        heal("heal_oreburgh_first", "the nurse; out onto the doorstep, where 01.03 starts", out_of_oreburgh_center()),
+    });
+}
+
 StoryCheckpoint oreburgh_mine_to_roark(){
     const Pose below_roark = next_to(MINE, "roark", SOUTH, NORTH);
-    return row("01.03", "Oreburgh Mine to Roark", after_the_welcome(), {
-        anchored(legs("below_barry", {{.direction = SOUTH, .tiles = 1}, {.direction = EAST, .tiles = 3}, {.direction = NORTH, .tiles = 2}},
-            "south 1 around the guide, east 3 to Barry's column, north 2 to below Barry"), below_barry()),
+    return row("01.03", "Oreburgh Mine to Roark", out_of_oreburgh_center(), {
+        route("below_barry", below_barry(), "west from the Center to below Barry in the Gym's door", "town"),
         talk("barry", "Barry in the Gym's door"),
         scene("barrys_lines", below_barry(), "Roark has gone to the mine"),
         route("above_the_mine", at(OREBURGH, 46, 58, SOUTH), "down the door's column to above the mine's warp tiles", "town"),
@@ -820,6 +830,7 @@ std::vector<StoryCheckpoint> to_oreburgh(){
             anchored(battle("barry", true, "Barry's battle; a loss goes on, as it did on the console"), on_barrys_trigger()),
         }),
         route_203_to_oreburgh(),
+        oreburgh_center_heal(),
         oreburgh_mine_to_roark(),
         //  Stays an event: after a loss it walks back from the Center with
         //  the experience the battles gave, which a reload of this row's
@@ -899,6 +910,7 @@ const std::map<std::string, std::string>& start_save_cards(){
         {"00.05c", "Jubilife City"},
         {"01.01",  "Jubilife City"},
         {"01.02",  "Route 203"},
+        {"01.02b", "Oreburgh City"},
         {"01.03",  "Oreburgh City"},
         {"01.04",  "Oreburgh City"},
         {"01.05",  "Oreburgh City"},
