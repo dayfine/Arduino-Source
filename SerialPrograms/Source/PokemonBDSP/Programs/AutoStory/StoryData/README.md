@@ -12,3 +12,5 @@ Two gates:
 This changes authoring, not game executor behavior. The native fake still uses declared scene/door fallbacks; a passing integration test does not prove detector/controller correctness. Python validates pinned local terrain and bounded wall movement, but requires scripted door/dialogue/scene/heal evidence and explicit wandering-NPC clearance windows. Missing transition links, native robust planner cost parity, analog/queue timing and live recovery remain separate gaps. Python's diagnostic policy is stop/no-save; the native program retains its real start-save/reload policy.
 
 The source #226 comments record the mine warp-column evidence and lab failures behind the route. Its map resource lock remains unchanged at PokemonSimulation `4de7742a764d27293b4525d6ad2a6fc8a95f3e3a`. No map correction, console run, profile or save is part of this change.
+
+The common authored envelope, common checkpoint parsing, and embedded-resource lookup live in `Pokemon/AutoStory/Pokemon_AuthoredCheckpointJson.*`. The BDSP adapter validates only its own `on_failure` and `saves_in` execution settings and retains native bookkeeping defaults.
