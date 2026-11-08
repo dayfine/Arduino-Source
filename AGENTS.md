@@ -251,6 +251,14 @@ Rules set by the user on 2026-11-02.
 - **Wait for each screen by detector, never by a fixed delay.** A press sent before a menu is
   drawn goes to the text box behind it (seen 2026-11-02 at the FRLG PC). A step that has no
   detector for the screen it needs stops instead of pressing blind.
+- **Launch lab apps with `lab/scripts/start_dev.py`** (build, stage, run with the slot's
+  profile); never hand-build or launch a slot dir. Details in `skills/console-iteration` §0.
+- **Unit tests run headless**: `SerialProgramsTests --filter <text>` (upstream #1845, in
+  `lab/main`). Never the GUI app's `--command-line-test-mode` on this Mac: with the default
+  settings it opens console A's serial port (2026-11-08, cut the user's live run).
+- **Map fixes need the user's approval** with evidence: failure screenshot, one PNG of the
+  desired and the actual route drawn with PokemonSimulation's tools, the wrong tile and how
+  it bent the route (`skills/map-fix-evidence`).
 - **FRLG has one save slot.** Never rerun an earlier checkpoint on a save that is further along,
   and a failed step stops without saving.
 
@@ -476,6 +484,8 @@ checkout of this branch; edit it here and PR the change, not the local copy.
   run one BDSP AutoStory checkpoint on console B, and judge it from log and screenshots.
 - [skills/map-route-verify/SKILL.md](skills/map-route-verify/SKILL.md): build a navigation grid
   from a map, plan a route on it and verify both on the console.
+- [skills/map-fix-evidence/SKILL.md](skills/map-fix-evidence/SKILL.md): the evidence pack
+  the user approves a navigation map fix from.
 - [skills/cpp-style-review/SKILL.md](skills/cpp-style-review/SKILL.md): judgement-level C++
   style review of a fork PR, against the user's own review themes.
 - [skills/codex-dispatch/SKILL.md](skills/codex-dispatch/SKILL.md): hand bounded tasks to Codex

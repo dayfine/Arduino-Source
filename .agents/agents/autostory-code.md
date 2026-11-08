@@ -31,9 +31,16 @@ without being restated.
   - one file: `ninja -C SerialPrograms/build CMakeFiles/SerialProgramsLib.dir/Source/<path>.cpp.o`;
   - build: `ninja -j4 SerialPrograms` in `SerialPrograms/build`. If it reaches the 10-minute cap, run
     the same command again; ninja resumes;
-  - tests: `./SerialPrograms.app/Contents/MacOS/SerialPrograms --command-line-test-mode` in
-    `SerialPrograms/build`, output to a file, then read only the suites you touched. Other games'
-    image tests fail locally without the CommandLineTests checkout; only the touched suites count.
+  - tests: never the GUI app's `--command-line-test-mode`: with the default
+    settings it opens the default profile's serial port and camera, which are the user's live
+    console A (2026-11-08 an agent's test run cut console A's controller mid-program), and test
+    launches refuse `--profile`. Use the headless runner `SerialProgramsTests` (upstream #1845; in
+    `lab/main` since f5ed40689): `ninja -j4 SerialProgramsTests`, then
+    `./SerialProgramsTests --filter <suite text>` in `SerialPrograms/build`, output to a file; it
+    skips settings and devices and exits with the failure count. On a code branch without it,
+    merge `origin/upstream/headless-tests` into a local scratch build tree only, never into a PR
+    branch. Read only the suites you touched; other games' image tests fail locally without the
+    CommandLineTests checkout.
 
   Read the exit code from a file (`…; echo $? > rc`), never through a pipe.
   Never background a long command and end the turn waiting for it: nothing wakes a subagent. If a command does run in the
