@@ -521,17 +521,18 @@ NudgedWalk walk_nudged(const StoryWorld& world, const TableSteps& table, Directi
     return out;
 }
 
-//  lab-B 2026-11-08 10:39: 01.03's route up to below Oreburgh's Center ran
+//  lab-B 2026-11-08 10:39: 01.03's old route up to below Oreburgh's Center ran
 //  north 36 to the wall up column 46 and tapped east 1 into the open; the
 //  heal's run north saw no door and ended at the counter a tile east of the
 //  nurse. A start part of a tile off the grid (a stick tap, as measured)
-//  rides along the run north and through the open tap. The table's steps
-//  up to the heal must end on the grid below the door, (47, 21), from
-//  either side of the start tile, and a walk north must go in.
+//  rides along a run and through an open tap. The table's steps from its
+//  route to the street, up to the heal, must end on the grid below the
+//  door, (47, 21), from either side of the start tile, and a walk north
+//  must go in.
 UnitTestResult test_oreburgh_center_approach(Logger& logger){
-    const std::optional<TableSteps> table = table_steps("01.03", "below_the_centers_door_again", "heal_oreburgh");
+    const std::optional<TableSteps> table = table_steps("01.03", "west_of_the_centers_door", "heal_oreburgh");
     if (!table){
-        return "01.03 has no below_the_centers_door_again before heal_oreburgh.";
+        return "01.03 has no west_of_the_centers_door before heal_oreburgh.";
     }
     const StoryWorld& world = *story_plan_world("OreburghCity", "OreburghCity");
     const TilePos below = story_to_world(world, "OreburghCity", {47, 21});
@@ -860,7 +861,8 @@ UnitTestResult test_wall_leg_check_at_wall_short_distance_safeguard(Logger& logg
     }
 }
 //  Oreburgh Mine B1F: the entrance hall corridor is traversed to and back by
-//  running south from (12, 1) to (12, 21), and north from (11, 21) to (11, 1).
+//  running south from (12, 1) to (12, 21), and north from (12, 21), where the
+//  coal room's warp lands us, to (12, 1).
 UnitTestResult test_oreburgh_mine_hall_corridor(Logger& logger){
     const StoryWorld* world = story_plan_world("OreburghMineB1F", "OreburghMineB1F");
     if (world == nullptr){
@@ -881,7 +883,7 @@ UnitTestResult test_oreburgh_mine_hall_corridor(Logger& logger){
     if (!err.empty()){
         return err;
     }
-    err = test_run({11, 21}, Direction::NORTH, {11, 1}, "Northbound");
+    err = test_run({12, 21}, Direction::NORTH, {12, 1}, "Northbound");
     return err.empty() ? UnitTestResult(true) : UnitTestResult(err);
 }
 

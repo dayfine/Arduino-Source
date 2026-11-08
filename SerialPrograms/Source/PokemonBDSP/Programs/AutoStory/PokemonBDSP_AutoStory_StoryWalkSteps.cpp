@@ -252,7 +252,10 @@ Pose StoryWalkSteps::recover_tapped_leg(const Pose& from, const std::vector<Tile
 
 //  Counted legs retain their normal path. An observed encounter invalidates
 //  the exact pose; localize from every legal prefix and re-plan to the end of
-//  the step, skipping the legs left. A re-plan to the end of the interrupted
+//  the step, skipping the legs left. A battle that may have begun before
+//  the leg (WalkOrigin::MAY_PRECEDE_LEG) found us on the tile the leg before
+//  ended on, since a battle starts on a tile stepped onto: the same prefixes
+//  hold. A re-plan to the end of the interrupted
 //  leg ended on an open tile, its last leg overshot a row, and the taps after
 //  went on a row off (lab-B 2026-11-08 11:55); a step that ends in a corner
 //  ends its re-plan on wall clips.
@@ -267,9 +270,6 @@ Outcome StoryWalkSteps::tap_legs(const Pose& from, const StoryStep& step){
         log(std::format("[{}] {}: taps {} moved {} of {} tiles.", m_row, step.name, direction_name(leg->direction), walk.moved_chunks, tiles));
         const auto next = counted_ends(at, *leg, policy);
         if (walk.wild_battles > 0){
-            if (walk.origin == WalkOrigin::MAY_PRECEDE_LEG){
-                return Pokemon::outcome_failed("encounter_origin_unknown", step.name);
-            }
             if (walk.stop != WalkStop::LIMIT && walk.stop != WalkStop::BLOCKED){
                 return Pokemon::outcome_failed("interrupted_leg_unconfirmed", step.name);
             }

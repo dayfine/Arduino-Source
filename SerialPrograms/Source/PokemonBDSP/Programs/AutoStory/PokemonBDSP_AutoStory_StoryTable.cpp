@@ -695,10 +695,16 @@ StoryCheckpoint route_203_to_oreburgh(){
 //
 //  The hall is walked on counted taps, not held: it is a cave, and a wild
 //  battle on a hold toward a fade would read as the fade. Its warp tiles
-//  are only entered on the step after, which meets no wild Pokemon. Down,
-//  from the city's (46, 59) we land on its (12, 1); up, from the coal
-//  room's warp we land on its (11, 21) and come out on the city's (45, 59),
-//  below the mine's sign (the old walk north stopped against it, r103).
+//  are only entered on the step after, which meets no wild Pokemon. The
+//  warps are Platinum's (pret/pokeplatinum res/field/maps/*/events.json;
+//  BDSP keeps DP's layout): the city's (44..48, 59) lead to the hall's
+//  (11, 1), (11, 1), (12, 1), (13, 1), (13, 1), and the hall's (11..13, 1)
+//  back to the city's (45..47, 59), a column each. Down, from the city's
+//  (46, 59) we land on the hall's (12, 1); up, the coal room's warp (15, 1)
+//  lands us on the hall's (12, 21), not (11, 21), so the walk north up
+//  column 12 comes out on the city's (46, 59), east of the mine's sign
+//  (45, 56): the walk north to it never stopped there (lab-B 2026-11-08,
+//  09:46, 10:39 and 12:03).
 //
 //  Across the coal room to Roark's east corner (20, 28): the north wall above
 //  it, his rock (19, 28) to its west. A wild battle on a counted tap re-plans
@@ -770,18 +776,31 @@ StoryCheckpoint oreburgh_mine_to_roark(){
         scene("roark_smashes_the_rock", below_roark, "his lines, Rock Smash on the rock east of him, and he walks off"),
         anchored(legs("below_the_coal_rooms_warp", legs_out_of_coal_room(), "east around crate, up column 29, west across row 17, and up corridor to warp doorstep"),
             at(MINE, 15, 2, NORTH)),
-        step_into("up_to_the_hall", NORTH, "the warp tile (15, 1)", at(MINE_HALL, 11, 21, NORTH)),
+        step_into("up_to_the_hall", NORTH, "the warp tile (15, 1)", at(MINE_HALL, 12, 21, NORTH)),
+        //  Out on the warp tile of the hall's column; any of the three, should
+        //  the walk up the hall drift.
         step_into("out_of_the_mine", NORTH, "up the entrance hall and out to the city",
-            Pokemon::tile_pose(OREBURGH, {TilePos{45, 59}, TilePos{45, 58}}, NORTH)),
-        anchored(to_walls("up_to_the_mines_sign", {{.direction = NORTH, .tiles = 3}}, "north against the mine's sign (45, 56)"),
-            at(OREBURGH, 45, 57, NORTH)),
-        route("below_the_centers_door_again", below_oreburghs_center(), "up to below the Center's door", "town"),
-        //  The 36-tile run north and the open step east left us off the door's
-        //  column: no fade, and the counter a tile east of the nurse (lab-B
-        //  2026-11-08 10:39). Line up as 01.02b does, against the walls east
-        //  and north of (48, 22), then one tap west below the door.
-        legs("south_of_the_centers_door", {{.direction = SOUTH, .tiles = 1}}, "a tap south onto the street"),
-        anchored(to_walls("against_the_walls_east_of_the_door", {{.direction = EAST, .tiles = 3}, {.direction = NORTH, .tiles = 1}},
+            Pokemon::tile_pose(OREBURGH, {TilePos{46, 59}, TilePos{45, 59}, TilePos{47, 59}, TilePos{46, 58}, TilePos{45, 58}, TilePos{47, 58}}, NORTH)),
+        //  Pin the column whichever warp tile we came out on, or a tile north
+        //  of it should the run go on past the fade, with no tap against the
+        //  sign (45, 56): a tap north onto row 58 or 57, east against the wall
+        //  at (49, 58) or (50, 57), a tap north, east against the wall at
+        //  (50, 57) or (50, 56), then south against the wall at (49, 58).
+        legs("off_the_mines_warp_tiles", {{.direction = NORTH, .tiles = 1}}, "a tap north off the mine's warp tiles"),
+        anchored(to_walls("east_of_the_mine", {{.direction = EAST, .tiles = 4}}, "east against the wall at (49, 58) or (50, 57)"),
+            Pokemon::tile_pose(OREBURGH, {TilePos{48, 58}, TilePos{49, 57}}, EAST)),
+        legs("north_of_row_58", {{.direction = NORTH, .tiles = 1}}, "a tap north onto row 57 or 56"),
+        anchored(to_walls("against_the_walls_east_of_the_mine", {{.direction = EAST, .tiles = 1}, {.direction = SOUTH, .tiles = 1}},
+            "east against the wall at (50, 57) or (50, 56), south against the wall at (49, 58)"), at(OREBURGH, 49, 57, SOUTH)),
+        //  Not a route to below the door: believing us on column 45 when we
+        //  were on 46, its run north to the wall and its open step east ended
+        //  off the door's column (no fade; the counter a tile east of the nurse,
+        //  lab-B 2026-11-08 10:39), and the run went through the door into the
+        //  Center (12:04). Route to the street west of the door, (44, 22), then
+        //  line up as 01.02b does, against the walls east and north of (48, 22),
+        //  and tap west below the door.
+        route("west_of_the_centers_door", at(OREBURGH, 44, 22, WEST), "up to the street west of the Center's door", "town"),
+        anchored(to_walls("against_the_walls_east_of_the_door", {{.direction = EAST, .tiles = 4}, {.direction = NORTH, .tiles = 1}},
             "east against the wall at (49, 22), north against the wall at (48, 20)"), at(OREBURGH, 48, 21, NORTH)),
         anchored(legs("below_the_centers_door_lined_up", {{.direction = WEST, .tiles = 1}}, "a tap west below the door"), below_oreburghs_center()),
         heal("heal_oreburgh", "the nurse; out onto the doorstep, where 01.04 starts", out_of_oreburgh_center()),
