@@ -85,6 +85,10 @@ struct LegSpec{
     //  interrupted again right away: something on the way, like a sign,
     //  interrupts every hold, so the wall is never reached.
     bool stop_if_blocked = false;
+    //  The steps (from 1) the game holds the player up a tile before, as
+    //  FireRed does on a step onto a connected map: each makes a hold over
+    //  it a tile longer.
+    std::vector<int> stalled_steps = {};
 };
 // Formats a LegSpec into a descriptive string.
 std::string to_string(const LegSpec& leg);
@@ -106,7 +110,9 @@ struct LegResult{
 
 //  How long to hold for `tiles` tiles: an open leg lets go half a tile before
 //  the last step would end, so the step under way finishes and no other
-//  starts; a leg to a wall is held two tiles longer than it takes.
+//  starts; a leg to a wall is held two tiles longer than it takes. The last
+//  `tiles` of the leg are held for, a tile more for each of its stalled
+//  steps among them.
 Milliseconds leg_hold(const LegSpec& leg, int tiles);
 
 //  How many tiles an open leg had walked when an interrupt was seen

@@ -4,6 +4,7 @@
  *
  */
 
+#include <algorithm>
 #include <format>
 #include "Pokemon_LegWalker.h"
 
@@ -17,10 +18,16 @@ std::string to_string(const LegSpec& leg){
 
 
 Milliseconds leg_hold(const LegSpec& leg, int tiles){
+    const int first = leg.tiles - tiles + 1;
+    const int stalls = (int)std::count_if(
+        leg.stalled_steps.begin(), leg.stalled_steps.end(),
+        [&](int step){ return step >= first && step <= leg.tiles; }
+    );
+    const Milliseconds stalled = leg.tile_time * stalls;
     if (leg.to_wall){
-        return leg.tile_time * (tiles + 2);
+        return leg.tile_time * (tiles + 2) + stalled;
     }
-    return leg.tile_time * (tiles - 1) + leg.tile_time / 2;
+    return leg.tile_time * (tiles - 1) + leg.tile_time / 2 + stalled;
 }
 
 int tiles_before_interrupt(const LegSpec& leg, Milliseconds elapsed, Milliseconds detection_delay, int remaining){
