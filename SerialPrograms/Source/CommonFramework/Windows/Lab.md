@@ -56,6 +56,7 @@ START_SEGMENT = "0"` or the path of a saved screenshot.
 seq=r3
 state=RUNNING
 program=PokemonBDSP:AutoStory
+controller=ready
 owner=lab-B
 error=
 ```
@@ -65,6 +66,9 @@ error=
   while the panel loads, `NO_PROGRAM` when the selected panel is not a
   program (the settings page).
 - `program` is the selected program's identifier (`<game>:<program>`).
+- `controller` is `ready` when the console's controller can take commands,
+  `none` while it is not connected (after a program switch the app
+  reconnects it, which can stall), empty for a panel without a console.
 - `owner` is the owner token, empty when the channel is unclaimed.
 - `error` is the error of the last request, empty once a request succeeds.
 
@@ -76,10 +80,11 @@ error=
 |---|---|
 | `select GAME:PROGRAM` | Shows that program, as clicking it in the program list does. The identifier is the one in `state` and in the settings file's `99-Panels` section, e.g. `PokemonBDSP:AutoStory`, `NintendoSwitch:CommandFileRunner`. Refused while a program runs. |
 | `set KEY JSON` | Sets one option of the selected program by its key in the settings file, live: `set START_SEGMENT "0"`, `set NEW_GAME_INTRO true`, `set NOTIFICATIONS.Enabled false` (dots walk into groups). The value is JSON, so strings need quotes. Prints `set KEY = <value the program now holds>`, which differs from what was sent when the program clamped or refused it. Refused while the program runs. |
-| `start` | What clicking Start Program does. Refused unless the program is `STOPPED`. |
+| `start [SECONDS]` | What clicking Start Program does. Refused unless the program is `STOPPED`. First waits up to `SECONDS` (default 30) for `controller=ready`, and refuses with `controller not connected` if it never is, instead of starting a program that would fail with "Incompatible Controller". |
 | `stop` | What clicking Stop Program does. Refused unless the program is `RUNNING`. The request goes on; the program stops in the background. |
 | `state` | Prints the state file's lines into the journal. (In the Command File Runner program, `state [image]` prints the detectors that fire instead; from the channel use `detect` per detector.) |
 | `keepawake on\|off [seconds]` | While it is on and no program runs, presses B every `seconds` (default 15) so the console does not sleep. A running program pauses it. Off by default; off again when the app restarts. |
+| `popups [close]` | Lists the app's open message boxes (title and text), such as the "Error" box a failed program leaves. `close` presses each one's default button. |
 | `owner claim TOKEN`, `owner release` | The owner lock, below. |
 | `help` | Prints every command and detector, including the ones games add. |
 
@@ -136,7 +141,7 @@ Games add their own commands and detectors with
 
 Two scripts driving one console would interleave their presses. A script
 claims the channel with `owner claim TOKEN`; from then on every request that
-changes anything (`select`, `set`, `start`, `stop`, `keepawake`, presses)
+changes anything (`select`, `set`, `start`, `stop`, `keepawake`, `popups`, presses)
 must start with the line `owner TOKEN`, or it is refused with
 `owned by TOKEN`. Requests that only read (`state`, `help`, `shot`, `detect`,
 ...) need no token. `owner release`, with the owner line, frees the channel.
@@ -196,6 +201,7 @@ The state file while it runs, and after:
 seq=r2                      seq=r2
 state=RUNNING               state=STOPPED
 program=PokemonBDSP:AutoStory
+controller=ready
 owner=lab-B
 error=
 ```
@@ -261,13 +267,13 @@ point its folder at `Lab/`: the channel reads that one.
 
 The `LabControl/` folder of earlier lab builds (files `start` and `stop`, a
 two-line `state`) is gone. `start` and `stop` are lines in a request, and
-`state` has the five lines above. Scripts move from
+`state` has the six lines above. Scripts move from
 `printf '' > LabControl/start` to a request file containing `start`.
 
 ## Tests
 
 `add_tests_LabChannel()` covers the request format, the journal lines, the
-state text, the owner lock and the keep-awake schedule (`LabChannel - ...`
+state text, the owner lock, the keep-awake schedule and the controller wait before `start` (`LabChannel - ...`
 unit tests); `add_tests_CommandFileRunner()` covers the console commands'
 arguments. Run them with the app's `--command-line-test-mode`. Selecting,
 setting, starting and the presses need a live app and console.

@@ -65,6 +65,17 @@ std::string line_after_words(const std::string& line, size_t count){
     return text.substr(begin, end + 1 - begin);
 }
 
+std::optional<Seconds> parse_seconds(const std::string& word){
+    const char* begin = word.c_str();
+    char* end = nullptr;
+    errno = 0;
+    const long seconds = std::strtol(begin, &end, 10);
+    if (end == begin || *end != '\0' || errno == ERANGE || seconds < 1){
+        return std::nullopt;
+    }
+    return Seconds(seconds);
+}
+
 std::optional<Filesystem::Path> next_request_file(const std::string& inbox){
     std::optional<Filesystem::Path> next;
     for (const Filesystem::Path& path : Filesystem::list_directory(Filesystem::Path(inbox))){
@@ -118,8 +129,28 @@ std::string lab_state_text(const LabState& state){
         "seq=" + state.seq + "\n" +
         "state=" + state.state + "\n" +
         "program=" + state.program + "\n" +
+        "controller=" + state.controller + "\n" +
         "owner=" + state.owner + "\n" +
         "error=" + state.error + "\n";
+}
+
+
+std::string wait_for_controller(
+    const std::function<std::string()>& status,
+    const std::function<bool(Milliseconds)>& sleep,
+    Milliseconds timeout, Milliseconds slice
+){
+    Milliseconds waited(0);
+    while (status() == "none"){
+        if (waited >= timeout){
+            return "controller not connected";
+        }
+        if (!sleep(slice)){
+            return "The app is closing.";
+        }
+        waited += slice;
+    }
+    return "";
 }
 
 
@@ -157,14 +188,11 @@ std::string KeepAwakeSchedule::set(const std::vector<std::string>& words, WallCl
     }
     Seconds interval = DEFAULT_INTERVAL;
     if (words.size() > 2){
-        const char* begin = words[2].c_str();
-        char* end = nullptr;
-        errno = 0;
-        const long seconds = std::strtol(begin, &end, 10);
-        if (end == begin || *end != '\0' || errno == ERANGE || seconds < 1){
+        const std::optional<Seconds> seconds = parse_seconds(words[2]);
+        if (!seconds){
             return "keepawake: seconds must be a whole number of at least 1, got " + words[2];
         }
-        interval = Seconds(seconds);
+        interval = *seconds;
     }
     m_on = words[1] == "on";
     m_interval = interval;
