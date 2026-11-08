@@ -24,4 +24,4 @@ No console is required for either gate.
 
 ## Native JSON code
 
-`../Data/JsonParser.*` owns authored checkpoint loading and the legacy capture reader. `JsonWriter.*` is retained for migration comparisons and export diagnostics; production authored loading does not depend on it. `Json_Tests.*` keeps the codec tests beside those sources. Once migration expectations are independent of the old capture, remove the legacy reader, writer, and `LegacyJsonFormat.h`; retain the authored parser.
+`Pokemon/AutoStory/Pokemon_AuthoredCheckpointJson.*` owns the common authored envelope, checkpoint codec delegation, and embedded-resource lookup. `../Data/JsonParser.*` validates FRLG execution settings and retains the legacy capture reader. `JsonWriter.*` is retained for migration comparisons and export diagnostics; production authored loading does not depend on it. `Json_Tests.*` keeps the codec tests beside those sources. Once migration expectations are independent of the old capture, remove the legacy reader, writer, and `LegacyJsonFormat.h`; retain the authored parser.

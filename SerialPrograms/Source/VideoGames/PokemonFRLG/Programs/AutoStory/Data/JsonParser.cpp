@@ -5,10 +5,12 @@
 #include <format>
 #include <initializer_list>
 #include <limits>
+#include <utility>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepJson.h"
+#include "Pokemon/AutoStory/Pokemon_AuthoredCheckpointJson.h"
 #include "LegacyJsonFormat.h"
 #include "JsonParser.h"
 
@@ -18,15 +20,6 @@ namespace PokemonFRLG{
 
 
 namespace{
-
-void exact_fields(const JsonObject& value, std::initializer_list<std::string_view> names){
-    if (value.size() != names.size()){
-        throw ParseException("Authored checkpoint: missing or extra fields.");
-    }
-    for (std::string_view name : names){
-        value.get_value_throw(std::string(name));
-    }
-}
 
 //  Reading. Every field is required and no other is allowed, as in the
 //  shared codec: the record says what the table said, not what it left out.
@@ -182,18 +175,11 @@ void check_envelope(const JsonObject& root, std::string_view source){
     }
 }
 
-} // namespace
-
-StoryCheckpoint read_authored_checkpoint(const JsonValue& value, std::string_view source){
-    const JsonObject& root = value.to_object_throw(std::string(source));
-    exact_fields(root, {"format", "game", "checkpoint", "execution"});
-    if (root.get_string_throw("format") != "pokesim-authored-checkpoint/1" || root.get_string_throw("game") != "frlg"){
-        throw ParseException("Unsupported authored checkpoint format/game.");
-    }
-    const JsonObject& execution = root.get_object_throw("execution");
-    exact_fields(execution, {"menu"});
+StoryCheckpoint apply_execution(Pokemon::AuthoredCheckpoint parsed, std::string_view source){
+    const JsonObject& execution = parsed.execution;
+    Pokemon::require_story_json_fields(execution, {"menu"}, source);
     StoryCheckpoint result;
-    static_cast<Pokemon::StoryCheckpoint&>(result) = Pokemon::read_story_checkpoint(root.get_value_throw("checkpoint"), source);
+    static_cast<Pokemon::StoryCheckpoint&>(result) = std::move(parsed.checkpoint);
     const std::string& menu = execution.get_string_throw("menu");
     if (menu == "before_pokemon"){
         result.menu = StartMenu::BEFORE_POKEMON;
@@ -207,13 +193,15 @@ StoryCheckpoint read_authored_checkpoint(const JsonValue& value, std::string_vie
     return result;
 }
 
+
+} // namespace
+
+StoryCheckpoint read_authored_checkpoint(const JsonValue& value, std::string_view source){
+    return apply_execution(Pokemon::read_authored_checkpoint(value, "frlg", source), source);
+}
+
 StoryCheckpoint load_authored_checkpoint(std::string_view file){
-    for (const auto& [name, text] : autostory_checkpoint_json()){
-        if (name == file){
-            return read_authored_checkpoint(parse_json(text), file);
-        }
-    }
-    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Authored checkpoint is not embedded: " + std::string(file));
+    return apply_execution(Pokemon::load_authored_checkpoint(autostory_checkpoint_json(), file, "frlg"), file);
 }
 
 StoryCheckpoint read_story_checkpoint_export(const JsonValue& value, std::string_view source){
