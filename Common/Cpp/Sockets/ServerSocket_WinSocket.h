@@ -30,7 +30,7 @@ public:
         : m_thread_pool(thread_pool)
     {}
     virtual ~ServerSocket_WinSocket(){
-        close();
+        close_and_wait();
     }
 
     virtual void start(const std::string& address, uint16_t port) override;
@@ -41,11 +41,6 @@ public:
     //  send loop re-checks the state every iteration). Safe to call from
     //  within a listener callback.
     virtual void close_connection() override;
-
-    //  Stops the server. It cancels any in-flight "send()" the same way
-    //  "close_connection()" does, and blocks until the worker threads have
-    //  exited, so it must not be called from within a listener callback.
-    virtual void close() noexcept override;
 
     virtual size_t send(
         const void* data,
@@ -61,6 +56,12 @@ private:
     //  WSACleanup: it is a process-wide, reference-counted operation, and
     //  other parts of the process (Qt) may be using Winsock as well.
     static void ensure_wsa_started();
+
+    //  Stops the server: it stops accepting new connections, closes the
+    //  active connection, and returns the server to State::NOT_RUNNING so
+    //  the object is fully torn down. It blocks until the worker threads
+    //  have exited, so it is private and only called by the destructor.
+    void close_and_wait() noexcept;
 
     void accept_thread_loop(std::string address, uint16_t port, uint64_t generation);
     void connection_thread_loop();
@@ -98,8 +99,8 @@ private:
     //  One task per start() call. start() must never destroy the previous
     //  task's AsyncTask here: its destructor blocks until the task has
     //  finished, and a task from an earlier attempt may still be running
-    //  (the caller's wait timed out while the pool was starved). close()
-    //  joins the whole list.
+    //  (the caller's wait timed out while the pool was starved).
+    //  close_and_wait() joins the whole list.
     std::vector<AsyncTask> m_accept_threads;
     AsyncTask m_client_thread;
 };
