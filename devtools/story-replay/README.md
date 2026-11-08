@@ -91,7 +91,7 @@ simulation tests continue to cover their own cases.
 
 ## Review order
 
-1. Read the [shared readable cases](https://github.com/dayfine/PokemonSimulation/blob/020a12db154b8a832bfbdd371884f35c18563319/data/story/parcel-pilot/CASES.md).
+1. Read the [shared readable cases](https://github.com/dayfine/PokemonSimulation/blob/9cb12c52f5f055299e32c2a7cf43e7103c101e3e/data/story/parcel-pilot/CASES.md).
 2. `PokemonFRLG_StoryReplay_IO.*` validates pins and bindings;
    `PokemonFRLG_StoryReplay_Executor.*` adapts game actions to the existing engine.
 3. `PokemonFRLG_StoryReplay_Tests.cpp` contains shared-case checks and negatives.

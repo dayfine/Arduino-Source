@@ -1,6 +1,6 @@
 {
   "format": "pokesim-route-candidate/1",
-  "binding_sha256": "12abcd4827a639c65667e49b69b5ef17d4dd74b95633a12fa62a2a5179855a51",
+  "binding_sha256": "5de39f53f63a9fd6319b4afd2fa85d0b0c468da7e94161fe4ce22bb939bb846e",
   "checkpoint": "00.05",
   "routes": {
     "below_mart_door": [
