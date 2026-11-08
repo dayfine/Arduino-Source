@@ -146,7 +146,9 @@ void StoryWorld::paint(const Placed& placed, const TilePos& corner){
     for (const auto& box : placed.wander){
         for (int y = std::max(0, box.y0); y <= std::min(placed.tiles.height - 1, box.y1); y++){
             for (int x = std::max(0, box.x0); x <= std::min(placed.tiles.width - 1, box.x1); x++){
-                Pokemon::cell_at(m_cells, {corner.x + x, corner.y + y}).recovery_hazard = true;
+                Cell& c = Pokemon::cell_at(m_cells, {corner.x + x, corner.y + y});
+                c.recovery_hazard = true;
+                c.wander_hazard = true;
             }
         }
     }
@@ -219,6 +221,16 @@ std::vector<TilePos> wandering_hazards(const StoryWorld& world){
     });
     result.erase(std::unique(result.begin(), result.end()), result.end());
     return result;
+}
+
+bool wandering_hazard(const StoryWorld& world, const TilePos& pos){
+    const StoryWorld::Cell* found = world.cell(pos);
+    return found != nullptr && found->wander_hazard;
+}
+
+bool recovery_hazard(const StoryWorld& world, const TilePos& pos){
+    const StoryWorld::Cell* found = world.cell(pos);
+    return found != nullptr && found->recovery_hazard;
 }
 
 void StoryWorld::block(const TilePos& pos){

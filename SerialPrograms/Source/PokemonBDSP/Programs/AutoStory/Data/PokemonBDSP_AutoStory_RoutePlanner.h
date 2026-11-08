@@ -49,6 +49,7 @@ std::string to_string(const TileLeg& leg);
 struct TilePlanCosts{
     int per_tile = 1;
     int per_grass_tile = 4;     //  extra for each tall-grass tile entered
+    int per_wander_tile = 3;    //  extra for each wander hazard tile entered
     int per_leg = 8;
     int leg_not_at_wall = 50;   //  extra for a leg that stops in the open
 };

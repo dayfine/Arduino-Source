@@ -72,6 +72,8 @@ public:
     std::optional<MapTile> to_local(const Pokemon::TilePos& world) const;
 
     friend std::vector<Pokemon::TilePos> wandering_hazards(const StoryWorld& world);
+    friend bool wandering_hazard(const StoryWorld& world, const Pokemon::TilePos& pos);
+    friend bool recovery_hazard(const StoryWorld& world, const Pokemon::TilePos& pos);
 
 private:
     struct Placed{
@@ -87,6 +89,7 @@ private:
         Pokemon::TileKind tile = Pokemon::TileKind::WALL;
         Occupant occupant = NOBODY;
         bool recovery_hazard = false;
+        bool wander_hazard = false;
     };
 
     void check_overlap(const Placed& map) const;
@@ -110,6 +113,10 @@ private:
 
 //  All tiles where someone wanders on the maps, in world coordinates.
 std::vector<Pokemon::TilePos> wandering_hazards(const StoryWorld& world);
+//  Whether a world tile is within a wandering hazard box.
+bool wandering_hazard(const StoryWorld& world, const Pokemon::TilePos& pos);
+//  Whether a world tile is a recovery hazard (wander box or warp).
+bool recovery_hazard(const StoryWorld& world, const Pokemon::TilePos& pos);
 //  Whether a map holds this world tile.
 bool covered(const StoryWorld& world, const Pokemon::TilePos& pos);
 //  Whether the player can stand on this tile.

@@ -460,10 +460,6 @@ UnitTestResult test_wandering_npc_routes_multi_seed(Logger& logger){
     const TilePos hiker_home = story_to_world(*world, "OreburghCity", {47, 26});
     const std::vector<uint64_t> seeds = {0, 1, 2, 7, 42, 100, 999, 1337};
     const std::vector<Milliseconds> start_times = {0ms, 500ms, 1200ms, 2000ms, 3500ms, 5000ms};
-    std::vector<TilePos> avoid = wandering_hazards(*world);
-    std::erase_if(avoid, [&](const TilePos& pos){
-        return pos == start || pos == target;
-    });
     for (uint64_t seed : seeds){
         for (Milliseconds start_time : start_times){
             SimWanderer hiker{
@@ -481,7 +477,7 @@ UnitTestResult test_wandering_npc_routes_multi_seed(Logger& logger){
             const auto result = walk_route(sim_io, *world, {start}, trainers, {
                 .goal = [&](const TilePos& pos){ return pos == target; },
                 .label = "01.03 above_the_mine",
-                .avoid = avoid,
+                .avoid = {},
                 .costs = *story_route_costs("town"),
                 .speed = MoveSpeed::RUN,
             });
@@ -539,6 +535,103 @@ UnitTestResult test_wandering_npc_wait_clearance(Logger& logger){
     }
     return true;
 }
+
+UnitTestResult test_wandering_npc_oreburgh_north_multi_seed(Logger& logger){
+    const StoryWorld* world = story_plan_world("OreburghCity", "OreburghCity");
+    if (world == nullptr){
+        return "OreburghCity world not found";
+    }
+    const TilePos start = story_to_world(*world, "OreburghCity", {46, 52});
+    const TilePos target = story_to_world(*world, "OreburghCity", {46, 21});
+    const TileBox hiker_box{
+        story_to_world(*world, "OreburghCity", {46, 25}).x,
+        story_to_world(*world, "OreburghCity", {46, 25}).y,
+        story_to_world(*world, "OreburghCity", {48, 27}).x,
+        story_to_world(*world, "OreburghCity", {48, 27}).y
+    };
+    const TilePos hiker_home = story_to_world(*world, "OreburghCity", {47, 26});
+    const std::vector<uint64_t> seeds = {0, 1, 2, 7, 42, 100, 999, 1337};
+    const std::vector<Milliseconds> start_times = {0ms, 500ms, 1200ms, 2000ms, 3500ms, 5000ms};
+    for (uint64_t seed : seeds){
+        for (Milliseconds start_time : start_times){
+            SimWanderer hiker{
+                .name = "hiker_0",
+                .box = hiker_box,
+                .pos = hiker_home,
+                .seed = seed,
+                .step_interval = 2000ms,
+                .time_offset = start_time,
+            };
+            GridSim sim({.world = world, .trainers = story_trainers(*world), .wanderers = {hiker}}, start, Direction::NORTH, true);
+            std::vector<std::string> notes;
+            GridSimRouteIO sim_io(sim, notes);
+            RouteTrainers trainers{story_trainers(*world), [&sim](const std::string&){ sim.end_dialogue(); }};
+            const auto result = walk_route(sim_io, *world, {start}, trainers, {
+                .goal = [&](const TilePos& pos){ return pos == target; },
+                .label = "01.03 oreburgh_north",
+                .avoid = {},
+                .costs = *story_route_costs("town"),
+                .speed = MoveSpeed::RUN,
+            });
+            if (result.empty() || result.front() != target || nearest_tile(sim.player().pos) != target){
+                return std::format("oreburgh north route failed for seed {} and start_time {} ms", seed, start_time.count());
+            }
+        }
+    }
+    return true;
+}
+
+class StalledWallLegRouteIO : public GridSimRouteIO{
+public:
+    StalledWallLegRouteIO(GridSim& sim, std::vector<std::string>& notes)
+        : GridSimRouteIO(sim, notes)
+    {}
+
+    virtual WalkResult walk_to_wall(const RouteWallWalk& walk) override{
+        if (m_first_wall_call){
+            m_first_wall_call = false;
+            return WalkResult{
+                .stop = WalkStop::LIMIT,
+                .walked = 5000ms,
+                .wild_battles = 0,
+                .moved_chunks = 2,
+            };
+        }
+        return GridSimRouteIO::walk_to_wall(walk);
+    }
+
+private:
+    bool m_first_wall_call = true;
+};
+
+UnitTestResult test_wall_leg_check_at_wall_short_distance_safeguard(Logger& logger){
+    StoryWorld world = make_world({
+        "########################",
+        "#......................#",
+        "########################",
+    });
+    const TilePos start{1, 1};
+    const TilePos target{22, 1};
+    GridSim sim({.world = &world}, start, Direction::EAST, true);
+    std::vector<std::string> notes;
+    StalledWallLegRouteIO sim_io(sim, notes);
+    RouteTrainers trainers{{}, [](const std::string&){}};
+    try{
+        walk_route(sim_io, world, {start}, trainers, {
+            .goal = [&](const TilePos& pos){ return pos == target; },
+            .label = "test_check_at_wall_safeguard",
+            .avoid = {},
+            .costs = *story_route_costs("town"),
+            .speed = MoveSpeed::RUN,
+        });
+        return "check_at_wall falsely accepted leg stalled well short of expected distance";
+    }catch (const GridSimFailure& f){
+        if (f.message.find("short of the wall") != std::string::npos){
+            return true;
+        }
+        return "caught unexpected failure: " + f.message;
+    }
+}
 struct AutoStoryGridSimInput{
     std::string name;
     std::function<UnitTestResult(Logger&)> body;
@@ -595,11 +688,19 @@ const AutoStoryGridSimCase AUTO_STORY_GRID_SIM_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"01.03 above_the_mine detours around wanderer across seeds and start times", test_wandering_npc_routes_multi_seed},
+        .input = {"01.03 above_the_mine paths through wanderer zone across seeds and start times", test_wandering_npc_routes_multi_seed},
         .expectation = {},
     },
     {
         .input = {"wandering NPC collision without avoid waits for clearance and resumes", test_wandering_npc_wait_clearance},
+        .expectation = {},
+    },
+    {
+        .input = {"01.03 oreburgh_north paths straight up column 46 across seeds and start times", test_wandering_npc_oreburgh_north_multi_seed},
+        .expectation = {},
+    },
+    {
+        .input = {"check_at_wall safeguard rejects legs stalled well short of expected distance", test_wall_leg_check_at_wall_short_distance_safeguard},
         .expectation = {},
     },
 };

@@ -154,6 +154,12 @@ constexpr RouteInput WAIT_FOR_THE_WAY{.kind = RouteInputKind::WAIT, .direction =
 
 //  Tiles a walk to the wall moved, from the time it walked.
 size_t tiles_moved(const WalkResult& walk, Milliseconds per_tile){
+    if (walk.stop == WalkStop::LIMIT && walk.moved_chunks > 0){
+        const Milliseconds moving = walk.walked - ROUTE_START_DELAY;
+        const size_t tiles_from_time = moving.count() <= 0 ? (size_t)0 : (size_t)(moving / per_tile);
+        const size_t tiles_from_chunks = (walk.moved_chunks * 400ms) / per_tile;
+        return std::min(tiles_from_time, std::max(walk.moved_chunks, tiles_from_chunks));
+    }
     const Milliseconds moving = walk.walked - ROUTE_START_DELAY -
         (walk.stop == WalkStop::BLOCKED ? 800ms : 0ms);
     return moving.count() <= 0 ? (size_t)0 : (size_t)(moving / per_tile);
@@ -226,7 +232,7 @@ private:
     bool finish_interrupted_wall(LegWalk& walk, Milliseconds limit);
     size_t unstick_wall_leg(LegWalk& walk, size_t walked_tiles, size_t nearest);
     LegNext stopped_short_of_wall(LegWalk& walk, size_t walked_tiles);
-    void check_at_wall(LegWalk& walk);
+    void check_at_wall(LegWalk& walk, size_t walked_tiles = SIZE_MAX, size_t expected_tiles = SIZE_MAX);
     void on_to_wall(LegWalk& walk);
 
     //  Open legs, tapped.
@@ -402,7 +408,7 @@ LegNext RouteWalker::wall_leg(LegWalk& walk){
     //  into the lab). Out of tall grass a stop reads, so walk on: a player
     //  still moving is not where the plan has him.
     if (walk.result.stop == WalkStop::LIMIT && route_wall_readable(m_grid, walk.planned.after)){
-        check_at_wall(walk);
+        check_at_wall(walk, walked_tiles, nearest);
     }
     return LegNext::NEXT_LEG;
 }
@@ -479,7 +485,14 @@ LegNext RouteWalker::stopped_short_of_wall(LegWalk& walk, size_t walked_tiles){
     return replan_from(walk, std::move(stopped), "stopped early after about " + std::to_string(walked_tiles) + " tiles");
 }
 
-void RouteWalker::check_at_wall(LegWalk& walk){
+void RouteWalker::check_at_wall(LegWalk& walk, size_t walked_tiles, size_t expected_tiles){
+    if (expected_tiles != SIZE_MAX && expected_tiles > 0 && walked_tiles != SIZE_MAX){
+        const size_t min_tiles = expected_tiles > 3 ? (expected_tiles * 7 / 10) : (expected_tiles > 1 ? expected_tiles - 1 : 1);
+        if (walked_tiles < min_tiles){
+            fail(m_io, walk.label + ": ran out of time well short of the wall (" +
+                std::to_string(walked_tiles) + " of " + std::to_string(expected_tiles) + " tiles): not where the plan has us.");
+        }
+    }
     WalkResult check = m_io.walk_to_wall({.direction = walk.planned.leg.direction, .limit = 2000ms,
         .label = walk.label + ": at the wall?", .options = {.arrived = nullptr, .pace = DpadPace::RUN}});
     if (check.stop == WalkStop::DIALOG){

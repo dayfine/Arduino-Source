@@ -83,6 +83,9 @@ public:
         if (tall_grass(m_world, *next)){
             step.extra_cost += m_costs.per_grass_tile;
         }
+        if (wandering_hazard(m_world, *next)){
+            step.extra_cost += m_costs.per_wander_tile;
+        }
         return step;
     }
     bool held_at(const State& pos, Direction direction) const{
@@ -218,6 +221,7 @@ namespace{
 struct Stepped{
     TilePos end;
     int grass = 0;
+    int wander = 0;
 };
 std::optional<Stepped> step_tiles(const StoryWorld& world, TilePos from, Direction direction, int tiles){
     Stepped stepped;
@@ -233,6 +237,9 @@ std::optional<Stepped> step_tiles(const StoryWorld& world, TilePos from, Directi
         travelled += (int)distance(*next, from);
         if (tall_grass(world, *next)){
             stepped.grass++;
+        }
+        if (wandering_hazard(world, *next)){
+            stepped.wander++;
         }
         from = *next;
     }
@@ -268,6 +275,7 @@ std::optional<Expansion> to_wall_leg(const StoryWorld& world, const Spread& spre
     Expansion expansion;
     size_t longest = 0;
     int grass = 0;
+    int wander = 0;
     for (const TilePos& pos : spread){
         const WallHit hit = slide_to_wall(world, pos, direction);
         if (!hit.anchored){
@@ -275,6 +283,7 @@ std::optional<Expansion> to_wall_leg(const StoryWorld& world, const Spread& spre
         }
         if (const std::optional<Stepped> stepped = step_tiles(world, pos, direction, (int)hit.tiles)){
             grass = std::max(grass, stepped->grass);
+            wander = std::max(wander, stepped->wander);
         }
         longest = std::max(longest, hit.tiles);
         expansion.next.push_back(hit.stop);
@@ -282,7 +291,8 @@ std::optional<Expansion> to_wall_leg(const StoryWorld& world, const Spread& spre
     if (longest == 0){
         return std::nullopt;
     }
-    expansion.cost = (long long)costs.per_leg + (long long)costs.per_tile * longest + (long long)costs.per_grass_tile * grass;
+    expansion.cost = (long long)costs.per_leg + (long long)costs.per_tile * longest
+        + (long long)costs.per_grass_tile * grass + (long long)costs.per_wander_tile * wander;
     expansion.leg = TileLeg{direction, longest, true};
     return expansion;
 }
@@ -292,6 +302,7 @@ std::optional<Expansion> to_wall_leg(const StoryWorld& world, const Spread& spre
 std::optional<Expansion> open_leg(const StoryWorld& world, const Spread& spread, Direction direction, int tiles, const RobustPlanCosts& costs){
     Expansion expansion;
     int grass = 0;
+    int wander = 0;
     const int error = tiles <= costs.exact_open_tiles ? 0 : costs.open_error + tiles / costs.open_error_per;
     for (const TilePos& pos : spread){
         for (int n = std::max(1, tiles - error); n <= tiles + error; n++){
@@ -300,11 +311,13 @@ std::optional<Expansion> open_leg(const StoryWorld& world, const Spread& spread,
                 return std::nullopt;
             }
             grass = std::max(grass, stepped->grass);
+            wander = std::max(wander, stepped->wander);
             expansion.next.push_back(stepped->end);
         }
     }
     expansion.cost = (long long)costs.per_leg + costs.leg_not_at_wall +
-        (long long)(costs.per_tile + costs.per_open_tile) * tiles + (long long)costs.per_grass_tile * grass;
+        (long long)(costs.per_tile + costs.per_open_tile) * tiles
+        + (long long)costs.per_grass_tile * grass + (long long)costs.per_wander_tile * wander;
     expansion.leg = TileLeg{direction, (size_t)tiles, false};
     return expansion;
 }
