@@ -921,6 +921,7 @@ if(COMMAND_LINE_EXE)
     include(Source/CommandLine/CommandLineExecutable.cmake)
 endif()
 
+include(../devtools/story-export/FRLG.cmake)
 if(PA_PYTHON_BINDINGS)
     # Python bindings (GUI-free) from subdirectory
     include(Source/PythonBindings/PythonBindings.cmake)
