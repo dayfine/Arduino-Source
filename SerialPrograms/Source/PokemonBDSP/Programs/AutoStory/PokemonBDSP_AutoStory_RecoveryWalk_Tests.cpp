@@ -97,7 +97,7 @@ public:
         if (world == nullptr){
             return "Missing native mine world.";
         }
-        GridSim sim({.world = world}, world->to_world("OreburghMine", {15, 10}), Direction::SOUTH, true);
+        GridSim sim({.world = world}, world->to_world("OreburghMine", {15, 9}), Direction::SOUTH, true);
         std::vector<SimWildTap> taps;
         for (size_t tap : m_case.input.taps){
             taps.push_back({.label = "below_roark", .direction = m_case.input.direction,
@@ -108,7 +108,7 @@ public:
         RecoveryStepIO io(route);
         StoryWalkSteps walks(io);
         walks.begin_attempt("01.03");
-        Pokemon::RunState state{.pose = Pokemon::tile_pose("OreburghMine", {{15, 10}}, Direction::SOUTH), .flags = {}};
+        Pokemon::RunState state{.pose = Pokemon::tile_pose("OreburghMine", {{15, 9}}, Direction::SOUTH), .flags = {}};
         std::string failure;
         std::optional<Pokemon::Pose> declared;
         try{
