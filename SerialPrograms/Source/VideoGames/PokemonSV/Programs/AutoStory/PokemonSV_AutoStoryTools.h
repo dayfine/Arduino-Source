@@ -25,6 +25,7 @@ using namespace ML;
 
 static constexpr bool ENABLE_TEST  = false;
 
+//  Shared checkpoint, segment and reset counters used by SV AutoStory.
 using AutoStoryStats = Pokemon::AutoStoryStats;
 
 
