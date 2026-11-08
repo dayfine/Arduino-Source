@@ -11,6 +11,12 @@
 #include "VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryExport.h"
 #include "VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryTable.h"
 
+namespace PokemonAutomation{
+//  This parent still expects the UI flag from application Main.cpp. The
+//  offline executable provides it without constructing a GUI application.
+bool USE_QT_UI = false;
+} // namespace PokemonAutomation
+
 int main(int argc, char** argv){
     if (argc != 2){
         std::cerr << "Usage: StoryCheckpointExport CHECKPOINT_ID\n";

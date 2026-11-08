@@ -214,6 +214,26 @@ jobs:
           # -d keepdepfile
           cmake --build . --config RelWithDebInfo --parallel ${{env.BUILD_PARALLEL}} -- -d keepdepfile
 
+      - name: Export evaluated FRLG Parcel checkpoint (Ubuntu)
+        if: startsWith(inputs.os, 'ubuntu') && inputs.run-tests
+        run: |
+          cd Arduino-Source/SerialPrograms/bin
+          ./StoryCheckpointExport 00.05 > frlg-parcel.native.json
+          python3 - <<'PYTHON'
+          import json
+          from pathlib import Path
+          data = json.loads(Path('frlg-parcel.native.json').read_text())
+          assert data['game'] == 'frlg' and data['checkpoint']['id'] == '00.05'
+          assert len(data['checkpoint']['events']) == 3
+          PYTHON
+
+      - name: Upload evaluated FRLG checkpoint
+        if: startsWith(inputs.os, 'ubuntu') && inputs.run-tests
+        uses: actions/upload-artifact@v7
+        with:
+          name: frlg-checkpoint-${{inputs.os}}-${{inputs.compiler}}
+          path: Arduino-Source/SerialPrograms/bin/frlg-parcel.native.json
+
       - name: Prepare upload build
         if: inputs.upload-build
         shell: bash
@@ -294,26 +314,6 @@ jobs:
         run: |
           cd Arduino-Source/SerialPrograms/bin
           ./SerialPrograms.app/Contents/MacOS/SerialPrograms --command-line-test-mode
-
-      - name: Export evaluated FRLG Parcel checkpoint (Ubuntu)
-        if: startsWith(inputs.os, 'ubuntu') && inputs.run-tests
-        run: |
-          cd Arduino-Source/SerialPrograms/bin
-          ./StoryCheckpointExport 00.05 > frlg-parcel.native.json
-          python3 - <<'PYTHON'
-          import json
-          from pathlib import Path
-          data = json.loads(Path('frlg-parcel.native.json').read_text())
-          assert data['game'] == 'frlg' and data['checkpoint']['id'] == '00.05'
-          assert len(data['checkpoint']['events']) == 3
-          PYTHON
-
-      - name: Upload evaluated FRLG checkpoint
-        if: startsWith(inputs.os, 'ubuntu') && inputs.run-tests
-        uses: actions/upload-artifact@v7
-        with:
-          name: frlg-checkpoint-${{inputs.os}}-${{inputs.compiler}}
-          path: Arduino-Source/SerialPrograms/bin/frlg-parcel.native.json
 
       # The list of files that passed clang-query, from the latest run on this branch or on main.
       # See .github/scripts/clang-query-cached.py. Unlike ccache, every run saves it: it is only
