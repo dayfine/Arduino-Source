@@ -24,6 +24,7 @@
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
 #include "Pokemon/AutoStory/Pokemon_StorySteps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
+#include "PokemonFRLG_AutoStoryExport.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 
 namespace PokemonAutomation{
@@ -224,6 +225,8 @@ private:
 //  checkpoint saves at its end (hooks.save stands for save_game()).
 struct Simulation{
     FakeGame game;
+    //  The rows run: the whole table unless a test sets its own.
+    std::vector<StoryCheckpoint> table = story_checkpoints();
     std::vector<std::string> lines;
     //  Where each save stood: the end of its checkpoint.
     std::vector<std::pair<std::string, Pokemon::Pose>> saves;
@@ -234,7 +237,7 @@ struct Simulation{
         game.set_language(Language::Japanese);
         Pokemon::Segment segment;
         segment.id = "00";
-        for (const StoryCheckpoint& data : story_checkpoints()){
+        for (const StoryCheckpoint& data : table){
             segment.checkpoints.push_back(Pokemon::CheckpointSpec{
                 .id = data.id, .title = data.title, .saves = true,
                 .build = [this, &data]{ return Pokemon::build_story_checkpoint(data, game); },
@@ -389,6 +392,40 @@ UnitTestResult test_gives_up_after_attempts(){
     return true;
 }
 
+//  00.05 as the table authors it and as the data file built into the
+//  program (StoryData/frlg-parcel-00.05.json, the export tool's capture of
+//  that row): the loaded row builds the same events, and run against the
+//  fake game walks the same route, leaves the same trace and saves in the
+//  same place.
+UnitTestResult test_data_row_parity(){
+    const std::vector<StoryCheckpoint>& table = story_checkpoints();
+    const auto authored = std::find_if(table.begin(), table.end(), [](const StoryCheckpoint& row){ return row.id == "00.05"; });
+    if (authored == table.end()){
+        return "Expected row 00.05 in the table.";
+    }
+    const StoryCheckpoint loaded = load_story_checkpoint("frlg-parcel-00.05");
+    FakeGame describer;
+    const std::string authored_events = Pokemon::describe(Pokemon::build_story_checkpoint(*authored, describer));
+    const std::string loaded_events = Pokemon::describe(Pokemon::build_story_checkpoint(loaded, describer));
+    if (authored_events != loaded_events){
+        return "Expected the same events from the table and the data:\n" + authored_events + "\n" + loaded_events;
+    }
+    Simulation from_table;
+    from_table.table = {*authored};
+    Simulation from_data;
+    from_data.table = {loaded};
+    const bool completed = from_table.run({}).completed && from_data.run({}).completed;
+    if (!completed || from_table.game.trace != from_data.game.trace || from_table.lines != from_data.lines){
+        return "Expected the same run from the table and the data:" + joined(from_table.game.trace) + joined(from_data.game.trace);
+    }
+    if (from_table.saves.size() != 1 || from_data.saves.size() != 1
+        || Pokemon::to_string(from_table.saves[0].second) != Pokemon::to_string(from_data.saves[0].second)
+    ){
+        return "Expected both runs to save once, in the same place:" + joined(from_table.lines) + joined(from_data.lines);
+    }
+    return true;
+}
+
 const AutoStorySimulationTestCase AUTO_STORY_SIMULATION_CASES[] = {
     {
         .input = {.name = "new game to Brock, in order, each start where the last save stood", .body = test_whole_story},
@@ -405,6 +442,10 @@ const AutoStorySimulationTestCase AUTO_STORY_SIMULATION_CASES[] = {
     {
         .input = {.name = "a battle lost every time stops after 3 attempts", .body = test_gives_up_after_attempts},
         .expectation = {.description = "aborts after three consecutive battle blackouts"},
+    },
+    {
+        .input = {.name = "00.05 from the data file runs as the table's row", .body = test_data_row_parity},
+        .expectation = {.description = "the loaded checkpoint builds the same events and leaves the same fake-game trace"},
     },
 };
 
