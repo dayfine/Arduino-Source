@@ -64,6 +64,20 @@ const char* const GOLDEN_V1 = R"(
 )";
 
 const RuntimeMapCase RUNTIME_MAP_CASES[] = {
+    {.input = {.name = "pickup derived name and default quantity", .fields = R"("format":"pokesim-runtime-map/2","items":[{"coord":[0,1],"source_event":3,"item":"potion"}])"}, .expectation = {.normalized_fields = R"("objects":[{"x":0,"y":1,"kind":"item","name":"item_3","source_event":3,"item":"potion","quantity":1}])"}},
+    {.input = {.name = "pickup explicit name and multiple quantity", .fields = R"("format":"pokesim-runtime-map/2","items":[{"name":"gift_cache","coord":[0,1],"source_event":3,"item":"potion","quantity":4}])"}, .expectation = {.normalized_fields = R"("objects":[{"x":0,"y":1,"kind":"item","name":"gift_cache","source_event":3,"item":"potion","quantity":4}])"}},
+    {.input = {.name = "pickup named quantity default", .fields = R"("format":"pokesim-runtime-map/2","items":[{"name":"pickup","coord":[0,1],"item":"potion"}])"}, .expectation = {.normalized_fields = R"("objects":[{"x":0,"y":1,"kind":"item","name":"pickup","item":"potion","quantity":1}])"}},
+    {.input = {.name = "pickup missing event", .fields = R"("format":"pokesim-runtime-map/2","items":[{"coord":[0,1],"item":"potion"}])"}, .expectation = {.error = "source_event"}},
+    {.input = {.name = "pickup negative event", .fields = R"("format":"pokesim-runtime-map/2","items":[{"coord":[0,1],"item":"potion","source_event":-1}])"}, .expectation = {.error = "source_event"}},
+    {.input = {.name = "pickup boolean event", .fields = R"("format":"pokesim-runtime-map/2","items":[{"coord":[0,1],"item":"potion","source_event":true}])"}, .expectation = {.error = "source_event"}},
+    {.input = {.name = "pickup overflow event", .fields = R"("format":"pokesim-runtime-map/2","items":[{"coord":[0,1],"item":"potion","source_event":2147483648}])"}, .expectation = {.error = "source_event"}},
+    {.input = {.name = "pickup zero quantity", .fields = R"("format":"pokesim-runtime-map/2","items":[{"coord":[0,1],"name":"p","item":"potion","quantity":0}])"}, .expectation = {.error = "quantity"}},
+    {.input = {.name = "pickup negative quantity", .fields = R"("format":"pokesim-runtime-map/2","items":[{"coord":[0,1],"name":"p","item":"potion","quantity":-1}])"}, .expectation = {.error = "quantity"}},
+    {.input = {.name = "pickup boolean quantity", .fields = R"("format":"pokesim-runtime-map/2","items":[{"coord":[0,1],"name":"p","item":"potion","quantity":true}])"}, .expectation = {.error = "quantity"}},
+    {.input = {.name = "pickup null quantity", .fields = R"("format":"pokesim-runtime-map/2","items":[{"coord":[0,1],"name":"p","item":"potion","quantity":null}])"}, .expectation = {.error = "quantity"}},
+    {.input = {.name = "pickup float quantity", .fields = R"("format":"pokesim-runtime-map/2","items":[{"coord":[0,1],"name":"p","item":"potion","quantity":1.5}])"}, .expectation = {.error = "quantity"}},
+    {.input = {.name = "pickup empty item", .fields = R"("format":"pokesim-runtime-map/2","items":[{"coord":[0,1],"name":"p","item":""}])"}, .expectation = {.error = "item"}},
+
     {.input = {.name = "complete normalized-value parity", .fields = GOLDEN_V2}, .expectation = {.normalized_fields = GOLDEN_V1}},
     {.input = {.name = "implicit v1", .fields = R"("objects":[{"name":"npc","kind":"npc","x":0,"y":0}])"}, .expectation = {}},
     {.input = {.name = "explicit v1", .fields = R"("format":"pokesim-runtime-map/1")"}, .expectation = {}},
