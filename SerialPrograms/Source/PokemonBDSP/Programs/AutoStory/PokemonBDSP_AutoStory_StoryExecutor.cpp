@@ -95,7 +95,7 @@ void save_failure_screenshot(VideoStream& stream, size_t attempt){
     stream.log("Failure screenshot: " + path);
 }
 
-}
+} // namespace
 
 
 StoryExecutor::StoryExecutor(StoryEnv& env)
@@ -217,7 +217,13 @@ Outcome StoryExecutor::heal(RunState&, const StoryStep& step){
     if (in){
         pbf_wait(context(), 1500ms);
     }else{
-        enter_lit_door(stream(), context(), label_of(step));
+        context().wait_for_all_requests();
+        const VideoSnapshot screen = stream().video().snapshot();
+        if (screen && pokemon_center_inside(*screen.frame)){
+            stream().log(std::format("[{}] {}: already inside Pokemon Center despite no fade detected.", m_checkpoint, step.name));
+        }else{
+            enter_lit_door(stream(), context(), label_of(step));
+        }
     }
     talk_to_nurse(stream(), context(), label_of(step));
     //  Her last line ("We hope to see you again!") can still be up, and a
