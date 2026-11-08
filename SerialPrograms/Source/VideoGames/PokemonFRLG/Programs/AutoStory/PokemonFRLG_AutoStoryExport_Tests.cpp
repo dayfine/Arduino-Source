@@ -7,6 +7,7 @@
 #include "Pokemon/AutoStory/Pokemon_StoryStepJson.h"
 #include "PokemonFRLG_AutoStoryExport.h"
 #include "PokemonFRLG_AutoStoryTable.h"
+#include "PokemonFRLG_StoryReplay.h"
 #include "PokemonFRLG_AutoStoryExport_Tests.h"
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -228,6 +229,7 @@ private:
 };
 } // namespace
 void add_tests_AutoStoryExport(UnitTestDatabase& database){
+    add_tests_StoryReplay(database);
     for (const ExportCase& test : CASES){
         database.add<ExportTest>(test);
     }

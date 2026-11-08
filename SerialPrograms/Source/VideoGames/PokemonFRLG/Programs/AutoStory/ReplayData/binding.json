@@ -1,0 +1,30 @@
+{
+  "format": "pokesim-story-replay-binding/1",
+  "capture": {
+    "file": "data/story/native/frlg-parcel-00.05.json",
+    "sha256": "076438644e5cc609a728d0e625564d3517b8a2984a18c8a23af2fe6017b37475",
+    "source_revision": "b170b7d2103e887ded825c37fdbdc19fd654fca8"
+  },
+  "map_revision": "158b007ecd14efb5776ebdadc530c1a807ef3541",
+  "maps": {
+    "PalletTown_ProfessorOaksLab": "1dedda88f1238eccd6610cbff79c1e5d3cd21b516637b792654746e02b2cdbc8",
+    "PalletTown": "0dc7446f568097b36a9479954f01afe546cb64c82bb0efa91da0cb66ad950f9f",
+    "Route1": "78bf43c8bdf7a0c5dcb22880261626abc36d068c0dfbbc242056e12401c44033",
+    "ViridianCity": "6a671a0a0b06f78f566b89646f6b0f00c91c240a36300dff861f970455f99909",
+    "ViridianCity_Mart": "1b2b23f8f9a1b1fbe266f12bdac96cdf649d974b057e84bf9cba6befbaa15b3b"
+  },
+  "capabilities": {
+    "below_mart_door": {"capability": "frlg-runtime-route/1", "parameters": {}},
+    "mart_door": {"capability": "frlg-runtime-step/1", "parameters": {}},
+    "parcel_from_clerk": {"capability": "scripted-scene/1", "parameters": {"require_received": {"oak-parcel": 1}}}
+  },
+  "costs": {"tile": 1, "turn": 2, "grass": 5, "warp": 1},
+  "max_route_moves": 256,
+  "policy": {
+    "basis": "synthetic-offline-policy",
+    "entry": "scripted-observation",
+    "attempts": 1,
+    "failure": "stop",
+    "save": "never"
+  }
+}

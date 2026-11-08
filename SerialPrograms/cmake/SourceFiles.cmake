@@ -1915,6 +1915,13 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStorySummary.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryExport.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryExport.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_StoryReplay.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_StoryReplay.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_StoryReplay_IO.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_StoryReplay_IO.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_StoryReplay_Executor.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_StoryReplay_Executor.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_StoryReplay_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryExport_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryExport_Tests.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryTable.cpp

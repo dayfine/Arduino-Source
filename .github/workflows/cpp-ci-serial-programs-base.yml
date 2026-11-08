@@ -101,6 +101,50 @@ jobs:
           operation: prepare
           consumer-directory: Arduino-Source
 
+      - name: Checkout preview replay fixture producer (not a resource adoption)
+        if: startsWith(inputs.os, 'ubuntu') && inputs.run-tests
+        uses: actions/checkout@v7
+        with:
+          repository: dayfine/PokemonSimulation
+          ref: 020a12db154b8a832bfbdd371884f35c18563319
+          path: StoryReplaySource
+
+      - name: Verify replay preview bytes and independently regenerate its route input
+        if: startsWith(inputs.os, 'ubuntu') && inputs.run-tests
+        env:
+          PYTHONPATH: StoryReplaySource/src
+        run: |
+          python3 - <<'PYTHON'
+          import hashlib, json, subprocess
+          from pathlib import Path
+          from pokesim.story.replay_binding import load_binding
+          from pokesim.story.checkpoint_replay import run
+          source = Path('StoryReplaySource')
+          native = Path('Arduino-Source/SerialPrograms/Source/VideoGames/PokemonFRLG/Programs/AutoStory')
+          folder = native / 'ReplayData'
+          pin = json.loads((folder / 'pin.json').read_text())
+          revision = subprocess.check_output(['git', '-C', str(source), 'rev-parse', 'HEAD']).decode().strip()
+          assert pin['status'] == 'preview-unmerged-PR-73' and revision == pin['revision']
+          for name, entry in pin['files'].items():
+              published = (source / entry['path']).read_bytes()
+              copied = (native / 'StoryData/frlg-parcel-00.05.json' if name == 'capture' else folder / (name + '.json')).read_bytes()
+              assert hashlib.sha256(published).hexdigest() == entry['sha256'], name
+              assert copied == published, name
+          binding = load_binding(source / pin['files']['binding']['path'], source)
+          cases = json.loads((source / pin['files']['cases']['path']).read_text())['cases']
+          scenario = next(c['input'] for c in cases if c['id'] == 'parcel-all-events')
+          actual = run(binding, scenario)  # No expectations are consulted to generate the candidate.
+          assert actual['status'] == 'model_complete'
+          candidate = {'format': 'pokesim-route-candidate/1', 'binding_sha256': binding.profile_sha256,
+                       'checkpoint': binding.checkpoint['id'], 'routes': {
+                           e['id']: [a for a in actual['actions'] if a['event'] == e['id']]
+                           for e in binding.checkpoint['events'] if e['kind'] == 'route'}}
+          raw = (folder / 'route-candidate.json').read_bytes()
+          assert hashlib.sha256(raw).hexdigest() == pin['candidate']['sha256']
+          assert json.loads(raw) == candidate
+          print('Preview source bytes and independently generated candidate match.')
+          PYTHON
+
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
@@ -223,7 +267,7 @@ jobs:
           cd Arduino-Source/SerialPrograms
           mkdir bin
           cd bin
-          cmake .. -DQT_MAJOR:STRING=6 -DPA_FRLG_STORY_EXPORT=ON ${{env.CMAKE_ADDITIONAL_FLAGS}}
+          cmake .. -DQT_MAJOR:STRING=6 -DPA_FRLG_STORY_EXPORT=ON -DPA_FRLG_STORY_REPLAY=ON ${{env.CMAKE_ADDITIONAL_FLAGS}}
           # By default Ninja reads each compile's .d dependency file into its own database, then deletes it.
           # To keep them for the downstream clang-query cache (see .github/scripts/clang-query-cached.py), add
           # -d keepdepfile
@@ -248,6 +292,49 @@ jobs:
         with:
           name: frlg-checkpoint-${{inputs.os}}-${{inputs.compiler}}
           path: Arduino-Source/SerialPrograms/bin/frlg-parcel.native.json
+
+      - name: Run compiled native replay and compare shared semantic scenarios (Ubuntu)
+        if: startsWith(inputs.os, 'ubuntu') && inputs.run-tests
+        env:
+          PYTHONPATH: StoryReplaySource/src
+        run: |
+          Arduino-Source/SerialPrograms/bin/StoryCheckpointReplay > Arduino-Source/SerialPrograms/bin/frlg-parcel.replay.json
+          python3 - <<'PYTHON'
+          import json, subprocess
+          from pathlib import Path
+          from pokesim.story.replay_binding import load_binding
+          from pokesim.story.checkpoint_replay import run
+          from pokesim.story.replay_cases import read_cases, check_case
+          source = Path('StoryReplaySource')
+          data = json.loads(Path('Arduino-Source/SerialPrograms/bin/frlg-parcel.replay.json').read_text())
+          revision = subprocess.check_output(['git', '-C', 'Arduino-Source', 'rev-parse', 'HEAD']).decode().strip()
+          assert data['native_execution_revision'] == revision
+          cases = read_cases(source / 'data/story/parcel-pilot/cases.json')
+          reports = {item['id']: item['report'] for item in data['reports']}
+          assert len(reports) == len(data['reports']) == len(cases)
+          assert set(reports) == {case['id'] for case in cases}
+          binding = load_binding(source / 'data/story/parcel-pilot/binding.json', source)
+          for case in cases:
+              native = reports[case['id']]
+              python = run(binding, case['input'])
+              check_case(case, native)
+              check_case(case, python)
+              for field in case['expectation']:
+                  assert native[field] == python[field], (case['id'], field)
+              if case['id'] == 'parcel-all-events':
+                  control = native['native_timing_controls']['below_mart_door']
+                  assert control['status'] == 'complete', control
+                  assert any('from_save' in line for line in native['engine_log'])
+              print(case['id'] + ': shared diagnostic outcomes/actions match; live executor parity remains unclaimed.')
+          PYTHON
+
+      - name: Upload native replay trace
+        if: always() && startsWith(inputs.os, 'ubuntu') && inputs.run-tests
+        uses: actions/upload-artifact@v7
+        with:
+          name: frlg-native-replay-${{inputs.os}}-${{inputs.compiler}}
+          path: Arduino-Source/SerialPrograms/bin/frlg-parcel.replay.json
+          if-no-files-found: ignore
 
       - name: Prepare upload build
         if: inputs.upload-build

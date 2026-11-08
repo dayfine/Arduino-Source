@@ -344,6 +344,29 @@ RouteStep to_route_step(const std::vector<MapData>& maps, const Pokemon::Leg<Loc
 
 
 
+std::optional<OverworldPress> predict_overworld_press(
+    const std::vector<MapData>& maps, const OverworldPose& from, Direction direction
+){
+    const int map = find_map(maps, from.position.map);
+    if (map < 0){
+        return std::nullopt;
+    }
+    const Located start{map, {from.position.point, from.elevation, from.surfing}};
+    const auto next = press(maps, start, direction);
+    if (!next){
+        return std::nullopt;
+    }
+    return OverworldPress{
+        .pose = {
+            .position = {maps[next->next.map].name, next->next.state.position},
+            .elevation = next->next.state.elevation,
+            .surfing = next->next.state.surfing,
+            .facing = next->walked_out ? Direction::SOUTH : direction,
+        },
+        .warped = next->warped,
+    };
+}
+
 std::optional<std::vector<RouteStep>> plan_overworld_route(
     const std::vector<MapData>& maps,
     const MapPosition& start,

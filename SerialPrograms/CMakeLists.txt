@@ -235,6 +235,8 @@ pa_embed_text_files(SerialProgramsLib Source/VideoGames/PokemonFRLG/Programs/Aut
     VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryBattleData.h PokemonAutomation::NintendoSwitch::PokemonFRLG autostory_battle_json)
 pa_embed_text_files(SerialProgramsLib Source/VideoGames/PokemonFRLG/Programs/AutoStory/StoryData
     VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryExport.h PokemonAutomation::NintendoSwitch::PokemonFRLG autostory_checkpoint_json)
+pa_embed_text_files(SerialProgramsLib Source/VideoGames/PokemonFRLG/Programs/AutoStory/ReplayData
+    VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_StoryReplay.h PokemonAutomation::NintendoSwitch::PokemonFRLG story_replay_fixture_json)
 
 
 # Create binary target
@@ -930,3 +932,5 @@ if(PA_PYTHON_BINDINGS)
     # Python bindings (GUI-free) from subdirectory
     include(Source/PythonBindings/PythonBindings.cmake)
 endif()
+
+include(../devtools/story-replay/FRLG.cmake)
