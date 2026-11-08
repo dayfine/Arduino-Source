@@ -32,6 +32,7 @@
 #define PokemonAutomation_Pokemon_StorySteps_H
 
 #include <cstddef>
+#include <map>
 #include <optional>
 #include <set>
 #include <string>
@@ -100,6 +101,10 @@ struct StoryStep{
 
     //  ROUTE: where to go; with several tiles, any of them. READY: the nurse.
     std::optional<Pose> target;
+    //  ROUTE: people standing in the way for now whom the maps do not have,
+    //  by name: the plan goes round their tiles (Barry on a doorstep until
+    //  he talks).
+    std::map<std::string, Pose> standing = {};
     //  STEP
     Direction direction = Direction::NORTH;
     //  LEGS

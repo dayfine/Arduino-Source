@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <format>
+#include <optional>
 #include "Common/Cpp/Color.h"
 #include "Common/Cpp/Exceptions.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
@@ -45,6 +46,21 @@ std::string label_of(const StoryStep& step){
 [[noreturn]] void fail(RouteIO& io, const std::string& message){
     io.note(message, RouteNote::FAILURE);
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "RouteIO::note() returned from a failure: " + message);
+}
+
+//  `world` with the people `step` says stand in the way on their tiles, or
+//  nothing if it names none.
+std::optional<StoryWorld> with_standing(const StoryWorld& world, const StoryStep& step){
+    if (step.standing.empty()){
+        return std::nullopt;
+    }
+    StoryWorld peopled = world;
+    for (const auto& person : step.standing){
+        for (const TilePos& pos : Pokemon::tiles_of(person.second)){
+            peopled.block(story_to_world(world, person.second.map, pos));
+        }
+    }
+    return peopled;
 }
 
 } // namespace
@@ -89,11 +105,12 @@ Pose StoryWalkSteps::walk_to(const Pose& from, const Pose& goal, const StoryStep
         sights,
         [this](const std::string& trainer){ m_io.fight(trainer); }
     };
+    const std::optional<StoryWorld> peopled = with_standing(*maps, step);
     const RouteWalkPlan plan{
         [&](const TilePos& pos){ return std::find(targets.begin(), targets.end(), pos) != targets.end(); },
         label_of(step), {}, *costs, m_can_run ? MoveSpeed::RUN : MoveSpeed::WALK
     };
-    const std::vector<TilePos> at = walk_route(m_io.route(), *maps, start, trainers, plan);
+    const std::vector<TilePos> at = walk_route(m_io.route(), peopled ? *peopled : *maps, start, trainers, plan);
     sights = std::move(trainers.sights);
     std::vector<TilePos> local;
     for (const TilePos& pos : at){
