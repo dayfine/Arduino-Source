@@ -101,7 +101,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: dayfine/PokemonSimulation
-          ref: fd2f1ab0facb116c38b3817520eeac0b3d3db8e0
+          ref: 678ee80802fec2ae02428429c2e603cd314f20b7
           path: AuthoredStorySource
 
       - name: Check identical authored mine JSON and replay its scenarios
