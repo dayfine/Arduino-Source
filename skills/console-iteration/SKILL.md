@@ -16,6 +16,28 @@ batch can show.
 Map and route work follows the `map-route-verify` skill, console rules
 `bdsp-autostory-test`. This skill is the loop around them.
 
+## 0. Launch, drive, test (current as of 2026-11-08)
+
+- **Launch only with** `python3 <agents checkout>/lab/scripts/start_dev.py B`: it builds
+  `lab/dev-bdsp` in `~/Projects/dev-builds/slot-B`, stages, signs and runs with profile
+  lab-B, holding `~/.lab/locks/B`. Needs a clean worktree. Run it detached; the app is
+  ready when its log says `Lab: reading requests`. To relaunch, `kill -TERM` the slot-B
+  pid, then run start_dev again. Never hand-build or launch slot dirs.
+- **Drive** from `<agents checkout>/lab/control` with
+  `export LAB_CONSOLE=B LAB_PROFILE="$HOME/Library/Application Support/SerialPrograms/Profiles/lab-B" LAB_OWNER=lab-B LABLOCK_TOKEN=$(cat ~/.lab/locks/B/token)`
+  (`LAB_PROFILE` must be the full path). `labctl.sh state|select|start|stop`,
+  `printf ... | sh cfrun.sh NAME` (shots in `lab-B/Lab/outbox/`).
+- **AutoStory range**: `START_CHECKPOINT` / `END_CHECKPOINT` under
+  `99-Panels["PokemonBDSP:AutoStory"].RUN` in the profile JSON (UTF-8 BOM). Edit it only
+  while the app is closed; `labctl set START_CHECKPOINT` fails. Indices shift when rows
+  are added: check the log's first `[Event]` line after `start`.
+- **Unit tests**: the headless `SerialProgramsTests --filter <text>` (in `lab/main`), never
+  the GUI app's `--command-line-test-mode`: with default settings it opens console A's
+  serial port (2026-11-08, cut A's live run).
+- **Watch a run** by polling `lab-B/Lab/state` and the log for `[Segment] ... failed`,
+  not by tail+grep (a tail monitor missed a failure for 25 min).
+- **Map fixes** need the user's approval with the `map-fix-evidence` pack.
+
 ## 1. Define a segment, then code it
 
 A segment (checkpoint) is **one map, or one story event**, never both:
