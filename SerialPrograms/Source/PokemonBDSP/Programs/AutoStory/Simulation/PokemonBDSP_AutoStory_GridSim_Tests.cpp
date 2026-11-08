@@ -485,10 +485,13 @@ struct StepsWalk{
     std::vector<std::pair<std::string, SimPos>> ends;
     std::string failure;
 };
-StepsWalk walk_steps(GridSim& sim, const TableSteps& table){
+//  With `overshoot`, the route's open legs overshoot as OvershootingRouteIO's.
+StepsWalk walk_steps(GridSim& sim, const TableSteps& table, bool overshoot = false){
     StepsWalk out;
     std::vector<std::string> notes;
-    GridSimRouteIO route_io(sim, notes);
+    GridSimRouteIO plain_io(sim, notes);
+    OvershootingRouteIO overshooting_io(sim, notes);
+    GridSimRouteIO& route_io = overshoot ? overshooting_io : plain_io;
     WalkStepsIO io(sim, route_io);
     StoryWalkSteps walk(io);
     walk.begin_attempt("01.03");
@@ -521,7 +524,7 @@ NudgedWalk walk_nudged(const StoryWorld& world, const TableSteps& table, Directi
     return out;
 }
 
-//  lab-B 2026-11-08 10:39: 01.03's route up to below Oreburgh's Center ran
+//  lab-B 2026-11-08 10:39: 01.03's old route up to below Oreburgh's Center ran
 //  north 36 to the wall up column 46 and tapped east 1 into the open; the
 //  heal's run north saw no door and ended at the counter a tile east of the
 //  nurse. A start part of a tile off the grid (a stick tap, as measured)
@@ -529,9 +532,9 @@ NudgedWalk walk_nudged(const StoryWorld& world, const TableSteps& table, Directi
 //  up to the heal must end on the grid below the door, (47, 21), from
 //  either side of the start tile, and a walk north must go in.
 UnitTestResult test_oreburgh_center_approach(Logger& logger){
-    const std::optional<TableSteps> table = table_steps("01.03", "below_the_centers_door_again", "heal_oreburgh");
+    const std::optional<TableSteps> table = table_steps("01.03", "west_of_the_centers_door", "heal_oreburgh");
     if (!table){
-        return "01.03 has no below_the_centers_door_again before heal_oreburgh.";
+        return "01.03 has no west_of_the_centers_door before heal_oreburgh.";
     }
     const StoryWorld& world = *story_plan_world("OreburghCity", "OreburghCity");
     const TilePos below = story_to_world(world, "OreburghCity", {47, 21});
@@ -557,6 +560,90 @@ UnitTestResult test_oreburgh_center_approach(Logger& logger){
     return true;
 }
 
+
+//  01.03's old steps up to the heal: a route to below the door, (47, 21),
+//  whose last legs are a run north to the wall up column 46 and a step east,
+//  then a tap south, the walls east and north of (48, 22), and a tap west.
+TableSteps old_route_to_below_the_center(){
+    StoryStep route;
+    route.kind = StoryStepKind::ROUTE;
+    route.name = "below_the_centers_door_again";
+    route.target = Pokemon::tile_pose("OreburghCity", {TilePos{47, 21}}, Direction::NORTH);
+    route.variant = "town";
+    StoryStep south;
+    south.kind = StoryStepKind::LEGS;
+    south.name = "south_of_the_centers_door";
+    south.legs = {{.direction = Direction::SOUTH, .tiles = 1}};
+    StoryStep walls;
+    walls.kind = StoryStepKind::LEGS;
+    walls.name = "against_the_walls_east_of_the_door";
+    walls.variant = "to_wall";
+    walls.legs = {{.direction = Direction::EAST, .tiles = 3}, {.direction = Direction::NORTH, .tiles = 1}};
+    walls.pose_after = Pokemon::tile_pose("OreburghCity", {TilePos{48, 21}}, Direction::NORTH);
+    StoryStep west;
+    west.kind = StoryStepKind::LEGS;
+    west.name = "below_the_centers_door_lined_up";
+    west.legs = {{.direction = Direction::WEST, .tiles = 1}};
+    west.pose_after = Pokemon::tile_pose("OreburghCity", {TilePos{47, 21}}, Direction::NORTH);
+    return {Pokemon::tile_pose("OreburghCity", {TilePos{45, 57}}, Direction::NORTH), {route, south, walls, west}};
+}
+
+//  Where `table`'s steps, walked on a GridSim from `start` (the table has
+//  the player elsewhere) with open legs overshooting, left the player, and
+//  why they failed if they did; "" if they ended on (47, 21) and a walk
+//  north from there went through the Center's door.
+std::string center_approach_miss(const StoryWorld& world, const TableSteps& table, const TilePos& start, Logger& logger){
+    const TilePos below = story_to_world(world, "OreburghCity", {47, 21});
+    GridSim sim({.world = &world, .trainers = story_trainers(world)}, story_to_world(world, "OreburghCity", start), Direction::NORTH, true);
+    const StepsWalk walk = walk_steps(sim, table, true);
+    std::string ends;
+    for (const auto& [name, end] : walk.ends){
+        ends += std::format(" {} {}", name, to_string(end));
+    }
+    logger.log(std::format("from {}:{}{}", Pokemon::to_string(start), ends, walk.failure.empty() ? "" : ", failed: " + walk.failure));
+    if (!walk.failure.empty()){
+        return std::format("from {}: failed at {}: {}", Pokemon::to_string(start), to_string(sim.player().pos), walk.failure);
+    }
+    if (sim.player().pos != sim_pos(below)){
+        return std::format("from {}: ended at {}, not on (47, 21).", Pokemon::to_string(start), to_string(sim.player().pos));
+    }
+    GridSim door({.world = &world}, below, Direction::NORTH, true);
+    if (door.hold(Direction::NORTH, 3000ms, SimPace::RUN).stop != SimStop::WARP){
+        return "the walk north from (47, 21) did not go through the Center's door.";
+    }
+    return "";
+}
+
+//  lab-B 2026-11-08, 01.03 up to Oreburgh's Center from below the mine's
+//  sign, (45, 57): at 10:39 the old route's run north up column 46 stopped
+//  at row 21 and its step east ended off the door's column; at 12:04 the
+//  same run went through the door into the Center, so we were a column east
+//  of where the table had us. From the table's start and from a column east
+//  of it (and a row south), with open legs overshooting a tile, the old
+//  steps must miss and the table's must end on (47, 21) below the door.
+UnitTestResult test_oreburgh_center_from_off_starts(Logger& logger){
+    const StoryWorld& world = *story_plan_world("OreburghCity", "OreburghCity");
+    const std::optional<TableSteps> table = table_steps("01.03", "west_of_the_centers_door", "heal_oreburgh");
+    if (!table){
+        return "01.03 has no west_of_the_centers_door before heal_oreburgh.";
+    }
+    const std::vector<TilePos> starts{{45, 57}, {46, 57}, {46, 58}};
+    bool old_missed = false;
+    for (const TilePos& start : starts){
+        logger.log("Old steps:");
+        const std::string old_miss = center_approach_miss(world, old_route_to_below_the_center(), start, logger);
+        old_missed = old_missed || !old_miss.empty();
+        logger.log("Table's steps:");
+        const std::string miss = center_approach_miss(world, *table, start, logger);
+        if (!miss.empty()){
+            return "01.03 up to the Center " + miss;
+        }
+    }
+    if (!old_missed){
+        return "The old steps reached (47, 21) from every start: the test no longer shows the console's failure.";
+    }
+    return true;
+}
 
 //  Where `table`'s steps, walked from `start` instead of where the table
 //  has the player, failed or left the player off `checks`' tiles; empty if
@@ -934,6 +1021,10 @@ const AutoStoryGridSimCase AUTO_STORY_GRID_SIM_CASES[] = {
     },
     {
         .input = {"01.03 lines up below Oreburgh's Center door from a start off the grid", test_oreburgh_center_approach},
+        .expectation = {},
+    },
+    {
+        .input = {"01.03 reaches below Oreburgh's Center door from a column off, where the old route ran into the Center", test_oreburgh_center_from_off_starts},
         .expectation = {},
     },
     {

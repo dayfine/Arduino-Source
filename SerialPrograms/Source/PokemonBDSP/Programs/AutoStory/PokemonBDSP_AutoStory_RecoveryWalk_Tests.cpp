@@ -148,29 +148,6 @@ private:
     RecoveryCase m_case;
 };
 
-//  The route walker's open legs as lab-B 2026-11-08 11:55 saw one: a leg of
-//  more than a tile that ends on open ground, not at a wall, goes a tile
-//  past where it was planned to stop (there, south 5 went 6). The walker is
-//  not told. A single tap stays tile-exact, and so do the story's own
-//  counted taps.
-class OvershootingRouteIO : public GridSimRouteIO{
-public:
-    OvershootingRouteIO(GridSim& sim, std::vector<std::string>& notes, std::vector<SimWildTap> taps)
-        : GridSimRouteIO(sim, notes, std::move(taps)), m_sim(sim), m_notes(notes)
-    {}
-    virtual WalkResult walk_taps(Direction direction, size_t tiles, const std::string& label) override{
-        const WalkResult result = GridSimRouteIO::walk_taps(direction, tiles, label);
-        if (tiles > 1 && label.ends_with("(open)") && result.stop == WalkStop::LIMIT && sim_can_step(m_sim, direction)){
-            m_sim.tap(direction, route_ms_per_tile(direction, MoveSpeed::WALK), false);
-            m_notes.push_back(std::format("[Sim] {}: overshot a tile {} to {}.", label, direction_name(direction), to_string(m_sim.player().pos)));
-        }
-        return result;
-    }
-private:
-    GridSim& m_sim;
-    std::vector<std::string>& m_notes;
-};
-
 //  RecoveryStepIO that also walks to walls, as the story simulation does.
 class WallStepIO : public RecoveryStepIO{
 public:
