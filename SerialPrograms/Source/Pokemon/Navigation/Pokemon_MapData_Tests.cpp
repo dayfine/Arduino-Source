@@ -432,6 +432,45 @@ private:
     MapDataTestCase m_scenario;
 };
 
+UnitTestResult test_tiles_to_door(){
+    // A 3x22 grid with a 20-tile corridor leading north to a door at (1, 0)
+    Grid<TileKind> corridor{
+        .width = 3,
+        .height = 22,
+        .cells = std::vector<TileKind>(3 * 22, TileKind::WALL)
+    };
+    cell_at(corridor, {1, 0}) = TileKind::DOOR;
+    for (int y = 1; y <= 20; y++){
+        cell_at(corridor, {1, y}) = TileKind::OPEN;
+    }
+
+    // From (1, 20) north to door at (1, 0): exactly 20 tiles
+    const size_t tiles_20 = tiles_to_door(corridor, {1, 20}, Direction::NORTH);
+    if (tiles_20 != 20){
+        return std::format("corridor: expected 20 tiles to door, got {}.", tiles_20);
+    }
+
+    // From (1, 1) north to door at (1, 0): exactly 1 tile
+    const size_t tiles_1 = tiles_to_door(corridor, {1, 1}, Direction::NORTH);
+    if (tiles_1 != 1){
+        return std::format("doorstep: expected 1 tile to door, got {}.", tiles_1);
+    }
+
+    // From (1, 1) south towards wall at row 21: 20 tiles
+    const size_t tiles_south = tiles_to_door(corridor, {1, 1}, Direction::SOUTH);
+    if (tiles_south != 20){
+        return std::format("wall stop: expected 20 tiles to wall, got {}.", tiles_south);
+    }
+
+    // From (1, 1) east into wall at (2, 1): 1 tile
+    const size_t tiles_east = tiles_to_door(corridor, {1, 1}, Direction::EAST);
+    if (tiles_east != 1){
+        return std::format("adjacent wall: expected 1 tile to wall, got {}.", tiles_east);
+    }
+
+    return true;
+}
+
 const MapDataTestCase MAP_DATA_CASES[] = {
     {
         .input = {.name = "the valid map", .test = test_valid_map},
@@ -464,6 +503,10 @@ const MapDataTestCase MAP_DATA_CASES[] = {
     {
         .input = {.name = "maps built into the program", .test = test_built_in_maps},
         .expectation = {.description = "loads and verifies embedded test map assets"},
+    },
+    {
+        .input = {.name = "tiles to door raycasting", .test = test_tiles_to_door},
+        .expectation = {.description = "counts tile distance along a corridor to a door or wall"},
     },
 };
 

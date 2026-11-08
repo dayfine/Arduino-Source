@@ -43,16 +43,20 @@ const char* walk_stop_name(WalkStop stop);
 //  Whether the walk has arrived, from the screen after each chunk.
 using WalkArrived = std::function<bool(const ImageViewRGB32& screen)>;
 
+//  An encounter already active at the first input, or found only after a
+//  leg, may belong to earlier movement. Never localize from this leg alone.
+enum class WalkOrigin{ CURRENT_LEG, MAY_PRECEDE_LEG };
+
 //  Result metrics and terminal state returned by automated walking execution.
 struct WalkResult{
     WalkStop stop;
-    Milliseconds walked;
-    size_t wild_battles;
-    //  Chunks whose screen change passed the blocked threshold: on a tap
-    //  walk, the taps that moved a tile. A trainer's freeze and a bump do
+    Milliseconds walked{};
+    size_t wild_battles = 0;
+    //  Count of completed steps or taps that clearly moved. Blocked taps do
     //  not count (r248a: "4 taps before the battle" were 2 steps and 2
     //  taps into Taylor's freeze).
     size_t moved_chunks = 0;
+    WalkOrigin origin = WalkOrigin::CURRENT_LEG;
 };
 
 //  Holds the left stick at `stick` until one of the WalkStop events. Wild battles on
