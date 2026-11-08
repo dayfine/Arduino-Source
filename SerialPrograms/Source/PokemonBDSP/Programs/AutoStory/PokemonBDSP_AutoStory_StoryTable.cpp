@@ -706,7 +706,7 @@ std::vector<StoryLeg> legs_below_roark(){
         {.direction = EAST,  .tiles = 14},
         {.direction = SOUTH, .tiles = 10},
         {.direction = WEST,  .tiles = 2},
-        {.direction = SOUTH, .tiles = 2},
+        {.direction = SOUTH, .tiles = 3},
         {.direction = WEST,  .tiles = 9},
     };
 }
@@ -714,7 +714,7 @@ std::vector<StoryLeg> legs_below_roark(){
 std::vector<StoryLeg> legs_out_of_coal_room(){
     return {
         {.direction = EAST,  .tiles = 9},
-        {.direction = NORTH, .tiles = 2},
+        {.direction = NORTH, .tiles = 3},
         {.direction = EAST,  .tiles = 2},
         {.direction = NORTH, .tiles = 10},
         {.direction = WEST,  .tiles = 14},
@@ -737,7 +737,7 @@ StoryCheckpoint oreburgh_mine_to_roark(){
         step_into("into_the_mine", SOUTH, "the warp tile (46, 59)", at(MINE_HALL, 12, 1, SOUTH)),
         step_into("into_the_coal_room", SOUTH, "down the entrance hall through the cave mouth", at(MINE, 15, 2, SOUTH)),
         anchored(to_walls("south_to_the_rock", {{.direction = SOUTH, .tiles = 8}}, "south against the corridor rock (15, 11)"),
-            at(MINE, 15, 10, SOUTH)),
+            at(MINE, 15, 9, SOUTH)),
         anchored(legs("below_roark", legs_below_roark(), "east around rock, across room, down column 29, and west to below Roark"), below_roark),
         talk("roark", "Roark, north of us between his rocks"),
         scene("roark_smashes_the_rock", below_roark, "his lines, Rock Smash on the rock east of him, and he walks off"),
