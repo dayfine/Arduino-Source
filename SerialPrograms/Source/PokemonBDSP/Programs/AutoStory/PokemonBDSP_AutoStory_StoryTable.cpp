@@ -699,12 +699,24 @@ StoryCheckpoint route_203_to_oreburgh(){
 //  from the city's (46, 59) we land on its (12, 1); up, from the coal
 //  room's warp we land on its (11, 21) and come out on the city's (45, 59),
 //  below the mine's sign (the old walk north stopped against it, r103).
-std::vector<StoryLeg> legs_around_the_rock(){
+//
+//  Across the coal room to Roark's east corner (20, 28): the north wall above
+//  it, his rock (19, 28) to its west. A wild battle on a counted tap re-plans
+//  to the end of the step, and a step that ends in a corner ends that re-plan
+//  on wall clips. Lab-B 2026-11-08 11:55: the re-plan went only to the end of
+//  the interrupted leg, the open tile (15, 16); its last leg, south 5 across
+//  the open room, overshot a row, and the taps after ran under Roark's rocks.
+std::vector<StoryLeg> legs_to_roarks_corner(){
     return {
         {.direction = EAST,  .tiles = 1},
         {.direction = SOUTH, .tiles = 2},
         {.direction = WEST,  .tiles = 1},
         {.direction = SOUTH, .tiles = 5},
+        {.direction = EAST,  .tiles = 14},
+        {.direction = SOUTH, .tiles = 10},
+        {.direction = WEST,  .tiles = 2},
+        {.direction = SOUTH, .tiles = 2},
+        {.direction = WEST,  .tiles = 7},
     };
 }
 
@@ -747,21 +759,12 @@ StoryCheckpoint oreburgh_mine_to_roark(){
         step_into("into_the_coal_room", SOUTH, "down the entrance hall through the cave mouth", at(MINE, 15, 2, SOUTH)),
         anchored(to_walls("south_to_the_rock", {{.direction = SOUTH, .tiles = 8}}, "south against the corridor rock (15, 11)"),
             at(MINE, 15, 9, SOUTH)),
-        anchored(legs("around_the_rock", legs_around_the_rock(), "east around rock and down column 15"), at(MINE, 15, 16, SOUTH)),
-        //  Across the room and down column 29 against the walls, not on counted
-        //  taps: a wild battle on the taps re-planned from an open leg, and the
-        //  row after was one too far south, under Roark's rocks (lab-B
-        //  2026-11-08 11:55). The passing run's re-plan clipped east to (29, 16)
-        //  and south to (29, 27) (10:35).
-        anchored(to_walls("down_column_29", {{.direction = EAST, .tiles = 15}, {.direction = SOUTH, .tiles = 12}},
-            "east across the room, south down column 29 to its wall"), at(MINE, 29, 27, SOUTH)),
-        anchored(legs("above_roarks_row", {{.direction = NORTH, .tiles = 1}, {.direction = WEST, .tiles = 2}, {.direction = SOUTH, .tiles = 2}},
-            "up 1, west 2, down onto Roark's row (27, 28)"), at(MINE, 27, 28, SOUTH)),
+        anchored(legs("to_roarks_corner", legs_to_roarks_corner(), "east around the rock, across the room, down column 29, west to Roark's rock"),
+            at(MINE, 20, 28, WEST)),
         //  Counted taps along the open row 29 drifted (lab-B 2026-11-07: south 3
-        //  moved 2): west on row 28 stops at the rock (19, 28) east of Roark,
-        //  south stops at the wall under row 29, two tiles from below him.
-        anchored(to_walls("beside_roarks_rock", {{.direction = WEST, .tiles = 7}, {.direction = SOUTH, .tiles = 1}},
-            "west against the rock east of Roark, south against the room's wall"), at(MINE, 20, 29, SOUTH)),
+        //  moved 2): south stops at the wall under row 29, two tiles from below him.
+        anchored(to_walls("beside_roarks_rock", {{.direction = SOUTH, .tiles = 1}}, "south against the room's wall"),
+            at(MINE, 20, 29, SOUTH)),
         anchored(legs("below_roark", {{.direction = WEST, .tiles = 2}}, "west 2 to below Roark"), below_roark),
         talk("roark", "Roark, north of us between his rocks"),
         scene("roark_smashes_the_rock", below_roark, "his lines, Rock Smash on the rock east of him, and he walks off"),

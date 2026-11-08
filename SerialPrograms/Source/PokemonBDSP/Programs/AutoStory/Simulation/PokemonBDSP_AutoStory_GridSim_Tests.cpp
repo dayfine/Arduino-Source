@@ -584,8 +584,9 @@ std::string walk_misses(const StoryWorld& world, const TableSteps& table, const 
 }
 
 //  Roark's room the old way: counted taps across the room, down column 29
-//  and onto his row, then west against the rock east of him.
-TableSteps old_taps_across_roarks_room(const StoryStep& beside_the_rock){
+//  and onto his row from (15, 16), then west against the rock east of him
+//  and south against the wall.
+TableSteps old_taps_across_roarks_room(){
     StoryStep taps;
     taps.kind = StoryStepKind::LEGS;
     taps.name = "above_roarks_row";
@@ -593,31 +594,25 @@ TableSteps old_taps_across_roarks_room(const StoryStep& beside_the_rock){
         {.direction = Direction::EAST, .tiles = 14}, {.direction = Direction::SOUTH, .tiles = 10},
         {.direction = Direction::WEST, .tiles = 2}, {.direction = Direction::SOUTH, .tiles = 2},
     };
-    return {Pokemon::tile_pose("OreburghMine", {TilePos{15, 16}}, Direction::SOUTH), {taps, beside_the_rock}};
+    StoryStep walls;
+    walls.kind = StoryStepKind::LEGS;
+    walls.name = "beside_roarks_rock";
+    walls.variant = "to_wall";
+    walls.legs = {{.direction = Direction::WEST, .tiles = 7}, {.direction = Direction::SOUTH, .tiles = 1}};
+    return {Pokemon::tile_pose("OreburghMine", {TilePos{15, 16}}, Direction::SOUTH), {taps, walls}};
 }
 
 //  lab-B 2026-11-08 11:55: a wild battle on 01.03's counted taps through
-//  Roark's room re-planned from an open leg and left us a row off; the taps
-//  after landed a row too far south, the walk west to the rock east of Roark
-//  went under his rocks, and no one answered the talk. From (15, 16), where
-//  the table has us before the room, and from a row south of it, the walk
-//  across must end on Roark's row at (27, 28), then against the rock at
-//  (20, 29). The old taps miss from the row south.
+//  Roark's room re-planned to the end of the interrupted leg, (15, 16), and
+//  the re-plan's open run south overshot a row; the taps after landed a row
+//  too far south, the walk west went under Roark's rocks, and no one
+//  answered the talk. From a row south of (15, 16), the old taps miss
+//  beside his rock (20, 29): the sim shows the console's failure. The
+//  wild battle itself: Recovery walk tests, "01.03 to Roark's corner".
 UnitTestResult test_roarks_room_from_a_row_off(Logger& logger){
-    const std::optional<TableSteps> table = table_steps("01.03", "down_column_29", "below_roark");
-    if (!table){
-        return "01.03 has no down_column_29 before below_roark.";
-    }
     const StoryWorld& world = *story_plan_world("OreburghMine", "OreburghMine");
-    const std::vector<std::pair<std::string, TilePos>> checks = {{"above_roarks_row", {27, 28}}, {"beside_roarks_rock", {20, 29}}};
-    for (const TilePos& start : {TilePos{15, 16}, TilePos{15, 17}}){
-        const std::string miss = walk_misses(world, *table, start, checks, logger);
-        if (!miss.empty()){
-            return "01.03 across Roark's room " + miss;
-        }
-    }
-    const std::string old_miss = walk_misses(world, old_taps_across_roarks_room(table->steps.back()), {15, 17}, checks, logger);
-    if (old_miss.empty()){
+    const std::string miss = walk_misses(world, old_taps_across_roarks_room(), {15, 17}, {{"beside_roarks_rock", {20, 29}}}, logger);
+    if (miss.empty()){
         return "The old taps across Roark's room reached (20, 29) from a row south: the test no longer shows the console's failure.";
     }
     return true;
@@ -942,7 +937,7 @@ const AutoStoryGridSimCase AUTO_STORY_GRID_SIM_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"01.03 crosses Roark's room to beside his rock from a row off (lab-B, 2026-11-08)", test_roarks_room_from_a_row_off},
+        .input = {"01.03's old taps across Roark's room miss his rock from a row off (lab-B, 2026-11-08)", test_roarks_room_from_a_row_off},
         .expectation = {},
     },
     {
