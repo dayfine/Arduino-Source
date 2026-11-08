@@ -1,5 +1,14 @@
 {
+  "format": "pokesim-native-checkpoint-export/1",
+  "game": "frlg",
   "checkpoint": {
+    "id": "00.05",
+    "title": "Route 1 to Viridian Mart: Oak's Parcel",
+    "start": {
+      "certainty": "tile",
+      "map": "PalletTown_ProfessorOaksLab",
+      "where": {"facing": "south", "kind": "tiles", "tiles": [[7, 8]]}
+    },
     "events": [
       {
         "id": "below_mart_door",
@@ -11,28 +20,23 @@
         },
         "why": "Route 1, running from wild battles"
       },
-      {"id": "mart_door", "kind": "step", "why": "the clerk's scene starts on entering"},
       {
+        "id": "mart_door",
+        "kind": "step",
+        "why": "the clerk's scene starts on entering"
+      },
+      {
+        "id": "parcel_from_clerk",
+        "kind": "scene",
         "declared_after": {
           "certainty": "tile",
           "map": "ViridianCity_Mart",
           "where": {"facing": "west", "kind": "tiles", "tiles": [[4, 3]]}
         },
-        "id": "parcel_from_clerk",
-        "kind": "scene",
         "why": "the clerk gives OAK'S PARCEL"
       }
-    ],
-    "id": "00.05",
-    "start": {
-      "certainty": "tile",
-      "map": "PalletTown_ProfessorOaksLab",
-      "where": {"facing": "south", "kind": "tiles", "tiles": [[7, 8]]}
-    },
-    "title": "Route 1 to Viridian Mart: Oak's Parcel"
+    ]
   },
-  "format": "pokesim-native-checkpoint-export/1",
-  "game": "frlg",
   "native_fields": {
     "menu": "before_pokedex",
     "supplies": {
@@ -61,7 +65,7 @@
     }
   },
   "source_revision": "b170b7d2103e887ded825c37fdbdc19fd654fca8",
-  "state_basis": "native-table-bookkeeping",
   "status": "native-table-export",
+  "state_basis": "native-table-bookkeeping",
   "unbound": ["runtime_configuration", "map_pins", "executor_bindings", "entry_evidence", "effective_save_retry_policy"]
 }
