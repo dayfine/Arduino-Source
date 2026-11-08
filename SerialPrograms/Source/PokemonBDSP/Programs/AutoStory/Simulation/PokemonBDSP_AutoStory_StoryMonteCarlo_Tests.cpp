@@ -39,6 +39,7 @@ using Pokemon::TilePos;
 
 constexpr const char* SEEDS_VARIABLE = "PA_BDSP_STORY_MC_SEEDS";
 constexpr const char* ROWS_VARIABLE = "PA_BDSP_STORY_MC_ROWS";
+constexpr const char* TRACE_VARIABLE = "PA_BDSP_STORY_MC_TRACE";
 constexpr size_t DEFAULT_SEEDS = 20;
 
 //  The runs log nothing: a seed's own log is a reproduction away.
@@ -74,13 +75,34 @@ SeedOutcome failed_outcome(const Pokemon::SegmentReport& report, const SimRun& r
     return out;
 }
 
-//  Row `row` of `rows`, disturbed by `seed`.
-SeedOutcome run_seed(const std::vector<StoryCheckpoint>& rows, const SimMisses& clean, const std::string& row, uint64_t seed){
-    SimDisturbance noise(Pokemon::make_disturbance_plan(seed, Pokemon::DisturbanceRates{}, clean.fades, clean.banners));
-    SilentLogger logger;
+//  How a row's seeds are disturbed: at `rates`, missing one of the fades
+//  and banners its undisturbed run looked for (`clean`).
+struct RowNoise{
+    SimMisses clean;
+    Pokemon::DisturbanceRates rates;
+};
+
+//  The rates the harness was first built with, harsher than lab-B's (see
+//  DisturbanceRates): Gen IV's encounter rates, taps that drift as the
+//  stick does, and a miss in about a quarter of 01.03's seeds.
+Pokemon::DisturbanceRates stress_rates(){
+    Pokemon::DisturbanceRates rates;
+    rates.grass_encounter = 30.0 / 180;
+    rates.cave_encounter = 10.0 / 180;
+    rates.tap_drift_per_tile = rates.drift_per_tile;
+    rates.missed_detection = 0.04;
+    return rates;
+}
+
+//  Row `row` of `rows`, disturbed by `seed`, logging to `logger`.
+SeedOutcome run_seed(Logger& logger, const std::vector<StoryCheckpoint>& rows, const RowNoise& noise_of, const std::string& row, uint64_t seed){
+    const SimMisses& clean = noise_of.clean;
+    SimDisturbance noise(Pokemon::make_disturbance_plan(seed, noise_of.rates, clean.fades, clean.banners));
     SimExecutor executor(logger, {.fade = noise.plan().missed_fade, .banner = noise.plan().missed_banner}, &noise);
     try{
         const Pokemon::SegmentReport report = run_rows_on(executor, logger, {.from = row, .to = row}, rows);
+        logger.log(std::format("[Sim] {}: {} wild battle(s) over {} grass and {} cave tiles.", describe(noise.plan()),
+            noise.battles(), noise.encounter_tiles().grass, noise.encounter_tiles().cave));
         return report.completed ? SeedOutcome{.passed = true} : failed_outcome(report, executor.result(), noise);
     }catch (const GridSimFailure& e){
         return {.failed_step = row + " (thrown)", .kind = Pokemon::failure_kind("sim_failure", e.message), .detail = describe(noise.plan())};
@@ -89,10 +111,13 @@ SeedOutcome run_seed(const std::vector<StoryCheckpoint>& rows, const SimMisses& 
     }
 }
 
-RowReport run_row(const std::vector<StoryCheckpoint>& rows, const std::string& row, size_t seeds){
-    const SimMisses clean = looked_for(rows, row);
+RowReport run_row(const std::vector<StoryCheckpoint>& rows, const std::string& row, size_t seeds,
+    const Pokemon::DisturbanceRates& rates = {}
+){
+    const RowNoise noise{.clean = looked_for(rows, row), .rates = rates};
     return Pokemon::run_row_seeds(row, Pokemon::story_seeds(seeds), [&](const std::string& id, uint64_t seed){
-        return run_seed(rows, clean, id, seed);
+        SilentLogger logger;
+        return run_seed(logger, rows, noise, id, seed);
     });
 }
 
@@ -104,6 +129,14 @@ RowReport run_row(const std::vector<StoryCheckpoint>& rows, const std::string& r
 UnitTestResult test_row(Logger& logger, const std::string& row, size_t floor){
     if (Pokemon::selected_rows(ROWS_VARIABLE, {row}).empty()){
         return {UnitTestResult::SKIPPED, std::string(ROWS_VARIABLE) + " leaves it out"};
+    }
+    //  One seed's run, logged step by step: how a failure the report
+    //  names came about.
+    if (const size_t traced = Pokemon::seed_count(TRACE_VARIABLE, 0); traced > 0){
+        const std::vector<StoryCheckpoint> rows = story_checkpoints();
+        const SeedOutcome out = run_seed(logger, rows, {.clean = looked_for(rows, row), .rates = {}}, row, traced);
+        logger.log(std::format("{} seed {}: {} {} {}", row, traced, out.passed ? "passed" : "failed", out.failed_step, out.kind));
+        return true;
     }
     const size_t seeds = Pokemon::seed_count(SEEDS_VARIABLE, DEFAULT_SEEDS);
     const WallClock start = current_time();
@@ -189,17 +222,20 @@ bool failed_with(const RowReport& report, const std::string& step, const std::st
 //  lab-B 2026-11-08: a wild battle on the counted taps across Roark's room
 //  re-planned to an open leg and the row went one off (11:55); a run up
 //  Oreburgh's column 46 stopped short and an open step east left us off the
-//  Center door's column (10:39). The old row must show both.
+//  Center door's column (10:39). The old row must show both, at the stress
+//  rates: at lab-B's own, 200 seeds need not draw them.
 UnitTestResult test_old_0103(Logger& logger){
     const size_t seeds = std::max<size_t>(200, Pokemon::seed_count(SEEDS_VARIABLE, DEFAULT_SEEDS));
-    const RowReport whole = run_row(old_0103(), "01.03", seeds);
+    const RowReport whole = run_row(old_0103(), "01.03", seeds, stress_rates());
     logger.log("The old 01.03: " + Pokemon::format_report(whole));
-    const RowReport town = run_row(from_the_mines_sign(old_0103()), "01.03", seeds);
+    const RowReport town = run_row(from_the_mines_sign(old_0103()), "01.03", seeds, stress_rates());
     logger.log("The old 01.03 from the mine's sign: " + Pokemon::format_report(town));
-    logger.log("Today's 01.03 from the mine's sign: " + Pokemon::format_report(run_row(from_the_mines_sign(story_checkpoints()), "01.03", seeds)));
+    logger.log("Today's 01.03 from the mine's sign: " + Pokemon::format_report(
+        run_row(from_the_mines_sign(story_checkpoints()), "01.03", seeds, stress_rates())));
     //  A battle on the taps, then the row ends off the tile the taps count.
     const bool roark = failed_with(whole, "01.03 above_roarks_row", "sim_mismatch", "[wild battle in the step]");
-    const bool center = failed_with(town, "01.03 heal_oreburgh", "no door north");
+    //  From the mine's warp (the whole row) or the sign.
+    const bool center = failed_with(whole, "01.03 heal_oreburgh", "no door north") || failed_with(town, "01.03 heal_oreburgh", "no door north");
     if (!roark || !center){
         return std::format("expected the old 01.03 to fail across Roark's room after a wild battle ({}) and at the Center's door ({}):\n{}\n{}",
             roark, center, Pokemon::format_report(whole), Pokemon::format_report(town));
@@ -250,27 +286,27 @@ private:
 
 const StoryMonteCarloCase AUTO_STORY_MONTE_CARLO_CASES[] = {
     {.input = {"00.00"}, .expectation = {.floor = 100}},
-    {.input = {"00.01"}, .expectation = {.floor = 20}},
+    {.input = {"00.01"}, .expectation = {.floor = 95}},
     {.input = {"00.02"}, .expectation = {.floor = 100}},
-    {.input = {"00.03"}, .expectation = {.floor = 30}},
-    {.input = {"00.04"}, .expectation = {.floor = 0}},
-    {.input = {"00.04b"}, .expectation = {.floor = 55}},
+    {.input = {"00.03"}, .expectation = {.floor = 95}},
+    {.input = {"00.04"}, .expectation = {.floor = 95}},
+    {.input = {"00.04b"}, .expectation = {.floor = 100}},
     {.input = {"00.04c"}, .expectation = {.floor = 100}},
-    {.input = {"00.04d"}, .expectation = {.floor = 55}},
-    {.input = {"00.05"}, .expectation = {.floor = 70}},
-    {.input = {"00.05b"}, .expectation = {.floor = 45}},
-    {.input = {"00.05c"}, .expectation = {.floor = 20}},
-    {.input = {"01.01"}, .expectation = {.floor = 95}},
-    {.input = {"01.02"}, .expectation = {.floor = 20}},
+    {.input = {"00.04d"}, .expectation = {.floor = 100}},
+    {.input = {"00.05"}, .expectation = {.floor = 100}},
+    {.input = {"00.05b"}, .expectation = {.floor = 85}},
+    {.input = {"00.05c"}, .expectation = {.floor = 100}},
+    {.input = {"01.01"}, .expectation = {.floor = 100}},
+    {.input = {"01.02"}, .expectation = {.floor = 85}},
     {.input = {"01.02b"}, .expectation = {.floor = 90}},
-    {.input = {"01.03"}, .expectation = {.floor = 5}},
+    {.input = {"01.03"}, .expectation = {.floor = 75}},
     {.input = {"01.04"}, .expectation = {.floor = 100}},
-    {.input = {"01.05"}, .expectation = {.floor = 80}},
-    {.input = {"01.06"}, .expectation = {.floor = 25}},
+    {.input = {"01.05"}, .expectation = {.floor = 100}},
+    {.input = {"01.06"}, .expectation = {.floor = 95}},
     {.input = {"01.07"}, .expectation = {.floor = 100}},
     {.input = {"01.08"}, .expectation = {.floor = 40}},
-    {.input = {"01.09"}, .expectation = {.floor = 50}},
-    {.input = {"01.10"}, .expectation = {.floor = 5}},
+    {.input = {"01.09"}, .expectation = {.floor = 100}},
+    {.input = {"01.10"}, .expectation = {.floor = 80}},
     {.input = {"01.11"}, .expectation = {.floor = 100}},
     {
         .input = {"the old 01.03 fails across Roark's room and at the Center's door (lab-B, 2026-11-08)", test_old_0103},

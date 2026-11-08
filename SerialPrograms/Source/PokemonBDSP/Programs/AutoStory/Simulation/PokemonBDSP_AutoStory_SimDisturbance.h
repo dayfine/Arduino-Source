@@ -8,9 +8,9 @@
  *    - A wild battle on tall grass, or anywhere in a cave (Oreburgh Mine,
  *      the Ravaged Path), once the player has stepped onto the tile. It is
  *      fled, and the input goes on, as the console's walks go on.
- *    - Drift: a tap, a stick press or a hold stopped short of a wall ends
- *      up to DisturbanceRates::drift_per_tile off along its way, and taps
- *      add up. Within DisturbanceRates::fit of the tile the player still
+ *    - Drift: a stick press or a hold stopped short of a wall ends up to
+ *      DisturbanceRates::drift_per_tile off along its way, a D-pad tap up
+ *      to DisturbanceRates::tap_drift_per_tile (none by default). Within DisturbanceRates::fit of the tile the player still
  *      fits a one-tile gap; past it, the grid sim has them part of a tile
  *      off, where a door frame or a rock's corner stops them. A walk that
  *      stops at a wall ends on its tile, and on the grid along that way.
@@ -45,11 +45,20 @@ public:
     size_t battles() const{
         return m_battles;
     }
+    //  Encounter tiles stepped onto so far.
+    struct EncounterTiles{
+        size_t grass = 0;
+        size_t cave = 0;
+    };
+    const EncounterTiles& encounter_tiles() const{
+        return m_tiles;
+    }
     //  Whether stepping onto world tile `pos` starts a wild battle.
     bool battle_at(const StoryWorld& world, const Pokemon::TilePos& pos);
     //  The player moved `thousandths` of a tile toward `direction` and did
-    //  not stop at a wall (or, `at_wall`, stopped at one): drifts them.
-    void walked(GridSim& sim, Pokemon::Direction direction, int thousandths, bool at_wall);
+    //  not stop at a wall (or, `at_wall`, stopped at one): drifts them by up
+    //  to `drift_per_tile` thousandths a tile walked.
+    void walked(GridSim& sim, Pokemon::Direction direction, int thousandths, bool at_wall, int drift_per_tile);
     //  The player was put on a tile: no drift.
     void reset();
     //  The people who wander on `world`, each with a seed and start drawn.
@@ -69,6 +78,7 @@ private:
 
     Pokemon::DisturbancePlan m_plan;
     size_t m_battles = 0;
+    EncounterTiles m_tiles;
     Axis m_x;
     Axis m_y;
     std::map<const StoryWorld*, std::vector<SimWanderer>> m_people;

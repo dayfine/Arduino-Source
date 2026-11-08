@@ -46,7 +46,7 @@ DisturbancePlan make_disturbance_plan(uint64_t seed, const DisturbanceRates& rat
         .missed_banner = std::nullopt,
     };
     SimRandom misses(root.next());
-    if (fades + banners > 0 && misses.chance(rates.missed_detection)){
+    if (fades + banners > 0 && misses.chance(rates.missed_detection * (double)(fades + banners))){
         const size_t which = (size_t)misses.between(0, (int64_t)(fades + banners) - 1);
         if (which < fades){
             plan.missed_fade = which;

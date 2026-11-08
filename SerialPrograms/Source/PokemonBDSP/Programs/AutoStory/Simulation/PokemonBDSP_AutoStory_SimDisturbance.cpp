@@ -26,8 +26,6 @@ namespace{
 
 //  The caves on the story's way, where every tile has wild Pokemon.
 constexpr const char* CAVE_MAPS[] = {"OreburghMineB1F", "OreburghMine", "RavagedPath"};
-//  How often a wanderer tries a step (the grid sim's default).
-constexpr Milliseconds WANDER_STEP = 2000ms;
 //  Drift comes in steps of this many thousandths of a tile: 4 ms of stick
 //  across, 6 ms up or down, so the grid sim puts it back on the grid exactly.
 constexpr int DRIFT_STEP = 25;
@@ -96,8 +94,11 @@ bool SimDisturbance::battle_at(const StoryWorld& world, const TilePos& pos){
     if (!tile){
         return false;
     }
-    const double rate = *tile == TileKind::TALL_GRASS ? m_plan.rates.grass_encounter
-        : in_cave(world, pos) ? m_plan.rates.cave_encounter : 0;
+    const bool grass = *tile == TileKind::TALL_GRASS;
+    const bool cave = !grass && in_cave(world, pos);
+    m_tiles.grass += grass ? 1 : 0;
+    m_tiles.cave += cave ? 1 : 0;
+    const double rate = grass ? m_plan.rates.grass_encounter : cave ? m_plan.rates.cave_encounter : 0;
     if (rate <= 0 || !m_plan.battles.chance(rate)){
         return false;
     }
@@ -123,7 +124,7 @@ void SimDisturbance::sync(const GridSim& sim){
     }
 }
 
-void SimDisturbance::walked(GridSim& sim, Direction direction, int thousandths, bool at_wall){
+void SimDisturbance::walked(GridSim& sim, Direction direction, int thousandths, bool at_wall, int drift_per_tile){
     sync(sim);
     Axis& axis = across(direction) ? m_x : m_y;
     if (at_wall){
@@ -131,7 +132,7 @@ void SimDisturbance::walked(GridSim& sim, Direction direction, int thousandths, 
         return;
     }
     //  In steps of DRIFT_STEP, which a stick press moves exactly.
-    const int64_t most = m_plan.rates.drift_per_tile / DRIFT_STEP;
+    const int64_t most = drift_per_tile / DRIFT_STEP;
     const int64_t steps = m_plan.drift.between(-most, most) * thousandths / SIM_TILE;
     axis.drift = std::clamp(axis.drift + (int)steps * DRIFT_STEP, -SIM_TILE + 100, SIM_TILE - 100);
     materialize(sim, across(direction));
@@ -196,7 +197,7 @@ void SimDisturbance::add_people(std::vector<SimWanderer>& people, const std::str
         }
         const Pokemon::TileBox& box = *object.wander;
         people.push_back({.name = name, .box = {corner.x + box.x0, corner.y + box.y0, corner.x + box.x1, corner.y + box.y1},
-            .pos = {corner.x + object.x, corner.y + object.y}, .step_interval = WANDER_STEP});
+            .pos = {corner.x + object.x, corner.y + object.y}});
     }
 }
 
@@ -205,6 +206,7 @@ std::vector<SimWanderer> SimDisturbance::wanderers(const StoryWorld& world){
     for (SimWanderer& person : out){
         person.seed = m_plan.wanderers.next();
         person.time_offset = Milliseconds(m_plan.wanderers.between(0, m_plan.rates.wanderer_start.count()));
+        person.step_interval = m_plan.rates.wander_step;
     }
     return out;
 }
@@ -234,7 +236,7 @@ DisturbedHold disturbed_hold(GridSim& sim, SimDisturbance* noise, Direction dire
         out.move.time = ROUTE_START_DELAY + tile_time * out.move.distance / SIM_TILE + seen;
     }
     if (out.move.stop == SimStop::LIMIT || out.move.stop == SimStop::BLOCKED){
-        noise->walked(sim, direction, SIM_TILE, stopped_at_wall(sim, out.move, direction));
+        noise->walked(sim, direction, SIM_TILE, stopped_at_wall(sim, out.move, direction), noise->plan().rates.drift_per_tile);
     }
     return out;
 }
@@ -256,7 +258,7 @@ WalkResult DisturbedRouteIO::walk_to_wall(const RouteWallWalk& walk){
     return result;
 }
 
-//  A tap a tile, as GridSimRouteIO taps; a battle on a tile stepped onto
+//  A tap a tile, as GridSimRouteIO taps, drifting as the rates say; a battle on a tile stepped onto
 //  is fled and credited as a moved tile, as the console's walk credits it,
 //  and the taps go on. One on the first tap may have begun before it.
 WalkResult DisturbedRouteIO::walk_taps(Direction direction, size_t tiles, const std::string& label){
@@ -275,8 +277,9 @@ WalkResult DisturbedRouteIO::walk_taps(Direction direction, size_t tiles, const 
         }else if (still >= 2){
             result.stop = WalkStop::BLOCKED;
         }
-        if (move.distance > 0 && result.stop == WalkStop::LIMIT){
-            m_noise->walked(m_sim, direction, SIM_TILE, false);
+        const int tap_drift = m_noise->plan().rates.tap_drift_per_tile;
+        if (move.distance > 0 && result.stop == WalkStop::LIMIT && tap_drift > 0){
+            m_noise->walked(m_sim, direction, SIM_TILE, false, tap_drift);
         }
         if (move.distance > 0 && move.stop == SimStop::DONE && m_noise->battle_at(m_sim.world(), nearest_tile(m_sim.player().pos))){
             result.wild_battles++;
@@ -298,7 +301,7 @@ void DisturbedRouteIO::press(const RouteInput& input){
     }
     const int moved = std::abs(along(m_sim.player().pos, input.direction) - along(before, input.direction));
     if (moved > 0){
-        m_noise->walked(m_sim, input.direction, moved, false);
+        m_noise->walked(m_sim, input.direction, moved, false, m_noise->plan().rates.drift_per_tile);
     }
 }
 

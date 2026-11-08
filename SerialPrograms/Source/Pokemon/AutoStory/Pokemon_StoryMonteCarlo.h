@@ -54,23 +54,52 @@ private:
 
 
 //  How hard a run is disturbed. The rates are per tile the player enters.
+//  They are measured on lab-B's BDSP runs of rows 00.00 to 01.11, 2026-10-31
+//  to 2026-11-08 (its SerialPrograms.log and the one rotated before it, the
+//  AutoStory program's lines only), as noted on each.
 struct DisturbanceRates{
-    //  A wild battle on an encounter tile: Gen IV's rate / 180 a step, with
-    //  the routes' grass at 30 and Oreburgh Mine's caves at 10 (assumed for
-    //  BDSP; the console has not measured them).
-    double grass_encounter = 30.0 / 180;
-    double cave_encounter = 10.0 / 180;
-    //  Where a walk that does not end at a wall ends, along its way: off by
-    //  up to this many thousandths of a tile per tile walked, uniformly.
+    //  A wild battle on an encounter tile. Caves: 16 battles in 838 tiles
+    //  (the "[Walk] ...: N moved chunks, M wild battle(s)" lines of 01.03's
+    //  mine steps, 2026-11-07 and 08; their taps move a tile a chunk). Per
+    //  run it is less: 42 battles in the 71 runs that reached the mine, at
+    //  the 52 cave tiles the simulation walks there, 1.1%. Grass: 10
+    //  battles in about 1,200 tiles, from the battles logged in the steps of
+    //  00.03, 00.04d, 01.06 and 01.08 that cross grass, times each step's
+    //  runs, times the grass tiles the simulation walks in it (14, 43, 12,
+    //  13). Gen IV's rate / 180 (30 and 10 there) drew 8 to 14 battles a
+    //  01.03 run; the console met 0 to 2.
+    double grass_encounter = 10.0 / 1200;
+    double cave_encounter = 16.0 / 838;
+    //  Where a stick hold that does not end at a wall ends, along its way:
+    //  off by up to this many thousandths of a tile per tile walked,
+    //  uniformly. Not measured.
     int drift_per_tile = 150;
+    //  The same for D-pad taps, which move whole tiles: 54 runs of 01.03's
+    //  above_the_mine ended nine open taps on the tile above the mine's
+    //  warp, none on the warp. One open leg of the 466 of more than a tile
+    //  went a tile past (11:55 on 2026-11-08); that is not modelled.
+    int tap_drift_per_tile = 0;
     //  Off by no more than this, the player still fits a one-tile gap (a
     //  door, a corridor); past it the player covers two tiles. Assumed: a
     //  door frame stopped a player 0.375 tile off (the grid sim's measure).
     int fit = 250;
     //  Someone wandering starts their walk up to this far into it.
     Milliseconds wanderer_start = Milliseconds(10000);
-    //  The chance a seed misses one of the row's fades or banners.
-    double missed_detection = 0.25;
+    //  Someone wandering tries a step this often (a fifth of the tries they
+    //  stay). Oreburgh's hiker stopped 15 of 54 above_the_mine runs short of
+    //  the wall ("stopped after about N tiles"); in 11 the way cleared after
+    //  taps or waits, 4 talked to him, 1 failed with no plan. The simulation
+    //  at 2000 ms: 17 of 100 seeds stopped, 16 talked, 16 failed; at 1000 ms
+    //  16, 14 and 14. The step's pace is not what keeps him in the way.
+    Milliseconds wander_step = Milliseconds(2000);
+    //  The chance a seed misses each fade or banner its row looks for (it
+    //  misses one at most). The door's own watcher missed 13 of 35 fades,
+    //  but settle() then saw each arrival: no door step of 01.03 failed for
+    //  a fade on 2026-11-08. Over the whole week 9 door steps failed "no
+    //  fade within 120 s" in about 230 settles, most of them a step that
+    //  had not reached its door; 2 required banners went unread, both
+    //  01.03's old out_of_the_mine.
+    double missed_detection = 0.02;
 };
 
 //  One seed's disturbances: independent random streams for each kind, so a
