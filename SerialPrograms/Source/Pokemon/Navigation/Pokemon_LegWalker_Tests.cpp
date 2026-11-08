@@ -69,6 +69,15 @@ UnitTestResult test_hold_times(){
     if (leg_hold(wall, 4) != TILE * 6){
         return std::format("Wall leg: {}ms", leg_hold(wall, 4).count());
     }
+    //  A stall on step 2: a tile longer while the hold covers it.
+    LegSpec stalled = open;
+    stalled.stalled_steps = {2};
+    if (leg_hold(stalled, 4) != TILE * 4 + TILE / 2 || leg_hold(stalled, 3) != TILE * 3 + TILE / 2){
+        return std::format("Stalled leg: {}ms, {}ms", leg_hold(stalled, 4).count(), leg_hold(stalled, 3).count());
+    }
+    if (leg_hold(stalled, 2) != TILE + TILE / 2){
+        return std::format("Stalled leg past its stall: {}ms", leg_hold(stalled, 2).count());
+    }
     return true;
 }
 
@@ -130,7 +139,8 @@ UnitTestResult test_open_leg_interrupted_at_end(){
     return true;
 }
 
-//  An open leg set to stop at an interrupt doesn't walk on from a guess.
+//  An open leg set to stop at an interrupt doesn't walk on from a guess; it
+//  says how far the timing puts the player, for the caller to look around.
 UnitTestResult test_open_leg_stops(){
     ScriptedLeg script;
     script.outcomes = {after_step(2)};
@@ -139,6 +149,9 @@ UnitTestResult test_open_leg_stops(){
     const LegResult result = walk_leg_with(leg, script.calls(), 5);
     if (script.holds.size() != 1 || !result.stopped || result.exact || script.cleared.size() != 1){
         return "Expected one hold, the interrupt cleared, and the leg stopped.";
+    }
+    if (result.tiles != 2){
+        return std::format("Expected the timing to put the player 2 tiles in, got {}.", result.tiles);
     }
     return true;
 }
