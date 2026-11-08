@@ -160,7 +160,23 @@ Outcome StoryWalkSteps::tap_to_banner(const StoryStep& step){
 }
 
 namespace{
-Milliseconds door_timeout(const std::string& map_name, const Pose& pose, Direction direction, bool can_run){
+//  A run into a door: how long to hold, and for how long of it a dark screen
+//  is not yet the door's fade (run_into_door()).
+struct DoorRun{
+    Milliseconds timeout;
+    Milliseconds dark_from;
+};
+//  Dark before this share of the run's time to the door is not the door:
+//  lab-B 2026-11-08 09:27:33 read dark at 1.8 s of the 4050 ms run down the
+//  mine's entrance hall (3250 ms to the mouth), stopped there, and the next
+//  step walked on through the mouth.
+constexpr double DOOR_DARK_FROM_SHARE = 0.85;
+//  The shortest hold: the one-tile step onto the mine's warp faded 3.35 s
+//  after its hold began (lab-B 2026-11-07 12:19 and 12:27); a 1500 ms hold
+//  gave up just before the fade (2026-11-08 09:27:16) and settle() pressed B
+//  15 s before it called the overworld calm.
+constexpr Milliseconds DOOR_MIN_HOLD = 4500ms;
+DoorRun door_run(const std::string& map_name, const Pose& pose, Direction direction, bool can_run){
     try{
         const Pokemon::MapData& map = story_map(map_name);
         const auto tiles_list = Pokemon::tiles_of(pose);
@@ -168,11 +184,15 @@ Milliseconds door_timeout(const std::string& map_name, const Pose& pose, Directi
             const size_t tiles = Pokemon::tiles_to_door(map, tiles_list.front(), direction);
             if (tiles > 0){
                 const Milliseconds per_tile = route_ms_per_tile(direction, can_run ? MoveSpeed::RUN : MoveSpeed::WALK);
-                return std::max(1500ms, ROUTE_START_DELAY + per_tile * (int64_t)tiles + 800ms);
+                const Milliseconds to_door = ROUTE_START_DELAY + per_tile * (int64_t)tiles;
+                return {
+                    .timeout = std::max(DOOR_MIN_HOLD, to_door + 800ms),
+                    .dark_from = std::chrono::duration_cast<Milliseconds>(to_door * DOOR_DARK_FROM_SHARE),
+                };
             }
         }
     }catch (...){}
-    return Milliseconds(12000);
+    return {.timeout = 12000ms, .dark_from = 0ms};
 }
 enum class CountedEndPolicy{ EXACT, ONE_SHORT };
 std::vector<TilePos> counted_ends(const std::vector<TilePos>& starts, const Pokemon::StoryLeg& leg, CountedEndPolicy policy){
@@ -288,9 +308,10 @@ Outcome StoryWalkSteps::step(RunState& state, const StoryStep& step){
     //  (r33 was outside, "no fade"). No separate turn tap first: at 1 tile
     //  from the door, a 50 ms turn tap can step in before run_into_door() watches.
     if (step.pose_after && step.pose_after->map != state.pose.map){
-        const Milliseconds timeout = door_timeout(state.pose.map, state.pose, step.direction, m_can_run);
-        const bool faded = m_io.run_into_door(step.direction, m_can_run, timeout);
-        log(std::format("[{}] {}: {} through the door (timeout {} ms): {}.", m_row, step.name, direction_name(step.direction), timeout.count(), faded ? "faded" : "no fade yet"));
+        const DoorRun door = door_run(state.pose.map, state.pose, step.direction, m_can_run);
+        const bool faded = m_io.run_into_door(step.direction, m_can_run, door.timeout, door.dark_from);
+        log(std::format("[{}] {}: {} through the door (timeout {} ms, dark from {} ms): {}.", m_row, step.name,
+            direction_name(step.direction), door.timeout.count(), door.dark_from.count(), faded ? "faded" : "no fade yet"));
         m_io.settle(BUTTON_B, label_of(step), !faded);
         return Pokemon::outcome_ok();
     }
