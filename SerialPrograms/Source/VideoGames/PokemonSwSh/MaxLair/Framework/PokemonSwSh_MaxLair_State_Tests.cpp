@@ -56,6 +56,9 @@ public:
         if (state.boss != expected.boss){
             return std::format("Expected boss '{}', got '{}'", expected.boss, state.boss);
         }
+        if (state.opponent != input.opponent){
+            return "Expected opponent candidates to be preserved.";
+        }
         state.wins = input.final_wins;
         const std::string caught = state.boss_if_caught();
         if (caught != expected.boss_if_caught){
@@ -68,26 +71,55 @@ private:
     BossStateTestCase m_scenario;
 };
 
-//  Cases marked TODO record the current, wrong behaviour.
 const BossStateTestCase CASES[] = {
+    {
+        .input = {.name = "form ambiguity is only valid during rental battles", .wins = 4, .opponent = {"lycanroc-midday", "lycanroc-midnight"}, .boss = "nihilego", .final_wins = 4},
+        .expectation = {.accepted = false, .boss = "nihilego", .boss_if_caught = "nihilego"},
+    },
+    {
+        .input = {.name = "Lycanroc forms at battle two", .wins = 1, .opponent = {"lycanroc-midday", "lycanroc-midnight"}, .boss = "nihilego", .final_wins = 1},
+        .expectation = {.accepted = true, .boss = "nihilego", .boss_if_caught = ""},
+    },
+    {
+        .input = {.name = "Basculin forms at battle three", .wins = 2, .opponent = {"basculin-blue-striped", "basculin-red-striped"}, .boss = "nihilego", .final_wins = 2},
+        .expectation = {.accepted = true, .boss = "nihilego", .boss_if_caught = ""},
+    },
+    {
+        .input = {.name = "rental forms cannot pass boss stage", .wins = 3, .opponent = {"lycanroc-midday", "lycanroc-midnight"}, .boss = "", .final_wins = 3},
+        .expectation = {.accepted = false, .boss = "", .boss_if_caught = ""},
+    },
+    {
+        .input = {.name = "two different rentals at battle two", .wins = 1, .opponent = {"lycanroc-midday", "magmar"}, .boss = "nihilego", .final_wins = 1},
+        .expectation = {.accepted = true, .boss = "nihilego", .boss_if_caught = ""},
+    },
+    {
+        .input = {.name = "mixed boss and rental cannot pass rental stage", .wins = 1, .opponent = {"lycanroc-midday", "nihilego"}, .boss = "nihilego", .final_wins = 1},
+        .expectation = {.accepted = false, .boss = "nihilego", .boss_if_caught = ""},
+    },
+    {
+        .input = {.name = "empty rental read still rejects", .wins = 1, .opponent = {}, .boss = "nihilego", .final_wins = 1},
+        .expectation = {.accepted = false, .boss = "nihilego", .boss_if_caught = ""},
+    },
+    {
+        .input = {.name = "multiple boss candidates cannot infer a boss", .wins = 3, .opponent = {"kyurem", "nihilego"}, .boss = "", .final_wins = 3},
+        .expectation = {.accepted = false, .boss = "", .boss_if_caught = ""},
+    },
+
     {
         .input = {.name = "rental before three wins", .wins = 2, .opponent = {"mimikyu-disguised"}, .boss = "", .final_wins = 3},
         .expectation = {.accepted = true, .boss = "", .boss_if_caught = ""},
     },
-    //  TODO: to be fixed: a rental at the boss stage is accepted as the boss and reported caught.
     {
-        .input = {.name = "Mimikyu at boss stage", .wins = 3, .opponent = {"mimikyu-disguised"}, .boss = "", .final_wins = 3},
-        .expectation = {.accepted = true, .boss = "mimikyu-disguised", .boss_if_caught = "mimikyu-disguised"},
+        .input = {.name = "Mimikyu at boss stage must retry", .wins = 3, .opponent = {"mimikyu-disguised"}, .boss = "", .final_wins = 3},
+        .expectation = {.accepted = false, .boss = "", .boss_if_caught = ""},
     },
-    //  TODO: to be fixed: a rental misread as the boss is kept after the real boss is read.
     {
         .input = {.name = "Kyurem after Mimikyu misidentification", .wins = 3, .opponent = {"kyurem"}, .boss = "mimikyu-disguised", .final_wins = 3},
-        .expectation = {.accepted = true, .boss = "mimikyu-disguised", .boss_if_caught = "mimikyu-disguised"},
+        .expectation = {.accepted = true, .boss = "kyurem", .boss_if_caught = ""},
     },
-    //  TODO: to be fixed: the boss is reported caught without a fourth win.
     {
         .input = {.name = "identified boss lost", .wins = 3, .opponent = {"kyurem"}, .boss = "kyurem", .final_wins = 3},
-        .expectation = {.accepted = true, .boss = "kyurem", .boss_if_caught = "kyurem"},
+        .expectation = {.accepted = true, .boss = "kyurem", .boss_if_caught = ""},
     },
     {
         .input = {.name = "identified boss caught", .wins = 3, .opponent = {"kyurem"}, .boss = "", .final_wins = 4},
@@ -97,25 +129,21 @@ const BossStateTestCase CASES[] = {
         .input = {.name = "boss before three wins must retry", .wins = 2, .opponent = {"kyurem"}, .boss = "", .final_wins = 2},
         .expectation = {.accepted = false, .boss = "", .boss_if_caught = ""},
     },
-    //  TODO: to be fixed: a boss stage with no opponent read is accepted.
     {
-        .input = {.name = "empty boss-stage read", .wins = 3, .opponent = {}, .boss = "", .final_wins = 3},
-        .expectation = {.accepted = true, .boss = "", .boss_if_caught = ""},
+        .input = {.name = "empty boss-stage read must retry", .wins = 3, .opponent = {}, .boss = "", .final_wins = 3},
+        .expectation = {.accepted = false, .boss = "", .boss_if_caught = ""},
     },
-    //  TODO: to be fixed: a two-candidate read is accepted and the first is taken as the boss.
     {
-        .input = {.name = "ambiguous boss-stage read", .wins = 3, .opponent = {"kyurem", "mimikyu-disguised"}, .boss = "", .final_wins = 3},
-        .expectation = {.accepted = true, .boss = "kyurem", .boss_if_caught = "kyurem"},
+        .input = {.name = "ambiguous boss-stage read must retry", .wins = 3, .opponent = {"kyurem", "mimikyu-disguised"}, .boss = "", .final_wins = 3},
+        .expectation = {.accepted = false, .boss = "", .boss_if_caught = ""},
     },
-    //  TODO: to be fixed: a rental read at the boss stage is accepted, and the boss is reported caught without a fourth win.
     {
-        .input = {.name = "rental read after known boss", .wins = 3, .opponent = {"mimikyu-disguised"}, .boss = "kyurem", .final_wins = 3},
-        .expectation = {.accepted = true, .boss = "kyurem", .boss_if_caught = "kyurem"},
+        .input = {.name = "rejected read preserves known boss", .wins = 3, .opponent = {"mimikyu-disguised"}, .boss = "kyurem", .final_wins = 3},
+        .expectation = {.accepted = false, .boss = "kyurem", .boss_if_caught = ""},
     },
-    //  TODO: to be fixed: a rental read at the boss stage is accepted and the rental is reported as the caught boss.
     {
-        .input = {.name = "fourth win after rental boss", .wins = 3, .opponent = {"mimikyu-disguised"}, .boss = "mimikyu-disguised", .final_wins = 4},
-        .expectation = {.accepted = true, .boss = "mimikyu-disguised", .boss_if_caught = "mimikyu-disguised"},
+        .input = {.name = "fourth win cannot legitimize rental boss", .wins = 3, .opponent = {"mimikyu-disguised"}, .boss = "mimikyu-disguised", .final_wins = 4},
+        .expectation = {.accepted = false, .boss = "mimikyu-disguised", .boss_if_caught = ""},
     },
 };
 
