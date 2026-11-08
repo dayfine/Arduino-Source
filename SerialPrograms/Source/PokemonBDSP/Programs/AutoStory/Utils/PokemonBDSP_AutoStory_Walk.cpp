@@ -383,7 +383,9 @@ private:
         ){
             m_result.wild_battles++;
             late_battle = true;
-            m_result.origin = WalkOrigin::MAY_PRECEDE_LEG;
+            if (m_chunks <= 1 && m_result.moved_chunks <= 1){
+                m_result.origin = WalkOrigin::MAY_PRECEDE_LEG;
+            }
         }
         //  When the final tap of a TAPS leg lagged during frame drops at its
         //  800ms check (m_unchanged == 1 at WalkStop::LIMIT), it finishes
