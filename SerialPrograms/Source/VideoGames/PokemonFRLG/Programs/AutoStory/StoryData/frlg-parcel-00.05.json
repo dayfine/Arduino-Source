@@ -1,0 +1,67 @@
+{
+  "checkpoint": {
+    "events": [
+      {
+        "id": "below_mart_door",
+        "kind": "route",
+        "target": {
+          "certainty": "tile",
+          "map": "ViridianCity",
+          "where": {"facing": "north", "kind": "tiles", "tiles": [[36, 20]]}
+        },
+        "why": "Route 1, running from wild battles"
+      },
+      {"id": "mart_door", "kind": "step", "why": "the clerk's scene starts on entering"},
+      {
+        "declared_after": {
+          "certainty": "tile",
+          "map": "ViridianCity_Mart",
+          "where": {"facing": "west", "kind": "tiles", "tiles": [[4, 3]]}
+        },
+        "id": "parcel_from_clerk",
+        "kind": "scene",
+        "why": "the clerk gives OAK'S PARCEL"
+      }
+    ],
+    "id": "00.05",
+    "start": {
+      "certainty": "tile",
+      "map": "PalletTown_ProfessorOaksLab",
+      "where": {"facing": "south", "kind": "tiles", "tiles": [[7, 8]]}
+    },
+    "title": "Route 1 to Viridian Mart: Oak's Parcel"
+  },
+  "format": "pokesim-native-checkpoint-export/1",
+  "game": "frlg",
+  "native_fields": {
+    "menu": "before_pokedex",
+    "supplies": {
+      "antidotes": 0,
+      "foe_out": null,
+      "foes": [],
+      "hp_fill": 1.0,
+      "hp_red": false,
+      "hurt": false,
+      "lead": {
+        "level": 0,
+        "moves": [{"move": "tackle", "pp": 35}, {"move": "tail-whip", "pp": 30}],
+        "moves_read": false,
+        "moves_through_level": 5,
+        "species": "squirtle",
+        "stats": null
+      },
+      "parlyz_heals": 0,
+      "pocket": ["potion", "antidote", "parlyz-heal"],
+      "potions": 0,
+      "protected_slots": [],
+      "risk": "low",
+      "status": "no status",
+      "trainer": "",
+      "wild_foes": []
+    }
+  },
+  "source_revision": "b170b7d2103e887ded825c37fdbdc19fd654fca8",
+  "state_basis": "native-table-bookkeeping",
+  "status": "native-table-export",
+  "unbound": ["runtime_configuration", "map_pins", "executor_bindings", "entry_evidence", "effective_save_retry_policy"]
+}
