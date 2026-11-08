@@ -97,10 +97,6 @@ void settle(VideoStream& stream, ProControllerContext& context, Button button, c
         stream);
 }
 
-//  Holds the D-pad toward a door (with B after the shoes) until the screen goes
-//  dark or a line shows, up to 12 s. Returns whether it went dark. A line
-//  stops it: holding on under Mom's "Oh, Kosmos!" wasted 12 s (r45). A wild
-//  battle in a cave corridor runs away before returning.
 DpadPosition dpad_toward(Direction direction){
     return
         direction == Direction::NORTH ? DPAD_UP :
@@ -108,32 +104,99 @@ DpadPosition dpad_toward(Direction direction){
         direction == Direction::WEST ? DPAD_LEFT : DPAD_RIGHT;
 }
 
-bool run_into_door(VideoStream& stream, ProControllerContext& context, Direction direction, bool run, Milliseconds timeout){
-    const DpadPosition dpad = dpad_toward(direction);
+//  A dark-screen watcher that fires only from `from` on, and keeps when the
+//  screen last went dark: where a wild battle's fade began.
+class DarkFrom : public VisualInferenceCallback{
+public:
+    DarkFrom(BlackScreenWatcher& dark, WallClock from)
+        : VisualInferenceCallback("DarkFrom")
+        , m_dark(dark)
+        , m_from(from)
+    {}
+    virtual void make_overlays(VideoOverlaySet& items) const override{
+        m_dark.make_overlays(items);
+    }
+    virtual bool process_frame(const ImageViewRGB32& frame, WallClock timestamp) override{
+        const bool dark = m_dark.process_frame(frame, timestamp);
+        if (dark && !m_was_dark){
+            m_went_dark = timestamp;
+        }
+        m_was_dark = dark;
+        return dark && timestamp >= m_from;
+    }
+    //  When the screen last went dark; WallClock::max() if it has not.
+    WallClock went_dark() const{
+        return m_went_dark;
+    }
+
+private:
+    BlackScreenWatcher& m_dark;
+    WallClock m_from;
+    bool m_was_dark = false;
+    WallClock m_went_dark = WallClock::max();
+};
+
+//  How one hold toward a door ended: run_until()'s index (0 dark, 1 white,
+//  2 a line, 3 a wild battle; -1 time up), and when the screen last went dark.
+struct DoorHoldEnd{
+    int ret;
+    WallClock went_dark;
+};
+
+DoorHoldEnd hold_into_door(VideoStream& stream, ProControllerContext& context, DpadPosition dpad, bool run, Milliseconds hold, Milliseconds dark_from){
     BlackScreenWatcher dark(COLOR_RED, {0.1, 0.1, 0.8, 0.8}, 3 * FADE_DARKNESS, 60, BlackScreenWatcher::FinderType::PRESENT, 50ms);
+    DarkFrom late_dark(dark, current_time() + dark_from);
     WhiteScreenWatcher white(COLOR_BLUE, {0.1, 0.1, 0.8, 0.8}, WhiteScreenWatcher::FinderType::PRESENT, 60ms);
     ShortDialogWatcher dialog(COLOR_YELLOW);
     BattleMenuWatcher battle(BattleType::STANDARD, COLOR_YELLOW);
     const int ret = run_until<ProControllerContext>(stream, context, [&](ProControllerContext& context){
         if (run){
-            ssf_press_button(context, BUTTON_B, 0ms, timeout, 0ms);
+            ssf_press_button(context, BUTTON_B, 0ms, hold, 0ms);
         }
-        pbf_press_dpad(context, dpad, timeout, 0ms);
-    }, {{dark}, {white}, {dialog}, {battle}});
-    if (ret == 0){
-        stream.log("[Story] run_into_door: black screen fade detected.");
-    }else if (ret == 1){
-        stream.log("[Story] run_into_door: white screen fade detected.");
-    }else if (ret == 2){
-        stream.log("[Story] run_into_door: dialog detected.");
-    }else if (ret == 3){
-        stream.log("[Story] run_into_door: wild battle; fleeing.");
-        run_from_wild_battle(stream, context);
-        return false;
-    }else{
-        stream.log("[Story] run_into_door: timed out without detecting fade.");
+        pbf_press_dpad(context, dpad, hold, 0ms);
+    }, {{late_dark}, {white}, {dialog}, {battle}});
+    return {.ret = ret, .went_dark = late_dark.went_dark()};
+}
+
+//  Wild battles a run into a door flees and runs on after.
+constexpr size_t DOOR_RUN_BATTLES = 3;
+
+//  Holds the D-pad toward a door (with B after the shoes) for `timeout`
+//  until the screen goes dark or a line shows. Returns whether it went dark.
+//  A line stops it: holding on under Mom's "Oh, Kosmos!" wasted 12 s (r45).
+//  Dark in the first `dark_from` of running is not the door (lab-B
+//  2026-11-08: dark at 1.8 s, halfway down the mine's entrance hall). A wild
+//  battle on the way is fled, and the run goes on for the time it had left:
+//  only the running counts, up to the battle's fade.
+bool run_into_door(VideoStream& stream, ProControllerContext& context, Direction direction, bool run, Milliseconds timeout, Milliseconds dark_from){
+    Milliseconds left = timeout;
+    for (size_t battles = 0;; battles++){
+        const WallClock start = current_time();
+        const DoorHoldEnd end = hold_into_door(stream, context, dpad_toward(direction), run, left, dark_from);
+        if (end.ret == 3){
+            const WallClock stopped = std::min(end.went_dark, current_time());
+            const Milliseconds ran = std::chrono::duration_cast<Milliseconds>(stopped - start) - ROUTE_START_DELAY;
+            const Milliseconds counted = std::clamp(ran, 0ms, left);
+            left -= counted;
+            dark_from -= std::min(dark_from, counted);
+            stream.log(std::format("[Story] run_into_door: wild battle after {} ms of running; fleeing.", counted.count()));
+            run_from_wild_battle(stream, context);
+            if (battles < DOOR_RUN_BATTLES && left > 0ms){
+                continue;
+            }
+            return false;
+        }
+        if (end.ret == 0){
+            stream.log("[Story] run_into_door: black screen fade detected.");
+        }else if (end.ret == 1){
+            stream.log("[Story] run_into_door: white screen fade detected.");
+        }else if (end.ret == 2){
+            stream.log("[Story] run_into_door: dialog detected.");
+        }else{
+            stream.log("[Story] run_into_door: timed out without detecting fade.");
+        }
+        return end.ret == 0 || end.ret == 1;
     }
-    return ret == 0 || ret == 1;
 }
 
 //  What the screen showed after a tap toward a door or a cave mouth.
@@ -195,8 +258,8 @@ bool ConsoleStoryStepIO::run_until_map(Direction direction, Milliseconds limit, 
     return walk.stop == WalkStop::ARRIVED;
 }
 
-bool ConsoleStoryStepIO::run_into_door(Direction direction, bool run, Milliseconds timeout){
-    return PokemonBDSP::run_into_door(m_stream, m_context, direction, run, timeout);
+bool ConsoleStoryStepIO::run_into_door(Direction direction, bool run, Milliseconds timeout, Milliseconds dark_from){
+    return PokemonBDSP::run_into_door(m_stream, m_context, direction, run, timeout, dark_from);
 }
 
 //  A held walk can carry on past a fade that goes unseen: out of the Gym it

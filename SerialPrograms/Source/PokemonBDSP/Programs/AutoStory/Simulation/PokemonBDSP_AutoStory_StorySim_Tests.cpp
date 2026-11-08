@@ -68,15 +68,18 @@ using Pokemon::TilePos;
 //  Which detections the simulation misses on purpose (#162): the `fade`th
 //  door fade (run_into_door(), from 0) or the `banner`th map banner
 //  (run_until_map()) of the run goes unseen, though the player did go
-//  through. The console missed both (r75, r81).
+//  through. The console missed both (r75, r81). The `dark`th door run reads
+//  dark SIM_FALSE_DARK in, short of the door, as lab-B's did on 2026-11-08.
 //  The counts and flags below are the run's: how many fades and banners it
 //  looked for, whether a miss happened since the executor last looked, and
 //  whether a missed fade is still unseen.
 struct SimMisses{
     std::optional<size_t> fade;
     std::optional<size_t> banner;
+    std::optional<size_t> dark = {};
     size_t fades = 0;
     size_t banners = 0;
+    size_t doors = 0;
     bool missed = false;
     bool fade_unseen = false;
 };
@@ -87,6 +90,7 @@ struct SimMisses{
 //  reads at once. Through a cave mouth the fade comes first, and a hold
 //  whose fade went unseen goes on the same way (r75, r81).
 constexpr size_t SIM_BANNER_TILES = 3;
+constexpr Milliseconds SIM_FALSE_DARK = 1800ms;
 
 //  What a run on the simulation did.
 struct SimRun{
@@ -131,8 +135,13 @@ public:
     }
     virtual void walk_until_stopped(Direction direction, size_t tiles, const std::string& label) override;
     virtual bool run_until_map(Direction direction, Milliseconds limit, const std::string& map, const std::string&) override;
-    virtual bool run_into_door(Direction direction, bool run, Milliseconds timeout = Milliseconds(12000)) override{
-        const bool warped = m_sim.hold(direction, timeout, run ? SimPace::RUN : SimPace::WALK).stop == SimStop::WARP;
+    virtual bool run_into_door(Direction direction, bool run, Milliseconds timeout = Milliseconds(12000), Milliseconds dark_from = Milliseconds(0)) override{
+        const SimPace pace = run ? SimPace::RUN : SimPace::WALK;
+        if (false_dark() && dark_from <= SIM_FALSE_DARK && SIM_FALSE_DARK < timeout){
+            m_sim.hold(direction, SIM_FALSE_DARK, pace);
+            return true;
+        }
+        const bool warped = m_sim.hold(direction, timeout, pace).stop == SimStop::WARP;
         if (warped && fade_missed()){
             m_misses.fade_unseen = true;
             return false;
@@ -159,6 +168,11 @@ private:
         const bool miss = m_misses.fade == m_misses.fades++;
         m_misses.missed |= miss;
         return miss;
+    }
+    bool false_dark(){
+        const bool dark = m_misses.dark == m_misses.doors++;
+        m_misses.missed |= dark;
+        return dark;
     }
     bool banner_missed(){
         const bool miss = m_misses.banner == m_misses.banners++;
@@ -935,38 +949,24 @@ private:
 } // namespace
 
 const AutoStoryStorySimCase AUTO_STORY_STORY_SIM_CASES[] = {
+    {.input = {"the maps' coord events are on open ground or doors", test_coord_events}, .expectation = {}},
+    {.input = {"detector misses from 00.00 to 01.11", test_story_sim_misses}, .expectation = {}},
+    {.input = {"00.00 to 01.11: the whole table, from the new game to Floaroma", test_story_sim_whole_table}, .expectation = {}},
+    {.input = {"each row from 00.00 to 01.11 in isolation", test_story_sim_each_row}, .expectation = {}},
+    {.input = {"01.02b, Barry's lines, then the Center past his doorstep (lab-B, 2026-11-08)", [](Logger& logger){
+        return run_rows(logger, {.from = "01.02b", .to = "01.02b"});
+    }}, .expectation = {}},
+    {.input = {"r75, out of the Oreburgh Gate", test_exit_gate}, .expectation = {}},
+    {.input = {"r81, out of the Ravaged Path", test_exit_ravaged_path}, .expectation = {}},
+    {.input = {"01.03, Oreburgh Mine B1F entrance hall corridor runs to and back", test_oreburgh_mine_hall_corridor}, .expectation = {}},
     {
-        .input = {"the maps' coord events are on open ground or doors", test_coord_events},
-        .expectation = {},
-    },
-    {
-        .input = {"detector misses from 00.00 to 01.11", test_story_sim_misses},
-        .expectation = {},
-    },
-    {
-        .input = {"00.00 to 01.11: the whole table, from the new game to Floaroma", test_story_sim_whole_table},
-        .expectation = {},
-    },
-    {
-        .input = {"each row from 00.00 to 01.11 in isolation", test_story_sim_each_row},
-        .expectation = {},
-    },
-    {
-        .input = {"01.02b, Barry's lines, then the Center past his doorstep (lab-B, 2026-11-08)", [](Logger& logger){
-            return run_rows(logger, {.from = "01.02b", .to = "01.02b"});
+        .input = {"01.03, a dark frame 1.8 s down the mine's entrance hall is not its mouth (lab-B, 2026-11-08)", [](Logger& logger){
+            SimExecutor executor(logger, {.fade = {}, .banner = {}, .dark = 1});
+            run_rows_on(executor, logger, {.from = "01.03", .to = "01.03"});
+            const SimRun& run = executor.result();
+            return run.missed_step == "01.03 into_the_coal_room" && run.error.empty() ? UnitTestResult(true)
+                : UnitTestResult(std::format("dark in '{}', failed in '{}': {}", run.missed_step, run.failed_step, run.error));
         }},
-        .expectation = {},
-    },
-    {
-        .input = {"r75, out of the Oreburgh Gate", test_exit_gate},
-        .expectation = {},
-    },
-    {
-        .input = {"r81, out of the Ravaged Path", test_exit_ravaged_path},
-        .expectation = {},
-    },
-    {
-        .input = {"01.03, Oreburgh Mine B1F entrance hall corridor runs to and back", test_oreburgh_mine_hall_corridor},
         .expectation = {},
     },
     {

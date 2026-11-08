@@ -50,7 +50,7 @@ public:
     virtual void fight(const std::string&) override{ throw GridSimFailure{"unexpected trainer"}; }
     virtual void walk_until_stopped(Direction, size_t, const std::string&) override{ throw GridSimFailure{"unexpected blind hold"}; }
     virtual bool run_until_map(Direction, Milliseconds, const std::string&, const std::string&) override{ throw GridSimFailure{"unexpected banner walk"}; }
-    virtual bool run_into_door(Direction, bool, Milliseconds = Milliseconds(12000)) override{ throw GridSimFailure{"unexpected door"}; }
+    virtual bool run_into_door(Direction, bool, Milliseconds = Milliseconds(12000), Milliseconds = Milliseconds(0)) override{ throw GridSimFailure{"unexpected door"}; }
     virtual std::optional<size_t> tap_to_banner(Direction, const std::string&, size_t) override{ throw GridSimFailure{"unexpected banner"}; }
     virtual void settle(Button, const std::string&, bool) override{ throw GridSimFailure{"unexpected scene"}; }
 private:
