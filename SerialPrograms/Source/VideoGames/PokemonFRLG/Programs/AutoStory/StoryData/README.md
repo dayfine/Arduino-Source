@@ -21,3 +21,7 @@ The same file is checked into PokemonSimulation at `data/story/parcel-pilot/frlg
 - The simulator’s map pins, scene evidence and stop/no-save policy live in the binding and cases, not in the authored checkpoint. Python replay is a model check; native fake-game execution checks integration, not live timing/detector correctness.
 
 No console is required for either gate.
+
+## Native JSON code
+
+`../Data/JsonParser.*` owns authored checkpoint loading and the legacy capture reader. `JsonWriter.*` is retained for migration comparisons and export diagnostics; production authored loading does not depend on it. `Json_Tests.*` keeps the codec tests beside those sources. Once migration expectations are independent of the old capture, remove the legacy reader, writer, and `LegacyJsonFormat.h`; retain the authored parser.

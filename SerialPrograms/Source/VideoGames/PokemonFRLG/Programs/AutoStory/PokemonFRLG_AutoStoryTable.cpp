@@ -5,7 +5,7 @@
  */
 
 #include "PokemonFRLG_AutoStoryCapture.h"
-#include "PokemonFRLG_AutoStoryData.h"
+#include "Data/JsonParser.h"
 #include "PokemonFRLG_AutoStoryChoice.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
 #include "PokemonFRLG_AutoStoryMart.h"
@@ -82,6 +82,8 @@ StoryCheckpoint starter(){
     });
 }
 
+//  TODO: Load an ordered series of authored checkpoints together and construct
+//  a partial story table, instead of loading one file in each row factory.
 StoryCheckpoint parcel(){
     return load_authored_checkpoint("frlg-parcel-00.05.plan");
 }

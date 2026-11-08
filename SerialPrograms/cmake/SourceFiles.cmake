@@ -1912,12 +1912,13 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStorySimulation_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStorySummary.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStorySummary.h
-    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryData.cpp
-    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryData.h
-    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryExport.cpp
-    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryExport.h
-    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryExport_Tests.cpp
-    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryExport_Tests.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/Data/JsonParser.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/Data/JsonParser.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/Data/JsonWriter.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/Data/JsonWriter.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/Data/LegacyJsonFormat.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/Data/Json_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/Data/Json_Tests.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryTable.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryTable.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryTableCeladon.cpp
