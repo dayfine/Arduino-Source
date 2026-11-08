@@ -228,8 +228,8 @@ Pose read_story_pose(const JsonValue& value, std::string_view source){
         tiles.push_back({integer(pair[0], source), integer(pair[1], source)});
     }
     std::optional<Direction> facing;
-    if (const JsonValue* value = where.get_value("facing")){
-        facing = read_enum(DIRECTIONS, value->to_string_throw(), source);
+    if (const JsonValue* field = where.get_value("facing")){
+        facing = read_enum(DIRECTIONS, field->to_string_throw(), source);
     }
     result.where = std::make_shared<TilePose>(std::move(tiles), facing);
     return result;
