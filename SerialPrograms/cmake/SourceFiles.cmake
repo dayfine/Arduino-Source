@@ -1467,6 +1467,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Navigation/Pokemon_MapData.cpp
     Source/Pokemon/Navigation/Pokemon_MapData.h
     Source/Pokemon/Navigation/Pokemon_MapData_Tests.cpp
+    Source/Pokemon/Navigation/Pokemon_RuntimeMap.cpp
+    Source/Pokemon/Navigation/Pokemon_RuntimeMap.h
+    Source/Pokemon/Navigation/Pokemon_RuntimeMap_Tests.cpp
+    Source/Pokemon/Navigation/Pokemon_RuntimeMap_Tests.h
     Source/Pokemon/Navigation/Pokemon_Navigation_Tests.h
     Source/Pokemon/Navigation/Pokemon_RouteLog.cpp
     Source/Pokemon/Navigation/Pokemon_RouteLog.h

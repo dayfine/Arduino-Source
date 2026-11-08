@@ -1,5 +1,11 @@
 # Map tools for AutoStory routes
 
+BDSP maps are now pinned external build resources. See
+[RESOURCE_MAPS.md](RESOURCE_MAPS.md) for preparation, publishing prerequisites
+and native validation. The Sinnoh decomp CLI below forwards to the shared
+PokemonSimulation parser; set `PYTHONPATH=/path/to/pokesim/src`. Author map
+corrections and run decoder/builder tests there. Image fetch/overlay remain local.
+
 Offline helpers that give a route planner its tile grid (standard library
 only, Python 3.8+): a decoder for the Pokemon Platinum and Diamond
 decompilations, an overlay that draws a grid and a run's routes over the map
