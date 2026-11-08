@@ -598,9 +598,11 @@ Pose after_the_welcome(){
 Pose below_barry(){
     return at(OREBURGH, 26, 22, NORTH);
 }
-//  Below Oreburgh's Pokemon Center's door, facing it.
+//  Below Oreburgh's Pokemon Center's door (47, 20), facing it. Not the
+//  map's doorstep (46, 21): a route there ended against the wall west of
+//  the door and the heal found no door (lab-B, 2026-11-07 20:18).
 Pose below_oreburghs_center(){
-    return at(OREBURGH, "pokemon_center_doorstep", NORTH);
+    return at(OREBURGH, 47, 21, NORTH);
 }
 //  Out of Oreburgh's Pokemon Center, facing south: below its door, or on
 //  the map's doorstep (46, 21), from which 01.04's 20 taps west reach the
