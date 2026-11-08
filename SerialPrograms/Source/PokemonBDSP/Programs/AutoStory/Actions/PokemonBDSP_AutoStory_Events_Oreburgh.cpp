@@ -11,6 +11,7 @@
 
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Indoors.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Walk.h"
@@ -28,32 +29,27 @@ using namespace std::chrono_literals;
 
 namespace{
 
-//  Oreburgh, from the street in front of the Pokemon Center (its door or its
-//  front wall) into the gym, as walked by hand on 2026-10-29: west to the
-//  cliff, south to the posts, a row up, then 17 tiles east is the gym door's
-//  column. The hold is checked by the door itself: walk north, and if the
-//  gym's wall stops us, try the columns either side.
-//  D-pad moves from the Center's doorstep (as walk_out_of_center() leaves us
-//  there) to below the gym's door: 20. The program's own runs landed 2 tiles
-//  west with 22 and 1 tile west with 21 (r217d, r218d, the same tiles each
-//  time). By hand, after a stick exit, it took 22 taps; the hand exit and
-//  count did not carry over to the program's. Stick holds drift: 160 ms moved
-//  36 to 48 px, so 18 or 19 of them missed the door by a part of a tile.
-//  2026-11-08 14:51 (lab-B): 01.03's heal now leaves us below the Center's
-//  door (47, 21), and with only moving taps counted, 20 ended on (27, 21),
-//  a tile east of the gym's door (26, 20). The map's columns give 21.
-constexpr size_t GYM_DPAD_TAPS_WEST_OF_CENTER = 21;
+//  01.04 starts below Oreburgh's Center door (47, 21): 01.03's heal and
+//  the walk out after a loss both leave us there. The Gym's door is on the
+//  same street, so the D-pad taps west are the columns between the two
+//  doors on the map (21). A hand count of 20, from before the maps, ended
+//  a tile east of the Gym's door (lab-B, 2026-11-08 14:51).
+size_t gym_taps_west_of_center(){
+    const Pokemon::TilePos center = map_point("OreburghCity", "pokemon_center_door");
+    const Pokemon::TilePos gym = map_point("OreburghCity", "gym_door");
+    return static_cast<size_t>(center.x - gym.x);
+}
 
 void oreburgh_street_to_gym(VideoStream& stream, ProControllerContext& context){
     // From the Center's doorstep, straight west along its row to below the
     // gym's door, then north through it, all on the D-pad (whole tiles; see
-    // GYM_DPAD_TAPS_WEST_OF_CENTER). 01.04 always starts on the doorstep: its
+    // gym_taps_west_of_center()). 01.04 always starts on the doorstep: its
     // own save, or the walk out of the Center after a loss. A brightness
     // check for "already in the gym" (gym 75 against street 104 by day, r74)
     // read the street at night (88, game clock 00:25) as the gym and talked
     // to the nurse as Roark (lab-B, 2026-11-08 14:25).
     context.wait_for_all_requests();
-    dpad_tiles(stream, context, DPAD_LEFT, GYM_DPAD_TAPS_WEST_OF_CENTER, "west to the gym's door");
+    dpad_tiles(stream, context, DPAD_LEFT, gym_taps_west_of_center(), "west to the gym's door");
     if (dpad_through_door_north(stream, context, "Oreburgh Gym door")){
         return;
     }
