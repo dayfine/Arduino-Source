@@ -558,6 +558,28 @@ const MapWarp* warp_at(const MapData& map, const TilePos& pos){
     return nullptr;
 }
 
+size_t tiles_to_door(const Grid<TileKind>& tiles, const TilePos& from, Direction direction, size_t max_tiles){
+    TilePos at = from;
+    size_t count = 0;
+    while (count < max_tiles){
+        const TilePos next = at.next(direction);
+        if (!tiles.contains(next)){
+            break;
+        }
+        count++;
+        const TileKind kind = tiles.at(next);
+        if (kind == TileKind::DOOR || kind == TileKind::WALL || kind == TileKind::OUTSIDE){
+            break;
+        }
+        at = next;
+    }
+    return count;
+}
+
+size_t tiles_to_door(const MapData& map, const TilePos& from, Direction direction, size_t max_tiles){
+    return tiles_to_door(map.tiles, from, direction, max_tiles);
+}
+
 
 
 } // namespace Pokemon
