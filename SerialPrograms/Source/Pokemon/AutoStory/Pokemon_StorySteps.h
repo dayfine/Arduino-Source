@@ -33,6 +33,7 @@
 
 #include <cstddef>
 #include <optional>
+#include <set>
 #include <string>
 #include <vector>
 #include "CommonFramework/Language.h"
@@ -123,6 +124,13 @@ struct StoryStep{
     //  the game's executor answers (StoryStepExecutor::holds()), run flags
     //  unless the game reads them off the screen.
     std::vector<std::string> skip_if;
+    //  Preparation for what follows, done once per save: a TEACH, a check,
+    //  a read. Once it has succeeded and changed nothing
+    //  (Outcome::changed_nothing), the attempts after a reload of the same
+    //  save skip it, so a retry goes from the reload straight to the
+    //  battle. One that changed the game (a TM taught) runs again, as the
+    //  reload undid it. Only with build_story_checkpoint()'s PreparedSteps.
+    bool once_per_save = false;
     //  Where the step leaves the player, when its action does not say: the
     //  end of a scene that moves the player.
     std::optional<Pose> pose_after;
@@ -217,6 +225,16 @@ Event story_event(const StoryStep& step, StoryStepExecutor& executor);
 //  step. `data` and `executor` must outlive the checkpoint. Saving is the
 //  game's: it sets the checkpoint's save, or adds a SAVE step.
 Checkpoint build_story_checkpoint(const StoryCheckpoint& data, StoryStepExecutor& executor);
+
+//  The once_per_save steps done from the save the game is on that changed
+//  nothing, as "<checkpoint>/<step>". The game keeps it across reloads and
+//  empties it when it saves or loads another save.
+using PreparedSteps = std::set<std::string>;
+
+//  As above, and each once_per_save step is skipped while `prepared` has
+//  it, and added to it when it succeeds changing nothing. `prepared` must
+//  outlive the checkpoint.
+Checkpoint build_story_checkpoint(const StoryCheckpoint& data, StoryStepExecutor& executor, PreparedSteps& prepared);
 
 //  Problems an author should fix before running: an empty id, unnamed or
 //  repeated steps, a route or READY without a target, empty legs, a GAME
