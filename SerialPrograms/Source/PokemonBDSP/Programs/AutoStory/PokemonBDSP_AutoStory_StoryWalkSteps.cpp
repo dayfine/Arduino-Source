@@ -50,6 +50,17 @@ std::string label_of(const StoryStep& step){
 } // namespace
 
 
+CenterEntry run_into_center(StoryStepIO& io, bool run, const std::function<bool()>& inside, const std::function<void()>& line_up){
+    if (io.run_into_door(Direction::NORTH, run)){
+        return CenterEntry::FADED;
+    }
+    if (inside()){
+        return CenterEntry::INSIDE;
+    }
+    line_up();
+    return CenterEntry::LINED_UP;
+}
+
 void StoryWalkSteps::begin_attempt(const std::string& row){
     m_row = row;
     //  A row starts from its save: after the shoes' row, the save has them.

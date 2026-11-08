@@ -4,6 +4,7 @@
  *
  */
 
+#include <algorithm>
 #include <cmath>
 #include <optional>
 #include <vector>
@@ -203,6 +204,38 @@ void log_doorway(VideoStream& stream, const std::string& label, const LitDoorway
         std::to_string(doorway.x) + ", " + std::to_string(doorway.y) + " of the screen).");
 }
 
+//  Near the entrance: black below the floor, either side of the step out
+//  of the door, and the floor lit between them: not a fade (349 in
+//  Jubilife at night).
+bool center_entrance_view(const ImageViewRGB32& screen){
+    for (const ImageFloatBox& box : {ImageFloatBox(0.02, 0.95, 0.30, 0.04), ImageFloatBox(0.65, 0.95, 0.33, 0.04)}){
+        if (image_stats(extract_box_reference(screen, box)).average.sum() > 90){
+            return false;
+        }
+    }
+    return image_stats(extract_box_reference(screen, ImageFloatBox(0.30, 0.55, 0.40, 0.15))).average.sum() > 250;
+}
+
+//  At the nurse's counter, the camera in close and the lit floor down to
+//  the screen's bottom (lab-B 2026-11-08: a run in whose fade went unseen
+//  stopped there): either side of us, the counter's red top (r 246, g 84)
+//  over its white front (about 200 each). Outside Oreburgh's Center at
+//  sunset the ground there is orange (r 218, g 134), with nothing white.
+bool center_counter_view(const ImageViewRGB32& screen){
+    for (double x : {0.15, 0.56}){
+        const FloatPixel top = image_stats(extract_box_reference(screen, ImageFloatBox(x, 0.58, 0.12, 0.03))).average;
+        const FloatPixel front = image_stats(extract_box_reference(screen, ImageFloatBox(x, 0.66, 0.12, 0.03))).average;
+        const double front_min = std::min({front.r, front.g, front.b});
+        const double front_max = std::max({front.r, front.g, front.b});
+        const bool red = top.r >= 120 && top.r > 2 * top.g && top.g > top.b;
+        const bool white = front_min >= 120 && front_max - front_min <= 40;
+        if (!red || !white){
+            return false;
+        }
+    }
+    return true;
+}
+
 } // namespace
 
 
@@ -216,17 +249,7 @@ bool pokemon_center_inside(const ImageViewRGB32& screen){
         const double r = box.average.r, g = box.average.g, b = box.average.b;
         wall += r >= 140 && r > g + 40 && g > b + 40;
     }
-    if (wall < 2){
-        return false;
-    }
-    //  Black below the floor, either side of the step out of the door.
-    for (const ImageFloatBox& box : {ImageFloatBox(0.02, 0.95, 0.30, 0.04), ImageFloatBox(0.65, 0.95, 0.33, 0.04)}){
-        if (image_stats(extract_box_reference(screen, box)).average.sum() > 90){
-            return false;
-        }
-    }
-    //  And the floor lit between them: not a fade (349 in Jubilife at night).
-    return image_stats(extract_box_reference(screen, ImageFloatBox(0.30, 0.55, 0.40, 0.15))).average.sum() > 250;
+    return wall >= 2 && (center_entrance_view(screen) || center_counter_view(screen));
 }
 
 void fail_if_blacked_out(VideoStream& stream, ProControllerContext& context, const std::string& label){

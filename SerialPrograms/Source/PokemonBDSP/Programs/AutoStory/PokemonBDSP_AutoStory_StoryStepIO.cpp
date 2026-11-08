@@ -192,6 +192,10 @@ bool run_into_door(VideoStream& stream, ProControllerContext& context, Direction
             stream.log("[Story] run_into_door: white screen fade detected.");
         }else if (end.ret == 2){
             stream.log("[Story] run_into_door: dialog detected.");
+        }else if (end.went_dark != WallClock::max()){
+            //  Dark only before dark_from: early, or the door's fade itself.
+            stream.log(std::format("[Story] run_into_door: timed out; dark {} ms in, before dark_from {} ms.",
+                std::chrono::duration_cast<Milliseconds>(end.went_dark - start).count(), dark_from.count()));
         }else{
             stream.log("[Story] run_into_door: timed out without detecting fade.");
         }

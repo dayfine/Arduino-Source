@@ -559,10 +559,17 @@ std::string SimExecutor::off_pose(const Pose& pose) const{
     return std::format("ended at {} ({}), not on {}.", to_string(player.pos), describe(m_sim.world(), at), Pokemon::to_string(pose));
 }
 
+//  The program's run into the Center: past its door, the inside shows, a missed fade or not.
 Outcome SimExecutor::heal(RunState& state, const StoryStep& step){
-    if (sync(state.pose) && m_sim.hold(Direction::NORTH, 3000ms, SimPace::RUN).stop != SimStop::WARP){
-        return Pokemon::outcome_failed("no_door", step.name + ": no door north of " + to_string(m_sim.player().pos));
+    if (!sync(state.pose)){
+        return Pokemon::outcome_ok();
     }
+    run_into_center(m_io, m_walks.can_run(), [this]{
+        m_misses.fade_unseen = false;
+        return m_sim.player().warped.has_value();
+    }, [&]{
+        throw GridSimFailure{step.name + ": no door north of " + to_string(m_sim.player().pos)};
+    });
     return Pokemon::outcome_ok();
 }
 
