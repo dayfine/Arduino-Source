@@ -66,9 +66,11 @@ public:
 
 private:
     Pokemon::Pose walk_to(const Pokemon::Pose& from, const Pokemon::Pose& goal, const Pokemon::StoryStep& step);
+    //  After a wild battle on `leg`'s taps from `starts`: walks to one of
+    //  `goals` from wherever the leg could have left us, then faces `facing`.
     Pokemon::Pose recover_tapped_leg(const Pokemon::Pose& from,
         const std::vector<Pokemon::TilePos>& starts, const std::vector<Pokemon::TilePos>& goals,
-        const Pokemon::StoryLeg& leg, const Pokemon::StoryStep& step);
+        Pokemon::Direction facing, const Pokemon::StoryLeg& leg, const Pokemon::StoryStep& step);
     Pokemon::Outcome tap_legs(const Pokemon::Pose& from, const Pokemon::StoryStep& step);
     Pokemon::Outcome leg_to_dialogue(const Pokemon::StoryStep& step);
     Pokemon::Outcome leg_to_map(const Pokemon::StoryStep& step);
