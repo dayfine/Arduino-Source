@@ -484,7 +484,7 @@ StepsWalk walk_steps(GridSim& sim, const TableSteps& table){
     WalkStepsIO io(sim, route_io);
     StoryWalkSteps walk(io);
     walk.begin_attempt("01.03");
-    Pokemon::RunState state{.pose = table.start};
+    Pokemon::RunState state{.pose = table.start, .flags = {}};
     try{
         for (const StoryStep& step : table.steps){
             const Pokemon::Outcome outcome = step.kind == StoryStepKind::ROUTE ? walk.route(state, step)
