@@ -632,6 +632,32 @@ UnitTestResult test_wall_leg_check_at_wall_short_distance_safeguard(Logger& logg
         return "caught unexpected failure: " + f.message;
     }
 }
+//  Oreburgh Mine B1F: the entrance hall corridor is traversed to and back by
+//  running south from (12, 1) to (12, 21), and north from (11, 21) to (11, 1).
+UnitTestResult test_oreburgh_mine_hall_corridor(Logger& logger){
+    const StoryWorld* world = story_plan_world("OreburghMineB1F", "OreburghMineB1F");
+    if (world == nullptr){
+        return "OreburghMineB1F world not found.";
+    }
+    const SimWorld sim_world{.world = world, .can_run = true};
+    const auto test_run = [&](TilePos start, Direction dir, TilePos expected, const char* label){
+        GridSim sim(sim_world, start, dir, true);
+        const SimMove move = sim.hold(dir, 5000ms, SimPace::RUN);
+        if (move.stop != SimStop::WARP || sim.player().pos != sim_pos(expected)){
+            return std::format("{}: expected WARP at {}, got {} at {}.", label,
+                Pokemon::to_string(expected), sim_stop_name(move.stop), Pokemon::to_string(nearest_tile(sim.player().pos)));
+        }
+        logger.log(std::format("{} hall run reached {} in {} ms.", label, Pokemon::to_string(expected), move.time.count()));
+        return std::string{};
+    };
+    std::string err = test_run({12, 1}, Direction::SOUTH, {12, 21}, "Southbound");
+    if (!err.empty()){
+        return err;
+    }
+    err = test_run({11, 21}, Direction::NORTH, {11, 1}, "Northbound");
+    return err.empty() ? UnitTestResult(true) : UnitTestResult(err);
+}
+
 struct AutoStoryGridSimInput{
     std::string name;
     std::function<UnitTestResult(Logger&)> body;
@@ -701,6 +727,10 @@ const AutoStoryGridSimCase AUTO_STORY_GRID_SIM_CASES[] = {
     },
     {
         .input = {"check_at_wall safeguard rejects legs stalled well short of expected distance", test_wall_leg_check_at_wall_short_distance_safeguard},
+        .expectation = {},
+    },
+    {
+        .input = {"01.03, Oreburgh Mine B1F entrance hall corridor runs to and back", test_oreburgh_mine_hall_corridor},
         .expectation = {},
     },
 };

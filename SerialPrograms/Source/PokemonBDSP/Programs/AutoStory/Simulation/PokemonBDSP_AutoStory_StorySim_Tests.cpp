@@ -853,32 +853,6 @@ UnitTestResult test_exit_ravaged_path(Logger& logger){
     return run_exit_test(logger, "01.09", r81_old_cave_exit(), SimMisses{.fade = 0, .banner = std::nullopt}, r81_below_the_mouth());
 }
 
-//  Oreburgh Mine B1F: the entrance hall corridor is traversed to and back by
-//  running south from (12, 1) to (12, 21), and north from (11, 21) to (11, 1).
-UnitTestResult test_oreburgh_mine_hall_corridor(Logger& logger){
-    const StoryWorld* world = story_plan_world("OreburghMineB1F", "OreburghMineB1F");
-    if (world == nullptr){
-        return "OreburghMineB1F world not found.";
-    }
-    const SimWorld sim_world{.world = world, .can_run = true};
-    const auto test_run = [&](TilePos start, Direction dir, TilePos expected, const char* label){
-        GridSim sim(sim_world, start, dir, true);
-        const SimMove move = sim.hold(dir, 5000ms, SimPace::RUN);
-        if (move.stop != SimStop::WARP || sim.player().pos != sim_pos(expected)){
-            return std::format("{}: expected WARP at {}, got {} at {}.", label,
-                Pokemon::to_string(expected), sim_stop_name(move.stop), Pokemon::to_string(nearest_tile(sim.player().pos)));
-        }
-        logger.log(std::format("{} hall run reached {} in {} ms.", label, Pokemon::to_string(expected), move.time.count()));
-        return std::string{};
-    };
-    std::string err = test_run({12, 1}, Direction::SOUTH, {12, 21}, "Southbound");
-    if (!err.empty()){
-        return err;
-    }
-    err = test_run({11, 21}, Direction::NORTH, {11, 1}, "Northbound");
-    return err.empty() ? UnitTestResult(true) : UnitTestResult(err);
-}
-
 //  Oreburgh Mine B1F: tapping 19 tiles leaves the player 1 tile short of the warp door.
 StoryStep old_mine_hall_19(std::string name, Direction direction){
     StoryStep step;
@@ -958,7 +932,6 @@ const AutoStoryStorySimCase AUTO_STORY_STORY_SIM_CASES[] = {
     }}, .expectation = {}},
     {.input = {"r75, out of the Oreburgh Gate", test_exit_gate}, .expectation = {}},
     {.input = {"r81, out of the Ravaged Path", test_exit_ravaged_path}, .expectation = {}},
-    {.input = {"01.03, Oreburgh Mine B1F entrance hall corridor runs to and back", test_oreburgh_mine_hall_corridor}, .expectation = {}},
     {
         .input = {"01.03, a dark frame 1.8 s down the mine's entrance hall is not its mouth (lab-B, 2026-11-08)", [](Logger& logger){
             SimExecutor executor(logger, {.fade = {}, .banner = {}, .dark = 1});
