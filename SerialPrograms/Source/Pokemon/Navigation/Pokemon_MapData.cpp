@@ -11,6 +11,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
+#include "Pokemon_RuntimeMap.h"
 #include "Pokemon_MapData.h"
 
 namespace PokemonAutomation{
@@ -523,7 +524,8 @@ void check_places(const MapData& map, const std::string& where){
 
 
 MapData parse_map(const JsonValue& json, const std::string& source_name){
-    const JsonObject& root = as_object(json, source_name);
+    const JsonValue normalized = normalize_runtime_map(json, source_name);
+    const JsonObject& root = as_object(normalized, source_name);
     const std::string where = source_name + ": ";
     MapData map;
     map.name = read_string(root, "name", where);
@@ -554,6 +556,28 @@ const MapWarp* warp_at(const MapData& map, const TilePos& pos){
         }
     }
     return nullptr;
+}
+
+size_t tiles_to_door(const Grid<TileKind>& tiles, const TilePos& from, Direction direction, size_t max_tiles){
+    TilePos at = from;
+    size_t count = 0;
+    while (count < max_tiles){
+        const TilePos next = at.next(direction);
+        if (!tiles.contains(next)){
+            break;
+        }
+        count++;
+        const TileKind kind = tiles.at(next);
+        if (kind == TileKind::DOOR || kind == TileKind::WALL || kind == TileKind::OUTSIDE){
+            break;
+        }
+        at = next;
+    }
+    return count;
+}
+
+size_t tiles_to_door(const MapData& map, const TilePos& from, Direction direction, size_t max_tiles){
+    return tiles_to_door(map.tiles, from, direction, max_tiles);
 }
 
 

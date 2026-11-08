@@ -33,6 +33,7 @@
 
 #include "Pokemon/AutoStory/Pokemon_AutoStory_Tests.h"
 #include "Pokemon/Navigation/Pokemon_Navigation_Tests.h"
+#include "Pokemon/Navigation/Pokemon_RuntimeMap_Tests.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_MenuDetector.h"
 #include "PokemonBDSP/PokemonBDSP_Tests.h"
@@ -75,6 +76,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     Pokemon::add_tests_LegWalker(ret);
     Pokemon::add_tests_WallRecovery(ret);
     Pokemon::add_tests_MapData(ret);
+    Pokemon::add_tests_RuntimeMap(ret);
     Pokemon::add_tests_RouteLog(ret);
     Pokemon::add_tests_StoryEvents(ret);
     Pokemon::add_tests_StorySegments(ret);

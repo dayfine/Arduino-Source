@@ -207,7 +207,8 @@ struct MapData{
     std::vector<MapPatch> patches;
 };
 
-//  Reads a map from its parsed JSON. `source_name` names it in errors.
+//  Reads legacy/unmarked v1 or compact pokesim-runtime-map/2 JSON.
+//  Both games use this entry point; `source_name` names it in errors.
 //  Throws ParseException, naming the source and the JSON path (e.g.
 //  "Maps/TestTown.json: warps[2].x is missing."), when a field is missing,
 //  doesn't fit the schema, or places something outside the tiles.
@@ -215,6 +216,14 @@ MapData parse_map(const JsonValue& json, const std::string& source_name);
 
 //  The warp on `pos`, or nullptr if there is none.
 const MapWarp* warp_at(const MapData& map, const TilePos& pos);
+
+//  Counts the number of tiles along `direction` starting from `from` until reaching
+//  a DOOR tile, an impassable tile (WALL, OUTSIDE), or the edge of the grid.
+//  Used by AutoStory walkers to bound holds into door warps based on distance.
+size_t tiles_to_door(const Grid<TileKind>& tiles, const TilePos& from, Direction direction, size_t max_tiles = 50);
+
+//  Convenience overload that queries map.tiles.
+size_t tiles_to_door(const MapData& map, const TilePos& from, Direction direction, size_t max_tiles = 50);
 
 
 
