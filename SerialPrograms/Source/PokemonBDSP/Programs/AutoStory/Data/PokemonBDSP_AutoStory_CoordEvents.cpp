@@ -47,8 +47,18 @@ CoordEvent read_event(const JsonObject& object, const std::string& where){
         .value = read_int(object, "value", where),
         .source = read_string(object, "source", where),
     };
-    const int x = read_int(object, "x", where);
-    const int y = read_int(object, "y", where);
+    int x = 0;
+    int y = 0;
+    if (const JsonArray* coord = object.get_array("coord")){
+        if (coord->size() < 2 || !(*coord)[0].is_integer() || !(*coord)[1].is_integer()){
+            throw ParseException(where + "coord must have at least 2 integer elements.");
+        }
+        x = (int)(*coord)[0].to_integer_default();
+        y = (int)(*coord)[1].to_integer_default();
+    }else{
+        x = read_int(object, "x", where);
+        y = read_int(object, "y", where);
+    }
     const int width = read_int(object, "width", where);
     const int length = read_int(object, "length", where);
     if (width < 1 || length < 1){

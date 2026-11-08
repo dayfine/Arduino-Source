@@ -67,6 +67,11 @@ Milliseconds per_tile(Direction direction, SimPace pace, bool can_run){
     return route_ms_per_tile(direction, pace == SimPace::RUN && can_run ? MoveSpeed::RUN : MoveSpeed::WALK);
 }
 
+uint32_t step_rng(uint64_t& state){
+    state = state * 6364136223846793005ULL + 1442695040888963407ULL;
+    return static_cast<uint32_t>(state >> 32);
+}
+
 } // namespace
 
 
@@ -102,14 +107,21 @@ const char* sim_stop_name(SimStop stop){
 
 GridSim::GridSim(SimWorld world, const TilePos& start, Direction facing, bool can_run)
     : m_world(std::move(world))
+    , m_wanderers(m_world.wanderers)
 {
     m_player.pos = sim_pos(start);
     m_player.facing = facing;
     m_player.can_run = can_run;
+    for (SimWanderer& wanderer : m_wanderers){
+        if (wanderer.time_offset > 0ms){
+            advance_wanderer(wanderer, wanderer.time_offset);
+        }
+    }
 }
 
 void GridSim::place(SimWorld world, const TilePos& start, std::optional<Direction> facing){
     m_world = std::move(world);
+    m_wanderers = m_world.wanderers;
     m_player.pos = sim_pos(start);
     if (facing){
         m_player.facing = *facing;
@@ -120,6 +132,68 @@ void GridSim::place(SimWorld world, const TilePos& start, std::optional<Directio
     if (m_world.can_run){
         m_player.can_run = *m_world.can_run;
     }
+    for (SimWanderer& wanderer : m_wanderers){
+        if (wanderer.time_offset > 0ms){
+            advance_wanderer(wanderer, wanderer.time_offset);
+        }
+    }
+}
+
+bool GridSim::can_wander_to(const SimWanderer& wanderer, const TilePos& next) const{
+    if (next.x < wanderer.box.x0 || next.x > wanderer.box.x1 || next.y < wanderer.box.y0 || next.y > wanderer.box.y1){
+        return false;
+    }
+    if (!standable(*m_world.world, next) || m_world.world->occupied(next) != StoryWorld::NOBODY){
+        return false;
+    }
+    if (nearest_tile(m_player.pos) == next){
+        return false;
+    }
+    for (const SimWanderer& other : m_wanderers){
+        if (&other != &wanderer && other.pos == next){
+            return false;
+        }
+    }
+    return true;
+}
+
+void GridSim::step_wanderer(SimWanderer& wanderer){
+    const uint32_t choice = step_rng(wanderer.seed) % 5;
+    if (choice >= 4){
+        return;
+    }
+    const Direction dir = static_cast<Direction>(choice);
+    const TilePos next = wanderer.pos.next(dir);
+    if (can_wander_to(wanderer, next)){
+        wanderer.pos = next;
+    }
+}
+
+void GridSim::advance_wanderer(SimWanderer& wanderer, Milliseconds time){
+    wanderer.elapsed += time;
+    while (wanderer.step_interval > 0ms && wanderer.elapsed >= wanderer.step_interval){
+        wanderer.elapsed -= wanderer.step_interval;
+        step_wanderer(wanderer);
+    }
+}
+
+void sim_advance_time(GridSim& sim, Milliseconds time){
+    for (SimWanderer& wanderer : sim.m_wanderers){
+        sim.advance_wanderer(wanderer, time);
+    }
+}
+
+const std::vector<SimWanderer>& sim_wanderers(const GridSim& sim){
+    return sim.m_wanderers;
+}
+
+bool GridSim::wanderer_at(const TilePos& pos) const{
+    for (const SimWanderer& wanderer : m_wanderers){
+        if (wanderer.pos == pos){
+            return true;
+        }
+    }
+    return false;
 }
 
 //  Moves into the next tile toward `direction`, `part` of the way (a whole
@@ -143,6 +217,11 @@ std::optional<SimStop> GridSim::enter_next(Direction direction, int part, int& m
             m_player.warped = ahead[0];
             return SimStop::WARP;
         }else if (!landing){
+            return SimStop::BLOCKED;
+        }
+    }
+    for (const TilePos& pos : ahead){
+        if (wanderer_at(pos)){
             return SimStop::BLOCKED;
         }
     }
@@ -219,6 +298,7 @@ SimMove GridSim::tap(Direction direction, Milliseconds hold, bool stick){
     if (!stick){
         distance = std::max<int>(1, (int)((hold + tile_time / 2) / tile_time)) * SIM_TILE;
     }
+    sim_advance_time(*this, hold);
     SimMove move = advance(direction, distance);
     move.time = hold;
     return move;
@@ -230,6 +310,7 @@ SimMove GridSim::hold(Direction direction, Milliseconds limit, SimPace pace){
     int moved = 0;
     SimStop stop = SimStop::LIMIT;
     while (moved < tiles * SIM_TILE){
+        sim_advance_time(*this, tile_time);
         const SimMove step = advance(direction, SIM_TILE);
         moved += step.distance;
         if (step.stop != SimStop::DONE){
@@ -256,6 +337,11 @@ bool GridSim::press_a(){
     for (const TrainerSight& trainer : m_world.trainers){
         if (m_player.dialog && trainer.pos == faced){
             m_player.trainer = trainer.name;
+        }
+    }
+    for (const SimWanderer& wanderer : m_wanderers){
+        if (wanderer.pos == faced){
+            m_player.dialog = true;
         }
     }
     return m_player.dialog;
@@ -367,6 +453,7 @@ void GridSimRouteIO::press(const RouteInput& input){
             break;
         case RouteInputKind::WAIT:
         case RouteInputKind::PAUSE:
+            sim_advance_time(m_sim, input.hold * input.count);
             break;
         }
     }

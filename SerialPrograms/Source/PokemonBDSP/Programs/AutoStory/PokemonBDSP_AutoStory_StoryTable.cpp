@@ -722,7 +722,7 @@ std::vector<StoryLeg> legs_out_of_coal_room(){
         {.direction = EAST,  .tiles = 1},
         {.direction = NORTH, .tiles = 2},
         {.direction = WEST,  .tiles = 1},
-        {.direction = NORTH, .tiles = 8},
+        {.direction = NORTH, .tiles = 7},
     };
 }
 

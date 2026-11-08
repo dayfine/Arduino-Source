@@ -70,12 +70,24 @@ struct SimTrigger{
 //  the tiles that warp like doors though the maps draw them as walls (a
 //  house's stairs, entered from beside them); and, if the caller knows,
 //  whether B runs from here on (the Running Shoes, 00.03).
+//  A person who wanders pseudo-randomly within their wander box.
+struct SimWanderer{
+    std::string name;
+    Pokemon::TileBox box;                  //  wander boundary in world tiles
+    Pokemon::TilePos pos;                  //  current position
+    uint64_t seed = 0;                     //  PRNG seed for deterministic walk
+    Milliseconds step_interval = Milliseconds(2000);   //  how often the NPC attempts a move
+    Milliseconds elapsed = Milliseconds(0);            //  time accumulated towards next step
+    Milliseconds time_offset = Milliseconds(0);        //  initial start time offset
+};
+
 struct SimWorld{
     const StoryWorld* world = nullptr;
     std::vector<TrainerSight> trainers = {};
     std::vector<SimTrigger> triggers = {};
     std::vector<Pokemon::TilePos> doors = {};
     std::optional<bool> can_run = std::nullopt;
+    std::vector<SimWanderer> wanderers = {};
 };
 
 //  Reason why simulated player movement stopped.
@@ -144,13 +156,26 @@ public:
     }
 
 private:
+    friend void sim_advance_time(GridSim& sim, Milliseconds time);
+    friend const std::vector<SimWanderer>& sim_wanderers(const GridSim& sim);
+
     SimMove advance(Pokemon::Direction direction, int distance);
     std::optional<SimStop> enter_next(Pokemon::Direction direction, int part, int& moved);
     std::optional<SimStop> arrive();
+    void advance_wanderer(SimWanderer& wanderer, Milliseconds time);
+    void step_wanderer(SimWanderer& wanderer);
+    bool can_wander_to(const SimWanderer& wanderer, const Pokemon::TilePos& next) const;
+    bool wanderer_at(const Pokemon::TilePos& pos) const;
 
     SimWorld m_world;
     SimPlayer m_player;
+    std::vector<SimWanderer> m_wanderers;
 };
+
+//  Advances simulated time for world events and wandering NPCs.
+void sim_advance_time(GridSim& sim, Milliseconds time);
+//  The wandering NPCs on the simulation's world.
+const std::vector<SimWanderer>& sim_wanderers(const GridSim& sim);
 
 //  Whether the player could take a step toward `direction` from where they stand.
 bool sim_can_step(const GridSim& sim, Pokemon::Direction direction);

@@ -89,9 +89,14 @@ Pose StoryWalkSteps::walk_to(const Pose& from, const Pose& goal, const StoryStep
         sights,
         [this](const std::string& trainer){ m_io.fight(trainer); }
     };
+    std::vector<TilePos> avoid = wandering_hazards(*maps);
+    std::erase_if(avoid, [&](const TilePos& pos){
+        return std::find(start.begin(), start.end(), pos) != start.end()
+            || std::find(targets.begin(), targets.end(), pos) != targets.end();
+    });
     const RouteWalkPlan plan{
         [&](const TilePos& pos){ return std::find(targets.begin(), targets.end(), pos) != targets.end(); },
-        label_of(step), {}, *costs, m_can_run ? MoveSpeed::RUN : MoveSpeed::WALK
+        label_of(step), std::move(avoid), *costs, m_can_run ? MoveSpeed::RUN : MoveSpeed::WALK
     };
     const std::vector<TilePos> at = walk_route(m_io.route(), *maps, start, trainers, plan);
     sights = std::move(trainers.sights);

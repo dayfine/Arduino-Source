@@ -71,6 +71,8 @@ public:
     //  The map that holds a world tile, or nothing between maps.
     std::optional<MapTile> to_local(const Pokemon::TilePos& world) const;
 
+    friend std::vector<Pokemon::TilePos> wandering_hazards(const StoryWorld& world);
+
 private:
     struct Placed{
         std::string name;
@@ -106,6 +108,8 @@ private:
 
 //  The rules of walking on a story world, from its tiles.
 
+//  All tiles where someone wanders on the maps, in world coordinates.
+std::vector<Pokemon::TilePos> wandering_hazards(const StoryWorld& world);
 //  Whether a map holds this world tile.
 bool covered(const StoryWorld& world, const Pokemon::TilePos& pos);
 //  Whether the player can stand on this tile.

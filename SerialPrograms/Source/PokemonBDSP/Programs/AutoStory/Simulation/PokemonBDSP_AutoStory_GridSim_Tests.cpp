@@ -39,6 +39,7 @@ using Pokemon::Direction;
 using Pokemon::Pose;
 using Pokemon::StoryStep;
 using Pokemon::StoryStepKind;
+using Pokemon::TileBox;
 using Pokemon::TilePos;
 
 
@@ -210,11 +211,16 @@ SimWalk walk_on_sim(const SimRoute& route, bool stick_turns){
     RouteIO& io = stick_turns ? static_cast<RouteIO&>(stick_io) : sim_io;
     RouteTrainers trainers{story_trainers(*route.world), [&sim](const std::string&){ sim.end_dialogue(); }};
     const std::vector<TilePos>& targets = route.targets;
+    std::vector<TilePos> avoid = wandering_hazards(*route.world);
+    std::erase_if(avoid, [&](const TilePos& pos){
+        return std::find(route.from.begin(), route.from.end(), pos) != route.from.end()
+            || std::find(targets.begin(), targets.end(), pos) != targets.end();
+    });
     try{
         out.believed = walk_route(io, *route.world, route.from, trainers, {
             .goal = [&targets](const TilePos& pos){ return std::find(targets.begin(), targets.end(), pos) != targets.end(); },
             .label = route.label,
-            .avoid = {},
+            .avoid = std::move(avoid),
             .costs = route.costs,
             .speed = route.can_run ? MoveSpeed::RUN : MoveSpeed::WALK,
         });
@@ -384,6 +390,155 @@ UnitTestResult test_door_routes(Logger& logger){
 }
 
 
+
+UnitTestResult test_wandering_npc_mechanics(Logger& logger){
+    StoryWorld world = make_world({
+        "#######",
+        "#.....#",
+        "#.....#",
+        "#.....#",
+        "#######",
+    });
+    SimWanderer wanderer{
+        .name = "wanderer",
+        .box = {1, 1, 3, 3},
+        .pos = {2, 2},
+        .seed = 42,
+        .step_interval = 2000ms,
+    };
+    GridSim sim({.world = &world, .wanderers = {wanderer}}, {1, 2}, Direction::EAST, false);
+    sim_advance_time(sim, 100000ms);
+    const SimWanderer& after = sim_wanderers(sim).front();
+    if (after.pos.x < 1 || after.pos.x > 3 || after.pos.y < 1 || after.pos.y > 3){
+        return "wanderer stepped outside its bounding box";
+    }
+    GridSim sim2({.world = &world, .wanderers = {wanderer}}, {1, 2}, Direction::EAST, false);
+    sim_advance_time(sim2, 100000ms);
+    if (sim_wanderers(sim2).front().pos != after.pos){
+        return "wanderer simulation is not deterministic across identical seeds";
+    }
+    return true;
+}
+
+UnitTestResult test_wandering_npc_collision_and_dialog(Logger& logger){
+    StoryWorld world = make_world({
+        "#####",
+        "#...#",
+        "#####",
+    });
+    SimWanderer wanderer{
+        .name = "blocker",
+        .box = {2, 1, 2, 1},
+        .pos = {2, 1},
+        .seed = 0,
+        .step_interval = 10000ms,
+    };
+    GridSim sim({.world = &world, .wanderers = {wanderer}}, {1, 1}, Direction::EAST, false);
+    const SimMove move = sim.tap(Direction::EAST, 160ms, false);
+    if (move.stop != SimStop::BLOCKED || sim.player().pos != sim_pos({1, 1})){
+        return "player was not blocked by wandering NPC";
+    }
+    if (!sim.press_a()){
+        return "pressing A facing wandering NPC failed to open dialogue";
+    }
+    return true;
+}
+
+UnitTestResult test_wandering_npc_routes_multi_seed(Logger& logger){
+    const StoryWorld* world = story_plan_world("OreburghCity", "OreburghCity");
+    if (world == nullptr){
+        return "OreburghCity world not found";
+    }
+    const TilePos start = story_to_world(*world, "OreburghCity", {26, 22});
+    const TilePos target = story_to_world(*world, "OreburghCity", {46, 58});
+    const TileBox hiker_box{
+        story_to_world(*world, "OreburghCity", {46, 25}).x,
+        story_to_world(*world, "OreburghCity", {46, 25}).y,
+        story_to_world(*world, "OreburghCity", {48, 27}).x,
+        story_to_world(*world, "OreburghCity", {48, 27}).y
+    };
+    const TilePos hiker_home = story_to_world(*world, "OreburghCity", {47, 26});
+    const std::vector<uint64_t> seeds = {0, 1, 2, 7, 42, 100, 999, 1337};
+    const std::vector<Milliseconds> start_times = {0ms, 500ms, 1200ms, 2000ms, 3500ms, 5000ms};
+    std::vector<TilePos> avoid = wandering_hazards(*world);
+    std::erase_if(avoid, [&](const TilePos& pos){
+        return pos == start || pos == target;
+    });
+    for (uint64_t seed : seeds){
+        for (Milliseconds start_time : start_times){
+            SimWanderer hiker{
+                .name = "hiker_0",
+                .box = hiker_box,
+                .pos = hiker_home,
+                .seed = seed,
+                .step_interval = 2000ms,
+                .time_offset = start_time,
+            };
+            GridSim sim({.world = world, .trainers = story_trainers(*world), .wanderers = {hiker}}, start, Direction::NORTH, true);
+            std::vector<std::string> notes;
+            GridSimRouteIO sim_io(sim, notes);
+            RouteTrainers trainers{story_trainers(*world), [&sim](const std::string&){ sim.end_dialogue(); }};
+            const auto result = walk_route(sim_io, *world, {start}, trainers, {
+                .goal = [&](const TilePos& pos){ return pos == target; },
+                .label = "01.03 above_the_mine",
+                .avoid = avoid,
+                .costs = *story_route_costs("town"),
+                .speed = MoveSpeed::RUN,
+            });
+            if (result.empty() || result.front() != target || nearest_tile(sim.player().pos) != target){
+                return std::format("route failed for seed {} and start_time {} ms", seed, start_time.count());
+            }
+        }
+    }
+    return true;
+}
+
+UnitTestResult test_wandering_npc_wait_clearance(Logger& logger){
+    const StoryWorld* world = story_plan_world("OreburghCity", "OreburghCity");
+    if (world == nullptr){
+        return "OreburghCity world not found";
+    }
+    const TilePos start = story_to_world(*world, "OreburghCity", {48, 22});
+    const TilePos target = story_to_world(*world, "OreburghCity", {48, 30});
+    const TileBox hiker_box{
+        story_to_world(*world, "OreburghCity", {46, 25}).x,
+        story_to_world(*world, "OreburghCity", {46, 25}).y,
+        story_to_world(*world, "OreburghCity", {48, 27}).x,
+        story_to_world(*world, "OreburghCity", {48, 27}).y
+    };
+    SimWanderer hiker{
+        .name = "hiker_0",
+        .box = hiker_box,
+        .pos = story_to_world(*world, "OreburghCity", {48, 26}),
+        .seed = 2,
+        .step_interval = 2000ms,
+    };
+    GridSim sim({.world = world, .trainers = story_trainers(*world), .wanderers = {hiker}}, start, Direction::NORTH, true);
+    std::vector<std::string> notes;
+    GridSimRouteIO sim_io(sim, notes);
+    RouteTrainers trainers{story_trainers(*world), [&sim](const std::string&){ sim.end_dialogue(); }};
+    const auto result = walk_route(sim_io, *world, {start}, trainers, {
+        .goal = [&](const TilePos& pos){ return pos == target; },
+        .label = "walk_through_hiker",
+        .avoid = {},
+        .costs = *story_route_costs("town"),
+        .speed = MoveSpeed::RUN,
+    });
+    if (result.empty() || result.front() != target){
+        return "wait clearance route did not reach target";
+    }
+    bool saw_blocked_note = false;
+    for (const std::string& n : notes){
+        if (n.find("waiting for the way to clear") != std::string::npos){
+            saw_blocked_note = true;
+            break;
+        }
+    }
+    if (!saw_blocked_note){
+        return "expected route to encounter blocked wanderer and wait for clearance";
+    }
+    return true;
+}
 struct AutoStoryGridSimInput{
     std::string name;
     std::function<UnitTestResult(Logger&)> body;
@@ -429,6 +584,22 @@ const AutoStoryGridSimCase AUTO_STORY_GRID_SIM_CASES[] = {
     },
     {
         .input = {"a stick-tap turn misses the Sandgem Center and Jubilife School doors", test_door_routes},
+        .expectation = {},
+    },
+    {
+        .input = {"wandering NPC movement and deterministic seed behavior", test_wandering_npc_mechanics},
+        .expectation = {},
+    },
+    {
+        .input = {"wandering NPC collision stops player and opens dialogue", test_wandering_npc_collision_and_dialog},
+        .expectation = {},
+    },
+    {
+        .input = {"01.03 above_the_mine detours around wanderer across seeds and start times", test_wandering_npc_routes_multi_seed},
+        .expectation = {},
+    },
+    {
+        .input = {"wandering NPC collision without avoid waits for clearance and resumes", test_wandering_npc_wait_clearance},
         .expectation = {},
     },
 };

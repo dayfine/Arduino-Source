@@ -187,6 +187,40 @@ StoryWorld::Occupant StoryWorld::occupied(const TilePos& pos, OccupancyUse use) 
     return found == nullptr ? NOBODY : found->occupant;
 }
 
+namespace{
+
+void add_box_tiles(std::vector<TilePos>& out, const TilePos& corner, const Pokemon::TileBox& box, int max_w, int max_h){
+    const int y0 = std::max(0, box.y0);
+    const int y1 = std::min(max_h - 1, box.y1);
+    const int x0 = std::max(0, box.x0);
+    const int x1 = std::min(max_w - 1, box.x1);
+    for (int y = y0; y <= y1; y++){
+        for (int x = x0; x <= x1; x++){
+            out.push_back({corner.x + x, corner.y + y});
+        }
+    }
+}
+
+} // namespace
+
+std::vector<TilePos> wandering_hazards(const StoryWorld& world){
+    std::vector<TilePos> result;
+    for (const auto& placed : world.m_maps){
+        const TilePos corner{placed.offset.x - world.m_origin.x, placed.offset.y - world.m_origin.y};
+        for (const auto& box : placed.wander){
+            add_box_tiles(result, corner, box, placed.tiles.width, placed.tiles.height);
+        }
+    }
+    std::sort(result.begin(), result.end(), [](const TilePos& a, const TilePos& b){
+        if (a.y != b.y){
+            return a.y < b.y;
+        }
+        return a.x < b.x;
+    });
+    result.erase(std::unique(result.begin(), result.end()), result.end());
+    return result;
+}
+
 void StoryWorld::block(const TilePos& pos){
     if (Cell* found = cell(pos)){
         found->occupant = BLOCKED;

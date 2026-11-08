@@ -298,6 +298,13 @@ std::vector<PlannedLeg> RouteWalker::plan_legs() const{
             "; trying the default costs.", RouteNote::WARNING);
         legs = plan_recovered_route(m_grid, m_from, m_plan.goal, RobustPlanCosts());
     }
+    if (!legs && !m_plan.avoid.empty()){
+        m_io.note("[Route] " + m_plan.label + ": no plan avoiding hazard tiles; trying without hazard avoidance.", RouteNote::WARNING);
+        legs = plan_recovered_route(m_maps, m_from, m_plan.goal, m_plan.costs);
+        if (!legs){
+            legs = plan_recovered_route(m_maps, m_from, m_plan.goal, RobustPlanCosts());
+        }
+    }
     if (!legs){
         fail(m_io, m_plan.label + ": no plan from " + describe(m_maps, m_from) + ".");
     }
