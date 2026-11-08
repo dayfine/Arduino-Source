@@ -30,6 +30,12 @@ public:
     };
 
     struct Listener{
+        //  A listener must outlive the socket that calls it. Callbacks can
+        //  still be delivered after "close_connection()" returns - the
+        //  connection's threads only stop when the connection (or the
+        //  socket) is destroyed - so a listener must not be destroyed
+        //  before the socket that added it. Declare the listener before
+        //  the socket, so that it is destroyed after the socket.
         //  Called at the start of the thread that will handle a connection.
         //  This can be used to set the thread priority of the thread.
         virtual void on_thread_start(){}
@@ -83,11 +89,18 @@ public:
     //  "close()", this does not wait for the worker threads, so it is safe
     //  to call from within a listener callback. "Listener::on_disconnect"
     //  is not called for the connection closed this way.
+    //
+    //  It cancels any in-flight "send()" the same way "close()" does: the
+    //  send returns promptly with the number of bytes actually written so
+    //  far (best effort).
     virtual void close_connection() = 0;
 
     //  Stops the server: it stops accepting new connections, closes the
     //  active connection, and returns the socket to State::NOT_RUNNING so
     //  "start()" can be called again. This is safe to call multiple times.
+    //
+    //  It cancels any in-flight "send()": the send returns promptly with
+    //  the number of bytes actually written so far (best effort).
     //
     //  This blocks until the worker threads have exited, so it must not be
     //  called from within a listener callback (which runs on one of those
@@ -95,11 +108,12 @@ public:
     virtual void close() noexcept = 0;
 
     //  Sends data to the active connection. This blocks until every byte
-    //  has been written, the connection is lost, or "timeout" elapses.
+    //  has been written, the connection is lost, "close()"/
+    //  "close_connection()" is called, or "timeout" elapses.
     //  "std::chrono::milliseconds::max()" (the default) waits indefinitely.
     //  Returns the number of bytes actually written, which may be less
-    //  than "bytes" if the deadline elapsed or the connection was lost.
-    //  If there is no active connection, returns 0.
+    //  than "bytes" if the deadline elapsed, the connection was lost, or
+    //  the send was cancelled. If there is no active connection, returns 0.
     virtual size_t send(
         const void* data,
         size_t bytes,
