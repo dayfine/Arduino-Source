@@ -628,9 +628,15 @@ StoryCheckpoint oreburgh_to_route_203(){
             "west along the street, north up the stairs west of the houses, west along the Gate's row", "town"),
         step_into("barrys_trigger", WEST, "the trigger (6, 12..15)"),
         scene("barry_bumps_into_us", at(OREBURGH, 5, 13, EAST), "Barry runs into us, talks of Eterna, and leaves (assumed: the push)"),
-        route("by_the_gate", next_to(OREBURGH, "gate_mouth", EAST, WEST), "west to the Gate's warp tile (2, 13)"),
-        //  The warp's other end is the Gate's (27, 22), beside its east mouth.
-        tap_into("into_oreburgh_gate", WEST, "the Gate's mouth (1, 13)", arrival(GATE, {27, 22}, WEST)),
+        //  Straight west from where Barry leaves us into the Gate's mouth
+        //  (1, 13), running until the fade; the warp's other end is the
+        //  Gate's (27, 22), beside its east mouth. Not an open walk to the
+        //  tile beside the mouth and then a tap: that walk slid onto the warp
+        //  (screen change 177 at 1.6 s), the banner came and went unwatched,
+        //  and the tap step took the Gate's dim floor for its fade and waited
+        //  for a banner already gone (lab-B, 2026-11-08 15:31, 15:39, 15:47,
+        //  15:54; frames in Screenshots/AutoStory/banner/).
+        step_into("into_oreburgh_gate", WEST, "the Gate's mouth (1, 13)", arrival(GATE, {27, 22}, WEST)),
         route("through_the_gate", at(GATE, 4, 22, WEST), "west along row 22 to the warp tile by the west mouth (3, 22)"),
         //  Route 203's banner or a failure here: the old walk west "until the
         //  banner" went on into the pond's pocket (r75). 01.06 heads south.
