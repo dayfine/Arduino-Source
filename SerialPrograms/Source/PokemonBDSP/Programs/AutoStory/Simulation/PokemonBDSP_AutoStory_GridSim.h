@@ -221,22 +221,6 @@ private:
     std::vector<SimWildTap> m_encounters;
 };
 
-//  The route walker's open legs as lab-B 2026-11-08 11:55 saw one: a leg of
-//  more than a tile that ends on open ground, not at a wall, goes a tile
-//  past where it was planned to stop (there, south 5 went 6). The walker is
-//  not told. A single tap stays tile-exact, and so do the story's own
-//  counted taps.
-class OvershootingRouteIO : public GridSimRouteIO{
-public:
-    OvershootingRouteIO(GridSim& sim, std::vector<std::string>& notes, std::vector<SimWildTap> taps = {})
-        : GridSimRouteIO(sim, notes, std::move(taps)), m_sim(sim), m_notes(notes)
-    {}
-    virtual WalkResult walk_taps(Pokemon::Direction direction, size_t tiles, const std::string& label) override;
-private:
-    GridSim& m_sim;
-    std::vector<std::string>& m_notes;
-};
-
 //  What GridSimRouteIO throws for RouteNote::FAILURE.
 struct GridSimFailure{
     std::string message;

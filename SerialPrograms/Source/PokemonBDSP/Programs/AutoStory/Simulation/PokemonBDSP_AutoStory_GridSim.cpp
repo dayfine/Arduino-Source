@@ -439,15 +439,6 @@ WalkResult GridSimRouteIO::walk_taps(Direction direction, size_t tiles, const st
     return result;
 }
 
-WalkResult OvershootingRouteIO::walk_taps(Direction direction, size_t tiles, const std::string& label){
-    const WalkResult result = GridSimRouteIO::walk_taps(direction, tiles, label);
-    if (tiles > 1 && label.ends_with("(open)") && result.stop == WalkStop::LIMIT && sim_can_step(m_sim, direction)){
-        m_sim.tap(direction, route_ms_per_tile(direction, MoveSpeed::WALK), false);
-        m_notes.push_back(std::format("[Sim] {}: overshot a tile {} to {}.", label, direction_name(direction), to_string(m_sim.player().pos)));
-    }
-    return result;
-}
-
 void GridSimRouteIO::press(const RouteInput& input){
     for (size_t press = 0; press < input.count; press++){
         switch (input.kind){

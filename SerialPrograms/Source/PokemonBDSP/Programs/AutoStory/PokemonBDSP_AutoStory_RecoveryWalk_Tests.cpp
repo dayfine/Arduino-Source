@@ -9,6 +9,9 @@
  */
 #include <algorithm>
 #include <format>
+#include <optional>
+#include <string>
+#include <vector>
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "Simulation/PokemonBDSP_AutoStory_GridSim.h"
 #include "PokemonBDSP_AutoStory_StoryPlaces.h"
@@ -148,6 +151,29 @@ private:
     RecoveryCase m_case;
 };
 
+//  The route walker's open legs as lab-B 2026-11-08 11:55 saw one: a leg of
+//  more than a tile that ends on open ground, not at a wall, goes a tile
+//  past where it was planned to stop (there, south 5 went 6). The walker is
+//  not told. A single tap stays tile-exact, and so do the story's own
+//  counted taps.
+class OvershootingRouteIO : public GridSimRouteIO{
+public:
+    OvershootingRouteIO(GridSim& sim, std::vector<std::string>& notes, std::vector<SimWildTap> taps)
+        : GridSimRouteIO(sim, notes, std::move(taps)), m_sim(sim), m_notes(notes)
+    {}
+    virtual WalkResult walk_taps(Direction direction, size_t tiles, const std::string& label) override{
+        const WalkResult result = GridSimRouteIO::walk_taps(direction, tiles, label);
+        if (tiles > 1 && label.ends_with("(open)") && result.stop == WalkStop::LIMIT && sim_can_step(m_sim, direction)){
+            m_sim.tap(direction, route_ms_per_tile(direction, MoveSpeed::WALK), false);
+            m_notes.push_back(std::format("[Sim] {}: overshot a tile {} to {}.", label, direction_name(direction), to_string(m_sim.player().pos)));
+        }
+        return result;
+    }
+private:
+    GridSim& m_sim;
+    std::vector<std::string>& m_notes;
+};
+
 //  RecoveryStepIO that also walks to walls, as the story simulation does.
 class WallStepIO : public RecoveryStepIO{
 public:
@@ -247,6 +273,168 @@ const CornerCase CORNER_CASES[] = {
         .battle = {{.label = "to_roarks_corner", .direction = Direction::SOUTH, .requested_tiles = 10, .tap = 4}}}, .expectation = {}},
 };
 
+//  The Oreburgh Mine's warps, from the decomp's warp events (Platinum's
+//  res/field/maps/*/events.json; BDSP keeps DP's layout): the city's five
+//  warp tiles lead to the hall's three 2-1-2, the hall's back a column
+//  each, and the coal room's warp to the hall's column 12.
+struct WarpLink{
+    const char* from_map;
+    TilePos from;
+    const char* to_map;
+    TilePos to;
+};
+const WarpLink MINE_WARPS[] = {
+    {"OreburghCity", {44, 59}, "OreburghMineB1F", {11, 1}},
+    {"OreburghCity", {45, 59}, "OreburghMineB1F", {11, 1}},
+    {"OreburghCity", {46, 59}, "OreburghMineB1F", {12, 1}},
+    {"OreburghCity", {47, 59}, "OreburghMineB1F", {13, 1}},
+    {"OreburghCity", {48, 59}, "OreburghMineB1F", {13, 1}},
+    {"OreburghMineB1F", {11, 1}, "OreburghCity", {45, 59}},
+    {"OreburghMineB1F", {12, 1}, "OreburghCity", {46, 59}},
+    {"OreburghMineB1F", {13, 1}, "OreburghCity", {47, 59}},
+    {"OreburghMine", {15, 1}, "OreburghMineB1F", {12, 21}},
+};
+
+//  Puts the player on `map`'s `start` and walks north to a warp, then puts
+//  them where it lands. Returns where, on which map.
+std::pair<std::string, TilePos> warp_north(GridSim& sim, const std::string& map, const TilePos& start){
+    const StoryWorld& from = *story_plan_world(map, map);
+    sim.place({.world = &from}, from.to_world(map, start), Direction::NORTH);
+    if (sim.hold(Direction::NORTH, 20000ms, SimPace::WALK).stop != SimStop::WARP){
+        throw GridSimFailure{std::format("no warp north of {} on {}", Pokemon::to_string(start), map)};
+    }
+    const std::optional<TilePos> warp = story_to_local(from, map, *sim.player().warped);
+    for (const WarpLink& link : MINE_WARPS){
+        if (link.from_map == map && warp == link.from){
+            const StoryWorld& to = *story_plan_world(link.to_map, link.to_map);
+            sim.place({.world = &to, .trainers = story_trainers(to)}, to.to_world(link.to_map, link.to), Direction::NORTH);
+            return {link.to_map, link.to};
+        }
+    }
+    throw GridSimFailure{std::format("no warp known at {} on {}", warp ? Pokemon::to_string(*warp) : "?", map)};
+}
+
+//  01.03 out of the mine as the table had it before lab-B 2026-11-08: from
+//  the city's (45, 59) north against the mine's sign (45, 56), a route to
+//  below the Center's door (47, 21), a tap south, the walls east and north
+//  of (48, 22), and a tap west.
+std::pair<Pokemon::Pose, std::vector<Pokemon::StoryStep>> old_steps_out_of_the_mine(){
+    const auto step = [](const char* name, std::vector<Pokemon::StoryLeg> legs, const char* variant, std::optional<TilePos> end){
+        Pokemon::StoryStep out;
+        out.kind = Pokemon::StoryStepKind::LEGS;
+        out.name = name;
+        out.legs = std::move(legs);
+        out.variant = variant;
+        if (end){
+            out.pose_after = Pokemon::tile_pose("OreburghCity", {*end}, Direction::NORTH);
+        }
+        return out;
+    };
+    Pokemon::StoryStep route;
+    route.kind = Pokemon::StoryStepKind::ROUTE;
+    route.name = "below_the_centers_door_again";
+    route.target = Pokemon::tile_pose("OreburghCity", {TilePos{47, 21}}, Direction::NORTH);
+    route.variant = "town";
+    return {Pokemon::tile_pose("OreburghCity", {TilePos{45, 59}, TilePos{45, 58}}, Direction::NORTH), {
+        step("up_to_the_mines_sign", {{.direction = Direction::NORTH, .tiles = 3}}, "to_wall", TilePos{45, 57}),
+        route,
+        step("south_of_the_centers_door", {{.direction = Direction::SOUTH, .tiles = 1}}, "", std::nullopt),
+        step("against_the_walls_east_of_the_door", {{.direction = Direction::EAST, .tiles = 3}, {.direction = Direction::NORTH, .tiles = 1}},
+            "to_wall", TilePos{48, 21}),
+        step("below_the_centers_door_lined_up", {{.direction = Direction::WEST, .tiles = 1}}, "", TilePos{47, 21}),
+    }};
+}
+//  The table's 01.03 steps out of the mine, from where it has us on the
+//  city to below the Center's door.
+std::pair<Pokemon::Pose, std::vector<Pokemon::StoryStep>> table_steps_out_of_the_mine(){
+    std::vector<Pokemon::StoryStep> steps;
+    for (const Pokemon::StoryCheckpoint& checkpoint : story_checkpoints()){
+        bool on = false;
+        for (const Pokemon::StoryStep& step : checkpoint.steps){
+            on = checkpoint.id == "01.03" && (on || step.name == "off_the_mines_warp_tiles") && step.name != "heal_oreburgh";
+            if (on){
+                steps.push_back(step);
+            }
+        }
+    }
+    return {*story_step("01.03", "out_of_the_mine").pose_after, steps};
+}
+
+//  Why `steps`, walked on `sim` from where the player stands, the table
+//  having them on `pose`, with open legs overshooting, did not end on
+//  (47, 21) with the Center's door north; "" if they did.
+std::string center_miss(GridSim& sim, const std::pair<Pokemon::Pose, std::vector<Pokemon::StoryStep>>& steps, Logger& logger){
+    std::vector<std::string> notes;
+    OvershootingRouteIO route(sim, notes, {});
+    WallStepIO io(route, sim);
+    StoryWalkSteps walks(io);
+    walks.begin_attempt("01.03");
+    Pokemon::RunState state{.pose = steps.first, .flags = {}};
+    std::string ends;
+    try{
+        for (const Pokemon::StoryStep& step : steps.second){
+            const Pokemon::Outcome outcome = step.kind == Pokemon::StoryStepKind::ROUTE ? walks.route(state, step) : walks.legs(state, step);
+            ends += std::format(" {} {}", step.name, to_string(sim.player().pos));
+            if (!outcome.succeeded()){
+                return step.name + ": " + Pokemon::to_string(outcome);
+            }
+            state.pose = step.pose_after ? *step.pose_after : outcome.pose ? *outcome.pose : state.pose;
+        }
+    }catch (const GridSimFailure& error){
+        return error.message;
+    }
+    logger.log("   " + ends);
+    const StoryWorld& city = sim.world();
+    if (story_to_local(city, "OreburghCity", nearest_tile(sim.player().pos)) != TilePos{47, 21} || !on_grid(sim.player().pos)){
+        return std::format("ended at {}, not on (47, 21).", to_string(sim.player().pos));
+    }
+    return sim.hold(Direction::NORTH, 3000ms, SimPace::RUN).stop == SimStop::WARP ? "" : "no door north of (47, 21).";
+}
+
+//  lab-B 2026-11-08 (09:46, 10:39, 12:03): out of the mine, the walk north
+//  to the mine's sign never stopped on it, and the route after went up the
+//  wrong column; at 12:04 it ran through the Center's door. The coal room's
+//  warp lands us on the hall's column 12, which comes out on the city's
+//  (46, 59), east of the sign. Up the hall from there, or a column either
+//  side should the walk drift, and with a hold on a tile past the fade, the
+//  table's steps must end below the Center's door; the old steps must miss
+//  from column 12.
+class Test_MineExit : public UnitTest{
+public:
+    Test_MineExit()
+        : UnitTest("PokemonBDSP::AutoStory - Recovery walk: 01.03 out of the mine on the decomp's warps to below the Center's door")
+    {}
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        try{
+            for (int column : {12, 11, 13}){
+                for (int past : {0, 1}){
+                    for (bool old : {true, false}){
+                        const StoryWorld& room = *story_plan_world("OreburghMine", "OreburghMine");
+                        GridSim sim({.world = &room}, room.to_world("OreburghMine", {15, 2}), Direction::NORTH, true);
+                        const TilePos hall = warp_north(sim, "OreburghMine", {15, 2}).second;
+                        const TilePos out = warp_north(sim, "OreburghMineB1F", {column, hall.y}).second;
+                        if (past > 0){
+                            sim.tap(Direction::NORTH, route_ms_per_tile(Direction::NORTH, MoveSpeed::WALK), false);
+                        }
+                        const std::string miss = center_miss(sim, old ? old_steps_out_of_the_mine() : table_steps_out_of_the_mine(), logger);
+                        logger.log(std::format("{} steps, coal room to hall {}, up column {} to the city's {}{}: {}", old ? "Old" : "Table's",
+                            Pokemon::to_string(hall), column, Pokemon::to_string(out), past > 0 ? " and a tile on" : "", miss.empty() ? "below the door" : miss));
+                        if (old && column == 12 && past == 0 && miss.empty()){
+                            return "The old steps reached below the door from the decomp's exit: the test no longer shows the console's failure.";
+                        }
+                        if (!old && !miss.empty()){
+                            return std::format("01.03 out of the mine up the hall's column {}: {}", column, miss);
+                        }
+                    }
+                }
+            }
+        }catch (const GridSimFailure& error){
+            return error.message;
+        }
+        return true;
+    }
+};
+
 } // namespace
 
 void add_tests_AutoStory_RecoveryWalk(UnitTestDatabase& database){
@@ -267,6 +455,7 @@ void add_tests_AutoStory_RecoveryWalk(UnitTestDatabase& database){
     for (const CornerCase& scenario : CORNER_CASES){
         database.add<Test_RoarksCorner>(scenario);
     }
+    database.add<Test_MineExit>();
 }
 } // namespace PokemonBDSP
 } // namespace NintendoSwitch
