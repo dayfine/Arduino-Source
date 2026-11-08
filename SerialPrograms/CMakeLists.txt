@@ -26,6 +26,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 #set(CMAKE_VERBOSE_MAKEFILE ON)
 
+# Compile through ccache when it is installed. See cmake/Ccache.cmake for the options.
+include(cmake/Ccache.cmake)
+
 # Set these three on globally so all intermediate Qt targets can get processed automatically
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
@@ -63,6 +66,32 @@ find_package(Threads REQUIRED)
 # Define a toggle option (ON by default)
 option(COMMAND_LINE_EXE "Build the optional executable" ON)
 
+# Build SerialProgramsTests, which runs the unit tests without the GUI.
+option(TEST_RUNNER_EXE "Build the unit test executable, SerialProgramsTests" ON)
+# Build the _pa_core Python (pybind11) module; see Source/PythonBindings/README.md.
+# OFF by default because it needs a Python interpreter with development headers
+# and pybind11 (a system package or `pip install pybind11`).
+option(PA_PYTHON_BINDINGS "Build the _pa_core Python module (Switch controller)" OFF)
+
+# miniz is a third-party library compiled into every target that uses
+# CORE_LIBRARY_SOURCES (CoreLib in both build modes, SerialProgramsLib in the
+# full build): compile it with warnings off so its own code (and its header,
+# which it includes from its own directory, so no SYSTEM include directory can
+# shield it) can never trip -Werror / /WX, regardless of compiler or compiler
+# version. Must run before the PA_CORE_ONLY early return below; source
+# properties are global, so setting it once covers every target.
+if (MSVC)
+    set_source_files_properties(
+        ../3rdParty-Core/miniz-3.1.1/miniz.c
+        PROPERTIES COMPILE_OPTIONS "/W0"
+    )
+else()
+    set_source_files_properties(
+        ../3rdParty-Core/miniz-3.1.1/miniz.c
+        PROPERTIES COMPILE_OPTIONS "-w"
+    )
+endif()
+
 # Build only the GUI-free core: CoreLib and SerialProgramsCommandLine. This needs
 # no Qt, OpenCV, ONNX Runtime, Tesseract, DPP or Discord SDK, so none of them are
 # searched for.
@@ -83,6 +112,9 @@ if(PA_CORE_ONLY)
     include(cmake/CoreLib.cmake)
     if(COMMAND_LINE_EXE)
         include(Source/CommandLine/CommandLineExecutable.cmake)
+    endif()
+    if(PA_PYTHON_BINDINGS)
+        include(Source/PythonBindings/PythonBindings.cmake)
     endif()
     return()
 endif()
@@ -304,13 +336,6 @@ endfunction()
 apply_common_target_properties(SerialProgramsLib)
 apply_common_target_properties(SerialPrograms)
 
-if(MSVC)
-    set_source_files_properties("../3rdParty-Core/miniz-3.1.1/miniz.c" PROPERTIES COMPILE_FLAGS "/W0")
-else()
-    # For GCC/Clang
-    set_source_files_properties("../3rdParty-Core/miniz-3.1.1/miniz.c" PROPERTIES COMPILE_FLAGS "-w")
-endif()
-
 # REPO_ROOT_DIR: the root folder of the git repository, "Arduino-Source/"
 set(PACKAGES_DIR "${REPO_ROOT_DIR}/Packages")
 set(FIRMWARE_DIR "${PACKAGES_DIR}/Firmware")
@@ -355,6 +380,10 @@ if(NOT EXISTS "${DEST_DIR}/Scripts")
         COMMAND ${CMAKE_COMMAND} -E echo "[Deploy] Copying scripts"
         COMMAND ${CMAKE_COMMAND} -E copy_directory "${SCRIPTS_DIR}" "${DEST_DIR}/Scripts"
     )
+endif()
+
+if(TEST_RUNNER_EXE)
+    include(Source/Tests/TestRunnerExecutable.cmake)
 endif()
 
 if (WIN32)
@@ -918,3 +947,8 @@ else()
     set_target_properties(LabDeviceAccessTests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "$<TARGET_FILE_DIR:SerialPrograms>")
 endif()
 add_dependencies(SerialPrograms LabDeviceAccessTests)
+
+if(PA_PYTHON_BINDINGS)
+    # Python bindings (GUI-free) from subdirectory
+    include(Source/PythonBindings/PythonBindings.cmake)
+endif()
