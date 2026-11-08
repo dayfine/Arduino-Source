@@ -298,7 +298,7 @@ private:
             return {ChunkNext::STOP, WalkStop::DIALOG};
         }
         if (battle){
-            escape_battle("wild battle; running.");
+            escape_battle("wild battle; running.", BattleMovement::NONE);
             return {ChunkNext::NEXT_CHUNK, WalkStop::LIMIT};
         }
         if (ret == 3){
@@ -318,7 +318,7 @@ private:
             return {ChunkNext::STOP, WalkStop::DIALOG};
         }
         if (change > WALK_SCENE_CHANGE && battle_follows(m_stream, m_context)){
-            escape_battle("wild battle (leaf opening); running.");
+            escape_battle("wild battle (leaf opening); running.", BattleMovement::STEP_MOVED);
             return {ChunkNext::NEXT_CHUNK, WalkStop::LIMIT};
         }
         //  Two still chunks in a row, so one dropped frame does not stop us. A
@@ -358,9 +358,10 @@ private:
         return change < line;
     }
 
-    void escape_battle(const std::string& what){
+    enum class BattleMovement{ NONE, STEP_MOVED };
+    void escape_battle(const std::string& what, BattleMovement movement){
         m_result.wild_battles++;
-        if (m_chunks <= 1){
+        if (m_chunks <= 1 && movement == BattleMovement::NONE){
             m_result.origin = WalkOrigin::MAY_PRECEDE_LEG;
         }
         if (m_spec.input == WalkInput::TAPS){
@@ -399,6 +400,9 @@ private:
             if (!still_chunk(change)){
                 m_result.moved_chunks++;
             }
+        }
+        if (m_result.moved_chunks > 1){
+            m_result.origin = WalkOrigin::CURRENT_LEG;
         }
         m_stream.log("[Walk] " + m_spec.label + ": " + walk_stop_name(stop) + " after " +
             std::to_string(m_result.walked.count()) + "ms, " +
