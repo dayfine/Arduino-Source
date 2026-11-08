@@ -10,6 +10,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "Pokemon/Navigation/Pokemon_MapData.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_WallRecovery.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_PlannedRoute.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
@@ -159,6 +160,20 @@ Outcome StoryWalkSteps::tap_to_banner(const StoryStep& step){
 }
 
 namespace{
+Milliseconds door_timeout(const std::string& map_name, const Pose& pose, Direction direction, bool can_run){
+    try{
+        const Pokemon::MapData& map = story_map(map_name);
+        const auto tiles_list = Pokemon::tiles_of(pose);
+        if (!tiles_list.empty()){
+            const size_t tiles = Pokemon::tiles_to_door(map, tiles_list.front(), direction);
+            if (tiles > 0){
+                const Milliseconds per_tile = route_ms_per_tile(direction, can_run ? MoveSpeed::RUN : MoveSpeed::WALK);
+                return std::max(1500ms, ROUTE_START_DELAY + per_tile * (int64_t)tiles + 800ms);
+            }
+        }
+    }catch (...){}
+    return Milliseconds(12000);
+}
 enum class CountedEndPolicy{ EXACT, ONE_SHORT };
 std::vector<TilePos> counted_ends(const std::vector<TilePos>& starts, const Pokemon::StoryLeg& leg, CountedEndPolicy policy){
     std::vector<TilePos> ends;
@@ -273,15 +288,7 @@ Outcome StoryWalkSteps::step(RunState& state, const StoryStep& step){
     //  (r33 was outside, "no fade"). No separate turn tap first: at 1 tile
     //  from the door, a 50 ms turn tap can step in before run_into_door() watches.
     if (step.pose_after && step.pose_after->map != state.pose.map){
-        Milliseconds timeout(12000);
-        if (m_world.has(state.pose.map)){
-            const Pokemon::MapData& map = m_world.map(state.pose.map);
-            const size_t tiles = Pokemon::tiles_to_door(map, state.pose.pos, step.direction);
-            if (tiles > 0){
-                const Milliseconds per_tile = route_ms_per_tile(step.direction, m_can_run ? MoveSpeed::RUN : MoveSpeed::WALK);
-                timeout = std::max(1500ms, ROUTE_START_DELAY + per_tile * (int64_t)tiles + 800ms);
-            }
-        }
+        const Milliseconds timeout = door_timeout(state.pose.map, state.pose, step.direction, m_can_run);
         const bool faded = m_io.run_into_door(step.direction, m_can_run, timeout);
         log(std::format("[{}] {}: {} through the door (timeout {} ms): {}.", m_row, step.name, direction_name(step.direction), timeout.count(), faded ? "faded" : "no fade yet"));
         m_io.settle(BUTTON_B, label_of(step), !faded);
