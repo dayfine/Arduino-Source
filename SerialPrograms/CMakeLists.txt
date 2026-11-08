@@ -240,6 +240,9 @@ pa_pokesim_map_directory(BDSP_MAP_DIRECTORY bdsp "${POKESIM_CONSUMER}" "${POKESI
 file(RELATIVE_PATH BDSP_MAP_RESOURCES "${CMAKE_CURRENT_SOURCE_DIR}" "${BDSP_MAP_DIRECTORY}")
 pa_embed_text_files(SerialProgramsLib "${BDSP_MAP_RESOURCES}"
     PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h PokemonAutomation::NintendoSwitch::PokemonBDSP bdsp_map_json)
+pa_embed_text_files(SerialProgramsLib Source/PokemonBDSP/Programs/AutoStory/StoryData
+    PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryData.h PokemonAutomation::NintendoSwitch::PokemonBDSP bdsp_checkpoint_json)
+
 
 
 # Create binary target

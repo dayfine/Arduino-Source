@@ -1572,6 +1572,10 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Walk_Tests.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Segment00_Tests.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Segment00_Tests.h
+    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryData_Tests.cpp
+    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryData_Tests.h
+    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryData.cpp
+    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryData.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryTable.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryTable.h
     Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_StorySimulation_Tests.cpp
@@ -1722,7 +1726,8 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_MenuCursorDetector.cpp
     Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_MenuCursorDetector.h
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_CoordEvents.cpp
-    Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_CoordEvents.h    Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_CoordEvents.h
+    Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.cpp
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RoutePlanner.cpp
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RoutePlanner.h
