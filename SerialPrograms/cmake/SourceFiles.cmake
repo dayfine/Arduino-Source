@@ -1767,6 +1767,12 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/PokemonFRLG_Settings.h
     Source/VideoGames/PokemonFRLG/PokemonFRLG_Tests.cpp
     Source/VideoGames/PokemonFRLG/PokemonFRLG_Tests.h
+    Source/VideoGames/PokemonFRLG/Programs/BoxOrganization/PokemonFRLG_BoxOrganization.cpp
+    Source/VideoGames/PokemonFRLG/Programs/BoxOrganization/PokemonFRLG_BoxOrganization.h
+    Source/VideoGames/PokemonFRLG/Programs/BoxOrganization/PokemonFRLG_BoxSorter.cpp
+    Source/VideoGames/PokemonFRLG/Programs/BoxOrganization/PokemonFRLG_BoxSorter.h
+    Source/VideoGames/PokemonFRLG/Programs/BoxOrganization/PokemonFRLG_BoxSorterLivingDex.cpp
+    Source/VideoGames/PokemonFRLG/Programs/BoxOrganization/PokemonFRLG_BoxSorterLivingDex.h
     Source/VideoGames/PokemonFRLG/Programs/Farming/PokemonFRLG_EliteFourFarmer.cpp
     Source/VideoGames/PokemonFRLG/Programs/Farming/PokemonFRLG_EliteFourFarmer.h
     Source/VideoGames/PokemonFRLG/Programs/Farming/PokemonFRLG_EvTrainer.cpp
@@ -1887,6 +1893,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonHome/Programs/PokemonHome_BoxSorter.h
     Source/VideoGames/PokemonHome/Programs/PokemonHome_BoxSorterLivingDex.cpp
     Source/VideoGames/PokemonHome/Programs/PokemonHome_BoxSorterLivingDex.h
+    Source/VideoGames/PokemonHome/Programs/PokemonHome_BoxSorterLivingDex_Tests.cpp
+    Source/VideoGames/PokemonHome/Programs/PokemonHome_BoxSorterLivingDex_Tests.h
     Source/VideoGames/PokemonHome/Programs/PokemonHome_GenerateNameOCR.cpp
     Source/VideoGames/PokemonHome/Programs/PokemonHome_GenerateNameOCR.h
     Source/VideoGames/PokemonHome/Programs/PokemonHome_PageSwap.cpp
@@ -2643,6 +2651,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonSV/Programs/Farming/PokemonSV_AuctionFarmer.h
     Source/VideoGames/PokemonSV/Programs/Farming/PokemonSV_BBQSoloFarmer.cpp
     Source/VideoGames/PokemonSV/Programs/Farming/PokemonSV_BBQSoloFarmer.h
+    Source/VideoGames/PokemonSV/Programs/Farming/PokemonSV_BBQTests.cpp
+    Source/VideoGames/PokemonSV/Programs/Farming/PokemonSV_BBQTests.h
     Source/VideoGames/PokemonSV/Programs/Farming/PokemonSV_BlueberryCatchPhoto.cpp
     Source/VideoGames/PokemonSV/Programs/Farming/PokemonSV_BlueberryCatchPhoto.h
     Source/VideoGames/PokemonSV/Programs/Farming/PokemonSV_BlueberryQuests.cpp
@@ -2874,6 +2884,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonSwSh/MaxLair/Framework/PokemonSwSh_MaxLair_Notifications.h
     Source/VideoGames/PokemonSwSh/MaxLair/Framework/PokemonSwSh_MaxLair_State.cpp
     Source/VideoGames/PokemonSwSh/MaxLair/Framework/PokemonSwSh_MaxLair_State.h
+    Source/VideoGames/PokemonSwSh/MaxLair/Framework/PokemonSwSh_MaxLair_State_Tests.cpp
+    Source/VideoGames/PokemonSwSh/MaxLair/Framework/PokemonSwSh_MaxLair_State_Tests.h
     Source/VideoGames/PokemonSwSh/MaxLair/Framework/PokemonSwSh_MaxLair_StateMachine.cpp
     Source/VideoGames/PokemonSwSh/MaxLair/Framework/PokemonSwSh_MaxLair_StateMachine.h
     Source/VideoGames/PokemonSwSh/MaxLair/Framework/PokemonSwSh_MaxLair_StateTracker.cpp
