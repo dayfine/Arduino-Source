@@ -1,32 +1,23 @@
-# FRLG checkpoint JSON pilot
+# FRLG authored checkpoint pilot
 
-`frlg-parcel-00.05.json` describes checkpoint `00.05` (Oak’s Parcel). It is a capture of the native table, using `pokesim-native-checkpoint-export/1`, including its FRLG extension fields. `source_revision` records the original capture revision; it is not the revision currently being tested.
+`frlg-parcel-00.05.plan.json` is the production definition of checkpoint `00.05`. The story table loads it with `load_authored_checkpoint()`: there is no second C++ Parcel event list. Its `pokesim-authored-checkpoint/1` contract contains the common checkpoint plus FRLG executor configuration (`execution.menu`). It has no export revision, bookkeeping snapshot, or claimed observation.
 
-The current C++ story table remains the production source of truth. This pilot adds a strict reader and two native checks:
+The same file is checked into PokemonSimulation at `data/story/parcel-pilot/frlg-parcel-00.05.plan.json`; the paired CI check compares its exact bytes and runs the existing seven replay scenarios there. The schema is `schemas/authored-checkpoint.schema.json`, referencing `story-checkpoint.schema.json`.
 
-1. **Data equivalence:** parse the JSON into `StoryCheckpoint`, export it again, and compare it with the current compiled table’s `00.05` row. Both the portable events and serialized FRLG fields must match. A changed table with stale JSON fails this check.
-2. **Execution equivalence:** build both rows through the same story engine and run both through the existing fake-game simulator. Compare the event description, execution trace, engine log and saved position.
+## The two gates
 
-Read `check_loaded()` in `PokemonFRLG_AutoStoryExport_Tests.cpp` and `test_data_row_parity()` in `PokemonFRLG_AutoStorySimulation_Tests.cpp` for these assertions. Run the registered native tests through the repository’s normal command-line test mode; CI runs them on Linux, Windows and macOS. No console is needed.
+1. Native tests load the actual table entry through JSON, run the existing engine/fake-game simulator, and compare its events/trace/save pose with the captured pre-migration checkpoint. Existing full-story progression tests also use the JSON-backed table entry. Unsupported fields/menu values and malformed common actions are rejected.
+2. PokemonSimulation loads the same authored file with explicit map/action bindings and scripted evidence, then asserts the seven scenarios, including the full successful semantic action sequence and interruption/failure cases. It does not import the native supplies snapshot as requirements.
 
-This checks equality of the **serialized contract** and execution under the fake-game model. It does not validate real controller timing, detectors, scene internals, live state, or fields the exporter does not serialize. It does not switch the production executor to JSON or establish a general format for every game.
+`frlg-parcel-00.05.json` is the old table-export fixture used for migration regression checks only. Its provenance and snapshot fields are not part of the authored plan. It can be removed once the native expectations are independent of the capture.
 
-## Migration
+## Semantics
 
-Once production loads the checkpoint from data, remove its duplicate C++ row and the table-equivalence assertion. Keep the strict reader, malformed-input tests, and tests of expected actions and outcomes. Retain the exporter only while other C++ rows need conversion.
+- Checkpoint fields are ordered `id`, `title`, `start`, `events`; each event has an expanded block beginning with `id`, `kind`.
+- `start` is the assumed checkpoint/save pose, not a localization observation.
+- `declared_after` preserves the current scene executor’s author-declared arrival fallback. It is not independent evidence of position or Parcel receipt. Real door/scene verification remains a separate executor change.
+- `execution.menu` configures the existing FRLG save implementation. Inventory, party and battle bookkeeping keep their existing native initialization; they are neither asserted preconditions nor observations.
+- This first contract makes no new inventory/party requirements. Add explicit requirements only when an action depends on them, with supported verification/assumption semantics on both sides. Relevant prior progress is not proof of a complete execution history.
+- The simulator’s map pins, scene evidence and stop/no-save policy live in the binding and cases, not in the authored checkpoint. Python replay is a model check; native fake-game execution checks integration, not live timing/detector correctness.
 
-The cross-repository route replay diagnostic is a separate follow-up. Its Python route candidates and scripted observations are not required to load this JSON or check it against the table.
-
-## Field meanings and authoring direction
-
-Checkpoint fields are ordered `id`, `title`, `start`, `events`; each event is an expanded block beginning with `id`, `kind`. Keep coordinate pairs and short pose fields compact. JSON object order is presentation only.
-
-- `declared_after`: the author-declared pose after an event. It is a fallback/expectation, not evidence of the actual map, tile or facing. The current scene executor advances dialogue until the overworld returns; it does not independently localize the player or verify the Parcel receipt.
-- `status: native-table-export`: this document was exported from a compiled story table. It does not claim the checkpoint ran or succeeded.
-- `state_basis: native-table-bookkeeping`: the saved values are authored/in-memory bookkeeping, not observed entry state. Defaults such as `level: 0` or `hp_fill: 1` must not become requirements merely because they were exported.
-- `format: pokesim-native-checkpoint-export/1`: selects the versioned export contract. Its JSON Schema lives in [PokemonSimulation](https://github.com/dayfine/PokemonSimulation/blob/main/schemas/native-checkpoint-export.schema.json); its shared checkpoint structure is [story-checkpoint.schema.json](https://github.com/dayfine/PokemonSimulation/blob/main/schemas/story-checkpoint.schema.json). The native reader separately enforces its supported contract.
-- `native_fields`: FRLG extensions outside the common checkpoint events/poses. This pilot retains the full serialized menu/supplies snapshot for comparison with the C++ table. It is not a list of verified preconditions, nor a checksum proving that earlier checkpoints ran.
-
-For data-authored checkpoints, separate **requirements** (only state this checkpoint depends on), **effects/expected exit state** (what it should change), **runtime state** (inventory, party, observations), and **export provenance**. Entry requirements summarize the relevant consequences of previous progress; unrelated counters, default values and transient battle bookkeeping should not be copied into every checkpoint. A later checkpoint must verify its requirements or explicitly declare an assumption, including when starting from a save or returning from a handoff.
-
-This PR preserves the export contract for equivalence testing. A lean executable-plan contract and its required observation/executor bindings are a separate migration step; simply deleting snapshot fields would weaken the comparison.
+No console is required for either gate.
