@@ -31,6 +31,6 @@ struct AutoStoryStats : public StatsTracker{
 };
 
 
-}
-}
+} // namespace Pokemon
+} // namespace PokemonAutomation
 #endif
