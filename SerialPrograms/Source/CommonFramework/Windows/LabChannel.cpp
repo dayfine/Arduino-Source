@@ -6,7 +6,10 @@
 
 #include <exception>
 #include <sstream>
+#include <QApplication>
 #include <QCoreApplication>
+#include <QMessageBox>
+#include <QPushButton>
 #include "Common/Cpp/Color.h"
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/ScopeExit.h"
@@ -317,10 +320,10 @@ std::string LabChannel::run_line(const LabRequest& request, const LabRequestLine
             "  owner claim TOKEN | owner release   (then start with a line \"owner TOKEN\")\n"
             "  select GAME:PROGRAM\n"
             "  set OPTION_KEY JSON\n"
-            "  start | stop\n"
+            "  start [SECONDS] | stop   (start waits up to SECONDS, default 30, for the controller)\n"
             "  state\n"
             "  keepawake on|off [seconds]\n"
-            "  help\n";
+            "  popups [close]   (the app's message boxes; close presses their default button)\n  help\n";
         m_console->help(output.out);
         return "";
     }
@@ -336,7 +339,7 @@ std::string LabChannel::run_line(const LabRequest& request, const LabRequestLine
             return error;
         }
     }
-    if (command == "select" || command == "set" || command == "start" || command == "stop"){
+    if (command == "select" || command == "set" || command == "start" || command == "stop" || command == "popups"){
         return run_ui_command(line, output.out);
     }
     if (command == "keepawake"){
@@ -401,6 +404,9 @@ std::string LabChannel::run_on_console(const std::function<void(PanelSession& pa
 std::string LabChannel::run_ui_command(const LabRequestLine& line, std::ostream& out){
     const std::vector<std::string>& words = line.words;
     const std::string& command = words[0];
+    if (command == "popups"){
+        return run_popups(words, out);
+    }
     if (command == "select"){
         if (words.size() < 2){
             return "select: expected select GAME:PROGRAM";
@@ -432,15 +438,82 @@ std::string LabChannel::run_ui_command(const LabRequestLine& line, std::ostream&
         }
         return error;
     }
-    const bool start = command == "start";
+    if (command == "start"){
+        return run_start(words);
+    }
     return run_on_ui([&]{
-        return start_or_stop(m_callbacks.current_panel(), start);
+        return start_or_stop(m_callbacks.current_panel(), false);
+    });
+}
+
+//  "start [SECONDS]": waits for the controller, then starts. The wait runs
+//  here on the worker, so the window stays responsive while it reconnects.
+std::string LabChannel::run_start(const std::vector<std::string>& words){
+    Seconds timeout = CONTROLLER_WAIT_DEFAULT;
+    if (words.size() > 2){
+        return "start: expected start [SECONDS]";
+    }
+    if (words.size() == 2){
+        const std::optional<Seconds> seconds = parse_seconds(words[1]);
+        if (!seconds){
+            return "start: seconds must be a whole number of at least 1, got " + words[1];
+        }
+        timeout = *seconds;
+    }
+    const std::string error = wait_for_controller(
+        [this]{
+            std::lock_guard<Mutex> lg(m_panel_lock);
+            return read_controller_status();
+        },
+        [this](Milliseconds slice){
+            std::unique_lock<Mutex> lg(m_idle_lock);
+            m_idle_cv.wait_for(lg, slice);
+            return !m_stopping.load(std::memory_order_acquire);
+        },
+        timeout, POLL_INTERVAL
+    );
+    if (!error.empty()){
+        return error;
+    }
+    return run_on_ui([&]{
+        return start_or_stop(m_callbacks.current_panel(), true);
     });
 }
 
 //  Runs `body` on the UI thread and returns what it returns: "" or an error.
 //  Gives up with an error if the app is closing, since the UI thread would
 //  never run it.
+//  A failed program leaves a modal "Error" box, and nothing at the
+//  keyboard closes it on a lab console. "popups" lists the app's open
+//  message boxes; "popups close" presses each one's default button.
+std::string LabChannel::run_popups(const std::vector<std::string>& words, std::ostream& out){
+    const bool close = words.size() >= 2 && words[1] == "close";
+    if (words.size() > 2 || (words.size() == 2 && !close)){
+        return "popups: expected popups, or popups close";
+    }
+    return run_on_ui([&]{
+        size_t count = 0;
+        for (QWidget* widget : QApplication::topLevelWidgets()){
+            QMessageBox* box = qobject_cast<QMessageBox*>(widget);
+            if (box == nullptr || !box->isVisible()){
+                continue;
+            }
+            count++;
+            out << "popup: " << box->windowTitle().toStdString() << ": " << box->text().toStdString() << "\n";
+            if (close){
+                QPushButton* button = box->defaultButton();
+                if (button != nullptr){
+                    button->click();
+                }else{
+                    box->done(0);
+                }
+            }
+        }
+        out << count << (close ? " closed" : " open") << "\n";
+        return std::string();
+    });
+}
+
 std::string LabChannel::run_on_ui(const std::function<std::string()>& body){
     struct Call{
         Mutex lock;
@@ -510,11 +583,16 @@ void LabChannel::read_program_state(std::string& state, std::string& program, bo
     running = current != ProgramState::STOPPED;
 }
 
+std::string LabChannel::read_controller_status(){
+    return m_panel == nullptr ? "" : m_console->controller_status(*m_panel);
+}
+
 void LabChannel::write_state(){
     {
         std::lock_guard<Mutex> lg(m_panel_lock);
         bool running;
         read_program_state(m_state.state, m_state.program, running);
+        m_state.controller = read_controller_status();
     }
     m_state.owner = m_owner.token();
     std::string text = lab_state_text(m_state);
