@@ -44,6 +44,29 @@ bool permitted(const LabDevicePolicy& policy, const LabDeviceIdentity& device){
     return false;
 }
 
+//  Capture IDs are allowlisted as hex; show the readable ID beside it so a
+//  refusal names the device the settings selected.
+std::string readable_capture_id(const std::string& hex){
+    const bool is_hex = hex.size() % 2 == 0 && std::ranges::all_of(hex, [](char c){
+        return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f');
+    });
+    if (!is_hex){
+        return hex;
+    }
+    const QByteArray bytes = QByteArray::fromHex(QByteArray(hex.data(), (qsizetype)hex.size()));
+    return bytes.toStdString() + " (allowlist ID " + hex + ")";
+}
+
+std::string describe(const LabDeviceIdentity& device){
+    switch (device.kind){
+    case LabDeviceKind::SERIAL: return "Serial device " + device.id;
+    case LabDeviceKind::VIDEO: return "Video input " + readable_capture_id(device.id);
+    case LabDeviceKind::AUDIO: return "Audio input " + readable_capture_id(device.id);
+    case LabDeviceKind::PROFILE: return "Profile " + device.id;
+    }
+    return device.id;
+}
+
 std::string normalize_serial_path(std::string_view path){
     if (path.starts_with("/dev/tty.")){
         return "/dev/cu." + std::string(path.substr(9));
@@ -119,7 +142,7 @@ std::unique_ptr<LabDeviceLease> acquire_lab_device(
     const LabDevicePolicy& policy, std::string_view directory, const LabDeviceIdentity& device
 ){
     if (!permitted(policy, device)){
-        throw std::runtime_error("Device is not allowlisted for profile " + policy.profile + ". Nothing was opened.");
+        throw std::runtime_error(describe(device) + " is not allowlisted for profile " + policy.profile + ". Nothing was opened.");
     }
     if (!QDir().mkpath(text(directory))){
         throw std::runtime_error("Cannot create shared device lease directory. Nothing was opened.");
