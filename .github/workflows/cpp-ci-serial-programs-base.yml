@@ -88,6 +88,14 @@ jobs:
           ref: 'master'
           path: 'Arduino-Source/Packages'
 
+      - name: Prepare pinned BDSP map resources
+        id: map-resources
+        uses: dayfine/PokemonSimulation/integrations/arduino-source/verify-map-packs@4de7742a764d27293b4525d6ad2a6fc8a95f3e3a
+        with:
+          layout: resources
+          operation: prepare
+          consumer-directory: Arduino-Source
+
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
@@ -204,6 +212,8 @@ jobs:
           # every file missed, compiling took 10-40% longer than before on Linux and macOS, and
           # about twice as long on Windows.
           CCACHE_DEPEND: 1
+          POKESIM_TOOLS_SOURCE: ${{ steps.map-resources.outputs.tools-source }}
+          POKESIM_SOURCE_CACHE: ${{ steps.map-resources.outputs.source-cache }}
         run: |
           cd Arduino-Source/SerialPrograms
           mkdir bin
