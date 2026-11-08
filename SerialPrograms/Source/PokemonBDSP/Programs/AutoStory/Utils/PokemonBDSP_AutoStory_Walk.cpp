@@ -237,6 +237,7 @@ public:
             }
             const Milliseconds chunk = std::min(CHUNK, m_spec.limit - m_result.walked);
             const int ret = hold(chunk);
+            m_chunks++;
             m_result.walked += chunk;
             ChunkVerdict verdict = after_watchers(ret);
             if (verdict.next == ChunkNext::LOOK){
@@ -334,6 +335,8 @@ private:
             //  while the president walked off (r67: "east 2 moved 1", and
             //  the console showed both tiles walked).
             m_result.moved_chunks += 1 + (m_spec.input == WalkInput::TAPS ? m_unchanged : 0);
+        }else if (m_unchanged == 0){
+            m_before_still = m_before;
         }
         m_unchanged = still ? m_unchanged + 1 : 0;
         if (m_unchanged >= 2){
@@ -357,6 +360,14 @@ private:
 
     void escape_battle(const std::string& what){
         m_result.wild_battles++;
+        if (m_chunks <= 1){
+            m_result.origin = WalkOrigin::MAY_PRECEDE_LEG;
+        }
+        if (m_spec.input == WalkInput::TAPS){
+            //  Preserve the reporting credit; callers must carry uncertain
+            //  pose after an encounter rather than infer a completed tile.
+            m_result.moved_chunks++;
+        }
         m_stream.log("[Walk] " + m_spec.label + ": " + what);
         m_escape(m_stream, m_context);
         m_context.wait_for_all_requests();
@@ -366,13 +377,30 @@ private:
 
     WalkResult finish(WalkStop stop){
         m_result.stop = stop;
+        bool late_battle = false;
         if (m_spec.wild == WildPolicy::RUN_FROM && (stop == WalkStop::LIMIT || stop == WalkStop::BLOCKED) &&
             run_from_late_encounter(m_stream, m_context, m_escape, m_spec.label)
         ){
             m_result.wild_battles++;
+            late_battle = true;
+            m_result.origin = WalkOrigin::MAY_PRECEDE_LEG;
+        }
+        //  When the final tap of a TAPS leg lagged during frame drops at its
+        //  800ms check (m_unchanged == 1 at WalkStop::LIMIT), it finishes
+        //  scrolling during the 1200ms late-encounter wait (r4: away_from_barry
+        //  "north 2 moved 1" while console arrived at (14, 16)).
+        if (!late_battle && m_spec.input == WalkInput::TAPS && stop == WalkStop::LIMIT &&
+            m_unchanged == 1 && m_before_still
+        ){
+            VideoSnapshot after = snapshot_or_fail(m_stream, m_spec.label);
+            const double change = walk_screen_change(*m_before_still.frame, *after.frame);
+            if (!still_chunk(change)){
+                m_result.moved_chunks++;
+            }
         }
         m_stream.log("[Walk] " + m_spec.label + ": " + walk_stop_name(stop) + " after " +
             std::to_string(m_result.walked.count()) + "ms, " +
+            std::to_string(m_result.moved_chunks) + " moved chunks, " +
             std::to_string(m_result.wild_battles) + " wild battle(s).");
         return m_result;
     }
@@ -384,7 +412,9 @@ private:
     const DpadPosition m_dpad;
     WalkResult m_result{WalkStop::LIMIT, 0ms, 0};
     VideoSnapshot m_before;
+    VideoSnapshot m_before_still;
     size_t m_unchanged = 0;
+    size_t m_chunks = 0;
     double m_largest = 0;
 };
 
