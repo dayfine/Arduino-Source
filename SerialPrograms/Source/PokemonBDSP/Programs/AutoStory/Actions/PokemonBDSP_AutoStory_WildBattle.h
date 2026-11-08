@@ -35,8 +35,10 @@ void battle_1_pokemon(VideoStream& stream, ProControllerContext& context);
 void catch_1_pokemon(VideoStream& stream, ProControllerContext& context);
 
 //  Leaves the wild battle on screen as `policy` says: Run on the battle menu
-//  until the exit's black screen shows. Fails with a screenshot once the
-//  policy gives up and the main menu does not prove the overworld either.
+//  until the exit's black screen shows, or, once the game has refused the
+//  escape `policy.run_refusals` times (a trapping move), fights it to its end
+//  with the best move. Fails with a screenshot once the policy gives up and
+//  the main menu does not prove the overworld either.
 void escape_wild_battle(
     VideoStream& stream,
     ProControllerContext& context,

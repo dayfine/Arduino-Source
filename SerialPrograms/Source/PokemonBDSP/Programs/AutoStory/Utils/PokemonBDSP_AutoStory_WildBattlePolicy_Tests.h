@@ -16,7 +16,8 @@ namespace PokemonBDSP{
 
 
 //  The escape policy's decisions (PokemonBDSP_AutoStory_WildBattlePolicy.h)
-//  on scripted Run outcomes: when it escapes, and when it gives up.
+//  on scripted Run outcomes: when it escapes, when it fights a battle the
+//  game will not let it leave, and when it gives up.
 void add_tests_AutoStory_WildBattlePolicy(UnitTestDatabase& database);
 
 

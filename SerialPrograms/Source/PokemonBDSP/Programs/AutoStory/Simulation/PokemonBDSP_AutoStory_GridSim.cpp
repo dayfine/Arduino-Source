@@ -395,6 +395,9 @@ public:
         m_refusals_left--;
         return WildRunOutcome::TRAPPED;
     }
+    virtual void fight() override{
+        m_notes.push_back("[Sim escape] Fought with the best move until the battle ended.");
+    }
     virtual void note(const std::string& text) override{
         m_notes.push_back("[Sim escape] " + text);
     }
@@ -424,7 +427,8 @@ void GridSimRouteIO::escape_scripted_battle(const SimWildBattle& battle, const s
     if (result == WildEscapeResult::UNCONFIRMED){
         note(std::format("escape_wild_battle: {}: the Run attempts ran out without the exit.", label), RouteNote::FAILURE);
     }
-    m_notes.push_back(std::format("[Sim] {}: wild battle run from.", label));
+    const char* ended = result == WildEscapeResult::FOUGHT ? "fought to its end" : "run from";
+    m_notes.push_back(std::format("[Sim] {}: wild battle {}.", label, ended));
 }
 
 WalkResult GridSimRouteIO::walk_to_wall(const RouteWallWalk& walk){

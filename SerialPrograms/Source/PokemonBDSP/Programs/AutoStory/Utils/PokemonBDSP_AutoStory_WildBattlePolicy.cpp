@@ -22,6 +22,11 @@ WildEscapeResult escape_wild_battle(WildBattleEscapeActions& actions, const Wild
         case WildRunOutcome::TRAPPED:
             refusals++;
             actions.note(std::format("The game refused the escape ({} so far).", refusals));
+            if (refusals >= policy.run_refusals && policy.fallback == TrappedFallback::FIGHT){
+                actions.note("Trapped: fighting the battle to its end instead.");
+                actions.fight();
+                return WildEscapeResult::FOUGHT;
+            }
             break;
         case WildRunOutcome::UNCERTAIN:
             break;

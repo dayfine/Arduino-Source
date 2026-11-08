@@ -220,6 +220,9 @@ public:
     {}
 
     virtual WildRunOutcome run() override;
+    virtual void fight() override{
+        fight_wild_battle(m_stream, m_context, "Mine escape");
+    }
     virtual void note(const std::string& text) override{
         m_stream.log("[Mine escape] " + text);
     }
@@ -432,6 +435,10 @@ void escape_wild_battle(VideoStream& stream,
     const WildBattleEscapePolicy& policy){
     ConsoleWildBattleEscape actions(stream, context, battle_type);
     WildEscapeResult result = escape_wild_battle(actions, policy);
+    if (result == WildEscapeResult::FOUGHT){
+        // fight_wild_battle() ended on the overworld.
+        return;
+    }
     if (result == WildEscapeResult::UNCONFIRMED && actions.exit_within(10s)){
         result = WildEscapeResult::ESCAPED;
     }
