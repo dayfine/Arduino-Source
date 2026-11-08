@@ -19,7 +19,7 @@ struct WireInput{
     std::string_view json;
 };
 struct WireExpectation{
-    std::string_view canonical;
+    std::string_view canonical = {};
     bool rejected = false;
 };
 struct WireCase{
