@@ -398,44 +398,63 @@ std::string center_miss(GridSim& sim, const std::pair<Pokemon::Pose, std::vector
 //  warp lands us on the hall's column 12, which comes out on the city's
 //  (46, 59), east of the sign. Up the hall from there, or a column either
 //  side should the walk drift, and with a hold on a tile past the fade, the
-//  table's steps must end below the Center's door; the old steps must miss
-//  from column 12.
+//  table's steps must end below the Center's door; the old steps miss from
+//  column 12.
+struct MineExitInput{
+    std::string name;
+    int hall_column = 12;
+    bool past_the_fade = false;
+    bool old_steps = false;
+};
+struct MineExitExpectation{
+    bool below_the_door = true;
+};
+struct MineExitCase{
+    MineExitInput input;
+    MineExitExpectation expectation;
+};
 class Test_MineExit : public UnitTest{
 public:
-    Test_MineExit()
-        : UnitTest("PokemonBDSP::AutoStory - Recovery walk: 01.03 out of the mine on the decomp's warps to below the Center's door")
+    explicit Test_MineExit(MineExitCase data)
+        : UnitTest("PokemonBDSP::AutoStory - Recovery walk: 01.03 out of the mine on the decomp's warps, " + data.input.name)
+        , m_case(std::move(data))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        std::string miss;
         try{
-            for (int column : {12, 11, 13}){
-                for (int past : {0, 1}){
-                    for (bool old : {true, false}){
-                        const StoryWorld& room = *story_plan_world("OreburghMine", "OreburghMine");
-                        GridSim sim({.world = &room}, story_to_world(room, "OreburghMine", {15, 2}), Direction::NORTH, true);
-                        const TilePos hall = warp_north(sim, "OreburghMine", {15, 2}).second;
-                        const TilePos out = warp_north(sim, "OreburghMineB1F", {column, hall.y}).second;
-                        if (past > 0){
-                            sim.tap(Direction::NORTH, route_ms_per_tile(Direction::NORTH, MoveSpeed::WALK), false);
-                        }
-                        const std::string miss = center_miss(sim, old ? old_steps_out_of_the_mine() : table_steps_out_of_the_mine(), logger);
-                        logger.log(std::format("{} steps, coal room to hall {}, up column {} to the city's {}{}: {}", old ? "Old" : "Table's",
-                            Pokemon::to_string(hall), column, Pokemon::to_string(out), past > 0 ? " and a tile on" : "", miss.empty() ? "below the door" : miss));
-                        if (old && column == 12 && past == 0 && miss.empty()){
-                            return "The old steps reached below the door from the decomp's exit: the test no longer shows the console's failure.";
-                        }
-                        if (!old && !miss.empty()){
-                            return std::format("01.03 out of the mine up the hall's column {}: {}", column, miss);
-                        }
-                    }
-                }
+            const StoryWorld& room = *story_plan_world("OreburghMine", "OreburghMine");
+            GridSim sim({.world = &room}, story_to_world(room, "OreburghMine", {15, 2}), Direction::NORTH, true);
+            const TilePos hall = warp_north(sim, "OreburghMine", {15, 2}).second;
+            const TilePos out = warp_north(sim, "OreburghMineB1F", {m_case.input.hall_column, hall.y}).second;
+            if (m_case.input.past_the_fade){
+                sim.tap(Direction::NORTH, route_ms_per_tile(Direction::NORTH, MoveSpeed::WALK), false);
             }
+            miss = center_miss(sim, m_case.input.old_steps ? old_steps_out_of_the_mine() : table_steps_out_of_the_mine(), logger);
+            logger.log(std::format("Coal room to the hall's {}, up column {} to the city's {}: {}", Pokemon::to_string(hall),
+                m_case.input.hall_column, Pokemon::to_string(out), miss.empty() ? "below the door" : miss));
         }catch (const GridSimFailure& error){
-            return error.message;
+            miss = error.message;
         }catch (const Exception& error){
-            return std::string(error.name()) + ": " + error.message();
+            miss = std::string(error.name()) + ": " + error.message();
+        }
+        if (miss.empty() != m_case.expectation.below_the_door){
+            return miss.empty() ? "Reached below the door: the test no longer shows the console's failure." : miss;
         }
         return true;
     }
+private:
+    MineExitCase m_case;
+};
+
+const MineExitCase MINE_EXIT_CASES[] = {
+    {.input = {.name = "old steps from the hall's column 12", .hall_column = 12, .old_steps = true}, .expectation = {.below_the_door = false}},
+    {.input = {.name = "old steps from the hall's column 13", .hall_column = 13, .old_steps = true}, .expectation = {.below_the_door = false}},
+    {.input = {.name = "from the hall's column 12", .hall_column = 12}, .expectation = {}},
+    {.input = {.name = "from the hall's column 11", .hall_column = 11}, .expectation = {}},
+    {.input = {.name = "from the hall's column 13", .hall_column = 13}, .expectation = {}},
+    {.input = {.name = "from the hall's column 12, a tile past the fade", .hall_column = 12, .past_the_fade = true}, .expectation = {}},
+    {.input = {.name = "from the hall's column 11, a tile past the fade", .hall_column = 11, .past_the_fade = true}, .expectation = {}},
+    {.input = {.name = "from the hall's column 13, a tile past the fade", .hall_column = 13, .past_the_fade = true}, .expectation = {}},
 };
 
 } // namespace
@@ -458,7 +477,9 @@ void add_tests_AutoStory_RecoveryWalk(UnitTestDatabase& database){
     for (const CornerCase& scenario : CORNER_CASES){
         database.add<Test_RoarksCorner>(scenario);
     }
-    database.add<Test_MineExit>();
+    for (const MineExitCase& scenario : MINE_EXIT_CASES){
+        database.add<Test_MineExit>(scenario);
+    }
 }
 } // namespace PokemonBDSP
 } // namespace NintendoSwitch
