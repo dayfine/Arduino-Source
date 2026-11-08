@@ -195,14 +195,33 @@ struct SimWildTap{
     WalkOrigin origin = WalkOrigin::CURRENT_LEG;
 };
 
+//  A scripted wild battle, as the escape policy's game steps see it: how
+//  many Run presses the game refuses ("Can't escape!": Bind, Wrap) before
+//  one works. Not a model of the battle itself.
+struct SimWildBattle{
+    size_t run_refusals = 0;
+};
+//  A wild battle that interrupts the walk to a wall (walk_to_wall()) with
+//  this label toward this direction, once; the hold goes on to the wall
+//  after it, as the console's does.
+struct SimWallEncounter{
+    std::string label;
+    Pokemon::Direction direction = Pokemon::Direction::NORTH;
+    SimWildBattle battle;
+};
+
 //  The walker's RouteIO on a GridSim. A failure throws GridSimFailure.
 class GridSimRouteIO : public RouteIO{
 public:
     //  Every line noted goes to `notes`, which must outlive this.
-    GridSimRouteIO(GridSim& sim, std::vector<std::string>& notes, std::vector<SimWildTap> encounters = {})
+    GridSimRouteIO(
+        GridSim& sim, std::vector<std::string>& notes,
+        std::vector<SimWildTap> encounters = {}, std::vector<SimWallEncounter> wall_encounters = {}
+    )
         : m_sim(sim)
         , m_notes(notes)
         , m_encounters(std::move(encounters))
+        , m_wall_encounters(std::move(wall_encounters))
     {}
 
     virtual WalkResult walk_to_wall(const RouteWallWalk& walk) override;
@@ -215,10 +234,15 @@ public:
 
 private:
     std::optional<SimWildTap> take_encounter(Pokemon::Direction direction, size_t tiles, size_t tap, const std::string& label);
+    std::optional<SimWallEncounter> take_wall_encounter(const RouteWallWalk& walk);
+    //  The escape policy on `battle`; notes a FAILURE where the console
+    //  would fail the program.
+    void escape_scripted_battle(const SimWildBattle& battle, const std::string& label);
 
     GridSim& m_sim;
     std::vector<std::string>& m_notes;
     std::vector<SimWildTap> m_encounters;
+    std::vector<SimWallEncounter> m_wall_encounters;
 };
 
 //  What GridSimRouteIO throws for RouteNote::FAILURE.

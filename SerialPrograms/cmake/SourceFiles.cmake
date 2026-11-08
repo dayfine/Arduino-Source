@@ -1590,6 +1590,10 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Walk.cpp
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Walk.h
+    Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WildBattlePolicy.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WildBattlePolicy.h
+    Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WildBattlePolicy_Tests.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WildBattlePolicy_Tests.h
     Source/PokemonBDSP/Inference/Battles/PokemonBDSP_BattleBallReader.cpp
     Source/PokemonBDSP/Inference/Battles/PokemonBDSP_BattleBallReader.h
     Source/PokemonBDSP/Inference/Battles/PokemonBDSP_BattleMenuDetector.cpp

@@ -13,10 +13,10 @@
 #ifndef PokemonAutomation_PokemonBDSP_AutoStory_WildBattle_H
 #define PokemonAutomation_PokemonBDSP_AutoStory_WildBattle_H
 
-#include <chrono>
 #include "CommonFramework/Tools/VideoStream.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "PokemonBDSP/Inference/Battles/PokemonBDSP_BattleMenuDetector.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WildBattlePolicy.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -34,13 +34,14 @@ void battle_1_pokemon(VideoStream& stream, ProControllerContext& context);
 //  in the Bag, up to ten throws; ends on the overworld.
 void catch_1_pokemon(VideoStream& stream, ProControllerContext& context);
 
-//  Runs from the wild battle on screen: Run on the battle menu until the
-//  exit's black screen shows. Fails with a screenshot after `timeout`.
+//  Leaves the wild battle on screen as `policy` says: Run on the battle menu
+//  until the exit's black screen shows. Fails with a screenshot once the
+//  policy gives up and the main menu does not prove the overworld either.
 void escape_wild_battle(
     VideoStream& stream,
     ProControllerContext& context,
     BattleType battle_type = BattleType::STANDARD,
-    std::chrono::seconds timeout = std::chrono::seconds(60)
+    const WildBattleEscapePolicy& policy = WildBattleEscapePolicy()
 );
 
 //  escape_wild_battle() for a standard wild battle, as the walker takes it
