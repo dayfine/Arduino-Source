@@ -14,6 +14,7 @@
 #include <functional>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
@@ -478,12 +479,14 @@ struct NudgedWalk{
     SimPos end;
     std::string failure;
 };
-NudgedWalk walk_nudged(const StoryWorld& world, const TableSteps& table, Direction nudge){
-    const TilePos start = story_to_world(world, table.start.map, Pokemon::tiles_of(table.start).front());
-    const Direction back = static_cast<Direction>(((int)nudge + 2) % 4);
-    GridSim sim({.world = &world, .trainers = story_trainers(world)}, start.next(back), Direction::NORTH, true);
-    sim.tap(nudge, 100ms, true);
-    NudgedWalk out{.nudged = sim.player().pos};
+//  Where each of `table`'s steps, walked on `sim` from wherever its player
+//  stands, left the player, and why the walk failed if it did.
+struct StepsWalk{
+    std::vector<std::pair<std::string, SimPos>> ends;
+    std::string failure;
+};
+StepsWalk walk_steps(GridSim& sim, const TableSteps& table){
+    StepsWalk out;
     std::vector<std::string> notes;
     GridSimRouteIO route_io(sim, notes);
     WalkStepsIO io(sim, route_io);
@@ -495,6 +498,7 @@ NudgedWalk walk_nudged(const StoryWorld& world, const TableSteps& table, Directi
             const Pokemon::Outcome outcome = step.kind == StoryStepKind::ROUTE ? walk.route(state, step)
                 : step.kind == StoryStepKind::LEGS ? walk.legs(state, step)
                 : Pokemon::outcome_failed("not_a_walk", step.name);
+            out.ends.emplace_back(step.name, sim.player().pos);
             if (!outcome.succeeded()){
                 out.failure = step.name + ": " + Pokemon::to_string(outcome);
                 break;
@@ -504,6 +508,15 @@ NudgedWalk walk_nudged(const StoryWorld& world, const TableSteps& table, Directi
     }catch (const GridSimFailure& e){
         out.failure = e.message;
     }
+    return out;
+}
+NudgedWalk walk_nudged(const StoryWorld& world, const TableSteps& table, Direction nudge){
+    const TilePos start = story_to_world(world, table.start.map, Pokemon::tiles_of(table.start).front());
+    const Direction back = static_cast<Direction>(((int)nudge + 2) % 4);
+    GridSim sim({.world = &world, .trainers = story_trainers(world)}, start.next(back), Direction::NORTH, true);
+    sim.tap(nudge, 100ms, true);
+    NudgedWalk out{.nudged = sim.player().pos};
+    out.failure = walk_steps(sim, table).failure;
     out.end = sim.player().pos;
     return out;
 }
@@ -544,6 +557,71 @@ UnitTestResult test_oreburgh_center_approach(Logger& logger){
     return true;
 }
 
+
+//  Where `table`'s steps, walked from `start` instead of where the table
+//  has the player, failed or left the player off `checks`' tiles; empty if
+//  they did not.
+std::string walk_misses(const StoryWorld& world, const TableSteps& table, const TilePos& start,
+    const std::vector<std::pair<std::string, TilePos>>& checks, Logger& logger){
+    GridSim sim({.world = &world, .trainers = story_trainers(world)}, start, Direction::SOUTH, true);
+    const StepsWalk walk = walk_steps(sim, table);
+    std::string ends;
+    for (const auto& [name, end] : walk.ends){
+        ends += std::format(" {} {}", name, to_string(end));
+    }
+    logger.log(std::format("from {}:{}{}", Pokemon::to_string(start), ends, walk.failure.empty() ? "" : ", failed: " + walk.failure));
+    if (!walk.failure.empty()){
+        return std::format("from {}: failed at {}: {}", Pokemon::to_string(start), to_string(sim.player().pos), walk.failure);
+    }
+    for (const auto& [name, tile] : checks){
+        const auto end = std::find_if(walk.ends.begin(), walk.ends.end(), [&name](const auto& item){ return item.first == name; });
+        if (end == walk.ends.end() || end->second != sim_pos(tile)){
+            return std::format("from {}: {} ended{}, not on {}.", Pokemon::to_string(start), name,
+                end == walk.ends.end() ? " nowhere" : " at " + to_string(end->second), Pokemon::to_string(tile));
+        }
+    }
+    return {};
+}
+
+//  Roark's room the old way: counted taps across the room, down column 29
+//  and onto his row, then west against the rock east of him.
+TableSteps old_taps_across_roarks_room(const StoryStep& beside_the_rock){
+    StoryStep taps;
+    taps.kind = StoryStepKind::LEGS;
+    taps.name = "above_roarks_row";
+    taps.legs = {
+        {.direction = Direction::EAST, .tiles = 14}, {.direction = Direction::SOUTH, .tiles = 10},
+        {.direction = Direction::WEST, .tiles = 2}, {.direction = Direction::SOUTH, .tiles = 2},
+    };
+    return {Pokemon::tile_pose("OreburghMine", {TilePos{15, 16}}, Direction::SOUTH), {taps, beside_the_rock}};
+}
+
+//  lab-B 2026-11-08 11:55: a wild battle on 01.03's counted taps through
+//  Roark's room re-planned from an open leg and left us a row off; the taps
+//  after landed a row too far south, the walk west to the rock east of Roark
+//  went under his rocks, and no one answered the talk. From (15, 16), where
+//  the table has us before the room, and from a row south of it, the walk
+//  across must end on Roark's row at (27, 28), then against the rock at
+//  (20, 29). The old taps miss from the row south.
+UnitTestResult test_roarks_room_from_a_row_off(Logger& logger){
+    const std::optional<TableSteps> table = table_steps("01.03", "down_column_29", "below_roark");
+    if (!table){
+        return "01.03 has no down_column_29 before below_roark.";
+    }
+    const StoryWorld& world = *story_plan_world("OreburghMine", "OreburghMine");
+    const std::vector<std::pair<std::string, TilePos>> checks = {{"above_roarks_row", {27, 28}}, {"beside_roarks_rock", {20, 29}}};
+    for (const TilePos& start : {TilePos{15, 16}, TilePos{15, 17}}){
+        const std::string miss = walk_misses(world, *table, start, checks, logger);
+        if (!miss.empty()){
+            return "01.03 across Roark's room " + miss;
+        }
+    }
+    const std::string old_miss = walk_misses(world, old_taps_across_roarks_room(table->steps.back()), {15, 17}, checks, logger);
+    if (old_miss.empty()){
+        return "The old taps across Roark's room reached (20, 29) from a row south: the test no longer shows the console's failure.";
+    }
+    return true;
+}
 
 UnitTestResult test_wandering_npc_mechanics(Logger& logger){
     StoryWorld world = make_world({
@@ -861,6 +939,10 @@ const AutoStoryGridSimCase AUTO_STORY_GRID_SIM_CASES[] = {
     },
     {
         .input = {"01.03 lines up below Oreburgh's Center door from a start off the grid", test_oreburgh_center_approach},
+        .expectation = {},
+    },
+    {
+        .input = {"01.03 crosses Roark's room to beside his rock from a row off (lab-B, 2026-11-08)", test_roarks_room_from_a_row_off},
         .expectation = {},
     },
     {
