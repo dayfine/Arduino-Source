@@ -17,6 +17,7 @@
 #include "Data/PokemonBDSP_AutoStory_RoutePlanner.h"
 #include "Data/PokemonBDSP_AutoStory_WallRecovery.h"
 #include "Data/PokemonBDSP_AutoStory_Maps.h"
+#include "Simulation/PokemonBDSP_AutoStory_GridSim.h"
 #include "PokemonBDSP_AutoStory_RoutePlanner_Tests.h"
 
 namespace PokemonAutomation{
@@ -136,6 +137,47 @@ UnitTestResult test_plan_robust_route(Logger&){
         return true;
 }
 
+
+//  November 5 mine report: credited taps need not establish physical pose.
+//  The two phases are explicit diagnostics, not inferred console timing.
+struct EncounterInput{
+    std::string name;
+    SimEncounterPhase phase;
+};
+struct EncounterExpectation{
+    TilePos end;
+    size_t battles = 1;
+    size_t credited = 5;
+};
+struct EncounterCase{
+    EncounterInput input;
+    EncounterExpectation expectation;
+};
+class Test_InterruptedMineTaps : public UnitTest{
+public:
+    explicit Test_InterruptedMineTaps(EncounterCase scenario)
+        : UnitTest("PokemonBDSP::AutoStory - Encounter credits: " + scenario.input.name), m_case(std::move(scenario))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        StoryWorld mine;
+        mine.add("OreburghMine", story_map("OreburghMine"), {0, 0});
+        GridSim sim({.world = &mine}, {15, 12}, Direction::SOUTH, /*can_run=*/false);
+        std::vector<std::string> notes;
+        GridSimRouteIO io(sim, notes, {{.label = "south", .direction = Direction::SOUTH,
+            .requested_tiles = 5, .tap = 5, .phase = m_case.input.phase}});
+        const auto result = io.walk_taps(Direction::SOUTH, 5, "south");
+        const auto& expected = m_case.expectation;
+        const TilePos actual = nearest_tile(sim.player().pos);
+        if (result.wild_battles != expected.battles || result.moved_chunks != expected.credited || actual != expected.end){
+            return std::format("Expected {} battles, {} credits, tile {}; got {}, {}, {}.",
+                expected.battles, expected.credited, Pokemon::to_string(expected.end),
+                result.wild_battles, result.moved_chunks, Pokemon::to_string(actual));
+        }
+        return true;
+    }
+private:
+    EncounterCase m_case;
+};
 
 //  Empty map name selects a synthetic corridor: ####### / #.....# / #######.
 //  Both possible starts (1,1)/(5,1) must share a safe wall ray. NPCs and
@@ -268,6 +310,27 @@ private:
     RoutePlannerCase m_case;
 };
 
+const EncounterCase ENCOUNTER_CASES[] = {
+    {.input = {.name = "before movement", .phase = SimEncounterPhase::BEFORE_MOVEMENT},
+        .expectation = {.end = {.x = 15, .y = 16}}},
+    {.input = {.name = "after movement", .phase = SimEncounterPhase::AFTER_MOVEMENT},
+        .expectation = {.end = {.x = 15, .y = 17}}},
+};
+
+const RecoveryGeometryCase GEOMETRY_CASES[] = {
+    {.input = {.name = "mine rows converge south", .map = "OreburghMine", .from = {{15, 15}, {15, 16}, {15, 17}}},
+        .expectation = {.anchor = TilePos{.x = 15, .y = 17}}},
+    {.input = {.name = "r55 tiles converge east", .map = "Route202", .from = {{27, 5}, {26, 5}}},
+        .expectation = {.anchor = TilePos{.x = 30, .y = 5}, .direction = Direction::EAST}},
+    {.input = {.name = "wandering area is unsafe", .from = {{1, 1}, {5, 1}},
+            .wander = Pokemon::TileBox{.x0 = 2, .y0 = 1, .x1 = 4, .y1 = 1}},
+        .expectation = {.anchor = std::nullopt, .free_tile = TilePos{.x = 3, .y = 1}}},
+    {.input = {.name = "warp crossings are unsafe", .from = {{1, 1}, {5, 1}}, .warps = {{3, 1}}},
+        .expectation = {.anchor = std::nullopt}},
+    {.input = {.name = "warps on blocked glyphs are unsafe", .from = {{1, 1}, {5, 1}}, .warps = {{0, 1}, {6, 1}}},
+        .expectation = {.anchor = std::nullopt}},
+};
+
 } // namespace
 
 
@@ -290,23 +353,12 @@ const RoutePlannerCase ROUTE_PLANNER_CASES[] = {
     },
 };
 
-const RecoveryGeometryCase GEOMETRY_CASES[] = {
-    {.input = {.name = "mine rows converge south", .map = "OreburghMine", .from = {{15, 15}, {15, 16}, {15, 17}}},
-        .expectation = {.anchor = TilePos{.x = 15, .y = 17}}},
-    {.input = {.name = "r55 tiles converge east", .map = "Route202", .from = {{27, 5}, {26, 5}}},
-        .expectation = {.anchor = TilePos{.x = 30, .y = 5}, .direction = Direction::EAST}},
-    {.input = {.name = "wandering area is unsafe", .from = {{1, 1}, {5, 1}},
-            .wander = Pokemon::TileBox{.x0 = 2, .y0 = 1, .x1 = 4, .y1 = 1}},
-        .expectation = {.anchor = std::nullopt, .free_tile = TilePos{.x = 3, .y = 1}}},
-    {.input = {.name = "warp crossings are unsafe", .from = {{1, 1}, {5, 1}}, .warps = {{3, 1}}},
-        .expectation = {.anchor = std::nullopt}},
-    {.input = {.name = "warps on blocked glyphs are unsafe", .from = {{1, 1}, {5, 1}}, .warps = {{0, 1}, {6, 1}}},
-        .expectation = {.anchor = std::nullopt}},
-};
-
 void add_tests_AutoStory_RoutePlanner(UnitTestDatabase& database){
     for (const auto& item : ROUTE_PLANNER_CASES){
         database.add<Test_RoutePlanner>(item);
+    }
+    for (const auto& scenario : ENCOUNTER_CASES){
+        database.add<Test_InterruptedMineTaps>(scenario);
     }
     for (const auto& scenario : GEOMETRY_CASES){
         database.add<Test_RecoveryGeometry>(scenario);

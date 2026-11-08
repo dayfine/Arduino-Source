@@ -19,9 +19,9 @@
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
-#include "PokemonBDSP_AutoStory_Talks.h"
+#include "Actions/PokemonBDSP_AutoStory_Talks.h"
 #include "PokemonBDSP_AutoStory_Walks.h"
-#include "PokemonBDSP_AutoStory_WildBattle.h"
+#include "Actions/PokemonBDSP_AutoStory_WildBattle.h"
 #include "PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP_AutoStory_StoryStepIO.h"
 
@@ -99,9 +99,8 @@ void settle(VideoStream& stream, ProControllerContext& context, Button button, c
 
 //  Holds the D-pad toward a door (with B after the shoes) until the screen goes
 //  dark or a line shows, up to 12 s. Returns whether it went dark. A line
-//  stops it: holding on under Mom's "Oh, Kosmos!" wasted 12 s (r45). The walker's black-screen watch
-//  missed the lab's fade into Sandgem (r44, "dialog"), and settle's samples
-//  1.3 s apart can fall either side of it, so watch at settle's own darkness.
+//  stops it: holding on under Mom's "Oh, Kosmos!" wasted 12 s (r45). A wild
+//  battle in a cave corridor runs away before returning.
 DpadPosition dpad_toward(Direction direction){
     return
         direction == Direction::NORTH ? DPAD_UP :
