@@ -57,15 +57,29 @@ private:
     RouteIO& m_route;
 };
 
+//  The coal room's counted walk from the corridor rock (15, 9) to below
+//  Roark (18, 29), as 01.03 walked it before its end was clipped to his
+//  rock and the wall: nine counted legs, the last one 9 tiles west along
+//  an open row, which is what these recovery cases need.
 const Pokemon::StoryStep& mine_step(){
-    for (const auto& row : story_checkpoints()){
-        for (const auto& step : row.steps){
-            if (row.id == "01.03" && step.name == "below_roark"){
-                return step;
-            }
-        }
-    }
-    throw GridSimFailure{"missing native mine step"};
+    static const Pokemon::StoryStep step = []{
+        Pokemon::StoryStep step;
+        step.kind = Pokemon::StoryStepKind::LEGS;
+        step.name = "below_roark";
+        step.legs = {
+            {.direction = Direction::EAST,  .tiles = 1},
+            {.direction = Direction::SOUTH, .tiles = 2},
+            {.direction = Direction::WEST,  .tiles = 1},
+            {.direction = Direction::SOUTH, .tiles = 5},
+            {.direction = Direction::EAST,  .tiles = 14},
+            {.direction = Direction::SOUTH, .tiles = 10},
+            {.direction = Direction::WEST,  .tiles = 2},
+            {.direction = Direction::SOUTH, .tiles = 3},
+            {.direction = Direction::WEST,  .tiles = 9},
+        };
+        return step;
+    }();
+    return step;
 }
 
 struct RecoveryInput{
