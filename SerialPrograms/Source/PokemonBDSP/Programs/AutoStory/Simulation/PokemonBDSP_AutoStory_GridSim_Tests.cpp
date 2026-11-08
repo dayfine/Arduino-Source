@@ -24,7 +24,9 @@
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_PlannedRoute.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryExecutor.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h"
+#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryStepIO.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryTable.h"
+#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryWalkSteps.h"
 #include "PokemonBDSP_AutoStory_GridSim_Tests.h"
 
 namespace PokemonAutomation{
@@ -390,6 +392,158 @@ UnitTestResult test_door_routes(Logger& logger){
 }
 
 
+//  The story's walking steps on a GridSim: the route walker's IO and walks
+//  until something stops us (as the story simulation walks them). Anything
+//  else fails the walk.
+class WalkStepsIO : public StoryStepIO{
+public:
+    WalkStepsIO(GridSim& sim, GridSimRouteIO& route)
+        : m_sim(sim)
+        , m_route(route)
+    {}
+
+    virtual RouteIO& route() override{
+        return m_route;
+    }
+    virtual void fight(const std::string& trainer) override{
+        unsupported("a fight with " + trainer);
+    }
+    virtual void walk_until_stopped(Direction direction, size_t tiles, const std::string& label) override{
+        m_sim.tap(direction, ROUTE_TURN_TAP, false);
+        const Milliseconds limit = ROUTE_START_DELAY + 800ms + route_ms_per_tile(direction) * (int64_t)(2 * tiles);
+        const SimMove move = m_sim.hold(direction, limit, SimPace::WALK);
+        if (move.stop == SimStop::DIALOG || move.stop == SimStop::WARP){
+            m_route.note(label + ": " + sim_stop_name(move.stop) + " instead of a stop.", RouteNote::FAILURE);
+        }
+    }
+    virtual bool run_until_map(Direction, Milliseconds, const std::string& map, const std::string&) override{
+        unsupported("a run onto " + map);
+        return false;
+    }
+    virtual bool run_into_door(Direction, bool, Milliseconds, Milliseconds) override{
+        unsupported("a run into a door");
+        return false;
+    }
+    virtual std::optional<size_t> tap_to_banner(Direction, const std::string& map, size_t) override{
+        unsupported("taps to " + map + "'s banner");
+        return std::nullopt;
+    }
+    virtual void settle(Button, const std::string& label, bool) override{
+        unsupported(label + "'s settle");
+    }
+
+private:
+    void unsupported(const std::string& what){
+        m_route.note(what + " is not simulated here.", RouteNote::FAILURE);
+    }
+
+    GridSim& m_sim;
+    GridSimRouteIO& m_route;
+};
+
+//  Row `row`'s steps from `first` up to the one before `last`, and where
+//  the table has the player before `first`.
+struct TableSteps{
+    Pose start;
+    std::vector<StoryStep> steps;
+};
+std::optional<TableSteps> table_steps(const std::string& row, const std::string& first, const std::string& last){
+    const std::vector<StoryCheckpoint>& table = story_checkpoints();
+    const auto checkpoint = std::find_if(table.begin(), table.end(), [&row](const StoryCheckpoint& item){ return item.id == row; });
+    if (checkpoint == table.end()){
+        return std::nullopt;
+    }
+    std::optional<TableSteps> out;
+    std::optional<Pose> at = checkpoint->start;
+    for (const StoryStep& step : checkpoint->steps){
+        if (step.name == last){
+            return out;
+        }
+        if (step.name == first && at){
+            out = TableSteps{*at, {}};
+        }
+        if (out){
+            out->steps.push_back(step);
+        }
+        at = pose_after_step(at, step);
+    }
+    return std::nullopt;
+}
+
+//  Where a walk of `steps` from `start`, with the player put part of a tile
+//  off it by a 100 ms stick tap toward `nudge` from the tile behind, ended
+//  on the simulation, and why it failed if it did.
+struct NudgedWalk{
+    SimPos nudged;
+    SimPos end;
+    std::string failure;
+};
+NudgedWalk walk_nudged(const StoryWorld& world, const TableSteps& table, Direction nudge){
+    const TilePos start = story_to_world(world, table.start.map, Pokemon::tiles_of(table.start).front());
+    const Direction back = static_cast<Direction>(((int)nudge + 2) % 4);
+    GridSim sim({.world = &world, .trainers = story_trainers(world)}, start.next(back), Direction::NORTH, true);
+    sim.tap(nudge, 100ms, true);
+    NudgedWalk out{.nudged = sim.player().pos};
+    std::vector<std::string> notes;
+    GridSimRouteIO route_io(sim, notes);
+    WalkStepsIO io(sim, route_io);
+    StoryWalkSteps walk(io);
+    walk.begin_attempt("01.03");
+    Pokemon::RunState state{.pose = table.start};
+    try{
+        for (const StoryStep& step : table.steps){
+            const Pokemon::Outcome outcome = step.kind == StoryStepKind::ROUTE ? walk.route(state, step)
+                : step.kind == StoryStepKind::LEGS ? walk.legs(state, step)
+                : Pokemon::outcome_failed("not_a_walk", step.name);
+            if (!outcome.succeeded()){
+                out.failure = step.name + ": " + Pokemon::to_string(outcome);
+                break;
+            }
+            state.pose = step.pose_after ? *step.pose_after : outcome.pose ? *outcome.pose : state.pose;
+        }
+    }catch (const GridSimFailure& e){
+        out.failure = e.message;
+    }
+    out.end = sim.player().pos;
+    return out;
+}
+
+//  lab-B 2026-11-08 10:39: 01.03's route up to below Oreburgh's Center ran
+//  north 36 to the wall up column 46 and tapped east 1 into the open; the
+//  heal's run north saw no door and ended at the counter a tile east of the
+//  nurse. A start part of a tile off the grid (a stick tap, as measured)
+//  rides along the run north and through the open tap. The table's steps
+//  up to the heal must end on the grid below the door, (47, 21), from
+//  either side of the start tile, and a walk north must go in.
+UnitTestResult test_oreburgh_center_approach(Logger& logger){
+    const std::optional<TableSteps> table = table_steps("01.03", "below_the_centers_door_again", "heal_oreburgh");
+    if (!table){
+        return "01.03 has no below_the_centers_door_again before heal_oreburgh.";
+    }
+    const StoryWorld& world = *story_plan_world("OreburghCity", "OreburghCity");
+    const TilePos below = story_to_world(world, "OreburghCity", {47, 21});
+    for (Direction nudge : {Direction::EAST, Direction::WEST}){
+        const NudgedWalk walk = walk_nudged(world, *table, nudge);
+        const std::string from = std::format("from {} (a stick tap {})", to_string(walk.nudged), direction_name(nudge));
+        logger.log(std::format("01.03 below the Center's door {}: ended at {}{}", from, to_string(walk.end),
+            walk.failure.empty() ? "" : ", failed: " + walk.failure));
+        if (on_grid(walk.nudged)){
+            return "The stick tap left the player on the grid " + from + ".";
+        }
+        if (!walk.failure.empty()){
+            return std::format("01.03 below the Center's door {}: failed at {}: {}", from, to_string(walk.end), walk.failure);
+        }
+        if (walk.end != sim_pos(below)){
+            return std::format("01.03 below the Center's door {}: ended at {}, not on (47, 21).", from, to_string(walk.end));
+        }
+        GridSim door({.world = &world}, below, Direction::NORTH, true);
+        if (door.hold(Direction::NORTH, 3000ms, SimPace::RUN).stop != SimStop::WARP){
+            return "01.03: the walk north from (47, 21) did not go through the Center's door.";
+        }
+    }
+    return true;
+}
+
 
 UnitTestResult test_wandering_npc_mechanics(Logger& logger){
     StoryWorld world = make_world({
@@ -703,6 +857,10 @@ const AutoStoryGridSimCase AUTO_STORY_GRID_SIM_CASES[] = {
     },
     {
         .input = {"a stick-tap turn misses the Sandgem Center and Jubilife School doors", test_door_routes},
+        .expectation = {},
+    },
+    {
+        .input = {"01.03 lines up below Oreburgh's Center door from a start off the grid", test_oreburgh_center_approach},
         .expectation = {},
     },
     {
