@@ -146,12 +146,6 @@ StoryStep anchored(StoryStep step, Pose pose){
     step.pose_after = std::move(pose);
     return step;
 }
-//  The route `step`, planned round `people`, who stand in the way for now
-//  though the maps do not have them.
-StoryStep going_round(StoryStep step, std::map<std::string, Pose> people){
-    step.standing = std::move(people);
-    return step;
-}
 //  TODO(#114 coord events): the map schema has no scene triggers yet, so
 //  each row steps onto the decomp's trigger tile, named in its reason.
 StoryStep step_into(std::string name, Direction direction, std::string why, std::optional<Pose> pose_after = std::nullopt){
@@ -604,12 +598,6 @@ Pose after_the_welcome(){
 Pose below_barry(){
     return at(OREBURGH, 26, 22, NORTH);
 }
-//  Barry on the Gym's doorstep (26, 21), from the welcome until his lines in
-//  01.03; the map has no Barry there. lab-B, 2026-11-08: 01.02b's walk east
-//  along row 21 to the Center stopped west of him.
-std::map<std::string, Pose> barry_in_the_gyms_door(){
-    return {{"barry", at(OREBURGH, 26, 21)}};
-}
 //  Below Oreburgh's Pokemon Center's door (47, 20), facing it. Not the
 //  map's doorstep (46, 21): a route there ended against the wall west of
 //  the door and the heal found no door (lab-B, 2026-11-07 20:18).
@@ -745,8 +733,7 @@ std::vector<StoryLeg> legs_out_of_coal_room(){
 //  the doorstep.
 StoryCheckpoint oreburgh_center_heal(){
     return row("01.02b", "Oreburgh Center heal", after_the_welcome(), {
-        going_round(route("below_the_centers_door", below_oreburghs_center(), "east along the street to below the Center's door", "town"),
-            barry_in_the_gyms_door()),
+        route("below_the_centers_door", below_oreburghs_center(), "east along the street to below the Center's door", "town"),
         heal("heal_oreburgh_first", "the nurse; out onto the doorstep, where 01.03 starts", out_of_oreburgh_center()),
     });
 }
@@ -754,8 +741,7 @@ StoryCheckpoint oreburgh_center_heal(){
 StoryCheckpoint oreburgh_mine_to_roark(){
     const Pose below_roark = next_to(MINE, "roark", SOUTH, NORTH);
     return row("01.03", "Oreburgh Mine to Roark", out_of_oreburgh_center(), {
-        going_round(route("below_barry", below_barry(), "west from the Center to below Barry in the Gym's door", "town"),
-            barry_in_the_gyms_door()),
+        route("below_barry", below_barry(), "west from the Center to below Barry in the Gym's door", "town"),
         talk("barry", "Barry in the Gym's door"),
         scene("barrys_lines", below_barry(), "Roark has gone to the mine"),
         route("above_the_mine", at(OREBURGH, 46, 58, SOUTH), "down the door's column to above the mine's warp tiles", "town"),
