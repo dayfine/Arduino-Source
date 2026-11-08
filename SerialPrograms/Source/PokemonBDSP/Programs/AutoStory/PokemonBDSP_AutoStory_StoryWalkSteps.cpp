@@ -9,6 +9,7 @@
 #include "Common/Cpp/Color.h"
 #include "Common/Cpp/Exceptions.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
+#include "Pokemon/Navigation/Pokemon_MapData.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_PlannedRoute.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP_AutoStory_StoryExecutor.h"
@@ -213,8 +214,17 @@ Outcome StoryWalkSteps::step(RunState& state, const StoryStep& step){
     //  00.01; Dawn's tour, 00.04). Without the fade, settle must see it itself
     //  (r33 was outside, "no fade").
     if (step.pose_after && step.pose_after->map != state.pose.map){
-        const bool faded = m_io.run_into_door(step.direction, m_can_run);
-        log(std::format("[{}] {}: {} through the door: {}.", m_row, step.name, direction_name(step.direction), faded ? "faded" : "no fade yet"));
+        Milliseconds timeout(12000);
+        if (m_world.has(state.pose.map)){
+            const Pokemon::MapData& map = m_world.map(state.pose.map);
+            const size_t tiles = Pokemon::tiles_to_door(map, state.pose.pos, step.direction);
+            if (tiles > 0){
+                const Milliseconds per_tile = route_ms_per_tile(step.direction, m_can_run ? MoveSpeed::RUN : MoveSpeed::WALK);
+                timeout = std::max(1500ms, ROUTE_START_DELAY + per_tile * (int64_t)tiles + 800ms);
+            }
+        }
+        const bool faded = m_io.run_into_door(step.direction, m_can_run, timeout);
+        log(std::format("[{}] {}: {} through the door (timeout {} ms): {}.", m_row, step.name, direction_name(step.direction), timeout.count(), faded ? "faded" : "no fade yet"));
         m_io.settle(BUTTON_B, label_of(step), !faded);
         return Pokemon::outcome_ok();
     }
