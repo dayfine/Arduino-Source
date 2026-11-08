@@ -29,21 +29,50 @@ using namespace std::chrono_literals;
 using Pokemon::Direction;
 using Pokemon::TilePos;
 
+//  A wild battle in the recovery walk itself, on its first input of the
+//  kind: one the console cannot tell from a battle before that input began
+//  (WalkOrigin::MAY_PRECEDE_LEG).
+enum class RecoveryBattle{ NONE, FIRST_TAP, FIRST_HOLD };
+
 class InterruptingRouteIO : public GridSimRouteIO{
 public:
     InterruptingRouteIO(GridSim& sim, std::vector<std::string>& notes,
-        std::vector<SimWildTap> taps, size_t interrupted_holds)
-        : GridSimRouteIO(sim, notes, std::move(taps)), m_left(interrupted_holds)
+        std::vector<SimWildTap> taps, size_t interrupted_holds, RecoveryBattle recovery_battle = RecoveryBattle::NONE)
+        : GridSimRouteIO(sim, notes, std::move(taps)), m_notes(notes), m_left(interrupted_holds), m_recovery_battle(recovery_battle)
     {}
     virtual WalkResult walk_to_wall(const RouteWallWalk& walk) override{
         if (m_left > 0){
             m_left--;
             return {.stop = WalkStop::LIMIT, .walked = 400ms, .wild_battles = 1};
         }
+        if (take_recovery_battle(RecoveryBattle::FIRST_HOLD, walk.label)){
+            return {.stop = WalkStop::LIMIT, .walked = 400ms, .wild_battles = 1, .origin = WalkOrigin::MAY_PRECEDE_LEG};
+        }
         return GridSimRouteIO::walk_to_wall(walk);
     }
+    virtual WalkResult walk_taps(Direction direction, size_t tiles, const std::string& label) override{
+        if (take_recovery_battle(RecoveryBattle::FIRST_TAP, label)){
+            WalkResult result = GridSimRouteIO::walk_taps(direction, tiles - 1, label);
+            result.wild_battles++;
+            result.moved_chunks++;
+            result.origin = WalkOrigin::MAY_PRECEDE_LEG;
+            return result;
+        }
+        return GridSimRouteIO::walk_taps(direction, tiles, label);
+    }
 private:
+    bool take_recovery_battle(RecoveryBattle kind, const std::string& label){
+        if (m_recovery_battle != kind || label.find("recovery") == std::string::npos){
+            return false;
+        }
+        m_recovery_battle = RecoveryBattle::NONE;
+        m_notes.push_back("[Sim] a wild battle on the first input of " + label);
+        return true;
+    }
+
+    std::vector<std::string>& m_notes;
     size_t m_left;
+    RecoveryBattle m_recovery_battle;
 };
 
 //  Only walking is needed for this real LEGS step. Unexpected story actions
@@ -95,6 +124,7 @@ struct RecoveryInput{
     SimEncounterPhase phase = SimEncounterPhase::BEFORE_MOVEMENT;
     WalkOrigin origin = WalkOrigin::CURRENT_LEG;
     size_t interrupted_holds = 0;
+    RecoveryBattle recovery_battle = RecoveryBattle::NONE;
 };
 struct RecoveryExpectation{
     std::string failure = {};
@@ -123,7 +153,7 @@ public:
                 .requested_tiles = m_case.input.tiles, .tap = tap, .phase = m_case.input.phase, .origin = m_case.input.origin});
         }
         std::vector<std::string> notes;
-        InterruptingRouteIO route(sim, notes, std::move(taps), m_case.input.interrupted_holds);
+        InterruptingRouteIO route(sim, notes, std::move(taps), m_case.input.interrupted_holds, m_case.input.recovery_battle);
         RecoveryStepIO io(route);
         StoryWalkSteps walks(io);
         walks.begin_attempt("01.03");
@@ -468,6 +498,10 @@ void add_tests_AutoStory_RecoveryWalk(UnitTestDatabase& database){
         {.input = {.name = "last west leg recovers position and facing", .taps = {9}, .direction = Direction::WEST, .tiles = 9}, .expectation = {.failure = ""}},
         {.input = {.name = "repeat the interrupted recovery hold", .taps = {5}, .interrupted_holds = 1}, .expectation = {.failure = ""}},
         {.input = {.name = "recovery hold budget exhausted", .taps = {5}, .interrupted_holds = 10}, .expectation = {.failure = "recovery budget"}},
+        //  A second battle, in the recovery walk, on its first tap or hold
+        //  (MC seeds 717266 and 331438): the walk plans again to the step's end.
+        {.input = {.name = "battle on the recovery's first tap", .taps = {5}, .recovery_battle = RecoveryBattle::FIRST_TAP}, .expectation = {.failure = ""}},
+        {.input = {.name = "battle on the recovery's first hold", .taps = {5}, .recovery_battle = RecoveryBattle::FIRST_HOLD}, .expectation = {.failure = ""}},
         {.input = {.name = "first input may belong to previous leg", .taps = {1}}, .expectation = {.failure = "encounter_origin_unknown"}},
         {.input = {.name = "late encounter origin unknown", .taps = {5}, .origin = WalkOrigin::MAY_PRECEDE_LEG}, .expectation = {.failure = "encounter_origin_unknown"}},
     };

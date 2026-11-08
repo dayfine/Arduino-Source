@@ -417,10 +417,9 @@ bool RouteWalker::finish_interrupted_wall(LegWalk& walk, Milliseconds limit){
     if (walk.result.wild_battles == 0){
         return false;
     }
+    //  A battle that may have begun before the hold changes nothing here:
+    //  from where the leg began, it ends at its wall however far it got.
     for (size_t again = 0; again < 3 && walk.result.wild_battles > 0; again++){
-        if (walk.result.origin == WalkOrigin::MAY_PRECEDE_LEG){
-            fail(m_io, "encounter_origin_unknown: " + walk.label);
-        }
         if (walk.result.stop != WalkStop::LIMIT && walk.result.stop != WalkStop::BLOCKED){
             fail(m_io, "unconfirmed transition/dialogue during wall recovery: " + walk.label);
         }
@@ -579,10 +578,12 @@ LegNext RouteWalker::open_leg(LegWalk& walk){
     return LegNext::NEXT_LEG;
 }
 
+//  Where an open leg's battle left us: any tile of the leg from where it
+//  began, none moved to all. A battle that may have begun before the leg
+//  (WalkOrigin::MAY_PRECEDE_LEG) found us on the tile the leg before ended
+//  on, since a battle starts on a tile stepped onto, so the same tiles
+//  hold. Planning again from them is bounded by run()'s plans.
 LegNext RouteWalker::interrupted_open_leg(LegWalk& walk){
-    if (walk.result.origin == WalkOrigin::MAY_PRECEDE_LEG){
-        fail(m_io, "encounter_origin_unknown: " + walk.label);
-    }
     if (walk.result.stop != WalkStop::LIMIT && walk.result.stop != WalkStop::BLOCKED){
         fail(m_io, "interrupted open leg has an unconfirmed dialogue/transition: " + walk.label);
     }
