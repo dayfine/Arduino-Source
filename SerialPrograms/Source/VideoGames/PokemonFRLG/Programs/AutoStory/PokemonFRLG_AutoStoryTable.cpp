@@ -5,6 +5,7 @@
  */
 
 #include "PokemonFRLG_AutoStoryCapture.h"
+#include "PokemonFRLG_AutoStoryData.h"
 #include "PokemonFRLG_AutoStoryChoice.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
 #include "PokemonFRLG_AutoStoryMart.h"
@@ -82,12 +83,7 @@ StoryCheckpoint starter(){
 }
 
 StoryCheckpoint parcel(){
-    return row("00.05", "Route 1 to Viridian Mart: Oak's Parcel", at(LAB, 7, 8, SOUTH), {}, StartMenu::BEFORE_POKEDEX, {
-        route("below_mart_door", at(VIRIDIAN, 36, 20, NORTH), "Route 1, running from wild battles"),
-        step_into("mart_door", NORTH, "the clerk's scene starts on entering"),
-        //  ApproachCounter: up 4 from the mat, then faces the clerk.
-        scene("parcel_from_clerk", at(VIRIDIAN_MART, 4, 3, WEST), "the clerk gives OAK'S PARCEL"),
-    });
+    return load_authored_checkpoint("frlg-parcel-00.05.plan");
 }
 
 StoryCheckpoint pokedex(){

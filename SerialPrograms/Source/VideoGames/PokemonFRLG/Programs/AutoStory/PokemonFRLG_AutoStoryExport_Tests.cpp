@@ -5,6 +5,7 @@
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepJson.h"
+#include "PokemonFRLG_AutoStoryData.h"
 #include "PokemonFRLG_AutoStoryExport.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 #include "PokemonFRLG_AutoStoryExport_Tests.h"
@@ -113,6 +114,7 @@ struct LoadInput{
     std::string_view name;
     //  Applied to the capture before reading; none reads it as written.
     void (*mutate)(JsonObject& root) = nullptr;
+    bool authored = false;
 };
 struct LoadExpectation{
     //  The table row the loaded one must export like; empty when rejected.
@@ -159,7 +161,14 @@ void foe_out_as_text(JsonObject& root){
 void drop_revision(JsonObject& root){
     root = without(root, "source_revision");
 }
+void unknown_execution_menu(JsonObject& root){
+    root.get_object_throw("execution")["menu"] = "guess";
+}
 const LoadCase LOAD_CASES[] = {
+    {.input = {.name = "authored Parcel plan", .authored = true}, .expectation = {.row = "00.05"}},
+    {.input = {.name = "authored plan unknown field", .mutate = add_top_level_field, .authored = true}, .expectation = {.rejected = true}},
+    {.input = {.name = "authored plan unknown format", .mutate = change_format, .authored = true}, .expectation = {.rejected = true}},
+    {.input = {.name = "authored plan unknown menu", .mutate = unknown_execution_menu, .authored = true}, .expectation = {.rejected = true}},
     {.input = {.name = "the Parcel capture is row 00.05"}, .expectation = {.row = "00.05"}},
     {.input = {.name = "an unknown envelope field", .mutate = add_top_level_field}, .expectation = {.rejected = true}},
     {.input = {.name = "another format", .mutate = change_format}, .expectation = {.rejected = true}},
@@ -170,9 +179,9 @@ const LoadCase LOAD_CASES[] = {
     {.input = {.name = "foe_out as text", .mutate = foe_out_as_text}, .expectation = {.rejected = true}},
     {.input = {.name = "no source revision", .mutate = drop_revision}, .expectation = {.rejected = true}},
 };
-const std::string& parcel_text(){
+const std::string& parcel_text(const LoadInput& input){
     for (const auto& [name, text] : autostory_checkpoint_json()){
-        if (name == "frlg-parcel-00.05"){
+        if (name == (input.authored ? "frlg-parcel-00.05.plan" : "frlg-parcel-00.05")){
             return text;
         }
     }
@@ -187,8 +196,8 @@ const StoryCheckpoint* table_row(std::string_view id){
     return nullptr;
 }
 std::string check_loaded(const StoryCheckpoint& loaded, const JsonValue& capture, const LoadCase& test){
-    const std::string& revision = capture.to_object_throw().get_string_throw("source_revision");
-    if (!(exported_file(loaded, revision) == capture)){
+    const std::string revision = test.input.authored ? "" : capture.to_object_throw().get_string_throw("source_revision");
+    if (!test.input.authored && !(exported_file(loaded, revision) == capture)){
         return "Expected the loaded row to export as the capture, read " + story_checkpoint_export(loaded).dump(-1);
     }
     const StoryCheckpoint* row = table_row(test.expectation.row);
@@ -201,12 +210,13 @@ std::string check_loaded(const StoryCheckpoint& loaded, const JsonValue& capture
     return "";
 }
 std::string check_load(const LoadCase& test){
-    JsonValue capture = parse_json(parcel_text());
+    JsonValue capture = parse_json(parcel_text(test.input));
     if (test.input.mutate){
         test.input.mutate(capture.to_object_throw());
     }
     try{
-        const StoryCheckpoint loaded = read_story_checkpoint_export(capture, test.input.name);
+        const StoryCheckpoint loaded = test.input.authored ? read_authored_checkpoint(capture, test.input.name)
+            : read_story_checkpoint_export(capture, test.input.name);
         if (test.expectation.rejected){
             return "Expected rejection, read checkpoint " + loaded.id;
         }
