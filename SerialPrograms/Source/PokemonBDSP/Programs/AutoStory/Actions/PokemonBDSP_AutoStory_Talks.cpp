@@ -72,9 +72,27 @@ bool talk_or_fight(VideoStream& stream, ProControllerContext& context, const std
             route_status(stream, "Fighting " + label + ".");
             fight_story_battle(stream, context, label, format);
             // Lines after the battle (Roark's badge, r211d) keep the menu
-            // from opening: finish them before the Potion.
-            if (dialogue_opens(stream, context, 3000ms)){
-                finish_dialogue(stream, context, BUTTON_B, label + " after the battle");
+            // from opening: finish them before the Potion. They pause for
+            // the badge's fanfare, so "no box for a moment" is not the end:
+            // after four lines Roark went quiet, the Potion's menu opened
+            // under his next line and failed (lab-B, 2026-11-08 15:06).
+            // Done once the overworld shows with no box for 5 s.
+            auto calm_since = std::chrono::steady_clock::now();
+            const auto give_up = calm_since + 60s;
+            while (std::chrono::steady_clock::now() < give_up){
+                context.wait_for_all_requests();
+                const auto after = stream.video().snapshot();
+                const bool box = after && dialog.detect(*after.frame);
+                if (box || !after || !overworld.detect(*after.frame)){
+                    calm_since = std::chrono::steady_clock::now();
+                }else if (std::chrono::steady_clock::now() - calm_since >= 5s){
+                    break;
+                }
+                if (box){
+                    pbf_press_button(context, BUTTON_B, 80ms, 1100ms);
+                }else{
+                    pbf_wait(context, 300ms);
+                }
             }
             if (!in_pokemon_center(stream)){
                 use_potion_first_pokemon(stream, context, 0.8);
