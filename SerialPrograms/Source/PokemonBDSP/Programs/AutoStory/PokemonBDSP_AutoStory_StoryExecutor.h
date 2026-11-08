@@ -40,6 +40,7 @@ namespace NintendoSwitch{
 namespace PokemonBDSP{
 
 
+//  Starter Pokemon options for BDSP story automation.
 enum class StarterChoice{
     TURTWIG,
     CHIMCHAR,
@@ -178,7 +179,7 @@ Pokemon::Segment make_story_segment(
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

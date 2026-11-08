@@ -66,7 +66,7 @@ bool in_region(const std::string& map, const std::string& region, const TilePos&
     return std::find(tiles.begin(), tiles.end(), pos) != tiles.end();
 }
 
-}
+} // namespace
 
 
 //  Offsets are the maps' places in the game's world grid (the decomp's
@@ -75,11 +75,11 @@ bool in_region(const std::string& map, const std::string& region, const TilePos&
 //  Route 202's road comes down off its row 31 onto Sandgem's row 0.
 const StoryWorld& story_maps(){
     static const StoryWorld maps = []{
-        StoryWorld maps;
-        maps.add(MAP_ROUTE_201, story_map("Route201"), {0, 0});
-        maps.add(MAP_SANDGEM_TOWN, story_map("SandgemTown"), {64, -7});
-        maps.add(MAP_ROUTE_202, story_map("Route202"), {63, -39});
-        return maps;
+        StoryWorld world;
+        world.add(MAP_ROUTE_201, story_map("Route201"), {0, 0});
+        world.add(MAP_SANDGEM_TOWN, story_map("SandgemTown"), {64, -7});
+        world.add(MAP_ROUTE_202, story_map("Route202"), {63, -39});
+        return world;
     }();
     return maps;
 }
@@ -106,15 +106,15 @@ bool on_route203_west_line(const TilePos& pos){
 namespace{
 const TilePos JUBILIFE_EAST_CORNER{42, 12};
 const int JUBILIFE_EAST_BOTTOM = 25;
-}
+} // namespace
 const StoryWorld& jubilife_east_maps(){
     static const StoryWorld maps = []{
         const MapData& city = story_map("JubilifeCity");
-        StoryWorld maps;
-        maps.add(MAP_JUBILIFE_CITY, crop(
+        StoryWorld world;
+        world.add(MAP_JUBILIFE_CITY, crop(
             city, JUBILIFE_EAST_CORNER, city.tiles.width - JUBILIFE_EAST_CORNER.x, JUBILIFE_EAST_BOTTOM - JUBILIFE_EAST_CORNER.y + 1
         ), {0, 0});
-        return maps;
+        return world;
     }();
     return maps;
 }
@@ -209,7 +209,7 @@ std::vector<TilePos> route202_region(const char* region){
     }
     return tiles;
 }
-}
+} // namespace
 
 std::vector<TilePos> story_catch_save_area(){
     return route202_region("catch_save_area");
@@ -294,6 +294,6 @@ std::vector<TilePos> route204_south_tiles_to_avoid(){
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

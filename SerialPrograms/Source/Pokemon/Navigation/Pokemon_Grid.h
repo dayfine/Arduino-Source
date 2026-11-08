@@ -26,12 +26,15 @@ enum class Direction{
     SOUTH,
     WEST,
 };
+// Array containing all four cardinal directions.
 constexpr Direction ALL_DIRECTIONS[] = {
     Direction::NORTH, Direction::EAST, Direction::SOUTH, Direction::WEST,
 };
+// Returns the lowercase name string of a cardinal direction.
 const char* direction_name(Direction direction);
 
 
+// Grid coordinate with integer x and y components.
 struct TilePos{
     int x = 0;
     int y = 0;
@@ -39,6 +42,7 @@ struct TilePos{
     TilePos next(Direction direction) const;
     bool operator==(const TilePos& other) const = default;
 };
+// Formats a TilePos as "(x, y)".
 std::string to_string(const TilePos& pos);
 
 
@@ -60,16 +64,20 @@ struct Grid{
 //  The cell at `pos` of `grid`, to change it; `pos` must be inside the grid.
 //  A free function, so that Grid stays a plain value whose methods only read.
 template <typename Cell>
+Cell& cell_at(Grid<Cell>& grid, const TilePos& pos);
+
+template <typename Cell>
 Cell& cell_at(Grid<Cell>& grid, const TilePos& pos){
     return grid.cells[(size_t)pos.y * grid.width + pos.x];
 }
 
 
 
-}
-}
+} // namespace Pokemon
+} // namespace PokemonAutomation
 
 
+// Hash specialization for TilePos.
 template <>
 struct std::hash<PokemonAutomation::Pokemon::TilePos>{
     size_t operator()(const PokemonAutomation::Pokemon::TilePos& pos) const{

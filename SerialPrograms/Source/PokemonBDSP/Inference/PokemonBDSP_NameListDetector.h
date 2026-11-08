@@ -17,6 +17,7 @@ namespace NintendoSwitch{
 namespace PokemonBDSP{
 
 
+//  Detects the rival preset name selection menu and reads the selected row.
 class NameListDetector : public StaticScreenDetector{
 public:
     NameListDetector(Color color = COLOR_MAGENTA);
@@ -35,7 +36,7 @@ private:
 };
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

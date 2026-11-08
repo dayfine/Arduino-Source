@@ -16,9 +16,15 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
+// Registers leg planner algorithm unit tests.
 void add_tests_LegPlanner(UnitTestDatabase& database);
+// Registers leg walker execution unit tests.
 void add_tests_LegWalker(UnitTestDatabase& database);
+//  Register shared wall-convergence policy tests.
+void add_tests_WallRecovery(UnitTestDatabase& database);
+// Registers map data parsing and lookup unit tests.
 void add_tests_MapData(UnitTestDatabase& database);
+// Registers route logging formatting unit tests.
 void add_tests_RouteLog(UnitTestDatabase& database);
 
 //  (name, JSON text) of each map in Pokemon/Navigation/TestMaps/, built into
@@ -27,6 +33,6 @@ const std::vector<std::pair<std::string, std::string>>& navigation_test_map_json
 
 
 
-}
-}
+} // namespace Pokemon
+} // namespace PokemonAutomation
 #endif

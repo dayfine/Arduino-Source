@@ -159,13 +159,7 @@ std::vector<NamedTile> named_tiles(){
 //  every stretch plans as one straight leg on the decomp maps, and each
 //  line enters its scene's trigger rectangle on its last tile only. The
 //  named tiles the route records start from all lie on the lines.
-class Test_Segment00Lines : public UnitTest{
-public:
-    Test_Segment00Lines()
-        : UnitTest("PokemonBDSP::AutoStory - Segment 00: the lines into each scene")
-    {}
-
-    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+UnitTestResult test_segment00_lines(Logger& logger){
         const StoryWorld& maps = Segment00Lines::segment00_maps();
         for (const SceneTrigger& trigger : Segment00Lines::scene_triggers()){
             if (trigger.width <= 0 || trigger.height <= 0){
@@ -199,17 +193,58 @@ public:
             }
         }
         return true;
-    }
+}
+
+
+struct Segment00Input{
+    std::string name;
+    std::function<UnitTestResult(Logger&)> body;
 };
 
-}
+struct Segment00Expectation{
+};
 
+struct Segment00Case{
+    Segment00Input input;
+    Segment00Expectation expectation;
+};
+
+class Test_Segment00 : public UnitTest{
+public:
+    explicit Test_Segment00(Segment00Case test_case)
+        : UnitTest("PokemonBDSP::AutoStory - Segment 00: " + test_case.input.name)
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        try{
+            return m_case.input.body(logger);
+        }catch (Exception& e){
+            return std::string(e.name()) + ": " + e.message();
+        }
+    }
+
+private:
+    Segment00Case m_case;
+};
+
+} // namespace
+
+
+const Segment00Case SEGMENT00_CASES[] = {
+    {
+        .input = {"the lines into each scene", test_segment00_lines},
+        .expectation = {},
+    },
+};
 
 void add_tests_AutoStory_Segment00(UnitTestDatabase& database){
-    database.add<Test_Segment00Lines>();
+    for (const auto& item : SEGMENT00_CASES){
+        database.add<Test_Segment00>(item);
+    }
 }
 
 
-}
-}
-}
+
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

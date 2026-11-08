@@ -1,0 +1,29 @@
+name: Runtime map reader
+on:
+  pull_request:
+  workflow_dispatch:
+jobs:
+  native-schema:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: dayfine/PokemonSimulation
+          ref: 4de7742a764d27293b4525d6ad2a6fc8a95f3e3a
+          path: publisher
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python devtools/runtime-map-tests/prepare_parity.py --publisher publisher --publisher-revision 4de7742a764d27293b4525d6ad2a6fc8a95f3e3a --out runtime-map-pairs.json
+      - run: cmake -S devtools/runtime-map-tests -B build-runtime-maps -DCMAKE_BUILD_TYPE=Debug
+      - run: cmake --build build-runtime-maps --config Debug -j4
+      - run: ctest --test-dir build-runtime-maps -C Debug --output-on-failure
+      - if: runner.os != 'Windows'
+        run: ./build-runtime-maps/RuntimeMapTests runtime-map-pairs.json
+      - if: runner.os == 'Windows'
+        run: ./build-runtime-maps/Debug/RuntimeMapTests.exe runtime-map-pairs.json

@@ -31,16 +31,16 @@
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_PlannedRoute.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Walk.h"
-#include "PokemonBDSP_AutoStory_Actions.h"
-#include "PokemonBDSP_AutoStory_Center.h"
-#include "PokemonBDSP_AutoStory_Events.h"
-#include "PokemonBDSP_AutoStory_NewGame.h"
-#include "PokemonBDSP_AutoStory_Settings.h"
+#include "Actions/PokemonBDSP_AutoStory_Actions.h"
+#include "Actions/PokemonBDSP_AutoStory_Center.h"
+#include "Actions/PokemonBDSP_AutoStory_Events.h"
+#include "Actions/PokemonBDSP_AutoStory_NewGame.h"
+#include "Actions/PokemonBDSP_AutoStory_Settings.h"
 #include "PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP_AutoStory_StoryTable.h"
-#include "PokemonBDSP_AutoStory_Talks.h"
+#include "Actions/PokemonBDSP_AutoStory_Talks.h"
 #include "PokemonBDSP_AutoStory_Walks.h"
-#include "PokemonBDSP_AutoStory_WildBattle.h"
+#include "Actions/PokemonBDSP_AutoStory_WildBattle.h"
 #include "PokemonBDSP_AutoStory_StoryExecutor.h"
 
 namespace PokemonAutomation{
@@ -105,7 +105,7 @@ void fight_story_trainer(VideoStream& stream, ProControllerContext& context, con
     fight_route_trainer(stream, context, trainer);
 }
 
-}
+} // namespace
 
 
 StoryExecutor::StoryExecutor(StoryEnv& env)
@@ -245,7 +245,7 @@ Outcome leg_to_map(VideoStream& stream, ProControllerContext& context, const Sto
     return walk.stop == WalkStop::ARRIVED ? Pokemon::outcome_ok() : Pokemon::outcome_failed("no_banner", map);
 }
 
-}
+} // namespace
 
 Outcome StoryExecutor::legs(RunState& state, const StoryStep& step){
     if (step.variant == "to_wall"){
@@ -354,7 +354,7 @@ void settle(VideoStream& stream, ProControllerContext& context, Button button, c
         stream);
 }
 
-}
+} // namespace
 
 namespace{
 
@@ -438,7 +438,7 @@ Outcome tap_to_banner(VideoStream& stream, ProControllerContext& context, const 
     return Pokemon::outcome_failed("no_banner", map);
 }
 
-}
+} // namespace
 
 Outcome StoryExecutor::step(RunState& state, const StoryStep& step){
     route_turn(stream(), context(), step.direction);
@@ -650,6 +650,6 @@ Pokemon::Segment make_story_segment(
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

@@ -76,7 +76,7 @@ void add_beta_and_developer_panels(std::vector<PanelEntry>& ret){
     }
 }
 
-}
+} // namespace
 
 std::vector<PanelEntry> PanelListFactory::make_panels() const{
     std::vector<PanelEntry> ret;

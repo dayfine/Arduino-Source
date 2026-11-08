@@ -44,11 +44,12 @@ struct BattleMoveMenuState{
     size_t selected_slot = 0;
     std::array<ImageFloatBox, 4> buttons;
 };
+//  Detects the populated move slots and the currently selected slot from the battle move menu.
 BattleMoveMenuState detect_battle_move_menu(const ImageViewRGB32& screen);
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

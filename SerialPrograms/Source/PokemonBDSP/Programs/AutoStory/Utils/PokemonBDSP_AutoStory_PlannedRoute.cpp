@@ -98,7 +98,7 @@ std::string map_of(const StoryWorld& maps, const std::vector<TilePos>& tiles){
     return name;
 }
 
-}
+} // namespace
 
 
 namespace{
@@ -636,9 +636,21 @@ std::vector<size_t> RouteWalker::watching_trainers(const std::vector<std::vector
 //  A trainer the map does not have. Fight, then plan again from anywhere
 //  the leg could have stopped.
 LegNext RouteWalker::unknown_trainer(LegWalk& walk, const std::vector<std::vector<TilePos>>& paths){
-    std::vector<TilePos> anywhere = m_from;
-    for (const std::vector<TilePos>& path : paths){
-        anywhere.insert(anywhere.end(), path.begin(), path.end());
+    std::vector<TilePos> anywhere;
+    const size_t moved = std::min(walk.planned.leg.tiles, walk.result.moved_chunks + walk.turn_moved);
+    if (walk.result.stop == WalkStop::DIALOG && moved > 0){
+        for (const TilePos& pos : m_from){
+            const std::vector<TilePos> path = leg_path(m_grid, pos, walk.planned.leg.direction, moved);
+            if (!path.empty()){
+                anywhere.push_back(path.back());
+            }
+        }
+    }
+    if (anywhere.empty()){
+        anywhere = m_from;
+        for (const std::vector<TilePos>& path : paths){
+            anywhere.insert(anywhere.end(), path.begin(), path.end());
+        }
     }
     anywhere = sorted_unique(std::move(anywhere));
     //  A scene the map lacks (r14: Barry's Route 201 warning, then the row that
@@ -734,7 +746,7 @@ LegNext RouteWalker::replan_from(const LegWalk& walk, std::vector<TilePos> stopp
     return LegNext::REPLAN;
 }
 
-}
+} // namespace
 
 
 std::vector<TilePos> walk_route(
@@ -813,6 +825,6 @@ void talk_to_npc(
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

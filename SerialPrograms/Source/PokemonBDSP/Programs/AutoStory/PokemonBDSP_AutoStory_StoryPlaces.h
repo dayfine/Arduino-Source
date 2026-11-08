@@ -45,7 +45,7 @@ std::vector<TrainerSight> story_trainers(const StoryWorld& world);
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

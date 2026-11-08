@@ -898,7 +898,7 @@ std::vector<StoryCheckpoint> make_table(){
     return table;
 }
 
-}
+} // namespace
 
 
 const std::vector<StoryCheckpoint>& story_checkpoints(){
@@ -908,6 +908,6 @@ const std::vector<StoryCheckpoint>& story_checkpoints(){
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

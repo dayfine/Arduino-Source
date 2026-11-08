@@ -162,7 +162,7 @@ void verify_story_checkpoint(
     env.console.log(summary);
 }
 
-}
+} // namespace
 
 
 BDSPAutoStory::BDSPAutoStory()
@@ -216,7 +216,7 @@ std::set<std::string> saved_before_the_run(const std::vector<StoryCheckpoint>& c
     return {checkpoints[first].id};
 }
 
-}
+} // namespace
 
 void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
@@ -266,6 +266,6 @@ void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerCo
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

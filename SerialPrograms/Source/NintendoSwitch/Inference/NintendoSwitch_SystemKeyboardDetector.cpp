@@ -128,7 +128,7 @@ bool move_keyboard_cursor(VideoStream& stream, ProControllerContext& context, in
     return false;
 }
 
-}
+} // namespace
 
 
 void type_on_system_keyboard(VideoStream& stream, ProControllerContext& context, const std::string& text){
@@ -167,5 +167,5 @@ void type_on_system_keyboard(VideoStream& stream, ProControllerContext& context,
 
 
 
-}
-}
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

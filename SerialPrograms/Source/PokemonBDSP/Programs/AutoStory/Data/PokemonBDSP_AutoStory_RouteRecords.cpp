@@ -143,7 +143,7 @@ std::vector<RouteRecord> segment01_records_from_jubilife(){
     };
 }
 
-}
+} // namespace
 
 //  The walks planned on a grid (00.04 and 00.05's walk_route goals, 01.03's
 //  Mine legs, 01.06's Route 203 and Jubilife legs, 01.08's Route 204 South,
@@ -164,8 +164,8 @@ const std::vector<RouteRecord>& all(){
     static const std::vector<RouteRecord> records = []{
         std::vector<RouteRecord> all;
         for (auto part : {checkpoint_0001_records, checkpoints_0002_0003_records, segment01_records_to_oreburgh, segment01_records_from_jubilife}){
-            const std::vector<RouteRecord> records = part();
-            all.insert(all.end(), records.begin(), records.end());
+            const std::vector<RouteRecord> part_records = part();
+            all.insert(all.end(), part_records.begin(), part_records.end());
         }
         return all;
     }();
@@ -173,7 +173,7 @@ const std::vector<RouteRecord>& all(){
 }
 
 
-}
-}
-}
-}
+} // namespace RouteRecords
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
