@@ -3,6 +3,7 @@
  *  From: https://github.com/PokemonAutomation/
  */
 #include <array>
+#include <format>
 #include <limits>
 #include <set>
 #include <string>
@@ -101,6 +102,33 @@ JsonObject normalize_record(const JsonValue& value, WireFormat format, const std
     return result;
 }
 
+//  Expand compact pickup defaults without changing authored names or counts.
+JsonObject normalize_pickup(JsonObject record, std::string_view where){
+    const std::string* item = record.get_string("item");
+    if (!item || item->empty()){
+        throw ParseException(std::format("{}item must be a nonempty string.", where));
+    }
+    if (const JsonValue* event = record.get_value("source_event")){
+        const int index = coordinate(event, std::format("{}source_event", where));
+        if (index < 0){
+            throw ParseException(std::format("{}source_event must be nonnegative.", where));
+        }
+        if (!record.get_value("name")){
+            record["name"] = std::format("item_{}", index);
+        }
+    }else if (!record.get_value("name")){
+        throw ParseException(std::format("{}unnamed pickup requires source_event.", where));
+    }
+    if (const JsonValue* quantity = record.get_value("quantity")){
+        if (!quantity->is_integer() || quantity->to_integer_default() <= 0){
+            throw ParseException(std::format("{}quantity must be a positive integer.", where));
+        }
+    }else{
+        record["quantity"] = 1;
+    }
+    return record;
+}
+
 void append_objects(JsonArray& output, const JsonArray& input, WireFormat format, const std::string& group, const std::string& where){
     for (size_t i = 0; i < input.size(); i++){
         const std::string path = where + group + "[" + std::to_string(i) + "].";
@@ -119,6 +147,9 @@ void append_objects(JsonArray& output, const JsonArray& input, WireFormat format
             }
         }else if (group == "items" && record.get_value("interaction")){
             throw ParseException(path + "interactions belong in interactables.");
+        }
+        if (group == "items" && (record.get_value("item") || record.get_value("quantity"))){
+            record = normalize_pickup(std::move(record), path);
         }
         if (const JsonValue* wander = record.get_value("wander")){
             record["wander"] = normalize_wander(*wander, format, path + "wander.");
