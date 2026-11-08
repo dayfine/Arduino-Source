@@ -1,0 +1,20 @@
+name: CMake source groups
+on:
+  pull_request:
+    paths:
+      - SerialPrograms/CMakeLists.txt
+      - SerialPrograms/cmake/SourceGroups.cmake
+      - SerialPrograms/cmake/tests/source-groups/**
+      - .github/workflows/cmake-source-groups.yml
+  workflow_dispatch:
+jobs:
+  configure:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - run: cmake -S SerialPrograms/cmake/tests/source-groups -B ../external-source-group-tests
+      - run: ctest --test-dir ../external-source-group-tests --output-on-failure
