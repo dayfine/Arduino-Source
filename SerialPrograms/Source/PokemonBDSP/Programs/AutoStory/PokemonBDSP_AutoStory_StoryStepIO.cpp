@@ -6,7 +6,10 @@
 
 #include <algorithm>
 #include <format>
+#include "Common/Cpp/PrettyPrint.h"
+#include "Common/Cpp/Filesystem/Filesystem.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
+#include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTools/ImageStats.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
@@ -220,9 +223,18 @@ TapLook look_after_tap(VideoStream& stream, ProControllerContext& context, const
     const WallClock deadline = start + wait;
     std::string last_read;
     double darkest = 255;
+    //  Every 500 ms of a long wait (the one after a fade) a frame goes to
+    //  Screenshots/AutoStory/banner/, to see what the game showed.
+    const std::string folder = SCREENSHOTS_PATH() + "AutoStory/banner/";
+    WallClock next_frame = start;
     while (true){
         context.wait_for_all_requests();
         const VideoSnapshot screen = stream.video().snapshot();
+        if (!dark_too && screen && current_time() >= next_frame){
+            Filesystem::create_directories(Filesystem::Path(folder));
+            screen.frame->save(folder + now_to_filestring() + "-" + normalize_location_name(banner) + ".png");
+            next_frame += 500ms;
+        }
         const std::string read = screen ? read_location_banner(*screen.frame) : "";
         if (!read.empty() && read != last_read){
             stream.log(std::format("[Banner] read \"{}\" after {} ms, looking for \"{}\".",
