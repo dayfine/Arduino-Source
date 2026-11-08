@@ -314,9 +314,8 @@ std::vector<RowTrigger> story_triggers(){
     return triggers;
 }
 
-//  Someone the maps do not have, who stands on `tile` of `map` and is
-//  talked to there or walked round: from row `row` on if `until` is "",
-//  else until the step `until` of row `until_row` has run.
+//  Someone the maps do not have, on `tile` of `map`, talked to or walked round:
+//  from row `row` on, until row `until_row`'s step `until` has run if it is set.
 struct SimPerson{
     std::string name;
     std::string map;
@@ -329,9 +328,7 @@ std::vector<SimPerson> sim_people(){
     return {
         //  Mom stands a row above the decomp's (7, 8) from 00.04 on (r43).
         {.name = "mom", .map = "PlayerHouse1F", .tile = {7, 7}, .row = "00.04"},
-        //  Barry stands in the Gym's door from the welcome scene (lab-B,
-        //  2026-11-08: 01.02b's walk to the Center stopped west of him)
-        //  until his lines in 01.03 (Roark ignored A until then, r101 and r104).
+        //  Barry in the Gym's door, from the welcome (lab-B 2026-11-08) to his lines (r101, r104).
         {.name = "barry", .map = "OreburghCity", .tile = {26, 21}, .row = "01.02b", .until_row = "01.03", .until = "barrys_lines"},
     };
 }
@@ -439,9 +436,8 @@ const StoryWorld* SimExecutor::sim_world(const std::string& map) const{
     std::vector<SimPerson> here;
     std::string who;
     for (const SimPerson& person : sim_people()){
-        const bool gone = !person.until.empty() &&
-            (m_row > person.until_row || (m_row == person.until_row && m_ran.contains(person.until)));
-        const bool now = m_row >= person.row && !gone;
+        const bool now = m_row >= person.row && (person.until.empty() || m_row < person.until_row ||
+            (m_row == person.until_row && !m_ran.contains(person.until)));
         if (world != nullptr && now && story_plan_world(person.map, person.map) == world){
             here.push_back(person);
             who += person.name + ";";
@@ -835,12 +831,6 @@ UnitTestResult test_story_sim_each_row(Logger& logger){
     return true;
 }
 
-//  lab-B, 2026-11-08: 01.02b from the welcome's end, Barry on the Gym's
-//  doorstep (26, 21), walked east to the Center and stopped west of him.
-UnitTestResult test_oreburgh_heal_round_barry(Logger& logger){
-    return run_rows(logger, {.from = "01.02b", .to = "01.02b"});
-}
-
 UnitTestResult test_exit_gate(Logger& logger){
     return run_exit_test(logger, "01.05", r75_old_gate_exit(), SimMisses{}, r75_pond_pocket());
 }
@@ -962,7 +952,9 @@ const AutoStoryStorySimCase AUTO_STORY_STORY_SIM_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"01.02b, to the Center round Barry on the Gym's doorstep", test_oreburgh_heal_round_barry},
+        .input = {"01.02b, to the Center round Barry on the Gym's doorstep (lab-B, 2026-11-08)", [](Logger& logger){
+            return run_rows(logger, {.from = "01.02b", .to = "01.02b"});
+        }},
         .expectation = {},
     },
     {
