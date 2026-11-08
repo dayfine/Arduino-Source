@@ -144,6 +144,25 @@ test the PR and nothing else.
   console, and one grid-sim core (screens + encounters + sub-tile drift) that
   both games share. Also note BDSP's "every legal prefix" candidate idea and
   FRLG's missed-detector model as inputs.
+- **B5** (user, 2026-11-08 12:30; implementation, not design) Recovery
+  moves toward the goal, both games. A re-plan after an interruption (wild
+  battle, NPC block) targets the end of the step, not the end of the
+  interrupted leg, and skips the step's remaining legs. A counted step that
+  can be interrupted (encounter tiles, wanderers) must end on a wall-bounded
+  anchor (corner, wall, door, sign), so the re-plan ends in clips. Shared
+  walker (`Pokemon_LegWalker`, #114) and story steps (#122) with tests from
+  both games, plus a table lint for both games: interruptible counted steps
+  ending on an open tile fail. BDSP's own `tap_legs` gets the same rule first
+  (#226, Roark's corner (20, 28); lab-B 01.03 11:55: leg-end recovery ended
+  on "south 5 (open)", overshot a row, walked under Roark's rocks).
+- **B6** (user, same; implementation) One seeded disturbance sim for both
+  games: pinned seeds per row; per seed wild battles on encounter tiles,
+  sub-tile drift on holds/open legs, wanderer seed/start, one missed
+  fade/banner; pass rate per row and failing steps with seeds. Shared runner
+  and disturbance model in `Pokemon/`; bindings over `GridSim` (BDSP, first)
+  and `OverworldSim` (FRLG, has encounters + misses already). Default seeds in
+  the unit suite; heavy mode (200-1000) on demand. Gate: a console run of a
+  row only after its seeds pass. Folds into B4's one grid-sim core.
 
 ## Track C: story as data (PokemonSimulation #69/#70/#71)
 
