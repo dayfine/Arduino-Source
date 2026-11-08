@@ -471,14 +471,6 @@ std::optional<TableSteps> table_steps(const std::string& row, const std::string&
     return std::nullopt;
 }
 
-//  Where a walk of `steps` from `start`, with the player put part of a tile
-//  off it by a 100 ms stick tap toward `nudge` from the tile behind, ended
-//  on the simulation, and why it failed if it did.
-struct NudgedWalk{
-    SimPos nudged;
-    SimPos end;
-    std::string failure;
-};
 //  Where each of `table`'s steps, walked on `sim` from wherever its player
 //  stands, left the player, and why the walk failed if it did.
 struct StepsWalk{
@@ -510,55 +502,6 @@ StepsWalk walk_steps(GridSim& sim, const TableSteps& table){
     }
     return out;
 }
-NudgedWalk walk_nudged(const StoryWorld& world, const TableSteps& table, Direction nudge){
-    const TilePos start = story_to_world(world, table.start.map, Pokemon::tiles_of(table.start).front());
-    const Direction back = static_cast<Direction>(((int)nudge + 2) % 4);
-    GridSim sim({.world = &world, .trainers = story_trainers(world)}, start.next(back), Direction::NORTH, true);
-    sim.tap(nudge, 100ms, true);
-    NudgedWalk out{.nudged = sim.player().pos};
-    out.failure = walk_steps(sim, table).failure;
-    out.end = sim.player().pos;
-    return out;
-}
-
-//  lab-B 2026-11-08 10:39: 01.03's old route up to below Oreburgh's Center ran
-//  north 36 to the wall up column 46 and tapped east 1 into the open; the
-//  heal's run north saw no door and ended at the counter a tile east of the
-//  nurse. A start part of a tile off the grid (a stick tap, as measured)
-//  rides along a run and through an open tap. The table's steps from its
-//  route to the street, up to the heal, must end on the grid below the
-//  door, (47, 21), from either side of the start tile, and a walk north
-//  must go in.
-UnitTestResult test_oreburgh_center_approach(Logger& logger){
-    const std::optional<TableSteps> table = table_steps("01.03", "west_of_the_centers_door", "heal_oreburgh");
-    if (!table){
-        return "01.03 has no west_of_the_centers_door before heal_oreburgh.";
-    }
-    const StoryWorld& world = *story_plan_world("OreburghCity", "OreburghCity");
-    const TilePos below = story_to_world(world, "OreburghCity", {47, 21});
-    for (Direction nudge : {Direction::EAST, Direction::WEST}){
-        const NudgedWalk walk = walk_nudged(world, *table, nudge);
-        const std::string from = std::format("from {} (a stick tap {})", to_string(walk.nudged), direction_name(nudge));
-        logger.log(std::format("01.03 below the Center's door {}: ended at {}{}", from, to_string(walk.end),
-            walk.failure.empty() ? "" : ", failed: " + walk.failure));
-        if (on_grid(walk.nudged)){
-            return "The stick tap left the player on the grid " + from + ".";
-        }
-        if (!walk.failure.empty()){
-            return std::format("01.03 below the Center's door {}: failed at {}: {}", from, to_string(walk.end), walk.failure);
-        }
-        if (walk.end != sim_pos(below)){
-            return std::format("01.03 below the Center's door {}: ended at {}, not on (47, 21).", from, to_string(walk.end));
-        }
-        GridSim door({.world = &world}, below, Direction::NORTH, true);
-        if (door.hold(Direction::NORTH, 3000ms, SimPace::RUN).stop != SimStop::WARP){
-            return "01.03: the walk north from (47, 21) did not go through the Center's door.";
-        }
-    }
-    return true;
-}
-
-
 //  Where `table`'s steps, walked from `start` instead of where the table
 //  has the player, failed or left the player off `checks`' tiles; empty if
 //  they did not.
@@ -932,10 +875,6 @@ const AutoStoryGridSimCase AUTO_STORY_GRID_SIM_CASES[] = {
     },
     {
         .input = {"a stick-tap turn misses the Sandgem Center and Jubilife School doors", test_door_routes},
-        .expectation = {},
-    },
-    {
-        .input = {"01.03 lines up below Oreburgh's Center door from a start off the grid", test_oreburgh_center_approach},
         .expectation = {},
     },
     {

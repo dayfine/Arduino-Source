@@ -977,7 +977,7 @@ const AutoStoryStorySimCase AUTO_STORY_STORY_SIM_CASES[] = {
     },
     {
         .input = {"01.03, counted 19 taps north leaves player in hall", [](Logger& logger){
-            return test_story_sim_step_failure(logger, "01.03", old_mine_hall_19("out_of_the_mine", Direction::NORTH), "01.03 east_of_the_mine", "warp instead of a stop.");
+            return test_story_sim_step_failure(logger, "01.03", old_mine_hall_19("out_of_the_mine", Direction::NORTH), "01.03 north_to_the_centers_wall", "map_mismatch");
         }},
         .expectation = {},
     },

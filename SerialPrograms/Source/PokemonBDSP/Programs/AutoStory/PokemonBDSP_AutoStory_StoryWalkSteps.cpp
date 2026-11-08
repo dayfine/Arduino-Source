@@ -287,7 +287,38 @@ Outcome StoryWalkSteps::tap_legs(const Pose& from, const StoryStep& step){
     return Pokemon::outcome_ok(Pokemon::tile_pose(from.map, at, step.legs.back().direction));
 }
 
+//  A LEGS step "counted_wall": its one leg held to the wall, its tiles
+//  counted against the map's from each tile the table may have us on
+//  (walk_counted_wall_leg()). The leg's tiles are the table's reading of
+//  the map, and must be among them.
+Outcome StoryWalkSteps::counted_wall(const Pose& from, const StoryStep& step){
+    const StoryWorld* world = story_plan_world(from.map, from.map);
+    const std::vector<TilePos> starts = Pokemon::tiles_of(from);
+    if (step.legs.size() != 1 || world == nullptr || starts.empty()){
+        return Pokemon::outcome_failed("counted_wall", std::format("{} legs from {}", step.legs.size(), Pokemon::to_string(from)));
+    }
+    const Pokemon::StoryLeg& leg = step.legs.front();
+    size_t fewest = SIZE_MAX;
+    size_t most = 0;
+    for (const TilePos& pos : starts){
+        const size_t tiles = slide_to_wall(*world, story_to_world(*world, from.map, pos), leg.direction).tiles;
+        fewest = std::min(fewest, tiles);
+        most = std::max(most, tiles);
+    }
+    if ((size_t)leg.tiles < fewest || (size_t)leg.tiles > most){
+        return Pokemon::outcome_failed("map_mismatch",
+            std::format("{} {} where the map has {} to {}", direction_name(leg.direction), leg.tiles, fewest, most));
+    }
+    turn(leg.direction);
+    walk_counted_wall_leg(m_io.route(), {.direction = leg.direction, .fewest = fewest, .most = most,
+        .speed = m_can_run ? MoveSpeed::RUN : MoveSpeed::WALK, .label = label_of(step)});
+    return Pokemon::outcome_ok();
+}
+
 Outcome StoryWalkSteps::legs(RunState& state, const StoryStep& step){
+    if (step.variant == "counted_wall"){
+        return counted_wall(state.pose, step);
+    }
     if (step.variant == "to_wall"){
         for (const Pokemon::StoryLeg& leg : step.legs){
             m_io.walk_until_stopped(leg.direction, (size_t)leg.tiles, label_of(step));

@@ -123,7 +123,9 @@ protected:
     //  may end a tile short (a door lined up by sight after). Variant
     //  "to_wall": each leg walks until something stops it, for at most its
     //  tiles' time, as measured on the console; the pose is then unknown
-    //  unless the step gives one.
+    //  unless the step gives one. Variant "counted_wall": its one leg walks
+    //  to the wall, waiting out anyone walking about in the way, and fails
+    //  when the tiles walked are far off the map's from the step's start.
     virtual Pokemon::Outcome legs(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
     //  One D-pad step `direction`, turning first: onto a scene's trigger or
     //  into a door. Variant "to_banner": one tap into a cave mouth, then

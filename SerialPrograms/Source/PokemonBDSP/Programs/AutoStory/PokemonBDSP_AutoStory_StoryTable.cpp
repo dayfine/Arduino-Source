@@ -777,32 +777,23 @@ StoryCheckpoint oreburgh_mine_to_roark(){
         anchored(legs("below_the_coal_rooms_warp", legs_out_of_coal_room(), "east around crate, up column 29, west across row 17, and up corridor to warp doorstep"),
             at(MINE, 15, 2, NORTH)),
         step_into("up_to_the_hall", NORTH, "the warp tile (15, 1)", at(MINE_HALL, 12, 21, NORTH)),
-        //  Out on the warp tile of the hall's column; any of the three, should
-        //  the walk up the hall drift.
+        //  Out on the city's (46, 59), the warp tile of the hall's column 12
+        //  (the decomp's warp: the hall's (12, 1) to the city's (46, 59)), or
+        //  a tile north should the walk go on past the fade. On the console
+        //  (lab-B 2026-11-08 13:50) a tap north and a hold east to the wall
+        //  matched the map only from column 46.
         step_into("out_of_the_mine", NORTH, "up the entrance hall and out to the city",
-            Pokemon::tile_pose(OREBURGH, {TilePos{46, 59}, TilePos{45, 59}, TilePos{47, 59}, TilePos{46, 58}, TilePos{45, 58}, TilePos{47, 58}}, NORTH)),
-        //  Pin the column whichever warp tile we came out on, or a tile north
-        //  of it should the run go on past the fade, with no tap against the
-        //  sign (45, 56): a tap north onto row 58 or 57, east against the wall
-        //  at (49, 58) or (50, 57), a tap north, east against the wall at
-        //  (50, 57) or (50, 56), then south against the wall at (49, 58).
-        legs("off_the_mines_warp_tiles", {{.direction = NORTH, .tiles = 1}}, "a tap north off the mine's warp tiles"),
-        anchored(to_walls("east_of_the_mine", {{.direction = EAST, .tiles = 4}}, "east against the wall at (49, 58) or (50, 57)"),
-            Pokemon::tile_pose(OREBURGH, {TilePos{48, 58}, TilePos{49, 57}}, EAST)),
-        legs("north_of_row_58", {{.direction = NORTH, .tiles = 1}}, "a tap north onto row 57 or 56"),
-        anchored(to_walls("against_the_walls_east_of_the_mine", {{.direction = EAST, .tiles = 1}, {.direction = SOUTH, .tiles = 1}},
-            "east against the wall at (50, 57) or (50, 56), south against the wall at (49, 58)"), at(OREBURGH, 49, 57, SOUTH)),
-        //  Not a route to below the door: believing us on column 45 when we
-        //  were on 46, its run north to the wall and its open step east ended
-        //  off the door's column (no fade; the counter a tile east of the nurse,
-        //  lab-B 2026-11-08 10:39), and the run went through the door into the
-        //  Center (12:04). Route to the street west of the door, (44, 22), then
-        //  line up as 01.02b does, against the walls east and north of (48, 22),
-        //  and tap west below the door.
-        route("west_of_the_centers_door", at(OREBURGH, 44, 22, WEST), "up to the street west of the Center's door", "town"),
-        anchored(to_walls("against_the_walls_east_of_the_door", {{.direction = EAST, .tiles = 4}, {.direction = NORTH, .tiles = 1}},
-            "east against the wall at (49, 22), north against the wall at (48, 20)"), at(OREBURGH, 48, 21, NORTH)),
-        anchored(legs("below_the_centers_door_lined_up", {{.direction = WEST, .tiles = 1}}, "a tap west below the door"), below_oreburghs_center()),
+            Pokemon::tile_pose(OREBURGH, {TilePos{46, 59}, TilePos{46, 58}}, NORTH)),
+        //  Straight north up column 46 to the wall west of the Center's door,
+        //  (46, 20): 37 tiles from (46, 58), 38 from (46, 59). Oreburgh's
+        //  Hiker wanders (46..48, 25..27) across it, and the walk waits for
+        //  him. The column was the one the console stopped on at 10:39, and
+        //  it keeps off the street east of the mine, where at 13:50 a hold
+        //  east from (48, 57) moved 0 though the map has (49, 57) open, and
+        //  the walk after went astray.
+        anchored(legs("north_to_the_centers_wall", {{.direction = NORTH, .tiles = 37}},
+            "north up column 46 to the wall west of the Center's door", "counted_wall"), at(OREBURGH, 46, 21, NORTH)),
+        anchored(legs("east_below_the_centers_door", {{.direction = EAST, .tiles = 1}}, "a tap east below the door"), below_oreburghs_center()),
         heal("heal_oreburgh", "the nurse; out onto the doorstep, where 01.04 starts", out_of_oreburgh_center()),
     });
 }
