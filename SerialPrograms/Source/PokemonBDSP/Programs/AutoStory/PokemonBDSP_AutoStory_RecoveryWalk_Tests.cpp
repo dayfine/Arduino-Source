@@ -12,6 +12,7 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include "Common/Cpp/Exceptions.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "Simulation/PokemonBDSP_AutoStory_GridSim.h"
 #include "PokemonBDSP_AutoStory_StoryPlaces.h"
@@ -299,7 +300,7 @@ const WarpLink MINE_WARPS[] = {
 //  them where it lands. Returns where, on which map.
 std::pair<std::string, TilePos> warp_north(GridSim& sim, const std::string& map, const TilePos& start){
     const StoryWorld& from = *story_plan_world(map, map);
-    sim.place({.world = &from}, from.to_world(map, start), Direction::NORTH);
+    sim.place({.world = &from}, story_to_world(from, map, start), Direction::NORTH);
     if (sim.hold(Direction::NORTH, 20000ms, SimPace::WALK).stop != SimStop::WARP){
         throw GridSimFailure{std::format("no warp north of {} on {}", Pokemon::to_string(start), map)};
     }
@@ -307,7 +308,7 @@ std::pair<std::string, TilePos> warp_north(GridSim& sim, const std::string& map,
     for (const WarpLink& link : MINE_WARPS){
         if (link.from_map == map && warp == link.from){
             const StoryWorld& to = *story_plan_world(link.to_map, link.to_map);
-            sim.place({.world = &to, .trainers = story_trainers(to)}, to.to_world(link.to_map, link.to), Direction::NORTH);
+            sim.place({.world = &to, .trainers = story_trainers(to)}, story_to_world(to, link.to_map, link.to), Direction::NORTH);
             return {link.to_map, link.to};
         }
     }
@@ -410,7 +411,7 @@ public:
                 for (int past : {0, 1}){
                     for (bool old : {true, false}){
                         const StoryWorld& room = *story_plan_world("OreburghMine", "OreburghMine");
-                        GridSim sim({.world = &room}, room.to_world("OreburghMine", {15, 2}), Direction::NORTH, true);
+                        GridSim sim({.world = &room}, story_to_world(room, "OreburghMine", {15, 2}), Direction::NORTH, true);
                         const TilePos hall = warp_north(sim, "OreburghMine", {15, 2}).second;
                         const TilePos out = warp_north(sim, "OreburghMineB1F", {column, hall.y}).second;
                         if (past > 0){
@@ -430,6 +431,8 @@ public:
             }
         }catch (const GridSimFailure& error){
             return error.message;
+        }catch (const Exception& error){
+            return std::string(error.name()) + ": " + error.message();
         }
         return true;
     }
