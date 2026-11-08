@@ -119,10 +119,9 @@ UnitTestResult test_row(Logger& logger, const std::string& row, size_t floor){
 }
 
 
-//  01.03 as it was before be57db157 and 4f13c19bb: counted taps across
-//  Roark's room, and the route to below the Center's door straight into
-//  the heal.
-std::vector<StoryCheckpoint> old_0103(){
+//  01.03's steps across Roark's room as they were before 4f13c19bb:
+//  counted taps onto Roark's row, then west against his rock.
+std::vector<StoryStep> old_steps_to_roark(){
     StoryStep taps;
     taps.kind = Pokemon::StoryStepKind::LEGS;
     taps.name = "above_roarks_row";
@@ -133,8 +132,21 @@ std::vector<StoryCheckpoint> old_0103(){
         {.direction = Direction::WEST, .tiles = 2}, {.direction = Direction::SOUTH, .tiles = 2},
     };
     taps.pose_after = Pokemon::tile_pose("OreburghMine", {TilePos{27, 28}}, Direction::SOUTH);
-    const std::vector<std::string> added{"around_the_rock", "down_column_29",
-        "south_of_the_centers_door", "against_the_walls_east_of_the_door", "below_the_centers_door_lined_up"};
+    StoryStep walls;
+    walls.kind = Pokemon::StoryStepKind::LEGS;
+    walls.name = "beside_roarks_rock";
+    walls.variant = "to_wall";
+    walls.legs = {{.direction = Direction::WEST, .tiles = 7}, {.direction = Direction::SOUTH, .tiles = 1}};
+    walls.pose_after = Pokemon::tile_pose("OreburghMine", {TilePos{20, 29}}, Direction::SOUTH);
+    return {taps, walls};
+}
+
+//  01.03 as it was before be57db157 and 4f13c19bb: counted taps across
+//  Roark's room, and the route to below the Center's door straight into
+//  the heal.
+std::vector<StoryCheckpoint> old_0103(){
+    const std::vector<StoryStep> old = old_steps_to_roark();
+    const std::vector<std::string> added{"south_of_the_centers_door", "against_the_walls_east_of_the_door", "below_the_centers_door_lined_up"};
     std::vector<StoryCheckpoint> rows = story_checkpoints();
     for (StoryCheckpoint& row : rows){
         if (row.id != "01.03"){
@@ -143,7 +155,8 @@ std::vector<StoryCheckpoint> old_0103(){
         std::erase_if(row.steps, [&](const StoryStep& step){
             return std::find(added.begin(), added.end(), step.name) != added.end();
         });
-        std::replace_if(row.steps.begin(), row.steps.end(), [](const StoryStep& step){ return step.name == "above_roarks_row"; }, taps);
+        std::replace_if(row.steps.begin(), row.steps.end(), [](const StoryStep& step){ return step.name == "to_roarks_corner"; }, old[0]);
+        std::replace_if(row.steps.begin(), row.steps.end(), [](const StoryStep& step){ return step.name == "beside_roarks_rock"; }, old[1]);
     }
     return rows;
 }
