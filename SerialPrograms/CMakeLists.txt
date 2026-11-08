@@ -897,3 +897,5 @@ if(COMMAND_LINE_EXE)
     # Add command-line executable (GUI-free) from subdirectory
     include(Source/CommandLine/CommandLineExecutable.cmake)
 endif()
+
+include(../devtools/story-export/FRLG.cmake)
