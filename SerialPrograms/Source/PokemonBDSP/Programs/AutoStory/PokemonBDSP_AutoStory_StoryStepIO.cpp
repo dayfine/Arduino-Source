@@ -215,6 +215,19 @@ enum class TapLook{
 
 //  Looks for the location banner `banner` (and, if `dark_too`, the fade)
 //  for up to `wait`.
+void keep_banner_frame(const ImageViewRGB32& frame, const std::string& folder, const std::string& banner){
+    Filesystem::create_directories(Filesystem::Path(folder));
+    frame.save(folder + now_to_filestring() + "-" + normalize_location_name(banner) + ".png");
+}
+void log_new_banner_read(VideoStream& stream, const std::string& read, std::string& last_read, const std::string& banner, WallClock start){
+    if (read.empty() || read == last_read){
+        return;
+    }
+    stream.log(std::format("[Banner] read \"{}\" after {} ms, looking for \"{}\".",
+        read, std::chrono::duration_cast<Milliseconds>(current_time() - start).count(), banner));
+    last_read = read;
+}
+
 //  Logs each distinct banner read and how the wait ended: the Oreburgh Gate's
 //  entry missed its banner twice (lab-B, 2026-11-08 15:31 and 15:39) though
 //  a hand probe saw it 1.5 s after the fade, and nothing said why.
@@ -231,16 +244,11 @@ TapLook look_after_tap(VideoStream& stream, ProControllerContext& context, const
         context.wait_for_all_requests();
         const VideoSnapshot screen = stream.video().snapshot();
         if (!dark_too && screen && current_time() >= next_frame){
-            Filesystem::create_directories(Filesystem::Path(folder));
-            screen.frame->save(folder + now_to_filestring() + "-" + normalize_location_name(banner) + ".png");
+            keep_banner_frame(*screen.frame, folder, banner);
             next_frame += 500ms;
         }
         const std::string read = screen ? read_location_banner(*screen.frame) : "";
-        if (!read.empty() && read != last_read){
-            stream.log(std::format("[Banner] read \"{}\" after {} ms, looking for \"{}\".",
-                read, std::chrono::duration_cast<Milliseconds>(current_time() - start).count(), banner));
-            last_read = read;
-        }
+        log_new_banner_read(stream, read, last_read, banner, start);
         if (screen && location_banner_matches(read, banner)){
             return TapLook::BANNER;
         }
