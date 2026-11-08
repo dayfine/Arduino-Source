@@ -50,6 +50,7 @@
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryPcStorage.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRngLoop.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryTable.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryExport_Tests.h"
 #include "Programs/RngManipulation/PokemonFRLG_GiftRngAttempts_Tests.h"
 #include "Programs/RngManipulation/PokemonFRLG_RngPlanInputs_Tests.h"
 #include "Programs/RngManipulation/PokemonFRLG_RngPlanLog_Tests.h"
@@ -64,7 +65,6 @@
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
-
 
 namespace{
 
@@ -289,7 +289,6 @@ void add_tests_ExitWildBattle(UnitTestDatabase& database){
         database.add<Test_ExitWildBattle>(scenario);
     }
 }
-
 
 //  Naming screen keyboard: cursor moves, plans and text checks, against pokefirered's
 //  src/naming_screen.c.
@@ -933,6 +932,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_OverworldSim(database);
     add_tests_PlayerFacingReader(database);
     add_tests_AutoStory(database);
+    add_tests_AutoStoryExport(database);
     add_tests_AutoStorySimulation(database);
     add_tests_AutoStoryItems(database);
     add_tests_AutoStoryRngLoop(database);
