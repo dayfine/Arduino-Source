@@ -212,18 +212,34 @@ enum class TapLook{
 
 //  Looks for the location banner `banner` (and, if `dark_too`, the fade)
 //  for up to `wait`.
+//  Logs each distinct banner read and how the wait ended: the Oreburgh Gate's
+//  entry missed its banner twice (lab-B, 2026-11-08 15:31 and 15:39) though
+//  a hand probe saw it 1.5 s after the fade, and nothing said why.
 TapLook look_after_tap(VideoStream& stream, ProControllerContext& context, const std::string& banner, Milliseconds wait, bool dark_too){
-    const WallClock deadline = current_time() + wait;
+    const WallClock start = current_time();
+    const WallClock deadline = start + wait;
+    std::string last_read;
+    double darkest = 255;
     while (true){
         context.wait_for_all_requests();
         const VideoSnapshot screen = stream.video().snapshot();
-        if (screen && location_banner_matches(read_location_banner(*screen.frame), banner)){
+        const std::string read = screen ? read_location_banner(*screen.frame) : "";
+        if (!read.empty() && read != last_read){
+            stream.log(std::format("[Banner] read \"{}\" after {} ms, looking for \"{}\".",
+                read, std::chrono::duration_cast<Milliseconds>(current_time() - start).count(), banner));
+            last_read = read;
+        }
+        if (screen && location_banner_matches(read, banner)){
             return TapLook::BANNER;
         }
-        if (dark_too && screen && image_average(*screen.frame).sum() / 3 < FADE_DARKNESS){
+        const double brightness = screen ? image_average(*screen.frame).sum() / 3 : 255;
+        darkest = std::min(darkest, brightness);
+        if (dark_too && brightness < FADE_DARKNESS){
             return TapLook::DARK;
         }
         if (current_time() >= deadline){
+            stream.log(std::format("[Banner] no \"{}\" in {} ms; darkest frame {:.0f}, last read \"{}\".",
+                banner, wait.count(), darkest, last_read));
             return TapLook::NOTHING;
         }
         context.wait_for(100ms);
