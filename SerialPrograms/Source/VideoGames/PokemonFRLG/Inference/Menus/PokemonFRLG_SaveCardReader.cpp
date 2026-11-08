@@ -68,6 +68,13 @@ private:
             {"pewter-city", "Pewter City"},
             {"route-1", "Route 1"},
             {"route-2", "Route 2"},
+            {"route-3", "Route 3"},
+            {"route-4", "Route 4"},
+            {"cerulean-city", "Cerulean City"},
+            {"route-24", "Route 24"},
+            {"route-25", "Route 25"},
+            {"route-10", "Route 10"},
+            {"vermilion-city", "Vermilion City"},
         }){
             JsonArray names;
             names.push_back(name);

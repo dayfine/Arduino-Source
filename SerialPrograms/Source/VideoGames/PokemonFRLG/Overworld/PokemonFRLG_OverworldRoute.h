@@ -53,6 +53,9 @@ struct RouteStep{
     bool warps = false;
     //  WALK: on the water, where the player moves twice as fast.
     bool surfing = false;
+    //  WALK: on a map where the game doesn't let the player run (indoors,
+    //  MapData::allow_running): B held there still walks.
+    bool walk_only = false;
     //  WALK: a wall stops the player at the end, so the leg can be held for
     //  longer than it takes and still ends on its tile.
     bool to_wall = false;
@@ -65,6 +68,17 @@ struct RouteStep{
     Direction facing_after = Direction::NORTH;
     //  Where the player is after the step.
     MapPosition end;
+    //  WALK: the steps (from 1) onto a connected map. The game holds the
+    //  player up a tile before each while it loads the map: a hold timed
+    //  by the tiles alone ended a tile short (console B, 2026-11-03, rows
+    //  00.14, 00.16 and 00.20).
+    std::vector<int> connection_steps = {};
+    //  WALK onto a warp: how many tiles further the player may stand from
+    //  it than planned, which the hold goes on for, stopping at the fade.
+    //  An open leg over a map connection before it may end a tile further
+    //  on, when the game doesn't hold the player up there (console B,
+    //  2026-11-03, row 00.24). Set by with_warp_slack() when a route runs.
+    int warp_slack = 0;
 };
 //  Formats a RouteStep as a string.
 std::string to_string(const RouteStep& step);
@@ -82,7 +96,7 @@ enum class RouteCost{
     TILE,
     TURN,           //  extra for a leg in a new direction
     WARP,           //  the fade in and out
-    SURF,           //  the dialog and the animation
+    SURF,           //  the dialog and the animation; below 0, never
     GRASS_TILE,     //  extra for tall grass, where wild Pokemon appear
     //  Extra for a leg that ends where the player could keep walking: it has
     //  to be timed, and if a message or a battle stops it part-way, where
@@ -117,12 +131,13 @@ std::optional<std::vector<RouteStep>> plan_overworld_route(
 );
 
 //  Holding `direction` from `from`, on the water if `surfing`: where a wall
-//  stops the player, how many tiles on, and whether any tile on the way is
-//  tall grass or water.
+//  stops the player, how many tiles on, whether any tile on the way is tall
+//  grass or water, and whether the map lets the player run.
 struct WallHold{
     MapPosition end;
     int tiles = 0;
     bool wild = false;
+    bool walk_only = false;
 };
 //  Nothing unless every step on the way is a plain walk: a warp, Surf, a
 //  ledge, a person, a sign that would speak, or the edge of the loaded maps

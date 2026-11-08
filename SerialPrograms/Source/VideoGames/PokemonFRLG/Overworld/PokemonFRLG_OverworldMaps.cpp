@@ -37,10 +37,47 @@ const char* const MAP_NAMES[] = {
     "PewterCity_Mart",
     "PewterCity_Museum_1F",
     "PewterCity_Gym",
+    //  Route 3 to the Magikarp salesman in Route 4's Pokemon Center.
+    "Route3",
+    "Route4",
+    "Route4_PokemonCenter_1F",
+    //  Mt. Moon, from Route 4 west of it to Route 4 east of it.
+    "MtMoon_1F",
+    "MtMoon_B1F",
+    "MtMoon_B2F",
     //  Cerulean Cave, for Mewtwo.
     "CeruleanCity_PokemonCenter_1F",
     "CeruleanCity",
     "Route24",
+    //  Cerulean City's Mart and Gym, and Route 25 to Bill's Sea Cottage.
+    "CeruleanCity_Mart",
+    "CeruleanCity_Gym",
+    "Route25",
+    "Route25_SeaCottage",
+    //  The burgled house, the way south out of Cerulean; Route 5, the
+    //  Underground Path and Route 6 to Vermilion City, and the S.S.
+    //  Anne's way to the Captain.
+    "CeruleanCity_House2",
+    "Route5",
+    "UndergroundPath_NorthEntrance",
+    "UndergroundPath_NorthSouthTunnel",
+    "UndergroundPath_SouthEntrance",
+    "Route6",
+    "VermilionCity",
+    "VermilionCity_PokemonCenter_1F",
+    "SSAnne_Exterior",
+    "SSAnne_1F_Corridor",
+    "SSAnne_2F_Corridor",
+    "SSAnne_CaptainsOffice",
+    //  Vermilion Gym, past the tree Cut fells.
+    "VermilionCity_Gym",
+    //  The BIKE VOUCHER and the BICYCLE.
+    "VermilionCity_PokemonFanClub",
+    "CeruleanCity_BikeShop",
+    //  East over Route 9 to Route 10's Pokemon Center.
+    "Route9",
+    "Route10",
+    "Route10_PokemonCenter_1F",
     "CeruleanCave_1F",
     "CeruleanCave_2F",
     "CeruleanCave_B1F",

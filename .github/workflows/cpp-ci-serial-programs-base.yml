@@ -88,6 +88,19 @@ jobs:
           ref: 'master'
           path: 'Arduino-Source/Packages'
 
+      - name: Install Python for pinned map preparation
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Prepare approved FRLG map resources
+        id: map-resources
+        uses: dayfine/PokemonSimulation/integrations/arduino-source/verify-map-packs@906956e94fc912ae9adb0e44845da780f3bc7e4c
+        with:
+          layout: resources
+          operation: prepare
+          consumer-directory: Arduino-Source
+
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
@@ -204,6 +217,8 @@ jobs:
           # every file missed, compiling took 10-40% longer than before on Linux and macOS, and
           # about twice as long on Windows.
           CCACHE_DEPEND: 1
+          POKESIM_TOOLS_SOURCE: ${{ steps.map-resources.outputs.tools-source }}
+          POKESIM_SOURCE_CACHE: ${{ steps.map-resources.outputs.source-cache }}
         run: |
           cd Arduino-Source/SerialPrograms
           mkdir bin
@@ -265,7 +280,9 @@ jobs:
         uses: actions/checkout@v7
         if: inputs.run-tests
         with:
-          repository: 'PokemonAutomation/CommandLineTests'
+          # Complete fork fixtures include pending FRLG image submissions.
+          repository: 'dayfine/CommandLineTests'
+          ref: 'd150a6c547434110a920f95ba7857b93d5bb9222'
           path: 'CommandLineTests'
 
       # The unit tests assume the downloadable resources they need are already downloaded

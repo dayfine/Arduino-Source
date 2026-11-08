@@ -28,12 +28,14 @@ WhiteDialogDetector::WhiteDialogDetector(Color color)
     : m_right_box(0.923385, 0.748077, 0.00615385, 0.204577)
     , m_top_box(0.0704615, 0.741846, 0.859077, 0.00623077)
     , m_bottom_box(0.0716923, 0.943308, 0.851692, 0.00934615)
+    , m_frame_box(0.0704615, 0.7288, 0.859077, 0.0048)
 {}
 void WhiteDialogDetector::make_overlays(VideoOverlaySet& items) const{
     const BoxOption& GAME_BOX = GameSettings::instance().GAME_BOX;
     items.add(COLOR_RED, GAME_BOX.inner_to_outer(m_right_box));
     items.add(COLOR_RED, GAME_BOX.inner_to_outer(m_top_box));
     items.add(COLOR_RED, GAME_BOX.inner_to_outer(m_bottom_box));
+    items.add(COLOR_RED, GAME_BOX.inner_to_outer(m_frame_box));
 }
 bool WhiteDialogDetector::detect(const ImageViewRGB32& screen){
     ImageViewRGB32 game_screen = extract_box_reference(screen, GameSettings::instance().GAME_BOX);
@@ -41,9 +43,15 @@ bool WhiteDialogDetector::detect(const ImageViewRGB32& screen){
     ImageViewRGB32 right_image = extract_box_reference(game_screen, m_right_box);
     ImageViewRGB32 top_image = extract_box_reference(game_screen, m_top_box);
     ImageViewRGB32 bottom_image = extract_box_reference(game_screen, m_bottom_box);
+    ImageViewRGB32 frame_image = extract_box_reference(game_screen, m_frame_box);
+    //  The dialog's top frame is light blue, about (165, 214, 230). A white area with no
+    //  frame, like the S.S. Anne's hull, is pure white there. The default is_white() would
+    //  accept the light blue too, so this asks for a brighter white than any frame color.
+    const bool frame_is_white = is_white(frame_image, 720);
     if (is_white(right_image)
         && is_white(top_image)
         && is_white(bottom_image)
+        && !frame_is_white
     ){
         return true;
     }
@@ -125,6 +133,44 @@ bool SelectionDialogDetector::detect(const ImageViewRGB32& screen){
         return true;
     }
     return false;
+}
+
+class Test_WhiteDialogDetector : public ImageUnitTest{
+public:
+
+    Test_WhiteDialogDetector(
+        const std::string& image,
+        bool expected
+    )
+        : ImageUnitTest("PokemonFRLG::WhiteDialogDetector - " + image, {image})
+        , m_expected(expected)
+    {}
+
+    virtual UnitTestResult run_on_images(
+        Logger& logger, CancellableScope& scope,
+        const std::vector<ImageRGB32>& images
+    ) const override{
+        WhiteDialogDetector detector(COLOR_RED);
+        const ImageRGB32& image = images[0];
+        return detector.detect(image) == m_expected;
+    };
+
+private:
+    bool m_expected;
+};
+
+void add_tests_WhiteDialogDetector(UnitTestDatabase& database){
+    //  The S.S. Anne's white hull fills the dialog area, with no frame around it.
+    database.add<Test_WhiteDialogDetector>("PokemonFRLG/WhiteDialogDetector/SSAnne1F_Corridor_False.png", false);
+    database.add<Test_WhiteDialogDetector>("PokemonFRLG/WhiteDialogDetector/SSAnne1F_CorridorWorker_False.png", false);
+    //  Real dialogs, from the other dialog detectors' folders.
+    database.add<Test_WhiteDialogDetector>("PokemonFRLG/AdvanceWhiteDialogDetector/English-Bulba_True.png", true);
+    database.add<Test_WhiteDialogDetector>("PokemonFRLG/AdvanceWhiteDialogDetector/Ger-KennyExile-Sq_True.png", true);
+    database.add<Test_WhiteDialogDetector>("PokemonFRLG/AdvanceWhiteDialogDetector/MacOS-not-ili-Char_True.png", true);
+    database.add<Test_WhiteDialogDetector>("PokemonFRLG/AdvanceWhiteDialogDetector/Spanish-AlejaKaiser-Char_True.png", true);
+    database.add<Test_WhiteDialogDetector>("PokemonFRLG/Dialog/white_dialog_jap-112434221413.png", true);
+    database.add<Test_WhiteDialogDetector>("PokemonFRLG/Dialog/white_dialog_red_text_spa-205200755327.png", true);
+    database.add<Test_WhiteDialogDetector>("PokemonFRLG/SelectionDialogDetector/English-Bulba-720p_True.png", true);
 }
 
 class Test_AdvanceWhiteDialogDetector : public ImageUnitTest{

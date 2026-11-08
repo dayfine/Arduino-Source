@@ -8,6 +8,8 @@
 #include <cmath>
 #include <format>
 #include <random>
+#include <utility>
+#include <vector>
 #include "PokemonFRLG_AutoStoryWinChance.h"
 
 namespace PokemonAutomation{
@@ -19,12 +21,7 @@ namespace{
 
 //  A battle still going after this many turns counts as lost.
 constexpr size_t MAX_TURNS = 100;
-constexpr uint32_t CRIT_CHANCE = 16;
-constexpr uint32_t HIGH_CRIT_CHANCE = 8;
 constexpr int MAX_STAGE = 6;
-
-//  sAccuracyStageRatios, -6 to +6, in hundredths.
-constexpr uint32_t ACCURACY_RATIOS[] = {33, 36, 43, 50, 60, 75, 100, 133, 166, 200, 233, 266, 300};
 
 const MoveData& data_of(std::string_view move){
     static const MoveData NONE;
@@ -90,9 +87,9 @@ void change_stage(SimBattler& user, SimBattler& target, std::string_view effect)
 //  One battle, played once.
 class SimBattle{
 public:
-    SimBattle(const SimBattler& own, int potions, const SimTrainer& trainer, std::mt19937& rng)
+    SimBattle(const SimBattler& own, const SimItems& items, const SimTrainer& trainer, std::mt19937& rng)
         : m_own(own)
-        , m_potions(potions)
+        , m_items(items)
         , m_trainer(trainer)
         , m_rng(rng)
     {}
@@ -110,6 +107,18 @@ public:
         return false;
     }
 
+    //  After a lost battle: the foe out and the lead's state.
+    void tally_loss(LossTally& tally){
+        tally.by_foe[foe().species]++;
+        tally.seeded += m_own.seeded ? 1 : 0;
+        tally.poisoned += m_own.status == SimStatus::POISON ? 1 : 0;
+        tally.asleep += m_own.status == SimStatus::SLEEP ? 1 : 0;
+        tally.paralyzed += m_own.status == SimStatus::PARALYSIS ? 1 : 0;
+        tally.accuracy_down += stage(m_own, Stage::ACCURACY) < 0 ? 1 : 0;
+        tally.no_potions += m_items.potions == 0 ? 1 : 0;
+        tally.turn_cap += m_own.hp > 0 ? 1 : 0;
+    }
+
 private:
     SimBattler& foe(){
         return m_trainer.party[m_out];
@@ -119,6 +128,17 @@ private:
         return static_cast<size_t>(std::ranges::count_if(m_trainer.party, [](const SimBattler& battler){
             return battler.hp > 0;
         }));
+    }
+
+    //  The trainer's Pokemon not out and not fainted.
+    std::vector<SimBattler> to_come() const{
+        std::vector<SimBattler> rest;
+        for (size_t slot = 0; slot < m_trainer.party.size(); slot++){
+            if (slot != m_out && m_trainer.party[slot].hp > 0){
+                rest.push_back(m_trainer.party[slot]);
+            }
+        }
+        return rest;
     }
 
     bool send_next(){
@@ -151,21 +171,45 @@ private:
 
     void play_turn(){
         const size_t left = foes_left();
-        const OwnTurn own = own_turn(m_own, m_potions, foe(), m_trainer.items, left);
-        const std::optional<size_t> item = ai_item_choice(foe(), m_trainer.items, left);
-        const std::optional<size_t> foe_slot = item ? std::nullopt : foe_move();
+        m_psn_turns = m_own.status == SimStatus::POISON ? m_psn_turns + 1 : 0;
+        //  A charged two-turn move strikes: no choice this turn.
+        const bool own_locked = !m_own.charging.empty();
+        const bool foe_locked = !foe().charging.empty();
+        const OwnTurn own = own_locked ? OwnTurn{} : own_turn(m_own, m_items, foe(), m_trainer, left, to_come());
+        const bool antidote = !own_locked && !own.potion && !own.awakening && antidote_now();
+        const std::optional<size_t> item = foe_locked ? std::nullopt : ai_item_choice(foe(), m_trainer.items, left);
+        const std::optional<size_t> foe_slot = item || foe_locked ? std::nullopt : foe_move();
         if (own.potion){
             gain_hp(m_own, POTION_HP);
-            m_potions--;
+            m_items.potions--;
+        }
+        if (own.awakening){
+            m_own.status = SimStatus::NONE;
+            m_own.sleep = 0;
+            m_items.awakenings--;
+        }
+        if (antidote){
+            m_own.status = SimStatus::NONE;
+            m_items.antidotes--;
+            m_antidote_used = true;
         }
         if (item){
             gain_hp(foe(), ai_item_hp(m_trainer.items[*item]));
             m_trainer.items[*item].clear();
         }
-        const std::string own_move = own.potion ? "" : own.slot ? m_own.moves[*own.slot].move : "struggle";
-        const std::string foe_used = item ? "" : foe_slot ? foe().moves[*foe_slot].move : "struggle";
+        const bool item_used = own.potion || own.awakening || antidote;
+        const std::string own_move = own_locked ? m_own.charging
+            : item_used ? "" : own.slot ? m_own.moves[*own.slot].move : "struggle";
+        const std::string foe_used = foe_locked ? foe().charging
+            : item ? "" : foe_slot ? foe().moves[*foe_slot].move : "struggle";
         play_moves(own_move, own.slot, foe_used, foe_slot);
         end_of_turn();
+    }
+
+    //  As the battle loop: once a battle, PSN_TURNS_BEFORE_ANTIDOTE turns
+    //  poisoned in a row.
+    bool antidote_now() const{
+        return m_items.antidotes > 0 && !m_antidote_used && m_psn_turns >= PSN_TURNS_BEFORE_ANTIDOTE;
     }
 
     bool own_first(const std::string& own_move, const std::string& foe_used){
@@ -211,25 +255,29 @@ private:
     }
 
     bool hits(const SimBattler& user, const SimBattler& target, const MoveData& move){
-        if (move.accuracy == 0){
-            return true;
-        }
-        const int buff = std::clamp(
-            user.body.stages[static_cast<size_t>(Stage::ACCURACY)] - target.body.stages[static_cast<size_t>(Stage::EVASION)],
-            -MAX_STAGE, MAX_STAGE
-        );
-        const uint32_t chance = move.accuracy * ACCURACY_RATIOS[buff + MAX_STAGE] / 100;
-        return random(100) + 1 <= chance;
+        return move.accuracy == 0 || random(100) + 1 <= hit_percent(user, target, move);
     }
 
     void use(SimBattler& user, SimBattler& target, const std::string& move_name, std::optional<size_t> slot, bool moves_first){
-        if (move_name.empty() || user.hp == 0 || target.hp == 0 || !can_move(user, moves_first)){
+        if (move_name.empty() || user.hp == 0 || target.hp == 0){
+            return;
+        }
+        if (!can_move(user, moves_first)){
+            user.charging.clear();
             return;
         }
         if (slot && user.moves[*slot].pp > 0){
             user.moves[*slot].pp--;
         }
         const MoveData& move = data_of(move_name);
+        if (two_turn(move) && user.charging.empty()){
+            user.charging = move_name;
+            return;
+        }
+        user.charging.clear();
+        if (semi_invulnerable(target) && !on_user(move)){
+            return;
+        }
         if (!hits(user, target, move)){
             return;
         }
@@ -238,6 +286,18 @@ private:
         }else{
             apply_status_move(user, target, move);
         }
+    }
+
+    //  A move on its user only: a stat raise, Recover.
+    static bool on_user(const MoveData& move){
+        if (move.power > 0){
+            return false;
+        }
+        if (move.effect == "restore-hp" || move.effect == "softboiled"){
+            return true;
+        }
+        const std::optional<StageChange> change = stage_change(move.effect);
+        return change && change->on_user;
     }
 
     uint32_t hit_count(const MoveData& move){
@@ -256,7 +316,7 @@ private:
         if (move.effect == "super-fang"){
             return std::max<uint32_t>(target.hp / 2, 1);
         }
-        const bool crit = random(move.effect == "high-critical" ? HIGH_CRIT_CHANCE : CRIT_CHANCE) == 0;
+        const bool crit = random(crit_odds(move)) == 0;
         const uint32_t before = damage_before_roll(user.body, target.body, move, crit);
         return fixed_damage(move, user.body) ? before : rolled_damage(before, 100 - random(16));
     }
@@ -341,41 +401,75 @@ private:
     }
 
     SimBattler m_own;
-    int m_potions;
+    SimItems m_items;
     SimTrainer m_trainer;
     std::mt19937& m_rng;
     size_t m_out = 0;
     bool m_flinched = false;
+    int m_psn_turns = 0;
+    bool m_antidote_used = false;
 };
 
 } // namespace
 
 
-WinEstimate estimate_win_chance(const SimBattler& own, int potions, const SimTrainer& trainer, size_t battles, uint32_t seed){
+WinEstimate estimate_win_chance(const SimBattler& own, const SimItems& items, const SimTrainer& trainer, size_t battles, uint32_t seed){
     std::mt19937 rng(seed);
     WinEstimate estimate{.battles = battles, .wins = 0, .chance = 0};
     for (size_t i = 0; i < battles; i++){
-        SimBattle battle(own, potions, trainer, rng);
-        estimate.wins += battle.won() ? 1 : 0;
+        SimBattle battle(own, items, trainer, rng);
+        if (battle.won()){
+            estimate.wins++;
+        }else{
+            battle.tally_loss(estimate.losses);
+        }
     }
     estimate.chance = battles == 0 ? 0 : static_cast<double>(estimate.wins) / battles;
     return estimate;
 }
 
-std::optional<WinEstimate> story_win_chance(const PartyMember& lead, int potions, double hp_share, std::string_view trainer){
+std::string loss_text(const WinEstimate& estimate){
+    const LossTally& t = estimate.losses;
+    std::string text = std::format("lost {}:", estimate.battles - estimate.wins);
+    std::vector<std::pair<std::string, size_t>> foes(t.by_foe.begin(), t.by_foe.end());
+    std::ranges::sort(foes, [](const auto& a, const auto& b){ return a.second > b.second; });
+    for (size_t i = 0; i < foes.size(); i++){
+        text += std::format("{} {} {}", i == 0 ? "" : ",", foes[i].first, foes[i].second);
+    }
+    const std::pair<std::string_view, size_t> states[] = {
+        {"seeded", t.seeded}, {"poisoned", t.poisoned}, {"asleep", t.asleep}, {"paralyzed", t.paralyzed},
+        {"accuracy down", t.accuracy_down}, {"no Potions", t.no_potions}, {"turn cap", t.turn_cap},
+    };
+    const char* separator = ";";
+    for (const auto& [name, count] : states){
+        if (count > 0){
+            text += std::format("{} {} {}", separator, name, count);
+            separator = ",";
+        }
+    }
+    return text;
+}
+
+std::optional<WinEstimate> story_win_chance(const PartyMember& lead, const SimItems& items, double hp_share, std::string_view trainer){
     const std::optional<SimBattler> own = own_battler(lead, hp_share);
     const std::optional<SimTrainer> sim = sim_trainer(trainer);
     if (!own || !sim){
         return std::nullopt;
     }
-    WinEstimate estimate = estimate_win_chance(*own, potions, *sim);
+    WinEstimate estimate = estimate_win_chance(*own, items, *sim);
     estimate.inputs = std::format("{} Lv{} {}/{} HP:", own->species, own->body.level, own->hp, own->body.stats.hp);
     for (size_t slot = 0; slot < own->moves.size(); slot++){
         estimate.inputs += std::format(
             "{} {} {}/{}", slot == 0 ? "" : ",", own->moves[slot].move, own->moves[slot].pp, max_pp(own->moves[slot].move)
         );
     }
-    estimate.inputs += std::format("; {} Potions", potions);
+    estimate.inputs += std::format("; {} Potions", items.potions);
+    if (items.awakenings > 0){
+        estimate.inputs += std::format(", {} Awakenings", items.awakenings);
+    }
+    if (items.antidotes > 0){
+        estimate.inputs += std::format(", {} Antidotes", items.antidotes);
+    }
     return estimate;
 }
 

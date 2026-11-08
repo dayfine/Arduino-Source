@@ -75,25 +75,6 @@ constexpr Milliseconds MOVE_LIST_TIMEOUT = 5000ms;
 //  pixel inside.
 const ImageFloatBox STATUS_BADGE_BOX(146.0 / 240, 99.0 / 160, 12.0 / 240, 4.0 / 160);
 
-StatusCondition read_status_badge(const ImageViewRGB32& badge){
-    const ImageStats stats = image_stats(badge);
-    const double r = stats.average.r;
-    const double g = stats.average.g;
-    const double b = stats.average.b;
-    const double off_white = std::abs(r - 255) + std::abs(g - 255) + std::abs(b - 217);
-    if (off_white < 60){
-        return StatusCondition::NONE;
-    }
-    if (r > 200 && g < 200 && b > 180){
-        return StatusCondition::POISON;
-    }
-    //  Not measured yet: PAR's badge is taken to be the yellow one.
-    if (r > 180 && g > 150 && b < 140){
-        return StatusCondition::PARALYSIS;
-    }
-    return StatusCondition::OTHER;
-}
-
 
 enum class BattleScreen{
     //  Keep in step with screen_name().
@@ -126,7 +107,7 @@ BattleScreen read_battle_screen(const ImageViewRGB32& screen, bool confirmed){
     if (BattleMenuDetector(COLOR_RED).detect(screen)){
         return BattleScreen::MENU;
     }
-    if (BattleLearnDialogDetector(COLOR_RED).detect(screen)){
+    if (battle_yes_no_shows(screen)){
         return BattleScreen::LEARN;
     }
     if (!confirmed && !BattleScreenDetector(COLOR_RED).detect(screen)){
@@ -146,7 +127,7 @@ BattleTextScreen read_text_screen(const ImageViewRGB32& screen){
         .text_box = BattleDialogDetector(COLOR_RED).detect(screen),
         .hp_box = BattleScreenDetector(COLOR_RED).detect(screen),
         .arrow = AdvanceBattleDialogDetector(COLOR_RED).detect(screen),
-        .yes_no = BattleLearnDialogDetector(COLOR_RED).detect(screen) || yes_no_cursor(screen).has_value(),
+        .yes_no = battle_yes_no_shows(screen) || yes_no_cursor(screen).has_value(),
     };
 }
 
@@ -186,8 +167,7 @@ bool bag_row_is(
 
 //  From the battle menu: `item`, in `row` (from 0) of the Items pocket, on
 //  the starter. The bag opens on the pocket used last; Items is the first.
-//  Returns whether it was used; if the row holds something else (THOROUGH),
-//  backs out to the battle menu. Not run on the console yet.
+//  Returns whether it was used; else (THOROUGH) backs out to the menu.
 bool use_item(
     ConsoleHandle& console, ProControllerContext& context,
     int row, const std::string& item, StoryChecks checks, Language language
@@ -226,8 +206,7 @@ void run_away(ProControllerContext& context){
     pbf_press_button(context, BUTTON_A, 160ms, 500ms);
 }
 
-//  FIGHT, then the move in `slot` from the top left. The cursor doesn't
-//  move onto an empty slot.
+//  FIGHT, then the move in `slot` from the top left; the cursor stays off empty slots.
 void use_move(ProControllerContext& context, size_t slot){
     tap(context, DPAD_LEFT);
     tap(context, DPAD_UP);
@@ -302,12 +281,12 @@ bool forget_move(ConsoleHandle& console, ProControllerContext& context, size_t s
     return true;
 }
 
-//  The party list in battle opens on the lead: down to `slot`, then A, and
-//  SHIFT, the top of its menu.
 TurnResult item_result(bool used){
     return used ? TurnResult::DONE : TurnResult::NOT_DONE;
 }
 
+//  The party list in battle opens on the lead: down to `slot`, then A, and
+//  SHIFT, the top of its menu.
 void send_member(ProControllerContext& context, size_t slot){
     for (size_t c = 0; c < slot; c++){
         pbf_press_dpad(context, DPAD_DOWN, 160ms, 400ms);
@@ -411,7 +390,7 @@ private:
         if (!m_confirmed){
             return false;
         }
-        if (m_move_chosen && BattleOutOfPpDetector(COLOR_RED).detect(screen)){
+        if (m_move_chosen && m_refusal.no_pp_due(now) && BattleOutOfPpDetector(COLOR_RED).detect(screen)){
             m_console.log("Battle: no PP left for that move; choosing again.", COLOR_ORANGE);
             m_decisions.turn_done(TurnChoice::MOVE, TurnResult::NOT_DONE);
             m_move_chosen = false;
@@ -533,9 +512,10 @@ private:
                 ErrorReportMode::SEND_ERROR_REPORT, "fight_battle(): no battle on screen.", m_console
             );
         }
-        if (now - m_start > BATTLE_TIMEOUT){
+        //  Neither the battle nor the overworld for a minute: a stop, not 10 minutes of + and B.
+        if (now - m_start > BATTLE_TIMEOUT || m_end.overworld_lost(now)){
             OperationFailedExceptionWithScreenshot::fire(
-                ErrorReportMode::SEND_ERROR_REPORT, "fight_battle(): the battle took over 10 minutes.", m_console
+                ErrorReportMode::SEND_ERROR_REPORT, now - m_start > BATTLE_TIMEOUT ? std::string("fight_battle(): the battle took over 10 minutes.") : std::format("fight_battle(): no battle screen and no START menu for 60 s after the battle (turn {}{}).", m_decisions.turns(), m_decisions.lost() ? ", the lead fainted: the battle is lost" : ""), m_console
             );
         }
     }
@@ -605,6 +585,8 @@ private:
         if (!m_foes.species().empty()){
             m_foes.at_menu(read_trainer_foe(m_console.logger(), m_language, screen, m_foes.species()));
             m_supplies.foe_out = m_foes.out();
+            m_supplies.foes_fainted = m_foes.fainted();
+            m_supplies.foe_hp_fill = read_opponent_hp_fill(screen);
         }
         if (m_refusal.refused(current_time())){
             m_console.log("Battle: the move list came back without a turn (Disable?); choosing another move.", COLOR_ORANGE);
@@ -614,10 +596,13 @@ private:
         const TurnAction action = m_decisions.turn(status);
         m_evolution.turn_taken(action.choice);
         m_console.log(std::format(
-            "Battle: turn {}, HP {} ({:.0f}% of the bar), {}, {} Potions, {} Antidotes, {} Parlyz Heals.",
+            "Battle: turn {}, HP {} ({:.0f}% of the bar), {}, {} Potions, {} Antidotes, {} Parlyz Heals, {} Awakenings.",
             m_decisions.turns(), status.hp_red ? "red" : status.hp_yellow ? "yellow" : "green", 100 * status.hp_fill,
-            status_name(status.status), m_supplies.potions, m_supplies.antidotes, m_supplies.parlyz_heals
+            status_name(status.status), m_supplies.potions, m_supplies.antidotes, m_supplies.parlyz_heals, m_supplies.awakenings
         ));
+        if (!action.heal_reason.empty()){
+            m_console.log("Battle: " + action.heal_reason + ".");
+        }
         dump_debug_image(m_console, "AutoStory/battle", std::format("turn{}-menu", m_decisions.turns()), screen);
         switch (action.choice){
         case TurnChoice::RUN:
@@ -629,6 +614,9 @@ private:
             return;
         case TurnChoice::ANTIDOTE:
             m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, item_row(m_supplies, "antidote"), "antidote", m_checks, m_language)));
+            return;
+        case TurnChoice::AWAKENING:
+            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, item_row(m_supplies, "awakening"), "awakening", m_checks, m_language)));
             return;
         case TurnChoice::MOVE:
             m_console.log(std::format("Battle: move {}.", action.slot + 1));
@@ -745,7 +733,7 @@ public:
     }
     //  As the walker's own wild battle interrupts.
     virtual Milliseconds detection_delay() const override{
-        return m_late ? 2000ms : 300ms;
+        return m_late ? OverworldWalkSteps::LATE_WILD_BATTLE_DELAY : 300ms;
     }
     //  Run from or fought by the battle loop, which returns only once START
     //  opens on the overworld, so nothing of the battle is left before the
@@ -782,13 +770,7 @@ public:
         return 400ms;
     }
     virtual void clear(ConsoleHandle& console, ProControllerContext& context) const override{
-        if (advance_text(console, context, AFTER_BATTLE_TEXT, true) == TextEnd::OVERWORLD){
-            return;
-        }
-        console.log("Story: a trainer's battle after a message on the overworld.");
-        fail_on_blackout(console, fight_battle(console, context, m_supplies, BattleKind::TRAINER, m_checks, m_language));
-        mash_until_overworld(console, context, AFTER_BATTLE_TEXT);
-        recover_after_battle(console, context, m_supplies, m_checks, m_language);
+        clear_overworld_message(console, context, m_supplies, m_checks, m_language);
     }
 
 private:
@@ -808,10 +790,36 @@ const char* status_name(StatusCondition status){
         return "PSN";
     case StatusCondition::PARALYSIS:
         return "PAR";
+    case StatusCondition::SLEEP:
+        return "SLP";
     case StatusCondition::OTHER:
         return "a status";
     }
     return "?";
+}
+
+StatusCondition read_status_badge(const ImageViewRGB32& badge){
+    const ImageStats stats = image_stats(badge);
+    const double r = stats.average.r;
+    const double g = stats.average.g;
+    const double b = stats.average.b;
+    const double off_white = std::abs(r - 255) + std::abs(g - 255) + std::abs(b - 217);
+    if (off_white < 60){
+        return StatusCondition::NONE;
+    }
+    if (r > 200 && g < 200 && b > 180){
+        return StatusCondition::POISON;
+    }
+    //  SLP's grey-olive badge with its cream letters: red and green even,
+    //  blue lower but above the yellow taken for PAR.
+    if (std::abs(r - g) < 20 && b < g - 15 && b > 140 && r < 235){
+        return StatusCondition::SLEEP;
+    }
+    //  Not measured yet: PAR's badge is taken to be the yellow one.
+    if (r > 180 && g > 150 && b < 140){
+        return StatusCondition::PARALYSIS;
+    }
+    return StatusCondition::OTHER;
 }
 
 PartyStatus read_party_status(const ImageViewRGB32& screen){
@@ -832,36 +840,35 @@ bool battle_shows(const ImageViewRGB32& screen){
 }
 
 //  The count the story keeps for `item`, or null for an item it doesn't count.
-static int* count_slot(Supplies& supplies, const std::string& item){
+static int Supplies::* count_member(const std::string& item){
     if (item == "potion"){
-        return &supplies.potions;
+        return &Supplies::potions;
     }
     if (item == "antidote"){
-        return &supplies.antidotes;
+        return &Supplies::antidotes;
     }
     if (item == "parlyz-heal"){
-        return &supplies.parlyz_heals;
+        return &Supplies::parlyz_heals;
+    }
+    if (item == "awakening"){
+        return &Supplies::awakenings;
     }
     return nullptr;
 }
 
+static int* count_slot(Supplies& supplies, const std::string& item){
+    int Supplies::* const member = count_member(item);
+    return member == nullptr ? nullptr : &(supplies.*member);
+}
+
 int item_count(const Supplies& supplies, const std::string& item){
-    if (item == "potion"){
-        return supplies.potions;
-    }
-    if (item == "antidote"){
-        return supplies.antidotes;
-    }
-    if (item == "parlyz-heal"){
-        return supplies.parlyz_heals;
-    }
-    return 0;
+    int Supplies::* const member = count_member(item);
+    return member == nullptr ? 0 : supplies.*member;
 }
 
 //  Whether the story keeps a count for `item`.
 static bool counted(const std::string& item){
-    Supplies probe;
-    return count_slot(probe, item) != nullptr;
+    return count_member(item) != nullptr;
 }
 
 int item_row(const Supplies& supplies, const std::string& item){
@@ -883,6 +890,7 @@ std::vector<std::string> set_from_bag(Supplies& supplies, const std::vector<BagR
     supplies.potions = 0;
     supplies.antidotes = 0;
     supplies.parlyz_heals = 0;
+    supplies.awakenings = 0;
     supplies.pocket.clear();
     std::vector<std::string> unread;
     for (const BagRow& row : rows){
@@ -911,6 +919,7 @@ std::vector<std::string> set_from_loaded_bag(Supplies& supplies, Supplies& saved
     saved.potions = supplies.potions;
     saved.antidotes = supplies.antidotes;
     saved.parlyz_heals = supplies.parlyz_heals;
+    saved.awakenings = supplies.awakenings;
     saved.pocket = supplies.pocket;
     return unread;
 }
@@ -962,6 +971,16 @@ BattleEnd fight_battle(
     Supplies& supplies, BattleKind kind, StoryChecks checks, Language language
 ){
     return BattleLoop(console, context, supplies, kind, checks, language).run();
+}
+
+void clear_overworld_message(ConsoleHandle& console, ProControllerContext& context, Supplies& supplies, StoryChecks checks, Language language){
+    if (advance_text(console, context, AFTER_BATTLE_TEXT, true) == TextEnd::OVERWORLD){
+        return;
+    }
+    console.log("Story: a trainer's battle after a message on the overworld.");
+    fail_on_blackout(console, fight_battle(console, context, supplies, BattleKind::TRAINER, checks, language));
+    mash_until_overworld(console, context, AFTER_BATTLE_TEXT);
+    recover_after_battle(console, context, supplies, checks, language);
 }
 
 OverworldInterruptSet story_interrupts(Supplies& supplies, bool fight_wild, StoryChecks checks, Language language){

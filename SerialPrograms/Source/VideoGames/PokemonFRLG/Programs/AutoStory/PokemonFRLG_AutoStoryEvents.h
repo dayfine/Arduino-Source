@@ -59,9 +59,62 @@ struct StoryPose{
 //  has the Running Shoes (00.10 on).
 inline const std::string RUN_VARIANT = "run";
 
+//  The variant of a STEP into a trainer's line: a tile at a time, at most
+//  TRAINER_LINE_TILES, until the trainer sees the player
+//  (step_until_seen()). The battle after it starts on the trainer's row
+//  whether the walk before ended on its tile or a tile short.
+inline const std::string TRAINER_LINE_VARIANT = "trainer_line";
+//  Maximum tiles to step into a trainer's line of sight.
+inline constexpr int TRAINER_LINE_TILES = 3;
+
+//  The variant of a STEP into the line of a trainer who looks around
+//  (MOVEMENT_TYPE_LOOK_AROUND): one tile, then a wait of up to
+//  TRAINER_WAIT_WATCH for the trainer to turn to the player. Indoors, where
+//  the player can't run, such a trainer turns a random way every 32 to 128
+//  frames (pokefirered event_object_movement.c, MovementType_LookAround;
+//  it turns to the player only when the player runs), so they face the
+//  player within 30 s all but about 1 time in 500; and the game checks
+//  their sight every frame (ProcessPlayerFieldInput()), not only after a
+//  step. Stepped into from outside their sight onto the second tile of
+//  their line, the player is always seen there, and the trainer walks up
+//  one tile.
+inline const std::string TRAINER_WAIT_VARIANT = "trainer_wait";
+
+//  The GAME step that cuts the tree the player faces, `direction`
+//  (pokefirered data/scripts/field_moves.inc, EventScript_CutTree): A,
+//  "This tree looks like it can be CUT down! Would you like to CUT it?"
+//  YES, "<MON> used CUT!", the tree falls; then a step onto its tile. With
+//  no Pokemon that knows Cut there is no YES/NO, and the step fails. The
+//  tree grows back when the player leaves the map (its hide flag is a
+//  FLAG_TEMP), so the walk back cuts it again.
+inline const std::string CUT_TREE_VARIANT = "cut_tree";
+
+//  The GAME step that closes the Trainer Card SID Helper leaves open.
+inline const std::string CLOSE_TRAINER_CARD = "close_trainer_card";
+
+//  The GAME step that leaves the gift's summary Gift RNG leaves open for
+//  the overworld.
+inline const std::string LEAVE_GIFT_SUMMARY = "leave_gift_summary";
+
 //  How `step`, a ROUTE or LEGS, moves the player: RUN_VARIANT runs.
 MoveSpeed move_speed(const StoryStep& step);
 
+
+//  An upstream RNG program the user may run part-way through the story.
+//  Each is off unless its option is on.
+enum class StoryHandoff{
+    NONE,
+    //  The checkpoint's new game stops on the player's keyboard, the name
+    //  typed and OK not pressed, which is where SID Helper starts.
+    SID_HELPER,
+    //  The checkpoint saves south of the table, facing the starter's ball,
+    //  which is where Starter RNG starts. With the handoff off, it runs on
+    //  into the next checkpoint as one, as the story did before the split.
+    STARTER_RNG,
+    //  The checkpoint saves beside the Magikarp salesman, facing him, which
+    //  is where Gift RNG starts.
+    GIFT_RNG,
+};
 
 //  A shared checkpoint with what FRLG adds to it.
 struct StoryCheckpoint : public Pokemon::StoryCheckpoint{
@@ -69,12 +122,54 @@ struct StoryCheckpoint : public Pokemon::StoryCheckpoint{
     Supplies supplies;
     //  The START menu at its end, when it saves.
     StartMenu menu = StartMenu::FULL;
+    //  Starts from the game as another program left it, loading no save:
+    //  the way back into the story after an RNG program. A run that starts
+    //  before it passes over it.
+    bool live_start = false;
+    //  The RNG program the user may run at this checkpoint.
+    StoryHandoff handoff = StoryHandoff::NONE;
 };
 
+//  The handoffs a run stops for (AutoStory's options).
+struct StoryHandoffs{
+    bool sid_helper = false;
+    bool starter_rng = false;
+    bool gift_rng = false;
+};
 
-//  The maps the story plans on: every map to Brock, with the objects the
-//  game hides after the Hall of Fame removed, as the lab's frlg_route does.
+//  What a run from table row `first` to `last` does.
+struct StoryRunPlan{
+    //  The checkpoints to run, in order.
+    std::vector<StoryCheckpoint> rows;
+    //  NONE: the run ends after `rows`. SID_HELPER: `rows` is empty; the run
+    //  plays the new game to the player's keyboard and stops there.
+    //  STARTER_RNG: the run stops after `rows`, the last of which saves at
+    //  the starter's ball. GIFT_RNG: likewise, beside the Magikarp salesman;
+    //  with `rows` empty, the run started at 00.12b and takes Gift RNG from
+    //  the save beside the salesman, where the row before `first` ends.
+    StoryHandoff stop = StoryHandoff::NONE;
+};
+
+//  The rows of `checkpoints` from `first` to `last`, both inclusive, as a
+//  run with `handoffs` takes them: live-start rows only when the run
+//  starts there (00.12b with Gift RNG's handoff on starts at the handoff
+//  instead), a run that reaches a handoff that is on stops for it, and
+//  a STARTER_RNG row whose handoff is off is joined with the row after it,
+//  under its own id.
+StoryRunPlan plan_story_run(
+    const std::vector<StoryCheckpoint>& checkpoints, size_t first, size_t last, const StoryHandoffs& handoffs
+);
+
+
+//  The maps the story plans on: every map to Route 4's Pokemon Center, with
+//  the objects the game hides after the Hall of Fame removed, as the lab's
+//  frlg_route does, and those a new game hides until their scene (the
+//  S.S. Anne's rival on the Captain's door).
 const std::vector<MapData>& story_maps();
+//  default_route_costs() without Surf, which the story hasn't got yet:
+//  routes stay on land, even where water is the shorter way (Vermilion
+//  City's harbor).
+const RouteCosts& story_route_costs();
 
 //  Converts a StoryPose to a general navigation Pose.
 Pokemon::Pose to_pose(const StoryPose& pose);
@@ -95,6 +190,22 @@ std::string save_place_error(const std::string& start_map, const std::string& pl
 //  wall" if the next step its way is blocked.
 std::optional<std::vector<RouteStep>> fixed_route(
     const std::vector<MapData>& maps, const MapPosition& start, const std::vector<StoryLeg>& legs
+);
+
+//  Where a GRIND or capture `step` that paces (pace = ...) leaves the
+//  player who started it on `patch`: the patch's tile or the one its pace
+//  leads to, as the last battle came, facing unknown. `patch` for any
+//  other step, or a `patch` not on one tile.
+Pokemon::Pose paced_pose(const Pokemon::Pose& patch, const StoryStep& step);
+
+//  A ROUTE's legs from `pose` to `goal`, on story_route_costs(): from
+//  one tile, as planned; from a set of tiles (paced_pose()), first the
+//  holds to walls that bring them all to one tile (holds_to_one_tile()),
+//  then the route from there.
+//  Nothing if either can't be planned.
+std::optional<std::vector<RouteStep>> plan_story_route(
+    const std::vector<MapData>& maps, const Pokemon::Pose& pose,
+    std::optional<Direction> facing, const RouteGoal& goal
 );
 
 //  A way the player at `tile` can turn to without stepping: a wall there,
@@ -121,11 +232,20 @@ struct StoryEnv{
     //  The game's language, for reading item names. In one the readers have
     //  no names for, the checks fall back to positions and counts.
     Language language = Language::English;
+    //  The name the new game's intro types for the player; empty keeps the
+    //  game's default name.
+    std::string player_name = {};
     //  The map the checkpoint under way starts on, where its save is: a
     //  reload checks the save card against it.
     std::string start_map = {};
     //  That checkpoint's START menu: a reload reads the bag again with it.
     StartMenu start_menu = StartMenu::BEFORE_POKEMON;
+    //  The once_per_save steps done from the last save that changed
+    //  nothing: a retry after a reload skips them. Emptied by a save.
+    Pokemon::PreparedSteps prepared = {};
+    //  The last save's Items pocket was read in full (read_bag_supplies()):
+    //  a reload restores `saved_supplies` without reading it again.
+    bool bag_read = false;
 };
 
 //  After a save is loaded for a checkpoint that starts on `start_map`: the
@@ -143,7 +263,8 @@ void read_lead_moves(StoryEnv& env, StartMenu menu);
 //  After a save is loaded, with START's menu `menu`: the Items pocket's
 //  counts as read (set_from_loaded_bag()), in place of the row's, which
 //  are kept if nothing can be read. Only with the full menu: the rows
-//  before it carry the items they have.
+//  before it carry the items they have. Sets `bag_read` when every count
+//  was read.
 void read_bag_supplies(StoryEnv& env, StartMenu menu);
 
 //  Does FRLG's kinds of story step on the console. A console step that
@@ -176,6 +297,14 @@ protected:
     //  The Viridian Mart, before the Boulder Badge: Potions, Antidotes and Parlyz Heals.
     virtual Pokemon::Outcome shop(Pokemon::RunState& state, const StoryStep& step) override;
     virtual Pokemon::Outcome ready(Pokemon::RunState& state, const StoryStep& step) override;
+    //  CLOSE_TRAINER_CARD: back from SID Helper (close_trainer_card()).
+    //  LEAVE_GIFT_SUMMARY: back from Gift RNG (leave_gift_summary()).
+    //  A capture or a PC deposit or withdrawal (capture_step(), pc_step()
+    //  in PokemonFRLG_AutoStoryCapture.h); a shiny met in a capture stops
+    //  the program without reloading. A MART, TEACH, LEVEL, GRIND or
+    //  fossil CHOICE (PokemonFRLG_AutoStoryAbilities.h); a GRIND heals by
+    //  routing to its target, the nurse, and back.
+    virtual Pokemon::Outcome game(Pokemon::RunState& state, const StoryStep& step) override;
 
 private:
     StoryEnv& m_env;

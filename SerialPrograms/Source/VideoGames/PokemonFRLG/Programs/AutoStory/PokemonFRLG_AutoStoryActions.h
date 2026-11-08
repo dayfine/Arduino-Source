@@ -15,6 +15,7 @@
 #define PokemonAutomation_PokemonFRLG_AutoStoryActions_H
 
 #include <cstddef>
+#include <functional>
 #include <optional>
 #include <string>
 #include <vector>
@@ -111,10 +112,43 @@ void mash_until_overworld(ConsoleHandle& console, ProControllerContext& context,
 //  answers NO. Throws OperationFailedException after `timeout`.
 void answer_yes_no(ConsoleHandle& console, ProControllerContext& context, bool yes, Button advance, Milliseconds timeout);
 
+//  From the overworld, facing something that answers A with a message (a
+//  sign, Vermilion Gym's trash cans): A, then how many pages the message
+//  has, one or two, then on to the overworld. Language-free: one A after
+//  the first page has printed either closes the message or shows its
+//  second page. Nothing if no message showed.
+std::optional<size_t> talk_and_count_pages(ConsoleHandle& console, ProControllerContext& context);
+
 //  From the overworld: one step `direction`, onto a trigger or into a door.
 //  `facing` is the way the player faces, if known; a player facing another
 //  way is turned first.
 void step_once(ProControllerContext& context, Pokemon::Direction direction, std::optional<Pokemon::Direction> facing);
+
+//  Steps with `step` a tile at a time, at most `max_tiles`, until `seen`
+//  says a trainer saw the player. Returns the tiles stepped, or nothing
+//  if no trainer did. A walk that ended a tile short of a trainer's line
+//  still meets them (console B, 2026-11-03, Nugget Bridge: the walk ended
+//  on (11, 33), one step reached (11, 32), and Cale on row 31 never saw
+//  the player).
+std::optional<int> step_until_seen(int max_tiles, const std::function<void()>& step, const std::function<bool()>& seen);
+
+//  How long after a step into a trainer's line their message shows: the
+//  "!", then their words, as the route walker watches for a trainer
+//  with no tiles to walk up (PokemonFRLG_OverworldRecoveryWalk.cpp).
+inline constexpr Milliseconds TRAINER_LINE_WATCH(2500);
+
+//  How long a step into the line of a trainer who looks around waits for
+//  them to turn to the player (TRAINER_WAIT_VARIANT).
+inline constexpr Milliseconds TRAINER_WAIT_WATCH(30000);
+
+//  From the overworld: step_until_seen() `direction`, turning first
+//  unless `facing` is `direction`, each step watched `watch` for a
+//  trainer's message or battle.
+std::optional<int> step_into_line(
+    ConsoleHandle& console, ProControllerContext& context,
+    Pokemon::Direction direction, std::optional<Pokemon::Direction> facing, int max_tiles,
+    Milliseconds watch = TRAINER_LINE_WATCH
+);
 
 //  From the overworld, turns to face `direction` without stepping: the
 //  player must have a wall that way.
@@ -218,10 +252,26 @@ void buy_items(
 );
 
 //  From the title screen of a game with no save, to the bedroom: the
-//  controls pages, Oak's speech, BOY, the default name for the player (an
-//  empty name confirmed) and the rival's first preset name. Returns on the
-//  overworld.
-void play_new_game_intro(ConsoleHandle& console, ProControllerContext& context);
+//  controls pages, Oak's speech, BOY, `player_name` typed on the player's
+//  keyboard, and the rival's first preset name. An empty `player_name`
+//  keeps the player's default name (an empty name confirmed). Returns on
+//  the overworld. Throws UserSetupError if the game can't take the name
+//  (naming_text_error()).
+void play_new_game_intro(ConsoleHandle& console, ProControllerContext& context, const std::string& player_name);
+
+//  play_new_game_intro() up to the player's keyboard: `player_name` typed,
+//  OK not pressed, which is where SID Helper starts. Empty types nothing.
+void play_new_game_to_player_name(ConsoleHandle& console, ProControllerContext& context, const std::string& player_name);
+
+//  From the Trainer Card SID Helper leaves open, or from HOME (its "go
+//  home when done"): back to the game, the card and the START menu closed.
+//  Returns on the overworld.
+void close_trainer_card(ConsoleHandle& console, ProControllerContext& context);
+
+//  From the gift's summary Gift RNG leaves open, or from HOME (its "go home
+//  when done"): back to the game, the summary, the party and the START
+//  menu closed. Returns on the overworld.
+void leave_gift_summary(ConsoleHandle& console, ProControllerContext& context);
 
 
 

@@ -117,12 +117,21 @@ inline constexpr Milliseconds AFTER_WARP_BATTLE_WATCH(5000);
 //  A message set off by a leg's last step shows after the hold ends. Caught
 //  here, before the next leg's turn tap, which the message would swallow.
 inline constexpr Milliseconds AFTER_LEG_WATCH(500);
-//  The same after a leg through grass. A battle whose flashes are missed is
-//  seen only by its "Wild <Pokemon> appeared!", 3.7s after its step's press
-//  (twice on Route 1, console B, 2026-11-01, run 7). Unless the walker waits
-//  that long, the next leg is walked into the battle and lost: there, "east
-//  4" and "west 4".
+//  A wild battle whose flashes are missed is seen only by its "Wild
+//  <Pokemon> appeared!": the flashes, the wipe and the opening animation
+//  take 3.7s from its step's press, twice on Route 1 (console B, 2026-11-01,
+//  run 7). Other maps open battles with other wipes, so elsewhere this is a
+//  guess. Every interrupt for such a battle places the stop with this.
+inline constexpr Milliseconds LATE_WILD_BATTLE_DELAY(3700);
+//  The same after a leg through grass, for a battle seen that late. Unless
+//  the walker waits that long, the next leg is walked into the battle and
+//  lost: on Route 1, "east 4" and "west 4".
 inline constexpr Milliseconds AFTER_WILD_LEG_WATCH(3500);
+//  After a leg's watch saw nothing, but the screen shows a battle on its
+//  way: how long to watch on for its HP boxes. In Mt. Moon they came over
+//  5s after the step that set the battle off, after the watch had ended on
+//  the battle's empty text box (console B, 2026-11-03, row 00.13).
+inline constexpr Milliseconds UNSEEN_BATTLE_WATCH(5000);
 //  How long clear_open_message() watches for the message it saw.
 inline constexpr Milliseconds OPEN_MESSAGE_WATCH(1000);
 //  Maximum interruptions before a leg is abandoned.
@@ -138,12 +147,17 @@ void hold_dpad(ProControllerContext& context, Direction direction, Milliseconds 
 //  Turn taps go without B: a tap only turns the player.
 void hold_dpad_running(ProControllerContext& context, Direction direction, Milliseconds duration);
 
+//  The speed `step` moves at when the walker goes at `speed`: a walk where
+//  the map doesn't let the player run (RouteStep::walk_only).
+MoveSpeed step_speed(const RouteStep& step, MoveSpeed speed);
+
 //  How long one tile of `step` takes at `speed`: on the water, the Surf
-//  pace whatever the speed.
+//  pace whatever the speed; where running isn't allowed, the walking pace.
 Milliseconds tile_time(const RouteStep& step, MoveSpeed speed);
 
-//  The mover for `step` at `speed`: hold_dpad_running() for a run on foot,
-//  hold_dpad() otherwise (B does nothing on the water).
+//  The mover for `step` at `speed`: hold_dpad_running() for a run on foot
+//  where the map allows it, hold_dpad() otherwise (B does nothing on the
+//  water).
 Pokemon::LegMover<ProControllerContext> leg_mover(const RouteStep& step, MoveSpeed speed);
 
 //  How long the walker holds the D-pad for a WALK `step` at `speed`
@@ -169,6 +183,34 @@ void clear_open_message(
     ConsoleHandle& console, ProControllerContext& context,
     const OverworldInterrupts& interrupts, const RouteStep& step
 );
+
+//  After `step`'s hold and the watch after it, which saw nothing: if the
+//  screen shows a wild battle on its way anyway (its text box before the HP
+//  boxes, or black), watches on for it with `wild` (the interrupts for a
+//  step where a wild battle can start) and clears what shows. Returns how
+//  many it cleared: the leg may have stopped part-way. After any walk not
+//  onto a warp, whose fade check_warp_was_no_battle() covers, also where
+//  the maps see no wild tiles (RouteStep::wild): they miss some. Mt. Moon
+//  B2F's tiles closed on one side are cave floor too, and a battle on
+//  "east 7 (to wall)" there left the screen black after the leg, which
+//  was taken as walked (console B, 2026-11-03, row 00.13).
+size_t clear_unseen_battle(
+    ConsoleHandle& console, ProControllerContext& context,
+    const OverworldInterrupts& wild, const RouteStep& step
+);
+
+//  Before `step`: if the screen shows a wild battle on its way (as
+//  clear_unseen_battle()), set off before the step started, watches on for
+//  it with `wild` and clears what shows. Returns how many it cleared: the
+//  step before may have stopped part-way.
+size_t clear_battle_before(
+    ConsoleHandle& console, ProControllerContext& context,
+    const OverworldInterrupts& wild, const RouteStep& step
+);
+
+//  After a warp's fade: if it was a wild battle's, runs from the battle and
+//  returns true.
+bool run_from_battle_after_warp(ConsoleHandle& console, ProControllerContext& context);
 
 //  After `step`'s warp: fails, once the battle is fled, if its fade was a
 //  wild battle's.

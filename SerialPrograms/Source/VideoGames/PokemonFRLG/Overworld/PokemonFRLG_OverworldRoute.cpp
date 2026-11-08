@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <format>
 #include <functional>
+#include <ranges>
 #include <string>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -287,7 +288,7 @@ public:
 
     std::optional<Pokemon::Step<State>> press(const State& state, Direction direction) const{
         const std::optional<Transition> transition = PokemonFRLG::press(m_maps, state, direction);
-        if (!transition){
+        if (!transition || (transition->action == RouteAction::SURF && route_cost(m_costs, RouteCost::SURF) < 0)){
             return std::nullopt;
         }
         Pokemon::Step<State> step;
@@ -350,6 +351,7 @@ RouteStep to_route_step(const std::vector<MapData>& maps, const Pokemon::Leg<Loc
     step.tiles = leg.kind == Pokemon::LegKind::FACE ? 0 : leg.tiles;
     step.warps = leg.warps;
     step.surfing = leg.start.state.surfing;
+    step.walk_only = !maps[leg.start.map].allow_running;
     step.to_wall = leg.to_wall;
     step.facing_after = leg.facing_after;
     step.end = MapPosition{maps[leg.end.map].name, leg.end.state.position};
@@ -358,6 +360,10 @@ RouteStep to_route_step(const std::vector<MapData>& maps, const Pokemon::Leg<Loc
         //  start map only, "north 22" from Pallet Town through Route 1's grass
         //  wasn't watched for battles (console B, 2026-11-01).
         step.wild = leg.wild || leg.start.state.surfing || leg.kind == Pokemon::LegKind::ACTION;
+    }
+    const std::vector<MapPosition> tiles = leg_tiles(maps, MapPosition{maps[leg.start.map].name, leg.start.state.position}, step);
+    for (int c : std::views::iota(1, (int)tiles.size()) | std::views::filter([&](int n){ return tiles[n].map != tiles[n - 1].map; })){
+        step.connection_steps.push_back(c);
     }
     return step;
 }
@@ -450,6 +456,7 @@ std::optional<WallHold> hold_to_wall(
 ){
     std::optional<Located> player = locate(maps, from, surfing);
     WallHold hold;
+    hold.walk_only = player && !maps[player->map].allow_running;
     for (int c = 0; player && c <= MAX_HOLD_TILES; c++){
         if (stops_at(maps, *player, direction) || ledge_stops_north(maps, *player, direction)){
             hold.end = MapPosition{maps[player->map].name, player->state.position};

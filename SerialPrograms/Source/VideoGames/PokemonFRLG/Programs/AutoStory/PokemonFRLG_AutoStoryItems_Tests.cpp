@@ -2,21 +2,35 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The Mart cursor's moves, and the bag's rows as the story counts them.
+ *  The Mart cursor's moves, the bag's rows as the story counts them, and
+ *  where the story's wild battle seen late places a stopped leg.
  *
  */
 
+#include <cctype>
 #include <cmath>
+#include <cstdint>
 #include <format>
 #include <functional>
+#include <optional>
+#include <string>
 #include <string_view>
+#include <utility>
+#include <vector>
+#include "Common/Cpp/Color.h"
 #include "Common/Cpp/Exceptions.h"
+#include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/Language.h"
 #include "Tests/ImageUnitTest.h"
+#include "Tests/TestUtils.h"
+#include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleHpBarReader.h"
+#include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_SaveCardReader.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
@@ -197,6 +211,42 @@ UnitTestResult test_loaded_bag_other_items(Logger&){
     return true;
 }
 
+//  Awakenings, bought at Cerulean after a MOON STONE took its row: counted
+//  from the bag and found in their row.
+UnitTestResult test_loaded_bag_awakenings(Logger&){
+    Supplies row;
+    Supplies saved = row;
+    set_from_loaded_bag(row, saved, {{"", 1}, {"parlyz-heal", 1}, {"potion", 15}, {"awakening", 3}});
+    if (row.awakenings != 3 || saved.awakenings != 3 || item_count(row, "awakening") != 3 || item_row(row, "awakening") != 3){
+        return std::format(
+            "Expected 3 Awakenings in row 3, now and for a reload; got {} and {}, row {}.",
+            row.awakenings, saved.awakenings, item_row(row, "awakening")
+        );
+    }
+    return true;
+}
+
+//  The status badge's mean color on console B's captures: none and PSN
+//  (2026-11-01), and SLP after the Cerulean rival's Sleep Powder
+//  (2026-11-03, m56 run 2, turns 6 and 7 at 34/65 and 13/65 HP), which
+//  read as "a status".
+UnitTestResult test_status_badge(Logger&){
+    const std::vector<std::pair<uint32_t, StatusCondition>> cases = {
+        {combine_rgb(255, 255, 217), StatusCondition::NONE},
+        {combine_rgb(228, 168, 212), StatusCondition::POISON},
+        {combine_rgb(202, 203, 168), StatusCondition::SLEEP},
+    };
+    for (const auto& [color, expected] : cases){
+        ImageRGB32 badge(12, 4);
+        badge.fill(color);
+        const StatusCondition read = read_status_badge(badge);
+        if (read != expected){
+            return std::format("Badge 0x{:08x}: expected {}, got {}.", color, status_name(expected), status_name(read));
+        }
+    }
+    return true;
+}
+
 //  The pocket's rows as read: an unread name keeps its row, so the rows
 //  below it are still read; the rows end at CANCEL, or at the last name read.
 UnitTestResult test_pocket_rows_unread(Logger&){
@@ -229,12 +279,76 @@ UnitTestResult test_unread_language(Logger& logger){
     return true;
 }
 
+//  The open leg through Route 1's grass on the way from Viridian Mart to
+//  Oak's Lab ("south 20"), and the tile it starts from.
+struct GrassLeg{
+    MapPosition start;
+    RouteStep step;
+};
+std::optional<GrassLeg> route1_grass_leg(const std::vector<MapData>& maps){
+    const MapPosition mart{"ViridianCity_Mart", {4, 3}};
+    const RouteGoal lab{MapPosition{"PalletTown_ProfessorOaksLab", {6, 11}}, std::nullopt};
+    const std::optional<std::vector<RouteStep>> route = plan_overworld_route(maps, mart, lab, default_route_costs(), Direction::WEST);
+    if (!route){
+        return std::nullopt;
+    }
+    MapPosition start = mart;
+    for (const RouteStep& step : *route){
+        if (step.action == RouteAction::WALK && step.wild && !step.to_wall && !step.warps && step.tiles >= 16){
+            return GrassLeg{start, step};
+        }
+        start = step.end;
+    }
+    return std::nullopt;
+}
+
+//  How many tiles of `leg` the player walked to `at`, or -1 if `at` is off it.
+int tiles_walked(const std::vector<MapData>& maps, const GrassLeg& leg, const MapPosition& at){
+    const std::vector<MapPosition> tiles = leg_tiles(maps, leg.start, leg.step);
+    for (size_t c = 0; c < tiles.size(); c++){
+        if (tiles[c] == at){
+            return (int)c;
+        }
+    }
+    return -1;
+}
+
+//  r16 and r17 (console B, 2026-11-01), Route 1: a wild battle on the first
+//  grass step of "south 20" whose flashes were missed shows "Wild <Pokemon>
+//  appeared!" 3.7 s after the step's press. The story's interrupt for it
+//  must place the stop where the battle stopped the player, as the walker's
+//  does: with 2 s it put them about 6 tiles further on.
+UnitTestResult test_late_battle_placed(Logger&){
+    const std::vector<MapData> maps = overworld_maps();
+    const std::optional<GrassLeg> leg = route1_grass_leg(maps);
+    if (!leg){
+        return "Expected an open leg of 16 tiles or more through Route 1's grass from Viridian Mart to Oak's Lab.";
+    }
+    SimScript script;
+    script.encounters = {{.grass_step = 1, .seen_late = true}};
+    OverworldSim sim(maps, leg->start, leg->step.direction, script);
+    Supplies supplies;
+    const OverworldInterruptSet story = story_interrupts(supplies, false, StoryChecks::FAST, Language::English);
+    OverworldSimWalker walker(sim, {}, story);
+    const StepOutcome outcome = walker.calls().walk(leg->step, leg->step.direction);
+    const int walked = tiles_walked(maps, *leg, sim.state().position);
+    if (outcome.end != StepEnd::STOPPED || !outcome.walked || walked < outcome.walked->min || outcome.walked->max < walked){
+        return std::format(
+            "Expected \"{}\" from {} stopped and placed on tile {} ({}), where the battle stopped the player; placed on tiles {} to {}.",
+            to_string(leg->step), to_string(leg->start), walked, to_string(sim.state().position),
+            outcome.walked ? outcome.walked->min : -1, outcome.walked ? outcome.walked->max : -1
+        );
+    }
+    return true;
+}
+
 
 //  battle_shows(), the battle loop's look at whether the battle is still on
-//  screen, on console B's captures.
+//  screen, on console B's captures named <anything>_<True or False>.png.
+//  An image whose name doesn't say is registered with its answer.
 class Test_BattleShows : public ImageUnitTest{
 public:
-    Test_BattleShows(const std::string& image, bool expected)
+    Test_BattleShows(const std::string& image, std::optional<bool> expected = std::nullopt)
         : ImageUnitTest("PokemonFRLG::AutoStoryBattle - " + image, {image})
         , m_expected(expected)
     {}
@@ -243,43 +357,110 @@ public:
         Logger& logger, CancellableScope& scope,
         const std::vector<ImageRGB32>& images
     ) const override{
-        return battle_shows(images[0]) == m_expected;
+        bool expected = false;
+        if (m_expected){
+            expected = *m_expected;
+        }else{
+            const std::vector<std::string> words = parse_words(Filesystem::Path(image_paths()[0]).stem().string());
+            if (words.empty() || !parse_bool(words.back(), expected)){
+                return "Error: filename must be <anything>_<True or False>.";
+            }
+        }
+        return battle_shows(images[0]) == expected;
     }
 
 private:
-    bool m_expected;
+    std::optional<bool> m_expected;
 };
 
-//  read_party_status() on console B's captures: the bar's color, and its
-//  colored share within a pixel of the 48-pixel bar of `hp` / `max_hp`.
-//  Console B, 2026-11-03, before Miguel: 17/55 HP read as 15% of the bar,
-//  then 2% with the box a pixel lower.
-class Test_PartyHp : public ImageUnitTest{
+//  battle_yes_no_shows() on console B's captures named
+//  <anything>_<True or False>.png.
+class Test_BattleYesNo : public ImageUnitTest{
 public:
-    Test_PartyHp(const std::string& image, std::string_view color, int hp, int max_hp)
+    Test_BattleYesNo(const std::string& image)
         : ImageUnitTest("PokemonFRLG::AutoStoryBattle - " + image, {image})
-        , m_color(color)
-        , m_share(double(hp) / max_hp)
     {}
 
     virtual UnitTestResult run_on_images(
         Logger& logger, CancellableScope& scope,
         const std::vector<ImageRGB32>& images
     ) const override{
-        const PartyStatus status = read_party_status(images[0]);
-        const std::string_view color = !status.hp_seen ? "none" : status.hp_red ? "red" : status.hp_yellow ? "yellow" : "green";
-        if (color != m_color){
-            return std::format("Expected an HP bar read as {}, got {}.", m_color, color);
+        bool expected = false;
+        const std::vector<std::string> words = parse_words(Filesystem::Path(image_paths()[0]).stem().string());
+        if (words.empty() || !parse_bool(words.back(), expected)){
+            return "Error: filename must be <anything>_<True or False>.";
         }
-        if (std::abs(status.hp_fill - m_share) > 1.0 / 48){
-            return std::format("Expected {:.0f}% of the bar, got {:.0f}%.", 100 * m_share, 100 * status.hp_fill);
+        return battle_yes_no_shows(images[0]) == expected;
+    }
+};
+
+//  read_opponent_hp_fill() on console B's captures named
+//  <anything>_FoeHp_<pixels>of48.png: the bar's filled share within a pixel.
+class Test_FoeHp : public ImageUnitTest{
+public:
+    Test_FoeHp(const std::string& image)
+        : ImageUnitTest("PokemonFRLG::AutoStoryBattle - " + image, {image})
+    {}
+
+    virtual UnitTestResult run_on_images(
+        Logger& logger, CancellableScope& scope,
+        const std::vector<ImageRGB32>& images
+    ) const override{
+        const std::vector<std::string> words = parse_words(Filesystem::Path(image_paths()[0]).stem().string());
+        int pixels = -1;
+        if (words.empty() || words.back().find("of48") == std::string::npos || !parse_int(words.back().substr(0, words.back().find("of48")), pixels)){
+            return "Error: filename must be <anything>_FoeHp_<pixels>of48.";
+        }
+        const std::optional<double> fill = read_opponent_hp_fill(images[0]);
+        if (!fill || std::abs(*fill - pixels / 48.0) > 1.0 / 48){
+            return std::format("Expected {} of 48 pixels, got {:.1f}.", pixels, fill ? 48 * *fill : -1.0);
         }
         return true;
     }
+};
 
-private:
-    std::string_view m_color;
-    double m_share;
+//  read_party_status() on console B's captures named
+//  <anything>_Hp<Color>_<hp>of<max hp>[_<anything>].png: the bar's color,
+//  and its colored share within a pixel of the 48-pixel bar of hp / max hp.
+//  Console B, 2026-11-03, before Miguel: 17/55 HP read as 15% of the bar,
+//  then 2% with the box a pixel lower.
+class Test_PartyHp : public ImageUnitTest{
+public:
+    Test_PartyHp(const std::string& image)
+        : ImageUnitTest("PokemonFRLG::AutoStoryBattle - " + image, {image})
+    {}
+
+    virtual UnitTestResult run_on_images(
+        Logger& logger, CancellableScope& scope,
+        const std::vector<ImageRGB32>& images
+    ) const override{
+        std::string expected_color;
+        int hp = 0;
+        int max_hp = 0;
+        for (const std::string& word : parse_words(Filesystem::Path(image_paths()[0]).stem().string())){
+            const size_t of = word.find("of");
+            if (word.starts_with("Hp") && word.size() > 2){
+                expected_color = word.substr(2);
+                expected_color[0] = char(std::tolower((unsigned char)expected_color[0]));
+            }else if (of != std::string::npos){
+                parse_int(word.substr(0, of), hp);
+                parse_int(word.substr(of + 2), max_hp);
+            }
+        }
+        if (expected_color.empty() || max_hp <= 0){
+            return "Error: filename must be <anything>_Hp<Color>_<hp>of<max hp>[_<anything>].";
+        }
+        const double share = double(hp) / max_hp;
+        const PartyStatus status = read_party_status(images[0]);
+        const std::string_view color = !status.hp_seen ? "none" : status.hp_red ? "red" : status.hp_yellow ? "yellow" : "green";
+        if (color != expected_color){
+            return std::format("Expected an HP bar read as {}, got {}.", expected_color, color);
+        }
+        if (std::abs(status.hp_fill - share) > 1.0 / 48){
+            return std::format("Expected {:.0f}% of the bar, got {:.0f}%.", 100 * share, 100 * status.hp_fill);
+        }
+        return true;
+    }
 };
 
 
@@ -312,6 +493,18 @@ const AutoStoryItemsTestCase AUTO_STORY_ITEMS_CASES[] = {
         .input = {.name = "no item names read in a language without them", .body = test_unread_language},
         .expectation = {.description = "handles unsupported languages gracefully"},
     },
+    {
+        .input = {.name = "a wild battle seen late is placed where it stopped the leg", .body = test_late_battle_placed},
+        .expectation = {.description = "places late wild battle at interruption point"},
+    },
+    {
+        .input = {.name = "Awakenings counted from the bag", .body = test_loaded_bag_awakenings},
+        .expectation = {.description = "verifies awakenings are read and tracked from bag contents"},
+    },
+    {
+        .input = {.name = "the status badge: none, PSN, SLP", .body = test_status_badge},
+        .expectation = {.description = "detects status conditions accurately from status bar image"},
+    },
 };
 
 } // namespace
@@ -325,11 +518,29 @@ void add_tests_AutoStoryItems(UnitTestDatabase& database){
     //  after "Got away safely!", whose black lower half reads as the battle's
     //  text box (console B, 2026-11-03: 9 minutes of A and B there).
     database.add<Test_BattleShows>("PokemonFRLG/WildEncounterReader/eng_chansey.jpg", true);
-    database.add<Test_BattleShows>("PokemonFRLG/AutoStoryBattle/MtMoonB2F_AfterRun_False.png", false);
-    database.add<Test_PartyHp>("PokemonFRLG/AutoStoryBattle/MtMoon1F_HpGreen_Full.png", "green", 45, 45);
-    database.add<Test_PartyHp>("PokemonFRLG/AutoStoryBattle/MtMoon1F_HpGreen_27of45.png", "green", 27, 45);
-    database.add<Test_PartyHp>("PokemonFRLG/AutoStoryBattle/MtMoonB2F_HpYellow_17of55.png", "yellow", 17, 55);
-    database.add<Test_PartyHp>("PokemonFRLG/AutoStoryBattle/MtMoonB2F_HpYellow_17of55_BarLow.png", "yellow", 17, 55);
+    database.add<Test_BattleShows>("PokemonFRLG/AutoStoryBattle/MtMoonB2F_AfterRun_False.png");
+    for (const char* image : {
+        "MtMoon1F_HpGreen_45of45.png",
+        "MtMoon1F_HpGreen_27of45.png",
+        "MtMoonB2F_HpYellow_17of55.png",
+        "MtMoonB2F_HpYellow_17of55_BarLow.png",
+    }){
+        database.add<Test_PartyHp>(std::string("PokemonFRLG/AutoStoryBattle/") + image);
+    }
+    //  The YES/NO to "Delete a move to make room for BITE?" (Miguel), and the
+    //  S.S. Anne rival's and Misty's send-outs, which the move prompt's
+    //  detector alone took for one (console B, 2026-11-03).
+    for (const char* image : {
+        "Miguel_DeleteMoveForBite_YesNo_True.png",
+        "SSAnneRival_SentOutRaticate_YesNo_False.png",
+        "SSAnneRival_SentOutKadabra_YesNo_False.png",
+        "Misty_SentOutStarmie_YesNo_False.png",
+    }){
+        database.add<Test_BattleYesNo>(std::string("PokemonFRLG/AutoStoryBattle/") + image);
+    }
+    //  The S.S. Anne rival's Pidgeotto at full HP, its Raticate low.
+    database.add<Test_FoeHp>("PokemonFRLG/AutoStoryBattle/SSAnneRival_Pidgeotto_FoeHp_48of48.png");
+    database.add<Test_FoeHp>("PokemonFRLG/AutoStoryBattle/SSAnneRival_Raticate_FoeHp_7of48.png");
     //  The battle's choices, registered here to keep add_tests() within its size.
     add_tests_AutoStoryParty(database);
 }

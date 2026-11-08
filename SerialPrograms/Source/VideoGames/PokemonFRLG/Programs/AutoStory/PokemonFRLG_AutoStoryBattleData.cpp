@@ -54,6 +54,27 @@ constexpr StoryTrainer STORY_TRAINERS[] = {
     //  The Nugget Bridge Rocket, Route24_EventScript_Rocket.
     {.map = "Route24", .battle = "rocket_grunt", .trainer = "TRAINER_TEAM_ROCKET_GRUNT_6"},
     {.map = "CeruleanCity_Gym", .battle = "misty", .trainer = "TRAINER_LEADER_MISTY"},
+    //  Route 25's four the way can't walk around (Route25 scripts.inc):
+    //  Franklin (11, 4), Kelsey (22, 8), Nob (27, 9) and Haley (42, 5).
+    {.map = "Route25", .battle = "hiker_franklin", .trainer = "TRAINER_HIKER_FRANKLIN"},
+    {.map = "Route25", .battle = "picnicker_kelsey", .trainer = "TRAINER_PICNICKER_KELSEY"},
+    {.map = "Route25", .battle = "hiker_nob", .trainer = "TRAINER_HIKER_NOB"},
+    {.map = "Route25", .battle = "lass_haley", .trainer = "TRAINER_LASS_HALEY"},
+    //  The burgled house's Rocket (33, 6), CeruleanCity_EventScript_GruntTrigger.
+    {.map = "CeruleanCity", .battle = "rocket_grunt", .trainer = "TRAINER_TEAM_ROCKET_GRUNT_5"},
+    //  Route 6's Jeff (13, 33), across the only way south.
+    {.map = "Route6", .battle = "camper_jeff", .trainer = "TRAINER_CAMPER_JEFF"},
+    {.map = "SSAnne_2F_Corridor", .battle = "rival_ss_anne", .trainer = "TRAINER_RIVAL_SS_ANNE_BULBASAUR"},
+    //  Vermilion Gym's three, before the trash cans, and Lt. Surge.
+    {.map = "VermilionCity_Gym", .battle = "sailor_dwayne", .trainer = "TRAINER_SAILOR_DWAYNE"},
+    {.map = "VermilionCity_Gym", .battle = "engineer_baily", .trainer = "TRAINER_ENGINEER_BAILY"},
+    {.map = "VermilionCity_Gym", .battle = "gentleman_tucker", .trainer = "TRAINER_GENTLEMAN_TUCKER"},
+    {.map = "VermilionCity_Gym", .battle = "lt_surge", .trainer = "TRAINER_LEADER_LT_SURGE"},
+    //  Route 9's three the way can't walk around (Route9 scripts.inc):
+    //  Alicia (14, 10), Jeremy (20, 17) and Conner (49, 7).
+    {.map = "Route9", .battle = "picnicker_alicia", .trainer = "TRAINER_PICNICKER_ALICIA"},
+    {.map = "Route9", .battle = "hiker_jeremy", .trainer = "TRAINER_HIKER_JEREMY"},
+    {.map = "Route9", .battle = "bug_catcher_conner", .trainer = "TRAINER_BUG_CATCHER_CONNER"},
 };
 
 using JsonTable = std::map<std::string, JsonValue, std::less<>>;
