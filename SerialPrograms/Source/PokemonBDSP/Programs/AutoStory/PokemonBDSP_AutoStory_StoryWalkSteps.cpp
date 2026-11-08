@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <format>
+#include <iterator>
 #include "Common/Cpp/Color.h"
 #include "Common/Cpp/Exceptions.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
@@ -222,7 +223,7 @@ std::vector<TilePos> counted_ends(const std::vector<TilePos>& starts, const Poke
 } // namespace
 
 Pose StoryWalkSteps::recover_tapped_leg(const Pose& from, const std::vector<TilePos>& starts,
-    const std::vector<TilePos>& goals, const Pokemon::StoryLeg& leg, const StoryStep& step){
+    const std::vector<TilePos>& goals, Direction facing, const Pokemon::StoryLeg& leg, const StoryStep& step){
     const StoryWorld* world = story_plan_world(from.map, from.map);
     if (world == nullptr){
         fail(m_io.route(), "interrupted leg has no recovery world: " + from.map);
@@ -242,24 +243,29 @@ Pose StoryWalkSteps::recover_tapped_leg(const Pose& from, const std::vector<Tile
     StoryStep recovery = step;
     recovery.name += "_recovery";
     recovery.variant.clear();
-    const Pose found = walk_to(Pokemon::tile_pose(from.map, possible), Pokemon::tile_pose(from.map, goals, leg.direction), recovery);
+    const Pose found = walk_to(Pokemon::tile_pose(from.map, possible), Pokemon::tile_pose(from.map, goals, facing), recovery);
     //  The route back can approach from another direction. Establish the
-    //  original leg's facing before publishing that pose to the story runner.
-    turn(leg.direction);
+    //  step's facing before publishing that pose to the story runner.
+    turn(facing);
     return found;
 }
 
 //  Counted legs retain their normal path. An observed encounter invalidates
-//  the exact pose; localize from every legal prefix before the next leg.
+//  the exact pose; localize from every legal prefix and re-plan to the end of
+//  the step, skipping the legs left. A re-plan to the end of the interrupted
+//  leg ended on an open tile, its last leg overshot a row, and the taps after
+//  went on a row off (lab-B 2026-11-08 11:55); a step that ends in a corner
+//  ends its re-plan on wall clips.
 Outcome StoryWalkSteps::tap_legs(const Pose& from, const StoryStep& step){
-    const bool one_short_ok = step.variant == "one_short_ok";
+    const CountedEndPolicy policy = step.variant == "one_short_ok" ? CountedEndPolicy::ONE_SHORT : CountedEndPolicy::EXACT;
+    const bool one_short_ok = policy == CountedEndPolicy::ONE_SHORT;
     std::vector<TilePos> at = Pokemon::tiles_of(from);
-    for (const Pokemon::StoryLeg& leg : step.legs){
-        turn(leg.direction);
-        const size_t tiles = (size_t)leg.tiles;
-        const WalkResult walk = m_io.route().walk_taps(leg.direction, tiles, step.name);
-        log(std::format("[{}] {}: taps {} moved {} of {} tiles.", m_row, step.name, direction_name(leg.direction), walk.moved_chunks, tiles));
-        const auto next = counted_ends(at, leg, one_short_ok ? CountedEndPolicy::ONE_SHORT : CountedEndPolicy::EXACT);
+    for (auto leg = step.legs.begin(); leg != step.legs.end(); ++leg){
+        turn(leg->direction);
+        const size_t tiles = (size_t)leg->tiles;
+        const WalkResult walk = m_io.route().walk_taps(leg->direction, tiles, step.name);
+        log(std::format("[{}] {}: taps {} moved {} of {} tiles.", m_row, step.name, direction_name(leg->direction), walk.moved_chunks, tiles));
+        const auto next = counted_ends(at, *leg, policy);
         if (walk.wild_battles > 0){
             if (walk.origin == WalkOrigin::MAY_PRECEDE_LEG){
                 return Pokemon::outcome_failed("encounter_origin_unknown", step.name);
@@ -267,11 +273,14 @@ Outcome StoryWalkSteps::tap_legs(const Pose& from, const StoryStep& step){
             if (walk.stop != WalkStop::LIMIT && walk.stop != WalkStop::BLOCKED){
                 return Pokemon::outcome_failed("interrupted_leg_unconfirmed", step.name);
             }
-            at = Pokemon::tiles_of(recover_tapped_leg(from, at, next, leg, step));
-            continue;
+            std::vector<TilePos> ends = next;
+            for (auto rest = std::next(leg); rest != step.legs.end(); ++rest){
+                ends = counted_ends(ends, *rest, policy);
+            }
+            return Pokemon::outcome_ok(recover_tapped_leg(from, at, ends, step.legs.back().direction, *leg, step));
         }
         if (walk.moved_chunks + (one_short_ok ? 1 : 0) < tiles){
-            return Pokemon::outcome_failed("short_leg", std::format("{} {} moved {}", direction_name(leg.direction), tiles, walk.moved_chunks));
+            return Pokemon::outcome_failed("short_leg", std::format("{} {} moved {}", direction_name(leg->direction), tiles, walk.moved_chunks));
         }
         at = next;
     }

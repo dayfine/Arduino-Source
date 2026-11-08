@@ -252,14 +252,15 @@ StoryStep old_mine_hall_19(std::string name, Direction direction){
 }
 
 //  Oreburgh Mine: stepping south at col 29 without bypassing the crate
-//  hits the wooden crate at (29, 28) on the south leg, a tile down. From
-//  (29, 27), where down_column_29 leaves us, as the old taps reached (29, 26).
+//  hits the wooden crate at (29, 28) on the south leg, a tile down.
 StoryStep old_coal_room_crate_cut(){
     StoryStep step;
     step.kind = StoryStepKind::LEGS;
-    step.name = "above_roarks_row";
+    step.name = "to_roarks_corner";
     step.legs = {
-        {.direction = Direction::NORTH, .tiles = 1},
+        {.direction = Direction::EAST, .tiles = 1}, {.direction = Direction::SOUTH, .tiles = 2},
+        {.direction = Direction::WEST, .tiles = 1}, {.direction = Direction::SOUTH, .tiles = 5},
+        {.direction = Direction::EAST, .tiles = 14}, {.direction = Direction::SOUTH, .tiles = 10},
         {.direction = Direction::SOUTH, .tiles = 2}, {.direction = Direction::WEST, .tiles = 11},
     };
     return step;
@@ -364,7 +365,7 @@ const AutoStoryStorySimCase AUTO_STORY_STORY_SIM_CASES[] = {
     },
     {
         .input = {"01.03, cut corner through coal room crate at col 29", [](Logger& logger){
-            return test_story_sim_step_failure(logger, "01.03", old_coal_room_crate_cut(), "01.03 above_roarks_row", "short_leg: south 2 moved 1");
+            return test_story_sim_step_failure(logger, "01.03", old_coal_room_crate_cut(), "01.03 to_roarks_corner", "short_leg: south 2 moved 1");
         }},
         .expectation = {},
     },

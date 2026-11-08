@@ -8,6 +8,7 @@
  *  physical cause. Run the real story step and route walker on GridSim.
  */
 #include <algorithm>
+#include <format>
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "Simulation/PokemonBDSP_AutoStory_GridSim.h"
 #include "PokemonBDSP_AutoStory_StoryPlaces.h"
@@ -146,6 +147,129 @@ public:
 private:
     RecoveryCase m_case;
 };
+
+//  The route walker's open legs as lab-B 2026-11-08 11:55 saw one: a leg of
+//  more than a tile that ends on open ground, not at a wall, goes a tile
+//  past where it was planned to stop (there, south 5 went 6). The walker is
+//  not told. A single tap stays tile-exact, and so do the story's own
+//  counted taps.
+class OvershootingRouteIO : public GridSimRouteIO{
+public:
+    OvershootingRouteIO(GridSim& sim, std::vector<std::string>& notes, std::vector<SimWildTap> taps)
+        : GridSimRouteIO(sim, notes, std::move(taps)), m_sim(sim), m_notes(notes)
+    {}
+    virtual WalkResult walk_taps(Direction direction, size_t tiles, const std::string& label) override{
+        const WalkResult result = GridSimRouteIO::walk_taps(direction, tiles, label);
+        if (tiles > 1 && label.ends_with("(open)") && result.stop == WalkStop::LIMIT && sim_can_step(m_sim, direction)){
+            m_sim.tap(direction, route_ms_per_tile(direction, MoveSpeed::WALK), false);
+            m_notes.push_back(std::format("[Sim] {}: overshot a tile {} to {}.", label, direction_name(direction), to_string(m_sim.player().pos)));
+        }
+        return result;
+    }
+private:
+    GridSim& m_sim;
+    std::vector<std::string>& m_notes;
+};
+
+//  RecoveryStepIO that also walks to walls, as the story simulation does.
+class WallStepIO : public RecoveryStepIO{
+public:
+    WallStepIO(RouteIO& route, GridSim& sim) : RecoveryStepIO(route), m_sim(sim){}
+    virtual void walk_until_stopped(Direction direction, size_t tiles, const std::string&) override{
+        m_sim.tap(direction, ROUTE_TURN_TAP, false);
+        m_sim.hold(direction, ROUTE_START_DELAY + 800ms + route_ms_per_tile(direction) * (int64_t)(2 * tiles), SimPace::WALK);
+    }
+private:
+    GridSim& m_sim;
+};
+
+const Pokemon::StoryStep& story_step(const std::string& row, const std::string& name){
+    for (const Pokemon::StoryCheckpoint& checkpoint : story_checkpoints()){
+        for (const Pokemon::StoryStep& step : checkpoint.steps){
+            if (checkpoint.id == row && step.name == name){
+                return step;
+            }
+        }
+    }
+    throw GridSimFailure{"no step " + name + " in " + row};
+}
+
+//  lab-B 2026-11-08 11:55: a wild battle on 01.03's counted taps across
+//  Roark's room re-planned to the end of the interrupted leg, the open tile
+//  (15, 16); the re-plan's open run south overshot a row, and the taps after
+//  ran a row off, under Roark's rocks. With a wild battle on the input's
+//  tap, the table's to_roarks_corner from (15, 9) must end on his corner
+//  (20, 28) facing west, and beside_roarks_rock on (20, 29).
+struct CornerInput{
+    std::string name;
+    std::vector<SimWildTap> battle;
+};
+struct CornerExpectation{
+    std::string failure = {};
+};
+struct CornerCase{
+    CornerInput input;
+    CornerExpectation expectation;
+};
+class Test_RoarksCorner : public UnitTest{
+public:
+    explicit Test_RoarksCorner(CornerCase data)
+        : UnitTest("PokemonBDSP::AutoStory - Recovery walk: 01.03 to Roark's corner, " + data.input.name), m_case(std::move(data))
+    {}
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        const StoryWorld& world = *story_plan_world("OreburghMine", "OreburghMine");
+        GridSim sim({.world = &world}, world.to_world("OreburghMine", {15, 9}), Direction::SOUTH, true);
+        std::vector<std::string> notes;
+        OvershootingRouteIO route(sim, notes, m_case.input.battle);
+        WallStepIO io(route, sim);
+        StoryWalkSteps walks(io);
+        walks.begin_attempt("01.03");
+        Pokemon::RunState state{.pose = Pokemon::tile_pose("OreburghMine", {{15, 9}}, Direction::SOUTH), .flags = {}};
+        std::string failure;
+        try{
+            for (const char* name : {"to_roarks_corner", "beside_roarks_rock"}){
+                const Pokemon::StoryStep& step = story_step("01.03", name);
+                failure = walks.legs(state, step).failure;
+                const auto end = story_to_local(world, "OreburghMine", nearest_tile(sim.player().pos));
+                logger.log(std::format("{} ended at {}.", name, to_string(sim.player().pos)));
+                const std::vector<TilePos> tiles = Pokemon::tiles_of(*step.pose_after);
+                const bool on_tile = end && std::find(tiles.begin(), tiles.end(), *end) != tiles.end();
+                if (failure.empty() && (!on_tile || Pokemon::facing_of(*step.pose_after) != sim.player().facing)){
+                    failure = std::format("{} ended at {} facing {}, not on {}.", name, to_string(sim.player().pos),
+                        direction_name(sim.player().facing), Pokemon::to_string(*step.pose_after));
+                }
+                if (!failure.empty()){
+                    break;
+                }
+                state.pose = *step.pose_after;
+            }
+        }catch (const GridSimFailure& error){
+            failure = error.message;
+        }
+        for (const std::string& note : notes){
+            if (note.find("recovery") != std::string::npos || note.find("overshot") != std::string::npos){
+                logger.log(note);
+            }
+        }
+        return failure == m_case.expectation.failure ? UnitTestResult(true)
+            : UnitTestResult("Expected '" + m_case.expectation.failure + "', got '" + failure + "'");
+    }
+private:
+    CornerCase m_case;
+};
+
+const CornerCase CORNER_CASES[] = {
+    {.input = {.name = "no battle", .battle = {}}, .expectation = {}},
+    {.input = {.name = "battle on south 5 tap 3",
+        .battle = {{.label = "to_roarks_corner", .direction = Direction::SOUTH, .requested_tiles = 5, .tap = 3}}}, .expectation = {}},
+    {.input = {.name = "battle on south 5 tap 5",
+        .battle = {{.label = "to_roarks_corner", .direction = Direction::SOUTH, .requested_tiles = 5, .tap = 5}}}, .expectation = {}},
+    {.input = {.name = "battle on east 14 tap 7",
+        .battle = {{.label = "to_roarks_corner", .direction = Direction::EAST, .requested_tiles = 14, .tap = 7}}}, .expectation = {}},
+    {.input = {.name = "battle on south 10 tap 4",
+        .battle = {{.label = "to_roarks_corner", .direction = Direction::SOUTH, .requested_tiles = 10, .tap = 4}}}, .expectation = {}},
+};
+
 } // namespace
 
 void add_tests_AutoStory_RecoveryWalk(UnitTestDatabase& database){
@@ -162,6 +286,9 @@ void add_tests_AutoStory_RecoveryWalk(UnitTestDatabase& database){
     };
     for (const RecoveryCase& scenario : CASES){
         database.add<Test_RecoveryWalk>(scenario);
+    }
+    for (const CornerCase& scenario : CORNER_CASES){
+        database.add<Test_RoarksCorner>(scenario);
     }
 }
 } // namespace PokemonBDSP
