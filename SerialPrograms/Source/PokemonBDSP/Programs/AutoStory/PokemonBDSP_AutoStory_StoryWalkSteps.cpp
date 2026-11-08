@@ -9,6 +9,7 @@
 #include "Common/Cpp/Color.h"
 #include "Common/Cpp/Exceptions.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
+#include "Pokemon/Navigation/Pokemon_MapData.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_WallRecovery.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_PlannedRoute.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
@@ -43,33 +44,6 @@ std::string label_of(const StoryStep& step){
 [[noreturn]] void fail(RouteIO& io, const std::string& message){
     io.note(message, RouteNote::FAILURE);
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "RouteIO::note() returned from a failure: " + message);
-}
-
-//  How many tiles from `pose` along `direction` to the door or map edge.
-//  When stepping through a door from across the room (or down an entrance hall),
-//  this bounds the run so missing a fade does not run away across the far map.
-size_t tiles_to_door(const Pose& pose, Direction direction){
-    const std::vector<TilePos> tiles = Pokemon::tiles_of(pose);
-    if (tiles.empty()){
-        return 1;
-    }
-    const StoryWorld* world = story_plan_world(pose.map, pose.map);
-    if (world == nullptr){
-        return 1;
-    }
-    const TilePos start = story_to_world(*world, pose.map, tiles.front());
-    TilePos at = start;
-    size_t count = 0;
-    while (count < 50){
-        const TilePos next = at.next(direction);
-        count++;
-        const std::optional<Pokemon::TileKind> kind = world->tile(next);
-        if (!kind || *kind == Pokemon::TileKind::DOOR || *kind == Pokemon::TileKind::WALL || world->occupied(next)){
-            break;
-        }
-        at = next;
-    }
-    return std::max<size_t>(1, count);
 }
 
 } // namespace
@@ -299,12 +273,17 @@ Outcome StoryWalkSteps::step(RunState& state, const StoryStep& step){
     //  (r33 was outside, "no fade"). No separate turn tap first: at 1 tile
     //  from the door, a 50 ms turn tap can step in before run_into_door() watches.
     if (step.pose_after && step.pose_after->map != state.pose.map){
-        const size_t tiles = tiles_to_door(state.pose, step.direction);
-        const Milliseconds per_tile = route_ms_per_tile(step.direction, m_can_run ? MoveSpeed::RUN : MoveSpeed::WALK);
-        const Milliseconds timeout = std::max(1500ms, ROUTE_START_DELAY + per_tile * (int64_t)tiles + 800ms);
+        Milliseconds timeout(12000);
+        if (m_world.has(state.pose.map)){
+            const Pokemon::MapData& map = m_world.map(state.pose.map);
+            const size_t tiles = Pokemon::tiles_to_door(map, state.pose.pos, step.direction);
+            if (tiles > 0){
+                const Milliseconds per_tile = route_ms_per_tile(step.direction, m_can_run ? MoveSpeed::RUN : MoveSpeed::WALK);
+                timeout = std::max(1500ms, ROUTE_START_DELAY + per_tile * (int64_t)tiles + 800ms);
+            }
+        }
         const bool faded = m_io.run_into_door(step.direction, m_can_run, timeout);
-        log(std::format("[{}] {}: {} through the door ({} tiles, {} ms limit): {}.",
-            m_row, step.name, direction_name(step.direction), tiles, timeout.count(), faded ? "faded" : "no fade yet"));
+        log(std::format("[{}] {}: {} through the door (timeout {} ms): {}.", m_row, step.name, direction_name(step.direction), timeout.count(), faded ? "faded" : "no fade yet"));
         m_io.settle(BUTTON_B, label_of(step), !faded);
         return Pokemon::outcome_ok();
     }

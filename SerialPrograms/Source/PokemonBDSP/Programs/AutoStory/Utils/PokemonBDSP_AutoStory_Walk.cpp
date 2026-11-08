@@ -400,6 +400,7 @@ private:
         }
         m_stream.log("[Walk] " + m_spec.label + ": " + walk_stop_name(stop) + " after " +
             std::to_string(m_result.walked.count()) + "ms, " +
+            std::to_string(m_result.moved_chunks) + " moved chunks, " +
             std::to_string(m_result.wild_battles) + " wild battle(s).");
         return m_result;
     }
