@@ -24,6 +24,9 @@ void add_tests_StorySteps(UnitTestDatabase& database);
 
 
 
+//  Lossless shared story-data wire contract.
+void add_tests_StoryStepJson(UnitTestDatabase& database);
+
 } // namespace Pokemon
 } // namespace PokemonAutomation
 #endif
