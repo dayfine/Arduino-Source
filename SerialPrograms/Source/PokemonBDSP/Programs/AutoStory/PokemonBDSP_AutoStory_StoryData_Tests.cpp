@@ -40,10 +40,11 @@ JsonValue plan(){
     }
     throw ParseException("Expected embedded bdsp-mine-01.03.plan.json.");
 }
-std::string check_table(const StoryCheckpoint& loaded, const JsonValue& input){
+std::string check_table(const StoryCheckpoint& loaded){
     const auto& rows = story_checkpoints();
     const auto row = std::find_if(rows.begin(), rows.end(), [](const StoryCheckpoint& x){ return x.id == "01.03"; });
-    if (row == rows.end() || Pokemon::story_checkpoint_json(*row) != input.to_object_throw().get_value_throw("checkpoint")){
+    //  The shared writer omits explicit defaults such as direction: north.
+    if (row == rows.end() || Pokemon::story_checkpoint_json(*row) != Pokemon::story_checkpoint_json(loaded)){
         return "Expected the actual 01.03 table entry to contain every authored field.";
     }
     if (loaded.on_failure != StoryFailure::RELOAD_AND_RETRY || loaded.saves_in != "Oreburgh City"
@@ -75,7 +76,7 @@ public:
             if (m_test.expectation.rejected){
                 return "Expected authored data rejection.";
             }
-            const std::string error = check_table(loaded, input);
+            const std::string error = check_table(loaded);
             return error.empty() ? UnitTestResult(true) : UnitTestResult(error);
         }catch (const Exception& error){
             return m_test.expectation.rejected ? UnitTestResult(true) : UnitTestResult(error.to_str());
