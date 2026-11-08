@@ -870,15 +870,14 @@ StoryStep old_mine_hall_19(std::string name, Direction direction){
 }
 
 //  Oreburgh Mine: stepping south at col 29 without bypassing the crate
-//  hits the wooden crate at (29, 28) on the south leg, a tile down.
+//  hits the wooden crate at (29, 28) on the south leg, a tile down. From
+//  (29, 27), where down_column_29 leaves us, as the old taps reached (29, 26).
 StoryStep old_coal_room_crate_cut(){
     StoryStep step;
     step.kind = StoryStepKind::LEGS;
     step.name = "above_roarks_row";
     step.legs = {
-        {.direction = Direction::EAST, .tiles = 1}, {.direction = Direction::SOUTH, .tiles = 2},
-        {.direction = Direction::WEST, .tiles = 1}, {.direction = Direction::SOUTH, .tiles = 5},
-        {.direction = Direction::EAST, .tiles = 14}, {.direction = Direction::SOUTH, .tiles = 10},
+        {.direction = Direction::NORTH, .tiles = 1},
         {.direction = Direction::SOUTH, .tiles = 2}, {.direction = Direction::WEST, .tiles = 11},
     };
     return step;
