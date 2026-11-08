@@ -769,6 +769,14 @@ StoryCheckpoint oreburgh_mine_to_roark(){
         anchored(to_walls("up_to_the_mines_sign", {{.direction = NORTH, .tiles = 3}}, "north against the mine's sign (45, 56)"),
             at(OREBURGH, 45, 57, NORTH)),
         route("below_the_centers_door_again", below_oreburghs_center(), "up to below the Center's door", "town"),
+        //  The 36-tile run north and the open step east left us off the door's
+        //  column: no fade, and the counter a tile east of the nurse (lab-B
+        //  2026-11-08 10:39). Line up as 01.02b does, against the walls east
+        //  and north of (48, 22), then one tap west below the door.
+        legs("south_of_the_centers_door", {{.direction = SOUTH, .tiles = 1}}, "a tap south onto the street"),
+        anchored(to_walls("against_the_walls_east_of_the_door", {{.direction = EAST, .tiles = 3}, {.direction = NORTH, .tiles = 1}},
+            "east against the wall at (49, 22), north against the wall at (48, 20)"), at(OREBURGH, 48, 21, NORTH)),
+        anchored(legs("below_the_centers_door_lined_up", {{.direction = WEST, .tiles = 1}}, "a tap west below the door"), below_oreburghs_center()),
         heal("heal_oreburgh", "the nurse; out onto the doorstep, where 01.04 starts", out_of_oreburgh_center()),
     });
 }
