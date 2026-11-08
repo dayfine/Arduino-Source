@@ -81,3 +81,7 @@ Packages/*
 # Local agent/linter environments.
 .venv-code-health/
 __pycache__/
+
+# Prepared, pinned PokemonSimulation maps are external build inputs.
+Packages/Resources/Pokemon/Maps/
+.pokesim-map-source/
