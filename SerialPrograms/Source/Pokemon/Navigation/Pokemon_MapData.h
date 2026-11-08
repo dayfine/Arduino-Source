@@ -217,6 +217,14 @@ MapData parse_map(const JsonValue& json, const std::string& source_name);
 //  The warp on `pos`, or nullptr if there is none.
 const MapWarp* warp_at(const MapData& map, const TilePos& pos);
 
+//  Counts the number of tiles along `direction` starting from `from` until reaching
+//  a DOOR tile, an impassable tile (WALL, OUTSIDE), or the edge of the grid.
+//  Used by AutoStory walkers to bound holds into door warps based on distance.
+size_t tiles_to_door(const Grid<TileKind>& tiles, const TilePos& from, Direction direction, size_t max_tiles = 50);
+
+//  Convenience overload that queries map.tiles.
+size_t tiles_to_door(const MapData& map, const TilePos& from, Direction direction, size_t max_tiles = 50);
+
 
 
 } // namespace Pokemon
