@@ -328,8 +328,6 @@ public:
             error = "The server did not call on_disconnect";
         }
 
-        server.close();
-
         if (!ok && !error.empty()){
             return error;
         }
@@ -406,8 +404,6 @@ public:
 
             client.close();
         }
-
-        server.close();
 
         if (!ok && !error.empty()){
             return error;
@@ -489,8 +485,6 @@ public:
 
             client.close();
         }
-
-        server.close();
 
         if (!ok && !error.empty()){
             return error;
@@ -590,8 +584,6 @@ public:
             }
             client.close();
         }
-
-        server.close();
 
         if (!ok && !error.empty()){
             return error;
@@ -727,8 +719,6 @@ public:
             client.close();
         }
 
-        server.close();
-
         if (!ok && !error.empty()){
             return error;
         }
@@ -824,8 +814,6 @@ public:
             client_b.close();
         }
 
-        server.close();
-
         if (!ok && !error.empty()){
             return error;
         }
@@ -874,17 +862,12 @@ public:
             SOCKET_TEST_WAIT,
             [&second_listener]{ return second_listener.listen_finished.load() > 0; }
         )){
-            server.close();
             return "The second server did not report its start";
         }
         if (second_listener.last_listen_error.empty()){
-            server.close();
-            second_server.close();
             return "The second server succeeded on a port that is already in use";
         }
         if (second_server.state() != AbstractServerSocket::State::NOT_RUNNING){
-            server.close();
-            second_server.close();
             return "The second server is not NOT_RUNNING after a failed start";
         }
 
@@ -910,9 +893,6 @@ public:
 
             client.close();
         }
-
-        server.close();
-        second_server.close();
 
         if (!ok){
             return "The original server stopped working";
@@ -1026,8 +1006,6 @@ public:
 
             client.close();
         }
-
-        server.close();
 
         if (!ok && !error.empty()){
             return error;
@@ -1235,8 +1213,6 @@ public:
 
             client.close();
         }
-
-        server.close();
 
         if (!ok && !error.empty()){
             return error;
@@ -1469,8 +1445,6 @@ public:
             client.close();
         }
 
-        server.close();
-
         if (!ok && !error.empty()){
             return error;
         }
@@ -1700,8 +1674,6 @@ public:
         //  joins its connection thread, currently inside the stall) does
         //  not wait for it.
         server_listener.stop.store(true, std::memory_order_release);
-
-        server.close();
 
         if (!ok && !error.empty()){
             return error;
@@ -1950,8 +1922,6 @@ public:
             client.close();
         }
 
-        server.close();
-
         if (!ok && !error.empty()){
             return error;
         }
@@ -2118,8 +2088,6 @@ public:
         //  joins its connection thread, currently inside the stall) does
         //  not wait for it.
         server_listener.stop.store(true, std::memory_order_release);
-
-        server.close();
 
         if (!ok && !error.empty()){
             return error;
@@ -2307,8 +2275,6 @@ public:
             client.close();
         }
 
-        server.close();
-
         if (!ok && !error.empty()){
             return error;
         }
@@ -2387,8 +2353,6 @@ public:
                 ok = true;
             }
         }
-
-        server.close();
 
         if (!ok && !error.empty()){
             return error;
