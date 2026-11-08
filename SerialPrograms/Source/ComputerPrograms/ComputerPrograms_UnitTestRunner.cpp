@@ -30,6 +30,7 @@
 #include "NintendoSwitch/Inference/NintendoSwitch_FailedToConnectDetector.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_UpdatePopupDetector.h"
 #include "NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter_Tests.h"
+#include "NintendoSwitch/Controllers/SysbotBase/SysbotBase_Connection.h"
 
 #include "Pokemon/AutoStory/Pokemon_AutoStory_Tests.h"
 #include "Pokemon/Navigation/Pokemon_Navigation_Tests.h"
@@ -63,6 +64,8 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     add_tests_BlackBorderDetector(ret);
     add_tests_ListenerSet(ret);
     add_tests_MoveOnlyFunction(ret);
+    SysbotBase::add_tests_SysbotBasePing(ret);
+    SysbotBase::add_tests_SysbotBaseReceiveLine(ret);
     add_tests_AudioInfo(ret);
     add_tests_ChannelMixerMatrix(ret);
     add_tests_FFTStreamer(ret);
@@ -277,10 +280,12 @@ void UnitTestRunner::program(ProgramEnvironment& env, CancellableScope& scope){
         m_env = nullptr;
     });
 
+    //  Uncapped pool: the runner caps the # of concurrently running tests itself, and
+    //  dispatch_now_blocking() would stall the dispatcher once a capped pool saturates.
     PokemonAutomation::UnitTestRunner runner(
         &scope,
         env.logger(),
-        GlobalThreadPools::computation_normal()
+        GlobalThreadPools::unlimited_normal()
     );
     runner.add_listener(*this);
 
@@ -395,9 +400,11 @@ bool CommandLineUnitTestRunner::run(bool augment_color_distortions){
         m_logger.log("Color distortion augmentation enabled. Image tests with labeled images also run with: " + labels);
     }
 
+    //  Uncapped pool: the runner caps the # of concurrently running tests itself, and
+    //  dispatch_now_blocking() would stall the dispatcher once a capped pool saturates.
     PokemonAutomation::UnitTestRunner runner(
         m_logger,
-        GlobalThreadPools::computation_normal()
+        GlobalThreadPools::unlimited_normal()
     );
     runner.add_listener(*this);
     for (const auto& test : UNIT_TESTS_ALL()){
