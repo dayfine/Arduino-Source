@@ -39,7 +39,10 @@ namespace{
 //  time). By hand, after a stick exit, it took 22 taps; the hand exit and
 //  count did not carry over to the program's. Stick holds drift: 160 ms moved
 //  36 to 48 px, so 18 or 19 of them missed the door by a part of a tile.
-constexpr size_t GYM_DPAD_TAPS_WEST_OF_CENTER = 20;
+//  2026-11-08 14:51 (lab-B): 01.03's heal now leaves us below the Center's
+//  door (47, 21), and with only moving taps counted, 20 ended on (27, 21),
+//  a tile east of the gym's door (26, 20). The map's columns give 21.
+constexpr size_t GYM_DPAD_TAPS_WEST_OF_CENTER = 21;
 
 void oreburgh_street_to_gym(VideoStream& stream, ProControllerContext& context){
     // From the Center's doorstep, straight west along its row to below the
@@ -51,6 +54,15 @@ void oreburgh_street_to_gym(VideoStream& stream, ProControllerContext& context){
     // to the nurse as Roark (lab-B, 2026-11-08 14:25).
     context.wait_for_all_requests();
     dpad_tiles(stream, context, DPAD_LEFT, GYM_DPAD_TAPS_WEST_OF_CENTER, "west to the gym's door");
+    if (dpad_through_door_north(stream, context, "Oreburgh Gym door")){
+        return;
+    }
+    //  The gym's wall stopped us: try the column west, then the one east.
+    dpad_tiles(stream, context, DPAD_LEFT, 1, "a column west of the gym's door");
+    if (dpad_through_door_north(stream, context, "Oreburgh Gym door")){
+        return;
+    }
+    dpad_tiles(stream, context, DPAD_RIGHT, 2, "a column east of the gym's door");
     if (dpad_through_door_north(stream, context, "Oreburgh Gym door")){
         return;
     }
