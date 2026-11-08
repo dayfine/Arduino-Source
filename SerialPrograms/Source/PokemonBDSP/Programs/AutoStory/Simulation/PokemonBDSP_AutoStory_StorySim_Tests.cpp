@@ -889,6 +889,22 @@ UnitTestResult test_story_sim_step_failure(Logger& logger, const std::string& ro
     return true;
 }
 
+//  lab-B 2026-11-08: 01.03's run into Oreburgh's Center saw no fade and went
+//  on to the nurse's counter. The heal must find it is inside and go on.
+UnitTestResult test_heal_fade_unseen(Logger& logger){
+    SimExecutor clean(logger);
+    run_rows_on(clean, logger, {.from = "01.03", .to = "01.03"});
+    for (size_t i = 0; i < clean.misses().fades; i++){
+        SimExecutor sim(logger, {.fade = i, .banner = {}});
+        run_rows_on(sim, logger, {.from = "01.03", .to = "01.03"});
+        const SimRun& run = sim.result();
+        if (run.missed_step == "01.03 heal_oreburgh"){
+            return run.error.empty() ? UnitTestResult(true) : UnitTestResult(std::format("failed in '{}': {}", run.failed_step, run.error));
+        }
+    }
+    return "no fade in 01.03 heal_oreburgh to miss: the heal never ran into its door.";
+}
+
 struct AutoStoryStorySimInput{
     std::string name;
     std::function<UnitTestResult(Logger&)> body;
@@ -940,6 +956,10 @@ const AutoStoryStorySimCase AUTO_STORY_STORY_SIM_CASES[] = {
             return run.missed_step == "01.03 into_the_coal_room" && run.error.empty() ? UnitTestResult(true)
                 : UnitTestResult(std::format("dark in '{}', failed in '{}': {}", run.missed_step, run.failed_step, run.error));
         }},
+        .expectation = {},
+    },
+    {
+        .input = {"01.03, the Center's fade unseen, the heal goes on from the counter (lab-B, 2026-11-08)", test_heal_fade_unseen},
         .expectation = {},
     },
     {
