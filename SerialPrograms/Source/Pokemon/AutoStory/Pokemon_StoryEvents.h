@@ -115,6 +115,13 @@ Outcome outcome_failed(std::string failure, std::string detail = "");
 //  "probe_exhausted: 4 rows": the failure and its detail, if any.
 std::string to_string(const Outcome& outcome);
 
+//  The failure of a step that found the Switch's HOME menu instead of the
+//  game. Nothing in the story can answer it, as every press goes to the
+//  console's menus: no recovery runs and no reload, the run stops.
+constexpr const char* GAME_NOT_RUNNING = "game_not_running";
+//  GAME_NOT_RUNNING, saying so for the run log.
+Outcome outcome_game_not_running();
+
 
 // Callable action executed for a story event.
 using Act = MoveOnlyFunction<Outcome(RunState& state)>;
