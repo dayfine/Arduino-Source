@@ -345,6 +345,40 @@ UnitTestResult home_from_each_scene_end(Logger& logger){
     return passes(failures);
 }
 
+//  The table with row `id` cut to `step` alone, from `start`.
+std::vector<StoryCheckpoint> table_with_row(const std::string& id, const Pose& start, const StoryStep& step){
+    std::vector<StoryCheckpoint> rows = story_checkpoints();
+    for (StoryCheckpoint& checkpoint : rows){
+        if (checkpoint.id == id){
+            checkpoint.start = start;
+            checkpoint.steps = {step};
+        }
+    }
+    return rows;
+}
+//  00.03: Rowan's trigger is the column (5, 14..16) on Route 201 (decomp).
+//  The walk east from the Lakefront's wall runs along Route 201's row 14,
+//  or a row or two lower if the hold south stopped short of the wall. Each
+//  of the three rows starts the scene, and the walk stops on its tile.
+//  The Lakefront's rows 21..23 are Route 201's 14..16.
+UnitTestResult rowans_scene_on_each_row(Logger& logger){
+    const StoryStep& walk = table_step("00.03", "into_rowans_scene");
+    std::string failures;
+    for (int row = 14; row <= 16; row++){
+        const Pose start = Pokemon::tile_pose("VerityLakefront", {TilePos{20, row + 7}}, Direction::EAST);
+        const std::vector<StoryCheckpoint> rows = table_with_row("00.03", start, walk);
+        SimExecutor executor(logger, {.fade = {}, .banner = {}}, {});
+        const Pokemon::SegmentReport report = run_rows_on(executor, logger, {.from = "00.03", .to = "00.03"}, rows);
+        const Pose trigger = Pokemon::tile_pose("Route201", {TilePos{5, row}}, Direction::EAST);
+        if (!report.completed){
+            failures += std::format("\nrow {}: stopped in {}: {}", row, executor.result().failed_step, executor.result().error);
+        }else if (!ends_on(executor.result(), trigger)){
+            failures += std::format("\nrow {}: the walk ended at {}, not on (5, {})", row, end_of(executor.result()), row);
+        }
+    }
+    return passes(failures);
+}
+
 struct FailureCaseInput{
     std::string name;
     std::function<UnitTestResult(Logger&)> body;
@@ -424,6 +458,7 @@ const FailureCase AUTO_STORY_FAILURE_CASES[] = {
     {.input = {"00.03 Rowan's scene opens with no box and fades home", rowans_scene_opens_with_no_box}, .expectation = {}},
     {.input = {"00.02 the Starly battle's opening still plays after the starter (lab-B 2026-11-09)", starly_opening_after_the_starter}, .expectation = {}},
     {.input = {"00.03 out of the house from each tile Rowan's scene ends on, rows 8 and 9 (lab-B 2026-11-09)", home_from_each_scene_end}, .expectation = {}},
+    {.input = {"00.03 Rowan's scene starts on each of the trigger's rows 14..16, and the walk stops there", rowans_scene_on_each_row}, .expectation = {}},
 };
 
 void add_tests_AutoStory_SimFailureCases(UnitTestDatabase& database){

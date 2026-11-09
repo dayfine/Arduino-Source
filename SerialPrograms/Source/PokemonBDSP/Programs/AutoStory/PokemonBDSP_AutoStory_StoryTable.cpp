@@ -331,8 +331,9 @@ std::vector<StoryCheckpoint> lake_and_pokedex(){
                 "Rowan's lines and the walk out of the lake"),
         }),
         row("00.03", "Back to Sandgem: Rowan, Dawn and the Pokedex", at_or_next_to(LAKEFRONT, "below_lake_entrance", SOUTH), {
-            route("short_of_rowan", at(ROUTE_201, 4, 14, EAST), "back east onto Route 201's lower level"),
-            step_into("rowans_stop", EAST, "the trigger (5, 14..16)"),
+            //  The wall's row 21 runs on as Route 201's 14, through Rowan's trigger (5, 14..16).
+            route("to_the_lakefront_wall", at(LAKEFRONT, 17, 21), "south to the Lakefront's wall, the row into Rowan's trigger"),
+            legs("into_rowans_scene", {{.direction = EAST, .tiles = 22}}, "east onto Route 201 until Rowan's scene starts: 20 tiles, 22 at most", "to_dialogue"),
             //  BDSP, unlike Diamond: after Rowan leaves, Dawn's and Barry's lines, then
             //  the game fades to the house, where Mom gives the Running Shoes. The
             //  scene ends near her, by the rug: (6, 8) in r24 and r27, (5, 8) in
