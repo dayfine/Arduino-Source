@@ -71,13 +71,18 @@ using Pokemon::TilePos;
 //  (run_until_map()) of the run goes unseen, though the player did go
 //  through. The console missed both (r75, r81). The `dark`th door run reads
 //  dark SIM_FALSE_DARK in, short of the door, as lab-B's did on 2026-11-08.
-//  The counts and flags below are the run's: how many fades and banners it
-//  looked for, whether a miss happened since the executor last looked, and
-//  whether a missed fade is still unseen.
+//  The `through`th tap step (tap_to_banner(), from 0) starts on its far side,
+//  its banner gone unless `through_banner`: the walk before it slid onto the
+//  warp (lab-B 2026-11-08). The counts and flags below are the run's: how
+//  many fades and banners it looked for, whether a miss happened since the
+//  executor last looked, and whether a missed fade is still unseen.
 struct SimMisses{
     std::optional<size_t> fade;
     std::optional<size_t> banner;
     std::optional<size_t> dark = {};
+    std::optional<size_t> through = {};
+    bool through_banner = false;
+    size_t tap_steps = 0;
     size_t fades = 0;
     size_t banners = 0;
     size_t doors = 0;
@@ -227,10 +232,17 @@ bool SimStoryStepIO::run_until_map(Direction direction, Milliseconds limit, cons
 }
 
 //  D-pad taps, each looked at, until the fade and then the banner (the
-//  console's ConsoleStoryStepIO::tap_to_banner()). Each look stands still,
-//  so a banner on the far side reads at once. A fade seen ends the taps,
+//  console's ConsoleStoryStepIO::tap_to_banner()): none if the banner shows
+//  before the first. Each look stands still, so a banner on the far side
+//  reads at once. A fade seen ends the taps,
 //  banner or not; with the fade missed the next look still sees the banner.
 std::optional<size_t> SimStoryStepIO::tap_to_banner(Direction direction, const std::string& map, size_t max_taps){
+    if (m_misses.through == m_misses.tap_steps++){
+        m_misses.missed = true;
+        if (m_far_side() && m_misses.through_banner){
+            return 0;
+        }
+    }
     bool crossed = false;
     for (size_t tap = 1; tap <= max_taps; tap++){
         const SimMove move = m_sim.tap(direction, 160ms, false);
@@ -823,6 +835,26 @@ UnitTestResult test_exit_ravaged_path(Logger& logger){
     return run_exit_test(logger, "01.09", r81_old_cave_exit(), SimMisses{.fade = 0, .banner = std::nullopt}, r81_below_the_mouth());
 }
 
+//  lab-B 2026-11-08 15:31 to 15:54: 01.05's walk to the tile beside the
+//  Oreburgh Gate's mouth slid onto the warp, and the tap step after it began
+//  inside the Gate. With its banner up, the step ends there with no tap and
+//  no fade (the clean run's fade into the Gate is not seen); with it gone,
+//  it fails a few taps on, not across the Gate.
+UnitTestResult test_tap_through_already(Logger& logger, bool banner){
+    const std::vector<StoryCheckpoint> rows = table_with("01.05", old_tap_into_the_gate());
+    SimExecutor clean(logger);
+    run_rows_on(clean, logger, {.from = "01.05", .to = "01.05"}, rows);
+    SimExecutor through(logger, {.fade = {}, .banner = {}, .through = 1, .through_banner = banner});
+    run_rows_on(through, logger, {.from = "01.05", .to = "01.05"}, rows);
+    const SimRun& run = through.result();
+    const std::optional<TilePos> at = run.world ? story_to_local(*run.world, "OreburghGate", run.end) : std::nullopt;
+    const bool passed = banner
+        ? run.error.empty() && through.misses().fades + 1 == clean.misses().fades
+        : run.failed_step == "01.05 into_oreburgh_gate" && at && at->y == 22 && at->x >= 21;
+    return passed ? UnitTestResult(true) : UnitTestResult(std::format("failed in '{}' on {} after {} fades (clean {}): {}",
+        run.failed_step, end_of(run), through.misses().fades, clean.misses().fades, run.error.empty() ? "no failure" : run.error));
+}
+
 UnitTestResult test_story_sim_step_failure(Logger& logger, const std::string& row, const StoryStep& old_step, const std::string& expected_failed_step, const std::string& expected_error){
     SimExecutor executor(logger);
     const std::vector<StoryCheckpoint> rows = table_with(row, old_step);
@@ -894,6 +926,12 @@ const AutoStoryStorySimCase AUTO_STORY_STORY_SIM_CASES[] = {
     }}, .expectation = {}},
     {.input = {"r75, out of the Oreburgh Gate", test_exit_gate}, .expectation = {}},
     {.input = {"r81, out of the Ravaged Path", test_exit_ravaged_path}, .expectation = {}},
+    {.input = {"01.05, a tap step begun through the Gate's mouth, its banner up (lab-B, 2026-11-08)", [](Logger& logger){
+        return test_tap_through_already(logger, true);
+    }}, .expectation = {}},
+    {.input = {"01.05, a tap step begun through the Gate's mouth, its banner gone (lab-B, 2026-11-08)", [](Logger& logger){
+        return test_tap_through_already(logger, false);
+    }}, .expectation = {}},
     {
         .input = {"01.03, a dark frame 1.8 s down the mine's entrance hall is not its mouth (lab-B, 2026-11-08)", [](Logger& logger){
             SimExecutor executor(logger, {.fade = {}, .banner = {}, .dark = 1});

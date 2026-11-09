@@ -41,6 +41,10 @@ Pokemon::StoryStep old_mine_hall_19(std::string name, Pokemon::Direction directi
 //  hits the wooden crate at (29, 28) on the south leg, a tile down.
 Pokemon::StoryStep old_coal_room_crate_cut();
 
+//  01.05's old tap into the Oreburgh Gate, west to its banner, after an
+//  open walk to the tile beside its mouth (1, 13) that slid onto the warp:
+//  the tap step began inside the Gate (lab-B 2026-11-08 15:31 to 15:54).
+Pokemon::StoryStep old_tap_into_the_gate();
 
 
 

@@ -75,7 +75,7 @@ private:
     Pokemon::Outcome counted_wall(const Pokemon::Pose& from, const Pokemon::StoryStep& step);
     Pokemon::Outcome leg_to_dialogue(const Pokemon::StoryStep& step);
     Pokemon::Outcome leg_to_map(const Pokemon::StoryStep& step);
-    Pokemon::Outcome tap_to_banner(const Pokemon::StoryStep& step);
+    Pokemon::Outcome tap_to_banner(const Pokemon::Pose& from, const Pokemon::StoryStep& step);
     void turn(Pokemon::Direction direction);
     void log(const std::string& text);
 

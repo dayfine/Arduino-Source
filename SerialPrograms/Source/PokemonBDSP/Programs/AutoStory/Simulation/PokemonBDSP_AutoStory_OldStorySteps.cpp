@@ -73,6 +73,16 @@ StoryStep old_coal_room_crate_cut(){
     return step;
 }
 
+StoryStep old_tap_into_the_gate(){
+    StoryStep step;
+    step.kind = StoryStepKind::STEP;
+    step.name = "into_oreburgh_gate";
+    step.direction = Direction::WEST;
+    step.variant = "to_banner";
+    step.pose_after = Pokemon::tile_pose("OreburghGate", {TilePos{27, 22}, TilePos{26, 22}}, Direction::WEST);
+    return step;
+}
+
 
 
 } // namespace PokemonBDSP
