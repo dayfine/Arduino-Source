@@ -23,8 +23,15 @@
  *  plus whatever the commands print, such as detector results and the paths
  *  of saved screenshots. A failure also saves a screenshot of the moment.
  *
- *  Games add their own commands and detectors with
- *  register_command_file_command() and register_command_file_detector().
+ *  Every command also adds a line to "<name>.steps.jsonl" next to the
+ *  journal (NintendoSwitch_CommandFileRecorder.h): what ran, when, how it
+ *  ended and what the games' detectors and readings saw before and after,
+ *  so a story played by hand can be turned into story steps.
+ *
+ *  Games add their own commands, detectors and readings with
+ *  register_command_file_command(), register_command_file_detector() and
+ *  register_command_file_reading(), from their panel list's constructor
+ *  (e.g. PokemonLZA_Panels.cpp), so this module includes no game headers.
  *
  */
 
@@ -36,9 +43,12 @@
 #include <ostream>
 #include <string>
 #include <vector>
+#include "Common/Cpp/Json/JsonValue.h"
 #include "Common/Cpp/Options/BooleanCheckBoxOption.h"
 #include "Common/Cpp/Options/StaticTextOption.h"
 #include "Common/Cpp/Options/StringOption.h"
+#include "CommonFramework/ImageTypes/ImageViewRGB32.h"
+#include "CommonFramework/Tools/ProgramEnvironment.h"
 #include "CommonTools/VisualDetector.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 
@@ -48,6 +58,9 @@ namespace NintendoSwitch{
 
 //  What a command gets to work with.
 struct CommandFileSession{
+    //  The running program's, or one for the stopped program whose console
+    //  the lab channel drives.
+    ProgramEnvironment& env;
     ConsoleHandle& console;
     ProControllerContext& context;
     std::ostream& out;      //  Text printed here goes into the journal.
@@ -68,22 +81,37 @@ using CommandFileCommand = std::function<void(CommandFileSession& session, const
 //  A screen detector, by name, for "detect", "wait_for", "expect" and "state".
 using CommandFileDetectorFactory = std::function<std::unique_ptr<StaticScreenDetector>(ConsoleHandle& console)>;
 
-//  `usage` is the line "help" prints, e.g. "walk DIR steps". A registered
-//  command counts as driving the console: the lab channel runs it only while
-//  no program runs.
-void register_command_file_command(const std::string& name, const std::string& usage, CommandFileCommand command);
-void register_command_file_detector(const std::string& name, CommandFileDetectorFactory factory);
+//  A value read from a frame, such as the heading on a minimap: a number,
+//  a string or a bool, or null when the frame shows none.
+using CommandFileReading = std::function<JsonValue(ConsoleHandle& console, const ImageViewRGB32& screen)>;
 
-
+//  What a command does with the console, which decides when the lab channel
+//  lets it run.
 enum class CommandFileCommandKind{
     UNKNOWN,
-    READS_STREAM,       //  Screenshots and detectors.
-    DRIVES_CONSOLE,     //  Presses and waits.
+    READS_STREAM,       //  Screenshots and detectors: also while a program runs.
+    DRIVES_CONSOLE,     //  Presses and waits: only while no program runs.
 };
+
+//  Adds a command. `usage` is the line "help" prints, e.g. "walk DIR steps".
+//  The command parses its own words, throwing ParseException for bad ones.
+void register_command_file_command(
+    std::string name, std::string usage, CommandFileCommandKind kind, CommandFileCommand command
+);
+
+//  Adds a detector. A game's detectors are also recorded in every step.
+void register_command_file_detector(std::string name, CommandFileDetectorFactory factory);
+
+//  Adds a reading, which "detect" prints and every step records.
+void register_command_file_reading(std::string name, CommandFileReading reading);
+
+//  The kind of a built-in or registered command; UNKNOWN for any other name.
 CommandFileCommandKind command_file_command_kind(const std::string& name);
 
-//  Runs one command line. Returns false for "stop". Throws to fail the line.
-bool run_command_file_line(CommandFileSession& session, const std::vector<std::string>& words);
+//  Runs line `line` of a command file and adds its step to the steps file.
+//  Returns false for "stop". Throws to fail the line, after its step is
+//  recorded.
+bool run_command_file_line(CommandFileSession& session, const std::vector<std::string>& words, size_t line);
 
 //  Saves the current frame as <outbox>/<name>_<label>.png and returns its
 //  path, or "(no video frame)".

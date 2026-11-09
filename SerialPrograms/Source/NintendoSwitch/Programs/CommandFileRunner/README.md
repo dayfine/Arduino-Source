@@ -45,7 +45,11 @@ By default the command folder is `CommandFiles` in the settings folder, next to 
 
 ## Commands
 
-Every console command of [Lab.md](../../../CommonFramework/Windows/Lab.md#console) (`press`, `dpad`, `taps`, `stick`, `wait`, `walk`, `shot`, `shots`, `history`, `detect`, `wait_for`, `expect`, `state`, `close_game`, `help`), plus `stop`, which stops the file and the program. The channel's own commands (`select`, `set`, `start`, `owner`, `keepawake`) are not commands of this program. Here `state [image]` prints every detector that fires on the current frame or on a saved picture.
+Every console command of [Lab.md](../../../CommonFramework/Windows/Lab.md#console) (`press`, `dpad`, `taps`, `stick`, `wait`, `walk`, `shot`, `shots`, `history`, `detect`, `wait_for`, `expect`, `state`, `close_game`, `type`, `help`, and the games' commands such as `lza_move`), plus `stop`, which stops the file and the program. The channel's own commands (`select`, `set`, `start`, `owner`, `keepawake`) are not commands of this program. Here `state [image]` prints every detector that fires on the current frame or on a saved picture.
+
+## Steps file
+
+Every command also adds one JSON line to `outbox/<name>.steps.jsonl`, with the frame it ended on in `outbox/<name>_step_L<line>.jpg`; Lab.md describes it. The `.out` journal is unchanged.
 
 ## Options
 
@@ -54,4 +58,4 @@ Every console command of [Lab.md](../../../CommonFramework/Windows/Lab.md#consol
 
 ## Tests
 
-`add_tests_CommandFileRunner()` covers the parsing of command arguments (`CommandFileRunner - ...` unit tests); the file and journal formats are covered by the lab channel's tests.
+`add_tests_CommandFileRunner()` covers the parsing of command arguments (`CommandFileRunner - ...` unit tests) and `add_tests_CommandFileRecorder()` the steps file's lines; the file and journal formats are covered by the lab channel's tests. The LZA commands' arguments and their lookup are `PokemonLZA::AutoStory Commands - ...` tests.
