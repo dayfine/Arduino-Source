@@ -128,13 +128,69 @@ Pokemon::StoryAction played(Pokemon::StoryActionFunction act){
 } // namespace
 
 
-StoryMapsSim::StoryMapsSim()
+StoryMapsSim::StoryMapsSim(StorySimKnobs knobs)
     : Pokemon::TableExecutor(m_table, m_guard)
     , m_table(make_story_action_table([this](StoryActionId id){ return action(id); }))
-{}
+    , m_knobs(std::move(knobs))
+    , m_interrupts(step_interrupts([this](bool){ return look(); }, sim_interrupt_actions()))
+{
+    if (m_knobs.clear_interrupts){
+        set_interrupts(&m_interrupts);
+    }
+}
 
 void StoryMapsSim::begin_attempt(const Pokemon::StoryCheckpoint& data){
     m_stubs.begin_row(data.id);
+    m_row = data.id;
+    //  A reload starts the row on the quiet overworld.
+    m_dialog_up = m_dialog_rose = false;
+}
+
+Outcome StoryMapsSim::run(RunState& state, const StoryStep& step){
+    if (m_knobs.dialog_before && m_knobs.dialog_before(m_row, step.name)){
+        m_dialog_up = m_dialog_rose = true;
+        m_dialog_notes.push_back(m_row + "/" + step.name + ": a dialog pops up before it.");
+    }
+    return Pokemon::TableExecutor::run(state, step);
+}
+
+Outcome StoryMapsSim::run_action(RunState& state, const StoryStep& step){
+    if (m_dialog_up){
+        if (!presses_through_text(step.kind)){
+            return Pokemon::outcome_failed("dialog", step.name + ": a dialog that popped up before it is still up");
+        }
+        m_dialog_up = false;
+    }
+    return Pokemon::TableExecutor::run_action(state, step);
+}
+
+Pokemon::ScreenLook StoryMapsSim::look(){
+    const WallClock start = WallClock() + std::chrono::hours(1);
+    Pokemon::ScreenLook out;
+    out.log.record({}, start);
+    if (std::exchange(m_dialog_rose, false)){
+        out.log.record({Pokemon::ScreenEvent::DIALOG_BOX}, start + Milliseconds(33));
+    }
+    out.window = {.start = start, .end = start + BETWEEN_STEPS_LOOK};
+    return out;
+}
+
+//  Every kind closes what is up and notes it: the simulation shows only
+//  the dialogs it pops up.
+StepInterruptActions StoryMapsSim::sim_interrupt_actions(){
+    const auto cleared = [this](const char* what){
+        return [this, what](RunState&, const Pokemon::InterruptVerdict&){
+            m_dialog_notes.push_back(std::string(what) + " cleared before the next step.");
+            m_dialog_up = false;
+            return Pokemon::outcome_ok();
+        };
+    };
+    return StepInterruptActions{
+        .wild = cleared("a wild battle"),
+        .trainer = cleared("a trainer's battle"),
+        .dialog = cleared("a dialog"),
+        .warp = cleared("a warp"),
+    };
 }
 
 Pokemon::StoryAction StoryMapsSim::action(StoryActionId id){
