@@ -23,6 +23,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_PlanCosts.h"
 #include "PokemonBDSP_AutoStory_GridSim.h"
 #include "PokemonBDSP_AutoStory_OldStorySteps.h"
+#include "PokemonBDSP_AutoStory_StorySim.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_PlannedRoute.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryExecutor.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h"
@@ -884,6 +885,116 @@ UnitTestResult test_oreburgh_mine_hall_corridor(Logger& logger){
     return err.empty() ? UnitTestResult(true) : UnitTestResult(err);
 }
 
+//  Dawn's scene on the south world, in its tiles: the coord events of
+//  Sandgem that 00.03 arms (its trigger column (4, 10..15), decomp).
+std::vector<SimTrigger> dawns_triggers(const StoryWorld& world){
+    std::vector<SimTrigger> out;
+    for (const RowTrigger& armed : story_triggers()){
+        if (armed.row != "00.03" || armed.map != "SandgemTown"){
+            continue;
+        }
+        SimTrigger trigger{.name = armed.trigger.name, .tiles = {}};
+        for (const TilePos& pos : armed.trigger.tiles){
+            trigger.tiles.push_back(story_to_world(world, armed.map, pos));
+        }
+        out.push_back(std::move(trigger));
+    }
+    return out;
+}
+
+//  How 00.03's into_dawns_scene went on the grid simulation: its outcome,
+//  where it left the player, how many tiles east of the route's end, whether
+//  a dialogue is open, whether a wild battle was run from, and the failure
+//  the program would have stopped on instead of failing the step.
+struct SceneRun{
+    Pokemon::Outcome outcome;
+    TilePos end;
+    int run_tiles = 0;
+    bool dialog = false;
+    bool ran_from_battle = false;
+    std::string program_failure;
+};
+//  00.03's into_dawns_scene from where the table has the player before it,
+//  at the run's pace (the shoes are 00.03's): the route to Route 201's east
+//  edge, then the run east into Sandgem. With `dawn`, Dawn's scene is armed;
+//  with `battle`, a wild battle interrupts the run.
+SceneRun run_into_dawns_scene(bool dawn, bool battle){
+    const std::optional<TableSteps> table = table_steps("00.03", "into_dawns_scene", "rowan_gives_pokedex");
+    if (!table || table->steps.size() != 1 || !table->steps.front().target){
+        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "00.03 has no ROUTE into_dawns_scene right before rowan_gives_pokedex.");
+    }
+    const StoryStep& step = table->steps.front();
+    const StoryWorld& world = *story_plan_world(table->start.map, step.target->map);
+    SimWorld sim_world{.world = &world, .trainers = story_trainers(world), .can_run = true};
+    if (dawn){
+        sim_world.triggers = dawns_triggers(world);
+    }
+    GridSim sim(sim_world, story_to_world(world, table->start.map, Pokemon::tiles_of(table->start).front()), Direction::SOUTH, true);
+    std::vector<std::string> notes;
+    std::vector<SimWallEncounter> encounters;
+    if (battle){
+        encounters.push_back({.label = "into dawns scene", .direction = Direction::EAST, .battle = {}});
+    }
+    GridSimRouteIO route_io(sim, notes, {}, std::move(encounters));
+    WalkStepsIO io(sim, route_io);
+    StoryWalkSteps walk(io);
+    //  A row after the shoes' row runs, as 00.03 does once Mom gave them.
+    walk.begin_attempt("00.04");
+    Pokemon::RunState state{.pose = table->start, .flags = {}};
+    SceneRun out;
+    try{
+        out.outcome = walk.route(state, step);
+    }catch (const GridSimFailure& e){
+        out.program_failure = e.message;
+    }
+    out.end = nearest_tile(sim.player().pos);
+    out.run_tiles = out.end.x - story_to_world(world, step.target->map, Pokemon::tiles_of(*step.target).front()).x;
+    out.dialog = sim.player().dialog;
+    out.ran_from_battle = std::find(notes.begin(), notes.end(), "[Sim] into dawns scene: wild battle run from.") != notes.end();
+    return out;
+}
+
+//  00.03, Route 201 to Sandgem: the route to the edge, then a run east that
+//  Dawn's scene stops wherever on the run it starts, a wild battle on the
+//  way or not. With no scene, the run stops at its cap and the step fails
+//  as "no_dialogue", not the program.
+UnitTestResult test_run_into_dawns_scene(Logger& logger){
+    struct SceneCase{
+        const char* name;
+        bool dawn;
+        bool battle;
+    };
+    const SceneCase cases[] = {
+        {"Dawn's scene mid-run", true, false},
+        {"Dawn's scene after a wild battle on the run", true, true},
+        {"no scene", false, false},
+        {"a wild battle and no scene", false, true},
+    };
+    const StoryWorld& world = *story_plan_world("Route201", "SandgemTown");
+    std::string failures;
+    for (const SceneCase& item : cases){
+        const SceneRun run = run_into_dawns_scene(item.dawn, item.battle);
+        const std::optional<TilePos> sandgem = story_to_local(world, "SandgemTown", run.end);
+        logger.log(std::format("{}: {}, ended {} tiles on at {}.", item.name,
+            !run.program_failure.empty() ? "program failure: " + run.program_failure
+                : run.outcome.succeeded() ? std::string("done") : Pokemon::to_string(run.outcome),
+            run.run_tiles, describe(world, run.end)));
+        if (!run.program_failure.empty()){
+            failures += std::format("\n{}: the program failed instead of the step: {}", item.name, run.program_failure);
+        }else if (item.dawn && (!run.outcome.succeeded() || !run.dialog || !sandgem || sandgem->x != 4)){
+            failures += std::format("\n{}: {}, ended at {}, not in Dawn's scene on Sandgem's column 4.", item.name,
+                Pokemon::to_string(run.outcome), describe(world, run.end));
+        }else if (!item.dawn && run.outcome.failure != "no_dialogue"){
+            failures += std::format("\n{}: expected the step to fail as no_dialogue; {}.", item.name, Pokemon::to_string(run.outcome));
+        }else if (item.battle != run.ran_from_battle){
+            failures += std::format("\n{}: expected {} wild battle on the run.", item.name, item.battle ? "a" : "no");
+        }else if (run.run_tiles < 0 || run.run_tiles > 8){
+            failures += std::format("\n{}: the run went {} tiles past the route's end, outside its cap of 8.", item.name, run.run_tiles);
+        }
+    }
+    return failures.empty() ? UnitTestResult(true) : UnitTestResult(failures);
+}
+
 struct AutoStoryGridSimInput{
     std::string name;
     std::function<UnitTestResult(Logger&)> body;
@@ -969,6 +1080,10 @@ const AutoStoryGridSimCase AUTO_STORY_GRID_SIM_CASES[] = {
     },
     {
         .input = {"01.11, the old woman from each tile Floaroma's banner stops us on (lab-B, 2026-11-08)", test_old_couple_from_each_arrival},
+        .expectation = {},
+    },
+    {
+        .input = {"00.03, the run into Sandgem stops in Dawn's scene, or fails at its cap with no scene", test_run_into_dawns_scene},
         .expectation = {},
     },
 };
