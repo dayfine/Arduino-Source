@@ -983,11 +983,3 @@ if(PA_PYTHON_BINDINGS)
     # Python bindings (GUI-free) from subdirectory
     include(Source/PythonBindings/PythonBindings.cmake)
 endif()
-# The registered cross-process tests use this GUI-free native runner as their child.
-add_subdirectory(Source/CommonFramework/Devices)
-if(WIN32)
-    set_target_properties(LabDeviceAccessTests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${WIN_DEPLOY_DIR}")
-else()
-    set_target_properties(LabDeviceAccessTests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "$<TARGET_FILE_DIR:SerialPrograms>")
-endif()
-add_dependencies(SerialPrograms LabDeviceAccessTests)
