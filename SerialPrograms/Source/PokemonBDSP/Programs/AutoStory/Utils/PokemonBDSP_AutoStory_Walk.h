@@ -14,6 +14,7 @@
 #include <string>
 #include <vector>
 #include "Common/Cpp/Time.h"
+#include "CommonFramework/ImageTools/ImageStats.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/Tools/VideoStream.h"
 #include "Controllers/Joystick.h"
@@ -33,7 +34,7 @@ using WildBattleEscape = std::function<void(VideoStream& stream, ProControllerCo
 enum class WalkStop{
     ARRIVED,        //  `arrived` matched.
     DIALOG,         //  A dialogue box opened: an NPC or a trainer stopped us.
-    TRANSITION,     //  The screen went black and came back without a battle: a door or a new area.
+    TRANSITION,     //  A fade (WalkResult::warp) with no battle after it: a door or a new area.
     BLOCKED,        //  The screen stopped changing: we are walking into a wall.
     LIMIT,          //  Walked `limit` without any of the above.
 };
@@ -49,6 +50,45 @@ using WalkArrived = std::function<bool(const ImageViewRGB32& screen)>;
 //  hold where we are.
 enum class WalkOrigin{ CURRENT_LEG, MAY_PRECEDE_LEG };
 
+//  How a screen's fade looks (#268's design note, slice 3).
+enum class WarpFade{
+    NONE,
+    BLACK,      //  a door's black, or a cave mouth's dim fade
+    WHITE,      //  a cave exit's white, with no battle after it
+};
+//  "black fade", for the log.
+const char* warp_fade_name(WarpFade fade);
+
+//  A fade is uniform over the middle 80% of the screen, the shared
+//  Black/WhiteScreenWatcher's stddev test (upstream #1717): a dim cave floor
+//  is textured, so it is no fade (the Oreburgh Gate's, mean 46, lab-B
+//  2026-11-08). Check against the Gate's frames on the console before
+//  tightening.
+constexpr double FADE_MAX_STDDEV_SUM = 10;
+//  Dark goes to an rgb sum of 225, as a cave mouth's fade is dim, 45 to 64
+//  a channel, not black.
+constexpr double FADE_MAX_DARK_SUM = 225;
+//  White from an rgb sum of 500, as the shared WhiteScreenWatcher's.
+constexpr double FADE_MIN_WHITE_SUM = 500;
+//  The fade `middle` (the stats of the screen's middle 80%) shows, if any.
+WarpFade fade_of(const ImageStats& middle);
+//  fade_of() for a screen.
+WarpFade fade_of_screen(const ImageViewRGB32& screen);
+
+//  What a walk or a step saw of a warp (#268): a fade or the location
+//  banner of the map arrived on. Either one alone is the warp.
+struct WarpSeen{
+    WarpFade fade = WarpFade::NONE;
+    //  The banner read, "" if none.
+    std::string banner = {};
+
+    bool any() const{
+        return fade != WarpFade::NONE || !banner.empty();
+    }
+};
+//  How it was seen, for the log: a black fade, banner "Route 203".
+std::string describe(const WarpSeen& seen);
+
 //  Result metrics and terminal state returned by automated walking execution.
 struct WalkResult{
     WalkStop stop;
@@ -59,6 +99,9 @@ struct WalkResult{
     //  taps into Taylor's freeze).
     size_t moved_chunks = 0;
     WalkOrigin origin = WalkOrigin::CURRENT_LEG;
+    //  The fade that ended a TRANSITION, and any location banner read on
+    //  the way (#268 slice 2: walkers report warps).
+    WarpSeen warp = {};
 };
 
 //  Holds the left stick at `stick` until one of the WalkStop events. Wild battles on

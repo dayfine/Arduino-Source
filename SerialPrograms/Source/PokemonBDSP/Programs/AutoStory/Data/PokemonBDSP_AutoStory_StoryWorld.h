@@ -128,6 +128,13 @@ std::optional<Pokemon::TilePos> step(const StoryWorld& world, const Pokemon::Til
 //  in place. Doors and tiles off the maps are not walls: walking into a
 //  door enters the building, and ground off the maps may be an exit.
 bool at_wall(const StoryWorld& world, const Pokemon::TilePos& pos, Pokemon::Direction direction);
+//  The tiles the player passes when walking `tiles` tiles from `from`, the
+//  first one after `from` first. Stops early where the player is stopped.
+std::vector<Pokemon::TilePos> leg_path(const StoryWorld& grid, Pokemon::TilePos from, Pokemon::Direction direction, size_t tiles);
+//  Whether a warp (a door's tile) lies within `reach` tiles `direction` of
+//  one of `from`, nothing stopping the player before it: where a walk that
+//  ran on past its leg's end may have gone through (#268 slice 2).
+bool warp_within(const StoryWorld& world, const std::vector<Pokemon::TilePos>& from, Pokemon::Direction direction, size_t reach);
 //  "Route 201 (45, 3)", or "world (x, y)" if no map holds it.
 std::string describe(const StoryWorld& world, const Pokemon::TilePos& pos);
 

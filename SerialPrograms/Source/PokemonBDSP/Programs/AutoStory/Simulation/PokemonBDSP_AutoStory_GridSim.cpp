@@ -387,7 +387,9 @@ WalkResult GridSimRouteIO::walk_to_wall(const RouteWallWalk& walk){
     const SimMove move = m_sim.hold(walk.direction, walk.limit, pace);
     m_notes.push_back(std::format("[Sim] {}: held {} to {} at {}.", walk.label, direction_name(walk.direction),
         sim_stop_name(move.stop), to_string(m_sim.player().pos)));
-    return {.stop = walk_stop(move.stop), .walked = move.time, .wild_battles = 0, .moved_chunks = (size_t)(move.distance / SIM_TILE)};
+    WalkResult result{.stop = walk_stop(move.stop), .walked = move.time, .wild_battles = 0, .moved_chunks = (size_t)(move.distance / SIM_TILE)};
+    result.warp.fade = move.stop == SimStop::WARP ? WarpFade::BLACK : WarpFade::NONE;
+    return result;
 }
 
 std::optional<SimWildTap> GridSimRouteIO::take_encounter(Direction direction, size_t tiles, size_t tap, const std::string& label){
@@ -430,6 +432,7 @@ WalkResult GridSimRouteIO::walk_taps(Direction direction, size_t tiles, const st
         result.moved_chunks += move.distance > 0 ? 1 : 0;
         if (move.stop == SimStop::DIALOG || move.stop == SimStop::WARP){
             result.stop = walk_stop(move.stop);
+            result.warp.fade = move.stop == SimStop::WARP ? WarpFade::BLACK : WarpFade::NONE;
         }else if (still >= 2){
             result.stop = WalkStop::BLOCKED;
         }

@@ -5,6 +5,7 @@
  */
 
 #include <algorithm>
+#include <cstdlib>
 #include <format>
 #include "Common/Cpp/Exceptions.h"
 #include "PokemonBDSP_AutoStory_StoryWorld.h"
@@ -292,6 +293,37 @@ std::optional<TilePos> step(const StoryWorld& world, const TilePos& from, Direct
         return landing;
     }
     return std::nullopt;
+}
+
+std::vector<TilePos> leg_path(const StoryWorld& grid, TilePos from, Direction direction, size_t tiles){
+    std::vector<TilePos> path;
+    size_t travelled = 0;
+    while (travelled < tiles){
+        const std::optional<TilePos> next = step(grid, from, direction);
+        if (!next){
+            break;
+        }
+        travelled += std::abs(next->x - from.x) + std::abs(next->y - from.y);
+        from = *next;
+        path.push_back(from);
+    }
+    return path;
+}
+
+bool warp_within(const StoryWorld& world, const std::vector<TilePos>& from, Direction direction, size_t reach){
+    for (TilePos pos : from){
+        for (size_t i = 0; i < reach; i++){
+            if (world.tile(pos.next(direction)) == TileKind::DOOR){
+                return true;
+            }
+            const std::optional<TilePos> next = step(world, pos, direction);
+            if (!next){
+                break;
+            }
+            pos = *next;
+        }
+    }
+    return false;
 }
 
 //  Someone standing in the way stops us too, but is no wall to stop against:

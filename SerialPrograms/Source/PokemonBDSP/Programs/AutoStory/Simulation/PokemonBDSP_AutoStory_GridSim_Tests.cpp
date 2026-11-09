@@ -429,15 +429,15 @@ public:
         unsupported("a run onto " + map);
         return false;
     }
-    virtual bool run_into_door(Direction, bool, Milliseconds, Milliseconds) override{
+    virtual WarpSeen run_into_door(Direction, bool, Milliseconds, Milliseconds, const std::string&) override{
         unsupported("a run into a door");
-        return false;
+        return {};
     }
     virtual std::optional<size_t> tap_to_banner(Direction, const std::string& map, size_t) override{
         unsupported("taps to " + map + "'s banner");
         return std::nullopt;
     }
-    virtual void settle(Button, const std::string& label, bool) override{
+    virtual void settle(Button, const std::string& label, bool, const std::string&) override{
         unsupported(label + "'s settle");
     }
 
