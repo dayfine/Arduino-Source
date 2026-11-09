@@ -147,6 +147,10 @@ struct SimWorldKnobs{
     //  someone walks up and talks between two steps. Until it is pressed
     //  through, it stops a step that walks or talks, as on the console.
     std::function<bool(const std::string& row, const std::string& step)> dialog_before = nullptr;
+    //  Whether a battle's opening is still playing when row `row`'s step
+    //  `step` starts: the encounter's white, no battle yet (00.02's Starly
+    //  battle right after the starter is picked, lab-B 2026-11-09).
+    std::function<bool(const std::string& row, const std::string& step)> battle_opening_before = nullptr;
     //  Whether the executor clears what came up between steps
     //  (story_interrupts()), as the console does; off, as before it did.
     bool clear_interrupts = true;
@@ -426,6 +430,9 @@ private:
     StoryBoundActions sim_actions();
     //  The screen between steps: the dialog that popped up, if one did.
     Pokemon::ScreenLook look();
+    //  What the knobs put on the screen before `step`: a dialog that pops
+    //  up, a battle's opening still playing.
+    void show_before(const Pokemon::StoryStep& step);
     StoryInterruptActions sim_interrupt_actions();
     const StoryWorld* sim_world(const std::string& map) const;
     SimWorld setup(const StoryWorld* world) const;
@@ -454,6 +461,9 @@ private:
     //  it rose since the last look.
     bool m_dialog_up = false;
     bool m_dialog_rose = false;
+    //  A battle's opening is playing before this step
+    //  (SimWorldKnobs::battle_opening_before).
+    bool m_battle_opening = false;
     //  The planner's worlds with sim_people() on them, by world and who.
     mutable std::map<std::pair<const StoryWorld*, std::string>, std::unique_ptr<StoryWorld>> m_peopled;
     //  The steps of this row that have run.

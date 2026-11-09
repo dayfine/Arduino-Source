@@ -655,6 +655,9 @@ Pokemon::ScreenLook SimExecutor::look(){
     if (std::exchange(m_dialog_rose, false)){
         out.log.record({Pokemon::ScreenEvent::DIALOG_BOX, Pokemon::ScreenEvent::PLAYER_CAN_MOVE}, start + 33ms);
     }
+    if (m_battle_opening){
+        out.log.record({Pokemon::ScreenEvent::FADE_WHITE}, start + 33ms);
+    }
     out.window = {.start = start, .end = start + BETWEEN_STEPS_LOOK};
     return out;
 }
@@ -714,19 +717,28 @@ Outcome SimExecutor::run_step(RunState& state, const StoryStep& step){
     return Pokemon::TableExecutor::run(state, step);
 }
 
-Outcome SimExecutor::run(RunState& state, const StoryStep& step){
-    Outcome outcome;
-    m_passed_over = false;
-    m_step = step.name;
+void SimExecutor::show_before(const StoryStep& step){
     if (m_knobs.dialog_before && m_knobs.dialog_before(m_row, step.name)){
         m_dialog_up = m_dialog_rose = true;
         m_logger.log(std::format("[{}] {}: a dialog pops up before it.", m_row, step.name));
     }
+    m_battle_opening = m_knobs.battle_opening_before && m_knobs.battle_opening_before(m_row, step.name);
+    if (m_battle_opening){
+        m_logger.log(std::format("[{}] {}: a battle's opening is still playing before it.", m_row, step.name));
+    }
+}
+
+Outcome SimExecutor::run(RunState& state, const StoryStep& step){
+    Outcome outcome;
+    m_passed_over = false;
+    m_step = step.name;
+    show_before(step);
     try{
         outcome = run_step(state, step);
     }catch (const GridSimFailure& e){
         outcome = Pokemon::outcome_failed("sim_failure", e.message);
     }
+    m_battle_opening = false;
     m_astray |= std::exchange(m_misses.slid, false);
     const std::string mismatch = outcome.succeeded() && !m_passed_over ? check(step, outcome) : "";
     if (!mismatch.empty()){
