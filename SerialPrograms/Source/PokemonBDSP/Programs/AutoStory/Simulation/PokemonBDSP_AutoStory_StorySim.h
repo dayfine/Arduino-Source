@@ -154,6 +154,11 @@ struct SimWorldKnobs{
     //  Whether the executor clears what came up between steps
     //  (story_interrupts()), as the console does; off, as before it did.
     bool clear_interrupts = true;
+    //  Where a step the simulation does not play (a scene) really leaves
+    //  the player, by step name, when that is not the table's pose_after:
+    //  the program goes on from the table's pose, the player from here
+    //  (00.03's scene a row low, lab-B 2026-11-09).
+    std::map<std::string, Pokemon::Pose> lands = {};
 };
 
 //  The walker's RouteIO on the story simulation, with SimWorldKnobs' slides
@@ -438,6 +443,8 @@ private:
     SimWorld setup(const StoryWorld* world) const;
     void arm(const std::string& after);
     bool sync(const Pokemon::Pose& pose, const StoryWorld* on = nullptr);
+    //  Puts the player where SimWorldKnobs::lands says `step` leaves them, if it says.
+    void land(const std::string& step);
     bool cross();
     bool cross_to(const Pokemon::Pose& far);
     std::vector<SimWanderer> wanderers(const StoryWorld& world) const;
@@ -481,6 +488,10 @@ private:
     //  Whether a walk slid on (SimSlide), so the player is not where the
     //  program thinks, until a step's pose_after puts them right.
     bool m_astray = false;
+    //  Whether a step left the player off its pose_after (SimWorldKnobs::lands),
+    //  so the walks go on from there, checked, until a step's pose_after
+    //  puts them right.
+    bool m_misplaced = false;
     SimRun m_result;
 };
 

@@ -514,7 +514,7 @@ bool SimExecutor::sync(const Pose& pose, const StoryWorld* on){
         return false;
     }
     //  The program thinks we are on `pose`; we walk on from where the slide left us.
-    if (m_astray && m_placed){
+    if ((m_astray || m_misplaced) && m_placed){
         return true;
     }
     const SimPlayer& player = m_sim.player();
@@ -526,6 +526,20 @@ bool SimExecutor::sync(const Pose& pose, const StoryWorld* on){
     m_sim.place(setup(world), story_to_world(*world, pose.map, tiles.front()), Pokemon::facing_of(pose));
     m_placed = true;
     return true;
+}
+
+void SimExecutor::land(const std::string& step){
+    const auto lands = m_knobs.lands.find(step);
+    if (lands == m_knobs.lands.end()){
+        return;
+    }
+    m_misplaced = false;
+    const SimPlayer& player = m_sim.player();
+    const Pose& pose = lands->second;
+    if (sync(pose)){
+        m_misplaced = true;
+        m_logger.log(std::format("[{}] {}: the player lands on {}, off the table's pose.", m_row, step, to_string(player.pos)));
+    }
 }
 
 //  Through a door or a cave mouth onto the step's far side, the player's
@@ -748,7 +762,9 @@ Outcome SimExecutor::run(RunState& state, const StoryStep& step){
     //  where the table says it does.
     if (outcome.succeeded() && step.pose_after){
         m_astray = false;
+        m_misplaced = false;
         sync(*step.pose_after);
+        land(step.name);
     }
     m_logger.log(std::format("[{}] {}: {}, the player at {}.", m_row, step.name, Pokemon::to_string(outcome), to_string(m_sim.player().pos)));
     if (std::exchange(m_misses.missed, false) && m_result.missed_step.empty()){
