@@ -888,17 +888,17 @@ std::vector<StoryCheckpoint> to_oreburgh(){
     };
 }
 
-//  01.11 on Floaroma's map: the old woman (3, 25) and the old man (2, 25)
-//  west of her stand still above the flower field's bottom row (r251a).
-//  The walk to her is the one that ran on the console: 8 taps west along
-//  row 29 (or 27, 28), then north until she stops us (r250a: 3 steps, bumps).
+//  01.11: the old woman (3, 25), the old man (2, 25) west of her (r251a). 8 taps west from the banner's x 10..12 ended below
+//  him (lab-B 2026-11-08 18:41). The field's edge is 3 taps west of him (westedge batch 2026-11-08): x = -1, off the map.
+//  TODO(map points): the field goes on west of the map (the sim adds it, sim_ground()), or the couple stand a tile east.
 StoryCheckpoint floaromas_old_couple(){
     const Pose below_the_old_woman = next_to(FLOAROMA, "old_woman", SOUTH, NORTH);
     const Pose below_the_old_man = next_to(FLOAROMA, "old_man", SOUTH, NORTH);
+    const Pose at_the_field_edge = Pokemon::tile_pose(FLOAROMA, {TilePos{-1, 27}, TilePos{-1, 28}, TilePos{-1, 29}}, WEST);
     return row("01.11", "Floaroma's old couple", into_floaroma(), {
-        legs("west_along_the_field", {{.direction = WEST, .tiles = 8}}, "8 taps west along the row we stopped on"),
-        anchored(to_walls("up_to_the_old_woman", {{.direction = NORTH, .tiles = 5}}, "north until she stops us"),
-            below_the_old_woman),
+        anchored(to_walls("west_to_the_field_edge", {{.direction = WEST, .tiles = 13}}, "until the field's edge stops us"), at_the_field_edge),
+        legs("below_her_column", {{.direction = EAST, .tiles = 4}}, "4 taps east to her column (westedge batch 2026-11-08)"),
+        anchored(to_walls("up_to_the_old_woman", {{.direction = NORTH, .tiles = 5}}, "north until she stops us"), below_the_old_woman),
         talk("old_woman", "she gives Mew when a Let's Go save is on the console"),
         scene("old_woman_talks", below_the_old_woman, "her lines"),
         //  He stands above that tile, so talk() turning north only turns.
