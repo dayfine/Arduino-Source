@@ -27,6 +27,7 @@
 #include "PokemonBDSP/Options/PokemonBDSP_PlayerModelOption.h"
 #include "PokemonBDSP_AutoStory_Center.h"
 #include "PokemonBDSP_AutoStory_NewGame.h"
+#include "PokemonBDSP_AutoStory_Settings.h"
 #include "PokemonBDSP_AutoStory_Actions_Tests.h"
 
 namespace PokemonAutomation{
@@ -587,6 +588,43 @@ UnitTestResult test_school_lamp(Logger& logger){
 }
 
 
+//  The Options screen of a French game (console B, 2026-11-09; in
+//  CommandLineTests under PokemonBDSP/AutoStory): read by position and
+//  colour only, the cursor on Text Speed with Normal (the middle of three)
+//  selected, and the first value of the two-value rows below it.
+UnitTestResult test_options_french(Logger& logger){
+    const std::string path = UNIT_TEST_RESOURCE_PATH() + "PokemonBDSP/AutoStory/OptionsFrench-20261109.png";
+    if (!Filesystem::is_regular_file(path)){
+        return UnitTestResult(UnitTestResult::SKIPPED, "Screenshot not found: " + path);
+    }
+    const ImageRGB32 screen(path);
+    if (!options_screen_shown(screen)){
+        return "Options screen not recognised.";
+    }
+    const std::optional<double> y = options_selected_row_y(screen);
+    if (!y || *y < 0.137 || *y > 0.177){
+        return "Selected row not found on the first row.";
+    }
+    logger.log("Selected row at y=" + std::to_string(*y));
+    if (options_highlighted_column(screen, *y, 3) != size_t(1)){
+        return "Text Speed: Normal (column 1 of 3) not read.";
+    }
+    //  Battle Effects to Gyroscope: rows 2 to 6, the first value highlighted.
+    for (size_t row = 2; row <= 6; row++){
+        const double row_y = *y + 0.0858 * row;
+        if (options_highlighted_column(screen, row_y, 2) != size_t(0)){
+            return "Row " + std::to_string(row) + ": the first of two values not read.";
+        }
+    }
+    ImageRGB32 black(1920, 1080);
+    black.fill(0xff000000);
+    if (options_screen_shown(black)){
+        return "A black frame read as Options.";
+    }
+    return true;
+}
+
+
 struct AutoStoryActionsInput{
     std::string name;
     std::function<UnitTestResult(Logger&)> body;
@@ -672,6 +710,10 @@ const AutoStoryActionsCase AUTO_STORY_ACTIONS_CASES[] = {
     },
     {
         .input = {"Jubilife School lamp", test_school_lamp},
+        .expectation = {},
+    },
+    {
+        .input = {"Options read by position, French", test_options_french},
         .expectation = {},
     },
 };
