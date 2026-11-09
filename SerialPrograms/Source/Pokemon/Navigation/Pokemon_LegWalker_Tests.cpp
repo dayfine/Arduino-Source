@@ -14,6 +14,7 @@
 #include <string>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "Pokemon_LegWalker.h"
 #include "Pokemon_Navigation_Tests.h"
 
@@ -184,6 +185,44 @@ UnitTestResult test_too_many_interruptions(){
     return "Expected to give up after 3 interruptions.";
 }
 
+//  A watcher that fires on the frame numbered `fires_on` (from 1).
+class CountingWatcher : public VisualInferenceCallback{
+public:
+    explicit CountingWatcher(int fires_on)
+        : VisualInferenceCallback("CountingWatcher")
+        , m_fires_on(fires_on)
+    {}
+    int frames() const{
+        return m_frames;
+    }
+    virtual void make_overlays(VideoOverlaySet&) const override{}
+    using VisualInferenceCallback::process_frame;
+    virtual bool process_frame(const VideoSnapshot&) override{
+        return ++m_frames == m_fires_on;
+    }
+
+private:
+    int m_fires_on;
+    int m_frames = 0;
+};
+
+UnitTestResult test_watch_along(){
+    CountingWatcher watcher(3);
+    WatchAlong along(watcher);
+    for (int c = 0; c < 5; c++){
+        if (along.process_frame(VideoSnapshot())){
+            return std::format("WatchAlong stopped the hold on frame {}.", c + 1);
+        }
+        if (along.fired() != (c >= 2)){
+            return std::format("After frame {}, expected fired() {}.", c + 1, c >= 2);
+        }
+    }
+    if (watcher.frames() != 3){
+        return std::format("Expected the watcher to see 3 frames, up to its firing; it saw {}.", watcher.frames());
+    }
+    return true;
+}
+
 
 struct LegWalkerInput{
     std::string name;
@@ -245,6 +284,10 @@ const LegWalkerTestCase LEG_WALKER_CASES[] = {
     {
         .input = {.name = "a wall leg blocked by a sign stops", .test = test_wall_leg_blocked},
         .expectation = {.description = "aborts wall movement when blocked prematurely repeatedly"},
+    },
+    {
+        .input = {.name = "a watcher along a hold never stops it", .test = test_watch_along},
+        .expectation = {.description = "WatchAlong keeps its watcher's firing and returns false"},
     },
 };
 

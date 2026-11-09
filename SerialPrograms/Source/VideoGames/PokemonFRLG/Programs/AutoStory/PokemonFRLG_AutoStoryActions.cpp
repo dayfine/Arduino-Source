@@ -27,6 +27,7 @@
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_StartMenuDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_SelectionArrowDetector.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "VideoGames/PokemonFRLG/Programs/PokemonFRLG_NamingScreen.h"
 #include "VideoGames/PokemonFRLG/Programs/PokemonFRLG_StartMenuNavigation.h"
@@ -611,7 +612,13 @@ std::optional<int> step_into_line(
         [&]{
             WhiteDialogWatcher message(COLOR_RED);
             BattleScreenWatcher battle(COLOR_RED);
-            return wait_until(console, context, watch, {message, battle}) >= 0;
+            const int seen = wait_until(console, context, std::max(watch, WILD_BATTLE_IN_LINE_WATCH), {message, battle});
+            if (seen == 1){
+                console.log("Story: a wild battle on the step into a trainer's line; running from it, then stepping on.", COLOR_ORANGE);
+                flee_battle(console, context);
+                return false;
+            }
+            return seen == 0;
         }
     );
 }

@@ -176,7 +176,16 @@ Milliseconds leg_hold_time(const RouteStep& step, MoveSpeed speed);
 //  the tiles at the assumed pace and the hold. Empty for other steps.
 std::string speed_note(const RouteStep& step, MoveSpeed speed);
 
-//  After a hold onto `step`'s warp: waits out its fade.
+//  The hold watchers (Pokemon::walk_leg()) of a leg onto `step`: `fade`,
+//  which watches for the warp's fade from the start of the hold, if the
+//  step warps. A fade can be over before the hold ends.
+std::vector<Pokemon::WatchAlong*> warp_hold_watchers(const RouteStep& step, Pokemon::WatchAlong& fade);
+
+//  After a hold onto `step`'s warp: waits out its fade, unless `fade`, a
+//  BlackScreenOverWatcher watched along the hold, saw it over already;
+//  else waits on with that watcher, which may have seen the black.
+void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step, Pokemon::WatchAlong& fade);
+//  The same, watching only from now: for a caller that saw the black itself.
 void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step);
 
 //  Before `step`: fails unless the overworld is up.

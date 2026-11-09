@@ -16,6 +16,7 @@
 #include "CommonTools/Async/InferenceSession.h"
 #include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "PokemonFRLG_OverworldLateBattle.h"
 #include "PokemonFRLG_OverworldRecoveryWalk.h"
@@ -72,16 +73,18 @@ StepWalk walk_step(
         }
         context.wait_for_all_requests();
         out.hold_start = current_time();
+        BlackScreenOverWatcher arrival(COLOR_RED);
+        Pokemon::WatchAlong fade(arrival);
         const Pokemon::LegResult result = Pokemon::walk_leg(
             console, context, leg_mover(step, speed), step.wild ? interrupts.wild : interrupts.other,
-            leg_spec(step, speed), MAX_INTERRUPTIONS_PER_LEG
+            leg_spec(step, speed), MAX_INTERRUPTIONS_PER_LEG, warp_hold_watchers(step, fade)
         );
         if (result.stopped){
             out.stopped = walked_near(step, result.tiles, tile_time(step, speed));
             return out;
         }
         if (step.warps){
-            wait_out_warp(console, context, step);
+            wait_out_warp(console, context, step, fade);
             static_assert(AFTER_WARP_BATTLE_WATCH >= AFTER_WARP);
             if (run_from_battle_after_warp(console, context)){
                 console.log("Route: a wild battle, not the warp to " + step.end.map + "; the player is on " + to_string(step) + " before the warp.", COLOR_ORANGE);
@@ -186,12 +189,13 @@ StepOutcome walk_and_watch(
     return StepOutcome{.end = StepEnd::LATE, .walked = recorder.place(console, step, tile_time(step, speed), walked.hold_start)};
 }
 
-//  Holds on along `step`, stopped part-way off the grass, until its warp's
-//  fade. Off the grass only a message stops a leg (a trainer who saw the
-//  player, a Repel wearing off), and the player then stands on the leg's
-//  line, so holding on reaches the warp however far they got (console B,
-//  2026-11-01: Camper Liam stopped "south 9 (warp)" out of Pewter Gym).
-//  After a trainer the player faces them, so this turns first.
+//  Holds on along `step`, stopped part-way off the grass or by a wild
+//  battle where no trainer may see the player, until its warp's fade. Off
+//  the grass only a message stops a leg (a trainer who saw the player, a
+//  Repel wearing off), and the player then stands on the leg's line, as
+//  after a wild battle, so holding on reaches the warp however far they
+//  got (console B, 2026-11-01: Camper Liam stopped "south 9 (warp)" out of
+//  Pewter Gym). After a trainer the player faces them, so this turns first.
 void hold_to_warp(
     ConsoleHandle& console, ProControllerContext& context,
     const RouteStep& step, const OverworldInterrupts& interrupts, MoveSpeed speed
@@ -303,7 +307,7 @@ void walk_overworld_route_with_recovery(
         return walk_and_watch(console, context, step, from_facing, interrupts, speed);
     };
     calls.hold_to_warp = [&](const RouteStep& step){
-        hold_to_warp(console, context, step, interrupts.other, speed);
+        hold_to_warp(console, context, step, step.wild ? interrupts.wild : interrupts.other, speed);
     };
     calls.log = [&](const std::string& message){ console.log(message, COLOR_ORANGE); };
     calls.fail = [&](const std::string& message){

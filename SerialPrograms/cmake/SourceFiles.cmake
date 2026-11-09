@@ -1897,6 +1897,7 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWarpFade_Tests.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PlayerFacingReader.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PlayerFacingReader.h
     Source/VideoGames/PokemonFRLG/PokemonFRLG_Navigation.cpp

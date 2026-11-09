@@ -296,10 +296,10 @@ UnitTestResult test_forest_north_gate(){
 //  on the leg a tile short of the ladder. Here on the leg through the
 //  forest's grass onto its north gate: a battle on the leg's first or
 //  second step is run from, the player found again on the leg, and the
-//  gate reached through its warp. If the walk back onto the warp then
-//  ends short of it (hold 4: the leg, the hold that finds the player and
-//  its re-hold after the Bug Catcher), the route still stops on no fade.
-//  Without the rule it stops as off the route, as on the console.
+//  gate reached through its warp: the player is on the leg's line, and
+//  holds on to it. If that hold then ends well short of the warp (hold 2:
+//  the leg, then the hold on), the route still stops on no fade. Without the
+//  rule it stops as off the route, as on the console.
 UnitTestResult test_battle_on_warp_leg(){
     const SimCase c{.start = at("ViridianForest", 5, 20), .facing = Direction::NORTH, .goal = at("Route2_ViridianForest_NorthEntrance", 7, 9)};
     for (size_t tile : {1, 2}){
@@ -312,9 +312,9 @@ UnitTestResult test_battle_on_warp_leg(){
         }
     }
     SimCase no_warp = c;
-    no_warp.script.short_holds[4] = 2;
+    no_warp.script.short_holds[2] = 6;
     const std::optional<SimRun> short_back = run_with_battle_on_warp_leg(no_warp, 1);
-    if (!short_back || !stopped_with(*short_back, "no fade in and out") || short_back->state.warps != 0){
+    if (!short_back || !stopped_with(*short_back, "no fade holding on toward the warp") || short_back->state.warps != 0){
         return "Expected a stop on no fade when the walk back ends short of the warp:" + (short_back ? describe(*short_back) : "");
     }
     SimCase off = c;
@@ -658,7 +658,9 @@ UnitTestResult test_mt_moon_battle_on_ladder_leg(){
 //  timing. The text box after the watch is now watched on for, the leg
 //  walked again to its wall, and the route reaches B2F's ladder. Without
 //  the rule the leg is taken as walked, and the run stops on no fade onto
-//  the ladder down to B2F, as it did.
+//  the ladder down to B2F, as it did (the console's walker stopped on the
+//  leg; this one, which holds on toward a warp after a wild battle, stops
+//  holding on).
 UnitTestResult test_mt_moon_battle_seen_after_wall_leg(){
     SimCase c{.start = at("MtMoon_B1F", 3, 3), .facing = Direction::SOUTH, .goal = at("MtMoon_B2F", 26, 21)};
     c.script.encounters = {{.grass_step = 13, .seen_late = true}};
@@ -679,7 +681,7 @@ UnitTestResult test_mt_moon_battle_seen_after_wall_leg(){
     const bool taken_as_walked = std::any_of(old.log.begin(), old.log.end(), [](const std::string& line){
         return line.find("south 15 (to wall): ended at MtMoon_B1F (3, 18) (walked)") != std::string::npos;
     });
-    if (!taken_as_walked || !stopped_with(old, "no fade in and out after walking onto the warp to MtMoon_B2F.")){
+    if (!taken_as_walked || !stopped_with(old, "no fade holding on toward the warp to MtMoon_B2F.")){
         return "Expected the leg taken as walked and the run stopped on no fade, as on the console, without the rule:" + describe(old);
     }
     return true;
@@ -983,6 +985,7 @@ void add_tests_OverworldSim(UnitTestDatabase& database){
         database.add<Test_OverworldSim>(item);
     }
     add_tests_OverworldLateBattle(database);
+    add_tests_OverworldWarpFade(database);
 }
 
 

@@ -405,8 +405,17 @@ std::string OverworldStepSim::step_ahead(const StoryStep& step){
         }
         m_sim.tap(step.direction);
     };
+    //  A wild battle, with no message before it, is run from, and the
+    //  stepping goes on, as step_into_line() does.
     const auto seen = [this]{
-        return m_sim.watch({SimWatcher::MESSAGE, SimWatcher::BATTLE_SCREEN}, TRAINER_LINE_WATCH).has_value();
+        const std::optional<SimSeen> shown = m_sim.watch(
+            {SimWatcher::MESSAGE, SimWatcher::BATTLE_SCREEN}, std::max(TRAINER_LINE_WATCH, WILD_BATTLE_IN_LINE_WATCH)
+        );
+        if (shown && shown->watcher == 1){
+            m_sim.handle_battle(SimBattleChoice::RUN);
+            return false;
+        }
+        return shown.has_value();
     };
     const int tiles = step.variant == TRAINER_LINE_VARIANT ? TRAINER_LINE_TILES : 1;
     return step_until_seen(tiles, tap, seen) ? "" : "no trainer saw the player.";

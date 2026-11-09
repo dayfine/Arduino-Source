@@ -21,6 +21,7 @@
 #define PokemonAutomation_Pokemon_LegWalker_H
 
 #include <algorithm>
+#include <atomic>
 #include <format>
 #include <functional>
 #include <memory>
@@ -145,15 +146,54 @@ struct LegCalls{
 LegResult walk_leg_with(const LegSpec& leg, const LegCalls& calls, size_t max_interruptions);
 
 
+//  Shows a hold's frames to `watcher` without letting it stop the hold, and
+//  keeps whether it fired. A warp's fade can be over before the hold onto
+//  the warp ends, so a wait for it that starts after the hold sees nothing:
+//  the walk watches the hold with this, then waits on with the same watcher
+//  if it has not fired (FRLG 00.27, console B, 2026-11-09 01:41, the warp to
+//  CeruleanCity: the watch started 1.3 s into the hold and missed the fade).
+class WatchAlong : public VisualInferenceCallback{
+public:
+    explicit WatchAlong(VisualInferenceCallback& watcher)
+        : VisualInferenceCallback("WatchAlong")
+        , m_watcher(watcher)
+    {}
+
+    VisualInferenceCallback& watcher() const{
+        return m_watcher;
+    }
+    bool fired() const{
+        return m_fired.load(std::memory_order_acquire);
+    }
+
+    virtual void make_overlays(VideoOverlaySet& items) const override{
+        m_watcher.make_overlays(items);
+    }
+    using VisualInferenceCallback::process_frame;
+    virtual bool process_frame(const VideoSnapshot& frame) override{
+        if (!fired() && m_watcher.process_frame(frame)){
+            m_fired.store(true, std::memory_order_release);
+        }
+        return false;
+    }
+
+private:
+    VisualInferenceCallback& m_watcher;
+    std::atomic<bool> m_fired{false};
+};
+
+
 //  Walks `leg`. Throws OperationFailedException if it is interrupted more
-//  than `max_interruptions` times.
+//  than `max_interruptions` times. `hold_watchers` see every hold's frames
+//  too, after the interrupts' watchers, but stop nothing: a WatchAlong.
 template <typename Console, typename Context>
 LegResult walk_leg(
     Console& console, Context& context,
     const std::type_identity_t<LegMover<Context>>& mover,
     const LegInterrupts<Console, Context>& interrupts,
     const LegSpec& leg,
-    size_t max_interruptions = 5
+    size_t max_interruptions = 5,
+    const std::vector<WatchAlong*>& hold_watchers = std::vector<WatchAlong*>()
 );
 
 template <typename Console, typename Context>
@@ -162,7 +202,8 @@ LegResult walk_leg(
     const std::type_identity_t<LegMover<Context>>& mover,
     const LegInterrupts<Console, Context>& interrupts,
     const LegSpec& leg,
-    size_t max_interruptions
+    size_t max_interruptions,
+    const std::vector<WatchAlong*>& hold_watchers
 ){
     auto hold_watching = [&](Milliseconds hold) -> std::optional<HoldOutcome>{
         std::vector<std::unique_ptr<VisualInferenceCallback>> watchers;
@@ -170,6 +211,9 @@ LegResult walk_leg(
         for (const auto& interrupt : interrupts){
             watchers.emplace_back(interrupt->make_watcher());
             callbacks.emplace_back(*watchers.back());
+        }
+        for (WatchAlong* along : hold_watchers){
+            callbacks.emplace_back(*along);
         }
         context.wait_for_all_requests();
         WallClock start = current_time();

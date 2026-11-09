@@ -106,13 +106,49 @@ struct Reanchor{
     std::vector<RouteStep> back;
 };
 
-//  After `step` stopped part-way, from `candidates`. Nothing if no holds
-//  bring them all to one tile, or no way back walks the same from there.
+//  How many tiles `anchor`'s holds and way back walk, as far as planned.
+int reanchor_tiles(const Reanchor& anchor);
+
+//  After `step` stopped part-way, from `candidates`: of the ways that find
+//  the player, the one that walks the fewest tiles, holds and way back
+//  together, with tiles of open legs weighted over held ones. Nothing if
+//  no holds bring them all to one tile, or no way back walks the same from
+//  there.
 std::optional<Reanchor> plan_reanchor(
     const std::vector<MapData>& maps,
     const std::vector<StopCandidate>& candidates,
     const RouteStep& step,
     const RouteCosts& costs = default_route_costs()
+);
+
+//  Walking on along a stopped open leg instead of finding the player at
+//  walls first: the rest of the leg from the middle of the tiles they may
+//  be on, after which the route's next steps, as planned, end with a hold
+//  that brings them to one tile from every one of them. Walking on from
+//  how far a leg got, trusting the timing, went wrong on the console; here
+//  a hold finds the player whichever tile they were on.
+struct Resume{
+    //  From the middle candidate to the stopped leg's end; no tiles if the
+    //  middle candidate is its end.
+    RouteStep rest;
+    //  How many of the steps after the stopped leg go by until one, a hold
+    //  to a wall, brings every candidate to one tile.
+    size_t steps = 0;
+    //  Where each of those steps may start, `rest` first.
+    std::vector<std::vector<MapPosition>> starts;
+};
+
+//  After `step`, an open leg, stopped part-way on one of `candidates`
+//  (none stopped by a trainer), with `after` the route's steps after it:
+//  the way to walk on. Nothing if, from some candidate, a step of `after`
+//  before a hold that brings them all to one tile would walk otherwise
+//  than planned, or a way would cross a tile off the planned way that a
+//  trainer may see.
+std::optional<Resume> plan_resume(
+    const std::vector<MapData>& maps,
+    const std::vector<StopCandidate>& candidates,
+    const RouteStep& step,
+    const std::vector<RouteStep>& after
 );
 
 //  Holds to walls that bring the player to one tile from every one of
