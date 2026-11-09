@@ -232,6 +232,9 @@ void read_bag_supplies(StoryEnv& env, StartMenu menu);
 class StoryExecutor : public Pokemon::StoryStepExecutor{
 public:
     explicit StoryExecutor(StoryEnv& env);
+    //  Its table's actions point at it.
+    StoryExecutor(const StoryExecutor&) = delete;
+    StoryExecutor& operator=(const StoryExecutor&) = delete;
 
     StoryEnv& env(){
         return m_env;
