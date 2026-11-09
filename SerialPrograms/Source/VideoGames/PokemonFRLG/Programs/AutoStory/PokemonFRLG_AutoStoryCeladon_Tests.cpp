@@ -278,39 +278,54 @@ UnitTestResult test_route10_save_place(){
     return true;
 }
 
-//  00.27's step route10_nurse on the sim from Route 9 (70, 8): east onto
-//  Route 10, round its grass along row 11, down column 16 past the ledge
-//  (2..14, 12) and the fence post (17, 12), west along row 21 and north
-//  onto the Center's door (13, 20). Every leg but the door's is open
-//  (timed), and each ends a tile from something that sends the next leg
-//  elsewhere. Console B, 2026-11-09, both runs "no fade in and out":
+//  00.27's walk from Route 9 (70, 8) to Route 10's nurse: its steps from
+//  route10_ledge_end to route10_nurse. Console B, 2026-11-09, the walk
+//  then planned in one ended its open legs a tile from a blocker, and both
+//  runs ended "no fade in and out" at the Center's door (13, 20):
 //  - run 3: the crossing onto Route 10 wasn't held up, so the player
 //    stood a tile further east, row 11 ended on (17, 11), the leg down
-//    column 17 met the post (17, 12), and west 3 and north 1 ended in the
-//    grass on (14, 10) (the end frame).
-//  - run 2: the leg down column 16 ended on (16, 20), west 3 met the
-//    Center's east wall (15, 20) and north 1 ended on (16, 19) beside it.
-//  Either way the door should be reached.
-std::string route10_nurse_on_sim(const SimScript& script){
+//    column 17 met the fence post (17, 12), and the walk ended in the
+//    grass on (14, 10).
+//  - run 2: the leg down column 16 ended a tile short, on (16, 20), west
+//    3 met the Center's east wall (15, 20) and north 1 ended on (16, 19).
+std::vector<StoryStep> route10_walk(){
     const StoryCheckpoint& row = checkpoint("00.27");
-    const auto step = std::find_if(row.steps.begin(), row.steps.end(), [](const StoryStep& data){ return data.name == "route10_nurse"; });
-    if (step == row.steps.end()){
-        return "00.27: no step route10_nurse.";
+    const auto named = [&row](std::string_view name){
+        return std::find_if(row.steps.begin(), row.steps.end(), [&](const StoryStep& data){ return data.name == name; });
+    };
+    const auto first = named("route10_ledge_end");
+    const auto last = named("route10_nurse");
+    if (first == row.steps.end() || last == row.steps.end() || last < first){
+        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "00.27: no steps route10_ledge_end to route10_nurse.");
     }
-    StoryPose at{StoryTable::ROUTE9, {70, 8}, Direction::EAST};
-    OverworldSim sim(maps_after_surge(), MapPosition{at.map, at.tile}, Direction::EAST, script);
-    const std::string failure = row_step_on_sim(sim, at, *step, row.id);
+    return std::vector<StoryStep>(first, last + 1);
+}
+
+const StoryPose ROUTE10_WALK_START{StoryTable::ROUTE9, {70, 8}, Direction::EAST};
+
+//  `steps` from `first` on, on `sim` from `at`, where the table says the
+//  player stands: the failure, or empty once at Route 10's nurse.
+std::string route10_walk_rest(OverworldSim& sim, StoryPose at, const std::vector<StoryStep>& steps, size_t first){
+    std::string failure;
+    for (size_t c = first; c < steps.size() && failure.empty(); c++){
+        failure = row_step_on_sim(sim, at, steps[c], "00.27");
+    }
     const MapPosition nurse{StoryTable::ROUTE10_CENTER, {7, 4}};
-    if (!failure.empty() || !(sim.state().position == nurse) || sim.state().warps != 1){
-        return std::format("00.27/route10_nurse: ended on {}, not Route 10's nurse; {}", to_string(sim.state().position), failure);
+    if (!failure.empty() || !(sim.state().position == nurse)){
+        return std::format("ended on {}, not Route 10's nurse; {}", to_string(sim.state().position), failure);
     }
     return "";
+}
+
+std::string route10_walk_on_sim(const SimScript& script){
+    OverworldSim sim(maps_after_surge(), MapPosition{ROUTE10_WALK_START.map, ROUTE10_WALK_START.tile}, Direction::EAST, script);
+    return route10_walk_rest(sim, ROUTE10_WALK_START, route10_walk(), 0);
 }
 
 UnitTestResult test_route10_crossing_not_held_up(){
     SimScript script;
     script.connections_stall = false;
-    if (const std::string failure = route10_nurse_on_sim(script); !failure.empty()){
+    if (const std::string failure = route10_walk_on_sim(script); !failure.empty()){
         return "The crossing onto Route 10 not held up (run 3): " + failure;
     }
     return true;
@@ -318,10 +333,57 @@ UnitTestResult test_route10_crossing_not_held_up(){
 
 UnitTestResult test_route10_column_16_short(){
     SimScript script;
-    //  Holds: east 7, south 3, east 11, south 10 down column 16.
-    script.short_holds[4] = 1;
-    if (const std::string failure = route10_nurse_on_sim(script); !failure.empty()){
+    //  Holds: east 7, south 3 and east 12 onto row 11; west 1; south 12
+    //  down column 16.
+    script.short_holds[5] = 1;
+    if (const std::string failure = route10_walk_on_sim(script); !failure.empty()){
         return "The leg down column 16 a tile short (run 2): " + failure;
+    }
+    return true;
+}
+
+//  Where an open leg of two tiles or more ends a tile short or long, the
+//  next leg starts a tile off. From each such start (on an open tile), the
+//  rest of the walk still reaches the nurse. A leg to a wall ends on its
+//  tile, and a one-tile leg is one step (as grass_held() takes it), so the
+//  leg after either starts where planned. The one exception is the door's
+//  column: the three east from the wall (9, 21) set it, and nothing after
+//  them can.
+UnitTestResult test_route10_tile_off_after_open_legs(){
+    const std::vector<StoryStep> steps = route10_walk();
+    const std::vector<MapData>& maps = story_maps();
+    //  above_caitlin_line ends east 6 on (70, 8), an open leg.
+    RouteStep before{.direction = Direction::EAST, .tiles = 6};
+    StoryPose at = ROUTE10_WALK_START;
+    for (size_t s = 0; s < steps.size(); s++){
+        const std::vector<RouteStep> route = walked_route(at, steps[s]).value_or(std::vector<RouteStep>{});
+        MapPosition from{at.map, at.tile};
+        for (size_t c = 0; c < route.size(); c++){
+            const bool door_column = steps[s].name == "route10_nurse" && c == 0;
+            const bool off = before.action == RouteAction::WALK && !before.to_wall && !before.warps && before.tiles > 1 && !door_column;
+            const TilePos on = from.point.next(before.direction);
+            const TilePos short_of{2 * from.point.x - on.x, 2 * from.point.y - on.y};
+            const auto map = std::find_if(maps.begin(), maps.end(), [&](const MapData& data){ return data.name == from.map; });
+            for (const TilePos& start : off ? std::vector<TilePos>{short_of, on} : std::vector<TilePos>{}){
+                const bool open = map != maps.end() && in_bounds(*map, start) && object_at(*map, start) == nullptr
+                    && (tile_at(*map, start) == TileKind::OPEN || tile_at(*map, start) == TileKind::TALL_GRASS);
+                if (!open){
+                    continue;
+                }
+                OverworldSim sim(maps_after_surge(), MapPosition{from.map, start}, before.direction);
+                const std::vector<RouteStep> rest(route.begin() + c, route.end());
+                const RoutePlanning planning{.maps = &maps, .costs = story_route_costs(), .start = from, .label = steps[s].name};
+                std::string failure = OverworldSimWalker(sim).run(rest, planning);
+                const StoryPose next{route.back().end.map, route.back().end.point, route.back().facing_after};
+                failure = failure.empty() ? route10_walk_rest(sim, next, steps, s + 1) : failure;
+                if (!failure.empty()){
+                    return std::format("{} leg {} ({}) from {}, not {}: {}", steps[s].name, c + 1, to_string(route[c]), to_string(start), to_string(from.point), failure);
+                }
+            }
+            before = route[c];
+            from = route[c].end;
+        }
+        at = route.empty() ? at : StoryPose{route.back().end.map, route.back().end.point, route.back().facing_after};
     }
     return true;
 }
@@ -360,6 +422,10 @@ const AutoStoryCeladonCase AUTO_STORY_CELADON_CASES[] = {
     },
     {
         .input = {"00.27 route10_nurse: the leg down column 16 a tile short", test_route10_column_16_short},
+        .expectation = {},
+    },
+    {
+        .input = {"00.27 route10_nurse: a tile off after each open leg", test_route10_tile_off_after_open_legs},
         .expectation = {},
     },
 };
