@@ -486,27 +486,6 @@ UnitTestResult test_short_leg_unseen(){
     return true;
 }
 
-//  Console B, 2026-11-09 (00.28 run 2): the game missed the turn tap before
-//  a one-tile open leg, the leg's hold only turned the player, and the leg
-//  was taken as walked. The walker now reads the facing after the tap and
-//  taps again; without that the player stays where they started.
-UnitTestResult test_dropped_turn_tap(){
-    SimCase c{.start = at("ViridianForest", 13, 28), .facing = Direction::NORTH, .goal = at("ViridianForest", 12, 28)};
-    c.route = std::vector<RouteStep>{leg(Direction::WEST, 1, c.goal, false)};
-    c.script.dropped_turn_taps = {1};
-    const SimRun now = run_case(c);
-    if (!arrived(now, c.goal) || now.state.turn_taps_dropped != 1){
-        return "Expected the turn tapped again and the step walked:" + describe(now);
-    }
-    SimCase unchecked = c;
-    unchecked.rules.confirm_turn = false;
-    const SimRun old = run_case(unchecked);
-    if (!old.failure.empty() || !(old.state.position == c.start)){
-        return "Expected the leg taken as walked from the start without the check:" + describe(old);
-    }
-    return true;
-}
-
 //  r18 (console B, 2026-11-01), Pewter Gym: after Brock, Camper Liam sees
 //  the player on the walk south to the door, walks up and battles. The
 //  route holds on south to the door's mat; finding the player again at
@@ -982,7 +961,6 @@ const OverworldSimCase OVERWORLD_SIM_CASES[] = {
     {.input = {"no hold over a ledge", test_no_hold_over_ledge}, .expectation = {},},
     {.input = {"a short leg, then a sign", test_short_leg_then_sign}, .expectation = {},},
     {.input = {"a short leg, nothing seen", test_short_leg_unseen}, .expectation = {},},
-    {.input = {"a dropped turn tap before a one-tile leg", test_dropped_turn_tap}, .expectation = {},},
     {.input = {"a trainer on the way out of Pewter Gym", test_trainer_on_way_out}, .expectation = {},},
     {.input = {"out of Viridian Mart from the clerk's scene", test_mart_exit}, .expectation = {},},
     {.input = {"Mt. Moon: down the ladders to B2F", test_mt_moon_ladders}, .expectation = {},},

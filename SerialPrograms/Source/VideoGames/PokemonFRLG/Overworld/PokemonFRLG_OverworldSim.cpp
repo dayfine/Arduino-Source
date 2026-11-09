@@ -537,13 +537,6 @@ void OverworldSim::tap(Direction direction){
     advance_to(m_now + TAP_TIME);
 }
 
-std::optional<Direction> OverworldSim::facing_on_screen() const{
-    if (m_state.screen != SimScreen::OVERWORLD){
-        return std::nullopt;
-    }
-    return m_state.facing;
-}
-
 bool OverworldSim::drops_turn_tap(){
     m_turn_taps++;
     if (m_script.dropped_turn_taps.contains(m_turn_taps)){
@@ -921,8 +914,8 @@ RouteCalls OverworldSimWalker::calls(){
 void sim_turn_to(OverworldSim& sim, Direction direction, bool confirm){
     for (size_t tap = 1; tap <= MAX_TURN_TAPS; tap++){
         sim.tap(direction);
-        const std::optional<Direction> facing = sim.facing_on_screen();
-        if (!confirm || !facing || *facing == direction){
+        const SimState& state = sim.state();
+        if (!confirm || state.screen != SimScreen::OVERWORLD || state.facing == direction){
             return;
         }
     }

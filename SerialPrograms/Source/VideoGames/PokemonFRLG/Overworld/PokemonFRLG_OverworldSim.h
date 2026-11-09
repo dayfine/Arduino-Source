@@ -214,10 +214,6 @@ public:
     //  already face that way. A turn may be dropped (SimScript::dropped_turn_taps).
     void tap(Direction direction);
 
-    //  The way the player faces, as read_player_facing() reads it: on the
-    //  overworld only.
-    std::optional<Direction> facing_on_screen() const;
-
     //  Watches `watchers` for `duration`, as wait_until().
     std::optional<SimSeen> watch(const std::vector<SimWatcher>& watchers, Milliseconds duration);
 
@@ -375,8 +371,8 @@ struct SimWalkerRules{
     bool confirm_turn = true;
 };
 
-//  OverworldWalkSteps::turn_to() on `sim`; with `confirm` false, the one
-//  tap before it.
+//  OverworldWalkSteps::turn_to() on `sim`, which reads the facing on the
+//  overworld only; with `confirm` false, the one tap before it.
 void sim_turn_to(OverworldSim& sim, Direction direction, bool confirm = SimWalkerRules{}.confirm_turn);
 
 //  The console side of run_route() on an OverworldSim, as

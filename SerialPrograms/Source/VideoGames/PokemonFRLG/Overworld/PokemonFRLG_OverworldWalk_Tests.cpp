@@ -6,9 +6,12 @@
 
 #include <format>
 #include <functional>
+#include <set>
 #include <string>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "PokemonFRLG_OverworldMaps.h"
+#include "PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_OverworldWalk.h"
 
 namespace PokemonAutomation{
@@ -116,12 +119,81 @@ const OverworldWalkTestCase OVERWORLD_WALK_CASES[] = {
     },
 };
 
+
+struct TurnTapInput{
+    std::string name;
+    //  SimScript::dropped_turn_taps.
+    std::set<int> dropped_turn_taps;
+    //  SimWalkerRules::confirm_turn.
+    bool confirm_turn = true;
+};
+
+struct TurnTapExpectation{
+    //  Where the leg ends.
+    MapPosition end;
+};
+
+struct TurnTapCase{
+    TurnTapInput input;
+    TurnTapExpectation expectation;
+};
+
+const MapPosition TURN_START{"ViridianForest", {13, 28}};
+const MapPosition TURN_END{"ViridianForest", {12, 28}};
+
+//  Console B, 2026-11-09 (00.28 run 2): the game missed the turn tap before
+//  a one-tile open leg, the leg's hold only turned the player, and the leg
+//  was taken as walked. On the sim, a leg west 1 for a player facing north.
+class Test_OverworldTurnTap : public UnitTest{
+public:
+    explicit Test_OverworldTurnTap(TurnTapCase test_case)
+        : UnitTest("PokemonFRLG::OverworldWalk - turn tap: " + test_case.input.name)
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        static const std::vector<MapData> MAPS = overworld_maps();
+        RouteStep west;
+        west.direction = Direction::WEST;
+        west.tiles = 1;
+        west.facing_after = Direction::WEST;
+        west.end = TURN_END;
+        SimScript script;
+        script.dropped_turn_taps = m_case.input.dropped_turn_taps;
+        SimWalkerRules rules;
+        rules.confirm_turn = m_case.input.confirm_turn;
+        OverworldSim sim(MAPS, TURN_START, Direction::NORTH, script);
+        OverworldSimWalker walker(sim, rules);
+        const RoutePlanning planning{.maps = &MAPS, .costs = default_route_costs(), .start = TURN_START, .label = "Sim"};
+        const std::string failure = walker.run({west}, planning);
+        if (failure.empty() && sim.state().position == m_case.expectation.end){
+            return true;
+        }
+        return std::format(
+            "Expected the leg to end on {}; ended on {}, failure \"{}\".",
+            to_string(m_case.expectation.end), to_string(sim.state().position), failure
+        );
+    }
+
+private:
+    TurnTapCase m_case;
+};
+
+const TurnTapCase TURN_TAP_CASES[] = {
+    {.input = {.name = "taken"}, .expectation = {.end = TURN_END}},
+    {.input = {.name = "dropped, tapped again", .dropped_turn_taps = {1}}, .expectation = {.end = TURN_END}},
+    {.input = {.name = "dropped twice, tapped again", .dropped_turn_taps = {1, 2}}, .expectation = {.end = TURN_END}},
+    {.input = {.name = "dropped, not checked: the leg only turns", .dropped_turn_taps = {1}, .confirm_turn = false}, .expectation = {.end = TURN_START}},
+};
+
 } // namespace
 
 
 void add_tests_OverworldWalk(UnitTestDatabase& database){
     for (const auto& scenario : OVERWORLD_WALK_CASES){
         database.add<Test_OverworldWalk>(scenario);
+    }
+    for (const TurnTapCase& item : TURN_TAP_CASES){
+        database.add<Test_OverworldTurnTap>(item);
     }
 }
 
