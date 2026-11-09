@@ -32,6 +32,8 @@ std::vector<Pokemon::TilePos> interrupted_leg_positions(
 //  Establish a common wall anchor before continuing from an uncertain pose.
 //  Single positions retain the existing planner. Ambiguous positions without
 //  a safe anchor fail instead of choosing one. Goals already held need no walk.
+//  Of the anchors, the one whose whole walk, holds and the way on to the
+//  goal, costs least (robust_route_cost()).
 std::optional<std::vector<PlannedLeg>> plan_recovered_route(
     const StoryWorld& world, const std::vector<Pokemon::TilePos>& from,
     const std::function<bool(const Pokemon::TilePos&)>& goal,
