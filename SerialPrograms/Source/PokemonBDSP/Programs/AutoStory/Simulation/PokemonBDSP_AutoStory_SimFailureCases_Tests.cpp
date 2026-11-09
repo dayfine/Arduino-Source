@@ -25,6 +25,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RoutePlanner.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_WallRecovery.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h"
@@ -374,27 +375,47 @@ std::vector<StoryCheckpoint> table_with_row(const std::string& id, const Pose& s
     }
     return rows;
 }
-//  00.03: Rowan's trigger is the column (5, 14..16) on Route 201 (decomp).
-//  The walk east from the Lakefront's wall runs along Route 201's row 14,
-//  or a row or two lower if the hold south stopped short of the wall. Each
-//  of the three rows starts the scene, and the walk stops on its tile.
-//  The Lakefront's rows 21..23 are Route 201's 14..16.
-UnitTestResult rowans_scene_on_each_row(Logger& logger){
+//  00.03: Rowan's trigger is the column (5, 14..16) on Route 201 (decomp),
+//  20 tiles east of the Lakefront's wall row 21 (Route 201's row 14). The
+//  step routes from where the lake's scene leaves us, or from a row or two
+//  lower (21..23), onto that row, then runs east until his scene stops the
+//  run on a tile of the column.
+UnitTestResult rowans_scene_from_each_start(Logger& logger){
     const StoryStep& walk = table_step("00.03", "into_rowans_scene");
+    const Pose trigger = Pokemon::tile_pose("Route201", {TilePos{5, 14}, TilePos{5, 15}, TilePos{5, 16}}, Direction::EAST);
     std::string failures;
-    for (int row = 14; row <= 16; row++){
-        const Pose start = Pokemon::tile_pose("VerityLakefront", {TilePos{20, row + 7}}, Direction::EAST);
+    for (const TilePos& tile : {TilePos{17, 14}, TilePos{17, 15}, TilePos{20, 21}, TilePos{20, 22}, TilePos{20, 23}}){
+        const Pose start = Pokemon::tile_pose("VerityLakefront", {tile}, Direction::SOUTH);
         const std::vector<StoryCheckpoint> rows = table_with_row("00.03", start, walk);
         SimExecutor executor(logger, {.fade = {}, .banner = {}}, {});
         const Pokemon::SegmentReport report = run_rows_on(executor, logger, {.from = "00.03", .to = "00.03"}, rows);
-        const Pose trigger = Pokemon::tile_pose("Route201", {TilePos{5, row}}, Direction::EAST);
         if (!report.completed){
-            failures += std::format("\nrow {}: stopped in {}: {}", row, executor.result().failed_step, executor.result().error);
+            failures += std::format("\nfrom ({}, {}): stopped in {}: {}", tile.x, tile.y, executor.result().failed_step, executor.result().error);
         }else if (!ends_on(executor.result(), trigger)){
-            failures += std::format("\nrow {}: the walk ended at {}, not on (5, {})", row, end_of(executor.result()), row);
+            failures += std::format("\nfrom ({}, {}): the walk ended at {}, not on Rowan's trigger", tile.x, tile.y, end_of(executor.result()));
         }
     }
     return passes(failures);
+}
+//  00.03: Dawn's scene starts on Sandgem's column 4 (rows 10..15, decomp),
+//  five tiles into the run east from Route 201's edge (Sandgem (-1, 12) is
+//  Route 201 (63, 5)). From the house's doorstep, the step routes to the
+//  edge and runs on until her scene stops it there (r35, r36: an exact
+//  tile and banner raced her scene).
+UnitTestResult dawns_scene_mid_run(Logger& logger){
+    const StoryStep& walk = table_step("00.03", "into_dawns_scene");
+    const Pose start = Pokemon::tile_pose("TwinleafTown", {map_point("TwinleafTown", "house_doorstep")}, Direction::SOUTH);
+    const std::vector<StoryCheckpoint> rows = table_with_row("00.03", start, walk);
+    SimExecutor executor(logger, {.fade = {}, .banner = {}}, {});
+    const Pokemon::SegmentReport report = run_rows_on(executor, logger, {.from = "00.03", .to = "00.03"}, rows);
+    if (!report.completed){
+        return std::format("stopped in {}: {}", executor.result().failed_step, executor.result().error);
+    }
+    const Pose trigger = Pokemon::tile_pose("SandgemTown", {TilePos{4, 12}}, Direction::EAST);
+    if (!ends_on(executor.result(), trigger)){
+        return std::format("the walk ended at {}, not on Dawn's trigger (4, 12).", end_of(executor.result()));
+    }
+    return true;
 }
 
 struct FailureCaseInput{
@@ -477,7 +498,8 @@ const FailureCase AUTO_STORY_FAILURE_CASES[] = {
     {.input = {"00.03 Mom's scene ends with a closing fade: over once it is back up (lab-B 2026-11-09)", moms_scene_ends_with_a_fade}, .expectation = {}},
     {.input = {"00.02 the Starly battle's opening still plays after the starter (lab-B 2026-11-09)", starly_opening_after_the_starter}, .expectation = {}},
     {.input = {"00.03 out of the house from (6, 8), where Rowan's scene ends, and from a column west", home_from_each_scene_end}, .expectation = {}},
-    {.input = {"00.03 Rowan's scene starts on each of the trigger's rows 14..16, and the walk stops there", rowans_scene_on_each_row}, .expectation = {}},
+    {.input = {"00.03 the walk into Rowan's scene routes onto his row and stops on his trigger mid-run", rowans_scene_from_each_start}, .expectation = {}},
+    {.input = {"00.03 the walk into Sandgem stops on Dawn's trigger mid-run", dawns_scene_mid_run}, .expectation = {}},
 };
 
 void add_tests_AutoStory_SimFailureCases(UnitTestDatabase& database){

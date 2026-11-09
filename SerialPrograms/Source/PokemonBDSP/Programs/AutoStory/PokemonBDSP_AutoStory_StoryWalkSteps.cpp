@@ -155,29 +155,37 @@ Outcome StoryWalkSteps::route(RunState& state, const StoryStep& step){
     if (Pokemon::tiles_of(state.pose).empty()){
         return Pokemon::outcome_failed("no_pose", Pokemon::to_string(state.pose));
     }
-    return Pokemon::outcome_ok(walk_to(state.pose, *step.target, step));
+    const Pose end = walk_to(state.pose, *step.target, step);
+    if (step.legs.empty()){
+        return Pokemon::outcome_ok(end);
+    }
+    return run_to_dialogue(step);
 }
 
-//  A LEGS step "to_dialogue": taps its one leg until a dialogue starts on the
-//  way, wherever it starts (Dawn's at Sandgem's edge, r35/r36: an exact tile
-//  and banner raced her scene). The scene's lines are the next step's.
-Outcome StoryWalkSteps::leg_to_dialogue(const StoryStep& step){
+//  The run of a ROUTE step with a leg, after its route: on toward the leg's
+//  direction until a dialogue starts, wherever on the run it starts (a
+//  scene's trigger: r35/r36 raced Dawn's to an exact tile and banner), for
+//  the leg's tiles at most. A wild battle on the way is run from and the run
+//  goes on. No dialogue fails the step. The scene's lines are the next step's.
+Outcome StoryWalkSteps::run_to_dialogue(const StoryStep& step){
     const Pokemon::StoryLeg& leg = step.legs.front();
-    turn(leg.direction);
-    const WalkResult walk = m_io.route().walk_taps(leg.direction, (size_t)leg.tiles, step.name);
-    if (walk.wild_battles > 0){
-        return Pokemon::outcome_failed("interrupted_dialogue_approach", step.name);
-    }
-    log(std::format("[{}] {}: taps {} to a dialogue: {} tiles, {}.", m_row, step.name, direction_name(leg.direction), walk.moved_chunks, walk_stop_name(walk.stop)));
+    const MoveSpeed speed = m_can_run ? MoveSpeed::RUN : MoveSpeed::WALK;
+    const WalkResult walk = m_io.route().walk_to_wall({
+        .direction = leg.direction,
+        .limit = ROUTE_START_DELAY + route_ms_per_tile(leg.direction, speed) * leg.tiles,
+        .label = label_of(step),
+        .options = {.arrived = nullptr, .pace = m_can_run ? DpadPace::RUN : DpadPace::WALK},
+    });
+    log(std::format("[{}] {}: ran {} to a dialogue: {} tiles of {} at most, {}, {} wild battle(s).", m_row, step.name,
+        direction_name(leg.direction), walk.moved_chunks, leg.tiles, walk_stop_name(walk.stop), walk.wild_battles));
     if (walk.stop == WalkStop::DIALOG){
         return Pokemon::outcome_ok();
     }
-    //  A scene can lock us before its first line: Dawn walks over first (r37),
-    //  or Mom walks over to us on the mat (r7).
+    //  A scene can lock us before its first line: Dawn walks over first (r37).
     if (m_io.route().dialog_within(10000ms, COLOR_CYAN)){
         return Pokemon::outcome_ok();
     }
-    return Pokemon::outcome_failed("no_dialogue", step.name);
+    return Pokemon::outcome_failed("no_dialogue", std::format("{}: no dialogue in {} tiles {}", step.name, leg.tiles, direction_name(leg.direction)));
 }
 
 //  A LEGS step "to_map": runs its one leg until the location banner of
@@ -484,9 +492,6 @@ Outcome StoryWalkSteps::legs(RunState& state, const StoryStep& step){
             m_io.walk_until_stopped(leg.direction, (size_t)leg.tiles, label_of(step));
         }
         return Pokemon::outcome_ok();
-    }
-    if (step.variant == "to_dialogue"){
-        return leg_to_dialogue(step);
     }
     if (step.variant == "to_map"){
         return leg_to_map(step);

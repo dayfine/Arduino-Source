@@ -129,6 +129,15 @@ StoryStep route(std::string name, Pose target, std::string why, std::string cost
     step.variant = std::move(costs);
     return step;
 }
+//  The route to `target`, then a run on toward `run.direction` until a
+//  dialogue starts, wherever on the run it starts: a scene's trigger tile.
+//  No dialogue in `run.tiles` tiles fails the step. The scene is the next
+//  step's.
+StoryStep route_into_scene(std::string name, Pose target, StoryLeg run, std::string why, std::string costs = ""){
+    StoryStep step = route(std::move(name), std::move(target), std::move(why), std::move(costs));
+    step.legs = {run};
+    return step;
+}
 StoryStep legs(std::string name, std::vector<StoryLeg> legs, std::string why, std::string variant = ""){
     StoryStep step = make(StoryStepKind::LEGS, std::move(name), std::move(why));
     step.legs = std::move(legs);
@@ -336,9 +345,10 @@ std::vector<StoryCheckpoint> lake_and_pokedex(){
                 "Rowan's lines and the walk out of the lake"),
         }),
         row("00.03", "Back to Sandgem: Rowan, Dawn and the Pokedex", at_or_next_to(LAKEFRONT, "below_lake_entrance", SOUTH), {
-            //  The wall's row 21 runs on as Route 201's 14, through Rowan's trigger (5, 14..16).
-            route("to_the_lakefront_wall", at(LAKEFRONT, 17, 21), "south to the Lakefront's wall, the row into Rowan's trigger"),
-            legs("into_rowans_scene", {{.direction = EAST, .tiles = 22}}, "east onto Route 201 until Rowan's scene starts: 20 tiles, 22 at most", "to_dialogue"),
+            //  The wall's row 21 runs on as Route 201's 14, through Rowan's trigger
+            //  (5, 14..16): 20 tiles east of the wall.
+            route_into_scene("into_rowans_scene", at(LAKEFRONT, 17, 21), {.direction = EAST, .tiles = 22},
+                "south to the Lakefront's wall, then east onto Route 201 until Rowan's scene starts: 20 tiles, 22 at most"),
             //  BDSP, unlike Diamond: after Rowan leaves, Dawn's and Barry's lines, then
             //  the game fades to the house, where Mom gives the Running Shoes. The
             //  scene ends on (6, 8) facing her, east: 7 of 7 console runs stopped
@@ -350,10 +360,11 @@ std::vector<StoryCheckpoint> lake_and_pokedex(){
                 "Rowan and Dawn come back; Barry, then home for the Running Shoes"),
             out_of_the_house_again(),
             //  Through the grass now, with a starter: wild battles are run from.
-            route("short_of_dawn", at(ROUTE_201, 63, 5, EAST), "Twinleaf, then east along Route 201 to its east edge"),
-            //  Dawn's scene starts as we come into Sandgem (trigger (4, 10..15));
-            //  walk until it does rather than to a tile (r35, r36).
-            legs("into_sandgem", {{.direction = EAST, .tiles = 8}}, "east into Sandgem until Dawn's scene starts", "to_dialogue"),
+            //  Dawn's scene starts as we come into Sandgem (trigger (4, 10..15),
+            //  5 tiles past Route 201's edge (63, 5) = Sandgem (-1, 12)): run until
+            //  it does rather than to a tile (r35, r36).
+            route_into_scene("into_dawns_scene", at(ROUTE_201, 63, 5, EAST), {.direction = EAST, .tiles = 8},
+                "Twinleaf, then east along Route 201 to its edge and on into Sandgem until Dawn's scene starts"),
             //  Butters' sequence pressed B through Dawn's and Rowan's lines and
             //  the nickname question (No), then A for the Pokedex. The scene's
             //  B answers No too, and closes an item's lines as it did Barry's

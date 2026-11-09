@@ -68,6 +68,8 @@ public:
     }
 
     //  Walks the planned route to `step.target`. Variant: the plan's costs.
+    //  With a leg, then runs on toward its direction until a dialogue starts,
+    //  for its tiles at most (run_to_dialogue()).
     Pokemon::Outcome route(Pokemon::RunState& state, const Pokemon::StoryStep& step);
     //  See StoryExecutor::legs().
     Pokemon::Outcome legs(Pokemon::RunState& state, const Pokemon::StoryStep& step);
@@ -89,7 +91,7 @@ private:
     Pokemon::Outcome tap_legs(const Pokemon::Pose& from, const Pokemon::StoryStep& step);
     Pokemon::Outcome counted_wall(const Pokemon::Pose& from, const Pokemon::StoryStep& step);
     Pokemon::Outcome measured_legs(const Pokemon::Pose& from, const Pokemon::StoryStep& step);
-    Pokemon::Outcome leg_to_dialogue(const Pokemon::StoryStep& step);
+    Pokemon::Outcome run_to_dialogue(const Pokemon::StoryStep& step);
     Pokemon::Outcome leg_to_map(const Pokemon::StoryStep& step);
     Pokemon::Outcome tap_to_banner(const Pokemon::Pose& from, const Pokemon::StoryStep& step);
     bool through_already(const Pokemon::StoryStep& step);

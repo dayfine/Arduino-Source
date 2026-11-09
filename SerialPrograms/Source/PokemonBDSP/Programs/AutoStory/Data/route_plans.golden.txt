@@ -63,14 +63,14 @@ anchor); 0 from one start tile.
   target: VerityLakefront (17, 14) facing north (tile)
   not planned: the start is unknown (a LEGS or STEP step before it does not say where it ends)
 
-== 00.03 to_the_lakefront_wall (costs: route)
+== 00.03 into_rowans_scene (costs: route)
   from: VerityLakefront (17, 14) (17, 15) (set)
   target: VerityLakefront (17, 21) (tile)
   start candidates: Verity Lakefront (17, 14), Verity Lakefront (17, 15)
   1. south 7 (to wall) -> Verity Lakefront (17, 21)
   totals: 1 legs, 0 turns, 0 open, 1 localization
 
-== 00.03 short_of_dawn (costs: route)
+== 00.03 into_dawns_scene (costs: route)
   from: TwinleafTown (20, 22) facing south (tile)
   target: Route201 (63, 5) facing east (tile)
   start candidates: Twinleaf Town (20, 22)

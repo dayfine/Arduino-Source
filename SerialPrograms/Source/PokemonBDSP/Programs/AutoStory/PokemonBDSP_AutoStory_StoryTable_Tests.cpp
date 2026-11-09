@@ -46,7 +46,7 @@ using Pokemon::TilePos;
 const std::map<StoryStepKind, std::set<std::string>>& built_in_variants(){
     static const std::map<StoryStepKind, std::set<std::string>> variants{
         {StoryStepKind::ROUTE, {"", "town", "robust", "line"}},
-        {StoryStepKind::LEGS, {"", "one_short_ok", "to_wall", "counted_wall", "measured", "to_dialogue", "to_map"}},
+        {StoryStepKind::LEGS, {"", "one_short_ok", "to_wall", "counted_wall", "measured", "to_map"}},
         {StoryStepKind::STEP, {"", "to_banner", "tap", "or_legs"}},
         {StoryStepKind::MASH, {"", "a"}},
         {StoryStepKind::BATTLE, {"", "doubles", "starter"}},
