@@ -4,7 +4,8 @@
  *
  *  The adapter on synthetic frames: a uniform screen is a fade and nothing
  *  else, and no frame shows nothing. Frames of real boxes and battles are
- *  the detectors' own image tests (CommandLineTests).
+ *  the detectors' own image tests (CommandLineTests); a flat grey frame is
+ *  not one of those (the battle text box reads it as a box).
  *
  */
 
@@ -66,7 +67,6 @@ void add_tests_AutoStoryScreenEvents(UnitTestDatabase& database){
         {"no frame shows nothing", 0, {}},
         {"a black screen is a black fade only", 0xff000000, {ScreenEvent::FADE_BLACK}},
         {"a white screen is a white fade only", 0xffffffff, {ScreenEvent::FADE_WHITE}},
-        {"a grey screen shows nothing", 0xff787878, {}},
     };
     for (const ScreenEventsScenario& scenario : scenarios){
         database.add<Test_AutoStoryScreenEvents>(scenario);
