@@ -121,6 +121,14 @@ struct SimScript{
     //  src/data/wild_encounters.json), rolled from `encounter_seed`.
     std::map<std::string, int> encounter_rates;
     uint32_t encounter_seed = 0;
+    //  Turn taps (taps while the player faces another way) the game misses:
+    //  the player goes on facing the old way. By number, from 1, and each
+    //  with probability `turn_tap_drop_rate`, rolled from `turn_tap_seed`.
+    //  After one, a hold of a tile only turns the player (console B,
+    //  2026-11-09, 00.28 run 2).
+    std::set<int> dropped_turn_taps;
+    double turn_tap_drop_rate = 0;
+    uint32_t turn_tap_seed = 0;
     SimTiming timing;
 };
 
@@ -148,6 +156,7 @@ struct SimState{
     //  From each wild battle's step to the overworld after it, together.
     Milliseconds in_wild_battles{0};
     int signs_read = 0;
+    int turn_taps_dropped = 0;
     std::vector<std::string> trainers_beaten;
     //  Things the walker did that the game wouldn't let pass: D-pad holds
     //  under a battle, a trainer's battle fled, a battle fought that wasn't
@@ -202,8 +211,12 @@ public:
     );
 
     //  A short press of `direction`: turns the player, or steps if they
-    //  already face that way.
+    //  already face that way. A turn may be dropped (SimScript::dropped_turn_taps).
     void tap(Direction direction);
+
+    //  The way the player faces, as read_player_facing() reads it: on the
+    //  overworld only.
+    std::optional<Direction> facing_on_screen() const;
 
     //  Watches `watchers` for `duration`, as wait_until().
     std::optional<SimSeen> watch(const std::vector<SimWatcher>& watchers, Milliseconds duration);
@@ -254,6 +267,7 @@ private:
     bool wild_battle(Milliseconds pressed);
     std::optional<SimEncounter> next_encounter();
     bool rolls_encounter(int rate);
+    bool drops_turn_tap();
     bool trainer_sees(Milliseconds pressed);
     void update_view();
     void note(const std::string& line);
@@ -282,6 +296,9 @@ private:
     std::mt19937 m_encounter_rng;
     int m_steps_since_encounter = 0;
     int m_encounter_rate_buff = 0;
+    //  The turn taps so far, and what rolls their drops.
+    int m_turn_taps = 0;
+    std::mt19937 m_tap_rng;
     Milliseconds m_wild_battle_from{0};
     int m_holds = 0;
     SimState m_state;
@@ -351,7 +368,16 @@ struct SimWalkerRules{
     //  2026-11-09 01:41, 00.27, the warp to CeruleanCity: the watch started
     //  about 1.3 s into the hold).
     bool watch_fade_along_hold = true;
+    //  A turn tap is checked by the facing on screen, and tapped again
+    //  while the player faces another way (OverworldWalkSteps::turn_to()).
+    //  Without it a dropped tap left a one-tile leg turning the player
+    //  only, taken as walked (console B, 2026-11-09, 00.28 run 2).
+    bool confirm_turn = true;
 };
+
+//  OverworldWalkSteps::turn_to() on `sim`; with `confirm` false, the one
+//  tap before it.
+void sim_turn_to(OverworldSim& sim, Direction direction, bool confirm = SimWalkerRules{}.confirm_turn);
 
 //  The console side of run_route() on an OverworldSim, as
 //  walk_overworld_route_with_recovery() does it, with the story's

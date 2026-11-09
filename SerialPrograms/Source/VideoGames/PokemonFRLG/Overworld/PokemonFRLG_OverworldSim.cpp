@@ -145,6 +145,7 @@ OverworldSim::OverworldSim(std::vector<MapData> maps, MapPosition start, Directi
     , m_script(std::move(script))
     , m_map(find_map(m_maps, start.map))
     , m_encounter_rng(m_script.encounter_seed)
+    , m_tap_rng(m_script.turn_tap_seed)
 {
     if (m_map < 0){
         throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Sim: start on a map that isn't loaded: " + start.map);
@@ -524,11 +525,34 @@ void OverworldSim::tap(Direction direction){
     if (m_state.screen != SimScreen::OVERWORLD || m_frozen){
         stuck_hold(direction);
     }else if (m_state.facing != direction){
-        m_state.facing = direction;
+        if (drops_turn_tap()){
+            m_state.turn_taps_dropped++;
+            note(std::string("the turn tap ") + direction_name(direction) + " is dropped.");
+        }else{
+            m_state.facing = direction;
+        }
     }else{
         walk_hold(direction, m_script.timing.tile / 2, 0);
     }
     advance_to(m_now + TAP_TIME);
+}
+
+std::optional<Direction> OverworldSim::facing_on_screen() const{
+    if (m_state.screen != SimScreen::OVERWORLD){
+        return std::nullopt;
+    }
+    return m_state.facing;
+}
+
+bool OverworldSim::drops_turn_tap(){
+    m_turn_taps++;
+    if (m_script.dropped_turn_taps.contains(m_turn_taps)){
+        return true;
+    }
+    if (m_script.turn_tap_drop_rate <= 0){
+        return false;
+    }
+    return std::uniform_real_distribution<double>(0, 1)(m_tap_rng) < m_script.turn_tap_drop_rate;
 }
 
 std::optional<SimSeen> OverworldSim::watch(const std::vector<SimWatcher>& watchers, Milliseconds duration){
@@ -745,7 +769,7 @@ std::optional<WalkedTiles> OverworldSimWalker::walk_step(const RouteStep& step, 
         fail("Sim: Surf isn't modelled.");
     }
     if (facing != step.direction){
-        m_sim.tap(step.direction);
+        sim_turn_to(m_sim, step.direction, m_rules.confirm_turn);
     }
     const int warps_before = m_sim.state().warps;
     const std::vector<Interrupt>& ints = interrupts(step);
@@ -892,6 +916,16 @@ RouteCalls OverworldSimWalker::calls(){
     calls.moved_past_wall = [this](const RouteStep& step){ return moved_past_wall(step); };
     calls.watch_for_trainer = [this](const RouteStep& step, int approach_tiles){ return watch_for_trainer(step, approach_tiles); };
     return calls;
+}
+
+void sim_turn_to(OverworldSim& sim, Direction direction, bool confirm){
+    for (size_t tap = 1; tap <= MAX_TURN_TAPS; tap++){
+        sim.tap(direction);
+        const std::optional<Direction> facing = sim.facing_on_screen();
+        if (!confirm || !facing || *facing == direction){
+            return;
+        }
+    }
 }
 
 std::string OverworldSimWalker::run(const std::vector<RouteStep>& route, const RoutePlanning& planning){

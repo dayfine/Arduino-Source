@@ -487,7 +487,7 @@ bool ConsolePatchSteps::step(){
     const int ret = run_until<ProControllerContext>(
         m_console, m_context,
         [&](ProControllerContext& context){
-            step_once(context, way, m_spot.facing);
+            step_once(m_console, context, way, m_spot.facing);
         },
         {battle}
     );
