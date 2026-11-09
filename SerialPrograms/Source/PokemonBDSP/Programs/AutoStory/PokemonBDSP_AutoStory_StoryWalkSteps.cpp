@@ -243,12 +243,16 @@ Outcome StoryWalkSteps::tap_to_banner(const Pose& from, const StoryStep& step){
     return Pokemon::outcome_ok();
 }
 
-//  A STEP "or_legs" whose run into the door saw no fade: the run stopped
-//  beside the door's column, against the wall it is in. The step's legs, a
-//  tap a tile, put us on the door's tile, then the run goes again (00.03:
-//  from (5, 10) east onto the mat (6, 10), then south). A tap onto the
-//  tile that is itself the way through ends it.
-WarpSeen StoryWalkSteps::door_from_beside(const StoryStep& step, Milliseconds timeout, const std::string& banner){
+//  A STEP "or_legs" whose run into the door saw nothing (`seen`): the run
+//  stopped beside the door's column, against the wall it is in. The step's
+//  legs, a tap a tile, put us on the door's tile, then the run goes again
+//  (00.03: from (5, 10) east onto the mat (6, 10), then south). A tap onto
+//  the tile that is itself the way through ends it. `seen` itself for
+//  another variant, or when the run saw the warp.
+WarpSeen StoryWalkSteps::door_from_beside(const StoryStep& step, const WarpSeen& seen, Milliseconds timeout, const std::string& banner){
+    if (seen.any() || step.variant != "or_legs"){
+        return seen;
+    }
     for (const Pokemon::StoryLeg& leg : step.legs){
         turn(leg.direction);
         const WalkResult walk = m_io.route().walk_taps(leg.direction, (size_t)leg.tiles, step.name);
@@ -258,10 +262,10 @@ WarpSeen StoryWalkSteps::door_from_beside(const StoryStep& step, Milliseconds ti
             return walk.warp;
         }
     }
-    const WarpSeen seen = m_io.run_into_door(step.direction, m_can_run, timeout, Milliseconds(0), banner);
+    const WarpSeen again = m_io.run_into_door(step.direction, m_can_run, timeout, Milliseconds(0), banner);
     log(std::format("[{}] {}: {} through the door again: {}.", m_row, step.name,
-        direction_name(step.direction), seen.any() ? describe(seen) : "nothing yet"));
-    return seen;
+        direction_name(step.direction), again.any() ? describe(again) : "nothing yet"));
+    return again;
 }
 
 //  The route before ran on through this step's warp (walk_route_to_warp()):
@@ -526,9 +530,7 @@ Outcome StoryWalkSteps::step(RunState& state, const StoryStep& step){
         WarpSeen seen = m_io.run_into_door(step.direction, m_can_run, door.timeout, door.dark_from, banner);
         log(std::format("[{}] {}: {} through the door (timeout {} ms, dark from {} ms): {}.", m_row, step.name,
             direction_name(step.direction), door.timeout.count(), door.dark_from.count(), seen.any() ? describe(seen) : "nothing yet"));
-        if (!seen.any() && step.variant == "or_legs"){
-            seen = door_from_beside(step, door.timeout, banner);
-        }
+        seen = door_from_beside(step, seen, door.timeout, banner);
         m_io.settle(BUTTON_B, label_of(step), !seen.any(), banner);
         return Pokemon::outcome_ok();
     }
