@@ -14,6 +14,7 @@
 #include "CommonTools/Images/SolidColorTest.h"
 #include "CommonTools/Images/ColorClustering.h"
 #include "Tests/ImageUnitTest.h"
+#include "Tests/TestUtils.h"
 #include "Pokemon/Inference/Pokemon_ReadHpBar.h"
 #include "Pokemon/Inference/Pokemon_TypeReader.h"
 #include "VideoGames/PokemonSwSh/Resources/PokemonSwSh_MaxLairDatabase.h"
@@ -573,12 +574,59 @@ private:
 
 
 
+class Test_MaxLairSummaryOpponentReader : public ImageUnitTest{
+public:
+    Test_MaxLairSummaryOpponentReader(
+        const std::string& image,
+        Language language,
+        std::set<std::string> expected
+    )
+        : ImageUnitTest("PokemonSwSh::MaxLairSummaryOpponentReader - " + image, {image})
+        , m_language(language)
+        , m_expected(std::move(expected))
+    {}
+
+    virtual UnitTestResult run_on_images(
+        Logger& logger, CancellableScope& scope,
+        const std::vector<ImageRGB32>& images
+    ) const override{
+        DummyVideoOverlay overlay;
+        OcrFailureWatchdog ocr_watchdog(logger, m_language);
+        BattleMenuReader reader(overlay, m_language, ocr_watchdog);
+        std::set<std::string> result = reader.read_opponent_in_summary(logger, images[0]);
+        if (result == m_expected){
+            return true;
+        }
+        std::string message = "Read:";
+        for (const std::string& slug : result){
+            message += " " + slug;
+        }
+        if (result.empty()){
+            message += " (nothing)";
+        }
+        return UnitTestResult(UnitTestResult::FAILED, std::move(message));
+    };
+
+private:
+    Language m_language;
+    std::set<std::string> m_expected;
+};
+
+
+
 
 
 
 
 void add_tests_MaxLairBattleMenuDetector(UnitTestDatabase& database){
     database.add<Test_MaxLairBattleMenuDetector>("PokemonSwSh/MaxLair_BattleMenuDetector/MyPin_Q6g_BattleMenuDA_True.jpg", true);
+
+    //  A single-type Normal Pokemon: the "O" of the "NORMAL" badge label also
+    //  matches the Normal icon.
+    database.add<Test_MaxLairSummaryOpponentReader>(
+        "PokemonSwSh/MaxLair_SummaryOpponentReader/English_Persian.jpg",
+        Language::English, std::set<std::string>{"persian"}
+    );
 }
 
 
