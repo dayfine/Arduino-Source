@@ -9,13 +9,16 @@
  *  banner. Each row's test logs its pass rate and, per failing step, the
  *  failure kinds with a seed that reproduces each, and fails only below the
  *  row's pinned floor. The old 01.03 test shows the harness finds the two
- *  failures lab-B met on 2026-11-08.
+ *  failures lab-B met on 2026-11-08. One more runs every row's seeds again
+ *  with one fade's hold unseen: none that passed may fail.
  *
  */
 
 #include <algorithm>
 #include <format>
 #include <map>
+#include <string>
+#include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Time.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -98,7 +101,7 @@ Pokemon::DisturbanceRates stress_rates(){
 SeedOutcome run_seed(Logger& logger, const std::vector<StoryCheckpoint>& rows, const RowNoise& noise_of, const std::string& row, uint64_t seed){
     const SimMisses& clean = noise_of.clean;
     SimDisturbance noise(Pokemon::make_disturbance_plan(seed, noise_of.rates, clean.fades, clean.banners));
-    SimExecutor executor(logger, {.fade = noise.plan().missed_fade, .banner = noise.plan().missed_banner}, {.noise = &noise});
+    SimExecutor executor(logger, {.fade = noise.plan().missed_fade, .banner = noise.plan().missed_banner, .hold = noise.plan().missed_hold}, {.noise = &noise});
     try{
         const Pokemon::SegmentReport report = run_rows_on(executor, logger, {.from = row, .to = row}, rows);
         logger.log(std::format("[Sim] {}: {} wild battle(s) over {} grass and {} cave tiles.", describe(noise.plan()),
@@ -244,6 +247,50 @@ UnitTestResult test_old_0103(Logger& logger){
 }
 
 
+//  Each row of the table for the seeds, each seed run twice: as lab-B
+//  disturbs it, with no miss, and the same with one fade's hold dropped (a
+//  short fade between two frames; the door's watcher missed 13 of 35 on
+//  2026-11-08). The program's fade watch takes the scene after the fall,
+//  so no seed that passes the first fails the second.
+UnitTestResult test_one_hold_unseen(Logger& logger){
+    const size_t seeds = Pokemon::seed_count(SEEDS_VARIABLE, DEFAULT_SEEDS);
+    const std::vector<StoryCheckpoint> rows = story_checkpoints();
+    Pokemon::DisturbanceRates rates;
+    rates.missed_detection = 0;
+    Pokemon::DisturbanceRates hold_rates = rates;
+    hold_rates.missed_hold = 1;
+    std::vector<std::string> broken;
+    size_t runs = 0;
+    size_t held = 0;
+    for (const StoryCheckpoint& checkpoint : rows){
+        const std::string& row = checkpoint.id;
+        if (Pokemon::selected_rows(ROWS_VARIABLE, {row}).empty()){
+            continue;
+        }
+        const SimMisses clean = looked_for(rows, row);
+        for (uint64_t seed : Pokemon::story_seeds(seeds)){
+            SilentLogger silent;
+            const SeedOutcome plain = run_seed(silent, rows, {.clean = clean, .rates = rates}, row, seed);
+            const SeedOutcome hold = run_seed(silent, rows, {.clean = clean, .rates = hold_rates}, row, seed);
+            runs++;
+            held += plain.passed && hold.passed ? 1 : 0;
+            if (plain.passed && !hold.passed){
+                broken.push_back(std::format("{} {}: {} {}", row, hold.detail, hold.failed_step, hold.kind));
+            }
+        }
+    }
+    logger.log(std::format("One fade's hold unseen: {} of {} runs pass both ways; {} pass only with every hold seen.", held, runs, broken.size()));
+    if (broken.empty()){
+        return true;
+    }
+    std::string out = std::format("{} seeds pass with every hold seen and fail with one unseen:", broken.size());
+    for (const std::string& line : broken){
+        out += "\n  " + line;
+    }
+    return out;
+}
+
+
 //  A row of the table, disturbed; or, with a body, another test.
 struct StoryMonteCarloInput{
     std::string row;
@@ -310,6 +357,10 @@ const StoryMonteCarloCase AUTO_STORY_MONTE_CARLO_CASES[] = {
     {.input = {"01.11"}, .expectation = {.floor = 100}},
     {
         .input = {"the old 01.03 fails across Roark's room and at the Center's door (lab-B, 2026-11-08)", test_old_0103},
+        .expectation = {},
+    },
+    {
+        .input = {"one fade's hold unseen: every seed that passes still passes", test_one_hold_unseen},
         .expectation = {},
     },
 };

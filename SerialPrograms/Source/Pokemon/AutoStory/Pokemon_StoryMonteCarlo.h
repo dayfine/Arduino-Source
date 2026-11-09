@@ -100,12 +100,19 @@ struct DisturbanceRates{
     //  had not reached its door; 2 required banners went unread, both
     //  01.03's old out_of_the_mine.
     double missed_detection = 0.02;
+    //  The chance a seed drops the hold of one fade its row looks for: a
+    //  short fade whose dark or white fell between two frames, so only its
+    //  fall and the scene after show. 0 in the rates measured; 1 in the
+    //  tests that every seed survives it.
+    double missed_hold = 0;
 };
 
 //  One seed's disturbances: independent random streams for each kind, so a
 //  change in how many battles a run draws does not move its drift, and the
 //  one detection the run misses, if any (as an index into the row's fades,
-//  then its banners, from an undisturbed run).
+//  then its banners, from an undisturbed run), and the one fade whose hold
+//  it drops, if any (an index into the row's fades). The hold is drawn
+//  from a stream of its own, so a plan's other draws do not move with it.
 struct DisturbancePlan{
     uint64_t seed = 0;
     DisturbanceRates rates;
@@ -114,11 +121,13 @@ struct DisturbancePlan{
     SimRandom wanderers;
     std::optional<size_t> missed_fade;
     std::optional<size_t> missed_banner;
+    std::optional<size_t> missed_hold = std::nullopt;
 };
 //  The plan for `seed`, for a row whose undisturbed run looks for `fades`
 //  fades and `banners` banners.
 DisturbancePlan make_disturbance_plan(uint64_t seed, const DisturbanceRates& rates, size_t fades, size_t banners);
 //  "seed 17: miss fade 1": what a plan draws up front, to reproduce it.
+//  A dropped hold reads "fade 2's hold unseen".
 std::string describe(const DisturbancePlan& plan);
 
 

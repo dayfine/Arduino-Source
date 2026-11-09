@@ -54,6 +54,10 @@ DisturbancePlan make_disturbance_plan(uint64_t seed, const DisturbanceRates& rat
             plan.missed_banner = which - fades;
         }
     }
+    SimRandom holds(root.next());
+    if (fades > 0 && holds.chance(rates.missed_hold)){
+        plan.missed_hold = (size_t)holds.between(0, (int64_t)fades - 1);
+    }
     return plan;
 }
 
@@ -64,6 +68,9 @@ std::string describe(const DisturbancePlan& plan){
     }
     if (plan.missed_banner){
         text += std::format(": miss banner {}", *plan.missed_banner);
+    }
+    if (plan.missed_hold){
+        text += std::format(": fade {}'s hold unseen", *plan.missed_hold);
     }
     return text;
 }
