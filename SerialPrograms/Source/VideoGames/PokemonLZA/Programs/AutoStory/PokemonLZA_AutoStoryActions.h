@@ -23,6 +23,7 @@
 #include <vector>
 #include "Common/Cpp/Time.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
+#include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/Language.h"
 #include "CommonFramework/Tools/ProgramEnvironment.h"
 #include "NintendoSwitch/Controllers/NintendoSwitch_ControllerButtons.h"
@@ -71,6 +72,11 @@ void mash_to_overworld(ConsoleHandle& console, ProControllerContext& context, Bu
 //  From the overworld, presses A at what the player faces. Returns once a
 //  dialogue box shows; throws OperationFailedException if none does.
 void talk_to_facing(ConsoleHandle& console, ProControllerContext& context);
+
+//  Where a dialogue's choices are drawn, and choose_dialog_option() looks
+//  for the selection arrow: the restaurant receptionist's (RestaurantFarmer).
+//  Other dialogues' choices are assumed to sit there.
+const ImageFloatBox& dialog_choice_box();
 
 //  With a dialogue's choices on screen, picks choice `index` (0 is the top):
 //  waits for the selection arrow, presses down until it has moved `index`
