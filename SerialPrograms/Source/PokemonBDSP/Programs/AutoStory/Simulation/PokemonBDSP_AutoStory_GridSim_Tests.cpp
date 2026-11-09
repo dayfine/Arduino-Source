@@ -14,6 +14,7 @@
 #include <functional>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
@@ -24,7 +25,9 @@
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_PlannedRoute.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryExecutor.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h"
+#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryStepIO.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryTable.h"
+#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryWalkSteps.h"
 #include "PokemonBDSP_AutoStory_GridSim_Tests.h"
 
 namespace PokemonAutomation{
@@ -390,6 +393,198 @@ UnitTestResult test_door_routes(Logger& logger){
 }
 
 
+//  The story's walking steps on a GridSim: the route walker's IO and walks
+//  until something stops us (as the story simulation walks them). Anything
+//  else fails the walk.
+class WalkStepsIO : public StoryStepIO{
+public:
+    WalkStepsIO(GridSim& sim, GridSimRouteIO& route)
+        : m_sim(sim)
+        , m_route(route)
+    {}
+
+    virtual RouteIO& route() override{
+        return m_route;
+    }
+    virtual void fight(const std::string& trainer) override{
+        unsupported("a fight with " + trainer);
+    }
+    virtual void walk_until_stopped(Direction direction, size_t tiles, const std::string& label) override{
+        m_sim.tap(direction, ROUTE_TURN_TAP, false);
+        const Milliseconds limit = ROUTE_START_DELAY + 800ms + route_ms_per_tile(direction) * (int64_t)(2 * tiles);
+        const SimMove move = m_sim.hold(direction, limit, SimPace::WALK);
+        if (move.stop == SimStop::DIALOG || move.stop == SimStop::WARP){
+            m_route.note(label + ": " + sim_stop_name(move.stop) + " instead of a stop.", RouteNote::FAILURE);
+        }
+    }
+    virtual bool run_until_map(Direction, Milliseconds, const std::string& map, const std::string&) override{
+        unsupported("a run onto " + map);
+        return false;
+    }
+    virtual bool run_into_door(Direction, bool, Milliseconds, Milliseconds) override{
+        unsupported("a run into a door");
+        return false;
+    }
+    virtual std::optional<size_t> tap_to_banner(Direction, const std::string& map, size_t) override{
+        unsupported("taps to " + map + "'s banner");
+        return std::nullopt;
+    }
+    virtual void settle(Button, const std::string& label, bool) override{
+        unsupported(label + "'s settle");
+    }
+
+private:
+    void unsupported(const std::string& what){
+        m_route.note(what + " is not simulated here.", RouteNote::FAILURE);
+    }
+
+    GridSim& m_sim;
+    GridSimRouteIO& m_route;
+};
+
+//  Row `row`'s steps from `first` up to the one before `last`, and where
+//  the table has the player before `first`.
+struct TableSteps{
+    Pose start;
+    std::vector<StoryStep> steps;
+};
+std::optional<TableSteps> table_steps(const std::string& row, const std::string& first, const std::string& last){
+    const std::vector<StoryCheckpoint>& table = story_checkpoints();
+    const auto checkpoint = std::find_if(table.begin(), table.end(), [&row](const StoryCheckpoint& item){ return item.id == row; });
+    if (checkpoint == table.end()){
+        return std::nullopt;
+    }
+    std::optional<TableSteps> out;
+    std::optional<Pose> at = checkpoint->start;
+    for (const StoryStep& step : checkpoint->steps){
+        if (step.name == last){
+            return out;
+        }
+        if (step.name == first && at){
+            out = TableSteps{*at, {}};
+        }
+        if (out){
+            out->steps.push_back(step);
+        }
+        at = pose_after_step(at, step);
+    }
+    return std::nullopt;
+}
+
+//  Where each of `table`'s steps, walked on `sim` from wherever its player
+//  stands, left the player, and why the walk failed if it did.
+struct StepsWalk{
+    std::vector<std::pair<std::string, SimPos>> ends;
+    std::string failure;
+};
+StepsWalk walk_steps(GridSim& sim, const TableSteps& table){
+    StepsWalk out;
+    std::vector<std::string> notes;
+    GridSimRouteIO route_io(sim, notes);
+    WalkStepsIO io(sim, route_io);
+    StoryWalkSteps walk(io);
+    walk.begin_attempt("01.03");
+    Pokemon::RunState state{.pose = table.start};
+    try{
+        for (const StoryStep& step : table.steps){
+            const Pokemon::Outcome outcome = step.kind == StoryStepKind::ROUTE ? walk.route(state, step)
+                : step.kind == StoryStepKind::LEGS ? walk.legs(state, step)
+                : Pokemon::outcome_failed("not_a_walk", step.name);
+            out.ends.emplace_back(step.name, sim.player().pos);
+            if (!outcome.succeeded()){
+                out.failure = step.name + ": " + Pokemon::to_string(outcome);
+                break;
+            }
+            state.pose = step.pose_after ? *step.pose_after : outcome.pose ? *outcome.pose : state.pose;
+        }
+    }catch (const GridSimFailure& e){
+        out.failure = e.message;
+    }
+    return out;
+}
+//  Where `table`'s steps, walked from `start` instead of where the table
+//  has the player, failed or left the player off `checks`' tiles; empty if
+//  they did not.
+std::string walk_misses(const StoryWorld& world, const TableSteps& table, const TilePos& start,
+    const std::vector<std::pair<std::string, TilePos>>& checks, Logger& logger){
+    GridSim sim({.world = &world, .trainers = story_trainers(world)}, start, Direction::SOUTH, true);
+    const StepsWalk walk = walk_steps(sim, table);
+    std::string ends;
+    for (const auto& [name, end] : walk.ends){
+        ends += std::format(" {} {}", name, to_string(end));
+    }
+    logger.log(std::format("from {}:{}{}", Pokemon::to_string(start), ends, walk.failure.empty() ? "" : ", failed: " + walk.failure));
+    if (!walk.failure.empty()){
+        return std::format("from {}: failed at {}: {}", Pokemon::to_string(start), to_string(sim.player().pos), walk.failure);
+    }
+    for (const auto& [name, tile] : checks){
+        const auto end = std::find_if(walk.ends.begin(), walk.ends.end(), [&name](const auto& item){ return item.first == name; });
+        if (end == walk.ends.end() || end->second != sim_pos(tile)){
+            return std::format("from {}: {} ended{}, not on {}.", Pokemon::to_string(start), name,
+                end == walk.ends.end() ? " nowhere" : " at " + to_string(end->second), Pokemon::to_string(tile));
+        }
+    }
+    return {};
+}
+
+//  Roark's room the old way: counted taps across the room, down column 29
+//  and onto his row from (15, 16), then west against the rock east of him
+//  and south against the wall.
+TableSteps old_taps_across_roarks_room(){
+    StoryStep taps;
+    taps.kind = StoryStepKind::LEGS;
+    taps.name = "above_roarks_row";
+    taps.legs = {
+        {.direction = Direction::EAST, .tiles = 14}, {.direction = Direction::SOUTH, .tiles = 10},
+        {.direction = Direction::WEST, .tiles = 2}, {.direction = Direction::SOUTH, .tiles = 2},
+    };
+    StoryStep walls;
+    walls.kind = StoryStepKind::LEGS;
+    walls.name = "beside_roarks_rock";
+    walls.variant = "to_wall";
+    walls.legs = {{.direction = Direction::WEST, .tiles = 7}, {.direction = Direction::SOUTH, .tiles = 1}};
+    return {Pokemon::tile_pose("OreburghMine", {TilePos{15, 16}}, Direction::SOUTH), {taps, walls}};
+}
+
+//  lab-B 2026-11-08 11:55: a wild battle on 01.03's counted taps through
+//  Roark's room re-planned to the end of the interrupted leg, (15, 16), and
+//  the re-plan's open run south overshot a row; the taps after landed a row
+//  too far south, the walk west went under Roark's rocks, and no one
+//  answered the talk. From a row south of (15, 16), the old taps miss
+//  beside his rock (20, 29): the sim shows the console's failure. The
+//  wild battle itself: Recovery walk tests, "01.03 to Roark's corner".
+UnitTestResult test_roarks_room_from_a_row_off(Logger& logger){
+    const StoryWorld& world = *story_plan_world("OreburghMine", "OreburghMine");
+    const std::string miss = walk_misses(world, old_taps_across_roarks_room(), {15, 17}, {{"beside_roarks_rock", {20, 29}}}, logger);
+    if (miss.empty()){
+        return "The old taps across Roark's room reached (20, 29) from a row south: the test no longer shows the console's failure.";
+    }
+    return true;
+}
+
+//  lab-B 2026-11-08 15:31 to 15:54: 01.05's open walk west 3 from (5, 13),
+//  where Barry's push leaves us, to (2, 13) beside the Oreburgh Gate's mouth
+//  (1, 13) went on into the Gate. D-pad taps move whole tiles but keep a
+//  part-tile offset: 0.375 of a tile west of (5, 13), the three taps take
+//  the warp; on the tile, they stop beside it.
+UnitTestResult test_gate_walk_part_tile_off(Logger&){
+    const StoryWorld& world = *story_plan_world("OreburghCity", "OreburghCity");
+    for (const bool off : {false, true}){
+        GridSim sim({.world = &world}, story_to_world(world, "OreburghCity", {5, 13}), Direction::WEST, true);
+        if (off){
+            sim.tap(Direction::WEST, 60ms, true);
+        }
+        SimStop stop = SimStop::DONE;
+        for (int tap = 0; tap < 3 && stop == SimStop::DONE; tap++){
+            stop = sim.tap(Direction::WEST, 160ms, false).stop;
+        }
+        if ((stop == SimStop::WARP) != off){
+            return std::format("{} (5, 13): three taps west ended {} at {}.", off ? "0.375 west of" : "on",
+                sim_stop_name(stop), to_string(sim.player().pos));
+        }
+    }
+    return true;
+}
 
 UnitTestResult test_wandering_npc_mechanics(Logger& logger){
     StoryWorld world = make_world({
@@ -709,6 +904,33 @@ UnitTestResult test_wall_leg_wild_battles(Logger&){
     return true;
 }
 
+//  Oreburgh Mine B1F: the entrance hall corridor is traversed to and back by
+//  running south from (12, 1) to (12, 21), and north from (12, 21), where the
+//  coal room's warp lands us, to (12, 1).
+UnitTestResult test_oreburgh_mine_hall_corridor(Logger& logger){
+    const StoryWorld* world = story_plan_world("OreburghMineB1F", "OreburghMineB1F");
+    if (world == nullptr){
+        return "OreburghMineB1F world not found.";
+    }
+    const SimWorld sim_world{.world = world, .can_run = true};
+    const auto test_run = [&](TilePos start, Direction dir, TilePos expected, const char* label){
+        GridSim sim(sim_world, start, dir, true);
+        const SimMove move = sim.hold(dir, 5000ms, SimPace::RUN);
+        if (move.stop != SimStop::WARP || sim.player().pos != sim_pos(expected)){
+            return std::format("{}: expected WARP at {}, got {} at {}.", label,
+                Pokemon::to_string(expected), sim_stop_name(move.stop), Pokemon::to_string(nearest_tile(sim.player().pos)));
+        }
+        logger.log(std::format("{} hall run reached {} in {} ms.", label, Pokemon::to_string(expected), move.time.count()));
+        return std::string{};
+    };
+    std::string err = test_run({12, 1}, Direction::SOUTH, {12, 21}, "Southbound");
+    if (!err.empty()){
+        return err;
+    }
+    err = test_run({12, 21}, Direction::NORTH, {12, 1}, "Northbound");
+    return err.empty() ? UnitTestResult(true) : UnitTestResult(err);
+}
+
 struct AutoStoryGridSimInput{
     std::string name;
     std::function<UnitTestResult(Logger&)> body;
@@ -757,6 +979,10 @@ const AutoStoryGridSimCase AUTO_STORY_GRID_SIM_CASES[] = {
         .expectation = {},
     },
     {
+        .input = {"01.03's old taps across Roark's room miss his rock from a row off (lab-B, 2026-11-08)", test_roarks_room_from_a_row_off},
+        .expectation = {},
+    },
+    {
         .input = {"wandering NPC movement and deterministic seed behavior", test_wandering_npc_mechanics},
         .expectation = {},
     },
@@ -782,6 +1008,14 @@ const AutoStoryGridSimCase AUTO_STORY_GRID_SIM_CASES[] = {
     },
     {
         .input = {"a wild battle on a wall leg is run from, or fought when the game refuses the escape", test_wall_leg_wild_battles},
+        .expectation = {},
+    },
+    {
+        .input = {"01.03, Oreburgh Mine B1F entrance hall corridor runs to and back", test_oreburgh_mine_hall_corridor},
+        .expectation = {},
+    },
+    {
+        .input = {"01.05, a part of a tile off, the old open walk west takes the Gate's warp (lab-B, 2026-11-08)", test_gate_walk_part_tile_off},
         .expectation = {},
     },
 };

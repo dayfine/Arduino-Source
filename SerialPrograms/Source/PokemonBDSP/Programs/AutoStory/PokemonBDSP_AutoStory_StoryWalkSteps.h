@@ -11,6 +11,7 @@
 #ifndef PokemonAutomation_PokemonBDSP_AutoStory_StoryWalkSteps_H
 #define PokemonAutomation_PokemonBDSP_AutoStory_StoryWalkSteps_H
 
+#include <functional>
 #include <map>
 #include <string>
 #include <vector>
@@ -21,6 +22,20 @@
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
+
+
+//  How a run north into a Pokemon Center's door got us in.
+enum class CenterEntry{
+    FADED,      //  its fade showed
+    INSIDE,     //  no fade, but the inside shows: the run went on in, as
+                //  far as the nurse's counter (lab-B 2026-11-08, Oreburgh)
+    LINED_UP,   //  no fade and no inside: lined up with the lit doorway
+};
+
+//  Runs north into the Pokemon Center's door ahead, running with `run`.
+//  Without a fade, `inside` says whether the Center's inside shows, and if
+//  not, `line_up` lines up with the lit doorway and walks in (or fails).
+CenterEntry run_into_center(StoryStepIO& io, bool run, const std::function<bool()>& inside, const std::function<void()>& line_up);
 
 
 //  Executes walking and movement-related story steps via StoryStepIO.
@@ -51,13 +66,16 @@ public:
 
 private:
     Pokemon::Pose walk_to(const Pokemon::Pose& from, const Pokemon::Pose& goal, const Pokemon::StoryStep& step);
+    //  After a wild battle on `leg`'s taps from `starts`: walks to one of
+    //  `goals` from wherever the leg could have left us, then faces `facing`.
     Pokemon::Pose recover_tapped_leg(const Pokemon::Pose& from,
         const std::vector<Pokemon::TilePos>& starts, const std::vector<Pokemon::TilePos>& goals,
-        const Pokemon::StoryLeg& leg, const Pokemon::StoryStep& step);
+        Pokemon::Direction facing, const Pokemon::StoryLeg& leg, const Pokemon::StoryStep& step);
     Pokemon::Outcome tap_legs(const Pokemon::Pose& from, const Pokemon::StoryStep& step);
+    Pokemon::Outcome counted_wall(const Pokemon::Pose& from, const Pokemon::StoryStep& step);
     Pokemon::Outcome leg_to_dialogue(const Pokemon::StoryStep& step);
     Pokemon::Outcome leg_to_map(const Pokemon::StoryStep& step);
-    Pokemon::Outcome tap_to_banner(const Pokemon::StoryStep& step);
+    Pokemon::Outcome tap_to_banner(const Pokemon::Pose& from, const Pokemon::StoryStep& step);
     void turn(Pokemon::Direction direction);
     void log(const std::string& text);
 

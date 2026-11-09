@@ -211,19 +211,20 @@ Outcome StoryExecutor::heal(RunState&, const StoryStep& step){
     //  doorway lineup is for when the run in finds no door: people on the
     //  way can leave the route unsure of the column (r59, Jubilife). Below
     //  Sandgem's door the lineup read 0.7 tile off and stepped us off it (r48).
+    //  With no fade, the run can have gone on in to the counter (lab-B
+    //  2026-11-08, Oreburgh).
     route_turn(stream(), context(), Direction::NORTH);
-    const bool in = m_io.run_into_door(Direction::NORTH, m_walks.can_run());
-    stream().log(std::format("[{}] {}: north into the Center: {}.", m_checkpoint, step.name, in ? "faded" : "no door; lining up by sight"));
-    if (in){
-        pbf_wait(context(), 1500ms);
-    }else{
+    const CenterEntry in = run_into_center(m_io, m_walks.can_run(), [this]{
         context().wait_for_all_requests();
         const VideoSnapshot screen = stream().video().snapshot();
-        if (screen && pokemon_center_inside(*screen.frame)){
-            stream().log(std::format("[{}] {}: already inside Pokemon Center despite no fade detected.", m_checkpoint, step.name));
-        }else{
-            enter_lit_door(stream(), context(), label_of(step));
-        }
+        return screen && pokemon_center_inside(*screen.frame);
+    }, [&]{
+        enter_lit_door(stream(), context(), label_of(step));
+    });
+    stream().log(std::format("[{}] {}: north into the Center: {}.", m_checkpoint, step.name,
+        in == CenterEntry::FADED ? "faded" : in == CenterEntry::INSIDE ? "no fade, but inside" : "no fade; lined up by sight"));
+    if (in == CenterEntry::FADED){
+        pbf_wait(context(), 1500ms);
     }
     talk_to_nurse(stream(), context(), label_of(step));
     //  Her last line ("We hope to see you again!") can still be up, and a

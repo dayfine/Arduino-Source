@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <format>
+#include <iterator>
 #include "Common/Cpp/Color.h"
 #include "Common/Cpp/Exceptions.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
@@ -49,6 +50,17 @@ std::string label_of(const StoryStep& step){
 
 } // namespace
 
+
+CenterEntry run_into_center(StoryStepIO& io, bool run, const std::function<bool()>& inside, const std::function<void()>& line_up){
+    if (io.run_into_door(Direction::NORTH, run)){
+        return CenterEntry::FADED;
+    }
+    if (inside()){
+        return CenterEntry::INSIDE;
+    }
+    line_up();
+    return CenterEntry::LINED_UP;
+}
 
 void StoryWalkSteps::begin_attempt(const std::string& row){
     m_row = row;
@@ -146,21 +158,73 @@ Outcome StoryWalkSteps::leg_to_map(const StoryStep& step){
     return arrived ? Pokemon::outcome_ok() : Pokemon::outcome_failed("no_banner", map);
 }
 
+namespace{
+//  Taps toward a door with no table door ahead of it.
+constexpr size_t TAPS_TO_BANNER = 30;
+//  How many taps `direction` a tap step from `from` takes at most: the
+//  tiles to the door its map has ahead of every tile of `from`, and two
+//  more; TAPS_TO_BANNER where the map has none. A step through already,
+//  its banner gone, then stops a few tiles on (lab-B 2026-11-08: 01.05's
+//  walk slid into the Oreburgh Gate, whose row 22 runs 24 tiles on).
+size_t taps_to_banner(const Pose& from, Direction direction){
+    size_t most = 0;
+    try{
+        const Pokemon::MapData& map = story_map(from.map);
+        for (const TilePos& pos : Pokemon::tiles_of(from)){
+            const size_t tiles = Pokemon::tiles_to_door(map, pos, direction);
+            TilePos door = pos;
+            for (size_t i = 0; i < tiles; i++){
+                door = door.next(direction);
+            }
+            if (tiles == 0 || map.tiles.at(door) != Pokemon::TileKind::DOOR){
+                return TAPS_TO_BANNER;
+            }
+            most = std::max(most, tiles);
+        }
+    }catch (...){
+        return TAPS_TO_BANNER;
+    }
+    return most == 0 ? TAPS_TO_BANNER : most + 2;
+}
+} // namespace
+
 //  A STEP "to_banner": D-pad taps toward a door or cave mouth until the fade
 //  and pose_after's map's location banner. No banner fails the step right
-//  there.
-Outcome StoryWalkSteps::tap_to_banner(const StoryStep& step){
+//  there; a banner before any tap means the walk before took us through.
+Outcome StoryWalkSteps::tap_to_banner(const Pose& from, const StoryStep& step){
     const std::string map = step.pose_after ? step.pose_after->map : "";
-    const std::optional<size_t> taps = m_io.tap_to_banner(step.direction, map, 30);
+    const size_t limit = taps_to_banner(from, step.direction);
+    const std::optional<size_t> taps = m_io.tap_to_banner(step.direction, map, limit);
     if (!taps){
-        return Pokemon::outcome_failed("no_banner", map);
+        return Pokemon::outcome_failed("no_banner", std::format("{} in {} taps {}: through already, its banner gone?",
+            map, limit, direction_name(step.direction)));
     }
-    log(std::format("[{}] {}: {}'s banner after {} taps {}.", m_row, step.name, map, *taps, direction_name(step.direction)));
+    if (*taps == 0){
+        log(std::format("[{}] {}: {}'s banner before any tap: through already.", m_row, step.name, map));
+    }else{
+        log(std::format("[{}] {}: {}'s banner after {} taps {}.", m_row, step.name, map, *taps, direction_name(step.direction)));
+    }
     return Pokemon::outcome_ok();
 }
 
 namespace{
-Milliseconds door_timeout(const std::string& map_name, const Pose& pose, Direction direction, bool can_run){
+//  A run into a door: how long to hold, and for how long of it a dark screen
+//  is not yet the door's fade (run_into_door()).
+struct DoorRun{
+    Milliseconds timeout;
+    Milliseconds dark_from;
+};
+//  Dark before this share of the run's time to the door is not the door:
+//  lab-B 2026-11-08 09:27:33 read dark at 1.8 s of the 4050 ms run down the
+//  mine's entrance hall (3250 ms to the mouth), stopped there, and the next
+//  step walked on through the mouth.
+constexpr double DOOR_DARK_FROM_SHARE = 0.85;
+//  The shortest hold: the one-tile step onto the mine's warp faded 3.35 s
+//  after its hold began (lab-B 2026-11-07 12:19 and 12:27); a 1500 ms hold
+//  gave up just before the fade (2026-11-08 09:27:16) and settle() pressed B
+//  15 s before it called the overworld calm.
+constexpr Milliseconds DOOR_MIN_HOLD = 4500ms;
+DoorRun door_run(const std::string& map_name, const Pose& pose, Direction direction, bool can_run){
     try{
         const Pokemon::MapData& map = story_map(map_name);
         const auto tiles_list = Pokemon::tiles_of(pose);
@@ -168,11 +232,15 @@ Milliseconds door_timeout(const std::string& map_name, const Pose& pose, Directi
             const size_t tiles = Pokemon::tiles_to_door(map, tiles_list.front(), direction);
             if (tiles > 0){
                 const Milliseconds per_tile = route_ms_per_tile(direction, can_run ? MoveSpeed::RUN : MoveSpeed::WALK);
-                return std::max(1500ms, ROUTE_START_DELAY + per_tile * (int64_t)tiles + 800ms);
+                const Milliseconds to_door = ROUTE_START_DELAY + per_tile * (int64_t)tiles;
+                return {
+                    .timeout = std::max(DOOR_MIN_HOLD, to_door + 800ms),
+                    .dark_from = std::chrono::duration_cast<Milliseconds>(to_door * DOOR_DARK_FROM_SHARE),
+                };
             }
         }
     }catch (...){}
-    return Milliseconds(12000);
+    return {.timeout = 12000ms, .dark_from = 0ms};
 }
 enum class CountedEndPolicy{ EXACT, ONE_SHORT };
 std::vector<TilePos> counted_ends(const std::vector<TilePos>& starts, const Pokemon::StoryLeg& leg, CountedEndPolicy policy){
@@ -191,7 +259,7 @@ std::vector<TilePos> counted_ends(const std::vector<TilePos>& starts, const Poke
 } // namespace
 
 Pose StoryWalkSteps::recover_tapped_leg(const Pose& from, const std::vector<TilePos>& starts,
-    const std::vector<TilePos>& goals, const Pokemon::StoryLeg& leg, const StoryStep& step){
+    const std::vector<TilePos>& goals, Direction facing, const Pokemon::StoryLeg& leg, const StoryStep& step){
     const StoryWorld* world = story_plan_world(from.map, from.map);
     if (world == nullptr){
         fail(m_io.route(), "interrupted leg has no recovery world: " + from.map);
@@ -211,43 +279,82 @@ Pose StoryWalkSteps::recover_tapped_leg(const Pose& from, const std::vector<Tile
     StoryStep recovery = step;
     recovery.name += "_recovery";
     recovery.variant.clear();
-    const Pose found = walk_to(Pokemon::tile_pose(from.map, possible), Pokemon::tile_pose(from.map, goals, leg.direction), recovery);
+    const Pose found = walk_to(Pokemon::tile_pose(from.map, possible), Pokemon::tile_pose(from.map, goals, facing), recovery);
     //  The route back can approach from another direction. Establish the
-    //  original leg's facing before publishing that pose to the story runner.
-    turn(leg.direction);
+    //  step's facing before publishing that pose to the story runner.
+    turn(facing);
     return found;
 }
 
 //  Counted legs retain their normal path. An observed encounter invalidates
-//  the exact pose; localize from every legal prefix before the next leg.
+//  the exact pose; localize from every legal prefix and re-plan to the end of
+//  the step, skipping the legs left. A battle that may have begun before
+//  the leg (WalkOrigin::MAY_PRECEDE_LEG) found us on the tile the leg before
+//  ended on, since a battle starts on a tile stepped onto: the same prefixes
+//  hold. A re-plan to the end of the interrupted
+//  leg ended on an open tile, its last leg overshot a row, and the taps after
+//  went on a row off (lab-B 2026-11-08 11:55); a step that ends in a corner
+//  ends its re-plan on wall clips.
 Outcome StoryWalkSteps::tap_legs(const Pose& from, const StoryStep& step){
-    const bool one_short_ok = step.variant == "one_short_ok";
+    const CountedEndPolicy policy = step.variant == "one_short_ok" ? CountedEndPolicy::ONE_SHORT : CountedEndPolicy::EXACT;
+    const bool one_short_ok = policy == CountedEndPolicy::ONE_SHORT;
     std::vector<TilePos> at = Pokemon::tiles_of(from);
-    for (const Pokemon::StoryLeg& leg : step.legs){
-        turn(leg.direction);
-        const size_t tiles = (size_t)leg.tiles;
-        const WalkResult walk = m_io.route().walk_taps(leg.direction, tiles, step.name);
-        log(std::format("[{}] {}: taps {} moved {} of {} tiles.", m_row, step.name, direction_name(leg.direction), walk.moved_chunks, tiles));
-        const auto next = counted_ends(at, leg, one_short_ok ? CountedEndPolicy::ONE_SHORT : CountedEndPolicy::EXACT);
+    for (auto leg = step.legs.begin(); leg != step.legs.end(); ++leg){
+        turn(leg->direction);
+        const size_t tiles = (size_t)leg->tiles;
+        const WalkResult walk = m_io.route().walk_taps(leg->direction, tiles, step.name);
+        log(std::format("[{}] {}: taps {} moved {} of {} tiles.", m_row, step.name, direction_name(leg->direction), walk.moved_chunks, tiles));
+        const auto next = counted_ends(at, *leg, policy);
         if (walk.wild_battles > 0){
-            if (walk.origin == WalkOrigin::MAY_PRECEDE_LEG){
-                return Pokemon::outcome_failed("encounter_origin_unknown", step.name);
-            }
             if (walk.stop != WalkStop::LIMIT && walk.stop != WalkStop::BLOCKED){
                 return Pokemon::outcome_failed("interrupted_leg_unconfirmed", step.name);
             }
-            at = Pokemon::tiles_of(recover_tapped_leg(from, at, next, leg, step));
-            continue;
+            std::vector<TilePos> ends = next;
+            for (auto rest = std::next(leg); rest != step.legs.end(); ++rest){
+                ends = counted_ends(ends, *rest, policy);
+            }
+            return Pokemon::outcome_ok(recover_tapped_leg(from, at, ends, step.legs.back().direction, *leg, step));
         }
         if (walk.moved_chunks + (one_short_ok ? 1 : 0) < tiles){
-            return Pokemon::outcome_failed("short_leg", std::format("{} {} moved {}", direction_name(leg.direction), tiles, walk.moved_chunks));
+            return Pokemon::outcome_failed("short_leg", std::format("{} {} moved {}", direction_name(leg->direction), tiles, walk.moved_chunks));
         }
         at = next;
     }
     return Pokemon::outcome_ok(Pokemon::tile_pose(from.map, at, step.legs.back().direction));
 }
 
+//  A LEGS step "counted_wall": its one leg held to the wall, its tiles
+//  counted against the map's from each tile the table may have us on
+//  (walk_counted_wall_leg()). The leg's tiles are the table's reading of
+//  the map, and must be among them.
+Outcome StoryWalkSteps::counted_wall(const Pose& from, const StoryStep& step){
+    const StoryWorld* world = story_plan_world(from.map, from.map);
+    const std::vector<TilePos> starts = Pokemon::tiles_of(from);
+    if (step.legs.size() != 1 || world == nullptr || starts.empty()){
+        return Pokemon::outcome_failed("counted_wall", std::format("{} legs from {}", step.legs.size(), Pokemon::to_string(from)));
+    }
+    const Pokemon::StoryLeg& leg = step.legs.front();
+    size_t fewest = SIZE_MAX;
+    size_t most = 0;
+    for (const TilePos& pos : starts){
+        const size_t tiles = slide_to_wall(*world, story_to_world(*world, from.map, pos), leg.direction).tiles;
+        fewest = std::min(fewest, tiles);
+        most = std::max(most, tiles);
+    }
+    if ((size_t)leg.tiles < fewest || (size_t)leg.tiles > most){
+        return Pokemon::outcome_failed("map_mismatch",
+            std::format("{} {} where the map has {} to {}", direction_name(leg.direction), leg.tiles, fewest, most));
+    }
+    turn(leg.direction);
+    walk_counted_wall_leg(m_io.route(), {.direction = leg.direction, .fewest = fewest, .most = most,
+        .speed = m_can_run ? MoveSpeed::RUN : MoveSpeed::WALK, .label = label_of(step)});
+    return Pokemon::outcome_ok();
+}
+
 Outcome StoryWalkSteps::legs(RunState& state, const StoryStep& step){
+    if (step.variant == "counted_wall"){
+        return counted_wall(state.pose, step);
+    }
     if (step.variant == "to_wall"){
         for (const Pokemon::StoryLeg& leg : step.legs){
             m_io.walk_until_stopped(leg.direction, (size_t)leg.tiles, label_of(step));
@@ -269,7 +376,7 @@ Outcome StoryWalkSteps::legs(RunState& state, const StoryStep& step){
 Outcome StoryWalkSteps::step(RunState& state, const StoryStep& step){
     if (step.variant == "to_banner"){
         turn(step.direction);
-        return tap_to_banner(step);
+        return tap_to_banner(state.pose, step);
     }
     if (step.variant == "tap"){
         //  No separate turn tap first: at 1 tile from the door, a turn tap
@@ -288,9 +395,10 @@ Outcome StoryWalkSteps::step(RunState& state, const StoryStep& step){
     //  (r33 was outside, "no fade"). No separate turn tap first: at 1 tile
     //  from the door, a 50 ms turn tap can step in before run_into_door() watches.
     if (step.pose_after && step.pose_after->map != state.pose.map){
-        const Milliseconds timeout = door_timeout(state.pose.map, state.pose, step.direction, m_can_run);
-        const bool faded = m_io.run_into_door(step.direction, m_can_run, timeout);
-        log(std::format("[{}] {}: {} through the door (timeout {} ms): {}.", m_row, step.name, direction_name(step.direction), timeout.count(), faded ? "faded" : "no fade yet"));
+        const DoorRun door = door_run(state.pose.map, state.pose, step.direction, m_can_run);
+        const bool faded = m_io.run_into_door(step.direction, m_can_run, door.timeout, door.dark_from);
+        log(std::format("[{}] {}: {} through the door (timeout {} ms, dark from {} ms): {}.", m_row, step.name,
+            direction_name(step.direction), door.timeout.count(), door.dark_from.count(), faded ? "faded" : "no fade yet"));
         m_io.settle(BUTTON_B, label_of(step), !faded);
         return Pokemon::outcome_ok();
     }

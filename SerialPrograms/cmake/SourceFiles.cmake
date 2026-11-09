@@ -1501,6 +1501,9 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_StorySegments.cpp
     Source/Pokemon/AutoStory/Pokemon_StorySegments.h
     Source/Pokemon/AutoStory/Pokemon_StorySegments_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_AuthoredCheckpointJson.cpp
+    Source/Pokemon/AutoStory/Pokemon_AuthoredCheckpointJson.h
+    Source/Pokemon/AutoStory/Pokemon_AuthoredCheckpointJson_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryStepJson.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryStepJson.h
     Source/Pokemon/AutoStory/Pokemon_StoryStepJson_Tests.cpp
@@ -1711,6 +1714,8 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryWalkSteps.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h
+    Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_OldStorySteps.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_OldStorySteps.h
     Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_StorySim_Tests.cpp
     Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_StorySim_Tests.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryTable_Tests.cpp

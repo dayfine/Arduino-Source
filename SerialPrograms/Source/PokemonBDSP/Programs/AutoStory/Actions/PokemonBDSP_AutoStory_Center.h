@@ -31,10 +31,11 @@ struct LitDoorway{
     double rows_up;         //  rows north of the player's tile, roughly: 1 straight ahead
 };
 
-//  Whether `screen` is the inside of a Pokemon Center seen from its door:
-//  the orange back wall at the top left, and the black below the entrance
-//  mat along the bottom edge. Its lit floor reads as a doorway
-//  (find_lit_doorway()), so this is what says we are in (r126 runs 2, 3).
+//  Whether `screen` is the inside of a Pokemon Center: the orange back wall
+//  along the top, and either the black below the entrance mat along the
+//  bottom edge (seen from the door) or the nurse's counter close up. Its lit
+//  floor reads as a doorway (find_lit_doorway()), so this is what says we
+//  are in (r126 runs 2, 3).
 bool pokemon_center_inside(const ImageViewRGB32& screen);
 
 //  Finds a lit doorway (a Pokemon Center's or a Poke Mart's) in the upper

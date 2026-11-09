@@ -417,10 +417,9 @@ bool RouteWalker::finish_interrupted_wall(LegWalk& walk, Milliseconds limit){
     if (walk.result.wild_battles == 0){
         return false;
     }
+    //  A battle that may have begun before the hold changes nothing here:
+    //  from where the leg began, it ends at its wall however far it got.
     for (size_t again = 0; again < 3 && walk.result.wild_battles > 0; again++){
-        if (walk.result.origin == WalkOrigin::MAY_PRECEDE_LEG){
-            fail(m_io, "encounter_origin_unknown: " + walk.label);
-        }
         if (walk.result.stop != WalkStop::LIMIT && walk.result.stop != WalkStop::BLOCKED){
             fail(m_io, "unconfirmed transition/dialogue during wall recovery: " + walk.label);
         }
@@ -579,10 +578,12 @@ LegNext RouteWalker::open_leg(LegWalk& walk){
     return LegNext::NEXT_LEG;
 }
 
+//  Where an open leg's battle left us: any tile of the leg from where it
+//  began, none moved to all. A battle that may have begun before the leg
+//  (WalkOrigin::MAY_PRECEDE_LEG) found us on the tile the leg before ended
+//  on, since a battle starts on a tile stepped onto, so the same tiles
+//  hold. Planning again from them is bounded by run()'s plans.
 LegNext RouteWalker::interrupted_open_leg(LegWalk& walk){
-    if (walk.result.origin == WalkOrigin::MAY_PRECEDE_LEG){
-        fail(m_io, "encounter_origin_unknown: " + walk.label);
-    }
     if (walk.result.stop != WalkStop::LIMIT && walk.result.stop != WalkStop::BLOCKED){
         fail(m_io, "interrupted open leg has an unconfirmed dialogue/transition: " + walk.label);
     }
@@ -879,6 +880,65 @@ void talk_to_npc(
         io.note(talk.label + ": nobody answered from " + describe(maps, stand) + "; trying another side.", RouteNote::STATUS);
     }
     fail(io, talk.label + ": no side of " + describe(maps, talk.npc) + " started a dialogue.");
+}
+
+namespace{
+
+//  Waits for the way at most this often in one counted leg: Oreburgh's
+//  Hiker tries a step every 2 s, and may stay or keep to the column.
+constexpr size_t COUNTED_WALL_WAITS = 8;
+
+//  A count by time is off by a tile or so a stop. Short of the wall by more
+//  than WAIT_SHORT_OF is someone in the way (Oreburgh's Hiker stops us 4
+//  to 7 tiles short of the Center's wall); past COUNT_SLACK either way at
+//  the end, the walk is not where the step has us.
+constexpr size_t COUNTED_WALL_WAIT_SHORT_OF = 2;
+constexpr size_t COUNTED_WALL_COUNT_SLACK = 3;
+
+//  One hold of `leg` to the wall; fails on anything but a stop or the time.
+WalkResult hold_counted_wall_leg(RouteIO& io, const CountedWallLeg& leg){
+    const WalkResult result = io.walk_to_wall({.direction = leg.direction,
+        .limit = wall_limit({.direction = leg.direction, .tiles = leg.most}), .label = leg.label,
+        .options = {.arrived = nullptr, .pace = DpadPace::RUN}});
+    if (result.stop != WalkStop::BLOCKED && result.stop != WalkStop::LIMIT){
+        fail(io, leg.label + ": " + walk_stop_name(result.stop) + " instead of a stop.");
+    }
+    if (result.wild_battles > 0){
+        fail(io, leg.label + ": a wild battle on the way; the count of tiles is lost.");
+    }
+    return result;
+}
+
+} // namespace
+
+size_t walk_counted_wall_leg(RouteIO& io, const CountedWallLeg& leg){
+    const Milliseconds per_tile = route_ms_per_tile(leg.direction, leg.speed);
+    const size_t slack = COUNTED_WALL_COUNT_SLACK;
+    size_t walked = 0;
+    for (size_t waits = 0;; waits++){
+        const WalkResult result = hold_counted_wall_leg(io, leg);
+        walked += tiles_moved(result, per_tile);
+        if (result.stop == WalkStop::LIMIT){
+            //  The stop went unseen: we must be held against the wall.
+            if (!io.holding_against_wall(leg.direction, leg.label + ": at the wall?")){
+                fail(io, leg.label + ": ran out of time after about " + std::to_string(walked) + " tiles, short of the wall.");
+            }
+            break;
+        }
+        if (walked + COUNTED_WALL_WAIT_SHORT_OF >= leg.fewest || waits == COUNTED_WALL_WAITS){
+            break;
+        }
+        io.note("[Route] " + leg.label + ": stopped after about " + std::to_string(walked) +
+            " tiles, short of the wall; waiting for the way to clear.", RouteNote::WARNING);
+        io.press(WAIT_FOR_THE_WAY);
+    }
+    io.note(std::format("[Route] {}: about {} tiles to the wall; the map has {} to {}.", leg.label, walked, leg.fewest, leg.most),
+        RouteNote::LOG);
+    if (walked + slack < leg.fewest || walked > leg.most + slack){
+        fail(io, std::format("{}: about {} tiles to the wall, where the map has {} to {}: not where the step has us.",
+            leg.label, walked, leg.fewest, leg.most));
+    }
+    return walked;
 }
 
 

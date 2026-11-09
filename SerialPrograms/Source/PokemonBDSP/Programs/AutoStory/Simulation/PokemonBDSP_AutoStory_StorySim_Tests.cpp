@@ -41,6 +41,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_CoordEvents.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP_AutoStory_GridSim.h"
+#include "PokemonBDSP_AutoStory_OldStorySteps.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Events.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryExecutor.h"
@@ -68,15 +69,23 @@ using Pokemon::TilePos;
 //  Which detections the simulation misses on purpose (#162): the `fade`th
 //  door fade (run_into_door(), from 0) or the `banner`th map banner
 //  (run_until_map()) of the run goes unseen, though the player did go
-//  through. The console missed both (r75, r81).
-//  The counts and flags below are the run's: how many fades and banners it
-//  looked for, whether a miss happened since the executor last looked, and
-//  whether a missed fade is still unseen.
+//  through. The console missed both (r75, r81). The `dark`th door run reads
+//  dark SIM_FALSE_DARK in, short of the door, as lab-B's did on 2026-11-08.
+//  The `through`th tap step (tap_to_banner(), from 0) starts on its far side,
+//  its banner gone unless `through_banner`: the walk before it slid onto the
+//  warp (lab-B 2026-11-08). The counts and flags below are the run's: how
+//  many fades and banners it looked for, whether a miss happened since the
+//  executor last looked, and whether a missed fade is still unseen.
 struct SimMisses{
     std::optional<size_t> fade;
     std::optional<size_t> banner;
+    std::optional<size_t> dark = {};
+    std::optional<size_t> through = {};
+    bool through_banner = false;
+    size_t tap_steps = 0;
     size_t fades = 0;
     size_t banners = 0;
+    size_t doors = 0;
     bool missed = false;
     bool fade_unseen = false;
 };
@@ -87,6 +96,7 @@ struct SimMisses{
 //  reads at once. Through a cave mouth the fade comes first, and a hold
 //  whose fade went unseen goes on the same way (r75, r81).
 constexpr size_t SIM_BANNER_TILES = 3;
+constexpr Milliseconds SIM_FALSE_DARK = 1800ms;
 
 //  What a run on the simulation did.
 struct SimRun{
@@ -131,8 +141,13 @@ public:
     }
     virtual void walk_until_stopped(Direction direction, size_t tiles, const std::string& label) override;
     virtual bool run_until_map(Direction direction, Milliseconds limit, const std::string& map, const std::string&) override;
-    virtual bool run_into_door(Direction direction, bool run, Milliseconds timeout = Milliseconds(12000)) override{
-        const bool warped = m_sim.hold(direction, timeout, run ? SimPace::RUN : SimPace::WALK).stop == SimStop::WARP;
+    virtual bool run_into_door(Direction direction, bool run, Milliseconds timeout = Milliseconds(12000), Milliseconds dark_from = Milliseconds(0)) override{
+        const SimPace pace = run ? SimPace::RUN : SimPace::WALK;
+        if (false_dark() && dark_from <= SIM_FALSE_DARK && SIM_FALSE_DARK < timeout){
+            m_sim.hold(direction, SIM_FALSE_DARK, pace);
+            return true;
+        }
+        const bool warped = m_sim.hold(direction, timeout, pace).stop == SimStop::WARP;
         if (warped && fade_missed()){
             m_misses.fade_unseen = true;
             return false;
@@ -159,6 +174,11 @@ private:
         const bool miss = m_misses.fade == m_misses.fades++;
         m_misses.missed |= miss;
         return miss;
+    }
+    bool false_dark(){
+        const bool dark = m_misses.dark == m_misses.doors++;
+        m_misses.missed |= dark;
+        return dark;
     }
     bool banner_missed(){
         const bool miss = m_misses.banner == m_misses.banners++;
@@ -212,10 +232,17 @@ bool SimStoryStepIO::run_until_map(Direction direction, Milliseconds limit, cons
 }
 
 //  D-pad taps, each looked at, until the fade and then the banner (the
-//  console's ConsoleStoryStepIO::tap_to_banner()). Each look stands still,
-//  so a banner on the far side reads at once. A fade seen ends the taps,
+//  console's ConsoleStoryStepIO::tap_to_banner()): none if the banner shows
+//  before the first. Each look stands still, so a banner on the far side
+//  reads at once. A fade seen ends the taps,
 //  banner or not; with the fade missed the next look still sees the banner.
 std::optional<size_t> SimStoryStepIO::tap_to_banner(Direction direction, const std::string& map, size_t max_taps){
+    if (m_misses.through == m_misses.tap_steps++){
+        m_misses.missed = true;
+        if (m_far_side() && m_misses.through_banner){
+            return 0;
+        }
+    }
     bool crossed = false;
     for (size_t tap = 1; tap <= max_taps; tap++){
         const SimMove move = m_sim.tap(direction, 160ms, false);
@@ -314,23 +341,22 @@ std::vector<RowTrigger> story_triggers(){
     return triggers;
 }
 
-//  Someone the maps do not have, who stands on `tile` of `map` and is
-//  talked to there or walked round: from row `row` on if `until` is "",
-//  else in `row` until its step `until` has run.
+//  Someone the maps do not have, on `tile` of `map`, talked to or walked round:
+//  from row `row` on, until row `until_row`'s step `until` has run if it is set.
 struct SimPerson{
     std::string name;
     std::string map;
     TilePos tile;
     std::string row;
-    std::string until;
+    std::string until_row = {};
+    std::string until = {};
 };
 std::vector<SimPerson> sim_people(){
     return {
         //  Mom stands a row above the decomp's (7, 8) from 00.04 on (r43).
-        {.name = "mom", .map = "PlayerHouse1F", .tile = {7, 7}, .row = "00.04", .until = ""},
-        //  Barry stands in the Gym's door until his lines (01.03; Roark
-        //  ignored A until then, r101 and r104).
-        {.name = "barry", .map = "OreburghCity", .tile = {26, 21}, .row = "01.03", .until = "barrys_lines"},
+        {.name = "mom", .map = "PlayerHouse1F", .tile = {7, 7}, .row = "00.04"},
+        //  Barry in the Gym's door, from the welcome (lab-B 2026-11-08) to his lines (r101, r104).
+        {.name = "barry", .map = "OreburghCity", .tile = {26, 21}, .row = "01.02b", .until_row = "01.02b", .until = "barrys_lines"},
     };
 }
 
@@ -437,7 +463,8 @@ const StoryWorld* SimExecutor::sim_world(const std::string& map) const{
     std::vector<SimPerson> here;
     std::string who;
     for (const SimPerson& person : sim_people()){
-        const bool now = person.until.empty() ? m_row >= person.row : m_row == person.row && !m_ran.contains(person.until);
+        const bool now = m_row >= person.row && (person.until.empty() || m_row < person.until_row ||
+            (m_row == person.until_row && !m_ran.contains(person.until)));
         if (world != nullptr && now && story_plan_world(person.map, person.map) == world){
             here.push_back(person);
             who += person.name + ";";
@@ -545,10 +572,17 @@ std::string SimExecutor::off_pose(const Pose& pose) const{
     return std::format("ended at {} ({}), not on {}.", to_string(player.pos), describe(m_sim.world(), at), Pokemon::to_string(pose));
 }
 
+//  The program's run into the Center: past its door, the inside shows, a missed fade or not.
 Outcome SimExecutor::heal(RunState& state, const StoryStep& step){
-    if (sync(state.pose) && m_sim.hold(Direction::NORTH, 3000ms, SimPace::RUN).stop != SimStop::WARP){
-        return Pokemon::outcome_failed("no_door", step.name + ": no door north of " + to_string(m_sim.player().pos));
+    if (!sync(state.pose)){
+        return Pokemon::outcome_ok();
     }
+    run_into_center(m_io, m_walks.can_run(), [this]{
+        m_misses.fade_unseen = false;
+        return m_sim.player().warped.has_value();
+    }, [&]{
+        throw GridSimFailure{step.name + ": no door north of " + to_string(m_sim.player().pos)};
+    });
     return Pokemon::outcome_ok();
 }
 
@@ -719,44 +753,6 @@ UnitTestResult run_exit_test(Logger& logger, const std::string& row_id, const St
     return true;
 }
 
-//  r75: out of the Oreburgh Gate as a run west until Route 203's banner
-//  (the old event west_until_transition()). The banner reads a few tiles
-//  in: the run ends west of the Gate's warp tile (55, 9), in the pocket by
-//  the pond (Route 203's x 49 to 54, rows 6 to 13).
-StoryStep r75_old_gate_exit(){
-    StoryStep step;
-    step.kind = StoryStepKind::LEGS;
-    step.name = "out_of_oreburgh_gate";
-    step.legs = {{.direction = Direction::WEST, .tiles = 8}};
-    step.variant = "to_map";
-    step.pose_after = Pokemon::tile_pose("Route203", {TilePos{55, 9}}, Direction::WEST);
-    return step;
-}
-Pose r75_pond_pocket(){
-    std::vector<TilePos> tiles;
-    for (int y = 6; y <= 13; y++){
-        for (int x = 49; x <= 54; x++){
-            tiles.push_back({x, y});
-        }
-    }
-    return Pokemon::tile_pose("Route203", tiles);
-}
-//  r81: out of the Ravaged Path as a timed walk south (the old event's
-//  4 s walk_dir()), its fade missed: on past cave_exit (20, 26) to the
-//  cliff, column 20 down to row 30.
-StoryStep r81_old_cave_exit(){
-    StoryStep step;
-    step.kind = StoryStepKind::LEGS;
-    step.name = "out_of_the_ravaged_path";
-    step.legs = {{.direction = Direction::SOUTH, .tiles = 4}};
-    step.variant = "to_wall";
-    step.pose_after = Pokemon::tile_pose("Route204North", {TilePos{20, 26}}, Direction::SOUTH);
-    return step;
-}
-Pose r81_below_the_mouth(){
-    return Pokemon::tile_pose("Route204North", {TilePos{20, 27}, TilePos{20, 28}, TilePos{20, 29}, TilePos{20, 30}});
-}
-
 UnitTestResult test_coord_events(Logger&){
     for (const auto& [map, json] : bdsp_map_json()){
         const StoryWorld* world = story_plan_world(map, map);
@@ -839,54 +835,24 @@ UnitTestResult test_exit_ravaged_path(Logger& logger){
     return run_exit_test(logger, "01.09", r81_old_cave_exit(), SimMisses{.fade = 0, .banner = std::nullopt}, r81_below_the_mouth());
 }
 
-//  Oreburgh Mine B1F: the entrance hall corridor is traversed to and back by
-//  running south from (12, 1) to (12, 21), and north from (11, 21) to (11, 1).
-UnitTestResult test_oreburgh_mine_hall_corridor(Logger& logger){
-    const StoryWorld* world = story_plan_world("OreburghMineB1F", "OreburghMineB1F");
-    if (world == nullptr){
-        return "OreburghMineB1F world not found.";
-    }
-    const SimWorld sim_world{.world = world, .can_run = true};
-    const auto test_run = [&](TilePos start, Direction dir, TilePos expected, const char* label){
-        GridSim sim(sim_world, start, dir, true);
-        const SimMove move = sim.hold(dir, 5000ms, SimPace::RUN);
-        if (move.stop != SimStop::WARP || sim.player().pos != sim_pos(expected)){
-            return std::format("{}: expected WARP at {}, got {} at {}.", label,
-                Pokemon::to_string(expected), sim_stop_name(move.stop), Pokemon::to_string(nearest_tile(sim.player().pos)));
-        }
-        logger.log(std::format("{} hall run reached {} in {} ms.", label, Pokemon::to_string(expected), move.time.count()));
-        return std::string{};
-    };
-    std::string err = test_run({12, 1}, Direction::SOUTH, {12, 21}, "Southbound");
-    if (!err.empty()){
-        return err;
-    }
-    err = test_run({11, 21}, Direction::NORTH, {11, 1}, "Northbound");
-    return err.empty() ? UnitTestResult(true) : UnitTestResult(err);
-}
-
-//  Oreburgh Mine B1F: tapping 19 tiles leaves the player 1 tile short of the warp door.
-StoryStep old_mine_hall_19(std::string name, Direction direction){
-    StoryStep step;
-    step.kind = StoryStepKind::LEGS;
-    step.name = std::move(name);
-    step.legs = {{.direction = direction, .tiles = 19}};
-    return step;
-}
-
-//  Oreburgh Mine: stepping south at col 29 without bypassing the crate
-//  hits the wooden crate at (29, 28) on the south leg, a tile down.
-StoryStep old_coal_room_crate_cut(){
-    StoryStep step;
-    step.kind = StoryStepKind::LEGS;
-    step.name = "above_roarks_row";
-    step.legs = {
-        {.direction = Direction::EAST, .tiles = 1}, {.direction = Direction::SOUTH, .tiles = 2},
-        {.direction = Direction::WEST, .tiles = 1}, {.direction = Direction::SOUTH, .tiles = 5},
-        {.direction = Direction::EAST, .tiles = 14}, {.direction = Direction::SOUTH, .tiles = 10},
-        {.direction = Direction::SOUTH, .tiles = 2}, {.direction = Direction::WEST, .tiles = 11},
-    };
-    return step;
+//  lab-B 2026-11-08 15:31 to 15:54: 01.05's walk to the tile beside the
+//  Oreburgh Gate's mouth slid onto the warp, and the tap step after it began
+//  inside the Gate. With its banner up, the step ends there with no tap and
+//  no fade (the clean run's fade into the Gate is not seen); with it gone,
+//  it fails a few taps on, not across the Gate.
+UnitTestResult test_tap_through_already(Logger& logger, bool banner){
+    const std::vector<StoryCheckpoint> rows = table_with("01.05", old_tap_into_the_gate());
+    SimExecutor clean(logger);
+    run_rows_on(clean, logger, {.from = "01.05", .to = "01.05"}, rows);
+    SimExecutor through(logger, {.fade = {}, .banner = {}, .through = 1, .through_banner = banner});
+    run_rows_on(through, logger, {.from = "01.05", .to = "01.05"}, rows);
+    const SimRun& run = through.result();
+    const std::optional<TilePos> at = run.world ? story_to_local(*run.world, "OreburghGate", run.end) : std::nullopt;
+    const bool passed = banner
+        ? run.error.empty() && through.misses().fades + 1 == clean.misses().fades
+        : run.failed_step == "01.05 into_oreburgh_gate" && at && at->y == 22 && at->x >= 21;
+    return passed ? UnitTestResult(true) : UnitTestResult(std::format("failed in '{}' on {} after {} fades (clean {}): {}",
+        run.failed_step, end_of(run), through.misses().fades, clean.misses().fades, run.error.empty() ? "no failure" : run.error));
 }
 
 UnitTestResult test_story_sim_step_failure(Logger& logger, const std::string& row, const StoryStep& old_step, const std::string& expected_failed_step, const std::string& expected_error){
@@ -899,6 +865,22 @@ UnitTestResult test_story_sim_step_failure(Logger& logger, const std::string& ro
             old_step.name, expected_failed_step, expected_error, run.failed_step, run.error);
     }
     return true;
+}
+
+//  lab-B 2026-11-08: 01.03's run into Oreburgh's Center saw no fade and went
+//  on to the nurse's counter. The heal must find it is inside and go on.
+UnitTestResult test_heal_fade_unseen(Logger& logger){
+    SimExecutor clean(logger);
+    run_rows_on(clean, logger, {.from = "01.03", .to = "01.03"});
+    for (size_t i = 0; i < clean.misses().fades; i++){
+        SimExecutor sim(logger, {.fade = i, .banner = {}});
+        run_rows_on(sim, logger, {.from = "01.03", .to = "01.03"});
+        const SimRun& run = sim.result();
+        if (run.missed_step == "01.03 heal_oreburgh"){
+            return run.error.empty() ? UnitTestResult(true) : UnitTestResult(std::format("failed in '{}': {}", run.failed_step, run.error));
+        }
+    }
+    return "no fade in 01.03 heal_oreburgh to miss: the heal never ran into its door.";
 }
 
 struct AutoStoryStorySimInput{
@@ -935,32 +917,33 @@ private:
 } // namespace
 
 const AutoStoryStorySimCase AUTO_STORY_STORY_SIM_CASES[] = {
+    {.input = {"the maps' coord events are on open ground or doors", test_coord_events}, .expectation = {}},
+    {.input = {"detector misses from 00.00 to 01.11", test_story_sim_misses}, .expectation = {}},
+    {.input = {"00.00 to 01.11: the whole table, from the new game to Floaroma", test_story_sim_whole_table}, .expectation = {}},
+    {.input = {"each row from 00.00 to 01.11 in isolation", test_story_sim_each_row}, .expectation = {}},
+    {.input = {"01.02b, Barry's lines, then the Center past his doorstep (lab-B, 2026-11-08)", [](Logger& logger){
+        return run_rows(logger, {.from = "01.02b", .to = "01.02b"});
+    }}, .expectation = {}},
+    {.input = {"r75, out of the Oreburgh Gate", test_exit_gate}, .expectation = {}},
+    {.input = {"r81, out of the Ravaged Path", test_exit_ravaged_path}, .expectation = {}},
+    {.input = {"01.05, a tap step begun through the Gate's mouth, its banner up (lab-B, 2026-11-08)", [](Logger& logger){
+        return test_tap_through_already(logger, true);
+    }}, .expectation = {}},
+    {.input = {"01.05, a tap step begun through the Gate's mouth, its banner gone (lab-B, 2026-11-08)", [](Logger& logger){
+        return test_tap_through_already(logger, false);
+    }}, .expectation = {}},
     {
-        .input = {"the maps' coord events are on open ground or doors", test_coord_events},
+        .input = {"01.03, a dark frame 1.8 s down the mine's entrance hall is not its mouth (lab-B, 2026-11-08)", [](Logger& logger){
+            SimExecutor executor(logger, {.fade = {}, .banner = {}, .dark = 1});
+            run_rows_on(executor, logger, {.from = "01.03", .to = "01.03"});
+            const SimRun& run = executor.result();
+            return run.missed_step == "01.03 into_the_coal_room" && run.error.empty() ? UnitTestResult(true)
+                : UnitTestResult(std::format("dark in '{}', failed in '{}': {}", run.missed_step, run.failed_step, run.error));
+        }},
         .expectation = {},
     },
     {
-        .input = {"detector misses from 00.00 to 01.11", test_story_sim_misses},
-        .expectation = {},
-    },
-    {
-        .input = {"00.00 to 01.11: the whole table, from the new game to Floaroma", test_story_sim_whole_table},
-        .expectation = {},
-    },
-    {
-        .input = {"each row from 00.00 to 01.11 in isolation", test_story_sim_each_row},
-        .expectation = {},
-    },
-    {
-        .input = {"r75, out of the Oreburgh Gate", test_exit_gate},
-        .expectation = {},
-    },
-    {
-        .input = {"r81, out of the Ravaged Path", test_exit_ravaged_path},
-        .expectation = {},
-    },
-    {
-        .input = {"01.03, Oreburgh Mine B1F entrance hall corridor runs to and back", test_oreburgh_mine_hall_corridor},
+        .input = {"01.03, the Center's fade unseen, the heal goes on from the counter (lab-B, 2026-11-08)", test_heal_fade_unseen},
         .expectation = {},
     },
     {
@@ -971,13 +954,13 @@ const AutoStoryStorySimCase AUTO_STORY_STORY_SIM_CASES[] = {
     },
     {
         .input = {"01.03, counted 19 taps north leaves player in hall", [](Logger& logger){
-            return test_story_sim_step_failure(logger, "01.03", old_mine_hall_19("out_of_the_mine", Direction::NORTH), "01.03 up_to_the_mines_sign", "warp instead of a stop.");
+            return test_story_sim_step_failure(logger, "01.03", old_mine_hall_19("out_of_the_mine", Direction::NORTH), "01.03 north_to_the_centers_wall", "map_mismatch");
         }},
         .expectation = {},
     },
     {
         .input = {"01.03, cut corner through coal room crate at col 29", [](Logger& logger){
-            return test_story_sim_step_failure(logger, "01.03", old_coal_room_crate_cut(), "01.03 above_roarks_row", "short_leg: south 2 moved 1");
+            return test_story_sim_step_failure(logger, "01.03", old_coal_room_crate_cut(), "01.03 to_roarks_corner", "short_leg: south 2 moved 1");
         }},
         .expectation = {},
     },
