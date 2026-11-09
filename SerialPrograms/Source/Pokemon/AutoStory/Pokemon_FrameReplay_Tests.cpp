@@ -17,6 +17,7 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonTools/VisualDetectors/BlackScreenDetector.h"
+#include "Pokemon/Navigation/Pokemon_LegWalker.h"
 #include "Pokemon_AutoStory_Tests.h"
 #include "Pokemon_FrameReplay.h"
 #include "Pokemon_Interrupts.h"
@@ -109,14 +110,24 @@ UnitTestResult test_watcher_sees_fade(){
     return true;
 }
 
-//  A watcher started once the black is over never fires: a walk that holds
-//  onto a door and only then waits for the fade reports "no fade" though
-//  the warp happened.
-UnitTestResult test_late_watcher_misses_fade(){
+//  A walk that holds onto a door for 2000 ms, past the black: its watcher
+//  sees the hold's frames (WatchAlong) and so the black, over before the
+//  hold ends. A watcher started once the black is over never fires: the
+//  walk then reported "no fade" though the warp happened (00.27, console
+//  B, 2026-11-09 01:41, the warp to CeruleanCity, watched from 1.3 s into
+//  the hold).
+UnitTestResult test_watcher_along_hold_sees_fade(){
+    const ReplayFrameSource source = door_recording();
     BlackScreenOverWatcher arrival;
-    const ReplayHit hit = replay_until(door_recording(), {1600ms, 9600ms}, {&arrival}, T0);
-    if (hit.index != -1){
-        return std::format("expected no stop, got index {} at {} ms", hit.index, hit.at.count());
+    WatchAlong along(arrival);
+    const ReplayHit during = replay_until(source, {0ms, 2000ms}, {&along}, T0);
+    if (during.index != -1 || !along.fired()){
+        return std::format("expected the hold not stopped and the fade seen, got index {}, seen {}", during.index, along.fired());
+    }
+    BlackScreenOverWatcher late;
+    const ReplayHit missed = replay_until(source, {2000ms, 10000ms}, {&late}, T0);
+    if (missed.index != -1){
+        return std::format("expected a watcher started after the black to miss it, got index {} at {} ms", missed.index, missed.at.count());
     }
     return true;
 }
@@ -172,7 +183,7 @@ const FrameReplayCase FRAME_REPLAY_CASES[] = {
     {.input = {"the frame showing at a time", test_frame_at}, .expectation = {}},
     {.input = {"a missing recording throws", test_missing_folder}, .expectation = {}},
     {.input = {"the warp watcher sees a door's black", test_watcher_sees_fade}, .expectation = {}},
-    {.input = {"a warp watcher started after the black misses it", test_late_watcher_misses_fade}, .expectation = {}},
+    {.input = {"a warp watcher along the hold sees a black over before it ends", test_watcher_along_hold_sees_fade}, .expectation = {}},
     {.input = {"the replayed events judged as a warp", test_events_judged}, .expectation = {}},
 };
 
