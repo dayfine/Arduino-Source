@@ -34,11 +34,26 @@ struct Case{
     Input input;
     Expectation expectation;
 };
-void extra(JsonObject& root){ root["unknown"] = true; }
-void wrong_game(JsonObject& root){ root["game"] = "frlg"; }
-void wrong_policy(JsonObject& root){ root.get_object_throw("execution")["on_failure"] = "guess"; }
-void missing_card(JsonObject& root){ root.get_object_throw("execution")["saves_in"] = ""; }
-void stop_with_save(JsonObject& root){ root.get_object_throw("execution")["on_failure"] = "stop"; }
+void extra(JsonObject& root){
+    root["unknown"] = true;
+}
+
+void wrong_game(JsonObject& root){
+    root["game"] = "frlg";
+}
+
+void wrong_policy(JsonObject& root){
+    root.get_object_throw("execution")["on_failure"] = "guess";
+}
+
+void missing_card(JsonObject& root){
+    root.get_object_throw("execution")["saves_in"] = "";
+}
+
+void stop_with_save(JsonObject& root){
+    root.get_object_throw("execution")["on_failure"] = "stop";
+}
+
 const Case CASES[] = {
     {.input = {.name = "mine resource is registered with ordered events and save policy"}, .expectation = {}},
     {.input = {.name = "extra envelope field", .mutate = extra}, .expectation = {.rejected = true}},
