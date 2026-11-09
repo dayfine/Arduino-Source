@@ -124,6 +124,8 @@ public:
 
     std::vector<std::string> trace;
     std::map<std::string, Failure> failures;
+    //  Where the save loaded stands, when not at its checkpoint's start.
+    std::optional<StoryPose> save_stands;
     //  What the Mart sold, by its list's names.
     std::map<std::string, int> bag;
 
@@ -282,7 +284,11 @@ struct Simulation{
         for (const StoryCheckpoint& data : rows){
             segment.checkpoints.push_back(Pokemon::CheckpointSpec{
                 .id = data.id, .title = data.title, .saves = true,
-                .build = [this, &data]{ return Pokemon::build_story_checkpoint(data, game); },
+                .build = [this, &data]{
+                    Pokemon::Checkpoint checkpoint = Pokemon::build_story_checkpoint(data, game);
+                    add_start_pose_check(checkpoint, data.start, [this]{ return game.save_stands; }, [this](const std::string& line){ lines.push_back(line); });
+                    return checkpoint;
+                },
             });
         }
         Pokemon::SegmentHooks hooks;
@@ -417,6 +423,23 @@ UnitTestResult test_retry_from_save(){
     }
     if (std::find(sim.lines.begin(), sim.lines.end(), "[Checkpoint] 00.08: passed on attempt 2 (1 reset)") == sim.lines.end()){
         return "Expected the retried pass logged:" + joined(sim.lines);
+    }
+    return true;
+}
+
+//  console B, FRLG 00.27, 2026-11-09: the save stood below Cerulean Center's
+//  door, and the run walked as if from the counter where 00.27 starts. 00.09
+//  from below Pewter Center's door (17, 25) stops before any step or save.
+UnitTestResult test_save_off_start_pose(){
+    Simulation sim;
+    sim.game.save_stands = StoryPose{"PewterCity", TilePos{17, 26}, Direction::SOUTH};
+    const Pokemon::SegmentReport report = sim.run({.from = "00.09", .to = "00.09"});
+    const auto stepped = [](const std::string& item){ return item.starts_with("00.09/"); };
+    const auto told = [](const std::string& line){ return line.starts_with("start pose mismatch: "); };
+    if (report.completed || report.failure.failure != "start_failed" || !sim.saves.empty()
+        || std::ranges::any_of(sim.game.trace, stepped) || std::ranges::none_of(sim.lines, told)
+    ){
+        return "Expected 00.09 stopped at its start check, the mismatch logged:" + joined(sim.game.trace) + joined(sim.lines);
     }
     return true;
 }
@@ -955,6 +978,7 @@ const AutoStorySimulationTestCase AUTO_STORY_SIMULATION_CASES[] = {
     {.input = {.name = "00.20 back to the Center, the Oddish's battle on the pace's far step", .body = test_oddish_battle_on_far_step}, .expectation = {.description = "handles Oddish capture encounter occurring on far pace step"}},
     {.input = {.name = "00.20 onto the grass out of Shane's sight, the leg west a tile short", .body = test_oddish_patch_west_short}, .expectation = {.description = "recovers when approaching grass patch with short western leg"}},
     {.input = {.name = "the routes after pacing, from either of its tiles", .body = test_routes_after_pacing}, .expectation = {.description = "plans valid routes regardless of which pacing tile character ends on"}},
+    {.input = {.name = "a save off the start pose stops before any step", .body = test_save_off_start_pose}, .expectation = {.description = "fails the start check without walking or saving"}},
 };
 
 } // namespace
