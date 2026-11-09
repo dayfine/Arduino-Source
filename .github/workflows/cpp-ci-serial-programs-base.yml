@@ -101,7 +101,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: dayfine/PokemonSimulation
-          ref: cf365e1722dea03fcf40c322b910332fcc864ea4
+          ref: 913a5e3eaa22865e1aeab52f23c9e23ea7141ced
           path: AuthoredStorySource
 
       - name: Replay the authoritative Arduino mine plan
