@@ -1,0 +1,86 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "00.30",
+    "title": "Celadon Game Corner and the Rocket Hideout down to B4F: the poster guard, the Lift Key Grunt, the LIFT KEY and B3F's Rare Candy",
+    "start": {"certainty": "tile", "map": "CeladonCity_PokemonCenter_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 4]]}},
+    "events": [
+      {
+        "id": "celadon_below_game_corner",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "CeladonCity", "where": {"facing": "north", "kind": "tiles", "tiles": [[34, 22]]}},
+        "variant": "run",
+        "why": "out of the Center, west along row 12, down column 41..43 to row 22, west to below the Game Corner (34, 21)"
+      },
+      {
+        "id": "below_poster_guard",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "CeladonCity_GameCorner", "where": {"facing": "north", "kind": "tiles", "tiles": [[11, 3]]}},
+        "variant": "run",
+        "why": "into the Game Corner, up the slot rows to below the Grunt (11, 2) in front of the poster"
+      },
+      {
+        "id": "talk_poster_guard",
+        "kind": "talk",
+        "why": "the Grunt guarding the poster"
+      },
+      {
+        "id": "hideout-poster-guard",
+        "kind": "battle",
+        "declared_after": {"certainty": "tile", "map": "CeladonCity_GameCorner", "where": {"facing": "north", "kind": "tiles", "tiles": [[11, 3]]}},
+        "why": "Rocket Grunt (TRAINER_TEAM_ROCKET_GRUNT_7): Raticate, Zubat Lv20; he runs off"
+      },
+      {
+        "id": "poster_switch",
+        "kind": "talk",
+        "why": "the poster (11, 1): the switch opens the stairs (15, 2)"
+      },
+      {
+        "id": "hideout_b4f_west",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "RocketHideout_B4F", "where": {"facing": "west", "kind": "tiles", "tiles": [[5, 3]]}},
+        "variant": "run",
+        "why": "the stairs (15, 2) down to B1F, B1F to B2F (17, 2), B2F's arrow tiles to B3F (21, 2), B3F to B4F (15, 18), round to (5, 3), east of the tile below the Grunt (4, 2)"
+      },
+      {
+        "id": "key_grunt_line",
+        "kind": "step",
+        "direction": "west",
+        "variant": "trainer_line",
+        "why": "onto (4, 3), in the Grunt's line (sight 1)"
+      },
+      {
+        "id": "hideout-key-grunt",
+        "kind": "battle",
+        "declared_after": {"certainty": "tile", "map": "RocketHideout_B4F", "where": {"facing": "west", "kind": "tiles", "tiles": [[4, 3]]}},
+        "why": "Rocket Grunt (TRAINER_TEAM_ROCKET_GRUNT_18): Koffing, Zubat Lv21; he drops the LIFT KEY"
+      },
+      {
+        "id": "below_lift_key",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "RocketHideout_B4F", "where": {"facing": "north", "kind": "tiles", "tiles": [[3, 3]]}},
+        "variant": "run",
+        "why": "a tile west, below the LIFT KEY (3, 2)"
+      },
+      {
+        "id": "lift_key",
+        "kind": "talk",
+        "why": "pick up the LIFT KEY (pokeguy 57:33)"
+      },
+      {
+        "id": "beside_b3f_rare_candy",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "RocketHideout_B3F", "where": {"facing": "north", "kind": "tiles", "tiles": [[12, 13]]}},
+        "variant": "run",
+        "why": "back up the stairs to B3F, below the Rare Candy (12, 12) beside the arrow tiles"
+      },
+      {
+        "id": "b3f_rare_candy",
+        "kind": "talk",
+        "why": "pick up the Rare Candy: two, with Route 9's"
+      }
+    ]
+  },
+  "execution": {"menu": "full"}
+}
