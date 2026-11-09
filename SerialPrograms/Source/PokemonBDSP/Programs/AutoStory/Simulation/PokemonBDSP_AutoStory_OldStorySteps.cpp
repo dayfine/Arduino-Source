@@ -83,6 +83,14 @@ StoryStep old_tap_into_the_gate(){
     return step;
 }
 
+StoryStep old_west_along_the_field(){
+    StoryStep step;
+    step.kind = StoryStepKind::LEGS;
+    step.name = "west_along_the_field";
+    step.legs = {{.direction = Direction::WEST, .tiles = 8}};
+    return step;
+}
+
 
 
 } // namespace PokemonBDSP
