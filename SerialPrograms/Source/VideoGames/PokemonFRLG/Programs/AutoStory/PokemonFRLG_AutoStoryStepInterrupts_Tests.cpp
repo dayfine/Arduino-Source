@@ -164,7 +164,11 @@ UnitTestResult test_warp(){
     if (game.state.pose.where != nullptr){
         return "Expected the pose lost after a warp, got " + Pokemon::to_string(game.state.pose);
     }
-    return ran(warp, StoryStepKind::GAME, {"game"});
+    const std::string error = ran(warp, StoryStepKind::GAME, {"game"});
+    if (!error.empty()){
+        return error;
+    }
+    return true;
 }
 
 
