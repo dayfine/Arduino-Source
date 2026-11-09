@@ -166,7 +166,8 @@ std::string walk_leg_from(
 }
 
 //  A LEGS step from `from`, walked tile by tile on its map, a tile short too
-//  where the step allows it. Walks to walls end where nothing is known.
+//  where the step allows it. Walks to walls, and walks that end on another
+//  map (into Sandgem until Dawn's scene starts), end where nothing is known.
 Walked walk_legs(const Pose& from, const StoryStep& step){
     if (step.variant == "to_wall"){
         return {std::nullopt, "", ""};
@@ -195,7 +196,11 @@ Walked walk_legs(const Pose& from, const StoryStep& step){
     }
     std::vector<TilePos> local;
     for (const TilePos& pos : at){
-        local.push_back(*story_to_local(*world, from.map, pos));
+        const std::optional<TilePos> tile = story_to_local(*world, from.map, pos);
+        if (!tile){
+            return {std::nullopt, "", ""};
+        }
+        local.push_back(*tile);
     }
     return {Pokemon::tile_pose(from.map, local, step.legs.back().direction), "", ""};
 }
