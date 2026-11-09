@@ -347,8 +347,13 @@ UnitTestResult test_intro_pick_steps(Logger&){
 
 //  The language select from lab-B 2026-11-09 (cursor on English), and screens
 //  that are not it. Screenshots are in the unit test resources; a missing one
-//  is skipped.
+//  is passed over, and the test is skipped when all are.
 UnitTestResult test_language_select_screenshots(Logger& logger){
+    ImageRGB32 black(1920, 1080);
+    black.fill(0xff000000);
+    if (language_select_cursor(black)){
+        return "A black screen read as the language select.";
+    }
     struct Case{
         const char* file;
         std::optional<size_t> cursor;
@@ -358,16 +363,22 @@ UnitTestResult test_language_select_screenshots(Logger& logger){
         {.file = "PokemonBDSP/AutoStory/OreburghCenterCounter-20261108-094735.png", .cursor = std::nullopt},
         {.file = "PokemonBDSP/AutoStory/OreburghCenterDoorstep-20261108.png", .cursor = std::nullopt},
     };
+    size_t read = 0;
     for (const Case& c : cases){
         const std::string path = UNIT_TEST_RESOURCE_PATH() + c.file;
         if (!Filesystem::is_regular_file(path)){
-            return UnitTestResult(UnitTestResult::SKIPPED, "Screenshot not found: " + path);
+            logger.log("Screenshot not found: " + path);
+            continue;
         }
+        read++;
         const std::optional<size_t> cursor = language_select_cursor(ImageRGB32(path));
         logger.log(std::string(c.file) + ": cursor " + (cursor ? std::to_string(*cursor) : "none"));
         if (cursor != c.cursor){
             return std::string(c.file) + ": wrong language select read.";
         }
+    }
+    if (read == 0){
+        return UnitTestResult(UnitTestResult::SKIPPED, "No language select screenshots found.");
     }
     return true;
 }
