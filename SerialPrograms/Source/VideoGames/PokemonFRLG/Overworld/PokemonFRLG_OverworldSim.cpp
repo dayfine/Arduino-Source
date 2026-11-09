@@ -144,6 +144,7 @@ OverworldSim::OverworldSim(std::vector<MapData> maps, MapPosition start, Directi
     : m_maps(std::move(maps))
     , m_script(std::move(script))
     , m_map(find_map(m_maps, start.map))
+    , m_encounter_rng(m_script.encounter_seed)
 {
     if (m_map < 0){
         throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Sim: start on a map that isn't loaded: " + start.map);
@@ -378,13 +379,12 @@ bool OverworldSim::wild_battle(Milliseconds pressed){
         return false;
     }
     m_grass_steps++;
-    for (const SimEncounter& encounter : m_script.encounters){
-        if (encounter.grass_step != m_grass_steps){
-            continue;
-        }
+    if (const std::optional<SimEncounter> encounter = next_encounter()){
         m_frozen = true;
+        m_state.wild_battles++;
+        m_wild_battle_from = pressed;
         m_battle_pending = true;
-        if (!encounter.seen_late){
+        if (!encounter->seen_late){
             schedule(pressed + m_script.timing.flash, SimScreen::BATTLE_FLASH, false);
         }
         if (m_script.timing.battle_wipe){
@@ -394,10 +394,52 @@ bool OverworldSim::wild_battle(Milliseconds pressed){
             schedule(pressed + *m_script.timing.battle_opening, SimScreen::BATTLE_OPENING, false);
         }
         schedule(pressed + m_script.timing.battle_screen, SimScreen::BATTLE, false);
-        note(std::format("a wild battle on {}{}.", to_string(m_state.position), encounter.seen_late ? " (flashes missed)" : ""));
+        note(std::format("a wild battle on {}{}.", to_string(m_state.position), encounter->seen_late ? " (flashes missed)" : ""));
         return true;
     }
     return false;
+}
+
+//  The encounter this step onto a wild tile starts, if any: the script's,
+//  or the game's roll on a map with an encounter rate.
+std::optional<SimEncounter> OverworldSim::next_encounter(){
+    const auto rate = m_script.encounter_rates.find(map().name);
+    if (rate != m_script.encounter_rates.end()){
+        return rolls_encounter(rate->second) ? std::optional<SimEncounter>(SimEncounter{.grass_step = m_grass_steps}) : std::nullopt;
+    }
+    for (const SimEncounter& encounter : m_script.encounters){
+        if (encounter.grass_step == m_grass_steps){
+            return encounter;
+        }
+    }
+    return std::nullopt;
+}
+
+//  pokefirered TryStandardWildEncounter() on land, for a land encounter
+//  `rate`, with no Repel, flute, Cleanse Tag, lead ability or bike:
+//  - HandleWildEncounterCooldown(): until `min_steps` steps since the last
+//    battle (8 - rate / 10, 8 below rate 10, 0 from 80), a step goes on to
+//    the roll only 5 times in 100;
+//  - DoWildEncounterRateTest(): a battle if rand % 1600 < rate * 16 plus
+//    a buff, which grows by `rate` with each roll lost and is cleared by a
+//    battle, as the step count is.
+//  StandardWildEncounter()'s 60% roll on a step onto a tile of another
+//  behavior is left out: a cave's floor is one behavior.
+bool OverworldSim::rolls_encounter(int rate){
+    const int min_steps = rate >= 80 ? 0 : rate < 10 ? 8 : 8 - rate / 10;
+    if (m_steps_since_encounter < min_steps){
+        m_steps_since_encounter++;
+        if (m_encounter_rng() % 100 >= 5){
+            return false;
+        }
+    }
+    if ((int)(m_encounter_rng() % 1600) >= rate * 16 + m_encounter_rate_buff * 16 / 200){
+        m_encounter_rate_buff += rate;
+        return false;
+    }
+    m_encounter_rate_buff = 0;
+    m_steps_since_encounter = 0;
+    return true;
 }
 
 //  Blocked holding `direction` at `pressed`: a sign walked into moving north
@@ -511,6 +553,9 @@ SimBattleEnd OverworldSim::handle_battle(SimBattleChoice choice){
     show(SimScreen::OVERWORLD, m_now);
     m_frozen = false;
     m_battle_pending = false;
+    if (!m_trainer){
+        m_state.in_wild_battles += m_now - m_wild_battle_from;
+    }
     if (m_trainer){
         MapObject& trainer = m_maps[m_map].objects[*m_trainer];
         trainer.trainer.reset();

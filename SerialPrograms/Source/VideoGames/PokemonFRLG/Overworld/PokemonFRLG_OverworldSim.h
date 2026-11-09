@@ -30,6 +30,7 @@
 
 #include <map>
 #include <optional>
+#include <random>
 #include <set>
 #include <string>
 #include <utility>
@@ -115,6 +116,11 @@ struct SimScript{
     //  2026-11-03, rows 00.16 and 00.20), not south from Route 6 into
     //  Vermilion City (row 00.24).
     bool connections_stall = true;
+    //  Wild battles at the game's own odds instead of `encounters`, on the
+    //  maps named here, with their land encounter rate (pokefirered
+    //  src/data/wild_encounters.json), rolled from `encounter_seed`.
+    std::map<std::string, int> encounter_rates;
+    uint32_t encounter_seed = 0;
     SimTiming timing;
 };
 
@@ -138,6 +144,9 @@ struct SimState{
     bool black_below = false;
     int steps = 0;
     int warps = 0;
+    int wild_battles = 0;
+    //  From each wild battle's step to the overworld after it, together.
+    Milliseconds in_wild_battles{0};
     int signs_read = 0;
     std::vector<std::string> trainers_beaten;
     //  Things the walker did that the game wouldn't let pass: D-pad holds
@@ -243,6 +252,8 @@ private:
     std::optional<Step> cross_edge(Direction direction) const;
     bool after_step(const Step& step, Milliseconds pressed);
     bool wild_battle(Milliseconds pressed);
+    std::optional<SimEncounter> next_encounter();
+    bool rolls_encounter(int rate);
     bool trainer_sees(Milliseconds pressed);
     void update_view();
     void note(const std::string& line);
@@ -267,6 +278,11 @@ private:
     //  The trees cut since the last warp, and their maps.
     std::vector<std::pair<int, MapObject>> m_cut_trees;
     int m_grass_steps = 0;
+    //  The game's wild encounter state (SimScript::encounter_rates).
+    std::mt19937 m_encounter_rng;
+    int m_steps_since_encounter = 0;
+    int m_encounter_rate_buff = 0;
+    Milliseconds m_wild_battle_from{0};
     int m_holds = 0;
     SimState m_state;
 };
