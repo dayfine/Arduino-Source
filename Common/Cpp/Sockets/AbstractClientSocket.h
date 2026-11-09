@@ -25,21 +25,8 @@ public:
     };
 
     struct Listener{
-        //  Called at the start of the receiver thread. This can be used to set
-        //  the thread priority of the thread.
-        virtual void on_thread_start(){}
-
-        //  Called when a connection attempt finishes.
-        //  If successful, "error_message" is empty.
-        //  Otherwise, it contains the error message.
         virtual void on_connect_finished(const std::string& error_message){}
-
-        //  Called when the socket receives data from the server.
         virtual void on_receive_data(const void* data, size_t bytes){}
-
-        //  Called when an established connection is lost (the server closed
-        //  the connection or a socket error occurred). It is not called by
-        //  "close()".
         virtual void on_disconnect(const std::string& error_message){}
     };
 
@@ -61,14 +48,11 @@ public:
         return m_state.load(std::memory_order_relaxed);
     }
 
+    //  Close the connection and immediately cancel all ongoing sends.
     virtual void close() noexcept = 0;
+
     virtual void connect(const std::string& address, uint16_t port) = 0;
 
-    //  Sends data on the active connection. This blocks until every byte
-    //  has been written, the connection is lost, or "timeout" elapses.
-    //  "std::chrono::milliseconds::max()" (the default) waits indefinitely.
-    //  Returns the number of bytes actually written, which may be less
-    //  than "bytes" if the deadline elapsed or the connection was lost.
     virtual size_t send(
         const void* data,
         size_t bytes,

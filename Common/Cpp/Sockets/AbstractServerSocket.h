@@ -30,28 +30,13 @@ public:
     };
 
     struct Listener{
-        //  Called at the start of the thread that will handle a connection.
-        //  This can be used to set the thread priority of the thread.
-        virtual void on_thread_start(){}
-
         //  Called when "start()" finishes.
         //  If successful, "error_message" is empty.
         //  Otherwise, it contains the error message.
         virtual void on_listen_finished(const std::string& error_message){}
-
-        //  Called when a client connects.
         virtual void on_connect(){}
-
-        //  Called when an incoming connection was rejected because a
-        //  client is already connected.
         virtual void on_connect_rejected(){}
-
-        //  Called when the server receives data from the client.
         virtual void on_receive_data(const void* data, size_t bytes){}
-
-        //  Called when the active connection is lost (the client closed
-        //  the connection or a socket error occurred). It is not called
-        //  by "close()" or "close_connection()".
         virtual void on_disconnect(const std::string& error_message){}
     };
 
@@ -73,33 +58,14 @@ public:
         return m_state.load(std::memory_order_relaxed);
     }
 
-    //  Binds to "address" and listens on "port". Use "0.0.0.0" to accept
-    //  connections on all interfaces. The result is reported through
-    //  "Listener::on_listen_finished", after which the state is
-    //  State::LISTENING on success or State::NOT_RUNNING on failure.
+    //  Binds to "address" and listens on "port".
+    //  Use "0.0.0.0" to accept connections on all interfaces.
     virtual void start(const std::string& address, uint16_t port) = 0;
 
-    //  Closes the active connection, if any, and keeps listening. Unlike
-    //  "close()", this does not wait for the worker threads, so it is safe
-    //  to call from within a listener callback. "Listener::on_disconnect"
-    //  is not called for the connection closed this way.
+    //  Close the connection and immediately cancel all ongoing sends.
+    //  The socket will continue listening for a new incoming connection.
     virtual void close_connection() = 0;
 
-    //  Stops the server: it stops accepting new connections, closes the
-    //  active connection, and returns the socket to State::NOT_RUNNING so
-    //  "start()" can be called again. This is safe to call multiple times.
-    //
-    //  This blocks until the worker threads have exited, so it must not be
-    //  called from within a listener callback (which runs on one of those
-    //  threads).
-    virtual void close() noexcept = 0;
-
-    //  Sends data to the active connection. This blocks until every byte
-    //  has been written, the connection is lost, or "timeout" elapses.
-    //  "std::chrono::milliseconds::max()" (the default) waits indefinitely.
-    //  Returns the number of bytes actually written, which may be less
-    //  than "bytes" if the deadline elapsed or the connection was lost.
-    //  If there is no active connection, returns 0.
     virtual size_t send(
         const void* data,
         size_t bytes,
