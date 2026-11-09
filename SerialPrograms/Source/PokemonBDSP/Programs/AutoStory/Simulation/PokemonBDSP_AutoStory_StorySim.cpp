@@ -33,6 +33,77 @@ ImageStats sim_screen(double brightness, double stddev){
     return ImageStats(FloatPixel(brightness, brightness, brightness), FloatPixel(stddev, stddev, stddev), 1);
 }
 
+SimBeat sim_line(std::string what){
+    return {.what = std::move(what), .line = true};
+}
+SimBeat sim_pause(std::string what, Milliseconds length, bool moving){
+    return {.what = std::move(what), .length = length, .moving = moving};
+}
+SimBeat sim_fade(std::string what, Milliseconds length, WarpFade fade){
+    return {.what = std::move(what), .length = length, .overworld = false, .fade = fade};
+}
+
+std::string play_scene(const SimScene& scene, const TalkOverRule& rule){
+    const Milliseconds press = TALK_OVER_HOLD + TALK_OVER_RELEASE;
+    TalkOver judge(rule);
+    const WallClock start = WallClock();
+    WallClock now = start;
+    WallClock beat_start = start;
+    size_t beat = 0;
+    const auto at = [&]{
+        return std::format("{} ms in, at beat {} of {}", std::chrono::duration_cast<Milliseconds>(now - start).count(), beat + 1, scene.size());
+    };
+    while (now - start < TALK_OVER_LIMIT){
+        while (beat < scene.size() && !scene[beat].line && now - beat_start >= scene[beat].length){
+            beat_start += scene[beat].length;
+            beat++;
+        }
+        SceneLook look{.overworld = true, .still = true};
+        if (beat < scene.size()){
+            const SimBeat& shown = scene[beat];
+            look = {.box = shown.line, .overworld = shown.overworld, .still = !shown.moving, .fade = shown.fade};
+        }
+        switch (judge.look(look, now)){
+        case SceneMove::DONE:
+            return beat < scene.size() ? std::format("judged over {} ({})", at(), scene[beat].what) : "";
+        case SceneMove::BATTLE:
+            return "read a battle " + at();
+        case SceneMove::NEXT:
+        case SceneMove::B:
+            //  Either press closes a line; nothing else answers one.
+            if (beat < scene.size() && scene[beat].line){
+                beat++;
+                beat_start = now + press;
+            }
+            break;
+        }
+        now += press;
+    }
+    return "never judged over: " + at() + ", " + judge.describe();
+}
+
+//  Plays the step's scene knob through TalkOver if it has one. Without, a
+//  scene may take us to another map (Mom walks us out, 00.04): with a
+//  dialogue open the stub scene plays it. Otherwise only a door fades.
+void SimStoryStepIO::settle(Button, const std::string& label, bool fade, const std::string&){
+    const auto scene = m_knobs.scenes.find(m_step);
+    if (scene != m_knobs.scenes.end()){
+        m_misses.fade_unseen = false;
+        m_sim.end_dialogue();
+        const std::string early = play_scene(scene->second, {.warp = fade});
+        if (!early.empty()){
+            m_route.note(label + ": talk-over " + early + ".", RouteNote::FAILURE);
+        }
+        return;
+    }
+    const bool scene_fades = m_sim.player().dialog && m_far_side();
+    if (fade && ((!m_sim.player().warped && !scene_fades) || m_misses.fade_unseen)){
+        m_route.note(label + ": no fade, so we are not where the step goes (map mismatch).", RouteNote::FAILURE);
+    }
+    m_misses.fade_unseen = false;
+    m_sim.end_dialogue();
+}
+
 //  A hold until something stops us. A door stops it at the fade, which
 //  fails the step; a fade missed lets the hold go on past the mouth (r81's
 //  timed walk south out of the Ravaged Path, onto Route 204's cliff).
@@ -445,6 +516,20 @@ Outcome SimExecutor::heal(RunState& state, const StoryStep& step){
         throw GridSimFailure{step.name + ": no door north of " + to_string(m_sim.player().pos)};
     });
     return Pokemon::outcome_ok();
+}
+
+//  The battle is not played. The speeches after it are, when the knobs
+//  script them, as the console's battle ends: confirm_battle_overworld()'s
+//  talk-over.
+Outcome SimExecutor::battle(RunState&, const StoryStep& step){
+    const auto scene = m_knobs.scenes.find(step.name);
+    if (scene != m_knobs.scenes.end()){
+        const std::string early = play_scene(scene->second, {});
+        if (!early.empty()){
+            return Pokemon::outcome_failed("talk_over", step.name + ": " + early);
+        }
+    }
+    return stub();
 }
 
 //  Why a walking step did not end where the table says, or "". A step

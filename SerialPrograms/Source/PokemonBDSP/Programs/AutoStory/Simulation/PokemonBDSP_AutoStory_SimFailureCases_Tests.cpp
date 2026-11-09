@@ -207,6 +207,75 @@ UnitTestResult wanderers_move(Logger& logger, const std::string& row){
     return failed.empty() ? UnitTestResult(true) : UnitTestResult(out);
 }
 
+//  Roark's badge speech after the battle: four lines, the fanfare's pause
+//  with no box, then the badge's and the TM's lines (lab-B 2026-10-31 09:45
+//  and 2026-11-08 15:06: "no box for a moment" read as the end, and the
+//  Potion's menu opened under his next line). Then a scene: someone walks
+//  off with no box for 6 s before the last line, as Rowan does in r23 (the
+//  walk is a model, not measured after Roark). Played on the talk-over the
+//  battle's end runs (confirm_battle_overworld()).
+UnitTestResult roark_badge_speech(Logger& logger){
+    const SimScene scene{
+        sim_line("Roark: the battle's last line"),
+        sim_line("Roark: you beat me"),
+        sim_line("Roark: the Coal Badge"),
+        sim_line("Received the Coal Badge"),
+        sim_pause("the badge's fanfare", 3000ms, false),
+        sim_line("Roark: the TM"),
+        sim_line("Roark: Stealth Rock"),
+        sim_pause("someone walks off", 6000ms, true),
+        sim_line("the last line"),
+    };
+    const std::string early = play_scene(scene, {});
+    logger.log("Roark's badge speech: " + (early.empty() ? std::string("over after the last line") : early));
+    return passes(early);
+}
+
+//  01.07: after the tag battle the screen fades back from the battle and
+//  the grunts run off before anyone speaks: a scene that opens with no box,
+//  6 s of people moving (Rowan's cutscene shape), then Rowan's and Dawn's
+//  lines, and Bebe walks over with hers. The lengths are a model: r80 saved
+//  over her lines.
+UnitTestResult grunts_run_off_before_rowan(Logger& logger){
+    SimWorldKnobs knobs;
+    knobs.scenes["galactic_grunts"] = {
+        sim_fade("back from the battle", 1000ms),
+        sim_pause("the grunts run off", 6000ms, true),
+        sim_line("Rowan"),
+        sim_line("Rowan"),
+        sim_line("Dawn"),
+        sim_pause("Bebe walks over", 5000ms, true),
+        sim_line("Bebe"),
+        sim_line("Bebe: the Pokemon Center's PC"),
+    };
+    return passes(run_case(logger, "01.07", "01.07", {.fade = {}, .banner = {}}, knobs));
+}
+
+//  00.03: Rowan's scene opens with no box: Rowan and Dawn walk back and
+//  stand a moment before his first line; after he leaves, Dawn's and
+//  Barry's lines, the fade home, and Mom walks over before she speaks
+//  (r23, r24, r31). The scene changes map, so only the quiet after the
+//  fade counts.
+UnitTestResult rowans_scene_opens_with_no_box(Logger& logger){
+    SimWorldKnobs knobs;
+    knobs.scenes["rowan_and_dawn"] = {
+        sim_pause("Rowan and Dawn walk back", 7000ms, true),
+        sim_pause("they stand a moment", 3000ms, false),
+        sim_line("Rowan"),
+        sim_line("Rowan"),
+        sim_pause("Rowan leaves", 6000ms, true),
+        sim_pause("Dawn and Barry stand", 3000ms, false),
+        sim_line("Dawn"),
+        sim_line("Barry"),
+        sim_fade("the fade home", 1500ms),
+        sim_pause("home, still", 4000ms, false),
+        sim_pause("Mom walks over", 5000ms, true),
+        sim_line("Mom: the Running Shoes"),
+        sim_line("Mom"),
+    };
+    return passes(run_case(logger, "00.03", "00.03", {.fade = {}, .banner = {}}, knobs));
+}
+
 struct FailureCaseInput{
     std::string name;
     std::function<UnitTestResult(Logger&)> body;
@@ -280,6 +349,9 @@ const FailureCase AUTO_STORY_FAILURE_CASES[] = {
     {.input = {"01.08 with Route 204's youngster wandering (12..14, 2)", [](Logger& logger){
         return wanderers_move(logger, "01.08");
     }}, .expectation = {}},
+    {.input = {"01.04 Roark's badge speech: the fanfare's pause, then a scene", roark_badge_speech}, .expectation = {}},
+    {.input = {"01.07 after the tag battle the grunts run off before anyone speaks", grunts_run_off_before_rowan}, .expectation = {}},
+    {.input = {"00.03 Rowan's scene opens with no box and fades home", rowans_scene_opens_with_no_box}, .expectation = {}},
 };
 
 void add_tests_AutoStory_SimFailureCases(UnitTestDatabase& database){

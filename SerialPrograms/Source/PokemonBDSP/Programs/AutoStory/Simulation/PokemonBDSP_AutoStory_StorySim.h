@@ -25,6 +25,7 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/ImageTools/ImageStats.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
+#include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_TalkOver.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryExecutor.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryStepIO.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryTable.h"
@@ -92,6 +93,31 @@ struct SimSlide{
     bool banner_up = false;
 };
 
+//  One beat of a scripted scene: a line, up until a press, or `length` of
+//  screen with no box, `overworld` or not (a battle's end, a fade),
+//  `moving` (someone walking, the camera panning) or still, faded as `fade`.
+struct SimBeat{
+    std::string what;
+    bool line = false;
+    Milliseconds length = Milliseconds(0);
+    bool overworld = true;
+    bool moving = false;
+    WarpFade fade = WarpFade::NONE;
+};
+//  A line, up until a press.
+SimBeat sim_line(std::string what);
+//  `length` of overworld with no box, someone moving or not.
+SimBeat sim_pause(std::string what, Milliseconds length, bool moving);
+//  `length` of a fade, not the overworld.
+SimBeat sim_fade(std::string what, Milliseconds length, WarpFade fade = WarpFade::BLACK);
+//  A talk or a scene as the screen shows it, beat by beat; the quiet
+//  overworld after the last beat.
+using SimScene = std::vector<SimBeat>;
+//  Plays `scene` against the program's TalkOver with `rule`, a look per
+//  press, as talk_over() takes them: "" if it is judged over after the last
+//  beat, else when it was judged over early, or that it never was.
+std::string play_scene(const SimScene& scene, const TalkOverRule& rule);
+
 //  What the console showed that the plain simulation leaves out, each off
 //  unless set. All of it is deterministic: wanderers walk from `wander_seed`.
 struct SimWorldKnobs{
@@ -107,6 +133,9 @@ struct SimWorldKnobs{
     std::optional<uint64_t> wander_seed = std::nullopt;
     //  How long after the A press a talk's first line shows, by step name.
     std::map<std::string, Milliseconds> first_line = {};
+    //  The scene a step's talk-over plays, by step name: a scene's or a
+    //  door's settle(), or the speeches after a battle step's battle.
+    std::map<std::string, SimScene> scenes = {};
 };
 
 //  The walker's RouteIO on the story simulation, with SimWorldKnobs' slides
@@ -202,6 +231,7 @@ public:
         , m_misses(misses)
         , m_knobs(knobs)
         , m_far_side(std::move(far_side))
+        , m_step(step)
     {}
 
     virtual RouteIO& route() override{
@@ -231,20 +261,12 @@ public:
         m_misses.fade_unseen = true;
         return {.banner = !banner.empty() && !banner_missed() ? banner : ""};
     }
-    //  A scene may take us to another map (Mom walks us out, 00.04): with a
-    //  dialogue open the stub scene plays it. Otherwise only a door fades.
     //  A fade missed on the way in stays missed: it was over before settle()
     //  looked, which then fails as it does on the console after 120 s. The
     //  run before looked for the banner (run_into_door()), so settle() sees
-    //  none here.
-    virtual void settle(Button, const std::string& label, bool fade, const std::string&) override{
-        const bool scene_fades = m_sim.player().dialog && m_far_side();
-        if (fade && ((!m_sim.player().warped && !scene_fades) || m_misses.fade_unseen)){
-            m_route.note(label + ": no fade, so we are not where the step goes (map mismatch).", RouteNote::FAILURE);
-        }
-        m_misses.fade_unseen = false;
-        m_sim.end_dialogue();
-    }
+    //  none here. With a scene in SimWorldKnobs::scenes, the program's
+    //  TalkOver plays it instead.
+    virtual void settle(Button, const std::string& label, bool fade, const std::string&) override;
     virtual std::optional<size_t> tap_to_banner(Pokemon::Direction direction, const std::string& map, size_t max_taps) override;
 
 private:
@@ -275,6 +297,7 @@ private:
     SimMisses& m_misses;
     const SimWorldKnobs& m_knobs;
     std::function<bool()> m_far_side;
+    const std::string& m_step;
 };
 
 //  A scene's trigger the simulation fires from row `row` on, once the step
@@ -340,7 +363,7 @@ protected:
     virtual Pokemon::Outcome new_game(Pokemon::RunState&, const Pokemon::StoryStep&) override{ return stub(); }
     virtual Pokemon::Outcome options(Pokemon::RunState&, const Pokemon::StoryStep&) override{ return stub(); }
     virtual Pokemon::Outcome answer(Pokemon::RunState&, const Pokemon::StoryStep&) override{ return stub(); }
-    virtual Pokemon::Outcome battle(Pokemon::RunState&, const Pokemon::StoryStep&) override{ return stub(); }
+    virtual Pokemon::Outcome battle(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
     virtual Pokemon::Outcome train(Pokemon::RunState&, const Pokemon::StoryStep&) override{ return stub(); }
     virtual Pokemon::Outcome shop(Pokemon::RunState&, const Pokemon::StoryStep&) override{ return stub(); }
     virtual Pokemon::Outcome save(Pokemon::RunState&, const Pokemon::StoryStep&) override{ return stub(); }
