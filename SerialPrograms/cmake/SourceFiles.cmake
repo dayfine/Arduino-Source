@@ -1503,6 +1503,9 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_ScreenEvents.cpp
     Source/Pokemon/AutoStory/Pokemon_ScreenEvents.h
     Source/Pokemon/AutoStory/Pokemon_ScreenEvents_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryActions.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryActions.h
+    Source/Pokemon/AutoStory/Pokemon_StoryActions_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryEvents.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryEvents.h
     Source/Pokemon/AutoStory/Pokemon_StoryEvents_Tests.cpp
@@ -1512,6 +1515,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_AuthoredCheckpointJson.cpp
     Source/Pokemon/AutoStory/Pokemon_AuthoredCheckpointJson.h
     Source/Pokemon/AutoStory/Pokemon_AuthoredCheckpointJson_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryVariant.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryVariant.h
     Source/Pokemon/AutoStory/Pokemon_StoryStepJson.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryStepJson.h
     Source/Pokemon/AutoStory/Pokemon_StoryStepJson_Tests.cpp
@@ -1917,6 +1922,9 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStorySimulation_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStorySummary.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStorySummary.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryStepTable.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryStepTable.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryStepTable_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryExport.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryExport.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryExport_Tests.cpp
