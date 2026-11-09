@@ -74,6 +74,8 @@ private:
     StarterRngPlanOptions RNG_PLAN;
     EventNotificationOption NOTIFICATION_SHINY;
     EventNotificationOption NOTIFICATION_STATUS_UPDATE;
+    //  The save loaded was made by hand: keep the screen as its start frame.
+    BooleanCheckBoxOption KEEP_START_FRAME;
     EventNotificationsOption NOTIFICATIONS;
 };
 
