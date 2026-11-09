@@ -24,9 +24,12 @@
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/ImageTools/ImageStats.h"
+#include "Pokemon/AutoStory/Pokemon_StoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
 #include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_TalkOver.h"
+#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryActions.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryExecutor.h"
+#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryStepIO.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryTable.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryWalkSteps.h"
@@ -204,11 +207,13 @@ struct SimRun{
     std::string failed_step;
     //  Walking steps that end where nothing says, as "row step".
     std::vector<std::string> unchecked;
-    //  Each row run, with the fades and banners looked for before it.
+    //  Each row run, with the fades and banners looked for before it, and
+    //  its steps the simulation did not play (stub()), in order.
     struct RowStart{
         std::string row;
         size_t fades;
         size_t banners;
+        std::vector<std::string> stubbed = {};
     };
     std::vector<RowStart> rows;
     //  Where the player stood after the last step, if placed.
@@ -324,16 +329,22 @@ std::vector<VarState> story_vars();
 //  The maps' coord events whose story variable holds, as triggers.
 std::vector<RowTrigger> story_triggers();
 
-//  The program's walking steps on the simulation, the rest stubbed.
-class SimExecutor : public Pokemon::StoryStepExecutor{
+//  The program's walking steps on the simulation, the rest stubbed: the
+//  story's action table (story_action_table()), its rows that need the
+//  console bound to the stand-ins below.
+class SimExecutor : public Pokemon::TableExecutor{
 public:
+    //  The table and the guard are members, built after the base: it only
+    //  keeps references to them until a step runs.
     explicit SimExecutor(Logger& logger, SimMisses misses = {}, SimWorldKnobs knobs = {})
-        : m_logger(logger)
+        : Pokemon::TableExecutor(m_table, m_guard)
+        , m_logger(logger)
         , m_misses(misses)
         , m_knobs(std::move(knobs))
         , m_sim({}, {0, 0}, Pokemon::Direction::NORTH, false)
         , m_io(m_sim, m_notes, m_misses, m_knobs, m_step, [this]{ return cross(); }, [this](const Pokemon::Pose& far){ cross_to(far); })
         , m_walks(m_io)
+        , m_table(story_action_table(m_walks, sim_actions()))
     {}
 
     const SimMisses& misses() const{
@@ -341,6 +352,10 @@ public:
     }
     const SimRun& result() const{
         return m_result;
+    }
+    //  The story's actions as the simulation binds them.
+    const Pokemon::StoryActionTable& actions() const{
+        return m_table;
     }
     virtual void begin_attempt(const Pokemon::StoryCheckpoint& data) override{
         m_row = data.id;
@@ -354,11 +369,6 @@ public:
     virtual Pokemon::Outcome run(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
 
 protected:
-    virtual Pokemon::Outcome route(Pokemon::RunState& state, const Pokemon::StoryStep& step) override{ return m_walks.route(state, step); }
-    virtual Pokemon::Outcome legs(Pokemon::RunState& state, const Pokemon::StoryStep& step) override{ return m_walks.legs(state, step); }
-    virtual Pokemon::Outcome step(Pokemon::RunState& state, const Pokemon::StoryStep& step) override{ return m_walks.step(state, step); }
-    virtual Pokemon::Outcome talk(Pokemon::RunState& state, const Pokemon::StoryStep& step) override{ return m_walks.talk(state, step); }
-    virtual Pokemon::Outcome mash(Pokemon::RunState& state, const Pokemon::StoryStep& step) override{ return m_walks.mash(state, step); }
     virtual Pokemon::Outcome heal(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
     virtual Pokemon::Outcome new_game(Pokemon::RunState&, const Pokemon::StoryStep&) override{ return stub(); }
     virtual Pokemon::Outcome options(Pokemon::RunState&, const Pokemon::StoryStep&) override{ return stub(); }
@@ -370,11 +380,18 @@ protected:
     virtual Pokemon::Outcome game(Pokemon::RunState&, const Pokemon::StoryStep&) override{ return stub(); }
 
 private:
+    //  A failed step fails the run as it threw: the simulation has no save
+    //  to reload.
+    class SimStepGuard : public Pokemon::StepGuard{
+    public:
+        virtual bool stops_on_failure(const Pokemon::StoryStep&) const override{
+            return true;
+        }
+    };
+
     //  A step the simulation does not play: its dialogue opened and closed.
-    Pokemon::Outcome stub(){
-        m_sim.end_dialogue();
-        return Pokemon::outcome_ok();
-    }
+    Pokemon::Outcome stub();
+    StoryBoundActions sim_actions();
     const StoryWorld* sim_world(const std::string& map) const;
     SimWorld setup(const StoryWorld* world) const;
     void arm(const std::string& after);
@@ -395,6 +412,8 @@ private:
     GridSim m_sim;
     SimStoryStepIO m_io;
     StoryWalkSteps m_walks;
+    SimStepGuard m_guard;
+    Pokemon::StoryActionTable m_table;
     //  The planner's worlds with sim_people() on them, by world and who.
     mutable std::map<std::pair<const StoryWorld*, std::string>, std::unique_ptr<StoryWorld>> m_peopled;
     //  The steps of this row that have run.
@@ -429,6 +448,9 @@ std::vector<StoryCheckpoint> table_with(const std::string& row, const Pokemon::S
 bool ends_on(const SimRun& run, const Pokemon::Pose& pose);
 //  Where the run ended, described; "nowhere" if never placed.
 std::string end_of(const SimRun& run);
+//  Each row's steps the simulation did not play, a line a row:
+//  "01.03: 2 stubbed: save, gym_until_roark_beaten".
+std::string stub_report(const SimRun& run);
 
 
 
