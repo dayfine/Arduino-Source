@@ -307,8 +307,6 @@ protected:
 private:
     //  How the console does `id`.
     Pokemon::StoryAction console_action(StoryActionId id);
-    //  How the console clears each kind of interrupt between steps.
-    StepInterruptActions console_interrupt_actions();
 
     StoryEnv& m_env;
     StartMenu m_menu = StartMenu::FULL;
