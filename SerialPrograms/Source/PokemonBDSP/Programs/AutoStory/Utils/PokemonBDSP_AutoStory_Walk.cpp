@@ -9,6 +9,7 @@
 #include <algorithm>
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
+#include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTools/ImageDiff.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
@@ -21,6 +22,7 @@
 #include "PokemonBDSP/Inference/PokemonBDSP_TransitionWatchers.h"
 #include "PokemonBDSP/Inference/Battles/PokemonBDSP_BattleMenuDetector.h"
 #include "PokemonBDSP_AutoStory_Indoors.h"
+#include "PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP_AutoStory_Walk.h"
 
 namespace PokemonAutomation{
@@ -40,6 +42,7 @@ const char* walk_stop_name(WalkStop stop){
     }
     return "?";
 }
+
 
 double walk_screen_change(const ImageViewRGB32& before, const ImageViewRGB32& after){
     //  Small copies: only the whole-view scroll matters, not detail.
@@ -143,7 +146,7 @@ DpadPosition dpad_toward(JoystickPosition stick){
 bool black_screen_was_battle(VideoStream& stream, ProControllerContext& context){
     BattleMenuWatcher battle_menu(BattleType::STANDARD, COLOR_YELLOW);
     BattleDialogWatcher battle_dialog(COLOR_YELLOW);
-    BlackScreenWatcher gone(COLOR_RED, {0.1, 0.1, 0.8, 0.8}, 100, 10,
+    BlackScreenWatcher gone(COLOR_RED, {0.1, 0.1, 0.8, 0.8}, FADE_MAX_DARK_SUM, FADE_MAX_STDDEV_SUM,
         BlackScreenWatcher::FinderType::GONE, 500ms);
     const int ret = wait_until(stream, context, 10s, {{battle_menu}, {battle_dialog}, {gone}});
     if (ret == 2){
@@ -158,11 +161,15 @@ bool black_screen_was_battle(VideoStream& stream, ProControllerContext& context)
 //  A grass encounter opens with a leaf animation, neither white nor black, and
 //  shows the battle's text box a few seconds later. After a change of the
 //  whole screen that walking cannot make, wait for the battle to show.
-bool battle_follows(VideoStream& stream, ProControllerContext& context){
+bool battle_follows(VideoStream& stream, ProControllerContext& context, Milliseconds wait = 5000ms){
     BattleMenuWatcher battle_menu(BattleType::STANDARD, COLOR_YELLOW);
     BattleDialogWatcher battle_dialog(COLOR_YELLOW);
-    return wait_until(stream, context, 5s, {{battle_menu}, {battle_dialog}}) >= 0;
+    return wait_until(stream, context, wait, {{battle_menu}, {battle_dialog}}) >= 0;
 }
+
+//  After a white flash: an encounter's, if its battle shows; else a cave
+//  exit's white fade (#268 slice 3), which the walk once fled as a battle.
+constexpr Milliseconds WHITE_FLASH_BATTLE_WAIT = 8000ms;
 
 } // namespace
 
@@ -313,19 +320,24 @@ public:
     }
 
 private:
+    //  The banner watcher only looks (m_banner keeps the first read); a
+    //  fade ends the chunk: dark (fade_of()'s uniform test, a cave's dim
+    //  fade too) or the white of an encounter or a cave exit.
     int hold(Milliseconds chunk){
         WhiteScreenOverWatcher encounter_flash(COLOR_YELLOW, {0.1, 0.1, 0.8, 0.8});
-        BlackScreenWatcher black(COLOR_RED);
+        BlackScreenWatcher black(COLOR_RED, {0.1, 0.1, 0.8, 0.8}, FADE_MAX_DARK_SUM, FADE_MAX_STDDEV_SUM);
         BattleMenuWatcher battle_menu(BattleType::STANDARD, COLOR_YELLOW);
         ShortDialogWatcher dialog(COLOR_YELLOW);
         BattleDialogWatcher battle_dialog(COLOR_YELLOW);
-        return run_until<ProControllerContext>(
+        const int ret = run_until<ProControllerContext>(
             m_stream, m_context,
             [&](ProControllerContext& context){
                 press(context, chunk);
             },
-            {{encounter_flash}, {black}, {battle_menu}, {dialog}, {battle_dialog}}
+            {{encounter_flash}, {black}, {battle_menu}, {dialog}, {battle_dialog}, {m_banner}}
         );
+        m_result.warp.banner = m_banner.seen();
+        return ret;
     }
 
     void press(ProControllerContext& context, Milliseconds chunk) const{
@@ -349,10 +361,13 @@ private:
     //  The watchers: 0 the encounter flash, 1 black, 2 the battle menu, 3 a
     //  dialogue, 4 the battle's text box.
     ChunkVerdict after_watchers(int ret){
-        bool battle = ret == 0 || ret == 2 || ret == 4;
-        if (ret == 1){
-            battle = black_screen_was_battle(m_stream, m_context);
+        bool battle = ret == 2 || ret == 4;
+        if (ret == 0 || ret == 1){
+            battle = ret == 0
+                ? battle_follows(m_stream, m_context, WHITE_FLASH_BATTLE_WAIT)
+                : black_screen_was_battle(m_stream, m_context);
             if (!battle){
+                m_result.warp.fade = ret == 0 ? WarpFade::WHITE : WarpFade::BLACK;
                 return {ChunkNext::STOP, WalkStop::TRANSITION};
             }
         }
@@ -361,7 +376,7 @@ private:
             return {ChunkNext::STOP, WalkStop::DIALOG};
         }
         if (battle){
-            escape_battle("wild battle; running.");
+            escape_battle("wild battle; running.", BattleMovement::NONE);
             return {ChunkNext::NEXT_CHUNK, WalkStop::LIMIT};
         }
         if (ret == 3){
@@ -381,7 +396,7 @@ private:
             return {ChunkNext::STOP, WalkStop::DIALOG};
         }
         if (change > WALK_SCENE_CHANGE && battle_follows(m_stream, m_context)){
-            escape_battle("wild battle (leaf opening); running.");
+            escape_battle("wild battle (leaf opening); running.", BattleMovement::STEP_MOVED);
             return {ChunkNext::NEXT_CHUNK, WalkStop::LIMIT};
         }
         //  Two still chunks in a row, so one dropped frame does not stop us. A
@@ -424,9 +439,10 @@ private:
             : WALK_BLOCKED_CHANGE;
     }
 
-    void escape_battle(const std::string& what){
+    enum class BattleMovement{ NONE, STEP_MOVED };
+    void escape_battle(const std::string& what, BattleMovement movement){
         m_result.wild_battles++;
-        if (m_chunks <= 1){
+        if (m_chunks <= 1 && movement == BattleMovement::NONE){
             m_result.origin = WalkOrigin::MAY_PRECEDE_LEG;
         }
         if (m_spec.input == WalkInput::TAPS){
@@ -449,7 +465,9 @@ private:
         ){
             m_result.wild_battles++;
             late_battle = true;
-            m_result.origin = WalkOrigin::MAY_PRECEDE_LEG;
+            if (m_chunks <= 1 && m_result.moved_chunks <= 1){
+                m_result.origin = WalkOrigin::MAY_PRECEDE_LEG;
+            }
         }
         //  When the final tap of a TAPS leg lagged during frame drops at its
         //  800ms check (m_unchanged == 1 at WalkStop::LIMIT), it finishes
@@ -463,6 +481,9 @@ private:
             if (!still_chunk(change)){
                 m_result.moved_chunks++;
             }
+        }
+        if (m_result.moved_chunks > 1){
+            m_result.origin = WalkOrigin::CURRENT_LEG;
         }
         m_stream.log("[Walk] " + m_spec.label + ": " + walk_stop_name(stop) + " after " +
             std::to_string(m_result.walked.count()) + "ms, " +
@@ -482,6 +503,7 @@ private:
     size_t m_unchanged = 0;
     size_t m_chunks = 0;
     double m_largest = 0;
+    LocationBannerWatcher m_banner;
 };
 
 WalkResult walk_until_spec(
@@ -547,7 +569,7 @@ WalkResult walk_for(
     WalkResult result{WalkStop::LIMIT, duration, 0};
     context.wait_for_all_requests();
     WhiteScreenOverWatcher encounter_flash(COLOR_YELLOW, {0.1, 0.1, 0.8, 0.8});
-    BlackScreenWatcher black(COLOR_RED);
+    BlackScreenWatcher black(COLOR_RED, {0.1, 0.1, 0.8, 0.8}, FADE_MAX_DARK_SUM, FADE_MAX_STDDEV_SUM);
     BattleMenuWatcher battle_menu(BattleType::STANDARD, COLOR_YELLOW);
     ShortDialogWatcher dialog(COLOR_YELLOW);
     BattleDialogWatcher battle_dialog(COLOR_YELLOW);
@@ -567,6 +589,7 @@ WalkResult walk_for(
         battle = black_screen_was_battle(stream, context);
         if (!battle){
             result.stop = WalkStop::TRANSITION;
+            result.warp.fade = WarpFade::BLACK;
         }
     }
     if (battle){

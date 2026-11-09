@@ -49,6 +49,7 @@ std::string to_string(const TileLeg& leg);
 struct TilePlanCosts{
     int per_tile = 1;
     int per_grass_tile = 4;     //  extra for each tall-grass tile entered
+    int per_wander_tile = 3;    //  extra for each wander hazard tile entered
     int per_leg = 8;
     int leg_not_at_wall = 50;   //  extra for a leg that stops in the open
 };
@@ -128,8 +129,13 @@ struct RobustPlanCosts : TilePlanCosts{
 //  Cheapest legs that take the player from any of the tiles in `from` to tiles
 //  that are all `goal`, even if every open leg ends up to `open_error` tiles
 //  off: the walls of later legs must bring the possible positions together.
-//  Legs that would leave the maps or enter a door are not used. Nothing if no
-//  such plan exists, or none is found within `costs.max_searched` sets.
+//  Legs that would leave the maps or enter a door are not used, nor legs that
+//  run along a zone where someone wanders: two tiles of it in a row, the
+//  leg's start among them. Crossing a zone (one tile of it) costs
+//  `per_wander_tile`. On lab-B (2026-11-08, 01.08) Route 204's youngster,
+//  who wanders (12, 2) to (14, 2), stopped the leg "west 2 (to wall)" from
+//  (13, 2) twice. Nothing if no such plan exists, or none is found within
+//  `costs.max_searched` sets.
 std::optional<std::vector<PlannedLeg>> plan_robust_route(
     const StoryWorld& world,
     const std::vector<Pokemon::TilePos>& from, const std::function<bool(const Pokemon::TilePos&)>& goal,
@@ -140,6 +146,16 @@ std::optional<std::vector<PlannedLeg>> plan_robust_route(
     const StoryWorld& world,
     const Pokemon::TilePos& from, const Pokemon::TilePos& to,
     const RobustPlanCosts& costs = RobustPlanCosts()
+);
+
+//  What plan_robust_route() charges for walking `legs` from any of `from`,
+//  each leg from the tiles the one before may end on. A leg it would not
+//  plan (along a wander zone, or off the maps) costs its tiles and legs
+//  without grass or wander tiles.
+long long robust_route_cost(
+    const StoryWorld& world,
+    const std::vector<Pokemon::TilePos>& from, const std::vector<PlannedLeg>& legs,
+    const RobustPlanCosts& costs
 );
 
 
