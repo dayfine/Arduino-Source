@@ -1,0 +1,110 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "00.35",
+    "title": "The POKE FLUTE, Fly to Celadon, Route 16's Snorlax, Cycling Road's Rare Candy and Max Elixir, Fuchsia",
+    "start": {"certainty": "tile", "map": "LavenderTown_VolunteerPokemonHouse", "where": {"facing": "north", "kind": "tiles", "tiles": [[3, 4]]}},
+    "events": [
+      {
+        "id": "talk_fuji_house",
+        "kind": "talk",
+        "why": "Mr. Fuji, again"
+      },
+      {
+        "id": "poke_flute",
+        "kind": "scene",
+        "why": "the POKE FLUTE (pokeguy 1:11:17)"
+      },
+      {
+        "id": "fly_celadon",
+        "kind": "game_action",
+        "declared_after": {"certainty": "tile", "map": "CeladonCity", "where": {"facing": "south", "kind": "tiles", "tiles": [[48, 12]]}},
+        "variant": "fly CeladonCity",
+        "why": "Fly to Celadon"
+      },
+      {
+        "id": "below_route16_tree_2",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "Route16", "where": {"facing": "north", "kind": "tiles", "tiles": [[41, 12]]}},
+        "variant": "run",
+        "why": "west out of the city, below the tree (41, 11), grown back"
+      },
+      {
+        "id": "cut_route16_tree_2",
+        "kind": "game_action",
+        "declared_after": {"certainty": "tile", "map": "Route16", "where": {"facing": "north", "kind": "tiles", "tiles": [[41, 11]]}},
+        "variant": "cut_tree",
+        "why": "the tree again"
+      },
+      {
+        "id": "beside_snorlax",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "Route16", "where": {"facing": "west", "kind": "tiles", "tiles": [[32, 13]]}},
+        "variant": "run",
+        "why": "west to beside the Snorlax (31, 13)"
+      },
+      {
+        "id": "snorlax_flute",
+        "kind": "talk",
+        "why": "the POKE FLUTE wakes it: YES"
+      },
+      {
+        "id": "flee_snorlax",
+        "kind": "game_action",
+        "variant": "flee_wild",
+        "why": "Snorlax Lv30: RUN (events.json route16-snorlax \"fled\"); it leaves"
+      },
+      {
+        "id": "cycling_road_gate",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "Route16", "where": {"facing": "west", "kind": "tiles", "tiles": [[28, 13]]}},
+        "why": "west to the gate (27, 13), onto the Bicycle"
+      },
+      {
+        "id": "cycling_road_rare_candy",
+        "kind": "route",
+        "target": {"certainty": "unknown", "map": "Route17", "where": {"kind": "unknown"}},
+        "variant": "run",
+        "why": "the gate, then down Cycling Road to the hidden Rare Candy"
+      },
+      {
+        "id": "hidden_rare_candy",
+        "kind": "talk",
+        "why": "the hidden Rare Candy (pokeguy 1:12:43)"
+      },
+      {
+        "id": "cycling_road_max_elixir",
+        "kind": "route",
+        "target": {"certainty": "unknown", "map": "Route17", "where": {"kind": "unknown"}},
+        "variant": "run",
+        "why": "on down to the hidden Max Elixir"
+      },
+      {
+        "id": "hidden_max_elixir",
+        "kind": "talk",
+        "why": "the hidden Max Elixir"
+      },
+      {
+        "id": "fuchsia_below_center",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "FuchsiaCity", "where": {"facing": "north", "kind": "tiles", "tiles": [[25, 32]]}},
+        "variant": "run",
+        "why": "down the road, east over Route 18 into Fuchsia, to below the Center door"
+      },
+      {
+        "id": "fuchsia_nurse",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "FuchsiaCity_PokemonCenter_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 4]]}},
+        "variant": "run",
+        "why": "to the nurse"
+      },
+      {
+        "id": "heal_fuchsia",
+        "kind": "heal",
+        "why": "the nurse heals the party"
+      }
+    ]
+  },
+  "execution": {"menu": "full"}
+}

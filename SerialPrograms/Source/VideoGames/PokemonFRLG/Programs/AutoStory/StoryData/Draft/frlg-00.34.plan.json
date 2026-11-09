@@ -1,0 +1,134 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "00.34",
+    "title": "Pokemon Tower 3F to 7F: Tammy, Jennifer, Emilia, the Marowak, three Grunts, Mr. Fuji",
+    "start": {"certainty": "tile", "map": "PokemonTower_2F", "where": {"facing": "west", "kind": "tiles", "tiles": [[4, 10]]}},
+    "events": [
+      {
+        "id": "tower_5f_tammy",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "PokemonTower_5F", "where": {"facing": "west", "kind": "tiles", "tiles": [[17, 7]]}},
+        "why": "up 3F and 4F round the Channelers' lines, onto 5F, east to two tiles from Tammy (19, 7)"
+      },
+      {
+        "id": "talk_tammy",
+        "kind": "talk",
+        "why": "Tammy"
+      },
+      {
+        "id": "tower-tammy",
+        "kind": "battle",
+        "declared_after": {"certainty": "tile", "map": "PokemonTower_5F", "where": {"facing": "east", "kind": "tiles", "tiles": [[17, 7]]}},
+        "why": "Channeler Tammy (TRAINER_CHANNELER_TAMMY): Haunter Lv23"
+      },
+      {
+        "id": "tower_6f_jennifer",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "PokemonTower_6F", "where": {"facing": "east", "kind": "tiles", "tiles": [[16, 6]]}},
+        "why": "up to 6F, in Jennifer's line (15..17, 6)"
+      },
+      {
+        "id": "tower-jennifer",
+        "kind": "battle",
+        "declared_after": {"certainty": "tile", "map": "PokemonTower_6F", "where": {"facing": "east", "kind": "tiles", "tiles": [[16, 6]]}},
+        "why": "Channeler Jennifer (TRAINER_CHANNELER_JENNIFER): Gastly Lv24"
+      },
+      {
+        "id": "above_6f_rare_candy",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "PokemonTower_6F", "where": {"facing": "south", "kind": "tiles", "tiles": [[5, 14]]}},
+        "why": "west and south to above the Rare Candy (5, 15)"
+      },
+      {
+        "id": "tower_rare_candy",
+        "kind": "talk",
+        "why": "pick up the Rare Candy (kept for Erika)"
+      },
+      {
+        "id": "emilia_line",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "PokemonTower_6F", "where": {"facing": "north", "kind": "tiles", "tiles": [[9, 8]]}},
+        "why": "up to Emilia's line (9, 7..9)"
+      },
+      {
+        "id": "tower-emilia",
+        "kind": "battle",
+        "declared_after": {"certainty": "tile", "map": "PokemonTower_6F", "where": {"facing": "north", "kind": "tiles", "tiles": [[9, 8]]}},
+        "why": "Channeler Emilia (TRAINER_CHANNELER_EMILIA): Gastly Lv24"
+      },
+      {
+        "id": "marowak_tile",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "PokemonTower_6F", "where": {"facing": "south", "kind": "tiles", "tiles": [[11, 14]]}},
+        "why": "to the Marowak's scene above the stairs (11, 16)"
+      },
+      {
+        "id": "marowak_ghost",
+        "kind": "scene",
+        "why": "the ghost; the SILPH SCOPE shows Marowak"
+      },
+      {
+        "id": "tower-marowak",
+        "kind": "battle",
+        "declared_after": {"certainty": "tile", "map": "PokemonTower_6F", "where": {"facing": "south", "kind": "tiles", "tiles": [[11, 14]]}},
+        "why": "scripted Marowak Lv30 (not a pokeguy-trainers.json id: events.json \"tower-marowak\"); it can't be caught"
+      },
+      {
+        "id": "tower_7f_grunt1",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "PokemonTower_7F", "where": {"facing": "west", "kind": "tiles", "tiles": [[11, 10]]}},
+        "why": "up to 7F, into Grunt 1's line (10..13, 10)"
+      },
+      {
+        "id": "tower-rocket1",
+        "kind": "battle",
+        "declared_after": {"certainty": "tile", "map": "PokemonTower_7F", "where": {"facing": "west", "kind": "tiles", "tiles": [[11, 10]]}},
+        "why": "Rocket Grunt (TRAINER_TEAM_ROCKET_GRUNT_19): Zubat, Zubat, Golbat Lv25"
+      },
+      {
+        "id": "tower_7f_grunt2",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "PokemonTower_7F", "where": {"facing": "east", "kind": "tiles", "tiles": [[11, 8]]}},
+        "why": "into Grunt 2's line (9..12, 8)"
+      },
+      {
+        "id": "tower-rocket2",
+        "kind": "battle",
+        "declared_after": {"certainty": "tile", "map": "PokemonTower_7F", "where": {"facing": "east", "kind": "tiles", "tiles": [[11, 8]]}},
+        "why": "Rocket Grunt (TRAINER_TEAM_ROCKET_GRUNT_20): Koffing, Drowzee Lv26"
+      },
+      {
+        "id": "tower_7f_grunt3",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "PokemonTower_7F", "where": {"facing": "west", "kind": "tiles", "tiles": [[11, 6]]}},
+        "why": "into Grunt 3's line (10..13, 6)"
+      },
+      {
+        "id": "tower-rocket3",
+        "kind": "battle",
+        "declared_after": {"certainty": "tile", "map": "PokemonTower_7F", "where": {"facing": "west", "kind": "tiles", "tiles": [[11, 6]]}},
+        "why": "Rocket Grunt (TRAINER_TEAM_ROCKET_GRUNT_21): Zubat, Zubat, Rattata, Raticate Lv23"
+      },
+      {
+        "id": "below_fuji",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "PokemonTower_7F", "where": {"facing": "north", "kind": "tiles", "tiles": [[11, 5]]}},
+        "why": "below Mr. Fuji (11, 4)"
+      },
+      {
+        "id": "talk_fuji",
+        "kind": "talk",
+        "why": "Mr. Fuji: he takes the player to his house"
+      },
+      {
+        "id": "to_fuji_house",
+        "kind": "scene",
+        "declared_after": {"certainty": "tile", "map": "LavenderTown_VolunteerPokemonHouse", "where": {"facing": "north", "kind": "tiles", "tiles": [[3, 4]]}},
+        "why": "to the Volunteer Pokemon House"
+      }
+    ]
+  },
+  "execution": {"menu": "full"}
+}
