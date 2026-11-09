@@ -829,6 +829,7 @@ const AutoStorySimulationTestCase AUTO_STORY_SIMULATION_CASES[] = {
 
 void add_tests_AutoStorySimulation(UnitTestDatabase& database){
     add_tests_AutoStoryStepTable(database);
+    add_tests_AutoStoryStartFrames(database);
     for (const auto& scenario : AUTO_STORY_SIMULATION_CASES){
         database.add<Test_AutoStorySimulation>(scenario);
     }
