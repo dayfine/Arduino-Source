@@ -916,7 +916,6 @@ void quest_catch(
     BBQuests current_quest
 ){
     TargetAttemptRecorder recorder(console, current_quest, BBQ_OPTIONS.SAVE_TARGET_DIAGNOSTICS);
-    bool battle_menu_seen = false;
     EncounterWatcher encounter_watcher(console, COLOR_RED);
     bool battle_menu_seen = false;
 
@@ -941,7 +940,6 @@ void quest_catch(
                 recorder.checkpoint("battle-entry-timeout");
                 console.log("BBQ quest=" + BBQuests_enum_to_string(current_quest) + " event=battle_entry outcome=timeout");
                 log_bbq_snapshot(console, BBQuests_enum_to_string(current_quest) + "-battle-entry-timeout");
-            }
             }
         },
         {
