@@ -83,7 +83,8 @@ bool may_open_a_battle(const ScreenLook& look, const InterruptVerdict& verdict){
 InterruptVerdict settled_verdict(const StoryInterrupts& interrupts, StoryStepKind step, ScreenSettle& screen){
     ScreenLook look = interrupts.look(true);
     InterruptVerdict verdict = classify_interrupt(look.log, look.window, interrupts.knobs);
-    if (!interrupts.handlers.step_starts_on(step, InterruptKind::UNSETTLED)){
+    const bool home = look.log.showing().has(ScreenEvent::SWITCH_HOME_MENU);
+    if (!home && !interrupts.handlers.step_starts_on(step, InterruptKind::UNSETTLED)){
         for (size_t looks = 1; verdict.kind == InterruptKind::UNSETTLED; looks++){
             const size_t limit = may_open_a_battle(look, verdict) ? interrupts.max_opening_looks : interrupts.max_looks;
             if (looks >= limit){
@@ -119,8 +120,12 @@ ScreenSettle judge_settle(const ScreenLook& look){
     return out;
 }
 
+bool on_home_menu(const ScreenSettle& settle){
+    return settle.seen && settle.showing.has(ScreenEvent::SWITCH_HOME_MENU);
+}
+
 bool is_settled(const ScreenSettle& settle){
-    return settle.seen &&
+    return settle.seen && !on_home_menu(settle) &&
         settle.showing.has(ScreenEvent::PLAYER_CAN_MOVE) &&
         !settle.showing.any_of({ScreenEvent::DIALOG_BOX, ScreenEvent::BATTLE_STARTED}) &&
         fade_in(settle.showing) == WarpFade::NONE;
@@ -131,6 +136,9 @@ std::string describe(const ScreenSettle& settle){
         return "no frame seen";
     }
     const std::string quiet = std::format("quiet {:.1f} s", settle.quiet.count() / 1000.0);
+    if (on_home_menu(settle)){
+        return "Switch HOME menu (" + quiet + ")";
+    }
     if (is_settled(settle)){
         return "settled overworld (" + quiet + ")";
     }
@@ -141,6 +149,11 @@ std::string describe(const ScreenSettle& settle){
 InterruptCheck clear_story_interrupt(const StoryInterrupts& interrupts, RunState& state, const StoryStep& step){
     InterruptCheck out;
     out.verdict = settled_verdict(interrupts, step.kind, out.screen);
+    if (on_home_menu(out.screen)){
+        out.verdict = {};
+        out.outcome = outcome_game_not_running();
+        return out;
+    }
     const InterruptKind kind = out.verdict.kind;
     if (kind == InterruptKind::NONE){
         return out;
