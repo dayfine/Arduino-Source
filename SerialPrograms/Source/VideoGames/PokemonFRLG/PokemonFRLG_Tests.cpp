@@ -50,6 +50,7 @@
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryCapture.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryPcStorage.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRngLoop.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryStepTable.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryTable.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryExport_Tests.h"
 #include "Programs/RngManipulation/PokemonFRLG_GiftRngAttempts_Tests.h"
@@ -933,6 +934,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_OverworldSim(database);
     add_tests_PlayerFacingReader(database);
     add_tests_AutoStory(database);
+    add_tests_AutoStoryStepTable(database);
     add_tests_AutoStoryExport(database);
     add_tests_AutoStorySimulation(database);
     add_tests_AutoStoryItems(database);
