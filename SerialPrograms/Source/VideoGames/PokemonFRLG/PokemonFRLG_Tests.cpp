@@ -9,6 +9,7 @@
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonFramework/StaticGlobals.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryScreenEvents.h"
 #include "Inference/Box/PokemonFRLG_BoxCellOccupiedDetector.h"
 #include "Inference/Box/PokemonFRLG_BoxCellReader.h"
 #include "Inference/Box/PokemonFRLG_BoxGenderReader.h"
@@ -944,8 +945,8 @@ void add_tests(UnitTestDatabase& database){
     add_tests_NamingKeys(database);
     add_tests_NamingText(database);
     add_tests_RngManipulation(database);
+    add_tests_AutoStoryScreenEvents(database);
 }
-
 
 UnitTestResult check_against_golden_file(
     const std::string& image_path,
@@ -993,7 +994,6 @@ UnitTestResult check_against_golden_file(
     }
     return true;
 }
-
 
 }
 }
