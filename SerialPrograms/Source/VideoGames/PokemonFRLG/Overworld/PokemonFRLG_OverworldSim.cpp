@@ -10,6 +10,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "Pokemon/Navigation/Pokemon_LegWalker.h"
+#include "PokemonFRLG_OverworldLateBattle.h"
 #include "PokemonFRLG_OverworldReanchor.h"
 #include "PokemonFRLG_OverworldWalk.h"
 #include "PokemonFRLG_OverworldSim.h"
@@ -41,6 +42,50 @@ const char* sim_screen_name(SimScreen screen){
         return "a warp's fade";
     }
     return "?";
+}
+
+
+WallClock sim_wall_clock(Milliseconds time){
+    return WallClock() + time;
+}
+
+namespace{
+
+Pokemon::ScreenEvents observed_events(SimScreen screen){
+    switch (screen){
+    case SimScreen::MESSAGE:
+        return {Pokemon::ScreenEvent::DIALOG_BOX};
+    case SimScreen::BATTLE_WIPE:
+    case SimScreen::FADE:
+        return {Pokemon::ScreenEvent::FADE_BLACK};
+    case SimScreen::BATTLE_OPENING:
+    case SimScreen::BATTLE:
+        return {Pokemon::ScreenEvent::BATTLE_STARTED};
+    case SimScreen::OVERWORLD:
+    case SimScreen::START_MENU:
+    case SimScreen::BATTLE_FLASH:
+        break;
+    }
+    return {};
+}
+
+} // namespace
+
+Pokemon::ScreenEventLog screen_event_log(const SimState& state, Milliseconds from){
+    Pokemon::ScreenEventLog log;
+    SimScreen screen = state.shown.empty() ? state.screen : state.shown.front().screen;
+    size_t next = 0;
+    for (; next < state.shown.size() && state.shown[next].at <= from; next++){
+        screen = state.shown[next].screen;
+    }
+    Milliseconds at = from;
+    log.record(observed_events(screen), sim_wall_clock(at));
+    for (; next < state.shown.size(); next++){
+        at = std::max(at, state.shown[next].at);
+        log.record(observed_events(state.shown[next].screen), sim_wall_clock(at));
+    }
+    log.record(observed_events(state.screen), sim_wall_clock(std::max(at, state.time)));
+    return log;
 }
 
 
@@ -105,7 +150,7 @@ OverworldSim::OverworldSim(std::vector<MapData> maps, MapPosition start, Directi
     }
     m_player = PlayerState{start.point, elevation_at(map(), start.point), false};
     m_state.facing = facing;
-    m_state.screen = m_script.start_menu_open ? SimScreen::START_MENU : SimScreen::OVERWORLD;
+    show(m_script.start_menu_open ? SimScreen::START_MENU : SimScreen::OVERWORLD, m_now);
     update_view();
 }
 
@@ -135,11 +180,17 @@ void OverworldSim::schedule(Milliseconds at, SimScreen screen, bool unfreeze){
 
 void OverworldSim::advance_to(Milliseconds time){
     while (!m_pending.empty() && m_pending.front().at <= time){
-        m_state.screen = m_pending.front().screen;
+        show(m_pending.front().screen, m_pending.front().at);
         m_frozen = m_frozen && !m_pending.front().unfreeze;
         m_pending.erase(m_pending.begin());
     }
     m_now = std::max(m_now, time);
+    m_state.time = m_now;
+}
+
+void OverworldSim::show(SimScreen screen, Milliseconds at){
+    m_state.screen = screen;
+    m_state.shown.push_back(SimShown{at, screen});
 }
 
 
@@ -453,7 +504,7 @@ SimBattleEnd OverworldSim::handle_battle(SimBattleChoice choice){
         return SimBattleEnd::CANT_RUN;
     }
     advance_to(m_now + BATTLE_TIME);
-    m_state.screen = SimScreen::OVERWORLD;
+    show(SimScreen::OVERWORLD, m_now);
     m_frozen = false;
     m_battle_pending = false;
     if (m_trainer){
@@ -471,7 +522,7 @@ bool OverworldSim::close_message(){
         return false;
     }
     advance_to(m_now + MESSAGE_CLOSE);
-    m_state.screen = SimScreen::OVERWORLD;
+    show(SimScreen::OVERWORLD, m_now);
     if (!m_trainer_speaking){
         m_frozen = false;
         return false;
@@ -656,6 +707,7 @@ std::optional<WalkedTiles> OverworldSimWalker::walk_step(const RouteStep& step, 
     calls.name = [&](size_t index){ return ints[index].name; };
     calls.log = [&](const std::string& message){ m_log.push_back("Leg: " + message); };
     calls.fail = [&](const std::string& message){ fail(message); };
+    m_leg_start = m_sim.state().time;
     const Pokemon::LegResult result = Pokemon::walk_leg_with(leg, calls, MAX_INTERRUPTIONS_PER_LEG);
     if (result.stopped){
         return walked_near(step, result.tiles, TILE_TIME);
@@ -694,7 +746,24 @@ StepOutcome OverworldSimWalker::walk(const RouteStep& step, std::optional<Direct
         late = clear_unseen_battle(step);
     }
     const bool done = late == 0 || step.warps || step.action != RouteAction::WALK;
-    return StepOutcome{.end = done ? StepEnd::DONE : StepEnd::LATE, .walked = std::nullopt};
+    if (done){
+        return StepOutcome{};
+    }
+    return StepOutcome{.end = StepEnd::LATE, .walked = late_stop(step)};
+}
+
+//  For an open leg, place_late_stop() over what the sim showed since the
+//  leg's hold started.
+std::optional<WalkedTiles> OverworldSimWalker::late_stop(const RouteStep& step){
+    if (step.to_wall || !m_rules.place_late_battle){
+        return std::nullopt;
+    }
+    const WallClock start = sim_wall_clock(m_leg_start);
+    const LateStop stop = place_late_stop(
+        step, TILE_TIME, screen_event_log(m_sim.state(), m_leg_start), start, sim_wall_clock(m_sim.state().time)
+    );
+    m_log.push_back(late_stop_line(step, stop, start));
+    return stop.walked;
 }
 
 //  Whether the screen shows a battle on its way: its wipe's black, or its

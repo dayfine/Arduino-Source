@@ -48,7 +48,10 @@ ReplayExecutor::ReplayExecutor(const ReplayData& data, const JsonValue& scenario
     , m_pose(read_pose(m_scenario->get_object_throw("entry").get_value_throw("pose"), data.maps))
     , m_table(make_story_action_table([this](StoryActionId id){ return replay_action(id); }))
     , m_executor(m_table, m_guard)
-{}
+    , m_interrupts(step_interrupts([this](bool){ return look(); }, interrupt_actions()))
+{
+    m_executor.set_interrupts(&m_interrupts);
+}
 bool ReplayStepGuard::stops_on_failure(const StoryStep&) const{
     return true;
 }
@@ -92,6 +95,38 @@ Pokemon::Outcome ReplayExecutor::run(Pokemon::RunState& state, const StoryStep& 
 void ReplayExecutor::lose_pose(std::string basis){
     m_known = false;
     m_basis = std::move(basis);
+}
+Pokemon::ScreenLook ReplayExecutor::look(){
+    const WallClock start = WallClock() + std::chrono::hours(1);
+    Pokemon::ScreenLook out;
+    out.log.record({}, start);
+    ReplayScreen screen{{}, 400};
+    const JsonObject* between = m_scenario->get_object("between_steps");
+    const JsonObject* shown = between ? between->get_object(m_active) : nullptr;
+    if (shown && m_shown.insert(m_active).second){
+        screen = between_steps_screen(shown->get_string_throw("kind"));
+    }
+    for (const auto& [ms, events] : screen.frames){
+        out.log.record(events, start + Milliseconds(ms));
+    }
+    out.window = {.start = start, .end = start + Milliseconds(screen.look_ms)};
+    return out;
+}
+StepInterruptActions ReplayExecutor::interrupt_actions(){
+    const auto recorded = [this](bool warp){
+        return [this, warp](Pokemon::RunState&, const Pokemon::InterruptVerdict& verdict){
+            JsonObject action;
+            action["event"] = m_active;
+            action["kind"] = "interrupt";
+            action["interrupt"] = Pokemon::interrupt_kind_name(verdict.kind);
+            m_actions.push_back(std::move(action));
+            if (warp){
+                lose_pose("unknown-after-warp");
+            }
+            return Pokemon::outcome_ok();
+        };
+    };
+    return {.wild = recorded(false), .trainer = recorded(false), .dialog = recorded(false), .warp = recorded(true)};
 }
 void ReplayExecutor::observe_interruption(const OverworldPose& predicted){
     m_candidates.push_back(pose_json(m_pose, std::nullopt));

@@ -264,10 +264,34 @@ ReplayData read_data(std::string_view capture, std::string_view binding, std::st
     check_route_names(result);
     return result;
 }
+ReplayScreen between_steps_screen(std::string_view kind){
+    using Pokemon::ScreenEvent;
+    const Pokemon::ScreenEvents box{ScreenEvent::DIALOG_BOX};
+    const Pokemon::ScreenEvents battle{ScreenEvent::BATTLE_STARTED};
+    const Pokemon::ScreenEvents black{ScreenEvent::FADE_BLACK};
+    ReplayScreen screen;
+    if (kind == "dialog"){
+        screen.frames = {{33, box}};
+        screen.look_ms = 400;
+    }else if (kind == "wild-encounter"){
+        screen.frames = {{100, Pokemon::ScreenEvents{ScreenEvent::FADE_WHITE}}, {400, {}}, {1500, battle}};
+        screen.look_ms = 2000;
+    }else if (kind == "trainer-sight"){
+        screen.frames = {{100, box}, {2000, black}, {2500, battle}};
+        screen.look_ms = 3000;
+    }else if (kind == "warp"){
+        //  Long enough after the fade for no battle to follow it.
+        screen.frames = {{100, black}, {600, {}}};
+        screen.look_ms = 9000;
+    }else{
+        throw ParseException("story replay: unknown interrupt kind");
+    }
+    return screen;
+}
 void validate_scenario(const ReplayData& data, const JsonValue& scenario){
     const JsonObject& root = scenario.to_object_throw();
     for (const auto& [name, value] : root){
-        if (name != "entry" && name != "signals" && name != "check_actions"){
+        if (name != "entry" && name != "signals" && name != "between_steps" && name != "check_actions"){
             throw ParseException("story replay: unknown scenario field");
         }
         if (name == "check_actions"){
@@ -299,6 +323,16 @@ void validate_scenario(const ReplayData& data, const JsonValue& scenario){
             const auto& spec = data.binding.to_object_throw().get_object_throw("capabilities").get_object_throw(name);
             receipts(s.get_object_throw("received"), &spec.get_object_throw("parameters").get_object_throw("require_received"));
         }
+    }
+    const JsonObject* between = root.get_object("between_steps");
+    if (between == nullptr){
+        return;
+    }
+    for (const auto& [name, shown] : *between){
+        if (std::none_of(data.row.steps.begin(), data.row.steps.end(), [&](const auto& e){ return e.name == name; })){
+            throw ParseException("story replay: interrupt before an unknown event");
+        }
+        between_steps_screen(fields(shown, {"kind"}).get_string_throw("kind"));
     }
 }
 } // namespace StoryReplayInternal

@@ -5,7 +5,10 @@
 #define PokemonAutomation_PokemonFRLG_StoryReplay_IO_H
 #include <initializer_list>
 #include <string_view>
+#include <utility>
+#include <vector>
 #include "Common/Cpp/Json/JsonObject.h"
+#include "Pokemon/AutoStory/Pokemon_ScreenEvents.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "Data/JsonParser.h"
 namespace PokemonAutomation{
@@ -38,7 +41,17 @@ OverworldPose authored_pose(const Pokemon::Pose& value, const std::vector<MapDat
 JsonValue pose_json(const OverworldPose& pose, std::optional<Direction> facing);
 //  Reject bad hashes, capabilities and policies before any executor action.
 ReplayData read_data(std::string_view capture, std::string_view binding, std::string_view candidate);
-//  Validate every scripted signal against its event's capability/parameters.
+//  A scripted screen between two steps: its frames, `ms` after the look
+//  starts, and how long the look lasts.
+struct ReplayScreen{
+    std::vector<std::pair<int, Pokemon::ScreenEvents>> frames;
+    int look_ms = 0;
+};
+//  The screen an interrupt shows between steps, by the scenario's kind:
+//  "dialog", "wild-encounter", "trainer-sight" or "warp".
+ReplayScreen between_steps_screen(std::string_view kind);
+//  Validate every scripted signal against its event's capability/parameters,
+//  and every interrupt between steps against its event and kind.
 void validate_scenario(const ReplayData& data, const JsonValue& scenario);
 } // namespace StoryReplayInternal
 } // namespace PokemonFRLG

@@ -12,6 +12,8 @@
  *  StepGuard: the log line, and a failed console step turned into a failed
  *  Outcome. Today each game writes that guard itself (BDSP's
  *  StoryExecutor::run(), FRLG's guarded(), PLZA's Executor::run()).
+ *  With the game's interrupts set, it also clears what stopped the player
+ *  between steps (Pokemon_StoryInterrupts.h).
  *
  */
 
@@ -20,11 +22,13 @@
 
 #include <functional>
 #include <map>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "Pokemon_StoryEvents.h"
+#include "Pokemon_StoryInterrupts.h"
 #include "Pokemon_StorySteps.h"
 
 namespace PokemonAutomation{
@@ -89,6 +93,9 @@ public:
     virtual bool stops_on_failure(const StoryStep& step) const;
     //  The step threw `error` and fails: e.g. log it and save a screenshot.
     virtual void on_failure(const StoryStep& step, const OperationFailedException& error);
+    //  A look before the step, or after it failed, found an interrupt and
+    //  cleared it or failed to (`check`): e.g. log it.
+    virtual void on_interrupt(const StoryStep& step, const InterruptCheck& check);
 };
 
 
@@ -102,11 +109,29 @@ public:
     //  (StoryStepExecutor::run()), so a game can move to the table one
     //  kind at a time. An OperationFailedException from either is the
     //  failed Outcome "operation_failed", unless the guard stops on it.
+    //  With interrupts set, each step first clears what stopped the player
+    //  since the step before, and a failed step that an interrupt explains
+    //  runs again once it is cleared.
     virtual Outcome run(RunState& state, const StoryStep& step) override;
 
+    //  The game's interrupts between steps, which must outlive the
+    //  executor; none (the default) looks for none.
+    void set_interrupts(const StoryInterrupts* interrupts){
+        m_interrupts = interrupts;
+    }
+
+protected:
+    //  The table's action for the step, or the kind's virtual: what run()
+    //  runs once the screen is clear. A binding may wrap it.
+    virtual Outcome run_action(RunState& state, const StoryStep& step);
+
 private:
+    std::optional<Outcome> clear_interrupts(RunState& state, const StoryStep& step, size_t& cleared);
+    bool cleared_after_failure(RunState& state, const StoryStep& step, size_t& cleared);
+
     const StoryActionTable& m_table;
     StepGuard& m_guard;
+    const StoryInterrupts* m_interrupts = nullptr;
 };
 
 

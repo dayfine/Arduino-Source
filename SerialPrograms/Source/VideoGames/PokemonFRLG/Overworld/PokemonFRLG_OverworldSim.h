@@ -36,6 +36,7 @@
 #include <vector>
 #include "Common/Cpp/Time.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "Pokemon/AutoStory/Pokemon_ScreenEvents.h"
 #include "PokemonFRLG_OverworldRecovery.h"
 #include "PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_OverworldWalk.h"
@@ -117,11 +118,21 @@ struct SimScript{
     SimTiming timing;
 };
 
+//  A screen the sim showed, and when, from its start.
+struct SimShown{
+    Milliseconds at{0};
+    SimScreen screen = SimScreen::OVERWORLD;
+};
+
 //  The player and the screen, and what went wrong that the game would show.
 struct SimState{
     MapPosition position;
     Direction facing = Direction::SOUTH;
     SimScreen screen = SimScreen::OVERWORLD;
+    //  The sim's clock, from its start.
+    Milliseconds time{0};
+    //  Each screen as it showed, oldest first, from `screen` at the start.
+    std::vector<SimShown> shown;
     //  Whether black shows below the map: the player stands near the bottom
     //  of a map with nothing joined to it (a small room or a gate).
     bool black_below = false;
@@ -135,6 +146,17 @@ struct SimState{
     std::vector<std::string> violations;
     std::vector<std::string> log;
 };
+
+//  A time on the sim's clock as a WallClock, for the shared judges.
+WallClock sim_wall_clock(Milliseconds time);
+
+//  The screens `state` showed from `from` until its time, as the walker's
+//  screen observer (FrlgScreenObserver) reports them: a message's box, a
+//  battle's text box with or without its HP boxes, and the black of a
+//  battle's wipe or a warp's fade. A battle's flashes are no uniform
+//  screen, and black below a small room, which the observer's battle text
+//  box detector may take for a box, isn't modelled.
+Pokemon::ScreenEventLog screen_event_log(const SimState& state, Milliseconds from);
 
 //  A watcher that fired: which (an index into the watchers asked for), and
 //  how long after the hold or watch started.
@@ -208,6 +230,7 @@ private:
     };
 
     void advance_to(Milliseconds time);
+    void show(SimScreen screen, Milliseconds at);
     void schedule(Milliseconds at, SimScreen screen, bool unfreeze);
     bool sees(SimWatcher watcher, SimScreen screen) const;
     std::optional<Milliseconds> first_seen(SimWatcher watcher, Milliseconds from, Milliseconds to) const;
@@ -300,6 +323,11 @@ struct SimWalkerRules{
     //  Cerulean City onto Nugget Bridge ended a tile short (console B,
     //  2026-11-03, rows 00.16 and 00.20).
     bool hold_over_connections = true;
+    //  An open leg after whose hold a wild battle was seen is placed by the
+    //  battle's first timed screen event (place_late_stop()). Without it the
+    //  player may be anywhere on the leg: on Route 10, "east 11" was found
+    //  again from all 12 of its tiles (console B, 2026-11-09, 00.27 run 2).
+    bool place_late_battle = true;
 };
 
 //  The console side of run_route() on an OverworldSim, as
@@ -337,6 +365,7 @@ private:
         bool battle;
     };
     StepOutcome walk(const RouteStep& step, std::optional<Direction> facing);
+    std::optional<WalkedTiles> late_stop(const RouteStep& step);
     std::optional<WalkedTiles> walk_step(const RouteStep& step, std::optional<Direction> facing);
     bool after_warp(const RouteStep& step, int warps_before);
     [[noreturn]] void fail_off_route(const RouteStep& step);
@@ -358,6 +387,8 @@ private:
     std::vector<Interrupt> m_wild;
     std::vector<Interrupt> m_other;
     std::vector<std::string> m_log;
+    //  When the last WALK leg's first hold started, on the sim's clock.
+    Milliseconds m_leg_start{0};
 };
 
 

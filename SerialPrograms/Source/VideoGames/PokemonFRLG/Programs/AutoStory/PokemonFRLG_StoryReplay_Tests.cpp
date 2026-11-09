@@ -47,6 +47,9 @@ std::string compare_expected(const JsonValue& test, const JsonValue& actual){
 enum class Mutation{
     NONE, CAPTURE_HASH, MAP_HASH, CAPABILITY, SAVE_POLICY, CANDIDATE_DISTANCE,
     DROP_ACTION, EXTRA_ACTION, REVERSE_ACTIONS, ACTION_DISTANCE, ACTION_DIRECTION,
+    //  A dialog before the walk to the Mart and before the clerk's scene
+    //  (between_steps): the walk's cleared first, the scene's its own.
+    DIALOGS_BETWEEN_STEPS,
 };
 enum class ExpectedResult{ MATCH, REJECTED, MISMATCH };
 struct ReplayInput{
@@ -79,6 +82,7 @@ const ReplayCase CASES[] = {
     {.input = {.name = "parcel-all-events", .mutation = Mutation::REVERSE_ACTIONS}, .expectation = {.result = ExpectedResult::MISMATCH, .diagnostic = "actions"}},
     {.input = {.name = "parcel-all-events", .mutation = Mutation::ACTION_DISTANCE}, .expectation = {.result = ExpectedResult::MISMATCH, .diagnostic = "actions"}},
     {.input = {.name = "parcel-all-events", .mutation = Mutation::ACTION_DIRECTION}, .expectation = {.result = ExpectedResult::MISMATCH, .diagnostic = "actions"}},
+    {.input = {.name = "parcel-all-events", .mutation = Mutation::DIALOGS_BETWEEN_STEPS}, .expectation = {}},
 };
 void mutate_config(Mutation mutation, JsonObject& binding, JsonObject& candidate){
     switch (mutation){
@@ -98,6 +102,7 @@ void mutate_config(Mutation mutation, JsonObject& binding, JsonObject& candidate
         candidate.get_object_throw("routes").get_array_throw("below_mart_door")[0].to_object_throw()["tiles"] = 2;
         return;
     case Mutation::NONE:
+    case Mutation::DIALOGS_BETWEEN_STEPS:
     case Mutation::DROP_ACTION:
     case Mutation::EXTRA_ACTION:
     case Mutation::REVERSE_ACTIONS:
@@ -132,6 +137,7 @@ void mutate_actions(Mutation mutation, JsonValue& report){
         actions[0].to_object_throw()["direction"] = "east";
         return;
     case Mutation::NONE:
+    case Mutation::DIALOGS_BETWEEN_STEPS:
     case Mutation::CAPTURE_HASH:
     case Mutation::MAP_HASH:
     case Mutation::CAPABILITY:
@@ -139,6 +145,33 @@ void mutate_actions(Mutation mutation, JsonValue& report){
     case Mutation::CANDIDATE_DISTANCE:
         return;
     }
+}
+//  `test` (a case of cases.json, which is PokemonSimulation's, so it has
+//  no interrupts between steps) with a dialog before its walk to the Mart
+//  and before the clerk's scene: expected as before, with the walk's
+//  dialog cleared as its first action.
+JsonValue with_dialogs_between_steps(const JsonValue& test){
+    JsonValue out = test.clone();
+    JsonObject& row = out.to_object_throw();
+    JsonObject between;
+    for (const char* step : {"below_mart_door", "parcel_from_clerk"}){
+        JsonObject shown;
+        shown["kind"] = "dialog";
+        between[step] = std::move(shown);
+    }
+    row.get_object_throw("input")["between_steps"] = std::move(between);
+    JsonArray& expected = row.get_object_throw("expectation").get_array_throw("actions");
+    JsonArray actions;
+    JsonObject cleared;
+    cleared["event"] = "below_mart_door";
+    cleared["kind"] = "interrupt";
+    cleared["interrupt"] = "dialog";
+    actions.push_back(std::move(cleared));
+    for (const JsonValue& action : expected){
+        actions.push_back(action.clone());
+    }
+    expected = std::move(actions);
+    return out;
 }
 JsonValue run_case(const ReplayInput& input, const JsonValue& test){
     JsonValue binding = parse_json(story_replay_fixture("binding"));
@@ -159,7 +192,10 @@ public:
         : UnitTest(std::format("PokemonFRLG::StoryReplay - {} mutation {}", test.input.name, (int)test.input.mutation)), m_test(test){}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         const JsonValue document = parse_json(story_replay_fixture("cases"));
-        const JsonValue& test = named_case(document, m_test.input.name);
+        const JsonValue& named = named_case(document, m_test.input.name);
+        const JsonValue scripted = m_test.input.mutation == Mutation::DIALOGS_BETWEEN_STEPS
+            ? with_dialogs_between_steps(named) : named.clone();
+        const JsonValue& test = scripted;
         try{
             const JsonValue report = run_case(m_test.input, test);
             const std::string difference = compare_expected(test, report);

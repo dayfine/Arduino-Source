@@ -35,6 +35,8 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
+#include "PokemonFRLG_AutoStoryStartFrames.h"
+#include "PokemonFRLG_AutoStoryStepInterrupts.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
 
 namespace PokemonAutomation{
@@ -204,7 +206,7 @@ using StoryLog = std::function<void(const std::string& line)>;
 //  (start_pose_mismatch()), or the checkpoint stops before its first event,
 //  "start_failed". A save that can't be read passes. `log` gets a
 //  mismatch, or that nothing was read. A row with no start (a new game)
-//  gets none.
+//  gets none. (add_start_check() with a reader of the tile.)
 void add_start_pose_check(
     Pokemon::Checkpoint& checkpoint, const std::optional<Pokemon::Pose>& start, SavePoseReader read, StoryLog log
 );
@@ -270,6 +272,12 @@ struct StoryEnv{
     //  The last save's Items pocket was read in full (read_bag_supplies()):
     //  a reload restores `saved_supplies` without reading it again.
     bool bag_read = false;
+    //  The frames of where each checkpoint starts, for the start check: a
+    //  save at a checkpoint's end keeps one for the next checkpoint.
+    StartFrameStore start_frames = {};
+    //  The next start check keeps the screen as its checkpoint's start
+    //  frame and passes: the user saved there by hand.
+    bool keep_start_frame = false;
 };
 
 //  After a save is loaded for a checkpoint that starts on `start_map`: the
@@ -294,6 +302,8 @@ void read_bag_supplies(StoryEnv& env, StartMenu menu);
 //  Does FRLG's kinds of story step on the console, each with its row of
 //  story_action_rows() (PokemonFRLG_AutoStoryStepTable.h). A console step
 //  that fails is a failed Outcome, which the segment answers by reloading.
+//  Before each step it clears what came up since the step before
+//  (step_interrupts(), PokemonFRLG_AutoStoryStepInterrupts.h).
 class StoryExecutor : public Pokemon::StoryStepExecutor{
 public:
     explicit StoryExecutor(StoryEnv& env);
@@ -318,10 +328,13 @@ private:
 
     StoryEnv& m_env;
     StartMenu m_menu = StartMenu::FULL;
-    //  FRLG does nothing around a step: a failed one fails the step.
-    Pokemon::StepGuard m_guard;
+    //  A failed step fails the step; an interrupt between steps is logged.
+    InterruptLogGuard m_guard;
     Pokemon::StoryActionTable m_table;
     Pokemon::TableExecutor m_executor;
+    //  What is cleared between steps, looked for on the screen.
+    ConsoleScreenLook m_look;
+    Pokemon::StoryInterrupts m_interrupts;
 };
 
 //  The checkpoint `data` as events, saving at its end.

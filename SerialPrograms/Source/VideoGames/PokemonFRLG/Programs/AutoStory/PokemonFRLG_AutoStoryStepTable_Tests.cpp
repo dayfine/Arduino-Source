@@ -16,6 +16,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Pokemon_StoryActions.h"
+#include "PokemonFRLG_AutoStoryStepInterrupts.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryTable.h"
@@ -247,6 +248,7 @@ void add_tests_AutoStoryStepTable(UnitTestDatabase& database){
     for (const auto& scenario : STEP_TABLE_CASES){
         database.add<Test_StepTable>(scenario);
     }
+    add_tests_AutoStoryStepInterrupts(database);
 }
 
 

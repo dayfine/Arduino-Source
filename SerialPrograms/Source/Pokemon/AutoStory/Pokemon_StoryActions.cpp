@@ -85,6 +85,8 @@ bool StepGuard::stops_on_failure(const StoryStep&) const{
 
 void StepGuard::on_failure(const StoryStep&, const OperationFailedException&){}
 
+void StepGuard::on_interrupt(const StoryStep&, const InterruptCheck&){}
+
 
 TableExecutor::TableExecutor(const StoryActionTable& table, StepGuard& guard)
     : m_table(table)
@@ -93,18 +95,62 @@ TableExecutor::TableExecutor(const StoryActionTable& table, StepGuard& guard)
 
 Outcome TableExecutor::run(RunState& state, const StoryStep& step){
     m_guard.before_step(step);
-    try{
-        if (const StoryAction* action = m_table.find(step)){
-            return action->act(state, step);
+    size_t cleared = 0;
+    while (true){
+        if (std::optional<Outcome> failed = clear_interrupts(state, step, cleared)){
+            return *failed;
         }
-        return StoryStepExecutor::run(state, step);
-    }catch (OperationFailedException& e){
-        if (m_guard.stops_on_failure(step)){
-            throw;
+        try{
+            Outcome outcome = run_action(state, step);
+            if (outcome.succeeded() || !cleared_after_failure(state, step, cleared)){
+                return outcome;
+            }
+        }catch (OperationFailedException& e){
+            if (cleared_after_failure(state, step, cleared)){
+                continue;
+            }
+            if (m_guard.stops_on_failure(step)){
+                throw;
+            }
+            m_guard.on_failure(step, e);
+            return outcome_failed("operation_failed", e.message());
         }
-        m_guard.on_failure(step, e);
-        return outcome_failed("operation_failed", e.message());
     }
+}
+
+Outcome TableExecutor::run_action(RunState& state, const StoryStep& step){
+    if (const StoryAction* action = m_table.find(step)){
+        return action->act(state, step);
+    }
+    return StoryStepExecutor::run(state, step);
+}
+
+//  Clears what interrupted the player before `step`, counting it in
+//  `cleared`. Nothing when there was nothing or it is cleared; else the
+//  step's failure.
+std::optional<Outcome> TableExecutor::clear_interrupts(RunState& state, const StoryStep& step, size_t& cleared){
+    if (m_interrupts == nullptr){
+        return std::nullopt;
+    }
+    InterruptCheck check = clear_story_interrupt(*m_interrupts, state, step);
+    if (check.verdict.kind == InterruptKind::NONE){
+        return std::nullopt;
+    }
+    if (check.outcome.succeeded() && ++cleared > m_interrupts->max_per_step){
+        check.outcome = outcome_failed("too_many_interrupts", step.name);
+    }
+    m_guard.on_interrupt(step, check);
+    if (!check.outcome.succeeded()){
+        return check.outcome;
+    }
+    return std::nullopt;
+}
+
+//  Whether an interrupt explains the failure of `step`: one showed after
+//  it failed and is cleared, so the step runs again.
+bool TableExecutor::cleared_after_failure(RunState& state, const StoryStep& step, size_t& cleared){
+    const size_t before = cleared;
+    return !clear_interrupts(state, step, cleared) && cleared > before;
 }
 
 

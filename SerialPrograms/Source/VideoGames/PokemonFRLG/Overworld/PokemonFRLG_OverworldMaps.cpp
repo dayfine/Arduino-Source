@@ -78,6 +78,11 @@ const char* const MAP_NAMES[] = {
     "Route9",
     "Route10",
     "Route10_PokemonCenter_1F",
+    //  Rock Tunnel to Lavender Town's Pokemon Center.
+    "RockTunnel_1F",
+    "RockTunnel_B1F",
+    "LavenderTown",
+    "LavenderTown_PokemonCenter_1F",
     "CeruleanCave_1F",
     "CeruleanCave_2F",
     "CeruleanCave_B1F",

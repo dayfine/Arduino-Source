@@ -21,6 +21,7 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "PokemonFRLG_OverworldLateBattle.h"
 #include "PokemonFRLG_OverworldMaps.h"
 #include "PokemonFRLG_OverworldSim.h"
 
@@ -981,6 +982,7 @@ void add_tests_OverworldSim(UnitTestDatabase& database){
     for (const auto& item : OVERWORLD_SIM_CASES){
         database.add<Test_OverworldSim>(item);
     }
+    add_tests_OverworldLateBattle(database);
 }
 
 

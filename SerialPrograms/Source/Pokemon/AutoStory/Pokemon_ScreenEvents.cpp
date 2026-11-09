@@ -4,6 +4,7 @@
  *
  */
 
+#include <format>
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "Pokemon_ScreenEvents.h"
@@ -104,6 +105,48 @@ WarpFade fade_of_screen(const ImageViewRGB32& screen){
 }
 
 
+ScreenEventLog::ScreenEventLog(size_t capacity)
+    : m_capacity(capacity)
+{}
+void ScreenEventLog::record(const ScreenEvents& frame, WallClock now){
+    const uint32_t changed = frame.bits() ^ m_showing.bits();
+    for (size_t c = 0; c < SCREEN_EVENT_COUNT; c++){
+        if ((changed & (uint32_t(1) << c)) == 0){
+            continue;
+        }
+        const ScreenEvent event = (ScreenEvent)c;
+        m_changes.push_back({now, event, frame.has(event) ? ScreenEventEdge::ROSE : ScreenEventEdge::FELL});
+    }
+    while (m_changes.size() > m_capacity){
+        m_changes.pop_front();
+        m_dropped++;
+    }
+    m_showing = frame;
+    m_last_frame = now;
+}
+void ScreenEventLog::clear(){
+    m_changes.clear();
+    m_dropped = 0;
+    m_showing = ScreenEvents();
+    m_last_frame.reset();
+}
+std::string describe(const ScreenEventLog& log, WallClock origin){
+    std::string out;
+    if (log.dropped() > 0){
+        out += std::format("({} older changes dropped)\n", log.dropped());
+    }
+    for (const ScreenEventChange& change : log.changes()){
+        out += std::format(
+            "{:+} ms {} {}\n",
+            std::chrono::duration_cast<Milliseconds>(change.time - origin).count(),
+            screen_event_name(change.event),
+            change.edge == ScreenEventEdge::ROSE ? "rose" : "fell"
+        );
+    }
+    return out.empty() ? "no changes" : out;
+}
+
+
 ScreenEventWatcher::ScreenEventWatcher(ScreenEventObserver& observer, ScreenEvents stop_on)
     : VisualInferenceCallback("ScreenEventWatcher")
     , m_observer(observer)
@@ -115,15 +158,25 @@ void ScreenEventWatcher::make_overlays(VideoOverlaySet& items) const{
 bool ScreenEventWatcher::process_frame(const VideoSnapshot& frame){
     const ScreenEvents events = m_observer.observe(frame, frame.timestamp);
     m_seen.fetch_or(events.bits(), std::memory_order_acq_rel);
+    {
+        LockGuard<Mutex> lg(m_log_lock);
+        m_log.record(events, frame.timestamp);
+    }
     if (!events.any_of(m_stop_on)){
         return false;
     }
     m_stopped_on.store(events.bits(), std::memory_order_release);
     return true;
 }
+ScreenEventLog ScreenEventWatcher::log() const{
+    LockGuard<Mutex> lg(m_log_lock);
+    return m_log;
+}
 void ScreenEventWatcher::reset(){
     m_seen.store(0, std::memory_order_release);
     m_stopped_on.store(0, std::memory_order_release);
+    LockGuard<Mutex> lg(m_log_lock);
+    m_log.clear();
 }
 
 
