@@ -93,6 +93,14 @@ class OwnershipTests(unittest.TestCase):
                 raise RuntimeError('build failed')
         self.assertFalse((self.root / 'locks/A').exists())
 
+    def test_older_format_lock_folder_refused_and_kept(self):
+        (self.root / 'locks/A').mkdir(parents=True)
+        with self.assertRaises(ValueError):
+            with dev.console_lock('A', self.root):
+                self.fail('second owner admitted')
+        self.assertTrue((self.root / 'locks/A').is_dir())
+        self.assertEqual(['A'], [p.name for p in (self.root / 'locks').iterdir()])
+
     def test_existing_shell_helpers_see_the_same_ownership(self):
         helper = Path(__file__).resolve().parents[1] / 'control/lablock.sh'
         with dev.console_lock('A', self.root) as token:
