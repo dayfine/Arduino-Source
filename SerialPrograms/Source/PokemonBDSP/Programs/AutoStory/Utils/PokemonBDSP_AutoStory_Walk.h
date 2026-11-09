@@ -11,6 +11,7 @@
 #define PokemonAutomation_PokemonBDSP_AutoStory_Walk_H
 
 #include <functional>
+#include <optional>
 #include <string>
 #include <vector>
 #include "Common/Cpp/Time.h"
@@ -20,6 +21,7 @@
 #include "Controllers/Joystick.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "Pokemon/AutoStory/Pokemon_SceneJudges.h"
+#include "Pokemon/AutoStory/Pokemon_Transitions.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -192,6 +194,53 @@ constexpr double WALK_BLOCKED_CHANGE = 16.0;
 constexpr double WALK_TAP_BLOCKED_CHANGE = 16.0;
 //  More than walking changes in 400ms: a new scene, such as a battle opening.
 constexpr double WALK_SCENE_CHANGE = 120.0;
+
+//  Whether two frames show different scenes: a change walking cannot make
+//  (WALK_SCENE_CHANGE). UNKNOWN without both frames.
+Pokemon::SceneChange walk_scenes_differ(const Pokemon::TransitionSample& before, const Pokemon::TransitionSample& after);
+
+//  What a warp's fade must show before a step takes it as one. All of it
+//  reads Pokemon::BDSP_FADE_PROFILE. Dark is the profile's uniform tier, or
+//  with `partial_dark` its partial tier's texture (a doorway's dim fade
+//  frames, which run_into_door() has stopped on since #268) up to the same
+//  dark sum. Dark must hold `dark_for` and white (always uniform) `white_for`.
+struct WarpFadeRule{
+    bool partial_dark = false;
+    Milliseconds dark_for = Milliseconds(0);
+    Milliseconds white_for = Milliseconds(0);
+};
+
+//  A warp's fade followed frame by frame (a Pokemon::TransitionTracker on
+//  BDSP_FADE_PROFILE) rather than judged on one frame. A fade shows when its
+//  dark or white has held as the rule says; or, when its hold fell between
+//  two frames (a 50 ms door fade), at the first frame of another scene
+//  after the fall, as `compare` tells scenes apart. That one unseen hold
+//  used to leave a door run to its 12 s timeout. Not thread-safe.
+class WarpFadeWatch{
+public:
+    explicit WarpFadeWatch(WarpFadeRule rule, Pokemon::TransitionTracker::CompareScenes compare = walk_scenes_differ);
+
+    //  Adds a frame; times must not go back. Returns the fade this frame
+    //  shows, NONE if none (yet).
+    WarpFade push(const Pokemon::TransitionSample& sample);
+    //  When the screen last went dark as the rule counts dark; none if it
+    //  has not.
+    std::optional<WallClock> went_dark() const{
+        return m_went_dark;
+    }
+    //  How the last fade showed, for the log; "" before one.
+    const std::string& how() const{
+        return m_how;
+    }
+
+private:
+    WarpFadeRule m_rule;
+    Pokemon::TransitionTracker m_tracker;
+    std::optional<WallClock> m_dark_since;
+    std::optional<WallClock> m_white_since;
+    std::optional<WallClock> m_went_dark;
+    std::string m_how;
+};
 
 
 //  One straight walk timed finely, to check a map against the game: holds the
