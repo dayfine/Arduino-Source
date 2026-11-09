@@ -25,6 +25,7 @@ const char* screen_event_name(ScreenEvent event){
     case ScreenEvent::BATTLE_ENDED:     return "battle ended";
     case ScreenEvent::PLAYER_CAN_MOVE:  return "player can move";
     case ScreenEvent::SCREEN_STILL:     return "screen still";
+    case ScreenEvent::SWITCH_HOME_MENU: return "Switch HOME menu";
     }
     return "?";
 }
@@ -144,6 +145,23 @@ std::string describe(const ScreenEventLog& log, WallClock origin){
         );
     }
     return out.empty() ? "no changes" : out;
+}
+
+
+SwitchHomeObserver::SwitchHomeObserver(NintendoSwitch::ConsoleHandle& console, ScreenEventObserver& game)
+    : m_game(game)
+    , m_home(console, COLOR_RED)
+{}
+
+ScreenEvents SwitchHomeObserver::observe(const VideoSnapshot& frame, WallClock now){
+    if (frame && m_home.detect_only(*frame.frame)){
+        return {ScreenEvent::SWITCH_HOME_MENU};
+    }
+    return m_game.observe(frame, now);
+}
+
+void SwitchHomeObserver::make_overlays(VideoOverlaySet& items) const{
+    m_game.make_overlays(items);
 }
 
 
