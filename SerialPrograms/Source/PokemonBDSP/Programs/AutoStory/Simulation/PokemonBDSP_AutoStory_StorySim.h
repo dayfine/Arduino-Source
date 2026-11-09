@@ -44,7 +44,9 @@ namespace PokemonBDSP{
 //  its banner gone unless `through_banner`: the walk before it slid onto the
 //  warp (lab-B 2026-11-08). The counts and flags below are the run's: how
 //  many fades and banners it looked for, whether a miss happened since the
-//  executor last looked, and whether a missed fade is still unseen.
+//  executor last looked, whether a missed fade is still unseen, whether a
+//  walk slid on (SimSlide) since the executor last looked, and the map whose
+//  banner a slide left up for the next step.
 struct SimMisses{
     std::optional<size_t> fade;
     std::optional<size_t> banner;
@@ -57,6 +59,82 @@ struct SimMisses{
     size_t doors = 0;
     bool missed = false;
     bool fade_unseen = false;
+    bool slid = false;
+    std::string banner_up = {};
+};
+
+//  How a warp's fade looks to the console's watchers (#268's design note).
+enum class SimFade{
+    //  A door's: near black. Every watcher of a black screen sees it.
+    BLACK,
+    //  A cave mouth's: dim, not black. A walk's strict black watcher (rgb
+    //  sum 100, stddev 10; WalkRunner::hold()) misses it and the walk goes
+    //  on (the Oreburgh Gate, lab-B 2026-11-08 16:03).
+    DIM,
+    //  A cave exit's white: a walk's encounter-flash watcher reads it as a
+    //  wild battle.
+    WHITE,
+};
+
+//  An open leg that runs on past its end: the walk taps of the step `step`
+//  toward `direction` go `tiles` further, once per step. Onto a warp, the
+//  player lands on `far` (the sim's maps have no warps' destinations), the
+//  walk sees the fade as `fade` looks, and the far map's banner is still up
+//  for the next step (`banner_up`) or gone (01.05, lab-B 2026-11-08 15:31).
+struct SimSlide{
+    std::string step;
+    Pokemon::Direction direction = Pokemon::Direction::WEST;
+    size_t tiles = 1;
+    Pokemon::Pose far = {};
+    SimFade fade = SimFade::DIM;
+    bool banner_up = false;
+};
+
+//  What the console showed that the plain simulation leaves out, each off
+//  unless set. All of it is deterministic: wanderers walk from `wander_seed`.
+struct SimWorldKnobs{
+    std::vector<SimSlide> slides = {};
+    //  The mean brightness (0 to 255) of a map's floor, by JSON map name, and
+    //  of the fade into a map; a tap step judges its fade from these with the
+    //  program's tap_faded(). Unset: 104 (Oreburgh's street by day) and 7
+    //  (a door's black).
+    std::map<std::string, double> floor = {};
+    std::map<std::string, double> fade_into = {};
+    //  People with a wander box on their map walk it, a step tried every 2 s.
+    std::optional<uint64_t> wander_seed = std::nullopt;
+    //  How long after the A press a talk's first line shows, by step name.
+    std::map<std::string, Milliseconds> first_line = {};
+};
+
+//  The walker's RouteIO on the story simulation, with SimWorldKnobs' slides
+//  and late first lines. `step` names the step running now; `cross` puts
+//  the player on a pose past a warp.
+class SimKnobRouteIO : public GridSimRouteIO{
+public:
+    SimKnobRouteIO(
+        GridSim& sim, std::vector<std::string>& notes, SimMisses& misses, const SimWorldKnobs& knobs,
+        const std::string& step, std::function<void(const Pokemon::Pose&)> cross
+    )
+        : GridSimRouteIO(sim, notes)
+        , m_grid(sim)
+        , m_misses(misses)
+        , m_knobs(knobs)
+        , m_step(step)
+        , m_cross(std::move(cross))
+    {}
+
+    virtual WalkResult walk_taps(Pokemon::Direction direction, size_t tiles, const std::string& label) override;
+    virtual bool dialog_within(Milliseconds wait, Color color) override;
+
+private:
+    WalkResult slide_on(const SimSlide& slide, WalkResult result);
+
+    GridSim& m_grid;
+    SimMisses& m_misses;
+    const SimWorldKnobs& m_knobs;
+    const std::string& m_step;
+    std::function<void(const Pokemon::Pose&)> m_cross;
+    std::set<std::string> m_slid_steps;
 };
 
 //  How many tiles a held walk goes on into a map before its location
@@ -65,7 +143,13 @@ struct SimMisses{
 //  reads at once. Through a cave mouth the fade comes first, and a hold
 //  whose fade went unseen goes on the same way (r75, r81).
 constexpr size_t SIM_BANNER_TILES = 3;
+//  How far into a door run SimMisses::dark reads dark, short of the door.
 constexpr Milliseconds SIM_FALSE_DARK = Milliseconds(1800);
+//  Brightness (0 to 255) of a floor where SimWorldKnobs does not say:
+//  Oreburgh's street by day (r74).
+constexpr double SIM_FLOOR = 104;
+//  Brightness of a fade where SimWorldKnobs does not say: a door's black (by hand: 7).
+constexpr double SIM_DOOR_FADE = 7;
 
 //  What a run on the simulation did.
 struct SimRun{
@@ -95,10 +179,14 @@ struct SimRun{
 //  sim's maps have no warps' destinations) and on along it.
 class SimStoryStepIO : public StoryStepIO{
 public:
-    SimStoryStepIO(GridSim& sim, std::vector<std::string>& notes, SimMisses& misses, std::function<bool()> far_side)
+    SimStoryStepIO(
+        GridSim& sim, std::vector<std::string>& notes, SimMisses& misses, const SimWorldKnobs& knobs,
+        const std::string& step, std::function<bool()> far_side, std::function<void(const Pokemon::Pose&)> cross
+    )
         : m_sim(sim)
-        , m_route(sim, notes)
+        , m_route(sim, notes, misses, knobs, step, std::move(cross))
         , m_misses(misses)
+        , m_knobs(knobs)
         , m_far_side(std::move(far_side))
     {}
 
@@ -157,10 +245,13 @@ private:
     bool on_map(const std::string& map) const{
         return story_to_local(m_sim.world(), map, nearest_tile(m_sim.player().pos)).has_value();
     }
+    //  The brightness of the floor the player stands on (SimWorldKnobs::floor).
+    double floor_here() const;
 
     GridSim& m_sim;
-    GridSimRouteIO m_route;
+    SimKnobRouteIO m_route;
     SimMisses& m_misses;
+    const SimWorldKnobs& m_knobs;
     std::function<bool()> m_far_side;
 };
 
@@ -191,11 +282,12 @@ std::vector<RowTrigger> story_triggers();
 //  The program's walking steps on the simulation, the rest stubbed.
 class SimExecutor : public Pokemon::StoryStepExecutor{
 public:
-    explicit SimExecutor(Logger& logger, SimMisses misses = {})
+    explicit SimExecutor(Logger& logger, SimMisses misses = {}, SimWorldKnobs knobs = {})
         : m_logger(logger)
         , m_misses(misses)
+        , m_knobs(std::move(knobs))
         , m_sim({}, {0, 0}, Pokemon::Direction::NORTH, false)
-        , m_io(m_sim, m_notes, m_misses, [this]{ return cross(); })
+        , m_io(m_sim, m_notes, m_misses, m_knobs, m_step, [this]{ return cross(); }, [this](const Pokemon::Pose& far){ cross_to(far); })
         , m_walks(m_io)
     {}
 
@@ -209,6 +301,7 @@ public:
         m_row = data.id;
         m_start_mismatch = data.start ? off_pose(*data.start) : "";
         m_ran.clear();
+        m_astray = false;
         m_result.rows.push_back({.row = data.id, .fades = m_misses.fades, .banners = m_misses.banners});
         m_walks.begin_attempt(data.id);
         arm("");
@@ -242,6 +335,8 @@ private:
     void arm(const std::string& after);
     bool sync(const Pokemon::Pose& pose, const StoryWorld* on = nullptr);
     bool cross();
+    bool cross_to(const Pokemon::Pose& far);
+    std::vector<SimWanderer> wanderers(const StoryWorld& world) const;
     std::string off_pose(const Pokemon::Pose& pose) const;
     std::string check(const Pokemon::StoryStep& step, const Pokemon::Outcome& outcome);
     Pokemon::Outcome run_step(Pokemon::RunState& state, const Pokemon::StoryStep& step);
@@ -249,6 +344,9 @@ private:
     Logger& m_logger;
     std::vector<std::string> m_notes;
     SimMisses m_misses;
+    SimWorldKnobs m_knobs;
+    //  The step running now.
+    std::string m_step;
     GridSim m_sim;
     SimStoryStepIO m_io;
     StoryWalkSteps m_walks;
@@ -266,6 +364,9 @@ private:
     bool m_placed = false;
     //  Whether the step running now is on a room with no map.
     bool m_passed_over = false;
+    //  Whether a walk slid on (SimSlide), so the player is not where the
+    //  program thinks, until a step's pose_after puts them right.
+    bool m_astray = false;
     SimRun m_result;
 };
 
