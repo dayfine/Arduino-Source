@@ -51,12 +51,19 @@ public:
     //  D-pad taps `direction` one at a time, each looked at, toward a door
     //  or cave mouth, until the fade (then no more taps) and the location
     //  banner of `map` (a JSON map's name), for at most `max_taps`. Returns
-    //  the taps it took, or nothing if no banner showed.
+    //  the taps it took (0 if the banner shows before the first: through
+    //  already), or nothing if no banner showed.
     virtual std::optional<size_t> tap_to_banner(Pokemon::Direction direction, const std::string& map, size_t max_taps) = 0;
     //  Presses through any text until the overworld is quiet; with `fade`, a
     //  fade must come first (a map change). Fails otherwise.
     virtual void settle(Button button, const std::string& label, bool fade) = 0;
 };
+
+
+//  Whether a look after a tap toward a door or a cave mouth shows its fade,
+//  from its brightness `after` and that of the look before the tap,
+//  `before` (the mean of r, g and b, 0 to 255).
+bool tap_faded(double before, double after);
 
 
 //  The console.

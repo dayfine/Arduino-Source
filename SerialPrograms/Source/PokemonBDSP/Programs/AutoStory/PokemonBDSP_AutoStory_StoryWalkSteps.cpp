@@ -158,16 +158,52 @@ Outcome StoryWalkSteps::leg_to_map(const StoryStep& step){
     return arrived ? Pokemon::outcome_ok() : Pokemon::outcome_failed("no_banner", map);
 }
 
+namespace{
+//  Taps toward a door with no table door ahead of it.
+constexpr size_t TAPS_TO_BANNER = 30;
+//  How many taps `direction` a tap step from `from` takes at most: the
+//  tiles to the door its map has ahead of every tile of `from`, and two
+//  more; TAPS_TO_BANNER where the map has none. A step through already,
+//  its banner gone, then stops a few tiles on (lab-B 2026-11-08: 01.05's
+//  walk slid into the Oreburgh Gate, whose row 22 runs 24 tiles on).
+size_t taps_to_banner(const Pose& from, Direction direction){
+    size_t most = 0;
+    try{
+        const Pokemon::MapData& map = story_map(from.map);
+        for (const TilePos& pos : Pokemon::tiles_of(from)){
+            const size_t tiles = Pokemon::tiles_to_door(map, pos, direction);
+            TilePos door = pos;
+            for (size_t i = 0; i < tiles; i++){
+                door = door.next(direction);
+            }
+            if (tiles == 0 || map.tiles.at(door) != Pokemon::TileKind::DOOR){
+                return TAPS_TO_BANNER;
+            }
+            most = std::max(most, tiles);
+        }
+    }catch (...){
+        return TAPS_TO_BANNER;
+    }
+    return most == 0 ? TAPS_TO_BANNER : most + 2;
+}
+} // namespace
+
 //  A STEP "to_banner": D-pad taps toward a door or cave mouth until the fade
 //  and pose_after's map's location banner. No banner fails the step right
-//  there.
-Outcome StoryWalkSteps::tap_to_banner(const StoryStep& step){
+//  there; a banner before any tap means the walk before took us through.
+Outcome StoryWalkSteps::tap_to_banner(const Pose& from, const StoryStep& step){
     const std::string map = step.pose_after ? step.pose_after->map : "";
-    const std::optional<size_t> taps = m_io.tap_to_banner(step.direction, map, 30);
+    const size_t limit = taps_to_banner(from, step.direction);
+    const std::optional<size_t> taps = m_io.tap_to_banner(step.direction, map, limit);
     if (!taps){
-        return Pokemon::outcome_failed("no_banner", map);
+        return Pokemon::outcome_failed("no_banner", std::format("{} in {} taps {}: through already, its banner gone?",
+            map, limit, direction_name(step.direction)));
     }
-    log(std::format("[{}] {}: {}'s banner after {} taps {}.", m_row, step.name, map, *taps, direction_name(step.direction)));
+    if (*taps == 0){
+        log(std::format("[{}] {}: {}'s banner before any tap: through already.", m_row, step.name, map));
+    }else{
+        log(std::format("[{}] {}: {}'s banner after {} taps {}.", m_row, step.name, map, *taps, direction_name(step.direction)));
+    }
     return Pokemon::outcome_ok();
 }
 
@@ -340,7 +376,7 @@ Outcome StoryWalkSteps::legs(RunState& state, const StoryStep& step){
 Outcome StoryWalkSteps::step(RunState& state, const StoryStep& step){
     if (step.variant == "to_banner"){
         turn(step.direction);
-        return tap_to_banner(step);
+        return tap_to_banner(state.pose, step);
     }
     if (step.variant == "tap"){
         //  No separate turn tap first: at 1 tile from the door, a turn tap

@@ -19,7 +19,10 @@
 #include "Data/PokemonBDSP_AutoStory_PlanCosts.h"
 #include "Data/PokemonBDSP_AutoStory_RoutePlanner.h"
 #include "Data/PokemonBDSP_AutoStory_StoryMaps.h"
+#include "Data/PokemonBDSP_AutoStory_WallRecovery.h"
 #include "Actions/PokemonBDSP_AutoStory_Events.h"
+#include "PokemonBDSP_AutoStory_StoryExecutor.h"
+#include "PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP_AutoStory_StoryTable.h"
 #include "PokemonBDSP_AutoStory_StoryTable_Tests.h"
 
@@ -218,6 +221,80 @@ UnitTestResult test_route204_north_line(Logger& logger){
     return true;
 }
 
+//  The legs a ROUTE step from `from` plans, as walk_route() plans them (the
+//  step's costs, then the default ones), on `world`; nothing if none.
+std::optional<std::vector<PlannedLeg>> route_step_plan(const StoryWorld& world, const Pokemon::Pose& from, const Pokemon::StoryStep& step){
+    std::vector<TilePos> start;
+    for (const TilePos& pos : Pokemon::tiles_of(from)){
+        start.push_back(story_to_world(world, from.map, pos));
+    }
+    std::vector<TilePos> targets;
+    for (const TilePos& pos : Pokemon::tiles_of(*step.target)){
+        targets.push_back(story_to_world(world, step.target->map, pos));
+    }
+    const auto goal = [&](const TilePos& pos){ return std::find(targets.begin(), targets.end(), pos) != targets.end(); };
+    std::optional<std::vector<PlannedLeg>> legs = plan_recovered_route(world, start, goal, *story_route_costs(step.variant));
+    return legs ? legs : plan_recovered_route(world, start, goal, RobustPlanCosts());
+}
+
+//  Why `planned` may slide into a door or a warp, or "": an open leg (not to
+//  a wall) that may end on the tile before one, walking toward it. A part of
+//  a tile too far takes the warp (lab-B 2026-11-08 15:31 to 15:54: 01.05's
+//  open walk west to (2, 13), beside the Oreburgh Gate's mouth, slid into
+//  the Gate, and the tap after it waited for a banner already gone). The
+//  maps draw every warp as a door tile, cave mouths too.
+std::string slides_into_door(const StoryWorld& world, const PlannedLeg& planned){
+    if (planned.leg.ends_at_wall){
+        return "";
+    }
+    for (const TilePos& pos : planned.after){
+        const TilePos ahead = pos.next(planned.leg.direction);
+        if (world.tile(ahead) == Pokemon::TileKind::DOOR){
+            return std::format("the open leg {} may end on {}, the tile before the door {}",
+                to_string(planned.leg), describe(world, pos), describe(world, ahead));
+        }
+    }
+    return "";
+}
+
+//  No ROUTE step of the table plans an open leg that ends before a door it
+//  walks toward: a door is gone through by a step that runs or taps into it
+//  from where the route ends on a wall or off its line. Where a row's steps
+//  leave the player is followed from its start through each step's target
+//  or pose_after; a route from an unknown place is not checked.
+UnitTestResult test_story_routes_stop_short_of_doors(Logger& logger){
+    std::vector<std::string> found;
+    size_t checked = 0;
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        std::optional<Pokemon::Pose> at = row.start;
+        for (const Pokemon::StoryStep& step : row.steps){
+            const bool known = at && !Pokemon::tiles_of(*at).empty();
+            const StoryWorld* world = step.kind == StoryStepKind::ROUTE && known
+                ? story_plan_world(at->map, step.target->map) : nullptr;
+            if (step.kind == StoryStepKind::ROUTE && world == nullptr){
+                logger.log(std::format("{} {}: not checked, from {}.", row.id, step.name, at ? Pokemon::to_string(*at) : "nowhere known"));
+            }
+            const std::optional<std::vector<PlannedLeg>> legs = world ? route_step_plan(*world, *at, step) : std::nullopt;
+            checked += legs ? 1 : 0;
+            for (const PlannedLeg& planned : legs ? *legs : std::vector<PlannedLeg>{}){
+                const std::string why = slides_into_door(*world, planned);
+                if (!why.empty()){
+                    found.push_back(std::format("{} {}: {}.", row.id, step.name, why));
+                }
+            }
+            at = step.kind == StoryStepKind::ROUTE ? step.target
+                : step.pose_after ? step.pose_after
+                : step.kind == StoryStepKind::LEGS || step.kind == StoryStepKind::STEP ? std::nullopt : at;
+        }
+    }
+    logger.log(std::format("{} routes planned.", checked));
+    std::string out;
+    for (const std::string& line : found){
+        out += "\n  " + line;
+    }
+    return found.empty() ? UnitTestResult(true) : UnitTestResult("Open legs that end before a door they walk toward:" + out);
+}
+
 
 struct AutoStoryStoryTableInput{
     std::string name;
@@ -268,6 +345,10 @@ const AutoStoryStoryTableCase AUTO_STORY_STORY_TABLE_CASES[] = {
     },
     {
         .input = {"Route 204 North: the line into Floaroma", test_route204_north_line},
+        .expectation = {},
+    },
+    {
+        .input = {"Story table: no open leg ends before a door it walks toward (lab-B, 2026-11-08)", test_story_routes_stop_short_of_doors},
         .expectation = {},
     },
 };
