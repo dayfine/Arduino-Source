@@ -90,6 +90,12 @@ ScreenLook white_settled(){
 ScreenLook home_menu(){
     return look_of({{0, HOME}, {300, HOME}}, 300);
 }
+//  The same, with a game's detectors reading it as the overworld too.
+ScreenLook home_read_as_overworld(){
+    ScreenEvents both = HOME;
+    both.set(ScreenEvent::PLAYER_CAN_MOVE, true);
+    return look_of({{0, both}}, 300);
+}
 
 
 //  The fake game: the screen its looks show, one per look and then the
@@ -578,7 +584,7 @@ UnitTestResult test_settle_of_a_look(){
         {"a box", dialog(), "dialog box, player can move showing (quiet 0.2 s)"},
         {"a door's fade back up", black_unsettled(), "settled overworld (quiet 0.3 s)"},
         {"the HOME menu", home_menu(), "Switch HOME menu (quiet 0.3 s)"},
-        {"HOME read as a quiet overworld too", look_of({{0, ScreenEvents{ScreenEvent::SWITCH_HOME_MENU, ScreenEvent::PLAYER_CAN_MOVE}}}, 300), "Switch HOME menu (quiet 0.3 s)"},
+        {"HOME read as a quiet overworld too", home_read_as_overworld(), "Switch HOME menu (quiet 0.3 s)"},
     };
     for (const Row& row : rows){
         const std::string got = describe(judge_settle(row.look));

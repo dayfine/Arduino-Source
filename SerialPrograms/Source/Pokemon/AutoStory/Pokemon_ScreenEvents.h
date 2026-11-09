@@ -28,6 +28,8 @@
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/InferenceCallbacks/VisualInferenceCallback.h"
+#include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
+#include "NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -200,6 +202,23 @@ public:
 
     //  The boxes the detectors read, for the video overlay.
     virtual void make_overlays(VideoOverlaySet& items) const = 0;
+};
+
+
+//  A game's observer behind a look at the Switch itself: a frame showing
+//  the HOME menu shows SWITCH_HOME_MENU and nothing else, as a game's
+//  detectors may read HOME's plain screen as a quiet overworld (BDSP,
+//  lab-B 2026-11-09). Every other frame is the game's to read.
+class SwitchHomeObserver : public ScreenEventObserver{
+public:
+    SwitchHomeObserver(NintendoSwitch::ConsoleHandle& console, ScreenEventObserver& game);
+
+    virtual ScreenEvents observe(const VideoSnapshot& frame, WallClock now) override;
+    virtual void make_overlays(VideoOverlaySet& items) const override;
+
+private:
+    ScreenEventObserver& m_game;
+    NintendoSwitch::HomeMenuDetector m_home;
 };
 
 
