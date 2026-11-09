@@ -827,83 +827,6 @@ UnitTestResult test_wall_leg_check_at_wall_short_distance_safeguard(Logger& logg
         return "caught unexpected failure: " + f.message;
     }
 }
-//  A wild battle on a leg to a wall: how the escape ends it. The leg must
-//  still end at the wall with the battle counted.
-struct WallBattleInput{
-    std::string name;
-    SimWildBattle battle;
-};
-struct WallBattleExpectation{
-    //  How the simulation notes the battle ended.
-    std::string ended;
-};
-struct WallBattleCase{
-    WallBattleInput input;
-    WallBattleExpectation expectation;
-};
-
-//  The corridor's one leg, east to its end wall, walked with `battle` on
-//  the way; the walk's notes, or why it did not end at the wall.
-struct WallBattleWalk{
-    std::vector<std::string> notes;
-    std::string error;
-};
-WallBattleWalk walk_wall_battle(const std::string& leg, const SimWildBattle& battle){
-    StoryWorld world = make_world({
-        "########################",
-        "#......................#",
-        "########################",
-    });
-    const TilePos start{1, 1};
-    const TilePos target{22, 1};
-    GridSim sim({.world = &world}, start, Direction::EAST, true);
-    WallBattleWalk walk;
-    GridSimRouteIO sim_io(sim, walk.notes, {}, {{.label = leg, .direction = Direction::EAST, .battle = battle}});
-    RouteTrainers trainers{{}, [](const std::string&){}};
-    try{
-        walk_route(sim_io, world, {start}, trainers, {
-            .goal = [&](const TilePos& pos){ return pos == target; },
-            .label = "wall leg battle",
-            .avoid = {},
-            .costs = *story_route_costs("town"),
-            .speed = MoveSpeed::RUN,
-        });
-    }catch (const GridSimFailure& f){
-        walk.error = "failed: " + f.message;
-        return walk;
-    }
-    if (nearest_tile(sim.player().pos) != target){
-        walk.error = "ended at " + to_string(sim.player().pos) + ", not at the wall.";
-    }
-    return walk;
-}
-
-UnitTestResult test_wall_leg_wild_battles(Logger&){
-    const std::string leg = "wall leg battle: " + to_string(TileLeg{.direction = Direction::EAST, .tiles = 21, .ends_at_wall = true});
-    const WallBattleCase cases[] = {
-        {.input = {.name = "the first Run works", .battle = {.run_refusals = 0}}, .expectation = {.ended = "run from"}},
-        {.input = {.name = "two refusals, then the third Run works", .battle = {.run_refusals = 2}}, .expectation = {.ended = "run from"}},
-        //  console B, BDSP 01.03 run 2026-11-07: Onix's Bind in Oreburgh Mine
-        //  refused nine Runs in 60 s and escape_wild_battle() gave up.
-        {.input = {.name = "bound: every Run refused", .battle = {.run_refusals = 20}}, .expectation = {.ended = "fought to its end"}},
-    };
-    for (const WallBattleCase& item : cases){
-        const WallBattleWalk walk = walk_wall_battle(leg, item.input.battle);
-        if (!walk.error.empty()){
-            return std::format("{}: {}", item.input.name, walk.error);
-        }
-        const std::string ended = std::format("[Sim] {}: wild battle {}.", leg, item.expectation.ended);
-        if (std::find(walk.notes.begin(), walk.notes.end(), ended) == walk.notes.end()){
-            std::string notes;
-            for (const std::string& line : walk.notes){
-                notes += "\n    " + line;
-            }
-            return std::format("{}: expected the note \"{}\"; the walk noted:{}", item.input.name, ended, notes);
-        }
-    }
-    return true;
-}
-
 //  Oreburgh Mine B1F: the entrance hall corridor is traversed to and back by
 //  running south from (12, 1) to (12, 21), and north from (12, 21), where the
 //  coal room's warp lands us, to (12, 1).
@@ -1004,10 +927,6 @@ const AutoStoryGridSimCase AUTO_STORY_GRID_SIM_CASES[] = {
     },
     {
         .input = {"check_at_wall safeguard rejects legs stalled well short of expected distance", test_wall_leg_check_at_wall_short_distance_safeguard},
-        .expectation = {},
-    },
-    {
-        .input = {"a wild battle on a wall leg is run from, or fought when the game refuses the escape", test_wall_leg_wild_battles},
         .expectation = {},
     },
     {
