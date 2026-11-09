@@ -245,6 +245,15 @@ UnitTestResult test_b1f_martha_after_row38_battle(Logger&){
 //  Rock Tunnel has no Flash: both floors are dark.
 const std::set<std::string> ROCK_TUNNEL_DARK{StoryTable::ROCK_TUNNEL_1F, StoryTable::ROCK_TUNNEL_B1F};
 
+//  Regression: console B, 2026-11-09, 00.28 hiker_lenny: won, and the dark
+//  overworld after it was taken for an evolution until fight_battle() gave
+//  up. 00.28 dark: every trainer's battle ends on the dark cave's overworld.
+UnitTestResult test_rock_tunnel_dark_battle_ends(Logger&){
+    SimScript script;
+    script.dark_maps = ROCK_TUNNEL_DARK;
+    return row_on_sim("00.28", script, {ROCK_TUNNEL_TRAINERS}, MapPosition{StoryTable::ROUTE10, {8, 58}});
+}
+
 //  below_martha_line as `legs` from Winston's tile (29, 37) on `sim`, by the
 //  walker with `rules`: the failure, or empty if it ended on (16, 35).
 std::string walk_below_martha(OverworldSim& sim, const std::vector<StoryLeg>& legs, const SimWalkerRules& rules){
@@ -542,6 +551,7 @@ UnitTestResult test_save_places(Logger&){
 const AutoStoryLavenderCase AUTO_STORY_LAVENDER_CASES[] = {
     {.input = {"00.28 the tree, Rock Tunnel's nine trainers, out of its south mouth", test_rock_tunnel_row}, .expectation = {}},
     {.input = {"00.28 a wild battle mid-leg in the tunnel", test_rock_tunnel_wild_battles}, .expectation = {}},
+    {.input = {"00.28 dark: each trainer's battle ends on the dark cave's overworld", test_rock_tunnel_dark_battle_ends}, .expectation = {}},
     {.input = {"00.28 a tile off after each open leg", test_rock_tunnel_tile_off}, .expectation = {}},
     {.input = {"00.28 B1F row 37 with a wild battle every 10 to 14 steps", test_b1f_row37_battles_every_12}, .expectation = {}},
     {.input = {"00.28 a wild battle every 7 to 25 steps, 12 seeds", test_rock_tunnel_frequent_battles}, .expectation = {}},

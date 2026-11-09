@@ -62,9 +62,6 @@ constexpr Milliseconds OVERWORLD_CHECK = 3000ms;
 //  No battle menu or HP box this long after a battle was seen: there was
 //  none (console B, 2026-11-01, Viridian Forest's north gate mat).
 constexpr Milliseconds NOT_A_BATTLE = 15000ms;
-//  An evolution's animation, with no presses: as long as exit_wild_battle()
-//  (PokemonFRLG_Navigation.cpp) waits for one.
-constexpr Milliseconds EVOLUTION = 20000ms;
 //  Text and the move learn prompts after a battle, on the overworld.
 constexpr Milliseconds AFTER_BATTLE_TEXT = 60000ms;
 //  The move list to fade in after "Delete a move?", and its cursor to move.
@@ -427,11 +424,12 @@ private:
         m_last_press = now;
     }
 
-    //  Nothing pressed while the screen may be an evolution, up to EVOLUTION.
+    //  Nothing pressed while the screen may be an evolution, up to
+    //  EvolutionHold::MAX_HOLD.
     void wait_out_evolution(){
         const WallClock start = current_time();
         bool holds = true;
-        while (holds && current_time() - start < EVOLUTION){
+        while (holds && current_time() - start < EvolutionHold::MAX_HOLD){
             pbf_wait(m_context, POLL);
             m_context.wait_for_all_requests();
             VideoSnapshot screen = m_console.video().snapshot();

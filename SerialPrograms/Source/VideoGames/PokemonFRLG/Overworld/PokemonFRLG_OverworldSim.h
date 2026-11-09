@@ -28,6 +28,7 @@
 #ifndef PokemonAutomation_PokemonFRLG_OverworldSim_H
 #define PokemonAutomation_PokemonFRLG_OverworldSim_H
 
+#include <functional>
 #include <map>
 #include <optional>
 #include <random>
@@ -415,6 +416,10 @@ struct SimWalkerRules{
     //  and the player was found again at a wall 5 tiles off (console B,
     //  2026-11-09, 00.28).
     bool whole_leg_in_dark = true;
+    //  The end of a trainer's battle the walker fought, as the story's
+    //  battle loop takes it on the screen the sim shows after it: its
+    //  failure, or empty. Not set: the battle just ends.
+    std::function<std::string(const OverworldSim&)> trainer_battle_end = nullptr;
 };
 
 //  OverworldWalkSteps::turn_to() on `sim`, which reads the facing on the

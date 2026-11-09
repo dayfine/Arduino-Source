@@ -13,6 +13,10 @@
  *    land encounters, over GAME_ODDS_SEEDS seeds (00.28's Rock Tunnel).
  *  - LATE_FADE: every warp's fade ends LATE_FADE later than the sim's
  *    usual (00.27's warp to Cerulean City).
+ *  - DARK_CAVE: the caves without Flash dark (DARK_MAPS), so each
+ *    battle there ends on the dark cave's overworld, with no wild
+ *    battles and with them at the game's odds (00.28 hiker_lenny, lab-B
+ *    2026-11-09).
  *
  *  Not swept here: a missed fade, which needs a knob in OverworldSim; a
  *  battle's opening at a step's start, which needs one in OverworldStepSim;
@@ -60,6 +64,7 @@ enum class FaultClass{
     SCENE_END_POSE,
     WILD_BATTLES,
     LATE_FADE,
+    DARK_CAVE,
     //  Not swept yet: the measured movement table's lost taps.
     LOST_TAP,
 };
@@ -71,6 +76,8 @@ const char* fault_class_name(FaultClass fault){
         return "wild battles at the game's odds";
     case FaultClass::LATE_FADE:
         return "late warp fade";
+    case FaultClass::DARK_CAVE:
+        return "dark cave without Flash";
     case FaultClass::LOST_TAP:
         return "lost tap";
     }
@@ -96,6 +103,11 @@ const std::map<std::string, int> STORY_ENCOUNTER_RATES{
 //  (Mt. Moon B2F, console B, 2026-11-03).
 const std::set<std::string> WILD_FLOOR_MAPS{"MtMoon_1F", "MtMoon_B1F", "MtMoon_B2F"};
 constexpr unsigned GAME_ODDS_SEEDS = 30;
+//  The caves the story walks dark: no Flash before Lavender Town.
+const std::set<std::string> DARK_MAPS{"RockTunnel_1F", "RockTunnel_B1F"};
+//  Seeds of wild battles at the game's odds in the dark, after a run
+//  with none.
+constexpr unsigned DARK_CAVE_SEEDS = 10;
 //  How much later than SimTiming's a late fade ends: the new map shows
 //  this long after the usual.
 constexpr Milliseconds LATE_FADE = 1500ms;
@@ -333,6 +345,37 @@ UnitTestResult sweep_late_fade(Logger& logger, const StoryCheckpoint& row, const
     return sweep_result(logger, FaultClass::LATE_FADE, row.id, 1, failures);
 }
 
+//  Row `row` with DARK_MAPS dark: once with no wild battles, then with
+//  them at the game's odds from DARK_CAVE_SEEDS seeds. Each trainer's
+//  battle there ends on the dark overworld (battle_end_on_sim() in
+//  PokemonFRLG_AutoStoryRowSim.cpp); wild ones are run from, after which
+//  nothing is held for an evolution. A row that walks no dark cave is
+//  not swept.
+UnitTestResult sweep_dark_cave(Logger& logger, const StoryCheckpoint& row, const RowRun& clean){
+    const bool walks_dark = DARK_MAPS.contains(clean.end.map) || std::any_of(clean.before.begin(), clean.before.end(), [](const auto& before){
+        return DARK_MAPS.contains(before.second.map);
+    });
+    if (!walks_dark){
+        logger.log(std::format("Fault sweep {}: not swept, the row walks no dark cave.", row.id));
+        return true;
+    }
+    std::vector<SweepFailure> failures;
+    for (unsigned seed = 0; seed <= DARK_CAVE_SEEDS; seed++){
+        SimScript script;
+        script.dark_maps = DARK_MAPS;
+        if (seed > 0){
+            script.encounter_rates = STORY_ENCOUNTER_RATES;
+            script.encounter_seed = seed;
+            script.wild_floor_maps = WILD_FLOOR_MAPS;
+        }
+        const std::string stopped = differs(run_row(row, script, {}, clean.scripted), clean);
+        if (!stopped.empty()){
+            failures.push_back({"", seed == 0 ? std::string("no wild battles") : std::format("seed {}", seed), stopped});
+        }
+    }
+    return sweep_result(logger, FaultClass::DARK_CAVE, row.id, DARK_CAVE_SEEDS + 1, failures);
+}
+
 //  A fault class swept over row `row` (empty in FAULT_SWEEP_CASES: each
 //  row with a start).
 struct FaultSweepInput{
@@ -396,6 +439,8 @@ private:
             return sweep_wild_battles(logger, m_row, clean);
         case FaultClass::LATE_FADE:
             return sweep_late_fade(logger, m_row, clean);
+        case FaultClass::DARK_CAVE:
+            return sweep_dark_cave(logger, m_row, clean);
         case FaultClass::LOST_TAP:
             break;
         }
@@ -413,6 +458,7 @@ const FaultSweepCase FAULT_SWEEP_CASES[] = {
     {.input = {.fault = FaultClass::SCENE_END_POSE}, .expectation = {}},
     {.input = {.fault = FaultClass::WILD_BATTLES}, .expectation = {}},
     {.input = {.fault = FaultClass::LATE_FADE}, .expectation = {}},
+    {.input = {.fault = FaultClass::DARK_CAVE}, .expectation = {}},
 };
 
 void add_tests_AutoStoryFaultSweep(UnitTestDatabase& database){

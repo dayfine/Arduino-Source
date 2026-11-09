@@ -87,6 +87,9 @@ struct BattleTextScreen{
     bool arrow = false;
     //  A YES/NO box.
     bool yes_no = false;
+    //  The overworld of a cave dark without Flash (dark_cave_screen()),
+    //  whose black reads as the text box.
+    bool dark_cave = false;
 };
 
 //  Answer to an in-battle prompt dialogue.
@@ -193,6 +196,10 @@ private:
 //  battle loop's B presses).
 class EvolutionHold{
 public:
+    //  The longest one hold lasts: as long as exit_wild_battle()
+    //  (PokemonFRLG_Navigation.cpp) waits for an evolution.
+    static constexpr Milliseconds MAX_HOLD = std::chrono::milliseconds(20000);
+
     explicit EvolutionHold(PartyMember& lead);
 
     //  The loop took a turn: only one that attacked can end the battle in a
