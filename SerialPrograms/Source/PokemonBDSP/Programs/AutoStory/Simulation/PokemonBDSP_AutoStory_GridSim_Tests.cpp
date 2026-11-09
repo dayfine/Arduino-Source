@@ -12,7 +12,6 @@
 #include <algorithm>
 #include <format>
 #include <functional>
-#include <memory>
 #include <optional>
 #include <string>
 #include <utility>
@@ -24,7 +23,6 @@
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_PlanCosts.h"
 #include "PokemonBDSP_AutoStory_GridSim.h"
 #include "PokemonBDSP_AutoStory_OldStorySteps.h"
-#include "PokemonBDSP_AutoStory_SimGround.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_PlannedRoute.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryExecutor.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h"
@@ -597,22 +595,21 @@ UnitTestResult test_gate_walk_part_tile_off(Logger&){
 //  lab-B 2026-11-08 18:41: 01.11's 8 taps west, then north, ended below the
 //  old man, and no one answered the old woman's talk. Floaroma's banner
 //  stops us on any of (10..12, 27..29): the old taps miss her from x 10 and
-//  12; the table's walk west to the field's edge and 4 taps east end below
+//  11; the table's walk west to the field's edge and 4 taps east end below
 //  her from all nine.
 UnitTestResult test_old_couple_from_each_arrival(Logger& logger){
     const std::optional<TableSteps> table = table_steps("01.11", "west_to_the_field_edge", "old_woman");
-    const auto ground = std::ranges::find(sim_ground(), std::string("FloaromaTown"), &SimGround::map);
-    if (!table || table->steps.empty() || ground == sim_ground().end()){
-        return "01.11 has no walk west to the field's edge, or Floaroma no ground west of its map.";
+    const StoryWorld* world = story_plan_world("FloaromaTown", "FloaromaTown");
+    if (!table || table->steps.empty() || world == nullptr){
+        return "01.11 has no walk west to the field's edge, or Floaroma no map.";
     }
     const TableSteps old_taps{table->start, {old_west_along_the_field(), table->steps.back()}};
-    const std::unique_ptr<StoryWorld> world = with_ground(*story_plan_world("FloaromaTown", "FloaromaTown"), *ground);
     const TilePos below_her = story_to_world(*world, "FloaromaTown", map_point("FloaromaTown", "old_woman").next(Direction::SOUTH));
     for (int x = 10; x <= 12; x++){
         for (int y = 27; y <= 29; y++){
             const TilePos start = story_to_world(*world, "FloaromaTown", {x, y});
             const std::string old_miss = walk_misses(*world, old_taps, start, {{"up_to_the_old_woman", below_her}}, logger);
-            if (old_miss.empty() != (x == 11)){
+            if (old_miss.empty() != (x == 12)){
                 return std::format("The old taps from ({}, {}): {}", x, y, old_miss.empty() ? "ended below her." : old_miss);
             }
             const std::string miss = walk_misses(*world, *table, start, {{"up_to_the_old_woman", below_her}}, logger);

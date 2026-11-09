@@ -42,7 +42,6 @@
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP_AutoStory_GridSim.h"
 #include "PokemonBDSP_AutoStory_OldStorySteps.h"
-#include "PokemonBDSP_AutoStory_SimGround.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Events.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryExecutor.h"
@@ -440,7 +439,7 @@ private:
     GridSim m_sim;
     SimStoryStepIO m_io;
     StoryWalkSteps m_walks;
-    //  The planner's worlds with sim_people() and sim_ground() on them, by world and who.
+    //  The planner's worlds with sim_people() on them, by world and who.
     mutable std::map<std::pair<const StoryWorld*, std::string>, std::unique_ptr<StoryWorld>> m_peopled;
     //  The steps of this row that have run.
     std::set<std::string> m_ran;
@@ -471,21 +470,14 @@ const StoryWorld* SimExecutor::sim_world(const std::string& map) const{
             who += person.name + ";";
         }
     }
-    const SimGround* ground = nullptr;
-    for (const SimGround& item : sim_ground()){
-        if (world != nullptr && m_row >= item.row && story_plan_world(item.map, item.map) == world){
-            ground = &item;
-            who += item.map + " ground;";
-        }
-    }
-    if (who.empty()){
+    if (here.empty()){
         return world;
     }
     std::unique_ptr<StoryWorld>& peopled = m_peopled[{world, who}];
     if (!peopled){
-        peopled = ground != nullptr ? with_ground(*world, *ground) : std::make_unique<StoryWorld>(*world);
+        peopled = std::make_unique<StoryWorld>(*world);
         for (const SimPerson& person : here){
-            peopled->block(story_to_world(*peopled, person.map, person.tile));
+            peopled->block(story_to_world(*world, person.map, person.tile));
         }
     }
     return peopled.get();
