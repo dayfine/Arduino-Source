@@ -1,0 +1,955 @@
+/*  AutoStory Simulation Tests
+ *
+ *  From: https://github.com/PokemonAutomation/
+ *
+ *  A run of the whole story table, new game to the Boulder Badge, without
+ *  the console: story_checkpoints() built into engine checkpoints by the
+ *  shared builder, saving at each end as the program does, run by the
+ *  shared runner with the program's retry policy, against a fake game.
+ *  The fake plans each ROUTE on the story maps from where the run's pose
+ *  says we stand (turning to a wall when the facing is unknown, as the
+ *  program does), walks each LEGS on them, steps onto triggers, and passes
+ *  every other step unless told to fail it.
+ *
+ */
+
+#include <algorithm>
+#include <format>
+#include <functional>
+#include <map>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <vector>
+#include "Common/Cpp/Exceptions.h"
+#include "Common/Cpp/TestRunners/UnitTest.h"
+#include "Pokemon/AutoStory/Pokemon_StorySegments.h"
+#include "Pokemon/AutoStory/Pokemon_StorySteps.h"
+#include "Pokemon/AutoStory/Pokemon_TilePose.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
+#include "PokemonFRLG_AutoStoryActions.h"
+#include "PokemonFRLG_AutoStoryCapture.h"
+#include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryPaceSim.h"
+#include "PokemonFRLG_AutoStoryRowSim.h"
+#include "Data/JsonParser.h"
+#include "PokemonFRLG_AutoStoryTable.h"
+
+namespace PokemonAutomation{
+namespace NintendoSwitch{
+namespace PokemonFRLG{
+
+
+namespace{
+
+using Pokemon::Outcome;
+using Pokemon::RunState;
+
+std::string joined(const std::vector<std::string>& lines){
+    std::string text;
+    for (const std::string& line : lines){
+        text += "\n    " + line;
+    }
+    return text;
+}
+
+const MapData* map_named(const std::string& name){
+    for (const MapData& map : story_maps()){
+        if (map.name == name){
+            return &map;
+        }
+    }
+    return nullptr;
+}
+
+//  Whether the player, at the end of a WALK `step`, stops there holding on:
+//  the map's edge, a wall, or water to Surf onto, but no warp of any kind,
+//  even one to a map that isn't loaded.
+bool stops_past_end(const RouteStep& step){
+    const MapData& map = *map_named(step.end.map);
+    const TilePos here = step.end.point;
+    const TilePos ahead = here.next(step.direction);
+    if (!in_bounds(map, ahead)){
+        return true;
+    }
+    if (warps_on_step(map, ahead) || exit_mat(map, here) == step.direction
+        || (step.direction == Direction::NORTH && is_door(map, ahead))
+    ){
+        return false;
+    }
+    const StepKind kind = classify_step(map, PlayerState{here, elevation_at(map, here), step.surfing}, step.direction);
+    return kind == StepKind::BLOCKED || kind == StepKind::START_SURF;
+}
+
+//  The first leg of `route` to a wall that holding on would carry past its
+//  end, or nothing (console B, 2026-11-02: one rode Route 4's Pokemon
+//  Center escalator).
+std::optional<std::string> overrun_wall_leg(const std::vector<RouteStep>& route){
+    for (const RouteStep& step : route){
+        if (step.to_wall && !stops_past_end(step)){
+            return to_string(step);
+        }
+    }
+    return std::nullopt;
+}
+
+//  Where the run stands, with a facing: a wall beside it when unknown.
+struct Standing{
+    MapPosition position;
+    Direction facing = Direction::NORTH;
+    std::string error;
+};
+Standing standing(const Pokemon::Pose& pose){
+    const std::optional<StoryPose> at = story_pose(pose);
+    if (!at){
+        return {{}, Direction::NORTH, "no one-tile pose: " + Pokemon::to_string(pose)};
+    }
+    std::optional<Direction> facing = at->facing;
+    if (!facing){
+        const MapData* map = map_named(at->map);
+        facing = map ? wall_beside(*map, at->tile) : std::nullopt;
+    }
+    if (!facing){
+        return {{}, Direction::NORTH, "facing unknown and no wall beside " + to_string(MapPosition{at->map, at->tile})};
+    }
+    return {{at->map, at->tile}, *facing, ""};
+}
+
+class FakeGame : public Pokemon::StoryStepExecutor{
+public:
+    struct Failure{
+        std::string failure;
+        size_t times = 0;
+    };
+
+    std::vector<std::string> trace;
+    std::map<std::string, Failure> failures;
+    //  What the Mart sold, by its list's names.
+    std::map<std::string, int> bag;
+
+    virtual void begin_attempt(const Pokemon::StoryCheckpoint& data) override{
+        m_row = data.id;
+        trace.push_back("begin " + data.id);
+    }
+    virtual Outcome run(RunState& state, const StoryStep& step) override{
+        const std::string key = m_row + "/" + step.name;
+        trace.push_back(key);
+        auto failure = failures.find(key);
+        if (failure != failures.end() && failure->second.times > 0){
+            failure->second.times--;
+            return Pokemon::outcome_failed(failure->second.failure, key);
+        }
+        return Pokemon::StoryStepExecutor::run(state, step);
+    }
+protected:
+    virtual Outcome route(RunState& state, const StoryStep& step) override{
+        return walk_to(state.pose, step);
+    }
+    virtual Outcome legs(RunState& state, const StoryStep& step) override{
+        const Standing at = standing(state.pose);
+        if (!at.error.empty()){
+            return Pokemon::outcome_failed("no_pose", at.error);
+        }
+        const std::optional<std::vector<RouteStep>> route = fixed_route(story_maps(), at.position, step.legs);
+        if (!route || route->empty()){
+            return Pokemon::outcome_failed("bad_legs", to_string(at.position));
+        }
+        return Pokemon::outcome_ok(to_pose(StoryPose{route->back().end.map, route->back().end.point, route->back().facing_after}));
+    }
+    //  A step into a trainer's line goes on until a trainer can see the
+    //  player, as step_until_seen() does on the console.
+    virtual Outcome step(RunState& state, const StoryStep& step) override{
+        const std::optional<StoryPose> at = story_pose(state.pose);
+        if (!at){
+            return Pokemon::outcome_failed("no_pose", Pokemon::to_string(state.pose));
+        }
+        const MapData* map = map_named(at->map);
+        if (step.variant != TRAINER_LINE_VARIANT || map == nullptr){
+            return Pokemon::outcome_ok(to_pose(StoryPose{at->map, at->tile.next(step.direction), step.direction}));
+        }
+        TilePos onto = at->tile;
+        const std::optional<int> stepped = step_until_seen(
+            TRAINER_LINE_TILES,
+            [&]{ onto = onto.next(step.direction); },
+            [&]{
+                return std::any_of(map->objects.begin(), map->objects.end(), [&](const MapObject& object){
+                    return object.trainer && trainer_may_see(*map, object, onto);
+                });
+            }
+        );
+        if (!stepped){
+            return Pokemon::outcome_failed("no_trainer", to_string(MapPosition{at->map, onto}));
+        }
+        return Pokemon::outcome_ok(to_pose(StoryPose{at->map, onto, step.direction}));
+    }
+    //  The nurse's way must plan too, but the run goes on from where it stands.
+    virtual Outcome ready(RunState& state, const StoryStep& step) override{
+        const Outcome to_nurse = walk_to(state.pose, step);
+        return to_nurse.succeeded() ? Pokemon::outcome_ok() : to_nurse;
+    }
+    virtual Outcome new_game(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
+    virtual Outcome options(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
+    virtual Outcome talk(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
+    virtual Outcome answer(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
+    virtual Outcome mash(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
+    virtual Outcome battle(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
+    virtual Outcome heal(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
+    //  Pacing leaves the player on either of its tiles, as on the console.
+    virtual Outcome game(RunState& state, const StoryStep& step) override{
+        return Pokemon::outcome_ok(paced_pose(state.pose, step));
+    }
+    //  The Viridian Mart's list as the game shows it. After a purchase the
+    //  cursor stays on the row bought (console B, 2026-11-01), so each
+    //  order moves it from there, as buy_items() does since ad5d40885.
+    virtual Outcome shop(RunState&, const StoryStep& step) override{
+        static const std::vector<std::string> LIST{"poke_ball", "potion", "antidote", "parlyz_heal", "cancel"};
+        const std::optional<std::vector<MartOrder>> orders = viridian_mart_orders(step.items);
+        if (!orders){
+            return Pokemon::outcome_failed("unknown_item", step.name);
+        }
+        int cursor = 0;
+        for (size_t c = 0; c < orders->size(); c++){
+            const MartOrder& order = (*orders)[c];
+            //  The presses: down or up from where the cursor is.
+            cursor += order.row - cursor;
+            if (cursor < 0 || cursor >= (int)LIST.size() || LIST[cursor] == "cancel"){
+                return Pokemon::outcome_failed("mart_cancel", std::format("order {} ends on row {}", c + 1, cursor + 1));
+            }
+            if (LIST[cursor] != step.items[c].item){
+                return Pokemon::outcome_failed("wrong_item", std::format("{} instead of {}", LIST[cursor], step.items[c].item));
+            }
+            bag[LIST[cursor]] += order.quantity;
+        }
+        return Pokemon::outcome_ok();
+    }
+
+private:
+    Outcome walk_to(const Pokemon::Pose& pose, const StoryStep& step){
+        if (Pokemon::tiles_of(pose).size() > 1){
+            //  From the tiles a pacing step leaves: the route must plan, and
+            //  test_routes_after_pacing() walks it on the sim from each.
+            const std::optional<StoryPose> target = story_pose(*step.target);
+            const RouteGoal goal{{target->map, target->tile}, target->facing};
+            const std::optional<std::vector<RouteStep>> route = plan_story_route(story_maps(), pose, std::nullopt, goal);
+            if (!route || route->empty()){
+                return Pokemon::outcome_failed("no_route", Pokemon::to_string(pose) + " to " + to_string(goal.position));
+            }
+            return Pokemon::outcome_ok(to_pose(StoryPose{target->map, target->tile, route->back().facing_after}));
+        }
+        const Standing at = standing(pose);
+        if (!at.error.empty()){
+            return Pokemon::outcome_failed("no_pose", at.error);
+        }
+        const std::optional<StoryPose> target = story_pose(*step.target);
+        const RouteGoal goal{{target->map, target->tile}, target->facing};
+        const std::optional<std::vector<RouteStep>> route = plan_overworld_route(
+            story_maps(), at.position, goal, story_route_costs(), at.facing
+        );
+        if (!route){
+            return Pokemon::outcome_failed("no_route", to_string(at.position) + " to " + to_string(goal.position));
+        }
+        const MapPosition end = follow_overworld_route(story_maps(), at.position, *route);
+        if (!(end == goal.position)){
+            return Pokemon::outcome_failed("wrong_end", to_string(end));
+        }
+        if (const std::optional<std::string> leg = overrun_wall_leg(*route)){
+            return Pokemon::outcome_failed("wall_overrun", *leg);
+        }
+        const Direction facing = route->empty() ? at.facing : route->back().facing_after;
+        return Pokemon::outcome_ok(to_pose(StoryPose{target->map, target->tile, facing}));
+    }
+
+    std::string m_row;
+};
+
+
+//  One simulated run, segment built as the program builds it: the rows a
+//  run takes with every handoff off, each saving at its end (hooks.save
+//  stands for save_game()).
+struct Simulation{
+    std::vector<StoryCheckpoint> rows = plan_story_run(story_checkpoints(), 0, story_checkpoints().size() - 1, StoryHandoffs{}).rows;
+    FakeGame game;
+    std::vector<std::string> lines;
+    //  Where each save stood: the end of its checkpoint.
+    std::vector<std::pair<std::string, Pokemon::Pose>> saves;
+    Pokemon::SegmentPolicy policy;
+
+    //  A language no reader supports, so a step that needed text would show.
+    Pokemon::SegmentReport run(const Pokemon::SegmentRange& range){
+        game.set_language(Language::Japanese);
+        Pokemon::Segment segment;
+        segment.id = "00";
+        for (const StoryCheckpoint& data : rows){
+            segment.checkpoints.push_back(Pokemon::CheckpointSpec{
+                .id = data.id, .title = data.title, .saves = true,
+                .build = [this, &data]{ return Pokemon::build_story_checkpoint(data, game); },
+            });
+        }
+        Pokemon::SegmentHooks hooks;
+        hooks.save = [this](RunState& state){
+            game.trace.push_back("save");
+            saves.emplace_back(last_begun(), state.pose);
+            return Pokemon::outcome_ok();
+        };
+        hooks.reload = [this](RunState&){
+            game.trace.push_back("reload");
+            return Pokemon::outcome_ok();
+        };
+        hooks.log = [this](const std::string& line){ lines.push_back(line); };
+        RunState state;
+        return Pokemon::run_segment(state, segment, range, policy, hooks);
+    }
+    std::string last_begun() const{
+        for (auto it = game.trace.rbegin(); it != game.trace.rend(); ++it){
+            if (it->starts_with("begin ")){
+                return it->substr(6);
+            }
+        }
+        return "";
+    }
+    std::vector<std::string> begun() const{
+        std::vector<std::string> ids;
+        for (const std::string& item : game.trace){
+            if (item.starts_with("begin ")){
+                ids.push_back(item.substr(6));
+            }
+        }
+        return ids;
+    }
+    size_t count(const std::string& item) const{
+        return (size_t)std::count(game.trace.begin(), game.trace.end(), item);
+    }
+};
+
+
+struct AutoStorySimulationInput{
+    std::string name;
+    UnitTestResult (*body)();
+};
+
+struct AutoStorySimulationExpectation{
+    std::string description;
+};
+
+struct AutoStorySimulationTestCase{
+    AutoStorySimulationInput input;
+    AutoStorySimulationExpectation expectation;
+};
+
+class Test_AutoStorySimulation : public UnitTest{
+public:
+    explicit Test_AutoStorySimulation(AutoStorySimulationTestCase scenario)
+        : UnitTest("PokemonFRLG::AutoStory - Simulation: " + scenario.input.name)
+        , m_scenario(std::move(scenario))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        try{
+            return m_scenario.input.body();
+        }catch (Exception& e){
+            return std::string(e.name()) + ": " + e.message();
+        }
+    }
+
+private:
+    AutoStorySimulationTestCase m_scenario;
+};
+
+
+UnitTestResult test_whole_story(){
+    Simulation sim;
+    const Pokemon::SegmentReport report = sim.run({});
+    if (!report.completed){
+        return "Expected the whole story through:" + joined(sim.lines);
+    }
+    std::vector<std::string> ids;
+    for (const StoryCheckpoint& data : sim.rows){
+        ids.push_back(data.id);
+    }
+    if (sim.begun() != ids || sim.saves.size() != ids.size()){
+        return "Expected each checkpoint once, in order, each saving at its end:" + joined(sim.game.trace);
+    }
+    //  Each checkpoint starts where the save before it stands.
+    for (size_t c = 1; c < sim.rows.size(); c++){
+        const StoryCheckpoint& data = sim.rows[c];
+        const std::optional<StoryPose> start = story_pose(*data.start);
+        const std::optional<StoryPose> saved = story_pose(sim.saves[c - 1].second);
+        const bool same = start && saved && start->map == saved->map && start->tile == saved->tile
+            && (!start->facing || start->facing == saved->facing);
+        if (!same){
+            return std::format("{} starts at {}, but {} saved at {}.", data.id,
+                Pokemon::to_string(*data.start), sim.saves[c - 1].first, Pokemon::to_string(sim.saves[c - 1].second));
+        }
+    }
+    if (report.one_shot_passes() != report.checkpoints_run){
+        return "Expected every checkpoint one-shot:" + joined(sim.lines);
+    }
+    //  00.07's shopping, with the cursor staying on each row bought.
+    const std::map<std::string, int> bought{{"potion", 5}, {"antidote", 3}, {"parlyz_heal", 1}};
+    if (sim.game.bag != bought){
+        std::string text;
+        for (const auto& item : sim.game.bag){
+            text += std::format(" {} {}", item.second, item.first);
+        }
+        return "Expected 5 Potions, 3 Antidotes and 1 Parlyz Heal; bought" + text + ".";
+    }
+    return true;
+}
+
+UnitTestResult test_start_and_end(){
+    Simulation sim;
+    const Pokemon::SegmentReport report = sim.run({.from = "00.05", .to = "00.07"});
+    if (!report.completed || sim.begun() != std::vector<std::string>{"00.05", "00.06", "00.07"}){
+        return "Expected 00.05 to 00.07 only:" + joined(sim.begun());
+    }
+    return true;
+}
+
+//  A walk that fails once (a trainer the walker could not recover from):
+//  the checkpoint reloads its last save and runs again from its start.
+UnitTestResult test_retry_from_save(){
+    Simulation sim;
+    sim.game.failures["00.08/forest_north"] = {.failure = "operation_failed", .times = 1};
+    const Pokemon::SegmentReport report = sim.run({.from = "00.08", .to = "00.09"});
+    if (!report.completed || report.reloads != 1 || sim.begun() != std::vector<std::string>{"00.08", "00.08", "00.09"}
+        || sim.count("00.08/forest_east") != 2
+    ){
+        return "Expected 00.08 reloaded once and run again from its start:" + joined(sim.game.trace);
+    }
+    if (std::find(sim.lines.begin(), sim.lines.end(), "[Checkpoint] 00.08: passed on attempt 2 (1 reset)") == sim.lines.end()){
+        return "Expected the retried pass logged:" + joined(sim.lines);
+    }
+    return true;
+}
+
+//  Brock's battle lost every time: three attempts, then the stop.
+UnitTestResult test_gives_up_after_attempts(){
+    Simulation sim;
+    sim.game.failures["00.09/brock"] = {.failure = "blackout", .times = 10};
+    const Pokemon::SegmentReport report = sim.run({.from = "00.09", .to = std::nullopt});
+    if (report.completed || report.reloads != 2 || report.failed_checkpoint != "00.09" || report.failed_event != "brock"
+        || report.failure.failure != "blackout" || sim.count("00.09/brock") != 3 || !sim.saves.empty()
+    ){
+        return "Expected 00.09 tried 3 times, then a stop on Brock:" + joined(sim.game.trace) + joined(sim.lines);
+    }
+    return true;
+}
+
+//  Walks `step` of 00.14 on `sim` from `at`, where the table says the
+//  player stands, and moves `at` to where it says the step ends. Returns
+//  the failure, or empty.
+std::string walk_on_sim(OverworldSim& sim, StoryPose& at, const StoryStep& step){
+    const std::string where = "00.14/" + step.name + ": ";
+    //  A walk that ends on an open leg may leave the player short of it.
+    bool open_end = false;
+    if (step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS){
+        const std::optional<std::vector<RouteStep>> route = walked_route(at, step);
+        if (!route || route->empty()){
+            return where + "no route from " + to_string(MapPosition{at.map, at.tile}) + ".";
+        }
+        const RoutePlanning planning{.maps = &story_maps(), .start = MapPosition{at.map, at.tile}, .label = step.name};
+        const std::string failure = OverworldSimWalker(sim).run(*route, planning);
+        if (!failure.empty()){
+            return where + failure + " On " + to_string(sim.state().position) + ".";
+        }
+        const RouteStep& last = route->back();
+        open_end = last.action == RouteAction::WALK && !last.to_wall && !last.warps;
+        at = StoryPose{last.end.map, last.end.point, last.facing_after};
+    }else if (step.kind == StoryStepKind::STEP){
+        if (sim.state().facing != step.direction){
+            sim.tap(step.direction);
+        }
+        sim.tap(step.direction);
+        sim.watch({SimWatcher::MESSAGE}, std::chrono::milliseconds(2000));
+        at = *story_pose(*step.pose_after);
+    }
+    if (!open_end && !(sim.state().position == MapPosition{at.map, at.tile})){
+        return where + "expected " + to_string(MapPosition{at.map, at.tile}) + ", but on " + to_string(sim.state().position) + ".";
+    }
+    return "";
+}
+
+//  Console B, 2026-11-03 (row 00.14): the open leg east from Route 4
+//  into Cerulean City ended a tile short, on (6, 20), with nothing on
+//  screen. No hold to a wall finds the player there, and the walk went on
+//  a column off, the hold south stopped by the fence on (6, 23), to a
+//  wall below a row of houses, not the Pokemon Center's door. From the
+//  foot of Route 4's ledge, the row's walks on the sim reach the nurse
+//  with that leg whole or a tile short.
+UnitTestResult test_cerulean_entry_short(){
+    const std::vector<StoryCheckpoint>& rows = story_checkpoints();
+    const auto row = std::find_if(rows.begin(), rows.end(), [](const StoryCheckpoint& data){ return data.id == "00.14"; });
+    if (row == rows.end()){
+        return "No checkpoint 00.14.";
+    }
+    const auto hop = std::find_if(row->steps.begin(), row->steps.end(), [](const StoryStep& step){ return step.name == "ledge_hop"; });
+    if (hop == row->steps.end() || !hop->pose_after){
+        return "00.14: no ledge_hop.";
+    }
+    for (int short_by : {0, 1}){
+        StoryPose at = *story_pose(*hop->pose_after);
+        SimScript script;
+        script.short_holds[1] = short_by;
+        OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing, script);
+        for (auto step = hop + 1; step != row->steps.end() && step->kind != StoryStepKind::HEAL; ++step){
+            const std::string failure = walk_on_sim(sim, at, *step);
+            if (!failure.empty()){
+                return std::format("Entry {} tile(s) short: ", short_by) + failure;
+            }
+        }
+    }
+    return true;
+}
+
+//  Console B, 2026-11-03 (row 00.16), twice: the open leg north from
+//  Cerulean City onto Nugget Bridge ended on (11, 33), a tile short of
+//  (11, 32), and the one step onto Cale's row reached only (11, 32), out
+//  of his sight: "bug_catcher_cale: failed: no_battle". From the walk's
+//  end, whole or a tile short, the five trainers are met and beaten on
+//  the sim, each battle on the trainer's row.
+UnitTestResult test_nugget_bridge_short(){
+    const std::vector<StoryCheckpoint>& rows = story_checkpoints();
+    const auto row = std::find_if(rows.begin(), rows.end(), [](const StoryCheckpoint& data){ return data.id == "00.16"; });
+    if (row == rows.end()){
+        return "No checkpoint 00.16.";
+    }
+    const auto walk = std::find_if(row->steps.begin(), row->steps.end(), [](const StoryStep& step){ return step.name == "below_cale_line"; });
+    if (walk == row->steps.end() || !walk->target){
+        return "No step 00.16/below_cale_line.";
+    }
+    for (int short_by : {0, 1}){
+        StoryPose at = *story_pose(*walk->target);
+        OverworldSim sim(story_maps(), MapPosition{at.map, {at.tile.x, at.tile.y + short_by}}, Direction::NORTH);
+        for (auto step = walk + 1; step != row->steps.end() && step->kind != StoryStepKind::READY; ++step){
+            const std::string failure = row_step_on_sim(sim, at, *step, "00.16");
+            if (!failure.empty()){
+                return std::format("Walk {} tile(s) short: ", short_by) + failure;
+            }
+        }
+        if (sim.state().trainers_beaten.size() != 5){
+            return std::format("Walk {} tile(s) short: expected 5 trainers beaten, got {}.", short_by, sim.state().trainers_beaten.size());
+        }
+    }
+    return true;
+}
+
+//  00.17 on the sim, from its start on Route 24 to the Sea Cottage:
+//  Franklin, Kelsey, Nob and Haley are met on the steps into their lines
+//  and beaten there. The sim's trainers who look around see every way
+//  they may look, so Youngster Dan sees the player on (20, 4), walks up
+//  to (21, 4) and is fought there, off the way on.
+UnitTestResult test_route25_trainers(){
+    const std::vector<StoryCheckpoint>& rows = story_checkpoints();
+    const auto row = std::find_if(rows.begin(), rows.end(), [](const StoryCheckpoint& data){ return data.id == "00.17"; });
+    if (row == rows.end()){
+        return "No checkpoint 00.17.";
+    }
+    StoryPose at = *story_pose(*row->start);
+    OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
+    for (const StoryStep& step : row->steps){
+        const std::string failure = row_step_on_sim(sim, at, step, "00.17");
+        if (!failure.empty()){
+            return failure;
+        }
+    }
+    const std::vector<std::string> expected{"hiker", "youngster", "picnicker", "hiker", "lass"};
+    if (sim.state().trainers_beaten != expected){
+        std::string beaten;
+        for (const std::string& name : sim.state().trainers_beaten){
+            beaten += " " + name;
+        }
+        return "00.17: expected Franklin, Dan, Kelsey, Nob and Haley beaten; beat" + beaten + ".";
+    }
+    if (!(sim.state().position == MapPosition{"Route25_SeaCottage", {7, 8}})){
+        return "00.17: expected to end in the Sea Cottage on (7, 8), not " + to_string(sim.state().position) + ".";
+    }
+    return true;
+}
+
+//  00.20 on the sim, its walks from the Center: over Nugget Bridge, whose
+//  trainers 00.16 beat (they stand there, but don't battle), onto Route
+//  24's grass at (4, 19) out of Camper Shane's sight, and back to the
+//  nurse. No trainer battles on the way. The open leg north from Cerulean
+//  City onto the bridge crosses onto Route 24, where the game holds the
+//  player up a tile: held for its tiles alone it ended on (11, 16), a tile
+//  short, and the leg west bumped the bridge's posts (console B,
+//  2026-11-03, row 00.20, twice).
+//  The story maps after 00.16: Nugget Bridge's trainers beaten, standing
+//  on columns 10 and 12 without battling.
+std::vector<MapData> maps_bridge_beaten(){
+    std::vector<MapData> maps = story_maps();
+    for (MapData& map : maps){
+        if (map.name != "Route24"){
+            continue;
+        }
+        for (MapObject& object : map.objects){
+            if (object.trainer && object.x >= 10 && object.x <= 12){
+                object.trainer.reset();
+            }
+        }
+    }
+    return maps;
+}
+
+UnitTestResult test_oddish_walks(){
+    const std::vector<StoryCheckpoint>& rows = story_checkpoints();
+    const auto row = std::find_if(rows.begin(), rows.end(), [](const StoryCheckpoint& data){ return data.id == "00.20"; });
+    if (row == rows.end()){
+        return "No checkpoint 00.20.";
+    }
+    StoryPose at = *story_pose(*row->start);
+    OverworldSim sim(maps_bridge_beaten(), MapPosition{at.map, at.tile}, *at.facing);
+    const std::map<std::string, MapPosition> ends{
+        {"mart_clerk", {"CeruleanCity_Mart", {4, 3}}},
+        {"oddish_patch", {"Route24", {3, 19}}},
+        {"oddish_patch_cliff", {"Route24", {3, 19}}},
+        {"cerulean_nurse", {"CeruleanCity_PokemonCenter_1F", {7, 4}}},
+    };
+    for (const StoryStep& step : row->steps){
+        if (step.kind != StoryStepKind::ROUTE && step.kind != StoryStepKind::LEGS){
+            continue;
+        }
+        const std::string failure = row_step_on_sim(sim, at, step, "00.20");
+        if (!failure.empty()){
+            return failure;
+        }
+        const auto end = ends.find(step.name);
+        if (end == ends.end() || !(sim.state().position == end->second)){
+            return "00.20/" + step.name + ": ended on " + to_string(sim.state().position) + ".";
+        }
+    }
+    if (!sim.state().trainers_beaten.empty() || !sim.state().violations.empty()){
+        return "00.20: a trainer's battle or a violation on the way.";
+    }
+    return true;
+}
+
+class QuietLogger : public Logger{
+public:
+    using Logger::log;
+    virtual void log(const std::string&, Color) override{}
+};
+
+//  Walks `route`, planned from the pacing step's tiles by
+//  plan_story_route(), on `sim`, as walk_route() does: no start tile, the
+//  facing read. Returns the failure, or empty.
+std::string walk_paced_route(OverworldSim& sim, const std::vector<RouteStep>& route, const std::string& label){
+    const RoutePlanning planning{.maps = &story_maps(), .start = std::nullopt, .label = label};
+    const std::string failure = OverworldSimWalker(sim).run(route, planning);
+    return failure.empty() ? "" : label + ": " + failure + " On " + to_string(sim.state().position) + ".";
+}
+
+//  Console B, 2026-11-03 (row 00.20, run m61): the Oddish's battle came
+//  on the pace's far step, so the capture left the player on (3, 19), not
+//  the table's (4, 19). The walk back planned from (4, 19) went a column
+//  west of its plan, down the bridge's column 10, not 11, and stopped
+//  against the beaten Lass on (10, 22); every later leg bumped, and the
+//  warp to the Center never came. On the sim, the battle on either step
+//  of the pace, the row's later walks, from the capture's tiles, reach the
+//  nurse.
+//  Console B, 2026-11-03 (m63, 00.20 verify run 2): the open leg west
+//  from Nugget Bridge's head ended a tile short, so the walk down onto the
+//  grass ended on (5, 19), in Camper Shane's sight; after the first wild
+//  battle he walked up ("I saw your feat from the grass!") and the capture
+//  stopped. From the Mart, the walk to the patch on the sim keeps out of
+//  his sight with the leg west whole or a tile short.
+UnitTestResult test_oddish_patch_west_short(){
+    const std::vector<StoryCheckpoint>& rows = story_checkpoints();
+    const auto row = std::find_if(rows.begin(), rows.end(), [](const StoryCheckpoint& data){ return data.id == "00.20"; });
+    if (row == rows.end()){
+        return "No checkpoint 00.20.";
+    }
+    const auto mart = std::find_if(row->steps.begin(), row->steps.end(), [](const StoryStep& step){ return step.name == "mart_clerk"; });
+    const auto patch = std::find_if(row->steps.begin(), row->steps.end(), [](const StoryStep& step){ return step.name == "oddish_patch"; });
+    if (mart == row->steps.end() || patch == row->steps.end() || !mart->target || !patch->target){
+        return "00.20: no mart_clerk or oddish_patch.";
+    }
+    for (int short_by : {0, 1}){
+        StoryPose at = *story_pose(*mart->target);
+        SimScript script;
+        //  Holds from the Mart: south, west, north, east, north, east, north
+        //  over the bridge, then the 8th, west from the bridge's head.
+        script.short_holds[8] = short_by;
+        OverworldSim sim(maps_bridge_beaten(), MapPosition{at.map, at.tile}, *at.facing, script);
+        const std::string failure = row_step_on_sim(sim, at, *patch, "00.20");
+        const std::string label = std::format("West leg {} tile(s) short: ", short_by);
+        if (!failure.empty()){
+            return label + failure;
+        }
+        if (!sim.state().trainers_beaten.empty()){
+            return label + "a trainer saw the player, on " + to_string(sim.state().position) + ".";
+        }
+        const StoryPose end = *story_pose(*patch->target);
+        if (!(sim.state().position == MapPosition{end.map, end.tile})){
+            return label + "ended on " + to_string(sim.state().position) + ", not " + to_string(MapPosition{end.map, end.tile}) + ".";
+        }
+    }
+    return true;
+}
+
+UnitTestResult test_oddish_battle_on_far_step(){
+    const std::vector<StoryCheckpoint>& rows = story_checkpoints();
+    const auto row = std::find_if(rows.begin(), rows.end(), [](const StoryCheckpoint& data){ return data.id == "00.20"; });
+    if (row == rows.end()){
+        return "No checkpoint 00.20.";
+    }
+    const auto capture = std::find_if(row->steps.begin(), row->steps.end(), [](const StoryStep& step){ return step.name == "catch_oddish"; });
+    if (capture == row->steps.end() || capture + 1 == row->steps.end() || !(capture + 1)->target){
+        return "00.20: no catch_oddish with a route after it.";
+    }
+    const auto patch = std::find_if(row->steps.begin(), capture, [](const StoryStep& step){ return step.name == "oddish_patch"; });
+    if (patch == capture || !patch->target){
+        return "00.20: no oddish_patch before catch_oddish.";
+    }
+    //  The sim starts on the patch (3, 19): grass step 1 is the pace's far
+    //  step onto (4, 19), step 2 the one back.
+    for (int grass_step : {1, 2}){
+        SimScript script;
+        script.encounters.push_back(SimEncounter{.grass_step = grass_step});
+        const StoryPose start = *story_pose(*patch->target);
+        OverworldSim sim(maps_bridge_beaten(), MapPosition{start.map, start.tile}, Direction::SOUTH, script);
+        const std::string label = std::format("Battle on grass step {}: ", grass_step);
+        QuietLogger logger;
+        SimPatch pacing(sim, Direction::EAST, Direction::WEST);
+        if (!pace_until_battle(logger, pacing, PACE_MAX_STEPS) || sim.handle_battle(SimBattleChoice::RUN) != SimBattleEnd::ENDED){
+            return label + "no wild battle on the pace.";
+        }
+        const StoryStep& back = *(capture + 1);
+        StoryPose at = *story_pose(*back.target);
+        const std::optional<std::vector<RouteStep>> route = plan_story_route(
+            story_maps(), paced_pose(*patch->target, *capture), std::nullopt, RouteGoal{{at.map, at.tile}, at.facing}
+        );
+        if (!route){
+            return label + "no route from the capture's tiles.";
+        }
+        if (const std::string failure = walk_paced_route(sim, *route, "00.20/" + back.name); !failure.empty()){
+            return label + failure;
+        }
+        for (auto step = capture + 2; step != row->steps.end(); ++step){
+            const std::string failure = row_step_on_sim(sim, at, *step, "00.20");
+            if (!failure.empty()){
+                return label + failure;
+            }
+        }
+        if (!(sim.state().position == MapPosition{"CeruleanCity_PokemonCenter_1F", {7, 4}})){
+            return label + "00.20 ended on " + to_string(sim.state().position) + ", not the nurse.";
+        }
+    }
+    return true;
+}
+
+//  Whether `row`'s step `c` is a GRIND or capture that paces, with a ROUTE
+//  after it: nothing if not; else the route, planned from the pace's two
+//  tiles (paced_pose()), walked on the sim from each: the failure, or empty.
+std::optional<std::string> route_after_pacing(const StoryCheckpoint& row, size_t c){
+    if (c == 0 || c + 1 >= row.steps.size() || row.steps[c + 1].kind != StoryStepKind::ROUTE || !row.steps[c - 1].target){
+        return std::nullopt;
+    }
+    const StoryStep& next = row.steps[c + 1];
+    const Pokemon::Pose paced = paced_pose(*row.steps[c - 1].target, row.steps[c]);
+    const std::vector<TilePos> tiles = Pokemon::tiles_of(paced);
+    if (tiles.size() < 2){
+        return std::nullopt;
+    }
+    const StoryPose end = *story_pose(*next.target);
+    const std::optional<std::vector<RouteStep>> route = plan_story_route(
+        story_maps(), paced, std::nullopt, RouteGoal{{end.map, end.tile}, end.facing}
+    );
+    const std::string where = row.id + "/" + next.name;
+    if (!route){
+        return where + ": no route from " + Pokemon::to_string(paced) + ".";
+    }
+    for (const TilePos& tile : tiles){
+        const std::string from = "From " + to_string(MapPosition{paced.map, tile}) + ": ";
+        OverworldSim sim(maps_bridge_beaten(), MapPosition{paced.map, tile}, Direction::SOUTH);
+        if (const std::string failure = walk_paced_route(sim, *route, where); !failure.empty()){
+            return from + failure;
+        }
+        if (!(sim.state().position == MapPosition{end.map, end.tile})){
+            return from + where + " ended on " + to_string(sim.state().position) + ".";
+        }
+    }
+    return std::string();
+}
+
+//  Every GRIND or capture that paces, and a ROUTE after it: the route
+//  planned from the pace's two tiles walks on the sim from either to its
+//  end, its first holds bringing them to one tile.
+UnitTestResult test_routes_after_pacing(){
+    size_t checked = 0;
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        for (size_t c = 0; c < row.steps.size(); c++){
+            const std::optional<std::string> failure = route_after_pacing(row, c);
+            if (failure && !failure->empty()){
+                return *failure;
+            }
+            checked += failure ? 1 : 0;
+        }
+    }
+    if (checked < 3){
+        return std::format("Expected the routes after 00.14b's and 00.15's GRINDs and 00.20's capture; checked {}.", checked);
+    }
+    return true;
+}
+
+//  00.14 on the sim, from Mt. Moon's exit (32, 6): east and up through
+//  (48, 5) into the tutors' pen on Route 4 to (50, 4), facing the Mega
+//  Kick tutor (50, 3), then on to above the ledge (93, 8). Each walk ends
+//  where the table says, and no trainer sees the player on the way.
+UnitTestResult test_mega_kick_tutor_walks(){
+    const std::vector<StoryCheckpoint>& rows = story_checkpoints();
+    const auto row = std::find_if(rows.begin(), rows.end(), [](const StoryCheckpoint& data){ return data.id == "00.14"; });
+    if (row == rows.end()){
+        return "No checkpoint 00.14.";
+    }
+    const auto ledge = std::find_if(row->steps.begin(), row->steps.end(), [](const StoryStep& step){ return step.name == "above_ledge"; });
+    if (ledge == row->steps.end()){
+        return "00.14: no above_ledge.";
+    }
+    StoryPose at = *story_pose(*row->start);
+    OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
+    bool at_tutor = false;
+    for (auto step = row->steps.begin(); step != ledge + 1; ++step){
+        if (step->kind != StoryStepKind::ROUTE && step->kind != StoryStepKind::LEGS){
+            continue;
+        }
+        const std::string failure = row_step_on_sim(sim, at, *step, "00.14");
+        if (!failure.empty()){
+            return failure;
+        }
+        if (!(sim.state().position == MapPosition{at.map, at.tile})){
+            return "00.14/" + step->name + ": expected " + to_string(MapPosition{at.map, at.tile}) + ", but on " + to_string(sim.state().position) + ".";
+        }
+        if (sim.state().position == MapPosition{"Route4", {50, 4}} && sim.state().facing == Direction::NORTH){
+            at_tutor = true;
+        }
+    }
+    if (!at_tutor){
+        return "00.14: no walk ended on Route 4's (50, 4) facing the Mega Kick tutor (50, 3).";
+    }
+    if (!sim.state().trainers_beaten.empty() || !sim.state().violations.empty()){
+        return "00.14: a trainer's battle or a violation on the way.";
+    }
+    return true;
+}
+
+//  Console B, 2026-11-03 (row 00.18): after his scene Bill stands on
+//  (7, 6), east of the player on (6, 6), not on the maps' (7, 5). The
+//  walk out planned east onto (7, 6) and south to the mat (7, 9); the
+//  east tap bumped Bill, and the hold south took the player down column 6
+//  to (6, 9), beside the mat, with no warp. On a copy of the maps with
+//  Bill on (7, 6) and only the mat (7, 9) as the way out (the console
+//  didn't warp from (6, 9)), the row's walks after the ticket end each
+//  where the table says and leave on Route 25's (51, 5).
+UnitTestResult test_out_of_bill_cottage(){
+    const std::vector<StoryCheckpoint>& rows = story_checkpoints();
+    const auto row = std::find_if(rows.begin(), rows.end(), [](const StoryCheckpoint& data){ return data.id == "00.18"; });
+    if (row == rows.end()){
+        return "No checkpoint 00.18.";
+    }
+    const auto ticket = std::find_if(row->steps.begin(), row->steps.end(), [](const StoryStep& step){ return step.name == "ss_ticket"; });
+    if (ticket == row->steps.end() || !ticket->pose_after){
+        return "00.18: no ss_ticket.";
+    }
+    std::vector<MapData> maps = story_maps();
+    for (MapData& map : maps){
+        if (map.name != "Route25_SeaCottage"){
+            continue;
+        }
+        for (MapObject& object : map.objects){
+            if (object.name == "bill"){
+                object.x = 7;
+                object.y = 6;
+            }
+        }
+        std::erase_if(map.warps, [](const MapWarp& warp){ return warp.x != 7; });
+    }
+    StoryPose at = *story_pose(*ticket->pose_after);
+    OverworldSim sim(maps, MapPosition{at.map, at.tile}, *at.facing);
+    for (auto step = ticket + 1; step != row->steps.end(); ++step){
+        if (step->kind != StoryStepKind::ROUTE && step->kind != StoryStepKind::LEGS){
+            continue;
+        }
+        const std::string failure = row_step_on_sim(sim, at, *step, "00.18");
+        if (!failure.empty()){
+            return failure;
+        }
+        if (!(sim.state().position == MapPosition{at.map, at.tile})){
+            return "00.18/" + step->name + ": expected " + to_string(MapPosition{at.map, at.tile}) + ", but on " + to_string(sim.state().position) + ".";
+        }
+    }
+    if (!(sim.state().position == MapPosition{"Route25", {51, 5}})){
+        return "00.18: expected to leave onto Route 25's (51, 5), not " + to_string(sim.state().position) + ".";
+    }
+    if (!sim.state().violations.empty()){
+        return "00.18: violations:" + joined(sim.state().violations);
+    }
+    return true;
+}
+
+
+//  00.05 as the table authors it and as the data file built into the
+//  program (StoryData/frlg-parcel-00.05.json, the export tool's capture of
+//  that row): the loaded row builds the same events, and run against the
+//  fake game walks the same route, leaves the same trace and saves in the
+//  same place.
+UnitTestResult test_data_row_parity(){
+    const std::vector<StoryCheckpoint>& table = story_checkpoints();
+    const auto authored = std::find_if(table.begin(), table.end(), [](const StoryCheckpoint& row){ return row.id == "00.05"; });
+    if (authored == table.end()){
+        return "Expected row 00.05 in the table.";
+    }
+    const StoryCheckpoint loaded = load_story_checkpoint("frlg-parcel-00.05");
+    FakeGame describer;
+    const std::string authored_events = Pokemon::describe(Pokemon::build_story_checkpoint(*authored, describer));
+    const std::string loaded_events = Pokemon::describe(Pokemon::build_story_checkpoint(loaded, describer));
+    if (authored_events != loaded_events){
+        return "Expected the same events from the table and the data:\n" + authored_events + "\n" + loaded_events;
+    }
+    Simulation from_table;
+    from_table.rows = {*authored};
+    Simulation from_data;
+    from_data.rows = {loaded};
+    const bool completed = from_table.run({}).completed && from_data.run({}).completed;
+    if (!completed || from_table.game.trace != from_data.game.trace || from_table.lines != from_data.lines){
+        return "Expected the same run from the table and the data:" + joined(from_table.game.trace) + joined(from_data.game.trace);
+    }
+    if (from_table.saves.size() != 1 || from_data.saves.size() != 1
+        || Pokemon::to_string(from_table.saves[0].second) != Pokemon::to_string(from_data.saves[0].second)
+    ){
+        return "Expected both runs to save once, in the same place:" + joined(from_table.lines) + joined(from_data.lines);
+    }
+    return true;
+}
+
+const AutoStorySimulationTestCase AUTO_STORY_SIMULATION_CASES[] = {
+    {.input = {.name = "00.05 loaded row parity", .body = test_data_row_parity}, .expectation = {.description = "loaded row preserves events, trace and save pose"}},
+    {.input = {.name = "new game to Brock, in order, each start where the last save stood", .body = test_whole_story}, .expectation = {.description = "runs full story progression from new game through Brock gym"}},
+    {.input = {.name = "start and end checkpoints", .body = test_start_and_end}, .expectation = {.description = "executes segment bounded by start and end checkpoints"}},
+    {.input = {.name = "a failed walk reloads its checkpoint's save", .body = test_retry_from_save}, .expectation = {.description = "reloads checkpoint save state on simulated movement failure"}},
+    {.input = {.name = "a battle lost every time stops after 3 attempts", .body = test_gives_up_after_attempts}, .expectation = {.description = "aborts after three consecutive battle blackouts"}},
+    {.input = {.name = "00.14 into Cerulean, the entry leg a tile short", .body = test_cerulean_entry_short}, .expectation = {.description = "recovers when entering Cerulean City if movement ends one tile short"}},
+    {.input = {.name = "00.14 from Mt. Moon to the Mega Kick tutor, then above the ledge", .body = test_mega_kick_tutor_walks}, .expectation = {.description = "verifies route navigation from Mt. Moon to tutor and past ledge"}},
+    {.input = {.name = "00.16 Nugget Bridge, the walk onto it a tile short", .body = test_nugget_bridge_short}, .expectation = {.description = "completes Nugget Bridge battles even if initial approach stops short"}},
+    {.input = {.name = "00.17 Route 25, its four trainers and Dan", .body = test_route25_trainers}, .expectation = {.description = "simulates Route 25 trainer battles and Dan detour"}},
+    {.input = {.name = "00.18 out of Bill's Sea Cottage, Bill on (7, 6)", .body = test_out_of_bill_cottage}, .expectation = {.description = "simulates exiting Bill sea cottage with Bill relocated"}},
+    {.input = {.name = "00.20 to Route 24's grass and back, past Shane", .body = test_oddish_walks}, .expectation = {.description = "navigates to Route 24 grass avoiding trainer line of sight"}},
+    {.input = {.name = "00.20 back to the Center, the Oddish's battle on the pace's far step", .body = test_oddish_battle_on_far_step}, .expectation = {.description = "handles Oddish capture encounter occurring on far pace step"}},
+    {.input = {.name = "00.20 onto the grass out of Shane's sight, the leg west a tile short", .body = test_oddish_patch_west_short}, .expectation = {.description = "recovers when approaching grass patch with short western leg"}},
+    {.input = {.name = "the routes after pacing, from either of its tiles", .body = test_routes_after_pacing}, .expectation = {.description = "plans valid routes regardless of which pacing tile character ends on"}},
+};
+
+} // namespace
+
+
+void add_tests_AutoStorySimulation(UnitTestDatabase& database){
+    for (const auto& scenario : AUTO_STORY_SIMULATION_CASES){
+        database.add<Test_AutoStorySimulation>(scenario);
+    }
+}
+
+
+
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

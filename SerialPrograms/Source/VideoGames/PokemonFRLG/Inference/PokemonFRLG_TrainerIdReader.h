@@ -34,8 +34,16 @@ public:
     uint16_t read_tid(
         Logger& logger, Language language, const ImageViewRGB32& frame
     );
+    // As read_tid(), but nothing when the digits can't be read or are more
+    // than a TID can be, instead of a wrapped-around number.
+    std::optional<uint16_t> try_read_tid(
+        Logger& logger, Language language, const ImageViewRGB32& frame
+    );
 
 private:
+    // The digits read, or -1.
+    int read_tid_digits(Logger& logger, Language language, const ImageViewRGB32& frame);
+
     Color m_color;
     ImageFloatBox m_box_tid;
     ImageFloatBox m_box_tid_spa;

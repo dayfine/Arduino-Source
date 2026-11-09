@@ -1,0 +1,34 @@
+name: Story data codec
+on:
+  pull_request:
+  workflow_dispatch:
+jobs:
+  native-codec:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: dayfine/PokemonSimulation
+          # Synthetic contract cases, not an approved map/resource pin.
+          ref: 866613fa03e5c4a5eb7e57c91b59fafb44fc7ee3
+          path: publisher
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Check the Python reader against the same cases
+        working-directory: publisher
+        env:
+          PYTHONPATH: src
+        run: python -m unittest pokesim.story.test_checkpoint_wire
+      - run: cmake -S devtools/story-data-tests -B build-story-data -DCMAKE_BUILD_TYPE=Debug
+      - run: cmake --build build-story-data --config Debug -j4
+      - run: ctest --test-dir build-story-data -C Debug --output-on-failure
+      - if: runner.os != 'Windows'
+        run: ./build-story-data/StoryDataTests publisher/data/story/wire-conformance.json
+      - if: runner.os == 'Windows'
+        run: ./build-story-data/Debug/StoryDataTests.exe publisher/data/story/wire-conformance.json

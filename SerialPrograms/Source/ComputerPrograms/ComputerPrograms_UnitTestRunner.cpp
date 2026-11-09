@@ -13,6 +13,7 @@
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Common/Qt/QtThreadPool_Tests.h"
 #include "Kernels/Kernels_Tests.h"
+#include "Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.h"
 #include "CommonFramework/AudioPipeline/AudioInfo_Tests.h"
 #include "CommonFramework/AudioPipeline/Tools/ChannelMixer.h"
 #include "CommonFramework/AudioPipeline/SinkPipeline_Tests.h"
@@ -35,6 +36,9 @@
 #include "NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter_Tests.h"
 #include "NintendoSwitch/Controllers/SysbotBase/SysbotBase_Connection.h"
 
+#include "Pokemon/AutoStory/Pokemon_AutoStory_Tests.h"
+#include "Pokemon/Navigation/Pokemon_Navigation_Tests.h"
+#include "Pokemon/Navigation/Pokemon_RuntimeMap_Tests.h"
 #include "VideoGames/PokemonHome/PokemonHome_Tests.h"
 #include "VideoGames/PokemonSwSh/PokemonSwSh_Tests.h"
 #include "VideoGames/PokemonLA/PokemonLA_Tests.h"
@@ -79,6 +83,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     add_tests_ListenerSet(ret);
     add_tests_MoveOnlyFunction(ret);
     SysbotBase::add_tests_SysbotBasePing(ret);
+    SysbotBase::add_tests_SysbotBaseReceiveLine(ret);
     add_tests_AudioInfo(ret);
     add_tests_ChannelMixerMatrix(ret);
     add_tests_FFTStreamer(ret);
@@ -90,6 +95,18 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     add_tests_LabDeviceAccess(ret);
     OCR::add_tests(ret);
     Kernels::add_tests(ret);
+    Pokemon::add_tests_AutoStorySelect(ret);
+    Pokemon::add_tests_LegPlanner(ret);
+    Pokemon::add_tests_LegWalker(ret);
+    Pokemon::add_tests_WallRecovery(ret);
+    Pokemon::add_tests_MapData(ret);
+    Pokemon::add_tests_RuntimeMap(ret);
+    Pokemon::add_tests_RouteLog(ret);
+    Pokemon::add_tests_StoryEvents(ret);
+    Pokemon::add_tests_StorySegments(ret);
+    Pokemon::add_tests_StorySteps(ret);
+    Pokemon::add_tests_StoryStepJson(ret);
+    Pokemon::add_tests_AuthoredCheckpointJson(ret);
     NintendoSwitch::add_tests_CheckOnlineDetector(ret);
     NintendoSwitch::add_tests_FailedToConnectDetector(ret);
     NintendoSwitch::add_tests_UpdatePopupDetector(ret);

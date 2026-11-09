@@ -41,6 +41,22 @@ void TrainerIdReader::make_overlays(VideoOverlaySet &items) const {
 uint16_t TrainerIdReader::read_tid(
     Logger& logger, Language language, const ImageViewRGB32& frame
 ){
+    return uint16_t(read_tid_digits(logger, language, frame));
+}
+
+std::optional<uint16_t> TrainerIdReader::try_read_tid(
+    Logger& logger, Language language, const ImageViewRGB32& frame
+){
+    const int tid = read_tid_digits(logger, language, frame);
+    if (tid < 0 || tid > 0xffff){
+        return std::nullopt;
+    }
+    return uint16_t(tid);
+}
+
+int TrainerIdReader::read_tid_digits(
+    Logger& logger, Language language, const ImageViewRGB32& frame
+){
     ImageViewRGB32 game_screen =
             extract_box_reference(frame, GameSettings::instance().GAME_BOX);
 
@@ -52,7 +68,7 @@ uint16_t TrainerIdReader::read_tid(
 
     // waterfill segmentation + template matching
     // against the PokemonFRLG/Digits/0-9.png templates.
-    return uint16_t(read_digits_waterfill_template(logger, tid_region, DigitTemplateType::DialogBox));
+    return read_digits_waterfill_template(logger, tid_region, DigitTemplateType::DialogBox);
 }
 
 
