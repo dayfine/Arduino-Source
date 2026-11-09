@@ -197,8 +197,45 @@ UnitTestResult test_b1f_row37_battles_every_12(Logger&){
     if (!failure.empty()){
         return std::format("below_martha_line: ended on {}; {}", to_string(sim.state().position), failure);
     }
-    if (!(sim.state().position == MapPosition{StoryTable::ROCK_TUNNEL_B1F, {17, 34}})){
-        return std::format("below_martha_line: ended on {}, not (17, 34).", to_string(sim.state().position));
+    if (!(sim.state().position == MapPosition{StoryTable::ROCK_TUNNEL_B1F, {16, 35}})){
+        return std::format("below_martha_line: ended on {}, not (16, 35).", to_string(sim.state().position));
+    }
+    return true;
+}
+
+//  From Winston's tile, below_martha_line, martha_line and Martha's battle
+//  on `sim`: the failure, or empty once Martha alone is fought.
+std::string winston_to_martha(OverworldSim& sim){
+    const StoryCheckpoint& row = checkpoint("00.28");
+    StoryPose at{StoryTable::ROCK_TUNNEL_B1F, {29, 37}, Direction::NORTH};
+    for (size_t c = step_index(row, "below_martha_line"); c <= step_index(row, "picnicker_martha"); c++){
+        if (const std::string failure = row_step_on_sim(sim, at, row.steps[c], row.id); !failure.empty()){
+            return std::format("ended on {}; {}", to_string(sim.state().position), failure);
+        }
+    }
+    if (sim.state().trainers_beaten != std::vector<std::string>{"picnicker"}){
+        return std::format("ended on {}, Martha not fought.", to_string(sim.state().position));
+    }
+    return "";
+}
+
+//  Console B, 2026-11-09 (run 2): after Winston, the walk west along row
+//  37 was found again at the wall (1, 38); a wild battle 0 to 2 tiles into
+//  the walk east along row 38 left the player on one of (1..3, 38), and
+//  the walk went on from there to the wall (19, 35). The one-tile step
+//  north onto row 34 then ended short with nothing seen, the walk east
+//  "to the wall (17, 34)" ran along row 35 to the rock (20, 35) instead
+//  (the end frame shows the wall (19, 34) north, the rock east), and
+//  martha_line found no trainer. Here the same battle, and the 10th hold
+//  (that step, before the route went up column 16 into her line) a tile
+//  short: Martha still sees the player.
+UnitTestResult test_b1f_martha_after_row38_battle(Logger&){
+    SimScript script;
+    script.encounters = {SimEncounter{.grass_step = 31}};
+    script.short_holds = {{1, 2}, {10, 1}};
+    OverworldSim sim(maps_after_route10(), MapPosition{StoryTable::ROCK_TUNNEL_B1F, {29, 37}}, Direction::NORTH, script);
+    if (const std::string failure = winston_to_martha(sim); !failure.empty()){
+        return failure;
     }
     return true;
 }
@@ -304,34 +341,54 @@ const std::map<std::string, int> ROCK_TUNNEL_ENCOUNTER_RATES{
 };
 
 constexpr unsigned GAME_ODDS_SEEDS = 30;
+//  The share of turn taps the sim drops (SimScript::turn_tap_drop_rate):
+//  a guess well above what the console showed, one in 00.28 run 2.
+constexpr double TURN_TAP_DROP_RATE = 0.1;
 
 //  00.28 whole, its wild battles at the game's own odds (OverworldSim::
-//  rolls_encounter()), from each of these seeds: every run ends where it
-//  should. Logs the runs' numbers.
-UnitTestResult test_rock_tunnel_game_odds(Logger& logger){
+//  rolls_encounter()) and `turn_tap_drop_rate` of its turn taps dropped,
+//  from each of these seeds: every run ends where it should. Logs the
+//  runs' numbers.
+UnitTestResult rock_tunnel_game_odds(Logger& logger, double turn_tap_drop_rate){
     OverworldSim clean_sim = row_start_sim("00.28", SimScript{});
     if (const UnitTestResult clean = row_checked(clean_sim, "00.28", {ROCK_TUNNEL_TRAINERS}, MapPosition{StoryTable::ROUTE10, {8, 58}}); clean.result != UnitTestResult::PASSED){
         return clean;
     }
     std::vector<RowRunNumbers> runs;
     std::string failures;
+    int dropped = 0;
     for (unsigned seed = 1; seed <= GAME_ODDS_SEEDS; seed++){
         SimScript script;
         script.encounter_rates = ROCK_TUNNEL_ENCOUNTER_RATES;
         script.encounter_seed = seed;
+        script.turn_tap_drop_rate = turn_tap_drop_rate;
+        script.turn_tap_seed = seed;
         OverworldSim sim = row_start_sim("00.28", script);
         const UnitTestResult result = row_checked(sim, "00.28", {ROCK_TUNNEL_TRAINERS}, MapPosition{StoryTable::ROUTE10, {8, 58}});
         const bool passed = result.result == UnitTestResult::PASSED;
         runs.push_back(row_numbers(sim.state(), passed, clean_sim.state()));
+        dropped += sim.state().turn_taps_dropped;
         if (!passed){
             failures += std::format("{}Seed {}: {}", failures.empty() ? "" : " | ", seed, result.message);
         }
     }
-    logger.log("00.28 at the game's encounter odds: " + numbers_summary(runs));
+    logger.log(std::format(
+        "00.28 at the game's encounter odds, {} turn taps dropped: {}", dropped, numbers_summary(runs)
+    ));
     if (!failures.empty()){
         return failures;
     }
     return true;
+}
+
+UnitTestResult test_rock_tunnel_game_odds(Logger& logger){
+    return rock_tunnel_game_odds(logger, 0);
+}
+
+//  The same with one turn tap in TURN_TAP_DROP_RATE dropped by the game
+//  (console B, 2026-11-09, 00.28 run 2).
+UnitTestResult test_rock_tunnel_dropped_turn_taps(Logger& logger){
+    return rock_tunnel_game_odds(logger, TURN_TAP_DROP_RATE);
 }
 
 //  00.29 on the sim: no trainer met, the ledge hopped, Lavender's nurse.
@@ -419,6 +476,8 @@ const AutoStoryLavenderCase AUTO_STORY_LAVENDER_CASES[] = {
     {.input = {"00.28 B1F row 37 with a wild battle every 10 to 14 steps", test_b1f_row37_battles_every_12}, .expectation = {}},
     {.input = {"00.28 a wild battle every 7 to 25 steps, 12 seeds", test_rock_tunnel_frequent_battles}, .expectation = {}},
     {.input = {"00.28 wild battles at the game's odds, 30 seeds", test_rock_tunnel_game_odds}, .expectation = {}},
+    {.input = {"00.28 wild battles at the game's odds and 1 in 10 turn taps dropped, 30 seeds", test_rock_tunnel_dropped_turn_taps}, .expectation = {}},
+    {.input = {"00.28 B1F a wild battle into row 38, then a step short: Martha still sees the player", test_b1f_martha_after_row38_battle}, .expectation = {}},
     {.input = {"00.29 Route 10 south, the ledge, Lavender Town's Pokemon Center", test_lavender_row}, .expectation = {}},
     {.input = {"00.29 a tile off after each open leg", test_lavender_tile_off}, .expectation = {}},
     {.input = {"00.28 and 00.29 save on Route 10 and in Lavender Town", test_save_places}, .expectation = {}},

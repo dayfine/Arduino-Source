@@ -77,7 +77,7 @@ std::optional<Direction> face_a_wall(StoryEnv& env, const MapPosition& position)
     const std::optional<Direction> wall = wall_beside(*map, position.point);
     if (wall){
         env.console.log(std::string("Story: facing unknown, turning to the wall ") + direction_name(*wall) + ".");
-        face_wall(env.context, *wall);
+        face_wall(env.console, env.context, *wall);
     }
     return wall;
 }
@@ -192,7 +192,7 @@ Outcome take_step(StoryEnv& env, RunState& state, const StoryStep& step){
             return Pokemon::outcome_failed("no_trainer", std::format("{} s on the tile {}", TRAINER_WAIT_WATCH.count() / 1000, direction_name(step.direction)));
         }
     }else{
-        step_once(env.context, step.direction, facing_of(state.pose));
+        step_once(env.console, env.context, step.direction, facing_of(state.pose));
     }
     const std::vector<TilePos> tiles = Pokemon::tiles_of(state.pose);
     if (tiles.size() != 1){
@@ -618,12 +618,12 @@ Outcome cut_tree(StoryEnv& env, RunState& state, const StoryStep& step){
     }
     if (here->facing != step.direction){
         //  The tree is in the way: a tap only turns the player to it.
-        face_wall(env.context, step.direction);
+        face_wall(env.console, env.context, step.direction);
     }
     pbf_press_button(env.context, BUTTON_A, 160ms, 800ms);
     answer_yes_no(env.console, env.context, true, BUTTON_B, YES_NO_TIMEOUT);
     mash_until_overworld(env.console, env.context, SCENE_TIMEOUT);
-    step_once(env.context, step.direction, step.direction);
+    step_once(env.console, env.context, step.direction, step.direction);
     return Pokemon::outcome_ok(to_pose(StoryPose{here->map, here->tile.next(step.direction), step.direction}));
 }
 

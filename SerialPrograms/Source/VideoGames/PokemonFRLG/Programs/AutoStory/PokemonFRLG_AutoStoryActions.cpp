@@ -27,6 +27,7 @@
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_StartMenuDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_SelectionArrowDetector.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "VideoGames/PokemonFRLG/Programs/PokemonFRLG_NamingScreen.h"
@@ -57,9 +58,6 @@ constexpr Milliseconds INTRO_TIMEOUT = 600000ms;
 //  "Wait about 8 s" after YES at the nurse (console B, 2026-11-01): 1.5 s
 //  between presses did not heal.
 constexpr Milliseconds HEAL_TIME = 8000ms;
-//  FRLG takes a tap this short as a turn, without a step.
-constexpr Milliseconds TURN_TAP = 40ms;
-constexpr Milliseconds TURN_SETTLE = 300ms;
 
 DpadPosition dpad(Direction direction){
     switch (direction){
@@ -580,9 +578,9 @@ std::optional<size_t> talk_and_count_pages(ConsoleHandle& console, ProController
     return pages;
 }
 
-void step_once(ProControllerContext& context, Direction direction, std::optional<Direction> facing){
+void step_once(ConsoleHandle& console, ProControllerContext& context, Direction direction, std::optional<Direction> facing){
     if (facing != direction){
-        pbf_press_dpad(context, dpad(direction), TURN_TAP, TURN_SETTLE);
+        OverworldWalkSteps::turn_to(console, context, direction);
     }
     //  A step, once started, finishes on its own.
     pbf_press_dpad(context, dpad(direction), 120ms, 500ms);
@@ -606,7 +604,7 @@ std::optional<int> step_into_line(
     return step_until_seen(
         max_tiles,
         [&]{
-            step_once(context, direction, facing);
+            step_once(console, context, direction, facing);
             facing = direction;
         },
         [&]{
@@ -623,9 +621,8 @@ std::optional<int> step_into_line(
     );
 }
 
-void face_wall(ProControllerContext& context, Direction direction){
-    pbf_press_dpad(context, dpad(direction), TURN_TAP, TURN_SETTLE);
-    context.wait_for_all_requests();
+void face_wall(ConsoleHandle& console, ProControllerContext& context, Direction direction){
+    OverworldWalkSteps::turn_to(console, context, direction);
 }
 
 SaveAction SaveDialog::next(SaveScreen screen){

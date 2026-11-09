@@ -66,7 +66,7 @@ StepWalk walk_step(
         //  facing the right way: holding through a turn lost a tile on the
         //  console, while holds from a standstill were exact over 15 tiles.
         if (facing != step.direction){
-            pbf_press_dpad(context, dpad(step.direction), TURN_TAP, TURN_SETTLE);
+            turn_to(console, context, step.direction);
         }
         if (const std::string note = speed_note(step, speed); !note.empty()){
             console.log(note);

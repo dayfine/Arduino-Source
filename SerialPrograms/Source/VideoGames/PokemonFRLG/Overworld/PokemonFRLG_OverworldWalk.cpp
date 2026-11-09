@@ -377,6 +377,22 @@ std::optional<Direction> read_facing(ConsoleHandle& console, ProControllerContex
     return facing;
 }
 
+void turn_to(ConsoleHandle& console, ProControllerContext& context, Direction direction){
+    for (size_t tap = 1; tap <= MAX_TURN_TAPS; tap++){
+        pbf_press_dpad(context, dpad(direction), TURN_TAP, TURN_SETTLE);
+        context.wait_for_all_requests();
+        VideoSnapshot screen = console.video().snapshot();
+        const std::optional<Direction> facing = screen ? read_player_facing(screen) : std::nullopt;
+        if (!facing || *facing == direction){
+            return;
+        }
+        console.log(std::format(
+            "Route: after turn tap {} {}, the player faces {}.",
+            tap, Pokemon::direction_name(direction), Pokemon::direction_name(*facing)
+        ), COLOR_ORANGE);
+    }
+}
+
 void start_surf(ConsoleHandle& console, ProControllerContext& context, Direction direction, bool facing_water){
     //  "The water is a deep blue... Would you like to SURF?", with YES selected.
     //  An A pressed while the player is still turning is lost.
@@ -515,7 +531,7 @@ void walk_overworld_route(
             //  facing the right way: holding through a turn lost a tile on the
             //  console, while holds from a standstill were exact over 15 tiles.
             if (facing != step.direction){
-                pbf_press_dpad(context, dpad(step.direction), TURN_TAP, TURN_SETTLE);
+                turn_to(console, context, step.direction);
             }
             if (const std::string note = speed_note(step, speed); !note.empty()){
                 console.log(note);

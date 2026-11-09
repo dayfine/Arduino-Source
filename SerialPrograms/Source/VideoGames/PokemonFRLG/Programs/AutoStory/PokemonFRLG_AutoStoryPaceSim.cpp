@@ -25,7 +25,7 @@ SimPatch::SimPatch(OverworldSim& sim, Direction pace, Direction back, std::funct
 bool SimPatch::step(){
     const Direction way = m_displaced ? m_back : m_pace;
     if (m_sim.state().facing != way){
-        m_sim.tap(way);
+        sim_turn_to(m_sim, way);
     }
     m_sim.tap(way);
     m_displaced = !m_displaced;

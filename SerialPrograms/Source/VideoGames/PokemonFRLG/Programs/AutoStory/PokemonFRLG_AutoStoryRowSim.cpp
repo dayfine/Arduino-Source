@@ -401,7 +401,7 @@ std::string OverworldStepSim::step_ahead(const StoryStep& step){
     }
     const auto tap = [this, &step]{
         if (m_sim.state().facing != step.direction){
-            m_sim.tap(step.direction);
+            sim_turn_to(m_sim, step.direction);
         }
         m_sim.tap(step.direction);
     };
@@ -424,7 +424,7 @@ std::string OverworldStepSim::step_ahead(const StoryStep& step){
 //  A hop() or step_onto(): one step, ending where the table says.
 std::string OverworldStepSim::step_onto(const StoryStep& step){
     if (m_sim.state().facing != step.direction){
-        m_sim.tap(step.direction);
+        sim_turn_to(m_sim, step.direction);
     }
     m_sim.tap(step.direction);
     m_at = *story_pose(*step.pose_after);
@@ -435,7 +435,7 @@ std::string OverworldStepSim::step_onto(const StoryStep& step){
 //  tile.
 std::string OverworldStepSim::cut(const StoryStep& step){
     if (m_sim.state().facing != step.direction){
-        m_sim.tap(step.direction);
+        sim_turn_to(m_sim, step.direction);
     }
     if (!m_sim.cut_tree()){
         return "no tree to cut.";
