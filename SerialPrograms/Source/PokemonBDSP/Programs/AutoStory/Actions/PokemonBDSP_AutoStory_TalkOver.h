@@ -28,11 +28,12 @@ namespace PokemonBDSP{
 
 //  The judgement is shared (Pokemon_SceneJudges.h): it reads the screen
 //  events BdspScreenObserver reports.
+//  What to do after a look.
 using Pokemon::SceneMove;
+//  What ends a talk-over, besides the quiet.
 using Pokemon::TalkOverRule;
+//  When a talk or a scene is over, from looks alone.
 using Pokemon::TalkOver;
-using Pokemon::TALK_OVER_QUIET;
-using Pokemon::TALK_OVER_CALM;
 
 //  One press is held this long,
 constexpr Milliseconds TALK_OVER_HOLD = Milliseconds(80);

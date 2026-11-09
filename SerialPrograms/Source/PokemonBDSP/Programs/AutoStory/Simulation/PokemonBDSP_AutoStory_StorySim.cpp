@@ -65,7 +65,7 @@ std::string play_scene(const SimScene& scene, const TalkOverRule& rule){
             look.set(Pokemon::ScreenEvent::DIALOG_BOX, shown.line);
             look.set(Pokemon::ScreenEvent::PLAYER_CAN_MOVE, shown.overworld);
             look.set(Pokemon::ScreenEvent::SCREEN_STILL, !shown.moving);
-            look.add_fade(shown.fade);
+            look.merge(Pokemon::fade_events(shown.fade));
         }
         switch (judge.look(look, now)){
         case SceneMove::DONE:

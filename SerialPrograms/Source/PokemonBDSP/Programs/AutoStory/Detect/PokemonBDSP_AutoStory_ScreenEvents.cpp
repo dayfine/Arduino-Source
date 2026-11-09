@@ -35,7 +35,7 @@ ScreenEvents BdspScreenObserver::observe(const VideoSnapshot& frame, WallClock n
     out.set(ScreenEvent::DIALOG_BOX, m_dialog.detect(screen));
     out.set(ScreenEvent::PLAYER_CAN_MOVE, m_overworld.detect(screen));
     out.set(ScreenEvent::SCREEN_STILL, m_previous && walk_screen_change(*m_previous.frame, screen) < WALK_TAP_BLOCKED_CHANGE);
-    out.add_fade(fade_of_screen(screen));
+    out.merge(Pokemon::fade_events(fade_of_screen(screen)));
     out.set(ScreenEvent::LOCATION_BANNER, !m_banner.empty() && location_banner_matches(m_reads.read(screen, now), m_banner));
     m_previous = frame;
     return out;

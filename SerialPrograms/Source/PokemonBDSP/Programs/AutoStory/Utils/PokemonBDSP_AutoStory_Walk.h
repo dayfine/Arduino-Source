@@ -53,13 +53,19 @@ enum class WalkOrigin{ CURRENT_LEG, MAY_PRECEDE_LEG };
 
 //  The fade and warp judgements are shared (Pokemon_ScreenEvents.h,
 //  Pokemon_SceneJudges.h); BDSP's walks and steps fill them.
+//  How a screen's fade looks.
 using Pokemon::WarpFade;
+//  "black fade", for the log.
 using Pokemon::warp_fade_name;
+//  A fade's most texture (the walk's black-screen watcher uses it too).
 using Pokemon::FADE_MAX_STDDEV_SUM;
+//  A dark fade's brightest rgb sum (likewise).
 using Pokemon::FADE_MAX_DARK_SUM;
-using Pokemon::FADE_MIN_WHITE_SUM;
+//  The fade a screen's middle shows, from its stats.
 using Pokemon::fade_of;
+//  The fade a screen shows.
 using Pokemon::fade_of_screen;
+//  What a walk or a step saw of a warp: a fade or a banner.
 using Pokemon::WarpSeen;
 
 //  Result metrics and terminal state returned by automated walking execution.
