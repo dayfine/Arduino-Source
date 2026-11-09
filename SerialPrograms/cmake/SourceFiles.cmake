@@ -1490,6 +1490,9 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Options/Pokemon_StatsHuntFilter.h
     Source/Pokemon/Options/Pokemon_StoryRunOptions.cpp
     Source/Pokemon/Options/Pokemon_StoryRunOptions.h
+    Source/Pokemon/AutoStory/Pokemon_AutoStoryFailureCapture.cpp
+    Source/Pokemon/AutoStory/Pokemon_AutoStoryFailureCapture.h
+    Source/Pokemon/AutoStory/Pokemon_AutoStoryFailureCapture_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect.h
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.h
