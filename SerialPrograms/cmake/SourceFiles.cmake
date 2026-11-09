@@ -1732,6 +1732,8 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryTable_Tests.h
     Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Talks.cpp
     Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Talks.h
+    Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_TalkOver.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_TalkOver.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Walks.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Walks.h
     Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_WildBattle.cpp

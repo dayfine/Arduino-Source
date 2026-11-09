@@ -23,6 +23,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
+#include "Actions/PokemonBDSP_AutoStory_TalkOver.h"
 #include "Actions/PokemonBDSP_AutoStory_Talks.h"
 #include "PokemonBDSP_AutoStory_Walks.h"
 #include "Actions/PokemonBDSP_AutoStory_WildBattle.h"
@@ -39,93 +40,9 @@ using Pokemon::Direction;
 
 namespace{
 
-//  One rule for scenes and map changes: v2's long B mashes, with an end
-//  check. Press through the text, and keep pressing B while the screen is
-//  quiet: a scene can pause while someone walks off (Dawn and Barry after
-//  Rowan leaves, r23), fade dimly, not to black, to another map (r25), or
-//  wait on a box the detector misses (r26). B never starts a talk on the
-//  overworld. Done once the overworld has shown, with no text and a still
-//  screen, for 5 s of presses: after r31's fade home a scripted walk-in ran
-//  5 s with no text before Mom spoke.
-//
-//  A step or scene that ends on another map (`fade`) must fade on the way,
-//  and only the quiet after the fade counts: r30's scene went quiet for 5 s
-//  before the fade home, and r28 "went out" a tile beside the door and
-//  walked a whole route in the house. No fade is a map mismatch. The far
-//  map's banner `banner`, if it has one, counts as the fade: a fade the run
-//  missed is over, but its banner comes after it (#268 slice 1).
-constexpr double FADE_DARKNESS = 75;    //  brightness 0 to 255; cave fades reach ~45..64, r24's dim fade goes darker
-//  What settle() has seen of the warp so far: the darkest frame, and the banner.
-class SettleWarp{
-public:
-    explicit SettleWarp(const std::string& banner)
-        : m_banner(banner)
-    {}
-    void look(const ImageViewRGB32& frame, WallClock now){
-        m_darkest = std::min(m_darkest, image_average(frame).sum() / 3);
-        m_banner_seen |= !m_banner.empty() && location_banner_matches(m_reads.read(frame, now), m_banner);
-    }
-    bool seen() const{
-        return m_darkest < FADE_DARKNESS || m_banner_seen;
-    }
-    std::string describe() const{
-        return std::format("darkest frame {:.0f}{}", m_darkest, m_banner_seen ? ", banner read" : "");
-    }
-
-private:
-    const std::string& m_banner;
-    double m_darkest = 255;
-    LocationBannerReads m_reads;
-    bool m_banner_seen = false;
-};
-void settle(VideoStream& stream, ProControllerContext& context, Button button, const std::string& label, bool fade, const std::string& banner){
-    const WallClock none = WallClock::max();
-    const WallClock deadline = current_time() + 120s;
-    ShortDialogDetector dialog;
-    OverworldDetector overworld;
-    BattleMenuDetector battle_menu(BattleType::STANDARD);
-    WallClock quiet_since = none, calm_since = none;
-    SettleWarp warp(banner);
-    VideoSnapshot previous;
-    while (current_time() < deadline){
-        context.wait_for_all_requests();
-        const auto frame = stream.video().snapshot();
-        const WallClock now = current_time();
-        if (frame && battle_menu.detect(frame)){
-            stream.log("[Story] " + label + ": in wild battle during settle; fleeing.");
-            run_from_wild_battle(stream, context);
-            continue;
-        }
-        if (frame){
-            warp.look(*frame.frame, now);
-        }
-        const bool warped = !fade || warp.seen();
-        const bool talking = frame && dialog.detect(frame);
-        const bool still = frame && previous && walk_screen_change(*previous.frame, *frame.frame) < WALK_TAP_BLOCKED_CHANGE;
-        previous = frame;
-        const bool calm = !talking && overworld.detect(frame) && warped;
-        calm_since = calm ? (calm_since == none ? now : calm_since) : none;
-        if (calm && now - calm_since >= 15000ms){
-            stream.log(std::format("[Story] {}: settled on calm overworld; {}.", label, warp.describe()));
-            return;
-        }
-        if (!talking && still && overworld.detect(frame) && warped){
-            quiet_since = quiet_since == none ? now : quiet_since;
-            if (now - quiet_since >= 5000ms){
-                stream.log(std::format("[Story] {}: settled; {}.", label, warp.describe()));
-                return;
-            }
-        }else{
-            quiet_since = none;
-        }
-        pbf_press_button(context, talking ? button : BUTTON_B, 80ms, 1200ms);
-    }
-    OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-        fade && !warp.seen()
-            ? label + ": no fade or banner within 120 s, so we are not where the step goes (map mismatch)."
-            : label + ": not back on a quiet overworld within 120 s.",
-        stream);
-}
+//  A door run's dark screen, a channel's mean brightness 0 to 255: cave
+//  fades reach ~45..64, r24's dim fade goes darker.
+constexpr double FADE_DARKNESS = 75;
 
 DpadPosition dpad_toward(Direction direction){
     return
@@ -376,8 +293,15 @@ std::optional<size_t> ConsoleStoryStepIO::tap_to_banner(Direction direction, con
     return std::nullopt;
 }
 
+//  One rule for scenes and map changes (talk_over()): press through the
+//  text, and keep pressing B while the screen is quiet, until the overworld
+//  is quiet. A step or scene that ends on another map (`fade`) must fade on
+//  the way, and only the quiet after the fade counts: r28 "went out" a tile
+//  beside the door and walked a whole route in the house. The far map's
+//  banner `banner`, if it has one, counts as the fade: a fade the run
+//  missed is over, but its banner comes after it (#268 slice 1).
 void ConsoleStoryStepIO::settle(Button button, const std::string& label, bool fade, const std::string& banner){
-    PokemonBDSP::settle(m_stream, m_context, button, label, fade, banner);
+    talk_over(m_stream, m_context, label, {.next = button, .rule = {.warp = fade}, .banner = banner});
 }
 
 

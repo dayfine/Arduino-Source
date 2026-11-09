@@ -18,17 +18,16 @@
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/OCR/OCR_RawTesseractOCR.h"
 #include "CommonTools/OCR/OCR_Routines.h"
-#include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "PokemonBDSP/Inference/Battles/PokemonBDSP_BattleMenuDetector.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
-#include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Indoors.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Walk.h"
 #include "PokemonBDSP_AutoStory_Bag.h"
 #include "PokemonBDSP_AutoStory_Battle.h"
+#include "PokemonBDSP_AutoStory_TalkOver.h"
 #include "PokemonBDSP_AutoStory_WildBattle.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Walks.h"
 #include "PokemonBDSP_AutoStory_Talks.h"
@@ -53,79 +52,23 @@ bool dialogue_opens(VideoStream& stream, ProControllerContext& context, Millisec
     return wait_until(stream, context, timeout, {{dialog}}) == 0;
 }
 
-namespace{
-
-//  Lines after a trainer battle (Roark's badge, r211d) keep the menu from
-//  opening: finish them before the Potion. They pause for the badge's
-//  fanfare, so "no box for a moment" is not the end: after four lines Roark
-//  went quiet, the Potion's menu opened under his next line and failed
-//  (lab-B, 2026-10-31 09:45 and 2026-11-08 15:06). Done once the overworld
-//  shows with no box for 5 s.
-void settle_after_battle(VideoStream& stream, ProControllerContext& context){
-    ShortDialogDetector dialog;
-    OverworldDetector overworld;
-    auto calm_since = std::chrono::steady_clock::now();
-    const auto give_up = calm_since + 60s;
-    while (std::chrono::steady_clock::now() < give_up){
-        context.wait_for_all_requests();
-        const auto frame = stream.video().snapshot();
-        const bool box = frame && dialog.detect(*frame.frame);
-        if (box || !frame || !overworld.detect(*frame.frame)){
-            calm_since = std::chrono::steady_clock::now();
-        }else if (std::chrono::steady_clock::now() - calm_since >= 5s){
-            return;
-        }
-        if (box){
-            pbf_press_button(context, BUTTON_B, 80ms, 1100ms);
-        }else{
-            pbf_wait(context, 300ms);
-        }
-    }
-}
-
-} // namespace
-
 bool talk_or_fight(VideoStream& stream, ProControllerContext& context, const std::string& label, TalkExpect expect, BattleFormat format){
-    ShortDialogDetector dialog;
-    OverworldDetector overworld;
-    BattleMenuDetector battle_menu(BattleType::TRAINER);
-    //  Roark's battle menu read as STANDARD, not TRAINER, and nothing fought
-    //  it (r210d): either counts here, as only a trainer's battle can start.
-    BattleMenuDetector battle_menu_standard(BattleType::STANDARD);
-    BlackScreenDetector black;
-    auto quiet_since = std::chrono::steady_clock::now();
-    for (size_t check = 0; check < 120; check++){
-        context.wait_for_all_requests();
-        const auto frame = stream.video().snapshot();
-        if (!frame){
-            fail_step(stream, label + ": No video frame.");
-        }
-        if (battle_menu.detect(*frame.frame) || battle_menu_standard.detect(*frame.frame) || black.detect(*frame.frame)){
-            route_status(stream, "Fighting " + label + ".");
-            fight_story_battle(stream, context, label, format);
-            settle_after_battle(stream, context);
-            if (!in_pokemon_center(stream)){
-                use_potion_first_pokemon(stream, context, 0.8);
-            }
-            return true;
-        }
-        const bool talking = dialog.detect(*frame.frame);
-        if (!talking && overworld.detect(*frame.frame)){
-            if (expect != TalkExpect::BATTLE && std::chrono::steady_clock::now() - quiet_since >= 4s){
-                route_status(stream, label + " only talked.");
-                return false;
-            }
-            pbf_wait(context, 300ms);
-            continue;
-        }
-        quiet_since = std::chrono::steady_clock::now();
-        if (talking){
-            pbf_press_button(context, BUTTON_B, 80ms, 1100ms);
-        }else{
-            pbf_wait(context, 300ms);
-        }
+    const TalkOverEnd end = talk_over(stream, context, label, {
+        .rule = {.end_on_quiet = expect != TalkExpect::BATTLE},
+        .watch = TalkOverWatch::TRAINER,
+    });
+    if (end == TalkOverEnd::QUIET){
+        route_status(stream, label + " only talked.");
+        return false;
     }
-    fail_step(stream, label + ": neither a battle nor the overworld after the dialogue.");
+    route_status(stream, "Fighting " + label + ".");
+    //  The battle ends with its speeches over (confirm_battle_overworld()):
+    //  Roark's badge lines keep the Potion's menu from opening until then.
+    fight_story_battle(stream, context, label, format);
+    if (!in_pokemon_center(stream)){
+        use_potion_first_pokemon(stream, context, 0.8);
+    }
+    return true;
 }
 
 //  A rough check that we stand in a Pokemon Center: its floor fills the lower

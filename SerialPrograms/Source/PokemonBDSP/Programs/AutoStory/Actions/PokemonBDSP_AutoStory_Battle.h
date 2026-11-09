@@ -35,8 +35,10 @@ enum class BattleFormat{
     DOUBLES,
 };
 
-//  Mashes B until the overworld has shown with no dialogue for four seconds.
-//  Fails with a screenshot after three minutes.
+//  The speeches after a battle, to their end: talk_over(), B through the
+//  lines until the overworld is quiet. Roark's badge lines pause for the
+//  fanfare, and someone may walk off before the next line, so a moment
+//  with no box is not the end. Fails with a screenshot after two minutes.
 void confirm_battle_overworld(VideoStream& stream, ProControllerContext& context, const std::string& label);
 
 //  A story battle that may go badly: the best move each turn, Potions
