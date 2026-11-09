@@ -278,6 +278,9 @@ TapLook look_after_tap(VideoStream& stream, ProControllerContext& context, const
 //  FADE_DARKNESS is not a fade by itself, since a cave's floor is that dim
 //  (the Oreburgh Gate's about 46, lab-B 2026-11-08), but a fade into a cave
 //  from a lit street goes from about 120 to 45..64.
+//  TODO(#268 slice 3): stopgap. A uniform-screen fade watcher (the shared
+//  Black/WhiteScreen stddev test, as in upstream #1717) should replace this
+//  brightness drop; remove it once that watcher passes the Gate frames.
 constexpr double TAP_FADE_BLACK = 25;
 constexpr double TAP_FADE_DROP = 0.7;
 bool tap_faded(double before, double after){
@@ -322,6 +325,9 @@ bool ConsoleStoryStepIO::run_into_door(Direction direction, bool run, Millisecon
 //  west into a pocket by Route 203's pond (r75). Taps during the fade are
 //  eaten. The banner before the first tap means we are through already:
 //  the walk before slid onto the warp (lab-B 2026-11-08 15:31).
+//  TODO(#268 slice 2): stopgap. The "through already" check sees only a
+//  banner still on screen; once walkers report the fade or banner they saw
+//  (WalkResult::warp), read that instead and remove this check.
 std::optional<size_t> ConsoleStoryStepIO::tap_to_banner(Direction direction, const std::string& map, size_t max_taps){
     const std::string& banner = story_banner_name(map);
     m_context.wait_for_all_requests();
