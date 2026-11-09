@@ -36,6 +36,7 @@
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
 #include "PokemonFRLG_AutoStoryStartFrames.h"
+#include "PokemonFRLG_AutoStoryStepInterrupts.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
 
 namespace PokemonAutomation{
@@ -231,6 +232,8 @@ void read_bag_supplies(StoryEnv& env, StartMenu menu);
 //  Does FRLG's kinds of story step on the console, each with its row of
 //  story_action_rows() (PokemonFRLG_AutoStoryStepTable.h). A console step
 //  that fails is a failed Outcome, which the segment answers by reloading.
+//  Before each step it clears what came up since the step before
+//  (step_interrupts(), PokemonFRLG_AutoStoryStepInterrupts.h).
 class StoryExecutor : public Pokemon::StoryStepExecutor{
 public:
     explicit StoryExecutor(StoryEnv& env);
@@ -256,13 +259,18 @@ protected:
 private:
     //  How the console does `id`.
     Pokemon::StoryAction console_action(StoryActionId id);
+    //  How the console clears each kind of interrupt between steps.
+    StepInterruptActions console_interrupt_actions();
 
     StoryEnv& m_env;
     StartMenu m_menu = StartMenu::FULL;
-    //  FRLG does nothing around a step: a failed one fails the step.
-    Pokemon::StepGuard m_guard;
+    //  A failed step fails the step; an interrupt between steps is logged.
+    InterruptLogGuard m_guard;
     Pokemon::StoryActionTable m_table;
     Pokemon::TableExecutor m_executor;
+    //  What is cleared between steps, looked for on the screen.
+    ConsoleScreenLook m_look;
+    Pokemon::StoryInterrupts m_interrupts;
 };
 
 //  The checkpoint `data` as events, saving at its end.
