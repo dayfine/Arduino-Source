@@ -7,6 +7,7 @@
 #include <format>
 #include <memory>
 #include <set>
+#include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
@@ -387,67 +388,83 @@ std::optional<Direction> wall_beside(const MapData& map, const TilePos& tile){
     return std::nullopt;
 }
 
+namespace{
+
+//  How the console does an action that needs only the env.
+using ConsoleAction = Outcome (*)(StoryEnv& env, RunState& state, const StoryStep& step);
+
+ConsoleAction console_action_of(StoryActionId id){
+    switch (id){
+    case StoryActionId::NEW_GAME:
+        return [](StoryEnv& env, RunState&, const StoryStep&){
+            play_new_game_intro(env.console, env.context, env.player_name);
+            return Pokemon::outcome_ok();
+        };
+    case StoryActionId::ROUTE:
+        return [](StoryEnv& env, RunState& state, const StoryStep& step){ return walk_route(env, state, step); };
+    case StoryActionId::LEGS:
+        return walk_legs;
+    case StoryActionId::STEP:
+        return take_step;
+    case StoryActionId::TALK:
+        return [](StoryEnv& env, RunState&, const StoryStep&){
+            pbf_press_button(env.context, BUTTON_A, 160ms, 800ms);
+            return Pokemon::outcome_ok();
+        };
+    case StoryActionId::ANSWER:
+        return [](StoryEnv& env, RunState&, const StoryStep& step){
+            answer_yes_no(env.console, env.context, step.yes, BUTTON_B, YES_NO_TIMEOUT);
+            return Pokemon::outcome_ok();
+        };
+    case StoryActionId::MASH:
+        return [](StoryEnv& env, RunState&, const StoryStep&){
+            mash_until_overworld(env.console, env.context, SCENE_TIMEOUT);
+            return Pokemon::outcome_ok();
+        };
+    case StoryActionId::BATTLE:
+        return [](StoryEnv& env, RunState&, const StoryStep& step){ return battle(env, step); };
+    case StoryActionId::HEAL:
+        return [](StoryEnv& env, RunState&, const StoryStep&){
+            heal_at_center(env.console, env.context);
+            healed_by_nurse(env.supplies);
+            return Pokemon::outcome_ok();
+        };
+    case StoryActionId::SHOP:
+        return [](StoryEnv& env, RunState&, const StoryStep& step){ return shop(env, step); };
+    case StoryActionId::READY:
+        return get_ready;
+    case StoryActionId::OPTIONS:
+    case StoryActionId::GAME:
+        break;
+    }
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::string("No console action for ") + story_action_name(id));
+}
+
+} // namespace
+
+
 StoryExecutor::StoryExecutor(StoryEnv& env)
     : m_env(env)
+    , m_table(make_story_action_table([this](StoryActionId id){ return console_action(id); }))
+    , m_executor(m_table, m_guard)
 {}
 
 Outcome StoryExecutor::run(RunState& state, const StoryStep& step){
-    return guarded([&]{ return Pokemon::StoryStepExecutor::run(state, step); });
+    return m_executor.run(state, step);
 }
 
-Outcome StoryExecutor::new_game(RunState&, const StoryStep&){
-    play_new_game_intro(m_env.console, m_env.context, m_env.player_name);
-    return Pokemon::outcome_ok();
-}
-
-Outcome StoryExecutor::options(RunState&, const StoryStep&){
-    set_options(m_env.console, m_env.context, m_menu, m_env.language);
-    return Pokemon::outcome_ok();
-}
-
-Outcome StoryExecutor::route(RunState& state, const StoryStep& step){
-    return walk_route(m_env, state, step);
-}
-
-Outcome StoryExecutor::legs(RunState& state, const StoryStep& step){
-    return walk_legs(m_env, state, step);
-}
-
-Outcome StoryExecutor::step(RunState& state, const StoryStep& step){
-    return take_step(m_env, state, step);
-}
-
-Outcome StoryExecutor::talk(RunState&, const StoryStep&){
-    pbf_press_button(m_env.context, BUTTON_A, 160ms, 800ms);
-    return Pokemon::outcome_ok();
-}
-
-Outcome StoryExecutor::answer(RunState&, const StoryStep& step){
-    answer_yes_no(m_env.console, m_env.context, step.yes, BUTTON_B, YES_NO_TIMEOUT);
-    return Pokemon::outcome_ok();
-}
-
-Outcome StoryExecutor::mash(RunState&, const StoryStep&){
-    mash_until_overworld(m_env.console, m_env.context, SCENE_TIMEOUT);
-    return Pokemon::outcome_ok();
-}
-
-Outcome StoryExecutor::battle(RunState&, const StoryStep& step){
-    return PokemonFRLG::battle(m_env, step);
-}
-
-Outcome StoryExecutor::heal(RunState&, const StoryStep&){
-    heal_at_center(m_env.console, m_env.context);
-    healed_by_nurse(m_env.supplies);
-    return Pokemon::outcome_ok();
-}
-
-Outcome StoryExecutor::shop(RunState&, const StoryStep& step){
-    return PokemonFRLG::shop(m_env, step);
-}
-
-Outcome StoryExecutor::ready(RunState& state, const StoryStep& step){
-    return get_ready(m_env, state, step);
+Pokemon::StoryAction StoryExecutor::console_action(StoryActionId id){
+    if (id == StoryActionId::OPTIONS){
+        return {.act = [this](RunState&, const StoryStep&){
+            set_options(m_env.console, m_env.context, m_menu, m_env.language);
+            return Pokemon::outcome_ok();
+        }, .needs_console = true};
+    }
+    if (id == StoryActionId::GAME){
+        return {.act = [this](RunState& state, const StoryStep& step){ return game(state, step); }, .needs_console = true};
+    }
+    const ConsoleAction action = console_action_of(id);
+    return {.act = [this, action](RunState& state, const StoryStep& step){ return action(m_env, state, step); }, .needs_console = true};
 }
 
 namespace{
