@@ -20,6 +20,34 @@ never learns. Console B, 2026-11-08:
 A single signal judged in a single window is fragile. Several signals,
 recorded all the time and judged together, aren't.
 
+## Prior art (checked 2026-11-08)
+
+Neither SV AutoStory (upstream main) nor Butter's BDSP AutoStory
+(upstream #1717) has a timeline or event bus. Both attach several watchers
+to the move itself with `run_until` and act on whichever fires first:
+
+- SV `overworld_navigation`: battle, dialog and marker watchers around the
+  whole walk, and a nested `run_until` on `NoMinimapWatcher` (cheap) that
+  stops the stick and then waits for the battle or dialog. That is a
+  detector gated on another. `do_action_and_monitor_for_battles` /
+  `_for_overworld` wrap any action the same way.
+- #1717: black OR white OR battle watchers around a stick hold
+  (Segment 03); for the Escape Rope it starts the watchers *before* the
+  press, "so the transition cannot happen before the watcher starts". Our
+  Gate failures are exactly that gap. Fades use the shared
+  `BlackScreenWatcher` / `WhiteScreenWatcher` (rgb sum < 100 and stddev < 10
+  over 80% of the screen): a textured dim floor fails the stddev test, so no
+  relative-fade logic is needed if real fades are that uniform.
+- Position: #1717 matches landmark templates (`OverworldMatchers`, dx/dy
+  from a sign or door); SV realigns from the minimap marker and YOLO.
+- Recovery: SV's `checkpoint_reattempt_loop` reloads and retries the
+  checkpoint; tolerance of one missed signal here is on top of that, not
+  instead of it.
+
+Consequence: slice 1 needs no new infra, only `run_until` with several
+watchers around the move. The timeline (slice 2) is new to this codebase;
+build it only if "the walker reports what it saw" (below) falls short.
+
 ## Shape
 
 **1. Observers run during every controller action, not per step.**
@@ -95,11 +123,17 @@ that agrees, or it logs that it is deciding on one.
    through its run and the settle, and accepts either one. Red test: 01.05's
    Monte Carlo, one missed fade at the Gate gives 19/20 today; it must give
    20/20. It also unblocks the Gate exit as one run west.
-2. **`ScreenTimeline` in the shared engine**, fed by BDSP's walkers; banner
-   steps read it, so a banner seen during the previous step counts. Red
-   test: an open leg that slides onto a warp (from the P3 rule's sim).
-3. **Relative fade**: drop against recent frames, not a fixed 75. Red test:
-   start inside a dim cave.
+2. **Walkers report warps.** Every walk attaches the fade and banner
+   watchers, as #1717 does, and returns `WARPED` (with the banner text, if
+   read) like it returns a battle. The next step checks that report instead
+   of waiting for a fade that has passed. Red test: an open leg that slides
+   onto a warp (from the P3 rule's sim). A run-wide `ScreenTimeline` only if
+   this proves too narrow.
+3. **Uniform fade**: use the shared watchers' stddev test as #1717 does,
+   not mean brightness < 75. Ours run loose (rgb sum 225, stddev 60) because
+   cave fades measured at 45 to 64 brightness; check them against the Gate
+   frames (`Screenshots/AutoStory/banner/`) before tightening. Red test:
+   start inside the dim Gate.
 4. **Talk-over from events** (post-battle speeches, scenes): replaces the
    ad hoc settle loops, including today's `settle_after_battle`.
 5. **FRLG binding**: its watchers post to the timeline, and its arrival
