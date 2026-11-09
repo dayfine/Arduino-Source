@@ -33,6 +33,7 @@
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryPaceSim.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
+#include "Data/JsonParser.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 
 namespace PokemonAutomation{
@@ -328,7 +329,7 @@ struct AutoStorySimulationInput{
 };
 
 struct AutoStorySimulationExpectation{
-    const char* description;
+    std::string description;
 };
 
 struct AutoStorySimulationTestCase{
@@ -887,7 +888,42 @@ UnitTestResult test_out_of_bill_cottage(){
 }
 
 
+//  00.05 as the table authors it and as the data file built into the
+//  program (StoryData/frlg-parcel-00.05.json, the export tool's capture of
+//  that row): the loaded row builds the same events, and run against the
+//  fake game walks the same route, leaves the same trace and saves in the
+//  same place.
+UnitTestResult test_data_row_parity(){
+    const std::vector<StoryCheckpoint>& table = story_checkpoints();
+    const auto authored = std::find_if(table.begin(), table.end(), [](const StoryCheckpoint& row){ return row.id == "00.05"; });
+    if (authored == table.end()){
+        return "Expected row 00.05 in the table.";
+    }
+    const StoryCheckpoint loaded = load_story_checkpoint("frlg-parcel-00.05");
+    FakeGame describer;
+    const std::string authored_events = Pokemon::describe(Pokemon::build_story_checkpoint(*authored, describer));
+    const std::string loaded_events = Pokemon::describe(Pokemon::build_story_checkpoint(loaded, describer));
+    if (authored_events != loaded_events){
+        return "Expected the same events from the table and the data:\n" + authored_events + "\n" + loaded_events;
+    }
+    Simulation from_table;
+    from_table.rows = {*authored};
+    Simulation from_data;
+    from_data.rows = {loaded};
+    const bool completed = from_table.run({}).completed && from_data.run({}).completed;
+    if (!completed || from_table.game.trace != from_data.game.trace || from_table.lines != from_data.lines){
+        return "Expected the same run from the table and the data:" + joined(from_table.game.trace) + joined(from_data.game.trace);
+    }
+    if (from_table.saves.size() != 1 || from_data.saves.size() != 1
+        || Pokemon::to_string(from_table.saves[0].second) != Pokemon::to_string(from_data.saves[0].second)
+    ){
+        return "Expected both runs to save once, in the same place:" + joined(from_table.lines) + joined(from_data.lines);
+    }
+    return true;
+}
+
 const AutoStorySimulationTestCase AUTO_STORY_SIMULATION_CASES[] = {
+    {.input = {.name = "00.05 loaded row parity", .body = test_data_row_parity}, .expectation = {.description = "loaded row preserves events, trace and save pose"}},
     {.input = {.name = "new game to Brock, in order, each start where the last save stood", .body = test_whole_story}, .expectation = {.description = "runs full story progression from new game through Brock gym"}},
     {.input = {.name = "start and end checkpoints", .body = test_start_and_end}, .expectation = {.description = "executes segment bounded by start and end checkpoints"}},
     {.input = {.name = "a failed walk reloads its checkpoint's save", .body = test_retry_from_save}, .expectation = {.description = "reloads checkpoint save state on simulated movement failure"}},
