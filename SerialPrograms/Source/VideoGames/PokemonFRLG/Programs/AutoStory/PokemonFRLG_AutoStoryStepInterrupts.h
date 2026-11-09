@@ -6,8 +6,8 @@
  *  wild battle is run from, a trainer who saw the player is fought, a
  *  message is read to its end (and a trainer's battle after it fought),
  *  and a warp's fade is pressed through, the pose then lost. The console
- *  (ConsoleScreenLook and StoryExecutor's console actions) and the
- *  simulations bind the same table.
+ *  (ConsoleScreenLook and console_interrupt_actions()), the simulation
+ *  and the replay bind the same table.
  *
  *  The steps that press through text (MASH, ANSWER, BATTLE, GAME,
  *  NEW_GAME) start on a message: one showing before them is theirs. A
@@ -22,15 +22,18 @@
 #ifndef PokemonAutomation_PokemonFRLG_AutoStoryStepInterrupts_H
 #define PokemonAutomation_PokemonFRLG_AutoStoryStepInterrupts_H
 
+#include <functional>
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/Time.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonFramework/Tools/VideoStream.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
+#include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "Pokemon/AutoStory/Pokemon_ScreenEvents.h"
 #include "Pokemon/AutoStory/Pokemon_StoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_StoryInterrupts.h"
 #include "Pokemon/AutoStory/Pokemon_StorySteps.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
 #include "PokemonFRLG_AutoStoryScreenEvents.h"
 
 namespace PokemonAutomation{
@@ -51,6 +54,16 @@ struct StepInterruptActions{
 //  are the shared defaults, BDSP's timings: FRLG's flash-to-battle and
 //  lines-to-battle times are not measured on the console yet.
 Pokemon::StoryInterrupts step_interrupts(Pokemon::ScreenLookFunction look, const StepInterruptActions& actions);
+
+//  The console's actions, as the walker clears what stops a leg
+//  part-way (`walker()`'s interrupts, story_interrupts() in
+//  PokemonFRLG_AutoStoryBattle.h, built when one is cleared): a wild
+//  battle is run from, a message read to its end and a trainer's battle
+//  after it fought. A warp's scene is pressed through.
+StepInterruptActions console_interrupt_actions(
+    ConsoleHandle& console, ProControllerContext& context,
+    std::function<OverworldInterruptSet()> walker
+);
 
 //  Whether a step of `kind` presses through any text showing when it
 //  starts; a step of another kind is stopped by it (a walk, a talk).
