@@ -295,12 +295,36 @@ UnitTestResult sweep_battle_opening(Logger& logger, const StoryCheckpoint& row){
     return sweep_result(logger, FaultClass::BATTLE_OPENING, row.id, variants, failures);
 }
 
+//  A fault class swept over row `row` (empty in FAULT_SWEEP_CASES: each
+//  row from FIRST_ROW to LAST_ROW).
+struct FaultSweepInput{
+    FaultClass fault = FaultClass::SCENE_END_POSE;
+    std::string row = {};
+};
+//  Whether a sweep is expected to fail is KNOWN_FAILING's, by name.
+struct FaultSweepExpectation{
+};
+struct FaultSweepCase{
+    FaultSweepInput input;
+    FaultSweepExpectation expectation;
+};
+
+//  The table's row `id`.
+const StoryCheckpoint& table_row(const std::string& id){
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        if (row.id == id){
+            return row;
+        }
+    }
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No row " + id);
+}
+
 class Test_AutoStoryFaultSweep : public UnitTest{
 public:
-    Test_AutoStoryFaultSweep(FaultClass fault, StoryCheckpoint row)
-        : UnitTest(std::format("PokemonBDSP::AutoStory - Fault sweep: {}, {}", row.id, fault_class_name(fault)))
-        , m_fault(fault)
-        , m_row(std::move(row))
+    explicit Test_AutoStoryFaultSweep(FaultSweepCase test_case)
+        : UnitTest(std::format("PokemonBDSP::AutoStory - Fault sweep: {}, {}", test_case.input.row, fault_class_name(test_case.input.fault)))
+        , m_fault(test_case.input.fault)
+        , m_row(table_row(test_case.input.row))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
         UnitTestResult result;
@@ -339,18 +363,23 @@ private:
     }
 
     FaultClass m_fault;
-    StoryCheckpoint m_row;
+    const StoryCheckpoint& m_row;
 };
 
 } // namespace
 
+const FaultSweepCase FAULT_SWEEP_CASES[] = {
+    {.input = {.fault = FaultClass::SCENE_END_POSE}, .expectation = {}},
+    {.input = {.fault = FaultClass::BATTLE_OPENING}, .expectation = {}},
+};
+
 void add_tests_AutoStory_FaultSweep(UnitTestDatabase& database){
-    for (const StoryCheckpoint& row : story_checkpoints()){
-        if (row.id < FIRST_ROW || row.id > LAST_ROW){
-            continue;
-        }
-        for (FaultClass fault : {FaultClass::SCENE_END_POSE, FaultClass::BATTLE_OPENING}){
-            database.add<Test_AutoStoryFaultSweep>(fault, row);
+    for (const FaultSweepCase& item : FAULT_SWEEP_CASES){
+        for (const StoryCheckpoint& row : story_checkpoints()){
+            if (row.id < FIRST_ROW || row.id > LAST_ROW){
+                continue;
+            }
+            database.add<Test_AutoStoryFaultSweep>(FaultSweepCase{.input = {.fault = item.input.fault, .row = row.id}, .expectation = item.expectation});
         }
     }
 }
