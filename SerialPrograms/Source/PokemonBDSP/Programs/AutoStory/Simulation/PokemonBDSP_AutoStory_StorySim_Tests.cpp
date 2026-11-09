@@ -48,6 +48,7 @@
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryStepIO.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryTable.h"
+#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Resources.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryWalkSteps.h"
 #include "PokemonBDSP_AutoStory_StorySim.h"
 #include "PokemonBDSP_AutoStory_StorySim_Tests.h"
@@ -374,6 +375,7 @@ void add_tests_AutoStory_StorySim(UnitTestDatabase& database){
     for (const auto& item : AUTO_STORY_STORY_SIM_CASES){
         database.add<Test_AutoStoryStorySim>(item);
     }
+    add_tests_AutoStoryResources(database);
 }
 
 } // namespace PokemonBDSP
