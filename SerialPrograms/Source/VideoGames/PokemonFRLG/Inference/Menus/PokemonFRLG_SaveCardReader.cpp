@@ -74,6 +74,7 @@ private:
             {"route-24", "Route 24"},
             {"route-25", "Route 25"},
             {"route-10", "Route 10"},
+            {"lavender-town", "Lavender Town"},
             {"vermilion-city", "Vermilion City"},
         }){
             JsonArray names;

@@ -895,6 +895,7 @@ static void add_tests_AutoStoryRows(UnitTestDatabase& database){
     add_tests_AutoStoryVermilion(database);
     add_tests_AutoStoryVermilionGym(database);
     add_tests_AutoStoryCeladon(database);
+    add_tests_AutoStoryLavender(database);
 }
 
 void add_tests(UnitTestDatabase& database){
