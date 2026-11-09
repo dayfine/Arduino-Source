@@ -347,15 +347,14 @@ std::string start_pose_mismatch(const Pokemon::Pose& start, const StoryPose& sta
         + ", but the checkpoint starts at " + Pokemon::to_string(start) + ".";
 }
 
-Pokemon::Checkpoint build_checked_checkpoint(
-    const StoryCheckpoint& data, Pokemon::StoryStepExecutor& executor, SavePoseReader read, StoryLog log
+void add_start_pose_check(
+    Pokemon::Checkpoint& checkpoint, const std::optional<Pokemon::Pose>& start, SavePoseReader read, StoryLog log
 ){
-    Pokemon::Checkpoint checkpoint = Pokemon::build_story_checkpoint(data, executor);
-    if (!data.start){
-        return checkpoint;
+    if (!start){
+        return;
     }
     checkpoint.start.push_back(Pokemon::condition("save_at_start_pose",
-        [start = *data.start, read = std::move(read), log = std::move(log)](RunState&){
+        [start = *start, read = std::move(read), log = std::move(log)](RunState&){
             const std::optional<StoryPose> stands = read();
             if (!stands){
                 log("start pose not read: going on from the save as the checkpoint's start.");
@@ -368,7 +367,6 @@ Pokemon::Checkpoint build_checked_checkpoint(
             return mismatch.empty();
         }
     ));
-    return checkpoint;
 }
 
 std::optional<std::vector<RouteStep>> fixed_route(
@@ -604,8 +602,9 @@ Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor&
     //  The console has no reader for the tile the save stands on yet: the
     //  save card's place is checked when the save is loaded
     //  (check_save_place()), and the start check passes.
-    Pokemon::Checkpoint checkpoint = build_checked_checkpoint(
-        data, executor,
+    Pokemon::Checkpoint checkpoint = Pokemon::build_story_checkpoint(data, executor);
+    add_start_pose_check(
+        checkpoint, data.start,
         []{ return std::optional<StoryPose>(); },
         [&env](const std::string& line){ env.console.log(line, COLOR_ORANGE); }
     );
