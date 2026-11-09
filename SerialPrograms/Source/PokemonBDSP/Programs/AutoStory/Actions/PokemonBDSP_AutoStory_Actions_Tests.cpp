@@ -20,8 +20,8 @@
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/Logging/Logger.h"
-#include "Data/PokemonBDSP_AutoStory_StoryMaps.h"
-#include "Utils/PokemonBDSP_AutoStory_Location.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryMaps.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP_AutoStory_Center.h"
 #include "PokemonBDSP_AutoStory_NewGame.h"
 #include "PokemonBDSP_AutoStory_Actions_Tests.h"
@@ -361,6 +361,41 @@ UnitTestResult test_pokemon_center_inside(Logger& logger){
 }
 
 
+//  Oreburgh's Center, lab-B 2026-11-08 (in CommandLineTests under
+//  PokemonBDSP/AutoStory, skipped without them): 01.03's run in saw no fade
+//  and stopped at the nurse's counter, the camera in close and the lit floor
+//  down to the screen's bottom; on the exit mat; and outside on the doorstep
+//  at sunset, the ground as orange as the Center's back wall.
+UnitTestResult test_pokemon_center_counter(Logger& logger){
+    struct Case{
+        const char* file;
+        bool inside;
+    };
+    const Case cases[] = {
+        {.file = "PokemonBDSP/AutoStory/OreburghCenterCounter-20261108-094735.png", .inside = true},
+        {.file = "PokemonBDSP/AutoStory/OreburghCenterExitMat-20261108.png", .inside = true},
+        {.file = "PokemonBDSP/AutoStory/OreburghCenterDoorstep-20261108.png", .inside = false},
+    };
+    for (const Case& c : cases){
+        const std::string path = UNIT_TEST_RESOURCE_PATH() + c.file;
+        if (!Filesystem::is_regular_file(path)){
+            return UnitTestResult(UnitTestResult::SKIPPED, "Screenshot not found: " + path);
+        }
+        const ImageRGB32 screen(path);
+        const bool inside = pokemon_center_inside(screen);
+        logger.log(std::string(c.file) + ": inside " + std::to_string(inside));
+        if (inside != c.inside){
+            return std::string(c.file) + ": expected " + (c.inside ? "inside" : "outside") +
+                " a Pokemon Center, read " + (inside ? "inside" : "outside") + ".";
+        }
+        if (inside && find_lit_doorway(screen)){
+            return std::string(c.file) + ": inside, yet a lit doorway was read.";
+        }
+    }
+    return true;
+}
+
+
 //  The School's lamp at night, from its doorsteps' row (2026-10-30): where
 //  the door took us in, the lamp reads within half a tile of the door; a
 //  tile either side, more.
@@ -461,6 +496,10 @@ const AutoStoryActionsCase AUTO_STORY_ACTIONS_CASES[] = {
     },
     {
         .input = {"Pokemon Center inside", test_pokemon_center_inside},
+        .expectation = {},
+    },
+    {
+        .input = {"Pokemon Center inside: Oreburgh's counter, exit mat and doorstep", test_pokemon_center_counter},
         .expectation = {},
     },
     {
