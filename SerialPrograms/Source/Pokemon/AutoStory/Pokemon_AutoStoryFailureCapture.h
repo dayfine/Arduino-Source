@@ -46,15 +46,16 @@ struct FailureRecord{
 //  made "_". An empty event (a start or end check failed) is "checkpoint".
 std::string failure_folder_name(std::string_view time, const FailureRecord& record);
 
+//  Failure.json: the record's fields, its log lines as an array.
 JsonObject failure_json(const FailureRecord& record);
 
-//  The checkpoint and event a status line names:
-//  "00.03/2 below_oaks_trigger: start" names 00.03 and below_oaks_trigger.
-//  Both empty for a line that names no event ("00: start, 3 checkpoints").
+//  The step a story status line names.
 struct StatusStep{
     std::string checkpoint;
     std::string event;
 };
+//  "00.03/2 below_oaks_trigger: start" names 00.03 and below_oaks_trigger.
+//  Both empty for a line that names no event ("00: start, 3 checkpoints").
 StatusStep step_of_status(std::string_view line);
 
 

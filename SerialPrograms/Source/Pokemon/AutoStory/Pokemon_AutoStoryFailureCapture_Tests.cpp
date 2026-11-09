@@ -8,6 +8,7 @@
  */
 
 #include <string>
+#include <utility>
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonValue.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -77,27 +78,56 @@ UnitTestResult test_step_of_status(){
     return true;
 }
 
+struct FailureCaptureInput{
+    std::string name;
+    UnitTestResult (*test)();
+};
+
+struct FailureCaptureExpectation{
+    const char* description;
+};
+
+struct FailureCaptureTestCase{
+    FailureCaptureInput input;
+    FailureCaptureExpectation expectation;
+};
+
 class Test_AutoStoryFailureCapture : public UnitTest{
 public:
-    Test_AutoStoryFailureCapture(const std::string& name, UnitTestResult (*test)())
-        : UnitTest("Pokemon::AutoStoryFailureCapture - " + name)
-        , m_test(test)
+    explicit Test_AutoStoryFailureCapture(FailureCaptureTestCase scenario)
+        : UnitTest("Pokemon::AutoStoryFailureCapture - " + scenario.input.name)
+        , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        return m_test();
+        return m_scenario.input.test();
     }
 
 private:
-    UnitTestResult (*m_test)();
+    FailureCaptureTestCase m_scenario;
+};
+
+const FailureCaptureTestCase FAILURE_CAPTURE_CASES[] = {
+    {
+        .input = {.name = "folder name", .test = test_folder_name},
+        .expectation = {.description = "names the folder by time, checkpoint and event, safe for a path"},
+    },
+    {
+        .input = {.name = "json", .test = test_json},
+        .expectation = {.description = "writes the record's fields and its log lines in order"},
+    },
+    {
+        .input = {.name = "step of a status line", .test = test_step_of_status},
+        .expectation = {.description = "reads checkpoint and event from event lines only"},
+    },
 };
 
 } // namespace
 
 
 void add_tests_AutoStoryFailureCapture(UnitTestDatabase& database){
-    database.add<Test_AutoStoryFailureCapture>("folder name", test_folder_name);
-    database.add<Test_AutoStoryFailureCapture>("json", test_json);
-    database.add<Test_AutoStoryFailureCapture>("step of a status line", test_step_of_status);
+    for (const auto& scenario : FAILURE_CAPTURE_CASES){
+        database.add<Test_AutoStoryFailureCapture>(scenario);
+    }
 }
 
 
