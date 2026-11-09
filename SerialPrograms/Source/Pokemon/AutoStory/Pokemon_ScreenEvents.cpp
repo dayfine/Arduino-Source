@@ -40,7 +40,7 @@ const char* warp_fade_name(WarpFade fade){
 
 ScreenEvents::ScreenEvents(std::initializer_list<ScreenEvent> events){
     for (ScreenEvent event : events){
-        set(event);
+        set(event, true);
     }
 }
 void ScreenEvents::set(ScreenEvent event, bool on){
@@ -50,37 +50,37 @@ void ScreenEvents::set(ScreenEvent event, bool on){
         m_bits &= ~bit(event);
     }
 }
-void ScreenEvents::add_fade(WarpFade fade){
-    switch (fade){
-    case WarpFade::NONE:
-        return;
-    case WarpFade::BLACK:
-        set(ScreenEvent::FADE_BLACK);
-        return;
-    case WarpFade::WHITE:
-        set(ScreenEvent::FADE_WHITE);
-        return;
-    }
-}
-WarpFade ScreenEvents::fade() const{
-    if (has(ScreenEvent::FADE_BLACK)){
-        return WarpFade::BLACK;
-    }
-    if (has(ScreenEvent::FADE_WHITE)){
-        return WarpFade::WHITE;
-    }
-    return WarpFade::NONE;
-}
 ScreenEvents ScreenEvents::from_bits(uint32_t bits){
     ScreenEvents out;
     out.m_bits = bits & ((uint32_t(1) << SCREEN_EVENT_COUNT) - 1);
     return out;
 }
-std::string ScreenEvents::describe() const{
+
+ScreenEvents fade_events(WarpFade fade){
+    switch (fade){
+    case WarpFade::NONE:
+        return {};
+    case WarpFade::BLACK:
+        return {ScreenEvent::FADE_BLACK};
+    case WarpFade::WHITE:
+        return {ScreenEvent::FADE_WHITE};
+    }
+    return {};
+}
+WarpFade fade_in(const ScreenEvents& events){
+    if (events.has(ScreenEvent::FADE_BLACK)){
+        return WarpFade::BLACK;
+    }
+    if (events.has(ScreenEvent::FADE_WHITE)){
+        return WarpFade::WHITE;
+    }
+    return WarpFade::NONE;
+}
+std::string describe(const ScreenEvents& events){
     std::string out;
     for (size_t c = 0; c < SCREEN_EVENT_COUNT; c++){
         const ScreenEvent event = (ScreenEvent)c;
-        if (!has(event)){
+        if (!events.has(event)){
             continue;
         }
         if (!out.empty()){

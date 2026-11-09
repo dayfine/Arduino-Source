@@ -22,13 +22,12 @@ FrlgScreenObserver::FrlgScreenObserver()
 {}
 
 ScreenEvents FrlgScreenObserver::observe(const VideoSnapshot& frame, WallClock){
-    ScreenEvents out;
     if (!frame){
-        return out;
+        return {};
     }
     const ImageViewRGB32& screen = *frame.frame;
-    out.add_fade(Pokemon::fade_of_screen(screen));
-    if (out.fade() != Pokemon::WarpFade::NONE){
+    ScreenEvents out = Pokemon::fade_events(Pokemon::fade_of_screen(screen));
+    if (Pokemon::fade_in(out) != Pokemon::WarpFade::NONE){
         //  A uniform screen has no box or menu to read.
         return out;
     }

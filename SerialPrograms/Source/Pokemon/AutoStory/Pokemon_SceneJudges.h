@@ -31,10 +31,10 @@ struct WarpSeen{
     bool any() const{
         return fade != WarpFade::NONE || !banner.empty();
     }
-    //  Notes a frame's events: its fade, and `banner_read` when it shows
-    //  LOCATION_BANNER. The first of each counts.
-    void see(const ScreenEvents& events, const std::string& banner_read = "");
 };
+//  `seen` after a frame's events: their fade, and `banner_read` when they
+//  show LOCATION_BANNER. The first of each counts.
+WarpSeen note_warp(WarpSeen seen, const ScreenEvents& events, const std::string& banner_read);
 //  How it was seen, for the log: a black fade, banner "Route 203".
 std::string describe(const WarpSeen& seen);
 

@@ -25,20 +25,6 @@ namespace{
 
 using namespace std::chrono_literals;
 
-class Test_ScreenEvents : public UnitTest{
-public:
-    Test_ScreenEvents(std::string name, std::function<UnitTestResult()> body)
-        : UnitTest("Pokemon::ScreenEvents - " + std::move(name))
-        , m_body(std::move(body))
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        return m_body();
-    }
-
-private:
-    std::function<UnitTestResult()> m_body;
-};
-
 UnitTestResult expect_equal(const std::string& what, const std::string& got, const std::string& expected){
     if (got == expected){
         return true;
@@ -53,18 +39,18 @@ UnitTestResult test_set_and_describe(){
         return "has() disagrees with the constructor's events";
     }
     events.set(ScreenEvent::DIALOG_BOX, false);
-    events.add_fade(WarpFade::WHITE);
-    events.add_fade(WarpFade::NONE);
-    if (events.fade() != WarpFade::WHITE){
-        return "add_fade(WHITE) did not give a white fade";
+    events.merge(fade_events(WarpFade::WHITE));
+    events.merge(fade_events(WarpFade::NONE));
+    if (fade_in(events) != WarpFade::WHITE){
+        return "fade_events(WHITE) did not give a white fade";
     }
     if (ScreenEvents::from_bits(events.bits()) != events){
         return "from_bits(bits()) is not the same set";
     }
-    if (!ScreenEvents().describe().starts_with("nothing")){
+    if (describe(ScreenEvents()) != "nothing"){
         return "an empty set does not describe as nothing";
     }
-    return expect_equal("describe()", events.describe(), "white fade, player can move");
+    return expect_equal("describe()", describe(events), "white fade, player can move");
 }
 
 //  A screen filled with one colour, or a checkerboard of two.
@@ -102,14 +88,13 @@ UnitTestResult test_fade_of_screen(){
 }
 
 UnitTestResult test_warp_seen(){
-    WarpSeen seen;
-    seen.see({ScreenEvent::DIALOG_BOX}, "Route 203");
+    WarpSeen seen = note_warp({}, {ScreenEvent::DIALOG_BOX}, "Route 203");
     if (seen.any()){
         return "a dialog box with no banner event counted as a warp";
     }
-    seen.see({ScreenEvent::FADE_BLACK});
-    seen.see({ScreenEvent::FADE_WHITE, ScreenEvent::LOCATION_BANNER}, "Route 203");
-    seen.see({ScreenEvent::LOCATION_BANNER}, "Oreburgh Gate");
+    seen = note_warp(seen, {ScreenEvent::FADE_BLACK}, "");
+    seen = note_warp(seen, {ScreenEvent::FADE_WHITE, ScreenEvent::LOCATION_BANNER}, "Route 203");
+    seen = note_warp(seen, {ScreenEvent::LOCATION_BANNER}, "Oreburgh Gate");
     return expect_equal("describe(WarpSeen)", describe(seen), "black fade, banner \"Route 203\"");
 }
 
@@ -205,28 +190,77 @@ UnitTestResult test_watcher(){
     if (stops != std::vector<bool>{false, false, true, false}){
         return "the watcher did not stop exactly on the banner frame";
     }
-    UnitTestResult result = expect_equal("seen()", watcher.seen().describe(),
+    UnitTestResult result = expect_equal("seen()", describe(watcher.seen()),
         "black fade, location banner, dialog box, player can move");
     if (result.result != UnitTestResult::PASSED){
         return result;
     }
-    result = expect_equal("stopped_on()", watcher.stopped_on().describe(), "location banner, player can move");
+    result = expect_equal("stopped_on()", describe(watcher.stopped_on()), "location banner, player can move");
     if (result.result != UnitTestResult::PASSED){
         return result;
     }
     watcher.reset();
-    return expect_equal("seen() after reset()", watcher.seen().describe(), "nothing");
+    return expect_equal("seen() after reset()", describe(watcher.seen()), "nothing");
 }
+
+
+struct ScreenEventsInput{
+    std::string name;
+    std::function<UnitTestResult()> body;
+};
+
+struct ScreenEventsExpectation{
+};
+
+struct ScreenEventsCase{
+    ScreenEventsInput input;
+    ScreenEventsExpectation expectation;
+};
+
+class Test_ScreenEvents : public UnitTest{
+public:
+    explicit Test_ScreenEvents(ScreenEventsCase test_case)
+        : UnitTest("Pokemon::ScreenEvents - " + test_case.input.name)
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        return m_case.input.body();
+    }
+
+private:
+    ScreenEventsCase m_case;
+};
 
 } // namespace
 
 
+const ScreenEventsCase SCREEN_EVENTS_CASES[] = {
+    {
+        .input = {"a set of events, its fade and its log text", test_set_and_describe},
+        .expectation = {},
+    },
+    {
+        .input = {"a fade is uniform, dark or white; a textured floor is none", test_fade_of_screen},
+        .expectation = {},
+    },
+    {
+        .input = {"a warp is the first fade and the first banner seen", test_warp_seen},
+        .expectation = {},
+    },
+    {
+        .input = {"talk-over from scripted events", test_talk_over},
+        .expectation = {},
+    },
+    {
+        .input = {"an observer as a watcher records and stops", test_watcher},
+        .expectation = {},
+    },
+};
+
 void add_tests_ScreenEvents(UnitTestDatabase& database){
-    database.add<Test_ScreenEvents>("a set of events, its fade and its log text", test_set_and_describe);
-    database.add<Test_ScreenEvents>("a fade is uniform, dark or white; a textured floor is none", test_fade_of_screen);
-    database.add<Test_ScreenEvents>("a warp is the first fade and the first banner seen", test_warp_seen);
-    database.add<Test_ScreenEvents>("talk-over from scripted events", test_talk_over);
-    database.add<Test_ScreenEvents>("an observer as a watcher records and stops", test_watcher);
+    for (const auto& item : SCREEN_EVENTS_CASES){
+        database.add<Test_ScreenEvents>(item);
+    }
 }
 
 
