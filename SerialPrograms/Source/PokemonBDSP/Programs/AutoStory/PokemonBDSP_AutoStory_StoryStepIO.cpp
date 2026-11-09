@@ -213,8 +213,11 @@ enum class TapLook{
     BANNER,
 };
 
-//  Looks for the location banner `banner` (and, if `dark_too`, the fade)
-//  for up to `wait`.
+//  The mean of r, g and b over the screen, 0 to 255; 255 with no frame.
+double brightness_of(const VideoSnapshot& screen){
+    return screen ? image_average(*screen.frame).sum() / 3 : 255;
+}
+
 void keep_banner_frame(const ImageViewRGB32& frame, const std::string& folder, const std::string& banner){
     Filesystem::create_directories(Filesystem::Path(folder));
     frame.save(folder + now_to_filestring() + "-" + normalize_location_name(banner) + ".png");
@@ -228,10 +231,12 @@ void log_new_banner_read(VideoStream& stream, const std::string& read, std::stri
     last_read = read;
 }
 
+//  Looks for the location banner `banner` for up to `wait`, and with
+//  `before` (the brightness before the tap) for the fade (tap_faded()).
 //  Logs each distinct banner read and how the wait ended: the Oreburgh Gate's
 //  entry missed its banner twice (lab-B, 2026-11-08 15:31 and 15:39) though
 //  a hand probe saw it 1.5 s after the fade, and nothing said why.
-TapLook look_after_tap(VideoStream& stream, ProControllerContext& context, const std::string& banner, Milliseconds wait, bool dark_too){
+TapLook look_after_tap(VideoStream& stream, ProControllerContext& context, const std::string& banner, Milliseconds wait, std::optional<double> before){
     const WallClock start = current_time();
     const WallClock deadline = start + wait;
     std::string last_read;
@@ -243,7 +248,7 @@ TapLook look_after_tap(VideoStream& stream, ProControllerContext& context, const
     while (true){
         context.wait_for_all_requests();
         const VideoSnapshot screen = stream.video().snapshot();
-        if (!dark_too && screen && current_time() >= next_frame){
+        if (!before && screen && current_time() >= next_frame){
             keep_banner_frame(*screen.frame, folder, banner);
             next_frame += 500ms;
         }
@@ -252,9 +257,9 @@ TapLook look_after_tap(VideoStream& stream, ProControllerContext& context, const
         if (screen && location_banner_matches(read, banner)){
             return TapLook::BANNER;
         }
-        const double brightness = screen ? image_average(*screen.frame).sum() / 3 : 255;
+        const double brightness = brightness_of(screen);
         darkest = std::min(darkest, brightness);
-        if (dark_too && brightness < FADE_DARKNESS){
+        if (before && tap_faded(*before, brightness)){
             return TapLook::DARK;
         }
         if (current_time() >= deadline){
@@ -268,6 +273,19 @@ TapLook look_after_tap(VideoStream& stream, ProControllerContext& context, const
 
 } // namespace
 
+
+//  Black as the Gym's door fades (< 25), or a drop to dark: a look under
+//  FADE_DARKNESS is not a fade by itself, since a cave's floor is that dim
+//  (the Oreburgh Gate's about 46, lab-B 2026-11-08), but a fade into a cave
+//  from a lit street goes from about 120 to 45..64.
+//  TODO(#268 slice 3): stopgap. A uniform-screen fade watcher (the shared
+//  Black/WhiteScreen stddev test, as in upstream #1717) should replace this
+//  brightness drop; remove it once that watcher passes the Gate frames.
+constexpr double TAP_FADE_BLACK = 25;
+constexpr double TAP_FADE_DROP = 0.7;
+bool tap_faded(double before, double after){
+    return after < TAP_FADE_BLACK || (after < FADE_DARKNESS && after < before * TAP_FADE_DROP);
+}
 
 ConsoleStoryStepIO::ConsoleStoryStepIO(VideoStream& stream, ProControllerContext& context)
     : m_stream(stream)
@@ -305,15 +323,26 @@ bool ConsoleStoryStepIO::run_into_door(Direction direction, bool run, Millisecon
 //  A held walk can carry on past a fade that goes unseen: out of the Gym it
 //  walked on south (r219g), and through the Oreburgh Gate's west mouth on
 //  west into a pocket by Route 203's pond (r75). Taps during the fade are
-//  eaten.
+//  eaten. The banner before the first tap means we are through already:
+//  the walk before slid onto the warp (lab-B 2026-11-08 15:31).
+//  TODO(#268 slice 2): stopgap. The "through already" check sees only a
+//  banner still on screen; once walkers report the fade or banner they saw
+//  (WalkResult::warp), read that instead and remove this check.
 std::optional<size_t> ConsoleStoryStepIO::tap_to_banner(Direction direction, const std::string& map, size_t max_taps){
     const std::string& banner = story_banner_name(map);
+    m_context.wait_for_all_requests();
+    VideoSnapshot screen = m_stream.video().snapshot();
+    if (screen && location_banner_matches(read_location_banner(*screen.frame), banner)){
+        m_stream.log("[Banner] \"" + banner + "\" shows before the first tap: through already.");
+        return 0;
+    }
     for (size_t tap = 1; tap <= max_taps; tap++){
+        const double before = brightness_of(screen);
         pbf_press_dpad(m_context, dpad_toward(direction), 160ms, 0ms);
-        TapLook look = look_after_tap(m_stream, m_context, banner, 1500ms, true);
+        TapLook look = look_after_tap(m_stream, m_context, banner, 1500ms, before);
         const bool faded = look == TapLook::DARK;
         if (faded){
-            look = look_after_tap(m_stream, m_context, banner, 8000ms, false);
+            look = look_after_tap(m_stream, m_context, banner, 8000ms, std::nullopt);
         }
         if (look == TapLook::BANNER){
             m_context.wait_for(1000ms);
@@ -322,6 +351,7 @@ std::optional<size_t> ConsoleStoryStepIO::tap_to_banner(Direction direction, con
         if (faded){
             break;
         }
+        screen = m_stream.video().snapshot();
     }
     return std::nullopt;
 }

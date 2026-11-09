@@ -121,6 +121,8 @@ StoryStep make(StoryStepKind kind, std::string name, std::string why){
     step.why = std::move(why);
     return step;
 }
+//  A route toward a door or a warp stops two tiles short, not beside it: an
+//  open walk there can slide onto it (01.05, lab-B 2026-11-08).
 StoryStep route(std::string name, Pose target, std::string why, std::string costs = ""){
     StoryStep step = make(StoryStepKind::ROUTE, std::move(name), std::move(why));
     step.target = std::move(target);
@@ -334,7 +336,8 @@ std::vector<StoryCheckpoint> lake_and_pokedex(){
             //  Line up on the table's corner west first: a plan from either tile
             //  ran east into Mom at (7, 8), who talks (r29).
             route("by_the_counter", at(HOME, 4, 8, WEST), "west against the table's corner (3, 8)"),
-            route("above_the_door_again", at(HOME, 6, 9, SOUTH), "to above the door"),
+            anchored(legs("above_the_door_again", {{.direction = EAST, .tiles = 1}, {.direction = SOUTH, .tiles = 1}, {.direction = EAST, .tiles = 1}},
+                "east, south past the wall (4, 9), and east to above the door: not south toward it"), at(HOME, 6, 9, EAST)),
             step_into("out_of_the_house_again", SOUTH, "onto the door's tile (6, 10), and out", at(TWINLEAF, "house_doorstep", SOUTH)),
             //  Through the grass now, with a starter: wild battles are run from.
             route("short_of_dawn", at(ROUTE_201, 63, 5, EAST), "Twinleaf, then east along Route 201 to its east edge"),
@@ -634,7 +637,7 @@ StoryCheckpoint oreburgh_to_route_203(){
         //  for a banner already gone (lab-B, 2026-11-08 15:31, 15:39, 15:47,
         //  15:54; frames in Screenshots/AutoStory/banner/).
         step_into("into_oreburgh_gate", WEST, "the Gate's mouth (1, 13)", arrival(GATE, {27, 22}, WEST)),
-        route("through_the_gate", at(GATE, 4, 22, WEST), "west along row 22 to the warp tile by the west mouth (3, 22)"),
+        route("through_the_gate", at(GATE, 5, 22, WEST), "west along row 22 to two tiles short of the west mouth's warp (3, 22)"),
         //  Route 203's banner or a failure here: the old walk west "until the
         //  banner" went on into the pond's pocket (r75). 01.06 heads south.
         tap_into("out_of_oreburgh_gate", WEST, "the west mouth (3, 22)", out_of_oreburgh_gate()),
@@ -671,7 +674,7 @@ StoryCheckpoint route_203_to_oreburgh(){
         //  can come up a moment after them; the scene's B closes it.
         scene("the_hiker", at(GATE, 7, 22, EAST), "HM Rock Smash, then the Hidden Moves card"),
         route("past_curtis", at(GATE, 20, 22, EAST), "east along row 22 past Camper Curtis's column (17), fighting him"),
-        route("by_the_east_mouth", at(GATE, 27, 22, EAST), "east past Picnicker Diana's column (24), fighting her"),
+        route("by_the_east_mouth", at(GATE, 26, 22, EAST), "east past Picnicker Diana's column (24), fighting her, to two short of the mouth"),
         tap_into("into_oreburgh", EAST, "the Gate's east mouth (28, 22)",
             arrival(OREBURGH, map_point(OREBURGH, "gate_mouth").next(EAST), EAST)),
         route("west_of_the_welcome", at(OREBURGH, 9, 13, EAST), "east along row 13"),

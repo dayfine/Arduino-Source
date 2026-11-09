@@ -562,6 +562,30 @@ UnitTestResult test_roarks_room_from_a_row_off(Logger& logger){
     return true;
 }
 
+//  lab-B 2026-11-08 15:31 to 15:54: 01.05's open walk west 3 from (5, 13),
+//  where Barry's push leaves us, to (2, 13) beside the Oreburgh Gate's mouth
+//  (1, 13) went on into the Gate. D-pad taps move whole tiles but keep a
+//  part-tile offset: 0.375 of a tile west of (5, 13), the three taps take
+//  the warp; on the tile, they stop beside it.
+UnitTestResult test_gate_walk_part_tile_off(Logger&){
+    const StoryWorld& world = *story_plan_world("OreburghCity", "OreburghCity");
+    for (const bool off : {false, true}){
+        GridSim sim({.world = &world}, story_to_world(world, "OreburghCity", {5, 13}), Direction::WEST, true);
+        if (off){
+            sim.tap(Direction::WEST, 60ms, true);
+        }
+        SimStop stop = SimStop::DONE;
+        for (int tap = 0; tap < 3 && stop == SimStop::DONE; tap++){
+            stop = sim.tap(Direction::WEST, 160ms, false).stop;
+        }
+        if ((stop == SimStop::WARP) != off){
+            return std::format("{} (5, 13): three taps west ended {} at {}.", off ? "0.375 west of" : "on",
+                sim_stop_name(stop), to_string(sim.player().pos));
+        }
+    }
+    return true;
+}
+
 UnitTestResult test_wandering_npc_mechanics(Logger& logger){
     StoryWorld world = make_world({
         "#######",
@@ -907,6 +931,10 @@ const AutoStoryGridSimCase AUTO_STORY_GRID_SIM_CASES[] = {
     },
     {
         .input = {"01.03, Oreburgh Mine B1F entrance hall corridor runs to and back", test_oreburgh_mine_hall_corridor},
+        .expectation = {},
+    },
+    {
+        .input = {"01.05, a part of a tile off, the old open walk west takes the Gate's warp (lab-B, 2026-11-08)", test_gate_walk_part_tile_off},
         .expectation = {},
     },
 };

@@ -15,6 +15,7 @@
 #include "Utils/PokemonBDSP_AutoStory_Location.h"
 #include "Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "Actions/PokemonBDSP_AutoStory_Talks.h"
+#include "PokemonBDSP_AutoStory_StoryStepIO.h"
 #include "PokemonBDSP_AutoStory_Walk_Tests.h"
 
 namespace PokemonAutomation{
@@ -118,6 +119,34 @@ UnitTestResult test_door_fade(Logger&){
             }
         }
         return true;
+}
+
+//  A tap step's fade is a real one: black, or a drop to dark from the look
+//  before the tap. The Oreburgh Gate's floor, about 46 before and after a
+//  tap inside it, is no fade: read as one, the tap into the Gate from
+//  Oreburgh, already through, waited 8 s for a banner gone (lab-B,
+//  2026-11-08 15:31 to 15:54).
+UnitTestResult test_tap_fade(Logger&){
+    struct Case{
+        std::string name;
+        double before;
+        double after;
+        bool faded;
+    };
+    const std::vector<Case> cases{
+        {.name = "inside the Gate, its floor", .before = 46, .after = 46, .faded = false},
+        {.name = "inside the Gate, a darker patch", .before = 52, .after = 44, .faded = false},
+        {.name = "on a street", .before = 120, .after = 112, .faded = false},
+        {.name = "the street into the Gate's mouth, to black", .before = 120, .after = 8, .faded = true},
+        {.name = "the street into a cave, a dim fade (45 to 64 measured)", .before = 120, .after = 60, .faded = true},
+        {.name = "out of the Gate, from its floor to black", .before = 46, .after = 12, .faded = true},
+    };
+    for (const Case& item : cases){
+        if (tap_faded(item.before, item.after) != item.faded){
+            return item.name + (item.faded ? ": no fade read." : ": read as a fade.");
+        }
+    }
+    return true;
 }
 
 
@@ -283,6 +312,10 @@ const AutoStoryWalkCase AUTO_STORY_WALK_CASES[] = {
     },
     {
         .input = {"out of a door needs its fade", test_door_fade},
+        .expectation = {},
+    },
+    {
+        .input = {"a tap into a door fades to black or drops to dark, not a dim floor (lab-B, 2026-11-08)", test_tap_fade},
         .expectation = {},
     },
     {

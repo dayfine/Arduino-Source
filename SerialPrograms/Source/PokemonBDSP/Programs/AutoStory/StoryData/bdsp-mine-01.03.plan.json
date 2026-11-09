@@ -16,10 +16,10 @@
         "target": {
           "map": "OreburghCity",
           "certainty": "tile",
-          "where": {"kind": "tiles", "tiles": [[46, 58]], "facing": "south"}
+          "where": {"kind": "tiles", "tiles": [[46, 57]], "facing": "south"}
         },
         "variant": "town",
-        "why": "down the door's column to above the mine's warp tiles"
+        "why": "down the door's column to two above the mine's warp tiles (44..48, 59)"
       },
       {
         "id": "into_the_mine",
