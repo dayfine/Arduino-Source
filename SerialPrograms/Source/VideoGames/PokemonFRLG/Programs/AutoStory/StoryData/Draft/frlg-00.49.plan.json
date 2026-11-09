@@ -1,0 +1,29 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "00.49",
+    "title": "Agatha",
+    "start": {"certainty": "tile", "map": "PokemonLeague_BrunosRoom", "where": {"facing": "north", "kind": "tiles", "tiles": [[6, 6]]}},
+    "events": [
+      {
+        "id": "below_agatha",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "PokemonLeague_AgathasRoom", "where": {"facing": "north", "kind": "tiles", "tiles": [[6, 6]]}},
+        "why": "the door (6, 2), up to Agatha"
+      },
+      {
+        "id": "talk_agatha",
+        "kind": "talk",
+        "why": "Agatha"
+      },
+      {
+        "id": "agatha",
+        "kind": "battle",
+        "declared_after": {"certainty": "tile", "map": "PokemonLeague_AgathasRoom", "where": {"facing": "north", "kind": "tiles", "tiles": [[6, 6]]}},
+        "why": "Agatha (TRAINER_ELITE_FOUR_AGATHA): Gengar, Golbat, Arbok, Gengar, Haunter"
+      }
+    ]
+  },
+  "execution": {"menu": "full"}
+}

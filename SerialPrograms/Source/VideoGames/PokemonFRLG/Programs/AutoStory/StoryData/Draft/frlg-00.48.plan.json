@@ -1,0 +1,29 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "00.48",
+    "title": "Bruno",
+    "start": {"certainty": "tile", "map": "PokemonLeague_LoreleisRoom", "where": {"facing": "north", "kind": "tiles", "tiles": [[6, 6]]}},
+    "events": [
+      {
+        "id": "below_bruno",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "PokemonLeague_BrunosRoom", "where": {"facing": "north", "kind": "tiles", "tiles": [[6, 6]]}},
+        "why": "the door (6, 2), up to Bruno (6, 5)"
+      },
+      {
+        "id": "talk_bruno",
+        "kind": "talk",
+        "why": "Bruno"
+      },
+      {
+        "id": "bruno",
+        "kind": "battle",
+        "declared_after": {"certainty": "tile", "map": "PokemonLeague_BrunosRoom", "where": {"facing": "north", "kind": "tiles", "tiles": [[6, 6]]}},
+        "why": "Bruno (TRAINER_ELITE_FOUR_BRUNO): Onix, Hitmonchan, Hitmonlee, Machamp, Onix"
+      }
+    ]
+  },
+  "execution": {"menu": "full"}
+}

@@ -1,0 +1,35 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "00.47",
+    "title": "Lorelei",
+    "start": {"certainty": "tile", "map": "IndigoPlateau_PokemonCenter_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[13, 12]]}},
+    "events": [
+      {
+        "id": "lorelei_door",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "IndigoPlateau_PokemonCenter_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[4, 2]]}},
+        "why": "past the guard (5, 3) to the door (4, 1)"
+      },
+      {
+        "id": "below_lorelei",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "PokemonLeague_LoreleisRoom", "where": {"facing": "north", "kind": "tiles", "tiles": [[6, 6]]}},
+        "why": "in, up to Lorelei"
+      },
+      {
+        "id": "talk_lorelei",
+        "kind": "talk",
+        "why": "Lorelei"
+      },
+      {
+        "id": "lorelei",
+        "kind": "battle",
+        "declared_after": {"certainty": "tile", "map": "PokemonLeague_LoreleisRoom", "where": {"facing": "north", "kind": "tiles", "tiles": [[6, 6]]}},
+        "why": "Lorelei (TRAINER_ELITE_FOUR_LORELEI): Dewgong, Cloyster, Slowbro, Jynx, Lapras"
+      }
+    ]
+  },
+  "execution": {"menu": "full"}
+}
