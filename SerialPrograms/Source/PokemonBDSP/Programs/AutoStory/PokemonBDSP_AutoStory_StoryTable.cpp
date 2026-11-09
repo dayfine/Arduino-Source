@@ -847,6 +847,15 @@ StoryCheckpoint through_the_ravaged_path(){
     });
 }
 
+//  Where 01.10's run north up column 11 stops: Floaroma's banner reads a
+//  tile or a few past the border (route_201_by_the_path()), and the path in
+//  (10..12, 30..31) opens onto the field at row 29, so from the arrival
+//  tile (11, 29) to two rows north of it.
+Pose into_floaroma(){
+    const TilePos arrival = map_point(FLOAROMA, "route_204_arrival");
+    return Pokemon::tile_pose(FLOAROMA, {arrival, arrival.next(NORTH), arrival.next(NORTH).next(NORTH)}, NORTH);
+}
+
 //  01.10: the line a human walked up Route 204's north half (2026-10-31,
 //  r246a to r251a), corner to corner (Test_Route204NorthLine checks each
 //  stretch is one straight leg), then north between the flower beds into
@@ -855,12 +864,22 @@ StoryCheckpoint through_the_ravaged_path(){
 StoryCheckpoint route_204_to_floaroma(){
     std::vector<StoryStep> steps;
     const std::vector<TilePos> line = map_region(ROUTE_204_NORTH, "floaroma_waypoints");
-    for (size_t i = 0; i < line.size(); i++){
+    //  The line's last corner, (11, 5) up column 11, is not walked to: the
+    //  run into Floaroma below goes past it.
+    for (size_t i = 0; i + 1 < line.size(); i++){
         steps.push_back(route(std::format("line_{}", i + 1), Pokemon::tile_pose(ROUTE_204_NORTH, {line[i]}),
             "a corner of the human's line", "line"));
     }
-    //  01.11 walks on from here: west 8 along row 29, north to the old woman.
-    steps.push_back(route("into_floaroma", at(FLOAROMA, "route_204_arrival", NORTH), "north up column 11 into Floaroma", "line"));
+    //  From (11, 12) north up column 11, through the grass on (11, 5..11),
+    //  until Floaroma's banner: the end is the banner, not a count. An open
+    //  leg to (11, 5) met a wild battle there and found no plan back, for
+    //  column 11 has no wall north to pin (lab-B 2026-11-08 18:17:53); the
+    //  run goes on north after a battle, and any tile of the column ends the
+    //  same way.
+    StoryStep run = legs("into_floaroma", {{.direction = NORTH, .tiles = 17}},
+        "run north up column 11 until Floaroma's banner", "to_map");
+    run.pose_after = into_floaroma();
+    steps.push_back(std::move(run));
     steps.push_back(save());
     return row("01.10", "Route 204 to Floaroma", at(ROUTE_204_NORTH, "cave_exit", SOUTH), std::move(steps));
 }
@@ -891,11 +910,13 @@ std::vector<StoryCheckpoint> to_oreburgh(){
 //  west of her stand still above the flower field's bottom row (r251a).
 //  The walk to her is the one that ran on the console: 8 taps west along
 //  row 29, then north until she stops us (r250a: 3 steps, then bumps).
+//  01.10's run may stop on rows 27 to 29: the taps west go along whichever,
+//  and the walk north ends below her all the same.
 StoryCheckpoint floaromas_old_couple(){
     const Pose below_the_old_woman = next_to(FLOAROMA, "old_woman", SOUTH, NORTH);
     const Pose below_the_old_man = next_to(FLOAROMA, "old_man", SOUTH, NORTH);
-    return row("01.11", "Floaroma's old couple", at(FLOAROMA, "route_204_arrival", NORTH), {
-        legs("west_along_the_field", {{.direction = WEST, .tiles = 8}}, "8 taps west along row 29"),
+    return row("01.11", "Floaroma's old couple", into_floaroma(), {
+        legs("west_along_the_field", {{.direction = WEST, .tiles = 8}}, "8 taps west along the row we stopped on"),
         anchored(to_walls("up_to_the_old_woman", {{.direction = NORTH, .tiles = 5}}, "north until she stops us"),
             below_the_old_woman),
         talk("old_woman", "she gives Mew when a Let's Go save is on the console"),

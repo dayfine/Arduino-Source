@@ -171,6 +171,10 @@ Walked walk_legs(const Pose& from, const StoryStep& step){
     if (step.variant == "to_wall"){
         return {std::nullopt, "", ""};
     }
+    //  A run until a map's banner ends where the banner reads.
+    if (step.variant == "to_map"){
+        return {step.pose_after, "", ""};
+    }
     const StoryWorld* world = story_plan_world(from.map, from.map);
     if (world == nullptr){
         return {std::nullopt, step.name + ": no world holds " + from.map + ".", ""};

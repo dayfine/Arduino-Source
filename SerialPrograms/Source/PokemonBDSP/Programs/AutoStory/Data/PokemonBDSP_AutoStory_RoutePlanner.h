@@ -148,6 +148,16 @@ std::optional<std::vector<PlannedLeg>> plan_robust_route(
     const RobustPlanCosts& costs = RobustPlanCosts()
 );
 
+//  What plan_robust_route() charges for walking `legs` from any of `from`,
+//  each leg from the tiles the one before may end on. A leg it would not
+//  plan (along a wander zone, or off the maps) costs its tiles and legs
+//  without grass or wander tiles.
+long long robust_route_cost(
+    const StoryWorld& world,
+    const std::vector<Pokemon::TilePos>& from, const std::vector<PlannedLeg>& legs,
+    const RobustPlanCosts& costs
+);
+
 
 
 } // namespace PokemonBDSP
