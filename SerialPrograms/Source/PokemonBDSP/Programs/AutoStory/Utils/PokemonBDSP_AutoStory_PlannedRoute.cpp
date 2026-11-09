@@ -13,6 +13,7 @@
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "Pokemon/Navigation/Pokemon_RouteLog.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_WallRecovery.h"
+#include "PokemonBDSP_AutoStory_LegBattle.h"
 #include "PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP_AutoStory_RouteIO.h"
 #include "PokemonBDSP_AutoStory_RouteWalk.h"
@@ -607,8 +608,9 @@ LegNext RouteWalker::open_leg(LegWalk& walk){
     return LegNext::NEXT_LEG;
 }
 
-//  Where an open leg's battle left us: any tile of the leg from where it
-//  began, none moved to all. A battle that may have begun before the leg
+//  Where an open leg's battle left us: where its screen events place it
+//  (place_leg_battle()), a tile or so from where the taps left us; else
+//  any tile of the leg from where it began, none moved to all. A battle that may have begun before the leg
 //  (WalkOrigin::MAY_PRECEDE_LEG) found us on the tile the leg before ended
 //  on, since a battle starts on a tile stepped onto, so the same tiles
 //  hold. Planning again from them is bounded by run()'s plans.
@@ -616,8 +618,14 @@ LegNext RouteWalker::interrupted_open_leg(LegWalk& walk){
     if (walk.result.stop != WalkStop::LIMIT && walk.result.stop != WalkStop::BLOCKED){
         fail(m_io, "interrupted open leg has an unconfirmed dialogue/transition: " + walk.label);
     }
-    auto possible = interrupted_leg_positions(m_grid, m_from, walk.planned.leg.direction, walk.planned.leg.tiles);
-    const auto next = replan_from(walk, std::move(possible), "encounter: credited taps do not establish pose");
+    const TileLeg& leg = walk.planned.leg;
+    const LegBattlePlace place = place_leg_battle(walk.result, leg.tiles);
+    m_io.note(ROUTE_LOG_TAG + leg_battle_line(walk.label, walk.result, place), RouteNote::LOG);
+    auto possible = place.moved
+        ? tiles_moved(m_grid, m_from, leg.direction, *place.moved)
+        : interrupted_leg_positions(m_grid, m_from, leg.direction, leg.tiles);
+    const auto next = replan_from(walk, std::move(possible), place.moved
+        ? "encounter: placed by its screen events" : "encounter: credited taps do not establish pose");
     m_facing.reset();
     return next;
 }

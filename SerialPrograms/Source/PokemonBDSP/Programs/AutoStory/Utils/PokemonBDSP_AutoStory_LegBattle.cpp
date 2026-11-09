@@ -5,6 +5,7 @@
  */
 
 #include <algorithm>
+#include <cstdint>
 #include <format>
 #include "PokemonBDSP_AutoStory_LegBattle.h"
 
@@ -106,7 +107,8 @@ std::vector<TilePos> tiles_moved(
 }
 
 void record_tap_battle(WalkResult& walk, size_t tap, const LegBattleTiming& timing){
-    const WallClock step = tap == 0 ? walk.started - timing.tap_time : walk.started + timing.tap_time * (tap - 1);
+    const int64_t taps_before = tap == 0 ? -1 : (int64_t)tap - 1;
+    const WallClock step = walk.started + timing.tap_time * taps_before;
     WallClock last = walk.events.last_frame().value_or(walk.started);
     std::vector<Pokemon::EventLag> lags = timing.lags;
     std::sort(lags.begin(), lags.end(), [](const Pokemon::EventLag& x, const Pokemon::EventLag& y){
