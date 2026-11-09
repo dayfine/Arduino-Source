@@ -64,15 +64,52 @@ std::optional<WalkedTiles> logged_bound(const std::vector<std::string>& log){
     return std::nullopt;
 }
 
-std::string describe(const std::string& failure, const SimState& state, const std::vector<std::string>& log){
-    std::string out = std::format("\n  ended on {}, failure: \"{}\"", to_string(state.position), failure);
-    for (const std::string& line : log){
+//  A walk on the sim: how it ended, and what the walker and the sim logged.
+struct LateBattleRun{
+    std::string failure;
+    SimState state;
+    std::vector<std::string> log;
+};
+
+std::string describe(const LateBattleRun& run){
+    std::string out = std::format("\n  ended on {}, failure: \"{}\"", to_string(run.state.position), run.failure);
+    for (const std::string& line : run.log){
         out += "\n  " + line;
     }
-    for (const std::string& line : state.log){
+    for (const std::string& line : run.state.log){
         out += "\n  " + line;
     }
     return out;
+}
+
+const MapPosition LEG_START{"Route10", {5, 10}};
+const MapPosition LEG_END{"Route10", {16, 10}};
+
+//  "east 11" from LEG_START through Route 10's grass, with a battle on
+//  `battle_step` whose flashes are missed.
+LateBattleRun walk_with_battle(int battle_step, SimWalkerRules rules){
+    RouteStep east;
+    east.direction = Direction::EAST;
+    east.tiles = 11;
+    east.wild = true;
+    east.facing_after = Direction::EAST;
+    east.end = LEG_END;
+    SimScript script;
+    script.encounters = {{.grass_step = battle_step, .seen_late = true}};
+    script.timing.battle_opening = OverworldWalkSteps::LATE_WILD_BATTLE_DELAY;
+    script.timing.battle_screen = OverworldWalkSteps::LATE_WILD_BATTLE_DELAY + 800ms;
+    OverworldSim sim(maps(), LEG_START, Direction::EAST, script);
+    OverworldSimWalker walker(sim, rules);
+    const RoutePlanning planning{.maps = &maps(), .costs = default_route_costs(), .start = LEG_START, .label = "Sim"};
+    LateBattleRun run;
+    run.failure = walker.run({east}, planning);
+    run.state = sim.state();
+    run.log = walker.log();
+    return run;
+}
+
+std::string bound_text(const std::optional<WalkedTiles>& bound){
+    return bound ? std::format("{} to {}", bound->min, bound->max) : std::string("no bound");
 }
 
 //  Console B, FRLG 00.27 run 2, 2026-11-09 (~/FRLGLab/captures/
@@ -101,34 +138,24 @@ public:
 
 private:
     UnitTestResult run_case() const{
-        const MapPosition start{"Route10", {5, 10}};
-        const MapPosition goal{"Route10", {16, 10}};
-        RouteStep east;
-        east.direction = Direction::EAST;
-        east.tiles = 11;
-        east.wild = true;
-        east.facing_after = Direction::EAST;
-        east.end = goal;
-        SimScript script;
-        script.encounters = {{.grass_step = m_case.input.battle_step, .seen_late = true}};
-        script.timing.battle_opening = OverworldWalkSteps::LATE_WILD_BATTLE_DELAY;
-        script.timing.battle_screen = OverworldWalkSteps::LATE_WILD_BATTLE_DELAY + 800ms;
-        OverworldSim sim(maps(), start, Direction::EAST, script);
-        OverworldSimWalker walker(sim);
-        const RoutePlanning planning{.maps = &maps(), .costs = default_route_costs(), .start = start, .label = "Sim"};
-        const std::string failure = walker.run({east}, planning);
-        const std::string seen = describe(failure, sim.state(), walker.log());
-        if (!failure.empty() || !(sim.state().position == goal) || !sim.state().violations.empty()){
-            return "Expected the battle run from and " + to_string(goal) + " reached:" + seen;
-        }
-        const std::optional<WalkedTiles> bound = logged_bound(walker.log());
         const int battle = m_case.input.battle_step;
+        const LateBattleRun now = walk_with_battle(battle, {});
+        if (!now.failure.empty() || !(now.state.position == LEG_END) || !now.state.violations.empty()){
+            return "Expected the battle run from and " + to_string(LEG_END) + " reached:" + describe(now);
+        }
+        const std::optional<WalkedTiles> bound = logged_bound(now.log);
         if (!bound || bound->min > battle || bound->max < battle || bound->max - bound->min > m_case.expectation.max_spread){
             return std::format(
                 "Expected the player placed within {} tiles around tile {} of the leg, got {}:{}",
-                m_case.expectation.max_spread, battle,
-                bound ? std::format("{} to {}", bound->min, bound->max) : std::string("no bound"), seen
+                m_case.expectation.max_spread, battle, bound_text(bound), describe(now)
             );
+        }
+        SimWalkerRules unplaced;
+        unplaced.place_late_battle = false;
+        const LateBattleRun old = walk_with_battle(battle, unplaced);
+        const std::optional<WalkedTiles> whole = logged_bound(old.log);
+        if (!whole || whole->min != 0 || whole->max != 11){
+            return "Expected the whole leg, 0 to 11 tiles, without the rule, as on the console, got " + bound_text(whole) + ":" + describe(old);
         }
         return true;
     }
