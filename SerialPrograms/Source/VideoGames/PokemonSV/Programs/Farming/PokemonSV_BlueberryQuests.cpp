@@ -114,7 +114,7 @@ std::vector<BBQuests> read_quests(
 ){
     std::vector<BBQuests> quest_list;
 
-    open_quest_panel(stream, context);
+    const bool panel_detected = open_quest_panel(stream, context);
 
     //Read in the initial 4 quests.
     stream.log("Reading quests.");
@@ -137,7 +137,7 @@ std::vector<BBQuests> read_quests(
     if (BP != nullptr){
         *BP = read_BP_from_image(stream.logger(), screen);
     }
-    BBQLogger(stream.logger()).board(/*panel_detected=*/result == 0, quest_list);
+    BBQLogger(stream.logger()).board(/*panel_detected=*/panel_detected, quest_list);
 
     //Close quest list
     pbf_mash_button(context, BUTTON_B, 800ms);

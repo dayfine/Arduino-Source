@@ -363,11 +363,11 @@ public:
     virtual BBQuestBatch process_quest_list(
         const std::vector<BBQuests>& quests, uint8_t eggs_hatched
     ) override{
-        std::vector<BBQuests> to_do = PokemonSV::process_quest_list(
+        BBQuestBatch batch = PokemonSV::process_quest_list(
             m_env.program_info(), m_env.console, m_context, m_options, quests, eggs_hatched, &m_bp_ledger
         );
         update_BP_stats();
-        return to_do;
+        return batch;
     }
     virtual bool do_quest(BBQuests quest, uint8_t& eggs_hatched, std::vector<BBQuests>& panel_after) override{
         return process_and_do_quest(m_env, m_env.console, m_context, m_options, quest, eggs_hatched, &panel_after);
