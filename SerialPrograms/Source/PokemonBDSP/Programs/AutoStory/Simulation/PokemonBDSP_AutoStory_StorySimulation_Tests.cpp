@@ -18,6 +18,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -29,6 +30,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_WallRecovery.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryTable.h"
+#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryWalkSteps.h"
 #include "PokemonBDSP_AutoStory_StorySimulation_Tests.h"
 
 namespace PokemonAutomation{
@@ -65,11 +67,13 @@ bool contains(const std::vector<TilePos>& tiles, const TilePos& pos){
     return std::find(tiles.begin(), tiles.end(), pos) != tiles.end();
 }
 
-//  Where a step ends, or why it does not plan.
+//  Where a step ends, or why it does not plan. A "measured" step ends on
+//  one of `at`'s tiles and the program knows which (`measured`).
 struct Walked{
     std::optional<Pose> at;
     std::string error;
     std::string plan;
+    bool measured = false;
 };
 
 //  The tiles a plan walks.
@@ -145,6 +149,27 @@ Walked plan_route(const Pose& from, const StoryStep& step){
     return walked;
 }
 
+//  A ROUTE step after a "measured" one: the program plans from the one
+//  tile it measured, so each tile of `from` must plan on its own.
+Walked plan_route_from_each(const Pose& from, const StoryStep& step){
+    Walked walked;
+    std::vector<TilePos> ends;
+    for (const TilePos& pos : Pokemon::tiles_of(from)){
+        const Walked one = plan_route(Pokemon::tile_pose(from.map, {pos}, Pokemon::facing_of(from)), step);
+        if (!one.error.empty() || !one.at){
+            return one;
+        }
+        walked.plan += (walked.plan.empty() ? "" : "; ") + one.plan;
+        for (const TilePos& end : Pokemon::tiles_of(*one.at)){
+            if (!contains(ends, end)){
+                ends.push_back(end);
+            }
+        }
+        walked.at = Pokemon::tile_pose(one.at->map, ends, Pokemon::facing_of(*one.at));
+    }
+    return walked;
+}
+
 //  `leg` of `step` from `pos`: adds where it ends to `next` (and a tile
 //  short where the step allows it). Returns why it is blocked, or "".
 std::string walk_leg_from(
@@ -175,6 +200,10 @@ Walked walk_legs(const Pose& from, const StoryStep& step){
     //  A run until a map's banner ends where the banner reads.
     if (step.variant == "to_map"){
         return {step.pose_after, "", ""};
+    }
+    if (step.variant == "measured"){
+        const std::optional<Pose> ends = measured_ends(from, step);
+        return {ends, ends ? "" : step.name + ": no world holds " + from.map + ".", "", true};
     }
     const StoryWorld* world = story_plan_world(from.map, from.map);
     if (world == nullptr){
@@ -251,7 +280,12 @@ protected:
         return moved(plan_route(state.pose, step), "no_plan");
     }
     virtual Outcome legs(RunState& state, const StoryStep& step) override{
-        return moved(walk_legs(state.pose, step), "blocked");
+        Walked walked = walk_legs(state.pose, step);
+        //  The fake player stands on the first tile a measured step may end on.
+        if (walked.measured && walked.at && !Pokemon::tiles_of(*walked.at).empty()){
+            walked.at = Pokemon::tile_pose(walked.at->map, {Pokemon::tiles_of(*walked.at).front()}, Pokemon::facing_of(*walked.at));
+        }
+        return moved(walked, "blocked");
     }
     virtual Outcome step(RunState& state, const StoryStep& step) override{
         return moved(step_on(state.pose, step), "blocked");
@@ -437,6 +471,7 @@ UnitTestResult test_gives_up_after_attempts(Logger&){
 //  the player, by the same planning and walking the fake run does.
 UnitTestResult test_poses_chain(Logger&){
     std::optional<Pose> at;
+    bool measured = false;
     std::string last;
     for (const StoryCheckpoint& row : story_checkpoints()){
         if (row.start){
@@ -456,12 +491,15 @@ UnitTestResult test_poses_chain(Logger&){
                 if (!at && step.variant != "to_wall" && step.variant != "jubilife_stairs"){
                     return row.id + " " + step.name + ": walks from an unknown pose.";
                 }
-                const Walked walked = !at ? Walked{} : step.kind == StoryStepKind::ROUTE ? plan_route(*at, step)
+                const bool known = std::exchange(measured, false);
+                const Walked walked = !at ? Walked{} : step.kind == StoryStepKind::ROUTE
+                    ? (known ? plan_route_from_each(*at, step) : plan_route(*at, step))
                     : step.kind == StoryStepKind::LEGS ? walk_legs(*at, step) : step_on(*at, step);
                 if (!walked.error.empty()){
                     return row.id + " " + walked.error;
                 }
                 at = walked.at;
+                measured = walked.measured;
             }else if (step.kind == StoryStepKind::GAME || step.kind == StoryStepKind::SHOP || step.kind == StoryStepKind::MASH){
                 //  A scene or an event: where it ends is the table's to say.
                 at.reset();

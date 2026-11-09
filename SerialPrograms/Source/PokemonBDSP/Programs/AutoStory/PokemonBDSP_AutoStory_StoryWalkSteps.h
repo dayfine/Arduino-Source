@@ -39,6 +39,18 @@ enum class CenterEntry{
 //  not, `line_up` lines up with the lit doorway and walks in (or fails).
 CenterEntry run_into_center(StoryStepIO& io, bool run, const std::function<bool()>& inside, const std::function<void()>& line_up);
 
+//  Where a leg's taps end, and how many of them moved.
+struct TappedEnd{
+    Pokemon::TilePos end;
+    size_t moved = 0;
+};
+//  Where `leg`'s taps from `pos` (a tile of `map`) end on `world`: each tap
+//  moves a tile until a wall stops them.
+TappedEnd tapped_end(const StoryWorld& world, const std::string& map, const Pokemon::TilePos& pos, const Pokemon::StoryLeg& leg);
+//  The tiles a "measured" LEGS step may end on from `from`, one a tile of
+//  it; the step measures which. Nothing if `from`'s map has no world.
+std::optional<Pokemon::Pose> measured_ends(const Pokemon::Pose& from, const Pokemon::StoryStep& step);
+
 
 //  Executes walking and movement-related story steps via StoryStepIO.
 class StoryWalkSteps{
@@ -76,6 +88,7 @@ private:
         const std::optional<TileSpan>& moved);
     Pokemon::Outcome tap_legs(const Pokemon::Pose& from, const Pokemon::StoryStep& step);
     Pokemon::Outcome counted_wall(const Pokemon::Pose& from, const Pokemon::StoryStep& step);
+    Pokemon::Outcome measured_legs(const Pokemon::Pose& from, const Pokemon::StoryStep& step);
     Pokemon::Outcome leg_to_dialogue(const Pokemon::StoryStep& step);
     Pokemon::Outcome leg_to_map(const Pokemon::StoryStep& step);
     Pokemon::Outcome tap_to_banner(const Pokemon::Pose& from, const Pokemon::StoryStep& step);

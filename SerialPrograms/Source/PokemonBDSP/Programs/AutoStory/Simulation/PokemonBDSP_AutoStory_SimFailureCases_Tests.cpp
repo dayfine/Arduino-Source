@@ -328,6 +328,23 @@ UnitTestResult starly_opening_after_the_starter(Logger& logger){
     return passes(run_case(logger, "00.02", "00.02", {.fade = {}, .banner = {}}, knobs));
 }
 
+//  00.03: Rowan's scene ends at home beside Mom, on the rug's row (r24,
+//  r27, r28) or a row lower (lab-B 2026-11-09 12:49: the walk west to the
+//  table's corner stopped on (5, 9) against the wall (4, 9), and the taps
+//  after crossed the door's mat to (7, 10)). The way out goes from each.
+UnitTestResult home_from_each_scene_end(Logger& logger){
+    std::string failures;
+    for (const TilePos& tile : {TilePos{5, 8}, TilePos{6, 8}, TilePos{5, 9}, TilePos{6, 9}}){
+        SimWorldKnobs knobs;
+        knobs.lands["rowan_and_dawn"] = Pokemon::tile_pose("PlayerHouse1F", {tile}, Direction::EAST);
+        const std::string stopped = run_case(logger, "00.03", "00.03", {.fade = {}, .banner = {}}, std::move(knobs));
+        if (!stopped.empty()){
+            failures += std::format("\nfrom ({}, {}): {}", tile.x, tile.y, stopped);
+        }
+    }
+    return passes(failures);
+}
+
 struct FailureCaseInput{
     std::string name;
     std::function<UnitTestResult(Logger&)> body;
@@ -406,6 +423,7 @@ const FailureCase AUTO_STORY_FAILURE_CASES[] = {
     {.input = {"01.07 after the tag battle the grunts run off before anyone speaks", grunts_run_off_before_rowan}, .expectation = {}},
     {.input = {"00.03 Rowan's scene opens with no box and fades home", rowans_scene_opens_with_no_box}, .expectation = {}},
     {.input = {"00.02 the Starly battle's opening still plays after the starter (lab-B 2026-11-09)", starly_opening_after_the_starter}, .expectation = {}},
+    {.input = {"00.03 out of the house from each tile Rowan's scene ends on, rows 8 and 9 (lab-B 2026-11-09)", home_from_each_scene_end}, .expectation = {}},
 };
 
 void add_tests_AutoStory_SimFailureCases(UnitTestDatabase& database){
