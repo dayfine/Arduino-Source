@@ -169,11 +169,11 @@ private:
 };
 
 const FrameReplayCase FRAME_REPLAY_CASES[] = {
-    {.input = {"the frame showing at a time", test_frame_at}},
-    {.input = {"a missing recording throws", test_missing_folder}},
-    {.input = {"the warp watcher sees a door's black", test_watcher_sees_fade}},
-    {.input = {"a warp watcher started after the black misses it", test_late_watcher_misses_fade}},
-    {.input = {"the replayed events judged as a warp", test_events_judged}},
+    {.input = {"the frame showing at a time", test_frame_at}, .expectation = {}},
+    {.input = {"a missing recording throws", test_missing_folder}, .expectation = {}},
+    {.input = {"the warp watcher sees a door's black", test_watcher_sees_fade}, .expectation = {}},
+    {.input = {"a warp watcher started after the black misses it", test_late_watcher_misses_fade}, .expectation = {}},
+    {.input = {"the replayed events judged as a warp", test_events_judged}, .expectation = {}},
 };
 
 } // namespace

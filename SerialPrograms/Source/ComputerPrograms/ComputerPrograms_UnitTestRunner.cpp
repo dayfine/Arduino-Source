@@ -55,7 +55,6 @@ namespace ComputerPrograms{
 
 UnitTestDatabase make_UNIT_TESTS_ALL(){
     UnitTestDatabase ret;
-
     add_tests_QtEventThreadPool(ret, GlobalThreadPools::computation_normal());
     add_tests_Sockets(ret, GlobalThreadPools::unlimited_normal());
     add_tests_BlackBorderDetector(ret);
