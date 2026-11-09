@@ -258,6 +258,21 @@ InterruptVerdict classify_interrupt(
 }
 
 
+std::optional<WallClock> interrupt_step_time(const InterruptVerdict& verdict, const std::vector<EventLag>& lags){
+    for (const ScreenEventChange& change : verdict.evidence){
+        if (change.edge != ScreenEventEdge::ROSE){
+            continue;
+        }
+        for (const EventLag& lag : lags){
+            if (lag.event == change.event){
+                return change.time - lag.lag;
+            }
+        }
+    }
+    return std::nullopt;
+}
+
+
 
 } // namespace Pokemon
 } // namespace PokemonAutomation
