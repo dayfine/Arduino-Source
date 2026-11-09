@@ -243,6 +243,27 @@ Outcome StoryWalkSteps::tap_to_banner(const Pose& from, const StoryStep& step){
     return Pokemon::outcome_ok();
 }
 
+//  A STEP "or_legs" whose run into the door saw no fade: the run stopped
+//  beside the door's column, against the wall it is in. The step's legs, a
+//  tap a tile, put us on the door's tile, then the run goes again (00.03:
+//  from (5, 10) east onto the mat (6, 10), then south). A tap onto the
+//  tile that is itself the way through ends it.
+WarpSeen StoryWalkSteps::door_from_beside(const StoryStep& step, Milliseconds timeout, const std::string& banner){
+    for (const Pokemon::StoryLeg& leg : step.legs){
+        turn(leg.direction);
+        const WalkResult walk = m_io.route().walk_taps(leg.direction, (size_t)leg.tiles, step.name);
+        log(std::format("[{}] {}: no fade; {} {} taps {}, {}.", m_row, step.name, leg.tiles,
+            direction_name(leg.direction), walk.moved_chunks, walk_stop_name(walk.stop)));
+        if (walk.warp.any()){
+            return walk.warp;
+        }
+    }
+    const WarpSeen seen = m_io.run_into_door(step.direction, m_can_run, timeout, Milliseconds(0), banner);
+    log(std::format("[{}] {}: {} through the door again: {}.", m_row, step.name,
+        direction_name(step.direction), seen.any() ? describe(seen) : "nothing yet"));
+    return seen;
+}
+
 //  The route before ran on through this step's warp (walk_route_to_warp()):
 //  the step is done, unless the banner it read names another map.
 bool StoryWalkSteps::through_already(const StoryStep& step){
@@ -502,9 +523,12 @@ Outcome StoryWalkSteps::step(RunState& state, const StoryStep& step){
         }
         const std::string banner = story_arrival_banner(state.pose.map, step.pose_after->map);
         const DoorRun door = door_run(state.pose.map, state.pose, step.direction, m_can_run);
-        const WarpSeen seen = m_io.run_into_door(step.direction, m_can_run, door.timeout, door.dark_from, banner);
+        WarpSeen seen = m_io.run_into_door(step.direction, m_can_run, door.timeout, door.dark_from, banner);
         log(std::format("[{}] {}: {} through the door (timeout {} ms, dark from {} ms): {}.", m_row, step.name,
             direction_name(step.direction), door.timeout.count(), door.dark_from.count(), seen.any() ? describe(seen) : "nothing yet"));
+        if (!seen.any() && step.variant == "or_legs"){
+            seen = door_from_beside(step, door.timeout, banner);
+        }
         m_io.settle(BUTTON_B, label_of(step), !seen.any(), banner);
         return Pokemon::outcome_ok();
     }
