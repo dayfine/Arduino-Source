@@ -4,9 +4,10 @@
  *
  */
 
+#include <format>
 #include <string>
+#include <string_view>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
-#include "JsonObject.h"
 #include "JsonValue.h"
 #include "JsonTools_Tests.h"
 
@@ -15,46 +16,62 @@ namespace{
 
 
 
-class Test_JsonTools_EmptyObjectRoundTrip : public UnitTest{
-public:
-    Test_JsonTools_EmptyObjectRoundTrip()
-        : UnitTest("Common::JsonTools - Empty object round trip")
-    {}
+struct DumpInput{
+    std::string_view name;
+    std::string_view text;
+};
+struct DumpExpectation{
+    std::string_view dumped;
+};
+struct DumpCase{
+    DumpInput input;
+    DumpExpectation expectation;
+};
 
-    virtual UnitTestResult run(Logger& logger, CancellableScope& scope) const override{
-        const std::string empty = JsonValue(JsonObject()).dump(-1);
-        if (empty != "{}"){
-            return UnitTestResult("dump of an empty object: expected {}, got " + empty);
-        }
-
-        const std::string text = parse_json(R"({"array":[],"object":{}})").dump(-1);
-        const JsonValue reparsed = parse_json(text);
-        const JsonObject* root = reparsed.to_object();
-        if (root == nullptr){
-            return UnitTestResult("reparsed document: expected an object, got " + text);
-        }
-        const JsonValue* object = root->get_value("object");
-        if (object == nullptr || !object->is_object()){
-            return UnitTestResult("nested empty object: expected an object, got " + text);
-        }
-        const JsonValue* array = root->get_value("array");
-        if (array == nullptr || !array->is_array()){
-            return UnitTestResult("nested empty array: expected an array, got " + text);
-        }
-        return true;
-    }
+//  Empty containers must keep their type through dump() and parse_json().
+const DumpCase CASES[] = {
+    {.input = {.name = "Empty object", .text = "{}"}, .expectation = {.dumped = "{}"}},
+    {.input = {.name = "Nested empty object", .text = R"({"object":{}})"}, .expectation = {.dumped = R"({"object":{}})"}},
+    {.input = {.name = "Nested empty array", .text = R"({"array":[]})"}, .expectation = {.dumped = R"({"array":[]})"}},
 };
 
 
 
-} // anonymous namespace
+class Test_JsonTools_DumpRoundTrip : public UnitTest{
+public:
+    explicit Test_JsonTools_DumpRoundTrip(DumpCase test)
+        : UnitTest(std::format("Common::JsonTools - {} round trip", test.input.name))
+        , m_test(test)
+    {}
+
+    virtual UnitTestResult run(Logger& logger, CancellableScope& scope) const override{
+        const std::string dumped = parse_json(std::string(m_test.input.text)).dump(-1);
+        if (dumped != m_test.expectation.dumped){
+            return UnitTestResult(std::format("dump: expected {}, got {}", m_test.expectation.dumped, dumped));
+        }
+        const std::string again = parse_json(dumped).dump(-1);
+        if (again != dumped){
+            return UnitTestResult(std::format("dump after reparse: expected {}, got {}", dumped, again));
+        }
+        return true;
+    }
+
+private:
+    DumpCase m_test;
+};
+
+
+
+} // namespace
 
 
 
 void add_tests_JsonTools(UnitTestDatabase& database){
-    database.add<Test_JsonTools_EmptyObjectRoundTrip>();
+    for (const DumpCase& test : CASES){
+        database.add<Test_JsonTools_DumpRoundTrip>(test);
+    }
 }
 
 
 
-}
+} // namespace PokemonAutomation
