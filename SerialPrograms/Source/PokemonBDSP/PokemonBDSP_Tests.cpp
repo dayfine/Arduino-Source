@@ -19,6 +19,8 @@
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_StoryData_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_StoryTable_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_Walk_Tests.h"
+#include "Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WildBattlePolicy_Tests.h"
+#include "Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_WallBattleSim_Tests.h"
 #include "PokemonBDSP_Tests.h"
 
 namespace PokemonAutomation{
@@ -38,8 +40,10 @@ void add_tests(UnitTestDatabase& database){
     add_tests_AutoStory_StoryData(database);
     add_tests_AutoStory_StoryTable(database);
     add_tests_AutoStory_Walk(database);
+    add_tests_AutoStory_WildBattlePolicy(database);
     add_tests_AutoStory_PlannedRoute(database);
     add_tests_AutoStory_GridSim(database);
+    add_tests_AutoStory_WallBattleSim(database);
     add_tests_AutoStory_RecoveryWalk(database);
     add_tests_AutoStory_StorySim(database);
 }
