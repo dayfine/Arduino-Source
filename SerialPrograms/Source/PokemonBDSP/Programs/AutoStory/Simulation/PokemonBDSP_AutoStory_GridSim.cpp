@@ -65,8 +65,18 @@ bool is_door(const StoryWorld& world, const TilePos& pos){
     return tile && *tile == TileKind::DOOR && !world.occupied(pos);
 }
 
+//  Held time per tile of a walk east or west to a wall: slower than the
+//  walker's 160 ms. On the console 3520 ms held east before the Running
+//  Shoes went fewer than 20 tiles (lab-B 2026-11-09, 00.03): at least 176 ms
+//  a tile. A limit timed at the walker's pace stops short here as it did
+//  there. North and south keep their measured 240 ms.
+constexpr Milliseconds SIM_WALK_MS_PER_TILE_ACROSS = Milliseconds(200);
+
 Milliseconds per_tile(Direction direction, SimPace pace, bool can_run){
-    return route_ms_per_tile(direction, pace == SimPace::RUN && can_run ? MoveSpeed::RUN : MoveSpeed::WALK);
+    if (pace == SimPace::RUN && can_run){
+        return route_ms_per_tile(direction, MoveSpeed::RUN);
+    }
+    return std::max(route_ms_per_tile(direction, MoveSpeed::WALK), SIM_WALK_MS_PER_TILE_ACROSS);
 }
 
 uint32_t step_rng(uint64_t& state){
