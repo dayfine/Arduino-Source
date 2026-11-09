@@ -131,6 +131,26 @@ InterruptVerdict classify_interrupt(
 );
 
 
+//  How long after the step that set an interrupt off one of its events
+//  shows, as a game measured it on its console.
+struct EventLag{
+    ScreenEvent event = ScreenEvent::BATTLE_STARTED;
+    Milliseconds lag = Milliseconds(0);
+};
+
+//  When the step that set `verdict`'s interrupt off was taken: the first
+//  rise in its evidence that `lags` times, less that lag. The first, as it
+//  shows nearest the step. Nothing if `lags` times none of them, as for a
+//  game that hasn't measured its events, or for no verdict. Lags are one
+//  kind of interrupt's (a wild battle's box, not a trainer's): the caller
+//  checks the verdict's kind first.
+//
+//  This places an interrupt seen only after a walk's hold has ended, by
+//  what the log saw of it during the hold, instead of by when the watcher
+//  that stopped for it fired.
+std::optional<WallClock> interrupt_step_time(const InterruptVerdict& verdict, const std::vector<EventLag>& lags);
+
+
 
 } // namespace Pokemon
 } // namespace PokemonAutomation
