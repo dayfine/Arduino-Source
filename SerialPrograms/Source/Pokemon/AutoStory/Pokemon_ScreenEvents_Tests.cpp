@@ -115,6 +115,9 @@ int first_beat(TalkOver& judge, const std::vector<ScreenEvents>& beats, SceneMov
 const ScreenEvents QUIET{ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::SCREEN_STILL};
 const ScreenEvents CALM{ScreenEvent::PLAYER_CAN_MOVE};
 const ScreenEvents BOX{ScreenEvent::DIALOG_BOX, ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::SCREEN_STILL};
+//  A black frame as BDSP's eyes see it: no box, so "overworld", and still.
+const ScreenEvents FADED{ScreenEvent::FADE_BLACK, ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::SCREEN_STILL};
+const ScreenEvents CALM_FADED{ScreenEvent::FADE_BLACK, ScreenEvent::PLAYER_CAN_MOVE};
 
 std::vector<ScreenEvents> repeat(const ScreenEvents& look, size_t count){
     return std::vector<ScreenEvents>(count, look);
@@ -146,6 +149,14 @@ UnitTestResult test_talk_over(){
             SceneMove::DONE, 6},
         {"no quiet ends a talk before a battle", {.end_on_quiet = false}, repeat(QUIET, 30), SceneMove::DONE, -1},
         {"a battle", {.end_on_quiet = false}, concat(repeat(QUIET, 6), {ScreenEvents{ScreenEvent::BATTLE_STARTED}}), SceneMove::BATTLE, 6},
+        //  Mom's Running Shoes scene (lab-B 2026-11-09 14:33): quiet, then
+        //  the scene's closing fade. It ended at the fade's start and the
+        //  next step's input landed in the fade.
+        {"a closing fade starts the quiet over", {},
+            concat(concat(repeat(QUIET, 4), repeat(FADED, 3)), repeat(QUIET, 8)),
+            SceneMove::DONE, 12},
+        {"a fade still down never ends it", {}, concat(repeat(QUIET, 3), repeat(FADED, 20)), SceneMove::DONE, -1},
+        {"a fade is never calm", {}, concat(repeat(CALM, 10), repeat(CALM_FADED, 10)), SceneMove::DONE, -1},
     };
     for (const Row& row : rows){
         TalkOver judge(row.rule);
