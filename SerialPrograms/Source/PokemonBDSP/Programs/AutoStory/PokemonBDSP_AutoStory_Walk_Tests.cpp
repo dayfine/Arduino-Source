@@ -5,6 +5,7 @@
  */
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 #include "Common/Cpp/Filesystem/Filesystem.h"
@@ -12,6 +13,7 @@
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "Utils/PokemonBDSP_AutoStory_Indoors.h"
+#include "Utils/PokemonBDSP_AutoStory_LegBattle.h"
 #include "Utils/PokemonBDSP_AutoStory_Location.h"
 #include "Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "Utils/PokemonBDSP_AutoStory_Walk.h"
@@ -308,6 +310,44 @@ struct AutoStoryWalkCase{
     AutoStoryWalkExpectation expectation;
 };
 
+//  place_leg_battle() on synthetic walks of 10 taps, their events recorded
+//  as record_tap_battle() records the console's.
+struct LegBattleCase{
+    std::string name;
+    size_t battles;
+    size_t tap;             //  the tap (from 0) that set the battle off
+    size_t moved_after;     //  taps that moved after it was run from
+    bool settled;           //  false: a white fade with no battle yet
+    std::optional<TileSpan> expected;
+};
+UnitTestResult test_leg_battle_place(Logger& logger){
+    const LegBattleCase CASES[] = {
+        {"mid-leg, the taps went on", 1, 2, 7, true, TileSpan{9, 10}},
+        {"seen after the hold", 1, 5, 0, true, TileSpan{5, 7}},
+        {"on the first tap", 1, 0, 0, true, TileSpan{0, 2}},
+        {"two battles", 2, 2, 0, true, std::nullopt},
+        {"unsettled: a white fade, no battle yet", 1, 3, 0, false, std::nullopt},
+    };
+    for (const LegBattleCase& item : CASES){
+        WalkResult walk{.stop = WalkStop::LIMIT, .walked = Milliseconds(8000), .wild_battles = item.battles};
+        walk.moved_after_battle = item.moved_after;
+        walk.events.record({}, walk.started);
+        if (item.settled){
+            record_tap_battle(walk, item.tap);
+        }else{
+            walk.events.record({Pokemon::ScreenEvent::FADE_WHITE}, walk.started + Milliseconds(800 * item.tap + 500));
+        }
+        const LegBattlePlace place = place_leg_battle(walk, 10);
+        logger.log(leg_battle_line(item.name, walk, place));
+        const bool same = place.moved.has_value() == item.expected.has_value() &&
+            (!place.moved || (place.moved->min == item.expected->min && place.moved->max == item.expected->max));
+        if (!same){
+            return item.name + ": " + leg_battle_line(item.name, walk, place);
+        }
+    }
+    return true;
+}
+
 class Test_AutoStoryWalk : public UnitTest{
 public:
     explicit Test_AutoStoryWalk(AutoStoryWalkCase test_case)
@@ -360,6 +400,10 @@ const AutoStoryWalkCase AUTO_STORY_WALK_CASES[] = {
     },
     {
         .input = {"a Pokemon Center is its floor in a room, not a yellow plaza", test_pokemon_center_on_screen},
+        .expectation = {},
+    },
+    {
+        .input = {"a wild battle on an open leg's taps, placed by its screen events", test_leg_battle_place},
         .expectation = {},
     },
 };
