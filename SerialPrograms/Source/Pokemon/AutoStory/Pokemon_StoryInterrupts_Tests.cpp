@@ -71,6 +71,10 @@ ScreenLook warp(){
 ScreenLook white_unsettled(){
     return look_of({{0, WALK}, {100, WHITE}, {700, WALK}}, 1000);
 }
+//  A trainer's lines, then the battle's black, still down: no battle yet.
+ScreenLook trainer_opening(){
+    return look_of({{0, WALK}, {100, BOX}, {2000, BLACK}}, 2100);
+}
 //  The same white, looked at for long enough after it: a cave exit.
 ScreenLook white_settled(){
     return look_of({{0, WALK}, {100, WHITE}, {700, WALK}, {10000, WALK}}, 10000);
@@ -324,6 +328,30 @@ UnitTestResult test_unsettled_before_a_battle(){
     return expect_trace(game, {"look", "run starly"});
 }
 
+//  A battle's opening still playing when a walk step begins: the walk
+//  before it ended in grass or in a trainer's sight (BDSP fault sweep, 51
+//  steps of 00.01-01.11). The looks wait for the battle, past max_looks,
+//  and its handler clears it before the step.
+UnitTestResult test_opening_before_a_walk(ScreenLook opening, ScreenLook battle, const std::string& kind, const std::string& handler){
+    FakeGame game;
+    game.screens = {opening, opening, opening, opening, std::move(battle), quiet()};
+    StoryInterrupts interrupts = fake_interrupts(game);
+    const FakeRun run = run_step(game, interrupts, make(StoryStepKind::ROUTE, "walk"));
+    if (!run.outcome.succeeded()){
+        return "Expected the walk to run after the battle, got " + to_string(run.outcome);
+    }
+    return expect_trace(game, {
+        "look", "look again", "look again", "look again", "look again",
+        "clear " + handler, "told " + kind + " ", "run walk",
+    });
+}
+UnitTestResult test_wild_opening_before_a_walk(){
+    return test_opening_before_a_walk(white_unsettled(), wild(), "wild encounter", "wild");
+}
+UnitTestResult test_trainer_opening_before_a_walk(){
+    return test_opening_before_a_walk(trainer_opening(), trainer(), "trainer sight", "trainer");
+}
+
 UnitTestResult test_failure_explained(bool throws){
     FakeGame game;
     //  Before the step, after its failure, before its second run.
@@ -461,6 +489,14 @@ const StoryInterruptsCase STORY_INTERRUPTS_CASES[] = {
     {
         .input = {.name = "unsettled: a battle's opening before a battle step", .test = test_unsettled_before_a_battle},
         .expectation = {.description = "the step's, after one look"},
+    },
+    {
+        .input = {.name = "unsettled: a wild battle's opening before a walk", .test = test_wild_opening_before_a_walk},
+        .expectation = {.description = "waits for the battle, clears it, then the walk"},
+    },
+    {
+        .input = {.name = "unsettled: a trainer battle's opening before a walk", .test = test_trainer_opening_before_a_walk},
+        .expectation = {.description = "waits for the battle, fights it, then the walk"},
     },
     {
         .input = {.name = "a failed step an interrupt explains runs again", .test = test_failed_outcome_explained},
