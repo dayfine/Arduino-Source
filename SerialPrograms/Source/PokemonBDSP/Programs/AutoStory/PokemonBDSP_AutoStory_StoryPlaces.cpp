@@ -191,6 +191,21 @@ std::vector<TrainerSight> route_203_trainer_sights(){
     };
 }
 
+std::vector<TrainerSight> oreburgh_gate_trainer_sights(){
+    const auto at = [](const char* name){
+        for (const Pokemon::MapObject& object : story_map("OreburghGate").objects){
+            if (object.name == name){
+                return TilePos{object.x, object.y};
+            }
+        }
+        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::string("Oreburgh Gate has no ") + name + ".");
+    };
+    return {
+        {.name = "Camper Curtis", .pos = at("camper_1"), .facing = Direction::NORTH, .range = 4},
+        {.name = "Picnicker Diana", .pos = at("picnicker_0"), .facing = Direction::SOUTH, .range = 2},
+    };
+}
+
 //  The trainers of the JSON map `map`, in its own tiles.
 std::vector<TrainerSight> map_trainers(const std::string& map){
     if (map == "Route202"){
@@ -213,6 +228,25 @@ std::vector<TrainerSight> map_trainers(const std::string& map){
 
 const std::string& story_banner_name(const std::string& map){
     return banner_name(map);
+}
+
+std::string story_arrival_banner(const std::string& from, const std::string& to){
+    //  The named places, by the place each map is part of: the mine's two floors are one.
+    static const std::map<std::string, std::string> caves{
+        {"OreburghGate", "OreburghGate"},
+        {"OreburghMine", "OreburghMine"},
+        {"OreburghMineB1F", "OreburghMine"},
+        {"RavagedPath", "RavagedPath"},
+    };
+    const auto place = [](const std::string& map) -> std::string{
+        if (banner_names().contains(map)){
+            return banner_name(map);
+        }
+        const auto cave = caves.find(map);
+        return cave == caves.end() ? "" : cave->second;
+    };
+    const std::string there = place(to);
+    return there.empty() || there == place(from) ? "" : story_banner_name(to);
 }
 
 const StoryWorld* story_plan_world(const std::string& from, const std::string& to){
