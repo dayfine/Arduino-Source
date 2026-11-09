@@ -13,6 +13,7 @@
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
+#include "Pokemon/AutoStory/Pokemon_AutoStoryFailureCapture.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
 #include "PokemonBDSP/Programs/PokemonBDSP_GameEntry.h"
@@ -131,9 +132,12 @@ struct VerifyRequest{
 //  at their start, never at their end, so the reset from HOME between runs
 //  loads the save the first run started from. Throws unless enough runs
 //  pass, closing the game first as after any failure unless `keep_game`.
+//  `capture` saves a run that throws, as the hooks it is attached to save
+//  a run that fails.
 void verify_story_checkpoint(
     SingleSwitchProgramEnvironment& env, ProControllerContext& context, Pokemon::RunState& state,
-    Pokemon::Segment& segment, Pokemon::SegmentHooks& hooks, const VerifyRequest& request
+    Pokemon::Segment& segment, Pokemon::SegmentHooks& hooks, Pokemon::FailureCapture& capture,
+    const VerifyRequest& request
 ){
     if (request.new_game){
         throw UserSetupError(env.console, "Verify mode reloads the start's save between runs: turn off \"Start a new game first\".");
@@ -144,7 +148,8 @@ void verify_story_checkpoint(
     Pokemon::VerifyReport report;
     try{
         report = Pokemon::verify_checkpoint(state, segment, id, policy, hooks);
-    }catch (OperationFailedException&){
+    }catch (OperationFailedException& e){
+        capture.save_thrown(e.message());
         if (!keep_game){
             close_game_after_failure(env, context);
         }
@@ -236,6 +241,9 @@ void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     std::set<std::string> saved = saved_before_the_run(checkpoints, first, JUST_LOADED && !(first == 0 && NEW_GAME_INTRO));
     Pokemon::Segment segment = make_story_segment(checkpoints, executor, saved);
     Pokemon::SegmentHooks hooks = story_hooks(env, context);
+    //  Each failed event's stream history, screenshot and log, for a replay test.
+    Pokemon::FailureCapture capture(env.console, "PokemonBDSP");
+    capture.attach(hooks);
 
     Pokemon::RunState state;
     if (!(first == 0 && NEW_GAME_INTRO)){
@@ -243,14 +251,15 @@ void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     }
     if (const std::optional<Pokemon::VerifyPolicy> verify = RUN.VERIFY.policy()){
         const VerifyRequest request{checkpoints[first].id, *verify, first == 0 && NEW_GAME_INTRO, RUN.STOP_AT_FIRST_FAILURE};
-        verify_story_checkpoint(env, context, state, segment, hooks, request);
+        verify_story_checkpoint(env, context, state, segment, hooks, capture, request);
         send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH);
         return;
     }
     Pokemon::SegmentReport report;
     try{
         report = run_segment(state, segment, Pokemon::SegmentRange{checkpoints[first].id, checkpoints[last].id}, RUN.policy(), hooks);
-    }catch (OperationFailedException&){
+    }catch (OperationFailedException& e){
+        capture.save_thrown(e.message());
         if (!RUN.STOP_AT_FIRST_FAILURE){
             close_game_after_failure(env, context);
         }
