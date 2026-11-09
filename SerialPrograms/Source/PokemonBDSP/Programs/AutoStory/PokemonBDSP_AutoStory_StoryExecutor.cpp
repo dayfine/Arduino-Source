@@ -98,40 +98,59 @@ void save_failure_screenshot(VideoStream& stream, size_t attempt){
 } // namespace
 
 
+void ConsoleStepGuard::before_step(const StoryStep& step){
+    m_stream.log(std::format("[{}] {} {}: {}", m_checkpoint, Pokemon::story_step_kind_name(step.kind), step.name, step.why), COLOR_BLUE);
+}
+
+bool ConsoleStepGuard::stops_on_failure(const StoryStep&) const{
+    return m_stop_rows.contains(m_checkpoint);
+}
+
+void ConsoleStepGuard::on_failure(const StoryStep&, const OperationFailedException& error){
+    //  Attempts are the segment's policy; this only counts them for the
+    //  log line the lab's run watcher reads.
+    const size_t attempt = m_failures[m_checkpoint]++;
+    m_stream.log(std::format("checkpoint_reattempt_loop: attempt {} failed: {}: {}", attempt, m_checkpoint, error.message()), COLOR_RED);
+    save_failure_screenshot(m_stream, attempt);
+}
+
+
+//  The table and the guard are members, built after the base: it only
+//  keeps references to them until a step runs.
 StoryExecutor::StoryExecutor(StoryEnv& env)
-    : m_env(env)
+    : Pokemon::TableExecutor(m_table, m_guard)
+    , m_env(env)
     , m_io(env.env.console, env.context)
     , m_walks(m_io)
+    , m_guard(env.env.console, m_checkpoint)
+    , m_table(story_action_table(m_walks, console_actions()))
 {}
+
+StoryBoundActions StoryExecutor::console_actions(){
+    const auto method = [this](Outcome (StoryExecutor::*action)(RunState&, const StoryStep&)){
+        return [this, action](RunState& state, const StoryStep& step){
+            return (this->*action)(state, step);
+        };
+    };
+    return StoryBoundActions{
+        .new_game = method(&StoryExecutor::new_game),
+        .options = method(&StoryExecutor::options),
+        .answer = method(&StoryExecutor::answer),
+        .battle = method(&StoryExecutor::battle),
+        .train = method(&StoryExecutor::train),
+        .heal = method(&StoryExecutor::heal),
+        .save = method(&StoryExecutor::save),
+        .event = [this](const std::string& name) -> Pokemon::StoryActionFunction{
+            return [this, event = story_events().at(name)](RunState& state, const StoryStep& step){
+                return event(*this, state, step);
+            };
+        },
+    };
+}
 
 void StoryExecutor::begin_attempt(const Pokemon::StoryCheckpoint& data){
     m_checkpoint = data.id;
     m_walks.begin_attempt(data.id);
-}
-
-Outcome StoryExecutor::run(RunState& state, const StoryStep& step){
-    stream().log(std::format("[{}] {} {}: {}", m_checkpoint, Pokemon::story_step_kind_name(step.kind), step.name, step.why), COLOR_BLUE);
-    try{
-        return run_guarded(state, step);
-    }catch (OperationFailedException& e){
-        if (m_stop_rows.contains(m_checkpoint)){
-            throw;
-        }
-        //  Attempts are the segment's policy; this only counts them for the
-        //  log line the lab's run watcher reads.
-        const size_t attempt = m_failures[m_checkpoint]++;
-        stream().log(std::format("checkpoint_reattempt_loop: attempt {} failed: {}: {}", attempt, m_checkpoint, e.message()), COLOR_RED);
-        save_failure_screenshot(stream(), attempt);
-        return Pokemon::outcome_failed("operation_failed", e.message());
-    }
-}
-
-Outcome StoryExecutor::run_guarded(RunState& state, const StoryStep& step){
-    const StoryEvents& events = story_events();
-    if (auto event = events.find(step.variant); event != events.end()){
-        return event->second(*this, state, step);
-    }
-    return Pokemon::StoryStepExecutor::run(state, step);
 }
 
 Outcome StoryExecutor::new_game(RunState&, const StoryStep&){
@@ -145,31 +164,11 @@ Outcome StoryExecutor::options(RunState&, const StoryStep&){
     return Pokemon::outcome_ok();
 }
 
-Outcome StoryExecutor::route(RunState& state, const StoryStep& step){
-    return m_walks.route(state, step);
-}
-
-Outcome StoryExecutor::legs(RunState& state, const StoryStep& step){
-    return m_walks.legs(state, step);
-}
-
-Outcome StoryExecutor::step(RunState& state, const StoryStep& step){
-    return m_walks.step(state, step);
-}
-
-Outcome StoryExecutor::talk(RunState& state, const StoryStep& step){
-    return m_walks.talk(state, step);
-}
-
 Outcome StoryExecutor::answer(RunState&, const StoryStep& step){
     wait_for_dialogue(stream(), context(), label_of(step));
     pbf_press_button(context(), step.yes ? BUTTON_A : BUTTON_B, 80ms, 1000ms);
     context().wait_for_all_requests();
     return Pokemon::outcome_ok();
-}
-
-Outcome StoryExecutor::mash(RunState& state, const StoryStep& step){
-    return m_walks.mash(state, step);
 }
 
 Outcome StoryExecutor::battle(RunState&, const StoryStep& step){

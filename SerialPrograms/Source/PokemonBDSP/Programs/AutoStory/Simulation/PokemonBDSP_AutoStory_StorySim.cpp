@@ -11,7 +11,6 @@
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_CoordEvents.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
-#include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Events.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP_AutoStory_StorySim.h"
 
@@ -560,18 +559,50 @@ std::string SimExecutor::check(const StoryStep& step, const Outcome& outcome){
     return off_pose(*expected);
 }
 
+Outcome SimExecutor::stub(){
+    if (!m_result.rows.empty()){
+        m_result.rows.back().stubbed.push_back(m_step);
+    }
+    m_sim.end_dialogue();
+    return Pokemon::outcome_ok();
+}
+
+//  The steps that need the console: stubbed, but for the Center's door and
+//  the speeches after a battle.
+StoryBoundActions SimExecutor::sim_actions(){
+    const auto stubbed = [this](RunState&, const StoryStep&){
+        return stub();
+    };
+    return StoryBoundActions{
+        .new_game = stubbed,
+        .options = stubbed,
+        .answer = stubbed,
+        .battle = [this](RunState& state, const StoryStep& step){
+            return battle(state, step);
+        },
+        .train = stubbed,
+        .heal = [this](RunState& state, const StoryStep& step){
+            return heal(state, step);
+        },
+        .save = stubbed,
+        .event = [stubbed](const std::string&) -> Pokemon::StoryActionFunction{
+            return stubbed;
+        },
+    };
+}
+
 Outcome SimExecutor::run_step(RunState& state, const StoryStep& step){
     if (!m_start_mismatch.empty()){
         return Pokemon::outcome_failed("sim_mismatch", "the row before " + std::exchange(m_start_mismatch, ""));
     }
     m_far = step.pose_after;
-    if (story_events().contains(step.variant)){
-        return stub();
-    }
     //  A scene goes on from where the step before left us. A route walks
     //  on the world it plans on (Jubilife alone has no Route 204 north of it).
-    const bool walks = step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS ||
-        step.kind == StoryStepKind::STEP || step.kind == StoryStepKind::TALK;
+    //  An event of a walking kind (talk_to_wanderer) is the console's.
+    const Pokemon::StoryAction* action = m_table.find(step);
+    const bool walks = (step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS ||
+        step.kind == StoryStepKind::STEP || step.kind == StoryStepKind::TALK) &&
+        action != nullptr && !action->needs_console;
     const StoryWorld* on = step.kind == StoryStepKind::ROUTE && step.target && !state.pose.map.empty()
         ? story_plan_world(state.pose.map, step.target->map) : nullptr;
     //  A world of one map is sim_world()'s, with its people.
@@ -583,7 +614,7 @@ Outcome SimExecutor::run_step(RunState& state, const StoryStep& step){
         m_passed_over = true;
         return Pokemon::outcome_ok();
     }
-    return Pokemon::StoryStepExecutor::run(state, step);
+    return Pokemon::TableExecutor::run(state, step);
 }
 
 //  Puts the player on `start` of `world`: on the grid, no drift.
@@ -699,6 +730,17 @@ bool ends_on(const SimRun& run, const Pose& pose){
 }
 std::string end_of(const SimRun& run){
     return run.world ? describe(*run.world, run.end) : "nowhere";
+}
+std::string stub_report(const SimRun& run){
+    std::string out;
+    for (const SimRun::RowStart& row : run.rows){
+        out += std::format("{}: {} stubbed", row.row, row.stubbed.size());
+        for (size_t i = 0; i < row.stubbed.size(); i++){
+            out += (i == 0 ? ": " : ", ") + row.stubbed[i];
+        }
+        out += "\n";
+    }
+    return out;
 }
 
 
