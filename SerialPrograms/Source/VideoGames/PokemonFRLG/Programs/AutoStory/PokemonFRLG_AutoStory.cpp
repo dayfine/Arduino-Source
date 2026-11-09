@@ -60,6 +60,13 @@ AutoStory::AutoStory()
         LockMode::LOCK_WHILE_RUNNING,
         true
     )
+    , KEEP_START_FRAME(
+        "<b>Keep the start frame:</b><br>Off by default. The save loaded was made by hand where the start checkpoint "
+        "begins: keep the screen after loading it as that checkpoint's start frame, which later runs compare their "
+        "save with. The program keeps one by itself at each save it makes.",
+        LockMode::LOCK_WHILE_RUNNING,
+        false
+    )
     , NOTIFICATIONS({
         &NOTIFICATION_PROGRAM_FINISH,
         &NOTIFICATION_ERROR_FATAL,
@@ -67,6 +74,7 @@ AutoStory::AutoStory()
 {
     PA_ADD_OPTION(RUN);
     PA_ADD_OPTION(NEW_GAME_FROM_TITLE);
+    PA_ADD_OPTION(KEEP_START_FRAME);
     PA_ADD_OPTION(NOTIFICATIONS);
 }
 
@@ -154,6 +162,7 @@ void verify_story_checkpoint(
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
     const StoryCheckpoint& checkpoint = checkpoints[run.start_index()];
     StoryEnv story{env.console, context, checkpoint.supplies, checkpoint.supplies, false, run.checks()};
+    use_start_frames(story, false);
     load_verify_save(env, context, story, checkpoint);
     StoryExecutor executor(story);
     executor.set_checks(run.checks());
@@ -192,6 +201,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     }
 
     StoryEnv story{env.console, context, checkpoints[first].supplies, checkpoints[first].supplies, false, RUN.checks()};
+    use_start_frames(story, KEEP_START_FRAME);
     if (!(first == 0 && NEW_GAME_FROM_TITLE)){
         env.console.log("Loading the save for " + checkpoints[first].id + ".");
         soft_reset(env.console, context);

@@ -47,6 +47,7 @@ private:
     //  every game's AutoStory.
     Pokemon::StoryRunOptions RUN;
     BooleanCheckBoxOption NEW_GAME_FROM_TITLE;
+    BooleanCheckBoxOption KEEP_START_FRAME;
     EventNotificationsOption NOTIFICATIONS;
 };
 

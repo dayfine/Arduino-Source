@@ -35,6 +35,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
+#include "PokemonFRLG_AutoStoryStartFrames.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
 
 namespace PokemonAutomation{
@@ -104,12 +105,22 @@ using SavePoseReader = std::function<std::optional<StoryPose>()>;
 //  Where the start check says what it found.
 using StoryLog = std::function<void(const std::string& line)>;
 
+//  Where the save just loaded is, against the start of the checkpoint it
+//  starts: the console's reads it from frames (PokemonFRLG_AutoStoryStartFrames.h).
+using StartReader = std::function<StartRead()>;
+
 //  Adds to `checkpoint`, built from a row that starts at `start`, the start
-//  check: the save it starts from, as `read` reads it, must stand there
-//  (start_pose_mismatch()), or the checkpoint stops before its first event,
-//  "start_failed". A save that can't be read passes. `log` gets a
-//  mismatch, or that nothing was read. A row with no start (a new game)
-//  gets none.
+//  check: the save it starts from, as `read` finds it, must be there, or
+//  the checkpoint stops before its first event, "start_failed". A save
+//  `read` can't tell about passes. `log` gets a mismatch ("start pose
+//  mismatch: "), that nothing was read ("start pose not read: "), or what
+//  a match saw. A row with no start (a new game) gets none.
+void add_start_check(
+    Pokemon::Checkpoint& checkpoint, const std::optional<Pokemon::Pose>& start, StartReader read, StoryLog log
+);
+
+//  add_start_check() with a reader of the tile the save stands on, which
+//  must be the start's (start_pose_mismatch()).
 void add_start_pose_check(
     Pokemon::Checkpoint& checkpoint, const std::optional<Pokemon::Pose>& start, SavePoseReader read, StoryLog log
 );
@@ -150,7 +161,19 @@ struct StoryEnv{
     std::string start_map = {};
     //  That checkpoint's START menu: a reload reads the bag again with it.
     StartMenu start_menu = StartMenu::BEFORE_POKEMON;
+    //  The frames of where each checkpoint starts, for the start check: a
+    //  save at a checkpoint's end keeps one for the next checkpoint.
+    StartFrameStore start_frames = {};
+    //  The next start check keeps the screen as its checkpoint's start
+    //  frame and passes: the user saved there by hand.
+    bool keep_start_frame = false;
 };
+
+//  The console's start check compares with the program's start frames
+//  (program_start_frames()); `keep_first`: the first start check keeps the
+//  screen as its checkpoint's frame instead (the option for a save made by
+//  hand).
+void use_start_frames(StoryEnv& env, bool keep_first);
 
 //  After a save is loaded for a checkpoint that starts on `start_map`: the
 //  save card's place, read from the START menu, against it, at every checks
