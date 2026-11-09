@@ -650,17 +650,30 @@ std::optional<SimSeen> OverworldSimWalker::hold_watching(const RouteStep& step, 
     return m_sim.hold(step.direction, hold, STEP_RELEASE, hold + STEP_RELEASE + m_rules.watch_past_hold, watchers(interrupts));
 }
 
+//  Whether a warp's fade showed and was over between `from` and now.
+bool OverworldSimWalker::fade_over_since(Milliseconds from) const{
+    const SimState& state = m_sim.state();
+    if (state.screen == SimScreen::FADE){
+        return false;
+    }
+    return std::any_of(
+        state.shown.begin(), state.shown.end(),
+        [&](const SimShown& shown){ return shown.screen == SimScreen::FADE && shown.at >= from; }
+    );
+}
+
 //  wait_out_warp(), then run_from_battle_after_warp(): false if the fade
 //  was a wild battle's, run from. wait_out_warp()'s watcher takes a wild
 //  battle's wipe for the fade (run 7; console B, 2026-11-03, Mt. Moon 1F):
-//  the battle screen stands in for the wipe.
-bool OverworldSimWalker::after_warp(const RouteStep& step, int warps_before){
+//  the battle screen stands in for the wipe. The fade is watched for from
+//  `watched_from`: a fade over by then is missed.
+bool OverworldSimWalker::after_warp(const RouteStep& step, int warps_before, Milliseconds watched_from){
     if (m_sim.state().warps == warps_before){
         if (!m_sim.watch({SimWatcher::BATTLE_SCREEN}, WARP_TIMEOUT)){
             fail("walk_overworld_route(): no fade in and out after walking onto the warp to " + step.end.map + ".");
         }
-    }else{
-        m_sim.watch({SimWatcher::FADE}, WARP_TIMEOUT);
+    }else if (!fade_over_since(watched_from) && !m_sim.watch({SimWatcher::FADE}, WARP_TIMEOUT)){
+        fail("walk_overworld_route(): no fade in and out after walking onto the warp to " + step.end.map + ".");
     }
     m_sim.watch({}, AFTER_WARP);
     if (!m_sim.watch(watchers({m_wild[1]}), AFTER_WARP_BATTLE_WATCH - AFTER_WARP)){
@@ -712,7 +725,8 @@ std::optional<WalkedTiles> OverworldSimWalker::walk_step(const RouteStep& step, 
     if (result.stopped){
         return walked_near(step, result.tiles, TILE_TIME);
     }
-    if (step.warps && !after_warp(step, warps_before)){
+    const Milliseconds fade_watched_from = m_rules.watch_fade_along_hold ? m_leg_start : m_sim.state().time;
+    if (step.warps && !after_warp(step, warps_before, fade_watched_from)){
         if (!m_rules.find_player_after_warp_battle){
             fail_off_route(step);
         }
@@ -795,7 +809,7 @@ void OverworldSimWalker::hold_to_warp(const RouteStep& step){
         const Milliseconds hold = TILE_TIME * (step.tiles + 2);
         const std::optional<SimSeen> seen = m_sim.hold(step.direction, hold, STEP_RELEASE, hold + STEP_RELEASE, fade_first);
         if (seen && seen->watcher == 0){
-            if (!after_warp(step, warps_before)){
+            if (!after_warp(step, warps_before, m_sim.state().time)){
                 fail_off_route(step);
             }
             return;

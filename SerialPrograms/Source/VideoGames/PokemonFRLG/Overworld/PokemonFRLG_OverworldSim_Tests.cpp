@@ -983,6 +983,7 @@ void add_tests_OverworldSim(UnitTestDatabase& database){
         database.add<Test_OverworldSim>(item);
     }
     add_tests_OverworldLateBattle(database);
+    add_tests_OverworldWarpFade(database);
 }
 
 
