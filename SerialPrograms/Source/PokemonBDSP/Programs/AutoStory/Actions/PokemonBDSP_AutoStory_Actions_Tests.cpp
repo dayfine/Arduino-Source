@@ -23,6 +23,7 @@
 #include "NintendoSwitch/Programs/MenuCursor/NintendoSwitch_MenuCursor_Tests.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryMaps.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
+#include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_LanguageSelectDetector.h"
 #include "PokemonBDSP_AutoStory_Center.h"
 #include "PokemonBDSP_AutoStory_NewGame.h"
 #include "PokemonBDSP_AutoStory_Actions_Tests.h"
@@ -203,7 +204,7 @@ std::string check_boot(IntroProgress& progress){
 }
 
 UnitTestResult check_confirming_screens(){
-    for (const char* screen : {"dialog", "rival-list-tell", "rival-list-preset", "menu"}){
+    for (const char* screen : {"dialog", "language-select", "rival-list-tell", "rival-list-preset", "menu"}){
         if (!intro_screen_confirms_bdsp(screen)){
             return std::string("Expected \"") + screen + "\" to confirm BDSP.";
         }
@@ -251,50 +252,59 @@ UnitTestResult test_intro_gate(Logger&){
 }
 
 
-//  The presses for the language select (a list starting on the Switch's
-//  language) and the appearance grid (two rows of four, from the first look).
+//  The presses for the language select (two columns of five, read row by
+//  row, from wherever its cursor is) and the appearance grid (two rows of
+//  four, from the first look).
 UnitTestResult test_intro_pick_moves(Logger&){
     using Moves = std::optional<std::vector<DpadPosition>>;
+    const IntroPicks french{Language::French, 2};
     struct Case{
         const char* what;
         Moves actual;
         Moves expected;
     };
     const Case cases[] = {
-        {"French on an English Switch (lab run 3)",
-            language_pick_moves({Language::English, Language::French, 0}), Moves(std::vector<DpadPosition>{DPAD_DOWN})},
-        {"the Switch's own language",
-            language_pick_moves({Language::English, Language::English, 0}), Moves(std::vector<DpadPosition>{})},
-        {"English on a French Switch",
-            language_pick_moves({Language::French, Language::English, 0}), Moves(std::vector<DpadPosition>{DPAD_UP})},
-        {"top to bottom",
-            language_pick_moves({Language::Japanese, Language::ChineseTraditional, 0}), Moves{std::vector<DpadPosition>(8, DPAD_DOWN)}},
+        {"French from English, where the cursor starts (lab run 3)",
+            language_pick_moves(0, french), Moves(std::vector<DpadPosition>{DPAD_DOWN, DPAD_DOWN})},
+        {"English from English",
+            language_pick_moves(0, IntroPicks{Language::English, 0}), Moves(std::vector<DpadPosition>{})},
+        {"French from Traditional Chinese, bottom right",
+            language_pick_moves(9, french), Moves(std::vector<DpadPosition>{DPAD_UP, DPAD_UP, DPAD_LEFT})},
+        {"Japanese: its kana button, right of English",
+            language_pick_moves(0, IntroPicks{Language::Japanese, 0}), Moves(std::vector<DpadPosition>{DPAD_RIGHT})},
+        {"Traditional Chinese from English",
+            language_pick_moves(0, IntroPicks{Language::ChineseTraditional, 0}),
+            Moves(std::vector<DpadPosition>{DPAD_RIGHT, DPAD_DOWN, DPAD_DOWN, DPAD_DOWN, DPAD_DOWN})},
+        {"Italian, bottom left",
+            language_pick_moves(0, IntroPicks{Language::Italian, 0}), Moves(std::vector<DpadPosition>(4, DPAD_DOWN))},
         {"a language the menu lacks",
-            language_pick_moves({Language::English, Language::None, 0}), std::nullopt},
+            language_pick_moves(0, IntroPicks{Language::None, 0}), std::nullopt},
+        {"a cursor outside the menu",
+            language_pick_moves(LANGUAGE_SELECT_BUTTONS, french), std::nullopt},
         {"Model 1, where the cursor starts",
-            look_pick_moves({Language::English, Language::English, 0}), Moves(std::vector<DpadPosition>{})},
+            look_pick_moves(IntroPicks{Language::English, 0}), Moves(std::vector<DpadPosition>{})},
         {"Model 3, Dawn's first look (lab run 3)",
-            look_pick_moves({Language::English, Language::English, 2}), Moves(std::vector<DpadPosition>{DPAD_RIGHT, DPAD_RIGHT})},
+            look_pick_moves(french), Moves(std::vector<DpadPosition>{DPAD_RIGHT, DPAD_RIGHT})},
         {"Model 8, the last",
-            look_pick_moves({Language::English, Language::English, 7}), Moves(std::vector<DpadPosition>{DPAD_RIGHT, DPAD_RIGHT, DPAD_RIGHT, DPAD_DOWN})},
+            look_pick_moves(IntroPicks{Language::English, 7}), Moves(std::vector<DpadPosition>{DPAD_RIGHT, DPAD_RIGHT, DPAD_RIGHT, DPAD_DOWN})},
         {"no Model 9",
-            look_pick_moves({Language::English, Language::English, 8}), std::nullopt},
+            look_pick_moves(IntroPicks{Language::English, 8}), std::nullopt},
     };
     for (const Case& c : cases){
         if (c.actual != c.expected){
             return std::string("Wrong presses for ") + c.what + ".";
         }
     }
-    if (bdsp_language_menu().size() != 9){
-        return "BDSP's language select lists nine languages.";
+    if (bdsp_language_menu().size() != BDSP_LANGUAGE_GRID.count || BDSP_LANGUAGE_GRID.count != LANGUAGE_SELECT_BUTTONS){
+        return "The language select's data, grid and detector must agree on ten buttons.";
     }
     return true;
 }
 
-//  Until its pick is made, every screen that would take A gets a probe
-//  first: the language's before the look's. The player's keyboard with a
-//  pick still to make fails. Picks the cursor starts on need no probe.
-UnitTestResult test_intro_pick_probes(Logger&){
+//  The language select takes the language pick, then A if it still shows.
+//  Until the look is picked, every screen after the language that would take
+//  A gets a probe first. The player's keyboard with a pick still to make fails.
+UnitTestResult test_intro_pick_steps(Logger&){
     struct Case{
         const char* what;
         const char* screen;
@@ -303,12 +313,14 @@ UnitTestResult test_intro_pick_probes(Logger&){
         IntroStep expected;
     };
     const Case cases[] = {
-        {"a logo, language to pick",        "other",    true,   true,   IntroStep::PROBE_FOR_LANGUAGE},
-        {"a dialogue, language to pick",    "dialog",   true,   false,  IntroStep::PROBE_FOR_LANGUAGE},
+        {"the language select",             "language-select", true, true, IntroStep::PICK_LANGUAGE},
+        {"the language select, picked",     "language-select", false, true, IntroStep::ADVANCE},
+        {"a logo before the language",      "other",    true,   true,   IntroStep::ADVANCE},
+        {"a dialogue before the language",  "dialog",   true,   true,   IntroStep::ADVANCE},
         {"Rowan, look to pick",             "dialog",   false,  true,   IntroStep::PROBE_FOR_LOOK},
         {"the preview, look to pick",       "other",    false,  true,   IntroStep::PROBE_FOR_LOOK},
         {"both picked",                     "dialog",   false,  false,  IntroStep::ADVANCE},
-        {"black, language to pick",         "black",    true,   true,   IntroStep::WAIT},
+        {"black, look to pick",             "black",    false,  true,   IntroStep::WAIT},
         {"the user select",                 "user-select", true, true,  IntroStep::SELECT_USER},
         {"the keyboard, language missed",   "keyboard", true,   false,  IntroStep::FAIL_PICK_MISSED},
         {"the keyboard, look missed",       "keyboard", false,  true,   IntroStep::FAIL_PICK_MISSED},
@@ -322,20 +334,40 @@ UnitTestResult test_intro_pick_probes(Logger&){
             return std::string("Wrong step for ") + c.what + ".";
         }
     }
-    //  The wrong-game guard still stops a game that never shows BDSP's screens.
-    IntroProgress other_game = intro_start({Language::English, Language::French, 2});
-    note_intro_screen(other_game, "other", std::chrono::milliseconds(0));
-    note_intro_screen(other_game, "other", INTRO_TIME_BEFORE_BDSP);
-    if (decide_intro_step("other", other_game) != IntroStep::FAIL_NOT_BDSP){
-        return "Past INTRO_TIME_BEFORE_BDSP, a pending pick must not keep another game going.";
+    const IntroProgress first_look = intro_start(IntroPicks{Language::English, 0});
+    if (!first_look.language_pending || first_look.look_pending){
+        return "The language is always picked on its select; the first look needs no grid.";
     }
-    const IntroProgress defaults = intro_start({Language::English, Language::English, 0});
-    if (defaults.language_pending || defaults.look_pending){
-        return "Picks the cursor starts on need no menu.";
-    }
-    const IntroProgress run3 = intro_start({Language::English, Language::French, 2});
+    const IntroProgress run3 = intro_start(IntroPicks{Language::French, 2});
     if (!run3.language_pending || !run3.look_pending){
-        return "French and Model 3 on an English Switch need both menus.";
+        return "French and Model 3 need both menus.";
+    }
+    return true;
+}
+
+//  The language select from lab-B 2026-11-09 (cursor on English), and screens
+//  that are not it. Screenshots are in the unit test resources; a missing one
+//  is skipped.
+UnitTestResult test_language_select_screenshots(Logger& logger){
+    struct Case{
+        const char* file;
+        std::optional<size_t> cursor;
+    };
+    const Case cases[] = {
+        {.file = "PokemonBDSP/AutoStory/LanguageSelect-20261109.png", .cursor = 0},
+        {.file = "PokemonBDSP/AutoStory/OreburghCenterCounter-20261108-094735.png", .cursor = std::nullopt},
+        {.file = "PokemonBDSP/AutoStory/OreburghCenterDoorstep-20261108.png", .cursor = std::nullopt},
+    };
+    for (const Case& c : cases){
+        const std::string path = UNIT_TEST_RESOURCE_PATH() + c.file;
+        if (!Filesystem::is_regular_file(path)){
+            return UnitTestResult(UnitTestResult::SKIPPED, "Screenshot not found: " + path);
+        }
+        const std::optional<size_t> cursor = language_select_cursor(ImageRGB32(path));
+        logger.log(std::string(c.file) + ": cursor " + (cursor ? std::to_string(*cursor) : "none"));
+        if (cursor != c.cursor){
+            return std::string(c.file) + ": wrong language select read.";
+        }
     }
     return true;
 }
@@ -582,7 +614,11 @@ const AutoStoryActionsCase AUTO_STORY_ACTIONS_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"new-game intro: probes until the picks are made", test_intro_pick_probes},
+        .input = {"new-game intro: steps until the picks are made", test_intro_pick_steps},
+        .expectation = {},
+    },
+    {
+        .input = {"language select screenshots", test_language_select_screenshots},
         .expectation = {},
     },
     {

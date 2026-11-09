@@ -50,7 +50,6 @@ private:
     BooleanCheckBoxOption NEW_GAME_INTRO;
     BooleanCheckBoxOption JUST_LOADED;
     StringOption PLAYER_NAME;
-    EnumDropdownOption<Language> SWITCH_LANGUAGE;
     PlayerModelOption PLAYER_LOOK;
     EnumDropdownOption<StarterChoice> STARTER;
 
