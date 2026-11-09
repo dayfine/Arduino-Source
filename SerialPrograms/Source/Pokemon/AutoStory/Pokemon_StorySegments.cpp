@@ -155,12 +155,13 @@ CheckpointReport run_row(
             ));
             return result;
         }
-        if (policy.stop_at_first_failure){
-            say(hooks, std::format(
-                "[Segment] {}: {} failed; stopping at the first failure, the game stays where it failed",
-                segment.id, spec.id
+        const bool not_running = result.failure.failure == GAME_NOT_RUNNING;
+        if (not_running || policy.stop_at_first_failure){
+            say(hooks, std::format("[Segment] {}: {} failed; {}", segment.id, spec.id, not_running
+                ? "the game is not running, so no reload"
+                : "stopping at the first failure, the game stays where it failed"
             ));
-            report.stopped_at_first_failure = true;
+            report.stopped_at_first_failure = !not_running;
             return result;
         }
         if (attempt >= policy.attempts_per_checkpoint){

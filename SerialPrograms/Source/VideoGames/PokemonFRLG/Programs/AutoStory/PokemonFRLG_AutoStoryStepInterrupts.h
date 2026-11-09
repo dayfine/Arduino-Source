@@ -77,9 +77,11 @@ constexpr Milliseconds BETWEEN_STEPS_LOOK = Milliseconds(400);
 
 //  The console's look between steps: FrlgScreenObserver's events for
 //  BETWEEN_STEPS_LOOK, everything showing in it judged.
+//  The Switch's HOME menu comes first (Pokemon::SwitchHomeObserver), so a
+//  step that starts on it fails instead of pressing buttons on HOME.
 class ConsoleScreenLook{
 public:
-    ConsoleScreenLook(VideoStream& stream, ProControllerContext& context);
+    ConsoleScreenLook(ConsoleHandle& console, ProControllerContext& context);
 
     Pokemon::ScreenLook look(bool fresh);
 
@@ -87,6 +89,7 @@ private:
     VideoStream& m_stream;
     ProControllerContext& m_context;
     FrlgScreenObserver m_observer;
+    Pokemon::SwitchHomeObserver m_eyes;
     Pokemon::ScreenEventWatcher m_watcher;
     WallClock m_start;
 };

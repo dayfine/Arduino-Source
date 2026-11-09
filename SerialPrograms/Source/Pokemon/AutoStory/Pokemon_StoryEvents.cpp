@@ -83,6 +83,10 @@ std::string to_string(const Outcome& outcome){
     return outcome.detail.empty() ? outcome.failure : outcome.failure + ": " + outcome.detail;
 }
 
+Outcome outcome_game_not_running(){
+    return outcome_failed(GAME_NOT_RUNNING, "the game is not running: the Switch HOME menu is showing");
+}
+
 Condition condition(std::string name, Check check){
     return Condition{std::move(name), std::move(check)};
 }
@@ -266,6 +270,9 @@ Recovery* next_recovery(EventRun& run, const std::string& failure){
 //  is answered in turn, so escalation goes on from there.
 std::optional<Outcome> recover(EventRun& run, Outcome failure){
     while (true){
+        if (failure.failure == GAME_NOT_RUNNING){
+            return failure;
+        }
         Recovery* recovery = next_recovery(run, failure.failure);
         if (recovery == nullptr){
             return failure;
