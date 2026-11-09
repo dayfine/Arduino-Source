@@ -38,6 +38,15 @@ They're `VisualInferenceCallback`s, the same mechanism the shared
 no new threads (AGENTS.md: no `std::thread`). The difference from
 `LegInterrupt`: they don't stop the action. They only record.
 
+**Cost: cheap gates, expensive reads.** The framework samples every 50 ms
+(`InferenceRoutines.h`). Fade, dialog, battle and still tests are color or
+brightness checks on small boxes and run on every frame. Expensive reads run
+only when a cheap detector fires: the banner's text (Tesseract, tens of ms)
+is read once when the banner box appears, plus one confirming read about
+300 ms later, and not again until the box goes away. Today `look_after_tap`
+runs OCR on every poll while the box shows (30 to 40 reads per banner).
+Frame dumps (the 500 ms banner shots) stay a debug option, not a recorder.
+
 **2. They post timestamped events to one timeline.**
 `ScreenTimeline`: an append-only list of `{time, kind, detail}` (e.g.
 `{14:03:50.4, FADE_WHITE}`, `{14:03:51.9, BANNER, "Route 203"}`), owned by the
@@ -101,5 +110,6 @@ that agrees, or it logs that it is deciding on one.
 - No new thread pools or async runtime: observers are inference callbacks on
   the existing video pipeline.
 - No change to what a step *means*; only to how it decides it happened.
+- No per-frame OCR: text reads are gated by a cheap detector (see Cost).
 - Not a rewrite of the walkers: they keep their stop watchers. Observers
   come on top of them.
