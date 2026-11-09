@@ -165,6 +165,32 @@ size_t tiles_moved(const WalkResult& walk, Milliseconds per_tile){
     return moving.count() <= 0 ? (size_t)0 : (size_t)(moving / per_tile);
 }
 
+//  Whether a walk to the wall never moved: no chunk changed and its time
+//  counts no tile. It stopped where it began, so whoever stopped it stands
+//  on the next tile, however short the leg. On lab-B (2026-11-08 16:50,
+//  01.08) Route 204's youngster, who wanders (12, 2) to (14, 2), stood a
+//  tile ahead of the leg "west 2 (to wall)" from (13, 2). The wait for the
+//  way needed a stop three tiles short of the wall, so he was talked to at
+//  once, and the replan from both (12, 2) and (13, 2) found no plan: an
+//  uncertain start needs a wall both tiles reach, and no wall is anchored
+//  from a tile someone wanders on.
+bool never_moved(const WalkResult& walk, size_t walked_tiles){
+    return walk.stop == WalkStop::BLOCKED && walk.moved_chunks == 0 && walked_tiles == 0;
+}
+
+//  Legs to a wall this many tiles or shorter must walk every tile: a tile
+//  short is someone in the way, not the time count's slack. On lab-B
+//  (2026-11-08, 01.08) Route 204's youngster stopped "west 2 (to wall)"
+//  after 1 tile; a tile short passed as at the wall, the route logged
+//  arriving at (11, 2) from (13, 2), and the taps north hit the cliff.
+constexpr size_t EXACT_WALL_LEG_TILES = 3;
+
+//  The fewest tiles a leg to a wall `expected_tiles` away must have walked
+//  to count as at its wall.
+size_t min_tiles_at_wall(size_t expected_tiles){
+    return expected_tiles > EXACT_WALL_LEG_TILES ? expected_tiles * 7 / 10 : expected_tiles;
+}
+
 //  Whether a leg's walk goes on to the next leg or the route plans again.
 enum class LegNext{
     NEXT_LEG,
@@ -408,6 +434,10 @@ LegNext RouteWalker::wall_leg(LegWalk& walk){
     //  into the lab). Out of tall grass a stop reads, so walk on: a player
     //  still moving is not where the plan has him.
     if (walk.result.stop == WalkStop::LIMIT && route_wall_readable(m_grid, walk.planned.after)){
+        //  A short leg a tile short stopped against someone in the way.
+        if (nearest <= EXACT_WALL_LEG_TILES && walked_tiles < nearest){
+            return stopped_short_of_wall(walk, walked_tiles);
+        }
         check_at_wall(walk, walked_tiles, nearest);
     }
     return LegNext::NEXT_LEG;
@@ -454,8 +484,13 @@ size_t RouteWalker::unstick_wall_leg(LegWalk& walk, size_t walked_tiles, size_t 
         walked_tiles += tiles_moved(walk.result, per_tile);
     }
     //  Someone walking about may stand in the way for a moment: wait and
-    //  walk to the wall again before calling it an obstacle.
-    for (size_t again = 0; again < 2 && walk.result.stop == WalkStop::BLOCKED && walked_tiles + 2 < nearest; again++){
+    //  walk to the wall again before calling it an obstacle. A walk that
+    //  never moved waits on a short leg too (never_moved()).
+    const auto in_the_way = [&]{
+        return walk.result.stop == WalkStop::BLOCKED &&
+            (walked_tiles + 2 < nearest || (nearest > 0 && never_moved(walk.result, walked_tiles)));
+    };
+    for (size_t again = 0; again < 2 && in_the_way(); again++){
         m_io.note("[Route] " + walk.label + ": stopped after about " + std::to_string(walked_tiles) +
             " tiles, short of the wall; waiting for the way to clear.", RouteNote::WARNING);
         m_io.press(WAIT_FOR_THE_WAY);
@@ -469,10 +504,13 @@ LegNext RouteWalker::stopped_short_of_wall(LegWalk& walk, size_t walked_tiles){
     //  Someone who stays put: talk to them. A trainer we walked up to from
     //  the side starts the battle this way.
     talk_to_blocker(walk.label);
+    //  A walk that never moved is where it began (never_moved()); any other
+    //  stop may be a tile either side of the tiles its time counts.
+    const size_t last = never_moved(walk.result, walked_tiles) ? 0 : walked_tiles + 1;
     std::vector<TilePos> stopped;
     for (const TilePos& pos : m_from){
         const std::vector<TilePos> path = leg_path(m_grid, pos, walk.planned.leg.direction, SIZE_MAX);
-        for (size_t k = walked_tiles == 0 ? 0 : walked_tiles - 1; k <= walked_tiles + 1 && k <= path.size(); k++){
+        for (size_t k = walked_tiles == 0 ? 0 : walked_tiles - 1; k <= last && k <= path.size(); k++){
             stopped.push_back(k == 0 ? pos : path[k - 1]);
         }
     }
@@ -486,8 +524,7 @@ LegNext RouteWalker::stopped_short_of_wall(LegWalk& walk, size_t walked_tiles){
 
 void RouteWalker::check_at_wall(LegWalk& walk, size_t walked_tiles, size_t expected_tiles){
     if (expected_tiles != SIZE_MAX && expected_tiles > 0 && walked_tiles != SIZE_MAX){
-        const size_t min_tiles = expected_tiles > 3 ? (expected_tiles * 7 / 10) : (expected_tiles > 1 ? expected_tiles - 1 : 1);
-        if (walked_tiles < min_tiles){
+        if (walked_tiles < min_tiles_at_wall(expected_tiles)){
             fail(m_io, walk.label + ": ran out of time well short of the wall (" +
                 std::to_string(walked_tiles) + " of " + std::to_string(expected_tiles) + " tiles): not where the plan has us.");
         }

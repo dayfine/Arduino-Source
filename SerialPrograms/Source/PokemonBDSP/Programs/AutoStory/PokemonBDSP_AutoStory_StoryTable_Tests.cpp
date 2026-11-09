@@ -7,10 +7,12 @@
 #include <algorithm>
 #include <cstdlib>
 #include <format>
+#include <functional>
 #include <map>
 #include <optional>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Filesystem/FileIO.h"
@@ -223,6 +225,34 @@ UnitTestResult test_route204_north_line(Logger& logger){
     return true;
 }
 
+//  01.10's line 5, "north 10 (open)" to (19, 12), after Aroma Lady Taylor's
+//  battle (lab-B 2026-11-08 18:15:47): we may stand anywhere on (19, 12..20).
+//  Column 19 is open floor from row 7 to 13 below the wall on row 6, so north
+//  to that wall and 5 south reach the goal; the console's plan, "south 12 (to
+//  wall) to (19, 24), north 12 (open) to (19, 12)", pinned the wall with the
+//  fewest held tiles and walked back twice as far.
+UnitTestResult test_line_5_recovery_pins_the_wall_nearest_the_goal(Logger& logger){
+    const StoryWorld& world = *story_plan_world("Route204North", "Route204North");
+    std::vector<TilePos> from;
+    for (int y = 12; y <= 20; y++){
+        from.push_back(story_to_world(world, "Route204North", {19, y}));
+    }
+    const TilePos goal = story_to_world(world, "Route204North", {19, 12});
+    const auto legs = plan_recovered_route(world, from, [&](const TilePos& pos){ return pos == goal; }, *story_route_costs("line"));
+    if (!legs || legs->empty()){
+        return "no plan from (19, 12..20).";
+    }
+    for (const PlannedLeg& planned : *legs){
+        logger.log("01.10 line 5 recovery: " + to_string(planned));
+    }
+    const PlannedLeg& first = legs->front();
+    const TilePos wall = story_to_world(world, "Route204North", {19, 7});
+    if (first.leg.direction != Direction::NORTH || !first.leg.ends_at_wall || first.after != std::vector<TilePos>{wall}){
+        return "the recovery starts " + to_string(first) + ", not north to the wall at (19, 7).";
+    }
+    return true;
+}
+
 //  A ROUTE step of the table, and where the steps before it in its row leave
 //  the player: the row's start, then each step's target or pose_after. A LEGS
 //  or STEP step that does not say where it ends leaves the start unknown.
@@ -309,25 +339,45 @@ std::string slides_into_door(const StoryWorld& world, const PlannedLeg& planned)
     return "";
 }
 
-//  No ROUTE step of the table plans an open leg that ends before a door it
-//  walks toward: a door is gone through by a step that runs or taps into it
-//  from where the route ends on a wall or off its line. A route from an
-//  unknown place is not checked.
-UnitTestResult test_story_routes_stop_short_of_doors(Logger& logger){
-    std::vector<std::string> found;
-    size_t checked = 0;
+//  A ROUTE step of the table from a known place: the world it plans on and
+//  its plan, or nothing if it finds none.
+struct PlannedStoryRoute{
+    std::string name;       //  "<row id> <step name>"
+    const StoryWorld* world;
+    std::vector<TilePos> from;
+    std::optional<std::vector<PlannedLeg>> legs;
+};
+
+//  Every ROUTE step of the table that starts from a known place, planned as
+//  walk_route() plans it. Where a row's steps leave the player is followed
+//  from its start through each step's target or pose_after; a route from an
+//  unknown place is logged, not planned.
+std::vector<PlannedStoryRoute> plan_story_routes(Logger& logger){
+    std::vector<PlannedStoryRoute> routes;
     for (const TableRoute& route : table_routes()){
         if (route.world == nullptr){
             logger.log(std::format("{} {}: not checked, from {}.", route.row, route.step->name,
                 route.from ? Pokemon::to_string(*route.from) : "nowhere known"));
             continue;
         }
-        const RouteStepPlan plan = plan_table_route(route);
-        checked += plan.legs ? 1 : 0;
-        for (const PlannedLeg& planned : plan.legs ? *plan.legs : std::vector<PlannedLeg>{}){
+        RouteStepPlan plan = plan_table_route(route);
+        routes.push_back({route.row + " " + route.step->name, route.world, std::move(plan.start), std::move(plan.legs)});
+    }
+    return routes;
+}
+
+//  No ROUTE step of the table plans an open leg that ends before a door it
+//  walks toward: a door is gone through by a step that runs or taps into it
+//  from where the route ends on a wall or off its line.
+UnitTestResult test_story_routes_stop_short_of_doors(Logger& logger){
+    std::vector<std::string> found;
+    size_t checked = 0;
+    for (const PlannedStoryRoute& route : plan_story_routes(logger)){
+        checked += route.legs ? 1 : 0;
+        for (const PlannedLeg& planned : route.legs ? *route.legs : std::vector<PlannedLeg>{}){
             const std::string why = slides_into_door(*route.world, planned);
             if (!why.empty()){
-                found.push_back(std::format("{} {}: {}.", route.row, route.step->name, why));
+                found.push_back(std::format("{}: {}.", route.name, why));
             }
         }
     }
@@ -337,6 +387,106 @@ UnitTestResult test_story_routes_stop_short_of_doors(Logger& logger){
         out += "\n  " + line;
     }
     return found.empty() ? UnitTestResult(true) : UnitTestResult("Open legs that end before a door they walk toward:" + out);
+}
+
+//  The tiles a planned leg walks over from `from`, `from` first: to the wall,
+//  or its tiles' worth of steps.
+std::vector<TilePos> walked_tiles(const StoryWorld& world, const TilePos& from, const TileLeg& leg){
+    std::vector<TilePos> tiles{from};
+    size_t walked = 0;
+    while (leg.ends_at_wall || walked < leg.tiles){
+        const std::optional<TilePos> next = step(world, tiles.back(), leg.direction);
+        if (!next){
+            break;
+        }
+        walked += (size_t)(std::abs(next->x - tiles.back().x) + std::abs(next->y - tiles.back().y));
+        tiles.push_back(*next);
+    }
+    return tiles;
+}
+
+//  The most tiles of `zone` one leg of `legs` walks over, from any tile the
+//  player may be on, and that leg.
+std::pair<size_t, std::string> most_zone_tiles(
+    const StoryWorld& world, std::vector<TilePos> from, const std::vector<PlannedLeg>& legs,
+    const std::function<bool(const TilePos&)>& zone
+){
+    std::pair<size_t, std::string> most{0, ""};
+    for (const PlannedLeg& planned : legs){
+        for (const TilePos& pos : from){
+            const std::vector<TilePos> tiles = walked_tiles(world, pos, planned.leg);
+            const size_t in_zone = (size_t)std::count_if(tiles.begin(), tiles.end(), zone);
+            if (in_zone > most.first){
+                most = {in_zone, to_string(planned.leg) + " from " + describe(world, pos)};
+            }
+        }
+        from = planned.after;
+    }
+    return most;
+}
+
+//  Where a planned leg from `from` runs along a zone where someone wanders,
+//  or "": two zone tiles in a row on a straight leg are tiles of one zone.
+std::string along_wander_zone(const StoryWorld& world, const TilePos& from, const TileLeg& leg){
+    const std::vector<TilePos> tiles = walked_tiles(world, from, leg);
+    for (size_t i = 1; i < tiles.size(); i++){
+        if (wandering_hazard(world, tiles[i - 1]) && wandering_hazard(world, tiles[i])){
+            return std::format("{} from {} runs along a wander zone at {}", to_string(leg), describe(world, from), describe(world, tiles[i]));
+        }
+    }
+    return "";
+}
+
+//  Every ROUTE step of the table from a known place has a plan, and no leg
+//  of it runs along a zone where someone wanders: plan_robust_route() never
+//  plans one, so a step with no other way finds no plan here.
+UnitTestResult test_story_routes_keep_off_wander_zones(Logger& logger){
+    std::string out;
+    for (const PlannedStoryRoute& route : plan_story_routes(logger)){
+        if (!route.legs){
+            out += "\n  " + route.name + ": no plan.";
+            continue;
+        }
+        std::vector<TilePos> from = route.from;
+        for (const PlannedLeg& planned : *route.legs){
+            for (const TilePos& pos : from){
+                const std::string along = along_wander_zone(*route.world, pos, planned.leg);
+                out += along.empty() ? "" : "\n  " + route.name + ": " + along + ".";
+            }
+            from = planned.after;
+        }
+    }
+    return out.empty() ? UnitTestResult(true) : UnitTestResult("ROUTE steps:" + out);
+}
+
+//  01.08's walk below the Ravaged Path keeps off the row Route 204 South's
+//  youngster_3 wanders, (12, 2) to (14, 2): on lab-B (2026-11-08) the plan
+//  "north 35 (to wall) to (13, 2), west 2 (to wall) to (11, 2)" walked along
+//  it, and he stopped the leg west twice. A leg may cross his row through
+//  one of his tiles, not walk two of them.
+UnitTestResult test_ravaged_path_keeps_off_the_youngster(Logger& logger){
+    for (const PlannedStoryRoute& route : plan_story_routes(logger)){
+        if (route.name != "01.08 below_the_ravaged_path"){
+            continue;
+        }
+        if (!route.legs){
+            return "01.08 below_the_ravaged_path: no plan.";
+        }
+        const StoryWorld& world = *route.world;
+        for (const PlannedLeg& planned : *route.legs){
+            logger.log("01.08 below_the_ravaged_path: " + to_string(planned));
+        }
+        const auto youngster_row = [&](const TilePos& pos){
+            const std::optional<TilePos> local = story_to_local(world, "Route204South", pos);
+            return local && local->y == 2 && local->x >= 12 && local->x <= 14;
+        };
+        const auto [most, leg] = most_zone_tiles(world, route.from, *route.legs, youngster_row);
+        if (most >= 2){
+            return std::format("the leg {} walks {} tiles of the youngster's row (12..14, 2).", leg, most);
+        }
+        return true;
+    }
+    return "01.08 below_the_ravaged_path is not a ROUTE step from a known place.";
 }
 
 
@@ -561,11 +711,23 @@ const AutoStoryStoryTableCase AUTO_STORY_STORY_TABLE_CASES[] = {
         .expectation = {},
     },
     {
+        .input = {"01.10: line 5's recovery pins the wall nearest its goal (lab-B, 2026-11-08)", test_line_5_recovery_pins_the_wall_nearest_the_goal},
+        .expectation = {},
+    },
+    {
         .input = {"Story table: no open leg ends before a door it walks toward (lab-B, 2026-11-08)", test_story_routes_stop_short_of_doors},
         .expectation = {},
     },
     {
         .input = {"Story table: every ROUTE step plans as Data/route_plans.golden.txt says", test_route_plans_golden},
+        .expectation = {},
+    },
+    {
+        .input = {"Story table: every route plans, and none runs along a wander zone", test_story_routes_keep_off_wander_zones},
+        .expectation = {},
+    },
+    {
+        .input = {"01.08: the walk below the Ravaged Path keeps off the youngster's row (lab-B, 2026-11-08)", test_ravaged_path_keeps_off_the_youngster},
         .expectation = {},
     },
 };

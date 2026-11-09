@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <format>
 #include <functional>
+#include <memory>
 #include <optional>
 #include <string>
 #include <utility>
@@ -22,6 +23,8 @@
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_PlanCosts.h"
 #include "PokemonBDSP_AutoStory_GridSim.h"
+#include "PokemonBDSP_AutoStory_OldStorySteps.h"
+#include "PokemonBDSP_AutoStory_SimGround.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_PlannedRoute.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryExecutor.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h"
@@ -46,7 +49,8 @@ using Pokemon::TileBox;
 using Pokemon::TilePos;
 
 
-StoryWorld make_world(const std::vector<std::string>& rows){
+//  A map of `rows`, with someone wandering `wander` if given.
+StoryWorld make_world(const std::vector<std::string>& rows, const std::optional<TileBox>& wander = std::nullopt){
     Pokemon::MapData map;
     map.name = "Test";
     map.tiles = Pokemon::Grid<Pokemon::TileKind>{(int)rows[0].size(), (int)rows.size(), {}};
@@ -54,6 +58,10 @@ StoryWorld make_world(const std::vector<std::string>& rows){
         for (char glyph : row){
             map.tiles.cells.push_back(*Pokemon::tile_from_glyph(glyph));
         }
+    }
+    if (wander){
+        map.objects.push_back({.name = "wanderer", .x = wander->x0, .y = wander->y0, .facing = std::nullopt,
+            .wander = wander, .trainer = std::nullopt, .hide_flag = std::nullopt});
     }
     StoryWorld world;
     world.add("Test", map, {0, 0});
@@ -586,6 +594,36 @@ UnitTestResult test_gate_walk_part_tile_off(Logger&){
     return true;
 }
 
+//  lab-B 2026-11-08 18:41: 01.11's 8 taps west, then north, ended below the
+//  old man, and no one answered the old woman's talk. Floaroma's banner
+//  stops us on any of (10..12, 27..29): the old taps miss her from x 10 and
+//  12; the table's walk west to the field's edge and 4 taps east end below
+//  her from all nine.
+UnitTestResult test_old_couple_from_each_arrival(Logger& logger){
+    const std::optional<TableSteps> table = table_steps("01.11", "west_to_the_field_edge", "old_woman");
+    const auto ground = std::ranges::find(sim_ground(), std::string("FloaromaTown"), &SimGround::map);
+    if (!table || table->steps.empty() || ground == sim_ground().end()){
+        return "01.11 has no walk west to the field's edge, or Floaroma no ground west of its map.";
+    }
+    const TableSteps old_taps{table->start, {old_west_along_the_field(), table->steps.back()}};
+    const std::unique_ptr<StoryWorld> world = with_ground(*story_plan_world("FloaromaTown", "FloaromaTown"), *ground);
+    const TilePos below_her = story_to_world(*world, "FloaromaTown", map_point("FloaromaTown", "old_woman").next(Direction::SOUTH));
+    for (int x = 10; x <= 12; x++){
+        for (int y = 27; y <= 29; y++){
+            const TilePos start = story_to_world(*world, "FloaromaTown", {x, y});
+            const std::string old_miss = walk_misses(*world, old_taps, start, {{"up_to_the_old_woman", below_her}}, logger);
+            if (old_miss.empty() != (x == 11)){
+                return std::format("The old taps from ({}, {}): {}", x, y, old_miss.empty() ? "ended below her." : old_miss);
+            }
+            const std::string miss = walk_misses(*world, *table, start, {{"up_to_the_old_woman", below_her}}, logger);
+            if (!miss.empty()){
+                return "The table's walk " + miss;
+            }
+        }
+    }
+    return true;
+}
+
 UnitTestResult test_wandering_npc_mechanics(Logger& logger){
     StoryWorld world = make_world({
         "#######",
@@ -684,30 +722,25 @@ UnitTestResult test_wandering_npc_routes_multi_seed(Logger& logger){
     return true;
 }
 
+//  Routes never run along a wander zone, but cross one: a row someone
+//  wanders, (2..4, 2), crossed south at (3, 2) while they stand there.
 UnitTestResult test_wandering_npc_wait_clearance(Logger& logger){
-    const StoryWorld* world = story_plan_world("OreburghCity", "OreburghCity");
-    if (world == nullptr){
-        return "OreburghCity world not found";
-    }
-    const TilePos start = story_to_world(*world, "OreburghCity", {48, 22});
-    const TilePos target = story_to_world(*world, "OreburghCity", {48, 30});
-    const TileBox hiker_box{
-        story_to_world(*world, "OreburghCity", {46, 25}).x,
-        story_to_world(*world, "OreburghCity", {46, 25}).y,
-        story_to_world(*world, "OreburghCity", {48, 27}).x,
-        story_to_world(*world, "OreburghCity", {48, 27}).y
-    };
+    const TileBox row_zone{.x0 = 2, .y0 = 2, .x1 = 4, .y1 = 2};
+    const StoryWorld room = make_world({"#######", "#.....#", "#.....#", "#.....#", "#.....#", "#######"}, row_zone);
+    const StoryWorld* world = &room;
+    const TilePos start{3, 1};
+    const TilePos target{3, 4};
     SimWanderer hiker{
         .name = "hiker_0",
-        .box = hiker_box,
-        .pos = story_to_world(*world, "OreburghCity", {48, 26}),
+        .box = row_zone,
+        .pos = {3, 2},
         .seed = 2,
         .step_interval = 2000ms,
     };
-    GridSim sim({.world = world, .trainers = story_trainers(*world), .wanderers = {hiker}}, start, Direction::NORTH, true);
+    GridSim sim({.world = world, .trainers = {}, .wanderers = {hiker}}, start, Direction::NORTH, true);
     std::vector<std::string> notes;
     GridSimRouteIO sim_io(sim, notes);
-    RouteTrainers trainers{story_trainers(*world), [&sim](const std::string&){ sim.end_dialogue(); }};
+    RouteTrainers trainers{{}, [&sim](const std::string&){ sim.end_dialogue(); }};
     const auto result = walk_route(sim_io, *world, {start}, trainers, {
         .goal = [&](const TilePos& pos){ return pos == target; },
         .label = "walk_through_hiker",
@@ -935,6 +968,10 @@ const AutoStoryGridSimCase AUTO_STORY_GRID_SIM_CASES[] = {
     },
     {
         .input = {"01.05, a part of a tile off, the old open walk west takes the Gate's warp (lab-B, 2026-11-08)", test_gate_walk_part_tile_off},
+        .expectation = {},
+    },
+    {
+        .input = {"01.11, the old woman from each tile Floaroma's banner stops us on (lab-B, 2026-11-08)", test_old_couple_from_each_arrival},
         .expectation = {},
     },
 };

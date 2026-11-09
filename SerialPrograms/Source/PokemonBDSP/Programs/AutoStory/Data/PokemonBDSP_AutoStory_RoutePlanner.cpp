@@ -222,10 +222,14 @@ struct Stepped{
     TilePos end;
     int grass = 0;
     int wander = 0;
+    //  Two tiles in a row where someone wanders, the start among them: the
+    //  walk runs along their zone, and plan_robust_route() does not use it.
+    bool along_wander = false;
 };
 std::optional<Stepped> step_tiles(const StoryWorld& world, TilePos from, Direction direction, int tiles){
     Stepped stepped;
     int travelled = 0;
+    bool in_wander = wandering_hazard(world, from);
     while (travelled < tiles){
         const std::optional<TilePos> next = step(world, from, direction);
         if (!next){
@@ -238,9 +242,12 @@ std::optional<Stepped> step_tiles(const StoryWorld& world, TilePos from, Directi
         if (tall_grass(world, *next)){
             stepped.grass++;
         }
-        if (wandering_hazard(world, *next)){
+        const bool next_wander = wandering_hazard(world, *next);
+        if (next_wander){
             stepped.wander++;
+            stepped.along_wander |= in_wander;
         }
+        in_wander = next_wander;
         from = *next;
     }
     stepped.end = from;
@@ -282,6 +289,9 @@ std::optional<Expansion> to_wall_leg(const StoryWorld& world, const Spread& spre
             return std::nullopt;
         }
         if (const std::optional<Stepped> stepped = step_tiles(world, pos, direction, (int)hit.tiles)){
+            if (stepped->along_wander){
+                return std::nullopt;
+            }
             grass = std::max(grass, stepped->grass);
             wander = std::max(wander, stepped->wander);
         }
@@ -307,7 +317,7 @@ std::optional<Expansion> open_leg(const StoryWorld& world, const Spread& spread,
     for (const TilePos& pos : spread){
         for (int n = std::max(1, tiles - error); n <= tiles + error; n++){
             const std::optional<Stepped> stepped = step_tiles(world, pos, direction, n);
-            if (!stepped){
+            if (!stepped || stepped->along_wander){
                 return std::nullopt;
             }
             grass = std::max(grass, stepped->grass);
@@ -457,6 +467,38 @@ std::optional<std::vector<PlannedLeg>> plan_robust_route(
         }
     }
     return RobustSearch(world, costs).run(from, goal);
+}
+
+long long robust_route_cost(
+    const StoryWorld& world,
+    const std::vector<TilePos>& from, const std::vector<PlannedLeg>& legs,
+    const RobustPlanCosts& costs
+){
+    long long total = 0;
+    Spread spread = from;
+    normalize(spread);
+    const TileLeg* previous = nullptr;
+    for (const PlannedLeg& planned : legs){
+        const TileLeg& leg = planned.leg;
+        const std::optional<Expansion> expansion = leg.ends_at_wall
+            ? to_wall_leg(world, spread, leg.direction, costs)
+            : open_leg(world, spread, leg.direction, (int)leg.tiles, costs);
+        long long cost = (long long)costs.per_leg + (long long)costs.per_tile * (long long)leg.tiles;
+        if (!leg.ends_at_wall){
+            cost += costs.leg_not_at_wall + (long long)costs.per_open_tile * (long long)leg.tiles;
+        }
+        if (expansion){
+            cost = expansion->cost;
+        }
+        if (previous != nullptr && previous->direction == leg.direction && !previous->ends_at_wall){
+            cost -= costs.per_leg;
+        }
+        total += cost;
+        spread = planned.after;
+        normalize(spread);
+        previous = &leg;
+    }
+    return total;
 }
 
 
