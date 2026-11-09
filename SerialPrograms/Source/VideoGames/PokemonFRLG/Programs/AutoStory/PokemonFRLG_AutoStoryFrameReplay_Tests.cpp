@@ -44,6 +44,7 @@ constexpr Milliseconds ONE_TILE_HOLD = OverworldWalkSteps::TILE_TIME + Overworld
 //  A warp leg: the player holds onto the door for `hold`, the walk then
 //  waits for the fade (wait_out_warp()).
 struct WarpReplayInput{
+    std::string name;
     //  The case's folder under CommandLineTests/PokemonFRLG/FrameReplay/.
     std::string recording;
     Milliseconds hold;
@@ -58,7 +59,6 @@ struct WarpReplayExpectation{
 };
 
 struct WarpReplayCase{
-    std::string name;
     WarpReplayInput input;
     WarpReplayExpectation expectation;
 };
@@ -73,7 +73,7 @@ std::string replay_watcher(const Pokemon::ReplayFrameSource& source, const WarpR
 class Test_WarpReplay : public UnitTest{
 public:
     explicit Test_WarpReplay(WarpReplayCase test_case)
-        : UnitTest("PokemonFRLG::AutoStory - Frame replay: " + test_case.name)
+        : UnitTest("PokemonFRLG::AutoStory - Frame replay: " + test_case.input.name)
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -121,13 +121,11 @@ private:
 //  missed fade (FRLGLab notes 2026-11-09-0027-route10-evidence).
 const WarpReplayCase WARP_REPLAY_CASES[] = {
     {
-        .name = "00.27 route10_nurse run 3: ended in the grass, no fade",
-        .input = {"0027-route10-run3", ONE_TILE_HOLD},
+        .input = {"00.27 route10_nurse run 3: ended in the grass, no fade", "0027-route10-run3", ONE_TILE_HOLD},
         .expectation = {"no fade", "no fade", "none"},
     },
     {
-        .name = "00.27 route10_nurse run 2: ended beside the Center, no fade",
-        .input = {"0027-route10-run2", ONE_TILE_HOLD},
+        .input = {"00.27 route10_nurse run 2: ended beside the Center, no fade", "0027-route10-run2", ONE_TILE_HOLD},
         .expectation = {"no fade", "no fade", "none"},
     },
 };

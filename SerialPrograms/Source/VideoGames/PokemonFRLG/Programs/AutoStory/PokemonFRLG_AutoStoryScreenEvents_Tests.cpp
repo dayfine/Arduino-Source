@@ -14,6 +14,7 @@
 #include <utility>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
+#include "PokemonFRLG_AutoStoryFrameReplay_Tests.h"
 #include "PokemonFRLG_AutoStoryScreenEvents.h"
 
 namespace PokemonAutomation{
@@ -88,6 +89,8 @@ void add_tests_AutoStoryScreenEvents(UnitTestDatabase& database){
     for (const auto& item : SCREEN_EVENTS_CASES){
         database.add<Test_AutoStoryScreenEvents>(item);
     }
+    //  The same events on recorded console frames.
+    add_tests_AutoStoryFrameReplay(database);
 }
 
 
