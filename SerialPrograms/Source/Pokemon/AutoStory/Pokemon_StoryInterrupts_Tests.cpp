@@ -309,6 +309,21 @@ UnitTestResult test_unsettled_is_bounded(){
     return expect_trace(game, {"look", "look again", "look again", "told unsettled interrupt_unsettled: walk"});
 }
 
+//  A battle's opening still playing when a step that starts on a battle
+//  begins (BDSP's Starly battle, right after the starter is picked): the
+//  step's, on the first look, not interrupt_unsettled.
+UnitTestResult test_unsettled_before_a_battle(){
+    FakeGame game;
+    game.screens = {white_unsettled()};
+    StoryInterrupts interrupts = fake_interrupts(game);
+    interrupts.handlers.starts_on(StoryStepKind::BATTLE, InterruptKind::WILD_ENCOUNTER);
+    const FakeRun run = run_step(game, interrupts, make(StoryStepKind::BATTLE, "starly"));
+    if (!run.outcome.succeeded()){
+        return "Expected the battle step to run, got " + to_string(run.outcome);
+    }
+    return expect_trace(game, {"look", "run starly"});
+}
+
 UnitTestResult test_failure_explained(bool throws){
     FakeGame game;
     //  Before the step, after its failure, before its second run.
@@ -442,6 +457,10 @@ const StoryInterruptsCase STORY_INTERRUPTS_CASES[] = {
     {
         .input = {.name = "unsettled: at most max_looks looks", .test = test_unsettled_is_bounded},
         .expectation = {.description = "interrupt_unsettled after three looks"},
+    },
+    {
+        .input = {.name = "unsettled: a battle's opening before a battle step", .test = test_unsettled_before_a_battle},
+        .expectation = {.description = "the step's, after one look"},
     },
     {
         .input = {.name = "a failed step an interrupt explains runs again", .test = test_failed_outcome_explained},
