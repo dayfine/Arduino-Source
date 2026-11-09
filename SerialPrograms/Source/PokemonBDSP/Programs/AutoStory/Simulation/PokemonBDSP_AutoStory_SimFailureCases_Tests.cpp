@@ -317,6 +317,24 @@ UnitTestResult rowans_scene_opens_with_no_box(Logger& logger){
     return passes(run_case(logger, "00.03", "00.03", {.fade = {}, .banner = {}}, knobs));
 }
 
+//  00.03: Mom's lines, a still moment, then the scene's closing fade
+//  (lab-B 2026-11-09 14:33). The scene once ended as the fade went down,
+//  and the next step's input landed in it: the talk-over must wait for the
+//  fade to come back up and for the quiet after it.
+UnitTestResult moms_scene_ends_with_a_fade(Logger& logger){
+    SimWorldKnobs knobs;
+    knobs.scenes["rowan_and_dawn"] = {
+        sim_line("Dawn"),
+        sim_line("Barry"),
+        sim_fade("the fade home", 1500ms),
+        sim_line("Mom: the Running Shoes"),
+        sim_line("Mom"),
+        sim_pause("Mom stands", 4000ms, false),
+        sim_fade("the scene's closing fade", 2000ms),
+    };
+    return passes(run_case(logger, "00.03", "00.03", {.fade = {}, .banner = {}}, knobs));
+}
+
 //  00.02: the Starly battle's opening is still playing when the battle
 //  step starts, right after choose_starter (lab-B 2026-11-09 run 3, event
 //  7): the battle step's, not interrupt_unsettled before it.
@@ -456,6 +474,7 @@ const FailureCase AUTO_STORY_FAILURE_CASES[] = {
     {.input = {"01.04 Roark's badge speech: the fanfare's pause, then a scene", roark_badge_speech}, .expectation = {}},
     {.input = {"01.07 after the tag battle the grunts run off before anyone speaks", grunts_run_off_before_rowan}, .expectation = {}},
     {.input = {"00.03 Rowan's scene opens with no box and fades home", rowans_scene_opens_with_no_box}, .expectation = {}},
+    {.input = {"00.03 Mom's scene ends with a closing fade: over once it is back up (lab-B 2026-11-09)", moms_scene_ends_with_a_fade}, .expectation = {}},
     {.input = {"00.02 the Starly battle's opening still plays after the starter (lab-B 2026-11-09)", starly_opening_after_the_starter}, .expectation = {}},
     {.input = {"00.03 out of the house from (6, 8), where Rowan's scene ends, and from a column west", home_from_each_scene_end}, .expectation = {}},
     {.input = {"00.03 Rowan's scene starts on each of the trigger's rows 14..16, and the walk stops there", rowans_scene_on_each_row}, .expectation = {}},

@@ -115,7 +115,8 @@ struct SimBeat{
 SimBeat sim_line(std::string what);
 //  `length` of overworld with no box, someone moving or not.
 SimBeat sim_pause(std::string what, Milliseconds length, bool moving);
-//  `length` of a fade, not the overworld.
+//  `length` of a fade, as BDSP's eyes see it: no box, so the overworld,
+//  and still (a black frame matches the one before).
 SimBeat sim_fade(std::string what, Milliseconds length, WarpFade fade = WarpFade::BLACK);
 //  A talk or a scene as the screen shows it, beat by beat; the quiet
 //  overworld after the last beat.

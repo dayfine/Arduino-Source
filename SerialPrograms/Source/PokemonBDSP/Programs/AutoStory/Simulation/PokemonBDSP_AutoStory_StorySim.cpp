@@ -72,7 +72,7 @@ SimBeat sim_pause(std::string what, Milliseconds length, bool moving){
     return {.what = std::move(what), .length = length, .moving = moving};
 }
 SimBeat sim_fade(std::string what, Milliseconds length, WarpFade fade){
-    return {.what = std::move(what), .length = length, .overworld = false, .fade = fade};
+    return {.what = std::move(what), .length = length, .overworld = true, .moving = false, .fade = fade};
 }
 
 std::string play_scene(const SimScene& scene, const TalkOverRule& rule){
