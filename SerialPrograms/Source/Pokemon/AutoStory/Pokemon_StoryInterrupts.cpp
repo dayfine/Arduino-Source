@@ -37,7 +37,13 @@ void InterruptHandlerTable::starts_on(StoryStepKind step, InterruptKind kind){
 }
 
 bool InterruptHandlerTable::step_starts_on(StoryStepKind step, InterruptKind kind) const{
-    return m_starts_on.contains({step, kind});
+    if (m_starts_on.contains({step, kind})){
+        return true;
+    }
+    return kind == InterruptKind::UNSETTLED && (
+        m_starts_on.contains({step, InterruptKind::WILD_ENCOUNTER}) ||
+        m_starts_on.contains({step, InterruptKind::TRAINER_SIGHT})
+    );
 }
 
 
@@ -49,9 +55,12 @@ InterruptVerdict judge(const StoryInterrupts& interrupts, bool fresh){
 }
 
 //  The look's verdict, looked at again while it is unsettled, up to
-//  max_looks looks in all.
-InterruptVerdict settled_verdict(const StoryInterrupts& interrupts){
+//  max_looks looks in all; not again before a step that starts on it.
+InterruptVerdict settled_verdict(const StoryInterrupts& interrupts, StoryStepKind step){
     InterruptVerdict verdict = judge(interrupts, true);
+    if (interrupts.handlers.step_starts_on(step, InterruptKind::UNSETTLED)){
+        return verdict;
+    }
     for (size_t looks = 1; verdict.kind == InterruptKind::UNSETTLED && looks < interrupts.max_looks; looks++){
         verdict = judge(interrupts, false);
     }
@@ -63,7 +72,7 @@ InterruptVerdict settled_verdict(const StoryInterrupts& interrupts){
 
 InterruptCheck clear_story_interrupt(const StoryInterrupts& interrupts, RunState& state, const StoryStep& step){
     InterruptCheck out;
-    out.verdict = settled_verdict(interrupts);
+    out.verdict = settled_verdict(interrupts, step.kind);
     const InterruptKind kind = out.verdict.kind;
     if (kind == InterruptKind::NONE){
         return out;
