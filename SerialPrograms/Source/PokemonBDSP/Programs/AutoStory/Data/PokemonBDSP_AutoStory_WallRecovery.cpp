@@ -135,19 +135,26 @@ std::optional<std::vector<PlannedLeg>> plan_recovered_route(
     if (from.size() == 1){
         return plan_robust_route(world, from, goal, costs);
     }
-    auto anchors = wall_recovery_candidates(world, from);
-    std::stable_sort(anchors.begin(), anchors.end(), [&](const auto& a, const auto& b){
-        return goal(a.at) && !goal(b.at);
-    });
-    for (const auto& anchor : anchors){
+    //  The cheapest whole walk, holds and the way on from the wall: the
+    //  fewest held tiles alone chose "south 12 (to wall), north 12 (open)"
+    //  over "north 13 (to wall), south 5 (open)" for 01.10's line 5 (lab-B
+    //  2026-11-08 18:15:47). Ties keep find_wall_anchors()' order.
+    std::optional<std::vector<PlannedLeg>> best;
+    long long best_cost = 0;
+    for (const auto& anchor : wall_recovery_candidates(world, from)){
         const auto back = plan_robust_route(world, std::vector<TilePos>{anchor.at}, goal, costs);
-        if (back){
-            auto route = recovery_legs(world, from, anchor.holds);
-            route.insert(route.end(), back->begin(), back->end());
-            return route;
+        if (!back){
+            continue;
+        }
+        auto route = recovery_legs(world, from, anchor.holds);
+        route.insert(route.end(), back->begin(), back->end());
+        const long long cost = robust_route_cost(world, from, route, costs);
+        if (!best || cost < best_cost){
+            best = std::move(route);
+            best_cost = cost;
         }
     }
-    return std::nullopt;
+    return best;
 }
 
 } // namespace PokemonBDSP
