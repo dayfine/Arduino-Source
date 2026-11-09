@@ -13,9 +13,10 @@ namespace PokemonAutomation{
 
 
 
+//  Register the JSON dump/parse round-trip tests.
 void add_tests_JsonTools(UnitTestDatabase& database);
 
 
 
-}
+} // namespace PokemonAutomation
 #endif
