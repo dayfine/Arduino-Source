@@ -1,0 +1,71 @@
+time,run,kind,quest,bp,source,note
+2026-10-19 23:42:07.922672,2026-10-19 23:40:00.373268,reward,sneak-up,20,SerialPrograms-20261020-032023983416.log:565079,inferred from disappearance; completion occurred since 2026-10-19 23:40:25.685826
+2026-10-19 23:43:15.741083,2026-10-19 23:40:00.373268,reward,photo-polar,30,SerialPrograms-20261020-032023983416.log:565256,inferred from disappearance; completion occurred since 2026-10-19 23:42:10.013462
+2026-10-19 23:45:51.180597,2026-10-19 23:40:00.373268,reward,catch-steel,40,SerialPrograms-20261020-032023983416.log:565641,inferred from disappearance; completion occurred since 2026-10-19 23:43:30.951174
+2026-10-19 23:48:02.772036,2026-10-19 23:40:00.373268,reward,photo-swim,30,SerialPrograms-20261020-032023983416.log:565976,inferred from disappearance; completion occurred since 2026-10-19 23:46:58.211776
+2026-10-19 23:50:02.935035,2026-10-19 23:40:00.373268,reward,sneak-up,20,SerialPrograms-20261020-032023983416.log:566284,inferred from disappearance; completion occurred since 2026-10-19 23:48:17.969658
+2026-10-19 23:51:33.719405,2026-10-19 23:40:00.373268,reward,photo-savanna,30,SerialPrograms-20261020-032023983416.log:566480,inferred from disappearance; completion occurred since 2026-10-19 23:50:04.971923
+2026-10-19 23:53:12.472155,2026-10-19 23:40:00.373268,reward,travel-500,20,SerialPrograms-20261020-032023983416.log:566694,inferred from disappearance; completion occurred since 2026-10-19 23:51:49.302493
+2026-10-19 23:53:55.667853,2026-10-19 23:40:00.373268,reward,make-tm,20,SerialPrograms-20261020-032023983416.log:566816,inferred from disappearance; completion occurred since 2026-10-19 23:53:14.571289
+2026-10-19 23:56:49.347248,2026-10-19 23:40:00.373268,reward,tera-self-defeat,30,SerialPrograms-20261020-032023983416.log:567174,inferred from disappearance; completion occurred since 2026-10-19 23:54:11.424196
+2026-10-19 23:58:35.952334,2026-10-19 23:40:00.373268,reward,sneak-up,20,SerialPrograms-20261020-032023983416.log:567420,inferred from disappearance; completion occurred since 2026-10-19 23:56:51.383784
+2026-10-20 00:11:25.756106,2026-10-20 00:08:25.146857,reward,bitter-sandwich,150,SerialPrograms-20261020-032023983416.log:568940,inferred from disappearance; completion occurred since 2026-10-20 00:08:40.921784
+2026-10-20 00:12:43.146412,2026-10-20 00:08:25.146857,reward,photo-coastal,30,SerialPrograms-20261020-032023983416.log:569127,inferred from disappearance; completion occurred since 2026-10-20 00:11:27.843129
+2026-10-20 00:50:33.209342,2026-10-20 00:50:18.125845,reroll,catch-poison,10,SerialPrograms-20261020-032023983416.log:573406,"requested; button sequence follows, no BP balance confirmation; next board changed target slug"
+2026-10-20 00:58:21.131784,2026-10-20 00:50:18.125845,reward,sneak-up,20,SerialPrograms-20261020-032023983416.log:574453,inferred from disappearance; completion occurred since 2026-10-20 00:56:39.275125
+2026-10-20 01:05:44.672725,2026-10-20 00:50:18.125845,reward,catch-any,20,SerialPrograms-20261020-032023983416.log:575407,inferred from disappearance; completion occurred since 2026-10-20 01:03:11.354636
+2026-10-20 01:27:26.312986,2026-10-20 01:22:16.704386,reward,travel-500,20,SerialPrograms-20261020-032023983416.log:576914,inferred from disappearance; completion occurred since 2026-10-20 01:26:02.453391
+2026-10-20 01:28:41.978236,2026-10-20 01:22:16.704386,reward,photo-polar,30,SerialPrograms-20261020-032023983416.log:577111,inferred from disappearance; completion occurred since 2026-10-20 01:27:28.398293
+2026-10-20 01:28:56.100979,2026-10-20 01:22:16.704386,reroll,tera-self-defeat,10,SerialPrograms-20261020-032023983416.log:577178,"requested; button sequence follows, no BP balance confirmation; next board changed target slug"
+2026-10-20 01:37:55.447166,2026-10-20 01:22:16.704386,reward,auto-10,20,SerialPrograms-20261020-032023983416.log:578407,inferred from disappearance; completion occurred since 2026-10-20 01:32:35.324648
+2026-10-20 01:38:09.489965,2026-10-20 01:22:16.704386,reroll,catch-bug,10,SerialPrograms-20261020-032023983416.log:578473,"requested; button sequence follows, no BP balance confirmation; next board changed target slug"
+2026-10-20 01:42:51.884897,2026-10-20 01:22:16.704386,reward,photo-swim,30,SerialPrograms-20261020-032023983416.log:579139,inferred from disappearance; completion occurred since 2026-10-20 01:41:45.988770
+2026-10-20 01:53:35.971997,2026-10-20 01:22:16.704386,reward,auto-10,20,SerialPrograms-20261020-032023983416.log:580599,inferred from disappearance; completion occurred since 2026-10-20 01:46:35.360464
+2026-10-20 01:55:02.136569,2026-10-20 01:22:16.704386,reward,travel-500,20,SerialPrograms-20261020-032023983416.log:580752,inferred from disappearance; completion occurred since 2026-10-20 01:53:38.009957
+2026-10-20 01:58:20.078717,2026-10-20 01:22:16.704386,reward,sour-sandwich,150,SerialPrograms-20261020-032023983416.log:581636,inferred from disappearance; completion occurred since 2026-10-20 01:55:17.729357
+2026-10-20 02:03:04.486924,2026-10-20 01:22:16.704386,reward,photo-coastal,30,SerialPrograms-20261020-032023983416.log:582275,inferred from disappearance; completion occurred since 2026-10-20 02:01:50.862782
+2026-10-20 02:04:15.732604,2026-10-20 01:22:16.704386,reward,photo-fly,30,SerialPrograms-20261020-032023983416.log:582445,inferred from disappearance; completion occurred since 2026-10-20 02:03:06.523468
+2026-10-20 02:08:37.209118,2026-10-20 01:22:16.704386,reward,make-tm,20,SerialPrograms-20261020-032023983416.log:583074,inferred from disappearance; completion occurred since 2026-10-20 02:07:57.114449
+2026-10-20 02:10:02.413836,2026-10-20 01:22:16.704386,reward,travel-500,20,SerialPrograms-20261020-032023983416.log:583219,inferred from disappearance; completion occurred since 2026-10-20 02:08:39.294468
+2026-10-20 02:10:16.817316,2026-10-20 01:22:16.704386,reroll,tera-self-defeat,10,SerialPrograms-20261020-032023983416.log:583285,"requested; button sequence follows, no BP balance confirmation; next board changed target slug"
+2026-10-20 02:21:31.618986,2026-10-20 01:22:16.704386,reward,auto-10,20,SerialPrograms-20261020-032023983416.log:584814,inferred from disappearance; completion occurred since 2026-10-20 02:17:38.514654
+2026-10-20 02:31:32.609603,2026-10-20 01:22:16.704386,reward,photo-swim,30,SerialPrograms-20261020-032023983416.log:586329,inferred from disappearance; completion occurred since 2026-10-20 02:26:21.835708
+2026-10-20 02:36:02.065959,2026-10-20 01:22:16.704386,reward,make-tm,20,SerialPrograms-20261020-032023983416.log:586977,inferred from disappearance; completion occurred since 2026-10-20 02:35:15.176627
+2026-10-20 02:41:09.138149,2026-10-20 01:22:16.704386,reward,travel-500,20,SerialPrograms-20261020-032023983416.log:587630,inferred from disappearance; completion occurred since 2026-10-20 02:39:46.309522
+2026-10-20 02:45:55.731512,2026-10-20 01:22:16.704386,reward,photo-swim,30,SerialPrograms-20261020-032023983416.log:588307,inferred from disappearance; completion occurred since 2026-10-20 02:44:51.811172
+2026-10-20 02:46:09.636122,2026-10-20 01:22:16.704386,reroll,catch-dark,10,SerialPrograms-20261020-032023983416.log:588375,"requested; button sequence follows, no BP balance confirmation; next board changed target slug"
+2026-10-20 02:54:49.472421,2026-10-20 01:22:16.704386,reward,travel-500,20,SerialPrograms-20261020-032023983416.log:589497,inferred from disappearance; completion occurred since 2026-10-20 02:53:26.566016
+2026-10-20 02:59:57.625671,2026-10-20 01:22:16.704386,reward,wild-tera,100,SerialPrograms-20261020-032023983416.log:590120,inferred from disappearance; completion occurred since 2026-10-20 02:57:16.925421
+2026-10-20 03:04:31.086616,2026-10-20 01:22:16.704386,reward,photo-swim,30,SerialPrograms-20261020-032023983416.log:590742,inferred from disappearance; completion occurred since 2026-10-20 03:03:26.221593
+2026-10-20 03:14:02.517471,2026-10-20 01:22:16.704386,reward,auto-10,20,SerialPrograms-20261020-032023983416.log:592073,inferred from disappearance; completion occurred since 2026-10-20 03:08:08.487675
+2026-10-20 03:19:07.387529,2026-10-20 01:22:16.704386,reward,travel-500,20,SerialPrograms-20261020-032023983416.log:592729,inferred from disappearance; completion occurred since 2026-10-20 03:17:43.813295
+2026-10-20 03:44:42.613274,2026-10-20 01:22:16.704386,reward,catch-normal,40,SerialPrograms.log:3080,inferred from disappearance; completion occurred since 2026-10-20 03:41:56.582221
+2026-10-20 03:53:43.625986,2026-10-20 01:22:16.704386,reward,auto-10,20,SerialPrograms.log:4313,inferred from disappearance; completion occurred since 2026-10-20 03:48:22.295491
+2026-10-20 03:58:34.559569,2026-10-20 01:22:16.704386,reward,photo-fly,30,SerialPrograms.log:4994,inferred from disappearance; completion occurred since 2026-10-20 03:57:26.889879
+2026-10-20 04:02:15.056726,2026-10-20 01:22:16.704386,reward,sneak-up,20,SerialPrograms.log:5509,inferred from disappearance; completion occurred since 2026-10-20 04:00:31.356585
+2026-10-20 04:03:06.189988,2026-10-20 01:22:16.704386,reward,make-tm,20,SerialPrograms.log:5653,inferred from disappearance; completion occurred since 2026-10-20 04:02:17.093616
+2026-10-20 04:10:15.173172,2026-10-20 01:22:16.704386,reward,auto-10,20,SerialPrograms.log:6640,inferred from disappearance; completion occurred since 2026-10-20 04:03:21.508379
+2026-10-20 04:11:26.892084,2026-10-20 01:22:16.704386,reward,photo-fly,30,SerialPrograms.log:6810,inferred from disappearance; completion occurred since 2026-10-20 04:10:17.208132
+2026-10-20 04:21:06.947081,2026-10-20 01:22:16.704386,reward,auto-30,130,SerialPrograms.log:8125,inferred from disappearance; completion occurred since 2026-10-20 04:11:42.242202
+2026-10-20 04:21:57.729507,2026-10-20 01:22:16.704386,reward,make-tm,20,SerialPrograms.log:8269,inferred from disappearance; completion occurred since 2026-10-20 04:21:09.035011
+2026-10-20 04:23:43.285679,2026-10-20 01:22:16.704386,reward,sneak-up,20,SerialPrograms.log:8509,inferred from disappearance; completion occurred since 2026-10-20 04:21:59.767739
+2026-10-20 04:29:09.251853,2026-10-20 01:22:16.704386,reward,auto-10,20,SerialPrograms.log:9273,inferred from disappearance; completion occurred since 2026-10-20 04:23:58.442030
+2026-10-20 04:30:34.837067,2026-10-20 01:22:16.704386,reward,travel-500,20,SerialPrograms.log:9416,inferred from disappearance; completion occurred since 2026-10-20 04:29:11.340594
+2026-10-20 04:30:48.930291,2026-10-20 01:22:16.704386,reroll,tera-self-defeat,10,SerialPrograms.log:9480,"requested; button sequence follows, no BP balance confirmation; next board changed target slug"
+2026-10-20 04:31:51.314436,2026-10-20 01:22:16.704386,reward,make-tm,20,SerialPrograms.log:9658,inferred from disappearance; completion occurred since 2026-10-20 04:30:58.160153
+2026-10-20 04:35:46.364531,2026-10-20 01:22:16.704386,reward,auto-10,20,SerialPrograms.log:10234,inferred from disappearance; completion occurred since 2026-10-20 04:32:06.596716
+2026-10-20 04:36:56.565246,2026-10-20 01:22:16.704386,reward,photo-fly,30,SerialPrograms.log:10407,inferred from disappearance; completion occurred since 2026-10-20 04:35:48.400573
+2026-10-20 04:39:21.978247,2026-10-20 01:22:16.704386,reward,catch-rock,40,SerialPrograms.log:10774,inferred from disappearance; completion occurred since 2026-10-20 04:37:13.985397
+2026-10-20 04:41:08.167448,2026-10-20 01:22:16.704386,reward,sneak-up,20,SerialPrograms.log:11013,inferred from disappearance; completion occurred since 2026-10-20 04:39:24.013153
+2026-10-20 04:46:46.105536,2026-10-20 01:22:16.704386,reward,auto-10,20,SerialPrograms.log:11810,inferred from disappearance; completion occurred since 2026-10-20 04:41:23.520737
+2026-10-20 04:47:53.259133,2026-10-20 01:22:16.704386,reward,photo-swim,30,SerialPrograms.log:11986,inferred from disappearance; completion occurred since 2026-10-20 04:46:48.192033
+2026-10-20 04:48:07.560679,2026-10-20 01:22:16.704386,reroll,tera-self-defeat,10,SerialPrograms.log:12052,"requested; button sequence follows, no BP balance confirmation; next board changed target slug"
+2026-10-20 04:49:50.769101,2026-10-20 01:22:16.704386,reward,photo-rock,150,SerialPrograms.log:12267,inferred from disappearance; completion occurred since 2026-10-20 04:48:17.916963
+2026-10-20 04:51:36.893054,2026-10-20 01:22:16.704386,reward,sneak-up,20,SerialPrograms.log:12507,inferred from disappearance; completion occurred since 2026-10-20 04:49:52.857403
+2026-10-20 04:51:51.282494,2026-10-20 01:22:16.704386,reroll,catch-fairy,10,SerialPrograms.log:12573,"requested; button sequence follows, no BP balance confirmation; next board changed target slug"
+2026-10-20 04:53:23.957831,2026-10-20 01:22:16.704386,reward,travel-500,20,SerialPrograms.log:12741,inferred from disappearance; completion occurred since 2026-10-20 04:52:00.468799
+2026-10-20 04:53:38.295487,2026-10-20 01:22:16.704386,reroll,tera-self-defeat,10,SerialPrograms.log:12806,"requested; button sequence follows, no BP balance confirmation; next board changed target slug"
+2026-10-20 04:56:31.666804,2026-10-20 01:22:16.704386,reward,catch-ground,40,SerialPrograms.log:13169,inferred from disappearance; completion occurred since 2026-10-20 04:53:47.331912
+2026-10-20 04:59:56.483679,2026-10-20 01:22:16.704386,reward,make-tm,20,SerialPrograms.log:13726,inferred from disappearance; completion occurred since 2026-10-20 04:58:58.612480
+2026-10-20 05:02:21.621503,2026-10-20 01:22:16.704386,reward,photo-swim,30,SerialPrograms.log:14118,inferred from disappearance; completion occurred since 2026-10-20 05:01:16.580479
+2026-10-20 05:05:18.733492,2026-10-20 01:22:16.704386,reward,catch-any,20,SerialPrograms.log:14462,inferred from disappearance; completion occurred since 2026-10-20 05:02:23.708110
