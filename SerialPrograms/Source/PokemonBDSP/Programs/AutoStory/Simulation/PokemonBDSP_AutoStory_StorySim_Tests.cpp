@@ -41,6 +41,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_CoordEvents.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP_AutoStory_GridSim.h"
+#include "PokemonBDSP_AutoStory_OldStorySteps.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Events.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryExecutor.h"
@@ -740,44 +741,6 @@ UnitTestResult run_exit_test(Logger& logger, const std::string& row_id, const St
     return true;
 }
 
-//  r75: out of the Oreburgh Gate as a run west until Route 203's banner
-//  (the old event west_until_transition()). The banner reads a few tiles
-//  in: the run ends west of the Gate's warp tile (55, 9), in the pocket by
-//  the pond (Route 203's x 49 to 54, rows 6 to 13).
-StoryStep r75_old_gate_exit(){
-    StoryStep step;
-    step.kind = StoryStepKind::LEGS;
-    step.name = "out_of_oreburgh_gate";
-    step.legs = {{.direction = Direction::WEST, .tiles = 8}};
-    step.variant = "to_map";
-    step.pose_after = Pokemon::tile_pose("Route203", {TilePos{55, 9}}, Direction::WEST);
-    return step;
-}
-Pose r75_pond_pocket(){
-    std::vector<TilePos> tiles;
-    for (int y = 6; y <= 13; y++){
-        for (int x = 49; x <= 54; x++){
-            tiles.push_back({x, y});
-        }
-    }
-    return Pokemon::tile_pose("Route203", tiles);
-}
-//  r81: out of the Ravaged Path as a timed walk south (the old event's
-//  4 s walk_dir()), its fade missed: on past cave_exit (20, 26) to the
-//  cliff, column 20 down to row 30.
-StoryStep r81_old_cave_exit(){
-    StoryStep step;
-    step.kind = StoryStepKind::LEGS;
-    step.name = "out_of_the_ravaged_path";
-    step.legs = {{.direction = Direction::SOUTH, .tiles = 4}};
-    step.variant = "to_wall";
-    step.pose_after = Pokemon::tile_pose("Route204North", {TilePos{20, 26}}, Direction::SOUTH);
-    return step;
-}
-Pose r81_below_the_mouth(){
-    return Pokemon::tile_pose("Route204North", {TilePos{20, 27}, TilePos{20, 28}, TilePos{20, 29}, TilePos{20, 30}});
-}
-
 UnitTestResult test_coord_events(Logger&){
     for (const auto& [map, json] : bdsp_map_json()){
         const StoryWorld* world = story_plan_world(map, map);
@@ -858,30 +821,6 @@ UnitTestResult test_exit_gate(Logger& logger){
 
 UnitTestResult test_exit_ravaged_path(Logger& logger){
     return run_exit_test(logger, "01.09", r81_old_cave_exit(), SimMisses{.fade = 0, .banner = std::nullopt}, r81_below_the_mouth());
-}
-
-//  Oreburgh Mine B1F: tapping 19 tiles leaves the player 1 tile short of the warp door.
-StoryStep old_mine_hall_19(std::string name, Direction direction){
-    StoryStep step;
-    step.kind = StoryStepKind::LEGS;
-    step.name = std::move(name);
-    step.legs = {{.direction = direction, .tiles = 19}};
-    return step;
-}
-
-//  Oreburgh Mine: stepping south at col 29 without bypassing the crate
-//  hits the wooden crate at (29, 28) on the south leg, a tile down.
-StoryStep old_coal_room_crate_cut(){
-    StoryStep step;
-    step.kind = StoryStepKind::LEGS;
-    step.name = "to_roarks_corner";
-    step.legs = {
-        {.direction = Direction::EAST, .tiles = 1}, {.direction = Direction::SOUTH, .tiles = 2},
-        {.direction = Direction::WEST, .tiles = 1}, {.direction = Direction::SOUTH, .tiles = 5},
-        {.direction = Direction::EAST, .tiles = 14}, {.direction = Direction::SOUTH, .tiles = 10},
-        {.direction = Direction::SOUTH, .tiles = 2}, {.direction = Direction::WEST, .tiles = 11},
-    };
-    return step;
 }
 
 UnitTestResult test_story_sim_step_failure(Logger& logger, const std::string& row, const StoryStep& old_step, const std::string& expected_failed_step, const std::string& expected_error){

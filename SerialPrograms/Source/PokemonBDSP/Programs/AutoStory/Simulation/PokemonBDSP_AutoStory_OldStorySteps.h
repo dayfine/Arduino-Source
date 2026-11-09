@@ -1,0 +1,50 @@
+/*  BDSP AutoStory - Old story steps
+ *
+ *  From: https://github.com/PokemonAutomation/
+ *
+ *  Steps the story table had that went wrong on the console, as they were:
+ *  the story simulation's regression tests run them in place of the
+ *  table's step of the same name and check they still go wrong there.
+ *
+ */
+
+#ifndef PokemonAutomation_PokemonBDSP_AutoStory_OldStorySteps_H
+#define PokemonAutomation_PokemonBDSP_AutoStory_OldStorySteps_H
+
+#include <string>
+#include "Pokemon/AutoStory/Pokemon_StorySteps.h"
+
+namespace PokemonAutomation{
+namespace NintendoSwitch{
+namespace PokemonBDSP{
+
+
+//  r75: out of the Oreburgh Gate as a run west until Route 203's banner
+//  (the old event west_until_transition()). The banner reads a few tiles
+//  in: the run ends west of the Gate's warp tile (55, 9), in the pocket by
+//  the pond (Route 203's x 49 to 54, rows 6 to 13).
+Pokemon::StoryStep r75_old_gate_exit();
+//  Where r75's run west ended: the pocket by Route 203's pond.
+Pokemon::Pose r75_pond_pocket();
+
+//  r81: out of the Ravaged Path as a timed walk south (the old event's
+//  4 s walk_dir()), its fade missed: on past cave_exit (20, 26) to the
+//  cliff, column 20 down to row 30.
+Pokemon::StoryStep r81_old_cave_exit();
+//  Where r81's walk south ended: below the Ravaged Path's mouth.
+Pokemon::Pose r81_below_the_mouth();
+
+//  Oreburgh Mine B1F: tapping 19 tiles leaves the player 1 tile short of the warp door.
+Pokemon::StoryStep old_mine_hall_19(std::string name, Pokemon::Direction direction);
+
+//  Oreburgh Mine: stepping south at col 29 without bypassing the crate
+//  hits the wooden crate at (29, 28) on the south leg, a tile down.
+Pokemon::StoryStep old_coal_room_crate_cut();
+
+
+
+
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
+#endif
