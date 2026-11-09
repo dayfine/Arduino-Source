@@ -17,6 +17,8 @@
  *  console step into a failed Outcome, with a screenshot and the
  *  "checkpoint_reattempt_loop: attempt N failed" line the lab's run watcher
  *  reads; the segment then reloads the row's save and runs it again.
+ *  Before each step it clears what came up since the step before
+ *  (story_interrupts(), PokemonBDSP_AutoStory_StoryInterrupts.h).
  *
  */
 
@@ -37,6 +39,7 @@
 #include "Pokemon/AutoStory/Pokemon_StorySteps.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RoutePlanner.h"
 #include "PokemonBDSP_AutoStory_StoryActions.h"
+#include "PokemonBDSP_AutoStory_StoryInterrupts.h"
 #include "PokemonBDSP_AutoStory_StoryStepIO.h"
 #include "PokemonBDSP_AutoStory_StoryWalkSteps.h"
 
@@ -105,6 +108,7 @@ public:
     virtual void before_step(const Pokemon::StoryStep& step) override;
     virtual bool stops_on_failure(const Pokemon::StoryStep& step) const override;
     virtual void on_failure(const Pokemon::StoryStep& step, const OperationFailedException& error) override;
+    virtual void on_interrupt(const Pokemon::StoryStep& step, const Pokemon::InterruptCheck& check) override;
 
 private:
     VideoStream& m_stream;
@@ -163,6 +167,7 @@ protected:
 
 private:
     StoryBoundActions console_actions();
+    StoryInterruptActions console_interrupt_actions();
 
     StoryEnv& m_env;
     ConsoleStoryStepIO m_io;
@@ -187,6 +192,9 @@ private:
     ConsoleStepGuard m_guard;
     //  The story's actions, its console rows bound to this executor.
     Pokemon::StoryActionTable m_table;
+    //  What is cleared between steps, looked for on the screen.
+    ConsoleScreenLook m_look;
+    Pokemon::StoryInterrupts m_interrupts;
 };
 
 

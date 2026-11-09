@@ -1509,6 +1509,9 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_StoryEvents.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryEvents.h
     Source/Pokemon/AutoStory/Pokemon_StoryEvents_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryInterrupts.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryInterrupts.h
+    Source/Pokemon/AutoStory/Pokemon_StoryInterrupts_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryMonteCarlo.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryMonteCarlo.h
     Source/Pokemon/AutoStory/Pokemon_StorySegments.cpp
@@ -1738,6 +1741,8 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryActions.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryExecutor.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryExecutor.h
+    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryInterrupts.cpp
+    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryInterrupts.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryStepIO.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryStepIO.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryWalkSteps.cpp

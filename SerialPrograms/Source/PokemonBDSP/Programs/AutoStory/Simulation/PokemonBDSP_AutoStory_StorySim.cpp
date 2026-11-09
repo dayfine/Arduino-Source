@@ -648,6 +648,46 @@ StoryBoundActions SimExecutor::sim_actions(){
     };
 }
 
+Pokemon::ScreenLook SimExecutor::look(){
+    const WallClock start = WallClock() + std::chrono::hours(1);
+    Pokemon::ScreenLook out;
+    out.log.record({Pokemon::ScreenEvent::PLAYER_CAN_MOVE}, start);
+    if (std::exchange(m_dialog_rose, false)){
+        out.log.record({Pokemon::ScreenEvent::DIALOG_BOX, Pokemon::ScreenEvent::PLAYER_CAN_MOVE}, start + 33ms);
+    }
+    out.window = {.start = start, .end = start + BETWEEN_STEPS_LOOK};
+    return out;
+}
+
+//  Every kind closes what is up and logs it: the simulation shows only
+//  the dialogs it pops up.
+StoryInterruptActions SimExecutor::sim_interrupt_actions(){
+    const auto cleared = [this](const char* what){
+        return [this, what](RunState&, const Pokemon::InterruptVerdict&){
+            m_logger.log(std::format("[{}] {}: {} cleared before it.", m_row, m_step, what));
+            m_dialog_up = false;
+            m_sim.end_dialogue();
+            return Pokemon::outcome_ok();
+        };
+    };
+    return StoryInterruptActions{
+        .wild = cleared("a wild battle"),
+        .trainer = cleared("a trainer's battle"),
+        .dialog = cleared("a dialog"),
+        .warp = cleared("a warp"),
+    };
+}
+
+Outcome SimExecutor::run_action(RunState& state, const StoryStep& step){
+    if (m_dialog_up){
+        if (!presses_through_text(step.kind)){
+            return Pokemon::outcome_failed("dialog", step.name + ": a dialog that popped up before it is still up");
+        }
+        m_dialog_up = false;
+    }
+    return Pokemon::TableExecutor::run_action(state, step);
+}
+
 Outcome SimExecutor::run_step(RunState& state, const StoryStep& step){
     if (!m_start_mismatch.empty()){
         return Pokemon::outcome_failed("sim_mismatch", "the row before " + std::exchange(m_start_mismatch, ""));
@@ -704,6 +744,10 @@ Outcome SimExecutor::run(RunState& state, const StoryStep& step){
     Outcome outcome;
     m_passed_over = false;
     m_step = step.name;
+    if (m_knobs.dialog_before && m_knobs.dialog_before(m_row, step.name)){
+        m_dialog_up = m_dialog_rose = true;
+        m_logger.log(std::format("[{}] {}: a dialog pops up before it.", m_row, step.name));
+    }
     const size_t battles_before = m_noise == nullptr ? 0 : m_noise->battles();
     try{
         outcome = run_step(state, step);
