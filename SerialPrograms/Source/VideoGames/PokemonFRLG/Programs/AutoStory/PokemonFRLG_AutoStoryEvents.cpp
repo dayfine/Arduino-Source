@@ -9,8 +9,6 @@
 #include <set>
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
-#include "CommonFramework/ImageTools/ImageBoxes.h"
-#include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "Pokemon/Navigation/Pokemon_RouteLog.h"
@@ -18,7 +16,6 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecoveryWalk.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
-#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "PokemonFRLG_AutoStoryAbilities.h"
 #include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryCapture.h"
@@ -357,34 +354,6 @@ std::string start_pose_mismatch(const Pokemon::Pose& start, const StoryPose& sta
         + ", but the checkpoint starts at " + Pokemon::to_string(start) + ".";
 }
 
-void add_start_check(
-    Pokemon::Checkpoint& checkpoint, const std::optional<Pokemon::Pose>& start, StartReader read, StoryLog log
-){
-    if (!start){
-        return;
-    }
-    checkpoint.start.push_back(Pokemon::condition("save_at_start_pose",
-        [read = std::move(read), log = std::move(log)](RunState&){
-            const StartRead found = read();
-            switch (found.found){
-            case StartFound::NOT_READ:
-                log("start pose not read: " + (found.detail.empty() ? "" : found.detail + "; ")
-                    + "going on from the save as the checkpoint's start.");
-                return true;
-            case StartFound::AT_START:
-                if (!found.detail.empty()){
-                    log("start pose matches: " + found.detail);
-                }
-                return true;
-            case StartFound::ELSEWHERE:
-                log("start pose mismatch: " + found.detail);
-                return false;
-            }
-            return false;
-        }
-    ));
-}
-
 void add_start_pose_check(
     Pokemon::Checkpoint& checkpoint, const std::optional<Pokemon::Pose>& start, SavePoseReader read, StoryLog log
 ){
@@ -717,39 +686,14 @@ void read_bag_supplies(StoryEnv& env, StartMenu menu){
 
 namespace{
 
-//  Frames the start check tries (read_start_frames()), a second apart.
-constexpr size_t START_FRAME_TRIES = 3;
-constexpr Milliseconds START_FRAME_WAIT = 1000ms;
-
-//  The game screen now, as the start frames keep it; empty with no video.
-ImageRGB32 console_start_frame(StoryEnv& env){
-    env.context.wait_for_all_requests();
-    const VideoSnapshot snapshot = env.console.video().snapshot();
-    if (!snapshot){
-        return ImageRGB32();
-    }
-    return start_frame(extract_box_reference(snapshot, GameSettings::instance().GAME_BOX));
-}
-
-//  The console's start check for `checkpoint`: the screen against the
-//  start frame kept for it. With keep_start_frame (a save made by hand),
-//  the screen is kept as that frame instead, and passes.
+//  The console's start check for `checkpoint`; with keep_start_frame (a
+//  save made by hand), the screen is kept as its frame instead.
 StartRead read_console_start(StoryEnv& env, const std::string& checkpoint){
     if (env.keep_start_frame){
         env.keep_start_frame = false;
-        const ImageRGB32 frame = console_start_frame(env);
-        if (!frame || !env.start_frames.save(checkpoint, frame, "kept by the program's option from the save loaded")){
-            return {StartFound::NOT_READ, "couldn't keep the screen as " + checkpoint + "'s start frame"};
-        }
-        return {StartFound::AT_START, "kept the screen as " + checkpoint + "'s start frame"};
+        return keep_console_start(env.console, env.context, env.start_frames, checkpoint);
     }
-    size_t frames = 0;
-    return read_start_frames(env.start_frames.load(checkpoint), [&env, &frames]{
-        if (frames++ > 0){
-            env.context.wait_for(START_FRAME_WAIT);
-        }
-        return console_start_frame(env);
-    }, START_FRAME_TRIES);
+    return check_console_start(env.console, env.context, env.start_frames, checkpoint);
 }
 
 //  After the save at the end of `ended`: the screen, kept as the start
@@ -757,14 +701,10 @@ StartRead read_console_start(StoryEnv& env, const std::string& checkpoint){
 void keep_next_start_frame(StoryEnv& env, const std::string& ended){
     const std::vector<StoryCheckpoint>& table = story_checkpoints();
     for (size_t c = 0; c + 1 < table.size(); c++){
-        if (table[c].id != ended || !table[c + 1].start){
-            continue;
+        if (table[c].id == ended && table[c + 1].start){
+            keep_console_frame(env.console, env.context, env.start_frames, table[c + 1].id, "saved at the end of " + ended);
+            return;
         }
-        const ImageRGB32 frame = console_start_frame(env);
-        if (frame){
-            env.start_frames.save(table[c + 1].id, frame, "saved at the end of " + ended);
-        }
-        return;
     }
 }
 
