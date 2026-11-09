@@ -116,6 +116,9 @@ public:
 
     std::vector<std::string> trace;
     std::map<std::string, Failure> failures;
+    //  Where the save loaded stands, when it isn't where its checkpoint
+    //  starts: the start check reads it.
+    std::optional<StoryPose> save_stands;
     //  What the Mart sold, by its list's names.
     std::map<std::string, int> bag;
 
@@ -241,7 +244,13 @@ struct Simulation{
         for (const StoryCheckpoint& data : rows){
             segment.checkpoints.push_back(Pokemon::CheckpointSpec{
                 .id = data.id, .title = data.title, .saves = true,
-                .build = [this, &data]{ return Pokemon::build_story_checkpoint(data, game); },
+                .build = [this, &data]{
+                    return build_checked_checkpoint(
+                        data, game,
+                        [this]{ return game.save_stands; },
+                        [this](const std::string& line){ lines.push_back(line); }
+                    );
+                },
             });
         }
         Pokemon::SegmentHooks hooks;
@@ -380,6 +389,44 @@ UnitTestResult test_retry_from_save(){
     return true;
 }
 
+//  Outside `building`'s door on `map`, facing away from it.
+StoryPose below_door(const std::string& map, const std::string& building){
+    const MapData* data = map_named(map);
+    const std::vector<MapWarp> none;
+    for (const MapWarp& warp : data ? data->warps : none){
+        if (warp.to && warp.to->map == building){
+            return StoryPose{map, TilePos{warp.x, warp.y}.next(Direction::SOUTH), Direction::SOUTH};
+        }
+    }
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No door to " + building + " on " + map);
+}
+
+//  console B, FRLG 00.27, 2026-11-09: the save stood in Cerulean City below
+//  the Center's door, not at the counter where the checkpoint starts; the
+//  run walked south as if from the counter and failed at a warp. 00.09
+//  starts at Pewter's counter: from a save below that Center's door, the
+//  start check stops it before any step and without saving.
+UnitTestResult test_save_off_start_pose(){
+    Simulation sim;
+    sim.game.save_stands = below_door("PewterCity", "PewterCity_PokemonCenter_1F");
+    const Pokemon::SegmentReport report = sim.run({.from = "00.09", .to = "00.09"});
+    const bool stepped = std::any_of(sim.game.trace.begin(), sim.game.trace.end(), [](const std::string& item){
+        return item.starts_with("00.09/");
+    });
+    if (report.completed || report.failed_checkpoint != "00.09" || report.failure.failure != "start_failed"
+        || stepped || !sim.saves.empty()
+    ){
+        return "Expected 00.09 stopped at its start check, before any step:" + joined(sim.game.trace) + joined(sim.lines);
+    }
+    const bool told = std::any_of(sim.lines.begin(), sim.lines.end(), [](const std::string& line){
+        return line.starts_with("start pose mismatch: ");
+    });
+    if (!told){
+        return "Expected the mismatch logged:" + joined(sim.lines);
+    }
+    return true;
+}
+
 //  Brock's battle lost every time: three attempts, then the stop.
 UnitTestResult test_gives_up_after_attempts(){
     Simulation sim;
@@ -409,6 +456,10 @@ const AutoStorySimulationTestCase AUTO_STORY_SIMULATION_CASES[] = {
     {
         .input = {.name = "a battle lost every time stops after 3 attempts", .body = test_gives_up_after_attempts},
         .expectation = {.description = "aborts after three consecutive battle blackouts"},
+    },
+    {
+        .input = {.name = "a save off the start pose stops before any step", .body = test_save_off_start_pose},
+        .expectation = {.description = "fails the start check without walking or saving"},
     },
 };
 
