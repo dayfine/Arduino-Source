@@ -406,16 +406,12 @@ void AudioPassthroughPairQt::reset(
     auto scope_check = m_sanitizer.check_scope();
     QMetaObject::invokeMethod(this, [this, format, descriptor, output, output_volume]{
         auto scope_check = m_sanitizer.check_scope();
+        close_audio_source();
         std::unique_ptr<AudioSource> source;
         if (descriptor){
             source = descriptor->make_AudioSource(m_logger, format);
         }
         WriteSpinLock lg(m_lock, PA_CURRENT_FUNCTION);
-        if (m_reader){
-            teardown_tree();
-            m_sink_device.reset();
-            m_reader.reset();
-        }
         m_input_choice = format;
         m_output_device = output;
         m_output_volume = output_volume;
@@ -426,6 +422,15 @@ void AudioPassthroughPairQt::reset(
             m_fft_listener.reset(new InternalFFTListener(*this));
         }
     });
+}
+// Called on this object's Qt thread before constructing a replacement input.
+void AudioPassthroughPairQt::close_audio_source(){
+    WriteSpinLock lg(m_lock, PA_CURRENT_FUNCTION);
+    if (m_reader){
+        teardown_tree();
+        m_sink_device.reset();
+        m_reader.reset();
+    }
 }
 void AudioPassthroughPairQt::clear_audio_source(){
     auto scope_check = m_sanitizer.check_scope();
@@ -447,16 +452,12 @@ void AudioPassthroughPairQt::set_audio_source(
     auto scope_check = m_sanitizer.check_scope();
     QMetaObject::invokeMethod(this, [this, descriptor, format]{
         auto scope_check = m_sanitizer.check_scope();
+        close_audio_source();
         std::unique_ptr<AudioSource> source;
         if (descriptor){
             source = descriptor->make_AudioSource(m_logger, format);
         }
         WriteSpinLock lg(m_lock, PA_CURRENT_FUNCTION);
-        if (m_reader){
-            teardown_tree();
-            m_sink_device.reset();
-            m_reader.reset();
-        }
         m_input_choice = format;
         if (source){
             m_reader = std::move(source);
