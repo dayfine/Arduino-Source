@@ -268,20 +268,25 @@ ReplayScreen between_steps_screen(std::string_view kind){
     using Pokemon::ScreenEvent;
     const Pokemon::ScreenEvents box{ScreenEvent::DIALOG_BOX};
     const Pokemon::ScreenEvents battle{ScreenEvent::BATTLE_STARTED};
+    const Pokemon::ScreenEvents black{ScreenEvent::FADE_BLACK};
+    ReplayScreen screen;
     if (kind == "dialog"){
-        return {{{33, box}}, 400};
-    }
-    if (kind == "wild-encounter"){
-        return {{{100, {ScreenEvent::FADE_WHITE}}, {400, {}}, {1500, battle}}, 2000};
-    }
-    if (kind == "trainer-sight"){
-        return {{{100, box}, {2000, {ScreenEvent::FADE_BLACK}}, {2500, battle}}, 3000};
-    }
-    if (kind == "warp"){
+        screen.frames = {{33, box}};
+        screen.look_ms = 400;
+    }else if (kind == "wild-encounter"){
+        screen.frames = {{100, Pokemon::ScreenEvents{ScreenEvent::FADE_WHITE}}, {400, {}}, {1500, battle}};
+        screen.look_ms = 2000;
+    }else if (kind == "trainer-sight"){
+        screen.frames = {{100, box}, {2000, black}, {2500, battle}};
+        screen.look_ms = 3000;
+    }else if (kind == "warp"){
         //  Long enough after the fade for no battle to follow it.
-        return {{{100, {ScreenEvent::FADE_BLACK}}, {600, {}}}, 9000};
+        screen.frames = {{100, black}, {600, {}}};
+        screen.look_ms = 9000;
+    }else{
+        throw ParseException("story replay: unknown interrupt kind");
     }
-    throw ParseException("story replay: unknown interrupt kind");
+    return screen;
 }
 void validate_scenario(const ReplayData& data, const JsonValue& scenario){
     const JsonObject& root = scenario.to_object_throw();
