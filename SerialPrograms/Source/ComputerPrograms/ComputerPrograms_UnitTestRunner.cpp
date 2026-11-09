@@ -81,6 +81,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     Pokemon::add_tests_RouteLog(ret);
     Pokemon::add_tests_ScreenEvents(ret);
     Pokemon::add_tests_Interrupts(ret);
+    Pokemon::add_tests_Transitions(ret);
     Pokemon::add_tests_StoryActions(ret);
     Pokemon::add_tests_StoryEvents(ret);
     Pokemon::add_tests_StorySegments(ret);
