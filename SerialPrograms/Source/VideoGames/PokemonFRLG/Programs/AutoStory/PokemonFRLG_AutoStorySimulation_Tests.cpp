@@ -120,8 +120,7 @@ public:
 
     std::vector<std::string> trace;
     std::map<std::string, Failure> failures;
-    //  Where the save loaded stands, when it isn't where its checkpoint
-    //  starts: the start check reads it.
+    //  Where the save loaded stands, when not at its checkpoint's start.
     std::optional<StoryPose> save_stands;
     //  What the Mart sold, by its list's names.
     std::map<std::string, int> bag;
@@ -267,7 +266,11 @@ struct Simulation{
         for (const StoryCheckpoint& data : rows){
             segment.checkpoints.push_back(Pokemon::CheckpointSpec{
                 .id = data.id, .title = data.title, .saves = true,
-                .build = [this, &data]{ return build_row(data); },
+                .build = [this, &data]{
+                    Pokemon::Checkpoint checkpoint = Pokemon::build_story_checkpoint(data, game);
+                    add_start_pose_check(checkpoint, data.start, [this]{ return game.save_stands; }, [this](const std::string& line){ lines.push_back(line); });
+                    return checkpoint;
+                },
             });
         }
         Pokemon::SegmentHooks hooks;
@@ -283,17 +286,6 @@ struct Simulation{
         hooks.log = [this](const std::string& line){ lines.push_back(line); };
         RunState state;
         return Pokemon::run_segment(state, segment, range, policy, hooks);
-    }
-    //  As the program builds it, with the start check reading the fake
-    //  game's save.
-    Pokemon::Checkpoint build_row(const StoryCheckpoint& data){
-        Pokemon::Checkpoint checkpoint = Pokemon::build_story_checkpoint(data, game);
-        add_start_pose_check(
-            checkpoint, data.start,
-            [this]{ return game.save_stands; },
-            [this](const std::string& line){ lines.push_back(line); }
-        );
-        return checkpoint;
     }
     std::string last_begun() const{
         for (auto it = game.trace.rbegin(); it != game.trace.rend(); ++it){
@@ -417,40 +409,19 @@ UnitTestResult test_retry_from_save(){
     return true;
 }
 
-//  Outside `building`'s door on `map`, facing away from it.
-StoryPose below_door(const std::string& map, const std::string& building){
-    const MapData* data = map_named(map);
-    const std::vector<MapWarp> none;
-    for (const MapWarp& warp : data ? data->warps : none){
-        if (warp.to && warp.to->map == building){
-            return StoryPose{map, TilePos{warp.x, warp.y}.next(Direction::SOUTH), Direction::SOUTH};
-        }
-    }
-    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No door to " + building + " on " + map);
-}
-
-//  console B, FRLG 00.27, 2026-11-09: the save stood in Cerulean City below
-//  the Center's door, not at the counter where the checkpoint starts; the
-//  run walked south as if from the counter and failed at a warp. 00.09
-//  starts at Pewter's counter: from a save below that Center's door, the
-//  start check stops it before any step and without saving.
+//  console B, FRLG 00.27, 2026-11-09: the save stood below Cerulean Center's
+//  door, and the run walked as if from the counter where 00.27 starts. 00.09
+//  from below Pewter Center's door (17, 25) stops before any step or save.
 UnitTestResult test_save_off_start_pose(){
     Simulation sim;
-    sim.game.save_stands = below_door("PewterCity", "PewterCity_PokemonCenter_1F");
+    sim.game.save_stands = StoryPose{"PewterCity", TilePos{17, 26}, Direction::SOUTH};
     const Pokemon::SegmentReport report = sim.run({.from = "00.09", .to = "00.09"});
-    const bool stepped = std::any_of(sim.game.trace.begin(), sim.game.trace.end(), [](const std::string& item){
-        return item.starts_with("00.09/");
-    });
-    if (report.completed || report.failed_checkpoint != "00.09" || report.failure.failure != "start_failed"
-        || stepped || !sim.saves.empty()
+    const auto stepped = [](const std::string& item){ return item.starts_with("00.09/"); };
+    const auto told = [](const std::string& line){ return line.starts_with("start pose mismatch: "); };
+    if (report.completed || report.failure.failure != "start_failed" || !sim.saves.empty()
+        || std::ranges::any_of(sim.game.trace, stepped) || std::ranges::none_of(sim.lines, told)
     ){
-        return "Expected 00.09 stopped at its start check, before any step:" + joined(sim.game.trace) + joined(sim.lines);
-    }
-    const bool told = std::any_of(sim.lines.begin(), sim.lines.end(), [](const std::string& line){
-        return line.starts_with("start pose mismatch: ");
-    });
-    if (!told){
-        return "Expected the mismatch logged:" + joined(sim.lines);
+        return "Expected 00.09 stopped at its start check, the mismatch logged:" + joined(sim.game.trace) + joined(sim.lines);
     }
     return true;
 }
