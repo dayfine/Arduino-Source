@@ -241,13 +241,7 @@ struct Simulation{
         for (const StoryCheckpoint& data : story_checkpoints()){
             segment.checkpoints.push_back(Pokemon::CheckpointSpec{
                 .id = data.id, .title = data.title, .saves = true,
-                .build = [this, &data]{
-                    return build_checked_checkpoint(
-                        data, game,
-                        [this]{ return game.save_stands; },
-                        [this](const std::string& line){ lines.push_back(line); }
-                    );
-                },
+                .build = [this, &data]{ return build_row(data); },
             });
         }
         Pokemon::SegmentHooks hooks;
@@ -263,6 +257,17 @@ struct Simulation{
         hooks.log = [this](const std::string& line){ lines.push_back(line); };
         RunState state;
         return Pokemon::run_segment(state, segment, range, policy, hooks);
+    }
+    //  As the program builds it, with the start check reading the fake
+    //  game's save.
+    Pokemon::Checkpoint build_row(const StoryCheckpoint& data){
+        Pokemon::Checkpoint checkpoint = Pokemon::build_story_checkpoint(data, game);
+        add_start_pose_check(
+            checkpoint, data.start,
+            [this]{ return game.save_stands; },
+            [this](const std::string& line){ lines.push_back(line); }
+        );
+        return checkpoint;
     }
     std::string last_begun() const{
         for (auto it = game.trace.rbegin(); it != game.trace.rend(); ++it){
