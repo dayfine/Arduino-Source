@@ -38,6 +38,9 @@ const WallClock T0 = WallClock() + std::chrono::hours(1);
 //  As the walk's WARP_TIMEOUT (PokemonFRLG_OverworldWalk.cpp).
 constexpr Milliseconds WARP_WAIT = 8000ms;
 
+//  A one-tile walk onto a door: a tile's time, then the release.
+constexpr Milliseconds ONE_TILE_HOLD = OverworldWalkSteps::TILE_TIME + OverworldWalkSteps::STEP_RELEASE;
+
 //  A warp leg: the player holds onto the door for `hold`, the walk then
 //  waits for the fade (wait_out_warp()).
 struct WarpReplayInput{
@@ -119,12 +122,12 @@ private:
 const WarpReplayCase WARP_REPLAY_CASES[] = {
     {
         .name = "00.27 route10_nurse run 3: ended in the grass, no fade",
-        .input = {"0027-route10-run3", TILE_TIME + STEP_RELEASE},
+        .input = {"0027-route10-run3", ONE_TILE_HOLD},
         .expectation = {"no fade", "no fade", "none"},
     },
     {
         .name = "00.27 route10_nurse run 2: ended beside the Center, no fade",
-        .input = {"0027-route10-run2", TILE_TIME + STEP_RELEASE},
+        .input = {"0027-route10-run2", ONE_TILE_HOLD},
         .expectation = {"no fade", "no fade", "none"},
     },
 };
