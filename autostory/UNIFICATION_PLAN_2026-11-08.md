@@ -15,6 +15,86 @@ Goals, in the user's order:
 
 PLZA is out of scope for now (user: "don't worry about PLZA just yet").
 
+## Re-prioritized 2026-11-08 evening (read this first)
+
+The night's console runs showed that the order below was wrong: we kept
+fixing one step's screen check at a time, finishing checkpoints by hand when
+they failed, and moving on. Every 01.04 bug found today (night brightness, a
+hand-counted tap total, the Potion menu under Roark's badge speech) was
+already in the 2026-10-31 log. New order, highest first:
+
+### P0 (process, now): no advance without a clean pass
+
+A failed checkpoint is rerun from its own save until the program passes it
+with no hand input; only then does the next one start (its save overwrites
+this one's start). Never "fixed but not verified". Skill rule: #265
+(`console-iteration` §6 step 7, §7 Save state). Memory:
+`no-advance-without-clean-pass`.
+
+- **01.04 is open, not passed.** Its start save was overwritten at 15:29 when
+  01.05 started after a hand-closed Bag. It needs a save from before Roark
+  (a replay from an earlier checkpoint, or a new game with the user's OK).
+
+### P1 (shared foundation, both games): event-driven perception
+
+Today each step polls one detector in its own window. Observed on console B
+(2026-11-08):
+
+- a banner that shows during the previous step is lost (the Gate, both ways:
+  an open leg slid onto the warp and the banner came and went unwatched);
+- a dim destination reads as a fade (the Gate's floor, brightness 46, under
+  `FADE_DARKNESS` 75);
+- one missed fade fails a real arrival (the Monte Carlo drops 01.05 to 19/20
+  on a single injected miss at a door);
+- a screen threshold measured by day fails at night (the gym check, street
+  88 against 90).
+
+Design: detectors (fade to black, fade to white, banner text, dialog,
+battle, still screen) run continuously while moving and post timestamped
+events; steps judge from the events since they started. Arrival through a
+warp = fade **or** the far map's banner **or** a position that fits the far
+map. Shared in `Pokemon/` with BDSP and FRLG bindings; the seeded
+disturbance sim (#262, B6) is the gate: a row must survive any single injected
+miss. Design note first (short), then implementation by a code agent.
+
+### P2 (shared foundation): move fast where the end is certain
+
+- A leg that ends at a wall, door or warp runs (held B + direction) and stops
+  on the wall or the fade; counted D-pad taps only for legs that stop on an
+  open tile. Out of the Oreburgh Gym took 19 taps, about 32 s; a run is about
+  5 s. The mine hall and the Gate's row 22 are the same case.
+- Door steps settle short (overworld back, still) unless the row marks an
+  arrival scene (Mom's walk-in, Dawn's tour). Today every door pays the 5 s
+  quiet rule: about 10 s after entering the Gate.
+- Don't localize what the next move doesn't need: the Gate's route spent six
+  wall clips pinning a column before a straight run west.
+
+### P3 (in progress, agent): no open leg beside a warp
+
+Planner/table rule with a red test: an open (stick) leg must not stop one
+tile short of a warp while walking toward it; it drifts onto the warp. Plus:
+the banner step must not take a dim cave floor for a fade, and must notice
+when the player is already through. 01.05 entry fixed in #226 `95b2960c5`;
+01.05's exit and 01.02's Gate entry have the same shape.
+
+### P4: BDSP 01.05 → 01.11, each checkpoint a clean pass from its own save
+
+Then the rest of the plan below in its old order (B1-B4, C1-C3). #263 (01.03
+as JSON) needs rework first: pilot JSON on a stable row, not the one being
+iterated on the console (review on #263).
+
+### Status at 2026-11-08 16:05
+
+| Row | State |
+|---|---|
+| 01.03 | **Passed** on console B 14:17-14:23, one program run (north route, mine doors black/white). Sim 76% (hiker "no plan", missed cave fades). |
+| 01.04 | Fixed: night brightness check removed; 21 taps from the map's doors (red test); settle after a battle before the Potion; no Potion left ends the doses. Program beat Roark (third try). **Open**: start save gone. |
+| 01.05 | Gate entry fixed (door run; passed on console 16:03). Gate exit: same bug; a one-run fix is local only, because it drops 01.05's Monte Carlo to 19/20 until a door counts fade or banner (P1). |
+| 01.06-01.11 | Not run tonight. |
+
+Open PRs from tonight: #226 (BDSP WIP), #262 (Monte Carlo), #263 (JSON,
+needs rework), #265 (skill rule), the P3 agent's PR.
+
 ## Where things are
 
 | Thing | Where | Notes |
