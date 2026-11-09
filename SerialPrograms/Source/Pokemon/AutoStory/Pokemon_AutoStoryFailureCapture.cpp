@@ -96,7 +96,7 @@ FailureCapture::FailureCapture(VideoStream& stream, std::string game)
 {}
 
 void FailureCapture::attach(SegmentHooks& hooks){
-    hooks.status = [this, status = std::move(hooks.status)](const std::string& line){
+    hooks.status = [this, status = std::move(hooks.status)](const std::string& line) mutable{
         StatusStep step = step_of_status(line);
         if (!step.checkpoint.empty()){
             m_last_step = std::move(step);
