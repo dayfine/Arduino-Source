@@ -9,8 +9,8 @@
  *  banner. Each row's test logs its pass rate and, per failing step, the
  *  failure kinds with a seed that reproduces each, and fails only below the
  *  row's pinned floor. The old 01.03 test shows the harness finds the two
- *  failures lab-B met on 2026-11-08. One more runs every row's seeds again
- *  with one fade's hold unseen: none that passed may fail.
+ *  failures lab-B met on 2026-11-08. Each row's seeds that pass with no
+ *  miss run again with one fade's hold unseen, and must pass again.
  *
  */
 
@@ -143,9 +143,39 @@ UnitTestResult test_row(Logger& logger, const std::string& row, size_t floor){
     }
     const size_t seeds = Pokemon::seed_count(SEEDS_VARIABLE, DEFAULT_SEEDS);
     const WallClock start = current_time();
-    const RowReport report = run_row(story_checkpoints(), row, seeds);
+    const std::vector<StoryCheckpoint> rows = story_checkpoints();
+    const RowNoise noise{.clean = looked_for(rows, row), .rates = {}};
+    RowNoise hold_noise = noise;
+    hold_noise.rates.missed_hold = 1;
+    //  Each seed that passes with no miss runs again with one fade's hold
+    //  dropped (a short fade between two frames; the door's watcher missed
+    //  13 of 35 on lab-B, 2026-11-08): the program's fade watch takes the
+    //  scene after the fall, so it must pass again.
+    size_t rerun = 0;
+    std::vector<std::string> hold_failed;
+    const RowReport report = Pokemon::run_row_seeds(row, Pokemon::story_seeds(seeds), [&](const std::string& id, uint64_t seed){
+        SilentLogger silent;
+        const SeedOutcome out = run_seed(silent, rows, noise, id, seed);
+        const Pokemon::DisturbancePlan plan = Pokemon::make_disturbance_plan(seed, noise.rates, noise.clean.fades, noise.clean.banners);
+        if (out.passed && noise.clean.fades > 0 && !plan.missed_fade && !plan.missed_banner){
+            rerun++;
+            const SeedOutcome hold = run_seed(silent, rows, hold_noise, id, seed);
+            if (!hold.passed){
+                hold_failed.push_back(std::format("{}: {} {}", hold.detail, hold.failed_step, hold.kind));
+            }
+        }
+        return out;
+    });
     const auto took = std::chrono::duration_cast<Milliseconds>(current_time() - start);
     logger.log(Pokemon::format_report(report) + std::format("\n    ({} seeds in {} ms)", seeds, took.count()));
+    logger.log(std::format("{}: one fade's hold unseen: {} of {} seeds that passed with no miss fail.", row, hold_failed.size(), rerun));
+    if (!hold_failed.empty()){
+        std::string out = std::format("{} fails with one fade's hold unseen where it passed without:", row);
+        for (const std::string& line : hold_failed){
+            out += "\n  " + line;
+        }
+        return out;
+    }
     //  The floors are the default seeds' counts; other counts only report.
     if (seeds == DEFAULT_SEEDS && report.passes * 100 < floor * report.runs){
         return std::format("{} passed {} of {}, under its floor of {}%:\n{}", row, report.passes, report.runs,
@@ -247,50 +277,6 @@ UnitTestResult test_old_0103(Logger& logger){
 }
 
 
-//  Each row of the table for the seeds, each seed run twice: as lab-B
-//  disturbs it, with no miss, and the same with one fade's hold dropped (a
-//  short fade between two frames; the door's watcher missed 13 of 35 on
-//  2026-11-08). The program's fade watch takes the scene after the fall,
-//  so no seed that passes the first fails the second.
-UnitTestResult test_one_hold_unseen(Logger& logger){
-    const size_t seeds = Pokemon::seed_count(SEEDS_VARIABLE, DEFAULT_SEEDS);
-    const std::vector<StoryCheckpoint> rows = story_checkpoints();
-    Pokemon::DisturbanceRates rates;
-    rates.missed_detection = 0;
-    Pokemon::DisturbanceRates hold_rates = rates;
-    hold_rates.missed_hold = 1;
-    std::vector<std::string> broken;
-    size_t runs = 0;
-    size_t held = 0;
-    for (const StoryCheckpoint& checkpoint : rows){
-        const std::string& row = checkpoint.id;
-        if (Pokemon::selected_rows(ROWS_VARIABLE, {row}).empty()){
-            continue;
-        }
-        const SimMisses clean = looked_for(rows, row);
-        for (uint64_t seed : Pokemon::story_seeds(seeds)){
-            SilentLogger silent;
-            const SeedOutcome plain = run_seed(silent, rows, {.clean = clean, .rates = rates}, row, seed);
-            const SeedOutcome hold = run_seed(silent, rows, {.clean = clean, .rates = hold_rates}, row, seed);
-            runs++;
-            held += plain.passed && hold.passed ? 1 : 0;
-            if (plain.passed && !hold.passed){
-                broken.push_back(std::format("{} {}: {} {}", row, hold.detail, hold.failed_step, hold.kind));
-            }
-        }
-    }
-    logger.log(std::format("One fade's hold unseen: {} of {} runs pass both ways; {} pass only with every hold seen.", held, runs, broken.size()));
-    if (broken.empty()){
-        return true;
-    }
-    std::string out = std::format("{} seeds pass with every hold seen and fail with one unseen:", broken.size());
-    for (const std::string& line : broken){
-        out += "\n  " + line;
-    }
-    return out;
-}
-
-
 //  A row of the table, disturbed; or, with a body, another test.
 struct StoryMonteCarloInput{
     std::string row;
@@ -357,10 +343,6 @@ const StoryMonteCarloCase AUTO_STORY_MONTE_CARLO_CASES[] = {
     {.input = {"01.11"}, .expectation = {.floor = 100}},
     {
         .input = {"the old 01.03 fails across Roark's room and at the Center's door (lab-B, 2026-11-08)", test_old_0103},
-        .expectation = {},
-    },
-    {
-        .input = {"one fade's hold unseen: every seed that passes still passes", test_one_hold_unseen},
         .expectation = {},
     },
 };
