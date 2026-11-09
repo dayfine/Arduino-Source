@@ -4,6 +4,8 @@
  *
  *  Plays a new game's intro (language, Professor Rowan, appearance, names) up to
  *  the bedroom with the player in control, which is where the Tutorial starts.
+ *  The language and the player's look are picked from their menus by index
+ *  (NintendoSwitch_MenuCursor.h); the menus' shapes are the data below.
  *
  */
 
@@ -14,12 +16,39 @@
 #include <cstddef>
 #include <optional>
 #include <string>
+#include <vector>
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
+#include "CommonFramework/Language.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
+#include "NintendoSwitch/Programs/MenuCursor/NintendoSwitch_MenuCursor.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
+
+
+//  The language select's items, top to bottom. Its cursor starts on the
+//  Switch's system language.
+const std::vector<Language>& bdsp_language_menu();
+//  The appearance grid: two rows of four looks, the cursor on the first.
+//  PlayerModelOption's "Model N" is item N - 1: Lucas's two first looks,
+//  then Dawn's, on each row.
+inline constexpr MenuGrid BDSP_LOOK_GRID{4, 8};
+
+//  What the intro picks on its menus.
+struct IntroPicks{
+    //  Where the language select's cursor starts.
+    Language switch_language = Language::English;
+    Language game_language = Language::English;
+    //  An item of BDSP_LOOK_GRID.
+    size_t look = 0;
+};
+//  The presses from the Switch's language to the game's on the language
+//  select; nullopt when the menu lacks either.
+std::optional<std::vector<DpadPosition>> language_pick_moves(const IntroPicks& picks);
+//  The presses from the first look to the chosen one; nullopt when it is
+//  outside the grid.
+std::optional<std::vector<DpadPosition>> look_pick_moves(const IntroPicks& picks);
 
 
 //  Which intro screen `screen` shows, as the intro's steps tell them apart:
@@ -35,6 +64,9 @@ enum class IntroStep{
     SELECT_USER,            //  A on the Switch's user select
     FAIL_NOT_IN_GAME,       //  HOME is showing
     FAIL_NOT_BDSP,          //  no BDSP screen within INTRO_TIME_BEFORE_BDSP
+    FAIL_PICK_MISSED,       //  the player's keyboard, with a pick still to make
+    PROBE_FOR_LANGUAGE,     //  D-pad probe: a list takes the language pick, else A
+    PROBE_FOR_LOOK,         //  D-pad probe: a grid takes the look pick, else A
     ENTER_PLAYER_NAME,      //  type the name on the first keyboard
     CANCEL_RIVAL_KEYBOARD,  //  X: back to the rival's name list
     MOVE_TO_PRESET,         //  Down: off "I'll tell you..."
@@ -48,6 +80,10 @@ enum class IntroStep{
 };
 //  Progress tracking state for the new-game introductory sequence.
 struct IntroProgress{
+    //  Picks still to make on the language select and the appearance grid. A
+    //  pick the cursor already starts on needs no menu, and A takes it.
+    bool language_pending = false;
+    bool look_pending = false;
     bool player_named = false;
     //  A preset name was picked from the rival's list, and how many screens
     //  have shown since without the list coming back. "Barry, is it?" and
@@ -74,7 +110,9 @@ struct IntroProgress{
 //  and the language select. Another game launched by mistake (r1,
 //  2026-11-01: FireRed) fails here instead of being played. Black screens
 //  take no presses: BDSP boots on black for about 25 s (r3, 2026-11-01).
-inline constexpr std::chrono::milliseconds INTRO_TIME_BEFORE_BDSP = std::chrono::seconds(60);
+//  While the language pick waits for its menu, each of those screens also
+//  takes two cursor probes of about 1.4 s each, hence two minutes.
+inline constexpr std::chrono::milliseconds INTRO_TIME_BEFORE_BDSP = std::chrono::seconds(120);
 //  How long the boot may stay black after the restart.
 inline constexpr std::chrono::milliseconds INTRO_BOOT_LIMIT = std::chrono::seconds(60);
 //  Whether `screen` (classify_intro_screen()) is one only BDSP's intro shows:
@@ -126,18 +164,25 @@ bool intro_in_control_without_menu(const XProbe& probe);
 //  Counts `step` in `progress`.
 void record_intro_step(IntroProgress& progress, IntroStep step);
 
+//  The progress a new intro starts from: which of `picks` need a menu.
+IntroProgress intro_start(const IntroPicks& picks);
+
 //  From the title screen or any intro screen of a game with no save, with BDSP
 //  running in front: from HOME it throws UserSetupError, since the restart would
-//  launch whatever tile HOME's cursor is on. Restarts the game first, so it
+//  launch whatever tile HOME's cursor is on, as it does for picks no menu has. Restarts the game first, so it
 //  always starts from the title, waits out the black boot (up to
 //  INTRO_BOOT_LIMIT) without pressing anything, and fails if no BDSP screen shows within
-//  INTRO_TIME_BEFORE_BDSP of screens. Names the player `player_name`
-//  and picks the rival's default name (Barry) from the list. Each step reads the
+//  INTRO_TIME_BEFORE_BDSP of screens. Picks the language and the look in
+//  `picks`, names the player `player_name` and picks the rival's default name
+//  (Barry) from the list. Until a pick is made, each unknown screen gets a
+//  D-pad probe before its A; the player's keyboard showing with a pick still
+//  to make fails. Each step reads the
 //  screen and waits for the expected next one; an unexpected screen fails with a
 //  screenshot and the recent screens.
 void play_new_game_intro(
     SingleSwitchProgramEnvironment& env,
     ProControllerContext& context,
+    const IntroPicks& picks,
     const std::string& player_name
 );
 
