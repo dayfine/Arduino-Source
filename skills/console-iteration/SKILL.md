@@ -16,6 +16,28 @@ batch can show.
 Map and route work follows the `map-route-verify` skill, console rules
 `bdsp-autostory-test`. This skill is the loop around them.
 
+## 0. Launch, drive, test (current as of 2026-11-08)
+
+- **Launch only with** `python3 <agents checkout>/lab/scripts/start_dev.py B`: it builds
+  `lab/dev-bdsp` in `~/Projects/dev-builds/slot-B`, stages, signs and runs with profile
+  lab-B, holding `~/.lab/locks/B`. Needs a clean worktree. Run it detached; the app is
+  ready when its log says `Lab: reading requests`. To relaunch, `kill -TERM` the slot-B
+  pid, then run start_dev again. Never hand-build or launch slot dirs.
+- **Drive** from `<agents checkout>/lab/control` with
+  `export LAB_CONSOLE=B LAB_PROFILE="$HOME/Library/Application Support/SerialPrograms/Profiles/lab-B" LAB_OWNER=lab-B LABLOCK_TOKEN=$(cat ~/.lab/locks/B/token)`
+  (`LAB_PROFILE` must be the full path). `labctl.sh state|select|start|stop`,
+  `printf ... | sh cfrun.sh NAME` (shots in `lab-B/Lab/outbox/`).
+- **AutoStory range**: `START_CHECKPOINT` / `END_CHECKPOINT` under
+  `99-Panels["PokemonBDSP:AutoStory"].RUN` in the profile JSON (UTF-8 BOM). Edit it only
+  while the app is closed; `labctl set START_CHECKPOINT` fails. Indices shift when rows
+  are added: check the log's first `[Event]` line after `start`.
+- **Unit tests**: the headless `SerialProgramsTests --filter <text>` (in `lab/main`), never
+  the GUI app's `--command-line-test-mode`: with default settings it opens console A's
+  serial port (2026-11-08, cut A's live run).
+- **Watch a run** by polling `lab-B/Lab/state` and the log for `[Segment] ... failed`,
+  not by tail+grep (a tail monitor missed a failure for 25 min).
+- **Map fixes** need the user's approval with the `map-fix-evidence` pack.
+
 ## 1. Define a segment, then code it
 
 A segment (checkpoint) is **one map, or one story event**, never both:
@@ -136,6 +158,16 @@ transaction:
    thing is how today's runs were stopped and a save was overwritten.
 6. **Budget**: a cycle is about 3 minutes of console time plus the fix.
    Three cycles without a pass is the hard stop (section 9).
+7. **No advance without a clean pass.** A failed checkpoint is rerun from
+   its own save, after the fix, until the program passes it end to end with
+   no hand input. Only then start the next one. The next checkpoint's run
+   saves at its start and overwrites this one's save (one slot), so a
+   checkpoint finished by hand and left behind can never be verified.
+   Never "count it as fixed but not verified", and never start N+1 from
+   where a hand recovery left the player. 01.04 (Oreburgh Gym) failed the
+   same three ways from 2026-10-31 to 2026-11-08, each time finished by hand
+   and moved past; on 2026-11-08 a hand-closed Bag after the Roark win and
+   a start at 01.05 overwrote 01.04's last start save.
 
 ## 7. Keep it safe
 
@@ -163,6 +195,10 @@ transaction:
 - A checkpoint run **saves at its start**. Starting checkpoint N moves the
   console's save to N's start. Start a checkpoint only from its own save,
   and never start one to "take a screenshot".
+- Before every `start`, check that the previous checkpoint passed cleanly
+  in a program run (section 6, step 7). If it did not, reload its save and
+  rerun it instead. If its save is already gone, say so and mark it open in
+  the run record, never passed.
 - Hand batches never save unless the batch is named a save (`sv*`) and the
   user asked.
 - Before any deliberate save, screenshot the save prompt (location, play
@@ -270,6 +306,23 @@ step.
 stay still, then `shot`: the player ends against the wall whatever the start
 was (the "clip" of clip-then-offset). Not on fixed-camera stretches.
 
+**Confirm a wanderer.** When someone blocks a leg, find out whether they
+move before changing code. Step out of their reach first (two taps away, off
+their row and column), so you don't block them or start a talk, then shoot
+on a timer:
+
+    dpad DOWN 160 640
+    dpad DOWN 160 640
+    shot s0
+    wait 2500
+    shot s1
+    ...                     (12 shots, 30 s)
+
+Montage the shots (`ffmpeg -framerate 1 -i s%d.png -vf "crop=...,tile=4x4"`)
+and write down every tile they stood on: that is the zone. Compare it with
+the map's `wander` min/max. Then probe the tiles around the zone the same
+way (tap, shot, tap back) to find the route that avoids it.
+
 **Talk, read a sign, answer a prompt.** Face the tile with a tap toward it,
 `press A 100 1500`, `shot`, `detect bdsp_dialog`. Rocks and signs answer too:
 read the shot. `press B 100 800` advances lines and never starts a talk; `A`
@@ -311,6 +364,12 @@ unknown screen: a new game's first screens accept it.
 - A cutscene (Rowan's) opens with no dialog box: the walk reads as stopped;
   wait for the first line.
 - Wandering NPCs (the Poketch clown, Jubilife's green-haired man, Route
-  203's road woman and the blue-haired man) are moving walls: never anchor
-  on them, and wait them out before re-planning.
+  203's road woman and the blue-haired man, Route 204's youngster at the
+  Ravaged Path) are moving walls: never anchor on them, and **never plan a
+  leg along their zone** (on its axis, through 2+ of its tiles). Crossing it
+  across its axis, one tile, is fine; waiting them out is only for that
+  crossing. Route 204, 2026-11-08: the
+  youngster wanders (12..14, 2) right beside the door tile (11, 2); the
+  route along row 2 failed twice, row 3 to (11, 3) then north never meets
+  him. Confirm a suspected wanderer with the recipe "Confirm a wanderer".
 - Rocks and signs answer A too. Check that the talk is the one you want.

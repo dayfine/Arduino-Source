@@ -26,7 +26,9 @@ jobs:
       - name: ShellCheck (errors only)
         run: shellcheck -S error $(git ls-files '*.sh') tools/hooks/pre-push
       - name: Lab lock race test
-        run: sh lab/control/lablock_test.sh 10
+        run: sh lab/control/lablock_test.sh 20
+      - name: Lab disk GC deployment rule test
+        run: sh lab/scripts/disk_gc_test.sh
       - name: Python syntax
         run: python3 -m py_compile $(git ls-files 'tools/*.py' 'bin/*.py' 'lab/*.py' 'devtools/*.py')
       - uses: actions/setup-python@v6

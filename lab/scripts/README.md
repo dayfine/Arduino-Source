@@ -13,6 +13,7 @@ and never start a program on a save you have not checked.
 | `cfr.sh NAME < batch` | Queue stdin as a Command File Runner batch, select the CFR, start it, wait for `end` (cap `CFR_WAIT_S`, default 600 s; stops early if the lab app exits) and print the journal. |
 | `ciwait.sh RUN_ID...` | Wait for fork CI runs (cap `CI_WAIT_MIN`, default 60), print branch / workflow / conclusion and failed test names. Run it in the background from the main session; subagents don't wait on CI. |
 | `decomp.sh ARGS` | `python3 -I -m devtools.maps ARGS` from a worktree with `devtools/maps` (`MAPGRID_WT`, default the FRLG lab tree). |
+| `disk_gc.sh [--dry-run\|--apply]` | The lab disk GC (source of `~/BDSPLab/disk_gc.sh`, launchd `com.dayfine.lab-disk-gc`): old lab profile output, idle agent worktrees and build folders, and `~/Projects/dev-deployments/<slot>/` beyond the newest 5 (never a running app's, never a symlink). Dry run by default. `disk_gc_test.sh` tests the deployment rule on a fake `HOME`. See [`../LAB_BUILD_DISK.md`](../LAB_BUILD_DISK.md). |
 
 Example:
 

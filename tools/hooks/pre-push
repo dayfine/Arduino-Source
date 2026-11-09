@@ -2,8 +2,11 @@
 # Pre-push code-health gate: the same check as CI's "C++ Code Health" job, run locally (about 1 s).
 # Installed by tools/install_hooks.sh as a stub that runs the latest copy from origin/agents.
 #
-# For each pushed branch whose commit is this worktree's HEAD, run the code-health linter against the
-# branch's fork PR base (else origin/main) and refuse the push on any failure. Pushes of other commits
+# For each pushed branch whose commit is this worktree's HEAD, run the code-health linter against a base
+# and refuse the push on any failure. The base is, in order: the branch's fork PR base; the branch's
+# recorded base (git config branch.<name>.pr-base <base branch>; set it before a stacked branch's
+# first push, when it has no PR yet); for a branch already on the remote (lab/main and other branches
+# without a PR), the remote's current tip, so only what this push adds is checked; else origin/main. Pushes of other commits
 # (e.g. pa-sync's merges made without a checkout), deletions and tags are not checked, nor are pushes
 # from a tree without SerialPrograms/ (the agents branch).
 # The linter is devtools/code_health on origin/agents, like this hook; PA_AGENTS_DIR=<agents checkout>
@@ -44,14 +47,22 @@ while read -r lref lsha rref rsha; do
     fi
     br=${rref#refs/heads/}
     base=$(gh pr view "$br" -R dayfine/Arduino-Source --json baseRefName -q .baseRefName 2>/dev/null)
-    [ -n "$base" ] || base=main
-    git rev-parse -q --verify "origin/$base" >/dev/null || base=main
-    out=$(cd "$tools" && "$PY" -m devtools.code_health --root "$code" --base-ref "origin/$base" 2>&1)
+    [ -n "$base" ] || base=$(git config "branch.$br.pr-base")
+    if [ -n "$base" ] && git rev-parse -q --verify "origin/$base" >/dev/null; then
+        baseref=origin/$base
+    elif [ "$rsha" != 0000000000000000000000000000000000000000 ] && git cat-file -e "$rsha^{commit}" 2>/dev/null; then
+        baseref=$rsha
+        base="$br's remote tip ${rsha%"${rsha#????????????}"}"
+    else
+        base=main
+        baseref=origin/main
+    fi
+    out=$(cd "$tools" && "$PY" -m devtools.code_health --root "$code" --base-ref "$baseref" 2>&1)
     rc=$?
     n=$(printf '%s\n' "$out" | sed -n 's/^Code health: \([0-9]*\) failure.*/\1/p')
     if [ $rc != 0 ] || { [ -n "$n" ] && [ "$n" != 0 ]; }; then
         printf '%s\n' "$out" | grep -v '^Advisory' | tail -25 >&2
-        echo "pre-push: $br fails code health (${n:-?} failures vs origin/$base); push refused. Fix in this PR's commits." >&2
+        echo "pre-push: $br fails code health (${n:-?} failures vs $base); push refused. Fix in this PR's commits, or set git config branch.$br.pr-base if the base is wrong." >&2
         status=1
     fi
 done
