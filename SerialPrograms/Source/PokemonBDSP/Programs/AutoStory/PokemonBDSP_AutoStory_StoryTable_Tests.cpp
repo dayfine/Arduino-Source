@@ -5,6 +5,7 @@
  */
 
 #include <algorithm>
+#include <cstdlib>
 #include <format>
 #include <map>
 #include <optional>
@@ -12,6 +13,7 @@
 #include <string>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
+#include "Common/Cpp/Filesystem/FileIO.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
 #include "Pokemon/AutoStory/Pokemon_StorySteps.h"
@@ -221,20 +223,70 @@ UnitTestResult test_route204_north_line(Logger& logger){
     return true;
 }
 
-//  The legs a ROUTE step from `from` plans, as walk_route() plans them (the
-//  step's costs, then the default ones), on `world`; nothing if none.
-std::optional<std::vector<PlannedLeg>> route_step_plan(const StoryWorld& world, const Pokemon::Pose& from, const Pokemon::StoryStep& step){
+//  A ROUTE step of the table, and where the steps before it in its row leave
+//  the player: the row's start, then each step's target or pose_after. A LEGS
+//  or STEP step that does not say where it ends leaves the start unknown.
+struct TableRoute{
+    std::string row;
+    const Pokemon::StoryStep* step;
+    std::optional<Pokemon::Pose> from;
+    //  The world the step is planned on; none if the start is unknown or no
+    //  world joins its map and the target's.
+    const StoryWorld* world;
+};
+
+std::optional<Pokemon::Pose> pose_after_step(const std::optional<Pokemon::Pose>& at, const Pokemon::StoryStep& step){
+    if (step.kind == StoryStepKind::ROUTE){
+        return step.target;
+    }
+    if (step.pose_after){
+        return step.pose_after;
+    }
+    return step.kind == StoryStepKind::LEGS || step.kind == StoryStepKind::STEP ? std::nullopt : at;
+}
+
+std::vector<TableRoute> table_routes(){
+    std::vector<TableRoute> routes;
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        std::optional<Pokemon::Pose> at = row.start;
+        for (const Pokemon::StoryStep& step : row.steps){
+            if (step.kind == StoryStepKind::ROUTE){
+                const bool known = at && !Pokemon::tiles_of(*at).empty();
+                routes.push_back({row.id, &step, at, known ? story_plan_world(at->map, step.target->map) : nullptr});
+            }
+            at = pose_after_step(at, step);
+        }
+    }
+    return routes;
+}
+
+std::vector<TilePos> world_tiles(const StoryWorld& world, const Pokemon::Pose& pose){
+    std::vector<TilePos> tiles;
+    for (const TilePos& pos : Pokemon::tiles_of(pose)){
+        tiles.push_back(story_to_world(world, pose.map, pos));
+    }
+    return tiles;
+}
+
+//  The legs a table ROUTE step plans, as walk_route() plans them: the step's
+//  costs, then the default ones; no legs if neither plans.
+struct RouteStepPlan{
     std::vector<TilePos> start;
-    for (const TilePos& pos : Pokemon::tiles_of(from)){
-        start.push_back(story_to_world(world, from.map, pos));
-    }
-    std::vector<TilePos> targets;
-    for (const TilePos& pos : Pokemon::tiles_of(*step.target)){
-        targets.push_back(story_to_world(world, step.target->map, pos));
-    }
+    std::optional<std::vector<PlannedLeg>> legs;
+    bool default_costs = false;     //  the step's own costs found no plan
+};
+
+RouteStepPlan plan_table_route(const TableRoute& route){
+    const StoryWorld& world = *route.world;
+    const std::vector<TilePos> targets = world_tiles(world, *route.step->target);
     const auto goal = [&](const TilePos& pos){ return std::find(targets.begin(), targets.end(), pos) != targets.end(); };
-    std::optional<std::vector<PlannedLeg>> legs = plan_recovered_route(world, start, goal, *story_route_costs(step.variant));
-    return legs ? legs : plan_recovered_route(world, start, goal, RobustPlanCosts());
+    RouteStepPlan plan{.start = world_tiles(world, *route.from)};
+    plan.legs = plan_recovered_route(world, plan.start, goal, *story_route_costs(route.step->variant));
+    if (!plan.legs){
+        plan.legs = plan_recovered_route(world, plan.start, goal, RobustPlanCosts());
+        plan.default_costs = plan.legs.has_value();
+    }
+    return plan;
 }
 
 //  Why `planned` may slide into a door or a warp, or "": an open leg (not to
@@ -259,32 +311,24 @@ std::string slides_into_door(const StoryWorld& world, const PlannedLeg& planned)
 
 //  No ROUTE step of the table plans an open leg that ends before a door it
 //  walks toward: a door is gone through by a step that runs or taps into it
-//  from where the route ends on a wall or off its line. Where a row's steps
-//  leave the player is followed from its start through each step's target
-//  or pose_after; a route from an unknown place is not checked.
+//  from where the route ends on a wall or off its line. A route from an
+//  unknown place is not checked.
 UnitTestResult test_story_routes_stop_short_of_doors(Logger& logger){
     std::vector<std::string> found;
     size_t checked = 0;
-    for (const StoryCheckpoint& row : story_checkpoints()){
-        std::optional<Pokemon::Pose> at = row.start;
-        for (const Pokemon::StoryStep& step : row.steps){
-            const bool known = at && !Pokemon::tiles_of(*at).empty();
-            const StoryWorld* world = step.kind == StoryStepKind::ROUTE && known
-                ? story_plan_world(at->map, step.target->map) : nullptr;
-            if (step.kind == StoryStepKind::ROUTE && world == nullptr){
-                logger.log(std::format("{} {}: not checked, from {}.", row.id, step.name, at ? Pokemon::to_string(*at) : "nowhere known"));
+    for (const TableRoute& route : table_routes()){
+        if (route.world == nullptr){
+            logger.log(std::format("{} {}: not checked, from {}.", route.row, route.step->name,
+                route.from ? Pokemon::to_string(*route.from) : "nowhere known"));
+            continue;
+        }
+        const RouteStepPlan plan = plan_table_route(route);
+        checked += plan.legs ? 1 : 0;
+        for (const PlannedLeg& planned : plan.legs ? *plan.legs : std::vector<PlannedLeg>{}){
+            const std::string why = slides_into_door(*route.world, planned);
+            if (!why.empty()){
+                found.push_back(std::format("{} {}: {}.", route.row, route.step->name, why));
             }
-            const std::optional<std::vector<PlannedLeg>> legs = world ? route_step_plan(*world, *at, step) : std::nullopt;
-            checked += legs ? 1 : 0;
-            for (const PlannedLeg& planned : legs ? *legs : std::vector<PlannedLeg>{}){
-                const std::string why = slides_into_door(*world, planned);
-                if (!why.empty()){
-                    found.push_back(std::format("{} {}: {}.", row.id, step.name, why));
-                }
-            }
-            at = step.kind == StoryStepKind::ROUTE ? step.target
-                : step.pose_after ? step.pose_after
-                : step.kind == StoryStepKind::LEGS || step.kind == StoryStepKind::STEP ? std::nullopt : at;
         }
     }
     logger.log(std::format("{} routes planned.", checked));
@@ -293,6 +337,175 @@ UnitTestResult test_story_routes_stop_short_of_doors(Logger& logger){
         out += "\n  " + line;
     }
     return found.empty() ? UnitTestResult(true) : UnitTestResult("Open legs that end before a door they walk toward:" + out);
+}
+
+
+//  The route plan dump: every table ROUTE step's legs, in a golden file
+//  beside the story data, so a planner or table change shows its plans' diff
+//  in review.
+
+constexpr const char* ROUTE_PLANS_HEADER =
+    "BDSP AutoStory: the legs each ROUTE step of the story table plans.\n"
+    "Planned as the console's RouteWalker plans them: plan_recovered_route() on\n"
+    "story_plan_world(), from the tiles the row's steps before it leave the\n"
+    "player on, with the step's costs, then the default costs if those find none.\n"
+    "Written by the StoryTable test \"every ROUTE step plans as\n"
+    "Data/route_plans.golden.txt says\". After a planner or table change, run\n"
+    "that test with PA_UPDATE_ROUTE_PLANS=1 to rewrite this file\n"
+    "(PA_ROUTE_PLANS_GOLDEN=<path> reads or writes another copy), and review\n"
+    "its diff.\n"
+    "turns: direction changes between legs. open: legs that stop in the open\n"
+    "(tapped, not held to a wall). localization: the wall holds at the start\n"
+    "that only bring several start tiles to one (plan_recovered_route()'s\n"
+    "anchor); 0 from one start tile.\n";
+
+std::string tile_list(const StoryWorld& world, const std::vector<TilePos>& tiles){
+    std::string out;
+    for (const TilePos& pos : tiles){
+        out += (out.empty() ? "" : ", ") + describe(world, pos);
+    }
+    return out;
+}
+
+//  plan_recovered_route()'s wall holds from several start tiles: the legs up
+//  to where the tiles the player may be on first become one.
+size_t localization_legs(const std::vector<TilePos>& start, const std::vector<PlannedLeg>& legs){
+    if (start.size() < 2){
+        return 0;
+    }
+    for (size_t i = 0; i < legs.size(); i++){
+        if (legs[i].after.size() == 1){
+            return i + 1;
+        }
+    }
+    return 0;
+}
+
+std::string plan_totals(const RouteStepPlan& plan){
+    const std::vector<PlannedLeg>& legs = *plan.legs;
+    size_t turns = 0;
+    size_t open = 0;
+    for (size_t i = 0; i < legs.size(); i++){
+        turns += i > 0 && legs[i].leg.direction != legs[i - 1].leg.direction ? 1 : 0;
+        open += legs[i].leg.ends_at_wall ? 0 : 1;
+    }
+    return std::format("  totals: {} legs, {} turns, {} open, {} localization\n",
+        legs.size(), turns, open, localization_legs(plan.start, legs));
+}
+
+std::string dump_plan(const StoryWorld& world, const RouteStepPlan& plan){
+    std::string out = "  start candidates: " + tile_list(world, plan.start) + "\n";
+    if (!plan.legs){
+        return out + "  NO PLAN\n";
+    }
+    if (plan.default_costs){
+        out += "  the step's costs found no plan; planned with the default costs\n";
+    }
+    for (size_t i = 0; i < plan.legs->size(); i++){
+        const PlannedLeg& planned = (*plan.legs)[i];
+        out += std::format("  {}. {} -> {}\n", i + 1, to_string(planned.leg), tile_list(world, planned.after));
+    }
+    return out + plan_totals(plan);
+}
+
+std::string dump_route(const TableRoute& route){
+    const Pokemon::StoryStep& step = *route.step;
+    std::string out = std::format("== {} {} (costs: {})\n", route.row, step.name, step.variant.empty() ? "route" : step.variant);
+    out += "  from: " + (route.from ? Pokemon::to_string(*route.from) : std::string("unknown")) + "\n";
+    out += "  target: " + Pokemon::to_string(*step.target) + "\n";
+    if (route.world == nullptr){
+        return out + (route.from && !Pokemon::tiles_of(*route.from).empty()
+            ? "  not planned: no story world joins the two maps\n"
+            : "  not planned: the start is unknown (a LEGS or STEP step before it does not say where it ends)\n");
+    }
+    return out + dump_plan(*route.world, plan_table_route(route));
+}
+
+std::string route_plans_text(){
+    std::string out = ROUTE_PLANS_HEADER;
+    for (const TableRoute& route : table_routes()){
+        out += "\n" + dump_route(route);
+    }
+    return out;
+}
+
+//  The golden file, in the Data folder beside this file's.
+std::string route_plans_golden_path(){
+    const char* path = std::getenv("PA_ROUTE_PLANS_GOLDEN");
+    if (path != nullptr && path[0] != '\0'){
+        return path;
+    }
+    const std::string self = __FILE__;
+    const size_t slash = self.find_last_of("/\\");
+    return (slash == std::string::npos ? std::string() : self.substr(0, slash + 1)) + "Data/route_plans.golden.txt";
+}
+
+//  `text` without carriage returns or a byte order mark.
+std::string plain_lines(const std::string& text){
+    std::string out = text.starts_with("\xef\xbb\xbf") ? text.substr(3) : text;
+    std::erase(out, '\r');
+    return out;
+}
+
+//  `text` split into the header and one block per "== " step line.
+std::vector<std::string> plan_blocks(const std::string& text){
+    std::vector<std::string> blocks{""};
+    size_t begin = 0;
+    while (begin < text.size()){
+        const size_t end = std::min(text.find('\n', begin), text.size() - 1) + 1;
+        const std::string line = text.substr(begin, end - begin);
+        if (line.starts_with("== ")){
+            blocks.push_back("");
+        }
+        blocks.back() += line;
+        begin = end;
+    }
+    return blocks;
+}
+
+//  Each step whose block changed, as "-" (golden) and "+" (planned) blocks.
+std::string plan_differences(const std::string& golden, const std::string& planned){
+    const std::vector<std::string> expected = plan_blocks(golden);
+    const std::vector<std::string> actual = plan_blocks(planned);
+    std::string out;
+    size_t changed = 0;
+    for (size_t i = 0; i < std::max(expected.size(), actual.size()); i++){
+        const std::string& was = i < expected.size() ? expected[i] : "";
+        const std::string& now = i < actual.size() ? actual[i] : "";
+        if (was != now && changed++ < 5){
+            out += "\n--- golden:\n" + was + "+++ planned:\n" + now;
+        }
+    }
+    return changed == 0 ? "" : std::format("{} block(s) differ, the first ones:{}", changed, out);
+}
+
+//  Every table ROUTE step plans the legs the golden file lists.
+UnitTestResult test_route_plans_golden(Logger& logger){
+    const std::string path = route_plans_golden_path();
+    const std::string planned = route_plans_text();
+    const char* update = std::getenv("PA_UPDATE_ROUTE_PLANS");
+    if (update != nullptr && update[0] != '\0' && update[0] != '0'){
+        std::string crlf;
+        for (char ch : planned){
+            crlf += ch == '\n' ? std::string("\r\n") : std::string(1, ch);
+        }
+        FileIO file;
+        if (!file.open(path, FileMode::WRITE | FileMode::BINARY) || file.write(crlf) != crlf.size()){
+            return "Could not write " + path + ".";
+        }
+        logger.log("Wrote " + path + ".");
+        return true;
+    }
+    std::string golden;
+    if (!file_to_string(path, golden)){
+        return "Could not read " + path + " (set PA_ROUTE_PLANS_GOLDEN to its path).";
+    }
+    const std::string differences = plan_differences(plain_lines(golden), planned);
+    if (differences.empty()){
+        return true;
+    }
+    return "The route plans differ from " + path + ". If the change is meant, rerun with PA_UPDATE_ROUTE_PLANS=1 "
+        "and review the file's diff. " + differences;
 }
 
 
@@ -349,6 +562,10 @@ const AutoStoryStoryTableCase AUTO_STORY_STORY_TABLE_CASES[] = {
     },
     {
         .input = {"Story table: no open leg ends before a door it walks toward (lab-B, 2026-11-08)", test_story_routes_stop_short_of_doors},
+        .expectation = {},
+    },
+    {
+        .input = {"Story table: every ROUTE step plans as Data/route_plans.golden.txt says", test_route_plans_golden},
         .expectation = {},
     },
 };
