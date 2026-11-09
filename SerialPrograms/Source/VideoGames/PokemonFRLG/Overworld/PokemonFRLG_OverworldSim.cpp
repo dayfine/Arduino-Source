@@ -345,7 +345,7 @@ bool OverworldSim::trainer_sees(Milliseconds pressed){
 }
 
 //  The player has taken `step`, pressed at `pressed`. Returns whether the
-//  game stopped them there: a warp, a wild battle, a trainer.
+//  game stopped them there: a warp, a trainer, a wild battle.
 bool OverworldSim::after_step(const Step& step, Milliseconds pressed){
     const SimTiming& timing = m_script.timing;
     m_map = step.map;
@@ -364,7 +364,11 @@ bool OverworldSim::after_step(const Step& step, Milliseconds pressed){
         note("warped to " + to_string(m_state.position) + ".");
         return true;
     }
-    return wild_battle(pressed) || trainer_sees(pressed);
+    //  The game looks for trainers who see the player before it rolls for a
+    //  wild battle, and doesn't roll once one does (pokefirered
+    //  ProcessPlayerFieldInput(): CheckForTrainersWantingBattle() first,
+    //  CheckStandardWildEncounter() last).
+    return trainer_sees(pressed) || wild_battle(pressed);
 }
 
 //  A wild battle the script starts on this step onto tall grass, or onto a
@@ -785,8 +789,9 @@ size_t OverworldSimWalker::clear_unseen_battle(const RouteStep& step){
 }
 
 void OverworldSimWalker::hold_to_warp(const RouteStep& step){
+    const std::vector<Interrupt>& ints = interrupts(step);
     std::vector<SimWatcher> fade_first{SimWatcher::FADE};
-    for (const SimWatcher watcher : watchers(m_other)){
+    for (const SimWatcher watcher : watchers(ints)){
         fade_first.push_back(watcher);
     }
     const int warps_before = m_sim.state().warps;
@@ -803,7 +808,7 @@ void OverworldSimWalker::hold_to_warp(const RouteStep& step){
         if (!seen){
             break;
         }
-        clear(m_other[seen->watcher - 1]);
+        clear(ints[seen->watcher - 1]);
     }
     fail("walk_overworld_route(): no fade holding on toward the warp to " + step.end.map + ".");
 }

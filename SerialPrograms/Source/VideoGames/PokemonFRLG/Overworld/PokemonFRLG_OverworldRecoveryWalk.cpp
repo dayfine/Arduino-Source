@@ -186,12 +186,13 @@ StepOutcome walk_and_watch(
     return StepOutcome{.end = StepEnd::LATE, .walked = recorder.place(console, step, tile_time(step, speed), walked.hold_start)};
 }
 
-//  Holds on along `step`, stopped part-way off the grass, until its warp's
-//  fade. Off the grass only a message stops a leg (a trainer who saw the
-//  player, a Repel wearing off), and the player then stands on the leg's
-//  line, so holding on reaches the warp however far they got (console B,
-//  2026-11-01: Camper Liam stopped "south 9 (warp)" out of Pewter Gym).
-//  After a trainer the player faces them, so this turns first.
+//  Holds on along `step`, stopped part-way off the grass or by a wild
+//  battle where no trainer may see the player, until its warp's fade. Off
+//  the grass only a message stops a leg (a trainer who saw the player, a
+//  Repel wearing off), and the player then stands on the leg's line, as
+//  after a wild battle, so holding on reaches the warp however far they
+//  got (console B, 2026-11-01: Camper Liam stopped "south 9 (warp)" out of
+//  Pewter Gym). After a trainer the player faces them, so this turns first.
 void hold_to_warp(
     ConsoleHandle& console, ProControllerContext& context,
     const RouteStep& step, const OverworldInterrupts& interrupts, MoveSpeed speed
@@ -303,7 +304,7 @@ void walk_overworld_route_with_recovery(
         return walk_and_watch(console, context, step, from_facing, interrupts, speed);
     };
     calls.hold_to_warp = [&](const RouteStep& step){
-        hold_to_warp(console, context, step, interrupts.other, speed);
+        hold_to_warp(console, context, step, step.wild ? interrupts.wild : interrupts.other, speed);
     };
     calls.log = [&](const std::string& message){ console.log(message, COLOR_ORANGE); };
     calls.fail = [&](const std::string& message){

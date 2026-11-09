@@ -98,14 +98,18 @@ std::string row_rest(OverworldSim& sim, StoryPose at, const StoryCheckpoint& row
     return "";
 }
 
-UnitTestResult row_on_sim(std::string_view id, const SimScript& script, const std::vector<std::string>& trainers, const MapPosition& end){
+//  Row `id` on the sim with `script`: it ends on `end`, with no violation
+//  on the way, having fought the trainers of one of `fought`, in order.
+UnitTestResult row_on_sim(
+    std::string_view id, const SimScript& script, const std::vector<std::vector<std::string>>& fought, const MapPosition& end
+){
     const StoryCheckpoint& row = checkpoint(id);
     const StoryPose at = *story_pose(*row.start);
     OverworldSim sim(maps_after_route10(), MapPosition{at.map, at.tile}, *at.facing, script);
     if (const std::string failure = row_rest(sim, at, row, 0); !failure.empty()){
         return std::string(id) + ": " + failure;
     }
-    if (sim.state().trainers_beaten != trainers){
+    if (std::find(fought.begin(), fought.end(), sim.state().trainers_beaten) == fought.end()){
         std::string fought;
         for (const std::string& name : sim.state().trainers_beaten){
             fought += " " + name;
@@ -124,12 +128,18 @@ UnitTestResult row_on_sim(std::string_view id, const SimScript& script, const st
 const std::vector<std::string> ROCK_TUNNEL_TRAINERS{
     "poke_maniac", "poke_maniac", "picnicker", "hiker", "hiker", "picnicker", "hiker", "poke_maniac", "picnicker",
 };
+//  Cooper unfought: a wild battle on the step into his sight, on the leg
+//  past him, starts first, and the sim's trainers look only after a step.
+//  The leg goes on past him to its wall either way.
+const std::vector<std::string> ROCK_TUNNEL_TRAINERS_BUT_COOPER{
+    "poke_maniac", "poke_maniac", "picnicker", "hiker", "hiker", "picnicker", "hiker", "picnicker",
+};
 
 //  00.28 on the sim: the tree cut, the nine trainers fought where the
 //  table steps into their lines (Cooper by the walker, on the leg past
 //  him), no one else met, and the walk out of the south mouth.
 UnitTestResult test_rock_tunnel_row(){
-    return row_on_sim("00.28", SimScript{}, ROCK_TUNNEL_TRAINERS, MapPosition{StoryTable::ROUTE10, {8, 58}});
+    return row_on_sim("00.28", SimScript{}, {ROCK_TUNNEL_TRAINERS}, MapPosition{StoryTable::ROUTE10, {8, 58}});
 }
 
 //  00.28 with a wild battle on the 3rd step on the tunnel's floor, mid-way
@@ -138,7 +148,7 @@ UnitTestResult test_rock_tunnel_row(){
 UnitTestResult test_rock_tunnel_wild_battles(){
     SimScript script;
     script.encounters.push_back(SimEncounter{.grass_step = 3});
-    return row_on_sim("00.28", script, ROCK_TUNNEL_TRAINERS, MapPosition{StoryTable::ROUTE10, {8, 58}});
+    return row_on_sim("00.28", script, {ROCK_TUNNEL_TRAINERS}, MapPosition{StoryTable::ROUTE10, {8, 58}});
 }
 
 //  Wild battles on the tunnel's floor, `gaps` steps apart in turn, from the
@@ -187,6 +197,7 @@ UnitTestResult test_b1f_row37_battles_every_12(){
 //  00.28 whole with a wild battle every 7 to 25 steps on the tunnel's floor,
 //  the gaps drawn from each of these seeds: the row ends where it should.
 UnitTestResult test_rock_tunnel_frequent_battles(){
+    std::string failures;
     for (unsigned seed = 1; seed <= 12; seed++){
         std::mt19937 random(seed);
         std::uniform_int_distribution<int> gap(7, 25);
@@ -194,17 +205,22 @@ UnitTestResult test_rock_tunnel_frequent_battles(){
         for (int c = 0; c < 400; c++){
             gaps.push_back(gap(random));
         }
-        const UnitTestResult result = row_on_sim("00.28", battles_every(gaps), ROCK_TUNNEL_TRAINERS, MapPosition{StoryTable::ROUTE10, {8, 58}});
+        const UnitTestResult result = row_on_sim(
+            "00.28", battles_every(gaps), {ROCK_TUNNEL_TRAINERS, ROCK_TUNNEL_TRAINERS_BUT_COOPER}, MapPosition{StoryTable::ROUTE10, {8, 58}}
+        );
         if (result.result != UnitTestResult::PASSED){
-            return std::format("Seed {}: {}", seed, result.message);
+            failures += std::format("{}Seed {}: {}", failures.empty() ? "" : " | ", seed, result.message);
         }
+    }
+    if (!failures.empty()){
+        return failures;
     }
     return true;
 }
 
 //  00.29 on the sim: no trainer met, the ledge hopped, Lavender's nurse.
 UnitTestResult test_lavender_row(){
-    return row_on_sim("00.29", SimScript{}, {}, MapPosition{StoryTable::LAVENDER_CENTER, {7, 4}});
+    return row_on_sim("00.29", SimScript{}, {{}}, MapPosition{StoryTable::LAVENDER_CENTER, {7, 4}});
 }
 
 //  Where an open leg of two tiles or more ends a tile short or long, the

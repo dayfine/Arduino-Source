@@ -111,13 +111,41 @@ int reanchor_tiles(const Reanchor& anchor);
 
 //  After `step` stopped part-way, from `candidates`: of the ways that find
 //  the player, the one that walks the fewest tiles, holds and way back
-//  together. Nothing if no holds bring them all to one tile, or no way
-//  back walks the same from there.
+//  together, with tiles of open legs weighted over held ones. Nothing if
+//  no holds bring them all to one tile, or no way back walks the same from
+//  there.
 std::optional<Reanchor> plan_reanchor(
     const std::vector<MapData>& maps,
     const std::vector<StopCandidate>& candidates,
     const RouteStep& step,
     const RouteCosts& costs = default_route_costs()
+);
+
+//  Walking on along a stopped open leg instead of finding the player at
+//  walls first: the rest of the leg from the middle of the tiles they may
+//  be on, after which the route's next holds, as planned, bring them to
+//  one tile from every one of them. Walking on from how far a leg got,
+//  trusting the timing, went wrong on the console; here the holds find the
+//  player whichever tile they were on.
+struct Resume{
+    //  From the middle candidate to the stopped leg's end; no tiles if the
+    //  middle candidate is its end.
+    RouteStep rest;
+    //  How many of the steps after the stopped leg, all holds to walls,
+    //  bring every candidate to one tile.
+    size_t holds = 0;
+};
+
+//  After `step`, an open leg, stopped part-way on one of `candidates`
+//  (none stopped by a trainer), with `after` the route's steps after it:
+//  the way to walk on. Nothing if the holds that start `after` don't bring
+//  every candidate to one tile, or if any would walk onto a tile off the
+//  planned way that a trainer may see.
+std::optional<Resume> plan_resume(
+    const std::vector<MapData>& maps,
+    const std::vector<StopCandidate>& candidates,
+    const RouteStep& step,
+    const std::vector<RouteStep>& after
 );
 
 //  Holds to walls that bring the player to one tile from every one of
