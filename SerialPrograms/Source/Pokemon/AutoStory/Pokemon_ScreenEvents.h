@@ -46,9 +46,10 @@ enum class ScreenEvent : uint8_t{
     BATTLE_ENDED,       //  A battle's closing screen.
     PLAYER_CAN_MOVE,    //  The overworld with the player in control.
     SCREEN_STILL,       //  The screen barely changed since the frame before.
+    SWITCH_HOME_MENU,   //  The Switch's HOME menu: the game is not on the screen.
 };
 //  How many ScreenEvent values there are.
-constexpr size_t SCREEN_EVENT_COUNT = 10;
+constexpr size_t SCREEN_EVENT_COUNT = 11;
 //  "dialog box", for the log.
 const char* screen_event_name(ScreenEvent event);
 

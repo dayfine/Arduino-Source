@@ -19,6 +19,7 @@
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "Pokemon_StoryActions.h"
 #include "Pokemon_StoryInterrupts.h"
+#include "Pokemon_StorySegments.h"
 #include "Pokemon_AutoStory_Tests.h"
 
 namespace PokemonAutomation{
@@ -41,6 +42,8 @@ const ScreenEvents WHITE{ScreenEvent::FADE_WHITE};
 const ScreenEvents BLACK{ScreenEvent::FADE_BLACK};
 const ScreenEvents BATTLE{ScreenEvent::BATTLE_STARTED};
 const ScreenEvents BANNER{ScreenEvent::LOCATION_BANNER, ScreenEvent::PLAYER_CAN_MOVE};
+//  The Switch's HOME menu: the game is not running.
+const ScreenEvents HOME{ScreenEvent::SWITCH_HOME_MENU};
 
 //  A look at `frames`, judged up to `until_ms`.
 ScreenLook look_of(const std::vector<Frame>& frames, int until_ms){
@@ -82,6 +85,10 @@ ScreenLook black_unsettled(){
 //  The same white, looked at for long enough after it: a cave exit.
 ScreenLook white_settled(){
     return look_of({{0, WALK}, {100, WHITE}, {700, WALK}, {10000, WALK}}, 10000);
+}
+//  The HOME menu, still: the program started with the game closed.
+ScreenLook home_menu(){
+    return look_of({{0, HOME}, {300, HOME}}, 300);
 }
 
 
@@ -479,6 +486,86 @@ UnitTestResult test_screen_before_each_step(){
     });
 }
 
+//  The program started on the HOME menu (lab-B 2026-11-09 15:31: "before
+//  save: settled overworld", then X on HOME and a 22-tile walk on it). The
+//  screen is told as HOME and the step fails at once, before any input,
+//  and before a step that starts on a battle's opening too.
+UnitTestResult test_home_menu_before_a_step(){
+    for (StoryStepKind kind : {StoryStepKind::SAVE, StoryStepKind::ROUTE, StoryStepKind::BATTLE}){
+        FakeGame game;
+        game.screens = {home_menu()};
+        StoryInterrupts interrupts = fake_interrupts(game);
+        interrupts.handlers.starts_on(StoryStepKind::BATTLE, InterruptKind::TRAINER_SIGHT);
+        const StoryActionTable table = table_of(game, {});
+        ScreenGuard guard(game);
+        TableExecutor executor(table, guard);
+        executor.set_interrupts(&interrupts);
+        RunState state;
+        StoryStep step = make(kind, "save");
+        step.variant = "act";
+        const Outcome outcome = executor.run(state, step);
+        if (to_string(outcome) != "game_not_running: the game is not running: the Switch HOME menu is showing"){
+            return "Expected the step on HOME to fail as game_not_running, got " + to_string(outcome);
+        }
+        if (UnitTestResult trace = expect_trace(game, {"look", "before save: Switch HOME menu (quiet 0.3 s)"}); trace.result != UnitTestResult::PASSED){
+            return trace;
+        }
+    }
+    return true;
+}
+
+//  A checkpoint that fails on the HOME menu is neither recovered in place
+//  nor reloaded: every press would go to the console's menus.
+UnitTestResult test_home_menu_stops_the_segment(){
+    std::vector<std::string> trace;
+    CheckpointSpec spec;
+    spec.id = "00.03";
+    spec.build = [&trace]{
+        Checkpoint checkpoint;
+        checkpoint.id = "00.03";
+        Event save;
+        save.name = "save";
+        save.act = [&trace](RunState&){
+            trace.push_back("save");
+            return outcome_failed("game_not_running", "the game is not running: the Switch HOME menu is showing");
+        };
+        Recovery wait;
+        wait.kind = RecoveryKind::WAIT;
+        wait.prepare = [&trace](RunState&){
+            trace.push_back("recover");
+            return outcome_ok();
+        };
+        save.recoveries.push_back(std::move(wait));
+        checkpoint.events.push_back(std::move(save));
+        return checkpoint;
+    };
+    Segment segment;
+    segment.id = "00";
+    segment.checkpoints.push_back(std::move(spec));
+    SegmentHooks hooks;
+    hooks.reload = [&trace](RunState&){
+        trace.push_back("reload");
+        return outcome_ok();
+    };
+    hooks.recover = [&trace](RunState&, const std::string&){
+        trace.push_back("recover in place");
+        return outcome_ok();
+    };
+    RunState state;
+    const SegmentReport report = run_segment(state, segment, SegmentRange{}, SegmentPolicy{.recoveries_per_event = 2}, hooks);
+    if (report.completed || report.failure.failure != "game_not_running" || report.reloads != 0){
+        return "Expected the segment to stop on game_not_running with no reload, got " + to_string(report.failure);
+    }
+    if (trace != std::vector<std::string>{"save"}){
+        std::string got;
+        for (const std::string& line : trace){
+            got += " " + line;
+        }
+        return "Expected the save tried once and nothing else, got:" + got;
+    }
+    return true;
+}
+
 UnitTestResult test_settle_of_a_look(){
     struct Row{
         const char* name;
@@ -490,6 +577,8 @@ UnitTestResult test_settle_of_a_look(){
         {"a quiet overworld", quiet(), "settled overworld (quiet 0.3 s)"},
         {"a box", dialog(), "dialog box, player can move showing (quiet 0.2 s)"},
         {"a door's fade back up", black_unsettled(), "settled overworld (quiet 0.3 s)"},
+        {"the HOME menu", home_menu(), "Switch HOME menu (quiet 0.3 s)"},
+        {"HOME read as a quiet overworld too", look_of({{0, ScreenEvents{ScreenEvent::SWITCH_HOME_MENU, ScreenEvent::PLAYER_CAN_MOVE}}}, 300), "Switch HOME menu (quiet 0.3 s)"},
     };
     for (const Row& row : rows){
         const std::string got = describe(judge_settle(row.look));
@@ -617,6 +706,14 @@ const StoryInterruptsCase STORY_INTERRUPTS_CASES[] = {
     {
         .input = {.name = "how a look ended", .test = test_settle_of_a_look},
         .expectation = {.description = "the last frame's events and how long they held"},
+    },
+    {
+        .input = {.name = "the HOME menu before a step", .test = test_home_menu_before_a_step},
+        .expectation = {.description = "told as HOME; game_not_running before any input"},
+    },
+    {
+        .input = {.name = "the HOME menu stops the segment", .test = test_home_menu_stops_the_segment},
+        .expectation = {.description = "no recovery in place, no reload"},
     },
 };
 
