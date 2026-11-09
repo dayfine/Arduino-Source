@@ -122,6 +122,10 @@ void ConsoleStepGuard::on_interrupt(const StoryStep& step, const Pokemon::Interr
     ), cleared ? COLOR_ORANGE : COLOR_RED);
 }
 
+void ConsoleStepGuard::on_screen(const StoryStep& step, const Pokemon::ScreenSettle& screen){
+    m_stream.log(std::format("[Screen] before {}: {}", step.name, Pokemon::describe(screen)));
+}
+
 
 //  The table and the guard are members, built after the base: it only
 //  keeps references to them until a step runs.

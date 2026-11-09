@@ -78,56 +78,21 @@ const char* LAST_ROW = "01.11";
 
 //  Sweeps the program fails today, by test name, with the likely fix.
 const std::map<std::string, std::string> KNOWN_FAILING{
-    {"PokemonBDSP::AutoStory - Fault sweep: 00.01, battle opening at step start",
-        "StoryInterrupts: an opening before a step that is not a battle fails as interrupt_unsettled; wait for the battle and clear it (#122)"},
     {"PokemonBDSP::AutoStory - Fault sweep: 00.01, scene end pose",
-        "the walk after barry_runs_to_the_lake, barry_warns_us trusts the table's pose: measure it or clip to a wall first, as 00.03's which_row"},
-    {"PokemonBDSP::AutoStory - Fault sweep: 00.02, battle opening at step start",
-        "StoryInterrupts: an opening before a step that is not a battle fails as interrupt_unsettled; wait for the battle and clear it (#122)"},
-    {"PokemonBDSP::AutoStory - Fault sweep: 00.03, battle opening at step start",
-        "StoryInterrupts: an opening before a step that is not a battle fails as interrupt_unsettled; wait for the battle and clear it (#122)"},
-    {"PokemonBDSP::AutoStory - Fault sweep: 00.03, scene end pose",
-        "the walk after rowan_and_dawn trusts the table's pose: measure it or clip to a wall first, as 00.03's which_row"},
-    {"PokemonBDSP::AutoStory - Fault sweep: 00.04, battle opening at step start",
-        "StoryInterrupts: an opening before a step that is not a battle fails as interrupt_unsettled; wait for the battle and clear it (#122)"},
+        "the walk after barry_runs_to_the_lake trusts the table's pose: measure it or clip to a wall first"},
     {"PokemonBDSP::AutoStory - Fault sweep: 00.04, scene end pose",
-        "the walk after mom_heals_us, moms_hat trusts the table's pose: measure it or clip to a wall first, as 00.03's which_row"},
-    {"PokemonBDSP::AutoStory - Fault sweep: 00.04b, battle opening at step start",
-        "StoryInterrupts: an opening before a step that is not a battle fails as interrupt_unsettled; wait for the battle and clear it (#122)"},
-    {"PokemonBDSP::AutoStory - Fault sweep: 00.05, battle opening at step start",
-        "StoryInterrupts: an opening before a step that is not a battle fails as interrupt_unsettled; wait for the battle and clear it (#122)"},
-    {"PokemonBDSP::AutoStory - Fault sweep: 00.05b, battle opening at step start",
-        "StoryInterrupts: an opening before a step that is not a battle fails as interrupt_unsettled; wait for the battle and clear it (#122)"},
-    {"PokemonBDSP::AutoStory - Fault sweep: 00.05b, scene end pose",
-        "the walk after president_walks_up, tv_clowns_coupon trusts the table's pose: measure it or clip to a wall first, as 00.03's which_row"},
-    {"PokemonBDSP::AutoStory - Fault sweep: 00.05c, scene end pose",
-        "the walk after the_poketch trusts the table's pose: measure it or clip to a wall first, as 00.03's which_row"},
-    {"PokemonBDSP::AutoStory - Fault sweep: 01.01, battle opening at step start",
-        "StoryInterrupts: an opening before a step that is not a battle fails as interrupt_unsettled; wait for the battle and clear it (#122)"},
-    {"PokemonBDSP::AutoStory - Fault sweep: 01.02, battle opening at step start",
-        "StoryInterrupts: an opening before a step that is not a battle fails as interrupt_unsettled; wait for the battle and clear it (#122)"},
-    {"PokemonBDSP::AutoStory - Fault sweep: 01.02, scene end pose",
-        "the walk after the_hiker trusts the table's pose: measure it or clip to a wall first, as 00.03's which_row"},
-    {"PokemonBDSP::AutoStory - Fault sweep: 01.02b, scene end pose",
-        "the walk after barrys_lines trusts the table's pose: measure it or clip to a wall first, as 00.03's which_row"},
-    {"PokemonBDSP::AutoStory - Fault sweep: 01.03, battle opening at step start",
-        "StoryInterrupts: an opening before a step that is not a battle fails as interrupt_unsettled; wait for the battle and clear it (#122)"},
-    {"PokemonBDSP::AutoStory - Fault sweep: 01.03, scene end pose",
-        "the walk after roark_smashes_the_rock trusts the table's pose: measure it or clip to a wall first, as 00.03's which_row"},
-    {"PokemonBDSP::AutoStory - Fault sweep: 01.05, battle opening at step start",
-        "StoryInterrupts: an opening before a step that is not a battle fails as interrupt_unsettled; wait for the battle and clear it (#122)"},
+        "the walk after mom_heals_us, moms_hat trusts the table's pose: measure it or clip to a wall first"},
     {"PokemonBDSP::AutoStory - Fault sweep: 01.05, scene end pose",
-        "the walk after barry_bumps_into_us trusts the table's pose: measure it or clip to a wall first, as 00.03's which_row"},
-    {"PokemonBDSP::AutoStory - Fault sweep: 01.08, battle opening at step start",
-        "StoryInterrupts: an opening before a step that is not a battle fails as interrupt_unsettled; wait for the battle and clear it (#122)"},
-    {"PokemonBDSP::AutoStory - Fault sweep: 01.09, battle opening at step start",
-        "StoryInterrupts: an opening before a step that is not a battle fails as interrupt_unsettled; wait for the battle and clear it (#122)"},
-    {"PokemonBDSP::AutoStory - Fault sweep: 01.10, battle opening at step start",
-        "StoryInterrupts: an opening before a step that is not a battle fails as interrupt_unsettled; wait for the battle and clear it (#122)"},
-    {"PokemonBDSP::AutoStory - Fault sweep: 01.11, battle opening at step start",
-        "StoryInterrupts: an opening before a step that is not a battle fails as interrupt_unsettled; wait for the battle and clear it (#122)"},
-    {"PokemonBDSP::AutoStory - Fault sweep: 01.11, scene end pose",
-        "the walk after old_woman_talks trusts the table's pose: measure it or clip to a wall first, as 00.03's which_row"},
+        "the walk after barry_bumps_into_us trusts the table's pose: measure it or clip to a wall first"},
+};
+
+//  Scenes whose end the console has proven, by step name: the sweep leaves
+//  them out, as the tiles next to it are not where the game leaves us.
+const std::map<std::string, std::string> PROVEN_SCENE_ENDS{
+    //  Mom's Running Shoes scene: (6, 8) facing east in 7 of 7 runs stopped
+    //  right after it (lab-B 2026-11-09). The rows 7, 9 and 10 seen before
+    //  were our input landing in its closing fade, now waited out.
+    {"rowan_and_dawn", "lab-B 2026-11-09, 7 of 7 runs on (6, 8)"},
 };
 
 //  Runs row `row` with `knobs`: "" if it passes, else where and why it stopped.
@@ -154,12 +119,25 @@ bool game_sets_end(StoryStepKind kind){
 bool walks(StoryStepKind kind){
     return kind == StoryStepKind::ROUTE || kind == StoryStepKind::LEGS || kind == StoryStepKind::STEP;
 }
-//  Whether the game left the player where they stood: a talk or a trainer's
-//  battle ends where our walk did, so it is not the game's end pose.
-bool same_tile(const Pose& a, const Pose& b){
-    const std::vector<TilePos> x = Pokemon::tiles_of(a);
-    const std::vector<TilePos> y = Pokemon::tiles_of(b);
-    return a.map == b.map && !x.empty() && !y.empty() && x.front() == y.front();
+//  Whether row `row` run clean up to its step `c` leaves the player on one
+//  of `pose`'s tiles: a talk, a trainer's battle or a scene that only turns
+//  the player ends where our walk did, so its end is not the game's.
+bool already_there(Logger& logger, const StoryCheckpoint& row, size_t c, const Pose& pose){
+    StoryCheckpoint head = row;
+    head.steps.resize(c);
+    SimExecutor executor(logger, {.fade = {}, .banner = {}}, {});
+    if (!run_rows_on(executor, logger, {.from = row.id, .to = row.id}, {head}).completed || executor.result().world == nullptr){
+        return false;
+    }
+    const SimRun& run = executor.result();
+    for (const TilePos& tile : Pokemon::tiles_of(pose)){
+        try{
+            if (story_to_world(*run.world, pose.map, tile) == run.end){
+                return true;
+            }
+        }catch (const InternalProgramError&){}
+    }
+    return false;
 }
 //  Whether walk `step` ends where a battle can start: on a route (grass, a
 //  trainer's sight) or in a cave. Towns and rooms have neither.
@@ -176,16 +154,10 @@ bool wild_or_trainers(const StoryStep& step){
     return false;
 }
 
-//  The tiles within one of `pose`'s first tile, diagonals too, that the
-//  player can reach from it in one or two steps: where a scene can leave
-//  them instead. A tile behind a wall or a person's is not one.
-std::vector<TilePos> walkable_neighbors(const Pose& pose){
-    const std::vector<TilePos> tiles = Pokemon::tiles_of(pose);
-    const StoryWorld* world = pose.map.empty() ? nullptr : story_plan_world(pose.map, pose.map);
-    if (tiles.empty() || world == nullptr){
-        return {};
-    }
-    const TilePos center = tiles.front();
+//  The tiles within one of `center`, diagonals too, that the player can
+//  reach from it in one or two steps, and not in `seen`: where a scene can
+//  leave them instead. A tile behind a wall is not one.
+void walkable_neighbors(const StoryWorld* world, const Pose& pose, const TilePos& center, std::set<std::pair<int, int>>& seen, std::vector<TilePos>& out){
     const auto step = [](const TilePos& tile, Direction direction){
         switch (direction){
         case Direction::NORTH:
@@ -202,8 +174,6 @@ std::vector<TilePos> walkable_neighbors(const Pose& pose){
         GridSim sim(SimWorld{.world = world}, story_to_world(*world, pose.map, from), direction, false);
         return sim_can_step(sim, direction);
     };
-    std::set<std::pair<int, int>> seen{{center.x, center.y}};
-    std::vector<TilePos> out;
     const auto add = [&](const TilePos& tile){
         if (seen.insert({tile.x, tile.y}).second){
             out.push_back(tile);
@@ -223,6 +193,22 @@ std::vector<TilePos> walkable_neighbors(const Pose& pose){
                 add(two);
             }
         }
+    }
+}
+//  The walkable tiles next to any of `pose`'s tiles, not its own.
+std::vector<TilePos> walkable_neighbors(const Pose& pose){
+    const std::vector<TilePos> tiles = Pokemon::tiles_of(pose);
+    const StoryWorld* world = pose.map.empty() ? nullptr : story_plan_world(pose.map, pose.map);
+    std::vector<TilePos> out;
+    if (world == nullptr){
+        return out;
+    }
+    std::set<std::pair<int, int>> seen;
+    for (const TilePos& tile : tiles){
+        seen.insert({tile.x, tile.y});
+    }
+    for (const TilePos& tile : tiles){
+        walkable_neighbors(world, pose, tile, seen, out);
     }
     return out;
 }
@@ -252,10 +238,10 @@ UnitTestResult sweep_result(Logger& logger, FaultClass fault, const std::string&
 UnitTestResult sweep_scene_end_pose(Logger& logger, const StoryCheckpoint& row){
     std::vector<SweepFailure> failures;
     size_t variants = 0;
-    std::optional<Pose> before = row.start;
-    for (const StoryStep& step : row.steps){
-        const std::optional<Pose> was = std::exchange(before, step.pose_after ? step.pose_after : walks(step.kind) ? step.target : before);
-        if (!game_sets_end(step.kind) || !step.pose_after || (was && same_tile(*was, *step.pose_after))){
+    for (size_t c = 0; c < row.steps.size(); c++){
+        const StoryStep& step = row.steps[c];
+        if (!game_sets_end(step.kind) || !step.pose_after || PROVEN_SCENE_ENDS.contains(step.name) ||
+            already_there(logger, row, c, *step.pose_after)){
             continue;
         }
         for (const TilePos& tile : walkable_neighbors(*step.pose_after)){

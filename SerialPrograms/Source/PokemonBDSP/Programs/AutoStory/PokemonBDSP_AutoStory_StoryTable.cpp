@@ -307,12 +307,17 @@ std::vector<StoryCheckpoint> intro(){
     };
 }
 
-//  00.03, home: west to the wall first, as from the rug's row (r27, r28):
-//  there it stops on (4, 8) against the table's corner (3, 8); a row lower
-//  on (5, 9) against the wall (4, 9). Not east: Mom at (7, 8) talks (r29).
-StoryStep by_the_counter(){
-    return anchored(to_walls("by_the_counter", {{.direction = WEST, .tiles = 2}}, "west to the table's corner, or the wall a row lower"),
-        Pokemon::tile_pose(HOME, {TilePos{4, 8}, TilePos{5, 9}}, WEST));
+//  00.03, home: Mom's scene leaves us on (6, 8), and the door's tile
+//  (6, 10) is two below: hold south, and its fade is the way out. Mom's
+//  warning was spent in 00.01, so the door is a plain door now (r27). Were
+//  we a column west, the hold stops on (5, 10) against the wall with no
+//  fade: a tap east onto the mat, and south again.
+StoryStep out_of_the_house_again(){
+    StoryStep step = step_into("out_of_the_house_again", SOUTH,
+        "south onto the door's tile (6, 10), and out; from column 5, east onto the mat first", at(TWINLEAF, "house_doorstep", SOUTH));
+    step.variant = "or_legs";
+    step.legs = {{.direction = EAST, .tiles = 1}};
+    return step;
 }
 
 std::vector<StoryCheckpoint> lake_and_pokedex(){
@@ -331,23 +336,19 @@ std::vector<StoryCheckpoint> lake_and_pokedex(){
                 "Rowan's lines and the walk out of the lake"),
         }),
         row("00.03", "Back to Sandgem: Rowan, Dawn and the Pokedex", at_or_next_to(LAKEFRONT, "below_lake_entrance", SOUTH), {
-            route("short_of_rowan", at(ROUTE_201, 4, 14, EAST), "back east onto Route 201's lower level"),
-            step_into("rowans_stop", EAST, "the trigger (5, 14..16)"),
+            //  The wall's row 21 runs on as Route 201's 14, through Rowan's trigger (5, 14..16).
+            route("to_the_lakefront_wall", at(LAKEFRONT, 17, 21), "south to the Lakefront's wall, the row into Rowan's trigger"),
+            legs("into_rowans_scene", {{.direction = EAST, .tiles = 22}}, "east onto Route 201 until Rowan's scene starts: 20 tiles, 22 at most", "to_dialogue"),
             //  BDSP, unlike Diamond: after Rowan leaves, Dawn's and Barry's lines, then
             //  the game fades to the house, where Mom gives the Running Shoes. The
-            //  scene ends near her, by the rug: (6, 8) in r24 and r27, (5, 8) in
-            //  r28, a row lower on lab-B 2026-11-09.
-            scene("rowan_and_dawn", Pokemon::tile_pose(HOME, {TilePos{5, 8}, TilePos{6, 8}, TilePos{5, 9}, TilePos{6, 9}}, EAST),
+            //  scene ends on (6, 8) facing her, east: 7 of 7 console runs stopped
+            //  right after the scene (lab-B 2026-11-09, ~/BDSPLab/captures/mom-proof).
+            //  The other ends seen before (5, 8 in r28, a row lower at 12:49) were our
+            //  input landing in the scene's closing fade, which the scene's end now
+            //  waits out (TalkOver).
+            scene("rowan_and_dawn", at(HOME, 6, 8, EAST),
                 "Rowan and Dawn come back; Barry, then home for the Running Shoes"),
-            //  Mom's warning was spent in 00.01, so the door's tile (6, 10) is a plain
-            //  door now: stepping onto it goes out (r27).
-            by_the_counter(),
-            //  A tap south tells (4, 8) and (5, 9) apart; from there to beside the
-            //  door's column, not down it: an open leg south could slide onto the door.
-            legs("which_row", {{.direction = SOUTH, .tiles = 1}}, "a tap south: the wall (4, 9) stops it, or not", "measured"),
-            route("beside_the_door_column", at(HOME, 5, 9, EAST), "from the tile the tap told us"),
-            legs("above_the_door_again", {{.direction = EAST, .tiles = 1}}, "east a tile to above the door: not south toward it"),
-            step_into("out_of_the_house_again", SOUTH, "onto the door's tile (6, 10), and out", at(TWINLEAF, "house_doorstep", SOUTH)),
+            out_of_the_house_again(),
             //  Through the grass now, with a starter: wild battles are run from.
             route("short_of_dawn", at(ROUTE_201, 63, 5, EAST), "Twinleaf, then east along Route 201 to its east edge"),
             //  Dawn's scene starts as we come into Sandgem (trigger (4, 10..15));

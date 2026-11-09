@@ -317,6 +317,24 @@ UnitTestResult rowans_scene_opens_with_no_box(Logger& logger){
     return passes(run_case(logger, "00.03", "00.03", {.fade = {}, .banner = {}}, knobs));
 }
 
+//  00.03: Mom's lines, a still moment, then the scene's closing fade
+//  (lab-B 2026-11-09 14:33). The scene once ended as the fade went down,
+//  and the next step's input landed in it: the talk-over must wait for the
+//  fade to come back up and for the quiet after it.
+UnitTestResult moms_scene_ends_with_a_fade(Logger& logger){
+    SimWorldKnobs knobs;
+    knobs.scenes["rowan_and_dawn"] = {
+        sim_line("Dawn"),
+        sim_line("Barry"),
+        sim_fade("the fade home", 1500ms),
+        sim_line("Mom: the Running Shoes"),
+        sim_line("Mom"),
+        sim_pause("Mom stands", 4000ms, false),
+        sim_fade("the scene's closing fade", 2000ms),
+    };
+    return passes(run_case(logger, "00.03", "00.03", {.fade = {}, .banner = {}}, knobs));
+}
+
 //  00.02: the Starly battle's opening is still playing when the battle
 //  step starts, right after choose_starter (lab-B 2026-11-09 run 3, event
 //  7): the battle step's, not interrupt_unsettled before it.
@@ -328,18 +346,52 @@ UnitTestResult starly_opening_after_the_starter(Logger& logger){
     return passes(run_case(logger, "00.02", "00.02", {.fade = {}, .banner = {}}, knobs));
 }
 
-//  00.03: Rowan's scene ends at home beside Mom, on the rug's row (r24,
-//  r27, r28) or a row lower (lab-B 2026-11-09 12:49: the walk west to the
-//  table's corner stopped on (5, 9) against the wall (4, 9), and the taps
-//  after crossed the door's mat to (7, 10)). The way out goes from each.
+//  00.03: Rowan's scene ends at home on (6, 8) beside Mom (lab-B
+//  2026-11-09, 7 of 7 runs). The way out holds south onto the door's tile
+//  (6, 10); from a column west, (5, 8), the hold stops on (5, 10) with no
+//  fade, and a tap east onto the mat goes out.
 UnitTestResult home_from_each_scene_end(Logger& logger){
     std::string failures;
-    for (const TilePos& tile : {TilePos{5, 8}, TilePos{6, 8}, TilePos{5, 9}, TilePos{6, 9}}){
+    for (const TilePos& tile : {TilePos{6, 8}, TilePos{5, 8}}){
         SimWorldKnobs knobs;
         knobs.lands["rowan_and_dawn"] = Pokemon::tile_pose("PlayerHouse1F", {tile}, Direction::EAST);
         const std::string stopped = run_case(logger, "00.03", "00.03", {.fade = {}, .banner = {}}, std::move(knobs));
         if (!stopped.empty()){
             failures += std::format("\nfrom ({}, {}): {}", tile.x, tile.y, stopped);
+        }
+    }
+    return passes(failures);
+}
+
+//  The table with row `id` cut to `step` alone, from `start`.
+std::vector<StoryCheckpoint> table_with_row(const std::string& id, const Pose& start, const StoryStep& step){
+    std::vector<StoryCheckpoint> rows = story_checkpoints();
+    for (StoryCheckpoint& checkpoint : rows){
+        if (checkpoint.id == id){
+            checkpoint.start = start;
+            checkpoint.steps = {step};
+        }
+    }
+    return rows;
+}
+//  00.03: Rowan's trigger is the column (5, 14..16) on Route 201 (decomp).
+//  The walk east from the Lakefront's wall runs along Route 201's row 14,
+//  or a row or two lower if the hold south stopped short of the wall. Each
+//  of the three rows starts the scene, and the walk stops on its tile.
+//  The Lakefront's rows 21..23 are Route 201's 14..16.
+UnitTestResult rowans_scene_on_each_row(Logger& logger){
+    const StoryStep& walk = table_step("00.03", "into_rowans_scene");
+    std::string failures;
+    for (int row = 14; row <= 16; row++){
+        const Pose start = Pokemon::tile_pose("VerityLakefront", {TilePos{20, row + 7}}, Direction::EAST);
+        const std::vector<StoryCheckpoint> rows = table_with_row("00.03", start, walk);
+        SimExecutor executor(logger, {.fade = {}, .banner = {}}, {});
+        const Pokemon::SegmentReport report = run_rows_on(executor, logger, {.from = "00.03", .to = "00.03"}, rows);
+        const Pose trigger = Pokemon::tile_pose("Route201", {TilePos{5, row}}, Direction::EAST);
+        if (!report.completed){
+            failures += std::format("\nrow {}: stopped in {}: {}", row, executor.result().failed_step, executor.result().error);
+        }else if (!ends_on(executor.result(), trigger)){
+            failures += std::format("\nrow {}: the walk ended at {}, not on (5, {})", row, end_of(executor.result()), row);
         }
     }
     return passes(failures);
@@ -422,8 +474,10 @@ const FailureCase AUTO_STORY_FAILURE_CASES[] = {
     {.input = {"01.04 Roark's badge speech: the fanfare's pause, then a scene", roark_badge_speech}, .expectation = {}},
     {.input = {"01.07 after the tag battle the grunts run off before anyone speaks", grunts_run_off_before_rowan}, .expectation = {}},
     {.input = {"00.03 Rowan's scene opens with no box and fades home", rowans_scene_opens_with_no_box}, .expectation = {}},
+    {.input = {"00.03 Mom's scene ends with a closing fade: over once it is back up (lab-B 2026-11-09)", moms_scene_ends_with_a_fade}, .expectation = {}},
     {.input = {"00.02 the Starly battle's opening still plays after the starter (lab-B 2026-11-09)", starly_opening_after_the_starter}, .expectation = {}},
-    {.input = {"00.03 out of the house from each tile Rowan's scene ends on, rows 8 and 9 (lab-B 2026-11-09)", home_from_each_scene_end}, .expectation = {}},
+    {.input = {"00.03 out of the house from (6, 8), where Rowan's scene ends, and from a column west", home_from_each_scene_end}, .expectation = {}},
+    {.input = {"00.03 Rowan's scene starts on each of the trigger's rows 14..16, and the walk stops there", rowans_scene_on_each_row}, .expectation = {}},
 };
 
 void add_tests_AutoStory_SimFailureCases(UnitTestDatabase& database){

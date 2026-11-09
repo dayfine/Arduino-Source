@@ -115,7 +115,8 @@ struct SimBeat{
 SimBeat sim_line(std::string what);
 //  `length` of overworld with no box, someone moving or not.
 SimBeat sim_pause(std::string what, Milliseconds length, bool moving);
-//  `length` of a fade, not the overworld.
+//  `length` of a fade, as BDSP's eyes see it: no box, so the overworld,
+//  and still (a black frame matches the one before).
 SimBeat sim_fade(std::string what, Milliseconds length, WarpFade fade = WarpFade::BLACK);
 //  A talk or a scene as the screen shows it, beat by beat; the quiet
 //  overworld after the last beat.
@@ -378,7 +379,7 @@ public:
         , m_io(m_sim, m_notes, m_misses, m_knobs, m_step, [this]{ return cross(); }, [this](const Pokemon::Pose& far){ cross_to(far); })
         , m_walks(m_io)
         , m_table(story_action_table(m_walks, sim_actions()))
-        , m_interrupts(story_interrupts([this](bool){ return look(); }, sim_interrupt_actions()))
+        , m_interrupts(story_interrupts([this](bool fresh){ return look(fresh); }, sim_interrupt_actions()))
     {
         if (m_knobs.clear_interrupts){
             set_interrupts(&m_interrupts);
@@ -433,8 +434,10 @@ private:
     //  A step the simulation does not play: its dialogue opened and closed.
     Pokemon::Outcome stub();
     StoryBoundActions sim_actions();
-    //  The screen between steps: the dialog that popped up, if one did.
-    Pokemon::ScreenLook look();
+    //  The screen between steps: the dialog that popped up, if one did; a
+    //  battle's opening, its battle on the OPENING_LOOKS-th look. `fresh`
+    //  starts a new look.
+    Pokemon::ScreenLook look(bool fresh);
     //  What the knobs put on the screen before `step`: a dialog that pops
     //  up, a battle's opening still playing.
     void show_before(const Pokemon::StoryStep& step);
@@ -471,6 +474,8 @@ private:
     //  A battle's opening is playing before this step
     //  (SimWorldKnobs::battle_opening_before).
     bool m_battle_opening = false;
+    //  Looks at the opening so far, from the fresh one.
+    size_t m_opening_looks = 0;
     //  The planner's worlds with sim_people() on them, by world and who.
     mutable std::map<std::pair<const StoryWorld*, std::string>, std::unique_ptr<StoryWorld>> m_peopled;
     //  The steps of this row that have run.

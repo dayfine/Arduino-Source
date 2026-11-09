@@ -22,6 +22,13 @@
  *  that is its battle's opening, still playing (BDSP's Starly battle right
  *  after the starter is picked), and the step waits for it itself.
  *
+ *  Before another step, an unsettled screen that may be a battle's opening
+ *  (a white flash, a fade still down, a fade after a dialog box) is looked
+ *  at until its battle shows, up to max_opening_looks looks: the walk
+ *  before the step ended in grass or in a trainer's sight. The battle is
+ *  then cleared as any other. A fade that came back up with no box before
+ *  it (a door's) is looked at max_looks times only.
+ *
  */
 
 #ifndef PokemonAutomation_Pokemon_StoryInterrupts_H
@@ -31,6 +38,7 @@
 #include <functional>
 #include <map>
 #include <set>
+#include <string>
 #include <utility>
 #include "Pokemon_Interrupts.h"
 #include "Pokemon_ScreenEvents.h"
@@ -96,14 +104,39 @@ struct StoryInterrupts{
     //  before it fails the step as "interrupt_unsettled". A step that
     //  starts on it gets it on the first look.
     size_t max_looks = 3;
+    //  The same, for a screen that may be a battle's opening: enough looks
+    //  for its battle to show. BDSP's 300 ms looks cover 12 s, past its
+    //  battle_after_fade (8 s), after which a fade with no battle settles.
+    size_t max_opening_looks = 40;
     //  Interrupts cleared for one step before it fails as
     //  "too_many_interrupts".
     size_t max_per_step = 3;
 };
 
 
+//  How the screen looked at the end of a look: the line a run log needs to
+//  answer "had the scene ended before the step's first input?".
+struct ScreenSettle{
+    //  Whether the look saw a frame at all.
+    bool seen = false;
+    //  The events its last frame showed.
+    ScreenEvents showing = {};
+    //  How long the screen had shown them unchanged when the look ended.
+    Milliseconds quiet = Milliseconds(0);
+};
+//  The end of `look`: its last frame's events, and how long they held.
+ScreenSettle judge_settle(const ScreenLook& look);
+//  Whether it ended on the overworld with no box, no fade and no battle.
+bool is_settled(const ScreenSettle& settle);
+//  "settled overworld (quiet 0.3 s)", "black fade showing (quiet 0.1 s)",
+//  "no frame seen".
+std::string describe(const ScreenSettle& settle);
+
+
 //  What a look between steps found, and what clearing it came to.
 struct InterruptCheck{
+    //  How the screen looked when the look ended, judged or not.
+    ScreenSettle screen = {};
     //  NONE when nothing interrupted, or when the step starts on it.
     InterruptVerdict verdict = {};
     //  Failed when the look stayed unsettled, the kind had no handler, or

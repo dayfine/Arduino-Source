@@ -71,6 +71,14 @@ ScreenLook warp(){
 ScreenLook white_unsettled(){
     return look_of({{0, WALK}, {100, WHITE}, {700, WALK}}, 1000);
 }
+//  A trainer's lines, then the battle's black, still down: no battle yet.
+ScreenLook trainer_opening(){
+    return look_of({{0, WALK}, {100, BOX}, {2000, BLACK}}, 2100);
+}
+//  A door's black, back up with no box before it: a warp, not yet settled.
+ScreenLook black_unsettled(){
+    return look_of({{0, WALK}, {100, BLACK}, {700, WALK}}, 1000);
+}
 //  The same white, looked at for long enough after it: a cave exit.
 ScreenLook white_settled(){
     return look_of({{0, WALK}, {100, WHITE}, {700, WALK}, {10000, WALK}}, 10000);
@@ -298,9 +306,10 @@ UnitTestResult test_unsettled_looks_again(){
     return expect_trace(game, {"look", "look again", "clear warp", "told warp ", "run walk"});
 }
 
+//  A door's fade is no battle's opening: three looks, as before.
 UnitTestResult test_unsettled_is_bounded(){
     FakeGame game;
-    game.screens = {white_unsettled()};
+    game.screens = {black_unsettled()};
     StoryInterrupts interrupts = fake_interrupts(game);
     const FakeRun run = run_step(game, interrupts, make(StoryStepKind::ROUTE, "walk"));
     if (run.outcome.failure != "interrupt_unsettled"){
@@ -322,6 +331,46 @@ UnitTestResult test_unsettled_before_a_battle(){
         return "Expected the battle step to run, got " + to_string(run.outcome);
     }
     return expect_trace(game, {"look", "run starly"});
+}
+
+//  A battle's opening still playing when a walk step begins: the walk
+//  before it ended in grass or in a trainer's sight (BDSP fault sweep, 51
+//  steps of 00.01-01.11). The looks wait for the battle, past max_looks,
+//  and its handler clears it before the step.
+UnitTestResult test_opening_before_a_walk(ScreenLook opening, ScreenLook battle, const std::string& kind, const std::string& handler){
+    FakeGame game;
+    game.screens = {opening, opening, opening, opening, std::move(battle), quiet()};
+    StoryInterrupts interrupts = fake_interrupts(game);
+    const FakeRun run = run_step(game, interrupts, make(StoryStepKind::ROUTE, "walk"));
+    if (!run.outcome.succeeded()){
+        return "Expected the walk to run after the battle, got " + to_string(run.outcome);
+    }
+    return expect_trace(game, {
+        "look", "look again", "look again", "look again", "look again",
+        "clear " + handler, "told " + kind + " ", "run walk",
+    });
+}
+UnitTestResult test_wild_opening_before_a_walk(){
+    return test_opening_before_a_walk(white_unsettled(), wild(), "wild encounter", "wild");
+}
+UnitTestResult test_trainer_opening_before_a_walk(){
+    return test_opening_before_a_walk(trainer_opening(), trainer(), "trainer sight", "trainer");
+}
+
+//  A white that shows no battle and does not settle: max_opening_looks.
+UnitTestResult test_opening_is_bounded(){
+    FakeGame game;
+    game.screens = {white_unsettled()};
+    StoryInterrupts interrupts = fake_interrupts(game);
+    interrupts.max_opening_looks = 5;
+    const FakeRun run = run_step(game, interrupts, make(StoryStepKind::ROUTE, "walk"));
+    if (run.outcome.failure != "interrupt_unsettled"){
+        return "Expected interrupt_unsettled, got " + to_string(run.outcome);
+    }
+    return expect_trace(game, {
+        "look", "look again", "look again", "look again", "look again",
+        "told unsettled interrupt_unsettled: walk",
+    });
 }
 
 UnitTestResult test_failure_explained(bool throws){
@@ -380,6 +429,73 @@ UnitTestResult test_table_rejects(){
     }
     if (table.find(InterruptKind::DIALOG) == nullptr || table.find(InterruptKind::WARP) != nullptr){
         return "Expected the dialog's handler found and no warp's.";
+    }
+    return true;
+}
+
+//  A guard that notes how the screen looked before each step.
+class ScreenGuard : public StepGuard{
+public:
+    explicit ScreenGuard(FakeGame& game)
+        : m_game(game)
+    {}
+    virtual void on_screen(const StoryStep& step, const ScreenSettle& screen) override{
+        m_game.trace.push_back("before " + step.name + ": " + describe(screen));
+    }
+
+private:
+    FakeGame& m_game;
+};
+
+//  The guard hears how the screen looked before every step, interrupt or
+//  not: the run log's answer to "had the scene ended before the input?".
+UnitTestResult test_screen_before_each_step(){
+    FakeGame game;
+    //  A scene's closing fade still down: no battle comes, so the step
+    //  fails unsettled, and the guard hears the fade was showing.
+    game.screens = {look_of({{0, WALK}, {100, BLACK}}, 300)};
+    StoryInterrupts interrupts = fake_interrupts(game);
+    interrupts.max_opening_looks = 2;
+    const StoryActionTable table = table_of(game, {});
+    ScreenGuard guard(game);
+    TableExecutor executor(table, guard);
+    executor.set_interrupts(&interrupts);
+    RunState state;
+    StoryStep step = make(StoryStepKind::ROUTE, "by_the_counter");
+    step.variant = "act";
+    const Outcome faded = executor.run(state, step);
+    if (faded.succeeded()){
+        return "Expected a step in a fade to fail unsettled, got " + to_string(faded);
+    }
+    game.screens = {quiet()};
+    game.looks = 0;
+    const Outcome settled = executor.run(state, step);
+    if (!settled.succeeded()){
+        return "Expected the step on a quiet screen to run, got " + to_string(settled);
+    }
+    return expect_trace(game, {
+        "look", "look again", "before by_the_counter: black fade showing (quiet 0.2 s)",
+        "look", "before by_the_counter: settled overworld (quiet 0.3 s)", "run by_the_counter",
+    });
+}
+
+UnitTestResult test_settle_of_a_look(){
+    struct Row{
+        const char* name;
+        ScreenLook look;
+        const char* expected;
+    };
+    const std::vector<Row> rows = {
+        {"no frame", ScreenLook{}, "no frame seen"},
+        {"a quiet overworld", quiet(), "settled overworld (quiet 0.3 s)"},
+        {"a box", dialog(), "dialog box, player can move showing (quiet 0.2 s)"},
+        {"a door's fade back up", black_unsettled(), "settled overworld (quiet 0.3 s)"},
+    };
+    for (const Row& row : rows){
+        const std::string got = describe(judge_settle(row.look));
+        if (got != row.expected){
+            return std::format("{}: expected \"{}\", got \"{}\"", row.name, row.expected, got);
+        }
     }
     return true;
 }
@@ -456,11 +572,23 @@ const StoryInterruptsCase STORY_INTERRUPTS_CASES[] = {
     },
     {
         .input = {.name = "unsettled: at most max_looks looks", .test = test_unsettled_is_bounded},
-        .expectation = {.description = "interrupt_unsettled after three looks"},
+        .expectation = {.description = "a door's fade: interrupt_unsettled after three looks"},
     },
     {
         .input = {.name = "unsettled: a battle's opening before a battle step", .test = test_unsettled_before_a_battle},
         .expectation = {.description = "the step's, after one look"},
+    },
+    {
+        .input = {.name = "unsettled: a wild battle's opening before a walk", .test = test_wild_opening_before_a_walk},
+        .expectation = {.description = "waits for the battle, clears it, then the walk"},
+    },
+    {
+        .input = {.name = "unsettled: a trainer battle's opening before a walk", .test = test_trainer_opening_before_a_walk},
+        .expectation = {.description = "waits for the battle, fights it, then the walk"},
+    },
+    {
+        .input = {.name = "unsettled: at most max_opening_looks for an opening", .test = test_opening_is_bounded},
+        .expectation = {.description = "a white with no battle: interrupt_unsettled"},
     },
     {
         .input = {.name = "a failed step an interrupt explains runs again", .test = test_failed_outcome_explained},
@@ -481,6 +609,14 @@ const StoryInterruptsCase STORY_INTERRUPTS_CASES[] = {
     {
         .input = {.name = "table: one handler a kind that can be cleared", .test = test_table_rejects},
         .expectation = {.description = "rejects NONE, UNSETTLED and a second handler"},
+    },
+    {
+        .input = {.name = "the screen before each step, for the log", .test = test_screen_before_each_step},
+        .expectation = {.description = "a fade still down is told, and fails unsettled; a quiet overworld is settled"},
+    },
+    {
+        .input = {.name = "how a look ended", .test = test_settle_of_a_look},
+        .expectation = {.description = "the last frame's events and how long they held"},
     },
 };
 

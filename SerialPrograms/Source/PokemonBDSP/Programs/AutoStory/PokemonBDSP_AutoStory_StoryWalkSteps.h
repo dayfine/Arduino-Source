@@ -93,6 +93,7 @@ private:
     Pokemon::Outcome leg_to_map(const Pokemon::StoryStep& step);
     Pokemon::Outcome tap_to_banner(const Pokemon::Pose& from, const Pokemon::StoryStep& step);
     bool through_already(const Pokemon::StoryStep& step);
+    WarpSeen door_from_beside(const Pokemon::StoryStep& step, const WarpSeen& seen, Milliseconds timeout, const std::string& banner);
     void turn(Pokemon::Direction direction);
     void log(const std::string& text);
 

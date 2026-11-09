@@ -112,6 +112,7 @@ public:
     virtual bool stops_on_failure(const Pokemon::StoryStep& step) const override;
     virtual void on_failure(const Pokemon::StoryStep& step, const OperationFailedException& error) override;
     virtual void on_interrupt(const Pokemon::StoryStep& step, const Pokemon::InterruptCheck& check) override;
+    virtual void on_screen(const Pokemon::StoryStep& step, const Pokemon::ScreenSettle& screen) override;
 
 private:
     VideoStream& m_stream;
@@ -187,7 +188,9 @@ private:
     //    whose taps the map lets move as many as moved are where we are.
     //  - STEP: one D-pad step `direction`, turning first: onto a scene's
     //    trigger or into a door. Variant "to_banner": one tap into a cave
-    //    mouth, then wait for pose_after's map's location banner.
+    //    mouth, then wait for pose_after's map's location banner. Variant
+    //    "or_legs": into a door, and with no fade, the step's legs onto the
+    //    door's tile and into it again.
     //  - TALK: A at what we face; a dialogue must open.
     //  - MASH: a dialogue opens (or has), then B through it to the overworld;
     //    variant "a": A through it, for lines that give an item.

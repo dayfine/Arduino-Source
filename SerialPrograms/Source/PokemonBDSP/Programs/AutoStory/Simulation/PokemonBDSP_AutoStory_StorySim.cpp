@@ -72,7 +72,7 @@ SimBeat sim_pause(std::string what, Milliseconds length, bool moving){
     return {.what = std::move(what), .length = length, .moving = moving};
 }
 SimBeat sim_fade(std::string what, Milliseconds length, WarpFade fade){
-    return {.what = std::move(what), .length = length, .overworld = false, .fade = fade};
+    return {.what = std::move(what), .length = length, .overworld = true, .moving = false, .fade = fade};
 }
 
 std::string play_scene(const SimScene& scene, const TalkOverRule& rule){
@@ -662,7 +662,11 @@ StoryBoundActions SimExecutor::sim_actions(){
     };
 }
 
-Pokemon::ScreenLook SimExecutor::look(){
+//  The look at a battle's opening that shows its battle: past the three
+//  looks of a door's fade (StoryInterrupts::max_looks), 1.8 s at BDSP's.
+constexpr size_t OPENING_LOOKS = 6;
+
+Pokemon::ScreenLook SimExecutor::look(bool fresh){
     const WallClock start = WallClock() + std::chrono::hours(1);
     Pokemon::ScreenLook out;
     out.log.record({Pokemon::ScreenEvent::PLAYER_CAN_MOVE}, start);
@@ -671,13 +675,18 @@ Pokemon::ScreenLook SimExecutor::look(){
     }
     if (m_battle_opening){
         out.log.record({Pokemon::ScreenEvent::FADE_WHITE}, start + 33ms);
+        m_opening_looks = fresh ? 1 : m_opening_looks + 1;
+        if (m_opening_looks >= OPENING_LOOKS){
+            out.log.record({Pokemon::ScreenEvent::BATTLE_STARTED}, start + BETWEEN_STEPS_LOOK - 33ms);
+        }
     }
     out.window = {.start = start, .end = start + BETWEEN_STEPS_LOOK};
     return out;
 }
 
-//  Every kind closes what is up and logs it: the simulation shows only
-//  the dialogs it pops up.
+//  A dialog or a warp closes what is up and logs it: the simulation shows
+//  only the dialogs it pops up. A battle ends its opening only: a scene the
+//  walk before ran into goes on after it.
 StoryInterruptActions SimExecutor::sim_interrupt_actions(){
     const auto cleared = [this](const char* what){
         return [this, what](RunState&, const Pokemon::InterruptVerdict&){
@@ -687,9 +696,16 @@ StoryInterruptActions SimExecutor::sim_interrupt_actions(){
             return Pokemon::outcome_ok();
         };
     };
+    const auto battled = [this](const char* what){
+        return [this, what](RunState&, const Pokemon::InterruptVerdict&){
+            m_logger.log(std::format("[{}] {}: {} cleared before it.", m_row, m_step, what));
+            m_battle_opening = false;
+            return Pokemon::outcome_ok();
+        };
+    };
     return StoryInterruptActions{
-        .wild = cleared("a wild battle"),
-        .trainer = cleared("a trainer's battle"),
+        .wild = battled("a wild battle"),
+        .trainer = battled("a trainer's battle"),
         .dialog = cleared("a dialog"),
         .warp = cleared("a warp"),
     };
