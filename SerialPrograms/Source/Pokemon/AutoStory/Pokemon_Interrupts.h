@@ -23,6 +23,7 @@
 #include <vector>
 #include "Common/Cpp/Time.h"
 #include "Pokemon_ScreenEvents.h"
+#include "Pokemon_Transitions.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -60,14 +61,6 @@ struct FadeSpan{
     std::optional<WallClock> up = {};
 };
 
-//  Whether the screen differs after a fade from before it. The log has no
-//  images; the caller compares the frames, or says it did not.
-enum class SceneChange{
-    UNKNOWN,
-    SAME,
-    DIFFERENT,
-};
-
 //  What the warp judge made of a fade.
 enum class WarpJudgement{
     NO_FADE,        //  No fade went down in the window.
@@ -75,6 +68,9 @@ enum class WarpJudgement{
     TOO_SHORT,      //  It came back up before min_fade_hold.
     SAME_SCENE,     //  It came back up on the scene it left.
     WARPED,         //  Down, held, back up; not on the same scene.
+    FLASH,          //  An encounter's flash (a tracked transition only).
+    WHITE_UNSURE,   //  A white that may be a flash or a cave exit (a
+                    //  tracked transition only): wait for a battle.
 };
 //  "fade too short", for the log.
 const char* warp_judgement_name(WarpJudgement judgement);
@@ -96,6 +92,10 @@ WarpVerdict judge_warp(
     const ScreenEventLog& log, InterruptWindow window,
     const InterruptKnobs& knobs, SceneChange change
 );
+//  The same judge over a TransitionTracker's transition, which has its own
+//  scene comparison. A transition whose hold went unseen onto another scene
+//  is a warp whatever min_fade_hold says: the scene change is the evidence.
+WarpVerdict judge_warp(const Transition& transition, const InterruptKnobs& knobs);
 
 
 //  What stopped the player.

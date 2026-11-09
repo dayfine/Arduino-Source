@@ -19,6 +19,8 @@ const char* warp_judgement_name(WarpJudgement judgement){
     case WarpJudgement::TOO_SHORT:      return "fade too short";
     case WarpJudgement::SAME_SCENE:     return "same scene after the fade";
     case WarpJudgement::WARPED:         return "warped";
+    case WarpJudgement::FLASH:          return "an encounter's flash";
+    case WarpJudgement::WHITE_UNSURE:   return "a white, flash or fade";
     }
     return "?";
 }
@@ -162,6 +164,8 @@ std::optional<InterruptVerdict> warp_verdict(
     case WarpJudgement::NO_FADE:
     case WarpJudgement::TOO_SHORT:
     case WarpJudgement::SAME_SCENE:
+    case WarpJudgement::FLASH:
+    case WarpJudgement::WHITE_UNSURE:
         break;
     }
     return std::nullopt;
@@ -194,6 +198,23 @@ WarpVerdict judge_warp(
         out.judgement = WarpJudgement::SAME_SCENE;
     }else{
         out.judgement = WarpJudgement::WARPED;
+    }
+    return out;
+}
+
+WarpVerdict judge_warp(const Transition& transition, const InterruptKnobs& knobs){
+    const WarpFade fade = transition.kind == TransitionKind::FADE_BLACK ? WarpFade::BLACK : WarpFade::WHITE;
+    WarpVerdict out{WarpJudgement::WARPED, FadeSpan{fade, transition.start, transition.end}};
+    if (!transition.end){
+        out.judgement = WarpJudgement::FADE_SHOWING;
+    }else if (transition.kind == TransitionKind::FLASH){
+        out.judgement = WarpJudgement::FLASH;
+    }else if (transition.change == SceneChange::SAME){
+        out.judgement = WarpJudgement::SAME_SCENE;
+    }else if (transition.kind == TransitionKind::WHITE_UNSURE){
+        out.judgement = WarpJudgement::WHITE_UNSURE;
+    }else if (transition.peak && transition.change != SceneChange::DIFFERENT && transition.hold() < knobs.min_fade_hold){
+        out.judgement = WarpJudgement::TOO_SHORT;
     }
     return out;
 }
