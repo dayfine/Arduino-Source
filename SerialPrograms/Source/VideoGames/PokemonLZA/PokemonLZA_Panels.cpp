@@ -127,6 +127,7 @@ std::vector<PanelEntry> PanelListFactory::make_panels() const{
 
     ret.emplace_back("---- Public Betas ----");
     ret.emplace_back(make_SingleSwitchProgram<StatsReset>());
+    ret.emplace_back(make_SingleSwitchProgram<AutoStory>());
 
     if (STATIC_GLOBALS.DEVELOPER_MODE){
         ret.emplace_back("---- Developer Tools ----");
@@ -134,7 +135,6 @@ std::vector<PanelEntry> PanelListFactory::make_panels() const{
         ret.emplace_back(make_SingleSwitchProgram<MoveBoxArrow>());
         ret.emplace_back(make_SingleSwitchProgram<TestBoxCellInfo>());
         ret.emplace_back(make_SingleSwitchProgram<GenerateLocationNameOCR>());
-        ret.emplace_back(make_SingleSwitchProgram<AutoStory>());
     }
     return ret;
 }
