@@ -1,0 +1,95 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "00.41",
+    "title": "East to Saffron: the TEA at the gate, the Fighting Dojo's Hitmonchan (Gift RNG placeholder), the Center",
+    "start": {"certainty": "tile", "map": "CeladonCity_Gym", "where": {"facing": "north", "kind": "tiles", "tiles": [[6, 5]]}},
+    "events": [
+      {
+        "id": "fly_celadon_out",
+        "kind": "game_action",
+        "declared_after": {"certainty": "tile", "map": "CeladonCity", "where": {"facing": "south", "kind": "tiles", "tiles": [[48, 12]]}},
+        "variant": "fly CeladonCity",
+        "why": "same-city Fly out of the Gym (pokeguy 1:27:07)"
+      },
+      {
+        "id": "route7_gate",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "Route7_EastEntrance", "where": {"facing": "east", "kind": "tiles", "tiles": [[6, 5]]}},
+        "variant": "run",
+        "why": "east onto Route 7, into the gate (15, 10), up to the guard"
+      },
+      {
+        "id": "tea_gate",
+        "kind": "scene",
+        "why": "the guard takes the TEA"
+      },
+      {
+        "id": "dojo_door",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "SaffronCity", "where": {"facing": "north", "kind": "tiles", "tiles": [[40, 13]]}},
+        "variant": "run",
+        "why": "east into Saffron, to below the Dojo (40, 12)"
+      },
+      {
+        "id": "karate_master",
+        "kind": "route",
+        "target": {"certainty": "unknown", "map": "SaffronCity_Dojo", "where": {"kind": "unknown"}},
+        "variant": "run",
+        "why": "in, past the Black Belts, to the Karate Master"
+      },
+      {
+        "id": "talk_karate_master",
+        "kind": "talk",
+        "why": "the Karate Master: a battle (not in pokeguy's run; no pokeguy-trainers.json id)"
+      },
+      {
+        "id": "dojo-karate-master",
+        "kind": "battle",
+        "declared_after": {"certainty": "unknown", "map": "SaffronCity_Dojo", "where": {"kind": "unknown"}},
+        "may_lose": true,
+        "why": "Black Belt Koichi (TRAINER_BLACK_BELT_KOICHI): needed for the gift; strategy not yet planned"
+      },
+      {
+        "id": "hitmonchan_ball",
+        "kind": "route",
+        "target": {"certainty": "unknown", "map": "SaffronCity_Dojo", "where": {"kind": "unknown"}},
+        "variant": "run",
+        "why": "to the Hitmonchan ball"
+      },
+      {
+        "id": "hitmonchan_party_room",
+        "kind": "game_action",
+        "variant": "party_room free=1",
+        "why": "a free party slot for the gift; stop if the party is full"
+      },
+      {
+        "id": "hitmonchan_gift_rng",
+        "kind": "game_action",
+        "variant": "gift_rng hitmonchan",
+        "why": "Gift RNG on the Hitmonchan ball: the Dojo pick"
+      },
+      {
+        "id": "saffron_center_door",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "SaffronCity", "where": {"facing": "north", "kind": "tiles", "tiles": [[24, 39]]}},
+        "variant": "run",
+        "why": "out, south-west to below the Center (24, 38)"
+      },
+      {
+        "id": "saffron_nurse",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "SaffronCity_PokemonCenter_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 4]]}},
+        "variant": "run",
+        "why": "the nurse (pokeguy-preparation.md: heal before the Silph sequence)"
+      },
+      {
+        "id": "heal_saffron",
+        "kind": "heal",
+        "why": "the nurse heals the party"
+      }
+    ]
+  },
+  "execution": {"menu": "full"}
+}

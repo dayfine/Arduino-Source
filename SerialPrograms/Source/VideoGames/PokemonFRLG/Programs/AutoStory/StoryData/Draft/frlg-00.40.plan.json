@@ -1,0 +1,143 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "00.40",
+    "title": "Fly to Celadon: two Rare Candies, Blizzard, Celadon Gym: Tamia, Lori, Erika",
+    "start": {"certainty": "tile", "map": "CinnabarIsland_Gym", "where": {"facing": "north", "kind": "tiles", "tiles": [[5, 5]]}},
+    "events": [
+      {
+        "id": "fly_celadon",
+        "kind": "game_action",
+        "declared_after": {"certainty": "tile", "map": "CeladonCity", "where": {"facing": "south", "kind": "tiles", "tiles": [[48, 12]]}},
+        "variant": "fly CeladonCity",
+        "why": "Fly to Celadon (pokeguy 1:23:45)"
+      },
+      {
+        "id": "celadon_nurse",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "CeladonCity_PokemonCenter_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 4]]}},
+        "variant": "run",
+        "why": "the nurse (pokeguy-preparation.md: Erika at 35/137)"
+      },
+      {
+        "id": "heal_celadon",
+        "kind": "heal",
+        "why": "the nurse heals the party"
+      },
+      {
+        "id": "rare_candy_3",
+        "kind": "game_action",
+        "variant": "use_item rare-candy slot=1",
+        "why": "Rare Candy: Lv43 (pokeguy 1:25:00)"
+      },
+      {
+        "id": "rare_candy_4",
+        "kind": "game_action",
+        "variant": "use_item rare-candy slot=1",
+        "why": "Rare Candy: Lv44"
+      },
+      {
+        "id": "teach_blizzard",
+        "kind": "game_action",
+        "variant": "teach tm14 blizzard slot=1 forget=mega-kick",
+        "why": "TM14 Blizzard over Mega Kick: a one-shot TM, needs the user's team decision first"
+      },
+      {
+        "id": "above_gym_tree",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "CeladonCity", "where": {"facing": "south", "kind": "tiles", "tiles": [[40, 34]]}},
+        "variant": "run",
+        "why": "out, down column 40..43 to above the tree (40, 35) on the way round to the Gym"
+      },
+      {
+        "id": "cut_gym_tree",
+        "kind": "game_action",
+        "declared_after": {"certainty": "tile", "map": "CeladonCity", "where": {"facing": "south", "kind": "tiles", "tiles": [[40, 35]]}},
+        "variant": "cut_tree",
+        "why": "the tree (40, 35)"
+      },
+      {
+        "id": "below_celadon_gym",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "CeladonCity", "where": {"facing": "north", "kind": "tiles", "tiles": [[11, 31]]}},
+        "variant": "run",
+        "why": "west along row 36 and up to below the Gym (11, 30)"
+      },
+      {
+        "id": "below_tamia_line",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "CeladonCity_Gym", "where": {"facing": "north", "kind": "tiles", "tiles": [[2, 11]]}},
+        "why": "in, up the west side to (2, 11), west of Kay (3, 11), who faces east"
+      },
+      {
+        "id": "tamia_line",
+        "kind": "step",
+        "direction": "north",
+        "variant": "trainer_line",
+        "why": "onto (2, 10), the end of Tamia's line (2, 7..10): she walks down to (2, 9)"
+      },
+      {
+        "id": "celadon-tamia",
+        "kind": "battle",
+        "declared_after": {"certainty": "tile", "map": "CeladonCity_Gym", "where": {"facing": "north", "kind": "tiles", "tiles": [[2, 10]]}},
+        "why": "Beauty Tamia (TRAINER_BEAUTY_TAMIA): Bellsprout, Bellsprout Lv24"
+      },
+      {
+        "id": "west_of_gym_tree",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "CeladonCity_Gym", "where": {"facing": "east", "kind": "tiles", "tiles": [[2, 5]]}},
+        "why": "up column 1 past Tamia, to (2, 5), west of the tree (3, 5)"
+      },
+      {
+        "id": "cut_gym_inner_tree",
+        "kind": "game_action",
+        "declared_after": {"certainty": "tile", "map": "CeladonCity_Gym", "where": {"facing": "east", "kind": "tiles", "tiles": [[3, 5]]}},
+        "variant": "cut_tree",
+        "why": "the tree (3, 5)"
+      },
+      {
+        "id": "to_lori_line",
+        "kind": "legs",
+        "legs": [{"direction": "east", "tiles": 1}],
+        "why": "onto (4, 5)"
+      },
+      {
+        "id": "lori_line",
+        "kind": "step",
+        "direction": "east",
+        "variant": "trainer_line",
+        "why": "onto (5, 5), below Lori (5, 4)"
+      },
+      {
+        "id": "celadon-lori",
+        "kind": "battle",
+        "declared_after": {"certainty": "tile", "map": "CeladonCity_Gym", "where": {"facing": "east", "kind": "tiles", "tiles": [[5, 5]]}},
+        "why": "Beauty Lori (TRAINER_BEAUTY_LORI): Exeggcute Lv24"
+      },
+      {
+        "id": "below_erika",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "CeladonCity_Gym", "where": {"facing": "north", "kind": "tiles", "tiles": [[6, 5]]}},
+        "why": "a tile east, below Erika (6, 4)"
+      },
+      {
+        "id": "talk_erika",
+        "kind": "talk",
+        "why": "Erika"
+      },
+      {
+        "id": "erika",
+        "kind": "battle",
+        "declared_after": {"certainty": "tile", "map": "CeladonCity_Gym", "where": {"facing": "north", "kind": "tiles", "tiles": [[6, 5]]}},
+        "why": "Erika (TRAINER_LEADER_ERIKA): Victreebel, Tangela, Vileplume"
+      },
+      {
+        "id": "rainbow_badge",
+        "kind": "scene",
+        "why": "the RAINBOW BADGE and TM19"
+      }
+    ]
+  },
+  "execution": {"menu": "full"}
+}
