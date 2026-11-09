@@ -82,23 +82,34 @@ def load_config(path, console):
 
 @contextmanager
 def console_lock(console, root):
-    """Publish the existing lablock.sh protocol; never evict an existing owner."""
-    lock = Path(root) / 'locks' / console
-    lock.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        lock.mkdir()
-    except FileExistsError:
-        raise ValueError(f'Console {console} is locked. Use lab/control/lablock.sh -c {console} status; do not delete a live lock.') from None
+    """Take the lablock.sh lock; never evict an existing owner.
+
+    Same format as lablock.sh: the lock is a symlink CONSOLE -> .CONSOLE.TOKEN,
+    a folder filled in before the link appears.
+    """
+    locks = Path(root) / 'locks'
+    lock = locks / console
+    locks.mkdir(parents=True, exist_ok=True)
     token = secrets.token_hex(24)
+    name = f'.{console}.{token}'
+    target = locks / name
+    target.mkdir()
     try:
-        (lock / 'pid').write_text(str(os.getpid()))
-        (lock / 'token').write_text(token)
-        (lock / 'name').write_text('human-dev-' + console)
-        (lock / 'since').write_text(datetime.now().isoformat(timespec='seconds'))
-        yield token
+        (target / 'pid').write_text(str(os.getpid()))
+        (target / 'token').write_text(token)
+        (target / 'name').write_text('human-dev-' + console)
+        (target / 'since').write_text(datetime.now().isoformat(timespec='seconds'))
+        try:
+            os.symlink(name, lock)  # fails on any existing lock, either format
+        except FileExistsError:
+            raise ValueError(f'Console {console} is locked. Use lab/control/lablock.sh -c {console} status; do not delete a live lock.') from None
+        try:
+            yield token
+        finally:
+            if os.path.islink(lock) and os.readlink(lock) == name:
+                os.unlink(lock)
     finally:
-        if (lock / 'token').is_file() and (lock / 'token').read_text() == token:
-            shutil.rmtree(lock)
+        shutil.rmtree(target, ignore_errors=True)
 
 
 @contextmanager
