@@ -203,7 +203,7 @@ void bag_back_to_overworld(VideoStream& stream, ProControllerContext& context, c
     }
 }
 
-enum class Dose{ HEALED, GIVEN };
+enum class Dose{ HEALED, GIVEN, NONE_LEFT };
 
 //  One Potion on the lead, from the overworld, its HP read before and after
 //  in the Bag. HEALED when no dose is needed (HP full, or above
@@ -212,14 +212,11 @@ enum class Dose{ HEALED, GIVEN };
 Dose potion_dose(VideoStream& stream, ProControllerContext& context, size_t dose, double heal_below){
     stream.log("[Potion] Finding Bag/Medicine/Potion; dose " + std::to_string(dose + 1) + "/3.");
     if (!find_bag_item_by_name(stream, context, "potion", 1, 5)){
-        if (dose == 0 && heal_below < 1.0){
-            // Only a check: without Potions there is nothing to do here.
-            stream.log("[Potion] No Potion in the Bag; skipping the HP check.", COLOR_ORANGE);
-            return Dose::HEALED;
-        }
-        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-            "Potion: Could not verify Potion in the Medicine pocket.",
-            stream);
+        // No Potion left is not a failure: the next Center heals. After Roark
+        // the one Potion went on the first dose and the second found the
+        // Medicine pocket empty (lab-B, 2026-11-08 15:26).
+        stream.log("[Potion] No Potion left in the Bag after " + std::to_string(dose) + " dose(s); going on.", COLOR_ORANGE);
+        return Dose::NONE_LEFT;
     }
     const double before = confirmed_potion_hp(stream, context);
     stream.log("[Potion] Slot 1 HP bar before use=" + std::to_string(before * 100) + "%.");
@@ -405,7 +402,12 @@ void use_potion_first_pokemon(VideoStream& stream, ProControllerContext& context
     OverlayBoxScope hp_overlay(stream.overlay(), COLOR_GREEN, {0.137, 0.160, 0.202, 0.016}, "");
     bool healed = false;
     for (size_t dose = 0; dose < 3 && !healed; dose++){
-        healed = potion_dose(stream, context, dose, heal_below) == Dose::HEALED;
+        const Dose result = potion_dose(stream, context, dose, heal_below);
+        if (result == Dose::NONE_LEFT){
+            bag_back_to_overworld(stream, context, "Potion: No overworld after finding no Potion.");
+            return;
+        }
+        healed = result == Dose::HEALED;
         if (!healed){
             pbf_mash_button(context, BUTTON_B, 2000ms);
             context.wait_for_all_requests();

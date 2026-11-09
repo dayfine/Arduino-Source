@@ -41,6 +41,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_CoordEvents.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP_AutoStory_GridSim.h"
+#include "PokemonBDSP_AutoStory_OldStorySteps.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Events.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryExecutor.h"
@@ -120,44 +121,6 @@ UnitTestResult run_exit_test(Logger& logger, const std::string& row_id, const St
         }
     }
     return true;
-}
-
-//  r75: out of the Oreburgh Gate as a run west until Route 203's banner
-//  (the old event west_until_transition()). The banner reads a few tiles
-//  in: the run ends west of the Gate's warp tile (55, 9), in the pocket by
-//  the pond (Route 203's x 49 to 54, rows 6 to 13).
-StoryStep r75_old_gate_exit(){
-    StoryStep step;
-    step.kind = StoryStepKind::LEGS;
-    step.name = "out_of_oreburgh_gate";
-    step.legs = {{.direction = Direction::WEST, .tiles = 8}};
-    step.variant = "to_map";
-    step.pose_after = Pokemon::tile_pose("Route203", {TilePos{55, 9}}, Direction::WEST);
-    return step;
-}
-Pose r75_pond_pocket(){
-    std::vector<TilePos> tiles;
-    for (int y = 6; y <= 13; y++){
-        for (int x = 49; x <= 54; x++){
-            tiles.push_back({x, y});
-        }
-    }
-    return Pokemon::tile_pose("Route203", tiles);
-}
-//  r81: out of the Ravaged Path as a timed walk south (the old event's
-//  4 s walk_dir()), its fade missed: on past cave_exit (20, 26) to the
-//  cliff, column 20 down to row 30.
-StoryStep r81_old_cave_exit(){
-    StoryStep step;
-    step.kind = StoryStepKind::LEGS;
-    step.name = "out_of_the_ravaged_path";
-    step.legs = {{.direction = Direction::SOUTH, .tiles = 4}};
-    step.variant = "to_wall";
-    step.pose_after = Pokemon::tile_pose("Route204North", {TilePos{20, 26}}, Direction::SOUTH);
-    return step;
-}
-Pose r81_below_the_mouth(){
-    return Pokemon::tile_pose("Route204North", {TilePos{20, 27}, TilePos{20, 28}, TilePos{20, 29}, TilePos{20, 30}});
 }
 
 UnitTestResult test_coord_events(Logger&){
@@ -242,28 +205,24 @@ UnitTestResult test_exit_ravaged_path(Logger& logger){
     return run_exit_test(logger, "01.09", r81_old_cave_exit(), SimMisses{.fade = 0, .banner = std::nullopt}, r81_below_the_mouth());
 }
 
-//  Oreburgh Mine B1F: tapping 19 tiles leaves the player 1 tile short of the warp door.
-StoryStep old_mine_hall_19(std::string name, Direction direction){
-    StoryStep step;
-    step.kind = StoryStepKind::LEGS;
-    step.name = std::move(name);
-    step.legs = {{.direction = direction, .tiles = 19}};
-    return step;
-}
-
-//  Oreburgh Mine: stepping south at col 29 without bypassing the crate
-//  hits the wooden crate at (29, 28) on the south leg, a tile down.
-StoryStep old_coal_room_crate_cut(){
-    StoryStep step;
-    step.kind = StoryStepKind::LEGS;
-    step.name = "to_roarks_corner";
-    step.legs = {
-        {.direction = Direction::EAST, .tiles = 1}, {.direction = Direction::SOUTH, .tiles = 2},
-        {.direction = Direction::WEST, .tiles = 1}, {.direction = Direction::SOUTH, .tiles = 5},
-        {.direction = Direction::EAST, .tiles = 14}, {.direction = Direction::SOUTH, .tiles = 10},
-        {.direction = Direction::SOUTH, .tiles = 2}, {.direction = Direction::WEST, .tiles = 11},
-    };
-    return step;
+//  lab-B 2026-11-08 15:31 to 15:54: 01.05's walk to the tile beside the
+//  Oreburgh Gate's mouth slid onto the warp, and the tap step after it began
+//  inside the Gate. With its banner up, the step ends there with no tap and
+//  no fade (the clean run's fade into the Gate is not seen); with it gone,
+//  it fails a few taps on, not across the Gate.
+UnitTestResult test_tap_through_already(Logger& logger, bool banner){
+    const std::vector<StoryCheckpoint> rows = table_with("01.05", old_tap_into_the_gate());
+    SimExecutor clean(logger);
+    run_rows_on(clean, logger, {.from = "01.05", .to = "01.05"}, rows);
+    SimExecutor through(logger, {.fade = {}, .banner = {}, .through = 1, .through_banner = banner});
+    run_rows_on(through, logger, {.from = "01.05", .to = "01.05"}, rows);
+    const SimRun& run = through.result();
+    const std::optional<TilePos> at = run.world ? story_to_local(*run.world, "OreburghGate", run.end) : std::nullopt;
+    const bool passed = banner
+        ? run.error.empty() && through.misses().fades + 1 == clean.misses().fades
+        : run.failed_step == "01.05 into_oreburgh_gate" && at && at->y == 22 && at->x >= 21;
+    return passed ? UnitTestResult(true) : UnitTestResult(std::format("failed in '{}' on {} after {} fades (clean {}): {}",
+        run.failed_step, end_of(run), through.misses().fades, clean.misses().fades, run.error.empty() ? "no failure" : run.error));
 }
 
 UnitTestResult test_story_sim_step_failure(Logger& logger, const std::string& row, const StoryStep& old_step, const std::string& expected_failed_step, const std::string& expected_error){
@@ -337,6 +296,12 @@ const AutoStoryStorySimCase AUTO_STORY_STORY_SIM_CASES[] = {
     }}, .expectation = {}},
     {.input = {"r75, out of the Oreburgh Gate", test_exit_gate}, .expectation = {}},
     {.input = {"r81, out of the Ravaged Path", test_exit_ravaged_path}, .expectation = {}},
+    {.input = {"01.05, a tap step begun through the Gate's mouth, its banner up (lab-B, 2026-11-08)", [](Logger& logger){
+        return test_tap_through_already(logger, true);
+    }}, .expectation = {}},
+    {.input = {"01.05, a tap step begun through the Gate's mouth, its banner gone (lab-B, 2026-11-08)", [](Logger& logger){
+        return test_tap_through_already(logger, false);
+    }}, .expectation = {}},
     {
         .input = {"01.03, a dark frame 1.8 s down the mine's entrance hall is not its mouth (lab-B, 2026-11-08)", [](Logger& logger){
             SimExecutor executor(logger, {.fade = {}, .banner = {}, .dark = 1});
@@ -359,7 +324,7 @@ const AutoStoryStorySimCase AUTO_STORY_STORY_SIM_CASES[] = {
     },
     {
         .input = {"01.03, counted 19 taps north leaves player in hall", [](Logger& logger){
-            return test_story_sim_step_failure(logger, "01.03", old_mine_hall_19("out_of_the_mine", Direction::NORTH), "01.03 east_of_the_mine", "warp instead of a stop.");
+            return test_story_sim_step_failure(logger, "01.03", old_mine_hall_19("out_of_the_mine", Direction::NORTH), "01.03 north_to_the_centers_wall", "map_mismatch");
         }},
         .expectation = {},
     },

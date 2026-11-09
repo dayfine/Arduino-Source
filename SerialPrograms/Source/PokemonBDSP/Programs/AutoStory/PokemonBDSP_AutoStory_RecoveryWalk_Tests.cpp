@@ -331,9 +331,19 @@ const WarpLink MINE_WARPS[] = {
     {"OreburghMine", {15, 1}, "OreburghMineB1F", {12, 21}},
 };
 
+//  Oreburgh's Hiker, who wanders (46..48, 25..27) from (47, 26) on the
+//  Diamond decomp's map: across column 46, the walk north to the Center.
+SimWanderer oreburgh_hiker(uint64_t seed, Milliseconds start){
+    const StoryWorld& city = *story_plan_world("OreburghCity", "OreburghCity");
+    const TilePos first = story_to_world(city, "OreburghCity", {46, 25});
+    const TilePos last = story_to_world(city, "OreburghCity", {48, 27});
+    return {.name = "hiker_0", .box = {first.x, first.y, last.x, last.y}, .pos = story_to_world(city, "OreburghCity", {47, 26}),
+        .seed = seed, .step_interval = 2000ms, .time_offset = start};
+}
+
 //  Puts the player on `map`'s `start` and walks north to a warp, then puts
-//  them where it lands. Returns where, on which map.
-std::pair<std::string, TilePos> warp_north(GridSim& sim, const std::string& map, const TilePos& start){
+//  them where it lands, with `wanderers` about. Returns where, on which map.
+std::pair<std::string, TilePos> warp_north(GridSim& sim, const std::string& map, const TilePos& start, std::vector<SimWanderer> wanderers = {}){
     const StoryWorld& from = *story_plan_world(map, map);
     sim.place({.world = &from}, story_to_world(from, map, start), Direction::NORTH);
     if (sim.hold(Direction::NORTH, 20000ms, SimPace::WALK).stop != SimStop::WARP){
@@ -343,52 +353,85 @@ std::pair<std::string, TilePos> warp_north(GridSim& sim, const std::string& map,
     for (const WarpLink& link : MINE_WARPS){
         if (link.from_map == map && warp == link.from){
             const StoryWorld& to = *story_plan_world(link.to_map, link.to_map);
-            sim.place({.world = &to, .trainers = story_trainers(to)}, story_to_world(to, link.to_map, link.to), Direction::NORTH);
+            sim.place({.world = &to, .trainers = story_trainers(to), .wanderers = std::move(wanderers)},
+                story_to_world(to, link.to_map, link.to), Direction::NORTH);
             return {link.to_map, link.to};
         }
     }
     throw GridSimFailure{std::format("no warp known at {} on {}", warp ? Pokemon::to_string(*warp) : "?", map)};
 }
 
+//  A LEGS step on Oreburgh City, after which the player stands on one of
+//  `end` facing `facing` (nowhere said if `end` is empty).
+Pokemon::StoryStep city_legs(const char* name, std::vector<Pokemon::StoryLeg> legs, const char* variant,
+    std::vector<TilePos> end = {}, Direction facing = Direction::NORTH
+){
+    Pokemon::StoryStep out;
+    out.kind = Pokemon::StoryStepKind::LEGS;
+    out.name = name;
+    out.legs = std::move(legs);
+    out.variant = variant;
+    if (!end.empty()){
+        out.pose_after = Pokemon::tile_pose("OreburghCity", end, facing);
+    }
+    return out;
+}
+//  A planned route on Oreburgh City to `target`, facing `facing`.
+Pokemon::StoryStep city_route(const char* name, TilePos target, Direction facing){
+    Pokemon::StoryStep out;
+    out.kind = Pokemon::StoryStepKind::ROUTE;
+    out.name = name;
+    out.target = Pokemon::tile_pose("OreburghCity", {target}, facing);
+    out.variant = "town";
+    out.pose_after = out.target;
+    return out;
+}
+
+using CitySteps = std::pair<Pokemon::Pose, std::vector<Pokemon::StoryStep>>;
+
 //  01.03 out of the mine as the table had it before lab-B 2026-11-08: from
 //  the city's (45, 59) north against the mine's sign (45, 56), a route to
 //  below the Center's door (47, 21), a tap south, the walls east and north
 //  of (48, 22), and a tap west.
-std::pair<Pokemon::Pose, std::vector<Pokemon::StoryStep>> old_steps_out_of_the_mine(){
-    const auto step = [](const char* name, std::vector<Pokemon::StoryLeg> legs, const char* variant, std::optional<TilePos> end){
-        Pokemon::StoryStep out;
-        out.kind = Pokemon::StoryStepKind::LEGS;
-        out.name = name;
-        out.legs = std::move(legs);
-        out.variant = variant;
-        if (end){
-            out.pose_after = Pokemon::tile_pose("OreburghCity", {*end}, Direction::NORTH);
-        }
-        return out;
-    };
-    Pokemon::StoryStep route;
-    route.kind = Pokemon::StoryStepKind::ROUTE;
-    route.name = "below_the_centers_door_again";
-    route.target = Pokemon::tile_pose("OreburghCity", {TilePos{47, 21}}, Direction::NORTH);
-    route.variant = "town";
+CitySteps old_steps_out_of_the_mine(){
+    Pokemon::StoryStep route = city_route("below_the_centers_door_again", {47, 21}, Direction::NORTH);
+    route.pose_after.reset();
     return {Pokemon::tile_pose("OreburghCity", {TilePos{45, 59}, TilePos{45, 58}}, Direction::NORTH), {
-        step("up_to_the_mines_sign", {{.direction = Direction::NORTH, .tiles = 3}}, "to_wall", TilePos{45, 57}),
+        city_legs("up_to_the_mines_sign", {{.direction = Direction::NORTH, .tiles = 3}}, "to_wall", {{45, 57}}),
         route,
-        step("south_of_the_centers_door", {{.direction = Direction::SOUTH, .tiles = 1}}, "", std::nullopt),
-        step("against_the_walls_east_of_the_door", {{.direction = Direction::EAST, .tiles = 3}, {.direction = Direction::NORTH, .tiles = 1}},
-            "to_wall", TilePos{48, 21}),
-        step("below_the_centers_door_lined_up", {{.direction = Direction::WEST, .tiles = 1}}, "", TilePos{47, 21}),
+        city_legs("south_of_the_centers_door", {{.direction = Direction::SOUTH, .tiles = 1}}, ""),
+        city_legs("against_the_walls_east_of_the_door", {{.direction = Direction::EAST, .tiles = 3}, {.direction = Direction::NORTH, .tiles = 1}},
+            "to_wall", {{48, 21}}),
+        city_legs("below_the_centers_door_lined_up", {{.direction = Direction::WEST, .tiles = 1}}, "", {{47, 21}}),
+    }};
+}
+//  01.03 out of the mine as the table had it at lab-B 2026-11-08 13:50: pin
+//  the column against the walls east of the mine, route to the street west
+//  of the door, (44, 22), and line up against the walls east and north of
+//  (48, 22). Its route goes round the Hiker's rows west of column 46.
+CitySteps previous_steps_out_of_the_mine(){
+    return {Pokemon::tile_pose("OreburghCity", {TilePos{46, 59}, TilePos{45, 59}, TilePos{47, 59}, TilePos{46, 58}, TilePos{45, 58}, TilePos{47, 58}},
+        Direction::NORTH), {
+        city_legs("off_the_mines_warp_tiles", {{.direction = Direction::NORTH, .tiles = 1}}, ""),
+        city_legs("east_of_the_mine", {{.direction = Direction::EAST, .tiles = 4}}, "to_wall", {{48, 58}, {49, 57}}, Direction::EAST),
+        city_legs("north_of_row_58", {{.direction = Direction::NORTH, .tiles = 1}}, ""),
+        city_legs("against_the_walls_east_of_the_mine", {{.direction = Direction::EAST, .tiles = 1}, {.direction = Direction::SOUTH, .tiles = 1}},
+            "to_wall", {{49, 57}}, Direction::SOUTH),
+        city_route("west_of_the_centers_door", {44, 22}, Direction::WEST),
+        city_legs("against_the_walls_east_of_the_door", {{.direction = Direction::EAST, .tiles = 4}, {.direction = Direction::NORTH, .tiles = 1}},
+            "to_wall", {{48, 21}}),
+        city_legs("below_the_centers_door_lined_up", {{.direction = Direction::WEST, .tiles = 1}}, "", {{47, 21}}),
     }};
 }
 //  The table's 01.03 steps out of the mine, from where it has us on the
 //  city to below the Center's door.
-std::pair<Pokemon::Pose, std::vector<Pokemon::StoryStep>> table_steps_out_of_the_mine(){
+CitySteps table_steps_out_of_the_mine(){
     std::vector<Pokemon::StoryStep> steps;
     for (const Pokemon::StoryCheckpoint& checkpoint : story_checkpoints()){
         bool on = false;
         for (const Pokemon::StoryStep& step : checkpoint.steps){
-            on = checkpoint.id == "01.03" && (on || step.name == "off_the_mines_warp_tiles") && step.name != "heal_oreburgh";
-            if (on){
+            on = checkpoint.id == "01.03" && step.name != "heal_oreburgh" && (on || step.name == "out_of_the_mine");
+            if (on && step.name != "out_of_the_mine"){
                 steps.push_back(step);
             }
         }
@@ -396,53 +439,120 @@ std::pair<Pokemon::Pose, std::vector<Pokemon::StoryStep>> table_steps_out_of_the
     return {*story_step("01.03", "out_of_the_mine").pose_after, steps};
 }
 
-//  Why `steps`, walked on `sim` from where the player stands, the table
-//  having them on `pose`, with open legs overshooting, did not end on
-//  (47, 21) with the Center's door north; "" if they did.
-std::string center_miss(GridSim& sim, const std::pair<Pokemon::Pose, std::vector<Pokemon::StoryStep>>& steps, Logger& logger){
+//  OvershootingRouteIO that keeps where each walk and tap left the player.
+class TracingRouteIO : public OvershootingRouteIO{
+public:
+    TracingRouteIO(GridSim& sim, std::vector<std::string>& notes)
+        : OvershootingRouteIO(sim, notes, {}), m_sim(sim)
+    {}
+    virtual WalkResult walk_to_wall(const RouteWallWalk& walk) override{
+        const WalkResult result = OvershootingRouteIO::walk_to_wall(walk);
+        m_trail.push_back(m_sim.player().pos);
+        return result;
+    }
+    virtual WalkResult walk_taps(Direction direction, size_t tiles, const std::string& label) override{
+        const WalkResult result = OvershootingRouteIO::walk_taps(direction, tiles, label);
+        m_trail.push_back(m_sim.player().pos);
+        return result;
+    }
+    void mark(){
+        m_trail.push_back(m_sim.player().pos);
+    }
+    const std::vector<SimPos>& trail() const{
+        return m_trail;
+    }
+private:
+    GridSim& m_sim;
+    std::vector<SimPos> m_trail;
+};
+
+//  How `steps` went: why they did not end on (47, 21) with the Center's
+//  door north ("" if they did), and whether the walk stood west of column
+//  46 on the way.
+struct CenterWalk{
+    std::string miss;
+    bool west_of_column_46 = false;
+};
+bool went_west_of_column_46(const StoryWorld& city, const std::vector<SimPos>& trail){
+    return std::any_of(trail.begin(), trail.end(), [&city](const SimPos& pos){
+        const std::optional<TilePos> tile = story_to_local(city, "OreburghCity", nearest_tile(pos));
+        return tile && tile->x < 46;
+    });
+}
+std::string walk_city_steps(StoryWalkSteps& walks, TracingRouteIO& route, const CitySteps& steps, Logger& logger){
+    Pokemon::RunState state{.pose = steps.first, .flags = {}};
+    std::string ends;
+    for (const Pokemon::StoryStep& step : steps.second){
+        const Pokemon::Outcome outcome = step.kind == Pokemon::StoryStepKind::ROUTE ? walks.route(state, step) : walks.legs(state, step);
+        route.mark();
+        ends += std::format(" {} {}", step.name, to_string(route.trail().back()));
+        if (!outcome.succeeded()){
+            return step.name + ": " + Pokemon::to_string(outcome);
+        }
+        state.pose = step.pose_after ? *step.pose_after : outcome.pose ? *outcome.pose : state.pose;
+    }
+    logger.log("   " + ends);
+    return "";
+}
+//  Walks `steps` on `sim` from where the player stands, the table having
+//  them on `steps.first`, with open legs overshooting.
+CenterWalk center_walk(GridSim& sim, const CitySteps& steps, Logger& logger){
     std::vector<std::string> notes;
-    OvershootingRouteIO route(sim, notes, {});
+    TracingRouteIO route(sim, notes);
     WallStepIO io(route, sim);
     StoryWalkSteps walks(io);
     walks.begin_attempt("01.03");
-    Pokemon::RunState state{.pose = steps.first, .flags = {}};
-    std::string ends;
+    CenterWalk out;
     try{
-        for (const Pokemon::StoryStep& step : steps.second){
-            const Pokemon::Outcome outcome = step.kind == Pokemon::StoryStepKind::ROUTE ? walks.route(state, step) : walks.legs(state, step);
-            ends += std::format(" {} {}", step.name, to_string(sim.player().pos));
-            if (!outcome.succeeded()){
-                return step.name + ": " + Pokemon::to_string(outcome);
-            }
-            state.pose = step.pose_after ? *step.pose_after : outcome.pose ? *outcome.pose : state.pose;
-        }
+        out.miss = walk_city_steps(walks, route, steps, logger);
     }catch (const GridSimFailure& error){
-        return error.message;
+        out.miss = error.message;
+    }catch (const Exception& error){
+        out.miss = std::string(error.name()) + ": " + error.message();
     }
-    logger.log("   " + ends);
+    for (const std::string& note : notes){
+        if (note.find("waiting") != std::string::npos || note.find("tiles to the wall") != std::string::npos){
+            logger.log("    " + note);
+        }
+    }
     const StoryWorld& city = sim.world();
-    if (story_to_local(city, "OreburghCity", nearest_tile(sim.player().pos)) != TilePos{47, 21} || !on_grid(sim.player().pos)){
-        return std::format("ended at {}, not on (47, 21).", to_string(sim.player().pos));
+    out.west_of_column_46 = went_west_of_column_46(city, route.trail());
+    if (!out.miss.empty()){
+        return out;
     }
-    return sim.hold(Direction::NORTH, 3000ms, SimPace::RUN).stop == SimStop::WARP ? "" : "no door north of (47, 21).";
+    if (story_to_local(city, "OreburghCity", nearest_tile(sim.player().pos)) != TilePos{47, 21} || !on_grid(sim.player().pos)){
+        out.miss = std::format("ended at {}, not on (47, 21).", to_string(sim.player().pos));
+    }else if (sim.hold(Direction::NORTH, 3000ms, SimPace::RUN).stop != SimStop::WARP){
+        out.miss = "no door north of (47, 21).";
+    }
+    return out;
 }
 
 //  lab-B 2026-11-08 (09:46, 10:39, 12:03): out of the mine, the walk north
 //  to the mine's sign never stopped on it, and the route after went up the
 //  wrong column; at 12:04 it ran through the Center's door. The coal room's
 //  warp lands us on the hall's column 12, which comes out on the city's
-//  (46, 59), east of the sign. Up the hall from there, or a column either
-//  side should the walk drift, and with a hold on a tile past the fade, the
-//  table's steps must end below the Center's door; the old steps miss from
-//  column 12.
+//  (46, 59), east of the sign. At 13:50 the steps that pinned the column
+//  east of the mine went astray too: the hold east from (48, 57) moved 0
+//  where the map has (49, 57) open. The table now runs straight north up
+//  column 46 to the wall at (46, 20), waiting for Oreburgh's Hiker when he
+//  wanders into the column, and taps east below the door. From the hall's
+//  column 12, with or without a tile past the fade, and with the Hiker at
+//  any seed and start time, its steps must end below the door, (47, 21),
+//  and walk in, never west of column 46. From the hall's other columns the
+//  count north is far off the map's and the walk must fail.
+enum class MineExitSteps{ OLD, PREVIOUS, TABLE };
 struct MineExitInput{
     std::string name;
     int hall_column = 12;
     bool past_the_fade = false;
-    bool old_steps = false;
+    MineExitSteps steps = MineExitSteps::TABLE;
+    //  Every seed and start time of the Hiker's, not just the first.
+    bool every_hiker = false;
 };
 struct MineExitExpectation{
     bool below_the_door = true;
+    std::optional<bool> west_of_column_46 = false;
 };
 struct MineExitCase{
     MineExitInput input;
@@ -455,41 +565,82 @@ public:
         , m_case(std::move(data))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
-        std::string miss;
-        try{
-            const StoryWorld& room = *story_plan_world("OreburghMine", "OreburghMine");
-            GridSim sim({.world = &room}, story_to_world(room, "OreburghMine", {15, 2}), Direction::NORTH, true);
-            const TilePos hall = warp_north(sim, "OreburghMine", {15, 2}).second;
-            const TilePos out = warp_north(sim, "OreburghMineB1F", {m_case.input.hall_column, hall.y}).second;
-            if (m_case.input.past_the_fade){
-                sim.tap(Direction::NORTH, route_ms_per_tile(Direction::NORTH, MoveSpeed::WALK), false);
+        const std::vector<uint64_t> seeds = m_case.input.every_hiker ? std::vector<uint64_t>{0, 1, 2, 7, 42, 100, 999, 1337} : std::vector<uint64_t>{0};
+        const std::vector<Milliseconds> starts = m_case.input.every_hiker
+            ? std::vector<Milliseconds>{0ms, 500ms, 1200ms, 2000ms, 3500ms, 5000ms} : std::vector<Milliseconds>{0ms};
+        for (uint64_t seed : seeds){
+            for (Milliseconds start : starts){
+                const std::string failure = run_once(oreburgh_hiker(seed, start), logger);
+                if (!failure.empty()){
+                    return std::format("the Hiker's seed {}, {} ms in: {}", seed, start.count(), failure);
+                }
             }
-            miss = center_miss(sim, m_case.input.old_steps ? old_steps_out_of_the_mine() : table_steps_out_of_the_mine(), logger);
-            logger.log(std::format("Coal room to the hall's {}, up column {} to the city's {}: {}", Pokemon::to_string(hall),
-                m_case.input.hall_column, Pokemon::to_string(out), miss.empty() ? "below the door" : miss));
-        }catch (const GridSimFailure& error){
-            miss = error.message;
-        }catch (const Exception& error){
-            miss = std::string(error.name()) + ": " + error.message();
-        }
-        if (miss.empty() != m_case.expectation.below_the_door){
-            return miss.empty() ? "Reached below the door: the test no longer shows the console's failure." : miss;
         }
         return true;
     }
 private:
+    CitySteps steps() const{
+        switch (m_case.input.steps){
+        case MineExitSteps::OLD:
+            return old_steps_out_of_the_mine();
+        case MineExitSteps::PREVIOUS:
+            return previous_steps_out_of_the_mine();
+        case MineExitSteps::TABLE:
+            break;
+        }
+        return table_steps_out_of_the_mine();
+    }
+    std::string run_once(const SimWanderer& hiker, Logger& logger) const{
+        CenterWalk walk;
+        try{
+            const StoryWorld& room = *story_plan_world("OreburghMine", "OreburghMine");
+            GridSim sim({.world = &room}, story_to_world(room, "OreburghMine", {15, 2}), Direction::NORTH, true);
+            const TilePos hall = warp_north(sim, "OreburghMine", {15, 2}).second;
+            const TilePos out = warp_north(sim, "OreburghMineB1F", {m_case.input.hall_column, hall.y}, {hiker}).second;
+            if (m_case.input.past_the_fade){
+                sim.tap(Direction::NORTH, route_ms_per_tile(Direction::NORTH, MoveSpeed::WALK), false);
+            }
+            walk = center_walk(sim, steps(), logger);
+            logger.log(std::format("Coal room to the hall's {}, up column {} to the city's {}: {}{}", Pokemon::to_string(hall),
+                m_case.input.hall_column, Pokemon::to_string(out), walk.miss.empty() ? "below the door" : walk.miss,
+                walk.west_of_column_46 ? ", west of column 46 on the way" : ""));
+        }catch (const GridSimFailure& error){
+            walk.miss = error.message;
+        }
+        if (walk.miss.empty() != m_case.expectation.below_the_door){
+            return walk.miss.empty() ? "Reached below the door: the test no longer shows the console's failure." : walk.miss;
+        }
+        if (m_case.expectation.west_of_column_46 && walk.west_of_column_46 != *m_case.expectation.west_of_column_46){
+            return walk.west_of_column_46 ? "The walk went west of column 46." : "The walk stayed on column 46 and east.";
+        }
+        return "";
+    }
+
     MineExitCase m_case;
 };
 
 const MineExitCase MINE_EXIT_CASES[] = {
-    {.input = {.name = "old steps from the hall's column 12", .hall_column = 12, .old_steps = true}, .expectation = {.below_the_door = false}},
-    {.input = {.name = "old steps from the hall's column 13", .hall_column = 13, .old_steps = true}, .expectation = {.below_the_door = false}},
+    {.input = {.name = "old steps from the hall's column 12", .hall_column = 12, .steps = MineExitSteps::OLD},
+        .expectation = {.below_the_door = false, .west_of_column_46 = std::nullopt}},
+    {.input = {.name = "old steps from the hall's column 13", .hall_column = 13, .steps = MineExitSteps::OLD},
+        .expectation = {.below_the_door = false, .west_of_column_46 = std::nullopt}},
+    //  The steps of 13:50 reach the door on the map, round the Hiker's rows
+    //  to the west.
+    {.input = {.name = "13:50's steps from the hall's column 12", .hall_column = 12, .steps = MineExitSteps::PREVIOUS},
+        .expectation = {.below_the_door = true, .west_of_column_46 = true}},
     {.input = {.name = "from the hall's column 12", .hall_column = 12}, .expectation = {}},
-    {.input = {.name = "from the hall's column 11", .hall_column = 11}, .expectation = {}},
-    {.input = {.name = "from the hall's column 13", .hall_column = 13}, .expectation = {}},
     {.input = {.name = "from the hall's column 12, a tile past the fade", .hall_column = 12, .past_the_fade = true}, .expectation = {}},
-    {.input = {.name = "from the hall's column 11, a tile past the fade", .hall_column = 11, .past_the_fade = true}, .expectation = {}},
-    {.input = {.name = "from the hall's column 13, a tile past the fade", .hall_column = 13, .past_the_fade = true}, .expectation = {}},
+    {.input = {.name = "from the hall's column 12, the Hiker at every seed and start time", .hall_column = 12, .every_hiker = true},
+        .expectation = {}},
+    {.input = {.name = "from the hall's column 12, a tile past the fade, the Hiker at every seed and start time", .hall_column = 12,
+        .past_the_fade = true, .every_hiker = true}, .expectation = {}},
+    //  Off column 46 the run north is not the map's 37 or 38 tiles: up
+    //  column 45 it stops at the mine's sign, up column 47 it goes through
+    //  the Center's door.
+    {.input = {.name = "from the hall's column 11", .hall_column = 11},
+        .expectation = {.below_the_door = false, .west_of_column_46 = std::nullopt}},
+    {.input = {.name = "from the hall's column 13", .hall_column = 13},
+        .expectation = {.below_the_door = false, .west_of_column_46 = std::nullopt}},
 };
 
 } // namespace

@@ -59,13 +59,18 @@ namespace PokemonBDSP{
 //  (run_until_map()) of the run goes unseen, though the player did go
 //  through. The console missed both (r75, r81). The `dark`th door run reads
 //  dark SIM_FALSE_DARK in, short of the door, as lab-B's did on 2026-11-08.
-//  The counts and flags below are the run's: how many fades and banners it
-//  looked for, whether a miss happened since the executor last looked, and
-//  whether a missed fade is still unseen.
+//  The `through`th tap step (tap_to_banner(), from 0) starts on its far side,
+//  its banner gone unless `through_banner`: the walk before it slid onto the
+//  warp (lab-B 2026-11-08). The counts and flags below are the run's: how
+//  many fades and banners it looked for, whether a miss happened since the
+//  executor last looked, and whether a missed fade is still unseen.
 struct SimMisses{
     std::optional<size_t> fade;
     std::optional<size_t> banner;
     std::optional<size_t> dark = {};
+    std::optional<size_t> through = {};
+    bool through_banner = false;
+    size_t tap_steps = 0;
     size_t fades = 0;
     size_t banners = 0;
     size_t doors = 0;

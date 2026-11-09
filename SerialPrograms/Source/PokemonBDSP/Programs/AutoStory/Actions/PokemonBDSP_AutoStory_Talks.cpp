@@ -53,6 +53,38 @@ bool dialogue_opens(VideoStream& stream, ProControllerContext& context, Millisec
     return wait_until(stream, context, timeout, {{dialog}}) == 0;
 }
 
+namespace{
+
+//  Lines after a trainer battle (Roark's badge, r211d) keep the menu from
+//  opening: finish them before the Potion. They pause for the badge's
+//  fanfare, so "no box for a moment" is not the end: after four lines Roark
+//  went quiet, the Potion's menu opened under his next line and failed
+//  (lab-B, 2026-10-31 09:45 and 2026-11-08 15:06). Done once the overworld
+//  shows with no box for 5 s.
+void settle_after_battle(VideoStream& stream, ProControllerContext& context){
+    ShortDialogDetector dialog;
+    OverworldDetector overworld;
+    auto calm_since = std::chrono::steady_clock::now();
+    const auto give_up = calm_since + 60s;
+    while (std::chrono::steady_clock::now() < give_up){
+        context.wait_for_all_requests();
+        const auto frame = stream.video().snapshot();
+        const bool box = frame && dialog.detect(*frame.frame);
+        if (box || !frame || !overworld.detect(*frame.frame)){
+            calm_since = std::chrono::steady_clock::now();
+        }else if (std::chrono::steady_clock::now() - calm_since >= 5s){
+            return;
+        }
+        if (box){
+            pbf_press_button(context, BUTTON_B, 80ms, 1100ms);
+        }else{
+            pbf_wait(context, 300ms);
+        }
+    }
+}
+
+} // namespace
+
 bool talk_or_fight(VideoStream& stream, ProControllerContext& context, const std::string& label, TalkExpect expect, BattleFormat format){
     ShortDialogDetector dialog;
     OverworldDetector overworld;
@@ -71,11 +103,7 @@ bool talk_or_fight(VideoStream& stream, ProControllerContext& context, const std
         if (battle_menu.detect(*frame.frame) || battle_menu_standard.detect(*frame.frame) || black.detect(*frame.frame)){
             route_status(stream, "Fighting " + label + ".");
             fight_story_battle(stream, context, label, format);
-            // Lines after the battle (Roark's badge, r211d) keep the menu
-            // from opening: finish them before the Potion.
-            if (dialogue_opens(stream, context, 3000ms)){
-                finish_dialogue(stream, context, BUTTON_B, label + " after the battle");
-            }
+            settle_after_battle(stream, context);
             if (!in_pokemon_center(stream)){
                 use_potion_first_pokemon(stream, context, 0.8);
             }

@@ -66,10 +66,17 @@ bool SimStoryStepIO::run_until_map(Direction direction, Milliseconds limit, cons
 }
 
 //  D-pad taps, each looked at, until the fade and then the banner (the
-//  console's ConsoleStoryStepIO::tap_to_banner()). Each look stands still,
-//  so a banner on the far side reads at once. A fade seen ends the taps,
+//  console's ConsoleStoryStepIO::tap_to_banner()): none if the banner shows
+//  before the first. Each look stands still, so a banner on the far side
+//  reads at once. A fade seen ends the taps,
 //  banner or not; with the fade missed the next look still sees the banner.
 std::optional<size_t> SimStoryStepIO::tap_to_banner(Direction direction, const std::string& map, size_t max_taps){
+    if (m_misses.through == m_misses.tap_steps++){
+        m_misses.missed = true;
+        if (m_far_side() && m_misses.through_banner){
+            return 0;
+        }
+    }
     bool crossed = false;
     for (size_t tap = 1; tap <= max_taps; tap++){
         const SimMove move = m_sim.tap(direction, 160ms, false);

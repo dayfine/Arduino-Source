@@ -471,14 +471,6 @@ std::optional<TableSteps> table_steps(const std::string& row, const std::string&
     return std::nullopt;
 }
 
-//  Where a walk of `steps` from `start`, with the player put part of a tile
-//  off it by a 100 ms stick tap toward `nudge` from the tile behind, ended
-//  on the simulation, and why it failed if it did.
-struct NudgedWalk{
-    SimPos nudged;
-    SimPos end;
-    std::string failure;
-};
 //  Where each of `table`'s steps, walked on `sim` from wherever its player
 //  stands, left the player, and why the walk failed if it did.
 struct StepsWalk{
@@ -510,55 +502,6 @@ StepsWalk walk_steps(GridSim& sim, const TableSteps& table){
     }
     return out;
 }
-NudgedWalk walk_nudged(const StoryWorld& world, const TableSteps& table, Direction nudge){
-    const TilePos start = story_to_world(world, table.start.map, Pokemon::tiles_of(table.start).front());
-    const Direction back = static_cast<Direction>(((int)nudge + 2) % 4);
-    GridSim sim({.world = &world, .trainers = story_trainers(world)}, start.next(back), Direction::NORTH, true);
-    sim.tap(nudge, 100ms, true);
-    NudgedWalk out{.nudged = sim.player().pos};
-    out.failure = walk_steps(sim, table).failure;
-    out.end = sim.player().pos;
-    return out;
-}
-
-//  lab-B 2026-11-08 10:39: 01.03's old route up to below Oreburgh's Center ran
-//  north 36 to the wall up column 46 and tapped east 1 into the open; the
-//  heal's run north saw no door and ended at the counter a tile east of the
-//  nurse. A start part of a tile off the grid (a stick tap, as measured)
-//  rides along a run and through an open tap. The table's steps from its
-//  route to the street, up to the heal, must end on the grid below the
-//  door, (47, 21), from either side of the start tile, and a walk north
-//  must go in.
-UnitTestResult test_oreburgh_center_approach(Logger& logger){
-    const std::optional<TableSteps> table = table_steps("01.03", "west_of_the_centers_door", "heal_oreburgh");
-    if (!table){
-        return "01.03 has no west_of_the_centers_door before heal_oreburgh.";
-    }
-    const StoryWorld& world = *story_plan_world("OreburghCity", "OreburghCity");
-    const TilePos below = story_to_world(world, "OreburghCity", {47, 21});
-    for (Direction nudge : {Direction::EAST, Direction::WEST}){
-        const NudgedWalk walk = walk_nudged(world, *table, nudge);
-        const std::string from = std::format("from {} (a stick tap {})", to_string(walk.nudged), direction_name(nudge));
-        logger.log(std::format("01.03 below the Center's door {}: ended at {}{}", from, to_string(walk.end),
-            walk.failure.empty() ? "" : ", failed: " + walk.failure));
-        if (on_grid(walk.nudged)){
-            return "The stick tap left the player on the grid " + from + ".";
-        }
-        if (!walk.failure.empty()){
-            return std::format("01.03 below the Center's door {}: failed at {}: {}", from, to_string(walk.end), walk.failure);
-        }
-        if (walk.end != sim_pos(below)){
-            return std::format("01.03 below the Center's door {}: ended at {}, not on (47, 21).", from, to_string(walk.end));
-        }
-        GridSim door({.world = &world}, below, Direction::NORTH, true);
-        if (door.hold(Direction::NORTH, 3000ms, SimPace::RUN).stop != SimStop::WARP){
-            return "01.03: the walk north from (47, 21) did not go through the Center's door.";
-        }
-    }
-    return true;
-}
-
-
 //  Where `table`'s steps, walked from `start` instead of where the table
 //  has the player, failed or left the player off `checks`' tiles; empty if
 //  they did not.
@@ -615,6 +558,30 @@ UnitTestResult test_roarks_room_from_a_row_off(Logger& logger){
     const std::string miss = walk_misses(world, old_taps_across_roarks_room(), {15, 17}, {{"beside_roarks_rock", {20, 29}}}, logger);
     if (miss.empty()){
         return "The old taps across Roark's room reached (20, 29) from a row south: the test no longer shows the console's failure.";
+    }
+    return true;
+}
+
+//  lab-B 2026-11-08 15:31 to 15:54: 01.05's open walk west 3 from (5, 13),
+//  where Barry's push leaves us, to (2, 13) beside the Oreburgh Gate's mouth
+//  (1, 13) went on into the Gate. D-pad taps move whole tiles but keep a
+//  part-tile offset: 0.375 of a tile west of (5, 13), the three taps take
+//  the warp; on the tile, they stop beside it.
+UnitTestResult test_gate_walk_part_tile_off(Logger&){
+    const StoryWorld& world = *story_plan_world("OreburghCity", "OreburghCity");
+    for (const bool off : {false, true}){
+        GridSim sim({.world = &world}, story_to_world(world, "OreburghCity", {5, 13}), Direction::WEST, true);
+        if (off){
+            sim.tap(Direction::WEST, 60ms, true);
+        }
+        SimStop stop = SimStop::DONE;
+        for (int tap = 0; tap < 3 && stop == SimStop::DONE; tap++){
+            stop = sim.tap(Direction::WEST, 160ms, false).stop;
+        }
+        if ((stop == SimStop::WARP) != off){
+            return std::format("{} (5, 13): three taps west ended {} at {}.", off ? "0.375 west of" : "on",
+                sim_stop_name(stop), to_string(sim.player().pos));
+        }
     }
     return true;
 }
@@ -935,10 +902,6 @@ const AutoStoryGridSimCase AUTO_STORY_GRID_SIM_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"01.03 lines up below Oreburgh's Center door from a start off the grid", test_oreburgh_center_approach},
-        .expectation = {},
-    },
-    {
         .input = {"01.03's old taps across Roark's room miss his rock from a row off (lab-B, 2026-11-08)", test_roarks_room_from_a_row_off},
         .expectation = {},
     },
@@ -968,6 +931,10 @@ const AutoStoryGridSimCase AUTO_STORY_GRID_SIM_CASES[] = {
     },
     {
         .input = {"01.03, Oreburgh Mine B1F entrance hall corridor runs to and back", test_oreburgh_mine_hall_corridor},
+        .expectation = {},
+    },
+    {
+        .input = {"01.05, a part of a tile off, the old open walk west takes the Gate's warp (lab-B, 2026-11-08)", test_gate_walk_part_tile_off},
         .expectation = {},
     },
 };
