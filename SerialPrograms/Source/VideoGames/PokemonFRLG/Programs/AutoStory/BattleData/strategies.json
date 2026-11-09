@@ -1,0 +1,14 @@
+{
+"TRAINER_RIVAL_POKEMON_TOWER_BULBASAUR": {"sp_attack": 2, "accuracy": 0, "outspeed": true, "source": "PokemonSimulation pokeguy-conditions.md tower-rival (+4 Sp. Atk while Torrent is off)"},
+"TRAINER_LEADER_KOGA": {"sp_attack": 1, "accuracy": 0, "outspeed": true, "source": "pokeguy-conditions.md koga"},
+"TRAINER_LEADER_ERIKA": {"sp_attack": 1, "accuracy": 2, "outspeed": true, "source": "pokeguy-conditions.md erika"},
+"TRAINER_RIVAL_SILPH_BULBASAUR": {"sp_attack": 2, "accuracy": 2, "outspeed": true, "source": "pokeguy-conditions.md silph-rival"},
+"TRAINER_BOSS_GIOVANNI_2": {"sp_attack": 1, "accuracy": 0, "outspeed": true, "source": "pokeguy-conditions.md silph-giovanni"},
+"TRAINER_LEADER_SABRINA": {"sp_attack": 0, "accuracy": 0, "outspeed": true, "source": "pokeguy-conditions.md sabrina"},
+"TRAINER_RIVAL_ROUTE22_LATE_BULBASAUR": {"sp_attack": 2, "accuracy": 2, "outspeed": true, "source": "pokeguy-conditions.md route22-rival"},
+"TRAINER_ELITE_FOUR_LORELEI": {"sp_attack": 4, "accuracy": 0, "outspeed": true, "source": "pokeguy-conditions.md lorelei"},
+"TRAINER_ELITE_FOUR_BRUNO": {"sp_attack": 2, "accuracy": 0, "outspeed": true, "source": "pokeguy-conditions.md bruno (two X Specials, one X Speed for Rock Tomb)"},
+"TRAINER_ELITE_FOUR_AGATHA": {"sp_attack": 1, "accuracy": 0, "outspeed": true, "source": "pokeguy-conditions.md agatha (more Sp. Atk while Torrent is off)"},
+"TRAINER_ELITE_FOUR_LANCE": {"sp_attack": 3, "accuracy": 2, "outspeed": true, "source": "pokeguy-conditions.md lance"},
+"TRAINER_CHAMPION_FIRST_BULBASAUR": {"sp_attack": 2, "accuracy": 2, "outspeed": true, "source": "pokeguy-conditions.md champion"}
+}

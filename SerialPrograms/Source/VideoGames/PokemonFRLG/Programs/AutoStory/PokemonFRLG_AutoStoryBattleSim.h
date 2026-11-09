@@ -80,6 +80,14 @@ struct SimItems{
     int potions = 0;
     int awakenings = 0;
     int antidotes = 0;
+    //  The ones only the plan uses (PokemonFRLG_AutoStoryBattleStrategy.h).
+    int super_potions = 0;
+    int hyper_potions = 0;
+    int full_restores = 0;
+    int x_attacks = 0;
+    int x_specials = 0;
+    int x_speeds = 0;
+    int x_accuracies = 0;
 };
 
 
@@ -251,8 +259,8 @@ PotionCase potion_case(const SimBattler& own, const SimBattler& foe, const SimTr
 //  attacking now wouldn't. Otherwise it attacks: a Potion the next turn
 //  undoes only gives the foe another turn (console B, 2026-11-03, m51: five
 //  Potions at 8/60 HP each undone by Misty's Starmie, then no Potions and
-//  a faint).
-bool potion_pays(const PotionCase& c);
+//  a faint). `heal`: a bigger heal's HP, weighed the same way.
+bool potion_pays(const PotionCase& c, uint16_t heal = POTION_HP);
 
 //  BattleRisk::HIGH: a Potion now, with `potions` left: the foe's next turn
 //  could faint the lead (PotionCase::max_hit) and potion_pays().

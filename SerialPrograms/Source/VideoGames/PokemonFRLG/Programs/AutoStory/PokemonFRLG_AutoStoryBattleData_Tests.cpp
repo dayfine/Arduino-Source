@@ -19,6 +19,7 @@
 #include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
 #include "PokemonFRLG_AutoStoryBattleSim.h"
+#include "PokemonFRLG_AutoStoryBattleStrategy.h"
 #include "PokemonFRLG_AutoStoryParty.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 
@@ -230,6 +231,7 @@ void add_tests_AutoStoryBattleData(UnitTestDatabase& database){
         database.add<Test_AutoStoryBattleData>(scenario);
     }
     add_tests_AutoStoryBattleSim(database);
+    add_tests_AutoStoryBattleStrategy(database);
 }
 
 

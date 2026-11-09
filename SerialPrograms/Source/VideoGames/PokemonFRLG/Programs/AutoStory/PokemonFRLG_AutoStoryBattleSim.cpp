@@ -730,8 +730,8 @@ PotionCase potion_case(const SimBattler& own, const SimBattler& foe, const SimTr
     };
 }
 
-bool potion_pays(const PotionCase& c){
-    const uint16_t heal = static_cast<uint16_t>(std::min<int>(POTION_HP, c.max_hp - c.hp));
+bool potion_pays(const PotionCase& c, uint16_t heal_hp){
+    const uint16_t heal = static_cast<uint16_t>(std::min<int>(heal_hp, c.max_hp - c.hp));
     if (heal == 0){
         return false;
     }

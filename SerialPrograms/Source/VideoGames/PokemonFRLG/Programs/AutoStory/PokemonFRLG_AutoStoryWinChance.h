@@ -36,6 +36,7 @@
 #include <string>
 #include <string_view>
 #include "PokemonFRLG_AutoStoryBattleSim.h"
+#include "PokemonFRLG_AutoStoryBattleStrategy.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -74,8 +75,13 @@ struct WinEstimate{
 std::string loss_text(const WinEstimate& estimate);
 
 //  `own` with `items` against `trainer`, `battles` times, from a fixed
-//  `seed` so the same inputs give the same estimate.
-WinEstimate estimate_win_chance(const SimBattler& own, const SimItems& items, const SimTrainer& trainer, size_t battles = 1000, uint32_t seed = 1);
+//  `seed` so the same inputs give the same estimate. The lead plays
+//  planned_turn() with `goals`: own_turn() when there are none and the
+//  bag holds only the items own_turn() uses.
+WinEstimate estimate_win_chance(
+    const SimBattler& own, const SimItems& items, const SimTrainer& trainer,
+    size_t battles = 1000, uint32_t seed = 1, const SetupGoals& goals = SetupGoals()
+);
 
 //  The story's lead (`hp_share` of its HP) with `items` against
 //  `trainer`. None if the data lacks the lead's species or the trainer.

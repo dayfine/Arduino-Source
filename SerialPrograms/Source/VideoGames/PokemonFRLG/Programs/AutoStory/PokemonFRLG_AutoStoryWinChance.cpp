@@ -87,10 +87,11 @@ void change_stage(SimBattler& user, SimBattler& target, std::string_view effect)
 //  One battle, played once.
 class SimBattle{
 public:
-    SimBattle(const SimBattler& own, const SimItems& items, const SimTrainer& trainer, std::mt19937& rng)
+    SimBattle(const SimBattler& own, const SimItems& items, const SimTrainer& trainer, const SetupGoals& goals, std::mt19937& rng)
         : m_own(own)
         , m_items(items)
         , m_trainer(trainer)
+        , m_goals(goals)
         , m_rng(rng)
     {}
 
@@ -115,7 +116,7 @@ public:
         tally.asleep += m_own.status == SimStatus::SLEEP ? 1 : 0;
         tally.paralyzed += m_own.status == SimStatus::PARALYSIS ? 1 : 0;
         tally.accuracy_down += stage(m_own, Stage::ACCURACY) < 0 ? 1 : 0;
-        tally.no_potions += m_items.potions == 0 ? 1 : 0;
+        tally.no_potions += m_items.potions + m_items.super_potions + m_items.hyper_potions + m_items.full_restores == 0 ? 1 : 0;
         tally.turn_cap += m_own.hp > 0 ? 1 : 0;
     }
 
@@ -175,8 +176,9 @@ private:
         //  A charged two-turn move strikes: no choice this turn.
         const bool own_locked = !m_own.charging.empty();
         const bool foe_locked = !foe().charging.empty();
-        const OwnTurn own = own_locked ? OwnTurn{} : own_turn(m_own, m_items, foe(), m_trainer, left, to_come());
-        const bool antidote = !own_locked && !own.potion && !own.awakening && antidote_now();
+        const PlannedTurn planned = own_locked ? PlannedTurn{} : planned_turn(m_own, m_items, foe(), m_trainer, left, to_come(), m_goals);
+        const OwnTurn& own = planned.turn;
+        const bool antidote = !own_locked && !own.potion && !own.awakening && !planned.item && antidote_now();
         const std::optional<size_t> item = foe_locked ? std::nullopt : ai_item_choice(foe(), m_trainer.items, left);
         const std::optional<size_t> foe_slot = item || foe_locked ? std::nullopt : foe_move();
         if (own.potion){
@@ -193,17 +195,57 @@ private:
             m_items.antidotes--;
             m_antidote_used = true;
         }
+        if (planned.item){
+            use_plan_item(*planned.item);
+        }
         if (item){
             gain_hp(foe(), ai_item_hp(m_trainer.items[*item]));
             m_trainer.items[*item].clear();
         }
-        const bool item_used = own.potion || own.awakening || antidote;
+        const bool item_used = own.potion || own.awakening || antidote || planned.item;
         const std::string own_move = own_locked ? m_own.charging
             : item_used ? "" : own.slot ? m_own.moves[*own.slot].move : "struggle";
         const std::string foe_used = foe_locked ? foe().charging
             : item ? "" : foe_slot ? foe().moves[*foe_slot].move : "struggle";
         play_moves(own_move, own.slot, foe_used, foe_slot);
         end_of_turn();
+    }
+
+    //  A heal raises HP (a Full Restore also cures the status), an X item
+    //  its stage by one.
+    void use_plan_item(PlanItem item){
+        gain_hp(m_own, plan_item_heal(item, m_own));
+        switch (item){
+        case PlanItem::SUPER_POTION:
+            m_items.super_potions--;
+            return;
+        case PlanItem::HYPER_POTION:
+            m_items.hyper_potions--;
+            return;
+        case PlanItem::FULL_RESTORE:
+            m_own.status = SimStatus::NONE;
+            m_own.sleep = 0;
+            m_items.full_restores--;
+            return;
+        case PlanItem::X_ATTACK:
+            raise(Stage::ATTACK, m_items.x_attacks);
+            return;
+        case PlanItem::X_SPECIAL:
+            raise(Stage::SP_ATTACK, m_items.x_specials);
+            return;
+        case PlanItem::X_SPEED:
+            raise(Stage::SPEED, m_items.x_speeds);
+            return;
+        case PlanItem::X_ACCURACY:
+            raise(Stage::ACCURACY, m_items.x_accuracies);
+            return;
+        }
+    }
+
+    void raise(Stage which, int& count){
+        int8_t& now = stage(m_own, which);
+        now = static_cast<int8_t>(std::min(now + 1, MAX_STAGE));
+        count--;
     }
 
     //  As the battle loop: once a battle, PSN_TURNS_BEFORE_ANTIDOTE turns
@@ -403,6 +445,7 @@ private:
     SimBattler m_own;
     SimItems m_items;
     SimTrainer m_trainer;
+    const SetupGoals m_goals;
     std::mt19937& m_rng;
     size_t m_out = 0;
     bool m_flinched = false;
@@ -413,11 +456,14 @@ private:
 } // namespace
 
 
-WinEstimate estimate_win_chance(const SimBattler& own, const SimItems& items, const SimTrainer& trainer, size_t battles, uint32_t seed){
+WinEstimate estimate_win_chance(
+    const SimBattler& own, const SimItems& items, const SimTrainer& trainer,
+    size_t battles, uint32_t seed, const SetupGoals& goals
+){
     std::mt19937 rng(seed);
     WinEstimate estimate{.battles = battles, .wins = 0, .chance = 0};
     for (size_t i = 0; i < battles; i++){
-        SimBattle battle(own, items, trainer, rng);
+        SimBattle battle(own, items, trainer, goals, rng);
         if (battle.won()){
             estimate.wins++;
         }else{
