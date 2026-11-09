@@ -11,6 +11,7 @@
 #include "Common/Cpp/Color.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
+#include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "VideoGames/PokemonLZA/Inference/Battles/PokemonLZA_RunFromBattleDetector.h"
@@ -242,11 +243,14 @@ void fight_battle_in_progress(
     BattleAIOption& battle_ai, std::chrono::seconds timeout
 ){
     TrainerBattleState battle_state(battle_ai);
-    AnyDialogDetector dialog;
+    FlatWhiteDialogDetector white_dialog;
+    BlueDialogDetector blue_dialog;
+    TealDialogDetector teal_dialog;
     const WallClock deadline = current_time() + timeout;
     while (true){
         context.wait_for_all_requests();
-        if (dialog.detect(console.video().snapshot())){
+        const VideoSnapshot screen = console.video().snapshot();
+        if (white_dialog.detect(screen) || blue_dialog.detect(screen) || teal_dialog.detect(screen)){
             return;
         }
         if (current_time() > deadline){
