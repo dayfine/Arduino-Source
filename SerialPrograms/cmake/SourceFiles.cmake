@@ -1498,6 +1498,9 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.h
     Source/Pokemon/AutoStory/Pokemon_AutoStoryStats.h
     Source/Pokemon/AutoStory/Pokemon_AutoStory_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_Interrupts.cpp
+    Source/Pokemon/AutoStory/Pokemon_Interrupts.h
+    Source/Pokemon/AutoStory/Pokemon_Interrupts_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_SceneJudges.cpp
     Source/Pokemon/AutoStory/Pokemon_SceneJudges.h
     Source/Pokemon/AutoStory/Pokemon_ScreenEvents.cpp
