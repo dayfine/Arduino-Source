@@ -166,18 +166,45 @@ bool battle_follows(VideoStream& stream, ProControllerContext& context, Millisec
 //  exit's white fade (#268 slice 3), which the walk once fled as a battle.
 constexpr Milliseconds WHITE_FLASH_BATTLE_WAIT = 8000ms;
 
+//  Records that the screen shows `events` now, in `log` if there is one.
+void record_now(Pokemon::ScreenEventLog* log, const Pokemon::ScreenEvents& events){
+    if (log != nullptr){
+        log->record(events, current_time());
+    }
+}
+
+//  What the late watch's watcher `ret` saw: 0 the encounter flash, 1 black,
+//  2 the battle menu, 3 the battle's text box.
+Pokemon::ScreenEvents late_watch_events(int ret){
+    switch (ret){
+    case 0:
+        return {Pokemon::ScreenEvent::FADE_WHITE};
+    case 1:
+        return {Pokemon::ScreenEvent::FADE_BLACK};
+    case 2:
+    case 3:
+        return {Pokemon::ScreenEvent::BATTLE_STARTED};
+    default:
+        return {};
+    }
+}
+
 } // namespace
 
 //  A step in tall grass that was started before the stick was released still
 //  finishes, and its encounter starts after the walk has ended. Watch a little
 //  longer, and run from it. Returns whether there was one.
-bool run_from_late_encounter(VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape, const std::string& label){
+bool run_from_late_encounter(
+    VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape, const std::string& label,
+    Pokemon::ScreenEventLog* events
+){
     VideoSnapshot before = stream.video().snapshot();
     WhiteScreenOverWatcher encounter_flash(COLOR_YELLOW, {0.1, 0.1, 0.8, 0.8});
     BlackScreenWatcher black(COLOR_RED);
     BattleMenuWatcher battle_menu(BattleType::STANDARD, COLOR_YELLOW);
     BattleDialogWatcher battle_dialog(COLOR_YELLOW);
     const int ret = wait_until(stream, context, 1200ms, {{encounter_flash}, {black}, {battle_menu}, {battle_dialog}});
+    record_now(events, late_watch_events(ret));
     bool battle = ret == 0 || ret == 2 || ret == 3 || (ret == 1 && black_screen_was_battle(stream, context));
     if (ret < 0){
         VideoSnapshot after = stream.video().snapshot();
@@ -187,9 +214,11 @@ bool run_from_late_encounter(VideoStream& stream, ProControllerContext& context,
     if (!battle){
         return false;
     }
+    record_now(events, {Pokemon::ScreenEvent::BATTLE_STARTED});
     stream.log("[Walk] " + label + ": wild battle after the walk; running.");
     escape(stream, context);
     context.wait_for_all_requests();
+    record_now(events, {});
     return true;
 }
 namespace{
@@ -292,6 +321,8 @@ public:
         //  A tile a tap: 160 ms held, the rest released, so each chunk is one tile.
         const Milliseconds CHUNK = m_spec.input == WalkInput::TAPS ? 800ms : 400ms;
         m_context.wait_for_all_requests();
+        m_result.started = current_time();
+        m_result.events.record({}, m_result.started);
         m_before = snapshot_or_fail(m_stream, m_spec.label);
         while (true){
             if (m_spec.arrived && m_spec.arrived(*m_before.frame)){
@@ -356,6 +387,7 @@ private:
     //  The watchers: 0 the encounter flash, 1 black, 2 the battle menu, 3 a
     //  dialogue, 4 the battle's text box.
     ChunkVerdict after_watchers(int ret){
+        record_now(&m_result.events, hold_events(ret));
         bool battle = ret == 2 || ret == 4;
         if (ret == 0 || ret == 1){
             battle = ret == 0
@@ -431,8 +463,26 @@ private:
         return change < line;
     }
 
+    //  What hold()'s watcher `ret` saw (see after_watchers()).
+    static Pokemon::ScreenEvents hold_events(int ret){
+        switch (ret){
+        case 0:
+            return {Pokemon::ScreenEvent::FADE_WHITE};
+        case 1:
+            return {Pokemon::ScreenEvent::FADE_BLACK};
+        case 2:
+        case 4:
+            return {Pokemon::ScreenEvent::BATTLE_STARTED};
+        case 3:
+            return {Pokemon::ScreenEvent::DIALOG_BOX};
+        default:
+            return {};
+        }
+    }
+
     enum class BattleMovement{ NONE, STEP_MOVED };
     void escape_battle(const std::string& what, BattleMovement movement){
+        record_now(&m_result.events, {Pokemon::ScreenEvent::BATTLE_STARTED});
         m_result.wild_battles++;
         if (m_chunks <= 1 && movement == BattleMovement::NONE){
             m_result.origin = WalkOrigin::MAY_PRECEDE_LEG;
@@ -445,6 +495,8 @@ private:
         m_stream.log("[Walk] " + m_spec.label + ": " + what);
         m_escape(m_stream, m_context);
         m_context.wait_for_all_requests();
+        record_now(&m_result.events, {});
+        m_moved_at_battle = m_result.moved_chunks;
         m_before = snapshot_or_fail(m_stream, m_spec.label);
         m_unchanged = 0;
     }
@@ -453,9 +505,10 @@ private:
         m_result.stop = stop;
         bool late_battle = false;
         if (m_spec.wild == WildPolicy::RUN_FROM && (stop == WalkStop::LIMIT || stop == WalkStop::BLOCKED) &&
-            run_from_late_encounter(m_stream, m_context, m_escape, m_spec.label)
+            run_from_late_encounter(m_stream, m_context, m_escape, m_spec.label, &m_result.events)
         ){
             m_result.wild_battles++;
+            m_moved_at_battle = m_result.moved_chunks;
             late_battle = true;
             if (m_chunks <= 1 && m_result.moved_chunks <= 1){
                 m_result.origin = WalkOrigin::MAY_PRECEDE_LEG;
@@ -477,6 +530,9 @@ private:
         if (m_result.moved_chunks > 1){
             m_result.origin = WalkOrigin::CURRENT_LEG;
         }
+        if (m_result.wild_battles > 0){
+            m_result.moved_after_battle = m_result.moved_chunks - m_moved_at_battle;
+        }
         m_stream.log("[Walk] " + m_spec.label + ": " + walk_stop_name(stop) + " after " +
             std::to_string(m_result.walked.count()) + "ms, " +
             std::to_string(m_result.moved_chunks) + " moved chunks, " +
@@ -494,6 +550,7 @@ private:
     VideoSnapshot m_before_still;
     size_t m_unchanged = 0;
     size_t m_chunks = 0;
+    size_t m_moved_at_battle = 0;
     double m_largest = 0;
     LocationBannerWatcher m_banner;
 };
