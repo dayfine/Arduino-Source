@@ -121,6 +121,7 @@ static void add_tests_TeraEncounterAction(UnitTestDatabase& database){
     for (const TeraEncounterScenario& scenario : scenarios){
         database.add<Test_TeraEncounterAction>(scenario);
     }
+}
 
 
 namespace{
