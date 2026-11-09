@@ -56,22 +56,21 @@ struct StepWalk{
     bool dark = false;
 };
 
-//  Where a stop on `step` leaves the player, from `timed`, the timing's
-//  tiles: anywhere on the leg if the leg started in a dark cave. There the
-//  timing has no basis: the screen is black before any battle's wipe, and
-//  a battle at the end of "east 12" on Rock Tunnel B1F was placed 0 to 3
-//  tiles in (console B, 2026-11-09, 00.28); the player was found again at
-//  a wall 5 tiles off.
-WalkedTiles stop_tiles(ConsoleHandle& console, const RouteStep& step, bool dark, WalkedTiles timed){
-    if (!dark){
-        return timed;
+//  stop_tiles(), logged when the leg started in a dark cave.
+WalkedTiles logged_stop_tiles(ConsoleHandle& console, const RouteStep& step, bool dark, WalkedTiles timed){
+    if (dark){
+        console.log(std::format(
+            "Route: {} started in a dark cave: the stop's timing ({} to {} tiles in) isn't trusted.",
+            to_string(step), timed.min, timed.max
+        ), COLOR_ORANGE);
     }
-    const WalkedTiles out = whole_leg(step);
-    console.log(std::format(
-        "Route: {} started in a dark cave: the stop's timing ({} to {} tiles in) isn't trusted; {} to {} tiles in.",
-        to_string(step), timed.min, timed.max, out.min, out.max
-    ), COLOR_ORANGE);
-    return out;
+    return stop_tiles(step, timed, dark);
+}
+
+//  Whether the screen shows a dark cave's overworld (dark_cave_screen()).
+bool on_dark_cave(ConsoleHandle& console){
+    const VideoSnapshot screen = console.video().snapshot();
+    return screen && dark_cave_screen(*screen.frame);
 }
 
 //  One step of a route, for a player facing `facing`.
@@ -93,9 +92,7 @@ StepWalk walk_step(
             console.log(note);
         }
         context.wait_for_all_requests();
-        if (VideoSnapshot before = console.video().snapshot()){
-            out.dark = dark_cave_screen(*before.frame);
-        }
+        out.dark = on_dark_cave(console);
         out.hold_start = current_time();
         BlackScreenOverWatcher arrival(COLOR_RED);
         Pokemon::WatchAlong fade(arrival);
@@ -104,7 +101,7 @@ StepWalk walk_step(
             leg_spec(step, speed), MAX_INTERRUPTIONS_PER_LEG, warp_hold_watchers(step, fade)
         );
         if (result.stopped){
-            out.stopped = stop_tiles(console, step, out.dark, walked_near(step, result.tiles, tile_time(step, speed)));
+            out.stopped = logged_stop_tiles(console, step, out.dark, walked_near(step, result.tiles, tile_time(step, speed)));
             return out;
         }
         if (step.warps){
@@ -212,7 +209,7 @@ StepOutcome walk_and_watch(
     }
     std::optional<WalkedTiles> placed = recorder.place(console, step, tile_time(step, speed), walked.hold_start);
     if (walked.dark && step.action == RouteAction::WALK && !step.to_wall){
-        placed = stop_tiles(console, step, true, placed.value_or(whole_leg(step)));
+        placed = logged_stop_tiles(console, step, true, placed.value_or(whole_leg(step)));
     }
     return StepOutcome{.end = StepEnd::LATE, .walked = placed};
 }

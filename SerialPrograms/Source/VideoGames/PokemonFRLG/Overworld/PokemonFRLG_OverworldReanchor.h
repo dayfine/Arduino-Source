@@ -58,6 +58,14 @@ WalkedTiles walked_near(const RouteStep& step, int estimate, Milliseconds tile_t
 std::vector<RouteStep> with_warp_slack(std::vector<RouteStep> route);
 //  Anywhere on `step`, for a stop the timing doesn't place.
 WalkedTiles whole_leg(const RouteStep& step);
+//  Where a stop on `step` leaves the player, from `timed`, the tiles its
+//  timing gives: anywhere on the leg (whole_leg()) if it started on a dark
+//  cave's screen (OverworldWalkSteps::dark_cave_screen()). There the timing
+//  has no basis: the screen is black before any battle's wipe, and a
+//  battle at the end of "east 12" on Rock Tunnel B1F was placed 0 to 3
+//  tiles in (console B, 2026-11-09, 00.28). The player, "found again" at
+//  a wall from those, was 5 tiles off.
+WalkedTiles stop_tiles(const RouteStep& step, WalkedTiles timed, bool dark);
 
 //  A trainer who saw the player and walked up to them: which of `map`'s
 //  objects, and the tile next to the player they stand on afterwards.

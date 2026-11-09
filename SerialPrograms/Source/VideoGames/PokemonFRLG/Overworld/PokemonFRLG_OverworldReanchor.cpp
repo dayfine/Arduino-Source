@@ -323,6 +323,10 @@ WalkedTiles whole_leg(const RouteStep& step){
     return WalkedTiles{.min = 0, .max = step.tiles};
 }
 
+WalkedTiles stop_tiles(const RouteStep& step, WalkedTiles timed, bool dark){
+    return dark ? whole_leg(step) : timed;
+}
+
 std::string to_string(const StopCandidate& candidate){
     std::string text = to_string(candidate.player);
     if (candidate.trainer){

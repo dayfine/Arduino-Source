@@ -166,6 +166,7 @@ void OverworldSim::update_view(){
     m_state.position = MapPosition{map().name, m_player.position};
     m_state.black_below = map().connections.empty() && map().tiles.height <= SMALL_ROOM_ROWS
         && m_player.position.y >= map().tiles.height - BLACK_BELOW_ROWS;
+    m_state.dark = m_script.dark_maps.contains(map().name);
 }
 
 void OverworldSim::schedule(Milliseconds at, SimScreen screen, bool unfreeze){
@@ -601,10 +602,6 @@ std::optional<SimSeen> OverworldSim::watch(const std::vector<SimWatcher>& watche
     return watch_until(watchers, m_now, m_now + duration);
 }
 
-bool OverworldSim::dark() const{
-    return m_script.dark_maps.contains(map().name);
-}
-
 SimBattleEnd OverworldSim::handle_battle(SimBattleChoice choice){
     if (!m_battle_pending){
         violation("fought a battle that isn't there, on " + std::string(sim_screen_name(m_state.screen)) + ".");
@@ -841,7 +838,7 @@ std::optional<WalkedTiles> OverworldSimWalker::walk_step(const RouteStep& step, 
     calls.log = [&](const std::string& message){ m_log.push_back("Leg: " + message); };
     calls.fail = [&](const std::string& message){ fail(message); };
     m_leg_start = m_sim.state().time;
-    m_leg_dark = m_sim.dark();
+    m_leg_dark = m_sim.state().dark;
     const Pokemon::LegResult result = Pokemon::walk_leg_with(leg, calls, MAX_INTERRUPTIONS_PER_LEG);
     if (result.stopped){
         return dark_stop(step, walked_near(step, result.tiles, TILE_TIME));
@@ -890,13 +887,7 @@ StepOutcome OverworldSimWalker::walk(const RouteStep& step, std::optional<Direct
 //  For an open leg, place_late_stop() over what the sim showed since the
 //  leg's hold started.
 std::optional<WalkedTiles> OverworldSimWalker::late_stop(const RouteStep& step){
-    if (step.to_wall){
-        return std::nullopt;
-    }
-    if (m_leg_dark){
-        return dark_stop(step, whole_leg(step));
-    }
-    if (!m_rules.place_late_battle){
+    if (step.to_wall || (!m_leg_dark && !m_rules.place_late_battle)){
         return std::nullopt;
     }
     const WallClock start = sim_wall_clock(m_leg_start);
@@ -904,30 +895,15 @@ std::optional<WalkedTiles> OverworldSimWalker::late_stop(const RouteStep& step){
         step, TILE_TIME, screen_event_log(m_sim.state(), m_leg_start), start, sim_wall_clock(m_sim.state().time)
     );
     m_log.push_back(late_stop_line(step, stop, start));
-    return stop.walked;
-}
-
-//  stop_tiles(): anywhere on `step` if it started in a dark cave. Without
-//  SimWalkerRules::whole_leg_in_dark, there the dark screen placed the stop
-//  at the hold's start.
-WalkedTiles OverworldSimWalker::dark_stop(const RouteStep& step, WalkedTiles timed){
-    if (!m_leg_dark){
-        return timed;
-    }
-    const WalkedTiles out = m_rules.whole_leg_in_dark ? whole_leg(step) : walked_near(step, 0, TILE_TIME);
-    m_log.push_back(std::format("Route: {} started in a dark cave: {} to {} tiles in.", to_string(step), out.min, out.max));
-    return out;
+    return m_leg_dark ? std::optional<WalkedTiles>(dark_stop(step, whole_leg(step))) : stop.walked;
 }
 
 //  Whether the screen shows a battle on its way: its wipe's black, or its
-//  text box before the HP boxes; without SimWalkerRules::
-//  dark_cave_not_battle, also a dark cave's overworld.
+//  text box before the HP boxes; without dark_cave_not_battle, a dark cave.
 bool OverworldSimWalker::battle_on_its_way() const{
     const SimScreen screen = m_sim.state().screen;
-    if (!m_rules.dark_cave_not_battle && screen == SimScreen::OVERWORLD && m_sim.dark()){
-        return true;
-    }
-    return screen == SimScreen::BATTLE_WIPE || screen == SimScreen::BATTLE_OPENING;
+    const bool dark_misread = !m_rules.dark_cave_not_battle && screen == SimScreen::OVERWORLD && m_sim.state().dark;
+    return dark_misread || screen == SimScreen::BATTLE_WIPE || screen == SimScreen::BATTLE_OPENING;
 }
 
 //  clear_unseen_battle(): the battle's text box or wipe seen after the

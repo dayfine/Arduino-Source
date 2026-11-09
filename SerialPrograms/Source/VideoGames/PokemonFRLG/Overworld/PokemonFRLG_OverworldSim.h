@@ -155,6 +155,8 @@ struct SimState{
     //  Whether black shows below the map: the player stands near the bottom
     //  of a map with nothing joined to it (a small room or a gate).
     bool black_below = false;
+    //  Whether the player's map is one of SimScript::dark_maps.
+    bool dark = false;
     int steps = 0;
     int warps = 0;
     int wild_battles = 0;
@@ -209,8 +211,6 @@ public:
     OverworldSim(std::vector<MapData> maps, MapPosition start, Direction facing, SimScript script = {});
 
     const SimState& state() const{ return m_state; }
-    //  Whether the player's map is one of SimScript::dark_maps.
-    bool dark() const;
 
     //  Holds `direction` for `duration` then lets go for `release`, while
     //  `watchers` watch until `watch` (at least the hold and release) from
@@ -461,7 +461,14 @@ private:
     };
     StepOutcome walk(const RouteStep& step, std::optional<Direction> facing);
     std::optional<WalkedTiles> late_stop(const RouteStep& step);
-    WalkedTiles dark_stop(const RouteStep& step, WalkedTiles timed);
+    //  stop_tiles(); without SimWalkerRules::whole_leg_in_dark, the dark
+    //  screen places the stop at the hold's start.
+    WalkedTiles dark_stop(const RouteStep& step, WalkedTiles timed) const{
+        if (m_leg_dark && !m_rules.whole_leg_in_dark){
+            return walked_near(step, 0, MovementMechanics::TILE_TIME);
+        }
+        return stop_tiles(step, timed, m_leg_dark);
+    }
     std::optional<WalkedTiles> walk_step(const RouteStep& step, std::optional<Direction> facing);
     bool after_warp(const RouteStep& step, int warps_before, Milliseconds watched_from);
     bool fade_over_since(Milliseconds from) const;
