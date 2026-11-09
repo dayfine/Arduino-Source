@@ -1,0 +1,92 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "00.43",
+    "title": "Silph Co. 11F: the boardroom Grunt, Giovanni; then Sabrina",
+    "start": {"certainty": "tile", "map": "SilphCo_7F", "where": {"facing": "west", "kind": "tiles", "tiles": [[1, 7]]}},
+    "events": [
+      {
+        "id": "above_boardroom_guard_line",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "SilphCo_11F", "where": {"facing": "south", "kind": "tiles", "tiles": [[2, 13]]}},
+        "why": "the pad (5, 8) to 11F (2, 5), down column 2 to (2, 13), above the line of the Grunt (2, 19) (which Grunt is GRUNT_41 is unconfirmed)"
+      },
+      {
+        "id": "boardroom_guard_line",
+        "kind": "step",
+        "direction": "south",
+        "variant": "trainer_line",
+        "why": "onto (2, 14), the end of his line (2, 14..18): he walks up to (2, 15)"
+      },
+      {
+        "id": "silph-boardroom-grunt",
+        "kind": "battle",
+        "declared_after": {"certainty": "tile", "map": "SilphCo_11F", "where": {"facing": "south", "kind": "tiles", "tiles": [[2, 14]]}},
+        "why": "Rocket Grunt (TRAINER_TEAM_ROCKET_GRUNT_41): Cubone, Marowak, Drowzee Lv32"
+      },
+      {
+        "id": "below_silph_giovanni",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "SilphCo_11F", "where": {"facing": "north", "kind": "tiles", "tiles": [[6, 12]]}},
+        "why": "down column 0 or 1 past the Grunt, east along row 18 and up column 5..6, the Card Key door, to below Giovanni (6, 11)"
+      },
+      {
+        "id": "talk_silph_giovanni",
+        "kind": "talk",
+        "why": "Giovanni"
+      },
+      {
+        "id": "silph-giovanni",
+        "kind": "battle",
+        "declared_after": {"certainty": "tile", "map": "SilphCo_11F", "where": {"facing": "north", "kind": "tiles", "tiles": [[6, 12]]}},
+        "why": "Giovanni (TRAINER_BOSS_GIOVANNI_2): Nidorino, Nidoqueen, Kangaskhan, Rhyhorn"
+      },
+      {
+        "id": "escape_rope_silph",
+        "kind": "game_action",
+        "declared_after": {"certainty": "tile", "map": "SaffronCity", "where": {"facing": "south", "kind": "tiles", "tiles": [[33, 31]]}},
+        "variant": "use_item escape-rope",
+        "why": "out of Silph Co. (pokeguy 1:32:56)"
+      },
+      {
+        "id": "saffron_gym_door",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "SaffronCity", "where": {"facing": "north", "kind": "tiles", "tiles": [[46, 13]]}},
+        "variant": "run",
+        "why": "east to below the Gym (46, 12); its Grunt left with Giovanni"
+      },
+      {
+        "id": "below_sabrina",
+        "kind": "route",
+        "target": {"certainty": "unknown", "map": "SaffronCity_Gym", "where": {"kind": "unknown"}},
+        "variant": "run",
+        "why": "the warp tiles to Sabrina"
+      },
+      {
+        "id": "talk_sabrina",
+        "kind": "talk",
+        "why": "Sabrina"
+      },
+      {
+        "id": "sabrina",
+        "kind": "battle",
+        "declared_after": {"certainty": "unknown", "map": "SaffronCity_Gym", "where": {"kind": "unknown"}},
+        "why": "Sabrina (TRAINER_LEADER_SABRINA): Kadabra, Mr. Mime, Venomoth, Alakazam"
+      },
+      {
+        "id": "marsh_badge",
+        "kind": "scene",
+        "why": "the MARSH BADGE and TM04"
+      },
+      {
+        "id": "escape_rope_saffron_gym",
+        "kind": "game_action",
+        "declared_after": {"certainty": "tile", "map": "SaffronCity", "where": {"facing": "south", "kind": "tiles", "tiles": [[46, 13]]}},
+        "variant": "use_item escape-rope",
+        "why": "out of the Gym (pokeguy 1:34:50)"
+      }
+    ]
+  },
+  "execution": {"menu": "full"}
+}

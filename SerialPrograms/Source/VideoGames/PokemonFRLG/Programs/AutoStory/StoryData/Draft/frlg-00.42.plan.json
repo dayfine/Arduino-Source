@@ -1,0 +1,70 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "00.42",
+    "title": "Silph Co.: the CARD KEY, the rival on 7F, the Lapras (Gift RNG placeholder)",
+    "start": {"certainty": "tile", "map": "SaffronCity_PokemonCenter_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 4]]}},
+    "events": [
+      {
+        "id": "silph_door",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "SaffronCity", "where": {"facing": "north", "kind": "tiles", "tiles": [[33, 31]]}},
+        "variant": "run",
+        "why": "out, north to below Silph Co. (33, 30)"
+      },
+      {
+        "id": "silph_5f_card_key",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "SilphCo_5F", "where": {"facing": "east", "kind": "tiles", "tiles": [[21, 21]]}},
+        "why": "stairs to 3F, the warp pads via 5F (pokeguy 1:27:44), west of the CARD KEY (22, 21)"
+      },
+      {
+        "id": "card_key",
+        "kind": "talk",
+        "why": "pick up the CARD KEY"
+      },
+      {
+        "id": "silph_7f_rival",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "SilphCo_7F", "where": {"facing": "south", "kind": "tiles", "tiles": [[3, 5]]}},
+        "why": "the Card Key door, the pads via 3F to the rival's 7F room (pokeguy 1:28:28), (3, 5)"
+      },
+      {
+        "id": "rival_silph",
+        "kind": "scene",
+        "why": "the rival stops the player"
+      },
+      {
+        "id": "silph-rival",
+        "kind": "battle",
+        "declared_after": {"certainty": "tile", "map": "SilphCo_7F", "where": {"facing": "south", "kind": "tiles", "tiles": [[3, 5]]}},
+        "why": "Rival (TRAINER_RIVAL_SILPH_BULBASAUR): Pidgeot, Venusaur, Gyarados, Growlithe, Alakazam"
+      },
+      {
+        "id": "lapras_man",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "SilphCo_7F", "where": {"facing": "west", "kind": "tiles", "tiles": [[1, 7]]}},
+        "why": "to east of the employee with the Lapras (0, 7)"
+      },
+      {
+        "id": "talk_lapras_man",
+        "kind": "talk",
+        "why": "the employee: the Lapras"
+      },
+      {
+        "id": "lapras_party_room",
+        "kind": "game_action",
+        "variant": "party_room free=1",
+        "why": "a free party slot for the gift; stop if the party is full"
+      },
+      {
+        "id": "lapras_gift_rng",
+        "kind": "game_action",
+        "variant": "gift_rng lapras",
+        "why": "Gift RNG on the Lapras: the shiny story gift; pokeguy took no Lapras"
+      }
+    ]
+  },
+  "execution": {"menu": "full"}
+}
