@@ -25,6 +25,7 @@
 #include <vector>
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
+#include "Pokemon/AutoStory/Pokemon_StoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
 #include "Pokemon/AutoStory/Pokemon_StorySteps.h"
@@ -33,6 +34,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
+#include "PokemonFRLG_AutoStoryStepTable.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -267,8 +269,9 @@ void read_lead_moves(StoryEnv& env, StartMenu menu);
 //  was read.
 void read_bag_supplies(StoryEnv& env, StartMenu menu);
 
-//  Does FRLG's kinds of story step on the console. A console step that
-//  fails is a failed Outcome, which the segment answers by reloading.
+//  Does FRLG's kinds of story step on the console, each with its row of
+//  story_action_rows() (PokemonFRLG_AutoStoryStepTable.h). A console step
+//  that fails is a failed Outcome, which the segment answers by reloading.
 class StoryExecutor : public Pokemon::StoryStepExecutor{
 public:
     explicit StoryExecutor(StoryEnv& env);
@@ -281,34 +284,19 @@ public:
         m_menu = menu;
     }
 
+    //  The step's action from the table.
     virtual Pokemon::Outcome run(Pokemon::RunState& state, const StoryStep& step) override;
 
-protected:
-    virtual Pokemon::Outcome new_game(Pokemon::RunState& state, const StoryStep& step) override;
-    virtual Pokemon::Outcome options(Pokemon::RunState& state, const StoryStep& step) override;
-    virtual Pokemon::Outcome route(Pokemon::RunState& state, const StoryStep& step) override;
-    virtual Pokemon::Outcome legs(Pokemon::RunState& state, const StoryStep& step) override;
-    virtual Pokemon::Outcome step(Pokemon::RunState& state, const StoryStep& step) override;
-    virtual Pokemon::Outcome talk(Pokemon::RunState& state, const StoryStep& step) override;
-    virtual Pokemon::Outcome answer(Pokemon::RunState& state, const StoryStep& step) override;
-    virtual Pokemon::Outcome mash(Pokemon::RunState& state, const StoryStep& step) override;
-    virtual Pokemon::Outcome battle(Pokemon::RunState& state, const StoryStep& step) override;
-    virtual Pokemon::Outcome heal(Pokemon::RunState& state, const StoryStep& step) override;
-    //  The Viridian Mart, before the Boulder Badge: Potions, Antidotes and Parlyz Heals.
-    virtual Pokemon::Outcome shop(Pokemon::RunState& state, const StoryStep& step) override;
-    virtual Pokemon::Outcome ready(Pokemon::RunState& state, const StoryStep& step) override;
-    //  CLOSE_TRAINER_CARD: back from SID Helper (close_trainer_card()).
-    //  LEAVE_GIFT_SUMMARY: back from Gift RNG (leave_gift_summary()).
-    //  A capture or a PC deposit or withdrawal (capture_step(), pc_step()
-    //  in PokemonFRLG_AutoStoryCapture.h); a shiny met in a capture stops
-    //  the program without reloading. A MART, TEACH, LEVEL, GRIND or
-    //  fossil CHOICE (PokemonFRLG_AutoStoryAbilities.h); a GRIND heals by
-    //  routing to its target, the nurse, and back.
-    virtual Pokemon::Outcome game(Pokemon::RunState& state, const StoryStep& step) override;
-
 private:
+    //  How the console does `id`.
+    Pokemon::StoryAction console_action(StoryActionId id);
+
     StoryEnv& m_env;
     StartMenu m_menu = StartMenu::FULL;
+    //  FRLG does nothing around a step: a failed one fails the step.
+    Pokemon::StepGuard m_guard;
+    Pokemon::StoryActionTable m_table;
+    Pokemon::TableExecutor m_executor;
 };
 
 //  The checkpoint `data` as events, saving at its end.
