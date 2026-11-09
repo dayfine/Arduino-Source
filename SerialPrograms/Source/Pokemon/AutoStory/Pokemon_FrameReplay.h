@@ -19,6 +19,16 @@
  *  20 frames a second, then rename frame N to its time, (N - 1) * 50 ms:
  *      ffmpeg -ss <start s> -t <seconds> -i Video.mp4 -vf fps=20 %d.png
  *
+ *  A failed AutoStory event saves its own (Pokemon_AutoStoryFailureCapture.h)
+ *  in USER_FILE_PATH()/<game>/AutoStoryFailures/<time>-<checkpoint>-<event>/,
+ *  whatever the error-report settings. Its Video.mp4 ends when the event
+ *  failed, so the last seconds are the case; Failure.json names the event
+ *  and its last log lines, which say where in those seconds each action
+ *  started. For the last 20 s, into the case folder:
+ *      ffmpeg -sseof -20 -i Video.mp4 -vf fps=20 %d.png
+ *      for f in *.png; do n=${f%.png}; mv "$f" "x$(( (n - 1) * 50 )).png"; done
+ *      for f in x*.png; do mv "$f" "${f#x}"; done
+ *
  *  One thread, no real time: the caller says which window of the recording
  *  each action watched, and the replay feeds those frames at the inference
  *  period, as run_until / wait_until would.
