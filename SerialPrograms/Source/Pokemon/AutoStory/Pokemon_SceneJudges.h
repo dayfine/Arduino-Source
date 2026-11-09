@@ -71,6 +71,9 @@ constexpr Milliseconds TALK_OVER_CALM = Milliseconds(15000);
 //  When a talk or a scene is over, from looks alone. A look is a frame's
 //  events: DIALOG_BOX, PLAYER_CAN_MOVE, SCREEN_STILL, a fade,
 //  LOCATION_BANNER (the expected map's) and BATTLE_STARTED are read.
+//  It is over only once every fade has come back up, no box shows, and
+//  the overworld has been quiet (or calm) since: a look that shows a fade
+//  starts the quiet over, however still it is.
 class TalkOver{
 public:
     explicit TalkOver(TalkOverRule rule = {})
@@ -86,7 +89,9 @@ public:
 
 private:
     TalkOverRule m_rule;
+    //  The first fade seen, and the one the last look showed.
     WarpFade m_fade = WarpFade::NONE;
+    WarpFade m_fade_showing = WarpFade::NONE;
     bool m_banner = false;
     WallClock m_quiet_since = WallClock::max();
     WallClock m_calm_since = WallClock::max();
