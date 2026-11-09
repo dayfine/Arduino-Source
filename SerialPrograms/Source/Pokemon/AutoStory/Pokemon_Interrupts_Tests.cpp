@@ -9,6 +9,7 @@
 
 #include <format>
 #include <functional>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -250,6 +251,45 @@ private:
     ClassifyCase m_case;
 };
 
+
+//  A synthetic scene, classified over all of it, and the lags to time it.
+struct StepTimeInput{
+    std::string name;
+    std::vector<Frame> frames;
+    int until_ms = 0;
+    std::vector<EventLag> lags;
+};
+
+struct StepTimeExpectation{
+    //  "+700 ms" from T0, or "none".
+    std::string step;
+};
+
+struct StepTimeCase{
+    StepTimeInput input;
+    StepTimeExpectation expectation;
+};
+
+class Test_InterruptStepTime : public UnitTest{
+public:
+    explicit Test_InterruptStepTime(StepTimeCase test_case)
+        : UnitTest("Pokemon::Interrupts - step time: " + test_case.input.name)
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const StepTimeInput& input = m_case.input;
+        const InterruptVerdict verdict = classify_interrupt(log_of(input.frames, input.until_ms), whole(input.until_ms), {});
+        const std::optional<WallClock> step = interrupt_step_time(verdict, input.lags);
+        const std::string got = step
+            ? std::format("{:+} ms", std::chrono::duration_cast<Milliseconds>(*step - T0).count())
+            : "none";
+        return expect_equal("step time of " + describe(verdict, T0), got, m_case.expectation.step);
+    }
+
+private:
+    StepTimeCase m_case;
+};
+
 } // namespace
 
 
@@ -352,12 +392,40 @@ const ClassifyCase CLASSIFY_CASES[] = {
     },
 };
 
+const StepTimeCase STEP_TIME_CASES[] = {
+    {
+        .input = {"a wild battle's box, its fade untimed",
+            {{0, WALK}, {1500, BLACK}, {2000, ScreenEvents()}, {4400, BATTLE}}, 6000,
+            {{ScreenEvent::BATTLE_STARTED, 3700ms}}},
+        .expectation = {"+700 ms"},
+    },
+    {
+        .input = {"the first timed rise wins",
+            {{0, WALK}, {1500, BLACK}, {2000, ScreenEvents()}, {4400, BATTLE}}, 6000,
+            {{ScreenEvent::BATTLE_STARTED, 3700ms}, {ScreenEvent::FADE_BLACK, 1000ms}}},
+        .expectation = {"+500 ms"},
+    },
+    {
+        .input = {"no lags, no time",
+            {{0, WALK}, {4400, BATTLE}}, 6000, {}},
+        .expectation = {"none"},
+    },
+    {
+        .input = {"no interrupt, no time",
+            {{0, WALK}}, 6000, {{ScreenEvent::BATTLE_STARTED, 3700ms}}},
+        .expectation = {"none"},
+    },
+};
+
 void add_tests_Interrupts(UnitTestDatabase& database){
     for (const auto& item : INTERRUPTS_CASES){
         database.add<Test_Interrupts>(item);
     }
     for (const auto& item : CLASSIFY_CASES){
         database.add<Test_InterruptClassify>(item);
+    }
+    for (const auto& item : STEP_TIME_CASES){
+        database.add<Test_InterruptStepTime>(item);
     }
 }
 
