@@ -1739,6 +1739,8 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryActions.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryExecutor.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryExecutor.h
+    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryInterrupts.cpp
+    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryInterrupts.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryStepIO.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryStepIO.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryWalkSteps.cpp

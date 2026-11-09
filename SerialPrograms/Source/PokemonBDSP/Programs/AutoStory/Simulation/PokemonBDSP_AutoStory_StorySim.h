@@ -29,6 +29,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_TalkOver.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryActions.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryExecutor.h"
+#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryInterrupts.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryStepIO.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryTable.h"
@@ -142,6 +143,13 @@ struct SimWorldKnobs{
     //  The scene a step's talk-over plays, by step name: a scene's or a
     //  door's settle(), or the speeches after a battle step's battle.
     std::map<std::string, SimScene> scenes = {};
+    //  Whether a dialog pops up right before row `row`'s step `step`:
+    //  someone walks up and talks between two steps. Until it is pressed
+    //  through, it stops a step that walks or talks, as on the console.
+    std::function<bool(const std::string& row, const std::string& step)> dialog_before = nullptr;
+    //  Whether the executor clears what came up between steps
+    //  (story_interrupts()), as the console does; off, as before it did.
+    bool clear_interrupts = true;
 };
 
 //  The walker's RouteIO on the story simulation, with SimWorldKnobs' slides
@@ -361,7 +369,12 @@ public:
         , m_io(m_sim, m_notes, m_misses, m_knobs, m_step, [this]{ return cross(); }, [this](const Pokemon::Pose& far){ cross_to(far); })
         , m_walks(m_io)
         , m_table(story_action_table(m_walks, sim_actions()))
-    {}
+        , m_interrupts(story_interrupts([this](bool){ return look(); }, sim_interrupt_actions()))
+    {
+        if (m_knobs.clear_interrupts){
+            set_interrupts(&m_interrupts);
+        }
+    }
 
     const SimMisses& misses() const{
         return m_misses;
@@ -385,6 +398,9 @@ public:
     virtual Pokemon::Outcome run(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
 
 protected:
+    //  A dialog that popped up and is still up stops a step that walks or
+    //  talks; a step that presses through text closes it.
+    virtual Pokemon::Outcome run_action(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
     virtual Pokemon::Outcome heal(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
     virtual Pokemon::Outcome new_game(Pokemon::RunState&, const Pokemon::StoryStep&) override{ return stub(); }
     virtual Pokemon::Outcome options(Pokemon::RunState&, const Pokemon::StoryStep&) override{ return stub(); }
@@ -408,6 +424,9 @@ private:
     //  A step the simulation does not play: its dialogue opened and closed.
     Pokemon::Outcome stub();
     StoryBoundActions sim_actions();
+    //  The screen between steps: the dialog that popped up, if one did.
+    Pokemon::ScreenLook look();
+    StoryInterruptActions sim_interrupt_actions();
     const StoryWorld* sim_world(const std::string& map) const;
     SimWorld setup(const StoryWorld* world) const;
     void arm(const std::string& after);
@@ -430,6 +449,11 @@ private:
     StoryWalkSteps m_walks;
     SimStepGuard m_guard;
     Pokemon::StoryActionTable m_table;
+    Pokemon::StoryInterrupts m_interrupts;
+    //  A dialog popped up (SimWorldKnobs::dialog_before) and is still up;
+    //  it rose since the last look.
+    bool m_dialog_up = false;
+    bool m_dialog_rose = false;
     //  The planner's worlds with sim_people() on them, by world and who.
     mutable std::map<std::pair<const StoryWorld*, std::string>, std::unique_ptr<StoryWorld>> m_peopled;
     //  The steps of this row that have run.

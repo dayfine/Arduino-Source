@@ -159,6 +159,26 @@ UnitTestResult test_story_sim_misses(Logger& logger){
     return unseen.empty() ? UnitTestResult(true) : UnitTestResult(out);
 }
 
+//  Someone talks to the player before every step (SimWorldKnobs::
+//  dialog_before): cleared between steps, the whole table still passes;
+//  left up, as before the executor looked, the first walk fails on it.
+UnitTestResult test_dialog_between_steps(Logger& logger){
+    const Pokemon::SegmentRange range{.from = "00.00", .to = "01.11"};
+    const auto always = [](const std::string&, const std::string&){
+        return true;
+    };
+    SimExecutor cleared(logger, {}, {.dialog_before = always});
+    if (!run_rows_on(cleared, logger, range).completed){
+        return "A dialog before every step, cleared: " + cleared.result().error;
+    }
+    SimExecutor left(logger, {}, {.dialog_before = always, .clear_interrupts = false});
+    run_rows_on(left, logger, range);
+    if (left.result().error.find(" dialog: ") == std::string::npos){
+        return "Expected a dialog left up to stop a walk, got: " + left.result().error;
+    }
+    return true;
+}
+
 UnitTestResult test_story_sim_whole_table(Logger& logger){
     return run_rows(logger, {.from = "00.00", .to = "01.11"});
 }
@@ -304,6 +324,7 @@ const AutoStoryStorySimCase AUTO_STORY_STORY_SIM_CASES[] = {
     {.input = {"a warp's fade on the sim's frames, through the door's and the taps' watches", test_sim_fade_frames}, .expectation = {}},
     {.input = {"00.00 to 01.11: the whole table, from the new game to Floaroma", test_story_sim_whole_table}, .expectation = {}},
     {.input = {"each row from 00.00 to 01.11 in isolation", test_story_sim_each_row}, .expectation = {}},
+    {.input = {"a dialog pops up before every step from 00.00 to 01.11", test_dialog_between_steps}, .expectation = {}},
     {.input = {"01.02b, Barry's lines, then the Center past his doorstep (lab-B, 2026-11-08)", [](Logger& logger){
         return run_rows(logger, {.from = "01.02b", .to = "01.02b"});
     }}, .expectation = {}},

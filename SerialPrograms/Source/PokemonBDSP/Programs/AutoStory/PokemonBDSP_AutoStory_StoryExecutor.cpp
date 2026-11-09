@@ -114,6 +114,14 @@ void ConsoleStepGuard::on_failure(const StoryStep&, const OperationFailedExcepti
     save_failure_screenshot(m_stream, attempt);
 }
 
+void ConsoleStepGuard::on_interrupt(const StoryStep& step, const Pokemon::InterruptCheck& check){
+    const bool cleared = check.outcome.succeeded();
+    m_stream.log(std::format(
+        "[{}] {}: before it, {}: {}", m_checkpoint, step.name,
+        Pokemon::interrupt_kind_name(check.verdict.kind), cleared ? "cleared" : Pokemon::to_string(check.outcome)
+    ), cleared ? COLOR_ORANGE : COLOR_RED);
+}
+
 
 //  The table and the guard are members, built after the base: it only
 //  keeps references to them until a step runs.
@@ -124,7 +132,11 @@ StoryExecutor::StoryExecutor(StoryEnv& env)
     , m_walks(m_io)
     , m_guard(env.env.console, m_checkpoint)
     , m_table(story_action_table(m_walks, console_actions()))
-{}
+    , m_look(env.env.console, env.context)
+    , m_interrupts(story_interrupts([this](bool fresh){ return m_look.look(fresh); }, console_interrupt_actions()))
+{
+    set_interrupts(&m_interrupts);
+}
 
 StoryBoundActions StoryExecutor::console_actions(){
     const auto method = [this](Outcome (StoryExecutor::*action)(RunState&, const StoryStep&)){
@@ -145,6 +157,29 @@ StoryBoundActions StoryExecutor::console_actions(){
                 return event(*this, state, step);
             };
         },
+    };
+}
+
+//  A wild battle is run from, a trainer who saw us fought, a dialog or a
+//  warp's scene pressed through to the quiet overworld.
+StoryInterruptActions StoryExecutor::console_interrupt_actions(){
+    const auto settle = [this](const char* label){
+        return [this, label](RunState&, const Pokemon::InterruptVerdict&){
+            m_io.settle(BUTTON_B, label, false, "");
+            return Pokemon::outcome_ok();
+        };
+    };
+    return StoryInterruptActions{
+        .wild = [this](RunState&, const Pokemon::InterruptVerdict&){
+            run_from_wild_battle(stream(), context());
+            return Pokemon::outcome_ok();
+        },
+        .trainer = [this](RunState&, const Pokemon::InterruptVerdict&){
+            m_io.fight("");
+            return Pokemon::outcome_ok();
+        },
+        .dialog = settle("a dialog between steps"),
+        .warp = settle("a warp between steps"),
     };
 }
 
