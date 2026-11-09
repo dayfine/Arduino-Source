@@ -14,6 +14,7 @@
 #include "Utils/PokemonBDSP_AutoStory_Indoors.h"
 #include "Utils/PokemonBDSP_AutoStory_Location.h"
 #include "Utils/PokemonBDSP_AutoStory_RouteWalk.h"
+#include "Utils/PokemonBDSP_AutoStory_Walk.h"
 #include "PokemonBDSP_AutoStory_Walk_Tests.h"
 
 namespace PokemonAutomation{
@@ -46,6 +47,62 @@ UnitTestResult test_route_turn_tap(Logger&){
             return "ROUTE_TURN_TAP is " + std::to_string(ROUTE_TURN_TAP.count()) + " ms; over 80 ms may step.";
         }
         return true;
+}
+
+//  WarpFadeWatch on synthetic frames 33 ms apart, each a brightness and a
+//  texture (stddev a channel). Two scenes differ here when their
+//  brightness does.
+struct FadeFrame{
+    double brightness;
+    double stddev;
+};
+struct WarpFadeCase{
+    std::string name;
+    WarpFadeRule rule;
+    std::vector<FadeFrame> frames;
+    //  The frame (1-based) the fade shows on, 0 for none, and how.
+    size_t seen_at;
+    WarpFade fade;
+};
+
+UnitTestResult test_warp_fade_watch(Logger&){
+    constexpr WarpFadeRule DOOR{.partial_dark = true, .dark_for = Milliseconds(50), .white_for = Milliseconds(60)};
+    constexpr WarpFadeRule TAP{};
+    constexpr FadeFrame STREET{104, 20};
+    constexpr FadeFrame ROOM{130, 20};
+    constexpr FadeFrame FALL{55, 10};
+    constexpr FadeFrame BLACK{7, 1};
+    const std::vector<WarpFadeCase> cases{
+        {.name = "a door's fade, its hold seen", .rule = DOOR, .frames = {STREET, FALL, BLACK, BLACK, BLACK, ROOM}, .seen_at = 4, .fade = WarpFade::BLACK},
+        {.name = "a tap's fade, its hold seen", .rule = TAP, .frames = {STREET, FALL, BLACK, ROOM}, .seen_at = 3, .fade = WarpFade::BLACK},
+        {.name = "a short fade, its hold between two frames", .rule = TAP, .frames = {STREET, FALL, ROOM}, .seen_at = 3, .fade = WarpFade::BLACK},
+        {.name = "a door's short fade, its hold between two frames", .rule = DOOR, .frames = {STREET, FALL, ROOM}, .seen_at = 3, .fade = WarpFade::BLACK},
+        {.name = "a dip back to the same street", .rule = TAP, .frames = {STREET, FALL, STREET}, .seen_at = 0, .fade = WarpFade::NONE},
+        {.name = "a dim cave floor (46) is no fade", .rule = TAP, .frames = {STREET, {46, 20}, {46, 20}, {46, 20}}, .seen_at = 0, .fade = WarpFade::NONE},
+        {.name = "a cave mouth's dim fade (55)", .rule = TAP, .frames = {STREET, {80, 10}, {55, 1}, ROOM}, .seen_at = 3, .fade = WarpFade::BLACK},
+        {.name = "a cave exit's white, its hold between two frames", .rule = TAP, .frames = {STREET, {180, 10}, ROOM}, .seen_at = 3, .fade = WarpFade::WHITE},
+        {.name = "a cave exit's white", .rule = DOOR, .frames = {STREET, {250, 1}, {250, 1}, {250, 1}}, .seen_at = 4, .fade = WarpFade::WHITE},
+    };
+    for (const WarpFadeCase& item : cases){
+        WarpFadeWatch watch(item.rule, [](const Pokemon::TransitionSample& before, const Pokemon::TransitionSample& after){
+            return after.middle.average.r != before.middle.average.r ? Pokemon::SceneChange::DIFFERENT : Pokemon::SceneChange::SAME;
+        });
+        size_t seen_at = 0;
+        WarpFade fade = WarpFade::NONE;
+        for (size_t i = 0; i < item.frames.size() && seen_at == 0; i++){
+            const FadeFrame& frame = item.frames[i];
+            fade = watch.push({
+                .time = WallClock() + Milliseconds(33 * (int64_t)i),
+                .middle = ImageStats(FloatPixel(frame.brightness, frame.brightness, frame.brightness), FloatPixel(frame.stddev, frame.stddev, frame.stddev), 1),
+            });
+            seen_at = fade == WarpFade::NONE ? 0 : i + 1;
+        }
+        if (seen_at != item.seen_at || fade != item.fade){
+            return item.name + ": " + warp_fade_name(fade) + " at frame " + std::to_string(seen_at) + ", expected " +
+                warp_fade_name(item.fade) + " at " + std::to_string(item.seen_at) + ".";
+        }
+    }
+    return true;
 }
 
 //  indoors() decides when leave_door_south() is out: r257 walked on south
@@ -246,6 +303,10 @@ const AutoStoryWalkCase AUTO_STORY_WALK_CASES[] = {
     },
     {
         .input = {"out of a door needs its fade", test_door_fade},
+        .expectation = {},
+    },
+    {
+        .input = {"a warp's fade, followed frame by frame, its hold seen or not", test_warp_fade_watch},
         .expectation = {},
     },
     {
