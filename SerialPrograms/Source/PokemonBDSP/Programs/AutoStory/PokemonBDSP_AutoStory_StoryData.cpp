@@ -1,6 +1,9 @@
-/*  BDSP authored story data
+/*  BDSP Authored Checkpoint Data
+ *
  *  From: https://github.com/PokemonAutomation/
+ *
  */
+
 #include <utility>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonObject.h"
@@ -14,14 +17,14 @@ namespace PokemonBDSP{
 
 namespace{
 
-StoryFailure read_failure(const std::string& value){
+StoryFailure read_failure(std::string_view value){
     if (value == "reload_and_retry"){
         return StoryFailure::RELOAD_AND_RETRY;
     }
     if (value == "stop"){
         return StoryFailure::STOP;
     }
-    throw ParseException("Unsupported BDSP failure policy: " + value);
+    throw ParseException("Unsupported BDSP failure policy: " + std::string(value));
 }
 
 StoryCheckpoint apply_execution(Pokemon::AuthoredCheckpoint parsed, std::string_view source){

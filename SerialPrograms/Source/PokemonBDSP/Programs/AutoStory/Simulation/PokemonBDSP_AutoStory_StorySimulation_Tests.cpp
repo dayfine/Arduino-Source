@@ -510,7 +510,7 @@ private:
 } // namespace
 
 
-//  Data migration of #226 at 0738cd55b: use the actual JSON-backed table.
+//  Execute the authored mine resource through the actual table and shared engine.
 UnitTestResult test_authored_mine(Logger&){
     Simulation sim;
     const auto report = sim.run({.from = "01.03", .to = "01.03"});
@@ -521,6 +521,7 @@ UnitTestResult test_authored_mine(Logger&){
     }
     return true;
 }
+
 UnitTestResult test_authored_mine_stops(Logger&){
     Simulation sim;
     sim.game.failures["01.03/out_of_the_mine"] = {.failure = "unconfirmed_transition", .times = 3};

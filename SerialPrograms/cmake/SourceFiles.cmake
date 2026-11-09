@@ -1729,8 +1729,7 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_MenuCursorDetector.cpp
     Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_MenuCursorDetector.h
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_CoordEvents.cpp
-    Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_CoordEvents.h
-    Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_CoordEvents.h    Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.cpp
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RoutePlanner.cpp
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RoutePlanner.h

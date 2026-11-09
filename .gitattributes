@@ -1,1 +1,3 @@
 * -text
+# Authored story data uses LF; native C++ retains repository CRLF conventions.
+SerialPrograms/Source/PokemonBDSP/Programs/AutoStory/StoryData/*.json text eol=lf

@@ -101,29 +101,39 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: dayfine/PokemonSimulation
-          ref: 678ee80802fec2ae02428429c2e603cd314f20b7
+          ref: cf365e1722dea03fcf40c322b910332fcc864ea4
           path: AuthoredStorySource
 
-      - name: Check identical authored mine JSON and replay its scenarios
+      - name: Replay the authoritative Arduino mine plan
         if: startsWith(inputs.os, 'ubuntu') && inputs.run-tests
         env:
           PYTHONPATH: AuthoredStorySource/src
         run: |
           python3 - <<'PYTHON'
           from pathlib import Path
+          import hashlib, json, tempfile
           from pokesim.story.replay_binding import load_binding
           from pokesim.story.replay_cases import read_cases, check_case
           from pokesim.story.checkpoint_replay import run
           source = Path('AuthoredStorySource')
           folder = source / 'data/story/bdsp-mine-pilot'
           native = Path('Arduino-Source/SerialPrograms/Source/PokemonBDSP/Programs/AutoStory/StoryData')
-          assert (native / 'bdsp-mine-01.03.plan.json').read_bytes() == (folder / 'bdsp-mine-01.03.plan.json').read_bytes()
-          binding = load_binding(folder / 'binding.json', source)
-          cases = read_cases(folder / 'cases.json')
-          for case in cases:
-              check_case(case, run(binding, case['input']))
-              print(case['id'] + ': authored BDSP JSON replay passed')
-          assert len(cases) == 9
+          # The Arduino plan is authoritative; bind these exact bytes explicitly.
+          # The simulator's checked-in plan is only a frozen regression snapshot.
+          with tempfile.TemporaryDirectory(prefix='.native-story-', dir=source) as temporary:
+              stage = Path(temporary)
+              raw = (native / 'bdsp-mine-01.03.plan.json').read_bytes()
+              (stage / 'plan.json').write_bytes(raw)
+              profile = json.loads((folder / 'binding.json').read_text())
+              profile['plan'] = {'file': str((stage / 'plan.json').relative_to(source)),
+                                 'sha256': hashlib.sha256(raw).hexdigest()}
+              (stage / 'binding.json').write_text(json.dumps(profile))
+              binding = load_binding(stage / 'binding.json', source)
+              cases = read_cases(folder / 'cases.json')
+              for case in cases:
+                  check_case(case, run(binding, case['input']))
+                  print(case['id'] + ': current Arduino plan replay passed')
+              assert len(cases) == 9
           PYTHON
 
       - name: Install Qt

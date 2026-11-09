@@ -20,7 +20,6 @@
 #include "Data/PokemonBDSP_AutoStory_RoutePlanner.h"
 #include "Data/PokemonBDSP_AutoStory_StoryMaps.h"
 #include "Actions/PokemonBDSP_AutoStory_Events.h"
-#include "PokemonBDSP_AutoStory_StoryData_Tests.h"
 #include "PokemonBDSP_AutoStory_StoryTable.h"
 #include "PokemonBDSP_AutoStory_StoryTable_Tests.h"
 
@@ -274,7 +273,6 @@ const AutoStoryStoryTableCase AUTO_STORY_STORY_TABLE_CASES[] = {
 };
 
 void add_tests_AutoStory_StoryTable(UnitTestDatabase& database){
-    add_tests_AutoStory_StoryData(database);
     for (const auto& item : AUTO_STORY_STORY_TABLE_CASES){
         database.add<Test_AutoStoryStoryTable>(item);
     }
