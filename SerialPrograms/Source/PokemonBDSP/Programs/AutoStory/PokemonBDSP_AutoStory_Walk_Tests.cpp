@@ -348,18 +348,19 @@ struct AutoStoryWalkCase{
 struct LegBattleCase{
     std::string name;
     size_t battles;
-    size_t tap;             //  the tap (from 0) that set the battle off
+    size_t tap;             //  the tap (from 1) that set the battle off
     size_t moved_after;     //  taps that moved after it was run from
     bool settled;           //  false: a white fade with no battle yet
     std::optional<TileSpan> expected;
 };
 UnitTestResult test_leg_battle_place(Logger& logger){
     const LegBattleCase CASES[] = {
-        {"mid-leg, the taps went on", 1, 2, 7, true, TileSpan{9, 10}},
-        {"seen after the hold", 1, 5, 0, true, TileSpan{5, 7}},
-        {"on the first tap", 1, 0, 0, true, TileSpan{0, 2}},
-        {"two battles", 2, 2, 0, true, std::nullopt},
-        {"unsettled: a white fade, no battle yet", 1, 3, 0, false, std::nullopt},
+        {"mid-leg, the taps went on", 1, 3, 7, true, TileSpan{9, 10}},
+        {"seen after the hold", 1, 6, 0, true, TileSpan{5, 7}},
+        {"on the first tap", 1, 1, 0, true, TileSpan{0, 2}},
+        {"before the walk", 1, 0, 0, true, TileSpan{0, 1}},
+        {"two battles", 2, 3, 0, true, std::nullopt},
+        {"unsettled: a white fade, no battle yet", 1, 4, 0, false, std::nullopt},
     };
     for (const LegBattleCase& item : CASES){
         WalkResult walk{.stop = WalkStop::LIMIT, .walked = Milliseconds(8000), .wild_battles = item.battles};
@@ -368,7 +369,7 @@ UnitTestResult test_leg_battle_place(Logger& logger){
         if (item.settled){
             record_tap_battle(walk, item.tap);
         }else{
-            walk.events.record({Pokemon::ScreenEvent::FADE_WHITE}, walk.started + Milliseconds(800 * item.tap + 500));
+            walk.events.record({Pokemon::ScreenEvent::FADE_WHITE}, walk.started + Milliseconds(800 * (item.tap - 1) + 500));
         }
         const LegBattlePlace place = place_leg_battle(walk, 10);
         logger.log(leg_battle_line(item.name, walk, place));

@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <format>
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_LegBattle.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WildBattlePolicy.h"
 #include "PokemonBDSP_AutoStory_GridSim.h"
@@ -463,7 +464,9 @@ std::optional<SimWildTap> GridSimRouteIO::take_encounter(Direction direction, si
 //  nothing end the walk.
 WalkResult GridSimRouteIO::walk_taps(Direction direction, size_t tiles, const std::string& label){
     WalkResult result{.stop = WalkStop::LIMIT, .walked = 0ms, .wild_battles = 0, .moved_chunks = 0};
+    result.events.record({}, result.started);
     size_t still = 0;
+    size_t moved_at_battle = 0;
     for (size_t tap = 0; tap < tiles && result.stop == WalkStop::LIMIT; tap++){
         const auto encounter = take_encounter(direction, tiles, tap + 1, label);
         const SimMove move = encounter && encounter->phase == SimEncounterPhase::BEFORE_MOVEMENT
@@ -478,6 +481,11 @@ WalkResult GridSimRouteIO::walk_taps(Direction direction, size_t tiles, const st
                 result.origin = WalkOrigin::MAY_PRECEDE_LEG;
             }
             result.moved_chunks++;
+            //  The console's watchers time the battle from the tap that set
+            //  it off: this one, or for a battle before this tap moved, the
+            //  one before (0: a step before the walk).
+            record_tap_battle(result, encounter->phase == SimEncounterPhase::BEFORE_MOVEMENT ? tap : tap + 1);
+            moved_at_battle = result.moved_chunks;
             still = 0;
             m_notes.push_back("[Sim] cleared wild encounter during " + label);
             continue;
@@ -490,6 +498,9 @@ WalkResult GridSimRouteIO::walk_taps(Direction direction, size_t tiles, const st
         }else if (still >= 2){
             result.stop = WalkStop::BLOCKED;
         }
+    }
+    if (result.wild_battles > 0){
+        result.moved_after_battle = result.moved_chunks - moved_at_battle;
     }
     m_notes.push_back(std::format("[Sim] {}: {} taps {}, {} moved, {} at {}.", label, tiles, direction_name(direction),
         result.moved_chunks, walk_stop_name(result.stop), to_string(m_sim.player().pos)));

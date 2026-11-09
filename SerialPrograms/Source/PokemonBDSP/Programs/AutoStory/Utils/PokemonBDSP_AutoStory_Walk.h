@@ -89,7 +89,7 @@ struct WalkResult{
     //  The shared judges read it (Pokemon::classify_interrupt()) to tell
     //  what stopped the walk and when its step was taken. Empty where
     //  nothing recorded it.
-    Pokemon::ScreenEventLog events = {};
+    Pokemon::ScreenEventLog events{};
     //  When the walk's first input went in; `events` are timed against it.
     WallClock started = {};
     //  Chunks that moved after the last wild battle was run from: the taps

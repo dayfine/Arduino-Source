@@ -13,6 +13,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
@@ -182,6 +183,83 @@ public:
     }
 private:
     RecoveryCase m_case;
+};
+
+//  A wild battle on below_roark's open leg east 14, on the input's tap: the
+//  leg's screen events must place the player a tile or so from where the
+//  taps left them, not anywhere along the 14 tiles. The taps go on after
+//  the battle, as the console's do: the player ends at the leg's end, a
+//  tile short when the battle came before its tap moved. Red until the
+//  story's taps read their events: the leg kept all 15 of its tiles.
+struct PlacedBattleInput{
+    std::string name;
+    size_t tap;
+    SimEncounterPhase phase;
+};
+struct PlacedBattleExpectation{
+    size_t tiles_in;    //  how far along east 14 the taps left the player
+};
+struct PlacedBattleCase{
+    PlacedBattleInput input;
+    PlacedBattleExpectation expectation;
+};
+
+//  "4 to 6 tiles in." in a placement line, if any.
+std::optional<std::pair<size_t, size_t>> placed_span(const std::vector<std::string>& notes){
+    for (const std::string& note : notes){
+        const size_t line = note.find("battle on the leg:");
+        const size_t in = note.find(" tiles in.");
+        if (line == std::string::npos || in == std::string::npos){
+            continue;
+        }
+        const size_t to = note.rfind(" to ", in);
+        const size_t from = note.rfind(' ', to - 1);
+        return std::pair<size_t, size_t>{std::stoul(note.substr(from + 1, to - from - 1)), std::stoul(note.substr(to + 4, in - to - 4))};
+    }
+    return std::nullopt;
+}
+
+class Test_PlacedLegBattle : public UnitTest{
+public:
+    explicit Test_PlacedLegBattle(PlacedBattleCase data)
+        : UnitTest("PokemonBDSP::AutoStory - Recovery walk: a battle on an open leg's taps, placed by its screen events: " + data.input.name)
+        , m_case(std::move(data))
+    {}
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        const StoryWorld* world = story_plan_world("OreburghMine", "OreburghMine");
+        GridSim sim({.world = world}, world->to_world("OreburghMine", {15, 9}), Direction::SOUTH, true);
+        std::vector<std::string> notes;
+        InterruptingRouteIO route(sim, notes, {{.label = "below_roark", .direction = Direction::EAST,
+            .requested_tiles = 14, .tap = m_case.input.tap, .phase = m_case.input.phase}}, 0, RecoveryBattle::NONE);
+        RecoveryStepIO io(route);
+        StoryWalkSteps walks(io);
+        walks.begin_attempt("01.03");
+        Pokemon::RunState state{.pose = Pokemon::tile_pose("OreburghMine", {{15, 9}}, Direction::SOUTH), .flags = {}};
+        std::string failure;
+        try{
+            failure = walks.legs(state, mine_step()).failure;
+        }catch (const GridSimFailure& error){
+            failure = error.message;
+        }
+        for (const std::string& note : notes){
+            logger.log(note);
+        }
+        const auto end = story_to_local(*world, "OreburghMine", nearest_tile(sim.player().pos));
+        if (!failure.empty() || !end || *end != TilePos{18, 29}){
+            return "Expected below Roark (18, 29), got " + to_string(sim.player().pos) + ": " + failure;
+        }
+        const auto span = placed_span(notes);
+        const size_t tiles_in = m_case.expectation.tiles_in;
+        if (!span){
+            return "The battle was not placed: the leg kept every one of its tiles.";
+        }
+        if (span->first > tiles_in || tiles_in > span->second || span->second - span->first > 2){
+            return std::format("Placed {} to {} tiles in; the taps left the player {} in.", span->first, span->second, tiles_in);
+        }
+        return true;
+    }
+private:
+    PlacedBattleCase m_case;
 };
 
 //  The route walker's open legs as lab-B 2026-11-08 11:55 saw one: a leg of
@@ -823,6 +901,14 @@ void add_tests_AutoStory_RecoveryWalk(UnitTestDatabase& database){
     };
     for (const RecoveryCase& scenario : CASES){
         database.add<Test_RecoveryWalk>(scenario);
+    }
+    const PlacedBattleCase PLACED_CASES[] = {
+        {.input = {.name = "tap 3", .tap = 3, .phase = SimEncounterPhase::AFTER_MOVEMENT}, .expectation = {.tiles_in = 14}},
+        {.input = {.name = "tap 7, before it moved", .tap = 7, .phase = SimEncounterPhase::BEFORE_MOVEMENT}, .expectation = {.tiles_in = 13}},
+        {.input = {.name = "the last tap", .tap = 14, .phase = SimEncounterPhase::AFTER_MOVEMENT}, .expectation = {.tiles_in = 14}},
+    };
+    for (const PlacedBattleCase& scenario : PLACED_CASES){
+        database.add<Test_PlacedLegBattle>(scenario);
     }
     for (const CornerCase& scenario : CORNER_CASES){
         database.add<Test_RoarksCorner>(scenario);
