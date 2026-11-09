@@ -5,6 +5,7 @@
  */
 
 #include <algorithm>
+#include <cstdlib>
 #include <format>
 #include "Common/Cpp/Exceptions.h"
 #include "PokemonBDSP_AutoStory_StoryWorld.h"
@@ -146,7 +147,9 @@ void StoryWorld::paint(const Placed& placed, const TilePos& corner){
     for (const auto& box : placed.wander){
         for (int y = std::max(0, box.y0); y <= std::min(placed.tiles.height - 1, box.y1); y++){
             for (int x = std::max(0, box.x0); x <= std::min(placed.tiles.width - 1, box.x1); x++){
-                Pokemon::cell_at(m_cells, {corner.x + x, corner.y + y}).recovery_hazard = true;
+                Cell& c = Pokemon::cell_at(m_cells, {corner.x + x, corner.y + y});
+                c.recovery_hazard = true;
+                c.wander_hazard = true;
             }
         }
     }
@@ -185,6 +188,50 @@ StoryWorld::Occupant StoryWorld::occupied(const TilePos& pos, OccupancyUse use) 
         return PERSON;
     }
     return found == nullptr ? NOBODY : found->occupant;
+}
+
+namespace{
+
+void add_box_tiles(std::vector<TilePos>& out, const TilePos& corner, const Pokemon::TileBox& box, int max_w, int max_h){
+    const int y0 = std::max(0, box.y0);
+    const int y1 = std::min(max_h - 1, box.y1);
+    const int x0 = std::max(0, box.x0);
+    const int x1 = std::min(max_w - 1, box.x1);
+    for (int y = y0; y <= y1; y++){
+        for (int x = x0; x <= x1; x++){
+            out.push_back({corner.x + x, corner.y + y});
+        }
+    }
+}
+
+} // namespace
+
+std::vector<TilePos> wandering_hazards(const StoryWorld& world){
+    std::vector<TilePos> result;
+    for (const auto& placed : world.m_maps){
+        const TilePos corner{placed.offset.x - world.m_origin.x, placed.offset.y - world.m_origin.y};
+        for (const auto& box : placed.wander){
+            add_box_tiles(result, corner, box, placed.tiles.width, placed.tiles.height);
+        }
+    }
+    std::sort(result.begin(), result.end(), [](const TilePos& a, const TilePos& b){
+        if (a.y != b.y){
+            return a.y < b.y;
+        }
+        return a.x < b.x;
+    });
+    result.erase(std::unique(result.begin(), result.end()), result.end());
+    return result;
+}
+
+bool wandering_hazard(const StoryWorld& world, const TilePos& pos){
+    const StoryWorld::Cell* found = world.cell(pos);
+    return found != nullptr && found->wander_hazard;
+}
+
+bool recovery_hazard(const StoryWorld& world, const TilePos& pos){
+    const StoryWorld::Cell* found = world.cell(pos);
+    return found != nullptr && found->recovery_hazard;
 }
 
 void StoryWorld::block(const TilePos& pos){
@@ -246,6 +293,37 @@ std::optional<TilePos> step(const StoryWorld& world, const TilePos& from, Direct
         return landing;
     }
     return std::nullopt;
+}
+
+std::vector<TilePos> leg_path(const StoryWorld& grid, TilePos from, Direction direction, size_t tiles){
+    std::vector<TilePos> path;
+    size_t travelled = 0;
+    while (travelled < tiles){
+        const std::optional<TilePos> next = step(grid, from, direction);
+        if (!next){
+            break;
+        }
+        travelled += std::abs(next->x - from.x) + std::abs(next->y - from.y);
+        from = *next;
+        path.push_back(from);
+    }
+    return path;
+}
+
+bool warp_within(const StoryWorld& world, const std::vector<TilePos>& from, Direction direction, size_t reach){
+    for (TilePos pos : from){
+        for (size_t i = 0; i < reach; i++){
+            if (world.tile(pos.next(direction)) == TileKind::DOOR){
+                return true;
+            }
+            const std::optional<TilePos> next = step(world, pos, direction);
+            if (!next){
+                break;
+            }
+            pos = *next;
+        }
+    }
+    return false;
 }
 
 //  Someone standing in the way stops us too, but is no wall to stop against:
