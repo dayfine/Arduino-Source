@@ -42,6 +42,7 @@ private:
     BattleDialogDetector m_battle_dialog;
 };
 
+//  Registers the adapter's unit tests (synthetic frames).
 void add_tests_AutoStoryScreenEvents(UnitTestDatabase& database);
 
 

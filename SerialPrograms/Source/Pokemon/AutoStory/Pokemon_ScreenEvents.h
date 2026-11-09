@@ -44,6 +44,7 @@ enum class ScreenEvent : uint8_t{
     PLAYER_CAN_MOVE,    //  The overworld with the player in control.
     SCREEN_STILL,       //  The screen barely changed since the frame before.
 };
+//  How many ScreenEvent values there are.
 constexpr size_t SCREEN_EVENT_COUNT = 10;
 //  "dialog box", for the log.
 const char* screen_event_name(ScreenEvent event);
@@ -68,19 +69,12 @@ public:
     bool has(ScreenEvent event) const{
         return (m_bits & bit(event)) != 0;
     }
-    bool empty() const{
-        return m_bits == 0;
-    }
     //  Whether any of `events` is in this set.
     bool any_of(const ScreenEvents& events) const{
         return (m_bits & events.m_bits) != 0;
     }
     //  Adds `event`, or removes it when `on` is false (as std::bitset::set).
-    void set(ScreenEvent event, bool on = true);
-    //  Adds the fade's event (nothing for WarpFade::NONE).
-    void add_fade(WarpFade fade);
-    //  The fade this set shows: BLACK before WHITE if it has both.
-    WarpFade fade() const;
+    void set(ScreenEvent event, bool on);
     void merge(const ScreenEvents& events){
         m_bits |= events.m_bits;
     }
@@ -89,9 +83,6 @@ public:
         return m_bits;
     }
     static ScreenEvents from_bits(uint32_t bits);
-
-    //  "dialog box, player can move"; "nothing" when empty.
-    std::string describe() const;
 
     bool operator==(const ScreenEvents& other) const = default;
 
@@ -102,6 +93,12 @@ private:
 
     uint32_t m_bits = 0;
 };
+//  The event of a fade: FADE_BLACK, FADE_WHITE, or none for WarpFade::NONE.
+ScreenEvents fade_events(WarpFade fade);
+//  The fade `events` show: BLACK before WHITE if they have both.
+WarpFade fade_in(const ScreenEvents& events);
+//  "dialog box, player can move"; "nothing" when empty.
+std::string describe(const ScreenEvents& events);
 
 
 //  A fade is uniform over the middle 80% of the screen, the shared
