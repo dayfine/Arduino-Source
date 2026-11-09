@@ -9,6 +9,7 @@
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonFramework/StaticGlobals.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryFrameReplay_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryScreenEvents.h"
 #include "Inference/Box/PokemonFRLG_BoxCellOccupiedDetector.h"
 #include "Inference/Box/PokemonFRLG_BoxCellReader.h"
@@ -880,6 +881,7 @@ static void add_tests_AutoStoryReaders(UnitTestDatabase& database){
     add_tests_SummaryMovesReader(database);
     add_tests_TeachScreenReader(database);
     add_tests_AutoStoryScreenEvents(database);
+    add_tests_AutoStoryFrameReplay(database);
 }
 
 //  The naming screen's cursor, plans, keys and text.
