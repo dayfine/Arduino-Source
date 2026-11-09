@@ -6,7 +6,7 @@ This sidecar preserves the reasoning that previously accompanied the C++ row. Th
 
 The Center door is `(47,20)`, so its approach is `(47,21)` facing north. The published `pokemon_center_doorstep` is `(46,21)`: a route there hit the wall west of the door and healing found no door (lab-B, 2026-11-07 20:18). Both `(47,21)` and `(46,21)` facing south remain exit alternatives. Earlier Gym alignment runs r217d/r218d inferred column 46 from twenty west taps; they did not independently establish where those taps began.
 
-`above_the_mine` goes to `(46,58)` facing south. The city's five warp tiles `(44..48,59)` map into the hall at `(11,1),(11,1),(12,1),(13,1),(13,1)`. Thus column 46 enters B1F at `(12,1)`. The mine hall is Diamond's B1F; the coal room below is the room with Roark. Diamond zone-event sources were narc_0044/narc_0197; Platinum's event files provide the corresponding warp layout, used as evidence for BDSP's retained DP layout.
+`above_the_mine` goes to `(46,57)` facing south, two tiles short of the warp row so an open walk cannot slide onto it (01.05, lab-B 2026-11-08). The city's five warp tiles `(44..48,59)` map into the hall at `(11,1),(11,1),(12,1),(13,1),(13,1)`. Thus column 46 enters B1F at `(12,1)`. The mine hall is Diamond's B1F; the coal room below is the room with Roark. Diamond zone-event sources were narc_0044/narc_0197; Platinum's event files provide the corresponding warp layout, used as evidence for BDSP's retained DP layout.
 
 ## Into the coal room
 
