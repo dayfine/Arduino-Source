@@ -888,13 +888,13 @@ std::vector<StoryCheckpoint> to_oreburgh(){
     };
 }
 
-//  01.11: the old woman (3, 25), the old man (2, 25) west of her (r251a). 8 taps west from the banner's x 10..12 ended below
-//  him (lab-B 2026-11-08 18:41). The field's edge is 3 taps west of him (westedge batch 2026-11-08): x = -1, off the map.
-//  TODO(map points): the field goes on west of the map (the sim adds it, sim_ground()), or the couple stand a tile east.
+//  01.11: the old woman (4, 25), the old man (3, 25) west of her (r251a; columns from the westedge batch 2026-11-08,
+//  PokemonSimulation#76). 8 taps west from the banner's x 10..12 ended below him (lab-B 2026-11-08 18:41), so the walk
+//  clips to the field's west edge (x 0) and taps east to her column.
 StoryCheckpoint floaromas_old_couple(){
     const Pose below_the_old_woman = next_to(FLOAROMA, "old_woman", SOUTH, NORTH);
     const Pose below_the_old_man = next_to(FLOAROMA, "old_man", SOUTH, NORTH);
-    const Pose at_the_field_edge = Pokemon::tile_pose(FLOAROMA, {TilePos{-1, 27}, TilePos{-1, 28}, TilePos{-1, 29}}, WEST);
+    const Pose at_the_field_edge = Pokemon::tile_pose(FLOAROMA, {TilePos{0, 27}, TilePos{0, 28}, TilePos{0, 29}}, WEST);
     return row("01.11", "Floaroma's old couple", into_floaroma(), {
         anchored(to_walls("west_to_the_field_edge", {{.direction = WEST, .tiles = 13}}, "until the field's edge stops us"), at_the_field_edge),
         legs("below_her_column", {{.direction = EAST, .tiles = 4}}, "4 taps east to her column (westedge batch 2026-11-08)"),
