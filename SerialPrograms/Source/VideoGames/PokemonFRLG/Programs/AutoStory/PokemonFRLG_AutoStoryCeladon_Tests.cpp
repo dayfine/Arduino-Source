@@ -278,6 +278,54 @@ UnitTestResult test_route10_save_place(){
     return true;
 }
 
+//  00.27's step route10_nurse on the sim from Route 9 (70, 8): east onto
+//  Route 10, round its grass along row 11, down column 16 past the ledge
+//  (2..14, 12) and the fence post (17, 12), west along row 21 and north
+//  onto the Center's door (13, 20). Every leg but the door's is open
+//  (timed), and each ends a tile from something that sends the next leg
+//  elsewhere. Console B, 2026-11-09, both runs "no fade in and out":
+//  - run 3: the crossing onto Route 10 wasn't held up, so the player
+//    stood a tile further east, row 11 ended on (17, 11), the leg down
+//    column 17 met the post (17, 12), and west 3 and north 1 ended in the
+//    grass on (14, 10) (the end frame).
+//  - run 2: the leg down column 16 ended on (16, 20), west 3 met the
+//    Center's east wall (15, 20) and north 1 ended on (16, 19) beside it.
+//  Either way the door should be reached.
+std::string route10_nurse_on_sim(const SimScript& script){
+    const StoryCheckpoint& row = checkpoint("00.27");
+    const auto step = std::find_if(row.steps.begin(), row.steps.end(), [](const StoryStep& data){ return data.name == "route10_nurse"; });
+    if (step == row.steps.end()){
+        return "00.27: no step route10_nurse.";
+    }
+    StoryPose at{StoryTable::ROUTE9, {70, 8}, Direction::EAST};
+    OverworldSim sim(maps_after_surge(), MapPosition{at.map, at.tile}, Direction::EAST, script);
+    const std::string failure = row_step_on_sim(sim, at, *step, row.id);
+    const MapPosition nurse{StoryTable::ROUTE10_CENTER, {7, 4}};
+    if (!failure.empty() || !(sim.state().position == nurse) || sim.state().warps != 1){
+        return std::format("00.27/route10_nurse: ended on {}, not Route 10's nurse; {}", to_string(sim.state().position), failure);
+    }
+    return "";
+}
+
+UnitTestResult test_route10_crossing_not_held_up(){
+    SimScript script;
+    script.connections_stall = false;
+    if (const std::string failure = route10_nurse_on_sim(script); !failure.empty()){
+        return "The crossing onto Route 10 not held up (run 3): " + failure;
+    }
+    return true;
+}
+
+UnitTestResult test_route10_column_16_short(){
+    SimScript script;
+    //  Holds: east 7, south 3, east 11, south 10 down column 16.
+    script.short_holds[4] = 1;
+    if (const std::string failure = route10_nurse_on_sim(script); !failure.empty()){
+        return "The leg down column 16 a tile short (run 2): " + failure;
+    }
+    return true;
+}
+
 } // namespace
 
 
@@ -304,6 +352,14 @@ const AutoStoryCeladonCase AUTO_STORY_CELADON_CASES[] = {
     },
     {
         .input = {"00.27 saves in Route 10's Pokemon Center, ROUTE 10 on the save card", test_route10_save_place},
+        .expectation = {},
+    },
+    {
+        .input = {"00.27 route10_nurse: the crossing onto Route 10 not held up", test_route10_crossing_not_held_up},
+        .expectation = {},
+    },
+    {
+        .input = {"00.27 route10_nurse: the leg down column 16 a tile short", test_route10_column_16_short},
         .expectation = {},
     },
 };
