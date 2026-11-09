@@ -106,8 +106,13 @@ struct Reanchor{
     std::vector<RouteStep> back;
 };
 
-//  After `step` stopped part-way, from `candidates`. Nothing if no holds
-//  bring them all to one tile, or no way back walks the same from there.
+//  How many tiles `anchor`'s holds and way back walk, as far as planned.
+int reanchor_tiles(const Reanchor& anchor);
+
+//  After `step` stopped part-way, from `candidates`: of the ways that find
+//  the player, the one that walks the fewest tiles, holds and way back
+//  together. Nothing if no holds bring them all to one tile, or no way
+//  back walks the same from there.
 std::optional<Reanchor> plan_reanchor(
     const std::vector<MapData>& maps,
     const std::vector<StopCandidate>& candidates,

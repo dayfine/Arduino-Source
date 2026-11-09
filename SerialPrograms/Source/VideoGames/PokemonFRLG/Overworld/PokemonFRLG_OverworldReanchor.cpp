@@ -236,14 +236,46 @@ bool walks_same_everywhere(
     return true;
 }
 
-//  The ways to find the player from all of `positions`: fewest holds first,
-//  then fewest tiles held. None needed if they are all on one tile.
+int held_tiles(const std::vector<RouteStep>& holds){
+    int tiles = 0;
+    for (const RouteStep& hold : holds){
+        tiles += hold.tiles;
+    }
+    return tiles;
+}
+
+//  The ways to find the player from all of `positions`, fewest holds first,
+//  then fewest tiles held. None needed if they are all on one tile. Not
+//  only the fewest holds: for each first hold, the fewest after it, so a
+//  caller can pick a way that keeps what a stopped leg walked. On Rock
+//  Tunnel B1F row 37 the one single hold went back east to the wall
+//  behind the leg's start, while a hold south and one west, ahead, were
+//  found too (console B, 2026-11-09).
 std::vector<Found> find_player(
     const std::vector<std::vector<MapData>>& worlds, const std::vector<Hypothesis>& positions, bool surfing
 ){
-    return Pokemon::find_wall_anchors<ReanchorPolicy>(
-        positions, ReanchorContext{.worlds = worlds, .surfing = surfing}, {.max_holds = MAX_HOLDS}
-    );
+    const ReanchorContext context{.worlds = worlds, .surfing = surfing};
+    std::vector<Found> found = Pokemon::find_wall_anchors<ReanchorPolicy>(positions, context, {.max_holds = 0});
+    if (!found.empty()){
+        return found;
+    }
+    for (Direction direction : Pokemon::ALL_DIRECTIONS){
+        const auto first = ReanchorPolicy::hold(context, positions, direction);
+        if (!first || first->positions == positions || first->hold.tiles == 0){
+            continue;
+        }
+        for (Found& rest : Pokemon::find_wall_anchors<ReanchorPolicy>(first->positions, context, {.max_holds = MAX_HOLDS - 1})){
+            rest.holds.insert(rest.holds.begin(), first->hold);
+            found.push_back(std::move(rest));
+        }
+    }
+    std::stable_sort(found.begin(), found.end(), [](const Found& a, const Found& b){
+        if (a.holds.size() != b.holds.size()){
+            return a.holds.size() < b.holds.size();
+        }
+        return held_tiles(a.holds) < held_tiles(b.holds);
+    });
+    return found;
 }
 
 } // namespace
@@ -326,6 +358,10 @@ std::vector<StopCandidate> stop_candidates(
     return candidates;
 }
 
+int reanchor_tiles(const Reanchor& anchor){
+    return held_tiles(anchor.holds) + held_tiles(anchor.back);
+}
+
 std::optional<Reanchor> plan_reanchor(
     const std::vector<MapData>& maps,
     const std::vector<StopCandidate>& candidates,
@@ -351,7 +387,12 @@ std::optional<Reanchor> plan_reanchor(
         add_unique(positions, Hypothesis{world, candidate.player});
     }
 
+    //  Of the ways found, the one that walks fewest tiles, holds and way back
+    //  together: it keeps the most of what the leg walked. A wild battle
+    //  every 10 to 14 tiles stopped every try of a leg whose way back
+    //  started behind it (console B, 2026-11-09, Rock Tunnel B1F row 37).
     const std::vector<MapData> clear_of_trainers = with_trainers(maps, trainers);
+    std::optional<Reanchor> best;
     for (const Found& at : find_player(worlds, positions, step.surfing)){
         const Direction facing = at.holds.empty() ? step.direction : at.holds.back().direction;
         //  The way back keeps clear of every trainer who may stand in it if
@@ -360,11 +401,15 @@ std::optional<Reanchor> plan_reanchor(
         if (!back && !trainers.empty()){
             back = plan_overworld_route(maps, at.at, RouteGoal{step.end, std::nullopt}, costs, facing);
         }
-        if (back && (trainers.empty() || walks_same_everywhere(worlds, positions, at.at, *back))){
-            return Reanchor{.holds = at.holds, .found = at.at, .back = std::move(*back)};
+        if (!back || (!trainers.empty() && !walks_same_everywhere(worlds, positions, at.at, *back))){
+            continue;
+        }
+        Reanchor anchor{.holds = at.holds, .found = at.at, .back = std::move(*back)};
+        if (!best || reanchor_tiles(anchor) < reanchor_tiles(*best)){
+            best = std::move(anchor);
         }
     }
-    return std::nullopt;
+    return best;
 }
 
 std::optional<std::vector<RouteStep>> holds_to_one_tile(

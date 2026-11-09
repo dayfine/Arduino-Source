@@ -86,18 +86,6 @@ bool hold_finds(const std::vector<MapData>& maps, const std::vector<StopCandidat
     return true;
 }
 
-//  How many tiles `anchor`'s holds and way back walk, as far as planned.
-int anchor_tiles(const Reanchor& anchor){
-    int tiles = 0;
-    for (const RouteStep& step : anchor.holds){
-        tiles += step.tiles;
-    }
-    for (const RouteStep& step : anchor.back){
-        tiles += step.tiles;
-    }
-    return tiles;
-}
-
 //  The route's lines in the route log the games share, as BDSP's walker
 //  writes them, under the caller's label.
 class RouteLogLines{
@@ -376,7 +364,7 @@ private:
             return;
         }
         const std::optional<Reanchor> anchor = plan_reanchor(*maps(), candidates, step, m_planning->costs);
-        if (!anchor || anchor->holds.empty() || anchor_tiles(*anchor) > 2 * step.tiles){
+        if (!anchor || anchor->holds.empty() || reanchor_tiles(*anchor) > 2 * step.tiles){
             m_calls.log("Route: no holds to walls within " + std::to_string(2 * step.tiles) + " tiles find the player if " + to_string(step) + " ended short; taken as walked.");
             return;
         }
