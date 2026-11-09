@@ -23,6 +23,7 @@
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
 #include "PokemonFRLG_AutoStorySummary.h"
+#include "PokemonFRLG_AutoStoryTable.h"
 #include "PokemonFRLG_AutoStoryTeachScreens.h"
 #include "PokemonFRLG_AutoStoryTrashCans.h"
 #include "PokemonFRLG_AutoStoryWinChance.h"
@@ -415,20 +416,15 @@ void add_start_pose_check(
     if (!start){
         return;
     }
-    checkpoint.start.push_back(Pokemon::condition("save_at_start_pose",
-        [start = *start, read = std::move(read), log = std::move(log)](RunState&){
-            const std::optional<StoryPose> stands = read();
-            if (!stands){
-                log("start pose not read: going on from the save as the checkpoint's start.");
-                return true;
-            }
-            const std::string mismatch = start_pose_mismatch(start, *stands);
-            if (!mismatch.empty()){
-                log("start pose mismatch: " + mismatch);
-            }
-            return mismatch.empty();
+    StartReader reader = [start = *start, read = std::move(read)]() -> StartRead{
+        const std::optional<StoryPose> stands = read();
+        if (!stands){
+            return {};
         }
-    ));
+        const std::string mismatch = start_pose_mismatch(start, *stands);
+        return mismatch.empty() ? StartRead{StartFound::AT_START} : StartRead{StartFound::ELSEWHERE, mismatch};
+    };
+    add_start_check(checkpoint, start, std::move(reader), std::move(log));
 }
 
 std::optional<std::vector<RouteStep>> fixed_route(
@@ -901,24 +897,52 @@ void read_bag_supplies(StoryEnv& env, StartMenu menu){
     env.bag_read = unread.empty();
 }
 
+namespace{
+
+//  The console's start check for `checkpoint`; with keep_start_frame (a
+//  save made by hand), the screen is kept as its frame instead.
+StartRead read_console_start(StoryEnv& env, const std::string& checkpoint){
+    if (env.keep_start_frame){
+        env.keep_start_frame = false;
+        return keep_console_start(env.console, env.context, env.start_frames, checkpoint);
+    }
+    return check_console_start(env.console, env.context, env.start_frames, checkpoint);
+}
+
+//  After the save at the end of `ended`: the screen, kept as the start
+//  frame of the table's next checkpoint, which starts there.
+void keep_next_start_frame(StoryEnv& env, const std::string& ended){
+    const std::vector<StoryCheckpoint>& table = story_checkpoints();
+    for (size_t c = 0; c + 1 < table.size(); c++){
+        if (table[c].id == ended && table[c + 1].start){
+            keep_console_frame(env.console, env.context, env.start_frames, table[c + 1].id, "saved at the end of " + ended);
+            return;
+        }
+    }
+}
+
+} // namespace
+
 Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor& executor){
     executor.set_menu(data.menu);
     StoryEnv& env = executor.env();
+    //  The console has no reader for the tile the save stands on: the save
+    //  card's place is checked when the save is loaded (check_save_place()),
+    //  and the start check compares the screen with the frame kept when the
+    //  program last saved there. With none kept, it passes.
     Pokemon::Checkpoint checkpoint = Pokemon::build_story_checkpoint(data, executor, env.prepared);
-    //  The console has no reader for the tile the save stands on yet: the
-    //  save card's place is checked when the save is loaded
-    //  (check_save_place()), and the start check passes.
-    add_start_pose_check(
+    add_start_check(
         checkpoint, data.start,
-        []{ return std::optional<StoryPose>(); },
+        [&env, id = data.id]{ return read_console_start(env, id); },
         [&env](const std::string& line){ env.console.log(line, COLOR_ORANGE); }
     );
     env.start_map = data.start ? data.start->map : "";
     env.start_menu = data.menu;
     const StartMenu menu = data.menu;
-    checkpoint.save = [&env, menu](RunState&){
+    checkpoint.save = [&env, menu, id = data.id](RunState&){
         return guarded([&]{
             save_game(env.console, env.context, menu);
+            keep_next_start_frame(env, id);
             env.has_save = true;
             env.saved_supplies = env.supplies;
             env.prepared.clear();
