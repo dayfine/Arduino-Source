@@ -96,6 +96,10 @@ public:
     //  A look before the step, or after it failed, found an interrupt and
     //  cleared it or failed to (`check`): e.g. log it.
     virtual void on_interrupt(const StoryStep& step, const InterruptCheck& check);
+    //  How the screen looked when the look before the step (or after it
+    //  failed) ended, interrupt or not: e.g. log it, so a run log shows
+    //  whether the scene before had ended before the step's first input.
+    virtual void on_screen(const StoryStep& step, const ScreenSettle& screen);
 };
 
 
