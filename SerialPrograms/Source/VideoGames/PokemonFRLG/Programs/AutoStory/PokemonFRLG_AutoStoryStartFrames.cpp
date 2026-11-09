@@ -11,6 +11,9 @@
 #include "Common/Cpp/Json/JsonObject.h"
 #include "Common/Cpp/Json/JsonValue.h"
 #include "CommonFramework/GlobalAutoPaths.h"
+#include "CommonFramework/ImageTools/ImageBoxes.h"
+#include "CommonFramework/VideoPipeline/VideoFeed.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "PokemonFRLG_AutoStoryStartFrames.h"
 
 namespace PokemonAutomation{
@@ -48,6 +51,11 @@ constexpr size_t BLOCK = 8;
 constexpr unsigned TILE_CHANGE = 24;
 //  The same place when at most a quarter of the tiles changed.
 constexpr size_t MOST_CHANGED_PERCENT = 25;
+
+//  Frames the console's start check tries, a second apart: a fade or a
+//  passer-by in front of the camera on one frame doesn't fail it.
+constexpr size_t START_FRAME_TRIES = 3;
+constexpr Milliseconds START_FRAME_WAIT = std::chrono::milliseconds(1000);
 
 //  The block at (`bx`, `by`): its channels' totals in `a` less those in
 //  `b`, summed as absolute values.
@@ -161,6 +169,75 @@ std::optional<ImageRGB32> StartFrameStore::load(const std::string& checkpoint) c
 
 StartFrameStore program_start_frames(){
     return StartFrameStore(USER_FILE_PATH() + "PokemonFRLG/AutoStoryStartFrames/");
+}
+
+
+ImageRGB32 console_start_frame(ConsoleHandle& console, ProControllerContext& context){
+    context.wait_for_all_requests();
+    const VideoSnapshot snapshot = console.video().snapshot();
+    if (!snapshot){
+        return ImageRGB32();
+    }
+    return start_frame(extract_box_reference(snapshot, GameSettings::instance().GAME_BOX));
+}
+
+StartRead check_console_start(
+    ConsoleHandle& console, ProControllerContext& context, const StartFrameStore& store, const std::string& checkpoint
+){
+    size_t frames = 0;
+    return read_start_frames(store.load(checkpoint), [&]{
+        if (frames++ > 0){
+            context.wait_for(START_FRAME_WAIT);
+        }
+        return console_start_frame(console, context);
+    }, START_FRAME_TRIES);
+}
+
+bool keep_console_frame(
+    ConsoleHandle& console, ProControllerContext& context, const StartFrameStore& store,
+    const std::string& checkpoint, const std::string& source
+){
+    const ImageRGB32 frame = console_start_frame(console, context);
+    return frame && store.save(checkpoint, frame, source);
+}
+
+StartRead keep_console_start(
+    ConsoleHandle& console, ProControllerContext& context, const StartFrameStore& store, const std::string& checkpoint
+){
+    if (!keep_console_frame(console, context, store, checkpoint, "kept by the program's option from the save loaded")){
+        return {StartFound::NOT_READ, "couldn't keep the screen as " + checkpoint + "'s start frame"};
+    }
+    return {StartFound::AT_START, "kept the screen as " + checkpoint + "'s start frame"};
+}
+
+
+void add_start_check(
+    Pokemon::Checkpoint& checkpoint, const std::optional<Pokemon::Pose>& start, StartReader read,
+    std::function<void(const std::string& line)> log
+){
+    if (!start){
+        return;
+    }
+    checkpoint.start.push_back(Pokemon::condition("save_at_start_pose",
+        [read = std::move(read), log = std::move(log)](Pokemon::RunState&){
+            const StartRead found = read();
+            switch (found.found){
+            case StartFound::NOT_READ:
+                log("start pose not read: " + (found.detail.empty() ? "" : found.detail + "; ")
+                    + "going on from the save as the checkpoint's start.");
+                return true;
+            case StartFound::AT_START:
+                if (!found.detail.empty()){
+                    log("start pose matches: " + found.detail);
+                }
+                return true;
+            case StartFound::ELSEWHERE:
+                log("start pose mismatch: " + found.detail);
+                return false;
+            }
+            return false;
+        }
+    ));
 }
 
 
