@@ -1,0 +1,94 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "00.37",
+    "title": "Fuchsia: Surf to the lead, Juggler Kirk, Koga, then HM04 Strength from the Warden",
+    "start": {"certainty": "tile", "map": "FuchsiaCity", "where": {"facing": "south", "kind": "tiles", "tiles": [[25, 32]]}},
+    "events": [
+      {
+        "id": "fuchsia_nurse",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "FuchsiaCity_PokemonCenter_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 4]]}},
+        "variant": "run",
+        "why": "the nurse first (pokeguy-preparation.md: Koga at 34/122 HP is a measured risk)"
+      },
+      {
+        "id": "heal_fuchsia",
+        "kind": "heal",
+        "why": "the nurse heals the party"
+      },
+      {
+        "id": "teach_surf",
+        "kind": "game_action",
+        "variant": "teach hm03 surf slot=1 forget=water-gun",
+        "why": "Surf in place of Water Gun (pokeguy 1:15:00)"
+      },
+      {
+        "id": "fuchsia_gym_door",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "FuchsiaCity", "where": {"facing": "north", "kind": "tiles", "tiles": [[9, 33]]}},
+        "variant": "run",
+        "why": "out, west to below the Gym (9, 32)"
+      },
+      {
+        "id": "kirk_line",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "FuchsiaCity_Gym", "where": {"facing": "west", "kind": "tiles", "tiles": [[13, 11]]}},
+        "why": "in, up the right side round the invisible walls into Kirk's line (12..14, 11)"
+      },
+      {
+        "id": "fuchsia-kirk",
+        "kind": "battle",
+        "declared_after": {"certainty": "tile", "map": "FuchsiaCity_Gym", "where": {"facing": "west", "kind": "tiles", "tiles": [[13, 11]]}},
+        "why": "Juggler Kirk (TRAINER_JUGGLER_KIRK): Drowzee, Drowzee, Kadabra, Drowzee Lv31"
+      },
+      {
+        "id": "below_koga",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "FuchsiaCity_Gym", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 14]]}},
+        "why": "on round the walls to below Koga (7, 13)"
+      },
+      {
+        "id": "talk_koga",
+        "kind": "talk",
+        "why": "Koga"
+      },
+      {
+        "id": "koga",
+        "kind": "battle",
+        "declared_after": {"certainty": "tile", "map": "FuchsiaCity_Gym", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 14]]}},
+        "why": "Koga (TRAINER_LEADER_KOGA): Koffing, Muk, Koffing, Weezing"
+      },
+      {
+        "id": "soul_badge",
+        "kind": "scene",
+        "why": "the SOUL BADGE and TM06"
+      },
+      {
+        "id": "warden_door",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "FuchsiaCity", "where": {"facing": "north", "kind": "tiles", "tiles": [[33, 32]]}},
+        "variant": "run",
+        "why": "out, east along row 33 to below the Warden's house (33, 31)"
+      },
+      {
+        "id": "beside_warden",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "FuchsiaCity_WardensHouse", "where": {"facing": "west", "kind": "tiles", "tiles": [[4, 5]]}},
+        "why": "in, beside the Warden (3, 5)"
+      },
+      {
+        "id": "talk_warden",
+        "kind": "talk",
+        "why": "the Warden: the GOLD TEETH"
+      },
+      {
+        "id": "hm04_strength",
+        "kind": "scene",
+        "why": "HM04 STRENGTH (pokeguy 1:18:34)"
+      }
+    ]
+  },
+  "execution": {"menu": "full"}
+}

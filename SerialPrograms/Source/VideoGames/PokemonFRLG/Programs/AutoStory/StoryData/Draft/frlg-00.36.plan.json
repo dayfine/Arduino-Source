@@ -1,0 +1,82 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "00.36",
+    "title": "Safari Zone: a Full Restore, the GOLD TEETH, HM03 Surf from the Secret House",
+    "start": {"certainty": "tile", "map": "FuchsiaCity_PokemonCenter_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 4]]}},
+    "events": [
+      {
+        "id": "safari_gate",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "FuchsiaCity_SafariZone_Entrance", "where": {"facing": "north", "kind": "tiles", "tiles": [[4, 3]]}},
+        "variant": "run",
+        "why": "out, north to the Safari Zone gate (24, 5), in to the attendant"
+      },
+      {
+        "id": "safari_attendant",
+        "kind": "talk",
+        "why": "pay 500 and enter: YES"
+      },
+      {
+        "id": "safari_yes",
+        "kind": "answer",
+        "why": "YES"
+      },
+      {
+        "id": "safari_super_repel",
+        "kind": "game_action",
+        "variant": "use_item super-repel",
+        "why": "a Super Repel (pokeguy 1:13:24)"
+      },
+      {
+        "id": "below_east_full_restore",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "SafariZone_East", "where": {"facing": "north", "kind": "tiles", "tiles": [[37, 16]]}},
+        "variant": "run",
+        "why": "Center area, then east, below the Full Restore (37, 15)"
+      },
+      {
+        "id": "safari_full_restore",
+        "kind": "talk",
+        "why": "pick up the Full Restore"
+      },
+      {
+        "id": "beside_gold_teeth",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "SafariZone_West", "where": {"facing": "north", "kind": "tiles", "tiles": [[28, 15]]}},
+        "variant": "run",
+        "why": "north, then west, below the GOLD TEETH (28, 14)"
+      },
+      {
+        "id": "gold_teeth",
+        "kind": "talk",
+        "why": "pick up the GOLD TEETH"
+      },
+      {
+        "id": "secret_house_attendant",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "SafariZone_SecretHouse", "where": {"facing": "north", "kind": "tiles", "tiles": [[6, 6]]}},
+        "why": "into the Secret House, below the attendant (6, 5)"
+      },
+      {
+        "id": "talk_secret_house",
+        "kind": "talk",
+        "why": "the attendant"
+      },
+      {
+        "id": "hm03_surf",
+        "kind": "scene",
+        "why": "HM03 SURF"
+      },
+      {
+        "id": "fly_fuchsia",
+        "kind": "game_action",
+        "declared_after": {"certainty": "tile", "map": "FuchsiaCity", "where": {"facing": "south", "kind": "tiles", "tiles": [[25, 32]]}},
+        "variant": "fly FuchsiaCity",
+        "why": "Fly out of the Safari Zone to Fuchsia (pokeguy 1:14:21)"
+      }
+    ]
+  },
+  "execution": {"menu": "full"}
+}
