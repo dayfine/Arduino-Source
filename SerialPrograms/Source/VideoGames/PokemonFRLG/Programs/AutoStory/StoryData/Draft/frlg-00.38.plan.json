@@ -1,0 +1,103 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "00.38",
+    "title": "Fly to Pallet, Surf down Route 21 to Cinnabar, the Mansion: Elixir, TM14 Blizzard and the SECRET KEY",
+    "start": {"certainty": "tile", "map": "FuchsiaCity_WardensHouse", "where": {"facing": "west", "kind": "tiles", "tiles": [[4, 5]]}},
+    "events": [
+      {
+        "id": "fly_pallet",
+        "kind": "game_action",
+        "declared_after": {"certainty": "tile", "map": "PalletTown", "where": {"facing": "south", "kind": "tiles", "tiles": [[6, 8]]}},
+        "variant": "fly PalletTown",
+        "why": "Fly to Pallet (pokeguy 1:18:59)"
+      },
+      {
+        "id": "pallet_shore",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "PalletTown", "where": {"facing": "south", "kind": "tiles", "tiles": [[6, 15]]}},
+        "variant": "run",
+        "why": "south to the shore, above the water (Route 21)"
+      },
+      {
+        "id": "surf_route21",
+        "kind": "game_action",
+        "declared_after": {"certainty": "tile", "map": "CinnabarIsland", "where": {"facing": "north", "kind": "tiles", "tiles": [[8, 4]]}},
+        "variant": "surf south",
+        "why": "Surf: the planner has no water moves; this leg is the executor's"
+      },
+      {
+        "id": "mansion_door",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "CinnabarIsland", "where": {"facing": "north", "kind": "tiles", "tiles": [[8, 4]]}},
+        "why": "below the Mansion (8, 3)"
+      },
+      {
+        "id": "mansion_super_repel",
+        "kind": "game_action",
+        "variant": "use_item super-repel",
+        "why": "a Super Repel (pokeguy 1:19:40)"
+      },
+      {
+        "id": "mansion_b1f",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "PokemonMansion_B1F", "where": {"facing": "west", "kind": "tiles", "tiles": [[33, 29]]}},
+        "why": "the Mansion: the statue switches, the floor drop and the stairs to B1F (pokeguy 1:19:40)"
+      },
+      {
+        "id": "hidden_elixir_spot",
+        "kind": "route",
+        "target": {"certainty": "unknown", "map": "PokemonMansion_B1F", "where": {"kind": "unknown"}},
+        "why": "to the hidden Elixir (pokeguy 1:20:06; its tile is not in the candidate map)"
+      },
+      {
+        "id": "hidden_elixir",
+        "kind": "talk",
+        "why": "the hidden Elixir"
+      },
+      {
+        "id": "below_tm14",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "PokemonMansion_B1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[23, 5]]}},
+        "why": "the B1F statue switch, to below TM14 (23, 4)"
+      },
+      {
+        "id": "tm14_blizzard",
+        "kind": "talk",
+        "why": "pick up TM14 BLIZZARD"
+      },
+      {
+        "id": "below_secret_key",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "PokemonMansion_B1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[5, 8]]}},
+        "why": "to below the SECRET KEY (5, 7)"
+      },
+      {
+        "id": "secret_key",
+        "kind": "talk",
+        "why": "pick up the SECRET KEY"
+      },
+      {
+        "id": "escape_rope_mansion",
+        "kind": "game_action",
+        "declared_after": {"certainty": "tile", "map": "CinnabarIsland", "where": {"facing": "south", "kind": "tiles", "tiles": [[8, 4]]}},
+        "variant": "use_item escape-rope",
+        "why": "out to the Mansion door"
+      },
+      {
+        "id": "cinnabar_nurse",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "CinnabarIsland_PokemonCenter_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 4]]}},
+        "variant": "run",
+        "why": "the Center (14, 11)"
+      },
+      {
+        "id": "heal_cinnabar",
+        "kind": "heal",
+        "why": "the nurse heals the party"
+      }
+    ]
+  },
+  "execution": {"menu": "full"}
+}

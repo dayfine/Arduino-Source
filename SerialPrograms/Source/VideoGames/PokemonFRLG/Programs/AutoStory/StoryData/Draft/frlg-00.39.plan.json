@@ -1,0 +1,62 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "00.39",
+    "title": "Cinnabar Gym: the quiz doors, Blaine",
+    "start": {"certainty": "tile", "map": "CinnabarIsland_PokemonCenter_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 4]]}},
+    "events": [
+      {
+        "id": "gym_door",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "CinnabarIsland", "where": {"facing": "north", "kind": "tiles", "tiles": [[20, 5]]}},
+        "variant": "run",
+        "why": "out, east to below the Gym (20, 4); the SECRET KEY opens it"
+      },
+      {
+        "id": "quiz_1",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "CinnabarIsland_Gym", "where": {"facing": "north", "kind": "tiles", "tiles": [[25, 12]]}},
+        "why": "in, up to the first quiz machine"
+      },
+      {
+        "id": "quiz_machine_1",
+        "kind": "talk",
+        "why": "quiz 1: Caterpie evolves into Metapod?"
+      },
+      {
+        "id": "quiz_answer_1",
+        "kind": "answer",
+        "why": "YES (pokeguy 1:20:37 has all six answers)"
+      },
+      {
+        "id": "quiz_doors",
+        "kind": "scene",
+        "why": "five more machines, each answered as pokeguy did: NO, NO, YES/NO..., opening every door and passing every trainer"
+      },
+      {
+        "id": "below_blaine",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "CinnabarIsland_Gym", "where": {"facing": "north", "kind": "tiles", "tiles": [[5, 5]]}},
+        "why": "through the opened doors to below Blaine (5, 4)"
+      },
+      {
+        "id": "talk_blaine",
+        "kind": "talk",
+        "why": "Blaine"
+      },
+      {
+        "id": "blaine",
+        "kind": "battle",
+        "declared_after": {"certainty": "tile", "map": "CinnabarIsland_Gym", "where": {"facing": "north", "kind": "tiles", "tiles": [[5, 5]]}},
+        "why": "Blaine (TRAINER_LEADER_BLAINE): Growlithe, Ponyta, Rapidash, Arcanine"
+      },
+      {
+        "id": "volcano_badge",
+        "kind": "scene",
+        "why": "the VOLCANO BADGE and TM38"
+      }
+    ]
+  },
+  "execution": {"menu": "full"}
+}
