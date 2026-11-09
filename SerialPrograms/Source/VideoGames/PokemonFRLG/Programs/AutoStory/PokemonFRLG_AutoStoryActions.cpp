@@ -33,6 +33,7 @@
 #include "VideoGames/PokemonFRLG/Programs/PokemonFRLG_NamingScreen.h"
 #include "VideoGames/PokemonFRLG/Programs/PokemonFRLG_StartMenuNavigation.h"
 #include "PokemonFRLG_AutoStoryActions.h"
+#include "PokemonFRLG_AutoStoryStepInterrupts.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -598,6 +599,17 @@ std::optional<int> step_until_seen(int max_tiles, const std::function<void()>& s
     return std::nullopt;
 }
 
+void wait_out_battle_exit(ConsoleHandle& console, ProControllerContext& context){
+    context.wait_for_all_requests();
+    ConsoleScreenLook eyes(console, context);
+    const Pokemon::ScreenSettle settle = wait_for_quiet_overworld(
+        [&eyes](bool fresh){ return eyes.look(fresh); },
+        MovementMechanics::AFTER_BATTLE_QUIET, BATTLE_EXIT_TIMEOUT
+    );
+    const bool quiet = quiet_overworld(settle, MovementMechanics::AFTER_BATTLE_QUIET);
+    console.log("Story: after the battle, " + Pokemon::describe(settle), quiet ? COLOR_BLACK : COLOR_RED);
+}
+
 std::optional<int> step_into_line(
     ConsoleHandle& console, ProControllerContext& context,
     Direction direction, std::optional<Direction> facing, int max_tiles, Milliseconds watch
@@ -615,6 +627,7 @@ std::optional<int> step_into_line(
             if (seen == 1){
                 console.log("Story: a wild battle on the step into a trainer's line; running from it, then stepping on.", COLOR_ORANGE);
                 flee_battle(console, context);
+                wait_out_battle_exit(console, context);
                 return false;
             }
             return seen == 0;

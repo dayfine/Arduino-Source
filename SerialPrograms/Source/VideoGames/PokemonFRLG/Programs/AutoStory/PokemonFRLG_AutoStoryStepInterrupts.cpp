@@ -98,6 +98,29 @@ Pokemon::ScreenLook ConsoleScreenLook::look(bool fresh){
 }
 
 
+bool quiet_overworld(const Pokemon::ScreenSettle& settle, Milliseconds quiet){
+    return settle.seen && settle.showing == Pokemon::ScreenEvents{} && settle.quiet >= quiet;
+}
+
+Pokemon::ScreenSettle wait_for_quiet_overworld(
+    const Pokemon::ScreenLookFunction& look, Milliseconds quiet, Milliseconds timeout
+){
+    Pokemon::ScreenLook seen = look(true);
+    Pokemon::ScreenSettle settle = Pokemon::judge_settle(seen);
+    //  Each look takes about BETWEEN_STEPS_LOOK; the cap also ends a look
+    //  that takes no time.
+    const size_t max_looks = (size_t)(timeout / BETWEEN_STEPS_LOOK) + 1;
+    for (size_t looks = 1; looks < max_looks && !quiet_overworld(settle, quiet); looks++){
+        if (seen.window.end - seen.window.start >= timeout){
+            break;
+        }
+        seen = look(false);
+        settle = Pokemon::judge_settle(seen);
+    }
+    return settle;
+}
+
+
 void InterruptLogGuard::on_interrupt(const Pokemon::StoryStep& step, const Pokemon::InterruptCheck& check){
     const bool cleared = check.outcome.succeeded();
     m_logger.log(std::format(

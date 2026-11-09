@@ -242,6 +242,33 @@ UnitTestResult test_b1f_martha_after_row38_battle(Logger&){
     return true;
 }
 
+//  Regression: console B, 2026-11-09 15:50, 00.28 winston_line, dark: from
+//  (32, 37) west into Winston's line, a wild battle on the 2nd tap's tile
+//  (30, 37), run from; the 3rd tap, sent as the battle's black ended, was
+//  lost, and the step failed no_trainer. After the battle the next tap
+//  waits for the overworld (wait_out_battle_exit()): Winston sees the
+//  player on (29, 37).
+UnitTestResult test_winston_line_battle_on_tap_2(Logger&){
+    const StoryCheckpoint& row = checkpoint("00.28");
+    SimScript script;
+    script.dark_maps = {StoryTable::ROCK_TUNNEL_1F, StoryTable::ROCK_TUNNEL_B1F};
+    script.wild_floor_maps = {StoryTable::ROCK_TUNNEL_B1F};
+    script.encounters = {SimEncounter{.grass_step = 2}};
+    StoryPose at{StoryTable::ROCK_TUNNEL_B1F, {32, 37}, Direction::WEST};
+    OverworldSim sim(maps_after_route10(), MapPosition{at.map, at.tile}, Direction::WEST, script);
+    const std::string failure = row_step_on_sim(sim, at, row.steps[step_index(row, "winston_line")], row.id);
+    const auto lost = std::find_if(sim.state().log.begin(), sim.state().log.end(), [](const std::string& line){
+        return line.find("in the lockout after a battle") != std::string::npos;
+    });
+    if (!failure.empty() || lost != sim.state().log.end() || sim.state().wild_battles != 1){
+        return std::format(
+            "winston_line: ended on {}, {} wild battle(s), {}; {}", to_string(sim.state().position),
+            sim.state().wild_battles, lost == sim.state().log.end() ? "no tap lost" : *lost, failure
+        );
+    }
+    return true;
+}
+
 //  Rock Tunnel has no Flash: both floors are dark.
 const std::set<std::string> ROCK_TUNNEL_DARK{StoryTable::ROCK_TUNNEL_1F, StoryTable::ROCK_TUNNEL_B1F};
 
@@ -559,6 +586,7 @@ const AutoStoryLavenderCase AUTO_STORY_LAVENDER_CASES[] = {
     {.input = {"00.28 B1F a wild battle into row 38, then a step short: Martha still sees the player", test_b1f_martha_after_row38_battle}, .expectation = {}},
     {.input = {"00.28 B1F dark, the 13:35 legs: a battle at the end of the walk back along row 38", test_b1f_dark_row38_battle_old_legs}, .expectation = {}},
     {.input = {"00.28 B1F dark, a wild battle on any step to Martha's line", test_b1f_dark_martha_battle_anywhere}, .expectation = {}},
+    {.input = {"00.28 B1F dark, winston_line: a wild battle on the 2nd tap, the 3rd after it", test_winston_line_battle_on_tap_2}, .expectation = {}},
     {.input = {"00.29 Route 10 south, the ledge, Lavender Town's Pokemon Center", test_lavender_row}, .expectation = {}},
     {.input = {"00.29 a tile off after each open leg", test_lavender_tile_off}, .expectation = {}},
     {.input = {"00.28 and 00.29 save on Route 10 and in Lavender Town", test_save_places}, .expectation = {}},

@@ -17,11 +17,15 @@
  *    battle there ends on the dark cave's overworld, with no wild
  *    battles and with them at the game's odds (00.28 hiker_lenny, lab-B
  *    2026-11-09).
+ *  - LOST_TAP: a wild battle on each tile of each step into a trainer's
+ *    line before its last, so the next tap comes as the overworld comes
+ *    back, inside the lockout after a battle (00.28 winston_line, console
+ *    B, 2026-11-09 15:50). The step alone, from where the clean run took
+ *    it, on its map made a wild floor.
  *
  *  Not swept here: a missed fade, which needs a knob in OverworldSim; a
  *  battle's opening at a step's start, which needs one in OverworldStepSim;
- *  and lost taps from the input lockout (FaultClass::LOST_TAP), for the
- *  measured movement table.
+ *  and the step tap lockout between two taps, which step_once() waits out.
  *
  *  The sim plays walks, steps, cuts and trainers' battles; after a step it
  *  does not play, the player is put on the table's pose. Each row runs
@@ -65,7 +69,6 @@ enum class FaultClass{
     WILD_BATTLES,
     LATE_FADE,
     DARK_CAVE,
-    //  Not swept yet: the measured movement table's lost taps.
     LOST_TAP,
 };
 const char* fault_class_name(FaultClass fault){
@@ -79,7 +82,7 @@ const char* fault_class_name(FaultClass fault){
     case FaultClass::DARK_CAVE:
         return "dark cave without Flash";
     case FaultClass::LOST_TAP:
-        return "lost tap";
+        return "lost tap after a battle in a trainer's line";
     }
     return "?";
 }
@@ -147,6 +150,7 @@ struct RowRun{
     std::set<size_t> scripted;
     //  Where the player stood before each step, by index.
     std::map<size_t, MapPosition> before;
+    std::map<size_t, Direction> facing_before;
     MapPosition end;
     Milliseconds time{0};
     int steps = 0;
@@ -187,6 +191,7 @@ RowRun run_row(
     for (size_t c = 0; c < row.steps.size() && out.failure.empty(); c++){
         const StoryStep& step = row.steps[c];
         out.before.emplace(c, sim->state().position);
+        out.facing_before.emplace(c, sim->state().facing);
         out.failure = row_step_on_sim(*sim, at, step, row.id);
         const bool let_pass = unscripted(out.failure) && (!scripted || scripted->contains(c));
         if (let_pass){
@@ -376,6 +381,66 @@ UnitTestResult sweep_dark_cave(Logger& logger, const StoryCheckpoint& row, const
     return sweep_result(logger, FaultClass::DARK_CAVE, row.id, DARK_CAVE_SEEDS + 1, failures);
 }
 
+//  How many tiles row `row`'s step `c`, into a trainer's line, steps onto
+//  before its last, in the clean run `clean`.
+int line_tiles_before_last(const StoryCheckpoint& row, const RowRun& clean, size_t c){
+    const auto from = clean.before.find(c);
+    const auto next = clean.before.find(c + 1);
+    if (from == clean.before.end()){
+        return 0;
+    }
+    const MapPosition last = next == clean.before.end() ? clean.end : next->second;
+    TilePos tile = from->second.point.next(row.steps[c].direction);
+    int out = 0;
+    for (; out + 1 < TRAINER_LINE_TILES && last.map == from->second.map && !(tile == last.point); out++){
+        tile = tile.next(row.steps[c].direction);
+    }
+    return out;
+}
+
+//  Row `row`'s step `c`, into a trainer's line, alone from where the clean
+//  run `clean` took it, with a wild battle on its `battle_step`th step: why
+//  it fails or ends off the clean run's tile, or "".
+std::string line_with_battle(const StoryCheckpoint& row, const RowRun& clean, size_t c, int battle_step){
+    const MapPosition from = clean.before.at(c);
+    const auto next = clean.before.find(c + 1);
+    const MapPosition last = next == clean.before.end() ? clean.end : next->second;
+    SimScript script;
+    script.wild_floor_maps = {from.map};
+    script.encounters = {SimEncounter{.grass_step = battle_step}};
+    OverworldSim sim(sweep_maps(), from, clean.facing_before.at(c), script);
+    StoryPose at{from.map, from.point, clean.facing_before.at(c)};
+    const std::string failure = row_step_on_sim(sim, at, row.steps[c], row.id);
+    if (!failure.empty()){
+        return failure;
+    }
+    if (!(sim.state().position == last)){
+        return std::format("ended on {}, not {}.", to_string(sim.state().position), to_string(last));
+    }
+    return "";
+}
+
+//  Row `row` with a wild battle on each tile of each step into a trainer's
+//  line before its last, one at a time: the tap after it must not be lost.
+UnitTestResult sweep_lost_tap(Logger& logger, const StoryCheckpoint& row, const RowRun& clean){
+    std::vector<SweepFailure> failures;
+    size_t variants = 0;
+    for (size_t c = 0; c < row.steps.size(); c++){
+        const StoryStep& step = row.steps[c];
+        if (step.kind != StoryStepKind::STEP || step.variant != TRAINER_LINE_VARIANT || clean.scripted.contains(c)){
+            continue;
+        }
+        const int tiles = line_tiles_before_last(row, clean, c);
+        for (int battle_step = 1; battle_step <= tiles; battle_step++){
+            variants++;
+            if (const std::string stopped = line_with_battle(row, clean, c, battle_step); !stopped.empty()){
+                failures.push_back({step.name, std::format("a wild battle on step {}", battle_step), stopped});
+            }
+        }
+    }
+    return sweep_result(logger, FaultClass::LOST_TAP, row.id, variants, failures);
+}
+
 //  A fault class swept over row `row` (empty in FAULT_SWEEP_CASES: each
 //  row with a start).
 struct FaultSweepInput{
@@ -442,7 +507,7 @@ private:
         case FaultClass::DARK_CAVE:
             return sweep_dark_cave(logger, m_row, clean);
         case FaultClass::LOST_TAP:
-            break;
+            return sweep_lost_tap(logger, m_row, clean);
         }
         return true;
     }
@@ -459,6 +524,7 @@ const FaultSweepCase FAULT_SWEEP_CASES[] = {
     {.input = {.fault = FaultClass::WILD_BATTLES}, .expectation = {}},
     {.input = {.fault = FaultClass::LATE_FADE}, .expectation = {}},
     {.input = {.fault = FaultClass::DARK_CAVE}, .expectation = {}},
+    {.input = {.fault = FaultClass::LOST_TAP}, .expectation = {}},
 };
 
 void add_tests_AutoStoryFaultSweep(UnitTestDatabase& database){

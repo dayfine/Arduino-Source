@@ -433,6 +433,23 @@ std::string battle_end_on_sim(const OverworldSim& sim){
     return "fight_battle(): START never looked for the overworld.";
 }
 
+//  wait_out_battle_exit() on `sim`: each look shows the sim's screens for
+//  BETWEEN_STEPS_LOOK.
+void sim_wait_out_battle_exit(OverworldSim& sim){
+    Milliseconds from = sim.state().time;
+    const auto look = [&sim, &from](bool fresh){
+        if (fresh){
+            from = sim.state().time;
+        }
+        sim.watch({}, BETWEEN_STEPS_LOOK);
+        return Pokemon::ScreenLook{
+            .log = screen_event_log(sim.state(), from),
+            .window = {.start = sim_wall_clock(from), .end = sim_wall_clock(sim.state().time)},
+        };
+    };
+    wait_for_quiet_overworld(look, MovementMechanics::AFTER_BATTLE_QUIET, BATTLE_EXIT_TIMEOUT);
+}
+
 } // namespace
 
 //  A ROUTE or LEGS by the sim's walker, fighting a trainer who sees the
@@ -469,6 +486,7 @@ std::string OverworldStepSim::step_ahead(const StoryStep& step){
         );
         if (shown && shown->watcher == 1){
             m_sim.handle_battle(SimBattleChoice::RUN);
+            sim_wait_out_battle_exit(m_sim);
             return false;
         }
         return shown.has_value();
