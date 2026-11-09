@@ -27,14 +27,14 @@ namespace NintendoSwitch{
 namespace PokemonBDSP{
 
 
-//  How a door run and a tap step take a warp's fade (WarpFadeWatch), the
-//  console's and the simulation's alike. A door run counts the partial
-//  tier's dark (a doorway's dim fade frames) held 50 ms and white held
-//  60 ms, as its black and white watchers did (lab-B to 2026-11-08); a tap
-//  step, looking every 100 ms, the uniform tier at once, as fade_of() did.
-//  Either also takes a fade whose hold it did not see, at the other scene
-//  after the fall.
+//  How a door run takes a warp's fade (WarpFadeWatch), on the console and
+//  the simulation alike: the partial tier's dark (a doorway's dim fade
+//  frames) held 50 ms, white held 60 ms, as its black and white watchers
+//  did (lab-B to 2026-11-08), or a fade whose hold it did not see, at the
+//  other scene after the fall.
 constexpr WarpFadeRule DOOR_FADE_RULE{.partial_dark = true, .dark_for = Milliseconds(50), .white_for = Milliseconds(60)};
+//  How a tap step, looking every 100 ms, takes one: the uniform tier at
+//  once, as fade_of() did, or a fade whose hold it did not see.
 constexpr WarpFadeRule TAP_FADE_RULE{};
 
 
