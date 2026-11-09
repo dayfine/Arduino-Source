@@ -4,23 +4,35 @@
  *
  */
 
-#include "CommonFramework/Exceptions/FatalProgramException.h"
+#include <format>
+#include <optional>
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
+#include "CommonFramework/VideoPipeline/VideoOverlay.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
+#include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
+#include "Pokemon/AutoStory/Pokemon_StorySegments.h"
 #include "Pokemon/Pokemon_Strings.h"
-#include "PokemonLZA_AutoStory_Segment_01.h"
+#include "VideoGames/PokemonLZA/Programs/PokemonLZA_GameEntry.h"
+#include "PokemonLZA_AutoStoryActions.h"
+#include "PokemonLZA_AutoStoryTable.h"
 #include "PokemonLZA_AutoStory.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonLZA{
 
+using namespace Pokemon;
+
+
 AutoStory_Descriptor::AutoStory_Descriptor()
     : SingleSwitchProgramDescriptor(
         "PokemonLZA:AutoStory",
-        STRING_POKEMON + " LZA", "Auto-Story",
+        STRING_POKEMON + " LZA", "Auto Story",
         "Programs/PokemonLZA/AutoStory.html",
-        "Automate the main story of Pokémon Legends: Z-A.",
+        "Play the main story of Pokemon Legends: Z-A. Prototype: Mission 1 only, not run on a console yet.",
+        PanelQualityStanding::DEVELOPER,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS
@@ -31,122 +43,120 @@ std::unique_ptr<StatsTracker> AutoStory_Descriptor::make_stats() const{
     return std::make_unique<AutoStoryStats>();
 }
 
-std::vector<std::unique_ptr<AutoStory_Segment>> make_segment_list(){
-    std::vector<std::unique_ptr<AutoStory_Segment>> list;
-    list.emplace_back(std::make_unique<AutoStory_Segment_01>());
-    return list;
+
+namespace{
+
+//  The start and end dropdowns' entries. The options hold a reference to it.
+const StringSelectDatabase& checkpoint_database(){
+    static const StringSelectDatabase database = story_checkpoint_database(story_checkpoints());
+    return database;
 }
 
-const std::vector<std::unique_ptr<AutoStory_Segment>>& ALL_AUTO_STORY_SEGMENTS(){
-    static std::vector<std::unique_ptr<AutoStory_Segment>> list = make_segment_list();
-    return list;
+//  Each row saves at its end; a failed attempt resets the game from HOME,
+//  which loads the save the row before it made.
+SegmentHooks story_hooks(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
+    SegmentHooks hooks;
+    hooks.save = [&env, &context](RunState&){
+        save_story_game(env.console, context);
+        return outcome_ok();
+    };
+    hooks.reload = [&env, &context](RunState&){
+        go_home(env.console, context);
+        if (!reset_game_from_home(env, env.console, context)){
+            return outcome_failed("reload_failed", "Failed to reset the game from HOME.");
+        }
+        return outcome_ok();
+    };
+    hooks.log = [&env](const std::string& line){
+        env.log(line, COLOR_BLUE);
+    };
+    hooks.status = [&env](const std::string& line){
+        env.console.overlay().add_log(line);
+    };
+    return hooks;
 }
 
-StringSelectDatabase make_segments_database(){
-    StringSelectDatabase db;
-    int idx = 0;
-    for (const auto& seg : ALL_AUTO_STORY_SEGMENTS()){
-        db.add_entry(StringSelectEntry(std::to_string(idx), seg->name()));
-        idx++;
+//  Verify mode: the start checkpoint as many times as asked, from its save.
+void verify_story_checkpoint(
+    SingleSwitchProgramEnvironment& env, RunState& state, Segment& segment, SegmentHooks& hooks,
+    const std::string& id, const VerifyPolicy& policy
+){
+    const VerifyReport report = verify_checkpoint(state, segment, id, policy, hooks);
+    const std::string summary = std::format(
+        "AutoStory verify: {} {}/{} passed, {} needed.", id, report.passes, policy.runs, policy.passes_needed
+    );
+    if (!report.verified){
+        throw OperationFailedException(ErrorReportMode::NO_ERROR_REPORT, summary);
     }
-    return db;
+    env.console.log(summary);
 }
 
-const StringSelectDatabase& SEGMENTS_DATABASE(){
-    static StringSelectDatabase db = make_segments_database();
-    return db;
-}
+} // namespace
 
-AutoStory::~AutoStory(){
-    START_SEGMENT.remove_listener(*this);
-    END_SEGMENT.remove_listener(*this);
-}
-
-void AutoStory::register_options(){
-    PA_ADD_OPTION(LANGUAGE);
-    PA_ADD_OPTION(STARTER_CHOICE);
-    PA_ADD_OPTION(BATTLE_AI);
-    PA_ADD_OPTION(START_SEGMENT);
-    PA_ADD_OPTION(END_SEGMENT);
-    PA_ADD_OPTION(START_DESCRIPTION);
-    PA_ADD_OPTION(END_DESCRIPTION);
-    PA_ADD_OPTION(GO_HOME_WHEN_DONE);
-    PA_ADD_OPTION(NOTIFICATIONS);
-    START_SEGMENT.add_listener(*this);
-    END_SEGMENT.add_listener(*this);
-}
 
 AutoStory::AutoStory()
-    : LANGUAGE("<b>Game Language:</b>", IV_READER().languages(), LockMode::LOCK_WHILE_RUNNING, true)
-    , STARTER_CHOICE("<b>Starter Choice:</b>", {
-        {StarterChoice::CHIKORITA, "chikorita", "Chikorita"},
-        {StarterChoice::CYNDAQUIL, "cyndaquil", "Cyndaquil"},
-        {StarterChoice::TOTODILE,  "totodile",  "Totodile"},
-    }, LockMode::LOCK_WHILE_RUNNING, StarterChoice::CYNDAQUIL)
-    , START_SEGMENT("<b>Start Segment:</b>", SEGMENTS_DATABASE(), LockMode::LOCK_WHILE_RUNNING, "0")
-    , END_SEGMENT("<b>End Segment:</b>", SEGMENTS_DATABASE(), LockMode::UNLOCK_WHILE_RUNNING, std::to_string(ALL_AUTO_STORY_SEGMENTS().size() - 1))
-    , START_DESCRIPTION("Start: " + ALL_AUTO_STORY_SEGMENTS()[0]->start_text())
-    , END_DESCRIPTION("End: " + ALL_AUTO_STORY_SEGMENTS().back()->end_text())
-    , GO_HOME_WHEN_DONE(true)
-    , NOTIFICATION_STATUS_UPDATE("Status Update", true, false, std::chrono::seconds(3600))
+    : RUN(checkpoint_database())
+    , STARTER(
+        "<b>Starter Pokemon:</b>",
+        {
+            {StarterChoice::CHIKORITA, "chikorita", "Chikorita"},
+            {StarterChoice::TEPIG,     "tepig",     "Tepig"},
+            {StarterChoice::TOTODILE,  "totodile",  "Totodile"},
+        },
+        LockMode::LOCK_WHILE_RUNNING,
+        StarterChoice::TEPIG
+    )
+    , GO_HOME_WHEN_DONE(false)
     , NOTIFICATIONS({
-        &NOTIFICATION_STATUS_UPDATE,
         &NOTIFICATION_PROGRAM_FINISH,
         &NOTIFICATION_ERROR_RECOVERABLE,
         &NOTIFICATION_ERROR_FATAL,
     })
 {
-    register_options();
-}
-
-void AutoStory::on_config_value_changed(void* /*object*/){
-    size_t start_idx = get_start_segment_index();
-    size_t end_idx = get_end_segment_index();
-
-    if (start_idx < ALL_AUTO_STORY_SEGMENTS().size()){
-        START_DESCRIPTION.set_text("Start: " + ALL_AUTO_STORY_SEGMENTS()[start_idx]->start_text());
-    }
-    if (end_idx < ALL_AUTO_STORY_SEGMENTS().size()){
-        END_DESCRIPTION.set_text("End: " + ALL_AUTO_STORY_SEGMENTS()[end_idx]->end_text());
-    }
-}
-
-size_t AutoStory::get_start_segment_index(){
-    return START_SEGMENT.index();
-}
-
-size_t AutoStory::get_end_segment_index(){
-    return END_SEGMENT.index();
+    PA_ADD_OPTION(RUN);
+    PA_ADD_OPTION(STARTER);
+    PA_ADD_OPTION(BATTLE_AI);
+    PA_ADD_OPTION(GO_HOME_WHEN_DONE);
+    PA_ADD_OPTION(NOTIFICATIONS);
 }
 
 void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
-    AutoStoryStats& stats = env.current_stats<AutoStoryStats>();
-
-    size_t start_idx = get_start_segment_index();
-    size_t end_idx = get_end_segment_index();
-
-    if (start_idx > end_idx){
-        throw UserSetupError(env.logger(), "The start segment cannot be after the end segment.");
+    const std::vector<StoryCheckpoint>& rows = story_checkpoints();
+    const size_t first = RUN.start_index();
+    const size_t last = RUN.end_index();
+    if (first > last || last >= rows.size()){
+        throw UserSetupError(env.console, "The start checkpoint must not come after the end checkpoint.");
     }
-
-    AutoStoryOptions options{
-        LANGUAGE,
-        STARTER_CHOICE,
-        BATTLE_AI,
-        NOTIFICATION_STATUS_UPDATE,
-        NOTIFICATION_ERROR_RECOVERABLE,
-    };
-
     require_player(env.console, context, BUTTON_L);
 
-    for (size_t seg = start_idx; seg <= end_idx; seg++){
-        env.console.log("Starting Segment: " + ALL_AUTO_STORY_SEGMENTS()[seg]->name(), COLOR_BLUE);
-        ALL_AUTO_STORY_SEGMENTS()[seg]->run_segment(env, context, options, stats);
-    }
+    StoryEnv story{.env = env, .context = context, .starter = STARTER, .battle_ai = BATTLE_AI};
+    StoryExecutor executor(story);
+    executor.set_checks(RUN.checks());
+    executor.set_language(RUN.language());
+    Segment segment = make_story_segment(rows, executor);
+    SegmentHooks hooks = story_hooks(env, context);
+    RunState state;
 
+    if (const std::optional<VerifyPolicy> verify = RUN.VERIFY.policy()){
+        verify_story_checkpoint(env, state, segment, hooks, rows[first].id, *verify);
+        send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH);
+        return;
+    }
+    const SegmentReport report = run_segment(state, segment, SegmentRange{rows[first].id, rows[last].id}, RUN.policy(), hooks);
+    record_story_stats(env.current_stats<AutoStoryStats>(), report);
+    env.update_stats();
+    if (!report.completed){
+        throw OperationFailedException(
+            ErrorReportMode::NO_ERROR_REPORT,
+            std::format("AutoStory stopped at {} {}: {}", report.failed_checkpoint, report.failed_event, to_string(report.failure))
+        );
+    }
+    env.console.log("AutoStory: done through " + rows[last].id + ".");
     send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH);
     GO_HOME_WHEN_DONE.run_end_of_program(context);
 }
+
+
 
 } // namespace PokemonLZA
 } // namespace NintendoSwitch

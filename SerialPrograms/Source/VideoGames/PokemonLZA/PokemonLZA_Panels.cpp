@@ -8,7 +8,6 @@
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "Pokemon/Pokemon_Strings.h"
 #include "PokemonLZA_Panels.h"
-#include "Programs/AutoStory/PokemonLZA_AutoStory.h"
 
 #include "PokemonLZA_Settings.h"
 
@@ -55,6 +54,7 @@
 #include "Programs/TestPrograms/PokemonLZA_MoveBoxArrow.h"
 #include "Programs/TestPrograms/PokemonLZA_TestBoxCellInfo.h"
 #include "InferenceTraining/PokemonLZA_GenerateLocationNameOCR.h"
+#include "Programs/AutoStory/PokemonLZA_AutoStory.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -69,18 +69,24 @@ PanelListFactory::PanelListFactory()
     )
 {}
 
-
-static void add_general_panels(std::vector<PanelEntry>& ret){
-    add_general_panels(ret);
-}
-
+// code-health: allow function_lines -- the list reads top to bottom as the program menu does; splitting it by section hides that order
 std::vector<PanelEntry> PanelListFactory::make_panels() const{
     std::vector<PanelEntry> ret;
 
     ret.emplace_back("---- Settings ----");
     ret.emplace_back(make_OptionsPanel<GameSettingsPanel>());
 
-    add_general_panels(ret);
+    ret.emplace_back("---- General ----");
+    ret.emplace_back(make_SingleSwitchProgram<ClothingBuyer>());
+    ret.emplace_back(make_SingleSwitchProgram<StallBuyer>());
+    ret.emplace_back(make_MultiSwitchProgram<SelfBoxTrade>());
+    ret.emplace_back(make_SingleSwitchProgram<PostKillCatcher>());
+    ret.emplace_back(make_SingleSwitchProgram<BoxSorter>());
+    ret.emplace_back(make_SingleSwitchProgram<WeatherFinder>());
+    ret.emplace_back(make_SingleSwitchProgram<HyperspaceRewardReset>());
+    ret.emplace_back(make_SingleSwitchProgram<DonutMaker>());
+    if (IS_BETA_VERSION){
+    }
 
     ret.emplace_back("---- Farming ----");
     ret.emplace_back(make_SingleSwitchProgram<RestaurantFarmer>());
@@ -124,6 +130,7 @@ std::vector<PanelEntry> PanelListFactory::make_panels() const{
         ret.emplace_back(make_SingleSwitchProgram<MoveBoxArrow>());
         ret.emplace_back(make_SingleSwitchProgram<TestBoxCellInfo>());
         ret.emplace_back(make_SingleSwitchProgram<GenerateLocationNameOCR>());
+        ret.emplace_back(make_SingleSwitchProgram<AutoStory>());
     }
     return ret;
 }
