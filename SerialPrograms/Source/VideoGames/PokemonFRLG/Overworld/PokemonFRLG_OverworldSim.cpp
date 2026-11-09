@@ -975,7 +975,7 @@ void sim_step_once(OverworldSim& sim, Direction direction){
     if (sim.state().facing != direction){
         sim_turn_to(sim, direction);
     }
-    sim.tap(direction);
+    sim.tap(direction, STEP_TAP, STEP_TAP_RELEASE);
 }
 
 std::string OverworldSimWalker::run(const std::vector<RouteStep>& route, const RoutePlanning& planning){
