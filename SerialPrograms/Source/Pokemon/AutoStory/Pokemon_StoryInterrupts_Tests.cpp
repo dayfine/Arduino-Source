@@ -75,6 +75,10 @@ ScreenLook white_unsettled(){
 ScreenLook trainer_opening(){
     return look_of({{0, WALK}, {100, BOX}, {2000, BLACK}}, 2100);
 }
+//  A door's black, back up with no box before it: a warp, not yet settled.
+ScreenLook black_unsettled(){
+    return look_of({{0, WALK}, {100, BLACK}, {700, WALK}}, 1000);
+}
 //  The same white, looked at for long enough after it: a cave exit.
 ScreenLook white_settled(){
     return look_of({{0, WALK}, {100, WHITE}, {700, WALK}, {10000, WALK}}, 10000);
@@ -302,9 +306,10 @@ UnitTestResult test_unsettled_looks_again(){
     return expect_trace(game, {"look", "look again", "clear warp", "told warp ", "run walk"});
 }
 
+//  A door's fade is no battle's opening: three looks, as before.
 UnitTestResult test_unsettled_is_bounded(){
     FakeGame game;
-    game.screens = {white_unsettled()};
+    game.screens = {black_unsettled()};
     StoryInterrupts interrupts = fake_interrupts(game);
     const FakeRun run = run_step(game, interrupts, make(StoryStepKind::ROUTE, "walk"));
     if (run.outcome.failure != "interrupt_unsettled"){
@@ -350,6 +355,22 @@ UnitTestResult test_wild_opening_before_a_walk(){
 }
 UnitTestResult test_trainer_opening_before_a_walk(){
     return test_opening_before_a_walk(trainer_opening(), trainer(), "trainer sight", "trainer");
+}
+
+//  A white that shows no battle and does not settle: max_opening_looks.
+UnitTestResult test_opening_is_bounded(){
+    FakeGame game;
+    game.screens = {white_unsettled()};
+    StoryInterrupts interrupts = fake_interrupts(game);
+    interrupts.max_opening_looks = 5;
+    const FakeRun run = run_step(game, interrupts, make(StoryStepKind::ROUTE, "walk"));
+    if (run.outcome.failure != "interrupt_unsettled"){
+        return "Expected interrupt_unsettled, got " + to_string(run.outcome);
+    }
+    return expect_trace(game, {
+        "look", "look again", "look again", "look again", "look again",
+        "told unsettled interrupt_unsettled: walk",
+    });
 }
 
 UnitTestResult test_failure_explained(bool throws){
@@ -484,7 +505,7 @@ const StoryInterruptsCase STORY_INTERRUPTS_CASES[] = {
     },
     {
         .input = {.name = "unsettled: at most max_looks looks", .test = test_unsettled_is_bounded},
-        .expectation = {.description = "interrupt_unsettled after three looks"},
+        .expectation = {.description = "a door's fade: interrupt_unsettled after three looks"},
     },
     {
         .input = {.name = "unsettled: a battle's opening before a battle step", .test = test_unsettled_before_a_battle},
@@ -497,6 +518,10 @@ const StoryInterruptsCase STORY_INTERRUPTS_CASES[] = {
     {
         .input = {.name = "unsettled: a trainer battle's opening before a walk", .test = test_trainer_opening_before_a_walk},
         .expectation = {.description = "waits for the battle, fights it, then the walk"},
+    },
+    {
+        .input = {.name = "unsettled: at most max_opening_looks for an opening", .test = test_opening_is_bounded},
+        .expectation = {.description = "a white with no battle: interrupt_unsettled"},
     },
     {
         .input = {.name = "a failed step an interrupt explains runs again", .test = test_failed_outcome_explained},
