@@ -26,6 +26,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryResources.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 #include "PokemonFRLG_AutoStoryTableSteps.h"
@@ -487,6 +488,7 @@ void add_tests_AutoStoryLavender(UnitTestDatabase& database){
     for (const auto& item : AUTO_STORY_LAVENDER_CASES){
         database.add<Test_AutoStoryLavender>(item);
     }
+    add_tests_AutoStoryResources(database);
 }
 
 
