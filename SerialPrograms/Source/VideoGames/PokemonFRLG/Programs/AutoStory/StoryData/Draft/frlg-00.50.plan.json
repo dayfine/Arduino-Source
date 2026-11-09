@@ -1,0 +1,29 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "00.50",
+    "title": "Lance",
+    "start": {"certainty": "tile", "map": "PokemonLeague_AgathasRoom", "where": {"facing": "north", "kind": "tiles", "tiles": [[6, 6]]}},
+    "events": [
+      {
+        "id": "below_lance",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "PokemonLeague_LancesRoom", "where": {"facing": "north", "kind": "tiles", "tiles": [[6, 9]]}},
+        "why": "the door (6, 2), round the room to below Lance (6, 8)"
+      },
+      {
+        "id": "talk_lance",
+        "kind": "talk",
+        "why": "Lance"
+      },
+      {
+        "id": "lance",
+        "kind": "battle",
+        "declared_after": {"certainty": "tile", "map": "PokemonLeague_LancesRoom", "where": {"facing": "north", "kind": "tiles", "tiles": [[6, 9]]}},
+        "why": "Lance (TRAINER_ELITE_FOUR_LANCE): Gyarados, Dragonair, Dragonair, Aerodactyl, Dragonite"
+      }
+    ]
+  },
+  "execution": {"menu": "full"}
+}
