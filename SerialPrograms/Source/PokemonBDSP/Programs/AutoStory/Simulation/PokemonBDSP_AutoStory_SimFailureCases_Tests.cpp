@@ -317,6 +317,17 @@ UnitTestResult rowans_scene_opens_with_no_box(Logger& logger){
     return passes(run_case(logger, "00.03", "00.03", {.fade = {}, .banner = {}}, knobs));
 }
 
+//  00.02: the Starly battle's opening is still playing when the battle
+//  step starts, right after choose_starter (lab-B 2026-11-09 run 3, event
+//  7): the battle step's, not interrupt_unsettled before it.
+UnitTestResult starly_opening_after_the_starter(Logger& logger){
+    SimWorldKnobs knobs;
+    knobs.battle_opening_before = [](const std::string& row, const std::string& step){
+        return row == "00.02" && step == "starly";
+    };
+    return passes(run_case(logger, "00.02", "00.02", {.fade = {}, .banner = {}}, knobs));
+}
+
 struct FailureCaseInput{
     std::string name;
     std::function<UnitTestResult(Logger&)> body;
@@ -394,6 +405,7 @@ const FailureCase AUTO_STORY_FAILURE_CASES[] = {
     {.input = {"01.04 Roark's badge speech: the fanfare's pause, then a scene", roark_badge_speech}, .expectation = {}},
     {.input = {"01.07 after the tag battle the grunts run off before anyone speaks", grunts_run_off_before_rowan}, .expectation = {}},
     {.input = {"00.03 Rowan's scene opens with no box and fades home", rowans_scene_opens_with_no_box}, .expectation = {}},
+    {.input = {"00.02 the Starly battle's opening still plays after the starter (lab-B 2026-11-09)", starly_opening_after_the_starter}, .expectation = {}},
 };
 
 void add_tests_AutoStory_SimFailureCases(UnitTestDatabase& database){
