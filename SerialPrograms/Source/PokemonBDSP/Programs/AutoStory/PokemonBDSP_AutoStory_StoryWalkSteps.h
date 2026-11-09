@@ -13,10 +13,12 @@
 
 #include <functional>
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 #include "Pokemon/AutoStory/Pokemon_StorySteps.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RoutePlanner.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_LegBattle.h"
 #include "PokemonBDSP_AutoStory_StoryStepIO.h"
 
 namespace PokemonAutomation{
@@ -70,7 +72,8 @@ private:
     //  `goals` from wherever the leg could have left us, then faces `facing`.
     Pokemon::Pose recover_tapped_leg(const Pokemon::Pose& from,
         const std::vector<Pokemon::TilePos>& starts, const std::vector<Pokemon::TilePos>& goals,
-        Pokemon::Direction facing, const Pokemon::StoryLeg& leg, const Pokemon::StoryStep& step);
+        Pokemon::Direction facing, const Pokemon::StoryLeg& leg, const Pokemon::StoryStep& step,
+        const std::optional<TileSpan>& moved);
     Pokemon::Outcome tap_legs(const Pokemon::Pose& from, const Pokemon::StoryStep& step);
     Pokemon::Outcome counted_wall(const Pokemon::Pose& from, const Pokemon::StoryStep& step);
     Pokemon::Outcome leg_to_dialogue(const Pokemon::StoryStep& step);
