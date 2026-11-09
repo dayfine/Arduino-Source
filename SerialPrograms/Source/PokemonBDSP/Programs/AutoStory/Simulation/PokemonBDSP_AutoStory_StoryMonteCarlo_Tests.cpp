@@ -125,6 +125,38 @@ RowReport run_row(const std::vector<StoryCheckpoint>& rows, const std::string& r
 }
 
 
+//  A row's seeds (run_row()), and each that passes with no miss run again
+//  with one fade's hold dropped (a short fade between two frames; the
+//  door's watcher missed 13 of 35 on lab-B, 2026-11-08): the program's fade
+//  watch takes the scene after the fall, so it must pass again. How many
+//  ran again, and those that then failed, as "plan: step kind".
+struct HeldRowReport{
+    RowReport report;
+    size_t rerun = 0;
+    std::vector<std::string> hold_failed;
+};
+HeldRowReport run_row_holding(const std::vector<StoryCheckpoint>& rows, const std::string& row, size_t seeds){
+    const RowNoise noise{.clean = looked_for(rows, row), .rates = {}};
+    RowNoise hold_noise = noise;
+    hold_noise.rates.missed_hold = 1;
+    HeldRowReport out;
+    out.report = Pokemon::run_row_seeds(row, Pokemon::story_seeds(seeds), [&](const std::string& id, uint64_t seed){
+        SilentLogger silent;
+        const SeedOutcome plain = run_seed(silent, rows, noise, id, seed);
+        const Pokemon::DisturbancePlan plan = Pokemon::make_disturbance_plan(seed, noise.rates, noise.clean.fades, noise.clean.banners);
+        if (plain.passed && noise.clean.fades > 0 && !plan.missed_fade && !plan.missed_banner){
+            out.rerun++;
+            const SeedOutcome hold = run_seed(silent, rows, hold_noise, id, seed);
+            if (!hold.passed){
+                out.hold_failed.push_back(std::format("{}: {} {}", hold.detail, hold.failed_step, hold.kind));
+            }
+        }
+        return plain;
+    });
+    return out;
+}
+
+
 //  Row `row` for the seeds, under `floor` passes in a hundred a failure:
 //  each row's floor is what it passed at this branch's tip, so a row that
 //  passes less often has got worse. A row PA_BDSP_STORY_MC_ROWS leaves out
@@ -143,32 +175,12 @@ UnitTestResult test_row(Logger& logger, const std::string& row, size_t floor){
     }
     const size_t seeds = Pokemon::seed_count(SEEDS_VARIABLE, DEFAULT_SEEDS);
     const WallClock start = current_time();
-    const std::vector<StoryCheckpoint> rows = story_checkpoints();
-    const RowNoise noise{.clean = looked_for(rows, row), .rates = {}};
-    RowNoise hold_noise = noise;
-    hold_noise.rates.missed_hold = 1;
-    //  Each seed that passes with no miss runs again with one fade's hold
-    //  dropped (a short fade between two frames; the door's watcher missed
-    //  13 of 35 on lab-B, 2026-11-08): the program's fade watch takes the
-    //  scene after the fall, so it must pass again.
-    size_t rerun = 0;
-    std::vector<std::string> hold_failed;
-    const RowReport report = Pokemon::run_row_seeds(row, Pokemon::story_seeds(seeds), [&](const std::string& id, uint64_t seed){
-        SilentLogger silent;
-        const SeedOutcome out = run_seed(silent, rows, noise, id, seed);
-        const Pokemon::DisturbancePlan plan = Pokemon::make_disturbance_plan(seed, noise.rates, noise.clean.fades, noise.clean.banners);
-        if (out.passed && noise.clean.fades > 0 && !plan.missed_fade && !plan.missed_banner){
-            rerun++;
-            const SeedOutcome hold = run_seed(silent, rows, hold_noise, id, seed);
-            if (!hold.passed){
-                hold_failed.push_back(std::format("{}: {} {}", hold.detail, hold.failed_step, hold.kind));
-            }
-        }
-        return out;
-    });
+    const HeldRowReport held = run_row_holding(story_checkpoints(), row, seeds);
+    const RowReport& report = held.report;
+    const std::vector<std::string>& hold_failed = held.hold_failed;
     const auto took = std::chrono::duration_cast<Milliseconds>(current_time() - start);
     logger.log(Pokemon::format_report(report) + std::format("\n    ({} seeds in {} ms)", seeds, took.count()));
-    logger.log(std::format("{}: one fade's hold unseen: {} of {} seeds that passed with no miss fail.", row, hold_failed.size(), rerun));
+    logger.log(std::format("{}: one fade's hold unseen: {} of {} seeds that passed with no miss fail.", row, hold_failed.size(), held.rerun));
     if (!hold_failed.empty()){
         std::string out = std::format("{} fails with one fade's hold unseen where it passed without:", row);
         for (const std::string& line : hold_failed){
