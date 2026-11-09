@@ -62,6 +62,11 @@ const StringSelectDatabase& checkpoint_database(){
     return database;
 }
 
+const char* const KEEP_START_FRAME_TEXT =
+    "<b>Keep the start frame:</b><br>Off by default. The save loaded was made by hand where the start checkpoint "
+    "begins: keep the screen after loading it as that checkpoint's start frame, which later runs compare their "
+    "save with. The program keeps one by itself at each save it makes.";
+
 } // namespace
 
 const char* const RUN_STARTER_RNG_TEXT =
@@ -116,10 +121,12 @@ AutoStory::AutoStory()
     , RUN_GIFT_RNG(RUN_GIFT_RNG_TEXT, LockMode::LOCK_WHILE_RUNNING, false)
     , NOTIFICATION_SHINY("Shiny found", true, true, ImageAttachmentMode::JPG, {"Notifs", "Showcase"})
     , NOTIFICATION_STATUS_UPDATE("Status Update", true, false, std::chrono::seconds(3600))
+    , KEEP_START_FRAME(KEEP_START_FRAME_TEXT, LockMode::LOCK_WHILE_RUNNING, false)
     , NOTIFICATIONS({&NOTIFICATION_SHINY, &NOTIFICATION_STATUS_UPDATE, &NOTIFICATION_PROGRAM_FINISH, &NOTIFICATION_ERROR_FATAL})
 {
     PA_ADD_OPTION(RUN);
     PA_ADD_OPTION(NEW_GAME_FROM_TITLE);
+    PA_ADD_OPTION(KEEP_START_FRAME);
     PA_ADD_OPTION(PLAYER_NAME);
     PA_ADD_OPTION(STOP_FOR_SID_HELPER);
     PA_ADD_OPTION(STOP_FOR_STARTER_RNG);
@@ -157,6 +164,19 @@ void check_player_name(ConsoleHandle& console, const std::string& name){
     if (!error.empty()){
         throw UserSetupError(console, "Player name: " + error);
     }
+}
+
+//  The story's state for a run from `checkpoint`: its supplies, the checks
+//  level, and the program's start frames, the first start check keeping
+//  the screen as its frame if `keep_start_frame` (a save made by hand).
+StoryEnv story_env(
+    SingleSwitchProgramEnvironment& env, ProControllerContext& context,
+    const StoryCheckpoint& checkpoint, StoryChecks checks, bool keep_start_frame
+){
+    StoryEnv story{env.console, context, checkpoint.supplies, checkpoint.supplies, false, checks};
+    story.start_frames = program_start_frames();
+    story.keep_start_frame = keep_start_frame;
+    return story;
 }
 
 //  A failed attempt reloads the last save, with the supplies it had, read
@@ -228,7 +248,7 @@ void verify_story_checkpoint(
 ){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
     const StoryCheckpoint& checkpoint = checkpoints[run.start_index()];
-    StoryEnv story{env.console, context, checkpoint.supplies, checkpoint.supplies, false, run.checks()};
+    StoryEnv story = story_env(env, context, checkpoint, run.checks(), false);
     load_verify_save(env, context, story, checkpoint);
     StoryExecutor executor(story);
     executor.set_checks(run.checks());
@@ -641,7 +661,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         first = checkpoint_index(checkpoints, "00.01b");
         plan = plan_story_run(checkpoints, first, last, handoffs);
     }
-    StoryEnv story{env.console, context, checkpoints[first].supplies, checkpoints[first].supplies, false, RUN.checks()};
+    StoryEnv story = story_env(env, context, checkpoints[first], RUN.checks(), KEEP_START_FRAME);
     story.player_name = player_name;
     const bool at_gift_rng = plan.stop == StoryHandoff::GIFT_RNG && plan.rows.empty();
     prepare_start(env, context, checkpoints, first, story, at_gift_rng);
