@@ -12,6 +12,7 @@
 #include <format>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
@@ -218,7 +219,7 @@ private:
     GridSim& m_sim;
 };
 
-const Pokemon::StoryStep& story_step(const std::string& row, const std::string& name){
+const Pokemon::StoryStep& story_step(std::string_view row, std::string_view name){
     for (const Pokemon::StoryCheckpoint& checkpoint : story_checkpoints()){
         for (const Pokemon::StoryStep& step : checkpoint.steps){
             if (checkpoint.id == row && step.name == name){
@@ -226,7 +227,7 @@ const Pokemon::StoryStep& story_step(const std::string& row, const std::string& 
             }
         }
     }
-    throw GridSimFailure{"no step " + name + " in " + row};
+    throw GridSimFailure{std::format("no step {} in {}", name, row)};
 }
 
 //  lab-B 2026-11-08 11:55: a wild battle on 01.03's counted taps across

@@ -96,6 +96,46 @@ jobs:
           operation: prepare
           consumer-directory: Arduino-Source
 
+      - name: Checkout authored BDSP story simulator
+        if: startsWith(inputs.os, 'ubuntu') && inputs.run-tests
+        uses: actions/checkout@v7
+        with:
+          repository: dayfine/PokemonSimulation
+          ref: cf365e1722dea03fcf40c322b910332fcc864ea4
+          path: AuthoredStorySource
+
+      - name: Replay the authoritative Arduino mine plan
+        if: startsWith(inputs.os, 'ubuntu') && inputs.run-tests
+        env:
+          PYTHONPATH: AuthoredStorySource/src
+        run: |
+          python3 - <<'PYTHON'
+          from pathlib import Path
+          import hashlib, json, tempfile
+          from pokesim.story.replay_binding import load_binding
+          from pokesim.story.replay_cases import read_cases, check_case
+          from pokesim.story.checkpoint_replay import run
+          source = Path('AuthoredStorySource').resolve()
+          folder = source / 'data/story/bdsp-mine-pilot'
+          native = Path('Arduino-Source/SerialPrograms/Source/PokemonBDSP/Programs/AutoStory/StoryData')
+          # The Arduino plan is authoritative; bind these exact bytes explicitly.
+          # The simulator's checked-in plan is only a frozen regression snapshot.
+          with tempfile.TemporaryDirectory(prefix='.native-story-', dir=source) as temporary:
+              stage = Path(temporary)
+              raw = (native / 'bdsp-mine-01.03.plan.json').read_bytes()
+              (stage / 'plan.json').write_bytes(raw)
+              profile = json.loads((folder / 'binding.json').read_text())
+              profile['plan'] = {'file': str((stage / 'plan.json').relative_to(source)),
+                                 'sha256': hashlib.sha256(raw).hexdigest()}
+              (stage / 'binding.json').write_text(json.dumps(profile))
+              binding = load_binding(stage / 'binding.json', source)
+              cases = read_cases(folder / 'cases.json')
+              for case in cases:
+                  check_case(case, run(binding, case['input']))
+                  print(case['id'] + ': current Arduino plan replay passed')
+              assert len(cases) == 9
+          PYTHON
+
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:

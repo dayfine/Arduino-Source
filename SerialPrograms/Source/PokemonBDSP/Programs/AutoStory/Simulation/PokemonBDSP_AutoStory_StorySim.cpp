@@ -13,7 +13,6 @@
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Events.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h"
-#include "PokemonBDSP_AutoStory_SimGround.h"
 #include "PokemonBDSP_AutoStory_StorySim.h"
 
 namespace PokemonAutomation{
@@ -276,21 +275,14 @@ const StoryWorld* SimExecutor::sim_world(const std::string& map) const{
             who += person.name + ";";
         }
     }
-    const SimGround* ground = nullptr;
-    for (const SimGround& item : sim_ground()){
-        if (world != nullptr && m_row >= item.row && story_plan_world(item.map, item.map) == world){
-            ground = &item;
-            who += item.map + " ground;";
-        }
-    }
-    if (who.empty()){
+    if (here.empty()){
         return world;
     }
     std::unique_ptr<StoryWorld>& peopled = m_peopled[{world, who}];
     if (!peopled){
-        peopled = ground != nullptr ? with_ground(*world, *ground) : std::make_unique<StoryWorld>(*world);
+        peopled = std::make_unique<StoryWorld>(*world);
         for (const SimPerson& person : here){
-            peopled->block(story_to_world(*peopled, person.map, person.tile));
+            peopled->block(story_to_world(*world, person.map, person.tile));
         }
     }
     return peopled.get();
