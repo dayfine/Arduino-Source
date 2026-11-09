@@ -12,6 +12,7 @@
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
+#include "Pokemon/AutoStory/Pokemon_AutoStoryFailureCapture.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
 #include "Pokemon/Pokemon_Strings.h"
@@ -258,9 +259,18 @@ void verify_story_checkpoint(
     executor.set_language(run.language());
     Pokemon::Segment segment = make_story_segment(checkpoints, executor);
     Pokemon::SegmentHooks hooks = story_hooks(env, story);
+    //  Each failed run's stream history, screenshot and log, for a replay test.
+    Pokemon::FailureCapture capture(env.console, "PokemonFRLG");
+    capture.attach(hooks);
 
     Pokemon::RunState state;
-    const Pokemon::VerifyReport report = Pokemon::verify_checkpoint(state, segment, checkpoint.id, policy, hooks);
+    Pokemon::VerifyReport report;
+    try{
+        report = Pokemon::verify_checkpoint(state, segment, checkpoint.id, policy, hooks);
+    }catch (OperationFailedException& e){
+        capture.save_thrown(e.message());
+        throw;
+    }
     const std::string summary = std::format(
         "AutoStory verify: {} {}/{} passed, {} needed.", checkpoint.id, report.passes, policy.runs, policy.passes_needed
     );
@@ -451,11 +461,18 @@ static void run_story_rows(
         before_last_save(segment, std::move(before));
     }
     Pokemon::SegmentHooks hooks = story_hooks(env, story);
+    //  Each failed event's stream history, screenshot and log, for a replay test.
+    Pokemon::FailureCapture capture(env.console, "PokemonFRLG");
+    capture.attach(hooks);
 
     Pokemon::RunState state;
-    const Pokemon::SegmentReport report = run_segment(
-        state, segment, Pokemon::SegmentRange{rows.front().id, rows.back().id}, policy, hooks
-    );
+    Pokemon::SegmentReport report;
+    try{
+        report = run_segment(state, segment, Pokemon::SegmentRange{rows.front().id, rows.back().id}, policy, hooks);
+    }catch (OperationFailedException& e){
+        capture.save_thrown(e.message());
+        throw;
+    }
     Pokemon::record_story_stats(env.current_stats<Pokemon::AutoStoryStats>(), report);
     env.update_stats();
     throw_if_failed(report);
