@@ -26,6 +26,8 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryFaultSweep_Tests.h"
+#include "PokemonFRLG_AutoStoryResources.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 #include "PokemonFRLG_AutoStoryTableSteps.h"
@@ -240,6 +242,88 @@ UnitTestResult test_b1f_martha_after_row38_battle(Logger&){
     return true;
 }
 
+//  Rock Tunnel has no Flash: both floors are dark.
+const std::set<std::string> ROCK_TUNNEL_DARK{StoryTable::ROCK_TUNNEL_1F, StoryTable::ROCK_TUNNEL_B1F};
+
+//  below_martha_line as `legs` from Winston's tile (29, 37) on `sim`, by the
+//  walker with `rules`: the failure, or empty if it ended on (16, 35).
+std::string walk_below_martha(OverworldSim& sim, const std::vector<StoryLeg>& legs, const SimWalkerRules& rules){
+    const MapPosition start{StoryTable::ROCK_TUNNEL_B1F, {29, 37}};
+    const std::vector<MapData>& maps = story_maps();
+    const std::optional<std::vector<RouteStep>> route = fixed_route(maps, start, legs);
+    if (!route){
+        return "the legs don't fit the map";
+    }
+    const RoutePlanning planning{.maps = &maps, .costs = story_route_costs(), .start = start, .label = "below_martha_line"};
+    std::string failure = OverworldSimWalker(sim, rules).run(*route, planning);
+    if (failure.empty() && !(sim.state().position == MapPosition{StoryTable::ROCK_TUNNEL_B1F, {16, 35}})){
+        failure = "ended on " + to_string(sim.state().position) + ", not (16, 35)";
+    }
+    return failure;
+}
+
+//  Console B, 2026-11-09 13:35, below_martha_line as it was then: west 16,
+//  north 2, east 6 to the wall (19, 35), west 3. A battle 6 tiles into
+//  west 16; the player found again at (1, 38); a battle seen late at the
+//  end of the walk back east 12 along row 38, placed 0 to 3 tiles in by
+//  the dark screen; "found again" at the rock (20, 35) while against the
+//  wall (25, 35); ended on (21, 35), where martha_line found no trainer.
+//  Here the second battle on each step of that walk back: with the dark
+//  cave's stops placed anywhere on their leg, every one ends on (16, 35);
+//  without, some don't.
+UnitTestResult test_b1f_dark_row38_battle_old_legs(Logger& logger){
+    const std::vector<StoryLeg> old_legs{{Direction::WEST, 16}, {Direction::NORTH, 2}, {Direction::EAST, 6}, {Direction::WEST, 3}};
+    std::string failures;
+    int old_wrong = 0;
+    for (int second = 8; second <= 60; second++){
+        SimScript script;
+        script.dark_maps = ROCK_TUNNEL_DARK;
+        script.encounters = {SimEncounter{.grass_step = 6}, SimEncounter{.grass_step = second, .seen_late = true}};
+        OverworldSim fixed(maps_after_route10(), MapPosition{StoryTable::ROCK_TUNNEL_B1F, {29, 37}}, Direction::NORTH, script);
+        if (const std::string failure = walk_below_martha(fixed, old_legs, SimWalkerRules{}); !failure.empty()){
+            failures += std::format("{}battle on step {}: {}", failures.empty() ? "" : " | ", second, failure);
+        }
+        SimWalkerRules old_rules;
+        old_rules.whole_leg_in_dark = false;
+        old_rules.dark_cave_not_battle = false;
+        OverworldSim old(maps_after_route10(), MapPosition{StoryTable::ROCK_TUNNEL_B1F, {29, 37}}, Direction::NORTH, script);
+        if (const std::string failure = walk_below_martha(old, old_legs, old_rules); !failure.empty()){
+            old_wrong++;
+            logger.log(std::format("Without the dark cave rules, battle on step {}: {}", second, failure));
+        }
+    }
+    if (!failures.empty()){
+        return failures;
+    }
+    if (old_wrong == 0){
+        return "Without the dark cave rules every walk still ended on (16, 35): the test doesn't show the failure.";
+    }
+    return true;
+}
+
+//  Rock Tunnel dark, from Winston's tile: below_martha_line, martha_line
+//  and Martha's battle with one wild battle on each step the walk takes,
+//  on rows 37 and 38 and on row 35 between the corner (11, 35) and
+//  (16, 35), seen as it starts and seen late: Martha alone is fought.
+UnitTestResult test_b1f_dark_martha_battle_anywhere(Logger&){
+    std::string failures;
+    for (int step = 1; step <= 40; step++){
+        for (const bool late : {false, true}){
+            SimScript script;
+            script.dark_maps = ROCK_TUNNEL_DARK;
+            script.encounters = {SimEncounter{.grass_step = step, .seen_late = late}};
+            OverworldSim sim(maps_after_route10(), MapPosition{StoryTable::ROCK_TUNNEL_B1F, {29, 37}}, Direction::NORTH, script);
+            if (const std::string failure = winston_to_martha(sim); !failure.empty()){
+                failures += std::format("{}step {}{}: {}", failures.empty() ? "" : " | ", step, late ? " late" : "", failure);
+            }
+        }
+    }
+    if (!failures.empty()){
+        return failures;
+    }
+    return true;
+}
+
 //  00.28 whole with a wild battle every 7 to 25 steps on the tunnel's floor,
 //  the gaps drawn from each of these seeds: the row ends where it should.
 UnitTestResult test_rock_tunnel_frequent_battles(Logger&){
@@ -341,39 +425,34 @@ const std::map<std::string, int> ROCK_TUNNEL_ENCOUNTER_RATES{
 };
 
 constexpr unsigned GAME_ODDS_SEEDS = 30;
-//  The share of turn taps the sim drops (SimScript::turn_tap_drop_rate):
-//  a guess well above what the console showed, one in 00.28 run 2.
-constexpr double TURN_TAP_DROP_RATE = 0.1;
 
 //  00.28 whole, its wild battles at the game's own odds (OverworldSim::
-//  rolls_encounter()) and `turn_tap_drop_rate` of its turn taps dropped,
-//  from each of these seeds: every run ends where it should. Logs the
-//  runs' numbers.
-UnitTestResult rock_tunnel_game_odds(Logger& logger, double turn_tap_drop_rate){
+//  rolls_encounter()), from each of these seeds: every run ends where it
+//  should. Logs the runs' numbers and the step taps the game ignored.
+UnitTestResult test_rock_tunnel_game_odds(Logger& logger){
     OverworldSim clean_sim = row_start_sim("00.28", SimScript{});
     if (const UnitTestResult clean = row_checked(clean_sim, "00.28", {ROCK_TUNNEL_TRAINERS}, MapPosition{StoryTable::ROUTE10, {8, 58}}); clean.result != UnitTestResult::PASSED){
         return clean;
     }
     std::vector<RowRunNumbers> runs;
     std::string failures;
-    int dropped = 0;
+    int ignored = 0;
     for (unsigned seed = 1; seed <= GAME_ODDS_SEEDS; seed++){
         SimScript script;
         script.encounter_rates = ROCK_TUNNEL_ENCOUNTER_RATES;
         script.encounter_seed = seed;
-        script.turn_tap_drop_rate = turn_tap_drop_rate;
-        script.turn_tap_seed = seed;
+        script.dark_maps = ROCK_TUNNEL_DARK;
         OverworldSim sim = row_start_sim("00.28", script);
         const UnitTestResult result = row_checked(sim, "00.28", {ROCK_TUNNEL_TRAINERS}, MapPosition{StoryTable::ROUTE10, {8, 58}});
         const bool passed = result.result == UnitTestResult::PASSED;
         runs.push_back(row_numbers(sim.state(), passed, clean_sim.state()));
-        dropped += sim.state().turn_taps_dropped;
+        ignored += sim.state().step_taps_ignored;
         if (!passed){
             failures += std::format("{}Seed {}: {}", failures.empty() ? "" : " | ", seed, result.message);
         }
     }
     logger.log(std::format(
-        "00.28 at the game's encounter odds, {} turn taps dropped: {}", dropped, numbers_summary(runs)
+        "00.28 at the game's encounter odds, {} step taps ignored: {}", ignored, numbers_summary(runs)
     ));
     if (!failures.empty()){
         return failures;
@@ -381,15 +460,6 @@ UnitTestResult rock_tunnel_game_odds(Logger& logger, double turn_tap_drop_rate){
     return true;
 }
 
-UnitTestResult test_rock_tunnel_game_odds(Logger& logger){
-    return rock_tunnel_game_odds(logger, 0);
-}
-
-//  The same with one turn tap in TURN_TAP_DROP_RATE dropped by the game
-//  (console B, 2026-11-09, 00.28 run 2).
-UnitTestResult test_rock_tunnel_dropped_turn_taps(Logger& logger){
-    return rock_tunnel_game_odds(logger, TURN_TAP_DROP_RATE);
-}
 
 //  00.29 on the sim: no trainer met, the ledge hopped, Lavender's nurse.
 UnitTestResult test_lavender_row(Logger&){
@@ -476,8 +546,9 @@ const AutoStoryLavenderCase AUTO_STORY_LAVENDER_CASES[] = {
     {.input = {"00.28 B1F row 37 with a wild battle every 10 to 14 steps", test_b1f_row37_battles_every_12}, .expectation = {}},
     {.input = {"00.28 a wild battle every 7 to 25 steps, 12 seeds", test_rock_tunnel_frequent_battles}, .expectation = {}},
     {.input = {"00.28 wild battles at the game's odds, 30 seeds", test_rock_tunnel_game_odds}, .expectation = {}},
-    {.input = {"00.28 wild battles at the game's odds and 1 in 10 turn taps dropped, 30 seeds", test_rock_tunnel_dropped_turn_taps}, .expectation = {}},
     {.input = {"00.28 B1F a wild battle into row 38, then a step short: Martha still sees the player", test_b1f_martha_after_row38_battle}, .expectation = {}},
+    {.input = {"00.28 B1F dark, the 13:35 legs: a battle at the end of the walk back along row 38", test_b1f_dark_row38_battle_old_legs}, .expectation = {}},
+    {.input = {"00.28 B1F dark, a wild battle on any step to Martha's line", test_b1f_dark_martha_battle_anywhere}, .expectation = {}},
     {.input = {"00.29 Route 10 south, the ledge, Lavender Town's Pokemon Center", test_lavender_row}, .expectation = {}},
     {.input = {"00.29 a tile off after each open leg", test_lavender_tile_off}, .expectation = {}},
     {.input = {"00.28 and 00.29 save on Route 10 and in Lavender Town", test_save_places}, .expectation = {}},
@@ -487,6 +558,8 @@ void add_tests_AutoStoryLavender(UnitTestDatabase& database){
     for (const auto& item : AUTO_STORY_LAVENDER_CASES){
         database.add<Test_AutoStoryLavender>(item);
     }
+    add_tests_AutoStoryResources(database);
+    add_tests_AutoStoryFaultSweep(database);
 }
 
 

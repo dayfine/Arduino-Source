@@ -22,6 +22,13 @@
  *  that is its battle's opening, still playing (BDSP's Starly battle right
  *  after the starter is picked), and the step waits for it itself.
  *
+ *  Before another step, an unsettled screen that may be a battle's opening
+ *  (a white flash, a fade still down, a fade after a dialog box) is looked
+ *  at until its battle shows, up to max_opening_looks looks: the walk
+ *  before the step ended in grass or in a trainer's sight. The battle is
+ *  then cleared as any other. A fade that came back up with no box before
+ *  it (a door's) is looked at max_looks times only.
+ *
  */
 
 #ifndef PokemonAutomation_Pokemon_StoryInterrupts_H
@@ -96,6 +103,10 @@ struct StoryInterrupts{
     //  before it fails the step as "interrupt_unsettled". A step that
     //  starts on it gets it on the first look.
     size_t max_looks = 3;
+    //  The same, for a screen that may be a battle's opening: enough looks
+    //  for its battle to show. BDSP's 300 ms looks cover 12 s, past its
+    //  battle_after_fade (8 s), after which a fade with no battle settles.
+    size_t max_opening_looks = 40;
     //  Interrupts cleared for one step before it fails as
     //  "too_many_interrupts".
     size_t max_per_step = 3;

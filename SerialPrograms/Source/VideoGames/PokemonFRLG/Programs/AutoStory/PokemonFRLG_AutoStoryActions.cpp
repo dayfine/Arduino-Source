@@ -582,8 +582,9 @@ void step_once(ConsoleHandle& console, ProControllerContext& context, Direction 
     if (facing != direction){
         OverworldWalkSteps::turn_to(console, context, direction);
     }
-    //  A step, once started, finishes on its own.
-    pbf_press_dpad(context, dpad(direction), 120ms, 500ms);
+    //  A step, once started, finishes on its own. The release waits out the
+    //  lockout before a next step tap (MovementMechanics::STEP_TAP_LOCKOUT).
+    pbf_press_dpad(context, dpad(direction), MovementMechanics::STEP_TAP, MovementMechanics::STEP_TAP_RELEASE);
     context.wait_for_all_requests();
 }
 

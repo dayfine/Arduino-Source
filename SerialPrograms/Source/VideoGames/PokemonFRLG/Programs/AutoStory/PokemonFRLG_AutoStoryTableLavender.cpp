@@ -72,7 +72,10 @@ StoryCheckpoint rock_tunnel(){
         running(legs("winston_line_end", {{WEST, 5}, {SOUTH, 10}, {NORTH, 1}, {WEST, 1}}, "west to the wall (33, 28), down column 33 to the wall (33, 38), up to (33, 37) and west to (32, 37)")),
         into_line("winston_line", WEST, "along row 37 onto (29, 37), the end of Winston's line: he walks down to (29, 36)"),
         battle("pokemaniac_winston", at(ROCK_TUNNEL_B1F, 29, 37, NORTH), false, "Slowpoke and Slowpoke"),
-        running(legs("below_martha_line", {{WEST, 16}, {NORTH, 2}, {EAST, 6}, {WEST, 3}}, "west along row 37 to (13, 37), up to the wall (13, 35), east to the wall (19, 35), west to (16, 35)")),
+        //  The corner (11, 35), wall north and rock west, finds the player
+        //  from any of (11..14, 35) after a battle; east to the wall (19,
+        //  35) did not (console B, 2026-11-09 13:35: found 5 tiles off).
+        running(legs("below_martha_line", {{WEST, 16}, {NORTH, 2}, {WEST, 2}, {EAST, 5}}, "west along row 37 to (13, 37), up to the wall (13, 35), west to the corner (11, 35), east to (16, 35)")),
         into_line("martha_line", NORTH, "up column 16 onto (16, 33), beside Martha; from (17, 35), a tile short, up column 17 onto (17, 33), the end of her line"),
         battle("picnicker_martha", at(ROCK_TUNNEL_B1F, 16, 33, WEST), false, "Oddish and Bulbasaur"),
         running(legs("below_allen_line", {{EAST, 1}, {NORTH, 5}, {EAST, 12}, {NORTH, 9}, {EAST, 11}, {NORTH, 2}, {WEST, 2}, {NORTH, 5}}, "east to the wall (17, 33), up column 17 to the wall (17, 28), east to the wall (29, 28), up column 29 past Steve's line to the wall (29, 19), east to (40, 19), up to row 17, west to the wall (38, 17) and up to the wall (38, 12)")),

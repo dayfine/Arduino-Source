@@ -38,6 +38,7 @@
 #include "Common/Cpp/Time.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Pokemon/AutoStory/Pokemon_ScreenEvents.h"
+#include "PokemonFRLG_MovementMechanics.h"
 #include "PokemonFRLG_OverworldRecovery.h"
 #include "PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_OverworldWalk.h"
@@ -84,7 +85,7 @@ struct SimEncounter{
 //  detection delays (OverworldInterrupt::detection_delay()) are its guesses
 //  at these.
 struct SimTiming{
-    Milliseconds tile{267};
+    Milliseconds tile = MovementMechanics::TILE_TIME;
     Milliseconds flash{300};
     Milliseconds battle_screen{3700};
     //  A wild battle's text box, before the HP boxes (battle_screen). Not
@@ -121,14 +122,18 @@ struct SimScript{
     //  src/data/wild_encounters.json), rolled from `encounter_seed`.
     std::map<std::string, int> encounter_rates;
     uint32_t encounter_seed = 0;
-    //  Turn taps (taps while the player faces another way) the game misses:
-    //  the player goes on facing the old way. By number, from 1, and each
-    //  with probability `turn_tap_drop_rate`, rolled from `turn_tap_seed`.
-    //  After one, a hold of a tile only turns the player (console B,
-    //  2026-11-09, 00.28 run 2).
+    //  Fault injection: turn taps (taps while the player faces another way)
+    //  the game misses, by number from 1; the player goes on facing the old
+    //  way. The game drops none from a standstill (MovementMechanics: 70 of
+    //  70 turned); these test the walker's check of the turn
+    //  (SimWalkerRules::confirm_turn) after 00.28 run 2 (console B,
+    //  2026-11-09), where a one-tile leg only turned the player.
     std::set<int> dropped_turn_taps;
-    double turn_tap_drop_rate = 0;
-    uint32_t turn_tap_seed = 0;
+    //  Caves dark without Flash (Rock Tunnel): the overworld is black but
+    //  for a lit circle on the player, which the walker's battle text box
+    //  check and screen observer read as a battle on its way (console B,
+    //  2026-11-09, 00.28), unless SimWalkerRules::dark_cave_not_battle.
+    std::set<std::string> dark_maps;
     SimTiming timing;
 };
 
@@ -150,6 +155,8 @@ struct SimState{
     //  Whether black shows below the map: the player stands near the bottom
     //  of a map with nothing joined to it (a small room or a gate).
     bool black_below = false;
+    //  Whether the player's map is one of SimScript::dark_maps.
+    bool dark = false;
     int steps = 0;
     int warps = 0;
     int wild_battles = 0;
@@ -157,6 +164,9 @@ struct SimState{
     Milliseconds in_wild_battles{0};
     int signs_read = 0;
     int turn_taps_dropped = 0;
+    //  Step taps the game ignored, inside the lockout after the last one
+    //  (MovementMechanics::STEP_TAP_LOCKOUT).
+    int step_taps_ignored = 0;
     std::vector<std::string> trainers_beaten;
     //  Things the walker did that the game wouldn't let pass: D-pad holds
     //  under a battle, a trainer's battle fled, a battle fought that wasn't
@@ -210,9 +220,18 @@ public:
         const std::vector<SimWatcher>& watchers
     );
 
-    //  A short press of `direction`: turns the player, or steps if they
-    //  already face that way. A turn may be dropped (SimScript::dropped_turn_taps).
-    void tap(Direction direction);
+    //  A press of `direction` for `duration` (at most MovementMechanics::
+    //  LONGEST_TAP), then `release`, as the console measured it: a player
+    //  facing another way only turns; one facing that way steps once,
+    //  unless the tap starts inside the lockout after the last step tap
+    //  (STEP_TAP_LOCKOUT), which the game ignores. A tap that starts as
+    //  the last one ends, with no release between, holds it on. A turn may
+    //  be dropped by fault injection (SimScript::dropped_turn_taps).
+    void tap(
+        Direction direction,
+        Milliseconds duration = MovementMechanics::TURN_TAP,
+        Milliseconds release = MovementMechanics::TURN_SETTLE
+    );
 
     //  Watches `watchers` for `duration`, as wait_until().
     std::optional<SimSeen> watch(const std::vector<SimWatcher>& watchers, Milliseconds duration);
@@ -253,7 +272,19 @@ private:
     bool sees(SimWatcher watcher, SimScreen screen) const;
     std::optional<Milliseconds> first_seen(SimWatcher watcher, Milliseconds from, Milliseconds to) const;
     std::optional<SimSeen> watch_until(const std::vector<SimWatcher>& watchers, Milliseconds from, Milliseconds to);
+    //  A tap, for the next one's lockout and to hold on: when it started
+    //  and ended, the player's facing before it and the steps it took.
+    struct TapPress{
+        Direction direction = Direction::NORTH;
+        Milliseconds start{0};
+        Milliseconds end{0};
+        Direction facing_before = Direction::NORTH;
+        int steps = 0;
+    };
     void walk_hold(Direction direction, Milliseconds duration, int short_by);
+    void take_steps(Direction direction, Milliseconds pressed, Milliseconds end, int left);
+    void step_tap(Direction direction, Milliseconds duration);
+    void hold_on(Direction direction, Milliseconds end);
     void stuck_hold(Direction direction);
     void bump(Direction direction, Milliseconds pressed);
     std::optional<Step> press(Direction direction) const;
@@ -292,9 +323,12 @@ private:
     std::mt19937 m_encounter_rng;
     int m_steps_since_encounter = 0;
     int m_encounter_rate_buff = 0;
-    //  The turn taps so far, and what rolls their drops.
+    //  The turn taps so far, for SimScript::dropped_turn_taps.
     int m_turn_taps = 0;
-    std::mt19937 m_tap_rng;
+    //  The last tap, until a hold.
+    std::optional<TapPress> m_last_tap;
+    //  When the last tap that stepped started.
+    std::optional<Milliseconds> m_last_step_tap;
     Milliseconds m_wild_battle_from{0};
     int m_holds = 0;
     SimState m_state;
@@ -369,11 +403,27 @@ struct SimWalkerRules{
     //  Without it a dropped tap left a one-tile leg turning the player
     //  only, taken as walked (console B, 2026-11-09, 00.28 run 2).
     bool confirm_turn = true;
+    //  A dark cave's overworld isn't a battle on its way
+    //  (OverworldWalkSteps::dark_cave_screen()). Without it the check
+    //  before each step watched for a battle on it (console B, 2026-11-09,
+    //  00.28: "running from a wild Pokemon", then "not a battle").
+    bool dark_cave_not_battle = true;
+    //  A stop on an open leg that started in a dark cave may be anywhere on
+    //  the leg (whole_leg()). Without it the stop is placed by the dark
+    //  screen's black, read as the battle at the hold's start: a battle at
+    //  the end of "east 12" on Rock Tunnel B1F was placed 0 to 3 tiles in,
+    //  and the player was found again at a wall 5 tiles off (console B,
+    //  2026-11-09, 00.28).
+    bool whole_leg_in_dark = true;
 };
 
 //  OverworldWalkSteps::turn_to() on `sim`, which reads the facing on the
 //  overworld only; with `confirm` false, the one tap before it.
 void sim_turn_to(OverworldSim& sim, Direction direction, bool confirm = SimWalkerRules{}.confirm_turn);
+
+//  AutoStory's step_once() on `sim`: turns the player if they face another
+//  way, then one step tap.
+void sim_step_once(OverworldSim& sim, Direction direction);
 
 //  The console side of run_route() on an OverworldSim, as
 //  walk_overworld_route_with_recovery() does it, with the story's
@@ -411,6 +461,14 @@ private:
     };
     StepOutcome walk(const RouteStep& step, std::optional<Direction> facing);
     std::optional<WalkedTiles> late_stop(const RouteStep& step);
+    //  stop_tiles(); without SimWalkerRules::whole_leg_in_dark, the dark
+    //  screen places the stop at the hold's start.
+    WalkedTiles dark_stop(const RouteStep& step, WalkedTiles timed) const{
+        if (m_leg_dark && !m_rules.whole_leg_in_dark){
+            return walked_near(step, 0, MovementMechanics::TILE_TIME);
+        }
+        return stop_tiles(step, timed, m_leg_dark);
+    }
     std::optional<WalkedTiles> walk_step(const RouteStep& step, std::optional<Direction> facing);
     bool after_warp(const RouteStep& step, int warps_before, Milliseconds watched_from);
     bool fade_over_since(Milliseconds from) const;
@@ -433,8 +491,10 @@ private:
     std::vector<Interrupt> m_wild;
     std::vector<Interrupt> m_other;
     std::vector<std::string> m_log;
-    //  When the last WALK leg's first hold started, on the sim's clock.
+    //  When the last WALK leg's first hold started, on the sim's clock,
+    //  and whether its map was dark then.
     Milliseconds m_leg_start{0};
+    bool m_leg_dark = false;
 };
 
 
