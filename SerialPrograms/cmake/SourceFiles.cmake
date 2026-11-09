@@ -1834,6 +1834,9 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/Farming/PokemonFRLG_NuggetBridgeFarmer.h
     Source/VideoGames/PokemonFRLG/Programs/Farming/PokemonFRLG_PickupFarmer.cpp
     Source/VideoGames/PokemonFRLG/Programs/Farming/PokemonFRLG_PickupFarmer.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryScreenEvents.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryScreenEvents.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryScreenEvents_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/PokemonFRLG_BattleMenuNavigation.cpp
     Source/VideoGames/PokemonFRLG/Programs/PokemonFRLG_BattleMenuNavigation.h
     Source/VideoGames/PokemonFRLG/Programs/PokemonFRLG_SafariOptimalAction.cpp
