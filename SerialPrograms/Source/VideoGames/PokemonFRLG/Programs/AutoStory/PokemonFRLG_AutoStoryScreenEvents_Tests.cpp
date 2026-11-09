@@ -40,7 +40,7 @@ public:
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        VideoSnapshot frame(ImageRGB32(), WallClock());
+        VideoSnapshot frame;
         if (m_scenario.color != 0){
             ImageRGB32 image(1920, 1080);
             image.fill(m_scenario.color);
