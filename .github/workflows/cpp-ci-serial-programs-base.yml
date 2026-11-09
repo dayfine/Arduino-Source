@@ -115,7 +115,7 @@ jobs:
           from pokesim.story.replay_binding import load_binding
           from pokesim.story.replay_cases import read_cases, check_case
           from pokesim.story.checkpoint_replay import run
-          source = Path('AuthoredStorySource')
+          source = Path('AuthoredStorySource').resolve()
           folder = source / 'data/story/bdsp-mine-pilot'
           native = Path('Arduino-Source/SerialPrograms/Source/PokemonBDSP/Programs/AutoStory/StoryData')
           # The Arduino plan is authoritative; bind these exact bytes explicitly.
