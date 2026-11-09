@@ -71,9 +71,10 @@ inline constexpr Milliseconds FACE_HOLD(40);
 inline constexpr Milliseconds FACE_SETTLE(300);
 //  The release between a leg's hold and what comes next.
 inline constexpr Milliseconds STEP_RELEASE(100);
-//  A one-step tap (step_once()) and the release after it: the next step
-//  tap starts STEP_TAP + STEP_TAP_RELEASE after it, past the lockout.
+//  A one-step tap (step_once()).
 inline constexpr Milliseconds STEP_TAP(66);
+//  The release after a step tap: the next one starts STEP_TAP +
+//  STEP_TAP_RELEASE after it, past the lockout.
 inline constexpr Milliseconds STEP_TAP_RELEASE(700);
 
 static_assert(TURN_TAP <= LONGEST_TAP && FACE_HOLD <= LONGEST_TAP && STEP_TAP <= LONGEST_TAP);

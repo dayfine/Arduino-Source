@@ -258,20 +258,22 @@ std::function<void(OverworldSim&)> turn_then_taps(int count, Milliseconds releas
     };
 }
 
+//  AutoStory's step_once() east `count` times.
+std::function<void(OverworldSim&)> step_once_east(int count){
+    return [=](OverworldSim& sim){
+        for (int c = 0; c < count; c++){
+            sim_step_once(sim, Direction::EAST);
+        }
+    };
+}
+
 const TapMechanicsCase TAP_MECHANICS_CASES[] = {
     {.input = {.name = "133ms facing another way only turns", .presses = taps_east(1, LONGEST_TAP, Milliseconds(700))}, .expectation = {}},
     {.input = {.name = "16ms facing that way steps once", .facing = Direction::EAST, .presses = taps_east(1, Milliseconds(16), Milliseconds(700))}, .expectation = {.steps = 1}},
     {.input = {.name = "3 step taps 566ms apart take 2 steps", .presses = turn_then_taps(3, Milliseconds(500))}, .expectation = {.steps = 2, .ignored = 1}},
     {.input = {.name = "3 step taps 666ms apart take 3 steps", .presses = turn_then_taps(3, Milliseconds(600))}, .expectation = {.steps = 3}},
     {.input = {.name = "3 step taps with no release are one hold", .presses = turn_then_taps(3, Milliseconds(0))}, .expectation = {.steps = 1}},
-    {
-        .input = {.name = "step_once 3 times takes 3 steps", .presses = [](OverworldSim& sim){
-            for (int c = 0; c < 3; c++){
-                sim_step_once(sim, Direction::EAST);
-            }
-        }},
-        .expectation = {.steps = 3},
-    },
+    {.input = {.name = "step_once 3 times takes 3 steps", .presses = step_once_east(3)}, .expectation = {.steps = 3}},
 };
 
 } // namespace
