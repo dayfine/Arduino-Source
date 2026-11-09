@@ -17,6 +17,10 @@ namespace Pokemon{
 
 // Registers unit tests for the shared screen events and the judgements over them.
 void add_tests_ScreenEvents(UnitTestDatabase& database);
+//  The timed screen-event log, the warp judge and the interrupt classifier.
+void add_tests_Interrupts(UnitTestDatabase& database);
+//  The transition tracker and the games' fade profiles.
+void add_tests_Transitions(UnitTestDatabase& database);
 //  Story action tables, the variant parser and the table executor.
 void add_tests_StoryActions(UnitTestDatabase& database);
 // Registers unit tests for story event sequencing and execution.
