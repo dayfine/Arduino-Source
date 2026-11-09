@@ -372,7 +372,7 @@ private:
     GridSim m_sim;
     SimStoryStepIO m_io;
     StoryWalkSteps m_walks;
-    //  The planner's worlds with sim_people() and sim_ground() on them, by world and who.
+    //  The planner's worlds with sim_people() on them, by world and who.
     mutable std::map<std::pair<const StoryWorld*, std::string>, std::unique_ptr<StoryWorld>> m_peopled;
     //  The steps of this row that have run.
     std::set<std::string> m_ran;

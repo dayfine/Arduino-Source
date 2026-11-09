@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <format>
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WildBattlePolicy.h"
 #include "PokemonBDSP_AutoStory_GridSim.h"
 
 namespace PokemonAutomation{
@@ -380,14 +381,67 @@ WalkStop walk_stop(SimStop stop){
     return WalkStop::LIMIT;
 }
 
+//  The escape policy's game steps on a scripted battle.
+class SimWildBattleEscape : public WildBattleEscapeActions{
+public:
+    SimWildBattleEscape(const SimWildBattle& battle, std::vector<std::string>& notes)
+        : m_refusals_left(battle.run_refusals)
+        , m_notes(notes)
+    {}
+    virtual WildRunOutcome run() override{
+        if (m_refusals_left == 0){
+            return WildRunOutcome::ESCAPED;
+        }
+        m_refusals_left--;
+        return WildRunOutcome::TRAPPED;
+    }
+    virtual void fight() override{
+        m_notes.push_back("[Sim escape] Fought with the best move until the battle ended.");
+    }
+    virtual void note(const std::string& text) override{
+        m_notes.push_back("[Sim escape] " + text);
+    }
+
+private:
+    size_t m_refusals_left;
+    std::vector<std::string>& m_notes;
+};
+
 } // namespace
 
+std::optional<SimWallEncounter> GridSimRouteIO::take_wall_encounter(const RouteWallWalk& walk){
+    const auto found = std::find_if(m_wall_encounters.begin(), m_wall_encounters.end(), [&](const SimWallEncounter& encounter){
+        return encounter.direction == walk.direction && encounter.label == walk.label;
+    });
+    if (found == m_wall_encounters.end()){
+        return std::nullopt;
+    }
+    SimWallEncounter encounter = *found;
+    m_wall_encounters.erase(found);
+    return encounter;
+}
+
+void GridSimRouteIO::escape_scripted_battle(const SimWildBattle& battle, const std::string& label){
+    SimWildBattleEscape actions(battle, m_notes);
+    const WildEscapeResult result = escape_wild_battle(actions, WildBattleEscapePolicy());
+    if (result == WildEscapeResult::UNCONFIRMED){
+        note(std::format("escape_wild_battle: {}: the Run attempts ran out without the exit.", label), RouteNote::FAILURE);
+    }
+    const char* ended = result == WildEscapeResult::FOUGHT ? "fought to its end" : "run from";
+    m_notes.push_back(std::format("[Sim] {}: wild battle {}.", label, ended));
+}
+
 WalkResult GridSimRouteIO::walk_to_wall(const RouteWallWalk& walk){
+    size_t wild_battles = 0;
+    if (const auto encounter = take_wall_encounter(walk)){
+        escape_scripted_battle(encounter->battle, walk.label);
+        wild_battles = 1;
+    }
     const SimPace pace = walk.options.pace == DpadPace::RUN ? SimPace::RUN : SimPace::WALK;
     const SimMove move = m_sim.hold(walk.direction, walk.limit, pace);
     m_notes.push_back(std::format("[Sim] {}: held {} to {} at {}.", walk.label, direction_name(walk.direction),
         sim_stop_name(move.stop), to_string(m_sim.player().pos)));
-    WalkResult result{.stop = walk_stop(move.stop), .walked = move.time, .wild_battles = 0, .moved_chunks = (size_t)(move.distance / SIM_TILE)};
+    WalkResult result{.stop = walk_stop(move.stop), .walked = move.time, .wild_battles = wild_battles, .moved_chunks = (size_t)(move.distance / SIM_TILE)};
     result.warp.fade = move.stop == SimStop::WARP ? WarpFade::BLACK : WarpFade::NONE;
     return result;
 }
