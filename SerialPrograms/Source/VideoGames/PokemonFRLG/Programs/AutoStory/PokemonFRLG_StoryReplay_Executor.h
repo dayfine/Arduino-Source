@@ -3,10 +3,13 @@
  */
 #ifndef PokemonAutomation_PokemonFRLG_StoryReplay_Executor_H
 #define PokemonAutomation_PokemonFRLG_StoryReplay_Executor_H
+#include <set>
+#include <string>
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Pokemon/AutoStory/Pokemon_StoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_StorySteps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecovery.h"
+#include "PokemonFRLG_AutoStoryStepInterrupts.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
 #include "PokemonFRLG_StoryReplay_IO.h"
 namespace PokemonAutomation{
@@ -33,7 +36,8 @@ public:
     ReplayExecutor(const ReplayExecutor&) = delete;
     ReplayExecutor& operator=(const ReplayExecutor&) = delete;
     //  FRLG's story action table (story_action_rows()) with ordered authored
-    //  completions and lost-pose handling.
+    //  completions and lost-pose handling, and FRLG's interrupts between
+    //  steps (step_interrupts()) on the scenario's scripted screens.
     virtual Pokemon::Outcome run(Pokemon::RunState& state, const StoryStep& step) override;
     //  Build the existing checkpoint, keeping its from_save initializer explicit.
     Pokemon::Checkpoint build();
@@ -55,6 +59,11 @@ private:
     void timed_plan(const StoryStep& step, const std::vector<RouteStep>& route);
     void lose_pose(std::string basis);
     void observe_interruption(const OverworldPose& predicted);
+    //  The screen before the active step: the scenario's interrupt before
+    //  it (between_steps), shown once, else nothing.
+    Pokemon::ScreenLook look();
+    //  Each kind recorded as an action; a warp loses the pose.
+    StepInterruptActions interrupt_actions();
     const ReplayData* m_data;
     const JsonObject* m_scenario;
     OverworldPose m_pose;
@@ -75,6 +84,8 @@ private:
     ReplayStepGuard m_guard;
     Pokemon::StoryActionTable m_table;
     Pokemon::TableExecutor m_executor;
+    Pokemon::StoryInterrupts m_interrupts;
+    std::set<std::string> m_shown;
 };
 } // namespace StoryReplayInternal
 } // namespace PokemonFRLG
