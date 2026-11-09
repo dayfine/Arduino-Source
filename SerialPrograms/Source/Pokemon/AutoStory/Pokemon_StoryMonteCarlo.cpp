@@ -58,6 +58,7 @@ DisturbancePlan make_disturbance_plan(uint64_t seed, const DisturbanceRates& rat
     if (fades > 0 && holds.chance(rates.missed_hold)){
         plan.missed_hold = (size_t)holds.between(0, (int64_t)fades - 1);
     }
+    plan.dialogs = SimRandom(root.next());
     return plan;
 }
 

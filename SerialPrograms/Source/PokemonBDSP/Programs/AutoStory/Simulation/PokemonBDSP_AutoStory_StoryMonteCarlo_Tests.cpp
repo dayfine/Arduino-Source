@@ -10,7 +10,9 @@
  *  failure kinds with a seed that reproduces each, and fails only below the
  *  row's pinned floor. The old 01.03 test shows the harness finds the two
  *  failures lab-B met on 2026-11-08. Each row's seeds that pass with no
- *  miss run again with one fade's hold unseen, and must pass again.
+ *  miss run again with one fade's hold unseen, and must pass again. With
+ *  dialogs popping up between steps, a seed that passes without them
+ *  must pass with them, the executor clearing them before each step.
  *
  */
 
@@ -18,6 +20,7 @@
 #include <format>
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Time.h"
@@ -97,11 +100,29 @@ Pokemon::DisturbanceRates stress_rates(){
     return rates;
 }
 
+//  What the executor does with a dialog that pops up between steps.
+enum class PoppedDialog{
+    CLEARED,    //  cleared before the next step, as the console does
+    LEFT_UP,    //  left up, as before the executor looked (SimWorldKnobs::clear_interrupts)
+};
+
 //  Row `row` of `rows`, disturbed by `seed`, logging to `logger`.
-SeedOutcome run_seed(Logger& logger, const std::vector<StoryCheckpoint>& rows, const RowNoise& noise_of, const std::string& row, uint64_t seed){
+SeedOutcome run_seed(
+    Logger& logger, const std::vector<StoryCheckpoint>& rows, const RowNoise& noise_of, const std::string& row, uint64_t seed,
+    PoppedDialog popped = PoppedDialog::CLEARED
+){
     const SimMisses& clean = noise_of.clean;
     SimDisturbance noise(Pokemon::make_disturbance_plan(seed, noise_of.rates, clean.fades, clean.banners));
-    SimExecutor executor(logger, {.fade = noise.plan().missed_fade, .banner = noise.plan().missed_banner, .hold = noise.plan().missed_hold}, {.noise = &noise});
+    Pokemon::SimRandom dialogs = noise.plan().dialogs;
+    const double dialog_rate = noise_of.rates.dialog_between_steps;
+    SimWorldKnobs knobs{
+        .dialog_before = [&dialogs, dialog_rate](const std::string&, const std::string&){
+            return dialog_rate > 0 && dialogs.chance(dialog_rate);
+        },
+        .clear_interrupts = popped == PoppedDialog::CLEARED,
+        .noise = &noise,
+    };
+    SimExecutor executor(logger, {.fade = noise.plan().missed_fade, .banner = noise.plan().missed_banner, .hold = noise.plan().missed_hold}, std::move(knobs));
     try{
         const Pokemon::SegmentReport report = run_rows_on(executor, logger, {.from = row, .to = row}, rows);
         logger.log(std::format("[Sim] {}: {} wild battle(s) over {} grass and {} cave tiles.", describe(noise.plan()),
@@ -194,6 +215,68 @@ UnitTestResult test_row(Logger& logger, const std::string& row, size_t floor){
             floor, Pokemon::format_report(report));
     }
     return true;
+}
+
+
+//  The chance a dialog pops up before a step, in the test that pops them,
+//  and its seeds a row: each runs three times, so fewer than a row's own.
+constexpr double DIALOG_RATE = 0.1;
+constexpr size_t DIALOG_SEEDS = 5;
+
+//  How a row's seeds fare with dialogs popping up between steps: without
+//  them, with them cleared before each step, and with them left up (the
+//  executor before it looked). Seeds that pass without them and fail with
+//  them cleared, as "row plan: step kind".
+struct DialogRowReport{
+    size_t runs = 0;
+    size_t plain = 0;
+    size_t cleared = 0;
+    size_t left = 0;
+    std::vector<std::string> regressions;
+};
+void run_row_dialogs(DialogRowReport& out, const std::vector<StoryCheckpoint>& rows, const std::string& row, size_t seeds){
+    const RowNoise plain{.clean = looked_for(rows, row), .rates = {}};
+    RowNoise popping = plain;
+    popping.rates.dialog_between_steps = DIALOG_RATE;
+    for (uint64_t seed : Pokemon::story_seeds(seeds)){
+        SilentLogger silent;
+        const bool passes = run_seed(silent, rows, plain, row, seed).passed;
+        const SeedOutcome cleared = run_seed(silent, rows, popping, row, seed);
+        const bool left = run_seed(silent, rows, popping, row, seed, PoppedDialog::LEFT_UP).passed;
+        out.runs++;
+        out.plain += passes ? 1 : 0;
+        out.cleared += cleared.passed ? 1 : 0;
+        out.left += left ? 1 : 0;
+        if (passes && !cleared.passed){
+            out.regressions.push_back(std::format("{} {}: {} {}", row, cleared.detail, cleared.failed_step, cleared.kind));
+        }
+    }
+}
+
+//  Every row to 01.11, its seeds with dialogs popping up between steps
+//  (DIALOG_RATE a step): one that passes without them must pass with them.
+UnitTestResult test_dialogs_between_steps(Logger& logger){
+    const std::vector<StoryCheckpoint> rows = story_checkpoints();
+    const size_t seeds = Pokemon::seed_count(SEEDS_VARIABLE, DIALOG_SEEDS);
+    DialogRowReport report;
+    for (const StoryCheckpoint& row : rows){
+        if (row.id > "01.11"){
+            continue;
+        }
+        run_row_dialogs(report, rows, row.id, seeds);
+    }
+    logger.log(std::format(
+        "Dialogs between steps, {} runs: {} pass without them, {} with them cleared, {} with them left up.",
+        report.runs, report.plain, report.cleared, report.left
+    ));
+    if (report.regressions.empty()){
+        return true;
+    }
+    std::string out = "Seeds that pass without dialogs between steps fail with them cleared:";
+    for (const std::string& line : report.regressions){
+        out += "\n  " + line;
+    }
+    return out;
 }
 
 
@@ -355,6 +438,10 @@ const StoryMonteCarloCase AUTO_STORY_MONTE_CARLO_CASES[] = {
     {.input = {"01.11"}, .expectation = {.floor = 100}},
     {
         .input = {"the old 01.03 fails across Roark's room and at the Center's door (lab-B, 2026-11-08)", test_old_0103},
+        .expectation = {},
+    },
+    {
+        .input = {"dialogs pop up between steps, 00.00 to 01.11", test_dialogs_between_steps},
         .expectation = {},
     },
 };

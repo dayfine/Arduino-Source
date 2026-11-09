@@ -105,6 +105,10 @@ struct DisturbanceRates{
     //  fall and the scene after show. 0 in the rates measured; 1 in the
     //  tests that every seed survives it.
     double missed_hold = 0;
+    //  The chance someone walks up and talks to the player before a step
+    //  (a dialog between two steps, cleared by the executor's look). Not
+    //  measured: 0 in the rates measured, set by the tests that pop them.
+    double dialog_between_steps = 0;
 };
 
 //  One seed's disturbances: independent random streams for each kind, so a
@@ -122,6 +126,9 @@ struct DisturbancePlan{
     std::optional<size_t> missed_fade;
     std::optional<size_t> missed_banner;
     std::optional<size_t> missed_hold = std::nullopt;
+    //  Whether a dialog pops up before each step, drawn last from the
+    //  seed, so the other draws do not move with it.
+    SimRandom dialogs = SimRandom();
 };
 //  The plan for `seed`, for a row whose undisturbed run looks for `fades`
 //  fades and `banners` banners.
