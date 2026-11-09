@@ -848,19 +848,20 @@ StoryCheckpoint through_the_ravaged_path(){
 }
 
 //  01.10: the line a human walked up Route 204's north half (2026-10-31,
-//  r246a to r251a), corner to corner (Test_Route204NorthLine checks each
-//  stretch is one straight leg), then north between the flower beds into
-//  Floaroma. Its trainers who see us are fought: Taylor on the line, the
-//  Twins as a pair.
+//  r246a to r251a; Test_Route204NorthLine), then north up column 11 until
+//  Floaroma's banner, which reads on (11, 27..29): the column has no wall
+//  north, so a wild battle on an open leg to the line's last corner (11, 5)
+//  found no plan back (lab-B 2026-11-08 18:17:53). Taylor and the Twins fight.
+Pose into_floaroma(){ return Pokemon::tile_pose(FLOAROMA, {TilePos{11, 27}, TilePos{11, 28}, TilePos{11, 29}}, NORTH); }
 StoryCheckpoint route_204_to_floaroma(){
     std::vector<StoryStep> steps;
     const std::vector<TilePos> line = map_region(ROUTE_204_NORTH, "floaroma_waypoints");
-    for (size_t i = 0; i < line.size(); i++){
+    for (size_t i = 0; i + 1 < line.size(); i++){
         steps.push_back(route(std::format("line_{}", i + 1), Pokemon::tile_pose(ROUTE_204_NORTH, {line[i]}),
             "a corner of the human's line", "line"));
     }
-    //  01.11 walks on from here: west 8 along row 29, north to the old woman.
-    steps.push_back(route("into_floaroma", at(FLOAROMA, "route_204_arrival", NORTH), "north up column 11 into Floaroma", "line"));
+    steps.push_back(anchored(legs("into_floaroma", {{.direction = NORTH, .tiles = 17}},
+        "run north until Floaroma's banner; on after a wild battle", "to_map"), into_floaroma()));
     steps.push_back(save());
     return row("01.10", "Route 204 to Floaroma", at(ROUTE_204_NORTH, "cave_exit", SOUTH), std::move(steps));
 }
@@ -890,12 +891,12 @@ std::vector<StoryCheckpoint> to_oreburgh(){
 //  01.11 on Floaroma's map: the old woman (3, 25) and the old man (2, 25)
 //  west of her stand still above the flower field's bottom row (r251a).
 //  The walk to her is the one that ran on the console: 8 taps west along
-//  row 29, then north until she stops us (r250a: 3 steps, then bumps).
+//  row 29 (or 27, 28), then north until she stops us (r250a: 3 steps, bumps).
 StoryCheckpoint floaromas_old_couple(){
     const Pose below_the_old_woman = next_to(FLOAROMA, "old_woman", SOUTH, NORTH);
     const Pose below_the_old_man = next_to(FLOAROMA, "old_man", SOUTH, NORTH);
-    return row("01.11", "Floaroma's old couple", at(FLOAROMA, "route_204_arrival", NORTH), {
-        legs("west_along_the_field", {{.direction = WEST, .tiles = 8}}, "8 taps west along row 29"),
+    return row("01.11", "Floaroma's old couple", into_floaroma(), {
+        legs("west_along_the_field", {{.direction = WEST, .tiles = 8}}, "8 taps west along the row we stopped on"),
         anchored(to_walls("up_to_the_old_woman", {{.direction = NORTH, .tiles = 5}}, "north until she stops us"),
             below_the_old_woman),
         talk("old_woman", "she gives Mew when a Let's Go save is on the console"),

@@ -469,6 +469,38 @@ std::optional<std::vector<PlannedLeg>> plan_robust_route(
     return RobustSearch(world, costs).run(from, goal);
 }
 
+long long robust_route_cost(
+    const StoryWorld& world,
+    const std::vector<TilePos>& from, const std::vector<PlannedLeg>& legs,
+    const RobustPlanCosts& costs
+){
+    long long total = 0;
+    Spread spread = from;
+    normalize(spread);
+    const TileLeg* previous = nullptr;
+    for (const PlannedLeg& planned : legs){
+        const TileLeg& leg = planned.leg;
+        const std::optional<Expansion> expansion = leg.ends_at_wall
+            ? to_wall_leg(world, spread, leg.direction, costs)
+            : open_leg(world, spread, leg.direction, (int)leg.tiles, costs);
+        long long cost = (long long)costs.per_leg + (long long)costs.per_tile * (long long)leg.tiles;
+        if (!leg.ends_at_wall){
+            cost += costs.leg_not_at_wall + (long long)costs.per_open_tile * (long long)leg.tiles;
+        }
+        if (expansion){
+            cost = expansion->cost;
+        }
+        if (previous != nullptr && previous->direction == leg.direction && !previous->ends_at_wall){
+            cost -= costs.per_leg;
+        }
+        total += cost;
+        spread = planned.after;
+        normalize(spread);
+        previous = &leg;
+    }
+    return total;
+}
+
 
 
 } // namespace PokemonBDSP
