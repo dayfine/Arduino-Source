@@ -9,6 +9,7 @@
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonFramework/StaticGlobals.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryScreenEvents.h"
 #include "Inference/Box/PokemonFRLG_BoxCellOccupiedDetector.h"
 #include "Inference/Box/PokemonFRLG_BoxCellReader.h"
 #include "Inference/Box/PokemonFRLG_BoxGenderReader.h"
@@ -892,6 +893,7 @@ static void add_tests_AutoStoryReaders(UnitTestDatabase& database){
     add_tests_SaveCardReader(database);
     add_tests_SummaryMovesReader(database);
     add_tests_TeachScreenReader(database);
+    add_tests_AutoStoryScreenEvents(database);
 }
 
 void add_tests(UnitTestDatabase& database){
