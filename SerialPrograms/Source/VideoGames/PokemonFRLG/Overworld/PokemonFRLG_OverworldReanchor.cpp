@@ -17,6 +17,9 @@ namespace PokemonFRLG{
 namespace{
 
 constexpr size_t MAX_HOLDS = 3;
+//  How many of the route's steps after a leg walked on may go by before
+//  they find the player.
+constexpr size_t MAX_WALK_ON_STEPS = 4;
 
 Direction opposite(Direction direction){
     return (Direction)(((int)direction + 2) % 4);
@@ -173,11 +176,6 @@ std::optional<std::pair<std::vector<Hypothesis>, RouteStep>> hold_all(
         hold.end = wall->end;
     }
     return std::make_pair(std::move(ends), hold);
-}
-
-//  Whether `step` is a hold to a wall.
-bool is_hold(const RouteStep& step){
-    return step.action == RouteAction::WALK && step.to_wall && !step.warps;
 }
 
 using Found = Pokemon::WallAnchor<MapPosition, RouteStep>;
@@ -510,19 +508,28 @@ struct WayOn{
     MapPosition at;
 };
 
-//  `hold` from where each of `ways` stands. False if any isn't stopped by a
-//  wall, or may be stopped short by a person.
-bool hold_ways(const std::vector<MapData>& maps, const RouteStep& hold, std::vector<WayOn>& ways){
+//  `step`, a hold to a wall or an open leg onto no warp, from where each of
+//  `ways` stands. False if a hold isn't stopped by a wall, an open leg is
+//  stopped short, or either may be stopped short by a person.
+bool walk_ways(const std::vector<MapData>& maps, const RouteStep& step, std::vector<WayOn>& ways){
+    if (step.action != RouteAction::WALK || step.warps || !step.connection_steps.empty()){
+        return false;
+    }
     for (WayOn& way : ways){
-        const std::optional<WallHold> wall = hold_to_wall(maps, way.at, hold.surfing, hold.direction);
-        if (!wall || person_on_the_way(maps, way.at, hold.surfing, hold.direction, *wall)){
+        std::optional<WallHold> walked = step.to_wall
+            ? hold_to_wall(maps, way.at, step.surfing, step.direction)
+            : std::optional<WallHold>(WallHold{.end = way.at, .tiles = step.tiles});
+        if (!walked || person_on_the_way(maps, way.at, step.surfing, step.direction, *walked)){
             return false;
         }
-        RouteStep held = hold;
-        held.tiles = wall->tiles;
+        RouteStep held = step;
+        held.tiles = walked->tiles;
         const std::vector<MapPosition> tiles = leg_tiles(maps, way.at, held);
+        if (tiles.size() != (size_t)held.tiles + 1){
+            return false;
+        }
         way.tiles.insert(way.tiles.end(), tiles.begin() + 1, tiles.end());
-        way.at = wall->end;
+        way.at = tiles.back();
     }
     return true;
 }
@@ -575,18 +582,26 @@ std::optional<Resume> plan_resume(
     if (!remaining){
         return std::nullopt;
     }
-    RouteStep rest = step;
-    rest.tiles = *remaining;
-    std::optional<std::vector<WayOn>> ways = walk_rest(maps, candidates, rest);
+    Resume resume{.rest = step, .steps = 0, .starts = {{}}};
+    resume.rest.tiles = *remaining;
+    for (const StopCandidate& candidate : candidates){
+        resume.starts[0].push_back(candidate.player);
+    }
+    std::optional<std::vector<WayOn>> ways = walk_rest(maps, candidates, resume.rest);
     //  The way as planned, from the leg's end.
     std::vector<WayOn> planned{WayOn{{step.end}, step.end}};
-    for (size_t c = 0; ways && c < after.size() && c < MAX_HOLDS; c++){
-        if (!is_hold(after[c]) || !hold_ways(maps, after[c], *ways) || !hold_ways(maps, after[c], planned)){
+    for (size_t c = 0; ways && c < after.size() && c < MAX_WALK_ON_STEPS; c++){
+        resume.starts.emplace_back();
+        for (const WayOn& way : *ways){
+            resume.starts.back().push_back(way.at);
+        }
+        if (!walk_ways(maps, after[c], *ways) || !walk_ways(maps, after[c], planned)){
             return std::nullopt;
         }
-        const bool found = std::all_of(ways->begin(), ways->end(), [&](const WayOn& way){ return way.at == after[c].end; });
+        const bool found = after[c].to_wall && std::all_of(ways->begin(), ways->end(), [&](const WayOn& way){ return way.at == after[c].end; });
         if (found){
-            return off_way_in_sight(maps, *ways, planned[0].tiles) ? std::nullopt : std::optional<Resume>(Resume{rest, c + 1});
+            resume.steps = c + 1;
+            return off_way_in_sight(maps, *ways, planned[0].tiles) ? std::nullopt : std::optional<Resume>(std::move(resume));
         }
     }
     return std::nullopt;

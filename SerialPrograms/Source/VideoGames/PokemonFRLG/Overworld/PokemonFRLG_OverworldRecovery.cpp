@@ -335,11 +335,11 @@ private:
     //  of a leg walked on after a stop (walk_on()) starts on any of the
     //  tiles that stop left the player on.
     std::vector<StopCandidate> candidates_on(const RouteStep& step, const std::optional<MapPosition>& start, WalkedTiles walked) const{
-        if (m_next != 0 || m_walk_on_starts.empty()){
+        if (m_next >= m_walk_on_starts.size()){
             return stop_candidates(*maps(), start, step, walked);
         }
         std::vector<StopCandidate> candidates;
-        for (const MapPosition& from : m_walk_on_starts){
+        for (const MapPosition& from : m_walk_on_starts[m_next]){
             for (const StopCandidate& candidate : stop_candidates(*maps(), from, step, walked)){
                 if (std::find(candidates.begin(), candidates.end(), candidate) == candidates.end()){
                     candidates.push_back(candidate);
@@ -358,6 +358,15 @@ private:
         const RouteStep& step, const StepOutcome& outcome,
         const std::optional<MapPosition>& start, const std::optional<TrainerCrossing>& crossing
     ){
+        if (outcome.end == StepEnd::STOPPED && step.wild){
+            //  Where wild battles start, one on the first step held again
+            //  after another interrupt stops the hold the same way: Cooper's
+            //  battle, then a wild one, on Rock Tunnel B1F's column 1 (the
+            //  sim, 2026-11-09). Walked again, as after any stop; a sign
+            //  that interrupts every hold ends the route at MAX_ROUTE_STOPS.
+            m_lines.end(step, std::nullopt, EndBasis::UNKNOWN, "interrupted again right away where wild battles start; walking it again");
+            return true;
+        }
         if (outcome.end == StepEnd::STOPPED){
             //  Interrupted at once, hold after hold: by something on the
             //  way that speaks, a sign, which the plan didn't have there.
@@ -426,22 +435,21 @@ private:
     }
 
     //  The plan from here: the rest of `step`, the stopped leg m_plan[m_next],
-    //  from the middle of `candidates`, then the old plan after it, whose
-    //  first `resume.holds` steps find the player. The player still faces
-    //  the leg's way: a turn tap first would step a tile.
-    void walk_on(const RouteStep& step, const Resume& resume, const std::vector<StopCandidate>& candidates){
+    //  then the old plan after it, whose first `resume.steps` steps find the
+    //  player. The player still faces the leg's way: a turn tap first would
+    //  step a tile.
+    void walk_on(const RouteStep& step, const Resume& resume){
         std::vector<RouteStep> plan;
-        m_walk_on_starts.clear();
+        m_walk_on_starts = resume.starts;
         if (resume.rest.tiles > 0){
             plan.push_back(resume.rest);
-            for (const StopCandidate& candidate : candidates){
-                m_walk_on_starts.push_back(candidate.player);
-            }
+        }else{
+            m_walk_on_starts.erase(m_walk_on_starts.begin());
         }
         plan.insert(plan.end(), m_plan.begin() + m_next + 1, m_plan.end());
         m_plan = std::move(plan);
         m_walked.reset();
-        m_holds = (resume.rest.tiles > 0 ? 1 : 0) + resume.holds;
+        m_holds = (resume.rest.tiles > 0 ? 1 : 0) + resume.steps;
         m_unchecked = m_holds;
         m_next = 0;
         m_at = std::nullopt;
@@ -463,10 +471,10 @@ private:
         const std::vector<RouteStep> after(m_plan.begin() + m_next + 1, m_plan.end());
         if (const std::optional<Resume> resume = plan_resume(*maps(), candidates, step, after)){
             m_calls.log(std::format(
-                "Route: walking on {} tiles along {}; the next {} hold(s) find the player from every one of those tiles.",
-                resume->rest.tiles, to_string(step), resume->holds
+                "Route: walking on {} tiles along {}; the next {} step(s) find the player from every one of those tiles.",
+                resume->rest.tiles, to_string(step), resume->steps
             ));
-            walk_on(step, *resume, candidates);
+            walk_on(step, *resume);
             return true;
         }
         const std::optional<Reanchor> anchor = candidates.empty()
@@ -511,7 +519,7 @@ private:
     size_t m_holds = 0;     //  of the plan, holds to walls that find the player
     size_t m_unchecked = 0; //  of the plan, the holds and the way back after them
     std::optional<Walked> m_walked;     //  the step walked last, if it may have stopped part-way
-    std::vector<MapPosition> m_walk_on_starts;  //  where the plan's first step, a leg walked on, may start
+    std::vector<std::vector<MapPosition>> m_walk_on_starts;  //  after walking on: where each of the plan's first steps may start
 };
 
 } // namespace
