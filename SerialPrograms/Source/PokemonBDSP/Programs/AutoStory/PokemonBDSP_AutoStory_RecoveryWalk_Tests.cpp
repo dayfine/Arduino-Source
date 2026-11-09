@@ -644,24 +644,25 @@ const MineExitCase MINE_EXIT_CASES[] = {
         .expectation = {.below_the_door = false, .west_of_column_46 = std::nullopt}},
 };
 
-//  A wild battle after the third tile of the first walk north of more than
-//  three tiles, tapped or run until a banner; the walk goes on after it, as
-//  walk_tiles_dpad() and walk_until_dpad() go on after running.
+//  A wild battle after `tiles` tiles of the first walk north longer than
+//  that, tapped or run until a banner (none if 0); the walk goes on after
+//  it, as walk_tiles_dpad() and walk_until_dpad() go on after running.
 class ColumnBattle{
 public:
-    explicit ColumnBattle(std::vector<std::string>& notes) : m_notes(notes){}
-    //  Whether the battle comes after `tile` tiles of a walk `direction`.
+    ColumnBattle(std::vector<std::string>& notes, size_t tiles) : m_notes(notes), m_tiles(tiles){}
+    size_t tiles() const{ return m_tiles; }
+    //  Whether the battle comes after `tile` tiles of a walk of `tiles` `direction`.
     bool after(Direction direction, size_t tiles, size_t tile){
-        if (m_taken || direction != Direction::NORTH || tiles <= BATTLE_AFTER || tile != BATTLE_AFTER){
+        if (m_taken || m_tiles == 0 || direction != Direction::NORTH || tiles <= m_tiles || tile != m_tiles){
             return false;
         }
         m_taken = true;
         m_notes.push_back(std::format("[Sim] a wild battle after {} tiles north.", tile));
         return true;
     }
-    static constexpr size_t BATTLE_AFTER = 3;
 private:
     std::vector<std::string>& m_notes;
+    size_t m_tiles;
     bool m_taken = false;
 };
 
@@ -671,11 +672,11 @@ public:
         : GridSimRouteIO(sim, notes), m_battle(battle)
     {}
     virtual WalkResult walk_taps(Direction direction, size_t tiles, const std::string& label) override{
-        if (!m_battle.after(direction, tiles, ColumnBattle::BATTLE_AFTER)){
+        if (!m_battle.after(direction, tiles, m_battle.tiles())){
             return GridSimRouteIO::walk_taps(direction, tiles, label);
         }
-        WalkResult result = GridSimRouteIO::walk_taps(direction, ColumnBattle::BATTLE_AFTER, label);
-        const WalkResult rest = GridSimRouteIO::walk_taps(direction, tiles - ColumnBattle::BATTLE_AFTER, label);
+        WalkResult result = GridSimRouteIO::walk_taps(direction, m_battle.tiles(), label);
+        const WalkResult rest = GridSimRouteIO::walk_taps(direction, tiles - m_battle.tiles(), label);
         result.stop = rest.stop;
         result.walked += rest.walked;
         result.moved_chunks += rest.moved_chunks;
@@ -720,13 +721,24 @@ private:
 //  on (11, 5..11) into Floaroma (lab-B 2026-11-08 18:17:53): a wild battle
 //  on "north 7 (open)" to (11, 5) left (11, 5..12), and no plan came, for
 //  column 11 has no wall to the north and no other wall brings those tiles
-//  together. The table's steps after line 6, with a wild battle three tiles
-//  up, must end in Floaroma where the row's last walk says.
-UnitTestResult test_line_7_battle_reaches_floaroma(Logger& logger){
+//  together. The table's steps after line 6, with a wild battle the input's
+//  tiles up, must end in Floaroma where the row's last walk says.
+struct LineSevenInput{
+    std::string name;
+    size_t battle_after_tiles = 0;
+};
+struct LineSevenExpectation{
+};
+struct LineSevenCase{
+    LineSevenInput input;
+    LineSevenExpectation expectation;
+};
+
+UnitTestResult test_line_7_battle_reaches_floaroma(Logger& logger, const LineSevenInput& input){
     const StoryWorld& world = *story_plan_world("Route204North", "FloaromaTown");
     GridSim sim({.world = &world}, story_to_world(world, "Route204North", {11, 12}), Direction::WEST, true);
     std::vector<std::string> notes;
-    ColumnBattle battle(notes);
+    ColumnBattle battle(notes, input.battle_after_tiles);
     ColumnBattleRouteIO route(sim, notes, battle);
     BannerStepIO io(route, sim, battle);
     StoryWalkSteps walks(io);
@@ -772,10 +784,20 @@ UnitTestResult test_line_7_battle_reaches_floaroma(Logger& logger){
 
 class Test_LineSevenBattle : public UnitTest{
 public:
-    Test_LineSevenBattle() : UnitTest("PokemonBDSP::AutoStory - Recovery walk: 01.10 a wild battle on the last line reaches Floaroma (lab-B, 2026-11-08)"){}
+    explicit Test_LineSevenBattle(LineSevenCase data)
+        : UnitTest("PokemonBDSP::AutoStory - Recovery walk: 01.10 into Floaroma, " + data.input.name), m_case(std::move(data))
+    {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
-        return test_line_7_battle_reaches_floaroma(logger);
+        return test_line_7_battle_reaches_floaroma(logger, m_case.input);
     }
+private:
+    LineSevenCase m_case;
+};
+
+const LineSevenCase LINE_SEVEN_CASES[] = {
+    {.input = {.name = "no battle", .battle_after_tiles = 0}, .expectation = {}},
+    {.input = {.name = "a wild battle 3 tiles up (lab-B, 2026-11-08)", .battle_after_tiles = 3}, .expectation = {}},
+    {.input = {.name = "a wild battle 6 tiles up", .battle_after_tiles = 6}, .expectation = {}},
 };
 
 } // namespace
@@ -807,7 +829,9 @@ void add_tests_AutoStory_RecoveryWalk(UnitTestDatabase& database){
     for (const MineExitCase& scenario : MINE_EXIT_CASES){
         database.add<Test_MineExit>(scenario);
     }
-    database.add<Test_LineSevenBattle>();
+    for (const LineSevenCase& scenario : LINE_SEVEN_CASES){
+        database.add<Test_LineSevenBattle>(scenario);
+    }
 }
 } // namespace PokemonBDSP
 } // namespace NintendoSwitch
