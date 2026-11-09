@@ -405,6 +405,35 @@ UnitTestResult test_describe(){
     return true;
 }
 
+//  The failed hook hears of each failed attempt and verify run, before the
+//  reload that would take the failure off the screen.
+UnitTestResult test_failed_hook_before_reload(){
+    Lab lab;
+    lab.world.walk_failures = 10;
+    Segment segment = twinleaf_to_sandgem(lab.world);
+    SegmentHooks hooks = lab.hooks();
+    hooks.failed = [&lab](const std::string& checkpoint, const std::string& event, const Outcome& failure){
+        lab.world.trace.push_back("failed " + checkpoint + " " + event + " " + to_string(failure));
+    };
+    RunState state;
+    run_segment(state, segment, SegmentRange{}, SegmentPolicy{.attempts_per_checkpoint = 2}, hooks);
+    const std::string failed = "failed 00.02 walk_south blocked: a wanderer on the path";
+    const std::vector<std::string> expected = {"walk_out", "save", "walk_south", failed, "reload", "walk_south", failed};
+    if (lab.world.trace != expected){
+        return "Expected each failed attempt told before its reload:" + lab.all();
+    }
+    lab.world.trace.clear();
+    lab.world.walk_failures = 1;
+    lab.saved = lab.world;
+    lab.saved.map = "Route 201";
+    lab.world.map = "Route 201";
+    verify_checkpoint(state, segment, "00.02", VerifyPolicy{}, hooks);
+    if (lab.world.trace.size() < 2 || lab.world.trace[1] != failed){
+        return "Expected the failed verify run told:" + lab.all();
+    }
+    return true;
+}
+
 
 struct StorySegmentInput{
     std::string name;
@@ -435,6 +464,10 @@ private:
 };
 
 const StorySegmentTestCase STORY_SEGMENT_CASES[] = {
+    {
+        .input = {.name = "failed hook before reload", .test = test_failed_hook_before_reload},
+        .expectation = {.description = "tells the game of each failed attempt while the failure is on screen"},
+    },
     {
         .input = {.name = "checkpoints run in order", .test = test_runs_checkpoints_in_order},
         .expectation = {.description = "executes sequential checkpoints and saves state"},
@@ -484,6 +517,9 @@ void add_tests_StorySegments(UnitTestDatabase& database){
     for (const auto& scenario : STORY_SEGMENT_CASES){
         database.add<Test_StorySegments>(scenario);
     }
+    //  The failure capture is what the games attach to the segment's
+    //  failed hook; its tests run with the segment's.
+    add_tests_AutoStoryFailureCapture(database);
 }
 
 

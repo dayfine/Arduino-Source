@@ -31,6 +31,9 @@ void add_tests_StoryEvents(UnitTestDatabase& database);
 void add_tests_StorySegments(UnitTestDatabase& database);
 // Registers unit tests for high-level story step dispatching and table conversion.
 void add_tests_StorySteps(UnitTestDatabase& database);
+//  The failure capture's folder names, its JSON and the step a status line
+//  names. Registered by add_tests_StorySegments().
+void add_tests_AutoStoryFailureCapture(UnitTestDatabase& database);
 
 
 
