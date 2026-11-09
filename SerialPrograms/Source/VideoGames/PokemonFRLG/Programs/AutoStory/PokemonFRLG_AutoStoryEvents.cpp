@@ -623,11 +623,6 @@ void keep_next_start_frame(StoryEnv& env, const std::string& ended){
 
 } // namespace
 
-void use_start_frames(StoryEnv& env, bool keep_first){
-    env.start_frames = program_start_frames();
-    env.keep_start_frame = keep_first;
-}
-
 Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor& executor){
     executor.set_menu(data.menu);
     StoryEnv& env = executor.env();

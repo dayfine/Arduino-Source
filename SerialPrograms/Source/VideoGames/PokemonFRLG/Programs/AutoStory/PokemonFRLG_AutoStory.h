@@ -47,6 +47,7 @@ private:
     //  every game's AutoStory.
     Pokemon::StoryRunOptions RUN;
     BooleanCheckBoxOption NEW_GAME_FROM_TITLE;
+    //  The save loaded was made by hand: keep the screen as its start frame.
     BooleanCheckBoxOption KEEP_START_FRAME;
     EventNotificationsOption NOTIFICATIONS;
 };

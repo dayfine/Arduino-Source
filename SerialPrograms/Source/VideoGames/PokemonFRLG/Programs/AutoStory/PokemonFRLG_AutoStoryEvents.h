@@ -169,12 +169,6 @@ struct StoryEnv{
     bool keep_start_frame = false;
 };
 
-//  The console's start check compares with the program's start frames
-//  (program_start_frames()); `keep_first`: the first start check keeps the
-//  screen as its checkpoint's frame instead (the option for a save made by
-//  hand).
-void use_start_frames(StoryEnv& env, bool keep_first);
-
 //  After a save is loaded for a checkpoint that starts on `start_map`: the
 //  save card's place, read from the START menu, against it, at every checks
 //  level. Empty if the save is there (or the card can't be read), else why

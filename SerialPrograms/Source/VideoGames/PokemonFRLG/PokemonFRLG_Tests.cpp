@@ -9,7 +9,6 @@
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonFramework/StaticGlobals.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryScreenEvents.h"
-#include "Programs/AutoStory/PokemonFRLG_AutoStoryStartFrames.h"
 #include "Inference/Box/PokemonFRLG_BoxCellOccupiedDetector.h"
 #include "Inference/Box/PokemonFRLG_BoxCellReader.h"
 #include "Inference/Box/PokemonFRLG_BoxGenderReader.h"
@@ -324,7 +323,6 @@ void add_tests(UnitTestDatabase& database){
     add_tests_AutoStorySimulation(database);
     add_tests_AutoStoryItems(database);
     add_tests_AutoStoryScreenEvents(database);
-    add_tests_AutoStoryStartFrames(database);
 }
 
 

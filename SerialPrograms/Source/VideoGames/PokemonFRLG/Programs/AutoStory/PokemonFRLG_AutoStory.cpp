@@ -50,6 +50,11 @@ const StringSelectDatabase& checkpoint_database(){
     return database;
 }
 
+const char* const KEEP_START_FRAME_TEXT =
+    "<b>Keep the start frame:</b><br>Off by default. The save loaded was made by hand where the start checkpoint "
+    "begins: keep the screen after loading it as that checkpoint's start frame, which later runs compare their "
+    "save with. The program keeps one by itself at each save it makes.";
+
 } // namespace
 
 AutoStory::AutoStory()
@@ -60,13 +65,7 @@ AutoStory::AutoStory()
         LockMode::LOCK_WHILE_RUNNING,
         true
     )
-    , KEEP_START_FRAME(
-        "<b>Keep the start frame:</b><br>Off by default. The save loaded was made by hand where the start checkpoint "
-        "begins: keep the screen after loading it as that checkpoint's start frame, which later runs compare their "
-        "save with. The program keeps one by itself at each save it makes.",
-        LockMode::LOCK_WHILE_RUNNING,
-        false
-    )
+    , KEEP_START_FRAME(KEEP_START_FRAME_TEXT, LockMode::LOCK_WHILE_RUNNING, false)
     , NOTIFICATIONS({
         &NOTIFICATION_PROGRAM_FINISH,
         &NOTIFICATION_ERROR_FATAL,
@@ -96,6 +95,19 @@ static void check_start_save(
 }
 
 namespace{
+
+//  The story's state for a run from `checkpoint`: its supplies, the checks
+//  level, and the program's start frames, the first start check keeping
+//  the screen as its frame if `keep_start_frame` (a save made by hand).
+StoryEnv story_env(
+    SingleSwitchProgramEnvironment& env, ProControllerContext& context,
+    const StoryCheckpoint& checkpoint, StoryChecks checks, bool keep_start_frame
+){
+    StoryEnv story{env.console, context, checkpoint.supplies, checkpoint.supplies, false, checks};
+    story.start_frames = program_start_frames();
+    story.keep_start_frame = keep_start_frame;
+    return story;
+}
 
 //  A failed attempt reloads the last save, with the supplies it had, read
 //  from its bag again; the engine's lines go to the console's log.
@@ -161,8 +173,7 @@ void verify_story_checkpoint(
 ){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
     const StoryCheckpoint& checkpoint = checkpoints[run.start_index()];
-    StoryEnv story{env.console, context, checkpoint.supplies, checkpoint.supplies, false, run.checks()};
-    use_start_frames(story, false);
+    StoryEnv story = story_env(env, context, checkpoint, run.checks(), false);
     load_verify_save(env, context, story, checkpoint);
     StoryExecutor executor(story);
     executor.set_checks(run.checks());
@@ -200,8 +211,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         throw UserSetupError(env.console, "Checkpoint 00.01 starts a new game: start on the title screen with no save.");
     }
 
-    StoryEnv story{env.console, context, checkpoints[first].supplies, checkpoints[first].supplies, false, RUN.checks()};
-    use_start_frames(story, KEEP_START_FRAME);
+    StoryEnv story = story_env(env, context, checkpoints[first], RUN.checks(), KEEP_START_FRAME);
     if (!(first == 0 && NEW_GAME_FROM_TITLE)){
         env.console.log("Loading the save for " + checkpoints[first].id + ".");
         soft_reset(env.console, context);
