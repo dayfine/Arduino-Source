@@ -83,8 +83,9 @@ std::vector<Pokemon::TilePos> tiles_moved(
 );
 
 //  Records in `walk` what the console's watchers show for a wild battle
-//  that tap `tap` (from 0) of `walk` set off, and its escape: for the sim.
-//  Times run from `walk.started`, a tap every `timing.tap_time`.
+//  that tap `tap` (from 1; 0 for a step before the walk) of `walk` set
+//  off, and its escape: for the sim. Times run from `walk.started`, a tap
+//  every `timing.tap_time`.
 void record_tap_battle(WalkResult& walk, size_t tap, const LegBattleTiming& timing = leg_battle_timing());
 
 

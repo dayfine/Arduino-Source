@@ -106,7 +106,7 @@ std::vector<TilePos> tiles_moved(
 }
 
 void record_tap_battle(WalkResult& walk, size_t tap, const LegBattleTiming& timing){
-    const WallClock step = walk.started + timing.tap_time * tap;
+    const WallClock step = tap == 0 ? walk.started - timing.tap_time : walk.started + timing.tap_time * (tap - 1);
     WallClock last = walk.events.last_frame().value_or(walk.started);
     std::vector<Pokemon::EventLag> lags = timing.lags;
     std::sort(lags.begin(), lags.end(), [](const Pokemon::EventLag& x, const Pokemon::EventLag& y){
