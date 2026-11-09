@@ -83,16 +83,17 @@ void talk_to_facing(ConsoleHandle& console, ProControllerContext& context){
 }
 
 
-namespace{
+const ImageFloatBox& dialog_choice_box(){
+    static const ImageFloatBox box{0.654308, 0.481553, 0.295529, 0.312621};
+    return box;
+}
 
-//  Where a dialogue's choices are drawn: the restaurant receptionist's
-//  (RestaurantFarmer). Other dialogues' choices are assumed to sit there.
-const ImageFloatBox DIALOG_CHOICE_BOX{0.654308, 0.481553, 0.295529, 0.312621};
+namespace{
 
 //  The selection arrow's top among the choices, once it has held still;
 //  none if it does not show within `timeout`.
 std::optional<double> wait_for_choice_arrow(ConsoleHandle& console, ProControllerContext& context, Milliseconds timeout){
-    SelectionArrowWatcher arrow(COLOR_YELLOW, &console.overlay(), SelectionArrowType::RIGHT, DIALOG_CHOICE_BOX);
+    SelectionArrowWatcher arrow(COLOR_YELLOW, &console.overlay(), SelectionArrowType::RIGHT, dialog_choice_box());
     context.wait_for_all_requests();
     if (wait_until(console, context, timeout, {arrow}) < 0){
         return std::nullopt;
