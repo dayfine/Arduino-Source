@@ -38,12 +38,17 @@ SceneMove TalkOver::look(const ScreenEvents& look, WallClock now){
         m_calm_since = WallClock::max();
         return SceneMove::BATTLE;
     }
-    if (fade_in(look) != WarpFade::NONE){
-        m_fade = fade_in(look);
+    m_fade_showing = fade_in(look);
+    if (m_fade_showing != WarpFade::NONE){
+        m_fade = m_fade_showing;
     }
     m_banner |= look.has(ScreenEvent::LOCATION_BANNER);
     const bool box = look.has(ScreenEvent::DIALOG_BOX);
-    const bool calm = !box && look.has(ScreenEvent::PLAYER_CAN_MOVE) && warped();
+    //  A fade is never calm: BDSP's overworld reads a black frame as no
+    //  box, and black stays still, so a closing fade counted as quiet and
+    //  ended Mom's scene as it went down (lab-B 2026-11-09 14:33).
+    const bool calm = !box && m_fade_showing == WarpFade::NONE &&
+        look.has(ScreenEvent::PLAYER_CAN_MOVE) && warped();
     const bool quiet = calm && look.has(ScreenEvent::SCREEN_STILL);
     if (!calm){
         m_calm_since = WallClock::max();
@@ -73,6 +78,9 @@ std::string TalkOver::describe() const{
         return "no fade or banner";
     }
     std::string out = m_fade == WarpFade::NONE ? "" : warp_fade_name(m_fade);
+    if (m_fade != WarpFade::NONE){
+        out += m_fade_showing == WarpFade::NONE ? " back up" : " still down";
+    }
     if (m_banner){
         out += out.empty() ? "banner read" : ", banner read";
     }
