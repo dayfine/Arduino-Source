@@ -106,31 +106,6 @@ UnitTestResult test_cursor_moves_stay_inside(){
     return true;
 }
 
-UnitTestResult test_cursor_probe(){
-    struct Case{
-        const char* what;
-        CursorProbe probe;
-        bool moved;
-    };
-    const Case cases[] = {
-        {"a still list: the highlight moves and comes back",  {0.5, 20, 0.5}, true},
-        {"a small Yes/No box",                                {0.3, 8, 0.4},  true},
-        {"an animated preview, swapped by the press",         {8, 40, 10},    true},
-        {"dialogue with a blinking arrow",                    {2.5, 3, 2.5},  false},
-        {"an animation that changes as much on its own",      {10, 20, 10},   false},
-        {"a press that moved something it did not put back", {0.5, 20, 15},  false},
-        {"a fade",                                            {20, 25, 45},   false},
-        {"no frames",                                         {0, 0, 0},      false},
-    };
-    for (const Case& c : cases){
-        if (cursor_probe_moved(c.probe) != c.moved){
-            return std::string(c.what) + (c.moved ? ": the cursor move was missed." : ": no cursor moved.");
-        }
-    }
-    return true;
-}
-
-
 struct MenuCursorInput{
     std::string name;
     UnitTestResult (*body)();
@@ -165,10 +140,6 @@ const MenuCursorCase MENU_CURSOR_CASES[] = {
     },
     {
         .input = {"presses stay inside the grid", test_cursor_moves_stay_inside},
-        .expectation = {},
-    },
-    {
-        .input = {"probe judgement", test_cursor_probe},
         .expectation = {},
     },
 };
