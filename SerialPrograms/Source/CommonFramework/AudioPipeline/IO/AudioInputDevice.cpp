@@ -53,6 +53,7 @@ AudioInputDevice::AudioInputDevice(
         RAW_BUFFER_CAPACITY
       )
     , ObjectStreamListener(raw_output_frame_bytes(format, reinterpret_96k_mono_as_stereo))
+    , m_device_lease(acquire_lab_capture(logger, LabDeviceKind::AUDIO, device.id().toHex().toStdString()))
     , m_sample_type(sample_format_of(format))
     , m_sample_rate(format.sampleRate())
     , m_channels(format.channelCount())
