@@ -19,6 +19,7 @@
 #include "CommonFramework/Tools/VideoStream.h"
 #include "Controllers/Joystick.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
+#include "Pokemon/AutoStory/Pokemon_SceneJudges.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -50,44 +51,22 @@ using WalkArrived = std::function<bool(const ImageViewRGB32& screen)>;
 //  hold where we are.
 enum class WalkOrigin{ CURRENT_LEG, MAY_PRECEDE_LEG };
 
-//  How a screen's fade looks (#268's design note, slice 3).
-enum class WarpFade{
-    NONE,
-    BLACK,      //  a door's black, or a cave mouth's dim fade
-    WHITE,      //  a cave exit's white, with no battle after it
-};
+//  The fade and warp judgements are shared (Pokemon_ScreenEvents.h,
+//  Pokemon_SceneJudges.h); BDSP's walks and steps fill them.
+//  How a screen's fade looks.
+using Pokemon::WarpFade;
 //  "black fade", for the log.
-const char* warp_fade_name(WarpFade fade);
-
-//  A fade is uniform over the middle 80% of the screen, the shared
-//  Black/WhiteScreenWatcher's stddev test (upstream #1717): a dim cave floor
-//  is textured, so it is no fade (the Oreburgh Gate's, mean 46, lab-B
-//  2026-11-08). Check against the Gate's frames on the console before
-//  tightening.
-constexpr double FADE_MAX_STDDEV_SUM = 10;
-//  Dark goes to an rgb sum of 225, as a cave mouth's fade is dim, 45 to 64
-//  a channel, not black.
-constexpr double FADE_MAX_DARK_SUM = 225;
-//  White from an rgb sum of 500, as the shared WhiteScreenWatcher's.
-constexpr double FADE_MIN_WHITE_SUM = 500;
-//  The fade `middle` (the stats of the screen's middle 80%) shows, if any.
-WarpFade fade_of(const ImageStats& middle);
-//  fade_of() for a screen.
-WarpFade fade_of_screen(const ImageViewRGB32& screen);
-
-//  What a walk or a step saw of a warp (#268): a fade or the location
-//  banner of the map arrived on. Either one alone is the warp.
-struct WarpSeen{
-    WarpFade fade = WarpFade::NONE;
-    //  The banner read, "" if none.
-    std::string banner = {};
-
-    bool any() const{
-        return fade != WarpFade::NONE || !banner.empty();
-    }
-};
-//  How it was seen, for the log: a black fade, banner "Route 203".
-std::string describe(const WarpSeen& seen);
+using Pokemon::warp_fade_name;
+//  A fade's most texture (the walk's black-screen watcher uses it too).
+using Pokemon::FADE_MAX_STDDEV_SUM;
+//  A dark fade's brightest rgb sum (likewise).
+using Pokemon::FADE_MAX_DARK_SUM;
+//  The fade a screen's middle shows, from its stats.
+using Pokemon::fade_of;
+//  The fade a screen shows.
+using Pokemon::fade_of_screen;
+//  What a walk or a step saw of a warp: a fade or a banner.
+using Pokemon::WarpSeen;
 
 //  Result metrics and terminal state returned by automated walking execution.
 struct WalkResult{

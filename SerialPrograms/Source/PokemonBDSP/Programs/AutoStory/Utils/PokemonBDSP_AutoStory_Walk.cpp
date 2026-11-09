@@ -42,36 +42,6 @@ const char* walk_stop_name(WalkStop stop){
     return "?";
 }
 
-const char* warp_fade_name(WarpFade fade){
-    switch (fade){
-    case WarpFade::NONE:    return "no fade";
-    case WarpFade::BLACK:   return "black fade";
-    case WarpFade::WHITE:   return "white fade";
-    }
-    return "?";
-}
-
-WarpFade fade_of(const ImageStats& middle){
-    if (middle.stddev.sum() > FADE_MAX_STDDEV_SUM){
-        return WarpFade::NONE;
-    }
-    const double sum = middle.average.sum();
-    return sum <= FADE_MAX_DARK_SUM ? WarpFade::BLACK : sum >= FADE_MIN_WHITE_SUM ? WarpFade::WHITE : WarpFade::NONE;
-}
-WarpFade fade_of_screen(const ImageViewRGB32& screen){
-    return fade_of(image_stats(extract_box_reference(screen, ImageFloatBox(0.1, 0.1, 0.8, 0.8))));
-}
-
-std::string describe(const WarpSeen& seen){
-    if (!seen.any()){
-        return "nothing";
-    }
-    std::string out = seen.fade == WarpFade::NONE ? "" : warp_fade_name(seen.fade);
-    if (!seen.banner.empty()){
-        out += (out.empty() ? "banner \"" : ", banner \"") + seen.banner + "\"";
-    }
-    return out;
-}
 
 double walk_screen_change(const ImageViewRGB32& before, const ImageViewRGB32& after){
     //  Small copies: only the whole-view scroll matters, not detail.
