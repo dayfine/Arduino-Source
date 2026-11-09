@@ -178,6 +178,19 @@ bool never_moved(const WalkResult& walk, size_t walked_tiles){
     return walk.stop == WalkStop::BLOCKED && walk.moved_chunks == 0 && walked_tiles == 0;
 }
 
+//  Legs to a wall this many tiles or shorter must walk every tile: a tile
+//  short is someone in the way, not the time count's slack. On lab-B
+//  (2026-11-08, 01.08) Route 204's youngster stopped "west 2 (to wall)"
+//  after 1 tile; a tile short passed as at the wall, the route logged
+//  arriving at (11, 2) from (13, 2), and the taps north hit the cliff.
+constexpr size_t EXACT_WALL_LEG_TILES = 3;
+
+//  The fewest tiles a leg to a wall `expected_tiles` away must have walked
+//  to count as at its wall.
+size_t min_tiles_at_wall(size_t expected_tiles){
+    return expected_tiles > EXACT_WALL_LEG_TILES ? expected_tiles * 7 / 10 : expected_tiles;
+}
+
 //  Whether a leg's walk goes on to the next leg or the route plans again.
 enum class LegNext{
     NEXT_LEG,
@@ -421,6 +434,10 @@ LegNext RouteWalker::wall_leg(LegWalk& walk){
     //  into the lab). Out of tall grass a stop reads, so walk on: a player
     //  still moving is not where the plan has him.
     if (walk.result.stop == WalkStop::LIMIT && route_wall_readable(m_grid, walk.planned.after)){
+        //  A short leg a tile short stopped against someone in the way.
+        if (nearest <= EXACT_WALL_LEG_TILES && walked_tiles < nearest){
+            return stopped_short_of_wall(walk, walked_tiles);
+        }
         check_at_wall(walk, walked_tiles, nearest);
     }
     return LegNext::NEXT_LEG;
@@ -507,8 +524,7 @@ LegNext RouteWalker::stopped_short_of_wall(LegWalk& walk, size_t walked_tiles){
 
 void RouteWalker::check_at_wall(LegWalk& walk, size_t walked_tiles, size_t expected_tiles){
     if (expected_tiles != SIZE_MAX && expected_tiles > 0 && walked_tiles != SIZE_MAX){
-        const size_t min_tiles = expected_tiles > 3 ? (expected_tiles * 7 / 10) : (expected_tiles > 1 ? expected_tiles - 1 : 1);
-        if (walked_tiles < min_tiles){
+        if (walked_tiles < min_tiles_at_wall(expected_tiles)){
             fail(m_io, walk.label + ": ran out of time well short of the wall (" +
                 std::to_string(walked_tiles) + " of " + std::to_string(expected_tiles) + " tiles): not where the plan has us.");
         }

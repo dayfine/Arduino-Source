@@ -46,7 +46,8 @@ using Pokemon::TileBox;
 using Pokemon::TilePos;
 
 
-StoryWorld make_world(const std::vector<std::string>& rows){
+//  A map of `rows`, with someone wandering `wander` if given.
+StoryWorld make_world(const std::vector<std::string>& rows, const std::optional<TileBox>& wander = std::nullopt){
     Pokemon::MapData map;
     map.name = "Test";
     map.tiles = Pokemon::Grid<Pokemon::TileKind>{(int)rows[0].size(), (int)rows.size(), {}};
@@ -54,6 +55,10 @@ StoryWorld make_world(const std::vector<std::string>& rows){
         for (char glyph : row){
             map.tiles.cells.push_back(*Pokemon::tile_from_glyph(glyph));
         }
+    }
+    if (wander){
+        map.objects.push_back({.name = "wanderer", .x = wander->x0, .y = wander->y0, .facing = std::nullopt,
+            .wander = wander, .trainer = std::nullopt, .hide_flag = std::nullopt});
     }
     StoryWorld world;
     world.add("Test", map, {0, 0});
@@ -684,30 +689,25 @@ UnitTestResult test_wandering_npc_routes_multi_seed(Logger& logger){
     return true;
 }
 
+//  Routes never run along a wander zone, but cross one: a row someone
+//  wanders, (2..4, 2), crossed south at (3, 2) while they stand there.
 UnitTestResult test_wandering_npc_wait_clearance(Logger& logger){
-    const StoryWorld* world = story_plan_world("OreburghCity", "OreburghCity");
-    if (world == nullptr){
-        return "OreburghCity world not found";
-    }
-    const TilePos start = story_to_world(*world, "OreburghCity", {48, 22});
-    const TilePos target = story_to_world(*world, "OreburghCity", {48, 30});
-    const TileBox hiker_box{
-        story_to_world(*world, "OreburghCity", {46, 25}).x,
-        story_to_world(*world, "OreburghCity", {46, 25}).y,
-        story_to_world(*world, "OreburghCity", {48, 27}).x,
-        story_to_world(*world, "OreburghCity", {48, 27}).y
-    };
+    const TileBox row_zone{.x0 = 2, .y0 = 2, .x1 = 4, .y1 = 2};
+    const StoryWorld room = make_world({"#######", "#.....#", "#.....#", "#.....#", "#.....#", "#######"}, row_zone);
+    const StoryWorld* world = &room;
+    const TilePos start{3, 1};
+    const TilePos target{3, 4};
     SimWanderer hiker{
         .name = "hiker_0",
-        .box = hiker_box,
-        .pos = story_to_world(*world, "OreburghCity", {48, 26}),
+        .box = row_zone,
+        .pos = {3, 2},
         .seed = 2,
         .step_interval = 2000ms,
     };
-    GridSim sim({.world = world, .trainers = story_trainers(*world), .wanderers = {hiker}}, start, Direction::NORTH, true);
+    GridSim sim({.world = world, .trainers = {}, .wanderers = {hiker}}, start, Direction::NORTH, true);
     std::vector<std::string> notes;
     GridSimRouteIO sim_io(sim, notes);
-    RouteTrainers trainers{story_trainers(*world), [&sim](const std::string&){ sim.end_dialogue(); }};
+    RouteTrainers trainers{{}, [&sim](const std::string&){ sim.end_dialogue(); }};
     const auto result = walk_route(sim_io, *world, {start}, trainers, {
         .goal = [&](const TilePos& pos){ return pos == target; },
         .label = "walk_through_hiker",
