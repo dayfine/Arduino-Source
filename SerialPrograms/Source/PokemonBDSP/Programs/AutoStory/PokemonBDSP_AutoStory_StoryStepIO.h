@@ -44,26 +44,25 @@ public:
     //  JSON map's name) shows, for at most `limit`. Returns whether it showed.
     virtual bool run_until_map(Pokemon::Direction direction, Milliseconds limit, const std::string& map, const std::string& label) = 0;
     //  Holds the D-pad toward a door (running with `run`) for `timeout` until
-    //  the screen goes dark or a line shows. A dark screen in the first
-    //  `dark_from` of running is not the door's fade, and a wild battle on the
-    //  way is fled, the run going on for the time left. Returns whether it went dark.
-    virtual bool run_into_door(Pokemon::Direction direction, bool run, Milliseconds timeout = Milliseconds(12000), Milliseconds dark_from = Milliseconds(0)) = 0;
+    //  the screen goes dark or white, `banner` (a map's banner name, "" for
+    //  none) reads, or a line shows. A dark screen in the first `dark_from`
+    //  of running is not the door's fade, and a wild battle on the way is
+    //  fled, the run going on for the time left. Returns what it saw of the
+    //  warp: the fade or the banner, either one alone (#268 slice 1).
+    virtual WarpSeen run_into_door(Pokemon::Direction direction, bool run, Milliseconds timeout = Milliseconds(12000),
+        Milliseconds dark_from = Milliseconds(0), const std::string& banner = "") = 0;
     //  D-pad taps `direction` one at a time, each looked at, toward a door
-    //  or cave mouth, until the fade (then no more taps) and the location
-    //  banner of `map` (a JSON map's name), for at most `max_taps`. Returns
-    //  the taps it took (0 if the banner shows before the first: through
-    //  already), or nothing if no banner showed.
+    //  or cave mouth, until its fade (fade_of(): uniform, so a dim cave floor
+    //  is none) or the location banner of `map` (a JSON map's name), for at
+    //  most `max_taps`; after a fade, no more taps. Either one alone is the
+    //  way through. The watch starts before the first tap: a banner up then
+    //  is 0 taps. Returns the taps it took, or nothing if neither showed.
     virtual std::optional<size_t> tap_to_banner(Pokemon::Direction direction, const std::string& map, size_t max_taps) = 0;
     //  Presses through any text until the overworld is quiet; with `fade`, a
-    //  fade must come first (a map change). Fails otherwise.
-    virtual void settle(Button button, const std::string& label, bool fade) = 0;
+    //  warp must come first (a map change): a fade, or the banner `banner`
+    //  ("" for a fade only). Fails otherwise.
+    virtual void settle(Button button, const std::string& label, bool fade, const std::string& banner) = 0;
 };
-
-
-//  Whether a look after a tap toward a door or a cave mouth shows its fade,
-//  from its brightness `after` and that of the look before the tap,
-//  `before` (the mean of r, g and b, 0 to 255).
-bool tap_faded(double before, double after);
 
 
 //  The console.
@@ -77,9 +76,10 @@ public:
     virtual void fight(const std::string& trainer) override;
     virtual void walk_until_stopped(Pokemon::Direction direction, size_t tiles, const std::string& label) override;
     virtual bool run_until_map(Pokemon::Direction direction, Milliseconds limit, const std::string& map, const std::string& label) override;
-    virtual bool run_into_door(Pokemon::Direction direction, bool run, Milliseconds timeout = Milliseconds(12000), Milliseconds dark_from = Milliseconds(0)) override;
+    virtual WarpSeen run_into_door(Pokemon::Direction direction, bool run, Milliseconds timeout = Milliseconds(12000),
+        Milliseconds dark_from = Milliseconds(0), const std::string& banner = "") override;
     virtual std::optional<size_t> tap_to_banner(Pokemon::Direction direction, const std::string& map, size_t max_taps) override;
-    virtual void settle(Button button, const std::string& label, bool fade) override;
+    virtual void settle(Button button, const std::string& label, bool fade, const std::string& banner) override;
 
 private:
     VideoStream& m_stream;

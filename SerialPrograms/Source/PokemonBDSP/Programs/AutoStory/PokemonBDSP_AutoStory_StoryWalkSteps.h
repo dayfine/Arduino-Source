@@ -76,6 +76,7 @@ private:
     Pokemon::Outcome leg_to_dialogue(const Pokemon::StoryStep& step);
     Pokemon::Outcome leg_to_map(const Pokemon::StoryStep& step);
     Pokemon::Outcome tap_to_banner(const Pokemon::Pose& from, const Pokemon::StoryStep& step);
+    bool through_already(const Pokemon::StoryStep& step);
     void turn(Pokemon::Direction direction);
     void log(const std::string& text);
 
@@ -86,6 +87,9 @@ private:
     //  in its tiles, from its first walk this attempt; all of them again at
     //  each attempt.
     std::map<const StoryWorld*, std::vector<TrainerSight>> m_trainers;
+    //  The warp the last route ran on through at its end (walk_route_to_warp()),
+    //  for the step after it, which goes through that warp.
+    WarpSeen m_warp;
 };
 
 

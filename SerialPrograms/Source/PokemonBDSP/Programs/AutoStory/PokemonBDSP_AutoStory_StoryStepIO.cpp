@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <format>
+#include <vector>
 #include "Common/Cpp/PrettyPrint.h"
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
@@ -22,6 +23,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
+#include "Actions/PokemonBDSP_AutoStory_TalkOver.h"
 #include "Actions/PokemonBDSP_AutoStory_Talks.h"
 #include "PokemonBDSP_AutoStory_Walks.h"
 #include "Actions/PokemonBDSP_AutoStory_WildBattle.h"
@@ -38,67 +40,9 @@ using Pokemon::Direction;
 
 namespace{
 
-//  One rule for scenes and map changes: v2's long B mashes, with an end
-//  check. Press through the text, and keep pressing B while the screen is
-//  quiet: a scene can pause while someone walks off (Dawn and Barry after
-//  Rowan leaves, r23), fade dimly, not to black, to another map (r25), or
-//  wait on a box the detector misses (r26). B never starts a talk on the
-//  overworld. Done once the overworld has shown, with no text and a still
-//  screen, for 5 s of presses: after r31's fade home a scripted walk-in ran
-//  5 s with no text before Mom spoke.
-//
-//  A step or scene that ends on another map (`fade`) must fade on the way,
-//  and only the quiet after the fade counts: r30's scene went quiet for 5 s
-//  before the fade home, and r28 "went out" a tile beside the door and
-//  walked a whole route in the house. No fade is a map mismatch.
-constexpr double FADE_DARKNESS = 75;    //  brightness 0 to 255; cave fades reach ~45..64, r24's dim fade goes darker
-void settle(VideoStream& stream, ProControllerContext& context, Button button, const std::string& label, bool fade){
-    const WallClock none = WallClock::max();
-    const WallClock deadline = current_time() + 120s;
-    ShortDialogDetector dialog;
-    OverworldDetector overworld;
-    BattleMenuDetector battle_menu(BattleType::STANDARD);
-    WallClock quiet_since = none, calm_since = none;
-    double darkest = 255;
-    VideoSnapshot previous;
-    while (current_time() < deadline){
-        context.wait_for_all_requests();
-        const auto frame = stream.video().snapshot();
-        const WallClock now = current_time();
-        if (frame && battle_menu.detect(frame)){
-            stream.log("[Story] " + label + ": in wild battle during settle; fleeing.");
-            run_from_wild_battle(stream, context);
-            continue;
-        }
-        if (frame){
-            darkest = std::min(darkest, image_average(*frame.frame).sum() / 3);
-        }
-        const bool talking = frame && dialog.detect(frame);
-        const bool still = frame && previous && walk_screen_change(*previous.frame, *frame.frame) < WALK_TAP_BLOCKED_CHANGE;
-        previous = frame;
-        const bool calm = !talking && overworld.detect(frame) && (!fade || darkest < FADE_DARKNESS);
-        calm_since = calm ? (calm_since == none ? now : calm_since) : none;
-        if (calm && now - calm_since >= 15000ms){
-            stream.log(std::format("[Story] {}: settled on calm overworld; darkest frame {:.0f}.", label, darkest));
-            return;
-        }
-        if (!talking && still && overworld.detect(frame) && (!fade || darkest < FADE_DARKNESS)){
-            quiet_since = quiet_since == none ? now : quiet_since;
-            if (now - quiet_since >= 5000ms){
-                stream.log(std::format("[Story] {}: settled; darkest frame {:.0f}.", label, darkest));
-                return;
-            }
-        }else{
-            quiet_since = none;
-        }
-        pbf_press_button(context, talking ? button : BUTTON_B, 80ms, 1200ms);
-    }
-    OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-        fade && darkest >= FADE_DARKNESS
-            ? label + ": no fade within 120 s, so we are not where the step goes (map mismatch)."
-            : label + ": not back on a quiet overworld within 120 s.",
-        stream);
-}
+//  A door run's dark screen, a channel's mean brightness 0 to 255: cave
+//  fades reach ~45..64, r24's dim fade goes darker.
+constexpr double FADE_DARKNESS = 75;
 
 DpadPosition dpad_toward(Direction direction){
     return
@@ -140,25 +84,32 @@ private:
 };
 
 //  How one hold toward a door ended: run_until()'s index (0 dark, 1 white,
-//  2 a line, 3 a wild battle; -1 time up), and when the screen last went dark.
+//  2 a line, 3 a wild battle, 4 the far map's banner; -1 time up), when the
+//  screen last went dark, and the banner read.
 struct DoorHoldEnd{
     int ret;
     WallClock went_dark;
+    std::string banner;
 };
 
-DoorHoldEnd hold_into_door(VideoStream& stream, ProControllerContext& context, DpadPosition dpad, bool run, Milliseconds hold, Milliseconds dark_from){
+DoorHoldEnd hold_into_door(VideoStream& stream, ProControllerContext& context, DpadPosition dpad, bool run, Milliseconds hold, Milliseconds dark_from, const std::string& banner){
     BlackScreenWatcher dark(COLOR_RED, {0.1, 0.1, 0.8, 0.8}, 3 * FADE_DARKNESS, 60, BlackScreenWatcher::FinderType::PRESENT, 50ms);
     DarkFrom late_dark(dark, current_time() + dark_from);
     WhiteScreenWatcher white(COLOR_BLUE, {0.1, 0.1, 0.8, 0.8}, WhiteScreenWatcher::FinderType::PRESENT, 60ms);
     ShortDialogWatcher dialog(COLOR_YELLOW);
     BattleMenuWatcher battle(BattleType::STANDARD, COLOR_YELLOW);
+    LocationBannerWatcher far_banner(banner);
+    std::vector<PeriodicInferenceCallback> watchers{{late_dark}, {white}, {dialog}, {battle}};
+    if (!banner.empty()){
+        watchers.emplace_back(far_banner);
+    }
     const int ret = run_until<ProControllerContext>(stream, context, [&](ProControllerContext& context){
         if (run){
             ssf_press_button(context, BUTTON_B, 0ms, hold, 0ms);
         }
         pbf_press_dpad(context, dpad, hold, 0ms);
-    }, {{late_dark}, {white}, {dialog}, {battle}});
-    return {.ret = ret, .went_dark = late_dark.went_dark()};
+    }, watchers);
+    return {.ret = ret, .went_dark = late_dark.went_dark(), .banner = ret == 4 ? far_banner.seen() : ""};
 }
 
 //  Wild battles a run into a door flees and runs on after.
@@ -171,11 +122,13 @@ constexpr size_t DOOR_RUN_BATTLES = 3;
 //  2026-11-08: dark at 1.8 s, halfway down the mine's entrance hall). A wild
 //  battle on the way is fled, and the run goes on for the time it had left:
 //  only the running counts, up to the battle's fade.
-bool run_into_door(VideoStream& stream, ProControllerContext& context, Direction direction, bool run, Milliseconds timeout, Milliseconds dark_from){
+//  The far map's banner `banner` shows after the fade, so it ends the run
+//  only when the fade went unseen (#268 slice 1).
+WarpSeen run_into_door(VideoStream& stream, ProControllerContext& context, Direction direction, bool run, Milliseconds timeout, Milliseconds dark_from, const std::string& banner){
     Milliseconds left = timeout;
     for (size_t battles = 0;; battles++){
         const WallClock start = current_time();
-        const DoorHoldEnd end = hold_into_door(stream, context, dpad_toward(direction), run, left, dark_from);
+        const DoorHoldEnd end = hold_into_door(stream, context, dpad_toward(direction), run, left, dark_from, banner);
         if (end.ret == 3){
             const WallClock stopped = std::min(end.went_dark, current_time());
             const Milliseconds ran = std::chrono::duration_cast<Milliseconds>(stopped - start) - ROUTE_START_DELAY;
@@ -187,7 +140,7 @@ bool run_into_door(VideoStream& stream, ProControllerContext& context, Direction
             if (battles < DOOR_RUN_BATTLES && left > 0ms){
                 continue;
             }
-            return false;
+            return {};
         }
         if (end.ret == 0){
             stream.log("[Story] run_into_door: black screen fade detected.");
@@ -195,6 +148,8 @@ bool run_into_door(VideoStream& stream, ProControllerContext& context, Direction
             stream.log("[Story] run_into_door: white screen fade detected.");
         }else if (end.ret == 2){
             stream.log("[Story] run_into_door: dialog detected.");
+        }else if (end.ret == 4){
+            stream.log("[Story] run_into_door: no fade seen, but the banner \"" + end.banner + "\" read.");
         }else if (end.went_dark != WallClock::max()){
             //  Dark only before dark_from: early, or the door's fade itself.
             stream.log(std::format("[Story] run_into_door: timed out; dark {} ms in, before dark_from {} ms.",
@@ -202,7 +157,10 @@ bool run_into_door(VideoStream& stream, ProControllerContext& context, Direction
         }else{
             stream.log("[Story] run_into_door: timed out without detecting fade.");
         }
-        return end.ret == 0 || end.ret == 1;
+        return {
+            .fade = end.ret == 0 ? WarpFade::BLACK : end.ret == 1 ? WarpFade::WHITE : WarpFade::NONE,
+            .banner = end.banner,
+        };
     }
 }
 
@@ -232,14 +190,15 @@ void log_new_banner_read(VideoStream& stream, const std::string& read, std::stri
 }
 
 //  Looks for the location banner `banner` for up to `wait`, and with
-//  `before` (the brightness before the tap) for the fade (tap_faded()).
-//  Logs each distinct banner read and how the wait ended: the Oreburgh Gate's
-//  entry missed its banner twice (lab-B, 2026-11-08 15:31 and 15:39) though
-//  a hand probe saw it 1.5 s after the fade, and nothing said why.
-TapLook look_after_tap(VideoStream& stream, ProControllerContext& context, const std::string& banner, Milliseconds wait, std::optional<double> before){
+//  `fade` for the fade (fade_of_screen()). Logs each distinct banner read
+//  and how the wait ended: the Oreburgh Gate's entry missed its banner twice
+//  (lab-B, 2026-11-08 15:31 and 15:39) though a hand probe saw it 1.5 s
+//  after the fade, and nothing said why.
+TapLook look_after_tap(VideoStream& stream, ProControllerContext& context, const std::string& banner, Milliseconds wait, bool fade){
     const WallClock start = current_time();
     const WallClock deadline = start + wait;
     std::string last_read;
+    LocationBannerReads reads;
     double darkest = 255;
     //  Every 500 ms of a long wait (the one after a fade) a frame goes to
     //  Screenshots/AutoStory/banner/, to see what the game showed.
@@ -248,18 +207,17 @@ TapLook look_after_tap(VideoStream& stream, ProControllerContext& context, const
     while (true){
         context.wait_for_all_requests();
         const VideoSnapshot screen = stream.video().snapshot();
-        if (!before && screen && current_time() >= next_frame){
+        if (!fade && screen && current_time() >= next_frame){
             keep_banner_frame(*screen.frame, folder, banner);
             next_frame += 500ms;
         }
-        const std::string read = screen ? read_location_banner(*screen.frame) : "";
+        const std::string read = screen ? reads.read(*screen.frame, current_time()) : "";
         log_new_banner_read(stream, read, last_read, banner, start);
         if (screen && location_banner_matches(read, banner)){
             return TapLook::BANNER;
         }
-        const double brightness = brightness_of(screen);
-        darkest = std::min(darkest, brightness);
-        if (before && tap_faded(*before, brightness)){
+        darkest = std::min(darkest, brightness_of(screen));
+        if (fade && screen && fade_of_screen(*screen.frame) != WarpFade::NONE){
             return TapLook::DARK;
         }
         if (current_time() >= deadline){
@@ -273,19 +231,6 @@ TapLook look_after_tap(VideoStream& stream, ProControllerContext& context, const
 
 } // namespace
 
-
-//  Black as the Gym's door fades (< 25), or a drop to dark: a look under
-//  FADE_DARKNESS is not a fade by itself, since a cave's floor is that dim
-//  (the Oreburgh Gate's about 46, lab-B 2026-11-08), but a fade into a cave
-//  from a lit street goes from about 120 to 45..64.
-//  TODO(#268 slice 3): stopgap. A uniform-screen fade watcher (the shared
-//  Black/WhiteScreen stddev test, as in upstream #1717) should replace this
-//  brightness drop; remove it once that watcher passes the Gate frames.
-constexpr double TAP_FADE_BLACK = 25;
-constexpr double TAP_FADE_DROP = 0.7;
-bool tap_faded(double before, double after){
-    return after < TAP_FADE_BLACK || (after < FADE_DARKNESS && after < before * TAP_FADE_DROP);
-}
 
 ConsoleStoryStepIO::ConsoleStoryStepIO(VideoStream& stream, ProControllerContext& context)
     : m_stream(stream)
@@ -316,48 +261,47 @@ bool ConsoleStoryStepIO::run_until_map(Direction direction, Milliseconds limit, 
     return walk.stop == WalkStop::ARRIVED;
 }
 
-bool ConsoleStoryStepIO::run_into_door(Direction direction, bool run, Milliseconds timeout, Milliseconds dark_from){
-    return PokemonBDSP::run_into_door(m_stream, m_context, direction, run, timeout, dark_from);
+WarpSeen ConsoleStoryStepIO::run_into_door(Direction direction, bool run, Milliseconds timeout, Milliseconds dark_from, const std::string& banner){
+    return PokemonBDSP::run_into_door(m_stream, m_context, direction, run, timeout, dark_from, banner);
 }
 
 //  A held walk can carry on past a fade that goes unseen: out of the Gym it
 //  walked on south (r219g), and through the Oreburgh Gate's west mouth on
 //  west into a pocket by Route 203's pond (r75). Taps during the fade are
-//  eaten. The banner before the first tap means we are through already:
-//  the walk before slid onto the warp (lab-B 2026-11-08 15:31).
-//  TODO(#268 slice 2): stopgap. The "through already" check sees only a
-//  banner still on screen; once walkers report the fade or banner they saw
-//  (WalkResult::warp), read that instead and remove this check.
+//  eaten, so a fade ends the taps; the banner after it is evidence, not
+//  required (#268 slice 1). The watch starts before the first tap: a walk
+//  before that slid onto the warp unseen may have left its banner up
+//  (lab-B 2026-11-08 15:31).
 std::optional<size_t> ConsoleStoryStepIO::tap_to_banner(Direction direction, const std::string& map, size_t max_taps){
     const std::string& banner = story_banner_name(map);
     m_context.wait_for_all_requests();
-    VideoSnapshot screen = m_stream.video().snapshot();
-    if (screen && location_banner_matches(read_location_banner(*screen.frame), banner)){
+    if (look_after_tap(m_stream, m_context, banner, 0ms, true) == TapLook::BANNER){
         m_stream.log("[Banner] \"" + banner + "\" shows before the first tap: through already.");
         return 0;
     }
     for (size_t tap = 1; tap <= max_taps; tap++){
-        const double before = brightness_of(screen);
         pbf_press_dpad(m_context, dpad_toward(direction), 160ms, 0ms);
-        TapLook look = look_after_tap(m_stream, m_context, banner, 1500ms, before);
-        const bool faded = look == TapLook::DARK;
-        if (faded){
-            look = look_after_tap(m_stream, m_context, banner, 8000ms, std::nullopt);
+        const TapLook look = look_after_tap(m_stream, m_context, banner, 1500ms, true);
+        if (look == TapLook::DARK && look_after_tap(m_stream, m_context, banner, 8000ms, false) != TapLook::BANNER){
+            m_stream.log("[Banner] a fade, no \"" + banner + "\" banner after it: counting the fade.", COLOR_ORANGE);
         }
-        if (look == TapLook::BANNER){
+        if (look != TapLook::NOTHING){
             m_context.wait_for(1000ms);
             return tap;
         }
-        if (faded){
-            break;
-        }
-        screen = m_stream.video().snapshot();
     }
     return std::nullopt;
 }
 
-void ConsoleStoryStepIO::settle(Button button, const std::string& label, bool fade){
-    PokemonBDSP::settle(m_stream, m_context, button, label, fade);
+//  One rule for scenes and map changes (talk_over()): press through the
+//  text, and keep pressing B while the screen is quiet, until the overworld
+//  is quiet. A step or scene that ends on another map (`fade`) must fade on
+//  the way, and only the quiet after the fade counts: r28 "went out" a tile
+//  beside the door and walked a whole route in the house. The far map's
+//  banner `banner`, if it has one, counts as the fade: a fade the run
+//  missed is over, but its banner comes after it (#268 slice 1).
+void ConsoleStoryStepIO::settle(Button button, const std::string& label, bool fade, const std::string& banner){
+    talk_over(m_stream, m_context, label, {.next = button, .rule = {.warp = fade}, .banner = banner});
 }
 
 

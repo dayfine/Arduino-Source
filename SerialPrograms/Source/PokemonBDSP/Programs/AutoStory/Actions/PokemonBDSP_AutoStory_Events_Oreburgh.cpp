@@ -98,12 +98,10 @@ bool oreburgh_gym_battles(VideoStream& stream, ProControllerContext& context){
         if (dialogue_opens(stream, context, 3000ms)){
             // His lines pause for more than 4 s before the battle (r210d: "only
             // talked"), so the battle is expected.
+            //  His badge speech is over when talk_or_fight() returns: the
+            //  battle ends with its speeches (confirm_battle_overworld()).
             if (talk_or_fight(stream, context, "Roark", TalkExpect::BATTLE)){
-                if (in_pokemon_center(stream)){
-                    return false;
-                }
-                finish_dialogue(stream, context, BUTTON_B, "Roark after the battle");
-                return true;
+                return !in_pokemon_center(stream);
             }
             continue;
         }

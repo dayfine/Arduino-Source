@@ -23,6 +23,7 @@
 #include <utility>
 #include <vector>
 #include "Data/PokemonBDSP_AutoStory_Maps.h"
+#include "PokemonBDSP_AutoStory_StoryData.h"
 #include "PokemonBDSP_AutoStory_StoryTable.h"
 
 namespace PokemonAutomation{
@@ -59,10 +60,6 @@ const char* const JUBILIFE = "JubilifeCity";
 const char* const TRAINERS_SCHOOL = "TrainersSchool";
 const char* const OREBURGH = "OreburghCity";
 const char* const GYM = "OreburghGym";
-//  The mine's entrance hall (Diamond's MAP_OREBURGH_MINE_B1F) and the coal
-//  room below it, Roark's.
-const char* const MINE_HALL = "OreburghMineB1F";
-const char* const MINE = "OreburghMine";
 const char* const GATE = "OreburghGate";
 const char* const ROUTE_203 = "Route203";
 const char* const ROUTE_204_SOUTH = "Route204South";
@@ -688,68 +685,6 @@ StoryCheckpoint route_203_to_oreburgh(){
     });
 }
 
-//  01.03, planned on Oreburgh's map and the coal room's (Diamond's zone
-//  events narc_0044 and narc_0197): Barry in the Center's door says Roark
-//  went to the mine (Roark ignored A until then, r101 and r104); down the
-//  door's column to the mine's warp tiles (44..48, 59); straight down the
-//  entrance hall to its warps (11..13, 21); in the coal room down to
-//  Roark, whose scene ends with him gone (Platinum's
-//  scripts_oreburgh_mine_b2f.s: he smashes the rock east of him and walks
-//  off east); back up and out; and the Center's nurse, so 01.04 starts on
-//  the doorstep. The Center's door is the decomp's (47, 20): out of
-//  Sandgem's and Jubilife's Centers the console stood in their doors'
-//  columns. The map's doorstep (46, 21) is the Gym's door column plus the
-//  20 taps of 01.04 (r217d, r218d), which do not say where the taps began;
-//  the heal lines up on the lit doorway if north from (47, 21) misses.
-//
-//  The hall is walked on counted taps, not held: it is a cave, and a wild
-//  battle on a hold toward a fade would read as the fade. Its warp tiles
-//  are only entered on the step after, which meets no wild Pokemon. The
-//  warps are Platinum's (pret/pokeplatinum res/field/maps/*/events.json;
-//  BDSP keeps DP's layout): the city's (44..48, 59) lead to the hall's
-//  (11, 1), (11, 1), (12, 1), (13, 1), (13, 1), and the hall's (11..13, 1)
-//  back to the city's (45..47, 59), a column each. Down, from the city's
-//  (46, 59) we land on the hall's (12, 1); up, the coal room's warp (15, 1)
-//  lands us on the hall's (12, 21), not (11, 21), so the walk north up
-//  column 12 comes out on the city's (46, 59), east of the mine's sign
-//  (45, 56): the walk north to it never stopped there (lab-B 2026-11-08,
-//  09:46, 10:39 and 12:03).
-//
-//  Across the coal room to Roark's east corner (20, 28): the north wall above
-//  it, his rock (19, 28) to its west. A wild battle on a counted tap re-plans
-//  to the end of the step, and a step that ends in a corner ends that re-plan
-//  on wall clips. Lab-B 2026-11-08 11:55: the re-plan went only to the end of
-//  the interrupted leg, the open tile (15, 16); its last leg, south 5 across
-//  the open room, overshot a row, and the taps after ran under Roark's rocks.
-std::vector<StoryLeg> legs_to_roarks_corner(){
-    return {
-        {.direction = EAST,  .tiles = 1},
-        {.direction = SOUTH, .tiles = 2},
-        {.direction = WEST,  .tiles = 1},
-        {.direction = SOUTH, .tiles = 5},
-        {.direction = EAST,  .tiles = 14},
-        {.direction = SOUTH, .tiles = 10},
-        {.direction = WEST,  .tiles = 2},
-        {.direction = SOUTH, .tiles = 2},
-        {.direction = WEST,  .tiles = 7},
-    };
-}
-
-std::vector<StoryLeg> legs_out_of_coal_room(){
-    return {
-        {.direction = EAST,  .tiles = 9},
-        {.direction = NORTH, .tiles = 3},
-        {.direction = EAST,  .tiles = 2},
-        {.direction = NORTH, .tiles = 10},
-        {.direction = WEST,  .tiles = 14},
-        {.direction = NORTH, .tiles = 5},
-        {.direction = EAST,  .tiles = 1},
-        {.direction = NORTH, .tiles = 2},
-        {.direction = WEST,  .tiles = 1},
-        {.direction = NORTH, .tiles = 7},
-    };
-}
-
 //  01.02b: the welcome leaves the party as Route 203 left it (2026-11-07 runs:
 //  the lead paralysed, its water move out of PP, and every reload of 01.03
 //  replayed that). Barry's lines first, as before the split (he blocks the
@@ -766,45 +701,9 @@ StoryCheckpoint oreburgh_center_heal(){
     });
 }
 
+//  The authored file carries the mine route and its save-card/failure policy.
 StoryCheckpoint oreburgh_mine_to_roark(){
-    const Pose below_roark = next_to(MINE, "roark", SOUTH, NORTH);
-    return row("01.03", "Oreburgh Mine to Roark", out_of_oreburgh_center(), {
-        route("above_the_mine", at(OREBURGH, 46, 57, SOUTH), "down the door's column to two above the mine's warp tiles (44..48, 59)", "town"),
-        step_into("into_the_mine", SOUTH, "the warp tile (46, 59)", at(MINE_HALL, 12, 1, SOUTH)),
-        step_into("into_the_coal_room", SOUTH, "down the entrance hall through the cave mouth", at(MINE, 15, 2, SOUTH)),
-        anchored(to_walls("south_to_the_rock", {{.direction = SOUTH, .tiles = 8}}, "south against the corridor rock (15, 11)"),
-            at(MINE, 15, 9, SOUTH)),
-        anchored(legs("to_roarks_corner", legs_to_roarks_corner(), "east around the rock, across the room, down column 29, west to Roark's rock"),
-            at(MINE, 20, 28, WEST)),
-        //  Counted taps along the open row 29 drifted (lab-B 2026-11-07: south 3
-        //  moved 2): south stops at the wall under row 29, two tiles from below him.
-        anchored(to_walls("beside_roarks_rock", {{.direction = SOUTH, .tiles = 1}}, "south against the room's wall"),
-            at(MINE, 20, 29, SOUTH)),
-        anchored(legs("below_roark", {{.direction = WEST, .tiles = 2}}, "west 2 to below Roark"), below_roark),
-        talk("roark", "Roark, north of us between his rocks"),
-        scene("roark_smashes_the_rock", below_roark, "his lines, Rock Smash on the rock east of him, and he walks off"),
-        anchored(legs("below_the_coal_rooms_warp", legs_out_of_coal_room(), "east around crate, up column 29, west across row 17, and up corridor to warp doorstep"),
-            at(MINE, 15, 2, NORTH)),
-        step_into("up_to_the_hall", NORTH, "the warp tile (15, 1)", at(MINE_HALL, 12, 21, NORTH)),
-        //  Out on the city's (46, 59), the warp tile of the hall's column 12
-        //  (the decomp's warp: the hall's (12, 1) to the city's (46, 59)), or
-        //  a tile north should the walk go on past the fade. On the console
-        //  (lab-B 2026-11-08 13:50) a tap north and a hold east to the wall
-        //  matched the map only from column 46.
-        step_into("out_of_the_mine", NORTH, "up the entrance hall and out to the city",
-            Pokemon::tile_pose(OREBURGH, {TilePos{46, 59}, TilePos{46, 58}}, NORTH)),
-        //  Straight north up column 46 to the wall west of the Center's door,
-        //  (46, 20): 37 tiles from (46, 58), 38 from (46, 59). Oreburgh's
-        //  Hiker wanders (46..48, 25..27) across it, and the walk waits for
-        //  him. The column was the one the console stopped on at 10:39, and
-        //  it keeps off the street east of the mine, where at 13:50 a hold
-        //  east from (48, 57) moved 0 though the map has (49, 57) open, and
-        //  the walk after went astray.
-        anchored(legs("north_to_the_centers_wall", {{.direction = NORTH, .tiles = 37}},
-            "north up column 46 to the wall west of the Center's door", "counted_wall"), at(OREBURGH, 46, 21, NORTH)),
-        anchored(legs("east_below_the_centers_door", {{.direction = EAST, .tiles = 1}}, "a tap east below the door"), below_oreburghs_center()),
-        heal("heal_oreburgh", "the nurse; out onto the doorstep, where 01.04 starts", out_of_oreburgh_center()),
-    });
+    return load_authored_checkpoint("bdsp-mine-01.03.plan");
 }
 
 //  Below Rowan's trigger in Jubilife: (47, 8), the east tile under the
@@ -848,19 +747,20 @@ StoryCheckpoint through_the_ravaged_path(){
 }
 
 //  01.10: the line a human walked up Route 204's north half (2026-10-31,
-//  r246a to r251a), corner to corner (Test_Route204NorthLine checks each
-//  stretch is one straight leg), then north between the flower beds into
-//  Floaroma. Its trainers who see us are fought: Taylor on the line, the
-//  Twins as a pair.
+//  r246a to r251a; Test_Route204NorthLine), then north up column 11 until
+//  Floaroma's banner, which reads on (11, 27..29): the column has no wall
+//  north, so a wild battle on an open leg to the line's last corner (11, 5)
+//  found no plan back (lab-B 2026-11-08 18:17:53). Taylor and the Twins fight.
+Pose into_floaroma(){ return Pokemon::tile_pose(FLOAROMA, {TilePos{11, 27}, TilePos{11, 28}, TilePos{11, 29}}, NORTH); }
 StoryCheckpoint route_204_to_floaroma(){
     std::vector<StoryStep> steps;
     const std::vector<TilePos> line = map_region(ROUTE_204_NORTH, "floaroma_waypoints");
-    for (size_t i = 0; i < line.size(); i++){
+    for (size_t i = 0; i + 1 < line.size(); i++){
         steps.push_back(route(std::format("line_{}", i + 1), Pokemon::tile_pose(ROUTE_204_NORTH, {line[i]}),
             "a corner of the human's line", "line"));
     }
-    //  01.11 walks on from here: west 8 along row 29, north to the old woman.
-    steps.push_back(route("into_floaroma", at(FLOAROMA, "route_204_arrival", NORTH), "north up column 11 into Floaroma", "line"));
+    steps.push_back(anchored(legs("into_floaroma", {{.direction = NORTH, .tiles = 17}},
+        "run north until Floaroma's banner; on after a wild battle", "to_map"), into_floaroma()));
     steps.push_back(save());
     return row("01.10", "Route 204 to Floaroma", at(ROUTE_204_NORTH, "cave_exit", SOUTH), std::move(steps));
 }
@@ -887,17 +787,17 @@ std::vector<StoryCheckpoint> to_oreburgh(){
     };
 }
 
-//  01.11 on Floaroma's map: the old woman (3, 25) and the old man (2, 25)
-//  west of her stand still above the flower field's bottom row (r251a).
-//  The walk to her is the one that ran on the console: 8 taps west along
-//  row 29, then north until she stops us (r250a: 3 steps, then bumps).
+//  01.11: the old woman (4, 25), the old man (3, 25) west of her (r251a; columns from the westedge batch 2026-11-08,
+//  PokemonSimulation#76). 8 taps west from the banner's x 10..12 ended below him (lab-B 2026-11-08 18:41), so the walk
+//  clips to the field's west edge (x 0) and taps east to her column.
 StoryCheckpoint floaromas_old_couple(){
     const Pose below_the_old_woman = next_to(FLOAROMA, "old_woman", SOUTH, NORTH);
     const Pose below_the_old_man = next_to(FLOAROMA, "old_man", SOUTH, NORTH);
-    return row("01.11", "Floaroma's old couple", at(FLOAROMA, "route_204_arrival", NORTH), {
-        legs("west_along_the_field", {{.direction = WEST, .tiles = 8}}, "8 taps west along row 29"),
-        anchored(to_walls("up_to_the_old_woman", {{.direction = NORTH, .tiles = 5}}, "north until she stops us"),
-            below_the_old_woman),
+    const Pose at_the_field_edge = Pokemon::tile_pose(FLOAROMA, {TilePos{0, 27}, TilePos{0, 28}, TilePos{0, 29}}, WEST);
+    return row("01.11", "Floaroma's old couple", into_floaroma(), {
+        anchored(to_walls("west_to_the_field_edge", {{.direction = WEST, .tiles = 13}}, "until the field's edge stops us"), at_the_field_edge),
+        legs("below_her_column", {{.direction = EAST, .tiles = 4}}, "4 taps east to her column (westedge batch 2026-11-08)"),
+        anchored(to_walls("up_to_the_old_woman", {{.direction = NORTH, .tiles = 5}}, "north until she stops us"), below_the_old_woman),
         talk("old_woman", "she gives Mew when a Let's Go save is on the console"),
         scene("old_woman_talks", below_the_old_woman, "her lines"),
         //  He stands above that tile, so talk() turning north only turns.
@@ -955,7 +855,6 @@ const std::map<std::string, std::string>& start_save_cards(){
         {"01.01",  "Jubilife City"},
         {"01.02",  "Route 203"},
         {"01.02b", "Oreburgh City"},
-        {"01.03",  "Oreburgh City"},
         {"01.04",  "Oreburgh City"},
         {"01.05",  "Oreburgh City"},
         {"01.06",  "Route 203"},

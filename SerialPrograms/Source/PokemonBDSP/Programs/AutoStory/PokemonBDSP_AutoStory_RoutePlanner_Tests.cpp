@@ -30,7 +30,8 @@ namespace{
 using Pokemon::Direction;
 using Pokemon::TilePos;
 
-StoryWorld make_world(const std::vector<std::string>& rows){
+//  A map of `rows`, with someone wandering `wander` if given.
+StoryWorld make_world(const std::vector<std::string>& rows, const std::optional<Pokemon::TileBox>& wander = std::nullopt){
     Pokemon::MapData map;
     map.name = "Test";
     map.tiles = Pokemon::Grid<Pokemon::TileKind>{(int)rows[0].size(), (int)rows.size(), {}};
@@ -38,6 +39,10 @@ StoryWorld make_world(const std::vector<std::string>& rows){
         for (char glyph : row){
             map.tiles.cells.push_back(*Pokemon::tile_from_glyph(glyph));
         }
+    }
+    if (wander){
+        map.objects.push_back({.name = "wanderer", .x = wander->x0, .y = wander->y0, .facing = std::nullopt,
+            .wander = wander, .trainer = std::nullopt, .hide_flag = std::nullopt});
     }
     StoryWorld world;
     world.add("Test", map, {0, 0});
@@ -134,6 +139,43 @@ UnitTestResult test_plan_robust_route(Logger&){
             plan_robust_route(world, TilePos{0, 0}, TilePos{4, 1});
             return std::string("A start on a wall did not throw.");
         }catch (InternalProgramError&){}
+        return true;
+}
+
+//  Someone wanders a row, (2..4, 2): a leg may cross the row through one of
+//  their tiles, but not run along it through two, the leg's start among
+//  them. On lab-B (2026-11-08, 01.08) Route 204's youngster stopped a leg
+//  west along his row twice. With no other way there is no plan.
+UnitTestResult test_plan_robust_route_wander_zone(Logger&){
+        const Pokemon::TileBox row_zone{.x0 = 2, .y0 = 2, .x1 = 4, .y1 = 2};
+        const StoryWorld room = make_world({"#######", "#.....#", "#.....#", "#.....#", "#######"}, row_zone);
+        const StoryWorld corridor = make_world({"#######", "#.....#", "#######"}, Pokemon::TileBox{.x0 = 2, .y0 = 1, .x1 = 4, .y1 = 1});
+        RobustPlanCosts exact;
+        exact.exact_open_tiles = exact.max_open_tiles;
+        struct ZoneCase{
+            std::string name;
+            const StoryWorld& world;
+            TilePos from;
+            TilePos goal;
+            std::string legs;
+        };
+        const std::vector<ZoneCase> cases{
+            {.name = "south across the row", .world = room, .from = {3, 1}, .goal = {3, 3}, .legs = "south 2 (to wall) to (3, 3)"},
+            {.name = "north across the row", .world = room, .from = {3, 3}, .goal = {3, 1}, .legs = "north 2 (to wall) to (3, 1)"},
+            {.name = "east into the row's first tile", .world = room, .from = {1, 2}, .goal = {2, 2}, .legs = "east 1 (open) to (2, 2)"},
+            {.name = "east along the row goes round it", .world = room, .from = {1, 2}, .goal = {5, 2},
+                .legs = "north 1 (to wall) to (1, 1); east 4 (to wall) to (5, 1); south 1 (open) to (5, 2)"},
+            {.name = "west along the row from inside it goes round", .world = room, .from = {3, 2}, .goal = {1, 2},
+                .legs = "north 1 (to wall) to (3, 1); west 2 (to wall) to (1, 1); south 1 (open) to (1, 2)"},
+            {.name = "no plan when the row is the only way", .world = corridor, .from = {1, 1}, .goal = {5, 1}, .legs = ""},
+        };
+        for (const ZoneCase& item : cases){
+            const auto legs = plan_robust_route(item.world, {item.from}, [&](const TilePos& pos){ return pos == item.goal; }, exact);
+            const std::string read = legs ? describe(*legs) : "";
+            if (read != item.legs){
+                return std::format("{}: planned \"{}\", expected \"{}\".", item.name, read, item.legs);
+            }
+        }
         return true;
 }
 
@@ -345,6 +387,10 @@ const RoutePlannerCase ROUTE_PLANNER_CASES[] = {
     },
     {
         .input = {"robust plans", test_plan_robust_route},
+        .expectation = {},
+    },
+    {
+        .input = {"robust plans cross a wander zone, never along it", test_plan_robust_route_wander_zone},
         .expectation = {},
     },
     {

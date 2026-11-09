@@ -14,10 +14,12 @@
 #include <string>
 #include <vector>
 #include "Common/Cpp/Time.h"
+#include "CommonFramework/ImageTools/ImageStats.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/Tools/VideoStream.h"
 #include "Controllers/Joystick.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
+#include "Pokemon/AutoStory/Pokemon_SceneJudges.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -33,7 +35,7 @@ using WildBattleEscape = std::function<void(VideoStream& stream, ProControllerCo
 enum class WalkStop{
     ARRIVED,        //  `arrived` matched.
     DIALOG,         //  A dialogue box opened: an NPC or a trainer stopped us.
-    TRANSITION,     //  The screen went black and came back without a battle: a door or a new area.
+    TRANSITION,     //  A fade (WalkResult::warp) with no battle after it: a door or a new area.
     BLOCKED,        //  The screen stopped changing: we are walking into a wall.
     LIMIT,          //  Walked `limit` without any of the above.
 };
@@ -49,6 +51,23 @@ using WalkArrived = std::function<bool(const ImageViewRGB32& screen)>;
 //  hold where we are.
 enum class WalkOrigin{ CURRENT_LEG, MAY_PRECEDE_LEG };
 
+//  The fade and warp judgements are shared (Pokemon_ScreenEvents.h,
+//  Pokemon_SceneJudges.h); BDSP's walks and steps fill them.
+//  How a screen's fade looks.
+using Pokemon::WarpFade;
+//  "black fade", for the log.
+using Pokemon::warp_fade_name;
+//  A fade's most texture (the walk's black-screen watcher uses it too).
+using Pokemon::FADE_MAX_STDDEV_SUM;
+//  A dark fade's brightest rgb sum (likewise).
+using Pokemon::FADE_MAX_DARK_SUM;
+//  The fade a screen's middle shows, from its stats.
+using Pokemon::fade_of;
+//  The fade a screen shows.
+using Pokemon::fade_of_screen;
+//  What a walk or a step saw of a warp: a fade or a banner.
+using Pokemon::WarpSeen;
+
 //  Result metrics and terminal state returned by automated walking execution.
 struct WalkResult{
     WalkStop stop;
@@ -59,6 +78,9 @@ struct WalkResult{
     //  taps into Taylor's freeze).
     size_t moved_chunks = 0;
     WalkOrigin origin = WalkOrigin::CURRENT_LEG;
+    //  The fade that ended a TRANSITION, and any location banner read on
+    //  the way (#268 slice 2: walkers report warps).
+    WarpSeen warp = {};
 };
 
 //  Holds the left stick at `stick` until one of the WalkStop events. Wild battles on

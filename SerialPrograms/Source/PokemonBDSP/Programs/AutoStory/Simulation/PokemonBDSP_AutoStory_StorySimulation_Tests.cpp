@@ -26,6 +26,7 @@
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_PlanCosts.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_WallRecovery.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryTable.h"
 #include "PokemonBDSP_AutoStory_StorySimulation_Tests.h"
@@ -113,7 +114,14 @@ Walked plan_route(const Pose& from, const StoryStep& step){
         targets.push_back(story_to_world(*world, goal.map, pos));
     }
     const std::function<bool(const TilePos&)> at_goal = [&](const TilePos& pos){ return contains(targets, pos); };
-    const auto plan = plan_robust_route(*world, start, at_goal, *costs);
+    //  As walk_route() plans: from a wall when the start is one of a few
+    //  tiles, then with the default costs if the step's find nothing. From
+    //  01.03's two start tiles a search over both found no plan within its
+    //  budget once routes kept off the hiker's zone.
+    std::optional<std::vector<PlannedLeg>> plan = plan_recovered_route(*world, start, at_goal, *costs);
+    if (!plan){
+        plan = plan_recovered_route(*world, start, at_goal, RobustPlanCosts());
+    }
     if (!plan){
         return {std::nullopt, step.name + ": no plan from" + describe(from.map, Pokemon::tiles_of(from)) + ".", ""};
     }
@@ -162,6 +170,10 @@ std::string walk_leg_from(
 Walked walk_legs(const Pose& from, const StoryStep& step){
     if (step.variant == "to_wall"){
         return {std::nullopt, "", ""};
+    }
+    //  A run until a map's banner ends where the banner reads.
+    if (step.variant == "to_map"){
+        return {step.pose_after, "", ""};
     }
     const StoryWorld* world = story_plan_world(from.map, from.map);
     if (world == nullptr){
@@ -510,7 +522,32 @@ private:
 } // namespace
 
 
+//  Execute the authored mine resource through the actual table and shared engine.
+UnitTestResult test_authored_mine(Logger&){
+    Simulation sim;
+    const auto report = sim.run({.from = "01.03", .to = "01.03"});
+    if (!report.completed || sim.begun() != std::vector<std::string>{"01.03"}
+        || sim.count("save in 01.03") != 1 || sim.count("card for 01.03: Oreburgh City") != 1
+        || sim.count("01.03/heal_oreburgh") != 1 || sim.count("01.03/roark") != 1){
+        return "Expected the JSON-authored mine checkpoint to save once, talk to Roark, heal and finish:" + joined(sim.trace) + joined(sim.lines);
+    }
+    return true;
+}
+
+UnitTestResult test_authored_mine_stops(Logger&){
+    Simulation sim;
+    sim.game.failures["01.03/out_of_the_mine"] = {.failure = "unconfirmed_transition", .times = 3};
+    const auto report = sim.run({.from = "01.03", .to = "01.03"});
+    if (report.completed || report.reloads != 2 || report.failed_event != "out_of_the_mine"
+        || sim.count("01.03/heal_oreburgh") != 0){
+        return "Expected failed mine transition to exhaust retries before healing:" + joined(sim.trace) + joined(sim.lines);
+    }
+    return true;
+}
+
 const AutoStoryStorySimulationCase AUTO_STORY_STORY_SIMULATION_CASES[] = {
+    {.input = {.name = "01.03 authored mine executes through the real table", .body = test_authored_mine}, .expectation = {}},
+    {.input = {.name = "01.03 unconfirmed mine exit stops before healing", .body = test_authored_mine_stops}, .expectation = {}},
     {
         .input = {"00.00 to Floaroma, in order, each row saved first, English and Japanese", test_whole_table},
         .expectation = {},

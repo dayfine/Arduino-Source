@@ -230,6 +230,25 @@ const std::string& story_banner_name(const std::string& map){
     return banner_name(map);
 }
 
+std::string story_arrival_banner(const std::string& from, const std::string& to){
+    //  The named places, by the place each map is part of: the mine's two floors are one.
+    static const std::map<std::string, std::string> caves{
+        {"OreburghGate", "OreburghGate"},
+        {"OreburghMine", "OreburghMine"},
+        {"OreburghMineB1F", "OreburghMine"},
+        {"RavagedPath", "RavagedPath"},
+    };
+    const auto place = [](const std::string& map) -> std::string{
+        if (banner_names().contains(map)){
+            return banner_name(map);
+        }
+        const auto cave = caves.find(map);
+        return cave == caves.end() ? "" : cave->second;
+    };
+    const std::string there = place(to);
+    return there.empty() || there == place(from) ? "" : story_banner_name(to);
+}
+
 const StoryWorld* story_plan_world(const std::string& from, const std::string& to){
     for (const PlanWorld& world : plan_worlds()){
         if (world.maps.contains(from) && world.maps.contains(to)){

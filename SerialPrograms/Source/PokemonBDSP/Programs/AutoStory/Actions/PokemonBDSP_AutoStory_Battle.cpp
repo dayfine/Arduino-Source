@@ -19,7 +19,6 @@
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/OCR/OCR_RawTesseractOCR.h"
-#include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "PokemonBDSP/Inference/Battles/PokemonBDSP_BattleMenuDetector.h"
 #include "PokemonBDSP/Inference/Battles/PokemonBDSP_EndBattleDetector.h"
@@ -30,6 +29,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP_AutoStory_Bag.h"
 #include "PokemonBDSP_AutoStory_BattleMoves.h"
+#include "PokemonBDSP_AutoStory_TalkOver.h"
 #include "PokemonBDSP_AutoStory_Battle.h"
 
 namespace PokemonAutomation{
@@ -378,37 +378,7 @@ void fight_with_best_move(VideoStream& stream, ProControllerContext& context, co
 
 void confirm_battle_overworld(VideoStream& stream, ProControllerContext& context,
     const std::string& label){
-    OverworldDetector overworld;
-    ShortDialogDetector dialogue(COLOR_YELLOW);
-    BlackScreenDetector black;
-    VideoOverlaySet overlays(stream.overlay());
-    overworld.make_overlays(overlays);
-    dialogue.make_overlays(overlays);
-    black.make_overlays(overlays);
-    const auto deadline = std::chrono::steady_clock::now() + 180s;
-    auto quiet_since = std::chrono::steady_clock::now();
-    bool finished = false;
-    while (std::chrono::steady_clock::now() < deadline){
-        const auto frame = stream.video().snapshot();
-        if (!frame){
-            OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                label + ": No video frame.", stream);
-        }
-        const auto now = std::chrono::steady_clock::now();
-        if (dialogue.detect(frame) || black.detect(frame) || !overworld.detect(frame)){
-            quiet_since = now;
-        }else if (now - quiet_since >= 4s){
-            finished = true;
-            break;
-        }
-        pbf_mash_button(context, BUTTON_B, 100ms);
-        context.wait_for_all_requests();
-    }
-    if (!finished){
-        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-            label + ": Dialogue-free overworld not confirmed for four seconds.", stream);
-    }
-    context.wait_for_all_requests();
+    talk_over(stream, context, label);
 }
 
 void fight_story_battle(VideoStream& stream, ProControllerContext& context, const std::string& label, BattleFormat format){

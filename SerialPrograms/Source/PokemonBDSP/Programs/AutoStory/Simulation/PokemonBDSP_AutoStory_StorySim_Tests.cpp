@@ -67,30 +67,6 @@ using Pokemon::StoryStep;
 using Pokemon::StoryStepKind;
 using Pokemon::TilePos;
 
-
-//  Runs `range` of the table on the simulation, stopping at the first failure.
-UnitTestResult run_rows(Logger& logger, const Pokemon::SegmentRange& range){
-    SimExecutor executor(logger);
-    const Pokemon::SegmentReport report = run_rows_on(executor, logger, range);
-    for (const std::string& step : executor.result().unchecked){
-        logger.log("No end to check after " + step + ".");
-    }
-    if (!report.completed){
-        return std::format("stopped at {} {}: {}", report.failed_checkpoint, report.failed_event, executor.result().error);
-    }
-    return true;
-}
-
-
-bool ends_on(const SimRun& run, const Pose& pose){
-    const std::vector<TilePos> tiles = Pokemon::tiles_of(pose);
-    const std::optional<TilePos> local = run.world ? story_to_local(*run.world, pose.map, run.end) : std::nullopt;
-    return local && std::find(tiles.begin(), tiles.end(), *local) != tiles.end();
-}
-std::string end_of(const SimRun& run){
-    return run.world ? describe(*run.world, run.end) : "nowhere";
-}
-
 UnitTestResult run_exit_test(Logger& logger, const std::string& row_id, const StoryStep& old_step, const SimMisses& misses, const Pose& overshoot){
     SimExecutor executor(logger, misses);
     const std::vector<StoryCheckpoint> rows = table_with(row_id, old_step);

@@ -98,7 +98,7 @@ Pokemon::DisturbanceRates stress_rates(){
 SeedOutcome run_seed(Logger& logger, const std::vector<StoryCheckpoint>& rows, const RowNoise& noise_of, const std::string& row, uint64_t seed){
     const SimMisses& clean = noise_of.clean;
     SimDisturbance noise(Pokemon::make_disturbance_plan(seed, noise_of.rates, clean.fades, clean.banners));
-    SimExecutor executor(logger, {.fade = noise.plan().missed_fade, .banner = noise.plan().missed_banner}, &noise);
+    SimExecutor executor(logger, {.fade = noise.plan().missed_fade, .banner = noise.plan().missed_banner}, {.noise = &noise});
     try{
         const Pokemon::SegmentReport report = run_rows_on(executor, logger, {.from = row, .to = row}, rows);
         logger.log(std::format("[Sim] {}: {} wild battle(s) over {} grass and {} cave tiles.", describe(noise.plan()),
