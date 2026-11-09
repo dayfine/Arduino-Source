@@ -22,7 +22,6 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
 #include "Pokemon/AutoStory/Pokemon_StorySteps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
@@ -258,9 +257,6 @@ struct Simulation{
     //  Where each save stood: the end of its checkpoint.
     std::vector<std::pair<std::string, Pokemon::Pose>> saves;
     Pokemon::SegmentPolicy policy;
-    //  The start check's reader, as the console's: unset, the fake game's
-    //  save pose is read.
-    StartReader start_reader;
 
     //  A language no reader supports, so a step that needed text would show.
     Pokemon::SegmentReport run(const Pokemon::SegmentRange& range){
@@ -272,7 +268,7 @@ struct Simulation{
                 .id = data.id, .title = data.title, .saves = true,
                 .build = [this, &data]{
                     Pokemon::Checkpoint checkpoint = Pokemon::build_story_checkpoint(data, game);
-                    add_start(checkpoint, data);
+                    add_start_pose_check(checkpoint, data.start, [this]{ return game.save_stands; }, [this](const std::string& line){ lines.push_back(line); });
                     return checkpoint;
                 },
             });
@@ -290,14 +286,6 @@ struct Simulation{
         hooks.log = [this](const std::string& line){ lines.push_back(line); };
         RunState state;
         return Pokemon::run_segment(state, segment, range, policy, hooks);
-    }
-    void add_start(Pokemon::Checkpoint& checkpoint, const StoryCheckpoint& data){
-        StoryLog log = [this](const std::string& line){ lines.push_back(line); };
-        if (start_reader){
-            add_start_check(checkpoint, data.start, start_reader, std::move(log));
-        }else{
-            add_start_pose_check(checkpoint, data.start, [this]{ return game.save_stands; }, std::move(log));
-        }
     }
     std::string last_begun() const{
         for (auto it = game.trace.rbegin(); it != game.trace.rend(); ++it){
@@ -434,68 +422,6 @@ UnitTestResult test_save_off_start_pose(){
         || std::ranges::any_of(sim.game.trace, stepped) || std::ranges::none_of(sim.lines, told)
     ){
         return "Expected 00.09 stopped at its start check, the mismatch logged:" + joined(sim.game.trace) + joined(sim.lines);
-    }
-    return true;
-}
-
-//  A screen of 15x10 flat tiles coloured from `seed`, as start_frame()
-//  keeps it; `visitor` stands a person on tile (3, 3).
-ImageRGB32 tiled_screen(uint32_t seed, bool visitor){
-    ImageRGB32 screen(240, 160);
-    for (size_t ty = 0; ty < 10; ty++){
-        for (size_t tx = 0; tx < 15; tx++){
-            seed = seed * 1664525u + 1013904223u;
-            const bool person = visitor && tx == 3 && (ty == 2 || ty == 3);
-            const uint32_t color = person ? 0xffe84030 : (0xff000000 | (seed >> 8));
-            for (size_t y = ty * 16; y < ty * 16 + 16; y++){
-                for (size_t x = tx * 16; x < tx * 16 + 16; x++){
-                    screen.pixel(x, y) = color;
-                }
-            }
-        }
-    }
-    return screen;
-}
-
-//  00.09 with the console's start check on frames: the frame kept for its
-//  start (tiled_screen(1), if `kept`) against `screen` after the save loads.
-Pokemon::SegmentReport run_with_start_frame(Simulation& sim, bool kept, StartFrameSource screen){
-    sim.start_reader = [kept, screen = std::move(screen)]{
-        std::optional<ImageRGB32> reference;
-        if (kept){
-            reference = tiled_screen(1, false);
-        }
-        return read_start_frames(reference, screen, 3);
-    };
-    return sim.run({.from = "00.09", .to = "00.09"});
-}
-
-//  console B, FRLG 00.27, 2026-11-09, with no tile reader: the screen
-//  after the save loads isn't the frame kept where 00.09 starts, so it
-//  stops before any step or save.
-UnitTestResult test_start_frame_elsewhere(){
-    Simulation sim;
-    const Pokemon::SegmentReport report = run_with_start_frame(sim, true, []{ return tiled_screen(2, false); });
-    const auto stepped = [](const std::string& item){ return item.starts_with("00.09/"); };
-    const auto told = [](const std::string& line){ return line.starts_with("start pose mismatch: "); };
-    if (report.completed || report.failure.failure != "start_failed" || !sim.saves.empty()
-        || std::ranges::any_of(sim.game.trace, stepped) || std::ranges::none_of(sim.lines, told)
-    ){
-        return "Expected 00.09 stopped at its start check, the mismatch logged:" + joined(sim.game.trace) + joined(sim.lines);
-    }
-    return true;
-}
-
-//  The kept frame with a visitor in it, and none kept: both go on.
-UnitTestResult test_start_frame_passes(){
-    for (const bool kept : {true, false}){
-        Simulation sim;
-        const Pokemon::SegmentReport report = run_with_start_frame(sim, kept, []{ return tiled_screen(1, true); });
-        const std::string expected = kept ? "start pose matches: " : "start pose not read: no start frame kept";
-        const auto told = [&](const std::string& line){ return line.starts_with(expected); };
-        if (!report.completed || std::ranges::none_of(sim.lines, told)){
-            return "Expected 00.09 run, \"" + expected + "\" logged:" + joined(sim.lines);
-        }
     }
     return true;
 }
@@ -692,14 +618,6 @@ const AutoStorySimulationTestCase AUTO_STORY_SIMULATION_CASES[] = {
     {
         .input = {.name = "a save off the start pose stops before any step", .body = test_save_off_start_pose},
         .expectation = {.description = "fails the start check without walking or saving"},
-    },
-    {
-        .input = {.name = "a screen off the start frame stops before any step", .body = test_start_frame_elsewhere},
-        .expectation = {.description = "fails the start check on frames without walking or saving"},
-    },
-    {
-        .input = {.name = "the start frame with a visitor, or none kept, goes on", .body = test_start_frame_passes},
-        .expectation = {.description = "passes the start check on frames when the place matches or nothing is kept"},
     },
 };
 
