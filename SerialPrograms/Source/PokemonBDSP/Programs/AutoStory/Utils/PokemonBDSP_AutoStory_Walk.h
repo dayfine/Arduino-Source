@@ -21,6 +21,7 @@
 #include "Controllers/Joystick.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "Pokemon/AutoStory/Pokemon_SceneJudges.h"
+#include "Pokemon/AutoStory/Pokemon_ScreenEvents.h"
 #include "Pokemon/AutoStory/Pokemon_Transitions.h"
 
 namespace PokemonAutomation{
@@ -83,6 +84,17 @@ struct WalkResult{
     //  The fade that ended a TRANSITION, and any location banner read on
     //  the way (#268 slice 2: walkers report warps).
     WarpSeen warp = {};
+    //  What the walk's watchers saw, timed, from its first input through
+    //  the watch after it: an encounter's flash, a battle, a box, a fade.
+    //  The shared judges read it (Pokemon::classify_interrupt()) to tell
+    //  what stopped the walk and when its step was taken. Empty where
+    //  nothing recorded it.
+    Pokemon::ScreenEventLog events = {};
+    //  When the walk's first input went in; `events` are timed against it.
+    WallClock started = {};
+    //  Chunks that moved after the last wild battle was run from: the taps
+    //  the walk went on with.
+    size_t moved_after_battle = 0;
 };
 
 //  Holds the left stick at `stick` until one of the WalkStop events. Wild battles on
@@ -160,7 +172,11 @@ WalkResult walk_expecting(
 //  After a move that may have walked onto an encounter tile (a tap in a cave
 //  or in tall grass): waits briefly for a wild battle and runs from it.
 //  Returns whether there was one; we may then be off the place we expected.
-bool run_from_late_encounter(VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape, const std::string& label);
+//  `events`, if given, records what was seen, timed.
+bool run_from_late_encounter(
+    VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape, const std::string& label,
+    Pokemon::ScreenEventLog* events = nullptr
+);
 
 //  walk_until() toward a wall the route was measured to end at. Seeing the
 //  stop only ends the hold early: holding on for the whole `limit` also
