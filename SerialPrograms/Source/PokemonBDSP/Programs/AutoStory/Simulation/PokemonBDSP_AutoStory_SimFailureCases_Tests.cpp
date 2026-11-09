@@ -18,6 +18,7 @@
 #include <format>
 #include <functional>
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -125,6 +126,31 @@ UnitTestResult gate_plan_one_run(Logger& logger){
     return plan->size() <= 2 ? UnitTestResult(true) : UnitTestResult(std::format("{} legs: {}", plan->size(), legs));
 }
 
+//  What a single miss leaves out: a fade whole, a fade's hold, or a banner.
+enum class SingleMiss{
+    FADE,
+    HOLD,
+    BANNER,
+};
+
+//  The run of the row the clean run's `index`th fade or banner (`rows`'
+//  counts) falls in, with that one missed as `kind` says; none if it passes.
+std::optional<SimRun> run_single_miss(Logger& logger, const std::vector<SimRun::RowStart>& rows, SingleMiss kind, size_t index){
+    const bool fade = kind != SingleMiss::BANNER;
+    size_t k = 0;
+    while (k + 1 < rows.size() && (fade ? rows[k + 1].fades : rows[k + 1].banners) <= index){
+        k++;
+    }
+    const size_t in_row = index - (fade ? rows[k].fades : rows[k].banners);
+    SimMisses misses{.fade = {}, .banner = {}};
+    (kind == SingleMiss::FADE ? misses.fade : kind == SingleMiss::HOLD ? misses.hold : misses.banner) = in_row;
+    SimExecutor executor(logger, misses);
+    if (run_rows_on(executor, logger, {.from = rows[k].row, .to = rows[k].row}).completed){
+        return std::nullopt;
+    }
+    return executor.result();
+}
+
 //  Each fade and each banner the clean run looks for, missed alone: the
 //  row it falls in must still pass, but for a miss in one of `skip`'s steps.
 //  A door step once accepted only its fade, so a missed fade there failed a
@@ -137,18 +163,10 @@ UnitTestResult every_single_miss(Logger& logger, const std::set<std::string>& sk
     const std::vector<SimRun::RowStart>& rows = clean.result().rows;
     std::vector<std::string> failed;
     const auto miss = [&](bool fade, size_t index){
-        size_t k = 0;
-        while (k + 1 < rows.size() && (fade ? rows[k + 1].fades : rows[k + 1].banners) <= index){
-            k++;
-        }
-        SimMisses misses{.fade = {}, .banner = {}};
-        (fade ? misses.fade : misses.banner) = index - (fade ? rows[k].fades : rows[k].banners);
-        SimExecutor executor(logger, misses);
-        if (!run_rows_on(executor, logger, {.from = rows[k].row, .to = rows[k].row}).completed
-            && !skip.contains(executor.result().failed_step)
-        ){
+        const std::optional<SimRun> run = run_single_miss(logger, rows, fade ? SingleMiss::FADE : SingleMiss::BANNER, index);
+        if (run && !skip.contains(run->failed_step)){
             failed.push_back(std::format("{} {} missed: stopped in {}: {}", fade ? "fade" : "banner", index,
-                executor.result().failed_step, executor.result().error));
+                run->failed_step, run->error));
         }
     };
     for (size_t i = 0; i < clean.misses().fades; i++){
@@ -158,6 +176,29 @@ UnitTestResult every_single_miss(Logger& logger, const std::set<std::string>& sk
         miss(false, i);
     }
     std::string out = std::format("{} of {} single misses fail their row:", failed.size(), clean.misses().fades + clean.misses().banners);
+    for (const std::string& line : failed){
+        out += "\n  " + line;
+    }
+    return failed.empty() ? UnitTestResult(true) : UnitTestResult(out);
+}
+
+//  Each fade the clean run looks for with only its hold unseen, a short
+//  fade between two frames (the door's watcher missed 13 of 35 fades on
+//  lab-B, 2026-11-08): the program's fade watch takes the scene after the
+//  fall, so every row passes, at every warp, ONE_SIGNAL_STEPS' too.
+UnitTestResult every_single_hold_miss(Logger& logger){
+    SimExecutor clean(logger);
+    if (!run_rows_on(clean, logger, {.from = "00.00", .to = "01.11"}).completed){
+        return "the run fails without misses: " + clean.result().error;
+    }
+    std::vector<std::string> failed;
+    for (size_t i = 0; i < clean.misses().fades; i++){
+        const std::optional<SimRun> run = run_single_miss(logger, clean.result().rows, SingleMiss::HOLD, i);
+        if (run){
+            failed.push_back(std::format("fade {}'s hold unseen: stopped in {}: {}", i, run->failed_step, run->error));
+        }
+    }
+    std::string out = std::format("{} of {} fades with their hold unseen fail their row:", failed.size(), clean.misses().fades);
     for (const std::string& line : failed){
         out += "\n  " + line;
     }
@@ -341,6 +382,7 @@ const FailureCase AUTO_STORY_FAILURE_CASES[] = {
     {.input = {"any one missed fade or banner at a warp that shows both: its row still passes", [](Logger& logger){
         return every_single_miss(logger, ONE_SIGNAL_STEPS);
     }}, .expectation = {}},
+    {.input = {"any one fade with its hold unseen from 00.00 to 01.11: every row still passes", every_single_hold_miss}, .expectation = {}},
     {.input = {"01.02 to 01.05 at night, the Gate's dim floor", night_and_dim_floors}, .expectation = {}},
     {.input = {"01.03 Roark's first line 7 s after the A press", roark_speaks_late}, .expectation = {}},
     {.input = {"01.03 with Oreburgh's people wandering (the pokefan on 45, 37..39)", [](Logger& logger){

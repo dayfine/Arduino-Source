@@ -47,7 +47,9 @@ namespace PokemonBDSP{
 //  Which detections the simulation misses on purpose (#162): the `fade`th
 //  door fade (run_into_door(), from 0) or the `banner`th map banner
 //  (run_until_map()) of the run goes unseen, though the player did go
-//  through. The console missed both (r75, r81). The `dark`th door run reads
+//  through. The console missed both (r75, r81). The `hold`th fade (counted
+//  with `fade`'s) shows its fall and the scene after but not its hold: a
+//  short fade's hold between two frames. The `dark`th door run reads
 //  dark SIM_FALSE_DARK in, short of the door, as lab-B's did on 2026-11-08.
 //  The `through`th tap step (tap_to_banner(), from 0) starts on its far side,
 //  its banner gone unless `through_banner`: the walk before it slid onto the
@@ -59,6 +61,7 @@ namespace PokemonBDSP{
 struct SimMisses{
     std::optional<size_t> fade;
     std::optional<size_t> banner;
+    std::optional<size_t> hold = {};
     std::optional<size_t> dark = {};
     std::optional<size_t> through = {};
     bool through_banner = false;
@@ -204,6 +207,14 @@ constexpr double SIM_FADE_STDDEV = 1;
 constexpr double SIM_FLOOR_STDDEV = 20;
 //  The screen's middle as fade_of() reads it: `brightness` a channel, `stddev` a channel.
 ImageStats sim_screen(double brightness, double stddev);
+//  The frames a warp's fade shows, 33 ms apart (the console's 30 fps): the
+//  floor (`floor`, textured), the fall, the hold of `fade` (uniform) and the
+//  rise, and the floor on the far side. Without `hold_seen` only the fall
+//  shows between the floors: a short fade's hold fell between two frames.
+std::vector<Pokemon::TransitionSample> sim_fade_frames(double floor, double fade, bool hold_seen);
+//  The fade the program's WarpFadeWatch with `rule` sees in those frames;
+//  each scene after a fall is another (the far side's).
+WarpFade sim_watch_fade(const WarpFadeRule& rule, double floor, double fade, bool hold_seen);
 
 //  What a run on the simulation did.
 struct SimRun{
@@ -275,11 +286,7 @@ public:
         if (disturbed_hold(m_sim, m_noise, direction, timeout, pace).move.stop != SimStop::WARP){
             return {};
         }
-        if (!fade_missed()){
-            return {.fade = WarpFade::BLACK};
-        }
-        m_misses.fade_unseen = true;
-        return {.banner = !banner.empty() && !banner_missed() ? banner : ""};
+        return door_fade(banner);
     }
     //  A fade missed on the way in stays missed: it was over before settle()
     //  looked, which then fails as it does on the console after 120 s. The
@@ -290,12 +297,21 @@ public:
     virtual std::optional<size_t> tap_to_banner(Pokemon::Direction direction, const std::string& map, size_t max_taps) override;
 
 private:
-    //  Whether the run misses this fade or this banner (SimMisses).
-    bool fade_missed(){
-        const bool miss = m_misses.fade == m_misses.fades++;
-        m_misses.missed |= miss;
-        return miss;
-    }
+    //  How the run shows its next fade (SimMisses): whole, its hold unseen,
+    //  or not at all.
+    enum class FadeShown{
+        SEEN,
+        HOLD_UNSEEN,
+        UNSEEN,
+    };
+    FadeShown next_fade();
+    //  The next fade, of brightness `fade` from the floor here, as the
+    //  program's watch with `rule` sees it.
+    WarpFade watched_fade(const WarpFadeRule& rule, double fade);
+    //  What a door run that reached its warp saw (run_into_door()).
+    WarpSeen door_fade(const std::string& banner);
+    //  Whether this door run reads dark short of the door, or the run
+    //  misses this banner (SimMisses).
     bool false_dark(){
         const bool dark = m_misses.dark == m_misses.doors++;
         m_misses.missed |= dark;

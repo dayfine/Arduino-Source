@@ -12,6 +12,7 @@
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTools/ImageStats.h"
+#include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/VisualDetectors/BlackScreenDetector.h"
@@ -40,10 +41,6 @@ using Pokemon::Direction;
 
 namespace{
 
-//  A door run's dark screen, a channel's mean brightness 0 to 255: cave
-//  fades reach ~45..64, r24's dim fade goes darker.
-constexpr double FADE_DARKNESS = 75;
-
 DpadPosition dpad_toward(Direction direction){
     return
         direction == Direction::NORTH ? DPAD_UP :
@@ -51,55 +48,54 @@ DpadPosition dpad_toward(Direction direction){
         direction == Direction::WEST ? DPAD_LEFT : DPAD_RIGHT;
 }
 
-//  A dark-screen watcher that fires only from `from` on, and keeps when the
-//  screen last went dark: where a wild battle's fade began.
-class DarkFrom : public VisualInferenceCallback{
+//  A door run's fade watch (DOOR_FADE_RULE) that fires only from `from` on.
+//  It keeps a small copy of each frame for the scene comparison, and the
+//  fade it saw.
+class DoorFadeFrom : public VisualInferenceCallback{
 public:
-    DarkFrom(BlackScreenWatcher& dark, WallClock from)
-        : VisualInferenceCallback("DarkFrom")
-        , m_dark(dark)
+    explicit DoorFadeFrom(WallClock from)
+        : VisualInferenceCallback("DoorFadeFrom")
+        , m_watch(DOOR_FADE_RULE)
         , m_from(from)
     {}
     virtual void make_overlays(VideoOverlaySet& items) const override{
-        m_dark.make_overlays(items);
+        items.add(COLOR_RED, {0.1, 0.1, 0.8, 0.8});
     }
     virtual bool process_frame(const ImageViewRGB32& frame, WallClock timestamp) override{
-        const bool dark = m_dark.process_frame(frame, timestamp);
-        if (dark && !m_was_dark){
-            m_went_dark = timestamp;
-        }
-        m_was_dark = dark;
-        return dark && timestamp >= m_from;
+        const Pokemon::TransitionSample sample = Pokemon::transition_sample(VideoSnapshot(frame.scale_to(192, 108), timestamp));
+        m_fade = m_watch.push(sample);
+        return m_fade != WarpFade::NONE && timestamp >= m_from;
     }
-    //  When the screen last went dark; WallClock::max() if it has not.
-    WallClock went_dark() const{
-        return m_went_dark;
+    WarpFade fade() const{
+        return m_fade;
+    }
+    const WarpFadeWatch& watch() const{
+        return m_watch;
     }
 
 private:
-    BlackScreenWatcher& m_dark;
+    WarpFadeWatch m_watch;
     WallClock m_from;
-    bool m_was_dark = false;
-    WallClock m_went_dark = WallClock::max();
+    WarpFade m_fade = WarpFade::NONE;
 };
 
-//  How one hold toward a door ended: run_until()'s index (0 dark, 1 white,
-//  2 a line, 3 a wild battle, 4 the far map's banner; -1 time up), when the
-//  screen last went dark, and the banner read.
+//  How one hold toward a door ended: run_until()'s index (0 the fade, 1 a
+//  line, 2 a wild battle, 3 the far map's banner; -1 time up), the fade
+//  and how it showed, when the screen last went dark, and the banner read.
 struct DoorHoldEnd{
     int ret;
+    WarpFade fade;
+    std::string how;
     WallClock went_dark;
     std::string banner;
 };
 
 DoorHoldEnd hold_into_door(VideoStream& stream, ProControllerContext& context, DpadPosition dpad, bool run, Milliseconds hold, Milliseconds dark_from, const std::string& banner){
-    BlackScreenWatcher dark(COLOR_RED, {0.1, 0.1, 0.8, 0.8}, 3 * FADE_DARKNESS, 60, BlackScreenWatcher::FinderType::PRESENT, 50ms);
-    DarkFrom late_dark(dark, current_time() + dark_from);
-    WhiteScreenWatcher white(COLOR_BLUE, {0.1, 0.1, 0.8, 0.8}, WhiteScreenWatcher::FinderType::PRESENT, 60ms);
+    DoorFadeFrom fade(current_time() + dark_from);
     ShortDialogWatcher dialog(COLOR_YELLOW);
     BattleMenuWatcher battle(BattleType::STANDARD, COLOR_YELLOW);
     LocationBannerWatcher far_banner(banner);
-    std::vector<PeriodicInferenceCallback> watchers{{late_dark}, {white}, {dialog}, {battle}};
+    std::vector<PeriodicInferenceCallback> watchers{{fade}, {dialog}, {battle}};
     if (!banner.empty()){
         watchers.emplace_back(far_banner);
     }
@@ -109,14 +105,22 @@ DoorHoldEnd hold_into_door(VideoStream& stream, ProControllerContext& context, D
         }
         pbf_press_dpad(context, dpad, hold, 0ms);
     }, watchers);
-    return {.ret = ret, .went_dark = late_dark.went_dark(), .banner = ret == 4 ? far_banner.seen() : ""};
+    return {
+        .ret = ret,
+        .fade = ret == 0 ? fade.fade() : WarpFade::NONE,
+        .how = fade.watch().how(),
+        .went_dark = fade.watch().went_dark().value_or(WallClock::max()),
+        .banner = ret == 3 ? far_banner.seen() : "",
+    };
 }
 
 //  Wild battles a run into a door flees and runs on after.
 constexpr size_t DOOR_RUN_BATTLES = 3;
 
 //  Holds the D-pad toward a door (with B after the shoes) for `timeout`
-//  until the screen goes dark or a line shows. Returns whether it went dark.
+//  until its fade (DOOR_FADE_RULE) or a line shows. Returns what it saw.
+//  A fade whose hold fell between two frames shows at the scene after it,
+//  so a missed 50 ms fade no longer runs the whole timeout.
 //  A line stops it: holding on under Mom's "Oh, Kosmos!" wasted 12 s (r45).
 //  Dark in the first `dark_from` of running is not the door (lab-B
 //  2026-11-08: dark at 1.8 s, halfway down the mine's entrance hall). A wild
@@ -129,7 +133,7 @@ WarpSeen run_into_door(VideoStream& stream, ProControllerContext& context, Direc
     for (size_t battles = 0;; battles++){
         const WallClock start = current_time();
         const DoorHoldEnd end = hold_into_door(stream, context, dpad_toward(direction), run, left, dark_from, banner);
-        if (end.ret == 3){
+        if (end.ret == 2){
             const WallClock stopped = std::min(end.went_dark, current_time());
             const Milliseconds ran = std::chrono::duration_cast<Milliseconds>(stopped - start) - ROUTE_START_DELAY;
             const Milliseconds counted = std::clamp(ran, 0ms, left);
@@ -143,12 +147,10 @@ WarpSeen run_into_door(VideoStream& stream, ProControllerContext& context, Direc
             return {};
         }
         if (end.ret == 0){
-            stream.log("[Story] run_into_door: black screen fade detected.");
+            stream.log(std::format("[Story] run_into_door: {} detected ({}).", warp_fade_name(end.fade), end.how));
         }else if (end.ret == 1){
-            stream.log("[Story] run_into_door: white screen fade detected.");
-        }else if (end.ret == 2){
             stream.log("[Story] run_into_door: dialog detected.");
-        }else if (end.ret == 4){
+        }else if (end.ret == 3){
             stream.log("[Story] run_into_door: no fade seen, but the banner \"" + end.banner + "\" read.");
         }else if (end.went_dark != WallClock::max()){
             //  Dark only before dark_from: early, or the door's fade itself.
@@ -157,10 +159,7 @@ WarpSeen run_into_door(VideoStream& stream, ProControllerContext& context, Direc
         }else{
             stream.log("[Story] run_into_door: timed out without detecting fade.");
         }
-        return {
-            .fade = end.ret == 0 ? WarpFade::BLACK : end.ret == 1 ? WarpFade::WHITE : WarpFade::NONE,
-            .banner = end.banner,
-        };
+        return {.fade = end.fade, .banner = end.banner};
     }
 }
 
@@ -190,11 +189,12 @@ void log_new_banner_read(VideoStream& stream, const std::string& read, std::stri
 }
 
 //  Looks for the location banner `banner` for up to `wait`, and with
-//  `fade` for the fade (fade_of_screen()). Logs each distinct banner read
+//  `fade` for the fade, each frame to `fade`'s watch (TAP_FADE_RULE), which
+//  follows the taps from before the first. Logs each distinct banner read
 //  and how the wait ended: the Oreburgh Gate's entry missed its banner twice
 //  (lab-B, 2026-11-08 15:31 and 15:39) though a hand probe saw it 1.5 s
 //  after the fade, and nothing said why.
-TapLook look_after_tap(VideoStream& stream, ProControllerContext& context, const std::string& banner, Milliseconds wait, bool fade){
+TapLook look_after_tap(VideoStream& stream, ProControllerContext& context, const std::string& banner, Milliseconds wait, WarpFadeWatch* fade){
     const WallClock start = current_time();
     const WallClock deadline = start + wait;
     std::string last_read;
@@ -217,7 +217,7 @@ TapLook look_after_tap(VideoStream& stream, ProControllerContext& context, const
             return TapLook::BANNER;
         }
         darkest = std::min(darkest, brightness_of(screen));
-        if (fade && screen && fade_of_screen(*screen.frame) != WarpFade::NONE){
+        if (fade != nullptr && screen && fade->push(Pokemon::transition_sample(screen)) != WarpFade::NONE){
             return TapLook::DARK;
         }
         if (current_time() >= deadline){
@@ -275,14 +275,18 @@ WarpSeen ConsoleStoryStepIO::run_into_door(Direction direction, bool run, Millis
 std::optional<size_t> ConsoleStoryStepIO::tap_to_banner(Direction direction, const std::string& map, size_t max_taps){
     const std::string& banner = story_banner_name(map);
     m_context.wait_for_all_requests();
-    if (look_after_tap(m_stream, m_context, banner, 0ms, true) == TapLook::BANNER){
+    WarpFadeWatch watch(TAP_FADE_RULE);
+    if (look_after_tap(m_stream, m_context, banner, 0ms, &watch) == TapLook::BANNER){
         m_stream.log("[Banner] \"" + banner + "\" shows before the first tap: through already.");
         return 0;
     }
     for (size_t tap = 1; tap <= max_taps; tap++){
         pbf_press_dpad(m_context, dpad_toward(direction), 160ms, 0ms);
-        const TapLook look = look_after_tap(m_stream, m_context, banner, 1500ms, true);
-        if (look == TapLook::DARK && look_after_tap(m_stream, m_context, banner, 8000ms, false) != TapLook::BANNER){
+        const TapLook look = look_after_tap(m_stream, m_context, banner, 1500ms, &watch);
+        if (look == TapLook::DARK){
+            m_stream.log("[Banner] the fade: " + watch.how() + ".");
+        }
+        if (look == TapLook::DARK && look_after_tap(m_stream, m_context, banner, 8000ms, nullptr) != TapLook::BANNER){
             m_stream.log("[Banner] a fade, no \"" + banner + "\" banner after it: counting the fade.", COLOR_ORANGE);
         }
         if (look != TapLook::NOTHING){

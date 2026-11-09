@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <format>
+#include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_CoordEvents.h"
@@ -30,6 +31,38 @@ using Pokemon::TilePos;
 
 ImageStats sim_screen(double brightness, double stddev){
     return ImageStats(FloatPixel(brightness, brightness, brightness), FloatPixel(stddev, stddev, stddev), 1);
+}
+
+std::vector<Pokemon::TransitionSample> sim_fade_frames(double floor, double fade, bool hold_seen){
+    constexpr Milliseconds FRAME = 33ms;
+    //  The fall and the rise: halfway, in brightness and in texture.
+    const ImageStats between = sim_screen((floor + fade) / 2, (SIM_FLOOR_STDDEV + SIM_FADE_STDDEV) / 2);
+    std::vector<ImageStats> looks{sim_screen(floor, SIM_FLOOR_STDDEV), between};
+    if (hold_seen){
+        for (size_t i = 0; i < 3; i++){
+            looks.push_back(sim_screen(fade, SIM_FADE_STDDEV));
+        }
+        looks.push_back(between);
+    }
+    looks.push_back(sim_screen(floor, SIM_FLOOR_STDDEV));
+    std::vector<Pokemon::TransitionSample> frames;
+    for (size_t i = 0; i < looks.size(); i++){
+        frames.push_back({.time = WallClock() + FRAME * (int64_t)i, .middle = looks[i]});
+    }
+    return frames;
+}
+
+WarpFade sim_watch_fade(const WarpFadeRule& rule, double floor, double fade, bool hold_seen){
+    WarpFadeWatch watch(rule, [](const Pokemon::TransitionSample&, const Pokemon::TransitionSample&){
+        return Pokemon::SceneChange::DIFFERENT;
+    });
+    for (const Pokemon::TransitionSample& frame : sim_fade_frames(floor, fade, hold_seen)){
+        const WarpFade seen = watch.push(frame);
+        if (seen != WarpFade::NONE){
+            return seen;
+        }
+    }
+    return WarpFade::NONE;
 }
 
 SimBeat sim_line(std::string what){
@@ -107,14 +140,40 @@ void SimStoryStepIO::settle(Button, const std::string& label, bool fade, const s
     m_sim.end_dialogue();
 }
 
+SimStoryStepIO::FadeShown SimStoryStepIO::next_fade(){
+    const size_t fade = m_misses.fades++;
+    const FadeShown shown = m_misses.fade == fade ? FadeShown::UNSEEN : m_misses.hold == fade ? FadeShown::HOLD_UNSEEN : FadeShown::SEEN;
+    m_misses.missed |= shown != FadeShown::SEEN;
+    return shown;
+}
+
+WarpFade SimStoryStepIO::watched_fade(const WarpFadeRule& rule, double fade){
+    const FadeShown shown = next_fade();
+    return shown == FadeShown::UNSEEN ? WarpFade::NONE : sim_watch_fade(rule, floor_here(), fade, shown == FadeShown::SEEN);
+}
+
+//  A door's fade through the program's door watch: a hold missed shows at
+//  the scene after it. A fade missed whole, the run goes on holding and
+//  sees the far map's `banner` show after it, if it has one.
+WarpSeen SimStoryStepIO::door_fade(const std::string& banner){
+    const WarpFade fade = watched_fade(DOOR_FADE_RULE, SIM_DOOR_FADE);
+    if (fade != WarpFade::NONE){
+        return {.fade = fade};
+    }
+    m_misses.fade_unseen = true;
+    return {.banner = !banner.empty() && !banner_missed() ? banner : ""};
+}
+
 //  A hold until something stops us. A door stops it at the fade, which
 //  fails the step; a fade missed lets the hold go on past the mouth (r81's
-//  timed walk south out of the Ravaged Path, onto Route 204's cliff).
+//  timed walk south out of the Ravaged Path, onto Route 204's cliff). The
+//  walk's watchers take uniform frames only, so a fade whose hold they
+//  did not see is missed too.
 void SimStoryStepIO::walk_until_stopped(Direction direction, size_t tiles, const std::string& label){
     m_sim.tap(direction, ROUTE_TURN_TAP, false);
     Milliseconds limit = ROUTE_START_DELAY + 800ms + route_ms_per_tile(direction) * (int64_t)(2 * tiles);
     SimMove move = disturbed_hold(m_sim, m_noise, direction, limit, SimPace::WALK).move;
-    if (move.stop == SimStop::WARP && fade_missed() && m_far_side()){
+    if (move.stop == SimStop::WARP && next_fade() != FadeShown::SEEN && m_far_side()){
         limit -= std::min(limit, move.time);
         move = disturbed_hold(m_sim, m_noise, direction, limit, SimPace::WALK).move;
     }
@@ -155,9 +214,9 @@ double SimStoryStepIO::floor_here() const{
 //  D-pad taps, each looked at, until the fade or the banner (the console's
 //  ConsoleStoryStepIO::tap_to_banner()): none if the banner shows before
 //  the first. Each look stands still, so a banner on the far side reads at
-//  once. A look the program's fade_of() takes for a fade ends the taps: a
-//  warp's fade, or a floor read as one; with the fade missed the look still
-//  sees the banner.
+//  once. A fade the program's tap watch (TAP_FADE_RULE) sees ends the taps,
+//  its hold seen or not; with the fade missed whole the look still sees the
+//  banner.
 std::optional<size_t> SimStoryStepIO::tap_to_banner(Direction direction, const std::string& map, size_t max_taps){
     if (m_misses.through == m_misses.tap_steps++){
         m_misses.missed = true;
@@ -174,16 +233,14 @@ std::optional<size_t> SimStoryStepIO::tap_to_banner(Direction direction, const s
         if (move.stop == SimStop::DIALOG){
             return std::nullopt;
         }
-        ImageStats look = sim_screen(floor_here(), SIM_FLOOR_STDDEV);
+        WarpFade fade = WarpFade::NONE;
         if (move.stop == SimStop::WARP){
-            const auto fade = m_knobs.fade_into.find(map);
-            if (!fade_missed()){
-                look = sim_screen(fade == m_knobs.fade_into.end() ? SIM_DOOR_FADE : fade->second, SIM_FADE_STDDEV);
-            }
+            const auto into = m_knobs.fade_into.find(map);
+            fade = watched_fade(TAP_FADE_RULE, into == m_knobs.fade_into.end() ? SIM_DOOR_FADE : into->second);
             crossed = m_far_side();
         }
         const bool banner = crossed && on_map(map) && !banner_missed();
-        if (banner || fade_of(look) != WarpFade::NONE){
+        if (banner || fade != WarpFade::NONE){
             return tap;
         }
     }
