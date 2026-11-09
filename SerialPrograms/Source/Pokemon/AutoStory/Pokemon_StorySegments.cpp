@@ -102,6 +102,12 @@ Outcome reload(RunState& state, SegmentHooks& hooks){
     return outcome_ok();
 }
 
+void tell_failed(SegmentHooks& hooks, const std::string& checkpoint, const CheckpointReport& result){
+    if (hooks.failed){
+        hooks.failed(checkpoint, result.failed_name, result.failure);
+    }
+}
+
 //  The policy's in-place recovery, after each event's own: the game's
 //  recover hook, if any, then the event again. Counts into `used`.
 void add_policy_recoveries(Checkpoint& checkpoint, const SegmentPolicy& policy, SegmentHooks& hooks, size_t& used){
@@ -155,6 +161,7 @@ CheckpointReport run_row(
             ));
             return result;
         }
+        tell_failed(hooks, spec.id, result);
         if (policy.stop_at_first_failure){
             say(hooks, std::format(
                 "[Segment] {}: {} failed; stopping at the first failure, the game stays where it failed",
@@ -250,6 +257,7 @@ bool verify_run(
         say(hooks, std::format("[Verify] {}: run {}/{} passed", spec.id, run, policy.runs));
         return true;
     }
+    tell_failed(hooks, spec.id, result);
     say(hooks, std::format(
         "[Verify] {}: run {}/{} failed{}: {}",
         spec.id, run, policy.runs,
