@@ -16,6 +16,7 @@
 #include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
 #include "PokemonBDSP/Programs/PokemonBDSP_GameEntry.h"
+#include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_NewGame.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP_AutoStory_StoryTable.h"
 #include "PokemonBDSP_AutoStory.h"
@@ -165,6 +166,23 @@ void verify_story_checkpoint(
 } // namespace
 
 
+namespace{
+
+//  The languages BDSP's language select lists, in its order.
+const EnumDropdownDatabase<Language>& switch_language_database(){
+    static const EnumDropdownDatabase<Language> database = []{
+        EnumDropdownDatabase<Language> ret;
+        for (Language language : bdsp_language_menu()){
+            ret.add(language, language_data(language).code, language_data(language).name, true);
+        }
+        return ret;
+    }();
+    return database;
+}
+
+} // namespace
+
+
 BDSPAutoStory::BDSPAutoStory()
     : RUN(checkpoint_database())
     , NEW_GAME_INTRO(
@@ -180,6 +198,14 @@ BDSPAutoStory::BDSPAutoStory()
         LockMode::LOCK_WHILE_RUNNING, false
     )
     , PLAYER_NAME(false, "<b>Player name:</b><br>For a new game. Letters and digits.", LockMode::LOCK_WHILE_RUNNING, "Kosmos", "Kosmos")
+    , SWITCH_LANGUAGE(
+        "<b>Switch language:</b><br>For a new game: the Switch's system language, where BDSP's language select starts its cursor.",
+        switch_language_database(), LockMode::LOCK_WHILE_RUNNING, Language::English
+    )
+    , PLAYER_LOOK(
+        "<b>Player's look:</b><br>For a new game: the look picked on the appearance grid. "
+        "Models 1, 2, 5 and 6 are Lucas; 3, 4, 7 and 8 are Dawn."
+    )
     , STARTER(
         "<b>Starter Pokemon:</b>",
         {
@@ -200,6 +226,8 @@ BDSPAutoStory::BDSPAutoStory()
     PA_ADD_OPTION(NEW_GAME_INTRO);
     PA_ADD_OPTION(JUST_LOADED);
     PA_ADD_OPTION(PLAYER_NAME);
+    PA_ADD_OPTION(SWITCH_LANGUAGE);
+    PA_ADD_OPTION(PLAYER_LOOK);
     PA_ADD_OPTION(STARTER);
     PA_ADD_OPTION(NOTIFICATIONS);
 }
@@ -228,7 +256,7 @@ void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     //  The reads that use text (Location.h) take the game's language from here.
     set_story_language(RUN.language());
 
-    StoryEnv story{env, context, STARTER, PLAYER_NAME};
+    StoryEnv story{env, context, STARTER, PLAYER_NAME, IntroPicks{SWITCH_LANGUAGE, RUN.language(), PLAYER_LOOK.index()}};
     StoryExecutor executor(story);
     executor.set_checks(RUN.checks());
     executor.set_language(RUN.language());

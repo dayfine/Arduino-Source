@@ -19,6 +19,7 @@
 #include "CommonFramework/Notifications/EventNotificationsTable.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 #include "Pokemon/Options/Pokemon_StoryRunOptions.h"
+#include "PokemonBDSP/Options/PokemonBDSP_PlayerModelOption.h"
 #include "PokemonBDSP_AutoStory_StoryExecutor.h"
 
 namespace PokemonAutomation{
@@ -49,6 +50,8 @@ private:
     BooleanCheckBoxOption NEW_GAME_INTRO;
     BooleanCheckBoxOption JUST_LOADED;
     StringOption PLAYER_NAME;
+    EnumDropdownOption<Language> SWITCH_LANGUAGE;
+    PlayerModelOption PLAYER_LOOK;
     EnumDropdownOption<StarterChoice> STARTER;
 
     EventNotificationsOption NOTIFICATIONS;

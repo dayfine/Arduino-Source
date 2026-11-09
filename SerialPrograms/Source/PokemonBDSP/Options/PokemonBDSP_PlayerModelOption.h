@@ -8,6 +8,7 @@
 #define PokemonAutomation_PokemonBDSP_PlayerModelOption_H
 
 #include <stdint.h>
+#include <string>
 #include "CommonTools/Options/StringSelectOption.h"
 
 namespace PokemonAutomation{
@@ -22,6 +23,8 @@ const uint8_t BDSP_PLAYER_MODEL_COUNT = 8;
 class PlayerModelOption : public StringSelectOption{
 public:
     PlayerModelOption();
+    //  The same choices, under another label.
+    explicit PlayerModelOption(std::string label);
     uint8_t model_number() const{ return (uint8_t)(index() + 1); }
 };
 

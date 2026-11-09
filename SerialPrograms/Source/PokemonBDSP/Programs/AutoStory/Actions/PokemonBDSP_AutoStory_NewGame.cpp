@@ -4,6 +4,7 @@
  *
  */
 
+#include <algorithm>
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTools/ImageDiff.h"
@@ -28,6 +29,54 @@ namespace NintendoSwitch{
 namespace PokemonBDSP{
 
 using namespace std::chrono_literals;
+
+
+const std::vector<Language>& bdsp_language_menu(){
+    static const std::vector<Language> menu{
+        Language::Japanese,
+        Language::English,
+        Language::French,
+        Language::Italian,
+        Language::German,
+        Language::Spanish,
+        Language::Korean,
+        Language::ChineseSimplified,
+        Language::ChineseTraditional,
+    };
+    return menu;
+}
+
+namespace{
+
+std::optional<size_t> language_item(Language language){
+    const std::vector<Language>& menu = bdsp_language_menu();
+    const auto it = std::find(menu.begin(), menu.end(), language);
+    if (it == menu.end()){
+        return std::nullopt;
+    }
+    return (size_t)(it - menu.begin());
+}
+
+} // namespace
+
+std::optional<std::vector<DpadPosition>> language_pick_moves(const IntroPicks& picks){
+    const std::optional<size_t> from = language_item(picks.switch_language);
+    const std::optional<size_t> to = language_item(picks.game_language);
+    if (!from || !to){
+        return std::nullopt;
+    }
+    return menu_cursor_moves(MenuGrid{1, bdsp_language_menu().size()}, *from, *to);
+}
+std::optional<std::vector<DpadPosition>> look_pick_moves(const IntroPicks& picks){
+    return menu_cursor_moves(BDSP_LOOK_GRID, 0, picks.look);
+}
+
+IntroProgress intro_start(const IntroPicks& picks){
+    IntroProgress progress;
+    progress.language_pending = picks.switch_language != picks.game_language;
+    progress.look_pending = picks.look != 0;
+    return progress;
+}
 
 
 std::string classify_intro_screen(ConsoleHandle* console, const ImageViewRGB32& screen){
@@ -64,6 +113,25 @@ std::string classify_intro_screen(ConsoleHandle* console, const ImageViewRGB32& 
     return "other";
 }
 
+namespace{
+
+//  A on a screen that may take A, after a D-pad probe while a pick waits for
+//  its menu. The picks come before the player's name.
+IntroStep advance_or_probe(const IntroProgress& progress){
+    if (progress.player_named){
+        return IntroStep::ADVANCE;
+    }
+    if (progress.language_pending){
+        return IntroStep::PROBE_FOR_LANGUAGE;
+    }
+    if (progress.look_pending){
+        return IntroStep::PROBE_FOR_LOOK;
+    }
+    return IntroStep::ADVANCE;
+}
+
+} // namespace
+
 IntroStep decide_intro_step(const std::string& screen, const IntroProgress& progress){
     if (screen == "user-select"){
         return IntroStep::SELECT_USER;
@@ -72,6 +140,9 @@ IntroStep decide_intro_step(const std::string& screen, const IntroProgress& prog
         return IntroStep::FAIL_NOT_IN_GAME;
     }
     if (screen == "keyboard"){
+        if (!progress.player_named && (progress.language_pending || progress.look_pending)){
+            return IntroStep::FAIL_PICK_MISSED;
+        }
         return progress.player_named ? IntroStep::CANCEL_RIVAL_KEYBOARD : IntroStep::ENTER_PLAYER_NAME;
     }
     if (screen == "rival-list-tell"){
@@ -87,7 +158,7 @@ IntroStep decide_intro_step(const std::string& screen, const IntroProgress& prog
         return IntroStep::WAIT;
     }
     if (screen == "dialog"){
-        return progress.rival_named ? IntroStep::ADVANCE_WITH_B : IntroStep::ADVANCE;
+        return progress.rival_named ? IntroStep::ADVANCE_WITH_B : advance_or_probe(progress);
     }
     //  The bedroom comes only after the rival is named. Before that, every unknown
     //  screen (logos, the title, language, the appearance preview, cutscenes)
@@ -99,7 +170,7 @@ IntroStep decide_intro_step(const std::string& screen, const IntroProgress& prog
     if (!progress.game_confirmed && progress.unconfirmed_for >= INTRO_TIME_BEFORE_BDSP){
         return IntroStep::FAIL_NOT_BDSP;
     }
-    return IntroStep::ADVANCE;
+    return advance_or_probe(progress);
 }
 bool intro_screen_confirms_bdsp(const std::string& screen){
     return screen == "dialog" || screen == "rival-list-tell" || screen == "rival-list-preset" || screen == "menu";
@@ -199,6 +270,7 @@ struct IntroRun{
     SingleSwitchProgramEnvironment& env;
     ProControllerContext& context;
     StepTrace& trace;
+    const IntroPicks& picks;
     const std::string& player_name;
     WallClock start;
     IntroProgress progress;
@@ -277,12 +349,91 @@ void probe_for_menu(IntroRun& run){
     }
 }
 
-//  Carries out what decide_intro_step() chose for `screen`.
-void act(IntroRun& run, const char* screen){
+void advance(IntroRun& run){
+    pbf_press_button(run.context, BUTTON_A, 60ms, 400ms);
+}
+
+//  Probes the screen with `there` and `back`; whether a cursor moved.
+bool probe_moves(IntroRun& run, DpadPosition there, DpadPosition back){
+    const CursorProbe probe = probe_cursor(run.env.console, run.context, there, back);
+    const bool moved = cursor_probe_moved(probe);
+    run.trace.action("Cursor probe " + dpad_to_string(there) + ": still " + std::to_string(probe.still_change) +
+        ", press " + std::to_string(probe.press_change) + ", back " + std::to_string(probe.back_change) +
+        (moved ? ": a cursor moved." : ": no cursor."));
+    return moved;
+}
+
+//  Moves the cursor with `moves`, saves a screenshot of it on the pick, and confirms with A.
+void pick_on_menu(IntroRun& run, const std::vector<DpadPosition>& moves, const std::string& what){
+    run.trace.action("Picking " + what + ": " + std::to_string(moves.size()) + " D-pad presses, then A.");
+    press_cursor_moves(run.context, moves);
+    run.context.wait_for_all_requests();
+    run.trace.screen("pick-" + what);
+    press(run, BUTTON_A);
+    pbf_wait(run.context, 500ms);
+}
+
+//  The language select is a list: Down moves its cursor, unless it starts on
+//  the last item of a list that does not wrap, so Up is tried too. Sideways
+//  moves only on the appearance grid, which comes later.
+void probe_for_language(IntroRun& run){
+    if (!probe_moves(run, DPAD_DOWN, DPAD_UP) && !probe_moves(run, DPAD_UP, DPAD_DOWN)){
+        advance(run);
+        return;
+    }
+    if (probe_moves(run, DPAD_RIGHT, DPAD_LEFT)){
+        run.trace.fail("The appearance grid showed before the language select was found.");
+    }
+    pick_on_menu(run, *language_pick_moves(run.picks), "language");
+    run.progress.language_pending = false;
+}
+
+//  The appearance grid's cursor starts on the first look, so Right moves it.
+//  The Yes/No boxes around it do not move sideways.
+void probe_for_look(IntroRun& run){
+    if (!probe_moves(run, DPAD_RIGHT, DPAD_LEFT)){
+        advance(run);
+        return;
+    }
+    pick_on_menu(run, *look_pick_moves(run.picks), "look");
+    run.progress.look_pending = false;
+}
+
+//  PROBE_FOR_LANGUAGE or PROBE_FOR_LOOK.
+void probe_for_pick(IntroRun& run, IntroStep step){
+    if (step == IntroStep::PROBE_FOR_LANGUAGE){
+        probe_for_language(run);
+    }else{
+        probe_for_look(run);
+    }
+}
+
+//  Notes `screen` in the run's progress, decides the step for it and counts it.
+IntroStep next_intro_step(IntroRun& run, const char* screen){
     note_intro_screen(run.progress, screen,
         std::chrono::duration_cast<std::chrono::milliseconds>(current_time() - run.start));
     const IntroStep step = decide_intro_step(screen, run.progress);
     record_intro_step(run.progress, step);
+    return step;
+}
+
+//  Stops the intro for one of the FAIL_ steps.
+[[noreturn]] void fail_intro(const IntroRun& run, IntroStep step){
+    if (step == IntroStep::FAIL_NOT_IN_GAME){
+        run.trace.fail("The Switch HOME menu is showing: the game is not running in front.");
+    }
+    if (step == IntroStep::FAIL_NOT_BDSP){
+        run.trace.fail("The game in front is not BDSP: no BDSP screen in " +
+            std::to_string(run.progress.unconfirmed_for.count() / 1000) + " s of unknown screens.");
+    }
+    run.trace.fail(std::string("The player's name keyboard showed before the ") +
+        (run.progress.language_pending ? "language select" : "appearance grid") +
+        " was found: no cursor probe above saw its cursor move.");
+}
+
+//  Carries out what decide_intro_step() chose for `screen`.
+void act(IntroRun& run, const char* screen){
+    const IntroStep step = next_intro_step(run, screen);
     switch (step){
     case IntroStep::SELECT_USER:
         //  The cursor starts on the user that launched the game.
@@ -290,10 +441,13 @@ void act(IntroRun& run, const char* screen){
         pbf_wait(run.context, 1000ms);
         return;
     case IntroStep::FAIL_NOT_IN_GAME:
-        run.trace.fail("The Switch HOME menu is showing: the game is not running in front.");
     case IntroStep::FAIL_NOT_BDSP:
-        run.trace.fail("The game in front is not BDSP: no BDSP screen in " +
-            std::to_string(run.progress.unconfirmed_for.count() / 1000) + " s of unknown screens.");
+    case IntroStep::FAIL_PICK_MISSED:
+        fail_intro(run, step);
+    case IntroStep::PROBE_FOR_LANGUAGE:
+    case IntroStep::PROBE_FOR_LOOK:
+        probe_for_pick(run, step);
+        return;
     case IntroStep::ENTER_PLAYER_NAME:
         enter_player_name(run.env.console, run.context, run.trace, run.player_name);
         return;
@@ -313,7 +467,7 @@ void act(IntroRun& run, const char* screen){
         close_menu_and_finish(run);
         return;
     case IntroStep::ADVANCE:
-        pbf_press_button(run.context, BUTTON_A, 60ms, 400ms);
+        advance(run);
         return;
     case IntroStep::ADVANCE_WITH_B:
     case IntroStep::CLEAR_WITH_B:
@@ -396,10 +550,19 @@ std::vector<ScreenState> intro_states(IntroRun& run){
 void play_new_game_intro(
     SingleSwitchProgramEnvironment& env,
     ProControllerContext& context,
+    const IntroPicks& picks,
     const std::string& player_name
 ){
     VideoStream& stream = env.console;
     StepTrace trace(stream, "Intro");
+
+    if (!language_pick_moves(picks)){
+        throw UserSetupError(env.console,
+            "BDSP's language select lacks the Switch's language or the game's language: pick ones it lists.");
+    }
+    if (!look_pick_moves(picks)){
+        throw UserSetupError(env.console, "The player's look must be one of BDSP's eight.");
+    }
 
     //  The restart below reopens the game HOME's cursor is on, which is the
     //  game running in front only while it runs: with none running (r1,
@@ -423,7 +586,9 @@ void play_new_game_intro(
     from_home_close_and_reopen_game(env.console, context, true);
 
     wait_out_boot(stream, context, trace);
-    IntroRun run{env, context, trace, player_name, current_time(), {}, 0};
+    IntroRun run{env, context, trace, picks, player_name, current_time(), intro_start(picks), 0};
+    trace.action(std::string("Picks: language ") + language_data(picks.game_language).name + " from " +
+        language_data(picks.switch_language).name + ", look " + std::to_string(picks.look + 1) + ".");
     const std::vector<ScreenState> states = intro_states(run);
     run_screen_machine(stream, context, trace, states, std::chrono::minutes(15));
     trace.action("Intro done.");

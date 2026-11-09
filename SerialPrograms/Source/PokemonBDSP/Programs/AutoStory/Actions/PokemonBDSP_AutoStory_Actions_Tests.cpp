@@ -20,6 +20,7 @@
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/Logging/Logger.h"
+#include "NintendoSwitch/Programs/MenuCursor/NintendoSwitch_MenuCursor_Tests.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryMaps.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP_AutoStory_Center.h"
@@ -247,6 +248,96 @@ UnitTestResult test_intro_gate(Logger&){
         return "Once BDSP's dialogue has shown, the clock stops.";
     }
     return check_confirming_screens();
+}
+
+
+//  The presses for the language select (a list starting on the Switch's
+//  language) and the appearance grid (two rows of four, from the first look).
+UnitTestResult test_intro_pick_moves(Logger&){
+    using Moves = std::optional<std::vector<DpadPosition>>;
+    struct Case{
+        const char* what;
+        Moves actual;
+        Moves expected;
+    };
+    const Case cases[] = {
+        {"French on an English Switch (lab run 3)",
+            language_pick_moves({Language::English, Language::French, 0}), Moves(std::vector<DpadPosition>{DPAD_DOWN})},
+        {"the Switch's own language",
+            language_pick_moves({Language::English, Language::English, 0}), Moves(std::vector<DpadPosition>{})},
+        {"English on a French Switch",
+            language_pick_moves({Language::French, Language::English, 0}), Moves(std::vector<DpadPosition>{DPAD_UP})},
+        {"top to bottom",
+            language_pick_moves({Language::Japanese, Language::ChineseTraditional, 0}), Moves{std::vector<DpadPosition>(8, DPAD_DOWN)}},
+        {"a language the menu lacks",
+            language_pick_moves({Language::English, Language::None, 0}), std::nullopt},
+        {"Model 1, where the cursor starts",
+            look_pick_moves({Language::English, Language::English, 0}), Moves(std::vector<DpadPosition>{})},
+        {"Model 3, Dawn's first look (lab run 3)",
+            look_pick_moves({Language::English, Language::English, 2}), Moves(std::vector<DpadPosition>{DPAD_RIGHT, DPAD_RIGHT})},
+        {"Model 8, the last",
+            look_pick_moves({Language::English, Language::English, 7}), Moves(std::vector<DpadPosition>{DPAD_RIGHT, DPAD_RIGHT, DPAD_RIGHT, DPAD_DOWN})},
+        {"no Model 9",
+            look_pick_moves({Language::English, Language::English, 8}), std::nullopt},
+    };
+    for (const Case& c : cases){
+        if (c.actual != c.expected){
+            return std::string("Wrong presses for ") + c.what + ".";
+        }
+    }
+    if (bdsp_language_menu().size() != 9){
+        return "BDSP's language select lists nine languages.";
+    }
+    return true;
+}
+
+//  Until its pick is made, every screen that would take A gets a probe
+//  first: the language's before the look's. The player's keyboard with a
+//  pick still to make fails. Picks the cursor starts on need no probe.
+UnitTestResult test_intro_pick_probes(Logger&){
+    struct Case{
+        const char* what;
+        const char* screen;
+        bool language_pending;
+        bool look_pending;
+        IntroStep expected;
+    };
+    const Case cases[] = {
+        {"a logo, language to pick",        "other",    true,   true,   IntroStep::PROBE_FOR_LANGUAGE},
+        {"a dialogue, language to pick",    "dialog",   true,   false,  IntroStep::PROBE_FOR_LANGUAGE},
+        {"Rowan, look to pick",             "dialog",   false,  true,   IntroStep::PROBE_FOR_LOOK},
+        {"the preview, look to pick",       "other",    false,  true,   IntroStep::PROBE_FOR_LOOK},
+        {"both picked",                     "dialog",   false,  false,  IntroStep::ADVANCE},
+        {"black, language to pick",         "black",    true,   true,   IntroStep::WAIT},
+        {"the user select",                 "user-select", true, true,  IntroStep::SELECT_USER},
+        {"the keyboard, language missed",   "keyboard", true,   false,  IntroStep::FAIL_PICK_MISSED},
+        {"the keyboard, look missed",       "keyboard", false,  true,   IntroStep::FAIL_PICK_MISSED},
+        {"the keyboard, both picked",       "keyboard", false,  false,  IntroStep::ENTER_PLAYER_NAME},
+    };
+    for (const Case& c : cases){
+        IntroProgress progress = intro_progress(0);
+        progress.language_pending = c.language_pending;
+        progress.look_pending = c.look_pending;
+        if (decide_intro_step(c.screen, progress) != c.expected){
+            return std::string("Wrong step for ") + c.what + ".";
+        }
+    }
+    //  The wrong-game guard still stops a game that never shows BDSP's screens.
+    IntroProgress other_game = intro_start({Language::English, Language::French, 2});
+    note_intro_screen(other_game, "other", std::chrono::milliseconds(0));
+    note_intro_screen(other_game, "other", INTRO_TIME_BEFORE_BDSP);
+    if (decide_intro_step("other", other_game) != IntroStep::FAIL_NOT_BDSP){
+        return "Past INTRO_TIME_BEFORE_BDSP, a pending pick must not keep another game going.";
+    }
+    const IntroProgress defaults = intro_start({Language::English, Language::English, 0});
+    if (defaults.language_pending || defaults.look_pending){
+        return "Picks the cursor starts on need no menu.";
+    }
+    const IntroProgress run3 = intro_start({Language::English, Language::French, 2});
+    if (!run3.language_pending || !run3.look_pending){
+        return "French and Model 3 on an English Switch need both menus.";
+    }
+    return true;
 }
 
 
@@ -487,6 +578,14 @@ const AutoStoryActionsCase AUTO_STORY_ACTIONS_CASES[] = {
         .expectation = {},
     },
     {
+        .input = {"new-game intro: language and look presses", test_intro_pick_moves},
+        .expectation = {},
+    },
+    {
+        .input = {"new-game intro: probes until the picks are made", test_intro_pick_probes},
+        .expectation = {},
+    },
+    {
         .input = {"lit doorway screenshots", test_lit_doorway_screenshots},
         .expectation = {},
     },
@@ -512,6 +611,8 @@ void add_tests_AutoStory_Actions(UnitTestDatabase& database){
     for (const auto& item : AUTO_STORY_ACTIONS_CASES){
         database.add<Test_AutoStoryActions>(item);
     }
+    //  The menu cursor's own tests, with those of the intro, its first user.
+    add_tests_MenuCursor(database);
 }
 
 
