@@ -105,22 +105,12 @@ using SavePoseReader = std::function<std::optional<StoryPose>()>;
 //  Where the start check says what it found.
 using StoryLog = std::function<void(const std::string& line)>;
 
-//  Where the save just loaded is, against the start of the checkpoint it
-//  starts: the console's reads it from frames (PokemonFRLG_AutoStoryStartFrames.h).
-using StartReader = std::function<StartRead()>;
-
 //  Adds to `checkpoint`, built from a row that starts at `start`, the start
-//  check: the save it starts from, as `read` finds it, must be there, or
-//  the checkpoint stops before its first event, "start_failed". A save
-//  `read` can't tell about passes. `log` gets a mismatch ("start pose
-//  mismatch: "), that nothing was read ("start pose not read: "), or what
-//  a match saw. A row with no start (a new game) gets none.
-void add_start_check(
-    Pokemon::Checkpoint& checkpoint, const std::optional<Pokemon::Pose>& start, StartReader read, StoryLog log
-);
-
-//  add_start_check() with a reader of the tile the save stands on, which
-//  must be the start's (start_pose_mismatch()).
+//  check: the save it starts from, as `read` reads it, must stand there
+//  (start_pose_mismatch()), or the checkpoint stops before its first event,
+//  "start_failed". A save that can't be read passes. `log` gets a
+//  mismatch, or that nothing was read. A row with no start (a new game)
+//  gets none. (add_start_check() with a reader of the tile.)
 void add_start_pose_check(
     Pokemon::Checkpoint& checkpoint, const std::optional<Pokemon::Pose>& start, SavePoseReader read, StoryLog log
 );
