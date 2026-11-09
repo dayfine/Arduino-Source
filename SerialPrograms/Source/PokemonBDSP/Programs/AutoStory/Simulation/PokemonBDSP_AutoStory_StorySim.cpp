@@ -58,10 +58,14 @@ std::string play_scene(const SimScene& scene, const TalkOverRule& rule){
             beat_start += scene[beat].length;
             beat++;
         }
-        SceneLook look{.overworld = true, .still = true};
+        Pokemon::ScreenEvents look{Pokemon::ScreenEvent::PLAYER_CAN_MOVE, Pokemon::ScreenEvent::SCREEN_STILL};
         if (beat < scene.size()){
             const SimBeat& shown = scene[beat];
-            look = {.box = shown.line, .overworld = shown.overworld, .still = !shown.moving, .fade = shown.fade};
+            look = {};
+            look.set(Pokemon::ScreenEvent::DIALOG_BOX, shown.line);
+            look.set(Pokemon::ScreenEvent::PLAYER_CAN_MOVE, shown.overworld);
+            look.set(Pokemon::ScreenEvent::SCREEN_STILL, !shown.moving);
+            look.add_fade(shown.fade);
         }
         switch (judge.look(look, now)){
         case SceneMove::DONE:
