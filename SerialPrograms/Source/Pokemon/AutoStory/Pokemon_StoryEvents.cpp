@@ -161,6 +161,8 @@ Outcome attempt_event(Event& event, RunState& state){
     return check_expects(event, state);
 }
 
+} // namespace
+
 void apply_interrupt_pose(Pose& pose, InterruptPose effect){
     switch (effect){
     case InterruptPose::UNCHANGED:
@@ -176,6 +178,8 @@ void apply_interrupt_pose(Pose& pose, InterruptPose effect){
         return;
     }
 }
+
+namespace{
 
 
 //  One event being run, with what it has used up.
