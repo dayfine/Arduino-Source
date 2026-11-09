@@ -17,7 +17,10 @@
  *
  *  A step that starts on what the look found (a MASH on its scene's box,
  *  a BATTLE on its trainer's lines) is not interrupted by it: the table
- *  says which (InterruptHandlerTable::starts_on()).
+ *  says which (InterruptHandlerTable::starts_on()). A step that starts on
+ *  a battle also starts on an UNSETTLED screen, a fade with no battle yet:
+ *  that is its battle's opening, still playing (BDSP's Starly battle right
+ *  after the starter is picked), and the step waits for it itself.
  *
  */
 
@@ -72,7 +75,8 @@ public:
     const InterruptHandler* find(InterruptKind kind) const;
 
     //  Steps of `step` start on `kind` showing: before one, it is the
-    //  step's to clear, not an interrupt.
+    //  step's to clear, not an interrupt. A step that starts on
+    //  WILD_ENCOUNTER or TRAINER_SIGHT starts on UNSETTLED too.
     void starts_on(StoryStepKind step, InterruptKind kind);
     bool step_starts_on(StoryStepKind step, InterruptKind kind) const;
 
@@ -89,7 +93,8 @@ struct StoryInterrupts{
     InterruptKnobs knobs = {};
     InterruptHandlerTable handlers = {};
     //  Looks at a screen that stays UNSETTLED (a fade with no battle yet)
-    //  before it fails the step as "interrupt_unsettled".
+    //  before it fails the step as "interrupt_unsettled". A step that
+    //  starts on it gets it on the first look.
     size_t max_looks = 3;
     //  Interrupts cleared for one step before it fails as
     //  "too_many_interrupts".
