@@ -433,6 +433,73 @@ UnitTestResult test_table_rejects(){
     return true;
 }
 
+//  A guard that notes how the screen looked before each step.
+class ScreenGuard : public StepGuard{
+public:
+    explicit ScreenGuard(FakeGame& game)
+        : m_game(game)
+    {}
+    virtual void on_screen(const StoryStep& step, const ScreenSettle& screen) override{
+        m_game.trace.push_back("before " + step.name + ": " + describe(screen));
+    }
+
+private:
+    FakeGame& m_game;
+};
+
+//  The guard hears how the screen looked before every step, interrupt or
+//  not: the run log's answer to "had the scene ended before the input?".
+UnitTestResult test_screen_before_each_step(){
+    FakeGame game;
+    //  A scene's closing fade still down: no battle comes, so the step
+    //  fails unsettled, and the guard hears the fade was showing.
+    game.screens = {look_of({{0, WALK}, {100, BLACK}}, 300)};
+    StoryInterrupts interrupts = fake_interrupts(game);
+    interrupts.max_opening_looks = 2;
+    const StoryActionTable table = table_of(game, {});
+    ScreenGuard guard(game);
+    TableExecutor executor(table, guard);
+    executor.set_interrupts(&interrupts);
+    RunState state;
+    StoryStep step = make(StoryStepKind::ROUTE, "by_the_counter");
+    step.variant = "act";
+    const Outcome faded = executor.run(state, step);
+    if (faded.succeeded()){
+        return "Expected a step in a fade to fail unsettled, got " + to_string(faded);
+    }
+    game.screens = {quiet()};
+    game.looks = 0;
+    const Outcome settled = executor.run(state, step);
+    if (!settled.succeeded()){
+        return "Expected the step on a quiet screen to run, got " + to_string(settled);
+    }
+    return expect_trace(game, {
+        "look", "look again", "before by_the_counter: black fade showing (quiet 0.2 s)",
+        "look", "before by_the_counter: settled overworld (quiet 0.3 s)", "run by_the_counter",
+    });
+}
+
+UnitTestResult test_settle_of_a_look(){
+    struct Row{
+        const char* name;
+        ScreenLook look;
+        const char* expected;
+    };
+    const std::vector<Row> rows = {
+        {"no frame", ScreenLook{}, "no frame seen"},
+        {"a quiet overworld", quiet(), "settled overworld (quiet 0.3 s)"},
+        {"a box", dialog(), "dialog box, player can move showing (quiet 0.2 s)"},
+        {"a door's fade back up", black_unsettled(), "settled overworld (quiet 0.3 s)"},
+    };
+    for (const Row& row : rows){
+        const std::string got = describe(judge_settle(row.look));
+        if (got != row.expected){
+            return std::format("{}: expected \"{}\", got \"{}\"", row.name, row.expected, got);
+        }
+    }
+    return true;
+}
+
 
 struct StoryInterruptsInput{
     std::string_view name;
@@ -542,6 +609,14 @@ const StoryInterruptsCase STORY_INTERRUPTS_CASES[] = {
     {
         .input = {.name = "table: one handler a kind that can be cleared", .test = test_table_rejects},
         .expectation = {.description = "rejects NONE, UNSETTLED and a second handler"},
+    },
+    {
+        .input = {.name = "the screen before each step, for the log", .test = test_screen_before_each_step},
+        .expectation = {.description = "a fade still down is told, and fails unsettled; a quiet overworld is settled"},
+    },
+    {
+        .input = {.name = "how a look ended", .test = test_settle_of_a_look},
+        .expectation = {.description = "the last frame's events and how long they held"},
     },
 };
 
