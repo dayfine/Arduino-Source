@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <format>
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
+#include "CommonFramework/ImageTools/ImageBoxes.h"
+#include "CommonFramework/ImageTools/ImageStats.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
@@ -18,6 +20,7 @@
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleTextBoxDetector.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "PokemonFRLG_PlayerFacingReader.h"
 #include "PokemonFRLG_OverworldWalk.h"
 
@@ -292,11 +295,12 @@ void clear_open_message(
 namespace{
 
 //  What on screen shows a wild battle on its way: its text box, or the
-//  black of its wipe. Nothing if neither shows.
+//  black of its wipe. Nothing if neither shows, or on a dark cave's
+//  overworld (dark_cave_screen()).
 const char* battle_on_its_way(ConsoleHandle& console, ProControllerContext& context){
     context.wait_for_all_requests();
     VideoSnapshot screen = console.video().snapshot();
-    if (!screen){
+    if (!screen || dark_cave_screen(*screen.frame)){
         return nullptr;
     }
     if (BattleTextBoxDetector(COLOR_RED).detect(screen)){
@@ -308,7 +312,39 @@ const char* battle_on_its_way(ConsoleHandle& console, ProControllerContext& cont
     return nullptr;
 }
 
+//  The parts of the game screen a dark cave shows black (its corners) and
+//  lit (the player's tile and the ones next to it), and how bright each
+//  may be, as the sum of the average's channels. Not measured on the
+//  console's frames yet: the corners are a GBA screen's 2 by 2 tiles, the
+//  middle its player's tile.
+constexpr double DARK_CORNER_MAX = 45.0;
+constexpr double LIT_MIDDLE_MIN = 120.0;
+
+bool box_brightness_below(const ImageViewRGB32& screen, const ImageFloatBox& box, double limit){
+    return image_stats(extract_box_reference(screen, box)).average.sum() < limit;
+}
+
 } // namespace
+
+bool dark_cave_screen(const ImageViewRGB32& screen){
+    if (screen.width() == 0 || screen.height() == 0){
+        return false;
+    }
+    const ImageFloatBox game = GameSettings::instance().GAME_BOX;
+    auto part = [&](double x, double y, double width, double height){
+        return ImageFloatBox(game.x + game.width * x, game.y + game.height * y, game.width * width, game.height * height);
+    };
+    const ImageFloatBox corners[] = {
+        part(0.00, 0.00, 0.13, 0.20), part(0.87, 0.00, 0.13, 0.20),
+        part(0.00, 0.80, 0.13, 0.20), part(0.87, 0.80, 0.13, 0.20),
+    };
+    for (const ImageFloatBox& corner : corners){
+        if (!box_brightness_below(screen, corner, DARK_CORNER_MAX)){
+            return false;
+        }
+    }
+    return !box_brightness_below(screen, part(0.45, 0.42, 0.10, 0.16), LIT_MIDDLE_MIN);
+}
 
 size_t clear_unseen_battle(
     ConsoleHandle& console, ProControllerContext& context,

@@ -23,6 +23,7 @@
 #include <string>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "Pokemon/AutoStory/Pokemon_ScreenEvents.h"
 #include "Pokemon/Navigation/Pokemon_LegWalker.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
@@ -212,6 +213,16 @@ size_t clear_battle_before(
     ConsoleHandle& console, ProControllerContext& context,
     const OverworldInterrupts& wild, const RouteStep& step
 );
+
+//  Whether `screen` is the overworld of a cave dark without Flash (Rock
+//  Tunnel): black around a lit circle on the player in the middle. The
+//  battle text box detector and the black screen check read its black as
+//  a battle on its way (console B, 2026-11-09, 00.28: the check before
+//  each step ran a 15 s battle loop on it, "not a battle", and an open
+//  leg's stop was placed by it 0 to 3 tiles in, where the battle came at
+//  the leg's end). A battle's wipe is black in the middle too; its text
+//  box and HP boxes aren't black in the corners.
+bool dark_cave_screen(const ImageViewRGB32& screen);
 
 //  After a warp's fade: if it was a wild battle's, runs from the battle and
 //  returns true.

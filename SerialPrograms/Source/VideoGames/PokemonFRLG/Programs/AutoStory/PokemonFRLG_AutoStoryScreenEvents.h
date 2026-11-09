@@ -25,6 +25,8 @@ namespace PokemonFRLG{
 //  - CHOICE_BOX: a Yes/No or answer box beside it (SelectionDialogDetector);
 //  - BATTLE_STARTED: the battle menu or a battle's text box;
 //  - FADE_BLACK / FADE_WHITE: fade_of_screen().
+//  Nothing on a dark cave's overworld (dark_cave_screen()), whose black
+//  the battle text box detector reads as a box.
 //  Not reported yet, as FRLG has no detector for them here: the map-name
 //  popup (LOCATION_BANNER), PLAYER_CAN_MOVE, SCREEN_STILL, the interact
 //  prompt (FRLG has none) and a battle's end.

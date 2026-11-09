@@ -129,6 +129,11 @@ struct SimScript{
     //  (SimWalkerRules::confirm_turn) after 00.28 run 2 (console B,
     //  2026-11-09), where a one-tile leg only turned the player.
     std::set<int> dropped_turn_taps;
+    //  Caves dark without Flash (Rock Tunnel): the overworld is black but
+    //  for a lit circle on the player, which the walker's battle text box
+    //  check and screen observer read as a battle on its way (console B,
+    //  2026-11-09, 00.28), unless SimWalkerRules::dark_cave_not_battle.
+    std::set<std::string> dark_maps;
     SimTiming timing;
 };
 
@@ -204,6 +209,8 @@ public:
     OverworldSim(std::vector<MapData> maps, MapPosition start, Direction facing, SimScript script = {});
 
     const SimState& state() const{ return m_state; }
+    //  Whether the player's map is one of SimScript::dark_maps.
+    bool dark() const;
 
     //  Holds `direction` for `duration` then lets go for `release`, while
     //  `watchers` watch until `watch` (at least the hold and release) from
@@ -396,6 +403,18 @@ struct SimWalkerRules{
     //  Without it a dropped tap left a one-tile leg turning the player
     //  only, taken as walked (console B, 2026-11-09, 00.28 run 2).
     bool confirm_turn = true;
+    //  A dark cave's overworld isn't a battle on its way
+    //  (OverworldWalkSteps::dark_cave_screen()). Without it the check
+    //  before each step watched for a battle on it (console B, 2026-11-09,
+    //  00.28: "running from a wild Pokemon", then "not a battle").
+    bool dark_cave_not_battle = true;
+    //  A stop on an open leg that started in a dark cave may be anywhere on
+    //  the leg (whole_leg()). Without it the stop is placed by the dark
+    //  screen's black, read as the battle at the hold's start: a battle at
+    //  the end of "east 12" on Rock Tunnel B1F was placed 0 to 3 tiles in,
+    //  and the player was found again at a wall 5 tiles off (console B,
+    //  2026-11-09, 00.28).
+    bool whole_leg_in_dark = true;
 };
 
 //  OverworldWalkSteps::turn_to() on `sim`, which reads the facing on the
@@ -442,6 +461,7 @@ private:
     };
     StepOutcome walk(const RouteStep& step, std::optional<Direction> facing);
     std::optional<WalkedTiles> late_stop(const RouteStep& step);
+    WalkedTiles dark_stop(const RouteStep& step, WalkedTiles timed);
     std::optional<WalkedTiles> walk_step(const RouteStep& step, std::optional<Direction> facing);
     bool after_warp(const RouteStep& step, int warps_before, Milliseconds watched_from);
     bool fade_over_since(Milliseconds from) const;
@@ -464,8 +484,10 @@ private:
     std::vector<Interrupt> m_wild;
     std::vector<Interrupt> m_other;
     std::vector<std::string> m_log;
-    //  When the last WALK leg's first hold started, on the sim's clock.
+    //  When the last WALK leg's first hold started, on the sim's clock,
+    //  and whether its map was dark then.
     Milliseconds m_leg_start{0};
+    bool m_leg_dark = false;
 };
 
 
