@@ -158,6 +158,16 @@ transaction:
    thing is how today's runs were stopped and a save was overwritten.
 6. **Budget**: a cycle is about 3 minutes of console time plus the fix.
    Three cycles without a pass is the hard stop (section 9).
+7. **No advance without a clean pass.** A failed checkpoint is rerun from
+   its own save, after the fix, until the program passes it end to end with
+   no hand input. Only then start the next one. The next checkpoint's run
+   saves at its start and overwrites this one's save (one slot), so a
+   checkpoint finished by hand and left behind can never be verified.
+   Never "count it as fixed but not verified", and never start N+1 from
+   where a hand recovery left the player. 01.04 (Oreburgh Gym) failed the
+   same three ways from 2026-10-31 to 2026-11-08, each time finished by hand
+   and moved past; on 2026-11-08 a hand-closed Bag after the Roark win and
+   a start at 01.05 overwrote 01.04's last start save.
 
 ## 7. Keep it safe
 
@@ -185,6 +195,10 @@ transaction:
 - A checkpoint run **saves at its start**. Starting checkpoint N moves the
   console's save to N's start. Start a checkpoint only from its own save,
   and never start one to "take a screenshot".
+- Before every `start`, check that the previous checkpoint passed cleanly
+  in a program run (section 6, step 7). If it did not, reload its save and
+  rerun it instead. If its save is already gone, say so and mark it open in
+  the run record, never passed.
 - Hand batches never save unless the batch is named a save (`sv*`) and the
   user asked.
 - Before any deliberate save, screenshot the save prompt (location, play
