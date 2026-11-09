@@ -21,6 +21,8 @@ void add_tests_ScreenEvents(UnitTestDatabase& database);
 void add_tests_Interrupts(UnitTestDatabase& database);
 //  The transition tracker and the games' fade profiles.
 void add_tests_Transitions(UnitTestDatabase& database);
+//  Recorded frames replayed through the detectors on a virtual clock.
+void add_tests_FrameReplay(UnitTestDatabase& database);
 //  Story action tables, the variant parser and the table executor.
 void add_tests_StoryActions(UnitTestDatabase& database);
 //  The table executor's looks for interrupts between steps.

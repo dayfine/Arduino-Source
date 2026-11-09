@@ -83,6 +83,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     Pokemon::add_tests_ScreenEvents(ret);
     Pokemon::add_tests_Interrupts(ret);
     Pokemon::add_tests_Transitions(ret);
+    Pokemon::add_tests_FrameReplay(ret);
     Pokemon::add_tests_StoryActions(ret);
     Pokemon::add_tests_StoryInterrupts(ret);
     Pokemon::add_tests_StoryEvents(ret);
