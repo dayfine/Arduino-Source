@@ -5,7 +5,9 @@
  */
 
 #include "Common/Cpp/Exceptions.h"
+#include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
+#include "PokemonFRLG_AutoStoryTrashCans.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -28,6 +30,10 @@ const char* story_action_name(StoryActionId id){
     case StoryActionId::HEAL:       return "heal";
     case StoryActionId::SHOP:       return "shop";
     case StoryActionId::READY:      return "ready";
+    case StoryActionId::CLOSE_TRAINER_CARD: return "close_trainer_card";
+    case StoryActionId::LEAVE_GIFT_SUMMARY: return "leave_gift_summary";
+    case StoryActionId::CUT_TREE:   return "cut_tree";
+    case StoryActionId::TRASH_CANS: return "trash_cans";
     case StoryActionId::GAME:       return "game";
     }
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Unknown story action.");
@@ -47,6 +53,10 @@ const std::vector<StoryActionRow>& story_action_rows(){
         {StoryStepKind::HEAL,       "", StoryActionId::HEAL},
         {StoryStepKind::SHOP,       "", StoryActionId::SHOP},
         {StoryStepKind::READY,      "", StoryActionId::READY},
+        {StoryStepKind::GAME,       CLOSE_TRAINER_CARD, StoryActionId::CLOSE_TRAINER_CARD},
+        {StoryStepKind::GAME,       LEAVE_GIFT_SUMMARY, StoryActionId::LEAVE_GIFT_SUMMARY},
+        {StoryStepKind::GAME,       CUT_TREE_VARIANT,   StoryActionId::CUT_TREE},
+        {StoryStepKind::GAME,       TRASH_CANS_VARIANT, StoryActionId::TRASH_CANS},
         {StoryStepKind::GAME,       "", StoryActionId::GAME},
     };
     return ROWS;

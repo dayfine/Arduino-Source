@@ -39,7 +39,20 @@ enum class StoryActionId{
     HEAL,
     SHOP,
     READY,
-    //  A GAME step: one only FRLG has.
+    //  CLOSE_TRAINER_CARD: back from SID Helper (close_trainer_card()).
+    CLOSE_TRAINER_CARD,
+    //  LEAVE_GIFT_SUMMARY: back from Gift RNG (leave_gift_summary()).
+    LEAVE_GIFT_SUMMARY,
+    //  CUT_TREE_VARIANT: the tree ahead cut, and a step onto its tile.
+    CUT_TREE,
+    //  TRASH_CANS_VARIANT: the search for Vermilion Gym's switches.
+    TRASH_CANS,
+    //  Any other GAME step: a capture or a PC deposit or withdrawal
+    //  (capture_step(), pc_step() in PokemonFRLG_AutoStoryCapture.h); a
+    //  shiny met in a capture stops the program without reloading. A MART,
+    //  TEACH, LEVEL, GRIND or fossil CHOICE
+    //  (PokemonFRLG_AutoStoryAbilities.h); a GRIND heals by routing to its
+    //  target, the nurse, and back.
     GAME,
 };
 //  "route", "game": the action's name in logs and test traces.
