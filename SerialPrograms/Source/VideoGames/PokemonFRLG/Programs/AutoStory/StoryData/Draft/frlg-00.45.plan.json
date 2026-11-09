@@ -1,0 +1,55 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "00.45",
+    "title": "Route 22: the rival; Route 23's badge gates; Strength",
+    "start": {"certainty": "tile", "map": "ViridianCity_PokemonCenter_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 4]]}},
+    "events": [
+      {
+        "id": "route22_rival",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "Route22", "where": {"kind": "tiles", "tiles": [[26, 5]]}},
+        "variant": "run",
+        "why": "west onto Route 22, to the rival's scene"
+      },
+      {
+        "id": "rival_route22",
+        "kind": "scene",
+        "why": "the rival walks up"
+      },
+      {
+        "id": "route22-rival",
+        "kind": "battle",
+        "declared_after": {"certainty": "tile", "map": "Route22", "where": {"kind": "tiles", "tiles": [[26, 5]]}},
+        "why": "Rival (TRAINER_RIVAL_ROUTE22_LATE_BULBASAUR): Pidgeot, Venusaur, Rhyhorn, Gyarados, Growlithe, Alakazam"
+      },
+      {
+        "id": "route23_gate",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "Route23", "where": {"facing": "north", "kind": "tiles", "tiles": [[9, 150]]}},
+        "variant": "run",
+        "why": "west to the gate (8..9, 5), through it, onto Route 23"
+      },
+      {
+        "id": "badge_checks",
+        "kind": "scene",
+        "why": "the seven badge guards (Cascade to Earth) each check on a fixed tile (pokeguy 1:42:23); Surf across the water between gates"
+      },
+      {
+        "id": "teach_strength",
+        "kind": "game_action",
+        "variant": "teach hm04 strength slot=1 forget=water-pulse",
+        "why": "Strength in place of Water Pulse (pokeguy 1:43:24); an HM"
+      },
+      {
+        "id": "victory_road_door",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "Route23", "where": {"facing": "north", "kind": "tiles", "tiles": [[5, 29]]}},
+        "variant": "run",
+        "why": "north to below Victory Road (5, 28)"
+      }
+    ]
+  },
+  "execution": {"menu": "full"}
+}

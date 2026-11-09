@@ -1,0 +1,98 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "00.44",
+    "title": "Fly to Viridian: Viridian Gym: Takashi, Warren, Giovanni",
+    "start": {"certainty": "tile", "map": "SaffronCity", "where": {"facing": "south", "kind": "tiles", "tiles": [[46, 13]]}},
+    "events": [
+      {
+        "id": "fly_viridian",
+        "kind": "game_action",
+        "declared_after": {"certainty": "tile", "map": "ViridianCity", "where": {"facing": "south", "kind": "tiles", "tiles": [[26, 27]]}},
+        "variant": "fly ViridianCity",
+        "why": "Fly to Viridian (pokeguy 1:35:00)"
+      },
+      {
+        "id": "viridian_nurse",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "ViridianCity_PokemonCenter_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 4]]}},
+        "variant": "run",
+        "why": "the nurse (pokeguy-preparation.md: Giovanni at 28/149)"
+      },
+      {
+        "id": "heal_viridian",
+        "kind": "heal",
+        "why": "the nurse heals the party"
+      },
+      {
+        "id": "viridian_gym_door",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "ViridianCity", "where": {"facing": "north", "kind": "tiles", "tiles": [[36, 11]]}},
+        "variant": "run",
+        "why": "out, north to below the Gym (36, 10)"
+      },
+      {
+        "id": "takashi_line",
+        "kind": "route",
+        "target": {"certainty": "unknown", "map": "ViridianCity_Gym", "where": {"kind": "unknown"}},
+        "variant": "run",
+        "why": "in, the arrow tiles to Takashi"
+      },
+      {
+        "id": "viridian-takashi",
+        "kind": "battle",
+        "declared_after": {"certainty": "unknown", "map": "ViridianCity_Gym", "where": {"kind": "unknown"}},
+        "why": "Black Belt Takashi (TRAINER_BLACK_BELT_TAKASHI): Machoke, Machop, Machoke Lv38"
+      },
+      {
+        "id": "warren_line",
+        "kind": "route",
+        "target": {"certainty": "unknown", "map": "ViridianCity_Gym", "where": {"kind": "unknown"}},
+        "variant": "run",
+        "why": "to Warren"
+      },
+      {
+        "id": "viridian-warren",
+        "kind": "battle",
+        "declared_after": {"certainty": "unknown", "map": "ViridianCity_Gym", "where": {"kind": "unknown"}},
+        "why": "Cooltrainer Warren (TRAINER_COOLTRAINER_WARREN)"
+      },
+      {
+        "id": "below_gym_giovanni",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "ViridianCity_Gym", "where": {"facing": "north", "kind": "tiles", "tiles": [[2, 3]]}},
+        "why": "to below Giovanni (2, 2)"
+      },
+      {
+        "id": "talk_gym_giovanni",
+        "kind": "talk",
+        "why": "Giovanni"
+      },
+      {
+        "id": "giovanni-gym",
+        "kind": "battle",
+        "declared_after": {"certainty": "tile", "map": "ViridianCity_Gym", "where": {"facing": "north", "kind": "tiles", "tiles": [[2, 3]]}},
+        "why": "Giovanni (TRAINER_LEADER_GIOVANNI): Rhyhorn, Dugtrio, Nidoqueen, Nidoking, Rhyhorn"
+      },
+      {
+        "id": "earth_badge",
+        "kind": "scene",
+        "why": "the EARTH BADGE and TM26"
+      },
+      {
+        "id": "viridian_nurse_2",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "ViridianCity_PokemonCenter_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 4]]}},
+        "variant": "run",
+        "why": "back to the nurse before the rival (pokeguy-conditions.md route22-rival: the hardest fight on the way)"
+      },
+      {
+        "id": "heal_viridian_2",
+        "kind": "heal",
+        "why": "the nurse heals the party"
+      }
+    ]
+  },
+  "execution": {"menu": "full"}
+}

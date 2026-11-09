@@ -1,0 +1,60 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "00.46",
+    "title": "Victory Road's boulders, Indigo Plateau: Full Restores, the nurse, the save",
+    "start": {"certainty": "tile", "map": "Route23", "where": {"facing": "north", "kind": "tiles", "tiles": [[5, 29]]}},
+    "events": [
+      {
+        "id": "victory_road_super_repel",
+        "kind": "game_action",
+        "variant": "use_item super-repel",
+        "why": "a Super Repel (pokeguy 1:43:44)"
+      },
+      {
+        "id": "victory_road_boulders",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "VictoryRoad_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 19]]}},
+        "why": "into Victory Road, to the boulder (7, 18)"
+      },
+      {
+        "id": "strength_boulders",
+        "kind": "game_action",
+        "variant": "strength_puzzle victory_road",
+        "why": "the Strength pushes onto both switches and the ladders through 2F and 3F (pokeguy 1:43:44 to 1:45:37)"
+      },
+      {
+        "id": "indigo_door",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "IndigoPlateau_Exterior", "where": {"facing": "north", "kind": "tiles", "tiles": [[11, 7]]}},
+        "variant": "run",
+        "why": "out onto Route 23's top, north to the Plateau"
+      },
+      {
+        "id": "indigo_clerk",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "IndigoPlateau_PokemonCenter_1F", "where": {"facing": "west", "kind": "tiles", "tiles": [[2, 7]]}},
+        "why": "in, to the Mart clerk (0, 7), across the counter (1, 7)"
+      },
+      {
+        "id": "buy_full_restores",
+        "kind": "game_action",
+        "variant": "mart IndigoPlateau_PokemonCenter_1F budget=36000 floor=36000 full-restore=12",
+        "why": "pokeguy 1:46:15: about 12 Full Restores, 13 with Safari's (pokeguy-conditions.md lorelei bag)"
+      },
+      {
+        "id": "indigo_nurse",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "IndigoPlateau_PokemonCenter_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[13, 12]]}},
+        "why": "to the nurse (13, 10)"
+      },
+      {
+        "id": "heal_indigo",
+        "kind": "heal",
+        "why": "the nurse heals the party"
+      }
+    ]
+  },
+  "execution": {"menu": "full"}
+}
