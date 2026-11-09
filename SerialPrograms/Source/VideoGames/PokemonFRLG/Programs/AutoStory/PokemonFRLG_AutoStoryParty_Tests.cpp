@@ -616,6 +616,45 @@ UnitTestResult test_run_then_overworld(Logger&){
     return "START never looked for the overworld in the dark cave.";
 }
 
+//  Regression: console B, 2026-11-09, 00.28 hiker_lenny in Rock Tunnel
+//  without Flash: the battle won with a move, then the dark cave's
+//  overworld, black but for the lit circle on the player, read as the
+//  text box with no HP box. The loop held B for an evolution three times
+//  for 20 s, and gave up: "no battle screen and no START menu for 60 s
+//  after the battle". A dark cave's overworld is no evolution: START looks
+//  for the overworld within seconds of the last HP box.
+UnitTestResult test_trainer_win_then_dark_cave(Logger&){
+    const BattleTextScreen defeated{.text_box = true, .hp_box = true, .arrow = true, .yes_no = false};
+    const BattleTextScreen dark_cave{.text_box = true, .hp_box = false, .arrow = false, .yes_no = false, .dark_cave = true};
+    std::vector<LoopPoll> polls{{.ms = 0, .screen = defeated}};
+    for (int ms = 300; ms <= 1500; ms += 300){
+        polls.push_back({.ms = ms, .screen = defeated});
+    }
+    for (int ms = 1800; ms <= 60000; ms += 300){
+        polls.push_back({.ms = ms, .screen = dark_cave});
+    }
+
+    Supplies supplies;
+    EvolutionHold hold(supplies.lead);
+    BattleEndWatch watch;
+    const WallClock start = current_time();
+    hold.turn_taken(TurnChoice::MOVE);
+    for (const LoopPoll& poll : polls){
+        const WallClock now = start + std::chrono::milliseconds(poll.ms);
+        if (hold.holds(poll.screen)){
+            return std::format("Held B for an evolution at {} ms, on the dark cave's overworld.", poll.ms);
+        }
+        watch.seen(poll.screen.hp_box || poll.screen.yes_no ? BattleSeen::BATTLE : BattleSeen::NONE, now);
+        if (watch.check_overworld(now)){
+            if (poll.ms > 5000){
+                return std::format("START first looked for the overworld at {} ms.", poll.ms);
+            }
+            return true;
+        }
+    }
+    return "START never looked for the overworld in the dark cave.";
+}
+
 //  START only once the battle is gone for a while, and then not at every
 //  poll; A and B blind for at most 30 s since the last battle menu.
 UnitTestResult test_end_watch_timing(Logger&){
@@ -923,6 +962,7 @@ const AutoStoryPartyTestCase AUTO_STORY_PARTY_CASES[] = {
     {.input = {.name = "summary members: fewer moves, unread PP, strongest attack", .body = test_summary_members}, .expectation = {.description = "handles party members with partial move data"},},
     {.input = {.name = "no B during an evolution", .body = test_no_b_during_evolution}, .expectation = {.description = "prevents cancelling evolution sequence"},},
     {.input = {.name = "RUN, then a dark cave: no evolution wait, START soon", .body = test_run_then_overworld}, .expectation = {.description = "handles post-battle overworld transition in dark cave"},},
+    {.input = {.name = "a trainer beaten, then a dark cave without Flash: no evolution wait, START soon", .body = test_trainer_win_then_dark_cave}, .expectation = {.description = "takes a dark cave's overworld after a win for no evolution"},},
     {.input = {.name = "battle end: START after the battle is gone, A and B for 30 s at most", .body = test_end_watch_timing}, .expectation = {.description = "verifies timing constraints on battle end loop"},},
     {.input = {.name = "attacks by matchup: Bite on the rival's Bulbasaur and Misty", .body = test_attack_by_matchup}, .expectation = {.description = "selects optimal attack move based on type matchup"},},
     {.input = {.name = "attacks against an unknown foe: the plan's order", .body = test_attack_unknown_foe}, .expectation = {.description = "falls back to default move preference order against unknown foe"},},

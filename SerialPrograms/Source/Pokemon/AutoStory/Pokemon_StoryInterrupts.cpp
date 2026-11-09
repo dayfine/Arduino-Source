@@ -5,6 +5,9 @@
  */
 
 #include <algorithm>
+#include <chrono>
+#include <format>
+#include <optional>
 #include <string>
 #include "Common/Cpp/Exceptions.h"
 #include "Pokemon_StoryInterrupts.h"
@@ -75,30 +78,69 @@ bool may_open_a_battle(const ScreenLook& look, const InterruptVerdict& verdict){
 
 //  The look's verdict, looked at again while it is unsettled, up to
 //  max_looks looks in all, or max_opening_looks while it may be a battle's
-//  opening; not again before a step that starts on it.
-InterruptVerdict settled_verdict(const StoryInterrupts& interrupts, StoryStepKind step){
+//  opening; not again before a step that starts on it. `screen` is how the
+//  last look ended.
+InterruptVerdict settled_verdict(const StoryInterrupts& interrupts, StoryStepKind step, ScreenSettle& screen){
     ScreenLook look = interrupts.look(true);
     InterruptVerdict verdict = classify_interrupt(look.log, look.window, interrupts.knobs);
-    if (interrupts.handlers.step_starts_on(step, InterruptKind::UNSETTLED)){
-        return verdict;
-    }
-    for (size_t looks = 1; verdict.kind == InterruptKind::UNSETTLED; looks++){
-        const size_t limit = may_open_a_battle(look, verdict) ? interrupts.max_opening_looks : interrupts.max_looks;
-        if (looks >= limit){
-            break;
+    if (!interrupts.handlers.step_starts_on(step, InterruptKind::UNSETTLED)){
+        for (size_t looks = 1; verdict.kind == InterruptKind::UNSETTLED; looks++){
+            const size_t limit = may_open_a_battle(look, verdict) ? interrupts.max_opening_looks : interrupts.max_looks;
+            if (looks >= limit){
+                break;
+            }
+            look = interrupts.look(false);
+            verdict = classify_interrupt(look.log, look.window, interrupts.knobs);
         }
-        look = interrupts.look(false);
-        verdict = classify_interrupt(look.log, look.window, interrupts.knobs);
     }
+    screen = judge_settle(look);
     return verdict;
 }
 
 } // namespace
 
 
+ScreenSettle judge_settle(const ScreenLook& look){
+    ScreenSettle out;
+    const std::optional<WallClock> last = look.log.last_frame();
+    if (!last || *last < look.window.start){
+        return out;
+    }
+    out.seen = true;
+    out.showing = look.log.showing();
+    WallClock since = look.window.start;
+    for (const ScreenEventChange& change : look.log.changes()){
+        if (change.time <= look.window.end){
+            since = std::max(since, change.time);
+        }
+    }
+    const WallClock end = std::max(look.window.end, since);
+    out.quiet = std::chrono::duration_cast<Milliseconds>(end - since);
+    return out;
+}
+
+bool is_settled(const ScreenSettle& settle){
+    return settle.seen &&
+        settle.showing.has(ScreenEvent::PLAYER_CAN_MOVE) &&
+        !settle.showing.any_of({ScreenEvent::DIALOG_BOX, ScreenEvent::BATTLE_STARTED}) &&
+        fade_in(settle.showing) == WarpFade::NONE;
+}
+
+std::string describe(const ScreenSettle& settle){
+    if (!settle.seen){
+        return "no frame seen";
+    }
+    const std::string quiet = std::format("quiet {:.1f} s", settle.quiet.count() / 1000.0);
+    if (is_settled(settle)){
+        return "settled overworld (" + quiet + ")";
+    }
+    return describe(settle.showing) + " showing (" + quiet + ")";
+}
+
+
 InterruptCheck clear_story_interrupt(const StoryInterrupts& interrupts, RunState& state, const StoryStep& step){
     InterruptCheck out;
-    out.verdict = settled_verdict(interrupts, step.kind);
+    out.verdict = settled_verdict(interrupts, step.kind, out.screen);
     const InterruptKind kind = out.verdict.kind;
     if (kind == InterruptKind::NONE){
         return out;

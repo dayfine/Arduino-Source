@@ -92,7 +92,8 @@ private:
 };
 
 //  The console's guard: a failed step fails it, as before; each interrupt
-//  found between steps is logged, cleared or not.
+//  found between steps is logged, cleared or not, and how the screen looked
+//  before every step.
 class InterruptLogGuard : public Pokemon::StepGuard{
 public:
     explicit InterruptLogGuard(Logger& logger)
@@ -100,6 +101,7 @@ public:
     {}
 
     virtual void on_interrupt(const Pokemon::StoryStep& step, const Pokemon::InterruptCheck& check) override;
+    virtual void on_screen(const Pokemon::StoryStep& step, const Pokemon::ScreenSettle& screen) override;
 
 private:
     Logger& m_logger;

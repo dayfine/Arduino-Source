@@ -22,6 +22,7 @@
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartyMenuDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_SummaryMovesReader.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "PokemonFRLG_AutoStoryActions.h"
@@ -62,9 +63,6 @@ constexpr Milliseconds OVERWORLD_CHECK = 3000ms;
 //  No battle menu or HP box this long after a battle was seen: there was
 //  none (console B, 2026-11-01, Viridian Forest's north gate mat).
 constexpr Milliseconds NOT_A_BATTLE = 15000ms;
-//  An evolution's animation, with no presses: as long as exit_wild_battle()
-//  (PokemonFRLG_Navigation.cpp) waits for one.
-constexpr Milliseconds EVOLUTION = 20000ms;
 //  Text and the move learn prompts after a battle, on the overworld.
 constexpr Milliseconds AFTER_BATTLE_TEXT = 60000ms;
 //  The move list to fade in after "Delete a move?", and its cursor to move.
@@ -102,7 +100,8 @@ const char* screen_name(BattleScreen screen){
 }
 
 //  Until `confirmed`, the battle text box alone counts for nothing: it also
-//  reads on the black below a small indoor map.
+//  reads on the black below a small indoor map. Nor ever on a dark cave's
+//  overworld after the battle (console B, 2026-11-09, Rock Tunnel).
 BattleScreen read_battle_screen(const ImageViewRGB32& screen, bool confirmed){
     if (BattleMenuDetector(COLOR_RED).detect(screen)){
         return BattleScreen::MENU;
@@ -110,7 +109,7 @@ BattleScreen read_battle_screen(const ImageViewRGB32& screen, bool confirmed){
     if (battle_yes_no_shows(screen)){
         return BattleScreen::LEARN;
     }
-    if (!confirmed && !BattleScreenDetector(COLOR_RED).detect(screen)){
+    if ((!confirmed && !BattleScreenDetector(COLOR_RED).detect(screen)) || OverworldWalkSteps::dark_cave_screen(screen)){
         return BattleScreen::NONE;
     }
     if (AdvanceBattleDialogDetector(COLOR_RED).detect(screen)){
@@ -128,6 +127,7 @@ BattleTextScreen read_text_screen(const ImageViewRGB32& screen){
         .hp_box = BattleScreenDetector(COLOR_RED).detect(screen),
         .arrow = AdvanceBattleDialogDetector(COLOR_RED).detect(screen),
         .yes_no = battle_yes_no_shows(screen) || yes_no_cursor(screen).has_value(),
+        .dark_cave = OverworldWalkSteps::dark_cave_screen(screen),
     };
 }
 
@@ -427,11 +427,11 @@ private:
         m_last_press = now;
     }
 
-    //  Nothing pressed while the screen may be an evolution, up to EVOLUTION.
+    //  Nothing pressed while the screen may be an evolution, up to MAX_HOLD.
     void wait_out_evolution(){
         const WallClock start = current_time();
         bool holds = true;
-        while (holds && current_time() - start < EVOLUTION){
+        while (holds && current_time() - start < EvolutionHold::MAX_HOLD){
             pbf_wait(m_context, POLL);
             m_context.wait_for_all_requests();
             VideoSnapshot screen = m_console.video().snapshot();

@@ -105,6 +105,10 @@ void InterruptLogGuard::on_interrupt(const Pokemon::StoryStep& step, const Pokem
     ), cleared ? COLOR_ORANGE : COLOR_RED);
 }
 
+void InterruptLogGuard::on_screen(const Pokemon::StoryStep& step, const Pokemon::ScreenSettle& screen){
+    m_logger.log(std::format("[Screen] before {}: {}", step.name, Pokemon::describe(screen)));
+}
+
 
 
 } // namespace PokemonFRLG

@@ -509,7 +509,7 @@ void EvolutionHold::turn_taken(TurnChoice choice){
 }
 
 bool EvolutionHold::holds(const BattleTextScreen& screen) const{
-    return m_attacked && m_held < EVOLUTION_HOLDS && screen.text_box && !screen.hp_box && !screen.arrow && !screen.yes_no;
+    return m_attacked && m_held < EVOLUTION_HOLDS && screen.text_box && !screen.hp_box && !screen.arrow && !screen.yes_no && !screen.dark_cave;
 }
 
 void EvolutionHold::held(Milliseconds held, bool lead_fainted){

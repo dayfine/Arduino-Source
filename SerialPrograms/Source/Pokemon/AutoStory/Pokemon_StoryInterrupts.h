@@ -38,6 +38,7 @@
 #include <functional>
 #include <map>
 #include <set>
+#include <string>
 #include <utility>
 #include "Pokemon_Interrupts.h"
 #include "Pokemon_ScreenEvents.h"
@@ -113,8 +114,29 @@ struct StoryInterrupts{
 };
 
 
+//  How the screen looked at the end of a look: the line a run log needs to
+//  answer "had the scene ended before the step's first input?".
+struct ScreenSettle{
+    //  Whether the look saw a frame at all.
+    bool seen = false;
+    //  The events its last frame showed.
+    ScreenEvents showing = {};
+    //  How long the screen had shown them unchanged when the look ended.
+    Milliseconds quiet = Milliseconds(0);
+};
+//  The end of `look`: its last frame's events, and how long they held.
+ScreenSettle judge_settle(const ScreenLook& look);
+//  Whether it ended on the overworld with no box, no fade and no battle.
+bool is_settled(const ScreenSettle& settle);
+//  "settled overworld (quiet 0.3 s)", "black fade showing (quiet 0.1 s)",
+//  "no frame seen".
+std::string describe(const ScreenSettle& settle);
+
+
 //  What a look between steps found, and what clearing it came to.
 struct InterruptCheck{
+    //  How the screen looked when the look ended, judged or not.
+    ScreenSettle screen = {};
     //  NONE when nothing interrupted, or when the step starts on it.
     InterruptVerdict verdict = {};
     //  Failed when the look stayed unsettled, the kind had no handler, or
