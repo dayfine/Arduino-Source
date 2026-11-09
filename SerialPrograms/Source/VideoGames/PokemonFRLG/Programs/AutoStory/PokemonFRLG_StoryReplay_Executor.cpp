@@ -293,7 +293,7 @@ JsonValue ReplayExecutor::report(const Pokemon::CheckpointReport& result, const 
     root["native_source_revision"] = m_data->source_revision;
     root["route_source"] = "supplied-python-candidate-not-native-planner";
     root["native_parity"] = "diagnostic-profile-only-not-live-executor";
-    root["failure"] = result.completed ? JsonValue() : JsonValue(result.failure.failure == "require_failed" ? "entry_requirement_failed" : result.failure.failure);
+    root["failure"] = result.completed ? JsonValue() : JsonValue(result.failure.failure == "start_failed" ? "entry_requirement_failed" : result.failure.failure);
     root["active_event"] = result.completed || result.failed_event == 0 ? JsonValue() : JsonValue(m_active);
     root["completed_events"] = m_completed.clone();
     root["pose"] = m_known ? pose_json(m_pose, m_pose.facing) : JsonValue();
