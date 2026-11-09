@@ -22,6 +22,7 @@
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartyMenuDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_SummaryMovesReader.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "PokemonFRLG_AutoStoryActions.h"
@@ -107,6 +108,11 @@ BattleScreen read_battle_screen(const ImageViewRGB32& screen, bool confirmed){
     if (battle_yes_no_shows(screen)){
         return BattleScreen::LEARN;
     }
+    //  A dark cave's overworld after the battle: its black reads as the
+    //  text box (console B, 2026-11-09, Rock Tunnel).
+    if (OverworldWalkSteps::dark_cave_screen(screen)){
+        return BattleScreen::NONE;
+    }
     if (!confirmed && !BattleScreenDetector(COLOR_RED).detect(screen)){
         return BattleScreen::NONE;
     }
@@ -125,6 +131,7 @@ BattleTextScreen read_text_screen(const ImageViewRGB32& screen){
         .hp_box = BattleScreenDetector(COLOR_RED).detect(screen),
         .arrow = AdvanceBattleDialogDetector(COLOR_RED).detect(screen),
         .yes_no = battle_yes_no_shows(screen) || yes_no_cursor(screen).has_value(),
+        .dark_cave = OverworldWalkSteps::dark_cave_screen(screen),
     };
 }
 
