@@ -1,0 +1,197 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "bdsp",
+  "checkpoint": {
+    "id": "01.03",
+    "title": "Oreburgh Mine to Roark",
+    "start": {
+      "map": "OreburghCity",
+      "certainty": "set",
+      "where": {"kind": "tiles", "tiles": [[47, 21], [46, 21]], "facing": "south"}
+    },
+    "events": [
+      {
+        "id": "above_the_mine",
+        "kind": "route",
+        "target": {
+          "map": "OreburghCity",
+          "certainty": "tile",
+          "where": {"kind": "tiles", "tiles": [[46, 58]], "facing": "south"}
+        },
+        "variant": "town",
+        "why": "down the door's column to above the mine's warp tiles"
+      },
+      {
+        "id": "into_the_mine",
+        "kind": "step",
+        "direction": "south",
+        "declared_after": {
+          "map": "OreburghMineB1F",
+          "certainty": "tile",
+          "where": {"kind": "tiles", "tiles": [[12, 1]], "facing": "south"}
+        },
+        "why": "the warp tile (46, 59)"
+      },
+      {
+        "id": "into_the_coal_room",
+        "kind": "step",
+        "direction": "south",
+        "declared_after": {
+          "map": "OreburghMine",
+          "certainty": "tile",
+          "where": {"kind": "tiles", "tiles": [[15, 2]], "facing": "south"}
+        },
+        "why": "down the entrance hall through the cave mouth"
+      },
+      {
+        "id": "south_to_the_rock",
+        "kind": "legs",
+        "legs": [{"direction": "south", "tiles": 8}],
+        "declared_after": {
+          "map": "OreburghMine",
+          "certainty": "tile",
+          "where": {"kind": "tiles", "tiles": [[15, 9]], "facing": "south"}
+        },
+        "why": "south against the corridor rock (15, 11)",
+        "variant": "to_wall"
+      },
+      {
+        "id": "to_roarks_corner",
+        "kind": "legs",
+        "legs": [
+          {"direction": "east", "tiles": 1},
+          {"direction": "south", "tiles": 2},
+          {"direction": "west", "tiles": 1},
+          {"direction": "south", "tiles": 5},
+          {"direction": "east", "tiles": 14},
+          {"direction": "south", "tiles": 10},
+          {"direction": "west", "tiles": 2},
+          {"direction": "south", "tiles": 2},
+          {"direction": "west", "tiles": 7}
+        ],
+        "declared_after": {
+          "map": "OreburghMine",
+          "certainty": "tile",
+          "where": {"kind": "tiles", "tiles": [[20, 28]], "facing": "west"}
+        },
+        "why": "east around the rock, across the room, down column 29, west to Roark's rock"
+      },
+      {
+        "id": "beside_roarks_rock",
+        "kind": "legs",
+        "legs": [{"direction": "south", "tiles": 1}],
+        "declared_after": {
+          "map": "OreburghMine",
+          "certainty": "tile",
+          "where": {"kind": "tiles", "tiles": [[20, 29]], "facing": "south"}
+        },
+        "why": "south against the room's wall",
+        "variant": "to_wall"
+      },
+      {
+        "id": "below_roark",
+        "kind": "legs",
+        "legs": [{"direction": "west", "tiles": 2}],
+        "declared_after": {
+          "map": "OreburghMine",
+          "certainty": "tile",
+          "where": {"kind": "tiles", "tiles": [[18, 29]], "facing": "north"}
+        },
+        "why": "west 2 to below Roark"
+      },
+      {
+        "id": "roark",
+        "kind": "talk",
+        "why": "Roark, north of us between his rocks"
+      },
+      {
+        "id": "roark_smashes_the_rock",
+        "kind": "scene",
+        "declared_after": {
+          "map": "OreburghMine",
+          "certainty": "tile",
+          "where": {"kind": "tiles", "tiles": [[18, 29]], "facing": "north"}
+        },
+        "why": "his lines, Rock Smash on the rock east of him, and he walks off"
+      },
+      {
+        "id": "below_the_coal_rooms_warp",
+        "kind": "legs",
+        "legs": [
+          {"direction": "east", "tiles": 9},
+          {"direction": "north", "tiles": 3},
+          {"direction": "east", "tiles": 2},
+          {"direction": "north", "tiles": 10},
+          {"direction": "west", "tiles": 14},
+          {"direction": "north", "tiles": 5},
+          {"direction": "east", "tiles": 1},
+          {"direction": "north", "tiles": 2},
+          {"direction": "west", "tiles": 1},
+          {"direction": "north", "tiles": 7}
+        ],
+        "declared_after": {
+          "map": "OreburghMine",
+          "certainty": "tile",
+          "where": {"kind": "tiles", "tiles": [[15, 2]], "facing": "north"}
+        },
+        "why": "east around crate, up column 29, west across row 17, and up corridor to warp doorstep"
+      },
+      {
+        "id": "up_to_the_hall",
+        "kind": "step",
+        "direction": "north",
+        "declared_after": {
+          "map": "OreburghMineB1F",
+          "certainty": "tile",
+          "where": {"kind": "tiles", "tiles": [[12, 21]], "facing": "north"}
+        },
+        "why": "the warp tile (15, 1)"
+      },
+      {
+        "id": "out_of_the_mine",
+        "kind": "step",
+        "direction": "north",
+        "declared_after": {
+          "map": "OreburghCity",
+          "certainty": "set",
+          "where": {"kind": "tiles", "tiles": [[46, 59], [46, 58]], "facing": "north"}
+        },
+        "why": "up the entrance hall and out to the city"
+      },
+      {
+        "id": "north_to_the_centers_wall",
+        "kind": "legs",
+        "legs": [{"direction": "north", "tiles": 37}],
+        "declared_after": {
+          "map": "OreburghCity",
+          "certainty": "tile",
+          "where": {"kind": "tiles", "tiles": [[46, 21]], "facing": "north"}
+        },
+        "why": "north up column 46 to the wall west of the Center's door",
+        "variant": "counted_wall"
+      },
+      {
+        "id": "east_below_the_centers_door",
+        "kind": "legs",
+        "legs": [{"direction": "east", "tiles": 1}],
+        "declared_after": {
+          "map": "OreburghCity",
+          "certainty": "tile",
+          "where": {"kind": "tiles", "tiles": [[47, 21]], "facing": "north"}
+        },
+        "why": "a tap east below the door"
+      },
+      {
+        "id": "heal_oreburgh",
+        "kind": "heal",
+        "declared_after": {
+          "map": "OreburghCity",
+          "certainty": "set",
+          "where": {"kind": "tiles", "tiles": [[47, 21], [46, 21]], "facing": "south"}
+        },
+        "why": "the nurse; out onto the doorstep, where 01.04 starts"
+      }
+    ]
+  },
+  "execution": {"on_failure": "reload_and_retry", "saves_in": "Oreburgh City"}
+}

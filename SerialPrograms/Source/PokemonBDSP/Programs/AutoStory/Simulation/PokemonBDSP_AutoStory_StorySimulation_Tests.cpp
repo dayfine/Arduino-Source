@@ -510,7 +510,32 @@ private:
 } // namespace
 
 
+//  Execute the authored mine resource through the actual table and shared engine.
+UnitTestResult test_authored_mine(Logger&){
+    Simulation sim;
+    const auto report = sim.run({.from = "01.03", .to = "01.03"});
+    if (!report.completed || sim.begun() != std::vector<std::string>{"01.03"}
+        || sim.count("save in 01.03") != 1 || sim.count("card for 01.03: Oreburgh City") != 1
+        || sim.count("01.03/heal_oreburgh") != 1 || sim.count("01.03/roark") != 1){
+        return "Expected the JSON-authored mine checkpoint to save once, talk to Roark, heal and finish:" + joined(sim.trace) + joined(sim.lines);
+    }
+    return true;
+}
+
+UnitTestResult test_authored_mine_stops(Logger&){
+    Simulation sim;
+    sim.game.failures["01.03/out_of_the_mine"] = {.failure = "unconfirmed_transition", .times = 3};
+    const auto report = sim.run({.from = "01.03", .to = "01.03"});
+    if (report.completed || report.reloads != 2 || report.failed_event != "out_of_the_mine"
+        || sim.count("01.03/heal_oreburgh") != 0){
+        return "Expected failed mine transition to exhaust retries before healing:" + joined(sim.trace) + joined(sim.lines);
+    }
+    return true;
+}
+
 const AutoStoryStorySimulationCase AUTO_STORY_STORY_SIMULATION_CASES[] = {
+    {.input = {.name = "01.03 authored mine executes through the real table", .body = test_authored_mine}, .expectation = {}},
+    {.input = {.name = "01.03 unconfirmed mine exit stops before healing", .body = test_authored_mine_stops}, .expectation = {}},
     {
         .input = {"00.00 to Floaroma, in order, each row saved first, English and Japanese", test_whole_table},
         .expectation = {},
