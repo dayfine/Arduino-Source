@@ -20,14 +20,24 @@ add_executable(StoryDataTests
     "${ROOT}/Common/Cpp/Filesystem/FileIO.cpp"
     "${ROOT}/Common/Cpp/Filesystem/FilePath.cpp"
     "${ROOT}/Common/Cpp/Strings/Unicode.cpp")
-target_include_directories(StoryDataTests PRIVATE "${ROOT}" "${ROOT}/SerialPrograms/Source")
-target_compile_features(StoryDataTests PRIVATE cxx_std_23)
-target_compile_definitions(StoryDataTests PRIVATE PA_STORY_DATA_STANDALONE)
+# Reuse the Qt/controller-free support sources; each codec has its own test main.
+get_target_property(STORY_DATA_SOURCES StoryDataTests SOURCES)
+list(REMOVE_ITEM STORY_DATA_SOURCES "${STORY}/Pokemon_StoryStepJson_Tests.cpp")
+add_executable(AuthoredCheckpointTests ${STORY_DATA_SOURCES}
+    "${STORY}/Pokemon_AuthoredCheckpointJson.cpp"
+    "${STORY}/Pokemon_AuthoredCheckpointJson_Tests.cpp")
+
+foreach(TEST_TARGET IN ITEMS StoryDataTests AuthoredCheckpointTests)
+target_include_directories(${TEST_TARGET} PRIVATE "${ROOT}" "${ROOT}/SerialPrograms/Source")
+target_compile_features(${TEST_TARGET} PRIVATE cxx_std_23)
+target_compile_definitions(${TEST_TARGET} PRIVATE PA_STORY_DATA_STANDALONE)
 if(MSVC)
-    target_compile_definitions(StoryDataTests PRIVATE _CRT_SECURE_NO_WARNINGS)
-    target_compile_options(StoryDataTests PRIVATE /W4 /WX)
+    target_compile_definitions(${TEST_TARGET} PRIVATE _CRT_SECURE_NO_WARNINGS)
+    target_compile_options(${TEST_TARGET} PRIVATE /W4 /WX)
     set_property(SOURCE "${ROOT}/Common/Cpp/Filesystem/FileIO.cpp" APPEND PROPERTY COMPILE_OPTIONS /wd4505)
 else()
-    target_compile_options(StoryDataTests PRIVATE -Wall -Wextra -Werror)
+    target_compile_options(${TEST_TARGET} PRIVATE -Wall -Wextra -Werror)
 endif()
+endforeach()
 add_test(NAME StoryData COMMAND StoryDataTests)
+add_test(NAME AuthoredCheckpoint COMMAND AuthoredCheckpointTests)
