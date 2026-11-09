@@ -26,6 +26,7 @@
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_PlanCosts.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_WallRecovery.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryTable.h"
 #include "PokemonBDSP_AutoStory_StorySimulation_Tests.h"
@@ -113,7 +114,14 @@ Walked plan_route(const Pose& from, const StoryStep& step){
         targets.push_back(story_to_world(*world, goal.map, pos));
     }
     const std::function<bool(const TilePos&)> at_goal = [&](const TilePos& pos){ return contains(targets, pos); };
-    const auto plan = plan_robust_route(*world, start, at_goal, *costs);
+    //  As walk_route() plans: from a wall when the start is one of a few
+    //  tiles, then with the default costs if the step's find nothing. From
+    //  01.03's two start tiles a search over both found no plan within its
+    //  budget once routes kept off the hiker's zone.
+    std::optional<std::vector<PlannedLeg>> plan = plan_recovered_route(*world, start, at_goal, *costs);
+    if (!plan){
+        plan = plan_recovered_route(*world, start, at_goal, RobustPlanCosts());
+    }
     if (!plan){
         return {std::nullopt, step.name + ": no plan from" + describe(from.map, Pokemon::tiles_of(from)) + ".", ""};
     }

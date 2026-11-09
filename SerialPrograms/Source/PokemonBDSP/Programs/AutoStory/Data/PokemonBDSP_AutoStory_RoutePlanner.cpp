@@ -222,10 +222,14 @@ struct Stepped{
     TilePos end;
     int grass = 0;
     int wander = 0;
+    //  Two tiles in a row where someone wanders, the start among them: the
+    //  walk runs along their zone, and plan_robust_route() does not use it.
+    bool along_wander = false;
 };
 std::optional<Stepped> step_tiles(const StoryWorld& world, TilePos from, Direction direction, int tiles){
     Stepped stepped;
     int travelled = 0;
+    bool in_wander = wandering_hazard(world, from);
     while (travelled < tiles){
         const std::optional<TilePos> next = step(world, from, direction);
         if (!next){
@@ -238,9 +242,12 @@ std::optional<Stepped> step_tiles(const StoryWorld& world, TilePos from, Directi
         if (tall_grass(world, *next)){
             stepped.grass++;
         }
-        if (wandering_hazard(world, *next)){
+        const bool next_wander = wandering_hazard(world, *next);
+        if (next_wander){
             stepped.wander++;
+            stepped.along_wander |= in_wander;
         }
+        in_wander = next_wander;
         from = *next;
     }
     stepped.end = from;
@@ -282,6 +289,9 @@ std::optional<Expansion> to_wall_leg(const StoryWorld& world, const Spread& spre
             return std::nullopt;
         }
         if (const std::optional<Stepped> stepped = step_tiles(world, pos, direction, (int)hit.tiles)){
+            if (stepped->along_wander){
+                return std::nullopt;
+            }
             grass = std::max(grass, stepped->grass);
             wander = std::max(wander, stepped->wander);
         }
@@ -307,7 +317,7 @@ std::optional<Expansion> open_leg(const StoryWorld& world, const Spread& spread,
     for (const TilePos& pos : spread){
         for (int n = std::max(1, tiles - error); n <= tiles + error; n++){
             const std::optional<Stepped> stepped = step_tiles(world, pos, direction, n);
-            if (!stepped){
+            if (!stepped || stepped->along_wander){
                 return std::nullopt;
             }
             grass = std::max(grass, stepped->grass);
