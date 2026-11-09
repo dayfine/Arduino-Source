@@ -202,6 +202,30 @@ UnitTestResult test_oreburgh_mine_hall(Logger& logger){
     return true;
 }
 
+//  01.04: the D-pad taps west from below Oreburgh's Center door end below
+//  the Gym's door, where the step north goes in. Red with 20 taps: they ended
+//  on (27, 21), a tile east of the door (lab-B, 2026-11-08 14:51).
+UnitTestResult test_oreburgh_center_to_gym_taps(Logger& logger){
+        const RouteRecords::RouteRecord* record = nullptr;
+        for (const RouteRecords::RouteRecord& item : RouteRecords::all()){
+            if (item.checkpoint == "01.04" && item.map_file == "OreburghCity"){
+                record = &item;
+            }
+        }
+        if (record == nullptr || !record->start || record->legs.empty()){
+            return "No 01.04 record on Oreburgh City with a start tile and legs.";
+        }
+        const StoryWorld city = alone("OreburghCity");
+        const RouteRecords::RouteLeg& west = record->legs.front();
+        const TilePos end = trace_legs(city, *record->start, {{west.direction, west.tiles, false}}).back();
+        const TilePos doorstep = map_point("OreburghCity", "gym_doorstep");
+        if (end != doorstep){
+            return std::format("{} taps west end on ({}, {}), not below the Gym's door ({}, {}).", west.tiles, end.x, end.y, doorstep.x, doorstep.y);
+        }
+        logger.log(std::format("Oreburgh: {} taps west from below the Center's door reach the Gym's doorstep.", west.tiles));
+        return true;
+}
+
 //  Each traceable record with a start tile starts on ground, and its legs
 //  counted in whole tiles trace on its map up to the first leg that ends
 //  some other way.
@@ -286,6 +310,10 @@ const StoryMapsCase STORY_MAPS_CASES[] = {
     },
     {
         .input = {"Oreburgh Mine B1F: the entrance hall corridor and warps", test_oreburgh_mine_hall},
+        .expectation = {},
+    },
+    {
+        .input = {"Oreburgh: 01.04's taps from the Center's door to the Gym's", test_oreburgh_center_to_gym_taps},
         .expectation = {},
     },
     {
