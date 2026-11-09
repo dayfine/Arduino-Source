@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <format>
 #include <functional>
+#include <random>
 #include <set>
 #include <string>
 #include <string_view>
@@ -140,6 +141,67 @@ UnitTestResult test_rock_tunnel_wild_battles(){
     return row_on_sim("00.28", script, ROCK_TUNNEL_TRAINERS, MapPosition{StoryTable::ROUTE10, {8, 58}});
 }
 
+//  Wild battles on the tunnel's floor, `gaps` steps apart in turn, from the
+//  first step: as many as a row walks.
+SimScript battles_every(const std::vector<int>& gaps){
+    SimScript script;
+    int step = 0;
+    for (size_t c = 0; step < 3000; c++){
+        step += gaps[c % gaps.size()];
+        script.encounters.push_back(SimEncounter{.grass_step = step});
+    }
+    return script;
+}
+
+//  00.28's step `name`: where it is in the row.
+size_t step_index(const StoryCheckpoint& row, std::string_view name){
+    for (size_t c = 0; c < row.steps.size(); c++){
+        if (row.steps[c].name == name){
+            return c;
+        }
+    }
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("No step {} in {}.", name, row.id));
+}
+
+//  Console B, 2026-11-09: after Winston, the walk west along B1F row 37 to
+//  (13, 37) met a wild battle 10 to 14 tiles into every try. Each time the
+//  walker found the player again at the east wall (45, 37), behind where
+//  the leg started, and walked the whole 32 tiles again, until it gave up
+//  ("stopped part-way 9 times"). From Winston's tile, with a battle every
+//  10 to 14 steps, the steps from below_martha_line on reach Martha's line.
+UnitTestResult test_b1f_row37_battles_every_12(){
+    const StoryCheckpoint& row = checkpoint("00.28");
+    const size_t first = step_index(row, "below_martha_line");
+    StoryPose at{StoryTable::ROCK_TUNNEL_B1F, {29, 37}, Direction::NORTH};
+    OverworldSim sim(maps_after_route10(), MapPosition{at.map, at.tile}, *at.facing, battles_every({12, 10, 14, 11, 13}));
+    const std::string failure = row_step_on_sim(sim, at, row.steps[first], row.id);
+    if (!failure.empty()){
+        return std::format("below_martha_line: ended on {}; {}", to_string(sim.state().position), failure);
+    }
+    if (!(sim.state().position == MapPosition{StoryTable::ROCK_TUNNEL_B1F, {17, 34}})){
+        return std::format("below_martha_line: ended on {}, not (17, 34).", to_string(sim.state().position));
+    }
+    return true;
+}
+
+//  00.28 whole with a wild battle every 7 to 25 steps on the tunnel's floor,
+//  the gaps drawn from each of these seeds: the row ends where it should.
+UnitTestResult test_rock_tunnel_frequent_battles(){
+    for (unsigned seed = 1; seed <= 12; seed++){
+        std::mt19937 random(seed);
+        std::uniform_int_distribution<int> gap(7, 25);
+        std::vector<int> gaps;
+        for (int c = 0; c < 400; c++){
+            gaps.push_back(gap(random));
+        }
+        const UnitTestResult result = row_on_sim("00.28", battles_every(gaps), ROCK_TUNNEL_TRAINERS, MapPosition{StoryTable::ROUTE10, {8, 58}});
+        if (result.result != UnitTestResult::PASSED){
+            return std::format("Seed {}: {}", seed, result.message);
+        }
+    }
+    return true;
+}
+
 //  00.29 on the sim: no trainer met, the ledge hopped, Lavender's nurse.
 UnitTestResult test_lavender_row(){
     return row_on_sim("00.29", SimScript{}, {}, MapPosition{StoryTable::LAVENDER_CENTER, {7, 4}});
@@ -222,6 +284,8 @@ const AutoStoryLavenderCase AUTO_STORY_LAVENDER_CASES[] = {
     {.input = {"00.28 the tree, Rock Tunnel's nine trainers, out of its south mouth", test_rock_tunnel_row}, .expectation = {}},
     {.input = {"00.28 a wild battle mid-leg in the tunnel", test_rock_tunnel_wild_battles}, .expectation = {}},
     {.input = {"00.28 a tile off after each open leg", test_rock_tunnel_tile_off}, .expectation = {}},
+    {.input = {"00.28 B1F row 37 with a wild battle every 10 to 14 steps", test_b1f_row37_battles_every_12}, .expectation = {}},
+    {.input = {"00.28 a wild battle every 7 to 25 steps, 12 seeds", test_rock_tunnel_frequent_battles}, .expectation = {}},
     {.input = {"00.29 Route 10 south, the ledge, Lavender Town's Pokemon Center", test_lavender_row}, .expectation = {}},
     {.input = {"00.29 a tile off after each open leg", test_lavender_tile_off}, .expectation = {}},
     {.input = {"00.28 and 00.29 save on Route 10 and in Lavender Town", test_save_places}, .expectation = {}},
