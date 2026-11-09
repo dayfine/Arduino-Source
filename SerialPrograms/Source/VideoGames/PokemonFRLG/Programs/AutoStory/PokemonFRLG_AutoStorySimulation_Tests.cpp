@@ -17,7 +17,9 @@
 #include <format>
 #include <functional>
 #include <map>
+#include <memory>
 #include <optional>
+#include <random>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -60,6 +62,10 @@ std::string joined(const std::vector<std::string>& lines){
 //  and steps told to fail.
 class FakeGame : public StoryMapsSim{
 public:
+    explicit FakeGame(StorySimKnobs knobs = {})
+        : StoryMapsSim(std::move(knobs))
+    {}
+
     struct Failure{
         std::string failure;
         size_t times = 0;
@@ -95,6 +101,10 @@ private:
 //  run takes with every handoff off, each saving at its end (hooks.save
 //  stands for save_game()).
 struct Simulation{
+    explicit Simulation(StorySimKnobs knobs = {})
+        : game(std::move(knobs))
+    {}
+
     std::vector<StoryCheckpoint> rows = plan_story_run(story_checkpoints(), 0, story_checkpoints().size() - 1, StoryHandoffs{}).rows;
     FakeGame game;
     std::vector<std::string> lines;
@@ -805,6 +815,56 @@ UnitTestResult test_data_row_parity(){
     return true;
 }
 
+//  Someone talks to the player before every step (StorySimKnobs::
+//  dialog_before): cleared between steps, the whole story still passes;
+//  left up, as before the executor looked, a walk fails on it.
+UnitTestResult test_dialog_before_every_step(){
+    const auto always = [](const std::string&, const std::string&){
+        return true;
+    };
+    Simulation cleared({.dialog_before = always});
+    if (!cleared.run({}).completed){
+        return "Expected the story through, a dialog before every step cleared:" + joined(cleared.lines);
+    }
+    Simulation left({.dialog_before = always, .clear_interrupts = false});
+    const bool completed = left.run({}).completed;
+    const auto stopped = [](const std::string& line){
+        return line.find("is still up") != std::string::npos;
+    };
+    if (completed || std::ranges::none_of(left.lines, stopped)){
+        return "Expected a dialog left up to stop a walk:" + joined(left.lines);
+    }
+    return true;
+}
+
+//  Dialogs pop up at random before one step in five: how many whole runs
+//  pass with them cleared between steps, and with them left up.
+UnitTestResult test_dialogs_at_random(Logger& logger){
+    constexpr uint32_t SEEDS = 5;
+    size_t passes[2] = {0, 0};
+    for (uint32_t seed = 1; seed <= SEEDS; seed++){
+        for (bool clear : {false, true}){
+            const auto rng = std::make_shared<std::mt19937>(seed);
+            Simulation sim({
+                .dialog_before = [rng](const std::string&, const std::string&){
+                    return std::bernoulli_distribution(0.2)(*rng);
+                },
+                .clear_interrupts = clear,
+            });
+            passes[clear] += sim.run({}).completed ? 1 : 0;
+        }
+    }
+    logger.log(std::format(
+        "Dialogs before one step in five, {} seeds: {} passed left up, {} cleared between steps.",
+        SEEDS, passes[0], passes[1]
+    ));
+    if (passes[1] != SEEDS){
+        return std::format("Expected every run through with the dialogs cleared, {} of {}.", passes[1], SEEDS);
+    }
+    return true;
+}
+
+
 const AutoStorySimulationTestCase AUTO_STORY_SIMULATION_CASES[] = {
     {.input = {.name = "00.05 loaded row parity", .body = test_data_row_parity}, .expectation = {.description = "loaded row preserves events, trace and save pose"}},
     {.input = {.name = "new game to Brock, in order, each start where the last save stood", .body = test_whole_story}, .expectation = {.description = "runs full story progression from new game through Brock gym"}},
@@ -822,6 +882,8 @@ const AutoStorySimulationTestCase AUTO_STORY_SIMULATION_CASES[] = {
     {.input = {.name = "00.20 onto the grass out of Shane's sight, the leg west a tile short", .body = test_oddish_patch_west_short}, .expectation = {.description = "recovers when approaching grass patch with short western leg"}},
     {.input = {.name = "the routes after pacing, from either of its tiles", .body = test_routes_after_pacing}, .expectation = {.description = "plans valid routes regardless of which pacing tile character ends on"}},
     {.input = {.name = "a save off the start pose stops before any step", .body = test_save_off_start_pose}, .expectation = {.description = "fails the start check without walking or saving"}},
+    {.input = {.name = "a dialog pops up before every step", .body = test_dialog_before_every_step}, .expectation = {.description = "cleared between steps, the story passes; left up, a walk fails on it"}},
+    {.input = {.name = "dialogs pop up before one step in five, over 5 seeds", .body = nullptr, .logged = test_dialogs_at_random}, .expectation = {.description = "every run passes with them cleared"}},
 };
 
 } // namespace

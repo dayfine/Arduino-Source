@@ -13,6 +13,7 @@
 #ifndef PokemonAutomation_PokemonFRLG_AutoStoryRowSim_H
 #define PokemonAutomation_PokemonFRLG_AutoStoryRowSim_H
 
+#include <functional>
 #include <map>
 #include <optional>
 #include <string>
@@ -21,6 +22,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryStepInterrupts.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
 
 namespace PokemonAutomation{
@@ -67,22 +69,36 @@ public:
 };
 
 
+//  What happens on the story maps besides the story's steps.
+struct StorySimKnobs{
+    //  Whether a dialog pops up right before row `row`'s step `step`:
+    //  someone walks up and talks between two steps. Until it is pressed
+    //  through, it stops a step that walks or talks, as on the console.
+    std::function<bool(const std::string& row, const std::string& step)> dialog_before = nullptr;
+    //  Whether the executor clears what came up between steps
+    //  (step_interrupts()), as the console does; off, as before it did.
+    bool clear_interrupts = true;
+};
+
 //  The whole story on the story maps, without a walker: each ROUTE planned
 //  and followed from where the run stands (turning to a wall when the
 //  facing is unknown, as the program does), each LEGS laid out, a step
 //  into a trainer's line taken until a trainer can see the player, a
 //  READY's way to the nurse planned, the Viridian Mart's orders checked
 //  against its list, and a GAME leaving the player where pacing would
-//  (paced_pose()). The rest is stubbed.
+//  (paced_pose()). The rest is stubbed. The dialogs `knobs` pops up are
+//  the only interrupts between steps it shows.
 class StoryMapsSim : public Pokemon::TableExecutor{
 public:
     //  The table and guard are members, built after the base: it only keeps
     //  references to them until a step runs.
-    StoryMapsSim();
+    explicit StoryMapsSim(StorySimKnobs knobs = {});
     StoryMapsSim(const StoryMapsSim&) = delete;
     void operator=(const StoryMapsSim&) = delete;
 
     virtual void begin_attempt(const Pokemon::StoryCheckpoint& data) override;
+    //  The step, after a dialog pops up before it if the knobs say so.
+    virtual Pokemon::Outcome run(Pokemon::RunState& state, const StoryStep& step) override;
     //  The story's actions as this simulation binds them.
     const Pokemon::StoryActionTable& actions() const{
         return m_table;
@@ -94,6 +110,15 @@ public:
     const std::map<std::string, int>& bag() const{
         return m_bag;
     }
+    //  "00.03/oak: a dialog pops up before it.", and how it was cleared.
+    const std::vector<std::string>& dialog_notes() const{
+        return m_dialog_notes;
+    }
+
+protected:
+    //  A dialog that popped up and is still up stops a step that walks or
+    //  talks; a step that presses through text closes it.
+    virtual Pokemon::Outcome run_action(Pokemon::RunState& state, const StoryStep& step) override;
 
 private:
     Pokemon::StoryAction action(StoryActionId id);
@@ -101,11 +126,22 @@ private:
     Pokemon::Outcome legs(const Pokemon::Pose& pose, const StoryStep& step) const;
     Pokemon::Outcome step_ahead(const Pokemon::Pose& pose, const StoryStep& step) const;
     Pokemon::Outcome shop(const StoryStep& step);
+    //  The screen between steps: the dialog that popped up, if one did.
+    Pokemon::ScreenLook look();
+    StepInterruptActions sim_interrupt_actions();
 
     SimStepGuard m_guard;
     SimStubs m_stubs;
     std::map<std::string, int> m_bag;
     Pokemon::StoryActionTable m_table;
+    StorySimKnobs m_knobs;
+    Pokemon::StoryInterrupts m_interrupts;
+    std::string m_row;
+    //  A dialog popped up (StorySimKnobs::dialog_before) and is still up;
+    //  it rose since the last look.
+    bool m_dialog_up = false;
+    bool m_dialog_rose = false;
+    std::vector<std::string> m_dialog_notes;
 };
 
 
