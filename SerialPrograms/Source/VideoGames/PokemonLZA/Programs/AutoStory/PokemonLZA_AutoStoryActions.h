@@ -55,13 +55,26 @@ public:
 [[noreturn]] void throw_not_implemented(ConsoleHandle& console, std::string_view action, std::string_view todo);
 
 
-//  A straight run in the overworld. Lumiose has no tiles: a move is a
-//  heading and how long to run, as measured on the console.
+//  One leg of a walk: a turn, then a walk straight on.
+struct StoryWalkLeg{
+    //  Degrees clockwise from where the player faces (negative: left), as
+    //  the story was recorded: L recenters the camera behind the player,
+    //  the stick is tapped that way for 150 ms, and L again. The tap also
+    //  takes a step. 0: no turn.
+    double turn = 0;
+    //  How long to hold the stick forward after the turn, walking (not
+    //  dashing). 0: the turn only.
+    Milliseconds walk = Milliseconds(0);
+};
+
+//  A walk in the overworld. Lumiose has no tiles: a move is an optional
+//  compass heading to face first, then legs of turns and timed walks, as
+//  recorded on the console.
 struct StoryMove{
     //  Clockwise from north, as the minimap's arrow reads it
-    //  (get_facing_direction()). None: straight ahead of the camera.
-    std::optional<double> heading;
-    Milliseconds duration = Milliseconds(0);
+    //  (get_facing_direction()). None: no compass turn first.
+    std::optional<double> heading = std::nullopt;
+    std::vector<StoryWalkLeg> legs = {};
 };
 
 
@@ -95,10 +108,11 @@ double read_heading(ConsoleHandle& console, ProControllerContext& context);
 //  OperationFailedException if it stays outside the tolerance.
 double face_heading(ConsoleHandle& console, ProControllerContext& context, double heading, double tolerance);
 
-//  From the overworld, runs as `move` says: faces its heading first, if it
-//  has one, then runs straight ahead for its duration. Throws
-//  OperationFailedException if a day/night change cut the run short, since
-//  where it stopped is then unknown.
+//  From the overworld, walks as `move` says: faces its heading first, if it
+//  has one, then each leg's turn and walk. Dash is a toggle in this game;
+//  the walk assumes it is off. Nothing is read on the way: a leg that is cut
+//  short or blocked goes unnoticed, and a step that needs a prompt after the
+//  walk fails there instead.
 void run_story_move(ConsoleHandle& console, ProControllerContext& context, const StoryMove& move);
 
 //  From the overworld, opens the map and fast travels to `location`

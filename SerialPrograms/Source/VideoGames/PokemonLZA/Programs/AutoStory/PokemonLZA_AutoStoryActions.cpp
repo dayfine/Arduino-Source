@@ -138,11 +138,12 @@ namespace{
 
 //  Recenters the camera behind the player (L), then taps the stick
 //  `degrees` clockwise of straight ahead, which turns the player that way
-//  (and steps it a little).
+//  (and steps it a little). 150 ms is the tap the story was recorded with
+//  (console B, 2026-11-08).
 void turn_by(ProControllerContext& context, double degrees){
     const double radians = degrees * std::numbers::pi / 180.0;
     pbf_press_button(context, BUTTON_L, 100ms, 400ms);
-    pbf_move_left_joystick(context, {std::sin(radians), std::cos(radians)}, 100ms, 300ms);
+    pbf_move_left_joystick(context, {std::sin(radians), std::cos(radians)}, 150ms, 300ms);
 }
 
 } // namespace
@@ -168,14 +169,17 @@ void run_story_move(ConsoleHandle& console, ProControllerContext& context, const
     if (move.heading){
         face_heading(console, context, *move.heading, 10.0);
     }
-    context.wait_for_all_requests();
-    if (run_a_straight_path_in_overworld(console, context, 0, 1, move.duration) == 0){
-        OperationFailedExceptionWithScreenshot::fire(
-            ErrorReportMode::SEND_ERROR_REPORT,
-            "run_story_move(): a day/night change cut the run short.",
-            console
-        );
+    for (const StoryWalkLeg& leg : move.legs){
+        if (leg.turn != 0){
+            //  The walk goes where the camera looks: recenter it after the turn.
+            turn_by(context, leg.turn);
+            pbf_press_button(context, BUTTON_L, 100ms, 400ms);
+        }
+        if (leg.walk > Milliseconds(0)){
+            pbf_move_left_joystick(context, {0, 1}, leg.walk, 0ms);
+        }
     }
+    context.wait_for_all_requests();
 }
 
 

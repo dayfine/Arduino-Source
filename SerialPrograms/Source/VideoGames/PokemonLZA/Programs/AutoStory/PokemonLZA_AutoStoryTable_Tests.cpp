@@ -47,8 +47,8 @@ private:
     std::string m_checkpoint;
 };
 
-//  The table: ids unique and in order, each row starts somewhere, lints,
-//  and every step is one PLZA's executor does.
+//  The table: ids unique and in order, each row but the new game starts
+//  somewhere, lints, and every step is one PLZA's executor does.
 UnitTestResult test_story_table_lints(Logger&){
     std::string previous;
     for (const StoryCheckpoint& row : story_checkpoints()){
@@ -56,8 +56,8 @@ UnitTestResult test_story_table_lints(Logger&){
             return std::format("{}: repeated or out of order after {}.", row.id, previous);
         }
         previous = row.id;
-        if (!row.start){
-            return row.id + ": no start; every row starts from a save.";
+        if (!row.start && row.id != "01.00"){
+            return row.id + ": no start; every row after the new game starts from a save.";
         }
         const std::vector<std::string> problems = Pokemon::lint_story_checkpoint(row);
         if (!problems.empty()){
@@ -72,44 +72,85 @@ UnitTestResult test_story_table_lints(Logger&){
             }
         }
     }
-    if (story_checkpoints().empty() || story_checkpoints().front().id != "01.01"){
-        return "Expected the table to start at 01.01.";
+    if (story_checkpoints().empty() || story_checkpoints().front().id != "01.00"){
+        return "Expected the table to start at 01.00, the new game.";
     }
     return true;
 }
 
-//  Every move the table names is known, and each runs forward for some time
-//  toward a heading on the compass, if it has one.
+//  What is wrong with a walk, if anything: it needs legs, each turning at
+//  most half a turn either way and walking no negative time, and it must
+//  walk somewhere. Empty when there is none.
+std::string move_problem(const std::string& name, const StoryMove& move){
+    if (move.legs.empty()){
+        return "Move " + name + " has no legs.";
+    }
+    bool goes = false;
+    for (const StoryWalkLeg& leg : move.legs){
+        if (leg.turn < -180 || leg.turn > 180 || leg.walk.count() < 0){
+            return std::format("Move {}: leg turns {} deg, walks {} ms.", name, leg.turn, leg.walk.count());
+        }
+        goes = goes || leg.walk.count() > 0;
+    }
+    if (!goes){
+        return "Move " + name + " walks nowhere.";
+    }
+    if (move.heading && (*move.heading < 0 || *move.heading >= 360)){
+        return std::format("Move {} heads {} deg, expected [0, 360).", name, *move.heading);
+    }
+    return "";
+}
+
+//  Every move the table names is known, every move is in a step, and each
+//  walks somewhere.
 UnitTestResult test_story_moves_known(Logger&){
     std::set<std::string> used;
     for (const StoryCheckpoint& row : story_checkpoints()){
         for (const StoryStep& step : row.steps){
-            if (step.kind == StoryStepKind::GAME && step.variant != "choose_starter"){
+            if (step.kind == StoryStepKind::GAME && story_moves().contains(step.variant)){
                 used.insert(step.variant);
             }
-        }
-    }
-    for (const std::string& name : used){
-        if (!story_moves().contains(name)){
-            return "No move named " + name + ".";
         }
     }
     for (const auto& [name, move] : story_moves()){
         if (!used.contains(name)){
             return "Move " + name + " is in no step.";
         }
-        if (move.duration.count() <= 0){
-            return std::format("Move {} runs for {} ms, expected more than 0.", name, move.duration.count());
+        const std::string problem = move_problem(name, move);
+        if (!problem.empty()){
+            return problem;
         }
-        if (move.heading && (*move.heading < 0 || *move.heading >= 360)){
-            return std::format("Move {} heads {} deg, expected [0, 360).", name, *move.heading);
+    }
+    return true;
+}
+
+//  Each action that is not implemented says what it waits for, is no move's
+//  name, and is in a step.
+UnitTestResult test_not_implemented_actions(Logger&){
+    std::set<std::string> used;
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        for (const StoryStep& step : row.steps){
+            if (step.kind == StoryStepKind::GAME){
+                used.insert(step.variant);
+            }
+        }
+    }
+    for (const auto& [name, todo] : story_actions_not_implemented()){
+        if (todo.empty()){
+            return name + ": no TODO.";
+        }
+        if (story_moves().contains(name)){
+            return name + ": also a move's name.";
+        }
+        if (!used.contains(name)){
+            return name + ": in no step.";
         }
     }
     return true;
 }
 
 //  Unsupported kinds and variants are refused by name: a tile walk, a fly
-//  without "fly", a move nobody defined.
+//  without "fly", a move nobody defined, a choice row nobody listed.
 UnitTestResult test_unsupported_steps_refused(Logger&){
     const std::vector<std::pair<StoryStepKind, std::string>> refused{
         {StoryStepKind::LEGS, ""},
@@ -117,6 +158,8 @@ UnitTestResult test_unsupported_steps_refused(Logger&){
         {StoryStepKind::ROUTE, ""},
         {StoryStepKind::MASH, "x"},
         {StoryStepKind::GAME, "no_such_move"},
+        {StoryStepKind::GAME, "choose_starter"},
+        {StoryStepKind::GAME, "choose_2"},
     };
     for (const auto& [kind, variant] : refused){
         StoryStep step;
@@ -165,18 +208,15 @@ UnitTestResult test_story_table_runs(Logger&){
     return true;
 }
 
-//  The starters' rows in the game's list: top to bottom.
-UnitTestResult test_starter_rows(Logger&){
-    const std::vector<std::pair<StarterChoice, size_t>> rows{
-        {StarterChoice::CHIKORITA, 0},
-        {StarterChoice::TEPIG, 1},
-        {StarterChoice::TOTODILE, 2},
-    };
-    for (const auto& [starter, expected] : rows){
-        const size_t index = starter_index(starter);
-        if (index != expected){
-            return std::format("Expected row {}, read {}.", expected, index);
-        }
+//  Chikorita's walk is recorded and walks somewhere.
+UnitTestResult test_starter_moves(Logger&){
+    const auto chikorita = starter_moves().find(StarterChoice::CHIKORITA);
+    if (chikorita == starter_moves().end()){
+        return "Expected the walk to Chikorita.";
+    }
+    const std::string problem = move_problem("approach_chikorita", chikorita->second);
+    if (!problem.empty()){
+        return problem;
     }
     return true;
 }
@@ -234,7 +274,11 @@ const AutoStoryTableCase AUTO_STORY_TABLE_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"Starters: rows top to bottom", test_starter_rows},
+        .input = {"Story table: actions not implemented say what they wait for", test_not_implemented_actions},
+        .expectation = {},
+    },
+    {
+        .input = {"Starters: the walk to Chikorita is recorded", test_starter_moves},
         .expectation = {},
     },
 };

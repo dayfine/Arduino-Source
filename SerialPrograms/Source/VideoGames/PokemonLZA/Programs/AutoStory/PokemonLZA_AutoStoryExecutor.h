@@ -15,7 +15,12 @@
  *      HEAL    the nurse (not implemented)
  *      SHOP    the counter (not implemented)
  *      SAVE    save where the player stands
- *      GAME    a move of story_moves(), or "choose_starter"
+ *      GAME    a move of story_moves(); "approach_starter" (the walk of
+ *              starter_moves() to the chosen starter); "choose_0"/"choose_1"
+ *              (that row of the choices on screen); "story_battle" (attack
+ *              in a battle already on screen until a dialog shows); or an
+ *              action of story_actions_not_implemented(), which throws
+ *              StoryActionNotImplemented naming the code it waits for
  *
  *  Any other kind or variant fails by name: tile walks (LEGS, STEP) mean
  *  nothing in Lumiose. A failed console step becomes a failed Outcome, so
@@ -27,7 +32,8 @@
 #ifndef PokemonAutomation_PokemonLZA_AutoStoryExecutor_H
 #define PokemonAutomation_PokemonLZA_AutoStoryExecutor_H
 
-#include <cstddef>
+#include <functional>
+#include <map>
 #include <string>
 #include <vector>
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
@@ -41,22 +47,26 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  The starters Mission 1 offers, in the order the game lists them.
+//  The starters Mission 1 offers. The player picks one by walking up to it
+//  and talking to it.
 enum class StarterChoice{
     CHIKORITA,
     TEPIG,
     TOTODILE,
 };
-//  The starter's row in the game's list, 0 at the top.
-size_t starter_index(StarterChoice starter);
 
 //  What the story's steps act on.
 struct StoryEnv{
     SingleSwitchProgramEnvironment& env;
     ProControllerContext& context;
-    StarterChoice starter = StarterChoice::TEPIG;
+    StarterChoice starter = StarterChoice::CHIKORITA;
     BattleAIOption& battle_ai;
 };
+
+//  The GAME steps whose console code does not exist yet, by variant, each
+//  with the code it waits for. The executor throws StoryActionNotImplemented
+//  with that text instead of pressing buttons blind.
+const std::map<std::string, std::string, std::less<>>& story_actions_not_implemented();
 
 //  Whether this game's executor does `step`: its kind, and its variant
 //  among those the kind takes (the header comment's list).
@@ -85,6 +95,10 @@ protected:
     virtual Pokemon::Outcome game(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
 
 private:
+    //  Walks to the chosen starter (starter_moves()); not implemented for
+    //  one whose walk was not recorded.
+    void approach_starter();
+
     ConsoleHandle& console(){
         return m_env.env.console;
     }

@@ -31,7 +31,7 @@ AutoStory_Descriptor::AutoStory_Descriptor()
         "PokemonLZA:AutoStory",
         STRING_POKEMON + " LZA", "Auto Story",
         "Programs/PokemonLZA/AutoStory.html",
-        "Play the main story of Pokemon Legends: Z-A. Prototype: Mission 1 only, not run on a console yet.",
+        "Play the main story of Pokemon Legends: Z-A. Prototype: Main Missions 01-03 as recorded on a console; most steps still wait for code.",
         PanelQualityStanding::DEVELOPER,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
@@ -104,7 +104,7 @@ AutoStory::AutoStory()
             {StarterChoice::TOTODILE,  "totodile",  "Totodile"},
         },
         LockMode::LOCK_WHILE_RUNNING,
-        StarterChoice::TEPIG
+        StarterChoice::CHIKORITA
     )
     , GO_HOME_WHEN_DONE(false)
     , NOTIFICATIONS({
