@@ -23,6 +23,8 @@ void add_tests_Interrupts(UnitTestDatabase& database);
 void add_tests_Transitions(UnitTestDatabase& database);
 //  Story action tables, the variant parser and the table executor.
 void add_tests_StoryActions(UnitTestDatabase& database);
+//  The table executor's looks for interrupts between steps.
+void add_tests_StoryInterrupts(UnitTestDatabase& database);
 // Registers unit tests for story event sequencing and execution.
 void add_tests_StoryEvents(UnitTestDatabase& database);
 // Registers unit tests for story segment running, verification, and branching.
