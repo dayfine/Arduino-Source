@@ -196,7 +196,7 @@ Pokemon::Segment make_story_segment(const std::vector<Pokemon::StoryCheckpoint>&
     segment.id = "PLZA";
     for (const Pokemon::StoryCheckpoint& row : rows){
         segment.checkpoints.push_back(Pokemon::CheckpointSpec{
-            .id = row.id, .title = row.title, .saves = true,
+            .id = row.id, .title = row.title, .saves = story_row_saves(row),
             .build = [&row, &executor]{
                 return Pokemon::build_story_checkpoint(row, executor);
             },

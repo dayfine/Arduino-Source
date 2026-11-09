@@ -41,6 +41,11 @@ namespace PokemonLZA{
 //  without a save.
 const std::vector<Pokemon::StoryCheckpoint>& story_checkpoints();
 
+//  Whether `row` saves through the menu at its end. Rows before the game
+//  has its menu (01.00-01.02) don't: the game autosaves before the starter,
+//  and that autosave is 01.03's start.
+bool story_row_saves(const Pokemon::StoryCheckpoint& row);
+
 //  The overworld walks the table's GAME steps name, by name.
 const std::map<std::string, StoryMove, std::less<>>& story_moves();
 

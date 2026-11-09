@@ -377,6 +377,10 @@ const std::map<std::string, StoryMove, std::less<>>& story_moves(){
     return moves;
 }
 
+bool story_row_saves(const Pokemon::StoryCheckpoint& row){
+    return row.id != "01.00" && row.id != "01.01" && row.id != "01.02";
+}
+
 const std::map<StarterChoice, StoryMove>& starter_moves(){
     static const std::map<StarterChoice, StoryMove> moves{
         //  Step 13: ends at the "A Talk Chikorita" prompt. Measured

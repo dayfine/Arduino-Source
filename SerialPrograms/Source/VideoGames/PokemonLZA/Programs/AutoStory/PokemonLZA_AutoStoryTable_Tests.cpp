@@ -174,7 +174,8 @@ UnitTestResult test_unsupported_steps_refused(Logger&){
 }
 
 //  The whole table through make_story_segment() and the shared runner, each
-//  step done: every row passes in order, saving at its end.
+//  step done: every row passes in order, saving at its end unless it
+//  relies on the game's autosave.
 UnitTestResult test_story_table_runs(Logger&){
     RecordingExecutor executor;
     Pokemon::Segment segment = make_story_segment(story_checkpoints(), executor);
@@ -202,8 +203,15 @@ UnitTestResult test_story_table_runs(Logger&){
     if (executor.trace != expected){
         return std::format("Expected {} steps in table order, ran {}.", expected.size(), executor.trace.size());
     }
-    if (saves != story_checkpoints().size()){
-        return std::format("Expected a save per row ({}), saw {}.", story_checkpoints().size(), saves);
+    size_t expected_saves = 0;
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        expected_saves += story_row_saves(row) ? 1 : 0;
+    }
+    if (expected_saves != story_checkpoints().size() - 3){
+        return std::format("Expected 01.00-01.02 to rely on autosaves, {} of {} rows save.", expected_saves, story_checkpoints().size());
+    }
+    if (saves != expected_saves){
+        return std::format("Expected a save per saving row ({}), saw {}.", expected_saves, saves);
     }
     return true;
 }
