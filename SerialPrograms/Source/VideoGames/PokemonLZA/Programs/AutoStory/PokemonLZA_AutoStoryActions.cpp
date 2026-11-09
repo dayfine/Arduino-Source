@@ -236,6 +236,30 @@ void fight_battle(
 }
 
 
+
+void fight_battle_in_progress(
+    ProgramEnvironment& env, ConsoleHandle& console, ProControllerContext& context,
+    BattleAIOption& battle_ai, std::chrono::seconds timeout
+){
+    TrainerBattleState battle_state(battle_ai);
+    AnyDialogDetector dialog;
+    const WallClock deadline = current_time() + timeout;
+    while (true){
+        context.wait_for_all_requests();
+        if (dialog.detect(console.video().snapshot())){
+            return;
+        }
+        if (current_time() > deadline){
+            OperationFailedExceptionWithScreenshot::fire(
+                ErrorReportMode::SEND_ERROR_REPORT,
+                "fight_battle_in_progress(): no dialog after the battle within the timeout.",
+                console
+            );
+        }
+        battle_state.attempt_one_attack(env, console, context);
+    }
+}
+
 void heal_at_pokemon_center(ConsoleHandle& console, ProControllerContext&){
     throw_not_implemented(
         console, "heal_at_pokemon_center",

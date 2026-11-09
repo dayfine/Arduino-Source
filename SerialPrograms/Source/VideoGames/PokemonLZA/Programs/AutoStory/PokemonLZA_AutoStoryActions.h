@@ -16,6 +16,7 @@
 #ifndef PokemonAutomation_PokemonLZA_AutoStoryActions_H
 #define PokemonAutomation_PokemonLZA_AutoStoryActions_H
 
+#include <chrono>
 #include <cstddef>
 #include <optional>
 #include <string>
@@ -113,6 +114,15 @@ void fly_to(ConsoleHandle& console, ProControllerContext& context, Language lang
 void fight_battle(
     ProgramEnvironment& env, ConsoleHandle& console, ProControllerContext& context,
     BattleAIOption& battle_ai
+);
+
+//  In a battle that is already on screen: attacks with TrainerBattleState
+//  until a dialog box shows (the speech after a win or a loss). For story
+//  battles, which show no Run prompt for fight_battle() to start on.
+//  Throws OperationFailedException after `timeout`.
+void fight_battle_in_progress(
+    ProgramEnvironment& env, ConsoleHandle& console, ProControllerContext& context,
+    BattleAIOption& battle_ai, std::chrono::seconds timeout
 );
 
 //  At a Pokemon Center: heal the party. Not implemented: throws

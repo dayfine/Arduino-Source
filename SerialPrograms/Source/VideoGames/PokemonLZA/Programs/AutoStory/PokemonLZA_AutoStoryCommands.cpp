@@ -114,8 +114,13 @@ void run_fly(CommandFileSession& session, const std::vector<std::string>& words)
     fly_to(session.console, session.context, fly.language, fly.location);
 }
 void run_battle(CommandFileSession& session, const std::vector<std::string>& words){
-    parse_no_arguments(words);
     BattleAIOption battle_ai;
+    if (words.size() >= 2 && words[1] == "now"){
+        const int seconds = words.size() >= 3 ? std::stoi(words[2]) : 180;
+        fight_battle_in_progress(session.env, session.console, session.context, battle_ai, std::chrono::seconds(seconds));
+        return;
+    }
+    parse_no_arguments(words);
     fight_battle(session.env, session.console, session.context, battle_ai);
 }
 void run_heal(CommandFileSession& session, const std::vector<std::string>& words){
@@ -209,7 +214,7 @@ void register_lza_command_file_commands(){
     register_command_file_command("lza_move", "lza_move ANGLE|ahead MS   (face ANGLE clockwise from north, then run MS)", DRIVES_CONSOLE, run_move);
     register_command_file_command("lza_face", "lza_face ANGLE [TOL]   (face ANGLE within TOL degrees, 10 if none)", DRIVES_CONSOLE, run_face);
     register_command_file_command("lza_fly", "lza_fly PLACE [LANG]   (fast travel to a location slug; LANG eng if none)", DRIVES_CONSOLE, run_fly);
-    register_command_file_command("lza_battle", "lza_battle   (fight the battle that is starting)", DRIVES_CONSOLE, run_battle);
+    register_command_file_command("lza_battle", "lza_battle [now [SECONDS]]   (fight the battle that is starting; \"now\": one already on screen, until a dialog)", DRIVES_CONSOLE, run_battle);
     register_command_file_command("lza_heal", "lza_heal   (not implemented yet)", DRIVES_CONSOLE, run_heal);
     register_command_file_command("lza_shop", "lza_shop ITEM...   (not implemented yet)", DRIVES_CONSOLE, run_shop);
     register_command_file_command("lza_save", "lza_save   (save the game, back to the overworld)", DRIVES_CONSOLE, run_save);
