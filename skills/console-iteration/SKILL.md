@@ -365,9 +365,10 @@ unknown screen: a new game's first screens accept it.
   wait for the first line.
 - Wandering NPCs (the Poketch clown, Jubilife's green-haired man, Route
   203's road woman and the blue-haired man, Route 204's youngster at the
-  Ravaged Path) are moving walls: never anchor on them, and **route around
-  their zone**, not through it and not by waiting them out. Waiting is the
-  fallback only when no route avoids the zone. Route 204, 2026-11-08: the
+  Ravaged Path) are moving walls: never anchor on them, and **never plan a
+  leg along their zone** (on its axis, through 2+ of its tiles). Crossing it
+  across its axis, one tile, is fine; waiting them out is only for that
+  crossing. Route 204, 2026-11-08: the
   youngster wanders (12..14, 2) right beside the door tile (11, 2); the
   route along row 2 failed twice, row 3 to (11, 3) then north never meets
   him. Confirm a suspected wanderer with the recipe "Confirm a wanderer".
