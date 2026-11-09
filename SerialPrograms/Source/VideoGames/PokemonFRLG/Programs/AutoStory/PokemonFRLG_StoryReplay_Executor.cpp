@@ -46,7 +46,24 @@ void check_candidate_move(const JsonObject& command, const OverworldPose& from, 
 ReplayExecutor::ReplayExecutor(const ReplayData& data, const JsonValue& scenario)
     : m_data(&data), m_scenario(&scenario.to_object_throw())
     , m_pose(read_pose(m_scenario->get_object_throw("entry").get_value_throw("pose"), data.maps))
+    , m_table(make_story_action_table([this](StoryActionId id){ return replay_action(id); }))
+    , m_executor(m_table, m_guard)
 {}
+bool ReplayStepGuard::stops_on_failure(const StoryStep&) const{
+    return true;
+}
+Pokemon::StoryAction ReplayExecutor::replay_action(StoryActionId id){
+    switch (id){
+    case StoryActionId::ROUTE:
+        return {.act = [this](Pokemon::RunState&, const StoryStep& step){ return replay_route(step); }};
+    case StoryActionId::STEP:
+        return {.act = [this](Pokemon::RunState&, const StoryStep& step){ return replay_step(step); }};
+    case StoryActionId::MASH:
+        return {.act = [this](Pokemon::RunState&, const StoryStep& step){ return replay_scene(step); }};
+    default:
+        return {.act = [](Pokemon::RunState&, const StoryStep& step){ return Pokemon::unsupported_step(step); }};
+    }
+}
 const JsonObject* ReplayExecutor::signal() const{
     return m_scenario->get_object_throw("signals").get_object(m_active);
 }
@@ -64,7 +81,7 @@ Pokemon::Checkpoint ReplayExecutor::build(){
 }
 Pokemon::Outcome ReplayExecutor::run(Pokemon::RunState& state, const StoryStep& step){
     m_active = step.name;
-    Pokemon::Outcome outcome = Pokemon::StoryStepExecutor::run(state, step);
+    Pokemon::Outcome outcome = m_executor.run(state, step);
     if (outcome.succeeded()){
         m_completed.push_back(step.name);
     }else if (!m_known){
@@ -213,7 +230,7 @@ StepOutcome ReplayExecutor::walk_leg(const RouteStep& step){
     m_basis = "model-prediction";
     return StepOutcome{};
 }
-Pokemon::Outcome ReplayExecutor::route(Pokemon::RunState&, const StoryStep& step){
+Pokemon::Outcome ReplayExecutor::replay_route(const StoryStep& step){
     default_plan(step);
     const std::vector<RouteStep> route = prepare_route(step);
     size_t moves = 0;
@@ -240,7 +257,7 @@ Pokemon::Outcome ReplayExecutor::route(Pokemon::RunState&, const StoryStep& step
     }
     return Pokemon::outcome_ok(native_pose(m_pose));
 }
-Pokemon::Outcome ReplayExecutor::step(Pokemon::RunState&, const StoryStep& step){
+Pokemon::Outcome ReplayExecutor::replay_step(const StoryStep& step){
     const auto next = predict_overworld_press(m_data->maps, m_pose, step.direction);
     if (!next){
         lose_pose("unknown-after-transition");
@@ -256,7 +273,7 @@ Pokemon::Outcome ReplayExecutor::step(Pokemon::RunState&, const StoryStep& step)
     m_basis = "model-prediction";
     return Pokemon::outcome_ok(native_pose(m_pose));
 }
-Pokemon::Outcome ReplayExecutor::mash(Pokemon::RunState&, const StoryStep& step){
+Pokemon::Outcome ReplayExecutor::replay_scene(const StoryStep& step){
     JsonObject action;
     action["event"] = step.name;
     action["kind"] = "scene";
