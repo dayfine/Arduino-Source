@@ -33,3 +33,5 @@ These are synthetic codec tests, not exports of either game's authored story
 tables or captured controller replay. Evaluated FRLG/BDSP table exporters,
 policy/state envelope binding and execution parity remain subsequent work.
 No gameplay behavior changes here.
+
+The same CTest command also runs `AuthoredCheckpointTests`: shared authored-envelope parsing/writing and embedded-resource lookup for FRLG, BDSP, and opaque future game settings. Game adapters must validate their own execution object before running anything. The shared codec does not interpret FRLG menus, BDSP save-card policy, native bookkeeping, or controller evidence.
