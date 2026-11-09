@@ -16,6 +16,7 @@
 #include "CommonTools/Async/InferenceSession.h"
 #include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "PokemonFRLG_OverworldLateBattle.h"
 #include "PokemonFRLG_OverworldRecoveryWalk.h"
@@ -72,16 +73,18 @@ StepWalk walk_step(
         }
         context.wait_for_all_requests();
         out.hold_start = current_time();
+        BlackScreenOverWatcher arrival(COLOR_RED);
+        Pokemon::WatchAlong fade(arrival);
         const Pokemon::LegResult result = Pokemon::walk_leg(
             console, context, leg_mover(step, speed), step.wild ? interrupts.wild : interrupts.other,
-            leg_spec(step, speed), MAX_INTERRUPTIONS_PER_LEG
+            leg_spec(step, speed), MAX_INTERRUPTIONS_PER_LEG, warp_hold_watchers(step, fade)
         );
         if (result.stopped){
             out.stopped = walked_near(step, result.tiles, tile_time(step, speed));
             return out;
         }
         if (step.warps){
-            wait_out_warp(console, context, step);
+            wait_out_warp(console, context, step, fade);
             static_assert(AFTER_WARP_BATTLE_WATCH >= AFTER_WARP);
             if (run_from_battle_after_warp(console, context)){
                 console.log("Route: a wild battle, not the warp to " + step.end.map + "; the player is on " + to_string(step) + " before the warp.", COLOR_ORANGE);

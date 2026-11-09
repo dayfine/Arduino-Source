@@ -213,18 +213,34 @@ std::string speed_note(const RouteStep& step, MoveSpeed speed){
     );
 }
 
+std::vector<Pokemon::WatchAlong*> warp_hold_watchers(const RouteStep& step, Pokemon::WatchAlong& fade){
+    if (!step.warps){
+        return {};
+    }
+    return {&fade};
+}
+
 //  One watcher for the whole fade: a ladder's black is short enough to be
 //  over before a second watcher, started once the fade is seen, looks.
-void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step){
-    BlackScreenOverWatcher arrival(COLOR_RED);
+void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step, Pokemon::WatchAlong& fade){
+    if (fade.fired()){
+        console.log("Route: the fade to " + step.end.map + " was over before the hold ended.");
+        return;
+    }
     context.wait_for_all_requests();
-    if (wait_until(console, context, WARP_TIMEOUT, {arrival}) < 0){
+    if (wait_until(console, context, WARP_TIMEOUT, {fade.watcher()}) < 0){
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::SEND_ERROR_REPORT,
             "walk_overworld_route(): no fade in and out after walking onto the warp to " + step.end.map + ".",
             console
         );
     }
+}
+
+void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step){
+    BlackScreenOverWatcher arrival(COLOR_RED);
+    Pokemon::WatchAlong fade(arrival);
+    wait_out_warp(console, context, step, fade);
 }
 
 //  Fails unless the overworld is up. Under the START menu or a message the
@@ -454,6 +470,31 @@ const OverworldInterruptSet& default_overworld_interrupts(){
 }
 
 
+namespace{
+
+//  A WALK step's leg, and the fade of the warp it walks onto, watched from
+//  the start of the hold.
+void walk_step_leg(
+    ConsoleHandle& console, ProControllerContext& context,
+    const RouteStep& step, const OverworldInterruptSet& interrupts, MoveSpeed speed
+){
+    BlackScreenOverWatcher arrival(COLOR_RED);
+    Pokemon::WatchAlong fade(arrival);
+    Pokemon::walk_leg(
+        console, context, leg_mover(step, speed), step.wild ? interrupts.wild : interrupts.other,
+        leg_spec(step, speed), MAX_INTERRUPTIONS_PER_LEG, warp_hold_watchers(step, fade)
+    );
+    if (!step.warps){
+        return;
+    }
+    wait_out_warp(console, context, step, fade);
+    static_assert(AFTER_WARP_BATTLE_WATCH >= AFTER_WARP);
+    check_warp_was_no_battle(console, context, step);
+}
+
+} // namespace
+
+
 void walk_overworld_route(
     ConsoleHandle& console, ProControllerContext& context,
     const std::vector<RouteStep>& route,
@@ -479,12 +520,7 @@ void walk_overworld_route(
             if (const std::string note = speed_note(step, speed); !note.empty()){
                 console.log(note);
             }
-            Pokemon::walk_leg(console, context, leg_mover(step, speed), step.wild ? interrupts.wild : interrupts.other, leg_spec(step, speed), MAX_INTERRUPTIONS_PER_LEG);
-            if (step.warps){
-                wait_out_warp(console, context, step);
-                static_assert(AFTER_WARP_BATTLE_WATCH >= AFTER_WARP);
-                check_warp_was_no_battle(console, context, step);
-            }
+            walk_step_leg(console, context, step, interrupts, speed);
             break;
         case RouteAction::SURF:
             start_surf(console, context, step.direction, facing == step.direction);

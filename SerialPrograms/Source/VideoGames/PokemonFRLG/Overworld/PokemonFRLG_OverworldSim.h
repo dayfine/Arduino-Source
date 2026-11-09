@@ -328,6 +328,13 @@ struct SimWalkerRules{
     //  player may be anywhere on the leg: on Route 10, "east 11" was found
     //  again from all 12 of its tiles (console B, 2026-11-09, 00.27 run 2).
     bool place_late_battle = true;
+    //  The watch for a warp's fade starts with the hold onto the warp
+    //  (Pokemon::WatchAlong), not when it ends. Without it a fade over
+    //  before the hold ended was missed, and the walk stopped on "no fade in
+    //  and out after walking onto the warp" though it had warped (console B,
+    //  2026-11-09 01:41, 00.27, the warp to CeruleanCity: the watch started
+    //  about 1.3 s into the hold).
+    bool watch_fade_along_hold = true;
 };
 
 //  The console side of run_route() on an OverworldSim, as
@@ -367,7 +374,8 @@ private:
     StepOutcome walk(const RouteStep& step, std::optional<Direction> facing);
     std::optional<WalkedTiles> late_stop(const RouteStep& step);
     std::optional<WalkedTiles> walk_step(const RouteStep& step, std::optional<Direction> facing);
-    bool after_warp(const RouteStep& step, int warps_before);
+    bool after_warp(const RouteStep& step, int warps_before, Milliseconds watched_from);
+    bool fade_over_since(Milliseconds from) const;
     [[noreturn]] void fail_off_route(const RouteStep& step);
     std::optional<SimSeen> hold_watching(const RouteStep& step, Milliseconds hold, const std::vector<Interrupt>& interrupts);
     size_t clear_late(const std::vector<Interrupt>& interrupts, Milliseconds watch, size_t max);
@@ -394,6 +402,8 @@ private:
 
 //  Register overworld simulation unit tests.
 void add_tests_OverworldSim(UnitTestDatabase& database);
+//  Register the tests of a warp's fade over before the hold onto it ends.
+void add_tests_OverworldWarpFade(UnitTestDatabase& database);
 
 
 
