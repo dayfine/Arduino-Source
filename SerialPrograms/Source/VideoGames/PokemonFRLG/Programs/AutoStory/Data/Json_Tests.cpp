@@ -1,32 +1,39 @@
 /*  FRLG Checkpoint Export Tests
  *  From: https://github.com/PokemonAutomation/
  */
+
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepJson.h"
-#include "PokemonFRLG_AutoStoryData.h"
-#include "PokemonFRLG_AutoStoryExport.h"
-#include "PokemonFRLG_AutoStoryTable.h"
-#include "PokemonFRLG_StoryReplay.h"
-#include "PokemonFRLG_AutoStoryExport_Tests.h"
+#include "JsonParser.h"
+#include "JsonWriter.h"
+#include "VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryTable.h"
+#include "VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_StoryReplay.h"
+#include "Json_Tests.h"
+
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
+
 namespace{
+
 struct ExportInput{
     std::string_view id;
     bool custom = false;
 };
+
 struct ExportExpectation{
     std::vector<std::string> events;
     std::string_view menu;
     std::string_view native_json = {};
 };
+
 struct ExportCase{
     ExportInput input;
     ExportExpectation expectation;
 };
+
 const ExportCase CASES[] = {
     {.input = {.id = "00.05"}, .expectation = {.events = {"below_mart_door", "mart_door", "parcel_from_clerk"}, .menu = "before_pokedex"}},
     {.input = {.id = "00.05", .custom = true}, .expectation = {
@@ -34,6 +41,7 @@ const ExportCase CASES[] = {
         .native_json = R"({"menu":"full","supplies":{"potions":2,"antidotes":3,"parlyz_heals":4,"pocket":["antidote",""],"status":"PSN","hurt":true,"hp_red":true,"hp_fill":0.25,"lead":{"species":"wartortle","moves":[{"move":"bite","pp":0}],"moves_through_level":18,"moves_read":true,"level":19,"stats":{"hp":50,"attack":20,"defense":30,"sp_attack":40,"sp_defense":35,"speed":25}},"protected_slots":[0,2],"foes":["staryu"],"trainer":"misty","risk":"high","foe_out":0,"wild_foes":["pidgey"]}})"
     }},
 };
+
 void customize(StoryCheckpoint& row){
     row.menu = StartMenu::FULL;
     Supplies& state = row.supplies;
@@ -55,12 +63,14 @@ void customize(StoryCheckpoint& row){
     state.foe_out = 0;
     state.wild_foes = {"pidgey"};
 }
+
 //  The export as the tool writes it to a file: with its source revision.
 JsonValue exported_file(const StoryCheckpoint& row, const std::string& revision){
     JsonValue result = story_checkpoint_export(row);
     result.to_object_throw()["source_revision"] = revision;
     return result;
 }
+
 std::string check_export(StoryCheckpoint row, const ExportCase& test){
     if (test.input.custom){
         customize(row);
@@ -89,6 +99,7 @@ std::string check_export(StoryCheckpoint row, const ExportCase& test){
     }
     return names == test.expectation.events ? "" : "Expected Parcel's three authored events in order.";
 }
+
 class ExportTest : public UnitTest{
 public:
     explicit ExportTest(ExportCase test)
@@ -117,15 +128,18 @@ struct LoadInput{
     void (*mutate)(JsonObject& root) = nullptr;
     bool authored = false;
 };
+
 struct LoadExpectation{
     //  The table row the loaded one must export like; empty when rejected.
     std::string_view row = {};
     bool rejected = false;
 };
+
 struct LoadCase{
     LoadInput input;
     LoadExpectation expectation;
 };
+
 //  `object` without `key`: JsonObject has no erase.
 JsonObject without(const JsonObject& object, std::string_view key){
     JsonObject result;
@@ -136,35 +150,45 @@ JsonObject without(const JsonObject& object, std::string_view key){
     }
     return result;
 }
+
 void add_top_level_field(JsonObject& root){
     root["mystery"] = 1;
 }
+
 void change_format(JsonObject& root){
     root["format"] = "pokesim-story-plan/1";
 }
+
 void add_native_field(JsonObject& root){
     root.get_object_throw("native_fields")["speed"] = "fast";
 }
+
 void unknown_menu(JsonObject& root){
     root.get_object_throw("native_fields")["menu"] = "before_bag";
 }
+
 void drop_potions(JsonObject& root){
     JsonObject& native = root.get_object_throw("native_fields");
     native["supplies"] = without(native.get_object_throw("supplies"), "potions");
 }
+
 void negative_pp(JsonObject& root){
     JsonObject& supplies = root.get_object_throw("native_fields").get_object_throw("supplies");
     supplies.get_object_throw("lead").get_array_throw("moves")[0].to_object_throw()["pp"] = -1;
 }
+
 void foe_out_as_text(JsonObject& root){
     root.get_object_throw("native_fields").get_object_throw("supplies")["foe_out"] = "0";
 }
+
 void drop_revision(JsonObject& root){
     root = without(root, "source_revision");
 }
+
 void unknown_execution_menu(JsonObject& root){
     root.get_object_throw("execution")["menu"] = "guess";
 }
+
 const LoadCase LOAD_CASES[] = {
     {.input = {.name = "authored Parcel plan", .authored = true}, .expectation = {.row = "00.05"}},
     {.input = {.name = "authored plan unknown field", .mutate = add_top_level_field, .authored = true}, .expectation = {.rejected = true}},
@@ -180,6 +204,7 @@ const LoadCase LOAD_CASES[] = {
     {.input = {.name = "foe_out as text", .mutate = foe_out_as_text}, .expectation = {.rejected = true}},
     {.input = {.name = "no source revision", .mutate = drop_revision}, .expectation = {.rejected = true}},
 };
+
 const std::string& parcel_text(const LoadInput& input){
     for (const auto& [name, text] : autostory_checkpoint_json()){
         if (name == (input.authored ? "frlg-parcel-00.05.plan" : "frlg-parcel-00.05")){
@@ -188,6 +213,7 @@ const std::string& parcel_text(const LoadInput& input){
     }
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "StoryData/frlg-parcel-00.05.json is not built into the program.");
 }
+
 const StoryCheckpoint* table_row(std::string_view id){
     for (const StoryCheckpoint& row : story_checkpoints()){
         if (row.id == id){
@@ -196,6 +222,7 @@ const StoryCheckpoint* table_row(std::string_view id){
     }
     return nullptr;
 }
+
 std::string check_loaded(const StoryCheckpoint& loaded, const JsonValue& capture, const LoadCase& test){
     const std::string revision = test.input.authored ? "" : capture.to_object_throw().get_string_throw("source_revision");
     if (!test.input.authored && !(exported_file(loaded, revision) == capture)){
@@ -210,6 +237,7 @@ std::string check_loaded(const StoryCheckpoint& loaded, const JsonValue& capture
     }
     return "";
 }
+
 std::string check_load(const LoadCase& test){
     JsonValue capture = parse_json(parcel_text(test.input));
     if (test.input.mutate){
@@ -226,6 +254,7 @@ std::string check_load(const LoadCase& test){
         return test.expectation.rejected ? "" : "Unexpected parse failure: " + error.message();
     }
 }
+
 class LoadTest : public UnitTest{
 public:
     explicit LoadTest(LoadCase test)
@@ -237,8 +266,10 @@ public:
 private:
     LoadCase m_test;
 };
+
 } // namespace
-void add_tests_AutoStoryExport(UnitTestDatabase& database){
+
+void add_tests_AutoStoryJson(UnitTestDatabase& database){
     add_tests_StoryReplay(database);
     for (const ExportCase& test : CASES){
         database.add<ExportTest>(test);
@@ -247,6 +278,7 @@ void add_tests_AutoStoryExport(UnitTestDatabase& database){
         database.add<LoadTest>(test);
     }
 }
+
 } // namespace PokemonFRLG
 } // namespace NintendoSwitch
 } // namespace PokemonAutomation

@@ -33,7 +33,7 @@
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryPaceSim.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
-#include "PokemonFRLG_AutoStoryExport.h"
+#include "Data/JsonParser.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 
 namespace PokemonAutomation{
@@ -329,7 +329,7 @@ struct AutoStorySimulationInput{
 };
 
 struct AutoStorySimulationExpectation{
-    const char* description;
+    std::string description;
 };
 
 struct AutoStorySimulationTestCase{
