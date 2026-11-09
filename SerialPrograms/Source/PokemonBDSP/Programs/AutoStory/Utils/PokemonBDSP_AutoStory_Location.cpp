@@ -6,11 +6,13 @@
 
 #include <algorithm>
 #include <cctype>
+#include <utility>
 #include <vector>
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTools/ImageStats.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/Language.h"
+#include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
 #include "CommonTools/Images/ImageFilter.h"
 #include "CommonTools/OCR/OCR_RawTesseractOCR.h"
 #include "PokemonBDSP_AutoStory_Location.h"
@@ -141,6 +143,47 @@ bool location_banner_matches(const std::string& read, const std::string& expecte
     }
     return row[b.size()] <= std::max<size_t>(1, b.size() / 4);
 }
+
+
+std::string LocationBannerReads::read(const ImageViewRGB32& screen, WallClock now){
+    if (!location_banner_showing(screen)){
+        m_reads = 0;
+        return "";
+    }
+    if (m_reads >= 2 || (m_reads == 1 && now - m_first < std::chrono::milliseconds(300))){
+        return "";
+    }
+    if (m_reads == 0){
+        m_first = now;
+    }
+    m_reads++;
+    return read_location_banner(screen);
+}
+
+LocationBannerWatcher::LocationBannerWatcher(std::string expected)
+    : VisualInferenceCallback("LocationBannerWatcher")
+    , m_expected(std::move(expected))
+{}
+void LocationBannerWatcher::make_overlays(VideoOverlaySet& items) const{
+    items.add(COLOR_CYAN, LOCATION_BANNER_WHITE);
+}
+bool LocationBannerWatcher::process_frame(const ImageViewRGB32& frame, WallClock timestamp){
+    const std::string read = m_reads.read(frame, timestamp);
+    if (read.empty() || m_matched){
+        return m_matched;
+    }
+    m_last_read = read;
+    if (!m_expected.empty() && location_banner_matches(read, m_expected)){
+        m_seen = read;
+        m_matched = true;
+        return true;
+    }
+    if (m_seen.empty() && m_expected.empty()){
+        m_seen = read;
+    }
+    return false;
+}
+
 
 
 } // namespace PokemonBDSP
