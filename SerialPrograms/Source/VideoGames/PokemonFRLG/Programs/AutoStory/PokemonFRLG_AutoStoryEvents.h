@@ -164,13 +164,14 @@ using SavePoseReader = std::function<std::optional<StoryPose>()>;
 //  Where the start check says what it found.
 using StoryLog = std::function<void(const std::string& line)>;
 
-//  The checkpoint `data` as events (Pokemon::build_story_checkpoint()), and
-//  for a row with a start pose, the start check: the save it starts from,
-//  as `read` reads it, must stand there (start_pose_mismatch()), or the
-//  checkpoint stops before its first event, "start_failed". A save that
-//  can't be read passes. `log` gets a mismatch, or that nothing was read.
-Pokemon::Checkpoint build_checked_checkpoint(
-    const StoryCheckpoint& data, Pokemon::StoryStepExecutor& executor, SavePoseReader read, StoryLog log
+//  Adds to `checkpoint`, built from a row that starts at `start`, the start
+//  check: the save it starts from, as `read` reads it, must stand there
+//  (start_pose_mismatch()), or the checkpoint stops before its first event,
+//  "start_failed". A save that can't be read passes. `log` gets a
+//  mismatch, or that nothing was read. A row with no start (a new game)
+//  gets none.
+void add_start_pose_check(
+    Pokemon::Checkpoint& checkpoint, const std::optional<Pokemon::Pose>& start, SavePoseReader read, StoryLog log
 );
 
 //  `legs` from `start` as route steps for the walker, each checked against
