@@ -241,7 +241,13 @@ struct Simulation{
         for (const StoryCheckpoint& data : story_checkpoints()){
             segment.checkpoints.push_back(Pokemon::CheckpointSpec{
                 .id = data.id, .title = data.title, .saves = true,
-                .build = [this, &data]{ return Pokemon::build_story_checkpoint(data, game); },
+                .build = [this, &data]{
+                    return build_checked_checkpoint(
+                        data, game,
+                        [this]{ return game.save_stands; },
+                        [this](const std::string& line){ lines.push_back(line); }
+                    );
+                },
             });
         }
         Pokemon::SegmentHooks hooks;
@@ -383,11 +389,10 @@ UnitTestResult test_retry_from_save(){
 //  Outside `building`'s door on `map`, facing away from it.
 StoryPose below_door(const std::string& map, const std::string& building){
     const MapData* data = map_named(map);
-    if (data != nullptr){
-        for (const MapWarp& warp : data->warps){
-            if (warp.to && warp.to->map == building){
-                return StoryPose{map, TilePos{warp.x, warp.y}.next(Direction::SOUTH), Direction::SOUTH};
-            }
+    const std::vector<MapWarp> none;
+    for (const MapWarp& warp : data ? data->warps : none){
+        if (warp.to && warp.to->map == building){
+            return StoryPose{map, TilePos{warp.x, warp.y}.next(Direction::SOUTH), Direction::SOUTH};
         }
     }
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No door to " + building + " on " + map);
