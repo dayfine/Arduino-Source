@@ -471,7 +471,12 @@ StoryExecutor::StoryExecutor(StoryEnv& env)
     , m_table(make_story_action_table([this](StoryActionId id){ return console_action(id); }))
     , m_executor(m_table, m_guard)
     , m_look(env.console, env.context)
-    , m_interrupts(step_interrupts([this](bool fresh){ return m_look.look(fresh); }, console_interrupt_actions()))
+    , m_interrupts(step_interrupts(
+        [this](bool fresh){ return m_look.look(fresh); },
+        console_interrupt_actions(env.console, env.context, [&env]{
+            return story_interrupts(env.supplies, false, env.checks, env.language);
+        })
+    ))
 {
     m_executor.set_interrupts(&m_interrupts);
 }
@@ -492,28 +497,6 @@ Pokemon::StoryAction StoryExecutor::console_action(StoryActionId id){
     }
     const ConsoleAction action = console_action_of(id);
     return {.act = [this, action](RunState& state, const StoryStep& step){ return action(m_env, state, step); }, .needs_console = true};
-}
-
-//  As the walker clears them part-way through a leg (story_interrupts()):
-//  a wild battle is run from; a message is read to its end, and a
-//  trainer's battle after it fought. A warp's scene is pressed through.
-StepInterruptActions StoryExecutor::console_interrupt_actions(){
-    const auto walker_clears = [this](bool wild){
-        return [this, wild](RunState&, const Pokemon::InterruptVerdict&){
-            const OverworldInterruptSet set = story_interrupts(m_env.supplies, false, m_env.checks, m_env.language);
-            (wild ? set.wild : set.other).front()->clear(m_env.console, m_env.context);
-            return Pokemon::outcome_ok();
-        };
-    };
-    return StepInterruptActions{
-        .wild = walker_clears(true),
-        .trainer = walker_clears(false),
-        .dialog = walker_clears(false),
-        .warp = [this](RunState&, const Pokemon::InterruptVerdict&){
-            mash_until_overworld(m_env.console, m_env.context, SCENE_TIMEOUT);
-            return Pokemon::outcome_ok();
-        },
-    };
 }
 
 

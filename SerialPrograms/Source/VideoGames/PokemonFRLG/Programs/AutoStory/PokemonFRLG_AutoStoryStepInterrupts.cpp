@@ -8,6 +8,7 @@
 #include <utility>
 #include "Common/Cpp/Color.h"
 #include "CommonTools/Async/InferenceRoutines.h"
+#include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryStepInterrupts.h"
 
 namespace PokemonAutomation{
@@ -17,6 +18,10 @@ namespace PokemonFRLG{
 using Pokemon::InterruptKind;
 using Pokemon::InterruptPose;
 using Pokemon::StoryStepKind;
+using namespace std::chrono_literals;
+
+//  A warp's scene is a fade and the map's name: well within this.
+constexpr Milliseconds WARP_SCENE_TIMEOUT = 60000ms;
 
 
 bool presses_through_text(StoryStepKind kind){
@@ -30,6 +35,28 @@ bool presses_through_text(StoryStepKind kind){
     default:
         return false;
     }
+}
+
+StepInterruptActions console_interrupt_actions(
+    ConsoleHandle& console, ProControllerContext& context,
+    std::function<OverworldInterruptSet()> walker
+){
+    const auto walker_clears = [&console, &context, walker](bool wild){
+        return [&console, &context, walker, wild](Pokemon::RunState&, const Pokemon::InterruptVerdict&){
+            const OverworldInterruptSet set = walker();
+            (wild ? set.wild : set.other).front()->clear(console, context);
+            return Pokemon::outcome_ok();
+        };
+    };
+    return StepInterruptActions{
+        .wild = walker_clears(true),
+        .trainer = walker_clears(false),
+        .dialog = walker_clears(false),
+        .warp = [&console, &context](Pokemon::RunState&, const Pokemon::InterruptVerdict&){
+            mash_until_overworld(console, context, WARP_SCENE_TIMEOUT);
+            return Pokemon::outcome_ok();
+        },
+    };
 }
 
 Pokemon::StoryInterrupts step_interrupts(Pokemon::ScreenLookFunction look, const StepInterruptActions& actions){
