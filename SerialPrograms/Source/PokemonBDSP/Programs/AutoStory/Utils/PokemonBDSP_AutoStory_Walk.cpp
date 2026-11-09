@@ -478,7 +478,7 @@ private:
         ){
             VideoSnapshot after = snapshot_or_fail(m_stream, m_spec.label);
             const double change = walk_screen_change(*m_before_still.frame, *after.frame);
-            if (!still_chunk(change)){
+            if (tap_moved(*m_before_still.frame, *after.frame, still_line(change))){
                 m_result.moved_chunks++;
             }
         }
