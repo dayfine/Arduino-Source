@@ -46,6 +46,11 @@ Pokemon::StoryStep old_coal_room_crate_cut();
 //  the tap step began inside the Gate (lab-B 2026-11-08 15:31 to 15:54).
 Pokemon::StoryStep old_tap_into_the_gate();
 
+//  01.11's old walk toward the old woman: 8 taps west along the row
+//  Floaroma's banner stopped us on, from x 10 to 12, so north of it ended
+//  below the old man (lab-B 2026-11-08 18:41).
+Pokemon::StoryStep old_west_along_the_field();
+
 
 
 } // namespace PokemonBDSP
