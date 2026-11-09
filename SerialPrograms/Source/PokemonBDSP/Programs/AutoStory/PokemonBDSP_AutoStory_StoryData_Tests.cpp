@@ -5,6 +5,7 @@
  */
 
 #include <algorithm>
+#include <format>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
@@ -63,13 +64,36 @@ const Case CASES[] = {
     {.input = {.name = "stop policy must not claim a start save", .mutate = stop_with_save}, .expectation = {.rejected = true}},
 };
 
+std::string string_list(const std::vector<std::string>& values){
+    JsonArray result;
+    for (const std::string& value : values){
+        result.push_back(value);
+    }
+    return result.dump(-1);
+}
+
+std::string tile_list(const std::vector<Pokemon::TilePos>& tiles){
+    std::vector<std::string> values;
+    for (const auto& tile : tiles){
+        values.push_back(Pokemon::to_string(tile));
+    }
+    return string_list(values);
+}
+
+std::string policy(const StoryCheckpoint& row){
+    return std::format("{}; saves_in=\"{}\"",
+        row.on_failure == StoryFailure::RELOAD_AND_RETRY ? "reload_and_retry" : "stop", row.saves_in);
+}
+
 JsonValue plan(){
+    std::vector<std::string> names;
     for (const auto& [name, text] : bdsp_checkpoint_json()){
+        names.push_back(name);
         if (name == "bdsp-mine-01.03.plan"){
             return parse_json(text);
         }
     }
-    throw ParseException("Expected embedded bdsp-mine-01.03.plan.json.");
+    throw ParseException("Expected embedded bdsp-mine-01.03.plan.json; read resource names " + string_list(names));
 }
 
 //  Literal authored poses must stay aligned with the map-derived anchors
@@ -79,7 +103,8 @@ std::string check_map_anchors(const StoryCheckpoint& loaded){
         {47, 21}, map_point("OreburghCity", "pokemon_center_doorstep")
     };
     if (!loaded.start || Pokemon::tiles_of(*loaded.start) != doorstep){
-        return "Expected the authored start to match the Center exit alternatives.";
+        return "Expected Center exit tiles " + tile_list(doorstep) + "; read "
+            + (loaded.start ? Pokemon::story_pose_json(*loaded.start).dump(-1) : "absent start");
     }
     const std::vector<Pokemon::TilePos> below_roark{
         map_point("OreburghMine", "roark").next(Pokemon::Direction::SOUTH)
@@ -89,7 +114,8 @@ std::string check_map_anchors(const StoryCheckpoint& loaded){
         if (roark || step.name == "heal_oreburgh"){
             const auto& expected = roark ? below_roark : doorstep;
             if (!step.pose_after || Pokemon::tiles_of(*step.pose_after) != expected){
-                return "Expected map-derived arrival anchors for " + step.name;
+                return "Expected " + step.name + " arrival tiles " + tile_list(expected) + "; read "
+                    + (step.pose_after ? Pokemon::story_pose_json(*step.pose_after).dump(-1) : "absent arrival");
             }
         }
     }
@@ -101,12 +127,21 @@ std::string check_registration(const StoryCheckpoint& loaded){
     const auto row = std::find_if(rows.begin(), rows.end(), [](const StoryCheckpoint& x){ return x.id == "01.03"; });
     //  Wiring check only: both values originate in the authored resource.
     //  Route correctness is covered by separate scenario expectations.
-    if (row == rows.end() || Pokemon::story_checkpoint_json(*row) != Pokemon::story_checkpoint_json(loaded)){
-        return "Expected the embedded mine resource to be registered as checkpoint 01.03.";
+    if (row == rows.end()){
+        std::vector<std::string> ids;
+        for (const auto& entry : rows){
+            ids.push_back(entry.id);
+        }
+        return "Expected registered checkpoint 01.03; read checkpoint IDs " + string_list(ids);
+    }
+    if (Pokemon::story_checkpoint_json(*row) != Pokemon::story_checkpoint_json(loaded)){
+        return "Expected registered resource " + Pokemon::story_checkpoint_json(loaded).dump(-1)
+            + "; read table record " + Pokemon::story_checkpoint_json(*row).dump(-1);
     }
     if (loaded.on_failure != StoryFailure::RELOAD_AND_RETRY || loaded.saves_in != "Oreburgh City"
         || row->on_failure != loaded.on_failure || row->saves_in != loaded.saves_in){
-        return "Expected reload-and-retry with Oreburgh City save-card guard.";
+        return "Expected reload_and_retry; saves_in=\"Oreburgh City\" for resource and table; read resource "
+            + policy(loaded) + "; table " + policy(*row);
     }
     const std::vector<std::string> expected{
         "above_the_mine", "into_the_mine", "into_the_coal_room", "south_to_the_rock",
@@ -119,7 +154,7 @@ std::string check_registration(const StoryCheckpoint& loaded){
         actual.push_back(step.name);
     }
     if (actual != expected){
-        return "Expected all 15 mine event IDs in order.";
+        return "Expected event IDs " + string_list(expected) + "; read " + string_list(actual);
     }
     return check_map_anchors(loaded);
 }
@@ -135,7 +170,7 @@ public:
         try{
             const StoryCheckpoint loaded = read_authored_checkpoint(input, m_test.input.name);
             if (m_test.expectation.rejected){
-                return "Expected authored data rejection.";
+                return "Expected authored data rejection; read accepted record " + Pokemon::story_checkpoint_json(loaded).dump(-1);
             }
             const std::string error = check_registration(loaded);
             return error.empty() ? UnitTestResult(true) : UnitTestResult(error);

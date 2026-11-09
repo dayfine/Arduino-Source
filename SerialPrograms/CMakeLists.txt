@@ -240,6 +240,8 @@ pa_pokesim_map_directory(BDSP_MAP_DIRECTORY bdsp "${POKESIM_CONSUMER}" "${POKESI
 file(RELATIVE_PATH BDSP_MAP_RESOURCES "${CMAKE_CURRENT_SOURCE_DIR}" "${BDSP_MAP_DIRECTORY}")
 pa_embed_text_files(SerialProgramsLib "${BDSP_MAP_RESOURCES}"
     PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h PokemonAutomation::NintendoSwitch::PokemonBDSP bdsp_map_json)
+# TODO: Move JSON syntax preflight into pa_embed_text_files so map and story
+# resources share it. Keep game/schema/semantic checks in their native tests.
 # Catch JSON syntax errors during a lab build, before static table initialization.
 # Native tests still validate the schema, game policy and execution semantics.
 file(GLOB BDSP_STORY_FILES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/Source/PokemonBDSP/Programs/AutoStory/StoryData/*.json")
