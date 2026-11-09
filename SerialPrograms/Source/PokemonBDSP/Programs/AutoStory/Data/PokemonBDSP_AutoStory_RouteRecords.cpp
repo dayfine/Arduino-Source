@@ -32,11 +32,9 @@ std::vector<RouteRecord> checkpoint_0001_records(){
         }, "Segment00Lines line 2, not walked by the program yet"},
         {"00.01", "Route 201: Barry's tall-grass warning, then west to the Lakefront", "Route 201", "Route201", true, map_point("Route201", "route_201_arrival"), {
             {Direction::NORTH, 6, LegEnd::COUNT, "up the exit path to (15, 18): Barry's warning fires on that row"},
-            {Direction::WEST, 1, LegEnd::COUNT, "after the scene, to (14, 18); west of it is the 201 sign and trees (r16)"},
-            {Direction::NORTH, 1, LegEnd::COUNT, "onto row 17, the top of the exit path's T"},
-            {Direction::WEST, 2, LegEnd::COUNT, "along row 17 to column 12"},
-            {Direction::NORTH, 1, LegEnd::COUNT, "to row 16, the lower level's row to the Lakefront"},
-            {Direction::WEST, 12, LegEnd::COUNT, "to (0, 16), the route's last tile"},
+            {Direction::WEST, 1, LegEnd::COUNT, "after the scene, to (14, 18); west of it is trees (r16)"},
+            {Direction::NORTH, 2, LegEnd::COUNT, "past the 201 sign at (13, 17) onto row 16, the lower level's row to the Lakefront (probe-r201-sign)"},
+            {Direction::WEST, 14, LegEnd::COUNT, "to (0, 16), the route's last tile"},
             {Direction::WEST, 0, LegEnd::BANNER, "on west onto the Verity Lakefront"},
         }, "Segment00Lines lines 2 and 3, not walked by the program yet; traced on the Route201 map, the decomp's since #111"},
         {"00.01", "Verity Lakefront: to below the lake's entrance", "Verity Lakefront", "VerityLakefront", true, map_point("VerityLakefront", "lakefront_arrival"), {
@@ -96,10 +94,10 @@ std::vector<RouteRecord> segment01_records_to_oreburgh(){
             {Direction::EAST, 0, LegEnd::TRANSITION, "into the Oreburgh Gate"},
             {Direction::EAST, 0, LegEnd::TRANSITION, "through the Gate into Oreburgh City"},
         }, "route203_to_oreburgh(); no start tile: Barry stops us on whichever row we came along"},
-        {"01.04", "Oreburgh Pokemon Center doorstep to the Gym", "Oreburgh City", "OreburghCity", true, map_point("OreburghCity", "pokemon_center_doorstep"), {
-            {Direction::WEST, 20, LegEnd::COUNT, "D-pad taps along the Center's row to below the Gym's door"},
+        {"01.04", "Oreburgh Pokemon Center doorstep to the Gym", "Oreburgh City", "OreburghCity", true, Pokemon::TilePos{47, 21}, {
+            {Direction::WEST, 21, LegEnd::COUNT, "D-pad taps along the Center's row to below the Gym's door"},
             {Direction::NORTH, 1, LegEnd::DOOR, "into the Gym (the fade)"},
-        }, "oreburgh_street_to_gym(); 20 taps measured on the console (r204 to r215, 3 runs on the same tile); the decomp's Center door is at x 47, the taps say the doorstep is x 46"},
+        }, "oreburgh_street_to_gym(); 21 taps; 20 were measured from (46, 21) on the console (r204 to r215, 3 runs on the same tile), and 01.03's heal leaves us below the Center's door (47, 21) (lab-B 2026-11-08 14:51: 20 taps from there ended a tile east of the Gym's door)"},
         {"01.04", "Inside the Oreburgh Gym", "Oreburgh Gym", "OreburghGym", true, map_point("OreburghGym", "entrance"), {
             {Direction::NORTH, 0, LegEnd::NPC, "up column 5 from the entrance to Roark on row 3; the Youngsters at (4, 18) and (7, 11) see the column and stop us on rows 18 and 11 on the way"},
         }, "oreburgh_gym_battles(); the Gym's grid from the Diamond decomp (land_data 0228), its trainers and their sight from the events file (zone_event 0046)"},
