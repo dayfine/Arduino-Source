@@ -21,6 +21,8 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
+#include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
+#include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryStartFrames.h"
 
 namespace PokemonAutomation{
@@ -296,6 +298,97 @@ const ReadCase READ_CASES[] = {
 };
 
 
+//  console B, FRLG 00.27, 2026-11-09: the save stood outside Cerulean
+//  Center's door, not at the counter where 00.27 starts, and the run walked
+//  off. A checkpoint of one walk with the console's start check on frames
+//  (add_start_check(), as build_checkpoint() adds it): the walk runs only
+//  when the screen after the save loads shows the kept frame's place, or
+//  when no frame is kept.
+struct StartCheckInput{
+    std::string name;
+    bool has_reference;
+    ImageRGB32 (*screen)();
+};
+struct StartCheckExpectation{
+    bool walked;
+    //  The start check's log line starts with this.
+    std::string logged;
+};
+struct StartCheckCase{
+    StartCheckInput input;
+    StartCheckExpectation expectation;
+};
+
+class Test_StartFrameCheck : public UnitTest{
+public:
+    explicit Test_StartFrameCheck(StartCheckCase test_case)
+        : UnitTest("PokemonFRLG::AutoStoryStartFrames - " + test_case.input.name)
+        , m_case(std::move(test_case))
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        size_t walks = 0;
+        std::vector<std::string> lines;
+        Pokemon::Checkpoint checkpoint = one_walk(walks);
+        add_start_check(
+            checkpoint, to_pose(StoryPose{"CeruleanCity_PokemonCenter_1F", TilePos{7, 4}, Direction::NORTH}),
+            [this]{ return read_start_frames(reference(), m_case.input.screen, 3); },
+            [&lines](const std::string& line){ lines.push_back(line); }
+        );
+        Pokemon::RunState state;
+        Pokemon::EventLogger log = [](const std::string&){};
+        const Pokemon::CheckpointReport report = Pokemon::run_checkpoint(state, checkpoint, log);
+        const bool stopped = !report.completed && report.failure.failure == "start_failed";
+        const bool logged = lines.size() == 1 && lines[0].starts_with(m_case.expectation.logged);
+        if ((m_case.expectation.walked ? !report.completed || walks != 1 : !stopped || walks != 0) || !logged){
+            return std::format(
+                "expected {}, \"{}\" logged; got {} walk(s), {}: {}",
+                m_case.expectation.walked ? "the walk" : "a stop before it", m_case.expectation.logged,
+                walks, Pokemon::to_string(report.failure), lines.empty() ? "nothing logged" : lines[0]
+            );
+        }
+        return true;
+    }
+
+private:
+    static Pokemon::Checkpoint one_walk(size_t& walks){
+        Pokemon::Checkpoint checkpoint;
+        checkpoint.id = "00.27";
+        Pokemon::Event walk;
+        walk.name = "to_the_door";
+        walk.act = [&walks](Pokemon::RunState&){
+            walks++;
+            return Pokemon::outcome_ok();
+        };
+        checkpoint.events.push_back(std::move(walk));
+        return checkpoint;
+    }
+    std::optional<ImageRGB32> reference() const{
+        if (!m_case.input.has_reference){
+            return std::nullopt;
+        }
+        return start_frame(counter_reference());
+    }
+
+    StartCheckCase m_case;
+};
+
+const StartCheckCase START_CHECK_CASES[] = {
+    {
+        .input = {"a save outside the door stops before any step", true, outside_door},
+        .expectation = {false, "start pose mismatch: "},
+    },
+    {
+        .input = {"a save at the counter walks", true, at_counter},
+        .expectation = {true, "start pose matches: "},
+    },
+    {
+        .input = {"no frame kept walks, as before", false, outside_door},
+        .expectation = {true, "start pose not read: no start frame kept"},
+    },
+};
+
+
 //  The store, given two frames for 00.28 (outside the door, then the
 //  counter): what it finds for 00.28 and 00.27.
 struct StoreInput{
@@ -371,6 +464,9 @@ void add_tests_AutoStoryStartFrames(UnitTestDatabase& database){
     }
     for (const auto& item : READ_CASES){
         database.add<Test_StartFrameRead>(item);
+    }
+    for (const auto& item : START_CHECK_CASES){
+        database.add<Test_StartFrameCheck>(item);
     }
     for (const auto& item : STORE_CASES){
         database.add<Test_StartFrameStore>(item);
