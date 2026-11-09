@@ -34,6 +34,7 @@
 #include "PokemonFRLG_AutoStoryPaceSim.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "Data/JsonParser.h"
+#include "PokemonFRLG_AutoStoryStepTable.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 
 namespace PokemonAutomation{
@@ -943,6 +944,7 @@ const AutoStorySimulationTestCase AUTO_STORY_SIMULATION_CASES[] = {
 
 
 void add_tests_AutoStorySimulation(UnitTestDatabase& database){
+    add_tests_AutoStoryStepTable(database);
     for (const auto& scenario : AUTO_STORY_SIMULATION_CASES){
         database.add<Test_AutoStorySimulation>(scenario);
     }

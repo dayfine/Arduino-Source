@@ -51,7 +51,6 @@
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryPaceSim.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryPcStorage.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRngLoop.h"
-#include "Programs/AutoStory/PokemonFRLG_AutoStoryStepTable.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryTable.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryTrashCans.h"
 #include "Programs/AutoStory/Data/Json_Tests.h"
@@ -936,7 +935,6 @@ void add_tests(UnitTestDatabase& database){
     add_tests_PlayerFacingReader(database);
     add_tests_AutoStory(database);
     add_tests_AutoStoryJson(database);
-    add_tests_AutoStoryStepTable(database);
     add_tests_AutoStorySimulation(database);
     add_tests_AutoStoryRows(database);
     add_tests_AutoStoryTrashCans(database);
