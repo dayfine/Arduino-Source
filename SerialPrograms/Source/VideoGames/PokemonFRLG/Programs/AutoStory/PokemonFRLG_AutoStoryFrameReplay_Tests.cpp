@@ -3,8 +3,9 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  Console failures of the walk's warp check, replayed from their frames
- *  through the watcher the walk uses (BlackScreenOverWatcher, after the
- *  hold) and through FRLG's screen events, judged by the shared judges.
+ *  through the watcher the walk uses (BlackScreenOverWatcher, from the
+ *  start of the hold) and through FRLG's screen events, judged by the
+ *  shared judges.
  *  Each case's frames are in CommandLineTests/PokemonFRLG/FrameReplay/<case>/
  *  ("<ms>.png", Pokemon_FrameReplay.h); a case skips when they are missing.
  *
@@ -41,8 +42,9 @@ constexpr Milliseconds WARP_WAIT = 8000ms;
 //  A one-tile walk onto a door: a tile's time, then the release.
 constexpr Milliseconds ONE_TILE_HOLD = OverworldWalkSteps::TILE_TIME + OverworldWalkSteps::STEP_RELEASE;
 
-//  A warp leg: the player holds onto the door for `hold`, the walk then
-//  waits for the fade (wait_out_warp()).
+//  A warp leg: the player holds onto the door for `hold`, watched for the
+//  fade (warp_hold_watchers()), and the walk then waits out the rest of it
+//  (wait_out_warp()).
 struct WarpReplayInput{
     std::string name;
     //  The case's folder under CommandLineTests/PokemonFRLG/FrameReplay/.
@@ -51,7 +53,8 @@ struct WarpReplayInput{
 };
 
 struct WarpReplayExpectation{
-    //  "fade over at <ms> ms" or "no fade", from BlackScreenOverWatcher.
+    //  "fade over during the hold", "fade over at <ms> ms" or "no fade",
+    //  from BlackScreenOverWatcher.
     std::string watcher;
     //  judge_warp() and classify_interrupt() over FRLG's events.
     std::string warp;
@@ -65,6 +68,11 @@ struct WarpReplayCase{
 
 std::string replay_watcher(const Pokemon::ReplayFrameSource& source, const WarpReplayInput& input){
     BlackScreenOverWatcher arrival(COLOR_RED);
+    Pokemon::WatchAlong fade(arrival);
+    Pokemon::replay_until(source, {Milliseconds(0), input.hold}, {&fade}, T0);
+    if (fade.fired()){
+        return "fade over during the hold";
+    }
     const Pokemon::ReplayWindow wait{input.hold, input.hold + WARP_WAIT};
     const Pokemon::ReplayHit hit = Pokemon::replay_until(source, wait, {&arrival}, T0);
     return hit.index < 0 ? "no fade" : std::format("fade over at {} ms", hit.at.count());
