@@ -342,39 +342,33 @@ const std::map<std::string, int> ROCK_TUNNEL_ENCOUNTER_RATES{
 };
 
 constexpr unsigned GAME_ODDS_SEEDS = 30;
-//  The share of turn taps the sim drops (SimScript::turn_tap_drop_rate):
-//  a guess well above what the console showed, one in 00.28 run 2.
-constexpr double TURN_TAP_DROP_RATE = 0.1;
 
 //  00.28 whole, its wild battles at the game's own odds (OverworldSim::
-//  rolls_encounter()) and `turn_tap_drop_rate` of its turn taps dropped,
-//  from each of these seeds: every run ends where it should. Logs the
-//  runs' numbers.
-UnitTestResult rock_tunnel_game_odds(Logger& logger, double turn_tap_drop_rate){
+//  rolls_encounter()), from each of these seeds: every run ends where it
+//  should. Logs the runs' numbers and the step taps the game ignored.
+UnitTestResult test_rock_tunnel_game_odds(Logger& logger){
     OverworldSim clean_sim = row_start_sim("00.28", SimScript{});
     if (const UnitTestResult clean = row_checked(clean_sim, "00.28", {ROCK_TUNNEL_TRAINERS}, MapPosition{StoryTable::ROUTE10, {8, 58}}); clean.result != UnitTestResult::PASSED){
         return clean;
     }
     std::vector<RowRunNumbers> runs;
     std::string failures;
-    int dropped = 0;
+    int ignored = 0;
     for (unsigned seed = 1; seed <= GAME_ODDS_SEEDS; seed++){
         SimScript script;
         script.encounter_rates = ROCK_TUNNEL_ENCOUNTER_RATES;
         script.encounter_seed = seed;
-        script.turn_tap_drop_rate = turn_tap_drop_rate;
-        script.turn_tap_seed = seed;
         OverworldSim sim = row_start_sim("00.28", script);
         const UnitTestResult result = row_checked(sim, "00.28", {ROCK_TUNNEL_TRAINERS}, MapPosition{StoryTable::ROUTE10, {8, 58}});
         const bool passed = result.result == UnitTestResult::PASSED;
         runs.push_back(row_numbers(sim.state(), passed, clean_sim.state()));
-        dropped += sim.state().turn_taps_dropped;
+        ignored += sim.state().step_taps_ignored;
         if (!passed){
             failures += std::format("{}Seed {}: {}", failures.empty() ? "" : " | ", seed, result.message);
         }
     }
     logger.log(std::format(
-        "00.28 at the game's encounter odds, {} turn taps dropped: {}", dropped, numbers_summary(runs)
+        "00.28 at the game's encounter odds, {} step taps ignored: {}", ignored, numbers_summary(runs)
     ));
     if (!failures.empty()){
         return failures;
@@ -382,15 +376,6 @@ UnitTestResult rock_tunnel_game_odds(Logger& logger, double turn_tap_drop_rate){
     return true;
 }
 
-UnitTestResult test_rock_tunnel_game_odds(Logger& logger){
-    return rock_tunnel_game_odds(logger, 0);
-}
-
-//  The same with one turn tap in TURN_TAP_DROP_RATE dropped by the game
-//  (console B, 2026-11-09, 00.28 run 2).
-UnitTestResult test_rock_tunnel_dropped_turn_taps(Logger& logger){
-    return rock_tunnel_game_odds(logger, TURN_TAP_DROP_RATE);
-}
 
 //  00.29 on the sim: no trainer met, the ledge hopped, Lavender's nurse.
 UnitTestResult test_lavender_row(Logger&){
@@ -477,7 +462,6 @@ const AutoStoryLavenderCase AUTO_STORY_LAVENDER_CASES[] = {
     {.input = {"00.28 B1F row 37 with a wild battle every 10 to 14 steps", test_b1f_row37_battles_every_12}, .expectation = {}},
     {.input = {"00.28 a wild battle every 7 to 25 steps, 12 seeds", test_rock_tunnel_frequent_battles}, .expectation = {}},
     {.input = {"00.28 wild battles at the game's odds, 30 seeds", test_rock_tunnel_game_odds}, .expectation = {}},
-    {.input = {"00.28 wild battles at the game's odds and 1 in 10 turn taps dropped, 30 seeds", test_rock_tunnel_dropped_turn_taps}, .expectation = {}},
     {.input = {"00.28 B1F a wild battle into row 38, then a step short: Martha still sees the player", test_b1f_martha_after_row38_battle}, .expectation = {}},
     {.input = {"00.29 Route 10 south, the ledge, Lavender Town's Pokemon Center", test_lavender_row}, .expectation = {}},
     {.input = {"00.29 a tile off after each open leg", test_lavender_tile_off}, .expectation = {}},

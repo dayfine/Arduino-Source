@@ -25,6 +25,7 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
 
+using namespace MovementMechanics;
 using namespace OverworldWalkSteps;
 
 

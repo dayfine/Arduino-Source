@@ -400,10 +400,7 @@ std::string OverworldStepSim::step_ahead(const StoryStep& step){
         return step_onto(step);
     }
     const auto tap = [this, &step]{
-        if (m_sim.state().facing != step.direction){
-            sim_turn_to(m_sim, step.direction);
-        }
-        m_sim.tap(step.direction);
+        sim_step_once(m_sim, step.direction);
     };
     //  A wild battle, with no message before it, is run from, and the
     //  stepping goes on, as step_into_line() does.
@@ -423,10 +420,7 @@ std::string OverworldStepSim::step_ahead(const StoryStep& step){
 
 //  A hop() or step_onto(): one step, ending where the table says.
 std::string OverworldStepSim::step_onto(const StoryStep& step){
-    if (m_sim.state().facing != step.direction){
-        sim_turn_to(m_sim, step.direction);
-    }
-    m_sim.tap(step.direction);
+    sim_step_once(m_sim, step.direction);
     m_at = *story_pose(*step.pose_after);
     return m_sim.state().position == MapPosition{m_at.map, m_at.tile} ? "" : "expected to end on " + to_string(MapPosition{m_at.map, m_at.tile}) + ".";
 }
@@ -440,7 +434,7 @@ std::string OverworldStepSim::cut(const StoryStep& step){
     if (!m_sim.cut_tree()){
         return "no tree to cut.";
     }
-    m_sim.tap(step.direction);
+    sim_step_once(m_sim, step.direction);
     m_at = StoryPose{m_at.map, m_at.tile.next(step.direction), step.direction};
     if (!(m_sim.state().position == MapPosition{m_at.map, m_at.tile})){
         return "expected to step onto the tree's tile " + to_string(MapPosition{m_at.map, m_at.tile}) + ".";

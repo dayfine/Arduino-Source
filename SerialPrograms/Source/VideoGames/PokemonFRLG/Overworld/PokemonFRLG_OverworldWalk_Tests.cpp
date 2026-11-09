@@ -18,6 +18,7 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
 
+using namespace MovementMechanics;
 using namespace OverworldWalkSteps;
 
 
@@ -185,6 +186,94 @@ const TurnTapCase TURN_TAP_CASES[] = {
     {.input = {.name = "dropped, not checked: the leg only turns", .dropped_turn_taps = {1}, .confirm_turn = false}, .expectation = {.end = TURN_START}},
 };
 
+
+struct TapMechanicsInput{
+    std::string name;
+    //  The player's facing at the start.
+    Direction facing = Direction::NORTH;
+    //  The presses, on the sim.
+    std::function<void(OverworldSim&)> presses;
+};
+
+struct TapMechanicsExpectation{
+    //  Tiles stepped east.
+    int steps = 0;
+    Direction facing = Direction::EAST;
+    //  Step taps the game ignored.
+    int ignored = 0;
+};
+
+struct TapMechanicsCase{
+    TapMechanicsInput input;
+    TapMechanicsExpectation expectation;
+};
+
+//  Open floor east of the start: where the taps were measured (console B,
+//  2026-11-09, MovementMechanics).
+const MapPosition TAP_START{"Route10_PokemonCenter_1F", {3, 4}};
+
+//  The sim's taps east, as the console moved the player for them.
+class Test_OverworldTapMechanics : public UnitTest{
+public:
+    explicit Test_OverworldTapMechanics(TapMechanicsCase test_case)
+        : UnitTest("PokemonFRLG::OverworldWalk - tap: " + test_case.input.name)
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        static const std::vector<MapData> MAPS = overworld_maps();
+        OverworldSim sim(MAPS, TAP_START, m_case.input.facing);
+        m_case.input.presses(sim);
+        const SimState& state = sim.state();
+        const TapMechanicsExpectation& expected = m_case.expectation;
+        const MapPosition end{TAP_START.map, {TAP_START.point.x + expected.steps, TAP_START.point.y}};
+        if (state.position == end && state.facing == expected.facing && state.step_taps_ignored == expected.ignored){
+            return true;
+        }
+        return std::format(
+            "Expected {} step(s) east to {} facing {}, {} tap(s) ignored; on {} facing {}, {} ignored.",
+            expected.steps, to_string(end), Pokemon::direction_name(expected.facing), expected.ignored,
+            to_string(state.position), Pokemon::direction_name(state.facing), state.step_taps_ignored
+        );
+    }
+
+private:
+    TapMechanicsCase m_case;
+};
+
+//  `count` taps east of `duration`, each released for `release`.
+std::function<void(OverworldSim&)> taps_east(int count, Milliseconds duration, Milliseconds release){
+    return [=](OverworldSim& sim){
+        for (int c = 0; c < count; c++){
+            sim.tap(Direction::EAST, duration, release);
+        }
+    };
+}
+
+//  A turn tap east and a 1000ms wait, then `count` taps east of 66ms,
+//  each released for `release`.
+std::function<void(OverworldSim&)> turn_then_taps(int count, Milliseconds release){
+    return [=](OverworldSim& sim){
+        sim.tap(Direction::EAST, TURN_TAP, Milliseconds(1000));
+        taps_east(count, Milliseconds(66), release)(sim);
+    };
+}
+
+const TapMechanicsCase TAP_MECHANICS_CASES[] = {
+    {.input = {.name = "133ms facing another way only turns", .presses = taps_east(1, LONGEST_TAP, Milliseconds(700))}, .expectation = {}},
+    {.input = {.name = "16ms facing that way steps once", .facing = Direction::EAST, .presses = taps_east(1, Milliseconds(16), Milliseconds(700))}, .expectation = {.steps = 1}},
+    {.input = {.name = "3 step taps 566ms apart take 2 steps", .presses = turn_then_taps(3, Milliseconds(500))}, .expectation = {.steps = 2, .ignored = 1}},
+    {.input = {.name = "3 step taps 666ms apart take 3 steps", .presses = turn_then_taps(3, Milliseconds(600))}, .expectation = {.steps = 3}},
+    {.input = {.name = "3 step taps with no release are one hold", .presses = turn_then_taps(3, Milliseconds(0))}, .expectation = {.steps = 1}},
+    {
+        .input = {.name = "step_once 3 times takes 3 steps", .presses = [](OverworldSim& sim){
+            for (int c = 0; c < 3; c++){
+                sim_step_once(sim, Direction::EAST);
+            }
+        }},
+        .expectation = {.steps = 3},
+    },
+};
+
 } // namespace
 
 
@@ -194,6 +283,9 @@ void add_tests_OverworldWalk(UnitTestDatabase& database){
     }
     for (const TurnTapCase& item : TURN_TAP_CASES){
         database.add<Test_OverworldTurnTap>(item);
+    }
+    for (const TapMechanicsCase& item : TAP_MECHANICS_CASES){
+        database.add<Test_OverworldTapMechanics>(item);
     }
 }
 

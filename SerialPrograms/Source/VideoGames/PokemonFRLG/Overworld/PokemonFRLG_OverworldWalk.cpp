@@ -26,12 +26,12 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 using namespace std::chrono_literals;
+using namespace MovementMechanics;
 using namespace OverworldWalkSteps;
 
 
 namespace{
 
-constexpr Milliseconds FACE_SETTLE = 300ms;     //  the turn animation, before A reaches what is ahead
 //  From the end of the hold, through the fade out and in.
 constexpr Milliseconds WARP_TIMEOUT = 8000ms;
 constexpr Milliseconds SURF_PROMPT_TIMEOUT = 5000ms;
