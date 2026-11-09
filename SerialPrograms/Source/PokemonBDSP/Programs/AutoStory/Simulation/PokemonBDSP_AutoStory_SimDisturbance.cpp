@@ -9,6 +9,7 @@
 #include <format>
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_LegBattle.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP_AutoStory_SimDisturbance.h"
 
@@ -266,7 +267,9 @@ WalkResult DisturbedRouteIO::walk_taps(Direction direction, size_t tiles, const 
         return GridSimRouteIO::walk_taps(direction, tiles, label);
     }
     WalkResult result{.stop = WalkStop::LIMIT, .walked = 0ms, .wild_battles = 0, .moved_chunks = 0};
+    result.events.record({}, result.started);
     size_t still = 0;
+    size_t moved_at_battle = 0;
     for (size_t tap = 0; tap < tiles && result.stop == WalkStop::LIMIT; tap++){
         const SimMove move = m_sim.tap(direction, ROUTE_MS_PER_TILE_ACROSS, false);
         result.walked += 800ms;
@@ -284,8 +287,14 @@ WalkResult DisturbedRouteIO::walk_taps(Direction direction, size_t tiles, const 
         if (move.distance > 0 && move.stop == SimStop::DONE && m_noise->battle_at(m_sim.world(), nearest_tile(m_sim.player().pos))){
             result.wild_battles++;
             result.origin = tap == 0 ? WalkOrigin::MAY_PRECEDE_LEG : result.origin;
+            //  The console's watchers time the battle from this tap.
+            record_tap_battle(result, tap + 1);
+            moved_at_battle = result.moved_chunks;
             m_notes.push_back("[Sim] wild battle during " + label);
         }
+    }
+    if (result.wild_battles > 0){
+        result.moved_after_battle = result.moved_chunks - moved_at_battle;
     }
     m_notes.push_back(std::format("[Sim] {}: {} taps {}, {} moved, {} at {}.", label, tiles, direction_name(direction),
         result.moved_chunks, walk_stop_name(result.stop), to_string(m_sim.player().pos)));
