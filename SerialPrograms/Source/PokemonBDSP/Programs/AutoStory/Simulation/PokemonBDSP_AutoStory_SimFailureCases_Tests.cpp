@@ -49,8 +49,6 @@ const std::map<std::string, std::string> KNOWN_FAILING{
     {"01.05 through_the_gate is one run west", "planner: goal kinds and ms costs (PLANNER_DESIGN.md)"},
     {"any one missed fade or banner from 00.00 to 01.11: every row still passes",
         "a third signal where a warp gives one (ONE_SIGNAL_STEPS): position (PLANNER_DESIGN.md 2, 4)"},
-    {"00.03 out of the house from each tile Rowan's scene ends on, rows 8 and 9 (lab-B 2026-11-09)",
-        "00.03: the way to the door localized from each tile the scene ends on"},
     {"01.08 with Route 204's youngster wandering (12..14, 2)", "planner: one recovery rule, a sidestep round a wanderer (PLANNER_DESIGN.md 4, 7)"},
 };
 

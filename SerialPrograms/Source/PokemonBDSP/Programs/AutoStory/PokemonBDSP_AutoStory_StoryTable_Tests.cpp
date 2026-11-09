@@ -29,6 +29,7 @@
 #include "PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP_AutoStory_StoryTable.h"
 #include "PokemonBDSP_AutoStory_StoryTable_Tests.h"
+#include "PokemonBDSP_AutoStory_StoryWalkSteps.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -45,7 +46,7 @@ using Pokemon::TilePos;
 const std::map<StoryStepKind, std::set<std::string>>& built_in_variants(){
     static const std::map<StoryStepKind, std::set<std::string>> variants{
         {StoryStepKind::ROUTE, {"", "town", "robust", "line"}},
-        {StoryStepKind::LEGS, {"", "one_short_ok", "to_wall", "counted_wall", "to_dialogue", "to_map"}},
+        {StoryStepKind::LEGS, {"", "one_short_ok", "to_wall", "counted_wall", "measured", "to_dialogue", "to_map"}},
         {StoryStepKind::STEP, {"", "to_banner", "tap"}},
         {StoryStepKind::MASH, {"", "a"}},
         {StoryStepKind::BATTLE, {"", "doubles", "starter"}},
@@ -275,14 +276,32 @@ std::optional<Pokemon::Pose> pose_after_step(const std::optional<Pokemon::Pose>&
     return step.kind == StoryStepKind::LEGS || step.kind == StoryStepKind::STEP ? std::nullopt : at;
 }
 
+//  A ROUTE step after a "measured" LEGS step plans from the one tile the
+//  taps measured: one TableRoute for each tile of `at`.
+void add_measured_routes(std::vector<TableRoute>& routes, const std::string& row, const Pokemon::StoryStep& step, const Pokemon::Pose& at){
+    for (const TilePos& pos : Pokemon::tiles_of(at)){
+        const Pokemon::Pose one = Pokemon::tile_pose(at.map, {pos}, Pokemon::facing_of(at));
+        routes.push_back({row, &step, one, story_plan_world(at.map, step.target->map)});
+    }
+}
+
 std::vector<TableRoute> table_routes(){
     std::vector<TableRoute> routes;
     for (const StoryCheckpoint& row : story_checkpoints()){
         std::optional<Pokemon::Pose> at = row.start;
+        bool measured = false;
         for (const Pokemon::StoryStep& step : row.steps){
-            if (step.kind == StoryStepKind::ROUTE){
-                const bool known = at && !Pokemon::tiles_of(*at).empty();
+            const bool known = at && !Pokemon::tiles_of(*at).empty();
+            if (step.kind == StoryStepKind::ROUTE && known && std::exchange(measured, false)){
+                add_measured_routes(routes, row.id, step, *at);
+            }else if (step.kind == StoryStepKind::ROUTE){
                 routes.push_back({row.id, &step, at, known ? story_plan_world(at->map, step.target->map) : nullptr});
+            }
+            measured = false;
+            if (step.kind == StoryStepKind::LEGS && step.variant == "measured" && known && !step.pose_after){
+                at = measured_ends(*at, step);
+                measured = at.has_value();
+                continue;
             }
             at = pose_after_step(at, step);
         }

@@ -180,6 +180,8 @@ private:
     //    unless the step gives one. Variant "counted_wall": its one leg walks
     //    to the wall, waiting out anyone walking about in the way, and fails
     //    when the tiles walked are far off the map's from the step's start.
+    //    Variant "measured": each leg in taps; the tiles of the step's start
+    //    whose taps the map lets move as many as moved are where we are.
     //  - STEP: one D-pad step `direction`, turning first: onto a scene's
     //    trigger or into a door. Variant "to_banner": one tap into a cave
     //    mouth, then wait for pose_after's map's location banner.

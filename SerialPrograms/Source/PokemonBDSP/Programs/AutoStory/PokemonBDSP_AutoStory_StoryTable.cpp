@@ -307,6 +307,14 @@ std::vector<StoryCheckpoint> intro(){
     };
 }
 
+//  00.03, home: west to the wall first, as from the rug's row (r27, r28):
+//  there it stops on (4, 8) against the table's corner (3, 8); a row lower
+//  on (5, 9) against the wall (4, 9). Not east: Mom at (7, 8) talks (r29).
+StoryStep by_the_counter(){
+    return anchored(to_walls("by_the_counter", {{.direction = WEST, .tiles = 2}}, "west to the table's corner, or the wall a row lower"),
+        Pokemon::tile_pose(HOME, {TilePos{4, 8}, TilePos{5, 9}}, WEST));
+}
+
 std::vector<StoryCheckpoint> lake_and_pokedex(){
     return {
         row("00.02", "Lake Verity: the starter and the Starly battle", at(LAKEFRONT, "below_lake_entrance", NORTH), {
@@ -327,17 +335,18 @@ std::vector<StoryCheckpoint> lake_and_pokedex(){
             step_into("rowans_stop", EAST, "the trigger (5, 14..16)"),
             //  BDSP, unlike Diamond: after Rowan leaves, Dawn's and Barry's lines, then
             //  the game fades to the house, where Mom gives the Running Shoes. The
-            //  scene ends beside her on the rug, facing her: (6, 8) in r24 and r27,
-            //  (5, 8) in r28.
-            scene("rowan_and_dawn", Pokemon::tile_pose(HOME, {TilePos{5, 8}, TilePos{6, 8}}, EAST),
+            //  scene ends near her, by the rug: (6, 8) in r24 and r27, (5, 8) in
+            //  r28, a row lower on lab-B 2026-11-09.
+            scene("rowan_and_dawn", Pokemon::tile_pose(HOME, {TilePos{5, 8}, TilePos{6, 8}, TilePos{5, 9}, TilePos{6, 9}}, EAST),
                 "Rowan and Dawn come back; Barry, then home for the Running Shoes"),
             //  Mom's warning was spent in 00.01, so the door's tile (6, 10) is a plain
             //  door now: stepping onto it goes out (r27).
-            //  Line up on the table's corner west first: a plan from either tile
-            //  ran east into Mom at (7, 8), who talks (r29).
-            route("by_the_counter", at(HOME, 4, 8, WEST), "west against the table's corner (3, 8)"),
-            anchored(legs("above_the_door_again", {{.direction = EAST, .tiles = 1}, {.direction = SOUTH, .tiles = 1}, {.direction = EAST, .tiles = 1}},
-                "east, south past the wall (4, 9), and east to above the door: not south toward it"), at(HOME, 6, 9, EAST)),
+            by_the_counter(),
+            //  A tap south tells (4, 8) and (5, 9) apart; from there to beside the
+            //  door's column, not down it: an open leg south could slide onto the door.
+            legs("which_row", {{.direction = SOUTH, .tiles = 1}}, "a tap south: the wall (4, 9) stops it, or not", "measured"),
+            route("beside_the_door_column", at(HOME, 5, 9, EAST), "from the tile the tap told us"),
+            legs("above_the_door_again", {{.direction = EAST, .tiles = 1}}, "east a tile to above the door: not south toward it"),
             step_into("out_of_the_house_again", SOUTH, "onto the door's tile (6, 10), and out", at(TWINLEAF, "house_doorstep", SOUTH)),
             //  Through the grass now, with a starter: wild battles are run from.
             route("short_of_dawn", at(ROUTE_201, 63, 5, EAST), "Twinleaf, then east along Route 201 to its east edge"),

@@ -64,6 +64,34 @@ CenterEntry run_into_center(StoryStepIO& io, bool run, const std::function<bool(
     return CenterEntry::LINED_UP;
 }
 
+TappedEnd tapped_end(const StoryWorld& world, const std::string& map, const TilePos& pos, const Pokemon::StoryLeg& leg){
+    const size_t open = slide_to_wall(world, story_to_world(world, map, pos), leg.direction).tiles;
+    TappedEnd tapped{.end = pos, .moved = std::min(open, (size_t)leg.tiles)};
+    for (size_t i = 0; i < tapped.moved; i++){
+        tapped.end = tapped.end.next(leg.direction);
+    }
+    return tapped;
+}
+
+std::optional<Pose> measured_ends(const Pose& from, const StoryStep& step){
+    const StoryWorld* world = story_plan_world(from.map, from.map);
+    if (world == nullptr || step.legs.empty()){
+        return std::nullopt;
+    }
+    std::vector<TilePos> at = Pokemon::tiles_of(from);
+    for (const Pokemon::StoryLeg& leg : step.legs){
+        std::vector<TilePos> next;
+        for (const TilePos& pos : at){
+            const TilePos end = tapped_end(*world, from.map, pos, leg).end;
+            if (std::find(next.begin(), next.end(), end) == next.end()){
+                next.push_back(end);
+            }
+        }
+        at = std::move(next);
+    }
+    return Pokemon::tile_pose(from.map, at, step.legs.back().direction);
+}
+
 void StoryWalkSteps::begin_attempt(const std::string& row){
     m_row = row;
     //  A row starts from its save: after the shoes' row, the save has them.
@@ -354,6 +382,42 @@ Outcome StoryWalkSteps::tap_legs(const Pose& from, const StoryStep& step){
     return Pokemon::outcome_ok(Pokemon::tile_pose(from.map, at, step.legs.back().direction));
 }
 
+//  A LEGS step "measured": each leg tapped, its taps that moved counted
+//  against the map's from each tile the player may stand on; the tiles
+//  whose count matches are where we are. A wall a tap bumps tells us
+//  where we are, where a fixed leg from a guessed tile walks on astray
+//  (00.03, lab-B 2026-11-09: a row low, the taps crossed the door's mat).
+Outcome StoryWalkSteps::measured_legs(const Pose& from, const StoryStep& step){
+    const StoryWorld* world = story_plan_world(from.map, from.map);
+    std::vector<TilePos> at = Pokemon::tiles_of(from);
+    if (world == nullptr || at.empty()){
+        return Pokemon::outcome_failed("measured", "no map or tiles: " + Pokemon::to_string(from));
+    }
+    for (const Pokemon::StoryLeg& leg : step.legs){
+        turn(leg.direction);
+        const size_t tiles = (size_t)leg.tiles;
+        const WalkResult walk = m_io.route().walk_taps(leg.direction, tiles, step.name);
+        if (walk.wild_battles > 0){
+            return Pokemon::outcome_failed("interrupted_leg_unconfirmed", step.name);
+        }
+        std::vector<TilePos> next;
+        for (const TilePos& pos : at){
+            const TappedEnd tapped = tapped_end(*world, from.map, pos, leg);
+            if (tapped.moved == walk.moved_chunks){
+                next.push_back(tapped.end);
+            }
+        }
+        log(std::format("[{}] {}: taps {} moved {} of {}: {} of {} tiles fit.", m_row, step.name,
+            direction_name(leg.direction), walk.moved_chunks, tiles, next.size(), at.size()));
+        if (next.empty()){
+            return Pokemon::outcome_failed("measured", std::format("{} moved {}: no tile of {} fits",
+                direction_name(leg.direction), walk.moved_chunks, Pokemon::to_string(from)));
+        }
+        at = std::move(next);
+    }
+    return Pokemon::outcome_ok(Pokemon::tile_pose(from.map, at, step.legs.back().direction));
+}
+
 //  A LEGS step "counted_wall": its one leg held to the wall, its tiles
 //  counted against the map's from each tile the table may have us on
 //  (walk_counted_wall_leg()). The leg's tiles are the table's reading of
@@ -386,6 +450,9 @@ Outcome StoryWalkSteps::legs(RunState& state, const StoryStep& step){
     m_warp = {};
     if (step.variant == "counted_wall"){
         return counted_wall(state.pose, step);
+    }
+    if (step.variant == "measured"){
+        return measured_legs(state.pose, step);
     }
     if (step.variant == "to_wall"){
         for (const Pokemon::StoryLeg& leg : step.legs){
