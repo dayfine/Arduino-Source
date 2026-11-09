@@ -44,6 +44,8 @@
 #include "VideoGames/PokemonSV/Programs/TeraRaids/PokemonSV_TeraBattler.h"
 #include "VideoGames/PokemonSV/Programs/Farming/PokemonSV_BlueberryCatchPhoto.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_Terarium.h"
+#include "PokemonSV_BBQLogger.h"
+#include "PokemonSV_BBQSnapshot.h"
 
 #include "PokemonSV_BlueberryQuests.h"
 
@@ -103,6 +105,7 @@ bool open_quest_panel(VideoStream& stream, ProControllerContext& context){
 
 }
 
+// Detector index 0 confirms the quest panel; a negative run_until result means no detection.
 std::vector<BBQuests> read_quests(
     const ProgramInfo& info,
     VideoStream& stream, ProControllerContext& context,
@@ -134,6 +137,7 @@ std::vector<BBQuests> read_quests(
     if (BP != nullptr){
         *BP = read_BP_from_image(stream.logger(), screen);
     }
+    BBQLogger(stream.logger()).board(/*panel_detected=*/result == 0, quest_list);
 
     //Close quest list
     pbf_mash_button(context, BUTTON_B, 800ms);
@@ -312,6 +316,9 @@ BBQRerollResult reroll_quest(
     std::optional<std::vector<BBQuests>>& observed_panel
 ){
     observed_panel.reset();
+    // An unavailable slot is logged as unknown without indexing outside the board.
+    const BBQuests quest = slot < quests.size() ? quests[slot] : BBQuests::UnableToDetect;
+    BBQLogger(logger).reroll_attempt(/*slot=*/slot, /*quest=*/quest);
     if (!actions.open_panel()){
         return BBQRerollResult::PanelNotOpened;
     }
@@ -553,6 +560,10 @@ bool process_and_do_quest(
     int quest_attempts = 0;
 
     while (!quest_completed){
+        BBQAttemptLog attempt_log(
+            console.logger(), /*quest=*/current_quest,
+            /*attempt=*/quest_attempts + 1, /*limit=*/static_cast<unsigned>(BBQ_OPTIONS.NUM_RETRIES) + 1
+        );
         switch (current_quest){
         case BBQuests::make_tm:
             quest_make_tm(env.program_info(), console, context);
@@ -651,6 +662,7 @@ bool process_and_do_quest(
             break;
         }
 
+        attempt_log.route_return();
         //Validate quest was completed by checking list
         console.log("Reading quest panel after attempt.");
         std::vector<BBQuests> quest_list = read_quests(env.program_info(), console, context, BBQ_OPTIONS);
@@ -658,10 +670,8 @@ bool process_and_do_quest(
             *panel_after = quest_list;
         }
         if (std::find(quest_list.begin(), quest_list.end(), current_quest) != quest_list.end()){
-            console.log("Current quest exists on list. Quest did not complete.");
             quest_attempts++;
         }else{
-            console.log("Current quest was not found. Quest completed!");
             if (current_quest == BBQuests::hatch_egg){
                 eggs_hatched++;
                 console.log("Eggs hatched: " + std::to_string(eggs_hatched));
@@ -670,8 +680,12 @@ bool process_and_do_quest(
             quest_completed = true;
         }
 
+        record_bbq_attempt_result(
+            console, attempt_log, current_quest,
+            quest_completed ? BBQAttemptOutcome::Completed : BBQAttemptOutcome::StillOnBoard
+        );
         if (quest_attempts > BBQ_OPTIONS.NUM_RETRIES){
-            console.log("Failed to complete a quest multiple times. Skipping it for now.", COLOR_RED);
+            BBQLogger(console.logger()).retry_exhausted(current_quest);
             break;
         }
     }
