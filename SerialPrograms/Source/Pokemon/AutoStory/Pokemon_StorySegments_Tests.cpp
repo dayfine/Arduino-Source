@@ -517,6 +517,9 @@ void add_tests_StorySegments(UnitTestDatabase& database){
     for (const auto& scenario : STORY_SEGMENT_CASES){
         database.add<Test_StorySegments>(scenario);
     }
+    //  The failure capture is what the games attach to the segment's
+    //  failed hook; its tests run with the segment's.
+    add_tests_AutoStoryFailureCapture(database);
 }
 
 
