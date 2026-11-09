@@ -1,0 +1,38 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "00.32b",
+    "title": "Celadon Mansion roof room: the Eevee (Gift RNG placeholder)",
+    "start": {"certainty": "tile", "map": "CeladonCity_PokemonCenter_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 4]]}},
+    "events": [
+      {
+        "id": "celadon_mansion_back_door",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "CeladonCity", "where": {"facing": "south", "kind": "tiles", "tiles": [[30, 3]]}},
+        "variant": "run",
+        "why": "out of the Center, up column 51 and west along row 3 to above the Condominiums' back door (30, 4)"
+      },
+      {
+        "id": "eevee_ball",
+        "kind": "route",
+        "target": {"certainty": "unknown", "map": "CeladonCity_Condominiums_RoofRoom", "where": {"kind": "unknown"}},
+        "variant": "run",
+        "why": "up the back stairs to the roof room, below the Eevee's ball"
+      },
+      {
+        "id": "eevee_party_room",
+        "kind": "game_action",
+        "variant": "party_room free=1",
+        "why": "a free party slot for the gift; stop if the party is full"
+      },
+      {
+        "id": "eevee_gift_rng",
+        "kind": "game_action",
+        "variant": "gift_rng eevee",
+        "why": "Gift RNG on the Eevee ball: the shiny Eevee story gift; a handoff point like 00.12/00.12b"
+      }
+    ]
+  },
+  "execution": {"menu": "full"}
+}

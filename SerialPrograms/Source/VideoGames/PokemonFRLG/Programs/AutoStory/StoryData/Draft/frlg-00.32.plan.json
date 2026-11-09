@@ -1,0 +1,138 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "00.32",
+    "title": "Celadon: Department Store 5F battle items, HM02 Fly on Route 16 for the Pidgey, the Tea, then the Center",
+    "start": {"certainty": "tile", "map": "CeladonCity", "where": {"facing": "south", "kind": "tiles", "tiles": [[34, 22]]}},
+    "events": [
+      {
+        "id": "dept_store_door",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "CeladonCity", "where": {"facing": "north", "kind": "tiles", "tiles": [[15, 15]]}},
+        "variant": "run",
+        "why": "west along row 22 and up to below the Department Store's east door (15, 14)"
+      },
+      {
+        "id": "x_item_clerk",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "CeladonCity_DepartmentStore_5F", "where": {"facing": "west", "kind": "tiles", "tiles": [[2, 7]]}},
+        "variant": "run",
+        "why": "in, the lift to 5F, to the X item clerk (1, 7)"
+      },
+      {
+        "id": "buy_battle_items",
+        "kind": "game_action",
+        "variant": "mart CeladonCity_DepartmentStore_5F budget=15600 floor=15600 x-speed=6 x-special=21 x-accuracy=5 guard-spec=2",
+        "why": "pokeguy 1:02:42: 6 X Speeds, 21 X Specials, 5 X Accuracies, 2 Guard Specs (pokeguy-conditions.md tower-rival bag)"
+      },
+      {
+        "id": "route16_below_tree",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "CeladonCity", "where": {"facing": "west", "kind": "tiles", "tiles": [[4, 22]]}},
+        "variant": "run",
+        "why": "out of the store, west along row 22 to the city's west edge (Route 16)"
+      },
+      {
+        "id": "below_route16_tree",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "Route16", "where": {"facing": "north", "kind": "tiles", "tiles": [[41, 12]]}},
+        "variant": "run",
+        "why": "west onto Route 16, below its tree (41, 11)"
+      },
+      {
+        "id": "cut_route16_tree",
+        "kind": "game_action",
+        "declared_after": {"certainty": "tile", "map": "Route16", "where": {"facing": "north", "kind": "tiles", "tiles": [[41, 11]]}},
+        "variant": "cut_tree",
+        "why": "Route 16's tree (41, 11)"
+      },
+      {
+        "id": "below_fly_house",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "Route16", "where": {"facing": "north", "kind": "tiles", "tiles": [[10, 6]]}},
+        "variant": "run",
+        "why": "west along the north path to below the house (10, 5)"
+      },
+      {
+        "id": "fly_girl",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "Route16_House", "where": {"facing": "north", "kind": "tiles", "tiles": [[4, 4]]}},
+        "why": "in, to the woman (4, 2), who wanders (3..5, 1..3)"
+      },
+      {
+        "id": "talk_fly_girl",
+        "kind": "talk",
+        "why": "she gives HM02 FLY"
+      },
+      {
+        "id": "hm02_fly",
+        "kind": "scene",
+        "why": "HM02 FLY"
+      },
+      {
+        "id": "teach_fly",
+        "kind": "game_action",
+        "variant": "teach hm02 fly slot=3",
+        "why": "Fly to the Pidgey, slot 3 (an HM: no team decision needed)"
+      },
+      {
+        "id": "above_route16_tree",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "Route16", "where": {"facing": "south", "kind": "tiles", "tiles": [[41, 10]]}},
+        "variant": "run",
+        "why": "out, east along the north path to above the tree (41, 11), grown back"
+      },
+      {
+        "id": "cut_route16_tree_back",
+        "kind": "game_action",
+        "declared_after": {"certainty": "tile", "map": "Route16", "where": {"facing": "south", "kind": "tiles", "tiles": [[41, 11]]}},
+        "variant": "cut_tree",
+        "why": "the tree again, from the north"
+      },
+      {
+        "id": "below_condominiums",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "CeladonCity", "where": {"facing": "north", "kind": "tiles", "tiles": [[30, 12]]}},
+        "variant": "run",
+        "why": "east into Celadon, along row 12 to below the Condominiums door (30, 11)"
+      },
+      {
+        "id": "tea_woman",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "CeladonCity_Condominiums_1F", "where": {"facing": "south", "kind": "tiles", "tiles": [[2, 8]]}},
+        "why": "in, round the Nidoran's pen (3..7, 7..9) to above the old woman (2, 9)"
+      },
+      {
+        "id": "talk_tea_woman",
+        "kind": "talk",
+        "why": "she gives the TEA (pokeguy 1:11:47; FRLG's Saffron gates want it)"
+      },
+      {
+        "id": "tea",
+        "kind": "scene",
+        "why": "TEA"
+      },
+      {
+        "id": "celadon_below_center_2",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "CeladonCity", "where": {"facing": "north", "kind": "tiles", "tiles": [[48, 12]]}},
+        "variant": "run",
+        "why": "out, east along row 12 to below the Center door"
+      },
+      {
+        "id": "celadon_nurse",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "CeladonCity_PokemonCenter_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 4]]}},
+        "variant": "run",
+        "why": "to the nurse"
+      },
+      {
+        "id": "heal_celadon",
+        "kind": "heal",
+        "why": "the nurse heals the party"
+      }
+    ]
+  },
+  "execution": {"menu": "full"}
+}

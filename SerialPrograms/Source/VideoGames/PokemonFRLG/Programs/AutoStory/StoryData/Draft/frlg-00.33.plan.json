@@ -1,0 +1,62 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "00.33",
+    "title": "Fly to Lavender, the Center, Pokemon Tower 2F: the rival",
+    "start": {"certainty": "tile", "map": "CeladonCity_PokemonCenter_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 4]]}},
+    "events": [
+      {
+        "id": "fly_lavender",
+        "kind": "game_action",
+        "declared_after": {"certainty": "tile", "map": "LavenderTown", "where": {"facing": "south", "kind": "tiles", "tiles": [[6, 6]]}},
+        "variant": "fly LavenderTown",
+        "why": "Fly to Lavender (pokeguy 1:03:59)"
+      },
+      {
+        "id": "lavender_nurse",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "LavenderTown_PokemonCenter_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 4]]}},
+        "variant": "run",
+        "why": "the Center door (6, 5), to the nurse (pokeguy healed nowhere here; pokeguy-preparation.md: heal before the Tower rival)"
+      },
+      {
+        "id": "heal_lavender",
+        "kind": "heal",
+        "why": "the nurse heals the party"
+      },
+      {
+        "id": "tower_door",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "LavenderTown", "where": {"facing": "north", "kind": "tiles", "tiles": [[18, 7]]}},
+        "variant": "run",
+        "why": "out, east along row 7 to below the Tower (18, 6)"
+      },
+      {
+        "id": "tower_2f_rival",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "PokemonTower_2F", "where": {"facing": "north", "kind": "tiles", "tiles": [[16, 6]]}},
+        "why": "in, the stairs (18, 9) to 2F, below the rival (16, 5)"
+      },
+      {
+        "id": "rival_walks_up",
+        "kind": "scene",
+        "declared_after": {"certainty": "tile", "map": "PokemonTower_2F", "where": {"facing": "north", "kind": "tiles", "tiles": [[16, 6]]}},
+        "why": "the rival stops the player"
+      },
+      {
+        "id": "tower-rival",
+        "kind": "battle",
+        "declared_after": {"certainty": "tile", "map": "PokemonTower_2F", "where": {"facing": "north", "kind": "tiles", "tiles": [[16, 6]]}},
+        "why": "Rival (TRAINER_RIVAL_POKEMON_TOWER_BULBASAUR): Pidgeotto, Ivysaur, Gyarados, Growlithe, Kadabra"
+      },
+      {
+        "id": "tower_2f_stairs",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "PokemonTower_2F", "where": {"facing": "west", "kind": "tiles", "tiles": [[4, 10]]}},
+        "why": "west onto the stairs (4, 10), facing them"
+      }
+    ]
+  },
+  "execution": {"menu": "full"}
+}
