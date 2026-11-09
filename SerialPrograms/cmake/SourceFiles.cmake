@@ -102,6 +102,8 @@ file(GLOB CORE_LIBRARY_SOURCES
     ../Common/Cpp/Json/JsonObject.h
     ../Common/Cpp/Json/JsonTools.cpp
     ../Common/Cpp/Json/JsonTools.h
+    ../Common/Cpp/Json/JsonTools_Tests.cpp
+    ../Common/Cpp/Json/JsonTools_Tests.h
     ../Common/Cpp/Json/JsonValue.cpp
     ../Common/Cpp/Json/JsonValue.h
     ../Common/Cpp/LifetimeSanitizer.cpp
@@ -1524,6 +1526,11 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.h
     Source/Pokemon/AutoStory/Pokemon_AutoStoryStats.h
     Source/Pokemon/AutoStory/Pokemon_AutoStory_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_SceneJudges.cpp
+    Source/Pokemon/AutoStory/Pokemon_SceneJudges.h
+    Source/Pokemon/AutoStory/Pokemon_ScreenEvents.cpp
+    Source/Pokemon/AutoStory/Pokemon_ScreenEvents.h
+    Source/Pokemon/AutoStory/Pokemon_ScreenEvents_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryEvents.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryEvents.h
     Source/Pokemon/AutoStory/Pokemon_StoryEvents_Tests.cpp
@@ -1865,6 +1872,7 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecoveryWalk.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecovery_Tests.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRouteStrings.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h
@@ -1945,6 +1953,13 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/Data/JsonParser.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/Data/JsonWriter.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/Data/JsonWriter.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_StoryReplay.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_StoryReplay.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_StoryReplay_IO.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_StoryReplay_IO.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_StoryReplay_Executor.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_StoryReplay_Executor.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_StoryReplay_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/Data/LegacyJsonFormat.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/Data/Json_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/Data/Json_Tests.h
@@ -1988,6 +2003,9 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/Farming/PokemonFRLG_NuggetBridgeFarmer.h
     Source/VideoGames/PokemonFRLG/Programs/Farming/PokemonFRLG_PickupFarmer.cpp
     Source/VideoGames/PokemonFRLG/Programs/Farming/PokemonFRLG_PickupFarmer.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryScreenEvents.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryScreenEvents.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryScreenEvents_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/PokemonFRLG_BattleMenuNavigation.cpp
     Source/VideoGames/PokemonFRLG/Programs/PokemonFRLG_BattleMenuNavigation.h
     Source/VideoGames/PokemonFRLG/Programs/PokemonFRLG_NamingScreen.cpp

@@ -4,6 +4,7 @@
  *
  */
 
+#include "Common/Cpp/Json/JsonTools_Tests.h"
 #include "Common/Cpp/ListenerSet.h"
 #include "Common/Cpp/MoveOnlyFunction_Tests.h"
 #include "Common/Cpp/ScopeExit.h"
@@ -81,6 +82,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     add_tests_Sockets(ret, GlobalThreadPools::unlimited_normal());
     add_tests_BlackBorderDetector(ret);
     add_tests_ListenerSet(ret);
+    add_tests_JsonTools(ret);
     add_tests_MoveOnlyFunction(ret);
     SysbotBase::add_tests_SysbotBasePing(ret);
     SysbotBase::add_tests_SysbotBaseReceiveLine(ret);
@@ -102,6 +104,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     Pokemon::add_tests_MapData(ret);
     Pokemon::add_tests_RuntimeMap(ret);
     Pokemon::add_tests_RouteLog(ret);
+    Pokemon::add_tests_ScreenEvents(ret);
     Pokemon::add_tests_StoryEvents(ret);
     Pokemon::add_tests_StorySegments(ret);
     Pokemon::add_tests_StorySteps(ret);

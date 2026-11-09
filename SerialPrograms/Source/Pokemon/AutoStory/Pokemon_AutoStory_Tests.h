@@ -15,6 +15,8 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
+// Registers unit tests for the shared screen events and the judgements over them.
+void add_tests_ScreenEvents(UnitTestDatabase& database);
 // Registers unit tests for story event sequencing and execution.
 void add_tests_StoryEvents(UnitTestDatabase& database);
 // Registers unit tests for story segment running, verification, and branching.
