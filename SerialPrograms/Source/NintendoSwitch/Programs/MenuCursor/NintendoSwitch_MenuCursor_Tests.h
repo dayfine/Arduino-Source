@@ -13,7 +13,7 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 
 
-//  The cursor presses for list and grid items, and the probe's judgement. No console.
+//  The cursor presses for list and grid items. No console.
 void add_tests_MenuCursor(UnitTestDatabase& database);
 
 

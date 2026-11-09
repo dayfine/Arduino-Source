@@ -4,8 +4,6 @@
  *
  */
 
-#include "CommonFramework/ImageTools/ImageDiff.h"
-#include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch_MenuCursor.h"
 
@@ -26,14 +24,6 @@ void add_sideways(std::vector<DpadPosition>& moves, size_t from_column, size_t t
     }else{
         add_presses(moves, DPAD_LEFT, from_column - to_column);
     }
-}
-
-//  0 when either frame is missing: a probe without frames sees nothing move.
-double screen_change(const VideoSnapshot& before, const VideoSnapshot& after){
-    if (!before || !after){
-        return 0;
-    }
-    return ImageMatch::pixel_RMSD(*before.frame, *after.frame);
 }
 
 } // namespace
@@ -60,30 +50,6 @@ std::optional<std::vector<DpadPosition>> menu_cursor_moves(const MenuGrid& grid,
     return moves;
 }
 
-
-bool cursor_probe_moved(const CursorProbe& probe){
-    return probe.press_change >= CURSOR_PRESS_CHANGE &&
-        probe.press_change >= CURSOR_NOISE_RATIO * probe.still_change &&
-        2 * probe.back_change <= probe.press_change;
-}
-
-CursorProbe probe_cursor(VideoStream& stream, ProControllerContext& context, DpadPosition there, DpadPosition back){
-    context.wait_for_all_requests();
-    const VideoSnapshot first = stream.video().snapshot();
-    context.wait_for(CURSOR_PROBE_WAIT);
-    const VideoSnapshot before = stream.video().snapshot();
-    pbf_press_dpad(context, there, 80ms, CURSOR_PROBE_WAIT);
-    context.wait_for_all_requests();
-    const VideoSnapshot pressed = stream.video().snapshot();
-    pbf_press_dpad(context, back, 80ms, CURSOR_PROBE_WAIT);
-    context.wait_for_all_requests();
-    const VideoSnapshot returned = stream.video().snapshot();
-    return CursorProbe{
-        screen_change(first, before),
-        screen_change(before, pressed),
-        screen_change(before, returned),
-    };
-}
 
 void press_cursor_moves(ProControllerContext& context, const std::vector<DpadPosition>& moves){
     for (DpadPosition move : moves){

@@ -183,7 +183,8 @@ BDSPAutoStory::BDSPAutoStory()
     , PLAYER_NAME(false, "<b>Player name:</b><br>For a new game. Letters and digits.", LockMode::LOCK_WHILE_RUNNING, "Kosmos", "Kosmos")
     , PLAYER_LOOK(
         "<b>Player's look:</b><br>For a new game: the look picked on the appearance grid. "
-        "Models 1, 2, 5 and 6 are Lucas; 3, 4, 7 and 8 are Dawn."
+        "The portraits row by row: 1 Lucas light, 2 Lucas dark, 3 Dawn dark-haired, 4 Dawn dark; "
+        "5 Lucas blond, 6 Lucas brown, 7 Dawn blond, 8 Dawn brown-haired."
     )
     , STARTER(
         "<b>Starter Pokemon:</b>",

@@ -23,7 +23,8 @@
 #include "NintendoSwitch/Programs/MenuCursor/NintendoSwitch_MenuCursor_Tests.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryMaps.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
-#include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_LanguageSelectDetector.h"
+#include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_IntroMenuDetector.h"
+#include "PokemonBDSP/Options/PokemonBDSP_PlayerModelOption.h"
 #include "PokemonBDSP_AutoStory_Center.h"
 #include "PokemonBDSP_AutoStory_NewGame.h"
 #include "PokemonBDSP_AutoStory_Actions_Tests.h"
@@ -252,6 +253,17 @@ UnitTestResult test_intro_gate(Logger&){
 }
 
 
+//  The menus' data, grids, detectors and the look option agree on their sizes.
+UnitTestResult check_intro_menu_sizes(){
+    if (bdsp_language_menu().size() != BDSP_LANGUAGE_GRID.count || BDSP_LANGUAGE_GRID.count != LANGUAGE_SELECT_BUTTONS){
+        return "The language select's data, grid and detector must agree on ten buttons.";
+    }
+    if (BDSP_LOOK_GRID.count != LOOK_SELECT_PORTRAITS || BDSP_LOOK_GRID.count != BDSP_PLAYER_MODEL_COUNT){
+        return "The look grid, its detector and PlayerModelOption must agree on eight looks.";
+    }
+    return true;
+}
+
 //  The presses for the language select (two columns of five, read row by
 //  row, from wherever its cursor is) and the appearance grid (two rows of
 //  four, from the first look).
@@ -282,28 +294,28 @@ UnitTestResult test_intro_pick_moves(Logger&){
         {"a cursor outside the menu",
             language_pick_moves(LANGUAGE_SELECT_BUTTONS, french), std::nullopt},
         {"Model 1, where the cursor starts",
-            look_pick_moves(IntroPicks{Language::English, 0}), Moves(std::vector<DpadPosition>{})},
+            look_pick_moves(0, IntroPicks{Language::English, 0}), Moves(std::vector<DpadPosition>{})},
         {"Model 3, Dawn's first look (lab run 3)",
-            look_pick_moves(french), Moves(std::vector<DpadPosition>{DPAD_RIGHT, DPAD_RIGHT})},
+            look_pick_moves(0, french), Moves(std::vector<DpadPosition>{DPAD_RIGHT, DPAD_RIGHT})},
+        {"Model 3 from Model 8",
+            look_pick_moves(7, french), Moves(std::vector<DpadPosition>{DPAD_UP, DPAD_LEFT})},
         {"Model 8, the last",
-            look_pick_moves(IntroPicks{Language::English, 7}), Moves(std::vector<DpadPosition>{DPAD_RIGHT, DPAD_RIGHT, DPAD_RIGHT, DPAD_DOWN})},
+            look_pick_moves(0, IntroPicks{Language::English, 7}), Moves(std::vector<DpadPosition>{DPAD_RIGHT, DPAD_RIGHT, DPAD_RIGHT, DPAD_DOWN})},
         {"no Model 9",
-            look_pick_moves(IntroPicks{Language::English, 8}), std::nullopt},
+            look_pick_moves(0, IntroPicks{Language::English, 8}), std::nullopt},
+        {"a cursor outside the look grid",
+            look_pick_moves(LOOK_SELECT_PORTRAITS, french), std::nullopt},
     };
     for (const Case& c : cases){
         if (c.actual != c.expected){
             return std::string("Wrong presses for ") + c.what + ".";
         }
     }
-    if (bdsp_language_menu().size() != BDSP_LANGUAGE_GRID.count || BDSP_LANGUAGE_GRID.count != LANGUAGE_SELECT_BUTTONS){
-        return "The language select's data, grid and detector must agree on ten buttons.";
-    }
-    return true;
+    return check_intro_menu_sizes();
 }
 
-//  The language select takes the language pick, then A if it still shows.
-//  Until the look is picked, every screen after the language that would take
-//  A gets a probe first. The player's keyboard with a pick still to make fails.
+//  Each select takes its pick, then A if it still shows. Other screens take
+//  A. The player's keyboard with a pick still to make fails.
 UnitTestResult test_intro_pick_steps(Logger&){
     struct Case{
         const char* what;
@@ -317,8 +329,10 @@ UnitTestResult test_intro_pick_steps(Logger&){
         {"the language select, picked",     "language-select", false, true, IntroStep::ADVANCE},
         {"a logo before the language",      "other",    true,   true,   IntroStep::ADVANCE},
         {"a dialogue before the language",  "dialog",   true,   true,   IntroStep::ADVANCE},
-        {"Rowan, look to pick",             "dialog",   false,  true,   IntroStep::PROBE_FOR_LOOK},
-        {"the preview, look to pick",       "other",    false,  true,   IntroStep::PROBE_FOR_LOOK},
+        {"the look select",                 "look-select", false, true, IntroStep::PICK_LOOK},
+        {"the look select, picked",         "look-select", false, false, IntroStep::ADVANCE},
+        {"Rowan, look to pick",             "dialog",   false,  true,   IntroStep::ADVANCE},
+        {"a cutscene, look to pick",        "other",    false,  true,   IntroStep::ADVANCE},
         {"both picked",                     "dialog",   false,  false,  IntroStep::ADVANCE},
         {"black, look to pick",             "black",    false,  true,   IntroStep::WAIT},
         {"the user select",                 "user-select", true, true,  IntroStep::SELECT_USER},
@@ -345,23 +359,28 @@ UnitTestResult test_intro_pick_steps(Logger&){
     return true;
 }
 
-//  The language select from lab-B 2026-11-09 (cursor on English), and screens
-//  that are not it. Screenshots are in the unit test resources; a missing one
-//  is passed over, and the test is skipped when all are.
-UnitTestResult test_language_select_screenshots(Logger& logger){
+//  The intro's two selects from lab-B 2026-11-09 (each cursor on its first
+//  item), the screens one A before and after the look select, and screens
+//  that are neither. Screenshots are in the unit test resources; a missing
+//  one is passed over, and the test is skipped when all are.
+UnitTestResult test_intro_menu_screenshots(Logger& logger){
     ImageRGB32 black(1920, 1080);
     black.fill(0xff000000);
-    if (language_select_cursor(black)){
-        return "A black screen read as the language select.";
+    if (language_select_cursor(black) || look_select_cursor(black)){
+        return "A black screen read as an intro menu.";
     }
     struct Case{
         const char* file;
-        std::optional<size_t> cursor;
+        std::optional<size_t> language;
+        std::optional<size_t> look;
     };
     const Case cases[] = {
-        {.file = "PokemonBDSP/AutoStory/LanguageSelect-20261109.png", .cursor = 0},
-        {.file = "PokemonBDSP/AutoStory/OreburghCenterCounter-20261108-094735.png", .cursor = std::nullopt},
-        {.file = "PokemonBDSP/AutoStory/OreburghCenterDoorstep-20261108.png", .cursor = std::nullopt},
+        {.file = "PokemonBDSP/AutoStory/LanguageSelect-20261109.png", .language = 0, .look = std::nullopt},
+        {.file = "PokemonBDSP/AutoStory/LookSelect-20261109.png", .language = std::nullopt, .look = 0},
+        {.file = "PokemonBDSP/AutoStory/LookSelectBefore-20261109.png", .language = std::nullopt, .look = std::nullopt},
+        {.file = "PokemonBDSP/AutoStory/LookSelectAfterA-20261109.png", .language = std::nullopt, .look = std::nullopt},
+        {.file = "PokemonBDSP/AutoStory/OreburghCenterCounter-20261108-094735.png", .language = std::nullopt, .look = std::nullopt},
+        {.file = "PokemonBDSP/AutoStory/OreburghCenterDoorstep-20261108.png", .language = std::nullopt, .look = std::nullopt},
     };
     size_t read = 0;
     for (const Case& c : cases){
@@ -371,14 +390,17 @@ UnitTestResult test_language_select_screenshots(Logger& logger){
             continue;
         }
         read++;
-        const std::optional<size_t> cursor = language_select_cursor(ImageRGB32(path));
-        logger.log(std::string(c.file) + ": cursor " + (cursor ? std::to_string(*cursor) : "none"));
-        if (cursor != c.cursor){
-            return std::string(c.file) + ": wrong language select read.";
+        const ImageRGB32 screen(path);
+        const std::optional<size_t> language = language_select_cursor(screen);
+        const std::optional<size_t> look = look_select_cursor(screen);
+        logger.log(std::string(c.file) + ": language " + (language ? std::to_string(*language) : "none") +
+            ", look " + (look ? std::to_string(*look) : "none"));
+        if (language != c.language || look != c.look){
+            return std::string(c.file) + ": wrong intro menu read.";
         }
     }
     if (read == 0){
-        return UnitTestResult(UnitTestResult::SKIPPED, "No language select screenshots found.");
+        return UnitTestResult(UnitTestResult::SKIPPED, "No intro menu screenshots found.");
     }
     return true;
 }
@@ -629,7 +651,7 @@ const AutoStoryActionsCase AUTO_STORY_ACTIONS_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"language select screenshots", test_language_select_screenshots},
+        .input = {"intro menu screenshots", test_intro_menu_screenshots},
         .expectation = {},
     },
     {
