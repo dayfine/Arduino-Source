@@ -29,6 +29,9 @@ class ReplayExecutor : public Pokemon::StoryStepExecutor{
 public:
     //  Inputs must outlive this synchronous replay; validation occurs before actions.
     ReplayExecutor(const ReplayData& data, const JsonValue& scenario);
+    //  Its table's actions point at it.
+    ReplayExecutor(const ReplayExecutor&) = delete;
+    ReplayExecutor& operator=(const ReplayExecutor&) = delete;
     //  FRLG's story action table (story_action_rows()) with ordered authored
     //  completions and lost-pose handling.
     virtual Pokemon::Outcome run(Pokemon::RunState& state, const StoryStep& step) override;
