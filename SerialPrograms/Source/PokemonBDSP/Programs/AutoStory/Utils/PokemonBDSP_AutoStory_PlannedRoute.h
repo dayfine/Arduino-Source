@@ -71,6 +71,21 @@ std::vector<Pokemon::TilePos> walk_route(
     RouteTrainers& trainers, const RouteWalkPlan& plan
 );
 
+//  Where walk_route_to_warp() ended: on `tiles`, or through a warp it saw
+//  (`warp`), with `tiles` where the leg that went through began.
+struct RouteEnd{
+    std::vector<Pokemon::TilePos> tiles;
+    WarpSeen warp = {};
+};
+//  walk_route(), but a fade on a leg with a warp at most a tile or two past
+//  its end ends the walk there, as arrived early: the walk ran on onto the
+//  warp (01.05's Oreburgh Gate, lab-B 2026-11-08), and the step after goes
+//  through it (#268 slice 2). Any other fade fails as in walk_route().
+RouteEnd walk_route_to_warp(
+    RouteIO& io, const StoryWorld& maps, std::vector<Pokemon::TilePos> from,
+    RouteTrainers& trainers, const RouteWalkPlan& plan
+);
+
 //  The corners of a line a human walked, and the costs to plan each
 //  stretch with.
 struct WaypointWalkPlan{

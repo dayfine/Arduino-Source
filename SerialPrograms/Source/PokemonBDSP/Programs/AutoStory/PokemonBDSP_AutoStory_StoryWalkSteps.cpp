@@ -7,12 +7,14 @@
 #include <algorithm>
 #include <format>
 #include <iterator>
+#include <utility>
 #include "Common/Cpp/Color.h"
 #include "Common/Cpp/Exceptions.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "Pokemon/Navigation/Pokemon_MapData.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_WallRecovery.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_PlannedRoute.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP_AutoStory_StoryExecutor.h"
@@ -52,7 +54,7 @@ std::string label_of(const StoryStep& step){
 
 
 CenterEntry run_into_center(StoryStepIO& io, bool run, const std::function<bool()>& inside, const std::function<void()>& line_up){
-    if (io.run_into_door(Direction::NORTH, run)){
+    if (io.run_into_door(Direction::NORTH, run).any()){
         return CenterEntry::FADED;
     }
     if (inside()){
@@ -67,6 +69,7 @@ void StoryWalkSteps::begin_attempt(const std::string& row){
     //  A row starts from its save: after the shoes' row, the save has them.
     m_can_run = row > std::string(RUNNING_SHOES_ROW);
     m_trainers.clear();
+    m_warp = {};
 }
 
 void StoryWalkSteps::turn(Direction direction){
@@ -105,10 +108,11 @@ Pose StoryWalkSteps::walk_to(const Pose& from, const Pose& goal, const StoryStep
         [&](const TilePos& pos){ return std::find(targets.begin(), targets.end(), pos) != targets.end(); },
         label_of(step), {}, *costs, m_can_run ? MoveSpeed::RUN : MoveSpeed::WALK
     };
-    const std::vector<TilePos> at = walk_route(m_io.route(), *maps, start, trainers, plan);
+    RouteEnd end = walk_route_to_warp(m_io.route(), *maps, start, trainers, plan);
     sights = std::move(trainers.sights);
+    m_warp = std::move(end.warp);
     std::vector<TilePos> local;
-    for (const TilePos& pos : at){
+    for (const TilePos& pos : end.tiles){
         const std::optional<TilePos> tile = story_to_local(*maps, goal.map, pos);
         if (!tile){
             fail(m_io.route(), std::format("{}: the walk ended off {}.", step.name, goal.map));
@@ -119,6 +123,7 @@ Pose StoryWalkSteps::walk_to(const Pose& from, const Pose& goal, const StoryStep
 }
 
 Outcome StoryWalkSteps::route(RunState& state, const StoryStep& step){
+    m_warp = {};
     if (Pokemon::tiles_of(state.pose).empty()){
         return Pokemon::outcome_failed("no_pose", Pokemon::to_string(state.pose));
     }
@@ -193,18 +198,36 @@ size_t taps_to_banner(const Pose& from, Direction direction){
 //  there; a banner before any tap means the walk before took us through.
 Outcome StoryWalkSteps::tap_to_banner(const Pose& from, const StoryStep& step){
     const std::string map = step.pose_after ? step.pose_after->map : "";
+    if (through_already(step)){
+        return Pokemon::outcome_ok();
+    }
     const size_t limit = taps_to_banner(from, step.direction);
     const std::optional<size_t> taps = m_io.tap_to_banner(step.direction, map, limit);
     if (!taps){
-        return Pokemon::outcome_failed("no_banner", std::format("{} in {} taps {}: through already, its banner gone?",
+        return Pokemon::outcome_failed("no_banner", std::format("no fade and no {} banner in {} taps {}",
             map, limit, direction_name(step.direction)));
     }
     if (*taps == 0){
         log(std::format("[{}] {}: {}'s banner before any tap: through already.", m_row, step.name, map));
     }else{
-        log(std::format("[{}] {}: {}'s banner after {} taps {}.", m_row, step.name, map, *taps, direction_name(step.direction)));
+        log(std::format("[{}] {}: through to {} after {} taps {}.", m_row, step.name, map, *taps, direction_name(step.direction)));
     }
     return Pokemon::outcome_ok();
+}
+
+//  The route before ran on through this step's warp (walk_route_to_warp()):
+//  the step is done, unless the banner it read names another map.
+bool StoryWalkSteps::through_already(const StoryStep& step){
+    const WarpSeen through = std::exchange(m_warp, {});
+    if (!through.any()){
+        return false;
+    }
+    const std::string map = step.pose_after ? step.pose_after->map : "";
+    if (!through.banner.empty() && !location_banner_matches(through.banner, story_banner_name(map))){
+        fail(m_io.route(), std::format("{}: the walk before went through a warp to \"{}\", not {}.", step.name, through.banner, map));
+    }
+    log(std::format("[{}] {}: through already; the walk before saw {}.", m_row, step.name, describe(through)));
+    return true;
 }
 
 namespace{
@@ -352,6 +375,7 @@ Outcome StoryWalkSteps::counted_wall(const Pose& from, const StoryStep& step){
 }
 
 Outcome StoryWalkSteps::legs(RunState& state, const StoryStep& step){
+    m_warp = {};
     if (step.variant == "counted_wall"){
         return counted_wall(state.pose, step);
     }
@@ -385,7 +409,7 @@ Outcome StoryWalkSteps::step(RunState& state, const StoryStep& step){
         if (walk.wild_battles > 0){
             return Pokemon::outcome_failed("interrupted_step", step.name);
         }
-        m_io.settle(BUTTON_B, label_of(step), false);
+        m_io.settle(BUTTON_B, label_of(step), false, "");
         return Pokemon::outcome_ok();
     }
     //  A step through a door: walk (or run) on until the screen goes dark,
@@ -394,12 +418,19 @@ Outcome StoryWalkSteps::step(RunState& state, const StoryStep& step){
     //  00.01; Dawn's tour, 00.04). Without the fade, settle must see it itself
     //  (r33 was outside, "no fade"). No separate turn tap first: at 1 tile
     //  from the door, a 50 ms turn tap can step in before run_into_door() watches.
+    //  A fade or the far map's banner is the way through, either one (#268
+    //  slice 1); with neither yet, settle() waits for one.
     if (step.pose_after && step.pose_after->map != state.pose.map){
+        if (through_already(step)){
+            m_io.settle(BUTTON_B, label_of(step), false, "");
+            return Pokemon::outcome_ok();
+        }
+        const std::string banner = story_arrival_banner(state.pose.map, step.pose_after->map);
         const DoorRun door = door_run(state.pose.map, state.pose, step.direction, m_can_run);
-        const bool faded = m_io.run_into_door(step.direction, m_can_run, door.timeout, door.dark_from);
+        const WarpSeen seen = m_io.run_into_door(step.direction, m_can_run, door.timeout, door.dark_from, banner);
         log(std::format("[{}] {}: {} through the door (timeout {} ms, dark from {} ms): {}.", m_row, step.name,
-            direction_name(step.direction), door.timeout.count(), door.dark_from.count(), faded ? "faded" : "no fade yet"));
-        m_io.settle(BUTTON_B, label_of(step), !faded);
+            direction_name(step.direction), door.timeout.count(), door.dark_from.count(), seen.any() ? describe(seen) : "nothing yet"));
+        m_io.settle(BUTTON_B, label_of(step), !seen.any(), banner);
         return Pokemon::outcome_ok();
     }
     turn(step.direction);
@@ -416,6 +447,7 @@ Outcome StoryWalkSteps::step(RunState& state, const StoryStep& step){
 }
 
 Outcome StoryWalkSteps::talk(RunState& state, const StoryStep& step){
+    m_warp = {};
     //  Face whom we talk to: a route ends facing its last leg, not its goal
     //  (r40 reached Mom facing north). They block the tile, so the tap only turns.
     if (const std::optional<Direction> facing = Pokemon::facing_of(state.pose)){
@@ -432,6 +464,7 @@ Outcome StoryWalkSteps::talk(RunState& state, const StoryStep& step){
 }
 
 Outcome StoryWalkSteps::mash(RunState& state, const StoryStep& step){
+    m_warp = {};
     //  The step before may have played the scene already (a door step settles
     //  its arrival scene), so its first line is not required.
     if (!m_io.route().dialog_within(15000ms, COLOR_CYAN)){
@@ -439,7 +472,7 @@ Outcome StoryWalkSteps::mash(RunState& state, const StoryStep& step){
     }
     m_io.settle(step.variant == "a" ? BUTTON_A : BUTTON_B, label_of(step),
         step.pose_after && step.pose_after->map != state.pose.map &&
-        story_plan_world(state.pose.map, step.pose_after->map) == nullptr);
+        story_plan_world(state.pose.map, step.pose_after->map) == nullptr, "");
     if (m_row == RUNNING_SHOES_ROW && step.name == RUNNING_SHOES_STEP){
         m_can_run = true;
     }

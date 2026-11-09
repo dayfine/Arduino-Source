@@ -69,23 +69,6 @@ void log_leg_done(RouteIO& io, const StoryWorld& maps, const std::string& label,
         assumed ? EndBasis::ASSUMED : EndBasis::WALKED, assumed ? std::to_string(wild_battles) + " wild battle(s) on the way" : ""), RouteNote::LOG);
 }
 
-//  The tiles the player passes when walking `tiles` tiles from `from`, the
-//  first one after `from` first. Stops early where the player is stopped.
-std::vector<TilePos> leg_path(const StoryWorld& grid, TilePos from, Direction direction, size_t tiles){
-    std::vector<TilePos> path;
-    size_t travelled = 0;
-    while (travelled < tiles){
-        const std::optional<TilePos> next = step(grid, from, direction);
-        if (!next){
-            break;
-        }
-        travelled += std::abs(next->x - from.x) + std::abs(next->y - from.y);
-        from = *next;
-        path.push_back(from);
-    }
-    return path;
-}
-
 //  The map all of `tiles` are on, or empty if they are on several or none.
 std::string map_of(const StoryWorld& maps, const std::vector<TilePos>& tiles){
     std::string name;
@@ -195,7 +178,10 @@ size_t min_tiles_at_wall(size_t expected_tiles){
 enum class LegNext{
     NEXT_LEG,
     REPLAN,
+    ARRIVED_EARLY,  //  through a warp at the leg's end (walk_route_to_warp())
 };
+//  How far past a leg's end a walk that ran on may have gone.
+constexpr size_t WARP_SLIDE_TILES = 2;
 
 //  One planned leg as it is walked: where it goes, and the location
 //  banners read on the way.
@@ -246,7 +232,7 @@ public:
         , m_plan(plan)
     {}
 
-    std::vector<TilePos> run(std::vector<TilePos> from);
+    RouteEnd run(std::vector<TilePos> from);
 
 private:
     std::vector<PlannedLeg> plan_legs() const;
@@ -290,11 +276,12 @@ private:
     //  Every banner read on the way, to check the map we arrive on against.
     std::vector<std::string> m_all_banners;
     std::string m_map_start;
+    WarpSeen m_warp;
     //  Dialogue the map does not explain, so far on this route.
     size_t m_unexplained_talks = 0;
 };
 
-std::vector<TilePos> RouteWalker::run(std::vector<TilePos> from){
+RouteEnd RouteWalker::run(std::vector<TilePos> from){
     //  Tiles to avoid are ground the game lets us walk on (a trainer's line
     //  of sight), so they are off the map, not walls: a leg must not end
     //  "at" one, or the walk would run on through it.
@@ -309,12 +296,12 @@ std::vector<TilePos> RouteWalker::run(std::vector<TilePos> from){
         const std::vector<PlannedLeg> legs = plan_legs();
         m_io.note(m_plan.label + ": " + std::to_string(legs.size()) + " legs planned", RouteNote::STATUS);
         log_plan(m_io, m_maps, m_plan.label, m_from, legs);
-        bool replanned = false;
-        for (size_t number = 1; number <= legs.size() && !replanned; number++){
-            replanned = walk_leg(legs[number - 1], number, legs.size()) == LegNext::REPLAN;
+        LegNext next = LegNext::NEXT_LEG;
+        for (size_t number = 1; number <= legs.size() && next == LegNext::NEXT_LEG; number++){
+            next = walk_leg(legs[number - 1], number, legs.size());
         }
-        if (!replanned){
-            return arrive();
+        if (next != LegNext::REPLAN){
+            return {next == LegNext::ARRIVED_EARLY ? m_from : arrive(), m_warp};
         }
     }
     fail(m_io, m_plan.label + ": too many plans.");
@@ -356,10 +343,15 @@ LegNext RouteWalker::walk_leg(const PlannedLeg& planned, size_t number, size_t c
         return next;
     }
     m_facing = planned.leg.direction;
-    check_banners(walk);
     if (walk.result.stop == WalkStop::TRANSITION){
-        fail(m_io, walk.label + ": unexpected transition.");
+        if (!warp_within(m_grid, m_from, planned.leg.direction, planned.leg.tiles + WARP_SLIDE_TILES)){
+            fail(m_io, walk.label + ": unexpected transition.");
+        }
+        m_io.note("[Route] " + walk.label + ": through the warp at its end (" + describe(walk.result.warp) + "); handing over.", RouteNote::WARNING);
+        m_warp = walk.result.warp;
+        return LegNext::ARRIVED_EARLY;
     }
+    check_banners(walk);
     return after_leg(walk);
 }
 
@@ -855,6 +847,17 @@ std::vector<TilePos> walk_route(
 }
 
 std::vector<TilePos> walk_route(
+    RouteIO& io, const StoryWorld& maps, std::vector<TilePos> from,
+    RouteTrainers& trainers, const RouteWalkPlan& plan
+){
+    RouteEnd end = walk_route_to_warp(io, maps, std::move(from), trainers, plan);
+    if (end.warp.any()){
+        fail(io, plan.label + ": unexpected transition.");
+    }
+    return std::move(end.tiles);
+}
+
+RouteEnd walk_route_to_warp(
     RouteIO& io, const StoryWorld& maps, std::vector<TilePos> from,
     RouteTrainers& trainers, const RouteWalkPlan& plan
 ){

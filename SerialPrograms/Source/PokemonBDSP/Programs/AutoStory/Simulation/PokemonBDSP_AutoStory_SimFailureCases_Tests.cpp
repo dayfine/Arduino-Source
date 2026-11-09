@@ -18,6 +18,7 @@
 #include <format>
 #include <functional>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
@@ -44,12 +45,20 @@ using Pokemon::TilePos;
 
 //  Cases the program fails today, with what is to fix each.
 const std::map<std::string, std::string> KNOWN_FAILING{
-    {"01.05 old walk slides onto the Gate's west mouth, dim fade, banner gone", "#268 slice 2: walkers report warps"},
-    {"01.05 old walk slides onto the Gate's west mouth, black fade", "#268 slice 2: walkers report warps"},
-    {"01.05 old walk slides onto the Gate's west mouth, white fade", "#268 slices 2 and 3: a fade watcher that tells white from a battle"},
     {"01.05 through_the_gate is one run west", "planner: goal kinds and ms costs (PLANNER_DESIGN.md)"},
-    {"any one missed fade or banner from 00.00 to 01.11: every row still passes", "#268 slice 1: door arrival = fade or banner"},
+    {"any one missed fade or banner from 00.00 to 01.11: every row still passes",
+        "a third signal where a warp gives one (ONE_SIGNAL_STEPS): position (PLANNER_DESIGN.md 2, 4)"},
     {"01.08 with Route 204's youngster wandering (12..14, 2)", "planner: one recovery rule, a sidestep round a wanderer (PLANNER_DESIGN.md 4, 7)"},
+};
+
+//  Warps that give one signal only (#268 slice 1: door = fade or banner), so
+//  a miss there leaves nothing to go on: a fade and no banner (stairs, into
+//  a building, between the mine's floors), or a banner and no fade (an open
+//  border crossed by run_until_map()).
+const std::set<std::string> ONE_SIGNAL_STEPS{
+    "00.01 down_the_stairs", "00.01 into_barrys_house", "00.01 up_barrys_stairs", "00.01 down_barrys_stairs",
+    "00.04 into_the_house", "00.05 into_the_school", "01.03 into_the_coal_room", "01.03 up_to_the_hall",
+    "00.04 to_route_201", "01.10 into_floaroma",
 };
 
 //  The table's step `name` in row `row`.
@@ -117,10 +126,10 @@ UnitTestResult gate_plan_one_run(Logger& logger){
 }
 
 //  Each fade and each banner the clean run looks for, missed alone: the
-//  row it falls in must still pass. A door step accepts only its fade
-//  today, so a missed fade there fails a real arrival (#268's Monte Carlo,
-//  19/20 on 01.05).
-UnitTestResult every_single_miss(Logger& logger){
+//  row it falls in must still pass, but for a miss in one of `skip`'s steps.
+//  A door step once accepted only its fade, so a missed fade there failed a
+//  real arrival (#268's Monte Carlo, 19/20 on 01.05).
+UnitTestResult every_single_miss(Logger& logger, const std::set<std::string>& skip){
     SimExecutor clean(logger);
     if (!run_rows_on(clean, logger, {.from = "00.00", .to = "01.11"}).completed){
         return "the run fails without misses: " + clean.result().error;
@@ -134,9 +143,12 @@ UnitTestResult every_single_miss(Logger& logger){
         }
         SimMisses misses{.fade = {}, .banner = {}};
         (fade ? misses.fade : misses.banner) = index - (fade ? rows[k].fades : rows[k].banners);
-        const std::string stopped = run_case(logger, rows[k].row, rows[k].row, misses, {});
-        if (!stopped.empty()){
-            failed.push_back(std::format("{} {} missed: {}", fade ? "fade" : "banner", index, stopped));
+        SimExecutor executor(logger, misses);
+        if (!run_rows_on(executor, logger, {.from = rows[k].row, .to = rows[k].row}).completed
+            && !skip.contains(executor.result().failed_step)
+        ){
+            failed.push_back(std::format("{} {} missed: stopped in {}: {}", fade ? "fade" : "banner", index,
+                executor.result().failed_step, executor.result().error));
         }
     };
     for (size_t i = 0; i < clean.misses().fades; i++){
@@ -154,8 +166,9 @@ UnitTestResult every_single_miss(Logger& logger){
 
 //  Oreburgh's street at night (88, game clock 00:25; 104 by day, r74), the
 //  Gate's dim floor (46) and a cave mouth's dim fade (45 to 64): the tap
-//  steps judge their fades with tap_faded(), which took the Gate's floor
-//  for a fade under the old "brightness under 75" (lab-B 2026-11-08).
+//  steps judge their fades with fade_of(): uniform, so a textured floor
+//  is none. The old "brightness under 75" took the Gate's floor for a fade
+//  (lab-B 2026-11-08).
 UnitTestResult night_and_dim_floors(Logger& logger){
     SimWorldKnobs knobs{
         .floor = {{"OreburghCity", 88}, {"Route203", 88}, {"OreburghGate", 46}},
@@ -253,7 +266,12 @@ const FailureCase AUTO_STORY_FAILURE_CASES[] = {
         return gate_old_walk_slides(logger, SimFade::WHITE, true);
     }}, .expectation = {}},
     {.input = {"01.05 through_the_gate is one run west", gate_plan_one_run}, .expectation = {}},
-    {.input = {"any one missed fade or banner from 00.00 to 01.11: every row still passes", every_single_miss}, .expectation = {}},
+    {.input = {"any one missed fade or banner from 00.00 to 01.11: every row still passes", [](Logger& logger){
+        return every_single_miss(logger, {});
+    }}, .expectation = {}},
+    {.input = {"any one missed fade or banner at a warp that shows both: its row still passes", [](Logger& logger){
+        return every_single_miss(logger, ONE_SIGNAL_STEPS);
+    }}, .expectation = {}},
     {.input = {"01.02 to 01.05 at night, the Gate's dim floor", night_and_dim_floors}, .expectation = {}},
     {.input = {"01.03 Roark's first line 7 s after the A press", roark_speaks_late}, .expectation = {}},
     {.input = {"01.03 with Oreburgh's people wandering (the pokefan on 45, 37..39)", [](Logger& logger){

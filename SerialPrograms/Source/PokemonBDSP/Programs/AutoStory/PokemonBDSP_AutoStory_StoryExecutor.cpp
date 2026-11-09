@@ -241,9 +241,9 @@ Outcome StoryExecutor::heal(RunState&, const StoryStep& step){
     //  Out the same way: south until the fade. The walk out's indoor check
     //  read "not a room" a step from the counter and stopped inside (r50, r59).
     route_turn(stream(), context(), Direction::SOUTH);
-    const bool out = m_io.run_into_door(Direction::SOUTH, m_walks.can_run());
+    const bool out = m_io.run_into_door(Direction::SOUTH, m_walks.can_run()).any();
     stream().log(std::format("[{}] {}: south out of the Center: {}.", m_checkpoint, step.name, out ? "faded" : "no fade yet"));
-    m_io.settle(BUTTON_B, label_of(step), !out);
+    m_io.settle(BUTTON_B, label_of(step), !out, "");
     //  r143a's heal said it had walked out while still inside.
     context().wait_for_all_requests();
     VideoSnapshot screen = stream().video().snapshot();

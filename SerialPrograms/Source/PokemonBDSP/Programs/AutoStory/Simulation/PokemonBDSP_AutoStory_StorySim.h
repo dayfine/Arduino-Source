@@ -23,6 +23,7 @@
 #include <vector>
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "CommonFramework/ImageTools/ImageStats.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryExecutor.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryStepIO.h"
@@ -63,16 +64,17 @@ struct SimMisses{
     std::string banner_up = {};
 };
 
-//  How a warp's fade looks to the console's watchers (#268's design note).
+//  How a warp's fade looks on the screen (#268's design note); the
+//  program's fade_of() judges it, as the walk's watchers do.
 enum class SimFade{
-    //  A door's: near black. Every watcher of a black screen sees it.
+    //  A door's: near black (SIM_DOOR_FADE).
     BLACK,
-    //  A cave mouth's: dim, not black. A walk's strict black watcher (rgb
-    //  sum 100, stddev 10; WalkRunner::hold()) misses it and the walk goes
-    //  on (the Oreburgh Gate, lab-B 2026-11-08 16:03).
+    //  A cave mouth's: dim, not black (SIM_DIM_FADE). The walk's old strict
+    //  black watcher (rgb sum 100) missed it and the walk went on (the
+    //  Oreburgh Gate, lab-B 2026-11-08 16:03).
     DIM,
-    //  A cave exit's white: a walk's encounter-flash watcher reads it as a
-    //  wild battle.
+    //  A cave exit's white. The walk's old encounter-flash watcher read it
+    //  as a wild battle.
     WHITE,
 };
 
@@ -96,8 +98,9 @@ struct SimWorldKnobs{
     std::vector<SimSlide> slides = {};
     //  The mean brightness (0 to 255) of a map's floor, by JSON map name, and
     //  of the fade into a map; a tap step judges its fade from these with the
-    //  program's tap_faded(). Unset: 104 (Oreburgh's street by day) and 7
-    //  (a door's black).
+    //  program's fade_of(), a floor textured, a fade uniform (SIM_FLOOR_STDDEV,
+    //  SIM_FADE_STDDEV). Unset: 104 (Oreburgh's street by day) and 7 (a
+    //  door's black).
     std::map<std::string, double> floor = {};
     std::map<std::string, double> fade_into = {};
     //  People with a wander box on their map walk it, a step tried every 2 s.
@@ -150,6 +153,17 @@ constexpr Milliseconds SIM_FALSE_DARK = Milliseconds(1800);
 constexpr double SIM_FLOOR = 104;
 //  Brightness of a fade where SimWorldKnobs does not say: a door's black (by hand: 7).
 constexpr double SIM_DOOR_FADE = 7;
+//  Brightness of a cave mouth's dim fade (45 to 64 measured).
+constexpr double SIM_DIM_FADE = 55;
+//  Brightness of a cave exit's white fade.
+constexpr double SIM_WHITE_FADE = 250;
+//  The spread (stddev a channel) of a fade: uniform. A model, not measured
+//  on the console.
+constexpr double SIM_FADE_STDDEV = 1;
+//  The spread of a floor, which the game draws with texture. A model too.
+constexpr double SIM_FLOOR_STDDEV = 20;
+//  The screen's middle as fade_of() reads it: `brightness` a channel, `stddev` a channel.
+ImageStats sim_screen(double brightness, double stddev);
 
 //  What a run on the simulation did.
 struct SimRun{
@@ -198,24 +212,32 @@ public:
     }
     virtual void walk_until_stopped(Pokemon::Direction direction, size_t tiles, const std::string& label) override;
     virtual bool run_until_map(Pokemon::Direction direction, Milliseconds limit, const std::string& map, const std::string&) override;
-    virtual bool run_into_door(Pokemon::Direction direction, bool run, Milliseconds timeout = Milliseconds(12000), Milliseconds dark_from = Milliseconds(0)) override{
+    //  A door's fade stops the run; with the fade missed, the run goes on
+    //  holding and sees the far map's `banner` show after it, if it has one
+    //  (story_arrival_banner(): the sim's maps have no banners of their own).
+    virtual WarpSeen run_into_door(Pokemon::Direction direction, bool run, Milliseconds timeout = Milliseconds(12000),
+        Milliseconds dark_from = Milliseconds(0), const std::string& banner = "") override{
         const SimPace pace = run ? SimPace::RUN : SimPace::WALK;
         if (false_dark() && dark_from <= SIM_FALSE_DARK && SIM_FALSE_DARK < timeout){
             m_sim.hold(direction, SIM_FALSE_DARK, pace);
-            return true;
+            return {.fade = WarpFade::BLACK};
         }
-        const bool warped = m_sim.hold(direction, timeout, pace).stop == SimStop::WARP;
-        if (warped && fade_missed()){
-            m_misses.fade_unseen = true;
-            return false;
+        if (m_sim.hold(direction, timeout, pace).stop != SimStop::WARP){
+            return {};
         }
-        return warped;
+        if (!fade_missed()){
+            return {.fade = WarpFade::BLACK};
+        }
+        m_misses.fade_unseen = true;
+        return {.banner = !banner.empty() && !banner_missed() ? banner : ""};
     }
     //  A scene may take us to another map (Mom walks us out, 00.04): with a
     //  dialogue open the stub scene plays it. Otherwise only a door fades.
     //  A fade missed on the way in stays missed: it was over before settle()
-    //  looked, which then fails as it does on the console after 120 s.
-    virtual void settle(Button, const std::string& label, bool fade) override{
+    //  looked, which then fails as it does on the console after 120 s. The
+    //  run before looked for the banner (run_into_door()), so settle() sees
+    //  none here.
+    virtual void settle(Button, const std::string& label, bool fade, const std::string&) override{
         const bool scene_fades = m_sim.player().dialog && m_far_side();
         if (fade && ((!m_sim.player().warped && !scene_fades) || m_misses.fade_unseen)){
             m_route.note(label + ": no fade, so we are not where the step goes (map mismatch).", RouteNote::FAILURE);

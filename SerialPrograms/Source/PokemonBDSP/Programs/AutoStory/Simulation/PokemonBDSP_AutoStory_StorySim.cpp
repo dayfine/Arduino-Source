@@ -29,6 +29,10 @@ using Pokemon::StoryStepKind;
 using Pokemon::TilePos;
 
 
+ImageStats sim_screen(double brightness, double stddev){
+    return ImageStats(FloatPixel(brightness, brightness, brightness), FloatPixel(stddev, stddev, stddev), 1);
+}
+
 //  A hold until something stops us. A door stops it at the fade, which
 //  fails the step; a fade missed lets the hold go on past the mouth (r81's
 //  timed walk south out of the Ravaged Path, onto Route 204's cliff).
@@ -74,12 +78,12 @@ double SimStoryStepIO::floor_here() const{
     return SIM_FLOOR;
 }
 
-//  D-pad taps, each looked at, until the fade and then the banner (the
-//  console's ConsoleStoryStepIO::tap_to_banner()): none if the banner shows
-//  before the first. Each look stands still, so a banner on the far side
-//  reads at once. A look the program's tap_faded() takes for the fade ends
-//  the taps, banner or not: a warp's fade, or a dim floor read as one; with
-//  the fade missed the next look still sees the banner.
+//  D-pad taps, each looked at, until the fade or the banner (the console's
+//  ConsoleStoryStepIO::tap_to_banner()): none if the banner shows before
+//  the first. Each look stands still, so a banner on the far side reads at
+//  once. A look the program's fade_of() takes for a fade ends the taps: a
+//  warp's fade, or a floor read as one; with the fade missed the look still
+//  sees the banner.
 std::optional<size_t> SimStoryStepIO::tap_to_banner(Direction direction, const std::string& map, size_t max_taps){
     if (m_misses.through == m_misses.tap_steps++){
         m_misses.missed = true;
@@ -92,22 +96,21 @@ std::optional<size_t> SimStoryStepIO::tap_to_banner(Direction direction, const s
     }
     bool crossed = false;
     for (size_t tap = 1; tap <= max_taps; tap++){
-        const double before = floor_here();
         const SimMove move = m_sim.tap(direction, 160ms, false);
         if (move.stop == SimStop::DIALOG){
             return std::nullopt;
         }
-        double look = floor_here();
+        ImageStats look = sim_screen(floor_here(), SIM_FLOOR_STDDEV);
         if (move.stop == SimStop::WARP){
             const auto fade = m_knobs.fade_into.find(map);
-            look = fade_missed() ? look : fade == m_knobs.fade_into.end() ? SIM_DOOR_FADE : fade->second;
+            if (!fade_missed()){
+                look = sim_screen(fade == m_knobs.fade_into.end() ? SIM_DOOR_FADE : fade->second, SIM_FADE_STDDEV);
+            }
             crossed = m_far_side();
         }
-        if (crossed && on_map(map) && !banner_missed()){
+        const bool banner = crossed && on_map(map) && !banner_missed();
+        if (banner || fade_of(look) != WarpFade::NONE){
             return tap;
-        }
-        if (tap_faded(before, look)){
-            return std::nullopt;
         }
     }
     return std::nullopt;
@@ -127,9 +130,11 @@ WalkResult SimKnobRouteIO::walk_taps(Direction direction, size_t tiles, const st
     return result;
 }
 
-//  The taps past the leg's end. Onto a warp the walk sees what the fade
-//  looks like to its watchers: a black fade ends it (TRANSITION), a white
-//  one is a wild battle to it, a dim one nothing.
+//  The taps past the leg's end. Onto a warp the walk sees the fade as the
+//  program's fade_of() judges it, the walk's watchers' test: a fade ends
+//  it (TRANSITION), a white one too, as no battle follows it. The walk ends
+//  at the fade, before the banner shows (about 1.5 s after it), so it
+//  reads none.
 WalkResult SimKnobRouteIO::slide_on(const SimSlide& slide, WalkResult result){
     m_misses.slid = true;
     for (size_t tap = 0; tap < slide.tiles; tap++){
@@ -141,10 +146,10 @@ WalkResult SimKnobRouteIO::slide_on(const SimSlide& slide, WalkResult result){
         note("[Sim] slid onto a warp to " + Pokemon::to_string(slide.far) + ".", RouteNote::LOG);
         m_cross(slide.far);
         m_misses.banner_up = slide.banner_up ? slide.far.map : "";
-        if (slide.fade == SimFade::BLACK){
+        const double brightness = slide.fade == SimFade::BLACK ? SIM_DOOR_FADE : slide.fade == SimFade::DIM ? SIM_DIM_FADE : SIM_WHITE_FADE;
+        result.warp.fade = fade_of(sim_screen(brightness, SIM_FADE_STDDEV));
+        if (result.warp.fade != WarpFade::NONE){
             result.stop = WalkStop::TRANSITION;
-        }else if (slide.fade == SimFade::WHITE){
-            result.wild_battles++;
         }
         return result;
     }

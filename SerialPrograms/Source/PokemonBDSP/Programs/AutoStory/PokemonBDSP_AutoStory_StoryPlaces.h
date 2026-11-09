@@ -33,6 +33,11 @@ const StoryWorld* story_plan_world(const std::string& from, const std::string& t
 //  The location banner of the JSON map `map` ("Route 204" for both of its
 //  halves), or `map` itself for one no banner list names.
 const std::string& story_banner_name(const std::string& map);
+//  The banner (story_banner_name()) a warp from the JSON map `from` onto
+//  `to` shows, or "" if none: arriving in another town, route or cave shows
+//  its name (out of the Gym, Oreburgh City's), arriving in a house, a lab,
+//  a school or another floor of the same cave shows none.
+std::string story_arrival_banner(const std::string& from, const std::string& to);
 
 //  The tile `local` of the map `map` in `world`.
 Pokemon::TilePos story_to_world(const StoryWorld& world, const std::string& map, const Pokemon::TilePos& local);

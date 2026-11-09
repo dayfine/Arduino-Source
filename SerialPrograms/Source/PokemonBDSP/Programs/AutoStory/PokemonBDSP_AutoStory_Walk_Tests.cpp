@@ -14,6 +14,7 @@
 #include "Utils/PokemonBDSP_AutoStory_Indoors.h"
 #include "Utils/PokemonBDSP_AutoStory_Location.h"
 #include "Utils/PokemonBDSP_AutoStory_RouteWalk.h"
+#include "Utils/PokemonBDSP_AutoStory_Walk.h"
 #include "Actions/PokemonBDSP_AutoStory_Talks.h"
 #include "PokemonBDSP_AutoStory_StoryStepIO.h"
 #include "PokemonBDSP_AutoStory_Walk_Tests.h"
@@ -121,29 +122,33 @@ UnitTestResult test_door_fade(Logger&){
         return true;
 }
 
-//  A tap step's fade is a real one: black, or a drop to dark from the look
-//  before the tap. The Oreburgh Gate's floor, about 46 before and after a
-//  tap inside it, is no fade: read as one, the tap into the Gate from
-//  Oreburgh, already through, waited 8 s for a banner gone (lab-B,
-//  2026-11-08 15:31 to 15:54).
-UnitTestResult test_tap_fade(Logger&){
+//  A fade is uniform (fade_of(): the shared watchers' stddev test), dark or
+//  white; a floor is textured. The Oreburgh Gate's floor, about 46, is no
+//  fade: read as one, the tap into the Gate from Oreburgh, already
+//  through, waited 8 s for a banner gone (lab-B, 2026-11-08 15:31 to
+//  15:54). A cave mouth's dim fade (45 to 64 measured) is one. The stddevs
+//  are a model; the Gate's frames on the console are to check them.
+UnitTestResult test_fade_of(Logger&){
     struct Case{
         std::string name;
-        double before;
-        double after;
-        bool faded;
+        double brightness;
+        double stddev;
+        WarpFade fade;
     };
     const std::vector<Case> cases{
-        {.name = "inside the Gate, its floor", .before = 46, .after = 46, .faded = false},
-        {.name = "inside the Gate, a darker patch", .before = 52, .after = 44, .faded = false},
-        {.name = "on a street", .before = 120, .after = 112, .faded = false},
-        {.name = "the street into the Gate's mouth, to black", .before = 120, .after = 8, .faded = true},
-        {.name = "the street into a cave, a dim fade (45 to 64 measured)", .before = 120, .after = 60, .faded = true},
-        {.name = "out of the Gate, from its floor to black", .before = 46, .after = 12, .faded = true},
+        {.name = "inside the Gate, its floor", .brightness = 46, .stddev = 20, .fade = WarpFade::NONE},
+        {.name = "Oreburgh's street at night", .brightness = 88, .stddev = 20, .fade = WarpFade::NONE},
+        {.name = "a door's black", .brightness = 7, .stddev = 1, .fade = WarpFade::BLACK},
+        {.name = "a cave mouth's dim fade", .brightness = 64, .stddev = 2, .fade = WarpFade::BLACK},
+        {.name = "a grey screen, neither dark nor white", .brightness = 120, .stddev = 1, .fade = WarpFade::NONE},
+        {.name = "a cave exit's white", .brightness = 250, .stddev = 1, .fade = WarpFade::WHITE},
+        {.name = "a bright textured screen", .brightness = 250, .stddev = 20, .fade = WarpFade::NONE},
     };
     for (const Case& item : cases){
-        if (tap_faded(item.before, item.after) != item.faded){
-            return item.name + (item.faded ? ": no fade read." : ": read as a fade.");
+        const ImageStats stats(FloatPixel(item.brightness, item.brightness, item.brightness), FloatPixel(item.stddev, item.stddev, item.stddev), 1);
+        const WarpFade fade = fade_of(stats);
+        if (fade != item.fade){
+            return item.name + ": " + warp_fade_name(fade) + ", expected " + warp_fade_name(item.fade) + ".";
         }
     }
     return true;
@@ -315,7 +320,7 @@ const AutoStoryWalkCase AUTO_STORY_WALK_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"a tap into a door fades to black or drops to dark, not a dim floor (lab-B, 2026-11-08)", test_tap_fade},
+        .input = {"a fade is uniform, dark or white; a dim floor is none (lab-B, 2026-11-08)", test_fade_of},
         .expectation = {},
     },
     {
