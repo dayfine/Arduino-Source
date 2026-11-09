@@ -736,11 +736,8 @@ void OverworldSimWalker::clear(const Interrupt& interrupt){
         }
         return;
     }
-    if (!m_sim.close_message() || !m_rules.fight_trainer_after_message){
-        return;
-    }
-    m_sim.handle_battle(SimBattleChoice::FIGHT);
-    if (m_rules.trainer_battle_end){
+    if (m_sim.close_message() && m_rules.fight_trainer_after_message){
+        m_sim.handle_battle(SimBattleChoice::FIGHT);
         if (const std::string failure = m_rules.trainer_battle_end(m_sim); !failure.empty()){
             fail(failure);
         }

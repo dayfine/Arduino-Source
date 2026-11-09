@@ -100,7 +100,8 @@ const char* screen_name(BattleScreen screen){
 }
 
 //  Until `confirmed`, the battle text box alone counts for nothing: it also
-//  reads on the black below a small indoor map.
+//  reads on the black below a small indoor map. Nor ever on a dark cave's
+//  overworld after the battle (console B, 2026-11-09, Rock Tunnel).
 BattleScreen read_battle_screen(const ImageViewRGB32& screen, bool confirmed){
     if (BattleMenuDetector(COLOR_RED).detect(screen)){
         return BattleScreen::MENU;
@@ -108,12 +109,7 @@ BattleScreen read_battle_screen(const ImageViewRGB32& screen, bool confirmed){
     if (battle_yes_no_shows(screen)){
         return BattleScreen::LEARN;
     }
-    //  A dark cave's overworld after the battle: its black reads as the
-    //  text box (console B, 2026-11-09, Rock Tunnel).
-    if (OverworldWalkSteps::dark_cave_screen(screen)){
-        return BattleScreen::NONE;
-    }
-    if (!confirmed && !BattleScreenDetector(COLOR_RED).detect(screen)){
+    if ((!confirmed && !BattleScreenDetector(COLOR_RED).detect(screen)) || OverworldWalkSteps::dark_cave_screen(screen)){
         return BattleScreen::NONE;
     }
     if (AdvanceBattleDialogDetector(COLOR_RED).detect(screen)){
@@ -431,8 +427,7 @@ private:
         m_last_press = now;
     }
 
-    //  Nothing pressed while the screen may be an evolution, up to
-    //  EvolutionHold::MAX_HOLD.
+    //  Nothing pressed while the screen may be an evolution, up to MAX_HOLD.
     void wait_out_evolution(){
         const WallClock start = current_time();
         bool holds = true;

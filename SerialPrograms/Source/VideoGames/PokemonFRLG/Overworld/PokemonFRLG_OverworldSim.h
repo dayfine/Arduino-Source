@@ -418,8 +418,10 @@ struct SimWalkerRules{
     bool whole_leg_in_dark = true;
     //  The end of a trainer's battle the walker fought, as the story's
     //  battle loop takes it on the screen the sim shows after it: its
-    //  failure, or empty. Not set: the battle just ends.
-    std::function<std::string(const OverworldSim&)> trainer_battle_end = nullptr;
+    //  failure, or empty. By default the battle just ends.
+    std::function<std::string(const OverworldSim&)> trainer_battle_end = [](const OverworldSim&){
+        return std::string();
+    };
 };
 
 //  OverworldWalkSteps::turn_to() on `sim`, which reads the facing on the
