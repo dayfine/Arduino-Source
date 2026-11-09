@@ -229,6 +229,42 @@ UnitTestResult test_heal_fade_unseen(Logger& logger){
     return "no fade in 01.03 heal_oreburgh to miss: the heal never ran into its door.";
 }
 
+//  The sim's frames of a warp's fade through the program's own watches
+//  (sim_watch_fade()): a door's black, a cave mouth's dim fade and a cave
+//  exit's white, each with its hold seen and unseen. Only on a floor as
+//  dark as the fall (a street at night, 88) is a fade whose hold went unseen
+//  still missed: no frame shows the scene before it.
+UnitTestResult test_sim_fade_frames(Logger&){
+    struct FadeCase{
+        const char* name;
+        bool door;
+        double floor;
+        double fade;
+        bool hold_seen;
+        WarpFade seen;
+    };
+    const std::vector<FadeCase> cases{
+        {"a door's black", true, SIM_FLOOR, SIM_DOOR_FADE, true, WarpFade::BLACK},
+        {"a door's black, its hold unseen", true, SIM_FLOOR, SIM_DOOR_FADE, false, WarpFade::BLACK},
+        {"a tap into a door's black", false, SIM_FLOOR, SIM_DOOR_FADE, true, WarpFade::BLACK},
+        {"a tap into a door's black, its hold unseen", false, SIM_FLOOR, SIM_DOOR_FADE, false, WarpFade::BLACK},
+        {"a tap into a cave mouth's dim fade", false, SIM_FLOOR, SIM_DIM_FADE, true, WarpFade::BLACK},
+        {"a tap into a cave mouth's dim fade, its hold unseen", false, SIM_FLOOR, SIM_DIM_FADE, false, WarpFade::BLACK},
+        {"a tap into a cave exit's white", false, SIM_FLOOR, SIM_WHITE_FADE, true, WarpFade::WHITE},
+        {"a tap into a cave exit's white, its hold unseen", false, SIM_FLOOR, SIM_WHITE_FADE, false, WarpFade::WHITE},
+        {"a door's black from the Gate's dim floor (46), its hold unseen", true, 46, SIM_DOOR_FADE, false, WarpFade::BLACK},
+        {"a tap from a street at night (88)", false, 88, SIM_DOOR_FADE, true, WarpFade::BLACK},
+        {"a tap from a street at night (88), its hold unseen", false, 88, SIM_DOOR_FADE, false, WarpFade::NONE},
+    };
+    for (const FadeCase& item : cases){
+        const WarpFade seen = sim_watch_fade(item.door ? DOOR_FADE_RULE : TAP_FADE_RULE, item.floor, item.fade, item.hold_seen);
+        if (seen != item.seen){
+            return std::format("{}: saw {}, expected {}.", item.name, warp_fade_name(seen), warp_fade_name(item.seen));
+        }
+    }
+    return true;
+}
+
 struct AutoStoryStorySimInput{
     std::string name;
     std::function<UnitTestResult(Logger&)> body;
@@ -265,6 +301,7 @@ private:
 const AutoStoryStorySimCase AUTO_STORY_STORY_SIM_CASES[] = {
     {.input = {"the maps' coord events are on open ground or doors", test_coord_events}, .expectation = {}},
     {.input = {"detector misses from 00.00 to 01.11", test_story_sim_misses}, .expectation = {}},
+    {.input = {"a warp's fade on the sim's frames, through the door's and the taps' watches", test_sim_fade_frames}, .expectation = {}},
     {.input = {"00.00 to 01.11: the whole table, from the new game to Floaroma", test_story_sim_whole_table}, .expectation = {}},
     {.input = {"each row from 00.00 to 01.11 in isolation", test_story_sim_each_row}, .expectation = {}},
     {.input = {"01.02b, Barry's lines, then the Center past his doorstep (lab-B, 2026-11-08)", [](Logger& logger){

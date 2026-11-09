@@ -27,6 +27,17 @@ namespace NintendoSwitch{
 namespace PokemonBDSP{
 
 
+//  How a door run and a tap step take a warp's fade (WarpFadeWatch), the
+//  console's and the simulation's alike. A door run counts the partial
+//  tier's dark (a doorway's dim fade frames) held 50 ms and white held
+//  60 ms, as its black and white watchers did (lab-B to 2026-11-08); a tap
+//  step, looking every 100 ms, the uniform tier at once, as fade_of() did.
+//  Either also takes a fade whose hold it did not see, at the other scene
+//  after the fall.
+constexpr WarpFadeRule DOOR_FADE_RULE{.partial_dark = true, .dark_for = Milliseconds(50), .white_for = Milliseconds(60)};
+constexpr WarpFadeRule TAP_FADE_RULE{};
+
+
 //  Abstract interface for story step input/output operations.
 class StoryStepIO{
 public:
@@ -44,7 +55,7 @@ public:
     //  JSON map's name) shows, for at most `limit`. Returns whether it showed.
     virtual bool run_until_map(Pokemon::Direction direction, Milliseconds limit, const std::string& map, const std::string& label) = 0;
     //  Holds the D-pad toward a door (running with `run`) for `timeout` until
-    //  the screen goes dark or white, `banner` (a map's banner name, "" for
+    //  its fade (DOOR_FADE_RULE), `banner` (a map's banner name, "" for
     //  none) reads, or a line shows. A dark screen in the first `dark_from`
     //  of running is not the door's fade, and a wild battle on the way is
     //  fled, the run going on for the time left. Returns what it saw of the
@@ -52,8 +63,8 @@ public:
     virtual WarpSeen run_into_door(Pokemon::Direction direction, bool run, Milliseconds timeout = Milliseconds(12000),
         Milliseconds dark_from = Milliseconds(0), const std::string& banner = "") = 0;
     //  D-pad taps `direction` one at a time, each looked at, toward a door
-    //  or cave mouth, until its fade (fade_of(): uniform, so a dim cave floor
-    //  is none) or the location banner of `map` (a JSON map's name), for at
+    //  or cave mouth, until its fade (TAP_FADE_RULE: uniform, so a dim cave
+    //  floor is none) or the location banner of `map` (a JSON map's name), for at
     //  most `max_taps`; after a fade, no more taps. Either one alone is the
     //  way through. The watch starts before the first tap: a banner up then
     //  is 0 taps. Returns the taps it took, or nothing if neither showed.
