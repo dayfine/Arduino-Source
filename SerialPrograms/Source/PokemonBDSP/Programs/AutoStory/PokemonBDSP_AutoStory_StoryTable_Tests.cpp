@@ -224,6 +224,34 @@ UnitTestResult test_route204_north_line(Logger& logger){
     return true;
 }
 
+//  01.10's line 5, "north 10 (open)" to (19, 12), after Aroma Lady Taylor's
+//  battle (lab-B 2026-11-08 18:15:47): we may stand anywhere on (19, 12..20).
+//  Column 19 is open floor from row 7 to 13 below the wall on row 6, so north
+//  to that wall and 5 south reach the goal; the console's plan, "south 12 (to
+//  wall) to (19, 24), north 12 (open) to (19, 12)", pinned the wall with the
+//  fewest held tiles and walked back twice as far.
+UnitTestResult test_line_5_recovery_pins_the_wall_nearest_the_goal(Logger& logger){
+    const StoryWorld& world = *story_plan_world("Route204North", "Route204North");
+    std::vector<TilePos> from;
+    for (int y = 12; y <= 20; y++){
+        from.push_back(story_to_world(world, "Route204North", {19, y}));
+    }
+    const TilePos goal = story_to_world(world, "Route204North", {19, 12});
+    const auto legs = plan_recovered_route(world, from, [&](const TilePos& pos){ return pos == goal; }, *story_route_costs("line"));
+    if (!legs || legs->empty()){
+        return "no plan from (19, 12..20).";
+    }
+    for (const PlannedLeg& planned : *legs){
+        logger.log("01.10 line 5 recovery: " + to_string(planned));
+    }
+    const PlannedLeg& first = legs->front();
+    const TilePos wall = story_to_world(world, "Route204North", {19, 7});
+    if (first.leg.direction != Direction::NORTH || !first.leg.ends_at_wall || first.after != std::vector<TilePos>{wall}){
+        return "the recovery starts " + to_string(first) + ", not north to the wall at (19, 7).";
+    }
+    return true;
+}
+
 //  The legs a ROUTE step from `from` plans, as walk_route() plans them (the
 //  step's costs, then the default ones), on `world`; nothing if none.
 std::optional<std::vector<PlannedLeg>> route_step_plan(const StoryWorld& world, const Pokemon::Pose& from, const Pokemon::StoryStep& step){
@@ -472,6 +500,10 @@ const AutoStoryStoryTableCase AUTO_STORY_STORY_TABLE_CASES[] = {
     },
     {
         .input = {"Route 204 North: the line into Floaroma", test_route204_north_line},
+        .expectation = {},
+    },
+    {
+        .input = {"01.10: line 5's recovery pins the wall nearest its goal (lab-B, 2026-11-08)", test_line_5_recovery_pins_the_wall_nearest_the_goal},
         .expectation = {},
     },
     {

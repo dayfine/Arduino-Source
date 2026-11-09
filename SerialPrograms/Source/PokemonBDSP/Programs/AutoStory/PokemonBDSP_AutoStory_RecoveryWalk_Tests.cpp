@@ -8,6 +8,7 @@
  *  physical cause. Run the real story step and route walker on GridSim.
  */
 #include <algorithm>
+#include <cstdint>
 #include <format>
 #include <optional>
 #include <string>
@@ -643,6 +644,140 @@ const MineExitCase MINE_EXIT_CASES[] = {
         .expectation = {.below_the_door = false, .west_of_column_46 = std::nullopt}},
 };
 
+//  A wild battle after the third tile of the first walk north of more than
+//  three tiles, tapped or run until a banner; the walk goes on after it, as
+//  walk_tiles_dpad() and walk_until_dpad() go on after running.
+class ColumnBattle{
+public:
+    explicit ColumnBattle(std::vector<std::string>& notes) : m_notes(notes){}
+    //  Whether the battle comes after `tile` tiles of a walk `direction`.
+    bool after(Direction direction, size_t tiles, size_t tile){
+        if (m_taken || direction != Direction::NORTH || tiles <= BATTLE_AFTER || tile != BATTLE_AFTER){
+            return false;
+        }
+        m_taken = true;
+        m_notes.push_back(std::format("[Sim] a wild battle after {} tiles north.", tile));
+        return true;
+    }
+    static constexpr size_t BATTLE_AFTER = 3;
+private:
+    std::vector<std::string>& m_notes;
+    bool m_taken = false;
+};
+
+class ColumnBattleRouteIO : public GridSimRouteIO{
+public:
+    ColumnBattleRouteIO(GridSim& sim, std::vector<std::string>& notes, ColumnBattle& battle)
+        : GridSimRouteIO(sim, notes), m_battle(battle)
+    {}
+    virtual WalkResult walk_taps(Direction direction, size_t tiles, const std::string& label) override{
+        if (!m_battle.after(direction, tiles, ColumnBattle::BATTLE_AFTER)){
+            return GridSimRouteIO::walk_taps(direction, tiles, label);
+        }
+        WalkResult result = GridSimRouteIO::walk_taps(direction, ColumnBattle::BATTLE_AFTER, label);
+        const WalkResult rest = GridSimRouteIO::walk_taps(direction, tiles - ColumnBattle::BATTLE_AFTER, label);
+        result.stop = rest.stop;
+        result.walked += rest.walked;
+        result.moved_chunks += rest.moved_chunks;
+        result.wild_battles++;
+        return result;
+    }
+private:
+    ColumnBattle& m_battle;
+};
+
+//  RecoveryStepIO that also runs until a map's banner: it reads
+//  SIM_BANNER_TILES into the map, as the story simulation's does, or where
+//  something stops the run on it.
+class BannerStepIO : public RecoveryStepIO{
+public:
+    static constexpr size_t SIM_BANNER_TILES = 3;
+    BannerStepIO(RouteIO& route, GridSim& sim, ColumnBattle& battle) : RecoveryStepIO(route), m_sim(sim), m_battle(battle){}
+    virtual bool run_until_map(Direction direction, Milliseconds limit, const std::string& map, const std::string&) override{
+        size_t on = 0;
+        size_t tiles = 0;
+        for (Milliseconds ran = 0ms; ran < limit; ran += ROUTE_RUN_MS_PER_TILE_ACROSS){
+            m_battle.after(direction, SIZE_MAX, tiles);
+            const SimMove move = m_sim.tap(direction, ROUTE_MS_PER_TILE_ACROSS, false);
+            tiles++;
+            const bool stopped = move.distance == 0 || move.stop != SimStop::DONE;
+            on = story_to_local(m_sim.world(), map, nearest_tile(m_sim.player().pos)) ? on + 1 : 0;
+            if (on > 0 && (on >= SIM_BANNER_TILES || stopped)){
+                return true;
+            }
+            if (stopped){
+                return false;
+            }
+        }
+        return false;
+    }
+private:
+    GridSim& m_sim;
+    ColumnBattle& m_battle;
+};
+
+//  01.10's last stretch, north up column 11 from (11, 12) through the grass
+//  on (11, 5..11) into Floaroma (lab-B 2026-11-08 18:17:53): a wild battle
+//  on "north 7 (open)" to (11, 5) left (11, 5..12), and no plan came, for
+//  column 11 has no wall to the north and no other wall brings those tiles
+//  together. The table's steps after line 6, with a wild battle three tiles
+//  up, must end in Floaroma where the row's last walk says.
+UnitTestResult test_line_7_battle_reaches_floaroma(Logger& logger){
+    const StoryWorld& world = *story_plan_world("Route204North", "FloaromaTown");
+    GridSim sim({.world = &world}, story_to_world(world, "Route204North", {11, 12}), Direction::WEST, true);
+    std::vector<std::string> notes;
+    ColumnBattle battle(notes);
+    ColumnBattleRouteIO route(sim, notes, battle);
+    BannerStepIO io(route, sim, battle);
+    StoryWalkSteps walks(io);
+    walks.begin_attempt("01.10");
+    Pokemon::RunState state{.pose = Pokemon::tile_pose("Route204North", {{11, 12}}, Direction::WEST), .flags = {}};
+    std::string failure;
+    std::optional<Pokemon::Pose> last;
+    try{
+        bool after_line_6 = false;
+        for (const Pokemon::StoryCheckpoint& checkpoint : story_checkpoints()){
+            for (const Pokemon::StoryStep& step : checkpoint.id == "01.10" ? checkpoint.steps : std::vector<Pokemon::StoryStep>{}){
+                const bool walks_here = after_line_6 && (step.kind == Pokemon::StoryStepKind::ROUTE || step.kind == Pokemon::StoryStepKind::LEGS);
+                after_line_6 |= step.name == "line_6";
+                if (!walks_here || !failure.empty()){
+                    continue;
+                }
+                const Pokemon::Outcome outcome = step.kind == Pokemon::StoryStepKind::ROUTE ? walks.route(state, step) : walks.legs(state, step);
+                failure = outcome.failure;
+                last = step.pose_after ? step.pose_after : step.target;
+                state.pose = outcome.pose ? *outcome.pose : *last;
+                logger.log(std::format("01.10 {} ended at {}.", step.name, to_string(sim.player().pos)));
+            }
+        }
+    }catch (const GridSimFailure& error){
+        failure = error.message;
+    }
+    for (const std::string& note : notes){
+        logger.log(note);
+    }
+    if (!failure.empty() || !last){
+        return "01.10 after line 6: " + (failure.empty() ? std::string("no walk") : failure);
+    }
+    const std::vector<TilePos> tiles = Pokemon::tiles_of(*last);
+    const auto end = story_to_local(world, last->map, nearest_tile(sim.player().pos));
+    if (!end || std::find(tiles.begin(), tiles.end(), *end) == tiles.end()){
+        return std::format("01.10 ended at {}, not on {}.", to_string(sim.player().pos), Pokemon::to_string(*last));
+    }
+    if (last->map != "FloaromaTown"){
+        return "01.10 ends on " + last->map + ", not in Floaroma.";
+    }
+    return true;
+}
+
+class Test_LineSevenBattle : public UnitTest{
+public:
+    Test_LineSevenBattle() : UnitTest("PokemonBDSP::AutoStory - Recovery walk: 01.10 a wild battle on the last line reaches Floaroma (lab-B, 2026-11-08)"){}
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        return test_line_7_battle_reaches_floaroma(logger);
+    }
+};
+
 } // namespace
 
 void add_tests_AutoStory_RecoveryWalk(UnitTestDatabase& database){
@@ -672,6 +807,7 @@ void add_tests_AutoStory_RecoveryWalk(UnitTestDatabase& database){
     for (const MineExitCase& scenario : MINE_EXIT_CASES){
         database.add<Test_MineExit>(scenario);
     }
+    database.add<Test_LineSevenBattle>();
 }
 } // namespace PokemonBDSP
 } // namespace NintendoSwitch
