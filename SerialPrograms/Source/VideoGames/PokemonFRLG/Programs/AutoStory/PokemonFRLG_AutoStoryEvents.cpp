@@ -7,6 +7,7 @@
 #include <format>
 #include <memory>
 #include <set>
+#include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
@@ -398,6 +399,39 @@ std::string save_place_error(const std::string& start_map, const std::string& pl
     return "The save is in " + place + ", but the checkpoint starts in " + expected + " (" + start_map + ").";
 }
 
+std::string start_pose_mismatch(const Pokemon::Pose& start, const StoryPose& stands){
+    const std::optional<StoryPose> at = story_pose(start);
+    if (at && at->map == stands.map && at->tile == stands.tile
+        && (!at->facing || !stands.facing || at->facing == stands.facing)
+    ){
+        return "";
+    }
+    return "The save stands at " + Pokemon::to_string(to_pose(stands))
+        + ", but the checkpoint starts at " + Pokemon::to_string(start) + ".";
+}
+
+void add_start_pose_check(
+    Pokemon::Checkpoint& checkpoint, const std::optional<Pokemon::Pose>& start, SavePoseReader read, StoryLog log
+){
+    if (!start){
+        return;
+    }
+    checkpoint.start.push_back(Pokemon::condition("save_at_start_pose",
+        [start = *start, read = std::move(read), log = std::move(log)](RunState&){
+            const std::optional<StoryPose> stands = read();
+            if (!stands){
+                log("start pose not read: going on from the save as the checkpoint's start.");
+                return true;
+            }
+            const std::string mismatch = start_pose_mismatch(start, *stands);
+            if (!mismatch.empty()){
+                log("start pose mismatch: " + mismatch);
+            }
+            return mismatch.empty();
+        }
+    ));
+}
+
 std::optional<std::vector<RouteStep>> fixed_route(
     const std::vector<MapData>& maps, const MapPosition& start, const std::vector<StoryLeg>& legs
 ){
@@ -479,69 +513,6 @@ std::optional<Direction> wall_beside(const MapData& map, const TilePos& tile){
         }
     }
     return std::nullopt;
-}
-
-StoryExecutor::StoryExecutor(StoryEnv& env)
-    : m_env(env)
-{}
-
-Outcome StoryExecutor::run(RunState& state, const StoryStep& step){
-    return guarded([&]{ return Pokemon::StoryStepExecutor::run(state, step); });
-}
-
-Outcome StoryExecutor::new_game(RunState&, const StoryStep&){
-    play_new_game_intro(m_env.console, m_env.context, m_env.player_name);
-    return Pokemon::outcome_ok();
-}
-
-Outcome StoryExecutor::options(RunState&, const StoryStep&){
-    set_options(m_env.console, m_env.context, m_menu, m_env.language);
-    return Pokemon::outcome_ok();
-}
-
-Outcome StoryExecutor::route(RunState& state, const StoryStep& step){
-    return walk_route(m_env, state, step);
-}
-
-Outcome StoryExecutor::legs(RunState& state, const StoryStep& step){
-    return walk_legs(m_env, state, step);
-}
-
-Outcome StoryExecutor::step(RunState& state, const StoryStep& step){
-    return take_step(m_env, state, step);
-}
-
-Outcome StoryExecutor::talk(RunState&, const StoryStep&){
-    pbf_press_button(m_env.context, BUTTON_A, 160ms, 800ms);
-    return Pokemon::outcome_ok();
-}
-
-Outcome StoryExecutor::answer(RunState&, const StoryStep& step){
-    answer_yes_no(m_env.console, m_env.context, step.yes, BUTTON_B, YES_NO_TIMEOUT);
-    return Pokemon::outcome_ok();
-}
-
-Outcome StoryExecutor::mash(RunState&, const StoryStep&){
-    mash_until_overworld(m_env.console, m_env.context, SCENE_TIMEOUT);
-    return Pokemon::outcome_ok();
-}
-
-Outcome StoryExecutor::battle(RunState&, const StoryStep& step){
-    return PokemonFRLG::battle(m_env, step);
-}
-
-Outcome StoryExecutor::heal(RunState&, const StoryStep&){
-    heal_at_center(m_env.console, m_env.context);
-    healed_by_nurse(m_env.supplies);
-    return Pokemon::outcome_ok();
-}
-
-Outcome StoryExecutor::shop(RunState&, const StoryStep& step){
-    return PokemonFRLG::shop(m_env, step);
-}
-
-Outcome StoryExecutor::ready(RunState& state, const StoryStep& step){
-    return get_ready(m_env, state, step);
 }
 
 namespace{
@@ -701,32 +672,17 @@ Outcome open_gym_door(StoryEnv& env, RunState& state, const StoryStep& step){
     return Pokemon::outcome_ok(state.pose);
 }
 
-} // namespace
-
-
-Outcome StoryExecutor::game(RunState& state, const StoryStep& step){
-    if (step.variant == CLOSE_TRAINER_CARD){
-        close_trainer_card(m_env.console, m_env.context);
-        return Pokemon::outcome_ok();
-    }
-    if (step.variant == LEAVE_GIFT_SUMMARY){
-        leave_gift_summary(m_env.console, m_env.context);
-        return Pokemon::outcome_ok();
-    }
-    if (step.variant == CUT_TREE_VARIANT){
-        return cut_tree(m_env, state, step);
-    }
-    if (step.variant == TRASH_CANS_VARIANT){
-        return open_gym_door(m_env, state, step);
-    }
+//  The GAME steps without a row of their own: a capture or a PC deposit or
+//  withdrawal, a MART, TEACH, LEVEL, GRIND or fossil CHOICE.
+Outcome other_game_step(StoryEnv& env, RunState& state, const StoryStep& step){
     const Pokemon::Pose patch = state.pose;
-    ConsoleCaptureActions capture(m_env.console, m_env.context, m_env.language, [&]{
-        pace_trainer_battle(m_env, state, step, patch);
+    ConsoleCaptureActions capture(env.console, env.context, env.language, [&]{
+        pace_trainer_battle(env, state, step, patch);
     });
-    ConsolePcStorageActions pc(m_env.console, m_env.context);
-    std::optional<Outcome> done = run_storage_game_step(m_env.console.logger(), &m_env.console, step, capture, pc);
+    ConsolePcStorageActions pc(env.console, env.context);
+    std::optional<Outcome> done = run_storage_game_step(env.console.logger(), &env.console, step, capture, pc);
     if (!done){
-        done = run_abilities(m_env, state, step);
+        done = run_abilities(env, state, step);
     }
     if (done && done->succeeded() && !done->pose){
         //  Pacing leaves the player on either of its tiles.
@@ -738,6 +694,105 @@ Outcome StoryExecutor::game(RunState& state, const StoryStep& step){
     return Pokemon::unsupported_step(step);
 }
 
+//  How the console does an action that needs only the env.
+using ConsoleAction = Outcome (*)(StoryEnv& env, RunState& state, const StoryStep& step);
+
+//  The console's GAME actions; nullptr for another id.
+ConsoleAction game_console_action(StoryActionId id){
+    switch (id){
+    case StoryActionId::CLOSE_TRAINER_CARD:
+        return [](StoryEnv& env, RunState&, const StoryStep&){
+            close_trainer_card(env.console, env.context);
+            return Pokemon::outcome_ok();
+        };
+    case StoryActionId::LEAVE_GIFT_SUMMARY:
+        return [](StoryEnv& env, RunState&, const StoryStep&){
+            leave_gift_summary(env.console, env.context);
+            return Pokemon::outcome_ok();
+        };
+    case StoryActionId::CUT_TREE:
+        return cut_tree;
+    case StoryActionId::TRASH_CANS:
+        return open_gym_door;
+    case StoryActionId::GAME:
+        return other_game_step;
+    default:
+        return nullptr;
+    }
+}
+
+ConsoleAction console_action_of(StoryActionId id){
+    if (const ConsoleAction game = game_console_action(id)){
+        return game;
+    }
+    switch (id){
+    case StoryActionId::NEW_GAME:
+        return [](StoryEnv& env, RunState&, const StoryStep&){
+            play_new_game_intro(env.console, env.context, env.player_name);
+            return Pokemon::outcome_ok();
+        };
+    case StoryActionId::ROUTE:
+        return [](StoryEnv& env, RunState& state, const StoryStep& step){ return walk_route(env, state, step); };
+    case StoryActionId::LEGS:
+        return walk_legs;
+    case StoryActionId::STEP:
+        return take_step;
+    case StoryActionId::TALK:
+        return [](StoryEnv& env, RunState&, const StoryStep&){
+            pbf_press_button(env.context, BUTTON_A, 160ms, 800ms);
+            return Pokemon::outcome_ok();
+        };
+    case StoryActionId::ANSWER:
+        return [](StoryEnv& env, RunState&, const StoryStep& step){
+            answer_yes_no(env.console, env.context, step.yes, BUTTON_B, YES_NO_TIMEOUT);
+            return Pokemon::outcome_ok();
+        };
+    case StoryActionId::MASH:
+        return [](StoryEnv& env, RunState&, const StoryStep&){
+            mash_until_overworld(env.console, env.context, SCENE_TIMEOUT);
+            return Pokemon::outcome_ok();
+        };
+    case StoryActionId::BATTLE:
+        return [](StoryEnv& env, RunState&, const StoryStep& step){ return battle(env, step); };
+    case StoryActionId::HEAL:
+        return [](StoryEnv& env, RunState&, const StoryStep&){
+            heal_at_center(env.console, env.context);
+            healed_by_nurse(env.supplies);
+            return Pokemon::outcome_ok();
+        };
+    case StoryActionId::SHOP:
+        return [](StoryEnv& env, RunState&, const StoryStep& step){ return shop(env, step); };
+    case StoryActionId::READY:
+        return get_ready;
+    default:
+        break;
+    }
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::string("No console action for ") + story_action_name(id));
+}
+
+} // namespace
+
+
+StoryExecutor::StoryExecutor(StoryEnv& env)
+    : m_env(env)
+    , m_table(make_story_action_table([this](StoryActionId id){ return console_action(id); }))
+    , m_executor(m_table, m_guard)
+{}
+
+Outcome StoryExecutor::run(RunState& state, const StoryStep& step){
+    return m_executor.run(state, step);
+}
+
+Pokemon::StoryAction StoryExecutor::console_action(StoryActionId id){
+    if (id == StoryActionId::OPTIONS){
+        return {.act = [this](RunState&, const StoryStep&){
+            set_options(m_env.console, m_env.context, m_menu, m_env.language);
+            return Pokemon::outcome_ok();
+        }, .needs_console = true};
+    }
+    const ConsoleAction action = console_action_of(id);
+    return {.act = [this, action](RunState& state, const StoryStep& step){ return action(m_env, state, step); }, .needs_console = true};
+}
 
 namespace{
 
@@ -851,6 +906,14 @@ Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor&
     executor.set_menu(data.menu);
     StoryEnv& env = executor.env();
     Pokemon::Checkpoint checkpoint = Pokemon::build_story_checkpoint(data, executor, env.prepared);
+    //  The console has no reader for the tile the save stands on yet: the
+    //  save card's place is checked when the save is loaded
+    //  (check_save_place()), and the start check passes.
+    add_start_pose_check(
+        checkpoint, data.start,
+        []{ return std::optional<StoryPose>(); },
+        [&env](const std::string& line){ env.console.log(line, COLOR_ORANGE); }
+    );
     env.start_map = data.start ? data.start->map : "";
     env.start_menu = data.menu;
     const StartMenu menu = data.menu;

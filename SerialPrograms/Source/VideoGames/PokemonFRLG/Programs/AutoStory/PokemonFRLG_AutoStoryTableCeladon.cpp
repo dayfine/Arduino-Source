@@ -119,7 +119,16 @@ StoryCheckpoint bike_voucher(){
 //  - Route 10 (Route10 map.json) joins Route 9's rows 8..10 by its own;
 //    its north part, down to the Center's door (13, 20), has no trainer
 //    on the way and its grass is walked round. The trees west of the
-//    door (10, 20..26) stay.
+//    door (10, 20..26) stay. The walk there ends its open legs where a
+//    tile of error can't reach a blocker, and finds its place again on
+//    walls (console B, 2026-11-09, two runs "no fade" at the door): the
+//    step onto Route 10 is not always held up, so the player may stand a
+//    tile further east, and the leg along row 11 holds to the wall
+//    (17, 11) instead of ending on (16, 11) by count. The 12 tiles down
+//    column 16 may end a tile short or long: from rows 22..29 a tile west
+//    and up to the Center's wall (15, 20) all end on (15, 21). West along
+//    row 21 to the wall (9, 21) ends on (10, 21), three west of the
+//    door's column: the only count no wall after it checks.
 //  - The nurse, and the save in Route 10's Center: the save card names
 //    ROUTE 10.
 StoryCheckpoint route10_center(){
@@ -142,7 +151,9 @@ StoryCheckpoint route10_center(){
         step_onto("above_east_ledge", SOUTH, at(ROUTE9, 64, 3, SOUTH), "onto (64, 3), above the ledge (64, 4)"),
         hop("east_ledge_hop", SOUTH, at(ROUTE9, 64, 5, SOUTH), "down the ledge (64, 4)"),
         running(legs("above_caitlin_line", {{SOUTH, 3}, {EAST, 6}}, "down column 64 to row 8, east along it to (70, 8): above Caitlin's line (61..64, 9)")),
-        running(route("route10_nurse", at(ROUTE10_CENTER, 7, 4, NORTH), "east onto Route 10, round its grass and down to the Center's door (13, 20), to the nurse")),
+        running(route("route10_ledge_end", at(ROUTE10, 17, 11, EAST), "east onto Route 10, down to row 11 west of the grass and east along it to the wall (17, 11), above the fence post (17, 12)")),
+        running(legs("below_center_door", {{WEST, 1}, {SOUTH, 12}, {WEST, 1}, {NORTH, 2}, {WEST, 5}, {EAST, 3}}, "into the ledge's gap (16, 11), down column 16 to row 23, a tile west, up to the Center's wall (15, 21), west along row 21 to the wall (10, 21), east to (13, 21), below the door")),
+        running(route("route10_nurse", at(ROUTE10_CENTER, 7, 4, NORTH), "up onto the Center's door (13, 20), to the nurse")),
         heal("heal_route10"),
     });
 }

@@ -20,11 +20,13 @@
 #ifndef PokemonAutomation_PokemonFRLG_AutoStoryEvents_H
 #define PokemonAutomation_PokemonFRLG_AutoStoryEvents_H
 
+#include <functional>
 #include <optional>
 #include <string>
 #include <vector>
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
+#include "Pokemon/AutoStory/Pokemon_StoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
 #include "Pokemon/AutoStory/Pokemon_StorySteps.h"
@@ -33,6 +35,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
+#include "PokemonFRLG_AutoStoryStepTable.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -185,6 +188,27 @@ std::string save_card_place(const std::string& map);
 //  be read (empty `place`), or the map has no known place.
 std::string save_place_error(const std::string& start_map, const std::string& place);
 
+//  Why a save standing at `stands` can't start a checkpoint that starts at
+//  `start`, or empty if it can: the same map and tile, and the same facing
+//  when both are known.
+std::string start_pose_mismatch(const Pokemon::Pose& start, const StoryPose& stands);
+
+//  Where the save just loaded stands, as the game reads it: nothing when it
+//  can't be read.
+using SavePoseReader = std::function<std::optional<StoryPose>()>;
+//  Where the start check says what it found.
+using StoryLog = std::function<void(const std::string& line)>;
+
+//  Adds to `checkpoint`, built from a row that starts at `start`, the start
+//  check: the save it starts from, as `read` reads it, must stand there
+//  (start_pose_mismatch()), or the checkpoint stops before its first event,
+//  "start_failed". A save that can't be read passes. `log` gets a
+//  mismatch, or that nothing was read. A row with no start (a new game)
+//  gets none.
+void add_start_pose_check(
+    Pokemon::Checkpoint& checkpoint, const std::optional<Pokemon::Pose>& start, SavePoseReader read, StoryLog log
+);
+
 //  `legs` from `start` as route steps for the walker, each checked against
 //  the map: nothing if a step is blocked or leaves the map. A leg ends "to
 //  wall" if the next step its way is blocked.
@@ -267,11 +291,15 @@ void read_lead_moves(StoryEnv& env, StartMenu menu);
 //  was read.
 void read_bag_supplies(StoryEnv& env, StartMenu menu);
 
-//  Does FRLG's kinds of story step on the console. A console step that
-//  fails is a failed Outcome, which the segment answers by reloading.
+//  Does FRLG's kinds of story step on the console, each with its row of
+//  story_action_rows() (PokemonFRLG_AutoStoryStepTable.h). A console step
+//  that fails is a failed Outcome, which the segment answers by reloading.
 class StoryExecutor : public Pokemon::StoryStepExecutor{
 public:
     explicit StoryExecutor(StoryEnv& env);
+    //  Its table's actions point at it.
+    StoryExecutor(const StoryExecutor&) = delete;
+    StoryExecutor& operator=(const StoryExecutor&) = delete;
 
     StoryEnv& env(){
         return m_env;
@@ -281,34 +309,19 @@ public:
         m_menu = menu;
     }
 
+    //  The step's action from the table.
     virtual Pokemon::Outcome run(Pokemon::RunState& state, const StoryStep& step) override;
 
-protected:
-    virtual Pokemon::Outcome new_game(Pokemon::RunState& state, const StoryStep& step) override;
-    virtual Pokemon::Outcome options(Pokemon::RunState& state, const StoryStep& step) override;
-    virtual Pokemon::Outcome route(Pokemon::RunState& state, const StoryStep& step) override;
-    virtual Pokemon::Outcome legs(Pokemon::RunState& state, const StoryStep& step) override;
-    virtual Pokemon::Outcome step(Pokemon::RunState& state, const StoryStep& step) override;
-    virtual Pokemon::Outcome talk(Pokemon::RunState& state, const StoryStep& step) override;
-    virtual Pokemon::Outcome answer(Pokemon::RunState& state, const StoryStep& step) override;
-    virtual Pokemon::Outcome mash(Pokemon::RunState& state, const StoryStep& step) override;
-    virtual Pokemon::Outcome battle(Pokemon::RunState& state, const StoryStep& step) override;
-    virtual Pokemon::Outcome heal(Pokemon::RunState& state, const StoryStep& step) override;
-    //  The Viridian Mart, before the Boulder Badge: Potions, Antidotes and Parlyz Heals.
-    virtual Pokemon::Outcome shop(Pokemon::RunState& state, const StoryStep& step) override;
-    virtual Pokemon::Outcome ready(Pokemon::RunState& state, const StoryStep& step) override;
-    //  CLOSE_TRAINER_CARD: back from SID Helper (close_trainer_card()).
-    //  LEAVE_GIFT_SUMMARY: back from Gift RNG (leave_gift_summary()).
-    //  A capture or a PC deposit or withdrawal (capture_step(), pc_step()
-    //  in PokemonFRLG_AutoStoryCapture.h); a shiny met in a capture stops
-    //  the program without reloading. A MART, TEACH, LEVEL, GRIND or
-    //  fossil CHOICE (PokemonFRLG_AutoStoryAbilities.h); a GRIND heals by
-    //  routing to its target, the nurse, and back.
-    virtual Pokemon::Outcome game(Pokemon::RunState& state, const StoryStep& step) override;
-
 private:
+    //  How the console does `id`.
+    Pokemon::StoryAction console_action(StoryActionId id);
+
     StoryEnv& m_env;
     StartMenu m_menu = StartMenu::FULL;
+    //  FRLG does nothing around a step: a failed one fails the step.
+    Pokemon::StepGuard m_guard;
+    Pokemon::StoryActionTable m_table;
+    Pokemon::TableExecutor m_executor;
 };
 
 //  The checkpoint `data` as events, saving at its end.
