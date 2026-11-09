@@ -306,6 +306,23 @@ step.
 stay still, then `shot`: the player ends against the wall whatever the start
 was (the "clip" of clip-then-offset). Not on fixed-camera stretches.
 
+**Confirm a wanderer.** When someone blocks a leg, find out whether they
+move before changing code. Step out of their reach first (two taps away, off
+their row and column), so you don't block them or start a talk, then shoot
+on a timer:
+
+    dpad DOWN 160 640
+    dpad DOWN 160 640
+    shot s0
+    wait 2500
+    shot s1
+    ...                     (12 shots, 30 s)
+
+Montage the shots (`ffmpeg -framerate 1 -i s%d.png -vf "crop=...,tile=4x4"`)
+and write down every tile they stood on: that is the zone. Compare it with
+the map's `wander` min/max. Then probe the tiles around the zone the same
+way (tap, shot, tap back) to find the route that avoids it.
+
 **Talk, read a sign, answer a prompt.** Face the tile with a tap toward it,
 `press A 100 1500`, `shot`, `detect bdsp_dialog`. Rocks and signs answer too:
 read the shot. `press B 100 800` advances lines and never starts a talk; `A`
@@ -347,6 +364,11 @@ unknown screen: a new game's first screens accept it.
 - A cutscene (Rowan's) opens with no dialog box: the walk reads as stopped;
   wait for the first line.
 - Wandering NPCs (the Poketch clown, Jubilife's green-haired man, Route
-  203's road woman and the blue-haired man) are moving walls: never anchor
-  on them, and wait them out before re-planning.
+  203's road woman and the blue-haired man, Route 204's youngster at the
+  Ravaged Path) are moving walls: never anchor on them, and **route around
+  their zone**, not through it and not by waiting them out. Waiting is the
+  fallback only when no route avoids the zone. Route 204, 2026-11-08: the
+  youngster wanders (12..14, 2) right beside the door tile (11, 2); the
+  route along row 2 failed twice, row 3 to (11, 3) then north never meets
+  him. Confirm a suspected wanderer with the recipe "Confirm a wanderer".
 - Rocks and signs answer A too. Check that the talk is the one you want.
