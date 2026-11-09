@@ -1715,8 +1715,6 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryWalkSteps.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h
-    Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_StorySim_Tests.cpp
-    Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_StorySim_Tests.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryTable_Tests.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryTable_Tests.h
     Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Talks.cpp

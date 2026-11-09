@@ -14,7 +14,6 @@
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_Segment00_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_StoryMaps_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_StoryWorld_Tests.h"
-#include "Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_StorySim_Tests.h"
 #include "Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_StorySimulation_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_StoryTable_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_Walk_Tests.h"
@@ -39,7 +38,6 @@ void add_tests(UnitTestDatabase& database){
     add_tests_AutoStory_PlannedRoute(database);
     add_tests_AutoStory_GridSim(database);
     add_tests_AutoStory_RecoveryWalk(database);
-    add_tests_AutoStory_StorySim(database);
 }
 
 
