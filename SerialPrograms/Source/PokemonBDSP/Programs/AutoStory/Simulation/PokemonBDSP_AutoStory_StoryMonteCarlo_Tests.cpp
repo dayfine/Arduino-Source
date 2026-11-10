@@ -43,9 +43,9 @@ using Pokemon::SeedOutcome;
 using Pokemon::StoryStep;
 using Pokemon::TilePos;
 
-constexpr const char* SEEDS_VARIABLE = "PA_BDSP_STORY_MC_SEEDS";
-constexpr const char* ROWS_VARIABLE = "PA_BDSP_STORY_MC_ROWS";
-constexpr const char* TRACE_VARIABLE = "PA_BDSP_STORY_MC_TRACE";
+constexpr std::string_view SEEDS_VARIABLE = "PA_BDSP_STORY_MC_SEEDS";
+constexpr std::string_view ROWS_VARIABLE = "PA_BDSP_STORY_MC_ROWS";
+constexpr std::string_view TRACE_VARIABLE = "PA_BDSP_STORY_MC_TRACE";
 constexpr size_t DEFAULT_SEEDS = 20;
 
 //  The runs log nothing: a seed's own log is a reproduction away.
@@ -286,19 +286,20 @@ std::vector<StoryStep> old_steps_to_roark(){
     StoryStep taps;
     taps.kind = Pokemon::StoryStepKind::LEGS;
     taps.name = "above_roarks_row";
-    taps.legs = {
+    taps.action = "legs";
+    taps.args["legs"] = std::vector<Pokemon::StoryLeg>{
         {.direction = Direction::EAST, .tiles = 1}, {.direction = Direction::SOUTH, .tiles = 2},
         {.direction = Direction::WEST, .tiles = 1}, {.direction = Direction::SOUTH, .tiles = 5},
         {.direction = Direction::EAST, .tiles = 14}, {.direction = Direction::SOUTH, .tiles = 10},
         {.direction = Direction::WEST, .tiles = 2}, {.direction = Direction::SOUTH, .tiles = 2},
     };
-    taps.pose_after = Pokemon::tile_pose("OreburghMine", {TilePos{27, 28}}, Direction::SOUTH);
+    taps.pose_after = Pokemon::GridPose{"OreburghMine", {TilePos{27, 28}}, Direction::SOUTH};
     StoryStep walls;
     walls.kind = Pokemon::StoryStepKind::LEGS;
     walls.name = "beside_roarks_rock";
-    walls.variant = "to_wall";
-    walls.legs = {{.direction = Direction::WEST, .tiles = 7}, {.direction = Direction::SOUTH, .tiles = 1}};
-    walls.pose_after = Pokemon::tile_pose("OreburghMine", {TilePos{20, 29}}, Direction::SOUTH);
+    walls.action = "to_wall";
+    walls.args["legs"] = std::vector<Pokemon::StoryLeg>{{.direction = Direction::WEST, .tiles = 7}, {.direction = Direction::SOUTH, .tiles = 1}};
+    walls.pose_after = Pokemon::GridPose{"OreburghMine", {TilePos{20, 29}}, Direction::SOUTH};
     return {taps, walls};
 }
 
@@ -332,7 +333,7 @@ std::vector<StoryCheckpoint> from_the_mines_sign(std::vector<StoryCheckpoint> ro
         const auto sign = std::find_if(row.steps.begin(), row.steps.end(), [](const StoryStep& step){
             return step.name == "up_to_the_mines_sign";
         });
-        row.start = Pokemon::tile_pose("OreburghCity", {TilePos{45, 59}, TilePos{45, 58}}, Direction::NORTH);
+        row.start = Pokemon::GridPose{"OreburghCity", {TilePos{45, 59}, TilePos{45, 58}}, Direction::NORTH};
         row.saves_in.clear();
         row.steps.erase(row.steps.begin(), sign);
     }

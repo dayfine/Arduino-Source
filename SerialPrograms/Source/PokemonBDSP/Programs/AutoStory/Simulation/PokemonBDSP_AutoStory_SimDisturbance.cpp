@@ -26,7 +26,7 @@ using Pokemon::TilePos;
 namespace{
 
 //  The caves on the story's way, where every tile has wild Pokemon.
-constexpr const char* CAVE_MAPS[] = {"OreburghMineB1F", "OreburghMine", "RavagedPath"};
+constexpr std::string_view CAVE_MAPS[] = {"OreburghMineB1F", "OreburghMine", "RavagedPath"};
 //  Drift comes in steps of this many thousandths of a tile: 4 ms of stick
 //  across, 6 ms up or down, so the grid sim puts it back on the grid exactly.
 constexpr int DRIFT_STEP = 25;
@@ -43,7 +43,7 @@ int along(const SimPos& pos, Direction direction){
     return across(direction) ? pos.x : pos.y;
 }
 bool wanderer_on(const GridSim& sim, const TilePos& pos){
-    const std::vector<SimWanderer>& people = sim_wanderers(sim);
+    const std::vector<SimWanderer>& people = detail::sim_wanderers(sim);
     return std::any_of(people.begin(), people.end(), [&](const SimWanderer& person){ return person.pos == pos; });
 }
 //  Whether the player can drift a little toward `direction`: the tile there
@@ -60,7 +60,7 @@ bool stopped_at_wall(const GridSim& sim, const SimMove& move, Direction directio
 
 bool in_cave(const StoryWorld& world, const TilePos& pos){
     const std::optional<MapTile> tile = world.to_local(pos);
-    return tile && std::ranges::any_of(CAVE_MAPS, [&](const char* map){ return tile->map == story_banner_name(map); });
+    return tile && std::ranges::any_of(CAVE_MAPS, [&](std::string_view map){ return tile->map == story_banner_name(std::string(map)); });
 }
 
 //  Whether `box` of `map` holds `pos`.
@@ -250,7 +250,7 @@ WalkResult DisturbedRouteIO::walk_to_wall(const RouteWallWalk& walk){
     const SimPace pace = walk.options.pace == DpadPace::RUN ? SimPace::RUN : SimPace::WALK;
     const DisturbedHold hold = disturbed_hold(m_sim, m_noise, walk.direction, walk.limit, pace);
     m_notes.push_back(std::format("[Sim] {}: held {} to {} at {}, {} wild battle(s).", walk.label, direction_name(walk.direction),
-        sim_stop_name(hold.move.stop), to_string(m_sim.player().pos), hold.battles));
+        detail::sim_stop_name(hold.move.stop), to_string(m_sim.player().pos), hold.battles));
     WalkResult result{.stop = walk_stop(hold.move.stop), .walked = hold.move.time, .wild_battles = hold.battles,
         .moved_chunks = (size_t)(hold.move.distance / SIM_TILE)};
     if (hold.first_tile){

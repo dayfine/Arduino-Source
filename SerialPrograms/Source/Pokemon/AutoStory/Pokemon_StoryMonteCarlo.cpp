@@ -87,8 +87,8 @@ std::vector<uint64_t> story_seeds(size_t count){
     return seeds;
 }
 
-size_t seed_count(const char* name, size_t fallback){
-    const char* value = std::getenv(name);
+size_t seed_count(std::string_view name, size_t fallback){
+    const auto* value = std::getenv(std::string(name).c_str());
     if (value == nullptr){
         return fallback;
     }
@@ -96,8 +96,8 @@ size_t seed_count(const char* name, size_t fallback){
     return count > 0 ? (size_t)count : fallback;
 }
 
-std::vector<std::string> selected_rows(const char* name, const std::vector<std::string>& rows){
-    const char* value = std::getenv(name);
+std::vector<std::string> selected_rows(std::string_view name, const std::vector<std::string>& rows){
+    const auto* value = std::getenv(std::string(name).c_str());
     if (value == nullptr || *value == '\0'){
         return rows;
     }

@@ -13,6 +13,7 @@
  *  Game-agnostic: a game binds it by running one row for one seed's
  *  DisturbancePlan (a SeedRun) on its own simulation.
  *
+// code-health: allow header_symbols -- Monte Carlo framework types, disturbance plan and reporter
  */
 
 #ifndef PokemonAutomation_Pokemon_StoryMonteCarlo_H
@@ -143,10 +144,10 @@ std::string describe(const DisturbancePlan& plan);
 std::vector<uint64_t> story_seeds(size_t count);
 //  The seed count to run: `fallback`, or the environment variable `name`
 //  when it holds a positive number (the heavy, on-demand mode).
-size_t seed_count(const char* name, size_t fallback);
+size_t seed_count(std::string_view name, size_t fallback);
 //  The rows to run: all of `rows`, or those the environment variable
 //  `name` lists (comma-separated ids), in `rows`' order.
-std::vector<std::string> selected_rows(const char* name, const std::vector<std::string>& rows);
+std::vector<std::string> selected_rows(std::string_view name, const std::vector<std::string>& rows);
 
 
 //  What one seed's run of a row did.
