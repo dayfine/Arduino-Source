@@ -50,6 +50,10 @@ TappedEnd tapped_end(const StoryWorld& world, const std::string& map, const Poke
 //  The tiles a "measured" LEGS step may end on from `from`, one a tile of
 //  it; the step measures which. Nothing if `from`'s map has no world.
 std::optional<Pokemon::Pose> measured_ends(const Pokemon::Pose& from, const Pokemon::StoryStep& step);
+//  The trainers of `world` who can see us in row `row`: story_trainers(),
+//  less those an earlier row fights, whom its save and every later one's
+//  keep beaten.
+std::vector<TrainerSight> row_trainers(const StoryWorld& world, const std::string& row);
 
 
 //  Executes walking and movement-related story steps via StoryStepIO.

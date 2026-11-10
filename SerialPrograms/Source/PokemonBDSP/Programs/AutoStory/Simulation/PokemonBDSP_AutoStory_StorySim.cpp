@@ -426,7 +426,7 @@ const StoryWorld* SimExecutor::sim_world(const std::string& map) const{
 
 SimWorld SimExecutor::setup(const StoryWorld* world) const{
     //  B runs once the shoes' scene has given them: the scene ends at home.
-    SimWorld out{.world = world, .trainers = story_trainers(*world), .can_run = m_walks.can_run()};
+    SimWorld out{.world = world, .trainers = row_trainers(*world, m_row), .can_run = m_walks.can_run()};
     for (const SimStairs& stairs : sim_stairs()){
         if (sim_world(stairs.map) == world){
             out.doors.push_back(story_to_world(*world, stairs.map, map_point(stairs.map, "stairs").next(stairs.side)));

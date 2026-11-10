@@ -4,6 +4,7 @@
  *
  */
 
+#include <algorithm>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -18,7 +19,9 @@
 #include "Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "Utils/PokemonBDSP_AutoStory_Walk.h"
 #include "Actions/PokemonBDSP_AutoStory_Talks.h"
+#include "PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP_AutoStory_StoryStepIO.h"
+#include "PokemonBDSP_AutoStory_StoryWalkSteps.h"
 #include "PokemonBDSP_AutoStory_Walk_Tests.h"
 
 namespace PokemonAutomation{
@@ -329,6 +332,27 @@ UnitTestResult test_pokemon_center_on_screen(Logger&){
     return true;
 }
 
+//  01.02's walk east beats the Youngster above Route 203's row 18; the rows
+//  after it, from saves made since, do not meet him again.
+UnitTestResult test_row_trainers(Logger&){
+    const StoryWorld* world = story_plan_world("Route203", "JubilifeCity");
+    if (world == nullptr){
+        return std::string("no world joins Route 203 and Jubilife");
+    }
+    const auto has_youngster = [world](const std::string& row){
+        const std::vector<TrainerSight> sights = row_trainers(*world, row);
+        return std::any_of(sights.begin(), sights.end(), [](const TrainerSight& sight){
+            return sight.name == "Youngster (above row 18)";
+        });
+    };
+    if (!has_youngster("01.02")){
+        return std::string("01.02 fights the Youngster: he must be on its trainers");
+    }
+    if (has_youngster("01.06")){
+        return std::string("01.06 starts from a save after 01.02 beat the Youngster");
+    }
+    return true;
+}
 
 struct AutoStoryWalkInput{
     std::string name;
@@ -442,6 +466,10 @@ const AutoStoryWalkCase AUTO_STORY_WALK_CASES[] = {
     },
     {
         .input = {"a wild battle on an open leg's taps, placed by its screen events", test_leg_battle_place},
+        .expectation = {},
+    },
+    {
+        .input = {"a row's trainers leave out those an earlier row beat", test_row_trainers},
         .expectation = {},
     },
 };
