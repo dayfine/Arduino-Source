@@ -1,3 +1,4 @@
+// code-health: allow header_symbols -- grid simulation primitives and types for BDSP overworld movement simulation
 /*  BDSP AutoStory - Grid simulation
  *
  *  From: https://github.com/PokemonAutomation/
@@ -26,6 +27,7 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 #include "Common/Cpp/Time.h"
@@ -38,6 +40,8 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
 
+
+namespace detail{
 
 //  A tile, in the simulation's units.
 inline constexpr int SIM_TILE = 1000;
@@ -59,11 +63,30 @@ Pokemon::TilePos nearest_tile(const SimPos& pos);
 std::string to_string(const SimPos& pos);
 
 //  A scene that starts when the player steps onto one of `tiles` (a coord
-//  event): its dialogue opens and the player stops. It fires once.
+//  event): its dialogue opens and the player stops. It fires once, and
+//  spends the triggers named in `spends` with it: the same scene's.
 struct SimTrigger{
     std::string name;
     std::vector<Pokemon::TilePos> tiles;
+    std::vector<std::string> spends = {};
 };
+
+} // namespace detail
+
+//  A tile, in the simulation's units.
+using detail::SIM_TILE;
+//  Position in simulation units.
+using detail::SimPos;
+//  Simulation position at the origin of a tile.
+using detail::sim_pos;
+//  Checks if a position is exactly on grid.
+using detail::on_grid;
+//  Returns the nearest tile to a position.
+using detail::nearest_tile;
+//  Formats position as string.
+using detail::to_string;
+//  Trigger region in simulation units.
+using detail::SimTrigger;
 
 //  Where the simulated player walks: the world (which must outlive the
 //  simulation), its trainers and its scene triggers, in world tiles; and
@@ -81,6 +104,22 @@ struct SimWanderer{
     Milliseconds time_offset = Milliseconds(0);        //  initial start time offset
 };
 
+//  Simulated grid environment.
+class GridSim;
+namespace detail{
+//  Advance simulation time.
+void sim_advance_time(GridSim& sim, Milliseconds time);
+//  Get simulated wanderers.
+const std::vector<SimWanderer>& sim_wanderers(const GridSim& sim);
+//  Add a simulated trigger.
+void sim_add_trigger(GridSim& sim, SimTrigger trigger);
+//  Get simulated triggers.
+const std::vector<SimTrigger>& sim_triggers(const GridSim& sim);
+//  Forget warp state.
+void sim_forget_warp(GridSim& sim);
+//  Set simulated fight.
+void sim_fight(GridSim& sim);
+} // namespace detail
 struct SimWorld{
     const StoryWorld* world = nullptr;
     std::vector<TrainerSight> trainers = {};
@@ -98,8 +137,10 @@ enum class SimStop{
     WARP,       //  stepped onto a door
     LIMIT,      //  a held walk ran out of time
 };
+namespace detail{
 //  Returns the debug string for a SimStop reason.
-const char* sim_stop_name(SimStop stop);
+std::string_view sim_stop_name(SimStop stop);
+} // namespace detail
 
 //  What one input did.
 struct SimMove{
@@ -118,6 +159,10 @@ struct SimPlayer{
     bool dialog = false;
     //  The trainer whose dialogue is open, if one is.
     std::optional<std::string> trainer;
+    //  The scene (SimTrigger) whose dialogue is open, if one is.
+    std::optional<std::string> scene;
+    //  Scenes whose dialogue was fought as a trainer's (sim_fight()).
+    std::vector<std::string> scenes_fought = {};
     //  The door the last warp stepped onto.
     std::optional<Pokemon::TilePos> warped;
     std::vector<std::string> fought = {};
@@ -156,8 +201,12 @@ public:
     }
 
 private:
-    friend void sim_advance_time(GridSim& sim, Milliseconds time);
-    friend const std::vector<SimWanderer>& sim_wanderers(const GridSim& sim);
+    friend void detail::sim_advance_time(GridSim& sim, Milliseconds time);
+    friend const std::vector<SimWanderer>& detail::sim_wanderers(const GridSim& sim);
+    friend void detail::sim_add_trigger(GridSim& sim, SimTrigger trigger);
+    friend const std::vector<SimTrigger>& detail::sim_triggers(const GridSim& sim);
+    friend void detail::sim_forget_warp(GridSim& sim);
+    friend void detail::sim_fight(GridSim& sim);
 
     SimMove advance(Pokemon::Direction direction, int distance);
     std::optional<SimStop> enter_next(Pokemon::Direction direction, int part, int& moved);
@@ -172,13 +221,23 @@ private:
     std::vector<SimWanderer> m_wanderers;
 };
 
+namespace detail{
 //  Advances simulated time for world events and wandering NPCs.
 void sim_advance_time(GridSim& sim, Milliseconds time);
 //  The wandering NPCs on the simulation's world.
 const std::vector<SimWanderer>& sim_wanderers(const GridSim& sim);
-
+//  A scene's trigger on the world the player is on, from now on.
+void sim_add_trigger(GridSim& sim, SimTrigger trigger);
+//  The scene triggers on the world the player is on.
+const std::vector<SimTrigger>& sim_triggers(const GridSim& sim);
+//  A new step starts: the warp a step before stepped onto is not this one's.
+void sim_forget_warp(GridSim& sim);
+//  The open dialogue is fought as a trainer's: a scene's is noted in
+//  SimPlayer::scenes_fought, as it is pressed through under a walk.
+void sim_fight(GridSim& sim);
 //  Whether the player could take a step toward `direction` from where they stand.
 bool sim_can_step(const GridSim& sim, Pokemon::Direction direction);
+} // namespace detail
 
 
 //  A deterministic, already-cleared encounter at a tap boundary. This is
@@ -209,6 +268,15 @@ struct SimWallEncounter{
     Pokemon::Direction direction = Pokemon::Direction::NORTH;
     SimWildBattle battle;
 };
+//  Wild battles in tall grass on every pass: one each `every` grass tiles
+//  the player steps onto, counted across walks, each run from at once. A
+//  fixed count, not the game's dice, so a route that crosses the grass
+//  again after each battle's replan meets a battle every time (00.04 on
+//  Route 201's row 5, lab-B 2026-11-09 16:14: a battle on each of four
+//  passes of 10 grass tiles). 0: no grass battles.
+struct SimGrassBattles{
+    size_t every = 0;
+};
 
 //  The walker's RouteIO on a GridSim. A failure throws GridSimFailure.
 class GridSimRouteIO : public RouteIO{
@@ -216,12 +284,14 @@ public:
     //  Every line noted goes to `notes`, which must outlive this.
     GridSimRouteIO(
         GridSim& sim, std::vector<std::string>& notes,
-        std::vector<SimWildTap> encounters = {}, std::vector<SimWallEncounter> wall_encounters = {}
+        std::vector<SimWildTap> encounters = {}, std::vector<SimWallEncounter> wall_encounters = {},
+        SimGrassBattles grass = {}
     )
         : m_sim(sim)
         , m_notes(notes)
         , m_encounters(std::move(encounters))
         , m_wall_encounters(std::move(wall_encounters))
+        , m_grass(grass)
     {}
 
     virtual WalkResult walk_to_wall(const RouteWallWalk& walk) override;
@@ -238,11 +308,15 @@ private:
     //  The escape policy on `battle`; notes a FAILURE where the console
     //  would fail the program.
     void escape_scripted_battle(const SimWildBattle& battle, const std::string& label);
+    //  Whether stepping onto `tile` sets off a grass battle (SimGrassBattles).
+    bool grass_battle(const Pokemon::TilePos& tile);
 
     GridSim& m_sim;
     std::vector<std::string>& m_notes;
     std::vector<SimWildTap> m_encounters;
     std::vector<SimWallEncounter> m_wall_encounters;
+    SimGrassBattles m_grass;
+    size_t m_grass_tiles = 0;   //  grass tiles stepped onto since the last grass battle
 };
 
 //  What GridSimRouteIO throws for RouteNote::FAILURE.

@@ -41,6 +41,8 @@ Pokemon::StoryInterrupts story_interrupts(Pokemon::ScreenLookFunction look, cons
         out.handlers.starts_on(step, InterruptKind::DIALOG);
     }
     out.handlers.starts_on(StoryStepKind::BATTLE, InterruptKind::TRAINER_SIGHT);
+    //  The story's wild battles (the Starly at the lake) are the step's.
+    out.handlers.starts_on(StoryStepKind::BATTLE, InterruptKind::WILD_ENCOUNTER);
     out.handlers.starts_on(StoryStepKind::TRAIN, InterruptKind::WILD_ENCOUNTER);
     for (StoryStepKind step : {StoryStepKind::GAME, StoryStepKind::NEW_GAME}){
         for (InterruptKind kind : {InterruptKind::WILD_ENCOUNTER, InterruptKind::TRAINER_SIGHT, InterruptKind::WARP}){
@@ -51,11 +53,12 @@ Pokemon::StoryInterrupts story_interrupts(Pokemon::ScreenLookFunction look, cons
 }
 
 
-ConsoleScreenLook::ConsoleScreenLook(VideoStream& stream, ProControllerContext& context)
-    : m_stream(stream)
+ConsoleScreenLook::ConsoleScreenLook(ConsoleHandle& console, ProControllerContext& context)
+    : m_stream(console)
     , m_context(context)
     , m_observer(BattleCue::WILD_MENU, "")
-    , m_watcher(m_observer)
+    , m_eyes(console, m_observer)
+    , m_watcher(m_eyes)
     , m_start(current_time())
 {}
 

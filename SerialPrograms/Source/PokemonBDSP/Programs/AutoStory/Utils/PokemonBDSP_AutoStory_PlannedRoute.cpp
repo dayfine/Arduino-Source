@@ -15,6 +15,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_WallRecovery.h"
 #include "PokemonBDSP_AutoStory_LegBattle.h"
 #include "PokemonBDSP_AutoStory_Location.h"
+#include "PokemonBDSP_AutoStory_RouteChoice.h"
 #include "PokemonBDSP_AutoStory_RouteIO.h"
 #include "PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP_AutoStory_PlannedRoute.h"
@@ -58,7 +59,7 @@ void log_plan(RouteIO& io, const StoryWorld& maps, const std::string& label, con
     for (const PlannedLeg& leg : legs){
         logged.push_back(planned_route_leg(maps, leg));
     }
-    io.note(ROUTE_LOG_TAG + route_plan_line(label, route_tiles(maps, from), logged), RouteNote::LOG);
+    io.note(std::string(ROUTE_LOG_TAG) + route_plan_line(label, route_tiles(maps, from), logged), RouteNote::LOG);
 }
 
 //  Logs a leg that ended on its planned tiles, and how that is known: an
@@ -66,7 +67,7 @@ void log_plan(RouteIO& io, const StoryWorld& maps, const std::string& label, con
 //  leg to a wall is walked again to its wall.
 void log_leg_done(RouteIO& io, const StoryWorld& maps, const std::string& label, const PlannedLeg& planned, size_t wild_battles){
     const bool assumed = !planned.leg.ends_at_wall && wild_battles > 0;
-    io.note(ROUTE_LOG_TAG + route_leg_end_line(label, route_log_leg(planned.leg), route_tiles(maps, planned.after),
+    io.note(std::string(ROUTE_LOG_TAG) + route_leg_end_line(label, route_log_leg(planned.leg), route_tiles(maps, planned.after),
         assumed ? EndBasis::ASSUMED : EndBasis::WALKED, assumed ? std::to_string(wild_battles) + " wild battle(s) on the way" : ""), RouteNote::LOG);
 }
 
@@ -180,6 +181,7 @@ enum class LegNext{
     NEXT_LEG,
     REPLAN,
     ARRIVED_EARLY,  //  through a warp at the leg's end (walk_route_to_warp())
+    SCENE,          //  the next step's scene started (RouteWalkPlan::scene_next)
 };
 //  How far past a leg's end a walk that ran on may have gone.
 constexpr size_t WARP_SLIDE_TILES = 2;
@@ -236,7 +238,7 @@ public:
     RouteEnd run(std::vector<TilePos> from);
 
 private:
-    std::vector<PlannedLeg> plan_legs() const;
+    std::vector<PlannedLeg> plan_legs(bool first) const;
     LegNext walk_leg(const PlannedLeg& planned, size_t number, size_t count);
     std::vector<TilePos> arrive() const;
 
@@ -250,6 +252,7 @@ private:
 
     //  Open legs, tapped.
     LegNext open_leg(LegWalk& walk);
+    LegNext held_leg(LegWalk& walk);
     LegNext interrupted_open_leg(LegWalk& walk);
     void turn_tap(LegWalk& walk);
     LegNext blocked_open_leg(LegWalk& walk, size_t moved);
@@ -294,7 +297,7 @@ RouteEnd RouteWalker::run(std::vector<TilePos> from){
     m_from = std::move(from);
     m_map_start = map_of(m_maps, m_from);
     for (size_t plans = 0; plans < 8; plans++){
-        const std::vector<PlannedLeg> legs = plan_legs();
+        const std::vector<PlannedLeg> legs = plan_legs(plans == 0);
         m_io.note(m_plan.label + ": " + std::to_string(legs.size()) + " legs planned", RouteNote::STATUS);
         log_plan(m_io, m_maps, m_plan.label, m_from, legs);
         LegNext next = LegNext::NEXT_LEG;
@@ -302,14 +305,14 @@ RouteEnd RouteWalker::run(std::vector<TilePos> from){
             next = walk_leg(legs[number - 1], number, legs.size());
         }
         if (next != LegNext::REPLAN){
-            return {next == LegNext::ARRIVED_EARLY ? m_from : arrive(), m_warp};
+            return {next == LegNext::NEXT_LEG ? arrive() : m_from, m_warp, next == LegNext::SCENE};
         }
     }
     fail(m_io, m_plan.label + ": too many plans.");
 }
 
-std::vector<PlannedLeg> RouteWalker::plan_legs() const{
-    std::optional<std::vector<PlannedLeg>> legs = plan_recovered_route(m_grid, m_from, m_plan.goal, m_plan.costs);
+std::vector<PlannedLeg> RouteWalker::plan_legs(bool first) const{
+    std::optional<std::vector<PlannedLeg>> legs = plan_walk({m_grid, m_from, m_plan.goal, m_plan.costs, m_plan.speed, {}, m_plan.goal_is_trigger}, first);
     if (!legs){
         //  From a few possible tiles the exact-open-leg costs found no
         //  plan where the default ones did (r240a, three tiles on Route
@@ -339,7 +342,7 @@ LegNext RouteWalker::walk_leg(const PlannedLeg& planned, size_t number, size_t c
         .map_before = map_of(m_maps, m_from),
         .map_after = map_of(m_maps, planned.after),
     };
-    const LegNext next = planned.leg.ends_at_wall ? wall_leg(walk) : open_leg(walk);
+    const LegNext next = planned.leg.ends_at_wall ? wall_leg(walk) : planned.leg.held ? held_leg(walk) : open_leg(walk);
     if (next == LegNext::REPLAN){
         return next;
     }
@@ -384,7 +387,7 @@ std::vector<TilePos> RouteWalker::arrive() const{
         fail(m_io, m_plan.label + ": arrived at " + describe(m_maps, m_from) + " on the map, but " + map_end +
             "'s location banner never showed (read " + (reads.empty() ? "nothing" : reads) + ").");
     }
-    m_io.note(ROUTE_LOG_TAG + route_arrived_line(m_plan.label, route_tiles(m_maps, m_from)), RouteNote::LOG);
+    m_io.note(std::string(ROUTE_LOG_TAG) + route_arrived_line(m_plan.label, route_tiles(m_maps, m_from)), RouteNote::LOG);
     return m_from;
 }
 
@@ -608,6 +611,18 @@ LegNext RouteWalker::open_leg(LegWalk& walk){
     return LegNext::NEXT_LEG;
 }
 
+//  An open leg held for its time at the plan's speed (TileLeg::held).
+LegNext RouteWalker::held_leg(LegWalk& walk){
+    const TileLeg& leg = walk.planned.leg;
+    const Milliseconds per_tile = route_ms_per_tile(leg.direction, m_plan.speed);
+    walk.result = m_io.walk_to_wall({.direction = leg.direction, .limit = ROUTE_START_DELAY + per_tile * leg.tiles - per_tile / 2,
+        .label = walk.label, .options = run_watching(walk)});
+    if (walk.result.wild_battles > 0 || walk.result.stop != WalkStop::BLOCKED){
+        return walk.result.wild_battles > 0 ? interrupted_open_leg(walk) : LegNext::NEXT_LEG;
+    }
+    return blocked_open_leg(walk, std::min(leg.tiles, tiles_moved(walk.result, per_tile)));
+}
+
 //  Where an open leg's battle left us: where its screen events place it
 //  (place_leg_battle()), a tile or so from where the taps left us; else
 //  any tile of the leg from where it began, none moved to all. A battle that may have begun before the leg
@@ -620,7 +635,7 @@ LegNext RouteWalker::interrupted_open_leg(LegWalk& walk){
     }
     const TileLeg& leg = walk.planned.leg;
     const LegBattlePlace place = place_leg_battle(walk.result, leg.tiles);
-    m_io.note(ROUTE_LOG_TAG + leg_battle_line(walk.label, walk.result, place), RouteNote::LOG);
+    m_io.note(std::string(ROUTE_LOG_TAG) + leg_battle_line(walk.label, walk.result, place), RouteNote::LOG);
     auto possible = place.moved
         ? tiles_moved(m_grid, m_from, leg.direction, *place.moved)
         : interrupted_leg_positions(m_grid, m_from, leg.direction, leg.tiles);
@@ -650,6 +665,7 @@ LegNext RouteWalker::blocked_open_leg(LegWalk& walk, size_t moved){
     }
     stopped = sorted_unique(std::move(stopped));
     mark_blocker(walk, stopped);
+    stopped = blocked_stop_tiles(m_grid, stopped, walk.planned.leg.direction);
     return replan_from(walk, std::move(stopped),
         "blocked after " + std::to_string(moved) + " of " + std::to_string(walk.planned.leg.tiles) + " tiles");
 }
@@ -730,7 +746,8 @@ std::vector<size_t> RouteWalker::watching_trainers(const std::vector<std::vector
 }
 
 //  A trainer the map does not have. Fight, then plan again from anywhere
-//  the leg could have stopped.
+//  the leg could have stopped. The next step's scene (RouteWalkPlan::scene_next)
+//  is not fought: the walk ends there, its dialogue open, for that step.
 LegNext RouteWalker::unknown_trainer(LegWalk& walk, const std::vector<std::vector<TilePos>>& paths){
     std::vector<TilePos> anywhere;
     const size_t moved = std::min(walk.planned.leg.tiles, walk.result.moved_chunks + walk.turn_moved);
@@ -749,6 +766,11 @@ LegNext RouteWalker::unknown_trainer(LegWalk& walk, const std::vector<std::vecto
         }
     }
     anywhere = sorted_unique(std::move(anywhere));
+    if (m_plan.scene_next){
+        m_from = std::move(anywhere);
+        m_io.note(walk.label + ": the next step's scene started on the way; handing it over.", RouteNote::WARNING);
+        return LegNext::SCENE;
+    }
     //  A scene the map lacks (r14: Barry's Route 201 warning, then the row that
     //  pulls us back) would replan into it forever: give up after the second.
     if (++m_unexplained_talks > 2){
@@ -783,7 +805,7 @@ LegNext RouteWalker::known_trainer(LegWalk& walk, const std::vector<std::vector<
     if (stopped.empty()){
         fail(m_io, walk.label + ": " + trainer.name + " talked, but no path enters their sight.");
     }
-    m_io.note(ROUTE_LOG_TAG + route_trainer_line(m_plan.label, trainer.name, route_tiles(m_maps, stopped)), RouteNote::LOG);
+    m_io.note(std::string(ROUTE_LOG_TAG) + route_trainer_line(m_plan.label, trainer.name, route_tiles(m_maps, stopped)), RouteNote::LOG);
     m_io.note("Fighting " + trainer.name + ".", RouteNote::STATUS);
     m_trainers.fight(trainer.name);
     m_trainers.sights.erase(m_trainers.sights.begin() + watching[0]);
@@ -836,7 +858,7 @@ void RouteWalker::mark_blocker(const LegWalk& walk, const std::vector<TilePos>& 
 }
 
 LegNext RouteWalker::replan_from(const LegWalk& walk, std::vector<TilePos> stopped, const std::string& why){
-    m_io.note(ROUTE_LOG_TAG + route_replan_line(m_plan.label, route_log_leg(walk.planned.leg), why, route_tiles(m_maps, stopped)), RouteNote::WARNING);
+    m_io.note(std::string(ROUTE_LOG_TAG) + route_replan_line(m_plan.label, route_log_leg(walk.planned.leg), why, route_tiles(m_maps, stopped)), RouteNote::WARNING);
     m_facing = walk.planned.leg.direction;
     m_from = std::move(stopped);
     return LegNext::REPLAN;
@@ -872,23 +894,6 @@ RouteEnd walk_route_to_warp(
     return RouteWalker(io, maps, trainers, plan).run(std::move(from));
 }
 
-std::vector<TilePos> walk_waypoints(
-    VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
-    const StoryWorld& maps, std::vector<TilePos> from,
-    RouteTrainers& trainers, const WaypointWalkPlan& plan
-){
-    for (size_t i = 0; i < plan.waypoints.size(); i++){
-        const TilePos goal = plan.waypoints[i];
-        from = walk_route(stream, context, escape, maps, from, trainers, {
-            .goal = [goal](const TilePos& pos){ return pos == goal; },
-            .label = plan.label + " (" + std::to_string(i + 1) + "/" + std::to_string(plan.waypoints.size()) +
-                ", to " + describe(maps, goal) + ")",
-            .avoid = {},
-            .costs = plan.costs,
-        });
-    }
-    return from;
-}
 
 void talk_to_npc(
     VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
@@ -988,8 +993,6 @@ size_t walk_counted_wall_leg(RouteIO& io, const CountedWallLeg& leg){
     }
     return walked;
 }
-
-
 
 } // namespace PokemonBDSP
 } // namespace NintendoSwitch

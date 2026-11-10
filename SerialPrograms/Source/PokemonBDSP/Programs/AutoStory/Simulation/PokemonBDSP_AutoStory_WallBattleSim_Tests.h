@@ -17,6 +17,8 @@ namespace PokemonBDSP{
 
 //  A wild battle on a leg to a wall, on the grid simulation: run from, or
 //  fought when the game refuses the escape, the leg still ends at the wall.
+//  And 00.03's run into Sandgem: Dawn's scene stops it, a wild battle on the
+//  way or not; with no scene, the step fails at the run's cap.
 void add_tests_AutoStory_WallBattleSim(UnitTestDatabase& database);
 
 

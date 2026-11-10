@@ -14,7 +14,7 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-const char* certainty_name(PoseCertainty certainty){
+std::string certainty_name(PoseCertainty certainty){
     switch (certainty){
     case PoseCertainty::TILE:
         return "tile";
@@ -60,19 +60,18 @@ std::string to_string(const Pose& pose){
 bool Outcome::succeeded() const{
     return failure.empty();
 }
-Outcome outcome_ok(){
-    return Outcome{};
-}
-Outcome outcome_ok(Pose pose){
+Outcome outcome_ok(std::optional<Pose> pose){
     Outcome outcome;
     outcome.pose = std::move(pose);
     return outcome;
 }
+
 Outcome outcome_unchanged(){
     Outcome outcome;
     outcome.changed_nothing = true;
     return outcome;
 }
+
 Outcome outcome_failed(std::string failure, std::string detail){
     Outcome outcome;
     outcome.failure = std::move(failure);
@@ -81,6 +80,10 @@ Outcome outcome_failed(std::string failure, std::string detail){
 }
 std::string to_string(const Outcome& outcome){
     return outcome.detail.empty() ? outcome.failure : outcome.failure + ": " + outcome.detail;
+}
+
+Outcome outcome_game_not_running(){
+    return outcome_failed(std::string(GAME_NOT_RUNNING), "the game is not running: the Switch HOME menu is showing");
 }
 
 Condition condition(std::string name, Check check){
@@ -94,7 +97,7 @@ Condition pose_known(std::string map, PoseCertainty need){
     });
 }
 
-const char* recovery_name(RecoveryKind kind){
+std::string recovery_name(RecoveryKind kind){
     switch (kind){
     case RecoveryKind::WAIT:
         return "wait";
@@ -104,11 +107,6 @@ const char* recovery_name(RecoveryKind kind){
         return "stop";
     }
     return "?";
-}
-
-
-std::string event_log_line(const std::string& checkpoint, size_t number, const std::string& event, const std::string& status){
-    return std::format("[Event] {}/{} {}: {}", checkpoint, number, event, status);
 }
 
 
@@ -266,6 +264,9 @@ Recovery* next_recovery(EventRun& run, const std::string& failure){
 //  is answered in turn, so escalation goes on from there.
 std::optional<Outcome> recover(EventRun& run, Outcome failure){
     while (true){
+        if (failure.failure == GAME_NOT_RUNNING){
+            return failure;
+        }
         Recovery* recovery = next_recovery(run, failure.failure);
         if (recovery == nullptr){
             return failure;
@@ -401,7 +402,7 @@ Outcome finish_checkpoint(RunState& state, Checkpoint& checkpoint){
 CheckpointReport run_checkpoint(RunState& state, Checkpoint& checkpoint, EventLogger& log){
     CheckpointReport report;
     const std::string& id = checkpoint.id;
-    log(std::format("[Checkpoint] {}: start, {} events", id, checkpoint.events.size()));
+    log(checkpoint_start_line(id, checkpoint.events.size()));
     std::optional<std::string> failing = first_failing(checkpoint.start, state);
     if (failing){
         return stop_checkpoint(report, log, id, outcome_failed("start_failed", *failing));

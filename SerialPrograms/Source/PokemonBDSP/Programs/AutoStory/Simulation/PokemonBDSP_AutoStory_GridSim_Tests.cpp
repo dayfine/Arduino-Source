@@ -22,8 +22,12 @@
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_PlanCosts.h"
 #include "PokemonBDSP_AutoStory_GridSim.h"
-#include "PokemonBDSP_AutoStory_OldStorySteps.h"
+#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
+#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
+#include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_PlannedRoute.h"
+#include "PokemonBDSP_AutoStory_OldStorySteps.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryExecutor.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryStepIO.h"
@@ -34,12 +38,15 @@
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
+using namespace detail;
 
 
 namespace{
 
 using namespace std::chrono_literals;
 using Pokemon::Direction;
+using Pokemon::GridPose;
+using Pokemon::story_arg;
 using Pokemon::Pose;
 using Pokemon::StoryStep;
 using Pokemon::StoryStepKind;
@@ -273,29 +280,32 @@ std::vector<TilePos> world_tiles(const StoryWorld& world, const Pose& pose){
 std::optional<Pose> pose_after_step(const std::optional<Pose>& at, const StoryStep& step){
     std::optional<Pose> next;
     if (step.kind == StoryStepKind::ROUTE){
-        next = step.target;
+        const GridPose& target = story_arg<GridPose>(step.args, "target");
+        next = Pokemon::pose_of(target);
     }else if (at && step.kind == StoryStepKind::STEP){
+        const Direction direction = story_arg<Direction>(step.args, "direction");
         std::vector<TilePos> tiles;
         for (const TilePos& pos : Pokemon::tiles_of(*at)){
-            tiles.push_back(pos.next(step.direction));
+            tiles.push_back(pos.next(direction));
         }
-        next = Pokemon::tile_pose(at->map, tiles, step.direction);
-    }else if (at && step.kind == StoryStepKind::LEGS && step.variant.empty()){
+        next = Pokemon::tile_pose(at->map, tiles, direction);
+    }else if (at && step.kind == StoryStepKind::LEGS && (step.action.empty() || step.action == "legs" || step.action == "open")){
         std::vector<TilePos> tiles = Pokemon::tiles_of(*at);
-        for (const Pokemon::StoryLeg& leg : step.legs){
+        const auto& legs_list = story_arg<std::vector<Pokemon::StoryLeg>>(step.args, "legs");
+        for (const Pokemon::StoryLeg& leg : legs_list){
             for (TilePos& pos : tiles){
                 for (int i = 0; i < leg.tiles; i++){
                     pos = pos.next(leg.direction);
                 }
             }
         }
-        next = Pokemon::tile_pose(at->map, tiles, step.legs.back().direction);
+        next = Pokemon::tile_pose(at->map, tiles, legs_list.back().direction);
     }else if (step.kind != StoryStepKind::GAME && step.kind != StoryStepKind::SHOP &&
         step.kind != StoryStepKind::MASH && step.kind != StoryStepKind::LEGS
     ){
         next = at;
     }
-    return step.pose_after ? step.pose_after : next;
+    return step.pose_after ? std::optional<Pose>(Pokemon::pose_of(*step.pose_after)) : next;
 }
 
 //  Every ROUTE step of the table that starts from a known pose, from its
@@ -303,10 +313,11 @@ std::optional<Pose> pose_after_step(const std::optional<Pose>& at, const StorySt
 std::vector<SimRoute> table_routes(){
     std::vector<SimRoute> routes;
     for (const StoryCheckpoint& row : story_checkpoints()){
-        std::optional<Pose> at = row.start;
+        std::optional<Pose> at = row.start ? std::optional<Pose>(Pokemon::pose_of(*row.start)) : std::nullopt;
         bool shoes = row.id > std::string(RUNNING_SHOES_ROW);
         for (const StoryStep& step : row.steps){
-            const StoryWorld* world = at && step.kind == StoryStepKind::ROUTE ? story_plan_world(at->map, step.target->map) : nullptr;
+            const GridPose* target_ptr = step.kind == StoryStepKind::ROUTE ? &story_arg<GridPose>(step.args, "target") : nullptr;
+            const StoryWorld* world = at && target_ptr ? story_plan_world(at->map, target_ptr->map) : nullptr;
             const std::vector<TilePos> from = world ? world_tiles(*world, *at) : std::vector<TilePos>{};
             std::vector<TilePos> starts;
             if (!from.empty()){
@@ -317,7 +328,7 @@ std::vector<SimRoute> table_routes(){
             }
             for (const TilePos& start : starts){
                 routes.push_back({.label = row.id + " " + step.name, .world = world, .from = from, .start = start,
-                    .targets = world_tiles(*world, *step.target), .costs = *story_route_costs(step.variant), .can_run = shoes});
+                    .targets = world_tiles(*world, Pokemon::pose_of(*target_ptr)), .costs = *story_route_costs(step.action), .can_run = shoes});
             }
             at = pose_after_step(at, step);
             shoes = shoes || (row.id == RUNNING_SHOES_ROW && step.name == RUNNING_SHOES_STEP);
@@ -420,7 +431,7 @@ public:
         const Milliseconds limit = ROUTE_START_DELAY + 800ms + route_ms_per_tile(direction) * (int64_t)(2 * tiles);
         const SimMove move = m_sim.hold(direction, limit, SimPace::WALK);
         if (move.stop == SimStop::DIALOG || move.stop == SimStop::WARP){
-            m_route.note(label + ": " + sim_stop_name(move.stop) + " instead of a stop.", RouteNote::FAILURE);
+            m_route.note(label + ": " + std::string(sim_stop_name(move.stop)) + " instead of a stop.", RouteNote::FAILURE);
         }
     }
     virtual bool run_until_map(Direction, Milliseconds, const std::string& map, const std::string&) override{
@@ -461,7 +472,7 @@ std::optional<TableSteps> table_steps(const std::string& row, const std::string&
         return std::nullopt;
     }
     std::optional<TableSteps> out;
-    std::optional<Pose> at = checkpoint->start;
+    std::optional<Pose> at = checkpoint->start ? std::optional<Pose>(Pokemon::pose_of(*checkpoint->start)) : std::nullopt;
     for (const StoryStep& step : checkpoint->steps){
         if (step.name == last){
             return out;
@@ -501,7 +512,7 @@ StepsWalk walk_steps(GridSim& sim, const TableSteps& table){
                 out.failure = step.name + ": " + Pokemon::to_string(outcome);
                 break;
             }
-            state.pose = step.pose_after ? *step.pose_after : outcome.pose ? *outcome.pose : state.pose;
+            state.pose = step.pose_after ? Pokemon::pose_of(*step.pose_after) : outcome.pose ? *outcome.pose : state.pose;
         }
     }catch (const GridSimFailure& e){
         out.failure = e.message;
@@ -540,15 +551,16 @@ TableSteps old_taps_across_roarks_room(){
     StoryStep taps;
     taps.kind = StoryStepKind::LEGS;
     taps.name = "above_roarks_row";
-    taps.legs = {
+    taps.action = "legs";
+    taps.args["legs"] = std::vector<Pokemon::StoryLeg>{
         {.direction = Direction::EAST, .tiles = 14}, {.direction = Direction::SOUTH, .tiles = 10},
         {.direction = Direction::WEST, .tiles = 2}, {.direction = Direction::SOUTH, .tiles = 2},
     };
     StoryStep walls;
     walls.kind = StoryStepKind::LEGS;
     walls.name = "beside_roarks_rock";
-    walls.variant = "to_wall";
-    walls.legs = {{.direction = Direction::WEST, .tiles = 7}, {.direction = Direction::SOUTH, .tiles = 1}};
+    walls.action = "to_wall";
+    walls.args["legs"] = std::vector<Pokemon::StoryLeg>{{.direction = Direction::WEST, .tiles = 7}, {.direction = Direction::SOUTH, .tiles = 1}};
     return {Pokemon::tile_pose("OreburghMine", {TilePos{15, 16}}, Direction::SOUTH), {taps, walls}};
 }
 
@@ -866,7 +878,7 @@ UnitTestResult test_oreburgh_mine_hall_corridor(Logger& logger){
         return "OreburghMineB1F world not found.";
     }
     const SimWorld sim_world{.world = world, .can_run = true};
-    const auto test_run = [&](TilePos start, Direction dir, TilePos expected, const char* label){
+    const auto test_run = [&](TilePos start, Direction dir, TilePos expected, std::string_view label){
         GridSim sim(sim_world, start, dir, true);
         const SimMove move = sim.hold(dir, 5000ms, SimPace::RUN);
         if (move.stop != SimStop::WARP || sim.player().pos != sim_pos(expected)){

@@ -14,7 +14,10 @@
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
+#include "Pokemon/AutoStory/Pokemon_StoryLog.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
+#include "Pokemon/Options/Pokemon_GameLanguages.h"
+#include "Pokemon/Options/Pokemon_StoryRunOptions.h"
 #include "PokemonBDSP/Programs/PokemonBDSP_GameEntry.h"
 #include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_NewGame.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
@@ -52,7 +55,13 @@ namespace{
 //  The start and end dropdowns' entries: segments 00 and 01 joined, 00.00
 //  to 01.11. The options hold a reference to it.
 const StringSelectDatabase& checkpoint_database(){
-    static const StringSelectDatabase database = Pokemon::story_checkpoint_database(story_checkpoints());
+    static const StringSelectDatabase database = []{
+        std::vector<std::string> labels;
+        for (const StoryCheckpoint& row : story_checkpoints()){
+            labels.push_back(story_checkpoint_label(row));
+        }
+        return Pokemon::story_checkpoint_database(labels);
+    }();
     return database;
 }
 
@@ -107,9 +116,7 @@ void throw_if_stopped(SingleSwitchProgramEnvironment& env, ProControllerContext&
     if (report.completed){
         return;
     }
-    if (!report.stopped_at_first_failure){
-        close_game_after_failure(env, context);
-    }
+    close_game_after_failure(env, context);
     throw OperationFailedException(
         ErrorReportMode::NO_ERROR_REPORT,
         std::format(
@@ -125,7 +132,6 @@ struct VerifyRequest{
     std::string id;
     Pokemon::VerifyPolicy policy;
     bool new_game = false;
-    bool keep_game = false;
 };
 
 //  Verify mode: the checkpoint run as the request's policy says. Rows save
@@ -141,23 +147,18 @@ void verify_story_checkpoint(
     }
     const std::string& id = request.id;
     const Pokemon::VerifyPolicy& policy = request.policy;
-    const bool keep_game = request.keep_game;
     Pokemon::VerifyReport report;
     try{
         report = Pokemon::verify_checkpoint(state, segment, id, policy, hooks);
     }catch (OperationFailedException&){
-        if (!keep_game){
-            close_game_after_failure(env, context);
-        }
+        close_game_after_failure(env, context);
         throw;
     }
     const std::string summary = std::format(
         "AutoStory verify: {} {}/{} passed, {} needed.", id, report.passes, policy.runs, policy.passes_needed
     );
     if (!report.verified){
-        if (!keep_game){
-            close_game_after_failure(env, context);
-        }
+        close_game_after_failure(env, context);
         throw OperationFailedException(ErrorReportMode::NO_ERROR_REPORT, summary);
     }
     env.console.log(summary);
@@ -167,7 +168,7 @@ void verify_story_checkpoint(
 
 
 BDSPAutoStory::BDSPAutoStory()
-    : RUN(checkpoint_database())
+    : RUN(checkpoint_database(), Pokemon::Gen8ToGen9Languages_Database())
     , NEW_GAME_INTRO(
         "<b>Start a new game first:</b><br>"
         "For a game with no save: restart it and play the intro (language, appearance, names) "
@@ -237,8 +238,6 @@ void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerCo
 
     StoryEnv story{env, context, STARTER, PLAYER_NAME, IntroPicks{RUN.language(), PLAYER_LOOK.index()}};
     StoryExecutor executor(story);
-    executor.set_checks(RUN.checks());
-    executor.set_language(RUN.language());
     executor.set_stop_rows(rows_that_stop(checkpoints));
     std::set<std::string> saved = saved_before_the_run(checkpoints, first, JUST_LOADED && !(first == 0 && NEW_GAME_INTRO));
     Pokemon::Segment segment = make_story_segment(checkpoints, executor, saved);
@@ -249,7 +248,7 @@ void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerCo
         state.flags.insert("save_loaded");
     }
     if (const std::optional<Pokemon::VerifyPolicy> verify = RUN.VERIFY.policy()){
-        const VerifyRequest request{checkpoints[first].id, *verify, first == 0 && NEW_GAME_INTRO, RUN.STOP_AT_FIRST_FAILURE};
+        const VerifyRequest request{checkpoints[first].id, *verify, first == 0 && NEW_GAME_INTRO};
         verify_story_checkpoint(env, context, state, segment, hooks, request);
         send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH);
         return;
@@ -258,13 +257,11 @@ void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     try{
         report = run_segment(state, segment, Pokemon::SegmentRange{checkpoints[first].id, checkpoints[last].id}, RUN.policy(), hooks);
     }catch (OperationFailedException&){
-        if (!RUN.STOP_AT_FIRST_FAILURE){
-            close_game_after_failure(env, context);
-        }
+        close_game_after_failure(env, context);
         throw;
     }
     Pokemon::AutoStoryStats& stats = env.current_stats<Pokemon::AutoStoryStats>();
-    Pokemon::record_story_stats(stats, report);
+    Pokemon::record_story_counts(stats, report.story_counts());
     env.update_stats();
     throw_if_stopped(env, context, report);
     env.console.log("AutoStory: done through " + checkpoints[last].id + ".");

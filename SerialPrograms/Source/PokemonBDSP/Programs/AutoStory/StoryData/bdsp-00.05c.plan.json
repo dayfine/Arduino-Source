@@ -1,0 +1,82 @@
+﻿{
+  "checkpoint": {
+    "events": [
+      {
+        "action": "town",
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "north",
+            "map": "JubilifeCity",
+            "tiles": [
+              [
+                46,
+                36
+              ]
+            ]
+          }
+        },
+        "id": "below_the_president",
+        "kind": "route",
+        "why": "east along the long road, down the main road"
+      },
+      {
+        "id": "president",
+        "kind": "talk",
+        "why": "the Poketch Company's president at (46, 35)"
+      },
+      {
+        "declared_after": {
+          "facing": "north",
+          "map": "JubilifeCity",
+          "tiles": [
+            [
+              46,
+              36
+            ]
+          ]
+        },
+        "id": "the_poketch",
+        "kind": "scene",
+        "why": "the coupons for the Poketch; he walks off north"
+      },
+      {
+        "action": "town",
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "east",
+            "map": "JubilifeCity",
+            "tiles": [
+              [
+                58,
+                22
+              ]
+            ]
+          }
+        },
+        "id": "to_the_route_203_street",
+        "kind": "route",
+        "why": "up the main road and east along the street"
+      }
+    ],
+    "id": "00.05c",
+    "start": {
+      "facing": "north",
+      "map": "JubilifeCity",
+      "tiles": [
+        [
+          15,
+          19
+        ]
+      ]
+    },
+    "title": "Jubilife: the Poketch, up to the street east to Route 203"
+  },
+  "execution": {
+    "on_failure": "reload_and_retry",
+    "saves_in": "Jubilife City"
+  },
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "bdsp"
+}

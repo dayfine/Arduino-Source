@@ -53,7 +53,8 @@ WallHit slide_to_wall(const StoryWorld& world, const TilePos& from, Direction di
 
 
 std::string to_string(const TileLeg& leg){
-    return std::format("{} {}{}", Pokemon::direction_name(leg.direction), leg.tiles, leg.ends_at_wall ? " (to wall)" : " (open)");
+    return std::format("{} {}{}", Pokemon::direction_name(leg.direction), leg.tiles,
+        leg.ends_at_wall ? " (to wall)" : leg.held ? " (held)" : " (open)");
 }
 
 
@@ -130,7 +131,7 @@ std::optional<std::vector<TileLeg>> plan_tile_route(
     }
     std::vector<TileLeg> ret;
     for (const Pokemon::Leg<TilePos>& leg : *legs){
-        ret.push_back(TileLeg{leg.direction, distance(leg.end, leg.start), leg.to_wall});
+        ret.push_back(TileLeg{leg.direction, distance(leg.end, leg.start), leg.to_wall, false});
     }
     return ret;
 }
@@ -254,6 +255,38 @@ std::optional<Stepped> step_tiles(const StoryWorld& world, TilePos from, Directi
     return stepped;
 }
 
+//  step_tiles() for each count from 1 to `most`, in one walk: [n - 1] is
+//  step_tiles(world, from, direction, n).
+std::vector<std::optional<Stepped>> step_prefixes(const StoryWorld& world, TilePos from, Direction direction, int most){
+    std::vector<std::optional<Stepped>> out;
+    Stepped stepped;
+    int travelled = 0;
+    bool in_wander = wandering_hazard(world, from);
+    while ((int)out.size() < most){
+        const std::optional<TilePos> next = step(world, from, direction);
+        if (!next){
+            stepped.end = from;
+            const std::optional<Stepped> last = at_wall(world, from, direction) ? std::optional<Stepped>(stepped) : std::nullopt;
+            out.resize((size_t)most, last);
+            break;
+        }
+        travelled += (int)distance(*next, from);
+        stepped.grass += tall_grass(world, *next) ? 1 : 0;
+        const bool next_wander = wandering_hazard(world, *next);
+        if (next_wander){
+            stepped.wander++;
+            stepped.along_wander |= in_wander;
+        }
+        in_wander = next_wander;
+        from = *next;
+        stepped.end = from;
+        while ((int)out.size() < std::min(travelled, most)){
+            out.push_back(stepped);
+        }
+    }
+    return out;
+}
+
 using Spread = std::vector<TilePos>;
 
 bool spread_less(const TilePos& a, const TilePos& b){
@@ -274,6 +307,9 @@ struct Expansion{
     long long cost = 0;
     Spread next;
     TileLeg leg;
+    //  A held leg that may end somewhere unsafe: not to be used, though a
+    //  longer one may be.
+    bool unsafe = false;
 };
 
 //  To the wall: every position walks until stopped. Nothing unless each is
@@ -303,32 +339,53 @@ std::optional<Expansion> to_wall_leg(const StoryWorld& world, const Spread& spre
     }
     expansion.cost = (long long)costs.per_leg + (long long)costs.per_tile * longest
         + (long long)costs.per_grass_tile * grass + (long long)costs.per_wander_tile * wander;
-    expansion.leg = TileLeg{direction, longest, true};
+    expansion.leg = TileLeg{direction, longest, true, false};
     return expansion;
 }
 
+//  Whether a held leg's possible ends, `ends` in order from the shortest,
+//  meet nothing past the shortest that a tap would not: no tall grass, no
+//  wanderer's zone, no ledge hop.
+bool held_ends_safe(const StoryWorld& world, const std::vector<TilePos>& ends){
+    for (size_t i = 1; i < ends.size(); i++){
+        if (distance(ends[i - 1], ends[i]) > 1 || tall_grass(world, ends[i]) || wandering_hazard(world, ends[i])){
+            return false;
+        }
+    }
+    return true;
+}
+
 //  Open: about `tiles` tiles, give or take the error. Nothing if any
-//  possible end leaves the maps or enters a door.
+//  possible end leaves the maps or enters a door, or a held leg's may end
+//  somewhere unsafe (held_ends_safe()).
 std::optional<Expansion> open_leg(const StoryWorld& world, const Spread& spread, Direction direction, int tiles, const RobustPlanCosts& costs){
     Expansion expansion;
     int grass = 0;
     int wander = 0;
-    const int error = tiles <= costs.exact_open_tiles ? 0 : costs.open_error + tiles / costs.open_error_per;
+    const int error = tiles <= costs.exact_open_tiles ? 0 : (int)open_hold_error((size_t)tiles);
+    const bool held = costs.hold_open_legs && error > 0;
     for (const TilePos& pos : spread){
+        std::vector<TilePos> ends;
+        const std::vector<std::optional<Stepped>> prefixes = step_prefixes(world, pos, direction, tiles + error);
         for (int n = std::max(1, tiles - error); n <= tiles + error; n++){
-            const std::optional<Stepped> stepped = step_tiles(world, pos, direction, n);
+            const std::optional<Stepped>& stepped = prefixes[(size_t)n - 1];
             if (!stepped || stepped->along_wander){
                 return std::nullopt;
             }
             grass = std::max(grass, stepped->grass);
             wander = std::max(wander, stepped->wander);
-            expansion.next.push_back(stepped->end);
+            ends.push_back(stepped->end);
         }
+        if (held && !held_ends_safe(world, ends)){
+            expansion.unsafe = true;
+        }
+        expansion.next.insert(expansion.next.end(), ends.begin(), ends.end());
     }
+    const int per_open_tile = held ? 0 : costs.per_open_tile;
     expansion.cost = (long long)costs.per_leg + costs.leg_not_at_wall +
-        (long long)(costs.per_tile + costs.per_open_tile) * tiles
-        + (long long)costs.per_grass_tile * grass + (long long)costs.per_wander_tile * wander;
-    expansion.leg = TileLeg{direction, (size_t)tiles, false};
+        (long long)(costs.per_tile + per_open_tile) * tiles
+        + (long long)(costs.per_grass_tile + costs.per_open_grass_tile) * grass + (long long)costs.per_wander_tile * wander;
+    expansion.leg = TileLeg{.direction = direction, .tiles = (size_t)tiles, .ends_at_wall = false, .held = held};
     return expansion;
 }
 
@@ -382,12 +439,15 @@ private:
             if (std::optional<Expansion> wall = to_wall_leg(m_world, spread, direction, m_costs)){
                 relax(spread, cost, std::move(*wall));
             }
+            //  A held leg unsafe at one length may be safe at a longer one.
             for (int tiles = 1; tiles <= m_costs.max_open_tiles; tiles++){
                 std::optional<Expansion> open = open_leg(m_world, spread, direction, tiles, m_costs);
                 if (!open){
                     break;
                 }
-                relax(spread, cost, std::move(*open));
+                if (!open->unsafe){
+                    relax(spread, cost, std::move(*open));
+                }
             }
         }
     }
@@ -401,7 +461,7 @@ private:
         }
         if (spread != m_start){
             const TileLeg& prev = m_nodes.at(spread).leg.leg;
-            if (expansion.leg.direction == prev.direction && !prev.ends_at_wall){
+            if (expansion.leg.direction == prev.direction && !prev.ends_at_wall && !prev.held && !expansion.leg.held){
                 expansion.cost -= m_costs.per_leg;
             }
         }
@@ -426,7 +486,7 @@ private:
         for (const PlannedLeg& planned : legs){
             if (!consolidated.empty() &&
                 consolidated.back().leg.direction == planned.leg.direction &&
-                !consolidated.back().leg.ends_at_wall
+                !consolidated.back().leg.ends_at_wall && !consolidated.back().leg.held && !planned.leg.held
             ){
                 consolidated.back().leg.tiles += planned.leg.tiles;
                 consolidated.back().leg.ends_at_wall = planned.leg.ends_at_wall;
@@ -446,6 +506,10 @@ private:
 };
 
 } // namespace
+
+size_t open_hold_error(size_t){
+    return 1;
+}
 
 std::optional<std::vector<PlannedLeg>> plan_robust_route(
     const StoryWorld& world,
@@ -490,7 +554,7 @@ long long robust_route_cost(
         if (expansion){
             cost = expansion->cost;
         }
-        if (previous != nullptr && previous->direction == leg.direction && !previous->ends_at_wall){
+        if (previous != nullptr && previous->direction == leg.direction && !previous->ends_at_wall && !previous->held && !leg.held){
             cost -= costs.per_leg;
         }
         total += cost;
