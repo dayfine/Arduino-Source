@@ -84,14 +84,24 @@ inline constexpr std::string_view TEACH_TUTOR = "tutor";
 //  Whether `move` is an HM's, which the game won't let a Pokemon forget.
 bool is_hm_move(std::string_view move);
 
-//  The prefix of a GAME step's variant that names a TEACH step.
-inline constexpr std::string_view TEACH_VARIANT_PREFIX = "teach ";
+//  The variant of a GAME step that is a TEACH step.
+inline constexpr std::string_view TEACH_VARIANT = "teach";
+//  Its args: the TM, HM or tutor, the move, the party slot, and the move
+//  to forget by name or by slot.
+inline constexpr Pokemon::StoryArgSpec TEACH_ARGS[] = {
+    {"item", Pokemon::StoryArgType::TEXT, true},
+    {"move", Pokemon::StoryArgType::TEXT, true},
+    {"slot", Pokemon::StoryArgType::NUMBER, true},
+    {"forget", Pokemon::StoryArgType::TEXT, false},
+    {"forget_slot", Pokemon::StoryArgType::NUMBER, false},
+};
 
-//  `plan` as a variant: "teach hm03 surf slot=1 forget=tail-whip" or
-//  "... forget_slot=2", slots counted from 1, no forget when it has room.
-std::string teach_variant(const TeachPlan& plan);
-//  Parses a move teaching plan from a variant string.
-std::optional<TeachPlan> parse_teach_variant(std::string_view variant);
+//  `plan` as a TEACH step's args: {"item": "hm03", "move": "surf", "slot":
+//  1, "forget": "tail-whip"} or "forget_slot": 2, slots counted from 1, no
+//  forget when it has room.
+Pokemon::StoryArgs teach_args(const TeachPlan& plan);
+//  The plan a TEACH step (teach_step()) runs; nothing if it isn't one.
+std::optional<TeachPlan> parse_teach_step(const Pokemon::StoryStep& step);
 
 //  The table's TEACH step, once per save (StoryStep::once_per_save): a
 //  retry from the same save skips it when the lead knew the move or there

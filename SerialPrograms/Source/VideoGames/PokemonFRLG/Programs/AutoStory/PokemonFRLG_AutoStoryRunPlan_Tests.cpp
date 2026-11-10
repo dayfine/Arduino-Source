@@ -371,24 +371,24 @@ UnitTestResult test_cerulean_mart_and_grind(){
     if (!start || start->map != "CeruleanCity_PokemonCenter_1F"){
         return "00.15: expected it to start in Cerulean's Center.";
     }
-    const std::optional<TeachPlan> teach = steps.empty() ? std::nullopt : parse_teach_variant(steps[0].variant);
+    const std::optional<TeachPlan> teach = steps.empty() ? std::nullopt : parse_teach_step(steps[0]);
     if (!teach || teach->item != "tm03" || teach->move != "water-pulse" || teach->member != 0 || teach->forget_move != "tail-whip"){
         return "00.15: expected it to start with TM03 Water Pulse over the lead's Tail Whip.";
     }
     const size_t mart = find_step(steps, 0, [](const StoryStep& step){
-        const std::optional<MartPlan> plan = parse_mart_variant(step.variant);
+        const std::optional<MartPlan> plan = parse_mart_step(step);
         return plan && plan->map == "CeruleanCity_Mart" && !plan->lines.empty() && plan->lines[0].item == "potion";
     });
     const std::optional<std::string_view> rival = story_trainer("CeruleanCity", "rival_cerulean");
     const size_t grind = find_step(steps, mart, [&](const StoryStep& step){
-        const std::optional<GrindPlan> plan = parse_grind_variant(step.variant);
+        const std::optional<GrindPlan> plan = parse_grind_step(step);
         return plan && plan->member == 0 && rival && plan->trainer == *rival && plan->min_chance == MIN_WIN_CHANCE
             && plan->level > 25;
     });
     if (mart == steps.size() || grind == steps.size()){
         return "00.15: expected a Cerulean Mart step buying Potions, then a GRIND of the lead until the rival is 50%, capped above Lv25.";
     }
-    const MartPlan plan = *parse_mart_variant(steps[mart].variant);
+    const MartPlan plan = *parse_mart_step(steps[mart]);
     const std::optional<std::vector<MartBuy>> buys = plan.money_floor
         ? plan_mart_buys(mart_stock(plan.map), plan, *plan.money_floor)
         : std::nullopt;
@@ -437,7 +437,7 @@ UnitTestResult test_cerulean_rival_row(){
     if (battles != " rival_cerulean" || rival.steps.size() != 3 || rival.steps[1].name != "rival_trigger"){
         return "00.15b: expected a TEACH, the step onto his trigger and his battle; its battles:" + battles;
     }
-    const std::optional<TeachPlan> teach = parse_teach_variant(rival.steps[0].variant);
+    const std::optional<TeachPlan> teach = parse_teach_step(rival.steps[0]);
     if (rival.steps[0].kind != StoryStepKind::GAME || !teach || teach->item != "tm03" || teach->move != "water-pulse"
         || teach->member != 0 || teach->forget_move != "tail-whip"
     ){
@@ -482,7 +482,7 @@ UnitTestResult test_misty_rows(){
     }
     const std::vector<StoryStep>& steps = gym.steps;
     const size_t mart = find_step(steps, 0, [](const StoryStep& step){
-        const std::optional<MartPlan> plan = parse_mart_variant(step.variant);
+        const std::optional<MartPlan> plan = parse_mart_step(step);
         return plan && plan->map == "CeruleanCity_Mart" && !plan->lines.empty() && plan->lines[0].item == "potion";
     });
     if (mart == steps.size() || !battle_names(gym).empty()){
@@ -504,7 +504,7 @@ UnitTestResult test_misty_rows(){
         return "00.14c: expected the talk from (9, 6), facing Misty (8, 6).";
     }
     const size_t teach = find_step(misty.steps, 0, [](const StoryStep& step){
-        const std::optional<TeachPlan> plan = parse_teach_variant(step.variant);
+        const std::optional<TeachPlan> plan = parse_teach_step(step);
         return plan && plan->item == "tm03" && plan->move == "water-pulse" && plan->member == 0 && plan->forget_move == "tail-whip";
     });
     if (teach == misty.steps.size()){
@@ -523,7 +523,7 @@ UnitTestResult test_misty_grind_order(){
     const std::vector<StoryStep>& steps = story_checkpoints()[row_index("00.14b")].steps;
     std::optional<MartPlan> plan;
     const size_t mart = find_step(steps, 0, [&](const StoryStep& step){
-        plan = parse_mart_variant(step.variant);
+        plan = parse_mart_step(step);
         return plan && plan->map == "CeruleanCity_Mart";
     });
     if (mart == steps.size() || plan->lines.size() < 2 || plan->lines[0].item != "potion" || plan->lines[1].item != "super-potion"
@@ -536,7 +536,7 @@ UnitTestResult test_misty_grind_order(){
         return "00.14b: expected the money floor to buy 2 or more Potions and a Super Potion.";
     }
     const size_t grind = find_step(steps, mart, [](const StoryStep& step){
-        const std::optional<GrindPlan> grind_plan = parse_grind_variant(step.variant);
+        const std::optional<GrindPlan> grind_plan = parse_grind_step(step);
         return grind_plan && grind_plan->member == 0 && grind_plan->level >= 23;
     });
     if (grind == steps.size() || !steps[grind - 1].target || !steps[grind].target){

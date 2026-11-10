@@ -132,7 +132,9 @@
           {
             "id": "buy_repels",
             "kind": "game_action",
-            "variant": "mart CeruleanCity_Mart budget=2850 floor=6000 repel=5 escape-rope=2",
+            "variant": "mart",
+            "args": {"map": "CeruleanCity_Mart", "budget": 2850, "floor": 6000},
+            "items": [{"item": "repel", "quantity": 5}, {"item": "escape-rope", "quantity": 2}],
             "once_per_save": true,
             "why": "5 Repels and 2 Escape Ropes, 2850 at most"
           },

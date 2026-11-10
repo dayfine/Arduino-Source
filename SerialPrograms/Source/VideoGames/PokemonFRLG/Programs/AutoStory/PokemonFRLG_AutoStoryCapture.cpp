@@ -22,6 +22,7 @@
 #include "VideoGames/PokemonFRLG/Programs/PokemonFRLG_BattleMenuNavigation.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryCapture.h"
+#include "PokemonFRLG_AutoStoryVariantWords.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -36,35 +37,8 @@ namespace{
 constexpr size_t PARTY_SIZE = 6;
 constexpr size_t MOVE_COUNT = 4;
 
-std::vector<std::string_view> words_of(std::string_view text){
-    std::vector<std::string_view> words;
-    while (!text.empty()){
-        const size_t space = text.find(' ');
-        const std::string_view word = text.substr(0, space);
-        if (!word.empty()){
-            words.push_back(word);
-        }
-        if (space == std::string_view::npos){
-            break;
-        }
-        text.remove_prefix(space + 1);
-    }
-    return words;
-}
-
-std::optional<size_t> number_of(std::string_view text){
-    if (text.empty() || text.size() > 4){
-        return std::nullopt;
-    }
-    size_t value = 0;
-    for (char c : text){
-        if (c < '0' || c > '9'){
-            return std::nullopt;
-        }
-        value = value * 10 + size_t(c - '0');
-    }
-    return value;
-}
+//  The most a count names: four digits.
+constexpr int64_t MAX_COUNT = 9999;
 
 std::optional<Direction> direction_of(std::string_view text){
     for (Direction direction : Pokemon::ALL_DIRECTIONS){
@@ -110,59 +84,50 @@ const char* capture_end_name(CaptureEnd end){
 }
 
 
-std::string capture_variant(const CapturePlan& plan){
-    std::string variant = std::format(
-        "{}{} catches={} encounters={} balls={} pace={}",
-        CAPTURE_VARIANT_PREFIX, plan.species, plan.catches, plan.max_encounters, plan.max_balls, direction_name(plan.pace)
-    );
+Pokemon::StoryArgs capture_args(const CapturePlan& plan){
+    Pokemon::StoryArgs args{
+        {"species", plan.species},
+        {"catches", static_cast<int64_t>(plan.catches)},
+        {"encounters", static_cast<int64_t>(plan.max_encounters)},
+        {"balls", static_cast<int64_t>(plan.max_balls)},
+        {"pace", std::string(direction_name(plan.pace))},
+    };
     if (plan.weaken_move){
-        variant += std::format(" move={} turns={}", *plan.weaken_move + 1, plan.max_weaken_turns);
+        args["move"] = static_cast<int64_t>(*plan.weaken_move + 1);
+        args["turns"] = static_cast<int64_t>(plan.max_weaken_turns);
     }
-    return variant;
+    return args;
 }
 
-std::optional<CapturePlan> parse_capture_variant(std::string_view variant){
-    if (!variant.starts_with(CAPTURE_VARIANT_PREFIX)){
-        return std::nullopt;
-    }
-    const std::vector<std::string_view> words = words_of(variant.substr(CAPTURE_VARIANT_PREFIX.size()));
-    if (words.empty() || words[0].find('=') != std::string_view::npos){
+std::optional<CapturePlan> parse_capture_step(const Pokemon::StoryStep& step){
+    const Pokemon::StoryArgs* args = game_step_args(step, CAPTURE_VARIANT, CAPTURE_ARGS);
+    if (args == nullptr
+        || !arg_number_within(*args, "catches", 1, MAX_COUNT) || !arg_number_within(*args, "encounters", 1, MAX_COUNT)
+        || !arg_number_within(*args, "balls", 1, MAX_COUNT) || !arg_number_within(*args, "move", 1, static_cast<int64_t>(MOVE_COUNT))
+        || !arg_number_within(*args, "turns", 0, MAX_COUNT)
+    ){
         return std::nullopt;
     }
     CapturePlan plan;
-    plan.species = std::string(words[0]);
-    for (size_t c = 1; c < words.size(); c++){
-        const size_t equals = words[c].find('=');
-        if (equals == std::string_view::npos){
+    plan.species = std::string(*Pokemon::story_arg_text(*args, "species"));
+    if (plan.species.empty()){
+        return std::nullopt;
+    }
+    plan.catches = static_cast<size_t>(*Pokemon::story_arg_number(*args, "catches"));
+    plan.max_encounters = static_cast<size_t>(*Pokemon::story_arg_number(*args, "encounters"));
+    plan.max_balls = static_cast<size_t>(*Pokemon::story_arg_number(*args, "balls"));
+    if (const std::optional<std::string_view> pace = Pokemon::story_arg_text(*args, "pace")){
+        const std::optional<Direction> direction = direction_of(*pace);
+        if (!direction){
             return std::nullopt;
         }
-        const std::string_view key = words[c].substr(0, equals);
-        const std::string_view value = words[c].substr(equals + 1);
-        if (key == "pace"){
-            const std::optional<Direction> pace = direction_of(value);
-            if (!pace){
-                return std::nullopt;
-            }
-            plan.pace = *pace;
-            continue;
-        }
-        const std::optional<size_t> number = number_of(value);
-        if (!number){
-            return std::nullopt;
-        }
-        if (key == "catches" && *number >= 1){
-            plan.catches = *number;
-        }else if (key == "encounters" && *number >= 1){
-            plan.max_encounters = *number;
-        }else if (key == "balls" && *number >= 1){
-            plan.max_balls = *number;
-        }else if (key == "move" && *number >= 1 && *number <= MOVE_COUNT){
-            plan.weaken_move = *number - 1;
-        }else if (key == "turns"){
-            plan.max_weaken_turns = *number;
-        }else{
-            return std::nullopt;
-        }
+        plan.pace = *direction;
+    }
+    if (const std::optional<int64_t> move = Pokemon::story_arg_number(*args, "move")){
+        plan.weaken_move = static_cast<size_t>(*move) - 1;
+    }
+    if (const std::optional<int64_t> turns = Pokemon::story_arg_number(*args, "turns")){
+        plan.max_weaken_turns = static_cast<size_t>(*turns);
     }
     return plan;
 }
@@ -172,7 +137,8 @@ Pokemon::StoryStep capture_step(std::string name, std::string why, const Capture
     step.kind = Pokemon::StoryStepKind::GAME;
     step.name = std::move(name);
     step.why = std::move(why);
-    step.variant = capture_variant(plan);
+    step.variant = CAPTURE_VARIANT;
+    step.args = capture_args(plan);
     return step;
 }
 
@@ -181,7 +147,8 @@ Pokemon::StoryStep pc_step(std::string name, std::string why, const PcTransfer& 
     step.kind = Pokemon::StoryStepKind::GAME;
     step.name = std::move(name);
     step.why = std::move(why);
-    step.variant = pc_variant(transfer);
+    step.variant = PC_VARIANT;
+    step.args = pc_args(transfer);
     return step;
 }
 
@@ -396,8 +363,8 @@ std::optional<Pokemon::Outcome> run_storage_game_step(
     Logger& logger, VideoStream* stream, const Pokemon::StoryStep& step,
     CaptureActions& capture, PcStorageActions& pc
 ){
-    if (step.variant.starts_with(CAPTURE_VARIANT_PREFIX)){
-        const std::optional<CapturePlan> plan = parse_capture_variant(step.variant);
+    if (step.variant == CAPTURE_VARIANT){
+        const std::optional<CapturePlan> plan = parse_capture_step(step);
         if (!plan){
             return Pokemon::outcome_failed("bad_variant", step.variant);
         }
@@ -416,8 +383,8 @@ std::optional<Pokemon::Outcome> run_storage_game_step(
         }
         return Pokemon::outcome_failed(std::string("capture_") + capture_end_name(result.end), message);
     }
-    if (step.variant.starts_with(PC_VARIANT_PREFIX)){
-        const std::optional<PcTransfer> transfer = parse_pc_variant(step.variant);
+    if (step.variant == PC_VARIANT){
+        const std::optional<PcTransfer> transfer = parse_pc_step(step);
         if (!transfer){
             return Pokemon::outcome_failed("bad_variant", step.variant);
         }

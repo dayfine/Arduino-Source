@@ -5,8 +5,15 @@
  */
 
 #include "Common/Cpp/Exceptions.h"
+#include "PokemonFRLG_AutoStoryCapture.h"
+#include "PokemonFRLG_AutoStoryChoice.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryGrind.h"
+#include "PokemonFRLG_AutoStoryMart.h"
+#include "PokemonFRLG_AutoStoryMember.h"
+#include "PokemonFRLG_AutoStoryPcStorage.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
+#include "PokemonFRLG_AutoStoryTeach.h"
 #include "PokemonFRLG_AutoStoryTrashCans.h"
 
 namespace PokemonAutomation{
@@ -57,6 +64,15 @@ const std::vector<StoryActionRow>& story_action_rows(){
         {StoryStepKind::GAME,       LEAVE_GIFT_SUMMARY, StoryActionId::LEAVE_GIFT_SUMMARY},
         {StoryStepKind::GAME,       CUT_TREE_VARIANT,   StoryActionId::CUT_TREE},
         {StoryStepKind::GAME,       TRASH_CANS_VARIANT, StoryActionId::TRASH_CANS},
+        //  The GAME action's steps that carry args, each with its own.
+        {StoryStepKind::GAME,       std::string(MART_VARIANT),        StoryActionId::GAME, MART_ARGS},
+        {StoryStepKind::GAME,       std::string(TEACH_VARIANT),       StoryActionId::GAME, TEACH_ARGS},
+        {StoryStepKind::GAME,       std::string(PC_VARIANT),          StoryActionId::GAME, PC_ARGS},
+        {StoryStepKind::GAME,       std::string(GRIND_VARIANT),       StoryActionId::GAME, GRIND_ARGS},
+        {StoryStepKind::GAME,       std::string(GRIND_CHECK_VARIANT), StoryActionId::GAME, GRIND_ARGS},
+        {StoryStepKind::GAME,       std::string(CAPTURE_VARIANT),     StoryActionId::GAME, CAPTURE_ARGS},
+        {StoryStepKind::GAME,       std::string(FOSSIL_VARIANT),      StoryActionId::GAME, FOSSIL_ARGS},
+        {StoryStepKind::GAME,       std::string(LEVEL_VARIANT),       StoryActionId::GAME, LEVEL_ARGS},
         {StoryStepKind::GAME,       "", StoryActionId::GAME},
     };
     return ROWS;
@@ -65,7 +81,9 @@ const std::vector<StoryActionRow>& story_action_rows(){
 Pokemon::StoryActionTable make_story_action_table(const StoryActionBinding& bind){
     Pokemon::StoryActionTable table;
     for (const StoryActionRow& row : story_action_rows()){
-        table.add(row.kind, row.variant, bind(row.id));
+        Pokemon::StoryAction action = bind(row.id);
+        action.args = row.args;
+        table.add(row.kind, row.variant, std::move(action));
     }
     return table;
 }
