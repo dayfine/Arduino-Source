@@ -5,11 +5,12 @@
  */
 
 #include <algorithm>
+#include <cmath>
 #include <format>
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "PokemonFRLG_AutoStoryActions.h"
+#include "PokemonFRLG_AutoStoryGameArgs.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
-#include "PokemonFRLG_AutoStoryVariantWords.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -35,88 +36,59 @@ const char* grind_end_name(GrindEnd end){
 }
 
 
-std::string grind_variant(const GrindPlan& plan){
-    std::string variant = std::format(
-        "{}slot={} level={} encounters={} pace={} heal_every={}",
-        GRIND_VARIANT_PREFIX, plan.member + 1, plan.level, plan.max_encounters,
-        direction_name(plan.pace), plan.heal_every
-    );
+Pokemon::StoryActionArgs grind_args(const GrindPlan& plan, Pokemon::GridPose nurse){
+    Pokemon::StoryActionArgs args{
+        {"slot", int64_t(plan.member + 1)},
+        {"level", int64_t(plan.level)},
+        {"encounters", int64_t(plan.max_encounters)},
+        {"pace", plan.pace},
+        {"heal_every", int64_t(plan.heal_every)},
+        {"nurse", std::move(nurse)},
+    };
     if (!plan.trainer.empty()){
-        variant += std::format(" beat={} chance={:.0f}", plan.trainer, 100 * plan.min_chance);
+        args.emplace("beat", plan.trainer);
+        args.emplace("chance", int64_t(std::lround(100 * plan.min_chance)));
     }
-    return variant;
+    return args;
 }
 
-namespace{
-
-bool set_grind_word(GrindPlan& plan, std::string_view word){
-    const std::optional<VariantPair> pair = variant_pair(word);
-    if (!pair){
-        return false;
-    }
-    if (pair->key == "beat"){
-        plan.trainer = std::string(pair->value);
-        return !plan.trainer.empty();
-    }
-    if (pair->key == "pace"){
-        for (Direction direction : Pokemon::ALL_DIRECTIONS){
-            if (pair->value == direction_name(direction)){
-                plan.pace = direction;
-                return true;
-            }
-        }
-        return false;
-    }
-    const std::optional<size_t> number = variant_number(pair->value, 4);
-    if (!number){
-        return false;
-    }
-    if (pair->key == "slot" && *number >= 1 && *number <= PARTY_SLOTS){
-        plan.member = *number - 1;
-    }else if (pair->key == "level" && *number >= 2 && *number <= 100){
-        plan.level = (unsigned)*number;
-    }else if (pair->key == "encounters" && *number >= 1){
-        plan.max_encounters = *number;
-    }else if (pair->key == "heal_every"){
-        plan.heal_every = *number;
-    }else if (pair->key == "chance" && *number >= 1 && *number <= 100){
-        plan.min_chance = static_cast<double>(*number) / 100;
-    }else{
-        return false;
-    }
-    return true;
-}
-
-} // namespace
-
-std::optional<GrindPlan> parse_grind_variant(std::string_view variant){
-    if (!variant.starts_with(GRIND_VARIANT_PREFIX)){
+std::optional<GrindPlan> grind_plan_of(const Pokemon::StoryActionArgs& args){
+    const std::optional<size_t> member = counted_arg(args, "slot", PARTY_SLOTS);
+    const std::optional<size_t> level = number_arg(args, "level", 2, 100);
+    const std::optional<size_t> encounters = number_arg(args, "encounters", 1, 9999);
+    const std::optional<size_t> heal_every = number_arg(args, "heal_every", 0, 9999);
+    const Direction* pace = game_arg<Direction>(args, "pace");
+    if (!member || !level || !encounters || !heal_every || pace == nullptr){
         return std::nullopt;
     }
-    GrindPlan plan;
-    bool level_seen = false;
-    bool chance_seen = false;
-    for (std::string_view word : variant_words(variant.substr(GRIND_VARIANT_PREFIX.size()))){
-        if (!set_grind_word(plan, word)){
+    GrindPlan plan{
+        .member = *member, .level = (unsigned)*level, .max_encounters = *encounters,
+        .pace = *pace, .heal_every = *heal_every,
+    };
+    if (const std::string* trainer = game_arg<std::string>(args, "beat")){
+        if (trainer->empty()){
             return std::nullopt;
         }
-        level_seen |= word.starts_with("level=");
-        chance_seen |= word.starts_with("chance=");
+        plan.trainer = *trainer;
     }
-    //  A chance needs a trainer to be against.
-    if (!level_seen || (chance_seen && plan.trainer.empty())){
-        return std::nullopt;
+    if (args.contains("chance")){
+        const std::optional<size_t> chance = number_arg(args, "chance", 1, 100);
+        //  A chance needs a trainer to be against.
+        if (!chance || plan.trainer.empty()){
+            return std::nullopt;
+        }
+        plan.min_chance = static_cast<double>(*chance) / 100;
     }
     return plan;
 }
 
-Pokemon::StoryStep grind_step(std::string name, std::string why, const GrindPlan& plan, Pokemon::Pose nurse){
+Pokemon::StoryStep grind_step(std::string name, std::string why, const GrindPlan& plan, Pokemon::GridPose nurse){
     Pokemon::StoryStep step;
     step.kind = Pokemon::StoryStepKind::GAME;
     step.name = std::move(name);
     step.why = std::move(why);
-    step.variant = grind_variant(plan);
-    step.target = std::move(nurse);
+    step.action = GRIND_ACTION;
+    step.args = grind_args(plan, std::move(nurse));
     return step;
 }
 
@@ -316,7 +288,7 @@ std::optional<WinEstimate> healed_win_chance(PartyMember lead, const SimItems& i
 
 ConsoleGrindActions::ConsoleGrindActions(
     ConsoleHandle& console, ProControllerContext& context, Language language,
-    Supplies& supplies, StoryChecks checks, HealTrip heal_trip, PaceTrainerBattle trainer_battle
+    Supplies& supplies, Pokemon::StoryCheckLevel checks, HealTrip heal_trip, PaceTrainerBattle trainer_battle
 )
     : m_console(console)
     , m_context(context)

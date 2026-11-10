@@ -5,7 +5,7 @@
  *  The FRLG story as data for the shared story engine
  *  (Pokemon/AutoStory/Pokemon_StoryEvents.h, Pokemon_StorySegments.h).
  *  A checkpoint is a list of the shared StorySteps
- *  (Pokemon/AutoStory/Pokemon_StorySteps.h), each one kind of event (a
+ *  (Pokemon/AutoStory/Pokemon_StoryStepExecutor.h), each one kind of event (a
  *  route, a talk, text read to its end, a YES/NO, a battle, the nurse, the
  *  Mart); StoryExecutor does each kind on the console, and
  *  make_story_segment() turns the table into engine checkpoints. Routes
@@ -29,7 +29,7 @@
 #include "Pokemon/AutoStory/Pokemon_StoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
-#include "Pokemon/AutoStory/Pokemon_StorySteps.h"
+#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMap.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
@@ -226,7 +226,7 @@ struct StoryEnv{
     Supplies saved_supplies;
     //  Whether the game has a save to reload.
     bool has_save = false;
-    StoryChecks checks = StoryChecks::THOROUGH;
+    Pokemon::StoryCheckLevel checks = Pokemon::StoryCheckLevel::DEFAULT;
     //  The game's language, for reading item names. In one the readers have
     //  no names for, the checks fall back to positions and counts.
     Language language = Language::English;
@@ -294,17 +294,16 @@ public:
     //  The step's action from the table.
     virtual Pokemon::Outcome run(Pokemon::RunState& state, const StoryStep& step) override;
 
-protected:
-    //  CLOSE_TRAINER_CARD: back from SID Helper (close_trainer_card()).
-    //  LEAVE_GIFT_SUMMARY: back from Gift RNG (leave_gift_summary()).
-    //  A capture or a PC deposit or withdrawal (capture_step(), pc_step()
-    //  in PokemonFRLG_AutoStoryCapture.h); a shiny met in a capture stops
-    //  the program without reloading. A MART, TEACH, LEVEL, GRIND or
-    //  fossil CHOICE (PokemonFRLG_AutoStoryAbilities.h); a GRIND heals by
-    //  routing to its target, the nurse, and back.
-    virtual Pokemon::Outcome game(Pokemon::RunState& state, const StoryStep& step) override;
-
 private:
+    //  A GAME step by its action. CLOSE_TRAINER_CARD: back from SID Helper
+    //  (close_trainer_card()). LEAVE_GIFT_SUMMARY: back from Gift RNG
+    //  (leave_gift_summary()). A capture or a PC deposit or withdrawal
+    //  (capture_step(), pc_step() in PokemonFRLG_AutoStoryCapture.h); a
+    //  shiny met in a capture stops the program without reloading. A MART,
+    //  TEACH, LEVEL, GRIND or fossil CHOICE
+    //  (PokemonFRLG_AutoStoryAbilities.h); a GRIND heals by routing to its
+    //  nurse and back.
+    Pokemon::Outcome game(Pokemon::RunState& state, const StoryStep& step);
     //  How the console does `id`.
     Pokemon::StoryAction console_action(StoryActionId id);
 

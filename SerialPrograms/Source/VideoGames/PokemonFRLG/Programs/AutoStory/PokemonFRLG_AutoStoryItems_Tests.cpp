@@ -326,7 +326,7 @@ UnitTestResult test_late_battle_placed(Logger&){
     script.encounters = {{.grass_step = 1, .seen_late = true}};
     OverworldSim sim(maps, leg->start, leg->step.direction, script);
     Supplies supplies;
-    const OverworldInterruptSet story = story_interrupts(supplies, false, StoryChecks::FAST, Language::English);
+    const OverworldInterruptSet story = story_interrupts(supplies, false, Pokemon::StoryCheckLevel::FAST, Language::English);
     OverworldSimWalker walker(sim, {}, story);
     const StepOutcome outcome = walker.calls().walk(leg->step, leg->step.direction);
     const int walked = tiles_walked(maps, *leg, sim.state().position);

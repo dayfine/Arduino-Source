@@ -3,7 +3,7 @@
  */
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
-#include "Pokemon/AutoStory/Pokemon_StoryStepJson.h"
+#include "Pokemon/AutoStory/Data/Pokemon_StoryStepJson.h"
 #include "PokemonFRLG_AutoStoryExport.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 #include "PokemonFRLG_AutoStoryExport_Tests.h"
