@@ -5,7 +5,14 @@
  */
 
 #include <fstream>
+#include <functional>
+#include <map>
+#include <memory>
+#include <string_view>
+#include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Filesystem/Filesystem.h"
+#include "Common/Cpp/Json/JsonObject.h"
+#include "Common/Cpp/Json/JsonValue.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonFramework/StaticGlobals.h"
 #include "Inference/Box/PokemonFRLG_BoxCellOccupiedDetector.h"
@@ -28,7 +35,16 @@
 #include "Inference/PokemonFRLG_TrainerIdReader.h"
 #include "Inference/PokemonFRLG_WildEncounterReader.h"
 #include "Programs/BoxOrganization/PokemonFRLG_BoxSorter_Tests.h"
+#include "Programs/RngManipulation/PokemonFRLG_EggRng.h"
+#include "Programs/RngManipulation/PokemonFRLG_GiftRng.h"
+#include "Programs/RngManipulation/PokemonFRLG_RngHelper.h"
+#include "Programs/RngManipulation/PokemonFRLG_RngProgram.h"
+#include "Programs/RngManipulation/PokemonFRLG_RoamingLegendaryRng.h"
+#include "Programs/RngManipulation/PokemonFRLG_StarterRng.h"
+#include "Programs/RngManipulation/PokemonFRLG_StaticRng.h"
+#include "Programs/RngManipulation/PokemonFRLG_WildRng.h"
 #include "PokemonFRLG_Navigation.h"
+#include "Tests/ImageUnitTest.h"
 #include "Tests/TestUtils.h"
 
 #include "PokemonFRLG_Tests.h"
@@ -261,6 +277,318 @@ void add_tests_ExitWildBattle(UnitTestDatabase& database){
     }
 }
 
+
+std::string slot_name(PartySlot slot){
+    return std::to_string(static_cast<unsigned>(slot) + 1);
+}
+
+// Reads the last occupied slot from a party menu screenshot, as the RNG programs' party check does.
+class Test_LastOccupiedPartySlot : public ImageUnitTest{
+public:
+    Test_LastOccupiedPartySlot(std::string_view image, PartySlot expected)
+        : ImageUnitTest("PokemonFRLG::LastOccupiedPartySlot - " + std::string(image), {std::string(image)})
+        , m_expected(expected)
+    {}
+
+    virtual UnitTestResult run_on_images(
+        Logger&, CancellableScope&,
+        const std::vector<ImageRGB32>& images
+    ) const override{
+        const PartySlot slot = detect_last_occupied_party_slot(images[0]);
+        if (slot != m_expected){
+            return "Expected last occupied slot " + slot_name(m_expected) + ", got " + slot_name(slot);
+        }
+        return true;
+    }
+
+private:
+    const PartySlot m_expected;
+};
+
+void add_tests_LastOccupiedPartySlot(UnitTestDatabase& database){
+    for (unsigned occupied = 1; occupied <= 6; occupied++){
+        database.add<Test_LastOccupiedPartySlot>(
+            "PokemonFRLG/Party/Party_" + std::to_string(occupied) + ".png",
+            static_cast<PartySlot>(occupied - 1)
+        );
+    }
+    database.add<Test_LastOccupiedPartySlot>("PokemonFRLG/Party/Party_6_With_Held_Items.png", PartySlot::SIX);
+    database.add<Test_LastOccupiedPartySlot>("PokemonFRLG/Party/JPN_HeldItem.png", PartySlot::SIX);
+    database.add<Test_LastOccupiedPartySlot>("PokemonFRLG/Party/JPN_Party.png", PartySlot::FOUR);
+    database.add<Test_LastOccupiedPartySlot>("PokemonFRLG/Party/SPA_HeldItem.png", PartySlot::SIX);
+}
+
+// Steps that return scripted reads, and record what check_party_free_slots() asked for.
+class ScriptedPartyCheck : public PartyCheckActions{
+public:
+    bool menu_opens = true;
+    PartySlot last_occupied = PartySlot::ONE;
+    std::string steps;
+
+    virtual bool open_party_menu() override{
+        steps += steps.empty() ? "open" : " open";
+        return menu_opens;
+    }
+    virtual PartySlot read_last_occupied_slot() override{
+        steps += steps.empty() ? "read" : " read";
+        return last_occupied;
+    }
+};
+
+struct PartyCheckInput{
+    std::string name;
+    size_t free_slots_needed = 1;
+    bool menu_opens = true;
+    PartySlot last_occupied = PartySlot::ONE;
+};
+
+struct PartyCheckExpectation{
+    std::string steps = "";
+    // Start of the UserSetupError message; empty if the check passes.
+    std::string error = "";
+};
+
+struct PartyCheckCase{
+    PartyCheckInput input;
+    PartyCheckExpectation expectation;
+};
+
+class Test_PartyCheck : public UnitTest{
+public:
+    Test_PartyCheck(PartyCheckCase test_case)
+        : UnitTest("PokemonFRLG::RngPartyCheck - " + test_case.input.name)
+        , m_case(std::move(test_case))
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const PartyCheckInput& input = m_case.input;
+        const PartyCheckExpectation& expected = m_case.expectation;
+        ScriptedPartyCheck actions;
+        actions.menu_opens = input.menu_opens;
+        actions.last_occupied = input.last_occupied;
+
+        NullLogger logger;
+        std::string error;
+        try{
+            check_party_free_slots(logger, input.free_slots_needed, actions);
+        }catch (UserSetupError& e){
+            error = e.message();
+        }
+        const bool error_matches = expected.error.empty()
+            ? error.empty()
+            : error.rfind(expected.error, 0) == 0;
+        if (!error_matches){
+            return "Expected error: \"" + expected.error + "\"\nActual error:   \"" + error + "\"";
+        }
+        if (actions.steps != expected.steps){
+            return "Expected steps: " + expected.steps + "\nActual steps:   " + actions.steps;
+        }
+        return true;
+    }
+
+private:
+    const PartyCheckCase m_case;
+};
+
+void add_tests_PartyCheck(UnitTestDatabase& database){
+    const PartyCheckCase cases[] = {
+        {
+            // Programs that don't add a Pokemon to the party don't open the menu.
+            .input = {.name = "no free slot needed, full party", .free_slots_needed = 0, .last_occupied = PartySlot::SIX},
+            .expectation = {},
+        },
+        {
+            .input = {.name = "one free slot needed, one Pokemon"},
+            .expectation = {.steps = "open read"},
+        },
+        {
+            .input = {.name = "one free slot needed, five Pokemon", .last_occupied = PartySlot::FIVE},
+            .expectation = {.steps = "open read"},
+        },
+        {
+            .input = {.name = "one free slot needed, full party", .last_occupied = PartySlot::SIX},
+            .expectation = {.steps = "open read", .error = "Your party is full. Leave a party slot free"},
+        },
+        {
+            .input = {.name = "three free slots needed, three Pokemon", .free_slots_needed = 3, .last_occupied = PartySlot::THREE},
+            .expectation = {.steps = "open read"},
+        },
+        {
+            .input = {.name = "three free slots needed, four Pokemon", .free_slots_needed = 3, .last_occupied = PartySlot::FOUR},
+            .expectation = {.steps = "open read", .error = "Your party has 4 "},
+        },
+        {
+            // A menu that can't be opened skips the check rather than stopping the program.
+            .input = {.name = "party menu not opened", .menu_opens = false, .last_occupied = PartySlot::SIX},
+            .expectation = {.steps = "open"},
+        },
+    };
+    for (const PartyCheckCase& test_case : cases){
+        database.add<Test_PartyCheck>(test_case);
+    }
+}
+
+
+std::string menu_context_name(StartMenuContext context){
+    switch (context){
+    case StartMenuContext::STANDARD:    return "STANDARD";
+    case StartMenuContext::SAFARI_ZONE: return "SAFARI_ZONE";
+    case StartMenuContext::NO_DEX:      return "NO_DEX";
+    }
+    return "?";
+}
+
+template <typename Program>
+std::unique_ptr<RngProgramInstance> make_rng_program(){
+    return std::make_unique<Program>();
+}
+
+struct RngProgramPartyInput{
+    std::string name;
+    std::function<std::unique_ptr<RngProgramInstance>()> make_program;
+    // Program settings by option name, as in the saved settings JSON.
+    std::map<std::string, std::string> settings = {};
+};
+
+struct RngProgramPartyExpectation{
+    size_t free_slots;
+    StartMenuContext menu_context = StartMenuContext::STANDARD;
+};
+
+struct RngProgramPartyCase{
+    RngProgramPartyInput input;
+    RngProgramPartyExpectation expectation;
+};
+
+// Builds the program with the given settings and checks what its start check asks for. The
+// check itself runs for every RNG program: RngProgramInstance's start hook is final.
+class Test_RngProgramPartyRequirement : public UnitTest{
+public:
+    Test_RngProgramPartyRequirement(RngProgramPartyCase test_case)
+        : UnitTest("PokemonFRLG::RngProgramPartyRequirement - " + test_case.input.name)
+        , m_case(std::move(test_case))
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const RngProgramPartyInput& input = m_case.input;
+        const RngProgramPartyExpectation& expected = m_case.expectation;
+        std::unique_ptr<RngProgramInstance> program = input.make_program();
+        JsonObject settings;
+        for (const auto& [option, value] : input.settings){
+            settings[option] = value;
+        }
+        program->load_json(JsonValue(std::move(settings)));
+
+        const size_t free_slots = program->free_party_slots_needed();
+        if (free_slots != expected.free_slots){
+            return "Expected " + std::to_string(expected.free_slots) + " free party slots needed, got "
+                + std::to_string(free_slots);
+        }
+        const StartMenuContext menu_context = program->start_menu_context();
+        if (menu_context != expected.menu_context){
+            return "Expected start menu " + menu_context_name(expected.menu_context)
+                + ", got " + menu_context_name(menu_context);
+        }
+        return true;
+    }
+
+private:
+    const RngProgramPartyCase m_case;
+};
+
+const RngProgramPartyCase RNG_PROGRAM_PARTY_CASES[] = {
+    {
+        .input = {.name = "StarterRng", .make_program = make_rng_program<StarterRng>},
+        .expectation = {.free_slots = 0},
+    },
+    {
+        // The egg and the two wild Pokemon caught to confirm the seed.
+        .input = {.name = "EggRng", .make_program = make_rng_program<EggRng>},
+        .expectation = {.free_slots = 3},
+    },
+    {
+        .input = {.name = "GiftRng", .make_program = make_rng_program<GiftRng>},
+        .expectation = {.free_slots = 1},
+    },
+    {
+        .input = {.name = "StaticRng", .make_program = make_rng_program<StaticRng>},
+        .expectation = {.free_slots = 1},
+    },
+    {
+        .input = {.name = "RoamingLegendaryRng", .make_program = make_rng_program<RoamingLegendaryRng>},
+        .expectation = {.free_slots = 1},
+    },
+    {
+        .input = {
+            .name = "WildRng on Route 1",
+            .make_program = make_rng_program<WildRng>,
+            .settings = {{"GAME_LOCATION", "route_1"}},
+        },
+        .expectation = {.free_slots = 1},
+    },
+    {
+        // The Safari Zone start menu has no POKEMON entry in the usual place.
+        .input = {
+            .name = "WildRng in the Safari Zone",
+            .make_program = make_rng_program<WildRng>,
+            .settings = {{"GAME_LOCATION", "safari_zone_entrance"}},
+        },
+        .expectation = {.free_slots = 1, .menu_context = StartMenuContext::SAFARI_ZONE},
+    },
+    // RngHelper reads a Pokemon it receives from the party, but only watches encounters, so
+    // what it needs depends on the target.
+    {
+        .input = {.name = "RngHelper starters", .make_program = make_rng_program<RngHelper>, .settings = {{"TARGET", "starters"}}},
+        .expectation = {.free_slots = 0},
+    },
+    {
+        .input = {.name = "RngHelper lapras", .make_program = make_rng_program<RngHelper>, .settings = {{"TARGET", "lapras"}}},
+        .expectation = {.free_slots = 1},
+    },
+    {
+        .input = {.name = "RngHelper fossils", .make_program = make_rng_program<RngHelper>, .settings = {{"TARGET", "fossils"}}},
+        .expectation = {.free_slots = 1},
+    },
+    {
+        .input = {.name = "RngHelper gamecornerporygon", .make_program = make_rng_program<RngHelper>, .settings = {{"TARGET", "gamecornerporygon"}}},
+        .expectation = {.free_slots = 1},
+    },
+    {
+        .input = {.name = "RngHelper togepi", .make_program = make_rng_program<RngHelper>, .settings = {{"TARGET", "togepi"}}},
+        .expectation = {.free_slots = 1},
+    },
+    {
+        .input = {.name = "RngHelper eggheld", .make_program = make_rng_program<RngHelper>, .settings = {{"TARGET", "eggheld"}}},
+        .expectation = {.free_slots = 0},
+    },
+    {
+        .input = {.name = "RngHelper eggpickup", .make_program = make_rng_program<RngHelper>, .settings = {{"TARGET", "eggpickup"}}},
+        .expectation = {.free_slots = 1},
+    },
+    {
+        .input = {.name = "RngHelper snorlax", .make_program = make_rng_program<RngHelper>, .settings = {{"TARGET", "snorlax"}}},
+        .expectation = {.free_slots = 0},
+    },
+    {
+        .input = {.name = "RngHelper sweetscent", .make_program = make_rng_program<RngHelper>, .settings = {{"TARGET", "sweetscent"}}},
+        .expectation = {.free_slots = 0},
+    },
+    {
+        .input = {.name = "RngHelper safarizonesurf", .make_program = make_rng_program<RngHelper>, .settings = {{"TARGET", "safarizonesurf"}}},
+        .expectation = {.free_slots = 0},
+    },
+    {
+        .input = {.name = "RngHelper roaming", .make_program = make_rng_program<RngHelper>, .settings = {{"TARGET", "roaming"}}},
+        .expectation = {.free_slots = 0},
+    },
+};
+
+void add_tests_RngProgramPartyRequirement(UnitTestDatabase& database){
+    for (const RngProgramPartyCase& test_case : RNG_PROGRAM_PARTY_CASES){
+        database.add<Test_RngProgramPartyRequirement>(test_case);
+    }
+}
+
 }
 
 
@@ -279,12 +607,15 @@ void add_tests(UnitTestDatabase& database){
     add_tests_EliteFourRoomDetector(database);
     add_tests_ExitWildBattle(database);
     add_tests_HallOfFameSavingDetector(database);
+    add_tests_LastOccupiedPartySlot(database);
+    add_tests_PartyCheck(database);
     add_tests_PartyEmptySlotDetector(database);
     add_tests_PartyHeldItemDetector(database);
     add_tests_PartyLevelUpReader(database);
     add_tests_PartyMenuDetector(database);
     add_tests_PrizeSelectDetector(database);
     add_tests_PartySlotDetector(database);
+    add_tests_RngProgramPartyRequirement(database);
     add_tests_StatsReader(database);
     add_tests_SelectionDialogDetector(database);
     add_tests_ShinySymbolDetector(database);
