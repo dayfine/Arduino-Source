@@ -66,7 +66,7 @@ ImageRGB32 screen_of(uint32_t a, uint32_t b){
 
 UnitTestResult test_fade_of_screen(){
     struct Row{
-        const char* name;
+        std::string name;
         uint32_t a;
         uint32_t b;
         WarpFade fade;
@@ -129,7 +129,7 @@ std::vector<ScreenEvents> concat(std::vector<ScreenEvents> a, const std::vector<
 
 UnitTestResult test_talk_over(){
     struct Row{
-        const char* name;
+        std::string name;
         TalkOverRule rule;
         std::vector<ScreenEvents> beats;
         SceneMove want;

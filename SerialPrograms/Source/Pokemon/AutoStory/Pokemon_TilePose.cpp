@@ -4,6 +4,7 @@
  *
  */
 
+#include <memory>
 #include <utility>
 #include "Pokemon_TilePose.h"
 
@@ -28,8 +29,22 @@ std::string TilePose::describe() const{
 }
 
 std::vector<TilePos> tiles_of(const Pose& pose){
-    const TilePose* tile_pose = dynamic_cast<const TilePose*>(pose.where.get());
-    return tile_pose ? tile_pose->tiles : std::vector<TilePos>{};
+    const TilePose* position = dynamic_cast<const TilePose*>(pose.where.get());
+    return position ? position->tiles : std::vector<TilePos>{};
+}
+
+std::optional<Direction> facing_of(const Pose& pose){
+    const TilePose* position = dynamic_cast<const TilePose*>(pose.where.get());
+    return position ? position->facing : std::nullopt;
+}
+
+Pose tile_pose(std::string map, std::vector<TilePos> tiles, std::optional<Direction> facing){
+    Pose pose;
+    pose.map = std::move(map);
+    pose.certainty = tiles.empty() ? PoseCertainty::UNKNOWN
+        : tiles.size() == 1 ? PoseCertainty::TILE : PoseCertainty::SET;
+    pose.where = std::make_shared<const TilePose>(std::move(tiles), facing);
+    return pose;
 }
 
 
