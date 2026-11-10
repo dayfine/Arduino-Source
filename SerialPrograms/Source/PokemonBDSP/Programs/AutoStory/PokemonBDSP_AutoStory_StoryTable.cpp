@@ -252,6 +252,48 @@ std::vector<StoryStep> route_201_to_the_lakefront(){
     };
 }
 
+//  Barry's room east of its stairs: columns 3 to 5, rows 4 to `bottom`.
+Pose barrys_room_by_the_stairs(int bottom){
+    std::vector<TilePos> tiles;
+    for (int y = 4; y <= bottom; y++){
+        for (int x = 3; x <= 5; x++){
+            tiles.push_back({x, y});
+        }
+    }
+    return Pokemon::tile_pose(BARRYS_ROOM, tiles, NORTH);
+}
+
+//  00.01's visit to Barry: his door, up to his room, and out again.
+std::vector<StoryStep> barrys_house(){
+    return {
+        //  From (9, 13) straight north through (9, 12) (its trigger is spent) into
+        //  his door: a separate tap to (9, 12) first stepped into the door before
+        //  into_barrys_house watched for the fade.
+        step_into("into_barrys_house", NORTH, "past (9, 12) into his door", at(BARRYS_HOUSE, "door", NORTH)),
+        legs("off_barrys_mat", {{.direction = NORTH, .tiles = 1}}, "off the door's mat, which no route starts on"),
+        //  Like ours: stairs are entered sideways from the top of their mat, the
+        //  stairs point (r11: north from (2, 4) only bumps the wall).
+        route("below_barrys_stairs", at(BARRYS_HOUSE, "stairs", EAST), "past his mother at (4, 6) to the top of the stairs' mat"),
+        step_into("up_barrys_stairs", EAST, "onto the stairs", at(BARRYS_ROOM, "stairs")),
+        //  Automatic on arrival (2F frame script), not a talk: Barry runs past us down
+        //  the stairs and the game walks us a tile south of them (decomp; Butters
+        //  never walked to him).
+        scene("barry_runs_to_the_lake", at(BARRYS_ROOM, 3, 5, NORTH), "Barry's lines; he runs off to the lake", "a"),
+        //  Where the scene leaves us is the decomp's: from a tile next to it,
+        //  the route to the stairs' mat had no plan or ended a column east.
+        //  A tap east takes each of them (column 2 only from row 6) into
+        //  columns 3 to 5, and north to the back wall onto row 4 there,
+        //  east of the stairs, which a run west goes down.
+        anchored(legs("off_barrys_west_wall", {{.direction = EAST, .tiles = 1}}, "a tap east, clear of the west wall"),
+            barrys_room_by_the_stairs(6)),
+        anchored(to_walls("up_to_barrys_back_wall", {{.direction = NORTH, .tiles = 3}}, "north to the room's back wall"),
+            barrys_room_by_the_stairs(4)),
+        step_into("down_barrys_stairs", WEST, "west along row 4 onto the stairs", at(BARRYS_HOUSE, "stairs")),
+        route("above_barrys_door", at(BARRYS_HOUSE, 6, 9, SOUTH), "back to his door"),
+        step_into("out_of_barrys_house", SOUTH, "out of his door", at(TWINLEAF, "barry_doorstep", SOUTH)),
+    };
+}
+
 //  00.01: down from the bedroom, Barry's house, and out to the Lakefront.
 StoryCheckpoint bedroom_to_lakefront(){
     std::vector<StoryStep> steps{
@@ -278,26 +320,10 @@ StoryCheckpoint bedroom_to_lakefront(){
         //  r10: the first north tap after the scene gave no warp, the second did).
         scene("barry_bursts_out", at(TWINLEAF, 9, 13, NORTH), "Barry runs out, bumps into us and runs back in", "a"),
         scene("barry_goes_home", at(TWINLEAF, 9, 13, NORTH), "his second lines (Butters waited for two)", "a"),
-        //  From (9, 13) straight north through (9, 12) (its trigger is spent) into
-        //  his door: a separate tap to (9, 12) first stepped into the door before
-        //  into_barrys_house watched for the fade.
-        step_into("into_barrys_house", NORTH, "past (9, 12) into his door", at(BARRYS_HOUSE, "door", NORTH)),
-        legs("off_barrys_mat", {{.direction = NORTH, .tiles = 1}}, "off the door's mat, which no route starts on"),
-        //  Like ours: stairs are entered sideways from the top of their mat, the
-        //  stairs point (r11: north from (2, 4) only bumps the wall).
-        route("below_barrys_stairs", at(BARRYS_HOUSE, "stairs", EAST), "past his mother at (4, 6) to the top of the stairs' mat"),
-        step_into("up_barrys_stairs", EAST, "onto the stairs", at(BARRYS_ROOM, "stairs")),
-        //  Automatic on arrival (2F frame script), not a talk: Barry runs past us down
-        //  the stairs and the game walks us a tile south of them (decomp; Butters
-        //  never walked to him).
-        scene("barry_runs_to_the_lake", at(BARRYS_ROOM, 3, 5, NORTH), "Barry's lines; he runs off to the lake", "a"),
-        //  Butters went west from there straight into the stairs; ours are entered from
-        //  the mat's top tile, so go there first (unchecked: which works).
-        route("above_barrys_stairs", at(BARRYS_ROOM, "stairs", WEST), "back to the top of the stairs' mat"),
-        step_into("down_barrys_stairs", WEST, "onto the stairs", at(BARRYS_HOUSE, "stairs")),
-        route("above_barrys_door", at(BARRYS_HOUSE, 6, 9, SOUTH), "back to his door"),
-        step_into("out_of_barrys_house", SOUTH, "out of his door", at(TWINLEAF, "barry_doorstep", SOUTH)),
     };
+    for (StoryStep& step : barrys_house()){
+        steps.push_back(std::move(step));
+    }
     for (StoryStep& step : route_201_to_the_lakefront()){
         steps.push_back(std::move(step));
     }
@@ -423,6 +449,34 @@ std::vector<StoryStep> home_to_the_doors_column(){
     };
 }
 
+//  Into the house, Mom's heal, and out with her hat: her scenes' ends
+//  are guesses, so walls tell us where we are after each.
+std::vector<StoryStep> moms_heal_and_hat(){
+    return {
+        step_into("into_the_house", NORTH, "the house's door", at(HOME, 6, 9, NORTH)),
+        route("beside_mom", at(HOME, 6, 8, EAST), "west of Mom at (7, 8)"),
+        talk("mom", "Mom"),
+        scene("mom_heals_us", at(HOME, 7, 7, SOUTH), "Mom heals us; Barry's mom gives us his parcel"),
+        //  Where her scene leaves us is a guess (no console run stopped after
+        //  it): from any tile next to it, fixed legs ended a tile off or
+        //  against her. North, east and south to the walls end on (11, 8) from
+        //  each of them: row 5's shelves stop columns 6 and 7 on row 6, the
+        //  wall stops column 8 on row 5, the east wall column 11, row 9's wall
+        //  row 8. The route goes on from there.
+        anchored(to_walls("into_the_east_corner", {
+            {.direction = NORTH, .tiles = 4}, {.direction = EAST, .tiles = 6}, {.direction = SOUTH, .tiles = 4},
+        }, "north, east and south to the walls, into the room's east corner"), at(HOME, 11, 8, SOUTH)),
+        route("around_mom", at(HOME, 6, 9, SOUTH), "round Mom to (6, 9) above the door"),
+        step_into("to_moms_call", SOUTH, "onto the door mat (6, 10), triggering Mom's call"),
+        scene("moms_hat", at(TWINLEAF, 19, 22, EAST), "Mom's hat; she walks out with us"),
+        //  Her scene's end is a guess too, and Mom may stand east of us: west
+        //  along the row to Twinleaf's west wall, column 6, from either row the
+        //  scene may leave us on. The route plans from both.
+        anchored(to_walls("to_twinleafs_west_wall", {{.direction = WEST, .tiles = 16}},
+            "west along the row to the town's west wall"), Pokemon::tile_pose(TWINLEAF, {TilePos{6, 22}, TilePos{6, 23}}, WEST)),
+    };
+}
+
 std::vector<StoryCheckpoint> to_the_catch(){
     std::vector<StoryStep> steps{
         out_of_the_lab_into_dawns_tour(),
@@ -435,14 +489,9 @@ std::vector<StoryCheckpoint> to_the_catch(){
     for (StoryStep& s : home_to_the_doors_column()){
         steps.push_back(std::move(s));
     }
-    steps.push_back(step_into("into_the_house", NORTH, "the house's door", at(HOME, 6, 9, NORTH)));
-    steps.push_back(route("beside_mom", at(HOME, 6, 8, EAST), "west of Mom at (7, 8)"));
-    steps.push_back(talk("mom", "Mom"));
-    steps.push_back(scene("mom_heals_us", at(HOME, 7, 7, SOUTH), "Mom heals us; Barry's mom gives us his parcel"));
-    steps.push_back(legs("around_mom", {{.direction = WEST, .tiles = 1}, {.direction = SOUTH, .tiles = 2}},
-        "around Mom to (6, 9) above the door"));
-    steps.push_back(step_into("to_moms_call", SOUTH, "onto the door mat (6, 10), triggering Mom's call"));
-    steps.push_back(scene("moms_hat", at(TWINLEAF, 19, 22, EAST), "Mom's hat; she walks out with us"));
+    for (StoryStep& s : moms_heal_and_hat()){
+        steps.push_back(std::move(s));
+    }
     steps.push_back(route("short_of_the_catch_tutorial", at(ROUTE_202, 22, 27, WEST), "through Sandgem onto Route 202, east of its trigger column"));
     steps.push_back(step_into("catch_tutorial_trigger", WEST, "the trigger (21, 25..29), VAR_ROUTE_202_STATE 0"));
     steps.push_back(event("catch_tutorial", "Dawn's catching tutorial"));
@@ -660,10 +709,17 @@ StoryCheckpoint oreburgh_to_route_203(){
             "west along the street, north up the stairs west of the houses, west along the Gate's row", "town"),
         step_into("barrys_trigger", WEST, "the trigger (6, 12..15)"),
         scene("barry_bumps_into_us", at(OREBURGH, 5, 13, EAST), "Barry runs into us, talks of Eterna, and leaves (assumed: the push)"),
-        //  Straight west from where Barry leaves us into the Gate's mouth
-        //  (1, 13), running until the fade; the warp's other end is the
-        //  Gate's (27, 22), beside its east mouth. Not an open walk to the
-        //  tile beside the mouth and then a tap: that walk slid onto the warp
+        //  Where the push leaves us is assumed: a row up or down, the run
+        //  west below missed the mouth. South to the wall, row 17, and west
+        //  to it, column 2, from any of those tiles; then taps up to the
+        //  mouth's row.
+        anchored(to_walls("below_the_gates_mouth", {{.direction = SOUTH, .tiles = 6}, {.direction = WEST, .tiles = 6}},
+            "south to row 17's wall, then west to column 2's"), at(OREBURGH, 2, 17, WEST)),
+        legs("to_the_gates_row", {{.direction = NORTH, .tiles = 4}}, "taps up column 2 to the mouth's row 13"),
+        //  West from there into the Gate's mouth (1, 13), running until
+        //  the fade; the warp's other end is the Gate's (27, 22), beside
+        //  its east mouth. Not an open walk to the tile beside the mouth
+        //  and then a tap: that walk slid onto the warp
         //  (screen change 177 at 1.6 s), the banner came and went unwatched,
         //  and the tap step took the Gate's dim floor for its fade and waited
         //  for a banner already gone (lab-B, 2026-11-08 15:31, 15:39, 15:47,
@@ -845,8 +901,16 @@ std::vector<StoryCheckpoint> to_floaroma(){
         row("01.06", "Route 203 to Jubilife", out_of_oreburgh_gate(), {
             //  Trainers who saw us going east in 01.02 are beaten; any other
             //  sees us here and is fought (route_203_trainer_sights()).
-            route("below_rowans_trigger", below_rowans_trigger(),
-                "down Route 203 (its ledges only south), west along it into Jubilife's street, north up the road", "town"),
+            //  Up the road's west column 41 to its corner (41, 8) first:
+            //  from (41, 22), or (42, 22) where a wild battle in the grass
+            //  cuts the long leg west a tile short, the walls bring us there.
+            //  One route to the trigger turned north at column 44: such a
+            //  battle left it on (44, 22) or (45, 22), and column 45 has no
+            //  wall up the road, nor a way round the Ace Trainer who wanders
+            //  (45..47, 21) (fault sweep).
+            route("up_jubilifes_road", at(JUBILIFE, 41, 8, NORTH),
+                "down Route 203 (its ledges only south), west along it into Jubilife's street, north up the road's west column", "town"),
+            route("below_rowans_trigger", below_rowans_trigger(), "east along row 8 to the sign's wall", "town"),
         }),
         rowan_and_the_grunts(),
         row("01.08", "Jubilife to the Ravaged Path", after_the_grunts(), {

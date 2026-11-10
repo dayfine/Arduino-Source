@@ -43,13 +43,6 @@ anchor); 0 from one start tile.
   target: RivalHouse1F (2, 3) facing east (tile)
   not planned: the start is unknown (a LEGS or STEP step before it does not say where it ends)
 
-== 00.01 above_barrys_stairs (costs: route)
-  from: RivalHouse2F (3, 5) facing north (tile)
-  target: RivalHouse2F (3, 4) facing west (tile)
-  start candidates: RivalHouse2F (3, 5)
-  1. north 1 (to wall) -> RivalHouse2F (3, 4)
-  totals: 1 legs, 0 turns, 0 open, 0 localization
-
 == 00.01 above_barrys_door (costs: route)
   from: RivalHouse1F (2, 3) (tile)
   target: RivalHouse1F (6, 9) facing south (tile)
@@ -132,21 +125,31 @@ anchor); 0 from one start tile.
   1. north 1 (open) -> PlayerHouse1F (6, 8)
   totals: 1 legs, 0 turns, 1 open, 0 localization
 
+== 00.04 around_mom (costs: route)
+  from: PlayerHouse1F (11, 8) facing south (tile)
+  target: PlayerHouse1F (6, 9) facing south (tile)
+  start candidates: PlayerHouse1F (11, 8)
+  1. west 1 (open) -> PlayerHouse1F (10, 8)
+  2. south 1 (open) -> PlayerHouse1F (10, 9)
+  3. west 4 (open) -> PlayerHouse1F (6, 9)
+  totals: 3 legs, 2 turns, 3 open, 0 localization
+
 == 00.04 short_of_the_catch_tutorial (costs: route)
-  from: TwinleafTown (19, 22) facing east (tile)
+  from: TwinleafTown (6, 22) (6, 23) facing west (set)
   target: Route202 (22, 27) facing west (tile)
-  start candidates: Twinleaf Town (19, 22)
-  1. west 2 (open) -> Twinleaf Town (17, 22)
-  2. north 34 (to wall) -> Route 201 (17, 13)
-  3. east 40 (to wall) -> Route 201 (57, 13)
-  4. west 7 (open) -> Route 201 (50, 13)
-  5. north 7 (open) -> Route 201 (50, 6)
-  6. east 43 (to wall) -> Sandgem Town (29, 13)
-  7. west 5 (open) -> Sandgem Town (24, 13)
-  8. north 21 (to wall) -> Route 202 (25, 24)
-  9. west 3 (to wall) -> Route 202 (22, 24)
-  10. south 3 (open) -> Route 202 (22, 27)
-  totals: 10 legs, 9 turns, 5 open, 0 localization
+  start candidates: Twinleaf Town (6, 22), Twinleaf Town (6, 23)
+  1. north 19 (to wall) -> Twinleaf Town (6, 4)
+  2. east 8 (open) -> Twinleaf Town (14, 4)
+  3. north 16 (to wall) -> Route 201 (14, 13)
+  4. east 43 (to wall) -> Route 201 (57, 13)
+  5. west 7 (open) -> Route 201 (50, 13)
+  6. north 7 (open) -> Route 201 (50, 6)
+  7. east 43 (to wall) -> Sandgem Town (29, 13)
+  8. west 5 (open) -> Sandgem Town (24, 13)
+  9. north 21 (to wall) -> Route 202 (25, 24)
+  10. west 3 (to wall) -> Route 202 (22, 24)
+  11. south 3 (open) -> Route 202 (22, 27)
+  totals: 11 legs, 10 turns, 5 open, 1 localization
 
 == 00.04b to_catch_grass (costs: route)
   from: Route202 (15, 25) (16, 25) (17, 25) (18, 25) (19, 25) (20, 25) (21, 25) (15, 26) (16, 26) (17, 26) (18, 26) (19, 26) (20, 26) (21, 26) (15, 27) (16, 27) (17, 27) (18, 27) (19, 27) (20, 27) (21, 27) (21, 28) (21, 29) (set)
@@ -357,17 +360,23 @@ anchor); 0 from one start tile.
   6. west 3 (open) -> OreburghGate (5, 22)
   totals: 6 legs, 5 turns, 1 open, 3 localization
 
-== 01.06 below_rowans_trigger (costs: town)
+== 01.06 up_jubilifes_road (costs: town)
   from: Route203 (55, 9) facing west (tile)
-  target: JubilifeCity (47, 8) facing north (tile)
+  target: JubilifeCity (41, 8) facing north (tile)
   start candidates: Route 203 (55, 9)
   1. south 10 (to wall) -> Route 203 (55, 19)
   2. west 17 (to wall) -> Route 203 (38, 19)
   3. north 1 (open) -> Route 203 (38, 18)
-  4. west 57 (open) -> Jubilife City (44, 22)
-  5. north 14 (to wall) -> Jubilife City (44, 8)
-  6. east 3 (to wall) -> Jubilife City (47, 8)
-  totals: 6 legs, 5 turns, 2 open, 0 localization
+  4. west 60 (open) -> Jubilife City (41, 22)
+  5. north 14 (to wall) -> Jubilife City (41, 8)
+  totals: 5 legs, 4 turns, 2 open, 0 localization
+
+== 01.06 below_rowans_trigger (costs: town)
+  from: JubilifeCity (41, 8) facing north (tile)
+  target: JubilifeCity (47, 8) facing north (tile)
+  start candidates: Jubilife City (41, 8)
+  1. east 6 (to wall) -> Jubilife City (47, 8)
+  totals: 1 legs, 0 turns, 0 open, 0 localization
 
 == 01.08 below_the_ravaged_path (costs: town)
   from: JubilifeCity (44, 5) facing west (tile)

@@ -41,6 +41,8 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
+#include "Pokemon/Navigation/Pokemon_MapData.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP_AutoStory_StorySim.h"
 #include "PokemonBDSP_AutoStory_FaultSweep_Tests.h"
@@ -84,15 +86,6 @@ const char* LAST_ROW = "01.11";
 
 //  Sweeps the program fails today, by test name, with the likely fix.
 const std::map<std::string, std::string> KNOWN_FAILING{
-    {"PokemonBDSP::AutoStory - Fault sweep: 00.01, scene end pose",
-        "the walk after barry_runs_to_the_lake trusts the table's pose: measure it or clip to a wall first"},
-    {"PokemonBDSP::AutoStory - Fault sweep: 00.04, scene end pose",
-        "the walk after mom_heals_us, moms_hat trusts the table's pose: measure it or clip to a wall first"},
-    {"PokemonBDSP::AutoStory - Fault sweep: 01.05, scene end pose",
-        "the walk after barry_bumps_into_us trusts the table's pose: measure it or clip to a wall first"},
-    {"PokemonBDSP::AutoStory - Fault sweep: 01.06, wild battles on every grass pass",
-        "below_rowans_trigger's open leg west 57: a battle in its grass leaves it on Jubilife's (44, 22) or (45, 22), "
-        "from which the Ace Trainer's (45..47, 21) leaves no plan: end the long leg on a column both of whose candidates clip north to row 8"},
 };
 
 //  Scenes whose end the console has proven, by step name: the sweep leaves
@@ -165,7 +158,8 @@ bool wild_or_trainers(const StoryStep& step){
 
 //  The tiles within one of `center`, diagonals too, that the player can
 //  reach from it in one or two steps, and not in `seen`: where a scene can
-//  leave them instead. A tile behind a wall is not one.
+//  leave them instead. A tile behind a wall is not one, nor a door's: a
+//  step onto it goes through (00.04's moms_hat by the house's door).
 void walkable_neighbors(const StoryWorld* world, const Pose& pose, const TilePos& center, std::set<std::pair<int, int>>& seen, std::vector<TilePos>& out){
     const auto step = [](const TilePos& tile, Direction direction){
         switch (direction){
@@ -183,7 +177,11 @@ void walkable_neighbors(const StoryWorld* world, const Pose& pose, const TilePos
         GridSim sim(SimWorld{.world = world}, story_to_world(*world, pose.map, from), direction, false);
         return sim_can_step(sim, direction);
     };
+    const Pokemon::MapData& map = story_map(pose.map);
     const auto add = [&](const TilePos& tile){
+        if (map.tiles.at(tile) == Pokemon::TileKind::DOOR){
+            return;
+        }
         if (seen.insert({tile.x, tile.y}).second){
             out.push_back(tile);
         }
