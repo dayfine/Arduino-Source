@@ -38,7 +38,7 @@ constexpr std::pair<char, TileKind> GLYPHS[] = {
     {'6', TileKind::CLOSED_EAST},
 };
 
-constexpr std::pair<const char*, WarpEntry> WARP_ENTRIES[] = {
+constexpr std::pair<std::string_view, WarpEntry> WARP_ENTRIES[] = {
     {"walk_into", WarpEntry::WALK_INTO},
     {"step_on", WarpEntry::STEP_ON},
     {"cave_entrance", WarpEntry::CAVE_ENTRANCE},
