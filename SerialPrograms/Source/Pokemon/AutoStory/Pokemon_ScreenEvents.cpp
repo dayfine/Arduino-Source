@@ -13,7 +13,7 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-const char* screen_event_name(ScreenEvent event){
+std::string screen_event_name(ScreenEvent event){
     switch (event){
     case ScreenEvent::FADE_BLACK:       return "black fade";
     case ScreenEvent::FADE_WHITE:       return "white fade";
@@ -30,7 +30,7 @@ const char* screen_event_name(ScreenEvent event){
     return "?";
 }
 
-const char* warp_fade_name(WarpFade fade){
+std::string warp_fade_name(WarpFade fade){
     switch (fade){
     case WarpFade::NONE:    return "no fade";
     case WarpFade::BLACK:   return "black fade";
