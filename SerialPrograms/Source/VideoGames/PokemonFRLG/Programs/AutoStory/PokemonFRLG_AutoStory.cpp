@@ -10,6 +10,7 @@
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
+#include "Pokemon/AutoStory/Pokemon_AutoStorySelect.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
 #include "Pokemon/AutoStory/Pokemon_StoryLog.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
