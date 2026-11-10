@@ -7,9 +7,7 @@
  *  routes from it. These are BDSP AutoStory's route lines, lifted from
  *  PokemonBDSP_AutoStory_RouteWalk.cpp, with what the other games need:
  *
- *      [Route] To the grass: plan from Route 202 (15, 25), Route 202 (16, 25):
- *          east 15 (to wall) to Route 202 (23, 25), Route 202 (30, 26)
- *          north 5 (to wall) to Route 202 (23, 24)
+ *      [Route] To the grass: plan from Route 202 (15, 25), Route 202 (16, 25): east 15 (to wall) to Route 202 (23, 25), Route 202 (30, 26); north 5 (to wall) to Route 202 (23, 24)
  *      [Route] Leg 1/2: east 15 (to wall) to Route 202 (23, 25), Route 202 (30, 26)
  *      [Route] To the grass: east 15 (to wall): ended at Route 202 (23, 25) (walked).
  *      [Route] To the grass: north 5 (to wall): stopped early after about 2 tiles, at Route 202 (23, 23); planning again.
@@ -93,7 +91,9 @@ enum class EndBasis{
 const char* basis_name(EndBasis basis);
 
 
-//  "<label>: plan from <tiles>:", then a line per leg.
+//  "<label>: plan from <tiles>: <leg> to <tiles>; <leg> to <tiles>", one
+//  line, each leg written as route_leg_line() writes it; "<label>: plan
+//  from <tiles>:" with no legs.
 std::string route_plan_line(const std::string& label, const std::vector<RouteTile>& from, const std::vector<PlannedRouteLeg>& legs);
 //  "Leg <number>/<count>: <leg> to <tiles>", as the leg starts.
 std::string route_leg_line(size_t number, size_t count, const PlannedRouteLeg& leg);
