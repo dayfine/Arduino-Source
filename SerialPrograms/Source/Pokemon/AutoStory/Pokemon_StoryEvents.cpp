@@ -68,11 +68,13 @@ Outcome outcome_ok(Pose pose){
     outcome.pose = std::move(pose);
     return outcome;
 }
+
 Outcome outcome_unchanged(){
     Outcome outcome;
     outcome.changed_nothing = true;
     return outcome;
 }
+
 Outcome outcome_failed(std::string failure, std::string detail){
     Outcome outcome;
     outcome.failure = std::move(failure);
@@ -108,17 +110,6 @@ const char* recovery_name(RecoveryKind kind){
         return "stop";
     }
     return "?";
-}
-
-
-std::string event_log_line(
-    const std::string& checkpoint, size_t number, const std::string& event, const std::string& status,
-    const std::string& section
-){
-    if (section.empty()){
-        return std::format("[Event] {}/{} {}: {}", checkpoint, number, event, status);
-    }
-    return std::format("[Event] {}/{} [{}] {}: {}", checkpoint, number, section, event, status);
 }
 
 
@@ -414,7 +405,7 @@ Outcome finish_checkpoint(RunState& state, Checkpoint& checkpoint){
 CheckpointReport run_checkpoint(RunState& state, Checkpoint& checkpoint, EventLogger& log){
     CheckpointReport report;
     const std::string& id = checkpoint.id;
-    log(std::format("[Checkpoint] {}: start, {} events", id, checkpoint.events.size()));
+    log(checkpoint_start_line(id, checkpoint.events.size()));
     std::optional<std::string> failing = first_failing(checkpoint.start, state);
     if (failing){
         return stop_checkpoint(report, log, id, outcome_failed("start_failed", *failing));

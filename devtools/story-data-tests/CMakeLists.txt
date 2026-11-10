@@ -11,6 +11,7 @@ add_executable(StoryDataTests
     "${STORY}/Pokemon_StoryStepJson.cpp"
     "${STORY}/Pokemon_StoryStepJson_Tests.cpp"
     "${STORY}/Pokemon_TilePose.cpp"
+    "${STORY}/Types/Pokemon_StoryArgs.cpp"
     "${ROOT}/SerialPrograms/Source/Pokemon/Navigation/Pokemon_Grid.cpp"
     "${ROOT}/Common/Cpp/Exceptions.cpp"
     "${ROOT}/Common/Cpp/Json/JsonValue.cpp"
@@ -26,8 +27,12 @@ list(REMOVE_ITEM STORY_DATA_SOURCES "${STORY}/Pokemon_StoryStepJson_Tests.cpp")
 add_executable(AuthoredCheckpointTests ${STORY_DATA_SOURCES}
     "${STORY}/Pokemon_AuthoredCheckpointJson.cpp"
     "${STORY}/Pokemon_AuthoredCheckpointJson_Tests.cpp")
+add_executable(StoryArgsTests
+    "${STORY}/Types/Pokemon_StoryArgs.cpp"
+    "${STORY}/Pokemon_StoryVariant.cpp"
+    "${STORY}/Pokemon_StoryArgs_Tests.cpp")
 
-foreach(TEST_TARGET IN ITEMS StoryDataTests AuthoredCheckpointTests)
+foreach(TEST_TARGET IN ITEMS StoryDataTests AuthoredCheckpointTests StoryArgsTests)
 target_include_directories(${TEST_TARGET} PRIVATE "${ROOT}" "${ROOT}/SerialPrograms/Source")
 target_compile_features(${TEST_TARGET} PRIVATE cxx_std_23)
 target_compile_definitions(${TEST_TARGET} PRIVATE PA_STORY_DATA_STANDALONE)
@@ -41,3 +46,4 @@ endif()
 endforeach()
 add_test(NAME StoryData COMMAND StoryDataTests)
 add_test(NAME AuthoredCheckpoint COMMAND AuthoredCheckpointTests)
+add_test(NAME StoryArgs COMMAND StoryArgsTests)

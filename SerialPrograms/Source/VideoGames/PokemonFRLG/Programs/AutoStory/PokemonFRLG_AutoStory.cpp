@@ -252,10 +252,9 @@ void verify_story_checkpoint(
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
     const StoryCheckpoint& checkpoint = checkpoints[run.start_index()];
     StoryEnv story = story_env(env, context, checkpoint, run.checks(), false);
+    story.language = run.language();
     load_verify_save(env, context, story, checkpoint);
     StoryExecutor executor(story);
-    executor.set_checks(run.checks());
-    executor.set_language(run.language());
     Pokemon::Segment segment = make_story_segment(checkpoints, executor);
     Pokemon::SegmentHooks hooks = story_hooks(env, story);
 
@@ -665,12 +664,11 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         plan = plan_story_run(checkpoints, first, last, handoffs);
     }
     StoryEnv story = story_env(env, context, checkpoints[first], RUN.checks(), KEEP_START_FRAME);
+    story.language = RUN.language();
     story.player_name = player_name;
     const bool at_gift_rng = plan.stop == StoryHandoff::GIFT_RNG && plan.rows.empty();
     prepare_start(env, context, checkpoints, first, story, at_gift_rng);
     StoryExecutor executor(story);
-    executor.set_checks(RUN.checks());
-    executor.set_language(RUN.language());
 
     const std::optional<std::string> done_through = at_gift_rng
         ? run_from_gift_rng_save(env, context, story, executor, first)
