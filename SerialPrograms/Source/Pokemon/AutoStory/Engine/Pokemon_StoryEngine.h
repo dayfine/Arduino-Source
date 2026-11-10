@@ -36,6 +36,9 @@ namespace Pokemon{
 //  (non-zero is set).
 ObservedState observed_state(const Observation<GridPose>& observation);
 
+//  The same for a zone game: the map is the zone; no tile or facing.
+ObservedState observed_state(const Observation<ZonePose>& observation);
+
 //  Runs `game`'s checkpoints on `backend`. Both must outlive it.
 template <StoryPose PoseType>
 class StoryEngine{
@@ -75,6 +78,7 @@ private:
 
 //  Instantiated once, in Pokemon_StoryEngine.cpp.
 extern template class StoryEngine<GridPose>;
+extern template class StoryEngine<ZonePose>;
 
 
 

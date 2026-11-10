@@ -63,13 +63,28 @@ StoryGame<PoseType> with_gated_save_step(StoryGame<PoseType> game, const StorySa
 }
 
 
+//  The items ("bag.<ITEM>") and flags ("flag.<name>", non-zero is set) of
+//  `observation`'s readings.
+ObservedState observed_readings(const ScreenObservation& observation){
+    constexpr std::string_view BAG = "bag.";
+    constexpr std::string_view FLAG = "flag.";
+    ObservedState observed;
+    for (const auto& [name, value] : observation.readings){
+        if (name.starts_with(BAG)){
+            observed.items[name.substr(BAG.size())] = value < 0 ? 0 : (size_t)value;
+        }else if (name.starts_with(FLAG)){
+            observed.flags[name.substr(FLAG.size())] = value != 0;
+        }
+    }
+    return observed;
+}
+
+
 } // namespace
 
 
 ObservedState observed_state(const Observation<GridPose>& observation){
-    constexpr std::string_view BAG = "bag.";
-    constexpr std::string_view FLAG = "flag.";
-    ObservedState observed;
+    ObservedState observed = observed_readings(observation);
     if (observation.pose){
         observed.map = observation.pose->map;
         if (observation.pose->tiles.size() == 1){
@@ -77,12 +92,13 @@ ObservedState observed_state(const Observation<GridPose>& observation){
         }
         observed.facing = observation.pose->facing;
     }
-    for (const auto& [name, value] : observation.readings){
-        if (name.starts_with(BAG)){
-            observed.items[name.substr(BAG.size())] = value < 0 ? 0 : (size_t)value;
-        }else if (name.starts_with(FLAG)){
-            observed.flags[name.substr(FLAG.size())] = value != 0;
-        }
+    return observed;
+}
+
+ObservedState observed_state(const Observation<ZonePose>& observation){
+    ObservedState observed = observed_readings(observation);
+    if (observation.pose){
+        observed.map = observation.pose->zone;
     }
     return observed;
 }
@@ -178,6 +194,7 @@ PostconditionReport StoryEngine<PoseType>::check_postconditions(const StoryCheck
 
 
 template class StoryEngine<GridPose>;
+template class StoryEngine<ZonePose>;
 
 
 

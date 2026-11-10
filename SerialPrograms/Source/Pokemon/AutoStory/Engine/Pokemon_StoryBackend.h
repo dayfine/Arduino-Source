@@ -23,6 +23,7 @@
 #include "Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h"
 #include "Pokemon/Navigation/Pokemon_Grid.h"
 #include "Pokemon_StoryPoseConcept.h"
+#include "Pokemon_ZonePose.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
