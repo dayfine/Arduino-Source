@@ -117,8 +117,6 @@ void answer_yes_no(ConsoleHandle& console, ProControllerContext& context, bool y
 //  has, one or two, then on to the overworld. Language-free: one A after
 //  the first page has printed either closes the message or shows its
 //  second page. Nothing if no message showed.
-//  Presses A; true once a message box is up.
-bool talk_opens_message(ConsoleHandle& console, ProControllerContext& context);
 std::optional<size_t> talk_and_count_pages(ConsoleHandle& console, ProControllerContext& context);
 
 //  From the overworld: one step `direction`, onto a trigger or into a door.

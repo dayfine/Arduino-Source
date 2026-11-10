@@ -9,15 +9,16 @@
 #include <set>
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
+#include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "Pokemon/Navigation/Pokemon_RouteLog.h"
+#include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldReanchor.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecoveryWalk.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
-#include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryAbilities.h"
 #include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryCapture.h"
@@ -494,6 +495,22 @@ std::optional<Direction> wall_beside(const MapData& map, const TilePos& tile){
 }
 
 namespace{
+
+//  A talk to a person or an item ball opens a message; an A that opens
+//  none faced nothing (00.31 b3f_rare_candy, console B, 2026-11-10: one A,
+//  "done", on the wrong floor). The message is left open for the next step.
+bool talk_opens_message(ConsoleHandle& console, ProControllerContext& context){
+    WhiteDialogWatcher opened(COLOR_RED);
+    const int shown = run_until<ProControllerContext>(
+        console, context,
+        [](ProControllerContext& context){
+            pbf_press_button(context, BUTTON_A, 160ms, 2000ms);
+        },
+        {opened}
+    );
+    return shown >= 0;
+}
+
 
 bool walked(StoryEnv& env, RunState& state, const StoryStep& step){
     const Outcome outcome = walk_route(env, state, step);
