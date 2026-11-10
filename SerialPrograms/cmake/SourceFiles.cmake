@@ -1520,6 +1520,7 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_StoryStepJson.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryStepJson.h
     Source/Pokemon/AutoStory/Pokemon_StoryStepJson_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryArgs_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_StorySteps.cpp
     Source/Pokemon/AutoStory/Pokemon_StorySteps.h
     Source/Pokemon/AutoStory/Pokemon_StorySteps_Tests.cpp
@@ -1528,6 +1529,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_Transitions.cpp
     Source/Pokemon/AutoStory/Pokemon_Transitions.h
     Source/Pokemon/AutoStory/Pokemon_Transitions_Tests.cpp
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryArgs.cpp
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryArgs.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryChecks.cpp
     Source/Pokemon/AutoStory/Types/Pokemon_StoryChecks.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h
