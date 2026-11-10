@@ -3,9 +3,11 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  The options every AutoStory program shows for where to start and end, how
- *  hard to try and how much to check: the same group in each game, read into the shared
- *  SegmentPolicy (Pokemon/AutoStory/Pokemon_StorySegments.h) and the
- *  executor's checks level (Pokemon_StorySteps.h).
+ *  hard to try and how much to check: the shared range group
+ *  (Pokemon_StoryRangeOptions.h) plus the run policy, read into the shared
+ *  SegmentPolicy (Pokemon/AutoStory/Pokemon_StorySegments.h), the checks
+ *  level (Types/Pokemon_StoryChecks.h) and the language the game's steps
+ *  read text in.
  *
  */
 
@@ -21,10 +23,13 @@
 #include "Common/Cpp/Options/EnumDropdownOption.h"
 #include "Common/Cpp/Options/GroupOption.h"
 #include "Common/Cpp/Options/SimpleIntegerOption.h"
+#include "CommonFramework/Language.h"
 #include "CommonTools/Options/StringSelectOption.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStorySelect.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
-#include "Pokemon/AutoStory/Pokemon_StorySteps.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryChecks.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
+#include "Pokemon_StoryRangeOptions.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -34,10 +39,12 @@ namespace Pokemon{
 //  segments: "00.09 Pewter Gym: Camper Liam, then Brock".
 struct StoryCheckpointEntry{
     std::string label;
+
     const std::string& name() const{
         return label;
     }
 };
+
 // Formats a checkpoint identifier and description into a dropdown label.
 std::string story_checkpoint_label(const StoryCheckpoint& checkpoint);
 
@@ -78,30 +85,27 @@ public:
 };
 
 
-// Configuration options panel for selecting story checkpoints and execution mode.
-class StoryRunOptions : public GroupOption{
+//  The range group (START_CHECKPOINT, END_CHECKPOINT, start_index(),
+//  end_index()) with the run policy added to the same group, so the saved
+//  settings keep one flat object.
+class StoryRunOptions : public StoryRangeOptions{
 public:
     //  `checkpoints`: story_checkpoint_database() of the game's story, kept
     //  alive by the caller; the dropdowns start on its first and last.
     explicit StoryRunOptions(const StringSelectDatabase& checkpoints);
 
-    //  The checkpoints to run, by index in the database, both inclusive.
-    size_t start_index() const;
-    size_t end_index() const;
-    //  "The start checkpoint comes after the end checkpoint." if it does.
+    //  The range's check, then verify mode's: one checkpoint only.
     virtual std::string check_validity() const override;
 
     //  The policy these options set. In-place recoveries are the game's to
     //  set, not the user's.
     SegmentPolicy policy() const;
-    //  The checks level for the game's story step executor (set_checks()).
+    //  The checks level, for the game's steps to read.
     StoryChecks checks() const;
-    //  The game's language, for the executor (set_language()).
+    //  The game's language, for the steps that read text.
     Language language() const;
 
 public:
-    StringSelectOption START_CHECKPOINT;
-    StringSelectOption END_CHECKPOINT;
     SimpleIntegerOption<uint8_t> ATTEMPTS_PER_CHECKPOINT;
     BooleanCheckBoxOption STOP_AT_FIRST_FAILURE;
     EnumDropdownOption<StoryChecks> CHECKS;
