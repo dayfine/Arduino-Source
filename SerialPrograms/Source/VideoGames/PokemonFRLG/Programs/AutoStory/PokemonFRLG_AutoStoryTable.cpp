@@ -95,6 +95,30 @@ std::set<std::string> read_note_keys(const JsonObject& execution, std::string_vi
     return keys;
 }
 
+//  The file without its "metadata", which the shared reader doesn't take
+//  (yet): {"phase": testing, verification or reproduction}, how far the
+//  checkpoint is trusted to save (the engine's save policy reads it).
+JsonValue without_metadata(const JsonValue& value, std::string_view source){
+    JsonObject stripped;
+    for (const auto& [key, field] : value.to_object_throw(std::string(source))){
+        if (key != "metadata"){
+            stripped[key] = field.clone();
+            continue;
+        }
+        const JsonObject& metadata = field.to_object_throw(std::string(source));
+        for (const auto& [metadata_key, unused] : metadata){
+            if (metadata_key != "phase"){
+                throw ParseException(std::format("{}: unsupported metadata field {}", source, metadata_key));
+            }
+        }
+        const std::string& phase = metadata.get_string_throw("phase", std::string(source));
+        if (phase != "testing" && phase != "verification" && phase != "reproduction"){
+            throw ParseException(std::format("{}: unknown phase {}", source, phase));
+        }
+    }
+    return JsonValue(std::move(stripped));
+}
+
 } // namespace
 
 
@@ -108,7 +132,7 @@ StoryCheckpoint read_story_checkpoint_file(const JsonValue& value, std::string_v
         note_keys = read_note_keys(execution, where);
     };
     static_cast<Pokemon::StoryCheckpoint&>(checkpoint) = Pokemon::read_authored_checkpoint(
-        value, "frlg", source, read_execution, story_action_specs()
+        without_metadata(value, source), "frlg", source, read_execution, story_action_specs()
     );
     for (const std::string& key : note_keys){
         bool found = key == "checkpoint";

@@ -75,5 +75,6 @@
         "On to Brock unless red HP or a status is left that no item cures."
       ]
     }
-  }
+  },
+  "metadata": {"phase": "testing"}
 }

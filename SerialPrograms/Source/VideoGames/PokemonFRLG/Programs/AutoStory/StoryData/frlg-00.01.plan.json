@@ -25,5 +25,6 @@
         "new_game.c: the bedroom at (6, 6), facing the TV."
       ]
     }
-  }
+  },
+  "metadata": {"phase": "testing"}
 }
