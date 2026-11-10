@@ -4,6 +4,7 @@
  *
  */
 
+#include <format>
 #include <memory>
 #include <utility>
 #include "Pokemon_TilePose.h"
@@ -23,7 +24,7 @@ std::string TilePose::describe() const{
         text += (text.empty() ? "" : " ") + to_string(tile);
     }
     if (facing){
-        text += (text.empty() ? "facing " : " facing ") + std::string(direction_name(*facing));
+        text += std::format("{}facing {}", text.empty() ? "" : " ", direction_name(*facing));
     }
     return text;
 }

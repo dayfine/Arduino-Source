@@ -13,8 +13,7 @@
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Common/Qt/QtThreadPool_Tests.h"
 #include "Kernels/Kernels_Tests.h"
-#include "Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.h"
-#include "Pokemon/AutoStory/Pokemon_StoryRun_Tests.h"
+#include "Pokemon/AutoStory/Pokemon_AutoStory_Tests.h"
 #include "CommonFramework/AudioPipeline/AudioInfo_Tests.h"
 #include "CommonFramework/AudioPipeline/Tools/ChannelMixer.h"
 #include "CommonFramework/AudioPipeline/SinkPipeline_Tests.h"
@@ -33,9 +32,12 @@
 #include "NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter_Tests.h"
 #include "NintendoSwitch/Controllers/SysbotBase/SysbotBase_Connection.h"
 
-#include "Pokemon/AutoStory/Pokemon_AutoStory_Tests.h"
-#include "Pokemon/Navigation/Pokemon_Navigation_Tests.h"
+#include "Pokemon/Navigation/Pokemon_LegPlanner_Tests.h"
+#include "Pokemon/Navigation/Pokemon_LegWalker_Tests.h"
+#include "Pokemon/Navigation/Pokemon_MapData_Tests.h"
+#include "Pokemon/Navigation/Pokemon_RouteLog_Tests.h"
 #include "Pokemon/Navigation/Pokemon_RuntimeMap_Tests.h"
+#include "Pokemon/Navigation/Pokemon_WallRecovery_Tests.h"
 #include "PokemonBDSP/PokemonBDSP_Tests.h"
 #include "VideoGames/PokemonHome/PokemonHome_Tests.h"
 #include "VideoGames/PokemonSwSh/PokemonSwSh_Tests.h"
@@ -73,22 +75,12 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     add_tests_LabControl(ret);
     OCR::add_tests(ret);
     Kernels::add_tests(ret);
-    Pokemon::add_tests_AutoStorySelect(ret);
     Pokemon::add_tests_LegPlanner(ret);
     Pokemon::add_tests_LegWalker(ret);
     Pokemon::add_tests_WallRecovery(ret);
     Pokemon::add_tests_MapData(ret);
     Pokemon::add_tests_RuntimeMap(ret);
     Pokemon::add_tests_RouteLog(ret);
-    Pokemon::add_tests_StoryEvents(ret);
-    Pokemon::add_tests_StorySegments(ret);
-    Pokemon::add_tests_StoryLog(ret);
-    Pokemon::add_tests_StoryRangeOptions(ret);
-    Pokemon::add_tests_ScreenEvents(ret);
-    Pokemon::add_tests_Interrupts(ret);
-    Pokemon::add_tests_Transitions(ret);
-    Pokemon::add_tests_StoryActions(ret);
-    Pokemon::add_tests_StoryInterrupts(ret);
     Pokemon::add_tests_AutoStory(ret);
     NintendoSwitch::add_tests_CheckOnlineDetector(ret);
     NintendoSwitch::add_tests_FailedToConnectDetector(ret);
