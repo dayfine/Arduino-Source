@@ -42,7 +42,7 @@ public:
     virtual std::vector<BagRow> read_pocket() override{
         return pockets[m_pocket];
     }
-    virtual void use_row(size_t row){
+    virtual void use_row(size_t row) override{
         BagRow& item = pockets[m_pocket][row];
         used.push_back(item.item);
         if (item.count > 0){
