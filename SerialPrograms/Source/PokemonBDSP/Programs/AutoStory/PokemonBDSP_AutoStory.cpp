@@ -155,9 +155,7 @@ void verify_story_checkpoint(
         report = Pokemon::verify_checkpoint(state, segment, id, policy, hooks);
     }catch (OperationFailedException& e){
         capture.save_thrown(e.message());
-        if (!keep_game){
-            close_game_after_failure(env, context);
-        }
+        close_game_after_failure(env, context);
         throw;
     }
     const std::string summary = std::format(
@@ -251,7 +249,7 @@ void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerCo
         state.flags.insert("save_loaded");
     }
     if (const std::optional<Pokemon::VerifyPolicy> verify = RUN.VERIFY.policy()){
-        const VerifyRequest request{checkpoints[first].id, *verify, first == 0 && NEW_GAME_INTRO, RUN.STOP_AT_FIRST_FAILURE};
+        const VerifyRequest request{checkpoints[first].id, *verify, first == 0 && NEW_GAME_INTRO};
         verify_story_checkpoint(env, context, state, segment, hooks, capture, request);
         send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH);
         return;
@@ -261,9 +259,7 @@ void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerCo
         report = run_segment(state, segment, Pokemon::SegmentRange{checkpoints[first].id, checkpoints[last].id}, RUN.policy(), hooks);
     }catch (OperationFailedException& e){
         capture.save_thrown(e.message());
-        if (!RUN.STOP_AT_FIRST_FAILURE){
-            close_game_after_failure(env, context);
-        }
+        close_game_after_failure(env, context);
         throw;
     }
     Pokemon::AutoStoryStats& stats = env.current_stats<Pokemon::AutoStoryStats>();

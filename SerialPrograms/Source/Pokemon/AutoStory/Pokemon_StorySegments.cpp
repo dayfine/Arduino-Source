@@ -136,14 +136,6 @@ CheckpointReport run_row(
             say(hooks, std::format("[Segment] {}: {} failed; the game is not running, so no reload", segment.id, spec.id));
             return result;
         }
-        if (policy.stop_at_first_failure){
-            say(hooks, std::format(
-                "[Segment] {}: {} failed; stopping at the first failure, the game stays where it failed",
-                segment.id, spec.id
-            ));
-            report.stopped_at_first_failure = true;
-            return result;
-        }
         if (attempt >= policy.attempts_per_checkpoint){
             return result;
         }
