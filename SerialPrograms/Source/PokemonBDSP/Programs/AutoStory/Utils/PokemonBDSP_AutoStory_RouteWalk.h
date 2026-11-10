@@ -51,8 +51,22 @@ constexpr Milliseconds ROUTE_RUN_MS_PER_TILE_ACROSS = Milliseconds(100);
 //  Running time per vertical tile (north or south).
 constexpr Milliseconds ROUTE_RUN_MS_PER_TILE_UP_DOWN = Milliseconds(150);
 
+//  The most held time a tile can take at each speed, in any direction: the
+//  pace a limit in tiles is timed at, so that it never cuts a run short.
+//  The times above are the fastest seen: a walk east before the Running
+//  Shoes, timed at 160 ms a tile, stopped short of Rowan's trigger 20 tiles
+//  on after 3520 ms held (lab-B 2026-11-09, 00.03). A Gen 4 walking step
+//  takes 8 frames at 30 fps, 267 ms; a run went 35 tiles north in about
+//  5.75 s (r27).
+constexpr Milliseconds ROUTE_WALK_MS_PER_TILE_SLOWEST = Milliseconds(270);
+//  The most held time a running tile can take.
+constexpr Milliseconds ROUTE_RUN_MS_PER_TILE_SLOWEST = Milliseconds(170);
+
 //  Time per tile in `direction` at `speed`.
 Milliseconds route_ms_per_tile(Pokemon::Direction direction, MoveSpeed speed = MoveSpeed::WALK);
+//  The longest `tiles` tiles at `speed` take to hold, from standing: a
+//  limit for a run that something on the way ends (a scene's dialogue).
+Milliseconds route_limit_for_tiles(MoveSpeed speed, size_t tiles);
 //  The left stick for a direction. Row 0 is the top of a map, and the
 //  stick's y is positive upward.
 JoystickPosition route_stick(Pokemon::Direction direction);

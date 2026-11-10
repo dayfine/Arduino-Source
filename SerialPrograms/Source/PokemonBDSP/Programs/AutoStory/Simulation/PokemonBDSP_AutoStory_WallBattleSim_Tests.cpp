@@ -285,14 +285,16 @@ std::string scene_run_error(const SceneRunCase& test_case, const SceneRun& run){
     const StoryWorld& world = *story_plan_world("Route201", "SandgemTown");
     const std::optional<TilePos> sandgem = story_to_local(world, "SandgemTown", run.end);
     const int cap = into_dawns_scene().legs.front().tiles;
+    //  The cap is timed at the slowest run; the sim runs faster, this far.
+    const int most = (int)((route_limit_for_tiles(MoveSpeed::RUN, cap) - ROUTE_START_DELAY) / route_ms_per_tile(Direction::EAST, MoveSpeed::RUN));
     if (!run.program_failure.empty()){
         return "the program failed instead of the step: " + run.program_failure;
     }
     if (test_case.input.battle != run.ran_from_battle){
         return std::format("expected {} wild battle on the run.", test_case.input.battle ? "a" : "no");
     }
-    if (run.run_tiles < 0 || run.run_tiles > cap){
-        return std::format("the run went {} tiles past the route's end, outside its cap of {}.", run.run_tiles, cap);
+    if (run.run_tiles < 0 || run.run_tiles > most){
+        return std::format("the run went {} tiles past the route's end, outside its cap of {} ({} at the sim's pace).", run.run_tiles, cap, most);
     }
     if (test_case.expectation.in_scene && (!run.outcome.succeeded() || !run.dialog || !sandgem || sandgem->x != 4)){
         return std::format("\"{}\", ended at {}, not in Dawn's scene on Sandgem's column 4.", Pokemon::to_string(run.outcome), describe(world, run.end));

@@ -167,16 +167,19 @@ Outcome StoryWalkSteps::route(RunState& state, const StoryStep& step){
 //  scene's trigger: r35/r36 raced Dawn's to an exact tile and banner), for
 //  the leg's tiles at most. A wild battle on the way is run from and the run
 //  goes on. No dialogue fails the step. The scene's lines are the next step's.
+//  The leg's tiles are timed at the slowest pace of the player's speed (a
+//  walk before the Running Shoes): a run past the trigger's tile is ended by
+//  its dialogue anyway, where one cut short fails (lab-B 2026-11-09, 00.03).
 Outcome StoryWalkSteps::run_to_dialogue(const StoryStep& step){
     const Pokemon::StoryLeg& leg = step.legs.front();
     const MoveSpeed speed = m_can_run ? MoveSpeed::RUN : MoveSpeed::WALK;
     const WalkResult walk = m_io.route().walk_to_wall({
         .direction = leg.direction,
-        .limit = ROUTE_START_DELAY + route_ms_per_tile(leg.direction, speed) * leg.tiles,
+        .limit = route_limit_for_tiles(speed, leg.tiles),
         .label = label_of(step),
         .options = {.arrived = nullptr, .pace = m_can_run ? DpadPace::RUN : DpadPace::WALK},
     });
-    log(std::format("[{}] {}: ran {} to a dialogue: {} tiles of {} at most, {}, {} wild battle(s).", m_row, step.name,
+    log(std::format("[{}] {}: ran {} to a dialogue: {} moved chunks, {} tiles at most, {}, {} wild battle(s).", m_row, step.name,
         direction_name(leg.direction), walk.moved_chunks, leg.tiles, walk_stop_name(walk.stop), walk.wild_battles));
     if (walk.stop == WalkStop::DIALOG){
         return Pokemon::outcome_ok();
