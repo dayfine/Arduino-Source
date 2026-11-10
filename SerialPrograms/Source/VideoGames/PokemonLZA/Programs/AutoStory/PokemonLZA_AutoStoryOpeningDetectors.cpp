@@ -51,10 +51,12 @@ const PlatformRegion PLATFORM_REGIONS[] = {
 //    city flyovers 0022-0024 at top 134.7+, left 95.6+;
 //  - the reference against itself moved 16 px: top 42.2, left 20.8,
 //    right 21.2; 10% darker: top 24.6, left 19.9, right 16.4.
-//  So the bounds sit about midway: top 65 (48 below 0056), left 55 (27
-//  below). The right side holds a walking NPC and the companion, so it only
+//  - the platform after loading its autosave (camera turned a little,
+//    2026-11-10): top 67.9-68.1, left 25.8-41.7, right 16.5-16.9.
+//  So the bounds sit between the loaded view and 0056: top 90 (23 below
+//  0056), left 55 (27 below). The right side holds a walking NPC and the companion, so it only
 //  has to be roughly the platform (120: a menu or another place is 140+).
-constexpr double PLATFORM_TOP_MAX = 65.0;
+constexpr double PLATFORM_TOP_MAX = 90.0;
 constexpr double PLATFORM_LEFT_MAX = 55.0;
 constexpr double PLATFORM_RIGHT_MAX = 120.0;
 
