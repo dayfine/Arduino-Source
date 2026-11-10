@@ -3,8 +3,8 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  A game's story steps as a table of actions instead of one virtual per
- *  kind. An action is keyed by the step's kind and its variant's name
- *  (variant_name(), Pokemon_StoryVariant.h), so one table holds a game's
+ *  kind. An action is keyed by the step's kind and its action's name
+ *  (StoryStep::action), so one table holds a game's
  *  usual way of doing a kind, its other ways, and the steps only it has.
  *  The console and a simulation bind the same rows to different actions.
  *
@@ -23,13 +23,15 @@
 #include <functional>
 #include <map>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "Pokemon_StoryEvents.h"
 #include "Pokemon_StoryInterrupts.h"
-#include "Pokemon_StorySteps.h"
+#include "Pokemon_StoryStepExecutor.h"
+#include "Types/Pokemon_StoryActionSpec.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -47,25 +49,28 @@ struct StoryAction{
     //  The screen event the action ends on ("fade", "dialog"). Declared for
     //  the event-driven waits to come; nothing reads it yet.
     std::string waits_for = {};
+    //  The args its steps may carry (StoryStep::args); a step with any
+    //  other, or without a required one, fails lint_story_checkpoint().
+    std::vector<StoryArgSpec> args = {};
 };
 
 
-//  A game's actions by step kind and variant name.
+//  A game's actions by step kind and action name.
 class StoryActionTable{
 public:
-    //  The action for steps of `kind` whose variant is named `name`. An
+    //  The action for steps of `kind` whose action is named `name`. An
     //  empty `name` is the kind's default. A second action for the same
     //  key throws InternalProgramError.
     void add(StoryStepKind kind, std::string name, StoryAction action);
-    //  The action for steps of any kind whose variant is named `name`,
+    //  The action for steps of any kind whose action is named `name`,
     //  which must not be empty.
     void add_any_kind(std::string name, StoryAction action);
 
-    //  The action for a step of `kind` with a variant named `name`: the
+    //  The action for a step of `kind` with an action named `name`: the
     //  one added for both, else the one for `name` of any kind, else the
     //  kind's default. nullptr if there is none.
     const StoryAction* find(StoryStepKind kind, std::string_view name) const;
-    //  find() for the step's kind and its variant's name.
+    //  find() for the step's kind and its action's name.
     const StoryAction* find(const StoryStep& step) const;
 
 private:
@@ -75,7 +80,8 @@ private:
 };
 
 //  The steps of `data` that `table` has no action for, as
-//  "<checkpoint> step <n> <name>: no action for GAME 'bill'".
+//  "<checkpoint> step <n> <name>: no action for GAME 'bill'", or whose args
+//  don't fit their action's, as "... missing argument \"budget\" for GAME 'mart'".
 std::vector<std::string> lint_story_checkpoint(const StoryCheckpoint& data, const StoryActionTable& table);
 
 
@@ -109,10 +115,10 @@ public:
     //  `table` and `guard` must outlive the executor.
     TableExecutor(const StoryActionTable& table, StepGuard& guard);
 
-    //  The table's action for the step; with none, the kind's virtual
-    //  (StoryStepExecutor::run()), so a game can move to the table one
-    //  kind at a time. An OperationFailedException from either is the
-    //  failed Outcome "operation_failed", unless the guard stops on it.
+    //  The table's action for the step (run_action()); with none, the
+    //  step is unsupported (unsupported_step()). An OperationFailedException
+    //  from the action is the failed Outcome "operation_failed", unless the
+    //  guard stops on it.
     //  With interrupts set, each step first clears what stopped the player
     //  since the step before, and a failed step that an interrupt explains
     //  runs again once it is cleared.
@@ -125,8 +131,9 @@ public:
     }
 
 protected:
-    //  The table's action for the step, or the kind's virtual: what run()
-    //  runs once the screen is clear. A binding may wrap it.
+    //  The table's action for the step, or unsupported_step() with none:
+    //  what run() runs once the screen is clear. A binding may wrap it, or
+    //  do the kinds its table does not have yet.
     virtual Outcome run_action(RunState& state, const StoryStep& step);
 
 private:

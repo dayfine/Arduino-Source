@@ -32,7 +32,7 @@ struct RuntimeMapCase{
     RuntimeMapExpectation expectation;
 };
 
-const char* const GOLDEN_V2 = R"(
+const std::string GOLDEN_V2 = R"(
     "format":"pokesim-runtime-map/2",
     "world":{"name":"Sinnoh","x":0,"y":0},
     "extension":{"zero":0,"false":false},
@@ -48,7 +48,7 @@ const char* const GOLDEN_V2 = R"(
     "coord_events":[{"coord":[0,0],"width":1,"length":2,"var":0}]
 )";
 
-const char* const GOLDEN_V1 = R"(
+const std::string GOLDEN_V1 = R"(
     "world":{"name":"Sinnoh","x":0,"y":0},
     "extension":{"zero":0,"false":false},
     "objects":[
