@@ -29,6 +29,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RoutePlanner.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_WallRecovery.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h"
+#include "PokemonBDSP_AutoStory_OldStorySteps.h"
 #include "PokemonBDSP_AutoStory_StorySim.h"
 #include "PokemonBDSP_AutoStory_SimFailureCases_Tests.h"
 
@@ -462,6 +463,63 @@ std::string ledge_walk_in_grass(Logger& logger, const std::set<std::string>& ski
     return run_case(logger, "00.04", "00.04", {.fade = {}, .banner = {}}, route_201_grass(), rows);
 }
 
+//  The scenes a run's walks fought as trainers', or "none".
+std::string fought(const SimRun& run){
+    std::string out;
+    for (const std::string& scene : run.scenes_fought){
+        out += (out.empty() ? "" : "; ") + scene;
+    }
+    return out.empty() ? "none" : out;
+}
+//  00.04: Mom's call after her heal fires on (6, 9), above the mat
+//  (lab-B 2026-11-09 17:29). The walk into it ends in her call, which her
+//  hat scene's step plays to the fade out with her; no walk fights it.
+UnitTestResult moms_call_above_the_mat(Logger& logger){
+    SimExecutor executor(logger, {.fade = {}, .banner = {}}, {});
+    const Pokemon::SegmentReport report = run_rows_on(executor, logger, {.from = "00.04", .to = "00.04"});
+    if (!report.completed){
+        return std::format("stopped in {}: {}", executor.result().failed_step, executor.result().error);
+    }
+    if (!executor.result().scenes_fought.empty()){
+        return "a walk fought a scene: " + fought(executor.result());
+    }
+    return true;
+}
+//  00.04's old walk round Mom to (6, 9) and step onto the mat. On the
+//  console the walk fought her call, the step went out of the door and her
+//  hat scene saw no fade. A route before a step onto a scene's trigger now
+//  hands a scene that starts on the way to the scene's step, and the step
+//  onto the trigger is not taken.
+UnitTestResult old_walk_hands_moms_call_over(Logger& logger){
+    std::vector<StoryCheckpoint> rows = story_checkpoints();
+    for (StoryCheckpoint& checkpoint : rows){
+        if (checkpoint.id != "00.04"){
+            continue;
+        }
+        std::vector<StoryStep> steps;
+        for (StoryStep& step : checkpoint.steps){
+            if (step.name != "into_moms_call"){
+                steps.push_back(std::move(step));
+                continue;
+            }
+            for (StoryStep& old : old_round_mom_to_the_mat()){
+                steps.push_back(std::move(old));
+            }
+        }
+        checkpoint.steps = std::move(steps);
+    }
+    SimExecutor executor(logger, {.fade = {}, .banner = {}}, {});
+    const Pokemon::SegmentReport report = run_rows_on(executor, logger, {.from = "00.04", .to = "00.04"}, rows);
+    const SimRun& run = executor.result();
+    if (!report.completed){
+        return std::format("stopped in {}: {}", run.failed_step, run.error);
+    }
+    if (!run.scenes_fought.empty()){
+        return "a walk fought a scene: " + fought(run);
+    }
+    return true;
+}
+
 struct FailureCaseInput{
     std::string name;
     std::function<UnitTestResult(Logger&)> body;
@@ -544,6 +602,8 @@ const FailureCase AUTO_STORY_FAILURE_CASES[] = {
     {.input = {"00.03 out of the house from (6, 8), where Rowan's scene ends, and from a column west", home_from_each_scene_end}, .expectation = {}},
     {.input = {"00.03 the walk into Rowan's scene routes onto his row and stops on his trigger mid-run", rowans_scene_from_each_start}, .expectation = {}},
     {.input = {"00.03 the walk into Sandgem stops on Dawn's trigger mid-run", dawns_scene_mid_run}, .expectation = {}},
+    {.input = {"00.04 Mom's call fires above the mat, on (6, 9): the walk ends in it, her hat scene plays it (lab-B 2026-11-09 17:29)", moms_call_above_the_mat}, .expectation = {}},
+    {.input = {"00.04 the old walk round Mom to (6, 9) runs into her call: it hands it to her hat scene, not fights it (lab-B 2026-11-09 17:29)", old_walk_hands_moms_call_over}, .expectation = {}},
     {.input = {"00.04 to the ledge column with a wild battle on each pass through Route 201's grass (lab-B 2026-11-09 16:14)", [](Logger& logger){
         return passes(ledge_walk_in_grass(logger, {}));
     }}, .expectation = {}},

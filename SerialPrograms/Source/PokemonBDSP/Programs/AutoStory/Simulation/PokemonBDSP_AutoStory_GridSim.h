@@ -59,10 +59,12 @@ Pokemon::TilePos nearest_tile(const SimPos& pos);
 std::string to_string(const SimPos& pos);
 
 //  A scene that starts when the player steps onto one of `tiles` (a coord
-//  event): its dialogue opens and the player stops. It fires once.
+//  event): its dialogue opens and the player stops. It fires once, and
+//  spends the triggers named in `spends` with it: the same scene's.
 struct SimTrigger{
     std::string name;
     std::vector<Pokemon::TilePos> tiles;
+    std::vector<std::string> spends = {};
 };
 
 //  Where the simulated player walks: the world (which must outlive the
@@ -118,6 +120,10 @@ struct SimPlayer{
     bool dialog = false;
     //  The trainer whose dialogue is open, if one is.
     std::optional<std::string> trainer;
+    //  The scene (SimTrigger) whose dialogue is open, if one is.
+    std::optional<std::string> scene;
+    //  Scenes whose dialogue was fought as a trainer's (sim_fight()).
+    std::vector<std::string> scenes_fought = {};
     //  The door the last warp stepped onto.
     std::optional<Pokemon::TilePos> warped;
     std::vector<std::string> fought = {};
@@ -158,6 +164,10 @@ public:
 private:
     friend void sim_advance_time(GridSim& sim, Milliseconds time);
     friend const std::vector<SimWanderer>& sim_wanderers(const GridSim& sim);
+    friend void sim_add_trigger(GridSim& sim, SimTrigger trigger);
+    friend const std::vector<SimTrigger>& sim_triggers(const GridSim& sim);
+    friend void sim_forget_warp(GridSim& sim);
+    friend void sim_fight(GridSim& sim);
 
     SimMove advance(Pokemon::Direction direction, int distance);
     std::optional<SimStop> enter_next(Pokemon::Direction direction, int part, int& moved);
@@ -176,6 +186,15 @@ private:
 void sim_advance_time(GridSim& sim, Milliseconds time);
 //  The wandering NPCs on the simulation's world.
 const std::vector<SimWanderer>& sim_wanderers(const GridSim& sim);
+//  A scene's trigger on the world the player is on, from now on.
+void sim_add_trigger(GridSim& sim, SimTrigger trigger);
+//  The scene triggers on the world the player is on.
+const std::vector<SimTrigger>& sim_triggers(const GridSim& sim);
+//  A new step starts: the warp a step before stepped onto is not this one's.
+void sim_forget_warp(GridSim& sim);
+//  The open dialogue is fought as a trainer's: a scene's is noted in
+//  SimPlayer::scenes_fought, as it is pressed through under a walk.
+void sim_fight(GridSim& sim);
 
 //  Whether the player could take a step toward `direction` from where they stand.
 bool sim_can_step(const GridSim& sim, Pokemon::Direction direction);

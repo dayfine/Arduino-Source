@@ -140,6 +140,7 @@ void GridSim::place(SimWorld world, const TilePos& start, std::optional<Directio
     }
     m_player.dialog = false;
     m_player.trainer.reset();
+    m_player.scene.reset();
     m_player.warped.reset();
     if (m_world.can_run){
         m_player.can_run = *m_world.can_run;
@@ -199,6 +200,22 @@ const std::vector<SimWanderer>& sim_wanderers(const GridSim& sim){
     return sim.m_wanderers;
 }
 
+void sim_add_trigger(GridSim& sim, SimTrigger trigger){
+    sim.m_world.triggers.push_back(std::move(trigger));
+}
+const std::vector<SimTrigger>& sim_triggers(const GridSim& sim){
+    return sim.m_world.triggers;
+}
+void sim_forget_warp(GridSim& sim){
+    sim.m_player.warped.reset();
+}
+void sim_fight(GridSim& sim){
+    if (sim.m_player.scene){
+        sim.m_player.scenes_fought.push_back(*sim.m_player.scene);
+    }
+    sim.end_dialogue();
+}
+
 bool GridSim::wanderer_at(const TilePos& pos) const{
     for (const SimWanderer& wanderer : m_wanderers){
         if (wanderer.pos == pos){
@@ -255,7 +272,9 @@ std::optional<SimStop> GridSim::arrive(){
         const bool fired = std::find(m_player.fired.begin(), m_player.fired.end(), trigger.name) != m_player.fired.end();
         if (!fired && std::find(trigger.tiles.begin(), trigger.tiles.end(), tile) != trigger.tiles.end()){
             m_player.fired.push_back(trigger.name);
+            m_player.fired.insert(m_player.fired.end(), trigger.spends.begin(), trigger.spends.end());
             m_player.dialog = true;
+            m_player.scene = trigger.name;
             return SimStop::DIALOG;
         }
     }
@@ -364,6 +383,7 @@ void GridSim::end_dialogue(){
         m_player.fought.push_back(*m_player.trainer);
     }
     m_player.trainer.reset();
+    m_player.scene.reset();
     m_player.dialog = false;
 }
 
