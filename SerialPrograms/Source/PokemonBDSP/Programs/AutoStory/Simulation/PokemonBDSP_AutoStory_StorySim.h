@@ -407,6 +407,11 @@ public:
     const SimRun& result() const{
         return m_result;
     }
+    //  Every line the walks wrote, the route walker's and the leg records
+    //  ("[Leg] ...") among them.
+    const std::vector<std::string>& notes() const{
+        return m_notes;
+    }
     //  The story's actions as the simulation binds them.
     const Pokemon::StoryActionTable& actions() const{
         return m_table;
