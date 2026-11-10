@@ -11,7 +11,7 @@
 #include <string>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon_WallRecovery.h"
-#include "Pokemon_Navigation_Tests.h"
+#include "Pokemon_WallRecovery_Tests.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -89,7 +89,7 @@ struct CorridorTestCase{
 class Test_WallRecovery : public UnitTest{
 public:
     explicit Test_WallRecovery(CorridorTestCase scenario)
-        : UnitTest("Pokemon::WallRecovery - " + scenario.input.name), m_scenario(std::move(scenario))
+        : UnitTest(std::format("Pokemon::WallRecovery - {}", scenario.input.name)), m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         const auto& input = m_scenario.input;
@@ -206,7 +206,7 @@ struct CornerTestCase{
 class Test_WallRecoveryCorner : public UnitTest{
 public:
     explicit Test_WallRecoveryCorner(CornerTestCase scenario)
-        : UnitTest("Pokemon::WallRecovery - " + scenario.input.name), m_scenario(std::move(scenario))
+        : UnitTest(std::format("Pokemon::WallRecovery - {}", scenario.input.name)), m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         const auto& input = m_scenario.input;
