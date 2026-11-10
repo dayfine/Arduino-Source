@@ -34,6 +34,7 @@
 #include <string>
 #include <vector>
 #include "Common/Cpp/MoveOnlyFunction.h"
+#include "Pokemon_StoryLog.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -236,11 +237,6 @@ struct CheckpointReport{
 // Callback receiver for story event execution log messages.
 using EventLogger = MoveOnlyFunction<void(const std::string& line)>;
 
-
-//  One log line, in a format the lab watcher parses:
-//      [Event] 00.04/3 talk_mom: start
-//      [Event] 00.04/3 talk_mom: failed: expect_failed: has_parcel
-std::string event_log_line(const std::string& checkpoint, size_t number, const std::string& event, const std::string& status);
 
 //  Problems an author should fix before running: unnamed or empty events,
 //  missing actions, recoveries out of escalation order.
