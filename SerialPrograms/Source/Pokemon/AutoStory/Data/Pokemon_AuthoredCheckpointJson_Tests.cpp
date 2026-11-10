@@ -1,25 +1,37 @@
 /*  Shared Authored Checkpoint JSON Tests
+ *
  *  From: https://github.com/PokemonAutomation/
+ *
  */
 
 #include <iostream>
+#include <string>
+#include <utility>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Pokemon_AuthoredCheckpointJson.h"
 #include "Pokemon_StoryStepJson.h"
 #ifndef PA_STORY_DATA_STANDALONE
-#include "Pokemon_AutoStory_Tests.h"
+#include "Pokemon/AutoStory/Pokemon_AutoStory_Tests.h"
 #endif
 
 namespace PokemonAutomation{
 namespace Pokemon{
+
+
 namespace{
 
+
 //  Documents intentionally contain no game headers or native bookkeeping.
-const std::string FRLG = R"({"format":"pokesim-authored-checkpoint/1","game":"frlg","checkpoint":{"id":"00.05","title":"Parcel","events":[{"id":"first","kind":"route"},{"id":"second","kind":"scene"}]},"execution":{"menu":"before_pokedex"}})";
+const std::string FRLG = R"({"format":"pokesim-authored-checkpoint/1","game":"frlg","checkpoint":{"id":"00.05","title":"Parcel","events":[{"id":"first","kind":"talk"},{"id":"second","kind":"scene"}]},"execution":{"menu":"before_pokedex"}})";
 const std::string BDSP = R"({"format":"pokesim-authored-checkpoint/1","game":"bdsp","checkpoint":{"id":"01.03","title":"Mine","events":[{"id":"roark","kind":"talk"}]},"execution":{"on_failure":"reload_and_retry","saves_in":"Oreburgh City"}})";
 
-enum class Failure{ NONE, PARSE, MISSING_RESOURCE };
+//  How a case fails, if it does.
+enum class Failure{
+    NONE,
+    PARSE,
+    MISSING_RESOURCE,
+};
 
 struct AuthoredInput{
     std::string name;
@@ -60,7 +72,24 @@ const AuthoredCase CASES[] = {
         .checkpoint = "x", .execution = R"({"zero":0,"false":false,"null":null})", .events = {}}},
 };
 
-std::string check_loaded(const AuthoredCheckpoint& actual, const AuthoredCase& test){
+
+//  What a test reads: the checkpoint, and the execution object its reader
+//  kept.
+struct Loaded{
+    StoryCheckpoint checkpoint;
+    JsonObject execution;
+};
+
+//  A reader that keeps the execution object in `kept`.
+ExecutionReader keep_execution(JsonObject& kept){
+    return [&kept](const JsonObject& execution, std::string_view){
+        kept = execution.clone();
+    };
+}
+
+//  "" when `actual` is what `test` expects and survives a write and a
+//  read, else what was expected and what was read.
+std::string check_loaded(const Loaded& actual, const AuthoredCase& test){
     if (test.expectation.failure != Failure::NONE){
         return "Expected rejection, read accepted authored checkpoint.";
     }
@@ -78,19 +107,22 @@ std::string check_loaded(const AuthoredCheckpoint& actual, const AuthoredCase& t
         return "Expected authored event IDs in their original order.";
     }
     const JsonValue encoded = authored_checkpoint_json(actual.checkpoint, test.input.game, actual.execution.clone());
-    const AuthoredCheckpoint reread = read_authored_checkpoint(encoded, test.input.game, test.input.name);
+    Loaded reread;
+    reread.checkpoint = read_authored_checkpoint(encoded, test.input.game, test.input.name, keep_execution(reread.execution));
     if (!(story_checkpoint_json(actual.checkpoint) == story_checkpoint_json(reread.checkpoint)) || actual.execution != reread.execution){
         return "Expected checkpoint and execution to survive the shared writer/reader round trip.";
     }
     return "";
 }
 
+//  "" when `test` reads or fails as expected.
 std::string check_case(const AuthoredCase& test){
     try{
         const std::vector<std::pair<std::string, std::string>> files = {{"plan", test.input.json}};
-        const AuthoredCheckpoint actual = test.input.resource
-            ? load_authored_checkpoint(files, test.input.file, test.input.game)
-            : read_authored_checkpoint(parse_json(test.input.json), test.input.game, test.input.name);
+        Loaded actual;
+        actual.checkpoint = test.input.resource
+            ? load_authored_checkpoint(files, test.input.file, test.input.game, keep_execution(actual.execution))
+            : read_authored_checkpoint(parse_json(test.input.json), test.input.game, test.input.name, keep_execution(actual.execution));
         return check_loaded(actual, test);
     }catch (const ParseException& error){
         return test.expectation.failure == Failure::PARSE ? "" : "Unexpected parse failure: " + error.message();
@@ -99,34 +131,49 @@ std::string check_case(const AuthoredCase& test){
     }
 }
 
+
 #ifndef PA_STORY_DATA_STANDALONE
+
 class AuthoredJsonTest : public UnitTest{
 public:
     explicit AuthoredJsonTest(AuthoredCase test)
-        : UnitTest("Pokemon::AuthoredCheckpointJson - " + test.input.name), m_case(std::move(test)){}
+        : UnitTest("Pokemon::AuthoredCheckpointJson - " + test.input.name)
+        , m_case(std::move(test))
+    {}
+
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         const std::string error = check_case(m_case);
         return error.empty() ? UnitTestResult(true) : UnitTestResult(error);
     }
+
 private:
     AuthoredCase m_case;
 };
+
 #endif
+
 
 } // namespace
 
+
 #ifndef PA_STORY_DATA_STANDALONE
+
 void add_tests_AuthoredCheckpointJson(UnitTestDatabase& database){
     for (const AuthoredCase& test : CASES){
         database.add<AuthoredJsonTest>(test);
     }
 }
+
 #endif
+
+
 
 } // namespace Pokemon
 } // namespace PokemonAutomation
 
+
 #ifdef PA_STORY_DATA_STANDALONE
+
 int main(){
     int failed = 0;
     for (const auto& test : PokemonAutomation::Pokemon::CASES){
@@ -136,4 +183,5 @@ int main(){
     }
     return failed != 0;
 }
+
 #endif
