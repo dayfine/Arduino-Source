@@ -21,6 +21,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_AutoStoryActions.h"
+#include "PokemonFRLG_AutoStoryStepTable.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 
 namespace PokemonAutomation{
@@ -482,8 +483,12 @@ UnitTestResult test_save_dialog(){
 }
 
 UnitTestResult test_lint(){
+    //  FRLG's own action args (a battle's trainer and foes), with no console.
+    const Pokemon::StoryActionTable table = make_story_action_table([](StoryActionId){
+        return Pokemon::StoryAction{};
+    });
     for (const StoryCheckpoint& checkpoint : story_checkpoints()){
-        const std::vector<std::string> problems = Pokemon::lint_story_checkpoint(checkpoint);
+        const std::vector<std::string> problems = Pokemon::lint_story_checkpoint(checkpoint, table);
         if (!problems.empty()){
             return problems[0];
         }

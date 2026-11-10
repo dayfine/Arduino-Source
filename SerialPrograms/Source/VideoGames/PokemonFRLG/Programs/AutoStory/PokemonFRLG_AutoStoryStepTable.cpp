@@ -56,6 +56,20 @@ std::span<const Pokemon::StoryActionSpec> story_action_specs(){
     static const std::vector<Pokemon::StoryActionSpec> SPECS = []{
         const std::span<const Pokemon::StoryActionSpec> builtin = Pokemon::builtin_story_actions();
         std::vector<Pokemon::StoryActionSpec> specs(builtin.begin(), builtin.end());
+        //  A trainer battle's plan names the trainer and its party.
+        for (Pokemon::StoryActionSpec& spec : specs){
+            if (spec.kind != StoryStepKind::BATTLE){
+                continue;
+            }
+            spec.args.push_back(Pokemon::StoryArgSpec{
+                .key = "trainer", .type = Pokemon::StoryArgType::WORD, .required = false, .fallback = std::string(),
+                .why = "pret's constant for the trainer (\"TRAINER_LEADER_BROCK\"); sets the battle's risk",
+            });
+            spec.args.push_back(Pokemon::StoryArgSpec{
+                .key = "foes", .type = Pokemon::StoryArgType::WORDS, .required = false, .fallback = std::vector<std::string>(),
+                .why = "the trainer's party in order; attacks are chosen against the one out",
+            });
+        }
         for (StoryStepKind kind : {StoryStepKind::ROUTE, StoryStepKind::LEGS}){
             Pokemon::StoryActionSpec run = *Pokemon::find_story_action(builtin, kind, "");
             run.name = "run";

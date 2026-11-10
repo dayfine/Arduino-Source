@@ -42,27 +42,16 @@ namespace PokemonFRLG{
 
 
 //  The slot to attack with: the first of the plan's attacks for its line
-//  that it knows with PP left, else its strongest damaging move with PP
-//  left, else any move with PP left, else the top left (Struggle). None
-//  while the story doesn't know all its moves (fewer than four, not read).
+//  that it knows with PP left, else its first damaging move with PP left,
+//  else any move with PP left, else the top left (Struggle). None while the
+//  story doesn't know all its moves (fewer than four, not read).
 std::optional<size_t> attack_slot(const PartyMember& member);
 
-//  The species of `trainer`'s party, in order: pret's constant
-//  ("TRAINER_LEADER_MISTY", see story_trainer()), from pret/pokefirered
-//  src/data/trainer_parties.h. Empty for a trainer the data doesn't have.
-std::vector<std::string> trainer_party(std::string_view trainer);
-
 //  The slot to attack `foes` with, any of them as likely to be out: the
-//  move with PP left that does the most expected damage, ties going to
-//  attack_slot()'s order. Expected damage, summed over the foes, is power
-//  times STAB times the type chart times accuracy, times the lead's base
-//  Attack or Sp. Atk, whichever the move's type uses (Gen 3: Fire, Water, Grass,
-//  Electric, Psychic, Ice, Dragon and Dark are special): Water Gun and Bite
-//  compare on Sp. Atk, Tackle on Attack. The foe's defenses are left out,
-//  so a frail foe's low Defense doesn't pull Tackle ahead of a type
-//  advantage. A foe the data doesn't
-//  have is left out; with none left, or while the story doesn't know all
-//  the lead's moves, attack_slot() itself (the plan's order).
+//  damaging move with PP left whose type multiplier, summed over the foes,
+//  is best; ties go to the plan's attacks, then slot order. A foe the data
+//  doesn't have is left out; with none left, or while the story doesn't
+//  know all the lead's moves, attack_slot() itself.
 std::optional<size_t> attack_slot_against(const PartyMember& member, const std::vector<std::string>& foes);
 
 //  The PP left in the damaging moves it knows.

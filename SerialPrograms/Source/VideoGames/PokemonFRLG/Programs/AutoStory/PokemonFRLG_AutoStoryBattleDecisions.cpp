@@ -50,9 +50,9 @@ constexpr int MOVE_PROMPTS = 4;
 //  The HP a Potion heals (pret src/data/items.h).
 constexpr double POTION_HP = 20;
 
-//  A trainer's battle, until the checkpoint carries the simulation's plan:
-//  the strongest move (attack_slot_against()) against the foe out as read
-//  at the battle menu, else against the whole party.
+//  A trainer's battle: the plan's attack, else the best type matchup
+//  (attack_slot_against()) against the foe out as read at the battle
+//  menu, else against the whole party its plan lists.
 std::optional<size_t> trainer_attack_slot(const PartyMember& usable, const Supplies& supplies){
     if (!supplies.foe_out.empty()){
         return attack_slot_against(usable, std::vector<std::string>{supplies.foe_out});
@@ -162,7 +162,7 @@ void BattleDecisions::see_hit(const PartyStatus& status){
 }
 
 //  The plan's attack with PP left, or against known foes (a trainer's
-//  party, the wild Pokemon read), the one that does them most damage. While the story doesn't know
+//  party, the wild Pokemon read), the best type matchup. While the story doesn't know
 //  all four moves, the bottom left one (Bubble from Lv7), which the cursor
 //  can't reach while that slot is empty, so before Bubble it stays on
 //  Tackle.

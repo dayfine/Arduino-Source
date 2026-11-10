@@ -58,7 +58,9 @@
         "id": "rival_battle",
         "kind": "battle",
         "args": {
-          "may_lose": true
+          "may_lose": true,
+          "trainer": "TRAINER_RIVAL_OAKS_LAB_BULBASAUR",
+          "foes": ["bulbasaur"]
         },
         "declared_after": {"map": "PalletTown_ProfessorOaksLab", "tiles": [[7, 8]], "facing": "south"},
         "why": "the tutorial battle; losing goes on too"
