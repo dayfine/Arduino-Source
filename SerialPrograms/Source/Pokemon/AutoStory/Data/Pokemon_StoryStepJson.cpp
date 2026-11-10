@@ -353,7 +353,7 @@ JsonValue metadata_json(const StoryCheckpoint& checkpoint){
 }
 
 //  Reads "metadata" into `checkpoint`. A missing phase is testing.
-void read_metadata(StoryCheckpoint& checkpoint, const JsonValue& value, std::string_view source){
+void read_metadata(const JsonValue& value, std::string_view source, StoryCheckpoint& checkpoint){
     const JsonObject& root = fields(value, {"phase", "verified", "source", "postconditions"}, source);
     if (const JsonValue* field = root.get_value("phase")){
         const std::string name = field->to_string_throw();
@@ -490,7 +490,7 @@ StoryCheckpoint read_story_checkpoint(const JsonValue& value, std::string_view s
         result.steps.push_back(std::move(step));
     }
     if (const JsonValue* metadata = root.get_value("metadata")){
-        read_metadata(result, *metadata, source);
+        read_metadata(*metadata, source, result);
     }
     return result;
 }

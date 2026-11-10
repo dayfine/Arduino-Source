@@ -5,6 +5,7 @@
  */
 
 #include <algorithm>
+#include <format>
 #include <string>
 #include <utility>
 #include "CommonFramework/ImageTools/ImageDiff.h"
@@ -88,14 +89,12 @@ std::optional<std::string> ScreenMachineChecks::problem(const ScreenState& state
 std::optional<std::string> ScreenMachineChecks::unchanged_problem(const ScreenState& state, WallClock when){
     if (state.max_still > Milliseconds::zero()){
         if (when - m_changed_at > state.max_still){
-            return "The screen stayed still on \"" + state.name + "\" for more than " +
-                std::to_string(state.max_still.count() / 1000) + "s.";
+            return std::format("The screen stayed still on \"{}\" for more than {}s.", state.name, state.max_still.count() / 1000);
         }
         return std::nullopt;
     }
     if (++m_unchanged >= MAX_UNCHANGED){
-        return "The screen stopped changing: " + std::to_string(MAX_UNCHANGED) +
-            " steps on \"" + state.name + "\" did nothing.";
+        return std::format("The screen stopped changing: {} steps on \"{}\" did nothing.", MAX_UNCHANGED, state.name);
     }
     return std::nullopt;
 }
@@ -117,16 +116,14 @@ std::optional<std::string> ScreenMachineChecks::problem(const ScreenState& state
     if (m_previous != nullptr && m_previous != &state && !m_previous->next.empty() &&
         std::find(m_previous->next.begin(), m_previous->next.end(), state.name) == m_previous->next.end()
     ){
-        return "Unexpected screen after \"" + m_previous->name + "\": \"" + state.name + "\".";
+        return std::format("Unexpected screen after \"{}\": \"{}\".", m_previous->name, state.name);
     }
     m_in_a_row = m_previous == &state ? m_in_a_row + 1 : 1;
     if (m_in_a_row > state.max_in_a_row){
-        return "Screen \"" + state.name + "\" came up " + std::to_string(m_in_a_row) +
-            " times in a row: the step for it is not getting anywhere.";
+        return std::format("Screen \"{}\" came up {} times in a row: the step for it is not getting anywhere.", state.name, m_in_a_row);
     }
     if (++m_visits[state.name] > state.max_visits){
-        return "Screen \"" + state.name + "\" came up more than " +
-            std::to_string(state.max_visits) + " times: the step for it is not working.";
+        return std::format("Screen \"{}\" came up more than {} times: the step for it is not working.", state.name, state.max_visits);
     }
     m_previous = &state;
     return std::nullopt;
@@ -134,8 +131,8 @@ std::optional<std::string> ScreenMachineChecks::problem(const ScreenState& state
 
 
 ScreenMachineResult run_screen_machine_on_observations(
-    const std::function<ScreenObservation()>& observe, CancellableScope& scope, StepTrace& trace,
-    const std::vector<ScreenState>& states, Milliseconds timeout
+    const std::function<ScreenObservation()>& observe, CancellableScope& scope,
+    const std::vector<ScreenState>& states, Milliseconds timeout, StepTrace& trace
 ){
     //  Looks before the run stops even when nothing else ends it (looks with
     //  no time, states with no visit limit).
@@ -149,7 +146,7 @@ ScreenMachineResult run_screen_machine_on_observations(
             start = observation.when;
         }
         if (observation.when - *start > timeout){
-            return {.terminal = "", .failure = "Did not finish within " + std::to_string(timeout.count() / 1000) + "s."};
+            return {.terminal = "", .failure = std::format("Did not finish within {}s.", timeout.count() / 1000)};
         }
         const ScreenState* state = match_screen_state(states, observation);
         if (state == nullptr){
@@ -167,7 +164,7 @@ ScreenMachineResult run_screen_machine_on_observations(
             return {.terminal = state->name, .failure = ""};
         }
     }
-    return {.terminal = "", .failure = "Did not finish within " + std::to_string(MAX_LOOKS) + " looks."};
+    return {.terminal = "", .failure = std::format("Did not finish within {} looks.", MAX_LOOKS)};
 }
 
 

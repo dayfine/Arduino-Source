@@ -1524,7 +1524,9 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryEnginePolicy.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryEnginePolicy.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryEnginePolicy_Tests.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryEnginePolicy_Tests.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryEngineRuns_Tests.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryEngineRuns_Tests.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryGame.h

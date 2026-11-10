@@ -35,8 +35,8 @@ public:
             m_game.begin_attempt(data);
         }
     }
-    virtual Outcome run(RunState& state, const StoryStep& step) override{
-        return m_runner.act(state, step);
+    virtual Outcome run(const StoryStep& step, RunState& state) override{
+        return m_runner.act(step, state);
     }
     virtual bool holds(std::string_view condition, RunState& state) override{
         return m_runner.holds(condition, state);
@@ -55,7 +55,7 @@ StoryGame<PoseType> with_gated_save_step(
     StoryGame<PoseType> game, const StorySaveMode& mode, const StoryCheckpoint* const& current
 ){
     StoryActionHandler<PoseType> gated = [&mode, &current, save = game.save](
-        StoryBackend<PoseType>& backend, RunState&, const StoryActionCall&
+        StoryBackend<PoseType>& backend, const StoryActionCall&, RunState&
     ){
         if (mode != StorySaveMode::PER_CHECKPOINT){
             backend.log(std::format("[Save] save step skipped: save mode {}", story_save_mode_name(mode)));
@@ -109,10 +109,10 @@ std::vector<std::string> postcondition_needs(const StoryCheckpoint& checkpoint){
         needs.emplace_back("pose");
     }
     for (const StoryItem& item : checkpoint.postconditions.items){
-        needs.push_back("bag." + item.item);
+        needs.push_back(std::format("bag.{}", item.item));
     }
     for (const std::string& flag : checkpoint.postconditions.flags){
-        needs.push_back("flag." + flag);
+        needs.push_back(std::format("flag.{}", flag));
     }
     return needs;
 }
@@ -174,19 +174,19 @@ std::string StoryEngine<PoseType>::steps_hash(const StoryCheckpoint& checkpoint)
 }
 
 template <StoryPose PoseType>
-StoryEngineReport StoryEngine<PoseType>::run_checkpoint(const StoryCheckpoint& checkpoint, RunState& state, SavePoint point){
-    return run_once(checkpoint, state, point, SaveGate::BY_PHASE);
+StoryEngineReport StoryEngine<PoseType>::run_checkpoint(const StoryCheckpoint& checkpoint, SavePoint point, RunState& state){
+    return run_once(checkpoint, point, SaveGate::BY_PHASE, state);
 }
 
 template <StoryPose PoseType>
 StoryEngineReport StoryEngine<PoseType>::run_once(
-    const StoryCheckpoint& checkpoint, RunState& state, SavePoint point, SaveGate gate
+    const StoryCheckpoint& checkpoint, SavePoint point, SaveGate gate, RunState& state
 ){
     StoryEngineReport report;
     const std::vector<std::string> problems = m_registry.lint(checkpoint);
     if (!problems.empty()){
         for (const std::string& problem : problems){
-            m_backend.log("[Lint] " + problem);
+            m_backend.log(std::format("[Lint] {}", problem));
         }
         report.run.failure = outcome_failed("lint_failed", problems.front());
         return report;
@@ -210,7 +210,7 @@ StoryEngineReport StoryEngine<PoseType>::run_once(
     report.verdict = report.postconditions->count(PostconditionVerdict::FAILED) == 0
         ? CheckpointVerdict::PASSED
         : CheckpointVerdict::FAILED;
-    save_if_allowed(report, checkpoint, point);
+    save_if_allowed(checkpoint, point, report);
     return report;
 }
 
@@ -232,11 +232,11 @@ Outcome StoryEngine<PoseType>::reload(RunState& state){
 
 template <StoryPose PoseType>
 StoryEngineReport StoryEngine<PoseType>::run_with_retries(
-    const StoryCheckpoint& checkpoint, RunState& state, SavePoint point, size_t attempts, CheckpointRun& run
+    const StoryCheckpoint& checkpoint, SavePoint point, size_t attempts, RunState& state, CheckpointRun& run
 ){
     for (size_t attempt = 1; ; attempt++){
         run.attempts = attempt;
-        StoryEngineReport report = run_checkpoint(checkpoint, state, point);
+        StoryEngineReport report = run_checkpoint(checkpoint, point, state);
         if (report.verdict == CheckpointVerdict::PASSED){
             run.passed = true;
             m_backend.log(checkpoint_pass_line(checkpoint.id, attempt));
@@ -258,8 +258,8 @@ StoryEngineReport StoryEngine<PoseType>::run_with_retries(
 
 template <StoryPose PoseType>
 SegmentReport StoryEngine<PoseType>::run_segment(
-    std::string_view id, std::span<const StoryCheckpoint> checkpoints, RunState& state,
-    size_t attempts_per_checkpoint
+    std::string_view id, std::span<const StoryCheckpoint> checkpoints, size_t attempts_per_checkpoint,
+    RunState& state
 ){
     SegmentReport report;
     m_backend.log(std::format("[Segment] {}: start, {} checkpoints", id, checkpoints.size()));
@@ -274,7 +274,7 @@ SegmentReport StoryEngine<PoseType>::run_segment(
         }
         report.checkpoints_run++;
         report.runs.push_back(CheckpointRun{.id = checkpoint.id});
-        const StoryEngineReport result = run_with_retries(checkpoint, state, point, attempts, report.runs.back());
+        const StoryEngineReport result = run_with_retries(checkpoint, point, attempts, state, report.runs.back());
         report.reloads += report.runs.back().attempts - 1;
         if (result.verdict != CheckpointVerdict::PASSED){
             report.failed_checkpoint = checkpoint.id;
@@ -291,7 +291,7 @@ SegmentReport StoryEngine<PoseType>::run_segment(
 }
 
 template <StoryPose PoseType>
-VerifyReport StoryEngine<PoseType>::verify_checkpoint(const StoryCheckpoint& checkpoint, RunState& state, const VerifyPolicy& policy){
+VerifyReport StoryEngine<PoseType>::verify_checkpoint(const StoryCheckpoint& checkpoint, const VerifyPolicy& policy, RunState& state){
     VerifyReport report;
     report.checkpoint = checkpoint.id;
     if (policy.runs == 0 || policy.passes_needed > policy.runs){
@@ -313,14 +313,14 @@ VerifyReport StoryEngine<PoseType>::verify_checkpoint(const StoryCheckpoint& che
         //  Only the last run may save, and only when every run before it passed.
         const bool may_save = run == policy.runs && report.passes + 1 == run;
         const StoryEngineReport result = run_once(
-            checkpoint, state, SavePoint::RUN_END, may_save ? SaveGate::BY_PHASE : SaveGate::NEVER
+            checkpoint, SavePoint::RUN_END, may_save ? SaveGate::BY_PHASE : SaveGate::NEVER, state
         );
         const bool passed = result.verdict == CheckpointVerdict::PASSED;
         report.passes += passed ? 1 : 0;
         report.saved = result.saved;
         m_backend.log(std::format(
             "[Verify] {}: run {}/{} {}", checkpoint.id, run, policy.runs,
-            passed ? std::string("passed") : "failed: " + to_string(run_failure(result))
+            passed ? std::string("passed") : std::format("failed: {}", to_string(run_failure(result)))
         ));
         if (repeats_on_reload(result.run.failure)){
             report.failure = result.run.failure;
@@ -349,7 +349,7 @@ CheckpointReport StoryEngine<PoseType>::run_steps(const StoryCheckpoint& checkpo
 }
 
 template <StoryPose PoseType>
-void StoryEngine<PoseType>::save_if_allowed(StoryEngineReport& report, const StoryCheckpoint& checkpoint, SavePoint point){
+void StoryEngine<PoseType>::save_if_allowed(const StoryCheckpoint& checkpoint, SavePoint point, StoryEngineReport& report){
     const bool passed = report.verdict == CheckpointVerdict::PASSED;
     if (!story_save_allowed(report.save.mode, report.verdict, point)){
         m_backend.log(std::format(
@@ -364,7 +364,7 @@ void StoryEngine<PoseType>::save_if_allowed(StoryEngineReport& report, const Sto
     }
     const Outcome saved = m_game.save(m_backend, checkpoint);
     report.saved = saved.succeeded();
-    m_backend.log(std::format("[Save] {}: {}", checkpoint.id, report.saved ? "saved" : "save failed: " + to_string(saved)));
+    m_backend.log(std::format("[Save] {}: {}", checkpoint.id, report.saved ? "saved" : std::format("save failed: {}", to_string(saved))));
 }
 
 template <StoryPose PoseType>

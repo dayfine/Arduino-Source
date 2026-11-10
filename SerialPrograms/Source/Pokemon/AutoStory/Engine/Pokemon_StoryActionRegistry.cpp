@@ -110,7 +110,7 @@ std::vector<std::string> StoryActionRegistry<PoseType>::lint(const StoryCheckpoi
         const StoryStep& step = checkpoint.steps[c];
         const std::string where = std::format("{} step {} {}", checkpoint.id, c + 1, step.name);
         if (step.name.empty() || !names.insert(step.name).second){
-            problems.push_back(where + ": empty or repeated name");
+            problems.push_back(std::format("{}: empty or repeated name", where));
         }
         for (const std::string& problem : check(step)){
             problems.push_back(std::format("{}: {}", where, problem));
@@ -123,7 +123,7 @@ std::vector<std::string> StoryActionRegistry<PoseType>::lint(const StoryCheckpoi
 }
 
 template <StoryPose PoseType>
-Outcome StoryActionRegistry<PoseType>::dispatch(StoryBackend<PoseType>& backend, RunState& state, const StoryStep& step) const{
+Outcome StoryActionRegistry<PoseType>::dispatch(StoryBackend<PoseType>& backend, const StoryStep& step, RunState& state) const{
     const StoryAction<PoseType>* action = find(step.kind, step.action);
     if (action == nullptr || !action->handler){
         return unsupported_step(step);
@@ -134,7 +134,7 @@ Outcome StoryActionRegistry<PoseType>::dispatch(StoryBackend<PoseType>& backend,
         ));
     }
     const StoryActionArgs args = with_fallbacks(action->spec, step.args);
-    return action->handler(backend, state, StoryActionCall{.step = step, .args = args});
+    return action->handler(backend, StoryActionCall{.step = step, .args = args}, state);
 }
 
 

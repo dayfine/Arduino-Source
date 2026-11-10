@@ -12,6 +12,8 @@
 #define PokemonAutomation_Pokemon_AutoStory_Tests_H
 
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "Engine/Pokemon_StoryEnginePolicy_Tests.h"
+#include "Engine/Pokemon_StoryEngineRuns_Tests.h"
 #include "Engine/Pokemon_StoryEngine_Tests.h"
 #include "Pokemon/Options/Pokemon_StoryRangeOptions_Tests.h"
 #include "Pokemon_AutoStorySelect_Tests.h"

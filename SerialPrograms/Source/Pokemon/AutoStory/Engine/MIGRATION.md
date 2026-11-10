@@ -47,7 +47,7 @@ Each move deletes that game's executor; the last one deletes `StoryStepExecutor`
    verification or reproduction checkpoint's recorded hash differs from its steps' hash. Delete the
    C++ table rows once the JSON parity test passes.
 4. **Run.** Replace the program's executor loop with `StoryEngine::run_segment(id, checkpoints,
-   state, attempts)`: it runs each with `run_checkpoint()` (the last at `RUN_END`), reloads and
+   attempts, state)`: it runs each with `run_checkpoint()` (the last at `RUN_END`), reloads and
    retries a checkpoint only when the reload returns to its start save (the first one, or one
    whose previous checkpoint saved at its end, #329), and never for a lint, `console_only` or
    game-not-running failure. Verify mode is `StoryEngine::verify_checkpoint(checkpoint, state,

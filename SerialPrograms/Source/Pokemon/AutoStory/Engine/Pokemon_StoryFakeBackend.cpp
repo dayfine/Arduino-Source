@@ -37,12 +37,12 @@ StoryBackendKind FakeStoryBackend<PoseType>::kind() const{
 
 template <StoryPose PoseType>
 void FakeStoryBackend<PoseType>::press(NintendoSwitch::Button button, Milliseconds, Milliseconds){
-    m_inputs.push_back("press " + NintendoSwitch::button_to_string(button));
+    m_inputs.push_back(std::format("press {}", NintendoSwitch::button_to_string(button)));
 }
 
 template <StoryPose PoseType>
 void FakeStoryBackend<PoseType>::tap(Direction direction){
-    m_inputs.push_back("tap " + direction_name(direction));
+    m_inputs.push_back(std::format("tap {}", direction_name(direction)));
 }
 
 template <StoryPose PoseType>

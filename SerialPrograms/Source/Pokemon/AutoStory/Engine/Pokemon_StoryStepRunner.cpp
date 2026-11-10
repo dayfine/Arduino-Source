@@ -32,7 +32,7 @@ StoryStepRunner<PoseType>::StoryStepRunner(const StoryActionRegistry<PoseType>& 
 {}
 
 template <StoryPose PoseType>
-Outcome StoryStepRunner<PoseType>::run(RunState& state, const StoryStep& step){
+Outcome StoryStepRunner<PoseType>::run(const StoryStep& step, RunState& state){
     bool skip = !step.skip_if.empty();
     for (const std::string& condition : step.skip_if){
         skip = skip && holds(condition, state);
@@ -41,19 +41,19 @@ Outcome StoryStepRunner<PoseType>::run(RunState& state, const StoryStep& step){
         m_backend.log(std::format("[Step] {} {}: skipped", step.name, step_label(step)));
         return outcome_unchanged();
     }
-    return act(state, step);
+    return act(step, state);
 }
 
 template <StoryPose PoseType>
-Outcome StoryStepRunner<PoseType>::act(RunState& state, const StoryStep& step){
+Outcome StoryStepRunner<PoseType>::act(const StoryStep& step, RunState& state){
     m_backend.scope().throw_if_cancelled();
-    Outcome outcome = m_registry.dispatch(m_backend, state, step);
+    Outcome outcome = m_registry.dispatch(m_backend, step, state);
     if (outcome.succeeded() && !outcome.pose && step.pose_after){
         outcome.pose = pose_of(*step.pose_after);
     }
     m_backend.log(std::format(
         "[Step] {} {}: {}", step.name, step_label(step),
-        outcome.succeeded() ? "ok" : "failed: " + to_string(outcome)
+        outcome.succeeded() ? "ok" : std::format("failed: {}", to_string(outcome))
     ));
     return outcome;
 }

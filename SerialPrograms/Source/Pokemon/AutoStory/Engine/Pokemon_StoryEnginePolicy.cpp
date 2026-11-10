@@ -55,7 +55,7 @@ std::string story_steps_hash(const StoryCheckpoint& checkpoint, std::span<const 
     SHA256 hash;
     hash.push(text.data(), text.size());
     hash.finish();
-    return "sha256:" + hash.get_hash_hex();
+    return std::format("sha256:{}", hash.get_hash_hex());
 }
 
 StorySaveDecision decide_story_save(const StoryCheckpoint& checkpoint, std::string_view steps_hash){
