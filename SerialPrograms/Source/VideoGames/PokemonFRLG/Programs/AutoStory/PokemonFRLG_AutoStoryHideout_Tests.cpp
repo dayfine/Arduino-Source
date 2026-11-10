@@ -5,6 +5,7 @@
  */
 
 #include <format>
+#include <optional>
 #include <string>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -212,24 +213,15 @@ UnitTestResult test_coded_spinners(){
     return true;
 }
 
-//  00.31's taps through B3F's arrow floor (frlg-00.31.plan.json's
-//  b3f_arrow_maze, pokeguy's way) on the sim, from the stairs (18, 2)
-//  to below the stairs to B4F (15, 19): as planned, and with each of the
-//  turns the taps make dropped in turn (a tap facing another way only
-//  turns the player, and a dropped one doesn't even turn them).
-UnitTestResult test_b3f_maze_taps(){
-    using Pokemon::StoryLeg;
-    const std::vector<StoryLeg> legs{
-        {Direction::WEST, 6}, {Direction::SOUTH, 5}, {Direction::WEST, 7}, {Direction::SOUTH, 2}, {Direction::WEST, 1},
-        {Direction::SOUTH, 2}, {Direction::WEST, 2}, {Direction::SOUTH, 3}, {Direction::WEST, 3}, {Direction::SOUTH, 2},
-        {Direction::EAST, 2}, {Direction::WEST, 2}, {Direction::SOUTH, 5}, {Direction::EAST, 10}, {Direction::NORTH, 6},
-    };
+//  `legs` from `start` tapped out on the sim (RouteStep::tapped), facing
+//  `facing`: as planned, and with each of the turns the taps make dropped
+//  in turn (a tap facing another way only turns the player, and a
+//  dropped one doesn't even turn them). Empty if each run ends on `goal`.
+std::string tap_legs_on_sim(const MapPosition& start, Direction facing, const std::vector<Pokemon::StoryLeg>& legs, const MapPosition& goal){
     const std::vector<MapData>& maps = story_maps();
-    const MapPosition start{"RocketHideout_B3F", {18, 2}};
-    const MapPosition goal{"RocketHideout_B3F", {15, 19}};
     std::optional<std::vector<RouteStep>> route = fixed_route(maps, start, legs);
     if (!route || !(route->back().end == goal)){
-        return std::string("The legs don't end below B3F's stairs to B4F.");
+        return "The legs from " + to_string(start) + " don't end on " + to_string(goal) + ".";
     }
     for (RouteStep& step : *route){
         step.tapped = true;
@@ -239,12 +231,66 @@ UnitTestResult test_b3f_maze_taps(){
         if (dropped > 0){
             script.dropped_turn_taps = {dropped};
         }
-        OverworldSim sim(maps, start, Direction::EAST, script);
+        OverworldSim sim(maps, start, facing, script);
         OverworldSimWalker walker(sim);
         const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = start, .label = "Sim"};
         const std::string failure = walker.run(*route, planning);
         if (!failure.empty() || !(sim.state().position == goal)){
             return std::format("With turn tap {} dropped, walked to {}, failure \"{}\".", dropped, to_string(sim.state().position), failure);
+        }
+    }
+    return "";
+}
+
+//  The planned route from `start` to `goal` on the sim, with each of its
+//  holds 1 and 2 tiles short in turn. Empty if each run ends on `goal`.
+std::string short_holds_on_sim(const MapPosition& start, Direction facing, const MapPosition& goal){
+    const std::vector<MapData>& maps = story_maps();
+    const auto route = plan_overworld_route(maps, start, RouteGoal{goal, std::nullopt}, default_route_costs(), facing);
+    if (!route){
+        return "No route from " + to_string(start) + ".";
+    }
+    for (int hold = 1; hold <= (int)route->size(); hold++){
+        for (const int short_by : {1, 2}){
+            SimScript script;
+            script.short_holds = {{hold, short_by}};
+            OverworldSim sim(maps, start, facing, script);
+            OverworldSimWalker walker(sim);
+            const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = start, .label = "Sim"};
+            const std::string failure = walker.run(*route, planning);
+            if (!failure.empty() || !(sim.state().position == goal)){
+                return std::format("Hold {} {} short from {}: walked to {}, failure \"{}\".", hold, short_by, to_string(start), to_string(sim.state().position), failure);
+            }
+        }
+    }
+    return "";
+}
+
+//  00.31's taps through B3F's arrow floor (frlg-00.31.plan.json's
+//  b3f_arrow_maze and b3f_back_to_candy_row, pokeguy's way): down from
+//  the stairs (18, 2) to below the stairs to B4F (15, 19), and back from
+//  them (15, 18) to the stop (10, 13). The routes planned after them,
+//  onto the stairs to B4F and east to below the Rare Candy, have no
+//  arrow on the way: a short hold there is found again.
+UnitTestResult test_b3f_maze_taps(){
+    using Pokemon::StoryLeg;
+    const MapPosition below_stairs{"RocketHideout_B3F", {15, 19}};
+    const MapPosition candy_stop{"RocketHideout_B3F", {10, 13}};
+    const std::vector<std::string> failures{
+        tap_legs_on_sim({"RocketHideout_B3F", {18, 2}}, Direction::EAST, {
+            {Direction::WEST, 6}, {Direction::SOUTH, 5}, {Direction::WEST, 7}, {Direction::SOUTH, 2}, {Direction::WEST, 1},
+            {Direction::SOUTH, 2}, {Direction::WEST, 2}, {Direction::SOUTH, 3}, {Direction::WEST, 3}, {Direction::SOUTH, 2},
+            {Direction::EAST, 2}, {Direction::WEST, 2}, {Direction::SOUTH, 5}, {Direction::EAST, 10}, {Direction::NORTH, 6},
+        }, below_stairs),
+        tap_legs_on_sim({"RocketHideout_B3F", {15, 18}}, Direction::WEST, {
+            {Direction::SOUTH, 2}, {Direction::WEST, 5}, {Direction::NORTH, 6},
+        }, candy_stop),
+        short_holds_on_sim(below_stairs, Direction::NORTH, {"RocketHideout_B4F", map_point(story_maps(), "RocketHideout_B4F", "warp_0")}),
+        short_holds_on_sim(candy_stop, Direction::NORTH, {"RocketHideout_B3F", {12, 13}}),
+    };
+    for (const std::string& failure : failures){
+        if (!failure.empty()){
+            return failure;
         }
     }
     return true;
