@@ -291,7 +291,7 @@ namespace{
 class Test_SummaryScreen : public ImageUnitTest{
 public:
     Test_SummaryScreen(const std::string& image)
-        : ImageUnitTest("PokemonFRLG::SummaryMovesReader - " + image, {image})
+        : ImageUnitTest(std::format("PokemonFRLG::SummaryMovesReader - {}", image), {image})
     {}
 
     virtual UnitTestResult run_on_images(

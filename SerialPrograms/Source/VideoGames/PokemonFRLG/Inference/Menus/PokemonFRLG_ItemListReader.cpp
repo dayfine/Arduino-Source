@@ -148,7 +148,7 @@ Language language_of_test_image(const std::string& image){
 class Test_BagPocket : public ImageUnitTest{
 public:
     Test_BagPocket(const std::string& image)
-        : ImageUnitTest("PokemonFRLG::ItemListReader - " + image, {image})
+        : ImageUnitTest(std::format("PokemonFRLG::ItemListReader - {}", image), {image})
     {}
 
     virtual UnitTestResult run_on_images(
@@ -177,7 +177,7 @@ public:
 class Test_MartList : public ImageUnitTest{
 public:
     Test_MartList(const std::string& image)
-        : ImageUnitTest("PokemonFRLG::ItemListReader - " + image, {image})
+        : ImageUnitTest(std::format("PokemonFRLG::ItemListReader - {}", image), {image})
     {}
 
     virtual UnitTestResult run_on_images(

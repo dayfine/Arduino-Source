@@ -4,6 +4,7 @@
  *
  */
 
+#include <format>
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/ImageTools/ImageStats.h"
@@ -142,7 +143,7 @@ public:
         const std::string& image,
         bool expected
     )
-        : ImageUnitTest("PokemonFRLG::WhiteDialogDetector - " + image, {image})
+        : ImageUnitTest(std::format("PokemonFRLG::WhiteDialogDetector - {}", image), {image})
         , m_expected(expected)
     {}
 
@@ -180,7 +181,7 @@ public:
         const std::string& image,
         bool expected
     )
-        : ImageUnitTest("PokemonFRLG::AdvanceWhiteDialogDetector - " + image, {image})
+        : ImageUnitTest(std::format("PokemonFRLG::AdvanceWhiteDialogDetector - {}", image), {image})
         , m_expected(expected)
     {}
 
@@ -218,7 +219,7 @@ public:
         const std::string& image,
         bool expected
     )
-        : ImageUnitTest("PokemonFRLG::SelectionDialogDetector - " + image, {image})
+        : ImageUnitTest(std::format("PokemonFRLG::SelectionDialogDetector - {}", image), {image})
         , m_expected(expected)
     {}
 

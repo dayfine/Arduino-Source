@@ -5,11 +5,12 @@
  */
 
 #include <cstdint>
+#include <format>
 #include <string>
 #include <utility>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon_StoryRun_Tests.h"
+#include "Pokemon_AutoStory_Tests.h"
 #include "Pokemon_AutoStoryStats.h"
 
 namespace PokemonAutomation{
@@ -39,21 +40,22 @@ struct StoryCountsCase{
 class Test_StoryCounts : public UnitTest{
 public:
     Test_StoryCounts(StoryCountsCase test_case)
-        : UnitTest("Pokemon::AutoStoryStats - " + test_case.input.name)
+        : UnitTest(std::format("Pokemon::AutoStoryStats - {}", test_case.input.name))
         , m_case(std::move(test_case))
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         AutoStoryStats stats;
         for (const StoryRunCounts& counts : m_case.input.added){
-            record_story_counts(stats, counts);
+            record_story_counts(counts, stats);
         }
         const StoryCountsExpectation& expected = m_case.expectation;
         if (stats.m_segment != expected.segments || stats.m_checkpoint != expected.checkpoints || stats.m_reset != expected.resets){
-            return "Expected " + std::to_string(expected.segments) + " segments, " + std::to_string(expected.checkpoints)
-                + " checkpoints and " + std::to_string(expected.resets) + " resets, got "
-                + std::to_string(stats.m_segment) + ", " + std::to_string(stats.m_checkpoint)
-                + " and " + std::to_string(stats.m_reset);
+            return std::format(
+                "Expected {} segments, {} checkpoints and {} resets, got {}, {} and {}",
+                expected.segments, expected.checkpoints, expected.resets,
+                stats.m_segment.load(), stats.m_checkpoint.load(), stats.m_reset.load()
+            );
         }
         return true;
     }
