@@ -505,7 +505,7 @@ void OverworldSim::stuck_hold(Direction direction){
     }else if (m_battle_pending){
         violation(std::string("the D-pad held ") + direction_name(direction) + " into a battle.");
     }else{
-        note(std::string("the D-pad held ") + direction_name(direction) + " under " + sim_screen_name(m_state.screen) + ".");
+        note(std::string("the D-pad held ") + direction_name(direction) + " under " + sim_screen_name(m_state.screen) + (m_frozen ? "." : ", in the lockout after a battle."));
     }
 }
 
@@ -532,7 +532,7 @@ std::optional<SimSeen> OverworldSim::hold(
 
 void OverworldSim::tap(Direction direction, Milliseconds duration, Milliseconds release){
     const Milliseconds start = m_now;
-    if (m_state.screen != SimScreen::OVERWORLD || m_frozen){
+    if (m_state.screen != SimScreen::OVERWORLD || m_frozen || start < m_battle_lockout_end){
         stuck_hold(direction);
         m_last_tap.reset();
     }else if (m_last_tap && m_last_tap->direction == direction && m_last_tap->end == start){
@@ -620,14 +620,14 @@ SimBattleEnd OverworldSim::handle_battle(SimBattleChoice choice){
     show(SimScreen::OVERWORLD, m_now);
     m_frozen = false;
     m_battle_pending = false;
-    if (!m_trainer){
-        m_state.in_wild_battles += m_now - m_wild_battle_from;
-    }
+    m_battle_lockout_end = m_now + m_script.timing.battle_exit_lockout;
     if (m_trainer){
         MapObject& trainer = m_maps[m_map].objects[*m_trainer];
         trainer.trainer.reset();
         m_state.trainers_beaten.push_back(trainer.name);
         m_trainer.reset();
+    }else{
+        m_state.in_wild_battles += m_now - m_wild_battle_from;
     }
     note(std::string(choice == SimBattleChoice::RUN ? "ran from" : "won") + " the battle.");
     return SimBattleEnd::ENDED;

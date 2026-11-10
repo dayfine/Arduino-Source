@@ -126,10 +126,12 @@ struct ScreenSettle{
 };
 //  The end of `look`: its last frame's events, and how long they held.
 ScreenSettle judge_settle(const ScreenLook& look);
+//  Whether it ended on the HOME menu: the game is not running.
+bool on_home_menu(const ScreenSettle& settle);
 //  Whether it ended on the overworld with no box, no fade and no battle.
 bool is_settled(const ScreenSettle& settle);
 //  "settled overworld (quiet 0.3 s)", "black fade showing (quiet 0.1 s)",
-//  "no frame seen".
+//  "Switch HOME menu (quiet 0.3 s)", "no frame seen".
 std::string describe(const ScreenSettle& settle);
 
 
@@ -140,13 +142,15 @@ struct InterruptCheck{
     //  NONE when nothing interrupted, or when the step starts on it.
     InterruptVerdict verdict = {};
     //  Failed when the look stayed unsettled, the kind had no handler, or
-    //  the handler failed.
+    //  the handler failed; GAME_NOT_RUNNING, with no verdict, when the
+    //  look ended on the Switch's HOME menu.
     Outcome outcome = {};
 };
 
 //  Looks at the screen before `step` (or after it failed) and clears what
 //  interrupted the player, if anything, writing the handler's effect on
-//  the pose into `state`.
+//  the pose into `state`. On the HOME menu it fails as GAME_NOT_RUNNING
+//  and clears nothing, whatever the step starts on.
 InterruptCheck clear_story_interrupt(const StoryInterrupts& interrupts, RunState& state, const StoryStep& step);
 
 

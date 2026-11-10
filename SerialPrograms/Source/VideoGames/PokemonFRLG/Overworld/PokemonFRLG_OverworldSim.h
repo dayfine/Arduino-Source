@@ -99,6 +99,8 @@ struct SimTiming{
     Milliseconds fade{1000};            //  from the step's end to the new map
     Milliseconds trainer_notice{1000};  //  "!" over the trainer, before they walk up
     Milliseconds trainer_battle{2000};  //  after the trainer's message closes
+    //  From a battle's end on, the game ignores taps this long.
+    Milliseconds battle_exit_lockout = MovementMechanics::BATTLE_EXIT_LOCKOUT;
 };
 
 //  What a test sets up beyond the maps.
@@ -225,7 +227,9 @@ public:
     //  LONGEST_TAP), then `release`, as the console measured it: a player
     //  facing another way only turns; one facing that way steps once,
     //  unless the tap starts inside the lockout after the last step tap
-    //  (STEP_TAP_LOCKOUT), which the game ignores. A tap that starts as
+    //  (STEP_TAP_LOCKOUT), which the game ignores, as it does any tap
+    //  inside the lockout after a battle (BATTLE_EXIT_LOCKOUT); holds
+    //  aren't held up by that lockout yet. A tap that starts as
     //  the last one ends, with no release between, holds it on. A turn may
     //  be dropped by fault injection (SimScript::dropped_turn_taps).
     void tap(
@@ -330,6 +334,8 @@ private:
     std::optional<TapPress> m_last_tap;
     //  When the last tap that stepped started.
     std::optional<Milliseconds> m_last_step_tap;
+    //  The end of the lockout after the last battle.
+    Milliseconds m_battle_lockout_end{0};
     Milliseconds m_wild_battle_from{0};
     int m_holds = 0;
     SimState m_state;

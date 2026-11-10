@@ -148,6 +148,16 @@ inline constexpr Milliseconds TRAINER_LINE_WATCH(2500);
 //  2026-11-09).
 inline constexpr Milliseconds WILD_BATTLE_IN_LINE_WATCH(5000);
 
+//  The longest wait_out_battle_exit() waits for the overworld.
+inline constexpr Milliseconds BATTLE_EXIT_TIMEOUT(10000);
+
+//  After a battle run from or won: waits until the overworld has shown
+//  nothing (wait_for_quiet_overworld()) for MovementMechanics::
+//  AFTER_BATTLE_QUIET, at most BATTLE_EXIT_TIMEOUT, and logs how the screen
+//  ended. A tap sent as the battle's black ends is lost (console B,
+//  2026-11-09, 00.28 winston_line).
+void wait_out_battle_exit(ConsoleHandle& console, ProControllerContext& context);
+
 //  How long a step into the line of a trainer who looks around waits for
 //  them to turn to the player (TRAINER_WAIT_VARIANT).
 inline constexpr Milliseconds TRAINER_WAIT_WATCH(30000);

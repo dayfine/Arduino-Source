@@ -21,6 +21,9 @@
  *      tap's start is ignored.
  *  -   Taps with no release between them are one hold: after a turn, 3 of
  *      them took 0 or 1 steps.
+ *  After a battle (console B, 2026-11-09 15:50, 00.28 winston_line): a
+ *  step tap sent as flee_battle() returned, on the black's end, was lost;
+ *  one more tap by hand stepped.
  *
  */
 
@@ -55,6 +58,10 @@ inline constexpr Milliseconds LONGEST_TAP(133);
 inline constexpr Milliseconds STEP_TAP_LOCKOUT(620);
 //  The shortest step tap spacing, start to start, measured to work.
 inline constexpr Milliseconds STEP_TAP_SPACING_WORKED(666);
+//  After a battle's black ends, the overworld fades in and the game ignores
+//  the D-pad this long. Not measured: pokefirered's fade from black is 16
+//  frames, then the field takes input; a tap sent at once was lost.
+inline constexpr Milliseconds BATTLE_EXIT_LOCKOUT(500);
 
 
 //  The walker's presses.
@@ -77,9 +84,14 @@ inline constexpr Milliseconds STEP_TAP(66);
 //  STEP_TAP_RELEASE after it, past the lockout.
 inline constexpr Milliseconds STEP_TAP_RELEASE(700);
 
+//  How long the overworld must show nothing (no box, fade or battle) after
+//  a battle before the next tap: twice the lockout.
+inline constexpr Milliseconds AFTER_BATTLE_QUIET(1000);
+
 static_assert(TURN_TAP <= LONGEST_TAP && FACE_HOLD <= LONGEST_TAP && STEP_TAP <= LONGEST_TAP);
 static_assert(STEP_TAP + STEP_TAP_RELEASE > STEP_TAP_SPACING_WORKED);
 static_assert(STEP_TAP_SPACING_WORKED > STEP_TAP_LOCKOUT);
+static_assert(AFTER_BATTLE_QUIET > BATTLE_EXIT_LOCKOUT);
 
 
 } // namespace MovementMechanics
