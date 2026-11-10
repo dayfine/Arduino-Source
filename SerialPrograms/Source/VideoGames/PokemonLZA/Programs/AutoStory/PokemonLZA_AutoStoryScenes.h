@@ -31,11 +31,14 @@ namespace PokemonLZA{
 //  `quiet` time, an OVERWORLD mash also ends once no box, choice, battle or
 //  fade has shown for that long: the new game's tutorial shows no party bar
 //  (only the Move / Control Camera hints, which have no detector yet).
+//  A cutscene can hold a still frame longer than `quiet`, so the quiet end
+//  waits for `min_length`, the scene's rough recorded length, to pass.
 //  Throws OperationFailedException if the goal does not show within `timeout`.
 void mash_scene(
     ConsoleHandle& console, ProControllerContext& context,
     SceneMashGoal goal, Button text_button, Milliseconds timeout,
-    std::optional<Milliseconds> quiet = std::nullopt
+    std::optional<Milliseconds> quiet = std::nullopt,
+    Milliseconds min_length = Milliseconds(0)
 );
 
 

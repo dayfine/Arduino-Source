@@ -21,11 +21,13 @@ using namespace std::chrono_literals;
 namespace{
 
 //  When an OVERWORLD mash is over: the party bar held a second, or (with a
-//  quiet time) nothing busy on screen for that long.
+//  quiet time) nothing busy on screen for that long once the scene's
+//  minimum length has passed.
 class OverworldEnd{
 public:
-    explicit OverworldEnd(std::optional<Milliseconds> quiet)
+    OverworldEnd(std::optional<Milliseconds> quiet, Milliseconds min_length)
         : m_quiet(quiet)
+        , m_quiet_from(current_time() + min_length)
         , m_last_busy(current_time())
     {}
     bool reached(ConsoleHandle& console, const Pokemon::ScreenEvents& events, SceneMashAction action, WallClock now){
@@ -44,7 +46,7 @@ public:
         if (m_can_move_since && now - *m_can_move_since >= 1000ms){
             return true;
         }
-        if (m_quiet && now - m_last_busy >= *m_quiet){
+        if (m_quiet && now >= m_quiet_from && now - m_last_busy >= *m_quiet){
             console.log(std::format("mash_scene(): quiet for {} ms, taking it as the overworld.", m_quiet->count()));
             return true;
         }
@@ -53,6 +55,7 @@ public:
 
 private:
     std::optional<Milliseconds> m_quiet;
+    WallClock m_quiet_from;
     WallClock m_last_busy;
     std::optional<WallClock> m_can_move_since;
 };
@@ -80,10 +83,10 @@ void press_for(ProControllerContext& context, SceneMashAction action, Button tex
 void mash_scene(
     ConsoleHandle& console, ProControllerContext& context,
     SceneMashGoal goal, Button text_button, Milliseconds timeout,
-    std::optional<Milliseconds> quiet
+    std::optional<Milliseconds> quiet, Milliseconds min_length
 ){
     PlzaScreenObserver observer;
-    OverworldEnd overworld(quiet);
+    OverworldEnd overworld(quiet, min_length);
     const WallClock start = current_time();
     while (current_time() - start < timeout){
         context.wait_for_all_requests();

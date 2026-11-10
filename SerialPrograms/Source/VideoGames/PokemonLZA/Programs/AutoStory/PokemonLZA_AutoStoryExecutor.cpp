@@ -175,8 +175,19 @@ Outcome StoryExecutor::game(RunState&, const StoryStep& step){
     }else if (step.variant == "type_player_name"){
         type_player_name(console(), context(), m_env.player_name);
     }else if (step.variant == "mash_to_move_hints"){
-        //  The tutorial shows no party bar: 8 s with no box is the overworld.
-        mash_scene(console(), context(), SceneMashGoal::OVERWORLD, BUTTON_A, 180s, 8000ms);
+        //  The tutorial shows no party bar: 8 s with no box is the overworld,
+        //  once the scene's rough length has passed (its cutscenes hold
+        //  still frames longer than 8 s). Rough guesses, to tune on console B.
+        static const std::map<std::string, Milliseconds, std::less<>> MIN_LENGTH{
+            {"opening", 60000ms},
+            {"arrival_scenes", 40000ms},
+            {"battle_area", 20000ms},
+        };
+        const auto min_length = MIN_LENGTH.find(step.name);
+        mash_scene(
+            console(), context(), SceneMashGoal::OVERWORLD, BUTTON_A, 180s, 8000ms,
+            min_length == MIN_LENGTH.end() ? Milliseconds(0) : min_length->second
+        );
     }else if (step.variant == "text_to_choice"){
         mash_scene(console(), context(), SceneMashGoal::CHOICE, BUTTON_B, 60s);
     }else if (step.variant == "story_battle_start"){
