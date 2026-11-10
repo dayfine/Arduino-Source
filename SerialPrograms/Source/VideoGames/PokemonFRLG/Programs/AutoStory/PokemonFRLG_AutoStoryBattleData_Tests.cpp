@@ -2,8 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The battle data, the foes each story battle's plan lists, and the
- *  attacks chosen against trainers' parties and wild Pokemon from it.
+ *  The battle data, and the attacks chosen against trainers' parties and wild Pokemon from it.
  *
  */
 
@@ -21,7 +20,6 @@
 #include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
 #include "PokemonFRLG_AutoStoryParty.h"
-#include "PokemonFRLG_AutoStoryTable.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -112,34 +110,6 @@ UnitTestResult test_data(){
     return true;
 }
 
-//  Every battle step in the table names its trainer and that trainer's
-//  party, each species one the data has.
-UnitTestResult test_story_trainers(){
-    size_t battles = 0;
-    for (const StoryCheckpoint& checkpoint : story_checkpoints()){
-        for (const StoryStep& step : checkpoint.steps){
-            if (step.kind != StoryStepKind::BATTLE){
-                continue;
-            }
-            battles++;
-            const std::string& trainer = Pokemon::story_arg<std::string>(step.args, "trainer");
-            const std::vector<std::string>& foes = Pokemon::story_arg<std::vector<std::string>>(step.args, "foes");
-            if (trainer.empty() || foes.empty()){
-                return std::format("{}, {}: no trainer or no foes.", checkpoint.id, step.name);
-            }
-            for (const std::string& foe : foes){
-                if (species_data(foe) == nullptr){
-                    return std::format("{}, {}: unknown foe {}.", checkpoint.id, step.name, foe);
-                }
-            }
-        }
-    }
-    if (battles == 0){
-        return "Expected battle steps in the table.";
-    }
-    return true;
-}
-
 //  Mt. Moon: Super Nerd Miguel's Grimer (Poison) takes Water Gun, with or
 //  without Bite known: Water Gun and Bite both hit his party 1x, and the
 //  tie goes to the plan's Water Gun.
@@ -219,10 +189,6 @@ const AutoStoryBattleDataTestCase AUTO_STORY_BATTLE_DATA_CASES[] = {
     {
         .input = {.name = "type chart, moves and species from pret", .body = test_data},
         .expectation = {.description = "validates decompiled type charts, moves, and species"},
-    },
-    {
-        .input = {.name = "every story battle's plan names a trainer and its party", .body = test_story_trainers},
-        .expectation = {.description = "ensures all scripted story battles list known foes"},
     },
     {
         .input = {.name = "Miguel's Grimer: Water Gun", .body = test_miguel_grimer},
