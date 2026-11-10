@@ -422,7 +422,7 @@ public:
         m_ran.clear();
         m_astray = false;
         m_result.rows.push_back({.row = data.id, .fades = m_misses.fades, .banners = m_misses.banners});
-        m_walks.begin_attempt(data.id);
+        m_walks.begin_attempt(data.id, data.steps);
         arm("");
     }
     virtual Pokemon::Outcome run(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;

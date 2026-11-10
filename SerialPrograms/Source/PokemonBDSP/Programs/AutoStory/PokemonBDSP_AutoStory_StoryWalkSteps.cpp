@@ -113,12 +113,18 @@ std::optional<Pose> measured_ends(const Pose& from, const StoryStep& step){
     return Pokemon::tile_pose(from.map, at, step.legs.back().direction);
 }
 
-void StoryWalkSteps::begin_attempt(const std::string& row){
+void StoryWalkSteps::begin_attempt(const std::string& row, const std::vector<StoryStep>& steps){
     m_row = row;
     //  A row starts from its save: after the shoes' row, the save has them.
     m_can_run = row > std::string(RUNNING_SHOES_ROW);
     m_trainers.clear();
     m_warp = {};
+    m_scene_next.clear();
+    for (size_t c = 1; c < steps.size(); c++){
+        if (steps[c].kind == Pokemon::StoryStepKind::MASH){
+            m_scene_next.insert(steps[c - 1].name);
+        }
+    }
 }
 
 void StoryWalkSteps::turn(Direction direction){
@@ -155,11 +161,12 @@ Pose StoryWalkSteps::walk_to(const Pose& from, const Pose& goal, const StoryStep
     };
     const RouteWalkPlan plan{
         [&](const TilePos& pos){ return std::find(targets.begin(), targets.end(), pos) != targets.end(); },
-        label_of(step), {}, *costs, m_can_run ? MoveSpeed::RUN : MoveSpeed::WALK
+        label_of(step), {}, *costs, m_can_run ? MoveSpeed::RUN : MoveSpeed::WALK, m_scene_next.contains(step.name)
     };
     RouteEnd end = walk_route_to_warp(m_io.route(), *maps, start, trainers, plan);
     sights = std::move(trainers.sights);
     m_warp = std::move(end.warp);
+    m_scene_started = end.scene;
     std::vector<TilePos> local;
     for (const TilePos& pos : end.tiles){
         const std::optional<TilePos> tile = story_to_local(*maps, goal.map, pos);
@@ -177,7 +184,8 @@ Outcome StoryWalkSteps::route(RunState& state, const StoryStep& step){
         return Pokemon::outcome_failed("no_pose", Pokemon::to_string(state.pose));
     }
     const Pose end = walk_to(state.pose, *step.target, step);
-    if (step.legs.empty()){
+    //  The next step's scene started on the way: its step plays it.
+    if (step.legs.empty() || m_scene_started){
         return Pokemon::outcome_ok(end);
     }
     return run_to_dialogue(step);

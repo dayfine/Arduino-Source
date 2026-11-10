@@ -14,6 +14,7 @@
 #include <functional>
 #include <map>
 #include <optional>
+#include <set>
 #include <string>
 #include <vector>
 #include "Pokemon/AutoStory/Pokemon_StorySteps.h"
@@ -64,8 +65,10 @@ public:
     {}
 
     //  A new attempt of the row `row`: every trainer can see us again, and
-    //  the pace is the row's save's (a run after the Running Shoes).
-    void begin_attempt(const std::string& row);
+    //  the pace is the row's save's (a run after the Running Shoes). With
+    //  the row's `steps`, a route followed by a scene hands a dialogue that
+    //  starts on the way to that scene (RouteWalkPlan::scene_next).
+    void begin_attempt(const std::string& row, const std::vector<Pokemon::StoryStep>& steps = {});
     //  Whether the player has the Running Shoes: the pace routes are timed at.
     bool can_run() const{
         return m_can_run;
@@ -113,6 +116,10 @@ private:
     //  The warp the last route ran on through at its end (walk_route_to_warp()),
     //  for the step after it, which goes through that warp.
     WarpSeen m_warp;
+    //  The row's steps followed by a scene (begin_attempt()).
+    std::set<std::string> m_scene_next;
+    //  The last route ended in the next step's scene (RouteEnd::scene).
+    bool m_scene_started = false;
 };
 
 

@@ -466,8 +466,13 @@ std::vector<StoryStep> moms_heal_and_hat(){
         anchored(to_walls("into_the_east_corner", {
             {.direction = NORTH, .tiles = 4}, {.direction = EAST, .tiles = 6}, {.direction = SOUTH, .tiles = 4},
         }, "north, east and south to the walls, into the room's east corner"), at(HOME, 11, 8, SOUTH)),
-        route("around_mom", at(HOME, 6, 9, SOUTH), "round Mom to (6, 9) above the door"),
-        step_into("to_moms_call", SOUTH, "onto the door mat (6, 10), triggering Mom's call"),
+        //  Her call fires on (6, 9), above the mat, not on the mat: a walk
+        //  west along row 9 stopped in it there, all 4 taps moved (lab-B
+        //  2026-11-09 17:29); the step south from (6, 9) went out of the door
+        //  after it, where on 2026-11-04 the same step inside her call did
+        //  not. So the route stops a tile east and runs on into her call.
+        route_into_scene("into_moms_call", at(HOME, 7, 9, WEST), {.direction = WEST, .tiles = 1},
+            "round Mom to (7, 9), then west until her call stops us on (6, 9)"),
         scene("moms_hat", at(TWINLEAF, 19, 22, EAST), "Mom's hat; she walks out with us"),
         //  Her scene's end is a guess too, and Mom may stand east of us: west
         //  along the row to Twinleaf's west wall, column 6, from either row the
