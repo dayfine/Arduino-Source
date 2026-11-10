@@ -13,6 +13,7 @@
 #include "CommonFramework/Environment/SystemSleep.h"
 #include "CommonFramework/Panels/PanelTools.h"
 #include "CommonFramework/Panels/PanelSession.h"
+#include "LabChannel.h"
 
 class QVBoxLayout;
 class QLabel;
@@ -91,6 +92,9 @@ private:
     bool m_pending_resize = false;
     bool m_pending_move = false;
     bool m_panel_transition = false;
+
+    //  The lab channel, when "<user files>/Lab/" existed at startup (LabChannel.h).
+    std::unique_ptr<LabChannel> m_lab_channel;
 };
 
 // returns given X value, but bounded by 0 and screen_width
