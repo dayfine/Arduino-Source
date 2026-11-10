@@ -23,6 +23,7 @@
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
 #include "PokemonFRLG_AutoStoryHideout.h"
+#include "PokemonFRLG_AutoStoryLegs.h"
 #include "PokemonFRLG_AutoStoryScreenEvents.h"
 #include "PokemonFRLG_AutoStorySummary.h"
 #include "PokemonFRLG_AutoStoryTable.h"
@@ -166,7 +167,12 @@ Outcome walk_legs(StoryEnv& env, RunState& state, const StoryStep& step){
     if (!facing){
         facing = face_a_wall(env, start);
     }
-    const std::optional<std::vector<RouteStep>> route = fixed_route(story_maps(), start, step.legs);
+    std::optional<std::vector<RouteStep>> route = fixed_route(story_maps(), start, step.legs);
+    if (route && step.variant == TAPS_VARIANT){
+        for (RouteStep& leg : *route){
+            leg.tapped = true;
+        }
+    }
     if (!facing || !route || route->empty()){
         return Pokemon::outcome_failed("bad_legs", to_string(start));
     }
@@ -437,42 +443,6 @@ void add_start_pose_check(
         return mismatch.empty() ? StartRead{StartFound::AT_START} : StartRead{StartFound::ELSEWHERE, mismatch};
     };
     add_start_check(checkpoint, start, std::move(reader), std::move(log));
-}
-
-std::optional<std::vector<RouteStep>> fixed_route(
-    const std::vector<MapData>& maps, const MapPosition& start, const std::vector<StoryLeg>& legs
-){
-    const MapData* map = nullptr;
-    for (const MapData& candidate : maps){
-        if (candidate.name == start.map){
-            map = &candidate;
-        }
-    }
-    if (map == nullptr || !in_bounds(*map, start.point)){
-        return std::nullopt;
-    }
-    std::vector<RouteStep> route;
-    PlayerState player{start.point, elevation_at(*map, start.point), false};
-    for (const StoryLeg& leg : legs){
-        RouteStep step;
-        step.direction = leg.direction;
-        step.tiles = leg.tiles;
-        step.facing_after = leg.direction;
-        step.walk_only = !map->allow_running;
-        for (int c = 0; c < leg.tiles; c++){
-            const StepKind kind = classify_step(*map, player, leg.direction);
-            const TilePos next = player.position.next(leg.direction);
-            if (kind != StepKind::WALK || !in_bounds(*map, next) || warps_on_step(*map, next)){
-                return std::nullopt;
-            }
-            step.wild |= is_tall_grass(*map, next);
-            player = after_step(*map, player, leg.direction, kind);
-        }
-        step.to_wall = classify_step(*map, player, leg.direction) == StepKind::BLOCKED;
-        step.end = MapPosition{map->name, player.position};
-        route.push_back(step);
-    }
-    return route;
 }
 
 Pokemon::Pose paced_pose(const Pokemon::Pose& patch, const StoryStep& step){

@@ -22,6 +22,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecovery.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
+#include "PokemonFRLG_AutoStoryLegs.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
@@ -359,7 +360,7 @@ UnitTestResult test_runs_after_shoes(){
     size_t runs = 0;
     for (const StoryCheckpoint& checkpoint : story_checkpoints()){
         for (const StoryStep& step : checkpoint.steps){
-            if (step.kind != StoryStepKind::ROUTE && step.kind != StoryStepKind::LEGS){
+            if ((step.kind != StoryStepKind::ROUTE && step.kind != StoryStepKind::LEGS) || step.variant == TAPS_VARIANT){
                 continue;
             }
             const MoveSpeed expected = has_shoes ? MoveSpeed::RUN : MoveSpeed::WALK;

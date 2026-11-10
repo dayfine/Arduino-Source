@@ -880,8 +880,8 @@ StepOutcome OverworldSimWalker::walk_ridden(const RouteStep& step, std::optional
         clear_late(interrupts(step), OPEN_MESSAGE_WATCH, 1);
     }
     check_overworld(step);
-    if (m_rules.count_bike_taps && counts_bike_taps(step, m_speed)){
-        const StepOutcome outcome = walk_bike_taps(step);
+    if (counts_step_taps(step) || (m_rules.count_bike_taps && counts_bike_taps(step, m_speed))){
+        const StepOutcome outcome = counts_step_taps(step) ? walk_step_taps(step) : walk_bike_taps(step);
         if (outcome.end != StepEnd::DONE){
             return outcome;
         }

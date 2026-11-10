@@ -212,13 +212,6 @@ void add_start_pose_check(
     Pokemon::Checkpoint& checkpoint, const std::optional<Pokemon::Pose>& start, SavePoseReader read, StoryLog log
 );
 
-//  `legs` from `start` as route steps for the walker, each checked against
-//  the map: nothing if a step is blocked or leaves the map. A leg ends "to
-//  wall" if the next step its way is blocked.
-std::optional<std::vector<RouteStep>> fixed_route(
-    const std::vector<MapData>& maps, const MapPosition& start, const std::vector<StoryLeg>& legs
-);
-
 //  Where a GRIND or capture `step` that paces (pace = ...) leaves the
 //  player who started it on `patch`: the patch's tile or the one its pace
 //  leads to, as the last battle came, facing unknown. `patch` for any
