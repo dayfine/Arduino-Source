@@ -10,7 +10,7 @@
 #include "Common/Cpp/Json/JsonObject.h"
 #include "Pokemon/AutoStory/Pokemon_ScreenEvents.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
-#include "Data/JsonParser.h"
+#include "PokemonFRLG_AutoStoryEvents.h"
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{

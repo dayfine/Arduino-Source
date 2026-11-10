@@ -5,7 +5,7 @@
  *  The FRLG story as data for the shared story engine
  *  (Pokemon/AutoStory/Pokemon_StoryEvents.h, Pokemon_StorySegments.h).
  *  A checkpoint is a list of the shared StorySteps
- *  (Pokemon/AutoStory/Pokemon_StorySteps.h), each one kind of event (a
+ *  (Pokemon/AutoStory/Pokemon_StoryStepExecutor.h), each one kind of event (a
  *  route, a talk, text read to its end, a YES/NO, a battle, the nurse, the
  *  Mart); StoryExecutor does each kind on the console, and
  *  make_story_segment() turns the table into engine checkpoints. Routes
@@ -29,7 +29,7 @@
 #include "Pokemon/AutoStory/Pokemon_StoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
-#include "Pokemon/AutoStory/Pokemon_StorySteps.h"
+#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMap.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
@@ -239,10 +239,6 @@ std::optional<std::vector<RouteStep>> plan_story_route(
 //  into a sign would read it.
 std::optional<Direction> wall_beside(const MapData& map, const TilePos& tile);
 
-//  `items` as orders at the Viridian Mart before the Boulder Badge: the
-//  rows of POKE BALL, POTION, ANTIDOTE, PARLYZ HEAL. Nothing if it does
-//  not sell one of them.
-std::optional<std::vector<MartOrder>> viridian_mart_orders(const std::vector<Pokemon::StoryItem>& items);
 
 
 //  What the story's events act on. `supplies` are what the bag holds now,
@@ -254,7 +250,7 @@ struct StoryEnv{
     Supplies saved_supplies;
     //  Whether the game has a save to reload.
     bool has_save = false;
-    StoryChecks checks = StoryChecks::THOROUGH;
+    Pokemon::StoryCheckLevel checks = Pokemon::StoryCheckLevel::DEFAULT;
     //  The game's language, for reading item names. In one the readers have
     //  no names for, the checks fall back to positions and counts.
     Language language = Language::English;

@@ -51,6 +51,7 @@
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryPaceSim.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryPcStorage.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRngLoop.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryRows_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryTable.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryTrashCans.h"
 #include "Programs/AutoStory/Data/Json_Tests.h"
@@ -890,7 +891,6 @@ static void add_tests_Naming(UnitTestDatabase& database){
     add_tests_NamingText(database);
 }
 
-//  The story's rows on the overworld sim, a file of tests per stage.
 static void add_tests_AutoStoryRows(UnitTestDatabase& database){
     add_tests_AutoStoryVermilion(database);
     add_tests_AutoStoryVermilionGym(database);

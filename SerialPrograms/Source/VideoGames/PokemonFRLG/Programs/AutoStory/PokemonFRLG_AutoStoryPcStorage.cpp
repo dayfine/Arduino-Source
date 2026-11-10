@@ -9,6 +9,7 @@
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "PokemonFRLG_AutoStoryActions.h"
+#include "PokemonFRLG_AutoStoryGameArgs.h"
 #include "PokemonFRLG_AutoStoryPcStorage.h"
 
 namespace PokemonAutomation{
@@ -30,86 +31,62 @@ constexpr size_t STORAGE_MENU_ROWS = 5;
 //  A second look at a frame that reads as the overworld.
 constexpr Milliseconds OVERWORLD_CONFIRM = 800ms;
 
-std::vector<std::string_view> split_words(std::string_view text){
-    std::vector<std::string_view> words;
-    while (!text.empty()){
-        const size_t space = text.find(' ');
-        const std::string_view word = text.substr(0, space);
-        if (!word.empty()){
-            words.push_back(word);
-        }
-        if (space == std::string_view::npos){
-            break;
-        }
-        text.remove_prefix(space + 1);
+//  "deposit slot=2 box=1" or "withdraw box=1 slot=7", for the log.
+std::string pc_transfer_text(const PcTransfer& transfer){
+    if (transfer.action == PcAction::DEPOSIT){
+        return std::format(
+            "deposit slot={} box={}{}", transfer.party_slot + 1, transfer.box + 1,
+            transfer.if_missing == PcMissing::SKIP ? " if_present" : ""
+        );
     }
-    return words;
-}
-
-//  "key=N" with N from 1 to `max`, as N - 1.
-std::optional<size_t> counted_value(std::string_view word, std::string_view key, size_t max){
-    if (!word.starts_with(key) || word.size() <= key.size() + 1 || word[key.size()] != '='){
-        return std::nullopt;
-    }
-    size_t value = 0;
-    for (char c : word.substr(key.size() + 1)){
-        if (c < '0' || c > '9' || value > max){
-            return std::nullopt;
-        }
-        value = value * 10 + size_t(c - '0');
-    }
-    if (value < 1 || value > max){
-        return std::nullopt;
-    }
-    return value - 1;
+    return std::format("withdraw box={} slot={}", transfer.box + 1, transfer.box_slot + 1);
 }
 
 } // namespace
 
 
-std::string pc_variant(const PcTransfer& transfer){
+Pokemon::StoryActionArgs pc_args(const PcTransfer& transfer){
     if (transfer.action == PcAction::DEPOSIT){
-        return std::format(
-            "{}deposit slot={} box={}{}", PC_VARIANT_PREFIX, transfer.party_slot + 1, transfer.box + 1,
-            transfer.if_missing == PcMissing::SKIP ? " if_present" : ""
-        );
+        return {
+            {"do", std::string("deposit")},
+            {"slot", int64_t(transfer.party_slot + 1)},
+            {"box", int64_t(transfer.box + 1)},
+            {"if_present", transfer.if_missing == PcMissing::SKIP},
+        };
     }
-    return std::format("{}withdraw box={} slot={}", PC_VARIANT_PREFIX, transfer.box + 1, transfer.box_slot + 1);
+    return {
+        {"do", std::string("withdraw")},
+        {"slot", int64_t(transfer.box_slot + 1)},
+        {"box", int64_t(transfer.box + 1)},
+        {"if_present", false},
+    };
 }
 
-std::optional<PcTransfer> parse_pc_variant(std::string_view variant){
-    if (!variant.starts_with(PC_VARIANT_PREFIX)){
+std::optional<PcTransfer> pc_transfer_of(const Pokemon::StoryActionArgs& args){
+    const std::string* action = game_arg<std::string>(args, "do");
+    const std::optional<size_t> box = counted_arg(args, "box", BOX_COUNT);
+    if (action == nullptr || !box){
         return std::nullopt;
     }
-    std::vector<std::string_view> words = split_words(variant.substr(PC_VARIANT_PREFIX.size()));
-    PcTransfer transfer;
-    if (words.size() == 4 && words[0] == "deposit" && words[3] == "if_present"){
-        transfer.if_missing = PcMissing::SKIP;
-        words.pop_back();
-    }
-    if (words.size() != 3){
-        return std::nullopt;
-    }
-    std::optional<size_t> slot;
-    std::optional<size_t> box;
-    if (words[0] == "deposit"){
-        transfer.action = PcAction::DEPOSIT;
-        slot = counted_value(words[1], "slot", PARTY_SIZE);
-        box = counted_value(words[2], "box", BOX_COUNT);
-    }else if (words[0] == "withdraw"){
-        transfer.action = PcAction::WITHDRAW;
-        box = counted_value(words[1], "box", BOX_COUNT);
-        slot = counted_value(words[2], "slot", BOX_SLOTS);
-    }
-    if (!slot || !box){
-        return std::nullopt;
-    }
-    transfer.box = *box;
-    if (transfer.action == PcAction::DEPOSIT){
+    PcTransfer transfer{.box = *box};
+    if (*action == "deposit"){
+        const std::optional<size_t> slot = counted_arg(args, "slot", PARTY_SIZE);
+        const bool* if_present = game_arg<bool>(args, "if_present");
+        if (!slot){
+            return std::nullopt;
+        }
         transfer.party_slot = *slot;
-    }else{
-        transfer.box_slot = *slot;
+        if (if_present != nullptr && *if_present){
+            transfer.if_missing = PcMissing::SKIP;
+        }
+        return transfer;
     }
+    const std::optional<size_t> slot = counted_arg(args, "slot", BOX_SLOTS);
+    if (*action != "withdraw" || !slot){
+        return std::nullopt;
+    }
+    transfer.action = PcAction::WITHDRAW;
+    transfer.box_slot = *slot;
     return transfer;
 }
 
@@ -317,7 +294,7 @@ PcDecision PcStorageDialog::on_box_chooser(const PcView& view){
 
 
 PcResult run_pc_transfer(Logger& logger, PcStorageActions& actions, const PcTransfer& transfer){
-    const std::string name = pc_variant(transfer);
+    const std::string name = pc_transfer_text(transfer);
     const std::vector<PcPartyMember> party = actions.read_party();
     if (transfer.action == PcAction::DEPOSIT && transfer.if_missing == PcMissing::SKIP && transfer.party_slot >= party.size()){
         logger.log(std::format("PC: skipped \"{}\": the party has {} Pokemon.", name, party.size()));

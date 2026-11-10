@@ -321,9 +321,7 @@ UnitTestResult test_route_logged(){
         return "Failed: " + script.failure;
     }
     const std::vector<std::string> expected{
-        "[Route] test walk: plan from Corridor (2, 1):\n"
-        "    east 2 (open) to Corridor (4, 1)\n"
-        "    west 1 (open) to Corridor (3, 1)",
+        "[Route] test walk: plan from Corridor (2, 1): east 2 (open) to Corridor (4, 1); west 1 (open) to Corridor (3, 1)",
         "[Route] Leg 1/2: east 2 (open) to Corridor (4, 1)",
         "[Route] test walk: east 2 (open): ended at Corridor (4, 1) (walked).",
         "[Route] Leg 2/2: west 1 (open) to Corridor (3, 1)",
