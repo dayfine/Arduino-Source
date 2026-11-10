@@ -61,8 +61,7 @@ class ReplayTest(unittest.TestCase):
 [Console 0]: [Route] Turning north.
 [Console 0]: [00.04] to_the_signs_row: taps north moved 1 of 1 tiles.
 [Program]: [Event] 00.04/5 to_ledge_column: start
-[Console 0]: [Route] to ledge column: plan from Route 201 (57, 4), Route 201 (58, 4):
-[Console 0]:     west 7 (to wall) to Route 201 (56, 4)
+[Console 0]: [Route] to ledge column: plan from Route 201 (57, 4), Route 201 (58, 4): west 7 (to wall) to Route 201 (56, 4); south 1 (open) to Route 201 (56, 5); west 2 (to wall) to Route 201 (54, 5)
 [Console 0]: [Route] Leg 1/3: west 7 (to wall) to Route 201 (56, 4)
 [Console 0]: [Walk] to ledge column: west 7 (to wall): wild battle; running.
 [Console 0]: [Route] to ledge column: west 7 (to wall): ended at Route 201 (56, 4) (walked).
