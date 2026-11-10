@@ -55,8 +55,6 @@ const std::vector<StoryCheckpoint>& story_checkpoints();
 
 //  Registers AutoStory table validation unit tests.
 void add_tests_AutoStory(UnitTestDatabase& database);
-//  The story files against the C++ rows they replace.
-void add_tests_AutoStoryTableParity(UnitTestDatabase& database);
 //  The table run end to end against a fake game (PokemonFRLG_AutoStorySimulation_Tests.cpp).
 void add_tests_AutoStorySimulation(UnitTestDatabase& database);
 

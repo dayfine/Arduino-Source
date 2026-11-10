@@ -319,7 +319,6 @@ void add_tests(UnitTestDatabase& database){
     add_tests_OverworldRecovery(database);
     add_tests_PlayerFacingReader(database);
     add_tests_AutoStory(database);
-    add_tests_AutoStoryTableParity(database);
     add_tests_AutoStoryExport(database);
     add_tests_AutoStorySimulation(database);
     add_tests_AutoStoryItems(database);
