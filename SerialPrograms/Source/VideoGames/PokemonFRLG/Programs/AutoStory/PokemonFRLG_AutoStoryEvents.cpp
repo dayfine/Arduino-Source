@@ -169,18 +169,17 @@ Outcome take_step(StoryEnv& env, RunState& state, const StoryStep& step){
 }
 
 Outcome battle(StoryEnv& env, const StoryStep& step){
-    const std::optional<std::string_view> trainer = step.pose_after ? story_trainer(step.pose_after->map, step.name) : std::nullopt;
-    env.supplies.trainer = trainer ? std::string(*trainer) : "";
-    env.supplies.risk = trainer ? story_battle_risk(step.pose_after->map, step.name) : BattleRisk::LOW;
+    env.supplies.trainer = arg<std::string>(step, "trainer");
+    env.supplies.risk = default_battle_risk(env.supplies.trainer);
     env.supplies.foe_out.clear();
     if (advance_text(env.console, env.context, BATTLE_TEXT_TIMEOUT, true) != TextEnd::BATTLE){
         return Pokemon::outcome_failed("no_battle");
     }
-    env.supplies.foes = trainer ? trainer_party(*trainer) : std::vector<std::string>{};
+    env.supplies.foes = arg<std::vector<std::string>>(step, "foes");
     if (!env.supplies.foes.empty()){
         env.console.log(std::format(
             "Story: {} is {}, risk {}; attacks are chosen against the foe out.",
-            step.name, *trainer, battle_risk_name(env.supplies.risk)
+            step.name, env.supplies.trainer, battle_risk_name(env.supplies.risk)
         ));
     }
     const BattleEnd end = fight_battle(env.console, env.context, env.supplies, BattleKind::TRAINER, env.checks, env.language);

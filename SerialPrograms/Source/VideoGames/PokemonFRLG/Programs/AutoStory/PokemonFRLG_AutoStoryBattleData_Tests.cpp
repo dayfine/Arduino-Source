@@ -2,8 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The generated battle data, the trainer each story battle fights, and the
- *  attacks chosen against trainers' parties and wild Pokemon from it.
+ *  The battle data, and the attacks chosen against trainers' parties and wild Pokemon from it.
  *
  */
 
@@ -13,7 +12,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
-#include <tuple>
+#include <utility>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -21,7 +20,6 @@
 #include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
 #include "PokemonFRLG_AutoStoryParty.h"
-#include "PokemonFRLG_AutoStoryTable.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -47,14 +45,14 @@ struct AutoStoryBattleDataTestCase{
 class Test_AutoStoryBattleData : public UnitTest{
 public:
     explicit Test_AutoStoryBattleData(AutoStoryBattleDataTestCase scenario)
-        : UnitTest("PokemonFRLG::AutoStoryBattleData - " + scenario.input.name)
+        : UnitTest(std::format("PokemonFRLG::AutoStoryBattleData - {}", scenario.input.name))
         , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         try{
             return m_scenario.input.body();
         }catch (Exception& e){
-            return std::string(e.name()) + ": " + e.message();
+            return std::format("{}: {}", e.name(), e.message());
         }
     }
 
@@ -84,8 +82,8 @@ size_t wild_turn(const PartyMember& lead, std::string_view species){
 }
 
 
-//  Spot checks against pret: the type chart, Bite, and species' types and
-//  stats.
+//  Spot checks against pret: the type chart, Bite, Growl and species'
+//  types.
 UnitTestResult test_data(){
     if (type_effectiveness(PokemonType::WATER, PokemonType::FIRE) != 20
         || type_effectiveness(PokemonType::DARK, PokemonType::PSYCHIC) != 20
@@ -95,12 +93,16 @@ UnitTestResult test_data(){
         return "Expected Water 2x on Fire, Dark 2x on Psychic, Normal 0x on Ghost, Water 1x on Normal.";
     }
     const MoveData* bite = move_data("bite");
-    if (bite == nullptr || bite->power != 60 || bite->type != PokemonType::DARK || bite->pp != 25 || !special_type(bite->type)){
-        return "Expected Bite: 60 power, Dark (special in Gen 3), 25 PP.";
+    if (bite == nullptr || !bite->damaging || bite->type != PokemonType::DARK || bite->pp != 25){
+        return "Expected Bite: damaging, Dark, 25 PP.";
+    }
+    const MoveData* growl = move_data("growl");
+    if (growl == nullptr || growl->damaging || growl->pp != 40){
+        return "Expected Growl: no damage, 40 PP.";
     }
     const SpeciesData* starmie = species_data("starmie");
-    if (starmie == nullptr || starmie->first != PokemonType::WATER || starmie->second != PokemonType::PSYCHIC || starmie->base.sp_attack != 100){
-        return "Expected Starmie: Water, Psychic, base Sp. Atk 100.";
+    if (starmie == nullptr || starmie->first != PokemonType::WATER || starmie->second != PokemonType::PSYCHIC){
+        return "Expected Starmie: Water, Psychic.";
     }
     if (battle_species().size() != 386 || species_data("farfetch-d") == nullptr || species_data("missingno") != nullptr){
         return std::format("Expected the 386 species by the program's slugs, got {}.", battle_species().size());
@@ -108,45 +110,14 @@ UnitTestResult test_data(){
     return true;
 }
 
-//  Every battle step in the table fights a trainer with a party.
-UnitTestResult test_story_trainers(){
-    size_t battles = 0;
-    for (const StoryCheckpoint& checkpoint : story_checkpoints()){
-        for (const StoryStep& step : checkpoint.steps){
-            if (step.kind != StoryStepKind::BATTLE){
-                continue;
-            }
-            battles++;
-            const std::string map = step.pose_after ? step.pose_after->map : "";
-            const std::optional<std::string_view> trainer = story_trainer(map, step.name);
-            if (!trainer){
-                return std::format("{}, {} on {}: no trainer.", checkpoint.id, step.name, map);
-            }
-            if (trainer_party(*trainer).empty()){
-                return std::format("{} on {}: {} has no party.", step.name, map, *trainer);
-            }
-        }
-    }
-    if (battles == 0){
-        return "Expected battle steps in the table.";
-    }
-    if (trainer_party(*story_trainer("CeruleanCity_Gym", "misty")) != std::vector<std::string>{"staryu", "starmie"}){
-        return "Expected Misty's Staryu and Starmie.";
-    }
-    return true;
-}
-
 //  Mt. Moon: Super Nerd Miguel's Grimer (Poison) takes Water Gun, with or
-//  without Bite known: Bite (60, Dark) ties Water Gun (40 x 1.5 STAB), both
-//  special, and the tie goes to the plan's Water Gun.
+//  without Bite known: Water Gun and Bite both hit his party 1x, and the
+//  tie goes to the plan's Water Gun.
 UnitTestResult test_miguel_grimer(){
-    const std::optional<std::string_view> miguel = story_trainer("MtMoon_B2F", "super_nerd_miguel");
-    if (!miguel || trainer_party(*miguel) != std::vector<std::string>{"grimer", "voltorb", "koffing"}){
-        return "Expected Miguel's Grimer, Voltorb and Koffing (pret's sParty_SuperNerdMiguel).";
-    }
+    const std::vector<std::string> miguel{"grimer", "voltorb", "koffing"};
     const std::vector<PartyMember> leads{grown_to(new_member("squirtle", 5), 17), grown_to(new_member("squirtle", 5), 20)};
     for (const PartyMember& lead : leads){
-        for (const std::vector<std::string>& foes : {std::vector<std::string>{"grimer"}, trainer_party(*miguel)}){
+        for (const std::vector<std::string>& foes : {std::vector<std::string>{"grimer"}, miguel}){
             const std::optional<size_t> slot = attack_slot_against(lead, foes);
             if (slot != WATER_GUN){
                 return std::format("{} against {} foes: expected Water Gun, got slot {}.", lead.species, foes.size(), slot_name(slot));
@@ -156,9 +127,9 @@ UnitTestResult test_miguel_grimer(){
     return true;
 }
 
-//  Bite where it does more than Water Gun: on a Psychic or Ghost foe (2x),
-//  and on one that resists Water, where Bite's 1x beats Water Gun's
-//  0.5 x 1.5 STAB. Against a wild Pokemon as read, and a trainer's party.
+//  Bite where it hits better than Water Gun: on a Psychic or Ghost foe
+//  (2x), and on one that resists Water, where Bite's 1x beats Water Gun's
+//  0.5x. Against a wild Pokemon as read, and a trainer's party.
 UnitTestResult test_bite_wins(){
     const PartyMember wartortle = grown_to(new_member("squirtle", 5), 20);
     for (std::string_view foe : {"abra", "starmie", "gastly", "staryu", "oddish", "dratini"}){
@@ -173,26 +144,26 @@ UnitTestResult test_bite_wins(){
             return std::format("A wild {}: expected Water Gun, got slot {}.", foe, slot);
         }
     }
-    if (attack_slot_against(wartortle, trainer_party(*story_trainer("CeruleanCity_Gym", "misty"))) != BITE){
+    if (attack_slot_against(wartortle, {"staryu", "starmie"}) != BITE){
         return "Expected Bite against Misty's party.";
     }
     return true;
 }
 
-//  The default risks: the rival and gym leaders HIGH, route trainers and
-//  grunts LOW.
+//  The default risks: the rival and gym leaders HIGH, route trainers,
+//  grunts and a battle that names no trainer LOW.
 UnitTestResult test_risks(){
-    const std::vector<std::tuple<std::string_view, std::string_view, BattleRisk>> cases = {
-        {"CeruleanCity", "rival_cerulean", BattleRisk::HIGH},
-        {"CeruleanCity_Gym", "misty", BattleRisk::HIGH},
-        {"PewterCity_Gym", "brock", BattleRisk::HIGH},
-        {"Route24", "lass_ali", BattleRisk::LOW},
-        {"MtMoon_B2F", "rocket_grunt", BattleRisk::LOW},
-        {"Route1", "nobody", BattleRisk::LOW},
+    const std::vector<std::pair<std::string_view, BattleRisk>> cases = {
+        {"TRAINER_RIVAL_CERULEAN_BULBASAUR", BattleRisk::HIGH},
+        {"TRAINER_LEADER_MISTY", BattleRisk::HIGH},
+        {"TRAINER_LEADER_BROCK", BattleRisk::HIGH},
+        {"TRAINER_LASS_ALI", BattleRisk::LOW},
+        {"TRAINER_TEAM_ROCKET_GRUNT", BattleRisk::LOW},
+        {"", BattleRisk::LOW},
     };
-    for (const auto& [map, battle, risk] : cases){
-        if (story_battle_risk(map, battle) != risk){
-            return std::format("{} on {}: expected {}.", battle, map, battle_risk_name(risk));
+    for (const auto& [trainer, risk] : cases){
+        if (default_battle_risk(trainer) != risk){
+            return std::format("\"{}\": expected {}.", trainer, battle_risk_name(risk));
         }
     }
     return true;
@@ -218,10 +189,6 @@ const AutoStoryBattleDataTestCase AUTO_STORY_BATTLE_DATA_CASES[] = {
     {
         .input = {.name = "type chart, moves and species from pret", .body = test_data},
         .expectation = {.description = "validates decompiled type charts, moves, and species"},
-    },
-    {
-        .input = {.name = "every story battle fights a trainer with a party", .body = test_story_trainers},
-        .expectation = {.description = "ensures all scripted story battles encounter valid teams"},
     },
     {
         .input = {.name = "Miguel's Grimer: Water Gun", .body = test_miguel_grimer},

@@ -25,6 +25,10 @@
       {
         "id": "camper_liam",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_CAMPER_LIAM",
+          "foes": ["geodude", "sandshrew"]
+        },
         "declared_after": {"map": "PewterCity_Gym", "tiles": [[6, 8]], "facing": "north"},
         "why": "Geodude and Sandshrew; EXP before Brock"
       },
@@ -52,6 +56,10 @@
       {
         "id": "brock",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_LEADER_BROCK",
+          "foes": ["geodude", "onix"]
+        },
         "declared_after": {"map": "PewterCity_Gym", "tiles": [[6, 6]], "facing": "north"},
         "why": "Geodude and Onix, with Bubble; Boulder Badge and TM39"
       }

@@ -2,16 +2,12 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The game's data the story's attacks are chosen from, generated from
- *  pret/pokefirered by devtools/maps/frlg_battle_data.py into BattleData/
- *  and built into the program: the type chart, every species' types and
- *  base stats, every move's power, type, PP, accuracy, priority and
- *  effect, and every trainer's AI flags, items and party. Also which
- *  trainer each of the story's battle steps fights, and how carefully
- *  (BattleRisk).
+ *  The game's data the story's attacks are chosen from when the plan has
+ *  none, built into the program from BattleData/: the type chart, each
+ *  species' types, and each move's type, whether it does damage and its
+ *  PP. A battle's foes come from its step in the checkpoint's plan.
  *
- *  Names are the program's slugs ("water-gun", "mr-mime"); trainers are
- *  pret's constants ("TRAINER_SUPER_NERD_MIGUEL").
+ *  Names are the program's slugs ("water-gun", "mr-mime").
  *
  */
 
@@ -19,8 +15,6 @@
 #define PokemonAutomation_PokemonFRLG_AutoStoryBattleData_H
 
 #include <cstddef>
-#include <cstdint>
-#include <optional>
 #include <set>
 #include <string>
 #include <string_view>
@@ -30,8 +24,8 @@
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/Language.h"
-#include "Pokemon/Pokemon_Types.h"
-#include "PokemonFRLG_AutoStoryStoryTrainers.h"
+#include "PokemonFRLG_AutoStoryBattleRisk.h"
+#include "PokemonFRLG_AutoStoryMoveData.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -50,6 +44,11 @@ std::vector<std::string> wild_foes(std::string_view species);
 //  HP box names (WildEncounterReader, among battle_species()), as
 //  wild_foes() takes it. Logs what it read.
 std::vector<std::string> read_wild_foes(Logger& logger, Language language, const ImageViewRGB32& screen);
+
+//  The Pokemon a trainer's battle shows on `screen`, a battle menu: the
+//  name its HP box shows (WildEncounterReader), among `party`'s species.
+//  Empty if not read. Logs what it read.
+std::string read_trainer_foe(Logger& logger, Language language, const ImageViewRGB32& screen, const std::vector<std::string>& party);
 
 
 

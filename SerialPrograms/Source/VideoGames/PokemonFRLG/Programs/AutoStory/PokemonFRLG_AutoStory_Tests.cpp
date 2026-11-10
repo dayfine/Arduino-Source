@@ -22,6 +22,8 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_AutoStoryActions.h"
+#include "PokemonFRLG_AutoStoryMoveData.h"
+#include "PokemonFRLG_AutoStoryStepTable.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 
 namespace PokemonAutomation{
@@ -483,11 +485,43 @@ UnitTestResult test_save_dialog(){
 }
 
 UnitTestResult test_lint(){
+    //  FRLG's own action args (a battle's trainer and foes), with no console.
+    const Pokemon::StoryActionTable table = make_story_action_table([](StoryActionId){
+        return Pokemon::StoryAction{};
+    });
     for (const StoryCheckpoint& checkpoint : story_checkpoints()){
-        const std::vector<std::string> problems = Pokemon::lint_story_checkpoint(checkpoint);
+        const std::vector<std::string> problems = Pokemon::lint_story_checkpoint(checkpoint, table);
         if (!problems.empty()){
             return problems[0];
         }
+    }
+    return true;
+}
+
+//  Every battle step in the table names its trainer and that trainer's
+//  party, each species one the battle data has.
+UnitTestResult test_story_trainers(){
+    size_t battles = 0;
+    for (const StoryCheckpoint& checkpoint : story_checkpoints()){
+        for (const StoryStep& step : checkpoint.steps){
+            if (step.kind != StoryStepKind::BATTLE){
+                continue;
+            }
+            battles++;
+            const std::string& trainer = Pokemon::story_arg<std::string>(step.args, "trainer");
+            const std::vector<std::string>& foes = Pokemon::story_arg<std::vector<std::string>>(step.args, "foes");
+            if (trainer.empty() || foes.empty()){
+                return std::format("{}, {}: no trainer or no foes.", checkpoint.id, step.name);
+            }
+            for (const std::string& foe : foes){
+                if (species_data(foe) == nullptr){
+                    return std::format("{}, {}: unknown foe {}.", checkpoint.id, step.name, foe);
+                }
+            }
+        }
+    }
+    if (battles == 0){
+        return "Expected battle steps in the table.";
     }
     return true;
 }
@@ -795,6 +829,10 @@ const AutoStoryTestCase AUTO_STORY_CASES[] = {
     {
         .input = {.name = "every checkpoint lints clean", .body = test_lint},
         .expectation = {.description = "validates semantic lint rules across story step sequence"},
+    },
+    {
+        .input = {.name = "every story battle's plan names a trainer and its party", .body = test_story_trainers},
+        .expectation = {.description = "ensures all scripted story battles list known foes"},
     },
     {
         .input = {.name = "Pewter Gym walks", .body = test_pewter_gym_walks},
