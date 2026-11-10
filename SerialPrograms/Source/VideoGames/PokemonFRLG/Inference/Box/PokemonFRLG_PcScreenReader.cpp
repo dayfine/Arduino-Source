@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <string>
 #include <vector>
+#include <format>
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTools/ImageStats.h"
@@ -231,7 +232,7 @@ std::string number_slug(const std::optional<size_t>& value){
 class Test_PcScreen : public ImageUnitTest{
 public:
     Test_PcScreen(const std::string& image)
-        : ImageUnitTest("PokemonFRLG::PcScreenReader - " + image, {image})
+        : ImageUnitTest(std::format("PokemonFRLG::PcScreenReader - {}", image), {image})
     {}
 
     virtual UnitTestResult run_on_images(
@@ -280,7 +281,7 @@ void add_tests_PcScreenReader(UnitTestDatabase& database){
         "Overworld_overworld_none_none.png",
         "StartMenu_other_none_none.png",
     }){
-        database.add<Test_PcScreen>("PokemonFRLG/PcScreenReader/" + std::string(image));
+        database.add<Test_PcScreen>(std::format("PokemonFRLG/PcScreenReader/{}", image));
     }
 }
 

@@ -433,8 +433,8 @@ std::string cursor_value(const std::optional<size_t>& cursor){
 //  What a list or menu shows: its rows from the top to the first not read,
 //  and its cursor.
 void add_list(
-    std::vector<std::string>& labels, std::vector<std::string>& values,
-    const std::vector<std::string>& rows, const std::optional<size_t>& cursor
+    const std::vector<std::string>& rows, const std::optional<size_t>& cursor,
+    std::vector<std::string>& labels, std::vector<std::string>& values
 ){
     for (size_t c = 0; c < rows.size(); c++){
         labels.push_back(std::format("row {}", c + 1));
@@ -454,7 +454,7 @@ void add_list(
 class Test_TeachScreen : public ImageUnitTest{
 public:
     Test_TeachScreen(const std::string& image)
-        : ImageUnitTest("PokemonFRLG::TeachScreenReader - " + image, {image})
+        : ImageUnitTest(std::format("PokemonFRLG::TeachScreenReader - {}", image), {image})
     {}
 
     virtual UnitTestResult run_on_images(
@@ -486,14 +486,14 @@ private:
             const std::vector<std::string> rows = pocket == "key-items"
                 ? read_teach_rows(logger, language, screen, kind)
                 : std::vector<std::string>{};
-            add_list(labels, values, rows, read_teach_cursor(kind, screen));
+            add_list(rows, read_teach_cursor(kind, screen), labels, values);
             return;
         }
         case TeachScreen::TM_CASE:
-            add_list(labels, values, read_teach_rows(logger, language, screen, kind), read_teach_cursor(kind, screen));
+            add_list(read_teach_rows(logger, language, screen, kind), read_teach_cursor(kind, screen), labels, values);
             return;
         case TeachScreen::ITEM_MENU:
-            add_list(labels, values, {}, read_teach_cursor(kind, screen));
+            add_list({}, read_teach_cursor(kind, screen), labels, values);
             return;
         case TeachScreen::PARTY_YES_NO:
             labels.push_back("cursor");
@@ -544,7 +544,7 @@ void add_tests_TeachScreenReader(UnitTestDatabase& database){
         //  HM01 to an Oddish with two free slots (00.23, console B).
         "MachineSet_eng.png",
     }){
-        database.add<Test_TeachScreen>("PokemonFRLG/TeachScreenReader/" + std::string(image));
+        database.add<Test_TeachScreen>(std::format("PokemonFRLG/TeachScreenReader/{}", image));
     }
 }
 

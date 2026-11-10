@@ -5,6 +5,7 @@
  */
 
 #include <string_view>
+#include <format>
 #include "Common/Cpp/Color.h"
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/Json/JsonArray.h"
@@ -111,7 +112,7 @@ namespace{
 class Test_SaveCard : public ImageUnitTest{
 public:
     Test_SaveCard(const std::string& image)
-        : ImageUnitTest("PokemonFRLG::SaveCardReader - " + image, {image})
+        : ImageUnitTest(std::format("PokemonFRLG::SaveCardReader - {}", image), {image})
     {}
 
     virtual UnitTestResult run_on_images(
@@ -125,7 +126,7 @@ public:
         const std::string& language_word = words[words.size() - 2];
         const Language language = language_code_to_enum(language_word);
         if (language == Language::None || language == Language::EndOfList){
-            return "Error: invalid language word in filename: " + language_word;
+            return std::format("Error: invalid language word in filename: {}", language_word);
         }
 
         const std::string read = read_save_card_location(logger, language, images[0]);
