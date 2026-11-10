@@ -1925,6 +1925,34 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/PokemonFRLG_Settings.h
     Source/VideoGames/PokemonFRLG/PokemonFRLG_Tests.cpp
     Source/VideoGames/PokemonFRLG/PokemonFRLG_Tests.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryActions.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryActions.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryBattle.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryBattle.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryBattleData.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryBattleData.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryBattleData_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryBattleDecisions.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryBattleDecisions.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryBattleRisk.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryBattleTurns.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryIntro.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryItems_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryItemsPocket.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryLevelUps.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryMoveData.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryNewMembers.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryParty.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryParty.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryParty_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryPartyMember.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryPresses.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStorySave.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryStartMenu.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStorySummary.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStorySummary.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryStats.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStorySupplies.h
     Source/VideoGames/PokemonFRLG/Programs/BoxOrganization/PokemonFRLG_BoxOrganization.cpp
     Source/VideoGames/PokemonFRLG/Programs/BoxOrganization/PokemonFRLG_BoxOrganization.h
     Source/VideoGames/PokemonFRLG/Programs/BoxOrganization/PokemonFRLG_BoxSorter.cpp
