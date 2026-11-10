@@ -466,9 +466,10 @@ std::vector<StoryStep> moms_heal_and_hat(){
         //  west along row 9 stopped in it there, all 4 taps moved (lab-B
         //  2026-11-09 17:29); the step south from (6, 9) went out of the door
         //  after it, where on 2026-11-04 the same step inside her call did
-        //  not. So the route stops a tile east and runs on into her call.
-        route_into_scene("into_moms_call", at(HOME, 7, 9, WEST), {.direction = WEST, .tiles = 1},
-            "round Mom to (7, 9), then west until her call stops us on (6, 9)"),
+        //  not. Her call is the route's target: it stops a run west along
+        //  row 9 there, as a wall would.
+        route("into_moms_call", at(HOME, 6, 9, WEST),
+            "round Mom and west along row 9 until her call stops us on (6, 9)", std::string(ROUTE_ONTO_TRIGGER)),
         scene("moms_hat", at(TWINLEAF, 19, 22, EAST), "Mom's hat; she walks out with us"),
         //  Her scene's end is a guess too, and Mom may stand east of us: west
         //  along the row to Twinleaf's west wall, column 6, from either row the
