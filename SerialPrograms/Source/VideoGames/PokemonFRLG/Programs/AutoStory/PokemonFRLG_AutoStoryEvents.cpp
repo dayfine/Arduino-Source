@@ -17,6 +17,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecoveryWalk.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
+#include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryAbilities.h"
 #include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryCapture.h"
@@ -719,7 +720,9 @@ ConsoleAction console_action_of(StoryActionId id){
         return take_step;
     case StoryActionId::TALK:
         return [](StoryEnv& env, RunState&, const StoryStep&){
-            pbf_press_button(env.context, BUTTON_A, 160ms, 800ms);
+            if (!talk_opens_message(env.console, env.context)){
+                return Pokemon::outcome_failed("no_message", "talk: A opened no message; nothing to talk to or pick up here.");
+            }
             return Pokemon::outcome_ok();
         };
     case StoryActionId::ANSWER:

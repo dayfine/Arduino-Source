@@ -555,6 +555,21 @@ void answer_yes_no(ConsoleHandle& console, ProControllerContext& context, bool y
     );
 }
 
+//  A talk to a person or an item ball opens a message; an A that opens
+//  none faced nothing (00.31 b3f_rare_candy, console B, 2026-11-10: one A,
+//  "done", on the wrong floor). The message is left open for the next step.
+bool talk_opens_message(ConsoleHandle& console, ProControllerContext& context){
+    WhiteDialogWatcher opened(COLOR_RED);
+    const int shown = run_until<ProControllerContext>(
+        console, context,
+        [](ProControllerContext& context){
+            pbf_press_button(context, BUTTON_A, 160ms, 2000ms);
+        },
+        {opened}
+    );
+    return shown >= 0;
+}
+
 std::optional<size_t> talk_and_count_pages(ConsoleHandle& console, ProControllerContext& context){
     WhiteDialogWatcher opened(COLOR_RED);
     const int shown = run_until<ProControllerContext>(
