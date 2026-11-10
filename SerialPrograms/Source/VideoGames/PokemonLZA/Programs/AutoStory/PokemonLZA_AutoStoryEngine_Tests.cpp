@@ -186,7 +186,7 @@ UnitTestResult test_walk_ends_on_white_fade(CancellableScope& scope){
         return std::format("Expected the walk to end on the white fade: {}", to_string(report.run.failure));
     }
     return expect_inputs(backend, {
-        "wait 250ms", "hold north 4500ms walk", "press L", "stick 90deg 150ms walk, release 300ms", "press L",
+        "wait 250ms", "hold north 4500ms walk", "press L", "stick 90deg 150ms walk, release 100ms", "press L",
         "hold north 250ms walk", "hold north 250ms walk", "hold north 250ms walk",
     });
 }
@@ -222,7 +222,7 @@ UnitTestResult test_face_heading(CancellableScope& scope){
     if (!faced.succeeded()){
         return std::format("Expected to face 90 degrees: {}", to_string(faced));
     }
-    const UnitTestResult turned = expect_inputs(backend, {"press L", "stick 90deg 150ms walk, release 300ms"});
+    const UnitTestResult turned = expect_inputs(backend, {"press L", "stick 90deg 150ms walk, release 100ms"});
     if (turned.result != UnitTestResult::PASSED){
         return turned;
     }
