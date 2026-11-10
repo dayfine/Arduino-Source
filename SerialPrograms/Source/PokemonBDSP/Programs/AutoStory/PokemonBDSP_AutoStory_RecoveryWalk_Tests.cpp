@@ -9,6 +9,7 @@
  */
 #include <algorithm>
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h"
 #include "Simulation/PokemonBDSP_AutoStory_GridSim.h"
 #include "PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP_AutoStory_StoryStepIO.h"
@@ -62,7 +63,8 @@ const Pokemon::StoryStep& mine_step(){
         Pokemon::StoryStep step;
         step.kind = Pokemon::StoryStepKind::LEGS;
         step.name = "below_roark";
-        step.legs = {
+        step.action = "open";
+        step.args["legs"] = std::vector<Pokemon::StoryLeg>{
             {.direction = Direction::EAST,  .tiles = 1},
             {.direction = Direction::SOUTH, .tiles = 2},
             {.direction = Direction::WEST,  .tiles = 1},

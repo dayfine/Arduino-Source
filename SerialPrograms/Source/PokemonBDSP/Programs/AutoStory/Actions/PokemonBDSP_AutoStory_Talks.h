@@ -8,6 +8,7 @@
  *
  */
 
+// code-health: allow header_symbols -- dialogue and screen-detection primitives for story interactions that callers need together
 #ifndef PokemonAutomation_PokemonBDSP_AutoStory_Talks_H
 #define PokemonAutomation_PokemonBDSP_AutoStory_Talks_H
 

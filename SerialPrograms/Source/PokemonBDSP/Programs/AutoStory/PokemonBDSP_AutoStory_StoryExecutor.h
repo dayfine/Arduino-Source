@@ -32,7 +32,10 @@
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryWorld.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
-#include "Pokemon/AutoStory/Pokemon_StorySteps.h"
+#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
+#include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RoutePlanner.h"
 #include "PokemonBDSP_AutoStory_StoryStepIO.h"
 #include "PokemonBDSP_AutoStory_StoryWalkSteps.h"
@@ -114,40 +117,40 @@ protected:
         return m_checkpoint;
     }
     //  The intro of a new game, from the title screen to the bedroom.
-    virtual Pokemon::Outcome new_game(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
+    Pokemon::Outcome new_game(Pokemon::RunState& state, const Pokemon::StoryStep& step);
     //  verify_tutorial_settings(): fast text, Autosave off.
-    virtual Pokemon::Outcome options(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
+    Pokemon::Outcome options(Pokemon::RunState& state, const Pokemon::StoryStep& step);
     //  Variant: the plan's costs ("" route, "town", "robust", "line").
-    virtual Pokemon::Outcome route(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
+    Pokemon::Outcome route(Pokemon::RunState& state, const Pokemon::StoryStep& step);
     //  Each leg in D-pad taps, turning first. Variant "one_short_ok": a leg
     //  may end a tile short (a door lined up by sight after). Variant
     //  "to_wall": each leg walks until something stops it, for at most its
     //  tiles' time, as measured on the console; the pose is then unknown
     //  unless the step gives one.
-    virtual Pokemon::Outcome legs(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
+    Pokemon::Outcome legs(Pokemon::RunState& state, const Pokemon::StoryStep& step);
     //  One D-pad step `direction`, turning first: onto a scene's trigger or
     //  into a door. Variant "to_banner": one tap into a cave mouth, then
     //  wait for pose_after's map's location banner.
-    virtual Pokemon::Outcome step(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
+    Pokemon::Outcome step(Pokemon::RunState& state, const Pokemon::StoryStep& step);
     //  A at what we face; a dialogue must open.
-    virtual Pokemon::Outcome talk(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
+    Pokemon::Outcome talk(Pokemon::RunState& state, const Pokemon::StoryStep& step);
     //  A for YES, B for NO, once the question's box shows.
-    virtual Pokemon::Outcome answer(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
+    Pokemon::Outcome answer(Pokemon::RunState& state, const Pokemon::StoryStep& step);
     //  A dialogue opens (or has), then B through it to the overworld;
     //  variant "a": A through it, for lines that give an item.
-    virtual Pokemon::Outcome mash(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
+    Pokemon::Outcome mash(Pokemon::RunState& state, const Pokemon::StoryStep& step);
     //  A trainer's text opens (or has) and ends in a battle, fought with the
     //  best move; one lost fails the step unless `may_lose`. Variant
     //  "doubles" for a tag battle.
-    virtual Pokemon::Outcome battle(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
+    Pokemon::Outcome battle(Pokemon::RunState& state, const Pokemon::StoryStep& step);
     //  `battles` wild battles in the grass we stand in, with the best move.
-    virtual Pokemon::Outcome train(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
+    Pokemon::Outcome train(Pokemon::RunState& state, const Pokemon::StoryStep& step);
     //  In front of a Pokemon Center, its lit doorway on screen: in, the
     //  nurse, and out (heal_at_pokemon_center()).
-    virtual Pokemon::Outcome heal(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
-    virtual Pokemon::Outcome save(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
+    Pokemon::Outcome heal(Pokemon::RunState& state, const Pokemon::StoryStep& step);
+    Pokemon::Outcome save(Pokemon::RunState& state, const Pokemon::StoryStep& step);
     //  The event its variant names (story_events()).
-    virtual Pokemon::Outcome game(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
+    Pokemon::Outcome game(Pokemon::RunState& state, const Pokemon::StoryStep& step);
 
 private:
     Pokemon::Outcome run_guarded(Pokemon::RunState& state, const Pokemon::StoryStep& step);

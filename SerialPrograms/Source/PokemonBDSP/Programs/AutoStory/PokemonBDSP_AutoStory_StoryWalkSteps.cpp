@@ -18,6 +18,9 @@
 #include "PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP_AutoStory_StoryTable.h"
 #include "PokemonBDSP_AutoStory_StoryWalkSteps.h"
+#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
+#include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -25,6 +28,8 @@ namespace PokemonBDSP{
 
 using namespace std::chrono_literals;
 using Pokemon::Direction;
+using Pokemon::GridPose;
+using Pokemon::story_arg;
 using Pokemon::Outcome;
 using Pokemon::Pose;
 using Pokemon::RunState;
@@ -71,9 +76,9 @@ Pose StoryWalkSteps::walk_to(const Pose& from, const Pose& goal, const StoryStep
     if (maps == nullptr){
         fail(m_io.route(), std::format("{}: no maps join {} and {}.", step.name, from.map, goal.map));
     }
-    const std::optional<RobustPlanCosts> costs = story_route_costs(step.variant);
+    const std::optional<RobustPlanCosts> costs = story_route_costs(step.action);
     if (!costs){
-        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Unknown route costs: " + step.variant);
+        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Unknown route costs: " + step.action);
     }
     std::vector<TilePos> start;
     for (const TilePos& pos : Pokemon::tiles_of(from)){
@@ -110,14 +115,16 @@ Outcome StoryWalkSteps::route(RunState& state, const StoryStep& step){
     if (Pokemon::tiles_of(state.pose).empty()){
         return Pokemon::outcome_failed("no_pose", Pokemon::to_string(state.pose));
     }
-    return Pokemon::outcome_ok(walk_to(state.pose, *step.target, step));
+    const GridPose& target = story_arg<GridPose>(step.args, "target");
+    return Pokemon::outcome_ok(walk_to(state.pose, Pokemon::pose_of(target), step));
 }
 
 //  A LEGS step "to_dialogue": taps its one leg until a dialogue starts on the
 //  way, wherever it starts (Dawn's at Sandgem's edge, r35/r36: an exact tile
 //  and banner raced her scene). The scene's lines are the next step's.
 Outcome StoryWalkSteps::leg_to_dialogue(const StoryStep& step){
-    const Pokemon::StoryLeg& leg = step.legs.front();
+    const auto& legs_list = story_arg<std::vector<Pokemon::StoryLeg>>(step.args, "legs");
+    const Pokemon::StoryLeg& leg = legs_list.front();
     turn(leg.direction);
     const WalkResult walk = m_io.route().walk_taps(leg.direction, (size_t)leg.tiles, step.name);
     if (walk.wild_battles > 0){
@@ -139,7 +146,8 @@ Outcome StoryWalkSteps::leg_to_dialogue(const StoryStep& step){
 //  pose_after's map shows, wherever it shows. A straight run along an open
 //  row needs no tile count (r41, r42: Sandgem's row 11 took us into the lab).
 Outcome StoryWalkSteps::leg_to_map(const StoryStep& step){
-    const Pokemon::StoryLeg& leg = step.legs.front();
+    const auto& legs_list = story_arg<std::vector<Pokemon::StoryLeg>>(step.args, "legs");
+    const Pokemon::StoryLeg& leg = legs_list.front();
     const std::string map = step.pose_after ? step.pose_after->map : "";
     turn(leg.direction);
     const bool arrived = m_io.run_until_map(leg.direction, Milliseconds(250) * leg.tiles + 2000ms, map, step.name);
@@ -151,11 +159,12 @@ Outcome StoryWalkSteps::leg_to_map(const StoryStep& step){
 //  there.
 Outcome StoryWalkSteps::tap_to_banner(const StoryStep& step){
     const std::string map = step.pose_after ? step.pose_after->map : "";
-    const std::optional<size_t> taps = m_io.tap_to_banner(step.direction, map, 30);
+    const Direction direction = story_arg<Direction>(step.args, "direction");
+    const std::optional<size_t> taps = m_io.tap_to_banner(direction, map, 30);
     if (!taps){
         return Pokemon::outcome_failed("no_banner", map);
     }
-    log(std::format("[{}] {}: {}'s banner after {} taps {}.", m_row, step.name, map, *taps, direction_name(step.direction)));
+    log(std::format("[{}] {}: {}'s banner after {} taps {}.", m_row, step.name, map, *taps, direction_name(direction)));
     return Pokemon::outcome_ok();
 }
 
@@ -210,7 +219,7 @@ Pose StoryWalkSteps::recover_tapped_leg(const Pose& from, const std::vector<Tile
     }
     StoryStep recovery = step;
     recovery.name += "_recovery";
-    recovery.variant.clear();
+    recovery.action.clear();
     const Pose found = walk_to(Pokemon::tile_pose(from.map, possible), Pokemon::tile_pose(from.map, goals, leg.direction), recovery);
     //  The route back can approach from another direction. Establish the
     //  original leg's facing before publishing that pose to the story runner.
@@ -221,9 +230,10 @@ Pose StoryWalkSteps::recover_tapped_leg(const Pose& from, const std::vector<Tile
 //  Counted legs retain their normal path. An observed encounter invalidates
 //  the exact pose; localize from every legal prefix before the next leg.
 Outcome StoryWalkSteps::tap_legs(const Pose& from, const StoryStep& step){
-    const bool one_short_ok = step.variant == "one_short_ok";
+    const bool one_short_ok = step.action == "one_short_ok";
     std::vector<TilePos> at = Pokemon::tiles_of(from);
-    for (const Pokemon::StoryLeg& leg : step.legs){
+    const auto& legs_list = story_arg<std::vector<Pokemon::StoryLeg>>(step.args, "legs");
+    for (const Pokemon::StoryLeg& leg : legs_list){
         turn(leg.direction);
         const size_t tiles = (size_t)leg.tiles;
         const WalkResult walk = m_io.route().walk_taps(leg.direction, tiles, step.name);
@@ -244,37 +254,40 @@ Outcome StoryWalkSteps::tap_legs(const Pose& from, const StoryStep& step){
         }
         at = next;
     }
-    return Pokemon::outcome_ok(Pokemon::tile_pose(from.map, at, step.legs.back().direction));
+    return Pokemon::outcome_ok(Pokemon::tile_pose(from.map, at, legs_list.back().direction));
 }
 
 Outcome StoryWalkSteps::legs(RunState& state, const StoryStep& step){
-    if (step.variant == "to_wall"){
-        for (const Pokemon::StoryLeg& leg : step.legs){
+    if (step.action == "to_wall"){
+        const auto& legs_list = story_arg<std::vector<Pokemon::StoryLeg>>(step.args, "legs");
+        for (const Pokemon::StoryLeg& leg : legs_list){
             m_io.walk_until_stopped(leg.direction, (size_t)leg.tiles, label_of(step));
         }
         return Pokemon::outcome_ok();
     }
-    if (step.variant == "to_dialogue"){
+    if (step.action == "to_dialogue"){
         return leg_to_dialogue(step);
     }
-    if (step.variant == "to_map"){
+    if (step.action == "to_map"){
         return leg_to_map(step);
     }
-    if (step.variant != "one_short_ok" && !step.variant.empty()){
-        return Pokemon::outcome_failed("unknown_variant", step.variant);
+    const bool one_short_ok = step.action == "one_short_ok";
+    if (!one_short_ok && !step.action.empty() && step.action != "legs"){
+        return Pokemon::outcome_failed("unknown_action", step.action);
     }
     return tap_legs(state.pose, step);
 }
 
 Outcome StoryWalkSteps::step(RunState& state, const StoryStep& step){
-    if (step.variant == "to_banner"){
-        turn(step.direction);
+    const Direction direction = story_arg<Direction>(step.args, "direction");
+    if (step.action == "to_banner"){
+        turn(direction);
         return tap_to_banner(step);
     }
-    if (step.variant == "tap"){
+    if (step.action == "tap"){
         //  No separate turn tap first: at 1 tile from the door, a turn tap
         //  steps onto the warp, causing walk_taps to take an extra step on the far map.
-        const WalkResult walk = m_io.route().walk_taps(step.direction, 1, step.name);
+        const WalkResult walk = m_io.route().walk_taps(direction, 1, step.name);
         if (walk.wild_battles > 0){
             return Pokemon::outcome_failed("interrupted_step", step.name);
         }
@@ -288,23 +301,23 @@ Outcome StoryWalkSteps::step(RunState& state, const StoryStep& step){
     //  (r33 was outside, "no fade"). No separate turn tap first: at 1 tile
     //  from the door, a 50 ms turn tap can step in before run_into_door() watches.
     if (step.pose_after && step.pose_after->map != state.pose.map){
-        const Milliseconds timeout = door_timeout(state.pose.map, state.pose, step.direction, m_can_run);
-        const bool faded = m_io.run_into_door(step.direction, m_can_run, timeout);
-        log(std::format("[{}] {}: {} through the door (timeout {} ms): {}.", m_row, step.name, direction_name(step.direction), timeout.count(), faded ? "faded" : "no fade yet"));
+        const Milliseconds timeout = door_timeout(state.pose.map, state.pose, direction, m_can_run);
+        const bool faded = m_io.run_into_door(direction, m_can_run, timeout);
+        log(std::format("[{}] {}: {} through the door (timeout {} ms): {}.", m_row, step.name, direction_name(direction), timeout.count(), faded ? "faded" : "no fade yet"));
         m_io.settle(BUTTON_B, label_of(step), !faded);
         return Pokemon::outcome_ok();
     }
-    turn(step.direction);
-    const WalkResult walk = m_io.route().walk_taps(step.direction, 1, step.name);
+    turn(direction);
+    const WalkResult walk = m_io.route().walk_taps(direction, 1, step.name);
     if (walk.wild_battles > 0){
         return Pokemon::outcome_failed("interrupted_step", step.name);
     }
-    log(std::format("[{}] {}: a step {}, {}.", m_row, step.name, direction_name(step.direction), walk_stop_name(walk.stop)));
+    log(std::format("[{}] {}: a step {}, {}.", m_row, step.name, direction_name(direction), walk_stop_name(walk.stop)));
     std::vector<TilePos> at;
     for (const TilePos& pos : Pokemon::tiles_of(state.pose)){
-        at.push_back(pos.next(step.direction));
+        at.push_back(pos.next(direction));
     }
-    return Pokemon::outcome_ok(Pokemon::tile_pose(state.pose.map, at, step.direction));
+    return Pokemon::outcome_ok(Pokemon::tile_pose(state.pose.map, at, direction));
 }
 
 Outcome StoryWalkSteps::talk(RunState& state, const StoryStep& step){
@@ -329,7 +342,7 @@ Outcome StoryWalkSteps::mash(RunState& state, const StoryStep& step){
     if (!m_io.route().dialog_within(15000ms, COLOR_CYAN)){
         m_io.route().note(label_of(step) + ": no line within 15 s; the step before played it.", RouteNote::WARNING);
     }
-    m_io.settle(step.variant == "a" ? BUTTON_A : BUTTON_B, label_of(step),
+    m_io.settle(step.action == "a" ? BUTTON_A : BUTTON_B, label_of(step),
         step.pose_after && step.pose_after->map != state.pose.map &&
         story_plan_world(state.pose.map, step.pose_after->map) == nullptr);
     if (m_row == RUNNING_SHOES_ROW && step.name == RUNNING_SHOES_STEP){

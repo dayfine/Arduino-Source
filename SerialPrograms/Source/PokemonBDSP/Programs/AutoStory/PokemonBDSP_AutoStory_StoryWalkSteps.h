@@ -14,7 +14,11 @@
 #include <map>
 #include <string>
 #include <vector>
-#include "Pokemon/AutoStory/Pokemon_StorySteps.h"
+#include "Pokemon/AutoStory/Pokemon_StoryEvent.h"
+#include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
+#include "Pokemon/AutoStory/Pokemon_StoryPose.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RoutePlanner.h"
 #include "PokemonBDSP_AutoStory_StoryStepIO.h"
 

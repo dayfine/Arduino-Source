@@ -1,3 +1,4 @@
+// code-health: allow header_symbols -- grid simulation primitives and types for BDSP overworld movement simulation
 /*  BDSP AutoStory - Grid simulation
  *
  *  From: https://github.com/PokemonAutomation/
@@ -26,6 +27,7 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 #include "Common/Cpp/Time.h"
@@ -38,6 +40,8 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
 
+
+namespace detail{
 
 //  A tile, in the simulation's units.
 inline constexpr int SIM_TILE = 1000;
@@ -65,6 +69,23 @@ struct SimTrigger{
     std::vector<Pokemon::TilePos> tiles;
 };
 
+} // namespace detail
+
+//  A tile, in the simulation's units.
+using detail::SIM_TILE;
+//  Position in simulation units.
+using detail::SimPos;
+//  Simulation position at the origin of a tile.
+using detail::sim_pos;
+//  Checks if a position is exactly on grid.
+using detail::on_grid;
+//  Returns the nearest tile to a position.
+using detail::nearest_tile;
+//  Formats position as string.
+using detail::to_string;
+//  Trigger region in simulation units.
+using detail::SimTrigger;
+
 //  Where the simulated player walks: the world (which must outlive the
 //  simulation), its trainers and its scene triggers, in world tiles; and
 //  the tiles that warp like doors though the maps draw them as walls (a
@@ -87,7 +108,7 @@ enum class SimStop{
     LIMIT,      //  a held walk ran out of time
 };
 //  Returns the debug string for a SimStop reason.
-const char* sim_stop_name(SimStop stop);
+std::string_view sim_stop_name(SimStop stop);
 
 //  What one input did.
 struct SimMove{
