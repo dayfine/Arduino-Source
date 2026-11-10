@@ -4,6 +4,7 @@
  *
  */
 
+#include <format>
 #include "Pokemon_StoryRunOptions.h"
 
 namespace PokemonAutomation{
@@ -33,7 +34,7 @@ const EnumDropdownDatabase<StorySaveMode>& StorySaveMode_Database(){
 
 
 std::string story_checkpoint_label(const StoryCheckpoint& checkpoint){
-    return checkpoint.title.empty() ? checkpoint.id : checkpoint.id + " " + checkpoint.title;
+    return checkpoint.title.empty() ? checkpoint.id : std::format("{} {}", checkpoint.id, checkpoint.title);
 }
 
 

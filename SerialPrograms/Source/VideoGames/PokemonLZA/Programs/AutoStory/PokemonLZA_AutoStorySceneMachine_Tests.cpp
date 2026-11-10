@@ -301,13 +301,13 @@ UnitTestResult test_move_ends(Logger&){
     for (const auto& [name, end] : story_move_ends()){
         const auto move = story_moves().find(name);
         if (move == story_moves().end()){
-            return name + ": ends on an event but is not a move.";
+            return std::format("{}: ends on an event but is not a move.", name);
         }
         if (move->second.legs.empty() || move->second.legs.back().walk <= 0ms){
-            return name + ": its last leg has no walk to hold until the event.";
+            return std::format("{}: its last leg has no walk to hold until the event.", name);
         }
         if (end != ScreenEvent::FADE_WHITE && end != ScreenEvent::FADE_BLACK){
-            return name + ": ends on " + Pokemon::screen_event_name(end) + ", not a fade.";
+            return std::format("{}: ends on {}, not a fade.", name, Pokemon::screen_event_name(end));
         }
     }
     return true;
@@ -330,7 +330,7 @@ struct SceneMachineCase{
 class Test_AutoStorySceneMachine : public UnitTest{
 public:
     explicit Test_AutoStorySceneMachine(SceneMachineCase test_case)
-        : UnitTest("PokemonLZA::AutoStorySceneMachine - " + test_case.input.name)
+        : UnitTest(std::format("PokemonLZA::AutoStorySceneMachine - {}", test_case.input.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
