@@ -52,7 +52,7 @@ MoveList mission_01_02_moves(){
         //  run. The sidestep around the starters had no time recorded:
         //  1000 ms is a placeholder.
         {"chase_pancham", walk({
-            {-15, 4000ms}, {-90, 3500ms}, {90, 9000ms}, {-90, 0ms}, {90, 1000ms}, {-90, 4000ms},
+            {-75, 4000ms}, {-90, 3500ms}, {90, 9000ms}, {-90, 0ms}, {90, 1000ms}, {-90, 4000ms},
         })},
         //  Step 18. NEEDS TUNING. Measured 2026-11-08 on console B, walk not run.
         {"battle_zone_to_brigitte", walk({
