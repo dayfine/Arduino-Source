@@ -15,14 +15,16 @@
  *      HEAL    the nurse (not implemented)
  *      SHOP    the counter (not implemented)
  *      SAVE    save where the player stands
- *      GAME    a move of story_moves(); "approach_starter" (the walk of
+ *      GAME    a move of story_moves(), walked once the screen shows free
+ *              control (check_can_walk()); "approach_starter" (the walk of
  *              starter_moves() to the chosen starter); "choose_0"/"choose_1"
  *              (that row of the choices on screen); "story_battle" (attack
  *              in a battle already on screen until a dialog shows); the new
  *              game's "new_game_language", "pick_look", "type_player_name";
- *              the scene mashes "mash_to_move_hints", "text_to_choice",
- *              "story_battle_start", "talk_through_map_screen",
- *              "talk_to_pokedex_screen" (mash_scene()); "climb_ladder"; or an
+ *              the scene machines "mash_to_move_hints" and "text_to_choice"
+ *              (run_scene_machine()); the scene mashes "story_battle_start",
+ *              "talk_through_map_screen", "talk_to_pokedex_screen"
+ *              (mash_scene()); "climb_ladder"; or an
  *              action of story_actions_not_implemented(), which throws
  *              StoryActionNotImplemented naming the code it waits for
  *
@@ -46,6 +48,7 @@
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "VideoGames/PokemonLZA/Options/PokemonLZA_BattleAIOption.h"
+#include "PokemonLZA_AutoStoryMoves.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -106,6 +109,12 @@ private:
     //  Walks to the chosen starter (starter_moves()); not implemented for
     //  one whose walk was not recorded.
     void approach_starter();
+    //  "mash_to_move_hints" (the overworld) and "text_to_choice" (B to the
+    //  choice) as a scene machine (run_scene_machine()), logged per state.
+    void scene(const Pokemon::StoryStep& step);
+    //  Walks the move `name` once the screen shows free control
+    //  (check_can_walk()), until its end event if it has one (story_move_ends()).
+    void walk(const std::string& name, const StoryMove& move);
 
     ConsoleHandle& console(){
         return m_env.env.console;

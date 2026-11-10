@@ -26,6 +26,7 @@
 #include <set>
 #include <string>
 #include <vector>
+#include "Pokemon/AutoStory/Pokemon_ScreenEventTypes.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
 #include "PokemonLZA_AutoStoryMoves.h"
 #include "PokemonLZA_AutoStoryExecutor.h"
@@ -58,6 +59,11 @@ size_t story_rows_ready();
 
 //  The overworld walks the table's GAME steps name, by name.
 const std::map<std::string, StoryMove, std::less<>>& story_moves();
+
+//  The moves of story_moves() that end on a screen event: the walk holds its
+//  last leg until the event shows, the leg's time as the upper bound
+//  (walk_until()). Every other move walks its times.
+const std::map<std::string, Pokemon::ScreenEvent, std::less<>>& story_move_ends();
 
 //  The walk to each starter, for the "approach_starter" step; a starter
 //  without one was not recorded.

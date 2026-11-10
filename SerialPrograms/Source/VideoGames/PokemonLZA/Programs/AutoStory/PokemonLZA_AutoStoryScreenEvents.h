@@ -41,6 +41,8 @@ public:
     PlzaScreenObserver();
 
     virtual Pokemon::ScreenEvents observe(const VideoSnapshot& frame, WallClock now) override;
+    //  observe() for a frame that is not a snapshot (a ScreenState's read).
+    Pokemon::ScreenEvents read(const ImageViewRGB32& screen);
     virtual void make_overlays(VideoOverlaySet& items) const override;
 
 private:

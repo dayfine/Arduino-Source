@@ -13,6 +13,7 @@
 #include "PokemonLZA_AutoStoryActions.h"
 #include "PokemonLZA_AutoStoryDialogs.h"
 #include "PokemonLZA_AutoStoryMoves.h"
+#include "PokemonLZA_AutoStorySceneMachine.h"
 #include "PokemonLZA_AutoStoryScenes.h"
 #include "PokemonLZA_AutoStoryTable.h"
 #include "PokemonLZA_AutoStoryExecutor.h"
@@ -188,22 +189,8 @@ Outcome StoryExecutor::game(const StoryStep& step){
         pick_first_look(console(), context());
     }else if (step.action == "type_player_name"){
         type_player_name(console(), context(), m_env.player_name);
-    }else if (step.action == "mash_to_move_hints"){
-        //  The tutorial shows no party bar: 8 s with no box is the overworld,
-        //  once the scene's rough length has passed (its cutscenes hold
-        //  still frames longer than 8 s). Rough guesses, to tune on console B.
-        static const std::map<std::string, Milliseconds, std::less<>> MIN_LENGTH{
-            {"opening", 60000ms},
-            {"arrival_scenes", 40000ms},
-            {"battle_area", 20000ms},
-        };
-        const auto min_length = MIN_LENGTH.find(step.name);
-        mash_scene(
-            console(), context(), SceneMashGoal::OVERWORLD, BUTTON_A, 180s, 8000ms,
-            min_length == MIN_LENGTH.end() ? Milliseconds(0) : min_length->second
-        );
-    }else if (step.action == "text_to_choice"){
-        mash_scene(console(), context(), SceneMashGoal::CHOICE, BUTTON_B, 60s);
+    }else if (step.action == "mash_to_move_hints" || step.action == "text_to_choice"){
+        scene(step);
     }else if (step.action == "story_battle_start"){
         mash_scene(console(), context(), SceneMashGoal::BATTLE, BUTTON_A, 90s);
     }else if (step.action == "talk_through_map_screen" || step.action == "talk_to_pokedex_screen"){
@@ -216,7 +203,7 @@ Outcome StoryExecutor::game(const StoryStep& step){
         fight_battle_in_progress(m_env.env, console(), context(), m_env.battle_ai, 120s);
     }else{
         //  story_step_supported(): any other action is a move.
-        run_story_move(console(), context(), story_moves().find(step.action)->second);
+        walk(step.action, story_moves().find(step.action)->second);
     }
     return Pokemon::outcome_ok();
 }
@@ -229,7 +216,40 @@ void StoryExecutor::approach_starter(){
             "the walk to this starter: only Chikorita's was recorded (console B, 2026-11-08)."
         );
     }
-    run_story_move(console(), context(), walk->second);
+    this->walk("approach_starter", walk->second);
+}
+
+void StoryExecutor::scene(const StoryStep& step){
+    SceneMachineConfig config;
+    if (step.action == "text_to_choice"){
+        config.goal = SceneMashGoal::CHOICE;
+        config.text_button = BUTTON_B;
+        run_scene_machine(console(), context(), step.name, config, 60s);
+        return;
+    }
+    //  "mash_to_move_hints". The tutorial shows no party bar: 8 s with no
+    //  box is the overworld, once the scene's rough length has passed (its
+    //  cutscenes hold still frames longer than 8 s). Rough guesses, to tune
+    //  on console B from the scene machine's trace.
+    static const std::map<std::string, Milliseconds, std::less<>> MIN_LENGTH{
+        {"opening", 60000ms},
+        {"arrival_scenes", 40000ms},
+        {"battle_area", 20000ms},
+    };
+    const auto min_length = MIN_LENGTH.find(step.name);
+    config.quiet = 8000ms;
+    config.min_length = min_length == MIN_LENGTH.end() ? Milliseconds(0) : min_length->second;
+    run_scene_machine(console(), context(), step.name, config, 180s);
+}
+
+void StoryExecutor::walk(const std::string& name, const StoryMove& move){
+    check_can_walk(console(), context(), name);
+    const auto end = story_move_ends().find(name);
+    if (end != story_move_ends().end()){
+        walk_until(console(), context(), name, move, end->second);
+    }else{
+        run_story_move(console(), context(), move);
+    }
 }
 
 

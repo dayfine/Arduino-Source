@@ -78,7 +78,10 @@ ScreenEvents PlzaScreenObserver::observe(const VideoSnapshot& frame, WallClock){
     if (!frame){
         return {};
     }
-    const ImageViewRGB32& screen = *frame.frame;
+    return read(*frame.frame);
+}
+
+ScreenEvents PlzaScreenObserver::read(const ImageViewRGB32& screen){
     ScreenEvents out = Pokemon::fade_events(Pokemon::fade_of_screen(screen));
     if (Pokemon::fade_in(out) != Pokemon::WarpFade::NONE){
         //  A uniform screen has no box, prompt or HUD to read.

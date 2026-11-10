@@ -373,6 +373,15 @@ const std::map<std::string, StoryMove, std::less<>>& story_moves(){
     return moves;
 }
 
+const std::map<std::string, Pokemon::ScreenEvent, std::less<>>& story_move_ends(){
+    static const std::map<std::string, Pokemon::ScreenEvent, std::less<>> ends{
+        //  Steps 6-7: right along the plaza "until the white fade" into the
+        //  arrival scenes. 6000 ms is the recorded walk, which overshot into it.
+        {"platform_to_plaza", Pokemon::ScreenEvent::FADE_WHITE},
+    };
+    return ends;
+}
+
 const std::set<std::string, std::less<>>& story_autosave_rows(){
     static const std::set<std::string, std::less<>> rows{"01.00", "01.01", "02.01", "03.01"};
     return rows;
