@@ -8,7 +8,9 @@
  *    shows for 1-3 s after the game autosaves;
  *  - the tutorial's controls hint under the player, a "?" card over
  *    "(L) Move" and "(R) Control Camera" (ControlsHintDetector), which shows
- *    for ~10 s when the player gets control.
+ *    for ~10 s when the player gets control;
+ *  - the "press A to go on" chevron at the bottom right of a dialogue box or
+ *    of the boxless subtitles of 01.01's ad (AdvanceArrowDetector).
  *
  */
 
@@ -79,6 +81,26 @@ private:
     ImageFloatBox m_card;
     ImageFloatBox m_glyph;
     ImageFloatBox m_around[4];
+};
+
+
+//  The "press A to go on" chevron (a V about 32x19 on 1920x1080) at the
+//  right end of a dialogue box and of boxless subtitles: dark on a white
+//  box, white on a blue box and on the ad's subtitles. Found by shape in
+//  x 1370-1480, y 930-1050: a blob of white (every channel 235+) or dark
+//  (every channel 110 or under) pixels the size of the chevron, filling a
+//  V, with no other pixel of its colour around it. Text is not read, so
+//  any language matches.
+class AdvanceArrowDetector : public StaticScreenDetector{
+public:
+    explicit AdvanceArrowDetector(Color color = COLOR_GREEN);
+
+    virtual void make_overlays(VideoOverlaySet& items) const override;
+    virtual bool detect(const ImageViewRGB32& screen) override;
+
+private:
+    Color m_color;
+    ImageFloatBox m_area;
 };
 
 

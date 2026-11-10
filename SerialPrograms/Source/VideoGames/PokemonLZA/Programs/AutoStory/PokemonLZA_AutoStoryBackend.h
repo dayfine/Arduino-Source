@@ -93,7 +93,8 @@ public:
     //  Once the inputs are done: PlzaScreenObserver's events on a frame
     //  (plza_observation()), STILL when it barely differs from the frame
     //  of the look before, and the readings PLATFORM_READING,
-    //  SKIP_PROMPT_READING, AUTOSAVE_READING and CONTROLS_HINT_READING.
+    //  SKIP_PROMPT_READING, AUTOSAVE_READING, CONTROLS_HINT_READING and
+    //  ADVANCE_ARROW_READING.
     virtual Pokemon::Observation<Pokemon::ZonePose> observe() override;
     //  fight_battle() with the run's battle AI; a failure is an Outcome.
     virtual Pokemon::Outcome battle(const Pokemon::StoryActionArgs& args) override;
@@ -107,6 +108,7 @@ private:
     SkipPromptDetector m_skip_prompt;
     AutosaveDetector m_autosave;
     ControlsHintDetector m_controls_hint;
+    AdvanceArrowDetector m_advance_arrow;
     VideoSnapshot m_previous;
     //  Every look's events, and a frame each time they change (and every
     //  CAPTURE_EVERY), go to the log and a capture folder: the record of

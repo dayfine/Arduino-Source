@@ -8,7 +8,8 @@
  *  picks one state, the state takes one step, and each change of state is
  *  logged with the look's events. The player has control when the party
  *  bar or, in the tutorial (which has no party bar), the controls hint
- *  (CONTROLS_HINT_READING) holds a second.
+ *  (CONTROLS_HINT_READING) holds a second. The advance chevron
+ *  (ADVANCE_ARROW_READING) is text to press on, with or without a box.
  *
  *  The walks between the scenes are PokemonLZA_AutoStoryGuardedWalks.h.
  *
@@ -45,6 +46,10 @@ struct SceneMachineConfig{
     //  ...and this long has passed since the start: a cutscene can hold a
     //  still frame longer than `quiet`.
     Milliseconds min_length = Milliseconds(0);
+    //  OVERWORLD with A: presses A every 2 s once nothing
+    //  busy and no sign of control has shown for this long, for text the
+    //  detectors miss (A does not skip a cutscene).
+    std::optional<Milliseconds> blind_press_after = std::nullopt;
 };
 
 //  The states a scene machine tells apart, in the order it tries them.
@@ -54,12 +59,13 @@ enum class SceneScreen{
     FADE_BLACK,     //  wait until it lifts
     FADE_WHITE,     //  wait until it lifts
     CHOICE,         //  A: the top choice
-    DIALOG,         //  the text button
+    DIALOG,         //  the text button: a box, or the advance chevron
     CAN_MOVE,       //  terminal: the party bar, held a second
     PARTY_BAR,      //  wait: the party bar, not held a second yet
     CONTROLS_HINT,  //  terminal: the tutorial's controls hint, held a second
     HINT_SHOWING,   //  wait: the controls hint, not held a second yet
     QUIET_END,      //  terminal, failing: nothing busy for the quiet time, past the minimum length
+    BLIND_PRESS,    //  A: nothing busy and no sign of control for blind_press_after
     SCENE_MOVING,   //  no box, the screen changing: a cutscene, or the player in control
     SCENE_STILL,    //  no box, the screen still since the read before
 };
@@ -94,6 +100,9 @@ public:
     //  without a quiet time.
     std::optional<WallClock> quiet_end_due() const;
 
+    //  Whether a blind A press is due at `now` (blind_press_after).
+    bool blind_press_due(WallClock now) const;
+
     const SceneMachineConfig& config() const{
         return m_config;
     }
@@ -102,8 +111,14 @@ private:
     SceneMachineConfig m_config;
     WallClock m_quiet_from;
     WallClock m_last_busy;
+    //  The last look busy or with a sign of control (party bar, hint).
+    WallClock m_last_cue;
+    std::optional<WallClock> m_last_blind_press;
     std::optional<WallClock> m_party_bar_since;
     std::optional<WallClock> m_hint_since;
+
+    //  classify() past the fades, boxes and the goal.
+    SceneScreen classify_open(const ScreenObservation& look) const;
 };
 
 

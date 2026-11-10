@@ -99,6 +99,9 @@ Pokemon::Observation<Pokemon::ZonePose> PlzaConsoleBackend::observe(){
         if (m_controls_hint.detect(*frame.frame)){
             look.readings[std::string(CONTROLS_HINT_READING)] = 1;
         }
+        if (m_advance_arrow.detect(*frame.frame)){
+            look.readings[std::string(ADVANCE_ARROW_READING)] = 1;
+        }
         if (same_screen(m_previous, frame)){
             look.events.add(PokemonAutomation::ScreenEvent::STILL);
         }
@@ -149,6 +152,9 @@ std::string look_text(const ScreenObservation& look){
     }
     if (look.readings.contains(CONTROLS_HINT_READING)){
         text += "+controls_hint";
+    }
+    if (look.readings.contains(ADVANCE_ARROW_READING)){
+        text += "+advance_arrow";
     }
     return text;
 }

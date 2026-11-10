@@ -35,6 +35,8 @@ struct Read{
     SceneScreen expected;
     //  The controls hint (CONTROLS_HINT_READING) shows.
     bool hint = false;
+    //  The advance chevron (ADVANCE_ARROW_READING) shows.
+    bool arrow = false;
 };
 
 //  Feeds `reads` to a timeline as the machine does (classify, then record
@@ -50,6 +52,9 @@ UnitTestResult check_reads(const SceneMachineConfig& config, const std::vector<R
         }
         if (read.hint){
             look.readings[std::string(CONTROLS_HINT_READING)] = 1;
+        }
+        if (read.arrow){
+            look.readings[std::string(ADVANCE_ARROW_READING)] = 1;
         }
         const SceneScreen got = timeline.classify(look);
         if (got != read.expected){
@@ -76,6 +81,15 @@ const ScreenEvents PARTY_BAR{ScreenEvent::PLAYER_CAN_MOVE};
 const ScreenEvents WHITE{ScreenEvent::FADE_WHITE};
 const ScreenEvents BLACK{ScreenEvent::FADE_BLACK};
 const ScreenEvents BATTLE{ScreenEvent::BATTLE_STARTED};
+const ScreenEvents PROMPT{ScreenEvent::INTERACT_PROMPT};
+
+//  mash_to_move_hints' config: a minute quiet, blind A after 5 s.
+SceneMachineConfig arrival_config(){
+    SceneMachineConfig config;
+    config.quiet = 60000ms;
+    config.blind_press_after = 5000ms;
+    return config;
+}
 
 //  The opening: a still frame past the quiet time does not end it before
 //  the scene's minimum length; then it does.
@@ -125,6 +139,49 @@ UnitTestResult test_controls_hint_held(Logger&){
         {900ms, NOTHING, false, SceneScreen::HINT_SHOWING, true},
         {1800ms, NOTHING, true, SceneScreen::HINT_SHOWING, true},
         {9000ms, NOTHING, true, SceneScreen::CONTROLS_HINT, true},
+    });
+}
+
+//  01.01's ad: subtitles with no box. The advance chevron is text to press
+//  on; with nothing seen for 5 s, A every 2 s (not at an interact prompt);
+//  the controls hint stops the presses and, held a second, ends the scene.
+UnitTestResult test_ad_subtitles(Logger&){
+    return check_reads(arrival_config(), {
+        {0ms, NOTHING, false, SceneScreen::SCENE_MOVING},
+        {1000ms, NOTHING, false, SceneScreen::DIALOG, false, true},
+        {1500ms, NOTHING, true, SceneScreen::SCENE_STILL},
+        {3000ms, NOTHING, true, SceneScreen::DIALOG, false, true},
+        {7900ms, NOTHING, true, SceneScreen::SCENE_STILL},
+        {8000ms, NOTHING, true, SceneScreen::BLIND_PRESS},
+        {9000ms, NOTHING, true, SceneScreen::SCENE_STILL},
+        {10000ms, NOTHING, false, SceneScreen::BLIND_PRESS},
+        {12000ms, PROMPT, false, SceneScreen::SCENE_MOVING},
+        {12100ms, NOTHING, false, SceneScreen::BLIND_PRESS},
+        {14200ms, NOTHING, false, SceneScreen::HINT_SHOWING, true},
+        {15000ms, NOTHING, true, SceneScreen::HINT_SHOWING, true},
+        {15300ms, NOTHING, true, SceneScreen::CONTROLS_HINT, true},
+    });
+}
+
+//  Blind presses are not busy: a minute of them still ends quiet; and only
+//  an A mash after control presses blind.
+UnitTestResult test_blind_press_keeps_quiet(Logger& logger){
+    const UnitTestResult quiet = check_reads(arrival_config(), {
+        {0ms, NOTHING, false, SceneScreen::DIALOG, false, true},
+        {5000ms, NOTHING, true, SceneScreen::BLIND_PRESS},
+        {6000ms, NOTHING, true, SceneScreen::SCENE_STILL},
+        {59000ms, NOTHING, true, SceneScreen::BLIND_PRESS},
+        {60000ms, NOTHING, true, SceneScreen::QUIET_END},
+    });
+    if (quiet.result != UnitTestResult::PASSED){
+        return quiet;
+    }
+    SceneMachineConfig to_choice = arrival_config();
+    to_choice.goal = SceneMashGoal::CHOICE;
+    to_choice.text_button = BUTTON_B;
+    return check_reads(to_choice, {
+        {0ms, NOTHING, false, SceneScreen::DIALOG, false, true},
+        {30000ms, NOTHING, true, SceneScreen::SCENE_STILL},
     });
 }
 
@@ -178,6 +235,7 @@ UnitTestResult test_state_actions(Logger&){
         {SceneScreen::HINT_SHOWING, a_mash, SceneMashAction::WAIT},
         {SceneScreen::CONTROLS_HINT, a_mash, SceneMashAction::DONE},
         {SceneScreen::QUIET_END, a_mash, SceneMashAction::DONE},
+        {SceneScreen::BLIND_PRESS, a_mash, SceneMashAction::PRESS_A},
         {SceneScreen::GOAL_CHOICE, b_to_choice, SceneMashAction::DONE},
         {SceneScreen::GOAL_BATTLE, to_battle, SceneMashAction::DONE},
     };
@@ -268,6 +326,14 @@ const SceneMachineCase SCENE_MACHINE_CASES[] = {
     },
     {
         .input = {"the controls hint held a second ends the scene", test_controls_hint_held},
+        .expectation = {},
+    },
+    {
+        .input = {"the ad's subtitles: A at the chevron, blind A, none at the hint", test_ad_subtitles},
+        .expectation = {},
+    },
+    {
+        .input = {"blind presses keep the quiet end, and only in an A mash", test_blind_press_keeps_quiet},
         .expectation = {},
     },
     {

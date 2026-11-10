@@ -35,14 +35,21 @@ constexpr Milliseconds FADE_WAIT = 30000ms;
 constexpr Milliseconds STILL_WAIT = 10000ms;
 //  The longest a cutscene may hold one still frame.
 constexpr Milliseconds SCENE_STILL_WAIT = 60000ms;
+//  How often blind_press_after presses A.
+constexpr Milliseconds BLIND_PRESS_EVERY = 2000ms;
 //  How often a wait looks again.
 constexpr Milliseconds POLL = 250ms;
 
-//  Something holds the player: a box (or choice), a battle, a fade.
+//  Text to press on: a box (or choice), or the advance chevron without one.
+bool text_shows(const ScreenObservation& look){
+    return look.events.has(EngineEvent::TEXT_BOX) || look.events.has(EngineEvent::CHOICE_BOX) ||
+        look.readings.contains(ADVANCE_ARROW_READING);
+}
+
+//  Something holds the player: text, a battle, a fade.
 bool busy(const ScreenObservation& look){
-    return look.events.has(EngineEvent::TEXT_BOX) || look.events.has(EngineEvent::BATTLE) ||
-        look.events.has(EngineEvent::FADE_BLACK) || look.events.has(EngineEvent::FADE_WHITE) ||
-        look.events.has(EngineEvent::CHOICE_BOX);
+    return text_shows(look) || look.events.has(EngineEvent::BATTLE) ||
+        look.events.has(EngineEvent::FADE_BLACK) || look.events.has(EngineEvent::FADE_WHITE);
 }
 
 constexpr SceneScreen ALL_SCREENS[] = {
@@ -50,7 +57,7 @@ constexpr SceneScreen ALL_SCREENS[] = {
     SceneScreen::FADE_BLACK, SceneScreen::FADE_WHITE,
     SceneScreen::CHOICE, SceneScreen::DIALOG,
     SceneScreen::CAN_MOVE, SceneScreen::PARTY_BAR,
-    SceneScreen::CONTROLS_HINT, SceneScreen::HINT_SHOWING, SceneScreen::QUIET_END,
+    SceneScreen::CONTROLS_HINT, SceneScreen::HINT_SHOWING, SceneScreen::QUIET_END, SceneScreen::BLIND_PRESS,
     SceneScreen::SCENE_MOVING, SceneScreen::SCENE_STILL,
 };
 
@@ -81,6 +88,8 @@ std::string_view scene_screen_name(SceneScreen screen){
         return "hint_showing";
     case SceneScreen::QUIET_END:
         return "quiet_end";
+    case SceneScreen::BLIND_PRESS:
+        return "blind_press";
     case SceneScreen::SCENE_MOVING:
         return "scene_moving";
     case SceneScreen::SCENE_STILL:
@@ -101,6 +110,7 @@ SceneMashAction scene_screen_action(SceneScreen screen, const SceneMachineConfig
     }
     switch (screen){
     case SceneScreen::CHOICE:
+    case SceneScreen::BLIND_PRESS:
         return SceneMashAction::PRESS_A;
     case SceneScreen::DIALOG:
         return SceneMashAction::PRESS_TEXT;
@@ -120,6 +130,7 @@ SceneTimeline::SceneTimeline(SceneMachineConfig config, WallClock start)
     : m_config(std::move(config))
     , m_quiet_from(start + m_config.min_length)
     , m_last_busy(start)
+    , m_last_cue(start)
 {}
 
 std::optional<WallClock> SceneTimeline::quiet_end_due() const{
@@ -127,6 +138,16 @@ std::optional<WallClock> SceneTimeline::quiet_end_due() const{
         return std::nullopt;
     }
     return std::max(m_quiet_from, m_last_busy + *m_config.quiet);
+}
+
+bool SceneTimeline::blind_press_due(WallClock now) const{
+    if (!m_config.blind_press_after || m_config.goal != SceneMashGoal::OVERWORLD || m_config.text_button != BUTTON_A){
+        return false;
+    }
+    if (now - m_last_cue < *m_config.blind_press_after){
+        return false;
+    }
+    return !m_last_blind_press || now - *m_last_blind_press >= BLIND_PRESS_EVERY;
 }
 
 SceneScreen SceneTimeline::classify(const ScreenObservation& look) const{
@@ -146,9 +167,13 @@ SceneScreen SceneTimeline::classify(const ScreenObservation& look) const{
     if (choice){
         return SceneScreen::CHOICE;
     }
-    if (look.events.has(EngineEvent::TEXT_BOX)){
+    if (text_shows(look)){
         return SceneScreen::DIALOG;
     }
+    return classify_open(look);
+}
+
+SceneScreen SceneTimeline::classify_open(const ScreenObservation& look) const{
     if (m_config.goal == SceneMashGoal::OVERWORLD && look.events.has(EngineEvent::CAN_MOVE)){
         if (m_party_bar_since && look.when - *m_party_bar_since >= PARTY_BAR_HOLD){
             return SceneScreen::CAN_MOVE;
@@ -164,6 +189,10 @@ SceneScreen SceneTimeline::classify(const ScreenObservation& look) const{
     const std::optional<WallClock> due = quiet_end_due();
     if (due && look.when >= *due && !busy(look)){
         return SceneScreen::QUIET_END;
+    }
+    //  Not at an interact prompt: A would talk to whoever it names.
+    if (blind_press_due(look.when) && !look.events.has(EngineEvent::INTERACT_PROMPT)){
+        return SceneScreen::BLIND_PRESS;
     }
     return look.events.has(EngineEvent::STILL) ? SceneScreen::SCENE_STILL : SceneScreen::SCENE_MOVING;
 }
@@ -182,12 +211,18 @@ void track_since(std::optional<WallClock>& since, bool shows, WallClock when){
 } // namespace
 
 void SceneTimeline::record(const ScreenObservation& look){
+    if (classify(look) == SceneScreen::BLIND_PRESS){
+        m_last_blind_press = look.when;
+    }
     if (busy(look)){
         m_last_busy = look.when;
     }
     const bool box = look.events.has(EngineEvent::TEXT_BOX) || look.events.has(EngineEvent::CHOICE_BOX);
     track_since(m_party_bar_since, look.events.has(EngineEvent::CAN_MOVE) && !box, look.when);
     track_since(m_hint_since, look.readings.contains(CONTROLS_HINT_READING) && !box, look.when);
+    if (busy(look) || m_party_bar_since || m_hint_since){
+        m_last_cue = look.when;
+    }
 }
 
 
@@ -211,6 +246,9 @@ std::string describe_look(const ScreenObservation& look){
     }
     if (look.readings.contains(CONTROLS_HINT_READING)){
         text += text.empty() ? "controls hint" : ", controls hint";
+    }
+    if (look.readings.contains(ADVANCE_ARROW_READING)){
+        text += text.empty() ? "advance arrow" : ", advance arrow";
     }
     return text.empty() ? "nothing" : text;
 }
@@ -267,7 +305,8 @@ private:
         case SceneScreen::SCENE_STILL:
             wait_until(STILL_WAIT, [this](const ScreenObservation& look){
                 const std::optional<WallClock> due = m_timeline.quiet_end_due();
-                return (due && look.when >= *due) || !look.events.has(EngineEvent::STILL);
+                return (due && look.when >= *due) || m_timeline.blind_press_due(look.when) ||
+                    !look.events.has(EngineEvent::STILL);
             });
             return;
         case SceneScreen::PARTY_BAR:
@@ -320,6 +359,8 @@ Milliseconds max_still(SceneScreen screen){
     case SceneScreen::FADE_WHITE:
         return FADE_WAIT;
     case SceneScreen::SCENE_STILL:
+    case SceneScreen::BLIND_PRESS:
+        //  A blind A press need not change the screen.
         return SCENE_STILL_WAIT;
     case SceneScreen::PARTY_BAR:
     case SceneScreen::HINT_SHOWING:
