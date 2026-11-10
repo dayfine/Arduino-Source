@@ -12,6 +12,7 @@
 #ifndef PokemonAutomation_CommonTools_ScreenMachine_H
 #define PokemonAutomation_CommonTools_ScreenMachine_H
 
+#include <format>
 #include <stdint.h>
 #include <functional>
 #include <map>
@@ -49,8 +50,8 @@ struct ScreenState{
 //  The state on screen, once two frames 150ms apart agree. Waits out a video
 //  gap of up to 10s. Fails through `trace` if no state matches.
 const ScreenState& read_screen_state(
-    VideoStream& stream, CancellableScope& scope, StepTrace& trace,
-    const std::vector<ScreenState>& states, VideoSnapshot& frame
+    VideoStream& stream, CancellableScope& scope,
+    const std::vector<ScreenState>& states, StepTrace& trace, VideoSnapshot& frame
 );
 
 //  The checks between reads: the screen must be one the previous state can lead
@@ -80,21 +81,21 @@ private:
 //  `trace` on an unexpected screen, a state seen too often, a stall or the timeout.
 template <typename ControllerContext>
 std::string run_screen_machine(
-    VideoStream& stream, ControllerContext& context, StepTrace& trace,
-    const std::vector<ScreenState>& states, Milliseconds timeout
+    VideoStream& stream, ControllerContext& context,
+    const std::vector<ScreenState>& states, Milliseconds timeout, StepTrace& trace
 );
 
 template <typename ControllerContext>
 std::string run_screen_machine(
-    VideoStream& stream, ControllerContext& context, StepTrace& trace,
-    const std::vector<ScreenState>& states, Milliseconds timeout
+    VideoStream& stream, ControllerContext& context,
+    const std::vector<ScreenState>& states, Milliseconds timeout, StepTrace& trace
 ){
     ScreenMachineChecks checks(trace);
     const WallClock deadline = current_time() + timeout;
     while (current_time() < deadline){
         context.wait_for_all_requests();
         VideoSnapshot frame;
-        const ScreenState& state = read_screen_state(stream, context, trace, states, frame);
+        const ScreenState& state = read_screen_state(stream, context, states, trace, frame);
         trace.screen(state.name);
         checks.check(state, std::move(frame));
         state.act();
@@ -103,7 +104,7 @@ std::string run_screen_machine(
             return state.name;
         }
     }
-    trace.fail("Did not finish within " + std::to_string(timeout.count() / 1000) + "s.");
+    trace.fail(std::format("Did not finish within {}s.", timeout.count() / 1000));
 }
 
 

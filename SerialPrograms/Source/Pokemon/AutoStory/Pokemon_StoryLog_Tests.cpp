@@ -8,8 +8,8 @@
 #include <string>
 #include <utility>
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon_AutoStory_Tests.h"
 #include "Pokemon_StoryLog.h"
+#include "Pokemon_StoryLog_Tests.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{

@@ -149,7 +149,7 @@ SegmentReport run_in(StorySaveMode mode, Lab& lab){
     Segment segment = three_rows(lab);
     SegmentHooks hooks = lab.hooks();
     RunState state;
-    return run_segment(state, segment, SegmentRange{}, SegmentPolicy{.save_mode = mode}, hooks);
+    return run_segment(SegmentRange{}, SegmentPolicy{.save_mode = mode}, segment, hooks, state);
 }
 
 UnitTestResult test_none_never_saves(){
@@ -247,7 +247,7 @@ VerifyReport verify_in(StorySaveMode mode, Lab& lab){
     SegmentHooks hooks = lab.hooks();
     RunState state;
     const VerifyPolicy policy{.runs = 3, .passes_needed = 2, .save_mode = mode};
-    return verify_checkpoint(state, segment, "00.02", policy, hooks);
+    return verify_checkpoint("00.02", policy, segment, hooks, state);
 }
 
 UnitTestResult test_verify_saves_once_every_run_passed(){
