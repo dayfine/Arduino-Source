@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <format>
 #include <functional>
+#include <iterator>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -185,8 +186,8 @@ UnitTestResult test_walk_ends_on_white_fade(CancellableScope& scope){
     });
 }
 
-//  platform_to_plaza with no white fade fails once the last leg's 6 s are
-//  held: 24 slices.
+//  platform_to_plaza with no white fade fails once the last leg's 10 s are
+//  held: 40 slices.
 UnitTestResult test_walk_fails_at_bound(CancellableScope& scope){
     FakeBackend backend = fake_plza({look_at(0ms)}, scope);
     const Pokemon::StoryEngineReport report = run_plza(backend, step_of("01.01", "platform_to_plaza"));
@@ -194,8 +195,8 @@ UnitTestResult test_walk_fails_at_bound(CancellableScope& scope){
         return "Expected walk_no_end, got " + to_string(report.run.failure);
     }
     const size_t slices = (size_t)std::count(backend.inputs().begin(), backend.inputs().end(), "hold north 250ms walk");
-    if (slices != 24){
-        return std::format("Expected 24 slices of 250 ms, held {}.", slices);
+    if (slices != 40){
+        return std::format("Expected 40 slices of 250 ms, held {}.", slices);
     }
     return true;
 }
@@ -241,8 +242,8 @@ UnitTestResult test_text_to_choice(CancellableScope& scope){
 }
 
 //  01.01's arrival scenes (mash_to_move_hints): A at the text and at the
-//  choice (its top row), waits through a 20 s text-free flyover, done once
-//  the controls hint has shown a second.
+//  choice (its top row), one blind A in a 20 s text-free flyover, done
+//  once the controls hint has shown a second.
 UnitTestResult test_arrival_ends_on_controls_hint(CancellableScope& scope){
     FakeBackend backend = fake_plza({
         look_at(0ms, {EngineEvent::TEXT_BOX}),
@@ -262,8 +263,37 @@ UnitTestResult test_arrival_ends_on_controls_hint(CancellableScope& scope){
         return input.starts_with("press");
     });
     const auto a_presses = std::count(backend.inputs().begin(), backend.inputs().end(), "press A");
-    if (presses != 2 || a_presses != 2){
-        return "Expected A at the text and at the choice only, got [" + joined(backend.inputs()) + "].";
+    if (presses != 3 || a_presses != 3){
+        return "Expected A at the text, once in the flyover and at the choice, got [" + joined(backend.inputs()) + "].";
+    }
+    return true;
+}
+
+//  01.01's ad (run 2, 2026-11-10 13:28): subtitles with no box. A at each
+//  advance chevron, a blind A once nothing has shown for 5 s, none once
+//  the controls hint shows; done when it has shown a second.
+UnitTestResult test_arrival_presses_through_the_ad(CancellableScope& scope){
+    FakeBackend backend = fake_plza({
+        look_at(0ms),
+        with_reading(look_at(1000ms), ADVANCE_ARROW_READING),
+        with_reading(look_at(2000ms), ADVANCE_ARROW_READING),
+        look_at(2500ms),
+        look_at(6000ms),
+        look_at(7100ms),
+        with_reading(look_at(8000ms), CONTROLS_HINT_READING),
+        with_reading(look_at(8500ms), CONTROLS_HINT_READING),
+        with_reading(look_at(9100ms), CONTROLS_HINT_READING),
+    }, scope);
+    const Pokemon::StoryEngineReport report = run_plza(backend, step_of("01.01", "arrival_scenes"));
+    if (report.verdict != Pokemon::CheckpointVerdict::PASSED){
+        return "Expected the ad to end on the controls hint: " + to_string(report.run.failure);
+    }
+    std::vector<std::string> presses;
+    std::copy_if(backend.inputs().begin(), backend.inputs().end(), std::back_inserter(presses), [](const std::string& input){
+        return input.starts_with("press");
+    });
+    if (presses != std::vector<std::string>{"press A", "press A", "press A"}){
+        return "Expected A at the two chevrons and one blind A, got [" + joined(backend.inputs()) + "].";
     }
     return true;
 }
@@ -402,6 +432,7 @@ const EngineTestCase ENGINE_TEST_CASES[] = {
     {.input = {"01.01 start check: fails without the platform", test_start_check_needs_platform}, .expectation = {}},
     {.input = {"01.01 text_to_choice: B through the text, done at the choice", test_text_to_choice}, .expectation = {}},
     {.input = {"01.01 arrival_scenes: A through text and choice, done on the controls hint", test_arrival_ends_on_controls_hint}, .expectation = {}},
+    {.input = {"01.01 arrival_scenes: A through the ad's boxless subtitles", test_arrival_presses_through_the_ad}, .expectation = {}},
     {.input = {"01.01 arrival_scenes: a quiet minute without the hint fails", test_arrival_quiet_fails}, .expectation = {}},
     {.input = {"face_heading: turns by the minimap's heading", test_face_heading}, .expectation = {}},
     {.input = {"01.01 platform_to_plaza: no walk without free control", test_walk_needs_free_control}, .expectation = {}},
