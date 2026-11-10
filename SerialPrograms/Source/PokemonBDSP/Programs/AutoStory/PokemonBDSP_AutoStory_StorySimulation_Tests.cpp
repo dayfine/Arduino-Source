@@ -270,9 +270,9 @@ public:
     void set_language(PokemonAutomation::Language){}
 
 private:
-    Outcome moved(const Walked& walked, const char* failure){
+    Outcome moved(const Walked& walked, std::string_view failure){
         if (!walked.error.empty()){
-            return Pokemon::outcome_failed(failure, walked.error);
+            return Pokemon::outcome_failed(std::string(failure), walked.error);
         }
         if (!walked.plan.empty()){
             plans.push_back(walked.plan);

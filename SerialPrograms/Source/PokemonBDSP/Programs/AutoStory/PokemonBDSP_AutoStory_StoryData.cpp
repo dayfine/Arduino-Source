@@ -51,11 +51,11 @@ std::vector<Pokemon::StoryActionSpec> make_bdsp_actions(){
         "items", Pokemon::StoryArgType::ITEMS, "the items and how many of each"
     );
 
-    for (const char* cost : {"town", "overworld", "indoors", "caves", "robust", "line"}){
-        actions.push_back({.kind = Pokemon::StoryStepKind::ROUTE, .name = cost, .args = {route_target, fight_wild}});
+    for (std::string_view cost : {"town", "overworld", "indoors", "caves", "robust", "line"}){
+        actions.push_back({.kind = Pokemon::StoryStepKind::ROUTE, .name = std::string(cost), .args = {route_target, fight_wild}});
     }
-    for (const char* act : {"to_wall", "to_dialogue", "to_map", "one_short_ok"}){
-        actions.push_back({.kind = Pokemon::StoryStepKind::LEGS, .name = act, .args = {legs_arg, fight_wild}});
+    for (std::string_view act : {"to_wall", "to_dialogue", "to_map", "one_short_ok"}){
+        actions.push_back({.kind = Pokemon::StoryStepKind::LEGS, .name = std::string(act), .args = {legs_arg, fight_wild}});
     }
     actions.push_back({.kind = Pokemon::StoryStepKind::STEP, .name = "to_banner", .args = {direction_arg}});
     actions.push_back({.kind = Pokemon::StoryStepKind::TALK, .name = "talk_to_wanderer", .args = {}});

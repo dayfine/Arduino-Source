@@ -13,6 +13,7 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
 
+//  Registers unit tests for BDSP authored story data loading and envelope validation.
 void add_tests_AutoStory_StoryData(UnitTestDatabase& database);
 
 } // namespace PokemonBDSP
