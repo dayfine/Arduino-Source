@@ -209,9 +209,9 @@ include(cmake/SourceFiles.cmake)
 include(cmake/ExtractDiscordSDK.cmake)
 
 # Organize source files in IDE project view
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/../../ FILES ${CORE_LIBRARY_SOURCES})
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/../../ FILES ${LIBRARY_SOURCES})
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/../../ FILES ${EXECUTABLE_SOURCES})
+# lab: source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/../../ FILES ${CORE_LIBRARY_SOURCES})
+# lab: source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/../../ FILES ${LIBRARY_SOURCES})
+# lab: source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/../../ FILES ${EXECUTABLE_SOURCES})
 
 # Create GUI-free Controller library, CoreLib
 include(cmake/CoreLib.cmake)
