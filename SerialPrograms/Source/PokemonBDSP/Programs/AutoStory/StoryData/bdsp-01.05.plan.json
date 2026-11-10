@@ -163,5 +163,8 @@
     "saves_in": "Oreburgh City"
   },
   "format": "pokesim-authored-checkpoint/1",
-  "game": "bdsp"
+  "game": "bdsp",
+  "metadata": {
+    "phase": "testing"
+  }
 }
