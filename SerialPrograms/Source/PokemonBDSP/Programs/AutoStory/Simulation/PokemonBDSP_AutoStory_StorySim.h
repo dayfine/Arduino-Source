@@ -11,6 +11,7 @@
  *  (wild battles, drift off the grid, people wandering): the story's Monte
  *  Carlo tests.
  *
+// code-health: allow header_symbols -- story simulation executor, scenario runners and mock IO
  */
 
 #ifndef PokemonAutomation_PokemonBDSP_AutoStory_StorySim_H
@@ -29,6 +30,7 @@
 #include "CommonFramework/ImageTools/ImageStats.h"
 #include "Pokemon/AutoStory/Pokemon_StoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
+#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_TalkOver.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryActions.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryExecutor.h"
@@ -51,7 +53,7 @@ namespace PokemonBDSP{
 //  through. The console missed both (r75, r81). The `hold`th fade (counted
 //  with `fade`'s) shows its fall and the scene after but not its hold: a
 //  short fade's hold between two frames. The `dark`th door run reads
-//  dark SIM_FALSE_DARK in, short of the door, as lab-B's did on 2026-11-08.
+//  dark detail::SIM_FALSE_DARK in, short of the door, as lab-B's did on 2026-11-08.
 //  The `through`th tap step (tap_to_banner(), from 0) starts on its far side,
 //  its banner gone unless `through_banner`: the walk before it slid onto the
 //  warp (lab-B 2026-11-08). The counts and flags below are the run's: how
@@ -104,6 +106,7 @@ struct SimSlide{
     bool banner_up = false;
 };
 
+namespace detail{
 //  One beat of a scripted scene: a line, up until a press, or `length` of
 //  screen with no box, `overworld` or not (a battle's end, a fade),
 //  `moving` (someone walking, the camera panning) or still, faded as `fade`.
@@ -119,7 +122,8 @@ struct SimBeat{
 SimBeat sim_line(std::string what);
 //  `length` of overworld with no box, someone moving or not.
 SimBeat sim_pause(std::string what, Milliseconds length, bool moving);
-//  `length` of a fade, not the overworld.
+//  `length` of a fade, as BDSP's eyes see it: no box, so the overworld,
+//  and still (a black frame matches the one before).
 SimBeat sim_fade(std::string what, Milliseconds length, WarpFade fade = WarpFade::BLACK);
 //  A talk or a scene as the screen shows it, beat by beat; the quiet
 //  overworld after the last beat.
@@ -128,6 +132,7 @@ using SimScene = std::vector<SimBeat>;
 //  press, as talk_over() takes them: "" if it is judged over after the last
 //  beat, else when it was judged over early, or that it never was.
 std::string play_scene(const SimScene& scene, const TalkOverRule& rule);
+} // namespace detail
 
 //  What the console showed that the plain simulation leaves out, each off
 //  unless set. All of it is deterministic: wanderers walk from `wander_seed`.
@@ -146,11 +151,15 @@ struct SimWorldKnobs{
     std::map<std::string, Milliseconds> first_line = {};
     //  The scene a step's talk-over plays, by step name: a scene's or a
     //  door's settle(), or the speeches after a battle step's battle.
-    std::map<std::string, SimScene> scenes = {};
+    std::map<std::string, detail::SimScene> scenes = {};
     //  Whether a dialog pops up right before row `row`'s step `step`:
     //  someone walks up and talks between two steps. Until it is pressed
     //  through, it stops a step that walks or talks, as on the console.
     std::function<bool(const std::string& row, const std::string& step)> dialog_before = nullptr;
+    //  Whether a battle's opening is still playing when row `row`'s step
+    //  `step` starts: the encounter's white, no battle yet (00.02's Starly
+    //  battle right after the starter is picked, lab-B 2026-11-09).
+    std::function<bool(const std::string& row, const std::string& step)> battle_opening_before = nullptr;
     //  Whether the executor clears what came up between steps
     //  (story_interrupts()), as the console does; off, as before it did.
     bool clear_interrupts = true;
@@ -158,7 +167,21 @@ struct SimWorldKnobs{
     //  wandering), which must outlive the run: the story's Monte Carlo tests.
     //  Within half a tile of where a step should end counts as there.
     SimDisturbance* noise = nullptr;
+    //  Where a step really leaves the player, by step name, when that is
+    //  not the table's pose_after or the walk's end: the program goes on
+    //  from the table's pose, the player from here (00.03's scene a row
+    //  low, lab-B 2026-11-09; 00.04b's run into Sandgem two columns west,
+    //  lab-B 2026-11-09 20:09).
+    std::map<std::string, Pokemon::Pose> lands = {};
+    //  Wild battles in tall grass on every pass (SimGrassBattles); none unset.
+    SimGrassBattles grass = {};
+    //  Whether the scene after row `row`'s walk `step` starts early, on the
+    //  walk's last tiles (its target): its trigger lies on the way, so the
+    //  walk runs into it (00.04's Mom's call on (6, 9), lab-B 2026-11-09 17:29).
+    std::function<bool(const std::string& row, const std::string& step)> scene_at_walk_end = nullptr;
 };
+
+namespace detail{
 
 //  The walker's RouteIO on the story simulation, with SimWorldKnobs' slides
 //  and late first lines, disturbed by SimWorldKnobs::noise if set. `step`
@@ -169,7 +192,7 @@ public:
         GridSim& sim, std::vector<std::string>& notes, SimMisses& misses, const SimWorldKnobs& knobs,
         const std::string& step, std::function<void(const Pokemon::Pose&)> cross
     )
-        : DisturbedRouteIO(sim, notes, knobs.noise)
+        : DisturbedRouteIO(sim, notes, knobs.noise, knobs.grass)
         , m_grid(sim)
         , m_misses(misses)
         , m_knobs(knobs)
@@ -190,6 +213,9 @@ private:
     std::function<void(const Pokemon::Pose&)> m_cross;
     std::set<std::string> m_slid_steps;
 };
+} // namespace detail
+
+namespace detail{
 
 //  How many tiles a held walk goes on into a map before its location
 //  banner reads: "it shows a tile or a few past the border" (the table's
@@ -223,6 +249,7 @@ std::vector<Pokemon::TransitionSample> sim_fade_frames(double floor, double fade
 //  The fade the program's WarpFadeWatch with `rule` sees in those frames;
 //  each scene after a fall is another (the far side's).
 WarpFade sim_watch_fade(const WarpFadeRule& rule, double floor, double fade, bool hold_seen);
+} // namespace detail
 
 //  What a run on the simulation did.
 struct SimRun{
@@ -252,6 +279,10 @@ struct SimRun{
     //  How the run failed: the failure and its message.
     std::string failure;
     std::string failure_detail;
+    //  Scenes a walk took for a trainer's and pressed through, as
+    //  "row step: scene" (the console's unknown-trainer handler, lab-B
+    //  2026-11-09 17:29: Mom's call, then her scene's fade missed).
+    std::vector<std::string> scenes_fought = {};
 };
 
 //  StoryStepIO on the simulation. A walk through a door or a cave mouth
@@ -276,8 +307,10 @@ public:
     virtual RouteIO& route() override{
         return m_route;
     }
+    //  A scene's dialogue fought as a trainer's is pressed through under the
+    //  walk, not its own step: noted (sim_fight()).
     virtual void fight(const std::string&) override{
-        m_sim.end_dialogue();
+        detail::sim_fight(m_sim);
     }
     virtual void walk_until_stopped(Pokemon::Direction direction, size_t tiles, const std::string& label) override;
     virtual bool run_until_map(Pokemon::Direction direction, Milliseconds limit, const std::string& map, const std::string&) override;
@@ -287,8 +320,8 @@ public:
     virtual WarpSeen run_into_door(Pokemon::Direction direction, bool run, Milliseconds timeout = Milliseconds(12000),
         Milliseconds dark_from = Milliseconds(0), const std::string& banner = "") override{
         const SimPace pace = run ? SimPace::RUN : SimPace::WALK;
-        if (false_dark() && dark_from <= SIM_FALSE_DARK && SIM_FALSE_DARK < timeout){
-            disturbed_hold(m_sim, m_noise, direction, SIM_FALSE_DARK, pace);
+        if (false_dark() && dark_from <= detail::SIM_FALSE_DARK && detail::SIM_FALSE_DARK < timeout){
+            disturbed_hold(m_sim, m_noise, direction, detail::SIM_FALSE_DARK, pace);
             return {.fade = WarpFade::BLACK};
         }
         if (disturbed_hold(m_sim, m_noise, direction, timeout, pace).move.stop != SimStop::WARP){
@@ -338,20 +371,24 @@ private:
 
     GridSim& m_sim;
     SimDisturbance* m_noise;
-    SimKnobRouteIO m_route;
+    detail::SimKnobRouteIO m_route;
     SimMisses& m_misses;
     const SimWorldKnobs& m_knobs;
     std::function<bool()> m_far_side;
     const std::string& m_step;
 };
 
+namespace detail{
+
 //  A scene's trigger the simulation fires from row `row` on, once the step
-//  `after` has run ("" from the row's start), on `map`'s `tiles`.
+//  `after` has run ("" from the row's start), on `map`'s `tiles`, while its
+//  story variable `var` holds the value it waits for.
 struct RowTrigger{
     std::string row;
     std::string after;
     std::string map;
     SimTrigger trigger;
+    std::string var = {};
 };
 
 //  When a story variable holds the value its coord events wait for: from
@@ -368,6 +405,7 @@ struct VarState{
 std::vector<VarState> story_vars();
 //  The maps' coord events whose story variable holds, as triggers.
 std::vector<RowTrigger> story_triggers();
+} // namespace detail
 
 //  The program's walking steps on the simulation, the rest stubbed: the
 //  story's action table (story_action_table()), its rows that need the
@@ -386,7 +424,7 @@ public:
         , m_io(m_sim, m_notes, m_misses, m_knobs, m_step, [this]{ return cross(); }, [this](const Pokemon::Pose& far){ cross_to(far); })
         , m_walks(m_io)
         , m_table(story_action_table(m_walks, sim_actions()))
-        , m_interrupts(story_interrupts([this](bool){ return look(); }, sim_interrupt_actions()))
+        , m_interrupts(story_interrupts([this](bool fresh){ return look(fresh); }, sim_interrupt_actions()))
     {
         if (m_knobs.clear_interrupts){
             set_interrupts(&m_interrupts);
@@ -399,17 +437,22 @@ public:
     const SimRun& result() const{
         return m_result;
     }
+    //  Every line the walks wrote, the route walker's and the leg records
+    //  ("[Leg] ...") among them.
+    const std::vector<std::string>& notes() const{
+        return m_notes;
+    }
     //  The story's actions as the simulation binds them.
     const Pokemon::StoryActionTable& actions() const{
         return m_table;
     }
     virtual void begin_attempt(const Pokemon::StoryCheckpoint& data) override{
         m_row = data.id;
-        m_start_mismatch = data.start ? off_pose(*data.start) : "";
+        m_start_mismatch = data.start ? off_pose(Pokemon::pose_of(*data.start)) : "";
         m_ran.clear();
         m_astray = false;
         m_result.rows.push_back({.row = data.id, .fades = m_misses.fades, .banners = m_misses.banners});
-        m_walks.begin_attempt(data.id);
+        m_walks.begin_attempt(data.id, data.steps);
         arm("");
     }
     virtual Pokemon::Outcome run(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
@@ -418,15 +461,15 @@ protected:
     //  A dialog that popped up and is still up stops a step that walks or
     //  talks; a step that presses through text closes it.
     virtual Pokemon::Outcome run_action(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
-    virtual Pokemon::Outcome heal(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
-    virtual Pokemon::Outcome new_game(Pokemon::RunState&, const Pokemon::StoryStep&) override{ return stub(); }
-    virtual Pokemon::Outcome options(Pokemon::RunState&, const Pokemon::StoryStep&) override{ return stub(); }
-    virtual Pokemon::Outcome answer(Pokemon::RunState&, const Pokemon::StoryStep&) override{ return stub(); }
-    virtual Pokemon::Outcome battle(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
-    virtual Pokemon::Outcome train(Pokemon::RunState&, const Pokemon::StoryStep&) override{ return stub(); }
-    virtual Pokemon::Outcome shop(Pokemon::RunState&, const Pokemon::StoryStep&) override{ return stub(); }
-    virtual Pokemon::Outcome save(Pokemon::RunState&, const Pokemon::StoryStep&) override{ return stub(); }
-    virtual Pokemon::Outcome game(Pokemon::RunState&, const Pokemon::StoryStep&) override{ return stub(); }
+    virtual Pokemon::Outcome heal(Pokemon::RunState& state, const Pokemon::StoryStep& step);
+    virtual Pokemon::Outcome new_game(Pokemon::RunState&, const Pokemon::StoryStep&){ return stub(); }
+    virtual Pokemon::Outcome options(Pokemon::RunState&, const Pokemon::StoryStep&){ return stub(); }
+    virtual Pokemon::Outcome answer(Pokemon::RunState&, const Pokemon::StoryStep&){ return stub(); }
+    virtual Pokemon::Outcome battle(Pokemon::RunState& state, const Pokemon::StoryStep& step);
+    virtual Pokemon::Outcome train(Pokemon::RunState&, const Pokemon::StoryStep&){ return stub(); }
+    virtual Pokemon::Outcome shop(Pokemon::RunState&, const Pokemon::StoryStep&){ return stub(); }
+    virtual Pokemon::Outcome save(Pokemon::RunState&, const Pokemon::StoryStep&){ return stub(); }
+    virtual Pokemon::Outcome game(Pokemon::RunState&, const Pokemon::StoryStep&){ return stub(); }
 
 private:
     //  A failed step fails the run as it threw: the simulation has no save
@@ -441,13 +484,22 @@ private:
     //  A step the simulation does not play: its dialogue opened and closed.
     Pokemon::Outcome stub();
     StoryBoundActions sim_actions();
-    //  The screen between steps: the dialog that popped up, if one did.
-    Pokemon::ScreenLook look();
+    //  The screen between steps: the dialog that popped up, if one did; a
+    //  battle's opening, its battle on the OPENING_LOOKS-th look. `fresh`
+    //  starts a new look.
+    Pokemon::ScreenLook look(bool fresh);
+    //  What the knobs put on the screen before `step`: a dialog that pops
+    //  up, a battle's opening still playing.
+    void show_before(const Pokemon::StoryStep& step);
     StoryInterruptActions sim_interrupt_actions();
     const StoryWorld* sim_world(const std::string& map) const;
     SimWorld setup(const StoryWorld* world) const;
     void arm(const std::string& after);
     bool sync(const Pokemon::Pose& pose, const StoryWorld* on = nullptr);
+    //  Puts a trigger on walk `step`'s last tiles (SimWorldKnobs::scene_at_walk_end).
+    void start_scene_at_end(const Pokemon::StoryStep& step);
+    //  Puts the player where SimWorldKnobs::lands says `step` leaves them, if it says.
+    void land(const std::string& step);
     bool cross();
     bool cross_to(const Pokemon::Pose& far);
     std::vector<SimWanderer> wanderers(const StoryWorld& world) const;
@@ -471,16 +523,23 @@ private:
     SimStepGuard m_guard;
     Pokemon::StoryActionTable m_table;
     Pokemon::StoryInterrupts m_interrupts;
+    //  The scenes fought so far that SimRun::scenes_fought has.
+    size_t m_scenes_fought = 0;
     //  A dialog popped up (SimWorldKnobs::dialog_before) and is still up;
     //  it rose since the last look.
     bool m_dialog_up = false;
     bool m_dialog_rose = false;
+    //  A battle's opening is playing before this step
+    //  (SimWorldKnobs::battle_opening_before).
+    bool m_battle_opening = false;
+    //  Looks at the opening so far, from the fresh one.
+    size_t m_opening_looks = 0;
     //  The planner's worlds with sim_people() on them, by world and who.
     mutable std::map<std::pair<const StoryWorld*, std::string>, std::unique_ptr<StoryWorld>> m_peopled;
     //  The steps of this row that have run.
     std::set<std::string> m_ran;
     std::string m_row;
-    std::vector<RowTrigger> m_armed;
+    std::vector<detail::RowTrigger> m_armed;
     //  Where the step running now ends, if it says: a door's far side.
     std::optional<Pokemon::Pose> m_far;
     //  Why the player is not on this row's start, or "".
@@ -492,6 +551,10 @@ private:
     //  Whether a walk slid on (SimSlide), so the player is not where the
     //  program thinks, until a step's pose_after puts them right.
     bool m_astray = false;
+    //  Whether a step left the player off its pose_after (SimWorldKnobs::lands),
+    //  so the walks go on from there, checked, until a step's pose_after
+    //  puts them right.
+    bool m_misplaced = false;
     SimRun m_result;
 };
 
@@ -503,6 +566,8 @@ Pokemon::SegmentReport run_rows_on(
 );
 //  Runs `range` of the table on the simulation, stopping at the first failure.
 UnitTestResult run_rows(Logger& logger, const Pokemon::SegmentRange& range);
+namespace detail{
+
 //  The table with row `row`'s step of `step`'s name replaced by `step`.
 std::vector<StoryCheckpoint> table_with(const std::string& row, const Pokemon::StoryStep& step);
 //  Whether the run ended on one of `pose`'s tiles.
@@ -512,6 +577,7 @@ std::string end_of(const SimRun& run);
 //  Each row's steps the simulation did not play, a line a row:
 //  "01.03: 2 stubbed: save, gym_until_roark_beaten".
 std::string stub_report(const SimRun& run);
+} // namespace detail
 
 
 

@@ -21,6 +21,8 @@
 #include "Data/PokemonBDSP_AutoStory_RouteRecords.h"
 #include "Data/PokemonBDSP_AutoStory_StoryMaps.h"
 #include "PokemonBDSP_AutoStory_StoryMaps_Tests.h"
+#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
+#include "PokemonBDSP_AutoStory_StoryTable.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -30,6 +32,7 @@ namespace PokemonBDSP{
 namespace{
 
 using Pokemon::Direction;
+using Pokemon::StoryStep;
 using Pokemon::TileKind;
 using Pokemon::TilePos;
 
@@ -84,34 +87,62 @@ UnitTestResult test_route202_catch_grass(Logger& logger){
         return true;
 }
 
-//  00.04's way to Sandgem's Pokemon Center ends below the Center's sign,
-//  walking north into it, then taps west along the doors' row to below the
-//  door: the row must be open there, the door straight north of where the
-//  taps end, and nothing else (a sign, the Mart's door) on the way.
+//  The table's step `name` in row `row`.
+const StoryStep& table_step(const std::string& row, const std::string& name){
+    for (const StoryCheckpoint& checkpoint : story_checkpoints()){
+        for (const StoryStep& step : checkpoint.steps){
+            if (checkpoint.id == row && step.name == name){
+                return step;
+            }
+        }
+    }
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No step " + name + " in " + row);
+}
+
+//  00.04b's way to Sandgem's Pokemon Center from the road's last row,
+//  wherever on it the run in stopped (lab-B 2026-11-09 20:09: two columns
+//  short): west to the row's wall and south onto the Center's sign, the
+//  table's walls, then its taps round the sign to below the door, each
+//  open, the door straight north of where they end.
 UnitTestResult test_sandgem_center_approach(Logger& logger){
         const StoryWorld town = alone("SandgemTown");
         const TilePos sign = map_point("SandgemTown", "pokemon_center_sign");
         const TilePos door = map_point("SandgemTown", "pokemon_center_door");
-        if (town.tile(sign) != TileKind::SIGN || town.tile(door) != TileKind::DOOR || door.y != sign.y || door.x >= sign.x){
-            return std::format("The Center's sign {} and door {} are not a sign and a door west of it on one row.",
+        const TilePos entry = map_point("SandgemTown", "route_202_entry_stop");
+        if (town.tile(sign) != TileKind::SIGN || town.tile(door) != TileKind::DOOR){
+            return std::format("The Center's sign {} and door {} are not a sign and a door.",
                 Pokemon::to_string(sign), Pokemon::to_string(door));
         }
-        TilePos pos = sign.next(Direction::SOUTH);
-        for (int tap = 0; tap < sign.x - door.x; tap++){
-            const std::optional<TilePos> next = step(town, pos, Direction::WEST);
-            if (!next){
-                return "West from " + Pokemon::to_string(pos) + " is blocked.";
+        const StoryStep& walls = table_step("00.04b", "above_center_sign");
+        const StoryStep& taps = table_step("00.04b", "below_center_door");
+        const auto& walls_legs = Pokemon::story_arg<std::vector<Pokemon::StoryLeg>>(walls.args, "legs");
+        const auto& taps_legs = Pokemon::story_arg<std::vector<Pokemon::StoryLeg>>(taps.args, "legs");
+        const TilePos above_sign = sign.next(Direction::NORTH);
+        for (TilePos start = entry; standable(town, start); start = start.next(Direction::WEST)){
+            TilePos pos = start;
+            for (const Pokemon::StoryLeg& leg : walls_legs){
+                pos = slide_to_wall(town, pos, leg.direction).stop;
             }
-            if (town.tile(next->next(Direction::NORTH)) != TileKind::WALL && *next != door.next(Direction::SOUTH)){
-                return "Above " + Pokemon::to_string(*next) + " is not the Center's wall.";
+            if (!(pos == above_sign)){
+                return std::format("From {} the walls end at {}, not above the sign {}.",
+                    Pokemon::to_string(start), Pokemon::to_string(pos), Pokemon::to_string(sign));
             }
-            pos = *next;
+        }
+        TilePos pos = above_sign;
+        for (const Pokemon::StoryLeg& leg : taps_legs){
+            for (int tap = 0; tap < leg.tiles; tap++){
+                const std::optional<TilePos> next = step(town, pos, leg.direction);
+                if (!next){
+                    return std::format("{} from {} is blocked.", Pokemon::direction_name(leg.direction), Pokemon::to_string(pos));
+                }
+                pos = *next;
+            }
         }
         if (!(pos == door.next(Direction::SOUTH))){
             return std::format("The taps end at {}, not below the door {}.", Pokemon::to_string(pos), Pokemon::to_string(door));
         }
-        logger.log(std::format("Sandgem: below the sign {}, {} taps west to below the door {}.",
-            Pokemon::to_string(sign.next(Direction::SOUTH)), sign.x - door.x, Pokemon::to_string(door)));
+        logger.log(std::format("Sandgem: from the road's last row by walls to {}, {} tap legs to below the door {}.",
+            Pokemon::to_string(above_sign), taps_legs.size(), Pokemon::to_string(door)));
         return true;
 }
 
@@ -297,7 +328,7 @@ const StoryMapsCase STORY_MAPS_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"Sandgem Town: below the Center's sign to below its door", test_sandgem_center_approach},
+        .input = {"Sandgem Town: from the road's last row by walls to below the Center's door", test_sandgem_center_approach},
         .expectation = {},
     },
     {

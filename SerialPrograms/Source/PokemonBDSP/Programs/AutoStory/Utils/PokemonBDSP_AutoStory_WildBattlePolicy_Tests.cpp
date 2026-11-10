@@ -49,7 +49,7 @@ private:
     size_t m_fights = 0;
 };
 
-const char* result_name(WildEscapeResult result){
+std::string_view result_name(WildEscapeResult result){
     switch (result){
     case WildEscapeResult::ESCAPED:
         return "ESCAPED";

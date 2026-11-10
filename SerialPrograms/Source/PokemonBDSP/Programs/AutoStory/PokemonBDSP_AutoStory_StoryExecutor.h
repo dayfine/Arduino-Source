@@ -1,5 +1,7 @@
 /*  BDSP AutoStory - Story executor
  *
+// code-health: allow header_symbols -- BDSP story executor and checkpoint execution primitives
+ *
  *  From: https://github.com/PokemonAutomation/
  *
  *  BDSP's way of doing the shared story steps
@@ -29,6 +31,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
@@ -36,7 +39,10 @@
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryWorld.h"
 #include "Pokemon/AutoStory/Pokemon_StoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
-#include "Pokemon/AutoStory/Pokemon_StorySteps.h"
+#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
+#include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RoutePlanner.h"
 #include "PokemonBDSP_AutoStory_StoryActions.h"
 #include "PokemonBDSP_AutoStory_StoryInterrupts.h"
@@ -84,10 +90,15 @@ struct StoryEnv{
 };
 
 
-//  The plan costs a ROUTE step's variant names: "" the route costs,
-//  "town" town_plan_costs(), "robust" the planner's defaults, "line"
-//  waypoint_plan_costs() (a stretch of a line a human walked). Nothing for
-//  another name.
+//  The variant of a ROUTE step whose target is the next scene's trigger:
+//  the scene starts there and stops the walk, as a wall would (00.04's
+//  Mom's call on (6, 9)). It plans with the route costs.
+inline constexpr std::string_view ROUTE_ONTO_TRIGGER = "trigger";
+
+//  The plan costs a ROUTE step's variant names: "" and ROUTE_ONTO_TRIGGER
+//  the route costs, "town" town_plan_costs(), "robust" the planner's
+//  defaults, "line" waypoint_plan_costs() (a stretch of a line a human
+//  walked). Nothing for another name.
 std::optional<RobustPlanCosts> story_route_costs(const std::string& variant);
 
 
@@ -109,6 +120,7 @@ public:
     virtual bool stops_on_failure(const Pokemon::StoryStep& step) const override;
     virtual void on_failure(const Pokemon::StoryStep& step, const OperationFailedException& error) override;
     virtual void on_interrupt(const Pokemon::StoryStep& step, const Pokemon::InterruptCheck& check) override;
+    virtual void on_screen(const Pokemon::StoryStep& step, const Pokemon::ScreenSettle& screen) override;
 
 private:
     VideoStream& m_stream;
@@ -147,23 +159,23 @@ protected:
         return m_checkpoint;
     }
     //  The intro of a new game, from the title screen to the bedroom.
-    virtual Pokemon::Outcome new_game(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
+    Pokemon::Outcome new_game(Pokemon::RunState& state, const Pokemon::StoryStep& step);
     //  verify_tutorial_settings(): fast text, Autosave off.
-    virtual Pokemon::Outcome options(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
+    Pokemon::Outcome options(Pokemon::RunState& state, const Pokemon::StoryStep& step);
     //  A for YES, B for NO, once the question's box shows.
-    virtual Pokemon::Outcome answer(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
+    Pokemon::Outcome answer(Pokemon::RunState& state, const Pokemon::StoryStep& step);
     //  A trainer's text opens (or has) and ends in a battle, fought with the
     //  best move; one lost fails the step unless `may_lose`. Variant
     //  "doubles" for a tag battle.
-    virtual Pokemon::Outcome battle(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
+    Pokemon::Outcome battle(Pokemon::RunState& state, const Pokemon::StoryStep& step);
     //  `battles` wild battles in the grass we stand in, with the best move.
-    virtual Pokemon::Outcome train(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
+    Pokemon::Outcome train(Pokemon::RunState& state, const Pokemon::StoryStep& step);
     //  In front of a Pokemon Center, its lit doorway on screen: in, the
     //  nurse, and out (heal_at_pokemon_center()).
-    virtual Pokemon::Outcome heal(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
-    virtual Pokemon::Outcome save(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
+    Pokemon::Outcome heal(Pokemon::RunState& state, const Pokemon::StoryStep& step);
+    Pokemon::Outcome save(Pokemon::RunState& state, const Pokemon::StoryStep& step);
     //  The event its variant names (story_events()).
-    virtual Pokemon::Outcome game(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
+    Pokemon::Outcome game(Pokemon::RunState& state, const Pokemon::StoryStep& step);
 
 private:
     StoryBoundActions console_actions();
@@ -180,9 +192,13 @@ private:
     //    unless the step gives one. Variant "counted_wall": its one leg walks
     //    to the wall, waiting out anyone walking about in the way, and fails
     //    when the tiles walked are far off the map's from the step's start.
+    //    Variant "measured": each leg in taps; the tiles of the step's start
+    //    whose taps the map lets move as many as moved are where we are.
     //  - STEP: one D-pad step `direction`, turning first: onto a scene's
     //    trigger or into a door. Variant "to_banner": one tap into a cave
-    //    mouth, then wait for pose_after's map's location banner.
+    //    mouth, then wait for pose_after's map's location banner. Variant
+    //    "or_legs": into a door, and with no fade, the step's legs onto the
+    //    door's tile and into it again.
     //  - TALK: A at what we face; a dialogue must open.
     //  - MASH: a dialogue opens (or has), then B through it to the overworld;
     //    variant "a": A through it, for lines that give an item.

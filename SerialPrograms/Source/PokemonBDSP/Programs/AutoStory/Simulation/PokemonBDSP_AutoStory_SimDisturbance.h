@@ -101,8 +101,8 @@ DisturbedHold disturbed_hold(GridSim& sim, SimDisturbance* noise, Pokemon::Direc
 //  GridSimRouteIO, disturbed by `noise` (none: GridSimRouteIO itself).
 class DisturbedRouteIO : public GridSimRouteIO{
 public:
-    DisturbedRouteIO(GridSim& sim, std::vector<std::string>& notes, SimDisturbance* noise)
-        : GridSimRouteIO(sim, notes)
+    DisturbedRouteIO(GridSim& sim, std::vector<std::string>& notes, SimDisturbance* noise, SimGrassBattles grass = {})
+        : GridSimRouteIO(sim, notes, {}, {}, grass)
         , m_sim(sim)
         , m_notes(notes)
         , m_noise(noise)

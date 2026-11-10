@@ -10,13 +10,17 @@
 #include <array>
 #include <cctype>
 #include <cmath>
+#include <string_view>
 #include <vector>
 #include "Common/Cpp/Filesystem/Filesystem.h"
+#include "Common/Cpp/Json/JsonObject.h"
+#include "Common/Cpp/Json/JsonValue.h"
 #include "Common/Cpp/PrettyPrint.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonTools/OCR/OCR_RawTesseractOCR.h"
+#include "CommonTools/OCR/OCR_SmallDictionaryMatcher.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP_AutoStory_BattleMoves.h"
 
@@ -27,24 +31,105 @@ namespace PokemonBDSP{
 
 namespace{
 
-// Early moves the starters and their foes have, as type, power and
-// most PP. A status move has power 0.
+//  How close a read must come to a move's name, as the other move readers.
+constexpr double MOVE_NAME_MAX_LOG10P = -1.30;
+constexpr double MOVE_NAME_LOG10P_SPREAD = 0.50;
+
+//  Early moves the starters and their foes have, by the slug of the move
+//  name dictionary, as type, power and most PP. A status move has power 0.
 struct KnownMove{
-    const char* name;
+    std::string slug;
     const char* type;
     int power;
     int pp;
 };
 const KnownMove KNOWN_MOVES[] = {
     {"pound", "normal", 40, 35}, {"tackle", "normal", 40, 35}, {"scratch", "normal", 40, 35},
-    {"quickattack", "normal", 40, 30}, {"headbutt", "normal", 70, 15},
-    {"watergun", "water", 40, 25}, {"bubble", "water", 40, 30}, {"bubblebeam", "water", 65, 20},
-    {"ember", "fire", 40, 25}, {"flamewheel", "fire", 60, 25}, {"machpunch", "fighting", 40, 30},
-    {"absorb", "grass", 20, 25}, {"razorleaf", "grass", 55, 25}, {"bite", "dark", 60, 25},
-    {"peck", "flying", 35, 35}, {"wingattack", "flying", 60, 35}, {"metalclaw", "steel", 50, 35},
-    {"growl", "normal", 0, 40}, {"leer", "normal", 0, 30}, {"tailwhip", "normal", 0, 30},
-    {"withdraw", "water", 0, 40}, {"taunt", "dark", 0, 20},
+    {"quick-attack", "normal", 40, 30}, {"headbutt", "normal", 70, 15},
+    {"water-gun", "water", 40, 25}, {"bubble", "water", 40, 30}, {"bubble-beam", "water", 65, 20},
+    {"ember", "fire", 40, 25}, {"flame-wheel", "fire", 60, 25}, {"mach-punch", "fighting", 40, 30},
+    {"absorb", "grass", 20, 25}, {"razor-leaf", "grass", 55, 25}, {"bite", "dark", 60, 25},
+    {"peck", "flying", 35, 35}, {"pluck", "flying", 60, 20}, {"wing-attack", "flying", 60, 35},
+    {"metal-claw", "steel", 50, 35},
+    {"growl", "normal", 0, 40}, {"leer", "normal", 0, 30}, {"tail-whip", "normal", 0, 30},
+    {"withdraw", "water", 0, 40}, {"taunt", "dark", 0, 20}, {"charm", "fairy", 0, 20},
+    {"curse", "ghost", 0, 10},
 };
+
+const KnownMove* known_move(std::string_view slug){
+    for (const KnownMove& move : KNOWN_MOVES){
+        if (slug == move.slug){
+            return &move;
+        }
+    }
+    return nullptr;
+}
+
+//  What each starter has in each slot as BDSP teaches it, learnt in this
+//  order up to level 13: slot 1 is a Normal attack, slot 2 a status move,
+//  slot 3 the starter's own-type attack, slot 4 either.
+const std::vector<std::vector<std::string_view>> STARTER_SLOTS = {
+    {"tackle", "scratch", "pound"},
+    {"withdraw", "leer", "growl"},
+    {"absorb", "ember", "water-gun"},
+    {"razor-leaf", "taunt", "charm"},
+};
+
+//  A slot whose name was not read, from its PP, which rules out any move
+//  with less most PP, among what the starters have in that slot (any known
+//  move if none of those is left): a known move when every move left is an
+//  attack (the weakest) or every one a status move.
+const KnownMove* guess_unread_move(size_t slot, int pp){
+    std::vector<const KnownMove*> left;
+    if (slot < STARTER_SLOTS.size()){
+        for (std::string_view slug : STARTER_SLOTS[slot]){
+            left.push_back(known_move(slug));
+        }
+    }
+    auto pp_rules_out = [&](const KnownMove* move){ return pp > move->pp; };
+    std::erase_if(left, pp_rules_out);
+    if (left.empty()){
+        for (const KnownMove& move : KNOWN_MOVES){
+            left.push_back(&move);
+        }
+        std::erase_if(left, pp_rules_out);
+    }
+    if (left.empty()){
+        return nullptr;
+    }
+    const KnownMove* weakest = left[0];
+    for (const KnownMove* move : left){
+        if ((move->power > 0) != (weakest->power > 0)){
+            return nullptr;
+        }
+        if (move->power < weakest->power){
+            weakest = move;
+        }
+    }
+    return weakest;
+}
+
+//  Every language's names of the known moves, from the move name dictionary.
+JsonObject known_move_names(){
+    const JsonValue all = load_json_file(RESOURCE_PATH() + "PokemonSV/PokemonMovesOCR.json");
+    JsonObject known;
+    for (const auto& [language, names] : all.to_object_throw()){
+        JsonObject names_known;
+        for (const KnownMove& move : KNOWN_MOVES){
+            const JsonValue* name = names.to_object_throw().get_value(move.slug);
+            if (name){
+                names_known[move.slug] = name->clone();
+            }
+        }
+        known[language] = std::move(names_known);
+    }
+    return known;
+}
+
+const OCR::SmallDictionaryMatcher& move_name_matcher(){
+    static const OCR::SmallDictionaryMatcher matcher(known_move_names());
+    return matcher;
+}
 
 //  The box's text, whatever differs from its median colour by more than
 //  120, as black on white with an 8-pixel margin.
@@ -164,11 +249,11 @@ std::pair<size_t, size_t> tallest_text_band(const GrayBox& box){
     return {band_top, band_bottom};
 }
 
-// The name is dark text on a light button (grey, or light blue under the
-// cursor). Take the box right of the type icon and left of the PP, tall
-// enough for a status move's name, which sits lower: it has no "Effective"
-// line under it. Read as lower-case letters; nothing where there is no
-// reader for the game's language (an unread move counts as a plain attack).
+//  The name is dark text on a light button (grey, or light blue under the
+//  cursor). Take the box right of the type icon and left of the PP, tall
+//  enough for a status move's name, which sits lower: it has no "Effective"
+//  line under it. Returns the slug of the known move it reads as, in the
+//  story's language; "" if none.
 std::string read_move_name(const ImageViewRGB32& screen, const ImageFloatBox& button){
     const ImageFloatBox name_box{button.x + button.width * 0.17, button.y + button.height * 0.08,
         button.width * 0.53, button.height * 0.80};
@@ -187,45 +272,75 @@ std::string read_move_name(const ImageViewRGB32& screen, const ImageFloatBox& bu
             }
         }
     }
-    std::string name;
-    for (unsigned char ch : story_reads_text() ? OCR::tesseract_ocr_read(story_language(), text) : std::string()){
-        if (std::isalpha(ch)){
-            name.push_back((char)std::tolower(ch));
-        }
+    const OCR::StringMatchResult read = move_name_matcher().match_substring_from_image(
+        nullptr, story_language(), text, MOVE_NAME_MAX_LOG10P, MOVE_NAME_LOG10P_SPREAD);
+    if (read.results.size() != 1){
+        return "";
     }
-    return name;
+    return read.results.begin()->second.token;
 }
 
-//  The longest known move whose name appears in `name`: "bubblebeam" over "bubble".
-const KnownMove* known_move(const std::string& name){
-    const KnownMove* known = nullptr;
-    for (const KnownMove& move : KNOWN_MOVES){
-        if (name.find(move.name) != std::string::npos &&
-            (!known || std::string(move.name).size() > std::string(known->name).size())){
-            known = &move;
-        }
-    }
-    return known;
-}
-
-//  The move in slot `i`: its read name, and what it is if known. A slot
-//  read well once keeps its name when a later read fails.
-std::pair<std::string, const KnownMove*> identify_move(const ImageViewRGB32& screen, const ImageFloatBox& button, size_t i){
+//  `slug` read in slot `i`, or what the slot read last time if this read
+//  failed.
+std::string remember_move(std::string slug, size_t i){
     static std::array<std::string, 4> last_read;
-    std::string name = read_move_name(screen, button);
-    const KnownMove* known = known_move(name);
-    if (!known){
-        name = last_read[i];
-        known = known_move(name);
+    if (slug.empty()){
+        return last_read[i];
     }
-    if (known){
-        last_read[i] = known->name;
-    }
-    return {name, known};
+    last_read[i] = slug;
+    return slug;
 }
 
 } // namespace
 
+
+std::string MoveSlot::describe(size_t slot) const{
+    const KnownMove* known = known_move(slug);
+    const KnownMove* guess = known ? nullptr : guess_unread_move(slot, pp);
+    const std::string what = known
+        ? std::string(known->slug) + " (" + known->type + ", " + std::to_string(known->power) + ")"
+        : guess
+            ? std::string("unread, ") + (guess->power > 0 ? "an attack" : "a status move") + " by slot and PP"
+            : "unread";
+    return what + ", PP left " + (pp < 0 ? std::string("unread") : std::to_string(pp));
+}
+
+size_t choose_move(const std::vector<MoveSlot>& slots){
+    size_t best = 0;
+    int best_score = -1;
+    for (size_t i = 0; i < slots.size(); i++){
+        // A move with no PP left cannot be chosen; the game says so and
+        // keeps the menu up.
+        if (slots[i].pp == 0){
+            continue;
+        }
+        const KnownMove* known = known_move(slots[i].slug);
+        if (!known){
+            known = guess_unread_move(i, slots[i].pp);
+        }
+        // A move that might be either counts below any attack known for
+        // sure, and an earlier one first: slot 1 is an attack for every
+        // starter.
+        const int score = known ? known->power * 2 + (std::string_view(known->type) != "normal" ? 1 : 0) : 1;
+        if (score > best_score){
+            best_score = score;
+            best = i;
+        }
+    }
+    return best + 1;
+}
+
+std::vector<MoveSlot> read_move_menu(const ImageViewRGB32& screen, const BattleMoveMenuState& moves){
+    std::vector<MoveSlot> slots;
+    for (size_t i = 0; i < moves.move_count; i++){
+        MoveSlot slot;
+        slot.slug = read_move_name(screen, moves.buttons[i]);
+        const KnownMove* known = known_move(slot.slug);
+        slot.pp = read_move_pp(screen, moves.buttons[i], known ? known->pp : 0);
+        slots.push_back(std::move(slot));
+    }
+    return slots;
+}
 
 size_t pick_best_move(VideoStream& stream, const ImageViewRGB32& screen,
     const BattleMoveMenuState& moves, const std::string& label){
@@ -233,42 +348,15 @@ size_t pick_best_move(VideoStream& stream, const ImageViewRGB32& screen,
     const std::string folder = SCREENSHOTS_PATH() + "AutoStory/moves/";
     Filesystem::create_directories(Filesystem::Path(folder));
     screen.save(folder + now_to_filestring() + "-" + label + ".png");
-    size_t best = 1;
-    int best_score = -1;
-    bool any_attack = false;
-    size_t last_not_status = 1;
-    for (size_t i = 0; i < moves.move_count; i++){
-        const auto [name, known] = identify_move(screen, moves.buttons[i], i);
-        // A move with no PP left cannot be chosen; the game says so and
-        // keeps the menu up.
-        const int pp = read_move_pp(screen, moves.buttons[i], known ? known->pp : 0);
-        stream.log("[" + label + "] Move " + std::to_string(i + 1) + " PP left: " + (pp < 0 ? std::string("unread") : std::to_string(pp)) + ".");
-        if (pp == 0){
-            continue;
-        }
-        // An unreadable move counts as a plain attack, ahead of known
-        // status moves.
-        const int score = known ? known->power * 2 + (std::string(known->type) != "normal" ? 1 : 0) : 40 * 2 - 1;
-        stream.log("[" + label + "] Move " + std::to_string(i + 1) + " reads \"" + name + "\"" +
-            (known ? std::string(" = ") + known->name + " (" + known->type + ", " + std::to_string(known->power) + ")" : " (unknown)") + ".");
-        if (score > best_score){
-            best_score = score;
-            best = i + 1;
-        }
-        any_attack = any_attack || (known && known->power > 0);
-        if (!known || known->power > 0){
-            last_not_status = i + 1;
-        }
+    std::vector<MoveSlot> slots = read_move_menu(screen, moves);
+    for (size_t i = 0; i < slots.size(); i++){
+        slots[i].slug = remember_move(std::move(slots[i].slug), i);
+        stream.log("[" + label + "] Move " + std::to_string(i + 1) + ": " + slots[i].describe(i) + ".");
     }
-    // No attack read: the newest move is the starter's own-type attack
-    // (Water Gun, Ember, Absorb), unless it is a status move.
-    if (!any_attack){
-        best = last_not_status;
-    }
+    const size_t best = choose_move(slots);
     stream.log("[" + label + "] Best move: " + std::to_string(best) + ".");
     return best;
 }
-
 
 
 } // namespace PokemonBDSP

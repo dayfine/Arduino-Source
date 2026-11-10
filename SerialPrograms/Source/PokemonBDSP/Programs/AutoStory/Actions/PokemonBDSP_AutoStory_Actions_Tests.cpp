@@ -21,7 +21,9 @@
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/Logging/Logger.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryMaps.h"
+#include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_BattleMenuReader.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
+#include "PokemonBDSP_AutoStory_BattleMoves.h"
 #include "PokemonBDSP_AutoStory_Center.h"
 #include "PokemonBDSP_AutoStory_NewGame.h"
 #include "PokemonBDSP_AutoStory_Actions_Tests.h"
@@ -255,7 +257,7 @@ UnitTestResult test_intro_gate(Logger&){
 //  relative to the player, who is in the middle of the screen.
 UnitTestResult test_lit_doorway_screenshots(Logger& logger){
     struct Case{
-        const char* file;
+        std::string file;
         double tiles_across_min;
         double tiles_across_max;
         double rows_up_min;
@@ -320,7 +322,7 @@ UnitTestResult test_save_screen_location(Logger& logger){
 //  the walk kept lining up with it (runs 2 and 3).
 UnitTestResult test_pokemon_center_inside(Logger& logger){
     struct Case{
-        const char* file;
+        std::string file;
         bool inside;
         bool doorway;
     };
@@ -368,7 +370,7 @@ UnitTestResult test_pokemon_center_inside(Logger& logger){
 //  at sunset, the ground as orange as the Center's back wall.
 UnitTestResult test_pokemon_center_counter(Logger& logger){
     struct Case{
-        const char* file;
+        std::string file;
         bool inside;
     };
     const Case cases[] = {
@@ -425,6 +427,80 @@ UnitTestResult test_school_lamp(Logger& logger){
         if (across < c.min || across > c.max){
             return std::string(c.file) + ": door " + std::to_string(across) + " tiles across, expected " +
                 std::to_string(c.min) + " to " + std::to_string(c.max) + ".";
+        }
+    }
+    return true;
+}
+
+
+//  The move picked from names and PP as read. lab-B 2026-11-09, French:
+//  no name read, Piplup's Pound at 35 PP and Growl at 22 PP, and the old
+//  "newest move that is not a status move" fallback used Growl until the
+//  training gave up after 25 turns.
+UnitTestResult test_choose_move(Logger&){
+    struct Case{ std::string_view name; std::vector<MoveSlot> slots; size_t best; };
+    const Case cases[] = {
+        {"no name read, PP 35 and 22", {{"", 35}, {"", 22}}, 1},
+        {"no name read, PP 35 and 30", {{"", 35}, {"", 30}}, 1},
+        {"no name or PP read", {{"", -1}, {"", -1}}, 1},
+        {"Scratch and Leer", {{"scratch", 35}, {"leer", 30}}, 1},
+        {"Pound, Growl, Water Gun and Charm", {{"pound", 35}, {"growl", 40}, {"water-gun", 10}, {"charm", 20}}, 3},
+        {"Water Gun out of PP", {{"pound", 35}, {"growl", 40}, {"water-gun", 0}, {"charm", 20}}, 1},
+        {"slot 1 unread at 38 PP: a status move", {{"", 38}, {"", 40}, {"", 20}}, 3},
+        {"Growl unread, Tackle read", {{"", 40}, {"tackle", 35}}, 2},
+    };
+    for (const Case& c : cases){
+        const size_t best = choose_move(c.slots);
+        if (best != c.best){
+            return std::string(c.name) + ": picked move " + std::to_string(best) + ", expected " + std::to_string(c.best) + ".";
+        }
+    }
+    return true;
+}
+
+//  Move menus saved on lab-B (SCREENSHOTS_PATH()/AutoStory/moves/), read in
+//  the game's language. The French ones read nothing before the names came
+//  from the move name dictionary.
+UnitTestResult test_move_menu_screenshots(Logger& logger){
+    struct Case{
+        std::string file;
+        Language language;
+        std::vector<MoveSlot> slots;
+        size_t best;
+    };
+    const Case cases[] = {
+        {"PokemonBDSP/AutoStory/MoveMenuFrenchPoundGrowl-20261109-192734.png", Language::French,
+            {{"pound", 35}, {"growl", 40}}, 1},
+        {"PokemonBDSP/AutoStory/MoveMenuFrenchPoundGrowl16-20261109-193035.png", Language::French,
+            {{"pound", 35}, {"growl", 16}}, 1},
+        {"PokemonBDSP/AutoStory/MoveMenuEnglishPiplup-20261108-181435.png", Language::English,
+            {{"pound", 35}, {"growl", 40}, {"water-gun", 10}, {"charm", 20}}, 3},
+    };
+    const Language story = story_language();
+    for (const Case& c : cases){
+        const std::string path = UNIT_TEST_RESOURCE_PATH() + c.file;
+        if (!Filesystem::is_regular_file(path)){
+            return UnitTestResult(UnitTestResult::SKIPPED, "Screenshot not found: " + path);
+        }
+        const ImageRGB32 screen(path);
+        set_story_language(c.language);
+        const std::vector<MoveSlot> slots = read_move_menu(screen, detect_battle_move_menu(screen));
+        set_story_language(story);
+        std::string read;
+        for (size_t i = 0; i < slots.size(); i++){
+            read += " [" + slots[i].describe(i) + "]";
+        }
+        logger.log(std::string(c.file) + ":" + read);
+        if (slots.size() != c.slots.size()){
+            return std::string(c.file) + ": " + std::to_string(slots.size()) + " moves, expected " + std::to_string(c.slots.size()) + ".";
+        }
+        for (size_t i = 0; i < slots.size(); i++){
+            if (slots[i].slug != c.slots[i].slug || slots[i].pp != c.slots[i].pp){
+                return std::string(c.file) + ": move " + std::to_string(i + 1) + " read as" + read + ".";
+            }
+        }
+        if (choose_move(slots) != c.best){
+            return std::string(c.file) + ": picked move " + std::to_string(choose_move(slots)) + ", expected " + std::to_string(c.best) + ".";
         }
     }
     return true;
@@ -504,6 +580,14 @@ const AutoStoryActionsCase AUTO_STORY_ACTIONS_CASES[] = {
     },
     {
         .input = {"Jubilife School lamp", test_school_lamp},
+        .expectation = {},
+    },
+    {
+        .input = {"battle moves: the pick from names and PP", test_choose_move},
+        .expectation = {},
+    },
+    {
+        .input = {"battle moves: move menu screenshots in each language", test_move_menu_screenshots},
         .expectation = {},
     },
 };
