@@ -15,6 +15,7 @@
  *  walk's moved chunks and held time), where the leg ended and how that is
  *  known, and what interrupted it.
  *
+// code-health: allow header_symbols -- leg trace diagnostic models and route execution logging types
  */
 
 #ifndef PokemonAutomation_Pokemon_LegTrace_H
@@ -35,7 +36,7 @@ namespace Pokemon{
 
 
 //  Prefix tag of a leg record's log line.
-inline constexpr const char* LEG_TRACE_TAG = "[Leg] ";
+inline constexpr std::string_view LEG_TRACE_TAG = "[Leg] ";
 
 //  How a leg is planned to end.
 enum class LegEndKind{
@@ -44,7 +45,7 @@ enum class LegEndKind{
     TILE,   //  counted taps onto an exact tile
 };
 //  "open", "wall", "tile".
-const char* leg_end_kind_name(LegEndKind kind);
+std::string_view leg_end_kind_name(LegEndKind kind);
 
 //  How the end of a leg is known.
 enum class LegEndKnown{
@@ -57,7 +58,7 @@ enum class LegEndKnown{
     UNKNOWN,        //  not known: the leg was cut off
 };
 //  "wall", "fade", "dialogue", "counted", "dead_reckoned", "seen", "unknown".
-const char* leg_end_known_name(LegEndKnown known);
+std::string_view leg_end_known_name(LegEndKnown known);
 
 //  What stopped or delayed a leg on the way.
 enum class LegInterrupt{
@@ -68,7 +69,7 @@ enum class LegInterrupt{
     BLOCKED,    //  someone the map lacks stood in the way
 };
 //  "wild_battle", "trainer", "scene", "dialogue", "blocked".
-const char* leg_interrupt_name(LegInterrupt interrupt);
+std::string_view leg_interrupt_name(LegInterrupt interrupt);
 
 //  What a leg is planned to do.
 struct LegPlan{

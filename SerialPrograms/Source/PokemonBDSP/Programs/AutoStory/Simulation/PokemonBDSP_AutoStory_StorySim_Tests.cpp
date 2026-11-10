@@ -57,6 +57,7 @@
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
+using namespace detail;
 
 namespace{
 
@@ -258,7 +259,7 @@ UnitTestResult test_heal_fade_unseen(Logger& logger){
 //  still missed: no frame shows the scene before it.
 UnitTestResult test_sim_fade_frames(Logger&){
     struct FadeCase{
-        const char* name;
+        std::string_view name;
         bool door;
         double floor;
         double fade;

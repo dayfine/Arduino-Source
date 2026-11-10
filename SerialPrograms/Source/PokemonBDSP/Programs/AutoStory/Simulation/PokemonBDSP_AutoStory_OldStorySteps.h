@@ -6,6 +6,7 @@
  *  the story simulation's regression tests run them in place of the
  *  table's step of the same name and check they still go wrong there.
  *
+// code-health: allow header_symbols -- legacy story steps definitions for test parity verification
  */
 
 #ifndef PokemonAutomation_PokemonBDSP_AutoStory_OldStorySteps_H

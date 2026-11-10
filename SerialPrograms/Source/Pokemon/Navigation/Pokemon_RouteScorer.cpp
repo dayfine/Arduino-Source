@@ -16,7 +16,7 @@ namespace Pokemon{
 
 
 std::string to_string(const ScoredLeg& leg){
-    const char* how = "taps";
+    std::string_view how = "taps";
     switch (leg.kind){
     case ScoredLegKind::TO_WALL:
         how = leg.run ? "run to wall" : "walk to wall";
@@ -47,7 +47,7 @@ size_t tiles_walked_back(const std::vector<ScoredLeg>& legs){
     return tiles;
 }
 
-const char* verdict_name(RouteVerdict verdict){
+std::string_view verdict_name(RouteVerdict verdict){
     switch (verdict){
     case RouteVerdict::PASS:
         return "PASS";

@@ -305,7 +305,7 @@ std::vector<BenchCase> bench_cases(){
 }
 
 
-constexpr const char* BENCH_HEADER =
+constexpr std::string_view BENCH_HEADER =
     "BDSP AutoStory: the route bench. Each ROUTE step of the story table, its\r\n"
     "plan scored by Pokemon::score_route() as RouteWalker walks it (wall legs\r\n"
     "held, at a run after 00.03; open legs tapped), then the user's routes for\r\n"
@@ -454,7 +454,7 @@ struct BenchText{
     std::string strands;
 };
 BenchText bench_text(){
-    BenchText out{BENCH_HEADER, "", ""};
+    BenchText out{std::string(BENCH_HEADER), "", ""};
     for (const BenchCase& bench : bench_cases()){
         const RouteScore score = score_case(bench);
         out.lines += bench_line(bench, score) + "\r\n";
@@ -517,6 +517,7 @@ std::map<std::string, GoldenRow> golden_rows(const std::string& text){
 }
 
 std::string bench_golden_path(){
+    // code-health: allow char_pointer -- std::getenv returns a const char pointer
     const char* path = std::getenv("PA_ROUTE_BENCH_GOLDEN");
     if (path != nullptr && path[0] != '\0'){
         return path;
@@ -564,6 +565,7 @@ UnitTestResult test_route_bench(Logger& logger){
     const std::string& now = text.lines;
     logger.log("Route bench:\n" + now);
     logger.log("Route bench legs:\n" + text.legs);
+    // code-health: allow char_pointer -- std::getenv returns a const char pointer
     const char* update = std::getenv("PA_UPDATE_ROUTE_BENCH");
     if (update != nullptr && update[0] != '\0' && update[0] != '0'){
         FileIO file;
@@ -594,7 +596,7 @@ struct RouteBenchInput{
 };
 
 struct RouteBenchExpectation{
-    const char* description;
+    std::string_view description;
 };
 
 struct RouteBenchCase{

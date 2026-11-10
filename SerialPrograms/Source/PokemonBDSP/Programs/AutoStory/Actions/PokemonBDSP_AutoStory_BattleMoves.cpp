@@ -38,7 +38,7 @@ constexpr double MOVE_NAME_LOG10P_SPREAD = 0.50;
 //  Early moves the starters and their foes have, by the slug of the move
 //  name dictionary, as type, power and most PP. A status move has power 0.
 struct KnownMove{
-    const char* slug;
+    std::string slug;
     const char* type;
     int power;
     int pp;

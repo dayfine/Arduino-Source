@@ -22,7 +22,7 @@ namespace PokemonBDSP{
 namespace{
 
 struct ResourcesInput{
-    const char* name;
+    std::string name;
     const std::vector<std::string_view>& (*paths)();
 };
 struct ResourcesExpectation{

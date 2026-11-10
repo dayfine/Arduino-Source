@@ -28,6 +28,7 @@
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
+using namespace detail;
 
 using namespace std::chrono_literals;
 using namespace Pokemon;
@@ -47,6 +48,11 @@ Milliseconds route_ms_per_tile(Direction direction, MoveSpeed speed){
     }
     return across(direction) ? ROUTE_MS_PER_TILE_ACROSS : ROUTE_MS_PER_TILE_UP_DOWN;
 }
+
+namespace{
+constexpr Milliseconds ROUTE_WALK_MS_PER_TILE_SLOWEST = Milliseconds(270);
+constexpr Milliseconds ROUTE_RUN_MS_PER_TILE_SLOWEST = Milliseconds(170);
+} // namespace
 
 Milliseconds route_limit_for_tiles(MoveSpeed speed, size_t tiles){
     const Milliseconds per_tile = speed == MoveSpeed::RUN ? ROUTE_RUN_MS_PER_TILE_SLOWEST : ROUTE_WALK_MS_PER_TILE_SLOWEST;

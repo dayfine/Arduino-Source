@@ -96,8 +96,8 @@ std::string label_of(const StoryStep& step){
 
 //  A trainer every pass of a row fights, by that row.
 struct FoughtTrainer{
-    const char* row;
-    const char* name;
+    std::string_view row;
+    std::string_view name;
 };
 //  01.02's walk east along Route 203's row 18 crosses his sight down
 //  column 31 (route_203_trainer_sights()).

@@ -1,5 +1,7 @@
 /*  Route Scorer
  *
+// code-health: allow header_symbols -- route scoring profile definitions and path evaluation criteria
+ *
  *  From: https://github.com/PokemonAutomation/
  *
  *  Scores a walk plan on a tile grid: how long it takes on the game's
@@ -117,7 +119,7 @@ enum class RouteVerdict{
     RETRIES,        //  more recoveries in a row than InterruptModel::max_recoveries
 };
 //  "PASS", "FAIL", "STRAND", "RETRIES".
-const char* verdict_name(RouteVerdict verdict);
+std::string_view verdict_name(RouteVerdict verdict);
 
 //  A plan's score.
 struct RouteScore{

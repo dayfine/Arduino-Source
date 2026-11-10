@@ -15,7 +15,7 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-const char* leg_end_kind_name(LegEndKind kind){
+std::string_view leg_end_kind_name(LegEndKind kind){
     switch (kind){
     case LegEndKind::OPEN:
         return "open";
@@ -27,7 +27,7 @@ const char* leg_end_kind_name(LegEndKind kind){
     return "?";
 }
 
-const char* leg_end_known_name(LegEndKnown known){
+std::string_view leg_end_known_name(LegEndKnown known){
     switch (known){
     case LegEndKnown::WALL:
         return "wall";
@@ -47,7 +47,7 @@ const char* leg_end_known_name(LegEndKnown known){
     return "?";
 }
 
-const char* leg_interrupt_name(LegInterrupt interrupt){
+std::string_view leg_interrupt_name(LegInterrupt interrupt){
     switch (interrupt){
     case LegInterrupt::WILD_BATTLE:
         return "wild_battle";
@@ -88,7 +88,7 @@ std::string leg_trace_json(const LegRecord& record){
     out["leg"] = (int64_t)record.leg;
     out["dir"] = direction_name(record.plan.direction);
     out["tiles"] = (int64_t)record.plan.tiles;
-    out["end_kind"] = leg_end_kind_name(record.plan.end_kind);
+    out["end_kind"] = std::string(leg_end_kind_name(record.plan.end_kind));
     out["planned_end"] = tiles_json(record.plan.ends);
     if (record.moved){
         out["moved"] = (int64_t)*record.moved;
@@ -96,10 +96,10 @@ std::string leg_trace_json(const LegRecord& record){
     out["chunks"] = (int64_t)record.chunks;
     out["ms"] = record.walked_ms;
     out["end"] = tiles_json(record.end);
-    out["known"] = leg_end_known_name(record.known);
+    out["known"] = std::string(leg_end_known_name(record.known));
     JsonArray interrupts;
     for (LegInterrupt interrupt : record.interrupts){
-        interrupts.push_back(leg_interrupt_name(interrupt));
+        interrupts.push_back(std::string(leg_interrupt_name(interrupt)));
     }
     out["interrupts"] = std::move(interrupts);
     if (!record.note.empty()){
@@ -109,7 +109,7 @@ std::string leg_trace_json(const LegRecord& record){
 }
 
 std::string leg_trace_line(const LegRecord& record){
-    return LEG_TRACE_TAG + leg_trace_json(record);
+    return std::string(LEG_TRACE_TAG) + leg_trace_json(record);
 }
 
 
@@ -117,9 +117,8 @@ namespace{
 
 std::optional<int> parse_int(std::string_view text){
     int value = 0;
-    const char* end = text.data() + text.size();
-    const auto result = std::from_chars(text.data(), end, value);
-    if (result.ec != std::errc() || result.ptr != end){
+    const auto result = std::from_chars(text.data(), text.data() + text.size(), value);
+    if (result.ec != std::errc() || result.ptr != text.data() + text.size()){
         return std::nullopt;
     }
     return value;

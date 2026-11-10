@@ -104,6 +104,22 @@ struct SimWanderer{
     Milliseconds time_offset = Milliseconds(0);        //  initial start time offset
 };
 
+//  Simulated grid environment.
+class GridSim;
+namespace detail{
+//  Advance simulation time.
+void sim_advance_time(GridSim& sim, Milliseconds time);
+//  Get simulated wanderers.
+const std::vector<SimWanderer>& sim_wanderers(const GridSim& sim);
+//  Add a simulated trigger.
+void sim_add_trigger(GridSim& sim, SimTrigger trigger);
+//  Get simulated triggers.
+const std::vector<SimTrigger>& sim_triggers(const GridSim& sim);
+//  Forget warp state.
+void sim_forget_warp(GridSim& sim);
+//  Set simulated fight.
+void sim_fight(GridSim& sim);
+} // namespace detail
 struct SimWorld{
     const StoryWorld* world = nullptr;
     std::vector<TrainerSight> trainers = {};
@@ -121,8 +137,10 @@ enum class SimStop{
     WARP,       //  stepped onto a door
     LIMIT,      //  a held walk ran out of time
 };
+namespace detail{
 //  Returns the debug string for a SimStop reason.
 std::string_view sim_stop_name(SimStop stop);
+} // namespace detail
 
 //  What one input did.
 struct SimMove{
@@ -183,12 +201,12 @@ public:
     }
 
 private:
-    friend void sim_advance_time(GridSim& sim, Milliseconds time);
-    friend const std::vector<SimWanderer>& sim_wanderers(const GridSim& sim);
-    friend void sim_add_trigger(GridSim& sim, SimTrigger trigger);
-    friend const std::vector<SimTrigger>& sim_triggers(const GridSim& sim);
-    friend void sim_forget_warp(GridSim& sim);
-    friend void sim_fight(GridSim& sim);
+    friend void detail::sim_advance_time(GridSim& sim, Milliseconds time);
+    friend const std::vector<SimWanderer>& detail::sim_wanderers(const GridSim& sim);
+    friend void detail::sim_add_trigger(GridSim& sim, SimTrigger trigger);
+    friend const std::vector<SimTrigger>& detail::sim_triggers(const GridSim& sim);
+    friend void detail::sim_forget_warp(GridSim& sim);
+    friend void detail::sim_fight(GridSim& sim);
 
     SimMove advance(Pokemon::Direction direction, int distance);
     std::optional<SimStop> enter_next(Pokemon::Direction direction, int part, int& moved);
@@ -203,6 +221,7 @@ private:
     std::vector<SimWanderer> m_wanderers;
 };
 
+namespace detail{
 //  Advances simulated time for world events and wandering NPCs.
 void sim_advance_time(GridSim& sim, Milliseconds time);
 //  The wandering NPCs on the simulation's world.
@@ -216,9 +235,9 @@ void sim_forget_warp(GridSim& sim);
 //  The open dialogue is fought as a trainer's: a scene's is noted in
 //  SimPlayer::scenes_fought, as it is pressed through under a walk.
 void sim_fight(GridSim& sim);
-
 //  Whether the player could take a step toward `direction` from where they stand.
 bool sim_can_step(const GridSim& sim, Pokemon::Direction direction);
+} // namespace detail
 
 
 //  A deterministic, already-cleared encounter at a tap boundary. This is

@@ -7,6 +7,7 @@
  *  does not, because the player stops there however long the stick is held.
  *  The planner prefers such legs.
  *
+// code-health: allow header_symbols -- route planning types and candidate route choices for navigation
  */
 
 #ifndef PokemonAutomation_PokemonBDSP_AutoStory_RoutePlanner_H

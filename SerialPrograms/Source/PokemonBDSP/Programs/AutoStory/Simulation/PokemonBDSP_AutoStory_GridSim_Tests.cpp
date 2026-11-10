@@ -38,6 +38,7 @@
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
+using namespace detail;
 
 
 namespace{
@@ -877,7 +878,7 @@ UnitTestResult test_oreburgh_mine_hall_corridor(Logger& logger){
         return "OreburghMineB1F world not found.";
     }
     const SimWorld sim_world{.world = world, .can_run = true};
-    const auto test_run = [&](TilePos start, Direction dir, TilePos expected, const char* label){
+    const auto test_run = [&](TilePos start, Direction dir, TilePos expected, std::string_view label){
         GridSim sim(sim_world, start, dir, true);
         const SimMove move = sim.hold(dir, 5000ms, SimPace::RUN);
         if (move.stop != SimStop::WARP || sim.player().pos != sim_pos(expected)){

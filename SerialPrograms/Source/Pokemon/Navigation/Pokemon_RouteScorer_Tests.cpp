@@ -282,7 +282,7 @@ struct RouteScorerInput{
 };
 
 struct RouteScorerExpectation{
-    const char* description;
+    std::string_view description;
 };
 
 struct RouteScorerCase{

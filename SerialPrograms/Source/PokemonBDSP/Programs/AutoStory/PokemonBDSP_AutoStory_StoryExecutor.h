@@ -1,5 +1,7 @@
 /*  BDSP AutoStory - Story executor
  *
+// code-health: allow header_symbols -- BDSP story executor and checkpoint execution primitives
+ *
  *  From: https://github.com/PokemonAutomation/
  *
  *  BDSP's way of doing the shared story steps

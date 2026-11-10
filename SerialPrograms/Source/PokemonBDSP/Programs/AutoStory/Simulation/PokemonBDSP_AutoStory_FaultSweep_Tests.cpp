@@ -75,7 +75,7 @@ enum class FaultClass{
     //  Not swept yet: the measured movement table's lost taps (#293).
     LOST_TAP,
 };
-const char* fault_class_name(FaultClass fault){
+std::string_view fault_class_name(FaultClass fault){
     switch (fault){
     case FaultClass::SCENE_END_POSE:
         return "scene end pose";
@@ -92,8 +92,8 @@ const char* fault_class_name(FaultClass fault){
 }
 
 //  The rows swept: those the clean simulation runs (SimFailureCases_Tests).
-const char* FIRST_ROW = "00.00";
-const char* LAST_ROW = "01.11";
+constexpr std::string_view FIRST_ROW = "00.00";
+constexpr std::string_view LAST_ROW = "01.11";
 
 //  Sweeps the program fails today, by test name, with the likely fix.
 const std::map<std::string, std::string> KNOWN_FAILING{
@@ -163,7 +163,7 @@ bool wild_or_trainers(const StoryStep& step){
     }else{
         return true;
     }
-    for (const char* place : {"Route", "Gate", "Mine", "RavagedPath"}){
+    for (std::string_view place : {"Route", "Gate", "Mine", "RavagedPath"}){
         if (map.find(place) != std::string::npos){
             return true;
         }
@@ -190,7 +190,7 @@ void walkable_neighbors(const StoryWorld* world, const Pose& pose, const TilePos
     };
     const auto can_step = [&](const TilePos& from, Direction direction){
         GridSim sim(SimWorld{.world = world}, story_to_world(*world, pose.map, from), direction, false);
-        return sim_can_step(sim, direction);
+        return detail::sim_can_step(sim, direction);
     };
     const Pokemon::MapData& map = story_map(pose.map);
     const auto add = [&](const TilePos& tile){

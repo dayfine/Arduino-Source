@@ -8,6 +8,7 @@
  *  legs are held where a long or short hold is safe. Also the scorer's view
  *  of the story maps and of RouteWalker's walking, for the route bench.
  *
+// code-health: allow header_symbols -- route choice selection and candidate evaluation types
  */
 
 #ifndef PokemonAutomation_PokemonBDSP_AutoStory_RouteChoice_H

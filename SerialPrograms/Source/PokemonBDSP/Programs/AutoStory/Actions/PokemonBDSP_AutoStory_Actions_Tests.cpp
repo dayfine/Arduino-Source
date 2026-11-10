@@ -257,7 +257,7 @@ UnitTestResult test_intro_gate(Logger&){
 //  relative to the player, who is in the middle of the screen.
 UnitTestResult test_lit_doorway_screenshots(Logger& logger){
     struct Case{
-        const char* file;
+        std::string file;
         double tiles_across_min;
         double tiles_across_max;
         double rows_up_min;
@@ -322,7 +322,7 @@ UnitTestResult test_save_screen_location(Logger& logger){
 //  the walk kept lining up with it (runs 2 and 3).
 UnitTestResult test_pokemon_center_inside(Logger& logger){
     struct Case{
-        const char* file;
+        std::string file;
         bool inside;
         bool doorway;
     };
@@ -370,7 +370,7 @@ UnitTestResult test_pokemon_center_inside(Logger& logger){
 //  at sunset, the ground as orange as the Center's back wall.
 UnitTestResult test_pokemon_center_counter(Logger& logger){
     struct Case{
-        const char* file;
+        std::string file;
         bool inside;
     };
     const Case cases[] = {
@@ -438,7 +438,7 @@ UnitTestResult test_school_lamp(Logger& logger){
 //  "newest move that is not a status move" fallback used Growl until the
 //  training gave up after 25 turns.
 UnitTestResult test_choose_move(Logger&){
-    struct Case{ const char* name; std::vector<MoveSlot> slots; size_t best; };
+    struct Case{ std::string_view name; std::vector<MoveSlot> slots; size_t best; };
     const Case cases[] = {
         {"no name read, PP 35 and 22", {{"", 35}, {"", 22}}, 1},
         {"no name read, PP 35 and 30", {{"", 35}, {"", 30}}, 1},
@@ -463,7 +463,7 @@ UnitTestResult test_choose_move(Logger&){
 //  from the move name dictionary.
 UnitTestResult test_move_menu_screenshots(Logger& logger){
     struct Case{
-        const char* file;
+        std::string file;
         Language language;
         std::vector<MoveSlot> slots;
         size_t best;

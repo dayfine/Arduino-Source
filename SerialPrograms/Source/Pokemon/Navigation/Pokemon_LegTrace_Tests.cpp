@@ -61,7 +61,7 @@ std::string plan_text(const std::optional<LegPlan>& plan){
         return "none";
     }
     return std::string(direction_name(plan->direction)) + " " + std::to_string(plan->tiles) + " "
-        + leg_end_kind_name(plan->end_kind) + " -> " + tiles_text(plan->ends);
+        + std::string(leg_end_kind_name(plan->end_kind)) + " -> " + tiles_text(plan->ends);
 }
 
 //  The lines a tracer emits for `script`, one a line.

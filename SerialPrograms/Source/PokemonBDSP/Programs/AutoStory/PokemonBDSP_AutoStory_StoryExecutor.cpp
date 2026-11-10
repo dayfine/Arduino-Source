@@ -170,7 +170,7 @@ StoryBoundActions StoryExecutor::console_actions(){
 //  A wild battle is run from, a trainer who saw us fought, a dialog or a
 //  warp's scene pressed through to the quiet overworld.
 StoryInterruptActions StoryExecutor::console_interrupt_actions(){
-    const auto settle = [this](const char* label){
+    const auto settle = [this](std::string label){
         return [this, label](RunState&, const Pokemon::InterruptVerdict&){
             m_io.settle(BUTTON_B, label, false, "");
             return Pokemon::outcome_ok();

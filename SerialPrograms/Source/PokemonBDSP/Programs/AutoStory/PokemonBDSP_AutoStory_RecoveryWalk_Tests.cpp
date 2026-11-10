@@ -31,6 +31,7 @@
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
+using namespace detail;
 namespace{
 using namespace std::chrono_literals;
 using Pokemon::Direction;
@@ -348,7 +349,7 @@ public:
         Pokemon::RunState state{.pose = Pokemon::tile_pose("OreburghMine", {{15, 9}}, Direction::SOUTH), .flags = {}};
         std::string failure;
         try{
-            for (const char* name : {"to_roarks_corner", "beside_roarks_rock"}){
+            for (std::string_view name : {"to_roarks_corner", "beside_roarks_rock"}){
                 const Pokemon::StoryStep& step = story_step("01.03", name);
                 failure = walks.legs(state, step).failure;
                 const auto end = story_to_local(world, "OreburghMine", nearest_tile(sim.player().pos));
@@ -401,9 +402,9 @@ const CornerCase CORNER_CASES[] = {
 //  warp tiles lead to the hall's three 2-1-2, the hall's back a column
 //  each, and the coal room's warp to the hall's column 12.
 struct WarpLink{
-    const char* from_map;
+    std::string from_map;
     TilePos from;
-    const char* to_map;
+    std::string to_map;
     TilePos to;
 };
 const WarpLink MINE_WARPS[] = {
@@ -442,7 +443,7 @@ std::pair<std::string, TilePos> warp_north(GridSim& sim, const std::string& map,
             const StoryWorld& to = *story_plan_world(link.to_map, link.to_map);
             sim.place({.world = &to, .trainers = story_trainers(to), .wanderers = std::move(wanderers)},
                 story_to_world(to, link.to_map, link.to), Direction::NORTH);
-            return {link.to_map, link.to};
+            return std::pair<std::string, TilePos>{link.to_map, link.to};
         }
     }
     throw GridSimFailure{std::format("no warp known at {} on {}", warp ? Pokemon::to_string(*warp) : "?", map)};
@@ -450,7 +451,7 @@ std::pair<std::string, TilePos> warp_north(GridSim& sim, const std::string& map,
 
 //  A LEGS step on Oreburgh City, after which the player stands on one of
 //  `end` facing `facing` (nowhere said if `end` is empty).
-Pokemon::StoryStep city_legs(const char* name, std::vector<Pokemon::StoryLeg> legs, const char* variant,
+Pokemon::StoryStep city_legs(std::string_view name, std::vector<Pokemon::StoryLeg> legs, std::string_view variant,
     std::vector<TilePos> end = {}, Direction facing = Direction::NORTH
 ){
     Pokemon::StoryStep out;
@@ -465,7 +466,7 @@ Pokemon::StoryStep city_legs(const char* name, std::vector<Pokemon::StoryLeg> le
     return out;
 }
 //  A planned route on Oreburgh City to `target`, facing `facing`.
-Pokemon::StoryStep city_route(const char* name, TilePos target, Direction facing){
+Pokemon::StoryStep city_route(std::string_view name, TilePos target, Direction facing){
     Pokemon::StoryStep out;
     out.kind = Pokemon::StoryStepKind::ROUTE;
     out.name = name;

@@ -14,6 +14,7 @@
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
+using namespace detail;
 
 using namespace std::chrono_literals;
 using Pokemon::Direction;
@@ -100,8 +101,6 @@ TilePos nearest_tile(const SimPos& pos){
 std::string to_string(const SimPos& pos){
     return std::format("({:g}, {:g})", pos.x / (double)SIM_TILE, pos.y / (double)SIM_TILE);
 }
-} // namespace detail
-
 std::string_view sim_stop_name(SimStop stop){
     switch (stop){
     case SimStop::DONE:
@@ -117,7 +116,7 @@ std::string_view sim_stop_name(SimStop stop){
     }
     return "?";
 }
-
+} // namespace detail
 
 GridSim::GridSim(SimWorld world, const TilePos& start, Direction facing, bool can_run)
     : m_world(std::move(world))
@@ -192,6 +191,7 @@ void GridSim::advance_wanderer(SimWanderer& wanderer, Milliseconds time){
     }
 }
 
+namespace detail{
 void sim_advance_time(GridSim& sim, Milliseconds time){
     for (SimWanderer& wanderer : sim.m_wanderers){
         sim.advance_wanderer(wanderer, time);
@@ -217,6 +217,7 @@ void sim_fight(GridSim& sim){
     }
     sim.end_dialogue();
 }
+} // namespace detail
 
 bool GridSim::wanderer_at(const TilePos& pos) const{
     for (const SimWanderer& wanderer : m_wanderers){
@@ -390,11 +391,13 @@ void GridSim::end_dialogue(){
 }
 
 
+namespace detail{
 bool sim_can_step(const GridSim& sim, Direction direction){
     GridSim probe = sim;
     const SimMove move = probe.tap(direction, ROUTE_MS_PER_TILE_ACROSS, false);
     return move.distance > 0;
 }
+} // namespace detail
 
 
 namespace{
@@ -460,7 +463,7 @@ void GridSimRouteIO::escape_scripted_battle(const SimWildBattle& battle, const s
     if (result == WildEscapeResult::UNCONFIRMED){
         note(std::format("escape_wild_battle: {}: the Run attempts ran out without the exit.", label), RouteNote::FAILURE);
     }
-    const char* ended = result == WildEscapeResult::FOUGHT ? "fought to its end" : "run from";
+    const std::string_view ended = result == WildEscapeResult::FOUGHT ? "fought to its end" : "run from";
     m_notes.push_back(std::format("[Sim] {}: wild battle {}.", label, ended));
 }
 

@@ -22,6 +22,7 @@
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
+using namespace detail;
 
 using namespace std::chrono_literals;
 using Pokemon::Direction;
@@ -35,6 +36,7 @@ using Pokemon::StoryStepKind;
 using Pokemon::TilePos;
 
 
+namespace detail{
 ImageStats sim_screen(double brightness, double stddev){
     return ImageStats(FloatPixel(brightness, brightness, brightness), FloatPixel(stddev, stddev, stddev), 1);
 }
@@ -123,6 +125,7 @@ std::string play_scene(const SimScene& scene, const TalkOverRule& rule){
     }
     return "never judged over: " + at() + ", " + judge.describe();
 }
+} // namespace detail
 
 //  Plays the step's scene knob through TalkOver if it has one. Without, a
 //  scene may take us to another map (Mom walks us out, 00.04): with a
@@ -315,6 +318,7 @@ bool SimKnobRouteIO::dialog_within(Milliseconds wait, Color color){
 //  Left out: the Twinleaf guitarist (spent upstairs), Platinum's rival
 //  steps around our bedroom's start, Dawn at Jubilife's steps (BDSP starts
 //  her below them: an event), and Floaroma's (10..12, 29) (Diamond only).
+namespace detail{
 std::vector<VarState> story_vars(){
     return {
         {.var = "VAR_TWINLEAF_TOWN_RIVAL_TRIGGER_STATE", .value = 0, .row = "00.01", .after = ""},
@@ -393,6 +397,7 @@ std::vector<RowTrigger> story_triggers(){
     }
     return triggers;
 }
+} // namespace detail
 
 namespace{
 
@@ -764,7 +769,7 @@ Pokemon::ScreenLook SimExecutor::look(bool fresh){
 //  only the dialogs it pops up. A battle ends its opening only: a scene the
 //  walk before ran into goes on after it.
 StoryInterruptActions SimExecutor::sim_interrupt_actions(){
-    const auto cleared = [this](const char* what){
+    const auto cleared = [this](std::string_view what){
         return [this, what](RunState&, const Pokemon::InterruptVerdict&){
             m_logger.log(std::format("[{}] {}: {} cleared before it.", m_row, m_step, what));
             m_dialog_up = false;
@@ -772,7 +777,7 @@ StoryInterruptActions SimExecutor::sim_interrupt_actions(){
             return Pokemon::outcome_ok();
         };
     };
-    const auto battled = [this](const char* what){
+    const auto battled = [this](std::string_view what){
         return [this, what](RunState&, const Pokemon::InterruptVerdict&){
             m_logger.log(std::format("[{}] {}: {} cleared before it.", m_row, m_step, what));
             m_battle_opening = false;
@@ -919,6 +924,7 @@ UnitTestResult run_rows(Logger& logger, const Pokemon::SegmentRange& range){
     return true;
 }
 
+namespace detail{
 //  The table with row `row`'s step of `step`'s name replaced by `step`.
 std::vector<StoryCheckpoint> table_with(const std::string& row, const StoryStep& step){
     std::vector<StoryCheckpoint> rows = story_checkpoints();
@@ -952,7 +958,7 @@ std::string stub_report(const SimRun& run){
     }
     return out;
 }
-
+} // namespace detail
 
 
 } // namespace PokemonBDSP
