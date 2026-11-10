@@ -30,37 +30,18 @@ MemberReader console_member_reader(ConsoleHandle& console, ProControllerContext&
 }
 
 
-std::string level_variant(const LevelCheck& check){
-    return std::format("{}slot={} min={}", LEVEL_VARIANT_PREFIX, check.slot + 1, check.level);
-}
-
-std::optional<LevelCheck> parse_level_variant(std::string_view variant){
-    if (!variant.starts_with(LEVEL_VARIANT_PREFIX)){
+std::optional<LevelCheck> parse_level_step(const Pokemon::StoryStep& step){
+    const Pokemon::StoryArgs* args = game_step_args(step, LEVEL_VARIANT, LEVEL_ARGS);
+    if (args == nullptr
+        || !arg_number_within(*args, "slot", 1, static_cast<int64_t>(PARTY_SLOTS))
+        || !arg_number_within(*args, "min", 1, 100)
+    ){
         return std::nullopt;
     }
-    LevelCheck check;
-    bool slot_seen = false;
-    bool level_seen = false;
-    for (std::string_view word : variant_words(variant.substr(LEVEL_VARIANT_PREFIX.size()))){
-        const std::optional<VariantPair> pair = variant_pair(word);
-        const std::optional<size_t> number = pair ? variant_number(pair->value, 3) : std::nullopt;
-        if (!number){
-            return std::nullopt;
-        }
-        if (pair->key == "slot" && *number >= 1 && *number <= PARTY_SLOTS){
-            check.slot = *number - 1;
-            slot_seen = true;
-        }else if (pair->key == "min" && *number >= 1 && *number <= 100){
-            check.level = (unsigned)*number;
-            level_seen = true;
-        }else{
-            return std::nullopt;
-        }
-    }
-    if (!slot_seen || !level_seen){
-        return std::nullopt;
-    }
-    return check;
+    return LevelCheck{
+        .slot = static_cast<size_t>(*Pokemon::story_arg_number(*args, "slot")) - 1,
+        .level = static_cast<unsigned>(*Pokemon::story_arg_number(*args, "min")),
+    };
 }
 
 Pokemon::StoryStep level_step(std::string name, std::string why, const LevelCheck& check){
@@ -68,7 +49,11 @@ Pokemon::StoryStep level_step(std::string name, std::string why, const LevelChec
     step.kind = Pokemon::StoryStepKind::GAME;
     step.name = std::move(name);
     step.why = std::move(why);
-    step.variant = level_variant(check);
+    step.variant = LEVEL_VARIANT;
+    step.args = {
+        {"slot", static_cast<int64_t>(check.slot + 1)},
+        {"min", static_cast<int64_t>(check.level)},
+    };
     return step;
 }
 

@@ -166,8 +166,9 @@ StoryStep poster_switch(std::string name, std::string why){
 
 StoryStep lift_floor(std::string name, std::string_view from, std::string_view to, std::string why){
     StoryStep step = make(StoryStepKind::GAME, std::move(name), std::move(why));
-    step.variant = lift_floor_variant(from, to);
-    if (const std::optional<LiftRide> ride = parse_lift_floor_variant(step.variant)){
+    step.variant = LIFT_FLOOR_VARIANT;
+    step.args = {{"from", std::string(from)}, {"to", std::string(to)}};
+    if (const std::optional<LiftRide> ride = parse_lift_floor_step(step)){
         const MapPosition& door = rocket_hideout_lift_doors()[ride->to];
         step.pose_after = to_pose(StoryPose{door.map, door.point, Direction::SOUTH});
     }
@@ -190,7 +191,8 @@ StoryStep center_exit(std::string name, Pokemon::Pose below_door, std::string wh
 
 StoryStep use_item(std::string name, std::string_view item, std::string why, std::optional<Pokemon::Pose> pose_after){
     StoryStep step = make(StoryStepKind::GAME, std::move(name), std::move(why));
-    step.variant = use_item_variant(item);
+    step.variant = USE_ITEM_VARIANT;
+    step.args = {{"item", std::string(item)}};
     step.pose_after = std::move(pose_after);
     return step;
 }

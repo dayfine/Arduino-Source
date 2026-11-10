@@ -156,7 +156,8 @@
           {
             "id": "helix_fossil",
             "kind": "game_action",
-            "variant": "fossil helix",
+            "variant": "fossil",
+            "args": {"fossil": "helix"},
             "why": "the HELIX FOSSIL; Miguel takes the DOME FOSSIL"
           },
           {

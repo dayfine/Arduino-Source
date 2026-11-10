@@ -17,7 +17,8 @@
         "id": "lift_to_b4f",
         "kind": "game_action",
         "declared_after": {"certainty": "tile", "map": "RocketHideout_B4F", "where": {"facing": "south", "kind": "tiles", "tiles": [[20, 23]]}},
-        "variant": "lift_floor B2F B4F",
+        "variant": "lift_floor",
+        "args": {"from": "B2F", "to": "B4F"},
         "why": "the lift script: in through the door (28, 16), to the panel, B4F with the LIFT KEY, out onto B4F's lift door; no map of the lift"
       },
       {
@@ -52,13 +53,15 @@
       {
         "id": "rare_candy_1",
         "kind": "game_action",
-        "variant": "use_item rare-candy slot=1",
+        "variant": "use_item",
+        "args": {"item": "rare-candy", "slot": 1},
         "why": "Rare Candy: Lv35 (pokeguy 1:00:25)"
       },
       {
         "id": "rare_candy_2",
         "kind": "game_action",
-        "variant": "use_item rare-candy slot=1",
+        "variant": "use_item",
+        "args": {"item": "rare-candy", "slot": 1},
         "why": "Rare Candy: Lv36, Wartortle evolves"
       },
       {
@@ -98,7 +101,8 @@
         "id": "escape_rope_hideout",
         "kind": "game_action",
         "declared_after": {"certainty": "tile", "map": "CeladonCity", "where": {"facing": "south", "kind": "tiles", "tiles": [[34, 22]]}},
-        "variant": "use_item escape-rope",
+        "variant": "use_item",
+        "args": {"item": "escape-rope"},
         "why": "out to the Game Corner's door (pokeguy 1:02:10)"
       }
     ]

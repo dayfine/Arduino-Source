@@ -78,7 +78,7 @@ code (`PokemonFRLG_CodedRooms.h`):
   `center_exit`: south 4 and out; the game walks the player back onto the tile
   below the door. 00.30 and 00.31 use them for Lavender's and Celadon's
   Centers; no `CeladonCity_PokemonCenter_1F` map is needed.
-- `lift_floor <from> <to>`: from below `from`'s lift door, facing north: in
+- `lift_floor` (args `from`, `to`): from below `from`'s lift door, facing north: in
   onto (2, 5), north 2, west 2 to below the panel (0, 2), the floor picked,
   east 2, south 2 and south through the arrow warp onto `to`'s lift door
   (`setdynamicwarp`: B1F (24, 25), B2F (28, 16), B4F (20, 23)). No
@@ -120,12 +120,12 @@ drafts become table rows, their battle steps take those names.
   Fossil (00.38b), the Hitmonchan (00.41) and the Lapras (00.42). The authored
   format can't yet say `handoff`/`live_start` as 00.12/00.12b do in C++.
 - `game_action` variants the C++ executor now has (no console run yet):
-  `poster_switch`, `lift_floor <from> <to>` (PokemonFRLG_AutoStoryHideout.h),
+  `poster_switch`, `lift_floor` (PokemonFRLG_AutoStoryHideout.h),
   `center_enter`, `center_exit` (PokemonFRLG_AutoStoryRooms.h),
-  `use_item <repel|super-repel|max-repel|escape-rope>` and `ride_bike`
+  `use_item` with `item` repel, super-repel, max-repel or escape-rope, and `ride_bike`
   (PokemonFRLG_AutoStoryItemUse.h), and the `bike` route variant. Variants
-  that no executor has yet: `party_room`, `gift_rng`, `use_item rare-candy
-  slot=N` (an item used on a party member), `fly`, `flee_wild`, `surf`,
+  that no executor has yet: `party_room`, `gift_rng`, `use_item` with a
+  `slot` (rare-candy, an item used on a party member), `fly`, `flee_wild`, `surf`,
   `strength_puzzle`, `reenter_map`. The `mart` variants name Marts the Mart table doesn't list
   yet (Lavender, Celadon 5F, Indigo Plateau).
 - HMs and key items come in story order: LIFT KEY, SILPH SCOPE, HM02 Fly, TEA,

@@ -16,7 +16,8 @@
           {
             "id": "surge_winnable",
             "kind": "game_action",
-            "variant": "grind_check slot=1 level=32 encounters=150 pace=east heal_every=0 beat=TRAINER_LEADER_LT_SURGE chance=50",
+            "variant": "grind_check",
+            "args": {"slot": 1, "level": 32, "encounters": 150, "pace": "east", "heal_every": 0, "beat": "TRAINER_LEADER_LT_SURGE", "chance": 50},
             "why": "the lead as it is: if the sim beats Lt. Surge 50% or more already, no trip to Route 6"
           }
         ]
@@ -44,7 +45,8 @@
           {
             "id": "grind_for_surge",
             "kind": "game_action",
-            "variant": "grind slot=1 level=32 encounters=150 pace=east heal_every=0 beat=TRAINER_LEADER_LT_SURGE chance=50",
+            "variant": "grind",
+            "args": {"slot": 1, "level": 32, "encounters": 150, "pace": "east", "heal_every": 0, "beat": "TRAINER_LEADER_LT_SURGE", "chance": 50},
             "target": {"certainty": "tile", "map": "VermilionCity_PokemonCenter_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 4]]}},
             "skip_if": ["surge_winnable"],
             "why": "wild battles until the sim beats Lt. Surge 50% or more, Lv32 at most; the nurse when hurt or low on PP"

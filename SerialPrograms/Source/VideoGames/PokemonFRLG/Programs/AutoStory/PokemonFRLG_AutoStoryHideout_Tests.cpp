@@ -15,6 +15,7 @@
 #include "PokemonFRLG_AutoStoryHideout.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryTableSteps.h"
+#include "PokemonFRLG_AutoStoryVariantWords.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -43,7 +44,9 @@ public:
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const std::optional<LiftRide> ride = parse_lift_floor_variant(m_case.input.variant);
+        const std::string_view floors[] = {"from", "to"};
+        const StoryStep step = legacy_game_step(m_case.input.variant, floors);
+        const std::optional<LiftRide> ride = parse_lift_floor_step(step);
         const std::optional<MenuPresses>& expected = m_case.expectation.presses;
         if (!ride || !expected){
             if (ride.has_value() != expected.has_value()){
@@ -58,8 +61,8 @@ public:
                 got.presses, Pokemon::direction_name(got.direction), expected->presses, Pokemon::direction_name(expected->direction)
             );
         }
-        if (!is_hideout_variant(m_case.input.variant)){
-            return "A ride that isn't a hideout variant.";
+        if (!is_hideout_step(step)){
+            return "A ride that isn't a hideout step.";
         }
         return true;
     }
@@ -69,11 +72,22 @@ private:
 };
 
 UnitTestResult test_variants(){
-    if (!is_hideout_variant(POSTER_SWITCH_VARIANT) || is_hideout_variant("cut_tree") || is_hideout_variant("")){
-        return "Expected only the poster switch and lift rides as hideout variants.";
+    const auto game_step = [](std::string variant, Pokemon::StoryArgs args){
+        StoryStep step;
+        step.kind = Pokemon::StoryStepKind::GAME;
+        step.variant = std::move(variant);
+        step.args = std::move(args);
+        return step;
+    };
+    if (!is_hideout_step(game_step(POSTER_SWITCH_VARIANT, {})) || is_hideout_step(game_step("cut_tree", {}))
+        || is_hideout_step(game_step("", {})) || is_hideout_step(game_step(POSTER_SWITCH_VARIANT, {{"from", "B1F"}}))
+    ){
+        return "Expected only the poster switch and lift rides as hideout steps.";
     }
-    if (lift_floor_variant("B2F", "B4F") != "lift_floor B2F B4F"){
-        return "Expected \"lift_floor B2F B4F\", got \"" + lift_floor_variant("B2F", "B4F") + "\".";
+    const StoryStep ride = StoryTable::lift_floor("ride", "B2F", "B4F", "");
+    const Pokemon::StoryArgs expected{{"from", "B2F"}, {"to", "B4F"}};
+    if (ride.variant != LIFT_FLOOR_VARIANT || ride.args != expected){
+        return "Expected lift_floor with {from: B2F, to: B4F}, got \"" + ride.variant + "\".";
     }
     //  A three-row menu doesn't wrap.
     const MenuPresses no_wrap = lift_menu_presses(LiftRide{0, 2}, 3);

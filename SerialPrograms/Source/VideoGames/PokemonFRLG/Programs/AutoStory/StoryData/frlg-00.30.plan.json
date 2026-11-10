@@ -39,7 +39,9 @@
           {
             "id": "buy_ropes_and_super_repels",
             "kind": "game_action",
-            "variant": "mart LavenderTown_Mart budget=5700 floor=9000 escape-rope=4 super-repel=7",
+            "variant": "mart",
+            "args": {"map": "LavenderTown_Mart", "budget": 5700, "floor": 9000},
+            "items": [{"item": "escape-rope", "quantity": 4}, {"item": "super-repel", "quantity": 7}],
             "once_per_save": true,
             "why": "pokeguy 54:18: 4 Escape Ropes (the Rocket Hideout, 00.31) and 7 Super Repels (Pokemon Tower)"
           },
@@ -170,7 +172,8 @@
           {
             "id": "catch_pidgey",
             "kind": "game_action",
-            "variant": "capture pidgey catches=1 encounters=30 balls=5 pace=east",
+            "variant": "capture",
+            "args": {"species": "pidgey", "catches": 1, "encounters": 30, "balls": 5, "pace": "east"},
             "once_per_save": true,
             "why": "a Pidgey to carry HM02 Fly (pokeguy flies with a Pidgey from 1:03 on); the party has no other flier"
           }

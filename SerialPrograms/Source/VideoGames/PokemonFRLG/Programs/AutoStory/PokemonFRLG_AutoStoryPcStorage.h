@@ -51,6 +51,8 @@
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryArgs.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
 #include "VideoGames/PokemonFRLG/Inference/Box/PokemonFRLG_PcScreenReader.h"
 
 namespace PokemonAutomation{
@@ -84,16 +86,27 @@ struct PcTransfer{
     PcMissing if_missing = PcMissing::REFUSE;
 };
 
-//  The prefix of a GAME step's variant that names a PC step.
-inline constexpr std::string_view PC_VARIANT_PREFIX = "pc ";
+//  The variant of a GAME step that is a PC step.
+inline constexpr std::string_view PC_VARIANT = "pc";
+//  Its args: "deposit" or "withdraw", the slot (the party's for a deposit,
+//  the box's for a withdrawal) and the box; a deposit with if_present skips
+//  a slot the party hasn't got.
+inline constexpr Pokemon::StoryArgSpec PC_ARGS[] = {
+    {"op", Pokemon::StoryArgType::TEXT, true},
+    {"slot", Pokemon::StoryArgType::NUMBER, true},
+    {"box", Pokemon::StoryArgType::NUMBER, true},
+    {"if_present", Pokemon::StoryArgType::FLAG, false},
+};
 
-//  `transfer` as a GAME step's variant: "pc deposit slot=2 box=1" or
-//  "pc withdraw box=1 slot=7", slots and boxes counted from 1 as the game
-//  shows them; a deposit with PcMissing::SKIP ends in " if_present".
-std::string pc_variant(const PcTransfer& transfer);
-//  A variant from pc_variant(); nothing if `variant` isn't one, or names a
-//  slot or box the game hasn't got.
-std::optional<PcTransfer> parse_pc_variant(std::string_view variant);
+//  `transfer` for the log: "pc deposit slot=2 box=1" or "pc withdraw box=1
+//  slot=7", slots and boxes counted from 1 as the game shows them; a
+//  deposit with PcMissing::SKIP ends in " if_present".
+std::string pc_transfer_text(const PcTransfer& transfer);
+//  `transfer` as a PC step's args, counted from 1 as pc_transfer_text().
+Pokemon::StoryArgs pc_args(const PcTransfer& transfer);
+//  The transfer a PC step (pc_step()) makes; nothing if it isn't one, or
+//  names a slot or box the game hasn't got.
+std::optional<PcTransfer> parse_pc_step(const Pokemon::StoryStep& step);
 
 
 //  A party member as far as a PC step needs to know.

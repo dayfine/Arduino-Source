@@ -84,15 +84,22 @@ struct MartPlan{
     std::optional<size_t> money_floor = std::nullopt;
 };
 
-//  The prefix of a GAME step's variant that names a Mart step.
-inline constexpr std::string_view MART_VARIANT_PREFIX = "mart ";
+//  The variant of a GAME step that is a Mart step.
+inline constexpr std::string_view MART_VARIANT = "mart";
+//  Its args: the Mart's map, the budget and the money floor. What it buys
+//  is the step's items, in priority order.
+inline constexpr Pokemon::StoryArgSpec MART_ARGS[] = {
+    {"map", Pokemon::StoryArgType::TEXT, true},
+    {"budget", Pokemon::StoryArgType::NUMBER, true},
+    {"floor", Pokemon::StoryArgType::NUMBER, false},
+};
 
-//  `plan` as a variant: "mart PewterCity_Mart budget=2000 floor=2400
-//  potion=5 repel=3", the lines in order.
-std::string mart_variant(const MartPlan& plan);
-//  A variant from mart_variant(); nothing if it isn't one, has no line, or
-//  names an item its Mart doesn't sell.
-std::optional<MartPlan> parse_mart_variant(std::string_view variant);
+//  `plan`'s map, budget and floor as a Mart step's args, e.g. {"map":
+//  "PewterCity_Mart", "budget": 2000, "floor": 2400}.
+Pokemon::StoryArgs mart_args(const MartPlan& plan);
+//  The plan a Mart step (mart_step()) buys; nothing if it isn't one, has no
+//  item, or names an item its Mart doesn't sell.
+std::optional<MartPlan> parse_mart_step(const Pokemon::StoryStep& step);
 
 //  The table's Mart step, once per save (StoryStep::once_per_save): a
 //  retry from the same save skips it when it had nothing to buy.

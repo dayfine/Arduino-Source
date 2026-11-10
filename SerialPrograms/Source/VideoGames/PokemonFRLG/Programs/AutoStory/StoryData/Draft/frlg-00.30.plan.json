@@ -23,13 +23,16 @@
       {
         "id": "buy_ropes_and_super_repels",
         "kind": "game_action",
-        "variant": "mart LavenderTown_Mart budget=5700 floor=9000 escape-rope=4 super-repel=7",
+        "variant": "mart",
+        "args": {"map": "LavenderTown_Mart", "budget": 5700, "floor": 9000},
+        "items": [{"item": "escape-rope", "quantity": 4}, {"item": "super-repel", "quantity": 7}],
         "why": "pokeguy 54:18: 4 Escape Ropes and 7 Super Repels"
       },
       {
         "id": "repel_route8",
         "kind": "game_action",
-        "variant": "use_item repel",
+        "variant": "use_item",
+        "args": {"item": "repel"},
         "why": "a Repel (5 bought in 00.26) for Route 8's grass and the Underground Path; renewed when it wears off"
       },
       {
@@ -82,7 +85,8 @@
       {
         "id": "catch_pidgey",
         "kind": "game_action",
-        "variant": "capture pidgey catches=1 encounters=30 balls=5 pace=east",
+        "variant": "capture",
+        "args": {"species": "pidgey", "catches": 1, "encounters": 30, "balls": 5, "pace": "east"},
         "why": "a Pidgey to carry HM02 Fly (pokeguy flies with a Pidgey from 1:03 on); the party has no other flier"
       },
       {

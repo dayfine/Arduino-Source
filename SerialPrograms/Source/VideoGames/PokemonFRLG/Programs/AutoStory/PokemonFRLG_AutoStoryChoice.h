@@ -54,13 +54,16 @@ std::optional<Fossil> fossil_from_name(std::string_view name);
 //  Where `fossil` lies on MtMoon_B2F (map.json object_events).
 Pokemon::TilePos fossil_tile(Fossil fossil);
 
-//  The prefix of a GAME step's variant that names the fossil CHOICE.
-inline constexpr std::string_view FOSSIL_VARIANT_PREFIX = "fossil ";
+//  The variant of a GAME step that is the fossil CHOICE.
+inline constexpr std::string_view FOSSIL_VARIANT = "fossil";
+//  Its args: the fossil, "helix" or "dome".
+inline constexpr Pokemon::StoryArgSpec FOSSIL_ARGS[] = {
+    {"fossil", Pokemon::StoryArgType::TEXT, true},
+};
 
-//  "fossil helix" or "fossil dome".
-std::string fossil_variant(Fossil fossil);
-//  Parses a fossil CHOICE variant string.
-std::optional<Fossil> parse_fossil_variant(std::string_view variant);
+//  The fossil a fossil CHOICE step (fossil_step()) takes; nothing if it
+//  isn't one.
+std::optional<Fossil> parse_fossil_step(const Pokemon::StoryStep& step);
 
 //  The table's CHOICE(fossil) step, the player facing the fossil.
 Pokemon::StoryStep fossil_step(std::string name, std::string why, Fossil fossil);

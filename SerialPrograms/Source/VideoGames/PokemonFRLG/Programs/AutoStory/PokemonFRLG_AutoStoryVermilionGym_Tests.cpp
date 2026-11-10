@@ -496,7 +496,7 @@ UnitTestResult test_surge_dig_two_turns(){
 UnitTestResult test_surge_winnable_skips_grind(){
     const StoryCheckpoint& row = checkpoint("00.24");
     const StoryStep& check = row.steps.front();
-    if (!parse_grind_check_variant(check.variant)){
+    if (!parse_grind_check_step(check)){
         return "Expected 00.24 to start with the grind's check, not " + check.name + ".";
     }
     StoryPose at = *story_pose(*row.start);

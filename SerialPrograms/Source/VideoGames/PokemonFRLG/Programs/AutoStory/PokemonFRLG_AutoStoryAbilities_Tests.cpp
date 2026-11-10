@@ -9,11 +9,15 @@
 
 #include <format>
 #include <functional>
+#include <map>
+#include <span>
 #include <string>
+#include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/Exceptions/ProgramFinishedException.h"
 #include "PokemonFRLG_AutoStoryAbilities.h"
+#include "PokemonFRLG_AutoStoryVariantWords.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -115,11 +119,27 @@ private:
 };
 
 
-Pokemon::StoryStep game_step(std::string variant){
-    Pokemon::StoryStep step;
-    step.kind = Pokemon::StoryStepKind::GAME;
+//  A GAME step written the old way ("mart PewterCity_Mart budget=2000
+//  potion=5"), a Mart's purchases as its items.
+Pokemon::StoryStep game_step(std::string_view text){
+    static const std::map<std::string_view, std::vector<std::string_view>> POSITIONAL{
+        {MART_VARIANT, {"map"}}, {TEACH_VARIANT, {"item", "move"}}, {"capture", {"species"}},
+    };
+    const auto found = POSITIONAL.find(text.substr(0, text.find(' ')));
+    Pokemon::StoryStep step = legacy_game_step(text, found == POSITIONAL.end() ? std::span<const std::string_view>() : found->second);
     step.name = "test";
-    step.variant = std::move(variant);
+    if (step.variant != MART_VARIANT){
+        return step;
+    }
+    for (auto it = step.args.begin(); it != step.args.end();){
+        const std::optional<int64_t> quantity = Pokemon::story_arg_number(step.args, it->first);
+        if (!quantity || it->first == "budget" || it->first == "floor"){
+            ++it;
+            continue;
+        }
+        step.items.push_back({it->first, static_cast<size_t>(*quantity)});
+        it = step.args.erase(it);
+    }
     return step;
 }
 
@@ -218,13 +238,14 @@ UnitTestResult test_grind_shiny_stops(){
 
 
 UnitTestResult test_level_variant(){
-    const std::string variant = level_variant({.slot = 1, .level = 23});
-    const std::optional<LevelCheck> back = parse_level_variant(variant);
-    if (variant != "level slot=2 min=23" || !back || back->slot != 1 || back->level != 23){
-        return "Unexpected level variant \"" + variant + "\".";
+    const Pokemon::StoryStep step = level_step("level", "", {.slot = 1, .level = 23});
+    const std::optional<LevelCheck> back = parse_level_step(step);
+    const Pokemon::StoryArgs expected{{"slot", int64_t(2)}, {"min", int64_t(23)}};
+    if (step.variant != LEVEL_VARIANT || step.args != expected || !back || back->slot != 1 || back->level != 23){
+        return "Unexpected LEVEL step \"" + step.variant + "\".";
     }
     for (std::string_view bad : {"level", "level slot=1", "level min=5", "level slot=0 min=5", "level slot=1 min=101"}){
-        if (parse_level_variant(bad)){
+        if (parse_level_step(legacy_game_step(bad))){
             return "Expected \"" + std::string(bad) + "\" refused.";
         }
     }

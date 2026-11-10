@@ -18,6 +18,7 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "PokemonFRLG_AutoStoryBattleSim.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
+#include "PokemonFRLG_AutoStoryVariantWords.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -437,33 +438,42 @@ UnitTestResult test_grind_variant(){
     plan.max_encounters = 60;
     plan.pace = Pokemon::Direction::NORTH;
     plan.heal_every = 8;
-    const std::string variant = grind_variant(plan);
-    if (variant != "grind slot=1 level=18 encounters=60 pace=north heal_every=8"){
-        return "Unexpected variant \"" + variant + "\".";
+    const Pokemon::StoryStep step = grind_step("grind", "", plan, Pokemon::Pose{});
+    const Pokemon::StoryArgs expected{
+        {"slot", int64_t(1)}, {"level", int64_t(18)}, {"encounters", int64_t(60)}, {"pace", "north"}, {"heal_every", int64_t(8)},
+    };
+    if (step.variant != GRIND_VARIANT || step.args != expected){
+        return "Unexpected GRIND step \"" + step.variant + "\".";
     }
-    const std::optional<GrindPlan> back = parse_grind_variant(variant);
+    const std::optional<GrindPlan> back = parse_grind_step(step);
     if (!back || back->level != 18 || back->max_encounters != 60 || back->pace != Pokemon::Direction::NORTH
         || back->heal_every != 8 || back->member != 0
     ){
-        return "\"" + variant + "\" didn't read back as its plan.";
+        return "The GRIND step didn't read back as its plan.";
     }
     GrindPlan rival = beat_rival(30);
     rival.max_encounters = 100;
     rival.pace = Pokemon::Direction::WEST;
-    const std::string rival_variant = grind_variant(rival);
-    if (rival_variant != "grind slot=1 level=30 encounters=100 pace=west heal_every=0 beat=TRAINER_RIVAL_CERULEAN_BULBASAUR chance=50"){
-        return "Unexpected variant \"" + rival_variant + "\".";
+    Pokemon::StoryStep rival_step = grind_step("grind", "", rival, Pokemon::Pose{});
+    if (Pokemon::story_arg_text(rival_step.args, "beat") != "TRAINER_RIVAL_CERULEAN_BULBASAUR"
+        || Pokemon::story_arg_number(rival_step.args, "chance") != 50
+    ){
+        return "Expected the rival's GRIND step to name the rival and a 50% chance.";
     }
-    const std::optional<GrindPlan> rival_back = parse_grind_variant(rival_variant + " chance=75");
+    rival_step.args["chance"] = int64_t(75);
+    const std::optional<GrindPlan> rival_back = parse_grind_step(rival_step);
     if (!rival_back || rival_back->trainer != RIVAL || rival_back->level != 30 || rival_back->min_chance != 0.75){
-        return "\"" + rival_variant + " chance=75\" didn't read back as its plan.";
+        return "The rival's GRIND step with a 75% chance didn't read back as its plan.";
     }
     for (std::string_view bad : {
-        "grind", "grind slot=1", "grind slot=1 level=101", "grind slot=7 level=18", "grind level=18 pace=up",
-        "grind level=18 encounters=0", "capture rattata", "grind level=30 beat=", "grind level=30 chance=70",
-        "grind level=30 beat=TRAINER_X chance=0", "grind level=30 beat=TRAINER_X chance=101",
+        "grind", "grind slot=1", "grind slot=1 level=101 encounters=60 pace=east", "grind slot=7 level=18 encounters=60 pace=east",
+        "grind slot=1 level=18 encounters=60 pace=up", "grind slot=1 level=18 encounters=0 pace=east",
+        "capture rattata", "grind slot=1 level=30 encounters=60 pace=east beat=",
+        "grind slot=1 level=30 encounters=60 pace=east chance=70",
+        "grind slot=1 level=30 encounters=60 pace=east beat=TRAINER_X chance=0",
+        "grind slot=1 level=30 encounters=60 pace=east beat=TRAINER_X chance=101",
     }){
-        if (parse_grind_variant(bad)){
+        if (parse_grind_step(legacy_game_step(bad))){
             return "Expected \"" + std::string(bad) + "\" refused.";
         }
     }
@@ -487,8 +497,8 @@ UnitTestResult test_grind_reached_already(){
         }
     }
     const Pokemon::StoryStep check = grind_check_step("rival_winnable", "", beat_rival(30));
-    const std::optional<GrindPlan> back = parse_grind_check_variant(check.variant);
-    if (!back || back->trainer != RIVAL || back->level != 30 || parse_grind_variant(check.variant)){
+    const std::optional<GrindPlan> back = parse_grind_check_step(check);
+    if (!back || back->trainer != RIVAL || back->level != 30 || parse_grind_step(check)){
         return "\"" + check.variant + "\" didn't read back as its plan, or read as a GRIND step.";
     }
     return true;

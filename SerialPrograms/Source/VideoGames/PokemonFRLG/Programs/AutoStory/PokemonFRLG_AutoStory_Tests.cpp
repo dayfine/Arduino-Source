@@ -570,7 +570,7 @@ UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<const Map
         const bool walks = step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS;
         //  A GRIND's or a capture's patch is grass: the route there may end on it.
         const bool to_patch = step.target && c + 1 < checkpoint.steps.size()
-            && (parse_grind_variant(checkpoint.steps[c + 1].variant) || parse_capture_variant(checkpoint.steps[c + 1].variant));
+            && (parse_grind_step(checkpoint.steps[c + 1]) || parse_capture_step(checkpoint.steps[c + 1]));
         for (const MapPosition& tile : walks ? tiles_walked(pose, step) : std::vector<MapPosition>{}){
             const StoryPose end = to_patch ? one_tile(*step.target) : StoryPose{};
             const bool patch = to_patch && tile.map == end.map && tile.point == end.tile;
@@ -917,7 +917,7 @@ UnitTestResult test_magikarp_deposit_skippable(){
             continue;
         }
         for (const StoryStep& step : checkpoint.steps){
-            const std::optional<PcTransfer> transfer = parse_pc_variant(step.variant);
+            const std::optional<PcTransfer> transfer = parse_pc_step(step);
             if (transfer && transfer->party_slot == 1 && transfer->if_missing == PcMissing::SKIP){
                 return true;
             }

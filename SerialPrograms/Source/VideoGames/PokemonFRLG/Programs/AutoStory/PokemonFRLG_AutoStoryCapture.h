@@ -65,17 +65,27 @@ struct CapturePlan{
     size_t max_weaken_turns = 2;
 };
 
-//  The prefix of a GAME step's variant that names a capture step.
-inline constexpr std::string_view CAPTURE_VARIANT_PREFIX = "capture ";
+//  The variant of a GAME step that is a capture step.
+inline constexpr std::string_view CAPTURE_VARIANT = "capture";
+//  Its args: the species, how many, the encounters and balls to spend,
+//  the pace, and the move to weaken with for how many turns.
+inline constexpr Pokemon::StoryArgSpec CAPTURE_ARGS[] = {
+    {"species", Pokemon::StoryArgType::TEXT, true},
+    {"catches", Pokemon::StoryArgType::NUMBER, true},
+    {"encounters", Pokemon::StoryArgType::NUMBER, true},
+    {"balls", Pokemon::StoryArgType::NUMBER, true},
+    {"pace", Pokemon::StoryArgType::TEXT, false},
+    {"move", Pokemon::StoryArgType::NUMBER, false},
+    {"turns", Pokemon::StoryArgType::NUMBER, false},
+};
 
-//  `plan` as a GAME step's variant, e.g. "capture rattata catches=1
-//  encounters=20 balls=5 pace=east", with " move=1 turns=2" when it
-//  weakens (the move counted from 1).
-std::string capture_variant(const CapturePlan& plan);
-//  A variant from capture_variant(), whose keys after the species may come
-//  in any order or be left out (their defaults); nothing if `variant` isn't
-//  one or has a key or value it doesn't know.
-std::optional<CapturePlan> parse_capture_variant(std::string_view variant);
+//  `plan` as a capture step's args, e.g. {"species": "rattata", "catches":
+//  1, "encounters": 20, "balls": 5, "pace": "east"}, with "move": 1,
+//  "turns": 2 when it weakens (the move counted from 1).
+Pokemon::StoryArgs capture_args(const CapturePlan& plan);
+//  The plan a capture step (capture_step()) runs, the pace east and no
+//  weakening unless it says; nothing if it isn't one.
+std::optional<CapturePlan> parse_capture_step(const Pokemon::StoryStep& step);
 
 //  The table's step that runs `plan`.
 Pokemon::StoryStep capture_step(std::string name, std::string why, const CapturePlan& plan);

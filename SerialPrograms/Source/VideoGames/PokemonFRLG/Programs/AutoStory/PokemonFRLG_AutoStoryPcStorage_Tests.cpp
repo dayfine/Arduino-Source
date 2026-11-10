@@ -18,7 +18,9 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryPcStorage.h"
+#include "PokemonFRLG_AutoStoryVariantWords.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -524,23 +526,25 @@ UnitTestResult test_pc_variant(){
         {.action = PcAction::DEPOSIT, .party_slot = 1, .box = 0, .if_missing = PcMissing::SKIP},
     };
     for (const PcTransfer& transfer : transfers){
-        const std::string variant = pc_variant(transfer);
-        const std::optional<PcTransfer> back = parse_pc_variant(variant);
-        if (!back || back->action != transfer.action || back->box != transfer.box
+        const Pokemon::StoryStep step = pc_step("pc", "", transfer);
+        const std::optional<PcTransfer> back = parse_pc_step(step);
+        if (step.variant != PC_VARIANT || !back || back->action != transfer.action || back->box != transfer.box
             || back->party_slot != transfer.party_slot || back->box_slot != transfer.box_slot
             || back->if_missing != transfer.if_missing
         ){
-            return "\"" + variant + "\" didn't read back as the transfer it was made from.";
+            return "\"" + pc_transfer_text(transfer) + "\" didn't read back as the transfer it was made from.";
         }
     }
-    if (pc_variant(transfers[0]) != "pc deposit slot=2 box=1"){
-        return "Expected \"pc deposit slot=2 box=1\", got \"" + pc_variant(transfers[0]) + "\".";
+    const Pokemon::StoryArgs expected{{"op", "deposit"}, {"slot", int64_t(2)}, {"box", int64_t(1)}};
+    if (pc_args(transfers[0]) != expected || pc_transfer_text(transfers[0]) != "pc deposit slot=2 box=1"){
+        return "Expected \"pc deposit slot=2 box=1\", got \"" + pc_transfer_text(transfers[0]) + "\".";
     }
+    const std::string_view positional[] = {"op"};
     for (std::string_view bad : {
         "pc", "pc deposit", "pc deposit slot=7 box=1", "pc deposit slot=0 box=1", "pc deposit slot=2 box=15",
-        "pc withdraw box=1 slot=31", "pc release slot=1 box=1", "pc deposit box=1 slot=2", "capture rattata",
+        "pc withdraw box=1 slot=31", "pc release slot=1 box=1", "pc withdraw box=1 slot=2 if_present", "capture rattata",
     }){
-        if (parse_pc_variant(bad)){
+        if (parse_pc_step(legacy_game_step(bad, positional))){
             return "Expected \"" + std::string(bad) + "\" refused.";
         }
     }

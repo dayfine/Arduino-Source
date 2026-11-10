@@ -72,26 +72,38 @@ struct GrindPlan{
     double min_chance = MIN_WIN_CHANCE;
 };
 
-//  The prefix of a GAME step's variant that names a GRIND step.
-inline constexpr std::string_view GRIND_VARIANT_PREFIX = "grind ";
+//  The variant of a GAME step that is a GRIND step.
+inline constexpr std::string_view GRIND_VARIANT = "grind";
+//  Its args, and a GRIND_CHECK step's: the lead's slot, the level, the
+//  encounters and the pace; the nurse's visits, and the trainer to beat
+//  with the chance to reach.
+inline constexpr Pokemon::StoryArgSpec GRIND_ARGS[] = {
+    {"slot", Pokemon::StoryArgType::NUMBER, true},
+    {"level", Pokemon::StoryArgType::NUMBER, true},
+    {"encounters", Pokemon::StoryArgType::NUMBER, true},
+    {"pace", Pokemon::StoryArgType::TEXT, true},
+    {"heal_every", Pokemon::StoryArgType::NUMBER, false},
+    {"beat", Pokemon::StoryArgType::TEXT, false},
+    {"chance", Pokemon::StoryArgType::NUMBER, false},
+};
 
-//  `plan` as a variant: "grind slot=1 level=18 encounters=60 pace=east
-//  heal_every=8", the slot counted from 1, and with a trainer
-//  " beat=TRAINER_RIVAL_CERULEAN_BULBASAUR chance=70", the chance in
-//  percent. The step's target is the nurse.
-std::string grind_variant(const GrindPlan& plan);
-//  Parses a grinding plan from a variant string.
-std::optional<GrindPlan> parse_grind_variant(std::string_view variant);
+//  `plan` as a GRIND step's args: {"slot": 1, "level": 18, "encounters":
+//  60, "pace": "east", "heal_every": 8}, the slot counted from 1, and with
+//  a trainer "beat": "TRAINER_RIVAL_CERULEAN_BULBASAUR", "chance": 70, the
+//  chance in percent. The step's target is the nurse.
+Pokemon::StoryArgs grind_args(const GrindPlan& plan);
+//  The plan a GRIND step (grind_step()) runs; nothing if it isn't one.
+std::optional<GrindPlan> parse_grind_step(const Pokemon::StoryStep& step);
 
 //  The table's GRIND step: `nurse` is where the player faces the nurse.
 Pokemon::StoryStep grind_step(std::string name, std::string why, const GrindPlan& plan, Pokemon::Pose nurse);
 
-//  The prefix of a GAME step's variant that checks a GRIND step's plan
-//  before the walk out to its patch, e.g. "grind_check slot=1 level=32
-//  ...", the rest as grind_variant()'s.
-inline constexpr std::string_view GRIND_CHECK_VARIANT_PREFIX = "grind_check ";
-//  Parses a grind check variant string into its GrindPlan.
-std::optional<GrindPlan> parse_grind_check_variant(std::string_view variant);
+//  The variant of a GAME step that checks a GRIND step's plan before the
+//  walk out to its patch, with grind_args() as its args.
+inline constexpr std::string_view GRIND_CHECK_VARIANT = "grind_check";
+//  The plan a grind check step (grind_check_step()) checks; nothing if it
+//  isn't one.
+std::optional<GrindPlan> parse_grind_check_step(const Pokemon::StoryStep& step);
 
 //  The table's check before the walk out to a GRIND step's patch: when the
 //  lead already has what `plan` grinds for, the step sets a run flag named

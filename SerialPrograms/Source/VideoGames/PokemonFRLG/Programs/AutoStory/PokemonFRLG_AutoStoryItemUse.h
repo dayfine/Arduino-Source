@@ -23,6 +23,8 @@
 #include "CommonFramework/Language.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryArgs.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_ItemListReader.h"
 
 namespace PokemonAutomation{
@@ -30,9 +32,15 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-//  The GAME step that uses an item from the bag on the overworld:
-//  "use_item <slug>", the slug as read_item_list_name() names it.
-inline constexpr std::string_view USE_ITEM_PREFIX = "use_item ";
+//  The GAME step that uses an item from the bag on the overworld, its
+//  args the item's slug as read_item_list_name() names it, and for an item
+//  used on a Pokemon the party slot (none the story uses yet).
+inline constexpr std::string_view USE_ITEM_VARIANT = "use_item";
+//  Its args: the item, and the party slot it is used on.
+inline constexpr Pokemon::StoryArgSpec USE_ITEM_ARGS[] = {
+    {"item", Pokemon::StoryArgType::TEXT, true},
+    {"slot", Pokemon::StoryArgType::NUMBER, false},
+};
 //  The GAME step that gets on the Bicycle (the Key Items pocket's BICYCLE,
 //  USE). The ROUTE steps after it ride (BIKE_VARIANT).
 inline const std::string RIDE_BIKE_VARIANT = "ride_bike";
@@ -51,13 +59,11 @@ std::optional<BagPocket> usable_item_pocket(std::string_view item);
 //  Whether `item` is a Repel of any kind.
 bool is_repel(std::string_view item);
 
-//  The variant that uses `item`.
-std::string use_item_variant(std::string_view item);
-//  The item a "use_item <slug>" variant uses, or nothing if it isn't one
-//  or the item isn't one the story uses from the bag.
-std::optional<std::string> parse_use_item_variant(std::string_view variant);
-//  Whether `variant` is one of this file's steps.
-bool is_item_use_variant(std::string_view variant);
+//  The item a use_item step uses, or nothing if it isn't one, the item
+//  isn't one the story uses from the bag, or it names a slot.
+std::optional<std::string> parse_use_item_step(const Pokemon::StoryStep& step);
+//  Whether `step` is one of this file's steps.
+bool is_item_use_step(const Pokemon::StoryStep& step);
 
 //  The row of `item` in `rows` (read_bag_pocket()'s, from the top), if it
 //  has one left: a count of -1 (unread) counts as some.

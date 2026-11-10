@@ -22,6 +22,7 @@
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
 #include "Pokemon/AutoStory/Pokemon_StorySteps.h"
 #include "PokemonFRLG_AutoStoryCapture.h"
+#include "PokemonFRLG_AutoStoryVariantWords.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -349,30 +350,32 @@ UnitTestResult test_capture_variant(){
             .weaken_move = 3, .max_weaken_turns = 1},
     };
     for (const CapturePlan& plan : plans){
-        const std::string variant = capture_variant(plan);
-        const std::optional<CapturePlan> back = parse_capture_variant(variant);
+        const std::optional<CapturePlan> back = parse_capture_step(capture_step("catch", "", plan));
         if (!back || back->species != plan.species || back->catches != plan.catches
             || back->max_encounters != plan.max_encounters || back->max_balls != plan.max_balls
             || back->pace != plan.pace || back->weaken_move != plan.weaken_move
             || (plan.weaken_move && back->max_weaken_turns != plan.max_weaken_turns)
         ){
-            return "\"" + variant + "\" didn't read back as the plan it was made from.";
+            return "The capture step for " + plan.species + " didn't read back as the plan it was made from.";
         }
     }
-    const std::optional<CapturePlan> short_form = parse_capture_variant("capture rattata");
-    if (!short_form || short_form->species != "rattata" || short_form->max_balls != 5 || short_form->weaken_move){
-        return "Expected \"capture rattata\" to read with the defaults.";
+    const std::string_view positional[] = {"species"};
+    const std::optional<CapturePlan> short_form = parse_capture_step(legacy_game_step("capture rattata catches=1 encounters=20 balls=5", positional));
+    if (!short_form || short_form->species != "rattata" || short_form->pace != Direction::EAST || short_form->weaken_move){
+        return "Expected a capture step without a pace or a move to pace east and not weaken.";
     }
     for (std::string_view bad : {
-        "capture", "capture ", "capture balls=3", "capture rattata balls=0", "capture rattata move=5",
-        "capture rattata pace=up", "capture rattata colour=red", "capture rattata balls", "pc deposit slot=2 box=1",
+        "capture", "capture rattata", "capture catches=1 encounters=20 balls=3", "capture rattata catches=1 encounters=20 balls=0",
+        "capture rattata catches=1 encounters=20 balls=5 move=5", "capture rattata catches=1 encounters=20 balls=5 pace=up",
+        "capture rattata catches=1 encounters=20 balls=5 colour=red", "capture rattata catches=1 encounters=20 balls",
+        "pc deposit slot=2 box=1",
     }){
-        if (parse_capture_variant(bad)){
+        if (parse_capture_step(legacy_game_step(bad, positional))){
             return "Expected \"" + std::string(bad) + "\" refused.";
         }
     }
     const Pokemon::StoryStep step = capture_step("catch_rattata", "Cut user", RATTATA);
-    if (step.kind != Pokemon::StoryStepKind::GAME || !parse_capture_variant(step.variant)){
+    if (step.kind != Pokemon::StoryStepKind::GAME || !parse_capture_step(step)){
         return "Expected capture_step() to be a GAME step with a capture variant.";
     }
     return true;

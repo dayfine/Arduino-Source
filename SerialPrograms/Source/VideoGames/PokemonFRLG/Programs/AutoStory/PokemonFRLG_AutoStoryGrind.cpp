@@ -5,6 +5,7 @@
  */
 
 #include <algorithm>
+#include <cmath>
 #include <format>
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "PokemonFRLG_AutoStoryActions.h"
@@ -35,79 +36,69 @@ const char* grind_end_name(GrindEnd end){
 }
 
 
-std::string grind_variant(const GrindPlan& plan){
-    std::string variant = std::format(
-        "{}slot={} level={} encounters={} pace={} heal_every={}",
-        GRIND_VARIANT_PREFIX, plan.member + 1, plan.level, plan.max_encounters,
-        direction_name(plan.pace), plan.heal_every
-    );
+Pokemon::StoryArgs grind_args(const GrindPlan& plan){
+    Pokemon::StoryArgs args{
+        {"slot", static_cast<int64_t>(plan.member + 1)},
+        {"level", static_cast<int64_t>(plan.level)},
+        {"encounters", static_cast<int64_t>(plan.max_encounters)},
+        {"pace", std::string(direction_name(plan.pace))},
+        {"heal_every", static_cast<int64_t>(plan.heal_every)},
+    };
     if (!plan.trainer.empty()){
-        variant += std::format(" beat={} chance={:.0f}", plan.trainer, 100 * plan.min_chance);
+        args["beat"] = plan.trainer;
+        args["chance"] = static_cast<int64_t>(std::llround(100 * plan.min_chance));
     }
-    return variant;
+    return args;
 }
 
 namespace{
 
-bool set_grind_word(GrindPlan& plan, std::string_view word){
-    const std::optional<VariantPair> pair = variant_pair(word);
-    if (!pair){
-        return false;
-    }
-    if (pair->key == "beat"){
-        plan.trainer = std::string(pair->value);
-        return !plan.trainer.empty();
-    }
-    if (pair->key == "pace"){
-        for (Direction direction : Pokemon::ALL_DIRECTIONS){
-            if (pair->value == direction_name(direction)){
-                plan.pace = direction;
-                return true;
-            }
+//  The most a count names: four digits.
+constexpr int64_t MAX_COUNT = 9999;
+
+std::optional<Direction> direction_from_name(std::string_view name){
+    for (Direction direction : Pokemon::ALL_DIRECTIONS){
+        if (name == direction_name(direction)){
+            return direction;
         }
-        return false;
     }
-    const std::optional<size_t> number = variant_number(pair->value, 4);
-    if (!number){
-        return false;
+    return std::nullopt;
+}
+
+//  `args` (checked against GRIND_ARGS) as a plan; nothing if a value is out
+//  of range, or a chance has no trainer to be against.
+std::optional<GrindPlan> grind_plan(const Pokemon::StoryArgs& args){
+    using Pokemon::story_arg_number;
+    if (!arg_number_within(args, "slot", 1, static_cast<int64_t>(PARTY_SLOTS)) || !arg_number_within(args, "level", 2, 100)
+        || !arg_number_within(args, "encounters", 1, MAX_COUNT) || !arg_number_within(args, "heal_every", 0, MAX_COUNT)
+        || !arg_number_within(args, "chance", 1, 100)
+    ){
+        return std::nullopt;
     }
-    if (pair->key == "slot" && *number >= 1 && *number <= PARTY_SLOTS){
-        plan.member = *number - 1;
-    }else if (pair->key == "level" && *number >= 2 && *number <= 100){
-        plan.level = (unsigned)*number;
-    }else if (pair->key == "encounters" && *number >= 1){
-        plan.max_encounters = *number;
-    }else if (pair->key == "heal_every"){
-        plan.heal_every = *number;
-    }else if (pair->key == "chance" && *number >= 1 && *number <= 100){
-        plan.min_chance = static_cast<double>(*number) / 100;
-    }else{
-        return false;
+    const std::optional<Direction> pace = direction_from_name(*Pokemon::story_arg_text(args, "pace"));
+    const std::optional<std::string_view> trainer = Pokemon::story_arg_text(args, "beat");
+    const std::optional<int64_t> chance = story_arg_number(args, "chance");
+    if (!pace || (trainer && trainer->empty()) || (chance && !trainer)){
+        return std::nullopt;
     }
-    return true;
+    GrindPlan plan;
+    plan.member = static_cast<size_t>(*story_arg_number(args, "slot")) - 1;
+    plan.level = static_cast<unsigned>(*story_arg_number(args, "level"));
+    plan.max_encounters = static_cast<size_t>(*story_arg_number(args, "encounters"));
+    plan.pace = *pace;
+    plan.heal_every = static_cast<size_t>(story_arg_number(args, "heal_every").value_or(0));
+    plan.trainer = std::string(trainer.value_or(""));
+    if (chance){
+        plan.min_chance = static_cast<double>(*chance) / 100;
+    }
+    return plan;
 }
 
 } // namespace
 
-std::optional<GrindPlan> parse_grind_variant(std::string_view variant){
-    if (!variant.starts_with(GRIND_VARIANT_PREFIX)){
-        return std::nullopt;
-    }
-    GrindPlan plan;
-    bool level_seen = false;
-    bool chance_seen = false;
-    for (std::string_view word : variant_words(variant.substr(GRIND_VARIANT_PREFIX.size()))){
-        if (!set_grind_word(plan, word)){
-            return std::nullopt;
-        }
-        level_seen |= word.starts_with("level=");
-        chance_seen |= word.starts_with("chance=");
-    }
-    //  A chance needs a trainer to be against.
-    if (!level_seen || (chance_seen && plan.trainer.empty())){
-        return std::nullopt;
-    }
-    return plan;
+std::optional<GrindPlan> parse_grind_step(const Pokemon::StoryStep& step){
+    const Pokemon::StoryArgs* args = game_step_args(step, GRIND_VARIANT, GRIND_ARGS);
+    return args == nullptr ? std::nullopt : grind_plan(*args);
 }
 
 Pokemon::StoryStep grind_step(std::string name, std::string why, const GrindPlan& plan, Pokemon::Pose nurse){
@@ -115,16 +106,15 @@ Pokemon::StoryStep grind_step(std::string name, std::string why, const GrindPlan
     step.kind = Pokemon::StoryStepKind::GAME;
     step.name = std::move(name);
     step.why = std::move(why);
-    step.variant = grind_variant(plan);
+    step.variant = GRIND_VARIANT;
+    step.args = grind_args(plan);
     step.target = std::move(nurse);
     return step;
 }
 
-std::optional<GrindPlan> parse_grind_check_variant(std::string_view variant){
-    if (!variant.starts_with(GRIND_CHECK_VARIANT_PREFIX)){
-        return std::nullopt;
-    }
-    return parse_grind_variant(std::string(GRIND_VARIANT_PREFIX) + std::string(variant.substr(GRIND_CHECK_VARIANT_PREFIX.size())));
+std::optional<GrindPlan> parse_grind_check_step(const Pokemon::StoryStep& step){
+    const Pokemon::StoryArgs* args = game_step_args(step, GRIND_CHECK_VARIANT, GRIND_ARGS);
+    return args == nullptr ? std::nullopt : grind_plan(*args);
 }
 
 Pokemon::StoryStep grind_check_step(std::string name, std::string why, const GrindPlan& plan){
@@ -132,7 +122,8 @@ Pokemon::StoryStep grind_check_step(std::string name, std::string why, const Gri
     step.kind = Pokemon::StoryStepKind::GAME;
     step.name = std::move(name);
     step.why = std::move(why);
-    step.variant = std::string(GRIND_CHECK_VARIANT_PREFIX) + grind_variant(plan).substr(GRIND_VARIANT_PREFIX.size());
+    step.variant = GRIND_CHECK_VARIANT;
+    step.args = grind_args(plan);
     return step;
 }
 

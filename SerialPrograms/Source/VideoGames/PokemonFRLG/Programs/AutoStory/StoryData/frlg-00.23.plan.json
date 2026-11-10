@@ -20,14 +20,16 @@
           {
             "id": "teach_cut",
             "kind": "game_action",
-            "variant": "teach hm01 cut slot=2",
+            "variant": "teach",
+            "args": {"item": "hm01", "move": "cut", "slot": 2},
             "once_per_save": true,
             "why": "HM01 Cut to the Oddish, second in the party, unless it knows it"
           },
           {
             "id": "teach_dig",
             "kind": "game_action",
-            "variant": "teach tm28 dig slot=1 forget=withdraw",
+            "variant": "teach",
+            "args": {"item": "tm28", "move": "dig", "slot": 1, "forget": "withdraw"},
             "once_per_save": true,
             "why": "TM28 Dig in place of Withdraw, for Lt. Surge, unless the lead knows it or there is no TM28"
           }

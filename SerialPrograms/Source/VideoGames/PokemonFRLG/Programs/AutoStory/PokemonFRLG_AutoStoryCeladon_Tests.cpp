@@ -209,12 +209,12 @@ UnitTestResult test_bike_voucher_row(){
 UnitTestResult test_repels_and_escape_ropes(){
     const StoryCheckpoint& row = checkpoint("00.26");
     const auto step = std::find_if(row.steps.begin(), row.steps.end(), [](const StoryStep& data){
-        return parse_mart_variant(data.variant).has_value();
+        return parse_mart_step(data).has_value();
     });
     if (step == row.steps.end()){
         return "00.26: expected a Mart step.";
     }
-    const MartPlan plan = *parse_mart_variant(step->variant);
+    const MartPlan plan = *parse_mart_step(*step);
     if (plan.map != StoryTable::CERULEAN_MART || !plan.money_floor){
         return "00.26: expected the Mart step at Cerulean's Mart, with a money floor.";
     }
