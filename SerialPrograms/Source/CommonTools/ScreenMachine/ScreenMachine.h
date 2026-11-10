@@ -137,8 +137,8 @@ struct ScreenMachineResult{
 //  once `timeout` has passed since the first look, and after 10000 looks in
 //  any case. A failure is returned, not thrown.
 ScreenMachineResult run_screen_machine_on_observations(
-    const std::function<ScreenObservation()>& observe, CancellableScope& scope, StepTrace& trace,
-    const std::vector<ScreenState>& states, Milliseconds timeout
+    const std::function<ScreenObservation()>& observe, CancellableScope& scope,
+    const std::vector<ScreenState>& states, Milliseconds timeout, StepTrace& trace
 );
 
 template <typename ControllerContext>

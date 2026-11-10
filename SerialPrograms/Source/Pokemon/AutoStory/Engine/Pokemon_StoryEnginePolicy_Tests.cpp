@@ -10,6 +10,7 @@
  *
  */
 
+#include <format>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -22,7 +23,7 @@
 #include "Pokemon/AutoStory/Data/Pokemon_StoryStepJson.h"
 #include "Pokemon_StoryEngine.h"
 #include "Pokemon_StoryFakeBackend.h"
-#include "Pokemon_StoryEngine_Tests.h"
+#include "Pokemon_StoryEnginePolicy_Tests.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -34,11 +35,11 @@ namespace{
 //  FRLG 00.31's end in the shared format, its steps given: beside B3F's
 //  Rare Candy, facing north, with two Rare Candies.
 std::string checkpoint_0031(std::string_view phase, std::string_view steps){
-    return std::string(R"({"id": "00.31", "title": "Rocket Hideout", "events": )") + std::string(steps) + R"(,
-        "metadata": {"phase": ")" + std::string(phase) + R"(", "source": "test", "postconditions": {
-            "position": {"map": "RocketHideout_B3F", "tiles": [[12, 13]], "facing": "north"},
-            "items": [{"item": "RARE_CANDY", "quantity": 2}]
-        }}})";
+    return std::format(R"({{"id": "00.31", "title": "Rocket Hideout", "events": {},
+        "metadata": {{"phase": "{}", "source": "test", "postconditions": {{
+            "position": {{"map": "RocketHideout_B3F", "tiles": [[12, 13]], "facing": "north"}},
+            "items": [{{"item": "RARE_CANDY", "quantity": 2}}]
+        }}}}}})", steps, phase);
 }
 
 inline constexpr std::string_view TALK_STEPS = R"([{"id": "b3f_rare_candy", "kind": "talk", "why": "the second candy"}])";
@@ -155,9 +156,9 @@ std::string check_engine_lines(const EngineCase& test, const FakeStoryBackend<Gr
         found |= line.starts_with(test.expectation.line);
     }
     if (saves != test.expectation.saves){
-        return "expected " + std::to_string(test.expectation.saves) + " saves, got " + std::to_string(saves);
+        return std::format("expected {} saves, got {}", test.expectation.saves, saves);
     }
-    return found ? "" : "expected a line starting \"" + std::string(test.expectation.line) + "\"";
+    return found ? "" : std::format("expected a line starting \"{}\"", test.expectation.line);
 }
 
 std::string check_engine(const EngineCase& test, CancellableScope& scope){
@@ -174,12 +175,12 @@ std::string check_engine(const EngineCase& test, CancellableScope& scope){
         };
     }
     RunState state;
-    const StoryEngineReport report = engine.run_checkpoint(checkpoint, state);
+    const StoryEngineReport report = engine.run_checkpoint(checkpoint, SavePoint::RUN_END, state);
     if (report.save.mode != test.expectation.mode){
-        return "expected save mode " + story_save_mode_name(test.expectation.mode) + ", got " + story_save_mode_name(report.save.mode);
+        return std::format("expected save mode {}, got {}", story_save_mode_name(test.expectation.mode), story_save_mode_name(report.save.mode));
     }
     if (report.verdict != test.expectation.verdict){
-        return std::string("expected the checkpoint ") + (test.expectation.verdict == CheckpointVerdict::PASSED ? "passed" : "failed");
+        return std::format("expected the checkpoint {}", test.expectation.verdict == CheckpointVerdict::PASSED ? "passed" : "failed");
     }
     return check_engine_lines(test, backend);
 }
@@ -187,7 +188,7 @@ std::string check_engine(const EngineCase& test, CancellableScope& scope){
 class StoryEngineSaveTest : public UnitTest{
 public:
     explicit StoryEngineSaveTest(EngineCase test)
-        : UnitTest("Pokemon::StoryEngine save - " + std::string(test.input.name))
+        : UnitTest(std::format("Pokemon::StoryEngine save - {}", test.input.name))
         , m_case(std::move(test))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
@@ -239,7 +240,7 @@ const HashCase HASH_CASES[] = {
 };
 
 std::string hash_of(std::string_view events, std::string_view source){
-    const std::string json = std::string(R"({"id": "x", "title": "x", "events": )") + std::string(events) + "}";
+    const std::string json = std::format(R"({{"id": "x", "title": "x", "events": {}}})", events);
     return story_steps_hash(read_story_checkpoint(parse_json(json), source), builtin_story_actions());
 }
 
@@ -247,10 +248,10 @@ std::string check_hash(const HashCase& test){
     const std::string a = hash_of(test.input.a, test.input.name);
     const std::string b = hash_of(test.input.b, test.input.name);
     if ((a == b) != test.expectation.same){
-        return std::string("expected the hashes ") + (test.expectation.same ? "equal" : "different") + ": " + a + ", " + b;
+        return std::format("{}{}: {}, {}", "expected the hashes ", (test.expectation.same ? "equal" : "different"), a, b);
     }
     if (test.expectation.hash_a && a != *test.expectation.hash_a){
-        return "expected the pinned hash " + std::string(*test.expectation.hash_a) + ", got " + a;
+        return std::format("expected the pinned hash {}, got {}", *test.expectation.hash_a, a);
     }
     return "";
 }
@@ -258,7 +259,7 @@ std::string check_hash(const HashCase& test){
 class StoryStepsHashTest : public UnitTest{
 public:
     explicit StoryStepsHashTest(HashCase test)
-        : UnitTest("Pokemon::StoryEngine steps_hash - " + std::string(test.input.name))
+        : UnitTest(std::format("Pokemon::StoryEngine steps_hash - {}", test.input.name))
         , m_case(std::move(test))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -304,23 +305,23 @@ const MetadataCase METADATA_CASES[] = {
 };
 
 std::string check_metadata(const MetadataCase& test){
-    const std::string json = std::string(R"({"id": "x", "title": "x", "events": [])") + std::string(test.input.metadata) + "}";
+    const std::string json = std::format(R"({{"id": "x", "title": "x", "events": []{}}})", test.input.metadata);
     StoryCheckpoint checkpoint;
     try{
         checkpoint = read_story_checkpoint(parse_json(json), "metadata");
     }catch (const ParseException& error){
         const bool expected = !test.expectation.error.empty() && error.message().find(test.expectation.error) != std::string::npos;
-        return expected ? "" : "unexpected error: " + error.message();
+        return expected ? "" : std::format("unexpected error: {}", error.message());
     }
     if (!test.expectation.error.empty()){
-        return "expected the error \"" + std::string(test.expectation.error) + "\"";
+        return std::format("expected the error \"{}\"", test.expectation.error);
     }
     const std::string hash = checkpoint.metadata.verified ? checkpoint.metadata.verified->steps_hash : "";
     if (checkpoint.metadata.phase != test.expectation.phase || hash != test.expectation.steps_hash){
-        return "read phase " + story_phase_name(checkpoint.metadata.phase) + ", steps_hash \"" + hash + "\"";
+        return std::format("read phase {}, steps_hash \"{}\"", story_phase_name(checkpoint.metadata.phase), hash);
     }
     if (checkpoint.postconditions.items.size() != test.expectation.items){
-        return "read " + std::to_string(checkpoint.postconditions.items.size()) + " items";
+        return std::format("read {} items", checkpoint.postconditions.items.size());
     }
     return "";
 }
@@ -328,7 +329,7 @@ std::string check_metadata(const MetadataCase& test){
 class StoryMetadataTest : public UnitTest{
 public:
     explicit StoryMetadataTest(MetadataCase test)
-        : UnitTest("Pokemon::StoryEngine metadata - " + std::string(test.input.name))
+        : UnitTest(std::format("Pokemon::StoryEngine metadata - {}", test.input.name))
         , m_case(std::move(test))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -394,13 +395,13 @@ std::string check_screen(const ScreenCase& test){
     }
     const ScreenState* state = match_screen_state(states, observation);
     const std::string got = state ? state->name : "none";
-    return got == test.expectation.state.value_or("none") ? "" : "matched " + got;
+    return got == test.expectation.state.value_or("none") ? "" : std::format("matched {}", got);
 }
 
 class ScreenObservationTest : public UnitTest{
 public:
     explicit ScreenObservationTest(ScreenCase test)
-        : UnitTest("Pokemon::StoryEngine screen observation - " + std::string(test.input.name))
+        : UnitTest(std::format("Pokemon::StoryEngine screen observation - {}", test.input.name))
         , m_case(std::move(test))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{

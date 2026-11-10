@@ -62,7 +62,7 @@ public:
     //  Runs `checkpoint` from `state`, then checks its postconditions and
     //  saves if its phase allows a save at `point`. A SAVE step among its
     //  steps saves only in PER_CHECKPOINT mode.
-    StoryEngineReport run_checkpoint(const StoryCheckpoint& checkpoint, RunState& state, SavePoint point = SavePoint::RUN_END);
+    StoryEngineReport run_checkpoint(const StoryCheckpoint& checkpoint, SavePoint point, RunState& state);
 
     //  `checkpoints` in order from the save the game is on, each run with
     //  run_checkpoint() (the last at RUN_END), until one does not pass.
@@ -74,8 +74,8 @@ public:
     //  every attempt would repeat: a lint, a console_only action, the game
     //  not running. Logs "[Segment] <id>: ..." lines.
     SegmentReport run_segment(
-        std::string_view id, std::span<const StoryCheckpoint> checkpoints, RunState& state,
-        size_t attempts_per_checkpoint
+        std::string_view id, std::span<const StoryCheckpoint> checkpoints, size_t attempts_per_checkpoint,
+        RunState& state
     );
 
     //  Verify mode: `checkpoint` run `policy.runs` times, each from the save
@@ -83,7 +83,7 @@ public:
     //  No run saves, but the last when every run before it passed: it saves
     //  at RUN_END as the checkpoint's phase allows. `policy.save_mode` is
     //  not read; the phase decides. Logs "[Verify] <id>: ..." lines.
-    VerifyReport verify_checkpoint(const StoryCheckpoint& checkpoint, RunState& state, const VerifyPolicy& policy);
+    VerifyReport verify_checkpoint(const StoryCheckpoint& checkpoint, const VerifyPolicy& policy, RunState& state);
 
     //  `checkpoint`'s postconditions against a fresh observation, read by
     //  the game's readers that opted in (StoryReaderUse::AFTER_CHECKPOINT)
@@ -98,15 +98,15 @@ private:
         NEVER,
     };
 
-    StoryEngineReport run_once(const StoryCheckpoint& checkpoint, RunState& state, SavePoint point, SaveGate gate);
+    StoryEngineReport run_once(const StoryCheckpoint& checkpoint, SavePoint point, SaveGate gate, RunState& state);
     CheckpointReport run_steps(const StoryCheckpoint& checkpoint, RunState& state);
-    void save_if_allowed(StoryEngineReport& report, const StoryCheckpoint& checkpoint, SavePoint point);
+    void save_if_allowed(const StoryCheckpoint& checkpoint, SavePoint point, StoryEngineReport& report);
     //  Empties `state` and reloads the last save; the reload's pose, if it
     //  says one, goes into `state`.
     Outcome reload(RunState& state);
     //  One checkpoint of a segment until it passes or runs out of attempts.
     StoryEngineReport run_with_retries(
-        const StoryCheckpoint& checkpoint, RunState& state, SavePoint point, size_t attempts, CheckpointRun& run
+        const StoryCheckpoint& checkpoint, SavePoint point, size_t attempts, RunState& state, CheckpointRun& run
     );
 
     //  Declared first: m_game's save step reads them.

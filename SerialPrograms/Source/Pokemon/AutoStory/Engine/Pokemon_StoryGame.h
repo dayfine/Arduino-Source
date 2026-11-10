@@ -41,7 +41,7 @@ struct StoryActionCall{
 //  succeeded action that knows where it left the player returns that pose
 //  in its Outcome.
 template <StoryPose PoseType>
-using StoryActionHandler = std::function<Outcome(StoryBackend<PoseType>& backend, RunState& state, const StoryActionCall& call)>;
+using StoryActionHandler = std::function<Outcome(StoryBackend<PoseType>& backend, const StoryActionCall& call, RunState& state)>;
 
 //  Fills an observation's pose or readings from what the backend saw: a
 //  console reads the frame (OCR, templates), a simulation its model.

@@ -54,7 +54,7 @@ std::string tiles_text(const std::vector<TilePos>& tiles){
     return text;
 }
 
-void check_map(std::vector<PostconditionResult>& out, const GridPose& end, const ObservedState& observed){
+void check_map(const GridPose& end, const ObservedState& observed, std::vector<PostconditionResult>& out){
     if (!observed.map){
         out.push_back(not_read("map"));
         return;
@@ -67,7 +67,7 @@ void check_map(std::vector<PostconditionResult>& out, const GridPose& end, const
 }
 
 //  The tile and facing mean nothing on another map: not checked then.
-void check_tile(std::vector<PostconditionResult>& out, const GridPose& end, const ObservedState& observed, bool map_failed){
+void check_tile(const GridPose& end, const ObservedState& observed, bool map_failed, std::vector<PostconditionResult>& out){
     if (end.tiles.empty()){
         return;
     }
@@ -86,7 +86,7 @@ void check_tile(std::vector<PostconditionResult>& out, const GridPose& end, cons
     ));
 }
 
-void check_facing(std::vector<PostconditionResult>& out, const GridPose& end, const ObservedState& observed, bool map_failed){
+void check_facing(const GridPose& end, const ObservedState& observed, bool map_failed, std::vector<PostconditionResult>& out){
     if (!end.facing){
         return;
     }
@@ -106,20 +106,20 @@ void check_facing(std::vector<PostconditionResult>& out, const GridPose& end, co
     ));
 }
 
-void check_position(std::vector<PostconditionResult>& out, const StoryCheckpoint& checkpoint, const ObservedState& observed){
+void check_position(const StoryCheckpoint& checkpoint, const ObservedState& observed, std::vector<PostconditionResult>& out){
     const std::optional<GridPose> end = checkpoint_end_pose(checkpoint);
     if (!end){
         return;
     }
-    check_map(out, *end, observed);
+    check_map(*end, observed, out);
     const bool map_failed = out.back().verdict == PostconditionVerdict::FAILED;
-    check_tile(out, *end, observed, map_failed);
-    check_facing(out, *end, observed, map_failed);
+    check_tile(*end, observed, map_failed, out);
+    check_facing(*end, observed, map_failed, out);
 }
 
-void check_items(std::vector<PostconditionResult>& out, const StoryPostconditions& expected, const ObservedState& observed){
+void check_items(const StoryPostconditions& expected, const ObservedState& observed, std::vector<PostconditionResult>& out){
     for (const StoryItem& item : expected.items){
-        const std::string what = "item " + item.item;
+        const std::string what = std::format("item {}", item.item);
         const auto read = observed.items.find(item.item);
         if (read == observed.items.end()){
             out.push_back(not_read(what));
@@ -133,9 +133,9 @@ void check_items(std::vector<PostconditionResult>& out, const StoryPostcondition
     }
 }
 
-void check_flags(std::vector<PostconditionResult>& out, const StoryPostconditions& expected, const ObservedState& observed){
+void check_flags(const StoryPostconditions& expected, const ObservedState& observed, std::vector<PostconditionResult>& out){
     for (const std::string& flag : expected.flags){
-        const std::string what = "flag " + flag;
+        const std::string what = std::format("flag {}", flag);
         const auto read = observed.flags.find(flag);
         if (read == observed.flags.end()){
             out.push_back(not_read(what));
@@ -195,9 +195,9 @@ std::optional<GridPose> checkpoint_end_pose(const StoryCheckpoint& checkpoint){
 PostconditionReport check_postconditions(const StoryCheckpoint& checkpoint, const ObservedState& observed){
     PostconditionReport report;
     report.checkpoint = checkpoint.id;
-    check_position(report.results, checkpoint, observed);
-    check_items(report.results, checkpoint.postconditions, observed);
-    check_flags(report.results, checkpoint.postconditions, observed);
+    check_position(checkpoint, observed, report.results);
+    check_items(checkpoint.postconditions, observed, report.results);
+    check_flags(checkpoint.postconditions, observed, report.results);
     return report;
 }
 

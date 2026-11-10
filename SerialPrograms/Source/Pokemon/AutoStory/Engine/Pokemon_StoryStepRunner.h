@@ -32,12 +32,12 @@ public:
 
     //  `step`, unless all its skip_if conditions hold (and it has some):
     //  then it changes nothing and says so.
-    Outcome run(RunState& state, const StoryStep& step);
+    Outcome run(const StoryStep& step, RunState& state);
 
     //  `step`'s action without the skip_if check, for a caller that checks
     //  it itself (the event layer): dispatch, then the declared end pose
     //  when the action gave none, then the "[Step]" line.
-    Outcome act(RunState& state, const StoryStep& step);
+    Outcome act(const StoryStep& step, RunState& state);
 
     //  Whether `condition` holds: a flag of the run, or else a non-zero
     //  reading from the game's reader of that name on a fresh observation

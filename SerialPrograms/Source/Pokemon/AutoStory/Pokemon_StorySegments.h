@@ -61,7 +61,7 @@ struct SegmentHooks{
     //  (check_postconditions(), Pokemon_StoryPostconditionCheck.h), run
     //  before a save in AFTER_VERIFICATION mode: one that failed stops the
     //  save and fails the run. The game logs its lines.
-    MoveOnlyFunction<Outcome(RunState& state, const std::string& checkpoint)> check_postconditions;
+    MoveOnlyFunction<Outcome(const std::string& checkpoint, RunState& state)> check_postconditions;
 };
 
 //  Runs the checkpoints in `range`, in order, saving as `policy.save_mode`

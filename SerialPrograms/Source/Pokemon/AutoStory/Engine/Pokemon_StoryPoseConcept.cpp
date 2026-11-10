@@ -5,6 +5,7 @@
  */
 
 #include <algorithm>
+#include <format>
 #include <string>
 #include "Pokemon_StoryPoseConcept.h"
 
@@ -30,10 +31,10 @@ bool pose_matches(const GridPose& actual, const GridPose& target){
 std::string pose_text(const GridPose& pose){
     std::string text = pose.map;
     for (const TilePos& tile : pose.tiles){
-        text += " " + to_string(tile);
+        text += std::format(" {}", to_string(tile));
     }
     if (pose.facing){
-        text += " facing " + direction_name(*pose.facing);
+        text += std::format(" facing {}", direction_name(*pose.facing));
     }
     return text;
 }
