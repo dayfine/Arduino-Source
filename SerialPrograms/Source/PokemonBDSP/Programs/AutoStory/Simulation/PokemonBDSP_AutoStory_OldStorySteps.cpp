@@ -73,6 +73,18 @@ StoryStep old_coal_room_crate_cut(){
     return step;
 }
 
+std::vector<StoryStep> old_round_mom_to_the_mat(){
+    StoryStep around;
+    around.kind = StoryStepKind::ROUTE;
+    around.name = "around_mom";
+    around.target = Pokemon::tile_pose("PlayerHouse1F", {TilePos{6, 9}}, Direction::SOUTH);
+    StoryStep step;
+    step.kind = StoryStepKind::STEP;
+    step.name = "to_moms_call";
+    step.direction = Direction::SOUTH;
+    return {around, step};
+}
+
 StoryStep old_tap_into_the_gate(){
     StoryStep step;
     step.kind = StoryStepKind::STEP;

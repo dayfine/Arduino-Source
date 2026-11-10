@@ -162,6 +162,10 @@ struct SimWorldKnobs{
     std::map<std::string, Pokemon::Pose> lands = {};
     //  Wild battles in tall grass on every pass (SimGrassBattles); none unset.
     SimGrassBattles grass = {};
+    //  Whether the scene after row `row`'s walk `step` starts early, on the
+    //  walk's last tiles (its target): its trigger lies on the way, so the
+    //  walk runs into it (00.04's Mom's call on (6, 9), lab-B 2026-11-09 17:29).
+    std::function<bool(const std::string& row, const std::string& step)> scene_at_walk_end = nullptr;
 };
 
 //  The walker's RouteIO on the story simulation, with SimWorldKnobs' slides
@@ -250,6 +254,10 @@ struct SimRun{
     //  Where the player stood after the last step, if placed.
     const StoryWorld* world = nullptr;
     Pokemon::TilePos end;
+    //  Scenes a walk took for a trainer's and pressed through, as
+    //  "row step: scene" (the console's unknown-trainer handler, lab-B
+    //  2026-11-09 17:29: Mom's call, then her scene's fade missed).
+    std::vector<std::string> scenes_fought = {};
 };
 
 //  StoryStepIO on the simulation. A walk through a door or a cave mouth
@@ -273,8 +281,17 @@ public:
     virtual RouteIO& route() override{
         return m_route;
     }
+    //  A scene's dialogue fought as a trainer's is pressed through under the
+    //  walk, not its own step: noted (take_scenes_fought()).
     virtual void fight(const std::string&) override{
+        if (m_sim.player().scene){
+            m_scenes_fought.push_back(*m_sim.player().scene);
+        }
         m_sim.end_dialogue();
+    }
+    //  The scenes fought since the last call.
+    std::vector<std::string> take_scenes_fought(){
+        return std::exchange(m_scenes_fought, {});
     }
     virtual void walk_until_stopped(Pokemon::Direction direction, size_t tiles, const std::string& label) override;
     virtual bool run_until_map(Pokemon::Direction direction, Milliseconds limit, const std::string& map, const std::string&) override;
@@ -339,6 +356,7 @@ private:
     const SimWorldKnobs& m_knobs;
     std::function<bool()> m_far_side;
     const std::string& m_step;
+    std::vector<std::string> m_scenes_fought;
 };
 
 //  A scene's trigger the simulation fires from row `row` on, once the step
@@ -448,6 +466,8 @@ private:
     SimWorld setup(const StoryWorld* world) const;
     void arm(const std::string& after);
     bool sync(const Pokemon::Pose& pose, const StoryWorld* on = nullptr);
+    //  Puts a trigger on walk `step`'s last tiles (SimWorldKnobs::scene_at_walk_end).
+    void start_scene_at_end(const Pokemon::StoryStep& step);
     //  Puts the player where SimWorldKnobs::lands says `step` leaves them, if it says.
     void land(const std::string& step);
     bool cross();

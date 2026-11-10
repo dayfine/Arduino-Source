@@ -140,6 +140,7 @@ void GridSim::place(SimWorld world, const TilePos& start, std::optional<Directio
     }
     m_player.dialog = false;
     m_player.trainer.reset();
+    m_player.scene.reset();
     m_player.warped.reset();
     if (m_world.can_run){
         m_player.can_run = *m_world.can_run;
@@ -256,6 +257,7 @@ std::optional<SimStop> GridSim::arrive(){
         if (!fired && std::find(trigger.tiles.begin(), trigger.tiles.end(), tile) != trigger.tiles.end()){
             m_player.fired.push_back(trigger.name);
             m_player.dialog = true;
+            m_player.scene = trigger.name;
             return SimStop::DIALOG;
         }
     }
@@ -364,6 +366,7 @@ void GridSim::end_dialogue(){
         m_player.fought.push_back(*m_player.trainer);
     }
     m_player.trainer.reset();
+    m_player.scene.reset();
     m_player.dialog = false;
 }
 

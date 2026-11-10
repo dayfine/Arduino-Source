@@ -12,6 +12,7 @@
 #define PokemonAutomation_PokemonBDSP_AutoStory_OldStorySteps_H
 
 #include <string>
+#include <vector>
 #include "Pokemon/AutoStory/Pokemon_StorySteps.h"
 
 namespace PokemonAutomation{
@@ -50,6 +51,12 @@ Pokemon::StoryStep old_tap_into_the_gate();
 //  Floaroma's banner stopped us on, from x 10 to 12, so north of it ended
 //  below the old man (lab-B 2026-11-08 18:41).
 Pokemon::StoryStep old_west_along_the_field();
+
+//  00.04's old walk round Mom to (6, 9) and step south onto the mat (6, 10)
+//  for her call: her call fired on (6, 9) at the walk's end, the walk took
+//  it for a trainer and pressed through it, the step went out of the door,
+//  and her hat scene saw no fade (lab-B 2026-11-09 17:29).
+std::vector<Pokemon::StoryStep> old_round_mom_to_the_mat();
 
 
 

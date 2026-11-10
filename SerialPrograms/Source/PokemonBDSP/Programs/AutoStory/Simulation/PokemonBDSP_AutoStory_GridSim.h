@@ -118,6 +118,8 @@ struct SimPlayer{
     bool dialog = false;
     //  The trainer whose dialogue is open, if one is.
     std::optional<std::string> trainer;
+    //  The scene (SimTrigger) whose dialogue is open, if one is.
+    std::optional<std::string> scene;
     //  The door the last warp stepped onto.
     std::optional<Pokemon::TilePos> warped;
     std::vector<std::string> fought = {};
@@ -147,6 +149,14 @@ public:
     void end_dialogue();
     //  Puts the player on `start` of `world`: after a warp or a scene.
     void place(SimWorld world, const Pokemon::TilePos& start, std::optional<Pokemon::Direction> facing);
+    //  A scene's trigger on the world the player is on, from now on.
+    void add_trigger(SimTrigger trigger){
+        m_world.triggers.push_back(std::move(trigger));
+    }
+    //  A new step starts: the warp a step before stepped onto is not this one's.
+    void forget_warp(){
+        m_player.warped.reset();
+    }
 
     const SimPlayer& player() const{
         return m_player;

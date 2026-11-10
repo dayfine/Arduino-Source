@@ -17,6 +17,11 @@
  *    each 8 grass tiles (00.04, lab-B 2026-11-09 16:14: four in a row on
  *    Route 201, each replan back through the grass, "too many plans").
  *    SimWorldKnobs::grass. One variant a row: the whole row so.
+ *  - SCENE_EARLY: a scene starts early, on the last tiles of the route walk
+ *    before its step: its trigger lies on the way (00.04's Mom's call on
+ *    (6, 9), lab-B 2026-11-09 17:29: the walk took it for a trainer and
+ *    pressed through it). A variant also fails when the walk fights it.
+ *    SimWorldKnobs::scene_at_walk_end.
  *
  *  Missed and short fades are swept by SimFailureCases_Tests (every single
  *  missed fade, banner and fade hold).
@@ -30,6 +35,7 @@
  *
  */
 
+#include <algorithm>
 #include <format>
 #include <functional>
 #include <map>
@@ -63,6 +69,7 @@ enum class FaultClass{
     SCENE_END_POSE,
     BATTLE_OPENING,
     GRASS_BATTLES,
+    SCENE_EARLY,
     //  Not swept yet: the measured movement table's lost taps (#293).
     LOST_TAP,
 };
@@ -74,6 +81,8 @@ const char* fault_class_name(FaultClass fault){
         return "battle opening at step start";
     case FaultClass::GRASS_BATTLES:
         return "wild battles on every grass pass";
+    case FaultClass::SCENE_EARLY:
+        return "scene starts during the walk before it";
     case FaultClass::LOST_TAP:
         return "lost tap";
     }
@@ -301,6 +310,37 @@ UnitTestResult sweep_grass_battles(Logger& logger, const StoryCheckpoint& row){
     return sweep_result(logger, FaultClass::GRASS_BATTLES, row.id, 1, failures);
 }
 
+//  Row `row` with the scene of each scene step after a route walk starting
+//  on that walk's target, one at a time.
+UnitTestResult sweep_scene_early(Logger& logger, const StoryCheckpoint& row){
+    std::vector<SweepFailure> failures;
+    size_t variants = 0;
+    for (size_t c = 1; c < row.steps.size(); c++){
+        const StoryStep& walk = row.steps[c - 1];
+        if (row.steps[c].kind != StoryStepKind::MASH || walk.kind != StoryStepKind::ROUTE){
+            continue;
+        }
+        SimWorldKnobs knobs;
+        knobs.scene_at_walk_end = [id = row.id, name = walk.name](const std::string& r, const std::string& s){
+            return r == id && s == name;
+        };
+        variants++;
+        SimExecutor executor(logger, {.fade = {}, .banner = {}}, std::move(knobs));
+        const Pokemon::SegmentReport report = run_rows_on(executor, logger, {.from = row.id, .to = row.id});
+        const SimRun& run = executor.result();
+        const std::string early = "early scene after " + walk.name;
+        const bool fought = std::any_of(run.scenes_fought.begin(), run.scenes_fought.end(), [&](const std::string& scene){
+            return scene.ends_with(early);
+        });
+        if (!report.completed){
+            failures.push_back({row.steps[c].name, "starts on " + walk.name + "'s end", std::format("stopped in {}: {}", run.failed_step, run.error)});
+        }else if (fought){
+            failures.push_back({row.steps[c].name, "starts on " + walk.name + "'s end", "the walk fought it as a trainer's"});
+        }
+    }
+    return sweep_result(logger, FaultClass::SCENE_EARLY, row.id, variants, failures);
+}
+
 //  A fault class swept over row `row` (empty in FAULT_SWEEP_CASES: each
 //  row from FIRST_ROW to LAST_ROW).
 struct FaultSweepInput{
@@ -364,6 +404,8 @@ private:
             return sweep_battle_opening(logger, m_row);
         case FaultClass::GRASS_BATTLES:
             return sweep_grass_battles(logger, m_row);
+        case FaultClass::SCENE_EARLY:
+            return sweep_scene_early(logger, m_row);
         case FaultClass::LOST_TAP:
             break;
         }
@@ -380,6 +422,7 @@ const FaultSweepCase FAULT_SWEEP_CASES[] = {
     {.input = {.fault = FaultClass::SCENE_END_POSE}, .expectation = {}},
     {.input = {.fault = FaultClass::BATTLE_OPENING}, .expectation = {}},
     {.input = {.fault = FaultClass::GRASS_BATTLES}, .expectation = {}},
+    {.input = {.fault = FaultClass::SCENE_EARLY}, .expectation = {}},
 };
 
 void add_tests_AutoStory_FaultSweep(UnitTestDatabase& database){
