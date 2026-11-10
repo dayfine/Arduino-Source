@@ -1,0 +1,67 @@
+BDSP AutoStory: the route bench. Each ROUTE step of the story table, its
+plan scored by Pokemon::score_route() as RouteWalker walks it (wall legs
+held, at a run after 00.03; open legs tapped), then the user's routes for
+three of them (TARGET). Written by the test "Route bench: no route scores
+worse than Data/route_bench.golden.txt"; rerun it with PA_UPDATE_ROUTE_BENCH=1
+to rewrite this file. A route is worse when its verdict leaves PASS, its
+expected time grows or one of its human ratios grows.
+columns: case | expected ms (interruptions by chance) | worst ms (slowest start and
+the costliest single interruption) | nominal ms (slowest start, none) | stops (wall
+re-localizations) | recoveries (places an interruption may happen) | replans (of those,
+the ones the plan cannot absorb) | slower than human (expected / human ms) | riskier
+than human ((recoveries + 1) / (human's + 1)) | more backtracking than human ((stops +
+replans + 1) / (human's stops + 1)) | the human's ms (the user's route, a recorded run,
+or the stand-in: the shortest safe walk run with no stops) | verdict (why). A ratio
+above 1.5 is flagged "!".
+
+00.01 below_the_flute | 4090 | 4090 | 4090 | 1 | 0 | 0 | 5.84! | 1.00 | 2.00! | 700 ms (stand-in) | PASS
+00.01 above_the_door | 7230 | 7230 | 7230 | 1 | 0 | 0 | 4.66! | 1.00 | 2.00! | 1550 ms (stand-in) | PASS
+00.01 short_of_barrys_door | 11950 | 11950 | 11950 | 1 | 0 | 0 | 4.35! | 1.00 | 2.00! | 2750 ms (stand-in) | PASS
+00.01 above_barrys_door | 8200 | 8200 | 8200 | 0 | 0 | 0 | 5.29! | 1.00 | 1.00 | 1550 ms (stand-in) | PASS
+00.03 into_rowans_scene | 3030 | 3030 | 3030 | 1 | 0 | 0 | 2.33! | 1.00 | 2.00! | 1300 ms (stand-in) | PASS
+00.03 into_dawns_scene | 61510 | 46690 | 34340 | 4 | 22 | 0 | 5.37! | 1.15 | 5.00! | 11450 ms (stand-in) | PASS
+00.04 onto_the_path | 4050 | 4050 | 4050 | 2 | 0 | 0 | 5.79! | 1.00 | 3.00! | 700 ms (stand-in) | PASS
+00.04 to_ledge_column | 3850 | 3850 | 3850 | 1 | 0 | 0 | 3.21! | 1.00 | 2.00! | 1200 ms (stand-in) | PASS
+00.04 along_route_201_road | 36400 | 36400 | 36400 | 0 | 0 | 0 | 2.96! | 1.00 | 0.33 | 12300 ms (user's route) | PASS
+00.04 into_twinleaf | 26500 | 26500 | 26500 | 0 | 0 | 0 | 2.60! | 1.00 | 0.50 | 10200 ms (user's route) | PASS
+00.04 to_moms_doorstep | 4100 | 4100 | 4100 | 0 | 0 | 0 | 5.47! | 1.00 | 1.00 | 750 ms (stand-in) | PASS
+00.04 beside_mom | 900 | 900 | 900 | 0 | 0 | 0 | 2.25! | 1.00 | 1.00 | 400 ms (stand-in) | PASS
+00.04 into_moms_call | 4300 | 4300 | 4300 | 0 | 0 | 0 | 5.38! | 1.00 | 1.00 | 800 ms (stand-in) | PASS
+00.04 short_of_the_catch_tutorial | 84001 | 81950 | 49900 | 6 | 19 | 7 | 4.73! | 1.00 | 14.00! | 17750 ms (stand-in) | PASS
+00.04b to_catch_grass | 9683 | 18650 | 6300 | 2 | 34 | 1 | 14.90! | 17.50! | 4.00! | 650 ms (stand-in) | STRAND (leg 3 interrupted at (115, 25): recovery from (114, 25)(115, 25)(116, 25): leg 2 interrupted at (115, 25): the recovery from (114, 25)(115, 25)(116, 25) leads back to itself)
+00.04b into_sandgem | 9520 | 19400 | 7050 | 3 | 12 | 0 | 2.93! | 4.33! | 4.00! | 3250 ms (stand-in) | PASS
+00.04b to_center_sign | 12300 | 12300 | 12300 | 0 | 0 | 0 | 6.00! | 1.00 | 1.00 | 2050 ms (stand-in) | PASS
+00.04d north_to_jubilife | 73653 | 64350 | 33200 | 6 | 35 | 5 | 7.22! | 1.24 | 12.00! | 10200 ms (stand-in) | STRAND (leg 9 interrupted at (119, 5): recovery from (118, 5)(119, 5)(120, 5): leg 2 interrupted at (119, 5): the recovery from (118, 5)(119, 5)(120, 5) leads back to itself)
+00.05 to_the_school | 9700 | 9700 | 9700 | 0 | 0 | 0 | 6.69! | 1.00 | 1.00 | 1450 ms (stand-in) | PASS
+00.05b below_the_presidents_trigger | 4900 | 4900 | 4900 | 0 | 0 | 0 | 5.76! | 1.00 | 1.00 | 850 ms (stand-in) | PASS
+00.05b below_the_tv_clown | 21463 | 23600 | 20750 | 1 | 1 | 0 | 4.57! | 2.00! | 2.00! | 4700 ms (stand-in) | PASS
+00.05b below_the_company_clown | 21900 | 21900 | 21900 | 0 | 0 | 0 | 6.74! | 1.00 | 1.00 | 3250 ms (stand-in) | PASS
+00.05c to_main_boulevard | 2500 | 2500 | 2500 | 0 | 0 | 0 | 3.57! | 1.00 | 1.00 | 700 ms (stand-in) | PASS
+00.05c along_main_boulevard | 24100 | 24100 | 24100 | 0 | 0 | 0 | 7.42! | 1.00 | 1.00 | 3250 ms (stand-in) | PASS
+00.05c beside_the_president | 10500 | 10500 | 10500 | 0 | 0 | 0 | 4.77! | 1.00 | 1.00 | 2200 ms (stand-in) | PASS
+00.05c to_the_route_203_street | 21000 | 21000 | 21000 | 0 | 0 | 0 | 6.00! | 1.00 | 1.00 | 3500 ms (stand-in) | PASS
+01.01 west_of_barrys_trigger | 7300 | 7300 | 7300 | 0 | 0 | 0 | 6.35! | 1.00 | 1.00 | 1150 ms (stand-in) | PASS
+01.02 by_the_gate | 26465 | 27700 | 15350 | 1 | 9 | 0 | 3.84! | 1.00 | 2.00! | 6900 ms (stand-in) | PASS
+01.02 west_of_the_hikers_trigger | 3950 | 3950 | 3950 | 2 | 0 | 0 | 8.78! | 1.00 | 3.00! | 450 ms (stand-in) | PASS
+01.02 past_curtis | 10500 | 10500 | 10500 | 0 | 0 | 0 | 6.77! | 1.00 | 1.00 | 1550 ms (stand-in) | PASS
+01.02 by_the_east_mouth | 4900 | 4900 | 4900 | 0 | 0 | 0 | 5.76! | 1.00 | 1.00 | 850 ms (stand-in) | PASS
+01.02 west_of_the_welcome | 8550 | 8550 | 8550 | 2 | 0 | 0 | 9.00! | 1.00 | 3.00! | 950 ms (stand-in) | PASS
+01.02b below_the_centers_door | 6663 | 8800 | 5950 | 2 | 1 | 0 | 2.38! | 2.00! | 3.00! | 2800 ms (stand-in) | PASS
+01.03 above_the_mine | 16350 | 16350 | 16350 | 3 | 0 | 0 | 2.75! | 1.00 | 4.00! | 5950 ms (stand-in) | PASS
+01.05 east_of_barrys_trigger | 26050 | 26050 | 26050 | 3 | 0 | 0 | 7.44! | 1.00 | 4.00! | 3500 ms (stand-in) | PASS
+01.05 through_the_gate | 12050 | 12050 | 12050 | 5 | 0 | 0 | 4.92! | 1.00 | 6.00! | 2450 ms (stand-in) | PASS
+01.06 up_jubilifes_road | 65760 | 70700 | 58350 | 3 | 10 | 4 | 5.77! | 2.20! | 8.00! | 11400 ms (stand-in) | STRAND (leg 4 interrupted at (98, 22): recovery from (97, 22)(98, 22)(99, 22): leg 2 interrupted at (116, 22): recovery from (115, 22)(116, 22)(117, 22): leg 2 interrupted at (116, 22): the recovery from (115, 22)(116, 22)(117, 22) leads back to itself)
+01.06 below_rowans_trigger | 1950 | 1950 | 1950 | 1 | 0 | 0 | 2.29! | 1.00 | 2.00! | 850 ms (stand-in) | PASS
+01.08 below_the_ravaged_path | 27098 | 25150 | 12800 | 3 | 12 | 0 | 4.52! | 1.30 | 4.00! | 6000 ms (stand-in) | PASS
+01.09 west_of_the_rock | 7400 | 7400 | 7400 | 0 | 0 | 0 | 4.93! | 1.00 | 1.00 | 1500 ms (stand-in) | PASS
+01.09 above_the_way_out | 4550 | 4550 | 4550 | 2 | 0 | 0 | 4.14! | 1.00 | 3.00! | 1100 ms (stand-in) | PASS
+01.10 line_1 | 900 | 900 | 900 | 0 | 0 | 0 | 2.25! | 1.00 | 1.00 | 400 ms (stand-in) | PASS
+01.10 line_2 | 7300 | 7300 | 7300 | 0 | 0 | 0 | 6.35! | 1.00 | 1.00 | 1150 ms (stand-in) | PASS
+01.10 line_3 | 4100 | 4100 | 4100 | 0 | 0 | 0 | 4.10! | 1.00 | 1.00 | 1000 ms (stand-in) | PASS
+01.10 line_4 | 6500 | 6500 | 6500 | 0 | 0 | 0 | 6.19! | 1.00 | 1.00 | 1050 ms (stand-in) | PASS
+01.10 line_5 | 20388 | 39400 | 8100 | 0 | 6 | 6 | 10.46! | 1.17 | 7.00! | 1950 ms (stand-in) | PASS
+01.10 line_6 | 6500 | 6500 | 6500 | 0 | 0 | 0 | 6.19! | 1.00 | 1.00 | 1050 ms (stand-in) | PASS
+00.04 into_moms_call + the tap into her call | 5200 | 5200 | 5200 | 0 | 0 | 0 | 2.04! | 1.00 | 0.50 | 2550 ms (user's route) | PASS
+TARGET 00.04 along_route_201_road | 11333 | 12300 | 12300 | 2 | 0 | 0 | 0.92 | 1.00 | 1.00 | 12300 ms (user's route) | FAIL (may end on (41, 56), off the goal)
+TARGET 00.04 into_twinleaf | 10200 | 10200 | 10200 | 1 | 0 | 0 | 1.00 | 1.00 | 1.00 | 10200 ms (user's route) | PASS
+TARGET 00.04 into_moms_call + the tap into her call | 2550 | 2550 | 2550 | 1 | 0 | 0 | 1.00 | 1.00 | 1.00 | 2550 ms (user's route) | PASS
