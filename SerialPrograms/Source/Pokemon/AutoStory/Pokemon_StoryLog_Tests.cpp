@@ -4,10 +4,11 @@
  *
  */
 
+#include <format>
 #include <string>
 #include <utility>
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon_StoryRun_Tests.h"
+#include "Pokemon_AutoStory_Tests.h"
 #include "Pokemon_StoryLog.h"
 
 namespace PokemonAutomation{
@@ -35,13 +36,13 @@ struct StoryLogCase{
 class Test_StoryLog : public UnitTest{
 public:
     Test_StoryLog(StoryLogCase test_case)
-        : UnitTest("Pokemon::StoryLog - " + test_case.input.name)
+        : UnitTest(std::format("Pokemon::StoryLog - {}", test_case.input.name))
         , m_case(std::move(test_case))
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         if (m_case.input.line != m_case.expectation.line){
-            return "Expected \"" + m_case.expectation.line + "\", got \"" + m_case.input.line + "\"";
+            return std::format("Expected \"{}\", got \"{}\"", m_case.expectation.line, m_case.input.line);
         }
         return true;
     }
