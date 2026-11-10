@@ -850,6 +850,8 @@ Outcome SimExecutor::run(RunState& state, const StoryStep& step){
         m_astray = false;
         m_misplaced = false;
         sync(*step.pose_after);
+    }
+    if (outcome.succeeded()){
         land(step.name);
     }
     m_logger.log(std::format("[{}] {}: {}, the player at {}.", m_row, step.name, Pokemon::to_string(outcome), to_string(m_sim.player().pos)));
