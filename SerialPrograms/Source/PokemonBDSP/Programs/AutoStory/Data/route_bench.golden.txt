@@ -16,7 +16,7 @@ the human's ms (the user's route, a recorded run, or the stand-in: the shortest 
 walk run with no stops) | verdict (why). A ratio above 1.5 is flagged "!".
 
 00.01 below_the_flute | 4090 | 4090 | 4090 | 1 | 0 | 0 | 5.84! | 1.00 | 1.00 | 700 ms (stand-in) | PASS
-00.01 above_the_door | 6980 | 6980 | 6980 | 2 | 0 | 0 | 4.50! | 1.00 | 1.00 | 1550 ms (stand-in) | PASS
+00.01 above_the_door | 7230 | 7230 | 7230 | 1 | 0 | 0 | 4.66! | 1.00 | 1.00 | 1550 ms (stand-in) | PASS
 00.01 short_of_barrys_door | 11950 | 11950 | 11950 | 1 | 0 | 0 | 4.35! | 1.00 | 1.00 | 2750 ms (stand-in) | PASS
 00.01 above_barrys_door | 7230 | 7230 | 7230 | 1 | 0 | 0 | 4.66! | 1.00 | 1.00 | 1550 ms (stand-in) | PASS
 00.03 into_rowans_scene | 3030 | 3030 | 3030 | 1 | 0 | 0 | 2.33! | 1.00 | 1.00 | 1300 ms (stand-in) | PASS

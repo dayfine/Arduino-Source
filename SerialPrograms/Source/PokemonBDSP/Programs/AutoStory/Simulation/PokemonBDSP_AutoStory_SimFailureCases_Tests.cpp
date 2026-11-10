@@ -607,11 +607,10 @@ const FailureCase AUTO_STORY_FAILURE_CASES[] = {
     {.input = {"00.04 to the ledge column with a wild battle on each pass through Route 201's grass (lab-B 2026-11-09 16:14)", [](Logger& logger){
         return passes(ledge_walk_in_grass(logger, {}));
     }}, .expectation = {}},
-    {.input = {"00.04 the old walk to the ledge column, west to row 5's wall through the grass, fails there: too many plans", [](Logger& logger){
-        const std::string stopped = ledge_walk_in_grass(logger, {"to_the_signs_row"});
-        return stopped.find("too many plans") != std::string::npos
-            ? UnitTestResult(true)
-            : UnitTestResult("the grass battles no longer stop the old walk: " + (stopped.empty() ? std::string("it passes") : stopped));
+    //  It failed there with "too many plans" until replans crossed the
+    //  grass on legs to a wall (replan_costs(), 2026-11-09).
+    {.input = {"00.04 the old walk to the ledge column, west to row 5's wall through the grass, now passes", [](Logger& logger){
+        return passes(ledge_walk_in_grass(logger, {"to_the_signs_row"}));
     }}, .expectation = {}},
 };
 

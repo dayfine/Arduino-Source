@@ -44,6 +44,10 @@ constexpr int REPLAN_OPEN_GRASS_COST = 12;
 //  How much shorter or longer than the plan's open leg a hold into a
 //  funnel is tried (add_funnel_holds()).
 constexpr size_t FUNNEL_SLIDE = 2;
+//  Shortest open leg run_variants() runs on or holds: shorter taps cost
+//  little, and each variant is a plan to score on every step's first plan
+//  (the BDSP sims plan thousands).
+constexpr size_t RUN_VARIANT_TILES = 6;
 
 
 //  Expected time a plan must save for each tile it walks back beyond the
@@ -210,7 +214,7 @@ std::vector<std::vector<PlannedLeg>> run_variants(const ScoredRoute& route, cons
     std::vector<TilePos> at = route.from;
     for (size_t i = 0; i < legs.size(); i++){
         const TileLeg& leg = legs[i].leg;
-        if (!leg.ends_at_wall && !leg.held && at.size() == 1){
+        if (!leg.ends_at_wall && !leg.held && leg.tiles >= RUN_VARIANT_TILES && at.size() == 1){
             if (std::optional<std::vector<PlannedLeg>> legs_out = overshoot_to_wall(route.world, at.front(), legs, i)){
                 out.push_back(std::move(*legs_out));
             }
