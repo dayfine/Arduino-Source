@@ -84,7 +84,7 @@ public:
     virtual void begin_attempt(const Pokemon::StoryCheckpoint& data) override;
     //  Logs the step, fails one this game does not do, does it by its kind,
     //  and turns a failed console step into a failed Outcome.
-    virtual Pokemon::Outcome run(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
+    virtual Pokemon::Outcome run(const Pokemon::StoryStep& step, Pokemon::RunState& state) override;
 
 private:
     //  Does a supported step (story_step_supported()) by its kind.

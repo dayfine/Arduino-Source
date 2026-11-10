@@ -43,8 +43,8 @@ class Test_AutoStoryScreenEvents : public ImageUnitTest{
 public:
     explicit Test_AutoStoryScreenEvents(ScreenEventsCase test_case)
         : ImageUnitTest(
-            "PokemonLZA::AutoStoryScreenEvents - " + test_case.input.frame,
-            {"PokemonLZA/AutoStoryScreenEvents/" + test_case.input.frame}
+            std::format("PokemonLZA::AutoStoryScreenEvents - {}", test_case.input.frame),
+            {std::format("PokemonLZA/AutoStoryScreenEvents/{}", test_case.input.frame)}
         )
         , m_case(std::move(test_case))
     {}

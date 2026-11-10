@@ -14,6 +14,7 @@
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
+#include "Pokemon/AutoStory/Pokemon_AutoStorySelect.h"
 #include "Pokemon/AutoStory/Pokemon_StoryLog.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
 #include "Pokemon/Options/Pokemon_GameLanguages.h"
@@ -33,7 +34,7 @@ using namespace Pokemon;
 AutoStory_Descriptor::AutoStory_Descriptor()
     : SingleSwitchProgramDescriptor(
         "PokemonLZA:AutoStory",
-        STRING_POKEMON + " LZA", "Auto Story",
+        std::format("{} LZA", STRING_POKEMON), "Auto Story",
         "Programs/PokemonLZA/AutoStory.html",
         "Play the main story of Pokemon Legends: Z-A. Prototype: Main Missions 01-03 as recorded on a console; most steps still wait for code.",
         PanelQualityStanding::DEVELOPER,
@@ -88,10 +89,10 @@ SegmentHooks story_hooks(SingleSwitchProgramEnvironment& env, ProControllerConte
 
 //  Verify mode: the start checkpoint as many times as asked, from its save.
 void verify_story_checkpoint(
-    SingleSwitchProgramEnvironment& env, RunState& state, Segment& segment, SegmentHooks& hooks,
-    const std::string& id, const VerifyPolicy& policy
+    SingleSwitchProgramEnvironment& env, const std::string& id, const VerifyPolicy& policy,
+    Segment& segment, SegmentHooks& hooks, RunState& state
 ){
-    const VerifyReport report = verify_checkpoint(state, segment, id, policy, hooks);
+    const VerifyReport report = verify_checkpoint(id, policy, segment, hooks, state);
     const std::string summary = std::format(
         "AutoStory verify: {} {}/{} passed, {} needed.", id, report.passes, policy.runs, policy.passes_needed
     );
@@ -146,12 +147,12 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     RunState state;
 
     if (const std::optional<VerifyPolicy> verify = RUN.VERIFY.policy()){
-        verify_story_checkpoint(env, state, segment, hooks, rows[first].id, *verify);
+        verify_story_checkpoint(env, rows[first].id, *verify, segment, hooks, state);
         send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH);
         return;
     }
-    const SegmentReport report = run_segment(state, segment, SegmentRange{rows[first].id, rows[last].id}, RUN.policy(), hooks);
-    record_story_counts(env.current_stats<AutoStoryStats>(), report.story_counts());
+    const SegmentReport report = run_segment(SegmentRange{rows[first].id, rows[last].id}, RUN.policy(), segment, hooks, state);
+    record_story_counts(report.story_counts(), env.current_stats<AutoStoryStats>());
     env.update_stats();
     if (!report.completed){
         throw OperationFailedException(
@@ -159,7 +160,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
             std::format("AutoStory stopped at {} {}: {}", report.failed_checkpoint, report.failed_event, to_string(report.failure))
         );
     }
-    env.console.log("AutoStory: done through " + rows[last].id + ".");
+    env.console.log(std::format("AutoStory: done through {}.", rows[last].id));
     send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH);
     GO_HOME_WHEN_DONE.run_end_of_program(context);
 }

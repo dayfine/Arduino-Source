@@ -100,7 +100,7 @@ void StoryExecutor::begin_attempt(const Pokemon::StoryCheckpoint& data){
     m_checkpoint = data.id;
 }
 
-Outcome StoryExecutor::run(RunState&, const StoryStep& step){
+Outcome StoryExecutor::run(const StoryStep& step, RunState&){
     console().log(
         std::format("[{}] {} {}: {}", m_checkpoint, Pokemon::story_step_kind_name(step.kind), step.name, step.why),
         COLOR_BLUE
