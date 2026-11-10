@@ -299,8 +299,9 @@ UnitTestResult test_b3f_maze_taps(){
 
 //  00.32's taps (frlg-00.32.plan.json): B3F from below its Rare Candy up
 //  to the top corridor, and B2F's arrows to the MOON STONE's stop and on
-//  to the lift room's stop (13, 20), with any one turn dropped; the routes
-//  between them, with no arrow on the way, with any hold short.
+//  to the lift room's stop (13, 20) and up to row 17, with any one turn
+//  dropped; the routes between them, with no arrow on the way, with any
+//  hold short.
 UnitTestResult test_b2f_maze_taps(){
     using Pokemon::StoryLeg;
     const MapPosition b2f_stairs{"RocketHideout_B2F", {21, 2}};
@@ -316,9 +317,12 @@ UnitTestResult test_b2f_maze_taps(){
             {Direction::SOUTH, 4}, {Direction::EAST, 1}, {Direction::SOUTH, 1}, {Direction::EAST, 1}, {Direction::EAST, 2}, {Direction::WEST, 2},
             {Direction::EAST, 3}, {Direction::SOUTH, 2}, {Direction::WEST, 1}, {Direction::EAST, 1}, {Direction::SOUTH, 1},
         }, lift_stop),
-        //  Not B3F (12, 2) to B2F's stairs: a hold short onto B3F's stairs (18, 2)
-        //  stops without the warp's fade, which the walker doesn't recover yet.
-        short_holds_on_sim(lift_stop, Direction::EAST, {"RocketHideout_B2F", {28, 17}}),
+        short_holds_on_sim({"RocketHideout_B3F", {12, 2}}, Direction::NORTH, b2f_stairs),
+        tap_legs_on_sim(lift_stop, Direction::EAST, {
+            {Direction::EAST, 2}, {Direction::NORTH, 3},
+        }, {"RocketHideout_B2F", {15, 17}}),
+        //  Not row 17 east to below the lift (28, 17): a hold short ends on
+        //  (27, 17), open floor, which the walker doesn't notice yet.
         short_holds_on_sim({"RocketHideout_B4F", {20, 24}}, Direction::SOUTH, {"RocketHideout_B4F", {16, 15}}),
         short_holds_on_sim({"RocketHideout_B4F", {19, 15}}, Direction::NORTH, {"RocketHideout_B4F", {19, 5}}),
     };

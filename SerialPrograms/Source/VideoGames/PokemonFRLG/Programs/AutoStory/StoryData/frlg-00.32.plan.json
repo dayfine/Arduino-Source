@@ -173,6 +173,22 @@
         "why": "a tap a tile through B2F's arrows, each slide the end of a leg: down column 2 to (2, 8), east and down to (3, 9), east onto (4, 9), which slides to the stop (8, 11); east twice, the second onto a slide to the stop (14, 13); west twice onto a slide to the stop (10, 15); east to (13, 15), down to (13, 17), west onto a slide to the stop (8, 19), east to (9, 19) and down onto (9, 20), which slides east to the stop (13, 20)"
       },
       {
+        "id": "lift_room_to_row_17",
+        "kind": "legs",
+        "variant": "taps",
+        "legs": [
+          {
+            "direction": "east",
+            "tiles": 2
+          },
+          {
+            "direction": "north",
+            "tiles": 3
+          }
+        ],
+        "why": "a tap a tile from the stop (13, 20): east to the wall at (15, 20) and up column 15 to row 17; a hold up the open column that ended short sent the run east along row 18 into its wall at (17, 18)"
+      },
+      {
         "id": "below_lift",
         "kind": "route",
         "target": {
@@ -190,7 +206,7 @@
           }
         },
         "variant": "run",
-        "why": "east to (15, 20), up column 15 to row 17 and east along it to below the lift door (28, 16); no arrow on the way"
+        "why": "east along row 17 to below the lift door (28, 16); no arrow on the way"
       },
       {
         "id": "lift_to_b4f",

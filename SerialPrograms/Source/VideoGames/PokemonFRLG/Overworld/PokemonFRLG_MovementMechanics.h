@@ -83,6 +83,10 @@ inline constexpr Milliseconds STEP_TAP(66);
 //  The release after a step tap: the next one starts STEP_TAP +
 //  STEP_TAP_RELEASE after it, past the lockout.
 inline constexpr Milliseconds STEP_TAP_RELEASE(700);
+//  The step taps after a hold toward a warp that showed no fade: a hold
+//  ends up to two tiles short, and an arrow warp (stairs, a mat) fires on
+//  the press made standing on it, a step after reaching it.
+inline constexpr int WARP_RETRY_TAPS = 2;
 
 
 //  How long the overworld must show nothing (no box, fade or battle) after
