@@ -18,6 +18,9 @@ namespace Pokemon{
 // Registers unit tests for the action registry, the step runner and the take_warp example.
 void add_tests_StoryEngine(UnitTestDatabase& database);
 
+// Registers unit tests for what games need of the engine: any pose type, the stick, observation machines, segment and verify runs, console-only actions.
+void add_tests_StoryEngineRuns(UnitTestDatabase& database);
+
 // Registers unit tests for the engine's save decision, postconditions, steps hash, metadata and observation screens.
 void add_tests_StoryEnginePolicy(UnitTestDatabase& database);
 

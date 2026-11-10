@@ -54,7 +54,7 @@ std::string joined(const std::vector<std::string>& items){
     return text;
 }
 
-bool has_line(const FakeStoryBackend& backend, std::string_view line){
+bool has_line(const FakeStoryBackend<GridPose>& backend, std::string_view line){
     for (const std::string& each : backend.lines()){
         if (each == line){
             return true;
@@ -68,9 +68,9 @@ bool has_line(const FakeStoryBackend& backend, std::string_view line){
 //  warp is a fade out, then a fade in on the target's map. No fade is not
 //  "arrived": FRLG 00.31 (console B, 2026-11-10) took it so and saved on
 //  the wrong floor.
-Outcome take_warp(StoryBackend<GridPose>& backend, RunState&, const StoryActionArgs& args){
-    const Direction direction = story_arg<Direction>(args, "direction");
-    const GridPose& to = story_arg<GridPose>(args, "to");
+Outcome take_warp(StoryBackend<GridPose>& backend, RunState&, const StoryActionCall& call){
+    const Direction direction = story_arg<Direction>(call.args, "direction");
+    const GridPose& to = story_arg<GridPose>(call.args, "to");
     backend.hold(direction, 400ms, StoryPace::WALK);
     bool faded = false;
     for (size_t c = 0; c < 40; c++){
@@ -99,7 +99,7 @@ StoryGame<GridPose> test_game(std::optional<int> door_open = std::nullopt){
     });
     game.actions.push_back({
         .spec = *find_story_action(builtin_story_actions(), StoryStepKind::ROUTE, "route"),
-        .handler = [](StoryBackend<GridPose>& backend, RunState&, const StoryActionArgs&){
+        .handler = [](StoryBackend<GridPose>& backend, RunState&, const StoryActionCall&){
             backend.hold(Direction::NORTH, 100ms, StoryPace::RUN);
             return outcome_ok();
         },
@@ -176,7 +176,7 @@ std::string check_registry(const RegistryCase& test, CancellableScope& scope){
     if (!lint.empty()){
         return "";
     }
-    FakeStoryBackend backend({.looks = {look({ScreenEvent::TEXT_BOX}), look({ScreenEvent::TEXT_BOX}), look({ScreenEvent::CAN_MOVE})}}, scope);
+    FakeStoryBackend<GridPose> backend({.looks = {look({ScreenEvent::TEXT_BOX}), look({ScreenEvent::TEXT_BOX}), look({ScreenEvent::CAN_MOVE})}}, scope);
     RunState state;
     const Outcome outcome = registry.dispatch(backend, state, test.input.step);
     if (outcome.failure != test.expectation.failure){
@@ -244,7 +244,7 @@ const RunnerCase RUNNER_CASES[] = {
 std::string check_runner(const RunnerCase& test, CancellableScope& scope){
     const StoryGame<GridPose> game = test_game(test.input.door_open);
     const StoryActionRegistry<GridPose> registry(game);
-    FakeStoryBackend backend({.looks = {look({ScreenEvent::CAN_MOVE})}}, scope);
+    FakeStoryBackend<GridPose> backend({.looks = {look({ScreenEvent::CAN_MOVE})}}, scope);
     StoryStepRunner<GridPose> runner(registry, backend);
     RunState state;
     state.flags.insert(test.input.flags.begin(), test.input.flags.end());
@@ -310,7 +310,7 @@ const WarpCase WARP_CASES[] = {
 std::string check_warp(const WarpCase& test, CancellableScope& scope){
     const StoryGame<GridPose> game = test_game();
     const StoryActionRegistry<GridPose> registry(game);
-    FakeStoryBackend backend({.looks = test.input.looks}, scope);
+    FakeStoryBackend<GridPose> backend({.looks = test.input.looks}, scope);
     StoryStepRunner<GridPose> runner(registry, backend);
     RunState state;
     const StoryStep step = make_step(StoryStepKind::GAME, "take_warp", {

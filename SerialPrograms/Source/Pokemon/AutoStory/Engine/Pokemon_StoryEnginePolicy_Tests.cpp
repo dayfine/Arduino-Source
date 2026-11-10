@@ -64,7 +64,7 @@ Observation<GridPose> end_look(std::string map){
 StoryGame<GridPose> engine_game(std::optional<int> candies){
     StoryGame<GridPose> game;
     game.id = "test";
-    game.save = [](StoryBackend<GridPose>& backend){
+    game.save = [](StoryBackend<GridPose>& backend, const StoryCheckpoint&){
         backend.wait(Milliseconds(1));
         backend.log("[Test] save");
         return outcome_ok();
@@ -144,7 +144,7 @@ std::vector<Observation<GridPose>> engine_looks(std::string_view end_map){
     return {std::move(text), end_look(std::string(end_map))};
 }
 
-std::string check_engine_lines(const EngineCase& test, const FakeStoryBackend& backend){
+std::string check_engine_lines(const EngineCase& test, const FakeStoryBackend<GridPose>& backend){
     size_t saves = 0;
     bool found = false;
     for (const std::string& line : backend.lines()){
@@ -159,7 +159,7 @@ std::string check_engine_lines(const EngineCase& test, const FakeStoryBackend& b
 
 std::string check_engine(const EngineCase& test, CancellableScope& scope){
     const StoryGame<GridPose> game = engine_game(test.input.candies);
-    FakeStoryBackend backend({.looks = engine_looks(test.input.end_map)}, scope);
+    FakeStoryBackend<GridPose> backend({.looks = engine_looks(test.input.end_map)}, scope);
     StoryEngine<GridPose> engine(game, backend);
     StoryCheckpoint checkpoint = read_story_checkpoint(
         parse_json(checkpoint_0031(test.input.phase, test.input.steps)), test.input.name, engine.registry().specs()

@@ -392,7 +392,10 @@ GridPose read_grid_pose(const JsonValue& value, std::string_view source){
     const JsonObject& root = fields(value, {"map", "tiles", "facing"}, source);
     GridPose result;
     result.map = root.get_string_throw("map");
-    result.tiles = read_tiles(root.get_value_throw("tiles"), source);
+    //  None: any tile of the map, or a game with no tiles (a zone).
+    if (const JsonValue* field = root.get_value("tiles")){
+        result.tiles = read_tiles(*field, source);
+    }
     if (const JsonValue* field = root.get_value("facing")){
         result.facing = read_enum(DIRECTIONS, field->to_string_throw(), source);
     }

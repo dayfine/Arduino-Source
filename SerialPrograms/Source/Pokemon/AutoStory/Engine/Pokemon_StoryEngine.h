@@ -16,12 +16,17 @@
 #ifndef PokemonAutomation_Pokemon_StoryEngine_H
 #define PokemonAutomation_Pokemon_StoryEngine_H
 
+#include <cstddef>
+#include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Pokemon/AutoStory/Pokemon_StoryPostconditionCheck.h"
+#include "Pokemon/AutoStory/Pokemon_StorySegments.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StorySaveMode.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StorySegmentTypes.h"
 #include "Pokemon_StoryActionRegistry.h"
 #include "Pokemon_StoryEnginePolicy.h"
 #include "Pokemon_StoryStepRunner.h"
@@ -59,16 +64,52 @@ public:
     //  steps saves only in PER_CHECKPOINT mode.
     StoryEngineReport run_checkpoint(const StoryCheckpoint& checkpoint, RunState& state, SavePoint point = SavePoint::RUN_END);
 
+    //  `checkpoints` in order from the save the game is on, each run with
+    //  run_checkpoint() (the last at RUN_END), until one does not pass.
+    //  One that fails is run again after a reload (StoryGame::reload), up to
+    //  `attempts_per_checkpoint` runs, only when a reload returns to the
+    //  save it started from: the first checkpoint's, or one the checkpoint
+    //  before it saved at its end. In none and after_verification modes
+    //  (#329) that leaves only the first. No reload either for a failure
+    //  every attempt would repeat: a lint, a console_only action, the game
+    //  not running. Logs "[Segment] <id>: ..." lines.
+    SegmentReport run_segment(
+        std::string_view id, std::span<const StoryCheckpoint> checkpoints, RunState& state,
+        size_t attempts_per_checkpoint
+    );
+
+    //  Verify mode: `checkpoint` run `policy.runs` times, each from the save
+    //  the first started from (a reload before each run after the first).
+    //  No run saves, but the last when every run before it passed: it saves
+    //  at RUN_END as the checkpoint's phase allows. `policy.save_mode` is
+    //  not read; the phase decides. Logs "[Verify] <id>: ..." lines.
+    VerifyReport verify_checkpoint(const StoryCheckpoint& checkpoint, RunState& state, const VerifyPolicy& policy);
+
     //  `checkpoint`'s postconditions against a fresh observation read by
     //  every reader of the game; logged as "[Postcondition]" lines.
     PostconditionReport check_postconditions(const StoryCheckpoint& checkpoint);
 
 private:
+    //  Whether a run may save at all.
+    enum class SaveGate{
+        BY_PHASE,
+        NEVER,
+    };
+
+    StoryEngineReport run_once(const StoryCheckpoint& checkpoint, RunState& state, SavePoint point, SaveGate gate);
     CheckpointReport run_steps(const StoryCheckpoint& checkpoint, RunState& state);
     void save_if_allowed(StoryEngineReport& report, const StoryCheckpoint& checkpoint, SavePoint point);
+    //  Empties `state` and reloads the last save; the reload's pose, if it
+    //  says one, goes into `state`.
+    Outcome reload(RunState& state);
+    //  One checkpoint of a segment until it passes or runs out of attempts.
+    StoryEngineReport run_with_retries(
+        const StoryCheckpoint& checkpoint, RunState& state, SavePoint point, size_t attempts, CheckpointRun& run
+    );
 
-    //  Declared first: m_game's save step reads it.
+    //  Declared first: m_game's save step reads them.
     StorySaveMode m_save_mode = StorySaveMode::NONE;
+    const StoryCheckpoint* m_checkpoint = nullptr;
     StoryGame<PoseType> m_game;
     StoryBackend<PoseType>& m_backend;
     StoryActionRegistry<PoseType> m_registry;
@@ -78,7 +119,7 @@ private:
 
 //  Instantiated once, in Pokemon_StoryEngine.cpp.
 extern template class StoryEngine<GridPose>;
-//  The same for a zone game (PLZA).
+//  And for ZonePose (Pokemon_ZonePose.h).
 extern template class StoryEngine<ZonePose>;
 
 

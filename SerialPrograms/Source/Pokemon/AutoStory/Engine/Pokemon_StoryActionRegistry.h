@@ -24,6 +24,11 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
+//  The failure of a console_only action (StoryActionSpec) on a backend that
+//  is not a console. Every attempt would fail the same way, so the engine
+//  does not reload for it.
+inline constexpr std::string_view CONSOLE_ONLY = "console_only";
+
 //  `game`'s actions. `game` must outlive the registry.
 template <StoryPose PoseType>
 class StoryActionRegistry{
@@ -45,12 +50,15 @@ public:
     //  registered, args that don't fit its spec, a walk of no legs.
     std::vector<std::string> check(const StoryStep& step) const;
 
-    //  check() for each step of `checkpoint`, and its step names: none
-    //  empty, none repeated.
+    //  check() for each step of `checkpoint`, its step names (none empty,
+    //  none repeated), and its declared poses (its start, each step's
+    //  declared_after): each must read as the game's pose type
+    //  (StoryPoseTraits::from_declared()).
     std::vector<std::string> lint(const StoryCheckpoint& checkpoint) const;
 
     //  Runs `step`'s action with its args' fallbacks filled in; a step with
-    //  no registered action fails as unsupported_step().
+    //  no registered action fails as unsupported_step(), a console_only
+    //  action on another backend as CONSOLE_ONLY, before any input.
     Outcome dispatch(StoryBackend<PoseType>& backend, RunState& state, const StoryStep& step) const;
 
 private:
@@ -65,7 +73,7 @@ private:
 
 //  Instantiated once, in Pokemon_StoryActionRegistry.cpp.
 extern template class StoryActionRegistry<GridPose>;
-//  The same for a zone game (PLZA).
+//  And for ZonePose (Pokemon_ZonePose.h).
 extern template class StoryActionRegistry<ZonePose>;
 
 

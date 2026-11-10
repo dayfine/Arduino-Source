@@ -33,33 +33,53 @@ std::string button_name(NintendoSwitch::Button button){
 }
 
 
+//  "walk" or "run".
+std::string_view pace_name(StoryPace pace){
+    return pace == StoryPace::RUN ? "run" : "walk";
+}
+
+
 } // namespace
 
 
-FakeStoryBackend::FakeStoryBackend(FakeStoryScript script, CancellableScope& scope)
+template <StoryPose PoseType>
+FakeStoryBackend<PoseType>::FakeStoryBackend(FakeStoryScript<PoseType> script, CancellableScope& scope)
     : m_script(std::move(script))
     , m_scope(scope)
 {}
 
-void FakeStoryBackend::press(NintendoSwitch::Button button, Milliseconds, Milliseconds){
+template <StoryPose PoseType>
+StoryBackendKind FakeStoryBackend<PoseType>::kind() const{
+    return m_script.kind;
+}
+
+template <StoryPose PoseType>
+void FakeStoryBackend<PoseType>::press(NintendoSwitch::Button button, Milliseconds, Milliseconds){
     m_inputs.push_back("press " + button_name(button));
 }
 
-void FakeStoryBackend::tap(Direction direction){
+template <StoryPose PoseType>
+void FakeStoryBackend<PoseType>::tap(Direction direction){
     m_inputs.push_back("tap " + direction_name(direction));
 }
 
-void FakeStoryBackend::hold(Direction direction, Milliseconds duration, StoryPace pace){
-    m_inputs.push_back(std::format(
-        "hold {} {}ms {}", direction_name(direction), duration.count(), pace == StoryPace::RUN ? "run" : "walk"
-    ));
+template <StoryPose PoseType>
+void FakeStoryBackend<PoseType>::hold(Direction direction, Milliseconds duration, StoryPace pace){
+    m_inputs.push_back(std::format("hold {} {}ms {}", direction_name(direction), duration.count(), pace_name(pace)));
 }
 
-void FakeStoryBackend::wait(Milliseconds duration){
+template <StoryPose PoseType>
+void FakeStoryBackend<PoseType>::stick(double degrees, Milliseconds duration, StoryPace pace){
+    m_inputs.push_back(std::format("stick {}deg {}ms {}", degrees, duration.count(), pace_name(pace)));
+}
+
+template <StoryPose PoseType>
+void FakeStoryBackend<PoseType>::wait(Milliseconds duration){
     m_inputs.push_back(std::format("wait {}ms", duration.count()));
 }
 
-Observation<GridPose> FakeStoryBackend::observe(){
+template <StoryPose PoseType>
+Observation<PoseType> FakeStoryBackend<PoseType>::observe(){
     if (m_script.looks.empty()){
         return {};
     }
@@ -67,18 +87,25 @@ Observation<GridPose> FakeStoryBackend::observe(){
     return m_script.looks[look];
 }
 
-Outcome FakeStoryBackend::battle(const StoryActionArgs&){
+template <StoryPose PoseType>
+Outcome FakeStoryBackend<PoseType>::battle(const StoryActionArgs&){
     m_inputs.push_back("battle");
     return m_script.battle;
 }
 
-void FakeStoryBackend::log(std::string_view line){
+template <StoryPose PoseType>
+void FakeStoryBackend<PoseType>::log(std::string_view line){
     m_lines.emplace_back(line);
 }
 
-CancellableScope& FakeStoryBackend::scope(){
+template <StoryPose PoseType>
+CancellableScope& FakeStoryBackend<PoseType>::scope(){
     return m_scope;
 }
+
+
+template class FakeStoryBackend<GridPose>;
+template class FakeStoryBackend<ZonePose>;
 
 
 
