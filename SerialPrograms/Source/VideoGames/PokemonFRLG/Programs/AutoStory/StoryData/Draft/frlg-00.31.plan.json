@@ -3,101 +3,83 @@
   "game": "frlg",
   "checkpoint": {
     "id": "00.31",
-    "title": "Rocket Hideout: the lift to B4F, the two door guards, two Rare Candies, Blastoise, Giovanni and the SILPH SCOPE",
-    "start": {"certainty": "tile", "map": "RocketHideout_B3F", "where": {"facing": "north", "kind": "tiles", "tiles": [[12, 13]]}},
+    "title": "Celadon Game Corner and the Rocket Hideout down to B4F: the poster guard, the Lift Key Grunt, the LIFT KEY and B3F's Rare Candy",
+    "start": {"certainty": "tile", "map": "CeladonCity_PokemonCenter_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 4]]}},
     "events": [
       {
-        "id": "b2f_lift",
+        "id": "celadon_below_game_corner",
         "kind": "route",
-        "target": {"certainty": "tile", "map": "RocketHideout_B2F", "where": {"facing": "north", "kind": "tiles", "tiles": [[28, 17]]}},
+        "target": {"certainty": "tile", "map": "CeladonCity", "where": {"facing": "north", "kind": "tiles", "tiles": [[34, 22]]}},
         "variant": "run",
-        "why": "up to B2F, along the arrow tiles to the lift (28..29, 16)"
+        "why": "out of the Center, west along row 12, down column 41..43 to row 22, west to below the Game Corner (34, 21)"
       },
       {
-        "id": "lift_to_b4f",
-        "kind": "scene",
-        "why": "the LIFT KEY works the lift: B4F"
-      },
-      {
-        "id": "b4f_below_guards",
+        "id": "below_poster_guard",
         "kind": "route",
-        "target": {"certainty": "tile", "map": "RocketHideout_B4F", "where": {"facing": "north", "kind": "tiles", "tiles": [[17, 16]]}},
+        "target": {"certainty": "tile", "map": "CeladonCity_GameCorner", "where": {"facing": "north", "kind": "tiles", "tiles": [[11, 3]]}},
         "variant": "run",
-        "why": "out of the lift to below the two Grunts (16, 14) and (19, 14)"
+        "why": "into the Game Corner, up the slot rows to below the Grunt (11, 2) in front of the poster"
       },
       {
-        "id": "talk_left_guard",
+        "id": "talk_poster_guard",
         "kind": "talk",
-        "why": "the left door guard"
+        "why": "the Grunt guarding the poster"
       },
       {
-        "id": "hideout-left-guard",
+        "id": "hideout-poster-guard",
         "kind": "battle",
-        "declared_after": {"certainty": "tile", "map": "RocketHideout_B4F", "where": {"facing": "north", "kind": "tiles", "tiles": [[17, 16]]}},
-        "why": "Rocket Grunt (TRAINER_TEAM_ROCKET_GRUNT_16): Sandshrew, Sandslash, Ekans Lv23"
+        "declared_after": {"certainty": "tile", "map": "CeladonCity_GameCorner", "where": {"facing": "north", "kind": "tiles", "tiles": [[11, 3]]}},
+        "why": "Rocket Grunt (TRAINER_TEAM_ROCKET_GRUNT_7): Raticate, Zubat Lv20; he runs off"
       },
       {
-        "id": "talk_right_guard",
-        "kind": "talk",
-        "why": "the right door guard"
-      },
-      {
-        "id": "hideout-right-guard",
-        "kind": "battle",
-        "declared_after": {"certainty": "tile", "map": "RocketHideout_B4F", "where": {"facing": "north", "kind": "tiles", "tiles": [[17, 16]]}},
-        "why": "Rocket Grunt (TRAINER_TEAM_ROCKET_GRUNT_17): Ekans, Sandshrew, Arbok Lv23; the door opens"
-      },
-      {
-        "id": "rare_candy_1",
+        "id": "poster_switch",
         "kind": "game_action",
-        "variant": "use_item rare-candy slot=1",
-        "why": "Rare Candy: Lv35 (pokeguy 1:00:25)"
+        "variant": "poster_switch",
+        "why": "the poster (11, 1): the switch opens the stairs (15, 2)"
       },
       {
-        "id": "rare_candy_2",
-        "kind": "game_action",
-        "variant": "use_item rare-candy slot=1",
-        "why": "Rare Candy: Lv36, Wartortle evolves"
-      },
-      {
-        "id": "evolve_blastoise",
-        "kind": "scene",
-        "why": "Wartortle evolves into Blastoise; do not press B"
-      },
-      {
-        "id": "below_giovanni",
+        "id": "hideout_b4f_west",
         "kind": "route",
-        "target": {"certainty": "tile", "map": "RocketHideout_B4F", "where": {"facing": "north", "kind": "tiles", "tiles": [[19, 5]]}},
-        "why": "through the door to below Giovanni (19, 4)"
+        "target": {"certainty": "tile", "map": "RocketHideout_B4F", "where": {"facing": "west", "kind": "tiles", "tiles": [[5, 3]]}},
+        "variant": "run",
+        "why": "the stairs (15, 2) down to B1F, B1F to B2F (17, 2), B2F's arrow tiles to B3F (21, 2), B3F to B4F (15, 18), round to (5, 3), east of the tile below the Grunt (4, 2)"
       },
       {
-        "id": "talk_giovanni",
-        "kind": "talk",
-        "why": "Giovanni"
+        "id": "key_grunt_line",
+        "kind": "step",
+        "direction": "west",
+        "variant": "trainer_line",
+        "why": "onto (4, 3), in the Grunt's line (sight 1)"
       },
       {
-        "id": "hideout-giovanni",
+        "id": "hideout-key-grunt",
         "kind": "battle",
-        "declared_after": {"certainty": "tile", "map": "RocketHideout_B4F", "where": {"facing": "north", "kind": "tiles", "tiles": [[19, 5]]}},
-        "why": "Giovanni (TRAINER_BOSS_GIOVANNI): Onix, Rhyhorn, Kangaskhan"
+        "declared_after": {"certainty": "tile", "map": "RocketHideout_B4F", "where": {"facing": "west", "kind": "tiles", "tiles": [[4, 3]]}},
+        "why": "Rocket Grunt (TRAINER_TEAM_ROCKET_GRUNT_18): Koffing, Zubat Lv21; he drops the LIFT KEY"
       },
       {
-        "id": "beside_silph_scope",
+        "id": "below_lift_key",
         "kind": "route",
-        "target": {"certainty": "tile", "map": "RocketHideout_B4F", "where": {"facing": "west", "kind": "tiles", "tiles": [[21, 5]]}},
-        "why": "round to east of the SILPH SCOPE (20, 5)"
+        "target": {"certainty": "tile", "map": "RocketHideout_B4F", "where": {"facing": "north", "kind": "tiles", "tiles": [[3, 3]]}},
+        "variant": "run",
+        "why": "a tile west, below the LIFT KEY (3, 2)"
       },
       {
-        "id": "silph_scope",
+        "id": "lift_key",
         "kind": "talk",
-        "why": "pick up the SILPH SCOPE"
+        "why": "pick up the LIFT KEY (pokeguy 57:33)"
       },
       {
-        "id": "escape_rope_hideout",
-        "kind": "game_action",
-        "declared_after": {"certainty": "tile", "map": "CeladonCity", "where": {"facing": "south", "kind": "tiles", "tiles": [[34, 22]]}},
-        "variant": "use_item escape-rope",
-        "why": "out to the Game Corner's door (pokeguy 1:02:10)"
+        "id": "beside_b3f_rare_candy",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "RocketHideout_B3F", "where": {"facing": "north", "kind": "tiles", "tiles": [[12, 13]]}},
+        "variant": "run",
+        "why": "back up the stairs to B3F, below the Rare Candy (12, 12) beside the arrow tiles"
+      },
+      {
+        "id": "b3f_rare_candy",
+        "kind": "talk",
+        "why": "pick up the Rare Candy: two, with Route 9's"
       }
     ]
   },

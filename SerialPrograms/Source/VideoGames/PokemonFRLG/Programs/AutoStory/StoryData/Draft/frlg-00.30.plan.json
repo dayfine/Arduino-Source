@@ -3,82 +3,99 @@
   "game": "frlg",
   "checkpoint": {
     "id": "00.30",
-    "title": "Celadon Game Corner and the Rocket Hideout down to B4F: the poster guard, the Lift Key Grunt, the LIFT KEY and B3F's Rare Candy",
-    "start": {"certainty": "tile", "map": "CeladonCity_PokemonCenter_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 4]]}},
+    "title": "Lavender Mart, then west over Route 8: Gamer Rich, a Pidgey for Fly, the Underground Path to Celadon",
+    "start": {"certainty": "tile", "map": "LavenderTown_PokemonCenter_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 4]]}},
     "events": [
       {
-        "id": "celadon_below_game_corner",
+        "id": "lavender_mart_clerk",
         "kind": "route",
-        "target": {"certainty": "tile", "map": "CeladonCity", "where": {"facing": "north", "kind": "tiles", "tiles": [[34, 22]]}},
+        "target": {"certainty": "tile", "map": "LavenderTown_Mart", "where": {"facing": "west", "kind": "tiles", "tiles": [[4, 3]]}},
         "variant": "run",
-        "why": "out of the Center, west along row 12, down column 41..43 to row 22, west to below the Game Corner (34, 21)"
+        "why": "out of the Center, east along row 6 and down to the Mart (20, 15), to its clerk"
       },
       {
-        "id": "below_poster_guard",
+        "id": "buy_ropes_and_super_repels",
+        "kind": "game_action",
+        "variant": "mart LavenderTown_Mart budget=5700 floor=9000 escape-rope=4 super-repel=7",
+        "why": "pokeguy 54:18: 4 Escape Ropes and 7 Super Repels"
+      },
+      {
+        "id": "repel_route8",
+        "kind": "game_action",
+        "variant": "use_item repel",
+        "why": "a Repel (5 bought in 00.26) for Route 8's grass and the Underground Path; renewed when it wears off"
+      },
+      {
+        "id": "ride_bike",
+        "kind": "game_action",
+        "variant": "ride_bike",
+        "why": "on the BICYCLE (00.26) for Route 8; the Underground Path's gate, indoors, gets the player off"
+      },
+      {
+        "id": "east_of_rich_line",
         "kind": "route",
-        "target": {"certainty": "tile", "map": "CeladonCity_GameCorner", "where": {"facing": "north", "kind": "tiles", "tiles": [[11, 3]]}},
-        "variant": "run",
-        "why": "into the Game Corner, up the slot rows to below the Grunt (11, 2) in front of the poster"
+        "target": {"certainty": "tile", "map": "Route8", "where": {"facing": "west", "kind": "tiles", "tiles": [[56, 18]]}},
+        "variant": "bike",
+        "why": "west out of Lavender onto Route 8, down column 64 east of Julia (62, 14) and west along row 18"
       },
       {
-        "id": "talk_poster_guard",
-        "kind": "talk",
-        "why": "the Grunt guarding the poster"
-      },
-      {
-        "id": "hideout-poster-guard",
-        "kind": "battle",
-        "declared_after": {"certainty": "tile", "map": "CeladonCity_GameCorner", "where": {"facing": "north", "kind": "tiles", "tiles": [[11, 3]]}},
-        "why": "Rocket Grunt (TRAINER_TEAM_ROCKET_GRUNT_7): Raticate, Zubat Lv20; he runs off"
-      },
-      {
-        "id": "poster_switch",
-        "kind": "talk",
-        "why": "the poster (11, 1): the switch opens the stairs (15, 2)"
-      },
-      {
-        "id": "hideout_b4f_west",
-        "kind": "route",
-        "target": {"certainty": "tile", "map": "RocketHideout_B4F", "where": {"facing": "west", "kind": "tiles", "tiles": [[5, 3]]}},
-        "variant": "run",
-        "why": "the stairs (15, 2) down to B1F, B1F to B2F (17, 2), B2F's arrow tiles to B3F (21, 2), B3F to B4F (15, 18), round to (5, 3), east of the tile below the Grunt (4, 2)"
-      },
-      {
-        "id": "key_grunt_line",
+        "id": "rich_line",
         "kind": "step",
         "direction": "west",
         "variant": "trainer_line",
-        "why": "onto (4, 3), in the Grunt's line (sight 1)"
+        "why": "onto (55, 18), the end of Rich's line (55, 16..18): he walks down to (55, 17)"
       },
       {
-        "id": "hideout-key-grunt",
+        "id": "route8-rich",
         "kind": "battle",
-        "declared_after": {"certainty": "tile", "map": "RocketHideout_B4F", "where": {"facing": "west", "kind": "tiles", "tiles": [[4, 3]]}},
-        "why": "Rocket Grunt (TRAINER_TEAM_ROCKET_GRUNT_18): Koffing, Zubat Lv21; he drops the LIFT KEY"
+        "declared_after": {"certainty": "tile", "map": "Route8", "where": {"facing": "north", "kind": "tiles", "tiles": [[55, 18]]}},
+        "why": "Gamer Rich (TRAINER_GAMER_RICH): Growlithe, Vulpix Lv24"
       },
       {
-        "id": "below_lift_key",
+        "id": "below_underground_door",
         "kind": "route",
-        "target": {"certainty": "tile", "map": "RocketHideout_B4F", "where": {"facing": "north", "kind": "tiles", "tiles": [[3, 3]]}},
-        "variant": "run",
-        "why": "a tile west, below the LIFT KEY (3, 2)"
+        "target": {"certainty": "tile", "map": "Route8", "where": {"facing": "north", "kind": "tiles", "tiles": [[13, 5]]}},
+        "variant": "bike",
+        "why": "west along rows 14..18, up column 14 east of Aidan's line (10..13, 6), to below the Underground Path door (13, 4)"
       },
       {
-        "id": "lift_key",
-        "kind": "talk",
-        "why": "pick up the LIFT KEY (pokeguy 57:33)"
-      },
-      {
-        "id": "beside_b3f_rare_candy",
+        "id": "route7_underground_exit",
         "kind": "route",
-        "target": {"certainty": "tile", "map": "RocketHideout_B3F", "where": {"facing": "north", "kind": "tiles", "tiles": [[12, 13]]}},
+        "target": {"certainty": "tile", "map": "Route7", "where": {"facing": "south", "kind": "tiles", "tiles": [[7, 15]]}},
         "variant": "run",
-        "why": "back up the stairs to B3F, below the Rare Candy (12, 12) beside the arrow tiles"
+        "why": "through the door, the east entrance, the east-west tunnel and the west entrance, out onto Route 7"
       },
       {
-        "id": "b3f_rare_candy",
-        "kind": "talk",
-        "why": "pick up the Rare Candy: two, with Route 9's"
+        "id": "pidgey_grass",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "Route7", "where": {"facing": "east", "kind": "tiles", "tiles": [[14, 5]]}},
+        "variant": "run",
+        "why": "north round the ledges into Route 7's grass (11..16, 2..5), a grass tile east of it free; Route 8's grass is behind two Cut trees"
+      },
+      {
+        "id": "catch_pidgey",
+        "kind": "game_action",
+        "variant": "capture pidgey catches=1 encounters=30 balls=5 pace=east",
+        "why": "a Pidgey to carry HM02 Fly (pokeguy flies with a Pidgey from 1:03 on); the party has no other flier"
+      },
+      {
+        "id": "celadon_below_center",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "CeladonCity", "where": {"facing": "north", "kind": "tiles", "tiles": [[48, 12]]}},
+        "variant": "run",
+        "why": "north round the grass, west onto Celadon (row 12..15) and along row 12 to below the Center door (48, 11)"
+      },
+      {
+        "id": "celadon_nurse",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "CeladonCity_PokemonCenter_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 4]]}},
+        "variant": "run",
+        "why": "into the Center, to the nurse"
+      },
+      {
+        "id": "heal_celadon",
+        "kind": "heal",
+        "why": "the nurse heals the party"
       }
     ]
   },

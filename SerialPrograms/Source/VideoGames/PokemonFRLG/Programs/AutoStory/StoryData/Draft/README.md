@@ -9,53 +9,80 @@ Each file is a `pokesim-authored-checkpoint/1` plan in the same format as
 `../frlg-parcel-00.05.plan.json`. The order and the item stops follow PokeGuy's
 LeafGreen run (PokemonSimulation `data/runs/pokeguy-leafgreen-15934/events.json`
 and `external/pokeguy-notes.md`). 00.28 and 00.29 are table rows on
-`frlg/stage8-rocktunnel` (#293), not drafts: 00.29 ends at Lavender's nurse.
-The draft that also used the id 00.29 (Lavender Mart, Route 8, the Underground
-Path to Celadon's Center) was dropped in favour of #293's row, so nothing here
-covers Lavender's nurse to Celadon's yet; its events are in commit 8b656d1a2.
+`frlg/stage8-rocktunnel` (#293); 00.29 ends at Lavender's nurse, where 00.30
+starts.
 
 | Id | Title | Events |
 |---|---|---:|
-| 00.30 | Celadon Game Corner and the Rocket Hideout down to B4F: the poster guard, the Lift Key Grunt, the LIFT KEY and B3F's Rare Candy | 12 |
-| 00.31 | Rocket Hideout: the lift to B4F, the two door guards, two Rare Candies, Blastoise, Giovanni and the SILPH SCOPE | 16 |
-| 00.32 | Celadon: Department Store 5F battle items, HM02 Fly on Route 16 for the Pidgey, the Tea, then the Center | 20 |
-| 00.32b | Celadon Mansion roof room: the Eevee (Gift RNG placeholder) | 4 |
-| 00.33 | Fly to Lavender, the Center, Pokemon Tower 2F: the rival | 8 |
-| 00.34 | Pokemon Tower 3F to 7F: Tammy, Jennifer, Emilia, the Marowak, three Grunts, Mr. Fuji | 21 |
-| 00.35 | The POKE FLUTE, Fly to Celadon, Route 16's Snorlax, Cycling Road's Rare Candy and Max Elixir, Fuchsia | 16 |
-| 00.36 | Safari Zone: a Full Restore, the GOLD TEETH, HM03 Surf from the Secret House | 12 |
-| 00.37 | Fuchsia: Surf to the lead, Juggler Kirk, Koga, then HM04 Strength from the Warden | 14 |
-| 00.38 | Fly to Pallet, Surf down Route 21 to Cinnabar, the Mansion: Elixir, TM14 Blizzard and the SECRET KEY | 15 |
-| 00.38b | Cinnabar Lab: the Helix Fossil revived (Gift RNG placeholder) | 6 |
-| 00.39 | Cinnabar Gym: the quiz doors, Blaine | 9 |
-| 00.40 | Fly to Celadon: two Rare Candies, Blizzard, Celadon Gym: Tamia, Lori, Erika | 21 |
-| 00.41 | East to Saffron: the TEA at the gate, the Fighting Dojo's Hitmonchan (Gift RNG placeholder), the Center | 13 |
-| 00.42 | Silph Co.: the CARD KEY, the rival on 7F, the Lapras (Gift RNG placeholder) | 10 |
-| 00.43 | Silph Co. 11F: the boardroom Grunt, Giovanni; then Sabrina | 13 |
-| 00.44 | Fly to Viridian: Viridian Gym: Takashi, Warren, Giovanni | 14 |
-| 00.45 | Route 22: the rival; Route 23's badge gates; Strength | 7 |
-| 00.46 | Victory Road's boulders, Indigo Plateau: Full Restores, the nurse, the save | 8 |
-| 00.47 | Lorelei | 4 |
-| 00.48 | Bruno | 3 |
-| 00.49 | Agatha | 3 |
-| 00.50 | Lance | 3 |
-| 00.51 | The Champion and the Hall of Fame | 4 |
+| 00.30 | Lavender Mart, then west over Route 8 on the Bicycle under a Repel: Gamer Rich, a Pidgey for Fly, the Underground Path to Celadon's Pokemon Center | 14 |
+| 00.31 | Celadon Game Corner and the Rocket Hideout down to B4F: the poster guard, the poster switch, the Lift Key Grunt, the LIFT KEY and B3F's Rare Candy | 12 |
+| 00.32 | Rocket Hideout: the lift to B4F, the two door guards, two Rare Candies, Giovanni, the SILPH SCOPE, an Escape Rope out | 16 |
 
-## Why 00.30 and 00.31 are not table rows yet
+The later drafts (Celadon Department Store to the Hall of Fame) are on
+`frlg/draft-story-50-51` (#303) under the ids 00.32 to 00.51; with 00.30
+restored here they each move up by one when that stack takes this one in.
 
-They can't run or be simulated on this branch's data:
+## Story order after the hideout
 
-- The map resource lock (PokemonSimulation `6c2f5c8`, `runtime-manifest.json`)
-  has none of CeladonCity, CeladonCity_GameCorner or RocketHideout_B1F..B4F;
-  they exist only in `source-candidate`. CeladonCity_PokemonCenter_1F (00.30's
-  start) and RocketHideout_Elevator (00.31's lift) are in neither. Adding them
-  to the runtime pack is a PokemonSimulation publish and a lock bump.
-- 00.30's start, Celadon's nurse, isn't reached by any row: 00.29 ends in
-  Lavender.
-- The walker has no spinner (arrow) tiles, which B2F and B3F need, and no
-  step for the lift's floor menu or the poster switch.
-- `STORY_TRAINERS` names none of the hideout's Grunts or Giovanni yet;
-  their parties are in `BattleData/`.
+As PokeGuy plays it: the Celadon Department Store 5F (6 X Speed, 21 X Special,
+5 X Accuracy, 2 Guard Spec), then Pokemon Tower (a Super Repel on 3F to 7F,
+the floors with wild Pokemon), Route 16's Snorlax, Fuchsia and Koga, the
+Pokemon Mansion and Blaine, Erika, Silph Co., Sabrina, Viridian's Giovanni, and
+the Elite Four.
+
+Items from the bag, as PokeGuy uses them: a Repel over Route 8 and the
+Underground Path (00.30; 5 bought in 00.26), renewed when "REPEL's effect wore
+off" shows (`renew_repel()`); Super Repels in Pokemon Tower; an Escape Rope out
+of the hideout after Giovanni (00.32), which puts the player at the Game
+Corner's door, CeladonCity (34, 22) (pokefirered `UpdateEscapeWarp()`: the last
+outdoor door, a tile south). The Rocket Hideout has no wild Pokemon
+(`wild_encounters.json` lists none of its floors), so no Repel is used there.
+The BICYCLE (00.26) is ridden on Route 8's open legs (`bike`); it is
+`BIKE_TILE_TIME`, an estimate from the decompilation, until measured.
+
+## The maps each draft needs
+
+The story can't run or simulate these drafts until their maps are in the map
+resource lock (PokemonSimulation `6c2f5c8`, `data/maps/runtime-manifest.json`).
+Status there, in PokemonSimulation's `data/games/frlg/maps/source-candidate`,
+or neither:
+
+| Map | Draft | Status |
+|---|---|---|
+| LavenderTown | 00.30 | published |
+| LavenderTown_Mart | 00.30 | candidate |
+| Route8 | 00.30 | candidate |
+| UndergroundPath_EastEntrance | 00.30 | candidate |
+| UndergroundPath_EastWestTunnel | 00.30 | candidate |
+| UndergroundPath_WestEntrance | 00.30 | candidate |
+| Route7 | 00.30 | candidate |
+| CeladonCity | 00.30 to 00.32 | candidate |
+| CeladonCity_PokemonCenter_1F | 00.30, 00.31 | missing |
+| CeladonCity_GameCorner | 00.31, 00.32 | candidate |
+| RocketHideout_B1F | 00.31, 00.32 | candidate |
+| RocketHideout_B2F | 00.31, 00.32 | candidate |
+| RocketHideout_B3F | 00.31 | candidate |
+| RocketHideout_B4F | 00.31, 00.32 | candidate |
+| RocketHideout_Elevator | 00.32 | missing |
+
+Beyond publishing (a PokemonSimulation publish and a lock bump, which need the
+user's approval), the code added for these drafts reads three things the
+candidate maps don't carry yet:
+
+- B2F's and B3F's spinner tiles as regions `spin_north`, `spin_south`,
+  `spin_west`, `spin_east` and `spin_stop` (pokefirered `MB_SPIN_*`,
+  `MB_STOP_SPINNING`; `spin_slide()` in PokemonFRLG_OverworldMap.h);
+- the Game Corner's poster as an object `poster` at (11, 1), and its stairs
+  (16..17, 2..3) as objects `poster_stairs`, which the switch removes
+  (`SimField::POSTER_SWITCH`);
+- the lift's floors: its door is a dynamic warp (`setdynamicwarp`), so the sim
+  is told where each floor lets out (`SimScript::lift_floors`: B1F (24, 25),
+  B2F (28, 16), B4F (20, 23)) and the planner can't route through it yet.
+
+`STORY_TRAINERS` names the battles these drafts fight: CeladonCity_GameCorner
+`rocket_grunt` (GRUNT_7), and on RocketHideout_B4F `lift_key_grunt` (GRUNT_18),
+`left_guard` (GRUNT_16), `right_guard` (GRUNT_17) and `giovanni`. When the
+drafts become table rows, their battle steps take those names.
 
 ## Conventions
 
@@ -74,9 +101,13 @@ They can't run or be simulated on this branch's data:
   `gift_rng <name>` handoff, for the Eevee (00.32b), the Omanyte from the Helix
   Fossil (00.38b), the Hitmonchan (00.41) and the Lapras (00.42). The authored
   format can't yet say `handoff`/`live_start` as 00.12/00.12b do in C++.
-- New `game_action` variants that no executor has yet: `party_room`,
-  `gift_rng`, `use_item`, `fly`, `flee_wild`, `surf`, `strength_puzzle`,
-  `reenter_map`. The `mart` variants name Marts the Mart table doesn't list
+- `game_action` variants the C++ executor now has (no console run yet):
+  `poster_switch`, `lift_floor <from> <to>` (PokemonFRLG_AutoStoryHideout.h),
+  `use_item <repel|super-repel|max-repel|escape-rope>` and `ride_bike`
+  (PokemonFRLG_AutoStoryItemUse.h), and the `bike` route variant. Variants
+  that no executor has yet: `party_room`, `gift_rng`, `use_item rare-candy
+  slot=N` (an item used on a party member), `fly`, `flee_wild`, `surf`,
+  `strength_puzzle`, `reenter_map`. The `mart` variants name Marts the Mart table doesn't list
   yet (Lavender, Celadon 5F, Indigo Plateau).
 - HMs and key items come in story order: LIFT KEY, SILPH SCOPE, HM02 Fly, TEA,
   POKE FLUTE, HM03 Surf, GOLD TEETH, HM04 Strength, SECRET KEY, CARD KEY.
@@ -84,8 +115,8 @@ They can't run or be simulated on this branch's data:
 ## Decisions for the user
 
 - **A Pidgey for Fly.** PokeGuy flies everywhere from 1:03; the story party has
-  no flier. The dropped Lavender-to-Celadon draft caught a Pidgey in Route 7's grass (Route 8's grass is behind
-  two Cut trees). Without Fly, Cinnabar needs a long walk round to Pallet.
+  no flier. 00.30 catches a Pidgey in Route 7's grass (Route 8's grass is
+  behind two Cut trees). Without Fly, Cinnabar needs a long walk round to Pallet.
 - **TM14 Blizzard over Mega Kick** (00.40) is a one-shot TM: it needs the team
   plan first.
 - **Strength over Water Pulse** (00.45) and **Surf over Water Gun** (00.37)
@@ -111,8 +142,8 @@ wall tiles, and Indigo Plateau's door glyph is at (11, 5) with its warp at
 
 | Skipped leg | Why |
 |---|---|
-| 00.31/b2f_lift | B2F's lift corner is reached over arrow tiles the planner does not solve |
-| 00.31/b4f_below_guards | RocketHideout_Elevator map not in source-candidate |
+| 00.32/b2f_lift | B2F's lift corner is reached over arrow tiles: the planner solves them now, but the candidate map has no `spin_*` regions |
+| 00.32/b4f_below_guards | RocketHideout_Elevator map not in source-candidate |
 | 00.32/x_item_clerk | CeladonCity_DepartmentStore_Elevator map not in source-candidate |
 | 00.32/route16_below_tree | CeladonCity_DepartmentStore_Elevator map not in source-candidate |
 | 00.32/celadon_nurse | map not in source-candidate |
