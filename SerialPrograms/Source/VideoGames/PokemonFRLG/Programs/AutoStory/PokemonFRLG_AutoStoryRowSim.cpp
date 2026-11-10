@@ -15,6 +15,7 @@
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
 #include "PokemonFRLG_AutoStoryHideout.h"
 #include "PokemonFRLG_AutoStoryRooms.h"
@@ -545,9 +546,26 @@ void sim_walk_room_legs(OverworldSim& sim, const std::vector<RoomLeg>& legs){
 
 } // namespace
 
+namespace{
+
+//  Whether the sim can walk a Pokemon Center's way in or out of `step`:
+//  the map it ends on is built into the program. Celadon's Center has no
+//  map yet (00.30), so its way in is stubbed.
+bool center_walkable(const StoryStep& step){
+    if (!is_center_variant(step.variant)){
+        return false;
+    }
+    const std::optional<StoryPose> after = step.pose_after ? story_pose(*step.pose_after) : std::nullopt;
+    const std::vector<std::pair<std::string, std::string>>& maps = overworld_map_json();
+    return after && std::any_of(maps.begin(), maps.end(), [&](const auto& map){ return map.first == after->map; });
+}
+
+} // namespace
+
 //  A scripted GAME step on the sim: the poster's switch, the lift's ride
 //  (its room coded, SimScript::lift_floors, rows as on the panel), or a
-//  Pokemon Center's way in or out; any other GAME step is stubbed.
+//  Pokemon Center's way in or out (center_walkable()); any other GAME step
+//  is stubbed.
 Pokemon::StoryAction OverworldStepSim::hideout_or_stub(){
     Pokemon::StoryAction stub = m_stubs.stub();
     Pokemon::StoryAction sim = played([this](RunState&, const StoryStep& step){
@@ -555,7 +573,7 @@ Pokemon::StoryAction OverworldStepSim::hideout_or_stub(){
         return failure.empty() ? Pokemon::outcome_ok() : Pokemon::outcome_failed("sim_failure", failure);
     });
     sim.act = [stub, played_act = sim.act](RunState& state, const StoryStep& step){
-        return is_hideout_variant(step.variant) || is_center_variant(step.variant)
+        return is_hideout_variant(step.variant) || center_walkable(step)
             ? played_act(state, step)
             : stub.act(state, step);
     };

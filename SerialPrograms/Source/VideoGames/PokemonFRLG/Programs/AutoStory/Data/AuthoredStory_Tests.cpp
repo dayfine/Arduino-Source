@@ -120,7 +120,7 @@ void unknown_event_field(JsonObject& root){
     first_event(root)["speed"] = "fast";
 }
 void unknown_variant(JsonObject& root){
-    first_event(root)["variant"] = "bike";
+    first_event(root)["variant"] = "skate";
 }
 void unknown_game_action(JsonObject& root){
     JsonObject& event = first_event(root);

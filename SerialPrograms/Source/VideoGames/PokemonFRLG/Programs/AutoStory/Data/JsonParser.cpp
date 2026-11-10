@@ -15,10 +15,13 @@
 #include "VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryCapture.h"
 #include "VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryChoice.h"
 #include "VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryGrind.h"
+#include "VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryHideout.h"
+#include "VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryItemUse.h"
 #include "VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryMart.h"
 #include "VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryMember.h"
 #include "VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryParty.h"
 #include "VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryPcStorage.h"
+#include "VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryRooms.h"
 #include "VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryTeach.h"
 #include "VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryTrashCans.h"
 #include "LegacyJsonFormat.h"
@@ -224,7 +227,8 @@ bool known_game_variant(const std::string& variant){
     }
     return parse_capture_variant(variant) || parse_pc_variant(variant) || parse_mart_variant(variant)
         || parse_teach_variant(variant) || parse_grind_variant(variant) || parse_grind_check_variant(variant)
-        || parse_fossil_variant(variant) || parse_level_variant(variant);
+        || parse_fossil_variant(variant) || parse_level_variant(variant)
+        || is_center_variant(variant) || is_item_use_variant(variant) || is_hideout_variant(variant);
 }
 
 //  Whether FRLG does `step`'s kind the way its variant names.
@@ -232,7 +236,7 @@ bool known_variant(const StoryStep& step){
     switch (step.kind){
     case StoryStepKind::ROUTE:
     case StoryStepKind::LEGS:
-        return step.variant.empty() || step.variant == RUN_VARIANT;
+        return step.variant.empty() || step.variant == RUN_VARIANT || step.variant == BIKE_VARIANT;
     case StoryStepKind::STEP:
         return step.variant.empty() || step.variant == TRAINER_LINE_VARIANT || step.variant == TRAINER_WAIT_VARIANT;
     case StoryStepKind::GAME:

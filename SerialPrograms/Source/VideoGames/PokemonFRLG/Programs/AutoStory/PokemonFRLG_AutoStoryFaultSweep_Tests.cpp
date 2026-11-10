@@ -98,7 +98,7 @@ const std::map<std::string, std::string> KNOWN_FAILING{
 //  on every tile (WILD_FLOOR_MAPS).
 const std::map<std::string, int> STORY_ENCOUNTER_RATES{
     {"Route1", 21}, {"Route2", 21}, {"Route3", 21}, {"Route4", 21}, {"Route5", 21}, {"Route6", 21},
-    {"Route9", 21}, {"Route10", 21}, {"Route11", 21}, {"Route22", 21}, {"Route24", 21}, {"Route25", 21},
+    {"Route7", 21}, {"Route8", 21}, {"Route9", 21}, {"Route10", 21}, {"Route11", 21}, {"Route22", 21}, {"Route24", 21}, {"Route25", 21},
     {"ViridianForest", 14}, {"MtMoon_1F", 7}, {"MtMoon_B1F", 5}, {"MtMoon_B2F", 7},
     {"RockTunnel_1F", 7}, {"RockTunnel_B1F", 7},
 };
@@ -161,6 +161,19 @@ struct RowRun{
 //  Where a stubbed step leaves the player instead of its pose_after: by step index.
 using Landings = std::map<size_t, TilePos>;
 
+//  Whether `map` is one of sweep_maps().
+bool map_loaded(const std::string& map){
+    const std::vector<MapData>& maps = sweep_maps();
+    return std::any_of(maps.begin(), maps.end(), [&](const MapData& data){ return data.name == map; });
+}
+
+//  Whether a step of `row` after its step `c` walks.
+bool walks_after(const StoryCheckpoint& row, size_t c){
+    return std::any_of(row.steps.begin() + c + 1, row.steps.end(), [](const StoryStep& next){
+        return next.kind == StoryStepKind::ROUTE || next.kind == StoryStepKind::LEGS || next.kind == StoryStepKind::STEP;
+    });
+}
+
 //  Whether `failure` is a script the sim does not have: a scene's trigger
 //  stepped onto (no trainer sees the player there) or a leader's battle
 //  after a talk (no trainer's message up).
@@ -180,6 +193,7 @@ RowRun run_row(
     const std::optional<std::set<size_t>>& scripted = std::nullopt
 ){
     RowRun out;
+    std::optional<MapPosition> off_maps;
     StoryPose at = *story_pose(*row.start);
     auto sim = std::make_unique<OverworldSim>(sweep_maps(), MapPosition{at.map, at.tile}, at.facing.value_or(Direction::SOUTH), script);
     const auto add = [&out](const SimState& state){
@@ -204,6 +218,12 @@ RowRun run_row(
         at = *story_pose(*step.pose_after);
         const auto landing = landings.find(c);
         const MapPosition land{at.map, landing == landings.end() ? at.tile : landing->second};
+        if (!map_loaded(land.map)){
+            //  A room with no map (Celadon's Pokemon Center) must end the row.
+            off_maps = land;
+            out.failure = walks_after(row, c) ? std::format("{}/{}: ends on {}, which has no map, with a walk after it.", row.id, step.name, land.map) : "";
+            break;
+        }
         if (!(sim->state().position == land)){
             add(sim->state());
             sim = std::make_unique<OverworldSim>(sweep_maps(), land, at.facing.value_or(sim->state().facing), script);
@@ -212,7 +232,7 @@ RowRun run_row(
     if (out.failure.empty() && !sim->state().violations.empty()){
         out.failure = "a violation on the way: " + sim->state().violations.back();
     }
-    out.end = sim->state().position;
+    out.end = off_maps.value_or(sim->state().position);
     add(sim->state());
     return out;
 }
@@ -282,9 +302,7 @@ UnitTestResult sweep_scene_end_pose(Logger& logger, const StoryCheckpoint& row, 
         //  ends where our walk did: not the game's end pose.
         const auto from = clean.before.find(c);
         //  With no walk after it, nothing in the row goes on from the pose.
-        const bool walk_after = std::any_of(row.steps.begin() + c + 1, row.steps.end(), [](const StoryStep& next){
-            return next.kind == StoryStepKind::ROUTE || next.kind == StoryStepKind::LEGS || next.kind == StoryStepKind::STEP;
-        });
+        const bool walk_after = walks_after(row, c);
         if (sim_plays(step) || !walk_after || !after || (from != clean.before.end() && from->second == MapPosition{after->map, after->tile})){
             continue;
         }

@@ -83,6 +83,7 @@ const char* const MAP_NAMES[] = {
     "RockTunnel_B1F",
     "LavenderTown",
     "LavenderTown_PokemonCenter_1F",
+    "LavenderTown_Mart",
     //  West from Lavender: Route 8, the Underground Path under Saffron and
     //  Route 7 to Celadon City.
     "Route8",
