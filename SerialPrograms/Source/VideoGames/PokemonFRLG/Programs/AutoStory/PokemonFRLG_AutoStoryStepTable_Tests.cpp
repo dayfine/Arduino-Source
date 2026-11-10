@@ -98,7 +98,7 @@ std::string parity_error(FakeGame& game, const StoryStep& step){
     std::vector<std::string> trace;
     const Pokemon::Outcome outcome = game.run(step, trace);
     const std::optional<StoryActionId> expected = old_dispatch(step);
-    const std::string label = std::format("{} '{}' ({})", Pokemon::story_step_kind_name(step.kind), step.variant, step.name);
+    const std::string label = std::format("{} '{}' ({})", Pokemon::story_step_kind_name(step.kind), step.action, step.name);
     if (!expected){
         if (!trace.empty() || outcome.failure != "unsupported_step"){
             return label + ": expected unsupported, ran " + (trace.empty() ? outcome.failure : trace[0]);
@@ -126,7 +126,7 @@ std::vector<StoryStep> every_kind_and_variant(){
             StoryStep step;
             step.kind = kind;
             step.name = "synthetic";
-            step.variant = variant;
+            step.action = variant;
             steps.push_back(std::move(step));
         }
     }

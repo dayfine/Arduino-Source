@@ -24,7 +24,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
-#include "Pokemon/AutoStory/Pokemon_StorySteps.h"
+#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
@@ -51,6 +51,21 @@ std::string joined(const std::vector<std::string>& lines){
         text += "\n    " + line;
     }
     return text;
+}
+
+//  A checkpoint's start as the engine's Pose: nothing for a new game.
+std::optional<Pokemon::Pose> start_pose(const StoryCheckpoint& checkpoint){
+    return checkpoint.start ? std::optional<Pokemon::Pose>(Pokemon::pose_of(*checkpoint.start)) : std::nullopt;
+}
+
+//  The table's checkpoint `id`; throws if it has none.
+const StoryCheckpoint& checkpoint_row(std::string_view id){
+    const std::vector<StoryCheckpoint>& rows = story_checkpoints();
+    const auto row = std::find_if(rows.begin(), rows.end(), [id](const StoryCheckpoint& data){ return data.id == id; });
+    if (row == rows.end()){
+        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No checkpoint " + std::string(id) + ".");
+    }
+    return *row;
 }
 
 const MapData* map_named(const std::string& name){
@@ -141,18 +156,38 @@ public:
             failure->second.times--;
             return Pokemon::outcome_failed(failure->second.failure, key);
         }
-        return Pokemon::StoryStepExecutor::run(state, step);
+        return act(state, step);
     }
-protected:
-    virtual Outcome route(RunState& state, const StoryStep& step) override{
-        return walk_to(state.pose, step);
+private:
+    //  The step by its kind, as the console does it (StoryExecutor), with
+    //  nothing done on a screen.
+    Outcome act(RunState& state, const StoryStep& step){
+        switch (step.kind){
+        case StoryStepKind::ROUTE:
+            return walk_to(state.pose, step);
+        case StoryStepKind::LEGS:
+            return legs(state, step);
+        case StoryStepKind::STEP:
+            return take_step(state, step);
+        case StoryStepKind::READY:
+            return ready(state, step);
+        case StoryStepKind::SHOP:
+            return shop(step);
+        case StoryStepKind::TRAIN:
+        case StoryStepKind::SAVE:
+            return Pokemon::unsupported_step(step);
+        default:
+            //  Nothing on a screen; pacing leaves the player on either of
+            //  its tiles, as on the console.
+            return Pokemon::outcome_ok(paced_pose(state.pose, step));
+        }
     }
-    virtual Outcome legs(RunState& state, const StoryStep& step) override{
+    Outcome legs(RunState& state, const StoryStep& step){
         const Standing at = standing(state.pose);
         if (!at.error.empty()){
             return Pokemon::outcome_failed("no_pose", at.error);
         }
-        const std::optional<std::vector<RouteStep>> route = fixed_route(story_maps(), at.position, step.legs);
+        const std::optional<std::vector<RouteStep>> route = fixed_route(story_maps(), at.position, Pokemon::story_arg<std::vector<StoryLeg>>(step.args, "legs"));
         if (!route || route->empty()){
             return Pokemon::outcome_failed("bad_legs", to_string(at.position));
         }
@@ -160,19 +195,20 @@ protected:
     }
     //  A step into a trainer's line goes on until a trainer can see the
     //  player, as step_until_seen() does on the console.
-    virtual Outcome step(RunState& state, const StoryStep& step) override{
+    Outcome take_step(RunState& state, const StoryStep& step){
         const std::optional<StoryPose> at = story_pose(state.pose);
         if (!at){
             return Pokemon::outcome_failed("no_pose", Pokemon::to_string(state.pose));
         }
+        const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
         const MapData* map = map_named(at->map);
-        if (step.variant != TRAINER_LINE_VARIANT || map == nullptr){
-            return Pokemon::outcome_ok(to_pose(StoryPose{at->map, at->tile.next(step.direction), step.direction}));
+        if (step.action != TRAINER_LINE_VARIANT || map == nullptr){
+            return Pokemon::outcome_ok(to_pose(StoryPose{at->map, at->tile.next(direction), direction}));
         }
         TilePos onto = at->tile;
         const std::optional<int> stepped = step_until_seen(
             TRAINER_LINE_TILES,
-            [&]{ onto = onto.next(step.direction); },
+            [&]{ onto = onto.next(direction); },
             [&]{
                 return std::any_of(map->objects.begin(), map->objects.end(), [&](const MapObject& object){
                     return object.trainer && trainer_may_see(*map, object, onto);
@@ -182,30 +218,20 @@ protected:
         if (!stepped){
             return Pokemon::outcome_failed("no_trainer", to_string(MapPosition{at->map, onto}));
         }
-        return Pokemon::outcome_ok(to_pose(StoryPose{at->map, onto, step.direction}));
+        return Pokemon::outcome_ok(to_pose(StoryPose{at->map, onto, direction}));
     }
     //  The nurse's way must plan too, but the run goes on from where it stands.
-    virtual Outcome ready(RunState& state, const StoryStep& step) override{
+    Outcome ready(RunState& state, const StoryStep& step){
         const Outcome to_nurse = walk_to(state.pose, step);
         return to_nurse.succeeded() ? Pokemon::outcome_ok() : to_nurse;
-    }
-    virtual Outcome new_game(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
-    virtual Outcome options(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
-    virtual Outcome talk(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
-    virtual Outcome answer(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
-    virtual Outcome mash(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
-    virtual Outcome battle(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
-    virtual Outcome heal(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
-    //  Pacing leaves the player on either of its tiles, as on the console.
-    virtual Outcome game(RunState& state, const StoryStep& step) override{
-        return Pokemon::outcome_ok(paced_pose(state.pose, step));
     }
     //  The Viridian Mart's list as the game shows it. After a purchase the
     //  cursor stays on the row bought (console B, 2026-11-01), so each
     //  order moves it from there, as buy_items() does since ad5d40885.
-    virtual Outcome shop(RunState&, const StoryStep& step) override{
+    Outcome shop(const StoryStep& step){
+        const std::vector<Pokemon::StoryItem>& items = Pokemon::story_arg<std::vector<Pokemon::StoryItem>>(step.args, "items");
         static const std::vector<std::string> LIST{"poke_ball", "potion", "antidote", "parlyz_heal", "cancel"};
-        const std::optional<std::vector<MartOrder>> orders = viridian_mart_orders(step.items);
+        const std::optional<std::vector<MartOrder>> orders = viridian_mart_orders(items);
         if (!orders){
             return Pokemon::outcome_failed("unknown_item", step.name);
         }
@@ -217,20 +243,19 @@ protected:
             if (cursor < 0 || cursor >= (int)LIST.size() || LIST[cursor] == "cancel"){
                 return Pokemon::outcome_failed("mart_cancel", std::format("order {} ends on row {}", c + 1, cursor + 1));
             }
-            if (LIST[cursor] != step.items[c].item){
-                return Pokemon::outcome_failed("wrong_item", std::format("{} instead of {}", LIST[cursor], step.items[c].item));
+            if (LIST[cursor] != items[c].item){
+                return Pokemon::outcome_failed("wrong_item", std::format("{} instead of {}", LIST[cursor], items[c].item));
             }
             bag[LIST[cursor]] += order.quantity;
         }
         return Pokemon::outcome_ok();
     }
 
-private:
     Outcome walk_to(const Pokemon::Pose& pose, const StoryStep& step){
         if (Pokemon::tiles_of(pose).size() > 1){
             //  From the tiles a pacing step leaves: the route must plan, and
             //  test_routes_after_pacing() walks it on the sim from each.
-            const std::optional<StoryPose> target = story_pose(*step.target);
+            const std::optional<StoryPose> target = story_pose(Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target")));
             const RouteGoal goal{{target->map, target->tile}, target->facing};
             const std::optional<std::vector<RouteStep>> route = plan_story_route(story_maps(), pose, std::nullopt, goal);
             if (!route || route->empty()){
@@ -242,7 +267,7 @@ private:
         if (!at.error.empty()){
             return Pokemon::outcome_failed("no_pose", at.error);
         }
-        const std::optional<StoryPose> target = story_pose(*step.target);
+        const std::optional<StoryPose> target = story_pose(Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target")));
         const RouteGoal goal{{target->map, target->tile}, target->facing};
         const std::optional<std::vector<RouteStep>> route = plan_overworld_route(
             story_maps(), at.position, goal, default_route_costs(), at.facing
@@ -276,9 +301,7 @@ struct Simulation{
     std::vector<std::pair<std::string, Pokemon::Pose>> saves;
     Pokemon::SegmentPolicy policy;
 
-    //  A language no reader supports, so a step that needed text would show.
     Pokemon::SegmentReport run(const Pokemon::SegmentRange& range){
-        game.set_language(Language::Japanese);
         Pokemon::Segment segment;
         segment.id = "00";
         for (const StoryCheckpoint& data : rows){
@@ -286,7 +309,7 @@ struct Simulation{
                 .id = data.id, .title = data.title, .saves = true,
                 .build = [this, &data]{
                     Pokemon::Checkpoint checkpoint = Pokemon::build_story_checkpoint(data, game);
-                    add_start_pose_check(checkpoint, data.start, [this]{ return game.save_stands; }, [this](const std::string& line){ lines.push_back(line); });
+                    add_start_pose_check(checkpoint, start_pose(data), [this]{ return game.save_stands; }, [this](const std::string& line){ lines.push_back(line); });
                     return checkpoint;
                 },
             });
@@ -377,13 +400,13 @@ UnitTestResult test_whole_story(){
     //  Each checkpoint starts where the save before it stands.
     for (size_t c = 1; c < sim.rows.size(); c++){
         const StoryCheckpoint& data = sim.rows[c];
-        const std::optional<StoryPose> start = story_pose(*data.start);
+        const std::optional<StoryPose> start = story_pose(*start_pose(data));
         const std::optional<StoryPose> saved = story_pose(sim.saves[c - 1].second);
         const bool same = start && saved && start->map == saved->map && start->tile == saved->tile
             && (!start->facing || start->facing == saved->facing);
         if (!same){
             return std::format("{} starts at {}, but {} saved at {}.", data.id,
-                Pokemon::to_string(*data.start), sim.saves[c - 1].first, Pokemon::to_string(sim.saves[c - 1].second));
+                Pokemon::to_string(*start_pose(data)), sim.saves[c - 1].first, Pokemon::to_string(sim.saves[c - 1].second));
         }
     }
     if (report.one_shot_passes() != report.checkpoints_run){
@@ -462,9 +485,9 @@ UnitTestResult test_gives_up_after_attempts(){
 std::optional<std::vector<RouteStep>> walked_route(const StoryPose& at, const StoryStep& step){
     const MapPosition start{at.map, at.tile};
     if (step.kind == StoryStepKind::LEGS){
-        return fixed_route(story_maps(), start, step.legs);
+        return fixed_route(story_maps(), start, Pokemon::story_arg<std::vector<StoryLeg>>(step.args, "legs"));
     }
-    const std::optional<StoryPose> target = story_pose(*step.target);
+    const std::optional<StoryPose> target = story_pose(Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target")));
     const RouteGoal goal{{target->map, target->tile}, target->facing};
     return plan_overworld_route(story_maps(), start, goal, default_route_costs(), at.facing);
 }
@@ -490,12 +513,13 @@ std::string walk_on_sim(OverworldSim& sim, StoryPose& at, const StoryStep& step)
         open_end = last.action == RouteAction::WALK && !last.to_wall && !last.warps;
         at = StoryPose{last.end.map, last.end.point, last.facing_after};
     }else if (step.kind == StoryStepKind::STEP){
-        if (sim.state().facing != step.direction){
-            sim.tap(step.direction);
+        const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
+        if (sim.state().facing != direction){
+            sim.tap(direction);
         }
-        sim.tap(step.direction);
+        sim.tap(direction);
         sim.watch({SimWatcher::MESSAGE}, std::chrono::milliseconds(2000));
-        at = *story_pose(*step.pose_after);
+        at = *story_pose(Pokemon::pose_of(*step.pose_after));
     }
     if (!open_end && !(sim.state().position == MapPosition{at.map, at.tile})){
         return where + "expected " + to_string(MapPosition{at.map, at.tile}) + ", but on " + to_string(sim.state().position) + ".";
@@ -511,17 +535,13 @@ std::string walk_on_sim(OverworldSim& sim, StoryPose& at, const StoryStep& step)
 //  foot of Route 4's ledge, the row's walks on the sim reach the nurse
 //  with that leg whole or a tile short.
 UnitTestResult test_cerulean_entry_short(){
-    const std::vector<StoryCheckpoint>& rows = story_checkpoints();
-    const auto row = std::find_if(rows.begin(), rows.end(), [](const StoryCheckpoint& data){ return data.id == "00.14"; });
-    if (row == rows.end()){
-        return "No checkpoint 00.14.";
-    }
+    const StoryCheckpoint* row = &checkpoint_row("00.14");
     const auto hop = std::find_if(row->steps.begin(), row->steps.end(), [](const StoryStep& step){ return step.name == "ledge_hop"; });
     if (hop == row->steps.end() || !hop->pose_after){
         return "00.14: no ledge_hop.";
     }
     for (int short_by : {0, 1}){
-        StoryPose at = *story_pose(*hop->pose_after);
+        StoryPose at = *story_pose(Pokemon::pose_of(*hop->pose_after));
         SimScript script;
         script.short_holds[1] = short_by;
         OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing, script);
@@ -553,23 +573,24 @@ std::string row_step_on_sim(OverworldSim& sim, StoryPose& at, const StoryStep& s
         return failure.empty() ? "" : where + failure + on();
     }
     if (step.kind == StoryStepKind::STEP){
-        const auto tap = [&sim, &step]{
-            if (sim.state().facing != step.direction){
-                sim.tap(step.direction);
+        const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
+        const auto tap = [&sim, direction]{
+            if (sim.state().facing != direction){
+                sim.tap(direction);
             }
-            sim.tap(step.direction);
+            sim.tap(direction);
         };
         const auto seen = [&sim]{
             return sim.watch({SimWatcher::MESSAGE, SimWatcher::BATTLE_SCREEN}, TRAINER_LINE_WATCH).has_value();
         };
-        const int tiles = step.variant == TRAINER_LINE_VARIANT ? TRAINER_LINE_TILES : 1;
+        const int tiles = step.action == TRAINER_LINE_VARIANT ? TRAINER_LINE_TILES : 1;
         return step_until_seen(tiles, tap, seen) ? "" : where + "no trainer saw the player." + on();
     }
     if (step.kind == StoryStepKind::BATTLE){
         if (!sim.close_message() || sim.handle_battle(SimBattleChoice::FIGHT) != SimBattleEnd::ENDED){
             return where + "no_battle." + on();
         }
-        at = *story_pose(*step.pose_after);
+        at = *story_pose(Pokemon::pose_of(*step.pose_after));
         if (!(sim.state().position == MapPosition{at.map, at.tile})){
             return where + "expected " + to_string(MapPosition{at.map, at.tile}) + "." + on();
         }
@@ -584,17 +605,13 @@ std::string row_step_on_sim(OverworldSim& sim, StoryPose& at, const StoryStep& s
 //  end, whole or a tile short, the five trainers are met and beaten on
 //  the sim, each battle on the trainer's row.
 UnitTestResult test_nugget_bridge_short(){
-    const std::vector<StoryCheckpoint>& rows = story_checkpoints();
-    const auto row = std::find_if(rows.begin(), rows.end(), [](const StoryCheckpoint& data){ return data.id == "00.16"; });
-    if (row == rows.end()){
-        return "No checkpoint 00.16.";
-    }
+    const StoryCheckpoint* row = &checkpoint_row("00.16");
     const auto walk = std::find_if(row->steps.begin(), row->steps.end(), [](const StoryStep& step){ return step.name == "below_cale_line"; });
-    if (walk == row->steps.end() || !walk->target){
+    if (walk == row->steps.end() || !walk->args.contains("target")){
         return "No step 00.16/below_cale_line.";
     }
     for (int short_by : {0, 1}){
-        StoryPose at = *story_pose(*walk->target);
+        StoryPose at = *story_pose(Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(walk->args, "target")));
         OverworldSim sim(story_maps(), MapPosition{at.map, {at.tile.x, at.tile.y + short_by}}, Direction::NORTH);
         for (auto step = walk + 1; step != row->steps.end() && step->kind != StoryStepKind::READY; ++step){
             const std::string failure = row_step_on_sim(sim, at, *step, "00.16");
@@ -615,12 +632,8 @@ UnitTestResult test_nugget_bridge_short(){
 //  they may look, so Youngster Dan sees the player on (20, 4), walks up
 //  to (21, 4) and is fought there, off the way on.
 UnitTestResult test_route25_trainers(){
-    const std::vector<StoryCheckpoint>& rows = story_checkpoints();
-    const auto row = std::find_if(rows.begin(), rows.end(), [](const StoryCheckpoint& data){ return data.id == "00.17"; });
-    if (row == rows.end()){
-        return "No checkpoint 00.17.";
-    }
-    StoryPose at = *story_pose(*row->start);
+    const StoryCheckpoint* row = &checkpoint_row("00.17");
+    StoryPose at = *story_pose(Pokemon::pose_of(*row->start));
     OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
     for (const StoryStep& step : row->steps){
         const std::string failure = row_step_on_sim(sim, at, step, "00.17");
@@ -668,12 +681,8 @@ std::vector<MapData> maps_bridge_beaten(){
 }
 
 UnitTestResult test_oddish_walks(){
-    const std::vector<StoryCheckpoint>& rows = story_checkpoints();
-    const auto row = std::find_if(rows.begin(), rows.end(), [](const StoryCheckpoint& data){ return data.id == "00.20"; });
-    if (row == rows.end()){
-        return "No checkpoint 00.20.";
-    }
-    StoryPose at = *story_pose(*row->start);
+    const StoryCheckpoint* row = &checkpoint_row("00.20");
+    StoryPose at = *story_pose(Pokemon::pose_of(*row->start));
     OverworldSim sim(maps_bridge_beaten(), MapPosition{at.map, at.tile}, *at.facing);
     const std::map<std::string, MapPosition> ends{
         {"mart_clerk", {"CeruleanCity_Mart", {4, 3}}},
@@ -715,6 +724,12 @@ std::string walk_paced_route(OverworldSim& sim, const std::vector<RouteStep>& ro
     return failure.empty() ? "" : label + ": " + failure + " On " + to_string(sim.state().position) + ".";
 }
 
+//  A ROUTE's target as a pose, or nothing for another step.
+std::optional<Pokemon::Pose> target_of(const StoryStep& step){
+    const Pokemon::GridPose* target = Pokemon::value_if_at_it<Pokemon::GridPose>(step.args, step.args.find("target"));
+    return target == nullptr ? std::nullopt : std::optional<Pokemon::Pose>(Pokemon::pose_of(*target));
+}
+
 //  Console B, 2026-11-03 (row 00.20, run m61): the Oddish's battle came
 //  on the pace's far step, so the capture left the player on (3, 19), not
 //  the table's (4, 19). The walk back planned from (4, 19) went a column
@@ -730,18 +745,14 @@ std::string walk_paced_route(OverworldSim& sim, const std::vector<RouteStep>& ro
 //  stopped. From the Mart, the walk to the patch on the sim keeps out of
 //  his sight with the leg west whole or a tile short.
 UnitTestResult test_oddish_patch_west_short(){
-    const std::vector<StoryCheckpoint>& rows = story_checkpoints();
-    const auto row = std::find_if(rows.begin(), rows.end(), [](const StoryCheckpoint& data){ return data.id == "00.20"; });
-    if (row == rows.end()){
-        return "No checkpoint 00.20.";
-    }
+    const StoryCheckpoint* row = &checkpoint_row("00.20");
     const auto mart = std::find_if(row->steps.begin(), row->steps.end(), [](const StoryStep& step){ return step.name == "mart_clerk"; });
     const auto patch = std::find_if(row->steps.begin(), row->steps.end(), [](const StoryStep& step){ return step.name == "oddish_patch"; });
-    if (mart == row->steps.end() || patch == row->steps.end() || !mart->target || !patch->target){
+    if (mart == row->steps.end() || patch == row->steps.end() || !target_of(*mart) || !target_of(*patch)){
         return "00.20: no mart_clerk or oddish_patch.";
     }
     for (int short_by : {0, 1}){
-        StoryPose at = *story_pose(*mart->target);
+        StoryPose at = *story_pose(*target_of(*mart));
         SimScript script;
         //  Holds from the Mart: south, west, north, east, north, east, north
         //  over the bridge, then the 8th, west from the bridge's head.
@@ -755,7 +766,7 @@ UnitTestResult test_oddish_patch_west_short(){
         if (!sim.state().trainers_beaten.empty()){
             return label + "a trainer saw the player, on " + to_string(sim.state().position) + ".";
         }
-        const StoryPose end = *story_pose(*patch->target);
+        const StoryPose end = *story_pose(*target_of(*patch));
         if (!(sim.state().position == MapPosition{end.map, end.tile})){
             return label + "ended on " + to_string(sim.state().position) + ", not " + to_string(MapPosition{end.map, end.tile}) + ".";
         }
@@ -764,17 +775,13 @@ UnitTestResult test_oddish_patch_west_short(){
 }
 
 UnitTestResult test_oddish_battle_on_far_step(){
-    const std::vector<StoryCheckpoint>& rows = story_checkpoints();
-    const auto row = std::find_if(rows.begin(), rows.end(), [](const StoryCheckpoint& data){ return data.id == "00.20"; });
-    if (row == rows.end()){
-        return "No checkpoint 00.20.";
-    }
+    const StoryCheckpoint* row = &checkpoint_row("00.20");
     const auto capture = std::find_if(row->steps.begin(), row->steps.end(), [](const StoryStep& step){ return step.name == "catch_oddish"; });
-    if (capture == row->steps.end() || capture + 1 == row->steps.end() || !(capture + 1)->target){
+    if (capture == row->steps.end() || capture + 1 == row->steps.end() || !target_of(*(capture + 1))){
         return "00.20: no catch_oddish with a route after it.";
     }
     const auto patch = std::find_if(row->steps.begin(), capture, [](const StoryStep& step){ return step.name == "oddish_patch"; });
-    if (patch == capture || !patch->target){
+    if (patch == capture || !target_of(*patch)){
         return "00.20: no oddish_patch before catch_oddish.";
     }
     //  The sim starts on the patch (3, 19): grass step 1 is the pace's far
@@ -782,7 +789,7 @@ UnitTestResult test_oddish_battle_on_far_step(){
     for (int grass_step : {1, 2}){
         SimScript script;
         script.encounters.push_back(SimEncounter{.grass_step = grass_step});
-        const StoryPose start = *story_pose(*patch->target);
+        const StoryPose start = *story_pose(*target_of(*patch));
         OverworldSim sim(maps_bridge_beaten(), MapPosition{start.map, start.tile}, Direction::SOUTH, script);
         const std::string label = std::format("Battle on grass step {}: ", grass_step);
         QuietLogger logger;
@@ -791,9 +798,9 @@ UnitTestResult test_oddish_battle_on_far_step(){
             return label + "no wild battle on the pace.";
         }
         const StoryStep& back = *(capture + 1);
-        StoryPose at = *story_pose(*back.target);
+        StoryPose at = *story_pose(*target_of(back));
         const std::optional<std::vector<RouteStep>> route = plan_story_route(
-            story_maps(), paced_pose(*patch->target, *capture), std::nullopt, RouteGoal{{at.map, at.tile}, at.facing}
+            story_maps(), paced_pose(*target_of(*patch), *capture), std::nullopt, RouteGoal{{at.map, at.tile}, at.facing}
         );
         if (!route){
             return label + "no route from the capture's tiles.";
@@ -818,16 +825,16 @@ UnitTestResult test_oddish_battle_on_far_step(){
 //  after it: nothing if not; else the route, planned from the pace's two
 //  tiles (paced_pose()), walked on the sim from each: the failure, or empty.
 std::optional<std::string> route_after_pacing(const StoryCheckpoint& row, size_t c){
-    if (c == 0 || c + 1 >= row.steps.size() || row.steps[c + 1].kind != StoryStepKind::ROUTE || !row.steps[c - 1].target){
+    if (c == 0 || c + 1 >= row.steps.size() || row.steps[c + 1].kind != StoryStepKind::ROUTE || !target_of(row.steps[c - 1])){
         return std::nullopt;
     }
     const StoryStep& next = row.steps[c + 1];
-    const Pokemon::Pose paced = paced_pose(*row.steps[c - 1].target, row.steps[c]);
+    const Pokemon::Pose paced = paced_pose(*target_of(row.steps[c - 1]), row.steps[c]);
     const std::vector<TilePos> tiles = Pokemon::tiles_of(paced);
     if (tiles.size() < 2){
         return std::nullopt;
     }
-    const StoryPose end = *story_pose(*next.target);
+    const StoryPose end = *story_pose(*target_of(next));
     const std::optional<std::vector<RouteStep>> route = plan_story_route(
         story_maps(), paced, std::nullopt, RouteGoal{{end.map, end.tile}, end.facing}
     );
@@ -873,16 +880,12 @@ UnitTestResult test_routes_after_pacing(){
 //  Kick tutor (50, 3), then on to above the ledge (93, 8). Each walk ends
 //  where the table says, and no trainer sees the player on the way.
 UnitTestResult test_mega_kick_tutor_walks(){
-    const std::vector<StoryCheckpoint>& rows = story_checkpoints();
-    const auto row = std::find_if(rows.begin(), rows.end(), [](const StoryCheckpoint& data){ return data.id == "00.14"; });
-    if (row == rows.end()){
-        return "No checkpoint 00.14.";
-    }
+    const StoryCheckpoint* row = &checkpoint_row("00.14");
     const auto ledge = std::find_if(row->steps.begin(), row->steps.end(), [](const StoryStep& step){ return step.name == "above_ledge"; });
     if (ledge == row->steps.end()){
         return "00.14: no above_ledge.";
     }
-    StoryPose at = *story_pose(*row->start);
+    StoryPose at = *story_pose(Pokemon::pose_of(*row->start));
     OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
     bool at_tutor = false;
     for (auto step = row->steps.begin(); step != ledge + 1; ++step){
@@ -918,11 +921,7 @@ UnitTestResult test_mega_kick_tutor_walks(){
 //  didn't warp from (6, 9)), the row's walks after the ticket end each
 //  where the table says and leave on Route 25's (51, 5).
 UnitTestResult test_out_of_bill_cottage(){
-    const std::vector<StoryCheckpoint>& rows = story_checkpoints();
-    const auto row = std::find_if(rows.begin(), rows.end(), [](const StoryCheckpoint& data){ return data.id == "00.18"; });
-    if (row == rows.end()){
-        return "No checkpoint 00.18.";
-    }
+    const StoryCheckpoint* row = &checkpoint_row("00.18");
     const auto ticket = std::find_if(row->steps.begin(), row->steps.end(), [](const StoryStep& step){ return step.name == "ss_ticket"; });
     if (ticket == row->steps.end() || !ticket->pose_after){
         return "00.18: no ss_ticket.";
@@ -940,7 +939,7 @@ UnitTestResult test_out_of_bill_cottage(){
         }
         std::erase_if(map.warps, [](const MapWarp& warp){ return warp.x != 7; });
     }
-    StoryPose at = *story_pose(*ticket->pose_after);
+    StoryPose at = *story_pose(Pokemon::pose_of(*ticket->pose_after));
     OverworldSim sim(maps, MapPosition{at.map, at.tile}, *at.facing);
     for (auto step = ticket + 1; step != row->steps.end(); ++step){
         if (step->kind != StoryStepKind::ROUTE && step->kind != StoryStepKind::LEGS){

@@ -187,7 +187,7 @@ bool battle_shows(const ImageViewRGB32& screen);
 //  different one isn't used.
 BattleEnd fight_battle(
     ConsoleHandle& console, ProControllerContext& context,
-    Supplies& supplies, BattleKind kind, StoryChecks checks, Language language
+    Supplies& supplies, BattleKind kind, Pokemon::StoryCheckLevel checks, Language language
 );
 
 
@@ -196,7 +196,7 @@ BattleEnd fight_battle(
 //  The bag's inputs are not checked on the console yet.
 void recover_after_battle(
     ConsoleHandle& console, ProControllerContext& context,
-    Supplies& supplies, StoryChecks checks, Language language
+    Supplies& supplies, Pokemon::StoryCheckLevel checks, Language language
 );
 
 
@@ -206,7 +206,7 @@ void recover_after_battle(
 //  OperationFailedException.
 void clear_overworld_message(
     ConsoleHandle& console, ProControllerContext& context,
-    Supplies& supplies, StoryChecks checks, Language language
+    Supplies& supplies, Pokemon::StoryCheckLevel checks, Language language
 );
 
 
@@ -214,7 +214,7 @@ void clear_overworld_message(
 //  fought if `fight_wild`. A message is advanced until the overworld is
 //  back; a battle that starts after it (a trainer who saw the player) is
 //  fought. A battle lost (a blackout) throws OperationFailedException.
-OverworldInterruptSet story_interrupts(Supplies& supplies, bool fight_wild, StoryChecks checks, Language language);
+OverworldInterruptSet story_interrupts(Supplies& supplies, bool fight_wild, Pokemon::StoryCheckLevel checks, Language language);
 
 
 //  Registers AutoStory item usage unit tests.
