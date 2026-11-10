@@ -5,6 +5,8 @@
  */
 
 #include <format>
+#include <string>
+#include <vector>
 #include "Pokemon_StoryArgs.h"
 
 namespace PokemonAutomation{
@@ -22,7 +24,7 @@ const Type* find_arg(const StoryArgs& args, std::string_view key){
 
 bool has_type(const StoryArgValue& value, StoryArgType type){
     switch (type){
-    case StoryArgType::FLAG:
+    case StoryArgType::BOOLEAN:
         return std::holds_alternative<bool>(value);
     case StoryArgType::NUMBER:
         return std::holds_alternative<int64_t>(value);
@@ -60,22 +62,22 @@ bool story_arg_flag(const StoryArgs& args, std::string_view key){
     return value != nullptr && *value;
 }
 
-std::string story_args_error(const StoryArgs& args, std::span<const StoryArgSpec> specs){
+std::vector<std::string> story_args_errors(const StoryArgs& args, std::span<const StoryArgSpec> specs){
+    std::vector<std::string> errors;
     for (const auto& [key, value] : args){
         const StoryArgSpec* spec = find_spec(specs, key);
         if (spec == nullptr){
-            return std::format("unknown argument \"{}\"", key);
-        }
-        if (!has_type(value, spec->type)){
-            return std::format("argument \"{}\" has the wrong type", key);
+            errors.emplace_back(std::format("unknown argument \"{}\"", key));
+        }else if (!has_type(value, spec->type)){
+            errors.emplace_back(std::format("argument \"{}\" has the wrong type", key));
         }
     }
     for (const StoryArgSpec& spec : specs){
         if (spec.required && args.find(spec.key) == args.end()){
-            return std::format("missing argument \"{}\"", spec.key);
+            errors.emplace_back(std::format("missing argument \"{}\"", spec.key));
         }
     }
-    return "";
+    return errors;
 }
 
 

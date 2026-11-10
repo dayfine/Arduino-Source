@@ -4,17 +4,17 @@
  *
  */
 
-#include "Pokemon_StoryChecks.h"
+#include "Pokemon_StoryCheckLevel.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
 
 
-const char* story_checks_name(StoryChecks checks){
-    switch (checks){
-    case StoryChecks::THOROUGH:
+std::string story_check_level_name(StoryCheckLevel level){
+    switch (level){
+    case StoryCheckLevel::THOROUGH:
         return "thorough";
-    case StoryChecks::FAST:
+    case StoryCheckLevel::FAST:
         return "fast";
     }
     return "?";

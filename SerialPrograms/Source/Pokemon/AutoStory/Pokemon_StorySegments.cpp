@@ -157,7 +157,7 @@ CheckpointReport run_row(
         if (attempt >= policy.attempts_per_checkpoint){
             return result;
         }
-        say(hooks, checkpoint_reset_line(segment.id, spec.id, attempt + 1, policy.attempts_per_checkpoint));
+        say(hooks, segment_reload_line(segment.id, spec.id, attempt + 1, policy.attempts_per_checkpoint));
         report.reloads++;
         Outcome reloaded = reload(state, hooks);
         if (!reloaded.succeeded()){
@@ -192,6 +192,16 @@ size_t SegmentReport::one_shot_passes() const{
         count += run.one_shot() ? 1 : 0;
     }
     return count;
+}
+
+StoryRunCounts SegmentReport::story_counts() const{
+    StoryRunCounts counts{.segments = 1, .checkpoints = 0, .resets = reloads};
+    for (const CheckpointRun& run : runs){
+        if (run.passed){
+            counts.checkpoints++;
+        }
+    }
+    return counts;
 }
 
 

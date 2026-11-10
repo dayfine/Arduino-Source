@@ -43,7 +43,7 @@
 #include "Pokemon_Interrupts.h"
 #include "Pokemon_ScreenEvents.h"
 #include "Pokemon_StoryEvents.h"
-#include "Pokemon_StorySteps.h"
+#include "Pokemon_StoryStepExecutor.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{

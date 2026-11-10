@@ -6,7 +6,7 @@
  *  hard to try and how much to check: the shared range group
  *  (Pokemon_StoryRangeOptions.h) plus the run policy, read into the shared
  *  SegmentPolicy (Pokemon/AutoStory/Pokemon_StorySegments.h), the checks
- *  level (Types/Pokemon_StoryChecks.h) and the language the game's steps
+ *  level (Types/Pokemon_StoryCheckLevel.h) and the language the game's steps
  *  read text in.
  *
  */
@@ -15,19 +15,17 @@
 #define PokemonAutomation_Pokemon_StoryRunOptions_H
 
 #include <cstdint>
-#include <memory>
 #include <optional>
+#include <span>
 #include <string>
-#include <vector>
 #include "Common/Cpp/Options/BooleanCheckBoxOption.h"
 #include "Common/Cpp/Options/EnumDropdownOption.h"
 #include "Common/Cpp/Options/GroupOption.h"
 #include "Common/Cpp/Options/SimpleIntegerOption.h"
 #include "CommonFramework/Language.h"
 #include "CommonTools/Options/StringSelectOption.h"
-#include "Pokemon/AutoStory/Pokemon_AutoStorySelect.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryChecks.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
 #include "Pokemon_StoryRangeOptions.h"
 
@@ -35,36 +33,17 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-//  A checkpoint's entry in the start and end dropdowns, as SV labels its
+//  A checkpoint's label in the start and end dropdowns, as SV labels its
 //  segments: "00.09 Pewter Gym: Camper Liam, then Brock".
-struct StoryCheckpointEntry{
-    std::string label;
-
-    const std::string& name() const{
-        return label;
-    }
-};
-
-// Formats a checkpoint identifier and description into a dropdown label.
 std::string story_checkpoint_label(const StoryCheckpoint& checkpoint);
 
 //  The start/end dropdown database of a story's checkpoints, `rows` in
-//  order, slugged by their index in it (make_story_select_database()). A
-//  game whose story is in sections (BDSP's segments 00 and 01) passes them
-//  joined: a section's entry i is then story_index(true, i, first of the
-//  section). The program keeps it in a function-local static: the options
-//  hold a reference.
-template <typename Row>
-StringSelectDatabase story_checkpoint_database(const std::vector<Row>& rows);
-
-template <typename Row>
-StringSelectDatabase story_checkpoint_database(const std::vector<Row>& rows){
-    std::vector<std::unique_ptr<StoryCheckpointEntry>> entries;
-    for (const StoryCheckpoint& row : rows){
-        entries.emplace_back(std::make_unique<StoryCheckpointEntry>(StoryCheckpointEntry{.label = story_checkpoint_label(row)}));
-    }
-    return make_story_select_database(entries, 0, entries.size());
-}
+//  order, slugged by their index in it, as make_story_select_database()
+//  slugs SV's. A game whose story is in sections (BDSP's segments 00 and
+//  01) passes them joined: a section's entry i is then story_index(true,
+//  i, first of the section). The program keeps it in a function-local
+//  static: the options hold a reference.
+StringSelectDatabase story_checkpoint_database(std::span<const StoryCheckpoint> rows);
 
 
 //  Verify mode, off by default (verify_checkpoint()): the start checkpoint
@@ -92,7 +71,8 @@ class StoryRunOptions : public StoryRangeOptions{
 public:
     //  `checkpoints`: story_checkpoint_database() of the game's story, kept
     //  alive by the caller; the dropdowns start on its first and last.
-    explicit StoryRunOptions(const StringSelectDatabase& checkpoints);
+    //  `languages`: the ones the game has (Pokemon_GameLanguages.h).
+    StoryRunOptions(const StringSelectDatabase& checkpoints, const EnumDropdownDatabase<Language>& languages);
 
     //  The range's check, then verify mode's: one checkpoint only.
     virtual std::string check_validity() const override;
@@ -101,14 +81,14 @@ public:
     //  set, not the user's.
     SegmentPolicy policy() const;
     //  The checks level, for the game's steps to read.
-    StoryChecks checks() const;
+    StoryCheckLevel check_level() const;
     //  The game's language, for the steps that read text.
     Language language() const;
 
 public:
     SimpleIntegerOption<uint8_t> ATTEMPTS_PER_CHECKPOINT;
     BooleanCheckBoxOption STOP_AT_FIRST_FAILURE;
-    EnumDropdownOption<StoryChecks> CHECKS;
+    EnumDropdownOption<StoryCheckLevel> CHECKS;
     //  Any language the game has, whether or not a reader supports it:
     //  steps without one use language-free checks, so none is refused.
     EnumDropdownOption<Language> LANGUAGE;

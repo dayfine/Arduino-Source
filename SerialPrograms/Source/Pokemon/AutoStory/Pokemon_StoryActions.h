@@ -30,7 +30,7 @@
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "Pokemon_StoryEvents.h"
 #include "Pokemon_StoryInterrupts.h"
-#include "Pokemon_StorySteps.h"
+#include "Pokemon_StoryStepExecutor.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{

@@ -4,7 +4,7 @@
  *
  *  A checkpoint of a tile game's story table as plain data: where its save
  *  leaves the player and its steps in order. build_story_checkpoint()
- *  (Pokemon_StorySteps.h) turns it into engine events.
+ *  (Pokemon_StoryStepExecutor.h) turns it into engine events.
  *
  */
 

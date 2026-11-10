@@ -19,10 +19,12 @@
 #include <utility>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "Pokemon/Options/Pokemon_GameLanguages.h"
 #include "Pokemon/Options/Pokemon_StoryRunOptions.h"
+#include "Pokemon_AutoStorySelect.h"
 #include "Pokemon_StoryEvents.h"
 #include "Pokemon_StorySegments.h"
-#include "Pokemon_StorySteps.h"
+#include "Pokemon_StoryStepExecutor.h"
 #include "Pokemon_TilePose.h"
 #include "Pokemon_AutoStory_Tests.h"
 
@@ -38,7 +40,7 @@ namespace{
 class FakeExecutor : public StoryStepExecutor{
 public:
     std::vector<std::string> trace;
-    std::set<std::string> conditions;
+    std::set<std::string, std::less<>> conditions;
     //  Steps by name that always fail, and how.
     std::set<std::string> failing;
     //  Steps by name that fail this many more times, then pass.
@@ -68,7 +70,7 @@ public:
         return run_kind(state, step);
     }
 
-    virtual bool holds(const std::string& condition, RunState& state) override{
+    virtual bool holds(std::string_view condition, RunState& state) override{
         return conditions.contains(condition) || StoryStepExecutor::holds(condition, state);
     }
 
@@ -369,7 +371,7 @@ UnitTestResult test_segment_of_tables(){
         && report.runs[0].one_shot() && report.runs[0].attempts == 1
         && !report.runs[1].one_shot() && report.runs[1].attempts == 2 && report.runs[1].passed
         && report.one_shot_passes() == 1;
-    const auto has = [&lines](const std::string& line){
+    const auto has = [&lines](std::string_view line){
         return std::find(lines.begin(), lines.end(), line) != lines.end();
     };
     if (!runs_ok
@@ -424,10 +426,10 @@ struct PolicyLab{
         RunState state;
         return run_segment(state, segment, SegmentRange{}, policy, hooks);
     }
-    bool has(const std::string& line) const{
+    bool has(std::string_view line) const{
         return std::find(lines.begin(), lines.end(), line) != lines.end();
     }
-    size_t count(const std::string& item) const{
+    size_t count(std::string_view item) const{
         return (size_t)std::count(executor.trace.begin(), executor.trace.end(), item);
     }
 };
@@ -509,7 +511,7 @@ struct BossLab{
         segment.id = "00";
         segment.checkpoints.push_back(CheckpointSpec{
             .id = table.id, .title = table.title, .saves = true,
-            .build = [this]{ return build_story_checkpoint(table, executor, prepared); },
+            .build = [this]{ return build_story_checkpoint(table, executor, &prepared); },
         });
         return segment;
     }
@@ -527,7 +529,7 @@ struct BossLab{
         hooks.log = [this](const std::string& line){ lines.push_back(line); };
         return hooks;
     }
-    size_t count(const std::string& item) const{
+    size_t count(std::string_view item) const{
         return (size_t)std::count(executor.trace.begin(), executor.trace.end(), item);
     }
 };
@@ -626,7 +628,7 @@ UnitTestResult test_checkpoint_dropdowns(){
     ){
         return "Unexpected label.";
     }
-    StoryRunOptions options(database);
+    StoryRunOptions options(database, Gen8ToGen9Languages_Database());
     if (options.start_index() != 0 || options.end_index() != 2 || !options.check_validity().empty()){
         return "Expected the whole story by default.";
     }
@@ -648,7 +650,7 @@ UnitTestResult test_story_stats(){
         CheckpointRun{.id = "00.05", .passed = false, .attempts = 1, .recoveries = 0},
     };
     AutoStoryStats stats;
-    record_story_stats(stats, report);
+    record_story_counts(stats, report.story_counts());
     if (stats.m_segment != 1 || stats.m_checkpoint != 2 || stats.m_reset != 2){
         return "Expected 1 segment, 2 checkpoints and 2 resets.";
     }
@@ -658,13 +660,13 @@ UnitTestResult test_story_stats(){
 //  The program's option group: 3 attempts, no stop, Thorough, by default;
 //  Fast when chosen.
 UnitTestResult test_run_options(){
-    StoryRunOptions options(two_sections_database());
+    StoryRunOptions options(two_sections_database(), Gen8ToGen9Languages_Database());
     const SegmentPolicy policy = options.policy();
-    if (policy.attempts_per_checkpoint != 3 || policy.stop_at_first_failure || options.checks() != StoryChecks::THOROUGH){
+    if (policy.attempts_per_checkpoint != 3 || policy.stop_at_first_failure || options.check_level() != StoryCheckLevel::THOROUGH){
         return "Expected 3 attempts, no stop at the first failure, and Thorough checks by default.";
     }
-    options.CHECKS.set(StoryChecks::FAST);
-    if (options.checks() != StoryChecks::FAST){
+    options.CHECKS.set(StoryCheckLevel::FAST);
+    if (options.check_level() != StoryCheckLevel::FAST){
         return "Expected Fast checks once chosen.";
     }
     //  Every game language can be chosen, read or not.
@@ -681,7 +683,7 @@ UnitTestResult test_run_options(){
 //  Verify mode: off by default; 3 runs and 2 passes when on, for one
 //  checkpoint only, never needing more passes than runs.
 UnitTestResult test_verify_options(){
-    StoryRunOptions options(two_sections_database());
+    StoryRunOptions options(two_sections_database(), Gen8ToGen9Languages_Database());
     if (options.VERIFY.policy()){
         return "Expected verify mode off by default.";
     }
@@ -734,7 +736,7 @@ struct StoryStepInput{
 };
 
 struct StoryStepExpectation{
-    const char* description;
+    std::string_view description;
 };
 
 struct StoryStepTestCase{
@@ -742,10 +744,10 @@ struct StoryStepTestCase{
     StoryStepExpectation expectation;
 };
 
-class Test_StorySteps : public UnitTest{
+class Test_StoryStepExecutor : public UnitTest{
 public:
-    explicit Test_StorySteps(StoryStepTestCase scenario)
-        : UnitTest("Pokemon::StorySteps - " + scenario.input.name)
+    explicit Test_StoryStepExecutor(StoryStepTestCase scenario)
+        : UnitTest("Pokemon::StoryStepExecutor - " + scenario.input.name)
         , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -826,9 +828,9 @@ const StoryStepTestCase STORY_STEP_CASES[] = {
 } // namespace
 
 
-void add_tests_StorySteps(UnitTestDatabase& database){
+void add_tests_StoryStepExecutor(UnitTestDatabase& database){
     for (const auto& scenario : STORY_STEP_CASES){
-        database.add<Test_StorySteps>(scenario);
+        database.add<Test_StoryStepExecutor>(scenario);
     }
 }
 

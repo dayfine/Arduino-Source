@@ -4,8 +4,8 @@
  *
  *  One step of a tile game's story (FRLG, BDSP) as plain data: its kind
  *  and the fields that kind reads. A game's executor does it
- *  (Pokemon_StorySteps.h); the shared JSON reads and writes it
- *  (Pokemon_StoryStepJson.h).
+ *  (Pokemon_StoryStepExecutor.h); the shared JSON reads and writes it
+ *  (Data/Pokemon_StoryStepJson.h).
  *
  */
 

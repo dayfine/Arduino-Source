@@ -30,7 +30,7 @@ constexpr StoryArgSpec MART_SPECS[] = {
     {.key = "map", .type = StoryArgType::TEXT, .required = true},
     {.key = "budget", .type = StoryArgType::NUMBER, .required = true},
     {.key = "floor", .type = StoryArgType::NUMBER},
-    {.key = "if_present", .type = StoryArgType::FLAG},
+    {.key = "if_present", .type = StoryArgType::BOOLEAN},
 };
 
 constexpr std::string_view MART_POSITIONAL[] = {"map"};
@@ -45,8 +45,8 @@ struct ArgsInput{
     std::span<const std::string_view> positional = MART_POSITIONAL;
 };
 
-//  The action name and args it gives, and the first error: the split's,
-//  else the specs'.
+//  The action name and args it gives, and its errors joined by "; ": the
+//  split's, else each of the specs'.
 struct ArgsExpectation{
     std::string_view action;
     StoryArgs args = {};
@@ -63,7 +63,7 @@ const ArgsCase CASES[] = {
      .expectation = {.action = "mart", .args = {{"map", std::string("CeruleanCity_Mart")}, {"budget", int64_t(1500)}, {"floor", int64_t(1500)}, {"if_present", true}}}},
     {.input = {.name = "plain name", .variant = "run", .specs = {}, .positional = {}}, .expectation = {.action = "run"}},
     {.input = {.name = "words stay words", .variant = "teach tutor forget=tail-whip", .specs = {}, .positional = {}},
-     .expectation = {.action = "teach", .args = {{"tutor", true}, {"forget", std::string("tail-whip")}}, .error = "unknown argument \"forget\""}},
+     .expectation = {.action = "teach", .args = {{"tutor", true}, {"forget", std::string("tail-whip")}}, .error = "unknown argument \"forget\"; unknown argument \"tutor\""}},
     {.input = {.name = "unknown key", .variant = "mart M budget=1 budgte=1"},
      .expectation = {.action = "mart", .args = {{"map", std::string("M")}, {"budget", int64_t(1)}, {"budgte", int64_t(1)}}, .error = "unknown argument \"budgte\""}},
     {.input = {.name = "wrong type", .variant = "mart M budget=lots"},
@@ -78,7 +78,12 @@ const ArgsCase CASES[] = {
 //  "" when `test` reads as expected, else what differs.
 std::string check_case(const ArgsCase& test){
     const LegacyVariant read = split_legacy_variant(test.input.variant, test.input.positional);
-    const std::string error = read.error.empty() ? story_args_error(read.args, test.input.specs) : read.error;
+    std::string error = read.error;
+    if (error.empty()){
+        for (const std::string& each : story_args_errors(read.args, test.input.specs)){
+            error += (error.empty() ? "" : "; ") + each;
+        }
+    }
     if (read.name != test.expectation.action || read.args != test.expectation.args){
         return "read \"" + read.name + "\" with other args";
     }
