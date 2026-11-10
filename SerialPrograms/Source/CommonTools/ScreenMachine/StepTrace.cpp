@@ -21,7 +21,7 @@ namespace PokemonAutomation{
 StepTrace::StepTrace(VideoStream& stream, std::string label)
     : m_stream(&stream)
     , m_label(std::move(label))
-    , m_folder(SCREENSHOTS_PATH() + "StepTrace/" + now_to_filestring() + "-" + m_label + "/")
+    , m_folder(std::format("{}StepTrace/{}-{}/", SCREENSHOTS_PATH(), now_to_filestring(), m_label))
     , m_start(current_time())
 {
     Filesystem::create_directories(Filesystem::Path(m_folder));
@@ -77,7 +77,10 @@ void StepTrace::action(const std::string& what){
 std::string StepTrace::recent_screens() const{
     std::string text;
     for (const std::string& name : m_recent){
-        text += (text.empty() ? "" : " -> ") + name;
+        if (!text.empty()){
+            text += " -> ";
+        }
+        text += name;
     }
     return text.empty() ? "(none)" : text;
 }
@@ -91,7 +94,7 @@ void StepTrace::fail(const std::string& message) const{
     }
     OperationFailedExceptionWithScreenshot::fire(
         ErrorReportMode::SEND_ERROR_REPORT,
-        m_label + ": " + message + " Recent screens: " + recent_screens() + ". Trace: " + m_folder,
+        std::format("{}: {} Recent screens: {}. Trace: {}", m_label, message, recent_screens(), m_folder),
         *m_stream
     );
 }

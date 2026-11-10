@@ -41,8 +41,8 @@ const ScreenState* match_screen_state(const std::vector<ScreenState>& states, co
 
 
 const ScreenState& read_screen_state(
-    VideoStream& stream, CancellableScope& scope, StepTrace& trace,
-    const std::vector<ScreenState>& states, VideoSnapshot& frame
+    VideoStream& stream, CancellableScope& scope,
+    const std::vector<ScreenState>& states, StepTrace& trace, VideoSnapshot& frame
 ){
     const ScreenState* last = nullptr;
     WallClock video_lost = WallClock::max();
