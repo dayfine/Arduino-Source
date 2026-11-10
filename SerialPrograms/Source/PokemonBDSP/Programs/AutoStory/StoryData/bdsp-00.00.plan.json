@@ -1,0 +1,37 @@
+﻿{
+  "checkpoint": {
+    "events": [
+      {
+        "declared_after": {
+          "facing": "north",
+          "map": "PlayerHouse2F",
+          "tiles": [
+            [
+              4,
+              6
+            ]
+          ]
+        },
+        "id": "intro",
+        "kind": "new_game",
+        "skip_if": [
+          "save_loaded"
+        ],
+        "why": "language, appearance, the player's name, Barry's default name"
+      },
+      {
+        "id": "settings",
+        "kind": "options",
+        "why": "fast text, Send to Boxes automatic, no nickname prompt, Autosave off"
+      }
+    ],
+    "id": "00.00",
+    "title": "New game: the intro and the settings"
+  },
+  "execution": {
+    "on_failure": "stop",
+    "saves_in": ""
+  },
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "bdsp"
+}

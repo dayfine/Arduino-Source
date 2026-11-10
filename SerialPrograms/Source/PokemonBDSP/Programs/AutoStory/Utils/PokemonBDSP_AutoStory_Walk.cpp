@@ -7,6 +7,7 @@
  */
 
 #include <algorithm>
+#include <utility>
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
@@ -49,7 +50,65 @@ double walk_screen_change(const ImageViewRGB32& before, const ImageViewRGB32& af
     return ImageMatch::pixel_RMSD(before.scale_to(192, 108), after.scale_to(192, 108));
 }
 
+Pokemon::SceneChange walk_scenes_differ(const Pokemon::TransitionSample& before, const Pokemon::TransitionSample& after){
+    if (!before.frame || !after.frame){
+        return Pokemon::SceneChange::UNKNOWN;
+    }
+    return walk_screen_change(*before.frame.frame, *after.frame.frame) > WALK_SCENE_CHANGE
+        ? Pokemon::SceneChange::DIFFERENT
+        : Pokemon::SceneChange::SAME;
+}
 
+
+namespace{
+
+//  Keeps when `on` began: set on its first frame, cleared on a frame without.
+void hold_since(std::optional<WallClock>& since, bool on, WallClock time){
+    if (!on){
+        since.reset();
+    }else if (!since){
+        since = time;
+    }
+}
+
+} // namespace
+
+WarpFadeWatch::WarpFadeWatch(WarpFadeRule rule, Pokemon::TransitionTracker::CompareScenes compare)
+    : m_rule(rule)
+    , m_tracker(Pokemon::BDSP_FADE_PROFILE, std::move(compare))
+{}
+
+WarpFade WarpFadeWatch::push(const Pokemon::TransitionSample& sample){
+    const Pokemon::FadeProfile& profile = Pokemon::BDSP_FADE_PROFILE;
+    const std::optional<Pokemon::Transition> done = m_tracker.push(sample);
+    const double stddev = sample.middle.stddev.sum();
+    const double sum = sample.middle.average.sum();
+    const double dark_stddev = m_rule.partial_dark ? profile.partial_max_stddev_sum : profile.uniform_max_stddev_sum;
+    const bool dark = stddev <= dark_stddev && sum <= profile.dark_max_sum;
+    const bool white = stddev <= profile.uniform_max_stddev_sum && sum >= profile.white_min_sum;
+    if (dark && !m_dark_since){
+        m_went_dark = sample.time;
+    }
+    hold_since(m_dark_since, dark, sample.time);
+    hold_since(m_white_since, white, sample.time);
+    if (m_dark_since && sample.time - *m_dark_since >= m_rule.dark_for){
+        m_how = "dark";
+        return WarpFade::BLACK;
+    }
+    if (m_white_since && sample.time - *m_white_since >= m_rule.white_for){
+        m_how = "white";
+        return WarpFade::WHITE;
+    }
+    //  Too short for the rule, or its hold unseen: the scene after decides.
+    if (!done || done->change != Pokemon::SceneChange::DIFFERENT || done->kind == Pokemon::TransitionKind::FLASH){
+        return WarpFade::NONE;
+    }
+    m_how = Pokemon::describe(*done, done->start);
+    return done->kind == Pokemon::TransitionKind::FADE_BLACK ? WarpFade::BLACK : WarpFade::WHITE;
+}
+
+
+namespace detail{
 bool ViewShift::scrolled() const{
     constexpr double LEAST_DIFFERENCE = 3;  //  standing still in the video: 0 to 1.5
     return (dx != 0 || dy != 0) && unshifted >= LEAST_DIFFERENCE && unshifted >= 2 * shifted;
@@ -110,6 +169,7 @@ bool tap_moved(const ImageViewRGB32& before, const ImageViewRGB32& after, double
     }
     return walk_view_shift(before, after).scrolled();
 }
+} // namespace detail
 
 
 namespace{
@@ -146,7 +206,7 @@ DpadPosition dpad_toward(JoystickPosition stick){
 bool black_screen_was_battle(VideoStream& stream, ProControllerContext& context){
     BattleMenuWatcher battle_menu(BattleType::STANDARD, COLOR_YELLOW);
     BattleDialogWatcher battle_dialog(COLOR_YELLOW);
-    BlackScreenWatcher gone(COLOR_RED, {0.1, 0.1, 0.8, 0.8}, FADE_MAX_DARK_SUM, FADE_MAX_STDDEV_SUM,
+    BlackScreenWatcher gone(COLOR_RED, {0.1, 0.1, 0.8, 0.8}, Pokemon::BDSP_FADE_PROFILE.dark_max_sum, Pokemon::BDSP_FADE_PROFILE.uniform_max_stddev_sum,
         BlackScreenWatcher::FinderType::GONE, 500ms);
     const int ret = wait_until(stream, context, 10s, {{battle_menu}, {battle_dialog}, {gone}});
     if (ret == 2){
@@ -171,18 +231,45 @@ bool battle_follows(VideoStream& stream, ProControllerContext& context, Millisec
 //  exit's white fade (#268 slice 3), which the walk once fled as a battle.
 constexpr Milliseconds WHITE_FLASH_BATTLE_WAIT = 8000ms;
 
+//  Records that the screen shows `events` now, in `log` if there is one.
+void record_now(Pokemon::ScreenEventLog* log, const Pokemon::ScreenEvents& events){
+    if (log != nullptr){
+        log->record(events, current_time());
+    }
+}
+
+//  What the late watch's watcher `ret` saw: 0 the encounter flash, 1 black,
+//  2 the battle menu, 3 the battle's text box.
+Pokemon::ScreenEvents late_watch_events(int ret){
+    switch (ret){
+    case 0:
+        return {Pokemon::ScreenEvent::FADE_WHITE};
+    case 1:
+        return {Pokemon::ScreenEvent::FADE_BLACK};
+    case 2:
+    case 3:
+        return {Pokemon::ScreenEvent::BATTLE_STARTED};
+    default:
+        return {};
+    }
+}
+
 } // namespace
 
 //  A step in tall grass that was started before the stick was released still
 //  finishes, and its encounter starts after the walk has ended. Watch a little
 //  longer, and run from it. Returns whether there was one.
-bool run_from_late_encounter(VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape, const std::string& label){
+bool run_from_late_encounter(
+    VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape, const std::string& label,
+    Pokemon::ScreenEventLog* events
+){
     VideoSnapshot before = stream.video().snapshot();
     WhiteScreenOverWatcher encounter_flash(COLOR_YELLOW, {0.1, 0.1, 0.8, 0.8});
     BlackScreenWatcher black(COLOR_RED);
     BattleMenuWatcher battle_menu(BattleType::STANDARD, COLOR_YELLOW);
     BattleDialogWatcher battle_dialog(COLOR_YELLOW);
     const int ret = wait_until(stream, context, 1200ms, {{encounter_flash}, {black}, {battle_menu}, {battle_dialog}});
+    record_now(events, late_watch_events(ret));
     bool battle = ret == 0 || ret == 2 || ret == 3 || (ret == 1 && black_screen_was_battle(stream, context));
     if (ret < 0){
         VideoSnapshot after = stream.video().snapshot();
@@ -192,9 +279,11 @@ bool run_from_late_encounter(VideoStream& stream, ProControllerContext& context,
     if (!battle){
         return false;
     }
+    record_now(events, {Pokemon::ScreenEvent::BATTLE_STARTED});
     stream.log("[Walk] " + label + ": wild battle after the walk; running.");
     escape(stream, context);
     context.wait_for_all_requests();
+    record_now(events, {});
     return true;
 }
 namespace{
@@ -297,6 +386,8 @@ public:
         //  A tile a tap: 160 ms held, the rest released, so each chunk is one tile.
         const Milliseconds CHUNK = m_spec.input == WalkInput::TAPS ? 800ms : 400ms;
         m_context.wait_for_all_requests();
+        m_result.started = current_time();
+        m_result.events.record({}, m_result.started);
         m_before = snapshot_or_fail(m_stream, m_spec.label);
         while (true){
             if (m_spec.arrived && m_spec.arrived(*m_before.frame)){
@@ -325,7 +416,7 @@ private:
     //  fade too) or the white of an encounter or a cave exit.
     int hold(Milliseconds chunk){
         WhiteScreenOverWatcher encounter_flash(COLOR_YELLOW, {0.1, 0.1, 0.8, 0.8});
-        BlackScreenWatcher black(COLOR_RED, {0.1, 0.1, 0.8, 0.8}, FADE_MAX_DARK_SUM, FADE_MAX_STDDEV_SUM);
+        BlackScreenWatcher black(COLOR_RED, {0.1, 0.1, 0.8, 0.8}, Pokemon::BDSP_FADE_PROFILE.dark_max_sum, Pokemon::BDSP_FADE_PROFILE.uniform_max_stddev_sum);
         BattleMenuWatcher battle_menu(BattleType::STANDARD, COLOR_YELLOW);
         ShortDialogWatcher dialog(COLOR_YELLOW);
         BattleDialogWatcher battle_dialog(COLOR_YELLOW);
@@ -361,6 +452,7 @@ private:
     //  The watchers: 0 the encounter flash, 1 black, 2 the battle menu, 3 a
     //  dialogue, 4 the battle's text box.
     ChunkVerdict after_watchers(int ret){
+        record_now(&m_result.events, hold_events(ret));
         bool battle = ret == 2 || ret == 4;
         if (ret == 0 || ret == 1){
             battle = ret == 0
@@ -439,8 +531,26 @@ private:
             : WALK_BLOCKED_CHANGE;
     }
 
+    //  What hold()'s watcher `ret` saw (see after_watchers()).
+    static Pokemon::ScreenEvents hold_events(int ret){
+        switch (ret){
+        case 0:
+            return {Pokemon::ScreenEvent::FADE_WHITE};
+        case 1:
+            return {Pokemon::ScreenEvent::FADE_BLACK};
+        case 2:
+        case 4:
+            return {Pokemon::ScreenEvent::BATTLE_STARTED};
+        case 3:
+            return {Pokemon::ScreenEvent::DIALOG_BOX};
+        default:
+            return {};
+        }
+    }
+
     enum class BattleMovement{ NONE, STEP_MOVED };
     void escape_battle(const std::string& what, BattleMovement movement){
+        record_now(&m_result.events, {Pokemon::ScreenEvent::BATTLE_STARTED});
         m_result.wild_battles++;
         if (m_chunks <= 1 && movement == BattleMovement::NONE){
             m_result.origin = WalkOrigin::MAY_PRECEDE_LEG;
@@ -453,6 +563,8 @@ private:
         m_stream.log("[Walk] " + m_spec.label + ": " + what);
         m_escape(m_stream, m_context);
         m_context.wait_for_all_requests();
+        record_now(&m_result.events, {});
+        m_moved_at_battle = m_result.moved_chunks;
         m_before = snapshot_or_fail(m_stream, m_spec.label);
         m_unchanged = 0;
     }
@@ -461,9 +573,10 @@ private:
         m_result.stop = stop;
         bool late_battle = false;
         if (m_spec.wild == WildPolicy::RUN_FROM && (stop == WalkStop::LIMIT || stop == WalkStop::BLOCKED) &&
-            run_from_late_encounter(m_stream, m_context, m_escape, m_spec.label)
+            run_from_late_encounter(m_stream, m_context, m_escape, m_spec.label, &m_result.events)
         ){
             m_result.wild_battles++;
+            m_moved_at_battle = m_result.moved_chunks;
             late_battle = true;
             if (m_chunks <= 1 && m_result.moved_chunks <= 1){
                 m_result.origin = WalkOrigin::MAY_PRECEDE_LEG;
@@ -485,6 +598,9 @@ private:
         if (m_result.moved_chunks > 1){
             m_result.origin = WalkOrigin::CURRENT_LEG;
         }
+        if (m_result.wild_battles > 0){
+            m_result.moved_after_battle = m_result.moved_chunks - m_moved_at_battle;
+        }
         m_stream.log("[Walk] " + m_spec.label + ": " + walk_stop_name(stop) + " after " +
             std::to_string(m_result.walked.count()) + "ms, " +
             std::to_string(m_result.moved_chunks) + " moved chunks, " +
@@ -502,6 +618,7 @@ private:
     VideoSnapshot m_before_still;
     size_t m_unchanged = 0;
     size_t m_chunks = 0;
+    size_t m_moved_at_battle = 0;
     double m_largest = 0;
     LocationBannerWatcher m_banner;
 };
@@ -569,7 +686,7 @@ WalkResult walk_for(
     WalkResult result{WalkStop::LIMIT, duration, 0};
     context.wait_for_all_requests();
     WhiteScreenOverWatcher encounter_flash(COLOR_YELLOW, {0.1, 0.1, 0.8, 0.8});
-    BlackScreenWatcher black(COLOR_RED, {0.1, 0.1, 0.8, 0.8}, FADE_MAX_DARK_SUM, FADE_MAX_STDDEV_SUM);
+    BlackScreenWatcher black(COLOR_RED, {0.1, 0.1, 0.8, 0.8}, Pokemon::BDSP_FADE_PROFILE.dark_max_sum, Pokemon::BDSP_FADE_PROFILE.uniform_max_stddev_sum);
     BattleMenuWatcher battle_menu(BattleType::STANDARD, COLOR_YELLOW);
     ShortDialogWatcher dialog(COLOR_YELLOW);
     BattleDialogWatcher battle_dialog(COLOR_YELLOW);

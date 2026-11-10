@@ -1,3 +1,4 @@
+// code-health: allow header_symbols -- story event dispatch table and per-area event population functions
 /*  BDSP AutoStory - Events
  *
  *  From: https://github.com/PokemonAutomation/

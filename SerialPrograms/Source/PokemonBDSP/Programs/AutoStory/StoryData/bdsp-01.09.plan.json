@@ -1,0 +1,95 @@
+﻿{
+  "checkpoint": {
+    "events": [
+      {
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "east",
+            "map": "RavagedPath",
+            "tiles": [
+              [
+                21,
+                43
+              ]
+            ]
+          }
+        },
+        "id": "west_of_the_rock",
+        "kind": "route",
+        "why": "up the stairs and along the corridor"
+      },
+      {
+        "action": "smash_the_rock",
+        "declared_after": {
+          "facing": "east",
+          "map": "RavagedPath",
+          "tiles": [
+            [
+              21,
+              43
+            ]
+          ]
+        },
+        "id": "smash_the_rock",
+        "kind": "game_action",
+        "why": "Rock Smash on the rock east of us"
+      },
+      {
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "south",
+            "map": "RavagedPath",
+            "tiles": [
+              [
+                28,
+                44
+              ]
+            ]
+          }
+        },
+        "id": "above_the_way_out",
+        "kind": "route",
+        "why": "east through the rock's tile"
+      },
+      {
+        "action": "to_banner",
+        "args": {
+          "direction": "south"
+        },
+        "declared_after": {
+          "facing": "south",
+          "map": "Route204North",
+          "tiles": [
+            [
+              20,
+              26
+            ]
+          ]
+        },
+        "id": "out_of_the_ravaged_path",
+        "kind": "step",
+        "why": "the way out (28, 45)"
+      }
+    ],
+    "id": "01.09",
+    "start": {
+      "facing": "north",
+      "map": "RavagedPath",
+      "tiles": [
+        [
+          19,
+          50
+        ]
+      ]
+    },
+    "title": "Ravaged Path"
+  },
+  "execution": {
+    "on_failure": "reload_and_retry",
+    "saves_in": "Ravaged Path"
+  },
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "bdsp"
+}

@@ -13,6 +13,7 @@
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "Pokemon/Navigation/Pokemon_RouteLog.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_WallRecovery.h"
+#include "PokemonBDSP_AutoStory_LegBattle.h"
 #include "PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP_AutoStory_RouteIO.h"
 #include "PokemonBDSP_AutoStory_RouteWalk.h"
@@ -57,7 +58,7 @@ void log_plan(RouteIO& io, const StoryWorld& maps, const std::string& label, con
     for (const PlannedLeg& leg : legs){
         logged.push_back(planned_route_leg(maps, leg));
     }
-    io.note(ROUTE_LOG_TAG + route_plan_line(label, route_tiles(maps, from), logged), RouteNote::LOG);
+    io.note(std::string(ROUTE_LOG_TAG) + route_plan_line(label, route_tiles(maps, from), logged), RouteNote::LOG);
 }
 
 //  Logs a leg that ended on its planned tiles, and how that is known: an
@@ -65,7 +66,7 @@ void log_plan(RouteIO& io, const StoryWorld& maps, const std::string& label, con
 //  leg to a wall is walked again to its wall.
 void log_leg_done(RouteIO& io, const StoryWorld& maps, const std::string& label, const PlannedLeg& planned, size_t wild_battles){
     const bool assumed = !planned.leg.ends_at_wall && wild_battles > 0;
-    io.note(ROUTE_LOG_TAG + route_leg_end_line(label, route_log_leg(planned.leg), route_tiles(maps, planned.after),
+    io.note(std::string(ROUTE_LOG_TAG) + route_leg_end_line(label, route_log_leg(planned.leg), route_tiles(maps, planned.after),
         assumed ? EndBasis::ASSUMED : EndBasis::WALKED, assumed ? std::to_string(wild_battles) + " wild battle(s) on the way" : ""), RouteNote::LOG);
 }
 
@@ -383,7 +384,7 @@ std::vector<TilePos> RouteWalker::arrive() const{
         fail(m_io, m_plan.label + ": arrived at " + describe(m_maps, m_from) + " on the map, but " + map_end +
             "'s location banner never showed (read " + (reads.empty() ? "nothing" : reads) + ").");
     }
-    m_io.note(ROUTE_LOG_TAG + route_arrived_line(m_plan.label, route_tiles(m_maps, m_from)), RouteNote::LOG);
+    m_io.note(std::string(ROUTE_LOG_TAG) + route_arrived_line(m_plan.label, route_tiles(m_maps, m_from)), RouteNote::LOG);
     return m_from;
 }
 
@@ -607,8 +608,9 @@ LegNext RouteWalker::open_leg(LegWalk& walk){
     return LegNext::NEXT_LEG;
 }
 
-//  Where an open leg's battle left us: any tile of the leg from where it
-//  began, none moved to all. A battle that may have begun before the leg
+//  Where an open leg's battle left us: where its screen events place it
+//  (place_leg_battle()), a tile or so from where the taps left us; else
+//  any tile of the leg from where it began, none moved to all. A battle that may have begun before the leg
 //  (WalkOrigin::MAY_PRECEDE_LEG) found us on the tile the leg before ended
 //  on, since a battle starts on a tile stepped onto, so the same tiles
 //  hold. Planning again from them is bounded by run()'s plans.
@@ -616,8 +618,14 @@ LegNext RouteWalker::interrupted_open_leg(LegWalk& walk){
     if (walk.result.stop != WalkStop::LIMIT && walk.result.stop != WalkStop::BLOCKED){
         fail(m_io, "interrupted open leg has an unconfirmed dialogue/transition: " + walk.label);
     }
-    auto possible = interrupted_leg_positions(m_grid, m_from, walk.planned.leg.direction, walk.planned.leg.tiles);
-    const auto next = replan_from(walk, std::move(possible), "encounter: credited taps do not establish pose");
+    const TileLeg& leg = walk.planned.leg;
+    const LegBattlePlace place = place_leg_battle(walk.result, leg.tiles);
+    m_io.note(std::string(ROUTE_LOG_TAG) + leg_battle_line(walk.label, walk.result, place), RouteNote::LOG);
+    auto possible = place.moved
+        ? tiles_moved(m_grid, m_from, leg.direction, *place.moved)
+        : interrupted_leg_positions(m_grid, m_from, leg.direction, leg.tiles);
+    const auto next = replan_from(walk, std::move(possible), place.moved
+        ? "encounter: placed by its screen events" : "encounter: credited taps do not establish pose");
     m_facing.reset();
     return next;
 }
@@ -775,7 +783,7 @@ LegNext RouteWalker::known_trainer(LegWalk& walk, const std::vector<std::vector<
     if (stopped.empty()){
         fail(m_io, walk.label + ": " + trainer.name + " talked, but no path enters their sight.");
     }
-    m_io.note(ROUTE_LOG_TAG + route_trainer_line(m_plan.label, trainer.name, route_tiles(m_maps, stopped)), RouteNote::LOG);
+    m_io.note(std::string(ROUTE_LOG_TAG) + route_trainer_line(m_plan.label, trainer.name, route_tiles(m_maps, stopped)), RouteNote::LOG);
     m_io.note("Fighting " + trainer.name + ".", RouteNote::STATUS);
     m_trainers.fight(trainer.name);
     m_trainers.sights.erase(m_trainers.sights.begin() + watching[0]);
@@ -828,7 +836,7 @@ void RouteWalker::mark_blocker(const LegWalk& walk, const std::vector<TilePos>& 
 }
 
 LegNext RouteWalker::replan_from(const LegWalk& walk, std::vector<TilePos> stopped, const std::string& why){
-    m_io.note(ROUTE_LOG_TAG + route_replan_line(m_plan.label, route_log_leg(walk.planned.leg), why, route_tiles(m_maps, stopped)), RouteNote::WARNING);
+    m_io.note(std::string(ROUTE_LOG_TAG) + route_replan_line(m_plan.label, route_log_leg(walk.planned.leg), why, route_tiles(m_maps, stopped)), RouteNote::WARNING);
     m_facing = walk.planned.leg.direction;
     m_from = std::move(stopped);
     return LegNext::REPLAN;

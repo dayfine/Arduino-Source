@@ -1,0 +1,90 @@
+﻿{
+  "checkpoint": {
+    "events": [
+      {
+        "action": "to_wall",
+        "args": {
+          "fight_wild": false,
+          "legs": [
+            {
+              "direction": "west",
+              "tiles": 4
+            }
+          ]
+        },
+        "declared_after": {
+          "facing": "west",
+          "map": "JubilifeCity",
+          "tiles": [
+            [
+              44,
+              5
+            ]
+          ]
+        },
+        "id": "west_to_the_wall",
+        "kind": "legs",
+        "why": "west along row 5 to the wall"
+      },
+      {
+        "action": "town",
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "north",
+            "map": "Route204South",
+            "tiles": [
+              [
+                11,
+                2
+              ]
+            ]
+          }
+        },
+        "id": "below_the_ravaged_path",
+        "kind": "route",
+        "why": "north out of Jubilife, up Route 204's street and grass to below the door (11, 1)"
+      },
+      {
+        "action": "to_banner",
+        "args": {
+          "direction": "north"
+        },
+        "declared_after": {
+          "facing": "north",
+          "map": "RavagedPath",
+          "tiles": [
+            [
+              19,
+              50
+            ]
+          ]
+        },
+        "id": "into_the_ravaged_path",
+        "kind": "step",
+        "why": "the door (11, 1)"
+      }
+    ],
+    "id": "01.08",
+    "start": {
+      "map": "JubilifeCity",
+      "tiles": [
+        [
+          46,
+          5
+        ],
+        [
+          47,
+          5
+        ]
+      ]
+    },
+    "title": "Jubilife to the Ravaged Path"
+  },
+  "execution": {
+    "on_failure": "reload_and_retry",
+    "saves_in": "Jubilife City"
+  },
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "bdsp"
+}

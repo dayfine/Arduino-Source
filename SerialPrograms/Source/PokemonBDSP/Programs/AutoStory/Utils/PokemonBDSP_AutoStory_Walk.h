@@ -11,6 +11,7 @@
 #define PokemonAutomation_PokemonBDSP_AutoStory_Walk_H
 
 #include <functional>
+#include <optional>
 #include <string>
 #include <vector>
 #include "Common/Cpp/Time.h"
@@ -20,6 +21,8 @@
 #include "Controllers/Joystick.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "Pokemon/AutoStory/Pokemon_SceneJudges.h"
+#include "Pokemon/AutoStory/Pokemon_ScreenEvents.h"
+#include "Pokemon/AutoStory/Pokemon_Transitions.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -81,6 +84,17 @@ struct WalkResult{
     //  The fade that ended a TRANSITION, and any location banner read on
     //  the way (#268 slice 2: walkers report warps).
     WarpSeen warp = {};
+    //  What the walk's watchers saw, timed, from its first input through
+    //  the watch after it: an encounter's flash, a battle, a box, a fade.
+    //  The shared judges read it (Pokemon::classify_interrupt()) to tell
+    //  what stopped the walk and when its step was taken. Empty where
+    //  nothing recorded it.
+    Pokemon::ScreenEventLog events{};
+    //  When the walk's first input went in; `events` are timed against it.
+    WallClock started = {};
+    //  Chunks that moved after the last wild battle was run from: the taps
+    //  the walk went on with.
+    size_t moved_after_battle = 0;
 };
 
 //  Holds the left stick at `stick` until one of the WalkStop events. Wild battles on
@@ -158,7 +172,11 @@ WalkResult walk_expecting(
 //  After a move that may have walked onto an encounter tile (a tap in a cave
 //  or in tall grass): waits briefly for a wild battle and runs from it.
 //  Returns whether there was one; we may then be off the place we expected.
-bool run_from_late_encounter(VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape, const std::string& label);
+//  `events`, if given, records what was seen, timed.
+bool run_from_late_encounter(
+    VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape, const std::string& label,
+    Pokemon::ScreenEventLog* events = nullptr
+);
 
 //  walk_until() toward a wall the route was measured to end at. Seeing the
 //  stop only ends the hold early: holding on for the whole `limit` also
@@ -193,6 +211,8 @@ constexpr double WALK_TAP_BLOCKED_CHANGE = 16.0;
 //  More than walking changes in 400ms: a new scene, such as a battle opening.
 constexpr double WALK_SCENE_CHANGE = 120.0;
 
+namespace detail{
+
 //  How the view scrolled between two frames, on 192x108 copies: the shift
 //  (dx, dy) of `before` that best lines up with `after`, leaving out the
 //  middle where the player stands, and the mean difference per colour
@@ -221,6 +241,62 @@ ViewShift walk_view_shift(const ImageViewRGB32& before, const ImageViewRGB32& af
 //  stay put while the player crosses a room (the house's 1F), so there a
 //  screen change of at least `line` counts, as it did before.
 bool tap_moved(const ImageViewRGB32& before, const ImageViewRGB32& after, double line);
+
+} // namespace detail
+
+//  View scroll shift calculation.
+using detail::ViewShift;
+//  Calculates the view scroll shift between before and after images.
+using detail::walk_view_shift;
+//  Whether the player moved between before and after frames.
+using detail::tap_moved;
+
+//  Whether two frames show different scenes: a change walking cannot make
+//  (WALK_SCENE_CHANGE). UNKNOWN without both frames.
+Pokemon::SceneChange walk_scenes_differ(const Pokemon::TransitionSample& before, const Pokemon::TransitionSample& after);
+
+//  What a warp's fade must show before a step takes it as one. All of it
+//  reads Pokemon::BDSP_FADE_PROFILE. Dark is the profile's uniform tier, or
+//  with `partial_dark` its partial tier's texture (a doorway's dim fade
+//  frames, which run_into_door() has stopped on since #268) up to the same
+//  dark sum. Dark must hold `dark_for` and white (always uniform) `white_for`.
+struct WarpFadeRule{
+    bool partial_dark = false;
+    Milliseconds dark_for = Milliseconds(0);
+    Milliseconds white_for = Milliseconds(0);
+};
+
+//  A warp's fade followed frame by frame (a Pokemon::TransitionTracker on
+//  BDSP_FADE_PROFILE) rather than judged on one frame. A fade shows when its
+//  dark or white has held as the rule says; or, when its hold fell between
+//  two frames (a 50 ms door fade), at the first frame of another scene
+//  after the fall, as `compare` tells scenes apart. That one unseen hold
+//  used to leave a door run to its 12 s timeout. Not thread-safe.
+class WarpFadeWatch{
+public:
+    explicit WarpFadeWatch(WarpFadeRule rule, Pokemon::TransitionTracker::CompareScenes compare = walk_scenes_differ);
+
+    //  Adds a frame; times must not go back. Returns the fade this frame
+    //  shows, NONE if none (yet).
+    WarpFade push(const Pokemon::TransitionSample& sample);
+    //  When the screen last went dark as the rule counts dark; none if it
+    //  has not.
+    std::optional<WallClock> went_dark() const{
+        return m_went_dark;
+    }
+    //  How the last fade showed, for the log; "" before one.
+    const std::string& how() const{
+        return m_how;
+    }
+
+private:
+    WarpFadeRule m_rule;
+    Pokemon::TransitionTracker m_tracker;
+    std::optional<WallClock> m_dark_since;
+    std::optional<WallClock> m_white_since;
+    std::optional<WallClock> m_went_dark;
+    std::string m_how;
+};
 
 
 //  One straight walk timed finely, to check a map against the game: holds the

@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <format>
+#include <optional>
 #include <string>
 #include <vector>
 #include "Common/Cpp/Filesystem/Filesystem.h"
@@ -13,8 +14,10 @@
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "Utils/PokemonBDSP_AutoStory_Indoors.h"
+#include "Utils/PokemonBDSP_AutoStory_LegBattle.h"
 #include "Utils/PokemonBDSP_AutoStory_Location.h"
 #include "Utils/PokemonBDSP_AutoStory_RouteWalk.h"
+#include "Utils/PokemonBDSP_AutoStory_Walk.h"
 #include "Actions/PokemonBDSP_AutoStory_Talks.h"
 #include "Utils/PokemonBDSP_AutoStory_Walk.h"
 #include "PokemonBDSP_AutoStory_Walk_Tests.h"
@@ -49,6 +52,62 @@ UnitTestResult test_route_turn_tap(Logger&){
             return "ROUTE_TURN_TAP is " + std::to_string(ROUTE_TURN_TAP.count()) + " ms; over 80 ms may step.";
         }
         return true;
+}
+
+//  WarpFadeWatch on synthetic frames 33 ms apart, each a brightness and a
+//  texture (stddev a channel). Two scenes differ here when their
+//  brightness does.
+struct FadeFrame{
+    double brightness;
+    double stddev;
+};
+struct WarpFadeCase{
+    std::string name;
+    WarpFadeRule rule;
+    std::vector<FadeFrame> frames;
+    //  The frame (1-based) the fade shows on, 0 for none, and how.
+    size_t seen_at;
+    WarpFade fade;
+};
+
+UnitTestResult test_warp_fade_watch(Logger&){
+    constexpr WarpFadeRule DOOR{.partial_dark = true, .dark_for = Milliseconds(50), .white_for = Milliseconds(60)};
+    constexpr WarpFadeRule TAP{};
+    constexpr FadeFrame STREET{104, 20};
+    constexpr FadeFrame ROOM{130, 20};
+    constexpr FadeFrame FALL{55, 10};
+    constexpr FadeFrame BLACK{7, 1};
+    const std::vector<WarpFadeCase> cases{
+        {.name = "a door's fade, its hold seen", .rule = DOOR, .frames = {STREET, FALL, BLACK, BLACK, BLACK, ROOM}, .seen_at = 4, .fade = WarpFade::BLACK},
+        {.name = "a tap's fade, its hold seen", .rule = TAP, .frames = {STREET, FALL, BLACK, ROOM}, .seen_at = 3, .fade = WarpFade::BLACK},
+        {.name = "a short fade, its hold between two frames", .rule = TAP, .frames = {STREET, FALL, ROOM}, .seen_at = 3, .fade = WarpFade::BLACK},
+        {.name = "a door's short fade, its hold between two frames", .rule = DOOR, .frames = {STREET, FALL, ROOM}, .seen_at = 3, .fade = WarpFade::BLACK},
+        {.name = "a dip back to the same street", .rule = TAP, .frames = {STREET, FALL, STREET}, .seen_at = 0, .fade = WarpFade::NONE},
+        {.name = "a dim cave floor (46) is no fade", .rule = TAP, .frames = {STREET, {46, 20}, {46, 20}, {46, 20}}, .seen_at = 0, .fade = WarpFade::NONE},
+        {.name = "a cave mouth's dim fade (55)", .rule = TAP, .frames = {STREET, {80, 10}, {55, 1}, ROOM}, .seen_at = 3, .fade = WarpFade::BLACK},
+        {.name = "a cave exit's white, its hold between two frames", .rule = TAP, .frames = {STREET, {180, 10}, ROOM}, .seen_at = 3, .fade = WarpFade::WHITE},
+        {.name = "a cave exit's white", .rule = DOOR, .frames = {STREET, {250, 1}, {250, 1}, {250, 1}}, .seen_at = 4, .fade = WarpFade::WHITE},
+    };
+    for (const WarpFadeCase& item : cases){
+        WarpFadeWatch watch(item.rule, [](const Pokemon::TransitionSample& before, const Pokemon::TransitionSample& after){
+            return after.middle.average.r != before.middle.average.r ? Pokemon::SceneChange::DIFFERENT : Pokemon::SceneChange::SAME;
+        });
+        size_t seen_at = 0;
+        WarpFade fade = WarpFade::NONE;
+        for (size_t i = 0; i < item.frames.size() && seen_at == 0; i++){
+            const FadeFrame& frame = item.frames[i];
+            fade = watch.push({
+                .time = WallClock() + Milliseconds(33 * (int64_t)i),
+                .middle = ImageStats(FloatPixel(frame.brightness, frame.brightness, frame.brightness), FloatPixel(frame.stddev, frame.stddev, frame.stddev), 1),
+            });
+            seen_at = fade == WarpFade::NONE ? 0 : i + 1;
+        }
+        if (seen_at != item.seen_at || fade != item.fade){
+            return item.name + ": " + warp_fade_name(fade) + " at frame " + std::to_string(seen_at) + ", expected " +
+                warp_fade_name(item.fade) + " at " + std::to_string(item.seen_at) + ".";
+        }
+    }
+    return true;
 }
 
 //  indoors() decides when leave_door_south() is out: r257 walked on south
@@ -333,6 +392,45 @@ struct AutoStoryWalkCase{
     AutoStoryWalkExpectation expectation;
 };
 
+//  place_leg_battle() on synthetic walks of 10 taps, their events recorded
+//  as record_tap_battle() records the console's.
+struct LegBattleCase{
+    std::string name;
+    size_t battles;
+    size_t tap;             //  the tap (from 1) that set the battle off
+    size_t moved_after;     //  taps that moved after it was run from
+    bool settled;           //  false: a white fade with no battle yet
+    std::optional<TileSpan> expected;
+};
+UnitTestResult test_leg_battle_place(Logger& logger){
+    const LegBattleCase CASES[] = {
+        {"mid-leg, the taps went on", 1, 3, 7, true, TileSpan{9, 10}},
+        {"seen after the hold", 1, 6, 0, true, TileSpan{5, 7}},
+        {"on the first tap", 1, 1, 0, true, TileSpan{0, 2}},
+        {"before the walk", 1, 0, 0, true, TileSpan{0, 1}},
+        {"two battles", 2, 3, 0, true, std::nullopt},
+        {"unsettled: a white fade, no battle yet", 1, 4, 0, false, std::nullopt},
+    };
+    for (const LegBattleCase& item : CASES){
+        WalkResult walk{.stop = WalkStop::LIMIT, .walked = Milliseconds(8000), .wild_battles = item.battles};
+        walk.moved_after_battle = item.moved_after;
+        walk.events.record({}, walk.started);
+        if (item.settled){
+            record_tap_battle(walk, item.tap);
+        }else{
+            walk.events.record({Pokemon::ScreenEvent::FADE_WHITE}, walk.started + Milliseconds(800 * (item.tap - 1) + 500));
+        }
+        const LegBattlePlace place = place_leg_battle(walk, 10);
+        logger.log(leg_battle_line(item.name, walk, place));
+        const bool same = place.moved.has_value() == item.expected.has_value() &&
+            (!place.moved || (place.moved->min == item.expected->min && place.moved->max == item.expected->max));
+        if (!same){
+            return item.name + ": " + leg_battle_line(item.name, walk, place);
+        }
+    }
+    return true;
+}
+
 class Test_AutoStoryWalk : public UnitTest{
 public:
     explicit Test_AutoStoryWalk(AutoStoryWalkCase test_case)
@@ -368,6 +466,10 @@ const AutoStoryWalkCase AUTO_STORY_WALK_CASES[] = {
         .expectation = {},
     },
     {
+        .input = {"a warp's fade, followed frame by frame, its hold seen or not", test_warp_fade_watch},
+        .expectation = {},
+    },
+    {
         .input = {"location banner match", test_location_banner},
         .expectation = {},
     },
@@ -385,6 +487,10 @@ const AutoStoryWalkCase AUTO_STORY_WALK_CASES[] = {
     },
     {
         .input = {"a step scrolls the view; moving scenery does not", test_view_shift},
+        .expectation = {},
+    },
+    {
+        .input = {"a wild battle on an open leg's taps, placed by its screen events", test_leg_battle_place},
         .expectation = {},
     },
 };

@@ -14,6 +14,7 @@
 #include "Common/Qt/QtThreadPool_Tests.h"
 #include "Kernels/Kernels_Tests.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.h"
+#include "Pokemon/AutoStory/Pokemon_StoryRun_Tests.h"
 #include "CommonFramework/AudioPipeline/AudioInfo_Tests.h"
 #include "CommonFramework/AudioPipeline/Tools/ChannelMixer.h"
 #include "CommonFramework/AudioPipeline/SinkPipeline_Tests.h"
@@ -35,8 +36,6 @@
 #include "Pokemon/AutoStory/Pokemon_AutoStory_Tests.h"
 #include "Pokemon/Navigation/Pokemon_Navigation_Tests.h"
 #include "Pokemon/Navigation/Pokemon_RuntimeMap_Tests.h"
-#include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
-#include "PokemonBDSP/Inference/PokemonBDSP_MenuDetector.h"
 #include "PokemonBDSP/PokemonBDSP_Tests.h"
 #include "VideoGames/PokemonHome/PokemonHome_Tests.h"
 #include "VideoGames/PokemonSwSh/PokemonSwSh_Tests.h"
@@ -81,19 +80,21 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     Pokemon::add_tests_MapData(ret);
     Pokemon::add_tests_RuntimeMap(ret);
     Pokemon::add_tests_RouteLog(ret);
-    Pokemon::add_tests_ScreenEvents(ret);
     Pokemon::add_tests_StoryEvents(ret);
     Pokemon::add_tests_StorySegments(ret);
-    Pokemon::add_tests_StorySteps(ret);
-    Pokemon::add_tests_StoryStepJson(ret);
-    Pokemon::add_tests_AuthoredCheckpointJson(ret);
+    Pokemon::add_tests_StoryLog(ret);
+    Pokemon::add_tests_StoryRangeOptions(ret);
+    Pokemon::add_tests_ScreenEvents(ret);
+    Pokemon::add_tests_Interrupts(ret);
+    Pokemon::add_tests_Transitions(ret);
+    Pokemon::add_tests_StoryActions(ret);
+    Pokemon::add_tests_StoryInterrupts(ret);
+    Pokemon::add_tests_AutoStory(ret);
     NintendoSwitch::add_tests_CheckOnlineDetector(ret);
     NintendoSwitch::add_tests_FailedToConnectDetector(ret);
     NintendoSwitch::add_tests_UpdatePopupDetector(ret);
     NintendoSwitch::Typewriter::add_tests_TypewriterTextMapping(ret);
     NintendoSwitch::PokemonBDSP::add_tests(ret);
-    NintendoSwitch::PokemonBDSP::add_tests_DialogDetector(ret);
-    NintendoSwitch::PokemonBDSP::add_tests_MenuDetector(ret);
     NintendoSwitch::PokemonFRLG::add_tests(ret);
     NintendoSwitch::PokemonRSE::add_tests(ret);
     NintendoSwitch::PokemonHome::add_tests(ret);
