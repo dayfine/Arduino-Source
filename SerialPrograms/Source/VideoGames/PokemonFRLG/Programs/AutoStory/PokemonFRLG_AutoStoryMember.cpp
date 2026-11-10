@@ -5,9 +5,9 @@
  */
 
 #include <format>
+#include "PokemonFRLG_AutoStoryGameArgs.h"
 #include "PokemonFRLG_AutoStoryMember.h"
 #include "PokemonFRLG_AutoStorySummary.h"
-#include "PokemonFRLG_AutoStoryVariantWords.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -30,37 +30,17 @@ MemberReader console_member_reader(ConsoleHandle& console, ProControllerContext&
 }
 
 
-std::string level_variant(const LevelCheck& check){
-    return std::format("{}slot={} min={}", LEVEL_VARIANT_PREFIX, check.slot + 1, check.level);
+Pokemon::StoryActionArgs level_args(const LevelCheck& check){
+    return {{"slot", int64_t(check.slot + 1)}, {"min", int64_t(check.level)}};
 }
 
-std::optional<LevelCheck> parse_level_variant(std::string_view variant){
-    if (!variant.starts_with(LEVEL_VARIANT_PREFIX)){
+std::optional<LevelCheck> level_check_of(const Pokemon::StoryActionArgs& args){
+    const std::optional<size_t> slot = counted_arg(args, "slot", PARTY_SLOTS);
+    const std::optional<size_t> level = number_arg(args, "min", 1, 100);
+    if (!slot || !level){
         return std::nullopt;
     }
-    LevelCheck check;
-    bool slot_seen = false;
-    bool level_seen = false;
-    for (std::string_view word : variant_words(variant.substr(LEVEL_VARIANT_PREFIX.size()))){
-        const std::optional<VariantPair> pair = variant_pair(word);
-        const std::optional<size_t> number = pair ? variant_number(pair->value, 3) : std::nullopt;
-        if (!number){
-            return std::nullopt;
-        }
-        if (pair->key == "slot" && *number >= 1 && *number <= PARTY_SLOTS){
-            check.slot = *number - 1;
-            slot_seen = true;
-        }else if (pair->key == "min" && *number >= 1 && *number <= 100){
-            check.level = (unsigned)*number;
-            level_seen = true;
-        }else{
-            return std::nullopt;
-        }
-    }
-    if (!slot_seen || !level_seen){
-        return std::nullopt;
-    }
-    return check;
+    return LevelCheck{.slot = *slot, .level = (unsigned)*level};
 }
 
 Pokemon::StoryStep level_step(std::string name, std::string why, const LevelCheck& check){
@@ -68,7 +48,8 @@ Pokemon::StoryStep level_step(std::string name, std::string why, const LevelChec
     step.kind = Pokemon::StoryStepKind::GAME;
     step.name = std::move(name);
     step.why = std::move(why);
-    step.variant = level_variant(check);
+    step.action = LEVEL_ACTION;
+    step.args = level_args(check);
     return step;
 }
 

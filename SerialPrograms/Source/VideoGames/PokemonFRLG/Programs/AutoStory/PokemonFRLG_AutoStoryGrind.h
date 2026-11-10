@@ -38,7 +38,8 @@
 #include "CommonFramework/Language.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
-#include "Pokemon/AutoStory/Pokemon_StorySteps.h"
+#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
 #include "Pokemon/Navigation/Pokemon_Grid.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
 #include "PokemonFRLG_AutoStoryBattleData.h"
@@ -72,19 +73,20 @@ struct GrindPlan{
     double min_chance = MIN_WIN_CHANCE;
 };
 
-//  The prefix of a GAME step's variant that names a GRIND step.
-inline constexpr std::string_view GRIND_VARIANT_PREFIX = "grind ";
-
-//  `plan` as a variant: "grind slot=1 level=18 encounters=60 pace=east
-//  heal_every=8", the slot counted from 1, and with a trainer
-//  " beat=TRAINER_RIVAL_CERULEAN_BULBASAUR chance=70", the chance in
-//  percent. The step's target is the nurse.
-std::string grind_variant(const GrindPlan& plan);
-//  Parses a grinding plan from a variant string.
-std::optional<GrindPlan> parse_grind_variant(std::string_view variant);
+//  The GAME action of a GRIND step: slot INTEGER (required, from 1);
+//  level INTEGER (required, 2-100); encounters INTEGER (60); pace
+//  DIRECTION (east); heal_every INTEGER (0); beat WORD and chance INTEGER
+//  (optional), the trainer and the win chance in percent; nurse GRID_POSE
+//  (required), where the step heals.
+inline const std::string GRIND_ACTION = "grind";
+//  `plan` and `nurse` as its action's args.
+Pokemon::StoryActionArgs grind_args(const GrindPlan& plan, Pokemon::GridPose nurse);
+//  The plan a GRIND_ACTION step's args give; nothing if one is out of
+//  range, or a chance has no trainer to be against.
+std::optional<GrindPlan> grind_plan_of(const Pokemon::StoryActionArgs& args);
 
 //  The table's GRIND step: `nurse` is where the player faces the nurse.
-Pokemon::StoryStep grind_step(std::string name, std::string why, const GrindPlan& plan, Pokemon::Pose nurse);
+Pokemon::StoryStep grind_step(std::string name, std::string why, const GrindPlan& plan, Pokemon::GridPose nurse);
 
 
 //  The outcome of an individual grinding battle.
@@ -182,7 +184,7 @@ public:
 
     ConsoleGrindActions(
         ConsoleHandle& console, ProControllerContext& context, Language language,
-        Supplies& supplies, StoryChecks checks, HealTrip heal_trip
+        Supplies& supplies, Pokemon::StoryCheckLevel checks, HealTrip heal_trip
     );
 
     virtual bool find_encounter(Pokemon::Direction pace) override;
@@ -199,7 +201,7 @@ private:
     ProControllerContext& m_context;
     Language m_language;
     Supplies& m_supplies;
-    StoryChecks m_checks;
+    Pokemon::StoryCheckLevel m_checks;
     ConsoleCaptureActions m_encounters;
     HealTrip m_heal_trip;
     GrindSpot m_spot;
