@@ -20,6 +20,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
+#include "PokemonFRLG_AutoStoryRows_Tests.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 
 namespace PokemonAutomation{
@@ -114,7 +115,7 @@ UnitTestResult test_route6_jeff_only(){
     if (row == nullptr){
         return "No checkpoint 00.21.";
     }
-    StoryPose at = *story_pose(*row->start);
+    StoryPose at = *story_pose(Pokemon::pose_of(*row->start));
     OverworldSim house(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
     const size_t rocket = step_index(*row, "rocket_trigger");
     for (size_t c = 0; c < rocket; c++){
@@ -126,13 +127,13 @@ UnitTestResult test_route6_jeff_only(){
         return "00.21: expected to reach (32, 7) west of the Rocket, meeting no one, not " + to_string(house.state().position) + ".";
     }
     const size_t battle = step_index(*row, "rocket_grunt");
-    const StoryPose after_rocket = *story_pose(*row->steps[battle].pose_after);
+    const StoryPose after_rocket = *story_pose(Pokemon::pose_of(*row->steps[battle].pose_after));
     OverworldSim whole(story_maps(), MapPosition{after_rocket.map, after_rocket.tile}, *after_rocket.facing);
     if (const std::string failure = run_to_vermilion(whole, after_rocket, *row, battle + 1); !failure.empty()){
         return "From the Rocket: " + failure;
     }
     const size_t walk = step_index(*row, "route6_column15");
-    const StoryPose column = *story_pose(*row->steps[walk].target);
+    const StoryPose column = *story_pose(Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(row->steps[walk].args, "target")));
     OverworldSim sim(story_maps(), MapPosition{column.map, {column.tile.x + 1, column.tile.y}}, Direction::WEST);
     if (const std::string failure = run_to_vermilion(sim, column, *row, walk + 1); !failure.empty()){
         return "A tile short: " + failure;
@@ -157,10 +158,10 @@ bool steps_onto(const std::vector<RouteStep>& route, MapPosition start, const st
 //  Where the table says the player stands after `step` from `at`.
 StoryPose pose_after(const StoryPose& at, const StoryStep& step){
     if (step.pose_after){
-        return *story_pose(*step.pose_after);
+        return *story_pose(Pokemon::pose_of(*step.pose_after));
     }
     if (step.kind == StoryStepKind::STEP){
-        return StoryPose{at.map, at.tile.next(step.direction), step.direction};
+        return StoryPose{at.map, at.tile.next(Pokemon::story_arg<Direction>(step.args, "direction")), Pokemon::story_arg<Direction>(step.args, "direction")};
     }
     return at;
 }
@@ -175,7 +176,7 @@ UnitTestResult test_ss_anne_walks(){
     if (row == nullptr){
         return "No checkpoint 00.22.";
     }
-    StoryPose at = *story_pose(*row->start);
+    StoryPose at = *story_pose(Pokemon::pose_of(*row->start));
     bool before_rival = true;
     for (const StoryStep& step : row->steps){
         if (step.kind != StoryStepKind::ROUTE && step.kind != StoryStepKind::LEGS){

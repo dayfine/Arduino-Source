@@ -111,20 +111,20 @@ public:
         for (const RouteStep& step : steps){
             legs.push_back({.leg = route_log_leg(step), .after = route_tiles(step.end)});
         }
-        m_calls.log(ROUTE_LOG_TAG + Pokemon::route_plan_line(m_label, route_tiles(from), legs));
+        m_calls.log(std::string(ROUTE_LOG_TAG) + Pokemon::route_plan_line(m_label, route_tiles(from), legs));
     }
     void leg(size_t index, const std::vector<RouteStep>& steps) const{
         const RouteStep& step = steps[index];
-        m_calls.log(ROUTE_LOG_TAG + Pokemon::route_leg_line(index + 1, steps.size(), {.leg = route_log_leg(step), .after = route_tiles(step.end)}));
+        m_calls.log(std::string(ROUTE_LOG_TAG) + Pokemon::route_leg_line(index + 1, steps.size(), {.leg = route_log_leg(step), .after = route_tiles(step.end)}));
     }
     void end(const RouteStep& step, const std::optional<MapPosition>& at, EndBasis basis, const std::string& why) const{
-        m_calls.log(ROUTE_LOG_TAG + Pokemon::route_leg_end_line(m_label, route_log_leg(step), route_tiles(at), basis, why));
+        m_calls.log(std::string(ROUTE_LOG_TAG) + Pokemon::route_leg_end_line(m_label, route_log_leg(step), route_tiles(at), basis, why));
     }
     void trainer_stopped(const RouteStep& step, const MapPosition& at) const{
-        m_calls.log(ROUTE_LOG_TAG + Pokemon::route_replan_line(m_label, route_log_leg(step), "stopped by a trainer who saw the player", route_tiles(at)));
+        m_calls.log(std::string(ROUTE_LOG_TAG) + Pokemon::route_replan_line(m_label, route_log_leg(step), "stopped by a trainer who saw the player", route_tiles(at)));
     }
     void found(const MapPosition& at, size_t holds) const{
-        m_calls.log(ROUTE_LOG_TAG + Pokemon::route_found_line(m_label, route_tiles(at), holds));
+        m_calls.log(std::string(ROUTE_LOG_TAG) + Pokemon::route_found_line(m_label, route_tiles(at), holds));
     }
     //  Step `number` (from 1) of a plan whose first `holds` steps are holds
     //  to walls, walked to its end.

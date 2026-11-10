@@ -24,7 +24,8 @@
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
-#include "Pokemon/AutoStory/Pokemon_StorySteps.h"
+#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.h"
 #include "Pokemon/Navigation/Pokemon_Grid.h"
 
 namespace PokemonAutomation{
@@ -32,13 +33,15 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-//  How much the story checks the screen before and after it acts: the
-//  shared level (Pokemon_StorySteps.h, set by StoryRunOptions). For FRLG,
-//  THOROUGH reads a Mart row's item before buying it, the bag's Items
-//  pocket after shopping (the counts the story then keeps), and an item's
-//  name in the bag before using it. FAST trusts the counts it keeps and the
-//  timings.
-using StoryChecks = Pokemon::StoryChecks;
+//  Whether the shared check level (Types/Pokemon_StoryCheckLevel.h, set by
+//  StoryRunOptions) has the story check the screen before and after it
+//  acts: DEFAULT and above (TESTING, THOROUGH). Then FRLG reads a Mart
+//  row's item before buying it, the bag's Items pocket after shopping (the
+//  counts the story then keeps), and an item's name in the bag before
+//  using it. FAST and SPEEDRUN trust the counts it keeps and the timings.
+inline bool checks_screen(Pokemon::StoryCheckLevel level){
+    return level <= Pokemon::StoryCheckLevel::DEFAULT;
+}
 
 //  The START menu as the story grows it. Before the starter: BAG, the
 //  player, SAVE, OPTION, EXIT; the starter adds POKEMON on top, the Pokedex
@@ -248,7 +251,7 @@ int mart_cursor_moves(int cursor, int row);
 //  bought by position only.
 void buy_items(
     ConsoleHandle& console, ProControllerContext& context,
-    const std::vector<MartOrder>& orders, StoryChecks checks, Language language
+    const std::vector<MartOrder>& orders, Pokemon::StoryCheckLevel checks, Language language
 );
 
 //  From the title screen of a game with no save, to the bedroom: the
