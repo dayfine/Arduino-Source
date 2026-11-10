@@ -583,13 +583,13 @@ void SimExecutor::start_scene_at_end(const StoryStep& step){
             return std::abs(early.x - tile.x) + std::abs(early.y - tile.y) == 1;
         });
     };
-    for (const SimTrigger& other : m_sim.triggers()){
+    for (const SimTrigger& other : sim_triggers(m_sim)){
         if (std::ranges::any_of(other.tiles, next_to)){
             trigger.spends.push_back(other.name);
         }
     }
     m_logger.log(std::format("[{}] {}: the next scene starts on its end, {}.", m_row, step.name, Pokemon::to_string(*end)));
-    m_sim.add_trigger(std::move(trigger));
+    sim_add_trigger(m_sim, std::move(trigger));
 }
 
 void SimExecutor::land(const std::string& step){
@@ -829,7 +829,7 @@ Outcome SimExecutor::run(RunState& state, const StoryStep& step){
     Outcome outcome;
     m_passed_over = false;
     m_step = step.name;
-    m_sim.forget_warp();
+    sim_forget_warp(m_sim);
     show_before(step);
     try{
         outcome = run_step(state, step);
@@ -862,9 +862,10 @@ Outcome SimExecutor::run(RunState& state, const StoryStep& step){
         m_result.error = m_row + " " + Pokemon::to_string(outcome);
         m_result.failed_step = m_row + " " + step.name;
     }
-    for (const std::string& scene : m_io.take_scenes_fought()){
-        m_logger.log(std::format("[{}] {}: the walk fought {}'s dialogue as a trainer's.", m_row, step.name, scene));
-        m_result.scenes_fought.push_back(std::format("{} {}: {}", m_row, step.name, scene));
+    const std::vector<std::string>& fought = m_sim.player().scenes_fought;
+    for (; m_scenes_fought < fought.size(); m_scenes_fought++){
+        m_logger.log(std::format("[{}] {}: the walk fought {}'s dialogue as a trainer's.", m_row, step.name, fought[m_scenes_fought]));
+        m_result.scenes_fought.push_back(std::format("{} {}: {}", m_row, step.name, fought[m_scenes_fought]));
     }
     m_result.world = m_placed ? &m_sim.world() : nullptr;
     m_result.end = nearest_tile(m_sim.player().pos);

@@ -200,6 +200,22 @@ const std::vector<SimWanderer>& sim_wanderers(const GridSim& sim){
     return sim.m_wanderers;
 }
 
+void sim_add_trigger(GridSim& sim, SimTrigger trigger){
+    sim.m_world.triggers.push_back(std::move(trigger));
+}
+const std::vector<SimTrigger>& sim_triggers(const GridSim& sim){
+    return sim.m_world.triggers;
+}
+void sim_forget_warp(GridSim& sim){
+    sim.m_player.warped.reset();
+}
+void sim_fight(GridSim& sim){
+    if (sim.m_player.scene){
+        sim.m_player.scenes_fought.push_back(*sim.m_player.scene);
+    }
+    sim.end_dialogue();
+}
+
 bool GridSim::wanderer_at(const TilePos& pos) const{
     for (const SimWanderer& wanderer : m_wanderers){
         if (wanderer.pos == pos){

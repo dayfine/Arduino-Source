@@ -94,24 +94,6 @@ RouteEnd walk_route_to_warp(
     RouteTrainers& trainers, const RouteWalkPlan& plan
 );
 
-//  The corners of a line a human walked, and the costs to plan each
-//  stretch with.
-struct WaypointWalkPlan{
-    std::vector<Pokemon::TilePos> waypoints;
-    std::string label;
-    RobustPlanCosts costs = waypoint_plan_costs();
-};
-
-//  Walks `from` to each of `plan.waypoints` in turn, with walk_route() for
-//  every stretch, and returns where the last one ended: the plan is the
-//  line, with the walker's handling of trainers and blocks on each stretch
-//  (Route 204 North, 2026-10-31).
-std::vector<Pokemon::TilePos> walk_waypoints(
-    VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
-    const StoryWorld& maps, std::vector<Pokemon::TilePos> from,
-    RouteTrainers& trainers, const WaypointWalkPlan& plan
-);
-
 //  Whom talk_to_npc() talks to: the NPC on world tile `npc`, from the sides
 //  in `sides` (the side of the NPC to stand on), in order.
 struct NpcTalk{

@@ -282,16 +282,9 @@ public:
         return m_route;
     }
     //  A scene's dialogue fought as a trainer's is pressed through under the
-    //  walk, not its own step: noted (take_scenes_fought()).
+    //  walk, not its own step: noted (sim_fight()).
     virtual void fight(const std::string&) override{
-        if (m_sim.player().scene){
-            m_scenes_fought.push_back(*m_sim.player().scene);
-        }
-        m_sim.end_dialogue();
-    }
-    //  The scenes fought since the last call.
-    std::vector<std::string> take_scenes_fought(){
-        return std::exchange(m_scenes_fought, {});
+        sim_fight(m_sim);
     }
     virtual void walk_until_stopped(Pokemon::Direction direction, size_t tiles, const std::string& label) override;
     virtual bool run_until_map(Pokemon::Direction direction, Milliseconds limit, const std::string& map, const std::string&) override;
@@ -356,7 +349,6 @@ private:
     const SimWorldKnobs& m_knobs;
     std::function<bool()> m_far_side;
     const std::string& m_step;
-    std::vector<std::string> m_scenes_fought;
 };
 
 //  A scene's trigger the simulation fires from row `row` on, once the step
@@ -491,6 +483,8 @@ private:
     SimStepGuard m_guard;
     Pokemon::StoryActionTable m_table;
     Pokemon::StoryInterrupts m_interrupts;
+    //  The scenes fought so far that SimRun::scenes_fought has.
+    size_t m_scenes_fought = 0;
     //  A dialog popped up (SimWorldKnobs::dialog_before) and is still up;
     //  it rose since the last look.
     bool m_dialog_up = false;
