@@ -96,6 +96,18 @@
         "why": "a tap a tile, west of the turning Grunt (20, 6) and out of his lines (sight 2): down to (21, 3), west to (19, 3), down to (19, 5), west to (17, 5), down to (17, 6), west onto the arrow (16, 6), which slides west and, turned at (11, 6) and (11, 4), on to the stop (1, 4)"
       },
       {
+        "id": "beside_moon_stone",
+        "kind": "legs",
+        "variant": "taps",
+        "legs": [
+          {
+            "direction": "east",
+            "tiles": 1
+          }
+        ],
+        "why": "a tap east from the stop (1, 4) to above the MOON STONE (2, 5), which stands in the only way on (pokeguy 57:52)"
+      },
+      {
         "id": "above_moon_stone",
         "kind": "route",
         "target": {
@@ -113,7 +125,7 @@
           }
         },
         "variant": "run",
-        "why": "a step east, above the MOON STONE (2, 5), which stands in the only way on (pokeguy 57:52)"
+        "why": "turn to face the MOON STONE (2, 5): no tile to walk"
       },
       {
         "id": "moon_stone",
@@ -190,23 +202,27 @@
       },
       {
         "id": "below_lift",
-        "kind": "route",
-        "target": {
-          "certainty": "tile",
-          "map": "RocketHideout_B2F",
-          "where": {
-            "facing": "north",
-            "kind": "tiles",
-            "tiles": [
-              [
-                28,
-                17
-              ]
-            ]
+        "kind": "legs",
+        "variant": "taps",
+        "legs": [
+          {
+            "direction": "east",
+            "tiles": 12
+          },
+          {
+            "direction": "south",
+            "tiles": 1
+          },
+          {
+            "direction": "east",
+            "tiles": 1
+          },
+          {
+            "direction": "north",
+            "tiles": 1
           }
-        },
-        "variant": "run",
-        "why": "east along row 17 to below the lift door (28, 16); no arrow on the way"
+        ],
+        "why": "a tap a tile along row 17 to (27, 17), down to row 18 and east to (28, 18), and up to below the lift door (28, 16), facing it"
       },
       {
         "id": "lift_to_b4f",
@@ -234,23 +250,23 @@
       },
       {
         "id": "below_left_guard",
-        "kind": "route",
-        "target": {
-          "certainty": "tile",
-          "map": "RocketHideout_B4F",
-          "where": {
-            "facing": "north",
-            "kind": "tiles",
-            "tiles": [
-              [
-                16,
-                15
-              ]
-            ]
+        "kind": "legs",
+        "variant": "taps",
+        "legs": [
+          {
+            "direction": "south",
+            "tiles": 1
+          },
+          {
+            "direction": "west",
+            "tiles": 4
+          },
+          {
+            "direction": "north",
+            "tiles": 9
           }
-        },
-        "variant": "run",
-        "why": "from the lift door up to below the left door Grunt (16, 14)"
+        ],
+        "why": "a tap a tile off the lift door (20, 23): down to (20, 24), west to (16, 24) and up column 16 to below the left door Grunt (16, 14)"
       },
       {
         "id": "talk_left_guard",
@@ -278,23 +294,23 @@
       },
       {
         "id": "below_right_guard",
-        "kind": "route",
-        "target": {
-          "certainty": "tile",
-          "map": "RocketHideout_B4F",
-          "where": {
-            "facing": "north",
-            "kind": "tiles",
-            "tiles": [
-              [
-                19,
-                15
-              ]
-            ]
+        "kind": "legs",
+        "variant": "taps",
+        "legs": [
+          {
+            "direction": "south",
+            "tiles": 1
+          },
+          {
+            "direction": "east",
+            "tiles": 3
+          },
+          {
+            "direction": "north",
+            "tiles": 1
           }
-        },
-        "variant": "run",
-        "why": "east along row 15 to below the right door Grunt (19, 14)"
+        ],
+        "why": "a tap a tile: down to (16, 16), east along row 16 to (19, 16) and up to below the right door Grunt (19, 14)"
       },
       {
         "id": "talk_right_guard",
@@ -321,6 +337,26 @@
         "why": "Rocket Grunt (TRAINER_TEAM_ROCKET_GRUNT_17): Ekans, Sandshrew, Arbok Lv23 (Arbok's Glare paralysed pokeguy's Wartortle, 59:44)"
       },
       {
+        "id": "beside_giovanni",
+        "kind": "legs",
+        "variant": "taps",
+        "legs": [
+          {
+            "direction": "west",
+            "tiles": 2
+          },
+          {
+            "direction": "north",
+            "tiles": 10
+          },
+          {
+            "direction": "east",
+            "tiles": 2
+          }
+        ],
+        "why": "a tap a tile: west to (17, 15), up column 17 between the guards (17..18, 12..13) to the wall at (17, 5), and east to below Giovanni (19, 4)"
+      },
+      {
         "id": "below_giovanni",
         "kind": "route",
         "target": {
@@ -338,7 +374,7 @@
           }
         },
         "variant": "run",
-        "why": "between the guards (17..18, 12..13) and up to below Giovanni (19, 4)"
+        "why": "turn to face Giovanni (19, 4): no tile to walk"
       },
       {
         "id": "talk_giovanni",
@@ -365,6 +401,30 @@
         "why": "Giovanni (TRAINER_BOSS_GIOVANNI): Onix, Rhyhorn, Kangaskhan"
       },
       {
+        "id": "east_of_silph_scope",
+        "kind": "legs",
+        "variant": "taps",
+        "legs": [
+          {
+            "direction": "west",
+            "tiles": 2
+          },
+          {
+            "direction": "south",
+            "tiles": 2
+          },
+          {
+            "direction": "east",
+            "tiles": 4
+          },
+          {
+            "direction": "north",
+            "tiles": 2
+          }
+        ],
+        "why": "a tap a tile round by row 7: west to (17, 5), down to (17, 7), east to the wall at (21, 7) and up to the wall at (21, 5), east of the SILPH SCOPE (20, 5)"
+      },
+      {
         "id": "beside_silph_scope",
         "kind": "route",
         "target": {
@@ -382,7 +442,7 @@
           }
         },
         "variant": "run",
-        "why": "round by row 7 to east of the SILPH SCOPE (20, 5)"
+        "why": "turn to face the SILPH SCOPE (20, 5): no tile to walk"
       },
       {
         "id": "silph_scope",
