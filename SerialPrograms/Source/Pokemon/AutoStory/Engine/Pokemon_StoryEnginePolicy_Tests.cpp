@@ -70,8 +70,11 @@ StoryGame<GridPose> engine_game(std::optional<int> candies){
         return outcome_ok();
     };
     if (candies){
-        game.readers.emplace_back("bag", [count = *candies](StoryBackend<GridPose>&, Observation<GridPose>& observation){
-            observation.readings["bag.RARE_CANDY"] = count;
+        game.readers.push_back({
+            .name = "bag", .supplies = {"bag.*"}, .use = StoryReaderUse::AFTER_CHECKPOINT, .console_only = false,
+            .read = [count = *candies](StoryBackend<GridPose>&, Observation<GridPose>& observation){
+                observation.readings["bag.RARE_CANDY"] = count;
+            },
         });
     }
     return game;

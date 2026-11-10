@@ -75,26 +75,42 @@ const ScreenState& read_screen_state(
 
 
 void ScreenMachineChecks::check(const ScreenState& state, VideoSnapshot frame){
-    const std::optional<std::string> found = problem(state, std::move(frame));
+    const std::optional<std::string> found = problem(state, std::move(frame), current_time());
     if (found){
         m_trace.fail(*found);
     }
 }
 
 std::optional<std::string> ScreenMachineChecks::problem(const ScreenState& state, const ScreenObservation& observation){
-    return problem(state, observation.frame ? *observation.frame : VideoSnapshot());
+    return problem(state, observation.frame ? *observation.frame : VideoSnapshot(), observation.when);
 }
 
-std::optional<std::string> ScreenMachineChecks::problem(const ScreenState& state, VideoSnapshot frame){
+std::optional<std::string> ScreenMachineChecks::unchanged_problem(const ScreenState& state, WallClock when){
+    if (state.max_still > Milliseconds::zero()){
+        if (when - m_changed_at > state.max_still){
+            return "The screen stayed still on \"" + state.name + "\" for more than " +
+                std::to_string(state.max_still.count() / 1000) + "s.";
+        }
+        return std::nullopt;
+    }
+    if (++m_unchanged >= MAX_UNCHANGED){
+        return "The screen stopped changing: " + std::to_string(MAX_UNCHANGED) +
+            " steps on \"" + state.name + "\" did nothing.";
+    }
+    return std::nullopt;
+}
+
+std::optional<std::string> ScreenMachineChecks::problem(const ScreenState& state, VideoSnapshot frame, WallClock when){
     const bool same_size = m_last_frame && frame &&
         m_last_frame->width() == frame->width() && m_last_frame->height() == frame->height();
     if (same_size && ImageMatch::pixel_RMSD(m_last_frame, frame) < 2.0){
-        if (++m_unchanged >= MAX_UNCHANGED){
-            return "The screen stopped changing: " + std::to_string(MAX_UNCHANGED) +
-                " steps on \"" + state.name + "\" did nothing.";
+        std::optional<std::string> stalled = unchanged_problem(state, when);
+        if (stalled){
+            return stalled;
         }
     }else{
         m_unchanged = 0;
+        m_changed_at = when;
     }
     m_last_frame = std::move(frame);
 

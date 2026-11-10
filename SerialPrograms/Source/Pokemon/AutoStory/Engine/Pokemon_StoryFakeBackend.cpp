@@ -15,24 +15,6 @@ namespace Pokemon{
 namespace{
 
 
-std::string button_name(NintendoSwitch::Button button){
-    switch (button){
-    case NintendoSwitch::BUTTON_A:
-        return "A";
-    case NintendoSwitch::BUTTON_B:
-        return "B";
-    case NintendoSwitch::BUTTON_X:
-        return "X";
-    case NintendoSwitch::BUTTON_Y:
-        return "Y";
-    case NintendoSwitch::BUTTON_PLUS:
-        return "PLUS";
-    default:
-        return std::format("{}", (uint32_t)button);
-    }
-}
-
-
 //  "walk" or "run".
 std::string_view pace_name(StoryPace pace){
     return pace == StoryPace::RUN ? "run" : "walk";
@@ -55,7 +37,7 @@ StoryBackendKind FakeStoryBackend<PoseType>::kind() const{
 
 template <StoryPose PoseType>
 void FakeStoryBackend<PoseType>::press(NintendoSwitch::Button button, Milliseconds, Milliseconds){
-    m_inputs.push_back("press " + button_name(button));
+    m_inputs.push_back("press " + NintendoSwitch::button_to_string(button));
 }
 
 template <StoryPose PoseType>
@@ -69,8 +51,12 @@ void FakeStoryBackend<PoseType>::hold(Direction direction, Milliseconds duration
 }
 
 template <StoryPose PoseType>
-void FakeStoryBackend<PoseType>::stick(double degrees, Milliseconds duration, StoryPace pace){
-    m_inputs.push_back(std::format("stick {}deg {}ms {}", degrees, duration.count(), pace_name(pace)));
+void FakeStoryBackend<PoseType>::stick(double degrees, Milliseconds duration, Milliseconds release, StoryPace pace){
+    std::string input = std::format("stick {}deg {}ms {}", degrees, duration.count(), pace_name(pace));
+    if (release > Milliseconds::zero()){
+        input += std::format(", release {}ms", release.count());
+    }
+    m_inputs.push_back(std::move(input));
 }
 
 template <StoryPose PoseType>

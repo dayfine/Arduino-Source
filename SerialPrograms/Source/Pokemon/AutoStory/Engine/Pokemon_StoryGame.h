@@ -14,6 +14,7 @@
 
 #include <functional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 #include "Pokemon/AutoStory/Pokemon_StoryCheckpointTypes.h"
@@ -43,11 +44,50 @@ template <StoryPose PoseType>
 using StoryActionHandler = std::function<Outcome(StoryBackend<PoseType>& backend, RunState& state, const StoryActionCall& call)>;
 
 //  Fills an observation's pose or readings from what the backend saw: a
-//  console reads the frame (OCR, templates), a simulation its model. A
-//  reader whose name is a step's skip_if condition answers it: the
-//  condition holds when the reader sets a non-zero reading of that name.
+//  console reads the frame (OCR, templates), a simulation its model.
 template <StoryPose PoseType>
 using StoryReader = std::function<void(StoryBackend<PoseType>& backend, Observation<PoseType>& observation)>;
+
+//  When the engine runs a reader.
+enum class StoryReaderUse{
+    //  Only for a step's skip_if condition of its name: it is slow, or
+    //  needs a screen a checkpoint need not end on (PLZA's heading waits
+    //  for the minimap and throws without it).
+    ON_REQUEST,
+    //  Also after a checkpoint whose postconditions need what it supplies:
+    //  it is cheap and safe on any screen a checkpoint ends on.
+    AFTER_CHECKPOINT,
+};
+
+//  What the engine reads the game with. A reader whose name is a step's
+//  skip_if condition answers it: the condition holds when the reader sets
+//  a non-zero reading of that name.
+template <StoryPose PoseType>
+struct StoryGameReader{
+    std::string name = {};
+    //  What it fills: "pose" (Observation::pose), a reading ("heading"), or
+    //  every reading with a prefix ("bag.*", "flag.*").
+    std::vector<std::string> supplies = {};
+    //  Opt in to the postcondition check with AFTER_CHECKPOINT.
+    StoryReaderUse use = StoryReaderUse::ON_REQUEST;
+    //  It reads a console's screen: never run on another backend.
+    bool console_only = false;
+    StoryReader<PoseType> read = {};
+};
+
+//  Whether `supplies` (StoryGameReader::supplies) covers `need`: the same
+//  name, or a prefix ending in "*" that `need` starts with.
+inline bool story_reader_supplies(const std::vector<std::string>& supplies, std::string_view need){
+    for (const std::string& each : supplies){
+        if (each == need){
+            return true;
+        }
+        if (each.ends_with('*') && need.starts_with(std::string_view(each).substr(0, each.size() - 1))){
+            return true;
+        }
+    }
+    return false;
+}
 
 //  An action: its spec (kind, name, args) and its code.
 template <StoryPose PoseType>
@@ -63,8 +103,8 @@ struct StoryGame{
     std::string id = {};
     //  The game's own actions, and its replacements of built-in ones.
     std::vector<StoryAction<PoseType>> actions = {};
-    //  By name: "pose", "bag", "facing", or a skip_if condition.
-    std::vector<std::pair<std::string, StoryReader<PoseType>>> readers = {};
+    //  "pose", "bag", "heading", or a skip_if condition.
+    std::vector<StoryGameReader<PoseType>> readers = {};
     //  The game's save (the menu, or a wait for an autosave) at the end of
     //  `checkpoint`, or at its SAVE step. The engine decides whether to call
     //  it (Pokemon_StoryEnginePolicy.h).

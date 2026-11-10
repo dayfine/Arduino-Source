@@ -45,8 +45,10 @@ class FakeStoryBackend : public StoryBackend<PoseType>{
 public:
     FakeStoryBackend(FakeStoryScript<PoseType> script, CancellableScope& scope);
 
-    //  Each input, in order: "press A", "tap north", "hold east 400ms walk",
-    //  "stick 90deg 150ms walk", "wait 100ms", "battle".
+    //  Each input, in order: "press A", "press +" (by button_to_string()),
+    //  "tap north", "hold east 400ms walk", "stick 90deg 150ms walk",
+    //  "stick 90deg 150ms walk, release 300ms" (a release only when not
+    //  zero), "wait 100ms", "battle".
     const std::vector<std::string>& inputs() const{
         return m_inputs;
     }
@@ -59,7 +61,7 @@ public:
     virtual void press(NintendoSwitch::Button button, Milliseconds hold, Milliseconds release) override;
     virtual void tap(Direction direction) override;
     virtual void hold(Direction direction, Milliseconds duration, StoryPace pace) override;
-    virtual void stick(double degrees, Milliseconds duration, StoryPace pace) override;
+    virtual void stick(double degrees, Milliseconds duration, Milliseconds release, StoryPace pace) override;
     virtual void wait(Milliseconds duration) override;
     virtual Observation<PoseType> observe() override;
     virtual Outcome battle(const StoryActionArgs& args) override;
