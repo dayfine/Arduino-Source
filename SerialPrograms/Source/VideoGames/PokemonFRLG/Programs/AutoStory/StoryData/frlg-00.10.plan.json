@@ -44,5 +44,6 @@
         "RunningShoesAideTriggerTop: the aide talks from (46, 20), no YES/NO; the player only turns up. He walks off and is removed; FLAG_SYS_B_DASH is set (console B, 2026-11-02: about 20 B presses to the overworld)."
       ]
     }
-  }
+  },
+  "metadata": {"phase": "testing"}
 }
