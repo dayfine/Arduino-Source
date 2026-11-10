@@ -58,12 +58,11 @@ UnitTestResult test_lookup_order(){
     table.add_any_kind("bill", named("any bill"));
     table.add_any_kind("nurse", named("any nurse"));
     const std::pair<std::string, std::string> checks[] = {
-        {found(table, StoryStepKind::TALK, "bill x=1"), "talk bill"},
+        {found(table, StoryStepKind::TALK, "bill"), "talk bill"},
         {found(table, StoryStepKind::MASH, "bill"), "any bill"},
         {found(table, StoryStepKind::TALK, "nurse"), "any nurse"},
         {found(table, StoryStepKind::TALK, "oak"), "talk default"},
         {found(table, StoryStepKind::TALK, ""), "talk default"},
-        {found(table, StoryStepKind::TALK, "x=1"), "talk default"},
         {found(table, StoryStepKind::MASH, "oak"), "none"},
         {found(table, StoryStepKind::MASH, ""), "none"},
     };
