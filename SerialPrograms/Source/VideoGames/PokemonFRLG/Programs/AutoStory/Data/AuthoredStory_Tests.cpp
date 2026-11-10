@@ -230,33 +230,51 @@ UnitTestResult test_trace_golden(){
     return true;
 }
 
-struct AuthoredCase{
+struct AuthoredInput{
     std::string name;
     UnitTestResult (*body)();
 };
 
+struct AuthoredExpectation{
+    std::string description;
+};
+
+struct AuthoredTestCase{
+    AuthoredInput input;
+    AuthoredExpectation expectation;
+};
+
+const AuthoredTestCase AUTHORED_CASES[] = {
+    {.input = {.name = "the story sim's trace is the golden one", .body = test_trace_golden},
+     .expectation = {.description = "the trace the C++ rows gave"}},
+    {.input = {.name = "malformed plans are rejected", .body = test_rejects},
+     .expectation = {.description = "a ParseException for each change"}},
+    {.input = {.name = "Rock Tunnel's sections", .body = test_rock_tunnel_sections},
+     .expectation = {.description = "00.28 split by area, sections in its log lines"}},
+};
+
 class AuthoredTest : public UnitTest{
 public:
-    explicit AuthoredTest(AuthoredCase test)
-        : UnitTest("PokemonFRLG::AutoStory - Authored: " + test.name), m_test(std::move(test)){}
+    explicit AuthoredTest(AuthoredTestCase test)
+        : UnitTest("PokemonFRLG::AutoStory - Authored: " + test.input.name), m_test(std::move(test)){}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         try{
-            return m_test.body();
+            return m_test.input.body();
         }catch (Exception& e){
             return std::string(e.name()) + ": " + e.message();
         }
     }
 private:
-    AuthoredCase m_test;
+    AuthoredTestCase m_test;
 };
 
 } // namespace
 
 
 void add_tests_AuthoredStory(UnitTestDatabase& database){
-    database.add<AuthoredTest>(AuthoredCase{"the story sim's trace is the golden one", test_trace_golden});
-    database.add<AuthoredTest>(AuthoredCase{"malformed plans are rejected", test_rejects});
-    database.add<AuthoredTest>(AuthoredCase{"Rock Tunnel's sections", test_rock_tunnel_sections});
+    for (const AuthoredTestCase& test : AUTHORED_CASES){
+        database.add<AuthoredTest>(test);
+    }
 }
 
 
