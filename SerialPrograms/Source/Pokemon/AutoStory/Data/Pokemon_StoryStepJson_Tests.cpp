@@ -62,6 +62,9 @@ const WireCase CASES[] = {
     {.input = {.name = "items", .json = R"({"id":"s","kind":"shop","args":{"items":[{"item":"potion","quantity":5}]}})"}, .expectation = {.canonical = R"({"id":"s","kind":"shop","args":{"items":[{"item":"potion","quantity":5}]}})"}},
     {.input = {.name = "game args", .json = R"({"id":"buy","kind":"game_action","action":"mart","args":{"map":"CeruleanCity_Mart","budget":3000,"if_present":true}})"}, .expectation = {.canonical = R"({"id":"buy","kind":"game_action","action":"mart","args":{"budget":3000,"if_present":true,"map":"CeruleanCity_Mart"}})"}},
     {.input = {.name = "game words", .json = R"({"id":"buy","kind":"game_action","action":"mart","args":{"map":"M","budget":1,"skip":["a","b"]}})"}, .expectation = {.canonical = R"({"id":"buy","kind":"game_action","action":"mart","args":{"budget":1,"if_present":false,"map":"M","skip":["a","b"]}})"}},
+    {.input = {.name = "game integer rows", .json = R"({"id":"w","kind":"game_action","action":"walk","args":{"legs":[[0,4500],[-90,0],[]]}})"}, .expectation = {.canonical = R"({"id":"w","kind":"game_action","action":"walk","args":{"legs":[[0,4500],[-90,0],[]]}})"}},
+    {.input = {.name = "integer rows, not rows", .json = R"({"id":"w","kind":"game_action","action":"walk","args":{"legs":[0,4500]}})"}, .expectation = {.rejected = true}},
+    {.input = {.name = "integer rows, fraction", .json = R"({"id":"w","kind":"game_action","action":"walk","args":{"legs":[[0,4.5]]}})"}, .expectation = {.rejected = true}},
     {.input = {.name = "unknown arg", .json = R"({"id":"a","kind":"game_action","action":"mart","args":{"map":"M","budget":1,"budgte":1}})"}, .expectation = {.rejected = true}},
     {.input = {.name = "missing required arg", .json = R"({"id":"a","kind":"game_action","action":"mart","args":{"map":"M"}})"}, .expectation = {.rejected = true}},
     {.input = {.name = "route without target", .json = R"({"id":"a","kind":"route"})"}, .expectation = {.rejected = true}},
@@ -93,6 +96,9 @@ std::vector<StoryActionSpec> test_actions(){
         {.key = "budget", .type = StoryArgType::INTEGER, .required = true, .fallback = std::nullopt, .why = "money to spend"},
         {.key = "if_present", .type = StoryArgType::BOOLEAN, .required = false, .fallback = false, .why = ""},
         {.key = "skip", .type = StoryArgType::WORDS, .required = false, .fallback = std::nullopt, .why = ""},
+    }});
+    actions.push_back({.kind = StoryStepKind::GAME, .name = "walk", .args = {
+        {.key = "legs", .type = StoryArgType::INTEGER_ROWS, .required = true, .fallback = std::nullopt, .why = "rows of numbers"},
     }});
     actions.push_back({.kind = StoryStepKind::GAME, .name = "profile", .args = {}});
     return actions;
