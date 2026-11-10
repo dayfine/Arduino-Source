@@ -366,6 +366,9 @@ const std::vector<MapData>& story_maps(){
         const std::vector<MapData> all = overworld_maps();
         std::set<std::string> flags = map_flag_set(all, "after_hall_of_fame");
         flags.merge(map_flag_set(all, "new_game"));
+        //  The one ball the story picks up in its way: B2F's MOON STONE
+        //  blocks column 2 of the arrow floor (00.32's moon_stone).
+        flags.insert("FLAG_HIDE_ROCKET_HIDEOUT_B2F_MOON_STONE");
         return overworld_maps(flags);
     }();
     return maps;
@@ -400,6 +403,7 @@ std::string save_card_place(const std::string& map){
         {"Route10", "route-10"},
         {"LavenderTown", "lavender-town"},
         {"CeladonCity", "celadon-city"},
+        {"RocketHideout", "rocket-hideout"},
     };
     for (const auto& [prefix, place] : PLACES){
         if (map == prefix || map.rfind(prefix + "_", 0) == 0){
