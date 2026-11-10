@@ -235,7 +235,7 @@ Outcome StoryMapsSim::legs(const Pokemon::Pose& pose, const StoryStep& step) con
     if (!at.error.empty()){
         return Pokemon::outcome_failed("no_pose", at.error);
     }
-    const std::optional<std::vector<RouteStep>> route = fixed_route(story_maps(), at.position, step.legs);
+    const std::optional<std::vector<RouteStep>> route = fixed_route(story_maps(), at.position, Pokemon::story_arg<std::vector<StoryLeg>>(step.args, "legs"));
     if (!route || route->empty()){
         return Pokemon::outcome_failed("bad_legs", to_string(at.position));
     }
@@ -249,14 +249,15 @@ Outcome StoryMapsSim::step_ahead(const Pokemon::Pose& pose, const StoryStep& ste
     if (!at){
         return Pokemon::outcome_failed("no_pose", Pokemon::to_string(pose));
     }
+    const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
     const MapData* map = map_named(at->map);
-    if (step.variant != TRAINER_LINE_VARIANT || map == nullptr){
-        return Pokemon::outcome_ok(to_pose(StoryPose{at->map, at->tile.next(step.direction), step.direction}));
+    if (step.action != TRAINER_LINE_VARIANT || map == nullptr){
+        return Pokemon::outcome_ok(to_pose(StoryPose{at->map, at->tile.next(direction), direction}));
     }
     TilePos onto = at->tile;
     const std::optional<int> stepped = step_until_seen(
         TRAINER_LINE_TILES,
-        [&]{ onto = onto.next(step.direction); },
+        [&]{ onto = onto.next(direction); },
         [&]{
             return std::any_of(map->objects.begin(), map->objects.end(), [&](const MapObject& object){
                 return object.trainer && trainer_may_see(*map, object, onto);
@@ -266,15 +267,16 @@ Outcome StoryMapsSim::step_ahead(const Pokemon::Pose& pose, const StoryStep& ste
     if (!stepped){
         return Pokemon::outcome_failed("no_trainer", to_string(MapPosition{at->map, onto}));
     }
-    return Pokemon::outcome_ok(to_pose(StoryPose{at->map, onto, step.direction}));
+    return Pokemon::outcome_ok(to_pose(StoryPose{at->map, onto, direction}));
 }
 
 //  The Viridian Mart's list as the game shows it. After a purchase the
 //  cursor stays on the row bought (console B, 2026-11-01), so each
 //  order moves it from there, as buy_items() does since ad5d40885.
 Outcome StoryMapsSim::shop(const StoryStep& step){
+    const std::vector<Pokemon::StoryItem>& items = Pokemon::story_arg<std::vector<Pokemon::StoryItem>>(step.args, "items");
     static const std::vector<std::string> LIST{"poke_ball", "potion", "antidote", "parlyz_heal", "cancel"};
-    const std::optional<std::vector<MartOrder>> orders = viridian_mart_orders(step.items);
+    const std::optional<std::vector<MartOrder>> orders = viridian_mart_orders(items);
     if (!orders){
         return Pokemon::outcome_failed("unknown_item", step.name);
     }
@@ -286,8 +288,8 @@ Outcome StoryMapsSim::shop(const StoryStep& step){
         if (cursor < 0 || cursor >= (int)LIST.size() || LIST[cursor] == "cancel"){
             return Pokemon::outcome_failed("mart_cancel", std::format("order {} ends on row {}", c + 1, cursor + 1));
         }
-        if (LIST[cursor] != step.items[c].item){
-            return Pokemon::outcome_failed("wrong_item", std::format("{} instead of {}", LIST[cursor], step.items[c].item));
+        if (LIST[cursor] != items[c].item){
+            return Pokemon::outcome_failed("wrong_item", std::format("{} instead of {}", LIST[cursor], items[c].item));
         }
         m_bag[LIST[cursor]] += order.quantity;
     }
@@ -298,7 +300,7 @@ Outcome StoryMapsSim::walk_to(const Pokemon::Pose& pose, const StoryStep& step) 
     if (Pokemon::tiles_of(pose).size() > 1){
         //  From the tiles a pacing step leaves: the route must plan, and
         //  test_routes_after_pacing() walks it on the sim from each.
-        const std::optional<StoryPose> target = story_pose(*step.target);
+        const std::optional<StoryPose> target = story_pose(Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target")));
         const RouteGoal goal{{target->map, target->tile}, target->facing};
         const std::optional<std::vector<RouteStep>> route = plan_story_route(story_maps(), pose, std::nullopt, goal);
         if (!route || route->empty()){
@@ -310,7 +312,7 @@ Outcome StoryMapsSim::walk_to(const Pokemon::Pose& pose, const StoryStep& step) 
     if (!at.error.empty()){
         return Pokemon::outcome_failed("no_pose", at.error);
     }
-    const std::optional<StoryPose> target = story_pose(*step.target);
+    const std::optional<StoryPose> target = story_pose(Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target")));
     const RouteGoal goal{{target->map, target->tile}, target->facing};
     const std::optional<std::vector<RouteStep>> route = plan_overworld_route(
         story_maps(), at.position, goal, story_route_costs(), at.facing
@@ -335,9 +337,9 @@ Outcome StoryMapsSim::walk_to(const Pokemon::Pose& pose, const StoryStep& step) 
 std::optional<std::vector<RouteStep>> walked_route(const StoryPose& at, const StoryStep& step){
     const MapPosition start{at.map, at.tile};
     if (step.kind == StoryStepKind::LEGS){
-        return fixed_route(story_maps(), start, step.legs);
+        return fixed_route(story_maps(), start, Pokemon::story_arg<std::vector<StoryLeg>>(step.args, "legs"));
     }
-    const std::optional<StoryPose> target = story_pose(*step.target);
+    const std::optional<StoryPose> target = story_pose(Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target")));
     const RouteGoal goal{{target->map, target->tile}, target->facing};
     return plan_overworld_route(story_maps(), start, goal, story_route_costs(), at.facing);
 }
@@ -395,30 +397,32 @@ std::string OverworldStepSim::walk(const StoryStep& step){
 //  A step one tap at a time, or for a step into a trainer's line by
 //  step_until_seen(), each watched for the trainer.
 std::string OverworldStepSim::step_ahead(const StoryStep& step){
-    const auto tap = [this, &step]{
-        if (m_sim.state().facing != step.direction){
-            m_sim.tap(step.direction);
+    const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
+    const auto tap = [this, direction]{
+        if (m_sim.state().facing != direction){
+            m_sim.tap(direction);
         }
-        m_sim.tap(step.direction);
+        m_sim.tap(direction);
     };
     const auto seen = [this]{
         return m_sim.watch({SimWatcher::MESSAGE, SimWatcher::BATTLE_SCREEN}, TRAINER_LINE_WATCH).has_value();
     };
-    const int tiles = step.variant == TRAINER_LINE_VARIANT ? TRAINER_LINE_TILES : 1;
+    const int tiles = step.action == TRAINER_LINE_VARIANT ? TRAINER_LINE_TILES : 1;
     return step_until_seen(tiles, tap, seen) ? "" : "no trainer saw the player.";
 }
 
 //  A CUT_TREE_VARIANT step: turned to the tree, cut, and a step onto its
 //  tile.
 std::string OverworldStepSim::cut(const StoryStep& step){
-    if (m_sim.state().facing != step.direction){
-        m_sim.tap(step.direction);
+    const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
+    if (m_sim.state().facing != direction){
+        m_sim.tap(direction);
     }
     if (!m_sim.cut_tree()){
         return "no tree to cut.";
     }
-    m_sim.tap(step.direction);
-    m_at = StoryPose{m_at.map, m_at.tile.next(step.direction), step.direction};
+    m_sim.tap(direction);
+    m_at = StoryPose{m_at.map, m_at.tile.next(direction), direction};
     if (!(m_sim.state().position == MapPosition{m_at.map, m_at.tile})){
         return "expected to step onto the tree's tile " + to_string(MapPosition{m_at.map, m_at.tile}) + ".";
     }
@@ -431,7 +435,7 @@ std::string OverworldStepSim::battle(const StoryStep& step){
     if (!m_sim.close_message() || m_sim.handle_battle(SimBattleChoice::FIGHT) != SimBattleEnd::ENDED){
         return "no_battle.";
     }
-    m_at = *story_pose(*step.pose_after);
+    m_at = *story_pose(Pokemon::pose_of(*step.pose_after));
     if (!(m_sim.state().position == MapPosition{m_at.map, m_at.tile})){
         return "expected " + to_string(MapPosition{m_at.map, m_at.tile}) + ".";
     }

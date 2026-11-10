@@ -1,0 +1,28 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "00.04",
+    "title": "to Squirtle's ball, south of the table",
+    "start": {"map": "PalletTown_ProfessorOaksLab", "tiles": [[6, 4]], "facing": "north"},
+    "events": [
+      {
+        "id": "below_squirtle",
+        "kind": "route",
+        "args": {
+          "target": {"map": "PalletTown_ProfessorOaksLab", "tiles": [[9, 5]], "facing": "north"}
+        },
+        "why": "under Squirtle's ball (9, 4)"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "before_pokemon",
+    "handoff": "starter_rng",
+    "notes": {
+      "checkpoint": [
+        "Starter RNG starts from a save south of the table, facing the ball."
+      ]
+    }
+  }
+}

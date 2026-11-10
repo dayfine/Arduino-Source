@@ -160,7 +160,7 @@ StoryRunPlan rows_after_gift_rng(
         throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No checkpoint after the Magikarp salesman.");
     }
     const StoryCheckpoint& row = checkpoints[salesman_row + 1];
-    if (row.steps.empty() || row.steps.front().variant != LEAVE_GIFT_SUMMARY){
+    if (row.steps.empty() || row.steps.front().action != LEAVE_GIFT_SUMMARY){
         throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, row.id + " doesn't start by leaving the gift's summary.");
     }
     StoryRunPlan plan;
