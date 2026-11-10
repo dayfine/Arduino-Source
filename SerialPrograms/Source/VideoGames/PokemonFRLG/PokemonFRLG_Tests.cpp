@@ -14,6 +14,7 @@
 #include "Inference/Box/PokemonFRLG_BoxCellReader.h"
 #include "Inference/Box/PokemonFRLG_BoxGenderReader.h"
 #include "Inference/Box/PokemonFRLG_BoxSelectionModeDetector.h"
+#include "Inference/Box/PokemonFRLG_PcScreenReader.h"
 #include "Inference/Dialogs/PokemonFRLG_BattleDialogs.h"
 #include "Inference/Dialogs/PokemonFRLG_DialogDetector.h"
 #include "Inference/Dialogs/PokemonFRLG_PrizeSelectDetector.h"
@@ -26,8 +27,10 @@
 #include "Inference/Menus/PokemonFRLG_PartyMenuDetector.h"
 #include "Inference/Menus/PokemonFRLG_SaveCardReader.h"
 #include "Inference/Menus/PokemonFRLG_SummaryMovesReader.h"
+#include "Inference/Menus/PokemonFRLG_TeachScreenReader.h"
 #include "Inference/PokemonFRLG_BattleLevelUpReader.h"
 #include "Inference/PokemonFRLG_BattleSelectionArrowDetector.h"
+#include "Inference/PokemonFRLG_BattleTextBoxDetector.h"
 #include "Inference/PokemonFRLG_PartyLevelUpReader.h"
 #include "Inference/PokemonFRLG_ShinySymbolDetector.h"
 #include "Inference/PokemonFRLG_StatsReader.h"
@@ -871,11 +874,16 @@ void add_tests_NamingText(UnitTestDatabase& database){
 
 } // namespace
 
+//  The menu readers AutoStory brought: the bag's and Marts' lists, the
+//  options, the save card, the summary's moves and the teach screens, and
+//  the screen events.
 static void add_tests_AutoStoryReaders(UnitTestDatabase& database){
     add_tests_ItemListReader(database);
     add_tests_OptionMenuReader(database);
     add_tests_SaveCardReader(database);
     add_tests_SummaryMovesReader(database);
+    add_tests_TeachScreenReader(database);
+    add_tests_AutoStoryScreenEvents(database);
 }
 
 void add_tests(UnitTestDatabase& database){
@@ -884,6 +892,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_BoxCellReader(database);
     add_tests_BoxGenderReader(database);
     add_tests_BoxSelectionModeDetector(database);
+    add_tests_PcScreenReader(database);
     add_tests_SelectionDialogDetector(database);
     add_tests_ShinySymbolDetector(database);
     add_tests_PrizeSelectDetector(database);
@@ -901,6 +910,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_EliteFourRoomDetector(database);
     add_tests_HallOfFameSavingDetector(database);
     add_tests_BattleMoveSelectionArrow(database);
+    add_tests_BattleTextBoxDetector(database);
     add_tests_BagDetector(database);
     add_tests_AutoStoryReaders(database);
     add_tests_ExitWildBattle(database);
@@ -926,7 +936,6 @@ void add_tests(UnitTestDatabase& database){
     add_tests_RngPlanLog(database);
     add_tests_RngSteps(database);
     add_tests_StarterRngLoop(database);
-    add_tests_AutoStoryScreenEvents(database);
 }
 
 

@@ -71,7 +71,7 @@ const StringSelectDatabase& checkpoint_database(){
     return database;
 }
 
-const char* const KEEP_START_FRAME_TEXT =
+const std::string KEEP_START_FRAME_TEXT =
     "<b>Keep the start frame:</b><br>Off by default. The save loaded was made by hand where the start checkpoint "
     "begins: keep the screen after loading it as that checkpoint's start frame, which later runs compare their "
     "save with. The program keeps one by itself at each save it makes.";
@@ -445,7 +445,7 @@ static void run_story_rows(
     const Pokemon::SegmentReport report = run_segment(
         state, segment, Pokemon::SegmentRange{rows.front().id, rows.back().id}, policy, hooks
     );
-    Pokemon::record_story_counts(env.current_stats<Pokemon::AutoStoryStats>(), report.story_counts());
+    Pokemon::record_story_counts(report.story_counts(), env.current_stats<Pokemon::AutoStoryStats>());
     env.update_stats();
     throw_if_failed(report);
 }

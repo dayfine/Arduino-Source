@@ -37,14 +37,6 @@ namespace PokemonFRLG{
 //  The rows of the page: four moves, then CANCEL or the move offered.
 constexpr size_t SUMMARY_MOVE_ROWS = 5;
 
-//  Where row `row` (from 0) shows its move's name, its current PP and its
-//  full PP, as fractions of the game screen.
-ImageFloatBox summary_move_name_box(size_t row);
-//  Where row `row` of summary moves shows its current PP.
-ImageFloatBox summary_move_pp_box(size_t row);
-//  Where row `row` of summary moves shows its max PP.
-ImageFloatBox summary_move_max_pp_box(size_t row);
-
 //  The move named in row `row`: a slug such as "water-gun", in a game in
 //  `language`; empty for an empty slot, a move the reader has no name
 //  for, or a language it has no names for.
@@ -56,6 +48,7 @@ std::string read_move_name(Logger& logger, Language language, const ImageViewRGB
 
 //  A single move entry read from the summary moves screen.
 struct SummaryMove{
+    //  Empty for a move the reader has no name for.
     std::string move;
     //  -1 if not read. The game draws a move's PP in color once it is down
     //  to half, which the digit templates may not read.
@@ -63,7 +56,8 @@ struct SummaryMove{
     int max_pp = -1;
 };
 
-//  The moves from the top, up to the first row whose name can't be read.
+//  The moves from the top, up to the first empty slot. A move whose name
+//  isn't read keeps its row, with its name empty.
 std::vector<SummaryMove> read_summary_moves(Logger& logger, Language language, const ImageViewRGB32& screen);
 
 //  The row (0 to 4) the red cursor box is on, if one shows.

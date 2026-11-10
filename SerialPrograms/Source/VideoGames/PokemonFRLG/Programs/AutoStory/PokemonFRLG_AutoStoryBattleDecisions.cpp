@@ -7,7 +7,6 @@
 #include <algorithm>
 #include <iterator>
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
-#include "PokemonFRLG_AutoStoryBattleSim.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -48,61 +47,32 @@ constexpr Milliseconds REFUSED_WITHIN = std::chrono::milliseconds(7000);
 constexpr size_t LOW_ATTACK_PP = 10;
 //  The move prompts a turn can bring: two moves offered, NO then YES each.
 constexpr int MOVE_PROMPTS = 4;
+//  The HP a Potion heals (pret src/data/items.h).
+constexpr double POTION_HP = 20;
 
-//  The trainer's Pokemon out, at full HP (its damage taken isn't read),
-//  when the battle loop knows which.
-std::optional<SimBattler> foe_out(const Supplies& supplies){
-    if (supplies.trainer.empty() || !supplies.foe_out){
-        return std::nullopt;
-    }
-    const std::vector<TrainerMon> party = trainer_mons(supplies.trainer);
-    return *supplies.foe_out < party.size() ? trainer_battler(party[*supplies.foe_out]) : std::nullopt;
-}
-
-//  A trainer's battle: against the foe out, the best expected damage at
-//  BattleRisk::LOW, the sim's planned move at HIGH (its items taken as not
-//  used yet); else, or while the story doesn't know all the lead's
-//  moves, attack_slot_against() the whole party.
+//  A trainer's battle, until the checkpoint carries the simulation's plan:
+//  the strongest move (attack_slot_against()) against the foe out as read
+//  at the battle menu, else against the whole party.
 std::optional<size_t> trainer_attack_slot(const PartyMember& usable, const Supplies& supplies){
-    const std::optional<SimBattler> foe = foe_out(supplies);
-    const std::optional<SimBattler> own = own_battler(usable);
-    std::optional<size_t> slot;
-    if (foe && own && attack_slot(usable)){
-        const std::optional<TrainerData> trainer = trainer_data(supplies.trainer);
-        slot = supplies.risk == BattleRisk::HIGH && trainer
-            ? planned_attack_slot(*own, *foe, trainer->items, trainer->party.size())
-            : best_damage_slot(*own, *foe);
+    if (!supplies.foe_out.empty()){
+        return attack_slot_against(usable, std::vector<std::string>{supplies.foe_out});
     }
-    return slot ? slot : attack_slot_against(usable, supplies.foes);
+    return attack_slot_against(usable, supplies.foes);
 }
 
-//  A Potion this turn, against a known foe (`seen_hit` the HP its last hit
-//  took, 0 if not seen): at BattleRisk::HIGH when its next hit could faint
-//  the lead (potion_now(), the HP from the bar's share) or the bar is red,
-//  at LOW whenever the bar isn't green; either only if potion_pays().
-//  Against a foe not known, whenever the bar isn't green, unless the last
-//  hit took a Potion's worth or more.
-bool wants_potion(const Supplies& supplies, const PartyStatus& status, double seen_hit){
-    const bool hurt = status.hp_red || status.hp_yellow;
-    const std::optional<SimBattler> foe = foe_out(supplies);
-    const std::optional<SimBattler> own = own_battler(supplies.lead, status.hp_seen ? status.hp_fill : 1.0);
-    if (!foe || !own){
-        return hurt && seen_hit < POTION_HP;
-    }
-    if (supplies.risk == BattleRisk::HIGH && potion_now(*own, *foe, supplies.potions, seen_hit)){
-        return true;
-    }
-    const bool asked = supplies.risk == BattleRisk::HIGH ? status.hp_red : hurt;
-    return asked && potion_pays(potion_case(*own, *foe, seen_hit));
+//  A Potion this turn: whenever the bar isn't green, unless the last hit
+//  took a Potion's worth or more (`seen_hit`, 0 if not seen).
+bool wants_potion(const PartyStatus& status, double seen_hit){
+    return (status.hp_red || status.hp_yellow) && seen_hit < POTION_HP;
 }
 
-//  The lead's HP from the bar's share, if it showed.
+//  The lead's HP from the bar's share, if it showed and POKEMON SKILLS was
+//  read for its species.
 std::optional<double> lead_hp(const Supplies& supplies, const PartyStatus& status){
-    const std::optional<SimBattler> own = own_battler(supplies.lead);
-    if (!status.hp_seen || !own){
+    if (!status.hp_seen || !supplies.lead.stats){
         return std::nullopt;
     }
-    return status.hp_fill * own->body.stats.hp;
+    return status.hp_fill * supplies.lead.stats->hp;
 }
 
 } // namespace
@@ -165,7 +135,7 @@ TurnAction BattleDecisions::lead_turn(const PartyStatus& status){
         return TurnAction{.choice = TurnChoice::RUN};
     }
     see_hit(status);
-    if (!m_items_off && m_supplies.potions > 0 && wants_potion(m_supplies, status, m_seen_hit)){
+    if (!m_items_off && m_supplies.potions > 0 && wants_potion(status, m_seen_hit)){
         return TurnAction{.choice = TurnChoice::POTION};
     }
     if (!m_items_off && m_psn_reads >= PSN_READS && !m_antidote_used && m_supplies.antidotes > 0){

@@ -15,7 +15,7 @@ namespace PokemonFRLG{
 using Pokemon::StoryStepKind;
 
 
-const char* story_action_name(StoryActionId id){
+std::string_view story_action_name(StoryActionId id){
     switch (id){
     case StoryActionId::NEW_GAME:   return "new_game";
     case StoryActionId::OPTIONS:    return "options";
