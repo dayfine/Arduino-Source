@@ -15,6 +15,7 @@
 #define PokemonAutomation_Pokemon_StoryLog_H
 
 #include <cstddef>
+#include <optional>
 #include <string>
 #include <string_view>
 #include "Pokemon_AutoStoryStats.h"
@@ -28,19 +29,18 @@ namespace Pokemon{
 //      [Event] 00.04/3 talk_mom: failed: expect_failed: has_parcel
 std::string event_log_line(std::string_view checkpoint, size_t number, std::string_view event, std::string_view status);
 
-//  A checkpoint starts:
+//  A checkpoint starts; the story engine also says it has `events` events:
 //      [Checkpoint] 00.04: start
-std::string checkpoint_start_line(std::string_view checkpoint);
-//  The story engine starts a checkpoint of `events` events:
 //      [Checkpoint] 00.04: start, 3 events
-std::string checkpoint_start_line(std::string_view checkpoint, size_t events);
+std::string checkpoint_start_line(std::string_view checkpoint, std::optional<size_t> events = std::nullopt);
 
-//  An attempt at a checkpoint starts, counting from 1:
+//  An attempt at a checkpoint starts, counting from 1, out of the
+//  program's limit of `attempts` if it has one:
 //      [Checkpoint] 00.04: attempt 2
-std::string checkpoint_attempt_line(std::string_view checkpoint, size_t attempt);
-//  The same, out of the program's limit of `attempts`:
 //      [Checkpoint] 00.04: attempt 2/3
-std::string checkpoint_attempt_line(std::string_view checkpoint, size_t attempt, size_t attempts);
+std::string checkpoint_attempt_line(
+    std::string_view checkpoint, size_t attempt, std::optional<size_t> attempts = std::nullopt
+);
 
 //  A checkpoint passed on attempt `attempt`, after `in_place` recoveries in
 //  place:
@@ -54,7 +54,7 @@ std::string checkpoint_pass_line(std::string_view checkpoint, size_t attempt, si
 std::string checkpoint_reset_line(std::string_view checkpoint, size_t next_attempt);
 //  The story engine reloads within segment `segment`, out of `attempts`:
 //      [Segment] 00: 00.02 failed, reloading for attempt 2/3
-std::string checkpoint_reset_line(std::string_view segment, std::string_view checkpoint, size_t next_attempt, size_t attempts);
+std::string segment_reload_line(std::string_view segment, std::string_view checkpoint, size_t next_attempt, size_t attempts);
 
 
 //  What a story run adds to the program's stats.

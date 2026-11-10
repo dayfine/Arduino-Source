@@ -124,7 +124,7 @@ UnitTestResult test_empty_log(){
 
 UnitTestResult test_judge_warp(){
     struct Row{
-        const char* name;
+        std::string name;
         std::vector<Frame> frames;
         SceneChange change;
         WarpJudgement expected;

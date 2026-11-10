@@ -1,19 +1,22 @@
-/*  Story Steps
+/*  Story Step Executor
  *
  *  From: https://github.com/PokemonAutomation/
  *
  */
 
 #include <format>
-#include <memory>
 #include <set>
 #include <utility>
-#include "Pokemon_StoryLog.h"
-#include "Pokemon_StorySteps.h"
+#include "Pokemon_BuiltinStoryActions.h"
+#include "Pokemon_StoryStepExecutor.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
 
+
+Pose pose_of(const GridPose& pose){
+    return tile_pose(pose.map, pose.tiles, pose.facing);
+}
 
 Outcome unsupported_step(const StoryStep& step){
     return outcome_failed("unsupported_step", std::format("{} {}", story_step_kind_name(step.kind), step.name));
@@ -22,8 +25,8 @@ Outcome unsupported_step(const StoryStep& step){
 
 void StoryStepExecutor::begin_attempt(const StoryCheckpoint&){}
 
-bool StoryStepExecutor::holds(const std::string& condition, RunState& state){
-    return state.flags.contains(condition);
+bool StoryStepExecutor::holds(std::string_view condition, RunState& state){
+    return state.flags.contains(std::string(condition));
 }
 
 
@@ -39,7 +42,9 @@ Event story_event(const StoryStep& step, StoryStepExecutor& executor){
     event.act = [&executor, &step](RunState& state){
         return executor.run(state, step);
     };
-    event.pose_learned = step.pose_after;
+    if (step.pose_after){
+        event.pose_learned = pose_of(*step.pose_after);
+    }
     return event;
 }
 
@@ -57,19 +62,6 @@ Event from_save_event(const Pose& start){
 }
 
 } // namespace
-
-Checkpoint build_story_checkpoint(const StoryCheckpoint& data, StoryStepExecutor& executor){
-    executor.begin_attempt(data);
-    Checkpoint checkpoint;
-    checkpoint.id = data.id;
-    if (data.start){
-        checkpoint.events.push_back(from_save_event(*data.start));
-    }
-    for (const StoryStep& step : data.steps){
-        checkpoint.events.push_back(story_event(step, executor));
-    }
-    return checkpoint;
-}
 
 namespace{
 
@@ -91,13 +83,17 @@ void run_once_per_save(Event& event, std::string key, PreparedSteps& prepared){
 
 } // namespace
 
-Checkpoint build_story_checkpoint(const StoryCheckpoint& data, StoryStepExecutor& executor, PreparedSteps& prepared){
-    Checkpoint checkpoint = build_story_checkpoint(data, executor);
-    //  After "from_save", the events are the steps in order.
-    const size_t first = data.start ? 1 : 0;
-    for (size_t c = 0; c < data.steps.size(); c++){
-        if (data.steps[c].once_per_save){
-            run_once_per_save(checkpoint.events[first + c], data.id + "/" + data.steps[c].name, prepared);
+Checkpoint build_story_checkpoint(const StoryCheckpoint& data, StoryStepExecutor& executor, PreparedSteps* prepared){
+    executor.begin_attempt(data);
+    Checkpoint checkpoint;
+    checkpoint.id = data.id;
+    if (data.start){
+        checkpoint.events.push_back(from_save_event(pose_of(*data.start)));
+    }
+    for (const StoryStep& step : data.steps){
+        checkpoint.events.push_back(story_event(step, executor));
+        if (prepared != nullptr && step.once_per_save){
+            run_once_per_save(checkpoint.events.back(), data.id + "/" + step.name, *prepared);
         }
     }
     return checkpoint;
@@ -106,31 +102,29 @@ Checkpoint build_story_checkpoint(const StoryCheckpoint& data, StoryStepExecutor
 
 namespace{
 
-//  What a step of its kind must have, or "" if it has it.
-std::string missing_field(const StoryStep& step){
-    switch (step.kind){
-    case StoryStepKind::ROUTE:
-    case StoryStepKind::READY:
-        return step.target ? "" : "no target";
-    case StoryStepKind::LEGS:
-        if (step.legs.empty()){
-            return "no legs";
-        }
-        for (const StoryLeg& leg : step.legs){
-            if (leg.tiles <= 0){
-                return "a leg of no tiles";
-            }
-        }
-        return "";
-    case StoryStepKind::TRAIN:
-        return step.battles > 0 ? "" : "no battles";
-    case StoryStepKind::SHOP:
-        return step.items.empty() ? "no items" : "";
-    case StoryStepKind::GAME:
-        return step.variant.empty() ? "no variant" : "";
-    default:
-        return "";
+//  What is wrong with a step's action and args, each as a line: a GAME
+//  step without an action, args that don't fit a built-in action's spec,
+//  an empty leg.
+std::vector<std::string> action_problems(const StoryStep& step){
+    if (step.kind == StoryStepKind::GAME){
+        return step.action.empty() ? std::vector<std::string>{"no action"} : std::vector<std::string>{};
     }
+    const StoryActionSpec* spec = find_story_action(builtin_story_actions(), step.kind, step.action);
+    if (spec == nullptr){
+        //  A game's own action: the game checks it when it loads the step.
+        return {};
+    }
+    std::vector<std::string> problems = story_args_errors(*spec, step.args);
+    const std::vector<StoryLeg>* legs = value_if_at_it<std::vector<StoryLeg>>(step.args, step.args.find("legs"));
+    if (legs != nullptr && legs->empty()){
+        problems.emplace_back("no legs");
+    }
+    for (const StoryLeg& leg : legs ? *legs : std::vector<StoryLeg>{}){
+        if (leg.tiles <= 0){
+            problems.emplace_back("a leg of no tiles");
+        }
+    }
+    return problems;
 }
 
 } // namespace
@@ -149,9 +143,8 @@ std::vector<std::string> lint_story_checkpoint(const StoryCheckpoint& data){
         }else if (!names.insert(step.name).second){
             problems.emplace_back(std::format("{}: a second step named {}", where, step.name));
         }
-        const std::string missing = missing_field(step);
-        if (!missing.empty()){
-            problems.emplace_back(std::format("{} {}: {} {}", where, step.name, story_step_kind_name(step.kind), missing));
+        for (const std::string& problem : action_problems(step)){
+            problems.emplace_back(std::format("{} {}: {} {}", where, step.name, story_step_kind_name(step.kind), problem));
         }
         //  skip_if's conditions must all hold; once per save is one more.
         if (step.once_per_save && !step.skip_if.empty()){
@@ -159,32 +152,6 @@ std::vector<std::string> lint_story_checkpoint(const StoryCheckpoint& data){
         }
     }
     return problems;
-}
-
-
-void record_story_stats(AutoStoryStats& stats, const SegmentReport& report){
-    StoryRunCounts counts{.segments = 1, .checkpoints = 0, .resets = report.reloads};
-    for (const CheckpointRun& run : report.runs){
-        if (run.passed){
-            counts.checkpoints++;
-        }
-    }
-    record_story_counts(stats, counts);
-}
-
-
-Pose tile_pose(std::string map, std::vector<TilePos> tiles, std::optional<Direction> facing){
-    Pose pose;
-    pose.map = std::move(map);
-    pose.certainty = tiles.empty() ? PoseCertainty::UNKNOWN
-        : tiles.size() == 1 ? PoseCertainty::TILE : PoseCertainty::SET;
-    pose.where = std::make_shared<const TilePose>(std::move(tiles), facing);
-    return pose;
-}
-
-std::optional<Direction> facing_of(const Pose& pose){
-    const TilePose* tile_pose = dynamic_cast<const TilePose*>(pose.where.get());
-    return tile_pose ? tile_pose->facing : std::nullopt;
 }
 
 

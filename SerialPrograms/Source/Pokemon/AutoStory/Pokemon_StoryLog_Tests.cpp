@@ -9,7 +9,7 @@
 #include <utility>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon_AutoStory_Tests.h"
+#include "Pokemon_StoryRun_Tests.h"
 #include "Pokemon_StoryLog.h"
 
 namespace PokemonAutomation{
@@ -90,7 +90,7 @@ const StoryLogCase STORY_LOG_CASES[] = {
         .expectation = {.line = "[Checkpoint] 00.04: failed, resetting for attempt 2"},
     },
     {
-        .input = {.name = "reload within a segment", .line = checkpoint_reset_line("00", "00.02", 2, 3)},
+        .input = {.name = "reload within a segment", .line = segment_reload_line("00", "00.02", 2, 3)},
         .expectation = {.line = "[Segment] 00: 00.02 failed, reloading for attempt 2/3"},
     },
 };
