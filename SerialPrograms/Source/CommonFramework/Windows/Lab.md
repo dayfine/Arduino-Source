@@ -99,11 +99,11 @@ program runs (`STOPPED`); the commands that only read the screen (`shot`,
 | Command | What it does | Defaults |
 |---|---|---|
 | `press BTN[+BTN] [hold] [release]` | Presses one button, or several together, joined with `+` (e.g. `L+R`). Buttons: `A B X Y L R ZL ZR PLUS MINUS LCLICK RCLICK HOME CAPTURE`. | hold 160, release 160 |
-| `dpad UP\|DOWN\|LEFT\|RIGHT [hold] [release]` | Presses the D-pad. | hold 100, release 200 |
+| `dpad UP\|DOWN\|LEFT\|RIGHT [hold] [release] [BTN[+BTN]]` | Presses the D-pad, holding the buttons with it when given. | hold 100, release 200 |
 | `taps DIR N [all] [hold] [release] [still]` | Taps the D-pad `N` times and measures the screen change (RMSD at 192x108, as `walk`) between the frame before and after each tap. Prints `tap k: change X moved\|still` per tap, `moved` when the change is at least `still`, then `moved M of N`. Stops after two still taps in a row (a wall) unless `N` is followed by `all`. On BDSP a step measures 21 to 50, a bump into a wall or an NPC brushing past 4 to 13. | hold 160, release 640, still 16 |
-| `stick L\|R x y [hold] [release]` | Moves the left or right stick. `x` and `y` run from -1 to 1; `y` is +1 for up. | hold 160, release 160 |
+| `stick L\|R x y [hold] [release] [BTN[+BTN]]` | Moves the left or right stick. `x` and `y` run from -1 to 1; `y` is +1 for up. Buttons, when given, are held for the whole hold: `stick L 0 1 1000 160 B` runs north in BDSP. | hold 160, release 160 |
 | `wait ms` | Waits. | |
-| `walk x y [max] [still]` | Holds the left stick in 200 ms slices until two slices in a row change the screen less than `still`: a wall or someone in the way. Prints `walk still\|limit after N ms, moving M ms` and each slice's change. For measuring maps: a timed `stick` hold moves a different number of tiles from try to try. | max 5000, still 10 |
+| `walk x y [max] [still] [BTN[+BTN]]` | Holds the left stick (and the buttons, when given) in 200 ms slices until two slices in a row change the screen less than `still`: a wall or someone in the way. Prints `walk still\|limit after N ms, moving M ms` and each slice's change. For measuring maps: a timed `stick` hold moves a different number of tiles from try to try. | max 5000, still 10 |
 
 #### Screen
 
