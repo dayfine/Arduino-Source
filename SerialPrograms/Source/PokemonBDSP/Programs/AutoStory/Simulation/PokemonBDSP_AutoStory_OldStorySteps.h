@@ -55,7 +55,8 @@ Pokemon::StoryStep old_west_along_the_field();
 //  00.04's old walk round Mom to (6, 9) and step south onto the mat (6, 10)
 //  for her call: her call fired on (6, 9) at the walk's end, the walk took
 //  it for a trainer and pressed through it, the step went out of the door,
-//  and her hat scene saw no fade (lab-B 2026-11-09 17:29).
+//  and her hat scene saw no fade (lab-B 2026-11-09 17:29). The walker now
+//  hands such a scene to its step; the table runs into her call instead.
 std::vector<Pokemon::StoryStep> old_round_mom_to_the_mat();
 
 

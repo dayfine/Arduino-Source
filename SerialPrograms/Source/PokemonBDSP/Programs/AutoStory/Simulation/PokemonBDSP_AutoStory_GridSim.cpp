@@ -256,6 +256,7 @@ std::optional<SimStop> GridSim::arrive(){
         const bool fired = std::find(m_player.fired.begin(), m_player.fired.end(), trigger.name) != m_player.fired.end();
         if (!fired && std::find(trigger.tiles.begin(), trigger.tiles.end(), tile) != trigger.tiles.end()){
             m_player.fired.push_back(trigger.name);
+            m_player.fired.insert(m_player.fired.end(), trigger.spends.begin(), trigger.spends.end());
             m_player.dialog = true;
             m_player.scene = trigger.name;
             return SimStop::DIALOG;

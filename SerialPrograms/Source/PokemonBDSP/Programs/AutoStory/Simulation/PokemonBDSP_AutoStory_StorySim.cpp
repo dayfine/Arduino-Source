@@ -5,6 +5,7 @@
  */
 
 #include <algorithm>
+#include <cstdlib>
 #include <format>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
@@ -574,6 +575,18 @@ void SimExecutor::start_scene_at_end(const StoryStep& step){
         try{
             trigger.tiles.push_back(story_to_world(m_sim.world(), end->map, tile));
         }catch (const InternalProgramError&){}
+    }
+    //  It is the scene of the trigger next to it, which then does not fire
+    //  again (00.05b's president, a row up).
+    const auto next_to = [&](const TilePos& tile){
+        return std::ranges::any_of(trigger.tiles, [&](const TilePos& early){
+            return std::abs(early.x - tile.x) + std::abs(early.y - tile.y) == 1;
+        });
+    };
+    for (const SimTrigger& other : m_sim.triggers()){
+        if (std::ranges::any_of(other.tiles, next_to)){
+            trigger.spends.push_back(other.name);
+        }
     }
     m_logger.log(std::format("[{}] {}: the next scene starts on its end, {}.", m_row, step.name, Pokemon::to_string(*end)));
     m_sim.add_trigger(std::move(trigger));

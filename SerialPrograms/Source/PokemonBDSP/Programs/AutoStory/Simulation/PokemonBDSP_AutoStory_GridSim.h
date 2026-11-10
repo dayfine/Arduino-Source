@@ -59,10 +59,12 @@ Pokemon::TilePos nearest_tile(const SimPos& pos);
 std::string to_string(const SimPos& pos);
 
 //  A scene that starts when the player steps onto one of `tiles` (a coord
-//  event): its dialogue opens and the player stops. It fires once.
+//  event): its dialogue opens and the player stops. It fires once, and
+//  spends the triggers named in `spends` with it: the same scene's.
 struct SimTrigger{
     std::string name;
     std::vector<Pokemon::TilePos> tiles;
+    std::vector<std::string> spends = {};
 };
 
 //  Where the simulated player walks: the world (which must outlive the
@@ -152,6 +154,9 @@ public:
     //  A scene's trigger on the world the player is on, from now on.
     void add_trigger(SimTrigger trigger){
         m_world.triggers.push_back(std::move(trigger));
+    }
+    const std::vector<SimTrigger>& triggers() const{
+        return m_world.triggers;
     }
     //  A new step starts: the warp a step before stepped onto is not this one's.
     void forget_warp(){
