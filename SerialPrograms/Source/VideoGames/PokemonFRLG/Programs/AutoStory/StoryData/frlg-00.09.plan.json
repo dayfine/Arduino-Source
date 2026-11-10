@@ -1,0 +1,88 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "00.09",
+    "title": "Pewter Gym: Camper Liam, then Brock",
+    "start": {"map": "PewterCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
+    "events": [
+      {
+        "id": "below_liam_line",
+        "kind": "route",
+        "args": {
+          "target": {"map": "PewterCity_Gym", "tiles": [[6, 9]], "facing": "north"}
+        },
+        "why": "in by the door, up column 6 to below Liam's row"
+      },
+      {
+        "id": "liam_line",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "why": "onto (6, 8), in Liam's line"
+      },
+      {
+        "id": "camper_liam",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_CAMPER_LIAM",
+          "foes": ["geodude", "sandshrew"]
+        },
+        "declared_after": {"map": "PewterCity_Gym", "tiles": [[6, 8]], "facing": "north"},
+        "why": "Geodude and Sandshrew; EXP before Brock"
+      },
+      {
+        "id": "ready_for_brock",
+        "kind": "ready",
+        "args": {
+          "target": {"map": "PewterCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
+        },
+        "why": "items for a status or low HP; the nurse only if they can't"
+      },
+      {
+        "id": "before_brock",
+        "kind": "route",
+        "args": {
+          "target": {"map": "PewterCity_Gym", "tiles": [[6, 6]], "facing": "north"}
+        },
+        "why": "below Brock (6, 5); Liam, beaten, stands at (5, 8)"
+      },
+      {
+        "id": "challenge_brock",
+        "kind": "talk",
+        "why": "Brock's speech"
+      },
+      {
+        "id": "brock",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_LEADER_BROCK",
+          "foes": ["geodude", "onix"]
+        },
+        "declared_after": {"map": "PewterCity_Gym", "tiles": [[6, 6]], "facing": "north"},
+        "why": "Geodude and Onix, with Bubble; Boulder Badge and TM39"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "supplies": {
+      "potions": 2,
+      "antidotes": 1,
+      "parlyz_heals": 0
+    },
+    "notes": {
+      "checkpoint": [
+        "The by-hand save: 2 Potions and 1 Antidote left after the forest."
+      ],
+      "below_liam_line": [
+        "Camper Liam (3, 8) always faces east (MOVEMENT_TYPE_FACE_RIGHT, sight 4) and sees (4..7, 8): walking north up column 6 from the door, the step onto (6, 8) starts his battle. He walks up to the player, who stays put and keeps facing north (FRLG doesn't turn the player to a trainer). That step is taken on its own, so no leg is cut."
+      ],
+      "ready_for_brock": [
+        "On to Brock unless red HP or a status is left that no item cures."
+      ]
+    }
+  },
+  "metadata": {"phase": "testing"}
+}
