@@ -16,6 +16,7 @@
 #ifndef PokemonAutomation_PokemonLZA_AutoStoryBackend_H
 #define PokemonAutomation_PokemonLZA_AutoStoryBackend_H
 
+#include <optional>
 #include <string>
 #include <string_view>
 #include "CommonFramework/Language.h"
@@ -100,6 +101,14 @@ private:
     StoryEnv& m_env;
     PlzaScreenObserver m_observer;
     VideoSnapshot m_previous;
+    //  Every look's events, and a frame each time they change (and every
+    //  CAPTURE_EVERY), go to the log and a capture folder: the record of
+    //  what the detectors saw, to find the screens they miss.
+    void capture(const Pokemon::Observation<Pokemon::ZonePose>& look);
+    std::string m_capture_folder;
+    std::optional<PokemonAutomation::ScreenEvents> m_captured_events;
+    WallClock m_captured_at;
+    size_t m_captures = 0;
 };
 
 

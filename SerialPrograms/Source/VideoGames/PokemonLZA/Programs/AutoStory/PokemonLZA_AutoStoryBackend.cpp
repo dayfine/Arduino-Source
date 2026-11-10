@@ -7,6 +7,10 @@
 #include <cmath>
 #include <numbers>
 #include <string>
+#include <format>
+#include "CommonFramework/GlobalAutoPaths.h"
+#include "Common/Cpp/Filesystem/Filesystem.h"
+#include "Common/Cpp/PrettyPrint.h"
 #include "Common/Cpp/Color.h"
 #include "CommonFramework/ImageTools/ImageDiff.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
@@ -90,7 +94,58 @@ Pokemon::Observation<Pokemon::ZonePose> PlzaConsoleBackend::observe(){
     look.when = current_time();
     m_previous = frame;
     look.frame = std::move(frame);
+    capture(look);
     return look;
+}
+
+namespace{
+
+std::string events_text(const PokemonAutomation::ScreenEvents& events){
+    using EngineEvent = PokemonAutomation::ScreenEvent;
+    const std::pair<EngineEvent, const char*> names[] = {
+        {EngineEvent::FADE_BLACK, "fade_black"},
+        {EngineEvent::FADE_WHITE, "fade_white"},
+        {EngineEvent::TEXT_BOX, "text_box"},
+        {EngineEvent::BATTLE, "battle"},
+        {EngineEvent::CAN_MOVE, "can_move"},
+        {EngineEvent::STILL, "still"},
+        {EngineEvent::CHOICE_BOX, "choice_box"},
+        {EngineEvent::INTERACT_PROMPT, "interact_prompt"},
+    };
+    std::string text;
+    for (const auto& [event, name] : names){
+        if (events.has(event)){
+            text += text.empty() ? "" : "+";
+            text += name;
+        }
+    }
+    return text.empty() ? std::string("nothing") : text;
+}
+
+constexpr Milliseconds CAPTURE_EVERY(2000);
+
+} // namespace
+
+void PlzaConsoleBackend::capture(const Pokemon::Observation<Pokemon::ZonePose>& look){
+    if (!look.frame || !look.frame->frame){
+        return;
+    }
+    PokemonAutomation::ScreenEvents events = look.events;
+    const bool changed = !m_captured_events || !(*m_captured_events == events);
+    if (!changed && look.when - m_captured_at < CAPTURE_EVERY){
+        return;
+    }
+    if (m_capture_folder.empty()){
+        m_capture_folder = SCREENSHOTS_PATH() + "PLZA-capture/" + now_to_filestring() + "/";
+        Filesystem::create_directories(Filesystem::Path(m_capture_folder));
+    }
+    m_captures++;
+    const std::string text = events_text(events);
+    const std::string path = std::format("{}{:04}-{}.png", m_capture_folder, m_captures, text);
+    look.frame->frame->save(path);
+    m_env.env.console.log(std::format("[PLZA capture] {:04} {}{}", m_captures, text, changed ? " (changed)" : ""));
+    m_captured_events = events;
+    m_captured_at = look.when;
 }
 
 Pokemon::Outcome PlzaConsoleBackend::battle(const Pokemon::StoryActionArgs&){
