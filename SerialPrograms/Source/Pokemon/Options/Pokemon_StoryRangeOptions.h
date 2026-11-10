@@ -27,8 +27,13 @@ class StoryRangeOptions : public GroupOption{
 public:
     //  `checkpoints`: the dropdown database (make_story_select_database()
     //  or story_checkpoint_database()), kept alive by the caller. The
-    //  dropdowns start on its first and last entries.
-    StoryRangeOptions(std::string label, const StringSelectDatabase& checkpoints);
+    //  dropdowns start on its first and last entries. `end_lock`:
+    //  UNLOCK_WHILE_RUNNING for a program that reads the end after each
+    //  checkpoint, so the end can be moved during a run.
+    StoryRangeOptions(
+        std::string label, const StringSelectDatabase& checkpoints,
+        LockMode end_lock = LockMode::LOCK_WHILE_RUNNING
+    );
 
     //  The checkpoints chosen, by index in the database, both inclusive.
     size_t start_index() const;
