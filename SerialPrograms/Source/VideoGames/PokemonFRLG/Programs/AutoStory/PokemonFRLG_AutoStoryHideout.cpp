@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryHideout.h"
 #include "PokemonFRLG_AutoStoryItemUse.h"
@@ -132,9 +133,14 @@ std::optional<Pokemon::Outcome> run_field_game_step(
     if (!is_item_use_step(step)){
         return std::nullopt;
     }
-    const std::string item = parse_use_item_step(step).value_or("bicycle");
+    if (step.variant == RIDE_BIKE_VARIANT){
+        OverworldWalkSteps::get_on_bike(console, context);
+        return done();
+    }
     ConsoleItemUseActions bag(console, context, language);
-    const ItemUseEnd end = use_item_from_bag(console.logger(), bag, item);
+    const ItemUseEnd end = step.variant == REGISTER_BIKE_VARIANT
+        ? register_item_in_bag(console.logger(), bag, "bicycle")
+        : use_item_from_bag(console.logger(), bag, *parse_use_item_step(step));
     if (end != ItemUseEnd::USED){
         return Pokemon::outcome_failed(std::string("use_item_") + item_use_end_name(end), step.variant);
     }

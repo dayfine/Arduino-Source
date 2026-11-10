@@ -41,9 +41,15 @@ inline constexpr Pokemon::StoryArgSpec USE_ITEM_ARGS[] = {
     {"item", Pokemon::StoryArgType::TEXT, true},
     {"slot", Pokemon::StoryArgType::NUMBER, false},
 };
-//  The GAME step that gets on the Bicycle (the Key Items pocket's BICYCLE,
-//  USE). The ROUTE steps after it ride (BIKE_VARIANT).
+//  The GAME step that gets on the registered Bicycle with SELECT
+//  (OverworldWalkSteps::get_on_bike()). The ROUTE steps after it ride
+//  (BIKE_VARIANT).
 inline const std::string RIDE_BIKE_VARIANT = "ride_bike";
+//  The GAME step that registers the Bicycle for SELECT: the Key Items
+//  pocket's BICYCLE, REGISTER, its menu's second option. Once a save:
+//  the registration is saved with the game, and a save made before it
+//  doesn't have it.
+inline const std::string REGISTER_BIKE_VARIANT = "register_bike";
 
 //  The bag's pockets, in the order LEFT and RIGHT go through them.
 enum class BagPocket{
@@ -80,6 +86,8 @@ public:
     virtual std::vector<BagRow> read_pocket() = 0;
     //  Moves to row `row`, USE, and through what the item says.
     virtual void use_row(size_t row) = 0;
+    //  Moves to row `row` and REGISTERs it for SELECT.
+    virtual void register_row(size_t row) = 0;
     //  Back to the overworld (nothing to do if the item closed the bag).
     virtual void close_bag() = 0;
 };
@@ -100,6 +108,8 @@ const char* item_use_end_name(ItemUseEnd end);
 //  Opens the item's pocket, finds it and uses it, then back to the
 //  overworld.
 ItemUseEnd use_item_from_bag(Logger& logger, ItemUseActions& actions, std::string_view item);
+//  The same, REGISTERing it for SELECT (the Bicycle) instead of USE.
+ItemUseEnd register_item_in_bag(Logger& logger, ItemUseActions& actions, std::string_view item);
 
 //  After "REPEL's effect wore off..." has closed: FRLG asks nothing, so
 //  another of the same Repel is used if the bag has one. NONE_LEFT is no
@@ -115,6 +125,7 @@ public:
     virtual bool open_pocket(BagPocket pocket) override;
     virtual std::vector<BagRow> read_pocket() override;
     virtual void use_row(size_t row) override;
+    virtual void register_row(size_t row) override;
     virtual void close_bag() override;
 
 private:

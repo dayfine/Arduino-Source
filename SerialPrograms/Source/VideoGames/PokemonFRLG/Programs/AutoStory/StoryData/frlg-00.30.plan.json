@@ -16,6 +16,13 @@
         "title": "From Lavender's Center to the Mart: Escape Ropes and Super Repels",
         "events": [
           {
+            "id": "register_bike",
+            "kind": "game_action",
+            "variant": "register_bike",
+            "once_per_save": true,
+            "why": "the BICYCLE (00.26) registered for SELECT, which gets on and off in about 1 s (console B, 2026-11-09); here until 00.26's plan (frlg/stage7-celadon, #224) takes it right after the Bicycle"
+          },
+          {
             "id": "east_of_mart_door",
             "kind": "route",
             "variant": "run",
@@ -62,7 +69,7 @@
             "id": "ride_bike",
             "kind": "game_action",
             "variant": "ride_bike",
-            "why": "on the BICYCLE (00.26, Key Items) for Route 8"
+            "why": "on the BICYCLE with SELECT (registered by register_bike) for Route 8"
           },
           {
             "id": "lavender_west_edge",

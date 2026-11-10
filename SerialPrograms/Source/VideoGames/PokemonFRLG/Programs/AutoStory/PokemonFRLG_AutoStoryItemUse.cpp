@@ -52,7 +52,8 @@ std::optional<std::string> parse_use_item_step(const Pokemon::StoryStep& step){
     return std::string(item);
 }
 bool is_item_use_step(const Pokemon::StoryStep& step){
-    return (step.variant == RIDE_BIKE_VARIANT && step.args.empty()) || parse_use_item_step(step).has_value();
+    const bool bike = step.variant == RIDE_BIKE_VARIANT || step.variant == REGISTER_BIKE_VARIANT;
+    return (bike && step.args.empty()) || parse_use_item_step(step).has_value();
 }
 
 std::optional<size_t> bag_row_of(const std::vector<BagRow>& rows, std::string_view item){
@@ -78,7 +79,13 @@ const char* item_use_end_name(ItemUseEnd end){
     return "?";
 }
 
-ItemUseEnd use_item_from_bag(Logger& logger, ItemUseActions& actions, std::string_view item){
+namespace{
+
+//  Opens the item's pocket, finds it and `uses` it, then back to the
+//  overworld.
+ItemUseEnd with_bag_row(
+    Logger& logger, ItemUseActions& actions, std::string_view item, bool registers
+){
     const std::optional<BagPocket> pocket = usable_item_pocket(item);
     if (!pocket){
         return ItemUseEnd::UNKNOWN_ITEM;
@@ -93,10 +100,23 @@ ItemUseEnd use_item_from_bag(Logger& logger, ItemUseActions& actions, std::strin
         actions.close_bag();
         return ItemUseEnd::NONE_LEFT;
     }
-    logger.log("Bag: using the " + std::string(item) + " on row " + std::to_string(*row + 1) + ".");
-    actions.use_row(*row);
+    logger.log("Bag: " + std::string(registers ? "registering" : "using") + " the " + std::string(item) + " on row " + std::to_string(*row + 1) + ".");
+    if (registers){
+        actions.register_row(*row);
+    }else{
+        actions.use_row(*row);
+    }
     actions.close_bag();
     return ItemUseEnd::USED;
+}
+
+} // namespace
+
+ItemUseEnd use_item_from_bag(Logger& logger, ItemUseActions& actions, std::string_view item){
+    return with_bag_row(logger, actions, item, false);
+}
+ItemUseEnd register_item_in_bag(Logger& logger, ItemUseActions& actions, std::string_view item){
+    return with_bag_row(logger, actions, item, true);
 }
 
 ItemUseEnd renew_repel(Logger& logger, ItemUseActions& actions, std::string_view item){
@@ -163,6 +183,17 @@ void ConsoleItemUseActions::use_row(size_t row){
     }
     //  The item's menu, USE on top.
     pbf_press_button(m_context, BUTTON_A, 160ms, 800ms);
+    pbf_press_button(m_context, BUTTON_A, 160ms, 1500ms);
+}
+
+void ConsoleItemUseActions::register_row(size_t row){
+    for (size_t c = 0; c < row; c++){
+        pbf_press_dpad(m_context, DPAD_DOWN, CURSOR_TAP, CURSOR_WAIT);
+    }
+    //  The item's menu: USE, REGISTER, ... Not timed on the console: the
+    //  USE waits.
+    pbf_press_button(m_context, BUTTON_A, 160ms, 800ms);
+    pbf_press_dpad(m_context, DPAD_DOWN, CURSOR_TAP, CURSOR_WAIT);
     pbf_press_button(m_context, BUTTON_A, 160ms, 1500ms);
 }
 
