@@ -15,6 +15,7 @@
 #include "Kernels/Kernels_Tests.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.h"
 #include "Pokemon/AutoStory/Pokemon_StoryRun_Tests.h"
+#include "Pokemon/Options/Pokemon_StoryRangeOptions_Tests.h"
 #include "CommonFramework/AudioPipeline/AudioInfo_Tests.h"
 #include "CommonFramework/AudioPipeline/Tools/ChannelMixer.h"
 #include "CommonFramework/AudioPipeline/SinkPipeline_Tests.h"
@@ -70,6 +71,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     OCR::add_tests(ret);
     Kernels::add_tests(ret);
     Pokemon::add_tests_AutoStorySelect(ret);
+    Pokemon::add_tests_AutoStoryStats(ret);
     Pokemon::add_tests_StoryLog(ret);
     Pokemon::add_tests_StoryRangeOptions(ret);
     NintendoSwitch::add_tests_CheckOnlineDetector(ret);
