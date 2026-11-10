@@ -11,7 +11,7 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-StoryRangeOptions::StoryRangeOptions(std::string label, const StringSelectDatabase& checkpoints)
+StoryRangeOptions::StoryRangeOptions(std::string label, const StringSelectDatabase& checkpoints, LockMode end_lock)
     : GroupOption(std::move(label), LockMode::LOCK_WHILE_RUNNING)
     , START_CHECKPOINT(
         "<b>Start checkpoint:</b><br>The program starts from this checkpoint's save.",
@@ -22,7 +22,7 @@ StoryRangeOptions::StoryRangeOptions(std::string label, const StringSelectDataba
     , END_CHECKPOINT(
         "<b>End checkpoint:</b><br>The program stops after this checkpoint.",
         checkpoints,
-        LockMode::LOCK_WHILE_RUNNING,
+        end_lock,
         checkpoints.size() == 0 ? 0 : checkpoints.size() - 1
     )
 {
