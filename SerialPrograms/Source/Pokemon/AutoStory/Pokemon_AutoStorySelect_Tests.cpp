@@ -103,6 +103,35 @@ private:
     const AutoStorySelectScenario m_scenario;
 };
 
+// story_checkpoint_database() over a game's checkpoint labels: one entry
+// per label, in order, slugged by its index.
+class Test_StoryCheckpointDatabase : public UnitTest{
+public:
+    Test_StoryCheckpointDatabase()
+        : UnitTest("Pokemon::AutoStorySelectDatabase - checkpoint labels slugged by index")
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const std::vector<std::string> labels = {"00.01 Pallet Town", "00.02 Oak's lab"};
+        const StringSelectDatabase database = story_checkpoint_database(labels);
+        std::vector<std::pair<std::string, std::string>> got;
+        for (const StringSelectEntry& entry : database.case_list()){
+            got.emplace_back(entry.slug, entry.display_name);
+        }
+        const std::vector<std::pair<std::string, std::string>> expected = {
+            {"0", "00.01 Pallet Town"}, {"1", "00.02 Oak's lab"},
+        };
+        if (got != expected){
+            std::string text;
+            for (const auto& [slug, label] : got){
+                text += (text.empty() ? "" : ", ") + slug + " \"" + label + "\"";
+            }
+            return "Expected slugs 0 and 1 over the labels in order, got [" + text + "]";
+        }
+        return true;
+    }
+};
+
 void add_index_tests(UnitTestDatabase& database){
     const AutoStoryIndexScenario scenarios[] = {
         {
@@ -158,6 +187,7 @@ void add_select_database_tests(UnitTestDatabase& database){
     for (const AutoStorySelectScenario& scenario : select_scenarios){
         database.add<Test_AutoStorySelectDatabase>(scenario);
     }
+    database.add<Test_StoryCheckpointDatabase>();
 }
 
 }
