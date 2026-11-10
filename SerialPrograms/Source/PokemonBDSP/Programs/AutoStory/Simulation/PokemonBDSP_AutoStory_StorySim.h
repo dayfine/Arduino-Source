@@ -26,6 +26,7 @@
 #include "CommonFramework/ImageTools/ImageStats.h"
 #include "Pokemon/AutoStory/Pokemon_StoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
+#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_TalkOver.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryActions.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryExecutor.h"
@@ -418,7 +419,7 @@ public:
     }
     virtual void begin_attempt(const Pokemon::StoryCheckpoint& data) override{
         m_row = data.id;
-        m_start_mismatch = data.start ? off_pose(*data.start) : "";
+        m_start_mismatch = data.start ? off_pose(Pokemon::pose_of(*data.start)) : "";
         m_ran.clear();
         m_astray = false;
         m_result.rows.push_back({.row = data.id, .fades = m_misses.fades, .banners = m_misses.banners});
@@ -431,15 +432,15 @@ protected:
     //  A dialog that popped up and is still up stops a step that walks or
     //  talks; a step that presses through text closes it.
     virtual Pokemon::Outcome run_action(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
-    virtual Pokemon::Outcome heal(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
-    virtual Pokemon::Outcome new_game(Pokemon::RunState&, const Pokemon::StoryStep&) override{ return stub(); }
-    virtual Pokemon::Outcome options(Pokemon::RunState&, const Pokemon::StoryStep&) override{ return stub(); }
-    virtual Pokemon::Outcome answer(Pokemon::RunState&, const Pokemon::StoryStep&) override{ return stub(); }
-    virtual Pokemon::Outcome battle(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
-    virtual Pokemon::Outcome train(Pokemon::RunState&, const Pokemon::StoryStep&) override{ return stub(); }
-    virtual Pokemon::Outcome shop(Pokemon::RunState&, const Pokemon::StoryStep&) override{ return stub(); }
-    virtual Pokemon::Outcome save(Pokemon::RunState&, const Pokemon::StoryStep&) override{ return stub(); }
-    virtual Pokemon::Outcome game(Pokemon::RunState&, const Pokemon::StoryStep&) override{ return stub(); }
+    virtual Pokemon::Outcome heal(Pokemon::RunState& state, const Pokemon::StoryStep& step);
+    virtual Pokemon::Outcome new_game(Pokemon::RunState&, const Pokemon::StoryStep&){ return stub(); }
+    virtual Pokemon::Outcome options(Pokemon::RunState&, const Pokemon::StoryStep&){ return stub(); }
+    virtual Pokemon::Outcome answer(Pokemon::RunState&, const Pokemon::StoryStep&){ return stub(); }
+    virtual Pokemon::Outcome battle(Pokemon::RunState& state, const Pokemon::StoryStep& step);
+    virtual Pokemon::Outcome train(Pokemon::RunState&, const Pokemon::StoryStep&){ return stub(); }
+    virtual Pokemon::Outcome shop(Pokemon::RunState&, const Pokemon::StoryStep&){ return stub(); }
+    virtual Pokemon::Outcome save(Pokemon::RunState&, const Pokemon::StoryStep&){ return stub(); }
+    virtual Pokemon::Outcome game(Pokemon::RunState&, const Pokemon::StoryStep&){ return stub(); }
 
 private:
     //  A failed step fails the run as it threw: the simulation has no save

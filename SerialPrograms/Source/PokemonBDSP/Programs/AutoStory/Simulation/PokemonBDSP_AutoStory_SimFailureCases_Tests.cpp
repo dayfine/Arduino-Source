@@ -25,6 +25,9 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
+#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
+#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
+#include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RoutePlanner.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_WallRecovery.h"
@@ -41,7 +44,9 @@ namespace{
 
 using namespace std::chrono_literals;
 using Pokemon::Direction;
+using Pokemon::GridPose;
 using Pokemon::Pose;
+using Pokemon::story_arg;
 using Pokemon::StoryStep;
 using Pokemon::StoryStepKind;
 using Pokemon::TilePos;
@@ -94,14 +99,14 @@ UnitTestResult passes(const std::string& stopped){
 //  warp (3, 22), as before #269 stopped routes two short of warps.
 StoryStep old_walk_beside_the_west_mouth(){
     StoryStep step = table_step("01.05", "through_the_gate");
-    step.target = Pokemon::tile_pose("OreburghGate", {TilePos{4, 22}}, Direction::WEST);
+    step.args["target"] = GridPose{"OreburghGate", {{4, 22}}, Direction::WEST};
     return step;
 }
 
 //  01.05's walk west through the Gate whose last open leg runs a tile on;
 //  the old walk's slides onto the west mouth's warp to Route 203.
 SimWorldKnobs gate_slide(SimFade fade, bool banner_up){
-    const Pose far = *table_step("01.05", "out_of_oreburgh_gate").pose_after;
+    const Pose far = Pokemon::pose_of(*table_step("01.05", "out_of_oreburgh_gate").pose_after);
     return {.slides = {{.step = "through_the_gate", .direction = Direction::WEST, .tiles = 1,
         .far = far, .fade = fade, .banner_up = banner_up}}};
 }
@@ -116,7 +121,7 @@ UnitTestResult gate_plan_one_run(Logger& logger){
     const StoryWorld* world = story_plan_world("OreburghGate", "OreburghGate");
     const std::vector<TilePos> from{story_to_world(*world, "OreburghGate", {27, 22}), story_to_world(*world, "OreburghGate", {26, 22})};
     const TilePos goal = story_to_world(*world, "OreburghGate", {5, 22});
-    const auto plan = plan_recovered_route(*world, from, [&](const TilePos& pos){ return pos == goal; }, *story_route_costs(table_step("01.05", "through_the_gate").variant));
+    const auto plan = plan_recovered_route(*world, from, [&](const TilePos& pos){ return pos == goal; }, *story_route_costs(table_step("01.05", "through_the_gate").action));
     if (!plan){
         return "no plan";
     }
@@ -381,7 +386,7 @@ std::vector<StoryCheckpoint> table_with_row(const std::string& id, const Pose& s
     std::vector<StoryCheckpoint> rows = story_checkpoints();
     for (StoryCheckpoint& checkpoint : rows){
         if (checkpoint.id == id){
-            checkpoint.start = start;
+            checkpoint.start = GridPose{start.map, Pokemon::tiles_of(start), Pokemon::facing_of(start)};
             checkpoint.steps = {step};
         }
     }
@@ -467,7 +472,7 @@ std::string ledge_walk_in_grass(Logger& logger, const std::set<std::string>& ski
     std::vector<StoryCheckpoint> rows = story_checkpoints();
     for (StoryCheckpoint& checkpoint : rows){
         if (checkpoint.id == "00.04"){
-            checkpoint.start = table_step("00.04", "onto_the_path").target;
+            checkpoint.start = story_arg<GridPose>(table_step("00.04", "onto_the_path").args, "target");
             checkpoint.steps = ledge_walk(skip);
         }
     }

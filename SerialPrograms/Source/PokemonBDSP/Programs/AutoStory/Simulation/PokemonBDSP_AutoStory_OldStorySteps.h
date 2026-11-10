@@ -13,7 +13,9 @@
 
 #include <string>
 #include <vector>
-#include "Pokemon/AutoStory/Pokemon_StorySteps.h"
+#include "Pokemon/AutoStory/Pokemon_StoryPose.h"
+#include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

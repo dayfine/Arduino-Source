@@ -115,12 +115,13 @@ std::vector<BenchCase> table_cases(){
         }
         const RouteStepPlan plan = plan_table_route(route);
         const bool run = route.row > std::string(RUNNING_SHOES_ROW);
-        const std::vector<TilePos> goal = world_tiles(*route.world, *route.step->target);
+        const Pokemon::Pose target = Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(route.step->args, "target"));
+        const std::vector<TilePos> goal = world_tiles(*route.world, target);
         cases.push_back({
             .name = name, .world = route.world, .from = plan.start,
-            .goal = goal, .triggers = route.step->variant == ROUTE_ONTO_TRIGGER ? goal : std::vector<TilePos>{},
+            .goal = goal, .triggers = route.step->action == ROUTE_ONTO_TRIGGER ? goal : std::vector<TilePos>{},
             .legs = plan.legs ? walked_legs(*plan.legs, run) : std::vector<ScoredLeg>{},
-            .run = run, .costs = story_route_costs(route.step->variant), .planned = plan.legs.has_value(),
+            .run = run, .costs = story_route_costs(route.step->action), .planned = plan.legs.has_value(),
         });
     }
     return cases;

@@ -48,6 +48,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
+#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon/Navigation/Pokemon_MapData.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h"
@@ -154,12 +155,16 @@ bool already_there(Logger& logger, const StoryCheckpoint& row, size_t c, const P
 //  Whether walk `step` ends where a battle can start: on a route (grass, a
 //  trainer's sight) or in a cave. Towns and rooms have neither.
 bool wild_or_trainers(const StoryStep& step){
-    const std::optional<Pose>& end = step.pose_after ? step.pose_after : step.target;
-    if (!end){
+    std::string map;
+    if (step.pose_after){
+        map = step.pose_after->map;
+    }else if (step.args.contains("target")){
+        map = Pokemon::story_arg<Pokemon::GridPose>(step.args, "target").map;
+    }else{
         return true;
     }
     for (const char* place : {"Route", "Gate", "Mine", "RavagedPath"}){
-        if (end->map.find(place) != std::string::npos){
+        if (map.find(place) != std::string::npos){
             return true;
         }
     }
@@ -258,12 +263,12 @@ UnitTestResult sweep_scene_end_pose(Logger& logger, const StoryCheckpoint& row){
     for (size_t c = 0; c < row.steps.size(); c++){
         const StoryStep& step = row.steps[c];
         if (!game_sets_end(step.kind) || !step.pose_after || PROVEN_SCENE_ENDS.contains(step.name) ||
-            already_there(logger, row, c, *step.pose_after)){
+            already_there(logger, row, c, Pokemon::pose_of(*step.pose_after))){
             continue;
         }
-        for (const TilePos& tile : walkable_neighbors(*step.pose_after)){
+        for (const TilePos& tile : walkable_neighbors(Pokemon::pose_of(*step.pose_after))){
             SimWorldKnobs knobs;
-            knobs.lands[step.name] = Pokemon::tile_pose(step.pose_after->map, {tile}, Pokemon::facing_of(*step.pose_after));
+            knobs.lands[step.name] = Pokemon::tile_pose(step.pose_after->map, {tile}, Pokemon::facing_of(Pokemon::pose_of(*step.pose_after)));
             variants++;
             const std::string stopped = run_row(logger, row.id, std::move(knobs));
             if (!stopped.empty()){
@@ -321,7 +326,7 @@ std::optional<size_t> route_before_scene(const std::vector<StoryStep>& steps, si
         return c - 1;
     }
     const StoryStep& step = steps[c - 1];
-    const bool onto_trigger = step.kind == StoryStepKind::STEP && step.variant.empty() && !step.pose_after;
+    const bool onto_trigger = step.kind == StoryStepKind::STEP && step.action.empty() && !step.pose_after;
     if (onto_trigger && c >= 2 && steps[c - 2].kind == StoryStepKind::ROUTE){
         return c - 2;
     }

@@ -87,6 +87,7 @@ uint32_t step_rng(uint64_t& state){
 } // namespace
 
 
+namespace detail{
 SimPos sim_pos(const TilePos& tile){
     return {tile.x * SIM_TILE, tile.y * SIM_TILE};
 }
@@ -99,8 +100,9 @@ TilePos nearest_tile(const SimPos& pos){
 std::string to_string(const SimPos& pos){
     return std::format("({:g}, {:g})", pos.x / (double)SIM_TILE, pos.y / (double)SIM_TILE);
 }
+} // namespace detail
 
-const char* sim_stop_name(SimStop stop){
+std::string_view sim_stop_name(SimStop stop){
     switch (stop){
     case SimStop::DONE:
         return "done";

@@ -11,7 +11,7 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-const char* direction_name(Direction direction){
+std::string direction_name(Direction direction){
     switch (direction){
     case Direction::NORTH:
         return "north";

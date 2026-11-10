@@ -10,6 +10,9 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
+#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
+#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
+#include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_CoordEvents.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
@@ -22,6 +25,8 @@ namespace PokemonBDSP{
 
 using namespace std::chrono_literals;
 using Pokemon::Direction;
+using Pokemon::GridPose;
+using Pokemon::story_arg;
 using Pokemon::Outcome;
 using Pokemon::Pose;
 using Pokemon::RunState;
@@ -179,7 +184,7 @@ void SimStoryStepIO::walk_until_stopped(Direction direction, size_t tiles, const
         move = m_sim.hold(direction, limit, SimPace::WALK);
     }
     if (move.stop == SimStop::DIALOG || move.stop == SimStop::WARP){
-        m_route.note(label + ": " + sim_stop_name(move.stop) + " instead of a stop.", RouteNote::FAILURE);
+        m_route.note(label + ": " + std::string(sim_stop_name(move.stop)) + " instead of a stop.", RouteNote::FAILURE);
     }
 }
 
@@ -568,7 +573,12 @@ bool SimExecutor::sync(const Pose& pose, const StoryWorld* on){
 }
 
 void SimExecutor::start_scene_at_end(const StoryStep& step){
-    const std::optional<Pose>& end = step.kind == StoryStepKind::ROUTE ? step.target : step.pose_after;
+    std::optional<Pose> end;
+    if (step.kind == StoryStepKind::ROUTE && step.args.contains("target")){
+        end = Pokemon::pose_of(story_arg<GridPose>(step.args, "target"));
+    }else if (step.pose_after){
+        end = Pokemon::pose_of(*step.pose_after);
+    }
     if (!end){
         return;
     }
@@ -677,7 +687,7 @@ Outcome SimExecutor::battle(RunState&, const StoryStep& step){
 //  maps have no warps' destinations.
 std::string SimExecutor::check(const StoryStep& step, const Outcome& outcome){
     const bool walks = step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS || step.kind == StoryStepKind::STEP;
-    const std::optional<Pose> expected = step.pose_after ? step.pose_after : outcome.pose;
+    const std::optional<Pose> expected = step.pose_after ? std::optional<Pose>(Pokemon::pose_of(*step.pose_after)) : outcome.pose;
     if (!walks || !m_placed){
         return "";
     }
@@ -791,7 +801,7 @@ Outcome SimExecutor::run_step(RunState& state, const StoryStep& step){
     if (!m_start_mismatch.empty()){
         return Pokemon::outcome_failed("sim_mismatch", "the row before " + std::exchange(m_start_mismatch, ""));
     }
-    m_far = step.pose_after;
+    m_far = step.pose_after ? std::optional<Pose>(Pokemon::pose_of(*step.pose_after)) : std::nullopt;
     //  A scene goes on from where the step before left us. A route walks
     //  on the world it plans on (Jubilife alone has no Route 204 north of it).
     //  An event of a walking kind (talk_to_wanderer) is the console's.
@@ -799,8 +809,9 @@ Outcome SimExecutor::run_step(RunState& state, const StoryStep& step){
     const bool walks = (step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS ||
         step.kind == StoryStepKind::STEP || step.kind == StoryStepKind::TALK) &&
         action != nullptr && !action->needs_console;
-    const StoryWorld* on = step.kind == StoryStepKind::ROUTE && step.target && !state.pose.map.empty()
-        ? story_plan_world(state.pose.map, step.target->map) : nullptr;
+    const GridPose* target_ptr = step.args.contains("target") ? &story_arg<GridPose>(step.args, "target") : nullptr;
+    const StoryWorld* on = step.kind == StoryStepKind::ROUTE && target_ptr && !state.pose.map.empty()
+        ? story_plan_world(state.pose.map, target_ptr->map) : nullptr;
     //  A world of one map is sim_world()'s, with its people.
     if (on != nullptr && on == story_plan_world(state.pose.map, state.pose.map)){
         on = nullptr;
@@ -849,7 +860,7 @@ Outcome SimExecutor::run(RunState& state, const StoryStep& step){
     if (outcome.succeeded() && step.pose_after){
         m_astray = false;
         m_misplaced = false;
-        sync(*step.pose_after);
+        sync(Pokemon::pose_of(*step.pose_after));
     }
     if (outcome.succeeded()){
         land(step.name);
@@ -887,7 +898,7 @@ Pokemon::SegmentReport run_rows_on(
     std::set<std::string> saved;
     Pokemon::Segment segment = make_story_segment(rows, executor, saved);
     Pokemon::SegmentPolicy policy;
-    policy.stop_at_first_failure = true;
+    policy.attempts_per_checkpoint = 1;
     Pokemon::SegmentHooks hooks;
     hooks.reload = [](RunState&){ return Pokemon::outcome_ok(); };
     hooks.log = [&logger](const std::string& line){ logger.log(line); };

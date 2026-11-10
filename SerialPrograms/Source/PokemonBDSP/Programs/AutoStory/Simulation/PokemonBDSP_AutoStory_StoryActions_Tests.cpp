@@ -43,7 +43,7 @@ std::vector<std::pair<std::string, StoryStep>> story_steps(){
         StoryStep save;
         save.kind = StoryStepKind::SAVE;
         save.name = "save";
-        save.variant = row.saves_in;
+        save.action = row.saves_in;
         out.emplace_back(row.id, std::move(save));
     }
     return out;
@@ -55,8 +55,8 @@ std::vector<std::pair<std::string, StoryStep>> story_steps(){
 //  the simulation's stand-in) for the others; else the base class's.
 std::string old_dispatch(const StoryStep& step){
     const std::string kind = Pokemon::story_step_kind_name(step.kind);
-    if (story_events().contains(step.variant)){
-        return "event " + step.variant;
+    if (story_events().contains(step.action)){
+        return "event " + step.action;
     }
     switch (step.kind){
     case StoryStepKind::ROUTE:
@@ -143,17 +143,17 @@ UnitTestResult test_table_runs_what_the_old_dispatch_ran(Logger& logger){
 
     std::set<std::pair<StoryStepKind, std::string>> seen;
     for (const auto& [row, step] : story_steps()){
-        if (!seen.emplace(step.kind, step.variant).second){
+        if (!seen.emplace(step.kind, step.action).second){
             continue;
         }
         const std::string expected = old_dispatch(step);
         const std::string actual = table_dispatch(table, step);
         if (actual != expected){
             return std::format("{} {} ({} \"{}\"): the table runs \"{}\", the old dispatch ran \"{}\".",
-                row, step.name, Pokemon::story_step_kind_name(step.kind), step.variant, actual, expected);
+                row, step.name, Pokemon::story_step_kind_name(step.kind), step.action, actual, expected);
         }
     }
-    logger.log(std::format("{} (kind, variant) pairs run as before.", seen.size()));
+    logger.log(std::format("{} (kind, action) pairs run as before.", seen.size()));
     return true;
 }
 
@@ -225,7 +225,7 @@ const AutoStoryStoryActionsCase AUTO_STORY_STORY_ACTIONS_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"Story actions: each (kind, variant) runs what the executors' own dispatch ran", test_table_runs_what_the_old_dispatch_ran},
+        .input = {"Story actions: each (kind, action) runs what the executors' own dispatch ran", test_table_runs_what_the_old_dispatch_ran},
         .expectation = {},
     },
     {

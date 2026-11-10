@@ -21,6 +21,7 @@
 #include "Data/PokemonBDSP_AutoStory_RouteRecords.h"
 #include "Data/PokemonBDSP_AutoStory_StoryMaps.h"
 #include "PokemonBDSP_AutoStory_StoryMaps_Tests.h"
+#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "PokemonBDSP_AutoStory_StoryTable.h"
 
 namespace PokemonAutomation{
@@ -114,10 +115,12 @@ UnitTestResult test_sandgem_center_approach(Logger& logger){
         }
         const StoryStep& walls = table_step("00.04b", "above_center_sign");
         const StoryStep& taps = table_step("00.04b", "below_center_door");
+        const auto& walls_legs = Pokemon::story_arg<std::vector<Pokemon::StoryLeg>>(walls.args, "legs");
+        const auto& taps_legs = Pokemon::story_arg<std::vector<Pokemon::StoryLeg>>(taps.args, "legs");
         const TilePos above_sign = sign.next(Direction::NORTH);
         for (TilePos start = entry; standable(town, start); start = start.next(Direction::WEST)){
             TilePos pos = start;
-            for (const Pokemon::StoryLeg& leg : walls.legs){
+            for (const Pokemon::StoryLeg& leg : walls_legs){
                 pos = slide_to_wall(town, pos, leg.direction).stop;
             }
             if (!(pos == above_sign)){
@@ -126,7 +129,7 @@ UnitTestResult test_sandgem_center_approach(Logger& logger){
             }
         }
         TilePos pos = above_sign;
-        for (const Pokemon::StoryLeg& leg : taps.legs){
+        for (const Pokemon::StoryLeg& leg : taps_legs){
             for (int tap = 0; tap < leg.tiles; tap++){
                 const std::optional<TilePos> next = step(town, pos, leg.direction);
                 if (!next){
@@ -139,7 +142,7 @@ UnitTestResult test_sandgem_center_approach(Logger& logger){
             return std::format("The taps end at {}, not below the door {}.", Pokemon::to_string(pos), Pokemon::to_string(door));
         }
         logger.log(std::format("Sandgem: from the road's last row by walls to {}, {} tap legs to below the door {}.",
-            Pokemon::to_string(above_sign), taps.legs.size(), Pokemon::to_string(door)));
+            Pokemon::to_string(above_sign), taps_legs.size(), Pokemon::to_string(door)));
         return true;
 }
 

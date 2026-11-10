@@ -1,0 +1,131 @@
+{
+  "checkpoint": {
+    "events": [
+      {
+        "args": {
+          "fight_wild": false,
+          "legs": [
+            {
+              "direction": "east",
+              "tiles": 22
+            }
+          ],
+          "target": {
+            "map": "VerityLakefront",
+            "tiles": [
+              [
+                17,
+                21
+              ]
+            ]
+          }
+        },
+        "id": "into_rowans_scene",
+        "kind": "route",
+        "why": "south to the Lakefront's wall, then east onto Route 201 until Rowan's scene starts: 20 tiles, 22 at most"
+      },
+      {
+        "declared_after": {
+          "facing": "east",
+          "map": "PlayerHouse1F",
+          "tiles": [
+            [
+              6,
+              8
+            ]
+          ]
+        },
+        "id": "rowan_and_dawn",
+        "kind": "scene",
+        "why": "Rowan and Dawn come back; Barry, then home for the Running Shoes"
+      },
+      {
+        "action": "or_legs",
+        "args": {
+          "direction": "south",
+          "legs": [
+            {
+              "direction": "east",
+              "tiles": 1
+            }
+          ]
+        },
+        "declared_after": {
+          "facing": "south",
+          "map": "TwinleafTown",
+          "tiles": [
+            [
+              20,
+              22
+            ]
+          ]
+        },
+        "id": "out_of_the_house_again",
+        "kind": "step",
+        "why": "south onto the door's tile (6, 10), and out; from column 5, east onto the mat first"
+      },
+      {
+        "args": {
+          "fight_wild": false,
+          "legs": [
+            {
+              "direction": "east",
+              "tiles": 8
+            }
+          ],
+          "target": {
+            "facing": "east",
+            "map": "Route201",
+            "tiles": [
+              [
+                63,
+                5
+              ]
+            ]
+          }
+        },
+        "id": "into_dawns_scene",
+        "kind": "route",
+        "why": "Twinleaf, then east along Route 201 to its edge and on into Sandgem until Dawn's scene starts"
+      },
+      {
+        "action": "a",
+        "declared_after": {
+          "facing": "north",
+          "map": "RowansLab",
+          "tiles": [
+            [
+              7,
+              6
+            ]
+          ]
+        },
+        "id": "rowan_gives_pokedex",
+        "kind": "scene",
+        "why": "Dawn walks us to the lab: Rowan, no nickname, the Pokedex"
+      }
+    ],
+    "id": "00.03",
+    "start": {
+      "facing": "south",
+      "map": "VerityLakefront",
+      "tiles": [
+        [
+          17,
+          14
+        ],
+        [
+          17,
+          15
+        ]
+      ]
+    },
+    "title": "Back to Sandgem: Rowan, Dawn and the Pokedex"
+  },
+  "execution": {
+    "on_failure": "reload_and_retry",
+    "saves_in": "Twinleaf Town"
+  },
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "bdsp"
+}
