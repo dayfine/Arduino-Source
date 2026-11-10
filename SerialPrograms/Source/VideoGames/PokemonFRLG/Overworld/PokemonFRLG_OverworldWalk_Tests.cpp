@@ -118,6 +118,16 @@ const OverworldWalkTestCase OVERWORLD_WALK_CASES[] = {
         .input = {.name = "walk, surfing", .speed = MoveSpeed::WALK, .tiles = 3, .to_wall = false, .surfing = true},
         .expectation = {.hold = Milliseconds(2 * 133 + 66), .note = ""},
     },
+    //  Console B, 2026-11-09: on the bike, 1450ms moved 15 tiles and 50ms
+    //  (a tap) one; 1736ms, held for "west 16 (open)", went past 16.
+    {
+        .input = {.name = "bike, open 16", .speed = MoveSpeed::BIKE, .tiles = 16, .to_wall = false, .surfing = false},
+        .expectation = {.hold = Milliseconds(1550), .note = ""},
+    },
+    {
+        .input = {.name = "bike, open 1", .speed = MoveSpeed::BIKE, .tiles = 1, .to_wall = false, .surfing = false},
+        .expectation = {.hold = Milliseconds(50), .note = ""},
+    },
 };
 
 

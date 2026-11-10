@@ -48,12 +48,16 @@ inline constexpr Milliseconds TILE_TIME(267);
 inline constexpr Milliseconds RUN_TILE_TIME(133);
 //  Surfing: a tile per 8 frames.
 inline constexpr Milliseconds SURF_TILE_TIME(133);
-//  Riding the Bicycle, measured on console B (2026-11-09, Lavender Town
-//  row 13, wall to wall, from rest): 16 tiles (1, 13) to (17, 13) in
-//  1800 ms of motion, east and back west alike, 112 ms a tile; 5 tiles
-//  from rest in 600 ms (120 ms a tile, the start up included). Not the
-//  decompilation's 4 frames a tile (67 ms): the bike speeds up from rest.
-inline constexpr Milliseconds BIKE_TILE_TIME(112);
+//  Riding the Bicycle, measured on console B (2026-11-09, Lavender Town,
+//  east from the rock west of the Center, from rest, counted back with
+//  one-tile taps): holds of 450, 500, 650, 700, 900, 950, 1100, 1250,
+//  1300, 1450 and 1500ms moved 5, 5, 7, 7, 9, 10, 11, 13, 13, 15 and 15
+//  tiles, the same each time: a tile per 100ms, so an open leg's hold of
+//  (n - 1) tiles and a half moves n. 112ms a tile (a wall-to-wall time
+//  of the motion on screen) held "west 16 (open)" for 17 or 18 tiles on
+//  Route 8 (00.30 run 2). Not the decompilation's 4 frames a tile (67ms):
+//  the bike speeds up from rest.
+inline constexpr Milliseconds BIKE_TILE_TIME(100);
 //  On the Bicycle a tap never only turns the player: from rest, a 40ms tap
 //  moved a tile facing either way, and holds of 112, 150, 200, 250, 300,
 //  336 and 400ms moved 1, 2, 2, 3, 3, 4 and 4 tiles (console B,
