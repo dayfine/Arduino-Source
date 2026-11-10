@@ -4,6 +4,7 @@
  *
  */
 
+#include <algorithm>
 #include <format>
 #include <memory>
 #include <optional>
@@ -61,20 +62,25 @@ struct StepWalk{
     bool blocked = false;
 };
 
-//  TODO(forest drift, 2026-11-01): the threshold is a diagnostic's guess.
-//  How much the game screen's top quarter, clear of the player in the
-//  middle, may change when a tap toward a wall only bumps the player (the
-//  player's own animation, an animated tile). A step scrolls the whole map
-//  by a tile. Not yet measured on the console: a guess on the safe side.
-constexpr double WALL_TAP_MOVED_RMSD = 20.0;
+} // namespace
 
-//  How much the top quarter of the game screen changed from `before` to
-//  `after`: a step scrolls it by a tile.
-double top_band_change(const ImageViewRGB32& before, const ImageViewRGB32& after){
-    const ImageFloatBox game = GameSettings::instance().GAME_BOX;
-    const ImageFloatBox band(game.x, game.y, game.width, game.height * 0.25);
-    return ImageMatch::pixel_RMSD(extract_box_reference(before, band), extract_box_reference(after, band));
+double tap_scroll_change(const ImageViewRGB32& before, const ImageViewRGB32& after, const ImageFloatBox& game){
+    const double w = game.width * 0.25;
+    const double h = game.height * 0.25;
+    const ImageFloatBox bands[] = {
+        {game.x, game.y, game.width, h},
+        {game.x, game.y + game.height - h, game.width, h},
+        {game.x, game.y, w, game.height},
+        {game.x + game.width - w, game.y, w, game.height},
+    };
+    double most = 0;
+    for (const ImageFloatBox& band : bands){
+        most = std::max(most, ImageMatch::pixel_RMSD(extract_box_reference(before, band), extract_box_reference(after, band)));
+    }
+    return most;
 }
+
+namespace{
 
 //  A counted tap's press, its release and the wait after it for the
 //  screen to show the step.
@@ -116,7 +122,7 @@ BikeTap console_bike_tap(
         return BikeTap{.moved = false, .interrupt = (size_t)ret};
     }
     const VideoSnapshot after = console.video().snapshot();
-    if (before && after && top_band_change(before, after) > WALL_TAP_MOVED_RMSD){
+    if (before && after && tap_scroll_change(before, after, GameSettings::instance().GAME_BOX) > WALL_TAP_MOVED_RMSD){
         return BikeTap{.moved = true};
     }
     const bool late = Pokemon::clear_late_interrupts(console, context, interrupts, AFTER_LEG_WATCH, MAX_INTERRUPTIONS_PER_LEG) > 0;
@@ -411,7 +417,7 @@ bool moved_past_wall(ConsoleHandle& console, ProControllerContext& context, cons
     if (!before || !after){
         return false;
     }
-    const double change = top_band_change(before, after);
+    const double change = tap_scroll_change(before, after, GameSettings::instance().GAME_BOX);
     console.log(std::format("Position check: a tap toward the wall of {} changed the screen by {:.1f}.", to_string(step), change));
     return change > WALL_TAP_MOVED_RMSD;
 }
