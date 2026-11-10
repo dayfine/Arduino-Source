@@ -96,6 +96,9 @@ Pokemon::Observation<Pokemon::ZonePose> PlzaConsoleBackend::observe(){
         if (m_autosave.detect(*frame.frame)){
             look.readings[std::string(AUTOSAVE_READING)] = 1;
         }
+        if (m_controls_hint.detect(*frame.frame)){
+            look.readings[std::string(CONTROLS_HINT_READING)] = 1;
+        }
         if (same_screen(m_previous, frame)){
             look.events.add(PokemonAutomation::ScreenEvent::STILL);
         }
@@ -132,7 +135,7 @@ std::string events_text(const PokemonAutomation::ScreenEvents& events){
 }
 
 //  The look's events and readings: "fade_black+still",
-//  "nothing+skip_prompt", "can_move+platform+autosave".
+//  "nothing+skip_prompt", "can_move+platform+autosave+controls_hint".
 std::string look_text(const ScreenObservation& look){
     std::string text = events_text(look.events);
     if (look.readings.contains(PLATFORM_READING)){
@@ -143,6 +146,9 @@ std::string look_text(const ScreenObservation& look){
     }
     if (look.readings.contains(AUTOSAVE_READING)){
         text += "+autosave";
+    }
+    if (look.readings.contains(CONTROLS_HINT_READING)){
+        text += "+controls_hint";
     }
     return text;
 }

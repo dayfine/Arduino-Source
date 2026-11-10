@@ -176,15 +176,16 @@ public:
         };
     }
 
-    //  "mash_to_move_hints": the overworld, or nothing busy for the quiet
-    //  time once the scene's rough length has passed (the tutorial shows no
-    //  party bar; its cutscenes hold still frames longer than the quiet).
+    //  "mash_to_move_hints": A through the scenes (a choice takes its top
+    //  row) until the player has control: the controls hint or the party
+    //  bar held a second. A text-free cutscene (01.01's city flyover, ~20
+    //  s) is not control: nothing busy for the quiet time fails the step.
     static Handler move_hints(){
         return [](Pokemon::StoryBackend<ZonePose>& backend, Pokemon::RunState&, const StoryActionCall& call){
             SceneMachineConfig config;
             config.quiet = Milliseconds(Pokemon::story_arg<int64_t>(call.args, "quiet_ms"));
             config.min_length = Milliseconds(Pokemon::story_arg<int64_t>(call.args, "min_length_ms"));
-            return run_scene_machine(backend, "mash_to_move_hints", config, 180s);
+            return run_scene_machine(backend, "mash_to_move_hints", config, 240s);
         };
     }
 
@@ -429,8 +430,8 @@ std::vector<StoryActionSpec> plza_story_action_specs(){
         console_only(StoryActionSpec{.kind = StoryStepKind::HEAL, .name = "heal", .args = {}}),
         console_only(builtin_spec(StoryStepKind::SHOP, "shop")),
         game_spec("mash_to_move_hints", {
-            optional_ms("min_length_ms", 0, "the scene's rough length: no quiet end before it"),
-            optional_ms("quiet_ms", 8000, "nothing busy this long ends the scene"),
+            optional_ms("min_length_ms", 0, "the scene's rough length: no quiet failure before it"),
+            optional_ms("quiet_ms", 60000, "nothing busy and no control this long fails the step"),
         }),
         game_spec("wait_for_platform", {
             optional_ms("timeout_ms", 180000, "no platform this long fails the step"),

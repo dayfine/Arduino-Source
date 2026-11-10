@@ -8,7 +8,10 @@
  *  - PLZA_OPENING_FRAMES: platform_ref.png and the lab's cutscene,
  *    0001-*.png ... 0056-*.png;
  *  - PLZA_USER_OPENING_FRAMES: the user's run, rec1_u001.png ...
- *    rec1_u146.png, one per ~1.5 s, with the autosave badge (in Chinese).
+ *    rec1_u146.png, one per ~1.5 s, with the autosave badge (in Chinese);
+ *  - PLZA_0101_RUN1_FRAMES: 01.01's first run (2026-11-10 13:00, in
+ *    Chinese), 0001-*.png ... 0089-*.png: the platform with the controls
+ *    hint, the walk to the plaza and the arrival scenes.
  *
  */
 
@@ -57,6 +60,16 @@ ImageRGB32 skip_badge_frame(){
     return image;
 }
 
+//  The controls hint's card drawn on black: sky blue with a dark block for
+//  the top of its "?".
+ImageRGB32 controls_hint_frame(){
+    ImageRGB32 image(WIDTH, HEIGHT);
+    image.fill(0xff000000);
+    fill_box(image, 946, 868, 972, 902, 0xff7dd2fa);
+    fill_box(image, 956, 879, 962, 886, 0xff1c7db0);
+    return image;
+}
+
 UnitTestResult test_synthetic_platform(Logger& logger){
     const ImageRGB32 reference = platform_reference_image(WIDTH, HEIGHT);
     const PlatformDistances same = platform_distances(reference);
@@ -95,6 +108,15 @@ UnitTestResult test_synthetic_badges(Logger&){
     if (autosave.detect(white) || autosave.detect(black) || autosave.detect(skip_badge_frame())){
         return "Expected a white, black or skip-badge frame not to be the autosave badge.";
     }
+    ControlsHintDetector hint;
+    if (!hint.detect(controls_hint_frame()) || hint.detect(white) || hint.detect(black)){
+        return "Expected the drawn card, and no white or black frame, to be the controls hint.";
+    }
+    ImageRGB32 sky(WIDTH, HEIGHT);
+    sky.fill(0xff7dd2fa);
+    if (hint.detect(sky)){
+        return "Expected a frame all in the card's blue (a sky) not to be the controls hint.";
+    }
     return true;
 }
 
@@ -103,23 +125,45 @@ struct FrameExpectation{
     bool platform;
     bool skip_prompt;
     bool autosave;
+    bool controls_hint;
 };
 
 //  The lab's opening: platform_ref.png is the platform, no cutscene frame
-//  0001-0056 is; only 0050 shows the skip prompt.
+//  0001-0056 is; only 0050 shows the skip prompt. The platform reference
+//  was taken after the controls hint had gone.
 std::optional<FrameExpectation> lab_opening(const std::string& name){
-    return FrameExpectation{.platform = name == "platform_ref.png", .skip_prompt = name.starts_with("0050-"), .autosave = false};
+    return FrameExpectation{
+        .platform = name == "platform_ref.png", .skip_prompt = name.starts_with("0050-"),
+        .autosave = false, .controls_hint = false,
+    };
 }
 
 //  The user's run rec1_u001-u146: the platform settles at u131 (u124-u130
 //  are the fade in and the camera moving in), the autosave badge shows on
-//  u132 only, no skip prompt. Later frames of the folder are not in the set.
+//  u132 only, the controls hint on u132-u138 (~10 s), no skip prompt.
+//  Later frames of the folder are not in the set.
 std::optional<FrameExpectation> user_opening(const std::string& name){
     const int index = std::stoi(name.substr(6, 3));
     if (index > 146){
         return std::nullopt;
     }
-    return FrameExpectation{.platform = index >= 131, .skip_prompt = false, .autosave = index == 132};
+    return FrameExpectation{
+        .platform = index >= 131, .skip_prompt = false,
+        .autosave = index == 132, .controls_hint = index >= 132 && index <= 138,
+    };
+}
+
+//  01.01's first run: the platform (0001-0003, as the run read it) and the
+//  walk with the controls hint (0001-0006; it is gone by 0007), then the
+//  white fade, the title card, the text-free flyover, the starters and the
+//  girl, the tourist choice (0065) and the ad (0080-0089): no free control.
+//  No autosave: the run took flyover frames 0033 and 0038 for one.
+std::optional<FrameExpectation> run1_arrival(const std::string& name){
+    const int index = std::stoi(name.substr(0, 4));
+    return FrameExpectation{
+        .platform = name.find("+platform") != std::string::npos, .skip_prompt = false,
+        .autosave = false, .controls_hint = index <= 6,
+    };
 }
 
 //  The frames `prefix`*.png in `folder` that `expect` has an expectation
@@ -131,6 +175,7 @@ UnitTestResult check_frames(
     PlatformArrivalDetector platform;
     SkipPromptDetector skip;
     AutosaveDetector autosave;
+    ControlsHintDetector hint;
     size_t frames = 0;
     std::string failures;
     for (const Filesystem::Path& path : Filesystem::list_directory(Filesystem::Path(folder))){
@@ -141,10 +186,16 @@ UnitTestResult check_frames(
             continue;
         }
         const ImageRGB32 frame(path.string());
-        const FrameExpectation got{.platform = platform.detect(frame), .skip_prompt = skip.detect(frame), .autosave = autosave.detect(frame)};
-        logger.log(std::format("{}: {}{}{}{}", name, to_string(platform.last_distances()),
-            got.platform ? ", platform" : "", got.skip_prompt ? ", skip prompt" : "", got.autosave ? ", autosave" : ""));
-        if (got.platform != want->platform || got.skip_prompt != want->skip_prompt || got.autosave != want->autosave){
+        const FrameExpectation got{
+            .platform = platform.detect(frame), .skip_prompt = skip.detect(frame),
+            .autosave = autosave.detect(frame), .controls_hint = hint.detect(frame),
+        };
+        logger.log(std::format("{}: {}{}{}{}{}", name, to_string(platform.last_distances()),
+            got.platform ? ", platform" : "", got.skip_prompt ? ", skip prompt" : "",
+            got.autosave ? ", autosave" : "", got.controls_hint ? ", controls hint" : ""));
+        if (got.platform != want->platform || got.skip_prompt != want->skip_prompt ||
+            got.autosave != want->autosave || got.controls_hint != want->controls_hint
+        ){
             failures += " " + name;
         }
         frames++;
@@ -184,6 +235,14 @@ UnitTestResult test_user_opening_frames(Logger& logger){
     return check_frames(logger, folder, "rec1_u", 146, user_opening);
 }
 
+UnitTestResult test_run1_arrival_frames(Logger& logger){
+    const std::string folder = frames_folder("PLZA_0101_RUN1_FRAMES");
+    if (folder.empty()){
+        return UnitTestResult(UnitTestResult::SKIPPED, "PLZA_0101_RUN1_FRAMES is not a folder.");
+    }
+    return check_frames(logger, folder, "00", 89, run1_arrival);
+}
+
 
 struct OpeningTestInput{
     std::string name;
@@ -218,9 +277,10 @@ private:
 
 const OpeningTestCase OPENING_TEST_CASES[] = {
     {.input = {"platform: synthetic frames", test_synthetic_platform}, .expectation = {}},
-    {.input = {"skip prompt and autosave: synthetic frames", test_synthetic_badges}, .expectation = {}},
+    {.input = {"skip prompt, autosave and controls hint: synthetic frames", test_synthetic_badges}, .expectation = {}},
     {.input = {"the lab's opening frames (PLZA_OPENING_FRAMES)", test_lab_opening_frames}, .expectation = {}},
     {.input = {"the user's opening frames (PLZA_USER_OPENING_FRAMES)", test_user_opening_frames}, .expectation = {}},
+    {.input = {"01.01 run 1's arrival frames (PLZA_0101_RUN1_FRAMES)", test_run1_arrival_frames}, .expectation = {}},
 };
 
 void add_tests_AutoStoryOpeningDetectors(UnitTestDatabase& database){

@@ -80,7 +80,7 @@ private:
 
 //  Registers the tests of these and the badge detectors: synthetic frames always; the opening's
 //  frames from the folders in PLZA_OPENING_FRAMES and PLZA_USER_OPENING_FRAMES,
-//  each skipped when unset.
+//  and 01.01's from PLZA_0101_RUN1_FRAMES, each skipped when unset.
 void add_tests_AutoStoryOpeningDetectors(UnitTestDatabase& database);
 
 

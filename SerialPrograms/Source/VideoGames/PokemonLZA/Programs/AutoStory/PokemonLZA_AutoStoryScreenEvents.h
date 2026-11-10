@@ -34,8 +34,8 @@ namespace PokemonLZA{
 //  - PLAYER_CAN_MOVE: the party bar at the bottom left, with no box;
 //  - FADE_BLACK / FADE_WHITE: fade_of_screen().
 //  Follow-up: the party bar is missed in some rooms (Hotel Z's hall,
-//  za2_m3x), and the tutorial's "Move / Control Camera" hint has no detector
-//  yet; both need frames measured before PLAYER_CAN_MOVE leans on them.
+//  za2_m3x). The tutorial's "Move / Control Camera" hint is the story
+//  backend's CONTROLS_HINT_READING (ControlsHintDetector), not an event here.
 class PlzaScreenObserver : public Pokemon::ScreenEventObserver{
 public:
     PlzaScreenObserver();
