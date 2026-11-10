@@ -120,9 +120,24 @@ void StoryWalkSteps::begin_attempt(const std::string& row, const std::vector<Sto
     m_trainers.clear();
     m_warp = {};
     m_scene_next.clear();
+    m_scene_open = false;
+    //  A route right before a scene, or before a plain step onto the scene's
+    //  trigger (the decomp's tile, which the console may have elsewhere).
+    const auto onto_trigger = [](const StoryStep& step){
+        return step.kind == Pokemon::StoryStepKind::STEP && step.variant.empty() && !step.pose_after;
+    };
+    const auto route = [](const StoryStep& step){
+        return step.kind == Pokemon::StoryStepKind::ROUTE;
+    };
     for (size_t c = 1; c < steps.size(); c++){
-        if (steps[c].kind == Pokemon::StoryStepKind::MASH){
+        if (steps[c].kind != Pokemon::StoryStepKind::MASH){
+            continue;
+        }
+        if (route(steps[c - 1])){
             m_scene_next.insert(steps[c - 1].name);
+        }
+        if (c >= 2 && onto_trigger(steps[c - 1]) && route(steps[c - 2])){
+            m_scene_next.insert(steps[c - 2].name);
         }
     }
 }
@@ -166,7 +181,7 @@ Pose StoryWalkSteps::walk_to(const Pose& from, const Pose& goal, const StoryStep
     RouteEnd end = walk_route_to_warp(m_io.route(), *maps, start, trainers, plan);
     sights = std::move(trainers.sights);
     m_warp = std::move(end.warp);
-    m_scene_started = end.scene;
+    m_scene_open = end.scene;
     std::vector<TilePos> local;
     for (const TilePos& pos : end.tiles){
         const std::optional<TilePos> tile = story_to_local(*maps, goal.map, pos);
@@ -185,7 +200,7 @@ Outcome StoryWalkSteps::route(RunState& state, const StoryStep& step){
     }
     const Pose end = walk_to(state.pose, *step.target, step);
     //  The next step's scene started on the way: its step plays it.
-    if (step.legs.empty() || m_scene_started){
+    if (step.legs.empty() || m_scene_open){
         return Pokemon::outcome_ok(end);
     }
     return run_to_dialogue(step);
@@ -513,6 +528,7 @@ Outcome StoryWalkSteps::counted_wall(const Pose& from, const StoryStep& step){
 
 Outcome StoryWalkSteps::legs(RunState& state, const StoryStep& step){
     m_warp = {};
+    m_scene_open = false;
     if (step.variant == "counted_wall"){
         return counted_wall(state.pose, step);
     }
@@ -571,6 +587,17 @@ Outcome StoryWalkSteps::step(RunState& state, const StoryStep& step){
         m_io.settle(BUTTON_B, label_of(step), !seen.any(), banner);
         return Pokemon::outcome_ok();
     }
+    return one_step(state, step);
+}
+
+//  A plain D-pad step: onto a scene's trigger, mostly. Not taken when the
+//  route before ran into that scene already (RouteEnd::scene): it holds us
+//  where it started.
+Outcome StoryWalkSteps::one_step(const RunState& state, const StoryStep& step){
+    if (std::exchange(m_scene_open, false)){
+        log(std::format("[{}] {}: its scene started on the walk before; no step.", m_row, step.name));
+        return Pokemon::outcome_ok(state.pose);
+    }
     turn(step.direction);
     const WalkResult walk = m_io.route().walk_taps(step.direction, 1, step.name);
     if (walk.wild_battles > 0){
@@ -586,6 +613,7 @@ Outcome StoryWalkSteps::step(RunState& state, const StoryStep& step){
 
 Outcome StoryWalkSteps::talk(RunState& state, const StoryStep& step){
     m_warp = {};
+    m_scene_open = false;
     //  Face whom we talk to: a route ends facing its last leg, not its goal
     //  (r40 reached Mom facing north). They block the tile, so the tap only turns.
     if (const std::optional<Direction> facing = Pokemon::facing_of(state.pose)){
@@ -603,6 +631,7 @@ Outcome StoryWalkSteps::talk(RunState& state, const StoryStep& step){
 
 Outcome StoryWalkSteps::mash(RunState& state, const StoryStep& step){
     m_warp = {};
+    m_scene_open = false;
     //  The step before may have played the scene already (a door step settles
     //  its arrival scene), so its first line is not required.
     if (!m_io.route().dialog_within(15000ms, COLOR_CYAN)){

@@ -66,8 +66,9 @@ public:
 
     //  A new attempt of the row `row`: every trainer can see us again, and
     //  the pace is the row's save's (a run after the Running Shoes). With
-    //  the row's `steps`, a route followed by a scene hands a dialogue that
-    //  starts on the way to that scene (RouteWalkPlan::scene_next).
+    //  the row's `steps`, a route followed by a scene, or by a plain step onto
+    //  the scene's trigger, hands a dialogue that starts on the way to that
+    //  scene (RouteWalkPlan::scene_next).
     void begin_attempt(const std::string& row, const std::vector<Pokemon::StoryStep>& steps = {});
     //  Whether the player has the Running Shoes: the pace routes are timed at.
     bool can_run() const{
@@ -100,6 +101,7 @@ private:
     Pokemon::Outcome measured_legs(const Pokemon::Pose& from, const Pokemon::StoryStep& step);
     Pokemon::Outcome run_to_dialogue(const Pokemon::StoryStep& step);
     Pokemon::Outcome leg_to_map(const Pokemon::StoryStep& step);
+    Pokemon::Outcome one_step(const Pokemon::RunState& state, const Pokemon::StoryStep& step);
     Pokemon::Outcome tap_to_banner(const Pokemon::Pose& from, const Pokemon::StoryStep& step);
     bool through_already(const Pokemon::StoryStep& step);
     WarpSeen door_from_beside(const Pokemon::StoryStep& step, const WarpSeen& seen, Milliseconds timeout, const std::string& banner);
@@ -118,8 +120,9 @@ private:
     WarpSeen m_warp;
     //  The row's steps followed by a scene (begin_attempt()).
     std::set<std::string> m_scene_next;
-    //  The last route ended in the next step's scene (RouteEnd::scene).
-    bool m_scene_started = false;
+    //  The last route ended in the scene of the step after it, or after the
+    //  plain step onto its trigger (RouteEnd::scene); that step is not taken.
+    bool m_scene_open = false;
 };
 
 
