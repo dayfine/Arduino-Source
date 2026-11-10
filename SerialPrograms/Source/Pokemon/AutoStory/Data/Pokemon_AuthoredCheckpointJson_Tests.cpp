@@ -4,6 +4,7 @@
  *
  */
 
+#include <format>
 #include <iostream>
 #include <string>
 #include <utility>
@@ -12,7 +13,7 @@
 #include "Pokemon_AuthoredCheckpointJson.h"
 #include "Pokemon_StoryStepJson.h"
 #ifndef PA_STORY_DATA_STANDALONE
-#include "Pokemon/AutoStory/Pokemon_StoryStep_Tests.h"
+#include "Pokemon_AuthoredCheckpointJson_Tests.h"
 #endif
 
 namespace PokemonAutomation{
@@ -94,10 +95,10 @@ std::string check_loaded(const Loaded& actual, const AuthoredCase& test){
         return "Expected rejection, read accepted authored checkpoint.";
     }
     if (actual.checkpoint.id != test.expectation.checkpoint){
-        return "Expected checkpoint " + test.expectation.checkpoint + ", read " + actual.checkpoint.id;
+        return std::format("Expected checkpoint {}, read {}", test.expectation.checkpoint, actual.checkpoint.id);
     }
     if (!(JsonValue(actual.execution.clone()) == parse_json(test.expectation.execution))){
-        return "Expected execution " + test.expectation.execution + ", read " + actual.execution.dump();
+        return std::format("Expected execution {}, read {}", test.expectation.execution, actual.execution.dump());
     }
     std::vector<std::string> events;
     for (const StoryStep& step : actual.checkpoint.steps){
@@ -125,9 +126,9 @@ std::string check_case(const AuthoredCase& test){
             : read_authored_checkpoint(parse_json(test.input.json), test.input.game, test.input.name, keep_execution(actual.execution));
         return check_loaded(actual, test);
     }catch (const ParseException& error){
-        return test.expectation.failure == Failure::PARSE ? "" : "Unexpected parse failure: " + error.message();
+        return test.expectation.failure == Failure::PARSE ? "" : std::format("Unexpected parse failure: {}", error.message());
     }catch (const InternalProgramError& error){
-        return test.expectation.failure == Failure::MISSING_RESOURCE ? "" : "Unexpected resource failure: " + error.message();
+        return test.expectation.failure == Failure::MISSING_RESOURCE ? "" : std::format("Unexpected resource failure: {}", error.message());
     }
 }
 
@@ -137,7 +138,7 @@ std::string check_case(const AuthoredCase& test){
 class AuthoredJsonTest : public UnitTest{
 public:
     explicit AuthoredJsonTest(AuthoredCase test)
-        : UnitTest("Pokemon::AuthoredCheckpointJson - " + test.input.name)
+        : UnitTest(std::format("Pokemon::AuthoredCheckpointJson - {}", test.input.name))
         , m_case(std::move(test))
     {}
 

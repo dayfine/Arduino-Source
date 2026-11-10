@@ -12,6 +12,7 @@
 #ifndef PokemonAutomation_Pokemon_BuiltinStoryActions_H
 #define PokemonAutomation_Pokemon_BuiltinStoryActions_H
 
+#include <format>
 #include <span>
 #include <string>
 #include <string_view>
@@ -53,7 +54,7 @@ template <typename Type>
 const Type& story_arg(const StoryActionArgs& args, std::string_view key){
     const Type* value = value_if_at_it<Type>(args, args.find(key));
     if (value == nullptr){
-        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Missing or mistyped story arg: " + std::string(key));
+        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("Missing or mistyped story arg: {}", key));
     }
     return *value;
 }
