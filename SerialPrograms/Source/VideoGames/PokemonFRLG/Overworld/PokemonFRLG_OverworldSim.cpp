@@ -358,6 +358,13 @@ bool OverworldSim::trainer_sees(Milliseconds pressed){
 //  game stopped them there: a warp, a trainer, a wild battle.
 bool OverworldSim::after_step(const Step& step, Milliseconds pressed){
     const SimTiming& timing = m_script.timing;
+    if (step.warped && m_script.black_without_warp.contains(++m_warp_steps)){
+        m_frozen = true;
+        schedule(pressed + timing.tile, SimScreen::FADE, false);
+        schedule(pressed + timing.tile + timing.fade, SimScreen::OVERWORLD, true);
+        note("black without a warp; the player stays at " + to_string(m_state.position) + ".");
+        return true;
+    }
     m_map = step.map;
     m_player = step.player;
     m_state.steps++;
@@ -797,6 +804,17 @@ bool OverworldSimWalker::fade_over_since(Milliseconds from) const{
 //  the battle screen stands in for the wipe. The fade is watched for from
 //  `watched_from`: a fade over by then is missed.
 bool OverworldSimWalker::after_warp(const RouteStep& step, int warps_before, Milliseconds watched_from){
+    //  A fade seen with no warp: the console's screen check
+    //  (warp_left_scene()) finds the scene from before the hold.
+    const bool black_only = m_sim.state().warps == warps_before
+        && (m_sim.state().screen == SimScreen::FADE || fade_over_since(watched_from));
+    if (black_only){
+        if (m_rules.confirm_warp_destination){
+            fail("walk_overworld_route(): the warp to " + step.end.map + " not confirmed: the screen after the fade shows the scene from before the hold.");
+        }
+        m_sim.watch({}, AFTER_WARP);
+        return true;
+    }
     if (m_sim.state().warps == warps_before){
         if (!m_sim.watch({SimWatcher::BATTLE_SCREEN}, WARP_TIMEOUT)){
             fail("walk_overworld_route(): no fade in and out after walking onto the warp to " + step.end.map + ".");

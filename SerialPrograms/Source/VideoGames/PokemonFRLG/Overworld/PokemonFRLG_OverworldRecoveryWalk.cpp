@@ -200,6 +200,7 @@ StepWalk walk_step(
         }
         context.wait_for_all_requests();
         out.dark = on_dark_cave(console);
+        const VideoSnapshot before = console.video().snapshot();
         out.hold_start = current_time();
         BlackScreenOverWatcher arrival(COLOR_RED);
         Pokemon::WatchAlong fade(arrival);
@@ -212,7 +213,7 @@ StepWalk walk_step(
             return out;
         }
         if (step.warps){
-            wait_out_warp(console, context, step, fade);
+            wait_out_warp(console, context, step, fade, before);
             static_assert(AFTER_WARP_BATTLE_WATCH >= AFTER_WARP);
             if (run_from_battle_after_warp(console, context)){
                 console.log("Route: a wild battle, not the warp to " + step.end.map + "; the player is on " + to_string(step) + " before the warp.", COLOR_ORANGE);
@@ -349,6 +350,7 @@ void hold_to_warp(
             callbacks.emplace_back(*watchers.back());
         }
         context.wait_for_all_requests();
+        const VideoSnapshot before = console.video().snapshot();
         const int ret = run_until<ProControllerContext>(
             console, context,
             [&](ProControllerContext& context){
@@ -358,7 +360,7 @@ void hold_to_warp(
             callbacks
         );
         if (ret == 0){
-            wait_out_warp(console, context, step);
+            wait_out_warp(console, context, step, before);
             check_warp_was_no_battle(console, context, step);
             return;
         }
