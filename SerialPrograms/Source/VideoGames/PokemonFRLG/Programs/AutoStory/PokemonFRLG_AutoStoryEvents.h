@@ -239,10 +239,6 @@ std::optional<std::vector<RouteStep>> plan_story_route(
 //  into a sign would read it.
 std::optional<Direction> wall_beside(const MapData& map, const TilePos& tile);
 
-//  `items` as orders at the Viridian Mart before the Boulder Badge: the
-//  rows of POKE BALL, POTION, ANTIDOTE, PARLYZ HEAL. Nothing if it does
-//  not sell one of them.
-std::optional<std::vector<MartOrder>> viridian_mart_orders(const std::vector<Pokemon::StoryItem>& items);
 
 
 //  What the story's events act on. `supplies` are what the bag holds now,

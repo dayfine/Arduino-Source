@@ -15,6 +15,7 @@
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
+#include "PokemonFRLG_AutoStoryViridianMart.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

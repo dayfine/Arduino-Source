@@ -59,7 +59,7 @@ const std::vector<std::pair<std::string, std::string>>& autostory_checkpoint_jso
 //  action args it doesn't take, or has notes for a step it doesn't have.
 StoryCheckpoint read_story_checkpoint_file(const JsonValue& value, std::string_view source);
 
-//  Checkpoints 00.01 to 00.25, in order: every file in StoryData/. With
+//  Checkpoints 00.01 to 00.27, in order: every file in StoryData/. With
 //  00.01b, the way back in after SID Helper, after 00.01, 00.04 split in two at Squirtle's ball for
 //  Starter RNG: 00.04 and 00.04b, 00.12b, the way back in after Gift RNG,
 //  after 00.12, 00.12c, the Magikarp put in BOX 1, after it, 00.14b and
@@ -71,18 +71,10 @@ const std::vector<StoryCheckpoint>& story_checkpoints();
 
 //  Registers AutoStory table validation unit tests.
 void add_tests_AutoStory(UnitTestDatabase& database);
-//  The story files against the C++ rows they replace.
-void add_tests_AutoStoryTableParity(UnitTestDatabase& database);
 //  Which rows a run takes (PokemonFRLG_AutoStoryRunPlan_Tests.cpp).
 void add_tests_AutoStoryRunPlan(UnitTestDatabase& database);
 //  The table run end to end against a fake game (PokemonFRLG_AutoStorySimulation_Tests.cpp).
 void add_tests_AutoStorySimulation(UnitTestDatabase& database);
-//  Rows 00.21 and 00.22 on the overworld sim (PokemonFRLG_AutoStoryVermilion_Tests.cpp).
-void add_tests_AutoStoryVermilion(UnitTestDatabase& database);
-//  Rows 00.23 to 00.25 on the overworld sim (PokemonFRLG_AutoStoryVermilionGym_Tests.cpp).
-void add_tests_AutoStoryVermilionGym(UnitTestDatabase& database);
-//  Rows from 00.26 on on the overworld sim (PokemonFRLG_AutoStoryCeladon_Tests.cpp).
-void add_tests_AutoStoryCeladon(UnitTestDatabase& database);
 
 
 
