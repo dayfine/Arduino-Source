@@ -573,7 +573,7 @@ Pokemon::StoryAction OverworldStepSim::hideout_or_stub(){
         return failure.empty() ? Pokemon::outcome_ok() : Pokemon::outcome_failed("sim_failure", failure);
     });
     sim.act = [stub, played_act = sim.act](RunState& state, const StoryStep& step){
-        return is_hideout_variant(step.variant) || center_walkable(step)
+        return is_hideout_step(step) || center_walkable(step)
             ? played_act(state, step)
             : stub.act(state, step);
     };
@@ -589,7 +589,7 @@ std::string OverworldStepSim::hideout(const StoryStep& step){
         sim_walk_room_legs(m_sim, center_legs(step.variant));
         return ended_on(step);
     }
-    const std::optional<LiftRide> ride = parse_lift_floor_variant(step.variant);
+    const std::optional<LiftRide> ride = parse_lift_floor_step(step);
     if (!ride){
         return "no lift ride \"" + step.variant + "\".";
     }

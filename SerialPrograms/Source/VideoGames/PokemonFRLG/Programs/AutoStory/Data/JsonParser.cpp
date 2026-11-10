@@ -229,7 +229,7 @@ bool known_game_step(const StoryStep& step){
     return parse_capture_step(step) || parse_pc_step(step) || parse_mart_step(step)
         || parse_teach_step(step) || parse_grind_step(step) || parse_grind_check_step(step)
         || parse_fossil_step(step) || parse_level_step(step)
-        || is_center_variant(step.variant) || is_item_use_variant(step.variant) || is_hideout_variant(step.variant);
+        || (is_center_variant(step.variant) && step.args.empty()) || is_item_use_step(step) || is_hideout_step(step);
 }
 
 //  Whether FRLG does `step`'s kind the way its variant names.

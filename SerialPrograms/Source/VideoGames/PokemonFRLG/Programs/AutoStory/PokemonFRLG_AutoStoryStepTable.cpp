@@ -9,6 +9,8 @@
 #include "PokemonFRLG_AutoStoryChoice.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
+#include "PokemonFRLG_AutoStoryHideout.h"
+#include "PokemonFRLG_AutoStoryItemUse.h"
 #include "PokemonFRLG_AutoStoryMart.h"
 #include "PokemonFRLG_AutoStoryMember.h"
 #include "PokemonFRLG_AutoStoryPcStorage.h"
@@ -73,6 +75,8 @@ const std::vector<StoryActionRow>& story_action_rows(){
         {StoryStepKind::GAME,       std::string(CAPTURE_VARIANT),     StoryActionId::GAME, CAPTURE_ARGS},
         {StoryStepKind::GAME,       std::string(FOSSIL_VARIANT),      StoryActionId::GAME, FOSSIL_ARGS},
         {StoryStepKind::GAME,       std::string(LEVEL_VARIANT),       StoryActionId::GAME, LEVEL_ARGS},
+        {StoryStepKind::GAME,       std::string(USE_ITEM_VARIANT),    StoryActionId::GAME, USE_ITEM_ARGS},
+        {StoryStepKind::GAME,       std::string(LIFT_FLOOR_VARIANT),  StoryActionId::GAME, LIFT_FLOOR_ARGS},
         {StoryStepKind::GAME,       "", StoryActionId::GAME},
     };
     return ROWS;

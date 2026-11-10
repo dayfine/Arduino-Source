@@ -10,6 +10,7 @@
 #include "PokemonFRLG_AutoStoryHideout.h"
 #include "PokemonFRLG_AutoStoryItemUse.h"
 #include "PokemonFRLG_AutoStoryRooms.h"
+#include "PokemonFRLG_AutoStoryVariantWords.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -22,10 +23,6 @@ using namespace std::chrono_literals;
 const std::vector<std::string>& rocket_hideout_lift_menu(){
     static const std::vector<std::string> MENU{"B1F", "B2F", "B4F", "EXIT"};
     return MENU;
-}
-
-std::string lift_floor_variant(std::string_view from, std::string_view to){
-    return std::string(LIFT_FLOOR_PREFIX) + std::string(from) + " " + std::string(to);
 }
 
 namespace{
@@ -43,17 +40,13 @@ std::optional<size_t> floor_row(std::string_view floor){
 
 } // namespace
 
-std::optional<LiftRide> parse_lift_floor_variant(std::string_view variant){
-    if (!variant.starts_with(LIFT_FLOOR_PREFIX)){
+std::optional<LiftRide> parse_lift_floor_step(const Pokemon::StoryStep& step){
+    const Pokemon::StoryArgs* args = game_step_args(step, LIFT_FLOOR_VARIANT, LIFT_FLOOR_ARGS);
+    if (args == nullptr){
         return std::nullopt;
     }
-    const std::string_view floors = variant.substr(LIFT_FLOOR_PREFIX.size());
-    const size_t space = floors.find(' ');
-    if (space == std::string_view::npos){
-        return std::nullopt;
-    }
-    const std::optional<size_t> from = floor_row(floors.substr(0, space));
-    const std::optional<size_t> to = floor_row(floors.substr(space + 1));
+    const std::optional<size_t> from = floor_row(*Pokemon::story_arg_text(*args, "from"));
+    const std::optional<size_t> to = floor_row(*Pokemon::story_arg_text(*args, "to"));
     if (!from || !to){
         return std::nullopt;
     }
@@ -72,8 +65,8 @@ MenuPresses lift_menu_presses(const LiftRide& ride, size_t entries){
     return down <= up ? MenuPresses{Pokemon::Direction::SOUTH, down} : MenuPresses{Pokemon::Direction::NORTH, up};
 }
 
-bool is_hideout_variant(std::string_view variant){
-    return variant == POSTER_SWITCH_VARIANT || parse_lift_floor_variant(variant).has_value();
+bool is_hideout_step(const Pokemon::StoryStep& step){
+    return (step.variant == POSTER_SWITCH_VARIANT && step.args.empty()) || parse_lift_floor_step(step).has_value();
 }
 
 
@@ -123,7 +116,7 @@ std::optional<Pokemon::Outcome> run_field_game_step(
     const auto done = [&step]{
         return step.pose_after ? Pokemon::outcome_ok(*step.pose_after) : Pokemon::outcome_ok();
     };
-    if (const std::optional<LiftRide> ride = parse_lift_floor_variant(step.variant)){
+    if (const std::optional<LiftRide> ride = parse_lift_floor_step(step)){
         ride_lift(console, context, *ride);
         return done();
     }
@@ -136,10 +129,10 @@ std::optional<Pokemon::Outcome> run_field_game_step(
         push_poster_switch(console, context);
         return Pokemon::outcome_ok();
     }
-    if (!is_item_use_variant(step.variant)){
+    if (!is_item_use_step(step)){
         return std::nullopt;
     }
-    const std::string item = parse_use_item_variant(step.variant).value_or("bicycle");
+    const std::string item = parse_use_item_step(step).value_or("bicycle");
     ConsoleItemUseActions bag(console, context, language);
     const ItemUseEnd end = use_item_from_bag(console.logger(), bag, item);
     if (end != ItemUseEnd::USED){

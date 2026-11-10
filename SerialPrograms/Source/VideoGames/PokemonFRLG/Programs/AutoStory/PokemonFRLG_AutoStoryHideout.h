@@ -37,13 +37,18 @@ namespace PokemonFRLG{
 //  beaten first.
 inline const std::string POSTER_SWITCH_VARIANT = "poster_switch";
 
-//  The GAME step that rides the Rocket Hideout's lift with the LIFT KEY:
-//  "lift_floor <from> <to>", floors as the panel names them (B1F, B2F,
+//  The GAME step that rides the Rocket Hideout's lift with the LIFT KEY,
+//  its args `from` and `to`, floors as the panel names them (B1F, B2F,
 //  B4F). `from` is the floor the lift stands at, where the panel's cursor
 //  starts. The player starts below `from`'s lift door, facing north, and
 //  ends on `to`'s lift door (rocket_hideout_lift_doors()): the lift is
 //  walked by a script (lift_in_legs(), lift_out_legs()), not a map.
-inline constexpr std::string_view LIFT_FLOOR_PREFIX = "lift_floor ";
+inline constexpr std::string_view LIFT_FLOOR_VARIANT = "lift_floor";
+//  Its args: the floors it rides from and to.
+inline constexpr Pokemon::StoryArgSpec LIFT_FLOOR_ARGS[] = {
+    {"from", Pokemon::StoryArgType::TEXT, true},
+    {"to", Pokemon::StoryArgType::TEXT, true},
+};
 
 //  The lift panel's menu, top first (pokefirered
 //  sMultichoiceList_RocketHideoutElevator): B1F, B2F, B4F, EXIT.
@@ -54,11 +59,9 @@ struct LiftRide{
     size_t from = 0;
     size_t to = 0;
 };
-//  The variant for a ride from floor `from` to `to`.
-std::string lift_floor_variant(std::string_view from, std::string_view to);
-//  The ride a "lift_floor <from> <to>" variant names, or nothing if it is
-//  not one, or names a floor the panel hasn't.
-std::optional<LiftRide> parse_lift_floor_variant(std::string_view variant);
+//  The ride a lift_floor step names, or nothing if it is not one, or names
+//  a floor the panel hasn't.
+std::optional<LiftRide> parse_lift_floor_step(const Pokemon::StoryStep& step);
 
 //  Presses of the D-pad on a menu: which way, how many.
 struct MenuPresses{
@@ -70,8 +73,8 @@ struct MenuPresses{
 //  wraps round (pokefirered DrawVerticalMultichoiceMenu()).
 MenuPresses lift_menu_presses(const LiftRide& ride, size_t entries);
 
-//  Whether `variant` is one of this file's steps.
-bool is_hideout_variant(std::string_view variant);
+//  Whether `step` is one of this file's steps.
+bool is_hideout_step(const Pokemon::StoryStep& step);
 
 //  On the console: A on the panel, the floor picked, the ride waited out
 //  back to the overworld, the player still in the lift.
@@ -84,7 +87,7 @@ void ride_lift(ConsoleHandle& console, ProControllerContext& context, const Lift
 void push_poster_switch(ConsoleHandle& console, ProControllerContext& context);
 
 //  On the console, a GAME step of this file's, a Pokemon Center's
-//  (is_center_variant()) or an item from the bag (is_item_use_variant());
+//  (is_center_variant()) or an item from the bag (is_item_use_step());
 //  nothing for another GAME step. The step ends on its pose_after, if it
 //  has one (an Escape Rope's, a lift ride's, a Center's).
 std::optional<Pokemon::Outcome> run_field_game_step(
