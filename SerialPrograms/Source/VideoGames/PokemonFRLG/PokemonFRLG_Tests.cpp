@@ -35,6 +35,12 @@
 #include "Inference/PokemonFRLG_StatsReader.h"
 #include "Inference/PokemonFRLG_TrainerIdReader.h"
 #include "Inference/PokemonFRLG_WildEncounterReader.h"
+#include "Overworld/PokemonFRLG_OverworldMaps.h"
+#include "Overworld/PokemonFRLG_OverworldReanchor.h"
+#include "Overworld/PokemonFRLG_OverworldRecovery.h"
+#include "Overworld/PokemonFRLG_OverworldRoute.h"
+#include "Overworld/PokemonFRLG_OverworldWalk.h"
+#include "Overworld/PokemonFRLG_PlayerFacingReader.h"
 #include "PokemonFRLG_Navigation.h"
 #include "Tests/TestUtils.h"
 
@@ -271,6 +277,9 @@ void add_tests_ExitWildBattle(UnitTestDatabase& database){
 }
 
 
+//  The menu readers AutoStory brought: the bag's and Marts' lists, the
+//  options, the save card, the summary's moves and the teach screens, and
+//  the screen events.
 static void add_tests_AutoStoryReaders(UnitTestDatabase& database){
     add_tests_ItemListReader(database);
     add_tests_OptionMenuReader(database);
@@ -308,6 +317,12 @@ void add_tests(UnitTestDatabase& database){
     add_tests_BagDetector(database);
     add_tests_AutoStoryReaders(database);
     add_tests_ExitWildBattle(database);
+    add_tests_OverworldMaps(database);
+    add_tests_OverworldRoute(database);
+    add_tests_OverworldWalk(database);
+    add_tests_OverworldReanchor(database);
+    add_tests_OverworldRecovery(database);
+    add_tests_PlayerFacingReader(database);
 }
 
 
