@@ -412,7 +412,7 @@ struct StorySegmentInput{
 };
 
 struct StorySegmentExpectation{
-    const char* description;
+    std::string_view description;
 };
 
 struct StorySegmentTestCase{

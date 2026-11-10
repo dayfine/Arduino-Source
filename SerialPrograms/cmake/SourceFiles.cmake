@@ -1460,6 +1460,11 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Inference/Pokemon_TypeReader.h
     Source/Pokemon/Navigation/Pokemon_Grid.cpp
     Source/Pokemon/Navigation/Pokemon_Grid.h
+    Source/Pokemon/Navigation/Pokemon_LegTypes.h
+    Source/Pokemon/Navigation/Pokemon_MapFeatures.h
+    Source/Pokemon/Navigation/Pokemon_MapTiles.h
+    Source/Pokemon/Navigation/Pokemon_RouteLogLegs.h
+    Source/Pokemon/Navigation/Pokemon_RouteLogTypes.h
     Source/Pokemon/Navigation/Pokemon_WallRecovery.h
     Source/Pokemon/Navigation/Pokemon_WallRecovery_Tests.cpp
     Source/Pokemon/Navigation/Pokemon_LegPlanner.h
@@ -1499,12 +1504,16 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.h
     Source/Pokemon/AutoStory/Pokemon_AutoStoryStats.h
     Source/Pokemon/AutoStory/Pokemon_AutoStory_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_StoryCheckpointTypes.h
+    Source/Pokemon/AutoStory/Pokemon_StoryEvent.h
     Source/Pokemon/AutoStory/Pokemon_StoryEvents.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryEvents.h
     Source/Pokemon/AutoStory/Pokemon_StoryEvents_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryLog.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryLog.h
     Source/Pokemon/AutoStory/Pokemon_StoryLog_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryOutcome.h
+    Source/Pokemon/AutoStory/Pokemon_StoryPose.h
     Source/Pokemon/AutoStory/Pokemon_StoryRun_Tests.h
     Source/Pokemon/AutoStory/Pokemon_StorySegments.cpp
     Source/Pokemon/AutoStory/Pokemon_StorySegments.h
