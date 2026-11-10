@@ -12,7 +12,9 @@
  *  - the "press A to go on" chevron at the bottom right of a dialogue box or
  *    of the boxless subtitles of 01.01's ad (AdvanceArrowDetector);
  *  - the "MAIN MISSION 01" banner across the middle when a main mission
- *    starts (MainMissionBannerDetector).
+ *    starts (MainMissionBannerDetector);
+ *  - the "COMPLETE" card when a main mission ends, which waits for A
+ *    (MissionCompleteDetector).
  *
  */
 
@@ -129,6 +131,30 @@ private:
     ImageFloatBox m_icon_left;
     ImageFloatBox m_icon_right;
     ImageFloatBox m_icon_stroke;
+};
+
+
+//  The card a main mission ends with, which waits for A: a big green
+//  "COMPLETE" at x 615-1300, y 271-349 on 1920x1080 over the mission's
+//  yellow bar (x 345-1590, y 390-585, "MAIN MISSION 01" and the mission's
+//  name), in a yellow hexagon with the mission's item. The word is read
+//  with nothing green just above or below it, and the bar left and right
+//  of the name. The word is the same in every language seen (the header
+//  stays English in Chinese), so its text is not read.
+class MissionCompleteDetector : public StaticScreenDetector{
+public:
+    explicit MissionCompleteDetector(Color color = COLOR_GREEN);
+
+    virtual void make_overlays(VideoOverlaySet& items) const override;
+    virtual bool detect(const ImageViewRGB32& screen) override;
+
+private:
+    Color m_color;
+    ImageFloatBox m_word;
+    ImageFloatBox m_above;
+    ImageFloatBox m_below;
+    ImageFloatBox m_bar_left;
+    ImageFloatBox m_bar_right;
 };
 
 

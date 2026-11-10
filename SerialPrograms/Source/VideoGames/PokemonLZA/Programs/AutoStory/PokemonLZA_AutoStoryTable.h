@@ -50,10 +50,10 @@ const std::vector<std::pair<std::string, std::string>>& autostory_checkpoint_jso
 const std::vector<Pokemon::StoryCheckpoint>& story_checkpoints();
 
 //  The rows that end on one of the game's autosaves and do not save
-//  themselves (their JSON "execution": {"save": "autosave"}): before 03.02
-//  the main menu cannot save. Each ends where the game autosaved in the
-//  recording (before the starter, the Main Mission 02 and 03 banners, the
-//  Hotel Z lobby scene), so the next row reloads there.
+//  themselves (their JSON "execution": {"save": "autosave"}). Each ends
+//  where the game autosaved in the recording, so the next row reloads
+//  there. The menu (X, then R) can save from the start of the story too:
+//  01.03 saves through it after Andi (console B, 2026-11-10).
 const std::set<std::string, std::less<>>& story_autosave_rows();
 
 //  Whether `row` saves through the menu at its end: every row but

@@ -331,8 +331,9 @@ UnitTestResult test_arrival_presses_through_the_ad(CancellableScope& scope){
 
 //  01.01's arrival (run 3, 2026-11-10 13:49): A at the last box, then the
 //  "MAIN MISSION 01" banner on two looks ends the step, which returns
-//  once the banner has gone; with the banner never going, it returns
-//  after 10 s all the same. No press at the banner.
+//  once the banner has gone, with no press at it. A banner still up after
+//  10 s (01.03's "MAIN MISSION 02", console B 2026-11-10) gets A 3 times,
+//  then the step returns all the same.
 UnitTestResult test_arrival_ends_on_mission_banner(CancellableScope& scope){
     for (const bool goes : {true, false}){
         std::vector<Observation<ZonePose>> looks{
@@ -353,8 +354,43 @@ UnitTestResult test_arrival_ends_on_mission_banner(CancellableScope& scope){
         const auto presses = std::count_if(backend.inputs().begin(), backend.inputs().end(), [](const std::string& input){
             return input.starts_with("press");
         });
-        if (presses != 1){
-            return std::format("Expected one A, at the box, got [{}].", joined(backend.inputs()));
+        const auto expected = goes ? 1 : 4;
+        if (presses != expected){
+            return std::format("Expected {} A presses, got [{}].", expected, joined(backend.inputs()));
+        }
+    }
+    return true;
+}
+
+//  01.03's after_andi (console B, 2026-11-10): A at the box, A at each
+//  look at the "MAIN MISSION 01 COMPLETE" card, then "MAIN MISSION 02" on
+//  two looks ends the step. A banner that goes by itself gets no press; one
+//  that stays past 10 s gets A 3 times.
+UnitTestResult test_after_andi_presses_complete_card(CancellableScope& scope){
+    for (const bool goes : {true, false}){
+        std::vector<Observation<ZonePose>> looks{
+            look_at(0ms, {EngineEvent::TEXT_BOX}),
+            with_reading(look_at(500ms), MISSION_COMPLETE_READING),
+            with_reading(look_at(1000ms), MISSION_COMPLETE_READING),
+            look_at(1500ms),
+            with_reading(look_at(2000ms), MISSION_BANNER_READING),
+            with_reading(look_at(2250ms), MISSION_BANNER_READING),
+        };
+        if (goes){
+            looks.push_back(look_at(2500ms));
+        }
+        FakeBackend backend = fake_plza(std::move(looks), scope);
+        const Pokemon::StoryEngineReport report = run_plza(backend, step_of("01.03", "after_andi"));
+        if (report.verdict != Pokemon::CheckpointVerdict::PASSED){
+            return std::format("Expected after_andi to end on the mission banner: {}", to_string(report.run.failure));
+        }
+        const auto presses = std::count_if(backend.inputs().begin(), backend.inputs().end(), [](const std::string& input){
+            return input.starts_with("press");
+        });
+        const auto expected = goes ? 3 : 6;
+        if (presses != expected){
+            return std::format("Expected {} A presses (the box, the card twice, the banner if it stays), got [{}].",
+                expected, joined(backend.inputs()));
         }
     }
     return true;
@@ -495,7 +531,8 @@ const EngineTestCase ENGINE_TEST_CASES[] = {
     {.input = {"01.01 text_to_choice: B through the text, done at the choice", test_text_to_choice}, .expectation = {}},
     {.input = {"01.01 arrival_scenes: A through text and choice, done on the controls hint", test_arrival_ends_on_controls_hint}, .expectation = {}},
     {.input = {"01.01 arrival_scenes: A through the ad's boxless subtitles", test_arrival_presses_through_the_ad}, .expectation = {}},
-    {.input = {"01.01 arrival_scenes: done on the mission banner once it has gone", test_arrival_ends_on_mission_banner}, .expectation = {}},
+    {.input = {"01.01 arrival_scenes: done on the mission banner once it has gone, A if it stays", test_arrival_ends_on_mission_banner}, .expectation = {}},
+    {.input = {"01.03 after_andi: A at the mission complete card, then the banner, A if it stays", test_after_andi_presses_complete_card}, .expectation = {}},
     {.input = {"01.01 arrival_scenes: a quiet minute without the hint fails", test_arrival_quiet_fails}, .expectation = {}},
     {.input = {"01.02 battle_area: done on the \"A: Talk\" prompt", test_battle_area_ends_on_interact_prompt}, .expectation = {}},
     {.input = {"face_heading: turns by the minimap's heading", test_face_heading}, .expectation = {}},

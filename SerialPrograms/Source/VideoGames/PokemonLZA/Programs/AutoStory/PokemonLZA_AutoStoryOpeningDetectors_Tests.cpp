@@ -17,7 +17,14 @@
  *    subtitles (0090-0115), where the run stopped;
  *  - PLZA_0101_RUN3_FRAMES: 01.01's third run (2026-11-10 13:49, in
  *    Chinese), 0001-*.png ... 0181-*.png: the same, through the ad and
- *    Pancham taking the bag, to the "MAIN MISSION 01" banner (0181).
+ *    Pancham taking the bag, to the "MAIN MISSION 01" banner (0181);
+ *  - PLZA_0101_RUN4_FRAMES: 01.01's fourth run (2026-11-10, in Chinese),
+ *    0001-*.png ... 0221-*.png, the "MAIN MISSION 01" banner on
+ *    0181-0189;
+ *  - PLZA_0103_RUN2_FRAMES: 01.03's second run (2026-11-10, in Chinese),
+ *    0001-*.png ... 0139-*.png and mission01-complete-fullres.png: the
+ *    "MAIN MISSION 01 COMPLETE" card (0045, 0046, the full-res frame),
+ *    the "MAIN MISSION 02" banner (0133-0139).
  *
  */
 
@@ -195,6 +202,40 @@ UnitTestResult test_synthetic_mission_banner(Logger&){
     return true;
 }
 
+//  The mission complete card drawn on a grey scene: the yellow bar, and
+//  "COMPLETE" as green strokes (three columns in four) above it.
+ImageRGB32 mission_complete_frame(){
+    ImageRGB32 image(WIDTH, HEIGHT);
+    image.fill(0xff606060);
+    fill_box(345, 390, 1590, 585, 0xfffad228, image);
+    for (size_t x = 615; x < 1300; x += 4){
+        fill_box(x, 275, x + 3, 345, 0xffa5f07d, image);
+    }
+    return image;
+}
+
+//  The drawn card, not the banner; the drawn banner, a frame all in the
+//  card's green or the bar's yellow, not the card.
+UnitTestResult test_synthetic_mission_complete(Logger&){
+    MissionCompleteDetector complete;
+    MainMissionBannerDetector banner;
+    const ImageRGB32 card = mission_complete_frame();
+    if (!complete.detect(card)){
+        return "Expected the drawn card to be the mission complete card.";
+    }
+    if (banner.detect(card)){
+        return "Expected the drawn card not to be the mission banner.";
+    }
+    ImageRGB32 green(WIDTH, HEIGHT);
+    green.fill(0xffa5f07d);
+    ImageRGB32 yellow(WIDTH, HEIGHT);
+    yellow.fill(0xfffad228);
+    if (complete.detect(mission_banner_frame(0, true)) || complete.detect(green) || complete.detect(yellow)){
+        return "Expected the banner, a green or a yellow frame not to be the mission complete card.";
+    }
+    return true;
+}
+
 //  What a frame should show.
 struct FrameExpectation{
     bool platform;
@@ -203,6 +244,7 @@ struct FrameExpectation{
     bool controls_hint;
     bool advance_arrow;
     bool mission_banner = false;
+    bool mission_complete = false;
 };
 
 //  The lab's opening: platform_ref.png is the platform, no cutscene frame
@@ -275,6 +317,34 @@ std::optional<FrameExpectation> run3_arrival(const std::string& name){
     };
 }
 
+//  A frame as a run read it, by its name ("0133-nothing+mission_banner.png").
+FrameExpectation as_named(const std::string& name){
+    const auto has = [&name](std::string_view reading){
+        return name.find(reading) != std::string::npos;
+    };
+    return FrameExpectation{
+        .platform = has("+platform"), .skip_prompt = has("+skip_prompt"),
+        .autosave = has("+autosave"), .controls_hint = has("+controls_hint"),
+        .advance_arrow = has("+advance_arrow"), .mission_banner = has("+mission_banner"),
+    };
+}
+
+//  01.01's fourth run: every detector as the run read it; the banner on
+//  0181-0189 (checked by eye), no complete card.
+std::optional<FrameExpectation> run4_arrival(const std::string& name){
+    return as_named(name);
+}
+
+//  01.03's second run: as the run read it, and the complete card on 0045,
+//  0046 (named "nothing": the run had no detector for it) and the full-res
+//  frame; the "MAIN MISSION 02" banner on 0133-0139 is not the card.
+std::optional<FrameExpectation> run_0103_2(const std::string& name){
+    FrameExpectation want = as_named(name);
+    want.mission_complete = name.starts_with("0045-") || name.starts_with("0046-") ||
+        name == "mission01-complete-fullres.png";
+    return want;
+}
+
 //  The opening's detectors, one of each.
 struct OpeningDetectors{
     PlatformArrivalDetector platform;
@@ -283,12 +353,14 @@ struct OpeningDetectors{
     ControlsHintDetector hint;
     AdvanceArrowDetector arrow;
     MainMissionBannerDetector banner;
+    MissionCompleteDetector complete;
 
     FrameExpectation read(const ImageRGB32& frame){
         return FrameExpectation{
             .platform = platform.detect(frame), .skip_prompt = skip.detect(frame),
             .autosave = autosave.detect(frame), .controls_hint = hint.detect(frame),
             .advance_arrow = arrow.detect(frame), .mission_banner = banner.detect(frame),
+            .mission_complete = complete.detect(frame),
         };
     }
 };
@@ -296,7 +368,8 @@ struct OpeningDetectors{
 bool same_reads(const FrameExpectation& got, const FrameExpectation& want){
     return got.platform == want.platform && got.skip_prompt == want.skip_prompt &&
         got.autosave == want.autosave && got.controls_hint == want.controls_hint &&
-        got.advance_arrow == want.advance_arrow && got.mission_banner == want.mission_banner;
+        got.advance_arrow == want.advance_arrow && got.mission_banner == want.mission_banner &&
+        got.mission_complete == want.mission_complete;
 }
 
 //  The frames `prefix`*.png in `folder` that `expect` has an expectation
@@ -317,10 +390,11 @@ UnitTestResult check_frames(
         }
         const ImageRGB32 frame(path.string());
         const FrameExpectation got = detectors.read(frame);
-        logger.log(std::format("{}: {}{}{}{}{}{}{}", name, to_string(detectors.platform.last_distances()),
+        logger.log(std::format("{}: {}{}{}{}{}{}{}{}", name, to_string(detectors.platform.last_distances()),
             got.platform ? ", platform" : "", got.skip_prompt ? ", skip prompt" : "",
             got.autosave ? ", autosave" : "", got.controls_hint ? ", controls hint" : "",
-            got.advance_arrow ? ", advance arrow" : "", got.mission_banner ? ", mission banner" : ""));
+            got.advance_arrow ? ", advance arrow" : "", got.mission_banner ? ", mission banner" : "",
+            got.mission_complete ? ", mission complete" : ""));
         if (!same_reads(got, *want)){
             failures += std::format(" {}", name);
         }
@@ -385,6 +459,23 @@ UnitTestResult test_run3_arrival_frames(Logger& logger){
     return check_frames(logger, folder, "0", 181, run3_arrival);
 }
 
+UnitTestResult test_run4_arrival_frames(Logger& logger){
+    const std::string folder = frames_folder("PLZA_0101_RUN4_FRAMES");
+    if (folder.empty()){
+        return UnitTestResult(UnitTestResult::SKIPPED, "PLZA_0101_RUN4_FRAMES is not a folder.");
+    }
+    return check_frames(logger, folder, "0", 221, run4_arrival);
+}
+
+UnitTestResult test_0103_run2_frames(Logger& logger){
+    const std::string folder = frames_folder("PLZA_0103_RUN2_FRAMES");
+    if (folder.empty()){
+        return UnitTestResult(UnitTestResult::SKIPPED, "PLZA_0103_RUN2_FRAMES is not a folder.");
+    }
+    //  0001-0139 and mission01-complete-fullres.png.
+    return check_frames(logger, folder, "", 140, run_0103_2);
+}
+
 
 struct OpeningTestInput{
     std::string name;
@@ -422,11 +513,14 @@ const OpeningTestCase OPENING_TEST_CASES[] = {
     {.input = {"skip prompt, autosave and controls hint: synthetic frames", test_synthetic_badges}, .expectation = {}},
     {.input = {"advance arrow: synthetic frames", test_synthetic_arrow}, .expectation = {}},
     {.input = {"mission banner: synthetic frames", test_synthetic_mission_banner}, .expectation = {}},
+    {.input = {"mission complete card: synthetic frames", test_synthetic_mission_complete}, .expectation = {}},
     {.input = {"the lab's opening frames (PLZA_OPENING_FRAMES)", test_lab_opening_frames}, .expectation = {}},
     {.input = {"the user's opening frames (PLZA_USER_OPENING_FRAMES)", test_user_opening_frames}, .expectation = {}},
     {.input = {"01.01 run 1's arrival frames (PLZA_0101_RUN1_FRAMES)", test_run1_arrival_frames}, .expectation = {}},
     {.input = {"01.01 run 2's arrival frames to the ad (PLZA_0101_RUN2_FRAMES)", test_run2_arrival_frames}, .expectation = {}},
     {.input = {"01.01 run 3's arrival frames to the mission banner (PLZA_0101_RUN3_FRAMES)", test_run3_arrival_frames}, .expectation = {}},
+    {.input = {"01.01 run 4's arrival frames to the mission banner (PLZA_0101_RUN4_FRAMES)", test_run4_arrival_frames}, .expectation = {}},
+    {.input = {"01.03 run 2's frames: the mission complete card and the MM02 banner (PLZA_0103_RUN2_FRAMES)", test_0103_run2_frames}, .expectation = {}},
 };
 
 void add_tests_AutoStoryOpeningDetectors(UnitTestDatabase& database){

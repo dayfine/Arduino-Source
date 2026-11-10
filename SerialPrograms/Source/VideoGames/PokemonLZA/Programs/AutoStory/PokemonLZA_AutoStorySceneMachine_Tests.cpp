@@ -39,6 +39,8 @@ struct Read{
     bool arrow = false;
     //  The mission banner (MISSION_BANNER_READING) shows.
     bool banner = false;
+    //  The mission complete card (MISSION_COMPLETE_READING) shows.
+    bool complete = false;
 };
 
 //  Feeds `reads` to a timeline as the machine does (classify, then record
@@ -60,6 +62,9 @@ UnitTestResult check_reads(const SceneMachineConfig& config, const std::vector<R
         }
         if (read.banner){
             look.readings[std::string(MISSION_BANNER_READING)] = 1;
+        }
+        if (read.complete){
+            look.readings[std::string(MISSION_COMPLETE_READING)] = 1;
         }
         const SceneScreen got = timeline.classify(look);
         if (got != read.expected){
@@ -184,6 +189,25 @@ UnitTestResult test_mission_banner_ends(Logger&){
     });
 }
 
+//  01.03's end (console B, 2026-11-10): the "MAIN MISSION 01 COMPLETE"
+//  card waits for A. Each look at it presses A, and it is busy: no blind
+//  press and no quiet end however long it shows, and a look with the
+//  banner's reading too is the card. Then "MAIN MISSION 02" ends the scene
+//  on its second look.
+UnitTestResult test_mission_complete_presses_a(Logger&){
+    SceneMachineConfig config = arrival_config();
+    config.quiet = 8000ms;
+    return check_reads(config, {
+        {0ms, DIALOG, false, SceneScreen::DIALOG},
+        {4000ms, NOTHING, false, SceneScreen::MISSION_COMPLETE, false, false, false, true},
+        {9000ms, NOTHING, true, SceneScreen::MISSION_COMPLETE, false, false, false, true},
+        {20000ms, NOTHING, true, SceneScreen::MISSION_COMPLETE, false, false, true, true},
+        {20500ms, NOTHING, false, SceneScreen::SCENE_MOVING},
+        {21000ms, NOTHING, false, SceneScreen::BANNER_SHOWING, false, false, true},
+        {21250ms, NOTHING, true, SceneScreen::MISSION_BANNER, false, false, true},
+    });
+}
+
 //  The banner ends only a scene after the overworld: B to a choice
 //  presses on past it.
 UnitTestResult test_mission_banner_only_overworld(Logger&){
@@ -270,6 +294,8 @@ UnitTestResult test_state_actions(Logger&){
         {SceneScreen::CONTROLS_HINT, a_mash, SceneMashAction::DONE},
         {SceneScreen::QUIET_END, a_mash, SceneMashAction::DONE},
         {SceneScreen::BLIND_PRESS, a_mash, SceneMashAction::PRESS_A},
+        {SceneScreen::MISSION_COMPLETE, a_mash, SceneMashAction::PRESS_A},
+        {SceneScreen::MISSION_COMPLETE, b_to_choice, SceneMashAction::PRESS_A},
         {SceneScreen::GOAL_CHOICE, b_to_choice, SceneMashAction::DONE},
         {SceneScreen::GOAL_BATTLE, to_battle, SceneMashAction::DONE},
     };
@@ -368,6 +394,10 @@ const SceneMachineCase SCENE_MACHINE_CASES[] = {
     },
     {
         .input = {"the mission banner on two looks ends the scene", test_mission_banner_ends},
+        .expectation = {},
+    },
+    {
+        .input = {"the mission complete card: A, busy, wins over the banner", test_mission_complete_presses_a},
         .expectation = {},
     },
     {

@@ -8,6 +8,7 @@
  *
  */
 
+// code-health: allow header_symbols -- one reading name per detector; the readings are one concern that every consumer shares
 #ifndef PokemonAutomation_PokemonLZA_AutoStoryObservation_H
 #define PokemonAutomation_PokemonLZA_AutoStoryObservation_H
 
@@ -41,6 +42,10 @@ constexpr std::string_view ADVANCE_ARROW_READING = "scene.advance_arrow";
 //  The reading set to 1 while a main mission's banner ("MAIN MISSION 01"
 //  over a yellow bar with the mission's name) shows (MainMissionBannerDetector).
 constexpr std::string_view MISSION_BANNER_READING = "scene.mission_banner";
+//  The reading set to 1 while the card a main mission ends with ("COMPLETE"
+//  over the mission's yellow bar) shows; it waits for A
+//  (MissionCompleteDetector). A look with it has no MISSION_BANNER_READING.
+constexpr std::string_view MISSION_COMPLETE_READING = "scene.mission_complete";
 
 //  PlzaScreenObserver's events as one look for the story engine:
 //  DIALOG_BOX is TEXT_BOX; CHOICE_BOX adds TEXT_BOX;

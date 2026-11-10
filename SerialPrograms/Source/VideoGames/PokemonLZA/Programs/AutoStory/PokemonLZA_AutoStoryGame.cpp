@@ -185,6 +185,8 @@ public:
     //  (01.01's city flyover, ~20 s) is not control: nothing busy for the
     //  quiet time fails the step. After 5 s with nothing busy and no sign
     //  of control, A every 2 s, for text the detectors miss (01.01's ad).
+    //  A banner that stays past the 10 s gets A up to 3 times (01.03's
+    //  "MAIN MISSION 02"), so the step ends with control.
     static Handler move_hints(){
         return [](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
             SceneMachineConfig config;
@@ -478,7 +480,7 @@ Pokemon::StoryGame<ZonePose> make_plza_story_game(StoryEnv& env, StarterChoice s
     });
     game.save = [&env](Pokemon::StoryBackend<ZonePose>& backend, const Pokemon::StoryCheckpoint& checkpoint){
         if (story_autosave_rows().contains(checkpoint.id)){
-            backend.log(std::format("[Save] {}: the game autosaved at its end; the menu cannot save yet", checkpoint.id));
+            backend.log(std::format("[Save] {}: the game autosaved at its end", checkpoint.id));
             return Pokemon::outcome_ok();
         }
         try{
