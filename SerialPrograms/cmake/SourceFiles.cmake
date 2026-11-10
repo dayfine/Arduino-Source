@@ -1528,6 +1528,12 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_Transitions.cpp
     Source/Pokemon/AutoStory/Pokemon_Transitions.h
     Source/Pokemon/AutoStory/Pokemon_Transitions_Tests.cpp
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryChecks.cpp
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryChecks.h
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryStep.h
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryStepKind.cpp
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryStepKind.h
     Source/Pokemon/Pokemon_AdvRng.cpp
     Source/Pokemon/Pokemon_AdvRng.h
     Source/Pokemon/Pokemon_BdspRng.cpp
