@@ -14,8 +14,8 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Tests that need no console: the story table lints, every step is one the
-//  executor does, its moves are known, and it runs through the shared engine.
+//  Tests that need no console: the story table lints against PLZA's engine
+//  actions, its moves are known, and its autosave rows come first.
 void add_tests_AutoStory_StoryTable(UnitTestDatabase& database);
 
 

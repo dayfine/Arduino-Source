@@ -12,9 +12,10 @@
 #define PokemonAutomation_PokemonLZA_AutoStoryGuardedWalks_H
 
 #include <string_view>
-#include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
-#include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
-#include "Pokemon/AutoStory/Pokemon_ScreenEventTypes.h"
+#include "CommonTools/ScreenMachine/ScreenObservation.h"
+#include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
+#include "PokemonLZA_AutoStoryObservation.h"
+#include "PokemonLZA_AutoStoryBackend.h"
 #include "PokemonLZA_AutoStoryMoves.h"
 
 namespace PokemonAutomation{
@@ -22,17 +23,16 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Throws OperationFailedException unless the screen shows no box, choice,
-//  fade or battle on two reads: a walk started anywhere else walks blind.
-//  The tutorial has no party bar, so it is not required.
-void check_can_walk(ConsoleHandle& console, ProControllerContext& context, std::string_view walk);
+//  Fails as "walk_not_free" unless two looks 150 ms apart show no box,
+//  choice, fade or battle: a walk started anywhere else walks blind. The
+//  tutorial has no party bar, so it is not required.
+Pokemon::Outcome check_can_walk(PlzaStoryBackend& backend, std::string_view walk);
 
-//  Walks `move`, holding its last leg until `end` shows (a fade), the leg's
-//  time as the upper bound. Throws OperationFailedException if `end` does
-//  not show within it.
-void walk_until(
-    ConsoleHandle& console, ProControllerContext& context,
-    std::string_view walk, const StoryMove& move, Pokemon::ScreenEvent end
+//  Walks `move`, holding its last leg in slices of 250 ms until a look
+//  shows `end` (a fade), the leg's time as the upper bound. Fails as
+//  "walk_no_end" if `end` does not show within it.
+Pokemon::Outcome walk_until(
+    PlzaStoryBackend& backend, std::string_view walk, const StoryMove& move, PokemonAutomation::ScreenEvent end
 );
 
 

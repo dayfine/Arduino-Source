@@ -78,6 +78,7 @@ private:
 
 //  Instantiated once, in Pokemon_StoryEngine.cpp.
 extern template class StoryEngine<GridPose>;
+//  The same for a zone game (PLZA).
 extern template class StoryEngine<ZonePose>;
 
 

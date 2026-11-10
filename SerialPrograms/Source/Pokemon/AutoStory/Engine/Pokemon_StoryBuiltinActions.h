@@ -39,6 +39,7 @@ std::vector<StoryAction<PoseType>> builtin_story_handlers(const StoryGame<PoseTy
 
 //  Instantiated once, in Pokemon_StoryBuiltinActions.cpp.
 extern template std::vector<StoryAction<GridPose>> builtin_story_handlers<GridPose>(const StoryGame<GridPose>& game);
+//  The same for a zone game (PLZA).
 extern template std::vector<StoryAction<ZonePose>> builtin_story_handlers<ZonePose>(const StoryGame<ZonePose>& game);
 
 

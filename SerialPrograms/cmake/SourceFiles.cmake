@@ -2342,16 +2342,20 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStory.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryActions.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryActions.h
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBackend.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBackend.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryDialogs.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryDialogs.h
-    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryExecutor.cpp
-    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryExecutor.h
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryEngine_Tests.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryEngine_Tests.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryGame.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryGame.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryGuardedWalks.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryGuardedWalks.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryMoves.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryMoves.h
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryObservation.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryObservation.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryScenes.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryScenes.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.cpp

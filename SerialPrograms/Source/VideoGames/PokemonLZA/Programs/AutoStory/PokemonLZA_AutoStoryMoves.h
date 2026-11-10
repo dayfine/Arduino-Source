@@ -17,7 +17,9 @@
 #include "CommonFramework/Language.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
+#include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
 #include "VideoGames/PokemonLZA/Resources/PokemonLZA_Locations.h"
+#include "PokemonLZA_AutoStoryBackend.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -46,22 +48,17 @@ struct StoryMove{
     std::vector<StoryWalkLeg> legs = {};
 };
 
-//  The heading the player faces, clockwise from north in [0, 360): the
-//  minimap's arrow (get_facing_direction()).
-double read_heading(ConsoleHandle& console, ProControllerContext& context);
-
-//  Turns the player toward `heading`, within `tolerance` degrees: recenters
-//  the camera behind the player, then taps the stick toward it and reads the
-//  minimap again, a few times. Returns the heading read last; throws
-//  OperationFailedException if it stays outside the tolerance.
-double face_heading(ConsoleHandle& console, ProControllerContext& context, double heading, double tolerance);
+//  Turns the player toward `heading`, within `tolerance` degrees: turns by
+//  the difference and reads the heading again, a few times. Fails as
+//  "heading_missed" if it stays outside the tolerance.
+Pokemon::Outcome face_heading(PlzaStoryBackend& backend, double heading, double tolerance);
 
 //  From the overworld, walks as `move` says: faces its heading first, if it
-//  has one, then each leg's turn and walk. Dash is a toggle in this game;
-//  the walk assumes it is off. Nothing is read on the way: a leg that is cut
-//  short or blocked goes unnoticed, and a step that needs a prompt after the
-//  walk fails there instead.
-void run_story_move(ConsoleHandle& console, ProControllerContext& context, const StoryMove& move);
+//  has one, then each leg's turn (and L to recenter the camera, since the
+//  walk goes where it looks) and walk. Nothing is read on the way: a leg
+//  that is cut short or blocked goes unnoticed, and a step that needs a
+//  prompt after the walk fails there instead.
+Pokemon::Outcome run_story_move(PlzaStoryBackend& backend, const StoryMove& move);
 
 //  From the overworld, opens the map and fast travels to `location`
 //  (open_map_and_fly_to()). Returns in the overworld there; throws

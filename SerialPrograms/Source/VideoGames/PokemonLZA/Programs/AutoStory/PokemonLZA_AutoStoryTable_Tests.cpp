@@ -13,10 +13,7 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
-#include "Pokemon/AutoStory/Pokemon_StorySegments.h"
-#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
-#include "PokemonLZA_AutoStoryExecutor.h"
+#include "PokemonLZA_AutoStoryGame.h"
 #include "PokemonLZA_AutoStoryScreenEvents.h"
 #include "PokemonLZA_AutoStoryTable.h"
 #include "PokemonLZA_AutoStoryTable_Tests.h"
@@ -32,25 +29,8 @@ using Pokemon::StoryCheckpoint;
 using Pokemon::StoryStep;
 using Pokemon::StoryStepKind;
 
-//  Does every step it is asked to, writing down "id KIND name".
-class RecordingExecutor : public Pokemon::StoryStepExecutor{
-public:
-    std::vector<std::string> trace;
-
-    virtual void begin_attempt(const StoryCheckpoint& data) override{
-        m_checkpoint = data.id;
-    }
-    virtual Pokemon::Outcome run(Pokemon::RunState&, const StoryStep& step) override{
-        trace.push_back(std::format("{} {} {}", m_checkpoint, Pokemon::story_step_kind_name(step.kind), step.name));
-        return Pokemon::outcome_ok();
-    }
-
-private:
-    std::string m_checkpoint;
-};
-
 //  The table: ids unique and in order, each row but the new game starts
-//  somewhere, lints, and every step is one PLZA's executor does.
+//  somewhere, and each lints against PLZA's actions in the engine.
 UnitTestResult test_story_table_lints(Logger&){
     std::string previous;
     for (const StoryCheckpoint& row : story_checkpoints()){
@@ -61,17 +41,9 @@ UnitTestResult test_story_table_lints(Logger&){
         if (!row.start && row.id != "01.00"){
             return row.id + ": no start; every row after the new game starts from a save.";
         }
-        const std::vector<std::string> problems = Pokemon::lint_story_checkpoint(row);
+        const std::vector<std::string> problems = plza_story_lint(row);
         if (!problems.empty()){
-            return row.id + ": " + problems[0];
-        }
-        for (const StoryStep& step : row.steps){
-            if (!story_step_supported(step)){
-                return std::format(
-                    "{} {}: the executor does no {} \"{}\".",
-                    row.id, step.name, Pokemon::story_step_kind_name(step.kind), step.action
-                );
-            }
+            return problems[0];
         }
     }
     if (story_checkpoints().empty() || story_checkpoints().front().id != "01.00"){
@@ -147,76 +119,6 @@ UnitTestResult test_not_implemented_actions(Logger&){
         if (!used.contains(name)){
             return name + ": in no step.";
         }
-    }
-    return true;
-}
-
-//  Unsupported kinds and variants are refused by name: a tile walk, a fly
-//  without "fly", a move nobody defined, a choice row nobody listed.
-UnitTestResult test_unsupported_steps_refused(Logger&){
-    const std::vector<std::pair<StoryStepKind, std::string>> refused{
-        {StoryStepKind::LEGS, ""},
-        {StoryStepKind::STEP, ""},
-        {StoryStepKind::ROUTE, ""},
-        {StoryStepKind::MASH, "x"},
-        {StoryStepKind::GAME, "no_such_move"},
-        {StoryStepKind::GAME, "choose_starter"},
-        {StoryStepKind::GAME, "choose_2"},
-    };
-    for (const auto& [kind, variant] : refused){
-        StoryStep step;
-        step.kind = kind;
-        step.name = "probe";
-        step.action = variant;
-        if (story_step_supported(step)){
-            return std::format("Expected {} \"{}\" to be refused.", Pokemon::story_step_kind_name(kind), variant);
-        }
-    }
-    return true;
-}
-
-//  The whole table through make_story_segment() and the shared runner, each
-//  step done: every row passes in order, saving at its end unless it
-//  relies on the game's autosave.
-UnitTestResult test_story_table_runs(Logger&){
-    RecordingExecutor executor;
-    Pokemon::Segment segment = make_story_segment(story_checkpoints(), executor);
-    size_t saves = 0;
-    Pokemon::SegmentHooks hooks;
-    hooks.save = [&saves](Pokemon::RunState&){
-        saves++;
-        return Pokemon::outcome_ok();
-    };
-    hooks.reload = [](Pokemon::RunState&){
-        return Pokemon::outcome_failed("no_reload", "nothing fails here");
-    };
-    hooks.log = [](const std::string&){};
-    Pokemon::RunState state;
-    const Pokemon::SegmentReport report = Pokemon::run_segment(state, segment, {}, Pokemon::SegmentPolicy{}, hooks);
-    if (!report.completed){
-        return std::format("Expected the table to run, stopped at {} {}.", report.failed_checkpoint, report.failed_event);
-    }
-    std::vector<std::string> expected;
-    for (const StoryCheckpoint& row : story_checkpoints()){
-        for (const StoryStep& step : row.steps){
-            expected.push_back(std::format("{} {} {}", row.id, Pokemon::story_step_kind_name(step.kind), step.name));
-        }
-    }
-    if (executor.trace != expected){
-        return std::format("Expected {} steps in table order, ran {}.", expected.size(), executor.trace.size());
-    }
-    size_t expected_saves = 0;
-    for (const StoryCheckpoint& row : story_checkpoints()){
-        expected_saves += story_row_saves(row) ? 1 : 0;
-    }
-    if (expected_saves != story_checkpoints().size() - story_autosave_rows().size()){
-        return std::format(
-            "Expected the {} autosave rows not to save, {} of {} rows save.",
-            story_autosave_rows().size(), expected_saves, story_checkpoints().size()
-        );
-    }
-    if (saves != expected_saves){
-        return std::format("Expected a save per saving row ({}), saw {}.", expected_saves, saves);
     }
     return true;
 }
@@ -340,19 +242,11 @@ private:
 
 const AutoStoryTableCase AUTO_STORY_TABLE_CASES[] = {
     {
-        .input = {"Story table: rows lint, every step is one the executor does", test_story_table_lints},
+        .input = {"Story table: rows lint against PLZA's engine actions", test_story_table_lints},
         .expectation = {},
     },
     {
         .input = {"Story table: every move is known and runs", test_story_moves_known},
-        .expectation = {},
-    },
-    {
-        .input = {"Executor: tile walks and unknown variants are refused", test_unsupported_steps_refused},
-        .expectation = {},
-    },
-    {
-        .input = {"Story table: runs through the shared engine, saving per row", test_story_table_runs},
         .expectation = {},
     },
     {

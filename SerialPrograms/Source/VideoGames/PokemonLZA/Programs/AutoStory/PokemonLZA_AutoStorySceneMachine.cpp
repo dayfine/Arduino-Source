@@ -6,15 +6,12 @@
 
 #include <algorithm>
 #include <format>
+#include <map>
 #include <string>
 #include <string_view>
 #include <stdint.h>
 #include <vector>
-#include "CommonFramework/ImageTools/ImageDiff.h"
-#include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/ScreenMachine/ScreenMachine.h"
-#include "CommonTools/ScreenMachine/StepTrace.h"
-#include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "PokemonLZA_AutoStorySceneMachine.h"
 
 namespace PokemonAutomation{
@@ -22,8 +19,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 using namespace std::chrono_literals;
-using Pokemon::ScreenEvent;
-using Pokemon::ScreenEvents;
+using EngineEvent = PokemonAutomation::ScreenEvent;
 
 
 namespace{
@@ -31,21 +27,21 @@ namespace{
 //  A party bar showing this long is the overworld: it also shows between
 //  lines of a talk.
 constexpr Milliseconds PARTY_BAR_HOLD = 1000ms;
-//  Below this pixel RMSD two reads are the same screen (ScreenMachineChecks'
-//  "unchanged").
-constexpr double STILL_RMSD = 2.0;
 //  The longest a fade is waited out in one step (02.01 holds a ~25 s black).
 constexpr Milliseconds FADE_WAIT = 30000ms;
-//  The longest a still screen is waited on in one step. ScreenMachineChecks
-//  fails after 8 steps that change nothing, so a still frame may last 80 s.
+//  The longest a still screen is waited on in one step.
 constexpr Milliseconds STILL_WAIT = 10000ms;
+//  How often a wait looks again.
+constexpr Milliseconds POLL = 250ms;
+//  Looks a machine takes at most, besides its timeout: a backend whose
+//  looks carry no time still ends.
+constexpr size_t MAX_LOOKS = 4000;
 
-const ScreenEvents& busy_events(){
-    static const ScreenEvents busy{
-        ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX, ScreenEvent::BATTLE_STARTED,
-        ScreenEvent::FADE_BLACK, ScreenEvent::FADE_WHITE,
-    };
-    return busy;
+//  Something holds the player: a box (or choice), a battle, a fade.
+bool busy(const ScreenObservation& look){
+    return look.events.has(EngineEvent::TEXT_BOX) || look.events.has(EngineEvent::BATTLE) ||
+        look.events.has(EngineEvent::FADE_BLACK) || look.events.has(EngineEvent::FADE_WHITE) ||
+        has_choice(look);
 }
 
 constexpr SceneScreen ALL_SCREENS[] = {
@@ -55,10 +51,6 @@ constexpr SceneScreen ALL_SCREENS[] = {
     SceneScreen::CAN_MOVE, SceneScreen::PARTY_BAR, SceneScreen::QUIET_END,
     SceneScreen::SCENE_MOVING, SceneScreen::SCENE_STILL,
 };
-
-bool same_size(const ImageViewRGB32& a, const ImageViewRGB32& b){
-    return a.width() == b.width() && a.height() == b.height();
-}
 
 } // namespace
 
@@ -130,101 +122,106 @@ std::optional<WallClock> SceneTimeline::quiet_end_due() const{
     return std::max(m_quiet_from, m_last_busy + *m_config.quiet);
 }
 
-SceneScreen SceneTimeline::classify(const ScreenEvents& events, bool still, WallClock now) const{
-    if (m_config.goal == SceneMashGoal::CHOICE && events.has(ScreenEvent::CHOICE_BOX)){
+SceneScreen SceneTimeline::classify(const ScreenObservation& look) const{
+    const bool choice = has_choice(look);
+    if (m_config.goal == SceneMashGoal::CHOICE && choice){
         return SceneScreen::GOAL_CHOICE;
     }
-    if (m_config.goal == SceneMashGoal::BATTLE && events.has(ScreenEvent::BATTLE_STARTED)){
+    if (m_config.goal == SceneMashGoal::BATTLE && look.events.has(EngineEvent::BATTLE)){
         return SceneScreen::GOAL_BATTLE;
     }
-    if (events.has(ScreenEvent::FADE_BLACK)){
+    if (look.events.has(EngineEvent::FADE_BLACK)){
         return SceneScreen::FADE_BLACK;
     }
-    if (events.has(ScreenEvent::FADE_WHITE)){
+    if (look.events.has(EngineEvent::FADE_WHITE)){
         return SceneScreen::FADE_WHITE;
     }
-    if (events.has(ScreenEvent::CHOICE_BOX)){
+    if (choice){
         return SceneScreen::CHOICE;
     }
-    if (events.has(ScreenEvent::DIALOG_BOX)){
+    if (look.events.has(EngineEvent::TEXT_BOX)){
         return SceneScreen::DIALOG;
     }
-    if (m_config.goal == SceneMashGoal::OVERWORLD && events.has(ScreenEvent::PLAYER_CAN_MOVE)){
-        if (m_party_bar_since && now - *m_party_bar_since >= PARTY_BAR_HOLD){
+    if (m_config.goal == SceneMashGoal::OVERWORLD && look.events.has(EngineEvent::CAN_MOVE)){
+        if (m_party_bar_since && look.when - *m_party_bar_since >= PARTY_BAR_HOLD){
             return SceneScreen::CAN_MOVE;
         }
         return SceneScreen::PARTY_BAR;
     }
     const std::optional<WallClock> due = quiet_end_due();
-    if (due && now >= *due && !events.any_of(busy_events())){
+    if (due && look.when >= *due && !busy(look)){
         return SceneScreen::QUIET_END;
     }
-    return still ? SceneScreen::SCENE_STILL : SceneScreen::SCENE_MOVING;
+    return look.events.has(EngineEvent::STILL) ? SceneScreen::SCENE_STILL : SceneScreen::SCENE_MOVING;
 }
 
-void SceneTimeline::record(const ScreenEvents& events, WallClock now){
-    if (events.any_of(busy_events())){
-        m_last_busy = now;
+void SceneTimeline::record(const ScreenObservation& look){
+    if (busy(look)){
+        m_last_busy = look.when;
     }
-    const bool party_bar = events.has(ScreenEvent::PLAYER_CAN_MOVE) &&
-        !events.has(ScreenEvent::DIALOG_BOX) && !events.has(ScreenEvent::CHOICE_BOX);
+    const bool party_bar = look.events.has(EngineEvent::CAN_MOVE) && !look.events.has(EngineEvent::TEXT_BOX) && !has_choice(look);
     if (!party_bar){
         m_party_bar_since.reset();
     }else if (!m_party_bar_since){
-        m_party_bar_since = now;
+        m_party_bar_since = look.when;
     }
 }
 
 
 namespace{
 
-//  What the states share: the observer, the timeline, and the last frame
-//  read, so the states of one frame read its events once.
-class SceneReader{
+//  "text box, choice": a look's events for the log.
+std::string describe_look(const ScreenObservation& look){
+    const std::pair<EngineEvent, std::string_view> names[] = {
+        {EngineEvent::FADE_BLACK, "black fade"}, {EngineEvent::FADE_WHITE, "white fade"},
+        {EngineEvent::TEXT_BOX, "text box"}, {EngineEvent::BATTLE, "battle"},
+        {EngineEvent::CAN_MOVE, "party bar"}, {EngineEvent::STILL, "still"},
+    };
+    std::string text;
+    for (const auto& [event, name] : names){
+        if (look.events.has(event)){
+            text += (text.empty() ? "" : ", ") + std::string(name);
+        }
+    }
+    if (has_choice(look)){
+        text += text.empty() ? "choice" : ", choice";
+    }
+    return text.empty() ? "nothing" : text;
+}
+
+//  What the states share: the backend, the timeline and the look they act on.
+class SceneRunner{
 public:
-    SceneReader(ConsoleHandle& console, ProControllerContext& context, StepTrace& trace, const SceneMachineConfig& config)
-        : m_console(console)
-        , m_context(context)
-        , m_trace(trace)
-        , m_timeline(config, current_time())
+    SceneRunner(PlzaStoryBackend& backend, std::string_view label, const SceneMachineConfig& config, WallClock start)
+        : m_backend(backend)
+        , m_label(label)
+        , m_timeline(config, start)
     {}
 
-    //  The state of `screen`; a frame already read gives its first reading.
-    SceneScreen read(const ImageViewRGB32& screen){
-        if (screen.data() == m_read_data && screen.width() == m_read_width && screen.height() == m_read_height){
-            return m_read_screen;
-        }
-        m_read_data = screen.data();
-        m_read_width = screen.width();
-        m_read_height = screen.height();
-        m_read_events = m_observer.read(screen);
-        const bool still = m_previous && same_size(*m_previous.frame, screen) &&
-            ImageMatch::pixel_RMSD(*m_previous.frame, screen) < STILL_RMSD;
-        m_read_screen = m_timeline.classify(m_read_events, still, current_time());
-        return m_read_screen;
+    const SceneTimeline& timeline() const{
+        return m_timeline;
     }
 
-    //  The step of `screen`, the state the machine read last.
-    void act(SceneScreen screen){
-        const WallClock now = current_time();
-        m_timeline.record(m_read_events, now);
-        if (m_read_events != m_logged_events){
-            m_logged_events = m_read_events;
-            m_trace.action("events: " + Pokemon::describe(m_read_events));
+    //  The step of `screen`, the state of `look`.
+    void act(SceneScreen screen, const ScreenObservation& look){
+        m_timeline.record(look);
+        const std::string events = describe_look(look);
+        if (screen != m_logged_screen || events != m_logged_events){
+            m_logged_screen = screen;
+            m_logged_events = events;
+            m_backend.log(std::format("[PLZA {}] {}: {}", m_label, scene_screen_name(screen), events));
         }
-        m_previous = m_console.video().snapshot();
-        m_read_data = nullptr;
         switch (scene_screen_action(screen, m_timeline.config())){
         case SceneMashAction::DONE:
             return;
         case SceneMashAction::PRESS_TEXT:
-            pbf_press_button(m_context, m_timeline.config().text_button, 160ms, 240ms);
+            m_backend.press(m_timeline.config().text_button, 160ms, 240ms);
             return;
         case SceneMashAction::PRESS_A:
-            pbf_press_button(m_context, BUTTON_A, 160ms, 240ms);
+            m_backend.press(BUTTON_A, 160ms, 240ms);
             return;
         case SceneMashAction::PRESS_B:
-            pbf_press_button(m_context, BUTTON_B, 160ms, 240ms);
+            m_backend.press(BUTTON_B, 160ms, 240ms);
             return;
         case SceneMashAction::WAIT:
             wait(screen);
@@ -237,52 +234,41 @@ private:
         switch (screen){
         case SceneScreen::FADE_BLACK:
         case SceneScreen::FADE_WHITE:
-            wait_until(FADE_WAIT, [](const ImageViewRGB32& frame){
-                return Pokemon::fade_of_screen(frame) == Pokemon::WarpFade::NONE;
+            wait_until(FADE_WAIT, [](const ScreenObservation& look){
+                return !look.events.has(EngineEvent::FADE_BLACK) && !look.events.has(EngineEvent::FADE_WHITE);
             });
             return;
         case SceneScreen::SCENE_STILL:
-            wait_until(STILL_WAIT, [this](const ImageViewRGB32& frame){
+            wait_until(STILL_WAIT, [this](const ScreenObservation& look){
                 const std::optional<WallClock> due = m_timeline.quiet_end_due();
-                return (due && current_time() >= *due) || !m_previous ||
-                    !same_size(*m_previous.frame, frame) ||
-                    ImageMatch::pixel_RMSD(*m_previous.frame, frame) >= STILL_RMSD;
+                return (due && look.when >= *due) || !look.events.has(EngineEvent::STILL);
             });
             return;
         case SceneScreen::PARTY_BAR:
-            m_context.wait_for(250ms);
+            m_backend.wait(POLL);
             return;
         default:
-            m_context.wait_for(500ms);
+            m_backend.wait(2 * POLL);
             return;
         }
     }
 
-    //  Reads a frame every 250 ms until `done` or `limit`.
+    //  Looks every POLL until `done` or `limit`.
     template <typename Done>
     void wait_until(Milliseconds limit, Done&& done){
-        const WallClock end = current_time() + limit;
-        while (current_time() < end){
-            m_context.wait_for(250ms);
-            const VideoSnapshot frame = m_console.video().snapshot();
-            if (frame && done(*frame.frame)){
+        for (Milliseconds waited = 0ms; waited < limit; waited += POLL){
+            m_backend.wait(POLL);
+            if (done(m_backend.observe())){
                 return;
             }
         }
     }
 
-    ConsoleHandle& m_console;
-    ProControllerContext& m_context;
-    StepTrace& m_trace;
-    PlzaScreenObserver m_observer;
+    PlzaStoryBackend& m_backend;
+    std::string m_label;
     SceneTimeline m_timeline;
-    VideoSnapshot m_previous;
-    const uint32_t* m_read_data = nullptr;
-    size_t m_read_width = 0;
-    size_t m_read_height = 0;
-    ScreenEvents m_read_events;
-    ScreenEvents m_logged_events;
-    SceneScreen m_read_screen = SceneScreen::SCENE_MOVING;
+    std::optional<SceneScreen> m_logged_screen;
+    std::string m_logged_events;
 };
 
 //  How often a state may come up before the machine fails: a box or a
@@ -301,28 +287,47 @@ size_t max_visits(SceneScreen screen){
 } // namespace
 
 
-void run_scene_machine(
-    ConsoleHandle& console, ProControllerContext& context,
-    std::string_view label, const SceneMachineConfig& config, Milliseconds timeout
+Pokemon::Outcome run_scene_machine(
+    PlzaStoryBackend& backend, std::string_view label, const SceneMachineConfig& config, Milliseconds timeout
 ){
-    StepTrace trace(console, "PLZA " + std::string(label));
-    SceneReader reader(console, context, trace, config);
+    Pokemon::Observation<Pokemon::ZonePose> look = backend.observe();
+    const WallClock start = look.when;
+    SceneRunner runner(backend, label, config, start);
     std::vector<ScreenState> states;
+    std::map<std::string, SceneScreen, std::less<>> screens;
     for (const SceneScreen screen : ALL_SCREENS){
         ScreenState state;
         state.name = std::string(scene_screen_name(screen));
-        state.matches = [&reader, screen](const ImageViewRGB32& frame){
-            return reader.read(frame) == screen;
-        };
-        state.act = [&reader, screen]{
-            reader.act(screen);
+        state.matches_observation = [&runner, screen](const ScreenObservation& observation){
+            return runner.timeline().classify(observation) == screen;
         };
         state.max_visits = max_visits(screen);
         state.terminal = scene_screen_terminal(screen);
+        screens.emplace(state.name, screen);
         states.push_back(std::move(state));
     }
-    const std::string end = run_screen_machine(console, context, trace, states, timeout);
-    console.log(std::format("[PLZA {}] done on {}.", label, end));
+    std::map<std::string, size_t, std::less<>> visits;
+    for (size_t looks = 0; looks < MAX_LOOKS; looks++){
+        if (looks > 0){
+            look = backend.observe();
+        }
+        if (look.when - start > timeout){
+            break;
+        }
+        const ScreenState* state = match_screen_state(states, look);
+        if (state == nullptr){
+            return Pokemon::outcome_failed("scene_unknown", std::format("{}: no state for {}", label, describe_look(look)));
+        }
+        if (++visits[state->name] > state->max_visits){
+            return Pokemon::outcome_failed("scene_stuck", std::format("{}: {} came up {} times", label, state->name, state->max_visits + 1));
+        }
+        runner.act(screens.at(state->name), look);
+        if (state->terminal){
+            backend.log(std::format("[PLZA {}] done on {}.", label, state->name));
+            return Pokemon::outcome_ok();
+        }
+    }
+    return Pokemon::outcome_failed("scene_timeout", std::format("{}: not done within {} s", label, timeout.count() / 1000));
 }
 
 

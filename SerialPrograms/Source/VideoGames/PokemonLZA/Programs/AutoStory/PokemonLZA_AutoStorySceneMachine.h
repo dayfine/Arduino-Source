@@ -2,12 +2,14 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  01.00's scenes as a ScreenMachine (CommonTools/ScreenMachine): every read
- *  of the screen picks one state from PlzaScreenObserver's events, the state
- *  takes one step, and StepTrace logs each change of state with its frame.
- *  That log says when the player gets control, which the tutorial shows with
- *  no party bar (only the Move / Control Camera hints, which have no detector
- *  yet: no frame of them has been kept).
+ *  01.00's scenes as ScreenMachine states (CommonTools/ScreenMachine) that
+ *  match on what the backend observed (ScreenState::matches_observation),
+ *  so they run on the console and on a scripted backend alike: every look
+ *  picks one state, the state takes one step, and each change of state is
+ *  logged with the look's events. That log says when the player gets
+ *  control, which the tutorial shows with no party bar (only the Move /
+ *  Control Camera hints, which have no detector yet: no frame of them has
+ *  been kept).
  *
  *  The walks between the scenes are PokemonLZA_AutoStoryGuardedWalks.h.
  *
@@ -21,10 +23,11 @@
 #include <string_view>
 #include "Common/Cpp/Time.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "CommonTools/ScreenMachine/ScreenObservation.h"
 #include "NintendoSwitch/Controllers/NintendoSwitch_ControllerButtons.h"
-#include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
-#include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
-#include "Pokemon/AutoStory/Pokemon_ScreenEvents.h"
+#include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
+#include "PokemonLZA_AutoStoryObservation.h"
+#include "PokemonLZA_AutoStoryBackend.h"
 #include "PokemonLZA_AutoStoryScreenEvents.h"
 
 namespace PokemonAutomation{
@@ -72,19 +75,19 @@ bool scene_screen_terminal(SceneScreen screen);
 //  screens), PRESS_A when the goal is a battle (cards, the VS splash).
 SceneMashAction scene_screen_action(SceneScreen screen, const SceneMachineConfig& config);
 
-//  The time-dependent part of the machine, apart from the console so tests
-//  can feed it events: when the screen was last busy, since when the party
-//  bar shows.
+//  The time-dependent part of the machine, apart from the backend so tests
+//  can feed it looks: when the screen was last busy, since when the party
+//  bar shows. A look's time is its `when`.
 class SceneTimeline{
 public:
     SceneTimeline(SceneMachineConfig config, WallClock start);
 
-    //  The state for a read showing `events` at `now`; `still`: the screen
-    //  barely changed since the read before. Does not change the timeline.
-    SceneScreen classify(const Pokemon::ScreenEvents& events, bool still, WallClock now) const;
+    //  The state for `look` (STILL: the screen barely changed since the
+    //  look before). Does not change the timeline.
+    SceneScreen classify(const ScreenObservation& look) const;
 
-    //  Takes in the read the machine acted on.
-    void record(const Pokemon::ScreenEvents& events, WallClock now);
+    //  Takes in the look the machine acted on.
+    void record(const ScreenObservation& look);
 
     //  When the quiet end is due if nothing busy shows before; none
     //  without a quiet time.
@@ -102,13 +105,13 @@ private:
 };
 
 
-//  Presses through a scene as a ScreenMachine until `config.goal` shows
-//  (OVERWORLD: the party bar held a second, or the quiet end). `label`
-//  names the StepTrace (its log lines and its frame folder). Throws
-//  OperationFailedException on a timeout or a state that comes up too often.
-void run_scene_machine(
-    ConsoleHandle& console, ProControllerContext& context,
-    std::string_view label, const SceneMachineConfig& config, Milliseconds timeout
+//  Presses through a scene until `config.goal` shows (OVERWORLD: the party
+//  bar held a second, or the quiet end). `label` names its log lines
+//  ("[PLZA opening] dialog: text box"). Fails as "scene_timeout" when
+//  `timeout` passes (by the looks' time) and "scene_stuck" on a state that
+//  comes up too often.
+Pokemon::Outcome run_scene_machine(
+    PlzaStoryBackend& backend, std::string_view label, const SceneMachineConfig& config, Milliseconds timeout
 );
 
 //  Registers the scene machine's tests: its states on sequences of events,

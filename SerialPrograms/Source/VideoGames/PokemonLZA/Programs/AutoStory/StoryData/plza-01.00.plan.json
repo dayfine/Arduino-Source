@@ -27,7 +27,10 @@
         "id": "opening",
         "kind": "game_action",
         "why": "step 5: the opening cutscene until the Move / Camera hints",
-        "action": "mash_to_move_hints"
+        "action": "mash_to_move_hints",
+        "args": {
+          "min_length_ms": 60000
+        }
       },
       {
         "id": "platform_to_plaza",
@@ -39,7 +42,10 @@
         "id": "arrival_scenes",
         "kind": "game_action",
         "why": "steps 8-10: \"That I am\", Jett's ad, \"So you hired a Pokemon...\" (top choices)",
-        "action": "mash_to_move_hints"
+        "action": "mash_to_move_hints",
+        "args": {
+          "min_length_ms": 40000
+        }
       },
       {
         "id": "chase_pancham",
@@ -63,7 +69,10 @@
         "id": "battle_area",
         "kind": "game_action",
         "why": "step 12: the scene until free control in the battle area; autosave",
-        "action": "mash_to_move_hints"
+        "action": "mash_to_move_hints",
+        "args": {
+          "min_length_ms": 20000
+        }
       }
     ],
     "metadata": {

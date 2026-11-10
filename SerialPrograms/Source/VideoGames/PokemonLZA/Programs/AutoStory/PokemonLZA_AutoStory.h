@@ -17,7 +17,7 @@
 #include "NintendoSwitch/Options/NintendoSwitch_GoHomeWhenDoneOption.h"
 #include "Pokemon/Options/Pokemon_StoryRunOptions.h"
 #include "VideoGames/PokemonLZA/Options/PokemonLZA_BattleAIOption.h"
-#include "PokemonLZA_AutoStoryExecutor.h"
+#include "PokemonLZA_AutoStoryBackend.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -33,7 +33,8 @@ public:
 };
 
 
-//  Runs the story table's checkpoints from the start one to the end one.
+//  Runs the story's checkpoints from the start one to the end one on the
+//  shared story engine.
 class AutoStory : public SingleSwitchProgramInstance{
 public:
     using Descriptor = AutoStory_Descriptor;
