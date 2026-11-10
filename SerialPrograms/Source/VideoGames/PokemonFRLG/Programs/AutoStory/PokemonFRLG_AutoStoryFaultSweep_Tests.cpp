@@ -188,6 +188,19 @@ bool unscripted(const std::string& failure){
         || failure.find(": no_battle.") != std::string::npos;
 }
 
+//  Hides from `maps` the trainer who leaves after `step`, a battle a talk
+//  starts (talk_battle_hide_flag()). Returns whether there was one.
+bool hide_talk_battle_trainer(std::vector<MapData>& maps, const StoryStep& step){
+    const std::optional<std::string> hidden = talk_battle_hide_flag(step);
+    if (!hidden){
+        return false;
+    }
+    for (MapData& map : maps){
+        hide_objects(map, {*hidden});
+    }
+    return true;
+}
+
 //  Row `row` on the sim with `script`, from its start. After a step the sim
 //  does not play, the player is put on its pose_after, or on `landings`'
 //  tile for it, the program going on from the pose_after either way. A
@@ -223,12 +236,7 @@ RowRun run_row(
             continue;
         }
         at = *story_pose(*step.pose_after);
-        const std::optional<std::string> hidden = talk_battle_hide_flag(step);
-        if (let_pass && hidden){
-            for (MapData& map : maps){
-                hide_objects(map, {*hidden});
-            }
-        }
+        const bool hidden = let_pass && hide_talk_battle_trainer(maps, step);
         const auto landing = landings.find(c);
         const MapPosition land{at.map, landing == landings.end() ? at.tile : landing->second};
         if (!map_loaded(land.map)){
@@ -237,7 +245,7 @@ RowRun run_row(
             out.failure = walks_after(row, c) ? std::format("{}/{}: ends on {}, which has no map, with a walk after it.", row.id, step.name, land.map) : "";
             break;
         }
-        if (!(sim->state().position == land) || (let_pass && hidden)){
+        if (!(sim->state().position == land) || hidden){
             add(sim->state());
             sim = std::make_unique<OverworldSim>(maps, land, at.facing.value_or(sim->state().facing), script);
         }
