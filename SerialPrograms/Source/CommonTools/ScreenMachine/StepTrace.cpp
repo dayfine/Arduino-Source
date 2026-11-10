@@ -36,9 +36,7 @@ void StepTrace::screen(const std::string& name){
     }
     m_count++;
     const double seconds = std::chrono::duration<double>(current_time() - m_start).count();
-    char prefix[16];
-    std::snprintf(prefix, sizeof(prefix), "%03zu-", m_count);
-    std::string path = m_folder + prefix + name + ".png";
+    std::string path = m_folder + std::format("{:03}-", m_count) + name + ".png";
     VideoSnapshot screen = m_stream.video().snapshot();
     if (screen){
         screen.frame->save(path);
