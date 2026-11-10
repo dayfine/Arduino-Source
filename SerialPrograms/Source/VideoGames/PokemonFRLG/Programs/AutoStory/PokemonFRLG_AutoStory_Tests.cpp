@@ -560,7 +560,7 @@ std::string joined_ids(const std::vector<StoryCheckpoint>& rows){
     return text;
 }
 
-const char* handoff_name(StoryHandoff handoff){
+std::string handoff_name(StoryHandoff handoff){
     switch (handoff){
     case StoryHandoff::NONE:
         return "none";

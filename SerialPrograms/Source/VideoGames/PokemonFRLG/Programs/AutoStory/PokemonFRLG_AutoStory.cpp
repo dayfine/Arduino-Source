@@ -78,7 +78,7 @@ const std::string KEEP_START_FRAME_TEXT =
 
 } // namespace
 
-const char* const RUN_STARTER_RNG_TEXT =
+const std::string RUN_STARTER_RNG_TEXT =
     "<b>Run Starter RNG in AutoStory:</b><br>Off by default. Instead of stopping for them, run SID Helper's steps on the "
     "new game's keyboard when the RNG plan has no SID, and Starter RNG's attempts from a save south of the table at the "
     "end of 00.04, as the RNG plan lists them. A shiny Squirtle goes on to the rival's battle, saves after it and the run "

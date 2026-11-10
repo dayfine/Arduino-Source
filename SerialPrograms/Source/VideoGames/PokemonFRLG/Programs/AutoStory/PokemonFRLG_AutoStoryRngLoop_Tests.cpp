@@ -30,7 +30,7 @@ struct AutoStoryRngLoopInput{
 };
 
 struct AutoStoryRngLoopExpectation{
-    const char* description;
+    std::string_view description;
 };
 
 struct AutoStoryRngLoopTestCase{
