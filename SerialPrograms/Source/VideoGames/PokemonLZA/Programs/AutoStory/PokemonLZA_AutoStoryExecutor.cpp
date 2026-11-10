@@ -26,15 +26,6 @@ using Pokemon::StoryStepKind;
 
 const std::map<std::string, std::string, std::less<>>& story_actions_not_implemented(){
     static const std::map<std::string, std::string, std::less<>> todos{
-        {"new_game_language", "from the title screen with no save: A at the language list (English is the default)."},
-        {"pick_look", "a grid pick for a menu whose highlight starts at random: D-pad UP, LEFT x3 to the first look (assumes the edges clamp)."},
-        {"type_player_name", "wait for the keyboard, type the player's name (Kosmos in the lab), then DOWN x2, A on \"Ready!\"."},
-        {"mash_to_move_hints", "a \"player can move\" detector (the Move / Control Camera hints): the tutorial has no party HUD for mash_to_overworld(). A picks a choice's top option."},
-        {"text_to_choice", "advance a scene's text until a choice's selection arrow shows, pressing nothing that would pick one."},
-        {"story_battle_start", "A through the text into a story battle: start on the VS splash or the \"sent out\" line (no Run prompt), A on tutorial cards (B does not close them)."},
-        {"talk_through_map_screen", "a map screen detector (\"MAP\" header, \"A Place Pin / B Close\"): close it with B, never A (A places a pin); A through the talk around it."},
-        {"climb_ladder", "a ladder: sidestep along the wall to it, face it, A at \"A Climb Up\", hold up until off the top."},
-        {"talk_to_pokedex_screen", "a Pokedex entry screen detector (its header): A through the talk until the entry screen opens, then B (A only plays motions there)."},
         {"catch_tutorial", "a throw: ZL+ZR held 1500 ms, then release (500 ms only aims); retry while the catch HUD comes back (it broke out) until \"You caught\"; turn to find the target; balls as a budget."},
         {"battle_then_catch", "fight at once (the target attacks first) until the \"catch window\" line, A twice (a throw is ignored while a dialog shows), then the 1500 ms ZL+ZR throw."},
         {"register_five_species", "find a wild Pokemon of a new species, approach, ZL lock and throw, read caught / broke out, count from the quest panel to 5/5; then back to the lab gate (route not recorded)."},
@@ -68,7 +59,12 @@ const std::map<StoryStepKind, std::set<std::string, std::less<>>>& step_variants
         {StoryStepKind::HEAL, {""}},
         {StoryStepKind::SHOP, {""}},
         {StoryStepKind::SAVE, {""}},
-        {StoryStepKind::GAME, {"approach_starter", "story_battle"}},
+        {StoryStepKind::GAME, {
+            "approach_starter", "story_battle",
+            "new_game_language", "pick_look", "type_player_name",
+            "mash_to_move_hints", "text_to_choice", "story_battle_start",
+            "talk_through_map_screen", "talk_to_pokedex_screen", "climb_ladder",
+        }},
     };
     return variants;
 }
@@ -132,7 +128,8 @@ Outcome StoryExecutor::answer(RunState&, const StoryStep& step){
 }
 
 Outcome StoryExecutor::mash(RunState&, const StoryStep& step){
-    mash_to_overworld(console(), context(), step.variant == "a" ? BUTTON_A : BUTTON_B, 60s);
+    //  120 s: 02.01's last scene holds a ~25 s black screen.
+    mash_scene(console(), context(), SceneMashGoal::OVERWORLD, step.variant == "a" ? BUTTON_A : BUTTON_B, 120s);
     return Pokemon::outcome_ok();
 }
 
@@ -170,6 +167,25 @@ Outcome StoryExecutor::game(RunState&, const StoryStep& step){
         choose_dialog_option(console(), context(), choice->second);
     }else if (step.variant == "approach_starter"){
         approach_starter();
+    }else if (step.variant == "new_game_language"){
+        new_game_language(console(), context());
+    }else if (step.variant == "pick_look"){
+        pick_first_look(console(), context());
+    }else if (step.variant == "type_player_name"){
+        type_player_name(console(), context(), m_env.player_name);
+    }else if (step.variant == "mash_to_move_hints"){
+        //  The tutorial shows no party bar: 8 s with no box is the overworld.
+        mash_scene(console(), context(), SceneMashGoal::OVERWORLD, BUTTON_A, 180s, 8000ms);
+    }else if (step.variant == "text_to_choice"){
+        mash_scene(console(), context(), SceneMashGoal::CHOICE, BUTTON_B, 60s);
+    }else if (step.variant == "story_battle_start"){
+        mash_scene(console(), context(), SceneMashGoal::BATTLE, BUTTON_A, 90s);
+    }else if (step.variant == "talk_through_map_screen" || step.variant == "talk_to_pokedex_screen"){
+        //  B through the talk closes the map (A would place a pin) and the
+        //  Pokedex entry (A only plays its motions).
+        mash_scene(console(), context(), SceneMashGoal::OVERWORLD, BUTTON_B, 90s);
+    }else if (step.variant == "climb_ladder"){
+        climb_ladder(console(), context());
     }else if (step.variant == "story_battle"){
         fight_battle_in_progress(m_env.env, console(), context(), m_env.battle_ai, 120s);
     }else{

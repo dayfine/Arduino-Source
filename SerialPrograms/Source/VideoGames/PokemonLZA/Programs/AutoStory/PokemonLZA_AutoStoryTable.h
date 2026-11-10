@@ -23,6 +23,7 @@
 
 #include <functional>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 #include "Pokemon/AutoStory/Pokemon_StorySteps.h"
@@ -35,16 +36,25 @@ namespace PokemonLZA{
 
 
 //  The story's checkpoints in order: 01.xx Main Mission 01 (new game,
-//  Pancham, the starter), 02.xx Main Mission 02 (out of the Battle Zone to
-//  Hotel Z), 03.xx Main Mission 03 (Taunie's battle, the Pokemon Center,
-//  Wild Zone 1, Mable's Rock Smash TM). Only 01.00, a new game, starts
-//  without a save.
+//  Pancham, the starter), 02.01 Main Mission 02 (out of the Battle Zone to
+//  Hotel Z, the first night), 03.xx Main Mission 03 (Taunie's battle, the
+//  Pokemon Center, Wild Zone 1, Mable's Rock Smash TM). Only 01.00, a new
+//  game, starts without a save; it starts on the title screen.
 const std::vector<Pokemon::StoryCheckpoint>& story_checkpoints();
 
-//  Whether `row` saves through the menu at its end. Rows before the game
-//  has its menu (01.00-01.02) don't: the game autosaves before the starter,
-//  and that autosave is 01.03's start.
+//  The rows that end on one of the game's autosaves and do not save
+//  themselves: before 03.02 the main menu cannot save. Each ends where the
+//  game autosaved in the recording (before the starter, the Main Mission 02
+//  and 03 banners, the Hotel Z lobby scene), so the next row reloads there.
+const std::set<std::string, std::less<>>& story_autosave_rows();
+
+//  Whether `row` saves through the menu at its end: every row but
+//  story_autosave_rows().
 bool story_row_saves(const Pokemon::StoryCheckpoint& row);
+
+//  How many rows from the first need no action of
+//  story_actions_not_implemented(): the part of the story a run can play.
+size_t story_rows_ready();
 
 //  The overworld walks the table's GAME steps name, by name.
 const std::map<std::string, StoryMove, std::less<>>& story_moves();

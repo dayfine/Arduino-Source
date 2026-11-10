@@ -31,6 +31,40 @@ const ImageFloatBox WHITE_BOX_EDGE{0.265, 0.931, 0.465, 0.020};
 } // namespace
 
 
+SceneMashAction scene_mash_action(const ScreenEvents& events, SceneMashGoal goal, bool text_button_is_b){
+    switch (goal){
+    case SceneMashGoal::CHOICE:
+        if (events.has(ScreenEvent::CHOICE_BOX)){
+            return SceneMashAction::DONE;
+        }
+        break;
+    case SceneMashGoal::BATTLE:
+        if (events.has(ScreenEvent::BATTLE_STARTED)){
+            return SceneMashAction::DONE;
+        }
+        break;
+    case SceneMashGoal::OVERWORLD:
+        if (events.has(ScreenEvent::PLAYER_CAN_MOVE)){
+            return SceneMashAction::DONE;
+        }
+        break;
+    }
+    if (events.has(ScreenEvent::FADE_BLACK) || events.has(ScreenEvent::FADE_WHITE)){
+        return SceneMashAction::WAIT;
+    }
+    if (events.has(ScreenEvent::CHOICE_BOX)){
+        return SceneMashAction::PRESS_A;
+    }
+    if (events.has(ScreenEvent::DIALOG_BOX)){
+        return SceneMashAction::PRESS_TEXT;
+    }
+    if (goal == SceneMashGoal::BATTLE){
+        return SceneMashAction::PRESS_A;
+    }
+    return text_button_is_b ? SceneMashAction::PRESS_B : SceneMashAction::WAIT;
+}
+
+
 PlzaScreenObserver::PlzaScreenObserver()
     : m_blue_dialog(COLOR_BLUE)
     , m_teal_dialog(COLOR_GREEN)

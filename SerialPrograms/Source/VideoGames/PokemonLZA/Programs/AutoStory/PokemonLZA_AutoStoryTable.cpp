@@ -9,6 +9,7 @@
 
 #include <chrono>
 #include <optional>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -88,24 +89,22 @@ StoryCheckpoint row(std::string id, std::string title, std::optional<Pose> start
 //  Main Mission 01: a new game, Pancham, the starter.
 std::vector<StoryCheckpoint> mission_01(){
     return {
-        row("01.00", "New game to the platform", std::nullopt, {
+        //  No save before the starter's autosave: a failed attempt reloads
+        //  to the title screen with no save, where this row starts again.
+        row("01.00", "New game to the starter", std::nullopt, {
             action("new_game_language", "language", "step 1: start a new game in English"),
             action("pick_look", "look", "step 2: pick the first look"),
             action("type_player_name", "name", "steps 3-4: name the player and confirm"),
             action("mash_to_move_hints", "opening", "step 5: the opening cutscene until the Move / Camera hints"),
-        }),
-        row("01.01", "Platform to the plaza", in(LUMIOSE), {
             move("platform_to_plaza", "steps 6-7: down the platform, then right until the white fade"),
             action("mash_to_move_hints", "arrival_scenes", "steps 8-10: \"That I am\", Jett's ad, \"So you hired a Pokemon...\" (top choices)"),
-        }),
-        row("01.02", "Chase Pancham", in(LUMIOSE), {
             move("chase_pancham", "step 11: after Pancham, through the archway, around the starters into the scene"),
             action("text_to_choice", "pancham_cornered", "step 12: the scene up to its choice"),
             action("choose_1", "battle_with_pokemon", "step 12: choose \"Battle with Pokemon!\" (second choice)"),
-            action("mash_to_move_hints", "battle_area", "step 12: the scene until free control in the battle area"),
+            action("mash_to_move_hints", "battle_area", "step 12: the scene until free control in the battle area; autosave"),
         }),
         //  Starts on the autosave before the starter.
-        row("01.03", "Starter and the first battle", in(LUMIOSE), {
+        row("01.01", "Starter and the first battle", in(LUMIOSE), {
             action("approach_starter", "approach_starter", "step 13: walk up to the starter (only Chikorita's walk was recorded)"),
             talk("talk_to_starter", "step 13: A at \"A Talk Chikorita\""),
             action("story_battle_start", "andi_battle_start", "steps 14-15: choose it, the pre-battle talk, \"Go! Chikorita!\", the battling tutorial"),
@@ -116,16 +115,16 @@ std::vector<StoryCheckpoint> mission_01(){
 }
 
 //  Main Mission 02: out of the Battle Zone, Hotel Z, the first night.
-std::vector<StoryCheckpoint> mission_02_battle_zone(){
+std::vector<StoryCheckpoint> mission_02(){
     return {
-        //  Starts on the autosave at the Main Mission 02 banner.
-        row("02.01", "Escape the Battle Zone: Brigitte", in(LUMIOSE), {
+        //  Starts on the autosave at the Main Mission 02 banner. No
+        //  autosave was seen until Main Mission 03's, and the menu cannot
+        //  save yet, so the whole mission is one row.
+        row("02.01", "Main Mission 02: Battle Zone to the first night", in(LUMIOSE), {
             move("battle_zone_to_brigitte", "step 18: through the Battle Zone until the black fade into Brigitte's scene"),
             action("story_battle_start", "brigitte_battle_start", "step 19: A through her talk to \"Brigitte sent out Cleffa!\""),
             action("story_battle", "brigitte_battle", "step 19: beat Brigitte's Cleffa (Lv 7), until her speech"),
             mash_a("after_brigitte", "step 20: Brigitte's and Taunie's talk, until free control alone in the plaza"),
-        }),
-        row("02.02", "Out of the Battle Zone to Hotel Z", in(LUMIOSE), {
             move("to_blocked_street", "step 21: on until the black fade into the street the trainers block"),
             mash_a("street_scene", "step 21: a Pokemon drives the trainers off (no battle)"),
             move("to_battle_zone_gate", "step 22: on to the gate's \"A Leave\""),
@@ -134,13 +133,6 @@ std::vector<StoryCheckpoint> mission_02_battle_zone(){
             mash_a("hotel_z_arrival", "step 23: the Hotel Z arrival scene"),
             move("to_hotel_z_door", "step 24: up the steps to the door's \"A Enter\""),
             mash_a("hotel_z_lobby", "steps 24-25: A Enter, the loading screen, the lobby scene with Taunie"),
-        }),
-    };
-}
-
-std::vector<StoryCheckpoint> mission_02_hotel_z(){
-    return {
-        row("02.03", "Check in, up to room 202", in(HOTEL_Z), {
             move("to_front_counter", "step 26: along the counter to the clerk's \"A Talk\""),
             talk("talk_to_clerk", "step 26: A at the clerk (\"A Talk ???\")"),
             mash_a("check_in", "step 27: check-in with AZ, the Key to Room 202"),
@@ -149,8 +141,6 @@ std::vector<StoryCheckpoint> mission_02_hotel_z(){
             action("choose_0", "ride_to_2f", "step 28: \"2F\", the first floor listed"),
             mash_b("arrive_2f", "step 28: the ride, until control on 2F"),
             move("to_room_202", "step 29: to \"Room 202 / A Enter\""),
-        }),
-        row("02.04", "A night in room 202", in(HOTEL_Z), {
             mash_a("enter_room_202", "step 30: A Enter, \"Here's room 202.\", until control in the room"),
             move("to_bed", "step 31: to the bed's \"A Rest\""),
             talk("rest", "step 31: A Rest, \"Rest until tomorrow morning?\""),
@@ -167,17 +157,19 @@ std::vector<StoryCheckpoint> mission_02_hotel_z(){
 std::vector<StoryCheckpoint> mission_03_hotel_z(){
     return {
         //  Starts on the autosave after the Main Mission 03 banner.
-        row("03.01", "Down to the lobby, out to Taunie", in(HOTEL_Z), {
+        row("03.01", "Down to the lobby", in(HOTEL_Z), {
             move("out_of_room_202", "step 36: to the room door's \"A Leave\""),
             mash_a("leave_room_202", "step 36: A Leave, the loading screen"),
             move("to_2f_elevator", "step 37: down the 2F hallway to \"A Take Elevator\""),
             talk("take_elevator_down", "step 37: A Take Elevator, \"Which floor?\""),
             action("choose_0", "ride_to_lobby", "step 38: \"1F (Lobby)\", the first floor listed"),
             mash_a("lobby_scene", "step 39: Z-A Royale, the app, the new outfit, AZ, Lida; autosave"),
+        }),
+        //  Starts on the lobby's autosave. From here on the main menu saves
+        //  at each row's end.
+        row("03.02", "Out of Hotel Z, battle Taunie", in(HOTEL_Z), {
             move("to_hotel_front_door", "step 40: across the lobby to the front door's \"A Leave\""),
             mash_a("leave_hotel_z", "steps 40-41: A Leave, the Main Menu tutorial card"),
-        }),
-        row("03.02", "Battle Taunie", in(LUMIOSE), {
             move("to_taunie_at_gate", "step 41: to Taunie at the gate, \"A Talk Taunie\""),
             talk("talk_to_taunie", "step 42: A at Taunie"),
             action("story_battle_start", "taunie_battle_start", "step 42: A through her talk to \"Taunie sent out Totodile!\""),
@@ -212,18 +204,21 @@ std::vector<StoryCheckpoint> mission_03_to_pokemon_center(){
 
 std::vector<StoryCheckpoint> mission_03_wild_zone(){
     return {
-        //  Starts on the autosave outside the Pokemon Center.
-        row("03.05", "Wild Zone 1: first catches", in(LUMIOSE), {
+        //  Starts on 03.04's save outside the Pokemon Center.
+        row("03.05", "To Wild Zone 1", in(LUMIOSE), {
             move("center_to_zone_1", "step 56: from the Pokemon Center to Wild Zone 1's gate"),
             move("toward_zone_1_gate", "step 57: toward the gate, into Taunie's scene"),
             mash_a("wild_zones_tutorial", "step 57: Taunie on wild zones, the Wild Zones card"),
             move("into_zone_1", "step 58: to the gate's \"A Enter\""),
             mash_a("enter_zone_1", "step 58: A Enter, Taunie, the Throwing Poke Balls card"),
+        }),
+        //  Design only (not code): Wild Zone 1's catches and crossing.
+        row("03.06", "Wild Zone 1: first catches", in(WILD_ZONE_1), {
             action("catch_tutorial", "catch_fletchling", "step 59: catch Fletchling, throwing again when it breaks out"),
             action("battle_then_catch", "catch_bunnelby", "step 60: weaken Bunnelby, then catch it in the catch window"),
             mash_a("after_catches", "step 61: Taunie: tall grass, more Poke Balls, moves smash boulders"),
         }),
-        row("03.06", "Five species, into the Research Lab", in(WILD_ZONE_1), {
+        row("03.07", "Five species, into the Research Lab", in(WILD_ZONE_1), {
             move("zone_1_to_far_gate", "step 62: back across Wild Zone 1 to its gate's \"A Leave\""),
             mash_a("leave_zone_1", "step 62: A Leave, out on the street"),
             move("to_research_lab", "step 63: across to the Pokemon Research Lab's gate, into Taunie's scene"),
@@ -234,7 +229,7 @@ std::vector<StoryCheckpoint> mission_03_wild_zone(){
             mash_a("lab_lobby", "steps 65-66: A Enter, the receptionist: third floor; autosave"),
         }),
         //  Starts on the autosave in the lab lobby.
-        row("03.07", "Mable's research, the Rock Smash TM", in(RESEARCH_LAB), {
+        row("03.08", "Mable's research, the Rock Smash TM", in(RESEARCH_LAB), {
             move("to_lab_elevator", "step 66: to the elevator's \"A Take Elevator\""),
             talk("take_lab_elevator", "step 66: A Take Elevator, \"Which floor would you like to go to?\""),
             //  By name: "3F: Director's Office" under "2F: Laboratory".
@@ -251,7 +246,7 @@ std::vector<StoryCheckpoint> mission_03_wild_zone(){
 std::vector<StoryCheckpoint> make_story_checkpoints(){
     std::vector<StoryCheckpoint> rows;
     for (std::vector<StoryCheckpoint> part : {
-        mission_01(), mission_02_battle_zone(), mission_02_hotel_z(),
+        mission_01(), mission_02(),
         mission_03_hotel_z(), mission_03_to_pokemon_center(), mission_03_wild_zone(),
     }){
         for (StoryCheckpoint& checkpoint : part){
@@ -377,8 +372,26 @@ const std::map<std::string, StoryMove, std::less<>>& story_moves(){
     return moves;
 }
 
+const std::set<std::string, std::less<>>& story_autosave_rows(){
+    static const std::set<std::string, std::less<>> rows{"01.00", "01.01", "02.01", "03.01"};
+    return rows;
+}
+
 bool story_row_saves(const Pokemon::StoryCheckpoint& row){
-    return row.id != "01.00" && row.id != "01.01" && row.id != "01.02";
+    return !story_autosave_rows().contains(row.id);
+}
+
+size_t story_rows_ready(){
+    size_t ready = 0;
+    for (const StoryCheckpoint& checkpoint : story_checkpoints()){
+        for (const StoryStep& step : checkpoint.steps){
+            if (step.kind == StoryStepKind::GAME && story_actions_not_implemented().contains(step.variant)){
+                return ready;
+            }
+        }
+        ready++;
+    }
+    return ready;
 }
 
 const std::map<StarterChoice, StoryMove>& starter_moves(){

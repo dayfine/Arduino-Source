@@ -18,7 +18,11 @@
  *      GAME    a move of story_moves(); "approach_starter" (the walk of
  *              starter_moves() to the chosen starter); "choose_0"/"choose_1"
  *              (that row of the choices on screen); "story_battle" (attack
- *              in a battle already on screen until a dialog shows); or an
+ *              in a battle already on screen until a dialog shows); the new
+ *              game's "new_game_language", "pick_look", "type_player_name";
+ *              the scene mashes "mash_to_move_hints", "text_to_choice",
+ *              "story_battle_start", "talk_through_map_screen",
+ *              "talk_to_pokedex_screen" (mash_scene()); "climb_ladder"; or an
  *              action of story_actions_not_implemented(), which throws
  *              StoryActionNotImplemented naming the code it waits for
  *
@@ -60,6 +64,9 @@ struct StoryEnv{
     SingleSwitchProgramEnvironment& env;
     ProControllerContext& context;
     StarterChoice starter = StarterChoice::CHIKORITA;
+    //  The new game's name: upper case letters and digits, as
+    //  type_player_name() types them. The lab's player is Kosmos.
+    std::string player_name = "KOSMOS";
     BattleAIOption& battle_ai;
 };
 

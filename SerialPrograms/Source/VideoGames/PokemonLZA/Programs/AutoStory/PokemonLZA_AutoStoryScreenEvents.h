@@ -52,6 +52,35 @@ private:
     OverworldPartySelectionDetector m_party;
 };
 
+//  What a scene mash is after: the overworld back, a choice on screen
+//  (pressing nothing that would pick one), or a story battle's HUD.
+enum class SceneMashGoal{
+    OVERWORLD,
+    CHOICE,
+    BATTLE,
+};
+
+//  What a scene mash does on one frame.
+enum class SceneMashAction{
+    WAIT,           //  nothing: a fade, or a quiet screen the goal waits out
+    PRESS_TEXT,     //  the mash's text button (A or B) at a dialogue box
+    PRESS_A,        //  A: the top choice, or a tutorial card / splash (B does not close them)
+    PRESS_B,        //  B on a screen with no box: closes the map and Pokedex screens
+    DONE,           //  the goal shows
+};
+
+//  How a scene mash reads a frame's events (the console loop is
+//  mash_scene() in PokemonLZA_AutoStoryActions.h):
+//  - the goal's event ends it (OVERWORLD: PLAYER_CAN_MOVE; the caller holds
+//    it a second, since the party bar also shows between lines);
+//  - a fade waits;
+//  - a choice takes its top row with A, except when the goal is the choice;
+//  - a box gets the text button;
+//  - with no box: BATTLE presses A (cards, the VS splash), a B mash presses
+//    B (it closes the screens a talk opens), an A mash waits (A would talk
+//    to whoever stands in front).
+SceneMashAction scene_mash_action(const Pokemon::ScreenEvents& events, SceneMashGoal goal, bool text_button_is_b);
+
 //  Registers the adapter's image tests (lab-B frames, 2026-11-08; they live
 //  in CommandLineTests, PokemonLZA/AutoStoryScreenEvents/).
 void add_tests_AutoStoryScreenEvents(UnitTestDatabase& database);

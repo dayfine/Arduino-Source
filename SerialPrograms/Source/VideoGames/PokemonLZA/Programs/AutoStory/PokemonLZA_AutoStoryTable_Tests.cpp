@@ -16,6 +16,7 @@
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
 #include "Pokemon/AutoStory/Pokemon_StorySteps.h"
 #include "PokemonLZA_AutoStoryExecutor.h"
+#include "PokemonLZA_AutoStoryScreenEvents.h"
 #include "PokemonLZA_AutoStoryTable.h"
 #include "PokemonLZA_AutoStoryTable_Tests.h"
 
@@ -207,11 +208,83 @@ UnitTestResult test_story_table_runs(Logger&){
     for (const StoryCheckpoint& row : story_checkpoints()){
         expected_saves += story_row_saves(row) ? 1 : 0;
     }
-    if (expected_saves != story_checkpoints().size() - 3){
-        return std::format("Expected 01.00-01.02 to rely on autosaves, {} of {} rows save.", expected_saves, story_checkpoints().size());
+    if (expected_saves != story_checkpoints().size() - story_autosave_rows().size()){
+        return std::format(
+            "Expected the {} autosave rows not to save, {} of {} rows save.",
+            story_autosave_rows().size(), expected_saves, story_checkpoints().size()
+        );
     }
     if (saves != expected_saves){
         return std::format("Expected a save per saving row ({}), saw {}.", expected_saves, saves);
+    }
+    return true;
+}
+
+//  Every autosave row is in the table, and they come first: once the main
+//  menu can save (03.02), every row saves through it.
+UnitTestResult test_autosave_rows(Logger&){
+    size_t seen = 0;
+    bool menu_saves = false;
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        if (story_row_saves(row)){
+            menu_saves = true;
+            continue;
+        }
+        seen++;
+        if (menu_saves){
+            return row.id + ": relies on an autosave after a row that saves through the menu.";
+        }
+    }
+    if (seen != story_autosave_rows().size()){
+        return std::format("Expected {} autosave rows in the table, found {}.", story_autosave_rows().size(), seen);
+    }
+    return true;
+}
+
+//  A run can play from the new game to Wild Zone 1's gate (03.05) with no
+//  action that is not implemented.
+UnitTestResult test_ready_to_wild_zone_1(Logger&){
+    const size_t ready = story_rows_ready();
+    if (ready == 0 || story_checkpoints()[ready - 1].id < "03.05"){
+        return std::format(
+            "Expected rows 01.00-03.05 to be ready, {} are ({}).",
+            ready, ready == 0 ? std::string("none") : "up to " + story_checkpoints()[ready - 1].id
+        );
+    }
+    return true;
+}
+
+//  scene_mash_action() on each kind of frame.
+UnitTestResult test_scene_mash_rule(Logger&){
+    using Pokemon::ScreenEvent;
+    using Pokemon::ScreenEvents;
+    struct Case{
+        const char* name;
+        ScreenEvents events;
+        SceneMashGoal goal;
+        bool text_b;
+        SceneMashAction expected;
+    };
+    const Case cases[] = {
+        {"box, A mash", {ScreenEvent::DIALOG_BOX}, SceneMashGoal::OVERWORLD, false, SceneMashAction::PRESS_TEXT},
+        {"box, B mash", {ScreenEvent::DIALOG_BOX}, SceneMashGoal::OVERWORLD, true, SceneMashAction::PRESS_TEXT},
+        {"choice takes the top", {ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX}, SceneMashGoal::OVERWORLD, true, SceneMashAction::PRESS_A},
+        {"choice is the goal", {ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX}, SceneMashGoal::CHOICE, true, SceneMashAction::DONE},
+        {"party bar", {ScreenEvent::PLAYER_CAN_MOVE}, SceneMashGoal::OVERWORLD, false, SceneMashAction::DONE},
+        {"party bar, not the goal", {ScreenEvent::PLAYER_CAN_MOVE}, SceneMashGoal::BATTLE, false, SceneMashAction::PRESS_A},
+        {"black fade waits", {ScreenEvent::FADE_BLACK}, SceneMashGoal::BATTLE, false, SceneMashAction::WAIT},
+        {"white fade waits", {ScreenEvent::FADE_WHITE}, SceneMashGoal::OVERWORLD, true, SceneMashAction::WAIT},
+        {"battle HUD", {ScreenEvent::BATTLE_STARTED}, SceneMashGoal::BATTLE, false, SceneMashAction::DONE},
+        {"card before a battle", {}, SceneMashGoal::BATTLE, false, SceneMashAction::PRESS_A},
+        {"quiet, A mash", {}, SceneMashGoal::OVERWORLD, false, SceneMashAction::WAIT},
+        {"quiet, B mash (map, Pokedex)", {}, SceneMashGoal::OVERWORLD, true, SceneMashAction::PRESS_B},
+        {"prompt alone, A mash", {ScreenEvent::INTERACT_PROMPT}, SceneMashGoal::OVERWORLD, false, SceneMashAction::WAIT},
+    };
+    for (const Case& item : cases){
+        const SceneMashAction got = scene_mash_action(item.events, item.goal, item.text_b);
+        if (got != item.expected){
+            return std::format("{}: expected action {}, got {}.", item.name, (int)item.expected, (int)got);
+        }
     }
     return true;
 }
@@ -287,6 +360,18 @@ const AutoStoryTableCase AUTO_STORY_TABLE_CASES[] = {
     },
     {
         .input = {"Starters: the walk to Chikorita is recorded", test_starter_moves},
+        .expectation = {},
+    },
+    {
+        .input = {"Story table: autosave rows come first, the menu saves after", test_autosave_rows},
+        .expectation = {},
+    },
+    {
+        .input = {"Story table: ready from the new game to Wild Zone 1", test_ready_to_wild_zone_1},
+        .expectation = {},
+    },
+    {
+        .input = {"Scene mash: what each frame presses", test_scene_mash_rule},
         .expectation = {},
     },
 };
