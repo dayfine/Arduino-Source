@@ -233,7 +233,7 @@ UnitTestResult test_autosave_rows(Logger&){
         }
         seen++;
         if (menu_saves){
-            return row.id + ": relies on an autosave after a row that saves through the menu.";
+            return std::format("{}: relies on an autosave after a row that saves through the menu.", row.id);
         }
     }
     if (seen != story_autosave_rows().size()){
@@ -249,7 +249,7 @@ UnitTestResult test_ready_to_wild_zone_1(Logger&){
     if (ready == 0 || story_checkpoints()[ready - 1].id < "03.05"){
         return std::format(
             "Expected rows 01.00-03.05 to be ready, {} are ({}).",
-            ready, ready == 0 ? std::string("none") : "up to " + story_checkpoints()[ready - 1].id
+            ready, ready == 0 ? std::string("none") : std::format("up to {}", story_checkpoints()[ready - 1].id)
         );
     }
     return true;

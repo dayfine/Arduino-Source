@@ -210,7 +210,7 @@ public:
         m_timeline.record(m_read_events, now);
         if (m_read_events != m_logged_events){
             m_logged_events = m_read_events;
-            m_trace.action("events: " + Pokemon::describe(m_read_events));
+            m_trace.action(std::format("events: {}", Pokemon::describe(m_read_events)));
         }
         m_previous = m_console.video().snapshot();
         m_read_data = nullptr;
@@ -305,7 +305,7 @@ void run_scene_machine(
     ConsoleHandle& console, ProControllerContext& context,
     std::string_view label, const SceneMachineConfig& config, Milliseconds timeout
 ){
-    StepTrace trace(console, "PLZA " + std::string(label));
+    StepTrace trace(console, std::format("PLZA {}", label));
     SceneReader reader(console, context, trace, config);
     std::vector<ScreenState> states;
     for (const SceneScreen screen : ALL_SCREENS){
@@ -321,7 +321,7 @@ void run_scene_machine(
         state.terminal = scene_screen_terminal(screen);
         states.push_back(std::move(state));
     }
-    const std::string end = run_screen_machine(console, context, trace, states, timeout);
+    const std::string end = run_screen_machine(console, context, states, timeout, trace);
     console.log(std::format("[PLZA {}] done on {}.", label, end));
 }
 
