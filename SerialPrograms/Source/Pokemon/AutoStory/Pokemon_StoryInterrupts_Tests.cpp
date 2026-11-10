@@ -570,9 +570,9 @@ UnitTestResult test_home_menu_stops_the_segment(){
 
 UnitTestResult test_settle_of_a_look(){
     struct Row{
-        const char* name;
+        std::string name;
         ScreenLook look;
-        const char* expected;
+        std::string expected;
     };
     const std::vector<Row> rows = {
         {"no frame", ScreenLook{}, "no frame seen"},
