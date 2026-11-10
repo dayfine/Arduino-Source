@@ -77,6 +77,7 @@ bool StoryStepRunner<PoseType>::holds(std::string_view condition, RunState& stat
 
 
 template class StoryStepRunner<GridPose>;
+template class StoryStepRunner<ZonePose>;
 
 
 

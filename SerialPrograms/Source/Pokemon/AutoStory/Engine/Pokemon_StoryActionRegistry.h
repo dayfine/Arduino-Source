@@ -65,6 +65,7 @@ private:
 
 //  Instantiated once, in Pokemon_StoryActionRegistry.cpp.
 extern template class StoryActionRegistry<GridPose>;
+extern template class StoryActionRegistry<ZonePose>;
 
 
 

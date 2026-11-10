@@ -150,6 +150,7 @@ std::vector<StoryAction<PoseType>> builtin_story_handlers(const StoryGame<PoseTy
 }
 
 template std::vector<StoryAction<GridPose>> builtin_story_handlers<GridPose>(const StoryGame<GridPose>& game);
+template std::vector<StoryAction<ZonePose>> builtin_story_handlers<ZonePose>(const StoryGame<ZonePose>& game);
 
 
 

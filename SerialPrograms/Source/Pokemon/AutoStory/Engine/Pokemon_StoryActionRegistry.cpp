@@ -121,6 +121,7 @@ Outcome StoryActionRegistry<PoseType>::dispatch(StoryBackend<PoseType>& backend,
 
 
 template class StoryActionRegistry<GridPose>;
+template class StoryActionRegistry<ZonePose>;
 
 
 
