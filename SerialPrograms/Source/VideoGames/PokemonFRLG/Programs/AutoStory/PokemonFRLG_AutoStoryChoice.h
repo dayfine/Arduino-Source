@@ -33,7 +33,8 @@
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
-#include "Pokemon/AutoStory/Pokemon_StorySteps.h"
+#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
 #include "Pokemon/Navigation/Pokemon_Grid.h"
 
 namespace PokemonAutomation{
@@ -54,13 +55,11 @@ std::optional<Fossil> fossil_from_name(std::string_view name);
 //  Where `fossil` lies on MtMoon_B2F (map.json object_events).
 Pokemon::TilePos fossil_tile(Fossil fossil);
 
-//  The prefix of a GAME step's variant that names the fossil CHOICE.
-inline constexpr std::string_view FOSSIL_VARIANT_PREFIX = "fossil ";
-
-//  "fossil helix" or "fossil dome".
-std::string fossil_variant(Fossil fossil);
-//  Parses a fossil CHOICE variant string.
-std::optional<Fossil> parse_fossil_variant(std::string_view variant);
+//  The GAME action of the fossil CHOICE: fossil WORD (required), "helix"
+//  or "dome".
+inline const std::string FOSSIL_ACTION = "fossil";
+//  The fossil a FOSSIL_ACTION step's args choose; nothing if it isn't one.
+std::optional<Fossil> fossil_of(const Pokemon::StoryActionArgs& args);
 
 //  The table's CHOICE(fossil) step, the player facing the fossil.
 Pokemon::StoryStep fossil_step(std::string name, std::string why, Fossil fossil);

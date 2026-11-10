@@ -12,8 +12,8 @@
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_ItemListReader.h"
 #include "PokemonFRLG_AutoStoryActions.h"
+#include "PokemonFRLG_AutoStoryGameArgs.h"
 #include "PokemonFRLG_AutoStoryMart.h"
-#include "PokemonFRLG_AutoStoryVariantWords.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -26,6 +26,8 @@ namespace{
 
 //  The quantity box's most (shop.c Task_BuyHowManyDialogueInit).
 constexpr size_t MAX_QUANTITY = 99;
+//  pokefirered: MAX_MONEY.
+constexpr size_t MAX_MONEY = 999999;
 
 //  Prices from pokefirered src/data/items.json.
 constexpr MartStockItem POKE_BALL{"poke-ball", 200};
@@ -79,25 +81,6 @@ std::optional<size_t> stock_row(const std::vector<MartStockItem>& stock, std::st
     return std::nullopt;
 }
 
-//  Sets one "key=value" of a Mart variant into `plan`. False if it can't.
-bool set_mart_word(MartPlan& plan, std::string_view word){
-    const std::optional<VariantPair> pair = variant_pair(word);
-    const std::optional<size_t> number = pair ? variant_number(pair->value) : std::nullopt;
-    if (!number){
-        return false;
-    }
-    if (pair->key == "budget"){
-        plan.budget = *number;
-    }else if (pair->key == "floor"){
-        plan.money_floor = *number;
-    }else if (*number >= 1 && *number <= MAX_QUANTITY && stock_row(mart_stock(plan.map), pair->key)){
-        plan.lines.push_back({std::string(pair->key), *number});
-    }else{
-        return false;
-    }
-    return true;
-}
-
 } // namespace
 
 
@@ -118,34 +101,39 @@ const char* mart_end_name(MartEnd end){
 }
 
 
-std::string mart_variant(const MartPlan& plan){
-    std::string variant = std::format("{}{} budget={}", MART_VARIANT_PREFIX, plan.map, plan.budget);
-    if (plan.money_floor){
-        variant += std::format(" floor={}", *plan.money_floor);
-    }
+Pokemon::StoryActionArgs mart_args(const MartPlan& plan){
+    std::vector<Pokemon::StoryItem> items;
     for (const MartLine& line : plan.lines){
-        variant += std::format(" {}={}", line.item, line.quantity);
+        items.push_back({line.item, line.quantity});
     }
-    return variant;
+    Pokemon::StoryActionArgs args{
+        {"map", plan.map}, {"budget", int64_t(plan.budget)}, {"items", std::move(items)},
+    };
+    if (plan.money_floor){
+        args.emplace("floor", int64_t(*plan.money_floor));
+    }
+    return args;
 }
 
-std::optional<MartPlan> parse_mart_variant(std::string_view variant){
-    if (!variant.starts_with(MART_VARIANT_PREFIX)){
+std::optional<MartPlan> mart_plan_of(const Pokemon::StoryActionArgs& args){
+    const std::string* map = game_arg<std::string>(args, "map");
+    const std::optional<size_t> budget = number_arg(args, "budget", 0, MAX_MONEY);
+    const std::vector<Pokemon::StoryItem>* items = game_arg<std::vector<Pokemon::StoryItem>>(args, "items");
+    if (map == nullptr || mart_stock(*map).empty() || !budget || items == nullptr || items->empty()){
         return std::nullopt;
     }
-    const std::vector<std::string_view> words = variant_words(variant.substr(MART_VARIANT_PREFIX.size()));
-    if (words.empty() || mart_stock(words[0]).empty()){
-        return std::nullopt;
-    }
-    MartPlan plan;
-    plan.map = std::string(words[0]);
-    for (size_t c = 1; c < words.size(); c++){
-        if (!set_mart_word(plan, words[c])){
+    MartPlan plan{.map = *map, .budget = *budget};
+    if (args.contains("floor")){
+        plan.money_floor = number_arg(args, "floor", 0, MAX_MONEY);
+        if (!plan.money_floor){
             return std::nullopt;
         }
     }
-    if (plan.lines.empty()){
-        return std::nullopt;
+    for (const Pokemon::StoryItem& item : *items){
+        if (item.quantity < 1 || item.quantity > MAX_QUANTITY || !stock_row(mart_stock(plan.map), item.item)){
+            return std::nullopt;
+        }
+        plan.lines.push_back({item.item, item.quantity});
     }
     return plan;
 }
@@ -155,7 +143,8 @@ Pokemon::StoryStep mart_step(std::string name, std::string why, const MartPlan& 
     step.kind = Pokemon::StoryStepKind::GAME;
     step.name = std::move(name);
     step.why = std::move(why);
-    step.variant = mart_variant(plan);
+    step.action = MART_ACTION;
+    step.args = mart_args(plan);
     step.once_per_save = true;
     return step;
 }

@@ -871,7 +871,7 @@ static void check_mart_row(ConsoleHandle& console, ProControllerContext& context
 
 void buy_items(
     ConsoleHandle& console, ProControllerContext& context,
-    const std::vector<MartOrder>& orders, StoryChecks checks, Language language
+    const std::vector<MartOrder>& orders, Pokemon::StoryCheckLevel checks, Language language
 ){
     //  "May I help you?" with BUY on top, then the list, cursor on its top.
     press(context, BUTTON_A, 2000ms);
@@ -888,7 +888,7 @@ void buy_items(
         }
         cursor = order.row;
         mart_shot(console, context, std::format("row{}-list", order.row + 1));
-        if (checks == StoryChecks::THOROUGH){
+        if (checks_screen(checks)){
             check_mart_row(console, context, order, language);
         }
         //  "How many?" drops presses while its text prints.

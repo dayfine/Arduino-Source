@@ -46,7 +46,8 @@
 #include <vector>
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
-#include "Pokemon/AutoStory/Pokemon_StorySteps.h"
+#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
 #include "PokemonFRLG_AutoStoryMember.h"
 
 namespace PokemonAutomation{
@@ -71,14 +72,16 @@ struct TeachPlan{
 //  Whether `move` is an HM's, which the game won't let a Pokemon forget.
 bool is_hm_move(std::string_view move);
 
-//  The prefix of a GAME step's variant that names a TEACH step.
-inline constexpr std::string_view TEACH_VARIANT_PREFIX = "teach ";
-
-//  `plan` as a variant: "teach hm03 surf slot=1 forget=tail-whip" or
-//  "... forget_slot=2", slots counted from 1, no forget when it has room.
-std::string teach_variant(const TeachPlan& plan);
-//  Parses a move teaching plan from a variant string.
-std::optional<TeachPlan> parse_teach_variant(std::string_view variant);
+//  The GAME action of a TEACH step: item WORD (required), the TM or HM,
+//  e.g. "hm03"; move WORD (required), e.g. "surf"; slot INTEGER
+//  (required, from 1); forget WORD or forget_slot INTEGER (from 1)
+//  (optional): the move to forget when it knows four.
+inline const std::string TEACH_ACTION = "teach";
+//  `plan` as its action's args.
+Pokemon::StoryActionArgs teach_args(const TeachPlan& plan);
+//  The plan a TEACH_ACTION step's args give; nothing if the item isn't a
+//  TM or HM or a slot is out of range.
+std::optional<TeachPlan> teach_plan_of(const Pokemon::StoryActionArgs& args);
 
 //  The table's TEACH step, once per save (StoryStep::once_per_save): a
 //  retry from the same save skips it when the lead knew the move or there
