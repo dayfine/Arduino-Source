@@ -535,50 +535,9 @@ const RngProgramPartyCase RNG_PROGRAM_PARTY_CASES[] = {
         },
         .expectation = {.free_slots = 1, .menu_context = StartMenuContext::SAFARI_ZONE},
     },
-    // RngHelper reads a Pokemon it receives from the party, but only watches encounters, so
-    // what it needs depends on the target.
-    {
-        .input = {.name = "RngHelper starters", .make_program = make_rng_program<RngHelper>, .settings = {{"TARGET", "starters"}}},
-        .expectation = {.free_slots = 0},
-    },
+    // RngHelper is the manual tool: whatever the target, it trusts the user's party.
     {
         .input = {.name = "RngHelper lapras", .make_program = make_rng_program<RngHelper>, .settings = {{"TARGET", "lapras"}}},
-        .expectation = {.free_slots = 1},
-    },
-    {
-        .input = {.name = "RngHelper fossils", .make_program = make_rng_program<RngHelper>, .settings = {{"TARGET", "fossils"}}},
-        .expectation = {.free_slots = 1},
-    },
-    {
-        .input = {.name = "RngHelper gamecornerporygon", .make_program = make_rng_program<RngHelper>, .settings = {{"TARGET", "gamecornerporygon"}}},
-        .expectation = {.free_slots = 1},
-    },
-    {
-        .input = {.name = "RngHelper togepi", .make_program = make_rng_program<RngHelper>, .settings = {{"TARGET", "togepi"}}},
-        .expectation = {.free_slots = 1},
-    },
-    {
-        .input = {.name = "RngHelper eggheld", .make_program = make_rng_program<RngHelper>, .settings = {{"TARGET", "eggheld"}}},
-        .expectation = {.free_slots = 0},
-    },
-    {
-        .input = {.name = "RngHelper eggpickup", .make_program = make_rng_program<RngHelper>, .settings = {{"TARGET", "eggpickup"}}},
-        .expectation = {.free_slots = 1},
-    },
-    {
-        .input = {.name = "RngHelper snorlax", .make_program = make_rng_program<RngHelper>, .settings = {{"TARGET", "snorlax"}}},
-        .expectation = {.free_slots = 0},
-    },
-    {
-        .input = {.name = "RngHelper sweetscent", .make_program = make_rng_program<RngHelper>, .settings = {{"TARGET", "sweetscent"}}},
-        .expectation = {.free_slots = 0},
-    },
-    {
-        .input = {.name = "RngHelper safarizonesurf", .make_program = make_rng_program<RngHelper>, .settings = {{"TARGET", "safarizonesurf"}}},
-        .expectation = {.free_slots = 0},
-    },
-    {
-        .input = {.name = "RngHelper roaming", .make_program = make_rng_program<RngHelper>, .settings = {{"TARGET", "roaming"}}},
         .expectation = {.free_slots = 0},
     },
 };
