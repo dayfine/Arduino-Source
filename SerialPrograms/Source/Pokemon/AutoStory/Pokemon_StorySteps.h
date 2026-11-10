@@ -5,21 +5,22 @@
  *  One vocabulary of story steps for the tile games (FRLG, BDSP): a route,
  *  a fixed walk, a step onto a trigger, a talk, a YES/NO, a scene, a
  *  battle, the nurse, a shop, a save, and so on. A checkpoint is a list of
- *  such steps, plain data, so a game's story is a table its unit tests can
- *  plan without a console.
+ *  such steps, plain data (Types/), so a game's story is a table its unit
+ *  tests can plan without a console.
  *
  *  build_story_checkpoint() turns a table row into engine events
  *  (Pokemon_StoryEvents.h). Each event's action asks the game's
- *  StoryStepExecutor to do its step: one virtual per kind, so a game
- *  implements the kinds it uses, and a step the game has no way of doing
- *  fails by name instead of doing something else.
+ *  StoryStepExecutor to do its step; a game implements the kinds it uses,
+ *  and a step it has no way of doing fails by name (unsupported_step())
+ *  instead of doing something else.
  *
  *  Steps never match dialogue or menu text: they look for screen state (a
  *  dialogue box, an arrow, a fade, a battle menu, colours, positions). The
  *  few reads that need text (item names in a shop or the Bag) take the
- *  game's language from the executor, and with no reader for it fall back
- *  to checks that need none (a row's position, digits, a changed screen),
- *  so a run never fails because its language is not supported.
+ *  game's language from the program's options (StoryRunOptions), and with
+ *  no reader for it fall back to checks that need none (a row's position,
+ *  digits, a changed screen), so a run never fails because its language
+ *  is not supported.
  *
  *  Poses are the game's own (Pose, with a TilePose for these games): a
  *  checkpoint's start, a scene's end and a route's target are poses, and
@@ -31,144 +32,28 @@
 #ifndef PokemonAutomation_Pokemon_StorySteps_H
 #define PokemonAutomation_Pokemon_StorySteps_H
 
-#include <cstddef>
 #include <optional>
 #include <set>
 #include <string>
 #include <vector>
-#include "CommonFramework/Language.h"
 #include "Pokemon/Navigation/Pokemon_Grid.h"
 #include "Pokemon_AutoStoryStats.h"
 #include "Pokemon_StoryEvents.h"
 #include "Pokemon_StorySegments.h"
 #include "Pokemon_TilePose.h"
+#include "Types/Pokemon_StoryChecks.h"
+#include "Types/Pokemon_StoryCheckpoint.h"
+#include "Types/Pokemon_StoryStep.h"
+#include "Types/Pokemon_StoryStepKind.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
 
 
-// Action category classification for individual story steps.
-enum class StoryStepKind{
-    NEW_GAME,   //  title screen (no save) to the first room
-    OPTIONS,    //  the game's options as the story needs them
-    ROUTE,      //  plan and walk to `target`
-    LEGS,       //  walk `legs` as given
-    STEP,       //  one step `direction`: onto a trigger, into a door
-    TALK,       //  A at what the player faces
-    ANSWER,     //  text to a YES/NO, then `yes`
-    MASH,       //  text until the overworld is back: a scene
-    BATTLE,     //  text into a battle, fight it, text to the overworld
-    TRAIN,      //  fight `battles` wild battles where the player stands
-    HEAL,       //  the nurse, from in front of her or of the Center's door
-    SHOP,       //  `items` from a shop
-    SAVE,       //  save the game where the player stands
-    READY,      //  before a big battle: items, and the nurse at `target` if they can't
-    GAME,       //  a step only this game has, named by `variant`
-};
-// Returns the readable string representation of a story step kind.
-const char* story_step_kind_name(StoryStepKind kind);
-
-//  How much a step reads the screen to confirm what it did. Each game
-//  decides what its steps check at each level.
-enum class StoryChecks{
-    //  Confirm on screen: purchases, the Bag, status after battles, position.
-    THOROUGH,
-    //  In a rush: trust counts and timings.
-    FAST,
-};
-// Returns the readable string representation of a story check level.
-const char* story_checks_name(StoryChecks checks);
-
-
-//  A straight leg of a fixed walk.
-struct StoryLeg{
-    Direction direction = Direction::NORTH;
-    int tiles = 0;
-};
-
-//  An item and how many to get.
-struct StoryItem{
-    std::string item;
-    size_t quantity = 0;
-};
-
-// Specification of an atomic story task with actions and postconditions.
-struct StoryStep{
-    StoryStepKind kind = StoryStepKind::TALK;
-    std::string name;
-    std::string why;
-
-    //  ROUTE: where to go; with several tiles, any of them. READY: the nurse.
-    std::optional<Pose> target;
-    //  STEP
-    Direction direction = Direction::NORTH;
-    //  LEGS
-    std::vector<StoryLeg> legs;
-    //  ROUTE, LEGS: fight wild battles on the way instead of running.
-    bool fight_wild = false;
-    //  ANSWER
-    bool yes = true;
-    //  BATTLE: losing goes on (a rival's first battle).
-    bool may_lose = false;
-    //  TRAIN
-    size_t battles = 0;
-    //  SHOP
-    std::vector<StoryItem> items;
-    //  How this game does the kind, when it has more than one way: a
-    //  route's plan costs, a door lined up by sight, the Mart lady instead
-    //  of the clerk. Empty is the game's usual way. GAME: the step's name
-    //  in the game's executor.
-    std::string variant;
-
-    //  Skipped when all of these hold (and there is at least one): names
-    //  the game's executor answers (StoryStepExecutor::holds()), run flags
-    //  unless the game reads them off the screen.
-    std::vector<std::string> skip_if;
-    //  Preparation for what follows, done once per save: a TEACH, a check,
-    //  a read. Once it has succeeded and changed nothing
-    //  (Outcome::changed_nothing), the attempts after a reload of the same
-    //  save skip it, so a retry goes from the reload straight to the
-    //  battle. One that changed the game (a TM taught) runs again, as the
-    //  reload undid it. Only with build_story_checkpoint()'s PreparedSteps.
-    bool once_per_save = false;
-    //  Where the step leaves the player, when its action does not say: the
-    //  end of a scene that moves the player.
-    std::optional<Pose> pose_after;
-    //  The id of the checkpoint's section the step is in (StorySection);
-    //  empty for a checkpoint without sections. Logged with the event.
-    std::string section;
-    //  The author's notes on the step: why it is done this way, what was
-    //  seen on the console. Not read by any executor.
-    std::vector<std::string> notes;
-};
-
-//  A part of a checkpoint, e.g. one floor of a cave: a run of steps that
-//  name it in their `section`. Steps are numbered across the checkpoint,
-//  not per section.
-struct StorySection{
-    std::string id;
-    std::string title;
-    std::vector<std::string> notes;
-};
-
-// Milestone row in the story table grouping related steps and starting pose.
-struct StoryCheckpoint{
-    std::string id;
-    std::string title;
-    //  Where its starting save leaves the player; none for a new game.
-    std::optional<Pose> start;
-    std::vector<StoryStep> steps;
-    //  The author's notes on the whole checkpoint: the maps, trainers and
-    //  numbers its steps were planned from.
-    std::vector<std::string> notes;
-    //  In order; each step's `section` names one of them. Empty when the
-    //  checkpoint is not split.
-    std::vector<StorySection> sections;
-};
-
-
-//  How a game does each kind of step. Every kind fails as unsupported
-//  unless the game overrides it.
+//  How a game does its story steps: an interface with no data. run() is the
+//  game's: it does the step's kind its own way (FRLG and BDSP bind kinds and
+//  variants to actions in a table), and returns unsupported_step() for a
+//  kind it has no way of doing.
 class StoryStepExecutor{
 public:
     virtual ~StoryStepExecutor() = default;
@@ -178,60 +63,13 @@ public:
     //  who can see us again, the row's own settings). Does nothing by default.
     virtual void begin_attempt(const StoryCheckpoint& data);
 
-    //  The checks level the program's options chose (StoryRunOptions);
-    //  THOROUGH unless set. Steps read it to decide what to confirm.
-    StoryChecks checks() const{
-        return m_checks;
-    }
-    void set_checks(StoryChecks checks){
-        m_checks = checks;
-    }
-    //  The game's language (StoryRunOptions), for the reads that need text;
-    //  English unless set. A game with no reader for it uses language-free
-    //  checks instead.
-    Language language() const{
-        return m_language;
-    }
-    void set_language(Language language){
-        m_language = language;
-    }
-
-    //  Runs `step`: dispatch_story_step() by default. A game overrides it
-    //  to wrap every step, e.g. to turn a failed console step into a failed
-    //  Outcome.
-    virtual Outcome run(RunState& state, const StoryStep& step);
+    //  Does `step`, from the run so far.
+    virtual Outcome run(RunState& state, const StoryStep& step) = 0;
 
     //  Whether the condition named in a step's skip_if holds: by default,
     //  whether the run has the flag (set by an earlier step's action).
     virtual bool holds(const std::string& condition, RunState& state);
-
-protected:
-    //  One per step kind, called by dispatch_story_step(); each fails as
-    //  unsupported unless the game overrides it.
-    friend Outcome dispatch_story_step(StoryStepExecutor& executor, RunState& state, const StoryStep& step);
-    virtual Outcome new_game(RunState& state, const StoryStep& step);
-    virtual Outcome options(RunState& state, const StoryStep& step);
-    virtual Outcome route(RunState& state, const StoryStep& step);
-    virtual Outcome legs(RunState& state, const StoryStep& step);
-    virtual Outcome step(RunState& state, const StoryStep& step);
-    virtual Outcome talk(RunState& state, const StoryStep& step);
-    virtual Outcome answer(RunState& state, const StoryStep& step);
-    virtual Outcome mash(RunState& state, const StoryStep& step);
-    virtual Outcome battle(RunState& state, const StoryStep& step);
-    virtual Outcome train(RunState& state, const StoryStep& step);
-    virtual Outcome heal(RunState& state, const StoryStep& step);
-    virtual Outcome shop(RunState& state, const StoryStep& step);
-    virtual Outcome save(RunState& state, const StoryStep& step);
-    virtual Outcome ready(RunState& state, const StoryStep& step);
-    virtual Outcome game(RunState& state, const StoryStep& step);
-
-private:
-    StoryChecks m_checks = StoryChecks::THOROUGH;
-    Language m_language = Language::English;
 };
-
-//  Calls the executor's method for the step's kind.
-Outcome dispatch_story_step(StoryStepExecutor& executor, RunState& state, const StoryStep& step);
 
 //  "unsupported_step: TRAIN train_in_grass": what an executor without the kind returns.
 Outcome unsupported_step(const StoryStep& step);

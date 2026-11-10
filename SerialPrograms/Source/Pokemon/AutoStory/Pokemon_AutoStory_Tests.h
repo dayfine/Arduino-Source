@@ -31,14 +31,30 @@ void add_tests_StoryEvents(UnitTestDatabase& database);
 void add_tests_StorySegments(UnitTestDatabase& database);
 // Registers unit tests for high-level story step dispatching and table conversion.
 void add_tests_StorySteps(UnitTestDatabase& database);
-
-
-
-//  Lossless shared story-data wire contract.
+// Registers unit tests for the lossless shared story-data wire contract.
 void add_tests_StoryStepJson(UnitTestDatabase& database);
-
-//  Shared authored envelope, game identity and embedded-resource loading.
+// Registers unit tests for step args: action specs and reading old variant strings.
+void add_tests_StoryArgs(UnitTestDatabase& database);
+// Registers unit tests for the shared authored envelope, game identity and embedded-resource loading.
 void add_tests_AuthoredCheckpointJson(UnitTestDatabase& database);
+// Registers unit tests for the shared checkpoint log lines and stats counts.
+void add_tests_StoryLog(UnitTestDatabase& database);
+// Registers unit tests for the shared start/end checkpoint range options.
+void add_tests_StoryRangeOptions(UnitTestDatabase& database);
+
+// Registers every suite above, for the unit test runner.
+inline void add_tests_AutoStory(UnitTestDatabase& database){
+    add_tests_StoryEvents(database);
+    add_tests_StorySegments(database);
+    add_tests_StorySteps(database);
+    add_tests_StoryStepJson(database);
+    add_tests_StoryArgs(database);
+    add_tests_AuthoredCheckpointJson(database);
+    add_tests_StoryLog(database);
+    add_tests_StoryRangeOptions(database);
+}
+
+
 
 } // namespace Pokemon
 } // namespace PokemonAutomation
