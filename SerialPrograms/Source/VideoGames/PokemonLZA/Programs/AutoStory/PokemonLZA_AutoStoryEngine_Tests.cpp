@@ -85,7 +85,7 @@ Pokemon::StoryEngineReport run_plza(FakeBackend& backend, const StoryCheckpoint&
     const Pokemon::StoryGame<ZonePose> game = make_plza_story_game(StarterChoice::CHIKORITA);
     Pokemon::StoryEngine<ZonePose> engine(game, backend);
     Pokemon::RunState state;
-    return engine.run_checkpoint(checkpoint, state);
+    return engine.run_checkpoint(checkpoint, Pokemon::SavePoint::RUN_END, state);
 }
 
 std::string joined(const std::vector<std::string>& lines){
@@ -98,7 +98,7 @@ std::string joined(const std::vector<std::string>& lines){
 
 UnitTestResult expect_inputs(const FakeBackend& backend, const std::vector<std::string>& expected){
     if (backend.inputs() != expected){
-        return "Expected inputs [" + joined(expected) + "], got [" + joined(backend.inputs()) + "].";
+        return std::format("Expected inputs [{}], got [{}].", joined(expected), joined(backend.inputs()));
     }
     return true;
 }
@@ -125,7 +125,7 @@ UnitTestResult test_opening_waits_for_platform(CancellableScope& scope){
     }, scope);
     const Pokemon::StoryEngineReport report = run_plza(backend, step_of("01.00", "opening"));
     if (report.verdict != Pokemon::CheckpointVerdict::PASSED){
-        return "Expected the opening to end at the platform: " + to_string(report.run.failure);
+        return std::format("Expected the opening to end at the platform: {}", to_string(report.run.failure));
     }
     const auto logged = [&backend](std::string_view text){
         return std::any_of(backend.lines().begin(), backend.lines().end(), [text](const std::string& line){
@@ -147,11 +147,11 @@ UnitTestResult test_start_check_needs_platform(CancellableScope& scope){
     }, scope);
     const Pokemon::StoryEngineReport report = run_plza(backend, step_of("01.01", "on_platform"));
     if (report.run.completed || report.run.failure.failure != "platform_not_seen"){
-        return "Expected platform_not_seen, got " + to_string(report.run.failure);
+        return std::format("Expected platform_not_seen, got {}", to_string(report.run.failure));
     }
     for (const std::string& input : backend.inputs()){
         if (input != "wait 300ms"){
-            return "Expected only waits, got " + input;
+            return std::format("Expected only waits, got {}", input);
         }
     }
     return true;
@@ -183,7 +183,7 @@ UnitTestResult test_walk_ends_on_white_fade(CancellableScope& scope){
     }, scope);
     const Pokemon::StoryEngineReport report = run_plza(backend, step_of("01.01", "platform_to_plaza"));
     if (report.verdict != Pokemon::CheckpointVerdict::PASSED){
-        return "Expected the walk to end on the white fade: " + to_string(report.run.failure);
+        return std::format("Expected the walk to end on the white fade: {}", to_string(report.run.failure));
     }
     return expect_inputs(backend, {
         "wait 250ms", "hold north 4500ms walk", "press L", "stick 90deg 150ms walk, release 300ms", "press L",
@@ -197,7 +197,7 @@ UnitTestResult test_walk_fails_at_bound(CancellableScope& scope){
     FakeBackend backend = fake_plza({look_at(0ms)}, scope);
     const Pokemon::StoryEngineReport report = run_plza(backend, step_of("01.01", "platform_to_plaza"));
     if (report.run.completed || report.run.failure.failure != "walk_no_end"){
-        return "Expected walk_no_end, got " + to_string(report.run.failure);
+        return std::format("Expected walk_no_end, got {}", to_string(report.run.failure));
     }
     const size_t slices = (size_t)std::count(backend.inputs().begin(), backend.inputs().end(), "hold north 250ms walk");
     if (slices != 40){
@@ -220,7 +220,7 @@ UnitTestResult test_face_heading(CancellableScope& scope){
     FakeBackend backend = fake_plza({facing(0ms, 0), facing(500ms, 88)}, scope);
     const Pokemon::Outcome faced = face_heading(backend, PlzaReader(), 90, 10);
     if (!faced.succeeded()){
-        return "Expected to face 90 degrees: " + to_string(faced);
+        return std::format("Expected to face 90 degrees: {}", to_string(faced));
     }
     const UnitTestResult turned = expect_inputs(backend, {"press L", "stick 90deg 150ms walk, release 300ms"});
     if (turned.result != UnitTestResult::PASSED){
@@ -229,7 +229,7 @@ UnitTestResult test_face_heading(CancellableScope& scope){
     FakeBackend blind = fake_plza({look_at(0ms)}, scope);
     const Pokemon::Outcome unread = face_heading(blind, PlzaReader(), 90, 10);
     if (unread.failure != "heading_unread"){
-        return "Expected heading_unread with no heading read, got " + to_string(unread);
+        return std::format("Expected heading_unread with no heading read, got {}", to_string(unread));
     }
     return expect_inputs(blind, {});
 }
@@ -241,7 +241,7 @@ UnitTestResult test_text_to_choice(CancellableScope& scope){
     FakeBackend backend = fake_plza({look_at(0ms, {EngineEvent::TEXT_BOX}), choice}, scope);
     const Pokemon::StoryEngineReport report = run_plza(backend, step_of("01.02", "pancham_cornered"));
     if (report.verdict != Pokemon::CheckpointVerdict::PASSED){
-        return "Expected the scene to end at the choice: " + to_string(report.run.failure);
+        return std::format("Expected the scene to end at the choice: {}", to_string(report.run.failure));
     }
     return expect_inputs(backend, {"press B"});
 }
@@ -262,14 +262,14 @@ UnitTestResult test_arrival_ends_on_controls_hint(CancellableScope& scope){
     }, scope);
     const Pokemon::StoryEngineReport report = run_plza(backend, step_of("01.01", "arrival_scenes"));
     if (report.verdict != Pokemon::CheckpointVerdict::PASSED){
-        return "Expected the scenes to end on the controls hint: " + to_string(report.run.failure);
+        return std::format("Expected the scenes to end on the controls hint: {}", to_string(report.run.failure));
     }
     const auto presses = std::count_if(backend.inputs().begin(), backend.inputs().end(), [](const std::string& input){
         return input.starts_with("press");
     });
     const auto a_presses = std::count(backend.inputs().begin(), backend.inputs().end(), "press A");
     if (presses != 3 || a_presses != 3){
-        return "Expected A at the text, once in the flyover and at the choice, got [" + joined(backend.inputs()) + "].";
+        return std::format("Expected A at the text, once in the flyover and at the choice, got [{}].", joined(backend.inputs()));
     }
     return true;
 }
@@ -317,14 +317,14 @@ UnitTestResult test_arrival_presses_through_the_ad(CancellableScope& scope){
     }, scope);
     const Pokemon::StoryEngineReport report = run_plza(backend, step_of("01.01", "arrival_scenes"));
     if (report.verdict != Pokemon::CheckpointVerdict::PASSED){
-        return "Expected the ad to end on the controls hint: " + to_string(report.run.failure);
+        return std::format("Expected the ad to end on the controls hint: {}", to_string(report.run.failure));
     }
     std::vector<std::string> presses;
     std::copy_if(backend.inputs().begin(), backend.inputs().end(), std::back_inserter(presses), [](const std::string& input){
         return input.starts_with("press");
     });
     if (presses != std::vector<std::string>{"press A", "press A", "press A"}){
-        return "Expected A at the two chevrons and one blind A, got [" + joined(backend.inputs()) + "].";
+        return std::format("Expected A at the two chevrons and one blind A, got [{}].", joined(backend.inputs()));
     }
     return true;
 }
@@ -348,13 +348,13 @@ UnitTestResult test_arrival_ends_on_mission_banner(CancellableScope& scope){
         FakeBackend backend = fake_plza(std::move(looks), scope);
         const Pokemon::StoryEngineReport report = run_plza(backend, step_of("01.01", "arrival_scenes"));
         if (report.verdict != Pokemon::CheckpointVerdict::PASSED){
-            return "Expected the scenes to end on the mission banner: " + to_string(report.run.failure);
+            return std::format("Expected the scenes to end on the mission banner: {}", to_string(report.run.failure));
         }
         const auto presses = std::count_if(backend.inputs().begin(), backend.inputs().end(), [](const std::string& input){
             return input.starts_with("press");
         });
         if (presses != 1){
-            return "Expected one A, at the box, got [" + joined(backend.inputs()) + "].";
+            return std::format("Expected one A, at the box, got [{}].", joined(backend.inputs()));
         }
     }
     return true;
@@ -367,7 +367,7 @@ UnitTestResult test_arrival_quiet_fails(CancellableScope& scope){
     FakeBackend backend = fake_plza({look_at(0ms), look_at(30000ms), look_at(61000ms)}, scope);
     const Pokemon::StoryEngineReport report = run_plza(backend, step_of("01.01", "arrival_scenes"));
     if (report.verdict == Pokemon::CheckpointVerdict::PASSED || report.run.failure.failure != "scene_quiet"){
-        return "Expected a quiet minute to fail as scene_quiet, got " + to_string(report.run.failure);
+        return std::format("Expected a quiet minute to fail as scene_quiet, got {}", to_string(report.run.failure));
     }
     return true;
 }
@@ -388,7 +388,7 @@ UnitTestResult test_refused_steps(CancellableScope& scope){
     FakeBackend backend = fake_plza({look_at(0ms)}, scope);
     const Pokemon::StoryEngineReport report = run_plza(backend, step_of("01.00", "language"));
     if (report.run.failure.failure != "console_only"){
-        return "Expected the new game's language to need a console, got " + to_string(report.run.failure);
+        return std::format("Expected the new game's language to need a console, got {}", to_string(report.run.failure));
     }
     const std::vector<std::pair<Pokemon::StoryStepKind, std::string>> unknown{
         {Pokemon::StoryStepKind::MASH, "x"},
@@ -421,7 +421,7 @@ UnitTestResult test_every_checkpoint_runs(CancellableScope& scope){
     game.id = "plza";
     for (const Pokemon::StoryActionSpec& spec : plza_story_action_specs()){
         const std::string label = std::format("{}/{}", Pokemon::story_step_kind_name(spec.kind), spec.name);
-        game.actions.push_back({.spec = spec, .handler = [&trace, label](Pokemon::StoryBackend<ZonePose>&, Pokemon::RunState&, const Pokemon::StoryActionCall&){
+        game.actions.push_back({.spec = spec, .handler = [&trace, label](Pokemon::StoryBackend<ZonePose>&, const Pokemon::StoryActionCall&, Pokemon::RunState&){
             trace.push_back(label);
             return Pokemon::outcome_ok();
         }});
@@ -439,7 +439,7 @@ UnitTestResult test_every_checkpoint_runs(CancellableScope& scope){
             expected.push_back(std::format("{}/{}", Pokemon::story_step_kind_name(step.kind), spec ? spec->name : "?"));
         }
         Pokemon::RunState state;
-        const Pokemon::StoryEngineReport report = engine.run_checkpoint(checkpoint, state);
+        const Pokemon::StoryEngineReport report = engine.run_checkpoint(checkpoint, Pokemon::SavePoint::RUN_END, state);
         if (report.verdict != Pokemon::CheckpointVerdict::PASSED || report.saved){
             return std::format("{}: expected a pass with no save, got {} ({}).", checkpoint.id,
                 report.verdict == Pokemon::CheckpointVerdict::PASSED ? "a save" : "a failure", to_string(report.run.failure));
@@ -471,14 +471,14 @@ struct EngineTestCase{
 class Test_AutoStoryEngine : public UnitTest{
 public:
     explicit Test_AutoStoryEngine(EngineTestCase test_case)
-        : UnitTest("PokemonLZA::AutoStoryEngine - " + test_case.input.name)
+        : UnitTest(std::format("PokemonLZA::AutoStoryEngine - {}", test_case.input.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
         try{
             return m_case.input.body(scope);
         }catch (Exception& e){
-            return std::string(e.name()) + ": " + e.message();
+            return std::format("{}: {}", e.name(), e.message());
         }
     }
 

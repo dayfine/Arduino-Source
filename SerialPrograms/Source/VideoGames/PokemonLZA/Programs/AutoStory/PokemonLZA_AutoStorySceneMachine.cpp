@@ -217,7 +217,7 @@ SceneScreen SceneTimeline::classify_open(const ScreenObservation& look) const{
 namespace{
 
 //  Starts `since` when `shows` starts, clears it when it stops.
-void track_since(std::optional<WallClock>& since, bool shows, WallClock when){
+void track_since(bool shows, WallClock when, std::optional<WallClock>& since){
     if (!shows){
         since.reset();
     }else if (!since){
@@ -235,8 +235,8 @@ void SceneTimeline::record(const ScreenObservation& look){
         m_last_busy = look.when;
     }
     const bool box = look.events.has(EngineEvent::TEXT_BOX) || look.events.has(EngineEvent::CHOICE_BOX);
-    track_since(m_party_bar_since, look.events.has(EngineEvent::CAN_MOVE) && !box, look.when);
-    track_since(m_hint_since, control_shows(look) && !box, look.when);
+    track_since(look.events.has(EngineEvent::CAN_MOVE) && !box, look.when, m_party_bar_since);
+    track_since(control_shows(look) && !box, look.when, m_hint_since);
     m_banner_looks = look.readings.contains(MISSION_BANNER_READING) && !box ? m_banner_looks + 1 : 0;
     if (busy(look) || m_party_bar_since || m_hint_since || m_banner_looks > 0){
         m_last_cue = look.when;
@@ -256,7 +256,7 @@ std::string describe_look(const ScreenObservation& look){
     std::string text;
     for (const auto& [event, name] : names){
         if (look.events.has(event)){
-            text += (text.empty() ? "" : ", ") + std::string(name);
+            text += std::format("{}{}", text.empty() ? "" : ", ", name);
         }
     }
     if (look.events.has(EngineEvent::CHOICE_BOX)){
@@ -457,7 +457,7 @@ Pokemon::Outcome run_scene_machine(
     StepTrace trace(std::format("PLZA {}", label), [&backend](const std::string& line){
         backend.log(line);
     });
-    const ScreenMachineResult result = run_screen_machine_on_observations(observe, backend.scope(), trace, states, timeout);
+    const ScreenMachineResult result = run_screen_machine_on_observations(observe, backend.scope(), states, timeout, trace);
     if (!result.succeeded()){
         return scene_failure(label, result.failure);
     }

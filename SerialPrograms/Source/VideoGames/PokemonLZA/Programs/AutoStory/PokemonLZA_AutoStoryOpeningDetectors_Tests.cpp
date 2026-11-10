@@ -46,7 +46,7 @@ namespace{
 constexpr size_t WIDTH = 1920;
 constexpr size_t HEIGHT = 1080;
 
-void fill_box(ImageRGB32& image, size_t min_x, size_t min_y, size_t max_x, size_t max_y, uint32_t color){
+void fill_box(size_t min_x, size_t min_y, size_t max_x, size_t max_y, uint32_t color, ImageRGB32& image){
     for (size_t y = min_y; y < max_y; y++){
         for (size_t x = min_x; x < max_x; x++){
             image.pixel(x, y) = color;
@@ -59,10 +59,10 @@ void fill_box(ImageRGB32& image, size_t min_x, size_t min_y, size_t max_x, size_
 ImageRGB32 skip_badge_frame(){
     ImageRGB32 image(WIDTH, HEIGHT);
     image.fill(0xff000000);
-    fill_box(image, 1500, 100, 1920, 175, 0xff2c2c30);
-    fill_box(image, 1564, 128, 1586, 150, 0xffffffff);
+    fill_box(1500, 100, 1920, 175, 0xff2c2c30, image);
+    fill_box(1564, 128, 1586, 150, 0xffffffff, image);
     for (size_t x = 1630; x < 1875; x += 4){
-        fill_box(image, x, 124, x + 1, 156, 0xffffffff);
+        fill_box(x, 124, x + 1, 156, 0xffffffff, image);
     }
     return image;
 }
@@ -72,27 +72,27 @@ ImageRGB32 skip_badge_frame(){
 ImageRGB32 controls_hint_frame(){
     ImageRGB32 image(WIDTH, HEIGHT);
     image.fill(0xff000000);
-    fill_box(image, 946, 868, 972, 902, 0xff7dd2fa);
-    fill_box(image, 956, 879, 962, 886, 0xff1c7db0);
+    fill_box(946, 868, 972, 902, 0xff7dd2fa, image);
+    fill_box(956, 879, 962, 886, 0xff1c7db0, image);
     return image;
 }
 
 UnitTestResult test_synthetic_platform(Logger& logger){
     const ImageRGB32 reference = platform_reference_image(WIDTH, HEIGHT);
     const PlatformDistances same = platform_distances(reference);
-    logger.log("reference: " + to_string(same));
+    logger.log(std::format("reference: {}", to_string(same)));
     if (!platform_matches(same) || same.top > 1 || same.left > 1 || same.right > 1){
-        return "Expected the reference's own cells to match at about 0: " + to_string(same);
+        return std::format("Expected the reference's own cells to match at about 0: {}", to_string(same));
     }
     ImageRGB32 gray(WIDTH, HEIGHT);
     gray.fill(0xff808080);
     const PlatformDistances other = platform_distances(gray);
     if (platform_matches(other)){
-        return "Expected a gray frame not to be the platform: " + to_string(other);
+        return std::format("Expected a gray frame not to be the platform: {}", to_string(other));
     }
     //  The player's area (x 780-1200, y 330-1080) is in no region.
     ImageRGB32 with_player = reference.copy();
-    fill_box(with_player, 780, 330, 1200, HEIGHT, 0xffffffff);
+    fill_box(780, 330, 1200, HEIGHT, 0xffffffff, with_player);
     if (!platform_matches(platform_distances(with_player))){
         return "Expected the player's area not to count.";
     }
@@ -125,7 +125,7 @@ UnitTestResult test_synthetic_arrow(Logger&){
     }
     ImageRGB32 block(WIDTH, HEIGHT);
     block.fill(0xffc1ecf0);
-    fill_box(block, 1400, 1004, 1432, 1023, 0xffffffff);
+    fill_box(1400, 1004, 1432, 1023, 0xffffffff, block);
     ImageRGB32 white(WIDTH, HEIGHT);
     white.fill(0xffffffff);
     ImageRGB32 black(WIDTH, HEIGHT);
@@ -170,10 +170,10 @@ UnitTestResult test_synthetic_badges(Logger&){
 ImageRGB32 mission_banner_frame(size_t dx, bool icon){
     ImageRGB32 image(WIDTH, HEIGHT);
     image.fill(0xff606060);
-    fill_box(image, 345, 410, 1590, 600, 0xfffad228);
+    fill_box(345, 410, 1590, 600, 0xfffad228, image);
     if (icon){
-        fill_box(image, 700 + dx, 327, 738 + dx, 370, 0xffffffff);
-        fill_box(image, 716 + dx, 336, 720 + dx, 357, 0xfff07020);
+        fill_box(700 + dx, 327, 738 + dx, 370, 0xffffffff, image);
+        fill_box(716 + dx, 336, 720 + dx, 357, 0xfff07020, image);
     }
     return image;
 }
@@ -322,7 +322,7 @@ UnitTestResult check_frames(
             got.autosave ? ", autosave" : "", got.controls_hint ? ", controls hint" : "",
             got.advance_arrow ? ", advance arrow" : "", got.mission_banner ? ", mission banner" : ""));
         if (!same_reads(got, *want)){
-            failures += " " + name;
+            failures += std::format(" {}", name);
         }
         frames++;
     }
@@ -330,7 +330,7 @@ UnitTestResult check_frames(
         return std::format("Expected {} frames in {}, found {}.", count, folder, frames);
     }
     if (!failures.empty()){
-        return "Wrong on:" + failures;
+        return std::format("Wrong on:{}", failures);
     }
     return true;
 }
@@ -402,7 +402,7 @@ struct OpeningTestCase{
 class Test_AutoStoryOpeningDetectors : public UnitTest{
 public:
     explicit Test_AutoStoryOpeningDetectors(OpeningTestCase test_case)
-        : UnitTest("PokemonLZA::AutoStoryOpeningDetectors - " + test_case.input.name)
+        : UnitTest(std::format("PokemonLZA::AutoStoryOpeningDetectors - {}", test_case.input.name))
         , m_case(std::move(test_case))
     {}
 

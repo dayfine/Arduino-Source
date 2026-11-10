@@ -8,6 +8,7 @@
  */
 
 #include <chrono>
+#include <format>
 #include <set>
 #include <string>
 #include <string_view>
@@ -140,7 +141,7 @@ StoryData load_story_data(){
             Pokemon::validate_json_fields(execution, {"save"}, source);
             const std::string& save = execution.get_string_throw("save");
             if (save != "autosave" && save != "menu"){
-                throw ParseException(std::string(source) + ": save must be \"autosave\" or \"menu\", not " + save);
+                throw ParseException(std::format("{}: save must be \"autosave\" or \"menu\", not {}", source, save));
             }
             autosave = save == "autosave";
         };
