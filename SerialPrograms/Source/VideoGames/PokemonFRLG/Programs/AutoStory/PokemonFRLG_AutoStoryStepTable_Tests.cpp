@@ -40,16 +40,16 @@ const StoryStepKind ALL_KINDS[] = {
 
 //  The action StoryExecutor::game() ran for a GAME `step` before the table.
 StoryActionId old_game_dispatch(const StoryStep& step){
-    if (step.variant == CLOSE_TRAINER_CARD){
+    if (step.action == CLOSE_TRAINER_CARD){
         return StoryActionId::CLOSE_TRAINER_CARD;
     }
-    if (step.variant == LEAVE_GIFT_SUMMARY){
+    if (step.action == LEAVE_GIFT_SUMMARY){
         return StoryActionId::LEAVE_GIFT_SUMMARY;
     }
-    if (step.variant == CUT_TREE_VARIANT){
+    if (step.action == CUT_TREE_VARIANT){
         return StoryActionId::CUT_TREE;
     }
-    if (step.variant == TRASH_CANS_VARIANT){
+    if (step.action == TRASH_CANS_VARIANT){
         return StoryActionId::TRASH_CANS;
     }
     return StoryActionId::GAME;
@@ -117,7 +117,7 @@ std::string parity_error(FakeGame& game, const StoryStep& step){
     std::vector<std::string> trace;
     const Pokemon::Outcome outcome = game.run(step, trace);
     const std::optional<StoryActionId> expected = old_dispatch(step);
-    const std::string label = std::format("{} '{}' ({})", Pokemon::story_step_kind_name(step.kind), step.variant, step.name);
+    const std::string label = std::format("{} '{}' ({})", Pokemon::story_step_kind_name(step.kind), step.action, step.name);
     if (!expected){
         if (!trace.empty() || outcome.failure != "unsupported_step"){
             return label + ": expected unsupported, ran " + (trace.empty() ? outcome.failure : trace[0]);
@@ -148,7 +148,7 @@ std::vector<StoryStep> every_kind_and_variant(){
             StoryStep step;
             step.kind = kind;
             step.name = "synthetic";
-            step.variant = variant;
+            step.action = variant;
             steps.push_back(std::move(step));
         }
     }
