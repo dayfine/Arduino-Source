@@ -93,11 +93,18 @@
         "why": "Rocket Grunt (TRAINER_TEAM_ROCKET_GRUNT_18): Koffing, Zubat Lv21; he drops the LIFT KEY"
       },
       {
+        "id": "beside_lift_key",
+        "kind": "legs",
+        "variant": "taps",
+        "legs": [{"direction": "west", "tiles": 1}],
+        "why": "a tap west from the Grunt's line (4, 3) to below the LIFT KEY (3, 3)"
+      },
+      {
         "id": "below_lift_key",
         "kind": "route",
         "target": {"certainty": "tile", "map": "RocketHideout_B4F", "where": {"facing": "north", "kind": "tiles", "tiles": [[3, 3]]}},
         "variant": "run",
-        "why": "a tile west, below the LIFT KEY (3, 2)"
+        "why": "turn to face the LIFT KEY (3, 2): no tile to walk"
       },
       {
         "id": "lift_key",
@@ -105,11 +112,18 @@
         "why": "pick up the LIFT KEY (pokeguy 57:33)"
       },
       {
+        "id": "b4f_to_stairs",
+        "kind": "legs",
+        "variant": "taps",
+        "legs": [{"direction": "east", "tiles": 3}, {"direction": "south", "tiles": 4}, {"direction": "east", "tiles": 5}, {"direction": "south", "tiles": 8}],
+        "why": "a tap a tile from below the LIFT KEY (3, 3): east to the wall (6, 3), down to (6, 7), east to (11, 7) and down onto the stairs (11, 15)"
+      },
+      {
         "id": "b3f_from_b4f",
         "kind": "route",
         "target": {"certainty": "tile", "map": "RocketHideout_B3F", "where": {"facing": "west", "kind": "tiles", "tiles": [[15, 18]]}},
         "variant": "run",
-        "why": "back to B4F's stairs (11, 15) and up them to B3F's (15, 18)"
+        "why": "east up B4F's stairs (11, 15) to B3F's (15, 18)"
       },
       {
         "id": "b3f_back_to_candy_row",
