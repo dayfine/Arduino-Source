@@ -81,6 +81,9 @@ struct Transition{
     bool warped = false;
     bool walked_out = false;     //  the warp ended with the game walking the player out
     bool dismounted = false;     //  stepped off the water onto land
+    //  The step landed on a spinner, which slid the player on: how far,
+    //  and the way they last moved.
+    std::optional<SpinSlide> spin;
 };
 
 //  The player taking `warp`, or nothing if it leads off the loaded maps.
@@ -182,6 +185,13 @@ std::optional<Transition> press(const std::vector<MapData>& maps, const Located&
     if (transition.action == RouteAction::WALK && warps_on_step(map, landed) && warp_at(map, landed) != nullptr){
         return take_warp(maps, warp_at(map, landed));
     }
+    if (transition.action == RouteAction::WALK && spin_direction(map, landed)){
+        transition.spin = spin_slide(map, transition.next.state);
+        if (!transition.spin){
+            return std::nullopt;
+        }
+        transition.next.state = transition.spin->end;
+    }
     return transition;
 }
 
@@ -268,9 +278,14 @@ public:
         step.action = transition->action == RouteAction::SURF ? ACTION_SURF : 0;
         //  Leaving the water: the player walks at half the speed from here.
         step.starts_leg = transition->dismounted;
-        step.ends_leg = transition->warped || transition->dismounted;
+        //  A slide ends the leg: the hold must let go on the spinner.
+        step.ends_leg = transition->warped || transition->dismounted || transition->spin;
         step.warped = transition->warped;
         step.facing = transition->walked_out ? Direction::SOUTH : direction;
+        if (transition->spin){
+            step.facing = transition->spin->facing;
+            step.extra_cost += transition->spin->tiles * route_cost(m_costs, RouteCost::TILE);
+        }
         if (transition->action == RouteAction::SURF){
             step.extra_cost += route_cost(m_costs, RouteCost::SURF);
         }
@@ -306,6 +321,24 @@ Pokemon::LegCosts to_leg_costs(const RouteCosts& costs){
     return leg_costs;
 }
 
+//  The tiles the slide at the end of WALK `leg` takes, if it ends on a
+//  spinner: only a leg's last step can slide (StepModel ends the leg).
+std::optional<int> last_spin_tiles(const std::vector<MapData>& maps, const Pokemon::Leg<Located>& leg){
+    Located player = leg.start;
+    std::optional<Transition> transition;
+    for (int c = 0; c < leg.tiles; c++){
+        transition = press(maps, player, leg.direction);
+        if (!transition){
+            return std::nullopt;
+        }
+        player = transition->next;
+    }
+    if (!transition || !transition->spin){
+        return std::nullopt;
+    }
+    return transition->spin->tiles;
+}
+
 RouteStep to_route_step(const std::vector<MapData>& maps, const Pokemon::Leg<Located>& leg){
     RouteStep step;
     switch (leg.kind){
@@ -332,6 +365,10 @@ RouteStep to_route_step(const std::vector<MapData>& maps, const Pokemon::Leg<Loc
         //  start map only, "north 22" from Pallet Town through Route 1's grass
         //  wasn't watched for battles (console B, 2026-11-01).
         step.wild = leg.wild || leg.start.state.surfing || leg.kind == Pokemon::LegKind::ACTION;
+    }
+    if (leg.kind == Pokemon::LegKind::WALK){
+        step.spin_tiles = last_spin_tiles(maps, leg);
+        step.to_wall = step.to_wall && !step.spin_tiles;
     }
     const std::vector<MapPosition> tiles = leg_tiles(maps, MapPosition{maps[leg.start.map].name, leg.start.state.position}, step);
     for (int c : std::views::iota(1, (int)tiles.size()) | std::views::filter([&](int n){ return tiles[n].map != tiles[n - 1].map; })){
@@ -361,7 +398,7 @@ std::optional<OverworldPress> predict_overworld_press(
             .position = {maps[next->next.map].name, next->next.state.position},
             .elevation = next->next.state.elevation,
             .surfing = next->next.state.surfing,
-            .facing = next->walked_out ? Direction::SOUTH : direction,
+            .facing = next->spin ? next->spin->facing : next->walked_out ? Direction::SOUTH : direction,
         },
         .warped = next->warped,
     };
@@ -424,7 +461,7 @@ std::optional<Located> locate(const std::vector<MapData>& maps, const MapPositio
 //  A plain step: no warp, no Surf, no getting off the water.
 std::optional<Located> plain_step(const std::vector<MapData>& maps, const Located& player, Direction direction){
     const std::optional<Transition> transition = press(maps, player, direction);
-    if (!transition || transition->warped || transition->dismounted || transition->action != RouteAction::WALK){
+    if (!transition || transition->warped || transition->dismounted || transition->spin || transition->action != RouteAction::WALK){
         return std::nullopt;
     }
     return transition->next;
@@ -473,7 +510,7 @@ std::vector<MapPosition> leg_tiles(
 ){
     std::vector<MapPosition> tiles{start};
     std::optional<Located> player = locate(maps, start, step.surfing);
-    const int along = step.tiles - (step.warps ? 1 : 0);
+    const int along = step.tiles - (step.warps || step.spin_tiles ? 1 : 0);
     for (int c = 0; player && c < along; c++){
         player = plain_step(maps, *player, step.direction);
         if (player){

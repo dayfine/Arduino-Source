@@ -243,7 +243,19 @@ std::optional<SimSeen> OverworldSim::watch_until(const std::vector<SimWatcher>& 
 
 std::optional<OverworldSim::Step> OverworldSim::take_warp(int map_index, const TilePos& tile) const{
     const MapWarp* warp = warp_at(m_maps[map_index], tile);
-    if (warp == nullptr || !warp->to){
+    if (warp == nullptr){
+        return std::nullopt;
+    }
+    const auto lift = m_script.lift_floors.find(m_maps[map_index].name);
+    if (lift != m_script.lift_floors.end() && m_lift_floor){
+        const MapPosition& out = lift->second[*m_lift_floor];
+        const int destination = find_map(m_maps, out.map);
+        if (destination < 0){
+            return std::nullopt;
+        }
+        return Step{destination, PlayerState{out.point, elevation_at(m_maps[destination], out.point), false}, true, false, false};
+    }
+    if (!warp->to){
         return std::nullopt;
     }
     const int destination = find_map(m_maps, warp->to->map);
@@ -309,9 +321,16 @@ std::optional<OverworldSim::Step> OverworldSim::press(Direction direction) const
     if (kind != StepKind::WALK){
         return std::nullopt;
     }
-    const Step step{m_map, after_step_onto(map(), m_player, map(), ahead, kind), false, false, false};
+    Step step{m_map, after_step_onto(map(), m_player, map(), ahead, kind), false, false, false};
     if (warps_on_step(map(), ahead)){
         return take_warp(m_map, ahead);
+    }
+    if (spin_direction(map(), ahead)){
+        step.spin = spin_slide(map(), step.player);
+        if (!step.spin){
+            return std::nullopt;
+        }
+        step.player = step.spin->end;
     }
     return step;
 }
@@ -491,6 +510,13 @@ void OverworldSim::take_steps(Direction direction, Milliseconds pressed, Millise
         if (step->walked_out){
             m_state.facing = Direction::SOUTH;
         }
+        if (step->spin){
+            //  The game moves the player through the slide; the hold, if
+            //  it goes on, walks on from its end.
+            m_state.facing = step->spin->facing;
+            note(std::format("slid {} tile(s) to {}.", step->spin->tiles, to_string(step->spin->end.position)));
+            pressed += MovementMechanics::SPIN_TILE_TIME * step->spin->tiles;
+        }
         if (after_step(*step, pressed)){
             return;
         }
@@ -669,6 +695,34 @@ bool OverworldSim::cut_tree(){
     return false;
 }
 
+bool OverworldSim::choose_lift_floor(size_t floor){
+    const auto lift = m_script.lift_floors.find(map().name);
+    if (lift == m_script.lift_floors.end() || floor >= lift->second.size() || m_frozen){
+        violation("no lift panel on " + to_string(m_state.position) + " with a floor " + std::to_string(floor) + ".");
+        return false;
+    }
+    m_lift_floor = floor;
+    advance_to(m_now + m_script.timing.message);
+    note("the lift goes to " + to_string(lift->second[floor]) + ".");
+    return true;
+}
+
+bool OverworldSim::push_poster_switch(){
+    std::vector<MapObject>& objects = m_maps[m_map].objects;
+    const TilePos ahead = m_player.position.next(m_state.facing);
+    const auto poster = std::find_if(objects.begin(), objects.end(), [&](const MapObject& object){
+        return object.name == "poster" && object.x == ahead.x && object.y == ahead.y;
+    });
+    if (poster == objects.end() || m_state.screen != SimScreen::OVERWORLD || m_frozen){
+        violation("no poster " + std::string(direction_name(m_state.facing)) + " of " + to_string(m_state.position) + ".");
+        return false;
+    }
+    std::erase_if(objects, [](const MapObject& object){ return object.name == "poster_stairs"; });
+    advance_to(m_now + m_script.timing.message);
+    note("pushed the switch behind the poster: the stairs are open.");
+    return true;
+}
+
 
 
 //
@@ -845,6 +899,9 @@ std::optional<WalkedTiles> OverworldSimWalker::walk_step(const RouteStep& step, 
     const Pokemon::LegResult result = Pokemon::walk_leg_with(leg, calls, MAX_INTERRUPTIONS_PER_LEG);
     if (result.stopped){
         return dark_stop(step, walked_near(step, result.tiles, TILE_TIME));
+    }
+    if (step.spin_tiles){
+        m_sim.watch({}, SPIN_TILE_TIME * *step.spin_tiles + SPIN_STOP_SETTLE);
     }
     const Milliseconds fade_watched_from = m_rules.watch_fade_along_hold ? m_leg_start : m_sim.state().time;
     if (step.warps && !after_warp(step, warps_before, fade_watched_from)){

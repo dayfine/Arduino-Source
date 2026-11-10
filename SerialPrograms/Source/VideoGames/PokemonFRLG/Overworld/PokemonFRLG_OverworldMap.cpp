@@ -230,6 +230,68 @@ StepKind classify_step_onto(
     return StepKind::WALK;
 }
 
+const char SPIN_NORTH_REGION[] = "spin_north";
+const char SPIN_SOUTH_REGION[] = "spin_south";
+const char SPIN_WEST_REGION[] = "spin_west";
+const char SPIN_EAST_REGION[] = "spin_east";
+const char SPIN_STOP_REGION[] = "spin_stop";
+
+namespace{
+
+bool in_region(const MapData& map, const char* region, const TilePos& point){
+    const auto tiles = map.regions.find(region);
+    return tiles != map.regions.end() && std::find(tiles->second.begin(), tiles->second.end(), point) != tiles->second.end();
+}
+
+} // namespace
+
+std::optional<Direction> spin_direction(const MapData& map, const TilePos& point){
+    static const std::pair<const char*, Direction> ARROWS[] = {
+        {SPIN_NORTH_REGION, Direction::NORTH},
+        {SPIN_SOUTH_REGION, Direction::SOUTH},
+        {SPIN_WEST_REGION, Direction::WEST},
+        {SPIN_EAST_REGION, Direction::EAST},
+    };
+    for (const auto& [region, direction] : ARROWS){
+        if (in_region(map, region, point)){
+            return direction;
+        }
+    }
+    return std::nullopt;
+}
+bool stops_spinning(const MapData& map, const TilePos& point){
+    return in_region(map, SPIN_STOP_REGION, point);
+}
+
+std::optional<SpinSlide> spin_slide(const MapData& map, const PlayerState& state){
+    std::optional<Direction> arrow = spin_direction(map, state.position);
+    if (!arrow){
+        return std::nullopt;
+    }
+    SpinSlide slide{state, *arrow, 0};
+    //  A slide longer than the map has tiles has gone round a loop.
+    const int max_tiles = map.tiles.width * map.tiles.height;
+    while (slide.tiles <= max_tiles){
+        const StepKind kind = classify_step(map, slide.end, slide.facing);
+        if (kind != StepKind::WALK){
+            return slide;
+        }
+        slide.end = after_step(map, slide.end, slide.facing, kind);
+        slide.tiles++;
+        if (warp_at(map, slide.end.position) != nullptr){
+            return std::nullopt;
+        }
+        if (stops_spinning(map, slide.end.position)){
+            return slide;
+        }
+        arrow = spin_direction(map, slide.end.position);
+        if (arrow){
+            slide.facing = *arrow;
+        }
+    }
+    return std::nullopt;
+}
+
 PlayerState after_step(const MapData& map, const PlayerState& state, Direction direction, StepKind kind){
     return after_step_onto(map, state, map, state.position.next(direction), kind);
 }

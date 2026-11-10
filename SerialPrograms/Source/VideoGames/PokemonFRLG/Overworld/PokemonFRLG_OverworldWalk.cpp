@@ -536,6 +536,10 @@ void walk_step_leg(
         console, context, leg_mover(step, speed), step.wild ? interrupts.wild : interrupts.other,
         leg_spec(step, speed), MAX_INTERRUPTIONS_PER_LEG, warp_hold_watchers(step, fade)
     );
+    if (step.spin_tiles){
+        //  The hold let go on the spinner; the game slides the player on.
+        pbf_wait(context, SPIN_TILE_TIME * *step.spin_tiles + SPIN_STOP_SETTLE);
+    }
     if (!step.warps){
         return;
     }

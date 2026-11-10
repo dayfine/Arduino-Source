@@ -137,6 +137,11 @@ struct SimScript{
     //  check and screen observer read as a battle on its way (console B,
     //  2026-11-09, 00.28), unless SimWalkerRules::dark_cave_not_battle.
     std::set<std::string> dark_maps;
+    //  A lift's map, and where its door lets the player out for each floor
+    //  on its panel's menu, top first (pokefirered setdynamicwarp in
+    //  RocketHideout_Elevator's scripts): the door's own warp is the
+    //  game's placeholder.
+    std::map<std::string, std::vector<MapPosition>> lift_floors = {};
     SimTiming timing;
 };
 
@@ -255,6 +260,18 @@ public:
     //  as its hide flag is a FLAG_TEMP. Returns whether there was one.
     bool cut_tree();
 
+    //  A on the panel of the lift the player stands in (SimScript::
+    //  lift_floors) and floor `floor` picked: the lift's door now lets out
+    //  there. Returns whether there was such a lift and floor.
+    bool choose_lift_floor(size_t floor);
+
+    //  A on the poster the player faces (an object named "poster"): the
+    //  switch behind it opens the stairs, which takes away the objects
+    //  named "poster_stairs" for good (pokefirered
+    //  CeladonCity_GameCorner_EventScript_Poster's setmetatile). Returns
+    //  whether there was a poster.
+    bool push_poster_switch();
+
 private:
     //  A screen that shows at `at`; `unfreeze`: the player can move again.
     struct Pending{
@@ -269,6 +286,8 @@ private:
         bool warped = false;
         bool walked_out = false;    //  the warp ended with the game walking the player a tile south
         bool ledge = false;
+        //  The step landed on a spinner, which slid the player to `player`.
+        std::optional<SpinSlide> spin = {};
     };
 
     void advance_to(Milliseconds time);
@@ -323,6 +342,8 @@ private:
     std::optional<size_t> m_trainer;
     //  The trees cut since the last warp, and their maps.
     std::vector<std::pair<int, MapObject>> m_cut_trees;
+    //  The floor picked on the lift's panel, if any.
+    std::optional<size_t> m_lift_floor;
     int m_grass_steps = 0;
     //  The game's wild encounter state (SimScript::encounter_rates).
     std::mt19937 m_encounter_rng;
@@ -515,6 +536,9 @@ private:
 void add_tests_OverworldSim(UnitTestDatabase& database);
 //  Register the tests of a warp's fade over before the hold onto it ends.
 void add_tests_OverworldWarpFade(UnitTestDatabase& database);
+//  Register the tests of spinner tiles, the lift's panel and the poster
+//  switch on made-up maps.
+void add_tests_OverworldSpin(UnitTestDatabase& database);
 
 
 
