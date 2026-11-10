@@ -323,9 +323,25 @@ std::vector<TilePos> blocked_stop_tiles(const StoryWorld& world, const std::vect
     return out;
 }
 
+bool same_legs(const std::vector<PlannedLeg>& a, const std::vector<PlannedLeg>& b){
+    return std::equal(a.begin(), a.end(), b.begin(), b.end(), [](const PlannedLeg& x, const PlannedLeg& y){
+        return x.leg.direction == y.leg.direction && x.leg.tiles == y.leg.tiles &&
+            x.leg.ends_at_wall == y.leg.ends_at_wall && x.leg.held == y.leg.held;
+    });
+}
+
 std::optional<std::vector<PlannedLeg>> plan_fastest_route(const ScoredRoute& route){
     std::optional<std::vector<PlannedLeg>> best = plan_recovered_route(route.world, route.from, route.goal, route.costs);
     if (!best){
+        return best;
+    }
+    std::vector<std::vector<PlannedLeg>> candidates = run_variants(route, *best);
+    std::optional<std::vector<PlannedLeg>> grass = plan_recovered_route(route.world, route.from, route.goal, replan_costs(route.costs));
+    if (grass && !same_legs(*grass, *best)){
+        candidates.push_back(std::move(*grass));
+    }
+    //  Most steps have no other plan: nothing to score.
+    if (candidates.empty()){
         return best;
     }
     CachedReplanner replanner(route);
@@ -334,10 +350,6 @@ std::optional<std::vector<PlannedLeg>> plan_fastest_route(const ScoredRoute& rou
     const bool own_passes = own.verdict == Pokemon::RouteVerdict::PASS;
     const size_t own_back = Pokemon::tiles_walked_back(route_scored_legs(*best, route.speed));
     double best_ms = own_passes ? own.expected_ms : -1;
-    std::vector<std::vector<PlannedLeg>> candidates = run_variants(route, *best);
-    if (std::optional<std::vector<PlannedLeg>> legs = plan_recovered_route(route.world, route.from, route.goal, replan_costs(route.costs))){
-        candidates.push_back(std::move(*legs));
-    }
     for (std::vector<PlannedLeg>& legs : candidates){
         const Pokemon::RouteScore score = score_with(route, legs, replan);
         if (score.verdict != Pokemon::RouteVerdict::PASS || (best_ms >= 0 && score.expected_ms >= best_ms)){
