@@ -11,8 +11,11 @@
       {
         "id": "zone_1_to_far_gate",
         "kind": "game_action",
-        "why": "step 62: back across Wild Zone 1 to its gate's \"A Leave\"",
-        "action": "zone_1_to_far_gate"
+        "why": "step 62: back across Wild Zone 1 to its gate's \"A Leave\". Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[90, 1000], [-90, 15000], [0, 2000]]
+        }
       },
       {
         "id": "leave_zone_1",
@@ -23,8 +26,11 @@
       {
         "id": "to_research_lab",
         "kind": "game_action",
-        "why": "step 63: across to the Pokemon Research Lab's gate, into Taunie's scene",
-        "action": "to_research_lab"
+        "why": "step 63: across to the Pokemon Research Lab's gate, into Taunie's scene. Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[45, 4000], [0, 2000], [-90, 2000]]
+        }
       },
       {
         "id": "research_lab_gate",
@@ -47,8 +53,11 @@
       {
         "id": "up_the_lab_steps",
         "kind": "game_action",
-        "why": "step 65: up the steps to the lab's \"A Enter\"",
-        "action": "up_the_lab_steps"
+        "why": "step 65: up the steps to the lab's \"A Enter\". 1 s was short. Measured 2026-11-09 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[0, 1500]]
+        }
       },
       {
         "id": "lab_lobby",

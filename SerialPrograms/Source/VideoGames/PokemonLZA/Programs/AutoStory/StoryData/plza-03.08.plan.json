@@ -11,8 +11,11 @@
       {
         "id": "to_lab_elevator",
         "kind": "game_action",
-        "why": "step 66: to the elevator's \"A Take Elevator\"",
-        "action": "to_lab_elevator"
+        "why": "step 66: to the elevator's \"A Take Elevator\". Measured 2026-11-09 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[0, 1000]]
+        }
       },
       {
         "id": "take_lab_elevator",
@@ -33,8 +36,11 @@
       {
         "id": "to_mable",
         "kind": "game_action",
-        "why": "step 68: to the acting director's desk, into her talk",
-        "action": "to_mable"
+        "why": "step 68: to the acting director's desk, into her talk. NEEDS TUNING: \"left 0.5 s, right 2 s\", the angles not recorded (90 is a guess). Measured 2026-11-09 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[-90, 500], [90, 2000]]
+        }
       },
       {
         "id": "mable_talk",

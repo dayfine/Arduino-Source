@@ -4,11 +4,15 @@
  *
  */
 
+#include <cstdint>
 #include <format>
 #include <optional>
+#include <set>
+#include <string_view>
 #include <string>
 #include <utility>
 #include <vector>
+#include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
@@ -55,13 +59,125 @@ const std::map<std::string, std::string, std::less<>>& story_actions_not_impleme
 
 namespace{
 
-//  The GAME actions that are not moves or todos and run on any backend,
+//  The GAME actions that are not walks or todos and run on any backend,
 //  with no args.
 const std::vector<std::string>& backend_game_actions(){
     static const std::vector<std::string> actions{
-        "approach_starter", "text_to_choice",
+        "text_to_choice",
     };
     return actions;
+}
+
+using IntegerRows = std::vector<std::vector<int64_t>>;
+
+//  approach_starter's arg for each starter: the walk to it.
+std::string_view starter_key(StarterChoice starter){
+    switch (starter){
+    case StarterChoice::CHIKORITA:
+        return "chikorita";
+    case StarterChoice::TEPIG:
+        return "tepig";
+    case StarterChoice::TOTODILE:
+        return "totodile";
+    }
+    return "";
+}
+
+constexpr StarterChoice STARTERS[] = {StarterChoice::CHIKORITA, StarterChoice::TEPIG, StarterChoice::TOTODILE};
+
+//  A walk's "end" arg as the event it ends on: a fade.
+std::optional<Pokemon::ScreenEvent> walk_end_event(std::string_view end){
+    if (end == "fade_white"){
+        return Pokemon::ScreenEvent::FADE_WHITE;
+    }
+    if (end == "fade_black"){
+        return Pokemon::ScreenEvent::FADE_BLACK;
+    }
+    return std::nullopt;
+}
+
+//  What is wrong with the legs `rows` of step `step`: each a [turn, ms]
+//  pair turning at most half a turn either way and walking no negative
+//  time, and at least one that walks.
+void add_legs_errors(std::string_view step, std::string_view key, const IntegerRows& rows, std::vector<std::string>& errors){
+    if (rows.empty()){
+        errors.push_back(std::format("{}: {} has no legs", step, key));
+        return;
+    }
+    bool goes = false;
+    for (size_t i = 0; i < rows.size(); i++){
+        const std::vector<int64_t>& row = rows[i];
+        if (row.size() != 2){
+            errors.push_back(std::format("{}: {} leg {} needs 2 numbers [turn, ms], has {}", step, key, i, row.size()));
+            continue;
+        }
+        if (row[0] < -180 || row[0] > 180){
+            errors.push_back(std::format("{}: {} leg {} turns {} deg, expected -180 to 180", step, key, i, row[0]));
+        }
+        if (row[1] < 0){
+            errors.push_back(std::format("{}: {} leg {} walks {} ms, expected 0 or more", step, key, i, row[1]));
+        }
+        goes = goes || row[1] > 0;
+    }
+    if (!goes){
+        errors.push_back(std::format("{}: {} walks nowhere", step, key));
+    }
+}
+
+//  What is wrong with an "approach_starter" step's walks: it needs one.
+std::vector<std::string> starter_walk_errors(const Pokemon::StoryStep& step){
+    std::vector<std::string> errors;
+    bool any = false;
+    for (StarterChoice starter : STARTERS){
+        const auto legs = step.args.find(starter_key(starter));
+        if (legs != step.args.end()){
+            any = true;
+            add_legs_errors(step.name, legs->first, std::get<IntegerRows>(legs->second), errors);
+        }
+    }
+    if (!any){
+        errors.push_back(std::format("{}: no walk to any starter", step.name));
+    }
+    return errors;
+}
+
+//  What is wrong with the args of a "walk" or "approach_starter" step;
+//  nothing for any other step.
+std::vector<std::string> walk_errors(const Pokemon::StoryStep& step){
+    std::vector<std::string> errors;
+    if (step.kind != StoryStepKind::GAME){
+        return errors;
+    }
+    if (step.action == "approach_starter"){
+        return starter_walk_errors(step);
+    }
+    if (step.action != "walk"){
+        return errors;
+    }
+    const auto legs = step.args.find("legs");
+    if (legs == step.args.end()){
+        return errors;
+    }
+    const IntegerRows& rows = std::get<IntegerRows>(legs->second);
+    add_legs_errors(step.name, "legs", rows, errors);
+    const auto end = step.args.find("end");
+    if (end != step.args.end()){
+        const std::string& name = std::get<std::string>(end->second);
+        if (!walk_end_event(name)){
+            errors.push_back(std::format("{}: end {} is not \"fade_white\" or \"fade_black\"", step.name, name));
+        }
+        if (rows.empty() || rows.back().size() != 2 || rows.back()[1] <= 0){
+            errors.push_back(std::format("{}: the last leg has no walk to hold until the end", step.name));
+        }
+    }
+    const auto heading = step.args.find("heading");
+    if (heading != step.args.end()){
+        const int64_t degrees = std::get<int64_t>(heading->second);
+        if (degrees < 0 || degrees >= 360){
+            errors.push_back(std::format("{}: heading {} deg, expected 0 to 359", step.name, degrees));
+        }
+    }
+    return errors;
 }
 
 //  The same that work through the game's own screens: console_only.
@@ -97,6 +213,34 @@ StoryActionSpec game_spec(std::string name, std::vector<StoryArgSpec> args = {})
 
 StoryArgSpec optional_ms(std::string key, int64_t fallback, std::string why){
     return StoryArgSpec{.key = std::move(key), .type = StoryArgType::INTEGER, .required = false, .fallback = fallback, .why = std::move(why)};
+}
+
+StoryArgSpec legs_arg(std::string key, bool required, std::string why){
+    return StoryArgSpec{.key = std::move(key), .type = StoryArgType::INTEGER_ROWS, .required = required, .fallback = std::nullopt, .why = std::move(why)};
+}
+
+//  "walk": its legs, the fade it ends on, the heading it faces first.
+StoryActionSpec walk_spec(){
+    return game_spec("walk", {
+        legs_arg("legs", true, "the legs: [turn in degrees, clockwise (negative: left), walk ms] each"),
+        StoryArgSpec{
+            .key = "end", .type = StoryArgType::WORD, .required = false, .fallback = std::nullopt,
+            .why = "\"fade_white\" or \"fade_black\": the last leg is held until it shows, its ms the bound",
+        },
+        StoryArgSpec{
+            .key = "heading", .type = StoryArgType::INTEGER, .required = false, .fallback = std::nullopt,
+            .why = "the compass heading to face first, clockwise from north",
+        },
+    });
+}
+
+//  "approach_starter": the walk to each starter, by the starter's key.
+StoryActionSpec approach_starter_spec(){
+    std::vector<StoryArgSpec> args;
+    for (StarterChoice starter : STARTERS){
+        args.push_back(legs_arg(std::string(starter_key(starter)), false, "the walk to this starter, as a walk's legs"));
+    }
+    return game_spec("approach_starter", std::move(args));
 }
 
 //  What a console action does with the run's console and the step's args.
@@ -142,28 +286,28 @@ public:
         };
     }
 
-    //  The move `name`, walked once the screen shows free control.
-    Handler walk(std::string name, StoryMove move) const{
-        return [name = std::move(name), move = std::move(move), heading = m_heading](
-            Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&
-        ){
-            const Outcome free = check_can_walk(backend, name);
-            if (!free.succeeded()){
-                return free;
-            }
-            const auto end = story_move_ends().find(name);
-            const std::optional<PokemonAutomation::ScreenEvent> fade =
-                end == story_move_ends().end() ? std::nullopt : engine_fade_event(end->second);
-            return fade ? walk_until(backend, name, move, heading, *fade) : run_story_move(backend, move, heading);
+    //  "walk": its args' legs, walked once the screen shows free control,
+    //  until its end event if it has one.
+    Handler walk() const{
+        return [heading = m_heading](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
+            return walk_legs(backend, call.step.name, story_walk_move(call.args, "legs"), call.args, heading);
         };
     }
 
+    //  "approach_starter": the walk to the run's starter, from the arg of
+    //  its name. A starter with no walk is not implemented.
     Handler approach_starter() const{
-        const auto move = starter_moves().find(m_starter);
-        if (move == starter_moves().end()){
-            return not_implemented("approach_starter", "the walk to this starter: only Chikorita's was recorded (console B, 2026-11-08).");
-        }
-        return walk("approach_starter", move->second);
+        return [heading = m_heading, starter = m_starter](
+            Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState& state
+        ){
+            const std::string_view key = starter_key(starter);
+            if (!call.args.contains(key)){
+                return not_implemented("approach_starter", std::format(
+                    "the walk to {}: only Chikorita's was recorded (console B, 2026-11-08).", key
+                ))(backend, call, state);
+            }
+            return walk_legs(backend, call.step.name, story_walk_move(call.args, key), call.args, heading);
+        };
     }
 
     static Handler not_implemented(std::string name, std::string todo){
@@ -207,6 +351,25 @@ public:
     }
 
 private:
+    //  `move`, once the screen shows free control; held until the fade of
+    //  `args`' "end", if it names one.
+    static Outcome walk_legs(
+        Pokemon::StoryBackend<ZonePose>& backend, std::string_view name, const StoryMove& move,
+        const StoryActionArgs& args, const PlzaReader& heading
+    ){
+        const Outcome free = check_can_walk(backend, name);
+        if (!free.succeeded()){
+            return free;
+        }
+        const auto end = args.find("end");
+        std::optional<PokemonAutomation::ScreenEvent> fade;
+        if (end != args.end()){
+            const std::optional<Pokemon::ScreenEvent> event = walk_end_event(std::get<std::string>(end->second));
+            fade = event ? engine_fade_event(*event) : std::nullopt;
+        }
+        return fade ? walk_until(backend, name, move, heading, *fade) : run_story_move(backend, move, heading);
+    }
+
     StoryEnv* m_env;
     StarterChoice m_starter;
     //  The compass for the walks; none without a console, where a look
@@ -301,9 +464,8 @@ Handler game_handler(const PlzaActions& make, const std::string& name){
     if (todo != story_actions_not_implemented().end()){
         return PlzaActions::not_implemented(name, todo->second);
     }
-    const auto move = story_moves().find(name);
-    if (move != story_moves().end()){
-        return make.walk(name, move->second);
+    if (name == "walk"){
+        return make.walk();
     }
     if (name == "choose_0" || name == "choose_1"){
         const size_t row = name == "choose_0" ? 0 : 1;
@@ -454,9 +616,8 @@ std::vector<StoryActionSpec> plza_story_action_specs(){
     for (const std::string& name : console_game_actions()){
         specs.push_back(console_only(game_spec(name)));
     }
-    for (const auto& [name, move] : story_moves()){
-        specs.push_back(game_spec(name));
-    }
+    specs.push_back(walk_spec());
+    specs.push_back(approach_starter_spec());
     for (const auto& [name, todo] : story_actions_not_implemented()){
         specs.push_back(game_spec(name));
     }
@@ -468,18 +629,44 @@ const std::vector<StoryActionSpec>& plza_story_specs(){
 }
 
 std::vector<std::string> plza_story_lint(const Pokemon::StoryCheckpoint& checkpoint){
-    return spec_registry().lint(checkpoint);
+    std::vector<std::string> errors = spec_registry().lint(checkpoint);
+    if (!errors.empty()){
+        return errors;
+    }
+    for (const Pokemon::StoryStep& step : checkpoint.steps){
+        for (std::string& error : walk_errors(step)){
+            errors.push_back(std::format("{}: {}", checkpoint.id, error));
+        }
+    }
+    return errors;
 }
 
-Pokemon::StoryGame<ZonePose> make_plza_story_game(StoryEnv& env, StarterChoice starter){
+StoryMove story_walk_move(const StoryActionArgs& args, std::string_view legs){
+    StoryMove move;
+    const auto heading = args.find("heading");
+    if (heading != args.end()){
+        move.heading = (double)std::get<int64_t>(heading->second);
+    }
+    for (const std::vector<int64_t>& row : Pokemon::story_arg<IntegerRows>(args, legs)){
+        if (row.size() != 2){
+            throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("A walk leg needs 2 numbers, has {}.", row.size()));
+        }
+        move.legs.push_back({.turn = (double)row[0], .walk = Milliseconds(row[1])});
+    }
+    return move;
+}
+
+Pokemon::StoryGame<ZonePose> make_plza_story_game(
+    StoryEnv& env, StarterChoice starter, std::set<std::string, std::less<>> autosave_rows
+){
     Pokemon::StoryGame<ZonePose> game = plza_game_actions(&env, starter);
     //  Slow, and it throws without the minimap: never after a checkpoint.
     game.readers.push_back({
         .name = std::string(Pokemon::STORY_HEADING), .supplies = {std::string(Pokemon::STORY_HEADING)},
         .use = Pokemon::StoryReaderUse::ON_REQUEST, .console_only = true, .read = heading_reader(env),
     });
-    game.save = [&env](Pokemon::StoryBackend<ZonePose>& backend, const Pokemon::StoryCheckpoint& checkpoint){
-        if (story_autosave_rows().contains(checkpoint.id)){
+    game.save = [&env, autosave_rows = std::move(autosave_rows)](Pokemon::StoryBackend<ZonePose>& backend, const Pokemon::StoryCheckpoint& checkpoint){
+        if (autosave_rows.contains(checkpoint.id)){
             backend.log(std::format("[Save] {}: the game autosaved at its end", checkpoint.id));
             return Pokemon::outcome_ok();
         }

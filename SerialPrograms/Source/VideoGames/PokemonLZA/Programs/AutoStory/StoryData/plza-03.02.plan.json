@@ -11,8 +11,11 @@
       {
         "id": "to_hotel_front_door",
         "kind": "game_action",
-        "why": "step 40: across the lobby to the front door's \"A Leave\"",
-        "action": "to_hotel_front_door"
+        "why": "step 40: across the lobby to the front door's \"A Leave\". Stops at the door. Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[0, 6000]]
+        }
       },
       {
         "id": "leave_hotel_z",
@@ -23,8 +26,11 @@
       {
         "id": "to_taunie_at_gate",
         "kind": "game_action",
-        "why": "step 41: to Taunie at the gate, \"A Talk Taunie\"",
-        "action": "to_taunie_at_gate"
+        "why": "step 41: to Taunie at the gate, \"A Talk Taunie\". Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[0, 3000]]
+        }
       },
       {
         "id": "talk_to_taunie",

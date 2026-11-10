@@ -11,8 +11,11 @@
       {
         "id": "through_hotel_gate",
         "kind": "game_action",
-        "why": "step 46: through the Hotel Z gate passage into the scene",
-        "action": "through_hotel_gate"
+        "why": "step 46: through the Hotel Z gate passage into the scene. Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[0, 7000]]
+        }
       },
       {
         "id": "rock_pile_scene",
@@ -23,8 +26,11 @@
       {
         "id": "side_street_to_wall",
         "kind": "game_action",
-        "why": "step 47: down the side street to the wall across it",
-        "action": "side_street_to_wall"
+        "why": "step 47: down the side street to the wall across it. 6 s down the side street, 2 s across. Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[0, 8000]]
+        }
       },
       {
         "id": "climb_ladder",
@@ -41,8 +47,11 @@
       {
         "id": "off_the_roof",
         "kind": "game_action",
-        "why": "step 51: off the roof's edge, down to South Boulevard",
-        "action": "off_the_roof"
+        "why": "step 51: off the roof's edge, down to South Boulevard. Walks off the edge and drops. Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[0, 4000]]
+        }
       },
       {
         "id": "south_boulevard",

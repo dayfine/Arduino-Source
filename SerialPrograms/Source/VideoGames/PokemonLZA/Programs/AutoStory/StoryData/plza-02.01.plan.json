@@ -11,8 +11,11 @@
       {
         "id": "battle_zone_to_brigitte",
         "kind": "game_action",
-        "why": "step 18: through the Battle Zone until the black fade into Brigitte's scene",
-        "action": "battle_zone_to_brigitte"
+        "why": "step 18: through the Battle Zone until the black fade into Brigitte's scene. NEEDS TUNING. Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[0, 3500], [90, 0], [-90, 500], [90, 4000], [5, 2500], [90, 4000]]
+        }
       },
       {
         "id": "brigitte_battle_start",
@@ -35,8 +38,11 @@
       {
         "id": "to_blocked_street",
         "kind": "game_action",
-        "why": "step 21: on until the black fade into the street the trainers block",
-        "action": "to_blocked_street"
+        "why": "step 21: on until the black fade into the street the trainers block. Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[0, 2000], [-75, 3500], [90, 3000]]
+        }
       },
       {
         "id": "street_scene",
@@ -47,8 +53,11 @@
       {
         "id": "to_battle_zone_gate",
         "kind": "game_action",
-        "why": "step 22: on to the gate's \"A Leave\"",
-        "action": "to_battle_zone_gate"
+        "why": "step 22: on to the gate's \"A Leave\". Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[0, 5000]]
+        }
       },
       {
         "id": "leave_battle_zone",
@@ -59,8 +68,11 @@
       {
         "id": "through_covered_passage",
         "kind": "game_action",
-        "why": "step 23: through the wooden door and the covered passage into the Hotel Z scene",
-        "action": "through_covered_passage"
+        "why": "step 23: through the wooden door and the covered passage into the Hotel Z scene. Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[75, 3000], [0, 5000]]
+        }
       },
       {
         "id": "hotel_z_arrival",
@@ -71,8 +83,11 @@
       {
         "id": "to_hotel_z_door",
         "kind": "game_action",
-        "why": "step 24: up the steps to the door's \"A Enter\"",
-        "action": "to_hotel_z_door"
+        "why": "step 24: up the steps to the door's \"A Enter\". 3-4.5 s, the longest. Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[0, 4500]]
+        }
       },
       {
         "id": "hotel_z_lobby",
@@ -83,8 +98,11 @@
       {
         "id": "to_front_counter",
         "kind": "game_action",
-        "why": "step 26: along the counter to the clerk's \"A Talk\"",
-        "action": "to_front_counter"
+        "why": "step 26: along the counter to the clerk's \"A Talk\". 2.25 s was one step short. Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[-5, 2500], [-85, 0]]
+        }
       },
       {
         "id": "talk_to_clerk",
@@ -100,8 +118,11 @@
       {
         "id": "to_lobby_elevator",
         "kind": "game_action",
-        "why": "step 28: to the elevator's \"A Take Elevator\"",
-        "action": "to_lobby_elevator"
+        "why": "step 28: to the elevator's \"A Take Elevator\". Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[0, 2000]]
+        }
       },
       {
         "id": "take_elevator_up",
@@ -122,8 +143,11 @@
       {
         "id": "to_room_202",
         "kind": "game_action",
-        "why": "step 29: to \"Room 202 / A Enter\"",
-        "action": "to_room_202"
+        "why": "step 29: to \"Room 202 / A Enter\". Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[-15, 2000]]
+        }
       },
       {
         "id": "enter_room_202",
@@ -134,8 +158,11 @@
       {
         "id": "to_bed",
         "kind": "game_action",
-        "why": "step 31: to the bed's \"A Rest\"",
-        "action": "to_bed"
+        "why": "step 31: to the bed's \"A Rest\". 1.5 s explored, 1 s enough. Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[45, 1000]]
+        }
       },
       {
         "id": "rest",
@@ -157,8 +184,11 @@
       {
         "id": "to_room_door",
         "kind": "game_action",
-        "why": "step 33: to the door's \"A Leave\"",
-        "action": "to_room_door"
+        "why": "step 33: to the door's \"A Leave\". Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[0, 2000]]
+        }
       },
       {
         "id": "first_evening",

@@ -20,8 +20,12 @@
       {
         "id": "platform_to_plaza",
         "kind": "game_action",
-        "why": "steps 6-7: down the platform, then right until the white fade",
-        "action": "platform_to_plaza"
+        "why": "steps 6-7: down the platform, then right until the white fade. Measured 2026-11-08 on console B, walk not run. Holds the last leg until the white fade into the arrival scenes; 6000 ms was the recorded walk, which overshot into it.",
+        "action": "walk",
+        "args": {
+          "legs": [[0, 4500], [90, 10000]],
+          "end": "fade_white"
+        }
       },
       {
         "id": "arrival_scenes",

@@ -11,8 +11,11 @@
       {
         "id": "chase_pancham",
         "kind": "game_action",
-        "why": "step 11: after Pancham, through the archway, around the starters into the scene",
-        "action": "chase_pancham"
+        "why": "step 11: after Pancham, through the archway, around the starters into the scene. NEEDS TUNING. Measured 2026-11-08 on console B, walk not run. The sidestep around the starters had no time recorded: 1000 ms is a placeholder.",
+        "action": "walk",
+        "args": {
+          "legs": [[-15, 4000], [-75, 3500], [90, 9000], [-90, 0], [90, 1000], [-90, 4000]]
+        }
       },
       {
         "id": "pancham_cornered",
