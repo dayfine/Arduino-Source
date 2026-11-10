@@ -19,8 +19,8 @@
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "Pokemon_StoryActions.h"
 #include "Pokemon_StoryInterrupts.h"
+#include "Pokemon_StoryInterrupts_Tests.h"
 #include "Pokemon_StorySegments.h"
-#include "Pokemon_AutoStory_Tests.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
