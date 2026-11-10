@@ -359,7 +359,10 @@ std::vector<ConsoleTrigger> console_triggers(){
 }
 
 RowTrigger row_trigger(const std::string& map, const CoordEvent& event, const VarState& state){
-    RowTrigger out{.row = state.row, .after = state.after, .map = map, .trigger = {.name = event.name, .tiles = event.tiles}};
+    RowTrigger out{
+        .row = state.row, .after = state.after, .map = map,
+        .trigger = {.name = event.name, .tiles = event.tiles}, .var = event.var,
+    };
     for (const ConsoleTrigger& seen : console_triggers()){
         if (seen.map == map && seen.name == event.name){
             out.trigger.tiles = seen.tiles;
@@ -513,15 +516,24 @@ std::vector<SimWanderer> SimExecutor::wanderers(const StoryWorld& world) const{
     return out;
 }
 
-//  Arms the triggers of this row that start after `after`.
+//  Arms the triggers of this row that start after `after`. A variable holds
+//  one value: the triggers armed for its value before are disarmed (Route
+//  201's row 19 pulls back only after Barry's warning, not in 00.03, where
+//  the variable has moved on).
 void SimExecutor::arm(const std::string& after){
-    size_t armed = 0;
+    std::vector<RowTrigger> now;
     for (const RowTrigger& trigger : story_triggers()){
         if (trigger.row == m_row && trigger.after == after){
-            m_armed.push_back(trigger);
-            armed++;
+            now.push_back(trigger);
         }
     }
+    for (const RowTrigger& trigger : now){
+        std::erase_if(m_armed, [&](const RowTrigger& old){
+            return old.var == trigger.var;
+        });
+    }
+    m_armed.insert(m_armed.end(), now.begin(), now.end());
+    const size_t armed = now.size();
     const SimPlayer& player = m_sim.player();
     if (armed > 0 && m_placed && on_grid(player.pos) && !player.dialog){
         m_sim.place(setup(&m_sim.world()), nearest_tile(player.pos), player.facing);

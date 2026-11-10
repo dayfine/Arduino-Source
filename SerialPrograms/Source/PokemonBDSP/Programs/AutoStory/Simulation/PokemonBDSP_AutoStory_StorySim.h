@@ -360,12 +360,14 @@ private:
 };
 
 //  A scene's trigger the simulation fires from row `row` on, once the step
-//  `after` has run ("" from the row's start), on `map`'s `tiles`.
+//  `after` has run ("" from the row's start), on `map`'s `tiles`, while its
+//  story variable `var` holds the value it waits for.
 struct RowTrigger{
     std::string row;
     std::string after;
     std::string map;
     SimTrigger trigger;
+    std::string var = {};
 };
 
 //  When a story variable holds the value its coord events wait for: from
