@@ -40,7 +40,8 @@ public:
     Outcome act(RunState& state, const StoryStep& step);
 
     //  Whether `condition` holds: a flag of the run, or else a non-zero
-    //  reading from the game's reader of that name on a fresh observation.
+    //  reading from the game's reader of that name on a fresh observation
+    //  (none from a console_only reader off a console).
     bool holds(std::string_view condition, RunState& state);
 
 private:

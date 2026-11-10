@@ -85,8 +85,10 @@ public:
     //  not read; the phase decides. Logs "[Verify] <id>: ..." lines.
     VerifyReport verify_checkpoint(const StoryCheckpoint& checkpoint, RunState& state, const VerifyPolicy& policy);
 
-    //  `checkpoint`'s postconditions against a fresh observation read by
-    //  every reader of the game; logged as "[Postcondition]" lines.
+    //  `checkpoint`'s postconditions against a fresh observation, read by
+    //  the game's readers that opted in (StoryReaderUse::AFTER_CHECKPOINT)
+    //  and supply what they need, but no console_only one off a console;
+    //  logged as "[Postcondition]" lines.
     PostconditionReport check_postconditions(const StoryCheckpoint& checkpoint);
 
 private:

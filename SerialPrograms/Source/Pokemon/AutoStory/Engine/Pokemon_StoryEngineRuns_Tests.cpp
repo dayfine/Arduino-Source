@@ -8,6 +8,9 @@
  *  over observations, the step in an action's call, the checkpoint in the
  *  save, the segment and verify loops, console-only actions, declared poses
  *  read as the game's pose type, and tile actions only for tile games.
+ *  Then what PLZA found on the engine: readers opt in to the postcondition
+ *  check, inputs logged by button name, waiting states may stay still, and
+ *  the stick's release.
  *
  */
 
@@ -23,6 +26,7 @@
 #include <vector>
 #include "Common/Cpp/Json/JsonValue.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonTools/ScreenMachine/ScreenMachine.h"
 #include "Pokemon/AutoStory/Data/Pokemon_StoryStepJson.h"
 #include "Pokemon_StoryEngine.h"
@@ -197,20 +201,34 @@ std::string tile_actions_only_with_tiles(CancellableScope&){
     return "";
 }
 
-//  Gap 2: the move stick at an angle, and the heading reading.
+//  Gap 2: the move stick at an angle, and the heading reading; a turn lets
+//  go of the stick for its release.
 std::string stick_and_heading(CancellableScope& scope){
     Observation<ZonePose> facing_east;
     facing_east.readings[std::string(STORY_HEADING)] = 90;
     FakeStoryBackend<ZonePose> backend({.looks = {facing_east, {}}}, scope);
-    backend.stick(45, 150ms, StoryPace::WALK);
-    backend.stick(-90, 300ms, StoryPace::RUN);
+    backend.stick(45, 150ms, 0ms, StoryPace::WALK);
+    backend.stick(-90, 300ms, 0ms, StoryPace::RUN);
+    backend.stick(90, 150ms, 300ms, StoryPace::WALK);
     if (story_heading(backend.observe()) != 90){
         return "expected the heading 90";
     }
     if (story_heading(backend.observe())){
         return "expected no heading where nothing read it";
     }
-    return expect_inputs(backend, "stick 45deg 150ms walk, stick -90deg 300ms run");
+    return expect_inputs(backend, "stick 45deg 150ms walk, stick -90deg 300ms run, stick 90deg 150ms walk, release 300ms");
+}
+
+//  The fake logs each press by the button's name.
+std::string buttons_by_name(CancellableScope& scope){
+    FakeStoryBackend<ZonePose> backend({}, scope);
+    for (const NintendoSwitch::Button button : {
+        NintendoSwitch::BUTTON_L, NintendoSwitch::BUTTON_R, NintendoSwitch::BUTTON_PLUS,
+        NintendoSwitch::BUTTON_A, NintendoSwitch::BUTTON_B, NintendoSwitch::BUTTON_ZL,
+    }){
+        backend.press(button, 80ms, 120ms);
+    }
+    return expect_inputs(backend, "press L, press R, press +, press A, press B, press ZL");
 }
 
 //  Gap 3 and 4: a screen machine over observations, its states matching
@@ -293,6 +311,144 @@ std::string observation_machine_fails(CancellableScope& scope){
         return "expected the looks' time to run out, got \"" + result.failure + "\"";
     }
     return "";
+}
+
+//  A look `seconds` after `start` on a uniform frame of `shade`, showing
+//  `event`.
+Observation<ZonePose> framed_look(WallClock start, int seconds, uint32_t shade, ScreenEvent event){
+    Observation<ZonePose> observation;
+    observation.when = start + std::chrono::seconds(seconds);
+    observation.events.add(event);
+    ImageRGB32 image(16, 16);
+    image.fill(shade);
+    observation.frame = VideoSnapshot(std::move(image), observation.when);
+    return observation;
+}
+
+//  A fade that waits (still up to 30 s), a box whose step presses A, and
+//  the overworld that ends the run, over `looks` on a fake backend.
+ScreenMachineResult run_still_states(const std::vector<Observation<ZonePose>>& looks, CancellableScope& scope){
+    FakeStoryBackend<ZonePose> backend({.looks = looks}, scope);
+    ScreenState fade;
+    fade.name = "fade";
+    fade.matches_observation = [](const ScreenObservation& observation){
+        return observation.events.has(ScreenEvent::FADE_BLACK);
+    };
+    fade.max_visits = SIZE_MAX;
+    fade.max_still = 30s;
+    ScreenState text;
+    text.name = "text";
+    text.matches_observation = [](const ScreenObservation& observation){
+        return observation.events.has(ScreenEvent::TEXT_BOX);
+    };
+    text.act = [&backend]{
+        backend.press(NintendoSwitch::BUTTON_A, 80ms, 120ms);
+    };
+    text.max_visits = SIZE_MAX;
+    ScreenState done;
+    done.name = "done";
+    done.matches_observation = [](const ScreenObservation& observation){
+        return observation.events.has(ScreenEvent::CAN_MOVE);
+    };
+    done.max_visits = SIZE_MAX;
+    done.terminal = true;
+    const std::vector<ScreenState> states{fade, text, done};
+    StepTrace trace("test", [](const std::string&){});
+    const std::function<ScreenObservation()> observe = [&backend]() -> ScreenObservation{
+        return backend.observe();
+    };
+    return run_screen_machine_on_observations(observe, scope, trace, states, 600s);
+}
+
+//  A waiting state may stay still up to its own limit; a state that
+//  presses and changes nothing is a stall after 8 looks.
+std::string still_states(CancellableScope& scope){
+    const WallClock start = current_time();
+    std::vector<Observation<ZonePose>> waits;
+    for (int second = 0; second < 12; second++){
+        waits.push_back(framed_look(start, second, 0xff000000, ScreenEvent::FADE_BLACK));
+    }
+    waits.push_back(framed_look(start, 12, 0xff808080, ScreenEvent::CAN_MOVE));
+    ScreenMachineResult result = run_still_states(waits, scope);
+    if (result.terminal != "done"){
+        return "expected a 12 s still fade to end on done, got \"" + result.failure + "\"";
+    }
+    std::vector<Observation<ZonePose>> too_long;
+    for (int second = 0; second < 40; second++){
+        too_long.push_back(framed_look(start, second, 0xff000000, ScreenEvent::FADE_BLACK));
+    }
+    result = run_still_states(too_long, scope);
+    if (result.failure != "The screen stayed still on \"fade\" for more than 30s."){
+        return "expected the fade to stay still too long, got \"" + result.failure + "\"";
+    }
+    std::vector<Observation<ZonePose>> presses;
+    for (int second = 0; second < 12; second++){
+        presses.push_back(framed_look(start, second, 0xffffffff, ScreenEvent::TEXT_BOX));
+    }
+    result = run_still_states(presses, scope);
+    if (result.failure != "The screen stopped changing: 8 steps on \"text\" did nothing."){
+        return "expected the box to stall, got \"" + result.failure + "\"";
+    }
+    return "";
+}
+
+//  A reader that logs "[Test] read <name>" when it runs and fills nothing.
+StoryGameReader<GridPose> logging_reader(std::string name, std::vector<std::string> supplies, StoryReaderUse use){
+    StoryGameReader<GridPose> reader;
+    reader.name = name;
+    reader.supplies = std::move(supplies);
+    reader.use = use;
+    reader.read = [name](StoryBackend<GridPose>& backend, Observation<GridPose>&){
+        backend.log("[Test] read " + name);
+    };
+    return reader;
+}
+
+//  The readers `checkpoint`'s postcondition check runs on a backend of
+//  `kind`, as "pose, bag".
+std::string readers_run(const StoryCheckpoint& checkpoint, StoryBackendKind kind, CancellableScope& scope){
+    StoryGame<GridPose> game;
+    game.readers.push_back(logging_reader("pose", {"pose"}, StoryReaderUse::AFTER_CHECKPOINT));
+    game.readers.push_back(logging_reader("bag", {"bag.*"}, StoryReaderUse::AFTER_CHECKPOINT));
+    game.readers.push_back(logging_reader("heading", {"heading"}, StoryReaderUse::ON_REQUEST));
+    StoryGameReader<GridPose> flags = logging_reader("flags", {"flag.*"}, StoryReaderUse::AFTER_CHECKPOINT);
+    flags.console_only = true;
+    game.readers.push_back(std::move(flags));
+    FakeStoryBackend<GridPose> backend({.kind = kind}, scope);
+    StoryEngine<GridPose> engine(game, backend);
+    engine.check_postconditions(checkpoint);
+    std::vector<std::string> read;
+    for (const std::string& line : backend.lines()){
+        if (line.starts_with("[Test] read ")){
+            read.push_back(line.substr(12));
+        }
+    }
+    return joined(read);
+}
+
+//  The postcondition check runs only the readers that opted in and supply
+//  what it needs, and no console_only one off a console; never the
+//  heading, which opted out.
+std::string readers_opt_in(CancellableScope& scope){
+    StoryCheckpoint items = checkpoint_of("01", {});
+    items.postconditions.items = {{.item = "POTION", .quantity = 1}};
+    std::string read = readers_run(items, StoryBackendKind::SCRIPT, scope);
+    if (read != "bag"){
+        return "expected only the bag read for an item, got \"" + read + "\"";
+    }
+    StoryCheckpoint place = checkpoint_of("02", {});
+    place.postconditions.position = GridPose{.map = "Town", .tiles = {{1, 2}}, .facing = std::nullopt};
+    place.postconditions.flags = {"DOOR"};
+    read = readers_run(place, StoryBackendKind::SCRIPT, scope);
+    if (read != "pose"){
+        return "expected only the pose read off a console, got \"" + read + "\"";
+    }
+    read = readers_run(place, StoryBackendKind::CONSOLE, scope);
+    if (read != "pose, flags"){
+        return "expected the pose and the console's flags read, got \"" + read + "\"";
+    }
+    read = readers_run(checkpoint_of("03", {}), StoryBackendKind::CONSOLE, scope);
+    return read.empty() ? "" : "expected no reader without postconditions, got \"" + read + "\"";
 }
 
 //  Gap 5: an action sees its step.
@@ -492,6 +648,9 @@ const RunsCase RUNS_CASES[] = {
     {.input = {.name = "zone start with tiles fails the lint", .check = &zone_rejects_tiles}, .expectation = {}},
     {.input = {.name = "tile actions only with tiles", .check = &tile_actions_only_with_tiles}, .expectation = {}},
     {.input = {.name = "stick and heading", .check = &stick_and_heading}, .expectation = {}},
+    {.input = {.name = "buttons by name", .check = &buttons_by_name}, .expectation = {}},
+    {.input = {.name = "waiting states may stay still", .check = &still_states}, .expectation = {}},
+    {.input = {.name = "readers opt in to postconditions", .check = &readers_opt_in}, .expectation = {}},
     {.input = {.name = "observation machine ends", .check = &observation_machine_ends}, .expectation = {}},
     {.input = {.name = "observation machine fails", .check = &observation_machine_fails}, .expectation = {}},
     {.input = {.name = "handler sees its step", .check = &handler_sees_step}, .expectation = {}},

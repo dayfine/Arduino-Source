@@ -105,8 +105,11 @@ StoryGame<GridPose> test_game(std::optional<int> door_open = std::nullopt){
         },
     });
     if (door_open){
-        game.readers.emplace_back("door_open", [value = *door_open](StoryBackend<GridPose>&, Observation<GridPose>& observation){
-            observation.readings["door_open"] = value;
+        game.readers.push_back({
+            .name = "door_open", .supplies = {"door_open"}, .use = StoryReaderUse::ON_REQUEST, .console_only = false,
+            .read = [value = *door_open](StoryBackend<GridPose>&, Observation<GridPose>& observation){
+                observation.readings["door_open"] = value;
+            },
         });
     }
     return game;

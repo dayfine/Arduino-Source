@@ -8,6 +8,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 #include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
 #include "Pokemon_StoryEngine.h"
 
@@ -97,6 +98,41 @@ ObservedState observed_readings(const ScreenObservation& observation){
         }
     }
     return observed;
+}
+
+
+//  What checking `checkpoint`'s postconditions needs read: "pose" for an
+//  end position, "bag.<ITEM>" per item, "flag.<name>" per flag.
+std::vector<std::string> postcondition_needs(const StoryCheckpoint& checkpoint){
+    std::vector<std::string> needs;
+    if (checkpoint_end_pose(checkpoint)){
+        needs.emplace_back("pose");
+    }
+    for (const StoryItem& item : checkpoint.postconditions.items){
+        needs.push_back("bag." + item.item);
+    }
+    for (const std::string& flag : checkpoint.postconditions.flags){
+        needs.push_back("flag." + flag);
+    }
+    return needs;
+}
+
+//  Whether the postcondition check of a checkpoint that `needs` these runs
+//  `reader` on a backend of `kind`.
+template <StoryPose PoseType>
+bool runs_after_checkpoint(const StoryGameReader<PoseType>& reader, const std::vector<std::string>& needs, StoryBackendKind kind){
+    if (!reader.read || reader.use != StoryReaderUse::AFTER_CHECKPOINT){
+        return false;
+    }
+    if (reader.console_only && kind != StoryBackendKind::CONSOLE){
+        return false;
+    }
+    for (const std::string& need : needs){
+        if (story_reader_supplies(reader.supplies, need)){
+            return true;
+        }
+    }
+    return false;
 }
 
 
@@ -333,10 +369,11 @@ void StoryEngine<PoseType>::save_if_allowed(StoryEngineReport& report, const Sto
 
 template <StoryPose PoseType>
 PostconditionReport StoryEngine<PoseType>::check_postconditions(const StoryCheckpoint& checkpoint){
+    const std::vector<std::string> needs = postcondition_needs(checkpoint);
     Observation<PoseType> observation = m_backend.observe();
-    for (const auto& [name, reader] : m_game.readers){
-        if (reader){
-            reader(m_backend, observation);
+    for (const StoryGameReader<PoseType>& reader : m_game.readers){
+        if (runs_after_checkpoint(reader, needs, m_backend.kind())){
+            reader.read(m_backend, observation);
         }
     }
     PostconditionReport report = Pokemon::check_postconditions(checkpoint, observed_state(observation));

@@ -10,8 +10,9 @@ Each move deletes that game's executor; the last one deletes `StoryStepExecutor`
    controller context, `kind()` CONSOLE. `observe()` waits for pending input
    (`wait_for_all_requests()`), takes a frame and fills `ScreenObservation::events` from the
    game's detectors (fade, text box, choice box, interact prompt, battle, can move, still).
-   `stick(degrees, duration, pace)` holds the move stick at an angle (a free-moving game's walk
-   and turn; `hold()` is the 90-degree case). A game without tiles reports the way the player
+   `stick(degrees, duration, release, pace)` holds the move stick at an angle, then lets go for
+   `release` (a free-moving game's walk and turn; `hold()` is the 90-degree case). A game
+   without tiles reports the way the player
    faces as the `"heading"` reading (`STORY_HEADING`, read with `story_heading()`), from
    `observe()` when cheap or from a reader of that name. `battle()` calls the game's battle code.
    A simulation backend wraps the PokemonSimulation model the same way (`kind()` SIMULATION);
@@ -31,9 +32,12 @@ Each move deletes that game's executor; the last one deletes `StoryStepExecutor`
      for it, so its handler can take the console from what it captured when the game was built.
    - `legs` and `face` exist only for a pose type with tile moves (`StoryPoseTraits::TILE_MOVES`);
      a game without tiles needs no replacement for them, and a step naming them fails its lint.
-   - `readers`: `"pose"` (map, tile, facing into `Observation::pose`), `"bag"` (`bag.<ITEM>`
-     readings), story flags (`flag.<name>`), and one per `skip_if` condition the game answers from
-     the screen. Postconditions are checked only with what the readers read.
+   - `readers` (`StoryGameReader`): `"pose"` (map, tile, facing into `Observation::pose`), `"bag"`
+     (`bag.<ITEM>` readings), story flags (`flag.<name>`), and one per `skip_if` condition the
+     game answers from the screen. Each says what it `supplies` (`"pose"`, `"heading"`,
+     `"bag.*"`). Postconditions are checked only with what the readers read, and only readers that
+     opt in with `StoryReaderUse::AFTER_CHECKPOINT` (cheap and safe on any end screen) and supply
+     a needed postcondition run then; a `console_only` reader never runs off a console.
    - `save(backend, checkpoint)` (the checkpoint whose end or SAVE step it is: e.g. an autosave
      wait for some checkpoints, the menu for others), `reload`, `begin_attempt` (today's
      `StoryStepExecutor::begin_attempt`) and `interrupts` (wild battles, trainers).
