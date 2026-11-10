@@ -184,24 +184,6 @@ StoryStep options_step();
 StoryStep cut_tree(std::string name, Pokemon::Pose tree, std::string why);
 
 
-//  Rows in files of their own (PokemonFRLG_AutoStoryTableVermilionGym.cpp,
-//  PokemonFRLG_AutoStoryTableCeladon.cpp).
-StoryCheckpoint vermilion_gym();
-//  Route navigation step towards Lt. Surge battle.
-StoryCheckpoint to_lt_surge();
-//  Lt. Surge gym leader battle checkpoint.
-StoryCheckpoint lt_surge();
-//  Bike Voucher retrieval checkpoint in Vermilion City Fan Club.
-StoryCheckpoint bike_voucher();
-//  Route 10 Pokemon Center navigation checkpoint.
-StoryCheckpoint route10_center();
-//  Through Rock Tunnel to Route 10 south of it (PokemonFRLG_AutoStoryTableLavender.cpp).
-StoryCheckpoint rock_tunnel();
-//  Route 10 south to Lavender Town's Pokemon Center.
-StoryCheckpoint lavender_center();
-
-
-
 } // namespace StoryTable
 } // namespace PokemonFRLG
 } // namespace NintendoSwitch

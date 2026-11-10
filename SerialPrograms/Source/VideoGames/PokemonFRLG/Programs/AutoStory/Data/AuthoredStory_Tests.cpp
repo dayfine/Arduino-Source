@@ -1,9 +1,10 @@
 /*  FRLG Authored Story Tests
  *  From: https://github.com/PokemonAutomation/
  *
- *  The story table as loaded from the StoryData plans against the C++
- *  rows it was exported from: the same events, and the same trace of the
- *  whole story on the story maps (StoryMapsSim).
+ *  The story table as loaded from the StoryData plans: the trace of the
+ *  whole story on the story maps (StoryMapsSim) against the golden one
+ *  taken from the C++ rows they were exported from, what a plan may not
+ *  say, and the sections in the log.
  *
  */
 
@@ -11,8 +12,6 @@
 #include <string>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
-#include "Common/Cpp/Filesystem/Filesystem.h"
-#include "Common/Cpp/Filesystem/FileIO.h"
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -21,7 +20,6 @@
 #include "VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryTable.h"
 #include "VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_StoryReplay.h"
 #include "JsonParser.h"
-#include "JsonWriter.h"
 #include "AuthoredStory_Tests.h"
 
 namespace PokemonAutomation{
@@ -101,54 +99,116 @@ std::vector<std::string> story_sim_trace(const std::vector<StoryCheckpoint>& tab
 
 namespace{
 
-//  The row as the C++ table built it: no notes or sections.
-JsonValue plain_export(StoryCheckpoint row){
-    row.notes.clear();
-    row.sections.clear();
-    for (StoryStep& step : row.steps){
-        step.notes.clear();
-        step.section.clear();
-    }
-    return story_checkpoint_export(row);
-}
-
-std::string compare_rows(const StoryCheckpoint& authored, const StoryCheckpoint& table){
-    const JsonValue a = plain_export(authored);
-    const JsonValue b = plain_export(table);
-    if (!(a == b)){
-        return std::format("{}: authored {}\nC++ {}", table.id, a.dump(-1), b.dump(-1));
-    }
-    if (authored.live_start != table.live_start || authored.handoff != table.handoff){
-        return table.id + ": live start or handoff differ.";
-    }
-    return "";
-}
-
-UnitTestResult test_rows_match(){
-    const std::vector<StoryCheckpoint> authored = load_authored_story();
-    const std::vector<StoryCheckpoint>& table = story_checkpoints();
-    if (authored.size() != table.size()){
-        return std::format("Expected {} authored rows, read {}.", table.size(), authored.size());
-    }
-    for (size_t c = 0; c < table.size(); c++){
-        const std::string error = compare_rows(authored[c], table[c]);
-        if (!error.empty()){
-            return error;
+//  00.28's plan, changed by `mutate`, read as an authored plan.
+StoryCheckpoint read_changed_rock_tunnel(void (*mutate)(JsonObject& root)){
+    JsonValue plan;
+    for (const auto& [name, text] : autostory_checkpoint_json()){
+        if (name == "frlg-00.28.plan"){
+            plan = parse_json(text);
         }
+    }
+    mutate(plan.to_object_throw());
+    return read_authored_checkpoint(plan, "frlg-00.28.plan (changed)");
+}
+
+JsonObject& first_event(JsonObject& root){
+    JsonArray& sections = root.get_object_throw("checkpoint").get_array_throw("sections");
+    return sections[0].to_object_throw().get_array_throw("events")[0].to_object_throw();
+}
+
+void unknown_event_field(JsonObject& root){
+    first_event(root)["speed"] = "fast";
+}
+void unknown_variant(JsonObject& root){
+    first_event(root)["variant"] = "bike";
+}
+void unknown_game_action(JsonObject& root){
+    JsonObject& event = first_event(root);
+    event["kind"] = "game_action";
+    event["variant"] = "mart Nowhere";
+}
+void events_beside_sections(JsonObject& root){
+    root.get_object_throw("checkpoint")["events"] = JsonArray();
+}
+void unknown_execution_field(JsonObject& root){
+    root.get_object_throw("execution")["repel"] = true;
+}
+void unknown_lead(JsonObject& root){
+    JsonObject supplies;
+    supplies["lead"] = "after_misty";
+    root.get_object_throw("execution")["supplies"] = std::move(supplies);
+}
+void empty_section(JsonObject& root){
+    JsonObject section;
+    section["id"] = "nothing";
+    section["title"] = "no events";
+    section["events"] = JsonArray();
+    root.get_object_throw("checkpoint").get_array_throw("sections").push_back(std::move(section));
+}
+void repeated_section(JsonObject& root){
+    JsonArray& sections = root.get_object_throw("checkpoint").get_array_throw("sections");
+    sections[1].to_object_throw()["id"] = sections[0].to_object_throw().get_string_throw("id");
+}
+
+struct RejectCase{
+    std::string_view name;
+    void (*mutate)(JsonObject& root);
+};
+const RejectCase REJECT_CASES[] = {
+    {"an unknown event field", unknown_event_field},
+    {"a variant FRLG doesn't do", unknown_variant},
+    {"a GAME step FRLG doesn't do", unknown_game_action},
+    {"events beside sections", events_beside_sections},
+    {"an unknown execution field", unknown_execution_field},
+    {"an unknown lead", unknown_lead},
+    {"a section without events", empty_section},
+    {"two sections with one id", repeated_section},
+};
+
+void unchanged(JsonObject&){}
+
+UnitTestResult test_rejects(){
+    //  Unchanged, it reads: each rejection is the change's.
+    if (read_changed_rock_tunnel(unchanged).id != "00.28"){
+        return "Expected the unchanged plan to read as 00.28.";
+    }
+    for (const RejectCase& test : REJECT_CASES){
+        try{
+            read_changed_rock_tunnel(test.mutate);
+            return std::format("Expected {} to be rejected.", test.name);
+        }catch (const ParseException&){}
     }
     return true;
 }
 
-UnitTestResult test_traces_match(){
-    const std::vector<std::string> authored = story_sim_trace(load_authored_story());
-    const std::vector<std::string> table = story_sim_trace(story_checkpoints());
-    for (size_t c = 0; c < std::min(authored.size(), table.size()); c++){
-        if (authored[c] != table[c]){
-            return std::format("Trace line {}: authored \"{}\", C++ \"{}\".", c, authored[c], table[c]);
+//  00.28 in its sections, numbered across them, each event's line naming
+//  its section: Winston is event 12 (after from_save), on B1F's east side.
+UnitTestResult test_rock_tunnel_sections(){
+    const StoryCheckpoint* rock_tunnel = nullptr;
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        if (row.id == "00.28"){
+            rock_tunnel = &row;
         }
     }
-    if (authored.size() != table.size()){
-        return std::format("Expected {} trace lines, read {}.", table.size(), authored.size());
+    if (rock_tunnel == nullptr){
+        return "Expected a checkpoint 00.28.";
+    }
+    std::vector<std::string> ids;
+    for (const Pokemon::StorySection& section : rock_tunnel->sections){
+        ids.push_back(section.id);
+    }
+    const std::vector<std::string> expected{
+        "route10_to_mouth", "1f_north", "b1f_east", "1f_west", "b1f_west", "1f_south", "route10_south",
+    };
+    if (ids != expected){
+        return "Expected 00.28's sections by area, read " + std::to_string(ids.size()) + " others.";
+    }
+    StoryMapsSim game;
+    Pokemon::Checkpoint checkpoint = Pokemon::build_story_checkpoint(*rock_tunnel, game);
+    const Pokemon::Event& winston = checkpoint.events[11];
+    const std::string line = Pokemon::event_log_line(checkpoint.id, 12, winston.name, "start", winston.section);
+    if (line != "[Event] 00.28/12 [b1f_east] winston_line: start"){
+        return "Expected Winston's line in b1f_east, read: " + line;
     }
     return true;
 }
@@ -167,22 +227,6 @@ UnitTestResult test_trace_golden(){
     if (golden.size() != trace.size()){
         return std::format("Expected {} trace lines, read {}.", golden.size(), trace.size());
     }
-    return true;
-}
-
-//  Migration only: writes each C++ row as its authored plan, and the C++
-//  table's trace, to frlg-story-export/ under the working directory.
-UnitTestResult test_export(){
-    const std::string folder = "frlg-story-export/";
-    Filesystem::create_directories(Filesystem::Path(folder));
-    for (const StoryCheckpoint& row : story_checkpoints()){
-        string_to_file(folder + "frlg-" + row.id + ".plan.json", authored_checkpoint_json(row).dump(2));
-    }
-    JsonArray lines;
-    for (const std::string& line : story_sim_trace(story_checkpoints())){
-        lines.push_back(line);
-    }
-    string_to_file(folder + "frlg-story-sim-trace.json", JsonValue(std::move(lines)).dump(1));
     return true;
 }
 
@@ -210,10 +254,9 @@ private:
 
 
 void add_tests_AuthoredStory(UnitTestDatabase& database){
-    database.add<AuthoredTest>(AuthoredCase{"every row as authored is the C++ row", test_rows_match});
-    database.add<AuthoredTest>(AuthoredCase{"the story sim's trace is the C++ table's", test_traces_match});
-    database.add<AuthoredTest>(AuthoredCase{"export the C++ rows", test_export});
     database.add<AuthoredTest>(AuthoredCase{"the story sim's trace is the golden one", test_trace_golden});
+    database.add<AuthoredTest>(AuthoredCase{"malformed plans are rejected", test_rejects});
+    database.add<AuthoredTest>(AuthoredCase{"Rock Tunnel's sections", test_rock_tunnel_sections});
 }
 
 

@@ -1,4 +1,15 @@
-# FRLG authored checkpoint pilot
+# FRLG authored checkpoints
+
+Every story checkpoint is an authored plan here, one file per checkpoint: `frlg-<id>.plan.json`, and `frlg-parcel-00.05.plan.json` for 00.05. `story_checkpoints()` is `load_authored_story()`: every embedded `*.plan` file, in order of id. There are no C++ row definitions; the files were exported once from the C++ table, and `ReplayData/frlg-story-sim-trace.json` keeps the whole story's sim trace from before that (`PokemonFRLG::AutoStory - Authored` tests it).
+
+- A checkpoint has `sections: [{id, title, notes?, events}]`, or plain `events` (one unnamed section, as 00.05 keeps so its bytes stay those PokemonSimulation pins). Events are numbered across the sections, and an event's log line names its section: `[Event] 00.28/12 [b1f_east] winston_line: start`.
+- `notes` (a list of paragraphs) on the checkpoint, a section or an event hold what the C++ table's comments said: the maps, trainers, numbers and console runs a step was planned from. No executor reads them.
+- `variant` says how FRLG does a step: `run` on a route or legs, `trainer_line`/`trainer_wait` on a step, and on a `game_action` the step's plan as its parser reads it (`mart ...`, `teach ...`, `grind ...`, `grind_check ...`, `capture ...`, `pc ...`, `fossil ...`, `level ...`, or `cut_tree`, `trash_cans`, `close_trainer_card`, `leave_gift_summary`). An unknown variant is rejected at load.
+- `once_per_save` marks a step done once per save (a TEACH, a Mart).
+- `execution` holds FRLG's fields: `menu`, and when not a new game's, `supplies` (`potions`, `antidotes`, `parlyz_heals`, `lead: "after_brock"`), `live_start` and `handoff` (`sid_helper`, `starter_rng`, `gift_rng`).
+- Unknown fields anywhere are rejected.
+
+## The Parcel pilot
 
 `frlg-parcel-00.05.plan.json` is the production definition of checkpoint `00.05`. The story table loads it with `load_authored_checkpoint()`: there is no second C++ Parcel event list. Its `pokesim-authored-checkpoint/1` contract contains the common checkpoint plus FRLG executor configuration (`execution.menu`). It has no export revision, bookkeeping snapshot, or claimed observation.
 
