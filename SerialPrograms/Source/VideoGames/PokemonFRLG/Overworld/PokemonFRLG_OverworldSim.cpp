@@ -470,9 +470,11 @@ void OverworldSim::walk_hold(Direction direction, Milliseconds duration, int sho
     const Milliseconds end = m_now + duration;
     Milliseconds pressed = m_now;
     if (m_state.facing != direction){
-        //  Holding through a turn lost a tile on the console.
+        //  Holding through a turn lost a tile on the console, on foot.
+        if (!m_script.on_bike){
+            pressed += tile;
+        }
         m_state.facing = direction;
-        pressed += tile;
     }
     take_steps(direction, pressed, end, (int)((end - pressed + tile - 1ms) / tile) - short_by);
 }
@@ -546,9 +548,9 @@ void OverworldSim::tap(Direction direction, Milliseconds duration, Milliseconds 
         m_last_tap.reset();
     }else if (m_last_tap && m_last_tap->direction == direction && m_last_tap->end == start){
         hold_on(direction, start + duration);
-    }else if (m_state.facing != direction){
+    }else if (m_state.facing != direction && !m_script.on_bike){
         //  From a standstill a tap only turns the player, even one as long
-        //  as LONGEST_TAP.
+        //  as LONGEST_TAP. Not on the Bicycle: there it steps.
         m_last_tap = TapPress{direction, start, start + duration, m_state.facing, 0};
         if (drops_turn_tap()){
             m_state.turn_taps_dropped++;
@@ -567,7 +569,7 @@ void OverworldSim::tap(Direction direction, Milliseconds duration, Milliseconds 
 void OverworldSim::step_tap(Direction direction, Milliseconds duration){
     const Milliseconds start = m_now;
     m_last_tap = TapPress{direction, start, start + duration, direction, 0};
-    if (m_last_step_tap && start < *m_last_step_tap + MovementMechanics::STEP_TAP_LOCKOUT){
+    if (!m_script.on_bike && m_last_step_tap && start < *m_last_step_tap + MovementMechanics::STEP_TAP_LOCKOUT){
         m_state.step_taps_ignored++;
         note(std::format(
             "the step tap {} is ignored, {} ms after the last.",
@@ -813,7 +815,7 @@ std::optional<WalkedTiles> OverworldSimWalker::walk_step(const RouteStep& step, 
     if (step.action != RouteAction::WALK){
         fail("Sim: Surf isn't modelled.");
     }
-    if (facing != step.direction){
+    if (turns_first(step, m_rules.speed, facing)){
         sim_turn_to(m_sim, step.direction, m_rules.confirm_turn);
     }
     const int warps_before = m_sim.state().warps;
@@ -822,7 +824,7 @@ std::optional<WalkedTiles> OverworldSimWalker::walk_step(const RouteStep& step, 
     leg.direction = step.direction;
     leg.tiles = step.tiles + step.warp_slack;
     leg.to_wall = step.to_wall;
-    leg.tile_time = TILE_TIME;
+    leg.tile_time = tile_time(step, m_rules.speed);
     leg.stop_on_interrupt = !step.to_wall;
     leg.stop_if_blocked = step.to_wall && m_rules.stop_if_blocked;
     if (m_rules.hold_over_connections){

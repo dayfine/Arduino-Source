@@ -127,6 +127,8 @@ struct TurnTapInput{
     std::set<int> dropped_turn_taps;
     //  SimWalkerRules::confirm_turn.
     bool confirm_turn = true;
+    //  On the Bicycle (SimScript::on_bike, SimWalkerRules::speed).
+    bool on_bike = false;
 };
 
 struct TurnTapExpectation{
@@ -162,6 +164,11 @@ public:
         script.dropped_turn_taps = m_case.input.dropped_turn_taps;
         SimWalkerRules rules;
         rules.confirm_turn = m_case.input.confirm_turn;
+        if (m_case.input.on_bike){
+            script.on_bike = true;
+            script.timing.tile = BIKE_TILE_TIME;
+            rules.speed = MoveSpeed::BIKE;
+        }
         OverworldSim sim(MAPS, TURN_START, Direction::NORTH, script);
         OverworldSimWalker walker(sim, rules);
         const RoutePlanning planning{.maps = &MAPS, .costs = default_route_costs(), .start = TURN_START, .label = "Sim"};
@@ -184,6 +191,10 @@ const TurnTapCase TURN_TAP_CASES[] = {
     {.input = {.name = "dropped, tapped again", .dropped_turn_taps = {1}}, .expectation = {.end = TURN_END}},
     {.input = {.name = "dropped twice, tapped again", .dropped_turn_taps = {1, 2}}, .expectation = {.end = TURN_END}},
     {.input = {.name = "dropped, not checked: the leg only turns", .dropped_turn_taps = {1}, .confirm_turn = false}, .expectation = {.end = TURN_START}},
+    //  Console B, 2026-11-09 (00.30): on the Bicycle the turn tap took a
+    //  step, each one-tile leg went two, and the walk to Route 8 ended on
+    //  Route 12.
+    {.input = {.name = "on the bike, no turn tap", .on_bike = true}, .expectation = {.end = TURN_END}},
 };
 
 

@@ -85,7 +85,8 @@ StepWalk walk_step(
         //  Turning first, with a tap, makes the hold start from a standstill
         //  facing the right way: holding through a turn lost a tile on the
         //  console, while holds from a standstill were exact over 15 tiles.
-        if (facing != step.direction){
+        //  Not on the Bicycle, where the tap is a step.
+        if (turns_first(step, speed, facing)){
             turn_to(console, context, step.direction);
         }
         if (const std::string note = speed_note(step, speed); !note.empty()){

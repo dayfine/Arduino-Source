@@ -54,6 +54,12 @@ inline constexpr Milliseconds SURF_TILE_TIME(133);
 //  from rest in 600 ms (120 ms a tile, the start up included). Not the
 //  decompilation's 4 frames a tile (67 ms): the bike speeds up from rest.
 inline constexpr Milliseconds BIKE_TILE_TIME(112);
+//  On the Bicycle a tap never only turns the player: from rest, a 40ms tap
+//  moved a tile facing either way, and holds of 112, 150, 200, 250, 300,
+//  336 and 400ms moved 1, 2, 2, 3, 3, 4 and 4 tiles (console B,
+//  2026-11-09, Route 12's north pier). So a bike leg has no turn tap: its
+//  hold turns the player too, and loses no tile for it.
+inline constexpr bool BIKE_TAP_ONLY_TURNS = false;
 //  The longest tap measured to only turn a player facing another way, and
 //  to take exactly one step for one facing its way.
 inline constexpr Milliseconds LONGEST_TAP(133);

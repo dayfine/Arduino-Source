@@ -154,6 +154,12 @@ MoveSpeed step_speed(const RouteStep& step, MoveSpeed speed);
 //  pace whatever the speed; where running isn't allowed, the walking pace.
 Milliseconds tile_time(const RouteStep& step, MoveSpeed speed);
 
+//  Whether a WALK `step` at `speed` starts with a turn tap, for a player
+//  facing `facing`: on foot facing another way (or an unknown way), so the
+//  hold starts facing the right way. Never on the Bicycle, where a tap
+//  takes a step (MovementMechanics::BIKE_TAP_ONLY_TURNS).
+bool turns_first(const RouteStep& step, MoveSpeed speed, std::optional<Direction> facing);
+
 //  The mover for `step` at `speed`: hold_dpad_running() for a run on foot
 //  where the map allows it, hold_dpad() otherwise (B does nothing on the
 //  water).

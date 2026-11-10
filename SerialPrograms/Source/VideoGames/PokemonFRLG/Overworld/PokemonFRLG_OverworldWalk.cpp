@@ -202,6 +202,13 @@ Milliseconds tile_time(const RouteStep& step, MoveSpeed speed){
     return TILE_TIME;
 }
 
+bool turns_first(const RouteStep& step, MoveSpeed speed, std::optional<Direction> facing){
+    if (facing == step.direction){
+        return false;
+    }
+    return step.surfing || step_speed(step, speed) != MoveSpeed::BIKE || BIKE_TAP_ONLY_TURNS;
+}
+
 Pokemon::LegMover<ProControllerContext> leg_mover(const RouteStep& step, MoveSpeed speed){
     if (step_speed(step, speed) == MoveSpeed::RUN && !step.surfing){
         return hold_dpad_running;
@@ -580,7 +587,8 @@ void walk_overworld_route(
             //  Turning first, with a tap, makes the hold start from a standstill
             //  facing the right way: holding through a turn lost a tile on the
             //  console, while holds from a standstill were exact over 15 tiles.
-            if (facing != step.direction){
+            //  Not on the Bicycle, where the tap is a step.
+            if (turns_first(step, speed, facing)){
                 turn_to(console, context, step.direction);
             }
             if (const std::string note = speed_note(step, speed); !note.empty()){
