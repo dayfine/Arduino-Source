@@ -84,6 +84,24 @@ UnitTestResult test_buttons(){
     return true;
 }
 
+UnitTestResult test_held_buttons(){
+    const std::vector<std::string> plain = split_command_line("stick L 0 1 300 100");
+    if (optional_buttons(plain, 6) != BUTTON_NONE){
+        return "A line without buttons should hold none.";
+    }
+    const std::vector<std::string> running = split_command_line("stick L 0 1 300 100 B");
+    if (optional_buttons(running, 6) != BUTTON_B){
+        return "stick: the word after release_ms should be the held buttons.";
+    }
+    if (optional_buttons(split_command_line("walk 0 1 5000 10 B+R"), 5) != (Button)(BUTTON_B | BUTTON_R)){
+        return "walk: the word after still_rmsd should be the held buttons.";
+    }
+    if (!throws_parse_error([]{ optional_buttons(split_command_line("dpad UP 100 200 run"), 4); })){
+        return "An unknown held button should be a parse error.";
+    }
+    return true;
+}
+
 UnitTestResult test_dpad(){
     if (parse_dpad("LEFT") != DPAD_LEFT){
         return "LEFT";
@@ -147,6 +165,7 @@ void add_tests_CommandFileRunner(UnitTestDatabase& database){
     database.add<Test_CommandFileRunner>("arguments", test_arguments);
     database.add<Test_CommandFileRunner>("argument errors", test_argument_errors);
     database.add<Test_CommandFileRunner>("buttons", test_buttons);
+    database.add<Test_CommandFileRunner>("held buttons", test_held_buttons);
     database.add<Test_CommandFileRunner>("D-pad", test_dpad);
     database.add<Test_CommandFileRunner>("taps arguments", test_taps);
 }
