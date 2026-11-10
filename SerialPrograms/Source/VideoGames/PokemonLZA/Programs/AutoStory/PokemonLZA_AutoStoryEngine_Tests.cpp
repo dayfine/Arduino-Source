@@ -49,11 +49,6 @@ FakeBackend fake_plza(
     return FakeBackend(Pokemon::FakeStoryScript<ZonePose>{.looks = std::move(looks), .battle = Pokemon::outcome_ok(), .kind = kind}, scope);
 }
 
-//  The fake's line for L, which it has no name for.
-std::string press_l(){
-    return std::format("press {}", (uint32_t)BUTTON_L);
-}
-
 //  A look at `at` after a fixed start showing `events`.
 Observation<ZonePose> look_at(Milliseconds at, std::initializer_list<EngineEvent> events = {}){
     static const WallClock START = current_time();
@@ -157,7 +152,7 @@ UnitTestResult test_walk_ends_on_white_fade(CancellableScope& scope){
         return "Expected the walk to end on the white fade: " + to_string(report.run.failure);
     }
     return expect_inputs(backend, {
-        "wait 150ms", "hold north 5500ms walk", press_l(), "stick 90deg 150ms walk", "wait 300ms", press_l(),
+        "wait 150ms", "hold north 5500ms walk", "press L", "stick 90deg 150ms walk, release 300ms", "press L",
         "hold north 250ms walk", "hold north 250ms walk", "hold north 250ms walk",
     });
 }
@@ -193,7 +188,7 @@ UnitTestResult test_face_heading(CancellableScope& scope){
     if (!faced.succeeded()){
         return "Expected to face 90 degrees: " + to_string(faced);
     }
-    const UnitTestResult turned = expect_inputs(backend, {press_l(), "stick 90deg 150ms walk", "wait 300ms"});
+    const UnitTestResult turned = expect_inputs(backend, {"press L", "stick 90deg 150ms walk, release 300ms"});
     if (turned.result != UnitTestResult::PASSED){
         return turned;
     }

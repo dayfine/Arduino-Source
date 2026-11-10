@@ -66,7 +66,10 @@ using PlzaReader = Pokemon::StoryReader<Pokemon::ZonePose>;
 void story_turn(PlzaBackend& backend, double degrees);
 
 //  The STORY_HEADING reading for the console: the minimap's arrow
-//  (get_facing_direction()), clockwise from north in [0, 360).
+//  (get_facing_direction()), clockwise from north in [0, 360). It waits up
+//  to 40 s for the minimap and throws without it, so its StoryGameReader
+//  in make_plza_story_game() is ON_REQUEST and console_only: no
+//  postcondition check runs it.
 PlzaReader heading_reader(StoryEnv& env);
 
 
@@ -82,7 +85,7 @@ public:
     virtual void press(Button button, Milliseconds hold, Milliseconds release) override;
     virtual void tap(Pokemon::Direction direction) override;
     virtual void hold(Pokemon::Direction direction, Milliseconds duration, Pokemon::StoryPace pace) override;
-    virtual void stick(double degrees, Milliseconds duration, Pokemon::StoryPace pace) override;
+    virtual void stick(double degrees, Milliseconds duration, Milliseconds release, Pokemon::StoryPace pace) override;
     virtual void wait(Milliseconds duration) override;
     //  Once the inputs are done: PlzaScreenObserver's events on a frame
     //  (plza_observation()), STILL when it barely differs from the frame

@@ -381,6 +381,11 @@ std::vector<std::string> plza_story_lint(const Pokemon::StoryCheckpoint& checkpo
 
 Pokemon::StoryGame<ZonePose> make_plza_story_game(StoryEnv& env, StarterChoice starter){
     Pokemon::StoryGame<ZonePose> game = plza_game_actions(&env, starter);
+    //  Slow, and it throws without the minimap: never after a checkpoint.
+    game.readers.push_back({
+        .name = std::string(Pokemon::STORY_HEADING), .supplies = {std::string(Pokemon::STORY_HEADING)},
+        .use = Pokemon::StoryReaderUse::ON_REQUEST, .console_only = true, .read = heading_reader(env),
+    });
     game.save = [&env](Pokemon::StoryBackend<ZonePose>& backend, const Pokemon::StoryCheckpoint& checkpoint){
         if (story_autosave_rows().contains(checkpoint.id)){
             backend.log(std::format("[Save] {}: the game autosaved at its end; the menu cannot save yet", checkpoint.id));

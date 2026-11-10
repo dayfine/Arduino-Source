@@ -31,6 +31,8 @@ constexpr Milliseconds PARTY_BAR_HOLD = 1000ms;
 constexpr Milliseconds FADE_WAIT = 30000ms;
 //  The longest a still screen is waited on in one step.
 constexpr Milliseconds STILL_WAIT = 10000ms;
+//  The longest a cutscene may hold one still frame.
+constexpr Milliseconds SCENE_STILL_WAIT = 60000ms;
 //  How often a wait looks again.
 constexpr Milliseconds POLL = 250ms;
 
@@ -281,6 +283,23 @@ size_t max_visits(SceneScreen screen){
     }
 }
 
+//  How long a state may see an unchanged screen: the waits (a fade, a
+//  still cutscene, the party bar held before it counts) for as long as
+//  they wait. Zero for the rest, whose presses must change the screen.
+Milliseconds max_still(SceneScreen screen){
+    switch (screen){
+    case SceneScreen::FADE_BLACK:
+    case SceneScreen::FADE_WHITE:
+        return FADE_WAIT;
+    case SceneScreen::SCENE_STILL:
+        return SCENE_STILL_WAIT;
+    case SceneScreen::PARTY_BAR:
+        return STILL_WAIT;
+    default:
+        return Milliseconds::zero();
+    }
+}
+
 } // namespace
 
 
@@ -318,6 +337,7 @@ Pokemon::Outcome run_scene_machine(
             runner.act(screen, look);
         };
         state.max_visits = max_visits(screen);
+        state.max_still = max_still(screen);
         state.terminal = scene_screen_terminal(screen);
         states.push_back(std::move(state));
     }
