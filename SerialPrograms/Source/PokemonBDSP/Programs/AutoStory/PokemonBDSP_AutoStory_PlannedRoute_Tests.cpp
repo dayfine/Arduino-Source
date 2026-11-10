@@ -91,11 +91,11 @@ public:
     {}
 
     virtual WalkResult walk_to_wall(const RouteWallWalk& walk) override{
-        m_script.legs.push_back({.direction = walk.direction, .tiles = 0, .ends_at_wall = true});
+        m_script.legs.push_back({.direction = walk.direction, .tiles = 0, .ends_at_wall = true, .held = false});
         return expect("wall: " + walk.label).walk;
     }
     virtual WalkResult walk_taps(Direction direction, size_t tiles, const std::string& label) override{
-        m_script.legs.push_back({.direction = direction, .tiles = tiles, .ends_at_wall = false});
+        m_script.legs.push_back({.direction = direction, .tiles = tiles, .ends_at_wall = false, .held = false});
         return expect(std::format("{} taps: {}", tiles, label)).walk;
     }
     virtual void press(const RouteInput& input) override{

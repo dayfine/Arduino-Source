@@ -41,6 +41,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_CoordEvents.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP_AutoStory_GridSim.h"
+#include "PokemonBDSP_AutoStory_LegTrace_Tests.h"
 #include "PokemonBDSP_AutoStory_OldStorySteps.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Events.h"
@@ -376,6 +377,7 @@ void add_tests_AutoStory_StorySim(UnitTestDatabase& database){
         database.add<Test_AutoStoryStorySim>(item);
     }
     add_tests_AutoStoryResources(database);
+    add_tests_AutoStory_LegTrace(database);
 }
 
 } // namespace PokemonBDSP

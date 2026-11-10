@@ -195,6 +195,8 @@ void add_tests_RouteLog(UnitTestDatabase& database){
     for (const auto& scenario : CASES){
         database.add<Test_RouteLog>(scenario);
     }
+    //  The leg records read the route lines back.
+    add_tests_LegTrace(database);
 }
 
 

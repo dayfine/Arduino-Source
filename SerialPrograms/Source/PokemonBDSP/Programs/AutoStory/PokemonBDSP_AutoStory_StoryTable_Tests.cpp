@@ -27,6 +27,7 @@
 #include "Actions/PokemonBDSP_AutoStory_Events.h"
 #include "PokemonBDSP_AutoStory_StoryExecutor.h"
 #include "PokemonBDSP_AutoStory_StoryPlaces.h"
+#include "PokemonBDSP_AutoStory_TableRoutes.h"
 #include "PokemonBDSP_AutoStory_StoryTable.h"
 #include "PokemonBDSP_AutoStory_StoryTable_Tests.h"
 #include "PokemonBDSP_AutoStory_StoryWalkSteps.h"
@@ -45,7 +46,7 @@ using Pokemon::TilePos;
 //  The variants each kind does itself, besides the story's events.
 const std::map<StoryStepKind, std::set<std::string>>& built_in_variants(){
     static const std::map<StoryStepKind, std::set<std::string>> variants{
-        {StoryStepKind::ROUTE, {"", "town", "robust", "line"}},
+        {StoryStepKind::ROUTE, {"", "town", "robust", "line", std::string(ROUTE_ONTO_TRIGGER)}},
         {StoryStepKind::LEGS, {"", "one_short_ok", "to_wall", "counted_wall", "measured", "to_map"}},
         {StoryStepKind::STEP, {"", "to_banner", "tap", "or_legs"}},
         {StoryStepKind::MASH, {"", "a"}},
@@ -252,90 +253,6 @@ UnitTestResult test_line_5_recovery_pins_the_wall_nearest_the_goal(Logger& logge
         return "the recovery starts " + to_string(first) + ", not north to the wall at (19, 7).";
     }
     return true;
-}
-
-//  A ROUTE step of the table, and where the steps before it in its row leave
-//  the player: the row's start, then each step's target or pose_after. A LEGS
-//  or STEP step that does not say where it ends leaves the start unknown.
-struct TableRoute{
-    std::string row;
-    const Pokemon::StoryStep* step;
-    std::optional<Pokemon::Pose> from;
-    //  The world the step is planned on; none if the start is unknown or no
-    //  world joins its map and the target's.
-    const StoryWorld* world;
-};
-
-std::optional<Pokemon::Pose> pose_after_step(const std::optional<Pokemon::Pose>& at, const Pokemon::StoryStep& step){
-    if (step.kind == StoryStepKind::ROUTE){
-        return step.target;
-    }
-    if (step.pose_after){
-        return step.pose_after;
-    }
-    return step.kind == StoryStepKind::LEGS || step.kind == StoryStepKind::STEP ? std::nullopt : at;
-}
-
-//  A ROUTE step after a "measured" LEGS step plans from the one tile the
-//  taps measured: one TableRoute for each tile of `at`.
-void add_measured_routes(std::vector<TableRoute>& routes, const std::string& row, const Pokemon::StoryStep& step, const Pokemon::Pose& at){
-    for (const TilePos& pos : Pokemon::tiles_of(at)){
-        const Pokemon::Pose one = Pokemon::tile_pose(at.map, {pos}, Pokemon::facing_of(at));
-        routes.push_back({row, &step, one, story_plan_world(at.map, step.target->map)});
-    }
-}
-
-std::vector<TableRoute> table_routes(){
-    std::vector<TableRoute> routes;
-    for (const StoryCheckpoint& row : story_checkpoints()){
-        std::optional<Pokemon::Pose> at = row.start;
-        bool measured = false;
-        for (const Pokemon::StoryStep& step : row.steps){
-            const bool known = at && !Pokemon::tiles_of(*at).empty();
-            if (step.kind == StoryStepKind::ROUTE && known && std::exchange(measured, false)){
-                add_measured_routes(routes, row.id, step, *at);
-            }else if (step.kind == StoryStepKind::ROUTE){
-                routes.push_back({row.id, &step, at, known ? story_plan_world(at->map, step.target->map) : nullptr});
-            }
-            measured = false;
-            if (step.kind == StoryStepKind::LEGS && step.variant == "measured" && known && !step.pose_after){
-                at = measured_ends(*at, step);
-                measured = at.has_value();
-                continue;
-            }
-            at = pose_after_step(at, step);
-        }
-    }
-    return routes;
-}
-
-std::vector<TilePos> world_tiles(const StoryWorld& world, const Pokemon::Pose& pose){
-    std::vector<TilePos> tiles;
-    for (const TilePos& pos : Pokemon::tiles_of(pose)){
-        tiles.push_back(story_to_world(world, pose.map, pos));
-    }
-    return tiles;
-}
-
-//  The legs a table ROUTE step plans, as walk_route() plans them: the step's
-//  costs, then the default ones; no legs if neither plans.
-struct RouteStepPlan{
-    std::vector<TilePos> start;
-    std::optional<std::vector<PlannedLeg>> legs;
-    bool default_costs = false;     //  the step's own costs found no plan
-};
-
-RouteStepPlan plan_table_route(const TableRoute& route){
-    const StoryWorld& world = *route.world;
-    const std::vector<TilePos> targets = world_tiles(world, *route.step->target);
-    const auto goal = [&](const TilePos& pos){ return std::find(targets.begin(), targets.end(), pos) != targets.end(); };
-    RouteStepPlan plan{.start = world_tiles(world, *route.from)};
-    plan.legs = plan_recovered_route(world, plan.start, goal, *story_route_costs(route.step->variant));
-    if (!plan.legs){
-        plan.legs = plan_recovered_route(world, plan.start, goal, RobustPlanCosts());
-        plan.default_costs = plan.legs.has_value();
-    }
-    return plan;
 }
 
 //  Why `planned` may slide into a door or a warp, or "": an open leg (not to

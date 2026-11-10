@@ -20,6 +20,7 @@
 #include "Pokemon/AutoStory/Pokemon_StorySteps.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RoutePlanner.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_LegBattle.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_LegTraceIO.h"
 #include "PokemonBDSP_AutoStory_StoryStepIO.h"
 
 namespace PokemonAutomation{
@@ -62,6 +63,8 @@ class StoryWalkSteps{
 public:
     explicit StoryWalkSteps(StoryStepIO& io)
         : m_io(io)
+        , m_legs(legs_to_log(io.route()))
+        , m_route(io.route(), m_legs)
     {}
 
     //  A new attempt of the row `row`: every trainer can see us again, and
@@ -109,6 +112,10 @@ private:
     void log(const std::string& text);
 
     StoryStepIO& m_io;
+    //  The leg records of the walks, written to m_io's route log.
+    Pokemon::LegTracer m_legs;
+    //  m_io's route walker console, telling m_legs of each leg walked.
+    LegTraceRouteIO m_route;
     std::string m_row;
     bool m_can_run = false;
     //  The trainers who can still see us on each story_plan_world() world,

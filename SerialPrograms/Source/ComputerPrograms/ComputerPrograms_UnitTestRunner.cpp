@@ -77,7 +77,6 @@ bool matches_any(std::string_view test_name, std::span<const std::string_view> f
 
 UnitTestDatabase make_UNIT_TESTS_ALL(){
     UnitTestDatabase ret;
-
     add_tests_QtEventThreadPool(ret, GlobalThreadPools::computation_normal());
     add_tests_Sockets(ret, GlobalThreadPools::unlimited_normal());
     add_tests_BlackBorderDetector(ret);
@@ -103,6 +102,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     Pokemon::add_tests_MapData(ret);
     Pokemon::add_tests_RuntimeMap(ret);
     Pokemon::add_tests_RouteLog(ret);
+    Pokemon::add_tests_RouteScorer(ret);
     Pokemon::add_tests_ScreenEvents(ret);
     Pokemon::add_tests_Interrupts(ret);
     Pokemon::add_tests_Transitions(ret);

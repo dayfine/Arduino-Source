@@ -155,10 +155,11 @@ struct SimWorldKnobs{
     //  Whether the executor clears what came up between steps
     //  (story_interrupts()), as the console does; off, as before it did.
     bool clear_interrupts = true;
-    //  Where a step the simulation does not play (a scene) really leaves
-    //  the player, by step name, when that is not the table's pose_after:
-    //  the program goes on from the table's pose, the player from here
-    //  (00.03's scene a row low, lab-B 2026-11-09).
+    //  Where a step really leaves the player, by step name, when that is
+    //  not the table's pose_after or the walk's end: the program goes on
+    //  from the table's pose, the player from here (00.03's scene a row
+    //  low, lab-B 2026-11-09; 00.04b's run into Sandgem two columns west,
+    //  lab-B 2026-11-09 20:09).
     std::map<std::string, Pokemon::Pose> lands = {};
     //  Wild battles in tall grass on every pass (SimGrassBattles); none unset.
     SimGrassBattles grass = {};
@@ -405,6 +406,11 @@ public:
     }
     const SimRun& result() const{
         return m_result;
+    }
+    //  Every line the walks wrote, the route walker's and the leg records
+    //  ("[Leg] ...") among them.
+    const std::vector<std::string>& notes() const{
+        return m_notes;
     }
     //  The story's actions as the simulation binds them.
     const Pokemon::StoryActionTable& actions() const{
