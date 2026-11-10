@@ -10,6 +10,7 @@
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
+#include "PokemonFRLG_AutoStoryPacing.h"
 #include "PokemonFRLG_AutoStoryVariantWords.h"
 
 namespace PokemonAutomation{
