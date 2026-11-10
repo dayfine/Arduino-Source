@@ -4,6 +4,7 @@
  *
  */
 
+#include <format>
 #include <string>
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
@@ -45,12 +46,15 @@ private:
 
 std::string not_enough_free_slots_message(size_t party_size, size_t free_slots_needed){
     if (free_slots_needed == 1){
-        return "Your party is full. Leave a party slot free so the program can check the "
-            + Pokemon::STRING_POKEMON + " it catches or receives.";
+        return std::format(
+            "Your party is full. Leave a party slot free so the program can check the {} it catches or receives.",
+            Pokemon::STRING_POKEMON
+        );
     }
-    return "Your party has " + std::to_string(party_size) + " " + Pokemon::STRING_POKEMON
-        + ". Leave at least " + std::to_string(free_slots_needed)
-        + " party slots free for the " + Pokemon::STRING_POKEMON + " the program catches or receives.";
+    return std::format(
+        "Your party has {} {}. Leave at least {} party slots free for the {} the program catches or receives.",
+        party_size, Pokemon::STRING_POKEMON, free_slots_needed, Pokemon::STRING_POKEMON
+    );
 }
 
 }  // namespace
