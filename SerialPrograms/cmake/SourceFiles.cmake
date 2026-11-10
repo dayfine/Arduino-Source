@@ -1498,6 +1498,14 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.h
     Source/Pokemon/AutoStory/Pokemon_AutoStoryStats.h
     Source/Pokemon/AutoStory/Pokemon_AutoStory_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_Interrupts.cpp
+    Source/Pokemon/AutoStory/Pokemon_Interrupts.h
+    Source/Pokemon/AutoStory/Pokemon_Interrupts_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_SceneJudges.cpp
+    Source/Pokemon/AutoStory/Pokemon_SceneJudges.h
+    Source/Pokemon/AutoStory/Pokemon_ScreenEvents.cpp
+    Source/Pokemon/AutoStory/Pokemon_ScreenEvents.h
+    Source/Pokemon/AutoStory/Pokemon_ScreenEvents_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryEvents.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryEvents.h
     Source/Pokemon/AutoStory/Pokemon_StoryEvents_Tests.cpp
@@ -1517,6 +1525,9 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_StorySteps_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_TilePose.cpp
     Source/Pokemon/AutoStory/Pokemon_TilePose.h
+    Source/Pokemon/AutoStory/Pokemon_Transitions.cpp
+    Source/Pokemon/AutoStory/Pokemon_Transitions.h
+    Source/Pokemon/AutoStory/Pokemon_Transitions_Tests.cpp
     Source/Pokemon/Pokemon_AdvRng.cpp
     Source/Pokemon/Pokemon_AdvRng.h
     Source/Pokemon/Pokemon_BdspRng.cpp
