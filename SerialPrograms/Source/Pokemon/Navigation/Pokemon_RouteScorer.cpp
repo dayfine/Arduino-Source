@@ -30,6 +30,20 @@ std::string to_string(const ScoredLeg& leg){
     return std::format("{} {} ({})", direction_name(leg.direction), leg.tiles, how);
 }
 
+size_t tiles_walked_back(const std::vector<ScoredLeg>& legs){
+    size_t tiles = 0;
+    for (size_t i = 0; i < legs.size(); i++){
+        const Direction back = Direction(((int)legs[i].direction + 2) % 4);
+        for (size_t j = 0; j < i; j++){
+            if (legs[j].direction == back){
+                tiles += legs[i].tiles;
+                break;
+            }
+        }
+    }
+    return tiles;
+}
+
 size_t open_hold_error(size_t tiles){
     return 1 + tiles / 5;
 }

@@ -301,24 +301,30 @@ constexpr const char* BENCH_HEADER =
     "three of them (TARGET). Written by the test \"Route bench: no route scores\r\n"
     "worse than Data/route_bench.golden.txt\"; rerun it with PA_UPDATE_ROUTE_BENCH=1\r\n"
     "to rewrite this file. A route is worse when its verdict leaves PASS, its\r\n"
-    "expected time grows or one of its human ratios grows.\r\n"
+    "expected or worst time grows or one of its human ratios grows.\r\n"
     "columns: case | expected ms (interruptions by chance) | worst ms (slowest start and\r\n"
     "the costliest single interruption) | nominal ms (slowest start, none) | stops (wall\r\n"
     "re-localizations) | recoveries (places an interruption may happen) | replans (of those,\r\n"
     "the ones the plan cannot absorb) | slower than human (expected / human ms) | riskier\r\n"
-    "than human ((recoveries + 1) / (human's + 1)) | more backtracking than human ((stops +\r\n"
-    "replans + 1) / (human's stops + 1)) | the human's ms (the user's route, a recorded run,\r\n"
-    "or the stand-in: the shortest safe walk run with no stops) | verdict (why). A ratio\r\n"
-    "above 1.5 is flagged \"!\".\r\n"
+    "than human ((recoveries + 1) / (human's + 1)) | more backtracking than human ((replans +\r\n"
+    "tiles walked back + 1) / (human's + 1); a planned stop at a wall is not backtracking) |\r\n"
+    "the human's ms (the user's route, a recorded run, or the stand-in: the shortest safe\r\n"
+    "walk run with no stops) | verdict (why). A ratio above 1.5 is flagged \"!\".\r\n"
     "\r\n";
 
 //  The bar a case's plan is measured against: a human's walk of it.
 struct HumanBaseline{
     long long ms = 0;
     size_t risk_tiles = 0;      //  places an interruption may happen
-    size_t stops = 0;           //  re-localization stops
+    size_t backtracking = 0;    //  replans and tiles walked back (backtracking())
     std::string source;
 };
+
+//  What the bench counts as backtracking: the replans a plan cannot absorb
+//  (recoveries that need a new plan) and the tiles it walks back.
+size_t backtracking(const RouteScore& score, const std::vector<ScoredLeg>& legs){
+    return score.replans + Pokemon::tiles_walked_back(legs);
+}
 
 //  A step of the stand-in's search: tiles walked, grass and wanderer tiles
 //  avoided where a way round exists.
@@ -373,7 +379,7 @@ std::optional<HumanBaseline> stand_in_from(const BenchCase& bench, const TilePos
             continue;
         }
         if (in_goal(bench, node.pos)){
-            return HumanBaseline{node.ms, node.risk, 0, "stand-in"};
+            return HumanBaseline{node.ms, node.risk, 0, "stand-in"};   //  no replans, no tile back
         }
         push_steps(open, bench, map, paces, node);
     }
@@ -401,7 +407,7 @@ std::optional<HumanBaseline> human_baseline(const BenchCase& bench){
     BenchCase human = bench;
     human.legs = *bench.human;
     const RouteScore score = score_case(human);
-    return HumanBaseline{score.nominal_ms, score.recoveries, score.stops, bench.human_source};
+    return HumanBaseline{score.nominal_ms, score.recoveries, backtracking(score, human.legs), bench.human_source};
 }
 
 //  "1.23", with "!" past 1.5: a plan that far behind the human is flagged.
@@ -410,28 +416,38 @@ std::string ratio_text(double ratio){
 }
 
 //  slower | riskier | more backtracking than the human, and the human's time.
-std::string human_columns(const RouteScore& score, const std::optional<HumanBaseline>& human){
+std::string human_columns(const BenchCase& bench, const RouteScore& score, const std::optional<HumanBaseline>& human){
     if (!human || human->ms <= 0){
         return "- | - | - | no human baseline";
     }
     const double slower = score.expected_ms / (double)human->ms;
     const double riskier = (double)(score.recoveries + 1) / (double)(human->risk_tiles + 1);
-    const double backtracking = (double)(score.stops + score.replans + 1) / (double)(human->stops + 1);
-    return std::format("{} | {} | {} | {} ms ({})", ratio_text(slower), ratio_text(riskier), ratio_text(backtracking),
+    const double back = (double)(backtracking(score, bench.legs) + 1) / (double)(human->backtracking + 1);
+    return std::format("{} | {} | {} | {} ms ({})", ratio_text(slower), ratio_text(riskier), ratio_text(back),
         human->ms, human->source);
 }
 
 std::string bench_line(const BenchCase& bench, const RouteScore& score){
     std::string line = std::format("{} | {} | {} | {} | {} | {} | {} | {} | {}", bench.name, (long long)(score.expected_ms + 0.5),
         score.worst_ms, score.nominal_ms, score.stops, score.recoveries, score.replans,
-        human_columns(score, human_baseline(bench)), Pokemon::verdict_name(score.verdict));
+        human_columns(bench, score, human_baseline(bench)), Pokemon::verdict_name(score.verdict));
     return score.why.empty() ? line : line + " (" + score.why + ")";
 }
 
-std::string bench_text(){
-    std::string out = BENCH_HEADER;
+//  The bench's lines, and each case's legs for the log.
+struct BenchText{
+    std::string lines;
+    std::string legs;
+};
+BenchText bench_text(){
+    BenchText out{BENCH_HEADER, ""};
     for (const BenchCase& bench : bench_cases()){
-        out += bench_line(bench, score_case(bench)) + "\r\n";
+        out.lines += bench_line(bench, score_case(bench)) + "\r\n";
+        out.legs += bench.name + ":";
+        for (const ScoredLeg& leg : bench.legs){
+            out.legs += " " + Pokemon::to_string(leg) + ";";
+        }
+        out.legs += "\n";
     }
     return out;
 }
@@ -453,6 +469,7 @@ std::vector<std::string> bench_fields(const std::string& line){
 //  A bench line's expected time and whether it passed.
 struct GoldenRow{
     long long expected_ms;
+    long long worst_ms;
     bool pass;
     std::vector<double> ratios;     //  slower, riskier, backtracking; empty without a human
 };
@@ -472,7 +489,7 @@ std::map<std::string, GoldenRow> golden_rows(const std::string& text){
             continue;
         }
         const std::vector<std::string> fields = bench_fields(line);
-        GoldenRow row{std::atoll(fields[1].c_str()), line.find(" | PASS") != std::string::npos, {}};
+        GoldenRow row{std::atoll(fields[1].c_str()), std::atoll(fields[2].c_str()), line.find(" | PASS") != std::string::npos, {}};
         for (size_t i = 7; i < 10 && i < fields.size() && fields[i] != "-"; i++){
             row.ratios.push_back(std::atof(fields[i].c_str()));
         }
@@ -510,9 +527,12 @@ std::string worse_routes(const std::string& golden, const std::string& now){
         if (was == before.end()){
             continue;
         }
-        if ((was->second.pass && !row.pass) || row.expected_ms > was->second.expected_ms || ratio_grew(was->second, row)){
-            out += std::format("\n  {}: {} ms{} -> {} ms{}", name, was->second.expected_ms, was->second.pass ? "" : " (not PASS)",
-                row.expected_ms, row.pass ? "" : " (not PASS)");
+        if ((was->second.pass && !row.pass) || row.expected_ms > was->second.expected_ms ||
+            row.worst_ms > was->second.worst_ms || ratio_grew(was->second, row)
+        ){
+            out += std::format("\n  {}: {} ms (worst {}){} -> {} ms (worst {}){}", name,
+                was->second.expected_ms, was->second.worst_ms, was->second.pass ? "" : " (not PASS)",
+                row.expected_ms, row.worst_ms, row.pass ? "" : " (not PASS)");
         }
     }
     return out;
@@ -520,8 +540,10 @@ std::string worse_routes(const std::string& golden, const std::string& now){
 
 UnitTestResult test_route_bench(Logger& logger){
     const std::string path = bench_golden_path();
-    const std::string now = bench_text();
+    const BenchText text = bench_text();
+    const std::string& now = text.lines;
     logger.log("Route bench:\n" + now);
+    logger.log("Route bench legs:\n" + text.legs);
     const char* update = std::getenv("PA_UPDATE_ROUTE_BENCH");
     if (update != nullptr && update[0] != '\0' && update[0] != '0'){
         FileIO file;

@@ -64,6 +64,11 @@ struct ScoredLeg{
 //  "west 16 (taps)", "south 33 (run to wall)".
 std::string to_string(const ScoredLeg& leg);
 
+//  Tiles `legs` walk back: each leg opposite to a leg before it. A planned
+//  stop at a wall re-localizes and is not counted; running past the goal
+//  to a wall and tapping back is.
+size_t tiles_walked_back(const std::vector<ScoredLeg>& legs);
+
 //  The game's measured times.
 struct RoutePaces{
     //  Time per tile held in a direction, walking or running.
