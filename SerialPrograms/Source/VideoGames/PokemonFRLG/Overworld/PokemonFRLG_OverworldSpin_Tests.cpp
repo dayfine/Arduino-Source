@@ -19,6 +19,8 @@
 #include "PokemonFRLG_OverworldRecovery.h"
 #include "PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_OverworldSim.h"
+#include "PokemonFRLG_OverworldSimField.h"
+#include "PokemonFRLG_OverworldSpin.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -32,7 +34,7 @@ struct SpinInput{
     UnitTestResult (*body)();
 };
 struct SpinExpectation{
-    const char* description;
+    std::string description;
 };
 struct SpinCase{
     SpinInput input;
@@ -193,7 +195,7 @@ UnitTestResult test_sim_walker_walks_slide(){
 
 //  A lift whose door, the exit mat (1, 2), lets out on the floor picked.
 std::vector<MapData> lift_maps(){
-    const char* FLOOR = R"({
+    const std::string FLOOR = R"({
         "name": "%s", "source": {"decomp_file": "", "revision": "test", "date": "2026-11-09"},
         "tiles": ["###", "#.#", "###"]
     })";
@@ -203,7 +205,7 @@ std::vector<MapData> lift_maps(){
         "tiles": ["###", "#.#", "#.#", "###"],
         "warps": [{"x": 1, "y": 2, "enter": "walk_south"}]
     })", "Lift"));
-    for (const char* name : {"FloorA", "FloorB"}){
+    for (const std::string name : {"FloorA", "FloorB"}){
         std::string json = FLOOR;
         json.replace(json.find("%s"), 2, name);
         maps.push_back(parse_map(json, name));

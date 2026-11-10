@@ -19,6 +19,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include "Pokemon/Navigation/Pokemon_Grid.h"
 #include "Pokemon/Navigation/Pokemon_MapData.h"
 
@@ -158,44 +159,6 @@ PlayerState after_step_onto(
     const MapData& from, const PlayerState& state,
     const MapData& to, const TilePos& destination, StepKind kind
 );
-
-
-//  Spinner tiles (Rocket Hideout B2F and B3F, Viridian Gym): pokefirered's
-//  MB_SPIN_UP, MB_SPIN_DOWN, MB_SPIN_LEFT, MB_SPIN_RIGHT and
-//  MB_STOP_SPINNING. The tile glyphs can't say so: the hideout's floors
-//  have them coded (coded_spin_direction(), PokemonFRLG_CodedRooms.h);
-//  another map may list them in these regions, as it does WILD_REGION.
-//  "spin_north": MB_SPIN_UP.
-extern const char SPIN_NORTH_REGION[];
-//  "spin_south": MB_SPIN_DOWN.
-extern const char SPIN_SOUTH_REGION[];
-//  "spin_west": MB_SPIN_LEFT.
-extern const char SPIN_WEST_REGION[];
-//  "spin_east": MB_SPIN_RIGHT.
-extern const char SPIN_EAST_REGION[];
-//  "spin_stop": MB_STOP_SPINNING.
-extern const char SPIN_STOP_REGION[];
-//  The way the arrow on this tile slides the player, if it is a spinner.
-std::optional<Direction> spin_direction(const MapData& map, const TilePos& point);
-//  Whether this tile ends a slide (MB_STOP_SPINNING).
-bool stops_spinning(const MapData& map, const TilePos& point);
-
-//  Where a slide leaves the player, the way it last moved them, and how
-//  many tiles it took.
-struct SpinSlide{
-    PlayerState end;
-    Direction facing = Direction::NORTH;
-    int tiles = 0;
-};
-//  The slide of a player who has just stepped onto the spinner `state`
-//  stands on (pokefirered TryUpdatePlayerSpinDirection()): a tile at a
-//  time the last arrow's way, turned by each arrow on the way, until a stop
-//  tile, or a step the step rules refuse (a wall, a person: the game's
-//  collision ends the forced movement there). Nothing if `state` isn't on a
-//  spinner, if the arrows turn the player round in a loop, or if the slide
-//  crosses a warp, which isn't modelled.
-std::optional<SpinSlide> spin_slide(const MapData& map, const PlayerState& state);
-
 
 
 } // namespace PokemonFRLG

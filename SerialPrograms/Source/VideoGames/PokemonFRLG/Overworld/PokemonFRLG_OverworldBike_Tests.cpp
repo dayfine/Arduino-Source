@@ -14,10 +14,14 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "PokemonFRLG_MovementMechanics.h"
+#include "PokemonFRLG_BikeSpinPresses.h"
+#include "PokemonFRLG_BikeSpinMechanics.h"
 #include "PokemonFRLG_OverworldMaps.h"
 #include "PokemonFRLG_OverworldRecovery.h"
 #include "PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_OverworldSim.h"
+#include "PokemonFRLG_OverworldSimField.h"
+#include "PokemonFRLG_OverworldBike.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

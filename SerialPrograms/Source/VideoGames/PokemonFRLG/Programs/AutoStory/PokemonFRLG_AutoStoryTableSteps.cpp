@@ -5,10 +5,14 @@
  */
 
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_CodedRooms.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_HideoutLiftRoom.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PokemonCenterRoom.h"
 #include "PokemonFRLG_AutoStoryHideout.h"
+#include "PokemonFRLG_AutoStoryHideoutLift.h"
 #include "PokemonFRLG_AutoStoryItemUse.h"
 #include "PokemonFRLG_AutoStoryRooms.h"
 #include "PokemonFRLG_AutoStoryTableSteps.h"
+#include "PokemonFRLG_AutoStoryFieldSteps.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -175,10 +179,10 @@ StoryStep lift_floor(std::string name, std::string_view from, std::string_view t
     return step;
 }
 
-StoryStep center_enter(std::string name, const char* center, std::string why){
+StoryStep center_enter(std::string name, const std::string& center, std::string why){
     StoryStep step = make(StoryStepKind::GAME, std::move(name), std::move(why));
     step.variant = CENTER_ENTER_VARIANT;
-    step.pose_after = at(center, CENTER_NURSE_FRONT.x, CENTER_NURSE_FRONT.y, Direction::NORTH);
+    step.pose_after = at(center.c_str(), CENTER_NURSE_FRONT.x, CENTER_NURSE_FRONT.y, Direction::NORTH);
     return step;
 }
 

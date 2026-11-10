@@ -13,6 +13,7 @@
 #include "PokemonFRLG_OverworldLateBattle.h"
 #include "PokemonFRLG_OverworldReanchor.h"
 #include "PokemonFRLG_OverworldWalk.h"
+#include "PokemonFRLG_OverworldBike.h"
 #include "PokemonFRLG_OverworldSim.h"
 
 namespace PokemonAutomation{
@@ -669,7 +670,6 @@ bool OverworldSim::close_message(){
     note("the trainer's battle starts.");
     return true;
 }
-
 
 
 

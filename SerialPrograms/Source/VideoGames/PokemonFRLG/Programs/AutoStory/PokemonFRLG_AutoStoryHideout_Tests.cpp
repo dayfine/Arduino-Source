@@ -9,13 +9,17 @@
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_CodedRooms.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_HideoutLiftRoom.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_MovementMechanics.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryHideout.h"
+#include "PokemonFRLG_AutoStoryHideoutLift.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryTableSteps.h"
+#include "PokemonFRLG_AutoStoryFieldSteps.h"
 #include "PokemonFRLG_AutoStoryVariantWords.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSpin.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -213,7 +217,7 @@ struct AutoStoryHideoutBodyInput{
     UnitTestResult (*body)();
 };
 struct AutoStoryHideoutBodyExpectation{
-    const char* description;
+    std::string description;
 };
 struct AutoStoryHideoutBodyCase{
     AutoStoryHideoutBodyInput input;

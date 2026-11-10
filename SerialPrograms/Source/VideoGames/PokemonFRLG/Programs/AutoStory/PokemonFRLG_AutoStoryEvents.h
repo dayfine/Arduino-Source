@@ -63,10 +63,6 @@ struct StoryPose{
 //  The variant of a ROUTE or LEGS step that runs, with B held: the player
 //  has the Running Shoes (00.10 on).
 inline const std::string RUN_VARIANT = "run";
-//  The variant of a ROUTE or LEGS step ridden on the Bicycle, mounted by a
-//  RIDE_BIKE_VARIANT step before it (PokemonFRLG_AutoStoryItemUse.h).
-//  Indoors, where the game doesn't let the player ride, it walks.
-inline const std::string BIKE_VARIANT = "bike";
 
 //  The variant of a STEP into a trainer's line: a tile at a time, at most
 //  TRAINER_LINE_TILES, until the trainer sees the player
@@ -347,7 +343,6 @@ Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor&
 
 //  `checkpoints` (kept alive by the caller) as a segment for run_segment().
 Pokemon::Segment make_story_segment(const std::vector<StoryCheckpoint>& checkpoints, StoryExecutor& executor);
-
 
 
 } // namespace PokemonFRLG

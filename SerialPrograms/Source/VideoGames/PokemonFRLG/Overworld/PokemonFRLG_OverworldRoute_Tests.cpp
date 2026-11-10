@@ -28,7 +28,7 @@ struct RouteTestInput{
     UnitTestResult (*body)();
 };
 struct RouteTestExpectation{
-    const char* description;
+    std::string description;
 };
 struct RouteTestCase{
     RouteTestInput input;
@@ -232,7 +232,7 @@ UnitTestResult test_mewtwo_tile_unreachable(){
 
 UnitTestResult test_story_maps(){
     const std::vector<MapData> maps = overworld_maps();
-    for (const char* name : {
+    for (const std::string name : {
         "PalletTown_PlayersHouse_2F", "PalletTown_ProfessorOaksLab", "Route1", "ViridianCity_Mart",
         "Route22", "Route2", "ViridianForest", "PewterCity", "PewterCity_Museum_1F", "PewterCity_Gym",
     }){
@@ -289,7 +289,7 @@ UnitTestResult test_viridian_mart_to_pewter_gym(){
 }
 
 //  A room with a sign on its north wall, above the third column.
-const char* const TEST_SIGN_ROOM_JSON = R"({
+const std::string TEST_SIGN_ROOM_JSON = R"({
     "name": "SignRoom", "source": {"decomp_file": "", "revision": "test", "date": "2026-10-31"},
     "tiles": ["##S##", "#...#", "#...#", "#...#", "#####"],
     "elevation": ["33333", "33333", "33333", "33333", "33333"]
@@ -321,7 +321,7 @@ UnitTestResult test_no_hold_into_sign(){
 }
 
 //  A yard with a row of ledges across it.
-const char* const TEST_LEDGE_YARD_JSON = R"({
+const std::string TEST_LEDGE_YARD_JSON = R"({
     "name": "LedgeYard", "source": {"decomp_file": "", "revision": "test", "date": "2026-10-31"},
     "tiles": ["#####", "#...#", "#...#", "#vvv#", "#...#", "#####"],
     "elevation": ["33333", "33333", "33333", "33333", "33333", "33333"]
@@ -409,14 +409,14 @@ UnitTestResult test_wild_steps(){
     return true;
 }
 
-const char* const TEST_ROOM_JSON = R"({
+const std::string TEST_ROOM_JSON = R"({
     "name": "Room", "source": {"decomp_file": "", "revision": "test", "date": "2026-10-31"},
     "tiles": ["#####", "#...#", "#...#", "##.##"],
     "elevation": ["33333", "33333", "33333", "33333"],
     "points": {"warp_0": [2, 3]},
     "warps": [{"x": 2, "y": 3, "enter": "walk_south", "to_map": "Yard", "to_point": "warp_0"}]
 })";
-const char* const TEST_YARD_JSON = R"({
+const std::string TEST_YARD_JSON = R"({
     "name": "Yard", "source": {"decomp_file": "", "revision": "test", "date": "2026-10-31"},
     "tiles": ["#####", "##D##", "#...#", "#####"],
     "elevation": ["33333", "33333", "33333", "33333"],

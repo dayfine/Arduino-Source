@@ -13,6 +13,7 @@
 #include "PokemonFRLG_OverworldMaps.h"
 #include "PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_OverworldWalk.h"
+#include "PokemonFRLG_BikeSpinMechanics.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

@@ -10,6 +10,8 @@
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryItemUse.h"
+#include "PokemonFRLG_AutoStoryBagUse.h"
+#include "PokemonFRLG_AutoStoryBag.h"
 #include "PokemonFRLG_AutoStoryVariantWords.h"
 
 namespace PokemonAutomation{
@@ -65,7 +67,7 @@ std::optional<size_t> bag_row_of(const std::vector<BagRow>& rows, std::string_vi
     return std::nullopt;
 }
 
-const char* item_use_end_name(ItemUseEnd end){
+std::string item_use_end_name(ItemUseEnd end){
     switch (end){
     case ItemUseEnd::USED:
         return "used";

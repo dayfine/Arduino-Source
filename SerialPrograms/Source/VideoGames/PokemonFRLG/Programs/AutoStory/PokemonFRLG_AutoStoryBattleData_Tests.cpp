@@ -145,8 +145,8 @@ UnitTestResult test_story_trainers(){
 //  party.
 UnitTestResult test_hideout_trainers(){
     struct Expected{
-        const char* map;
-        const char* battle;
+        std::string map;
+        std::string battle;
         std::vector<std::string> party;
     };
     const Expected EXPECTED[] = {
