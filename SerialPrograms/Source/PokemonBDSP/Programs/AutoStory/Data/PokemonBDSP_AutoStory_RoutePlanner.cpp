@@ -385,7 +385,7 @@ std::optional<Expansion> open_leg(const StoryWorld& world, const Spread& spread,
     const int per_open_tile = held ? 0 : costs.per_open_tile;
     expansion.cost = (long long)costs.per_leg + costs.leg_not_at_wall +
         (long long)(costs.per_tile + per_open_tile) * tiles
-        + (long long)costs.per_grass_tile * grass + (long long)costs.per_wander_tile * wander;
+        + (long long)(costs.per_grass_tile + costs.per_open_grass_tile) * grass + (long long)costs.per_wander_tile * wander;
     expansion.leg = TileLeg{.direction = direction, .tiles = (size_t)tiles, .ends_at_wall = false, .held = held};
     return expansion;
 }

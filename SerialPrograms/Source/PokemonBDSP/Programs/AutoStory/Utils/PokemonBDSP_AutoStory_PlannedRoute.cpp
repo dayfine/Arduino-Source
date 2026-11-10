@@ -238,7 +238,7 @@ public:
     RouteEnd run(std::vector<TilePos> from);
 
 private:
-    std::vector<PlannedLeg> plan_legs() const;
+    std::vector<PlannedLeg> plan_legs(bool first) const;
     LegNext walk_leg(const PlannedLeg& planned, size_t number, size_t count);
     std::vector<TilePos> arrive() const;
 
@@ -297,7 +297,7 @@ RouteEnd RouteWalker::run(std::vector<TilePos> from){
     m_from = std::move(from);
     m_map_start = map_of(m_maps, m_from);
     for (size_t plans = 0; plans < 8; plans++){
-        const std::vector<PlannedLeg> legs = plan_legs();
+        const std::vector<PlannedLeg> legs = plan_legs(plans == 0);
         m_io.note(m_plan.label + ": " + std::to_string(legs.size()) + " legs planned", RouteNote::STATUS);
         log_plan(m_io, m_maps, m_plan.label, m_from, legs);
         LegNext next = LegNext::NEXT_LEG;
@@ -311,8 +311,8 @@ RouteEnd RouteWalker::run(std::vector<TilePos> from){
     fail(m_io, m_plan.label + ": too many plans.");
 }
 
-std::vector<PlannedLeg> RouteWalker::plan_legs() const{
-    std::optional<std::vector<PlannedLeg>> legs = plan_fastest_route({m_grid, m_from, m_plan.goal, m_plan.costs, m_plan.speed, {}});
+std::vector<PlannedLeg> RouteWalker::plan_legs(bool first) const{
+    std::optional<std::vector<PlannedLeg>> legs = plan_walk({m_grid, m_from, m_plan.goal, m_plan.costs, m_plan.speed, {}}, first);
     if (!legs){
         //  From a few possible tiles the exact-open-leg costs found no
         //  plan where the default ones did (r240a, three tiles on Route

@@ -89,7 +89,8 @@ RouteScore score_case(const BenchCase& bench){
         return std::find(targets.begin(), targets.end(), pos) != targets.end();
     };
     const Pokemon::RouteReplanner replan = [&](const std::vector<TilePos>& from) -> std::optional<std::vector<ScoredLeg>>{
-        const std::optional<std::vector<PlannedLeg>> legs = plan_recovered_route(*bench.world, from, goal, bench.costs.value_or(RobustPlanCosts()));
+        const std::optional<std::vector<PlannedLeg>> legs =
+            plan_recovered_route(*bench.world, from, goal, replan_costs(bench.costs.value_or(RobustPlanCosts())));
         if (!legs){
             return std::nullopt;
         }
@@ -254,6 +255,26 @@ void add_run4_cases(std::vector<BenchCase>& cases){
     cases.push_back(std::move(recovery));
 }
 
+//  A wild battle on a leg to a wall needs no new plan: RouteWalker walks
+//  to the wall again. On an open leg it loses the count of tiles. 00.04d
+//  north_to_jubilife's plan with the route's own costs crosses Route 202's
+//  grass on "west 12 (taps)", and each battle there needs a replan;
+//  plan_fastest_route() picks the plan with open legs dear in grass
+//  (replan_costs()), which crosses it on legs to a wall. This scores the
+//  plan the route's own costs give.
+void add_own_costs_case(std::vector<BenchCase>& cases){
+    BenchCase own = cases[case_index(cases, "00.04d north_to_jubilife")];
+    const std::vector<TilePos> targets = own.goal;
+    const auto goal = [targets](const TilePos& pos){
+        return std::find(targets.begin(), targets.end(), pos) != targets.end();
+    };
+    const std::optional<std::vector<PlannedLeg>> legs = plan_recovered_route(*own.world, own.from, goal, *own.costs);
+    own.name += ", planned with the route's own costs (taps in the grass)";
+    own.legs = legs ? walked_legs(*legs, own.run) : std::vector<ScoredLeg>{};
+    own.planned = legs.has_value();
+    cases.push_back(std::move(own));
+}
+
 //  A human run recorded on the console, as legs: replaces a case's stand-in.
 struct RecordedHumanRun{
     std::string case_name;
@@ -285,6 +306,7 @@ std::vector<BenchCase> bench_cases(){
     add_target(cases, "00.04 into_twinleaf", twinleaf_target);
     add_target(cases, "00.04 into_moms_call + the tap into her call", moms_call_target);
     add_run4_cases(cases);
+    add_own_costs_case(cases);
     for (const RecordedHumanRun& run : recorded_human_runs()){
         BenchCase& bench = cases[case_index(cases, run.case_name)];
         bench.human = run.legs;
@@ -301,7 +323,8 @@ constexpr const char* BENCH_HEADER =
     "three of them (TARGET). Written by the test \"Route bench: no route scores\r\n"
     "worse than Data/route_bench.golden.txt\"; rerun it with PA_UPDATE_ROUTE_BENCH=1\r\n"
     "to rewrite this file. A route is worse when its verdict leaves PASS, its\r\n"
-    "expected or worst time grows or one of its human ratios grows.\r\n"
+    "expected or worst time grows or one of its human ratios grows past 1.00; a\r\n"
+    "route that did not pass is better once it passes. No story route may STRAND.\r\n"
     "columns: case | expected ms (interruptions by chance) | worst ms (slowest start and\r\n"
     "the costliest single interruption) | nominal ms (slowest start, none) | stops (wall\r\n"
     "re-localizations) | recoveries (places an interruption may happen) | replans (of those,\r\n"
@@ -434,15 +457,21 @@ std::string bench_line(const BenchCase& bench, const RouteScore& score){
     return score.why.empty() ? line : line + " (" + score.why + ")";
 }
 
-//  The bench's lines, and each case's legs for the log.
+//  The bench's lines, each case's legs for the log, and the cases that
+//  strand where they must not.
 struct BenchText{
     std::string lines;
     std::string legs;
+    std::string strands;
 };
 BenchText bench_text(){
-    BenchText out{BENCH_HEADER, ""};
+    BenchText out{BENCH_HEADER, "", ""};
     for (const BenchCase& bench : bench_cases()){
-        out.lines += bench_line(bench, score_case(bench)) + "\r\n";
+        const RouteScore score = score_case(bench);
+        out.lines += bench_line(bench, score) + "\r\n";
+        if (score.verdict == Pokemon::RouteVerdict::STRAND){
+            out.strands += "\n  " + bench.name + ": " + score.why;
+        }
         out.legs += bench.name + ":";
         for (const ScoredLeg& leg : bench.legs){
             out.legs += " " + Pokemon::to_string(leg) + ";";
@@ -508,10 +537,11 @@ std::string bench_golden_path(){
     return (slash == std::string::npos ? std::string() : self.substr(0, slash + 1)) + "Data/route_bench.golden.txt";
 }
 
-//  Whether any of `now`'s human ratios grew from `was`'s.
+//  Whether any of `now`'s human ratios grew from `was`'s, past the human's
+//  own (1.0): a plan may come up to the human's bar.
 bool ratio_grew(const GoldenRow& was, const GoldenRow& now){
     for (size_t i = 0; i < std::min(was.ratios.size(), now.ratios.size()); i++){
-        if (now.ratios[i] > was.ratios[i] + 0.005){
+        if (now.ratios[i] > was.ratios[i] + 0.005 && now.ratios[i] > 1.005){
             return true;
         }
     }
@@ -524,7 +554,8 @@ std::string worse_routes(const std::string& golden, const std::string& now){
     std::string out;
     for (const auto& [name, row] : golden_rows(now)){
         const auto was = before.find(name);
-        if (was == before.end()){
+        //  A route that did not pass has no times to keep: any pass is better.
+        if (was == before.end() || (!was->second.pass && row.pass)){
             continue;
         }
         if ((was->second.pass && !row.pass) || row.expected_ms > was->second.expected_ms ||
@@ -552,6 +583,9 @@ UnitTestResult test_route_bench(Logger& logger){
         }
         logger.log("Wrote " + path + ".");
         return true;
+    }
+    if (!text.strands.empty()){
+        return "Routes strand:" + text.strands;
     }
     std::string golden;
     if (!file_to_string(path, golden)){
@@ -600,7 +634,7 @@ private:
 const RouteBenchCase ROUTE_BENCH_CASES[] = {
     {
         .input = {.name = "no route scores worse than Data/route_bench.golden.txt", .test = test_route_bench},
-        .expectation = {.description = "every route's verdict and expected time at least as good as the golden file's"},
+        .expectation = {.description = "no story route strands; every route's verdict, times and ratios at least as good as the golden file's"},
     },
 };
 

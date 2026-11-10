@@ -49,7 +49,14 @@ struct ScoredRoute{
     MoveSpeed speed = MoveSpeed::WALK;
     std::vector<Pokemon::TilePos> triggers = {};
 };
-//  How `legs` score walked as `route` says.
+//  The costs walk_route() plans again with after an interruption: `costs`,
+//  with open legs dear in tall grass (RobustPlanCosts::per_open_grass_tile),
+//  so the new plan crosses the grass on legs to a wall, whose battles need
+//  no plan, rather than back on the open legs that lost the count.
+RobustPlanCosts replan_costs(const RobustPlanCosts& costs);
+
+//  How `legs` score walked as `route` says, recoveries planned with
+//  replan_costs(route.costs).
 Pokemon::RouteScore score_planned_route(const ScoredRoute& route, const std::vector<PlannedLeg>& legs);
 
 //  Where an open leg that something stopped may have ended, from `stopped`,
@@ -64,12 +71,22 @@ std::vector<Pokemon::TilePos> blocked_stop_tiles(
     const StoryWorld& world, const std::vector<Pokemon::TilePos>& stopped, Pokemon::Direction direction
 );
 
-//  The plan for `route`: of plan_recovered_route() with its costs, and with
-//  those costs holding open legs (RobustPlanCosts::hold_open_legs), the one
-//  the scorer passes in the least expected time, with no more risk or
-//  re-localizing than the first if it passes. The first if none passes;
-//  nothing if none plans.
+//  The plan for `route`: of plan_recovered_route() with its costs and with
+//  a few others (open legs held, costs shaped like the time, open legs
+//  dear in grass), the one the scorer passes in the least expected time.
+//  If the plan with the route's own costs passes, the one picked is no
+//  worse than it in worst time, places to be interrupted or replans, nor
+//  walks back more (tiles opposite to an earlier leg; a planned stop at a
+//  wall is not backtracking) unless that saves 5 s. The first if none
+//  passes; nothing if none plans.
 std::optional<std::vector<PlannedLeg>> plan_fastest_route(const ScoredRoute& route);
+
+//  The plan walk_route() walks: a step's `first` plan is
+//  plan_fastest_route()'s; a plan after an interruption is
+//  plan_recovered_route()'s with replan_costs(), planned once. Scoring
+//  every candidate on each of a fault sweep's many replans made the sims
+//  ten times slower.
+std::optional<std::vector<PlannedLeg>> plan_walk(const ScoredRoute& route, bool first);
 
 
 

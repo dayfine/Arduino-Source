@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <map>
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_WallRecovery.h"
 #include "PokemonBDSP_AutoStory_RouteChoice.h"
 
@@ -27,41 +28,119 @@ constexpr long long TAP_MS = 800;
 //  Confirming a stop at a wall: walk_until_dpad() watches a still screen.
 constexpr long long WALL_STOP_MS = 1000;
 //  Most sets a search with held legs looks through: their wide ends make
-//  many more sets than taps do, and walk_route() plans again after every
-//  interruption, so a held plan not found quickly is left to the taps.
+//  many more sets than taps do, so a held plan not found quickly is left
+//  to the taps.
 constexpr size_t HELD_MAX_SEARCHED = 3000;
+//  A tapped tile costs this many run tiles in a plan's search: a tap takes
+//  TAP_MS, a run about 250 ms a tile.
+constexpr int TAP_TILE_COST = 3;
+//  Taps this many tiles or fewer in the time-shaped costs: tapping back
+//  from a wall onto the goal.
+constexpr int TAPPED_BACK_TILES = 8;
+//  An open leg's extra per grass tile in a replan (RobustPlanCosts::
+//  per_open_grass_tile): a wall leg through grass beats an open one unless
+//  it walks this many tiles further.
+constexpr int REPLAN_OPEN_GRASS_COST = 12;
 
-//  The costs plan_fastest_route() tries besides the route's own: open legs
-//  held from 2 tiles, as long as a held leg may be (a column of 33
-//  tiles into Twinleaf), with and without the route's charge for ending in
-//  the open.
-std::vector<RobustPlanCosts> held_costs(const RobustPlanCosts& costs){
+//  The costs plan_fastest_route() tries besides the route's own:
+//   -  open legs held from 2 tiles, as long as a held leg may be (a column
+//      of 33 tiles into Twinleaf), with and without the route's charge for
+//      ending in the open;
+//   -  costs shaped like the time: a tapped tile dearer than a run one,
+//      no charge for ending in the open, so a run to a wall past the goal
+//      and taps back beat taps all the way (00.04 into_twinleaf);
+//   -  the route's own, with open legs dear in grass (replan_costs()).
+std::vector<RobustPlanCosts> other_costs(const RobustPlanCosts& costs){
     std::vector<RobustPlanCosts> out;
-    for (int exact : {1}){
-        for (int not_at_wall : {costs.leg_not_at_wall, 0}){
-            RobustPlanCosts held = costs;
-            held.hold_open_legs = true;
-            held.exact_open_tiles = exact;
-            held.max_open_tiles = 36;
-            held.leg_not_at_wall = not_at_wall;
-            held.max_searched = std::min<size_t>(costs.max_searched, HELD_MAX_SEARCHED);
-            out.push_back(held);
-        }
+    for (int not_at_wall : {costs.leg_not_at_wall, 0}){
+        RobustPlanCosts held = costs;
+        held.hold_open_legs = true;
+        held.exact_open_tiles = 1;
+        held.max_open_tiles = 36;
+        held.leg_not_at_wall = not_at_wall;
+        held.max_searched = std::min<size_t>(costs.max_searched, HELD_MAX_SEARCHED);
+        out.push_back(held);
     }
+    RobustPlanCosts timed = costs;
+    timed.hold_open_legs = true;
+    timed.exact_open_tiles = TAPPED_BACK_TILES;
+    timed.max_open_tiles = 36;
+    timed.per_open_tile = TAP_TILE_COST;
+    timed.leg_not_at_wall = 0;
+    timed.max_searched = std::min<size_t>(costs.max_searched, HELD_MAX_SEARCHED);
+    out.push_back(timed);
+    out.push_back(replan_costs(costs));
     return out;
 }
 
-//  Whether `score` beats `best`, the route's own plan's (if it passed): it
-//  passes in less time, and where `best` passed, with no more places to be
-//  interrupted and no more stops or replans to re-localize.
-bool faster(const Pokemon::RouteScore& score, const std::optional<Pokemon::RouteScore>& own, double best_ms){
-    if (score.verdict != Pokemon::RouteVerdict::PASS || (best_ms >= 0 && score.expected_ms >= best_ms)){
+//  Expected time a plan must save to walk back more than the route's own
+//  plan: a run past the goal to a wall and taps back saved 16 s into
+//  Twinleaf, the user's own route there; a second or two elsewhere is not
+//  worth the change of route.
+constexpr double WALK_BACK_WORTH_MS = 5000;
+
+//  Whether `score` is no worse than the route's own plan's in what the
+//  golden bench checks besides the expected time: its worst time, its
+//  places to be interrupted, its replans, and its backtracking (replans
+//  and tiles walked back), unless it saves WALK_BACK_WORTH_MS.
+bool no_worse(const Pokemon::RouteScore& score, size_t back, const Pokemon::RouteScore& own, size_t own_back){
+    if (score.worst_ms > own.worst_ms || score.recoveries > own.recoveries || score.replans > own.replans){
         return false;
     }
-    return !own || (score.recoveries <= own->recoveries && score.stops + score.replans <= own->stops + own->replans);
+    return score.replans + back <= own.replans + own_back || own.expected_ms - score.expected_ms >= WALK_BACK_WORTH_MS;
+}
+
+//  A replanner for the scorer that plans each set of tiles once, for every
+//  plan scored with it.
+class CachedReplanner{
+public:
+    explicit CachedReplanner(const ScoredRoute& route) : m_route(route) {}
+    Pokemon::RouteReplanner replanner(){
+        return [this](const std::vector<TilePos>& from) -> std::optional<std::vector<ScoredLeg>>{
+            std::vector<TilePos> key = from;
+            std::sort(key.begin(), key.end(), [](const TilePos& a, const TilePos& b){
+                return a.y != b.y ? a.y < b.y : a.x < b.x;
+            });
+            const auto found = m_plans.find(key);
+            if (found != m_plans.end()){
+                return found->second;
+            }
+            std::optional<std::vector<ScoredLeg>> legs;
+            const std::optional<std::vector<PlannedLeg>> again =
+                plan_recovered_route(m_route.world, from, m_route.goal, replan_costs(m_route.costs));
+            if (again){
+                legs = route_scored_legs(*again, m_route.speed);
+            }
+            m_plans.emplace(std::move(key), legs);
+            return legs;
+        };
+    }
+
+private:
+    struct TileLess{
+        bool operator()(const std::vector<TilePos>& a, const std::vector<TilePos>& b) const{
+            return std::lexicographical_compare(a.begin(), a.end(), b.begin(), b.end(), [](const TilePos& x, const TilePos& y){
+                return x.y != y.y ? x.y < y.y : x.x < y.x;
+            });
+        }
+    };
+    const ScoredRoute& m_route;
+    std::map<std::vector<TilePos>, std::optional<std::vector<ScoredLeg>>, TileLess> m_plans;
+};
+
+Pokemon::RouteScore score_with(const ScoredRoute& route, const std::vector<PlannedLeg>& legs, const Pokemon::RouteReplanner& replan){
+    return Pokemon::score_route(route_score_map(route.world, route.triggers), route.from, route.goal,
+        route_scored_legs(legs, route.speed), route_score_paces(), Pokemon::InterruptModel(), replan);
 }
 
 } // namespace
+
+
+RobustPlanCosts replan_costs(const RobustPlanCosts& costs){
+    RobustPlanCosts out = costs;
+    out.per_open_grass_tile = std::max(out.per_open_grass_tile, REPLAN_OPEN_GRASS_COST);
+    return out;
+}
 
 
 Pokemon::ScoreMap route_score_map(const StoryWorld& world, std::vector<TilePos> triggers){
@@ -112,15 +191,8 @@ std::vector<ScoredLeg> route_scored_legs(const std::vector<PlannedLeg>& legs, Mo
 }
 
 Pokemon::RouteScore score_planned_route(const ScoredRoute& route, const std::vector<PlannedLeg>& legs){
-    const Pokemon::RouteReplanner replan = [&route](const std::vector<TilePos>& from) -> std::optional<std::vector<ScoredLeg>>{
-        const std::optional<std::vector<PlannedLeg>> again = plan_recovered_route(route.world, from, route.goal, route.costs);
-        if (!again){
-            return std::nullopt;
-        }
-        return route_scored_legs(*again, route.speed);
-    };
-    return Pokemon::score_route(route_score_map(route.world, route.triggers), route.from, route.goal,
-        route_scored_legs(legs, route.speed), route_score_paces(), Pokemon::InterruptModel(), replan);
+    CachedReplanner replanner(route);
+    return score_with(route, legs, replanner.replanner());
 }
 
 std::vector<TilePos> blocked_stop_tiles(const StoryWorld& world, const std::vector<TilePos>& stopped, Direction direction){
@@ -147,22 +219,34 @@ std::optional<std::vector<PlannedLeg>> plan_fastest_route(const ScoredRoute& rou
     if (!best){
         return best;
     }
-    const Pokemon::RouteScore first = score_planned_route(route, *best);
-    const std::optional<Pokemon::RouteScore> own = first.verdict == Pokemon::RouteVerdict::PASS
-        ? std::optional<Pokemon::RouteScore>(first) : std::nullopt;
-    double best_ms = own ? first.expected_ms : -1;
-    for (const RobustPlanCosts& costs : held_costs(route.costs)){
+    CachedReplanner replanner(route);
+    const Pokemon::RouteReplanner replan = replanner.replanner();
+    const Pokemon::RouteScore own = score_with(route, *best, replan);
+    const bool own_passes = own.verdict == Pokemon::RouteVerdict::PASS;
+    const size_t own_back = Pokemon::tiles_walked_back(route_scored_legs(*best, route.speed));
+    double best_ms = own_passes ? own.expected_ms : -1;
+    for (const RobustPlanCosts& costs : other_costs(route.costs)){
         std::optional<std::vector<PlannedLeg>> legs = plan_recovered_route(route.world, route.from, route.goal, costs);
         if (!legs){
             continue;
         }
-        const Pokemon::RouteScore score = score_planned_route(route, *legs);
-        if (faster(score, own, best_ms)){
-            best = std::move(legs);
-            best_ms = score.expected_ms;
+        const Pokemon::RouteScore score = score_with(route, *legs, replan);
+        if (score.verdict != Pokemon::RouteVerdict::PASS || (best_ms >= 0 && score.expected_ms >= best_ms)){
+            continue;
         }
+        if (own_passes && !no_worse(score, Pokemon::tiles_walked_back(route_scored_legs(*legs, route.speed)), own, own_back)){
+            continue;
+        }
+        best = std::move(legs);
+        best_ms = score.expected_ms;
     }
     return best;
+}
+
+std::optional<std::vector<PlannedLeg>> plan_walk(const ScoredRoute& route, bool first){
+    return first
+        ? plan_fastest_route(route)
+        : plan_recovered_route(route.world, route.from, route.goal, replan_costs(route.costs));
 }
 
 

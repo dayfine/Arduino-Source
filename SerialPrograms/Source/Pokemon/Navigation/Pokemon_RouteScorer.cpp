@@ -281,6 +281,7 @@ private:
     void add_interruptions(PlanWalk& out, Branch& branch, size_t index, const TilePos& from, const LegWalk& walk) const;
     void recover(RouteScore& score, const std::vector<ScoredLeg>& legs, const Interruption& stop, size_t depth);
     RouteScore recovery_score(const std::vector<TilePos>& unsure, size_t depth);
+    bool relocalizes(const std::vector<TilePos>& unsure, const std::vector<ScoredLeg>& legs) const;
     static void fail(RouteScore& score, RouteVerdict verdict, const std::string& why);
 
     const ScoreMap& m_map;
@@ -290,7 +291,29 @@ private:
     const RouteReplanner& m_replan;
     std::map<std::string, RouteScore> m_done;
     std::set<std::string> m_open;
+    //  Recoveries in progress whose plan first stops every tile at one wall
+    //  out of harm's way (relocalizes()).
+    std::set<std::string> m_relocalizing;
 };
+
+//  Whether `legs` from `unsure` first walk every tile to one wall tile
+//  where nothing interrupts. A recovery that does is a retry from a known
+//  place: if it is interrupted where it was before, the walk does the same
+//  again, each time with the interruption's chance, so it ends.
+bool Scorer::relocalizes(const std::vector<TilePos>& unsure, const std::vector<ScoredLeg>& legs) const{
+    if (legs.empty() || legs.front().kind != ScoredLegKind::TO_WALL){
+        return false;
+    }
+    std::optional<TilePos> end;
+    for (const TilePos& pos : unsure){
+        const LegWalk walk = walk_to_wall(m_map, pos, legs.front(), m_paces);
+        if (!walk.stop || (end && *end != walk.ends.front())){
+            return false;
+        }
+        end = walk.ends.front();
+    }
+    return end && m_map.risk(*end) == TileRisk::NONE;
+}
 
 void Scorer::fail(RouteScore& score, RouteVerdict verdict, const std::string& why){
     if (score.verdict == RouteVerdict::PASS){
@@ -385,7 +408,10 @@ RouteScore Scorer::recovery_score(const std::vector<TilePos>& unsure, size_t dep
     RouteScore score;
     const std::string key = key_of(unsure);
     if (m_open.contains(key)){
-        fail(score, RouteVerdict::STRAND, "the recovery from " + key + " leads back to itself");
+        //  A retry from a wall: charged its replan alone (recover()).
+        if (!m_relocalizing.contains(key)){
+            fail(score, RouteVerdict::STRAND, "the recovery from " + key + " leads back to itself");
+        }
         return score;
     }
     const auto done = m_done.find(key);
@@ -402,8 +428,12 @@ RouteScore Scorer::recovery_score(const std::vector<TilePos>& unsure, size_t dep
         return score;
     }
     m_open.insert(key);
+    if (relocalizes(unsure, *legs)){
+        m_relocalizing.insert(key);
+    }
     score = this->score(unsure, *legs, depth);
     m_open.erase(key);
+    m_relocalizing.erase(key);
     if (score.verdict != RouteVerdict::PASS){
         score.why = "recovery from " + key + ": " + score.why;
     }

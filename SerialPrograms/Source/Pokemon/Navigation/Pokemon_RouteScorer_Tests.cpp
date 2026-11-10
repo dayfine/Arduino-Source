@@ -217,15 +217,30 @@ UnitTestResult test_taps_in_grass_need_a_replan(){
 }
 
 UnitTestResult test_recovery_back_through_the_grass_strands(){
-    //  The recovery walks back to the west wall and taps east through the
-    //  same grass: an interruption there leads to the same recovery again.
-    const ToyMap toy({"#.\"\"\"...."});
+    //  The recovery walks back to the west wall, still in the grass, and
+    //  taps east through it: an interruption there leads to the same
+    //  recovery again, from tiles never known.
+    const ToyMap toy({"#\"\"\"\"...."});
     const std::vector<ScoredLeg> taps{{.direction = Direction::EAST, .tiles = 5, .kind = ScoredLegKind::TAPS}};
     const RouteReplanner back = [](const std::vector<TilePos>&){
         return std::optional<std::vector<ScoredLeg>>({{.direction = Direction::WEST, .tiles = 4, .kind = ScoredLegKind::TO_WALL},
             {.direction = Direction::EAST, .tiles = 5, .kind = ScoredLegKind::TAPS}});
     };
     return all_of({expect(score(toy, {{1, 0}}, {6, 0}, taps, back), RouteVerdict::STRAND, "a recovery back through the grass")});
+}
+
+UnitTestResult test_recovery_from_a_wall_out_of_the_grass_retries(){
+    //  The same, but the west wall stops us on a tile out of the grass: the
+    //  recovery starts from a known tile each time, so an interruption on
+    //  the way back is a retry that ends, not a strand (00.04b
+    //  to_catch_grass, whose goal is in the grass).
+    const ToyMap toy({"#.\"\"\"...."});
+    const std::vector<ScoredLeg> taps{{.direction = Direction::EAST, .tiles = 5, .kind = ScoredLegKind::TAPS}};
+    const RouteReplanner back = [](const std::vector<TilePos>&){
+        return std::optional<std::vector<ScoredLeg>>({{.direction = Direction::WEST, .tiles = 4, .kind = ScoredLegKind::TO_WALL},
+            {.direction = Direction::EAST, .tiles = 5, .kind = ScoredLegKind::TAPS}});
+    };
+    return all_of({expect(score(toy, {{1, 0}}, {6, 0}, taps, back), RouteVerdict::PASS, "a recovery from a wall out of the grass")});
 }
 
 UnitTestResult test_too_many_recoveries(){
@@ -325,6 +340,10 @@ const RouteScorerCase ROUTE_SCORER_CASES[] = {
     {
         .input = {.name = "a recovery back through the grass strands", .test = test_recovery_back_through_the_grass_strands},
         .expectation = {.description = "STRAND"},
+    },
+    {
+        .input = {.name = "a recovery from a wall out of the grass retries", .test = test_recovery_from_a_wall_out_of_the_grass_retries},
+        .expectation = {.description = "PASS"},
     },
     {
         .input = {.name = "recoveries in a row are capped", .test = test_too_many_recoveries},

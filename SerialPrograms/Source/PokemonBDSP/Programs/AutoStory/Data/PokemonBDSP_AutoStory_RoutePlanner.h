@@ -123,6 +123,13 @@ struct RobustPlanCosts : TilePlanCosts{
     //  a long or short hold meets nothing a tap would not have. Off, such
     //  legs are planned as uncertain but walked in taps.
     bool hold_open_legs = false;
+    //  Extra per tall-grass tile an open leg enters. A wild battle on a leg
+    //  to a wall costs nothing to recover from: RouteWalker walks to the
+    //  wall again. On an open leg it loses the tile count, and the walk
+    //  plans again from the tiles round it, often back through the same
+    //  grass (00.04b to_catch_grass, 00.04d north_to_jubilife and 01.06
+    //  up_jubilifes_road were scored STRAND for that).
+    int per_open_grass_tile = 0;
     size_t max_spread = 5;      //  most tiles the player may be on after a leg
     //  Most sets of possible tiles to search before giving up. The search is
     //  over sets, not tiles, so it grows far faster than the map: all of

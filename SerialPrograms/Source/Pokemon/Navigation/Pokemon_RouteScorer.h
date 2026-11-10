@@ -108,7 +108,7 @@ using RouteReplanner = std::function<std::optional<std::vector<ScoredLeg>>(const
 enum class RouteVerdict{
     PASS,
     FAIL,           //  may end off the goal, overshoot onto a hazard, or never arrive
-    STRAND,         //  a recovery can lead back into itself
+    STRAND,         //  a recovery can lead back into itself without first stopping at a wall out of harm's way
     RETRIES,        //  more recoveries in a row than InterruptModel::max_recoveries
 };
 //  "PASS", "FAIL", "STRAND", "RETRIES".
