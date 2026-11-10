@@ -42,7 +42,7 @@ struct StoryRunCounts{
 };
 
 //  Adds `counts` to the shared AutoStory stats.
-void record_story_counts(AutoStoryStats& stats, const StoryRunCounts& counts);
+void record_story_counts(const StoryRunCounts& counts, AutoStoryStats& stats);
 
 
 } // namespace Pokemon

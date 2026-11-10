@@ -51,6 +51,7 @@ std::string checkpoint_pass_line(std::string_view checkpoint, size_t attempt, si
 //  attempt `next_attempt`:
 //      [Checkpoint] 00.04: failed, resetting for attempt 2
 std::string checkpoint_reset_line(std::string_view checkpoint, size_t next_attempt);
+
 //  The story engine reloads within segment `segment`, out of `attempts`:
 //      [Segment] 00: 00.02 failed, reloading for attempt 2/3
 std::string segment_reload_line(std::string_view segment, std::string_view checkpoint, size_t next_attempt, size_t attempts);
