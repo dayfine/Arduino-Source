@@ -7,7 +7,6 @@
 #include <format>
 #include <utility>
 #include "Common/Cpp/Exceptions.h"
-#include "Pokemon_StoryVariant.h"
 #include "Pokemon_StoryActions.h"
 
 namespace PokemonAutomation{
@@ -58,7 +57,7 @@ const StoryAction* StoryActionTable::find(StoryStepKind kind, std::string_view n
 }
 
 const StoryAction* StoryActionTable::find(const StoryStep& step) const{
-    return find(step.kind, variant_name(step.variant));
+    return find(step.kind, step.action);
 }
 
 
@@ -66,10 +65,14 @@ std::vector<std::string> lint_story_checkpoint(const StoryCheckpoint& data, cons
     std::vector<std::string> problems;
     for (size_t c = 0; c < data.steps.size(); c++){
         const StoryStep& step = data.steps[c];
-        if (table.find(step) == nullptr){
+        const StoryAction* action = table.find(step);
+        const std::vector<std::string> errors = action == nullptr
+            ? std::vector<std::string>{"no action"}
+            : story_args_errors(StoryActionSpec{.kind = step.kind, .name = step.action, .args = action->args}, step.args);
+        for (const std::string& error : errors){
             problems.emplace_back(std::format(
-                "{} step {} {}: no action for {} '{}'",
-                data.id, c + 1, step.name, story_step_kind_name(step.kind), variant_name(step.variant)
+                "{} step {} {}: {} for {} '{}'",
+                data.id, c + 1, step.name, error, story_step_kind_name(step.kind), step.action
             ));
         }
     }
@@ -86,6 +89,8 @@ bool StepGuard::stops_on_failure(const StoryStep&) const{
 void StepGuard::on_failure(const StoryStep&, const OperationFailedException&){}
 
 void StepGuard::on_interrupt(const StoryStep&, const InterruptCheck&){}
+
+void StepGuard::on_screen(const StoryStep&, const ScreenSettle&){}
 
 
 TableExecutor::TableExecutor(const StoryActionTable& table, StepGuard& guard)
@@ -122,7 +127,7 @@ Outcome TableExecutor::run_action(RunState& state, const StoryStep& step){
     if (const StoryAction* action = m_table.find(step)){
         return action->act(state, step);
     }
-    return StoryStepExecutor::run(state, step);
+    return unsupported_step(step);
 }
 
 //  Clears what interrupted the player before `step`, counting it in
@@ -133,8 +138,10 @@ std::optional<Outcome> TableExecutor::clear_interrupts(RunState& state, const St
         return std::nullopt;
     }
     InterruptCheck check = clear_story_interrupt(*m_interrupts, state, step);
+    m_guard.on_screen(step, check.screen);
     if (check.verdict.kind == InterruptKind::NONE){
-        return std::nullopt;
+        //  Nothing interrupted; failed only when the game is not running.
+        return check.outcome.succeeded() ? std::nullopt : std::optional<Outcome>(check.outcome);
     }
     if (check.outcome.succeeded() && ++cleared > m_interrupts->max_per_step){
         check.outcome = outcome_failed("too_many_interrupts", step.name);
