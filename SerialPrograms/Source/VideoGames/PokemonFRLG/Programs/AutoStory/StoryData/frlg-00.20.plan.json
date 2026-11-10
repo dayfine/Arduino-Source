@@ -1,0 +1,82 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "00.20",
+    "title": "Route 24's grass: an Oddish for Cut, then the Center",
+    "start": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
+    "events": [
+      {
+        "id": "mart_clerk",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeruleanCity_Mart", "tiles": [[4, 3]], "facing": "west"}
+        },
+        "why": "out of the Center to the Mart's clerk"
+      },
+      {
+        "id": "buy_poke_balls",
+        "kind": "game_action",
+        "action": "mart",
+        "args": {
+          "map": "CeruleanCity_Mart",
+          "budget": 1400,
+          "items": [{"item": "poke-ball", "quantity": 7}],
+          "floor": 1500
+        },
+        "why": "7 Poke Balls for the Oddish"
+      },
+      {
+        "id": "oddish_patch",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "Route24", "tiles": [[3, 19]]}
+        },
+        "why": "north over Nugget Bridge, west to the cliff and down column 3 onto the grass's first row, out of Shane's column 5"
+      },
+      {
+        "id": "catch_oddish",
+        "kind": "game_action",
+        "action": "capture",
+        "args": {
+          "species": "oddish",
+          "catches": 1,
+          "encounters": 30,
+          "balls": 7,
+          "pace": "east",
+          "turns": 2
+        },
+        "why": "wild battles until an Oddish, then Poke Balls; any other species is run from"
+      },
+      {
+        "id": "cerulean_nurse",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
+        },
+        "why": "back over the bridge to the Center"
+      },
+      {
+        "id": "heal_cerulean",
+        "kind": "heal",
+        "why": "full HP"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "lead": "after_brock",
+    "notes": {
+      "checkpoint": [
+        "Stopgap for console B's save, which caught nothing on Route 1. A new playthrough should instead catch a Rattata on Route 1 or 22 early, as its Cut user and spare member, and drop this row (and its walk over Nugget Bridge and back).",
+        "An Oddish for HM01 Cut, and a second member behind the lead (docs/design/AutoStory-FRLG-FutureEvents.md, \"Console B run choices\"). Route 24's grass (Route24 map.json: x 3..5, rows 19..31, west of Nugget Bridge) is the nearest to the Center with Oddish: FireRed's sRoute24_FireRed (pokefirered wild_encounters.json) has it in 25% of battles, Lv12..14, as Route 25's grass; Routes 5 and 6 aren't on the story's maps yet. Up the bridge, whose trainers 00.16 beat, west along rows 10..15 to the cliff (3, 15) and down column 3 to the grass's first row, (3, 19); the step paces east to (4, 19) and back. Camper Shane (5, 21) faces north, sight 5, over (5, 16..20): column 5 is kept off. The leg west ends on the cliff, not open: on console B (m63) an open leg west to (4, 15) ended a tile short, and the walk down column 5 came into Shane's sight.",
+        "First 7 Poke Balls at the Mart (row 1, 200 each; the bag isn't read, so the step buys them whatever the bag holds). The floor, from 00.15's 1500 less its 1400: the rival's 288 (4 x 18 x 4), the Rocket's 480 (4 x 15 x 8), Franklin's 540 and Nob's 468 (hikers, 9) alone make 1876 (pokefirered gTrainerMoneyTable). An Oddish at full HP (catch rate 255) stays in a Poke Ball about 1 time in 3 (Gen 3: a = 85, four shakes of 0.76), so 7 balls catch it about 94% of the time; the step throws 7 at most, in 30 battles (none an Oddish: 0.02%). Nothing weakens it: the HP bar isn't read on the console yet.",
+        "The Oddish joins the party second. Battles keep the lead in (PokemonFRLG_AutoStoryBattleDecisions.h): the Oddish is sent only when the lead faints in a trainer's battle, which counts as lost. Back to the nurse, and the save in the Center."
+      ]
+    }
+  },
+  "metadata": {"phase": "testing"}
+}

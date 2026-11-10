@@ -4,7 +4,7 @@
  *
  *  The capture step's decisions against a fake game: which encounters are
  *  run from, when balls or encounters run out, where a catch goes, what a
- *  shiny stops; its table variant; and a capture and a PC step run by the
+ *  shiny stops; its args; and a capture and a PC step run by the
  *  shared segment runner, as the program runs them, to show which failures
  *  reload the save and which stop the program.
  *
@@ -20,8 +20,9 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/Exceptions/ProgramFinishedException.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
-#include "Pokemon/AutoStory/Pokemon_StorySteps.h"
+#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "PokemonFRLG_AutoStoryCapture.h"
+#include "PokemonFRLG_AutoStoryStepTable.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -341,39 +342,48 @@ UnitTestResult test_capture_decisions(){
 }
 
 
-//  The table's variant, both ways, and the variants it refuses.
-UnitTestResult test_capture_variant(){
+//  The step's args, both ways, and the args it refuses.
+UnitTestResult test_capture_args(){
     const std::vector<CapturePlan> plans = {
         RATTATA,
         {.species = "pidgey", .catches = 2, .max_encounters = 30, .max_balls = 8, .pace = Direction::NORTH,
             .weaken_move = 3, .max_weaken_turns = 1},
     };
     for (const CapturePlan& plan : plans){
-        const std::string variant = capture_variant(plan);
-        const std::optional<CapturePlan> back = parse_capture_variant(variant);
+        const std::optional<CapturePlan> back = capture_plan_of(capture_args(plan));
         if (!back || back->species != plan.species || back->catches != plan.catches
             || back->max_encounters != plan.max_encounters || back->max_balls != plan.max_balls
             || back->pace != plan.pace || back->weaken_move != plan.weaken_move
-            || (plan.weaken_move && back->max_weaken_turns != plan.max_weaken_turns)
+            || back->max_weaken_turns != plan.max_weaken_turns
         ){
-            return "\"" + variant + "\" didn't read back as the plan it was made from.";
+            return "The " + plan.species + " plan didn't read back from its args.";
         }
     }
-    const std::optional<CapturePlan> short_form = parse_capture_variant("capture rattata");
-    if (!short_form || short_form->species != "rattata" || short_form->max_balls != 5 || short_form->weaken_move){
-        return "Expected \"capture rattata\" to read with the defaults.";
+    const Pokemon::StoryActionSpec* spec = Pokemon::find_story_action(story_action_specs(), Pokemon::StoryStepKind::GAME, CAPTURE_ACTION);
+    if (spec == nullptr){
+        return "No capture action among FRLG's actions.";
     }
-    for (std::string_view bad : {
-        "capture", "capture ", "capture balls=3", "capture rattata balls=0", "capture rattata move=5",
-        "capture rattata pace=up", "capture rattata colour=red", "capture rattata balls", "pc deposit slot=2 box=1",
-    }){
-        if (parse_capture_variant(bad)){
-            return "Expected \"" + std::string(bad) + "\" refused.";
+    const Pokemon::StoryActionArgs short_form = Pokemon::with_fallbacks(*spec, {{"species", std::string("rattata")}});
+    const std::optional<CapturePlan> defaults = capture_plan_of(short_form);
+    if (!defaults || defaults->species != "rattata" || defaults->max_balls != 5 || defaults->weaken_move){
+        return "Expected a capture of only a species to read with the defaults.";
+    }
+    const std::vector<std::pair<std::string, Pokemon::StoryArgValue>> bad_args{
+        {"species", std::string("")},
+        {"balls", int64_t(0)},
+        {"move", int64_t(5)},
+        {"pace", std::string("up")},
+    };
+    for (const auto& [key, value] : bad_args){
+        Pokemon::StoryActionArgs args = short_form;
+        args[key] = value;
+        if (capture_plan_of(args)){
+            return "Expected a bad " + key + " refused.";
         }
     }
     const Pokemon::StoryStep step = capture_step("catch_rattata", "Cut user", RATTATA);
-    if (step.kind != Pokemon::StoryStepKind::GAME || !parse_capture_variant(step.variant)){
-        return "Expected capture_step() to be a GAME step with a capture variant.";
+    if (step.kind != Pokemon::StoryStepKind::GAME || step.action != CAPTURE_ACTION || !capture_plan_of(step.args)){
+        return "Expected capture_step() to be a GAME capture step with its plan's args.";
     }
     return true;
 }
@@ -624,7 +634,7 @@ const AutoStoryCaptureCase AUTO_STORY_CAPTURE_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"the table's variant", test_capture_variant},
+        .input = {"the step's args", test_capture_args},
         .expectation = {},
     },
     {

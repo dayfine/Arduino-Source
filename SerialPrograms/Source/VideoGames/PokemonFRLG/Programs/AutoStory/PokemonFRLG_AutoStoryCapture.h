@@ -36,7 +36,8 @@
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
-#include "Pokemon/AutoStory/Pokemon_StorySteps.h"
+#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
 #include "Pokemon/Navigation/Pokemon_Grid.h"
 #include "PokemonFRLG_AutoStoryPcStorage.h"
 
@@ -65,17 +66,16 @@ struct CapturePlan{
     size_t max_weaken_turns = 2;
 };
 
-//  The prefix of a GAME step's variant that names a capture step.
-inline constexpr std::string_view CAPTURE_VARIANT_PREFIX = "capture ";
-
-//  `plan` as a GAME step's variant, e.g. "capture rattata catches=1
-//  encounters=20 balls=5 pace=east", with " move=1 turns=2" when it
-//  weakens (the move counted from 1).
-std::string capture_variant(const CapturePlan& plan);
-//  A variant from capture_variant(), whose keys after the species may come
-//  in any order or be left out (their defaults); nothing if `variant` isn't
-//  one or has a key or value it doesn't know.
-std::optional<CapturePlan> parse_capture_variant(std::string_view variant);
+//  The GAME action of a capture step: species WORD (required); catches
+//  INTEGER (1); encounters INTEGER (20); balls INTEGER (5); pace DIRECTION
+//  (east); move INTEGER (optional, from 1), the move that weakens; turns
+//  INTEGER (2).
+inline const std::string CAPTURE_ACTION = "capture";
+//  `plan` as its action's args.
+Pokemon::StoryActionArgs capture_args(const CapturePlan& plan);
+//  The plan a CAPTURE_ACTION step's args give; nothing if one is out of
+//  range.
+std::optional<CapturePlan> capture_plan_of(const Pokemon::StoryActionArgs& args);
 
 //  The table's step that runs `plan`.
 Pokemon::StoryStep capture_step(std::string name, std::string why, const CapturePlan& plan);
@@ -192,7 +192,7 @@ std::string capture_message(const CapturePlan& plan, const CaptureResult& result
 
 
 //  A capture or PC GAME step (see capture_step(), pc_step()) with these
-//  actions, the party read from `pc`: nothing for another variant. A capture that ends on a shiny
+//  actions, the party read from `pc`: nothing for another action. A capture that ends on a shiny
 //  throws ProgramFinishedException, so the segment stops without
 //  reloading, with a screenshot from `stream` if given; any other end but
 //  CAUGHT is a failed Outcome, as is a PC step that fails or is refused.
