@@ -7,7 +7,7 @@
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
 #include "CommonTools/Images/SolidColorTest.h"
-#include "PokemonLZA_AutoStoryActions.h"
+#include "PokemonLZA_AutoStoryDialogs.h"
 #include "PokemonLZA_AutoStoryScreenEvents.h"
 
 namespace PokemonAutomation{

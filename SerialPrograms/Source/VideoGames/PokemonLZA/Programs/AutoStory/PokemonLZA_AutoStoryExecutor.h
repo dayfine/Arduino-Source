@@ -3,10 +3,10 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  PLZA's way of doing the shared story steps
- *  (Pokemon/AutoStory/Pokemon_StorySteps.h) on the console, each kind with
- *  an action of PokemonLZA_AutoStoryActions.h:
+ *  (Pokemon/AutoStory/Types/Pokemon_StoryStep.h) on the console, each kind
+ *  with a function of PokemonLZA_AutoStoryActions.h:
  *
- *      ROUTE   variant "fly": fly to the target, whose map is a fast travel
+ *      ROUTE   action "fly": fly to the target, whose map is a fast travel
  *              place's slug ("vert-pokemon-center")
  *      TALK    A at what the player faces
  *      ANSWER  the first choice for yes, the second for no
@@ -26,7 +26,7 @@
  *              action of story_actions_not_implemented(), which throws
  *              StoryActionNotImplemented naming the code it waits for
  *
- *  Any other kind or variant fails by name: tile walks (LEGS, STEP) mean
+ *  Any other kind or action fails by name: tile walks (LEGS, STEP) mean
  *  nothing in Lumiose. A failed console step becomes a failed Outcome, so
  *  the segment reloads the row's save and tries again; an action that is not
  *  implemented ends the run instead.
@@ -40,10 +40,11 @@
 #include <map>
 #include <string>
 #include <vector>
+#include "CommonFramework/Language.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
-#include "Pokemon/AutoStory/Pokemon_StorySteps.h"
+#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "VideoGames/PokemonLZA/Options/PokemonLZA_BattleAIOption.h"
 
 namespace PokemonAutomation{
@@ -67,15 +68,17 @@ struct StoryEnv{
     //  The new game's name: letters and digits; type_player_name() capitalizes
     //  the first letter only. The lab's player is Kosmos.
     std::string player_name = "Kosmos";
+    //  The game's language, for the steps that read text.
+    Language language = Language::English;
     BattleAIOption& battle_ai;
 };
 
-//  The GAME steps whose console code does not exist yet, by variant, each
+//  The GAME steps whose console code does not exist yet, by action, each
 //  with the code it waits for. The executor throws StoryActionNotImplemented
 //  with that text instead of pressing buttons blind.
 const std::map<std::string, std::string, std::less<>>& story_actions_not_implemented();
 
-//  Whether this game's executor does `step`: its kind, and its variant
+//  Whether this game's executor does `step`: its kind, and its action
 //  among those the kind takes (the header comment's list).
 bool story_step_supported(const Pokemon::StoryStep& step);
 
@@ -86,22 +89,20 @@ public:
     explicit StoryExecutor(StoryEnv& env);
 
     virtual void begin_attempt(const Pokemon::StoryCheckpoint& data) override;
-    //  Logs the step, fails one this game does not do, and turns a failed
-    //  console step into a failed Outcome.
+    //  Logs the step, fails one this game does not do, does it by its kind,
+    //  and turns a failed console step into a failed Outcome.
     virtual Pokemon::Outcome run(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
 
-protected:
-    virtual Pokemon::Outcome route(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
-    virtual Pokemon::Outcome talk(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
-    virtual Pokemon::Outcome answer(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
-    virtual Pokemon::Outcome mash(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
-    virtual Pokemon::Outcome battle(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
-    virtual Pokemon::Outcome heal(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
-    virtual Pokemon::Outcome shop(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
-    virtual Pokemon::Outcome save(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
-    virtual Pokemon::Outcome game(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
-
 private:
+    //  Does a supported step (story_step_supported()) by its kind.
+    Pokemon::Outcome run_kind(const Pokemon::StoryStep& step);
+
+    Pokemon::Outcome route(const Pokemon::StoryStep& step);
+    Pokemon::Outcome answer(const Pokemon::StoryStep& step);
+    Pokemon::Outcome mash(const Pokemon::StoryStep& step);
+    Pokemon::Outcome shop(const Pokemon::StoryStep& step);
+    Pokemon::Outcome game(const Pokemon::StoryStep& step);
+
     //  Walks to the chosen starter (starter_moves()); not implemented for
     //  one whose walk was not recorded.
     void approach_starter();

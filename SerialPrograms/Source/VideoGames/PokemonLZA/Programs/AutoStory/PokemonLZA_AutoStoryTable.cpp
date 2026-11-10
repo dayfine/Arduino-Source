@@ -11,6 +11,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 #include "PokemonLZA_AutoStoryTable.h"
@@ -20,7 +21,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 using namespace std::chrono_literals;
-using Pokemon::Pose;
+using Pokemon::GridPose;
 using Pokemon::StoryCheckpoint;
 using Pokemon::StoryStep;
 using Pokemon::StoryStepKind;
@@ -28,37 +29,37 @@ using Pokemon::StoryStepKind;
 
 namespace{
 
-constexpr const char* LUMIOSE = "LumioseCity";
-constexpr const char* HOTEL_Z = "HotelZ";
-constexpr const char* WILD_ZONE_1 = "WildZone1";
-constexpr const char* RESEARCH_LAB = "PokemonResearchLab";
+constexpr std::string_view LUMIOSE = "LumioseCity";
+constexpr std::string_view HOTEL_Z = "HotelZ";
+constexpr std::string_view WILD_ZONE_1 = "WildZone1";
+constexpr std::string_view RESEARCH_LAB = "PokemonResearchLab";
 
 //  Somewhere in `map`: the game reads no position yet.
-Pose in(const char* map){
-    Pose pose;
-    pose.map = map;
+GridPose in(std::string_view map){
+    GridPose pose;
+    pose.map = std::string(map);
     return pose;
 }
 
-StoryStep make(StoryStepKind kind, std::string name, std::string why, std::string variant = ""){
+StoryStep make(StoryStepKind kind, std::string name, std::string why, std::string game_action = ""){
     StoryStep step;
     step.kind = kind;
     step.name = std::move(name);
     step.why = std::move(why);
-    step.variant = std::move(variant);
+    step.action = std::move(game_action);
     return step;
 }
 
 //  A GAME step that walks the move of story_moves() named `name`.
 StoryStep move(std::string name, std::string why){
-    std::string variant = name;
-    return make(StoryStepKind::GAME, std::move(name), std::move(why), std::move(variant));
+    std::string game_action = name;
+    return make(StoryStepKind::GAME, std::move(name), std::move(why), std::move(game_action));
 }
 
-//  A GAME step doing the executor's action `variant`: a choice, a story
+//  A GAME step doing the executor's action `game_action`: a choice, a story
 //  battle, or one of story_actions_not_implemented().
-StoryStep action(std::string variant, std::string name, std::string why){
-    return make(StoryStepKind::GAME, std::move(name), std::move(why), std::move(variant));
+StoryStep action(std::string game_action, std::string name, std::string why){
+    return make(StoryStepKind::GAME, std::move(name), std::move(why), std::move(game_action));
 }
 
 //  A scene: A through its text (choices: the top one) until the overworld.
@@ -76,7 +77,7 @@ StoryStep talk(std::string name, std::string why){
     return make(StoryStepKind::TALK, std::move(name), std::move(why));
 }
 
-StoryCheckpoint row(std::string id, std::string title, std::optional<Pose> start, std::vector<StoryStep> steps){
+StoryCheckpoint row(std::string id, std::string title, std::optional<GridPose> start, std::vector<StoryStep> steps){
     StoryCheckpoint checkpoint;
     checkpoint.id = std::move(id);
     checkpoint.title = std::move(title);
@@ -385,7 +386,7 @@ size_t story_rows_ready(){
     size_t ready = 0;
     for (const StoryCheckpoint& checkpoint : story_checkpoints()){
         for (const StoryStep& step : checkpoint.steps){
-            if (step.kind == StoryStepKind::GAME && story_actions_not_implemented().contains(step.variant)){
+            if (step.kind == StoryStepKind::GAME && story_actions_not_implemented().contains(step.action)){
                 return ready;
             }
         }

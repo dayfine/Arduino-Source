@@ -15,7 +15,7 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
-#include "Pokemon/AutoStory/Pokemon_StorySteps.h"
+#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "PokemonLZA_AutoStoryExecutor.h"
 #include "PokemonLZA_AutoStoryScreenEvents.h"
 #include "PokemonLZA_AutoStoryTable.h"
@@ -69,7 +69,7 @@ UnitTestResult test_story_table_lints(Logger&){
             if (!story_step_supported(step)){
                 return std::format(
                     "{} {}: the executor does no {} \"{}\".",
-                    row.id, step.name, Pokemon::story_step_kind_name(step.kind), step.variant
+                    row.id, step.name, Pokemon::story_step_kind_name(step.kind), step.action
                 );
             }
         }
@@ -109,8 +109,8 @@ UnitTestResult test_story_moves_known(Logger&){
     std::set<std::string> used;
     for (const StoryCheckpoint& row : story_checkpoints()){
         for (const StoryStep& step : row.steps){
-            if (step.kind == StoryStepKind::GAME && story_moves().contains(step.variant)){
-                used.insert(step.variant);
+            if (step.kind == StoryStepKind::GAME && story_moves().contains(step.action)){
+                used.insert(step.action);
             }
         }
     }
@@ -133,7 +133,7 @@ UnitTestResult test_not_implemented_actions(Logger&){
     for (const StoryCheckpoint& row : story_checkpoints()){
         for (const StoryStep& step : row.steps){
             if (step.kind == StoryStepKind::GAME){
-                used.insert(step.variant);
+                used.insert(step.action);
             }
         }
     }
@@ -167,7 +167,7 @@ UnitTestResult test_unsupported_steps_refused(Logger&){
         StoryStep step;
         step.kind = kind;
         step.name = "probe";
-        step.variant = variant;
+        step.action = variant;
         if (story_step_supported(step)){
             return std::format("Expected {} \"{}\" to be refused.", Pokemon::story_step_kind_name(kind), variant);
         }
