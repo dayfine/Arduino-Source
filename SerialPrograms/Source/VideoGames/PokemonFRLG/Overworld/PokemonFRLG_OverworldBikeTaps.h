@@ -44,8 +44,9 @@ struct BikeTapCalls{
     //  (STEP_TAP_TRIES).
     int tries = 1;
 };
-//  Taps per tile on foot: the first tap of a leg may only turn.
-constexpr int STEP_TAP_TRIES = 2;
+//  Taps per tile on foot: the first tap of a leg may only turn, and the
+//  game may miss a turn tap (MovementMechanics::MAX_TURN_TAPS).
+constexpr int STEP_TAP_TRIES = 3;
 //  How far a sure start may be off before a blocked tap finds the player:
 //  three runs of 00.30 stood 3 tiles off (console B, 2026-11-09).
 constexpr int BLOCKED_TAP_SLACK = 3;
