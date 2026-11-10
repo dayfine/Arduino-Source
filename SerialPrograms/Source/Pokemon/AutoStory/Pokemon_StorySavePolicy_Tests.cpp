@@ -284,10 +284,10 @@ inline constexpr std::string_view CHECKPOINT_0031 = R"({
         {"id": "beside_b3f_rare_candy", "kind": "route", "args": {"target": {"map": "RocketHideout_B3F", "tiles": [[12, 13]], "facing": "north"}}},
         {"id": "b3f_rare_candy", "kind": "talk"}
     ],
-    "postconditions": {
+    "metadata": {"phase": "testing", "postconditions": {
         "position": {"map": "RocketHideout_B3F", "tiles": [[12, 13]], "facing": "north"},
         "items": [{"item": "LIFT_KEY", "quantity": 1}, {"item": "RARE_CANDY", "quantity": 2}]
-    }
+    }}
 })";
 
 StoryCheckpoint checkpoint_0031(){

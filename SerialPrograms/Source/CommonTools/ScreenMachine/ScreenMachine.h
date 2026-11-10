@@ -22,6 +22,7 @@
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/Tools/VideoStream.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
+#include "ScreenObservation.h"
 #include "StepTrace.h"
 
 namespace PokemonAutomation{
@@ -33,6 +34,11 @@ struct ScreenState{
     //  Whether this is the screen. States are tried in order; the first match wins, so
     //  the last state should match anything.
     std::function<bool(const ImageViewRGB32& screen)> matches;
+    //  Whether this is the screen, from what a look at the game observed
+    //  instead of from its pixels, so the state also runs in a simulation.
+    //  A state may have either or both; read_screen_state() uses `matches`
+    //  and skips a state without it.
+    std::function<bool(const ScreenObservation& observation)> matches_observation = nullptr;
     //  The one step to take on this screen.
     std::function<void()> act;
     //  The screens the step may lead to besides staying here. Empty: any.
@@ -52,6 +58,10 @@ const ScreenState& read_screen_state(
     VideoStream& stream, CancellableScope& scope, StepTrace& trace,
     const std::vector<ScreenState>& states, VideoSnapshot& frame
 );
+
+//  The first of `states` whose matches_observation() accepts `observation`;
+//  null when none does. States without one are skipped.
+const ScreenState* match_screen_state(const std::vector<ScreenState>& states, const ScreenObservation& observation);
 
 //  The checks between reads: the screen must be one the previous state can lead
 //  to, no state may come up too often, and steps must keep changing the screen.

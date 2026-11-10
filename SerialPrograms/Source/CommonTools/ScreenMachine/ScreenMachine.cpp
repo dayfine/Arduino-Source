@@ -17,7 +17,7 @@ namespace{
 
 const ScreenState* classify(const std::vector<ScreenState>& states, const ImageViewRGB32& screen){
     for (const ScreenState& state : states){
-        if (state.matches(screen)){
+        if (state.matches && state.matches(screen)){
             return &state;
         }
     }
@@ -25,6 +25,16 @@ const ScreenState* classify(const std::vector<ScreenState>& states, const ImageV
 }
 
 } // namespace
+
+
+const ScreenState* match_screen_state(const std::vector<ScreenState>& states, const ScreenObservation& observation){
+    for (const ScreenState& state : states){
+        if (state.matches_observation && state.matches_observation(observation)){
+            return &state;
+        }
+    }
+    return nullptr;
+}
 
 
 const ScreenState& read_screen_state(

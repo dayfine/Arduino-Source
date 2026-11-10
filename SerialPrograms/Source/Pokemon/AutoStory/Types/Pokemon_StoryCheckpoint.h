@@ -15,6 +15,7 @@
 #include <string>
 #include <vector>
 #include "Pokemon_GridPose.h"
+#include "Pokemon_StoryCheckpointMetadata.h"
 #include "Pokemon_StoryPostconditions.h"
 #include "Pokemon_StoryStep.h"
 
@@ -30,7 +31,11 @@ struct StoryCheckpoint{
     std::optional<GridPose> start;
     std::vector<StoryStep> steps;
     //  What must hold when it is done; checked on its own after a run.
+    //  JSON: "metadata": {"postconditions": ...}.
     StoryPostconditions postconditions;
+    //  Its phase and verification (JSON "metadata"), which decide when a
+    //  run of it may save.
+    StoryCheckpointMetadata metadata = {};
 };
 
 

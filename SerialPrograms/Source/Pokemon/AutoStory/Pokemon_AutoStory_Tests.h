@@ -10,6 +10,7 @@
 #define PokemonAutomation_Pokemon_AutoStory_Tests_H
 
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "Engine/Pokemon_StoryEngine_Tests.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -38,6 +39,8 @@ inline void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_StoryActionArg(database);
     add_tests_AuthoredCheckpointJson(database);
     add_tests_StorySavePolicy(database);
+    add_tests_StoryEngine(database);
+    add_tests_StoryEnginePolicy(database);
 }
 
 
