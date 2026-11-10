@@ -6,9 +6,9 @@
  *  pret/pokefirered by devtools/maps/frlg_battle_data.py into BattleData/
  *  and built into the program: the type chart, every species' types and
  *  base stats, every move's power, type, PP, accuracy, priority and
- *  effect, every trainer's AI flags, items and party, and the trainers
- *  each map battles. Also which trainer each of the story's battle steps
- *  fights, and how carefully (BattleRisk).
+ *  effect, and every trainer's AI flags, items and party. Also which
+ *  trainer each of the story's battle steps fights, and how carefully
+ *  (BattleRisk).
  *
  *  Names are the program's slugs ("water-gun", "mr-mime"); trainers are
  *  pret's constants ("TRAINER_SUPER_NERD_MIGUEL").
@@ -138,9 +138,6 @@ std::optional<TrainerData> trainer_data(std::string_view trainer);
 //  Empty if not read. Logs what it read.
 std::string read_trainer_foe(Logger& logger, Language language, const ImageViewRGB32& screen, const std::vector<std::string>& party);
 
-//  The trainers `map`'s scripts and objects battle.
-std::vector<std::string> map_trainers(std::string_view map);
-
 //  The trainer the story's battle step `battle` fights on `map` (the map
 //  it leaves the player on). None for a battle the table doesn't name.
 std::optional<std::string_view> story_trainer(std::string_view map, std::string_view battle);
@@ -149,12 +146,12 @@ std::optional<std::string_view> story_trainer(std::string_view map, std::string_
 enum class BattleRisk{
     //  The move with the best expected damage against the foe out.
     LOW,
-    //  A battle sim (PokemonFRLG_AutoStoryBattleSim.h) picks the moves and
-    //  Potions, and the step fails before the fight when it wins too rarely.
+    //  The battles the simulation's plan is for (the rival, gym leaders,
+    //  bosses); fought as LOW until the checkpoint carries a plan.
     HIGH,
 };
 //  String representation of battle risk level.
-const char* battle_risk_name(BattleRisk risk);
+std::string_view battle_risk_name(BattleRisk risk);
 
 //  A trainer's risk by its kind: HIGH for the rival, gym leaders, bosses
 //  (Giovanni, the Rocket admins), the Elite Four and the Champion; LOW
@@ -164,9 +161,6 @@ BattleRisk default_battle_risk(std::string_view trainer);
 //  The risk of the story's battle step `battle` on `map`: its table row's,
 //  else its trainer's default. LOW for a battle the table doesn't name.
 BattleRisk story_battle_risk(std::string_view map, std::string_view battle);
-
-//  A HIGH battle is fought only if the sim wins at least this often.
-inline constexpr double MIN_WIN_CHANCE = 0.70;
 
 
 //  (name, JSON text) of each file in BattleData/, sorted by name.

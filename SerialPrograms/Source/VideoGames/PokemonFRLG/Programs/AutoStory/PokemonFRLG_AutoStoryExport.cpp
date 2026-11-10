@@ -78,8 +78,8 @@ JsonObject supplies_json(const Supplies& supplies){
     result["protected_slots"] = std::move(protected_slots);
     result["foes"] = strings(supplies.foes);
     result["trainer"] = supplies.trainer;
-    result["risk"] = battle_risk_name(supplies.risk);
-    result["foe_out"] = supplies.foe_out ? JsonValue(count(*supplies.foe_out)) : JsonValue();
+    result["risk"] = std::string(battle_risk_name(supplies.risk));
+    result["foe_out"] = supplies.foe_out.empty() ? JsonValue() : JsonValue(supplies.foe_out);
     result["wild_foes"] = strings(supplies.wild_foes);
     return result;
 }

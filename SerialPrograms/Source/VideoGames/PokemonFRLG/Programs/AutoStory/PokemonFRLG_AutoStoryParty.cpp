@@ -209,9 +209,10 @@ size_t effectiveness(const MoveData& move, const SpeciesData& defender){
 }
 
 //  `move`'s expected damage, summed over `foes`: its power times STAB
-//  times its effectiveness times the lead's base attacking stat for it.
-//  The foe's Defense and Sp. Def, levels, IVs, EVs, natures and accuracy
-//  are left out. Each foe must be in species_data().
+//  times its effectiveness times the lead's base attacking stat for it,
+//  times its accuracy (a move that never misses as 100%). The foe's
+//  Defense and Sp. Def, levels, IVs, EVs and natures are left out. Each
+//  foe must be in species_data().
 size_t expected_damage(const PartyMember& member, std::string_view move, const std::vector<std::string>& foes){
     const MoveData* data = move_data(move);
     const SpeciesData* own = species_data(member.species);
@@ -219,9 +220,10 @@ size_t expected_damage(const PartyMember& member, std::string_view move, const s
         return 0;
     }
     const bool stab = own->first == data->type || own->second == data->type;
+    const size_t accuracy = data->accuracy == 0 ? 100 : data->accuracy;
     size_t damage = 0;
     for (const std::string& foe : foes){
-        damage += (size_t)data->power * (stab ? 15 : 10) * effectiveness(*data, *species_data(foe)) * attacking_stat(*own, *data);
+        damage += (size_t)data->power * (stab ? 15 : 10) * effectiveness(*data, *species_data(foe)) * attacking_stat(*own, *data) * accuracy;
     }
     return damage;
 }

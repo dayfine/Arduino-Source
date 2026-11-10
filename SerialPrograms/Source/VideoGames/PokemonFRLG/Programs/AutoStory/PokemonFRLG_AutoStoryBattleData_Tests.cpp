@@ -12,13 +12,14 @@
 #include <functional>
 #include <optional>
 #include <string>
+#include <string_view>
+#include <tuple>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
 #include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
-#include "PokemonFRLG_AutoStoryBattleSim.h"
 #include "PokemonFRLG_AutoStoryParty.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 
@@ -35,7 +36,7 @@ struct AutoStoryBattleDataInput{
 };
 
 struct AutoStoryBattleDataExpectation{
-    const char* description;
+    std::string_view description;
 };
 
 struct AutoStoryBattleDataTestCase{
@@ -107,8 +108,7 @@ UnitTestResult test_data(){
     return true;
 }
 
-//  Every battle step in the table fights a trainer its map battles in
-//  pret's scripts, with a party.
+//  Every battle step in the table fights a trainer with a party.
 UnitTestResult test_story_trainers(){
     size_t battles = 0;
     for (const StoryCheckpoint& checkpoint : story_checkpoints()){
@@ -121,10 +121,6 @@ UnitTestResult test_story_trainers(){
             const std::optional<std::string_view> trainer = story_trainer(map, step.name);
             if (!trainer){
                 return std::format("{}, {} on {}: no trainer.", checkpoint.id, step.name, map);
-            }
-            const std::vector<std::string> on_map = map_trainers(map);
-            if (std::find(on_map.begin(), on_map.end(), *trainer) == on_map.end()){
-                return std::format("{} on {}: {} isn't one of the map's trainers.", step.name, map, *trainer);
             }
             if (trainer_party(*trainer).empty()){
                 return std::format("{} on {}: {} has no party.", step.name, map, *trainer);
@@ -183,6 +179,25 @@ UnitTestResult test_bite_wins(){
     return true;
 }
 
+//  The default risks: the rival and gym leaders HIGH, route trainers and
+//  grunts LOW.
+UnitTestResult test_risks(){
+    const std::vector<std::tuple<std::string_view, std::string_view, BattleRisk>> cases = {
+        {"CeruleanCity", "rival_cerulean", BattleRisk::HIGH},
+        {"CeruleanCity_Gym", "misty", BattleRisk::HIGH},
+        {"PewterCity_Gym", "brock", BattleRisk::HIGH},
+        {"Route24", "lass_ali", BattleRisk::LOW},
+        {"MtMoon_B2F", "rocket_grunt", BattleRisk::LOW},
+        {"Route1", "nobody", BattleRisk::LOW},
+    };
+    for (const auto& [map, battle, risk] : cases){
+        if (story_battle_risk(map, battle) != risk){
+            return std::format("{} on {}: expected {}.", battle, map, battle_risk_name(risk));
+        }
+    }
+    return true;
+}
+
 //  A wild Pokemon that wasn't read, or a name the data doesn't have, gets
 //  the plan's order: Water Gun first.
 UnitTestResult test_wild_fallback(){
@@ -220,6 +235,10 @@ const AutoStoryBattleDataTestCase AUTO_STORY_BATTLE_DATA_CASES[] = {
         .input = {.name = "a wild Pokemon not read: the plan's order", .body = test_wild_fallback},
         .expectation = {.description = "falls back to default move preference when unread"},
     },
+    {
+        .input = {.name = "battle risks by trainer", .body = test_risks},
+        .expectation = {.description = "rival and gym leaders HIGH, route trainers and grunts LOW"},
+    },
 };
 
 } // namespace
@@ -229,7 +248,6 @@ void add_tests_AutoStoryBattleData(UnitTestDatabase& database){
     for (const auto& scenario : AUTO_STORY_BATTLE_DATA_CASES){
         database.add<Test_AutoStoryBattleData>(scenario);
     }
-    add_tests_AutoStoryBattleSim(database);
 }
 
 

@@ -32,7 +32,7 @@
 #include <string_view>
 #include <vector>
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_SummaryMovesReader.h"
-#include "PokemonFRLG_AutoStoryDamage.h"
+#include "PokemonFRLG_AutoStoryStats.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -73,7 +73,8 @@ struct PartyMember{
     std::optional<Stats> stats = {};
 };
 
-//  The level the battle sim takes for `member`.
+//  The level the story takes for `member`: its level, or the level its
+//  moves were grown through if that is higher.
 uint8_t battle_level(const PartyMember& member);
 
 //  The species `species` evolves into by level, and at which level.
@@ -145,8 +146,8 @@ std::vector<std::string> trainer_party(std::string_view trainer);
 //  The slot to attack `foes` with, any of them as likely to be out: the
 //  move with PP left that does the most expected damage, ties going to
 //  attack_slot()'s order. Expected damage, summed over the foes, is power
-//  times STAB times the type chart, times the lead's base Attack or Sp.
-//  Atk, whichever the move's type uses (Gen 3: Fire, Water, Grass,
+//  times STAB times the type chart times accuracy, times the lead's base
+//  Attack or Sp. Atk, whichever the move's type uses (Gen 3: Fire, Water, Grass,
 //  Electric, Psychic, Ice, Dragon and Dark are special): Water Gun and Bite
 //  compare on Sp. Atk, Tackle on Attack. The foe's defenses are left out,
 //  so a frail foe's low Defense doesn't pull Tackle ahead of a type

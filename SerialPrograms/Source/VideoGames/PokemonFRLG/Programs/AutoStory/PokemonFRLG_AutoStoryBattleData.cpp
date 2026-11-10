@@ -280,12 +280,6 @@ std::string read_trainer_foe(Logger& logger, Language language, const ImageViewR
     return read;
 }
 
-std::vector<std::string> map_trainers(std::string_view map){
-    const JsonObject& maps = file_json("map_trainers").to_object_throw();
-    const auto it = maps.find(std::string(map));
-    return it == maps.end() ? std::vector<std::string>{} : strings_of(it->second);
-}
-
 std::optional<std::string_view> story_trainer(std::string_view map, std::string_view battle){
     for (const StoryTrainer& entry : STORY_TRAINERS){
         if (entry.map == map && entry.battle == battle){
@@ -295,7 +289,7 @@ std::optional<std::string_view> story_trainer(std::string_view map, std::string_
     return std::nullopt;
 }
 
-const char* battle_risk_name(BattleRisk risk){
+std::string_view battle_risk_name(BattleRisk risk){
     return risk == BattleRisk::HIGH ? "high" : "low";
 }
 

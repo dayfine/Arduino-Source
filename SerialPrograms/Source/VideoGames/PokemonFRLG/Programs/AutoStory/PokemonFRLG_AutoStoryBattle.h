@@ -88,9 +88,10 @@ struct Supplies{
     std::string trainer = {};
     //  How carefully that battle is fought (story_battle_risk()).
     BattleRisk risk = BattleRisk::LOW;
-    //  The slot of the trainer's party out, as the battle loop tracks it
-    //  (TrainerFoeTracker): the lead's attacks are chosen against it.
-    std::optional<size_t> foe_out = {};
+    //  The species of the trainer's Pokemon out, as read at the last battle
+    //  menu (read_trainer_foe()), "" if not read: the lead's attacks are
+    //  chosen against it.
+    std::string foe_out = {};
     //  The wild Pokemon of the battle going on, as read at its first battle
     //  menu (read_wild_foes()): the lead's attacks are chosen against it.
     //  Empty when it wasn't read; trainer battles never use it.

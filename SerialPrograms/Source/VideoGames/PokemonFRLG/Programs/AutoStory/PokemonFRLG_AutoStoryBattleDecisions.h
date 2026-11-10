@@ -155,7 +155,7 @@ private:
     //  The HP the last hit seen took, from the foe out `m_hit_by`; 0 if none
     //  was seen.
     double m_seen_hit = 0;
-    std::optional<size_t> m_hit_by;
+    std::string m_hit_by;
     //  The slots the game turned down, and the turns until they are tried again.
     std::map<size_t, int> m_refused;
     //  The members sent in after the lead fainted.

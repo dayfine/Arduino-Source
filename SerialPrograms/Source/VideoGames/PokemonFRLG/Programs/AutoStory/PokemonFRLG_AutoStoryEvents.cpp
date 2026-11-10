@@ -20,7 +20,6 @@
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStorySummary.h"
 #include "PokemonFRLG_AutoStoryTable.h"
-#include "PokemonFRLG_AutoStoryWinChance.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -169,33 +168,11 @@ Outcome take_step(StoryEnv& env, RunState& state, const StoryStep& step){
     return Pokemon::outcome_ok(to_pose(StoryPose{state.pose.map, tiles[0].next(direction), direction}));
 }
 
-//  Before a BattleRisk::HIGH battle the story may lose: the sim's win
-//  chance, the HP as the last bar read left it. Why not to fight, if so.
-std::optional<std::string> refuse_battle(StoryEnv& env, const StoryStep& step, std::string_view trainer){
-    const Supplies& supplies = env.supplies;
-    if (arg<bool>(step, "may_lose") || supplies.risk != BattleRisk::HIGH){
-        return std::nullopt;
-    }
-    const std::optional<WinEstimate> estimate = story_win_chance(supplies.lead, supplies.potions, supplies.hp_fill, trainer);
-    if (!estimate){
-        return std::nullopt;
-    }
-    env.console.log(std::format(
-        "Story: {} against {}: the sim wins {} of {} ({:.0f}%) with {}.",
-        step.name, trainer, estimate->wins, estimate->battles, 100 * estimate->chance, estimate->inputs
-    ));
-    return win_chance_refusal(*estimate);
-}
-
 Outcome battle(StoryEnv& env, const StoryStep& step){
     const std::optional<std::string_view> trainer = step.pose_after ? story_trainer(step.pose_after->map, step.name) : std::nullopt;
     env.supplies.trainer = trainer ? std::string(*trainer) : "";
     env.supplies.risk = trainer ? story_battle_risk(step.pose_after->map, step.name) : BattleRisk::LOW;
-    env.supplies.foe_out.reset();
-    if (const std::optional<std::string> refusal = trainer ? refuse_battle(env, step, *trainer) : std::nullopt){
-        env.console.log("Story: " + step.name + ": " + *refusal + ".", COLOR_RED);
-        return Pokemon::outcome_failed("win_chance", *refusal);
-    }
+    env.supplies.foe_out.clear();
     if (advance_text(env.console, env.context, BATTLE_TEXT_TIMEOUT, true) != TextEnd::BATTLE){
         return Pokemon::outcome_failed("no_battle");
     }
@@ -209,7 +186,7 @@ Outcome battle(StoryEnv& env, const StoryStep& step){
     const BattleEnd end = fight_battle(env.console, env.context, env.supplies, BattleKind::TRAINER, env.checks, env.language);
     env.supplies.foes.clear();
     env.supplies.trainer.clear();
-    env.supplies.foe_out.reset();
+    env.supplies.foe_out.clear();
     if (end == BattleEnd::LOST && !arg<bool>(step, "may_lose")){
         return Pokemon::outcome_failed("blackout");
     }
