@@ -76,6 +76,10 @@ struct RouteStep{
     //  WALK: a wall stops the player at the end, so the leg can be held for
     //  longer than it takes and still ends on its tile.
     bool to_wall = false;
+    //  WALK: the last tile is a spinner, which slides the player this many
+    //  tiles on, to `end` (spin_slide()). The hold must end on the spinner:
+    //  held on, the player walks on after the slide.
+    std::optional<int> spin_tiles;
     //  WALK, SURF: a wild Pokemon can appear on the way: the step crosses
     //  tall grass or water. Elsewhere (indoors, streets) no wild battle can
     //  start, so the walker doesn't watch for one.

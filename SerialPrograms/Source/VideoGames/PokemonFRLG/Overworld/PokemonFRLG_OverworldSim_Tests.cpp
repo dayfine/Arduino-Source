@@ -986,6 +986,7 @@ void add_tests_OverworldSim(UnitTestDatabase& database){
     }
     add_tests_OverworldLateBattle(database);
     add_tests_OverworldWarpFade(database);
+    add_tests_OverworldSpin(database);
 }
 
 

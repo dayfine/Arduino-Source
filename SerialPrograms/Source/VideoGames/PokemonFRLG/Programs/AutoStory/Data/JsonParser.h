@@ -24,6 +24,15 @@ StoryCheckpoint read_authored_checkpoint(const JsonValue& value, std::string_vie
 //  Load an embedded authored plan by filename without .json; no controller IO.
 StoryCheckpoint load_authored_checkpoint(std::string_view file);
 
+//  Every embedded authored plan (StoryData/*.plan.json), in order of id:
+//  the story table. A malformed plan or two with one id throw ParseException.
+std::vector<StoryCheckpoint> load_authored_story();
+
+//  `checkpoint` as an authored plan: the shared checkpoint, and its START
+//  menu, supplies, live start and handoff as `execution`. Supplies beyond
+//  the counted items and the lead after Brock aren't authored.
+JsonValue authored_checkpoint_json(const StoryCheckpoint& checkpoint);
+
 
 //  Embedded StoryData/*.json records: (filename without .json, text), sorted by name.
 const std::vector<std::pair<std::string, std::string>>& autostory_checkpoint_json();

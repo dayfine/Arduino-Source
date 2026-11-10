@@ -275,12 +275,18 @@ JsonValue story_step_json(const StoryStep& step){
     if (step.pose_after){
         result["declared_after"] = story_pose_json(*step.pose_after);
     }
+    if (step.once_per_save){
+        result["once_per_save"] = true;
+    }
+    if (!step.notes.empty()){
+        result["notes"] = strings_json(step.notes);
+    }
     return result;
 }
 
 StoryStep read_story_step(const JsonValue& value, std::string_view source){
     const JsonObject& root = fields(value, {"id", "kind", "why", "target", "direction", "legs", "fight_wild", "yes",
-        "may_lose", "battles", "items", "variant", "skip_if", "declared_after"}, source);
+        "may_lose", "battles", "items", "variant", "skip_if", "declared_after", "once_per_save", "notes"}, source);
     StoryStep result;
     result.name = root.get_string_throw("id");
     if (result.name.empty()){
@@ -312,26 +318,80 @@ StoryStep read_story_step(const JsonValue& value, std::string_view source){
     if (const JsonValue* field = root.get_value("declared_after")){
         result.pose_after = read_story_pose(*field, source);
     }
+    if (const JsonValue* field = root.get_value("once_per_save")){
+        result.once_per_save = field->to_boolean_throw();
+    }
+    if (const JsonValue* field = root.get_value("notes")){
+        result.notes = read_strings(*field, source);
+    }
     return result;
 }
+
+namespace{
+
+JsonArray events_json(const std::vector<StoryStep>& steps, const std::string& section){
+    JsonArray result;
+    for (const StoryStep& step : steps){
+        if (step.section == section){
+            result.push_back(story_step_json(step));
+        }
+    }
+    return result;
+}
+
+JsonArray sections_json(const StoryCheckpoint& checkpoint){
+    JsonArray result;
+    for (const StorySection& section : checkpoint.sections){
+        JsonObject item;
+        item["id"] = section.id;
+        item["title"] = section.title;
+        if (!section.notes.empty()){
+            item["notes"] = strings_json(section.notes);
+        }
+        item["events"] = events_json(checkpoint.steps, section.id);
+        result.push_back(std::move(item));
+    }
+    return result;
+}
+
+//  `events` read into `checkpoint`'s steps, in `section`, each id unique
+//  across the checkpoint (`names`).
+void read_events(
+    StoryCheckpoint& checkpoint, std::set<std::string>& names,
+    const JsonValue& events, const std::string& section, std::string_view source
+){
+    for (const JsonValue& event : events.to_array_throw(std::string(source))){
+        StoryStep step = read_story_step(event, source);
+        if (step.name.empty() || !names.insert(step.name).second){
+            throw ParseException("Empty or duplicate story event id.");
+        }
+        step.section = section;
+        checkpoint.steps.push_back(std::move(step));
+    }
+}
+
+} // namespace
 
 JsonValue story_checkpoint_json(const StoryCheckpoint& checkpoint){
     JsonObject result;
     result["id"] = checkpoint.id;
     result["title"] = checkpoint.title;
+    if (!checkpoint.notes.empty()){
+        result["notes"] = strings_json(checkpoint.notes);
+    }
     if (checkpoint.start){
         result["start"] = story_pose_json(*checkpoint.start);
     }
-    JsonArray events;
-    for (const StoryStep& step : checkpoint.steps){
-        events.push_back(story_step_json(step));
+    if (checkpoint.sections.empty()){
+        result["events"] = events_json(checkpoint.steps, "");
+    }else{
+        result["sections"] = sections_json(checkpoint);
     }
-    result["events"] = std::move(events);
     return result;
 }
 
 StoryCheckpoint read_story_checkpoint(const JsonValue& value, std::string_view source){
-    const JsonObject& root = fields(value, {"id", "title", "start", "events"}, source);
+    const JsonObject& root = fields(value, {"id", "title", "notes", "start", "events", "sections"}, source);
     StoryCheckpoint result;
     result.id = root.get_string_throw("id");
     if (result.id.empty()){
@@ -341,13 +401,38 @@ StoryCheckpoint read_story_checkpoint(const JsonValue& value, std::string_view s
     if (const JsonValue* start = root.get_value("start")){
         result.start = read_story_pose(*start, source);
     }
+    if (const JsonValue* notes = root.get_value("notes")){
+        result.notes = read_strings(*notes, source);
+    }
+    const JsonValue* events = root.get_value("events");
+    const JsonValue* sections = root.get_value("sections");
+    if ((events == nullptr) == (sections == nullptr)){
+        throw ParseException(std::format("{}: a checkpoint has events or sections, not both or neither.", source));
+    }
     std::set<std::string> names;
-    for (const JsonValue& event : root.get_array_throw("events")){
-        StoryStep step = read_story_step(event, source);
-        if (step.name.empty() || !names.insert(step.name).second){
-            throw ParseException("Empty or duplicate story event id.");
+    if (events){
+        read_events(result, names, *events, "", source);
+        return result;
+    }
+    std::set<std::string> section_ids;
+    for (const JsonValue& item : sections->to_array_throw(std::string(source))){
+        const JsonObject& section = fields(item, {"id", "title", "notes", "events"}, source);
+        StorySection header{.id = section.get_string_throw("id"), .title = section.get_string_throw("title"), .notes = {}};
+        if (header.id.empty() || !section_ids.insert(header.id).second){
+            throw ParseException(std::format("{}: empty or duplicate section id.", source));
         }
-        result.steps.push_back(std::move(step));
+        if (const JsonValue* notes = section.get_value("notes")){
+            header.notes = read_strings(*notes, source);
+        }
+        const size_t before = result.steps.size();
+        read_events(result, names, section.get_value_throw("events"), header.id, source);
+        if (result.steps.size() == before){
+            throw ParseException(std::format("{}: section {} has no events.", source, header.id));
+        }
+        result.sections.push_back(std::move(header));
+    }
+    if (result.sections.empty()){
+        throw ParseException(std::format("{}: no sections.", source));
     }
     return result;
 }

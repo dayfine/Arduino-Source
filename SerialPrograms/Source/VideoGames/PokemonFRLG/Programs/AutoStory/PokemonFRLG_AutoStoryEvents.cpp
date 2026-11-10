@@ -22,6 +22,7 @@
 #include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
+#include "PokemonFRLG_AutoStoryHideout.h"
 #include "PokemonFRLG_AutoStoryScreenEvents.h"
 #include "PokemonFRLG_AutoStorySummary.h"
 #include "PokemonFRLG_AutoStoryTable.h"
@@ -364,10 +365,6 @@ const std::vector<MapData>& story_maps(){
     return maps;
 }
 
-MoveSpeed move_speed(const StoryStep& step){
-    return step.variant == RUN_VARIANT ? MoveSpeed::RUN : MoveSpeed::WALK;
-}
-
 Pokemon::Pose to_pose(const StoryPose& pose){
     return Pokemon::tile_pose(pose.map, {pose.tile}, pose.facing);
 }
@@ -396,6 +393,7 @@ std::string save_card_place(const std::string& map){
         {"VermilionCity", "vermilion-city"},
         {"Route10", "route-10"},
         {"LavenderTown", "lavender-town"},
+        {"CeladonCity", "celadon-city"},
     };
     for (const auto& [prefix, place] : PLACES){
         if (map == prefix || map.rfind(prefix + "_", 0) == 0){
@@ -689,7 +687,10 @@ Outcome other_game_step(StoryEnv& env, RunState& state, const StoryStep& step){
         pace_trainer_battle(env, state, step, patch);
     });
     ConsolePcStorageActions pc(env.console, env.context);
-    std::optional<Outcome> done = run_storage_game_step(env.console.logger(), &env.console, step, capture, pc);
+    std::optional<Outcome> done = run_field_game_step(env.console, env.context, env.language, step);
+    if (!done){
+        done = run_storage_game_step(env.console.logger(), &env.console, step, capture, pc);
+    }
     if (!done){
         done = run_abilities(env, state, step);
     }
@@ -826,6 +827,8 @@ StoryCheckpoint joined_rows(const StoryCheckpoint& first, const StoryCheckpoint&
     row.live_start = first.live_start;
     row.steps = first.steps;
     row.steps.insert(row.steps.end(), second.steps.begin(), second.steps.end());
+    row.sections = first.sections;
+    row.sections.insert(row.sections.end(), second.sections.begin(), second.sections.end());
     return row;
 }
 

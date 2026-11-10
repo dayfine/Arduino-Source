@@ -77,6 +77,8 @@ void use_max_repel_from_bag(ConsoleHandle& console, ProControllerContext& contex
 enum class MoveSpeed{
     WALK,
     RUN,
+    //  On the Bicycle, already mounted (MovementMechanics::BIKE_TILE_TIME).
+    BIKE,
 };
 //  Name of a movement speed.
 const char* move_speed_name(MoveSpeed speed);

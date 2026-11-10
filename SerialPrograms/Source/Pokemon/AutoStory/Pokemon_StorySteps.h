@@ -134,6 +134,21 @@ struct StoryStep{
     //  Where the step leaves the player, when its action does not say: the
     //  end of a scene that moves the player.
     std::optional<Pose> pose_after;
+    //  The id of the checkpoint's section the step is in (StorySection);
+    //  empty for a checkpoint without sections. Logged with the event.
+    std::string section;
+    //  The author's notes on the step: why it is done this way, what was
+    //  seen on the console. Not read by any executor.
+    std::vector<std::string> notes;
+};
+
+//  A part of a checkpoint, e.g. one floor of a cave: a run of steps that
+//  name it in their `section`. Steps are numbered across the checkpoint,
+//  not per section.
+struct StorySection{
+    std::string id;
+    std::string title;
+    std::vector<std::string> notes;
 };
 
 // Milestone row in the story table grouping related steps and starting pose.
@@ -143,6 +158,12 @@ struct StoryCheckpoint{
     //  Where its starting save leaves the player; none for a new game.
     std::optional<Pose> start;
     std::vector<StoryStep> steps;
+    //  The author's notes on the whole checkpoint: the maps, trainers and
+    //  numbers its steps were planned from.
+    std::vector<std::string> notes;
+    //  In order; each step's `section` names one of them. Empty when the
+    //  checkpoint is not split.
+    std::vector<StorySection> sections;
 };
 
 

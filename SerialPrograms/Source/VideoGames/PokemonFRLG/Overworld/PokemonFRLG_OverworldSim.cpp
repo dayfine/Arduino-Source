@@ -96,8 +96,6 @@ namespace{
 constexpr Milliseconds NO_BATTLE_WAIT(15000);
 constexpr Milliseconds BATTLE_TIME(10000);
 constexpr Milliseconds MESSAGE_CLOSE(1000);
-//  The questions, "<MON> used CUT!" and the tree falling.
-constexpr Milliseconds CUT_TIME(4000);
 //  Rows of black below a small room, seen from this near its bottom.
 constexpr int BLACK_BELOW_ROWS = 5;
 constexpr int SMALL_ROOM_ROWS = 20;
@@ -147,6 +145,7 @@ OverworldSim::OverworldSim(std::vector<MapData> maps, MapPosition start, Directi
     if (m_map < 0){
         throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Sim: start on a map that isn't loaded: " + start.map);
     }
+    add_coded_field();
     m_player = PlayerState{start.point, elevation_at(map(), start.point), false};
     m_state.facing = facing;
     show(m_script.start_menu_open ? SimScreen::START_MENU : SimScreen::OVERWORLD, m_now);
@@ -243,7 +242,13 @@ std::optional<SimSeen> OverworldSim::watch_until(const std::vector<SimWatcher>& 
 
 std::optional<OverworldSim::Step> OverworldSim::take_warp(int map_index, const TilePos& tile) const{
     const MapWarp* warp = warp_at(m_maps[map_index], tile);
-    if (warp == nullptr || !warp->to){
+    if (warp == nullptr){
+        return std::nullopt;
+    }
+    if (m_lift_floor && m_script.lift_floors.contains(m_maps[map_index].name)){
+        return lift_warp(map_index);
+    }
+    if (!warp->to){
         return std::nullopt;
     }
     const int destination = find_map(m_maps, warp->to->map);
@@ -309,9 +314,12 @@ std::optional<OverworldSim::Step> OverworldSim::press(Direction direction) const
     if (kind != StepKind::WALK){
         return std::nullopt;
     }
-    const Step step{m_map, after_step_onto(map(), m_player, map(), ahead, kind), false, false, false};
+    Step step{m_map, after_step_onto(map(), m_player, map(), ahead, kind), false, false, false};
     if (warps_on_step(map(), ahead)){
         return take_warp(m_map, ahead);
+    }
+    if (!slide_on(step)){
+        return std::nullopt;
     }
     return step;
 }
@@ -491,6 +499,7 @@ void OverworldSim::take_steps(Direction direction, Milliseconds pressed, Millise
         if (step->walked_out){
             m_state.facing = Direction::SOUTH;
         }
+        pressed += after_slide(*step);
         if (after_step(*step, pressed)){
             return;
         }
@@ -651,23 +660,6 @@ bool OverworldSim::close_message(){
     return true;
 }
 
-bool OverworldSim::cut_tree(){
-    std::vector<MapObject>& objects = m_maps[m_map].objects;
-    const TilePos ahead = m_player.position.next(m_state.facing);
-    for (size_t c = 0; c < objects.size(); c++){
-        if (objects[c].name == "cut_tree" && objects[c].x == ahead.x && objects[c].y == ahead.y
-            && m_state.screen == SimScreen::OVERWORLD && !m_frozen
-        ){
-            m_cut_trees.emplace_back(m_map, objects[c]);
-            objects.erase(objects.begin() + c);
-            advance_to(m_now + CUT_TIME);
-            note("cut the tree on " + to_string(MapPosition{map().name, ahead}) + ".");
-            return true;
-        }
-    }
-    violation("no tree to cut " + std::string(direction_name(m_state.facing)) + " of " + to_string(m_state.position) + ".");
-    return false;
-}
 
 
 
@@ -759,6 +751,12 @@ size_t OverworldSimWalker::clear_late(const std::vector<Interrupt>& interrupts, 
     }
 }
 
+void OverworldSimWalker::wait_out_slide(const RouteStep& step){
+    if (step.spin_tiles){
+        m_sim.watch({}, SPIN_TILE_TIME * *step.spin_tiles + SPIN_STOP_SETTLE);
+    }
+}
+
 void OverworldSimWalker::check_overworld(const RouteStep& step){
     const SimScreen screen = m_sim.state().screen;
     if (m_rules.check_overworld && (screen == SimScreen::START_MENU || screen == SimScreen::MESSAGE)){
@@ -846,6 +844,7 @@ std::optional<WalkedTiles> OverworldSimWalker::walk_step(const RouteStep& step, 
     if (result.stopped){
         return dark_stop(step, walked_near(step, result.tiles, TILE_TIME));
     }
+    wait_out_slide(step);
     const Milliseconds fade_watched_from = m_rules.watch_fade_along_hold ? m_leg_start : m_sim.state().time;
     if (step.warps && !after_warp(step, warps_before, fade_watched_from)){
         if (!m_rules.find_player_after_warp_battle){

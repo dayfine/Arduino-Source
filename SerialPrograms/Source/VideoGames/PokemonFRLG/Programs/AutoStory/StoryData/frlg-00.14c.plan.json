@@ -1,0 +1,71 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "00.14c",
+    "title": "Cerulean Gym: Misty, then Water Pulse",
+    "notes": [
+      "Misty (TRAINER_LEADER_MISTY: Staryu Lv18, Starmie Lv21), talked to from (9, 6), beside her on the platform. Her win text runs on to the CASCADE BADGE, TM03 (Water Pulse) and its explanation, all read with the battle's. Bite is chosen against her party (Starmie is Water/Psychic). Back to the nurse round the pool's west side, out of Luis's line; then Water Pulse in place of Tail Whip, last, at the Center, from the bag's TM CASE. Ends where 00.15 starts."
+    ],
+    "start": {"certainty": "tile", "map": "CeruleanCity_Gym", "where": {"facing": "west", "kind": "tiles", "tiles": [[9, 7]]}},
+    "sections": [
+      {
+        "id": "misty",
+        "title": "Misty",
+        "events": [
+          {
+            "id": "beside_misty",
+            "kind": "route",
+            "variant": "run",
+            "target": {"certainty": "tile", "map": "CeruleanCity_Gym", "where": {"facing": "west", "kind": "tiles", "tiles": [[9, 6]]}},
+            "why": "up onto (9, 6), facing Misty (8, 6)"
+          },
+          {
+            "id": "challenge_misty",
+            "kind": "talk",
+            "why": "Misty's speech"
+          },
+          {
+            "id": "misty",
+            "kind": "battle",
+            "declared_after": {"certainty": "tile", "map": "CeruleanCity_Gym", "where": {"facing": "west", "kind": "tiles", "tiles": [[9, 6]]}},
+            "why": "Staryu and Starmie, with Bite; CASCADE BADGE and TM03"
+          }
+        ]
+      },
+      {
+        "id": "cerulean_center",
+        "title": "Out of the Gym to the Center, then Water Pulse",
+        "events": [
+          {
+            "id": "gym_way_out",
+            "kind": "legs",
+            "variant": "run",
+            "legs": [{"direction": "south", "tiles": 1}, {"direction": "east", "tiles": 3}, {"direction": "south", "tiles": 3}, {"direction": "west", "tiles": 8}, {"direction": "south", "tiles": 3}, {"direction": "east", "tiles": 5}],
+            "why": "walls (12, 7), (12, 10), (4, 10), (4, 13), (9, 13), round Luis's (9, 12)"
+          },
+          {
+            "id": "cerulean_nurse",
+            "kind": "route",
+            "variant": "run",
+            "target": {"certainty": "tile", "map": "CeruleanCity_PokemonCenter_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 4]]}},
+            "why": "down column 9 out of the Gym, to the Center"
+          },
+          {
+            "id": "heal_cerulean",
+            "kind": "heal",
+            "why": "full HP"
+          },
+          {
+            "id": "teach_water_pulse",
+            "kind": "game_action",
+            "variant": "teach tm03 water-pulse slot=1 forget=tail-whip",
+            "once_per_save": true,
+            "why": "TM03 Water Pulse in place of Tail Whip"
+          }
+        ]
+      }
+    ]
+  },
+  "execution": {"menu": "full", "supplies": {"lead": "after_brock"}}
+}

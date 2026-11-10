@@ -111,8 +111,14 @@ const char* recovery_name(RecoveryKind kind){
 }
 
 
-std::string event_log_line(const std::string& checkpoint, size_t number, const std::string& event, const std::string& status){
-    return std::format("[Event] {}/{} {}: {}", checkpoint, number, event, status);
+std::string event_log_line(
+    const std::string& checkpoint, size_t number, const std::string& event, const std::string& status,
+    const std::string& section
+){
+    if (section.empty()){
+        return std::format("[Event] {}/{} {}: {}", checkpoint, number, event, status);
+    }
+    return std::format("[Event] {}/{} [{}] {}: {}", checkpoint, number, section, event, status);
 }
 
 
@@ -198,7 +204,7 @@ struct EventRun{
 };
 
 void log_status(EventRun& run, const std::string& status){
-    run.log(event_log_line(run.checkpoint.id, run.number, run.event.name, status));
+    run.log(event_log_line(run.checkpoint.id, run.number, run.event.name, status, run.event.section));
 }
 
 

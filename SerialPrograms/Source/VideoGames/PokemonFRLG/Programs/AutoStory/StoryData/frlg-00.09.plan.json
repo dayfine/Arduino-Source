@@ -1,0 +1,74 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "00.09",
+    "title": "Pewter Gym: Camper Liam, then Brock",
+    "notes": [
+      "The by-hand save: 2 Potions and 1 Antidote left after the forest."
+    ],
+    "start": {"certainty": "tile", "map": "PewterCity_PokemonCenter_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 4]]}},
+    "sections": [
+      {
+        "id": "camper_liam",
+        "title": "Pewter Gym: Camper Liam",
+        "events": [
+          {
+            "id": "below_liam_line",
+            "kind": "route",
+            "target": {"certainty": "tile", "map": "PewterCity_Gym", "where": {"facing": "north", "kind": "tiles", "tiles": [[6, 9]]}},
+            "why": "in by the door, up column 6 to below Liam's row",
+            "notes": [
+              "Camper Liam (3, 8) always faces east (MOVEMENT_TYPE_FACE_RIGHT, sight 4) and sees (4..7, 8): walking north up column 6 from the door, the step onto (6, 8) starts his battle. He walks up to the player, who stays put and keeps facing north (FRLG doesn't turn the player to a trainer). That step is taken on its own, so no leg is cut."
+            ]
+          },
+          {
+            "id": "liam_line",
+            "kind": "step",
+            "direction": "north",
+            "why": "onto (6, 8), in Liam's line"
+          },
+          {
+            "id": "camper_liam",
+            "kind": "battle",
+            "declared_after": {"certainty": "tile", "map": "PewterCity_Gym", "where": {"facing": "north", "kind": "tiles", "tiles": [[6, 8]]}},
+            "why": "Geodude and Sandshrew; EXP before Brock"
+          }
+        ]
+      },
+      {
+        "id": "brock",
+        "title": "Pewter Gym: Brock",
+        "events": [
+          {
+            "id": "ready_for_brock",
+            "kind": "ready",
+            "target": {"certainty": "tile", "map": "PewterCity_PokemonCenter_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 4]]}},
+            "why": "items for a status or low HP; the nurse only if they can't",
+            "notes": [
+              "On to Brock unless red HP or a status is left that no item cures."
+            ]
+          },
+          {
+            "id": "before_brock",
+            "kind": "route",
+            "target": {"certainty": "tile", "map": "PewterCity_Gym", "where": {"facing": "north", "kind": "tiles", "tiles": [[6, 6]]}},
+            "why": "below Brock (6, 5); Liam, beaten, stands at (5, 8)"
+          },
+          {
+            "id": "challenge_brock",
+            "kind": "talk",
+            "why": "Brock's speech"
+          },
+          {
+            "id": "brock",
+            "kind": "battle",
+            "declared_after": {"certainty": "tile", "map": "PewterCity_Gym", "where": {"facing": "north", "kind": "tiles", "tiles": [[6, 6]]}},
+            "why": "Geodude and Onix, with Bubble; Boulder Badge and TM39"
+          }
+        ]
+      }
+    ]
+  },
+  "execution": {"menu": "full", "supplies": {"antidotes": 1, "potions": 2}}
+}
