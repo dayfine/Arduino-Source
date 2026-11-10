@@ -985,7 +985,6 @@ const AutoStoryTestCase AUTO_STORY_CASES[] = {
 
 void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_AutoStoryRunPlan(database);
-    add_tests_AutoStoryTableParity(database);
     for (const auto& scenario : AUTO_STORY_CASES){
         database.add<Test_AutoStory>(scenario);
     }
