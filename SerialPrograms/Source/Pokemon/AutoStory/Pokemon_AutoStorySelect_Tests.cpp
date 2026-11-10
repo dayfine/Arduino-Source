@@ -91,6 +91,7 @@ public:
         return true;
     }
 
+private:
     static std::string describe(const std::vector<std::pair<std::string, std::string>>& entries){
         std::string text;
         for (const auto& [slug, label] : entries){
@@ -99,9 +100,17 @@ public:
         return "[" + text + "]";
     }
 
-private:
     const AutoStorySelectScenario m_scenario;
 };
+
+//  (slug, label) entries as [0 "label", ...].
+std::string describe_entries(const std::vector<std::pair<std::string, std::string>>& entries){
+    std::string text;
+    for (const auto& [slug, label] : entries){
+        text += (text.empty() ? "" : ", ") + slug + " \"" + label + "\"";
+    }
+    return "[" + text + "]";
+}
 
 //  A game's checkpoint labels, in story order.
 struct StoryCheckpointDatabaseInput{
@@ -134,8 +143,7 @@ public:
             got.emplace_back(entry.slug, entry.display_name);
         }
         if (got != m_case.expectation.entries){
-            return "Expected " + Test_AutoStorySelectDatabase::describe(m_case.expectation.entries)
-                + ", got " + Test_AutoStorySelectDatabase::describe(got);
+            return "Expected " + describe_entries(m_case.expectation.entries) + ", got " + describe_entries(got);
         }
         return true;
     }
