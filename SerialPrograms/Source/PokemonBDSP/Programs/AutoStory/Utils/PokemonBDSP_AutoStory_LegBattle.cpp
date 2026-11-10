@@ -7,7 +7,9 @@
 #include <algorithm>
 #include <cstdint>
 #include <format>
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_WalkRules.h"
 #include "PokemonBDSP_AutoStory_LegBattle.h"
+#include "PokemonBDSP_AutoStory_WalkResult.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
