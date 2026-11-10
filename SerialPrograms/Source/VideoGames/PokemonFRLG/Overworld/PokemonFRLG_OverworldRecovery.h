@@ -68,7 +68,11 @@ enum class StepEnd{
 struct StepOutcome{
     StepEnd end = StepEnd::DONE;
     std::optional<WalkedTiles> walked;
+    //  STOPPED by a Bicycle tap that didn't move the player: the tile
+    //  ahead of where they stand is blocked (count_bike_taps()).
+    bool blocked = false;
 };
+
 
 //  Whether, after each leg to a wall, the walker taps once more toward the
 //  wall and logs whether the player moved (see RouteCalls).

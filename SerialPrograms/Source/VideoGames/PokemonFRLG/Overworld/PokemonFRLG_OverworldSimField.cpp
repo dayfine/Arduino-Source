@@ -33,6 +33,8 @@ bool OverworldSim::use_field(SimField field, size_t floor){
         return push_poster_switch();
     case SimField::LIFT_FLOOR:
         return choose_lift_floor(floor);
+    case SimField::BIKE_SELECT:
+        return press_select();
     }
     return false;
 }

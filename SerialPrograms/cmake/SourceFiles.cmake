@@ -1890,6 +1890,9 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_CodedRooms.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_CodedRooms.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_MovementMechanics.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldBikeTaps.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldBikeTaps.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldBike_Tests.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldLateBattle.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldLateBattle.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldLateBattle_Tests.cpp
@@ -1912,6 +1915,7 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute_Tests.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSimTaps.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSimField.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim_Tests.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSpin_Tests.cpp
@@ -1980,6 +1984,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryPaceSim.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryPaceSim.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryPaceSim_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryPacing.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryPacing.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryParty.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryParty.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryParty_Tests.cpp

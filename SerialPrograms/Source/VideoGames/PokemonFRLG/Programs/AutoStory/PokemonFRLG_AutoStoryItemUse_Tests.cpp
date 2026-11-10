@@ -36,6 +36,7 @@ public:
     std::map<BagPocket, std::vector<BagRow>> pockets;
     bool opens = true;
     std::vector<std::string> used;
+    std::vector<std::string> registered;
     bool open = false;
 
     virtual bool open_pocket(BagPocket pocket) override{
@@ -52,6 +53,9 @@ public:
         if (item.count > 0){
             item.count--;
         }
+    }
+    virtual void register_row(size_t row) override{
+        registered.push_back(pockets[m_pocket][row].item);
     }
     virtual void close_bag() override{
         open = false;
