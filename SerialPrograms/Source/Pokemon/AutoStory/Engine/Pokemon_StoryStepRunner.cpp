@@ -63,12 +63,15 @@ bool StoryStepRunner<PoseType>::holds(std::string_view condition, RunState& stat
     if (state.flags.contains(std::string(condition))){
         return true;
     }
-    for (const auto& [name, reader] : m_registry.game().readers){
-        if (name != condition || !reader){
+    for (const StoryGameReader<PoseType>& reader : m_registry.game().readers){
+        if (reader.name != condition || !reader.read){
+            continue;
+        }
+        if (reader.console_only && m_backend.kind() != StoryBackendKind::CONSOLE){
             continue;
         }
         Observation<PoseType> observation = m_backend.observe();
-        reader(m_backend, observation);
+        reader.read(m_backend, observation);
         const auto reading = observation.readings.find(condition);
         return reading != observation.readings.end() && reading->second != 0;
     }

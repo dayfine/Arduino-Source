@@ -65,12 +65,12 @@ void PlzaConsoleBackend::tap(Direction direction){
 }
 
 void PlzaConsoleBackend::hold(Direction direction, Milliseconds duration, Pokemon::StoryPace pace){
-    stick(direction_degrees(direction), duration, pace);
+    stick(direction_degrees(direction), duration, 0ms, pace);
 }
 
-void PlzaConsoleBackend::stick(double degrees, Milliseconds duration, Pokemon::StoryPace){
+void PlzaConsoleBackend::stick(double degrees, Milliseconds duration, Milliseconds release, Pokemon::StoryPace){
     const double radians = degrees * std::numbers::pi / 180.0;
-    pbf_move_left_joystick(m_env.context, {std::sin(radians), std::cos(radians)}, duration, 0ms);
+    pbf_move_left_joystick(m_env.context, {std::sin(radians), std::cos(radians)}, duration, release);
 }
 
 void PlzaConsoleBackend::wait(Milliseconds duration){
@@ -114,10 +114,9 @@ CancellableScope& PlzaConsoleBackend::scope(){
 
 void story_turn(PlzaBackend& backend, double degrees){
     //  150 ms is the tap the story was recorded with (console B, 2026-11-08);
-    //  the 300 ms after it lets the turn finish.
+    //  the 300 ms release after it lets the turn finish.
     backend.press(BUTTON_L, 100ms, 400ms);
-    backend.stick(degrees, 150ms, Pokemon::StoryPace::WALK);
-    backend.wait(300ms);
+    backend.stick(degrees, 150ms, 300ms, Pokemon::StoryPace::WALK);
 }
 
 PlzaReader heading_reader(StoryEnv& env){

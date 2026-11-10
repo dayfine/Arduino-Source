@@ -77,9 +77,10 @@ public:
     virtual void tap(Direction direction) = 0;
     virtual void hold(Direction direction, Milliseconds duration, StoryPace pace) = 0;
     //  The move stick held at `degrees` clockwise from north (straight on,
-    //  for a camera-relative game) for `duration`: the free-moving games'
-    //  walk and turn. A tile game's hold() is this at a multiple of 90.
-    virtual void stick(double degrees, Milliseconds duration, StoryPace pace) = 0;
+    //  for a camera-relative game) for `duration`, then let go for `release`
+    //  (a turn's time to finish) like press(): the free-moving games' walk
+    //  and turn. A tile game's hold() is this at a multiple of 90.
+    virtual void stick(double degrees, Milliseconds duration, Milliseconds release, StoryPace pace) = 0;
     virtual void wait(Milliseconds duration) = 0;
     //  The game now, once every input sent so far has been done.
     virtual Observation<PoseType> observe() = 0;
