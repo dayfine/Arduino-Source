@@ -193,6 +193,37 @@ UnitTestResult test_sim_walker_walks_slide(){
 }
 
 
+//  00.31 r1 (console B, 2026-11-10), Rocket Hideout B3F: off the stairs from
+//  B2F, the open leg west along the top corridor ended short, so the hold
+//  south to the wall stayed in the corridor, and the legs through the
+//  spinners after it all ran there: the walk ended a few tiles west of the
+//  stairs it came down, with no warp to B4F.
+UnitTestResult test_short_leg_off_hideout_stairs(){
+    static const std::vector<MapData> maps = overworld_maps();
+    const MapPosition start{"RocketHideout_B3F", {18, 2}};
+    const MapPosition goal{"RocketHideout_B4F", map_point(maps, "RocketHideout_B4F", "warp_0")};
+    const auto route = plan_overworld_route(maps, start, RouteGoal{goal, std::nullopt}, default_route_costs(), Direction::EAST);
+    if (!route){
+        return std::string("No route from B3F's stairs to B4F.");
+    }
+    for (const int short_by : {1, 2}){
+        SimScript script;
+        script.short_holds = {{1, short_by}};
+        OverworldSim sim(maps, start, Direction::EAST, script);
+        OverworldSimWalker walker(sim);
+        const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = start, .label = "Sim"};
+        const std::string failure = walker.run(*route, planning);
+        if (!failure.empty() || !(sim.state().position == goal)){
+            return std::format(
+                "With the first leg {} tile(s) short, walked to {}, failure \"{}\".",
+                short_by, to_string(sim.state().position), failure
+            );
+        }
+    }
+    return true;
+}
+
+
 //  A lift whose door, the exit mat (1, 2), lets out on the floor picked.
 std::vector<MapData> lift_maps(){
     const std::string FLOOR = R"({
@@ -303,6 +334,10 @@ const SpinCase SPIN_CASES[] = {
     {
         .input = {.name = "sim walker walks a slide", .body = test_sim_walker_walks_slide},
         .expectation = {.description = "sim walker walks a slide"},
+    },
+    {
+        .input = {.name = "a short leg off the hideout's stairs", .body = test_short_leg_off_hideout_stairs},
+        .expectation = {.description = "B4F reached after a short first leg on B3F"},
     },
     {
         .input = {.name = "lift lets out on the floor picked", .body = test_lift_floor},
