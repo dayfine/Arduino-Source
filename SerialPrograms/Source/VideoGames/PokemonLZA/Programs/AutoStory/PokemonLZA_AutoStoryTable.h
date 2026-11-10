@@ -49,10 +49,6 @@ const std::vector<std::pair<std::string, std::string>>& autostory_checkpoint_jso
 //  starts without a save; it starts on the title screen.
 const std::vector<Pokemon::StoryCheckpoint>& story_checkpoints();
 
-//  The C++ rows the JSON files were written from, for the parity test.
-//  Removed once it passes.
-const std::vector<Pokemon::StoryCheckpoint>& story_checkpoints_cpp();
-
 //  The rows that end on one of the game's autosaves and do not save
 //  themselves (their JSON "execution": {"save": "autosave"}): before 03.02
 //  the main menu cannot save. Each ends where the game autosaved in the
