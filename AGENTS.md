@@ -314,6 +314,9 @@ so keep it where it clearly pays off. `std::string_view` is the exception (see S
   ids (`for (std::string_view slug : {...})`). Never store it past the call (TotW #1, #180).
   The user's call over upstream's `const std::string&` habit (2026-11-02): fix it across our PRs
   before an upstream handoff. Existing upstream APIs we don't otherwise touch keep their signature.
+- **No `char*` / `char[]` in new code.** Use `std::string`, or `std::string_view`
+  (`inline constexpr std::string_view` for constants); `unsigned char` bytes and `main(argc, argv)`
+  are fine (the user, review of #312). Code Health fails added lines.
 - **`std::format`** for messages with several parts, instead of `+` / `std::to_string`
   chains or `ostringstream` (TotW #3, #124). Raw string literals for embedded JSON (TotW #64).
 
@@ -355,12 +358,19 @@ so keep it where it clearly pays off. `std::string_view` is the exception (see S
   `/*save=*/false` at the call site.
 - **No sentinel values in new APIs** (`-1`, `""`, `0` meaning "none"). Return
   `std::optional` or a result enum like `WildBattleExitResult` (TotW #171). For an optional
-  input, overload or take `const T*`, not `const std::optional<T>&` or `= ""` (TotW #163).
+  input, use a default argument with a real value, `std::optional<T>` by value or `const T*`,
+  not `const std::optional<T>&` or `= ""` (TotW #163).
 - **No top-level `const` on by-value parameters in declarations** (TotW #109).
 - **File-local helpers go in an unnamed `namespace{`**, not `static` and not the header
   (TotW #186).
 - **Overloads only when every overload means the same thing**
   (`move_cursor_to_option(..., BattleMenuOption / BattleMoveOption)`) (TotW #148).
+- **Default arguments over overloads.** When one overload's parameters are the other's plus more,
+  write one function with a default argument or a `std::optional` parameter (the user, review of
+  #312). Code Health fails such a pair in a header when either is new.
+- **Few names per header:** at most 8 public namespace-scope names (types, aliases, free functions
+  with their overloads, constants); 7-8 is a hint to split. `detail`/anonymous namespaces and class
+  members don't count. Code Health holds new headers to 8 and existing ones to their base count.
 - **Lambdas, not `std::bind`** (TotW #108). Free functions over extra public methods
   (TotW #99).
 

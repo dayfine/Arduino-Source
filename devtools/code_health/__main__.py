@@ -5,7 +5,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from . import allow, layering, style
+from . import allow, header_api, layering, style
 from .classes import measure_classes
 from .findings import annotations
 from .git_files import changed_files, default_base, read_revision
@@ -14,7 +14,7 @@ from .policy import advisories, bypasses, evaluate
 
 
 def analyze(path, source):
-    return measure(path, source) + measure_classes(path, source)
+    return measure(path, source) + measure_classes(path, source) + header_api.measure_header(path, source)
 
 
 def run(root, base_ref=None, github=False):
@@ -39,7 +39,10 @@ def run(root, base_ref=None, github=False):
         bypassed.extend(notices)
         notes.extend(unneeded)
         style_errors, style_notes = style.check(current, source, previous_source)
-        failures.extend(style_errors)
+        style_errors += header_api.prefix_overloads(current, source, previous_source)
+        style_errors, waived, unattached = allow.waive(current, source, allowances, style_errors)
+        failures.extend(style_errors + unattached)
+        bypassed.extend(waived)
         notes.extend(style_notes)
         advisory += sum(m.check == 'file_lines' and 500 < m.value <= 1000 for m in metrics)
     print(f'Scanned {len(changes)} changed C++ files against {base_ref}.')
