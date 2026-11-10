@@ -27,6 +27,16 @@ namespace{
 constexpr long long TAP_MS = 800;
 //  Confirming a stop at a wall: walk_until_dpad() watches a still screen.
 constexpr long long WALL_STOP_MS = 1000;
+//  Interruptions, estimated (not measured): a wild battle a tile in tall
+//  grass one time in ten, and run from in 12 s; a wanderer in the way a
+//  tile in four of their zone, waited out in 2.5 s; a trainer battle
+//  45 s; a stop and a new plan 2 s.
+constexpr double ENCOUNTER_PER_TILE = 0.1;
+constexpr long long WILD_BATTLE_MS = 12000;
+constexpr double WANDERER_PER_TILE = 0.25;
+constexpr long long WANDERER_WAIT_MS = 2500;
+constexpr long long TRAINER_BATTLE_MS = 45000;
+constexpr long long REPLAN_MS = 2000;
 //  Most sets a search with held legs looks through: their wide ends make
 //  many more sets than taps do, so a held plan not found quickly is left
 //  to the taps.
@@ -130,7 +140,7 @@ private:
 
 Pokemon::RouteScore score_with(const ScoredRoute& route, const std::vector<PlannedLeg>& legs, const Pokemon::RouteReplanner& replan){
     return Pokemon::score_route(route_score_map(route.world, route.triggers), route.from, route.goal,
-        route_scored_legs(legs, route.speed), route_score_paces(), Pokemon::InterruptModel(), replan);
+        route_scored_legs(legs, route.speed), route_score_paces(), route_interrupt_model(), replan);
 }
 
 } // namespace
@@ -177,7 +187,19 @@ Pokemon::RoutePaces route_score_paces(){
         .tap_ms = TAP_MS,
         .press_ms = ROUTE_TURN_TAP.count() * 2,
         .stop_ms = WALL_STOP_MS,
+        .open_hold_error = open_hold_error,
     };
+}
+
+Pokemon::InterruptModel route_interrupt_model(){
+    Pokemon::InterruptModel model;
+    model.encounter_per_tile = ENCOUNTER_PER_TILE;
+    model.encounter_ms = WILD_BATTLE_MS;
+    model.wanderer_per_tile = WANDERER_PER_TILE;
+    model.wanderer_ms = WANDERER_WAIT_MS;
+    model.trainer_ms = TRAINER_BATTLE_MS;
+    model.replan_ms = REPLAN_MS;
+    return model;
 }
 
 std::vector<ScoredLeg> route_scored_legs(const std::vector<PlannedLeg>& legs, MoveSpeed speed){

@@ -71,7 +71,19 @@ RoutePaces toy_paces(){
     return {
         .ms_per_tile = [](Direction, bool run){ return run ? 100LL : 250LL; },
         .start_ms = 250, .tap_ms = 800, .press_ms = 100, .stop_ms = 1000,
+        .open_hold_error = [](size_t tiles){ return 1 + tiles / 5; },
     };
+}
+
+InterruptModel toy_model(){
+    InterruptModel model;
+    model.encounter_per_tile = 0.1;
+    model.encounter_ms = 12000;
+    model.wanderer_per_tile = 0.25;
+    model.wanderer_ms = 2500;
+    model.trainer_ms = 45000;
+    model.replan_ms = 2000;
+    return model;
 }
 
 std::function<bool(const TilePos&)> exactly(const TilePos& goal){
@@ -79,7 +91,7 @@ std::function<bool(const TilePos&)> exactly(const TilePos& goal){
 }
 
 RouteScore score(const ToyMap& toy, const std::vector<TilePos>& from, const TilePos& goal,
-    const std::vector<ScoredLeg>& legs, const RouteReplanner& replan = nullptr, const InterruptModel& model = InterruptModel()
+    const std::vector<ScoredLeg>& legs, const RouteReplanner& replan = nullptr, const InterruptModel& model = toy_model()
 ){
     return score_route(toy.score_map(), from, exactly(goal), legs, toy_paces(), model, replan);
 }
@@ -248,7 +260,7 @@ UnitTestResult test_too_many_recoveries(){
     const RouteReplanner to_wall = [](const std::vector<TilePos>&){
         return std::optional<std::vector<ScoredLeg>>({{.direction = Direction::EAST, .tiles = 5, .kind = ScoredLegKind::TO_WALL}});
     };
-    InterruptModel model;
+    InterruptModel model = toy_model();
     model.max_recoveries = 0;
     return all_of({expect(score(toy, {{0, 0}}, {5, 0}, {{.direction = Direction::EAST, .tiles = 5, .kind = ScoredLegKind::TAPS}}, to_wall, model),
         RouteVerdict::RETRIES, "a replan with no recoveries allowed")});

@@ -44,10 +44,6 @@ size_t tiles_walked_back(const std::vector<ScoredLeg>& legs){
     return tiles;
 }
 
-size_t open_hold_error(size_t tiles){
-    return 1 + tiles / 5;
-}
-
 const char* verdict_name(RouteVerdict verdict){
     switch (verdict){
     case RouteVerdict::PASS:
@@ -160,7 +156,7 @@ std::string unsafe_overshoot(const ScoreMap& map, const TilePos& before, const T
 LegWalk walk_open_hold(const ScoreMap& map, const TilePos& from, const ScoredLeg& leg,
     const RoutePaces& paces, const std::function<bool(const TilePos&)>& goal
 ){
-    const size_t error = open_hold_error(leg.tiles);
+    const size_t error = paces.open_hold_error ? paces.open_hold_error(leg.tiles) : 0;
     const size_t fewest = leg.tiles > error ? leg.tiles - error : 0;
     const std::vector<TilePos> all = walk_steps(map, from, leg.direction, leg.tiles + error);
     LegWalk walk;

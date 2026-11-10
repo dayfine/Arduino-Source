@@ -36,13 +36,20 @@ struct WallHit{
 WallHit slide_to_wall(const StoryWorld& world, const Pokemon::TilePos& from, Pokemon::Direction direction);
 
 
+//  How many tiles short or long a timed hold of `tiles` tiles may end: one,
+//  and one more every 5 tiles (on the console a 7-tile walk went 9).
+//  Measured walking only; a run is assumed the same. BDSP's one model of a
+//  timed hold's error, for the planner and the route scorer
+//  (route_score_paces()).
+size_t open_hold_error(size_t tiles);
+
 //  A straight run in one direction.
 struct TileLeg{
     Pokemon::Direction direction = Pokemon::Direction::NORTH;
     size_t tiles = 0;           //  tiles travelled; a ledge hop counts 2
     bool ends_at_wall = false;  //  the next tile in `direction` stops the player
     //  An open leg held for its tiles' time instead of tapped a tile at a
-    //  time: much faster, but it may end Pokemon::open_hold_error() tiles
+    //  time: much faster, but it may end open_hold_error() tiles
     //  short or long (RobustPlanCosts::hold_open_legs).
     bool held = false;
 };
@@ -108,7 +115,7 @@ std::string to_string(const PlannedLeg& leg);
 
 //  Cost configuration parameters accounting for movement execution tolerances.
 struct RobustPlanCosts : TilePlanCosts{
-    //  An open leg of n tiles may end Pokemon::open_hold_error(n) tiles
+    //  An open leg of n tiles may end open_hold_error(n) tiles
     //  short or long: on the console 7 tiles went 9.
     //  Open legs this many tiles or shorter land exactly: a short hold moves
     //  whole tiles. 0 keeps every open leg uncertain.
@@ -142,7 +149,7 @@ struct RobustPlanCosts : TilePlanCosts{
 };
 
 //  Cheapest legs that take the player from any of the tiles in `from` to tiles
-//  that are all `goal`, even if every open leg ends up Pokemon::open_hold_error() tiles
+//  that are all `goal`, even if every open leg ends up open_hold_error() tiles
 //  off: the walls of later legs must bring the possible positions together.
 //  Legs that would leave the maps or enter a door are not used, nor legs that
 //  run along a zone where someone wanders: two tiles of it in a row, the

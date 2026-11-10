@@ -11,7 +11,6 @@
 #include <queue>
 #include "Common/Cpp/Exceptions.h"
 #include "Pokemon/Navigation/Pokemon_LegPlanner.h"
-#include "Pokemon/Navigation/Pokemon_RouteScorer.h"
 #include "PokemonBDSP_AutoStory_RoutePlanner.h"
 
 namespace PokemonAutomation{
@@ -363,7 +362,7 @@ std::optional<Expansion> open_leg(const StoryWorld& world, const Spread& spread,
     Expansion expansion;
     int grass = 0;
     int wander = 0;
-    const int error = tiles <= costs.exact_open_tiles ? 0 : (int)Pokemon::open_hold_error((size_t)tiles);
+    const int error = tiles <= costs.exact_open_tiles ? 0 : (int)open_hold_error((size_t)tiles);
     const bool held = costs.hold_open_legs && error > 0;
     for (const TilePos& pos : spread){
         std::vector<TilePos> ends;
@@ -507,6 +506,10 @@ private:
 };
 
 } // namespace
+
+size_t open_hold_error(size_t tiles){
+    return 1 + tiles / 5;
+}
 
 std::optional<std::vector<PlannedLeg>> plan_robust_route(
     const StoryWorld& world,

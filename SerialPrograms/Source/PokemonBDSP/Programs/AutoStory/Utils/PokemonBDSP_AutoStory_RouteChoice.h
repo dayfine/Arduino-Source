@@ -31,9 +31,13 @@ namespace PokemonBDSP{
 //  scene starts and stops the player.
 Pokemon::ScoreMap route_score_map(const StoryWorld& world, std::vector<Pokemon::TilePos> triggers = {});
 
-//  RouteWalker's paces: the measured walking and running times, a tap of
-//  walk_tiles_dpad(), and the still screen a stop at a wall is confirmed by.
+//  BDSP's profile for the shared route scorer. RouteWalker's paces: the
+//  measured walking and running times, a tap of walk_tiles_dpad(), the
+//  still screen a stop at a wall is confirmed by, and a timed hold's error
+//  (open_hold_error()).
 Pokemon::RoutePaces route_score_paces();
+//  How often BDSP's walks are interrupted and what each costs.
+Pokemon::InterruptModel route_interrupt_model();
 
 //  `legs` as RouteWalker walks them at `speed`: legs to a wall and held
 //  legs held, other open legs tapped.

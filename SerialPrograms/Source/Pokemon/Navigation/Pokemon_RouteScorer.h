@@ -11,8 +11,15 @@
  *  their chance times the recovery they need, and a recovery that can lead
  *  back into itself strands the player: the plan fails.
  *
- *  Game-neutral: the game supplies the step rules, the tile risks, the paces
- *  and, for recoveries, its replanner.
+ *  Game-neutral: the game supplies the step rules, the tile risks, its
+ *  paces and hold error (RoutePaces), how often and how dearly it is
+ *  interrupted (InterruptModel) and, for recoveries, its replanner. Nothing
+ *  here defaults to one game's numbers: BDSP's profile is in
+ *  PokemonBDSP_AutoStory_RouteChoice. FRLG, to use it, must supply its own
+ *  paces (walk, run and the bike's, as RoutePaces::ms_per_tile's "run" is
+ *  one faster pace), its hold error, its encounter rates, and later the
+ *  tiles that move the player on their own (spinners, currents), which
+ *  ScoreMap::step does not model yet.
  *
  */
 
@@ -69,31 +76,28 @@ std::string to_string(const ScoredLeg& leg);
 //  to a wall and tapping back is.
 size_t tiles_walked_back(const std::vector<ScoredLeg>& legs);
 
-//  The game's measured times.
+//  The game's measured times. The game sets every field.
 struct RoutePaces{
     //  Time per tile held in a direction, walking or running.
     std::function<long long(Direction, bool run)> ms_per_tile;
-    long long start_ms = 250;       //  from pressing to the first step
-    long long tap_ms = 800;         //  one tap and its release
-    long long press_ms = 100;       //  a leg's overhead: the turn, the watch
-    long long stop_ms = 1000;       //  confirming a stop at a wall (a re-localization)
+    long long start_ms = 0;         //  from pressing to the first step
+    long long tap_ms = 0;           //  one tap and its release
+    long long press_ms = 0;         //  a leg's overhead: the turn, the watch
+    long long stop_ms = 0;          //  confirming a stop at a wall (a re-localization)
+    //  How many tiles short or long a held open leg of so many tiles may
+    //  end. Null: a hold ends exactly.
+    std::function<size_t(size_t tiles)> open_hold_error;
 };
 
-//  How many tiles short or long a held open leg of `tiles` tiles may end:
-//  one, and one more every 5 tiles (on the console a 7-tile walk went 9).
-//  Measured walking only; a run is assumed the same. The one model of a
-//  timed hold's error, for the scorer and the planners: replace it here
-//  once the console has measured it.
-size_t open_hold_error(size_t tiles);
-
-//  How interruptions are charged.
+//  How interruptions are charged. The game sets the chances and costs;
+//  none charges nothing.
 struct InterruptModel{
-    double encounter_per_tile = 0.1;
-    long long encounter_ms = 12000;     //  a wild battle run from
-    double wanderer_per_tile = 0.25;
-    long long wanderer_ms = 2500;       //  waiting for them to move on
-    long long trainer_ms = 45000;       //  a trainer battle
-    long long replan_ms = 2000;         //  a stop and a new plan
+    double encounter_per_tile = 0;
+    long long encounter_ms = 0;         //  a wild battle run from
+    double wanderer_per_tile = 0;
+    long long wanderer_ms = 0;          //  waiting for them to move on
+    long long trainer_ms = 0;           //  a trainer battle
+    long long replan_ms = 0;            //  a stop and a new plan
     //  Most recoveries in a row before the plan counts as stuck.
     size_t max_recoveries = 3;
     //  Most tiles the player may be on at once, before a plan is too loose.

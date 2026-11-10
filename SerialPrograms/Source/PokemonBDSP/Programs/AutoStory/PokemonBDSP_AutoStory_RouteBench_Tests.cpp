@@ -96,7 +96,7 @@ RouteScore score_case(const BenchCase& bench){
         }
         return walked_legs(*legs, bench.run);
     };
-    return Pokemon::score_route(bench_map(bench), bench.from, goal, bench.legs, bench_paces(), Pokemon::InterruptModel(), replan);
+    return Pokemon::score_route(bench_map(bench), bench.from, goal, bench.legs, bench_paces(), route_interrupt_model(), replan);
 }
 
 
