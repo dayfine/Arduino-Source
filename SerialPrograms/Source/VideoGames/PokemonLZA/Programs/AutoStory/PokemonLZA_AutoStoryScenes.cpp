@@ -129,11 +129,17 @@ void type_player_name(ConsoleHandle& console, ProControllerContext& context, con
     //  TODO: a keyboard detector instead of the wait.
     context.wait_for(3000ms);
     //  The system keyboard types lowercase. Its Shift (stick click) caps
-    //  the next letter only, so it goes right before the name ("K" and "k"
-    //  are the same key to keyboard_enter_code).
+    //  the next letter only, so it goes right before the name, which is
+    //  typed in lower case (QWERTY has no upper case keys).
+    std::string lower = name;
+    for (char& ch : lower){
+        if ('A' <= ch && ch <= 'Z'){
+            ch = (char)(ch - 'A' + 'a');
+        }
+    }
     pbf_press_button(context, BUTTON_LCLICK, 160ms, 400ms);
     context.wait_for_all_requests();
-    FastCodeEntry::keyboard_enter_code(console, context, true, KeyboardLayout::QWERTY, name, true);
+    FastCodeEntry::keyboard_enter_code(console, context, true, KeyboardLayout::QWERTY, lower, true);
     context.wait_for(1000ms);
     //  PLUS is the keyboard's OK. "Confirm Choices" opens on "Change hair
     //  color"; "Ready!" is two rows down (console B, 2026-11-10).
