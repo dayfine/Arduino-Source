@@ -20,8 +20,10 @@
  *  A step onto a connected map waits a tile first, as the console does
  *  while the game loads the map.
  *
- *  Not modelled: Surf, bikes, running, HP and status. Wandering people
- *  stand on their tile.
+ *  Not modelled: Surf, running, HP and status. Wandering people stand on
+ *  their tile. The Bicycle is: its pace, its taps (each a tile, some
+ *  dropped when they come too fast), SELECT and doors taking the player
+ *  off it.
  *
  */
 
@@ -40,9 +42,14 @@
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Pokemon/AutoStory/Pokemon_ScreenEvents.h"
 #include "PokemonFRLG_MovementMechanics.h"
+#include "PokemonFRLG_BikeSpinPresses.h"
+#include "PokemonFRLG_BikeSpinMechanics.h"
+#include "PokemonFRLG_OverworldBikeTaps.h"
 #include "PokemonFRLG_OverworldRecovery.h"
 #include "PokemonFRLG_OverworldRoute.h"
+#include "PokemonFRLG_OverworldSimField.h"
 #include "PokemonFRLG_OverworldWalk.h"
+#include "PokemonFRLG_OverworldSpin.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -87,6 +94,8 @@ struct SimEncounter{
 //  at these.
 struct SimTiming{
     Milliseconds tile = MovementMechanics::TILE_TIME;
+    //  A tile on the Bicycle.
+    Milliseconds bike_tile = MovementMechanics::BIKE_TILE_TIME;
     Milliseconds flash{300};
     Milliseconds battle_screen{3700};
     //  A wild battle's text box, before the HP boxes (battle_screen). Not
@@ -132,11 +141,34 @@ struct SimScript{
     //  (SimWalkerRules::confirm_turn) after 00.28 run 2 (console B,
     //  2026-11-09), where a one-tile leg only turned the player.
     std::set<int> dropped_turn_taps;
+    //  Fault injection: steps onto a warp, by number from 1, that show the
+    //  fade's black and clear with the player where they were, not warped
+    //  (console B, 2026-11-10 01:44, 00.31 run 4, "east 1 (warp)" on B4F).
+    std::set<int> black_without_warp;
+    //  The player rides the Bicycle: a tap facing another way takes a step
+    //  too, a hold through a turn loses no tile
+    //  (MovementMechanics::BIKE_TAP_ONLY_TURNS), and no step tap is
+    //  ignored: a 40ms turn tap and a 56ms hold 340ms after it took two
+    //  tiles (console B, 2026-11-09, 00.30). At the start: SELECT gets on
+    //  and off (OverworldSim::press_select()), a warp gets off. Each tap is
+    //  a tile; one in MovementMechanics::BIKE_FAST_TAP_DROP_EVERY of those
+    //  that start sooner than BIKE_TAP_DROP_PERIOD after the last is
+    //  dropped. Its pace is timing.bike_tile.
+    bool on_bike = false;
+    //  The Bicycle is registered (Key Items, REGISTER): SELECT gets on. A
+    //  reload of a save made before it was registered loses it.
+    bool bike_registered = false;
     //  Caves dark without Flash (Rock Tunnel): the overworld is black but
     //  for a lit circle on the player, which the walker's battle text box
     //  check and screen observer read as a battle on its way (console B,
     //  2026-11-09, 00.28), unless SimWalkerRules::dark_cave_not_battle.
     std::set<std::string> dark_maps;
+    //  A lift's map, and where its door lets the player out for each floor
+    //  on its panel's menu, top first (pokefirered setdynamicwarp in
+    //  RocketHideout_Elevator's scripts): the door's own warp is the
+    //  game's placeholder. The hideout's: rocket_hideout_lift_room() under
+    //  LIFT_MAP, with rocket_hideout_lift_doors().
+    std::map<std::string, std::vector<MapPosition>> lift_floors = {};
     SimTiming timing;
 };
 
@@ -167,6 +199,10 @@ struct SimState{
     Milliseconds in_wild_battles{0};
     int signs_read = 0;
     int turn_taps_dropped = 0;
+    //  On the Bicycle (SimScript::on_bike).
+    bool on_bike = false;
+    //  Bicycle taps the game dropped, too soon after the last one.
+    int bike_taps_dropped = 0;
     //  Step taps the game ignored, inside the lockout after the last one
     //  (MovementMechanics::STEP_TAP_LOCKOUT).
     int step_taps_ignored = 0;
@@ -207,6 +243,7 @@ enum class SimBattleEnd{
     CANT_RUN,       //  a trainer's battle: "No! There's no running from a TRAINER battle!"
     NO_BATTLE,      //  there was none, on screen or about to show
 };
+
 
 //  Simulates overworld movement, encounters and dialogs.
 class OverworldSim{
@@ -250,10 +287,9 @@ public:
     //  battle follows it.
     bool close_message();
 
-    //  Cuts the tree the player faces (an object named "cut_tree") with
-    //  YES to the game's question: it is gone until the player next warps,
-    //  as its hide flag is a FLAG_TEMP. Returns whether there was one.
-    bool cut_tree();
+    //  A on what the player faces, as `field` says (`floor`: the lift's).
+    //  Returns whether it was there. (PokemonFRLG_OverworldSimField.cpp)
+    bool use_field(SimField field, size_t floor = 0);
 
 private:
     //  A screen that shows at `at`; `unfreeze`: the player can move again.
@@ -269,6 +305,8 @@ private:
         bool warped = false;
         bool walked_out = false;    //  the warp ended with the game walking the player a tile south
         bool ledge = false;
+        //  The step landed on a spinner, which slid the player to `player`.
+        std::optional<SpinSlide> spin = {};
     };
 
     void advance_to(Milliseconds time);
@@ -295,11 +333,32 @@ private:
     std::optional<Step> press(Direction direction) const;
     std::optional<Step> take_warp(int map_index, const TilePos& tile) const;
     std::optional<Step> cross_edge(Direction direction) const;
+    //  The lift's door to the floor picked, if `map_index` is a lift and
+    //  one was picked.
+    std::optional<Step> lift_warp(int map_index) const;
+    //  A step that landed on a spinner slides on to the slide's end; false
+    //  if the slide never stops.
+    bool slide_on(Step& step) const;
+    //  The slide's time after `step`, and its facing; 0 for no slide.
+    Milliseconds after_slide(const Step& step);
+    //  What the maps can't say, from code (add_coded_objects()).
+    void add_coded_field();
+    bool cut_tree();
+    bool choose_lift_floor(size_t floor);
+    bool push_poster_switch();
     bool after_step(const Step& step, Milliseconds pressed);
     bool wild_battle(Milliseconds pressed);
     std::optional<SimEncounter> next_encounter();
     bool rolls_encounter(int rate);
     bool drops_turn_tap();
+    bool press_select();
+    //  Whether the Bicycle tap starting at `start` is dropped, too soon
+    //  after the last one.
+    bool drops_bike_tap(Milliseconds start);
+    //  How long a tile takes: on the Bicycle or on foot.
+    Milliseconds tile_time() const{
+        return m_state.on_bike ? m_script.timing.bike_tile : m_script.timing.tile;
+    }
     bool trainer_sees(Milliseconds pressed);
     void update_view();
     void note(const std::string& line);
@@ -323,6 +382,8 @@ private:
     std::optional<size_t> m_trainer;
     //  The trees cut since the last warp, and their maps.
     std::vector<std::pair<int, MapObject>> m_cut_trees;
+    //  The floor picked on the lift's panel, if any.
+    std::optional<size_t> m_lift_floor;
     int m_grass_steps = 0;
     //  The game's wild encounter state (SimScript::encounter_rates).
     std::mt19937 m_encounter_rng;
@@ -330,8 +391,15 @@ private:
     int m_encounter_rate_buff = 0;
     //  The turn taps so far, for SimScript::dropped_turn_taps.
     int m_turn_taps = 0;
+    //  Steps onto a warp so far, and the fault on one
+    //  (SimScript::black_without_warp): its black without the warp.
+    int m_warp_steps = 0;
+    bool black_without_warp(Milliseconds pressed);
     //  The last tap, until a hold.
     std::optional<TapPress> m_last_tap;
+    //  When the last Bicycle tap started, and how many came too soon.
+    std::optional<Milliseconds> m_last_bike_tap;
+    int m_fast_bike_taps = 0;
     //  When the last tap that stepped started.
     std::optional<Milliseconds> m_last_step_tap;
     //  The end of the lockout after the last battle.
@@ -405,11 +473,32 @@ struct SimWalkerRules{
     //  2026-11-09 01:41, 00.27, the warp to CeruleanCity: the watch started
     //  about 1.3 s into the hold).
     bool watch_fade_along_hold = true;
+    //  A warp's fade is taken as the warp only once the screen after it
+    //  shows the player off the map they held from (warp_left_scene()).
+    //  Without it a black that cleared with the player where they were was
+    //  taken as the warp (console B, 2026-11-10 01:44, 00.31 run 4).
+    bool confirm_warp_destination = true;
     //  A turn tap is checked by the facing on screen, and tapped again
     //  while the player faces another way (OverworldWalkSteps::turn_to()).
     //  Without it a dropped tap left a one-tile leg turning the player
     //  only, taken as walked (console B, 2026-11-09, 00.28 run 2).
     bool confirm_turn = true;
+    //  The speed the walker goes at: its turn taps
+    //  (OverworldWalkSteps::turns_first()) and its holds' tile time.
+    MoveSpeed speed = MoveSpeed::WALK;
+    //  An open leg on the Bicycle is counted out a tap at a time, each a
+    //  tile (count_bike_taps()), and one that doesn't move finds the player
+    //  ahead of a block. Without it the leg is one hold, and a start off
+    //  along the leg ends it off with nothing to show it (console B,
+    //  2026-11-09, 00.30: three runs 3 tiles east after Route 8's legs).
+    bool count_bike_taps = true;
+    //  How far apart, start to start, the counted taps are
+    //  (MovementMechanics::BIKE_TAP_PERIOD).
+    Milliseconds bike_tap_period = MovementMechanics::BIKE_TAP_PERIOD;
+    //  After a warp, which takes the player off the Bicycle, the next leg
+    //  where it may be ridden gets on again with SELECT. Without it the
+    //  walker held on-foot legs at the Bicycle's pace.
+    bool get_back_on_bike = true;
     //  A dark cave's overworld isn't a battle on its way
     //  (OverworldWalkSteps::dark_cave_screen()). Without it the check
     //  before each step watched for a battle on it (console B, 2026-11-09,
@@ -473,6 +562,13 @@ private:
         bool battle;
     };
     StepOutcome walk(const RouteStep& step, std::optional<Direction> facing);
+    StepOutcome walk_ridden(const RouteStep& step, std::optional<Direction> facing);
+    //  count_bike_taps() on the sim.
+    StepOutcome walk_bike_taps(const RouteStep& step);
+    BikeTap bike_tap(const RouteStep& step);
+    //  count_bike_taps() on foot (counts_step_taps()).
+    StepOutcome walk_step_taps(const RouteStep& step);
+    BikeTap step_tap(const RouteStep& step, int tap);
     std::optional<WalkedTiles> late_stop(const RouteStep& step);
     //  stop_tiles(); without SimWalkerRules::whole_leg_in_dark, the dark
     //  screen places the stop at the hold's start.
@@ -485,6 +581,9 @@ private:
     std::optional<WalkedTiles> walk_step(const RouteStep& step, std::optional<Direction> facing);
     bool after_warp(const RouteStep& step, int warps_before, Milliseconds watched_from);
     bool fade_over_since(Milliseconds from) const;
+    //  after_warp() on a fade seen with no warp: fails, or with
+    //  SimWalkerRules::confirm_warp_destination off, takes it as the warp.
+    bool black_without_warp(const RouteStep& step, int warps_before, Milliseconds watched_from);
     [[noreturn]] void fail_off_route(const RouteStep& step);
     std::optional<SimSeen> hold_watching(const RouteStep& step, Milliseconds hold, const std::vector<Interrupt>& interrupts);
     size_t clear_late(const std::vector<Interrupt>& interrupts, Milliseconds watch, size_t max);
@@ -495,6 +594,8 @@ private:
     StepEnd watch_for_trainer(const RouteStep& step, int approach_tiles);
     bool moved_past_wall(const RouteStep& step);
     void check_overworld(const RouteStep& step);
+    //  After a leg onto a spinner: the slide's time.
+    void wait_out_slide(const RouteStep& step);
     const std::vector<Interrupt>& interrupts(const RouteStep& step) const;
     std::vector<SimWatcher> watchers(const std::vector<Interrupt>& interrupts) const;
     [[noreturn]] void fail(const std::string& message);
@@ -508,6 +609,10 @@ private:
     //  and whether its map was dark then.
     Milliseconds m_leg_start{0};
     bool m_leg_dark = false;
+    //  Whether the walker takes the player to ride the Bicycle, and the
+    //  speed of the step under way.
+    bool m_riding = false;
+    MoveSpeed m_speed = MoveSpeed::WALK;
 };
 
 
@@ -515,7 +620,6 @@ private:
 void add_tests_OverworldSim(UnitTestDatabase& database);
 //  Register the tests of a warp's fade over before the hold onto it ends.
 void add_tests_OverworldWarpFade(UnitTestDatabase& database);
-
 
 
 } // namespace PokemonFRLG

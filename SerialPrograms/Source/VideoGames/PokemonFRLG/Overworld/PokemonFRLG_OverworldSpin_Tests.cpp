@@ -1,0 +1,407 @@
+/*  Overworld Spinner, Lift and Poster Tests
+ *
+ *  From: https://github.com/PokemonAutomation/
+ *
+ *  The Rocket Hideout's walking on small made-up maps: spinner tiles that
+ *  slide the player (the map functions, the planner, the sim and its
+ *  walker), the lift's floor panel and the Game Corner's poster switch
+ *  on the sim.
+ *
+ */
+
+#include <format>
+#include <string>
+#include <vector>
+#include "Common/Cpp/Exceptions.h"
+#include "Common/Cpp/TestRunners/UnitTest.h"
+#include "PokemonFRLG_MovementMechanics.h"
+#include "PokemonFRLG_OverworldMaps.h"
+#include "PokemonFRLG_OverworldRecovery.h"
+#include "PokemonFRLG_OverworldRoute.h"
+#include "PokemonFRLG_OverworldSim.h"
+#include "PokemonFRLG_OverworldSimField.h"
+#include "PokemonFRLG_OverworldSpin.h"
+
+namespace PokemonAutomation{
+namespace NintendoSwitch{
+namespace PokemonFRLG{
+
+
+namespace{
+
+struct SpinInput{
+    std::string name;
+    UnitTestResult (*body)();
+};
+struct SpinExpectation{
+    std::string description;
+};
+struct SpinCase{
+    SpinInput input;
+    SpinExpectation expectation;
+};
+
+class Test_OverworldSpin : public UnitTest{
+public:
+    explicit Test_OverworldSpin(SpinCase test_case)
+        : UnitTest("PokemonFRLG::OverworldSpin - " + test_case.input.name)
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        try{
+            return m_case.input.body();
+        }catch (Exception& e){
+            return std::string(e.name()) + ": " + e.message();
+        }
+    }
+
+private:
+    SpinCase m_case;
+};
+
+//  A room with spinners:
+//  - (3, 3) north, up a dead end to (3, 1) against the wall; (3, 2) is only
+//    ever slid over;
+//  - (5, 4) east onto (6, 4), which turns the slide south to (6, 5);
+//  - (7, 3) west, onto the stop tile (5, 3).
+const MapData& spinner_room(){
+    static const MapData MAP = parse_map(R"({
+        "name": "Spinners", "source": {"decomp_file": "", "revision": "test", "date": "2026-11-09"},
+        "allow_running": false,
+        "tiles": ["#########", "###.#####", "###.#####", "#.......#", "#.......#", "#.......#", "#########"],
+        "regions": {
+            "spin_north": [[3, 3]], "spin_east": [[5, 4]], "spin_south": [[6, 4]],
+            "spin_west": [[7, 3]], "spin_stop": [[5, 3]]
+        }
+    })", "Spinners");
+    return MAP;
+}
+
+//  Two arrows that face each other.
+const MapData& spinner_loop(){
+    static const MapData MAP = parse_map(R"({
+        "name": "SpinLoop", "source": {"decomp_file": "", "revision": "test", "date": "2026-11-09"},
+        "tiles": ["####", "#..#", "####"],
+        "regions": {"spin_east": [[1, 1]], "spin_west": [[2, 1]]}
+    })", "SpinLoop");
+    return MAP;
+}
+
+std::string describe(const std::vector<RouteStep>& route){
+    std::string text;
+    for (const RouteStep& step : route){
+        text += "\n  " + to_string(step);
+    }
+    return text;
+}
+
+UnitTestResult check_slide(const TilePos& from, const TilePos& end, Direction facing, int tiles){
+    const std::optional<SpinSlide> slide = spin_slide(spinner_room(), PlayerState{from, ELEVATION_GROUND, false});
+    if (!slide){
+        return "No slide from " + to_string(from) + ".";
+    }
+    if (!(slide->end.position == end) || slide->facing != facing || slide->tiles != tiles){
+        return std::format(
+            "From {}: slid {} tile(s) to {} facing {}; expected {} to {} facing {}.",
+            to_string(from), slide->tiles, to_string(slide->end.position), direction_name(slide->facing),
+            tiles, to_string(end), direction_name(facing)
+        );
+    }
+    return true;
+}
+
+UnitTestResult test_slide_into_wall(){
+    return check_slide({3, 3}, {3, 1}, Direction::NORTH, 2);
+}
+UnitTestResult test_slide_turned_by_arrow(){
+    return check_slide({5, 4}, {6, 5}, Direction::SOUTH, 2);
+}
+UnitTestResult test_slide_to_stop_tile(){
+    return check_slide({7, 3}, {5, 3}, Direction::WEST, 2);
+}
+UnitTestResult test_slide_loop(){
+    if (spin_slide(spinner_loop(), PlayerState{{1, 1}, ELEVATION_GROUND, false})){
+        return "A slide round two arrows that face each other stopped.";
+    }
+    if (spin_slide(spinner_room(), PlayerState{{1, 3}, ELEVATION_GROUND, false})){
+        return "A slide from a tile with no arrow.";
+    }
+    return true;
+}
+
+const MapPosition SPIN_START{"Spinners", {1, 5}};
+const MapPosition DEAD_END{"Spinners", {3, 1}};
+
+UnitTestResult test_route_ends_on_slide(){
+    const std::vector<MapData> maps{spinner_room()};
+    const auto route = plan_overworld_route(maps, SPIN_START, RouteGoal{DEAD_END, std::nullopt});
+    if (!route || route->empty()){
+        return std::string("No route to the dead end, which only a slide reaches.");
+    }
+    const RouteStep& last = route->back();
+    if (last.spin_tiles != 2 || last.to_wall || !(last.end == DEAD_END)){
+        return "Expected a last leg onto (3, 3) that slides 2 tiles:" + describe(*route);
+    }
+    const MapPosition end = follow_overworld_route(maps, SPIN_START, *route);
+    if (!(end == DEAD_END)){
+        return "The route replays to " + to_string(end) + ":" + describe(*route);
+    }
+    return true;
+}
+
+//  Walking back down from the dead end steps onto (3, 3), which slides the
+//  player north again: there is no way out.
+UnitTestResult test_dead_end_traps(){
+    const std::vector<MapData> maps{spinner_room()};
+    const auto route = plan_overworld_route(maps, DEAD_END, RouteGoal{SPIN_START, std::nullopt});
+    if (route){
+        return "Planned a way out past the spinner that slides back in:" + describe(*route);
+    }
+    return true;
+}
+
+UnitTestResult test_sim_slides(){
+    OverworldSim sim({spinner_room()}, MapPosition{"Spinners", {3, 4}}, Direction::NORTH);
+    sim.hold(Direction::NORTH, MovementMechanics::TILE_TIME, MovementMechanics::STEP_RELEASE, MovementMechanics::TILE_TIME, {});
+    if (!(sim.state().position == DEAD_END)){
+        return "One step north onto (3, 3) ended on " + to_string(sim.state().position) + ".";
+    }
+    if (sim.state().facing != Direction::NORTH){
+        return std::string("The slide left the player facing ") + direction_name(sim.state().facing) + ".";
+    }
+    return true;
+}
+
+UnitTestResult test_sim_walker_walks_slide(){
+    const std::vector<MapData> maps{spinner_room()};
+    const auto route = plan_overworld_route(maps, SPIN_START, RouteGoal{DEAD_END, std::nullopt});
+    if (!route){
+        return std::string("No route.");
+    }
+    OverworldSim sim(maps, SPIN_START, Direction::NORTH);
+    OverworldSimWalker walker(sim);
+    const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = SPIN_START, .label = "Sim"};
+    const std::string failure = walker.run(*route, planning);
+    if (!failure.empty() || !(sim.state().position == DEAD_END)){
+        std::string log;
+        for (const std::string& line : walker.log()){
+            log += "\n  " + line;
+        }
+        return "Walked to " + to_string(sim.state().position) + ", failure \"" + failure + "\":" + describe(*route) + log;
+    }
+    return true;
+}
+
+
+//  00.31 r1 (console B, 2026-11-10), Rocket Hideout B3F: off the stairs from
+//  B2F, the open leg west along the top corridor ended short, so the hold
+//  south to the wall stayed in the corridor, and the legs through the
+//  spinners after it all ran there: the walk ended a few tiles west of the
+//  stairs it came down, with no warp to B4F.
+UnitTestResult test_short_leg_off_hideout_stairs(){
+    static const std::vector<MapData> maps = overworld_maps();
+    const MapPosition start{"RocketHideout_B3F", {18, 2}};
+    const MapPosition goal{"RocketHideout_B4F", map_point(maps, "RocketHideout_B4F", "warp_0")};
+    const auto route = plan_overworld_route(maps, start, RouteGoal{goal, std::nullopt}, default_route_costs(), Direction::EAST);
+    if (!route){
+        return std::string("No route from B3F's stairs to B4F.");
+    }
+    for (const int short_by : {1, 2}){
+        SimScript script;
+        script.short_holds = {{1, short_by}};
+        OverworldSim sim(maps, start, Direction::EAST, script);
+        OverworldSimWalker walker(sim);
+        const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = start, .label = "Sim"};
+        const std::string failure = walker.run(*route, planning);
+        if (!failure.empty() || !(sim.state().position == goal)){
+            return std::format(
+                "With the first leg {} tile(s) short, walked to {}, failure \"{}\".",
+                short_by, to_string(sim.state().position), failure
+            );
+        }
+    }
+    return true;
+}
+
+
+//  00.31 r1 run 3 (console B, 2026-11-10), Rocket Hideout B3F: "south 2"
+//  from (1, 14), at the wall, ended a tile short at (1, 15) with nothing
+//  seen. "east 2", meant to step onto the arrow (3, 16), walked into the
+//  wall east of (1, 15); the position check after the next leg took that
+//  wall for the one east of the stop tile (7, 20) and found the player
+//  there. From column 1 the hold "east 11" stepped onto the arrow (2, 17),
+//  which slid them up round (6, 17) and (6, 13) to the stop tile (10, 13);
+//  the hold west onto the warp slid them back there round (6, 13) (frame:
+//  the player on (10, 13), the north arrow (10, 14) below).
+UnitTestResult test_short_leg_before_hideout_arrows(){
+    static const std::vector<MapData> maps = overworld_maps();
+    const MapPosition start{"RocketHideout_B3F", {1, 14}};
+    const MapPosition goal{"RocketHideout_B4F", map_point(maps, "RocketHideout_B4F", "warp_0")};
+    const auto route = plan_overworld_route(maps, start, RouteGoal{goal, std::nullopt}, default_route_costs(), Direction::WEST);
+    if (!route){
+        return std::string("No route from B3F's west wall to B4F.");
+    }
+    for (const int short_by : {1, 2}){
+        SimScript script;
+        script.short_holds = {{1, short_by}};
+        OverworldSim sim(maps, start, Direction::WEST, script);
+        OverworldSimWalker walker(sim);
+        const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = start, .label = "Sim"};
+        const std::string failure = walker.run(*route, planning);
+        if (!failure.empty() || !(sim.state().position == goal)){
+            return std::format(
+                "With the first leg {} tile(s) short, walked to {}, failure \"{}\":{}",
+                short_by, to_string(sim.state().position), failure, describe(*route)
+            );
+        }
+    }
+    return true;
+}
+
+//  A lift whose door, the exit mat (1, 2), lets out on the floor picked.
+std::vector<MapData> lift_maps(){
+    const std::string FLOOR = R"({
+        "name": "%s", "source": {"decomp_file": "", "revision": "test", "date": "2026-11-09"},
+        "tiles": ["###", "#.#", "###"]
+    })";
+    std::vector<MapData> maps;
+    maps.push_back(parse_map(R"({
+        "name": "Lift", "source": {"decomp_file": "", "revision": "test", "date": "2026-11-09"},
+        "tiles": ["###", "#.#", "#.#", "###"],
+        "warps": [{"x": 1, "y": 2, "enter": "walk_south"}]
+    })", "Lift"));
+    for (const std::string name : {"FloorA", "FloorB"}){
+        std::string json = FLOOR;
+        json.replace(json.find("%s"), 2, name);
+        maps.push_back(parse_map(json, name));
+    }
+    return maps;
+}
+
+UnitTestResult lift_ride(bool pick, const MapPosition& expected){
+    SimScript script;
+    script.lift_floors["Lift"] = {MapPosition{"FloorA", {1, 1}}, MapPosition{"FloorB", {1, 1}}};
+    OverworldSim sim(lift_maps(), MapPosition{"Lift", {1, 2}}, Direction::SOUTH, script);
+    if (pick && !sim.use_field(SimField::LIFT_FLOOR, 1)){
+        return std::string("No floor 1 on the lift's panel.");
+    }
+    sim.hold(Direction::SOUTH, MovementMechanics::TILE_TIME, MovementMechanics::STEP_RELEASE, std::chrono::milliseconds(3000), {});
+    if (!(sim.state().position == expected)){
+        return "Expected " + to_string(expected) + ", ended on " + to_string(sim.state().position) + ".";
+    }
+    return true;
+}
+UnitTestResult test_lift_floor(){
+    return lift_ride(true, MapPosition{"FloorB", {1, 1}});
+}
+UnitTestResult test_lift_no_floor(){
+    return lift_ride(false, MapPosition{"Lift", {1, 2}});
+}
+
+
+//  The poster (2, 1) north of the player; the stairs behind it, (3, 1),
+//  closed until its switch is pushed.
+const MapData& poster_room(){
+    static const MapData MAP = parse_map(R"({
+        "name": "Corner", "source": {"decomp_file": "", "revision": "test", "date": "2026-11-09"},
+        "tiles": ["#####", "#...#", "#...#", "#####"],
+        "objects": [
+            {"name": "poster", "kind": "sign", "x": 2, "y": 1},
+            {"name": "poster_stairs", "kind": "npc", "x": 3, "y": 1}
+        ]
+    })", "Corner");
+    return MAP;
+}
+
+MapPosition poster_walk(bool push){
+    OverworldSim sim({poster_room()}, MapPosition{"Corner", {2, 2}}, Direction::NORTH);
+    if (push){
+        sim.use_field(SimField::POSTER_SWITCH);
+    }
+    const Milliseconds tile = MovementMechanics::TILE_TIME;
+    //  Each hold turns the player first, which costs a tile's time.
+    sim.hold(Direction::EAST, tile * 2, MovementMechanics::STEP_RELEASE, tile * 2, {});
+    sim.hold(Direction::NORTH, tile * 2, MovementMechanics::STEP_RELEASE, tile * 2, {});
+    return sim.state().position;
+}
+UnitTestResult test_poster_opens_stairs(){
+    const MapPosition shut = poster_walk(false);
+    if (!(shut == MapPosition{"Corner", {3, 2}})){
+        return "Before the switch, walked onto " + to_string(shut) + ".";
+    }
+    const MapPosition open = poster_walk(true);
+    if (!(open == MapPosition{"Corner", {3, 1}})){
+        return "After the switch, walked onto " + to_string(open) + ", not the stairs.";
+    }
+    return true;
+}
+
+const SpinCase SPIN_CASES[] = {
+    {
+        .input = {.name = "slide up to a wall", .body = test_slide_into_wall},
+        .expectation = {.description = "slide up to a wall"},
+    },
+    {
+        .input = {.name = "slide turned by an arrow", .body = test_slide_turned_by_arrow},
+        .expectation = {.description = "slide turned by an arrow"},
+    },
+    {
+        .input = {.name = "slide to a stop tile", .body = test_slide_to_stop_tile},
+        .expectation = {.description = "slide to a stop tile"},
+    },
+    {
+        .input = {.name = "arrows in a loop never stop", .body = test_slide_loop},
+        .expectation = {.description = "arrows in a loop never stop"},
+    },
+    {
+        .input = {.name = "route ends with a slide", .body = test_route_ends_on_slide},
+        .expectation = {.description = "route ends with a slide"},
+    },
+    {
+        .input = {.name = "a spinner back into a dead end traps", .body = test_dead_end_traps},
+        .expectation = {.description = "a spinner back into a dead end traps"},
+    },
+    {
+        .input = {.name = "sim slides the player", .body = test_sim_slides},
+        .expectation = {.description = "sim slides the player"},
+    },
+    {
+        .input = {.name = "sim walker walks a slide", .body = test_sim_walker_walks_slide},
+        .expectation = {.description = "sim walker walks a slide"},
+    },
+    {
+        .input = {.name = "a short leg off the hideout's stairs", .body = test_short_leg_off_hideout_stairs},
+        .expectation = {.description = "B4F reached after a short first leg on B3F"},
+    },
+    {
+        .input = {.name = "a short leg before the hideout's arrows", .body = test_short_leg_before_hideout_arrows},
+        .expectation = {.description = "B4F reached after a short leg to the arrow row on B3F"},
+    },
+    {
+        .input = {.name = "lift lets out on the floor picked", .body = test_lift_floor},
+        .expectation = {.description = "lift lets out on the floor picked"},
+    },
+    {
+        .input = {.name = "lift with no floor picked stays", .body = test_lift_no_floor},
+        .expectation = {.description = "lift with no floor picked stays"},
+    },
+    {
+        .input = {.name = "poster switch opens the stairs", .body = test_poster_opens_stairs},
+        .expectation = {.description = "poster switch opens the stairs"},
+    },
+};
+
+} // namespace
+
+
+void add_tests_OverworldSpin(UnitTestDatabase& database){
+    for (const SpinCase& item : SPIN_CASES){
+        database.add<Test_OverworldSpin>(item);
+    }
+}
+
+
+
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

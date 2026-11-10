@@ -101,7 +101,8 @@ inline const std::string CLOSE_TRAINER_CARD = "close_trainer_card";
 //  the overworld.
 inline const std::string LEAVE_GIFT_SUMMARY = "leave_gift_summary";
 
-//  How `step`, a ROUTE or LEGS, moves the player: RUN_VARIANT runs.
+//  How `step`, a ROUTE or LEGS, moves the player: RUN_VARIANT runs,
+//  BIKE_VARIANT rides.
 MoveSpeed move_speed(const StoryStep& step);
 
 
@@ -209,13 +210,6 @@ using StoryLog = std::function<void(const std::string& line)>;
 //  gets none. (add_start_check() with a reader of the tile.)
 void add_start_pose_check(
     Pokemon::Checkpoint& checkpoint, const std::optional<Pokemon::Pose>& start, SavePoseReader read, StoryLog log
-);
-
-//  `legs` from `start` as route steps for the walker, each checked against
-//  the map: nothing if a step is blocked or leaves the map. A leg ends "to
-//  wall" if the next step its way is blocked.
-std::optional<std::vector<RouteStep>> fixed_route(
-    const std::vector<MapData>& maps, const MapPosition& start, const std::vector<StoryLeg>& legs
 );
 
 //  Where a GRIND or capture `step` that paces (pace = ...) leaves the
@@ -338,7 +332,6 @@ Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor&
 
 //  `checkpoints` (kept alive by the caller) as a segment for run_segment().
 Pokemon::Segment make_story_segment(const std::vector<StoryCheckpoint>& checkpoints, StoryExecutor& executor);
-
 
 
 } // namespace PokemonFRLG

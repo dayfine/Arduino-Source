@@ -84,6 +84,7 @@ inline constexpr Milliseconds STEP_TAP(66);
 //  STEP_TAP_RELEASE after it, past the lockout.
 inline constexpr Milliseconds STEP_TAP_RELEASE(700);
 
+
 //  How long the overworld must show nothing (no box, fade or battle) after
 //  a battle before the next tap: twice the lockout.
 inline constexpr Milliseconds AFTER_BATTLE_QUIET(1000);

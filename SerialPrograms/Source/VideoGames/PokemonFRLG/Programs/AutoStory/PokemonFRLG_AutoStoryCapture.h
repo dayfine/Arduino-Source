@@ -308,6 +308,8 @@ private:
     ProControllerContext& m_context;
     Language m_language;
     PaceTrainerBattle m_trainer_battle;
+    //  Where pacing left the player, kept from one battle to the next.
+    PaceSpot m_spot;
 };
 
 

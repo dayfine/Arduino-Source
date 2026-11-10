@@ -70,6 +70,11 @@ private:
             {"parlyz-heal", "Parlyz Heal"},
             {"awakening", "Awakening"},
             {"poke-ball", "Poke Ball"},
+            {"repel", "Repel"},
+            {"super-repel", "Super Repel"},
+            {"max-repel", "Max Repel"},
+            {"escape-rope", "Escape Rope"},
+            {"bicycle", "Bicycle"},
             {"cancel", "Cancel"},
         }){
             JsonArray names;

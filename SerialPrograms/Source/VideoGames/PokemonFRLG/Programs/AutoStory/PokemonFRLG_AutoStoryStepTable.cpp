@@ -11,6 +11,9 @@
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryGameArgs.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
+#include "PokemonFRLG_AutoStoryHideout.h"
+#include "PokemonFRLG_AutoStoryItemUse.h"
+#include "PokemonFRLG_AutoStoryLegs.h"
 #include "PokemonFRLG_AutoStoryMart.h"
 #include "PokemonFRLG_AutoStoryMember.h"
 #include "PokemonFRLG_AutoStoryPcStorage.h"
@@ -158,10 +161,15 @@ std::span<const Pokemon::StoryActionSpec> story_action_specs(){
         const std::span<const Pokemon::StoryActionSpec> builtin = Pokemon::builtin_story_actions();
         std::vector<Pokemon::StoryActionSpec> specs(builtin.begin(), builtin.end());
         for (StoryStepKind kind : {StoryStepKind::ROUTE, StoryStepKind::LEGS}){
-            Pokemon::StoryActionSpec run = *Pokemon::find_story_action(builtin, kind, "");
-            run.name = "run";
-            specs.push_back(std::move(run));
+            for (const std::string& name : {RUN_VARIANT, BIKE_VARIANT}){
+                Pokemon::StoryActionSpec moved = *Pokemon::find_story_action(builtin, kind, "");
+                moved.name = name;
+                specs.push_back(std::move(moved));
+            }
         }
+        Pokemon::StoryActionSpec taps = *Pokemon::find_story_action(builtin, StoryStepKind::LEGS, "");
+        taps.name = TAPS_VARIANT;
+        specs.push_back(std::move(taps));
         for (const std::string& name : {TRAINER_LINE_VARIANT, TRAINER_WAIT_VARIANT}){
             Pokemon::StoryActionSpec step = *Pokemon::find_story_action(builtin, StoryStepKind::STEP, "");
             step.name = name;
@@ -177,6 +185,9 @@ std::span<const Pokemon::StoryActionSpec> story_action_specs(){
             pc_action_spec(), capture_action_spec(), fossil_action_spec(), level_action_spec(),
             mart_action_spec(), teach_action_spec(), grind_action_spec(), grind_check_action_spec(),
         }){
+            specs.push_back(std::move(spec));
+        }
+        for (Pokemon::StoryActionSpec spec : field_action_specs()){
             specs.push_back(std::move(spec));
         }
         return specs;
