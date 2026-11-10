@@ -9,6 +9,7 @@
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryHideout.h"
 #include "PokemonFRLG_AutoStoryItemUse.h"
+#include "PokemonFRLG_AutoStoryRooms.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -88,7 +89,7 @@ constexpr Milliseconds HIDEOUT_SCENE_TIMEOUT = 30000ms;
 
 } // namespace
 
-void ride_lift(ConsoleHandle& console, ProControllerContext& context, const LiftRide& ride){
+void pick_lift_floor(ConsoleHandle& console, ProControllerContext& context, const LiftRide& ride){
     const MenuPresses presses = lift_menu_presses(ride, rocket_hideout_lift_menu().size());
     console.log(
         "Story: lift from " + rocket_hideout_lift_menu()[ride.from] + " to " + rocket_hideout_lift_menu()[ride.to]
@@ -104,6 +105,12 @@ void ride_lift(ConsoleHandle& console, ProControllerContext& context, const Lift
     mash_until_overworld(console, context, HIDEOUT_SCENE_TIMEOUT);
 }
 
+void ride_lift(ConsoleHandle& console, ProControllerContext& context, const LiftRide& ride){
+    walk_room_legs(console, context, lift_in_legs(), Pokemon::Direction::NORTH);
+    pick_lift_floor(console, context, ride);
+    walk_room_legs(console, context, lift_out_legs(), Pokemon::Direction::NORTH);
+}
+
 void push_poster_switch(ConsoleHandle& console, ProControllerContext& context){
     console.log("Story: the switch behind the poster.");
     pbf_press_button(context, BUTTON_A, 160ms, 800ms);
@@ -113,9 +120,17 @@ void push_poster_switch(ConsoleHandle& console, ProControllerContext& context){
 std::optional<Pokemon::Outcome> run_field_game_step(
     ConsoleHandle& console, ProControllerContext& context, Language language, const Pokemon::StoryStep& step
 ){
+    const auto done = [&step]{
+        return step.pose_after ? Pokemon::outcome_ok(*step.pose_after) : Pokemon::outcome_ok();
+    };
     if (const std::optional<LiftRide> ride = parse_lift_floor_variant(step.variant)){
         ride_lift(console, context, *ride);
-        return Pokemon::outcome_ok();
+        return done();
+    }
+    if (is_center_variant(step.variant)){
+        //  Both start facing north: at the door, or at the nurse.
+        walk_room_legs(console, context, center_legs(step.variant), Pokemon::Direction::NORTH);
+        return done();
     }
     if (step.variant == POSTER_SWITCH_VARIANT){
         push_poster_switch(console, context);
@@ -130,7 +145,7 @@ std::optional<Pokemon::Outcome> run_field_game_step(
     if (end != ItemUseEnd::USED){
         return Pokemon::outcome_failed(std::string("use_item_") + item_use_end_name(end), step.variant);
     }
-    return step.pose_after ? Pokemon::outcome_ok(*step.pose_after) : Pokemon::outcome_ok();
+    return done();
 }
 
 

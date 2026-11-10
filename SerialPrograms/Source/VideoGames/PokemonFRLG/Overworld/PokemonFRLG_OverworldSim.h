@@ -140,7 +140,8 @@ struct SimScript{
     //  A lift's map, and where its door lets the player out for each floor
     //  on its panel's menu, top first (pokefirered setdynamicwarp in
     //  RocketHideout_Elevator's scripts): the door's own warp is the
-    //  game's placeholder.
+    //  game's placeholder. The hideout's: rocket_hideout_lift_room() under
+    //  LIFT_MAP, with rocket_hideout_lift_doors().
     std::map<std::string, std::vector<MapPosition>> lift_floors = {};
     SimTiming timing;
 };
@@ -222,7 +223,8 @@ enum class SimField{
     //  The poster the player faces (an object named "poster"): the switch
     //  behind it opens the stairs, which takes away the objects named
     //  "poster_stairs" for good (pokefirered
-    //  CeladonCity_GameCorner_EventScript_Poster's setmetatile).
+    //  CeladonCity_GameCorner_EventScript_Poster's setmetatile). The sim
+    //  adds both to the Game Corner from code (add_coded_objects()).
     POSTER_SWITCH,
     //  The panel of the lift the player stands in (SimScript::lift_floors):
     //  the floor picked, the lift's door now lets out there.
@@ -325,6 +327,8 @@ private:
     bool slide_on(Step& step) const;
     //  The slide's time after `step`, and its facing; 0 for no slide.
     Milliseconds after_slide(const Step& step);
+    //  What the maps can't say, from code (add_coded_objects()).
+    void add_coded_field();
     bool cut_tree();
     bool choose_lift_floor(size_t floor);
     bool push_poster_switch();

@@ -7,11 +7,18 @@
     "start": {"certainty": "tile", "map": "CeladonCity_PokemonCenter_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 4]]}},
     "events": [
       {
+        "id": "out_of_celadon_center",
+        "kind": "game_action",
+        "declared_after": {"certainty": "tile", "map": "CeladonCity", "where": {"facing": "south", "kind": "tiles", "tiles": [[48, 12]]}},
+        "variant": "center_exit",
+        "why": "the Center script out: south to the mat and out of the door (48, 11)"
+      },
+      {
         "id": "celadon_below_game_corner",
         "kind": "route",
         "target": {"certainty": "tile", "map": "CeladonCity", "where": {"facing": "north", "kind": "tiles", "tiles": [[34, 22]]}},
         "variant": "run",
-        "why": "out of the Center, west along row 12, down column 41..43 to row 22, west to below the Game Corner (34, 21)"
+        "why": "west along row 12, down column 41..43 to row 22, west to below the Game Corner (34, 21)"
       },
       {
         "id": "below_poster_guard",

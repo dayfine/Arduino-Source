@@ -7,11 +7,18 @@
     "start": {"certainty": "tile", "map": "LavenderTown_PokemonCenter_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 4]]}},
     "events": [
       {
+        "id": "out_of_lavender_center",
+        "kind": "game_action",
+        "declared_after": {"certainty": "tile", "map": "LavenderTown", "where": {"facing": "south", "kind": "tiles", "tiles": [[6, 6]]}},
+        "variant": "center_exit",
+        "why": "the Center script out: south to the mat and out of the door (6, 5)"
+      },
+      {
         "id": "lavender_mart_clerk",
         "kind": "route",
         "target": {"certainty": "tile", "map": "LavenderTown_Mart", "where": {"facing": "west", "kind": "tiles", "tiles": [[4, 3]]}},
         "variant": "run",
-        "why": "out of the Center, east along row 6 and down to the Mart (20, 15), to its clerk"
+        "why": "east along row 6 and down to the Mart (20, 15), to its clerk"
       },
       {
         "id": "buy_ropes_and_super_repels",
@@ -87,10 +94,10 @@
       },
       {
         "id": "celadon_nurse",
-        "kind": "route",
-        "target": {"certainty": "tile", "map": "CeladonCity_PokemonCenter_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 4]]}},
-        "variant": "run",
-        "why": "into the Center, to the nurse"
+        "kind": "game_action",
+        "declared_after": {"certainty": "tile", "map": "CeladonCity_PokemonCenter_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 4]]}},
+        "variant": "center_enter",
+        "why": "the Center script in: through the door and up to the nurse; no map of the Center"
       },
       {
         "id": "heal_celadon",

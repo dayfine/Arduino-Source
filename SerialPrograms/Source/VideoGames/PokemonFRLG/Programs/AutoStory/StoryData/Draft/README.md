@@ -37,8 +37,8 @@ of the hideout after Giovanni (00.32), which puts the player at the Game
 Corner's door, CeladonCity (34, 22) (pokefirered `UpdateEscapeWarp()`: the last
 outdoor door, a tile south). The Rocket Hideout has no wild Pokemon
 (`wild_encounters.json` lists none of its floors), so no Repel is used there.
-The BICYCLE (00.26) is ridden on Route 8's open legs (`bike`); it is
-`BIKE_TILE_TIME`, an estimate from the decompilation, until measured.
+The BICYCLE (00.26) is ridden on Route 8's open legs (`bike`) at
+`BIKE_TILE_TIME`, 112 ms a tile, measured on console B (2026-11-09).
 
 ## The maps each draft needs
 
@@ -57,27 +57,45 @@ or neither:
 | UndergroundPath_WestEntrance | 00.30 | candidate |
 | Route7 | 00.30 | candidate |
 | CeladonCity | 00.30 to 00.32 | candidate |
-| CeladonCity_PokemonCenter_1F | 00.30, 00.31 | missing |
 | CeladonCity_GameCorner | 00.31, 00.32 | candidate |
 | RocketHideout_B1F | 00.31, 00.32 | candidate |
 | RocketHideout_B2F | 00.31, 00.32 | candidate |
 | RocketHideout_B3F | 00.31 | candidate |
 | RocketHideout_B4F | 00.31, 00.32 | candidate |
-| RocketHideout_Elevator | 00.32 | missing |
 
-Beyond publishing (a PokemonSimulation publish and a lock bump, which need the
-user's approval), the code added for these drafts reads three things the
-candidate maps don't carry yet:
+### Scripted, not mapped
 
-- B2F's and B3F's spinner tiles as regions `spin_north`, `spin_south`,
-  `spin_west`, `spin_east` and `spin_stop` (pokefirered `MB_SPIN_*`,
-  `MB_STOP_SPINNING`; `spin_slide()` in PokemonFRLG_OverworldMap.h);
-- the Game Corner's poster as an object `poster` at (11, 1), and its stairs
-  (16..17, 2..3) as objects `poster_stairs`, which the switch removes
-  (`SimField::POSTER_SWITCH`);
-- the lift's floors: its door is a dynamic warp (`setdynamicwarp`), so the sim
-  is told where each floor lets out (`SimScript::lift_floors`: B1F (24, 25),
-  B2F (28, 16), B4F (20, 23)) and the planner can't route through it yet.
+Pokemon Centers and the hideout's lift have no maps (the user's call,
+2026-11-09): every Center's ground floor shares pokefirered's
+`LAYOUT_POKEMON_CENTER_1F`, and the lift is 5 by 7 tiles. The seven Centers in
+the map lock have the same tiles; they differ only in the people standing in
+them, none on the nurse's column (x 7). So the story walks both by a fixed
+script (`PokemonFRLG_AutoStoryRooms.h`), and the sim builds their rooms from
+code (`PokemonFRLG_CodedRooms.h`):
+
+- `center_enter`: from below the Center's door, facing north, through the door
+  onto the mat (7, 8) and north 4 to below the nurse (7, 4); `heal` follows.
+  `center_exit`: south 4 and out; the game walks the player back onto the tile
+  below the door. 00.30 and 00.31 use them for Lavender's and Celadon's
+  Centers; no `CeladonCity_PokemonCenter_1F` map is needed.
+- `lift_floor <from> <to>`: from below `from`'s lift door, facing north: in
+  onto (2, 5), north 2, west 2 to below the panel (0, 2), the floor picked,
+  east 2, south 2 and south through the arrow warp onto `to`'s lift door
+  (`setdynamicwarp`: B1F (24, 25), B2F (28, 16), B4F (20, 23)). No
+  `RocketHideout_Elevator` map is needed.
+
+The two other things the candidate maps can't say in glyphs are coded too,
+from pokefirered, so the maps need no extra regions or objects:
+
+- B2F's and B3F's spinner tiles (`MB_SPIN_*`, `MB_STOP_SPINNING` from the
+  floors' `map.bin` and the tilesets' metatile attributes;
+  `coded_spin_direction()`);
+- the Game Corner's poster at (11, 1) and the tiles its switch turns into
+  stairs, (15, 2) and (16..17, 2..3) (`OpenRocketHideout`'s `setmetatile`),
+  added to the sim's Game Corner by `add_coded_objects()`.
+
+Beyond those, the drafts need a PokemonSimulation publish and a lock bump for
+the candidate maps above, which need the user's approval.
 
 `STORY_TRAINERS` names the battles these drafts fight: CeladonCity_GameCorner
 `rocket_grunt` (GRUNT_7), and on RocketHideout_B4F `lift_key_grunt` (GRUNT_18),
@@ -103,6 +121,7 @@ drafts become table rows, their battle steps take those names.
   format can't yet say `handoff`/`live_start` as 00.12/00.12b do in C++.
 - `game_action` variants the C++ executor now has (no console run yet):
   `poster_switch`, `lift_floor <from> <to>` (PokemonFRLG_AutoStoryHideout.h),
+  `center_enter`, `center_exit` (PokemonFRLG_AutoStoryRooms.h),
   `use_item <repel|super-repel|max-repel|escape-rope>` and `ride_bike`
   (PokemonFRLG_AutoStoryItemUse.h), and the `bike` route variant. Variants
   that no executor has yet: `party_room`, `gift_rng`, `use_item rare-candy
@@ -140,10 +159,13 @@ the Elite Four rooms' arrival points (e.g. Lorelei's `warp_0` (6, 12)) are
 wall tiles, and Indigo Plateau's door glyph is at (11, 5) with its warp at
 (11, 6).
 
+The `*_nurse` legs below (drafts on #303) need no Center maps once they become
+`center_enter` steps, as 00.30's has.
+
 | Skipped leg | Why |
 |---|---|
 | 00.32/b2f_lift | B2F's lift corner is reached over arrow tiles: the planner solves them now, but the candidate map has no `spin_*` regions |
-| 00.32/b4f_below_guards | RocketHideout_Elevator map not in source-candidate |
+| 00.32/b4f_below_guards | planned before the lift was scripted; it now starts on B4F's lift door (20, 23) |
 | 00.32/x_item_clerk | CeladonCity_DepartmentStore_Elevator map not in source-candidate |
 | 00.32/route16_below_tree | CeladonCity_DepartmentStore_Elevator map not in source-candidate |
 | 00.32/celadon_nurse | map not in source-candidate |

@@ -15,7 +15,9 @@
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
 #include "PokemonFRLG_AutoStoryHideout.h"
+#include "PokemonFRLG_AutoStoryRooms.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 
 namespace PokemonAutomation{
@@ -522,9 +524,30 @@ std::string OverworldStepSim::cut(const StoryStep& step){
     return "";
 }
 
-//  A Rocket Hideout GAME step on the sim: the poster's switch, or the
-//  lift's floor (SimScript::lift_floors, rows as on the panel); any other
-//  GAME step is stubbed.
+namespace{
+
+//  walk_room_legs() on the sim: a step tap a tile, each warp's fade and
+//  the walk out of a door waited out.
+void sim_walk_room_legs(OverworldSim& sim, const std::vector<RoomLeg>& legs){
+    for (const RoomLeg& leg : legs){
+        if (leg.tiles == 0){
+            sim_turn_to(sim, leg.direction);
+            continue;
+        }
+        for (int tile = 0; tile < leg.tiles; tile++){
+            sim_step_once(sim, leg.direction);
+        }
+        if (leg.warps){
+            sim.watch({}, OverworldWalkSteps::AFTER_WARP);
+        }
+    }
+}
+
+} // namespace
+
+//  A scripted GAME step on the sim: the poster's switch, the lift's ride
+//  (its room coded, SimScript::lift_floors, rows as on the panel), or a
+//  Pokemon Center's way in or out; any other GAME step is stubbed.
 Pokemon::StoryAction OverworldStepSim::hideout_or_stub(){
     Pokemon::StoryAction stub = m_stubs.stub();
     Pokemon::StoryAction sim = played([this](RunState&, const StoryStep& step){
@@ -532,7 +555,9 @@ Pokemon::StoryAction OverworldStepSim::hideout_or_stub(){
         return failure.empty() ? Pokemon::outcome_ok() : Pokemon::outcome_failed("sim_failure", failure);
     });
     sim.act = [stub, played_act = sim.act](RunState& state, const StoryStep& step){
-        return is_hideout_variant(step.variant) ? played_act(state, step) : stub.act(state, step);
+        return is_hideout_variant(step.variant) || is_center_variant(step.variant)
+            ? played_act(state, step)
+            : stub.act(state, step);
     };
     sim.needs_console = stub.needs_console;
     return sim;
@@ -542,9 +567,33 @@ std::string OverworldStepSim::hideout(const StoryStep& step){
     if (step.variant == POSTER_SWITCH_VARIANT){
         return m_sim.use_field(SimField::POSTER_SWITCH) ? "" : "no poster ahead.";
     }
+    if (is_center_variant(step.variant)){
+        sim_walk_room_legs(m_sim, center_legs(step.variant));
+        return ended_on(step);
+    }
     const std::optional<LiftRide> ride = parse_lift_floor_variant(step.variant);
-    if (!ride || !m_sim.use_field(SimField::LIFT_FLOOR, ride->to)){
+    if (!ride){
+        return "no lift ride \"" + step.variant + "\".";
+    }
+    sim_walk_room_legs(m_sim, lift_in_legs());
+    if (!m_sim.use_field(SimField::LIFT_FLOOR, ride->to)){
         return "no lift panel for \"" + step.variant + "\".";
+    }
+    sim_walk_room_legs(m_sim, lift_out_legs());
+    return ended_on(step);
+}
+
+//  After a scripted step: the player's pose, and whether it is the step's
+//  pose_after, if it has one.
+std::string OverworldStepSim::ended_on(const StoryStep& step){
+    const SimState& state = m_sim.state();
+    m_at = StoryPose{state.position.map, state.position.point, state.facing};
+    if (!step.pose_after){
+        return "";
+    }
+    const std::optional<StoryPose> expected = story_pose(*step.pose_after);
+    if (!expected || !(MapPosition{expected->map, expected->tile} == state.position)){
+        return "expected to end on " + (expected ? to_string(MapPosition{expected->map, expected->tile}) : std::string("a pose")) + ".";
     }
     return "";
 }

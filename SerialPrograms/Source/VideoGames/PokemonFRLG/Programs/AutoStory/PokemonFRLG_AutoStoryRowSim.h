@@ -185,6 +185,7 @@ private:
     std::string battle(const StoryStep& step);
     Pokemon::StoryAction hideout_or_stub();
     std::string hideout(const StoryStep& step);
+    std::string ended_on(const StoryStep& step);
 
     OverworldSim& m_sim;
     StoryPose m_at;

@@ -111,9 +111,17 @@ ItemUseEnd renew_repel(Logger& logger, ItemUseActions& actions, std::string_view
 
 namespace{
 
-//  The bag slides in, and ignores presses until it is done (as
-//  use_max_repel_from_bag()).
-constexpr Milliseconds BAG_SLIDE_IN = 1000ms;
+//  The waits that worked on console B (2026-11-09, the Bicycle from Key
+//  Items: TEACHY TV, TM CASE, HELIX FOSSIL, FAME CHECKER, S.S. TICKET,
+//  BICYCLE; USE the first option, on the bike about 1.5 s after its A).
+//  The bag slides in, and ignores presses until it is done.
+constexpr Milliseconds BAG_SLIDE_IN = 1500ms;
+//  A pocket switch (left or right), press and wait.
+constexpr Milliseconds POCKET_TAP = 100ms;
+constexpr Milliseconds POCKET_SWITCH_WAIT = 600ms;
+//  A cursor step in a pocket, press and wait: 250 ms in all.
+constexpr Milliseconds CURSOR_TAP = 100ms;
+constexpr Milliseconds CURSOR_WAIT = 150ms;
 //  Out of the bag and its messages, or the Escape Rope's warp.
 constexpr Milliseconds BAG_CLOSE_TIMEOUT = 30000ms;
 
@@ -130,10 +138,10 @@ bool ConsoleItemUseActions::open_pocket(BagPocket pocket){
     pbf_wait(m_context, BAG_SLIDE_IN);
     //  Left to the Items pocket, which doesn't wrap, then right to `pocket`.
     for (int c = 0; c < 3; c++){
-        pbf_press_dpad(m_context, DPAD_LEFT, 100ms, 600ms);
+        pbf_press_dpad(m_context, DPAD_LEFT, POCKET_TAP, POCKET_SWITCH_WAIT);
     }
     for (int c = 0; c < (int)pocket; c++){
-        pbf_press_dpad(m_context, DPAD_RIGHT, 100ms, 600ms);
+        pbf_press_dpad(m_context, DPAD_RIGHT, POCKET_TAP, POCKET_SWITCH_WAIT);
     }
     for (int c = 0; c < 20; c++){
         pbf_press_dpad(m_context, DPAD_UP, 100ms, 100ms);
@@ -152,7 +160,7 @@ std::vector<BagRow> ConsoleItemUseActions::read_pocket(){
 
 void ConsoleItemUseActions::use_row(size_t row){
     for (size_t c = 0; c < row; c++){
-        pbf_press_dpad(m_context, DPAD_DOWN, 100ms, 300ms);
+        pbf_press_dpad(m_context, DPAD_DOWN, CURSOR_TAP, CURSOR_WAIT);
     }
     //  The item's menu, USE on top.
     pbf_press_button(m_context, BUTTON_A, 160ms, 800ms);

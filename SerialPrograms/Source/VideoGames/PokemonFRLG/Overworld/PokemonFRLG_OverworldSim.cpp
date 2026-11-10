@@ -145,6 +145,7 @@ OverworldSim::OverworldSim(std::vector<MapData> maps, MapPosition start, Directi
     if (m_map < 0){
         throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Sim: start on a map that isn't loaded: " + start.map);
     }
+    add_coded_field();
     m_player = PlayerState{start.point, elevation_at(map(), start.point), false};
     m_state.facing = facing;
     show(m_script.start_menu_open ? SimScreen::START_MENU : SimScreen::OVERWORLD, m_now);

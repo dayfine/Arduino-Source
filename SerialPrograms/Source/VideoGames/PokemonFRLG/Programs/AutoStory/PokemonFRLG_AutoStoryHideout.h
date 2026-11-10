@@ -37,10 +37,12 @@ namespace PokemonFRLG{
 //  beaten first.
 inline const std::string POSTER_SWITCH_VARIANT = "poster_switch";
 
-//  The GAME step that rides the Rocket Hideout's lift, the player facing
-//  its panel with the LIFT KEY: "lift_floor <from> <to>", floors as the
-//  panel names them (B1F, B2F, B4F). `from` is the floor the lift stands
-//  at, where the panel's cursor starts.
+//  The GAME step that rides the Rocket Hideout's lift with the LIFT KEY:
+//  "lift_floor <from> <to>", floors as the panel names them (B1F, B2F,
+//  B4F). `from` is the floor the lift stands at, where the panel's cursor
+//  starts. The player starts below `from`'s lift door, facing north, and
+//  ends on `to`'s lift door (rocket_hideout_lift_doors()): the lift is
+//  walked by a script (lift_in_legs(), lift_out_legs()), not a map.
 inline constexpr std::string_view LIFT_FLOOR_PREFIX = "lift_floor ";
 
 //  The lift panel's menu, top first (pokefirered
@@ -73,15 +75,18 @@ bool is_hideout_variant(std::string_view variant);
 
 //  On the console: A on the panel, the floor picked, the ride waited out
 //  back to the overworld, the player still in the lift.
+void pick_lift_floor(ConsoleHandle& console, ProControllerContext& context, const LiftRide& ride);
+//  On the console, the whole ride: into the lift from below the door,
+//  the floor picked, out onto the floor's lift door.
 void ride_lift(ConsoleHandle& console, ProControllerContext& context, const LiftRide& ride);
 //  On the console: A on the poster, its message closed back to the
 //  overworld.
 void push_poster_switch(ConsoleHandle& console, ProControllerContext& context);
 
-//  On the console, a GAME step of this file's or an item from the bag
-//  (is_item_use_variant()); nothing for another GAME step. The hideout's
-//  steps leave the player where they stand; an item used ends on the
-//  step's pose_after (an Escape Rope's), if it has one.
+//  On the console, a GAME step of this file's, a Pokemon Center's
+//  (is_center_variant()) or an item from the bag (is_item_use_variant());
+//  nothing for another GAME step. The step ends on its pose_after, if it
+//  has one (an Escape Rope's, a lift ride's, a Center's).
 std::optional<Pokemon::Outcome> run_field_game_step(
     ConsoleHandle& console, ProControllerContext& context, Language language, const Pokemon::StoryStep& step
 );

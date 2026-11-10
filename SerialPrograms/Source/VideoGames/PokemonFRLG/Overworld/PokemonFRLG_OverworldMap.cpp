@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include "Common/Cpp/Exceptions.h"
+#include "PokemonFRLG_CodedRooms.h"
 #include "PokemonFRLG_OverworldMap.h"
 
 namespace PokemonAutomation{
@@ -246,6 +247,9 @@ bool in_region(const MapData& map, const char* region, const TilePos& point){
 } // namespace
 
 std::optional<Direction> spin_direction(const MapData& map, const TilePos& point){
+    if (const std::optional<Direction> coded = coded_spin_direction(map.name, point)){
+        return coded;
+    }
     static const std::pair<const char*, Direction> ARROWS[] = {
         {SPIN_NORTH_REGION, Direction::NORTH},
         {SPIN_SOUTH_REGION, Direction::SOUTH},
@@ -260,7 +264,7 @@ std::optional<Direction> spin_direction(const MapData& map, const TilePos& point
     return std::nullopt;
 }
 bool stops_spinning(const MapData& map, const TilePos& point){
-    return in_region(map, SPIN_STOP_REGION, point);
+    return coded_spin_stop(map.name, point) || in_region(map, SPIN_STOP_REGION, point);
 }
 
 std::optional<SpinSlide> spin_slide(const MapData& map, const PlayerState& state){

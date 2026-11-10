@@ -162,8 +162,9 @@ PlayerState after_step_onto(
 
 //  Spinner tiles (Rocket Hideout B2F and B3F, Viridian Gym): pokefirered's
 //  MB_SPIN_UP, MB_SPIN_DOWN, MB_SPIN_LEFT, MB_SPIN_RIGHT and
-//  MB_STOP_SPINNING. The tile glyphs can't say so, so a map lists them in
-//  these regions, as it does WILD_REGION.
+//  MB_STOP_SPINNING. The tile glyphs can't say so: the hideout's floors
+//  have them coded (coded_spin_direction(), PokemonFRLG_CodedRooms.h);
+//  another map may list them in these regions, as it does WILD_REGION.
 //  "spin_north": MB_SPIN_UP.
 extern const char SPIN_NORTH_REGION[];
 //  "spin_south": MB_SPIN_DOWN.

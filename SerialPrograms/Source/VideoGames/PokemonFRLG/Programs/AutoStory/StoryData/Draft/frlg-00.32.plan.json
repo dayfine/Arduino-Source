@@ -16,15 +16,16 @@
       {
         "id": "lift_to_b4f",
         "kind": "game_action",
+        "declared_after": {"certainty": "tile", "map": "RocketHideout_B4F", "where": {"facing": "south", "kind": "tiles", "tiles": [[20, 23]]}},
         "variant": "lift_floor B2F B4F",
-        "why": "the LIFT KEY works the lift: B4F"
+        "why": "the lift script: in through the door (28, 16), to the panel, B4F with the LIFT KEY, out onto B4F's lift door; no map of the lift"
       },
       {
         "id": "b4f_below_guards",
         "kind": "route",
         "target": {"certainty": "tile", "map": "RocketHideout_B4F", "where": {"facing": "north", "kind": "tiles", "tiles": [[17, 16]]}},
         "variant": "run",
-        "why": "out of the lift to below the two Grunts (16, 14) and (19, 14)"
+        "why": "from the lift door to below the two Grunts (16, 14) and (19, 14)"
       },
       {
         "id": "talk_left_guard",

@@ -4,8 +4,10 @@
  *
  */
 
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_CodedRooms.h"
 #include "PokemonFRLG_AutoStoryHideout.h"
 #include "PokemonFRLG_AutoStoryItemUse.h"
+#include "PokemonFRLG_AutoStoryRooms.h"
 #include "PokemonFRLG_AutoStoryTableSteps.h"
 
 namespace PokemonAutomation{
@@ -165,6 +167,24 @@ StoryStep poster_switch(std::string name, std::string why){
 StoryStep lift_floor(std::string name, std::string_view from, std::string_view to, std::string why){
     StoryStep step = make(StoryStepKind::GAME, std::move(name), std::move(why));
     step.variant = lift_floor_variant(from, to);
+    if (const std::optional<LiftRide> ride = parse_lift_floor_variant(step.variant)){
+        const MapPosition& door = rocket_hideout_lift_doors()[ride->to];
+        step.pose_after = to_pose(StoryPose{door.map, door.point, Direction::SOUTH});
+    }
+    return step;
+}
+
+StoryStep center_enter(std::string name, const char* center, std::string why){
+    StoryStep step = make(StoryStepKind::GAME, std::move(name), std::move(why));
+    step.variant = CENTER_ENTER_VARIANT;
+    step.pose_after = at(center, CENTER_NURSE_FRONT.x, CENTER_NURSE_FRONT.y, Direction::NORTH);
+    return step;
+}
+
+StoryStep center_exit(std::string name, Pokemon::Pose below_door, std::string why){
+    StoryStep step = make(StoryStepKind::GAME, std::move(name), std::move(why));
+    step.variant = CENTER_EXIT_VARIANT;
+    step.pose_after = std::move(below_door);
     return step;
 }
 

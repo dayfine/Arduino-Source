@@ -48,10 +48,12 @@ inline constexpr Milliseconds TILE_TIME(267);
 inline constexpr Milliseconds RUN_TILE_TIME(133);
 //  Surfing: a tile per 8 frames.
 inline constexpr Milliseconds SURF_TILE_TIME(133);
-//  Riding the Bicycle: a tile per 4 frames (pokefirered bike.c,
-//  PlayerRideWaterCurrent(): MOVE_SPEED_FAST_2). An estimate from the
-//  decompilation, not measured on the console.
-inline constexpr Milliseconds BIKE_TILE_TIME(67);
+//  Riding the Bicycle, measured on console B (2026-11-09, Lavender Town
+//  row 13, wall to wall, from rest): 16 tiles (1, 13) to (17, 13) in
+//  1800 ms of motion, east and back west alike, 112 ms a tile; 5 tiles
+//  from rest in 600 ms (120 ms a tile, the start up included). Not the
+//  decompilation's 4 frames a tile (67 ms): the bike speeds up from rest.
+inline constexpr Milliseconds BIKE_TILE_TIME(112);
 //  The longest tap measured to only turn a player facing another way, and
 //  to take exactly one step for one facing its way.
 inline constexpr Milliseconds LONGEST_TAP(133);

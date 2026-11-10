@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_CodedRooms.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_MovementMechanics.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
@@ -100,55 +101,97 @@ UnitTestResult test_steps_on_sim(){
     return true;
 }
 
+//  The Game Corner with no poster or stairs in its map: the sim adds them
+//  from code (add_coded_objects()). The room ends at x 16, so the walk
+//  east ends on (15, 2), the stairs' top, only once the switch opens it.
 std::string poster_on_sim(){
-    const MapData room = parse_map(R"({
-        "name": "Corner", "source": {"decomp_file": "", "revision": "test", "date": "2026-11-09"},
-        "tiles": ["#####", "#...#", "#...#", "#####"],
-        "objects": [
-            {"name": "poster", "kind": "sign", "x": 2, "y": 1},
-            {"name": "poster_stairs", "kind": "npc", "x": 3, "y": 1}
-        ]
-    })", "Corner");
-    OverworldSim sim({room}, MapPosition{"Corner", {2, 2}}, Direction::NORTH);
-    StoryPose at{"Corner", {2, 2}, Direction::NORTH};
+    std::string rows;
+    for (int y = 0; y < 5; y++){
+        rows += std::string(y == 0 ? "" : ", ") + (y == 0 || y == 4 ? "\"#################\"" : "\"#...............#\"");
+    }
+    const MapData room = parse_map(
+        "{\"name\": \"CeladonCity_GameCorner\", \"source\": {\"decomp_file\": \"\", \"revision\": \"test\", \"date\": \"2026-11-09\"},"
+        " \"tiles\": [" + rows + "]}",
+        "CeladonCity_GameCorner"
+    );
+    const MapPosition below_poster{"CeladonCity_GameCorner", {GAME_CORNER_POSTER.x, GAME_CORNER_POSTER.y + 1}};
+    OverworldSim sim({room}, below_poster, Direction::NORTH);
+    StoryPose at{below_poster.map, below_poster.point, Direction::NORTH};
     const std::string failure = row_step_on_sim(sim, at, StoryTable::poster_switch("poster_switch", "test"), "00.31");
     if (!failure.empty()){
         return failure;
     }
     const Milliseconds tile = MovementMechanics::TILE_TIME;
-    sim.hold(Direction::EAST, tile * 2, MovementMechanics::STEP_RELEASE, tile * 2, {});
-    sim.hold(Direction::NORTH, tile * 2, MovementMechanics::STEP_RELEASE, tile * 2, {});
-    if (!(sim.state().position == MapPosition{"Corner", {3, 1}})){
-        return "After the poster step, walked onto " + to_string(sim.state().position) + ", not the stairs.";
+    sim.hold(Direction::EAST, tile * 6, MovementMechanics::STEP_RELEASE, tile * 6, {});
+    if (!(sim.state().position == MapPosition{"CeladonCity_GameCorner", {15, 2}})){
+        return "After the poster step, walked onto " + to_string(sim.state().position) + ", not the stairs' (15, 2).";
     }
     return "";
 }
 
+//  A hideout floor of 32 by 26 open tiles with its lift door, which lets
+//  into the lift as pokefirered's floors' warps do (warp 1 of the lift).
+MapData hideout_floor(const std::string& name, const TilePos& door){
+    std::string rows;
+    for (int y = 0; y < 26; y++){
+        std::string row(32, '.');
+        if (y == door.y){
+            row[door.x] = 'D';
+        }
+        rows += (y == 0 ? "\"" : ", \"") + row + "\"";
+    }
+    return parse_map(std::format(
+        "{{\"name\": \"{}\", \"source\": {{\"decomp_file\": \"\", \"revision\": \"test\", \"date\": \"2026-11-09\"}},"
+        " \"tiles\": [{}], \"warps\": [{{\"x\": {}, \"y\": {}, \"enter\": \"walk_into\", \"to_map\": \"{}\", \"to_point\": \"warp_1\"}}]}}",
+        name, rows, door.x, door.y, LIFT_MAP
+    ), name);
+}
+
+//  The ride from B2F to B4F with the lift's room coded, not mapped: from
+//  below B2F's lift door, in, the panel, out onto B4F's lift door.
 std::string lift_on_sim(){
-    std::vector<MapData> maps;
-    maps.push_back(parse_map(R"({
-        "name": "Lift", "source": {"decomp_file": "", "revision": "test", "date": "2026-11-09"},
-        "tiles": ["###", "#.#", "#.#", "###"],
-        "warps": [{"x": 1, "y": 2, "enter": "walk_south"}]
-    })", "Lift"));
-    maps.push_back(parse_map(R"({
-        "name": "B4F", "source": {"decomp_file": "", "revision": "test", "date": "2026-11-09"},
-        "tiles": ["###", "#.#", "###"]
-    })", "B4F"));
+    const std::vector<MapPosition>& doors = rocket_hideout_lift_doors();
+    std::vector<MapData> maps{
+        hideout_floor("RocketHideout_B2F", doors[1].point),
+        hideout_floor("RocketHideout_B4F", doors[2].point),
+        rocket_hideout_lift_room(),
+    };
     SimScript script;
-    const MapPosition b4f{"B4F", {1, 1}};
-    script.lift_floors["Lift"] = {MapPosition{"Lift", {1, 1}}, MapPosition{"Lift", {1, 1}}, b4f};
-    OverworldSim sim(maps, MapPosition{"Lift", {1, 2}}, Direction::SOUTH, script);
-    StoryPose at{"Lift", {1, 2}, Direction::SOUTH};
+    script.lift_floors[std::string(LIFT_MAP)] = doors;
+    const MapPosition below_door{"RocketHideout_B2F", doors[1].point.next(Direction::SOUTH)};
+    OverworldSim sim(maps, below_door, Direction::NORTH, script);
+    StoryPose at{below_door.map, below_door.point, Direction::NORTH};
     const std::string failure = row_step_on_sim(sim, at, StoryTable::lift_floor("lift_to_b4f", "B2F", "B4F", "test"), "00.32");
     if (!failure.empty()){
         return failure;
     }
-    sim.hold(Direction::SOUTH, MovementMechanics::TILE_TIME, MovementMechanics::STEP_RELEASE, std::chrono::milliseconds(3000), {});
-    if (!(sim.state().position == b4f)){
+    if (!(sim.state().position == doors[2])){
         return "After the lift step, the door let out on " + to_string(sim.state().position) + ".";
     }
+    if (!sim.state().violations.empty()){
+        return "The lift step broke the game's rules: " + sim.state().violations.front();
+    }
     return "";
+}
+
+//  The hideout's spinners are coded: a map named as B2F or B3F slides the
+//  player with no spin_* regions of its own.
+UnitTestResult test_coded_spinners(){
+    MapData b3f = parse_map(R"({
+        "name": "RocketHideout_B3F", "source": {"decomp_file": "", "revision": "test", "date": "2026-11-09"},
+        "tiles": ["##########", "#........#", "#........#", "##########"]
+    })", "RocketHideout_B3F");
+    if (spin_direction(b3f, TilePos{4, 9}) != Direction::WEST || !stops_spinning(b3f, TilePos{2, 9})){
+        return "Expected B3F (4, 9) to slide west and (2, 9) to stop a slide.";
+    }
+    if (coded_spin_direction("RocketHideout_B2F", TilePos{3, 4}) != Direction::WEST
+        || coded_spin_direction("RocketHideout_B2F", TilePos{9, 5}) != Direction::NORTH
+        || !coded_spin_stop("RocketHideout_B2F", TilePos{1, 4})
+        || coded_spin_direction("RocketHideout_B1F", TilePos{3, 4}).has_value()
+    ){
+        return "Expected B2F's arrows and stops from pokefirered, and none on B1F.";
+    }
+    return true;
 }
 
 struct AutoStoryHideoutBodyInput{
@@ -185,6 +228,10 @@ const AutoStoryHideoutBodyCase HIDEOUT_BODY_CASES[] = {
     {
         .input = {.name = "table steps on the sim", .body = test_steps_on_sim},
         .expectation = {.description = "the poster opens the stairs; the lift lets out on the floor picked"},
+    },
+    {
+        .input = {.name = "coded spinners", .body = test_coded_spinners},
+        .expectation = {.description = "B2F's and B3F's arrows come from code, not the map"},
     },
 };
 

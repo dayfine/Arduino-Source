@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <format>
+#include "PokemonFRLG_CodedRooms.h"
 #include "PokemonFRLG_OverworldSim.h"
 
 namespace PokemonAutomation{
@@ -34,6 +35,12 @@ bool OverworldSim::use_field(SimField field, size_t floor){
         return choose_lift_floor(floor);
     }
     return false;
+}
+
+void OverworldSim::add_coded_field(){
+    for (MapData& loaded : m_maps){
+        add_coded_objects(loaded);
+    }
 }
 
 bool OverworldSim::slide_on(Step& step) const{
