@@ -11,7 +11,10 @@
 #include <queue>
 #include "Common/Cpp/Exceptions.h"
 #include "Pokemon/Navigation/Pokemon_LegPlanner.h"
+#include "PokemonBDSP_AutoStory_RobustRoute.h"
 #include "PokemonBDSP_AutoStory_RoutePlanner.h"
+#include "PokemonBDSP_AutoStory_TrainerSight.h"
+#include "PokemonBDSP_AutoStory_WalkRules.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

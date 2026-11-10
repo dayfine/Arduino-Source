@@ -9,6 +9,7 @@
 #include <format>
 #include "Common/Cpp/Exceptions.h"
 #include "PokemonBDSP_AutoStory_StoryWorld.h"
+#include "PokemonBDSP_AutoStory_WalkRules.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
