@@ -78,6 +78,26 @@ void press_for(ProControllerContext& context, SceneMashAction action, Button tex
     }
 }
 
+//  Logs the frame's events whenever they change (the still-screen flag left
+//  out), so a run's log shows each scene's fades, boxes and party bar.
+void log_event_change(ConsoleHandle& console, const Pokemon::ScreenEvents& events, Pokemon::ScreenEvents& last){
+    Pokemon::ScreenEvents shown = events;
+    shown.set(Pokemon::ScreenEvent::SCREEN_STILL, false);
+    if (shown == last){
+        return;
+    }
+    last = shown;
+    std::string names;
+    for (size_t i = 0; i < Pokemon::SCREEN_EVENT_COUNT; i++){
+        const Pokemon::ScreenEvent event = (Pokemon::ScreenEvent)i;
+        if (shown.has(event)){
+            names += names.empty() ? "" : ", ";
+            names += Pokemon::screen_event_name(event);
+        }
+    }
+    console.log("mash_scene(): screen now: " + (names.empty() ? std::string("nothing") : names));
+}
+
 } // namespace
 
 void mash_scene(
@@ -87,11 +107,13 @@ void mash_scene(
 ){
     PlzaScreenObserver observer;
     OverworldEnd overworld(quiet, min_length);
+    Pokemon::ScreenEvents last_events;
     const WallClock start = current_time();
     while (current_time() - start < timeout){
         context.wait_for_all_requests();
         const WallClock now = current_time();
         const Pokemon::ScreenEvents events = observer.observe(console.video().snapshot(), now);
+        log_event_change(console, events, last_events);
         const SceneMashAction action = scene_mash_action(events, goal, text_button == BUTTON_B);
         if (goal == SceneMashGoal::OVERWORLD){
             if (overworld.reached(console, events, action, now)){
