@@ -261,9 +261,6 @@ std::set<std::string> BattleMenuReader::read_opponent(
 //    dump_image(logger, MODULE_NAME, "MaxLair-read_opponent", screen);
     return result;
 }
-//  A type read twice is one type: in the summary's type box the "O" of a
-//  "NORMAL" label also matches the Normal icon (Persian: 0.368, next to 0.076
-//  for the real icon), and no Pokemon has the same type twice.
 std::set<std::string> BattleMenuReader::read_opponent_in_summary(Logger& logger, const ImageViewRGB32& screen) const{
     //  Start by reading the types.
     PokemonType type0, type1;
@@ -282,18 +279,18 @@ std::set<std::string> BattleMenuReader::read_opponent_in_summary(Logger& logger,
         }
         logger.log(type_str);
 
+        //  A type read twice is one type: in the summary's type box the "O" of a
+        //  "NORMAL" label also matches the Normal icon (Persian: 0.368, next to
+        //  0.076 for the real icon), and no Pokemon has the same type twice.
         type0 = PokemonType::NONE;
         type1 = PokemonType::NONE;
-        {
-            auto iter = candidates.begin();
-            if (iter != candidates.end()){
-                type0 = iter->second.first;
-                ++iter;
-            }
-            if (iter != candidates.end() && iter->second.first != type0){
-                type1 = iter->second.first;
-                ++iter;
-            }
+        auto iter = candidates.begin();
+        if (iter != candidates.end()){
+            type0 = iter->second.first;
+            ++iter;
+        }
+        if (iter != candidates.end() && iter->second.first != type0){
+            type1 = iter->second.first;
         }
     }
 
