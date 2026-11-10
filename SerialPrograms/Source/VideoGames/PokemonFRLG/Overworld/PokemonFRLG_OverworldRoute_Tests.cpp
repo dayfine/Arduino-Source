@@ -108,8 +108,8 @@ MapPosition point_on(const std::vector<MapData>& maps, const std::string& map, c
 }
 
 const MapData* map_named(const std::vector<MapData>& maps, const std::string& name){
-    const int index = find_map(maps, name);
-    return index < 0 ? nullptr : &maps[index];
+    const auto map = std::find_if(maps.begin(), maps.end(), [&](const MapData& item){ return item.name == name; });
+    return map == maps.end() ? nullptr : &*map;
 }
 
 UnitTestResult test_maps(){
