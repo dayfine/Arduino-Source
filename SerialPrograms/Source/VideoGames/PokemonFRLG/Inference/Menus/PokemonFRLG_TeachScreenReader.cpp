@@ -468,7 +468,7 @@ public:
         const ImageViewRGB32& screen = images[0];
         const TeachScreen kind = read_teach_screen(screen);
         std::vector<std::string> labels{"screen"};
-        std::vector<std::string> values{teach_screen_name(kind)};
+        std::vector<std::string> values{std::string(teach_screen_name(kind))};
         add_details(logger, language, screen, kind, labels, values);
         return check_against_golden_file(UNIT_TEST_RESOURCE_PATH() + image_paths()[0], labels, values);
     }
@@ -503,7 +503,7 @@ private:
         case TeachScreen::PARTY_TEXT:
         case TeachScreen::TM_SCENE:
             labels.push_back("text");
-            values.push_back(teach_text_name(read_teach_text(logger, language, screen)));
+            values.emplace_back(teach_text_name(read_teach_text(logger, language, screen)));
             return;
         case TeachScreen::KNOWN_MOVES:
             for (size_t row = 0; row < SUMMARY_MOVE_ROWS; row++){
