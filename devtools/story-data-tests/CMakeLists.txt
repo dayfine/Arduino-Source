@@ -8,9 +8,11 @@ enable_testing()
 get_filename_component(ROOT "../.." ABSOLUTE)
 set(STORY "${ROOT}/SerialPrograms/Source/Pokemon/AutoStory")
 add_executable(StoryDataTests
-    "${STORY}/Pokemon_StoryStepJson.cpp"
-    "${STORY}/Pokemon_StoryStepJson_Tests.cpp"
-    "${STORY}/Pokemon_TilePose.cpp"
+    "${STORY}/Data/Pokemon_StoryStepJson.cpp"
+    "${STORY}/Data/Pokemon_StoryStepJson_Tests.cpp"
+    "${STORY}/Pokemon_BuiltinStoryActions.cpp"
+    "${STORY}/Types/Pokemon_StoryActionArg.cpp"
+    "${STORY}/Types/Pokemon_StoryActionSpec.cpp"
     "${ROOT}/SerialPrograms/Source/Pokemon/Navigation/Pokemon_Grid.cpp"
     "${ROOT}/Common/Cpp/Exceptions.cpp"
     "${ROOT}/Common/Cpp/Json/JsonValue.cpp"
@@ -22,12 +24,17 @@ add_executable(StoryDataTests
     "${ROOT}/Common/Cpp/Strings/Unicode.cpp")
 # Reuse the Qt/controller-free support sources; each codec has its own test main.
 get_target_property(STORY_DATA_SOURCES StoryDataTests SOURCES)
-list(REMOVE_ITEM STORY_DATA_SOURCES "${STORY}/Pokemon_StoryStepJson_Tests.cpp")
+list(REMOVE_ITEM STORY_DATA_SOURCES "${STORY}/Data/Pokemon_StoryStepJson_Tests.cpp")
 add_executable(AuthoredCheckpointTests ${STORY_DATA_SOURCES}
-    "${STORY}/Pokemon_AuthoredCheckpointJson.cpp"
-    "${STORY}/Pokemon_AuthoredCheckpointJson_Tests.cpp")
+    "${STORY}/Data/Pokemon_AuthoredCheckpointJson.cpp"
+    "${STORY}/Data/Pokemon_AuthoredCheckpointJson_Tests.cpp")
+add_executable(StoryActionArgTests
+    "${STORY}/Types/Pokemon_StoryActionArg.cpp"
+    "${STORY}/Types/Pokemon_StoryActionSpec.cpp"
+    "${STORY}/Types/Pokemon_StoryActionArg_Tests.cpp"
+    "${ROOT}/Common/Cpp/Exceptions.cpp")
 
-foreach(TEST_TARGET IN ITEMS StoryDataTests AuthoredCheckpointTests)
+foreach(TEST_TARGET IN ITEMS StoryDataTests AuthoredCheckpointTests StoryActionArgTests)
 target_include_directories(${TEST_TARGET} PRIVATE "${ROOT}" "${ROOT}/SerialPrograms/Source")
 target_compile_features(${TEST_TARGET} PRIVATE cxx_std_23)
 target_compile_definitions(${TEST_TARGET} PRIVATE PA_STORY_DATA_STANDALONE)
@@ -41,3 +48,4 @@ endif()
 endforeach()
 add_test(NAME StoryData COMMAND StoryDataTests)
 add_test(NAME AuthoredCheckpoint COMMAND AuthoredCheckpointTests)
+add_test(NAME StoryActionArg COMMAND StoryActionArgTests)

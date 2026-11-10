@@ -14,14 +14,18 @@
 #include <map>
 #include <optional>
 #include <set>
+#include <span>
 #include <string>
 #include <utility>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "Pokemon/Options/Pokemon_GameLanguages.h"
 #include "Pokemon/Options/Pokemon_StoryRunOptions.h"
+#include "Pokemon_AutoStorySelect.h"
 #include "Pokemon_StoryEvents.h"
+#include "Pokemon_BuiltinStoryActions.h"
 #include "Pokemon_StorySegments.h"
-#include "Pokemon_StorySteps.h"
+#include "Pokemon_StoryStepExecutor.h"
 #include "Pokemon_TilePose.h"
 #include "Pokemon_AutoStory_Tests.h"
 
@@ -37,7 +41,7 @@ namespace{
 class FakeExecutor : public StoryStepExecutor{
 public:
     std::vector<std::string> trace;
-    std::set<std::string> conditions;
+    std::set<std::string, std::less<>> conditions;
     //  Steps by name that always fail, and how.
     std::set<std::string> failing;
     //  Steps by name that fail this many more times, then pass.
@@ -64,43 +68,56 @@ public:
             left--;
             return outcome_failed("blocked", step.name + " was blocked");
         }
-        return StoryStepExecutor::run(state, step);
+        return run_kind(state, step);
     }
-    virtual bool holds(const std::string& condition, RunState& state) override{
+
+    virtual bool holds(std::string_view condition, RunState& state) override{
         return conditions.contains(condition) || StoryStepExecutor::holds(condition, state);
     }
 
-protected:
-    virtual Outcome route(RunState&, const StoryStep& step) override{
-        return outcome_ok(*step.target);
+private:
+    //  The kinds this world has; any other is unsupported.
+    Outcome run_kind(RunState& state, const StoryStep& step){
+        switch (step.kind){
+        case StoryStepKind::ROUTE:
+            return outcome_ok(pose_of(story_arg<GridPose>(step.args, "target")));
+        case StoryStepKind::STEP:
+            return step_one_tile(state, step);
+        case StoryStepKind::TALK:
+        case StoryStepKind::MASH:
+            return outcome_ok();
+        case StoryStepKind::BATTLE:
+            //  The first battle is lost; a step that may lose goes on.
+            return story_arg<bool>(step.args, "may_lose") ? outcome_ok() : outcome_failed("blackout");
+        case StoryStepKind::SHOP:
+            return shop(step);
+        case StoryStepKind::GAME:
+            return game(state, step);
+        default:
+            return unsupported_step(step);
+        }
     }
-    virtual Outcome step(RunState& state, const StoryStep& step) override{
+
+    Outcome step_one_tile(RunState& state, const StoryStep& step){
         const std::vector<TilePos> tiles = tiles_of(state.pose);
         if (tiles.size() != 1){
             return outcome_failed("no_pose", to_string(state.pose));
         }
-        return outcome_ok(tile_pose(state.pose.map, {tiles[0].next(step.direction)}, step.direction));
+        const Direction direction = story_arg<Direction>(step.args, "direction");
+        return outcome_ok(tile_pose(state.pose.map, {tiles[0].next(direction)}, direction));
     }
-    virtual Outcome talk(RunState&, const StoryStep&) override{
-        return outcome_ok();
-    }
-    virtual Outcome mash(RunState&, const StoryStep&) override{
-        return outcome_ok();
-    }
-    virtual Outcome battle(RunState&, const StoryStep& step) override{
-        //  The first battle is lost; a step that may lose goes on.
-        return step.may_lose ? outcome_ok() : outcome_failed("blackout");
-    }
-    virtual Outcome shop(RunState&, const StoryStep& step) override{
-        for (const StoryItem& item : step.items){
+
+    Outcome shop(const StoryStep& step){
+        for (const StoryItem& item : story_arg<std::vector<StoryItem>>(step.args, "items")){
             trace.push_back("  bought " + std::to_string(item.quantity) + " " + item.item);
         }
         return outcome_ok();
     }
-    //  A game step sets a run flag named for its variant.
-    virtual Outcome game(RunState& state, const StoryStep& step) override{
-        trace.push_back("  game " + step.variant);
-        state.flags.insert(step.variant);
+
+    //  A game step sets a run flag named for its action.
+    Outcome game(RunState& state, const StoryStep& step){
+        trace.push_back("  game " + step.action);
+        state.flags.insert(step.action);
         return unchanged.contains(step.name) ? outcome_unchanged() : outcome_ok();
     }
 };
@@ -109,22 +126,31 @@ StoryStep make(StoryStepKind kind, std::string name){
     StoryStep step;
     step.kind = kind;
     step.name = std::move(name);
+    //  As loading it would: the kind's built-in action's fallbacks.
+    if (const StoryActionSpec* spec = find_story_action(builtin_story_actions(), kind, "")){
+        step.args = with_fallbacks(*spec, {});
+    }
     return step;
 }
 
-StoryStep route_to(std::string name, Pose target){
+//  A grid pose on one tile.
+GridPose grid(std::string map, TilePos tile, Direction facing){
+    return GridPose{.map = std::move(map), .tiles = {tile}, .facing = facing};
+}
+
+StoryStep route_to(std::string name, GridPose target){
     StoryStep step = make(StoryStepKind::ROUTE, std::move(name));
-    step.target = std::move(target);
+    step.args = {{"target", std::move(target)}, {"fight_wild", false}};
     return step;
 }
 
 StoryStep step_into(std::string name, Direction direction){
     StoryStep step = make(StoryStepKind::STEP, std::move(name));
-    step.direction = direction;
+    step.args = {{"direction", direction}};
     return step;
 }
 
-StoryStep scene(std::string name, std::optional<Pose> pose_after){
+StoryStep scene(std::string name, std::optional<GridPose> pose_after){
     StoryStep step = make(StoryStepKind::MASH, std::move(name));
     step.pose_after = std::move(pose_after);
     return step;
@@ -134,17 +160,17 @@ StoryStep scene(std::string name, std::optional<Pose> pose_after){
 //  talk, a shop, a game step.
 StoryCheckpoint lab_checkpoint(){
     StoryStep shop = make(StoryStepKind::SHOP, "potions");
-    shop.items = {{.item = "potion", .quantity = 5}, {.item = "antidote", .quantity = 3}};
+    shop.args = {{"items", std::vector<StoryItem>{{.item = "potion", .quantity = 5}, {.item = "antidote", .quantity = 3}}}};
     StoryStep game = make(StoryStepKind::GAME, "dance");
-    game.variant = "dance";
+    game.action = "dance";
     return StoryCheckpoint{
         .id = "00.03",
         .title = "to the lab",
-        .start = tile_pose("Town", {{6, 8}}, Direction::SOUTH),
+        .start = grid("Town", {6, 8}, Direction::SOUTH),
         .steps = {
-            route_to("below_trigger", tile_pose("Town", {{12, 2}}, Direction::NORTH)),
+            route_to("below_trigger", grid("Town", {12, 2}, Direction::NORTH)),
             step_into("trigger", Direction::NORTH),
-            scene("to_the_lab", tile_pose("Lab", {{6, 4}}, Direction::NORTH)),
+            scene("to_the_lab", grid("Lab", {6, 4}, Direction::NORTH)),
             make(StoryStepKind::TALK, "talk_oak"),
             shop,
             game,
@@ -166,7 +192,7 @@ Run run(const StoryCheckpoint& data, StoryStepExecutor& executor){
     return ret;
 }
 
-std::string joined(const std::vector<std::string>& lines){
+std::string joined(std::span<const std::string> lines){
     std::string text;
     for (const std::string& line : lines){
         text += "\n  " + line;
@@ -281,14 +307,14 @@ UnitTestResult test_failure_names_the_step(){
 UnitTestResult test_unsupported_and_lost_battles(){
     //  The fake has no TRAIN, and loses battles a step may not lose.
     StoryStep train = make(StoryStepKind::TRAIN, "train");
-    train.battles = 3;
+    train.args = {{"battles", int64_t(3)}};
     FakeExecutor executor;
     Run result = run(StoryCheckpoint{.id = "01", .title = "", .start = std::nullopt, .steps = {train}}, executor);
     if (result.report.completed || result.report.failure.failure != "unsupported_step" || result.report.failure.detail != "TRAIN train"){
         return "Expected TRAIN unsupported:" + joined(result.lines);
     }
     StoryStep rival = make(StoryStepKind::BATTLE, "rival");
-    rival.may_lose = true;
+    rival.args = {{"may_lose", true}};
     StoryStep brock = make(StoryStepKind::BATTLE, "brock");
     result = run(StoryCheckpoint{.id = "02", .title = "", .start = std::nullopt, .steps = {rival, brock}}, executor);
     if (result.report.completed || result.report.failed_name != "brock" || result.report.failure.failure != "blackout"){
@@ -300,7 +326,7 @@ UnitTestResult test_unsupported_and_lost_battles(){
 //  Runs `tables` as one segment whose saves and reloads go into the
 //  executor's trace and whose log lines go into `lines`. Whatever blocked a
 //  step has gone by the reload.
-SegmentReport run_tables(const std::vector<StoryCheckpoint>& tables, FakeExecutor& executor, std::vector<std::string>& lines){
+SegmentReport run_tables(std::span<const StoryCheckpoint> tables, FakeExecutor& executor, std::vector<std::string>& lines){
     Segment segment;
     segment.id = "00";
     for (const StoryCheckpoint& data : tables){
@@ -333,7 +359,7 @@ UnitTestResult test_segment_of_tables(){
         StoryCheckpoint{
             .id = "00.04",
             .title = "the parcel",
-            .start = tile_pose("Lab", {{6, 4}}, Direction::NORTH),
+            .start = grid("Lab", {6, 4}, Direction::NORTH),
             .steps = {make(StoryStepKind::TALK, "give_parcel")},
         },
     };
@@ -356,7 +382,7 @@ UnitTestResult test_segment_of_tables(){
         && report.runs[0].one_shot() && report.runs[0].attempts == 1
         && !report.runs[1].one_shot() && report.runs[1].attempts == 2 && report.runs[1].passed
         && report.one_shot_passes() == 1;
-    const auto has = [&lines](const std::string& line){
+    const auto has = [&lines](std::string_view line){
         return std::find(lines.begin(), lines.end(), line) != lines.end();
     };
     if (!runs_ok
@@ -371,14 +397,14 @@ UnitTestResult test_segment_of_tables(){
 
 
 //  The two tables of test_segment_of_tables() as a segment run by `executor`,
-//  with hooks that write saves, reloads and recoveries into its trace.
+//  with hooks that write saves and reloads into its trace.
 struct PolicyLab{
     std::vector<StoryCheckpoint> tables{
         lab_checkpoint(),
         StoryCheckpoint{
             .id = "00.04",
             .title = "the parcel",
-            .start = tile_pose("Lab", {{6, 4}}, Direction::NORTH),
+            .start = grid("Lab", {6, 4}, Direction::NORTH),
             .steps = {make(StoryStepKind::TALK, "give_parcel")},
         },
     };
@@ -403,18 +429,14 @@ struct PolicyLab{
             executor.trace.push_back("reload");
             return outcome_ok();
         };
-        hooks.recover = [this](RunState&, const std::string& event){
-            executor.trace.push_back("recover " + event);
-            return outcome_ok();
-        };
         hooks.log = [this](const std::string& line){ lines.push_back(line); };
         RunState state;
         return run_segment(state, segment, SegmentRange{}, policy, hooks);
     }
-    bool has(const std::string& line) const{
+    bool has(std::string_view line) const{
         return std::find(lines.begin(), lines.end(), line) != lines.end();
     }
-    size_t count(const std::string& item) const{
+    size_t count(std::string_view item) const{
         return (size_t)std::count(executor.trace.begin(), executor.trace.end(), item);
     }
 };
@@ -436,34 +458,11 @@ UnitTestResult test_policy_attempts_then_fail(){
 UnitTestResult test_policy_stop_at_first_failure(){
     PolicyLab lab;
     lab.executor.failing = {"give_parcel"};
-    const SegmentReport report = lab.run(SegmentPolicy{.stop_at_first_failure = true});
-    if (report.completed || !report.stopped_at_first_failure || report.reloads != 0 || lab.count("reload") != 0
+    const SegmentReport report = lab.run(SegmentPolicy{.attempts_per_checkpoint = 1});
+    if (report.completed || report.reloads != 0 || lab.count("reload") != 0
         || lab.count("TALK give_parcel") != 1
-        || !lab.has("[Segment] 00: 00.04 failed; stopping at the first failure, the game stays where it failed")
     ){
         return "Expected a stop at the first failure, with no reload:" + joined(lab.executor.trace) + joined(lab.lines);
-    }
-    return true;
-}
-
-UnitTestResult test_policy_recovers_in_place(){
-    //  The talk fails twice; two recoveries in place get it through
-    //  without a reload, but not one-shot.
-    PolicyLab lab;
-    lab.executor.failures_left = {{"give_parcel", 2}};
-    const SegmentReport report = lab.run(SegmentPolicy{.recoveries_per_event = 2});
-    if (!report.completed || report.reloads != 0 || lab.count("recover give_parcel") != 2
-        || report.runs.size() != 2 || report.runs[1].recoveries != 2 || report.runs[1].one_shot()
-        || !lab.has("[Checkpoint] 00.04: passed on attempt 1 (one-shot), 2 in place")
-    ){
-        return "Expected 00.04 recovered in place twice:" + joined(lab.executor.trace) + joined(lab.lines);
-    }
-    //  Past the budget, the checkpoint is reloaded as before.
-    PolicyLab reloaded;
-    reloaded.executor.failures_left = {{"give_parcel", 2}};
-    const SegmentReport second = reloaded.run(SegmentPolicy{.recoveries_per_event = 1});
-    if (!second.completed || second.reloads != 1 || second.runs[1].attempts != 2){
-        return "Expected a reload once the in-place budget was used:" + joined(reloaded.executor.trace) + joined(reloaded.lines);
     }
     return true;
 }
@@ -475,7 +474,7 @@ struct BossLab{
     StoryCheckpoint table{
         .id = "00.15b",
         .title = "the rival",
-        .start = tile_pose("Cerulean", {{23, 7}}, Direction::NORTH),
+        .start = grid("Cerulean", {23, 7}, Direction::NORTH),
         .steps = {once("teach_known"), once("teach_new"), make(StoryStepKind::BATTLE, "rival")},
     };
     FakeExecutor executor;
@@ -484,7 +483,7 @@ struct BossLab{
 
     static StoryStep once(std::string name){
         StoryStep step = make(StoryStepKind::GAME, name);
-        step.variant = name;
+        step.action = name;
         step.once_per_save = true;
         return step;
     }
@@ -496,7 +495,7 @@ struct BossLab{
         segment.id = "00";
         segment.checkpoints.push_back(CheckpointSpec{
             .id = table.id, .title = table.title, .saves = true,
-            .build = [this]{ return build_story_checkpoint(table, executor, prepared); },
+            .build = [this]{ return build_story_checkpoint(table, executor, &prepared); },
         });
         return segment;
     }
@@ -514,7 +513,7 @@ struct BossLab{
         hooks.log = [this](const std::string& line){ lines.push_back(line); };
         return hooks;
     }
-    size_t count(const std::string& item) const{
+    size_t count(std::string_view item) const{
         return (size_t)std::count(executor.trace.begin(), executor.trace.end(), item);
     }
 };
@@ -525,7 +524,7 @@ struct BossLab{
 UnitTestResult test_once_per_save_retry(){
     BossLab lab;
     StoryStep battle = make(StoryStepKind::BATTLE, "rival");
-    battle.may_lose = true;
+    battle.args = {{"may_lose", true}};
     lab.table.steps.back() = battle;
     lab.executor.failures_left = {{"rival", 1}};
     Segment segment = lab.segment();
@@ -548,7 +547,7 @@ UnitTestResult test_once_per_save_retry(){
 UnitTestResult test_once_per_save_verify(){
     BossLab lab;
     StoryStep battle = make(StoryStepKind::BATTLE, "rival");
-    battle.may_lose = true;
+    battle.args = {{"may_lose", true}};
     lab.table.steps.back() = battle;
     Segment segment = lab.segment();
     SegmentHooks hooks = lab.hooks();
@@ -577,32 +576,6 @@ UnitTestResult test_once_per_save_verify(){
 }
 
 
-//  The checks level: THOROUGH by default, and what the program sets is
-//  what a step reads.
-UnitTestResult test_checks_level(){
-    class CheckingExecutor : public FakeExecutor{
-    public:
-        std::vector<std::string> seen;
-        virtual Outcome talk(RunState&, const StoryStep& step) override{
-            seen.push_back(step.name + " " + story_checks_name(checks()));
-            return outcome_ok();
-        }
-    };
-    StoryCheckpoint data = lab_checkpoint();
-    CheckingExecutor executor;
-    run(data, executor);
-    executor.set_checks(StoryChecks::FAST);
-    executor.set_language(Language::Korean);
-    run(data, executor);
-    if (executor.language() != Language::Korean){
-        return "Expected the language set on the executor.";
-    }
-    if (executor.seen != std::vector<std::string>{"talk_oak thorough", "talk_oak fast"}){
-        return "Expected the talk to read thorough, then fast:" + joined(executor.seen);
-    }
-    return true;
-}
-
 //  Two sections of a story, as BDSP has segments 00 and 01.
 const std::vector<StoryCheckpoint>& two_sections(){
     static const std::vector<StoryCheckpoint> rows{
@@ -612,8 +585,15 @@ const std::vector<StoryCheckpoint>& two_sections(){
     };
     return rows;
 }
+
 const StringSelectDatabase& two_sections_database(){
-    static const StringSelectDatabase database = story_checkpoint_database(two_sections());
+    static const StringSelectDatabase database = []{
+        std::vector<std::string> labels;
+        for (const StoryCheckpoint& checkpoint : two_sections()){
+            labels.push_back(story_checkpoint_label(checkpoint));
+        }
+        return story_checkpoint_database(labels);
+    }();
     return database;
 }
 
@@ -638,7 +618,7 @@ UnitTestResult test_checkpoint_dropdowns(){
     ){
         return "Unexpected label.";
     }
-    StoryRunOptions options(database);
+    StoryRunOptions options(database, Gen8ToGen9Languages_Database());
     if (options.start_index() != 0 || options.end_index() != 2 || !options.check_validity().empty()){
         return "Expected the whole story by default.";
     }
@@ -655,12 +635,12 @@ UnitTestResult test_story_stats(){
     SegmentReport report;
     report.reloads = 2;
     report.runs = {
-        CheckpointRun{.id = "00.03", .passed = true, .attempts = 1, .recoveries = 0},
-        CheckpointRun{.id = "00.04", .passed = true, .attempts = 3, .recoveries = 0},
-        CheckpointRun{.id = "00.05", .passed = false, .attempts = 1, .recoveries = 0},
+        CheckpointRun{.id = "00.03", .passed = true, .attempts = 1},
+        CheckpointRun{.id = "00.04", .passed = true, .attempts = 3},
+        CheckpointRun{.id = "00.05", .passed = false, .attempts = 1},
     };
     AutoStoryStats stats;
-    record_story_stats(stats, report);
+    record_story_counts(stats, report.story_counts());
     if (stats.m_segment != 1 || stats.m_checkpoint != 2 || stats.m_reset != 2){
         return "Expected 1 segment, 2 checkpoints and 2 resets.";
     }
@@ -670,13 +650,13 @@ UnitTestResult test_story_stats(){
 //  The program's option group: 3 attempts, no stop, Thorough, by default;
 //  Fast when chosen.
 UnitTestResult test_run_options(){
-    StoryRunOptions options(two_sections_database());
+    StoryRunOptions options(two_sections_database(), Gen8ToGen9Languages_Database());
     const SegmentPolicy policy = options.policy();
-    if (policy.attempts_per_checkpoint != 3 || policy.stop_at_first_failure || options.checks() != StoryChecks::THOROUGH){
+    if (policy.attempts_per_checkpoint != 3 || options.check_level() != StoryCheckLevel::DEFAULT){
         return "Expected 3 attempts, no stop at the first failure, and Thorough checks by default.";
     }
-    options.CHECKS.set(StoryChecks::FAST);
-    if (options.checks() != StoryChecks::FAST){
+    options.CHECKS.set(StoryCheckLevel::FAST);
+    if (options.check_level() != StoryCheckLevel::FAST){
         return "Expected Fast checks once chosen.";
     }
     //  Every game language can be chosen, read or not.
@@ -693,7 +673,7 @@ UnitTestResult test_run_options(){
 //  Verify mode: off by default; 3 runs and 2 passes when on, for one
 //  checkpoint only, never needing more passes than runs.
 UnitTestResult test_verify_options(){
-    StoryRunOptions options(two_sections_database());
+    StoryRunOptions options(two_sections_database(), Gen8ToGen9Languages_Database());
     if (options.VERIFY.policy()){
         return "Expected verify mode off by default.";
     }
@@ -718,16 +698,16 @@ UnitTestResult test_lint(){
     StoryStep no_target = make(StoryStepKind::ROUTE, "walk");
     StoryStep again = make(StoryStepKind::TALK, "walk");
     StoryStep bad_legs = make(StoryStepKind::LEGS, "legs");
-    bad_legs.legs = {{.direction = Direction::NORTH, .tiles = 0}};
+    bad_legs.args = {{"legs", std::vector<StoryLeg>{{.direction = Direction::NORTH, .tiles = 0}}}, {"fight_wild", false}};
     StoryStep no_variant = make(StoryStepKind::GAME, "");
     const StoryCheckpoint data{.id = "", .title = "", .start = std::nullopt, .steps = {no_target, again, bad_legs, no_variant}};
     const std::vector<std::string> expected{
         "a checkpoint has no id",
-        " step 1 walk: ROUTE no target",
+        " step 1 walk: ROUTE missing argument \"target\" (where to go; with several tiles, any of them)",
         " step 2: a second step named walk",
         " step 3 legs: LEGS a leg of no tiles",
         " step 4: no name",
-        " step 4 : GAME no variant",
+        " step 4 : GAME no action",
     };
     const std::vector<std::string> problems = lint_story_checkpoint(data);
     if (problems != expected){
@@ -746,7 +726,7 @@ struct StoryStepInput{
 };
 
 struct StoryStepExpectation{
-    const char* description;
+    std::string_view description;
 };
 
 struct StoryStepTestCase{
@@ -754,10 +734,10 @@ struct StoryStepTestCase{
     StoryStepExpectation expectation;
 };
 
-class Test_StorySteps : public UnitTest{
+class Test_StoryStepExecutor : public UnitTest{
 public:
-    explicit Test_StorySteps(StoryStepTestCase scenario)
-        : UnitTest("Pokemon::StorySteps - " + scenario.input.name)
+    explicit Test_StoryStepExecutor(StoryStepTestCase scenario)
+        : UnitTest("Pokemon::StoryStepExecutor - " + scenario.input.name)
         , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -798,10 +778,6 @@ const StoryStepTestCase STORY_STEP_CASES[] = {
         .expectation = {.description = "verifies lint validation rules on story checkpoints"},
     },
     {
-        .input = {.name = "the checks level reaches the steps", .test = test_checks_level},
-        .expectation = {.description = "transfers checks granularity option to step execution"},
-    },
-    {
         .input = {.name = "the run options' defaults", .test = test_run_options},
         .expectation = {.description = "validates initial default story run option values"},
     },
@@ -822,12 +798,8 @@ const StoryStepTestCase STORY_STEP_CASES[] = {
         .expectation = {.description = "enforces max checkpoint attempt policy before terminal failure"},
     },
     {
-        .input = {.name = "policy: stop at the first failure", .test = test_policy_stop_at_first_failure},
-        .expectation = {.description = "halts execution immediately when stop_at_first_failure is enabled"},
-    },
-    {
-        .input = {.name = "policy: recover in place before reloading", .test = test_policy_recovers_in_place},
-        .expectation = {.description = "applies in-place recovery handler prior to reloading save"},
+        .input = {.name = "policy: one attempt stops at the first failure", .test = test_policy_stop_at_first_failure},
+        .expectation = {.description = "halts without a reload when a checkpoint has one attempt"},
     },
     {
         .input = {.name = "once per save: a retry skips what changed nothing", .test = test_once_per_save_retry},
@@ -842,9 +814,9 @@ const StoryStepTestCase STORY_STEP_CASES[] = {
 } // namespace
 
 
-void add_tests_StorySteps(UnitTestDatabase& database){
+void add_tests_StoryStepExecutor(UnitTestDatabase& database){
     for (const auto& scenario : STORY_STEP_CASES){
-        database.add<Test_StorySteps>(scenario);
+        database.add<Test_StoryStepExecutor>(scenario);
     }
 }
 
