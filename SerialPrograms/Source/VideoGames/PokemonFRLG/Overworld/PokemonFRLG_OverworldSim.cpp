@@ -471,9 +471,7 @@ void OverworldSim::walk_hold(Direction direction, Milliseconds duration, int sho
     Milliseconds pressed = m_now;
     if (m_state.facing != direction){
         //  Holding through a turn lost a tile on the console, on foot.
-        if (!m_script.on_bike){
-            pressed += tile;
-        }
+        pressed += m_script.on_bike ? Milliseconds(0) : tile;
         m_state.facing = direction;
     }
     take_steps(direction, pressed, end, (int)((end - pressed + tile - 1ms) / tile) - short_by);
