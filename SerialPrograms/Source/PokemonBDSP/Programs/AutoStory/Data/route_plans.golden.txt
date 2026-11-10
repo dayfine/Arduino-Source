@@ -128,13 +128,13 @@ anchor); 0 from one start tile.
   1. north 1 (open) -> PlayerHouse1F (6, 8)
   totals: 1 legs, 0 turns, 1 open, 0 localization
 
-== 00.04 into_moms_call (costs: route)
+== 00.04 into_moms_call (costs: trigger)
   from: PlayerHouse1F (11, 8) facing south (tile)
-  target: PlayerHouse1F (7, 9) facing west (tile)
+  target: PlayerHouse1F (6, 9) facing west (tile)
   start candidates: PlayerHouse1F (11, 8)
   1. west 1 (open) -> PlayerHouse1F (10, 8)
   2. south 1 (open) -> PlayerHouse1F (10, 9)
-  3. west 3 (open) -> PlayerHouse1F (7, 9)
+  3. west 4 (open) -> PlayerHouse1F (6, 9)
   totals: 3 legs, 2 turns, 3 open, 0 localization
 
 == 00.04 short_of_the_catch_tutorial (costs: route)

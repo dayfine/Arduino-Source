@@ -55,6 +55,9 @@ struct RouteWalkPlan{
     //  call, lab-B 2026-11-09 17:29). The walk ends there with it open,
     //  for the scene's step, instead of pressing through it as a trainer's.
     bool scene_next = false;
+    //  `goal` is that scene's trigger (ROUTE_ONTO_TRIGGER): a walk stops on
+    //  it when the scene starts, as at a wall.
+    bool goal_is_trigger = false;
 };
 
 //  Walks from any of the world tiles `from` of `maps` until every tile the

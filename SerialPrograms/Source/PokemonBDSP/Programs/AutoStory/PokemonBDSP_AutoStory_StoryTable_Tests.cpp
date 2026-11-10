@@ -46,7 +46,7 @@ using Pokemon::TilePos;
 //  The variants each kind does itself, besides the story's events.
 const std::map<StoryStepKind, std::set<std::string>>& built_in_variants(){
     static const std::map<StoryStepKind, std::set<std::string>> variants{
-        {StoryStepKind::ROUTE, {"", "town", "robust", "line"}},
+        {StoryStepKind::ROUTE, {"", "town", "robust", "line", std::string(ROUTE_ONTO_TRIGGER)}},
         {StoryStepKind::LEGS, {"", "one_short_ok", "to_wall", "counted_wall", "measured", "to_map"}},
         {StoryStepKind::STEP, {"", "to_banner", "tap", "or_legs"}},
         {StoryStepKind::MASH, {"", "a"}},

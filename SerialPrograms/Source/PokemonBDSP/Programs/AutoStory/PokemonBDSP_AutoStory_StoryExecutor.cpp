@@ -57,7 +57,7 @@ using Pokemon::TilePos;
 
 
 std::optional<RobustPlanCosts> story_route_costs(const std::string& variant){
-    if (variant.empty()){
+    if (variant.empty() || variant == ROUTE_ONTO_TRIGGER){
         return route_plan_costs();
     }
     if (variant == "town"){
