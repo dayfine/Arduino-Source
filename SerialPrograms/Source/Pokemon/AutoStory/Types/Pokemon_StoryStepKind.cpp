@@ -10,7 +10,7 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-const char* story_step_kind_name(StoryStepKind kind){
+std::string story_step_kind_name(StoryStepKind kind){
     switch (kind){
     case StoryStepKind::NEW_GAME:
         return "NEW_GAME";

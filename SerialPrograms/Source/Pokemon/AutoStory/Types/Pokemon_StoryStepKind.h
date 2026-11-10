@@ -3,12 +3,14 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  The kinds of story step the tile games (FRLG, BDSP) share. A game's
- *  executor does each kind its own way (Pokemon_StorySteps.h).
+ *  executor does each kind its own way (Pokemon_StoryStepExecutor.h).
  *
  */
 
 #ifndef PokemonAutomation_Pokemon_StoryStepKind_H
 #define PokemonAutomation_Pokemon_StoryStepKind_H
+
+#include <string>
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -34,7 +36,7 @@ enum class StoryStepKind{
 };
 
 // Returns the readable string representation of a story step kind.
-const char* story_step_kind_name(StoryStepKind kind);
+std::string story_step_kind_name(StoryStepKind kind);
 
 
 
