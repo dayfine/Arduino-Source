@@ -15,6 +15,7 @@
 #include <cstdlib>
 #include <format>
 #include <functional>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -106,22 +107,26 @@ struct FrameExpectation{
 
 //  The lab's opening: platform_ref.png is the platform, no cutscene frame
 //  0001-0056 is; only 0050 shows the skip prompt.
-FrameExpectation lab_opening(const std::string& name){
-    return {.platform = name == "platform_ref.png", .skip_prompt = name.starts_with("0050-"), .autosave = false};
+std::optional<FrameExpectation> lab_opening(const std::string& name){
+    return FrameExpectation{.platform = name == "platform_ref.png", .skip_prompt = name.starts_with("0050-"), .autosave = false};
 }
 
 //  The user's run rec1_u001-u146: the platform settles at u131 (u124-u130
 //  are the fade in and the camera moving in), the autosave badge shows on
-//  u132 only, no skip prompt.
-FrameExpectation user_opening(const std::string& name){
+//  u132 only, no skip prompt. Later frames of the folder are not in the set.
+std::optional<FrameExpectation> user_opening(const std::string& name){
     const int index = std::stoi(name.substr(6, 3));
-    return {.platform = index >= 131, .skip_prompt = false, .autosave = index == 132};
+    if (index > 146){
+        return std::nullopt;
+    }
+    return FrameExpectation{.platform = index >= 131, .skip_prompt = false, .autosave = index == 132};
 }
 
-//  The frames `prefix`*.png in `folder` against `expect`; logs each one.
+//  The frames `prefix`*.png in `folder` that `expect` has an expectation
+//  for, against it; logs each one.
 UnitTestResult check_frames(
     Logger& logger, const std::string& folder, const std::string& prefix,
-    size_t count, const std::function<FrameExpectation(const std::string&)>& expect
+    size_t count, const std::function<std::optional<FrameExpectation>(const std::string&)>& expect
 ){
     PlatformArrivalDetector platform;
     SkipPromptDetector skip;
@@ -130,15 +135,16 @@ UnitTestResult check_frames(
     std::string failures;
     for (const Filesystem::Path& path : Filesystem::list_directory(Filesystem::Path(folder))){
         const std::string name = path.filename().string();
-        if (!name.starts_with(prefix) || !name.ends_with(".png")){
+        const std::optional<FrameExpectation> want =
+            name.starts_with(prefix) && name.ends_with(".png") ? expect(name) : std::nullopt;
+        if (!want){
             continue;
         }
         const ImageRGB32 frame(path.string());
         const FrameExpectation got{.platform = platform.detect(frame), .skip_prompt = skip.detect(frame), .autosave = autosave.detect(frame)};
         logger.log(std::format("{}: {}{}{}{}", name, to_string(platform.last_distances()),
             got.platform ? ", platform" : "", got.skip_prompt ? ", skip prompt" : "", got.autosave ? ", autosave" : ""));
-        const FrameExpectation want = expect(name);
-        if (got.platform != want.platform || got.skip_prompt != want.skip_prompt || got.autosave != want.autosave){
+        if (got.platform != want->platform || got.skip_prompt != want->skip_prompt || got.autosave != want->autosave){
             failures += " " + name;
         }
         frames++;
