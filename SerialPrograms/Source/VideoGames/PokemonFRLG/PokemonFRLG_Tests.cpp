@@ -4,6 +4,7 @@
  *
  */
 
+#include <format>
 #include <fstream>
 #include <functional>
 #include <map>
@@ -296,7 +297,7 @@ public:
     ) const override{
         const PartySlot slot = detect_last_occupied_party_slot(images[0]);
         if (slot != m_expected){
-            return "Expected last occupied slot " + slot_name(m_expected) + ", got " + slot_name(slot);
+            return std::format("Expected last occupied slot {}, got {}", slot_name(m_expected), slot_name(slot));
         }
         return true;
     }
@@ -378,10 +379,10 @@ public:
             ? error.empty()
             : error.rfind(expected.error, 0) == 0;
         if (!error_matches){
-            return "Expected error: \"" + expected.error + "\"\nActual error:   \"" + error + "\"";
+            return std::format("Expected error: \"{}\"\nActual error:   \"{}\"", expected.error, error);
         }
         if (actions.steps != expected.steps){
-            return "Expected steps: " + expected.steps + "\nActual steps:   " + actions.steps;
+            return std::format("Expected steps: {}\nActual steps:   {}", expected.steps, actions.steps);
         }
         return true;
     }
@@ -481,13 +482,13 @@ public:
 
         const size_t free_slots = program->free_party_slots_needed();
         if (free_slots != expected.free_slots){
-            return "Expected " + std::to_string(expected.free_slots) + " free party slots needed, got "
-                + std::to_string(free_slots);
+            return std::format("Expected {} free party slots needed, got {}", expected.free_slots, free_slots);
         }
         const StartMenuContext menu_context = program->start_menu_context();
         if (menu_context != expected.menu_context){
-            return "Expected start menu " + menu_context_name(expected.menu_context)
-                + ", got " + menu_context_name(menu_context);
+            return std::format(
+                "Expected start menu {}, got {}", menu_context_name(expected.menu_context), menu_context_name(menu_context)
+            );
         }
         return true;
     }
