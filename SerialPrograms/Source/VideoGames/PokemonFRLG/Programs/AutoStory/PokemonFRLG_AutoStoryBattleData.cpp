@@ -86,6 +86,7 @@ constexpr StoryTrainer STORY_TRAINERS[] = {
     {.map = "RockTunnel_B1F", .battle = "hiker_dudley", .trainer = "TRAINER_HIKER_DUDLEY"},
     {.map = "RockTunnel_B1F", .battle = "pokemaniac_cooper", .trainer = "TRAINER_POKEMANIAC_COOPER"},
     {.map = "RockTunnel_1F", .battle = "picnicker_dana", .trainer = "TRAINER_PICNICKER_DANA"},
+    {.map = "Route8", .battle = "gamer_rich", .trainer = "TRAINER_GAMER_RICH"},
     //  The Rocket Hideout, as PokeGuy's run fights it (the 00.31 and 00.32
     //  drafts): the Grunt at the Game Corner's poster (11, 2)
     //  (CeladonCity_GameCorner_EventScript_RocketGrunt); on B4F, Grunt1 at
