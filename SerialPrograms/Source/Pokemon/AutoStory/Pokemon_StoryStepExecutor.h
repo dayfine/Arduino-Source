@@ -1,4 +1,4 @@
-/*  Story Steps
+/*  Story Step Executor
  *
  *  From: https://github.com/PokemonAutomation/
  *
@@ -29,19 +29,16 @@
  *
  */
 
-#ifndef PokemonAutomation_Pokemon_StorySteps_H
-#define PokemonAutomation_Pokemon_StorySteps_H
+#ifndef PokemonAutomation_Pokemon_StoryStepExecutor_H
+#define PokemonAutomation_Pokemon_StoryStepExecutor_H
 
-#include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <vector>
-#include "Pokemon/Navigation/Pokemon_Grid.h"
-#include "Pokemon_AutoStoryStats.h"
 #include "Pokemon_StoryEvents.h"
-#include "Pokemon_StorySegments.h"
 #include "Pokemon_TilePose.h"
-#include "Types/Pokemon_StoryChecks.h"
+#include "Types/Pokemon_GridPose.h"
 #include "Types/Pokemon_StoryCheckpoint.h"
 #include "Types/Pokemon_StoryStep.h"
 #include "Types/Pokemon_StoryStepKind.h"
@@ -68,8 +65,11 @@ public:
 
     //  Whether the condition named in a step's skip_if holds: by default,
     //  whether the run has the flag (set by an earlier step's action).
-    virtual bool holds(const std::string& condition, RunState& state);
+    virtual bool holds(std::string_view condition, RunState& state);
 };
+
+//  `pose` as the engine's Pose: a TilePose, TILE for one tile, SET for several.
+Pose pose_of(const GridPose& pose);
 
 //  "unsupported_step: TRAIN train_in_grass": what an executor without the kind returns.
 Outcome unsupported_step(const StoryStep& step);
@@ -79,39 +79,26 @@ Outcome unsupported_step(const StoryStep& step);
 //  the event.
 Event story_event(const StoryStep& step, StoryStepExecutor& executor);
 
-//  The checkpoint `data` as events: "from_save" first when it has a start
-//  (the start pose, for a run that reloaded its save), then one event per
-//  step. `data` and `executor` must outlive the checkpoint. Saving is the
-//  game's: it sets the checkpoint's save, or adds a SAVE step.
-Checkpoint build_story_checkpoint(const StoryCheckpoint& data, StoryStepExecutor& executor);
-
 //  The once_per_save steps done from the save the game is on that changed
 //  nothing, as "<checkpoint>/<step>". The game keeps it across reloads and
 //  empties it when it saves or loads another save.
 using PreparedSteps = std::set<std::string>;
 
-//  As above, and each once_per_save step is skipped while `prepared` has
-//  it, and added to it when it succeeds changing nothing. `prepared` must
-//  outlive the checkpoint.
-Checkpoint build_story_checkpoint(const StoryCheckpoint& data, StoryStepExecutor& executor, PreparedSteps& prepared);
+//  The checkpoint `data` as events: "from_save" first when it has a start
+//  (the start pose, for a run that reloaded its save), then one event per
+//  step. `data` and `executor` must outlive the checkpoint. Saving is the
+//  game's: it sets the checkpoint's save, or adds a SAVE step.
+//  With `prepared`, each once_per_save step is skipped while `prepared` has
+//  it, and added to it when it succeeds changing nothing; `prepared` must
+//  then outlive the checkpoint. Without, once_per_save steps run every time.
+Checkpoint build_story_checkpoint(
+    const StoryCheckpoint& data, StoryStepExecutor& executor, PreparedSteps* prepared = nullptr
+);
 
 //  Problems an author should fix before running: an empty id, unnamed or
-//  repeated steps, a route or READY without a target, empty legs, a GAME
-//  step without a variant, TRAIN without battles, SHOP without items.
+//  repeated steps, a GAME step without an action, a built-in action's args
+//  that don't fit its spec (a route without a target), empty legs.
 std::vector<std::string> lint_story_checkpoint(const StoryCheckpoint& data);
-
-
-//  Adds a segment's run to the program's stats: the segment, each checkpoint
-//  that passed, each reload.
-void record_story_stats(AutoStoryStats& stats, const SegmentReport& report);
-
-
-//  A pose on one of `tiles` of `map`, facing `facing` if set: TILE for one
-//  tile, SET for several, UNKNOWN for none.
-Pose tile_pose(std::string map, std::vector<TilePos> tiles, std::optional<Direction> facing = std::nullopt);
-
-//  The facing of a tile pose; nothing for another pose or none.
-std::optional<Direction> facing_of(const Pose& pose);
 
 
 
