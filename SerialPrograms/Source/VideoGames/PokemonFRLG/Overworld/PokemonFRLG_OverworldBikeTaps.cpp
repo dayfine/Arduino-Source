@@ -47,7 +47,7 @@ bool counts_step_taps(const RouteStep& step){
 Milliseconds step_tap_settle(const RouteStep& step, int tap){
     using namespace MovementMechanics;
     if (tap != step.tiles || !step.spin_tiles){
-        return 0ms;
+        return Milliseconds(0);
     }
     return SPIN_TILE_TIME * *step.spin_tiles + SPIN_STOP_SETTLE;
 }
