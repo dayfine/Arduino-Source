@@ -8,6 +8,7 @@
  */
 
 #include <format>
+#include <set>
 #include <string>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
@@ -31,11 +32,15 @@ struct WarpFadeInput{
     Milliseconds fade{0};
     //  SimWalkerRules::watch_fade_along_hold.
     bool watch_along_hold = true;
+    //  SimScript::black_without_warp and SimWalkerRules::confirm_warp_destination.
+    std::set<int> black_without_warp = {};
+    bool confirm_destination = true;
 };
 
 struct WarpFadeExpectation{
     //  The failure the walk stops on; empty: the route is walked.
     std::string failure;
+    int warps = 1;
 };
 
 struct WarpFadeCase{
@@ -73,15 +78,17 @@ public:
         out.end = OUTSIDE;
         SimScript script;
         script.timing.fade = m_case.input.fade;
+        script.black_without_warp = m_case.input.black_without_warp;
         SimWalkerRules rules;
         rules.watch_fade_along_hold = m_case.input.watch_along_hold;
+        rules.confirm_warp_destination = m_case.input.confirm_destination;
         OverworldSim sim(maps(), MART, Direction::SOUTH, script);
         OverworldSimWalker walker(sim, rules);
         const RoutePlanning planning{.maps = &maps(), .costs = default_route_costs(), .start = MART, .label = "Sim"};
         const std::string failure = walker.run({out}, planning);
         const std::string& expected = m_case.expectation.failure;
         const bool as_expected = expected.empty() ? failure.empty() : failure.find(expected) != std::string::npos;
-        if (as_expected && sim.state().warps == 1){
+        if (as_expected && sim.state().warps == m_case.expectation.warps){
             return true;
         }
         std::string log;
@@ -89,8 +96,8 @@ public:
             log += "\n  " + line;
         }
         return std::format(
-            "Expected failure \"{}\" after 1 warp; got \"{}\" after {}:{}",
-            expected, failure, sim.state().warps, log
+            "Expected failure \"{}\" after {} warp(s); got \"{}\" after {}:{}",
+            expected, m_case.expectation.warps, failure, sim.state().warps, log
         );
     }
 
@@ -113,6 +120,15 @@ const WarpFadeCase WARP_FADE_CASES[] = {
     {
         .input = {.name = "a fade still on when the hold ends, watched from its end", .fade = 1000ms, .watch_along_hold = false},
         .expectation = {.failure = ""},
+    },
+    {
+        .input = {.name = "black without a warp, destination confirmed", .fade = 1000ms, .black_without_warp = {1}},
+        .expectation = {.failure = "the warp to ViridianCity not confirmed", .warps = 0},
+    },
+    {
+        //  00.31 run 4 (console B, 2026-11-10 01:44): taken as walked.
+        .input = {.name = "black without a warp, any black taken as the warp", .fade = 1000ms, .black_without_warp = {1}, .confirm_destination = false},
+        .expectation = {.failure = "", .warps = 0},
     },
 };
 

@@ -141,6 +141,10 @@ struct SimScript{
     //  (SimWalkerRules::confirm_turn) after 00.28 run 2 (console B,
     //  2026-11-09), where a one-tile leg only turned the player.
     std::set<int> dropped_turn_taps;
+    //  Fault injection: steps onto a warp, by number from 1, that show the
+    //  fade's black and clear with the player where they were, not warped
+    //  (console B, 2026-11-10 01:44, 00.31 run 4, "east 1 (warp)" on B4F).
+    std::set<int> black_without_warp;
     //  The player rides the Bicycle: a tap facing another way takes a step
     //  too, a hold through a turn loses no tile
     //  (MovementMechanics::BIKE_TAP_ONLY_TURNS), and no step tap is
@@ -387,6 +391,10 @@ private:
     int m_encounter_rate_buff = 0;
     //  The turn taps so far, for SimScript::dropped_turn_taps.
     int m_turn_taps = 0;
+    //  Steps onto a warp so far, and the fault on one
+    //  (SimScript::black_without_warp): its black without the warp.
+    int m_warp_steps = 0;
+    bool black_without_warp(Milliseconds pressed);
     //  The last tap, until a hold.
     std::optional<TapPress> m_last_tap;
     //  When the last Bicycle tap started, and how many came too soon.
@@ -465,6 +473,11 @@ struct SimWalkerRules{
     //  2026-11-09 01:41, 00.27, the warp to CeruleanCity: the watch started
     //  about 1.3 s into the hold).
     bool watch_fade_along_hold = true;
+    //  A warp's fade is taken as the warp only once the screen after it
+    //  shows the player off the map they held from (warp_left_scene()).
+    //  Without it a black that cleared with the player where they were was
+    //  taken as the warp (console B, 2026-11-10 01:44, 00.31 run 4).
+    bool confirm_warp_destination = true;
     //  A turn tap is checked by the facing on screen, and tapped again
     //  while the player faces another way (OverworldWalkSteps::turn_to()).
     //  Without it a dropped tap left a one-tile leg turning the player
@@ -568,6 +581,9 @@ private:
     std::optional<WalkedTiles> walk_step(const RouteStep& step, std::optional<Direction> facing);
     bool after_warp(const RouteStep& step, int warps_before, Milliseconds watched_from);
     bool fade_over_since(Milliseconds from) const;
+    //  after_warp() on a fade seen with no warp: fails, or with
+    //  SimWalkerRules::confirm_warp_destination off, takes it as the warp.
+    bool black_without_warp(const RouteStep& step, int warps_before, Milliseconds watched_from);
     [[noreturn]] void fail_off_route(const RouteStep& step);
     std::optional<SimSeen> hold_watching(const RouteStep& step, Milliseconds hold, const std::vector<Interrupt>& interrupts);
     size_t clear_late(const std::vector<Interrupt>& interrupts, Milliseconds watch, size_t max);

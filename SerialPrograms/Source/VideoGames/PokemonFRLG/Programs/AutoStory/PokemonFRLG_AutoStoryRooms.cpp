@@ -71,7 +71,12 @@ void walk_room_legs(
             facing = leg.direction;
             continue;
         }
+        VideoSnapshot before;
         for (int tile = 0; tile < leg.tiles; tile++){
+            if (leg.warps && tile + 1 == leg.tiles){
+                context.wait_for_all_requests();
+                before = console.video().snapshot();
+            }
             step_once(console, context, leg.direction, facing);
             facing = leg.direction;
         }
@@ -80,7 +85,7 @@ void walk_room_legs(
             step.direction = leg.direction;
             step.tiles = 1;
             step.warps = true;
-            OverworldWalkSteps::wait_out_warp(console, context, step);
+            OverworldWalkSteps::wait_out_warp(console, context, step, before);
         }
     }
 }

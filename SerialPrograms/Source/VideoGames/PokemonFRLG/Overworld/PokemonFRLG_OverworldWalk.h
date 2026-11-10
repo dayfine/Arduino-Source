@@ -23,7 +23,9 @@
 #include <string>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
+#include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "Pokemon/AutoStory/Pokemon_ScreenEvents.h"
 #include "Pokemon/Navigation/Pokemon_LegWalker.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
@@ -176,10 +178,15 @@ std::vector<Pokemon::WatchAlong*> warp_hold_watchers(const RouteStep& step, Poke
 
 //  After a hold onto `step`'s warp: waits out its fade, unless `fade`, a
 //  BlackScreenOverWatcher watched along the hold, saw it over already;
-//  else waits on with that watcher, which may have seen the black.
-void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step, Pokemon::WatchAlong& fade);
+//  else waits on with that watcher, which may have seen the black. Then
+//  fails unless the screen after the fade differs from `before`, taken
+//  before the hold (warp_left_scene()).
+void wait_out_warp(
+    ConsoleHandle& console, ProControllerContext& context, const RouteStep& step,
+    Pokemon::WatchAlong& fade, const VideoSnapshot& before
+);
 //  The same, watching only from now: for a caller that saw the black itself.
-void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step);
+void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step, const VideoSnapshot& before);
 
 //  Before `step`: fails unless the overworld is up.
 void check_overworld(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step);

@@ -357,6 +357,9 @@ bool OverworldSim::trainer_sees(Milliseconds pressed){
 //  game stopped them there: a warp, a trainer, a wild battle.
 bool OverworldSim::after_step(const Step& step, Milliseconds pressed){
     const SimTiming& timing = m_script.timing;
+    if (step.warped && black_without_warp(pressed)){
+        return true;
+    }
     m_map = step.map;
     m_player = step.player;
     m_state.steps++;
@@ -775,17 +778,6 @@ std::optional<SimSeen> OverworldSimWalker::hold_watching(const RouteStep& step, 
 }
 
 //  Whether a warp's fade showed and was over between `from` and now.
-bool OverworldSimWalker::fade_over_since(Milliseconds from) const{
-    const SimState& state = m_sim.state();
-    if (state.screen == SimScreen::FADE){
-        return false;
-    }
-    return std::any_of(
-        state.shown.begin(), state.shown.end(),
-        [&](const SimShown& shown){ return shown.screen == SimScreen::FADE && shown.at >= from; }
-    );
-}
-
 //  wait_out_warp(), then run_from_battle_after_warp(): false if the fade
 //  was a wild battle's, run from. wait_out_warp()'s watcher takes a wild
 //  battle's wipe for the fade (run 7; console B, 2026-11-03, Mt. Moon 1F):
@@ -794,6 +786,9 @@ bool OverworldSimWalker::fade_over_since(Milliseconds from) const{
 //  twice: a hold ends up to two tiles short, and an arrow warp (stairs)
 //  fires on the press made standing on it.
 bool OverworldSimWalker::after_warp(const RouteStep& step, int warps_before, Milliseconds watched_from){
+    if (black_without_warp(step, warps_before, watched_from)){
+        return true;
+    }
     bool battle = false;
     if (m_sim.state().warps == warps_before && !(battle = m_sim.watch({SimWatcher::BATTLE_SCREEN}, WARP_TIMEOUT).has_value())){
         for (int tap = 0; tap < 2 && m_sim.state().warps == warps_before; tap++){

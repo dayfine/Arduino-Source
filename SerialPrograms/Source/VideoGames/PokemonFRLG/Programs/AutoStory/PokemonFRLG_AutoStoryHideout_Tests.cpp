@@ -218,8 +218,10 @@ UnitTestResult test_coded_spinners(){
 //  `facing`: as planned, and with each of the turns the taps make dropped
 //  in turn (a tap facing another way only turns the player, and a
 //  dropped one doesn't even turn them). Empty if each run ends on `goal`.
-std::string tap_legs_on_sim(const MapPosition& start, Direction facing, const std::vector<Pokemon::StoryLeg>& legs, const MapPosition& goal){
-    const std::vector<MapData>& maps = story_maps();
+std::string tap_legs_on_sim(
+    const MapPosition& start, Direction facing, const std::vector<Pokemon::StoryLeg>& legs, const MapPosition& goal,
+    const std::vector<MapData>& maps = story_maps()
+){
     std::optional<std::vector<RouteStep>> route = fixed_route(maps, start, legs);
     if (!route || !(route->back().end == goal)){
         return "The legs from " + to_string(start) + " don't end on " + to_string(goal) + ".";
@@ -272,11 +274,25 @@ std::string short_holds_on_sim(const MapPosition& start, Direction facing, const
 //  the stairs (18, 2) to below the stairs to B4F (15, 19), and back from
 //  them (15, 18) to the stop (10, 13). The routes planned after them,
 //  onto the stairs to B4F and east to below the Rare Candy, have no
-//  arrow on the way: a short hold there is found again.
+//  arrow on the way: a short hold there is found again. B4F after the
+//  LIFT KEY, a tap a tile from the Grunt's line to below the key and on
+//  to the stairs (11, 15) with any one turn dropped, and the stairs up.
 UnitTestResult test_b3f_maze_taps(){
     using Pokemon::StoryLeg;
     const MapPosition below_stairs{"RocketHideout_B3F", {15, 19}};
     const MapPosition candy_stop{"RocketHideout_B3F", {10, 13}};
+    const MapPosition b4f_below_key{"RocketHideout_B4F", {3, 3}};
+    const MapPosition b4f_stairs{"RocketHideout_B4F", {11, 15}};
+    //  The Lift Key Grunt (4, 2) is beaten by then: (4, 3), in his line, is
+    //  open floor.
+    std::vector<MapData> key_grunt_beaten = story_maps();
+    for (MapData& map : key_grunt_beaten){
+        for (MapObject& object : map.objects){
+            if (map.name == "RocketHideout_B4F" && object.x == 4 && object.y == 2){
+                object.trainer.reset();
+            }
+        }
+    }
     const std::vector<std::string> failures{
         tap_legs_on_sim({"RocketHideout_B3F", {18, 2}}, Direction::EAST, {
             {Direction::WEST, 6}, {Direction::SOUTH, 5}, {Direction::WEST, 7}, {Direction::SOUTH, 2}, {Direction::WEST, 1},
@@ -288,6 +304,13 @@ UnitTestResult test_b3f_maze_taps(){
         }, candy_stop),
         short_holds_on_sim(below_stairs, Direction::NORTH, {"RocketHideout_B4F", map_point(story_maps(), "RocketHideout_B4F", "warp_0")}),
         short_holds_on_sim(candy_stop, Direction::NORTH, {"RocketHideout_B3F", {12, 13}}),
+        tap_legs_on_sim({"RocketHideout_B4F", {4, 3}}, Direction::WEST, {
+            {Direction::WEST, 1},
+        }, b4f_below_key),
+        tap_legs_on_sim(b4f_below_key, Direction::NORTH, {
+            {Direction::EAST, 3}, {Direction::SOUTH, 4}, {Direction::EAST, 5}, {Direction::SOUTH, 8},
+        }, b4f_stairs, key_grunt_beaten),
+        short_holds_on_sim(b4f_stairs, Direction::SOUTH, {"RocketHideout_B3F", {15, 18}}),
     };
     for (const std::string& failure : failures){
         if (!failure.empty()){

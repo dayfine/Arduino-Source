@@ -7,7 +7,9 @@
 #include <algorithm>
 #include <format>
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
+#include <cstdlib>
 #include "CommonFramework/ImageTools/ImageBoxes.h"
+#include "CommonFramework/ImageTools/ImageDiff.h"
 #include "CommonFramework/ImageTools/ImageStats.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/VisualDetectors/BlackScreenDetector.h"
@@ -293,9 +295,66 @@ std::vector<Pokemon::WatchAlong*> warp_hold_watchers(const RouteStep& step, Poke
     return {&fade};
 }
 
+namespace{
+
+//  How close (pixel RMSD) the overlap of two screens is for the same scene.
+constexpr double SAME_SCENE_RMSD = 25;
+//  The GBA screen's tiles across and down.
+constexpr int SCREEN_TILES_X = 15;
+constexpr int SCREEN_TILES_Y = 10;
+//  From the fade's end until the new map is in full light.
+constexpr Milliseconds WARP_FADE_IN(300);
+
+//  The RMSD of `before` and `after` where they overlap, with the scene
+//  scrolled `dx`, `dy` pixels: `after` at (x, y) shows `before` at
+//  (x + dx, y + dy).
+double scrolled_rmsd(const ImageViewRGB32& before, const ImageViewRGB32& after, int dx, int dy){
+    const size_t width = before.width() - (size_t)std::abs(dx);
+    const size_t height = before.height() - (size_t)std::abs(dy);
+    const ImageViewRGB32 old_part = before.sub_image(dx > 0 ? dx : 0, dy > 0 ? dy : 0, width, height);
+    const ImageViewRGB32 new_part = after.sub_image(dx < 0 ? -dx : 0, dy < 0 ? -dy : 0, width, height);
+    return ImageMatch::pixel_RMSD(old_part, new_part);
+}
+
+//  Whether `after` no longer shows the scene `before` showed, scrolled 0 to
+//  `max_tiles` tiles on toward `direction` inside the game box `game`: black
+//  then clear with the old scene back is no warp. A screen too dark to
+//  compare (a dark cave) counts as left.
+bool warp_left_scene(
+    const ImageViewRGB32& before, const ImageViewRGB32& after,
+    const ImageFloatBox& game, Direction direction, int max_tiles
+){
+    const ImageViewRGB32 old_box = extract_box_reference(before, game);
+    const ImageViewRGB32 new_box = extract_box_reference(after, game);
+    if (old_box.width() != new_box.width() || old_box.height() != new_box.height()){
+        return true;
+    }
+    if (dark_cave_screen(before) || dark_cave_screen(after)){
+        return true;
+    }
+    const int tile_x = (int)old_box.width() / SCREEN_TILES_X;
+    const int tile_y = (int)old_box.height() / SCREEN_TILES_Y;
+    //  Keep at least 5 tiles of overlap to compare.
+    const int most = std::min(max_tiles, (direction == Direction::NORTH || direction == Direction::SOUTH ? SCREEN_TILES_Y : SCREEN_TILES_X) - 5);
+    for (int tiles = 0; tiles <= most; tiles++){
+        int dx = 0;
+        int dy = 0;
+        switch (direction){
+        case Direction::NORTH: dy = -tiles * tile_y; break;
+        case Direction::SOUTH: dy = tiles * tile_y; break;
+        case Direction::WEST:  dx = -tiles * tile_x; break;
+        case Direction::EAST:  dx = tiles * tile_x; break;
+        }
+        if (scrolled_rmsd(old_box, new_box, dx, dy) < SAME_SCENE_RMSD){
+            return false;
+        }
+    }
+    return true;
+}
+
 //  One watcher for the whole fade: a ladder's black is short enough to be
 //  over before a second watcher, started once the fade is seen, looks.
-void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step, Pokemon::WatchAlong& fade){
+void wait_out_fade(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step, Pokemon::WatchAlong& fade){
     if (fade.fired()){
         console.log("Route: the fade to " + step.end.map + " was over before the hold ended.");
         return;
@@ -323,10 +382,38 @@ void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const 
     );
 }
 
-void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step){
+} // namespace
+
+//  A black screen that clears with the player where they were is no warp
+//  (console B, 2026-11-10 01:44, 00.31 run 4: "east 1 (warp)" was taken as
+//  walked while the player stayed on B4F).
+void wait_out_warp(
+    ConsoleHandle& console, ProControllerContext& context, const RouteStep& step,
+    Pokemon::WatchAlong& fade, const VideoSnapshot& before
+){
+    wait_out_fade(console, context, step, fade);
+    if (!before){
+        return;
+    }
+    pbf_wait(context, WARP_FADE_IN);
+    context.wait_for_all_requests();
+    const VideoSnapshot after = console.video().snapshot();
+    if (!after){
+        return;
+    }
+    if (!warp_left_scene(*before.frame, *after.frame, GameSettings::instance().GAME_BOX, step.direction, step.tiles + step.warp_slack + 2)){
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::SEND_ERROR_REPORT,
+            "walk_overworld_route(): the warp to " + step.end.map + " not confirmed: the screen after the fade shows the scene from before the hold.",
+            console
+        );
+    }
+}
+
+void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step, const VideoSnapshot& before){
     BlackScreenOverWatcher arrival(COLOR_RED);
     Pokemon::WatchAlong fade(arrival);
-    wait_out_warp(console, context, step, fade);
+    wait_out_warp(console, context, step, fade, before);
 }
 
 //  Fails unless the overworld is up. Under the START menu or a message the
@@ -619,6 +706,8 @@ void walk_step_leg(
     ConsoleHandle& console, ProControllerContext& context,
     const RouteStep& step, const OverworldInterruptSet& interrupts, MoveSpeed speed
 ){
+    context.wait_for_all_requests();
+    const VideoSnapshot before = console.video().snapshot();
     BlackScreenOverWatcher arrival(COLOR_RED);
     Pokemon::WatchAlong fade(arrival);
     Pokemon::walk_leg(
@@ -632,7 +721,7 @@ void walk_step_leg(
     if (!step.warps){
         return;
     }
-    wait_out_warp(console, context, step, fade);
+    wait_out_warp(console, context, step, fade, before);
     static_assert(AFTER_WARP_BATTLE_WATCH >= AFTER_WARP);
     check_warp_was_no_battle(console, context, step);
 }
