@@ -39,13 +39,19 @@ inline std::vector<std::string> leg_problems(const StoryActionArgs& args){
 }
 
 
+//  Why `declared` is no pose of the game's type.
+inline std::string undeclarable(const GridPose& declared){
+    return std::format("\"{}\" has tiles or a facing, which this game's poses cannot say: declare only the map", pose_text(declared));
+}
+
+
 } // namespace
 
 
 template <StoryPose PoseType>
 StoryActionRegistry<PoseType>::StoryActionRegistry(const StoryGame<PoseType>& game)
     : m_game(game)
-    , m_actions(builtin_story_handlers(game))
+    , m_actions(builtin_story_handlers<PoseType>())
 {
     //  A game's action replaces the built-in of its kind and name in place,
     //  so a kind's default stays the built-in one's position.
@@ -96,6 +102,9 @@ std::vector<std::string> StoryActionRegistry<PoseType>::lint(const StoryCheckpoi
     if (checkpoint.id.empty()){
         problems.emplace_back("a checkpoint has no id");
     }
+    if (checkpoint.start && !StoryPoseTraits<PoseType>::from_declared(*checkpoint.start)){
+        problems.push_back(std::format("{} start: {}", checkpoint.id, undeclarable(*checkpoint.start)));
+    }
     std::set<std::string> names;
     for (size_t c = 0; c < checkpoint.steps.size(); c++){
         const StoryStep& step = checkpoint.steps[c];
@@ -105,6 +114,9 @@ std::vector<std::string> StoryActionRegistry<PoseType>::lint(const StoryCheckpoi
         }
         for (const std::string& problem : check(step)){
             problems.push_back(std::format("{}: {}", where, problem));
+        }
+        if (step.pose_after && !StoryPoseTraits<PoseType>::from_declared(*step.pose_after)){
+            problems.push_back(std::format("{}: declared_after: {}", where, undeclarable(*step.pose_after)));
         }
     }
     return problems;
@@ -116,7 +128,13 @@ Outcome StoryActionRegistry<PoseType>::dispatch(StoryBackend<PoseType>& backend,
     if (action == nullptr || !action->handler){
         return unsupported_step(step);
     }
-    return action->handler(backend, state, with_fallbacks(action->spec, step.args));
+    if (action->spec.console_only && backend.kind() != StoryBackendKind::CONSOLE){
+        return outcome_failed(std::string(CONSOLE_ONLY), std::format(
+            "{} runs only on a console, not on a {} backend", action->spec.name, story_backend_kind_name(backend.kind())
+        ));
+    }
+    const StoryActionArgs args = with_fallbacks(action->spec, step.args);
+    return action->handler(backend, state, StoryActionCall{.step = step, .args = args});
 }
 
 

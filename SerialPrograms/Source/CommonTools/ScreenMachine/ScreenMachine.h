@@ -15,6 +15,7 @@
 #include <stdint.h>
 #include <functional>
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 #include "Common/Cpp/Time.h"
@@ -70,9 +71,16 @@ public:
     ScreenMachineChecks(StepTrace& trace)
         : m_trace(trace)
     {}
+    //  Fails through the trace on a problem.
     void check(const ScreenState& state, VideoSnapshot frame);
+    //  The problem with `state` coming up on `observation`, if any. The
+    //  screen counts as unchanged only when it and the look before both have
+    //  a frame and the frames match.
+    std::optional<std::string> problem(const ScreenState& state, const ScreenObservation& observation);
 
 private:
+    std::optional<std::string> problem(const ScreenState& state, VideoSnapshot frame);
+
     //  A step that changes nothing on screen is a dead end (e.g. a menu the states do
     //  not know): fail after a few instead of running out the visit limit.
     static constexpr size_t MAX_UNCHANGED = 8;
@@ -91,6 +99,32 @@ private:
 template <typename ControllerContext>
 std::string run_screen_machine(
     VideoStream& stream, ControllerContext& context, StepTrace& trace,
+    const std::vector<ScreenState>& states, Milliseconds timeout
+);
+
+
+//  How a run of states over observations ended.
+struct ScreenMachineResult{
+    //  The terminal state that acted; empty when the run failed.
+    std::string terminal;
+    //  Why it failed: no state matched, an unexpected screen, a state seen too
+    //  often, a stall, or the timeout.
+    std::string failure;
+
+    bool succeeded() const{
+        return failure.empty();
+    }
+};
+
+//  The same loop as run_screen_machine() over looks from `observe` instead of
+//  frames, so it runs on a console and in a simulation alike: each look picks
+//  the first state whose matches_observation() accepts it (one look, no second
+//  read: an observation is already settled), the trace records it, the checks
+//  apply, then the state acts. Time is the looks' own (`when`): the run fails
+//  once `timeout` has passed since the first look, and after 10000 looks in
+//  any case. A failure is returned, not thrown.
+ScreenMachineResult run_screen_machine_on_observations(
+    const std::function<ScreenObservation()>& observe, CancellableScope& scope, StepTrace& trace,
     const std::vector<ScreenState>& states, Milliseconds timeout
 );
 

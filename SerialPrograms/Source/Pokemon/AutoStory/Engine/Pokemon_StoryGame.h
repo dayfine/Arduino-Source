@@ -21,17 +21,26 @@
 #include "Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
 #include "Pokemon_StoryBackend.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
 
 
-//  An action's code: reads its args (fallbacks already filled in) and
-//  drives the backend. A succeeded action that knows where it left the
-//  player returns that pose in its Outcome.
+//  What an action is asked to do: the step it runs (its name and why, for
+//  the log and for what an action tunes by step) and the step's args with
+//  their fallbacks filled in. Both live for the call only.
+struct StoryActionCall{
+    const StoryStep& step;
+    const StoryActionArgs& args;
+};
+
+//  An action's code: reads its call's args and drives the backend. A
+//  succeeded action that knows where it left the player returns that pose
+//  in its Outcome.
 template <StoryPose PoseType>
-using StoryActionHandler = std::function<Outcome(StoryBackend<PoseType>& backend, RunState& state, const StoryActionArgs& args)>;
+using StoryActionHandler = std::function<Outcome(StoryBackend<PoseType>& backend, RunState& state, const StoryActionCall& call)>;
 
 //  Fills an observation's pose or readings from what the backend saw: a
 //  console reads the frame (OCR, templates), a simulation its model. A
@@ -56,10 +65,12 @@ struct StoryGame{
     std::vector<StoryAction<PoseType>> actions = {};
     //  By name: "pose", "bag", "facing", or a skip_if condition.
     std::vector<std::pair<std::string, StoryReader<PoseType>>> readers = {};
-    //  The game's save (the menu, or a wait for an autosave). The engine
-    //  decides whether to call it (Pokemon_StoryEnginePolicy.h).
-    std::function<Outcome(StoryBackend<PoseType>& backend)> save = {};
-    //  Back to the last save.
+    //  The game's save (the menu, or a wait for an autosave) at the end of
+    //  `checkpoint`, or at its SAVE step. The engine decides whether to call
+    //  it (Pokemon_StoryEnginePolicy.h).
+    std::function<Outcome(StoryBackend<PoseType>& backend, const StoryCheckpoint& checkpoint)> save = {};
+    //  Back to the last save. A succeeded reload that knows where it left
+    //  the player returns that pose in its Outcome.
     std::function<Outcome(StoryBackend<PoseType>& backend)> reload = {};
     //  Called as each attempt at a checkpoint starts, to reset what the game
     //  keeps per attempt (trainers who can see us again). Optional.

@@ -41,6 +41,7 @@ inline void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_StorySavePolicy(database);
     add_tests_StoryEngine(database);
     add_tests_StoryEnginePolicy(database);
+    add_tests_StoryEngineRuns(database);
 }
 
 

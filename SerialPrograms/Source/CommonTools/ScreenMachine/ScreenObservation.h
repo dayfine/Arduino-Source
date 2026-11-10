@@ -34,6 +34,8 @@ enum class ScreenEvent : uint8_t{
     BATTLE,         //  a battle is showing
     CAN_MOVE,       //  the player can move: no box, menu or scene holds them
     STILL,          //  nothing moved since the previous look
+    CHOICE_BOX,     //  a list of answers to pick from is open
+    INTERACT_PROMPT,    //  a prompt to interact with what the player faces ("A Talk")
 };
 
 //  The set of events one look showed.
@@ -67,7 +69,8 @@ private:
 struct ScreenObservation{
     WallClock when = WallClock::min();
     ScreenEvents events = {};
-    //  Named numbers a reader found: "bag.RARE_CANDY", "facing".
+    //  Named numbers a reader found: "bag.RARE_CANDY", "facing",
+    //  "heading" (degrees clockwise from north, [0, 360)).
     std::map<std::string, int, std::less<>> readings = {};
     //  The frame looked at; none in a simulation. A state that needs it
     //  can only run on a console.

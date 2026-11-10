@@ -50,6 +50,7 @@ private:
 
 //  Instantiated once, in Pokemon_StoryStepRunner.cpp.
 extern template class StoryStepRunner<GridPose>;
+//  And for ZonePose (Pokemon_ZonePose.h).
 extern template class StoryStepRunner<ZonePose>;
 
 

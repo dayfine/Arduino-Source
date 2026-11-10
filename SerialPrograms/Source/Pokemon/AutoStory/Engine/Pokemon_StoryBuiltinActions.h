@@ -7,11 +7,16 @@
  *
  *      legs    LEGS    a tap per tile; the pose moves along when it was one tile
  *      face    STEP    a tap in `direction`
+ *                      (legs and face only for a pose type with tile moves,
+ *                      StoryPoseTraits::TILE_MOVES; elsewhere a step naming
+ *                      them fails the lint)
  *      answer  ANSWER  A for yes, B for no
  *      talk    TALK    A, then a text box must open, then text to the overworld
  *      mash    MASH    text until the player can move
  *      fight   BATTLE  the backend's battle
- *      save    SAVE    the game's save (StoryGame::save)
+ *      save    SAVE    StoryEngine's: the game's save (StoryGame::save) as
+ *                      the checkpoint's phase allows; outside the engine it
+ *                      fails as "unsupported_step"
  *
  *  route, ready, train and shop need a game's map, planner or menus: their
  *  built-in action fails as "unsupported_step" naming the hook, and a game
@@ -33,13 +38,14 @@ namespace Pokemon{
 
 //  The built-in actions, in the order a kind's default comes first: the
 //  specs of builtin_story_actions() (Pokemon_BuiltinStoryActions.h), then
-//  talk, mash and save, which take no args. `game` gives the save.
+//  talk, mash and save, which take no args.
 template <StoryPose PoseType>
-std::vector<StoryAction<PoseType>> builtin_story_handlers(const StoryGame<PoseType>& game);
+std::vector<StoryAction<PoseType>> builtin_story_handlers();
 
 //  Instantiated once, in Pokemon_StoryBuiltinActions.cpp.
-extern template std::vector<StoryAction<GridPose>> builtin_story_handlers<GridPose>(const StoryGame<GridPose>& game);
-extern template std::vector<StoryAction<ZonePose>> builtin_story_handlers<ZonePose>(const StoryGame<ZonePose>& game);
+extern template std::vector<StoryAction<GridPose>> builtin_story_handlers<GridPose>();
+//  And for ZonePose (Pokemon_ZonePose.h).
+extern template std::vector<StoryAction<ZonePose>> builtin_story_handlers<ZonePose>();
 
 
 

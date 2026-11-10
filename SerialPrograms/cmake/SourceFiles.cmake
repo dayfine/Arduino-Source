@@ -1512,6 +1512,7 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson_Tests.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryActionRegistry.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryActionRegistry.h
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryBackend.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryBackend.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryBuiltinActions.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryBuiltinActions.h
@@ -1522,6 +1523,7 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryEnginePolicy.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryEnginePolicy.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryEnginePolicy_Tests.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryEngineRuns_Tests.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryGame.h

@@ -35,6 +35,27 @@ enum class StoryPace{
     RUN,
 };
 
+//  What a backend plays on. An action declared console_only
+//  (StoryActionSpec) runs only on CONSOLE: it reads or presses through
+//  screens nothing else models (menus, a keyboard, a battle AI).
+enum class StoryBackendKind{
+    CONSOLE,
+    SIMULATION,
+    SCRIPT,     //  a scripted fake, for unit tests
+};
+
+//  "console", "simulation", "script".
+std::string_view story_backend_kind_name(StoryBackendKind kind);
+
+//  The reading (ScreenObservation::readings) of the way the player faces in
+//  a game without tiles: degrees clockwise from north (straight on, for a
+//  camera-relative game), in [0, 360). A backend that can read it cheaply
+//  sets it in each observe(); otherwise a game's reader of this name does.
+inline constexpr std::string_view STORY_HEADING = "heading";
+
+//  `observation`'s STORY_HEADING reading; none when nothing read it.
+std::optional<int> story_heading(const ScreenObservation& observation);
+
 //  One look at the game, with where the player is when a reader knows it
 //  (StoryGame::readers fill `pose` and the readings).
 template <StoryPose PoseType>
@@ -43,16 +64,22 @@ struct Observation : public ScreenObservation{
 };
 
 //  The engine's only way to the game.
-//  code-health: allow public_methods -- the agreed backend boundary is these eight low-level calls; splitting them would make every action take two objects
+//  code-health: allow public_methods -- the agreed backend boundary is these low-level calls; splitting them would make every action take two objects
 template <StoryPose PoseType>
 class StoryBackend{
 public:
     virtual ~StoryBackend() = default;
 
+    virtual StoryBackendKind kind() const = 0;
+
     virtual void press(NintendoSwitch::Button button, Milliseconds hold, Milliseconds release) = 0;
     //  One tile in `direction`, or a turn to face it.
     virtual void tap(Direction direction) = 0;
     virtual void hold(Direction direction, Milliseconds duration, StoryPace pace) = 0;
+    //  The move stick held at `degrees` clockwise from north (straight on,
+    //  for a camera-relative game) for `duration`: the free-moving games'
+    //  walk and turn. A tile game's hold() is this at a multiple of 90.
+    virtual void stick(double degrees, Milliseconds duration, StoryPace pace) = 0;
     virtual void wait(Milliseconds duration) = 0;
     //  The game now, once every input sent so far has been done.
     virtual Observation<PoseType> observe() = 0;
