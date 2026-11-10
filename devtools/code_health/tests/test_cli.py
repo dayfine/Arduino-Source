@@ -66,6 +66,22 @@ class CliTests(unittest.TestCase):
         self.source(51, 'Common/new.hpp')
         self.assertEqual(1, self.cli().returncode)
 
+    def test_header_api_rules_and_style_waiver(self):
+        self.source(3)
+        self.commit()
+        names = ''.join(f'// Name {i}.\nvoid f{i}();\n' for i in range(9))
+        (self.root / 'Common/api.h').write_text(
+            'namespace A{\n' + names + '// Overload.\nvoid f0(int x);\n'
+            '// code-health: allow char_pointer -- the C library callback hands us this pointer\n'
+            'void on_text(const char* text);\n} // namespace A\n')
+        self.git('add', '.')
+        result = self.cli()
+        self.assertEqual(1, result.returncode, result.stderr)
+        self.assertIn('header_symbols=10, limit=8', result.stderr)
+        self.assertIn('f0: overload () is a prefix of (int)', result.stderr)
+        self.assertNotIn('char*', result.stderr)
+        self.assertIn('Bypass: Common/api.h:23: char_pointer bypassed by the tag at line 22', result.stdout)
+
     def test_unchanged_bad_function_in_changed_file_passes(self):
         self.source(60)
         self.commit()
