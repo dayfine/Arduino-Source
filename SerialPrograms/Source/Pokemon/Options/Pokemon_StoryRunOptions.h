@@ -4,8 +4,9 @@
  *
  *  The options every AutoStory program shows for where to start and end, how
  *  hard to try and how much to check: the same group in each game, read into the shared
- *  SegmentPolicy (Pokemon/AutoStory/Pokemon_StorySegments.h) and the
- *  executor's checks level (Pokemon_StorySteps.h).
+ *  SegmentPolicy (Pokemon/AutoStory/Pokemon_StorySegments.h), the checks
+ *  level (Types/Pokemon_StoryChecks.h) and the language the game's steps
+ *  read text in.
  *
  */
 
@@ -21,10 +22,12 @@
 #include "Common/Cpp/Options/EnumDropdownOption.h"
 #include "Common/Cpp/Options/GroupOption.h"
 #include "Common/Cpp/Options/SimpleIntegerOption.h"
+#include "CommonFramework/Language.h"
 #include "CommonTools/Options/StringSelectOption.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStorySelect.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
-#include "Pokemon/AutoStory/Pokemon_StorySteps.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryChecks.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -34,10 +37,12 @@ namespace Pokemon{
 //  segments: "00.09 Pewter Gym: Camper Liam, then Brock".
 struct StoryCheckpointEntry{
     std::string label;
+
     const std::string& name() const{
         return label;
     }
 };
+
 // Formats a checkpoint identifier and description into a dropdown label.
 std::string story_checkpoint_label(const StoryCheckpoint& checkpoint);
 
@@ -94,9 +99,9 @@ public:
     //  The policy these options set. In-place recoveries are the game's to
     //  set, not the user's.
     SegmentPolicy policy() const;
-    //  The checks level for the game's story step executor (set_checks()).
+    //  The checks level, for the game's steps to read.
     StoryChecks checks() const;
-    //  The game's language, for the executor (set_language()).
+    //  The game's language, for the steps that read text.
     Language language() const;
 
 public:

@@ -14,148 +14,15 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-const char* story_step_kind_name(StoryStepKind kind){
-    switch (kind){
-    case StoryStepKind::NEW_GAME:
-        return "NEW_GAME";
-    case StoryStepKind::OPTIONS:
-        return "OPTIONS";
-    case StoryStepKind::ROUTE:
-        return "ROUTE";
-    case StoryStepKind::LEGS:
-        return "LEGS";
-    case StoryStepKind::STEP:
-        return "STEP";
-    case StoryStepKind::TALK:
-        return "TALK";
-    case StoryStepKind::ANSWER:
-        return "ANSWER";
-    case StoryStepKind::MASH:
-        return "MASH";
-    case StoryStepKind::BATTLE:
-        return "BATTLE";
-    case StoryStepKind::TRAIN:
-        return "TRAIN";
-    case StoryStepKind::HEAL:
-        return "HEAL";
-    case StoryStepKind::SHOP:
-        return "SHOP";
-    case StoryStepKind::SAVE:
-        return "SAVE";
-    case StoryStepKind::READY:
-        return "READY";
-    case StoryStepKind::GAME:
-        return "GAME";
-    }
-    return "?";
-}
-
-
-const char* story_checks_name(StoryChecks checks){
-    switch (checks){
-    case StoryChecks::THOROUGH:
-        return "thorough";
-    case StoryChecks::FAST:
-        return "fast";
-    }
-    return "?";
-}
-
-
 Outcome unsupported_step(const StoryStep& step){
     return outcome_failed("unsupported_step", std::format("{} {}", story_step_kind_name(step.kind), step.name));
 }
 
-Outcome StoryStepExecutor::run(RunState& state, const StoryStep& step){
-    return dispatch_story_step(*this, state, step);
-}
 
 void StoryStepExecutor::begin_attempt(const StoryCheckpoint&){}
 
 bool StoryStepExecutor::holds(const std::string& condition, RunState& state){
     return state.flags.contains(condition);
-}
-
-Outcome StoryStepExecutor::new_game(RunState&, const StoryStep& step){
-    return unsupported_step(step);
-}
-Outcome StoryStepExecutor::options(RunState&, const StoryStep& step){
-    return unsupported_step(step);
-}
-Outcome StoryStepExecutor::route(RunState&, const StoryStep& step){
-    return unsupported_step(step);
-}
-Outcome StoryStepExecutor::legs(RunState&, const StoryStep& step){
-    return unsupported_step(step);
-}
-Outcome StoryStepExecutor::step(RunState&, const StoryStep& step){
-    return unsupported_step(step);
-}
-Outcome StoryStepExecutor::talk(RunState&, const StoryStep& step){
-    return unsupported_step(step);
-}
-Outcome StoryStepExecutor::answer(RunState&, const StoryStep& step){
-    return unsupported_step(step);
-}
-Outcome StoryStepExecutor::mash(RunState&, const StoryStep& step){
-    return unsupported_step(step);
-}
-Outcome StoryStepExecutor::battle(RunState&, const StoryStep& step){
-    return unsupported_step(step);
-}
-Outcome StoryStepExecutor::train(RunState&, const StoryStep& step){
-    return unsupported_step(step);
-}
-Outcome StoryStepExecutor::heal(RunState&, const StoryStep& step){
-    return unsupported_step(step);
-}
-Outcome StoryStepExecutor::shop(RunState&, const StoryStep& step){
-    return unsupported_step(step);
-}
-Outcome StoryStepExecutor::save(RunState&, const StoryStep& step){
-    return unsupported_step(step);
-}
-Outcome StoryStepExecutor::ready(RunState&, const StoryStep& step){
-    return unsupported_step(step);
-}
-Outcome StoryStepExecutor::game(RunState&, const StoryStep& step){
-    return unsupported_step(step);
-}
-
-Outcome dispatch_story_step(StoryStepExecutor& executor, RunState& state, const StoryStep& step){
-    switch (step.kind){
-    case StoryStepKind::NEW_GAME:
-        return executor.new_game(state, step);
-    case StoryStepKind::OPTIONS:
-        return executor.options(state, step);
-    case StoryStepKind::ROUTE:
-        return executor.route(state, step);
-    case StoryStepKind::LEGS:
-        return executor.legs(state, step);
-    case StoryStepKind::STEP:
-        return executor.step(state, step);
-    case StoryStepKind::TALK:
-        return executor.talk(state, step);
-    case StoryStepKind::ANSWER:
-        return executor.answer(state, step);
-    case StoryStepKind::MASH:
-        return executor.mash(state, step);
-    case StoryStepKind::BATTLE:
-        return executor.battle(state, step);
-    case StoryStepKind::TRAIN:
-        return executor.train(state, step);
-    case StoryStepKind::HEAL:
-        return executor.heal(state, step);
-    case StoryStepKind::SHOP:
-        return executor.shop(state, step);
-    case StoryStepKind::SAVE:
-        return executor.save(state, step);
-    case StoryStepKind::READY:
-        return executor.ready(state, step);
-    case StoryStepKind::GAME:
-        return executor.game(state, step);
-    }
-    return unsupported_step(step);
 }
 
 

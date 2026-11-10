@@ -30,6 +30,7 @@ struct VariantPair{
     std::string_view key;
     std::string_view value;
 };
+
 //  `word` split at its first '='; nothing without one or with an empty key.
 std::optional<VariantPair> variant_pair(std::string_view word);
 
