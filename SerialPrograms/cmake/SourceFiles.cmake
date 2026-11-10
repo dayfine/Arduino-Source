@@ -254,6 +254,8 @@ file(GLOB CORE_LIBRARY_SOURCES
     Source/CompileTimeBackends.h
     Source/ControllerInput/ControllerInput.cpp
     Source/ControllerInput/ControllerInput.h
+    Source/ControllerInput/Gamepad/GamepadInput_State.cpp
+    Source/ControllerInput/Gamepad/GamepadInput_State.h
     Source/ControllerInput/Keyboard/KeyBindingOption.cpp
     Source/ControllerInput/Keyboard/KeyBindingOption.h
     Source/ControllerInput/Keyboard/KeyboardHidButtons.h
@@ -927,6 +929,10 @@ file(GLOB LIBRARY_SOURCES
     Source/ComputerPrograms/Framework/ComputerProgramSession.h
     Source/ComputerPrograms/Framework/ComputerProgramWidget.cpp
     Source/ComputerPrograms/Framework/ComputerProgramWidget.h
+    Source/ControllerInput/Gamepad/GlobalGamepadTracker.cpp
+    Source/ControllerInput/Gamepad/GlobalGamepadTracker.h
+    Source/ControllerInput/Gamepad/GamepadInput_SDL.cpp
+    Source/ControllerInput/Gamepad/GamepadInput_SDL.h
     Source/ControllerInput/Keyboard/GlobalKeyboardHidTracker.cpp
     Source/ControllerInput/Keyboard/GlobalKeyboardHidTracker.h
     Source/ControllerInput/Keyboard/GlobalQtKeyMap.cpp
@@ -1467,6 +1473,9 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Options/Pokemon_NameSelectWidget.h
     Source/Pokemon/Options/Pokemon_StatsHuntFilter.cpp
     Source/Pokemon/Options/Pokemon_StatsHuntFilter.h
+    Source/Pokemon/AutoStory/Pokemon_AutoStorySelect.h
+    Source/Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.h
     Source/Pokemon/Pokemon_AdvRng.cpp
     Source/Pokemon/Pokemon_AdvRng.h
     Source/Pokemon/Pokemon_BdspRng.cpp
@@ -1769,6 +1778,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/BoxOrganization/PokemonFRLG_BoxSorter.h
     Source/VideoGames/PokemonFRLG/Programs/BoxOrganization/PokemonFRLG_BoxSorterLivingDex.cpp
     Source/VideoGames/PokemonFRLG/Programs/BoxOrganization/PokemonFRLG_BoxSorterLivingDex.h
+    Source/VideoGames/PokemonFRLG/Programs/BoxOrganization/PokemonFRLG_BoxSorter_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/BoxOrganization/PokemonFRLG_BoxSorter_Tests.h
     Source/VideoGames/PokemonFRLG/Programs/Farming/PokemonFRLG_EliteFourFarmer.cpp
     Source/VideoGames/PokemonFRLG/Programs/Farming/PokemonFRLG_EliteFourFarmer.h
     Source/VideoGames/PokemonFRLG/Programs/Farming/PokemonFRLG_EvTrainer.cpp
