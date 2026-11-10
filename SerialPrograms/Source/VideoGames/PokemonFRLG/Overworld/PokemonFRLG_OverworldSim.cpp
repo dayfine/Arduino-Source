@@ -326,7 +326,6 @@ std::optional<OverworldSim::Step> OverworldSim::press(Direction direction) const
     return step;
 }
 
-
 //  A trainer on the player's map who sees them now walks up and speaks.
 bool OverworldSim::trainer_sees(Milliseconds pressed){
     std::vector<MapObject>& objects = m_maps[m_map].objects;
@@ -525,7 +524,6 @@ void OverworldSim::stuck_hold(Direction direction){
     }
 }
 
-
 std::optional<SimSeen> OverworldSim::hold(
     Direction direction, Milliseconds duration, Milliseconds release, Milliseconds watch,
     const std::vector<SimWatcher>& watchers
@@ -671,8 +669,6 @@ bool OverworldSim::close_message(){
     return true;
 }
 
-
-
 //
 //  OverworldSimWalker
 //
@@ -694,7 +690,6 @@ Milliseconds delay_of(const OverworldInterrupts& interrupts, size_t index){
 }
 
 } // namespace
-
 
 OverworldSimWalker::OverworldSimWalker(OverworldSim& sim, SimWalkerRules rules, const OverworldInterruptSet& walker)
     : m_sim(sim)
@@ -795,13 +790,19 @@ bool OverworldSimWalker::fade_over_since(Milliseconds from) const{
 //  was a wild battle's, run from. wait_out_warp()'s watcher takes a wild
 //  battle's wipe for the fade (run 7; console B, 2026-11-03, Mt. Moon 1F):
 //  the battle screen stands in for the wipe. The fade is watched for from
-//  `watched_from`: a fade over by then is missed.
+//  `watched_from`: a fade over by then is missed. No warp: a step more,
+//  twice: a hold ends up to two tiles short, and an arrow warp (stairs)
+//  fires on the press made standing on it.
 bool OverworldSimWalker::after_warp(const RouteStep& step, int warps_before, Milliseconds watched_from){
-    if (m_sim.state().warps == warps_before){
-        if (!m_sim.watch({SimWatcher::BATTLE_SCREEN}, WARP_TIMEOUT)){
-            fail("walk_overworld_route(): no fade in and out after walking onto the warp to " + step.end.map + ".");
+    bool battle = false;
+    if (m_sim.state().warps == warps_before && !(battle = m_sim.watch({SimWatcher::BATTLE_SCREEN}, WARP_TIMEOUT).has_value())){
+        for (int tap = 0; tap < 2 && m_sim.state().warps == warps_before; tap++){
+            m_log.push_back("Route: no fade; one more step into the warp.");
+            watched_from = m_sim.state().time;
+            m_sim.tap(step.direction, STEP_TAP, STEP_TAP_RELEASE);
         }
-    }else if (!fade_over_since(watched_from) && !m_sim.watch({SimWatcher::FADE}, WARP_TIMEOUT)){
+    }
+    if (!battle && (m_sim.state().warps == warps_before || (!fade_over_since(watched_from) && !m_sim.watch({SimWatcher::FADE}, WARP_TIMEOUT)))){
         fail("walk_overworld_route(): no fade in and out after walking onto the warp to " + step.end.map + ".");
     }
     m_sim.watch({}, AFTER_WARP);
@@ -992,8 +993,6 @@ std::string OverworldSimWalker::run(const std::vector<RouteStep>& route, const R
     }
     return "";
 }
-
-
 
 } // namespace PokemonFRLG
 } // namespace NintendoSwitch

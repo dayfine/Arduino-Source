@@ -301,13 +301,26 @@ void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const 
         return;
     }
     context.wait_for_all_requests();
-    if (wait_until(console, context, WARP_TIMEOUT, {fade.watcher()}) < 0){
-        OperationFailedExceptionWithScreenshot::fire(
-            ErrorReportMode::SEND_ERROR_REPORT,
-            "walk_overworld_route(): no fade in and out after walking onto the warp to " + step.end.map + ".",
-            console
-        );
+    if (wait_until(console, context, WARP_TIMEOUT, {fade.watcher()}) >= 0){
+        return;
     }
+    //  A hold that ended short of a stairs or door warp, or on an arrow
+    //  warp: a step more at a time, twice, takes it. A hold ends up to two
+    //  tiles short, and an arrow warp fires on the press made standing on it.
+    for (int tap = 0; tap < 2; tap++){
+        console.log("Route: no fade; one more step into the warp.", COLOR_ORANGE);
+        BlackScreenOverWatcher arrival(COLOR_RED);
+        Pokemon::WatchAlong retry_fade(arrival);
+        pbf_press_dpad(context, dpad(step.direction), STEP_TAP, STEP_TAP_RELEASE);
+        if (wait_until(console, context, WARP_TIMEOUT, {retry_fade.watcher()}) >= 0){
+            return;
+        }
+    }
+    OperationFailedExceptionWithScreenshot::fire(
+        ErrorReportMode::SEND_ERROR_REPORT,
+        "walk_overworld_route(): no fade in and out after walking onto the warp to " + step.end.map + ".",
+        console
+    );
 }
 
 void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step){
