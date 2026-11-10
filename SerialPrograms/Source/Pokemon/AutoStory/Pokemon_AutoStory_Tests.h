@@ -42,6 +42,18 @@ void add_tests_StoryLog(UnitTestDatabase& database);
 // Registers unit tests for the shared start/end checkpoint range options.
 void add_tests_StoryRangeOptions(UnitTestDatabase& database);
 
+// Registers every suite above, for the unit test runner.
+inline void add_tests_AutoStory(UnitTestDatabase& database){
+    add_tests_StoryEvents(database);
+    add_tests_StorySegments(database);
+    add_tests_StorySteps(database);
+    add_tests_StoryStepJson(database);
+    add_tests_StoryArgs(database);
+    add_tests_AuthoredCheckpointJson(database);
+    add_tests_StoryLog(database);
+    add_tests_StoryRangeOptions(database);
+}
+
 
 
 } // namespace Pokemon
