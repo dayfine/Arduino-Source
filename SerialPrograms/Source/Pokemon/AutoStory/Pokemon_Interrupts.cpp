@@ -12,7 +12,7 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-const char* warp_judgement_name(WarpJudgement judgement){
+std::string warp_judgement_name(WarpJudgement judgement){
     switch (judgement){
     case WarpJudgement::NO_FADE:        return "no fade";
     case WarpJudgement::FADE_SHOWING:   return "fade still showing";
@@ -25,7 +25,7 @@ const char* warp_judgement_name(WarpJudgement judgement){
     return "?";
 }
 
-const char* interrupt_kind_name(InterruptKind kind){
+std::string interrupt_kind_name(InterruptKind kind){
     switch (kind){
     case InterruptKind::NONE:           return "none";
     case InterruptKind::WILD_ENCOUNTER: return "wild encounter";
@@ -222,7 +222,7 @@ WarpVerdict judge_warp(const Transition& transition, const InterruptKnobs& knobs
 
 std::string describe(const InterruptVerdict& verdict, WallClock origin){
     std::string out = interrupt_kind_name(verdict.kind);
-    const char* separator = ": ";
+    std::string_view separator = ": ";
     for (const ScreenEventChange& change : verdict.evidence){
         out += std::format(
             "{}{:+} ms {} {}",
