@@ -799,7 +799,16 @@ bool OverworldSimWalker::fade_over_since(Milliseconds from) const{
 bool OverworldSimWalker::after_warp(const RouteStep& step, int warps_before, Milliseconds watched_from){
     if (m_sim.state().warps == warps_before){
         if (!m_sim.watch({SimWatcher::BATTLE_SCREEN}, WARP_TIMEOUT)){
-            fail("walk_overworld_route(): no fade in and out after walking onto the warp to " + step.end.map + ".");
+            //  A hold that ended short on a stairs or door warp: one more
+            //  step into it takes it.
+            m_log.push_back("Route: no fade; one more step into the warp.");
+            const Milliseconds tapped = m_sim.state().time;
+            m_sim.tap(step.direction, STEP_TAP, STEP_TAP_RELEASE);
+            if (m_sim.state().warps == warps_before
+                || (!fade_over_since(tapped) && !m_sim.watch({SimWatcher::FADE}, WARP_TIMEOUT))
+            ){
+                fail("walk_overworld_route(): no fade in and out after walking onto the warp to " + step.end.map + ".");
+            }
         }
     }else if (!fade_over_since(watched_from) && !m_sim.watch({SimWatcher::FADE}, WARP_TIMEOUT)){
         fail("walk_overworld_route(): no fade in and out after walking onto the warp to " + step.end.map + ".");
