@@ -38,6 +38,7 @@
 #include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
 #include "Pokemon/AutoStory/Pokemon_StorySteps.h"
 #include "Pokemon/Navigation/Pokemon_Grid.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
 #include "PokemonFRLG_AutoStoryPcStorage.h"
 
 namespace PokemonAutomation{
@@ -249,6 +250,23 @@ public:
 //  meanwhile is fought (PatchSteps::fight_trainer()) and pacing goes on;
 //  their battle isn't a wild one.
 bool pace_until_battle(Logger& logger, PatchSteps& steps, size_t max_steps);
+//  Before pacing: gets the player off the Bicycle with SELECT, checked,
+//  and once more if they still ride. On the Bicycle a tap facing another
+//  way steps as well as turns, so pacing's turns walk it off the patch
+//  (console B, 2026-11-09, 00.30 run 5: Route 7's grass). Returns whether
+//  the player is on foot.
+bool select_off_bike(const BikeSelectCalls& calls);
+
+//  One search for a wild battle, as a capture or a grind paces: off the
+//  Bicycle (select_off_bike()), then pace_until_battle(). `steps` keeps
+//  the tile pacing left the player on from one search to the next, so the
+//  pace never starts a tile out. False if no battle came, or the player
+//  rides on.
+bool find_paced_encounter(Logger& logger, const BikeSelectCalls& bike, PatchSteps& steps);
+
+//  select_off_bike()'s calls on the console: SELECT is the Switch's MINUS,
+//  and the player rides while no standing sprite shows (screen_shows_riding()).
+BikeSelectCalls console_bike_select(ConsoleHandle& console, ProControllerContext& context);
 
 //  Steps in a patch before pacing gives up: about 10 % of steps in grass
 //  start a battle at Route 4's rates.
@@ -318,6 +336,8 @@ private:
     ProControllerContext& m_context;
     Language m_language;
     PaceTrainerBattle m_trainer_battle;
+    //  Where pacing left the player, kept from one battle to the next.
+    PaceSpot m_spot;
 };
 
 

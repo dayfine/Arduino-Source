@@ -437,6 +437,36 @@ bool pace_until_battle(Logger& logger, PatchSteps& steps, size_t max_steps){
 }
 
 
+bool select_off_bike(const BikeSelectCalls& calls){
+    for (size_t c = 0; c < 2 && calls.riding(); c++){
+        calls.press_select();
+    }
+    return !calls.riding();
+}
+
+bool find_paced_encounter(Logger& logger, const BikeSelectCalls& bike, PatchSteps& steps){
+    if (!select_off_bike(bike)){
+        logger.log("Pacing: still on the Bicycle after SELECT twice; not pacing on it.", COLOR_RED);
+        return false;
+    }
+    return pace_until_battle(logger, steps, PACE_MAX_STEPS);
+}
+
+BikeSelectCalls console_bike_select(ConsoleHandle& console, ProControllerContext& context){
+    BikeSelectCalls calls;
+    calls.press_select = [&console, &context]{
+        console.log("Pacing: SELECT (MINUS) off the Bicycle.");
+        pbf_press_button(context, BUTTON_MINUS, MovementMechanics::BIKE_SELECT_PRESS, MovementMechanics::BIKE_SELECT_SETTLE);
+    };
+    calls.riding = [&console, &context]{
+        context.wait_for_all_requests();
+        VideoSnapshot screen = console.video().snapshot();
+        return screen && screen_shows_riding(*screen.frame);
+    };
+    return calls;
+}
+
+
 ConsolePatchSteps::ConsolePatchSteps(
     ConsoleHandle& console, ProControllerContext& context, Direction pace, PaceSpot& spot,
     const PaceTrainerBattle& trainer_battle
@@ -502,9 +532,8 @@ ConsoleCaptureActions::ConsoleCaptureActions(
 {}
 
 bool ConsoleCaptureActions::find_encounter(Direction pace){
-    PaceSpot spot;
-    ConsolePatchSteps steps(m_console, m_context, pace, spot, m_trainer_battle);
-    return pace_until_battle(m_console.logger(), steps, PACE_MAX_STEPS);
+    ConsolePatchSteps steps(m_console, m_context, pace, m_spot, m_trainer_battle);
+    return find_paced_encounter(m_console.logger(), console_bike_select(m_console, m_context), steps);
 }
 
 EncounterSeen ConsoleCaptureActions::read_encounter(){

@@ -111,16 +111,19 @@ UnitTestResult test_capture_paced_in_trainer_sight(){
 }
 
 
-//  A capture on the sim as ConsoleCaptureActions paces it: each search for
-//  a battle with its own PatchSteps, east and back, `species` read in turn.
+//  A capture on the sim as ConsoleCaptureActions paces it, east and back:
+//  find_paced_encounter() with one PatchSteps kept from battle to battle,
+//  `species` read in turn.
 class SimConsoleCapture : public CaptureActions{
 public:
     SimConsoleCapture(Logger& logger, OverworldSim& sim, std::vector<std::string> species)
-        : m_logger(logger), m_sim(sim), m_species(std::move(species))
-    {}
+        : m_logger(logger), m_sim(sim), m_pacing(sim, Direction::EAST, Direction::WEST), m_species(std::move(species))
+    {
+        m_bike.press_select = [this]{ m_sim.use_field(SimField::BIKE_SELECT); };
+        m_bike.riding = [this]{ return m_sim.state().on_bike; };
+    }
     virtual bool find_encounter(Direction) override{
-        SimPatch pacing(m_sim, Direction::EAST, Direction::WEST);
-        return pace_until_battle(m_logger, pacing, PACE_MAX_STEPS);
+        return find_paced_encounter(m_logger, m_bike, m_pacing);
     }
     virtual EncounterSeen read_encounter() override{
         const std::string species = m_read < m_species.size() ? m_species[m_read] : m_species.back();
@@ -143,6 +146,8 @@ public:
 private:
     Logger& m_logger;
     OverworldSim& m_sim;
+    SimPatch m_pacing;
+    BikeSelectCalls m_bike;
     std::vector<std::string> m_species;
     size_t m_read = 0;
 };
