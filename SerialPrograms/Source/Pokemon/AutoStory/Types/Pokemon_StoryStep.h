@@ -18,6 +18,7 @@
 #include <vector>
 #include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
 #include "Pokemon/Navigation/Pokemon_Grid.h"
+#include "Pokemon_StoryArgs.h"
 #include "Pokemon_StoryStepKind.h"
 
 namespace PokemonAutomation{
@@ -61,8 +62,12 @@ struct StoryStep{
     //  How this game does the kind, when it has more than one way: a
     //  route's plan costs, a door lined up by sight, the Mart lady instead
     //  of the clerk. Empty is the game's usual way. GAME: the step's name
-    //  in the game's executor.
+    //  in the game's executor. A plain name; what the action needs beyond
+    //  it goes in `args`.
     std::string variant;
+    //  The arguments the variant's action reads (a Mart's map and budget),
+    //  checked against the ones it declares when the game loads the step.
+    StoryArgs args;
 
     //  Skipped when all of these hold (and there is at least one): names
     //  the game's executor answers (StoryStepExecutor::holds()), run flags
