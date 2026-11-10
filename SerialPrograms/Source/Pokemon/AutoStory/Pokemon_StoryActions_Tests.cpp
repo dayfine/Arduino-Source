@@ -199,14 +199,18 @@ UnitTestResult test_lint_names_steps_without_actions(){
 }
 
 
-//  Steps without an action of their own go to this TALK.
+//  A binding that does TALK itself when its table has no action for it.
 class FakeTableExecutor : public TableExecutor{
 public:
     using TableExecutor::TableExecutor;
 
 protected:
-    virtual Outcome talk(RunState&, const StoryStep&) override{
-        return outcome_failed("talk virtual");
+    virtual Outcome run_action(RunState& state, const StoryStep& step) override{
+        const Outcome outcome = TableExecutor::run_action(state, step);
+        if (step.kind == StoryStepKind::TALK && outcome.failure == "unsupported_step"){
+            return outcome_failed("talk binding");
+        }
+        return outcome;
     }
 };
 
@@ -236,7 +240,7 @@ StoryAction throwing(){
     };
 }
 
-UnitTestResult test_executor_uses_table_then_virtuals(){
+UnitTestResult test_executor_uses_table_then_binding(){
     StoryActionTable table;
     table.add(StoryStepKind::GAME, "bill", named("bill action"));
     FakeGuard guard;
@@ -245,8 +249,8 @@ UnitTestResult test_executor_uses_table_then_virtuals(){
     const std::string bill = executor.run(state, make(StoryStepKind::GAME, "bill", "bill")).failure;
     const std::string talk = executor.run(state, make(StoryStepKind::TALK, "talk")).failure;
     const std::string mash = executor.run(state, make(StoryStepKind::MASH, "mash")).failure;
-    if (bill != "bill action" || talk != "talk virtual" || mash != "unsupported_step"){
-        return "Expected table, virtual, unsupported; got " + bill + ", " + talk + ", " + mash;
+    if (bill != "bill action" || talk != "talk binding" || mash != "unsupported_step"){
+        return "Expected table, binding, unsupported; got " + bill + ", " + talk + ", " + mash;
     }
     if (guard.trace != std::vector<std::string>{"before bill", "before talk", "before mash"}){
         return "Expected the guard before every step.";
@@ -356,8 +360,8 @@ const StoryActionsCase STORY_ACTIONS_CASES[] = {
         .expectation = {.description = "names each step the table has no action for"},
     },
     {
-        .input = {.name = "executor: the table, then the kind's virtual", .test = test_executor_uses_table_then_virtuals},
-        .expectation = {.description = "falls back to the per-kind virtuals, guarded before every step"},
+        .input = {.name = "executor: the table, then the binding", .test = test_executor_uses_table_then_binding},
+        .expectation = {.description = "a step without a table action is the binding's or unsupported, guarded before every step"},
     },
     {
         .input = {.name = "executor: a console failure fails the step", .test = test_guard_turns_failures_into_outcomes},

@@ -109,10 +109,10 @@ public:
     //  `table` and `guard` must outlive the executor.
     TableExecutor(const StoryActionTable& table, StepGuard& guard);
 
-    //  The table's action for the step; with none, the kind's virtual
-    //  (StoryStepExecutor::run()), so a game can move to the table one
-    //  kind at a time. An OperationFailedException from either is the
-    //  failed Outcome "operation_failed", unless the guard stops on it.
+    //  The table's action for the step (run_action()); with none, the
+    //  step is unsupported (unsupported_step()). An OperationFailedException
+    //  from the action is the failed Outcome "operation_failed", unless the
+    //  guard stops on it.
     //  With interrupts set, each step first clears what stopped the player
     //  since the step before, and a failed step that an interrupt explains
     //  runs again once it is cleared.
@@ -125,8 +125,9 @@ public:
     }
 
 protected:
-    //  The table's action for the step, or the kind's virtual: what run()
-    //  runs once the screen is clear. A binding may wrap it.
+    //  The table's action for the step, or unsupported_step() with none:
+    //  what run() runs once the screen is clear. A binding may wrap it, or
+    //  do the kinds its table does not have yet.
     virtual Outcome run_action(RunState& state, const StoryStep& step);
 
 private:

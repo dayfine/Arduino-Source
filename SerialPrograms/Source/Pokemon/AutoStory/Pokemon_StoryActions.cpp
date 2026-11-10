@@ -124,7 +124,7 @@ Outcome TableExecutor::run_action(RunState& state, const StoryStep& step){
     if (const StoryAction* action = m_table.find(step)){
         return action->act(state, step);
     }
-    return StoryStepExecutor::run(state, step);
+    return unsupported_step(step);
 }
 
 //  Clears what interrupted the player before `step`, counting it in
