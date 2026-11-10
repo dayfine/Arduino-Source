@@ -1,4 +1,4 @@
-# FRLG story drafts, 00.29 to the Hall of Fame
+# FRLG story drafts, 00.30 to the Hall of Fame
 
 **Every file here is an unverified draft.** None has run on a console, and the
 story table doesn't load them: `pa_embed_text_files()` embeds only
@@ -8,12 +8,14 @@ so this README is where they are marked unverified.
 Each file is a `pokesim-authored-checkpoint/1` plan in the same format as
 `../frlg-parcel-00.05.plan.json`. The order and the item stops follow PokeGuy's
 LeafGreen run (PokemonSimulation `data/runs/pokeguy-leafgreen-15934/events.json`
-and `external/pokeguy-notes.md`). They start where 00.28 (Rock Tunnel to
-Lavender, on `frlg/stage8-rocktunnel`) is expected to end: at Lavender's nurse.
+and `external/pokeguy-notes.md`). 00.28 and 00.29 are table rows on
+`frlg/stage8-rocktunnel` (#293), not drafts: 00.29 ends at Lavender's nurse.
+The draft that also used the id 00.29 (Lavender Mart, Route 8, the Underground
+Path to Celadon's Center) was dropped in favour of #293's row, so nothing here
+covers Lavender's nurse to Celadon's yet; its events are in commit 8b656d1a2.
 
 | Id | Title | Events |
 |---|---|---:|
-| 00.29 | Lavender Mart, then west over Route 8: Gamer Rich, a Pidgey for Fly, the Underground Path to Celadon | 12 |
 | 00.30 | Celadon Game Corner and the Rocket Hideout down to B4F: the poster guard, the Lift Key Grunt, the LIFT KEY and B3F's Rare Candy | 12 |
 | 00.31 | Rocket Hideout: the lift to B4F, the two door guards, two Rare Candies, Blastoise, Giovanni and the SILPH SCOPE | 16 |
 | 00.32 | Celadon: Department Store 5F battle items, HM02 Fly on Route 16 for the Pidgey, the Tea, then the Center | 20 |
@@ -38,6 +40,22 @@ Lavender, on `frlg/stage8-rocktunnel`) is expected to end: at Lavender's nurse.
 | 00.49 | Agatha | 3 |
 | 00.50 | Lance | 3 |
 | 00.51 | The Champion and the Hall of Fame | 4 |
+
+## Why 00.30 and 00.31 are not table rows yet
+
+They can't run or be simulated on this branch's data:
+
+- The map resource lock (PokemonSimulation `6c2f5c8`, `runtime-manifest.json`)
+  has none of CeladonCity, CeladonCity_GameCorner or RocketHideout_B1F..B4F;
+  they exist only in `source-candidate`. CeladonCity_PokemonCenter_1F (00.30's
+  start) and RocketHideout_Elevator (00.31's lift) are in neither. Adding them
+  to the runtime pack is a PokemonSimulation publish and a lock bump.
+- 00.30's start, Celadon's nurse, isn't reached by any row: 00.29 ends in
+  Lavender.
+- The walker has no spinner (arrow) tiles, which B2F and B3F need, and no
+  step for the lift's floor menu or the poster switch.
+- `STORY_TRAINERS` names none of the hideout's Grunts or Giovanni yet;
+  their parties are in `BattleData/`.
 
 ## Conventions
 
@@ -66,7 +84,7 @@ Lavender, on `frlg/stage8-rocktunnel`) is expected to end: at Lavender's nurse.
 ## Decisions for the user
 
 - **A Pidgey for Fly.** PokeGuy flies everywhere from 1:03; the story party has
-  no flier. 00.29 catches a Pidgey in Route 7's grass (Route 8's grass is behind
+  no flier. The dropped Lavender-to-Celadon draft caught a Pidgey in Route 7's grass (Route 8's grass is behind
   two Cut trees). Without Fly, Cinnabar needs a long walk round to Pallet.
 - **TM14 Blizzard over Mega Kick** (00.40) is a one-shot TM: it needs the team
   plan first.
@@ -93,7 +111,6 @@ wall tiles, and Indigo Plateau's door glyph is at (11, 5) with its warp at
 
 | Skipped leg | Why |
 |---|---|
-| 00.29/celadon_nurse | map not in source-candidate |
 | 00.31/b2f_lift | B2F's lift corner is reached over arrow tiles the planner does not solve |
 | 00.31/b4f_below_guards | RocketHideout_Elevator map not in source-candidate |
 | 00.32/x_item_clerk | CeladonCity_DepartmentStore_Elevator map not in source-candidate |
