@@ -15,6 +15,7 @@
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
+#include "PokemonFRLG_AutoStoryHideout.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 
 namespace PokemonAutomation{
@@ -370,6 +371,8 @@ Pokemon::StoryAction OverworldStepSim::action(StoryActionId id){
     case StoryActionId::BATTLE:
         body = &OverworldStepSim::battle;
         break;
+    case StoryActionId::GAME:
+        return hideout_or_stub();
     default:
         return m_stubs.stub();
     }
@@ -515,6 +518,33 @@ std::string OverworldStepSim::cut(const StoryStep& step){
     m_at = StoryPose{m_at.map, m_at.tile.next(step.direction), step.direction};
     if (!(m_sim.state().position == MapPosition{m_at.map, m_at.tile})){
         return "expected to step onto the tree's tile " + to_string(MapPosition{m_at.map, m_at.tile}) + ".";
+    }
+    return "";
+}
+
+//  A Rocket Hideout GAME step on the sim: the poster's switch, or the
+//  lift's floor (SimScript::lift_floors, rows as on the panel); any other
+//  GAME step is stubbed.
+Pokemon::StoryAction OverworldStepSim::hideout_or_stub(){
+    Pokemon::StoryAction stub = m_stubs.stub();
+    Pokemon::StoryAction sim = played([this](RunState&, const StoryStep& step){
+        const std::string failure = hideout(step);
+        return failure.empty() ? Pokemon::outcome_ok() : Pokemon::outcome_failed("sim_failure", failure);
+    });
+    sim.act = [stub, played_act = sim.act](RunState& state, const StoryStep& step){
+        return is_hideout_variant(step.variant) ? played_act(state, step) : stub.act(state, step);
+    };
+    sim.needs_console = stub.needs_console;
+    return sim;
+}
+
+std::string OverworldStepSim::hideout(const StoryStep& step){
+    if (step.variant == POSTER_SWITCH_VARIANT){
+        return m_sim.push_poster_switch() ? "" : "no poster ahead.";
+    }
+    const std::optional<LiftRide> ride = parse_lift_floor_variant(step.variant);
+    if (!ride || !m_sim.choose_lift_floor(ride->to)){
+        return "no lift panel for \"" + step.variant + "\".";
     }
     return "";
 }

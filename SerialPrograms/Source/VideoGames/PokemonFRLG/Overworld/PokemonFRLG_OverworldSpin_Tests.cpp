@@ -136,11 +136,13 @@ UnitTestResult test_route_ends_on_slide(){
     return true;
 }
 
-UnitTestResult test_no_stop_mid_slide(){
+//  Walking back down from the dead end steps onto (3, 3), which slides the
+//  player north again: there is no way out.
+UnitTestResult test_dead_end_traps(){
     const std::vector<MapData> maps{spinner_room()};
-    const auto route = plan_overworld_route(maps, SPIN_START, RouteGoal{MapPosition{"Spinners", {3, 2}}, std::nullopt});
+    const auto route = plan_overworld_route(maps, DEAD_END, RouteGoal{SPIN_START, std::nullopt});
     if (route){
-        return "Planned a stop on (3, 2), which a slide only passes:" + describe(*route);
+        return "Planned a way out past the spinner that slides back in:" + describe(*route);
     }
     return true;
 }
@@ -239,7 +241,8 @@ MapPosition poster_walk(bool push){
         sim.push_poster_switch();
     }
     const Milliseconds tile = MovementMechanics::TILE_TIME;
-    sim.hold(Direction::EAST, tile, MovementMechanics::STEP_RELEASE, tile, {});
+    //  Each hold turns the player first, which costs a tile's time.
+    sim.hold(Direction::EAST, tile * 2, MovementMechanics::STEP_RELEASE, tile * 2, {});
     sim.hold(Direction::NORTH, tile * 2, MovementMechanics::STEP_RELEASE, tile * 2, {});
     return sim.state().position;
 }
@@ -264,7 +267,7 @@ void add_tests_OverworldSpin(UnitTestDatabase& database){
     database.add<Test_OverworldSpin>("slide to a stop tile", test_slide_to_stop_tile);
     database.add<Test_OverworldSpin>("arrows in a loop never stop", test_slide_loop);
     database.add<Test_OverworldSpin>("route ends with a slide", test_route_ends_on_slide);
-    database.add<Test_OverworldSpin>("no stop in the middle of a slide", test_no_stop_mid_slide);
+    database.add<Test_OverworldSpin>("a spinner back into a dead end traps", test_dead_end_traps);
     database.add<Test_OverworldSpin>("sim slides the player", test_sim_slides);
     database.add<Test_OverworldSpin>("sim walker walks a slide", test_sim_walker_walks_slide);
     database.add<Test_OverworldSpin>("lift lets out on the floor picked", test_lift_floor);

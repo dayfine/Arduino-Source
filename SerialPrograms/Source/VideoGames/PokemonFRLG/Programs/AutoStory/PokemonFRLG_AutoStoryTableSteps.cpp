@@ -4,6 +4,7 @@
  *
  */
 
+#include "PokemonFRLG_AutoStoryHideout.h"
 #include "PokemonFRLG_AutoStoryTableSteps.h"
 
 namespace PokemonAutomation{
@@ -151,6 +152,18 @@ StoryStep cut_tree(std::string name, Pokemon::Pose tree, std::string why){
     step.variant = CUT_TREE_VARIANT;
     step.direction = facing_of(tree).value_or(Direction::NORTH);
     step.pose_after = std::move(tree);
+    return step;
+}
+
+StoryStep poster_switch(std::string name, std::string why){
+    StoryStep step = make(StoryStepKind::GAME, std::move(name), std::move(why));
+    step.variant = POSTER_SWITCH_VARIANT;
+    return step;
+}
+
+StoryStep lift_floor(std::string name, std::string_view from, std::string_view to, std::string why){
+    StoryStep step = make(StoryStepKind::GAME, std::move(name), std::move(why));
+    step.variant = lift_floor_variant(from, to);
     return step;
 }
 

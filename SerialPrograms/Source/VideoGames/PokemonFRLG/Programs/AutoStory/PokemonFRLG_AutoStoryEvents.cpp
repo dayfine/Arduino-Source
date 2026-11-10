@@ -22,6 +22,7 @@
 #include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
+#include "PokemonFRLG_AutoStoryHideout.h"
 #include "PokemonFRLG_AutoStoryScreenEvents.h"
 #include "PokemonFRLG_AutoStorySummary.h"
 #include "PokemonFRLG_AutoStoryTable.h"
@@ -684,6 +685,15 @@ Outcome open_gym_door(StoryEnv& env, RunState& state, const StoryStep& step){
 //  The GAME steps without a row of their own: a capture or a PC deposit or
 //  withdrawal, a MART, TEACH, LEVEL, GRIND or fossil CHOICE.
 Outcome other_game_step(StoryEnv& env, RunState& state, const StoryStep& step){
+    //  The Rocket Hideout's steps leave the player where they stand.
+    if (const std::optional<LiftRide> ride = parse_lift_floor_variant(step.variant)){
+        ride_lift(env.console, env.context, *ride);
+        return Pokemon::outcome_ok();
+    }
+    if (step.variant == POSTER_SWITCH_VARIANT){
+        push_poster_switch(env.console, env.context);
+        return Pokemon::outcome_ok();
+    }
     const Pokemon::Pose patch = state.pose;
     ConsoleCaptureActions capture(env.console, env.context, env.language, [&]{
         pace_trainer_battle(env, state, step, patch);

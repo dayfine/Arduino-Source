@@ -13,6 +13,7 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "PokemonFRLG_AutoStoryEvents.h"
 
@@ -182,6 +183,12 @@ StoryStep options_step();
 //  Cuts the tree the player faces (CUT_TREE_VARIANT) and steps onto its
 //  tile, `tree`, facing the way the step goes.
 StoryStep cut_tree(std::string name, Pokemon::Pose tree, std::string why);
+//  Pushes the switch behind the Game Corner's poster the player faces
+//  (POSTER_SWITCH_VARIANT).
+StoryStep poster_switch(std::string name, std::string why);
+//  Rides the Rocket Hideout's lift, the player facing its panel, from the
+//  floor it stands at to `to` (lift_floor_variant()): "B1F", "B2F", "B4F".
+StoryStep lift_floor(std::string name, std::string_view from, std::string_view to, std::string why);
 
 
 //  Rows in files of their own (PokemonFRLG_AutoStoryTableVermilionGym.cpp,
