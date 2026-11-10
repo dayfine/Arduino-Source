@@ -147,7 +147,7 @@ private:
     Logger& m_logger;
     OverworldSim& m_sim;
     SimPatch m_pacing;
-    BikeSelectCalls m_bike;
+    OverworldWalkSteps::BikeSelectCalls m_bike;
     std::vector<std::string> m_species;
     size_t m_read = 0;
 };

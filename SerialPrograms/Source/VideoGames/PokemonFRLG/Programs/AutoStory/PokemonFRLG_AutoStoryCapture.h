@@ -255,18 +255,18 @@ bool pace_until_battle(Logger& logger, PatchSteps& steps, size_t max_steps);
 //  way steps as well as turns, so pacing's turns walk it off the patch
 //  (console B, 2026-11-09, 00.30 run 5: Route 7's grass). Returns whether
 //  the player is on foot.
-bool select_off_bike(const BikeSelectCalls& calls);
+bool select_off_bike(const OverworldWalkSteps::BikeSelectCalls& calls);
 
 //  One search for a wild battle, as a capture or a grind paces: off the
 //  Bicycle (select_off_bike()), then pace_until_battle(). `steps` keeps
 //  the tile pacing left the player on from one search to the next, so the
 //  pace never starts a tile out. False if no battle came, or the player
 //  rides on.
-bool find_paced_encounter(Logger& logger, const BikeSelectCalls& bike, PatchSteps& steps);
+bool find_paced_encounter(Logger& logger, const OverworldWalkSteps::BikeSelectCalls& bike, PatchSteps& steps);
 
 //  select_off_bike()'s calls on the console: SELECT is the Switch's MINUS,
-//  and the player rides while no standing sprite shows (screen_shows_riding()).
-BikeSelectCalls console_bike_select(ConsoleHandle& console, ProControllerContext& context);
+//  and the player rides while no standing sprite shows (OverworldWalkSteps::screen_shows_riding()).
+OverworldWalkSteps::BikeSelectCalls console_bike_select(ConsoleHandle& console, ProControllerContext& context);
 
 //  Steps in a patch before pacing gives up: about 10 % of steps in grass
 //  start a battle at Route 4's rates.
