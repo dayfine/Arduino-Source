@@ -29,6 +29,9 @@ public:
         : m_console(system_of(panel))
         , m_context(scope, m_console.controller<ProController>())
     {
+        //  Commands that watch the screen (run_until) need the inference
+        //  pivots a program's environment would have started.
+        m_console.initialize_inference_threads(scope);
         if (!m_context->is_ready()){
             throw ParseException("Controller is not ready.");
         }
@@ -87,6 +90,16 @@ void SwitchLabCommands::run(
         output.out << "shot " << save_command_file_screenshot(session, std::format("error_L{}", output.line)) << "\n";
         throw;
     }
+}
+
+std::string SwitchLabCommands::controller_status(PanelSession& panel){
+    GameConsole::ConsoleProgramSession* program = dynamic_cast<GameConsole::ConsoleProgramSession*>(&panel);
+    if (program == nullptr){
+        return "";
+    }
+    //  Controller 0, the one LabConsole and the program's ConsoleHandle use.
+    GameConsole::ConsoleSystemSession& system = program->system();
+    return system.controllers() > 0 && system.controller(0).ready() ? "ready" : "none";
 }
 
 void SwitchLabCommands::keep_awake(PanelSession& panel, CancellableScope& scope){

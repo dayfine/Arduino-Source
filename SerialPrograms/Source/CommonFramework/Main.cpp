@@ -55,10 +55,6 @@
 Q_DECLARE_METATYPE(std::string)
 
 namespace PokemonAutomation{
-bool use_qt_ui(){
-    return qobject_cast<QApplication*>(QCoreApplication::instance()) != nullptr;
-}
-
 namespace{
 
 void set_working_directory(){

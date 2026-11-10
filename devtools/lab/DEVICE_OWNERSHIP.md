@@ -43,6 +43,13 @@ the corresponding original device ID; it does not use the hex string as a device
 selector. Do not use capture descriptions, friendly names or list positions.
 Audio output to speakers is outside this input-device policy.
 
+A refusal names the kind and ID of the device the panel selected, e.g.
+`Audio input AppleUSBAudioEngine:...:1112100:3 (allowlist ID 4170...) is not
+allowlisted for profile lab-B`. That usually means the panel's settings pick the
+other console's input, not that the allowlist is wrong: both capture cards are
+listed as "USB Digital Audio", and only the ID tells them apart. Select the
+other entry in that panel's audio dropdown.
+
 This PR does not generate a policy from the currently selected panel: that could
 approve the very wrong-console binding we are preventing. Identity collection
 and confirming A/B assignments remain a deliberate setup step. Existing profiles,

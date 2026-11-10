@@ -31,6 +31,7 @@ struct PolicyInput{
 
 struct PolicyExpectation{
     int opens = 0;
+    std::string_view refusal = {};     //  The refusal message starts with this.
 };
 
 struct PolicyCase{
@@ -75,9 +76,11 @@ std::string check_serial(const SerialCase& test){
 
 const PolicyCase POLICY_CASES[] = {
     {.input = {.name = "matching serial", .json = R"({"schema":1,"profile":"lab-B","serial":["10c4:ea60:B"],"video":[],"audio":[]})", .requested = {LabDeviceKind::SERIAL, "10c4:ea60:B"}}, .expectation = {.opens = 1}},
-    {.input = {.name = "wrong console serial", .json = R"({"schema":1,"profile":"lab-B","serial":["10c4:ea60:B"],"video":[],"audio":[]})", .requested = {LabDeviceKind::SERIAL, "10c4:ea60:A"}}, .expectation = {}},
+    {.input = {.name = "wrong console serial", .json = R"({"schema":1,"profile":"lab-B","serial":["10c4:ea60:B"],"video":[],"audio":[]})", .requested = {LabDeviceKind::SERIAL, "10c4:ea60:A"}}, .expectation = {.refusal = "Serial device 10c4:ea60:A is not allowlisted for profile lab-B."}},
     {.input = {.name = "camera allowed", .json = R"({"schema":1,"profile":"lab-B","serial":[],"video":["766964656f42"],"audio":[]})", .requested = {LabDeviceKind::VIDEO, "766964656f42"}}, .expectation = {.opens = 1}},
     {.input = {.name = "audio allowed", .json = R"({"schema":1,"profile":"lab-B","serial":[],"video":[],"audio":["617564696f42"]})", .requested = {LabDeviceKind::AUDIO, "617564696f42"}}, .expectation = {.opens = 1}},
+    //  lab-B, 2026-11-08: a panel selected console A's audio input, and the refusal didn't say which device it was.
+    {.input = {.name = "wrong console audio", .json = R"({"schema":1,"profile":"lab-B","serial":[],"video":[],"audio":["617564696f42"]})", .requested = {LabDeviceKind::AUDIO, "617564696f41"}}, .expectation = {.refusal = "Audio input audioA (allowlist ID 617564696f41) is not allowlisted for profile lab-B."}},
     {.input = {.name = "camera not audio", .json = R"({"schema":1,"profile":"lab-B","serial":[],"video":["same-id"],"audio":[]})", .requested = {LabDeviceKind::AUDIO, "same-id"}}, .expectation = {}},
     {.input = {.name = "mismatched profile", .json = R"({"schema":1,"profile":"lab-A","serial":["port"],"video":[],"audio":[]})", .requested = {LabDeviceKind::SERIAL, "port"}}, .expectation = {}},
     {.input = {.name = "missing policy", .json = "", .requested = {LabDeviceKind::SERIAL, "port"}}, .expectation = {}},
@@ -95,13 +98,19 @@ std::string check_policy(const PolicyCase& test){
         return "Cannot create temporary lease directory.";
     }
     int opens = 0;
+    std::string refusal;
     try{
         const auto policy = parse_lab_device_policy(test.input.json, "lab-B");
         auto lease = acquire_lab_device(policy, directory.path().toStdString(), test.input.requested);
         opens++;  // Scripted native open: no real port, camera or microphone exists.
-    }catch (const std::runtime_error&){}
+    }catch (const std::runtime_error& error){
+        refusal = error.what();
+    }
     if (opens != test.expectation.opens){
         return "Expected opens " + std::to_string(test.expectation.opens) + "; read " + std::to_string(opens);
+    }
+    if (!refusal.starts_with(test.expectation.refusal)){
+        return "Expected a refusal starting \"" + std::string(test.expectation.refusal) + "\"; read \"" + refusal + "\"";
     }
     return {};
 }
