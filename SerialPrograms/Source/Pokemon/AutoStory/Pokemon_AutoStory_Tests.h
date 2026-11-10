@@ -14,7 +14,9 @@
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Pokemon/Options/Pokemon_StoryRangeOptions_Tests.h"
 #include "Pokemon_AutoStorySelect_Tests.h"
-#include "Pokemon_ScreenStory_Tests.h"
+#include "Pokemon_Interrupts_Tests.h"
+#include "Pokemon_ScreenEvents_Tests.h"
+#include "Pokemon_Transitions_Tests.h"
 #include "Pokemon_StoryStep_Tests.h"
 
 namespace PokemonAutomation{
