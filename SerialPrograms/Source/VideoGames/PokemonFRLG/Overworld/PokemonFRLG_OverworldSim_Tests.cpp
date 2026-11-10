@@ -488,6 +488,23 @@ UnitTestResult test_short_leg_unseen(){
     return true;
 }
 
+//  00.31 r1 (console B, 2026-11-10), Rocket Hideout B3F: off the stairs from
+//  B2F, the open leg west along the top corridor ended short, so the hold
+//  south to the wall stayed in the corridor, and the legs through the
+//  spinners after it all ran there: the walk ended a few tiles west of the
+//  stairs it came down, with no warp to B4F.
+UnitTestResult test_short_leg_off_hideout_stairs(){
+    SimCase c{.start = at("RocketHideout_B3F", 18, 2), .facing = Direction::EAST, .goal = arrival("RocketHideout_B4F", "warp_0")};
+    for (const int short_by : {1, 2}){
+        c.script.short_holds = {{1, short_by}};
+        const SimRun now = run_case(c);
+        if (!arrived(now, c.goal)){
+            return std::format("Expected B4F reached with the first leg {} tile(s) short:", short_by) + describe(now);
+        }
+    }
+    return true;
+}
+
 //  r18 (console B, 2026-11-01), Pewter Gym: after Brock, Camper Liam sees
 //  the player on the walk south to the door, walks up and battles. The
 //  route holds on south to the door's mat; finding the player again at
@@ -963,6 +980,7 @@ const OverworldSimCase OVERWORLD_SIM_CASES[] = {
     {.input = {"no hold over a ledge", test_no_hold_over_ledge}, .expectation = {},},
     {.input = {"a short leg, then a sign", test_short_leg_then_sign}, .expectation = {},},
     {.input = {"a short leg, nothing seen", test_short_leg_unseen}, .expectation = {},},
+    {.input = {"a short leg off the hideout's stairs", test_short_leg_off_hideout_stairs}, .expectation = {},},
     {.input = {"a trainer on the way out of Pewter Gym", test_trainer_on_way_out}, .expectation = {},},
     {.input = {"out of Viridian Mart from the clerk's scene", test_mart_exit}, .expectation = {},},
     {.input = {"Mt. Moon: down the ladders to B2F", test_mt_moon_ladders}, .expectation = {},},
