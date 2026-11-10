@@ -12,23 +12,12 @@
 #ifndef PokemonAutomation_Pokemon_StoryRangeOptions_H
 #define PokemonAutomation_Pokemon_StoryRangeOptions_H
 
-#include <span>
 #include <string>
 #include "Common/Cpp/Options/GroupOption.h"
 #include "CommonTools/Options/StringSelectOption.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
-
-
-//  The start/end dropdown database of a story's checkpoints, given by their
-//  labels in order ("00.09 Pewter Gym: Camper Liam, then Brock"), slugged
-//  by their index, as make_story_select_database() slugs SV's. A game whose
-//  story is in sections (BDSP's segments 00 and 01) passes them joined: a
-//  section's entry i is then story_index(true, i, first of the section).
-//  The program keeps it in a function-local static: the options hold a
-//  reference.
-StringSelectDatabase story_checkpoint_database(std::span<const std::string> labels);
 
 
 //  A program shows the group, or adds START_CHECKPOINT and END_CHECKPOINT

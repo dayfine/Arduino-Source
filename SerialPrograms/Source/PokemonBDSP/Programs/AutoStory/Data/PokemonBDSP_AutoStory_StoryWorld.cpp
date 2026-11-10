@@ -9,6 +9,7 @@
 #include <format>
 #include "Common/Cpp/Exceptions.h"
 #include "PokemonBDSP_AutoStory_StoryWorld.h"
+#include "PokemonBDSP_AutoStory_WalkRules.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -138,16 +139,16 @@ void StoryWorld::rebuild(){
 void StoryWorld::paint(const Placed& placed, const TilePos& corner){
     for (int y = 0; y < placed.tiles.height; y++){
         for (int x = 0; x < placed.tiles.width; x++){
-            Pokemon::cell_at(m_cells, {corner.x + x, corner.y + y}) = Cell{true, placed.tiles.at({x, y}), NOBODY};
+            Pokemon::cell_at({corner.x + x, corner.y + y}, m_cells) = Cell{true, placed.tiles.at({x, y}), NOBODY};
         }
     }
     for (const TilePos& pos : placed.occupied){
-        Pokemon::cell_at(m_cells, {corner.x + pos.x, corner.y + pos.y}).occupant = PERSON;
+        Pokemon::cell_at({corner.x + pos.x, corner.y + pos.y}, m_cells).occupant = PERSON;
     }
     for (const auto& box : placed.wander){
         for (int y = std::max(0, box.y0); y <= std::min(placed.tiles.height - 1, box.y1); y++){
             for (int x = std::max(0, box.x0); x <= std::min(placed.tiles.width - 1, box.x1); x++){
-                Cell& c = Pokemon::cell_at(m_cells, {corner.x + x, corner.y + y});
+                Cell& c = Pokemon::cell_at({corner.x + x, corner.y + y}, m_cells);
                 c.recovery_hazard = true;
                 c.wander_hazard = true;
             }
@@ -155,7 +156,7 @@ void StoryWorld::paint(const Placed& placed, const TilePos& corner){
     }
     for (const auto& warp : placed.warps){
         if (placed.tiles.contains(warp)){
-            Pokemon::cell_at(m_cells, {corner.x + warp.x, corner.y + warp.y}).recovery_hazard = true;
+            Pokemon::cell_at({corner.x + warp.x, corner.y + warp.y}, m_cells).recovery_hazard = true;
         }
     }
 }
@@ -170,7 +171,7 @@ StoryWorld::Cell* StoryWorld::cell(const TilePos& pos){
     if (!m_cells.contains(pos) || !m_cells.at(pos).covered){
         return nullptr;
     }
-    return &Pokemon::cell_at(m_cells, pos);
+    return &Pokemon::cell_at(pos, m_cells);
 }
 
 
