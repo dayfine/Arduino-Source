@@ -32,6 +32,11 @@ namespace PokemonFRLG{
 
 namespace{
 
+//  The number of visible rows in the TM Case.
+constexpr size_t TM_CASE_ROWS = 5;
+//  The number of visible rows in the item menu.
+constexpr size_t ITEM_MENU_ROWS = 3;
+
 //  A box in the game's 240x160 pixels.
 struct GameBox{
     double x;
@@ -126,7 +131,7 @@ double dark_share(const ImageViewRGB32& cell){
 //  Small OCR dictionaries of English names: slug -> how the game writes it.
 class NameMatcher : public OCR::SmallDictionaryMatcher{
 public:
-    NameMatcher(std::initializer_list<std::pair<const char*, const char*>> names)
+    NameMatcher(std::initializer_list<std::pair<std::string_view, std::string_view>> names)
         : SmallDictionaryMatcher(dictionary(names))
     {}
 
@@ -156,12 +161,12 @@ public:
     }
 
 private:
-    static JsonObject dictionary(std::initializer_list<std::pair<const char*, const char*>> names){
+    static JsonObject dictionary(std::initializer_list<std::pair<std::string_view, std::string_view>> names){
         JsonObject english;
         for (const auto& [slug, name] : names){
             JsonArray candidates;
-            candidates.push_back(name);
-            english[slug] = std::move(candidates);
+            candidates.push_back(std::string(name));
+            english[std::string(slug)] = std::move(candidates);
         }
         JsonObject json;
         json["eng"] = std::move(english);
@@ -276,7 +281,7 @@ TeachScreen read_party_screen(const ImageViewRGB32& screen){
 } // namespace
 
 
-const char* teach_screen_name(TeachScreen screen){
+std::string_view teach_screen_name(TeachScreen screen){
     switch (screen){
     case TeachScreen::OTHER:        return "other";
     case TeachScreen::BAG:          return "bag";
@@ -291,7 +296,7 @@ const char* teach_screen_name(TeachScreen screen){
     return "?";
 }
 
-const char* teach_text_name(TeachText text){
+std::string_view teach_text_name(TeachText text){
     switch (text){
     case TeachText::UNKNOWN:         return "unknown";
     case TeachText::TEACH_WHICH:     return "teach_which";
@@ -355,16 +360,24 @@ std::string read_pocket_name(Logger& logger, Language language, const ImageViewR
     return pocket_matcher().read(logger, language, game_crop(screen, POCKET_TITLE), BRIGHT_TEXT_FILTERS());
 }
 
+namespace{
+
+//  The key item in the bag's row `row`: "tm-case", "teachy-tv", ... or
+//  "cancel"; empty if not read.
 std::string read_key_item(Logger& logger, Language language, const ImageViewRGB32& screen, size_t row){
     const ImageViewRGB32 name = extract_box_reference(game_box(screen), item_list_name_box(int(row)));
     return key_item_matcher().read(logger, language, name, LIST_TEXT_FILTERS());
 }
 
+//  The move of the TM or HM in the TM CASE's row `row`, as a slug such as
+//  "water-pulse"; empty for CLOSE or a move not read.
 std::string read_tm_case_move(Logger& logger, Language language, const ImageViewRGB32& screen, size_t row){
     const ImageFloatBox name = item_list_name_box(int(row));
     const GameBox box{TM_MOVE_LEFT, name.y * 160, 200 - TM_MOVE_LEFT, name.height * 160};
     return read_move_name(logger, language, game_crop(screen, box));
 }
+
+} // namespace
 
 TeachText read_teach_text(Logger& logger, Language language, const ImageViewRGB32& screen){
     const TeachScreen kind = read_teach_screen(screen);
@@ -513,7 +526,7 @@ void add_tests_TeachScreenReader(UnitTestDatabase& database){
     //  FireRed on console B, 2026-11-03: TM03 taught to the lead from the
     //  bag, B on the move to forget, and YES to stop. Listed in the order
     //  the screens came up.
-    for (const char* image : {
+    for (std::string_view image : {
         "BagItems_eng.png",
         "BagKeyItems_eng.png",
         "KeyItemsTmCase_eng.png",
@@ -531,7 +544,7 @@ void add_tests_TeachScreenReader(UnitTestDatabase& database){
         //  HM01 to an Oddish with two free slots (00.23, console B).
         "MachineSet_eng.png",
     }){
-        database.add<Test_TeachScreen>(std::string("PokemonFRLG/TeachScreenReader/") + image);
+        database.add<Test_TeachScreen>("PokemonFRLG/TeachScreenReader/" + std::string(image));
     }
 }
 

@@ -166,7 +166,7 @@ PcView box_screen(Logger& logger, const ImageViewRGB32& screen, const ImageViewR
 } // namespace
 
 
-const char* pc_screen_name(PcScreen screen){
+std::string_view pc_screen_name(PcScreen screen){
     switch (screen){
     case PcScreen::OVERWORLD:       return "overworld";
     case PcScreen::TEXT:            return "text";
@@ -257,7 +257,7 @@ void add_tests_PcScreenReader(UnitTestDatabase& database){
     //  of the Magikarp (party slot 3), then of the Rattata (slot 2). A press
     //  sent before a menu was drawn went to the message behind it, so the
     //  messages must not read as the menus they come before.
-    for (const char* image : {
+    for (std::string_view image : {
         "PcBoot_text_none_none.png",
         "PcList_pc-list_0_none.png",
         "PcAccessed_text_none_none.png",
@@ -280,7 +280,7 @@ void add_tests_PcScreenReader(UnitTestDatabase& database){
         "Overworld_overworld_none_none.png",
         "StartMenu_other_none_none.png",
     }){
-        database.add<Test_PcScreen>(std::string("PokemonFRLG/PcScreenReader/") + image);
+        database.add<Test_PcScreen>("PokemonFRLG/PcScreenReader/" + std::string(image));
     }
 }
 

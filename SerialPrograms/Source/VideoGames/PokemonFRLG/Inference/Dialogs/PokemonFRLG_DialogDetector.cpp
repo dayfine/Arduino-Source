@@ -159,7 +159,7 @@ private:
     bool m_expected;
 };
 
-void add_tests_WhiteDialogDetector(UnitTestDatabase& database){
+static void add_tests_WhiteDialogDetector(UnitTestDatabase& database){
     //  The S.S. Anne's white hull fills the dialog area, with no frame around it.
     database.add<Test_WhiteDialogDetector>("PokemonFRLG/WhiteDialogDetector/SSAnne1F_Corridor_False.png", false);
     database.add<Test_WhiteDialogDetector>("PokemonFRLG/WhiteDialogDetector/SSAnne1F_CorridorWorker_False.png", false);
@@ -198,6 +198,7 @@ private:
 };
 
 void add_tests_AdvanceWhiteDialogDetector(UnitTestDatabase& database){
+    add_tests_WhiteDialogDetector(database);
     database.add<Test_AdvanceWhiteDialogDetector>("PokemonFRLG/AdvanceWhiteDialogDetector/Eng-Select_False.png", false);
     database.add<Test_AdvanceWhiteDialogDetector>("PokemonFRLG/AdvanceWhiteDialogDetector/English-Bulba_True.png", true);
     database.add<Test_AdvanceWhiteDialogDetector>("PokemonFRLG/AdvanceWhiteDialogDetector/Ger-KennyExile-Bulba_True.png", true);

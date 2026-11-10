@@ -281,7 +281,6 @@ static void add_tests_AutoStoryReaders(UnitTestDatabase& database){
 }
 
 void add_tests(UnitTestDatabase& database){
-    add_tests_WhiteDialogDetector(database);
     add_tests_AdvanceWhiteDialogDetector(database);
     add_tests_BoxCellOccupiedDetector(database);
     add_tests_BoxCellReader(database);

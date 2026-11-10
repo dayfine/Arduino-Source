@@ -1845,6 +1845,7 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_SummaryMovesReader.h
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_TeachScreenReader.cpp
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_TeachScreenReader.h
+    Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_TeachTextReader.h
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_TrainerCardDetector.cpp
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_TrainerCardDetector.h
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleLevelUpReader.cpp

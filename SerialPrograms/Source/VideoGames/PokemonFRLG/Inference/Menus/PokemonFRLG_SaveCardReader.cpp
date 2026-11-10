@@ -4,6 +4,7 @@
  *
  */
 
+#include <string_view>
 #include "Common/Cpp/Color.h"
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/Json/JsonArray.h"
@@ -62,7 +63,7 @@ private:
     static JsonObject dictionary(){
         JsonObject english;
         for (const auto& [slug, name] : {
-            std::pair<const char*, const char*>{"pallet-town", "Pallet Town"},
+            std::pair<std::string_view, std::string_view>{"pallet-town", "Pallet Town"},
             {"viridian-city", "Viridian City"},
             {"viridian-forest", "Viridian Forest"},
             {"pewter-city", "Pewter City"},
@@ -80,8 +81,8 @@ private:
             {"rocket-hideout", "Rocket Hideout"},
         }){
             JsonArray names;
-            names.push_back(name);
-            english[slug] = std::move(names);
+            names.push_back(std::string(name));
+            english[std::string(slug)] = std::move(names);
         }
         JsonObject json;
         json["eng"] = std::move(english);

@@ -5,6 +5,7 @@
  */
 
 #include <format>
+#include <string_view>
 #include <utility>
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/Json/JsonArray.h"
@@ -52,7 +53,7 @@ constexpr double CURSOR_EDGE_HEIGHT = 16;
 //  and HMs' moves not among them (src/data/items.h; Hyper Beam, Protect
 //  and Rain Dance are above), as the game writes them
 //  (src/data/text/move_names.h).
-constexpr std::pair<const char*, const char*> MOVE_NAMES[] = {
+constexpr std::pair<std::string_view, std::string_view> MOVE_NAMES[] = {
     {"tackle", "Tackle"},
     {"tail-whip", "Tail Whip"},
     {"bubble", "Bubble"},
@@ -170,8 +171,8 @@ private:
         JsonObject english;
         for (const auto& [slug, name] : MOVE_NAMES){
             JsonArray names;
-            names.push_back(name);
-            english[slug] = std::move(names);
+            names.push_back(std::string(name));
+            english[std::string(slug)] = std::move(names);
         }
         JsonObject json;
         json["eng"] = std::move(english);
@@ -214,9 +215,8 @@ int read_pp(Logger& logger, const ImageViewRGB32& screen, const ImageFloatBox& b
     return pp >= 0 && pp <= 64 ? pp : -1;
 }
 
-} // namespace
-
-
+//  Where row `row` (from 0) shows its move's name, its current PP and its
+//  full PP, as fractions of the game screen.
 ImageFloatBox summary_move_name_box(size_t row){
     return ImageFloatBox(161.0 / 240, (NAME_TOP + ROW_STEP * double(row)) / 160, 76.0 / 240, 12.0 / 160);
 }
@@ -226,6 +226,9 @@ ImageFloatBox summary_move_pp_box(size_t row){
 ImageFloatBox summary_move_max_pp_box(size_t row){
     return ImageFloatBox(224.0 / 240, (PP_TOP + ROW_STEP * double(row)) / 160, 15.0 / 240, 11.0 / 160);
 }
+
+} // namespace
+
 
 std::string read_summary_move_name(Logger& logger, Language language, const ImageViewRGB32& screen, size_t row){
     return read_move_name(logger, language, extract_box_reference(game_box(screen), summary_move_name_box(row)));
