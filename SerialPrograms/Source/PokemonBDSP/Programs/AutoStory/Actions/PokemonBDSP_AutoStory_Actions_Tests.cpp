@@ -35,6 +35,7 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
 
+using namespace detail;
 
 namespace{
 
@@ -207,7 +208,7 @@ std::string check_boot(IntroProgress& progress){
 }
 
 UnitTestResult check_confirming_screens(){
-    for (const char* screen : {"dialog", "language-select", "rival-list-tell", "rival-list-preset", "menu"}){
+    for (std::string screen : {"dialog", "language-select", "rival-list-tell", "rival-list-preset", "menu"}){
         if (!intro_screen_confirms_bdsp(screen)){
             return std::string("Expected \"") + screen + "\" to confirm BDSP.";
         }
@@ -273,7 +274,7 @@ UnitTestResult test_intro_pick_moves(Logger&){
     using Moves = std::optional<std::vector<DpadPosition>>;
     const IntroPicks french{Language::French, 2};
     struct Case{
-        const char* what;
+        std::string_view what;
         Moves actual;
         Moves expected;
     };
@@ -310,7 +311,7 @@ UnitTestResult test_intro_pick_moves(Logger&){
     };
     for (const Case& c : cases){
         if (c.actual != c.expected){
-            return std::string("Wrong presses for ") + c.what + ".";
+            return std::string("Wrong presses for ") + std::string(c.what) + ".";
         }
     }
     return check_intro_menu_sizes();
@@ -320,8 +321,8 @@ UnitTestResult test_intro_pick_moves(Logger&){
 //  A. The player's keyboard with a pick still to make fails.
 UnitTestResult test_intro_pick_steps(Logger&){
     struct Case{
-        const char* what;
-        const char* screen;
+        std::string_view what;
+        std::string_view screen;
         bool language_pending;
         bool look_pending;
         IntroStep expected;
@@ -347,7 +348,7 @@ UnitTestResult test_intro_pick_steps(Logger&){
         progress.language_pending = c.language_pending;
         progress.look_pending = c.look_pending;
         if (decide_intro_step(c.screen, progress) != c.expected){
-            return std::string("Wrong step for ") + c.what + ".";
+            return std::string("Wrong step for ") + std::string(c.what) + ".";
         }
     }
     const IntroProgress first_look = intro_start(IntroPicks{Language::English, 0});
@@ -372,7 +373,7 @@ UnitTestResult test_intro_menu_screenshots(Logger& logger){
         return "A black screen read as an intro menu.";
     }
     struct Case{
-        const char* file;
+        std::string_view file;
         std::optional<size_t> language;
         std::optional<size_t> look;
     };
@@ -386,7 +387,7 @@ UnitTestResult test_intro_menu_screenshots(Logger& logger){
     };
     size_t read = 0;
     for (const Case& c : cases){
-        const std::string path = UNIT_TEST_RESOURCE_PATH() + c.file;
+        const std::string path = UNIT_TEST_RESOURCE_PATH() + std::string(c.file);
         if (!Filesystem::is_regular_file(path)){
             logger.log("Screenshot not found: " + path);
             continue;
@@ -426,7 +427,7 @@ UnitTestResult test_lit_doorway_screenshots(Logger& logger){
         {"PokemonBDSP/AutoStory/SandgemMartDoorFarLeft-20261030-024648.png", -1.3, -0.5, 2.5, 4.5},
     };
     for (const Case& c : cases){
-        const std::string path = UNIT_TEST_RESOURCE_PATH() + c.file;
+        const std::string path = UNIT_TEST_RESOURCE_PATH() + std::string(c.file);
         if (!Filesystem::is_regular_file(path)){
             return UnitTestResult(UnitTestResult::SKIPPED, "Screenshot not found: " + path);
         }
@@ -497,7 +498,7 @@ UnitTestResult test_pokemon_center_inside(Logger& logger){
         {.file = "PokemonBDSP/AutoStory/JubilifeCenterDoorstep-20261030-c5.png", .inside = false, .doorway = true},
     };
     for (const Case& c : cases){
-        const std::string path = UNIT_TEST_RESOURCE_PATH() + c.file;
+        const std::string path = UNIT_TEST_RESOURCE_PATH() + std::string(c.file);
         if (!Filesystem::is_regular_file(path)){
             return UnitTestResult(UnitTestResult::SKIPPED, "Screenshot not found: " + path);
         }
@@ -535,7 +536,7 @@ UnitTestResult test_pokemon_center_counter(Logger& logger){
         {.file = "PokemonBDSP/AutoStory/OreburghCenterDoorstep-20261108.png", .inside = false},
     };
     for (const Case& c : cases){
-        const std::string path = UNIT_TEST_RESOURCE_PATH() + c.file;
+        const std::string path = UNIT_TEST_RESOURCE_PATH() + std::string(c.file);
         if (!Filesystem::is_regular_file(path)){
             return UnitTestResult(UnitTestResult::SKIPPED, "Screenshot not found: " + path);
         }
@@ -569,7 +570,7 @@ UnitTestResult test_school_lamp(Logger& logger){
         {"PokemonBDSP/AutoStory/JubilifeSchoolOneTilePast-20261030.png", 0.5, 1.5},
     };
     for (const Case& c : cases){
-        const std::string path = UNIT_TEST_RESOURCE_PATH() + c.file;
+        const std::string path = UNIT_TEST_RESOURCE_PATH() + std::string(c.file);
         if (!Filesystem::is_regular_file(path)){
             return UnitTestResult(UnitTestResult::SKIPPED, "Screenshot not found: " + path);
         }
@@ -634,7 +635,7 @@ UnitTestResult test_move_menu_screenshots(Logger& logger){
     };
     const Language story = story_language();
     for (const Case& c : cases){
-        const std::string path = UNIT_TEST_RESOURCE_PATH() + c.file;
+        const std::string path = UNIT_TEST_RESOURCE_PATH() + std::string(c.file);
         if (!Filesystem::is_regular_file(path)){
             return UnitTestResult(UnitTestResult::SKIPPED, "Screenshot not found: " + path);
         }

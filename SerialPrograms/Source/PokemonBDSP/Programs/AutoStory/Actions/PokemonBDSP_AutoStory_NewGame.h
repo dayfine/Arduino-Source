@@ -8,6 +8,7 @@
  *  (NintendoSwitch_MenuCursor.h); the menus' shapes are the data below.
  *  Both menus are read by their detector (PokemonBDSP_AutoStory_IntroMenuDetector.h).
  *
+// code-health: allow header_symbols -- new game intro flow, menu cursors, detectors and picks
  */
 
 #ifndef PokemonAutomation_PokemonBDSP_AutoStory_NewGame_H
@@ -111,6 +112,15 @@ struct IntroProgress{
     //  B presses on unknown screens since the last X.
     size_t b_presses = 0;
 };
+//  Whether `screen` (classify_intro_screen()) is one only BDSP's intro shows:
+//  its dialogue box, its language and look selects, the rival's name list, its main menu. The keyboard and
+//  the user select are the Switch's.
+bool intro_screen_confirms_bdsp(std::string_view screen);
+
+//  Decides the next controller action based on the current screen and intro progress.
+IntroStep decide_intro_step(std::string_view screen, const IntroProgress& progress);
+
+namespace detail{
 //  How long the intro presses A on unknown screens, from the first screen
 //  that is not black, before a BDSP screen must show: the logos, the title
 //  and the language select. Another game launched by mistake (r1,
@@ -119,16 +129,10 @@ struct IntroProgress{
 inline constexpr std::chrono::milliseconds INTRO_TIME_BEFORE_BDSP = std::chrono::seconds(60);
 //  How long the boot may stay black after the restart.
 inline constexpr std::chrono::milliseconds INTRO_BOOT_LIMIT = std::chrono::seconds(60);
-//  Whether `screen` (classify_intro_screen()) is one only BDSP's intro shows:
-//  its dialogue box, its language and look selects, the rival's name list, its main menu. The keyboard and
-//  the user select are the Switch's.
-bool intro_screen_confirms_bdsp(const std::string& screen);
-
 //  Screens after the rival's name is picked, each taking A, before the name
 //  counts as confirmed and B takes over: "Barry, is it?", the box closing
 //  (Barry alone), the Yes/No, and a few of Rowan's lines after it.
 inline constexpr size_t INTRO_SCREENS_AFTER_RIVAL_PICK = 8;
-
 //  Once the rival is named, the intro only has dialogue and cutscenes left
 //  before the bedroom, and screens the classifier misses (r2: a dialogue box
 //  without its arrow). Each unknown screen takes B, which advances dialogue,
@@ -138,13 +142,6 @@ inline constexpr size_t INTRO_B_BEFORE_X = 5;
 //  X presses that opened no menu before the intro gives up: with
 //  INTRO_B_BEFORE_X B presses between them, about two minutes.
 inline constexpr size_t INTRO_X_WITHOUT_MENU = 20;
-
-//  Notes `screen`, read `since_start` into the intro, in `progress`: the
-//  game is confirmed on a BDSP screen; black screens leave the clock alone.
-void note_intro_screen(IntroProgress& progress, const std::string& screen, std::chrono::milliseconds since_start);
-//  Decides the next controller action based on the current screen and intro progress.
-IntroStep decide_intro_step(const std::string& screen, const IntroProgress& progress);
-
 //  When X opens nothing the menu detector knows, the player is still in
 //  control if the screen held still for INTRO_STILL_TIME before X (no
 //  dialogue, no fade, no intro sparkles), X changed the menu's area by more
@@ -167,9 +164,12 @@ struct XProbe{
 bool intro_in_control_without_menu(const XProbe& probe);
 //  Counts `step` in `progress`.
 void record_intro_step(IntroProgress& progress, IntroStep step);
-
 //  The progress a new intro starts from: which of `picks` need a menu.
 IntroProgress intro_start(const IntroPicks& picks);
+//  Notes `screen`, read `since_start` into the intro, in `progress`: the
+//  game is confirmed on a BDSP screen; black screens leave the clock alone.
+void note_intro_screen(IntroProgress& progress, std::string_view screen, std::chrono::milliseconds since_start);
+} // namespace detail
 
 //  From the title screen or any intro screen of a game with no save, with BDSP
 //  running in front: from HOME it throws UserSetupError, since the restart would

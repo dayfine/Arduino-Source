@@ -26,7 +26,7 @@ std::string describe(const std::vector<DpadPosition>& moves){
 }
 
 struct MovesCase{
-    const char* what;
+    std::string_view what;
     MenuGrid grid;
     size_t from;
     size_t to;
