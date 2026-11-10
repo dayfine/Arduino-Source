@@ -34,6 +34,7 @@ public:
 class StarterRng : public RngProgramInstance, private ConfigOption::Listener{
 public:
     using Descriptor = StarterRng_Descriptor;
+    //  The party is empty before the starter, so there is nothing to check.
     virtual size_t free_party_slots_needed() const override{ return 0; }
     ~StarterRng();
     StarterRng();
