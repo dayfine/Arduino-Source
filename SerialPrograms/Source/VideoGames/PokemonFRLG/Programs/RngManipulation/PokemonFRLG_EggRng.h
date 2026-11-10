@@ -56,6 +56,7 @@ public:
     virtual std::unique_ptr<StatsTracker> make_stats() const override;
 };
 
+//  Calibrates timings to hit an RNG target for a daycare egg.
 class EggRng : public RngProgramInstance, public ConfigOption::Listener{
 public:
     using Descriptor = EggRng_Descriptor;

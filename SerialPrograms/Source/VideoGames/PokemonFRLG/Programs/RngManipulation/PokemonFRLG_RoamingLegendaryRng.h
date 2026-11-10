@@ -29,6 +29,7 @@ public:
     virtual std::unique_ptr<StatsTracker> make_stats() const override;
 };
 
+//  Calibrates timings to hit an RNG target for a roaming legendary.
 class RoamingLegendaryRng : public RngProgramInstance, private ConfigOption::Listener{
 public:
     using Descriptor = RoamingLegendaryRng_Descriptor;

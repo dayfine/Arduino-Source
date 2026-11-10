@@ -31,6 +31,7 @@ public:
     virtual std::unique_ptr<StatsTracker> make_stats() const override;
 };
 
+//  Calibrates timings to hit an RNG target for a random wild encounter.
 class WildRng : public RngProgramInstance, private ConfigOption::Listener{
 public:
     using Descriptor = WildRng_Descriptor;

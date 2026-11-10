@@ -34,6 +34,7 @@ public:
     virtual std::unique_ptr<StatsTracker> make_stats() const override;
 };
 
+//  Calibrates timings to hit an RNG target for a static encounter.
 class StaticRng : public RngProgramInstance, private ConfigOption::Listener{
 public:
     using Descriptor = StaticRng_Descriptor;

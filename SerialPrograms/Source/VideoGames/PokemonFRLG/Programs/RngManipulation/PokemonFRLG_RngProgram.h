@@ -47,6 +47,8 @@ void check_party_free_slots(
 );
 
 
+//  Base class of the RNG programs. Before program() runs, it checks that the
+//  party has the free slots the program needs.
 class RngProgramInstance : public SingleSwitchProgramInstance{
 public:
     using SingleSwitchProgramInstance::SingleSwitchProgramInstance;
@@ -71,7 +73,7 @@ public:
 };
 
 
-}
-}
-}
+}  // namespace PokemonFRLG
+}  // namespace NintendoSwitch
+}  // namespace PokemonAutomation
 #endif

@@ -29,6 +29,7 @@ public:
     virtual std::unique_ptr<StatsTracker> make_stats() const override;
 };
 
+//  Calibrates timings to hit an RNG target for a gift Pokemon.
 class GiftRng : public RngProgramInstance, private ConfigOption::Listener{
 public:
     using Descriptor = GiftRng_Descriptor;

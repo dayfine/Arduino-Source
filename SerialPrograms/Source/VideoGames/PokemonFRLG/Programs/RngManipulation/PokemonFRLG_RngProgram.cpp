@@ -53,7 +53,7 @@ std::string not_enough_free_slots_message(size_t party_size, size_t free_slots_n
         + " party slots free for the " + Pokemon::STRING_POKEMON + " the program catches or receives.";
 }
 
-}
+}  // namespace
 
 
 void check_party_free_slots(
@@ -86,6 +86,6 @@ void RngProgramInstance::start_program_game_checks(
     check_party_free_slots(env.console.logger(), free_party_slots_needed(), actions);
 }
 
-}
-}
-}
+}  // namespace PokemonFRLG
+}  // namespace NintendoSwitch
+}  // namespace PokemonAutomation

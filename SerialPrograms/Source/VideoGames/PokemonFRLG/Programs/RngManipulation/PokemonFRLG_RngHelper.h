@@ -28,6 +28,7 @@ public:
     virtual std::unique_ptr<StatsTracker> make_stats() const override;
 };
 
+//  Soft resets with given timings to hit a target seed and frame.
 class RngHelper : public RngProgramInstance{
 public:
     using Descriptor = RngHelper_Descriptor;

@@ -30,6 +30,7 @@ public:
     virtual std::unique_ptr<StatsTracker> make_stats() const override;
 };
 
+//  Calibrates timings to hit an RNG target for a starter.
 class StarterRng : public RngProgramInstance, private ConfigOption::Listener{
 public:
     using Descriptor = StarterRng_Descriptor;
