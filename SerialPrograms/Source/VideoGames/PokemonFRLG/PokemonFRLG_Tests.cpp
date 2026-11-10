@@ -8,6 +8,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <string_view>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/Json/JsonObject.h"
@@ -284,8 +285,8 @@ std::string slot_name(PartySlot slot){
 // Reads the last occupied slot from a party menu screenshot, as the RNG programs' party check does.
 class Test_LastOccupiedPartySlot : public ImageUnitTest{
 public:
-    Test_LastOccupiedPartySlot(const std::string& image, PartySlot expected)
-        : ImageUnitTest("PokemonFRLG::LastOccupiedPartySlot - " + image, {image})
+    Test_LastOccupiedPartySlot(std::string_view image, PartySlot expected)
+        : ImageUnitTest("PokemonFRLG::LastOccupiedPartySlot - " + std::string(image), {std::string(image)})
         , m_expected(expected)
     {}
 

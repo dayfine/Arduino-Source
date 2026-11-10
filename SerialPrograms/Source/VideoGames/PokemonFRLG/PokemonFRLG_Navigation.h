@@ -10,8 +10,8 @@
 #define PokemonAutomation_PokemonFRLG_Navigation_H
 
 #include "Common/Cpp/Logging/AbstractLogger.h"
-#include "CommonFramework/Language.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
+#include "CommonFramework/Language.h"
 #include "CommonFramework/Tools/VideoStream.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartySlot.h"

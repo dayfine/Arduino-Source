@@ -46,7 +46,7 @@ private:
 std::string not_enough_free_slots_message(size_t party_size, size_t free_slots_needed){
     if (free_slots_needed == 1){
         return "Your party is full. Leave a party slot free so the program can check the "
-            + Pokemon::STRING_POKEMON + " it catches.";
+            + Pokemon::STRING_POKEMON + " it catches or receives.";
     }
     return "Your party has " + std::to_string(party_size) + " " + Pokemon::STRING_POKEMON
         + ". Leave at least " + std::to_string(free_slots_needed)
@@ -69,8 +69,9 @@ void check_party_free_slots(
         logger.log("Unable to open the party menu. Skipping the free party slot check.", COLOR_RED);
         return;
     }
+    constexpr size_t MAX_PARTY_SIZE = 6;
     const size_t party_size = static_cast<size_t>(actions.read_last_occupied_slot()) + 1;
-    if (6 - party_size < free_slots_needed){
+    if (MAX_PARTY_SIZE - party_size < free_slots_needed){
         throw UserSetupError(logger, not_enough_free_slots_message(party_size, free_slots_needed));
     }
     logger.log("Party has enough free slots.");

@@ -23,7 +23,7 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-//  The game steps that check_party_requirement() takes. They are injected so
+//  The game steps that check_party_free_slots() takes. They are injected so
 //  that its decisions run in tests without a Switch.
 class PartyCheckActions{
 public:
