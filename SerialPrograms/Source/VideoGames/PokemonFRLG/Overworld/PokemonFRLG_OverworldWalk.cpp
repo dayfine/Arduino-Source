@@ -305,8 +305,9 @@ void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const 
         return;
     }
     //  A hold that ended short of a stairs or door warp, or on an arrow
-    //  warp: a step more at a time takes it.
-    for (int tap = 0; tap < WARP_RETRY_TAPS; tap++){
+    //  warp: a step more at a time, twice, takes it. A hold ends up to two
+    //  tiles short, and an arrow warp fires on the press made standing on it.
+    for (int tap = 0; tap < 2; tap++){
         console.log("Route: no fade; one more step into the warp.", COLOR_ORANGE);
         BlackScreenOverWatcher arrival(COLOR_RED);
         Pokemon::WatchAlong retry_fade(arrival);
