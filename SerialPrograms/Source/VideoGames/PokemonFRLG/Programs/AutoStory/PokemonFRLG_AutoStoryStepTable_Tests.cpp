@@ -19,6 +19,8 @@
 #include "PokemonFRLG_AutoStoryStepInterrupts.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryHideout.h"
+#include "PokemonFRLG_AutoStoryItemUse.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 #include "PokemonFRLG_AutoStoryTrashCans.h"
 
@@ -249,6 +251,9 @@ void add_tests_AutoStoryStepTable(UnitTestDatabase& database){
         database.add<Test_StepTable>(scenario);
     }
     add_tests_AutoStoryStepInterrupts(database);
+    //  The GAME variants with logic of their own.
+    add_tests_AutoStoryHideout(database);
+    add_tests_AutoStoryItemUse(database);
 }
 
 

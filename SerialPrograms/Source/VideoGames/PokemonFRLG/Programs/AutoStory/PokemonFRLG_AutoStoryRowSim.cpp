@@ -511,7 +511,7 @@ std::string OverworldStepSim::cut(const StoryStep& step){
     if (m_sim.state().facing != step.direction){
         sim_turn_to(m_sim, step.direction);
     }
-    if (!m_sim.cut_tree()){
+    if (!m_sim.use_field(SimField::CUT_TREE)){
         return "no tree to cut.";
     }
     sim_step_once(m_sim, step.direction);
@@ -540,10 +540,10 @@ Pokemon::StoryAction OverworldStepSim::hideout_or_stub(){
 
 std::string OverworldStepSim::hideout(const StoryStep& step){
     if (step.variant == POSTER_SWITCH_VARIANT){
-        return m_sim.push_poster_switch() ? "" : "no poster ahead.";
+        return m_sim.use_field(SimField::POSTER_SWITCH) ? "" : "no poster ahead.";
     }
     const std::optional<LiftRide> ride = parse_lift_floor_variant(step.variant);
-    if (!ride || !m_sim.choose_lift_floor(ride->to)){
+    if (!ride || !m_sim.use_field(SimField::LIFT_FLOOR, ride->to)){
         return "no lift panel for \"" + step.variant + "\".";
     }
     return "";

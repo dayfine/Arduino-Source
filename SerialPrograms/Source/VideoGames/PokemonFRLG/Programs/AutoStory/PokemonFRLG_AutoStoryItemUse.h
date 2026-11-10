@@ -78,6 +78,7 @@ public:
     virtual void close_bag() = 0;
 };
 
+//  How use_item_from_bag() ended.
 enum class ItemUseEnd{
     USED,
     //  The pocket has none left (or the name isn't read).
@@ -87,6 +88,7 @@ enum class ItemUseEnd{
     //  Not an item the story uses from the bag.
     UNKNOWN_ITEM,
 };
+//  "used", "none_left": the end's name in logs and failures.
 const char* item_use_end_name(ItemUseEnd end);
 
 //  Opens the item's pocket, finds it and uses it, then back to the

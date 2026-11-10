@@ -164,10 +164,15 @@ PlayerState after_step_onto(
 //  MB_SPIN_UP, MB_SPIN_DOWN, MB_SPIN_LEFT, MB_SPIN_RIGHT and
 //  MB_STOP_SPINNING. The tile glyphs can't say so, so a map lists them in
 //  these regions, as it does WILD_REGION.
+//  "spin_north": MB_SPIN_UP.
 extern const char SPIN_NORTH_REGION[];
+//  "spin_south": MB_SPIN_DOWN.
 extern const char SPIN_SOUTH_REGION[];
+//  "spin_west": MB_SPIN_LEFT.
 extern const char SPIN_WEST_REGION[];
+//  "spin_east": MB_SPIN_RIGHT.
 extern const char SPIN_EAST_REGION[];
+//  "spin_stop": MB_STOP_SPINNING.
 extern const char SPIN_STOP_REGION[];
 //  The way the arrow on this tile slides the player, if it is a spinner.
 std::optional<Direction> spin_direction(const MapData& map, const TilePos& point);

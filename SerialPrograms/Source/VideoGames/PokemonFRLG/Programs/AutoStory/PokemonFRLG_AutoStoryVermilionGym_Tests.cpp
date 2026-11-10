@@ -325,7 +325,7 @@ UnitTestResult test_tree_shuts_the_yard(){
     //  The sim: no step onto the tree; cut, it's gone; a warp grows it back.
     OverworldSim sim(story_maps(), MapPosition{StoryTable::VERMILION, {19, 23}}, Direction::SOUTH);
     sim.tap(Direction::SOUTH);
-    if (!(sim.state().position == MapPosition{StoryTable::VERMILION, {19, 23}}) || !sim.cut_tree()){
+    if (!(sim.state().position == MapPosition{StoryTable::VERMILION, {19, 23}}) || !sim.use_field(SimField::CUT_TREE)){
         return "Expected the tree to stop the player, then be cut.";
     }
     sim.tap(Direction::SOUTH);

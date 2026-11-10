@@ -213,6 +213,22 @@ enum class SimBattleEnd{
     NO_BATTLE,      //  there was none, on screen or about to show
 };
 
+//  What A does on the overworld, facing something (OverworldSim::use_field()).
+enum class SimField{
+    //  Cuts the tree the player faces (an object named "cut_tree") with
+    //  YES to the game's question: it is gone until the player next warps,
+    //  as its hide flag is a FLAG_TEMP.
+    CUT_TREE,
+    //  The poster the player faces (an object named "poster"): the switch
+    //  behind it opens the stairs, which takes away the objects named
+    //  "poster_stairs" for good (pokefirered
+    //  CeladonCity_GameCorner_EventScript_Poster's setmetatile).
+    POSTER_SWITCH,
+    //  The panel of the lift the player stands in (SimScript::lift_floors):
+    //  the floor picked, the lift's door now lets out there.
+    LIFT_FLOOR,
+};
+
 //  Simulates overworld movement, encounters and dialogs.
 class OverworldSim{
 public:
@@ -255,22 +271,9 @@ public:
     //  battle follows it.
     bool close_message();
 
-    //  Cuts the tree the player faces (an object named "cut_tree") with
-    //  YES to the game's question: it is gone until the player next warps,
-    //  as its hide flag is a FLAG_TEMP. Returns whether there was one.
-    bool cut_tree();
-
-    //  A on the panel of the lift the player stands in (SimScript::
-    //  lift_floors) and floor `floor` picked: the lift's door now lets out
-    //  there. Returns whether there was such a lift and floor.
-    bool choose_lift_floor(size_t floor);
-
-    //  A on the poster the player faces (an object named "poster"): the
-    //  switch behind it opens the stairs, which takes away the objects
-    //  named "poster_stairs" for good (pokefirered
-    //  CeladonCity_GameCorner_EventScript_Poster's setmetatile). Returns
-    //  whether there was a poster.
-    bool push_poster_switch();
+    //  A on what the player faces, as `field` says (`floor`: the lift's).
+    //  Returns whether it was there. (PokemonFRLG_OverworldSimField.cpp)
+    bool use_field(SimField field, size_t floor = 0);
 
 private:
     //  A screen that shows at `at`; `unfreeze`: the player can move again.
@@ -314,6 +317,17 @@ private:
     std::optional<Step> press(Direction direction) const;
     std::optional<Step> take_warp(int map_index, const TilePos& tile) const;
     std::optional<Step> cross_edge(Direction direction) const;
+    //  The lift's door to the floor picked, if `map_index` is a lift and
+    //  one was picked.
+    std::optional<Step> lift_warp(int map_index) const;
+    //  A step that landed on a spinner slides on to the slide's end; false
+    //  if the slide never stops.
+    bool slide_on(Step& step) const;
+    //  The slide's time after `step`, and its facing; 0 for no slide.
+    Milliseconds after_slide(const Step& step);
+    bool cut_tree();
+    bool choose_lift_floor(size_t floor);
+    bool push_poster_switch();
     bool after_step(const Step& step, Milliseconds pressed);
     bool wild_battle(Milliseconds pressed);
     std::optional<SimEncounter> next_encounter();
@@ -516,6 +530,8 @@ private:
     StepEnd watch_for_trainer(const RouteStep& step, int approach_tiles);
     bool moved_past_wall(const RouteStep& step);
     void check_overworld(const RouteStep& step);
+    //  After a leg onto a spinner: the slide's time.
+    void wait_out_slide(const RouteStep& step);
     const std::vector<Interrupt>& interrupts(const RouteStep& step) const;
     std::vector<SimWatcher> watchers(const std::vector<Interrupt>& interrupts) const;
     [[noreturn]] void fail(const std::string& message);

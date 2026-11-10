@@ -20,6 +20,9 @@
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
+#include "CommonFramework/Language.h"
+#include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
+#include "Pokemon/AutoStory/Pokemon_StorySteps.h"
 #include "Pokemon/Navigation/Pokemon_Grid.h"
 
 namespace PokemonAutomation{
@@ -55,13 +58,14 @@ std::string lift_floor_variant(std::string_view from, std::string_view to);
 //  not one, or names a floor the panel hasn't.
 std::optional<LiftRide> parse_lift_floor_variant(std::string_view variant);
 
-//  The fewest presses that move the cursor from `ride.from` to `ride.to`
-//  on a menu of `entries` rows. A multichoice of more than three rows
-//  wraps round (pokefirered DrawVerticalMultichoiceMenu()).
+//  Presses of the D-pad on a menu: which way, how many.
 struct MenuPresses{
     Pokemon::Direction direction = Pokemon::Direction::SOUTH;
     size_t presses = 0;
 };
+//  The fewest presses that move the cursor from `ride.from` to `ride.to`
+//  on a menu of `entries` rows. A multichoice of more than three rows
+//  wraps round (pokefirered DrawVerticalMultichoiceMenu()).
 MenuPresses lift_menu_presses(const LiftRide& ride, size_t entries);
 
 //  Whether `variant` is one of this file's steps.
@@ -73,6 +77,14 @@ void ride_lift(ConsoleHandle& console, ProControllerContext& context, const Lift
 //  On the console: A on the poster, its message closed back to the
 //  overworld.
 void push_poster_switch(ConsoleHandle& console, ProControllerContext& context);
+
+//  On the console, a GAME step of this file's or an item from the bag
+//  (is_item_use_variant()); nothing for another GAME step. The hideout's
+//  steps leave the player where they stand; an item used ends on the
+//  step's pose_after (an Escape Rope's), if it has one.
+std::optional<Pokemon::Outcome> run_field_game_step(
+    ConsoleHandle& console, ProControllerContext& context, Language language, const Pokemon::StoryStep& step
+);
 
 
 //  Registers the hideout steps' tests.

@@ -8,6 +8,7 @@
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryHideout.h"
+#include "PokemonFRLG_AutoStoryItemUse.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -107,6 +108,29 @@ void push_poster_switch(ConsoleHandle& console, ProControllerContext& context){
     console.log("Story: the switch behind the poster.");
     pbf_press_button(context, BUTTON_A, 160ms, 800ms);
     mash_until_overworld(console, context, HIDEOUT_SCENE_TIMEOUT);
+}
+
+std::optional<Pokemon::Outcome> run_field_game_step(
+    ConsoleHandle& console, ProControllerContext& context, Language language, const Pokemon::StoryStep& step
+){
+    if (const std::optional<LiftRide> ride = parse_lift_floor_variant(step.variant)){
+        ride_lift(console, context, *ride);
+        return Pokemon::outcome_ok();
+    }
+    if (step.variant == POSTER_SWITCH_VARIANT){
+        push_poster_switch(console, context);
+        return Pokemon::outcome_ok();
+    }
+    if (!is_item_use_variant(step.variant)){
+        return std::nullopt;
+    }
+    const std::string item = parse_use_item_variant(step.variant).value_or("bicycle");
+    ConsoleItemUseActions bag(console, context, language);
+    const ItemUseEnd end = use_item_from_bag(console.logger(), bag, item);
+    if (end != ItemUseEnd::USED){
+        return Pokemon::outcome_failed(std::string("use_item_") + item_use_end_name(end), step.variant);
+    }
+    return step.pose_after ? Pokemon::outcome_ok(*step.pose_after) : Pokemon::outcome_ok();
 }
 
 

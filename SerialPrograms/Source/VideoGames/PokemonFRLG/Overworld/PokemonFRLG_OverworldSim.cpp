@@ -96,8 +96,6 @@ namespace{
 constexpr Milliseconds NO_BATTLE_WAIT(15000);
 constexpr Milliseconds BATTLE_TIME(10000);
 constexpr Milliseconds MESSAGE_CLOSE(1000);
-//  The questions, "<MON> used CUT!" and the tree falling.
-constexpr Milliseconds CUT_TIME(4000);
 //  Rows of black below a small room, seen from this near its bottom.
 constexpr int BLACK_BELOW_ROWS = 5;
 constexpr int SMALL_ROOM_ROWS = 20;
@@ -246,14 +244,8 @@ std::optional<OverworldSim::Step> OverworldSim::take_warp(int map_index, const T
     if (warp == nullptr){
         return std::nullopt;
     }
-    const auto lift = m_script.lift_floors.find(m_maps[map_index].name);
-    if (lift != m_script.lift_floors.end() && m_lift_floor){
-        const MapPosition& out = lift->second[*m_lift_floor];
-        const int destination = find_map(m_maps, out.map);
-        if (destination < 0){
-            return std::nullopt;
-        }
-        return Step{destination, PlayerState{out.point, elevation_at(m_maps[destination], out.point), false}, true, false, false};
+    if (m_lift_floor && m_script.lift_floors.contains(m_maps[map_index].name)){
+        return lift_warp(map_index);
     }
     if (!warp->to){
         return std::nullopt;
@@ -325,12 +317,8 @@ std::optional<OverworldSim::Step> OverworldSim::press(Direction direction) const
     if (warps_on_step(map(), ahead)){
         return take_warp(m_map, ahead);
     }
-    if (spin_direction(map(), ahead)){
-        step.spin = spin_slide(map(), step.player);
-        if (!step.spin){
-            return std::nullopt;
-        }
-        step.player = step.spin->end;
+    if (!slide_on(step)){
+        return std::nullopt;
     }
     return step;
 }
@@ -510,13 +498,7 @@ void OverworldSim::take_steps(Direction direction, Milliseconds pressed, Millise
         if (step->walked_out){
             m_state.facing = Direction::SOUTH;
         }
-        if (step->spin){
-            //  The game moves the player through the slide; the hold, if
-            //  it goes on, walks on from its end.
-            m_state.facing = step->spin->facing;
-            note(std::format("slid {} tile(s) to {}.", step->spin->tiles, to_string(step->spin->end.position)));
-            pressed += MovementMechanics::SPIN_TILE_TIME * step->spin->tiles;
-        }
+        pressed += after_slide(*step);
         if (after_step(*step, pressed)){
             return;
         }
@@ -677,51 +659,6 @@ bool OverworldSim::close_message(){
     return true;
 }
 
-bool OverworldSim::cut_tree(){
-    std::vector<MapObject>& objects = m_maps[m_map].objects;
-    const TilePos ahead = m_player.position.next(m_state.facing);
-    for (size_t c = 0; c < objects.size(); c++){
-        if (objects[c].name == "cut_tree" && objects[c].x == ahead.x && objects[c].y == ahead.y
-            && m_state.screen == SimScreen::OVERWORLD && !m_frozen
-        ){
-            m_cut_trees.emplace_back(m_map, objects[c]);
-            objects.erase(objects.begin() + c);
-            advance_to(m_now + CUT_TIME);
-            note("cut the tree on " + to_string(MapPosition{map().name, ahead}) + ".");
-            return true;
-        }
-    }
-    violation("no tree to cut " + std::string(direction_name(m_state.facing)) + " of " + to_string(m_state.position) + ".");
-    return false;
-}
-
-bool OverworldSim::choose_lift_floor(size_t floor){
-    const auto lift = m_script.lift_floors.find(map().name);
-    if (lift == m_script.lift_floors.end() || floor >= lift->second.size() || m_frozen){
-        violation("no lift panel on " + to_string(m_state.position) + " with a floor " + std::to_string(floor) + ".");
-        return false;
-    }
-    m_lift_floor = floor;
-    advance_to(m_now + m_script.timing.message);
-    note("the lift goes to " + to_string(lift->second[floor]) + ".");
-    return true;
-}
-
-bool OverworldSim::push_poster_switch(){
-    std::vector<MapObject>& objects = m_maps[m_map].objects;
-    const TilePos ahead = m_player.position.next(m_state.facing);
-    const auto poster = std::find_if(objects.begin(), objects.end(), [&](const MapObject& object){
-        return object.name == "poster" && object.x == ahead.x && object.y == ahead.y;
-    });
-    if (poster == objects.end() || m_state.screen != SimScreen::OVERWORLD || m_frozen){
-        violation("no poster " + std::string(direction_name(m_state.facing)) + " of " + to_string(m_state.position) + ".");
-        return false;
-    }
-    std::erase_if(objects, [](const MapObject& object){ return object.name == "poster_stairs"; });
-    advance_to(m_now + m_script.timing.message);
-    note("pushed the switch behind the poster: the stairs are open.");
-    return true;
-}
 
 
 
@@ -813,6 +750,12 @@ size_t OverworldSimWalker::clear_late(const std::vector<Interrupt>& interrupts, 
     }
 }
 
+void OverworldSimWalker::wait_out_slide(const RouteStep& step){
+    if (step.spin_tiles){
+        m_sim.watch({}, SPIN_TILE_TIME * *step.spin_tiles + SPIN_STOP_SETTLE);
+    }
+}
+
 void OverworldSimWalker::check_overworld(const RouteStep& step){
     const SimScreen screen = m_sim.state().screen;
     if (m_rules.check_overworld && (screen == SimScreen::START_MENU || screen == SimScreen::MESSAGE)){
@@ -900,9 +843,7 @@ std::optional<WalkedTiles> OverworldSimWalker::walk_step(const RouteStep& step, 
     if (result.stopped){
         return dark_stop(step, walked_near(step, result.tiles, TILE_TIME));
     }
-    if (step.spin_tiles){
-        m_sim.watch({}, SPIN_TILE_TIME * *step.spin_tiles + SPIN_STOP_SETTLE);
-    }
+    wait_out_slide(step);
     const Milliseconds fade_watched_from = m_rules.watch_fade_along_hold ? m_leg_start : m_sim.state().time;
     if (step.warps && !after_warp(step, warps_before, fade_watched_from)){
         if (!m_rules.find_player_after_warp_battle){

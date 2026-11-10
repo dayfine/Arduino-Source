@@ -175,35 +175,62 @@ const ItemUseCase ITEM_USE_CASES[] = {
     },
 };
 
-class Test_AutoStoryItemUseVariants : public UnitTest{
+UnitTestResult test_variants_and_bike(){
+    if (parse_use_item_variant("use_item potion") || parse_use_item_variant("use_item") || !parse_use_item_variant(use_item_variant("super-repel"))){
+        return "Expected only the story's bag items as use_item variants.";
+    }
+    if (!is_item_use_variant(RIDE_BIKE_VARIANT) || is_item_use_variant("poster_switch")){
+        return "Expected ride_bike, not poster_switch, as an item use.";
+    }
+    StoryStep ride;
+    ride.kind = Pokemon::StoryStepKind::ROUTE;
+    ride.variant = BIKE_VARIANT;
+    if (move_speed(ride) != MoveSpeed::BIKE){
+        return "A bike ROUTE isn't ridden.";
+    }
+    RouteStep outdoors;
+    outdoors.tiles = 10;
+    RouteStep indoors = outdoors;
+    indoors.walk_only = true;
+    if (OverworldWalkSteps::tile_time(outdoors, MoveSpeed::BIKE) != MovementMechanics::BIKE_TILE_TIME
+        || OverworldWalkSteps::tile_time(indoors, MoveSpeed::BIKE) != MovementMechanics::TILE_TIME
+    ){
+        return "Expected the bike's pace outdoors and a walk indoors.";
+    }
+    return true;
+}
+
+struct AutoStoryItemUseBodyInput{
+    std::string name;
+    UnitTestResult (*body)();
+};
+struct AutoStoryItemUseBodyExpectation{
+    const char* description;
+};
+struct AutoStoryItemUseBodyCase{
+    AutoStoryItemUseBodyInput input;
+    AutoStoryItemUseBodyExpectation expectation;
+};
+
+class Test_AutoStoryItemUseBody : public UnitTest{
 public:
-    Test_AutoStoryItemUseVariants()
-        : UnitTest("PokemonFRLG::AutoStoryItemUse - variants and the bike's pace")
+    explicit Test_AutoStoryItemUseBody(AutoStoryItemUseBodyCase test_case)
+        : UnitTest("PokemonFRLG::AutoStoryItemUse - " + test_case.input.name)
+        , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        if (parse_use_item_variant("use_item potion") || parse_use_item_variant("use_item") || !parse_use_item_variant(use_item_variant("super-repel"))){
-            return "Expected only the story's bag items as use_item variants.";
-        }
-        if (!is_item_use_variant(RIDE_BIKE_VARIANT) || is_item_use_variant("poster_switch")){
-            return "Expected ride_bike, not poster_switch, as an item use.";
-        }
-        StoryStep ride;
-        ride.kind = Pokemon::StoryStepKind::ROUTE;
-        ride.variant = BIKE_VARIANT;
-        if (move_speed(ride) != MoveSpeed::BIKE){
-            return "A bike ROUTE isn't ridden.";
-        }
-        RouteStep outdoors;
-        outdoors.tiles = 10;
-        RouteStep indoors = outdoors;
-        indoors.walk_only = true;
-        if (OverworldWalkSteps::tile_time(outdoors, MoveSpeed::BIKE) != MovementMechanics::BIKE_TILE_TIME
-            || OverworldWalkSteps::tile_time(indoors, MoveSpeed::BIKE) != MovementMechanics::TILE_TIME
-        ){
-            return "Expected the bike's pace outdoors and a walk indoors.";
-        }
-        return true;
+        return m_case.input.body();
     }
+
+private:
+    AutoStoryItemUseBodyCase m_case;
+};
+
+const AutoStoryItemUseBodyCase ITEM_USE_BODY_CASES[] = {
+    {
+        .input = {.name = "variants and the bike's pace", .body = test_variants_and_bike},
+        .expectation = {.description = "the story's bag items, ride_bike, and the bike's pace outdoors only"},
+    },
 };
 
 } // namespace
@@ -213,7 +240,9 @@ void add_tests_AutoStoryItemUse(UnitTestDatabase& database){
     for (const ItemUseCase& item : ITEM_USE_CASES){
         database.add<Test_AutoStoryItemUse>(item);
     }
-    database.add<Test_AutoStoryItemUseVariants>();
+    for (const AutoStoryItemUseBodyCase& item : ITEM_USE_BODY_CASES){
+        database.add<Test_AutoStoryItemUseBody>(item);
+    }
 }
 
 

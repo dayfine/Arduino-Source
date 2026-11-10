@@ -8,6 +8,7 @@
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "PokemonFRLG_AutoStoryActions.h"
+#include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryItemUse.h"
 
 namespace PokemonAutomation{
@@ -17,6 +18,13 @@ namespace PokemonFRLG{
 
 using namespace std::chrono_literals;
 
+
+MoveSpeed move_speed(const StoryStep& step){
+    if (step.variant == BIKE_VARIANT){
+        return MoveSpeed::BIKE;
+    }
+    return step.variant == RUN_VARIANT ? MoveSpeed::RUN : MoveSpeed::WALK;
+}
 
 std::optional<BagPocket> usable_item_pocket(std::string_view item){
     if (is_repel(item) || item == "escape-rope"){

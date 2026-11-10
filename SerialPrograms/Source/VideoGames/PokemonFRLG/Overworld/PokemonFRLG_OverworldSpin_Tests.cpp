@@ -10,7 +10,6 @@
  */
 
 #include <format>
-#include <functional>
 #include <string>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
@@ -28,22 +27,34 @@ namespace PokemonFRLG{
 
 namespace{
 
+struct SpinInput{
+    std::string name;
+    UnitTestResult (*body)();
+};
+struct SpinExpectation{
+    const char* description;
+};
+struct SpinCase{
+    SpinInput input;
+    SpinExpectation expectation;
+};
+
 class Test_OverworldSpin : public UnitTest{
 public:
-    Test_OverworldSpin(std::string name, std::function<UnitTestResult()> body)
-        : UnitTest("PokemonFRLG::OverworldSpin - " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_OverworldSpin(SpinCase test_case)
+        : UnitTest("PokemonFRLG::OverworldSpin - " + test_case.input.name)
+        , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         try{
-            return m_body();
+            return m_case.input.body();
         }catch (Exception& e){
             return std::string(e.name()) + ": " + e.message();
         }
     }
 
 private:
-    std::function<UnitTestResult()> m_body;
+    SpinCase m_case;
 };
 
 //  A room with spinners:
@@ -204,7 +215,7 @@ UnitTestResult lift_ride(bool pick, const MapPosition& expected){
     SimScript script;
     script.lift_floors["Lift"] = {MapPosition{"FloorA", {1, 1}}, MapPosition{"FloorB", {1, 1}}};
     OverworldSim sim(lift_maps(), MapPosition{"Lift", {1, 2}}, Direction::SOUTH, script);
-    if (pick && !sim.choose_lift_floor(1)){
+    if (pick && !sim.use_field(SimField::LIFT_FLOOR, 1)){
         return std::string("No floor 1 on the lift's panel.");
     }
     sim.hold(Direction::SOUTH, MovementMechanics::TILE_TIME, MovementMechanics::STEP_RELEASE, std::chrono::milliseconds(3000), {});
@@ -238,7 +249,7 @@ const MapData& poster_room(){
 MapPosition poster_walk(bool push){
     OverworldSim sim({poster_room()}, MapPosition{"Corner", {2, 2}}, Direction::NORTH);
     if (push){
-        sim.push_poster_switch();
+        sim.use_field(SimField::POSTER_SWITCH);
     }
     const Milliseconds tile = MovementMechanics::TILE_TIME;
     //  Each hold turns the player first, which costs a tile's time.
@@ -258,21 +269,60 @@ UnitTestResult test_poster_opens_stairs(){
     return true;
 }
 
+const SpinCase SPIN_CASES[] = {
+    {
+        .input = {.name = "slide up to a wall", .body = test_slide_into_wall},
+        .expectation = {.description = "slide up to a wall"},
+    },
+    {
+        .input = {.name = "slide turned by an arrow", .body = test_slide_turned_by_arrow},
+        .expectation = {.description = "slide turned by an arrow"},
+    },
+    {
+        .input = {.name = "slide to a stop tile", .body = test_slide_to_stop_tile},
+        .expectation = {.description = "slide to a stop tile"},
+    },
+    {
+        .input = {.name = "arrows in a loop never stop", .body = test_slide_loop},
+        .expectation = {.description = "arrows in a loop never stop"},
+    },
+    {
+        .input = {.name = "route ends with a slide", .body = test_route_ends_on_slide},
+        .expectation = {.description = "route ends with a slide"},
+    },
+    {
+        .input = {.name = "a spinner back into a dead end traps", .body = test_dead_end_traps},
+        .expectation = {.description = "a spinner back into a dead end traps"},
+    },
+    {
+        .input = {.name = "sim slides the player", .body = test_sim_slides},
+        .expectation = {.description = "sim slides the player"},
+    },
+    {
+        .input = {.name = "sim walker walks a slide", .body = test_sim_walker_walks_slide},
+        .expectation = {.description = "sim walker walks a slide"},
+    },
+    {
+        .input = {.name = "lift lets out on the floor picked", .body = test_lift_floor},
+        .expectation = {.description = "lift lets out on the floor picked"},
+    },
+    {
+        .input = {.name = "lift with no floor picked stays", .body = test_lift_no_floor},
+        .expectation = {.description = "lift with no floor picked stays"},
+    },
+    {
+        .input = {.name = "poster switch opens the stairs", .body = test_poster_opens_stairs},
+        .expectation = {.description = "poster switch opens the stairs"},
+    },
+};
+
 } // namespace
 
 
 void add_tests_OverworldSpin(UnitTestDatabase& database){
-    database.add<Test_OverworldSpin>("slide up to a wall", test_slide_into_wall);
-    database.add<Test_OverworldSpin>("slide turned by an arrow", test_slide_turned_by_arrow);
-    database.add<Test_OverworldSpin>("slide to a stop tile", test_slide_to_stop_tile);
-    database.add<Test_OverworldSpin>("arrows in a loop never stop", test_slide_loop);
-    database.add<Test_OverworldSpin>("route ends with a slide", test_route_ends_on_slide);
-    database.add<Test_OverworldSpin>("a spinner back into a dead end traps", test_dead_end_traps);
-    database.add<Test_OverworldSpin>("sim slides the player", test_sim_slides);
-    database.add<Test_OverworldSpin>("sim walker walks a slide", test_sim_walker_walks_slide);
-    database.add<Test_OverworldSpin>("lift lets out on the floor picked", test_lift_floor);
-    database.add<Test_OverworldSpin>("lift with no floor picked stays", test_lift_no_floor);
-    database.add<Test_OverworldSpin>("poster switch opens the stairs", test_poster_opens_stairs);
+    for (const SpinCase& item : SPIN_CASES){
+        database.add<Test_OverworldSpin>(item);
+    }
 }
 
 
