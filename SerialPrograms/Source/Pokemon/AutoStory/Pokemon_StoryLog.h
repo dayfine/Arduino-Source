@@ -28,10 +28,7 @@ namespace Pokemon{
 //      [Event] 00.04/3 talk_mom: failed: expect_failed: has_parcel
 //  An event in a section of the checkpoint names it before the event:
 //      [Event] 00.28/12 [b1f_east] winston_line: start
-std::string event_log_line(
-    std::string_view checkpoint, size_t number, std::string_view event, std::string_view status,
-    std::string_view section = {}
-);
+std::string event_log_line(std::string_view checkpoint, size_t number, std::string_view event, std::string_view status, std::string_view section = {});
 
 //  A checkpoint starts:
 //      [Checkpoint] 00.04: start

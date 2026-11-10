@@ -284,6 +284,27 @@ Pose read_story_pose(const JsonValue& value, std::string_view source){
     return result;
 }
 
+namespace{
+
+//  What `step` says about running it, not doing it: when to skip it, where
+//  it ends, once per save, the author's notes.
+void add_run_fields(JsonObject& result, const StoryStep& step){
+    if (!step.skip_if.empty()){
+        result["skip_if"] = strings_json(step.skip_if);
+    }
+    if (step.pose_after){
+        result["declared_after"] = story_pose_json(*step.pose_after);
+    }
+    if (step.once_per_save){
+        result["once_per_save"] = true;
+    }
+    if (!step.notes.empty()){
+        result["notes"] = strings_json(step.notes);
+    }
+}
+
+} // namespace
+
 JsonValue story_step_json(const StoryStep& step){
     JsonObject result;
     result["id"] = step.name;
@@ -321,18 +342,7 @@ JsonValue story_step_json(const StoryStep& step){
     if (!step.args.empty()){
         result["args"] = args_json(step.args);
     }
-    if (!step.skip_if.empty()){
-        result["skip_if"] = strings_json(step.skip_if);
-    }
-    if (step.pose_after){
-        result["declared_after"] = story_pose_json(*step.pose_after);
-    }
-    if (step.once_per_save){
-        result["once_per_save"] = true;
-    }
-    if (!step.notes.empty()){
-        result["notes"] = strings_json(step.notes);
-    }
+    add_run_fields(result, step);
     return result;
 }
 
