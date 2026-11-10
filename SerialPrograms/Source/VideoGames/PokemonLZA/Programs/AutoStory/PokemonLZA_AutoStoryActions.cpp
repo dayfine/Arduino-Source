@@ -15,6 +15,7 @@
 #include "VideoGames/PokemonLZA/Inference/Battles/PokemonLZA_RunFromBattleDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_DialogDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_OverworldPartySelectionDetector.h"
+#include "VideoGames/PokemonLZA/Inference/PokemonLZA_SelectionArrowDetector.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_BasicNavigation.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_TrainerBattle.h"
 #include "PokemonLZA_AutoStoryActions.h"
@@ -123,13 +124,65 @@ void buy_items(ConsoleHandle& console, ProControllerContext&, const std::vector<
 }
 
 
+namespace{
+
+//  Whether the report page's Save button (its cursor arrow, where
+//  save_game_to_menu() looks for it) shows within `timeout`.
+bool save_button_shows(ConsoleHandle& console, ProControllerContext& context, Milliseconds timeout){
+    SelectionArrowWatcher save_button(
+        COLOR_GREEN, &console.overlay(), SelectionArrowType::RIGHT, {0.287118, 0.638835, 0.064410, 0.108738}
+    );
+    return wait_until(console, context, timeout, {save_button}) == 0;
+}
+
+//  From the overworld: X opens the menu, R its report page. The first menu
+//  of a playthrough opens under a save tutorial card that A closes, leaving
+//  the menu with the cursor on the Bag (console B, 2026-11-10); R does
+//  nothing over the card. So when R does not bring up the Save button, A
+//  once, then R again. A is never pressed on the plain menu, where it
+//  would open the Bag.
+void open_save_report(ConsoleHandle& console, ProControllerContext& context){
+    pbf_press_button(context, BUTTON_X, 160ms, 2340ms);
+    pbf_press_button(context, BUTTON_R, 160ms, 240ms);
+    if (save_button_shows(console, context, 5s)){
+        return;
+    }
+    console.log("save_story_game(): no Save button after R: the menu's tutorial card; pressing A, then R.");
+    pbf_press_button(context, BUTTON_A, 160ms, 1340ms);
+    pbf_press_button(context, BUTTON_R, 160ms, 240ms);
+    if (!save_button_shows(console, context, 5s)){
+        console.log("save_story_game(): still no Save button; save_game_to_menu() takes over.", COLOR_RED);
+    }
+}
+
+//  save_game_to_menu(), its failures as false.
+bool try_save(ConsoleHandle& console, ProControllerContext& context){
+    try{
+        return save_game_to_menu(console, context);
+    }catch (OperationFailedException& e){
+        console.log(std::format("save_story_game(): {}", e.message()), COLOR_RED);
+        return false;
+    }
+}
+
+} // namespace
+
+//  Opens the report page (open_save_report(), for the first menu's
+//  tutorial), then save_game_to_menu() presses Save once its button shows
+//  and waits for the "Saved!" text, so the save is confirmed. If that
+//  fails, B back to the overworld (B is harmless while writing) and one
+//  more try.
 void save_story_game(ConsoleHandle& console, ProControllerContext& context){
-    if (!save_game_to_menu(console, context)){
-        OperationFailedExceptionWithScreenshot::fire(
-            ErrorReportMode::SEND_ERROR_REPORT,
-            "save_story_game(): the game did not save.",
-            console
-        );
+    open_save_report(console, context);
+    if (!try_save(console, context)){
+        mash_to_overworld(console, context, BUTTON_B, 10s);
+        if (!save_game_to_menu(console, context)){
+            OperationFailedExceptionWithScreenshot::fire(
+                ErrorReportMode::SEND_ERROR_REPORT,
+                "save_story_game(): the game did not save.",
+                console
+            );
+        }
     }
     mash_to_overworld(console, context, BUTTON_B, 10s);
 }

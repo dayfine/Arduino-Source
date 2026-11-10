@@ -39,7 +39,6 @@ class StoryActionNotImplemented : public OperationFailedException{
 public:
     explicit StoryActionNotImplemented(std::string message);
 
-    // code-health: allow char_pointer -- the override must return the type OperationFailedException::name() declares
     virtual const char* name() const override{
         return "StoryActionNotImplemented";
     }
@@ -77,7 +76,10 @@ void heal_at_pokemon_center(ConsoleHandle& console, ProControllerContext& contex
 void buy_items(ConsoleHandle& console, ProControllerContext& context, const std::vector<std::string>& items);
 
 //  From the overworld, saves the game (save_game_to_menu()) and returns to
-//  the overworld. Throws OperationFailedException if the save fails.
+//  the overworld. The first menu of a playthrough shows a save tutorial
+//  card, which it closes with A. If the save fails, B back to the
+//  overworld and one more try; throws OperationFailedException if that
+//  fails too.
 void save_story_game(ConsoleHandle& console, ProControllerContext& context);
 
 

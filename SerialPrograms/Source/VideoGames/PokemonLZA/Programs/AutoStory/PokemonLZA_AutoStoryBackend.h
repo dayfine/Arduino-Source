@@ -94,7 +94,9 @@ public:
     //  (plza_observation()), STILL when it barely differs from the frame
     //  of the look before, and the readings PLATFORM_READING,
     //  SKIP_PROMPT_READING, AUTOSAVE_READING, CONTROLS_HINT_READING,
-    //  ADVANCE_ARROW_READING and MISSION_BANNER_READING.
+    //  ADVANCE_ARROW_READING, MISSION_BANNER_READING and
+    //  MISSION_COMPLETE_READING (which wins over the banner: the card has
+    //  the banner's bar).
     virtual Pokemon::Observation<Pokemon::ZonePose> observe() override;
     //  fight_battle() with the run's battle AI; a failure is an Outcome.
     virtual Pokemon::Outcome battle(const Pokemon::StoryActionArgs& args) override;
@@ -110,6 +112,7 @@ private:
     ControlsHintDetector m_controls_hint;
     AdvanceArrowDetector m_advance_arrow;
     MainMissionBannerDetector m_mission_banner;
+    MissionCompleteDetector m_mission_complete;
     VideoSnapshot m_previous;
     //  Every look's events, and a frame each time they change (and every
     //  CAPTURE_EVERY), go to the log and a capture folder: the record of

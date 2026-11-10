@@ -123,19 +123,16 @@ UnitTestResult test_not_implemented_actions(Logger&){
     return true;
 }
 
-//  Every autosave row is in the table, and they come first: once the main
-//  menu can save (03.02), every row saves through it.
+//  Every autosave row is in the table, and 01.03 saves through the menu
+//  (the menu can save from the start of the story).
 UnitTestResult test_autosave_rows(Logger&){
     size_t seen = 0;
-    bool menu_saves = false;
     for (const StoryCheckpoint& row : story_checkpoints()){
-        if (story_row_saves(row)){
-            menu_saves = true;
-            continue;
+        if (row.id == "01.03" && !story_row_saves(row)){
+            return "Expected 01.03 to save through the menu.";
         }
-        seen++;
-        if (menu_saves){
-            return std::format("{}: relies on an autosave after a row that saves through the menu.", row.id);
+        if (!story_row_saves(row)){
+            seen++;
         }
     }
     if (seen != story_autosave_rows().size()){
@@ -258,7 +255,7 @@ const AutoStoryTableCase AUTO_STORY_TABLE_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"Story table: autosave rows come first, the menu saves after", test_autosave_rows},
+        .input = {"Story table: the autosave rows, and 01.03 saves through the menu", test_autosave_rows},
         .expectation = {},
     },
     {

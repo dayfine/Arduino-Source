@@ -42,6 +42,11 @@ constexpr Milliseconds POLL = 250ms;
 //  The longest the machine waits for the mission banner to go once it has
 //  ended the scene (it shows ~3 s).
 constexpr Milliseconds BANNER_GONE_WAIT = 10000ms;
+//  A banner still up after BANNER_GONE_WAIT gets A this many times, this
+//  far apart, until it goes: 01.03's "MAIN MISSION 02" stayed past 10 s
+//  (console B, 2026-11-10), where "MAIN MISSION 01" went in ~3 s.
+constexpr size_t BANNER_PRESSES = 3;
+constexpr Milliseconds BANNER_PRESS_EVERY = 1000ms;
 
 //  Text to press on: a box (or choice), or the advance chevron without one.
 bool text_shows(const ScreenObservation& look){
@@ -49,10 +54,17 @@ bool text_shows(const ScreenObservation& look){
         look.readings.contains(ADVANCE_ARROW_READING);
 }
 
-//  Something holds the player: text, a battle, a fade.
+//  Something holds the player: text, a battle, a fade, the mission
+//  complete card.
 bool busy(const ScreenObservation& look){
     return text_shows(look) || look.events.has(EngineEvent::BATTLE) ||
-        look.events.has(EngineEvent::FADE_BLACK) || look.events.has(EngineEvent::FADE_WHITE);
+        look.events.has(EngineEvent::FADE_BLACK) || look.events.has(EngineEvent::FADE_WHITE) ||
+        look.readings.contains(MISSION_COMPLETE_READING);
+}
+
+//  The mission banner, and not the complete card (which has its bar).
+bool banner_shows(const ScreenObservation& look){
+    return look.readings.contains(MISSION_BANNER_READING) && !look.readings.contains(MISSION_COMPLETE_READING);
 }
 
 //  Free control on screen: the controls hint, or an "A: Talk" prompt
@@ -64,7 +76,7 @@ bool control_shows(const ScreenObservation& look){
 constexpr SceneScreen ALL_SCREENS[] = {
     SceneScreen::GOAL_CHOICE, SceneScreen::GOAL_BATTLE,
     SceneScreen::FADE_BLACK, SceneScreen::FADE_WHITE,
-    SceneScreen::CHOICE, SceneScreen::DIALOG,
+    SceneScreen::CHOICE, SceneScreen::DIALOG, SceneScreen::MISSION_COMPLETE,
     SceneScreen::MISSION_BANNER, SceneScreen::BANNER_SHOWING,
     SceneScreen::CAN_MOVE, SceneScreen::PARTY_BAR,
     SceneScreen::CONTROLS_HINT, SceneScreen::HINT_SHOWING, SceneScreen::QUIET_END, SceneScreen::BLIND_PRESS,
@@ -88,6 +100,8 @@ std::string_view scene_screen_name(SceneScreen screen){
         return "choice";
     case SceneScreen::DIALOG:
         return "dialog";
+    case SceneScreen::MISSION_COMPLETE:
+        return "mission_complete";
     case SceneScreen::MISSION_BANNER:
         return "mission_banner";
     case SceneScreen::BANNER_SHOWING:
@@ -124,6 +138,7 @@ SceneMashAction scene_screen_action(SceneScreen screen, const SceneMachineConfig
     }
     switch (screen){
     case SceneScreen::CHOICE:
+    case SceneScreen::MISSION_COMPLETE:
     case SceneScreen::BLIND_PRESS:
         return SceneMashAction::PRESS_A;
     case SceneScreen::DIALOG:
@@ -188,7 +203,10 @@ SceneScreen SceneTimeline::classify(const ScreenObservation& look) const{
 }
 
 SceneScreen SceneTimeline::classify_open(const ScreenObservation& look) const{
-    if (m_config.goal == SceneMashGoal::OVERWORLD && look.readings.contains(MISSION_BANNER_READING)){
+    if (look.readings.contains(MISSION_COMPLETE_READING)){
+        return SceneScreen::MISSION_COMPLETE;
+    }
+    if (m_config.goal == SceneMashGoal::OVERWORLD && banner_shows(look)){
         return m_banner_looks >= 1 ? SceneScreen::MISSION_BANNER : SceneScreen::BANNER_SHOWING;
     }
     if (m_config.goal == SceneMashGoal::OVERWORLD && look.events.has(EngineEvent::CAN_MOVE)){
@@ -237,7 +255,7 @@ void SceneTimeline::record(const ScreenObservation& look){
     const bool box = look.events.has(EngineEvent::TEXT_BOX) || look.events.has(EngineEvent::CHOICE_BOX);
     track_since(look.events.has(EngineEvent::CAN_MOVE) && !box, look.when, m_party_bar_since);
     track_since(control_shows(look) && !box, look.when, m_hint_since);
-    m_banner_looks = look.readings.contains(MISSION_BANNER_READING) && !box ? m_banner_looks + 1 : 0;
+    m_banner_looks = banner_shows(look) && !box ? m_banner_looks + 1 : 0;
     if (busy(look) || m_party_bar_since || m_hint_since || m_banner_looks > 0){
         m_last_cue = look.when;
     }
@@ -270,6 +288,9 @@ std::string describe_look(const ScreenObservation& look){
     }
     if (look.readings.contains(MISSION_BANNER_READING)){
         text += text.empty() ? "mission banner" : ", mission banner";
+    }
+    if (look.readings.contains(MISSION_COMPLETE_READING)){
+        text += text.empty() ? "mission complete" : ", mission complete";
     }
     return text.empty() ? "nothing" : text;
 }
@@ -366,6 +387,7 @@ size_t max_visits(SceneScreen screen){
     case SceneScreen::DIALOG:
         return 400;
     case SceneScreen::CHOICE:
+    case SceneScreen::MISSION_COMPLETE:
         return 30;
     default:
         return SIZE_MAX;
@@ -409,18 +431,40 @@ Pokemon::Outcome scene_failure(std::string_view label, const std::string& failur
     return Pokemon::outcome_failed(std::string(kind), std::format("{}: {}", label, failure));
 }
 
+//  Whether a new look shows the mission banner.
+bool banner_still_shows(PlzaBackend& backend){
+    return backend.observe().readings.contains(MISSION_BANNER_READING);
+}
+
 //  After the scene ended on the mission banner: looks until it has gone,
 //  so the next step starts with control, for at most BANNER_GONE_WAIT.
-void wait_banner_gone(PlzaBackend& backend, std::string_view label){
+//  Whether it went.
+bool wait_banner_gone(PlzaBackend& backend, std::string_view label){
     for (Milliseconds waited = 0ms; waited < BANNER_GONE_WAIT; waited += POLL){
-        if (!backend.observe().readings.contains(MISSION_BANNER_READING)){
+        if (!banner_still_shows(backend)){
             backend.log(std::format("[PLZA {}] the mission banner has gone after {} ms.", label, waited.count()));
-            return;
+            return true;
         }
         backend.wait(POLL);
     }
-    backend.log(std::format("[PLZA {}] the mission banner still shows after {} ms; going on.", label, BANNER_GONE_WAIT.count()));
+    return false;
 }
+
+//  A banner that stayed past BANNER_GONE_WAIT: A up to BANNER_PRESSES
+//  times, BANNER_PRESS_EVERY apart, until it goes.
+void press_banner_away(PlzaBackend& backend, std::string_view label){
+    backend.log(std::format("[PLZA {}] the mission banner still shows after {} ms; pressing A.", label, BANNER_GONE_WAIT.count()));
+    for (size_t presses = 1; presses <= BANNER_PRESSES; presses++){
+        backend.press(BUTTON_A, 160ms, 240ms);
+        backend.wait(BANNER_PRESS_EVERY);
+        if (!banner_still_shows(backend)){
+            backend.log(std::format("[PLZA {}] the mission banner has gone after {} A presses.", label, presses));
+            return;
+        }
+    }
+    backend.log(std::format("[PLZA {}] the mission banner still shows after {} A presses; going on.", label, BANNER_PRESSES));
+}
+
 
 } // namespace
 
@@ -468,8 +512,8 @@ Pokemon::Outcome run_scene_machine(
             "{}: nothing busy for {} ms and no sign of control.", label, config.quiet ? config.quiet->count() : 0
         ));
     }
-    if (result.terminal == scene_screen_name(SceneScreen::MISSION_BANNER)){
-        wait_banner_gone(backend, label);
+    if (result.terminal == scene_screen_name(SceneScreen::MISSION_BANNER) && !wait_banner_gone(backend, label)){
+        press_banner_away(backend, label);
     }
     backend.log(std::format("[PLZA {}] done on {}.", label, result.terminal));
     return Pokemon::outcome_ok();

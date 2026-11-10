@@ -11,8 +11,10 @@
  *  (CONTROLS_HINT_READING) holds a second. A main mission's banner
  *  (MISSION_BANNER_READING) on two looks in a row ends the scene too: it
  *  shows as the scene hands over control, and the machine then waits for
- *  it to go. The advance chevron (ADVANCE_ARROW_READING) is text to press
- *  on, with or without a box.
+ *  it to go, pressing A if it stays. The card a main mission ends with
+ *  (MISSION_COMPLETE_READING) waits for A: the machine presses A at it,
+ *  and it counts as busy. The advance chevron (ADVANCE_ARROW_READING) is
+ *  text to press on, with or without a box.
  *
  *  The walks between the scenes are PokemonLZA_AutoStoryGuardedWalks.h.
  *
@@ -63,6 +65,7 @@ enum class SceneScreen{
     FADE_WHITE,     //  wait until it lifts
     CHOICE,         //  A: the top choice
     DIALOG,         //  the text button: a box, or the advance chevron
+    MISSION_COMPLETE,   //  A: a main mission's "COMPLETE" card
     MISSION_BANNER, //  terminal: a main mission's banner, on a second look
     BANNER_SHOWING, //  wait: the banner, on its first look
     CAN_MOVE,       //  terminal: the party bar, held a second
@@ -131,7 +134,8 @@ private:
 
 //  Presses through a scene until `config.goal` shows (OVERWORLD: the party
 //  bar or the controls hint held a second, or the mission banner on two
-//  looks, then up to 10 s for the banner to go), on run_screen_machine_on_observations().
+//  looks, then up to 10 s for the banner to go and, if it stays, A up to 3
+//  times 1 s apart), on run_screen_machine_on_observations().
 //  `label` names its log lines ("[PLZA opening] dialog: text box"). Fails as
 //  "scene_quiet" on the quiet end, "scene_timeout" when `timeout` passes (by the looks' time),
 //  "scene_unknown" on a look no state takes and "scene_stuck" on a state
