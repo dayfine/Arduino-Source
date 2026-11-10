@@ -38,100 +38,12 @@
 #include "PokemonFRLG_AutoStoryStartFrames.h"
 #include "PokemonFRLG_AutoStoryStepInterrupts.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
+#include "PokemonFRLG_AutoStoryCheckpoints.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
 
-
-//  Story leg definition imported from Pokemon AutoStory.
-using Pokemon::StoryLeg;
-//  Story step definition imported from Pokemon AutoStory.
-using Pokemon::StoryStep;
-//  Story step kind classification imported from Pokemon AutoStory.
-using Pokemon::StoryStepKind;
-
-//  Where the player stands and faces: the one-tile poses of FRLG's table
-//  and routes. An unknown facing (after a scene that turns the player) is
-//  set before the next route by turning to a wall.
-struct StoryPose{
-    std::string map;
-    TilePos tile;
-    std::optional<Direction> facing;
-};
-
-//  The variant of a ROUTE or LEGS step that runs, with B held: the player
-//  has the Running Shoes (00.10 on).
-inline const std::string RUN_VARIANT = "run";
-
-//  How `step`, a ROUTE or LEGS, moves the player: RUN_VARIANT runs.
-MoveSpeed move_speed(const StoryStep& step);
-
-
-//  A shared checkpoint with what FRLG adds to it.
-struct StoryCheckpoint : public Pokemon::StoryCheckpoint{
-    //  The healing items at its start, for a run that loads its save.
-    Supplies supplies;
-    //  The START menu at its end, when it saves.
-    StartMenu menu = StartMenu::FULL;
-};
-
-
-//  The maps the story plans on: every map to Brock, with the objects the
-//  game hides after the Hall of Fame removed, as the lab's frlg_route does.
-const std::vector<MapData>& story_maps();
-
-//  Converts a StoryPose to a general navigation Pose.
-Pokemon::Pose to_pose(const StoryPose& pose);
-//  `pose` as a StoryPose: nothing unless it is on one tile.
-std::optional<StoryPose> story_pose(const Pokemon::Pose& pose);
-
-//  The place the save card names for a save on `map` (see
-//  read_save_card_location()), or empty for a map whose place isn't known.
-std::string save_card_place(const std::string& map);
-
-//  Why a save whose card names `place` can't start a checkpoint that starts
-//  on `start_map`, or empty if it can: the places match, the card couldn't
-//  be read (empty `place`), or the map has no known place.
-std::string save_place_error(const std::string& start_map, const std::string& place);
-
-//  Why a save standing at `stands` can't start a checkpoint that starts at
-//  `start`, or empty if it can: the same map and tile, and the same facing
-//  when both are known.
-std::string start_pose_mismatch(const Pokemon::Pose& start, const StoryPose& stands);
-
-//  Where the save just loaded stands, as the game reads it: nothing when it
-//  can't be read.
-using SavePoseReader = std::function<std::optional<StoryPose>()>;
-//  Where the start check says what it found.
-using StoryLog = std::function<void(const std::string& line)>;
-
-//  Adds to `checkpoint`, built from a row that starts at `start`, the start
-//  check: the save it starts from, as `read` reads it, must stand there
-//  (start_pose_mismatch()), or the checkpoint stops before its first event,
-//  "start_failed". A save that can't be read passes. `log` gets a
-//  mismatch, or that nothing was read. A row with no start (a new game)
-//  gets none. (add_start_check() with a reader of the tile.)
-void add_start_pose_check(
-    Pokemon::Checkpoint& checkpoint, const std::optional<Pokemon::Pose>& start, SavePoseReader read, StoryLog log
-);
-
-//  `legs` from `start` as route steps for the walker, each checked against
-//  the map: nothing if a step is blocked or leaves the map. A leg ends "to
-//  wall" if the next step its way is blocked.
-std::optional<std::vector<RouteStep>> fixed_route(
-    const std::vector<MapData>& maps, const MapPosition& start, const std::vector<StoryLeg>& legs
-);
-
-//  A way the player at `tile` can turn to without stepping: a wall there,
-//  with no one standing in it. West and east first: walking north or south
-//  into a sign would read it.
-std::optional<Direction> wall_beside(const MapData& map, const TilePos& tile);
-
-//  `items` as orders at the Viridian Mart before the Boulder Badge: the
-//  rows of POKE BALL, POTION, ANTIDOTE, PARLYZ HEAL. Nothing if it does
-//  not sell one of them.
-std::optional<std::vector<MartOrder>> viridian_mart_orders(const std::vector<Pokemon::StoryItem>& items);
 
 
 //  What the story's events act on. `supplies` are what the bag holds now,

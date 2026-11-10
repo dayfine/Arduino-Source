@@ -120,19 +120,6 @@ const Table<SpeciesData>& species(){
     return SPECIES;
 }
 
-//  The type chart's rows in its order: (attack, defend, tenths).
-const std::vector<std::tuple<PokemonType, PokemonType, size_t>>& chart_rows(){
-    static const std::vector<std::tuple<PokemonType, PokemonType, size_t>> ROWS = []{
-        std::vector<std::tuple<PokemonType, PokemonType, size_t>> rows;
-        for (const JsonValue& value : file_json("type_chart").to_array_throw()){
-            const JsonArray& entry = value.to_array_throw();
-            rows.emplace_back(type_of(entry[0]), type_of(entry[1]), static_cast<size_t>(entry[2].to_integer_throw()));
-        }
-        return rows;
-    }();
-    return ROWS;
-}
-
 std::vector<std::string> strings_of(const JsonValue& value){
     std::vector<std::string> strings;
     for (const JsonValue& item : value.to_array_throw()){
@@ -219,22 +206,6 @@ size_t type_effectiveness(PokemonType attack, PokemonType defend){
     }();
     const auto it = CHART.find({attack, defend});
     return it == CHART.end() ? 10 : it->second;
-}
-
-std::vector<size_t> type_multipliers(PokemonType attack, PokemonType first, PokemonType second){
-    std::vector<size_t> multipliers;
-    for (const auto& [row_attack, defend, tenths] : chart_rows()){
-        if (row_attack != attack){
-            continue;
-        }
-        if (defend == first){
-            multipliers.push_back(tenths);
-        }
-        if (defend == second && first != second){
-            multipliers.push_back(tenths);
-        }
-    }
-    return multipliers;
 }
 
 bool special_type(PokemonType type){
