@@ -17,7 +17,9 @@
 #include "PokemonFRLG_BikeSpinPresses.h"
 #include "PokemonFRLG_BikeSpinMechanics.h"
 #include "PokemonFRLG_OverworldMaps.h"
+#include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "PokemonFRLG_OverworldRecovery.h"
+#include "PokemonFRLG_OverworldRecoveryWalk.h"
 #include "PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_OverworldSimField.h"
@@ -215,7 +217,47 @@ UnitTestResult test_speed_after_door(){
     return true;
 }
 
+//  A floor that repeats every 16-pixel tile, with a pillar on the bottom
+//  row, seen from `scroll` pixels east.
+ImageRGB32 periodic_floor(size_t scroll){
+    ImageRGB32 image(160, 160);
+    for (size_t y = 0; y < 160; y++){
+        for (size_t x = 0; x < 160; x++){
+            const size_t floor_x = x + scroll;
+            uint32_t pixel = (floor_x % 16 < 8) ^ (y % 16 < 8) ? 0xff808040 : 0xffa0a060;
+            if (y >= 130 && floor_x >= 100 && floor_x < 120){
+                pixel = 0xff000000;
+            }
+            image.pixel(x, y) = pixel;
+        }
+    }
+    return image;
+}
+
+//  Rocket Hideout B3F (00.32 run 1): a tap east over a floor that repeats
+//  every tile left the top band the same, so the tap read as a turn.
+UnitTestResult test_scroll_over_periodic_floor(){
+    const ImageFloatBox game(0, 0, 1, 1);
+    const ImageRGB32 before = periodic_floor(0);
+    const double stepped = tap_scroll_change(before, periodic_floor(16), game);
+    if (stepped <= WALL_TAP_MOVED_RMSD){
+        return std::format("Expected a one-tile scroll to read as a step: change {}.", stepped);
+    }
+    ImageRGB32 turned = periodic_floor(0);
+    for (size_t y = 64; y < 96; y++){
+        for (size_t x = 64; x < 96; x++){
+            turned.pixel(x, y) = 0xffff0000;
+        }
+    }
+    const double bumped = tap_scroll_change(before, turned, game);
+    if (bumped > WALL_TAP_MOVED_RMSD){
+        return std::format("Expected the player turning in the middle not to read as a step: change {}.", bumped);
+    }
+    return true;
+}
+
 const BikeCase OVERWORLD_BIKE_CASES[] = {
+    {.input = {"a tap over a floor that repeats every tile", test_scroll_over_periodic_floor}, .expectation = {"scroll seen at the bottom edge; a turn is not"}},
     {.input = {"taps a tile each, one in 12 dropped 60ms apart", test_tap_chains}, .expectation = {"23 of 25 tiles at 60ms; 25 at 100 and 120ms"}},
     {.input = {"an open leg of 11 from a start 2 off, counted in taps", test_counted_leg_off_start}, .expectation = {"found against the rock and walked back"}},
     {.input = {"SELECT onto the registered Bicycle", test_select_onto_bike}, .expectation = {"one press registered; two and off unregistered"}},
