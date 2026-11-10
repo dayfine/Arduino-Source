@@ -6,13 +6,17 @@
 
 #include <format>
 #include <optional>
+#include <string>
+#include <vector>
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
+#include "Pokemon/AutoStory/Pokemon_StoryLog.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
+#include "Pokemon/Options/Pokemon_GameLanguages.h"
 #include "Pokemon/Pokemon_Strings.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_GameEntry.h"
 #include "PokemonLZA_AutoStoryActions.h"
@@ -48,7 +52,13 @@ namespace{
 
 //  The start and end dropdowns' entries. The options hold a reference to it.
 const StringSelectDatabase& checkpoint_database(){
-    static const StringSelectDatabase database = story_checkpoint_database(story_checkpoints());
+    static const StringSelectDatabase database = []{
+        std::vector<std::string> labels;
+        for (const StoryCheckpoint& row : story_checkpoints()){
+            labels.push_back(story_checkpoint_label(row));
+        }
+        return story_checkpoint_database(labels);
+    }();
     return database;
 }
 
@@ -95,7 +105,7 @@ void verify_story_checkpoint(
 
 
 AutoStory::AutoStory()
-    : RUN(checkpoint_database())
+    : RUN(checkpoint_database(), Gen8ToGen9Languages_Database())
     , STARTER(
         "<b>Starter Pokemon:</b>",
         {
@@ -129,10 +139,8 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     }
     require_player(env.console, context, BUTTON_L);
 
-    StoryEnv story{.env = env, .context = context, .starter = STARTER, .battle_ai = BATTLE_AI};
+    StoryEnv story{.env = env, .context = context, .starter = STARTER, .language = RUN.language(), .battle_ai = BATTLE_AI};
     StoryExecutor executor(story);
-    executor.set_checks(RUN.checks());
-    executor.set_language(RUN.language());
     Segment segment = make_story_segment(rows, executor);
     SegmentHooks hooks = story_hooks(env, context);
     RunState state;
@@ -143,7 +151,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         return;
     }
     const SegmentReport report = run_segment(state, segment, SegmentRange{rows[first].id, rows[last].id}, RUN.policy(), hooks);
-    record_story_stats(env.current_stats<AutoStoryStats>(), report);
+    record_story_counts(env.current_stats<AutoStoryStats>(), report.story_counts());
     env.update_stats();
     if (!report.completed){
         throw OperationFailedException(

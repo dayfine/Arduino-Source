@@ -3,11 +3,11 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  The story as rows of the shared story steps
- *  (Pokemon/AutoStory/Pokemon_StorySteps.h), plain data as BDSP's and
+ *  (Pokemon/AutoStory/Types/Pokemon_StoryStep.h), plain data as BDSP's and
  *  FRLG's tables are, so unit tests can check it without a console.
  *
  *  Lumiose has no tile grid, so a row's poses name a place and nothing more,
- *  and a walk in the overworld is a GAME step whose variant names one of
+ *  and a walk in the overworld is a GAME step whose action names one of
  *  story_moves(): legs of a relative turn and a walk time.
  *
  *  Recorded 2026-11-08/09 on console B, played step by step from a new
@@ -25,7 +25,7 @@
 #include <map>
 #include <string>
 #include <vector>
-#include "Pokemon/AutoStory/Pokemon_StorySteps.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
 #include "PokemonLZA_AutoStoryActions.h"
 #include "PokemonLZA_AutoStoryExecutor.h"
 

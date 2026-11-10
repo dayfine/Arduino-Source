@@ -8,6 +8,7 @@
 #include <map>
 #include <set>
 #include "Common/Cpp/Color.h"
+#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "VideoGames/PokemonLZA/Resources/PokemonLZA_Locations.h"
 #include "PokemonLZA_AutoStoryActions.h"
 #include "PokemonLZA_AutoStoryTable.h"
@@ -21,6 +22,7 @@ using namespace std::chrono_literals;
 using Pokemon::Outcome;
 using Pokemon::RunState;
 using Pokemon::StoryStep;
+using Pokemon::story_arg;
 using Pokemon::StoryStepKind;
 
 
@@ -56,10 +58,10 @@ const std::map<std::string, size_t, std::less<>>& choice_rows(){
     return rows;
 }
 
-//  The variants each kind takes; GAME also takes story_moves()' names,
+//  The actions each kind takes ("" its default); GAME also takes story_moves()' names,
 //  choice_rows() and story_actions_not_implemented().
-const std::map<StoryStepKind, std::set<std::string, std::less<>>>& step_variants(){
-    static const std::map<StoryStepKind, std::set<std::string, std::less<>>> variants{
+const std::map<StoryStepKind, std::set<std::string, std::less<>>>& step_actions(){
+    static const std::map<StoryStepKind, std::set<std::string, std::less<>>> actions{
         {StoryStepKind::ROUTE, {"fly"}},
         {StoryStepKind::TALK, {""}},
         {StoryStepKind::ANSWER, {""}},
@@ -70,21 +72,21 @@ const std::map<StoryStepKind, std::set<std::string, std::less<>>>& step_variants
         {StoryStepKind::SAVE, {""}},
         {StoryStepKind::GAME, {"approach_starter", "story_battle"}},
     };
-    return variants;
+    return actions;
 }
 
 } // namespace
 
 bool story_step_supported(const StoryStep& step){
     if (step.kind == StoryStepKind::GAME && (
-        story_moves().contains(step.variant) ||
-        choice_rows().contains(step.variant) ||
-        story_actions_not_implemented().contains(step.variant)
+        story_moves().contains(step.action) ||
+        choice_rows().contains(step.action) ||
+        story_actions_not_implemented().contains(step.action)
     )){
         return true;
     }
-    const auto kind = step_variants().find(step.kind);
-    return kind != step_variants().end() && kind->second.contains(step.variant);
+    const auto kind = step_actions().find(step.kind);
+    return kind != step_actions().end() && kind->second.contains(step.action);
 }
 
 
@@ -96,7 +98,7 @@ void StoryExecutor::begin_attempt(const Pokemon::StoryCheckpoint& data){
     m_checkpoint = data.id;
 }
 
-Outcome StoryExecutor::run(RunState& state, const StoryStep& step){
+Outcome StoryExecutor::run(RunState&, const StoryStep& step){
     console().log(
         std::format("[{}] {} {}: {}", m_checkpoint, Pokemon::story_step_kind_name(step.kind), step.name, step.why),
         COLOR_BLUE
@@ -105,7 +107,7 @@ Outcome StoryExecutor::run(RunState& state, const StoryStep& step){
         return Pokemon::unsupported_step(step);
     }
     try{
-        return Pokemon::StoryStepExecutor::run(state, step);
+        return run_kind(step);
     }catch (StoryActionNotImplemented&){
         throw;
     }catch (OperationFailedException& e){
@@ -114,67 +116,77 @@ Outcome StoryExecutor::run(RunState& state, const StoryStep& step){
     }
 }
 
-Outcome StoryExecutor::route(RunState&, const StoryStep& step){
-    //  story_step_supported(): the variant is "fly"; lint: there is a target.
-    const LocationItem& place = get_location_item_from_slug(step.target->map);
-    fly_to(console(), context(), language(), place.location);
-    return Pokemon::outcome_ok(*step.target);
+Outcome StoryExecutor::run_kind(const StoryStep& step){
+    switch (step.kind){
+    case StoryStepKind::ROUTE:
+        return route(step);
+    case StoryStepKind::TALK:
+        talk_to_facing(console(), context());
+        return Pokemon::outcome_ok();
+    case StoryStepKind::ANSWER:
+        return answer(step);
+    case StoryStepKind::MASH:
+        return mash(step);
+    case StoryStepKind::BATTLE:
+        fight_battle(m_env.env, console(), context(), m_env.battle_ai);
+        return Pokemon::outcome_ok();
+    case StoryStepKind::HEAL:
+        heal_at_pokemon_center(console(), context());
+        return Pokemon::outcome_ok();
+    case StoryStepKind::SHOP:
+        return shop(step);
+    case StoryStepKind::SAVE:
+        save_story_game(console(), context());
+        return Pokemon::outcome_ok();
+    case StoryStepKind::GAME:
+        return game(step);
+    default:
+        return Pokemon::unsupported_step(step);
+    }
 }
 
-Outcome StoryExecutor::talk(RunState&, const StoryStep&){
-    talk_to_facing(console(), context());
+Outcome StoryExecutor::route(const StoryStep& step){
+    //  story_step_supported(): the action is "fly", to the target's map.
+    const Pokemon::GridPose& target = story_arg<Pokemon::GridPose>(step.args, "target");
+    const LocationItem& place = get_location_item_from_slug(target.map);
+    fly_to(console(), context(), m_env.language, place.location);
+    return Pokemon::outcome_ok(Pokemon::pose_of(target));
+}
+
+Outcome StoryExecutor::answer(const StoryStep& step){
+    choose_dialog_option(console(), context(), story_arg<bool>(step.args, "yes") ? 0 : 1);
     return Pokemon::outcome_ok();
 }
 
-Outcome StoryExecutor::answer(RunState&, const StoryStep& step){
-    choose_dialog_option(console(), context(), step.yes ? 0 : 1);
+Outcome StoryExecutor::mash(const StoryStep& step){
+    mash_to_overworld(console(), context(), step.action == "a" ? BUTTON_A : BUTTON_B, 60s);
     return Pokemon::outcome_ok();
 }
 
-Outcome StoryExecutor::mash(RunState&, const StoryStep& step){
-    mash_to_overworld(console(), context(), step.variant == "a" ? BUTTON_A : BUTTON_B, 60s);
-    return Pokemon::outcome_ok();
-}
-
-Outcome StoryExecutor::battle(RunState&, const StoryStep&){
-    fight_battle(m_env.env, console(), context(), m_env.battle_ai);
-    return Pokemon::outcome_ok();
-}
-
-Outcome StoryExecutor::heal(RunState&, const StoryStep&){
-    heal_at_pokemon_center(console(), context());
-    return Pokemon::outcome_ok();
-}
-
-Outcome StoryExecutor::shop(RunState&, const StoryStep& step){
+Outcome StoryExecutor::shop(const StoryStep& step){
     std::vector<std::string> items;
-    for (const Pokemon::StoryItem& item : step.items){
+    for (const Pokemon::StoryItem& item : story_arg<std::vector<Pokemon::StoryItem>>(step.args, "items")){
         items.push_back(item.item);
     }
     buy_items(console(), context(), items);
     return Pokemon::outcome_ok();
 }
 
-Outcome StoryExecutor::save(RunState&, const StoryStep&){
-    save_story_game(console(), context());
-    return Pokemon::outcome_ok();
-}
-
-Outcome StoryExecutor::game(RunState&, const StoryStep& step){
-    const auto todo = story_actions_not_implemented().find(step.variant);
+Outcome StoryExecutor::game(const StoryStep& step){
+    const auto todo = story_actions_not_implemented().find(step.action);
     if (todo != story_actions_not_implemented().end()){
-        throw_not_implemented(console(), step.variant, todo->second);
+        throw_not_implemented(console(), step.action, todo->second);
     }
-    const auto choice = choice_rows().find(step.variant);
+    const auto choice = choice_rows().find(step.action);
     if (choice != choice_rows().end()){
         choose_dialog_option(console(), context(), choice->second);
-    }else if (step.variant == "approach_starter"){
+    }else if (step.action == "approach_starter"){
         approach_starter();
-    }else if (step.variant == "story_battle"){
+    }else if (step.action == "story_battle"){
         fight_battle_in_progress(m_env.env, console(), context(), m_env.battle_ai, 120s);
     }else{
-        //  story_step_supported(): any other variant is a move.
-        run_story_move(console(), context(), story_moves().find(step.variant)->second);
+        //  story_step_supported(): any other action is a move.
+        run_story_move(console(), context(), story_moves().find(step.action)->second);
     }
     return Pokemon::outcome_ok();
 }
