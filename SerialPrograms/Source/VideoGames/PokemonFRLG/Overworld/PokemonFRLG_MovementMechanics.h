@@ -65,12 +65,14 @@ inline constexpr Milliseconds BIKE_TILE_TIME(100);
 //  hold turns the player too, and loses no tile for it.
 inline constexpr bool BIKE_TAP_ONLY_TURNS = false;
 //  Chains of 40ms taps on the Bicycle (console B, 2026-11-09): one tap per
-//  100ms (60ms release) moved exactly a tile each; at one per 60ms, one
-//  tap in 12 was dropped. Somewhere between the two the game starts
-//  dropping taps; the sim drops one in BIKE_FAST_TAP_DROP_EVERY of the taps
-//  that start sooner than this after the last one.
+//  100ms (60ms release) moved exactly a tile each.
 inline constexpr Milliseconds BIKE_TAP_PERIOD_WORKED(100);
+//  At one tap per 60ms, one tap in 12 was dropped. Somewhere between that
+//  and BIKE_TAP_PERIOD_WORKED the game starts dropping taps; the sim drops
+//  taps that start sooner than this after the last one.
 inline constexpr Milliseconds BIKE_TAP_DROP_PERIOD(80);
+//  Of the taps that come sooner than BIKE_TAP_DROP_PERIOD, the sim drops
+//  one in this many.
 inline constexpr int BIKE_FAST_TAP_DROP_EVERY = 12;
 //  With the Bicycle registered (Key Items, BICYCLE, REGISTER), SELECT gets
 //  on and off in about 1s (console B, 2026-11-09). Going through a door
@@ -117,17 +119,18 @@ inline constexpr Milliseconds STEP_TAP(66);
 inline constexpr Milliseconds STEP_TAP_RELEASE(700);
 
 //  An open leg on the Bicycle is counted out in taps, each a tile: a 40ms
-//  press, released to a BIKE_TAP_PERIOD period, slower than the chains
-//  that worked, so none is dropped.
+//  press each.
 inline constexpr Milliseconds BIKE_TAP(40);
+//  The taps' period, start to start, slower than the chains that worked,
+//  so none is dropped.
 inline constexpr Milliseconds BIKE_TAP_PERIOD(120);
 //  After a tap, how long until the screen shows whether it moved: the
 //  tile's 100ms and video lag. The Command File Runner's tap check judged
 //  its first tap too early, as unmoved. Not measured: a guess.
 inline constexpr Milliseconds BIKE_TAP_SETTLE(250);
-//  SELECT, pressed to get on the registered Bicycle, and the wait after
-//  it for the player to be up on it.
+//  SELECT, pressed to get on the registered Bicycle.
 inline constexpr Milliseconds BIKE_SELECT_PRESS(160);
+//  The wait after SELECT for the player to be up on the Bicycle.
 inline constexpr Milliseconds BIKE_SELECT_SETTLE(1200);
 
 //  How long the overworld must show nothing (no box, fade or battle) after

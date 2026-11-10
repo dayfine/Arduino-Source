@@ -1205,7 +1205,7 @@
     "[Event] 00.30/1 from_save: start",
     "[Event] 00.30/1 from_save: done",
     "[Event] 00.30/2 register_bike: start",
-    "00.30/register_bike: ok at -",
+    "00.30/register_bike: ok at LavenderTown_PokemonCenter_1F (7, 4) facing north (tile)",
     "[Event] 00.30/2 register_bike: done",
     "[Event] 00.30/3 east_of_mart_door: start",
     "00.30/east_of_mart_door: ok at LavenderTown (21, 16) facing east (tile)",

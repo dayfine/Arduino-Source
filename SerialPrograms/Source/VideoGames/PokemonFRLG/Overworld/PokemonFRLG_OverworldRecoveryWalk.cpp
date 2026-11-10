@@ -151,9 +151,6 @@ StepWalk walk_step(
     const RouteStep& step, std::optional<Direction> facing,
     const OverworldInterruptSet& interrupts, MoveSpeed speed
 ){
-    if (counts_bike_taps(step, speed)){
-        return walk_bike_taps(console, context, step, interrupts);
-    }
     StepWalk out{std::nullopt, current_time(), false, false};
     switch (step.action){
     case RouteAction::WALK:{
@@ -264,7 +261,9 @@ StepOutcome walk_and_watch(
     clear_open_message(console, context, step.wild ? interrupts.wild : interrupts.other, step);
     check_overworld(console, context, step);
     const LegRecorder recorder(console, context, interrupts, step);
-    const StepWalk walked = walk_step(console, context, step, facing, interrupts, speed);
+    const StepWalk walked = counts_bike_taps(step, speed)
+        ? walk_bike_taps(console, context, step, interrupts)
+        : walk_step(console, context, step, facing, interrupts, speed);
     if (walked.stopped){
         return StepOutcome{.end = StepEnd::STOPPED, .walked = walked.stopped, .blocked = walked.blocked};
     }

@@ -250,6 +250,10 @@ enum class SimField{
     //  The panel of the lift the player stands in (SimScript::lift_floors):
     //  the floor picked, the lift's door now lets out there.
     LIFT_FLOOR,
+    //  Not A: SELECT, which with the Bicycle registered gets on it where
+    //  running is allowed, or off it, in about
+    //  MovementMechanics::BIKE_SELECT_TIME. (PokemonFRLG_OverworldSimTaps.cpp)
+    BIKE_SELECT,
 };
 
 //  Simulates overworld movement, encounters and dialogs.
@@ -281,13 +285,6 @@ public:
         Milliseconds duration = MovementMechanics::TURN_TAP,
         Milliseconds release = MovementMechanics::TURN_SETTLE
     );
-
-    //  SELECT on the overworld: with the Bicycle registered, gets on it
-    //  where running is allowed, or off it, taking about
-    //  MovementMechanics::BIKE_SELECT_TIME. Returns whether it did.
-    bool press_select();
-    //  REGISTER on the Bicycle in the bag (SimScript::bike_registered).
-    void register_bike(){ m_script.bike_registered = true; }
 
     //  Watches `watchers` for `duration`, as wait_until().
     std::optional<SimSeen> watch(const std::vector<SimWatcher>& watchers, Milliseconds duration);
@@ -365,6 +362,7 @@ private:
     std::optional<SimEncounter> next_encounter();
     bool rolls_encounter(int rate);
     bool drops_turn_tap();
+    bool press_select();
     //  Whether the Bicycle tap starting at `start` is dropped, too soon
     //  after the last one.
     bool drops_bike_tap(Milliseconds start);

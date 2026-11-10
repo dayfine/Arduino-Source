@@ -114,6 +114,7 @@ UnitTestResult test_tap_chains(){
     return true;
 }
 
+//  An open leg of `tiles` toward `direction`, ending on `end`.
 RouteStep open_leg(Direction direction, int tiles, MapPosition end){
     RouteStep step;
     step.direction = direction;
@@ -177,7 +178,7 @@ UnitTestResult test_select_onto_bike(){
         OverworldSim sim(field(), at(10, 1), Direction::WEST, script);
         BikeSelectCalls calls;
         int presses = 0;
-        calls.press_select = [&]{ presses++; sim.press_select(); };
+        calls.press_select = [&]{ presses++; sim.use_field(SimField::BIKE_SELECT); };
         calls.riding = [&]{ return sim.state().on_bike; };
         calls.log = [](const std::string&){};
         const bool riding = OverworldWalkSteps::select_onto_bike(calls);
