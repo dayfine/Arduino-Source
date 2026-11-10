@@ -31,6 +31,10 @@ constexpr std::string_view SKIP_PROMPT_READING = "scene.skip_prompt";
 //  The reading set to 1 while the autosave badge (a pencil and "Saving...",
 //  top right) shows: the game has autosaved (AutosaveDetector).
 constexpr std::string_view AUTOSAVE_READING = "scene.autosave";
+//  The reading set to 1 while the tutorial's controls hint (a "?" card over
+//  "(L) Move" and "(R) Control Camera", under the player) shows: the player
+//  has control (ControlsHintDetector).
+constexpr std::string_view CONTROLS_HINT_READING = "scene.controls_hint";
 
 //  PlzaScreenObserver's events as one look for the story engine:
 //  DIALOG_BOX is TEXT_BOX; CHOICE_BOX adds TEXT_BOX;

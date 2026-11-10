@@ -6,10 +6,9 @@
  *  match on what the backend observed (ScreenState::matches_observation),
  *  so they run on the console and on a scripted backend alike: every look
  *  picks one state, the state takes one step, and each change of state is
- *  logged with the look's events. That log says when the player gets
- *  control, which the tutorial shows with no party bar (only the Move /
- *  Control Camera hints, which have no detector yet: no frame of them has
- *  been kept).
+ *  logged with the look's events. The player has control when the party
+ *  bar or, in the tutorial (which has no party bar), the controls hint
+ *  (CONTROLS_HINT_READING) holds a second.
  *
  *  The walks between the scenes are PokemonLZA_AutoStoryGuardedWalks.h.
  *
@@ -40,8 +39,8 @@ struct SceneMachineConfig{
     SceneMashGoal goal = SceneMashGoal::OVERWORLD;
     //  Advances the text (A or B).
     Button text_button = BUTTON_A;
-    //  OVERWORLD only: also done once nothing busy (box, choice, battle,
-    //  fade) has shown for this long...
+    //  OVERWORLD only: fails ("scene_quiet") once nothing busy (box, choice,
+    //  battle, fade) and no sign of control has shown for this long...
     std::optional<Milliseconds> quiet = std::nullopt;
     //  ...and this long has passed since the start: a cutscene can hold a
     //  still frame longer than `quiet`.
@@ -58,7 +57,9 @@ enum class SceneScreen{
     DIALOG,         //  the text button
     CAN_MOVE,       //  terminal: the party bar, held a second
     PARTY_BAR,      //  wait: the party bar, not held a second yet
-    QUIET_END,      //  terminal: nothing busy for the quiet time, past the minimum length
+    CONTROLS_HINT,  //  terminal: the tutorial's controls hint, held a second
+    HINT_SHOWING,   //  wait: the controls hint, not held a second yet
+    QUIET_END,      //  terminal, failing: nothing busy for the quiet time, past the minimum length
     SCENE_MOVING,   //  no box, the screen changing: a cutscene, or the player in control
     SCENE_STILL,    //  no box, the screen still since the read before
 };
@@ -102,13 +103,14 @@ private:
     WallClock m_quiet_from;
     WallClock m_last_busy;
     std::optional<WallClock> m_party_bar_since;
+    std::optional<WallClock> m_hint_since;
 };
 
 
 //  Presses through a scene until `config.goal` shows (OVERWORLD: the party
-//  bar held a second, or the quiet end), on run_screen_machine_on_observations().
+//  bar or the controls hint held a second), on run_screen_machine_on_observations().
 //  `label` names its log lines ("[PLZA opening] dialog: text box"). Fails as
-//  "scene_timeout" when `timeout` passes (by the looks' time),
+//  "scene_quiet" on the quiet end, "scene_timeout" when `timeout` passes (by the looks' time),
 //  "scene_unknown" on a look no state takes and "scene_stuck" on a state
 //  that comes up too often or a screen that stops changing.
 Pokemon::Outcome run_scene_machine(

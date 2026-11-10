@@ -21,6 +21,7 @@
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.h"
 #include "PokemonLZA_AutoStoryGame.h"
 #include "PokemonLZA_AutoStoryMoves.h"
+#include "PokemonLZA_AutoStoryObservation.h"
 #include "PokemonLZA_AutoStoryTable.h"
 #include "PokemonLZA_AutoStoryEngine_Tests.h"
 
@@ -239,6 +240,46 @@ UnitTestResult test_text_to_choice(CancellableScope& scope){
     return expect_inputs(backend, {"press B"});
 }
 
+//  01.01's arrival scenes (mash_to_move_hints): A at the text and at the
+//  choice (its top row), waits through a 20 s text-free flyover, done once
+//  the controls hint has shown a second.
+UnitTestResult test_arrival_ends_on_controls_hint(CancellableScope& scope){
+    FakeBackend backend = fake_plza({
+        look_at(0ms, {EngineEvent::TEXT_BOX}),
+        look_at(1000ms),
+        look_at(21000ms),
+        look_at(22000ms, {EngineEvent::TEXT_BOX, EngineEvent::CHOICE_BOX}),
+        look_at(23000ms),
+        with_reading(look_at(24000ms), CONTROLS_HINT_READING),
+        with_reading(look_at(24500ms), CONTROLS_HINT_READING),
+        with_reading(look_at(25100ms), CONTROLS_HINT_READING),
+    }, scope);
+    const Pokemon::StoryEngineReport report = run_plza(backend, step_of("01.01", "arrival_scenes"));
+    if (report.verdict != Pokemon::CheckpointVerdict::PASSED){
+        return "Expected the scenes to end on the controls hint: " + to_string(report.run.failure);
+    }
+    const auto presses = std::count_if(backend.inputs().begin(), backend.inputs().end(), [](const std::string& input){
+        return input.starts_with("press");
+    });
+    const auto a_presses = std::count(backend.inputs().begin(), backend.inputs().end(), "press A");
+    if (presses != 2 || a_presses != 2){
+        return "Expected A at the text and at the choice only, got [" + joined(backend.inputs()) + "].";
+    }
+    return true;
+}
+
+//  01.01's arrival scenes: a minute with nothing busy and no controls hint
+//  (a text-free cutscene, or control the detectors miss) fails the step
+//  instead of taking it for control.
+UnitTestResult test_arrival_quiet_fails(CancellableScope& scope){
+    FakeBackend backend = fake_plza({look_at(0ms), look_at(30000ms), look_at(61000ms)}, scope);
+    const Pokemon::StoryEngineReport report = run_plza(backend, step_of("01.01", "arrival_scenes"));
+    if (report.verdict == Pokemon::CheckpointVerdict::PASSED || report.run.failure.failure != "scene_quiet"){
+        return "Expected a quiet minute to fail as scene_quiet, got " + to_string(report.run.failure);
+    }
+    return true;
+}
+
 //  What PLZA refuses: console actions fail as console_only off a console,
 //  and tile walks and unknown actions fail the lint.
 UnitTestResult test_refused_steps(CancellableScope& scope){
@@ -360,6 +401,8 @@ const EngineTestCase ENGINE_TEST_CASES[] = {
     {.input = {"01.00 opening: no presses, done on two looks at the platform after the autosave", test_opening_waits_for_platform}, .expectation = {}},
     {.input = {"01.01 start check: fails without the platform", test_start_check_needs_platform}, .expectation = {}},
     {.input = {"01.01 text_to_choice: B through the text, done at the choice", test_text_to_choice}, .expectation = {}},
+    {.input = {"01.01 arrival_scenes: A through text and choice, done on the controls hint", test_arrival_ends_on_controls_hint}, .expectation = {}},
+    {.input = {"01.01 arrival_scenes: a quiet minute without the hint fails", test_arrival_quiet_fails}, .expectation = {}},
     {.input = {"face_heading: turns by the minimap's heading", test_face_heading}, .expectation = {}},
     {.input = {"01.01 platform_to_plaza: no walk without free control", test_walk_needs_free_control}, .expectation = {}},
     {.input = {"01.01 platform_to_plaza: ends on the white fade", test_walk_ends_on_white_fade}, .expectation = {}},

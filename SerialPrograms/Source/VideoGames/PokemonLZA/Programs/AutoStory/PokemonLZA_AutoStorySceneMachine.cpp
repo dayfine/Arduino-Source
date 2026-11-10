@@ -27,6 +27,8 @@ namespace{
 //  A party bar showing this long is the overworld: it also shows between
 //  lines of a talk.
 constexpr Milliseconds PARTY_BAR_HOLD = 1000ms;
+//  The controls hint showing this long is free control: two looks or more.
+constexpr Milliseconds CONTROLS_HINT_HOLD = 1000ms;
 //  The longest a fade is waited out in one step (02.01 holds a ~25 s black).
 constexpr Milliseconds FADE_WAIT = 30000ms;
 //  The longest a still screen is waited on in one step.
@@ -47,7 +49,8 @@ constexpr SceneScreen ALL_SCREENS[] = {
     SceneScreen::GOAL_CHOICE, SceneScreen::GOAL_BATTLE,
     SceneScreen::FADE_BLACK, SceneScreen::FADE_WHITE,
     SceneScreen::CHOICE, SceneScreen::DIALOG,
-    SceneScreen::CAN_MOVE, SceneScreen::PARTY_BAR, SceneScreen::QUIET_END,
+    SceneScreen::CAN_MOVE, SceneScreen::PARTY_BAR,
+    SceneScreen::CONTROLS_HINT, SceneScreen::HINT_SHOWING, SceneScreen::QUIET_END,
     SceneScreen::SCENE_MOVING, SceneScreen::SCENE_STILL,
 };
 
@@ -72,6 +75,10 @@ std::string_view scene_screen_name(SceneScreen screen){
         return "can_move";
     case SceneScreen::PARTY_BAR:
         return "party_bar";
+    case SceneScreen::CONTROLS_HINT:
+        return "controls_hint";
+    case SceneScreen::HINT_SHOWING:
+        return "hint_showing";
     case SceneScreen::QUIET_END:
         return "quiet_end";
     case SceneScreen::SCENE_MOVING:
@@ -84,7 +91,8 @@ std::string_view scene_screen_name(SceneScreen screen){
 
 bool scene_screen_terminal(SceneScreen screen){
     return screen == SceneScreen::GOAL_CHOICE || screen == SceneScreen::GOAL_BATTLE ||
-        screen == SceneScreen::CAN_MOVE || screen == SceneScreen::QUIET_END;
+        screen == SceneScreen::CAN_MOVE || screen == SceneScreen::CONTROLS_HINT ||
+        screen == SceneScreen::QUIET_END;
 }
 
 SceneMashAction scene_screen_action(SceneScreen screen, const SceneMachineConfig& config){
@@ -147,6 +155,12 @@ SceneScreen SceneTimeline::classify(const ScreenObservation& look) const{
         }
         return SceneScreen::PARTY_BAR;
     }
+    if (m_config.goal == SceneMashGoal::OVERWORLD && look.readings.contains(CONTROLS_HINT_READING)){
+        if (m_hint_since && look.when - *m_hint_since >= CONTROLS_HINT_HOLD){
+            return SceneScreen::CONTROLS_HINT;
+        }
+        return SceneScreen::HINT_SHOWING;
+    }
     const std::optional<WallClock> due = quiet_end_due();
     if (due && look.when >= *due && !busy(look)){
         return SceneScreen::QUIET_END;
@@ -154,16 +168,26 @@ SceneScreen SceneTimeline::classify(const ScreenObservation& look) const{
     return look.events.has(EngineEvent::STILL) ? SceneScreen::SCENE_STILL : SceneScreen::SCENE_MOVING;
 }
 
+namespace{
+
+//  Starts `since` when `shows` starts, clears it when it stops.
+void track_since(std::optional<WallClock>& since, bool shows, WallClock when){
+    if (!shows){
+        since.reset();
+    }else if (!since){
+        since = when;
+    }
+}
+
+} // namespace
+
 void SceneTimeline::record(const ScreenObservation& look){
     if (busy(look)){
         m_last_busy = look.when;
     }
-    const bool party_bar = look.events.has(EngineEvent::CAN_MOVE) && !look.events.has(EngineEvent::TEXT_BOX) && !look.events.has(EngineEvent::CHOICE_BOX);
-    if (!party_bar){
-        m_party_bar_since.reset();
-    }else if (!m_party_bar_since){
-        m_party_bar_since = look.when;
-    }
+    const bool box = look.events.has(EngineEvent::TEXT_BOX) || look.events.has(EngineEvent::CHOICE_BOX);
+    track_since(m_party_bar_since, look.events.has(EngineEvent::CAN_MOVE) && !box, look.when);
+    track_since(m_hint_since, look.readings.contains(CONTROLS_HINT_READING) && !box, look.when);
 }
 
 
@@ -184,6 +208,9 @@ std::string describe_look(const ScreenObservation& look){
     }
     if (look.events.has(EngineEvent::CHOICE_BOX)){
         text += text.empty() ? "choice" : ", choice";
+    }
+    if (look.readings.contains(CONTROLS_HINT_READING)){
+        text += text.empty() ? "controls hint" : ", controls hint";
     }
     return text.empty() ? "nothing" : text;
 }
@@ -244,6 +271,7 @@ private:
             });
             return;
         case SceneScreen::PARTY_BAR:
+        case SceneScreen::HINT_SHOWING:
             m_backend.wait(POLL);
             return;
         default:
@@ -294,6 +322,7 @@ Milliseconds max_still(SceneScreen screen){
     case SceneScreen::SCENE_STILL:
         return SCENE_STILL_WAIT;
     case SceneScreen::PARTY_BAR:
+    case SceneScreen::HINT_SHOWING:
         return STILL_WAIT;
     default:
         return Milliseconds::zero();
@@ -354,6 +383,13 @@ Pokemon::Outcome run_scene_machine(
     const ScreenMachineResult result = run_screen_machine_on_observations(observe, backend.scope(), trace, states, timeout);
     if (!result.succeeded()){
         return scene_failure(label, result.failure);
+    }
+    if (result.terminal == scene_screen_name(SceneScreen::QUIET_END)){
+        //  Nothing busy for the quiet time, and no party bar or controls
+        //  hint: a cutscene with no text, or control the detectors miss.
+        return Pokemon::outcome_failed("scene_quiet", std::format(
+            "{}: nothing busy for {} ms and no sign of control.", label, config.quiet ? config.quiet->count() : 0
+        ));
     }
     backend.log(std::format("[PLZA {}] done on {}.", label, result.terminal));
     return Pokemon::outcome_ok();

@@ -33,6 +33,8 @@ struct Read{
     ScreenEvents events;
     bool still;
     SceneScreen expected;
+    //  The controls hint (CONTROLS_HINT_READING) shows.
+    bool hint = false;
 };
 
 //  Feeds `reads` to a timeline as the machine does (classify, then record
@@ -45,6 +47,9 @@ UnitTestResult check_reads(const SceneMachineConfig& config, const std::vector<R
         look.when = start + read.at;
         if (read.still){
             look.events.add(PokemonAutomation::ScreenEvent::STILL);
+        }
+        if (read.hint){
+            look.readings[std::string(CONTROLS_HINT_READING)] = 1;
         }
         const SceneScreen got = timeline.classify(look);
         if (got != read.expected){
@@ -111,6 +116,18 @@ UnitTestResult test_party_bar_held(Logger&){
     });
 }
 
+//  The controls hint ends the scene once it has held a second, ahead of
+//  the quiet end; a box over it starts the second again.
+UnitTestResult test_controls_hint_held(Logger&){
+    return check_reads(opening_config(0ms), {
+        {0ms, NOTHING, false, SceneScreen::HINT_SHOWING, true},
+        {600ms, DIALOG, false, SceneScreen::DIALOG, true},
+        {900ms, NOTHING, false, SceneScreen::HINT_SHOWING, true},
+        {1800ms, NOTHING, true, SceneScreen::HINT_SHOWING, true},
+        {9000ms, NOTHING, true, SceneScreen::CONTROLS_HINT, true},
+    });
+}
+
 //  Without a quiet time only the party bar ends an overworld scene: a
 //  still screen waits until the machine's timeout.
 UnitTestResult test_no_quiet_never_ends_still(Logger&){
@@ -158,6 +175,8 @@ UnitTestResult test_state_actions(Logger&){
         {SceneScreen::SCENE_MOVING, b_to_choice, SceneMashAction::PRESS_B},
         {SceneScreen::SCENE_MOVING, to_battle, SceneMashAction::PRESS_A},
         {SceneScreen::CAN_MOVE, a_mash, SceneMashAction::DONE},
+        {SceneScreen::HINT_SHOWING, a_mash, SceneMashAction::WAIT},
+        {SceneScreen::CONTROLS_HINT, a_mash, SceneMashAction::DONE},
         {SceneScreen::QUIET_END, a_mash, SceneMashAction::DONE},
         {SceneScreen::GOAL_CHOICE, b_to_choice, SceneMashAction::DONE},
         {SceneScreen::GOAL_BATTLE, to_battle, SceneMashAction::DONE},
@@ -245,6 +264,10 @@ const SceneMachineCase SCENE_MACHINE_CASES[] = {
     },
     {
         .input = {"the party bar held a second ends the scene", test_party_bar_held},
+        .expectation = {},
+    },
+    {
+        .input = {"the controls hint held a second ends the scene", test_controls_hint_held},
         .expectation = {},
     },
     {
