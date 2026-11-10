@@ -10,6 +10,7 @@
 #include <chrono>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 #include "PokemonLZA_AutoStoryTable.h"
@@ -27,15 +28,15 @@ using Pokemon::StoryStepKind;
 
 namespace{
 
-constexpr const char* LUMIOSE = "LumioseCity";
-constexpr const char* HOTEL_Z = "HotelZ";
-constexpr const char* WILD_ZONE_1 = "WildZone1";
-constexpr const char* RESEARCH_LAB = "PokemonResearchLab";
+constexpr std::string_view LUMIOSE = "LumioseCity";
+constexpr std::string_view HOTEL_Z = "HotelZ";
+constexpr std::string_view WILD_ZONE_1 = "WildZone1";
+constexpr std::string_view RESEARCH_LAB = "PokemonResearchLab";
 
 //  Somewhere in `map`: the game reads no position yet.
-GridPose in(const char* map){
+GridPose in(std::string_view map){
     GridPose pose;
-    pose.map = map;
+    pose.map = std::string(map);
     return pose;
 }
 

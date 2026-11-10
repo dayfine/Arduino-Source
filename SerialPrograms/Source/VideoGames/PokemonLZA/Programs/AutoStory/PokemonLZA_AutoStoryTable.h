@@ -26,7 +26,7 @@
 #include <string>
 #include <vector>
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
-#include "PokemonLZA_AutoStoryActions.h"
+#include "PokemonLZA_AutoStoryMoves.h"
 #include "PokemonLZA_AutoStoryExecutor.h"
 
 namespace PokemonAutomation{
