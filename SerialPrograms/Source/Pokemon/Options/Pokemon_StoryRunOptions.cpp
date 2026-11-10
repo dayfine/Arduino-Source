@@ -76,19 +76,7 @@ std::string StoryVerifyOptions::check_validity() const{
 
 
 StoryRunOptions::StoryRunOptions(const StringSelectDatabase& checkpoints)
-    : GroupOption("Story Run", LockMode::LOCK_WHILE_RUNNING)
-    , START_CHECKPOINT(
-        "<b>Start checkpoint:</b><br>The program starts from this checkpoint's save.",
-        checkpoints,
-        LockMode::LOCK_WHILE_RUNNING,
-        0
-    )
-    , END_CHECKPOINT(
-        "<b>End checkpoint:</b><br>The program stops after this checkpoint.",
-        checkpoints,
-        LockMode::LOCK_WHILE_RUNNING,
-        checkpoints.size() == 0 ? 0 : checkpoints.size() - 1
-    )
+    : StoryRangeOptions("Story Run", checkpoints)
     , ATTEMPTS_PER_CHECKPOINT(
         "<b>Attempts per checkpoint:</b><br>A failed checkpoint reloads its save and runs again, up to this many times in all.",
         LockMode::LOCK_WHILE_RUNNING,
@@ -113,8 +101,6 @@ StoryRunOptions::StoryRunOptions(const StringSelectDatabase& checkpoints)
         Language::English
     )
 {
-    PA_ADD_OPTION(START_CHECKPOINT);
-    PA_ADD_OPTION(END_CHECKPOINT);
     PA_ADD_OPTION(ATTEMPTS_PER_CHECKPOINT);
     PA_ADD_OPTION(STOP_AT_FIRST_FAILURE);
     PA_ADD_OPTION(CHECKS);
@@ -122,22 +108,15 @@ StoryRunOptions::StoryRunOptions(const StringSelectDatabase& checkpoints)
     PA_ADD_OPTION(VERIFY);
 }
 
-size_t StoryRunOptions::start_index() const{
-    return START_CHECKPOINT.index();
-}
-
-size_t StoryRunOptions::end_index() const{
-    return END_CHECKPOINT.index();
-}
-
 std::string StoryRunOptions::check_validity() const{
-    if (start_index() > end_index()){
-        return "The start checkpoint comes after the end checkpoint.";
+    std::string error = StoryRangeOptions::check_validity();
+    if (!error.empty()){
+        return error;
     }
     if (VERIFY.enabled() && start_index() != end_index()){
         return "Verify mode runs one checkpoint: set the end checkpoint to the start checkpoint.";
     }
-    return GroupOption::check_validity();
+    return error;
 }
 
 SegmentPolicy StoryRunOptions::policy() const{

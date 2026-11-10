@@ -113,11 +113,6 @@ const char* recovery_name(RecoveryKind kind){
 }
 
 
-std::string event_log_line(const std::string& checkpoint, size_t number, const std::string& event, const std::string& status){
-    return std::format("[Event] {}/{} {}: {}", checkpoint, number, event, status);
-}
-
-
 namespace{
 
 //  Runs an action; if it succeeded knowing where it left the player, that
@@ -410,7 +405,7 @@ Outcome finish_checkpoint(RunState& state, Checkpoint& checkpoint){
 CheckpointReport run_checkpoint(RunState& state, Checkpoint& checkpoint, EventLogger& log){
     CheckpointReport report;
     const std::string& id = checkpoint.id;
-    log(std::format("[Checkpoint] {}: start, {} events", id, checkpoint.events.size()));
+    log(checkpoint_start_line(id, checkpoint.events.size()));
     std::optional<std::string> failing = first_failing(checkpoint.start, state);
     if (failing){
         return stop_checkpoint(report, log, id, outcome_failed("start_failed", *failing));

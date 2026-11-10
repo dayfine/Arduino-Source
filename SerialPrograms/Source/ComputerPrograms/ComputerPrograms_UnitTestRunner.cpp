@@ -89,6 +89,8 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     Pokemon::add_tests_StoryStepJson(ret);
     Pokemon::add_tests_StoryArgs(ret);
     Pokemon::add_tests_AuthoredCheckpointJson(ret);
+    Pokemon::add_tests_StoryLog(ret);
+    Pokemon::add_tests_StoryRangeOptions(ret);
     NintendoSwitch::add_tests_CheckOnlineDetector(ret);
     NintendoSwitch::add_tests_FailedToConnectDetector(ret);
     NintendoSwitch::add_tests_UpdatePopupDetector(ret);
