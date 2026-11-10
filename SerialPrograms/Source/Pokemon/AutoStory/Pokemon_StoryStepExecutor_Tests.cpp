@@ -641,7 +641,7 @@ UnitTestResult test_story_stats(){
         CheckpointRun{.id = "00.05", .passed = false, .attempts = 1},
     };
     AutoStoryStats stats;
-    record_story_counts(stats, report.story_counts());
+    record_story_counts(report.story_counts(), stats);
     if (stats.m_segment != 1 || stats.m_checkpoint != 2 || stats.m_reset != 2){
         return "Expected 1 segment, 2 checkpoints and 2 resets.";
     }
