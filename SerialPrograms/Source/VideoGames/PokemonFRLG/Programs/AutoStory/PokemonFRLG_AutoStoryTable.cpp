@@ -10,6 +10,7 @@
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
 #include "Pokemon/AutoStory/Data/Pokemon_AuthoredCheckpointJson.h"
+#include "PokemonFRLG_AutoStoryItemUse.h"
 #include "PokemonFRLG_AutoStoryMart.h"
 #include "PokemonFRLG_AutoStoryParty.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
@@ -111,9 +112,36 @@ std::set<std::string> read_note_keys(const JsonObject& execution, std::string_vi
     return keys;
 }
 
+//  Checks the metadata's "postconditions": what the postcondition check
+//  after a run reads. "position" where the player ends, as a step's
+//  target; "items" the bag's counts by item; "flags" the game's flags
+//  that moved.
+void check_postconditions(const JsonObject& postconditions, std::string_view source){
+    only_fields(postconditions, {"position", "items", "flags"}, source);
+    if (const JsonValue* position = postconditions.get_value("position")){
+        const JsonObject& pose = position->to_object_throw(std::string(source));
+        only_fields(pose, {"map", "tiles", "facing"}, source);
+        pose.get_string_throw("map", std::string(source));
+        pose.get_array_throw("tiles", std::string(source));
+    }
+    if (const JsonValue* items = postconditions.get_value("items")){
+        for (const auto& [item, count] : items->to_object_throw(std::string(source))){
+            if (count.to_integer_throw(std::string(source)) < 0){
+                throw ParseException(std::format("{}: negative count of {}", source, item));
+            }
+        }
+    }
+    if (const JsonValue* flags = postconditions.get_value("flags")){
+        for (const JsonValue& flag : flags->to_array_throw(std::string(source))){
+            flag.to_string_throw(std::string(source));
+        }
+    }
+}
+
 //  The file without its "metadata", which the shared reader doesn't take
 //  (yet): {"phase": testing, verification or reproduction}, how far the
-//  checkpoint is trusted to save (the engine's save policy reads it).
+//  checkpoint is trusted to save (the engine's save policy reads it), and
+//  optionally "postconditions" (check_postconditions()).
 JsonValue without_metadata(const JsonValue& value, std::string_view source){
     JsonObject stripped;
     for (const auto& [key, field] : value.to_object_throw(std::string(source))){
@@ -123,9 +151,12 @@ JsonValue without_metadata(const JsonValue& value, std::string_view source){
         }
         const JsonObject& metadata = field.to_object_throw(std::string(source));
         for (const auto& [metadata_key, unused] : metadata){
-            if (metadata_key != "phase"){
+            if (metadata_key != "phase" && metadata_key != "postconditions"){
                 throw ParseException(std::format("{}: unsupported metadata field {}", source, metadata_key));
             }
+        }
+        if (const JsonValue* postconditions = metadata.get_value("postconditions")){
+            check_postconditions(postconditions->to_object_throw(std::string(source)), source);
         }
         const std::string& phase = metadata.get_string_throw("phase", std::string(source));
         if (phase != "testing" && phase != "verification" && phase != "reproduction"){
@@ -165,9 +196,10 @@ StoryCheckpoint read_story_checkpoint_file(const JsonValue& value, std::string_v
             throw ParseException(std::format("{}: notes for unknown step {}", source, key));
         }
     }
-    //  A Mart spends money and a TEACH a TM: once per save.
+    //  A Mart spends money, a TEACH a TM, and the Bicycle's registration is
+    //  saved with the game: once per save.
     for (StoryStep& step : checkpoint.steps){
-        step.once_per_save = step.action == MART_ACTION || step.action == TEACH_ACTION;
+        step.once_per_save = step.action == MART_ACTION || step.action == TEACH_ACTION || step.action == REGISTER_BIKE_VARIANT;
     }
     return checkpoint;
 }

@@ -24,6 +24,8 @@
 #include "PokemonFRLG_OverworldLateBattle.h"
 #include "PokemonFRLG_OverworldMaps.h"
 #include "PokemonFRLG_OverworldSim.h"
+#include "PokemonFRLG_OverworldSimField.h"
+#include "PokemonFRLG_OverworldSpin.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -986,6 +988,8 @@ void add_tests_OverworldSim(UnitTestDatabase& database){
     }
     add_tests_OverworldLateBattle(database);
     add_tests_OverworldWarpFade(database);
+    add_tests_OverworldSpin(database);
+    add_tests_OverworldBike(database);
 }
 
 

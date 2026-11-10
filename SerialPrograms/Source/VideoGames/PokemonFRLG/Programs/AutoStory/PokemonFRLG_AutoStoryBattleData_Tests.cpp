@@ -140,6 +140,38 @@ UnitTestResult test_story_trainers(){
     return true;
 }
 
+//  The Rocket Hideout's battles, which no table row fights yet (the
+//  00.31 and 00.32 drafts): each names its map's trainer, with pret's
+//  party.
+UnitTestResult test_hideout_trainers(){
+    struct Expected{
+        std::string map;
+        std::string battle;
+        std::vector<std::string> party;
+    };
+    const Expected EXPECTED[] = {
+        {"CeladonCity_GameCorner", "rocket_grunt", {"raticate", "zubat"}},
+        {"RocketHideout_B4F", "lift_key_grunt", {"koffing", "zubat"}},
+        {"RocketHideout_B4F", "left_guard", {"sandshrew", "ekans", "sandslash"}},
+        {"RocketHideout_B4F", "right_guard", {"ekans", "sandshrew", "arbok"}},
+        {"RocketHideout_B4F", "giovanni", {"onix", "rhyhorn", "kangaskhan"}},
+    };
+    for (const Expected& expected : EXPECTED){
+        const std::optional<std::string_view> trainer = story_trainer(expected.map, expected.battle);
+        if (!trainer){
+            return std::format("{} on {}: no trainer.", expected.battle, expected.map);
+        }
+        const std::vector<std::string> on_map = map_trainers(expected.map);
+        if (std::find(on_map.begin(), on_map.end(), *trainer) == on_map.end()){
+            return std::format("{} on {}: {} isn't one of the map's trainers.", expected.battle, expected.map, *trainer);
+        }
+        if (trainer_party(*trainer) != expected.party){
+            return std::format("{} on {}: {} hasn't the expected party.", expected.battle, expected.map, *trainer);
+        }
+    }
+    return true;
+}
+
 //  Mt. Moon: Super Nerd Miguel's Grimer (Poison) takes Water Gun, with or
 //  without Bite known: Bite (60, Dark) ties Water Gun (40 x 1.5 STAB), both
 //  special, and the tie goes to the plan's Water Gun.
@@ -207,6 +239,10 @@ const AutoStoryBattleDataTestCase AUTO_STORY_BATTLE_DATA_CASES[] = {
     {
         .input = {.name = "every story battle fights a trainer with a party", .body = test_story_trainers},
         .expectation = {.description = "ensures all scripted story battles encounter valid teams"},
+    },
+    {
+        .input = {.name = "the Rocket Hideout's Grunts and Giovanni", .body = test_hideout_trainers},
+        .expectation = {.description = "names each hideout battle's trainer and party"},
     },
     {
         .input = {.name = "Miguel's Grimer: Water Gun", .body = test_miguel_grimer},

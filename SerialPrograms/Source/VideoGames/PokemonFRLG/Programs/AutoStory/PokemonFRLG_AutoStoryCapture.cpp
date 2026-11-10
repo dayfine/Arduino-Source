@@ -23,6 +23,7 @@
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryGameArgs.h"
+#include "PokemonFRLG_AutoStoryPacing.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -480,9 +481,8 @@ ConsoleCaptureActions::ConsoleCaptureActions(
 {}
 
 bool ConsoleCaptureActions::find_encounter(Direction pace){
-    PaceSpot spot;
-    ConsolePatchSteps steps(m_console, m_context, pace, spot, m_trainer_battle);
-    return pace_until_battle(m_console.logger(), steps, PACE_MAX_STEPS);
+    ConsolePatchSteps steps(m_console, m_context, pace, m_spot, m_trainer_battle);
+    return find_paced_encounter(m_console.logger(), console_bike_select(m_console, m_context), steps);
 }
 
 EncounterSeen ConsoleCaptureActions::read_encounter(){

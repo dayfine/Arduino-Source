@@ -13,6 +13,7 @@
 #include "PokemonFRLG_OverworldLateBattle.h"
 #include "PokemonFRLG_OverworldReanchor.h"
 #include "PokemonFRLG_OverworldWalk.h"
+#include "PokemonFRLG_OverworldBike.h"
 #include "PokemonFRLG_OverworldSim.h"
 
 namespace PokemonAutomation{
@@ -96,8 +97,6 @@ namespace{
 constexpr Milliseconds NO_BATTLE_WAIT(15000);
 constexpr Milliseconds BATTLE_TIME(10000);
 constexpr Milliseconds MESSAGE_CLOSE(1000);
-//  The questions, "<MON> used CUT!" and the tree falling.
-constexpr Milliseconds CUT_TIME(4000);
 //  Rows of black below a small room, seen from this near its bottom.
 constexpr int BLACK_BELOW_ROWS = 5;
 constexpr int SMALL_ROOM_ROWS = 20;
@@ -147,8 +146,10 @@ OverworldSim::OverworldSim(std::vector<MapData> maps, MapPosition start, Directi
     if (m_map < 0){
         throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Sim: start on a map that isn't loaded: " + start.map);
     }
+    add_coded_field();
     m_player = PlayerState{start.point, elevation_at(map(), start.point), false};
     m_state.facing = facing;
+    m_state.on_bike = m_script.on_bike;
     show(m_script.start_menu_open ? SimScreen::START_MENU : SimScreen::OVERWORLD, m_now);
     update_view();
 }
@@ -243,7 +244,13 @@ std::optional<SimSeen> OverworldSim::watch_until(const std::vector<SimWatcher>& 
 
 std::optional<OverworldSim::Step> OverworldSim::take_warp(int map_index, const TilePos& tile) const{
     const MapWarp* warp = warp_at(m_maps[map_index], tile);
-    if (warp == nullptr || !warp->to){
+    if (warp == nullptr){
+        return std::nullopt;
+    }
+    if (m_lift_floor && m_script.lift_floors.contains(m_maps[map_index].name)){
+        return lift_warp(map_index);
+    }
+    if (!warp->to){
         return std::nullopt;
     }
     const int destination = find_map(m_maps, warp->to->map);
@@ -309,13 +316,15 @@ std::optional<OverworldSim::Step> OverworldSim::press(Direction direction) const
     if (kind != StepKind::WALK){
         return std::nullopt;
     }
-    const Step step{m_map, after_step_onto(map(), m_player, map(), ahead, kind), false, false, false};
+    Step step{m_map, after_step_onto(map(), m_player, map(), ahead, kind), false, false, false};
     if (warps_on_step(map(), ahead)){
         return take_warp(m_map, ahead);
     }
+    if (!slide_on(step)){
+        return std::nullopt;
+    }
     return step;
 }
-
 
 //  A trainer on the player's map who sees them now walks up and speaks.
 bool OverworldSim::trainer_sees(Milliseconds pressed){
@@ -348,6 +357,9 @@ bool OverworldSim::trainer_sees(Milliseconds pressed){
 //  game stopped them there: a warp, a trainer, a wild battle.
 bool OverworldSim::after_step(const Step& step, Milliseconds pressed){
     const SimTiming& timing = m_script.timing;
+    if (step.warped && black_without_warp(pressed)){
+        return true;
+    }
     m_map = step.map;
     m_player = step.player;
     m_state.steps++;
@@ -358,6 +370,11 @@ bool OverworldSim::after_step(const Step& step, Milliseconds pressed){
             m_maps[index].objects.push_back(tree);
         }
         m_cut_trees.clear();
+        if (m_state.on_bike){
+            //  A door takes the player off (the user's; not measured).
+            m_state.on_bike = false;
+            note("the warp takes the player off the Bicycle.");
+        }
         m_frozen = true;
         schedule(pressed + timing.tile, SimScreen::FADE, false);
         schedule(pressed + timing.tile + timing.fade, SimScreen::OVERWORLD, true);
@@ -458,13 +475,13 @@ void OverworldSim::bump(Direction direction, Milliseconds pressed){
 
 //  The steps a hold of `duration` takes, `short_by` fewer.
 void OverworldSim::walk_hold(Direction direction, Milliseconds duration, int short_by){
-    const Milliseconds tile = m_script.timing.tile;
+    const Milliseconds tile = tile_time();
     const Milliseconds end = m_now + duration;
     Milliseconds pressed = m_now;
     if (m_state.facing != direction){
-        //  Holding through a turn lost a tile on the console.
+        //  Holding through a turn lost a tile on the console, on foot.
+        pressed += m_state.on_bike ? Milliseconds(0) : tile;
         m_state.facing = direction;
-        pressed += tile;
     }
     take_steps(direction, pressed, end, (int)((end - pressed + tile - 1ms) / tile) - short_by);
 }
@@ -472,7 +489,7 @@ void OverworldSim::walk_hold(Direction direction, Milliseconds duration, int sho
 //  Up to `left` steps of a hold of `direction` until `end`, the first
 //  pressed at `pressed`.
 void OverworldSim::take_steps(Direction direction, Milliseconds pressed, Milliseconds end, int left){
-    const Milliseconds tile = m_script.timing.tile;
+    const Milliseconds tile = tile_time();
     for (; left > 0 && pressed < end; left--){
         const std::optional<Step> step = press(direction);
         if (!step){
@@ -491,6 +508,7 @@ void OverworldSim::take_steps(Direction direction, Milliseconds pressed, Millise
         if (step->walked_out){
             m_state.facing = Direction::SOUTH;
         }
+        pressed += after_slide(*step);
         if (after_step(*step, pressed)){
             return;
         }
@@ -509,7 +527,6 @@ void OverworldSim::stuck_hold(Direction direction){
     }
 }
 
-
 std::optional<SimSeen> OverworldSim::hold(
     Direction direction, Milliseconds duration, Milliseconds release, Milliseconds watch,
     const std::vector<SimWatcher>& watchers
@@ -519,6 +536,8 @@ std::optional<SimSeen> OverworldSim::hold(
     m_last_tap.reset();
     if (m_state.screen != SimScreen::OVERWORLD || m_frozen){
         stuck_hold(direction);
+    }else if (m_state.on_bike && duration <= MovementMechanics::LONGEST_TAP && drops_bike_tap(start)){
+        //  Dropped: no step.
     }else if (duration <= MovementMechanics::LONGEST_TAP && m_state.facing == direction){
         //  A hold as short as a tap is one (a one-tile leg).
         step_tap(direction, duration);
@@ -537,9 +556,11 @@ void OverworldSim::tap(Direction direction, Milliseconds duration, Milliseconds 
         m_last_tap.reset();
     }else if (m_last_tap && m_last_tap->direction == direction && m_last_tap->end == start){
         hold_on(direction, start + duration);
-    }else if (m_state.facing != direction){
+    }else if (m_state.on_bike && drops_bike_tap(start)){
+        m_last_tap.reset();
+    }else if (m_state.facing != direction && !m_state.on_bike){
         //  From a standstill a tap only turns the player, even one as long
-        //  as LONGEST_TAP.
+        //  as LONGEST_TAP. Not on the Bicycle: there it steps.
         m_last_tap = TapPress{direction, start, start + duration, m_state.facing, 0};
         if (drops_turn_tap()){
             m_state.turn_taps_dropped++;
@@ -558,7 +579,7 @@ void OverworldSim::tap(Direction direction, Milliseconds duration, Milliseconds 
 void OverworldSim::step_tap(Direction direction, Milliseconds duration){
     const Milliseconds start = m_now;
     m_last_tap = TapPress{direction, start, start + duration, direction, 0};
-    if (m_last_step_tap && start < *m_last_step_tap + MovementMechanics::STEP_TAP_LOCKOUT){
+    if (!m_state.on_bike && m_last_step_tap && start < *m_last_step_tap + MovementMechanics::STEP_TAP_LOCKOUT){
         m_state.step_taps_ignored++;
         note(std::format(
             "the step tap {} is ignored, {} ms after the last.",
@@ -578,7 +599,7 @@ void OverworldSim::step_tap(Direction direction, Milliseconds duration){
 //  hold, from the last one's start until `end`.
 void OverworldSim::hold_on(Direction direction, Milliseconds end){
     TapPress& press = *m_last_tap;
-    const Milliseconds tile = m_script.timing.tile;
+    const Milliseconds tile = tile_time();
     Milliseconds pressed = press.start;
     if (press.facing_before != direction){
         pressed += tile;
@@ -651,26 +672,6 @@ bool OverworldSim::close_message(){
     return true;
 }
 
-bool OverworldSim::cut_tree(){
-    std::vector<MapObject>& objects = m_maps[m_map].objects;
-    const TilePos ahead = m_player.position.next(m_state.facing);
-    for (size_t c = 0; c < objects.size(); c++){
-        if (objects[c].name == "cut_tree" && objects[c].x == ahead.x && objects[c].y == ahead.y
-            && m_state.screen == SimScreen::OVERWORLD && !m_frozen
-        ){
-            m_cut_trees.emplace_back(m_map, objects[c]);
-            objects.erase(objects.begin() + c);
-            advance_to(m_now + CUT_TIME);
-            note("cut the tree on " + to_string(MapPosition{map().name, ahead}) + ".");
-            return true;
-        }
-    }
-    violation("no tree to cut " + std::string(direction_name(m_state.facing)) + " of " + to_string(m_state.position) + ".");
-    return false;
-}
-
-
-
 //
 //  OverworldSimWalker
 //
@@ -693,10 +694,10 @@ Milliseconds delay_of(const OverworldInterrupts& interrupts, size_t index){
 
 } // namespace
 
-
 OverworldSimWalker::OverworldSimWalker(OverworldSim& sim, SimWalkerRules rules, const OverworldInterruptSet& walker)
     : m_sim(sim)
     , m_rules(rules)
+    , m_riding(rules.speed == MoveSpeed::BIKE)
 {
     //  In the walker's order: battles first.
     m_wild = {
@@ -759,6 +760,12 @@ size_t OverworldSimWalker::clear_late(const std::vector<Interrupt>& interrupts, 
     }
 }
 
+void OverworldSimWalker::wait_out_slide(const RouteStep& step){
+    if (step.spin_tiles){
+        m_sim.watch({}, SPIN_TILE_TIME * *step.spin_tiles + SPIN_STOP_SETTLE);
+    }
+}
+
 void OverworldSimWalker::check_overworld(const RouteStep& step){
     const SimScreen screen = m_sim.state().screen;
     if (m_rules.check_overworld && (screen == SimScreen::START_MENU || screen == SimScreen::MESSAGE)){
@@ -771,28 +778,26 @@ std::optional<SimSeen> OverworldSimWalker::hold_watching(const RouteStep& step, 
 }
 
 //  Whether a warp's fade showed and was over between `from` and now.
-bool OverworldSimWalker::fade_over_since(Milliseconds from) const{
-    const SimState& state = m_sim.state();
-    if (state.screen == SimScreen::FADE){
-        return false;
-    }
-    return std::any_of(
-        state.shown.begin(), state.shown.end(),
-        [&](const SimShown& shown){ return shown.screen == SimScreen::FADE && shown.at >= from; }
-    );
-}
-
 //  wait_out_warp(), then run_from_battle_after_warp(): false if the fade
 //  was a wild battle's, run from. wait_out_warp()'s watcher takes a wild
 //  battle's wipe for the fade (run 7; console B, 2026-11-03, Mt. Moon 1F):
 //  the battle screen stands in for the wipe. The fade is watched for from
-//  `watched_from`: a fade over by then is missed.
+//  `watched_from`: a fade over by then is missed. No warp: a step more,
+//  twice: a hold ends up to two tiles short, and an arrow warp (stairs)
+//  fires on the press made standing on it.
 bool OverworldSimWalker::after_warp(const RouteStep& step, int warps_before, Milliseconds watched_from){
-    if (m_sim.state().warps == warps_before){
-        if (!m_sim.watch({SimWatcher::BATTLE_SCREEN}, WARP_TIMEOUT)){
-            fail("walk_overworld_route(): no fade in and out after walking onto the warp to " + step.end.map + ".");
+    if (black_without_warp(step, warps_before, watched_from)){
+        return true;
+    }
+    bool battle = false;
+    if (m_sim.state().warps == warps_before && !(battle = m_sim.watch({SimWatcher::BATTLE_SCREEN}, WARP_TIMEOUT).has_value())){
+        for (int tap = 0; tap < 2 && m_sim.state().warps == warps_before; tap++){
+            m_log.push_back("Route: no fade; one more step into the warp.");
+            watched_from = m_sim.state().time;
+            m_sim.tap(step.direction, STEP_TAP, STEP_TAP_RELEASE);
         }
-    }else if (!fade_over_since(watched_from) && !m_sim.watch({SimWatcher::FADE}, WARP_TIMEOUT)){
+    }
+    if (!battle && (m_sim.state().warps == warps_before || (!fade_over_since(watched_from) && !m_sim.watch({SimWatcher::FADE}, WARP_TIMEOUT)))){
         fail("walk_overworld_route(): no fade in and out after walking onto the warp to " + step.end.map + ".");
     }
     m_sim.watch({}, AFTER_WARP);
@@ -815,7 +820,7 @@ std::optional<WalkedTiles> OverworldSimWalker::walk_step(const RouteStep& step, 
     if (step.action != RouteAction::WALK){
         fail("Sim: Surf isn't modelled.");
     }
-    if (facing != step.direction){
+    if (turns_first(step, m_speed, facing)){
         sim_turn_to(m_sim, step.direction, m_rules.confirm_turn);
     }
     const int warps_before = m_sim.state().warps;
@@ -824,7 +829,7 @@ std::optional<WalkedTiles> OverworldSimWalker::walk_step(const RouteStep& step, 
     leg.direction = step.direction;
     leg.tiles = step.tiles + step.warp_slack;
     leg.to_wall = step.to_wall;
-    leg.tile_time = TILE_TIME;
+    leg.tile_time = tile_time(step, m_speed);
     leg.stop_on_interrupt = !step.to_wall;
     leg.stop_if_blocked = step.to_wall && m_rules.stop_if_blocked;
     if (m_rules.hold_over_connections){
@@ -846,6 +851,7 @@ std::optional<WalkedTiles> OverworldSimWalker::walk_step(const RouteStep& step, 
     if (result.stopped){
         return dark_stop(step, walked_near(step, result.tiles, TILE_TIME));
     }
+    wait_out_slide(step);
     const Milliseconds fade_watched_from = m_rules.watch_fade_along_hold ? m_leg_start : m_sim.state().time;
     if (step.warps && !after_warp(step, warps_before, fade_watched_from)){
         if (!m_rules.find_player_after_warp_battle){
@@ -858,7 +864,7 @@ std::optional<WalkedTiles> OverworldSimWalker::walk_step(const RouteStep& step, 
 }
 
 //  walk_and_watch().
-StepOutcome OverworldSimWalker::walk(const RouteStep& step, std::optional<Direction> facing){
+StepOutcome OverworldSimWalker::walk_ridden(const RouteStep& step, std::optional<Direction> facing){
     if (m_rules.battle_before_step && battle_on_its_way()){
         m_log.push_back("Route: " + std::string(sim_screen_name(m_sim.state().screen)) + " before " + to_string(step) + ": watching on for a wild battle set off before it.");
         if (clear_late(m_wild, UNSEEN_BATTLE_WATCH, MAX_INTERRUPTIONS_PER_LEG) > 0){
@@ -870,7 +876,12 @@ StepOutcome OverworldSimWalker::walk(const RouteStep& step, std::optional<Direct
         clear_late(interrupts(step), OPEN_MESSAGE_WATCH, 1);
     }
     check_overworld(step);
-    if (const std::optional<WalkedTiles> walked = walk_step(step, facing)){
+    if (counts_step_taps(step) || (m_rules.count_bike_taps && counts_bike_taps(step, m_speed))){
+        const StepOutcome outcome = counts_step_taps(step) ? walk_step_taps(step) : walk_bike_taps(step);
+        if (outcome.end != StepEnd::DONE){
+            return outcome;
+        }
+    }else if (const std::optional<WalkedTiles> walked = walk_step(step, facing)){
         return StepOutcome{.end = StepEnd::STOPPED, .walked = walked};
     }
     if (step.action == RouteAction::FACE){
@@ -921,6 +932,8 @@ size_t OverworldSimWalker::clear_unseen_battle(const RouteStep& step){
 }
 
 void OverworldSimWalker::hold_to_warp(const RouteStep& step){
+    //  The warp it holds on to takes the player off the Bicycle.
+    m_riding = false;
     const std::vector<Interrupt>& ints = interrupts(step);
     std::vector<SimWatcher> fade_first{SimWatcher::FADE};
     for (const SimWatcher watcher : watchers(ints)){
@@ -967,23 +980,6 @@ RouteCalls OverworldSimWalker::calls(){
     return calls;
 }
 
-void sim_turn_to(OverworldSim& sim, Direction direction, bool confirm){
-    for (size_t tap = 1; tap <= MAX_TURN_TAPS; tap++){
-        sim.tap(direction);
-        const SimState& state = sim.state();
-        if (!confirm || state.screen != SimScreen::OVERWORLD || state.facing == direction){
-            return;
-        }
-    }
-}
-
-void sim_step_once(OverworldSim& sim, Direction direction){
-    if (sim.state().facing != direction){
-        sim_turn_to(sim, direction);
-    }
-    sim.tap(direction, STEP_TAP, STEP_TAP_RELEASE);
-}
-
 std::string OverworldSimWalker::run(const std::vector<RouteStep>& route, const RoutePlanning& planning){
     try{
         run_route(route, m_sim.state().facing, &planning, calls());
@@ -992,8 +988,6 @@ std::string OverworldSimWalker::run(const std::vector<RouteStep>& route, const R
     }
     return "";
 }
-
-
 
 } // namespace PokemonFRLG
 } // namespace NintendoSwitch

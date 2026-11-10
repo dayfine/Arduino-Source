@@ -76,6 +76,8 @@ private:
             {"route-10", "Route 10"},
             {"lavender-town", "Lavender Town"},
             {"vermilion-city", "Vermilion City"},
+            {"celadon-city", "Celadon City"},
+            {"rocket-hideout", "Rocket Hideout"},
         }){
             JsonArray names;
             names.push_back(name);

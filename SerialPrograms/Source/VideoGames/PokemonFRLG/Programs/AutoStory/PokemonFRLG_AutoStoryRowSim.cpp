@@ -13,10 +13,18 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
+#include "PokemonFRLG_AutoStoryLegs.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
+#include "PokemonFRLG_AutoStoryHideout.h"
+#include "PokemonFRLG_AutoStoryHideoutLift.h"
+#include "PokemonFRLG_AutoStoryRooms.h"
+#include "PokemonFRLG_AutoStoryRoomLegs.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryViridianMart.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSimField.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -373,6 +381,8 @@ Pokemon::StoryAction OverworldStepSim::action(StoryActionId id){
     case StoryActionId::BATTLE:
         body = &OverworldStepSim::battle;
         break;
+    case StoryActionId::GAME:
+        return hideout_or_stub();
     default:
         return m_stubs.stub();
     }
@@ -513,13 +523,104 @@ std::string OverworldStepSim::cut(const StoryStep& step){
     if (m_sim.state().facing != direction){
         sim_turn_to(m_sim, direction);
     }
-    if (!m_sim.cut_tree()){
+    if (!m_sim.use_field(SimField::CUT_TREE)){
         return "no tree to cut.";
     }
     sim_step_once(m_sim, direction);
     m_at = StoryPose{m_at.map, m_at.tile.next(direction), direction};
     if (!(m_sim.state().position == MapPosition{m_at.map, m_at.tile})){
         return "expected to step onto the tree's tile " + to_string(MapPosition{m_at.map, m_at.tile}) + ".";
+    }
+    return "";
+}
+
+namespace{
+
+//  walk_room_legs() on the sim: a step tap a tile, each warp's fade and
+//  the walk out of a door waited out.
+void sim_walk_room_legs(OverworldSim& sim, const std::vector<RoomLeg>& legs){
+    for (const RoomLeg& leg : legs){
+        if (leg.tiles == 0){
+            sim_turn_to(sim, leg.direction);
+            continue;
+        }
+        for (int tile = 0; tile < leg.tiles; tile++){
+            sim_step_once(sim, leg.direction);
+        }
+        if (leg.warps){
+            sim.watch({}, OverworldWalkSteps::AFTER_WARP);
+        }
+    }
+}
+
+} // namespace
+
+namespace{
+
+//  Whether the sim can walk a Pokemon Center's way in or out of `step`:
+//  the map it ends on is built into the program. Celadon's Center has no
+//  map yet (00.30), so its way in is stubbed.
+bool center_walkable(const StoryStep& step){
+    if (!is_center_variant(step.action)){
+        return false;
+    }
+    const std::optional<StoryPose> after = step.pose_after ? story_pose(Pokemon::pose_of(*step.pose_after)) : std::nullopt;
+    const std::vector<std::pair<std::string, std::string>>& maps = overworld_map_json();
+    return after && std::any_of(maps.begin(), maps.end(), [&](const auto& map){ return map.first == after->map; });
+}
+
+} // namespace
+
+//  A scripted GAME step on the sim: the poster's switch, the lift's ride
+//  (its room coded, SimScript::lift_floors, rows as on the panel), or a
+//  Pokemon Center's way in or out (center_walkable()); any other GAME step
+//  is stubbed.
+Pokemon::StoryAction OverworldStepSim::hideout_or_stub(){
+    Pokemon::StoryAction stub = m_stubs.stub();
+    Pokemon::StoryAction sim = played([this](RunState&, const StoryStep& step){
+        const std::string failure = hideout(step);
+        return failure.empty() ? Pokemon::outcome_ok() : Pokemon::outcome_failed("sim_failure", failure);
+    });
+    sim.act = [stub, played_act = sim.act](RunState& state, const StoryStep& step){
+        return is_hideout_step(step) || center_walkable(step)
+            ? played_act(state, step)
+            : stub.act(state, step);
+    };
+    sim.needs_console = stub.needs_console;
+    return sim;
+}
+
+std::string OverworldStepSim::hideout(const StoryStep& step){
+    if (step.action == POSTER_SWITCH_VARIANT){
+        return m_sim.use_field(SimField::POSTER_SWITCH) ? "" : "no poster ahead.";
+    }
+    if (is_center_variant(step.action)){
+        sim_walk_room_legs(m_sim, center_legs(step.action));
+        return ended_on(step);
+    }
+    const std::optional<LiftRide> ride = parse_lift_floor_step(step);
+    if (!ride){
+        return "no lift ride \"" + step.action + "\".";
+    }
+    sim_walk_room_legs(m_sim, lift_in_legs());
+    if (!m_sim.use_field(SimField::LIFT_FLOOR, ride->to)){
+        return "no lift panel for \"" + step.action + "\".";
+    }
+    sim_walk_room_legs(m_sim, lift_out_legs());
+    return ended_on(step);
+}
+
+//  After a scripted step: the player's pose, and whether it is the step's
+//  pose_after, if it has one.
+std::string OverworldStepSim::ended_on(const StoryStep& step){
+    const SimState& state = m_sim.state();
+    m_at = StoryPose{state.position.map, state.position.point, state.facing};
+    if (!step.pose_after){
+        return "";
+    }
+    const std::optional<StoryPose> expected = story_pose(Pokemon::pose_of(*step.pose_after));
+    if (!expected || !(MapPosition{expected->map, expected->tile} == state.position)){
+        return "expected to end on " + (expected ? to_string(MapPosition{expected->map, expected->tile}) : std::string("a pose")) + ".";
     }
     return "";
 }

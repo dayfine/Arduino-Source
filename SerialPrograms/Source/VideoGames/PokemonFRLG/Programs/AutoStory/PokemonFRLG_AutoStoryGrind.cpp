@@ -11,6 +11,7 @@
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryGameArgs.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
+#include "PokemonFRLG_AutoStoryPacing.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -329,7 +330,7 @@ bool ConsoleGrindActions::find_encounter(Direction pace){
     //  As ConsoleCaptureActions::find_encounter(), keeping track of the
     //  tile: a battle starts on the tile just stepped onto.
     ConsolePatchSteps steps(m_console, m_context, pace, m_spot, m_trainer_battle);
-    return pace_until_battle(m_console.logger(), steps, PACE_MAX_STEPS);
+    return find_paced_encounter(m_console.logger(), console_bike_select(m_console, m_context), steps);
 }
 
 EncounterSeen ConsoleGrindActions::read_encounter(){

@@ -86,6 +86,17 @@ constexpr StoryTrainer STORY_TRAINERS[] = {
     {.map = "RockTunnel_B1F", .battle = "hiker_dudley", .trainer = "TRAINER_HIKER_DUDLEY"},
     {.map = "RockTunnel_B1F", .battle = "pokemaniac_cooper", .trainer = "TRAINER_POKEMANIAC_COOPER"},
     {.map = "RockTunnel_1F", .battle = "picnicker_dana", .trainer = "TRAINER_PICNICKER_DANA"},
+    {.map = "Route8", .battle = "gamer_rich", .trainer = "TRAINER_GAMER_RICH"},
+    //  The Rocket Hideout, as PokeGuy's run fights it (the 00.31 and 00.32
+    //  drafts): the Grunt at the Game Corner's poster (11, 2)
+    //  (CeladonCity_GameCorner_EventScript_RocketGrunt); on B4F, Grunt1 at
+    //  (4, 2), who drops the LIFT KEY, the door guards Grunt2 (16, 14) and
+    //  Grunt3 (19, 14), and Giovanni (19, 4) (RocketHideout_B4F scripts.inc).
+    {.map = "CeladonCity_GameCorner", .battle = "rocket_grunt", .trainer = "TRAINER_TEAM_ROCKET_GRUNT_7"},
+    {.map = "RocketHideout_B4F", .battle = "lift_key_grunt", .trainer = "TRAINER_TEAM_ROCKET_GRUNT_18"},
+    {.map = "RocketHideout_B4F", .battle = "left_guard", .trainer = "TRAINER_TEAM_ROCKET_GRUNT_16"},
+    {.map = "RocketHideout_B4F", .battle = "right_guard", .trainer = "TRAINER_TEAM_ROCKET_GRUNT_17"},
+    {.map = "RocketHideout_B4F", .battle = "giovanni", .trainer = "TRAINER_BOSS_GIOVANNI"},
 };
 
 using JsonTable = std::map<std::string, JsonValue, std::less<>>;
