@@ -3,7 +3,7 @@
   "game": "plza",
   "checkpoint": {
     "id": "01.02",
-    "title": "Main Mission 01: Pancham, the starter and Andi",
+    "title": "Main Mission 01: chase Pancham to the battle area",
     "start": {
       "map": "LumioseCity"
     },
@@ -34,35 +34,6 @@
         "args": {
           "min_length_ms": 20000
         }
-      },
-      {
-        "id": "approach_starter",
-        "kind": "game_action",
-        "why": "step 13: walk up to the starter (only Chikorita's walk was recorded)",
-        "action": "approach_starter"
-      },
-      {
-        "id": "talk_to_starter",
-        "kind": "talk",
-        "why": "step 13: A at \"A Talk Chikorita\""
-      },
-      {
-        "id": "andi_battle_start",
-        "kind": "game_action",
-        "why": "steps 14-15: choose it, the pre-battle talk, \"Go! Chikorita!\", the battling tutorial",
-        "action": "story_battle_start"
-      },
-      {
-        "id": "andi_battle",
-        "kind": "game_action",
-        "why": "step 16: beat Andi's Pancham (Lv 6), until Andi's speech",
-        "action": "story_battle"
-      },
-      {
-        "id": "after_andi",
-        "kind": "scene",
-        "why": "step 17: fist bump, night in the Battle Zone, the Main Mission 02 banner and its autosave",
-        "action": "a"
       }
     ],
     "metadata": {
