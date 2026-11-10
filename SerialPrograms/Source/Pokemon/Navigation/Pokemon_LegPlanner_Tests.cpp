@@ -13,7 +13,7 @@
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon_LegPlanner.h"
-#include "Pokemon_Navigation_Tests.h"
+#include "Pokemon_LegPlanner_Tests.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -98,7 +98,7 @@ std::string describe(const std::vector<Leg<TilePos>>& legs){
         if (leg.warps){
             text += " (warp)";
         }
-        text += " -> " + to_string(leg.end);
+        text += std::format(" -> {}", to_string(leg.end));
     }
     return text;
 }
@@ -131,10 +131,10 @@ UnitTestResult test_prefers_wall_legs(){
     });
     const auto legs = plan(game, {0, 0}, {2, 1});
     if (!legs || legs->size() != 2){
-        return "Expected 2 legs:" + (legs ? describe(*legs) : std::string(" none"));
+        return std::format("Expected 2 legs:{}", legs ? describe(*legs) : " none");
     }
     if ((*legs)[1].direction != Direction::EAST || !(*legs)[1].to_wall){
-        return "Expected to end going east into the pillar:" + describe(*legs);
+        return std::format("Expected to end going east into the pillar:{}", describe(*legs));
     }
     return true;
 }
@@ -148,7 +148,7 @@ UnitTestResult test_person_is_not_a_wall(){
     });
     const auto legs = plan(game, {1, 1}, {2, 1});
     if (!legs || legs->size() != 1 || (*legs)[0].to_wall){
-        return "Expected one open leg:" + (legs ? describe(*legs) : std::string(" none"));
+        return std::format("Expected one open leg:{}", legs ? describe(*legs) : " none");
     }
     return true;
 }
@@ -167,7 +167,7 @@ UnitTestResult test_avoids_grass(){
     }
     for (const Leg<TilePos>& leg : *legs){
         if (leg.end.y == 1 && leg.end.x > 0 && leg.end.x < 4){
-            return "Walked into the grass:" + describe(*legs);
+            return std::format("Walked into the grass:{}", describe(*legs));
         }
     }
     return true;
@@ -186,7 +186,7 @@ UnitTestResult test_one_way_tile(){
     }
     const auto up = plan(game, {1, 2}, {1, 0});
     if (up){
-        return "Went up through the one-way tile:" + describe(*up);
+        return std::format("Went up through the one-way tile:{}", describe(*up));
     }
     return true;
 }
@@ -213,7 +213,7 @@ UnitTestResult test_warp_ends_leg(){
         }
     }
     if (!warped){
-        return "Expected a warp leg:" + describe(*legs);
+        return std::format("Expected a warp leg:{}", describe(*legs));
     }
     return true;
 }
@@ -224,7 +224,7 @@ UnitTestResult test_goal_facing(){
     });
     const auto legs = plan(game, {0, 0}, {2, 0}, std::nullopt, Direction::NORTH);
     if (!legs || legs->back().kind != LegKind::FACE || legs->back().direction != Direction::NORTH){
-        return "Expected to end facing north:" + (legs ? describe(*legs) : std::string(" none"));
+        return std::format("Expected to end facing north:{}", legs ? describe(*legs) : " none");
     }
     return true;
 }
@@ -236,14 +236,14 @@ UnitTestResult test_wild_leg(){
     });
     const auto through = plan(grass, {0, 0}, {3, 0});
     if (!through || through->size() != 1 || !(*through)[0].wild){
-        return "Expected one wild leg:" + (through ? describe(*through) : std::string(" none"));
+        return std::format("Expected one wild leg:{}", through ? describe(*through) : " none");
     }
     const ToyGame floor({
         "....",
     });
     const auto across = plan(floor, {0, 0}, {3, 0});
     if (!across || across->size() != 1 || (*across)[0].wild){
-        return "Expected one leg that isn't wild:" + (across ? describe(*across) : std::string(" none"));
+        return std::format("Expected one leg that isn't wild:{}", across ? describe(*across) : " none");
     }
     return true;
 }
@@ -261,11 +261,11 @@ UnitTestResult test_open_wild_stop(){
     });
     const auto plain = plan(game, {0, 0}, {3, 2});
     if (!plain || plain->empty() || (*plain)[0].to_wall || !(*plain)[0].wild || (*plain)[0].end.x != 3){
-        return "Without the weight, expected a wild leg east to stop in the open at x = 3:" + (plain ? describe(*plain) : std::string(" none"));
+        return std::format("Without the weight, expected a wild leg east to stop in the open at x = 3:{}", plain ? describe(*plain) : " none");
     }
     const auto weighed = plan(game, {0, 0}, {3, 2}, std::nullopt, std::nullopt, wild_stop_costs());
     if (!weighed || weighed->empty() || !(*weighed)[0].to_wall){
-        return "With the weight, expected to walk east to the wall:" + (weighed ? describe(*weighed) : std::string(" none"));
+        return std::format("With the weight, expected to walk east to the wall:{}", weighed ? describe(*weighed) : " none");
     }
     return true;
 }
@@ -279,7 +279,7 @@ UnitTestResult test_open_stop_without_grass(){
     });
     const auto legs = plan(game, {0, 0}, {3, 2}, std::nullopt, std::nullopt, wild_stop_costs());
     if (!legs || legs->empty() || (*legs)[0].to_wall || (*legs)[0].wild || (*legs)[0].end.x != 3){
-        return "Expected to stop in the open at x = 3:" + (legs ? describe(*legs) : std::string(" none"));
+        return std::format("Expected to stop in the open at x = 3:{}", legs ? describe(*legs) : " none");
     }
     return true;
 }
@@ -305,15 +305,15 @@ UnitTestResult test_wild_ends_with_leg(){
     });
     const auto legs = plan(game, {0, 0}, {4, 2}, std::nullopt, std::nullopt, wild_stop_costs());
     if (!legs || legs->size() != 3){
-        return "Expected 3 legs:" + (legs ? describe(*legs) : std::string(" none"));
+        return std::format("Expected 3 legs:{}", legs ? describe(*legs) : " none");
     }
     const Leg<TilePos>& east = (*legs)[0];
     const Leg<TilePos>& south = (*legs)[1];
     if (!east.wild || !east.to_wall){
-        return "Expected a wild leg east to the wall:" + describe(*legs);
+        return std::format("Expected a wild leg east to the wall:{}", describe(*legs));
     }
     if (south.wild || south.to_wall || !(south.end == TilePos{2, 2})){
-        return "Expected the south leg to stop in the open at (2, 2):" + describe(*legs);
+        return std::format("Expected the south leg to stop in the open at (2, 2):{}", describe(*legs));
     }
     return true;
 }
@@ -346,7 +346,7 @@ struct LegPlannerTestCase{
 class Test_LegPlanner : public UnitTest{
 public:
     explicit Test_LegPlanner(LegPlannerTestCase scenario)
-        : UnitTest("Pokemon::LegPlanner - " + scenario.input.name)
+        : UnitTest(std::format("Pokemon::LegPlanner - {}", scenario.input.name))
         , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
