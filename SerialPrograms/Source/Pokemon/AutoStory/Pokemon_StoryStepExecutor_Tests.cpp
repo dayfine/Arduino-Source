@@ -126,6 +126,10 @@ StoryStep make(StoryStepKind kind, std::string name){
     StoryStep step;
     step.kind = kind;
     step.name = std::move(name);
+    //  As loading it would: the kind's built-in action's fallbacks.
+    if (const StoryActionSpec* spec = find_story_action(builtin_story_actions(), kind, "")){
+        step.args = with_fallbacks(*spec, {});
+    }
     return step;
 }
 
