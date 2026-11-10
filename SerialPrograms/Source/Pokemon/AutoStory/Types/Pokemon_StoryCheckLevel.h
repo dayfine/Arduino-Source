@@ -19,10 +19,18 @@ namespace Pokemon{
 
 //  How much a step reads the screen to confirm what it did.
 enum class StoryCheckLevel{
-    //  Confirm on screen: purchases, the Bag, status after battles, position.
+    //  Everything THOROUGH checks, each checkpoint run 3 times by default to
+    //  make sure it really passes.
+    TESTING,
+    //  Check everything for the user: Bag items, Pokemon stats,
+    //  preconditions.
     THOROUGH,
-    //  In a rush: trust counts and timings.
+    //  Assume most things are fine; check the most important ones.
+    DEFAULT,
+    //  Minimal checks.
     FAST,
+    //  Almost no checks, to be as fast as possible.
+    SPEEDRUN,
 };
 
 // Returns the readable string representation of a story check level.

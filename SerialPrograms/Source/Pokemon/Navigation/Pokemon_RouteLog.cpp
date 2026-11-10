@@ -36,11 +36,11 @@ std::string to_string(const RouteLogLeg& leg){
     case RouteLegAction::WALK:
         break;
     }
-    const char* end = leg.end == RouteLegEnd::WALL ? " (to wall)" : leg.end == RouteLegEnd::WARP ? " (warp)" : " (open)";
-    return direction + " " + std::to_string(leg.tiles) + end;
+    const std::string_view end = leg.end == RouteLegEnd::WALL ? " (to wall)" : leg.end == RouteLegEnd::WARP ? " (warp)" : " (open)";
+    return direction + " " + std::to_string(leg.tiles) + std::string(end);
 }
 
-const char* basis_name(EndBasis basis){
+std::string basis_name(EndBasis basis){
     switch (basis){
     case EndBasis::WALKED:
         return "walked";

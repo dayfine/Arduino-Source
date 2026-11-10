@@ -14,6 +14,8 @@
 #include "Common/Qt/QtThreadPool_Tests.h"
 #include "Kernels/Kernels_Tests.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.h"
+#include "Pokemon/AutoStory/Pokemon_StoryRun_Tests.h"
+#include "Pokemon/Options/Pokemon_StoryRangeOptions_Tests.h"
 #include "CommonFramework/AudioPipeline/AudioInfo_Tests.h"
 #include "CommonFramework/AudioPipeline/Tools/ChannelMixer.h"
 #include "CommonFramework/AudioPipeline/SinkPipeline_Tests.h"
@@ -81,6 +83,11 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     Pokemon::add_tests_ScreenEvents(ret);
     Pokemon::add_tests_Interrupts(ret);
     Pokemon::add_tests_Transitions(ret);
+    Pokemon::add_tests_StoryEvents(ret);
+    Pokemon::add_tests_StorySegments(ret);
+    Pokemon::add_tests_AutoStoryStats(ret);
+    Pokemon::add_tests_StoryLog(ret);
+    Pokemon::add_tests_StoryRangeOptions(ret);
     Pokemon::add_tests_AutoStory(ret);
     NintendoSwitch::add_tests_CheckOnlineDetector(ret);
     NintendoSwitch::add_tests_FailedToConnectDetector(ret);

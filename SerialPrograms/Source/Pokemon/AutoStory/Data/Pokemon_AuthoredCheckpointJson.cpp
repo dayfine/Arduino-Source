@@ -25,8 +25,9 @@ void validate_json_fields(
     }
 }
 
-AuthoredCheckpoint read_authored_checkpoint(
-    const JsonValue& value, std::string_view game, std::string_view source
+StoryCheckpoint read_authored_checkpoint(
+    const JsonValue& value, std::string_view game, std::string_view source,
+    const ExecutionReader& read_execution, std::span<const StoryActionSpec> actions
 ){
     const JsonObject& root = value.to_object_throw(std::string(source));
     validate_json_fields(root, {"format", "game", "checkpoint", "execution"}, source);
@@ -35,10 +36,9 @@ AuthoredCheckpoint read_authored_checkpoint(
     ){
         throw ParseException(std::format("{}: unsupported authored checkpoint format/game.", source));
     }
-    return {
-        .checkpoint = read_story_checkpoint(root.get_value_throw("checkpoint"), source),
-        .execution = root.get_object_throw("execution", std::string(source)).clone(),
-    };
+    StoryCheckpoint checkpoint = read_story_checkpoint(root.get_value_throw("checkpoint"), source, actions);
+    read_execution(root.get_object_throw("execution", std::string(source)), source);
+    return checkpoint;
 }
 
 JsonValue authored_checkpoint_json(const StoryCheckpoint& checkpoint, std::string_view game, JsonObject execution){
@@ -53,12 +53,13 @@ JsonValue authored_checkpoint_json(const StoryCheckpoint& checkpoint, std::strin
     return result;
 }
 
-AuthoredCheckpoint load_authored_checkpoint(
-    std::span<const EmbeddedJsonFile> files, std::string_view file, std::string_view game
+StoryCheckpoint load_authored_checkpoint(
+    std::span<const EmbeddedJsonFile> files, std::string_view file, std::string_view game,
+    const ExecutionReader& read_execution, std::span<const StoryActionSpec> actions
 ){
     for (const auto& [name, text] : files){
         if (name == file){
-            return read_authored_checkpoint(parse_json(text), game, file);
+            return read_authored_checkpoint(parse_json(text), game, file, read_execution, actions);
         }
     }
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Authored checkpoint is not embedded: " + std::string(file));
