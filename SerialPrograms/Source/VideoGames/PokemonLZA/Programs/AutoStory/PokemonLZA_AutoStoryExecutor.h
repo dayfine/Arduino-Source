@@ -64,9 +64,9 @@ struct StoryEnv{
     SingleSwitchProgramEnvironment& env;
     ProControllerContext& context;
     StarterChoice starter = StarterChoice::CHIKORITA;
-    //  The new game's name: upper case letters and digits, as
-    //  type_player_name() types them. The lab's player is Kosmos.
-    std::string player_name = "KOSMOS";
+    //  The new game's name: letters and digits; type_player_name() capitalizes
+    //  the first letter only. The lab's player is Kosmos.
+    std::string player_name = "Kosmos";
     BattleAIOption& battle_ai;
 };
 

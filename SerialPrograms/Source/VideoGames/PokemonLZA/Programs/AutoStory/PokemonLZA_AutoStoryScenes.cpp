@@ -128,8 +128,16 @@ void pick_first_look(ConsoleHandle&, ProControllerContext& context){
 void type_player_name(ConsoleHandle& console, ProControllerContext& context, const std::string& name){
     //  TODO: a keyboard detector instead of the wait.
     context.wait_for(3000ms);
+    //  The system keyboard types lowercase. Its Shift (stick click) caps
+    //  the next letter only, so it goes right before the name ("K" and "k"
+    //  are the same key to keyboard_enter_code).
+    pbf_press_button(context, BUTTON_LCLICK, 160ms, 400ms);
+    context.wait_for_all_requests();
     FastCodeEntry::keyboard_enter_code(console, context, true, KeyboardLayout::QWERTY, name, true);
-    context.wait_for(2000ms);
+    context.wait_for(1000ms);
+    //  PLUS is the keyboard's OK. "Confirm Choices" opens on "Change hair
+    //  color"; "Ready!" is two rows down (console B, 2026-11-10).
+    pbf_press_button(context, BUTTON_PLUS, 160ms, 2500ms);
     pbf_press_dpad(context, DPAD_DOWN, 160ms, 400ms);
     pbf_press_dpad(context, DPAD_DOWN, 160ms, 400ms);
     pbf_press_button(context, BUTTON_A, 160ms, 2000ms);
