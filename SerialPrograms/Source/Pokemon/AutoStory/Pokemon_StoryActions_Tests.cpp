@@ -14,7 +14,6 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "Pokemon_StoryActions.h"
-#include "Pokemon_StoryVariant.h"
 #include "Pokemon_AutoStory_Tests.h"
 
 namespace PokemonAutomation{
@@ -23,21 +22,11 @@ namespace Pokemon{
 
 namespace{
 
-std::string joined(const std::vector<std::string_view>& words){
-    std::string out;
-    for (std::string_view word : words){
-        out += "[";
-        out += word;
-        out += "]";
-    }
-    return out;
-}
-
-StoryStep make(StoryStepKind kind, std::string name, std::string variant = ""){
+StoryStep make(StoryStepKind kind, std::string name, std::string action = ""){
     StoryStep step;
     step.kind = kind;
     step.name = std::move(name);
-    step.variant = std::move(variant);
+    step.action = std::move(action);
     return step;
 }
 
@@ -50,73 +39,15 @@ StoryAction named(std::string name){
     };
 }
 
-//  The name of the action the table finds for `kind` and `variant`; "none"
+//  The name of the action the table finds for `kind` and `action`; "none"
 //  without one.
-std::string found(const StoryActionTable& table, StoryStepKind kind, std::string variant){
-    const StoryAction* action = table.find(make(kind, "step", std::move(variant)));
+std::string found(const StoryActionTable& table, StoryStepKind kind, std::string name){
+    const StoryAction* action = table.find(make(kind, "step", std::move(name)));
     if (action == nullptr){
         return "none";
     }
     RunState state;
     return action->act(state, make(kind, "step")).failure;
-}
-
-
-UnitTestResult test_variant_words(){
-    const std::string words = joined(variant_words("  mart  PewterCity_Mart budget=2000 "));
-    if (words != "[mart][PewterCity_Mart][budget=2000]"){
-        return "Expected three words, got " + words;
-    }
-    if (!variant_words("").empty() || !variant_words("   ").empty()){
-        return "Expected no words in an empty variant.";
-    }
-    return true;
-}
-
-UnitTestResult test_variant_pairs(){
-    const std::optional<VariantPair> pair = variant_pair("budget=2000");
-    if (!pair || pair->key != "budget" || pair->value != "2000"){
-        return "Expected budget=2000 as a pair.";
-    }
-    const std::optional<VariantPair> empty_value = variant_pair("door=");
-    if (!empty_value || empty_value->key != "door" || !empty_value->value.empty()){
-        return "Expected door= as a pair with an empty value.";
-    }
-    const std::optional<VariantPair> two = variant_pair("a=b=c");
-    if (!two || two->key != "a" || two->value != "b=c"){
-        return "Expected a=b=c split at the first '='.";
-    }
-    if (variant_pair("=2000") || variant_pair("mart")){
-        return "Expected no pair without a key or an '='.";
-    }
-    return true;
-}
-
-UnitTestResult test_variant_name_and_values(){
-    if (variant_name(" bill  shot=1") != "bill" || !variant_name("shot=1 bill").empty() || !variant_name("").empty()){
-        return "Expected the name to be the first word unless it is a pair.";
-    }
-    const std::string_view variant = "mart potion=5 budget=2000 potion=9";
-    if (variant_value(variant, "potion") != std::optional<std::string_view>("5")){
-        return "Expected the first potion= value.";
-    }
-    if (variant_value(variant, "mart") || variant_value(variant, "repel")){
-        return "Expected no value for a plain word or a missing key.";
-    }
-    return true;
-}
-
-UnitTestResult test_variant_numbers(){
-    if (variant_number("2000") != 2000u || variant_number("0") != 0u || variant_number("999999") != 999999u){
-        return "Expected decimal numbers read.";
-    }
-    if (variant_number("") || variant_number("12a") || variant_number("-1") || variant_number("1234567")){
-        return "Expected no number from empty, non-digit or too long text.";
-    }
-    if (variant_number("123", 2) || variant_number("12", 2) != 12u){
-        return "Expected max_digits respected.";
-    }
-    return true;
 }
 
 
@@ -127,12 +58,11 @@ UnitTestResult test_lookup_order(){
     table.add_any_kind("bill", named("any bill"));
     table.add_any_kind("nurse", named("any nurse"));
     const std::pair<std::string, std::string> checks[] = {
-        {found(table, StoryStepKind::TALK, "bill x=1"), "talk bill"},
+        {found(table, StoryStepKind::TALK, "bill"), "talk bill"},
         {found(table, StoryStepKind::MASH, "bill"), "any bill"},
         {found(table, StoryStepKind::TALK, "nurse"), "any nurse"},
         {found(table, StoryStepKind::TALK, "oak"), "talk default"},
         {found(table, StoryStepKind::TALK, ""), "talk default"},
-        {found(table, StoryStepKind::TALK, "x=1"), "talk default"},
         {found(table, StoryStepKind::MASH, "oak"), "none"},
         {found(table, StoryStepKind::MASH, ""), "none"},
     };
@@ -169,13 +99,13 @@ UnitTestResult test_duplicate_actions_throw(){
 }
 
 //  The args a test Mart takes.
-constexpr StoryArgSpec MART_ARGS[] = {
-    {.key = "map", .type = StoryArgType::TEXT, .required = true},
-    {.key = "budget", .type = StoryArgType::NUMBER, .required = true},
+const std::vector<StoryArgSpec> MART_ARGS = {
+    {.key = "map", .type = StoryArgType::WORD, .required = true, .fallback = std::nullopt, .why = ""},
+    {.key = "budget", .type = StoryArgType::INTEGER, .required = true, .fallback = std::nullopt, .why = ""},
 };
 
 //  `step` with `args`.
-StoryStep with_args(StoryStep step, StoryArgs args){
+StoryStep with_args(StoryStep step, StoryActionArgs args){
     step.args = std::move(args);
     return step;
 }
@@ -192,9 +122,9 @@ UnitTestResult test_lint_names_steps_without_actions(){
         .title = "",
         .start = std::nullopt,
         .steps = {
-            make(StoryStepKind::ROUTE, "to the cape", "costs=grass"),
+            make(StoryStepKind::ROUTE, "to the cape", "route"),
             make(StoryStepKind::GAME, "meet Bill", "bill"),
-            make(StoryStepKind::GAME, "teleporter", "cell_separator x=1"),
+            make(StoryStepKind::GAME, "teleporter", "cell_separator"),
             make(StoryStepKind::TALK, "talk"),
             with_args(make(StoryStepKind::GAME, "buy", "mart"), {{"map", std::string("M")}, {"budget", int64_t(1500)}}),
             with_args(make(StoryStepKind::GAME, "buy more", "mart"), {{"map", std::string("M")}}),
@@ -351,22 +281,6 @@ private:
 };
 
 const StoryActionsCase STORY_ACTIONS_CASES[] = {
-    {
-        .input = {.name = "variant: words split on spaces", .test = test_variant_words},
-        .expectation = {.description = "drops empty words between, before and after spaces"},
-    },
-    {
-        .input = {.name = "variant: key=value pairs", .test = test_variant_pairs},
-        .expectation = {.description = "splits at the first '=', needs a key, allows an empty value"},
-    },
-    {
-        .input = {.name = "variant: name and values", .test = test_variant_name_and_values},
-        .expectation = {.description = "names the first plain word and reads the first value of a key"},
-    },
-    {
-        .input = {.name = "variant: numbers", .test = test_variant_numbers},
-        .expectation = {.description = "reads decimal digits only, up to max_digits"},
-    },
     {
         .input = {.name = "table: exact, then any kind, then the kind's default", .test = test_lookup_order},
         .expectation = {.description = "finds the most specific action, or none"},
