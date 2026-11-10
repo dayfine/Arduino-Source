@@ -1,0 +1,67 @@
+2026-11-09 18:14:16.837650 - [Program]: [Verify] 00.04: start, 4 runs from one save, 4 must pass
+2026-11-09 18:17:01.626705 - [Console 0]: [Route] into twinleaf: south 33 (open): ended at Twinleaf Town (15, 22) (walked).
+2026-11-09 18:17:11.107146 - [Program]: [Event] 00.04/12 into_the_house: start
+2026-11-09 18:17:11.107150 - [Console 0]: [00.04] STEP into_the_house: the house's door
+2026-11-09 18:17:11.408918 - [Console 0]: [Screen] before into_the_house: settled overworld (quiet 0.3 s)
+2026-11-09 18:17:13.360511 - [Console 0]: [00.04] into_the_house: north through the door (timeout 4500 ms, dark from 340 ms): black fade.
+2026-11-09 18:17:30.106101 - [Program]: [Event] 00.04/12 into_the_house: done
+2026-11-09 18:18:59.627312 - [Program]: [Event] 00.04/17 into_moms_call: start
+2026-11-09 18:18:59.627328 - [Console 0]: [00.04] ROUTE into_moms_call: round Mom to (7, 9), then west until her call stops us on (6, 9)
+2026-11-09 18:18:59.928412 - [Console 0]: [Screen] before into_moms_call: settled overworld (quiet 0.2 s)
+2026-11-09 18:19:21.924460 - [Console 0]: [00.04] into_moms_call: ran west to a dialogue: 2 moved chunks, 1 tiles at most, limit, 0 wild battle(s).
+2026-11-09 18:19:22.225774 - [Program]: [Event] 00.04/17 into_moms_call: done
+2026-11-09 18:19:22.225791 - [Program]: [Event] 00.04/18 moms_hat: start
+2026-11-09 18:19:22.225796 - [Console 0]: [00.04] MASH moms_hat: Mom's hat; she walks out with us
+2026-11-09 18:19:22.527411 - [Console 0]: [Screen] before moms_hat: dialog box, screen still showing (quiet 0.3 s)
+2026-11-09 18:19:47.341835 - [Program]: [Event] 00.04/18 moms_hat: done
+2026-11-09 18:24:33.730285 - [Program]: [Verify] 00.04: run 1/4 passed
+2026-11-09 18:28:07.727209 - [Console 0]: [Route] into twinleaf: south 33 (open): ended at Twinleaf Town (15, 22) (walked).
+2026-11-09 18:28:17.204496 - [Program]: [Event] 00.04/12 into_the_house: start
+2026-11-09 18:28:17.204507 - [Console 0]: [00.04] STEP into_the_house: the house's door
+2026-11-09 18:28:17.506032 - [Console 0]: [Screen] before into_the_house: settled overworld (quiet 0.2 s)
+2026-11-09 18:28:19.561013 - [Console 0]: [00.04] into_the_house: north through the door (timeout 4500 ms, dark from 340 ms): black fade.
+2026-11-09 18:28:28.573223 - [Program]: [Event] 00.04/12 into_the_house: done
+2026-11-09 18:29:56.818823 - [Program]: [Event] 00.04/17 into_moms_call: start
+2026-11-09 18:29:56.818840 - [Console 0]: [00.04] ROUTE into_moms_call: round Mom to (7, 9), then west until her call stops us on (6, 9)
+2026-11-09 18:29:57.121026 - [Console 0]: [Screen] before into_moms_call: settled overworld (quiet 0.3 s)
+2026-11-09 18:30:19.116141 - [Console 0]: [00.04] into_moms_call: ran west to a dialogue: 1 moved chunks, 1 tiles at most, limit, 0 wild battle(s).
+2026-11-09 18:30:19.467455 - [Program]: [Event] 00.04/17 into_moms_call: done
+2026-11-09 18:30:19.467469 - [Program]: [Event] 00.04/18 moms_hat: start
+2026-11-09 18:30:19.467474 - [Console 0]: [00.04] MASH moms_hat: Mom's hat; she walks out with us
+2026-11-09 18:30:19.768084 - [Console 0]: [Screen] before moms_hat: dialog box, screen still showing (quiet 0.3 s)
+2026-11-09 18:30:39.377161 - [Program]: [Event] 00.04/18 moms_hat: done
+2026-11-09 18:35:33.674974 - [Program]: [Verify] 00.04: run 2/4 passed
+2026-11-09 18:39:07.292031 - [Console 0]: [Route] into twinleaf: south 33 (open): ended at Twinleaf Town (15, 22) (walked).
+2026-11-09 18:39:16.781382 - [Program]: [Event] 00.04/12 into_the_house: start
+2026-11-09 18:39:16.781387 - [Console 0]: [00.04] STEP into_the_house: the house's door
+2026-11-09 18:39:17.083784 - [Console 0]: [Screen] before into_the_house: settled overworld (quiet 0.2 s)
+2026-11-09 18:39:19.086470 - [Console 0]: [00.04] into_the_house: north through the door (timeout 4500 ms, dark from 340 ms): black fade.
+2026-11-09 18:39:28.096183 - [Program]: [Event] 00.04/12 into_the_house: done
+2026-11-09 18:40:57.675432 - [Program]: [Event] 00.04/17 into_moms_call: start
+2026-11-09 18:40:57.675454 - [Console 0]: [00.04] ROUTE into_moms_call: round Mom to (7, 9), then west until her call stops us on (6, 9)
+2026-11-09 18:40:57.977549 - [Console 0]: [Screen] before into_moms_call: settled overworld (quiet 0.3 s)
+2026-11-09 18:41:19.976546 - [Console 0]: [00.04] into_moms_call: ran west to a dialogue: 1 moved chunks, 1 tiles at most, limit, 0 wild battle(s).
+2026-11-09 18:41:20.278762 - [Program]: [Event] 00.04/17 into_moms_call: done
+2026-11-09 18:41:20.278771 - [Program]: [Event] 00.04/18 moms_hat: start
+2026-11-09 18:41:20.278776 - [Console 0]: [00.04] MASH moms_hat: Mom's hat; she walks out with us
+2026-11-09 18:41:20.579876 - [Console 0]: [Screen] before moms_hat: dialog box, screen still showing (quiet 0.2 s)
+2026-11-09 18:41:45.448213 - [Program]: [Event] 00.04/18 moms_hat: done
+2026-11-09 18:47:05.392082 - [Program]: [Verify] 00.04: run 3/4 passed
+2026-11-09 18:50:31.722184 - [Console 0]: [Walk] into twinleaf: south 33 (open): blocked after 19200ms, 22 moved chunks, 0 wild battle(s).
+2026-11-09 18:50:31.722194 - [Console 0]: [Route] into twinleaf: south 33 (open): blocked after 22 of 33 tiles; waiting for the way to clear.
+2026-11-09 18:50:37.043092 - [Console 0]: [Walk] into twinleaf: south 33 (open): the rest: blocked after 1600ms, 0 moved chunks, 0 wild battle(s).
+2026-11-09 18:50:39.044207 - [Console 0]: [Route] into twinleaf: south 33 (open): something the map lacks is at Twinleaf Town (15, 12); marked it.
+2026-11-09 18:50:39.044215 - [Console 0]: [Route] into twinleaf: south 33 (open): blocked after 22 of 33 tiles, at Twinleaf Town (15, 11); planning again.
+2026-11-09 18:50:44.559123 - [Console 0]: [Walk] into twinleaf: west 1 (to wall): at the wall?: blocked after 1600ms, 2 moved chunks, 0 wild battle(s).
+2026-11-09 18:50:45.130074 - [Console 0]: [Route] into twinleaf: west 1 (to wall): ended at Twinleaf Town (14, 11) (walked).
+2026-11-09 18:50:56.143785 - [Console 0]: [Route] into twinleaf: south 11 (open): ended at Twinleaf Town (14, 22) (walked).
+2026-11-09 18:50:59.078402 - [Console 0]: [Route] into twinleaf: east 1 (open): ended at Twinleaf Town (15, 22) (walked).
+2026-11-09 18:51:08.566967 - [Program]: [Event] 00.04/12 into_the_house: start
+2026-11-09 18:51:08.566972 - [Console 0]: [00.04] STEP into_the_house: the house's door
+2026-11-09 18:51:08.869037 - [Console 0]: [Screen] before into_the_house: settled overworld (quiet 0.2 s)
+2026-11-09 18:51:13.370388 - [Console 0]: [00.04] into_the_house: north through the door (timeout 4500 ms, dark from 340 ms): nothing yet.
+2026-11-09 18:53:14.743100 - [Console 0]: [Screen] before into_the_house: settled overworld (quiet 0.3 s)
+2026-11-09 18:53:14.807903 - [Program]: [Event] 00.04/12 into_the_house: failed: operation_failed: into the house: no fade or banner within 120 s, so we are not where the step goes (map mismatch).
+2026-11-09 18:53:14.807915 - [Program]: [Checkpoint] 00.04: failed at 12 into_the_house: operation_failed: into the house: no fade or banner within 120 s, so we are not where the step goes (map mismatch).
+2026-11-09 18:53:14.807935 - [Program]: [Verify] 00.04: run 4/4 failed at into_the_house: operation_failed: into the house: no fade or banner within 120 s, so we are not where the step goes (map mismatch).
+2026-11-09 18:53:14.807965 - [Program]: [Verify] 00.04: 3/4 passed, 4 needed: not verified
