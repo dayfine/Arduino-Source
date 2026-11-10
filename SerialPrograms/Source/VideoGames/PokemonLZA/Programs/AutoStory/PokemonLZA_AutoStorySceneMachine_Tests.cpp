@@ -148,8 +148,9 @@ UnitTestResult test_controls_hint_held(Logger&){
 }
 
 //  01.01's ad: subtitles with no box. The advance chevron is text to press
-//  on; with nothing seen for 5 s, A every 2 s (not at an interact prompt);
-//  the controls hint stops the presses and, held a second, ends the scene.
+//  on; with nothing seen for 5 s, A every 2 s. An interact prompt is free
+//  control like the controls hint: one look stops the presses, held a
+//  second it ends the scene (01.02's battle area shows only the prompt).
 UnitTestResult test_ad_subtitles(Logger&){
     return check_reads(arrival_config(), {
         {0ms, NOTHING, false, SceneScreen::SCENE_MOVING},
@@ -160,8 +161,8 @@ UnitTestResult test_ad_subtitles(Logger&){
         {8000ms, NOTHING, true, SceneScreen::BLIND_PRESS},
         {9000ms, NOTHING, true, SceneScreen::SCENE_STILL},
         {10000ms, NOTHING, false, SceneScreen::BLIND_PRESS},
-        {12000ms, PROMPT, false, SceneScreen::SCENE_MOVING},
-        {12100ms, NOTHING, false, SceneScreen::BLIND_PRESS},
+        {12000ms, PROMPT, false, SceneScreen::HINT_SHOWING},
+        {12100ms, NOTHING, false, SceneScreen::SCENE_MOVING},
         {14200ms, NOTHING, false, SceneScreen::HINT_SHOWING, true},
         {15000ms, NOTHING, true, SceneScreen::HINT_SHOWING, true},
         {15300ms, NOTHING, true, SceneScreen::CONTROLS_HINT, true},
