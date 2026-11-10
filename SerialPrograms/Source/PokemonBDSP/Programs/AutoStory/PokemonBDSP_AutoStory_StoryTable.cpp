@@ -252,6 +252,48 @@ std::vector<StoryStep> route_201_to_the_lakefront(){
     };
 }
 
+//  Barry's room east of its stairs: columns 3 to 5, rows 4 to `bottom`.
+Pose barrys_room_by_the_stairs(int bottom){
+    std::vector<TilePos> tiles;
+    for (int y = 4; y <= bottom; y++){
+        for (int x = 3; x <= 5; x++){
+            tiles.push_back({x, y});
+        }
+    }
+    return Pokemon::tile_pose(BARRYS_ROOM, tiles, NORTH);
+}
+
+//  00.01's visit to Barry: his door, up to his room, and out again.
+std::vector<StoryStep> barrys_house(){
+    return {
+        //  From (9, 13) straight north through (9, 12) (its trigger is spent) into
+        //  his door: a separate tap to (9, 12) first stepped into the door before
+        //  into_barrys_house watched for the fade.
+        step_into("into_barrys_house", NORTH, "past (9, 12) into his door", at(BARRYS_HOUSE, "door", NORTH)),
+        legs("off_barrys_mat", {{.direction = NORTH, .tiles = 1}}, "off the door's mat, which no route starts on"),
+        //  Like ours: stairs are entered sideways from the top of their mat, the
+        //  stairs point (r11: north from (2, 4) only bumps the wall).
+        route("below_barrys_stairs", at(BARRYS_HOUSE, "stairs", EAST), "past his mother at (4, 6) to the top of the stairs' mat"),
+        step_into("up_barrys_stairs", EAST, "onto the stairs", at(BARRYS_ROOM, "stairs")),
+        //  Automatic on arrival (2F frame script), not a talk: Barry runs past us down
+        //  the stairs and the game walks us a tile south of them (decomp; Butters
+        //  never walked to him).
+        scene("barry_runs_to_the_lake", at(BARRYS_ROOM, 3, 5, NORTH), "Barry's lines; he runs off to the lake", "a"),
+        //  Where the scene leaves us is the decomp's: from a tile next to it,
+        //  the route to the stairs' mat had no plan or ended a column east.
+        //  A tap east takes each of them (column 2 only from row 6) into
+        //  columns 3 to 5, and north to the back wall onto row 4 there,
+        //  east of the stairs, which a run west goes down.
+        anchored(legs("off_barrys_west_wall", {{.direction = EAST, .tiles = 1}}, "a tap east, clear of the west wall"),
+            barrys_room_by_the_stairs(6)),
+        anchored(to_walls("up_to_barrys_back_wall", {{.direction = NORTH, .tiles = 3}}, "north to the room's back wall"),
+            barrys_room_by_the_stairs(4)),
+        step_into("down_barrys_stairs", WEST, "west along row 4 onto the stairs", at(BARRYS_HOUSE, "stairs")),
+        route("above_barrys_door", at(BARRYS_HOUSE, 6, 9, SOUTH), "back to his door"),
+        step_into("out_of_barrys_house", SOUTH, "out of his door", at(TWINLEAF, "barry_doorstep", SOUTH)),
+    };
+}
+
 //  00.01: down from the bedroom, Barry's house, and out to the Lakefront.
 StoryCheckpoint bedroom_to_lakefront(){
     std::vector<StoryStep> steps{
@@ -278,26 +320,10 @@ StoryCheckpoint bedroom_to_lakefront(){
         //  r10: the first north tap after the scene gave no warp, the second did).
         scene("barry_bursts_out", at(TWINLEAF, 9, 13, NORTH), "Barry runs out, bumps into us and runs back in", "a"),
         scene("barry_goes_home", at(TWINLEAF, 9, 13, NORTH), "his second lines (Butters waited for two)", "a"),
-        //  From (9, 13) straight north through (9, 12) (its trigger is spent) into
-        //  his door: a separate tap to (9, 12) first stepped into the door before
-        //  into_barrys_house watched for the fade.
-        step_into("into_barrys_house", NORTH, "past (9, 12) into his door", at(BARRYS_HOUSE, "door", NORTH)),
-        legs("off_barrys_mat", {{.direction = NORTH, .tiles = 1}}, "off the door's mat, which no route starts on"),
-        //  Like ours: stairs are entered sideways from the top of their mat, the
-        //  stairs point (r11: north from (2, 4) only bumps the wall).
-        route("below_barrys_stairs", at(BARRYS_HOUSE, "stairs", EAST), "past his mother at (4, 6) to the top of the stairs' mat"),
-        step_into("up_barrys_stairs", EAST, "onto the stairs", at(BARRYS_ROOM, "stairs")),
-        //  Automatic on arrival (2F frame script), not a talk: Barry runs past us down
-        //  the stairs and the game walks us a tile south of them (decomp; Butters
-        //  never walked to him).
-        scene("barry_runs_to_the_lake", at(BARRYS_ROOM, 3, 5, NORTH), "Barry's lines; he runs off to the lake", "a"),
-        //  Butters went west from there straight into the stairs; ours are entered from
-        //  the mat's top tile, so go there first (unchecked: which works).
-        route("above_barrys_stairs", at(BARRYS_ROOM, "stairs", WEST), "back to the top of the stairs' mat"),
-        step_into("down_barrys_stairs", WEST, "onto the stairs", at(BARRYS_HOUSE, "stairs")),
-        route("above_barrys_door", at(BARRYS_HOUSE, 6, 9, SOUTH), "back to his door"),
-        step_into("out_of_barrys_house", SOUTH, "out of his door", at(TWINLEAF, "barry_doorstep", SOUTH)),
     };
+    for (StoryStep& step : barrys_house()){
+        steps.push_back(std::move(step));
+    }
     for (StoryStep& step : route_201_to_the_lakefront()){
         steps.push_back(std::move(step));
     }

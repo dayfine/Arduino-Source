@@ -43,13 +43,6 @@ anchor); 0 from one start tile.
   target: RivalHouse1F (2, 3) facing east (tile)
   not planned: the start is unknown (a LEGS or STEP step before it does not say where it ends)
 
-== 00.01 above_barrys_stairs (costs: route)
-  from: RivalHouse2F (3, 5) facing north (tile)
-  target: RivalHouse2F (3, 4) facing west (tile)
-  start candidates: RivalHouse2F (3, 5)
-  1. north 1 (to wall) -> RivalHouse2F (3, 4)
-  totals: 1 legs, 0 turns, 0 open, 0 localization
-
 == 00.01 above_barrys_door (costs: route)
   from: RivalHouse1F (2, 3) (tile)
   target: RivalHouse1F (6, 9) facing south (tile)
