@@ -39,8 +39,13 @@ constexpr long long TRAINER_BATTLE_MS = 45000;
 constexpr long long REPLAN_MS = 2000;
 //  An open leg's extra per grass tile in a replan (RobustPlanCosts::
 //  per_open_grass_tile): a wall leg through grass beats an open one unless
-//  it walks this many tiles further.
-constexpr int REPLAN_OPEN_GRASS_COST = 12;
+//  it walks this many tiles further. At 12, 01.06 up_jubilifes_road's
+//  recovery from a battle in Route 203's first strip of grass tapped on
+//  west through the second, and battles there chained more than 3
+//  recoveries; at 60 the recovery leaves the grass on walls first.
+constexpr int REPLAN_OPEN_GRASS_COST = 60;
+//  Longest run into a trigger tried (trigger_runs()).
+constexpr size_t TRIGGER_RUN_TILES = 32;
 //  How much shorter or longer than the plan's open leg a hold into a
 //  funnel is tried (add_funnel_holds()).
 constexpr size_t FUNNEL_SLIDE = 2;
@@ -225,9 +230,82 @@ std::vector<std::vector<PlannedLeg>> run_variants(const ScoredRoute& route, cons
     return out;
 }
 
+bool same_legs(const std::vector<PlannedLeg>& a, const std::vector<PlannedLeg>& b){
+    return std::equal(a.begin(), a.end(), b.begin(), b.end(), [](const PlannedLeg& x, const PlannedLeg& y){
+        return x.leg.direction == y.leg.direction && x.leg.tiles == y.leg.tiles &&
+            x.leg.ends_at_wall == y.leg.ends_at_wall && x.leg.held == y.leg.held;
+    });
+}
+
+//  A run `direction` from `from` that a goal tile on its way stops, the
+//  goal a trigger: nothing if a wall or the maps' edge comes first.
+std::optional<PlannedLeg> run_into_goal(const ScoredRoute& route, const TilePos& from, Direction direction){
+    TilePos at = from;
+    for (size_t tiles = 1; tiles <= TRIGGER_RUN_TILES; tiles++){
+        const std::optional<TilePos> next = step(route.world, at, direction);
+        if (!next || std::abs(next->x - at.x) + std::abs(next->y - at.y) != 1){
+            return std::nullopt;
+        }
+        at = *next;
+        if (route.goal(at)){
+            return PlannedLeg{.leg = {.direction = direction, .tiles = tiles, .ends_at_wall = true, .held = false}, .after = {at}};
+        }
+    }
+    return std::nullopt;
+}
+
+//  To a trigger (ScoredRoute::goal_is_trigger): `legs` up to a leg from a
+//  known tile, then a run the trigger stops. 00.04 into_moms_call taps
+//  west 4 onto Mom's call on (6, 9), or runs west until it stops us there.
+std::vector<std::vector<PlannedLeg>> trigger_runs(const ScoredRoute& route, const std::vector<PlannedLeg>& legs){
+    std::vector<std::vector<PlannedLeg>> out;
+    if (!route.goal_is_trigger){
+        return out;
+    }
+    std::vector<TilePos> at = route.from;
+    for (size_t i = 0; i < legs.size(); i++){
+        if (at.size() == 1){
+            for (Direction direction : {Direction::NORTH, Direction::EAST, Direction::SOUTH, Direction::WEST}){
+                if (std::optional<PlannedLeg> run = run_into_goal(route, at.front(), direction)){
+                    std::vector<PlannedLeg> legs_out(legs.begin(), legs.begin() + i);
+                    legs_out.push_back(std::move(*run));
+                    out.push_back(std::move(legs_out));
+                }
+            }
+        }
+        at = legs[i].after;
+    }
+    return out;
+}
+
+//  The scorer's view of `route`'s world: a trigger goal stops a walk.
+Pokemon::ScoreMap score_map(const ScoredRoute& route){
+    Pokemon::ScoreMap map = route_score_map(route.world, route.triggers);
+    if (route.goal_is_trigger){
+        map.risk = [risk = std::move(map.risk), goal = route.goal](const TilePos& pos){
+            return goal(pos) ? Pokemon::TileRisk::TRIGGER : risk(pos);
+        };
+    }
+    return map;
+}
+
 Pokemon::RouteScore score_with(const ScoredRoute& route, const std::vector<PlannedLeg>& legs, const Pokemon::RouteReplanner& replan){
-    return Pokemon::score_route(route_score_map(route.world, route.triggers), route.from, route.goal,
+    return Pokemon::score_route(score_map(route), route.from, route.goal,
         route_scored_legs(legs, route.speed), route_score_paces(), route_interrupt_model(), replan);
+}
+
+//  The other plans plan_fastest_route() scores besides `own`, the plan
+//  with the route's costs.
+std::vector<std::vector<PlannedLeg>> candidate_plans(const ScoredRoute& route, const std::vector<PlannedLeg>& own){
+    std::vector<std::vector<PlannedLeg>> out = run_variants(route, own);
+    for (std::vector<PlannedLeg>& legs : trigger_runs(route, own)){
+        out.push_back(std::move(legs));
+    }
+    std::optional<std::vector<PlannedLeg>> grass = plan_recovered_route(route.world, route.from, route.goal, replan_costs(route.costs));
+    if (grass && !same_legs(*grass, own)){
+        out.push_back(std::move(*grass));
+    }
+    return out;
 }
 
 } // namespace
@@ -323,23 +401,12 @@ std::vector<TilePos> blocked_stop_tiles(const StoryWorld& world, const std::vect
     return out;
 }
 
-bool same_legs(const std::vector<PlannedLeg>& a, const std::vector<PlannedLeg>& b){
-    return std::equal(a.begin(), a.end(), b.begin(), b.end(), [](const PlannedLeg& x, const PlannedLeg& y){
-        return x.leg.direction == y.leg.direction && x.leg.tiles == y.leg.tiles &&
-            x.leg.ends_at_wall == y.leg.ends_at_wall && x.leg.held == y.leg.held;
-    });
-}
-
 std::optional<std::vector<PlannedLeg>> plan_fastest_route(const ScoredRoute& route){
     std::optional<std::vector<PlannedLeg>> best = plan_recovered_route(route.world, route.from, route.goal, route.costs);
     if (!best){
         return best;
     }
-    std::vector<std::vector<PlannedLeg>> candidates = run_variants(route, *best);
-    std::optional<std::vector<PlannedLeg>> grass = plan_recovered_route(route.world, route.from, route.goal, replan_costs(route.costs));
-    if (grass && !same_legs(*grass, *best)){
-        candidates.push_back(std::move(*grass));
-    }
+    std::vector<std::vector<PlannedLeg>> candidates = candidate_plans(route, *best);
     //  Most steps have no other plan: nothing to score.
     if (candidates.empty()){
         return best;

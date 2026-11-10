@@ -52,6 +52,9 @@ struct ScoredRoute{
     RobustPlanCosts costs;
     MoveSpeed speed = MoveSpeed::WALK;
     std::vector<Pokemon::TilePos> triggers = {};
+    //  `goal` is a scene's trigger (RouteWalkPlan::goal_is_trigger): a walk
+    //  stops on any of its tiles, as at a wall.
+    bool goal_is_trigger = false;
 };
 //  The costs walk_route() plans again with after an interruption: `costs`,
 //  with open legs dear in tall grass (RobustPlanCosts::per_open_grass_tile),
@@ -76,9 +79,10 @@ std::vector<Pokemon::TilePos> blocked_stop_tiles(
 );
 
 //  The plan for `route`: of plan_recovered_route()'s with its costs, the
-//  same with open legs dear in grass (replan_costs()), and that first plan
-//  walked the way a player runs (each open leg from a known tile run on to
-//  the wall and tapped back, or held into a wall across it), the one the
+//  same with open legs dear in grass (replan_costs()) or kept out of it,
+//  that first plan walked the way a player runs (each open leg from a
+//  known tile run on to the wall and tapped back, or held into a wall
+//  across it), and, to a trigger, run into it from a known tile, the one the
 //  scorer passes in the least expected time. If the first passes, the one
 //  picked is no worse than it in worst time, places to be interrupted or
 //  replans, and walks back no more (Pokemon::tiles_walked_back(): a

@@ -115,9 +115,10 @@ std::vector<BenchCase> table_cases(){
         }
         const RouteStepPlan plan = plan_table_route(route);
         const bool run = route.row > std::string(RUNNING_SHOES_ROW);
+        const std::vector<TilePos> goal = world_tiles(*route.world, *route.step->target);
         cases.push_back({
             .name = name, .world = route.world, .from = plan.start,
-            .goal = world_tiles(*route.world, *route.step->target), .triggers = {},
+            .goal = goal, .triggers = route.step->variant == ROUTE_ONTO_TRIGGER ? goal : std::vector<TilePos>{},
             .legs = plan.legs ? walked_legs(*plan.legs, run) : std::vector<ScoredLeg>{},
             .run = run, .costs = story_route_costs(route.step->variant), .planned = plan.legs.has_value(),
         });
@@ -189,22 +190,10 @@ BenchCase twinleaf_target(const BenchCase& current){
     return target;
 }
 
-//  00.04 "into_moms_call": from the room's east corner the plan walks round
-//  Mom to (7, 9), then taps west into her call on (6, 9) (lab-B 2026-11-09
-//  17:29, step 17 of 00.04). Scored to the trigger: the route's legs and
-//  the tap after them.
-BenchCase moms_call_current(const BenchCase& route){
-    const StoryWorld& world = *route.world;
-    BenchCase current = route;
-    current.name = "00.04 into_moms_call + the tap into her call";
-    current.goal = {story_to_world(world, "PlayerHouse1F", {6, 9})};
-    current.triggers = current.goal;
-    current.legs.push_back(taps(Direction::WEST, 1));
-    return current;
-}
-
-//  The user's route: down to row 9, whose wall row 10 does not stop us, so
-//  a tap; then run west along row 9 until her call stops us on (6, 9).
+//  00.04 "into_moms_call", to her call on (6, 9) (lab-B 2026-11-09 17:29,
+//  step 17 of 00.04). The user's route: down to row 9, whose wall row 10
+//  does not stop us, so a tap; then run west along row 9 until her call
+//  stops us on (6, 9).
 BenchCase moms_call_target(const BenchCase& current){
     BenchCase target = current;
     target.name = "TARGET " + current.name;
@@ -301,10 +290,9 @@ void add_target(std::vector<BenchCase>& cases, const std::string& name, const st
 
 std::vector<BenchCase> bench_cases(){
     std::vector<BenchCase> cases = table_cases();
-    cases.push_back(moms_call_current(cases[case_index(cases, "00.04 into_moms_call")]));
     add_target(cases, "00.04 along_route_201_road", road_target);
     add_target(cases, "00.04 into_twinleaf", twinleaf_target);
-    add_target(cases, "00.04 into_moms_call + the tap into her call", moms_call_target);
+    add_target(cases, "00.04 into_moms_call", moms_call_target);
     add_run4_cases(cases);
     add_own_costs_case(cases);
     for (const RecordedHumanRun& run : recorded_human_runs()){

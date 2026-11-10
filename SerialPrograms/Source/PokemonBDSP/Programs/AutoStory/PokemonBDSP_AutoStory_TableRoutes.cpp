@@ -86,6 +86,7 @@ RouteStepPlan plan_table_route(const TableRoute& route){
     const MoveSpeed speed = route.row > std::string(RUNNING_SHOES_ROW) ? MoveSpeed::RUN : MoveSpeed::WALK;
     plan.legs = plan_fastest_route({
         .world = world, .from = plan.start, .goal = goal, .costs = *story_route_costs(route.step->variant), .speed = speed,
+        .goal_is_trigger = route.step->variant == ROUTE_ONTO_TRIGGER,
     });
     if (!plan.legs){
         plan.legs = plan_recovered_route(world, plan.start, goal, RobustPlanCosts());

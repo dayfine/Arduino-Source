@@ -312,7 +312,7 @@ RouteEnd RouteWalker::run(std::vector<TilePos> from){
 }
 
 std::vector<PlannedLeg> RouteWalker::plan_legs(bool first) const{
-    std::optional<std::vector<PlannedLeg>> legs = plan_walk({m_grid, m_from, m_plan.goal, m_plan.costs, m_plan.speed, {}}, first);
+    std::optional<std::vector<PlannedLeg>> legs = plan_walk({m_grid, m_from, m_plan.goal, m_plan.costs, m_plan.speed, {}, m_plan.goal_is_trigger}, first);
     if (!legs){
         //  From a few possible tiles the exact-open-leg costs found no
         //  plan where the default ones did (r240a, three tiles on Route
