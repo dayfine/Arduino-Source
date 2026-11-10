@@ -35,6 +35,13 @@ struct TilePose : public Position{
 //  is not a tile pose.
 std::vector<TilePos> tiles_of(const Pose& pose);
 
+//  The facing of a tile pose; nothing for another pose or none.
+std::optional<Direction> facing_of(const Pose& pose);
+
+//  A pose on one of `tiles` of `map`, facing `facing` if set: TILE for one
+//  tile, SET for several, UNKNOWN for none.
+Pose tile_pose(std::string map, std::vector<TilePos> tiles, std::optional<Direction> facing = std::nullopt);
+
 
 
 } // namespace Pokemon

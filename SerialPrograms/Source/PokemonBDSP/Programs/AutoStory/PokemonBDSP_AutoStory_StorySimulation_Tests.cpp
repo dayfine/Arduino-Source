@@ -22,7 +22,9 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
-#include "Pokemon/AutoStory/Pokemon_StorySteps.h"
+#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
+#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
+#include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "Utils/PokemonBDSP_AutoStory_Location.h"
 #include "Data/PokemonBDSP_AutoStory_PlanCosts.h"
@@ -37,12 +39,16 @@ namespace PokemonBDSP{
 
 namespace{
 
+using Pokemon::Direction;
+using Pokemon::GridPose;
 using Pokemon::Outcome;
 using Pokemon::Pose;
 using Pokemon::RunState;
+using Pokemon::StoryLeg;
 using Pokemon::StoryStep;
 using Pokemon::StoryStepKind;
 using Pokemon::TilePos;
+using Pokemon::story_arg;
 
 std::string describe(const std::string& map, const std::vector<TilePos>& tiles){
     std::string text = " " + map;
@@ -98,11 +104,12 @@ std::string detour_error(const StoryWorld& world, const std::vector<TilePos>& st
 
 //  A ROUTE step from `from`, planned as StoryExecutor::walk_to() walks it.
 Walked plan_route(const Pose& from, const StoryStep& step){
-    const Pose& goal = *step.target;
+    const GridPose& target = story_arg<GridPose>(step.args, "target");
+    const Pose goal = Pokemon::pose_of(target);
     const StoryWorld* world = story_plan_world(from.map, goal.map);
-    const std::optional<RobustPlanCosts> costs = story_route_costs(step.variant);
+    const std::optional<RobustPlanCosts> costs = story_route_costs(step.action);
     if (world == nullptr || !costs){
-        return {std::nullopt, std::format("{}: no world joins {} and {}, or no costs \"{}\".", step.name, from.map, goal.map, step.variant), ""};
+        return {std::nullopt, std::format("{}: no world joins {} and {}, or no costs \"{}\".", step.name, from.map, goal.map, step.action), ""};
     }
     std::vector<TilePos> start;
     for (const TilePos& pos : Pokemon::tiles_of(from)){
@@ -148,7 +155,7 @@ std::string walk_leg_from(
         if (!stepped){
             return step.name + ": " + direction_name(leg.direction) + " is blocked at " + describe(world, pos) + ".";
         }
-        if (step.variant == "one_short_ok" && i + 1 == leg.tiles){
+        if (step.action == "one_short_ok" && i + 1 == leg.tiles){
             next.push_back(pos);
         }
         pos = *stepped;
@@ -160,18 +167,19 @@ std::string walk_leg_from(
 //  A LEGS step from `from`, walked tile by tile on its map, a tile short too
 //  where the step allows it. Walks to walls end where nothing is known.
 Walked walk_legs(const Pose& from, const StoryStep& step){
-    if (step.variant == "to_wall"){
+    if (step.action == "to_wall"){
         return {std::nullopt, "", ""};
     }
     const StoryWorld* world = story_plan_world(from.map, from.map);
     if (world == nullptr){
         return {std::nullopt, step.name + ": no world holds " + from.map + ".", ""};
     }
+    const auto& legs = story_arg<std::vector<StoryLeg>>(step.args, "legs");
     std::vector<TilePos> at;
     for (const TilePos& pos : Pokemon::tiles_of(from)){
         at.push_back(story_to_world(*world, from.map, pos));
     }
-    for (const Pokemon::StoryLeg& leg : step.legs){
+    for (const Pokemon::StoryLeg& leg : legs){
         std::vector<TilePos> next;
         for (const TilePos& pos : at){
             const std::string blocked = walk_leg_from(*world, pos, leg, step, next);
@@ -185,16 +193,17 @@ Walked walk_legs(const Pose& from, const StoryStep& step){
     for (const TilePos& pos : at){
         local.push_back(*story_to_local(*world, from.map, pos));
     }
-    return {Pokemon::tile_pose(from.map, local, step.legs.back().direction), "", ""};
+    return {Pokemon::tile_pose(from.map, local, legs.back().direction), "", ""};
 }
 
 //  A STEP onto the next tile of the same map.
 Walked step_on(const Pose& from, const StoryStep& step){
+    const Direction direction = story_arg<Direction>(step.args, "direction");
     std::vector<TilePos> at;
     for (const TilePos& pos : Pokemon::tiles_of(from)){
-        at.push_back(pos.next(step.direction));
+        at.push_back(pos.next(direction));
     }
-    return {Pokemon::tile_pose(from.map, at, step.direction), "", ""};
+    return {Pokemon::tile_pose(from.map, at, direction), "", ""};
 }
 
 
@@ -227,39 +236,43 @@ public:
             failure->second.times--;
             return Pokemon::outcome_failed(failure->second.failure, key);
         }
-        return Pokemon::StoryStepExecutor::run(state, step);
+        switch (step.kind){
+        case StoryStepKind::ROUTE:
+            return route(state, step);
+        case StoryStepKind::LEGS:
+            return legs(state, step);
+        case StoryStepKind::STEP:
+            return this->step(state, step);
+        case StoryStepKind::SAVE:
+            return save(state, step);
+        default:
+            return Pokemon::outcome_ok();
+        }
     }
 protected:
-    virtual Outcome route(RunState& state, const StoryStep& step) override{
+    Outcome route(RunState& state, const StoryStep& step){
         return moved(plan_route(state.pose, step), "no_plan");
     }
-    virtual Outcome legs(RunState& state, const StoryStep& step) override{
+    Outcome legs(RunState& state, const StoryStep& step){
         return moved(walk_legs(state.pose, step), "blocked");
     }
-    virtual Outcome step(RunState& state, const StoryStep& step) override{
+    Outcome step(RunState& state, const StoryStep& step){
         return moved(step_on(state.pose, step), "blocked");
     }
-    virtual Outcome new_game(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
-    virtual Outcome options(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
-    virtual Outcome talk(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
-    virtual Outcome mash(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
-    virtual Outcome battle(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
-    virtual Outcome train(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
-    virtual Outcome heal(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
-    virtual Outcome shop(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
-    virtual Outcome save(RunState&, const StoryStep& step) override{
+    Outcome save(RunState&, const StoryStep& step){
         trace.push_back("save in " + m_row);
-        if (!step.variant.empty()){
-            trace.push_back("card for " + m_row + ": " + step.variant);
+        if (!step.action.empty()){
+            trace.push_back("card for " + m_row + ": " + step.action);
         }
         return Pokemon::outcome_ok();
     }
-    virtual Outcome game(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
+public:
+    void set_language(PokemonAutomation::Language){}
 
 private:
-    Outcome moved(const Walked& walked, const char* failure){
+    Outcome moved(const Walked& walked, std::string_view failure){
         if (!walked.error.empty()){
-            return Pokemon::outcome_failed(failure, walked.error);
+            return Pokemon::outcome_failed(std::string(failure), walked.error);
         }
         if (!walked.plan.empty()){
             plans.push_back(walked.plan);
@@ -407,10 +420,10 @@ UnitTestResult test_gives_up_after_attempts(Logger&){
         return "Expected 01.04 tried 3 times from its save, then a stop:" + joined(sim.trace) + joined(sim.lines);
     }
     Simulation lab;
-    lab.policy.stop_at_first_failure = true;
+    lab.policy.attempts_per_checkpoint = 1;
     lab.game.failures[step] = {.failure = "operation_failed", .times = 10};
     const Pokemon::SegmentReport stopped = lab.run({.from = "01.01", .to = std::nullopt});
-    if (stopped.completed || !stopped.stopped_at_first_failure || lab.count("reload") != 0){
+    if (stopped.completed || stopped.reloads != 0 || lab.count("reload") != 0){
         return "Expected a stop at the first failure without a reload:" + joined(lab.trace);
     }
     return true;
@@ -423,20 +436,21 @@ UnitTestResult test_poses_chain(Logger&){
     std::string last;
     for (const StoryCheckpoint& row : story_checkpoints()){
         if (row.start){
-            const std::vector<TilePos> start = Pokemon::tiles_of(*row.start);
+            const Pose start_pose = Pokemon::pose_of(*row.start);
+            const std::vector<TilePos> start = Pokemon::tiles_of(start_pose);
             if (at && (at->map != row.start->map ||
                 !std::ranges::all_of(Pokemon::tiles_of(*at), [&](const TilePos& pos){ return contains(start, pos); }))
             ){
                 return std::format("{} starts at{}, but {} may end at{}.", row.id, describe(row.start->map, start),
                     last, describe(at->map, Pokemon::tiles_of(*at)));
             }
-            at = row.start;
+            at = start_pose;
         }else{
             at.reset();
         }
         for (const StoryStep& step : row.steps){
             if (step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS || step.kind == StoryStepKind::STEP){
-                if (!at && step.variant != "to_wall" && step.variant != "jubilife_stairs"){
+                if (!at && step.action != "to_wall" && step.action != "jubilife_stairs"){
                     return row.id + " " + step.name + ": walks from an unknown pose.";
                 }
                 const Walked walked = !at ? Walked{} : step.kind == StoryStepKind::ROUTE ? plan_route(*at, step)
@@ -450,7 +464,7 @@ UnitTestResult test_poses_chain(Logger&){
                 at.reset();
             }
             if (step.pose_after){
-                at = step.pose_after;
+                at = Pokemon::pose_of(*step.pose_after);
             }
         }
         last = row.id;

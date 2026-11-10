@@ -617,7 +617,7 @@ struct StoryEventInput{
 };
 
 struct StoryEventExpectation{
-    const char* description;
+    std::string_view description;
 };
 
 struct StoryEventTestCase{

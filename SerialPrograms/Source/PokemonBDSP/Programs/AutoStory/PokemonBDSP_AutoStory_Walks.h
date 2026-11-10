@@ -9,6 +9,7 @@
  *
  */
 
+// code-health: allow header_symbols -- movement primitives measured on console that are used across story executor and event scripts
 #ifndef PokemonAutomation_PokemonBDSP_AutoStory_Walks_H
 #define PokemonAutomation_PokemonBDSP_AutoStory_Walks_H
 

@@ -27,7 +27,7 @@ namespace Pokemon{
 
 namespace{
 
-const char* const VALID_MAP = R"({
+const std::string VALID_MAP = R"({
     "name": "TestTown",
     "source": {"decomp_file": "data/maps/TestTown/map.json", "revision": "abc123", "date": "2026-10-31"},
     "tiles": ["####", "#..~", "#D.S", "w^v#"],
@@ -44,7 +44,7 @@ const char* const VALID_MAP = R"({
 //  A map shaped like BDSP's: on a world grid, with tiles off the game's
 //  map, a region, a warp tile stood on, trainers, a person the story hides
 //  and scene triggers.
-const char* const BDSP_MAP = R"({
+const std::string BDSP_MAP = R"({
     "name": "Route 201",
     "source": {"decomp_file": "pret/pokediamond: land_data narc_0000.bin", "revision": "default branch", "date": "2026-11-01"},
     "world": {"name": "Sinnoh", "x": 96, "y": 839},
@@ -66,7 +66,7 @@ const char* const BDSP_MAP = R"({
 //  A map shaped like FRLG's: elevations, one-sided walls, warps of every
 //  entry to per-warp points (one to a map not loaded), a person hidden by
 //  an event flag, and a flag set.
-const char* const FRLG_MAP = R"({
+const std::string FRLG_MAP = R"({
     "name": "CeruleanCave_1F",
     "source": {"decomp_file": "data/maps/CeruleanCave_1F/map.json", "revision": "ce6406d8c2ea", "date": "2026-11-01"},
     "allow_running": false,
@@ -91,7 +91,7 @@ const char* const FRLG_MAP = R"({
 
 //  `base` with `find` replaced by `replacement`; empty when `find` is not
 //  in it.
-std::string edited(const char* base, const std::string& find, const std::string& replacement){
+std::string edited(const std::string& base, const std::string& find, const std::string& replacement){
     std::string json = base;
     const size_t at = json.find(find);
     if (at == std::string::npos){
@@ -114,8 +114,8 @@ std::string parse_error(const std::string& json){
 }
 
 //  Whether `text` contains every one of `parts`.
-bool mentions(const std::string& text, const std::vector<const char*>& parts){
-    for (const char* part : parts){
+bool mentions(const std::string& text, const std::vector<std::string>& parts){
+    for (const std::string& part : parts){
         if (text.find(part) == std::string::npos){
             return false;
         }
@@ -194,9 +194,9 @@ UnitTestResult test_glyphs_round_trip(){
 }
 
 struct BadMap{
-    const char* name;
+    std::string name;
     std::string json;
-    std::vector<const char*> mentions;
+    std::vector<std::string> mentions;
 };
 
 //  The first row whose map doesn't fail as it says, or true.
@@ -241,7 +241,7 @@ UnitTestResult test_each_error_class(){
 
 //  One value read from a parsed map, and what it should be, both as text.
 struct Expected{
-    const char* what;
+    std::string what;
     std::string expected;
     std::string read;
 };
@@ -327,7 +327,7 @@ UnitTestResult test_frlg_shaped_map(){
     const auto elevation = [&](const TilePos& pos){
         return std::to_string(map.elevation->at(pos));
     };
-    const auto warp = [&](WarpEntry enter, const TilePos& pos, const char* to){
+    const auto warp = [&](WarpEntry enter, const TilePos& pos, std::string_view to){
         return std::format("{} {} -> {}", to_string(pos), (int)enter, to);
     };
     return first_wrong({
@@ -406,7 +406,7 @@ struct MapDataTestInput{
 };
 
 struct MapDataTestExpectation{
-    const char* description;
+    std::string_view description;
 };
 
 struct MapDataTestCase{
