@@ -6,8 +6,8 @@
 
 #include <algorithm>
 #include <format>
+#include "PokemonFRLG_AutoStoryGameArgs.h"
 #include "PokemonFRLG_AutoStoryTeach.h"
-#include "PokemonFRLG_AutoStoryVariantWords.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -37,64 +37,46 @@ const char* teach_end_name(TeachEnd end){
 }
 
 
-std::string teach_variant(const TeachPlan& plan){
-    std::string variant = std::format("{}{} {} slot={}", TEACH_VARIANT_PREFIX, plan.item, plan.move, plan.member + 1);
-    if (!plan.forget_move.empty()){
-        variant += " forget=" + plan.forget_move;
-    }else if (plan.forget_slot){
-        variant += std::format(" forget_slot={}", *plan.forget_slot + 1);
-    }
-    return variant;
-}
-
 namespace{
 
 bool is_tm_or_hm(std::string_view item){
     return item.size() == 4 && (item.starts_with("tm") || item.starts_with("hm"))
-        && variant_number(item.substr(2), 2).has_value();
-}
-
-bool set_teach_word(TeachPlan& plan, std::string_view word){
-    const std::optional<VariantPair> pair = variant_pair(word);
-    if (!pair){
-        return false;
-    }
-    if (pair->key == "forget" && !pair->value.empty()){
-        plan.forget_move = std::string(pair->value);
-        return true;
-    }
-    const std::optional<size_t> number = variant_number(pair->value, 1);
-    if (pair->key == "slot" && number && *number >= 1 && *number <= PARTY_SLOTS){
-        plan.member = *number - 1;
-        return true;
-    }
-    if (pair->key == "forget_slot" && number && *number >= 1 && *number <= MOVE_SLOTS){
-        plan.forget_slot = *number - 1;
-        return true;
-    }
-    return false;
+        && item[2] >= '0' && item[2] <= '9' && item[3] >= '0' && item[3] <= '9';
 }
 
 } // namespace
 
-std::optional<TeachPlan> parse_teach_variant(std::string_view variant){
-    if (!variant.starts_with(TEACH_VARIANT_PREFIX)){
+Pokemon::StoryActionArgs teach_args(const TeachPlan& plan){
+    Pokemon::StoryActionArgs args{
+        {"item", plan.item}, {"move", plan.move}, {"slot", int64_t(plan.member + 1)},
+    };
+    if (!plan.forget_move.empty()){
+        args.emplace("forget", plan.forget_move);
+    }else if (plan.forget_slot){
+        args.emplace("forget_slot", int64_t(*plan.forget_slot + 1));
+    }
+    return args;
+}
+
+std::optional<TeachPlan> teach_plan_of(const Pokemon::StoryActionArgs& args){
+    const std::string* item = game_arg<std::string>(args, "item");
+    const std::string* move = game_arg<std::string>(args, "move");
+    const std::optional<size_t> member = counted_arg(args, "slot", PARTY_SLOTS);
+    if (item == nullptr || !is_tm_or_hm(*item) || move == nullptr || move->empty() || !member){
         return std::nullopt;
     }
-    const std::vector<std::string_view> words = variant_words(variant.substr(TEACH_VARIANT_PREFIX.size()));
-    if (words.size() < 3 || !is_tm_or_hm(words[0]) || variant_pair(words[1])){
-        return std::nullopt;
-    }
-    TeachPlan plan{.item = std::string(words[0]), .move = std::string(words[1])};
-    bool slot_seen = false;
-    for (size_t c = 2; c < words.size(); c++){
-        if (!set_teach_word(plan, words[c])){
+    TeachPlan plan{.item = *item, .move = *move, .member = *member};
+    if (const std::string* forget = game_arg<std::string>(args, "forget")){
+        if (forget->empty()){
             return std::nullopt;
         }
-        slot_seen |= words[c].starts_with("slot=");
+        plan.forget_move = *forget;
     }
-    if (!slot_seen){
-        return std::nullopt;
+    if (args.contains("forget_slot")){
+        plan.forget_slot = counted_arg(args, "forget_slot", MOVE_SLOTS);
+        if (!plan.forget_slot){
+            return std::nullopt;
+        }
     }
     return plan;
 }
@@ -104,7 +86,8 @@ Pokemon::StoryStep teach_step(std::string name, std::string why, const TeachPlan
     step.kind = Pokemon::StoryStepKind::GAME;
     step.name = std::move(name);
     step.why = std::move(why);
-    step.variant = teach_variant(plan);
+    step.action = TEACH_ACTION;
+    step.args = teach_args(plan);
     return step;
 }
 

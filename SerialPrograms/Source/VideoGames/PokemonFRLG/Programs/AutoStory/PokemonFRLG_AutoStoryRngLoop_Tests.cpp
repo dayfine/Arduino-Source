@@ -199,7 +199,7 @@ UnitTestResult test_rows_after_magikarp(){
     const size_t salesman_row = row_index("00.12");
     const StoryCheckpoint& salesman = checkpoints[salesman_row];
     const StoryCheckpoint& after = checkpoints[salesman_row + 1];
-    const std::optional<StoryPose> start = after.start ? story_pose(*after.start) : std::nullopt;
+    const std::optional<StoryPose> start = after.start ? story_pose(Pokemon::pose_of(*after.start)) : std::nullopt;
     if (salesman.handoff != StoryHandoff::GIFT_RNG || !after.live_start || !start
         || start->map != "Route4_PokemonCenter_1F" || !(start->tile == TilePos{2, 3}) || start->facing != Direction::WEST
     ){

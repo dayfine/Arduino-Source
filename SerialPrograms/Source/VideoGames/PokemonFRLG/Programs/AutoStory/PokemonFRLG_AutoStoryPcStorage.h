@@ -49,6 +49,7 @@
 #include <vector>
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "VideoGames/PokemonFRLG/Inference/Box/PokemonFRLG_PcScreenReader.h"
@@ -84,16 +85,17 @@ struct PcTransfer{
     PcMissing if_missing = PcMissing::REFUSE;
 };
 
-//  The prefix of a GAME step's variant that names a PC step.
-inline constexpr std::string_view PC_VARIANT_PREFIX = "pc ";
-
-//  `transfer` as a GAME step's variant: "pc deposit slot=2 box=1" or
-//  "pc withdraw box=1 slot=7", slots and boxes counted from 1 as the game
-//  shows them; a deposit with PcMissing::SKIP ends in " if_present".
-std::string pc_variant(const PcTransfer& transfer);
-//  A variant from pc_variant(); nothing if `variant` isn't one, or names a
-//  slot or box the game hasn't got.
-std::optional<PcTransfer> parse_pc_variant(std::string_view variant);
+//  The GAME action of a PC step, slots and boxes counted from 1 as the game
+//  shows them: do WORD (required), "deposit" or "withdraw"; slot INTEGER
+//  (required), the party slot (1-6) of a deposit or the box slot (1-30)
+//  of a withdrawal; box INTEGER (required, 1-14); if_present BOOLEAN
+//  (false): a deposit skipped when the party hasn't got the slot.
+inline const std::string PC_ACTION = "pc";
+//  `transfer` as its action's args.
+Pokemon::StoryActionArgs pc_args(const PcTransfer& transfer);
+//  The transfer a PC_ACTION step's args give; nothing if they name a slot
+//  or box the game hasn't got.
+std::optional<PcTransfer> pc_transfer_of(const Pokemon::StoryActionArgs& args);
 
 
 //  A party member as far as a PC step needs to know.

@@ -294,13 +294,13 @@ UnitTestResult test_starter_rows_joined(){
         return "Expected 00.04 \"Squirtle, then the rival's battle\": " + expected_steps
             + "; got " + row.id + " \"" + row.title + "\": " + step_names(row);
     }
-    const std::optional<StoryPose> start = story_pose(*row.start);
+    const std::optional<StoryPose> start = story_pose(Pokemon::pose_of(*row.start));
     if (!start || start->map != "PalletTown_ProfessorOaksLab" || !(start->tile == TilePos{6, 4}) || row.menu != StartMenu::BEFORE_POKEDEX){
         return "Expected the joined 00.04 to start at the table (6, 4) and save with the starter's START menu.";
     }
     //  Split, 00.04 saves under the ball facing it, before the starter.
     const StoryCheckpoint& to_ball = checkpoints[row_index("00.04")];
-    const std::optional<StoryPose> ball = story_pose(*checkpoints[row_index("00.04b")].start);
+    const std::optional<StoryPose> ball = story_pose(Pokemon::pose_of(*checkpoints[row_index("00.04b")].start));
     if (to_ball.handoff != StoryHandoff::STARTER_RNG || to_ball.menu != StartMenu::BEFORE_POKEMON
         || !ball || !(ball->tile == TilePos{9, 5}) || ball->facing != Direction::NORTH
     ){
