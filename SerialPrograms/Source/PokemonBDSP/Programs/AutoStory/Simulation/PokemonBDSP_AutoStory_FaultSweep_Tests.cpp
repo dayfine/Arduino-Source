@@ -18,7 +18,8 @@
  *    Route 201, each replan back through the grass, "too many plans").
  *    SimWorldKnobs::grass. One variant a row: the whole row so.
  *  - SCENE_EARLY: a scene starts early, on the last tiles of the route walk
- *    before its step: its trigger lies on the way (00.04's Mom's call on
+ *    before its step, or before the plain step onto its trigger: the
+ *    trigger lies on the way, not where the decomp has it (00.04's Mom's call on
  *    (6, 9), lab-B 2026-11-09 17:29: the walk took it for a trainer and
  *    pressed through it). A variant also fails when the walk fights it.
  *    SimWorldKnobs::scene_at_walk_end.
@@ -310,16 +311,34 @@ UnitTestResult sweep_grass_battles(Logger& logger, const StoryCheckpoint& row){
     return sweep_result(logger, FaultClass::GRASS_BATTLES, row.id, 1, failures);
 }
 
-//  Row `row` with the scene of each scene step after a route walk starting
-//  on that walk's target, one at a time.
+//  The route before scene step `c` of `steps`, right before it or before
+//  the plain step onto its trigger; none if there is none.
+std::optional<size_t> route_before_scene(const std::vector<StoryStep>& steps, size_t c){
+    if (steps[c].kind != StoryStepKind::MASH || c == 0){
+        return std::nullopt;
+    }
+    if (steps[c - 1].kind == StoryStepKind::ROUTE){
+        return c - 1;
+    }
+    const StoryStep& step = steps[c - 1];
+    const bool onto_trigger = step.kind == StoryStepKind::STEP && step.variant.empty() && !step.pose_after;
+    if (onto_trigger && c >= 2 && steps[c - 2].kind == StoryStepKind::ROUTE){
+        return c - 2;
+    }
+    return std::nullopt;
+}
+
+//  Row `row` with the scene of each scene step after a route starting on
+//  that route's target, one at a time.
 UnitTestResult sweep_scene_early(Logger& logger, const StoryCheckpoint& row){
     std::vector<SweepFailure> failures;
     size_t variants = 0;
     for (size_t c = 1; c < row.steps.size(); c++){
-        const StoryStep& walk = row.steps[c - 1];
-        if (row.steps[c].kind != StoryStepKind::MASH || walk.kind != StoryStepKind::ROUTE){
+        const std::optional<size_t> w = route_before_scene(row.steps, c);
+        if (!w){
             continue;
         }
+        const StoryStep& walk = row.steps[*w];
         SimWorldKnobs knobs;
         knobs.scene_at_walk_end = [id = row.id, name = walk.name](const std::string& r, const std::string& s){
             return r == id && s == name;
