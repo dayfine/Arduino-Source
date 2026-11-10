@@ -15,6 +15,7 @@
 #include "Engine/Pokemon_StoryEngine_Tests.h"
 #include "Pokemon/Options/Pokemon_StoryRangeOptions_Tests.h"
 #include "Pokemon_AutoStorySelect_Tests.h"
+#include "Pokemon_StorySavePolicy_Tests.h"
 #include "Pokemon_StoryStep_Tests.h"
 
 namespace PokemonAutomation{
@@ -29,8 +30,6 @@ void add_tests_AutoStoryStats(UnitTestDatabase& database);
 void add_tests_StoryEvents(UnitTestDatabase& database);
 // Registers unit tests for story segment running, verification, and branching.
 void add_tests_StorySegments(UnitTestDatabase& database);
-// Registers unit tests for when a run saves (save modes) and the postcondition check.
-void add_tests_StorySavePolicy(UnitTestDatabase& database);
 
 // Registers every shared AutoStory suite, for the unit test runner.
 inline void add_tests_AutoStory(UnitTestDatabase& database){

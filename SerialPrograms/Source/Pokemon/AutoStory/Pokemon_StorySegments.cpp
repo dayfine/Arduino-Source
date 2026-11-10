@@ -119,7 +119,7 @@ Act checked_save(Act save, std::string id, SegmentHooks& hooks){
             say(hooks, std::format("[Postcondition] {}: not checked: the game has no postcondition check", id));
             return save(state);
         }
-        const Outcome checked = hooks.check_postconditions(state, id);
+        const Outcome checked = hooks.check_postconditions(id, state);
         if (!checked.succeeded()){
             say(hooks, std::format("[Checkpoint] {}: postconditions failed, not saving", id));
             return outcome_failed("postconditions_failed", to_string(checked));
@@ -140,7 +140,7 @@ struct Row{
 //  The checkpoint's save as `policy.save_mode` allows: one the mode skips
 //  logs that it did not save; the run's last in AFTER_VERIFICATION saves
 //  (with the segment's hook if it has none) after the postcondition check.
-void set_save(Checkpoint& checkpoint, const Row& row, const SegmentPolicy& policy, SegmentHooks& hooks){
+void set_save(const Row& row, const SegmentPolicy& policy, SegmentHooks& hooks, Checkpoint& checkpoint){
     const StorySaveMode mode = policy.save_mode;
     const bool saves_at_end = mode == StorySaveMode::AFTER_VERIFICATION && row.last;
     if ((row.spec.saves || saves_at_end) && !checkpoint.save){
@@ -183,7 +183,7 @@ CheckpointReport run_row(
     for (size_t attempt = 1; ; attempt++){
         run.attempts = attempt;
         Checkpoint checkpoint = row.spec.build();
-        set_save(checkpoint, row, policy, hooks);
+        set_save(row, policy, hooks, checkpoint);
         EventLogger log = [&hooks](const std::string& line){ say(hooks, line); };
         CheckpointReport result = run_checkpoint(state, checkpoint, log);
         if (result.completed){
