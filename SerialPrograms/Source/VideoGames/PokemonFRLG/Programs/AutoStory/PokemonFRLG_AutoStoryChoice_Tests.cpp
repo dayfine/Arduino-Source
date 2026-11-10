@@ -14,6 +14,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "PokemonFRLG_AutoStoryChoice.h"
+#include "PokemonFRLG_AutoStoryVariantWords.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -179,11 +180,15 @@ UnitTestResult test_fossil_choice(){
 
 
 UnitTestResult test_fossil_variant(){
-    if (fossil_variant(Fossil::HELIX) != "fossil helix" || parse_fossil_variant("fossil dome") != Fossil::DOME){
-        return "Expected \"fossil helix\" and \"fossil dome\".";
+    const std::string_view positional[] = {"fossil"};
+    const Pokemon::StoryStep helix = fossil_step("fossil", "", Fossil::HELIX);
+    if (helix.variant != FOSSIL_VARIANT || Pokemon::story_arg_text(helix.args, "fossil") != "helix"
+        || parse_fossil_step(helix) != Fossil::HELIX || parse_fossil_step(legacy_game_step("fossil dome", positional)) != Fossil::DOME
+    ){
+        return "Expected the helix and dome fossil steps.";
     }
     for (std::string_view bad : {"fossil", "fossil old_amber", "fossil helix dome", "grind level=18"}){
-        if (parse_fossil_variant(bad)){
+        if (parse_fossil_step(legacy_game_step(bad, positional))){
             return "Expected \"" + std::string(bad) + "\" refused.";
         }
     }

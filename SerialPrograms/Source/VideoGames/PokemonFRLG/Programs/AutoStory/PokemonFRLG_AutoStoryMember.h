@@ -72,13 +72,16 @@ struct LevelCheck{
     unsigned level = 1;
 };
 
-//  The prefix of a GAME step's variant that names a LEVEL step.
-inline constexpr std::string_view LEVEL_VARIANT_PREFIX = "level ";
+//  The variant of a GAME step that is a LEVEL step.
+inline constexpr std::string_view LEVEL_VARIANT = "level";
+//  Its args: the party slot, counted from 1, and the least level.
+inline constexpr Pokemon::StoryArgSpec LEVEL_ARGS[] = {
+    {"slot", Pokemon::StoryArgType::NUMBER, true},
+    {"min", Pokemon::StoryArgType::NUMBER, true},
+};
 
-//  `check` as a variant: "level slot=1 min=16", the slot counted from 1.
-std::string level_variant(const LevelCheck& check);
-//  A variant from level_variant(); nothing if it isn't one.
-std::optional<LevelCheck> parse_level_variant(std::string_view variant);
+//  The check a LEVEL step (level_step()) makes; nothing if it isn't one.
+std::optional<LevelCheck> parse_level_step(const Pokemon::StoryStep& step);
 
 //  The table's LEVEL step.
 Pokemon::StoryStep level_step(std::string name, std::string why, const LevelCheck& check);

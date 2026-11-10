@@ -23,7 +23,8 @@
           {
             "id": "magikarp_to_box",
             "kind": "game_action",
-            "variant": "pc deposit slot=2 box=1 if_present",
+            "variant": "pc",
+            "args": {"op": "deposit", "slot": 2, "box": 1, "if_present": true},
             "why": "DEPOSIT the party's second slot into BOX 1, if it has one"
           }
         ]

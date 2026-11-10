@@ -218,17 +218,18 @@ Supplies read_authored_supplies(const JsonValue& value, std::string_view source)
     return result;
 }
 
-//  Whether `variant` names a GAME step FRLG's executor does.
-bool known_game_variant(const std::string& variant){
+//  Whether `step` is a GAME step FRLG's executor does, with args its
+//  action reads.
+bool known_game_step(const StoryStep& step){
     for (const std::string& name : {CLOSE_TRAINER_CARD, LEAVE_GIFT_SUMMARY, CUT_TREE_VARIANT, TRASH_CANS_VARIANT}){
-        if (variant == name){
-            return true;
+        if (step.variant == name){
+            return step.args.empty();
         }
     }
-    return parse_capture_variant(variant) || parse_pc_variant(variant) || parse_mart_variant(variant)
-        || parse_teach_variant(variant) || parse_grind_variant(variant) || parse_grind_check_variant(variant)
-        || parse_fossil_variant(variant) || parse_level_variant(variant)
-        || is_center_variant(variant) || is_item_use_variant(variant) || is_hideout_variant(variant);
+    return parse_capture_step(step) || parse_pc_step(step) || parse_mart_step(step)
+        || parse_teach_step(step) || parse_grind_step(step) || parse_grind_check_step(step)
+        || parse_fossil_step(step) || parse_level_step(step)
+        || is_center_variant(step.variant) || is_item_use_variant(step.variant) || is_hideout_variant(step.variant);
 }
 
 //  Whether FRLG does `step`'s kind the way its variant names.
@@ -240,7 +241,7 @@ bool known_variant(const StoryStep& step){
     case StoryStepKind::STEP:
         return step.variant.empty() || step.variant == TRAINER_LINE_VARIANT || step.variant == TRAINER_WAIT_VARIANT;
     case StoryStepKind::GAME:
-        return known_game_variant(step.variant);
+        return known_game_step(step);
     default:
         return step.variant.empty();
     }

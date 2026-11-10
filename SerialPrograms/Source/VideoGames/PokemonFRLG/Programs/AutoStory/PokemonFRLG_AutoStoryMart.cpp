@@ -79,24 +79,8 @@ std::optional<size_t> stock_row(const std::vector<MartStockItem>& stock, std::st
     return std::nullopt;
 }
 
-//  Sets one "key=value" of a Mart variant into `plan`. False if it can't.
-bool set_mart_word(MartPlan& plan, std::string_view word){
-    const std::optional<VariantPair> pair = variant_pair(word);
-    const std::optional<size_t> number = pair ? variant_number(pair->value) : std::nullopt;
-    if (!number){
-        return false;
-    }
-    if (pair->key == "budget"){
-        plan.budget = *number;
-    }else if (pair->key == "floor"){
-        plan.money_floor = *number;
-    }else if (*number >= 1 && *number <= MAX_QUANTITY && stock_row(mart_stock(plan.map), pair->key)){
-        plan.lines.push_back({std::string(pair->key), *number});
-    }else{
-        return false;
-    }
-    return true;
-}
+//  The most money a budget or floor names: six digits.
+constexpr int64_t MAX_MONEY = 999999;
 
 } // namespace
 
@@ -118,34 +102,37 @@ const char* mart_end_name(MartEnd end){
 }
 
 
-std::string mart_variant(const MartPlan& plan){
-    std::string variant = std::format("{}{} budget={}", MART_VARIANT_PREFIX, plan.map, plan.budget);
+Pokemon::StoryArgs mart_args(const MartPlan& plan){
+    Pokemon::StoryArgs args{
+        {"map", plan.map},
+        {"budget", static_cast<int64_t>(plan.budget)},
+    };
     if (plan.money_floor){
-        variant += std::format(" floor={}", *plan.money_floor);
+        args["floor"] = static_cast<int64_t>(*plan.money_floor);
     }
-    for (const MartLine& line : plan.lines){
-        variant += std::format(" {}={}", line.item, line.quantity);
-    }
-    return variant;
+    return args;
 }
 
-std::optional<MartPlan> parse_mart_variant(std::string_view variant){
-    if (!variant.starts_with(MART_VARIANT_PREFIX)){
-        return std::nullopt;
-    }
-    const std::vector<std::string_view> words = variant_words(variant.substr(MART_VARIANT_PREFIX.size()));
-    if (words.empty() || mart_stock(words[0]).empty()){
+std::optional<MartPlan> parse_mart_step(const Pokemon::StoryStep& step){
+    const Pokemon::StoryArgs* args = game_step_args(step, MART_VARIANT, MART_ARGS);
+    if (args == nullptr || !arg_number_within(*args, "budget", 0, MAX_MONEY) || !arg_number_within(*args, "floor", 0, MAX_MONEY)){
         return std::nullopt;
     }
     MartPlan plan;
-    plan.map = std::string(words[0]);
-    for (size_t c = 1; c < words.size(); c++){
-        if (!set_mart_word(plan, words[c])){
+    plan.map = std::string(*Pokemon::story_arg_text(*args, "map"));
+    const std::vector<MartStockItem>& stock = mart_stock(plan.map);
+    if (stock.empty() || step.items.empty()){
+        return std::nullopt;
+    }
+    plan.budget = static_cast<size_t>(*Pokemon::story_arg_number(*args, "budget"));
+    if (const std::optional<int64_t> floor = Pokemon::story_arg_number(*args, "floor")){
+        plan.money_floor = static_cast<size_t>(*floor);
+    }
+    for (const Pokemon::StoryItem& item : step.items){
+        if (item.quantity < 1 || item.quantity > MAX_QUANTITY || !stock_row(stock, item.item)){
             return std::nullopt;
         }
-    }
-    if (plan.lines.empty()){
-        return std::nullopt;
+        plan.lines.push_back({item.item, item.quantity});
     }
     return plan;
 }
@@ -155,7 +142,11 @@ Pokemon::StoryStep mart_step(std::string name, std::string why, const MartPlan& 
     step.kind = Pokemon::StoryStepKind::GAME;
     step.name = std::move(name);
     step.why = std::move(why);
-    step.variant = mart_variant(plan);
+    step.variant = MART_VARIANT;
+    step.args = mart_args(plan);
+    for (const MartLine& line : plan.lines){
+        step.items.push_back({line.item, line.quantity});
+    }
     step.once_per_save = true;
     return step;
 }

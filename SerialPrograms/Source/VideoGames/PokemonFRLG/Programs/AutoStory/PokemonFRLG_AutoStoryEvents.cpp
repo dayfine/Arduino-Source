@@ -477,9 +477,9 @@ std::optional<std::vector<RouteStep>> fixed_route(
 
 Pokemon::Pose paced_pose(const Pokemon::Pose& patch, const StoryStep& step){
     std::optional<Direction> pace;
-    if (const std::optional<GrindPlan> grind = parse_grind_variant(step.variant)){
+    if (const std::optional<GrindPlan> grind = parse_grind_step(step)){
         pace = grind->pace;
-    }else if (const std::optional<CapturePlan> capture = parse_capture_variant(step.variant)){
+    }else if (const std::optional<CapturePlan> capture = parse_capture_step(step)){
         pace = capture->pace;
     }
     const std::vector<TilePos> tiles = Pokemon::tiles_of(patch);
@@ -598,7 +598,7 @@ std::optional<Outcome> run_abilities(StoryEnv& env, RunState& state, const Story
     );
     ConsoleChoiceActions choice(env.console, env.context);
     StoryAbilities abilities{console_member_reader(env.console, env.context, env.language), mart, teach, grind, choice};
-    if (const std::optional<GrindPlan> plan = parse_grind_check_variant(step.variant)){
+    if (const std::optional<GrindPlan> plan = parse_grind_check_step(step)){
         if (grind_reached_already(env.console.logger(), grind, abilities.members, *plan)){
             state.flags.insert(step.name);
         }

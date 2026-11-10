@@ -16,7 +16,8 @@
           {
             "id": "teach_water_pulse",
             "kind": "game_action",
-            "variant": "teach tm03 water-pulse slot=1 forget=tail-whip",
+            "variant": "teach",
+            "args": {"item": "tm03", "move": "water-pulse", "slot": 1, "forget": "tail-whip"},
             "once_per_save": true,
             "why": "TM03 Water Pulse in place of Tail Whip, unless the lead knows it"
           },

@@ -14,6 +14,7 @@
 #define PokemonAutomation_PokemonFRLG_AutoStoryStepTable_H
 
 #include <functional>
+#include <span>
 #include <string>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
@@ -59,11 +60,13 @@ enum class StoryActionId{
 const char* story_action_name(StoryActionId id);
 
 //  A row of FRLG's table: the action for steps of `kind` whose variant is
-//  named `variant`, or for every other step of `kind` if it is empty.
+//  named `variant`, or for every other step of `kind` if it is empty, and
+//  the args its steps carry.
 struct StoryActionRow{
     Pokemon::StoryStepKind kind;
     std::string variant;
     StoryActionId id;
+    std::span<const Pokemon::StoryArgSpec> args = {};
 };
 //  Every row. TRAIN and SAVE have none: FRLG's story doesn't use them.
 const std::vector<StoryActionRow>& story_action_rows();

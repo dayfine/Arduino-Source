@@ -26,7 +26,9 @@
           {
             "id": "buy_poke_balls",
             "kind": "game_action",
-            "variant": "mart CeruleanCity_Mart budget=1400 floor=1500 poke-ball=7",
+            "variant": "mart",
+            "args": {"map": "CeruleanCity_Mart", "budget": 1400, "floor": 1500},
+            "items": [{"item": "poke-ball", "quantity": 7}],
             "once_per_save": true,
             "why": "7 Poke Balls for the Oddish"
           }
@@ -46,7 +48,8 @@
           {
             "id": "catch_oddish",
             "kind": "game_action",
-            "variant": "capture oddish catches=1 encounters=30 balls=7 pace=east",
+            "variant": "capture",
+            "args": {"species": "oddish", "catches": 1, "encounters": 30, "balls": 7, "pace": "east"},
             "why": "wild battles until an Oddish, then Poke Balls; any other species is run from"
           }
         ]

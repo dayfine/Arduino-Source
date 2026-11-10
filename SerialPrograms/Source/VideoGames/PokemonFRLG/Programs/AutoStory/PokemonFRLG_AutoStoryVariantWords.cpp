@@ -4,6 +4,7 @@
  *
  */
 
+#include "Pokemon/AutoStory/Pokemon_StoryVariant.h"
 #include "PokemonFRLG_AutoStoryVariantWords.h"
 
 namespace PokemonAutomation{
@@ -47,6 +48,34 @@ std::optional<size_t> variant_number(std::string_view text, size_t max_digits){
         value = value * 10 + size_t(c - '0');
     }
     return value;
+}
+
+
+const Pokemon::StoryArgs* game_step_args(
+    const Pokemon::StoryStep& step, std::string_view name, std::span<const Pokemon::StoryArgSpec> specs
+){
+    if (step.variant != name || !Pokemon::story_args_error(step.args, specs).empty()){
+        return nullptr;
+    }
+    return &step.args;
+}
+
+bool arg_number_within(const Pokemon::StoryArgs& args, std::string_view key, int64_t min, int64_t max){
+    const std::optional<int64_t> value = Pokemon::story_arg_number(args, key);
+    return !value || (*value >= min && *value <= max);
+}
+
+Pokemon::StoryStep legacy_game_step(std::string_view text, std::span<const std::string_view> positional){
+    Pokemon::StoryStep step;
+    step.kind = Pokemon::StoryStepKind::GAME;
+    Pokemon::LegacyVariant split = Pokemon::split_legacy_variant(text, positional);
+    if (!split.error.empty()){
+        step.variant = std::string(text);
+        return step;
+    }
+    step.variant = std::move(split.name);
+    step.args = std::move(split.args);
+    return step;
 }
 
 
