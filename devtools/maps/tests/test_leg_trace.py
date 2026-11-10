@@ -53,7 +53,7 @@ class ReplayTest(unittest.TestCase):
             '2026-11-09 18:41:00.2 - [Console 0]: ' + leg_trace.LEG_TAG + json.dumps(SIM['legs'][0]),
             '2026-11-09 18:41:00.3 - [Console 0]: ' + leg_trace.LEG_TAG + json.dumps(SIM['legs'][1]),
         ]
-        self.assertEqual(leg_trace.replay(lines), {'legs': SIM['legs'][:2]})
+        self.assertEqual(leg_trace.replay(lines), {'legs': [dict(x, attempt=1) for x in SIM['legs'][:2]]})
 
     def test_route_lines_without_records(self):
         lines = '''
@@ -67,6 +67,8 @@ class ReplayTest(unittest.TestCase):
 [Console 0]: [Walk] to ledge column: west 7 (to wall): wild battle; running.
 [Console 0]: [Route] to ledge column: west 7 (to wall): ended at Route 201 (56, 4) (walked).
 [Console 0]: [Route] Leg 2/3: south 1 (open) to Route 201 (56, 5)
+[Console 0]: [Walk] to ledge column: south 1 (open): blocked after 800ms, 0 moved chunks, 0 wild battle(s).
+[Console 0]: [Route] to ledge column: south 1 (open): blocked after 0 of 1 tiles; waiting for the way to clear.
 [Console 0]: [Route] to ledge column: south 1 (open): blocked after 0 of 1, at Route 201 (56, 4); planning again.
 [Program]: [Event] 00.04/18 into_moms_call: start
 [Console 0]: [00.04] into_moms_call: ran west to a dialogue: 2 moved chunks, 1 tiles at most, dialog, 0 wild battle(s).
@@ -82,7 +84,17 @@ class ReplayTest(unittest.TestCase):
         self.assertEqual(legs[1]['interrupts'], ['wild_battle'])
         self.assertEqual(legs[1]['end'], at(56, 4))
         self.assertEqual(legs[2]['note'], 'replan')
+        self.assertEqual((legs[2]['interrupts'], legs[2]['ms'], legs[2]['moved']), (['blocked'], 800, 0))
         self.assertEqual(legs[2]['checkpoint'], '00.04')
+
+
+    def test_runs_of_a_checkpoint_are_told_apart(self):
+        record = json.dumps(SIM['legs'][0])
+        lines = ['[Checkpoint] 00.04: start, 23 events', leg_trace.LEG_TAG + record,
+                 '[Checkpoint] 00.04: start, 23 events', leg_trace.LEG_TAG + record, leg_trace.LEG_TAG + record]
+        self.assertEqual([x['attempt'] for x in leg_trace.replay(lines)['legs']], [1, 2, 2])
+        self.assertEqual(len(leg_trace.replay(lines, attempt=1)['legs']), 1)
+        self.assertEqual(len(leg_trace.replay(lines, attempt=-1)['legs']), 2)
 
 
 class DiffTest(unittest.TestCase):
@@ -141,6 +153,23 @@ class DiffTest(unittest.TestCase):
         report = leg_trace.diff({'legs': legs}, SIM)
         self.assertEqual([g.grade for g in report.grades], [OK, OK, MASKED, MASKED])
         self.assertFalse(report.large())
+
+    def test_replan_that_resyncs_is_drift(self):
+        legs = json.loads(json.dumps(SIM['legs'][:2]))
+        legs += [
+            leg('to_ledge_column', 3, 'west', 5, 'open', at(51, 5), known='seen', note='replan'),
+            leg('to_ledge_column', 4, 'north', 1, 'wall', at(51, 4)),
+            leg('to_ledge_column', 5, 'north', 2, 'wall', at(51, 2)),
+        ]
+        report = leg_trace.diff({'legs': legs}, SIM)
+        self.assertEqual(grades(report), [(1, 1, OK), (2, 2, OK), (3, 3, OK), (4, 0, DRIFT), (5, 4, OK)])
+        self.assertFalse(report.large())
+
+    def test_event_without_leg_lines_in_an_old_log_is_masked(self):
+        old = {'legs': SIM['legs'][:1], 'events': [['00.04', 'to_ledge_column', 1], ['00.04', 'into_the_east_corner', 1]]}
+        sim = {'legs': SIM['legs'][:1] + [leg('into_the_east_corner', 1, 'north', 4, 'wall', [])]}
+        report = leg_trace.diff(old, sim)
+        self.assertEqual([g.grade for g in report.grades], [OK, MASKED])
 
     def test_missing_and_extra_legs_are_large(self):
         report = leg_trace.diff({'legs': SIM['legs'][:3]}, SIM)

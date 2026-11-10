@@ -65,8 +65,9 @@ enum class LegInterrupt{
     TRAINER,
     SCENE,
     DIALOGUE,
+    BLOCKED,    //  someone the map lacks stood in the way
 };
-//  "wild_battle", "trainer", "scene", "dialogue".
+//  "wild_battle", "trainer", "scene", "dialogue", "blocked".
 const char* leg_interrupt_name(LegInterrupt interrupt);
 
 //  What a leg is planned to do.

@@ -76,6 +76,8 @@ std::string_view between_last(std::string_view text, std::string_view after, std
 //      [Route] <label>: <leg>: through the warp at its end (<warp>); handing over.
 //      [Route] <label>: <who> stopped us about <tiles>.
 //      <label>: <leg>: the next step's scene started on the way; handing it over.
+//      [Route] <label>: <leg>: blocked after 7 of 24 tiles; waiting for the way to clear.
+//      <label>: <leg>: someone is in the way; talking to them.
 void LegTraceRouteIO::read_route_line(const std::string& text){
     if (const std::optional<Pokemon::LegPlan> plan = Pokemon::parse_route_leg_line(text)){
         m_tracer.begin_leg(*plan);
@@ -108,6 +110,8 @@ void LegTraceRouteIO::read_route_line(const std::string& text){
     }
     if (line.find(" stopped us about ") != std::string_view::npos){
         m_tracer.interrupted(LegInterrupt::TRAINER);
+    }else if (line.ends_with("; waiting for the way to clear.") || line.ends_with(": someone is in the way; talking to them.")){
+        m_tracer.interrupted(LegInterrupt::BLOCKED);
     }
 }
 

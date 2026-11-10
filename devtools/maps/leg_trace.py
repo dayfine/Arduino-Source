@@ -18,11 +18,14 @@ leg, and fails only on LARGE:
     OK      the same plan, and the end the same, or for an open leg within
             OPEN_BAND_TILES of the simulation's
     drift   outside that band, but a later leg of the event that re-localizes
-            (a wall, a count, a fade) ends where the simulation's does
+            (a wall, a count, a fade) ends where the simulation's does; or
+            a leg of a replan after a leg stopped short, until the route
+            re-syncs
     LARGE   outside the band and never re-synced, a different map, legs or
             events one side lacks, a recovery loop, or a checkpoint whose
             walking time is over TIME_RATIO_LARGE times the simulation's
-    masked  a leg with an interruption (wild battle, trainer, scene), and
+    masked  a leg with an interruption (wild battle, trainer, scene,
+            someone in the way), and
             the console's legs after it until one ends where a simulation
             leg does
 
@@ -56,6 +59,7 @@ MASKED = 'masked'
 LEG_TAG = '[Leg] '
 DIRECTION = r'(north|south|east|west)'
 TILE = re.compile(r'([^,()]+?) \((-?\d+), (-?\d+)\)')
+CHECKPOINT = re.compile(r'\[Checkpoint\] (\S+): start')
 EVENT = re.compile(r'\[Event\] (\S+)/\d+ (\S+): start')
 PLAN_LEG = re.compile(r'(?:\[Route\] )?Leg \d+/\d+: ' + DIRECTION + r' (\d+) \((to wall|open|warp)\) to (.*?)\s*$')
 LEG_END = re.compile(r'\[Route\] .*: ended at (.*) \((walked|assumed)[^)]*\)\.\s*$')
@@ -63,23 +67,50 @@ REPLAN = re.compile(r'\[Route\] .*, at (.*); planning again\.\s*$')
 TAPS = re.compile(r'\[(\S+)\] (\S+): taps ' + DIRECTION + r' moved (\d+) of (\d+)(?: tiles\.|: )')
 TO_DIALOGUE = re.compile(r'\[(\S+)\] (\S+): ran ' + DIRECTION +
                          r' to a dialogue: (\d+) moved chunks, (\d+) tiles at most, ([^,]+), (\d+) wild battle')
-WILD = re.compile(r'\[Walk\] .*wild battle(?: after the walk)?; running\.')
+WILD = re.compile(r'\[Walk\] .*wild battle[^;]*; running\.')
 TRAINER = re.compile(r'\[Route\] .* stopped us about ')
+BLOCKED = re.compile(r'; waiting for the way to clear\.|: someone is in the way; talking to them\.')
+WALKED = re.compile(r'\[Walk\] .*: \w+ after (\d+)ms, (\d+) moved chunks, (\d+) wild battle')
 
 
 def tiles_of(text):
     return [[m.group(1).strip(), int(m.group(2)), int(m.group(3))] for m in TILE.finditer(text)]
 
 
-def replay(lines):
+def replay(lines, attempt=None):
     """The trace of a log: its [Leg] records, or if it has none, what its
-    route lines say (replay_text())."""
+    route lines say (replay_text()). A log can hold several runs of a
+    checkpoint: each record gets its run's "attempt" (1, 2, ... a
+    checkpoint), and only `attempt` is kept (-1: each checkpoint's last;
+    None: all)."""
     legs = []
+    attempts = {}
     for line in lines:
+        m = CHECKPOINT.search(line)
+        if m:
+            attempts[m.group(1)] = attempts.get(m.group(1), 0) + 1
         at = line.find(LEG_TAG)
         if at >= 0:
-            legs.append(json.loads(line[at + len(LEG_TAG):]))
-    return {'legs': legs} if legs else replay_text(lines)
+            record = json.loads(line[at + len(LEG_TAG):])
+            record.setdefault('attempt', attempts.get(record['checkpoint'], 1))
+            legs.append(record)
+    trace = {'legs': legs} if legs else replay_text(lines)
+    return pick_attempt(trace, attempt)
+
+
+def pick_attempt(trace, attempt):
+    """`trace` with only run `attempt` of each checkpoint (-1: the last)."""
+    if attempt is None:
+        return trace
+    last = {}
+    for leg in trace['legs']:
+        last[leg['checkpoint']] = max(last.get(leg['checkpoint'], 0), leg.get('attempt', 1))
+    def wanted(checkpoint, run):
+        return run == (last.get(checkpoint, 0) if attempt == -1 else attempt)
+    out = {'legs': [leg for leg in trace['legs'] if wanted(leg['checkpoint'], leg.get('attempt', 1))]}
+    if 'events' in trace:
+        out['events'] = [e for e in trace['events'] if wanted(e[0], e[2])]
+    return out
 
 
 def replay_text(lines):
@@ -87,11 +118,14 @@ def replay_text(lines):
     legs without their end tiles (the log does not name them)."""
     legs = []
     state = {'checkpoint': '', 'event': '', 'count': 0, 'open': None}
+    attempts = {}
+    events = []
 
     def start(record):
         close(None, 'unknown')
         state['count'] += 1
-        record.update({'checkpoint': state['checkpoint'], 'event': state['event'], 'leg': state['count']})
+        record.update({'checkpoint': state['checkpoint'], 'event': state['event'], 'leg': state['count'],
+                       'attempt': attempts.get(state['checkpoint'], 1)})
         record.setdefault('chunks', 0)
         record.setdefault('ms', 0)
         record.setdefault('interrupts', [])
@@ -110,10 +144,16 @@ def replay_text(lines):
         state['open'] = None
 
     for line in lines:
+        m = CHECKPOINT.search(line)
+        if m:
+            close(None, 'unknown')
+            attempts[m.group(1)] = attempts.get(m.group(1), 0) + 1
+            continue
         m = EVENT.search(line)
         if m:
             close(None, 'unknown')
             state.update({'checkpoint': m.group(1), 'event': m.group(2), 'count': 0})
+            events.append([m.group(1), m.group(2), attempts.get(m.group(1), 1)])
             continue
         m = PLAN_LEG.search(line)
         if m:
@@ -149,8 +189,21 @@ def replay_text(lines):
             state['open']['interrupts'].append('wild_battle')
         elif state['open'] is not None and TRAINER.search(line):
             state['open']['interrupts'].append('trainer')
+        elif state['open'] is not None and BLOCKED.search(line):
+            state['open']['interrupts'].append('blocked')
+        elif state['open'] is not None and WALKED.search(line):
+            m = WALKED.search(line)
+            record = state['open']
+            record['ms'] += int(m.group(1))
+            record['chunks'] += int(m.group(2))
+            if record['end_kind'] == 'open':
+                record['moved'] = record.get('moved', 0) + int(m.group(2))
+            if int(m.group(3)) > 0 and 'wild_battle' not in record['interrupts']:
+                record['interrupts'].append('wild_battle')
     close(None, 'unknown')
-    return {'legs': legs}
+    # The events the log ran: one with no leg lines walked legs the text
+    # does not describe (a LEGS step to the walls).
+    return {'legs': legs, 'events': events}
 
 
 @dataclass
@@ -294,6 +347,22 @@ def _grade_event(checkpoint, event, console, sim, grades):
             i += 1
             j += 1
             continue
+        if c.get('note') == 'replan':
+            # Stopped short and planned again: the legs until the route
+            # re-syncs are drift, or LARGE if it never does.
+            grade, why = grade_leg(c, s)
+            add(c, s, grade if grade != DRIFT else LARGE, ('stopped short and planned again; ' + why).rstrip('; '))
+            found = _resync(console, i + 1, sim, j + 1)
+            if found is None:
+                for rest in console[i + 1:]:
+                    add(rest, None, LARGE, 'after a replan, never re-synced')
+                return
+            k, m = found
+            for rest in console[i + 1:k]:
+                add(rest, None, DRIFT, 'a replanned leg; re-synced at leg {}'.format(console[k]['leg']))
+            add(console[k], sim[m], OK, 're-synced: ends where the simulation leg {} does'.format(sim[m]['leg']))
+            i, j = k + 1, m + 1
+            continue
         grade, why = grade_leg(c, s)
         if grade == OK and _relocalizes(c, s):
             for g in pending:
@@ -328,8 +397,13 @@ def diff(console, sim, checkpoints=None):
     console_legs = [leg for leg in console['legs'] if leg['checkpoint'] in wanted]
     c_events = _by_event(console_legs)
     s_events = _by_event(sim_legs)
+    unrecorded = {(e[0], e[1]) for e in console.get('events', [])} - set(c_events)
     for key, s in s_events.items():
         c = c_events.get(key, [])
+        if key in unrecorded:
+            for leg in s:
+                report.grades.append(LegGrade(key[0], key[1], 0, leg['leg'], MASKED, 'the log ran the event but has no lines for its legs'))
+            continue
         if len(c) > len(s) + LOOP_EXTRA_LEGS:
             report.findings.append((key[0], LARGE, '{} walked {} legs, the simulation {}: a recovery loop'.format(
                 key[1], len(c), len(s))))
@@ -345,12 +419,12 @@ def diff(console, sim, checkpoints=None):
     return report
 
 
-def _load(path):
+def _load(path, attempt=None):
     with open(path, encoding='utf-8', errors='replace') as f:
         text = f.read()
     if text.lstrip().startswith('{'):
-        return json.loads(text)
-    return replay(text.splitlines())
+        return pick_attempt(json.loads(text), attempt)
+    return replay(text.splitlines(), attempt)
 
 
 def main(argv=None):
@@ -359,21 +433,23 @@ def main(argv=None):
     r = sub.add_parser('replay', help='a log as a trace')
     r.add_argument('log')
     r.add_argument('-o', '--out')
+    r.add_argument('--attempt', type=int, help='only this run of each checkpoint (-1: the last)')
     d = sub.add_parser('diff', help='grade a console log or trace against a simulation trace')
     d.add_argument('console')
     d.add_argument('sim')
     d.add_argument('--checkpoint', action='append')
+    d.add_argument('--attempt', type=int, default=-1, help='the console run of each checkpoint to grade (default -1: the last)')
     d.add_argument('-v', '--verbose', action='store_true', help='every leg, not only those off')
     args = parser.parse_args(argv)
     if args.command == 'replay':
-        text = json.dumps(_load(args.log), indent=1)
+        text = json.dumps(_load(args.log, args.attempt), indent=1)
         if args.out:
             with open(args.out, 'w', encoding='utf-8') as f:
                 f.write(text + '\n')
         else:
             print(text)
         return 0
-    report = diff(_load(args.console), _load(args.sim), args.checkpoint)
+    report = diff(_load(args.console, args.attempt), _load(args.sim), args.checkpoint)
     for g in report.grades:
         if args.verbose or g.grade != OK:
             print('{} {} console leg {} / sim leg {}: {} {}'.format(

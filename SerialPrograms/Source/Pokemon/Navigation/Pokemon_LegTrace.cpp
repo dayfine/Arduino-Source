@@ -57,6 +57,8 @@ const char* leg_interrupt_name(LegInterrupt interrupt){
         return "scene";
     case LegInterrupt::DIALOGUE:
         return "dialogue";
+    case LegInterrupt::BLOCKED:
+        return "blocked";
     }
     return "?";
 }
