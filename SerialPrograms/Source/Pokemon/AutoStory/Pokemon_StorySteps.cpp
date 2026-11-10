@@ -8,6 +8,7 @@
 #include <memory>
 #include <set>
 #include <utility>
+#include "Pokemon_StoryLog.h"
 #include "Pokemon_StorySteps.h"
 
 namespace PokemonAutomation{
@@ -162,13 +163,13 @@ std::vector<std::string> lint_story_checkpoint(const StoryCheckpoint& data){
 
 
 void record_story_stats(AutoStoryStats& stats, const SegmentReport& report){
-    stats.m_segment++;
+    StoryRunCounts counts{.segments = 1, .checkpoints = 0, .resets = report.reloads};
     for (const CheckpointRun& run : report.runs){
         if (run.passed){
-            stats.m_checkpoint++;
+            counts.checkpoints++;
         }
     }
-    stats.m_reset += report.reloads;
+    record_story_counts(stats, counts);
 }
 
 
