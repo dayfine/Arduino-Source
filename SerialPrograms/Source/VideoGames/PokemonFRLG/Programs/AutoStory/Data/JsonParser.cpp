@@ -236,8 +236,9 @@ bool known_game_step(const StoryStep& step){
 bool known_variant(const StoryStep& step){
     switch (step.kind){
     case StoryStepKind::ROUTE:
-    case StoryStepKind::LEGS:
         return step.variant.empty() || step.variant == RUN_VARIANT || step.variant == BIKE_VARIANT;
+    case StoryStepKind::LEGS:
+        return step.variant.empty() || step.variant == RUN_VARIANT || step.variant == BIKE_VARIANT || step.variant == TAPS_VARIANT;
     case StoryStepKind::STEP:
         return step.variant.empty() || step.variant == TRAINER_LINE_VARIANT || step.variant == TRAINER_WAIT_VARIANT;
     case StoryStepKind::GAME:
