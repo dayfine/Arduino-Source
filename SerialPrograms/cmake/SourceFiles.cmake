@@ -1556,7 +1556,6 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_StoryPose.h
     Source/Pokemon/AutoStory/Pokemon_StoryPostconditionCheck.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryPostconditionCheck.h
-    Source/Pokemon/AutoStory/Pokemon_StoryRun_Tests.h
     Source/Pokemon/AutoStory/Pokemon_StorySavePolicy_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_StorySegments.cpp
     Source/Pokemon/AutoStory/Pokemon_StorySegments.h
@@ -1564,6 +1563,7 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_StoryStepExecutor.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryStepExecutor.h
     Source/Pokemon/AutoStory/Pokemon_StoryStepExecutor_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryStep_Tests.h
     Source/Pokemon/AutoStory/Pokemon_TilePose.cpp
     Source/Pokemon/AutoStory/Pokemon_TilePose.h
     Source/Pokemon/AutoStory/Types/Pokemon_GridPose.h
