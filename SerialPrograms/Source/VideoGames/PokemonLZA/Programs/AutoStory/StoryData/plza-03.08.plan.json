@@ -1,0 +1,66 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "plza",
+  "checkpoint": {
+    "id": "03.08",
+    "title": "Mable's research, the Rock Smash TM",
+    "start": {
+      "map": "PokemonResearchLab",
+      "tiles": []
+    },
+    "events": [
+      {
+        "id": "to_lab_elevator",
+        "kind": "game_action",
+        "why": "step 66: to the elevator's \"A Take Elevator\"",
+        "action": "to_lab_elevator"
+      },
+      {
+        "id": "take_lab_elevator",
+        "kind": "talk",
+        "why": "step 66: A Take Elevator, \"Which floor would you like to go to?\""
+      },
+      {
+        "id": "ride_to_3f",
+        "kind": "game_action",
+        "why": "step 67: \"3F: Director's Office\", the second floor listed",
+        "action": "choose_1"
+      },
+      {
+        "id": "arrive_3f",
+        "kind": "scene",
+        "why": "step 67: the ride, until control on 3F"
+      },
+      {
+        "id": "to_mable",
+        "kind": "game_action",
+        "why": "step 68: to the acting director's desk, into her talk",
+        "action": "to_mable"
+      },
+      {
+        "id": "mable_talk",
+        "kind": "game_action",
+        "why": "step 69: Mable's research requests, until \"Press X...\", then X",
+        "action": "mash_to_instruction"
+      },
+      {
+        "id": "rock_smash_tm",
+        "kind": "game_action",
+        "why": "step 70: Mable's Research, Rewards: TM004 Rock Smash",
+        "action": "claim_mable_research_reward"
+      },
+      {
+        "id": "leave_mable",
+        "kind": "scene",
+        "why": "step 71: out of the menu, through Mable's talk, until control in her office"
+      }
+    ],
+    "metadata": {
+      "phase": "testing",
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game"
+    }
+  },
+  "execution": {
+    "save": "menu"
+  }
+}

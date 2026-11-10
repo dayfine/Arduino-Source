@@ -1,0 +1,39 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "plza",
+  "checkpoint": {
+    "id": "03.06",
+    "title": "Wild Zone 1: first catches",
+    "start": {
+      "map": "WildZone1",
+      "tiles": []
+    },
+    "events": [
+      {
+        "id": "catch_fletchling",
+        "kind": "game_action",
+        "why": "step 59: catch Fletchling, throwing again when it breaks out",
+        "action": "catch_tutorial"
+      },
+      {
+        "id": "catch_bunnelby",
+        "kind": "game_action",
+        "why": "step 60: weaken Bunnelby, then catch it in the catch window",
+        "action": "battle_then_catch"
+      },
+      {
+        "id": "after_catches",
+        "kind": "scene",
+        "why": "step 61: Taunie: tall grass, more Poke Balls, moves smash boulders",
+        "action": "a"
+      }
+    ],
+    "metadata": {
+      "phase": "testing",
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game"
+    }
+  },
+  "execution": {
+    "save": "menu"
+  }
+}

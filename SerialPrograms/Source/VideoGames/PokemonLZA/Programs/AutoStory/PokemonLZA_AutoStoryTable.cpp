@@ -14,6 +14,10 @@
 #include <string_view>
 #include <utility>
 #include <vector>
+#include "Common/Cpp/Exceptions.h"
+#include "Common/Cpp/Json/JsonValue.h"
+#include "Pokemon/AutoStory/Data/Pokemon_AuthoredCheckpointJson.h"
+#include "PokemonLZA_AutoStoryGame.h"
 #include "PokemonLZA_AutoStoryTable.h"
 
 namespace PokemonAutomation{
@@ -352,10 +356,49 @@ MoveList mission_03_zone_moves(){
     };
 }
 
+//  The checkpoints of the JSON files, in file order, and the ids of those
+//  whose execution says the game autosaves at their end.
+struct StoryData{
+    std::vector<StoryCheckpoint> checkpoints;
+    std::set<std::string, std::less<>> autosaves;
+};
+
+StoryData load_story_data(){
+    StoryData data;
+    for (const auto& [name, text] : autostory_checkpoint_json()){
+        bool autosave = false;
+        const Pokemon::ExecutionReader read_execution = [&autosave](const JsonObject& execution, std::string_view source){
+            Pokemon::validate_json_fields(execution, {"save"}, source);
+            const std::string& save = execution.get_string_throw("save");
+            if (save != "autosave" && save != "menu"){
+                throw ParseException(std::string(source) + ": save must be \"autosave\" or \"menu\", not " + save);
+            }
+            autosave = save == "autosave";
+        };
+        StoryCheckpoint checkpoint = Pokemon::read_authored_checkpoint(
+            parse_json(text), "plza", name, read_execution, plza_story_specs()
+        );
+        if (autosave){
+            data.autosaves.insert(checkpoint.id);
+        }
+        data.checkpoints.push_back(std::move(checkpoint));
+    }
+    return data;
+}
+
+const StoryData& story_data(){
+    static const StoryData data = load_story_data();
+    return data;
+}
+
 } // namespace
 
 
 const std::vector<StoryCheckpoint>& story_checkpoints(){
+    return story_data().checkpoints;
+}
+
+const std::vector<StoryCheckpoint>& story_checkpoints_cpp(){
     static const std::vector<StoryCheckpoint> rows = make_story_checkpoints();
     return rows;
 }
@@ -383,8 +426,7 @@ const std::map<std::string, Pokemon::ScreenEvent, std::less<>>& story_move_ends(
 }
 
 const std::set<std::string, std::less<>>& story_autosave_rows(){
-    static const std::set<std::string, std::less<>> rows{"01.00", "01.01", "02.01", "03.01"};
-    return rows;
+    return story_data().autosaves;
 }
 
 bool story_row_saves(const Pokemon::StoryCheckpoint& row){

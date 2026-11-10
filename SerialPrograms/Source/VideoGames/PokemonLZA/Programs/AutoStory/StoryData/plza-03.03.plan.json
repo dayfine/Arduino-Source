@@ -1,0 +1,63 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "plza",
+  "checkpoint": {
+    "id": "03.03",
+    "title": "Over the rooftops to Station Front",
+    "start": {
+      "map": "LumioseCity",
+      "tiles": []
+    },
+    "events": [
+      {
+        "id": "through_hotel_gate",
+        "kind": "game_action",
+        "why": "step 46: through the Hotel Z gate passage into the scene",
+        "action": "through_hotel_gate"
+      },
+      {
+        "id": "rock_pile_scene",
+        "kind": "scene",
+        "why": "step 46: Taunie at the rocks blocking the street",
+        "action": "a"
+      },
+      {
+        "id": "side_street_to_wall",
+        "kind": "game_action",
+        "why": "step 47: down the side street to the wall across it",
+        "action": "side_street_to_wall"
+      },
+      {
+        "id": "climb_ladder",
+        "kind": "game_action",
+        "why": "steps 48-49: sidestep right 0.6 s, face up (150 ms), A Climb Up, hold up ~4-6 s",
+        "action": "climb_ladder"
+      },
+      {
+        "id": "rooftop_scene",
+        "kind": "scene",
+        "why": "step 50: Taunie on the roof",
+        "action": "a"
+      },
+      {
+        "id": "off_the_roof",
+        "kind": "game_action",
+        "why": "step 51: off the roof's edge, down to South Boulevard",
+        "action": "off_the_roof"
+      },
+      {
+        "id": "south_boulevard",
+        "kind": "scene",
+        "why": "step 52: Taunie walks to the Pokemon Center, until Station Front",
+        "action": "a"
+      }
+    ],
+    "metadata": {
+      "phase": "testing",
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game"
+    }
+  },
+  "execution": {
+    "save": "menu"
+  }
+}

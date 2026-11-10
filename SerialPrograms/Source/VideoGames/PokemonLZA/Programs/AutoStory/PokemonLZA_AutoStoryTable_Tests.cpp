@@ -290,6 +290,58 @@ UnitTestResult test_scene_mash_rule(Logger&){
     return true;
 }
 
+//  What differs between two steps, if anything.
+std::string step_difference(const StoryStep& json, const StoryStep& cpp){
+    if (json.kind != cpp.kind || json.action != cpp.action){
+        return std::format("kind/action {} \"{}\" vs {} \"{}\"",
+            Pokemon::story_step_kind_name(json.kind), json.action, Pokemon::story_step_kind_name(cpp.kind), cpp.action);
+    }
+    if (json.why != cpp.why){
+        return "why \"" + json.why + "\" vs \"" + cpp.why + "\"";
+    }
+    if (json.args != cpp.args || json.skip_if != cpp.skip_if || json.pose_after != cpp.pose_after || json.once_per_save != cpp.once_per_save){
+        return "args, skip_if, pose_after or once_per_save";
+    }
+    return "";
+}
+
+//  The checked-in JSON files hold exactly the C++ rows they were written
+//  from: ids, titles, starts and every step; and the same autosave rows.
+UnitTestResult test_json_parity(Logger&){
+    const std::vector<StoryCheckpoint>& json = story_checkpoints();
+    const std::vector<StoryCheckpoint>& cpp = story_checkpoints_cpp();
+    if (json.size() != cpp.size()){
+        return std::format("Expected {} JSON checkpoints, read {}.", cpp.size(), json.size());
+    }
+    for (size_t c = 0; c < cpp.size(); c++){
+        const StoryCheckpoint& a = json[c];
+        const StoryCheckpoint& b = cpp[c];
+        if (a.id != b.id || a.title != b.title || a.start != b.start){
+            return std::format("Checkpoint {}: id, title or start differ from the C++ row {}.", a.id, b.id);
+        }
+        if (a.metadata.phase != Pokemon::StoryPhase::TESTING){
+            return a.id + ": expected phase testing.";
+        }
+        if (a.steps.size() != b.steps.size()){
+            return std::format("{}: {} JSON steps, {} C++ steps.", a.id, a.steps.size(), b.steps.size());
+        }
+        for (size_t s = 0; s < b.steps.size(); s++){
+            if (a.steps[s].name != b.steps[s].name){
+                return std::format("{} step {}: {} vs {}.", a.id, s + 1, a.steps[s].name, b.steps[s].name);
+            }
+            const std::string difference = step_difference(a.steps[s], b.steps[s]);
+            if (!difference.empty()){
+                return std::format("{} {}: {}.", a.id, b.steps[s].name, difference);
+            }
+        }
+    }
+    const std::set<std::string, std::less<>> autosaves{"01.00", "01.01", "02.01", "03.01"};
+    if (story_autosave_rows() != autosaves){
+        return "Expected the JSON's autosave rows to be 01.00, 01.01, 02.01 and 03.01.";
+    }
+    return true;
+}
+
 //  Chikorita's walk is recorded and walks somewhere.
 UnitTestResult test_starter_moves(Logger&){
     const auto chikorita = starter_moves().find(StarterChoice::CHIKORITA);
@@ -373,6 +425,10 @@ const AutoStoryTableCase AUTO_STORY_TABLE_CASES[] = {
     },
     {
         .input = {"Scene mash: what each frame presses", test_scene_mash_rule},
+        .expectation = {},
+    },
+    {
+        .input = {"Story data: the JSON files equal the C++ rows", test_json_parity},
         .expectation = {},
     },
 };

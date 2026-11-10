@@ -1,0 +1,51 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "plza",
+  "checkpoint": {
+    "id": "03.05",
+    "title": "To Wild Zone 1",
+    "start": {
+      "map": "LumioseCity",
+      "tiles": []
+    },
+    "events": [
+      {
+        "id": "center_to_zone_1",
+        "kind": "game_action",
+        "why": "step 56: from the Pokemon Center to Wild Zone 1's gate",
+        "action": "center_to_zone_1"
+      },
+      {
+        "id": "toward_zone_1_gate",
+        "kind": "game_action",
+        "why": "step 57: toward the gate, into Taunie's scene",
+        "action": "toward_zone_1_gate"
+      },
+      {
+        "id": "wild_zones_tutorial",
+        "kind": "scene",
+        "why": "step 57: Taunie on wild zones, the Wild Zones card",
+        "action": "a"
+      },
+      {
+        "id": "into_zone_1",
+        "kind": "game_action",
+        "why": "step 58: to the gate's \"A Enter\"",
+        "action": "into_zone_1"
+      },
+      {
+        "id": "enter_zone_1",
+        "kind": "scene",
+        "why": "step 58: A Enter, Taunie, the Throwing Poke Balls card",
+        "action": "a"
+      }
+    ],
+    "metadata": {
+      "phase": "testing",
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game"
+    }
+  },
+  "execution": {
+    "save": "menu"
+  }
+}
