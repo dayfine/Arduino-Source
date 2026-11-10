@@ -1,0 +1,114 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "bdsp",
+  "checkpoint": {
+    "id": "01.02b",
+    "title": "Oreburgh Center heal",
+    "start": {
+      "map": "OreburghCity",
+      "facing": "east",
+      "tiles": [
+        [
+          23,
+          23
+        ]
+      ]
+    },
+    "events": [
+      {
+        "id": "below_barry",
+        "kind": "legs",
+        "args": {
+          "legs": [
+            {
+              "direction": "south",
+              "tiles": 1
+            },
+            {
+              "direction": "east",
+              "tiles": 3
+            },
+            {
+              "direction": "north",
+              "tiles": 2
+            }
+          ],
+          "fight_wild": false
+        },
+        "declared_after": {
+          "map": "OreburghCity",
+          "facing": "north",
+          "tiles": [
+            [
+              26,
+              22
+            ]
+          ]
+        },
+        "why": "south 1 around the guide, east 3 to Barry's column, north 2 to below Barry"
+      },
+      {
+        "id": "barry",
+        "kind": "talk",
+        "why": "Barry in the Gym's door"
+      },
+      {
+        "id": "barrys_lines",
+        "kind": "scene",
+        "declared_after": {
+          "map": "OreburghCity",
+          "facing": "north",
+          "tiles": [
+            [
+              26,
+              22
+            ]
+          ]
+        },
+        "why": "Roark has gone to the mine"
+      },
+      {
+        "id": "below_the_centers_door",
+        "kind": "route",
+        "action": "town",
+        "args": {
+          "target": {
+            "map": "OreburghCity",
+            "facing": "north",
+            "tiles": [
+              [
+                47,
+                21
+              ]
+            ]
+          },
+          "fight_wild": false
+        },
+        "why": "east along the street to below the Center's door"
+      },
+      {
+        "id": "heal_oreburgh_first",
+        "kind": "heal",
+        "declared_after": {
+          "map": "OreburghCity",
+          "facing": "south",
+          "tiles": [
+            [
+              47,
+              21
+            ],
+            [
+              46,
+              21
+            ]
+          ]
+        },
+        "why": "the nurse; out onto the doorstep, where 01.03 starts"
+      }
+    ]
+  },
+  "execution": {
+    "on_failure": "reload_and_retry",
+    "saves_in": "Oreburgh City"
+  }
+}

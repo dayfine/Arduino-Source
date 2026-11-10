@@ -18,7 +18,9 @@
 #include "Common/Cpp/Filesystem/FileIO.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
-#include "Pokemon/AutoStory/Pokemon_StorySteps.h"
+#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
+#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
+#include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
 #include "Data/PokemonBDSP_AutoStory_Maps.h"
 #include "Data/PokemonBDSP_AutoStory_PlanCosts.h"
 #include "Data/PokemonBDSP_AutoStory_RoutePlanner.h"
@@ -27,8 +29,10 @@
 #include "Actions/PokemonBDSP_AutoStory_Events.h"
 #include "PokemonBDSP_AutoStory_StoryExecutor.h"
 #include "PokemonBDSP_AutoStory_StoryPlaces.h"
+#include "PokemonBDSP_AutoStory_TableRoutes.h"
 #include "PokemonBDSP_AutoStory_StoryTable.h"
 #include "PokemonBDSP_AutoStory_StoryTable_Tests.h"
+#include "PokemonBDSP_AutoStory_StoryWalkSteps.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -40,17 +44,19 @@ namespace{
 using Pokemon::Direction;
 using Pokemon::StoryStepKind;
 using Pokemon::TilePos;
+using Pokemon::story_arg;
 
-//  The variants each kind does itself, besides the story's events.
-const std::map<StoryStepKind, std::set<std::string>>& built_in_variants(){
-    static const std::map<StoryStepKind, std::set<std::string>> variants{
-        {StoryStepKind::ROUTE, {"", "town", "robust", "line"}},
-        {StoryStepKind::LEGS, {"", "one_short_ok", "to_wall", "counted_wall", "to_dialogue", "to_map"}},
-        {StoryStepKind::STEP, {"", "to_banner", "tap"}},
-        {StoryStepKind::MASH, {"", "a"}},
-        {StoryStepKind::BATTLE, {"", "doubles", "starter"}},
+//  The actions each kind does itself, besides the story's events.
+const std::map<StoryStepKind, std::set<std::string>>& built_in_actions(){
+    static const std::map<StoryStepKind, std::set<std::string>> actions{
+        {StoryStepKind::ROUTE, {"", "route", "town", "robust", "line", std::string(ROUTE_ONTO_TRIGGER)}},
+        {StoryStepKind::LEGS, {"", "legs", "one_short_ok", "to_wall", "to_dialogue", "to_map", "counted_wall", "measured"}},
+        {StoryStepKind::STEP, {"", "face", "to_banner", "tap", "or_legs"}},        {StoryStepKind::MASH, {"", "a"}},
+        {StoryStepKind::BATTLE, {"", "fight", "doubles", "starter"}},
+        {StoryStepKind::TALK, {"", "talk_to_wanderer"}},
+        {StoryStepKind::SHOP, {"", "sandgem_potions"}},
     };
-    return variants;
+    return actions;
 }
 
 //  The table: unique ids in order, each row lints, and every step's variant
@@ -72,13 +78,13 @@ UnitTestResult test_story_table_lints(Logger&){
             return row.id + ": " + problems[0];
         }
         for (const Pokemon::StoryStep& step : row.steps){
-            const auto built_in = built_in_variants().find(step.kind);
-            const bool known = events.contains(step.variant) ||
-                (step.kind != StoryStepKind::GAME && step.variant.empty()) ||
-                (built_in != built_in_variants().end() && built_in->second.contains(step.variant));
+            const auto built_in = built_in_actions().find(step.kind);
+            const bool known = events.contains(step.action) ||
+                (step.kind != StoryStepKind::GAME && step.action.empty()) ||
+                (built_in != built_in_actions().end() && built_in->second.contains(step.action));
             if (!known){
                 return std::format("{} {}: no event or {} way named \"{}\".",
-                    row.id, step.name, Pokemon::story_step_kind_name(step.kind), step.variant);
+                    row.id, step.name, Pokemon::story_step_kind_name(step.kind), step.action);
             }
         }
     }
@@ -95,7 +101,13 @@ std::optional<Pokemon::Pose> end_pose(const StoryCheckpoint& row){
         return std::nullopt;
     }
     const Pokemon::StoryStep& last = row.steps.back();
-    return last.pose_after ? last.pose_after : last.target;
+    if (last.pose_after){
+        return Pokemon::pose_of(*last.pose_after);
+    }
+    if (last.kind == StoryStepKind::ROUTE){
+        return Pokemon::pose_of(story_arg<Pokemon::GridPose>(last.args, "target"));
+    }
+    return std::nullopt;
 }
 
 //  Each row starts where the row before it ends: every tile its start allows
@@ -105,7 +117,7 @@ UnitTestResult test_story_table_rows_join(Logger&){
     const std::vector<StoryCheckpoint>& rows = story_checkpoints();
     for (size_t i = 1; i < rows.size(); i++){
         const std::optional<Pokemon::Pose> end = end_pose(rows[i - 1]);
-        const std::optional<Pokemon::Pose>& start = rows[i].start;
+        const std::optional<Pokemon::Pose> start = rows[i].start ? std::make_optional(Pokemon::pose_of(*rows[i].start)) : std::nullopt;
         if (!end || !start){
             continue;
         }
@@ -251,72 +263,6 @@ UnitTestResult test_line_5_recovery_pins_the_wall_nearest_the_goal(Logger& logge
         return "the recovery starts " + to_string(first) + ", not north to the wall at (19, 7).";
     }
     return true;
-}
-
-//  A ROUTE step of the table, and where the steps before it in its row leave
-//  the player: the row's start, then each step's target or pose_after. A LEGS
-//  or STEP step that does not say where it ends leaves the start unknown.
-struct TableRoute{
-    std::string row;
-    const Pokemon::StoryStep* step;
-    std::optional<Pokemon::Pose> from;
-    //  The world the step is planned on; none if the start is unknown or no
-    //  world joins its map and the target's.
-    const StoryWorld* world;
-};
-
-std::optional<Pokemon::Pose> pose_after_step(const std::optional<Pokemon::Pose>& at, const Pokemon::StoryStep& step){
-    if (step.kind == StoryStepKind::ROUTE){
-        return step.target;
-    }
-    if (step.pose_after){
-        return step.pose_after;
-    }
-    return step.kind == StoryStepKind::LEGS || step.kind == StoryStepKind::STEP ? std::nullopt : at;
-}
-
-std::vector<TableRoute> table_routes(){
-    std::vector<TableRoute> routes;
-    for (const StoryCheckpoint& row : story_checkpoints()){
-        std::optional<Pokemon::Pose> at = row.start;
-        for (const Pokemon::StoryStep& step : row.steps){
-            if (step.kind == StoryStepKind::ROUTE){
-                const bool known = at && !Pokemon::tiles_of(*at).empty();
-                routes.push_back({row.id, &step, at, known ? story_plan_world(at->map, step.target->map) : nullptr});
-            }
-            at = pose_after_step(at, step);
-        }
-    }
-    return routes;
-}
-
-std::vector<TilePos> world_tiles(const StoryWorld& world, const Pokemon::Pose& pose){
-    std::vector<TilePos> tiles;
-    for (const TilePos& pos : Pokemon::tiles_of(pose)){
-        tiles.push_back(story_to_world(world, pose.map, pos));
-    }
-    return tiles;
-}
-
-//  The legs a table ROUTE step plans, as walk_route() plans them: the step's
-//  costs, then the default ones; no legs if neither plans.
-struct RouteStepPlan{
-    std::vector<TilePos> start;
-    std::optional<std::vector<PlannedLeg>> legs;
-    bool default_costs = false;     //  the step's own costs found no plan
-};
-
-RouteStepPlan plan_table_route(const TableRoute& route){
-    const StoryWorld& world = *route.world;
-    const std::vector<TilePos> targets = world_tiles(world, *route.step->target);
-    const auto goal = [&](const TilePos& pos){ return std::find(targets.begin(), targets.end(), pos) != targets.end(); };
-    RouteStepPlan plan{.start = world_tiles(world, *route.from)};
-    plan.legs = plan_recovered_route(world, plan.start, goal, *story_route_costs(route.step->variant));
-    if (!plan.legs){
-        plan.legs = plan_recovered_route(world, plan.start, goal, RobustPlanCosts());
-        plan.default_costs = plan.legs.has_value();
-    }
-    return plan;
 }
 
 //  Why `planned` may slide into a door or a warp, or "": an open leg (not to
@@ -494,7 +440,7 @@ UnitTestResult test_ravaged_path_keeps_off_the_youngster(Logger& logger){
 //  beside the story data, so a planner or table change shows its plans' diff
 //  in review.
 
-constexpr const char* ROUTE_PLANS_HEADER =
+constexpr std::string_view ROUTE_PLANS_HEADER =
     "BDSP AutoStory: the legs each ROUTE step of the story table plans.\n"
     "Planned as the console's RouteWalker plans them: plan_recovered_route() on\n"
     "story_plan_world(), from the tiles the row's steps before it leave the\n"
@@ -560,9 +506,10 @@ std::string dump_plan(const StoryWorld& world, const RouteStepPlan& plan){
 
 std::string dump_route(const TableRoute& route){
     const Pokemon::StoryStep& step = *route.step;
-    std::string out = std::format("== {} {} (costs: {})\n", route.row, step.name, step.variant.empty() ? "route" : step.variant);
+    std::string out = std::format("== {} {} (costs: {})\n", route.row, step.name, step.action.empty() ? "route" : step.action);
     out += "  from: " + (route.from ? Pokemon::to_string(*route.from) : std::string("unknown")) + "\n";
-    out += "  target: " + Pokemon::to_string(*step.target) + "\n";
+    const Pokemon::Pose target = Pokemon::pose_of(story_arg<Pokemon::GridPose>(step.args, "target"));
+    out += "  target: " + Pokemon::to_string(target) + "\n";
     if (route.world == nullptr){
         return out + (route.from && !Pokemon::tiles_of(*route.from).empty()
             ? "  not planned: no story world joins the two maps\n"
@@ -572,7 +519,7 @@ std::string dump_route(const TableRoute& route){
 }
 
 std::string route_plans_text(){
-    std::string out = ROUTE_PLANS_HEADER;
+    std::string out = std::string(ROUTE_PLANS_HEADER);
     for (const TableRoute& route : table_routes()){
         out += "\n" + dump_route(route);
     }
@@ -581,6 +528,7 @@ std::string route_plans_text(){
 
 //  The golden file, in the Data folder beside this file's.
 std::string route_plans_golden_path(){
+    // code-health: allow char_pointer -- std::getenv returns a const char pointer
     const char* path = std::getenv("PA_ROUTE_PLANS_GOLDEN");
     if (path != nullptr && path[0] != '\0'){
         return path;
@@ -633,6 +581,7 @@ std::string plan_differences(const std::string& golden, const std::string& plann
 UnitTestResult test_route_plans_golden(Logger& logger){
     const std::string path = route_plans_golden_path();
     const std::string planned = route_plans_text();
+    // code-health: allow char_pointer -- std::getenv returns a const char pointer
     const char* update = std::getenv("PA_UPDATE_ROUTE_PLANS");
     if (update != nullptr && update[0] != '\0' && update[0] != '0'){
         std::string crlf;

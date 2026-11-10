@@ -14,6 +14,7 @@
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
+using namespace detail;
 
 using namespace std::chrono_literals;
 using Pokemon::Direction;
@@ -65,8 +66,18 @@ bool is_door(const StoryWorld& world, const TilePos& pos){
     return tile && *tile == TileKind::DOOR && !world.occupied(pos);
 }
 
+//  Held time per tile of a walk east or west to a wall: slower than the
+//  walker's 160 ms. On the console 3520 ms held east before the Running
+//  Shoes went fewer than 20 tiles (lab-B 2026-11-09, 00.03): at least 176 ms
+//  a tile. A limit timed at the walker's pace stops short here as it did
+//  there. North and south keep their measured 240 ms.
+constexpr Milliseconds SIM_WALK_MS_PER_TILE_ACROSS = Milliseconds(200);
+
 Milliseconds per_tile(Direction direction, SimPace pace, bool can_run){
-    return route_ms_per_tile(direction, pace == SimPace::RUN && can_run ? MoveSpeed::RUN : MoveSpeed::WALK);
+    if (pace == SimPace::RUN && can_run){
+        return route_ms_per_tile(direction, MoveSpeed::RUN);
+    }
+    return std::max(route_ms_per_tile(direction, MoveSpeed::WALK), SIM_WALK_MS_PER_TILE_ACROSS);
 }
 
 uint32_t step_rng(uint64_t& state){
@@ -77,6 +88,7 @@ uint32_t step_rng(uint64_t& state){
 } // namespace
 
 
+namespace detail{
 SimPos sim_pos(const TilePos& tile){
     return {tile.x * SIM_TILE, tile.y * SIM_TILE};
 }
@@ -89,8 +101,7 @@ TilePos nearest_tile(const SimPos& pos){
 std::string to_string(const SimPos& pos){
     return std::format("({:g}, {:g})", pos.x / (double)SIM_TILE, pos.y / (double)SIM_TILE);
 }
-
-const char* sim_stop_name(SimStop stop){
+std::string_view sim_stop_name(SimStop stop){
     switch (stop){
     case SimStop::DONE:
         return "done";
@@ -105,7 +116,7 @@ const char* sim_stop_name(SimStop stop){
     }
     return "?";
 }
-
+} // namespace detail
 
 GridSim::GridSim(SimWorld world, const TilePos& start, Direction facing, bool can_run)
     : m_world(std::move(world))
@@ -130,6 +141,7 @@ void GridSim::place(SimWorld world, const TilePos& start, std::optional<Directio
     }
     m_player.dialog = false;
     m_player.trainer.reset();
+    m_player.scene.reset();
     m_player.warped.reset();
     if (m_world.can_run){
         m_player.can_run = *m_world.can_run;
@@ -179,6 +191,7 @@ void GridSim::advance_wanderer(SimWanderer& wanderer, Milliseconds time){
     }
 }
 
+namespace detail{
 void sim_advance_time(GridSim& sim, Milliseconds time){
     for (SimWanderer& wanderer : sim.m_wanderers){
         sim.advance_wanderer(wanderer, time);
@@ -188,6 +201,23 @@ void sim_advance_time(GridSim& sim, Milliseconds time){
 const std::vector<SimWanderer>& sim_wanderers(const GridSim& sim){
     return sim.m_wanderers;
 }
+
+void sim_add_trigger(GridSim& sim, SimTrigger trigger){
+    sim.m_world.triggers.push_back(std::move(trigger));
+}
+const std::vector<SimTrigger>& sim_triggers(const GridSim& sim){
+    return sim.m_world.triggers;
+}
+void sim_forget_warp(GridSim& sim){
+    sim.m_player.warped.reset();
+}
+void sim_fight(GridSim& sim){
+    if (sim.m_player.scene){
+        sim.m_player.scenes_fought.push_back(*sim.m_player.scene);
+    }
+    sim.end_dialogue();
+}
+} // namespace detail
 
 bool GridSim::wanderer_at(const TilePos& pos) const{
     for (const SimWanderer& wanderer : m_wanderers){
@@ -245,7 +275,9 @@ std::optional<SimStop> GridSim::arrive(){
         const bool fired = std::find(m_player.fired.begin(), m_player.fired.end(), trigger.name) != m_player.fired.end();
         if (!fired && std::find(trigger.tiles.begin(), trigger.tiles.end(), tile) != trigger.tiles.end()){
             m_player.fired.push_back(trigger.name);
+            m_player.fired.insert(m_player.fired.end(), trigger.spends.begin(), trigger.spends.end());
             m_player.dialog = true;
+            m_player.scene = trigger.name;
             return SimStop::DIALOG;
         }
     }
@@ -354,15 +386,18 @@ void GridSim::end_dialogue(){
         m_player.fought.push_back(*m_player.trainer);
     }
     m_player.trainer.reset();
+    m_player.scene.reset();
     m_player.dialog = false;
 }
 
 
+namespace detail{
 bool sim_can_step(const GridSim& sim, Direction direction){
     GridSim probe = sim;
     const SimMove move = probe.tap(direction, ROUTE_MS_PER_TILE_ACROSS, false);
     return move.distance > 0;
 }
+} // namespace detail
 
 
 namespace{
@@ -428,10 +463,23 @@ void GridSimRouteIO::escape_scripted_battle(const SimWildBattle& battle, const s
     if (result == WildEscapeResult::UNCONFIRMED){
         note(std::format("escape_wild_battle: {}: the Run attempts ran out without the exit.", label), RouteNote::FAILURE);
     }
-    const char* ended = result == WildEscapeResult::FOUGHT ? "fought to its end" : "run from";
+    const std::string_view ended = result == WildEscapeResult::FOUGHT ? "fought to its end" : "run from";
     m_notes.push_back(std::format("[Sim] {}: wild battle {}.", label, ended));
 }
 
+bool GridSimRouteIO::grass_battle(const TilePos& tile){
+    if (m_grass.every == 0 || m_sim.world().tile(tile) != TileKind::TALL_GRASS){
+        return false;
+    }
+    if (++m_grass_tiles < m_grass.every){
+        return false;
+    }
+    m_grass_tiles = 0;
+    return true;
+}
+
+//  A grass battle on the hold does not stop it: the hold goes on to the
+//  wall after it, as a scripted one's does.
 WalkResult GridSimRouteIO::walk_to_wall(const RouteWallWalk& walk){
     size_t wild_battles = 0;
     if (const auto encounter = take_wall_encounter(walk)){
@@ -439,7 +487,15 @@ WalkResult GridSimRouteIO::walk_to_wall(const RouteWallWalk& walk){
         wild_battles = 1;
     }
     const SimPace pace = walk.options.pace == DpadPace::RUN ? SimPace::RUN : SimPace::WALK;
+    TilePos stepped = nearest_tile(m_sim.player().pos);
     const SimMove move = m_sim.hold(walk.direction, walk.limit, pace);
+    for (int tile = 0; tile < move.distance / SIM_TILE; tile++){
+        stepped = stepped.next(walk.direction);
+        if (grass_battle(stepped)){
+            escape_scripted_battle(SimWildBattle{}, walk.label);
+            wild_battles++;
+        }
+    }
     m_notes.push_back(std::format("[Sim] {}: held {} to {} at {}.", walk.label, direction_name(walk.direction),
         sim_stop_name(move.stop), to_string(m_sim.player().pos)));
     WalkResult result{.stop = walk_stop(move.stop), .walked = move.time, .wild_battles = wild_battles, .moved_chunks = (size_t)(move.distance / SIM_TILE)};
@@ -468,9 +524,12 @@ WalkResult GridSimRouteIO::walk_taps(Direction direction, size_t tiles, const st
     size_t still = 0;
     size_t moved_at_battle = 0;
     for (size_t tap = 0; tap < tiles && result.stop == WalkStop::LIMIT; tap++){
-        const auto encounter = take_encounter(direction, tiles, tap + 1, label);
+        std::optional<SimWildTap> encounter = take_encounter(direction, tiles, tap + 1, label);
         const SimMove move = encounter && encounter->phase == SimEncounterPhase::BEFORE_MOVEMENT
             ? SimMove{} : m_sim.tap(direction, ROUTE_MS_PER_TILE_ACROSS, false);
+        if (!encounter && move.distance > 0 && grass_battle(nearest_tile(m_sim.player().pos))){
+            encounter = SimWildTap{.label = label, .direction = direction, .requested_tiles = tiles, .tap = tap + 1};
+        }
         result.walked += 800ms;
         if (encounter){
             //  Match the production escape_battle() credit, independently

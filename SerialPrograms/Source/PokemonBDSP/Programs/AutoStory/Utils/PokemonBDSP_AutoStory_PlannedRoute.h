@@ -50,6 +50,14 @@ struct RouteWalkPlan{
     RobustPlanCosts costs = route_plan_costs();
     //  The pace of legs to a wall, which their tile counts are timed by.
     MoveSpeed speed = MoveSpeed::WALK;
+    //  The story's next step is a scene: a dialogue no trainer explains is
+    //  that scene, started early by a trigger on the way (00.04's Mom's
+    //  call, lab-B 2026-11-09 17:29). The walk ends there with it open,
+    //  for the scene's step, instead of pressing through it as a trainer's.
+    bool scene_next = false;
+    //  `goal` is that scene's trigger (ROUTE_ONTO_TRIGGER): a walk stops on
+    //  it when the scene starts, as at a wall.
+    bool goal_is_trigger = false;
 };
 
 //  Walks from any of the world tiles `from` of `maps` until every tile the
@@ -76,6 +84,9 @@ std::vector<Pokemon::TilePos> walk_route(
 struct RouteEnd{
     std::vector<Pokemon::TilePos> tiles;
     WarpSeen warp = {};
+    //  The next step's scene started on the way (RouteWalkPlan::scene_next):
+    //  its dialogue is open, and `tiles` are where the walk may have stopped.
+    bool scene = false;
 };
 //  walk_route(), but a fade on a leg with a warp at most a tile or two past
 //  its end ends the walk there, as arrived early: the walk ran on onto the
@@ -84,24 +95,6 @@ struct RouteEnd{
 RouteEnd walk_route_to_warp(
     RouteIO& io, const StoryWorld& maps, std::vector<Pokemon::TilePos> from,
     RouteTrainers& trainers, const RouteWalkPlan& plan
-);
-
-//  The corners of a line a human walked, and the costs to plan each
-//  stretch with.
-struct WaypointWalkPlan{
-    std::vector<Pokemon::TilePos> waypoints;
-    std::string label;
-    RobustPlanCosts costs = waypoint_plan_costs();
-};
-
-//  Walks `from` to each of `plan.waypoints` in turn, with walk_route() for
-//  every stretch, and returns where the last one ended: the plan is the
-//  line, with the walker's handling of trainers and blocks on each stretch
-//  (Route 204 North, 2026-10-31).
-std::vector<Pokemon::TilePos> walk_waypoints(
-    VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
-    const StoryWorld& maps, std::vector<Pokemon::TilePos> from,
-    RouteTrainers& trainers, const WaypointWalkPlan& plan
 );
 
 //  Whom talk_to_npc() talks to: the NPC on world tile `npc`, from the sides

@@ -14,6 +14,7 @@
 #ifndef PokemonAutomation_PokemonBDSP_AutoStory_StoryTable_H
 #define PokemonAutomation_PokemonBDSP_AutoStory_StoryTable_H
 
+#include <string_view>
 #include <vector>
 #include "PokemonBDSP_AutoStory_StoryExecutor.h"
 
@@ -28,9 +29,9 @@ const std::vector<StoryCheckpoint>& story_checkpoints();
 
 //  Mom gives the Running Shoes in this row's step: from then on, B held
 //  with the D-pad runs (r24, r27).
-constexpr const char* RUNNING_SHOES_ROW = "00.03";
+inline constexpr std::string_view RUNNING_SHOES_ROW = "00.03";
 //  Story step name in which Mom gives the Running Shoes.
-constexpr const char* RUNNING_SHOES_STEP = "rowan_and_dawn";
+inline constexpr std::string_view RUNNING_SHOES_STEP = "rowan_and_dawn";
 
 
 

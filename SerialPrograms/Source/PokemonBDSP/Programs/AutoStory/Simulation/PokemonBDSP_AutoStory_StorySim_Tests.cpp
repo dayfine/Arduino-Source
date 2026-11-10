@@ -41,6 +41,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_CoordEvents.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP_AutoStory_GridSim.h"
+#include "PokemonBDSP_AutoStory_LegTrace_Tests.h"
 #include "PokemonBDSP_AutoStory_OldStorySteps.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Events.h"
@@ -48,6 +49,7 @@
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryStepIO.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryTable.h"
+#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Resources.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryWalkSteps.h"
 #include "PokemonBDSP_AutoStory_StorySim.h"
 #include "PokemonBDSP_AutoStory_StorySim_Tests.h"
@@ -55,6 +57,7 @@
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
+using namespace detail;
 
 namespace{
 
@@ -256,7 +259,7 @@ UnitTestResult test_heal_fade_unseen(Logger& logger){
 //  still missed: no frame shows the scene before it.
 UnitTestResult test_sim_fade_frames(Logger&){
     struct FadeCase{
-        const char* name;
+        std::string_view name;
         bool door;
         double floor;
         double fade;
@@ -374,6 +377,8 @@ void add_tests_AutoStory_StorySim(UnitTestDatabase& database){
     for (const auto& item : AUTO_STORY_STORY_SIM_CASES){
         database.add<Test_AutoStoryStorySim>(item);
     }
+    add_tests_AutoStoryResources(database);
+    add_tests_AutoStory_LegTrace(database);
 }
 
 } // namespace PokemonBDSP

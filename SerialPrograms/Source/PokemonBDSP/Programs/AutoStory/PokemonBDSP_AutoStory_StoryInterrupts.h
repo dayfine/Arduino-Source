@@ -21,6 +21,7 @@
 
 #include "Common/Cpp/Time.h"
 #include "CommonFramework/Tools/VideoStream.h"
+#include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "Pokemon/AutoStory/Pokemon_ScreenEvents.h"
 #include "Pokemon/AutoStory/Pokemon_StoryInterrupts.h"
@@ -53,10 +54,12 @@ bool presses_through_text(Pokemon::StoryStepKind kind);
 constexpr Milliseconds BETWEEN_STEPS_LOOK = Milliseconds(300);
 
 //  The console's look between steps: BDSP's screen events for
-//  BETWEEN_STEPS_LOOK, everything showing in it judged.
+//  BETWEEN_STEPS_LOOK, everything showing in it judged. The Switch's HOME
+//  menu comes first (Pokemon::SwitchHomeObserver): BDSP's detectors read it
+//  as a quiet overworld (lab-B 2026-11-09 15:31).
 class ConsoleScreenLook{
 public:
-    ConsoleScreenLook(VideoStream& stream, ProControllerContext& context);
+    ConsoleScreenLook(ConsoleHandle& console, ProControllerContext& context);
 
     Pokemon::ScreenLook look(bool fresh);
 
@@ -64,6 +67,7 @@ private:
     VideoStream& m_stream;
     ProControllerContext& m_context;
     BdspScreenObserver m_observer;
+    Pokemon::SwitchHomeObserver m_eyes;
     Pokemon::ScreenEventWatcher m_watcher;
     WallClock m_start;
 };

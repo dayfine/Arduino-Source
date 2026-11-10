@@ -5,10 +5,14 @@
  */
 
 #include <algorithm>
+#include <cstdlib>
 #include <format>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
+#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
+#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
+#include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_CoordEvents.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
@@ -18,9 +22,12 @@
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
+using namespace detail;
 
 using namespace std::chrono_literals;
 using Pokemon::Direction;
+using Pokemon::GridPose;
+using Pokemon::story_arg;
 using Pokemon::Outcome;
 using Pokemon::Pose;
 using Pokemon::RunState;
@@ -29,6 +36,7 @@ using Pokemon::StoryStepKind;
 using Pokemon::TilePos;
 
 
+namespace detail{
 ImageStats sim_screen(double brightness, double stddev){
     return ImageStats(FloatPixel(brightness, brightness, brightness), FloatPixel(stddev, stddev, stddev), 1);
 }
@@ -72,7 +80,7 @@ SimBeat sim_pause(std::string what, Milliseconds length, bool moving){
     return {.what = std::move(what), .length = length, .moving = moving};
 }
 SimBeat sim_fade(std::string what, Milliseconds length, WarpFade fade){
-    return {.what = std::move(what), .length = length, .overworld = false, .fade = fade};
+    return {.what = std::move(what), .length = length, .overworld = true, .moving = false, .fade = fade};
 }
 
 std::string play_scene(const SimScene& scene, const TalkOverRule& rule){
@@ -117,6 +125,7 @@ std::string play_scene(const SimScene& scene, const TalkOverRule& rule){
     }
     return "never judged over: " + at() + ", " + judge.describe();
 }
+} // namespace detail
 
 //  Plays the step's scene knob through TalkOver if it has one. Without, a
 //  scene may take us to another map (Mom walks us out, 00.04): with a
@@ -178,7 +187,7 @@ void SimStoryStepIO::walk_until_stopped(Direction direction, size_t tiles, const
         move = m_sim.hold(direction, limit, SimPace::WALK);
     }
     if (move.stop == SimStop::DIALOG || move.stop == SimStop::WARP){
-        m_route.note(label + ": " + sim_stop_name(move.stop) + " instead of a stop.", RouteNote::FAILURE);
+        m_route.note(label + ": " + std::string(sim_stop_name(move.stop)) + " instead of a stop.", RouteNote::FAILURE);
     }
 }
 
@@ -309,6 +318,7 @@ bool SimKnobRouteIO::dialog_within(Milliseconds wait, Color color){
 //  Left out: the Twinleaf guitarist (spent upstairs), Platinum's rival
 //  steps around our bedroom's start, Dawn at Jubilife's steps (BDSP starts
 //  her below them: an event), and Floaroma's (10..12, 29) (Diamond only).
+namespace detail{
 std::vector<VarState> story_vars(){
     return {
         {.var = "VAR_TWINLEAF_TOWN_RIVAL_TRIGGER_STATE", .value = 0, .row = "00.01", .after = ""},
@@ -340,8 +350,37 @@ std::optional<VarState> var_state(const CoordEvent& event){
     return std::nullopt;
 }
 
+//  A coord event the console showed on other tiles than its map's.
+struct ConsoleTrigger{
+    std::string map;
+    std::string name;
+    std::vector<TilePos> tiles;
+};
+std::vector<ConsoleTrigger> console_triggers(){
+    return {
+        //  Mom's call after her heal fires on (6, 9), above the mat: a walk
+        //  west along row 9 stopped in it there with all 4 taps moved
+        //  (lab-B 2026-11-09 17:29), and the step south from (6, 9) after
+        //  it went out of the door, where the same step on 2026-11-04 12:20,
+        //  pressed inside her scene, moved nobody. The map has the mat (6, 10)
+        //  (r45, r46: her line came after that step was pressed).
+        //  Verify runs 1-3 (lab-B 2026-11-09 18:19, 18:30, 18:41): from (7, 9)
+        //  west, her call stopped us after at most 1 tile, on (6, 9) each time.
+        {.map = "PlayerHouse1F", .name = "moms_call", .tiles = {{6, 9}}},
+    };
+}
+
 RowTrigger row_trigger(const std::string& map, const CoordEvent& event, const VarState& state){
-    return {.row = state.row, .after = state.after, .map = map, .trigger = {.name = event.name, .tiles = event.tiles}};
+    RowTrigger out{
+        .row = state.row, .after = state.after, .map = map,
+        .trigger = {.name = event.name, .tiles = event.tiles}, .var = event.var,
+    };
+    for (const ConsoleTrigger& seen : console_triggers()){
+        if (seen.map == map && seen.name == event.name){
+            out.trigger.tiles = seen.tiles;
+        }
+    }
+    return out;
 }
 
 } // namespace
@@ -358,6 +397,7 @@ std::vector<RowTrigger> story_triggers(){
     }
     return triggers;
 }
+} // namespace detail
 
 namespace{
 
@@ -426,7 +466,7 @@ const StoryWorld* SimExecutor::sim_world(const std::string& map) const{
 
 SimWorld SimExecutor::setup(const StoryWorld* world) const{
     //  B runs once the shoes' scene has given them: the scene ends at home.
-    SimWorld out{.world = world, .trainers = story_trainers(*world), .can_run = m_walks.can_run()};
+    SimWorld out{.world = world, .trainers = row_trainers(*world, m_row), .can_run = m_walks.can_run()};
     for (const SimStairs& stairs : sim_stairs()){
         if (sim_world(stairs.map) == world){
             out.doors.push_back(story_to_world(*world, stairs.map, map_point(stairs.map, "stairs").next(stairs.side)));
@@ -489,15 +529,24 @@ std::vector<SimWanderer> SimExecutor::wanderers(const StoryWorld& world) const{
     return out;
 }
 
-//  Arms the triggers of this row that start after `after`.
+//  Arms the triggers of this row that start after `after`. A variable holds
+//  one value: the triggers armed for its value before are disarmed (Route
+//  201's row 19 pulls back only after Barry's warning, not in 00.03, where
+//  the variable has moved on).
 void SimExecutor::arm(const std::string& after){
-    size_t armed = 0;
+    std::vector<RowTrigger> now;
     for (const RowTrigger& trigger : story_triggers()){
         if (trigger.row == m_row && trigger.after == after){
-            m_armed.push_back(trigger);
-            armed++;
+            now.push_back(trigger);
         }
     }
+    for (const RowTrigger& trigger : now){
+        std::erase_if(m_armed, [&](const RowTrigger& old){
+            return old.var == trigger.var;
+        });
+    }
+    m_armed.insert(m_armed.end(), now.begin(), now.end());
+    const size_t armed = now.size();
     const SimPlayer& player = m_sim.player();
     if (armed > 0 && m_placed && on_grid(player.pos) && !player.dialog){
         m_sim.place(setup(&m_sim.world()), nearest_tile(player.pos), player.facing);
@@ -514,7 +563,7 @@ bool SimExecutor::sync(const Pose& pose, const StoryWorld* on){
         return false;
     }
     //  The program thinks we are on `pose`; we walk on from where the slide left us.
-    if (m_astray && m_placed){
+    if ((m_astray || m_misplaced) && m_placed){
         return true;
     }
     const SimPlayer& player = m_sim.player();
@@ -526,6 +575,52 @@ bool SimExecutor::sync(const Pose& pose, const StoryWorld* on){
     m_sim.place(setup(world), story_to_world(*world, pose.map, tiles.front()), Pokemon::facing_of(pose));
     m_placed = true;
     return true;
+}
+
+void SimExecutor::start_scene_at_end(const StoryStep& step){
+    std::optional<Pose> end;
+    if (step.kind == StoryStepKind::ROUTE && step.args.contains("target")){
+        end = Pokemon::pose_of(story_arg<GridPose>(step.args, "target"));
+    }else if (step.pose_after){
+        end = Pokemon::pose_of(*step.pose_after);
+    }
+    if (!end){
+        return;
+    }
+    SimTrigger trigger{.name = "early scene after " + step.name, .tiles = {}};
+    for (const TilePos& tile : Pokemon::tiles_of(*end)){
+        try{
+            trigger.tiles.push_back(story_to_world(m_sim.world(), end->map, tile));
+        }catch (const InternalProgramError&){}
+    }
+    //  It is the scene of the trigger next to it, which then does not fire
+    //  again (00.05b's president, a row up).
+    const auto next_to = [&](const TilePos& tile){
+        return std::ranges::any_of(trigger.tiles, [&](const TilePos& early){
+            return std::abs(early.x - tile.x) + std::abs(early.y - tile.y) == 1;
+        });
+    };
+    for (const SimTrigger& other : sim_triggers(m_sim)){
+        if (std::ranges::any_of(other.tiles, next_to)){
+            trigger.spends.push_back(other.name);
+        }
+    }
+    m_logger.log(std::format("[{}] {}: the next scene starts on its end, {}.", m_row, step.name, Pokemon::to_string(*end)));
+    sim_add_trigger(m_sim, std::move(trigger));
+}
+
+void SimExecutor::land(const std::string& step){
+    const auto lands = m_knobs.lands.find(step);
+    if (lands == m_knobs.lands.end()){
+        return;
+    }
+    m_misplaced = false;
+    const SimPlayer& player = m_sim.player();
+    const Pose& pose = lands->second;
+    if (sync(pose)){
+        m_misplaced = true;
+        m_logger.log(std::format("[{}] {}: the player lands on {}, off the table's pose.", m_row, step, to_string(player.pos)));
+    }
 }
 
 //  Through a door or a cave mouth onto the step's far side, the player's
@@ -597,7 +692,7 @@ Outcome SimExecutor::battle(RunState&, const StoryStep& step){
 //  maps have no warps' destinations.
 std::string SimExecutor::check(const StoryStep& step, const Outcome& outcome){
     const bool walks = step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS || step.kind == StoryStepKind::STEP;
-    const std::optional<Pose> expected = step.pose_after ? step.pose_after : outcome.pose;
+    const std::optional<Pose> expected = step.pose_after ? std::optional<Pose>(Pokemon::pose_of(*step.pose_after)) : outcome.pose;
     if (!walks || !m_placed){
         return "";
     }
@@ -648,21 +743,33 @@ StoryBoundActions SimExecutor::sim_actions(){
     };
 }
 
-Pokemon::ScreenLook SimExecutor::look(){
+//  The look at a battle's opening that shows its battle: past the three
+//  looks of a door's fade (StoryInterrupts::max_looks), 1.8 s at BDSP's.
+constexpr size_t OPENING_LOOKS = 6;
+
+Pokemon::ScreenLook SimExecutor::look(bool fresh){
     const WallClock start = WallClock() + std::chrono::hours(1);
     Pokemon::ScreenLook out;
     out.log.record({Pokemon::ScreenEvent::PLAYER_CAN_MOVE}, start);
     if (std::exchange(m_dialog_rose, false)){
         out.log.record({Pokemon::ScreenEvent::DIALOG_BOX, Pokemon::ScreenEvent::PLAYER_CAN_MOVE}, start + 33ms);
     }
+    if (m_battle_opening){
+        out.log.record({Pokemon::ScreenEvent::FADE_WHITE}, start + 33ms);
+        m_opening_looks = fresh ? 1 : m_opening_looks + 1;
+        if (m_opening_looks >= OPENING_LOOKS){
+            out.log.record({Pokemon::ScreenEvent::BATTLE_STARTED}, start + BETWEEN_STEPS_LOOK - 33ms);
+        }
+    }
     out.window = {.start = start, .end = start + BETWEEN_STEPS_LOOK};
     return out;
 }
 
-//  Every kind closes what is up and logs it: the simulation shows only
-//  the dialogs it pops up.
+//  A dialog or a warp closes what is up and logs it: the simulation shows
+//  only the dialogs it pops up. A battle ends its opening only: a scene the
+//  walk before ran into goes on after it.
 StoryInterruptActions SimExecutor::sim_interrupt_actions(){
-    const auto cleared = [this](const char* what){
+    const auto cleared = [this](std::string_view what){
         return [this, what](RunState&, const Pokemon::InterruptVerdict&){
             m_logger.log(std::format("[{}] {}: {} cleared before it.", m_row, m_step, what));
             m_dialog_up = false;
@@ -670,9 +777,16 @@ StoryInterruptActions SimExecutor::sim_interrupt_actions(){
             return Pokemon::outcome_ok();
         };
     };
+    const auto battled = [this](std::string_view what){
+        return [this, what](RunState&, const Pokemon::InterruptVerdict&){
+            m_logger.log(std::format("[{}] {}: {} cleared before it.", m_row, m_step, what));
+            m_battle_opening = false;
+            return Pokemon::outcome_ok();
+        };
+    };
     return StoryInterruptActions{
-        .wild = cleared("a wild battle"),
-        .trainer = cleared("a trainer's battle"),
+        .wild = battled("a wild battle"),
+        .trainer = battled("a trainer's battle"),
         .dialog = cleared("a dialog"),
         .warp = cleared("a warp"),
     };
@@ -692,7 +806,7 @@ Outcome SimExecutor::run_step(RunState& state, const StoryStep& step){
     if (!m_start_mismatch.empty()){
         return Pokemon::outcome_failed("sim_mismatch", "the row before " + std::exchange(m_start_mismatch, ""));
     }
-    m_far = step.pose_after;
+    m_far = step.pose_after ? std::optional<Pose>(Pokemon::pose_of(*step.pose_after)) : std::nullopt;
     //  A scene goes on from where the step before left us. A route walks
     //  on the world it plans on (Jubilife alone has no Route 204 north of it).
     //  An event of a walking kind (talk_to_wanderer) is the console's.
@@ -700,8 +814,9 @@ Outcome SimExecutor::run_step(RunState& state, const StoryStep& step){
     const bool walks = (step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS ||
         step.kind == StoryStepKind::STEP || step.kind == StoryStepKind::TALK) &&
         action != nullptr && !action->needs_console;
-    const StoryWorld* on = step.kind == StoryStepKind::ROUTE && step.target && !state.pose.map.empty()
-        ? story_plan_world(state.pose.map, step.target->map) : nullptr;
+    const GridPose* target_ptr = step.args.contains("target") ? &story_arg<GridPose>(step.args, "target") : nullptr;
+    const StoryWorld* on = step.kind == StoryStepKind::ROUTE && target_ptr && !state.pose.map.empty()
+        ? story_plan_world(state.pose.map, target_ptr->map) : nullptr;
     //  A world of one map is sim_world()'s, with its people.
     if (on != nullptr && on == story_plan_world(state.pose.map, state.pose.map)){
         on = nullptr;
@@ -711,22 +826,35 @@ Outcome SimExecutor::run_step(RunState& state, const StoryStep& step){
         m_passed_over = true;
         return Pokemon::outcome_ok();
     }
+    if (walks && m_knobs.scene_at_walk_end && m_knobs.scene_at_walk_end(m_row, step.name)){
+        start_scene_at_end(step);
+    }
     return Pokemon::TableExecutor::run(state, step);
+}
+
+void SimExecutor::show_before(const StoryStep& step){
+    if (m_knobs.dialog_before && m_knobs.dialog_before(m_row, step.name)){
+        m_dialog_up = m_dialog_rose = true;
+        m_logger.log(std::format("[{}] {}: a dialog pops up before it.", m_row, step.name));
+    }
+    m_battle_opening = m_knobs.battle_opening_before && m_knobs.battle_opening_before(m_row, step.name);
+    if (m_battle_opening){
+        m_logger.log(std::format("[{}] {}: a battle's opening is still playing before it.", m_row, step.name));
+    }
 }
 
 Outcome SimExecutor::run(RunState& state, const StoryStep& step){
     Outcome outcome;
     m_passed_over = false;
     m_step = step.name;
-    if (m_knobs.dialog_before && m_knobs.dialog_before(m_row, step.name)){
-        m_dialog_up = m_dialog_rose = true;
-        m_logger.log(std::format("[{}] {}: a dialog pops up before it.", m_row, step.name));
-    }
+    sim_forget_warp(m_sim);
+    show_before(step);
     try{
         outcome = run_step(state, step);
     }catch (const GridSimFailure& e){
         outcome = Pokemon::outcome_failed("sim_failure", e.message);
     }
+    m_battle_opening = false;
     m_astray |= std::exchange(m_misses.slid, false);
     const std::string mismatch = outcome.succeeded() && !m_passed_over ? check(step, outcome) : "";
     if (!mismatch.empty()){
@@ -736,7 +864,11 @@ Outcome SimExecutor::run(RunState& state, const StoryStep& step){
     //  where the table says it does.
     if (outcome.succeeded() && step.pose_after){
         m_astray = false;
-        sync(*step.pose_after);
+        m_misplaced = false;
+        sync(Pokemon::pose_of(*step.pose_after));
+    }
+    if (outcome.succeeded()){
+        land(step.name);
     }
     m_logger.log(std::format("[{}] {}: {}, the player at {}.", m_row, step.name, Pokemon::to_string(outcome), to_string(m_sim.player().pos)));
     if (std::exchange(m_misses.missed, false) && m_result.missed_step.empty()){
@@ -749,6 +881,11 @@ Outcome SimExecutor::run(RunState& state, const StoryStep& step){
         }
         m_result.error = m_row + " " + Pokemon::to_string(outcome);
         m_result.failed_step = m_row + " " + step.name;
+    }
+    const std::vector<std::string>& fought = m_sim.player().scenes_fought;
+    for (; m_scenes_fought < fought.size(); m_scenes_fought++){
+        m_logger.log(std::format("[{}] {}: the walk fought {}'s dialogue as a trainer's.", m_row, step.name, fought[m_scenes_fought]));
+        m_result.scenes_fought.push_back(std::format("{} {}: {}", m_row, step.name, fought[m_scenes_fought]));
     }
     m_result.world = m_placed ? &m_sim.world() : nullptr;
     m_result.end = nearest_tile(m_sim.player().pos);
@@ -766,7 +903,7 @@ Pokemon::SegmentReport run_rows_on(
     std::set<std::string> saved;
     Pokemon::Segment segment = make_story_segment(rows, executor, saved);
     Pokemon::SegmentPolicy policy;
-    policy.stop_at_first_failure = true;
+    policy.attempts_per_checkpoint = 1;
     Pokemon::SegmentHooks hooks;
     hooks.reload = [](RunState&){ return Pokemon::outcome_ok(); };
     hooks.log = [&logger](const std::string& line){ logger.log(line); };
@@ -787,6 +924,7 @@ UnitTestResult run_rows(Logger& logger, const Pokemon::SegmentRange& range){
     return true;
 }
 
+namespace detail{
 //  The table with row `row`'s step of `step`'s name replaced by `step`.
 std::vector<StoryCheckpoint> table_with(const std::string& row, const StoryStep& step){
     std::vector<StoryCheckpoint> rows = story_checkpoints();
@@ -820,7 +958,7 @@ std::string stub_report(const SimRun& run){
     }
     return out;
 }
-
+} // namespace detail
 
 
 } // namespace PokemonBDSP
