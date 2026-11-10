@@ -26,6 +26,8 @@ void add_tests_WallRecovery(UnitTestDatabase& database);
 void add_tests_MapData(UnitTestDatabase& database);
 // Registers route logging formatting unit tests.
 void add_tests_RouteLog(UnitTestDatabase& database);
+// Registers leg trace record and tracer unit tests.
+void add_tests_LegTrace(UnitTestDatabase& database);
 
 //  (name, JSON text) of each map in Pokemon/Navigation/TestMaps/, built into
 //  the program by pa_embed_text_files() (cmake/EmbedTextFiles.cmake).
