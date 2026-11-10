@@ -297,6 +297,38 @@ UnitTestResult test_b3f_maze_taps(){
     return true;
 }
 
+//  00.32's taps (frlg-00.32.plan.json): B3F from below its Rare Candy up
+//  to the top corridor, and B2F's arrows to the MOON STONE's stop and on
+//  to the lift room's stop (13, 20), with any one turn dropped; the routes
+//  between them, with no arrow on the way, with any hold short.
+UnitTestResult test_b2f_maze_taps(){
+    using Pokemon::StoryLeg;
+    const MapPosition b2f_stairs{"RocketHideout_B2F", {21, 2}};
+    const MapPosition lift_stop{"RocketHideout_B2F", {13, 20}};
+    const std::vector<std::string> failures{
+        tap_legs_on_sim({"RocketHideout_B3F", {12, 13}}, Direction::NORTH, {
+            {Direction::WEST, 4}, {Direction::NORTH, 2}, {Direction::EAST, 4}, {Direction::NORTH, 7},
+        }, {"RocketHideout_B3F", {12, 2}}),
+        tap_legs_on_sim(b2f_stairs, Direction::EAST, {
+            {Direction::SOUTH, 1}, {Direction::WEST, 2}, {Direction::SOUTH, 2}, {Direction::WEST, 2}, {Direction::SOUTH, 1}, {Direction::WEST, 1},
+        }, {"RocketHideout_B2F", {1, 4}}),
+        tap_legs_on_sim({"RocketHideout_B2F", {2, 4}}, Direction::SOUTH, {
+            {Direction::SOUTH, 4}, {Direction::EAST, 1}, {Direction::SOUTH, 1}, {Direction::EAST, 1}, {Direction::EAST, 2}, {Direction::WEST, 2},
+            {Direction::EAST, 3}, {Direction::SOUTH, 2}, {Direction::WEST, 1}, {Direction::EAST, 1}, {Direction::SOUTH, 1},
+        }, lift_stop),
+        short_holds_on_sim({"RocketHideout_B3F", {12, 2}}, Direction::NORTH, b2f_stairs),
+        short_holds_on_sim(lift_stop, Direction::EAST, {"RocketHideout_B2F", {28, 17}}),
+        short_holds_on_sim({"RocketHideout_B4F", {20, 24}}, Direction::SOUTH, {"RocketHideout_B4F", {16, 15}}),
+        short_holds_on_sim({"RocketHideout_B4F", {19, 15}}, Direction::NORTH, {"RocketHideout_B4F", {19, 5}}),
+    };
+    for (const std::string& failure : failures){
+        if (!failure.empty()){
+            return failure;
+        }
+    }
+    return true;
+}
+
 struct AutoStoryHideoutBodyInput{
     std::string name;
     UnitTestResult (*body)();
@@ -339,6 +371,10 @@ const AutoStoryHideoutBodyCase HIDEOUT_BODY_CASES[] = {
     {
         .input = {.name = "B3F's arrow floor a tap at a time", .body = test_b3f_maze_taps},
         .expectation = {.description = "below the stairs to B4F, with any one turn dropped"},
+    },
+    {
+        .input = {.name = "B2F's arrow floor to the lift a tap at a time", .body = test_b2f_maze_taps},
+        .expectation = {.description = "00.32's taps and the routes between them, any turn dropped or hold short"},
     },
 };
 

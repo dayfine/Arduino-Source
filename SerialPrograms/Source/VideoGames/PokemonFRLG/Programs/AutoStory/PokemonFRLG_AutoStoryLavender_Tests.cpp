@@ -26,6 +26,7 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_HideoutLiftRoom.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMap.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
@@ -764,10 +765,19 @@ UnitTestResult test_hideout_giovanni_row(Logger&){
     const StoryCheckpoint& row = checkpoint("00.32");
     StoryPose at = *story_pose(*row.start);
     std::vector<MapData> maps = maps_after_route10();
-    auto sim = std::make_unique<OverworldSim>(maps, MapPosition{at.map, at.tile}, *at.facing);
+    if (std::none_of(maps.begin(), maps.end(), [](const MapData& map){ return map.name == LIFT_MAP; })){
+        maps.push_back(rocket_hideout_lift_room());
+    }
+    SimScript script;
+    script.lift_floors[std::string(LIFT_MAP)] = rocket_hideout_lift_doors();
+    auto sim = std::make_unique<OverworldSim>(maps, MapPosition{at.map, at.tile}, *at.facing, script);
     for (const StoryStep& step : row.steps){
         if (step.name == "escape_rope_hideout"){
             break;
+        }
+        if (step.kind == StoryStepKind::BATTLE){
+            at = *story_pose(*step.pose_after);
+            continue;
         }
         if (const std::string failure = row_step_on_sim(*sim, at, step, row.id); !failure.empty()){
             return "00.32: ended on " + to_string(sim->state().position) + "; " + failure;
@@ -776,7 +786,7 @@ UnitTestResult test_hideout_giovanni_row(Logger&){
             for (MapData& map : maps){
                 hide_objects(map, {"FLAG_HIDE_ROCKET_HIDEOUT_B2F_MOON_STONE"});
             }
-            sim = std::make_unique<OverworldSim>(maps, sim->state().position, sim->state().facing);
+            sim = std::make_unique<OverworldSim>(maps, sim->state().position, sim->state().facing, script);
         }
     }
     if (!sim->state().trainers_beaten.empty()){
