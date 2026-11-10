@@ -26,7 +26,7 @@
       {
         "id": "arrival_scenes",
         "kind": "game_action",
-        "why": "steps 8-10: the white title card (~15 s), the text-free city flyover (~20 s), the starters and the girl, \"You're a tourist?\" (top choice), the ad, Pancham steals the bag; ends on the controls hint (free control)",
+        "why": "steps 8-10: the white title card (~15 s), the text-free city flyover (~20 s), the starters and the girl, \"You're a tourist?\" (top choice), the ad, Pancham steals the bag; ends on the \"MAIN MISSION 01: get the bag back\" banner (once it has gone), or on the controls hint (free control)",
         "action": "mash_to_move_hints"
       },
       {

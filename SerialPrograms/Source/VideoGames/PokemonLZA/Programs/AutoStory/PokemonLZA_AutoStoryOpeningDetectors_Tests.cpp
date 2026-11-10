@@ -14,7 +14,10 @@
  *    hint, the walk to the plaza and the arrival scenes;
  *  - PLZA_0101_RUN2_FRAMES: 01.01's second run (2026-11-10 13:28, in
  *    Chinese), 0001-*.png ... 0115-*.png: the same, on to the ad's
- *    subtitles (0090-0115), where the run stopped.
+ *    subtitles (0090-0115), where the run stopped;
+ *  - PLZA_0101_RUN3_FRAMES: 01.01's third run (2026-11-10 13:49, in
+ *    Chinese), 0001-*.png ... 0181-*.png: the same, through the ad and
+ *    Pancham taking the bag, to the "MAIN MISSION 01" banner (0181).
  *
  */
 
@@ -161,6 +164,37 @@ UnitTestResult test_synthetic_badges(Logger&){
     return true;
 }
 
+//  The mission banner drawn on a grey scene: the yellow bar, and the
+//  icon's white hexagon (as a block) with the orange stroke, `dx` right of
+//  run 3's; with `icon` false, the bar alone.
+ImageRGB32 mission_banner_frame(size_t dx, bool icon){
+    ImageRGB32 image(WIDTH, HEIGHT);
+    image.fill(0xff606060);
+    fill_box(image, 345, 410, 1590, 600, 0xfffad228);
+    if (icon){
+        fill_box(image, 700 + dx, 327, 738 + dx, 370, 0xffffffff);
+        fill_box(image, 716 + dx, 336, 720 + dx, 357, 0xfff07020);
+    }
+    return image;
+}
+
+//  The banner at run 3's place and 40 px right; not the bar without the
+//  icon, a frame all in the bar's yellow, or a white frame.
+UnitTestResult test_synthetic_mission_banner(Logger&){
+    MainMissionBannerDetector banner;
+    if (!banner.detect(mission_banner_frame(0, true)) || !banner.detect(mission_banner_frame(40, true))){
+        return "Expected the drawn banners to be the mission banner.";
+    }
+    ImageRGB32 yellow(WIDTH, HEIGHT);
+    yellow.fill(0xfffad228);
+    ImageRGB32 white(WIDTH, HEIGHT);
+    white.fill(0xffffffff);
+    if (banner.detect(mission_banner_frame(0, false)) || banner.detect(yellow) || banner.detect(white)){
+        return "Expected a bar without the icon, a yellow or a white frame not to be the mission banner.";
+    }
+    return true;
+}
+
 //  What a frame should show.
 struct FrameExpectation{
     bool platform;
@@ -168,6 +202,7 @@ struct FrameExpectation{
     bool autosave;
     bool controls_hint;
     bool advance_arrow;
+    bool mission_banner = false;
 };
 
 //  The lab's opening: platform_ref.png is the platform, no cutscene frame
@@ -226,6 +261,20 @@ std::optional<FrameExpectation> run2_arrival(const std::string& name){
     };
 }
 
+//  01.01's third run: as the second, on through the ad and the bag scene.
+//  The platform, the controls hint and the advance chevron as the run read
+//  them (in each frame's name; checked by eye on the hint and the chevrons
+//  through 0115 in run 2); the mission banner on 0181 only, the last frame.
+std::optional<FrameExpectation> run3_arrival(const std::string& name){
+    const int index = std::stoi(name.substr(0, 4));
+    return FrameExpectation{
+        .platform = name.find("+platform") != std::string::npos, .skip_prompt = false,
+        .autosave = false, .controls_hint = name.find("+controls_hint") != std::string::npos,
+        .advance_arrow = name.find("+advance_arrow") != std::string::npos,
+        .mission_banner = index == 181,
+    };
+}
+
 //  The opening's detectors, one of each.
 struct OpeningDetectors{
     PlatformArrivalDetector platform;
@@ -233,12 +282,13 @@ struct OpeningDetectors{
     AutosaveDetector autosave;
     ControlsHintDetector hint;
     AdvanceArrowDetector arrow;
+    MainMissionBannerDetector banner;
 
     FrameExpectation read(const ImageRGB32& frame){
         return FrameExpectation{
             .platform = platform.detect(frame), .skip_prompt = skip.detect(frame),
             .autosave = autosave.detect(frame), .controls_hint = hint.detect(frame),
-            .advance_arrow = arrow.detect(frame),
+            .advance_arrow = arrow.detect(frame), .mission_banner = banner.detect(frame),
         };
     }
 };
@@ -246,7 +296,7 @@ struct OpeningDetectors{
 bool same_reads(const FrameExpectation& got, const FrameExpectation& want){
     return got.platform == want.platform && got.skip_prompt == want.skip_prompt &&
         got.autosave == want.autosave && got.controls_hint == want.controls_hint &&
-        got.advance_arrow == want.advance_arrow;
+        got.advance_arrow == want.advance_arrow && got.mission_banner == want.mission_banner;
 }
 
 //  The frames `prefix`*.png in `folder` that `expect` has an expectation
@@ -267,10 +317,10 @@ UnitTestResult check_frames(
         }
         const ImageRGB32 frame(path.string());
         const FrameExpectation got = detectors.read(frame);
-        logger.log(std::format("{}: {}{}{}{}{}{}", name, to_string(detectors.platform.last_distances()),
+        logger.log(std::format("{}: {}{}{}{}{}{}{}", name, to_string(detectors.platform.last_distances()),
             got.platform ? ", platform" : "", got.skip_prompt ? ", skip prompt" : "",
             got.autosave ? ", autosave" : "", got.controls_hint ? ", controls hint" : "",
-            got.advance_arrow ? ", advance arrow" : ""));
+            got.advance_arrow ? ", advance arrow" : "", got.mission_banner ? ", mission banner" : ""));
         if (!same_reads(got, *want)){
             failures += " " + name;
         }
@@ -327,6 +377,14 @@ UnitTestResult test_run2_arrival_frames(Logger& logger){
     return check_frames(logger, folder, "0", 115, run2_arrival);
 }
 
+UnitTestResult test_run3_arrival_frames(Logger& logger){
+    const std::string folder = frames_folder("PLZA_0101_RUN3_FRAMES");
+    if (folder.empty()){
+        return UnitTestResult(UnitTestResult::SKIPPED, "PLZA_0101_RUN3_FRAMES is not a folder.");
+    }
+    return check_frames(logger, folder, "0", 181, run3_arrival);
+}
+
 
 struct OpeningTestInput{
     std::string name;
@@ -363,10 +421,12 @@ const OpeningTestCase OPENING_TEST_CASES[] = {
     {.input = {"platform: synthetic frames", test_synthetic_platform}, .expectation = {}},
     {.input = {"skip prompt, autosave and controls hint: synthetic frames", test_synthetic_badges}, .expectation = {}},
     {.input = {"advance arrow: synthetic frames", test_synthetic_arrow}, .expectation = {}},
+    {.input = {"mission banner: synthetic frames", test_synthetic_mission_banner}, .expectation = {}},
     {.input = {"the lab's opening frames (PLZA_OPENING_FRAMES)", test_lab_opening_frames}, .expectation = {}},
     {.input = {"the user's opening frames (PLZA_USER_OPENING_FRAMES)", test_user_opening_frames}, .expectation = {}},
     {.input = {"01.01 run 1's arrival frames (PLZA_0101_RUN1_FRAMES)", test_run1_arrival_frames}, .expectation = {}},
     {.input = {"01.01 run 2's arrival frames to the ad (PLZA_0101_RUN2_FRAMES)", test_run2_arrival_frames}, .expectation = {}},
+    {.input = {"01.01 run 3's arrival frames to the mission banner (PLZA_0101_RUN3_FRAMES)", test_run3_arrival_frames}, .expectation = {}},
 };
 
 void add_tests_AutoStoryOpeningDetectors(UnitTestDatabase& database){

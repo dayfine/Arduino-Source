@@ -178,7 +178,10 @@ public:
 
     //  "mash_to_move_hints": A through the scenes (a choice takes its top
     //  row, the advance chevron its text) until the player has control: the
-    //  controls hint or the party bar held a second. A text-free cutscene
+    //  controls hint or the party bar held a second, or a main mission's
+    //  banner on two looks (01.01's arrival ends on "MAIN MISSION 01"; the
+    //  step returns once it has gone, 10 s at most). 01.01's arrival takes
+    //  ~240 s on the console, hence 360 s. A text-free cutscene
     //  (01.01's city flyover, ~20 s) is not control: nothing busy for the
     //  quiet time fails the step. After 5 s with nothing busy and no sign
     //  of control, A every 2 s, for text the detectors miss (01.01's ad).
@@ -188,7 +191,7 @@ public:
             config.quiet = Milliseconds(Pokemon::story_arg<int64_t>(call.args, "quiet_ms"));
             config.min_length = Milliseconds(Pokemon::story_arg<int64_t>(call.args, "min_length_ms"));
             config.blind_press_after = 5s;
-            return run_scene_machine(backend, "mash_to_move_hints", config, 240s);
+            return run_scene_machine(backend, "mash_to_move_hints", config, 360s);
         };
     }
 
