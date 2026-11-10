@@ -5,8 +5,7 @@
     "id": "03.06",
     "title": "Wild Zone 1: first catches",
     "start": {
-      "map": "WildZone1",
-      "tiles": []
+      "map": "WildZone1"
     },
     "events": [
       {

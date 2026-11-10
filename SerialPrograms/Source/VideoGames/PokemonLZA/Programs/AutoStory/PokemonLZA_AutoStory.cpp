@@ -6,6 +6,7 @@
 
 #include <format>
 #include <optional>
+#include <span>
 #include <string>
 #include <vector>
 #include "CommonFramework/Exceptions/OperationFailedException.h"
@@ -61,72 +62,6 @@ const StringSelectDatabase& checkpoint_database(){
     return database;
 }
 
-//  The engine, PLZA's game on the console and the run's state.
-struct StoryRun{
-    PlzaConsoleBackend& backend;
-    const StoryGame<ZonePose>& game;
-    StoryEngine<ZonePose>& engine;
-    RunState state = {};
-    StoryRunCounts counts = {.segments = 1, .checkpoints = 0, .resets = 0};
-};
-
-//  Back to the save the game is on (game.reload); counted.
-Outcome reload(StoryRun& run){
-    run.counts.resets++;
-    return run.game.reload(run.backend);
-}
-
-//  `checkpoint` until it passes, `attempts` times at most, reloading
-//  between attempts. Only the first checkpoint of a run is retried: the
-//  save a reload returns to is the one it started from, since the engine
-//  saves only as each checkpoint's phase allows. A failure's report.
-StoryEngineReport run_with_retries(
-    StoryRun& run, const StoryCheckpoint& checkpoint, SavePoint point, size_t attempts
-){
-    StoryEngineReport report;
-    for (size_t attempt = 1; attempt <= attempts; attempt++){
-        if (attempt > 1){
-            run.backend.log(std::format("[Segment] {}: reloading for attempt {}/{}", checkpoint.id, attempt, attempts));
-            const Outcome reloaded = reload(run);
-            if (!reloaded.succeeded()){
-                report.run.failure = reloaded;
-                return report;
-            }
-        }
-        report = run.engine.run_checkpoint(checkpoint, run.state, point);
-        if (report.verdict == CheckpointVerdict::PASSED){
-            run.counts.checkpoints++;
-            return report;
-        }
-    }
-    return report;
-}
-
-//  Verify mode: the checkpoint as many times as asked, from its save; the
-//  last run may save (AFTER_VERIFICATION, from its phase).
-void verify_story_checkpoint(
-    SingleSwitchProgramEnvironment& env, StoryRun& run, const StoryCheckpoint& checkpoint, const VerifyPolicy& policy
-){
-    size_t passes = 0;
-    for (size_t c = 0; c < policy.runs; c++){
-        if (c > 0 && !reload(run).succeeded()){
-            throw OperationFailedException(ErrorReportMode::NO_ERROR_REPORT, "AutoStory verify: the reload failed.");
-        }
-        const SavePoint point = c + 1 == policy.runs ? SavePoint::RUN_END : SavePoint::CHECKPOINT_END;
-        if (run.engine.run_checkpoint(checkpoint, run.state, point).verdict == CheckpointVerdict::PASSED){
-            passes++;
-        }
-        env.console.log(std::format("[Verify] {}: run {}/{}, {} passed", checkpoint.id, c + 1, policy.runs, passes));
-    }
-    const std::string summary = std::format(
-        "AutoStory verify: {} {}/{} passed, {} needed.", checkpoint.id, passes, policy.runs, policy.passes_needed
-    );
-    if (passes < policy.passes_needed){
-        throw OperationFailedException(ErrorReportMode::NO_ERROR_REPORT, summary);
-    }
-    env.console.log(summary);
-}
-
 } // namespace
 
 
@@ -167,33 +102,36 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
 
     StoryEnv story{.env = env, .context = context, .language = RUN.language(), .battle_ai = BATTLE_AI};
     PlzaConsoleBackend backend(story);
-    const StoryGame<ZonePose> game = make_plza_story_game(backend, STARTER);
+    const StoryGame<ZonePose> game = make_plza_story_game(story, STARTER);
     StoryEngine<ZonePose> engine(game, backend);
-    StoryRun run{.backend = backend, .game = game, .engine = engine};
+    RunState state;
 
     if (const std::optional<VerifyPolicy> verify = RUN.VERIFY.policy()){
-        verify_story_checkpoint(env, run, rows[first], *verify);
-        send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH);
-        return;
-    }
-    const size_t attempts = RUN.policy().attempts_per_checkpoint;
-    for (size_t c = first; c <= last; c++){
-        const SavePoint point = c == last ? SavePoint::RUN_END : SavePoint::CHECKPOINT_END;
-        const StoryEngineReport report = run_with_retries(run, rows[c], point, c == first ? attempts : 1);
-        if (report.verdict != CheckpointVerdict::PASSED){
-            record_story_counts(env.current_stats<AutoStoryStats>(), run.counts);
-            env.update_stats();
+        const VerifyReport report = engine.verify_checkpoint(rows[first], state, *verify);
+        if (!report.verified){
             throw OperationFailedException(
                 ErrorReportMode::NO_ERROR_REPORT,
                 std::format(
-                    "AutoStory stopped at {} {}: {}", rows[c].id, report.run.failed_name,
-                    report.run.completed ? std::string("postconditions failed") : to_string(report.run.failure)
+                    "AutoStory verify: {} {}/{} passed, {} needed{}", report.checkpoint, report.passes, report.runs,
+                    verify->passes_needed, report.failure.succeeded() ? std::string() : ": " + to_string(report.failure)
                 )
             );
         }
+        send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH);
+        return;
     }
-    record_story_counts(env.current_stats<AutoStoryStats>(), run.counts);
+    const std::span<const StoryCheckpoint> checkpoints(rows.data() + first, last - first + 1);
+    const SegmentReport report = engine.run_segment("plza", checkpoints, state, RUN.policy().attempts_per_checkpoint);
+    record_story_counts(env.current_stats<AutoStoryStats>(), report.story_counts());
     env.update_stats();
+    if (!report.completed){
+        throw OperationFailedException(
+            ErrorReportMode::NO_ERROR_REPORT,
+            std::format(
+                "AutoStory stopped at {} {}: {}", report.failed_checkpoint, report.failed_event, to_string(report.failure)
+            )
+        );
+    }
     env.console.log("AutoStory: done through " + rows[last].id + ".");
     send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH);
     GO_HOME_WHEN_DONE.run_end_of_program(context);

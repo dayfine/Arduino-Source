@@ -21,22 +21,12 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  The readings a PLZA observation adds where the engine's events
-//  (CommonTools/ScreenMachine/ScreenObservation.h) have no name, 1 when it
-//  shows. The reading of a choice among a dialogue's answers.
-inline constexpr std::string_view CHOICE_BOX_READING = "choice_box";
-//  The reading of an "A Talk" prompt.
-inline constexpr std::string_view INTERACT_PROMPT_READING = "interact_prompt";
-
 //  PlzaScreenObserver's events as one look for the story engine:
-//  DIALOG_BOX is TEXT_BOX; CHOICE_BOX is TEXT_BOX and CHOICE_BOX_READING;
+//  DIALOG_BOX is TEXT_BOX; CHOICE_BOX adds TEXT_BOX;
 //  BATTLE_STARTED is BATTLE; PLAYER_CAN_MOVE (the party bar) is CAN_MOVE;
-//  SCREEN_STILL is STILL; the fades keep their names; INTERACT_PROMPT is
-//  INTERACT_PROMPT_READING. No time and no frame: the backend adds them.
+//  SCREEN_STILL is STILL; the fades and INTERACT_PROMPT keep their names.
+//  No time and no frame: the backend adds them.
 ScreenObservation plza_observation(const Pokemon::ScreenEvents& events);
-
-//  Whether `look` shows a choice.
-bool has_choice(const ScreenObservation& look);
 
 //  The engine's event for a fade of the shared events; none for another
 //  event.

@@ -49,16 +49,20 @@ struct StoryMove{
 };
 
 //  Turns the player toward `heading`, within `tolerance` degrees: turns by
-//  the difference and reads the heading again, a few times. Fails as
-//  "heading_missed" if it stays outside the tolerance.
-Pokemon::Outcome face_heading(PlzaStoryBackend& backend, double heading, double tolerance);
+//  the difference (story_turn()) and reads the heading again, a few times.
+//  The heading is a look's STORY_HEADING reading, filled in by `reader`
+//  (heading_reader() on a console; none where observe() sets it). Fails as
+//  "heading_unread" when no look has it and "heading_missed" if it stays
+//  outside the tolerance.
+Pokemon::Outcome face_heading(PlzaBackend& backend, const PlzaReader& reader, double heading, double tolerance);
 
 //  From the overworld, walks as `move` says: faces its heading first, if it
 //  has one, then each leg's turn (and L to recenter the camera, since the
 //  walk goes where it looks) and walk. Nothing is read on the way: a leg
 //  that is cut short or blocked goes unnoticed, and a step that needs a
-//  prompt after the walk fails there instead.
-Pokemon::Outcome run_story_move(PlzaStoryBackend& backend, const StoryMove& move);
+//  prompt after the walk fails there instead. `heading` reads the compass
+//  (face_heading()).
+Pokemon::Outcome run_story_move(PlzaBackend& backend, const StoryMove& move, const PlzaReader& heading);
 
 //  From the overworld, opens the map and fast travels to `location`
 //  (open_map_and_fly_to()). Returns in the overworld there; throws

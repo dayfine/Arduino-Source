@@ -3,7 +3,7 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  01.00's scene steps and walks, and every checkpoint, through the shared
- *  story engine on a scripted PLZA backend.
+ *  story engine on its scripted backend (FakeStoryBackend).
  *
  */
 
@@ -18,7 +18,9 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryEngine.h"
+#include "Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.h"
 #include "PokemonLZA_AutoStoryGame.h"
+#include "PokemonLZA_AutoStoryMoves.h"
 #include "PokemonLZA_AutoStoryTable.h"
 #include "PokemonLZA_AutoStoryEngine_Tests.h"
 
@@ -36,62 +38,21 @@ using EngineEvent = PokemonAutomation::ScreenEvent;
 
 namespace{
 
-//  A scripted PLZA: each observe() returns the script's next look (the
-//  last repeats); every input is written down.
-//  code-health: allow public_methods -- the backend calls it fakes plus the recording tests read
-class FakePlzaBackend : public PlzaStoryBackend{
-public:
-    FakePlzaBackend(std::vector<Observation<ZonePose>> looks, CancellableScope& scope)
-        : m_looks(std::move(looks))
-        , m_scope(scope)
-    {}
+using FakeBackend = Pokemon::FakeStoryBackend<ZonePose>;
 
-    //  "press A", "wait 250ms", "hold north 250ms", "turn 90".
-    const std::vector<std::string>& inputs() const{
-        return m_inputs;
-    }
+//  A scripted PLZA showing `looks` in order (the last repeats); `kind`
+//  CONSOLE runs the console_only actions' code.
+FakeBackend fake_plza(
+    std::vector<Observation<ZonePose>> looks, CancellableScope& scope,
+    Pokemon::StoryBackendKind kind = Pokemon::StoryBackendKind::SCRIPT
+){
+    return FakeBackend(Pokemon::FakeStoryScript<ZonePose>{.looks = std::move(looks), .battle = Pokemon::outcome_ok(), .kind = kind}, scope);
+}
 
-    virtual void press(Button button, Milliseconds, Milliseconds) override{
-        m_inputs.push_back(std::string("press ") + (button == BUTTON_A ? "A" : button == BUTTON_B ? "B" : button == BUTTON_L ? "L" : "other"));
-    }
-    virtual void tap(Pokemon::Direction direction) override{
-        m_inputs.push_back("tap " + Pokemon::direction_name(direction));
-    }
-    virtual void hold(Pokemon::Direction direction, Milliseconds duration, Pokemon::StoryPace) override{
-        m_inputs.push_back(std::format("hold {} {}ms", Pokemon::direction_name(direction), duration.count()));
-    }
-    virtual void wait(Milliseconds duration) override{
-        m_inputs.push_back(std::format("wait {}ms", duration.count()));
-    }
-    virtual Observation<ZonePose> observe() override{
-        if (m_looks.empty()){
-            return {};
-        }
-        const Observation<ZonePose>& look = m_looks[std::min(m_next, m_looks.size() - 1)];
-        m_next++;
-        return look;
-    }
-    virtual Pokemon::Outcome battle(const Pokemon::StoryActionArgs&) override{
-        m_inputs.emplace_back("battle");
-        return Pokemon::outcome_ok();
-    }
-    virtual void log(std::string_view) override{}
-    virtual CancellableScope& scope() override{
-        return m_scope;
-    }
-    virtual void turn(double degrees) override{
-        m_inputs.push_back(std::format("turn {}", degrees));
-    }
-    virtual double heading() override{
-        return 0;
-    }
-
-private:
-    std::vector<Observation<ZonePose>> m_looks;
-    CancellableScope& m_scope;
-    size_t m_next = 0;
-    std::vector<std::string> m_inputs;
-};
+//  The fake's line for L, which it has no name for.
+std::string press_l(){
+    return std::format("press {}", (uint32_t)BUTTON_L);
+}
 
 //  A look at `at` after a fixed start showing `events`.
 Observation<ZonePose> look_at(Milliseconds at, std::initializer_list<EngineEvent> events = {}){
@@ -117,8 +78,8 @@ StoryCheckpoint step_of_01_00(std::string_view name){
 }
 
 //  `checkpoint` on PLZA's engine over `backend`.
-Pokemon::StoryEngineReport run_plza(FakePlzaBackend& backend, const StoryCheckpoint& checkpoint){
-    const Pokemon::StoryGame<ZonePose> game = make_plza_story_game(backend, StarterChoice::CHIKORITA);
+Pokemon::StoryEngineReport run_plza(FakeBackend& backend, const StoryCheckpoint& checkpoint){
+    const Pokemon::StoryGame<ZonePose> game = make_plza_story_game(StarterChoice::CHIKORITA);
     Pokemon::StoryEngine<ZonePose> engine(game, backend);
     Pokemon::RunState state;
     return engine.run_checkpoint(checkpoint, state);
@@ -132,7 +93,7 @@ std::string joined(const std::vector<std::string>& lines){
     return text;
 }
 
-UnitTestResult expect_inputs(const FakePlzaBackend& backend, const std::vector<std::string>& expected){
+UnitTestResult expect_inputs(const FakeBackend& backend, const std::vector<std::string>& expected){
     if (backend.inputs() != expected){
         return "Expected inputs [" + joined(expected) + "], got [" + joined(backend.inputs()) + "].";
     }
@@ -143,7 +104,7 @@ UnitTestResult expect_inputs(const FakePlzaBackend& backend, const std::vector<s
 //  The opening (mash_to_move_hints): A at a dialog, a fade waited out with
 //  no press, then the quiet end once the scene's 60 s have passed.
 UnitTestResult test_opening_scene(CancellableScope& scope){
-    FakePlzaBackend backend({
+    FakeBackend backend = fake_plza({
         look_at(0ms, {EngineEvent::TEXT_BOX}),
         look_at(1000ms, {EngineEvent::FADE_BLACK}),
         look_at(2000ms),
@@ -159,7 +120,7 @@ UnitTestResult test_opening_scene(CancellableScope& scope){
 //  The opening does not end on a still screen before its minimum length:
 //  it waits, then ends once 60 s have passed.
 UnitTestResult test_opening_waits_min_length(CancellableScope& scope){
-    FakePlzaBackend backend({
+    FakeBackend backend = fake_plza({
         look_at(0ms, {EngineEvent::STILL}),
         look_at(30000ms, {EngineEvent::STILL}),
         look_at(60000ms, {EngineEvent::STILL}),
@@ -175,7 +136,7 @@ UnitTestResult test_opening_waits_min_length(CancellableScope& scope){
 //  A walk starts only on free control: platform_to_plaza on a text box
 //  fails before any input.
 UnitTestResult test_walk_needs_free_control(CancellableScope& scope){
-    FakePlzaBackend backend({look_at(0ms, {EngineEvent::TEXT_BOX})}, scope);
+    FakeBackend backend = fake_plza({look_at(0ms, {EngineEvent::TEXT_BOX})}, scope);
     const Pokemon::StoryEngineReport report = run_plza(backend, step_of_01_00("platform_to_plaza"));
     if (report.run.completed || report.run.failure.failure != "walk_not_free"){
         return "Expected walk_not_free, got " + to_string(report.run.failure);
@@ -183,10 +144,11 @@ UnitTestResult test_walk_needs_free_control(CancellableScope& scope){
     return expect_inputs(backend, {});
 }
 
-//  platform_to_plaza: the first leg, the turn, then the last leg held in
-//  slices until the white fade.
+//  platform_to_plaza: the first leg, the turn (L, the stick tapped at 90
+//  degrees) and L again, then the last leg held in slices until the white
+//  fade.
 UnitTestResult test_walk_ends_on_white_fade(CancellableScope& scope){
-    FakePlzaBackend backend({
+    FakeBackend backend = fake_plza({
         look_at(0ms), look_at(150ms),
         look_at(12000ms), look_at(12250ms), look_at(12500ms, {EngineEvent::FADE_WHITE}),
     }, scope);
@@ -195,32 +157,59 @@ UnitTestResult test_walk_ends_on_white_fade(CancellableScope& scope){
         return "Expected the walk to end on the white fade: " + to_string(report.run.failure);
     }
     return expect_inputs(backend, {
-        "wait 150ms", "hold north 5500ms", "turn 90", "press L",
-        "hold north 250ms", "hold north 250ms", "hold north 250ms",
+        "wait 150ms", "hold north 5500ms walk", press_l(), "stick 90deg 150ms walk", "wait 300ms", press_l(),
+        "hold north 250ms walk", "hold north 250ms walk", "hold north 250ms walk",
     });
 }
 
 //  platform_to_plaza with no white fade fails once the last leg's 6 s are
 //  held: 24 slices.
 UnitTestResult test_walk_fails_at_bound(CancellableScope& scope){
-    FakePlzaBackend backend({look_at(0ms)}, scope);
+    FakeBackend backend = fake_plza({look_at(0ms)}, scope);
     const Pokemon::StoryEngineReport report = run_plza(backend, step_of_01_00("platform_to_plaza"));
     if (report.run.completed || report.run.failure.failure != "walk_no_end"){
         return "Expected walk_no_end, got " + to_string(report.run.failure);
     }
-    const size_t slices = (size_t)std::count(backend.inputs().begin(), backend.inputs().end(), "hold north 250ms");
+    const size_t slices = (size_t)std::count(backend.inputs().begin(), backend.inputs().end(), "hold north 250ms walk");
     if (slices != 24){
         return std::format("Expected 24 slices of 250 ms, held {}.", slices);
     }
     return true;
 }
 
+//  A look at `at` facing `heading`, as the minimap reads it.
+Observation<ZonePose> facing(Milliseconds at, int heading){
+    Observation<ZonePose> look = look_at(at);
+    look.readings[std::string(Pokemon::STORY_HEADING)] = heading;
+    return look;
+}
+
+//  face_heading() turns by the difference to the heading a look reads and
+//  stops once a look reads it within the tolerance; with no heading read it
+//  fails before any input.
+UnitTestResult test_face_heading(CancellableScope& scope){
+    FakeBackend backend = fake_plza({facing(0ms, 0), facing(500ms, 88)}, scope);
+    const Pokemon::Outcome faced = face_heading(backend, PlzaReader(), 90, 10);
+    if (!faced.succeeded()){
+        return "Expected to face 90 degrees: " + to_string(faced);
+    }
+    const UnitTestResult turned = expect_inputs(backend, {press_l(), "stick 90deg 150ms walk", "wait 300ms"});
+    if (turned.result != UnitTestResult::PASSED){
+        return turned;
+    }
+    FakeBackend blind = fake_plza({look_at(0ms)}, scope);
+    const Pokemon::Outcome unread = face_heading(blind, PlzaReader(), 90, 10);
+    if (unread.failure != "heading_unread"){
+        return "Expected heading_unread with no heading read, got " + to_string(unread);
+    }
+    return expect_inputs(blind, {});
+}
+
 //  Pancham cornered (text_to_choice): B through the text, done at the
 //  choice without pressing it.
 UnitTestResult test_text_to_choice(CancellableScope& scope){
-    Observation<ZonePose> choice = look_at(2000ms, {EngineEvent::TEXT_BOX});
-    choice.readings[std::string(CHOICE_BOX_READING)] = 1;
-    FakePlzaBackend backend({look_at(0ms, {EngineEvent::TEXT_BOX}), choice}, scope);
+    const Observation<ZonePose> choice = look_at(2000ms, {EngineEvent::TEXT_BOX, EngineEvent::CHOICE_BOX});
+    FakeBackend backend = fake_plza({look_at(0ms, {EngineEvent::TEXT_BOX}), choice}, scope);
     const Pokemon::StoryEngineReport report = run_plza(backend, step_of_01_00("pancham_cornered"));
     if (report.verdict != Pokemon::CheckpointVerdict::PASSED){
         return "Expected the scene to end at the choice: " + to_string(report.run.failure);
@@ -228,8 +217,8 @@ UnitTestResult test_text_to_choice(CancellableScope& scope){
     return expect_inputs(backend, {"press B"});
 }
 
-//  What PLZA refuses: tile walks fail by name, console actions fail as
-//  console_only off a console, and unknown actions fail the lint.
+//  What PLZA refuses: console actions fail as console_only off a console,
+//  and tile walks and unknown actions fail the lint.
 UnitTestResult test_refused_steps(CancellableScope& scope){
     StoryCheckpoint legs;
     legs.id = "probe";
@@ -238,12 +227,11 @@ UnitTestResult test_refused_steps(CancellableScope& scope){
     step.name = "legs";
     step.args["legs"] = std::vector<Pokemon::StoryLeg>{{.direction = Pokemon::Direction::NORTH, .tiles = 1}};
     legs.steps.push_back(step);
-    FakePlzaBackend backend({look_at(0ms)}, scope);
-    Pokemon::StoryEngineReport report = run_plza(backend, legs);
-    if (report.run.failure.failure != "unsupported_step"){
-        return "Expected a tile walk to fail as unsupported_step, got " + to_string(report.run.failure);
+    if (plza_story_lint(legs).empty()){
+        return "Expected a tile walk to fail the lint.";
     }
-    report = run_plza(backend, step_of_01_00("language"));
+    FakeBackend backend = fake_plza({look_at(0ms)}, scope);
+    const Pokemon::StoryEngineReport report = run_plza(backend, step_of_01_00("language"));
     if (report.run.failure.failure != "console_only"){
         return "Expected the new game's language to need a console, got " + to_string(report.run.failure);
     }
@@ -269,21 +257,22 @@ UnitTestResult test_refused_steps(CancellableScope& scope){
 }
 
 //  Every checkpoint through the engine with each action recording itself:
-//  its steps in order, each by its action, and no save while testing.
+//  its steps in order, each by its action, and no save while testing. The
+//  fake says it is a console, so the console_only actions run too.
 UnitTestResult test_every_checkpoint_runs(CancellableScope& scope){
-    FakePlzaBackend backend({look_at(0ms)}, scope);
+    FakeBackend backend = fake_plza({look_at(0ms)}, scope, Pokemon::StoryBackendKind::CONSOLE);
     std::vector<std::string> trace;
     Pokemon::StoryGame<ZonePose> game;
     game.id = "plza";
     for (const Pokemon::StoryActionSpec& spec : plza_story_action_specs()){
         const std::string label = std::format("{}/{}", Pokemon::story_step_kind_name(spec.kind), spec.name);
-        game.actions.push_back({.spec = spec, .handler = [&trace, label](Pokemon::StoryBackend<ZonePose>&, Pokemon::RunState&, const Pokemon::StoryActionArgs&){
+        game.actions.push_back({.spec = spec, .handler = [&trace, label](Pokemon::StoryBackend<ZonePose>&, Pokemon::RunState&, const Pokemon::StoryActionCall&){
             trace.push_back(label);
             return Pokemon::outcome_ok();
         }});
     }
     size_t saves = 0;
-    game.save = [&saves](Pokemon::StoryBackend<ZonePose>&){
+    game.save = [&saves](Pokemon::StoryBackend<ZonePose>&, const StoryCheckpoint&){
         saves++;
         return Pokemon::outcome_ok();
     };
@@ -349,10 +338,11 @@ const EngineTestCase ENGINE_TEST_CASES[] = {
     {.input = {"01.00 opening: A at a dialog, a fade waited out, the quiet end", test_opening_scene}, .expectation = {}},
     {.input = {"01.00 opening: no quiet end before the scene's length", test_opening_waits_min_length}, .expectation = {}},
     {.input = {"01.00 text_to_choice: B through the text, done at the choice", test_text_to_choice}, .expectation = {}},
+    {.input = {"face_heading: turns by the minimap's heading", test_face_heading}, .expectation = {}},
     {.input = {"01.00 platform_to_plaza: no walk without free control", test_walk_needs_free_control}, .expectation = {}},
     {.input = {"01.00 platform_to_plaza: ends on the white fade", test_walk_ends_on_white_fade}, .expectation = {}},
     {.input = {"01.00 platform_to_plaza: fails at its bound", test_walk_fails_at_bound}, .expectation = {}},
-    {.input = {"refused: tile walks, console actions off a console, unknown actions", test_refused_steps}, .expectation = {}},
+    {.input = {"refused: console actions off a console, tile walks, unknown actions", test_refused_steps}, .expectation = {}},
     {.input = {"every checkpoint runs in step order, testing never saves", test_every_checkpoint_runs}, .expectation = {}},
 };
 

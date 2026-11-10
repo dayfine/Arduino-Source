@@ -106,12 +106,13 @@ private:
 
 
 //  Presses through a scene until `config.goal` shows (OVERWORLD: the party
-//  bar held a second, or the quiet end). `label` names its log lines
-//  ("[PLZA opening] dialog: text box"). Fails as "scene_timeout" when
-//  `timeout` passes (by the looks' time) and "scene_stuck" on a state that
-//  comes up too often.
+//  bar held a second, or the quiet end), on run_screen_machine_on_observations().
+//  `label` names its log lines ("[PLZA opening] dialog: text box"). Fails as
+//  "scene_timeout" when `timeout` passes (by the looks' time),
+//  "scene_unknown" on a look no state takes and "scene_stuck" on a state
+//  that comes up too often or a screen that stops changing.
 Pokemon::Outcome run_scene_machine(
-    PlzaStoryBackend& backend, std::string_view label, const SceneMachineConfig& config, Milliseconds timeout
+    PlzaBackend& backend, std::string_view label, const SceneMachineConfig& config, Milliseconds timeout
 );
 
 //  Registers the scene machine's tests: its states on sequences of events,

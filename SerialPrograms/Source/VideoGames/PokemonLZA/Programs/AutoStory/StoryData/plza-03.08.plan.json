@@ -5,8 +5,7 @@
     "id": "03.08",
     "title": "Mable's research, the Rock Smash TM",
     "start": {
-      "map": "PokemonResearchLab",
-      "tiles": []
+      "map": "PokemonResearchLab"
     },
     "events": [
       {

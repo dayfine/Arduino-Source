@@ -24,7 +24,7 @@ constexpr Milliseconds HOLD_SLICE = 250ms;
 
 //  What no walk may start on, by name; empty when free.
 std::string not_free_control(const ScreenObservation& look){
-    if (has_choice(look)){
+    if (look.events.has(EngineEvent::CHOICE_BOX)){
         return "a choice";
     }
     if (look.events.has(EngineEvent::TEXT_BOX)){
@@ -42,7 +42,7 @@ std::string not_free_control(const ScreenObservation& look){
 } // namespace
 
 
-Pokemon::Outcome check_can_walk(PlzaStoryBackend& backend, std::string_view walk){
+Pokemon::Outcome check_can_walk(PlzaBackend& backend, std::string_view walk){
     for (int read = 0; read < 2; read++){
         if (read > 0){
             backend.wait(150ms);
@@ -56,7 +56,7 @@ Pokemon::Outcome check_can_walk(PlzaStoryBackend& backend, std::string_view walk
 }
 
 Pokemon::Outcome walk_until(
-    PlzaStoryBackend& backend, std::string_view walk, const StoryMove& move, EngineEvent end
+    PlzaBackend& backend, std::string_view walk, const StoryMove& move, const PlzaReader& heading, EngineEvent end
 ){
     StoryMove head = move;
     Milliseconds hold = 0ms;
@@ -64,7 +64,7 @@ Pokemon::Outcome walk_until(
         hold = head.legs.back().walk;
         head.legs.back().walk = 0ms;
     }
-    const Pokemon::Outcome walked = run_story_move(backend, head);
+    const Pokemon::Outcome walked = run_story_move(backend, head, heading);
     if (!walked.succeeded()){
         return walked;
     }

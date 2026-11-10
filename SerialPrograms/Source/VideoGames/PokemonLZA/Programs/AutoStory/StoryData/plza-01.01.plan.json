@@ -5,8 +5,7 @@
     "id": "01.01",
     "title": "Starter and the first battle",
     "start": {
-      "map": "LumioseCity",
-      "tiles": []
+      "map": "LumioseCity"
     },
     "events": [
       {

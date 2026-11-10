@@ -28,24 +28,15 @@ ScreenObservation plza_observation(const ScreenEvents& events){
         {ScreenEvent::BATTLE_STARTED, EngineEvent::BATTLE},
         {ScreenEvent::PLAYER_CAN_MOVE, EngineEvent::CAN_MOVE},
         {ScreenEvent::SCREEN_STILL, EngineEvent::STILL},
+        {ScreenEvent::CHOICE_BOX, EngineEvent::CHOICE_BOX},
+        {ScreenEvent::INTERACT_PROMPT, EngineEvent::INTERACT_PROMPT},
     };
     for (const auto& [event, engine_event] : same){
         if (events.has(event)){
             look.events.add(engine_event);
         }
     }
-    if (events.has(ScreenEvent::CHOICE_BOX)){
-        look.readings[std::string(CHOICE_BOX_READING)] = 1;
-    }
-    if (events.has(ScreenEvent::INTERACT_PROMPT)){
-        look.readings[std::string(INTERACT_PROMPT_READING)] = 1;
-    }
     return look;
-}
-
-bool has_choice(const ScreenObservation& look){
-    const auto reading = look.readings.find(CHOICE_BOX_READING);
-    return reading != look.readings.end() && reading->second != 0;
 }
 
 std::optional<PokemonAutomation::ScreenEvent> engine_fade_event(ScreenEvent event){

@@ -61,11 +61,15 @@ void PlzaConsoleBackend::press(Button button, Milliseconds hold, Milliseconds re
 }
 
 void PlzaConsoleBackend::tap(Direction direction){
-    turn(direction_degrees(direction));
+    story_turn(*this, direction_degrees(direction));
 }
 
-void PlzaConsoleBackend::hold(Direction direction, Milliseconds duration, Pokemon::StoryPace){
-    const double radians = direction_degrees(direction) * std::numbers::pi / 180.0;
+void PlzaConsoleBackend::hold(Direction direction, Milliseconds duration, Pokemon::StoryPace pace){
+    stick(direction_degrees(direction), duration, pace);
+}
+
+void PlzaConsoleBackend::stick(double degrees, Milliseconds duration, Pokemon::StoryPace){
+    const double radians = degrees * std::numbers::pi / 180.0;
     pbf_move_left_joystick(m_env.context, {std::sin(radians), std::cos(radians)}, duration, 0ms);
 }
 
@@ -108,15 +112,19 @@ CancellableScope& PlzaConsoleBackend::scope(){
     return m_env.context;
 }
 
-void PlzaConsoleBackend::turn(double degrees){
-    const double radians = degrees * std::numbers::pi / 180.0;
-    //  150 ms is the tap the story was recorded with (console B, 2026-11-08).
-    pbf_press_button(m_env.context, BUTTON_L, 100ms, 400ms);
-    pbf_move_left_joystick(m_env.context, {std::sin(radians), std::cos(radians)}, 150ms, 300ms);
+void story_turn(PlzaBackend& backend, double degrees){
+    //  150 ms is the tap the story was recorded with (console B, 2026-11-08);
+    //  the 300 ms after it lets the turn finish.
+    backend.press(BUTTON_L, 100ms, 400ms);
+    backend.stick(degrees, 150ms, Pokemon::StoryPace::WALK);
+    backend.wait(300ms);
 }
 
-double PlzaConsoleBackend::heading(){
-    return get_facing_direction(m_env.env.console, m_env.context);
+PlzaReader heading_reader(StoryEnv& env){
+    return [&env](PlzaBackend&, Pokemon::Observation<Pokemon::ZonePose>& observation){
+        const double heading = get_facing_direction(env.env.console, env.context);
+        observation.readings[std::string(Pokemon::STORY_HEADING)] = (int)std::lround(heading) % 360;
+    };
 }
 
 

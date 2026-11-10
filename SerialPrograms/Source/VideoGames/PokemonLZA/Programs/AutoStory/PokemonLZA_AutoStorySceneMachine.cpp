@@ -33,15 +33,12 @@ constexpr Milliseconds FADE_WAIT = 30000ms;
 constexpr Milliseconds STILL_WAIT = 10000ms;
 //  How often a wait looks again.
 constexpr Milliseconds POLL = 250ms;
-//  Looks a machine takes at most, besides its timeout: a backend whose
-//  looks carry no time still ends.
-constexpr size_t MAX_LOOKS = 4000;
 
 //  Something holds the player: a box (or choice), a battle, a fade.
 bool busy(const ScreenObservation& look){
     return look.events.has(EngineEvent::TEXT_BOX) || look.events.has(EngineEvent::BATTLE) ||
         look.events.has(EngineEvent::FADE_BLACK) || look.events.has(EngineEvent::FADE_WHITE) ||
-        has_choice(look);
+        look.events.has(EngineEvent::CHOICE_BOX);
 }
 
 constexpr SceneScreen ALL_SCREENS[] = {
@@ -123,7 +120,7 @@ std::optional<WallClock> SceneTimeline::quiet_end_due() const{
 }
 
 SceneScreen SceneTimeline::classify(const ScreenObservation& look) const{
-    const bool choice = has_choice(look);
+    const bool choice = look.events.has(EngineEvent::CHOICE_BOX);
     if (m_config.goal == SceneMashGoal::CHOICE && choice){
         return SceneScreen::GOAL_CHOICE;
     }
@@ -159,7 +156,7 @@ void SceneTimeline::record(const ScreenObservation& look){
     if (busy(look)){
         m_last_busy = look.when;
     }
-    const bool party_bar = look.events.has(EngineEvent::CAN_MOVE) && !look.events.has(EngineEvent::TEXT_BOX) && !has_choice(look);
+    const bool party_bar = look.events.has(EngineEvent::CAN_MOVE) && !look.events.has(EngineEvent::TEXT_BOX) && !look.events.has(EngineEvent::CHOICE_BOX);
     if (!party_bar){
         m_party_bar_since.reset();
     }else if (!m_party_bar_since){
@@ -183,7 +180,7 @@ std::string describe_look(const ScreenObservation& look){
             text += (text.empty() ? "" : ", ") + std::string(name);
         }
     }
-    if (has_choice(look)){
+    if (look.events.has(EngineEvent::CHOICE_BOX)){
         text += text.empty() ? "choice" : ", choice";
     }
     return text.empty() ? "nothing" : text;
@@ -192,7 +189,7 @@ std::string describe_look(const ScreenObservation& look){
 //  What the states share: the backend, the timeline and the look they act on.
 class SceneRunner{
 public:
-    SceneRunner(PlzaStoryBackend& backend, std::string_view label, const SceneMachineConfig& config, WallClock start)
+    SceneRunner(PlzaBackend& backend, std::string_view label, const SceneMachineConfig& config, WallClock start)
         : m_backend(backend)
         , m_label(label)
         , m_timeline(config, start)
@@ -264,7 +261,7 @@ private:
         }
     }
 
-    PlzaStoryBackend& m_backend;
+    PlzaBackend& m_backend;
     std::string m_label;
     SceneTimeline m_timeline;
     std::optional<SceneScreen> m_logged_screen;
@@ -287,47 +284,59 @@ size_t max_visits(SceneScreen screen){
 } // namespace
 
 
+namespace{
+
+//  run_screen_machine_on_observations()'s failure as an Outcome.
+Pokemon::Outcome scene_failure(std::string_view label, const std::string& failure){
+    std::string_view kind = "scene_stuck";
+    if (failure.starts_with("Did not finish")){
+        kind = "scene_timeout";
+    }else if (failure.starts_with("The screen matches none")){
+        kind = "scene_unknown";
+    }
+    return Pokemon::outcome_failed(std::string(kind), std::format("{}: {}", label, failure));
+}
+
+} // namespace
+
+
 Pokemon::Outcome run_scene_machine(
-    PlzaStoryBackend& backend, std::string_view label, const SceneMachineConfig& config, Milliseconds timeout
+    PlzaBackend& backend, std::string_view label, const SceneMachineConfig& config, Milliseconds timeout
 ){
+    //  The look the states match and act on.
     Pokemon::Observation<Pokemon::ZonePose> look = backend.observe();
-    const WallClock start = look.when;
-    SceneRunner runner(backend, label, config, start);
+    bool first = true;
+    SceneRunner runner(backend, label, config, look.when);
     std::vector<ScreenState> states;
-    std::map<std::string, SceneScreen, std::less<>> screens;
     for (const SceneScreen screen : ALL_SCREENS){
         ScreenState state;
         state.name = std::string(scene_screen_name(screen));
         state.matches_observation = [&runner, screen](const ScreenObservation& observation){
             return runner.timeline().classify(observation) == screen;
         };
+        state.act = [&runner, &look, screen]{
+            runner.act(screen, look);
+        };
         state.max_visits = max_visits(screen);
         state.terminal = scene_screen_terminal(screen);
-        screens.emplace(state.name, screen);
         states.push_back(std::move(state));
     }
-    std::map<std::string, size_t, std::less<>> visits;
-    for (size_t looks = 0; looks < MAX_LOOKS; looks++){
-        if (looks > 0){
+    const std::function<ScreenObservation()> observe = [&backend, &look, &first]() -> ScreenObservation{
+        if (!first){
             look = backend.observe();
         }
-        if (look.when - start > timeout){
-            break;
-        }
-        const ScreenState* state = match_screen_state(states, look);
-        if (state == nullptr){
-            return Pokemon::outcome_failed("scene_unknown", std::format("{}: no state for {}", label, describe_look(look)));
-        }
-        if (++visits[state->name] > state->max_visits){
-            return Pokemon::outcome_failed("scene_stuck", std::format("{}: {} came up {} times", label, state->name, state->max_visits + 1));
-        }
-        runner.act(screens.at(state->name), look);
-        if (state->terminal){
-            backend.log(std::format("[PLZA {}] done on {}.", label, state->name));
-            return Pokemon::outcome_ok();
-        }
+        first = false;
+        return look;
+    };
+    StepTrace trace(std::format("PLZA {}", label), [&backend](const std::string& line){
+        backend.log(line);
+    });
+    const ScreenMachineResult result = run_screen_machine_on_observations(observe, backend.scope(), trace, states, timeout);
+    if (!result.succeeded()){
+        return scene_failure(label, result.failure);
     }
-    return Pokemon::outcome_failed("scene_timeout", std::format("{}: not done within {} s", label, timeout.count() / 1000));
+    backend.log(std::format("[PLZA {}] done on {}.", label, result.terminal));
+    return Pokemon::outcome_ok();
 }
 
 

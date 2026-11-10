@@ -5,7 +5,6 @@
  */
 
 #include <format>
-#include <memory>
 #include <optional>
 #include <string>
 #include <utility>
@@ -33,6 +32,7 @@ namespace PokemonLZA{
 using namespace std::chrono_literals;
 using Pokemon::Outcome;
 using Pokemon::StoryActionArgs;
+using Pokemon::StoryActionCall;
 using Pokemon::StoryActionSpec;
 using Pokemon::StoryArgSpec;
 using Pokemon::StoryArgType;
@@ -55,12 +55,21 @@ const std::map<std::string, std::string, std::less<>>& story_actions_not_impleme
 
 namespace{
 
-//  The GAME actions that are not moves or todos, with no args.
-const std::vector<std::string>& game_actions(){
+//  The GAME actions that are not moves or todos and run on any backend,
+//  with no args.
+const std::vector<std::string>& backend_game_actions(){
     static const std::vector<std::string> actions{
-        "approach_starter", "story_battle",
+        "approach_starter", "text_to_choice",
+    };
+    return actions;
+}
+
+//  The same that work through the game's own screens: console_only.
+const std::vector<std::string>& console_game_actions(){
+    static const std::vector<std::string> actions{
+        "story_battle",
         "new_game_language", "pick_look", "type_player_name",
-        "text_to_choice", "story_battle_start",
+        "story_battle_start",
         "talk_through_map_screen", "talk_to_pokedex_screen", "climb_ladder",
         "choose_0", "choose_1",
     };
@@ -76,6 +85,12 @@ StoryActionSpec builtin_spec(StoryStepKind kind, std::string name){
     return StoryActionSpec{.kind = kind, .name = std::move(name), .args = {}};
 }
 
+//  `spec`, run only on a console.
+StoryActionSpec console_only(StoryActionSpec spec){
+    spec.console_only = true;
+    return spec;
+}
+
 StoryActionSpec game_spec(std::string name, std::vector<StoryArgSpec> args = {}){
     return StoryActionSpec{.kind = StoryStepKind::GAME, .name = std::move(name), .args = std::move(args)};
 }
@@ -84,29 +99,39 @@ StoryArgSpec optional_ms(std::string key, int64_t fallback, std::string why){
     return StoryArgSpec{.key = std::move(key), .type = StoryArgType::INTEGER, .required = false, .fallback = fallback, .why = std::move(why)};
 }
 
+//  What a console action does with the run's console and the step's args.
+using ConsoleBody = std::function<void(StoryEnv& env, const StoryActionArgs& args)>;
 
-//  Builds the handlers: each holds the backend it drives.
+
+//  Builds the handlers. The console actions hold the console; without one
+//  (a test, a simulation) their specs are console_only and the engine
+//  refuses them before their handler.
 class PlzaActions{
 public:
-    PlzaActions(PlzaStoryBackend& backend, StarterChoice starter)
-        : m_backend(backend)
+    PlzaActions(StoryEnv* env, StarterChoice starter)
+        : m_env(env)
         , m_starter(starter)
-    {}
+    {
+        if (m_env != nullptr){
+            m_heading = heading_reader(*m_env);
+        }
+    }
 
-    //  `body` on the console; "console_only" anywhere else. A console
-    //  step that fails becomes a failed Outcome, so the run can reload;
-    //  an action that is not implemented ends the run.
-    Handler console(std::string name, std::function<void(StoryEnv& env, const StoryActionArgs& args)> body) const{
-        PlzaStoryBackend& backend = m_backend;
-        return [&backend, name = std::move(name), body = std::move(body)](
-            Pokemon::StoryBackend<ZonePose>&, Pokemon::RunState&, const StoryActionArgs& args
+    //  `body` on the console. A console step that fails becomes a failed
+    //  Outcome, so the run can reload; an action that is not implemented
+    //  ends the run.
+    Handler console(std::string name, ConsoleBody body) const{
+        if (m_env == nullptr){
+            return [name = std::move(name)](Pokemon::StoryBackend<ZonePose>&, Pokemon::RunState&, const StoryActionCall&){
+                return Pokemon::outcome_failed(std::string(Pokemon::CONSOLE_ONLY), name + " runs only on a console");
+            };
+        }
+        StoryEnv& env = *m_env;
+        return [&env, name = std::move(name), body = std::move(body)](
+            Pokemon::StoryBackend<ZonePose>& backend, Pokemon::RunState&, const StoryActionCall& call
         ){
-            StoryEnv* env = backend.console_env();
-            if (env == nullptr){
-                return Pokemon::outcome_failed("console_only", name + " runs only on a console");
-            }
             try{
-                body(*env, args);
+                body(env, call.args);
             }catch (StoryActionNotImplemented&){
                 throw;
             }catch (OperationFailedException& e){
@@ -117,17 +142,11 @@ public:
         };
     }
 
-    //  `body` on PLZA's backend.
-    Handler on_backend(std::function<Outcome(PlzaStoryBackend& backend, const StoryActionArgs& args)> body) const{
-        PlzaStoryBackend& backend = m_backend;
-        return [&backend, body = std::move(body)](Pokemon::StoryBackend<ZonePose>&, Pokemon::RunState&, const StoryActionArgs& args){
-            return body(backend, args);
-        };
-    }
-
     //  The move `name`, walked once the screen shows free control.
     Handler walk(std::string name, StoryMove move) const{
-        return on_backend([name = std::move(name), move = std::move(move)](PlzaStoryBackend& backend, const StoryActionArgs&){
+        return [name = std::move(name), move = std::move(move), heading = m_heading](
+            Pokemon::StoryBackend<ZonePose>& backend, Pokemon::RunState&, const StoryActionCall&
+        ){
             const Outcome free = check_can_walk(backend, name);
             if (!free.succeeded()){
                 return free;
@@ -135,8 +154,8 @@ public:
             const auto end = story_move_ends().find(name);
             const std::optional<PokemonAutomation::ScreenEvent> fade =
                 end == story_move_ends().end() ? std::nullopt : engine_fade_event(end->second);
-            return fade ? walk_until(backend, name, move, *fade) : run_story_move(backend, move);
-        });
+            return fade ? walk_until(backend, name, move, heading, *fade) : run_story_move(backend, move, heading);
+        };
     }
 
     Handler approach_starter() const{
@@ -147,10 +166,9 @@ public:
         return walk("approach_starter", move->second);
     }
 
-    Handler not_implemented(std::string name, std::string todo) const{
-        PlzaStoryBackend& backend = m_backend;
-        return [&backend, name = std::move(name), todo = std::move(todo)](
-            Pokemon::StoryBackend<ZonePose>&, Pokemon::RunState&, const StoryActionArgs&
+    static Handler not_implemented(std::string name, std::string todo){
+        return [name = std::move(name), todo = std::move(todo)](
+            Pokemon::StoryBackend<ZonePose>& backend, Pokemon::RunState&, const StoryActionCall&
         ) -> Outcome{
             const std::string message = std::format("PLZA AutoStory: {} is not implemented yet. TODO: {}", name, todo);
             backend.log(message);
@@ -161,31 +179,34 @@ public:
     //  "mash_to_move_hints": the overworld, or nothing busy for the quiet
     //  time once the scene's rough length has passed (the tutorial shows no
     //  party bar; its cutscenes hold still frames longer than the quiet).
-    Handler move_hints() const{
-        return on_backend([](PlzaStoryBackend& backend, const StoryActionArgs& args){
+    static Handler move_hints(){
+        return [](Pokemon::StoryBackend<ZonePose>& backend, Pokemon::RunState&, const StoryActionCall& call){
             SceneMachineConfig config;
-            config.quiet = Milliseconds(Pokemon::story_arg<int64_t>(args, "quiet_ms"));
-            config.min_length = Milliseconds(Pokemon::story_arg<int64_t>(args, "min_length_ms"));
+            config.quiet = Milliseconds(Pokemon::story_arg<int64_t>(call.args, "quiet_ms"));
+            config.min_length = Milliseconds(Pokemon::story_arg<int64_t>(call.args, "min_length_ms"));
             return run_scene_machine(backend, "mash_to_move_hints", config, 180s);
-        });
+        };
     }
 
-    Handler text_to_choice() const{
-        return on_backend([](PlzaStoryBackend& backend, const StoryActionArgs&){
+    static Handler text_to_choice(){
+        return [](Pokemon::StoryBackend<ZonePose>& backend, Pokemon::RunState&, const StoryActionCall&){
             SceneMachineConfig config;
             config.goal = SceneMashGoal::CHOICE;
             config.text_button = BUTTON_B;
             return run_scene_machine(backend, "text_to_choice", config, 60s);
-        });
+        };
     }
 
 private:
-    PlzaStoryBackend& m_backend;
+    StoryEnv* m_env;
     StarterChoice m_starter;
+    //  The compass for the walks; none without a console, where a look
+    //  carries its own heading.
+    PlzaReader m_heading;
 };
 
 //  mash_scene() to `goal`, pressing `button` through the text.
-std::function<void(StoryEnv& env, const StoryActionArgs& args)> mash(SceneMashGoal goal, Button button, Milliseconds timeout){
+ConsoleBody mash(SceneMashGoal goal, Button button, Milliseconds timeout){
     return [=](StoryEnv& env, const StoryActionArgs&){
         mash_scene(env.env.console, env.context, goal, button, timeout);
     };
@@ -195,7 +216,7 @@ std::function<void(StoryEnv& env, const StoryActionArgs& args)> mash(SceneMashGo
 Handler game_handler(const PlzaActions& make, const std::string& name){
     const auto todo = story_actions_not_implemented().find(name);
     if (todo != story_actions_not_implemented().end()){
-        return make.not_implemented(name, todo->second);
+        return PlzaActions::not_implemented(name, todo->second);
     }
     const auto move = story_moves().find(name);
     if (move != story_moves().end()){
@@ -211,10 +232,10 @@ Handler game_handler(const PlzaActions& make, const std::string& name){
         return make.approach_starter();
     }
     if (name == "mash_to_move_hints"){
-        return make.move_hints();
+        return PlzaActions::move_hints();
     }
     if (name == "text_to_choice"){
-        return make.text_to_choice();
+        return PlzaActions::text_to_choice();
     }
     if (name == "story_battle_start"){
         return make.console(name, mash(SceneMashGoal::BATTLE, BUTTON_A, 90s));
@@ -252,19 +273,14 @@ Handler plza_handler(const PlzaActions& make, const StoryActionSpec& spec){
             fly_to(env.env.console, env.context, env.language, get_location_item_from_slug(target.map).location);
         });
         //  Flown: the player is at the target.
-        return [fly = std::move(fly)](Pokemon::StoryBackend<ZonePose>& backend, Pokemon::RunState& state, const StoryActionArgs& args){
-            Outcome outcome = fly(backend, state, args);
+        return [fly = std::move(fly)](Pokemon::StoryBackend<ZonePose>& backend, Pokemon::RunState& state, const StoryActionCall& call){
+            Outcome outcome = fly(backend, state, call);
             if (outcome.succeeded()){
-                outcome.pose = Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(args, "target"));
+                outcome.pose = Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(call.args, "target"));
             }
             return outcome;
         };
     }
-    case StoryStepKind::LEGS:
-    case StoryStepKind::STEP:
-        return [](Pokemon::StoryBackend<ZonePose>&, Pokemon::RunState&, const StoryActionArgs&){
-            return Pokemon::outcome_failed("unsupported_step", "tile walks mean nothing in Lumiose");
-        };
     case StoryStepKind::TALK:
         return make.console(name, [](StoryEnv& env, const StoryActionArgs&){
             talk_to_facing(env.env.console, env.context);
@@ -306,32 +322,45 @@ const Pokemon::StoryActionRegistry<ZonePose>& spec_registry(){
     return registry;
 }
 
+//  PLZA's actions over `env` (none: no console), with no save or reload.
+Pokemon::StoryGame<ZonePose> plza_game_actions(StoryEnv* env, StarterChoice starter){
+    const PlzaActions make(env, starter);
+    Pokemon::StoryGame<ZonePose> game;
+    game.id = "plza";
+    for (StoryActionSpec& spec : plza_story_action_specs()){
+        Handler handler = plza_handler(make, spec);
+        game.actions.push_back({.spec = std::move(spec), .handler = std::move(handler)});
+    }
+    return game;
+}
+
 } // namespace
 
 
 std::vector<StoryActionSpec> plza_story_action_specs(){
     std::vector<StoryActionSpec> specs{
-        StoryActionSpec{.kind = StoryStepKind::ROUTE, .name = "fly", .args = {
+        console_only(StoryActionSpec{.kind = StoryStepKind::ROUTE, .name = "fly", .args = {
             StoryArgSpec{
                 .key = "target", .type = StoryArgType::GRID_POSE, .required = true,
                 .fallback = std::nullopt, .why = "the fast travel place, by slug, as the map",
             },
-        }},
-        builtin_spec(StoryStepKind::LEGS, "legs"),
-        builtin_spec(StoryStepKind::STEP, "face"),
-        builtin_spec(StoryStepKind::TALK, "talk"),
-        builtin_spec(StoryStepKind::ANSWER, "answer"),
-        builtin_spec(StoryStepKind::MASH, "mash"),
-        StoryActionSpec{.kind = StoryStepKind::MASH, .name = "a", .args = {}},
-        StoryActionSpec{.kind = StoryStepKind::HEAL, .name = "heal", .args = {}},
-        builtin_spec(StoryStepKind::SHOP, "shop"),
+        }}),
+        console_only(builtin_spec(StoryStepKind::TALK, "talk")),
+        console_only(builtin_spec(StoryStepKind::ANSWER, "answer")),
+        console_only(builtin_spec(StoryStepKind::MASH, "mash")),
+        console_only(StoryActionSpec{.kind = StoryStepKind::MASH, .name = "a", .args = {}}),
+        console_only(StoryActionSpec{.kind = StoryStepKind::HEAL, .name = "heal", .args = {}}),
+        console_only(builtin_spec(StoryStepKind::SHOP, "shop")),
         game_spec("mash_to_move_hints", {
             optional_ms("min_length_ms", 0, "the scene's rough length: no quiet end before it"),
             optional_ms("quiet_ms", 8000, "nothing busy this long ends the scene"),
         }),
     };
-    for (const std::string& name : game_actions()){
+    for (const std::string& name : backend_game_actions()){
         specs.push_back(game_spec(name));
+    }
+    for (const std::string& name : console_game_actions()){
+        specs.push_back(console_only(game_spec(name)));
     }
     for (const auto& [name, move] : story_moves()){
         specs.push_back(game_spec(name));
@@ -350,47 +379,32 @@ std::vector<std::string> plza_story_lint(const Pokemon::StoryCheckpoint& checkpo
     return spec_registry().lint(checkpoint);
 }
 
-Pokemon::StoryGame<ZonePose> make_plza_story_game(PlzaStoryBackend& backend, StarterChoice starter){
-    const PlzaActions make(backend, starter);
-    Pokemon::StoryGame<ZonePose> game;
-    game.id = "plza";
-    for (StoryActionSpec& spec : plza_story_action_specs()){
-        Handler handler = plza_handler(make, spec);
-        game.actions.push_back({.spec = std::move(spec), .handler = std::move(handler)});
-    }
-    //  The checkpoint under way, for the save: begin_attempt() sets it.
-    std::shared_ptr<std::string> checkpoint = std::make_shared<std::string>();
-    game.begin_attempt = [checkpoint](const Pokemon::StoryCheckpoint& data){
-        *checkpoint = data.id;
-    };
-    game.save = [&backend, checkpoint](Pokemon::StoryBackend<ZonePose>&){
-        if (story_autosave_rows().contains(*checkpoint)){
-            backend.log(std::format("[Save] {}: the game autosaved at its end; the menu cannot save yet", *checkpoint));
+Pokemon::StoryGame<ZonePose> make_plza_story_game(StoryEnv& env, StarterChoice starter){
+    Pokemon::StoryGame<ZonePose> game = plza_game_actions(&env, starter);
+    game.save = [&env](Pokemon::StoryBackend<ZonePose>& backend, const Pokemon::StoryCheckpoint& checkpoint){
+        if (story_autosave_rows().contains(checkpoint.id)){
+            backend.log(std::format("[Save] {}: the game autosaved at its end; the menu cannot save yet", checkpoint.id));
             return Pokemon::outcome_ok();
         }
-        StoryEnv* env = backend.console_env();
-        if (env == nullptr){
-            return Pokemon::outcome_failed("console_only", "the menu save runs only on a console");
-        }
         try{
-            save_story_game(env->env.console, env->context);
+            save_story_game(env.env.console, env.context);
         }catch (OperationFailedException& e){
             return Pokemon::outcome_failed("save_failed", e.message());
         }
         return Pokemon::outcome_ok();
     };
-    game.reload = [&backend](Pokemon::StoryBackend<ZonePose>&){
-        StoryEnv* env = backend.console_env();
-        if (env == nullptr){
-            return Pokemon::outcome_failed("console_only", "the reload runs only on a console");
-        }
-        go_home(env->env.console, env->context);
-        if (!reset_game_from_home(env->env, env->env.console, env->context)){
+    game.reload = [&env](Pokemon::StoryBackend<ZonePose>&){
+        go_home(env.env.console, env.context);
+        if (!reset_game_from_home(env.env, env.env.console, env.context)){
             return Pokemon::outcome_failed("reload_failed", "Failed to reset the game from HOME.");
         }
         return Pokemon::outcome_ok();
     };
     return game;
+}
+
+Pokemon::StoryGame<ZonePose> make_plza_story_game(StarterChoice starter){
+    return plza_game_actions(nullptr, starter);
 }
 
 

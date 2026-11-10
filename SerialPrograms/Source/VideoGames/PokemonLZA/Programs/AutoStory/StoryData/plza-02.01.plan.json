@@ -5,8 +5,7 @@
     "id": "02.01",
     "title": "Main Mission 02: Battle Zone to the first night",
     "start": {
-      "map": "LumioseCity",
-      "tiles": []
+      "map": "LumioseCity"
     },
     "events": [
       {

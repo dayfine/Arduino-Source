@@ -2,14 +2,14 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  What PLZA's story actions drive: the engine's backend
- *  (Pokemon/AutoStory/Engine/Pokemon_StoryBackend.h) with the inputs a game
- *  with no tiles needs on top, and its console form.
+ *  PLZA on the console for the engine's backend
+ *  (Pokemon/AutoStory/Engine/Pokemon_StoryBackend.h), and the inputs a game
+ *  with no tiles builds from it.
  *
  *  Directions are the stick relative to the camera: north is straight on,
- *  east to the right. tap() turns that way (turn()); hold() walks. Dash is
- *  a toggle in this game and the walks assume it is off, so StoryPace::RUN
- *  walks too.
+ *  east to the right. tap() turns that way (story_turn()); hold() walks.
+ *  Dash is a toggle in this game and the walks assume it is off, so
+ *  StoryPace::RUN walks too.
  *
  */
 
@@ -23,6 +23,7 @@
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryBackend.h"
+#include "Pokemon/AutoStory/Engine/Pokemon_StoryGame.h"
 #include "VideoGames/PokemonLZA/Options/PokemonLZA_BattleAIOption.h"
 #include "PokemonLZA_AutoStoryObservation.h"
 #include "PokemonLZA_AutoStoryScreenEvents.h"
@@ -54,33 +55,34 @@ struct StoryEnv{
 };
 
 
-//  The engine's backend for PLZA.
-class PlzaStoryBackend : public Pokemon::StoryBackend<Pokemon::ZonePose>{
-public:
-    //  Turns the player `degrees` clockwise of straight on (negative: left),
-    //  as the story was recorded: L recenters the camera behind the player,
-    //  then the stick is tapped that way. The tap also takes a step.
-    virtual void turn(double degrees) = 0;
-    //  The heading the player faces, clockwise from north in [0, 360): the
-    //  minimap's arrow.
-    virtual double heading() = 0;
-    //  The console, for the actions only a console can do; none in a
-    //  simulation or a test, where those actions fail by name.
-    virtual StoryEnv* console_env(){
-        return nullptr;
-    }
-};
+//  The engine's backend for PLZA's pose.
+using PlzaBackend = Pokemon::StoryBackend<Pokemon::ZonePose>;
+//  A reader for PLZA's pose (StoryGame::readers).
+using PlzaReader = Pokemon::StoryReader<Pokemon::ZonePose>;
+
+//  Turns the player `degrees` clockwise of straight on (negative: left),
+//  as the story was recorded: L recenters the camera behind the player,
+//  then the stick is tapped that way for 150 ms. The tap also takes a step.
+void story_turn(PlzaBackend& backend, double degrees);
+
+//  The STORY_HEADING reading for the console: the minimap's arrow
+//  (get_facing_direction()), clockwise from north in [0, 360).
+PlzaReader heading_reader(StoryEnv& env);
 
 
 //  PLZA on the console: the controller and PlzaScreenObserver.
-//  code-health: allow public_methods -- the engine's eight backend calls plus PLZA's turn, heading and console
-class PlzaConsoleBackend : public PlzaStoryBackend{
+//  code-health: allow public_methods -- the engine's backend calls; nothing PLZA adds
+class PlzaConsoleBackend : public PlzaBackend{
 public:
     explicit PlzaConsoleBackend(StoryEnv& env);
 
+    virtual Pokemon::StoryBackendKind kind() const override{
+        return Pokemon::StoryBackendKind::CONSOLE;
+    }
     virtual void press(Button button, Milliseconds hold, Milliseconds release) override;
     virtual void tap(Pokemon::Direction direction) override;
     virtual void hold(Pokemon::Direction direction, Milliseconds duration, Pokemon::StoryPace pace) override;
+    virtual void stick(double degrees, Milliseconds duration, Pokemon::StoryPace pace) override;
     virtual void wait(Milliseconds duration) override;
     //  Once the inputs are done: PlzaScreenObserver's events on a frame
     //  (plza_observation()), STILL when it barely differs from the frame
@@ -90,12 +92,6 @@ public:
     virtual Pokemon::Outcome battle(const Pokemon::StoryActionArgs& args) override;
     virtual void log(std::string_view line) override;
     virtual CancellableScope& scope() override;
-
-    virtual void turn(double degrees) override;
-    virtual double heading() override;
-    virtual StoryEnv* console_env() override{
-        return &m_env;
-    }
 
 private:
     StoryEnv& m_env;
