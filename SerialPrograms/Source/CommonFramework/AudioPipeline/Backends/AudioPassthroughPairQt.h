@@ -97,6 +97,7 @@ private:
     //  thread only ever sees them through the node listener sets, where
     //  ListenerSet::remove blocks on in-flight pushes so rebuilds never
     //  race a live push.
+    void close_audio_source();
     void teardown_tree();
     void teardown_sink_branch();
     void build_tree(float input_volume);
