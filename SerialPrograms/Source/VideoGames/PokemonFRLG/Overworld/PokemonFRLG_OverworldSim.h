@@ -391,8 +391,10 @@ private:
     int m_encounter_rate_buff = 0;
     //  The turn taps so far, for SimScript::dropped_turn_taps.
     int m_turn_taps = 0;
-    //  Steps onto a warp so far (SimScript::black_without_warp).
+    //  Steps onto a warp so far, and the fault on one
+    //  (SimScript::black_without_warp): its black without the warp.
     int m_warp_steps = 0;
+    bool black_without_warp(Milliseconds pressed);
     //  The last tap, until a hold.
     std::optional<TapPress> m_last_tap;
     //  When the last Bicycle tap started, and how many came too soon.
@@ -579,6 +581,9 @@ private:
     std::optional<WalkedTiles> walk_step(const RouteStep& step, std::optional<Direction> facing);
     bool after_warp(const RouteStep& step, int warps_before, Milliseconds watched_from);
     bool fade_over_since(Milliseconds from) const;
+    //  after_warp() on a fade seen with no warp: fails, or with
+    //  SimWalkerRules::confirm_warp_destination off, takes it as the warp.
+    bool black_without_warp(const RouteStep& step, int warps_before, Milliseconds watched_from);
     [[noreturn]] void fail_off_route(const RouteStep& step);
     std::optional<SimSeen> hold_watching(const RouteStep& step, Milliseconds hold, const std::vector<Interrupt>& interrupts);
     size_t clear_late(const std::vector<Interrupt>& interrupts, Milliseconds watch, size_t max);

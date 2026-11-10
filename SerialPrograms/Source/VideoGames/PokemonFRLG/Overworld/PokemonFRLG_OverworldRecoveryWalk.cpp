@@ -189,9 +189,8 @@ StepWalk walk_step(
     StepWalk out{std::nullopt, current_time(), false, false};
     switch (step.action){
     case RouteAction::WALK:{
-        //  Turning first, with a tap, makes the hold start from a standstill
-        //  facing the right way: holding through a turn lost a tile on the
-        //  console, while holds from a standstill were exact over 15 tiles.
+        //  Turning first, with a tap, starts the hold from a standstill facing
+        //  the right way: exact over 15 tiles, where a turn lost one.
         if (turns_first(step, speed, facing)){
             turn_to(console, context, step.direction);
         }

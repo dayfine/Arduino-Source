@@ -140,6 +140,44 @@ void sim_step_once(OverworldSim& sim, Direction direction){
 }
 
 
+bool OverworldSimWalker::fade_over_since(Milliseconds from) const{
+    const SimState& state = m_sim.state();
+    if (state.screen == SimScreen::FADE){
+        return false;
+    }
+    return std::any_of(
+        state.shown.begin(), state.shown.end(),
+        [&](const SimShown& shown){ return shown.screen == SimScreen::FADE && shown.at >= from; }
+    );
+}
+
+
+//  A fade seen with no warp: the console's screen check
+//  (warp_left_scene()) finds the scene from before the hold.
+bool OverworldSimWalker::black_without_warp(const RouteStep& step, int warps_before, Milliseconds watched_from){
+    const bool black_only = m_sim.state().warps == warps_before
+        && (m_sim.state().screen == SimScreen::FADE || fade_over_since(watched_from));
+    if (!black_only){
+        return false;
+    }
+    if (m_rules.confirm_warp_destination){
+        fail("walk_overworld_route(): the warp to " + step.end.map + " not confirmed: the screen after the fade shows the scene from before the hold.");
+    }
+    m_sim.watch({}, OverworldWalkSteps::AFTER_WARP);
+    return true;
+}
+
+bool OverworldSim::black_without_warp(Milliseconds pressed){
+    if (!m_script.black_without_warp.contains(++m_warp_steps)){
+        return false;
+    }
+    m_frozen = true;
+    schedule(pressed + m_script.timing.tile, SimScreen::FADE, false);
+    schedule(pressed + m_script.timing.tile + m_script.timing.fade, SimScreen::OVERWORLD, true);
+    note("black without a warp; the player stays at " + to_string(m_state.position) + ".");
+    return true;
+}
+
 } // namespace PokemonFRLG
 } // namespace NintendoSwitch
 } // namespace PokemonAutomation

@@ -188,15 +188,6 @@ void wait_out_warp(
 //  The same, watching only from now: for a caller that saw the black itself.
 void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step, const VideoSnapshot& before);
 
-//  Whether `after` no longer shows the scene `before` showed, scrolled 0 to
-//  `max_tiles` tiles on toward `direction` inside the game box `game`:
-//  black then clear with the old scene back is no warp. A screen too dark to
-//  compare (a dark cave) counts as left.
-bool warp_left_scene(
-    const ImageViewRGB32& before, const ImageViewRGB32& after,
-    const ImageFloatBox& game, Direction direction, int max_tiles
-);
-
 //  Before `step`: fails unless the overworld is up.
 void check_overworld(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step);
 
