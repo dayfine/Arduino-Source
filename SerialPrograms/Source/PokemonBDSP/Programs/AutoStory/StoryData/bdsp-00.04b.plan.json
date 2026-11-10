@@ -278,5 +278,8 @@
     "saves_in": "Route 202"
   },
   "format": "pokesim-authored-checkpoint/1",
-  "game": "bdsp"
+  "game": "bdsp",
+  "metadata": {
+    "phase": "reproduction"
+  }
 }
