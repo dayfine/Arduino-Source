@@ -3,7 +3,7 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  The kinds of story step the tile games (FRLG, BDSP) share. A game's
- *  executor does each kind its own way (Pokemon_StorySteps.h).
+ *  executor does each kind its own way (Pokemon_StoryStepExecutor.h).
  *
  */
 

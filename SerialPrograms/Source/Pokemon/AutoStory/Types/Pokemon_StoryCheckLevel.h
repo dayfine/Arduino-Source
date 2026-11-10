@@ -8,8 +8,8 @@
  *
  */
 
-#ifndef PokemonAutomation_Pokemon_StoryChecks_H
-#define PokemonAutomation_Pokemon_StoryChecks_H
+#ifndef PokemonAutomation_Pokemon_StoryCheckLevel_H
+#define PokemonAutomation_Pokemon_StoryCheckLevel_H
 
 namespace PokemonAutomation{
 namespace Pokemon{

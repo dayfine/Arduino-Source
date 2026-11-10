@@ -4,7 +4,7 @@
  *
  */
 
-#include "Pokemon_StoryChecks.h"
+#include "Pokemon_StoryCheckLevel.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{

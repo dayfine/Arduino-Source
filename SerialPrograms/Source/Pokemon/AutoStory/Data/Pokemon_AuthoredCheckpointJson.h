@@ -13,7 +13,7 @@
 #include <string_view>
 #include <utility>
 #include "Common/Cpp/Json/JsonObject.h"
-#include "Types/Pokemon_StoryCheckpoint.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{

@@ -20,7 +20,7 @@ void add_tests_StoryEvents(UnitTestDatabase& database);
 // Registers unit tests for story segment running, verification, and branching.
 void add_tests_StorySegments(UnitTestDatabase& database);
 // Registers unit tests for high-level story step dispatching and table conversion.
-void add_tests_StorySteps(UnitTestDatabase& database);
+void add_tests_StoryStepExecutor(UnitTestDatabase& database);
 // Registers unit tests for the lossless shared story-data wire contract.
 void add_tests_StoryStepJson(UnitTestDatabase& database);
 // Registers unit tests for step args: action specs and reading old variant strings.
@@ -36,7 +36,7 @@ void add_tests_StoryRangeOptions(UnitTestDatabase& database);
 inline void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_StoryEvents(database);
     add_tests_StorySegments(database);
-    add_tests_StorySteps(database);
+    add_tests_StoryStepExecutor(database);
     add_tests_StoryStepJson(database);
     add_tests_StoryArgs(database);
     add_tests_AuthoredCheckpointJson(database);

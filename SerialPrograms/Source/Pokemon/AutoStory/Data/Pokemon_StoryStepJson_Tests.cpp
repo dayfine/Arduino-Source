@@ -16,7 +16,7 @@
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Pokemon_StoryStepJson.h"
 #ifndef PA_STORY_DATA_STANDALONE
-#include "Pokemon_AutoStory_Tests.h"
+#include "Pokemon/AutoStory/Pokemon_AutoStory_Tests.h"
 #endif
 
 namespace PokemonAutomation{

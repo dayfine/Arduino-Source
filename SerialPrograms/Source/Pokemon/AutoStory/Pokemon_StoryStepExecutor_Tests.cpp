@@ -22,7 +22,7 @@
 #include "Pokemon/Options/Pokemon_StoryRunOptions.h"
 #include "Pokemon_StoryEvents.h"
 #include "Pokemon_StorySegments.h"
-#include "Pokemon_StorySteps.h"
+#include "Pokemon_StoryStepExecutor.h"
 #include "Pokemon_TilePose.h"
 #include "Pokemon_AutoStory_Tests.h"
 
@@ -742,10 +742,10 @@ struct StoryStepTestCase{
     StoryStepExpectation expectation;
 };
 
-class Test_StorySteps : public UnitTest{
+class Test_StoryStepExecutor : public UnitTest{
 public:
-    explicit Test_StorySteps(StoryStepTestCase scenario)
-        : UnitTest("Pokemon::StorySteps - " + scenario.input.name)
+    explicit Test_StoryStepExecutor(StoryStepTestCase scenario)
+        : UnitTest("Pokemon::StoryStepExecutor - " + scenario.input.name)
         , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -826,9 +826,9 @@ const StoryStepTestCase STORY_STEP_CASES[] = {
 } // namespace
 
 
-void add_tests_StorySteps(UnitTestDatabase& database){
+void add_tests_StoryStepExecutor(UnitTestDatabase& database){
     for (const auto& scenario : STORY_STEP_CASES){
-        database.add<Test_StorySteps>(scenario);
+        database.add<Test_StoryStepExecutor>(scenario);
     }
 }
 

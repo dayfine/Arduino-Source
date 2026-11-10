@@ -29,8 +29,8 @@
  *
  */
 
-#ifndef PokemonAutomation_Pokemon_StorySteps_H
-#define PokemonAutomation_Pokemon_StorySteps_H
+#ifndef PokemonAutomation_Pokemon_StoryStepExecutor_H
+#define PokemonAutomation_Pokemon_StoryStepExecutor_H
 
 #include <optional>
 #include <set>
@@ -41,7 +41,7 @@
 #include "Pokemon_StoryEvents.h"
 #include "Pokemon_StorySegments.h"
 #include "Pokemon_TilePose.h"
-#include "Types/Pokemon_StoryChecks.h"
+#include "Types/Pokemon_StoryCheckLevel.h"
 #include "Types/Pokemon_StoryCheckpoint.h"
 #include "Types/Pokemon_StoryStep.h"
 #include "Types/Pokemon_StoryStepKind.h"

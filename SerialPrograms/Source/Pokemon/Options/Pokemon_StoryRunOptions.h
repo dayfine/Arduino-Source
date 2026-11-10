@@ -6,7 +6,7 @@
  *  hard to try and how much to check: the shared range group
  *  (Pokemon_StoryRangeOptions.h) plus the run policy, read into the shared
  *  SegmentPolicy (Pokemon/AutoStory/Pokemon_StorySegments.h), the checks
- *  level (Types/Pokemon_StoryChecks.h) and the language the game's steps
+ *  level (Types/Pokemon_StoryCheckLevel.h) and the language the game's steps
  *  read text in.
  *
  */
@@ -27,7 +27,7 @@
 #include "CommonTools/Options/StringSelectOption.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStorySelect.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryChecks.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
 #include "Pokemon_StoryRangeOptions.h"
 

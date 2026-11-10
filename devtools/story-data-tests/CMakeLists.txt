@@ -8,8 +8,8 @@ enable_testing()
 get_filename_component(ROOT "../.." ABSOLUTE)
 set(STORY "${ROOT}/SerialPrograms/Source/Pokemon/AutoStory")
 add_executable(StoryDataTests
-    "${STORY}/Pokemon_StoryStepJson.cpp"
-    "${STORY}/Pokemon_StoryStepJson_Tests.cpp"
+    "${STORY}/Data/Pokemon_StoryStepJson.cpp"
+    "${STORY}/Data/Pokemon_StoryStepJson_Tests.cpp"
     "${STORY}/Pokemon_TilePose.cpp"
     "${STORY}/Types/Pokemon_StoryArgs.cpp"
     "${ROOT}/SerialPrograms/Source/Pokemon/Navigation/Pokemon_Grid.cpp"
@@ -23,10 +23,10 @@ add_executable(StoryDataTests
     "${ROOT}/Common/Cpp/Strings/Unicode.cpp")
 # Reuse the Qt/controller-free support sources; each codec has its own test main.
 get_target_property(STORY_DATA_SOURCES StoryDataTests SOURCES)
-list(REMOVE_ITEM STORY_DATA_SOURCES "${STORY}/Pokemon_StoryStepJson_Tests.cpp")
+list(REMOVE_ITEM STORY_DATA_SOURCES "${STORY}/Data/Pokemon_StoryStepJson_Tests.cpp")
 add_executable(AuthoredCheckpointTests ${STORY_DATA_SOURCES}
-    "${STORY}/Pokemon_AuthoredCheckpointJson.cpp"
-    "${STORY}/Pokemon_AuthoredCheckpointJson_Tests.cpp")
+    "${STORY}/Data/Pokemon_AuthoredCheckpointJson.cpp"
+    "${STORY}/Data/Pokemon_AuthoredCheckpointJson_Tests.cpp")
 add_executable(StoryArgsTests
     "${STORY}/Types/Pokemon_StoryArgs.cpp"
     "${STORY}/Pokemon_StoryVariant.cpp"
