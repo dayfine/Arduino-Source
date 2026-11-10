@@ -417,7 +417,7 @@ private:
     //  with nothing to show it (r16), unless it ends on its tile from
     //  wherever the leg left the player. If it doesn't, finds the player at
     //  walls first; without such holds, or if they and the way back walk
-    //  farther than the leg there and back, trusts the leg. Only there, and
+    //  farther than OPEN_LEG_CHECK_TILES_PER_TILE times the leg, trusts the leg. Only there, and
     //  only that far, to keep the check cheap: in Viridian Forest (r16) it
     //  walks 10 tiles after "west 6", while after Route 1's "west 4" the
     //  only holds walk 30. An open leg after a short one walks on off the
@@ -434,8 +434,8 @@ private:
             return;
         }
         const std::optional<Reanchor> anchor = plan_reanchor(*maps(), candidates, step, m_planning->costs);
-        if (!anchor || anchor->holds.empty() || reanchor_tiles(*anchor) > 2 * step.tiles){
-            m_calls.log("Route: no holds to walls within " + std::to_string(2 * step.tiles) + " tiles find the player if " + to_string(step) + " ended short; taken as walked.");
+        if (!anchor || anchor->holds.empty() || reanchor_tiles(*anchor) > OPEN_LEG_CHECK_TILES_PER_TILE * step.tiles){
+            m_calls.log("Route: no holds to walls within " + std::to_string(OPEN_LEG_CHECK_TILES_PER_TILE * step.tiles) + " tiles find the player if " + to_string(step) + " ended short; taken as walked.");
             return;
         }
         m_calls.log(std::format(

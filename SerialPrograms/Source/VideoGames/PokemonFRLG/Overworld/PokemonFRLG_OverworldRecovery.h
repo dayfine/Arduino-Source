@@ -87,6 +87,13 @@ enum class WallCheck{
 //  known (the forest drift), so this is what was seen, not a bound.
 constexpr int OPEN_LEG_SHORTFALL = 2;
 
+//  How far the holds that find the player after an open leg, and the way
+//  back, may walk, per tile of the leg. 2 left Rocket Hideout B3F's "west
+//  7" off the stairs unchecked: the hold to its west wall and back walk up
+//  to 18, and the leg ended short (00.31 r1, console B, 2026-11-10). Route
+//  1's "west 4", whose holds walk 30, stays unchecked.
+constexpr int OPEN_LEG_CHECK_TILES_PER_TILE = 3;
+
 //  Where a leg onto a warp stopped when its fade was a wild battle's: the
 //  battle's wipe passes for the fade (console B, 2026-11-03, Mt. Moon 1F),
 //  so the stop isn't timed. The battle started on one of the leg's steps
