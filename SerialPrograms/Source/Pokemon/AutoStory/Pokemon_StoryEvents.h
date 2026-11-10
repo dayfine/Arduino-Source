@@ -32,8 +32,10 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Common/Cpp/MoveOnlyFunction.h"
+#include "Pokemon_StoryLog.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -97,6 +99,10 @@ struct Outcome{
     std::string failure;
     std::string detail;
     std::optional<Pose> pose;
+    //  A succeeded action that left the game as it found it: a read, a
+    //  check, a TM the lead already knows. A reload of the same save undoes
+    //  nothing it did.
+    bool changed_nothing = false;
 
     bool succeeded() const;
 };
@@ -104,10 +110,19 @@ struct Outcome{
 Outcome outcome_ok();
 // Constructs a successful event outcome updating the run pose.
 Outcome outcome_ok(Pose pose);
+//  outcome_ok() with `changed_nothing`.
+Outcome outcome_unchanged();
 // Constructs a failed event outcome with reason and optional diagnostic detail.
 Outcome outcome_failed(std::string failure, std::string detail = "");
 //  "probe_exhausted: 4 rows": the failure and its detail, if any.
 std::string to_string(const Outcome& outcome);
+
+//  The failure of a step that found the Switch's HOME menu instead of the
+//  game. Nothing in the story can answer it, as every press goes to the
+//  console's menus: no recovery runs and no reload, the run stops.
+inline constexpr std::string_view GAME_NOT_RUNNING = "game_not_running";
+//  GAME_NOT_RUNNING, saying so for the run log.
+Outcome outcome_game_not_running();
 
 
 // Callable action executed for a story event.
@@ -189,6 +204,8 @@ struct Interrupt{
     InterruptPose pose = InterruptPose::UNCHANGED;
     ResumePolicy resume = ResumePolicy::RETRY_EVENT;
 };
+//  Writes what an interrupt did (`effect`) into `pose`.
+void apply_interrupt_pose(Pose& pose, InterruptPose effect);
 
 
 // Story milestone containing pre/post conditions and a series of events.
@@ -221,11 +238,6 @@ struct CheckpointReport{
 // Callback receiver for story event execution log messages.
 using EventLogger = MoveOnlyFunction<void(const std::string& line)>;
 
-
-//  One log line, in a format the lab watcher parses:
-//      [Event] 00.04/3 talk_mom: start
-//      [Event] 00.04/3 talk_mom: failed: expect_failed: has_parcel
-std::string event_log_line(const std::string& checkpoint, size_t number, const std::string& event, const std::string& status);
 
 //  Problems an author should fix before running: unnamed or empty events,
 //  missing actions, recoveries out of escalation order.

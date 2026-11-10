@@ -17,11 +17,12 @@
 #define PokemonAutomation_Pokemon_StorySegments_H
 
 #include <cstddef>
-#include <optional>
 #include <string>
 #include <vector>
 #include "Common/Cpp/MoveOnlyFunction.h"
 #include "Pokemon_StoryEvents.h"
+#include "Pokemon_StoryLog.h"
+#include "Types/Pokemon_StorySegmentTypes.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -58,37 +59,13 @@ struct SegmentHooks{
     EventLogger status;
 };
 
-// Retry and timeout configuration for story segment execution.
-struct SegmentPolicy{
-    //  Runs of one checkpoint, reloading between them, before the segment stops.
-    size_t attempts_per_checkpoint = 3;
-};
-
-//  The checkpoints to run, by id, both inclusive. An unset end is the
-//  segment's first or last checkpoint.
-struct SegmentRange{
-    std::optional<std::string> from;
-    std::optional<std::string> to;
-};
-
-
-// Execution results and failure diagnostics for a story segment run.
-struct SegmentReport{
-    bool completed = false;
-    //  Both empty when nothing failed; the event is empty when a start
-    //  check, an end check, a save or a reload failed.
-    std::string failed_checkpoint;
-    std::string failed_event;
-    Outcome failure;
-    size_t checkpoints_run = 0;
-    //  Reloads after failed attempts.
-    size_t reloads = 0;
-};
-
 //  Runs the checkpoints in `range`, in order. Logs through `hooks.log`,
 //  around the checkpoint lines:
 //      [Segment] 00: start, 3 checkpoints
 //      [Segment] 00: 00.02 failed, reloading for attempt 2/3
+//      [Checkpoint] 00.02: passed on attempt 2 (1 reset)
+//      [Checkpoint] 00.03: passed on attempt 1 (one-shot)
+//      [Segment] 00: 2 of 3 checkpoints one-shot
 //      [Segment] 00: done, 3 checkpoints
 //      [Segment] 00: failed at 00.02 talk_mom: expect_failed: dialogue opened
 SegmentReport run_segment(
