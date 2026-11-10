@@ -67,8 +67,10 @@ std::vector<std::string> lint_story_checkpoint(const StoryCheckpoint& data, cons
     for (size_t c = 0; c < data.steps.size(); c++){
         const StoryStep& step = data.steps[c];
         const StoryAction* action = table.find(step);
-        const std::string error = action == nullptr ? "no action" : story_args_error(step.args, action->args);
-        if (!error.empty()){
+        const std::vector<std::string> errors = action == nullptr
+            ? std::vector<std::string>{"no action"}
+            : story_args_errors(step.args, action->args);
+        for (const std::string& error : errors){
             problems.emplace_back(std::format(
                 "{} step {} {}: {} for {} '{}'",
                 data.id, c + 1, step.name, error, story_step_kind_name(step.kind), variant_name(step.variant)
