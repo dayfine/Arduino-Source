@@ -20,8 +20,10 @@
  *  A step onto a connected map waits a tile first, as the console does
  *  while the game loads the map.
  *
- *  Not modelled: Surf, bikes, running, HP and status. Wandering people
- *  stand on their tile.
+ *  Not modelled: Surf, running, HP and status. Wandering people stand on
+ *  their tile. The Bicycle is: its pace, its taps (each a tile, some
+ *  dropped when they come too fast), SELECT and doors taking the player
+ *  off it.
  *
  */
 
@@ -87,6 +89,8 @@ struct SimEncounter{
 //  at these.
 struct SimTiming{
     Milliseconds tile = MovementMechanics::TILE_TIME;
+    //  A tile on the Bicycle.
+    Milliseconds bike_tile = MovementMechanics::BIKE_TILE_TIME;
     Milliseconds flash{300};
     Milliseconds battle_screen{3700};
     //  A wild battle's text box, before the HP boxes (battle_screen). Not
@@ -136,9 +140,15 @@ struct SimScript{
     //  too, a hold through a turn loses no tile
     //  (MovementMechanics::BIKE_TAP_ONLY_TURNS), and no step tap is
     //  ignored: a 40ms turn tap and a 56ms hold 340ms after it took two
-    //  tiles (console B, 2026-11-09, 00.30). Set timing.tile to
-    //  MovementMechanics::BIKE_TILE_TIME with it.
+    //  tiles (console B, 2026-11-09, 00.30). At the start: SELECT gets on
+    //  and off (OverworldSim::press_select()), a warp gets off. Each tap is
+    //  a tile; one in MovementMechanics::BIKE_FAST_TAP_DROP_EVERY of those
+    //  that start sooner than BIKE_TAP_DROP_PERIOD after the last is
+    //  dropped. Its pace is timing.bike_tile.
     bool on_bike = false;
+    //  The Bicycle is registered (Key Items, REGISTER): SELECT gets on. A
+    //  reload of a save made before it was registered loses it.
+    bool bike_registered = false;
     //  Caves dark without Flash (Rock Tunnel): the overworld is black but
     //  for a lit circle on the player, which the walker's battle text box
     //  check and screen observer read as a battle on its way (console B,
@@ -180,6 +190,10 @@ struct SimState{
     Milliseconds in_wild_battles{0};
     int signs_read = 0;
     int turn_taps_dropped = 0;
+    //  On the Bicycle (SimScript::on_bike).
+    bool on_bike = false;
+    //  Bicycle taps the game dropped, too soon after the last one.
+    int bike_taps_dropped = 0;
     //  Step taps the game ignored, inside the lockout after the last one
     //  (MovementMechanics::STEP_TAP_LOCKOUT).
     int step_taps_ignored = 0;
@@ -268,6 +282,13 @@ public:
         Milliseconds release = MovementMechanics::TURN_SETTLE
     );
 
+    //  SELECT on the overworld: with the Bicycle registered, gets on it
+    //  where running is allowed, or off it, taking about
+    //  MovementMechanics::BIKE_SELECT_TIME. Returns whether it did.
+    bool press_select();
+    //  REGISTER on the Bicycle in the bag (SimScript::bike_registered).
+    void register_bike(){ m_script.bike_registered = true; }
+
     //  Watches `watchers` for `duration`, as wait_until().
     std::optional<SimSeen> watch(const std::vector<SimWatcher>& watchers, Milliseconds duration);
 
@@ -344,6 +365,13 @@ private:
     std::optional<SimEncounter> next_encounter();
     bool rolls_encounter(int rate);
     bool drops_turn_tap();
+    //  Whether the Bicycle tap starting at `start` is dropped, too soon
+    //  after the last one.
+    bool drops_bike_tap(Milliseconds start);
+    //  How long a tile takes: on the Bicycle or on foot.
+    Milliseconds tile_time() const{
+        return m_state.on_bike ? m_script.timing.bike_tile : m_script.timing.tile;
+    }
     bool trainer_sees(Milliseconds pressed);
     void update_view();
     void note(const std::string& line);
@@ -378,6 +406,9 @@ private:
     int m_turn_taps = 0;
     //  The last tap, until a hold.
     std::optional<TapPress> m_last_tap;
+    //  When the last Bicycle tap started, and how many came too soon.
+    std::optional<Milliseconds> m_last_bike_tap;
+    int m_fast_bike_taps = 0;
     //  When the last tap that stepped started.
     std::optional<Milliseconds> m_last_step_tap;
     //  The end of the lockout after the last battle.
@@ -459,6 +490,19 @@ struct SimWalkerRules{
     //  The speed the walker goes at: its turn taps
     //  (OverworldWalkSteps::turns_first()) and its holds' tile time.
     MoveSpeed speed = MoveSpeed::WALK;
+    //  An open leg on the Bicycle is counted out a tap at a time, each a
+    //  tile (count_bike_taps()), and one that doesn't move finds the player
+    //  ahead of a block. Without it the leg is one hold, and a start off
+    //  along the leg ends it off with nothing to show it (console B,
+    //  2026-11-09, 00.30: three runs 3 tiles east after Route 8's legs).
+    bool count_bike_taps = true;
+    //  How far apart, start to start, the counted taps are
+    //  (MovementMechanics::BIKE_TAP_PERIOD).
+    Milliseconds bike_tap_period = MovementMechanics::BIKE_TAP_PERIOD;
+    //  After a warp, which takes the player off the Bicycle, the next leg
+    //  where it may be ridden gets on again with SELECT. Without it the
+    //  walker held on-foot legs at the Bicycle's pace.
+    bool get_back_on_bike = true;
     //  A dark cave's overworld isn't a battle on its way
     //  (OverworldWalkSteps::dark_cave_screen()). Without it the check
     //  before each step watched for a battle on it (console B, 2026-11-09,
@@ -522,6 +566,10 @@ private:
         bool battle;
     };
     StepOutcome walk(const RouteStep& step, std::optional<Direction> facing);
+    StepOutcome walk_ridden(const RouteStep& step, std::optional<Direction> facing);
+    //  count_bike_taps() on the sim.
+    StepOutcome walk_bike_taps(const RouteStep& step);
+    BikeTap bike_tap(const RouteStep& step);
     std::optional<WalkedTiles> late_stop(const RouteStep& step);
     //  stop_tiles(); without SimWalkerRules::whole_leg_in_dark, the dark
     //  screen places the stop at the hold's start.
@@ -559,6 +607,10 @@ private:
     //  and whether its map was dark then.
     Milliseconds m_leg_start{0};
     bool m_leg_dark = false;
+    //  Whether the walker takes the player to ride the Bicycle, and the
+    //  speed of the step under way.
+    bool m_riding = false;
+    MoveSpeed m_speed = MoveSpeed::WALK;
 };
 
 
@@ -569,6 +621,8 @@ void add_tests_OverworldWarpFade(UnitTestDatabase& database);
 //  Register the tests of spinner tiles, the lift's panel and the poster
 //  switch on made-up maps.
 void add_tests_OverworldSpin(UnitTestDatabase& database);
+//  Register the tests of the Bicycle's taps and SELECT on a made-up map.
+void add_tests_OverworldBike(UnitTestDatabase& database);
 
 
 

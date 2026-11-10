@@ -313,7 +313,34 @@ private:
             return false;
         }
         const WalkedTiles walked = outcome.walked.value_or(whole_leg(step));
-        return rejoin(step, candidates_on(step, start, walked), walked);
+        if (!outcome.blocked){
+            return rejoin(step, candidates_on(step, start, walked), walked);
+        }
+        //  Past the leg's end too: a start that was off ahead takes the
+        //  taps there.
+        RouteStep longer = step;
+        longer.tiles += BLOCKED_TAP_SLACK;
+        return rejoin(step, blocked_ahead(step, candidates_on(longer, start, walked)), walked);
+    }
+
+    //  Of `candidates`, where a Bicycle tap along `step` stopped the
+    //  player, those the maps block the way ahead of; all of them if none.
+    std::vector<StopCandidate> blocked_ahead(const RouteStep& step, std::vector<StopCandidate> candidates) const{
+        std::vector<StopCandidate> blocked;
+        for (const StopCandidate& candidate : candidates){
+            RouteStep ahead;
+            ahead.direction = step.direction;
+            ahead.tiles = 1;
+            ahead.surfing = step.surfing;
+            if (!candidate.trainer && leg_tiles(*maps(), candidate.player, ahead).size() < 2){
+                blocked.push_back(candidate);
+            }
+        }
+        if (blocked.empty()){
+            m_calls.log("Route: a Bicycle tap was blocked where the maps show the way open: finding the player from the tiles the taps put them on.");
+            return candidates;
+        }
+        return blocked;
     }
 
     //  Whether `step`, a leg with wild battles stopped part-way, was stopped
@@ -548,6 +575,27 @@ std::optional<TrainerCrossing> trainer_crossing(
         return std::nullopt;
     }
     return crossing;
+}
+
+StepOutcome count_bike_taps(const RouteStep& step, const BikeTapCalls& calls){
+    int moved = 0;
+    for (int tap = 1; tap <= step.tiles; tap++){
+        const BikeTap result = calls.tap();
+        if (result.interrupt || result.cleared_late){
+            calls.log(std::format("Bike: tap {} of {}: interrupted after {} tile(s).", tap, step.tiles, moved));
+            if (result.interrupt){
+                calls.clear(*result.interrupt);
+            }
+            const int most = std::min(moved + 1, step.tiles);
+            return StepOutcome{.end = StepEnd::STOPPED, .walked = WalkedTiles{moved, most}};
+        }
+        if (!result.moved){
+            calls.log(std::format("Bike: tap {} of {} didn't move: blocked after {} tile(s).", tap, step.tiles, moved));
+            return StepOutcome{.end = StepEnd::STOPPED, .walked = WalkedTiles{moved, moved + BLOCKED_TAP_SLACK}, .blocked = true};
+        }
+        moved++;
+    }
+    return StepOutcome{};
 }
 
 void run_route(

@@ -64,6 +64,18 @@ inline constexpr Milliseconds BIKE_TILE_TIME(100);
 //  2026-11-09, Route 12's north pier). So a bike leg has no turn tap: its
 //  hold turns the player too, and loses no tile for it.
 inline constexpr bool BIKE_TAP_ONLY_TURNS = false;
+//  Chains of 40ms taps on the Bicycle (console B, 2026-11-09): one tap per
+//  100ms (60ms release) moved exactly a tile each; at one per 60ms, one
+//  tap in 12 was dropped. Somewhere between the two the game starts
+//  dropping taps; the sim drops one in BIKE_FAST_TAP_DROP_EVERY of the taps
+//  that start sooner than this after the last one.
+inline constexpr Milliseconds BIKE_TAP_PERIOD_WORKED(100);
+inline constexpr Milliseconds BIKE_TAP_DROP_PERIOD(80);
+inline constexpr int BIKE_FAST_TAP_DROP_EVERY = 12;
+//  With the Bicycle registered (Key Items, BICYCLE, REGISTER), SELECT gets
+//  on and off in about 1s (console B, 2026-11-09). Going through a door
+//  takes the player off (not measured); a battle leaves them on.
+inline constexpr Milliseconds BIKE_SELECT_TIME(1000);
 //  The longest tap measured to only turn a player facing another way, and
 //  to take exactly one step for one facing its way.
 inline constexpr Milliseconds LONGEST_TAP(133);
@@ -104,6 +116,20 @@ inline constexpr Milliseconds STEP_TAP(66);
 //  STEP_TAP_RELEASE after it, past the lockout.
 inline constexpr Milliseconds STEP_TAP_RELEASE(700);
 
+//  An open leg on the Bicycle is counted out in taps, each a tile: a 40ms
+//  press, released to a BIKE_TAP_PERIOD period, slower than the chains
+//  that worked, so none is dropped.
+inline constexpr Milliseconds BIKE_TAP(40);
+inline constexpr Milliseconds BIKE_TAP_PERIOD(120);
+//  After a tap, how long until the screen shows whether it moved: the
+//  tile's 100ms and video lag. The Command File Runner's tap check judged
+//  its first tap too early, as unmoved. Not measured: a guess.
+inline constexpr Milliseconds BIKE_TAP_SETTLE(250);
+//  SELECT, pressed to get on the registered Bicycle, and the wait after
+//  it for the player to be up on it.
+inline constexpr Milliseconds BIKE_SELECT_PRESS(160);
+inline constexpr Milliseconds BIKE_SELECT_SETTLE(1200);
+
 //  How long the overworld must show nothing (no box, fade or battle) after
 //  a battle before the next tap: twice the lockout.
 inline constexpr Milliseconds AFTER_BATTLE_QUIET(1000);
@@ -115,6 +141,9 @@ static_assert(TURN_TAP <= LONGEST_TAP && FACE_HOLD <= LONGEST_TAP && STEP_TAP <=
 static_assert(STEP_TAP + STEP_TAP_RELEASE > STEP_TAP_SPACING_WORKED);
 static_assert(STEP_TAP_SPACING_WORKED > STEP_TAP_LOCKOUT);
 static_assert(AFTER_BATTLE_QUIET > BATTLE_EXIT_LOCKOUT);
+static_assert(BIKE_TAP_PERIOD > BIKE_TAP_PERIOD_WORKED && BIKE_TAP_PERIOD_WORKED > BIKE_TAP_DROP_PERIOD);
+static_assert(BIKE_TAP < BIKE_TILE_TIME && BIKE_TAP <= LONGEST_TAP);
+static_assert(BIKE_SELECT_SETTLE > BIKE_SELECT_TIME);
 
 
 } // namespace MovementMechanics

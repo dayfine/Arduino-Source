@@ -209,6 +209,58 @@ bool turns_first(const RouteStep& step, MoveSpeed speed, std::optional<Direction
     return step.surfing || step_speed(step, speed) != MoveSpeed::BIKE || BIKE_TAP_ONLY_TURNS;
 }
 
+bool counts_bike_taps(const RouteStep& step, MoveSpeed speed){
+    return step.action == RouteAction::WALK && step_speed(step, speed) == MoveSpeed::BIKE
+        && !step.surfing && !step.to_wall && !step.warps && !step.spin_tiles
+        && step.connection_steps.empty() && step.tiles > 0;
+}
+
+bool gets_on_bike(const RouteStep& step, MoveSpeed speed, bool riding){
+    return speed == MoveSpeed::BIKE && !riding && step.action == RouteAction::WALK
+        && !step.walk_only && !step.surfing;
+}
+
+bool select_onto_bike(const BikeSelectCalls& calls){
+    for (int press = 1; press <= 2; press++){
+        calls.press_select();
+        if (calls.riding()){
+            return true;
+        }
+        calls.log(std::format("Bike: not riding after SELECT press {}.", press));
+    }
+    return false;
+}
+
+bool screen_shows_riding(const ImageViewRGB32& screen){
+    if (StartMenuDetector(COLOR_RED).detect(screen) || SelectionDialogDetector(COLOR_RED).detect(screen)
+        || WhiteDialogDetector(COLOR_RED).detect(screen)
+    ){
+        return false;
+    }
+    return !read_player_facing(screen).has_value();
+}
+
+void get_on_bike(ConsoleHandle& console, ProControllerContext& context){
+    BikeSelectCalls calls;
+    calls.press_select = [&]{
+        pbf_press_button(context, BUTTON_MINUS, BIKE_SELECT_PRESS, BIKE_SELECT_SETTLE);
+    };
+    calls.riding = [&]{
+        context.wait_for_all_requests();
+        VideoSnapshot screen = console.video().snapshot();
+        return screen && screen_shows_riding(*screen.frame);
+    };
+    calls.log = [&](const std::string& message){ console.log(message, COLOR_ORANGE); };
+    console.log("Bike: SELECT (MINUS) onto the Bicycle.");
+    if (!select_onto_bike(calls)){
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::SEND_ERROR_REPORT,
+            "get_on_bike(): not on the Bicycle after SELECT twice. Is it registered?",
+            console
+        );
+    }
+}
+
 Pokemon::LegMover<ProControllerContext> leg_mover(const RouteStep& step, MoveSpeed speed){
     if (step_speed(step, speed) == MoveSpeed::RUN && !step.surfing){
         return hold_dpad_running;
@@ -488,6 +540,10 @@ const char* move_speed_name(MoveSpeed speed){
         return "bike";
     }
     return "?";
+}
+
+MoveSpeed on_foot(MoveSpeed speed){
+    return speed == MoveSpeed::BIKE ? MoveSpeed::RUN : speed;
 }
 
 OverworldInterruptSet overworld_interrupts_with_repel(int max_repel_slot){
