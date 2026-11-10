@@ -14,7 +14,9 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
-#include "Pokemon/AutoStory/Pokemon_StorySteps.h"
+#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
+#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
+#include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
 #include "Data/PokemonBDSP_AutoStory_Maps.h"
 #include "Data/PokemonBDSP_AutoStory_PlanCosts.h"
 #include "Data/PokemonBDSP_AutoStory_RoutePlanner.h"
@@ -33,17 +35,20 @@ namespace{
 using Pokemon::Direction;
 using Pokemon::StoryStepKind;
 using Pokemon::TilePos;
+using Pokemon::story_arg;
 
-//  The variants each kind does itself, besides the story's events.
-const std::map<StoryStepKind, std::set<std::string>>& built_in_variants(){
-    static const std::map<StoryStepKind, std::set<std::string>> variants{
-        {StoryStepKind::ROUTE, {"", "town", "robust", "line"}},
-        {StoryStepKind::LEGS, {"", "one_short_ok", "to_wall", "to_dialogue", "to_map"}},
-        {StoryStepKind::STEP, {"", "to_banner"}},
+//  The actions each kind does itself, besides the story's events.
+const std::map<StoryStepKind, std::set<std::string>>& built_in_actions(){
+    static const std::map<StoryStepKind, std::set<std::string>> actions{
+        {StoryStepKind::ROUTE, {"", "route", "town", "robust", "line"}},
+        {StoryStepKind::LEGS, {"", "legs", "one_short_ok", "to_wall", "to_dialogue", "to_map", "counted_wall"}},
+        {StoryStepKind::STEP, {"", "face", "to_banner", "tap"}},
         {StoryStepKind::MASH, {"", "a"}},
-        {StoryStepKind::BATTLE, {"", "doubles", "starter"}},
+        {StoryStepKind::BATTLE, {"", "fight", "doubles", "starter"}},
+        {StoryStepKind::TALK, {"", "talk_to_wanderer"}},
+        {StoryStepKind::SHOP, {"", "sandgem_potions"}},
     };
-    return variants;
+    return actions;
 }
 
 //  The table: unique ids in order, each row lints, and every step's variant
@@ -65,13 +70,13 @@ UnitTestResult test_story_table_lints(Logger&){
             return row.id + ": " + problems[0];
         }
         for (const Pokemon::StoryStep& step : row.steps){
-            const auto built_in = built_in_variants().find(step.kind);
-            const bool known = events.contains(step.variant) ||
-                (step.kind != StoryStepKind::GAME && step.variant.empty()) ||
-                (built_in != built_in_variants().end() && built_in->second.contains(step.variant));
+            const auto built_in = built_in_actions().find(step.kind);
+            const bool known = events.contains(step.action) ||
+                (step.kind != StoryStepKind::GAME && step.action.empty()) ||
+                (built_in != built_in_actions().end() && built_in->second.contains(step.action));
             if (!known){
                 return std::format("{} {}: no event or {} way named \"{}\".",
-                    row.id, step.name, Pokemon::story_step_kind_name(step.kind), step.variant);
+                    row.id, step.name, Pokemon::story_step_kind_name(step.kind), step.action);
             }
         }
     }
@@ -88,7 +93,13 @@ std::optional<Pokemon::Pose> end_pose(const StoryCheckpoint& row){
         return std::nullopt;
     }
     const Pokemon::StoryStep& last = row.steps.back();
-    return last.pose_after ? last.pose_after : last.target;
+    if (last.pose_after){
+        return Pokemon::pose_of(*last.pose_after);
+    }
+    if (last.kind == StoryStepKind::ROUTE){
+        return Pokemon::pose_of(story_arg<Pokemon::GridPose>(last.args, "target"));
+    }
+    return std::nullopt;
 }
 
 //  Each row starts where the row before it ends: every tile its start allows
@@ -98,7 +109,7 @@ UnitTestResult test_story_table_rows_join(Logger&){
     const std::vector<StoryCheckpoint>& rows = story_checkpoints();
     for (size_t i = 1; i < rows.size(); i++){
         const std::optional<Pokemon::Pose> end = end_pose(rows[i - 1]);
-        const std::optional<Pokemon::Pose>& start = rows[i].start;
+        const std::optional<Pokemon::Pose> start = rows[i].start ? std::make_optional(Pokemon::pose_of(*rows[i].start)) : std::nullopt;
         if (!end || !start){
             continue;
         }

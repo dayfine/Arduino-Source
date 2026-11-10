@@ -1,0 +1,174 @@
+﻿{
+  "checkpoint": {
+    "events": [
+      {
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "east",
+            "map": "Route201",
+            "tiles": [
+              [
+                4,
+                14
+              ]
+            ]
+          }
+        },
+        "id": "short_of_rowan",
+        "kind": "route",
+        "why": "back east onto Route 201's lower level"
+      },
+      {
+        "args": {
+          "direction": "east"
+        },
+        "id": "rowans_stop",
+        "kind": "step",
+        "why": "the trigger (5, 14..16)"
+      },
+      {
+        "declared_after": {
+          "facing": "east",
+          "map": "PlayerHouse1F",
+          "tiles": [
+            [
+              5,
+              8
+            ],
+            [
+              6,
+              8
+            ]
+          ]
+        },
+        "id": "rowan_and_dawn",
+        "kind": "scene",
+        "why": "Rowan and Dawn come back; Barry, then home for the Running Shoes"
+      },
+      {
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "west",
+            "map": "PlayerHouse1F",
+            "tiles": [
+              [
+                4,
+                8
+              ]
+            ]
+          }
+        },
+        "id": "by_the_counter",
+        "kind": "route",
+        "why": "west against the table's corner (3, 8)"
+      },
+      {
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "south",
+            "map": "PlayerHouse1F",
+            "tiles": [
+              [
+                6,
+                9
+              ]
+            ]
+          }
+        },
+        "id": "above_the_door_again",
+        "kind": "route",
+        "why": "to above the door"
+      },
+      {
+        "args": {
+          "direction": "south"
+        },
+        "declared_after": {
+          "facing": "south",
+          "map": "TwinleafTown",
+          "tiles": [
+            [
+              20,
+              22
+            ]
+          ]
+        },
+        "id": "out_of_the_house_again",
+        "kind": "step",
+        "why": "onto the door's tile (6, 10), and out"
+      },
+      {
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "east",
+            "map": "Route201",
+            "tiles": [
+              [
+                63,
+                5
+              ]
+            ]
+          }
+        },
+        "id": "short_of_dawn",
+        "kind": "route",
+        "why": "Twinleaf, then east along Route 201 to its east edge"
+      },
+      {
+        "action": "to_dialogue",
+        "args": {
+          "fight_wild": false,
+          "legs": [
+            {
+              "direction": "east",
+              "tiles": 8
+            }
+          ]
+        },
+        "id": "into_sandgem",
+        "kind": "legs",
+        "why": "east into Sandgem until Dawn's scene starts"
+      },
+      {
+        "declared_after": {
+          "facing": "north",
+          "map": "RowansLab",
+          "tiles": [
+            [
+              7,
+              6
+            ]
+          ]
+        },
+        "id": "rowan_gives_pokedex",
+        "kind": "scene",
+        "why": "Dawn walks us to the lab: Rowan, no nickname, the Pokedex"
+      }
+    ],
+    "id": "00.03",
+    "start": {
+      "map": "VerityLakefront",
+      "tiles": [
+        [
+          17,
+          14
+        ],
+        [
+          17,
+          15
+        ]
+      ]
+    },
+    "title": "Back to Sandgem: Rowan, Dawn and the Pokedex"
+  },
+  "execution": {
+    "on_failure": "reload_and_retry",
+    "saves_in": "Verity Lakefront"
+  },
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "bdsp"
+}
