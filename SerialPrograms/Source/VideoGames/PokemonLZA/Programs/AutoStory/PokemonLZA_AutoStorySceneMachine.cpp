@@ -55,6 +55,12 @@ bool busy(const ScreenObservation& look){
         look.events.has(EngineEvent::FADE_BLACK) || look.events.has(EngineEvent::FADE_WHITE);
 }
 
+//  Free control on screen: the controls hint, or an "A: Talk" prompt
+//  (01.02's battle area shows no controls hint, console B 2026-11-10).
+bool control_shows(const ScreenObservation& look){
+    return look.readings.contains(CONTROLS_HINT_READING) || look.events.has(EngineEvent::INTERACT_PROMPT);
+}
+
 constexpr SceneScreen ALL_SCREENS[] = {
     SceneScreen::GOAL_CHOICE, SceneScreen::GOAL_BATTLE,
     SceneScreen::FADE_BLACK, SceneScreen::FADE_WHITE,
@@ -191,7 +197,7 @@ SceneScreen SceneTimeline::classify_open(const ScreenObservation& look) const{
         }
         return SceneScreen::PARTY_BAR;
     }
-    if (m_config.goal == SceneMashGoal::OVERWORLD && look.readings.contains(CONTROLS_HINT_READING)){
+    if (m_config.goal == SceneMashGoal::OVERWORLD && control_shows(look)){
         if (m_hint_since && look.when - *m_hint_since >= CONTROLS_HINT_HOLD){
             return SceneScreen::CONTROLS_HINT;
         }
@@ -230,7 +236,7 @@ void SceneTimeline::record(const ScreenObservation& look){
     }
     const bool box = look.events.has(EngineEvent::TEXT_BOX) || look.events.has(EngineEvent::CHOICE_BOX);
     track_since(m_party_bar_since, look.events.has(EngineEvent::CAN_MOVE) && !box, look.when);
-    track_since(m_hint_since, look.readings.contains(CONTROLS_HINT_READING) && !box, look.when);
+    track_since(m_hint_since, control_shows(look) && !box, look.when);
     m_banner_looks = look.readings.contains(MISSION_BANNER_READING) && !box ? m_banner_looks + 1 : 0;
     if (busy(look) || m_party_bar_since || m_hint_since || m_banner_looks > 0){
         m_last_cue = look.when;

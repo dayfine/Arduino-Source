@@ -277,6 +277,32 @@ UnitTestResult test_arrival_ends_on_controls_hint(CancellableScope& scope){
 //  01.01's ad (run 2, 2026-11-10 13:28): subtitles with no box. A at each
 //  advance chevron, a blind A once nothing has shown for 5 s, none once
 //  the controls hint shows; done when it has shown a second.
+//  01.02's battle area (console B, 2026-11-10 14:53): A at the text, a
+//  fade, then free control with only the "A: Talk" prompt, no controls
+//  hint. The prompt held a second ends the step; no press at it.
+UnitTestResult test_battle_area_ends_on_interact_prompt(CancellableScope& scope){
+    FakeBackend backend = fake_plza({
+        look_at(0ms, {EngineEvent::TEXT_BOX}),
+        look_at(1000ms, {EngineEvent::FADE_BLACK}),
+        look_at(3000ms),
+        look_at(3250ms, {EngineEvent::INTERACT_PROMPT}),
+        look_at(3750ms, {EngineEvent::INTERACT_PROMPT}),
+        look_at(4300ms, {EngineEvent::INTERACT_PROMPT}),
+    }, scope);
+    const Pokemon::StoryEngineReport report = run_plza(backend, step_of("01.02", "battle_area"));
+    if (report.verdict != Pokemon::CheckpointVerdict::PASSED){
+        return std::format("Expected the battle area to end on the interact prompt: {}", to_string(report.run.failure));
+    }
+    std::vector<std::string> presses;
+    std::copy_if(backend.inputs().begin(), backend.inputs().end(), std::back_inserter(presses), [](const std::string& input){
+        return input.starts_with("press");
+    });
+    if (presses != std::vector<std::string>{"press A"}){
+        return std::format("Expected one A at the text, got [{}].", joined(backend.inputs()));
+    }
+    return true;
+}
+
 UnitTestResult test_arrival_presses_through_the_ad(CancellableScope& scope){
     FakeBackend backend = fake_plza({
         look_at(0ms),
@@ -471,6 +497,7 @@ const EngineTestCase ENGINE_TEST_CASES[] = {
     {.input = {"01.01 arrival_scenes: A through the ad's boxless subtitles", test_arrival_presses_through_the_ad}, .expectation = {}},
     {.input = {"01.01 arrival_scenes: done on the mission banner once it has gone", test_arrival_ends_on_mission_banner}, .expectation = {}},
     {.input = {"01.01 arrival_scenes: a quiet minute without the hint fails", test_arrival_quiet_fails}, .expectation = {}},
+    {.input = {"01.02 battle_area: done on the \"A: Talk\" prompt", test_battle_area_ends_on_interact_prompt}, .expectation = {}},
     {.input = {"face_heading: turns by the minimap's heading", test_face_heading}, .expectation = {}},
     {.input = {"01.01 platform_to_plaza: no walk without free control", test_walk_needs_free_control}, .expectation = {}},
     {.input = {"01.01 platform_to_plaza: ends on the white fade", test_walk_ends_on_white_fade}, .expectation = {}},
