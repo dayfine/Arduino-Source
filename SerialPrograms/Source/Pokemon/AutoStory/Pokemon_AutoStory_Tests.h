@@ -27,6 +27,8 @@ void add_tests_StoryStepJson(UnitTestDatabase& database);
 void add_tests_StoryActionArg(UnitTestDatabase& database);
 // Registers unit tests for the shared authored envelope, game identity and embedded-resource loading.
 void add_tests_AuthoredCheckpointJson(UnitTestDatabase& database);
+// Registers unit tests for when a run saves (save modes) and the postcondition check.
+void add_tests_StorySavePolicy(UnitTestDatabase& database);
 
 // Registers the story engine's suites above (StoryEvents and StorySegments are
 // registered on their own), for the unit test runner.
@@ -35,6 +37,7 @@ inline void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_StoryStepJson(database);
     add_tests_StoryActionArg(database);
     add_tests_AuthoredCheckpointJson(database);
+    add_tests_StorySavePolicy(database);
 }
 
 
