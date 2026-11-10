@@ -64,11 +64,6 @@ struct StoryPose{
 //  has the Running Shoes (00.10 on).
 inline const std::string RUN_VARIANT = "run";
 
-//  The variant of LEGS walked on foot a tap at a time, each tap checked to
-//  have moved the player a tile (RouteStep::tapped): the Rocket Hideout's
-//  arrow floors, where a hold a tile off slides the player elsewhere.
-inline const std::string TAPS_VARIANT = "taps";
-
 //  The variant of a STEP into a trainer's line: a tile at a time, at most
 //  TRAINER_LINE_TILES, until the trainer sees the player
 //  (step_until_seen()). The battle after it starts on the trainer's row
@@ -215,13 +210,6 @@ using StoryLog = std::function<void(const std::string& line)>;
 //  gets none. (add_start_check() with a reader of the tile.)
 void add_start_pose_check(
     Pokemon::Checkpoint& checkpoint, const std::optional<Pokemon::Pose>& start, SavePoseReader read, StoryLog log
-);
-
-//  `legs` from `start` as route steps for the walker, each checked against
-//  the map: nothing if a step is blocked or leaves the map. A leg ends "to
-//  wall" if the next step its way is blocked.
-std::optional<std::vector<RouteStep>> fixed_route(
-    const std::vector<MapData>& maps, const MapPosition& start, const std::vector<StoryLeg>& legs
 );
 
 //  Where a GRIND or capture `step` that paces (pace = ...) leaves the
