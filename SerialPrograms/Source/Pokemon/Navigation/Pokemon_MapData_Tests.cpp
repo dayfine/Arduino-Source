@@ -19,7 +19,8 @@
 #include "Common/Cpp/Json/JsonValue.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon_MapData.h"
-#include "Pokemon_Navigation_Tests.h"
+#include "Pokemon_MapData_Tests.h"
+#include "Pokemon_NavigationTestMaps.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -184,7 +185,7 @@ UnitTestResult test_glyphs_round_trip(){
     for (char glyph : std::string("#.~wv^<>DS 8246")){
         const std::optional<TileKind> tile = tile_from_glyph(glyph);
         if (!tile || glyph_of(*tile) != glyph){
-            return std::string("Glyph '") + glyph + "' does not round-trip.";
+            return std::format("Glyph '{}' does not round-trip.", glyph);
         }
     }
     if (tile_from_glyph('?')){
@@ -203,11 +204,11 @@ struct BadMap{
 UnitTestResult first_wrong_error(const std::vector<BadMap>& rows){
     for (const BadMap& row : rows){
         if (row.json.empty()){
-            return std::string(row.name) + ": the text to edit is not in its map.";
+            return std::format("{}: the text to edit is not in its map.", row.name);
         }
         const std::string error = parse_error(row.json);
         if (!mentions(error, row.mentions)){
-            return std::string(row.name) + ": expected an error naming " + row.mentions.back() + ", got: \"" + error + "\"";
+            return std::format("{}: expected an error naming {}, got: \"{}\"", row.name, row.mentions.back(), error);
         }
     }
     return true;
@@ -272,7 +273,7 @@ std::string text(const std::optional<MapTrainer>& trainer){
     }
     std::string out = std::format("sight {}, looks", trainer->sight);
     for (Direction direction : trainer->looks){
-        out += std::string(" ") + direction_name(direction);
+        out += std::format(" {}", direction_name(direction));
     }
     return out;
 }
@@ -283,20 +284,20 @@ std::string text(const MapWarp* warp){
     if (warp == nullptr){
         return "(none)";
     }
-    const std::string to = warp->to ? warp->to->map + "." + warp->to->point : "(not loaded)";
+    const std::string to = warp->to ? std::format("{}.{}", warp->to->map, warp->to->point) : "(not loaded)";
     return std::format("{} {} -> {}", to_string(TilePos{warp->x, warp->y}), (int)warp->enter, to);
 }
 std::string text(const std::set<std::string>& flags){
     std::string out;
     for (const std::string& flag : flags){
-        out += flag + " ";
+        out += std::format("{} ", flag);
     }
     return out;
 }
 
 UnitTestResult test_bdsp_shaped_map(){
     const MapData map = parse_map(parse_json(BDSP_MAP), "Route201.json");
-    const std::string world = map.world ? map.world->name + " " + to_string(map.world->offset) : "(none)";
+    const std::string world = map.world ? std::format("{} {}", map.world->name, to_string(map.world->offset)) : "(none)";
     return first_wrong({
         {.what = "world", .expected = "Sinnoh (96, 839)", .read = world},
         {.what = "tile (0, 0)", .expected = "' '", .read = std::format("'{}'", glyph_of(map.tiles.at({0, 0})))},
@@ -312,7 +313,7 @@ UnitTestResult test_bdsp_shaped_map(){
         {.what = "trigger 0", .expected = "barry_warning (2, 1)..(3, 1) 00.02", .read = std::format(
             "{} {} {}", map.triggers[0].name, text(map.triggers[0].box), text(map.triggers[0].when)
         )},
-        {.what = "trigger 1, any time", .expected = "border_sign (none)", .read = map.triggers[1].name + " " + text(map.triggers[1].when)},
+        {.what = "trigger 1, any time", .expected = "border_sign (none)", .read = std::format("{} {}", map.triggers[1].name, text(map.triggers[1].when))},
     });
 }
 
@@ -389,7 +390,7 @@ UnitTestResult test_built_in_maps(){
         for (int x = 0; x < 130; x++){
             const bool border = x == 0 || y == 0 || x == 129 || y == 129;
             if (big.tiles.at(TilePos{x, y}) != (border ? TileKind::WALL : TileKind::OPEN)){
-                return "BigField's tile (" + std::to_string(x) + ", " + std::to_string(y) + ") is wrong.";
+                return std::format("BigField's tile ({}, {}) is wrong.", x, y);
             }
         }
     }
@@ -417,14 +418,14 @@ struct MapDataTestCase{
 class Test_MapData : public UnitTest{
 public:
     explicit Test_MapData(MapDataTestCase scenario)
-        : UnitTest("Pokemon::MapData - " + scenario.input.name)
+        : UnitTest(std::format("Pokemon::MapData - {}", scenario.input.name))
         , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         try{
             return m_scenario.input.test();
         }catch (Exception& e){
-            return std::string(e.name()) + ": " + e.message();
+            return std::format("{}: {}", e.name(), e.message());
         }
     }
 
@@ -439,9 +440,9 @@ UnitTestResult test_tiles_to_door(){
         .height = 22,
         .cells = std::vector<TileKind>(3 * 22, TileKind::WALL)
     };
-    cell_at(corridor, {1, 0}) = TileKind::DOOR;
+    cell_at({1, 0}, corridor) = TileKind::DOOR;
     for (int y = 1; y <= 20; y++){
-        cell_at(corridor, {1, y}) = TileKind::OPEN;
+        cell_at({1, y}, corridor) = TileKind::OPEN;
     }
 
     // From (1, 20) north to door at (1, 0): exactly 20 tiles

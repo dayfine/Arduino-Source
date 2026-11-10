@@ -14,9 +14,9 @@
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
-#include "Pokemon_AutoStory_Tests.h"
 #include "Pokemon_SceneJudges.h"
 #include "Pokemon_ScreenEvents.h"
+#include "Pokemon_ScreenEvents_Tests.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -99,9 +99,10 @@ UnitTestResult test_warp_seen(){
 }
 
 
-//  A scripted scene: a look per beat, each `every` apart. Returns the beat
+//  A scripted scene: a look per beat, a second apart. Returns the beat
 //  TalkOver first says `want` at, or -1.
-int first_beat(TalkOver& judge, const std::vector<ScreenEvents>& beats, SceneMove want, Milliseconds every = 1000ms){
+int first_beat(const std::vector<ScreenEvents>& beats, SceneMove want, TalkOver& judge){
+    const Milliseconds every = 1000ms;
     WallClock now = WallClock();
     for (size_t c = 0; c < beats.size(); c++){
         if (judge.look(beats[c], now) == want){
@@ -160,7 +161,7 @@ UnitTestResult test_talk_over(){
     };
     for (const Row& row : rows){
         TalkOver judge(row.rule);
-        const int got = first_beat(judge, row.beats, row.want);
+        const int got = first_beat(row.beats, row.want, judge);
         if (got != row.beat){
             return std::format("{}: expected beat {}, got {} ({})", row.name, row.beat, got, judge.describe());
         }
@@ -231,7 +232,7 @@ struct ScreenEventsCase{
 class Test_ScreenEvents : public UnitTest{
 public:
     explicit Test_ScreenEvents(ScreenEventsCase test_case)
-        : UnitTest("Pokemon::ScreenEvents - " + test_case.input.name)
+        : UnitTest(std::format("Pokemon::ScreenEvents - {}", test_case.input.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
