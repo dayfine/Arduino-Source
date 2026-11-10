@@ -47,7 +47,7 @@ using MoveList = std::vector<std::pair<std::string, StoryMove>>;
 MoveList mission_01_02_moves(){
     return {
         //  Steps 6-7. Measured 2026-11-08 on console B, walk not run.
-        {"platform_to_plaza", walk({{0, 4500ms}, {90, 6000ms}})},
+        {"platform_to_plaza", walk({{0, 4500ms}, {90, 10000ms}})},
         //  Step 11. NEEDS TUNING. Measured 2026-11-08 on console B, walk not
         //  run. The sidestep around the starters had no time recorded:
         //  1000 ms is a placeholder.
