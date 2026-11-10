@@ -28,5 +28,6 @@
         "SID Helper confirms the name, finishes the intro and reads the Trainer Card from the START menu, without moving the player or saving."
       ]
     }
-  }
+  },
+  "metadata": {"phase": "testing"}
 }
