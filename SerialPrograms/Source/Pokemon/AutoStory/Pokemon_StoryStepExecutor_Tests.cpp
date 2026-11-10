@@ -349,7 +349,7 @@ SegmentReport run_tables(std::span<const StoryCheckpoint> tables, FakeExecutor& 
     };
     hooks.log = [&lines](const std::string& line){ lines.push_back(line); };
     RunState state;
-    return run_segment(state, segment, SegmentRange{}, SegmentPolicy{}, hooks);
+    return run_segment(SegmentRange{}, SegmentPolicy{}, segment, hooks, state);
 }
 
 UnitTestResult test_segment_of_tables(){
@@ -433,7 +433,7 @@ struct PolicyLab{
         };
         hooks.log = [this](const std::string& line){ lines.push_back(line); };
         RunState state;
-        return run_segment(state, segment, SegmentRange{}, policy, hooks);
+        return run_segment(SegmentRange{}, policy, segment, hooks, state);
     }
     bool has(std::string_view line) const{
         return std::find(lines.begin(), lines.end(), line) != lines.end();
@@ -532,7 +532,7 @@ UnitTestResult test_once_per_save_retry(){
     Segment segment = lab.segment();
     SegmentHooks hooks = lab.hooks();
     RunState state;
-    const SegmentReport report = run_segment(state, segment, SegmentRange{}, SegmentPolicy{}, hooks);
+    const SegmentReport report = run_segment(SegmentRange{}, SegmentPolicy{}, segment, hooks, state);
     if (!report.completed || report.reloads != 1 || lab.count("GAME teach_known") != 1
         || lab.count("GAME teach_new") != 2 || lab.count("BATTLE rival") != 2
     ){
@@ -554,7 +554,7 @@ UnitTestResult test_once_per_save_verify(){
     Segment segment = lab.segment();
     SegmentHooks hooks = lab.hooks();
     RunState state;
-    const VerifyReport report = verify_checkpoint(state, segment, "00.15b", VerifyPolicy{}, hooks);
+    const VerifyReport report = verify_checkpoint("00.15b", VerifyPolicy{}, segment, hooks, state);
     if (!report.verified || report.runs != 3 || lab.count("GAME teach_known") != 1
         || lab.count("GAME teach_new") != 3 || lab.count("BATTLE rival") != 3
     ){
@@ -570,7 +570,7 @@ UnitTestResult test_once_per_save_verify(){
         .build = [&]{ return build_story_checkpoint(lab.table, plain); },
     });
     RunState again;
-    verify_checkpoint(again, without, "00.15b", VerifyPolicy{}, hooks);
+    verify_checkpoint("00.15b", VerifyPolicy{}, without, hooks, again);
     if (std::count(plain.trace.begin(), plain.trace.end(), "GAME teach_known") != 3){
         return std::format("Expected every run to prepare without PreparedSteps:{}", joined(plain.trace));
     }

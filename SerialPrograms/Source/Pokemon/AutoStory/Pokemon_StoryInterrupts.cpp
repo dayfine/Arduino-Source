@@ -176,7 +176,7 @@ InterruptCheck clear_story_interrupt(const StoryInterrupts& interrupts, const St
         out.outcome = outcome_failed("interrupt_failed", std::format("{}: {}", interrupt_kind_name(kind), to_string(handled)));
         return out;
     }
-    apply_interrupt_pose(state.pose, handler->pose);
+    apply_interrupt_pose(handler->pose, state.pose);
     return out;
 }
 

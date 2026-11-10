@@ -554,7 +554,7 @@ UnitTestResult test_home_menu_stops_the_segment(){
         return outcome_ok();
     };
     RunState state;
-    const SegmentReport report = run_segment(state, segment, SegmentRange{}, SegmentPolicy{}, hooks);
+    const SegmentReport report = run_segment(SegmentRange{}, SegmentPolicy{}, segment, hooks, state);
     if (report.completed || report.failure.failure != "game_not_running" || report.reloads != 0){
         return std::format("Expected the segment to stop on game_not_running with no reload, got {}", to_string(report.failure));
     }

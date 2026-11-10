@@ -46,7 +46,7 @@ struct Interrupt{
     ResumePolicy resume = ResumePolicy::RETRY_EVENT;
 };
 //  Writes what an interrupt did (`effect`) into `pose`.
-void apply_interrupt_pose(Pose& pose, InterruptPose effect);
+void apply_interrupt_pose(InterruptPose effect, Pose& pose);
 
 
 // Story milestone containing pre/post conditions and a series of events.
