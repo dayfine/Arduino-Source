@@ -15,7 +15,7 @@ starts.
 | Id | Title | Events |
 |---|---|---:|
 | 00.30 | Lavender Mart, then west over Route 8 on the Bicycle under a Repel: Gamer Rich, a Pidgey for Fly, the Underground Path to Celadon's Pokemon Center | 14 |
-| 00.31 | Celadon Game Corner and the Rocket Hideout down to B4F: the poster guard, the poster switch, the Lift Key Grunt, the LIFT KEY and B3F's Rare Candy | 12 |
+| 00.31 | Celadon Game Corner and the Rocket Hideout down to B4F: the poster guard, the poster switch, the Lift Key Grunt, the LIFT KEY and B3F's Rare Candy; promoted to `../frlg-00.31.plan.json` | 15 |
 | 00.32 | Rocket Hideout: the lift to B4F, the two door guards, two Rare Candies, Giovanni, the SILPH SCOPE, an Escape Rope out | 16 |
 
 The later drafts (Celadon Department Store to the Hall of Fame) are on

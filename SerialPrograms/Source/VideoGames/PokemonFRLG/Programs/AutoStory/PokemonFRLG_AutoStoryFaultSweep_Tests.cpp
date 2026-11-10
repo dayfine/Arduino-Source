@@ -174,6 +174,12 @@ bool walks_after(const StoryCheckpoint& row, size_t c){
     });
 }
 
+//  By the battle's map and name. The Game Corner's Grunt walks off once
+//  beaten (CeladonCity_GameCorner_Text_DefeatedGrunt: removeobject).
+const std::map<std::pair<std::string, std::string>, std::string> TALK_BATTLE_HIDE_FLAGS{
+    {{"CeladonCity_GameCorner", "rocket_grunt"}, "FLAG_HIDE_GAME_CORNER_ROCKET"},
+};
+
 //  Whether `failure` is a script the sim does not have: a scene's trigger
 //  stepped onto (no trainer sees the player there) or a leader's battle
 //  after a talk (no trainer's message up).
@@ -195,7 +201,8 @@ RowRun run_row(
     RowRun out;
     std::optional<MapPosition> off_maps;
     StoryPose at = *story_pose(*row.start);
-    auto sim = std::make_unique<OverworldSim>(sweep_maps(), MapPosition{at.map, at.tile}, at.facing.value_or(Direction::SOUTH), script);
+    std::vector<MapData> maps = sweep_maps();
+    auto sim = std::make_unique<OverworldSim>(maps, MapPosition{at.map, at.tile}, at.facing.value_or(Direction::SOUTH), script);
     const auto add = [&out](const SimState& state){
         out.time += state.time;
         out.steps += state.steps;
@@ -216,6 +223,12 @@ RowRun run_row(
             continue;
         }
         at = *story_pose(*step.pose_after);
+        const std::optional<std::string> hidden = talk_battle_hide_flag(step);
+        if (let_pass && hidden){
+            for (MapData& map : maps){
+                hide_objects(map, {*hidden});
+            }
+        }
         const auto landing = landings.find(c);
         const MapPosition land{at.map, landing == landings.end() ? at.tile : landing->second};
         if (!map_loaded(land.map)){
@@ -224,9 +237,9 @@ RowRun run_row(
             out.failure = walks_after(row, c) ? std::format("{}/{}: ends on {}, which has no map, with a walk after it.", row.id, step.name, land.map) : "";
             break;
         }
-        if (!(sim->state().position == land)){
+        if (!(sim->state().position == land) || (let_pass && hidden)){
             add(sim->state());
-            sim = std::make_unique<OverworldSim>(sweep_maps(), land, at.facing.value_or(sim->state().facing), script);
+            sim = std::make_unique<OverworldSim>(maps, land, at.facing.value_or(sim->state().facing), script);
         }
     }
     if (out.failure.empty() && !sim->state().violations.empty()){
@@ -544,6 +557,17 @@ const FaultSweepCase FAULT_SWEEP_CASES[] = {
     {.input = {.fault = FaultClass::DARK_CAVE}, .expectation = {}},
     {.input = {.fault = FaultClass::LOST_TAP}, .expectation = {}},
 };
+
+std::optional<std::string> talk_battle_hide_flag(const StoryStep& step){
+    if (step.kind != StoryStepKind::BATTLE || !step.pose_after){
+        return std::nullopt;
+    }
+    const auto found = TALK_BATTLE_HIDE_FLAGS.find({step.pose_after->map, step.name});
+    if (found == TALK_BATTLE_HIDE_FLAGS.end()){
+        return std::nullopt;
+    }
+    return found->second;
+}
 
 void add_tests_AutoStoryFaultSweep(UnitTestDatabase& database){
     for (const FaultSweepCase& item : FAULT_SWEEP_CASES){
