@@ -16,10 +16,12 @@
 #include <functional>
 #include <map>
 #include <numeric>
+#include <optional>
 #include <random>
 #include <set>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -600,6 +602,104 @@ UnitTestResult test_route7_grass_battles(Logger&){
     return true;
 }
 
+//  The maps after Gamer Rich's battle: Rich, beaten, stands where he
+//  walked down to (55, 17).
+std::vector<MapData> maps_after_rich(){
+    std::vector<MapData> maps = maps_after_route10();
+    for (MapData& map : maps){
+        if (map.name != "Route8"){
+            continue;
+        }
+        for (MapObject& object : map.objects){
+            if (object.name == "old_man_1"){
+                object.y = 17;
+                object.trainer.reset();
+            }
+        }
+    }
+    return maps;
+}
+
+//  The walker believes the player stands on `believed`, a tile 00.30's
+//  steps from Rich's battle on pass through, while the player stands on
+//  `actual`.
+struct OffStart{
+    TilePos believed;
+    TilePos actual;
+};
+
+const OffStart ROUTE8_OFF_STARTS[] = {
+    {{55, 18}, {58, 18}},
+    {{55, 18}, {52, 18}},
+    {{48, 7}, {45, 7}},
+    {{48, 7}, {50, 7}},
+    {{26, 7}, {29, 7}},
+    {{26, 7}, {26, 6}},
+    {{26, 7}, {26, 9}},
+    {{26, 7}, {28, 10}},
+};
+
+//  00.30's steps from `first` to `last`, as the table lays them out from
+//  `at`: the first that starts on `tile`, and where the table says the
+//  player stands then. Nothing if none does.
+std::optional<std::pair<size_t, StoryPose>> step_starting_on(
+    const StoryCheckpoint& row, size_t first, size_t last, StoryPose at, const TilePos& tile
+){
+    for (size_t c = first; c <= last; c++){
+        if (at.map == "Route8" && at.tile == tile){
+            return std::make_pair(c, at);
+        }
+        const std::optional<std::vector<RouteStep>> route = walked_route(at, row.steps[c]);
+        if (!route || route->empty()){
+            return std::nullopt;
+        }
+        at = StoryPose{route->back().end.map, route->back().end.point, route->back().facing_after};
+    }
+    return std::nullopt;
+}
+
+//  Console B, 2026-11-09 (00.30, three runs): after Route 8's open legs
+//  the player stood 3 tiles east of where the walker believed, the hold
+//  north to the Underground Path's door ran up column 17 to the cliff
+//  (16, 2), and the step onto the door bumped the house: "no fade in and
+//  out after walking onto the warp". From a start up to 3 tiles off, the
+//  steps on to Route 7 meet no trainer and come out of the Underground
+//  Path where the table says.
+UnitTestResult test_route8_west_off_start(Logger&){
+    const StoryCheckpoint& row = checkpoint("00.30");
+    const size_t first = step_index(row, "west_of_glenn_column");
+    const size_t last = step_index(row, "route7_underground_exit");
+    const StoryPose after_rich{"Route8", {55, 18}, Direction::NORTH};
+    const std::vector<MapData> maps = maps_after_rich();
+    const MapPosition end{"Route7", {7, 15}};
+    std::string failures;
+    for (const OffStart& off : ROUTE8_OFF_STARTS){
+        const std::optional<std::pair<size_t, StoryPose>> from = step_starting_on(row, first, last, after_rich, off.believed);
+        std::string failure = from ? "" : "no step starts there.";
+        StoryPose at = from ? from->second : after_rich;
+        OverworldSim sim(maps, MapPosition{at.map, off.actual}, at.facing.value_or(Direction::NORTH));
+        for (size_t c = from ? from->first : last + 1; c <= last && failure.empty(); c++){
+            failure = row_step_on_sim(sim, at, row.steps[c], row.id);
+        }
+        if (failure.empty() && !(sim.state().position == end)){
+            failure = std::format("ended on {}, not {}.", to_string(sim.state().position), to_string(end));
+        }
+        if (failure.empty() && !sim.state().trainers_beaten.empty()){
+            failure = "fought " + sim.state().trainers_beaten.front() + ".";
+        }
+        if (failure.empty() && !sim.state().violations.empty()){
+            failure = "a violation on the way: " + sim.state().violations.back();
+        }
+        if (!failure.empty()){
+            failures += std::format("{}from {}, not {}: {}", failures.empty() ? "" : " | ", to_string(off.actual), to_string(off.believed), failure);
+        }
+    }
+    if (!failures.empty()){
+        return failures;
+    }
+    return true;
+}
+
 //  00.30 saves in Celadon City's Pokemon Center: CELADON CITY on the save
 //  card.
 UnitTestResult test_celadon_save_place(Logger&){
@@ -629,6 +729,7 @@ const AutoStoryLavenderCase AUTO_STORY_LAVENDER_CASES[] = {
     {.input = {"00.28 and 00.29 save on Route 10 and in Lavender Town", test_save_places}, .expectation = {}},
     {.input = {"00.30 Lavender's Mart, Route 8 past Rich alone, the Underground Path, Route 7 to Celadon City", test_celadon_way_row}, .expectation = {}},
     {.input = {"00.30 a wild battle on the step into Route 7's grass", test_route7_grass_battles}, .expectation = {}},
+    {.input = {"00.30 Route 8 west from a start up to 3 tiles off", test_route8_west_off_start}, .expectation = {}},
     {.input = {"00.30 saves in Celadon City's Pokemon Center", test_celadon_save_place}, .expectation = {}},
 };
 

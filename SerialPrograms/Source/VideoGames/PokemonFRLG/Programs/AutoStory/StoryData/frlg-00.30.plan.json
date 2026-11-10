@@ -110,31 +110,39 @@
         "events": [
           {
             "id": "west_of_glenn_column",
-            "kind": "route",
+            "kind": "legs",
             "variant": "bike",
-            "target": {"certainty": "tile", "map": "Route8", "where": {"facing": "north", "kind": "tiles", "tiles": [[48, 7]]}},
-            "why": "west along row 18 past Rich (55, 17) and up column 48 to row 7, west of Glenn's south line (51, 7..10) and below his west line (47..50, 6)"
+            "legs": [
+              {"direction": "west", "tiles": 7}, {"direction": "north", "tiles": 11}
+            ],
+            "why": "west along row 18 past Rich (55, 17) to the wall (47, 18), then up column 48 to row 7, west of Glenn's south line (51, 7..10) and below his west line (47..50, 6): the wall puts the player on column 48 wherever on row 18 the battle left them"
           },
           {
-            "id": "east_of_megan_column",
-            "kind": "route",
+            "id": "route8_row7_west_wall",
+            "kind": "legs",
             "variant": "bike",
-            "target": {"certainty": "tile", "map": "Route8", "where": {"facing": "south", "kind": "tiles", "tiles": [[30, 13]]}},
-            "why": "west along row 7, below Megan's line (30..35, 6), and down column 30 to (30, 13), west of the pen's wall (33, 8..18)"
+            "legs": [
+              {"direction": "west", "tiles": 22}
+            ],
+            "why": "west along row 7, below Megan's line (30..35, 6) and Andrea's (26..28, 5), to the wall (25, 7): column 26 from anywhere on the row"
           },
           {
-            "id": "east_of_aidan_column",
-            "kind": "route",
+            "id": "route8_row14_west_wall",
+            "kind": "legs",
             "variant": "bike",
-            "target": {"certainty": "tile", "map": "Route8", "where": {"facing": "north", "kind": "tiles", "tiles": [[14, 13]]}},
-            "why": "down onto row 14, west along it above Jaren (24, 17) and Ricardo (14, 16), who see a tile, and up onto (14, 13)"
+            "legs": [
+              {"direction": "south", "tiles": 11}, {"direction": "north", "tiles": 4}, {"direction": "west", "tiles": 14}
+            ],
+            "why": "down column 26 to the wall (26, 19), east of Jaren's line (25, 17), 4 tiles back up onto row 14, and west along it above Jaren (24, 17) and Ricardo (14, 16), who see a tile, to the wall (11, 14): the walls put the player on row 18, then on column 12, wherever the walk along row 7 ended (console B, 2026-11-09: open legs from (48, 7) to (14, 13) ended 3 tiles east, and the door step bumped the house)"
           },
           {
             "id": "east_of_underground_door",
-            "kind": "route",
+            "kind": "legs",
             "variant": "bike",
-            "target": {"certainty": "tile", "map": "Route8", "where": {"facing": "north", "kind": "tiles", "tiles": [[14, 5]]}},
-            "why": "up column 14, east of Aidan's line (10..13, 6), to the wall (14, 4)"
+            "legs": [
+              {"direction": "east", "tiles": 2}, {"direction": "north", "tiles": 9}
+            ],
+            "why": "2 taps east (a Bicycle tap is a tile) onto column 14, east of Aidan's line (10..13, 6), and up it to the house's wall (14, 4)"
           },
           {
             "id": "below_underground_door",
