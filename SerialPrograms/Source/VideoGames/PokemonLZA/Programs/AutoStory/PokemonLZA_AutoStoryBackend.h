@@ -26,6 +26,7 @@
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryBackend.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryGame.h"
 #include "VideoGames/PokemonLZA/Options/PokemonLZA_BattleAIOption.h"
+#include "PokemonLZA_AutoStoryBadgeDetectors.h"
 #include "PokemonLZA_AutoStoryObservation.h"
 #include "PokemonLZA_AutoStoryOpeningDetectors.h"
 #include "PokemonLZA_AutoStoryScreenEvents.h"

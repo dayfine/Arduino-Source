@@ -23,6 +23,7 @@
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
+#include "PokemonLZA_AutoStoryBadgeDetectors.h"
 #include "PokemonLZA_AutoStoryOpeningDetectors.h"
 
 namespace PokemonAutomation{
@@ -178,29 +179,48 @@ UnitTestResult test_user_opening_frames(Logger& logger){
 }
 
 
+struct OpeningTestInput{
+    std::string name;
+    std::function<UnitTestResult(Logger&)> body;
+};
+
+struct OpeningTestExpectation{
+};
+
+struct OpeningTestCase{
+    OpeningTestInput input;
+    OpeningTestExpectation expectation;
+};
+
 class Test_AutoStoryOpeningDetectors : public UnitTest{
 public:
-    Test_AutoStoryOpeningDetectors(std::string name, std::function<UnitTestResult(Logger&)> body)
-        : UnitTest("PokemonLZA::AutoStoryOpeningDetectors - " + name)
-        , m_body(std::move(body))
+    explicit Test_AutoStoryOpeningDetectors(OpeningTestCase test_case)
+        : UnitTest("PokemonLZA::AutoStoryOpeningDetectors - " + test_case.input.name)
+        , m_case(std::move(test_case))
     {}
 
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
-        return m_body(logger);
+        return m_case.input.body(logger);
     }
 
 private:
-    std::function<UnitTestResult(Logger&)> m_body;
+    OpeningTestCase m_case;
 };
 
 } // namespace
 
 
+const OpeningTestCase OPENING_TEST_CASES[] = {
+    {.input = {"platform: synthetic frames", test_synthetic_platform}, .expectation = {}},
+    {.input = {"skip prompt and autosave: synthetic frames", test_synthetic_badges}, .expectation = {}},
+    {.input = {"the lab's opening frames (PLZA_OPENING_FRAMES)", test_lab_opening_frames}, .expectation = {}},
+    {.input = {"the user's opening frames (PLZA_USER_OPENING_FRAMES)", test_user_opening_frames}, .expectation = {}},
+};
+
 void add_tests_AutoStoryOpeningDetectors(UnitTestDatabase& database){
-    database.add<Test_AutoStoryOpeningDetectors>("platform: synthetic frames", test_synthetic_platform);
-    database.add<Test_AutoStoryOpeningDetectors>("skip prompt and autosave: synthetic frames", test_synthetic_badges);
-    database.add<Test_AutoStoryOpeningDetectors>("the lab's opening frames (PLZA_OPENING_FRAMES)", test_lab_opening_frames);
-    database.add<Test_AutoStoryOpeningDetectors>("the user's opening frames (PLZA_USER_OPENING_FRAMES)", test_user_opening_frames);
+    for (const OpeningTestCase& item : OPENING_TEST_CASES){
+        database.add<Test_AutoStoryOpeningDetectors>(item);
+    }
 }
 
 

@@ -2,14 +2,10 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Screens of the new game's opening and the autosave badge:
- *  - the station platform once the cutscene ends and the player has control
+ *  The station platform once the new game's opening cutscene ends once the cutscene ends and the player has control
  *    (PlatformArrivalDetector): the frame's top and sides against a
- *    reference of that first frame, with the player cropped out;
- *  - the "(+) Hold button to skip" badge at the top right
- *    (SkipPromptDetector);
- *  - the autosave badge, a pencil and "Saving..." at the top right
- *    (AutosaveDetector), which shows for 1-3 s after an autosave.
+ *    reference of that first frame, with the player cropped out. The
+ *    badges seen on the way are PokemonLZA_AutoStoryBadgeDetectors.h.
  *
  */
 
@@ -82,42 +78,7 @@ private:
 };
 
 
-//  The cutscene's "(+) Hold button to skip" badge at the top right: the
-//  white (+) icon, white text on the badge, and the badge's dark, even
-//  strip under the text.
-class SkipPromptDetector : public StaticScreenDetector{
-public:
-    explicit SkipPromptDetector(Color color = COLOR_MAGENTA);
-
-    virtual void make_overlays(VideoOverlaySet& items) const override;
-    virtual bool detect(const ImageViewRGB32& screen) override;
-
-private:
-    Color m_color;
-    ImageFloatBox m_icon;
-    ImageFloatBox m_text;
-    ImageFloatBox m_strip;
-};
-
-
-//  The autosave badge at the top right: a white pencil with a cyan glow at
-//  x 1603-1630, y 73-104 on 1920x1080, and nothing white or cyan just left
-//  of it. Only the icon is read, so any language matches.
-class AutosaveDetector : public StaticScreenDetector{
-public:
-    explicit AutosaveDetector(Color color = COLOR_YELLOW);
-
-    virtual void make_overlays(VideoOverlaySet& items) const override;
-    virtual bool detect(const ImageViewRGB32& screen) override;
-
-private:
-    Color m_color;
-    ImageFloatBox m_icon;
-    ImageFloatBox m_left;
-};
-
-
-//  Registers the detectors' tests: synthetic frames always; the opening's
+//  Registers the tests of these and the badge detectors: synthetic frames always; the opening's
 //  frames from the folders in PLZA_OPENING_FRAMES and PLZA_USER_OPENING_FRAMES,
 //  each skipped when unset.
 void add_tests_AutoStoryOpeningDetectors(UnitTestDatabase& database);
