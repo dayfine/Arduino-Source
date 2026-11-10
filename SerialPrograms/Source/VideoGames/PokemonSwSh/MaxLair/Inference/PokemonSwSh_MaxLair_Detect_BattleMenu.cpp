@@ -5,7 +5,6 @@
  */
 
 #include <cmath>
-#include <tuple>
 #include "Common/Cpp/PrettyPrint.h"
 #include "Common/Cpp/CancellableScope.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
@@ -262,36 +261,6 @@ std::set<std::string> BattleMenuReader::read_opponent(
 //    dump_image(logger, MODULE_NAME, "MaxLair-read_opponent", screen);
     return result;
 }
-namespace{
-
-//  The opponent's types from the type matches in its summary's type box, best
-//  match first. PokemonType::NONE where there is no match.
-std::pair<PokemonType, PokemonType> summary_types(
-    const std::multimap<double, std::pair<PokemonType, ImagePixelBox>>& candidates
-){
-    PokemonType type0 = PokemonType::NONE;
-    PokemonType type1 = PokemonType::NONE;
-    auto iter = candidates.begin();
-    if (iter != candidates.end()){
-        type0 = iter->second.first;
-        ++iter;
-    }
-    if (iter != candidates.end()){
-        type1 = iter->second.first;
-    }
-    //  The type box holds the type badge, e.g. "(O) NORMAL". The letter "O"
-    //  of the "NORMAL" label is a white ring of its own that also matches the
-    //  Normal icon (Persian: 0.368, next to 0.076 for the real icon).
-    //  find_type_symbols() drops only overlapping matches, so a single-type
-    //  Normal Pokemon was read as Normal/Normal and matched nothing. No
-    //  Pokemon has the same type twice, so a repeated type is one type.
-    if (type1 == type0){
-        type1 = PokemonType::NONE;
-    }
-    return {type0, type1};
-}
-
-}  // namespace
 std::set<std::string> BattleMenuReader::read_opponent_in_summary(Logger& logger, const ImageViewRGB32& screen) const{
     //  Start by reading the types.
     PokemonType type0, type1;
@@ -310,7 +279,24 @@ std::set<std::string> BattleMenuReader::read_opponent_in_summary(Logger& logger,
         }
         logger.log(type_str);
 
-        std::tie(type0, type1) = summary_types(candidates);
+        type0 = PokemonType::NONE;
+        type1 = PokemonType::NONE;
+        {
+            auto iter = candidates.begin();
+            if (iter != candidates.end()){
+                type0 = iter->second.first;
+                ++iter;
+            }
+            //  The type box holds the type badge, e.g. "(O) NORMAL". The letter "O"
+            //  of the "NORMAL" label is a white ring of its own that also matches the
+            //  Normal icon (Persian: 0.368, next to 0.076 for the real icon), so a
+            //  single-type Normal Pokemon read as Normal/Normal and matched nothing.
+            //  No Pokemon has the same type twice: a repeated type is one type.
+            if (iter != candidates.end() && iter->second.first != type0){
+                type1 = iter->second.first;
+                ++iter;
+            }
+        }
     }
 
     //  Compile a list of all possible mons that match the type.
