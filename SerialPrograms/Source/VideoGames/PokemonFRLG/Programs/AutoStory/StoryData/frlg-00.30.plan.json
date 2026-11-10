@@ -164,8 +164,8 @@
             "id": "pidgey_grass",
             "kind": "route",
             "variant": "run",
-            "target": {"certainty": "tile", "map": "Route7", "where": {"facing": "east", "kind": "tiles", "tiles": [[14, 5]]}},
-            "why": "north round the ledges into Route 7's grass (11..18, 2..6), a grass tile east of it free"
+            "target": {"certainty": "tile", "map": "Route7", "where": {"facing": "east", "kind": "tiles", "tiles": [[14, 6]]}},
+            "why": "north round the ledges and up column 14 onto the edge of Route 7's grass (11..18, 2..6), grass tiles east of it free"
           },
           {
             "id": "catch_pidgey",

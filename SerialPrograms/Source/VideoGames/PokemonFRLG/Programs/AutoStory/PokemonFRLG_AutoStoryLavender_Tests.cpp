@@ -581,28 +581,21 @@ UnitTestResult test_celadon_way_row(Logger&){
     return row_on_sim("00.30", SimScript{}, {{"old_man_1"}}, MapPosition{"CeladonCity", {48, 12}});
 }
 
-//  00.30's walk into Route 7's grass with a wild battle on each of its
-//  two grass steps in turn (Route 7's land rate is 21): it still ends on
-//  the Pidgey's tile.
+//  00.30's walk into Route 7's grass with a wild battle on its one grass
+//  step (Route 7's land rate is 21): it still ends on the Pidgey's tile.
 UnitTestResult test_route7_grass_battles(Logger&){
     const StoryCheckpoint& row = checkpoint("00.30");
     const size_t index = step_index(row, "pidgey_grass");
-    const MapPosition end{"Route7", {14, 5}};
-    for (int grass_step = 1; grass_step <= 2; grass_step++){
-        SimScript script;
-        script.encounters.push_back(SimEncounter{.grass_step = grass_step});
-        StoryPose at{"Route7", {7, 15}, Direction::SOUTH};
-        OverworldSim sim(maps_after_route10(), MapPosition{at.map, at.tile}, *at.facing, script);
-        const std::string failure = row_step_on_sim(sim, at, row.steps[index], row.id);
-        if (!failure.empty()){
-            return std::format("A battle on grass step {}: {}", grass_step, failure);
-        }
-        if (!(sim.state().position == end)){
-            return std::format("A battle on grass step {}: ended on {}, not {}.", grass_step, to_string(sim.state().position), to_string(end));
-        }
-        if (sim.state().wild_battles != 1){
-            return std::format("A battle on grass step {}: {} wild battles, not 1.", grass_step, sim.state().wild_battles);
-        }
+    const MapPosition end{"Route7", {14, 6}};
+    SimScript script;
+    script.encounters.push_back(SimEncounter{.grass_step = 1});
+    StoryPose at{"Route7", {7, 15}, Direction::SOUTH};
+    OverworldSim sim(maps_after_route10(), MapPosition{at.map, at.tile}, *at.facing, script);
+    if (const std::string failure = row_step_on_sim(sim, at, row.steps[index], row.id); !failure.empty()){
+        return failure;
+    }
+    if (!(sim.state().position == end) || sim.state().wild_battles != 1){
+        return std::format("Ended on {} after {} wild battles, not on {} after 1.", to_string(sim.state().position), sim.state().wild_battles, to_string(end));
     }
     return true;
 }
@@ -635,7 +628,7 @@ const AutoStoryLavenderCase AUTO_STORY_LAVENDER_CASES[] = {
     {.input = {"00.29 a tile off after each open leg", test_lavender_tile_off}, .expectation = {}},
     {.input = {"00.28 and 00.29 save on Route 10 and in Lavender Town", test_save_places}, .expectation = {}},
     {.input = {"00.30 Lavender's Mart, Route 8 past Rich alone, the Underground Path, Route 7 to Celadon City", test_celadon_way_row}, .expectation = {}},
-    {.input = {"00.30 a wild battle on each grass step into Route 7's grass", test_route7_grass_battles}, .expectation = {}},
+    {.input = {"00.30 a wild battle on the step into Route 7's grass", test_route7_grass_battles}, .expectation = {}},
     {.input = {"00.30 saves in Celadon City's Pokemon Center", test_celadon_save_place}, .expectation = {}},
 };
 
