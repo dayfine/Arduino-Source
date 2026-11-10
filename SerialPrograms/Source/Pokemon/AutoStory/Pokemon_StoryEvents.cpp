@@ -68,6 +68,11 @@ Outcome outcome_ok(Pose pose){
     outcome.pose = std::move(pose);
     return outcome;
 }
+Outcome outcome_unchanged(){
+    Outcome outcome;
+    outcome.changed_nothing = true;
+    return outcome;
+}
 Outcome outcome_failed(std::string failure, std::string detail){
     Outcome outcome;
     outcome.failure = std::move(failure);
@@ -76,6 +81,10 @@ Outcome outcome_failed(std::string failure, std::string detail){
 }
 std::string to_string(const Outcome& outcome){
     return outcome.detail.empty() ? outcome.failure : outcome.failure + ": " + outcome.detail;
+}
+
+Outcome outcome_game_not_running(){
+    return outcome_failed(GAME_NOT_RUNNING, "the game is not running: the Switch HOME menu is showing");
 }
 
 Condition condition(std::string name, Check check){
@@ -156,6 +165,8 @@ Outcome attempt_event(Event& event, RunState& state){
     return check_expects(event, state);
 }
 
+} // namespace
+
 void apply_interrupt_pose(Pose& pose, InterruptPose effect){
     switch (effect){
     case InterruptPose::UNCHANGED:
@@ -171,6 +182,8 @@ void apply_interrupt_pose(Pose& pose, InterruptPose effect){
         return;
     }
 }
+
+namespace{
 
 
 //  One event being run, with what it has used up.
@@ -257,6 +270,9 @@ Recovery* next_recovery(EventRun& run, const std::string& failure){
 //  is answered in turn, so escalation goes on from there.
 std::optional<Outcome> recover(EventRun& run, Outcome failure){
     while (true){
+        if (failure.failure == GAME_NOT_RUNNING){
+            return failure;
+        }
         Recovery* recovery = next_recovery(run, failure.failure);
         if (recovery == nullptr){
             return failure;
