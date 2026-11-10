@@ -163,3 +163,14 @@ program runs; the app refuses them otherwise and the journal says so. Read
 Between runs, `sh labctl.sh keepawake on` has the app press B every 15 s
 while nothing runs, so the console does not sleep; no Prevent Sleep program
 to start and stop.
+
+Keep an app open at all times. `keepawake` lives in the app, so it stops
+when the app quits, and an unattended console sleeps where nobody can wake
+it. Keep-awake is off in every new app, so turn it on after each launch.
+`start_dev.py` takes the console lock before it builds, and the old app holds that lock, so a
+rebuild means a gap: quitting the old app first left console B with no
+presses for the whole build (20 min on 2026-11-09). Until `start_dev.py`
+can build without launching, keep the old app open while a build in a separate
+build directory finishes. Then quit the old app, launch the new
+one and run `keepawake on` before anything else. If the
+quit is ignored, `kill -TERM` the app's pid; never touch console A's app.

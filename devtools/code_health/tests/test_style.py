@@ -158,7 +158,7 @@ class DeclarationTests(StyleCase):
     def test_top_level_const_by_value_parameters_in_header_declarations(self):
         self.assertFlags("'const int count'", wrap('void f(const int count, const std::string& name);'), HEADER)
         self.assertFlags("'const size_t index = 0'", wrap('struct A{\n    A(const size_t index = 0);\n};'), HEADER)
-        self.assertClean(wrap('void f(const std::string& a, const char* b, const std::vector<int&> c_ref,\n'
+        self.assertClean(wrap('void f(const std::string& a, const int* b, const std::vector<int&> c_ref,\n'
                               '       int d, std::function<void(const int)>&& e);'))
         self.assertEqual([], self.errors(wrap('inline void f(const int x){\n    g(x);\n}'), HEADER))
         self.assertEqual([], self.errors(wrap('void f(const int count);')))  # .cpp declaration

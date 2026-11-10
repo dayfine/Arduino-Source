@@ -274,6 +274,22 @@ DELETE = re.compile(r'(?<!=)(?<!= )(?<!operator)(?<!operator )\bdelete\b')
 RETURN_MOVE = re.compile(r'\breturn\s+std::move\s*\(\s*([A-Za-z_]\w*)\s*\)\s*;')
 QT_INCLUDE = re.compile(r'^\s*#\s*include\s*<Q', re.M)
 CONTROL = re.compile(r'\b(if(?:\s+constexpr)?|for|while|switch)\s*\(')
+# `char` followed by a pointer or a named array: `const char*`, `char const*`, `char**`, `char buf[8]`.
+CHAR_TYPE = re.compile(r'\bchar\b(?=\s*(?:const\s*)?\*|\s+(?:const\s+)?[A-Za-z_]\w*\s*\[)')
+MAIN = re.compile(r'\bmain\s*\(')
+
+
+def char_pointers(line):
+    """Columns where `line` names a `char*` / `char[]` type; not `unsigned char`, casts or main()."""
+    if MAIN.search(line):
+        return []
+    found = []
+    for match in CHAR_TYPE.finditer(line):
+        before = line[:match.start()]
+        if re.search(r'\b(un)?signed\s+$', before) or re.search(r'_cast\s*<[^<>]*$', before):
+            continue
+        found.append(match.start())
+    return found
 
 
 def function_start(bodies, line):
@@ -296,6 +312,11 @@ def line_checks(path, raw, code, added, statements_):
         for pattern, exempt, message, *cites in BANS:
             if pattern.search(line) and not path.startswith(exempt or ('\0',)):
                 errors.append(Finding(path, number, rule(message, *cites)))
+        if char_pointers(line):
+            errors.append(Finding(path, number, rule(
+                'no char* / char[] in new code; use std::string, or std::string_view '
+                '(inline constexpr std::string_view for constants)', 'fork AGENTS.md "Strings"'),
+                check='char_pointer'))
         if BIND.search(line):
             errors.append(Finding(path, number, rule('use a lambda, not std::bind', 'TotW #108')))
         if not allocator and (NEW.search(line) or DELETE.search(line)):

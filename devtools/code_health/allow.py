@@ -2,15 +2,22 @@
 
 A tag on a function's or class's first line, or in the comment block directly above it, lets
 that function's or class's listed metrics exceed their limit up to a hard ceiling. A
-`file_lines` tag goes in the first FILE_TAG_LINES lines. Every bypass is printed, quoting
+`file_lines` or `header_symbols` tag goes in the first FILE_TAG_LINES lines. A `char_pointer` or
+`overload_prefix` tag waives that style finding on its own line or the line below its comment
+block. Every bypass is printed, quoting
 its justification, so reviewers see it; malformed, unknown or misplaced tags fail."""
 import re
 from dataclasses import dataclass
 
-from .config import CLASS_LIMITS
+from .config import CLASS_LIMITS, HEADER_LIMITS
 from .findings import Finding
 
-CHECKS = ('file_lines', 'function_lines', 'nesting', 'parameters') + tuple(CLASS_LIMITS)
+# Style findings a tag can bypass; they attach like a function's tag, to the finding's line.
+STYLE_CHECKS = ('char_pointer', 'overload_prefix')
+# File-level metrics: the tag goes in the first FILE_TAG_LINES lines.
+FILE_CHECKS = ('file_lines',) + tuple(HEADER_LIMITS)
+CHECKS = (('file_lines', 'function_lines', 'nesting', 'parameters') + tuple(CLASS_LIMITS)
+          + tuple(HEADER_LIMITS) + STYLE_CHECKS)
 FILE_TAG_LINES = 20
 MIN_JUSTIFICATION_CHARS = 40
 MIN_JUSTIFICATION_WORDS = 6
@@ -67,9 +74,11 @@ def attach(path, source, allowances, metrics):
     allowed, errors = {}, []
     for allowance in allowances:
         for check in allowance.checks:
+            if check in STYLE_CHECKS:
+                continue
             targets = [m for m in metrics if m.check == check and covers(allowance, m, lines)]
             if not targets:
-                where = (f'in the first {FILE_TAG_LINES} lines' if check == 'file_lines'
+                where = (f'in the first {FILE_TAG_LINES} lines' if check in FILE_CHECKS
                          else 'on or directly above the function or class signature')
                 errors.append(Finding(path, allowance.line, f'code-health tag: {check} attaches to '
                                       f'nothing; put the tag {where}'))
@@ -78,8 +87,30 @@ def attach(path, source, allowances, metrics):
     return allowed, errors
 
 
+def waive(path, source, allowances, findings):
+    """(findings left, bypass notices, errors for style tags that attach to nothing).
+
+    A STYLE_CHECKS tag goes on the finding's line or in the comment block directly above it."""
+    lines = normalized_lines(source)
+    kept, notices, used = [], [], set()
+    for finding in findings:
+        tag = next((a for a in allowances if finding.check in a.checks
+                    and covers(a, finding, lines)), None)
+        if tag is None:
+            kept.append(finding)
+            continue
+        used.add((tag.line, finding.check))
+        notices.append(Finding(path, finding.line, f'{finding.check} bypassed by the tag at line '
+                               f'{tag.line}: "{tag.justification}"'))
+    errors = [Finding(path, a.line, f'code-health tag: {check} attaches to nothing; put the tag '
+                      'on or directly above the flagged line')
+              for a in allowances for check in a.checks
+              if check in STYLE_CHECKS and (a.line, check) not in used]
+    return kept, notices, errors
+
+
 def covers(allowance, metric, lines):
-    if metric.check == 'file_lines':
+    if metric.check in FILE_CHECKS:
         return allowance.line <= FILE_TAG_LINES
     if allowance.line == metric.line:
         return True
