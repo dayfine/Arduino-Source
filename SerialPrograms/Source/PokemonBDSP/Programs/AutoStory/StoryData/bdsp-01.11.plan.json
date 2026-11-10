@@ -128,5 +128,8 @@
     "saves_in": "Floaroma Town"
   },
   "format": "pokesim-authored-checkpoint/1",
-  "game": "bdsp"
+  "game": "bdsp",
+  "metadata": {
+    "phase": "testing"
+  }
 }

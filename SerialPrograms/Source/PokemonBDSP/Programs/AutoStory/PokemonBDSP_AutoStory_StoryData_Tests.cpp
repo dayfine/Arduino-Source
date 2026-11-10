@@ -57,6 +57,18 @@ void stop_with_save(JsonObject& root){
     root.get_object_throw("execution")["on_failure"] = "stop";
 }
 
+void bad_metadata_field(JsonObject& root){
+    JsonObject meta;
+    meta["unknown"] = "testing";
+    root["metadata"] = std::move(meta);
+}
+
+void bad_metadata_phase(JsonObject& root){
+    JsonObject meta;
+    meta["phase"] = "invalid";
+    root["metadata"] = std::move(meta);
+}
+
 UnitTestResult check_all_checkpoints_load(){
     const auto& table = story_checkpoints();
     if (table.size() != 22){
@@ -202,6 +214,14 @@ const StoryDataCase STORY_DATA_CASES[] = {
     },
     {
         .input = {.name = "Envelope: stop policy with start save", .mutate = stop_with_save},
+        .expectation = {.rejected = true},
+    },
+    {
+        .input = {.name = "Envelope: unknown metadata field", .mutate = bad_metadata_field},
+        .expectation = {.rejected = true},
+    },
+    {
+        .input = {.name = "Envelope: unknown metadata phase", .mutate = bad_metadata_phase},
         .expectation = {.rejected = true},
     },
 };
