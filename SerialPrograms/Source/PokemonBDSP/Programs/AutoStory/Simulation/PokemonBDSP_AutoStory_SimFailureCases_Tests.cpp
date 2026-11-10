@@ -418,6 +418,57 @@ UnitTestResult dawns_scene_mid_run(Logger& logger){
     return true;
 }
 
+//  Route 201's grass, as the console met it: a wild battle on each of four
+//  passes of 10 tiles of row 5's grass (lab-B 2026-11-09 16:14). A battle
+//  each 8 grass tiles gives one on every such pass.
+SimWorldKnobs route_201_grass(){
+    SimWorldKnobs knobs;
+    knobs.grass.every = 8;
+    return knobs;
+}
+//  00.04's steps from Route 201's east end down over the ledge: those after
+//  "to_route_201" through "over_the_ledge", less `skip`.
+std::vector<StoryStep> ledge_walk(const std::set<std::string>& skip){
+    std::vector<StoryStep> steps;
+    bool on = false;
+    for (const StoryCheckpoint& checkpoint : story_checkpoints()){
+        for (const StoryStep& step : checkpoint.steps){
+            if (checkpoint.id != "00.04"){
+                continue;
+            }
+            if (on && !skip.contains(step.name)){
+                steps.push_back(step);
+            }
+            if (step.name == "over_the_ledge"){
+                return steps;
+            }
+            on |= step.name == "to_route_201";
+        }
+    }
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No over_the_ledge after to_route_201 in 00.04");
+}
+//  00.04 from Route 201's east end (57, 5) and (63, 5) to below the ledge,
+//  a wild battle each 8 grass tiles: "" if both get there, else where and
+//  why each stopped. Without `skip`, the table's walk.
+std::string ledge_walk_in_grass(Logger& logger, const std::set<std::string>& skip){
+    std::string failures;
+    for (const int x : {57, 63}){
+        const Pose start = Pokemon::tile_pose("Route201", {TilePos{x, 5}}, Direction::WEST);
+        std::vector<StoryCheckpoint> rows = story_checkpoints();
+        for (StoryCheckpoint& checkpoint : rows){
+            if (checkpoint.id == "00.04"){
+                checkpoint.start = start;
+                checkpoint.steps = ledge_walk(skip);
+            }
+        }
+        const std::string stopped = run_case(logger, "00.04", "00.04", {.fade = {}, .banner = {}}, route_201_grass(), rows);
+        if (!stopped.empty()){
+            failures += std::format("\nfrom ({}, 5): {}", x, stopped);
+        }
+    }
+    return failures;
+}
+
 struct FailureCaseInput{
     std::string name;
     std::function<UnitTestResult(Logger&)> body;
@@ -500,6 +551,9 @@ const FailureCase AUTO_STORY_FAILURE_CASES[] = {
     {.input = {"00.03 out of the house from (6, 8), where Rowan's scene ends, and from a column west", home_from_each_scene_end}, .expectation = {}},
     {.input = {"00.03 the walk into Rowan's scene routes onto his row and stops on his trigger mid-run", rowans_scene_from_each_start}, .expectation = {}},
     {.input = {"00.03 the walk into Sandgem stops on Dawn's trigger mid-run", dawns_scene_mid_run}, .expectation = {}},
+    {.input = {"00.04 to the ledge column with a wild battle on each pass through Route 201's grass (lab-B 2026-11-09 16:14)", [](Logger& logger){
+        return passes(ledge_walk_in_grass(logger, {}));
+    }}, .expectation = {}},
 };
 
 void add_tests_AutoStory_SimFailureCases(UnitTestDatabase& database){

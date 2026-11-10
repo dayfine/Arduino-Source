@@ -160,6 +160,8 @@ struct SimWorldKnobs{
     //  the program goes on from the table's pose, the player from here
     //  (00.03's scene a row low, lab-B 2026-11-09).
     std::map<std::string, Pokemon::Pose> lands = {};
+    //  Wild battles in tall grass on every pass (SimGrassBattles); none unset.
+    SimGrassBattles grass = {};
 };
 
 //  The walker's RouteIO on the story simulation, with SimWorldKnobs' slides
@@ -171,7 +173,7 @@ public:
         GridSim& sim, std::vector<std::string>& notes, SimMisses& misses, const SimWorldKnobs& knobs,
         const std::string& step, std::function<void(const Pokemon::Pose&)> cross
     )
-        : GridSimRouteIO(sim, notes)
+        : GridSimRouteIO(sim, notes, {}, {}, knobs.grass)
         , m_grid(sim)
         , m_misses(misses)
         , m_knobs(knobs)

@@ -13,10 +13,13 @@
  *    (00.02's Starly, lab-B 2026-11-09), at each battle step and at each
  *    step after a walk, which can end in a trainer's sight or in grass.
  *    SimWorldKnobs::battle_opening_before.
+ *  - GRASS_BATTLES: a wild battle on every pass through tall grass, one
+ *    each 8 grass tiles (00.04, lab-B 2026-11-09 16:14: four in a row on
+ *    Route 201, each replan back through the grass, "too many plans").
+ *    SimWorldKnobs::grass. One variant a row: the whole row so.
  *
  *  Missed and short fades are swept by SimFailureCases_Tests (every single
- *  missed fade, banner and fade hold). Wild battles at the game's rates
- *  need grass on the story maps, which the simulation does not have yet.
+ *  missed fade, banner and fade hold).
  *  A lost tap from the input lockout waits for the measured movement
  *  table (FRLG #293); FaultClass::LOST_TAP is its slot.
  *
@@ -57,6 +60,7 @@ using Pokemon::TilePos;
 enum class FaultClass{
     SCENE_END_POSE,
     BATTLE_OPENING,
+    GRASS_BATTLES,
     //  Not swept yet: the measured movement table's lost taps (#293).
     LOST_TAP,
 };
@@ -66,6 +70,8 @@ const char* fault_class_name(FaultClass fault){
         return "scene end pose";
     case FaultClass::BATTLE_OPENING:
         return "battle opening at step start";
+    case FaultClass::GRASS_BATTLES:
+        return "wild battles on every grass pass";
     case FaultClass::LOST_TAP:
         return "lost tap";
     }
@@ -281,6 +287,19 @@ UnitTestResult sweep_battle_opening(Logger& logger, const StoryCheckpoint& row){
     return sweep_result(logger, FaultClass::BATTLE_OPENING, row.id, variants, failures);
 }
 
+//  Row `row` with a wild battle each 8 tall-grass tiles stepped onto, all
+//  through the row.
+UnitTestResult sweep_grass_battles(Logger& logger, const StoryCheckpoint& row){
+    SimWorldKnobs knobs;
+    knobs.grass.every = 8;
+    const std::string stopped = run_row(logger, row.id, std::move(knobs));
+    std::vector<SweepFailure> failures;
+    if (!stopped.empty()){
+        failures.push_back({"", "a battle each 8 grass tiles", stopped});
+    }
+    return sweep_result(logger, FaultClass::GRASS_BATTLES, row.id, 1, failures);
+}
+
 //  A fault class swept over row `row` (empty in FAULT_SWEEP_CASES: each
 //  row from FIRST_ROW to LAST_ROW).
 struct FaultSweepInput{
@@ -342,6 +361,8 @@ private:
             return sweep_scene_end_pose(logger, m_row);
         case FaultClass::BATTLE_OPENING:
             return sweep_battle_opening(logger, m_row);
+        case FaultClass::GRASS_BATTLES:
+            return sweep_grass_battles(logger, m_row);
         case FaultClass::LOST_TAP:
             break;
         }
@@ -357,6 +378,7 @@ private:
 const FaultSweepCase FAULT_SWEEP_CASES[] = {
     {.input = {.fault = FaultClass::SCENE_END_POSE}, .expectation = {}},
     {.input = {.fault = FaultClass::BATTLE_OPENING}, .expectation = {}},
+    {.input = {.fault = FaultClass::GRASS_BATTLES}, .expectation = {}},
 };
 
 void add_tests_AutoStory_FaultSweep(UnitTestDatabase& database){
