@@ -64,9 +64,8 @@ uint8_t battle_level(const PartyMember& member);
 //  A move's full PP; 0 for a move the table doesn't have.
 uint8_t max_pp(std::string_view move);
 
-//  A move's power; 0 for one that does no damage, or that the table
-//  doesn't have.
-uint8_t move_power(std::string_view move);
+//  The move does damage; false for one the table doesn't have.
+bool does_damage(std::string_view move);
 
 
 

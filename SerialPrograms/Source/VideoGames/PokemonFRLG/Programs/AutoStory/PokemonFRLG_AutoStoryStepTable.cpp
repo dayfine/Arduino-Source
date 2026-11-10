@@ -123,12 +123,10 @@ Pokemon::StoryActionSpec teach_action_spec(){
 Pokemon::StoryActionSpec grind_action_spec(){
     return {.kind = StoryStepKind::GAME, .name = GRIND_ACTION, .args = {
         required_arg("slot", StoryArgType::INTEGER, "the party slot that grinds, from 1"),
-        required_arg("level", StoryArgType::INTEGER, "the level to reach; with a trainer, the cap"),
+        required_arg("level", StoryArgType::INTEGER, "the level to reach"),
         optional_arg("encounters", StoryArgType::INTEGER, int64_t(60), "wild battles before the step gives up"),
         optional_arg("pace", StoryArgType::DIRECTION, Direction::EAST, "the way the player steps to look for a battle"),
         optional_arg("heal_every", StoryArgType::INTEGER, int64_t(0), "battles between visits to the nurse; 0: only when hurt"),
-        absent_arg("beat", StoryArgType::WORD, "the next boss's trainer: grind until the sim's win chance is enough"),
-        absent_arg("chance", StoryArgType::INTEGER, "the win chance against it, in percent"),
         required_arg("nurse", StoryArgType::GRID_POSE, "where the step heals"),
     }};
 }
@@ -139,6 +137,20 @@ std::span<const Pokemon::StoryActionSpec> story_action_specs(){
     static const std::vector<Pokemon::StoryActionSpec> SPECS = []{
         const std::span<const Pokemon::StoryActionSpec> builtin = Pokemon::builtin_story_actions();
         std::vector<Pokemon::StoryActionSpec> specs(builtin.begin(), builtin.end());
+        //  A trainer battle's plan names the trainer and its party.
+        for (Pokemon::StoryActionSpec& spec : specs){
+            if (spec.kind != StoryStepKind::BATTLE){
+                continue;
+            }
+            spec.args.push_back(Pokemon::StoryArgSpec{
+                .key = "trainer", .type = Pokemon::StoryArgType::WORD, .required = false, .fallback = std::string(),
+                .why = "pret's constant for the trainer (\"TRAINER_LEADER_BROCK\"); sets the battle's risk",
+            });
+            spec.args.push_back(Pokemon::StoryArgSpec{
+                .key = "foes", .type = Pokemon::StoryArgType::WORDS, .required = false, .fallback = std::vector<std::string>(),
+                .why = "the trainer's party in order; attacks are chosen against the one out",
+            });
+        }
         for (StoryStepKind kind : {StoryStepKind::ROUTE, StoryStepKind::LEGS}){
             Pokemon::StoryActionSpec run = *Pokemon::find_story_action(builtin, kind, "");
             run.name = "run";

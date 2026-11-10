@@ -68,14 +68,14 @@ struct Supplies{
     //  faints, so they gain no EXP and learn or evolve nothing: a member
     //  kept for later, or one the user keeps for a trade.
     std::vector<size_t> protected_slots = {};
-    //  The party of the trainer the table's battle step fights, when the
-    //  story knows it (trainer_party()): the lead's attacks are chosen
-    //  against it while the one out isn't known. Empty otherwise; wild
-    //  battles never use it.
+    //  The party of the trainer the battle step fights, as its plan lists
+    //  it (the step's "foes"): the lead's attacks are chosen against it
+    //  while the one out isn't known. Empty otherwise; wild battles never
+    //  use it.
     std::vector<std::string> foes = {};
-    //  That trainer (story_trainer()), "" otherwise.
+    //  That trainer, as its plan names it (the step's "trainer"), "" otherwise.
     std::string trainer = {};
-    //  How carefully that battle is fought (story_battle_risk()).
+    //  How carefully that battle is fought (default_battle_risk()).
     BattleRisk risk = BattleRisk::LOW;
     //  The species of the trainer's Pokemon out, as read at the last battle
     //  menu (read_trainer_foe()), "" if not read: the lead's attacks are
