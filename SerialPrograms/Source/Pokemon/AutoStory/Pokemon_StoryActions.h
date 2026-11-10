@@ -23,6 +23,7 @@
 #include <functional>
 #include <map>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -47,6 +48,9 @@ struct StoryAction{
     //  The screen event the action ends on ("fade", "dialog"). Declared for
     //  the event-driven waits to come; nothing reads it yet.
     std::string waits_for = {};
+    //  The args its steps may carry (StoryStep::args); a step with any
+    //  other, or without a required one, fails lint_story_checkpoint().
+    std::span<const StoryArgSpec> args = {};
 };
 
 
@@ -75,7 +79,8 @@ private:
 };
 
 //  The steps of `data` that `table` has no action for, as
-//  "<checkpoint> step <n> <name>: no action for GAME 'bill'".
+//  "<checkpoint> step <n> <name>: no action for GAME 'bill'", or whose args
+//  don't fit their action's, as "... missing argument \"budget\" for GAME 'mart'".
 std::vector<std::string> lint_story_checkpoint(const StoryCheckpoint& data, const StoryActionTable& table);
 
 

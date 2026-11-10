@@ -168,10 +168,25 @@ UnitTestResult test_duplicate_actions_throw(){
     return found(table, StoryStepKind::TALK, "bill") == "first" ? UnitTestResult(true) : UnitTestResult("Expected the first action kept.");
 }
 
+//  The args a test Mart takes.
+constexpr StoryArgSpec MART_ARGS[] = {
+    {.key = "map", .type = StoryArgType::TEXT, .required = true},
+    {.key = "budget", .type = StoryArgType::NUMBER, .required = true},
+};
+
+//  `step` with `args`.
+StoryStep with_args(StoryStep step, StoryArgs args){
+    step.args = std::move(args);
+    return step;
+}
+
 UnitTestResult test_lint_names_steps_without_actions(){
     StoryActionTable table;
     table.add(StoryStepKind::ROUTE, "", named("route"));
     table.add_any_kind("bill", named("bill"));
+    StoryAction mart = named("mart");
+    mart.args = MART_ARGS;
+    table.add(StoryStepKind::GAME, "mart", std::move(mart));
     const StoryCheckpoint data{
         .id = "00.05",
         .title = "",
@@ -181,19 +196,24 @@ UnitTestResult test_lint_names_steps_without_actions(){
             make(StoryStepKind::GAME, "meet Bill", "bill"),
             make(StoryStepKind::GAME, "teleporter", "cell_separator x=1"),
             make(StoryStepKind::TALK, "talk"),
+            with_args(make(StoryStepKind::GAME, "buy", "mart"), {{"map", std::string("M")}, {"budget", int64_t(1500)}}),
+            with_args(make(StoryStepKind::GAME, "buy more", "mart"), {{"map", std::string("M")}}),
+            with_args(make(StoryStepKind::GAME, "meet Bill again", "bill"), {{"slot", int64_t(1)}}),
         },
     };
     const std::vector<std::string> problems = lint_story_checkpoint(data, table);
     const std::vector<std::string> expected = {
         "00.05 step 3 teleporter: no action for GAME 'cell_separator'",
         "00.05 step 4 talk: no action for TALK ''",
+        "00.05 step 6 buy more: missing argument \"budget\" for GAME 'mart'",
+        "00.05 step 7 meet Bill again: unknown argument \"slot\" for GAME 'bill'",
     };
     if (problems != expected){
         std::string got;
         for (const std::string& problem : problems){
             got += "\n" + problem;
         }
-        return "Expected two steps without actions, got:" + got;
+        return "Expected two steps without actions and two with bad args, got:" + got;
     }
     return true;
 }
