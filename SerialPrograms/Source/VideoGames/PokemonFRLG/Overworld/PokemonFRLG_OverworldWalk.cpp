@@ -191,7 +191,15 @@ Milliseconds tile_time(const RouteStep& step, MoveSpeed speed){
     if (step.surfing){
         return SURF_TILE_TIME;
     }
-    return step_speed(step, speed) == MoveSpeed::RUN ? RUN_TILE_TIME : TILE_TIME;
+    switch (step_speed(step, speed)){
+    case MoveSpeed::RUN:
+        return RUN_TILE_TIME;
+    case MoveSpeed::BIKE:
+        return BIKE_TILE_TIME;
+    case MoveSpeed::WALK:
+        break;
+    }
+    return TILE_TIME;
 }
 
 Pokemon::LegMover<ProControllerContext> leg_mover(const RouteStep& step, MoveSpeed speed){
@@ -469,6 +477,8 @@ const char* move_speed_name(MoveSpeed speed){
         return "walk";
     case MoveSpeed::RUN:
         return "run";
+    case MoveSpeed::BIKE:
+        return "bike";
     }
     return "?";
 }

@@ -189,6 +189,11 @@ StoryStep poster_switch(std::string name, std::string why);
 //  Rides the Rocket Hideout's lift, the player facing its panel, from the
 //  floor it stands at to `to` (lift_floor_variant()): "B1F", "B2F", "B4F".
 StoryStep lift_floor(std::string name, std::string_view from, std::string_view to, std::string why);
+//  Uses `item` from the bag on the overworld (use_item_variant()): a
+//  Repel, or an Escape Rope, which leaves the player on `pose_after`.
+StoryStep use_item(std::string name, std::string_view item, std::string why, std::optional<Pokemon::Pose> pose_after = std::nullopt);
+//  Gets on the Bicycle (RIDE_BIKE_VARIANT).
+StoryStep ride_bike(std::string name, std::string why);
 
 
 //  Rows in files of their own (PokemonFRLG_AutoStoryTableVermilionGym.cpp,

@@ -48,6 +48,10 @@ inline constexpr Milliseconds TILE_TIME(267);
 inline constexpr Milliseconds RUN_TILE_TIME(133);
 //  Surfing: a tile per 8 frames.
 inline constexpr Milliseconds SURF_TILE_TIME(133);
+//  Riding the Bicycle: a tile per 4 frames (pokefirered bike.c,
+//  PlayerRideWaterCurrent(): MOVE_SPEED_FAST_2). An estimate from the
+//  decompilation, not measured on the console.
+inline constexpr Milliseconds BIKE_TILE_TIME(67);
 //  The longest tap measured to only turn a player facing another way, and
 //  to take exactly one step for one facing its way.
 inline constexpr Milliseconds LONGEST_TAP(133);

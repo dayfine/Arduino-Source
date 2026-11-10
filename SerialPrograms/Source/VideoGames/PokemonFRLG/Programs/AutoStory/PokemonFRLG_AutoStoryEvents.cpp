@@ -23,6 +23,7 @@
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
 #include "PokemonFRLG_AutoStoryHideout.h"
+#include "PokemonFRLG_AutoStoryItemUse.h"
 #include "PokemonFRLG_AutoStoryScreenEvents.h"
 #include "PokemonFRLG_AutoStorySummary.h"
 #include "PokemonFRLG_AutoStoryTable.h"
@@ -366,6 +367,9 @@ const std::vector<MapData>& story_maps(){
 }
 
 MoveSpeed move_speed(const StoryStep& step){
+    if (step.variant == BIKE_VARIANT){
+        return MoveSpeed::BIKE;
+    }
     return step.variant == RUN_VARIANT ? MoveSpeed::RUN : MoveSpeed::WALK;
 }
 
@@ -693,6 +697,16 @@ Outcome other_game_step(StoryEnv& env, RunState& state, const StoryStep& step){
     if (step.variant == POSTER_SWITCH_VARIANT){
         push_poster_switch(env.console, env.context);
         return Pokemon::outcome_ok();
+    }
+    //  An item from the bag; an Escape Rope ends where the table says.
+    if (is_item_use_variant(step.variant)){
+        const std::string item = parse_use_item_variant(step.variant).value_or("bicycle");
+        ConsoleItemUseActions bag(env.console, env.context, env.language);
+        const ItemUseEnd end = use_item_from_bag(env.console.logger(), bag, item);
+        if (end != ItemUseEnd::USED){
+            return Pokemon::outcome_failed(std::string("use_item_") + item_use_end_name(end), step.variant);
+        }
+        return step.pose_after ? Pokemon::outcome_ok(*step.pose_after) : Pokemon::outcome_ok();
     }
     const Pokemon::Pose patch = state.pose;
     ConsoleCaptureActions capture(env.console, env.context, env.language, [&]{

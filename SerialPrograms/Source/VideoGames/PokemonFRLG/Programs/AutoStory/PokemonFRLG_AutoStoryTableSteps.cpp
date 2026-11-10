@@ -5,6 +5,7 @@
  */
 
 #include "PokemonFRLG_AutoStoryHideout.h"
+#include "PokemonFRLG_AutoStoryItemUse.h"
 #include "PokemonFRLG_AutoStoryTableSteps.h"
 
 namespace PokemonAutomation{
@@ -164,6 +165,19 @@ StoryStep poster_switch(std::string name, std::string why){
 StoryStep lift_floor(std::string name, std::string_view from, std::string_view to, std::string why){
     StoryStep step = make(StoryStepKind::GAME, std::move(name), std::move(why));
     step.variant = lift_floor_variant(from, to);
+    return step;
+}
+
+StoryStep use_item(std::string name, std::string_view item, std::string why, std::optional<Pokemon::Pose> pose_after){
+    StoryStep step = make(StoryStepKind::GAME, std::move(name), std::move(why));
+    step.variant = use_item_variant(item);
+    step.pose_after = std::move(pose_after);
+    return step;
+}
+
+StoryStep ride_bike(std::string name, std::string why){
+    StoryStep step = make(StoryStepKind::GAME, std::move(name), std::move(why));
+    step.variant = RIDE_BIKE_VARIANT;
     return step;
 }
 

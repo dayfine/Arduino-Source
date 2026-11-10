@@ -101,7 +101,11 @@ public:
         if (!poster.empty()){
             return poster;
         }
-        return lift_on_sim();
+        const std::string lift = lift_on_sim();
+        if (!lift.empty()){
+            return lift;
+        }
+        return true;
     }
 
 private:
@@ -162,8 +166,14 @@ const LiftCase LIFT_CASES[] = {
         .expectation = {.presses = MenuPresses{Pokemon::Direction::SOUTH, 1}},
     },
     {
-        .input = {.name = "B4F to B1F: two up", .variant = "lift_floor B4F B1F"},
-        .expectation = {.presses = MenuPresses{Pokemon::Direction::NORTH, 2}},
+        //  Down past EXIT wraps to B1F: as few presses as up, and down is
+        //  taken.
+        .input = {.name = "B4F to B1F: two down past EXIT", .variant = "lift_floor B4F B1F"},
+        .expectation = {.presses = MenuPresses{Pokemon::Direction::SOUTH, 2}},
+    },
+    {
+        .input = {.name = "B4F to B2F: one up", .variant = "lift_floor B4F B2F"},
+        .expectation = {.presses = MenuPresses{Pokemon::Direction::NORTH, 1}},
     },
     {
         //  B1F up past the top wraps to EXIT, then B4F: two up equal two
