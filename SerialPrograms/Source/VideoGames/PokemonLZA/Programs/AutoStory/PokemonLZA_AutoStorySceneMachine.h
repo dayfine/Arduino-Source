@@ -8,8 +8,11 @@
  *  picks one state, the state takes one step, and each change of state is
  *  logged with the look's events. The player has control when the party
  *  bar or, in the tutorial (which has no party bar), the controls hint
- *  (CONTROLS_HINT_READING) holds a second. The advance chevron
- *  (ADVANCE_ARROW_READING) is text to press on, with or without a box.
+ *  (CONTROLS_HINT_READING) holds a second. A main mission's banner
+ *  (MISSION_BANNER_READING) on two looks in a row ends the scene too: it
+ *  shows as the scene hands over control, and the machine then waits for
+ *  it to go. The advance chevron (ADVANCE_ARROW_READING) is text to press
+ *  on, with or without a box.
  *
  *  The walks between the scenes are PokemonLZA_AutoStoryGuardedWalks.h.
  *
@@ -60,6 +63,8 @@ enum class SceneScreen{
     FADE_WHITE,     //  wait until it lifts
     CHOICE,         //  A: the top choice
     DIALOG,         //  the text button: a box, or the advance chevron
+    MISSION_BANNER, //  terminal: a main mission's banner, on a second look
+    BANNER_SHOWING, //  wait: the banner, on its first look
     CAN_MOVE,       //  terminal: the party bar, held a second
     PARTY_BAR,      //  wait: the party bar, not held a second yet
     CONTROLS_HINT,  //  terminal: the tutorial's controls hint, held a second
@@ -116,6 +121,8 @@ private:
     std::optional<WallClock> m_last_blind_press;
     std::optional<WallClock> m_party_bar_since;
     std::optional<WallClock> m_hint_since;
+    //  The looks in a row with the mission banner.
+    size_t m_banner_looks = 0;
 
     //  classify() past the fades, boxes and the goal.
     SceneScreen classify_open(const ScreenObservation& look) const;
@@ -123,7 +130,8 @@ private:
 
 
 //  Presses through a scene until `config.goal` shows (OVERWORLD: the party
-//  bar or the controls hint held a second), on run_screen_machine_on_observations().
+//  bar or the controls hint held a second, or the mission banner on two
+//  looks, then up to 10 s for the banner to go), on run_screen_machine_on_observations().
 //  `label` names its log lines ("[PLZA opening] dialog: text box"). Fails as
 //  "scene_quiet" on the quiet end, "scene_timeout" when `timeout` passes (by the looks' time),
 //  "scene_unknown" on a look no state takes and "scene_stuck" on a state

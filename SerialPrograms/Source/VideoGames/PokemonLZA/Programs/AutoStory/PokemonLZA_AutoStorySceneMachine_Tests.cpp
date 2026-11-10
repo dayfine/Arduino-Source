@@ -37,6 +37,8 @@ struct Read{
     bool hint = false;
     //  The advance chevron (ADVANCE_ARROW_READING) shows.
     bool arrow = false;
+    //  The mission banner (MISSION_BANNER_READING) shows.
+    bool banner = false;
 };
 
 //  Feeds `reads` to a timeline as the machine does (classify, then record
@@ -55,6 +57,9 @@ UnitTestResult check_reads(const SceneMachineConfig& config, const std::vector<R
         }
         if (read.arrow){
             look.readings[std::string(ADVANCE_ARROW_READING)] = 1;
+        }
+        if (read.banner){
+            look.readings[std::string(MISSION_BANNER_READING)] = 1;
         }
         const SceneScreen got = timeline.classify(look);
         if (got != read.expected){
@@ -160,6 +165,34 @@ UnitTestResult test_ad_subtitles(Logger&){
         {14200ms, NOTHING, false, SceneScreen::HINT_SHOWING, true},
         {15000ms, NOTHING, true, SceneScreen::HINT_SHOWING, true},
         {15300ms, NOTHING, true, SceneScreen::CONTROLS_HINT, true},
+    });
+}
+
+//  01.01's arrival (run 3, 2026-11-10 13:49): the last box, then "MAIN
+//  MISSION 01" over the scene. The banner's first look waits, its second
+//  ends the scene; a box between the two starts the count again. No blind
+//  A while it shows.
+UnitTestResult test_mission_banner_ends(Logger&){
+    return check_reads(arrival_config(), {
+        {0ms, DIALOG, false, SceneScreen::DIALOG},
+        {500ms, NOTHING, false, SceneScreen::SCENE_MOVING},
+        {6000ms, NOTHING, false, SceneScreen::BANNER_SHOWING, false, false, true},
+        {6250ms, DIALOG, false, SceneScreen::DIALOG, false, false, true},
+        {6500ms, NOTHING, false, SceneScreen::BANNER_SHOWING, false, false, true},
+        {12000ms, NOTHING, true, SceneScreen::MISSION_BANNER, false, false, true},
+    });
+}
+
+//  The banner ends only a scene after the overworld: B to a choice
+//  presses on past it.
+UnitTestResult test_mission_banner_only_overworld(Logger&){
+    SceneMachineConfig config;
+    config.goal = SceneMashGoal::CHOICE;
+    config.text_button = BUTTON_B;
+    return check_reads(config, {
+        {0ms, NOTHING, false, SceneScreen::SCENE_MOVING, false, false, true},
+        {500ms, NOTHING, false, SceneScreen::SCENE_MOVING, false, false, true},
+        {1000ms, CHOICE, false, SceneScreen::GOAL_CHOICE},
     });
 }
 
@@ -330,6 +363,14 @@ const SceneMachineCase SCENE_MACHINE_CASES[] = {
     },
     {
         .input = {"the ad's subtitles: A at the chevron, blind A, none at the hint", test_ad_subtitles},
+        .expectation = {},
+    },
+    {
+        .input = {"the mission banner on two looks ends the scene", test_mission_banner_ends},
+        .expectation = {},
+    },
+    {
+        .input = {"the mission banner does not end a mash to a choice", test_mission_banner_only_overworld},
         .expectation = {},
     },
     {

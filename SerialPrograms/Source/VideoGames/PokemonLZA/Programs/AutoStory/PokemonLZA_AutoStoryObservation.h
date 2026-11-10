@@ -38,6 +38,9 @@ constexpr std::string_view CONTROLS_HINT_READING = "scene.controls_hint";
 //  The reading set to 1 while the "press A to go on" chevron shows, at a
 //  dialogue box or at boxless subtitles (AdvanceArrowDetector).
 constexpr std::string_view ADVANCE_ARROW_READING = "scene.advance_arrow";
+//  The reading set to 1 while a main mission's banner ("MAIN MISSION 01"
+//  over a yellow bar with the mission's name) shows (MainMissionBannerDetector).
+constexpr std::string_view MISSION_BANNER_READING = "scene.mission_banner";
 
 //  PlzaScreenObserver's events as one look for the story engine:
 //  DIALOG_BOX is TEXT_BOX; CHOICE_BOX adds TEXT_BOX;

@@ -298,6 +298,37 @@ UnitTestResult test_arrival_presses_through_the_ad(CancellableScope& scope){
     return true;
 }
 
+//  01.01's arrival (run 3, 2026-11-10 13:49): A at the last box, then the
+//  "MAIN MISSION 01" banner on two looks ends the step, which returns
+//  once the banner has gone; with the banner never going, it returns
+//  after 10 s all the same. No press at the banner.
+UnitTestResult test_arrival_ends_on_mission_banner(CancellableScope& scope){
+    for (const bool goes : {true, false}){
+        std::vector<Observation<ZonePose>> looks{
+            look_at(0ms, {EngineEvent::TEXT_BOX}),
+            look_at(500ms),
+            with_reading(look_at(1000ms), MISSION_BANNER_READING),
+            with_reading(look_at(1250ms), MISSION_BANNER_READING),
+            with_reading(look_at(1500ms), MISSION_BANNER_READING),
+        };
+        if (goes){
+            looks.push_back(look_at(4000ms));
+        }
+        FakeBackend backend = fake_plza(std::move(looks), scope);
+        const Pokemon::StoryEngineReport report = run_plza(backend, step_of("01.01", "arrival_scenes"));
+        if (report.verdict != Pokemon::CheckpointVerdict::PASSED){
+            return "Expected the scenes to end on the mission banner: " + to_string(report.run.failure);
+        }
+        const auto presses = std::count_if(backend.inputs().begin(), backend.inputs().end(), [](const std::string& input){
+            return input.starts_with("press");
+        });
+        if (presses != 1){
+            return "Expected one A, at the box, got [" + joined(backend.inputs()) + "].";
+        }
+    }
+    return true;
+}
+
 //  01.01's arrival scenes: a minute with nothing busy and no controls hint
 //  (a text-free cutscene, or control the detectors miss) fails the step
 //  instead of taking it for control.
@@ -433,6 +464,7 @@ const EngineTestCase ENGINE_TEST_CASES[] = {
     {.input = {"01.01 text_to_choice: B through the text, done at the choice", test_text_to_choice}, .expectation = {}},
     {.input = {"01.01 arrival_scenes: A through text and choice, done on the controls hint", test_arrival_ends_on_controls_hint}, .expectation = {}},
     {.input = {"01.01 arrival_scenes: A through the ad's boxless subtitles", test_arrival_presses_through_the_ad}, .expectation = {}},
+    {.input = {"01.01 arrival_scenes: done on the mission banner once it has gone", test_arrival_ends_on_mission_banner}, .expectation = {}},
     {.input = {"01.01 arrival_scenes: a quiet minute without the hint fails", test_arrival_quiet_fails}, .expectation = {}},
     {.input = {"face_heading: turns by the minimap's heading", test_face_heading}, .expectation = {}},
     {.input = {"01.01 platform_to_plaza: no walk without free control", test_walk_needs_free_control}, .expectation = {}},
