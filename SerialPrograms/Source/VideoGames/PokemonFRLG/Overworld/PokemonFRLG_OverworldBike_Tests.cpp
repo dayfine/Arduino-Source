@@ -34,7 +34,7 @@ struct BikeInput{
     UnitTestResult (*body)();
 };
 struct BikeExpectation{
-    const char* description;
+    std::string description;
 };
 struct BikeCase{
     BikeInput input;
@@ -180,7 +180,6 @@ UnitTestResult test_select_onto_bike(){
         int presses = 0;
         calls.press_select = [&]{ presses++; sim.use_field(SimField::BIKE_SELECT); };
         calls.riding = [&]{ return sim.state().on_bike; };
-        calls.log = [](const std::string&){};
         const bool riding = OverworldWalkSteps::select_onto_bike(calls);
         if (riding != registered || presses != (registered ? 1 : 2)){
             return std::format(

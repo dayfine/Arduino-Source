@@ -180,7 +180,6 @@ bool gets_on_bike(const RouteStep& step, MoveSpeed speed, bool riding);
 struct BikeSelectCalls{
     std::function<void()> press_select;
     std::function<bool()> riding;
-    std::function<void(const std::string& message)> log;
 };
 //  Gets on the registered Bicycle with SELECT, checks the player rides,
 //  and presses again once if not. Returns whether they ride.

@@ -81,7 +81,6 @@ StepOutcome OverworldSimWalker::walk(const RouteStep& step, std::optional<Direct
         BikeSelectCalls select;
         select.press_select = [&]{ m_sim.use_field(SimField::BIKE_SELECT); };
         select.riding = [&]{ return m_sim.state().on_bike; };
-        select.log = [&](const std::string& message){ m_log.push_back(message); };
         if (!select_onto_bike(select)){
             fail("get_on_bike(): not on the Bicycle after SELECT twice. Is it registered?");
         }

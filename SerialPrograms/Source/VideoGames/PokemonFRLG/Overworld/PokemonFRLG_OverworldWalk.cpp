@@ -226,7 +226,6 @@ bool select_onto_bike(const BikeSelectCalls& calls){
         if (calls.riding()){
             return true;
         }
-        calls.log(std::format("Bike: not riding after SELECT press {}.", press));
     }
     return false;
 }
@@ -248,9 +247,10 @@ void get_on_bike(ConsoleHandle& console, ProControllerContext& context){
     calls.riding = [&]{
         context.wait_for_all_requests();
         VideoSnapshot screen = console.video().snapshot();
-        return screen && screen_shows_riding(*screen.frame);
+        const bool riding = screen && screen_shows_riding(*screen.frame);
+        console.log(riding ? "Bike: riding." : "Bike: not riding after SELECT.", riding ? COLOR_BLACK : COLOR_ORANGE);
+        return riding;
     };
-    calls.log = [&](const std::string& message){ console.log(message, COLOR_ORANGE); };
     console.log("Bike: SELECT (MINUS) onto the Bicycle.");
     if (!select_onto_bike(calls)){
         OperationFailedExceptionWithScreenshot::fire(
