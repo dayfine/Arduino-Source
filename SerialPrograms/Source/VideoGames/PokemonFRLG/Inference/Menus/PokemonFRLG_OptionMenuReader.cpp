@@ -44,8 +44,8 @@ const std::vector<OCR::TextColorRange>& VALUE_TEXT_FILTERS(){
 }
 
 struct OptionValue{
-    const char* slug;
-    const char* english;
+    std::string_view slug;
+    std::string_view english;
 };
 
 //  One matcher per item, so a value is only matched against its own row's.
@@ -75,8 +75,8 @@ private:
         JsonObject english;
         for (const OptionValue& value : values){
             JsonArray names;
-            names.push_back(value.english);
-            english[value.slug] = std::move(names);
+            names.push_back(std::string(value.english));
+            english[std::string(value.slug)] = std::move(names);
         }
         JsonObject json;
         json["eng"] = std::move(english);
@@ -97,14 +97,14 @@ std::vector<std::string> slugs_of(const std::vector<OptionValue>& values){
 //  An item's name, its row (option_menu.c MENUITEM_*), its values and their
 //  matcher.
 struct OptionItem{
-    OptionItem(const char* name, size_t row, const std::vector<OptionValue>& values, double max_log10p)
+    OptionItem(std::string_view name, size_t row, const std::vector<OptionValue>& values, double max_log10p)
         : name(name)
         , row(row)
         , slugs(slugs_of(values))
         , matcher(values, max_log10p)
     {}
 
-    const char* name;
+    std::string_view name;
     size_t row;
     std::vector<std::string> slugs;
     OptionValueMatcher matcher;
@@ -130,7 +130,7 @@ const OptionItem& option_item(OptionMenuItem item){
 } // namespace
 
 
-const char* option_menu_name(OptionMenuItem item){
+std::string_view option_menu_name(OptionMenuItem item){
     return option_item(item).name;
 }
 

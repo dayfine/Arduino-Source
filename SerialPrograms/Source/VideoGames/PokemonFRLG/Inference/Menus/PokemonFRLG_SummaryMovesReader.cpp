@@ -5,6 +5,7 @@
  */
 
 #include <format>
+#include <string_view>
 #include <utility>
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/Json/JsonArray.h"
@@ -35,17 +36,24 @@ namespace{
 constexpr double ROW_STEP = 28;
 constexpr double NAME_TOP = 22;
 constexpr double PP_TOP = 33;
+//  A move's type badge, x 123 to 154 and y 22 to 33 on the top row: an
+//  empty slot shows the pane's light background there instead.
+constexpr double BADGE_LEFT = 125;
+constexpr double BADGE_TOP = 24;
+constexpr double BADGE_WIDTH = 27;
+constexpr double BADGE_HEIGHT = 8;
 //  The cursor box's left edge, x 120 to 121, from y 20 to 44 on the top
 //  row: (255, 72, 0).
 constexpr double CURSOR_EDGE_LEFT = 120;
 constexpr double CURSOR_EDGE_TOP = 24;
 constexpr double CURSOR_EDGE_HEIGHT = 16;
 
-//  The level-up moves of Squirtle's and Magikarp's lines (pret
+//  The level-up moves of Squirtle's, Magikarp's and Oddish's lines (pret
 //  pokefirered src/data/pokemon/level_up_learnsets.h), then the TMs'
 //  and HMs' moves not among them (src/data/items.h; Hyper Beam, Protect
-//  and Rain Dance are above), as the game writes them.
-constexpr std::pair<const char*, const char*> MOVE_NAMES[] = {
+//  and Rain Dance are above), as the game writes them
+//  (src/data/text/move_names.h).
+constexpr std::pair<std::string_view, std::string_view> MOVE_NAMES[] = {
     {"tackle", "Tackle"},
     {"tail-whip", "Tail Whip"},
     {"bubble", "Bubble"},
@@ -64,6 +72,17 @@ constexpr std::pair<const char*, const char*> MOVE_NAMES[] = {
     {"leer", "Leer"},
     {"twister", "Twister"},
     {"dragon-dance", "Dragon Dance"},
+    {"absorb", "Absorb"},
+    {"sweet-scent", "Sweet Scent"},
+    {"poison-powder", "PoisonPowder"},
+    {"stun-spore", "Stun Spore"},
+    {"sleep-powder", "Sleep Powder"},
+    {"acid", "Acid"},
+    {"moonlight", "Moonlight"},
+    {"petal-dance", "Petal Dance"},
+    {"aromatherapy", "Aromatherapy"},
+    {"mega-drain", "Mega Drain"},
+    {"magical-leaf", "Magical Leaf"},
     {"hyper-beam", "Hyper Beam"},
     {"focus-punch", "Focus Punch"},
     {"dragon-claw", "Dragon Claw"},
@@ -152,8 +171,8 @@ private:
         JsonObject english;
         for (const auto& [slug, name] : MOVE_NAMES){
             JsonArray names;
-            names.push_back(name);
-            english[slug] = std::move(names);
+            names.push_back(std::string(name));
+            english[std::string(slug)] = std::move(names);
         }
         JsonObject json;
         json["eng"] = std::move(english);
@@ -172,15 +191,32 @@ bool cursor_red(uint32_t pixel){
     return r > 200 && g < 140 && b < 90;
 }
 
+//  Whether row `row` holds a move: its type badge shows, mostly darker
+//  than the pane's light background.
+bool row_has_move(const ImageViewRGB32& screen, size_t row){
+    const ImageFloatBox box(
+        BADGE_LEFT / 240, (BADGE_TOP + ROW_STEP * double(row)) / 160, BADGE_WIDTH / 240, BADGE_HEIGHT / 160
+    );
+    const ImageViewRGB32 badge = extract_box_reference(game_box(screen), box);
+    size_t dark = 0;
+    for (size_t y = 0; y < badge.height(); y++){
+        for (size_t x = 0; x < badge.width(); x++){
+            const uint32_t pixel = badge.pixel(x, y);
+            dark += ((pixel >> 16) & 0xff) + ((pixel >> 8) & 0xff) + (pixel & 0xff) < 600 ? 1 : 0;
+        }
+    }
+    //  Measured: a third to three quarters of a badge; none of an empty slot.
+    return dark * 5 > badge.width() * badge.height();
+}
+
 int read_pp(Logger& logger, const ImageViewRGB32& screen, const ImageFloatBox& box){
     const int pp = read_digits_waterfill_template(logger, extract_box_reference(game_box(screen), box), DigitTemplateType::StatBox);
     //  A move has at most 64 PP (40 with three PP Ups).
     return pp >= 0 && pp <= 64 ? pp : -1;
 }
 
-} // namespace
-
-
+//  Where row `row` (from 0) shows its move's name, its current PP and its
+//  full PP, as fractions of the game screen.
 ImageFloatBox summary_move_name_box(size_t row){
     return ImageFloatBox(161.0 / 240, (NAME_TOP + ROW_STEP * double(row)) / 160, 76.0 / 240, 12.0 / 160);
 }
@@ -190,6 +226,9 @@ ImageFloatBox summary_move_pp_box(size_t row){
 ImageFloatBox summary_move_max_pp_box(size_t row){
     return ImageFloatBox(224.0 / 240, (PP_TOP + ROW_STEP * double(row)) / 160, 15.0 / 240, 11.0 / 160);
 }
+
+} // namespace
+
 
 std::string read_summary_move_name(Logger& logger, Language language, const ImageViewRGB32& screen, size_t row){
     return read_move_name(logger, language, extract_box_reference(game_box(screen), summary_move_name_box(row)));
@@ -202,12 +241,12 @@ std::string read_move_name(Logger& logger, Language language, const ImageViewRGB
 std::vector<SummaryMove> read_summary_moves(Logger& logger, Language language, const ImageViewRGB32& screen){
     std::vector<SummaryMove> moves;
     for (size_t row = 0; row < SUMMARY_MOVE_ROWS - 1; row++){
-        std::string move = read_summary_move_name(logger, language, screen, row);
-        if (move.empty()){
+        //  The game packs the moves to the top: the first empty slot ends them.
+        if (!row_has_move(screen, row)){
             break;
         }
         moves.push_back(SummaryMove{
-            .move = std::move(move),
+            .move = read_summary_move_name(logger, language, screen, row),
             .pp = read_pp(logger, screen, summary_move_pp_box(row)),
             .max_pp = read_pp(logger, screen, summary_move_max_pp_box(row)),
         });
@@ -247,7 +286,8 @@ namespace{
 //  A capture of a summary page, named <anything>_<language code>.png. Its
 //  golden file holds the page shown; on the first page the species and the
 //  level; on KNOWN MOVES, or a move being picked, each move's name, PP and
-//  full PP, then the cursor's row (from 1) or "none".
+//  full PP ("unknown" for a move with no name read), then the cursor's
+//  row (from 1) or "none".
 class Test_SummaryScreen : public ImageUnitTest{
 public:
     Test_SummaryScreen(const std::string& image)
@@ -285,7 +325,7 @@ public:
             const std::vector<SummaryMove> known = read_summary_moves(logger, language, screen);
             for (size_t c = 0; c < known.size(); c++){
                 labels.push_back(std::format("move {}", c + 1));
-                values.push_back(known[c].move);
+                values.push_back(known[c].move.empty() ? "unknown" : known[c].move);
                 labels.push_back(std::format("move {} PP", c + 1));
                 values.push_back(std::to_string(known[c].pp));
                 labels.push_back(std::format("move {} full PP", c + 1));
@@ -311,6 +351,9 @@ void add_tests_SummaryMovesReader(UnitTestDatabase& database){
     database.add<Test_SummaryScreen>("PokemonFRLG/SummaryMovesReader/MoveDetail_eng.png");
     //  The party menu: no summary page.
     database.add<Test_SummaryScreen>("PokemonFRLG/SummaryMovesReader/PartyMenu_eng.png");
+    //  FireRed on console B, 2026-11-03: the Oddish caught for Cut, Lv12, with
+    //  ABSORB, SWEET SCENT and two empty slots.
+    database.add<Test_SummaryScreen>("PokemonFRLG/SummaryMovesReader/Oddish_KnownMoves_eng.png");
 }
 
 

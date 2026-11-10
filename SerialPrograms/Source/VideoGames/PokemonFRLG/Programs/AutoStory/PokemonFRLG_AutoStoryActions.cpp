@@ -697,7 +697,7 @@ static void set_option(
     ConsoleHandle& console, ProControllerContext& context,
     OptionMenuItem item, const std::string& target, Language language
 ){
-    const char* name = option_menu_name(item);
+    const std::string_view name = option_menu_name(item);
     const std::string current = read_option(console, context, item, language);
     const std::optional<size_t> presses = option_right_presses(option_menu_values(item), current, target);
     if (!presses){
