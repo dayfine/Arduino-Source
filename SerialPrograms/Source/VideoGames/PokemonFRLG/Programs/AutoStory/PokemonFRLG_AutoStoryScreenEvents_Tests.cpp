@@ -30,6 +30,9 @@ struct ScreenEventsInput{
     std::string name;
     //  The frame's colour; 0 for no frame.
     uint32_t color;
+    //  The colour of a square in the middle of the frame, around the
+    //  player; 0 for none.
+    uint32_t middle = 0;
 };
 
 struct ScreenEventsExpectation{
@@ -53,6 +56,13 @@ public:
         if (m_case.input.color != 0){
             ImageRGB32 image(1920, 1080);
             image.fill(m_case.input.color);
+            if (m_case.input.middle != 0){
+                for (size_t y = 380; y < 700; y++){
+                    for (size_t x = 800; x < 1120; x++){
+                        image.pixel(x, y) = m_case.input.middle;
+                    }
+                }
+            }
             frame = VideoSnapshot(std::move(image), WallClock());
         }
         FrlgScreenObserver observer;
@@ -82,6 +92,12 @@ const ScreenEventsCase SCREEN_EVENTS_CASES[] = {
     {
         .input = {"a white screen is a white fade only", 0xffffffff},
         .expectation = {{ScreenEvent::FADE_WHITE}},
+    },
+    {
+        //  Rock Tunnel without Flash (console B, 2026-11-09, 00.28): its
+        //  black read as a battle's text box before each step.
+        .input = {"a dark cave, black but for a lit middle, shows nothing", 0xff000000, 0xff8c7c64},
+        .expectation = {{}},
     },
 };
 

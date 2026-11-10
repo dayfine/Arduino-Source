@@ -23,6 +23,7 @@
 #include <functional>
 #include <map>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -47,6 +48,9 @@ struct StoryAction{
     //  The screen event the action ends on ("fade", "dialog"). Declared for
     //  the event-driven waits to come; nothing reads it yet.
     std::string waits_for = {};
+    //  The args its steps may carry (StoryStep::args); a step with any
+    //  other, or without a required one, fails lint_story_checkpoint().
+    std::span<const StoryArgSpec> args = {};
 };
 
 
@@ -75,7 +79,8 @@ private:
 };
 
 //  The steps of `data` that `table` has no action for, as
-//  "<checkpoint> step <n> <name>: no action for GAME 'bill'".
+//  "<checkpoint> step <n> <name>: no action for GAME 'bill'", or whose args
+//  don't fit their action's, as "... missing argument \"budget\" for GAME 'mart'".
 std::vector<std::string> lint_story_checkpoint(const StoryCheckpoint& data, const StoryActionTable& table);
 
 
@@ -96,6 +101,10 @@ public:
     //  A look before the step, or after it failed, found an interrupt and
     //  cleared it or failed to (`check`): e.g. log it.
     virtual void on_interrupt(const StoryStep& step, const InterruptCheck& check);
+    //  How the screen looked when the look before the step (or after it
+    //  failed) ended, interrupt or not: e.g. log it, so a run log shows
+    //  whether the scene before had ended before the step's first input.
+    virtual void on_screen(const StoryStep& step, const ScreenSettle& screen);
 };
 
 
@@ -105,10 +114,10 @@ public:
     //  `table` and `guard` must outlive the executor.
     TableExecutor(const StoryActionTable& table, StepGuard& guard);
 
-    //  The table's action for the step; with none, the kind's virtual
-    //  (StoryStepExecutor::run()), so a game can move to the table one
-    //  kind at a time. An OperationFailedException from either is the
-    //  failed Outcome "operation_failed", unless the guard stops on it.
+    //  The table's action for the step (run_action()); with none, the
+    //  step is unsupported (unsupported_step()). An OperationFailedException
+    //  from the action is the failed Outcome "operation_failed", unless the
+    //  guard stops on it.
     //  With interrupts set, each step first clears what stopped the player
     //  since the step before, and a failed step that an interrupt explains
     //  runs again once it is cleared.
@@ -121,8 +130,9 @@ public:
     }
 
 protected:
-    //  The table's action for the step, or the kind's virtual: what run()
-    //  runs once the screen is clear. A binding may wrap it.
+    //  The table's action for the step, or unsupported_step() with none:
+    //  what run() runs once the screen is clear. A binding may wrap it, or
+    //  do the kinds its table does not have yet.
     virtual Outcome run_action(RunState& state, const StoryStep& step);
 
 private:

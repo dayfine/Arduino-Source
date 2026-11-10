@@ -34,6 +34,7 @@
 #include <string>
 #include <vector>
 #include "Common/Cpp/MoveOnlyFunction.h"
+#include "Pokemon_StoryLog.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -114,6 +115,13 @@ Outcome outcome_unchanged();
 Outcome outcome_failed(std::string failure, std::string detail = "");
 //  "probe_exhausted: 4 rows": the failure and its detail, if any.
 std::string to_string(const Outcome& outcome);
+
+//  The failure of a step that found the Switch's HOME menu instead of the
+//  game. Nothing in the story can answer it, as every press goes to the
+//  console's menus: no recovery runs and no reload, the run stops.
+constexpr const char* GAME_NOT_RUNNING = "game_not_running";
+//  GAME_NOT_RUNNING, saying so for the run log.
+Outcome outcome_game_not_running();
 
 
 // Callable action executed for a story event.
@@ -229,11 +237,6 @@ struct CheckpointReport{
 // Callback receiver for story event execution log messages.
 using EventLogger = MoveOnlyFunction<void(const std::string& line)>;
 
-
-//  One log line, in a format the lab watcher parses:
-//      [Event] 00.04/3 talk_mom: start
-//      [Event] 00.04/3 talk_mom: failed: expect_failed: has_parcel
-std::string event_log_line(const std::string& checkpoint, size_t number, const std::string& event, const std::string& status);
 
 //  Problems an author should fix before running: unnamed or empty events,
 //  missing actions, recoveries out of escalation order.

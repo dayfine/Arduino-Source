@@ -25,6 +25,7 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
 
+using namespace MovementMechanics;
 using namespace OverworldWalkSteps;
 
 
@@ -47,11 +48,30 @@ Pokemon::LegSpec leg_spec(const RouteStep& step, MoveSpeed speed){
 }
 
 //  How one step's walk went: if an open leg stopped part-way, how far the
-//  timing puts the player along it; and when its hold started.
+//  timing puts the player along it; when its hold started; and whether the
+//  screen was a dark cave's then (dark_cave_screen()).
 struct StepWalk{
     std::optional<WalkedTiles> stopped;
     WallClock hold_start;
+    bool dark = false;
 };
+
+//  stop_tiles(), logged when the leg started in a dark cave.
+WalkedTiles logged_stop_tiles(ConsoleHandle& console, const RouteStep& step, bool dark, WalkedTiles timed){
+    if (dark){
+        console.log(std::format(
+            "Route: {} started in a dark cave: the stop's timing ({} to {} tiles in) isn't trusted.",
+            to_string(step), timed.min, timed.max
+        ), COLOR_ORANGE);
+    }
+    return stop_tiles(step, timed, dark);
+}
+
+//  Whether the screen shows a dark cave's overworld (dark_cave_screen()).
+bool on_dark_cave(ConsoleHandle& console){
+    const VideoSnapshot screen = console.video().snapshot();
+    return screen && dark_cave_screen(*screen.frame);
+}
 
 //  One step of a route, for a player facing `facing`.
 StepWalk walk_step(
@@ -59,19 +79,20 @@ StepWalk walk_step(
     const RouteStep& step, std::optional<Direction> facing,
     const OverworldInterruptSet& interrupts, MoveSpeed speed
 ){
-    StepWalk out{std::nullopt, current_time()};
+    StepWalk out{std::nullopt, current_time(), false};
     switch (step.action){
     case RouteAction::WALK:{
         //  Turning first, with a tap, makes the hold start from a standstill
         //  facing the right way: holding through a turn lost a tile on the
         //  console, while holds from a standstill were exact over 15 tiles.
         if (facing != step.direction){
-            pbf_press_dpad(context, dpad(step.direction), TURN_TAP, TURN_SETTLE);
+            turn_to(console, context, step.direction);
         }
         if (const std::string note = speed_note(step, speed); !note.empty()){
             console.log(note);
         }
         context.wait_for_all_requests();
+        out.dark = on_dark_cave(console);
         out.hold_start = current_time();
         BlackScreenOverWatcher arrival(COLOR_RED);
         Pokemon::WatchAlong fade(arrival);
@@ -80,7 +101,7 @@ StepWalk walk_step(
             leg_spec(step, speed), MAX_INTERRUPTIONS_PER_LEG, warp_hold_watchers(step, fade)
         );
         if (result.stopped){
-            out.stopped = walked_near(step, result.tiles, tile_time(step, speed));
+            out.stopped = logged_stop_tiles(console, step, out.dark, walked_near(step, result.tiles, tile_time(step, speed)));
             return out;
         }
         if (step.warps){
@@ -186,15 +207,20 @@ StepOutcome walk_and_watch(
     if (done){
         return StepOutcome{};
     }
-    return StepOutcome{.end = StepEnd::LATE, .walked = recorder.place(console, step, tile_time(step, speed), walked.hold_start)};
+    std::optional<WalkedTiles> placed = recorder.place(console, step, tile_time(step, speed), walked.hold_start);
+    if (walked.dark && step.action == RouteAction::WALK && !step.to_wall){
+        placed = logged_stop_tiles(console, step, true, placed.value_or(whole_leg(step)));
+    }
+    return StepOutcome{.end = StepEnd::LATE, .walked = placed};
 }
 
-//  Holds on along `step`, stopped part-way off the grass, until its warp's
-//  fade. Off the grass only a message stops a leg (a trainer who saw the
-//  player, a Repel wearing off), and the player then stands on the leg's
-//  line, so holding on reaches the warp however far they got (console B,
-//  2026-11-01: Camper Liam stopped "south 9 (warp)" out of Pewter Gym).
-//  After a trainer the player faces them, so this turns first.
+//  Holds on along `step`, stopped part-way off the grass or by a wild
+//  battle where no trainer may see the player, until its warp's fade. Off
+//  the grass only a message stops a leg (a trainer who saw the player, a
+//  Repel wearing off), and the player then stands on the leg's line, as
+//  after a wild battle, so holding on reaches the warp however far they
+//  got (console B, 2026-11-01: Camper Liam stopped "south 9 (warp)" out of
+//  Pewter Gym). After a trainer the player faces them, so this turns first.
 void hold_to_warp(
     ConsoleHandle& console, ProControllerContext& context,
     const RouteStep& step, const OverworldInterrupts& interrupts, MoveSpeed speed
@@ -306,7 +332,7 @@ void walk_overworld_route_with_recovery(
         return walk_and_watch(console, context, step, from_facing, interrupts, speed);
     };
     calls.hold_to_warp = [&](const RouteStep& step){
-        hold_to_warp(console, context, step, interrupts.other, speed);
+        hold_to_warp(console, context, step, step.wild ? interrupts.wild : interrupts.other, speed);
     };
     calls.log = [&](const std::string& message){ console.log(message, COLOR_ORANGE); };
     calls.fail = [&](const std::string& message){

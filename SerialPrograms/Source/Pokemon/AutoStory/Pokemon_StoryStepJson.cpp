@@ -1,19 +1,32 @@
 /*  Story Step JSON
+ *
  *  From: https://github.com/PokemonAutomation/
+ *
  */
+
 #include <array>
 #include <format>
 #include <initializer_list>
 #include <limits>
+#include <memory>
 #include <set>
+#include <span>
 #include <utility>
+#include <variant>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
+#include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "Pokemon_StoryStepJson.h"
+
 namespace PokemonAutomation{
 namespace Pokemon{
+
+
 namespace{
+
+
+//  The wire names of the step kinds.
 constexpr std::array<std::pair<StoryStepKind, std::string_view>, 15> KINDS{{
     {StoryStepKind::NEW_GAME, "new_game"},
     {StoryStepKind::OPTIONS, "options"},
@@ -31,6 +44,8 @@ constexpr std::array<std::pair<StoryStepKind, std::string_view>, 15> KINDS{{
     {StoryStepKind::READY, "ready"},
     {StoryStepKind::GAME, "game_action"},
 }};
+
+//  The wire names of the pose certainties.
 constexpr std::array<std::pair<PoseCertainty, std::string_view>, 5> CERTAINTIES{{
     {PoseCertainty::TILE, "tile"},
     {PoseCertainty::COLUMN, "column"},
@@ -38,6 +53,8 @@ constexpr std::array<std::pair<PoseCertainty, std::string_view>, 5> CERTAINTIES{
     {PoseCertainty::SET, "set"},
     {PoseCertainty::UNKNOWN, "unknown"},
 }};
+
+//  The wire names of the directions.
 constexpr std::array<std::pair<Direction, std::string_view>, 4> DIRECTIONS{{
     {Direction::NORTH, "north"},
     {Direction::EAST, "east"},
@@ -45,6 +62,8 @@ constexpr std::array<std::pair<Direction, std::string_view>, 4> DIRECTIONS{{
     {Direction::WEST, "west"},
 }};
 
+
+//  `value` as an object with no field outside `keys`.
 const JsonObject& fields(const JsonValue& value, std::initializer_list<std::string_view> keys, std::string_view source){
     const JsonObject& object = value.to_object_throw(std::string(source));
     for (const auto& [key, unused] : object){
@@ -102,7 +121,7 @@ JsonValue count_json(size_t value){
     return (uint64_t)value;
 }
 
-JsonArray strings_json(const std::vector<std::string>& strings){
+JsonArray strings_json(std::span<const std::string> strings){
     JsonArray result;
     for (const std::string& value : strings){
         result.push_back(value);
@@ -118,7 +137,7 @@ std::vector<std::string> read_strings(const JsonValue& value, std::string_view s
     return result;
 }
 
-JsonArray legs_json(const std::vector<StoryLeg>& legs){
+JsonArray legs_json(std::span<const StoryLeg> legs){
     JsonArray result;
     for (const StoryLeg& leg : legs){
         JsonObject item;
@@ -139,7 +158,7 @@ std::vector<StoryLeg> read_legs(const JsonValue& value, std::string_view source)
     return result;
 }
 
-JsonArray items_json(const std::vector<StoryItem>& items){
+JsonArray items_json(std::span<const StoryItem> items){
     JsonArray result;
     for (const StoryItem& item : items){
         JsonObject row;
@@ -158,6 +177,33 @@ std::vector<StoryItem> read_items(const JsonValue& value, std::string_view sourc
     }
     return result;
 }
+
+JsonObject args_json(const StoryArgs& args){
+    JsonObject result;
+    for (const auto& [key, value] : args){
+        std::visit([&](const auto& held){ result[key] = held; }, value);
+    }
+    return result;
+}
+
+//  A step's args: flags, whole numbers and words; any other value fails.
+StoryArgs read_args(const JsonValue& value, std::string_view source){
+    StoryArgs result;
+    for (const auto& [key, item] : value.to_object_throw(std::string(source))){
+        if (item.is_boolean()){
+            result[key] = item.to_boolean_throw();
+        }else if (item.is_integer()){
+            result[key] = item.to_integer_throw();
+        }else if (item.is_string()){
+            result[key] = item.to_string_throw();
+        }else{
+            throw ParseException(std::format("{}: argument {} is not a flag, whole number or word", source, key));
+        }
+    }
+    return result;
+}
+
+//  `result` with the step's yes/no and count fields read from `root`.
 StoryStep read_step_options(StoryStep result, const JsonObject& root, std::string_view source){
     if (const JsonValue* field = root.get_value("fight_wild")){
         result.fight_wild = field->to_boolean_throw();
@@ -174,7 +220,9 @@ StoryStep read_step_options(StoryStep result, const JsonObject& root, std::strin
     return result;
 }
 
+
 } // namespace
+
 
 JsonValue story_pose_json(const Pose& pose){
     JsonObject result;
@@ -191,7 +239,8 @@ JsonValue story_pose_json(const Pose& pose){
         JsonArray positions;
         for (const TilePos& tile : tiles->tiles){
             JsonArray pair;
-            pair.push_back(tile.x); pair.push_back(tile.y);
+            pair.push_back(tile.x);
+            pair.push_back(tile.y);
             positions.push_back(std::move(pair));
         }
         where["tiles"] = std::move(positions);
@@ -269,6 +318,9 @@ JsonValue story_step_json(const StoryStep& step){
     if (!step.variant.empty()){
         result["variant"] = step.variant;
     }
+    if (!step.args.empty()){
+        result["args"] = args_json(step.args);
+    }
     if (!step.skip_if.empty()){
         result["skip_if"] = strings_json(step.skip_if);
     }
@@ -280,7 +332,7 @@ JsonValue story_step_json(const StoryStep& step){
 
 StoryStep read_story_step(const JsonValue& value, std::string_view source){
     const JsonObject& root = fields(value, {"id", "kind", "why", "target", "direction", "legs", "fight_wild", "yes",
-        "may_lose", "battles", "items", "variant", "skip_if", "declared_after"}, source);
+        "may_lose", "battles", "items", "variant", "args", "skip_if", "declared_after"}, source);
     StoryStep result;
     result.name = root.get_string_throw("id");
     if (result.name.empty()){
@@ -305,6 +357,9 @@ StoryStep read_story_step(const JsonValue& value, std::string_view source){
     }
     if (const JsonValue* field = root.get_value("variant")){
         result.variant = field->to_string_throw();
+    }
+    if (const JsonValue* field = root.get_value("args")){
+        result.args = read_args(*field, source);
     }
     if (const JsonValue* field = root.get_value("skip_if")){
         result.skip_if = read_strings(*field, source);
@@ -351,5 +406,8 @@ StoryCheckpoint read_story_checkpoint(const JsonValue& value, std::string_view s
     }
     return result;
 }
+
+
+
 } // namespace Pokemon
 } // namespace PokemonAutomation

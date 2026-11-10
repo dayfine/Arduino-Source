@@ -77,9 +77,11 @@ constexpr Milliseconds BETWEEN_STEPS_LOOK = Milliseconds(400);
 
 //  The console's look between steps: FrlgScreenObserver's events for
 //  BETWEEN_STEPS_LOOK, everything showing in it judged.
+//  The Switch's HOME menu comes first (Pokemon::SwitchHomeObserver), so a
+//  step that starts on it fails instead of pressing buttons on HOME.
 class ConsoleScreenLook{
 public:
-    ConsoleScreenLook(VideoStream& stream, ProControllerContext& context);
+    ConsoleScreenLook(ConsoleHandle& console, ProControllerContext& context);
 
     Pokemon::ScreenLook look(bool fresh);
 
@@ -87,12 +89,28 @@ private:
     VideoStream& m_stream;
     ProControllerContext& m_context;
     FrlgScreenObserver m_observer;
+    Pokemon::SwitchHomeObserver m_eyes;
     Pokemon::ScreenEventWatcher m_watcher;
     WallClock m_start;
 };
 
+//  Whether a look ended on FRLG's overworld at rest: nothing showing (no
+//  box, fade or battle; FrlgScreenObserver reports no PLAYER_CAN_MOVE, so
+//  Pokemon::is_settled() never holds) for at least `quiet`.
+bool quiet_overworld(const Pokemon::ScreenSettle& settle, Milliseconds quiet);
+
+//  Looks with `look`, fresh and then on from it, until it ends on
+//  quiet_overworld() for `quiet`, or has looked for `timeout`. Returns how
+//  the last look ended. After a battle, the next tap waits for this
+//  (MovementMechanics::AFTER_BATTLE_QUIET): one sent at its black's end
+//  is lost (BATTLE_EXIT_LOCKOUT).
+Pokemon::ScreenSettle wait_for_quiet_overworld(
+    const Pokemon::ScreenLookFunction& look, Milliseconds quiet, Milliseconds timeout
+);
+
 //  The console's guard: a failed step fails it, as before; each interrupt
-//  found between steps is logged, cleared or not.
+//  found between steps is logged, cleared or not, and how the screen looked
+//  before every step.
 class InterruptLogGuard : public Pokemon::StepGuard{
 public:
     explicit InterruptLogGuard(Logger& logger)
@@ -100,6 +118,7 @@ public:
     {}
 
     virtual void on_interrupt(const Pokemon::StoryStep& step, const Pokemon::InterruptCheck& check) override;
+    virtual void on_screen(const Pokemon::StoryStep& step, const Pokemon::ScreenSettle& screen) override;
 
 private:
     Logger& m_logger;

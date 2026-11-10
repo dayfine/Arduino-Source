@@ -487,7 +487,7 @@ bool ConsolePatchSteps::step(){
     const int ret = run_until<ProControllerContext>(
         m_console, m_context,
         [&](ProControllerContext& context){
-            step_once(context, way, m_spot.facing);
+            step_once(m_console, context, way, m_spot.facing);
         },
         {battle}
     );
@@ -557,6 +557,9 @@ EncounterSeen ConsoleCaptureActions::read_encounter(){
 bool ConsoleCaptureActions::flee(){
     try{
         flee_battle(m_console, m_context);
+        //  The pacing counts its taps: one lost to the battle's exit
+        //  would put it a tile off.
+        wait_out_battle_exit(m_console, m_context);
         return true;
     }catch (OperationFailedException& e){
         m_console.log("Capture: " + e.message(), COLOR_RED);

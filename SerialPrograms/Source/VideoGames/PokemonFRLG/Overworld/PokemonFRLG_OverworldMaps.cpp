@@ -83,6 +83,14 @@ const char* const MAP_NAMES[] = {
     "RockTunnel_B1F",
     "LavenderTown",
     "LavenderTown_PokemonCenter_1F",
+    //  West from Lavender: Route 8, the Underground Path under Saffron and
+    //  Route 7 to Celadon City.
+    "Route8",
+    "UndergroundPath_EastEntrance",
+    "UndergroundPath_EastWestTunnel",
+    "UndergroundPath_WestEntrance",
+    "Route7",
+    "CeladonCity",
     "CeruleanCave_1F",
     "CeruleanCave_2F",
     "CeruleanCave_B1F",

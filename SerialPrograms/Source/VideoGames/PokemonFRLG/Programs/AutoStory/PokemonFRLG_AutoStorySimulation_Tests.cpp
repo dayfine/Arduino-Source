@@ -112,9 +112,7 @@ struct Simulation{
     std::vector<std::pair<std::string, Pokemon::Pose>> saves;
     Pokemon::SegmentPolicy policy;
 
-    //  A language no reader supports, so a step that needed text would show.
     Pokemon::SegmentReport run(const Pokemon::SegmentRange& range){
-        game.set_language(Language::Japanese);
         Pokemon::Segment segment;
         segment.id = "00";
         for (const StoryCheckpoint& data : rows){
@@ -349,10 +347,7 @@ std::string walk_on_sim(OverworldSim& sim, StoryPose& at, const StoryStep& step)
         open_end = last.action == RouteAction::WALK && !last.to_wall && !last.warps;
         at = StoryPose{last.end.map, last.end.point, last.facing_after};
     }else if (step.kind == StoryStepKind::STEP){
-        if (sim.state().facing != step.direction){
-            sim.tap(step.direction);
-        }
-        sim.tap(step.direction);
+        sim_step_once(sim, step.direction);
         sim.watch({SimWatcher::MESSAGE}, std::chrono::milliseconds(2000));
         at = *story_pose(*step.pose_after);
     }
