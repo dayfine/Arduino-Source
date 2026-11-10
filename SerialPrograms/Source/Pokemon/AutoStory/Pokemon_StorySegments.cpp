@@ -103,28 +103,9 @@ Outcome reload(RunState& state, SegmentHooks& hooks){
     return outcome_ok();
 }
 
-//  The policy's in-place recovery, after each event's own: the game's
-//  recover hook, if any, then the event again. Counts into `used`.
-void add_policy_recoveries(Checkpoint& checkpoint, const SegmentPolicy& policy, SegmentHooks& hooks, size_t& used){
-    if (policy.recoveries_per_event == 0){
-        return;
-    }
-    for (Event& event : checkpoint.events){
-        Recovery recovery;
-        recovery.kind = RecoveryKind::REANCHOR;
-        recovery.attempts = policy.recoveries_per_event;
-        recovery.why = "the segment's policy: recover in place before reloading";
-        recovery.prepare = [&hooks, &used, name = event.name](RunState& state){
-            used++;
-            return hooks.recover ? hooks.recover(state, name) : outcome_ok();
-        };
-        event.recoveries.push_back(std::move(recovery));
-    }
-}
-
 //  One row to success, reloading and rebuilding after each failed attempt.
 //  Returns the last attempt's report, or the reload's failure; `run` says
-//  how many attempts and recoveries it took.
+//  how many attempts it took.
 CheckpointReport run_row(
     RunState& state, const Segment& segment, CheckpointSpec& spec,
     const SegmentPolicy& policy, SegmentHooks& hooks, SegmentReport& report, CheckpointRun& run
@@ -137,27 +118,21 @@ CheckpointReport run_row(
                 return hooks.save ? hooks.save(state) : outcome_failed("no_save_hook");
             };
         }
-        add_policy_recoveries(checkpoint, policy, hooks, run.recoveries);
         EventLogger log = [&hooks](const std::string& line){ say(hooks, line); };
         CheckpointReport result = run_checkpoint(state, checkpoint, log);
         if (result.completed){
             run.passed = true;
-            say(hooks, checkpoint_pass_line(spec.id, attempt, run.recoveries));
+            say(hooks, checkpoint_pass_line(spec.id, attempt));
             return result;
         }
-        const bool not_running = result.failure.failure == GAME_NOT_RUNNING;
-        if (not_running || policy.stop_at_first_failure){
-            say(hooks, std::format("[Segment] {}: {} failed; {}", segment.id, spec.id, not_running
-                ? "the game is not running, so no reload"
-                : "stopping at the first failure, the game stays where it failed"
-            ));
-            report.stopped_at_first_failure = !not_running;
+        if (result.failure.failure == GAME_NOT_RUNNING){
+            say(hooks, std::format("[Segment] {}: {} failed; the game is not running, so no reload", segment.id, spec.id));
             return result;
         }
         if (attempt >= policy.attempts_per_checkpoint){
             return result;
         }
-        say(hooks, checkpoint_reset_line(segment.id, spec.id, attempt + 1, policy.attempts_per_checkpoint));
+        say(hooks, segment_reload_line(segment.id, spec.id, attempt + 1, policy.attempts_per_checkpoint));
         report.reloads++;
         Outcome reloaded = reload(state, hooks);
         if (!reloaded.succeeded()){
@@ -180,19 +155,6 @@ SegmentReport stop_segment(SegmentReport& report, SegmentHooks& hooks, const std
 }
 
 } // namespace
-
-
-bool CheckpointRun::one_shot() const{
-    return passed && attempts == 1 && recoveries == 0;
-}
-
-size_t SegmentReport::one_shot_passes() const{
-    size_t count = 0;
-    for (const CheckpointRun& run : runs){
-        count += run.one_shot() ? 1 : 0;
-    }
-    return count;
-}
 
 
 SegmentReport run_segment(
