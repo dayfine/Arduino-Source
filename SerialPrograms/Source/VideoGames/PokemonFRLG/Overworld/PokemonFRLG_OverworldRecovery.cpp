@@ -82,6 +82,15 @@ bool is_wall_hold(const RouteStep& next){
     return next.action == RouteAction::WALK && next.to_wall && !next.warps;
 }
 
+//  Whether `next` steps onto a spinner. From a tile short of its start it
+//  misses the arrow, or walks onto another, and ends elsewhere in the maze:
+//  "south 2" before Rocket Hideout B3F's "east 2" onto the arrow (3, 16)
+//  ended a tile short, the east leg walked into a wall, and the walk after
+//  it slid up to (10, 13) (00.31 r1 run 3, console B, 2026-11-10).
+bool is_slide(const RouteStep& next){
+    return next.action == RouteAction::WALK && next.spin_tiles && !next.warps;
+}
+
 //  Whether `next`, a hold to a wall, ends on its planned tile from each of
 //  `candidates`: then it finds the player itself.
 bool hold_finds(const std::vector<MapData>& maps, const std::vector<StopCandidate>& candidates, const RouteStep& next){
@@ -432,12 +441,12 @@ private:
     void check_open_leg(const RouteStep& step, const std::optional<MapPosition>& start){
         if (maps() == nullptr || m_planning->open_leg_check != OpenLegCheck::REANCHOR || !start
             || step.action != RouteAction::WALK || step.to_wall || step.warps
-            || m_next >= m_plan.size() || !is_wall_hold(m_plan[m_next])
+            || m_next >= m_plan.size() || !(is_wall_hold(m_plan[m_next]) || is_slide(m_plan[m_next]))
         ){
             return;
         }
         const std::vector<StopCandidate> candidates = short_candidates(*maps(), *start, step);
-        if (candidates.size() < 2 || hold_finds(*maps(), candidates, m_plan[m_next])){
+        if (candidates.size() < 2 || (is_wall_hold(m_plan[m_next]) && hold_finds(*maps(), candidates, m_plan[m_next]))){
             return;
         }
         const std::optional<Reanchor> anchor = plan_reanchor(*maps(), candidates, step, m_planning->costs);

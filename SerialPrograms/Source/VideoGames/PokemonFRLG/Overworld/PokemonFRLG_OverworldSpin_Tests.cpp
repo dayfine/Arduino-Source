@@ -224,6 +224,40 @@ UnitTestResult test_short_leg_off_hideout_stairs(){
 }
 
 
+//  00.31 r1 run 3 (console B, 2026-11-10), Rocket Hideout B3F: "south 2"
+//  from (1, 14), at the wall, ended a tile short at (1, 15) with nothing
+//  seen. "east 2", meant to step onto the arrow (3, 16), walked into the
+//  wall east of (1, 15); the position check after the next leg took that
+//  wall for the one east of the stop tile (7, 20) and found the player
+//  there. From column 1 the hold "east 11" stepped onto the arrow (2, 17),
+//  which slid them up round (6, 17) and (6, 13) to the stop tile (10, 13);
+//  the hold west onto the warp slid them back there round (6, 13) (frame:
+//  the player on (10, 13), the north arrow (10, 14) below).
+UnitTestResult test_short_leg_before_hideout_arrows(){
+    static const std::vector<MapData> maps = overworld_maps();
+    const MapPosition start{"RocketHideout_B3F", {1, 14}};
+    const MapPosition goal{"RocketHideout_B4F", map_point(maps, "RocketHideout_B4F", "warp_0")};
+    const auto route = plan_overworld_route(maps, start, RouteGoal{goal, std::nullopt}, default_route_costs(), Direction::WEST);
+    if (!route){
+        return std::string("No route from B3F's west wall to B4F.");
+    }
+    for (const int short_by : {1, 2}){
+        SimScript script;
+        script.short_holds = {{1, short_by}};
+        OverworldSim sim(maps, start, Direction::WEST, script);
+        OverworldSimWalker walker(sim);
+        const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = start, .label = "Sim"};
+        const std::string failure = walker.run(*route, planning);
+        if (!failure.empty() || !(sim.state().position == goal)){
+            return std::format(
+                "With the first leg {} tile(s) short, walked to {}, failure \"{}\":{}",
+                short_by, to_string(sim.state().position), failure, describe(*route)
+            );
+        }
+    }
+    return true;
+}
+
 //  A lift whose door, the exit mat (1, 2), lets out on the floor picked.
 std::vector<MapData> lift_maps(){
     const std::string FLOOR = R"({
@@ -338,6 +372,10 @@ const SpinCase SPIN_CASES[] = {
     {
         .input = {.name = "a short leg off the hideout's stairs", .body = test_short_leg_off_hideout_stairs},
         .expectation = {.description = "B4F reached after a short first leg on B3F"},
+    },
+    {
+        .input = {.name = "a short leg before the hideout's arrows", .body = test_short_leg_before_hideout_arrows},
+        .expectation = {.description = "B4F reached after a short leg to the arrow row on B3F"},
     },
     {
         .input = {.name = "lift lets out on the floor picked", .body = test_lift_floor},
