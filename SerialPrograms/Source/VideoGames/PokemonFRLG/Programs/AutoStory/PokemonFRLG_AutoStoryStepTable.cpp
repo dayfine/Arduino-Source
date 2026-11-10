@@ -5,6 +5,7 @@
  */
 
 #include "Common/Cpp/Exceptions.h"
+#include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
 
 namespace PokemonAutomation{
@@ -52,10 +53,29 @@ const std::vector<StoryActionRow>& story_action_rows(){
     return ROWS;
 }
 
+std::span<const Pokemon::StoryActionSpec> story_action_specs(){
+    static const std::vector<Pokemon::StoryActionSpec> SPECS = []{
+        const std::span<const Pokemon::StoryActionSpec> builtin = Pokemon::builtin_story_actions();
+        std::vector<Pokemon::StoryActionSpec> specs(builtin.begin(), builtin.end());
+        for (StoryStepKind kind : {StoryStepKind::ROUTE, StoryStepKind::LEGS}){
+            Pokemon::StoryActionSpec run = *Pokemon::find_story_action(builtin, kind, "");
+            run.name = "run";
+            specs.push_back(std::move(run));
+        }
+        specs.push_back({.kind = StoryStepKind::GAME, .name = CLOSE_TRAINER_CARD, .args = {}});
+        return specs;
+    }();
+    return SPECS;
+}
+
 Pokemon::StoryActionTable make_story_action_table(const StoryActionBinding& bind){
     Pokemon::StoryActionTable table;
     for (const StoryActionRow& row : story_action_rows()){
-        table.add(row.kind, row.variant, bind(row.id));
+        Pokemon::StoryAction action = bind(row.id);
+        if (const Pokemon::StoryActionSpec* spec = Pokemon::find_story_action(story_action_specs(), row.kind, row.variant)){
+            action.args = spec->args;
+        }
+        table.add(row.kind, row.variant, std::move(action));
     }
     return table;
 }
