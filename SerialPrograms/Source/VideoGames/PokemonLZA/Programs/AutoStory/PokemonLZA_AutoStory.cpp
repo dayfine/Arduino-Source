@@ -105,6 +105,18 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     const StoryGame<ZonePose> game = make_plza_story_game(story, STARTER);
     StoryEngine<ZonePose> engine(game, backend);
     RunState state;
+    //  Checkpoints after the first start from a save (01.01 from the
+    //  platform autosave), so the run loads it first instead of assuming
+    //  the game is already there.
+    if (first > 0){
+        const Outcome loaded = game.reload(backend);
+        if (!loaded.succeeded()){
+            throw OperationFailedException(
+                ErrorReportMode::NO_ERROR_REPORT,
+                std::format("AutoStory: could not load the save for {}: {}", rows[first].id, to_string(loaded))
+            );
+        }
+    }
 
     if (const std::optional<VerifyPolicy> verify = RUN.VERIFY.policy()){
         const VerifyReport report = engine.verify_checkpoint(rows[first], state, *verify);
