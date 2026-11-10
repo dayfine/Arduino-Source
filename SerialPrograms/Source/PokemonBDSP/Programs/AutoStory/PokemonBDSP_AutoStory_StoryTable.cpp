@@ -423,6 +423,34 @@ std::vector<StoryStep> home_to_the_doors_column(){
     };
 }
 
+//  Into the house, Mom's heal, and out with her hat: her scenes' ends
+//  are guesses, so walls tell us where we are after each.
+std::vector<StoryStep> moms_heal_and_hat(){
+    return {
+        step_into("into_the_house", NORTH, "the house's door", at(HOME, 6, 9, NORTH)),
+        route("beside_mom", at(HOME, 6, 8, EAST), "west of Mom at (7, 8)"),
+        talk("mom", "Mom"),
+        scene("mom_heals_us", at(HOME, 7, 7, SOUTH), "Mom heals us; Barry's mom gives us his parcel"),
+        //  Where her scene leaves us is a guess (no console run stopped after
+        //  it): from any tile next to it, fixed legs ended a tile off or
+        //  against her. North, east and south to the walls end on (11, 8) from
+        //  each of them: row 5's shelves stop columns 6 and 7 on row 6, the
+        //  wall stops column 8 on row 5, the east wall column 11, row 9's wall
+        //  row 8. The route goes on from there.
+        anchored(to_walls("into_the_east_corner", {
+            {.direction = NORTH, .tiles = 4}, {.direction = EAST, .tiles = 6}, {.direction = SOUTH, .tiles = 4},
+        }, "north, east and south to the walls, into the room's east corner"), at(HOME, 11, 8, SOUTH)),
+        route("around_mom", at(HOME, 6, 9, SOUTH), "round Mom to (6, 9) above the door"),
+        step_into("to_moms_call", SOUTH, "onto the door mat (6, 10), triggering Mom's call"),
+        scene("moms_hat", at(TWINLEAF, 19, 22, EAST), "Mom's hat; she walks out with us"),
+        //  Her scene's end is a guess too, and Mom may stand east of us: west
+        //  along the row to Twinleaf's west wall, column 6, from either row the
+        //  scene may leave us on. The route plans from both.
+        anchored(to_walls("to_twinleafs_west_wall", {{.direction = WEST, .tiles = 16}},
+            "west along the row to the town's west wall"), Pokemon::tile_pose(TWINLEAF, {TilePos{6, 22}, TilePos{6, 23}}, WEST)),
+    };
+}
+
 std::vector<StoryCheckpoint> to_the_catch(){
     std::vector<StoryStep> steps{
         out_of_the_lab_into_dawns_tour(),
@@ -435,27 +463,9 @@ std::vector<StoryCheckpoint> to_the_catch(){
     for (StoryStep& s : home_to_the_doors_column()){
         steps.push_back(std::move(s));
     }
-    steps.push_back(step_into("into_the_house", NORTH, "the house's door", at(HOME, 6, 9, NORTH)));
-    steps.push_back(route("beside_mom", at(HOME, 6, 8, EAST), "west of Mom at (7, 8)"));
-    steps.push_back(talk("mom", "Mom"));
-    steps.push_back(scene("mom_heals_us", at(HOME, 7, 7, SOUTH), "Mom heals us; Barry's mom gives us his parcel"));
-    //  Where her scene leaves us is a guess (no console run stopped after
-    //  it): from any tile next to it, fixed legs ended a tile off or
-    //  against her. North, east and south to the walls end on (11, 8) from
-    //  each of them: row 5's shelves stop columns 6 and 7 on row 6, the
-    //  wall stops column 8 on row 5, the east wall column 11, row 9's wall
-    //  row 8. The route goes on from there.
-    steps.push_back(anchored(to_walls("into_the_east_corner", {
-            {.direction = NORTH, .tiles = 4}, {.direction = EAST, .tiles = 6}, {.direction = SOUTH, .tiles = 4},
-        }, "north, east and south to the walls, into the room's east corner"), at(HOME, 11, 8, SOUTH)));
-    steps.push_back(route("around_mom", at(HOME, 6, 9, SOUTH), "round Mom to (6, 9) above the door"));
-    steps.push_back(step_into("to_moms_call", SOUTH, "onto the door mat (6, 10), triggering Mom's call"));
-    steps.push_back(scene("moms_hat", at(TWINLEAF, 19, 22, EAST), "Mom's hat; she walks out with us"));
-    //  Her scene's end is a guess too, and Mom may stand east of us: west
-    //  along the row to Twinleaf's west wall, column 6, from either row the
-    //  scene may leave us on. The route plans from both.
-    steps.push_back(anchored(to_walls("to_twinleafs_west_wall", {{.direction = WEST, .tiles = 16}},
-        "west along the row to the town's west wall"), Pokemon::tile_pose(TWINLEAF, {TilePos{6, 22}, TilePos{6, 23}}, WEST)));
+    for (StoryStep& s : moms_heal_and_hat()){
+        steps.push_back(std::move(s));
+    }
     steps.push_back(route("short_of_the_catch_tutorial", at(ROUTE_202, 22, 27, WEST), "through Sandgem onto Route 202, east of its trigger column"));
     steps.push_back(step_into("catch_tutorial_trigger", WEST, "the trigger (21, 25..29), VAR_ROUTE_202_STATE 0"));
     steps.push_back(event("catch_tutorial", "Dawn's catching tutorial"));
