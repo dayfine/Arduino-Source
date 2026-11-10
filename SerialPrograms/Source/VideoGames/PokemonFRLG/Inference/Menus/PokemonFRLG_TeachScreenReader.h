@@ -12,8 +12,9 @@
  *  Which screen shows is told from the colors of its background, its boxes
  *  and the dark arrow of its cursor, measured on those captures in the
  *  game's 240x160 pixels: the bag's frame is orange, the TM CASE's mint,
- *  the party menu's dark teal. Names and messages are read by OCR, in
- *  English only so far: in another language nothing is read.
+ *  the party menu's dark teal, the TM's scene's pale blue diamonds. Names
+ *  and messages are read by OCR, in English only so far: in another
+ *  language nothing is read.
  *
  */
 
@@ -22,11 +23,13 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/Language.h"
+#include "PokemonFRLG_TeachTextReader.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -50,9 +53,16 @@ enum class TeachScreen{
     PARTY_YES_NO,
     //  The KNOWN MOVES page with its red cursor: the move to forget.
     KNOWN_MOVES,
+    //  The TM's scene over the member (pokefirered
+    //  pokemon_special_anim.c), on its blue diamonds: with a free slot,
+    //  right after A on the member; after a forget, "1, 2 and... Poof!",
+    //  "<MON> forgot <OLD>.", "And...". Then "Machine set!", which waits
+    //  for A (B cancels the teach), the disc's wobble, "<MON> learned
+    //  <MOVE>!" and the TM CASE.
+    TM_SCENE,
 };
 //  The human-readable name of a teach screen.
-const char* teach_screen_name(TeachScreen screen);
+std::string_view teach_screen_name(TeachScreen screen);
 
 //  Reads the active teach screen from an image.
 TeachScreen read_teach_screen(const ImageViewRGB32& screen);
@@ -61,10 +71,6 @@ TeachScreen read_teach_screen(const ImageViewRGB32& screen);
 //  Rows a list or menu shows at once: the bag's, the TM CASE's (its info
 //  box is below), the item menu's.
 constexpr size_t TEACH_LIST_ROWS = 6;
-//  The number of visible rows in the TM Case.
-constexpr size_t TM_CASE_ROWS = 5;
-//  The number of visible rows in the item menu.
-constexpr size_t ITEM_MENU_ROWS = 3;
 
 //  The row the cursor is on: the dark arrow in the bag's list, the TM
 //  CASE's list, the item menu (0: OPEN or USE) or the party menu's YES/NO
@@ -76,37 +82,9 @@ std::optional<size_t> read_teach_cursor(TeachScreen screen, const ImageViewRGB32
 //  not read.
 std::string read_pocket_name(Logger& logger, Language language, const ImageViewRGB32& screen);
 
-//  The key item in the bag's row `row`: "tm-case", "teachy-tv", ... or
-//  "cancel"; empty if not read.
-std::string read_key_item(Logger& logger, Language language, const ImageViewRGB32& screen, size_t row);
-
-//  The move of the TM or HM in the TM CASE's row `row`, as a slug such as
-//  "water-pulse"; empty for CLOSE or a move not read.
-std::string read_tm_case_move(Logger& logger, Language language, const ImageViewRGB32& screen, size_t row);
-
 //  The rows of KEY ITEMS (`screen` BAG) or the TM CASE from the top, up to
 //  the first not read; KEY ITEMS' end with its "cancel".
 std::vector<std::string> read_teach_rows(Logger& logger, Language language, const ImageViewRGB32& image, TeachScreen screen);
-
-//  The messages of the party menu while a TM is taught.
-enum class TeachText{
-    UNKNOWN,
-    TEACH_WHICH,        //  "Teach which POKEMON?"
-    WANTS_TO_LEARN,     //  "<MON> wants to learn the move <MOVE>."
-    KNOWS_FOUR,         //  "However, <MON> already knows four moves."
-    DELETE_QUESTION,    //  "Should a move be deleted and replaced with <MOVE>?"
-    WHICH_MOVE,         //  "Which move should be forgotten?"
-    STOP_QUESTION,      //  "Stop trying to teach <MOVE>?"
-    DID_NOT_LEARN,      //  "<MON> did not learn the move <MOVE>."
-    NOT_COMPATIBLE,     //  "<MON> and <MOVE> are not compatible."
-};
-//  The human-readable name of a teach dialog message.
-const char* teach_text_name(TeachText text);
-
-//  The message over the party menu, from the prompt's or the message box's
-//  first two lines.
-TeachText read_teach_text(Logger& logger, Language language, const ImageViewRGB32& screen);
-
 
 //  Register teach screen reader unit tests.
 void add_tests_TeachScreenReader(UnitTestDatabase& database);

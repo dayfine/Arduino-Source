@@ -42,7 +42,7 @@ struct AutoStoryItemsInput{
 };
 
 struct AutoStoryItemsExpectation{
-    const char* description;
+    std::string_view description;
 };
 
 struct AutoStoryItemsTestCase{

@@ -29,6 +29,10 @@
       {
         "id": "rival_cerulean",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_RIVAL_CERULEAN_BULBASAUR",
+          "foes": ["pidgeotto", "abra", "rattata", "bulbasaur"]
+        },
         "declared_after": {"map": "CeruleanCity", "tiles": [[23, 6]], "facing": "south"},
         "why": "Pidgeotto, Abra, Rattata and Bulbasaur; then the FAME CHECKER"
       }

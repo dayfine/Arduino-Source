@@ -44,13 +44,13 @@ bool is_ledge(const MapData& map, const TilePos& point){
 bool is_water(const MapData& map, const TilePos& point){
     return tile_at(map, point) == TileKind::WATER;
 }
-const char WILD_REGION[] = "wild";
+
 
 bool is_tall_grass(const MapData& map, const TilePos& point){
     if (tile_at(map, point) == TileKind::TALL_GRASS){
         return true;
     }
-    const auto wild = map.regions.find(WILD_REGION);
+    const auto wild = map.regions.find(std::string(WILD_REGION));
     return wild != map.regions.end() && std::find(wild->second.begin(), wild->second.end(), point) != wild->second.end();
 }
 

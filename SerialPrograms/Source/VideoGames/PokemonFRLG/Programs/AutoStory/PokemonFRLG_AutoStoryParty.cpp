@@ -6,7 +6,7 @@
 
 #include <algorithm>
 #include <iterator>
-#include "PokemonFRLG_AutoStoryBattleData.h"
+#include "PokemonFRLG_AutoStoryMoveData.h"
 #include "PokemonFRLG_AutoStoryParty.h"
 
 namespace PokemonAutomation{
@@ -193,13 +193,7 @@ void take_level(PartyMember& member, uint8_t level){
     member.moves_through_level = level;
 }
 
-//  The base stat `attacker` uses `move` with: Attack or Sp. Atk, by the
-//  move's type.
-uint8_t attacking_stat(const SpeciesData& attacker, const MoveData& move){
-    return special_type(move.type) ? attacker.base.sp_attack : attacker.base.attack;
-}
-
-//  In tenths.
+//  How well `move` hits `defender`, in tenths: 40 is 4x, 5 is 0.5x.
 size_t effectiveness(const MoveData& move, const SpeciesData& defender){
     size_t tenths = type_effectiveness(move.type, defender.first);
     if (defender.second != defender.first){
@@ -208,22 +202,18 @@ size_t effectiveness(const MoveData& move, const SpeciesData& defender){
     return tenths;
 }
 
-//  `move`'s expected damage, summed over `foes`: its power times STAB
-//  times its effectiveness times the lead's base attacking stat for it.
-//  The foe's Defense and Sp. Def, levels, IVs, EVs, natures and accuracy
-//  are left out. Each foe must be in species_data().
-size_t expected_damage(const PartyMember& member, std::string_view move, const std::vector<std::string>& foes){
+//  `move`'s type multiplier, in tenths, summed over `foes`; 0 for a move
+//  that does no damage. Each foe must be in species_data().
+size_t matchup(std::string_view move, const std::vector<std::string>& foes){
     const MoveData* data = move_data(move);
-    const SpeciesData* own = species_data(member.species);
-    if (data == nullptr || own == nullptr){
+    if (data == nullptr || !data->damaging){
         return 0;
     }
-    const bool stab = own->first == data->type || own->second == data->type;
-    size_t damage = 0;
+    size_t total = 0;
     for (const std::string& foe : foes){
-        damage += (size_t)data->power * (stab ? 15 : 10) * effectiveness(*data, *species_data(foe)) * attacking_stat(*own, *data);
+        total += effectiveness(*data, *species_data(foe));
     }
-    return damage;
+    return total;
 }
 
 //  The member's slots in the plan's order: its line's attacks first, as
@@ -262,9 +252,9 @@ uint8_t max_pp(std::string_view move){
     return data == nullptr ? 0 : data->pp;
 }
 
-uint8_t move_power(std::string_view move){
+bool does_damage(std::string_view move){
     const MoveData* data = move_data(move);
-    return data == nullptr ? 0 : data->power;
+    return data != nullptr && data->damaging;
 }
 
 PartyMember new_member(std::string_view species, uint8_t level){
@@ -363,15 +353,10 @@ std::optional<size_t> attack_slot(const PartyMember& member){
             return slot;
         }
     }
-    std::optional<size_t> strongest;
     for (size_t slot = 0; slot < member.moves.size(); slot++){
-        const uint8_t power = move_power(member.moves[slot].move);
-        if (power > 0 && member.moves[slot].pp > 0 && (!strongest || power > move_power(member.moves[*strongest].move))){
-            strongest = slot;
+        if (does_damage(member.moves[slot].move) && member.moves[slot].pp > 0){
+            return slot;
         }
-    }
-    if (strongest){
-        return strongest;
     }
     for (size_t slot = 0; slot < member.moves.size(); slot++){
         if (member.moves[slot].pp > 0){
@@ -379,14 +364,6 @@ std::optional<size_t> attack_slot(const PartyMember& member){
         }
     }
     return TOP_LEFT_MOVE;
-}
-
-std::vector<std::string> trainer_party(std::string_view trainer){
-    std::vector<std::string> party;
-    for (const TrainerMon& mon : trainer_mons(trainer)){
-        party.push_back(mon.species);
-    }
-    return party;
 }
 
 std::optional<size_t> attack_slot_against(const PartyMember& member, const std::vector<std::string>& foes){
@@ -399,12 +376,12 @@ std::optional<size_t> attack_slot_against(const PartyMember& member, const std::
         return plan;
     }
     std::optional<size_t> best;
-    size_t best_damage = 0;
+    size_t best_matchup = 0;
     for (size_t slot : attack_order(member)){
-        const size_t damage = expected_damage(member, member.moves[slot].move, known);
-        if (member.moves[slot].pp > 0 && damage > best_damage){
+        const size_t tenths = matchup(member.moves[slot].move, known);
+        if (member.moves[slot].pp > 0 && tenths > best_matchup){
             best = slot;
-            best_damage = damage;
+            best_matchup = tenths;
         }
     }
     return best ? best : plan;
@@ -413,7 +390,7 @@ std::optional<size_t> attack_slot_against(const PartyMember& member, const std::
 size_t attack_pp(const PartyMember& member){
     size_t pp = 0;
     for (const KnownMove& known : member.moves){
-        if (move_power(known.move) > 0){
+        if (does_damage(known.move)){
             pp += known.pp;
         }
     }
