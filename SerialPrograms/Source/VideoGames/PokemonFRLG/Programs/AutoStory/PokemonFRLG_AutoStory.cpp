@@ -60,7 +60,7 @@ const StringSelectDatabase& checkpoint_database(){
     return database;
 }
 
-const char* const KEEP_START_FRAME_TEXT =
+const std::string KEEP_START_FRAME_TEXT =
     "<b>Keep the start frame:</b><br>Off by default. The save loaded was made by hand where the start checkpoint "
     "begins: keep the screen after loading it as that checkpoint's start frame, which later runs compare their "
     "save with. The program keeps one by itself at each save it makes.";

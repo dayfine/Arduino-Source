@@ -103,7 +103,7 @@ enum class BattleScreen{
     NONE,       //  no battle on screen
 };
 
-const char* screen_name(BattleScreen screen){
+std::string_view screen_name(BattleScreen screen){
     switch (screen){
     case BattleScreen::MENU:
         return "battle menu";
@@ -795,7 +795,7 @@ private:
 } // namespace
 
 
-const char* status_name(StatusCondition status){
+std::string_view status_name(StatusCondition status){
     switch (status){
     case StatusCondition::NONE:
         return "no status";

@@ -220,11 +220,11 @@ Outcome get_ready(StoryEnv& env, RunState& state, const StoryStep& step){
 //  POKE BALL, POTION (300), ANTIDOTE (100), PARLYZ HEAL (200). Each item
 //  the story buys: its row, and where the bag's count is kept.
 struct MartItem{
-    const char* item;
+    std::string_view item;
     int row;
     int Supplies::* count;
     //  The name the item list reader reads (read_item_list_name()).
-    const char* slug;
+    std::string_view slug;
 };
 constexpr MartItem VIRIDIAN_MART_ITEMS[] = {
     {.item = "potion", .row = 1, .count = &Supplies::potions, .slug = "potion"},
@@ -308,7 +308,7 @@ std::optional<StoryPose> story_pose(const Pokemon::Pose& pose){
 
 std::string save_card_place(const std::string& map){
     //  The longer names first: "ViridianForest" before "ViridianCity".
-    static const std::pair<const char*, const char*> PLACES[] = {
+    static const std::pair<std::string_view, std::string_view> PLACES[] = {
         {"PalletTown", "pallet-town"},
         {"ViridianForest", "viridian-forest"},
         {"ViridianCity", "viridian-city"},
@@ -316,7 +316,7 @@ std::string save_card_place(const std::string& map){
     };
     for (const auto& [prefix, place] : PLACES){
         if (map.rfind(prefix, 0) == 0){
-            return place;
+            return std::string(place);
         }
     }
     return "";
@@ -452,7 +452,7 @@ ConsoleAction console_action_of(StoryActionId id){
     case StoryActionId::GAME:
         break;
     }
-    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::string("No console action for ") + story_action_name(id));
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("No console action for {}", story_action_name(id)));
 }
 
 } // namespace

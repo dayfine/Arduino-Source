@@ -26,7 +26,7 @@ struct OverworldMapsInput{
 };
 
 struct OverworldMapsExpectation{
-    const char* description;
+    std::string_view description;
 };
 
 struct OverworldMapsTestCase{
@@ -53,7 +53,7 @@ private:
 };
 
 
-const char* const VALID_MAP = R"({
+const std::string VALID_MAP = R"({
     "name": "Test",
     "source": {"decomp_file": "data/maps/Test/map.json", "revision": "test", "date": "2026-10-31"},
     "tiles": ["#.w", "~D."],
@@ -79,8 +79,8 @@ std::string parse_error(const std::string& json){
 }
 
 //  Whether `text` contains every one of `parts`.
-bool mentions(const std::string& text, std::initializer_list<const char*> parts){
-    for (const char* part : parts){
+bool mentions(const std::string& text, std::initializer_list<std::string_view> parts){
+    for (std::string_view part : parts){
         if (text.find(part) == std::string::npos){
             return false;
         }
@@ -173,7 +173,7 @@ UnitTestResult test_unknown_tile(){
 //  Route 3's Lass Robin, shrunk: she wanders x 2, y 2..4 looking north and
 //  south, sight 3, below a corridor (row 1) walled off at x 2 above it; a
 //  bug catcher at (5, 4) looks west, sight 2.
-const char* const TRAINERS_MAP = R"({
+const std::string TRAINERS_MAP = R"({
     "name": "Trainers",
     "source": {"decomp_file": "", "revision": "test", "date": "2026-11-02"},
     "tiles": ["##.####", ".......", ".......", ".......", ".......", "~~~~~~~"],
@@ -224,7 +224,7 @@ UnitTestResult test_not_json(){
 
 //  A hall with an escalator at (1, 2) to a floor that isn't loaded, like
 //  Route 4's Pokemon Center.
-const char* const ESCALATOR_HALL = R"({
+const std::string ESCALATOR_HALL = R"({
     "name": "Hall", "source": {"decomp_file": "", "revision": "test", "date": "2026-11-02"},
     "tiles": ["######", "#....#", "#....#", "######"],
     "warps": [{"x": 1, "y": 2, "enter": "step_on"}]

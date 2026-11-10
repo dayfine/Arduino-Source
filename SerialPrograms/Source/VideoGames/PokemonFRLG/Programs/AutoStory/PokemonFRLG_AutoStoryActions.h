@@ -202,7 +202,7 @@ struct MartOrder{
     int row = 0;
     int quantity = 1;
     //  The item's slug for the check (see read_item_list_name()).
-    const char* item = "";
+    std::string_view item = "";
 };
 
 //  Down (positive) or up (negative) presses to move a Mart list's cursor

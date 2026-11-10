@@ -727,7 +727,7 @@ void set_options(ConsoleHandle& console, ProControllerContext& context, StartMen
     options_shot(console, context, "before");
     struct Target{
         OptionMenuItem item;
-        const char* value;
+        std::string_view value;
     };
     //  In row order. The cursor opens on TEXT SPEED (option_menu.c:
     //  cursorPos = 0) and DOWN moves it a row. Were it on another row, the
@@ -742,7 +742,7 @@ void set_options(ConsoleHandle& console, ProControllerContext& context, StartMen
         for (; cursor < option_menu_row(target.item); cursor++){
             tap(context, DPAD_DOWN);
         }
-        set_option(console, context, target.item, target.value, language);
+        set_option(console, context, target.item, std::string(target.value), language);
     }
     options_shot(console, context, "after");
     press(context, BUTTON_B, 1500ms);

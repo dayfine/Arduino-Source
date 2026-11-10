@@ -34,7 +34,7 @@ struct OverworldRecoveryInput{
 };
 
 struct OverworldRecoveryExpectation{
-    const char* description;
+    std::string_view description;
 };
 
 struct OverworldRecoveryTestCase{
@@ -203,7 +203,7 @@ UnitTestResult test_stop_recover_resume(){
 }
 
 //  A corridor with a person at each end: nothing finds the player again.
-const char* const TEST_CORRIDOR_JSON = R"({
+const std::string TEST_CORRIDOR_JSON = R"({
     "name": "Corridor", "source": {"decomp_file": "", "revision": "test", "date": "2026-10-31"},
     "tiles": ["#######", "#.....#", "#######"],
     "elevation": ["3333333", "3333333", "3333333"],
@@ -281,7 +281,7 @@ UnitTestResult test_wall_check(){
     wall.to_wall = true;
     const RouteStep open = walk(Direction::EAST, 2, {"Corridor", {3, 1}});
     struct Case{
-        const char* name;
+        std::string_view name;
         bool moves;
         WallCheck check;
         bool logged;
@@ -340,7 +340,7 @@ UnitTestResult test_route_logged(){
 //  row 1, walled at x 6, and below it Robin's column x 3, where she wanders
 //  y 2..4 looking north and south, sight 3. Every way east along the
 //  corridor crosses her sight at (3, 1), and nowhere else.
-const char* const TEST_ROBIN_JSON = R"({
+const std::string TEST_ROBIN_JSON = R"({
     "name": "Robin", "source": {"decomp_file": "", "revision": "test", "date": "2026-11-02"},
     "tiles": ["#######", "......#", "###.###", "###.###", "###.###", "#######"],
     "objects": [
@@ -373,7 +373,7 @@ UnitTestResult test_trainer_crossing(){
 //  A leg east past Robin, then a turn north: how the leg and the watch for
 //  her after it end, and whether she saw the player.
 struct TrainerCase{
-    const char* name;
+    std::string_view name;
     RouteStep leg;
     StepEnd walk_end;
     std::optional<WalkedTiles> walked;

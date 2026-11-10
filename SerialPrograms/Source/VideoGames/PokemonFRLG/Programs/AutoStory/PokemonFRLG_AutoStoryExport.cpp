@@ -12,7 +12,7 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
 namespace{
-const char* menu_name(StartMenu menu){
+std::string_view menu_name(StartMenu menu){
     switch (menu){
     case StartMenu::BEFORE_POKEMON: return "before_pokemon";
     case StartMenu::BEFORE_POKEDEX: return "before_pokedex";
@@ -66,7 +66,7 @@ JsonObject supplies_json(const Supplies& supplies){
     result["antidotes"] = supplies.antidotes;
     result["parlyz_heals"] = supplies.parlyz_heals;
     result["pocket"] = strings(supplies.pocket);
-    result["status"] = status_name(supplies.status);
+    result["status"] = std::string(status_name(supplies.status));
     result["hurt"] = supplies.hurt;
     result["hp_red"] = supplies.hp_red;
     result["hp_fill"] = supplies.hp_fill;
@@ -91,7 +91,7 @@ JsonValue story_checkpoint_export(const StoryCheckpoint& checkpoint){
     result["status"] = "native-table-export";
     result["checkpoint"] = Pokemon::story_checkpoint_json(checkpoint);
     JsonObject native;
-    native["menu"] = menu_name(checkpoint.menu);
+    native["menu"] = std::string(menu_name(checkpoint.menu));
     native["supplies"] = supplies_json(checkpoint.supplies);
     result["native_fields"] = std::move(native);
     result["state_basis"] = "native-table-bookkeeping";

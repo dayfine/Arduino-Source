@@ -232,7 +232,7 @@ void check_overworld(ConsoleHandle& console, ProControllerContext& context, cons
     if (!screen){
         return;
     }
-    const char* open = nullptr;
+    std::string_view open;
     if (StartMenuDetector(COLOR_RED).detect(screen)){
         open = "the START menu";
     }else if (SelectionDialogDetector(COLOR_RED).detect(screen)){
@@ -240,10 +240,10 @@ void check_overworld(ConsoleHandle& console, ProControllerContext& context, cons
     }else if (WhiteDialogDetector(COLOR_RED).detect(screen)){
         open = "a message";
     }
-    if (open != nullptr){
+    if (!open.empty()){
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::SEND_ERROR_REPORT,
-            std::string("walk_overworld_route(): ") + open + " is open, before: " + to_string(step),
+            std::format("walk_overworld_route(): {} is open, before: {}", open, to_string(step)),
             console
         );
     }
@@ -329,7 +329,7 @@ void start_surf(ConsoleHandle& console, ProControllerContext& context, Direction
 
 
 
-const char* move_speed_name(MoveSpeed speed){
+std::string_view move_speed_name(MoveSpeed speed){
     switch (speed){
     case MoveSpeed::WALK:
         return "walk";

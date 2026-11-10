@@ -70,7 +70,7 @@ enum class MoveSpeed{
     RUN,
 };
 //  Name of a movement speed.
-const char* move_speed_name(MoveSpeed speed);
+std::string_view move_speed_name(MoveSpeed speed);
 
 
 //  Walks `route` from where it was planned, at `speed`. The player must be

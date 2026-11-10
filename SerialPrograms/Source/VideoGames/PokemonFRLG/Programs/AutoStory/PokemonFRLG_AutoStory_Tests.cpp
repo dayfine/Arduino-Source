@@ -8,6 +8,7 @@
  *
  */
 
+#include <format>
 #include <functional>
 #include <optional>
 #include <string>
@@ -35,7 +36,7 @@ struct AutoStoryInput{
 };
 
 struct AutoStoryExpectation{
-    const char* description;
+    std::string_view description;
 };
 
 struct AutoStoryTestCase{
@@ -355,7 +356,7 @@ UnitTestResult test_runs_after_shoes(){
             }
             const MoveSpeed expected = has_shoes ? MoveSpeed::RUN : MoveSpeed::WALK;
             if (move_speed(step) != expected){
-                return checkpoint.id + "/" + step.name + ": expected to " + move_speed_name(expected) + ", it would " + move_speed_name(move_speed(step)) + ".";
+                return std::format("{}/{}: expected to {}, it would {}.", checkpoint.id, step.name, move_speed_name(expected), move_speed_name(move_speed(step)));
             }
         }
         has_shoes = has_shoes || checkpoint.id == "00.10";
@@ -414,7 +415,7 @@ UnitTestResult test_save_place_error(){
     return true;
 }
 
-const char* save_action_name(SaveAction action){
+std::string_view save_action_name(SaveAction action){
     switch (action){
     case SaveAction::WAIT:
         return "WAIT";
@@ -473,8 +474,7 @@ UnitTestResult test_save_dialog(){
         for (size_t i = 0; i < c.screens.size(); i++){
             const SaveAction action = dialog.next(c.screens[i].first);
             if (action != c.screens[i].second){
-                return c.name + ", screen " + std::to_string(i + 1) + ": expected " + save_action_name(c.screens[i].second) +
-                    ", got " + save_action_name(action) + ".";
+                return std::format("{}, screen {}: expected {}, got {}.", c.name, i + 1, save_action_name(c.screens[i].second), save_action_name(action));
             }
         }
     }
@@ -508,7 +508,7 @@ UnitTestResult test_unique_names(){
 //  was missed.
 UnitTestResult test_intro_names(){
     struct Case{
-        const char* what;
+        std::string_view what;
         IntroNameScreen screen;
         size_t keyboards_seen;
         size_t presets_picked;

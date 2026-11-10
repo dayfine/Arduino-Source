@@ -49,7 +49,7 @@ enum class StatusCondition{
     OTHER,      //  SLP, BRN, FRZ
 };
 //  String representation of a status condition.
-const char* status_name(StatusCondition status);
+std::string_view status_name(StatusCondition status);
 
 //  The healing items in the Items pocket, in the order they were bought:
 //  Potions, Antidotes, then Parlyz Heals.
