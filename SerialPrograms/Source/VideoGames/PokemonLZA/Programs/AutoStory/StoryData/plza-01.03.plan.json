@@ -33,9 +33,9 @@
       },
       {
         "id": "after_andi",
-        "kind": "scene",
-        "why": "step 17: fist bump, night in the Battle Zone, the Main Mission 02 banner and its autosave",
-        "action": "a"
+        "kind": "game_action",
+        "why": "step 17: fist bump, night in the Battle Zone, the Main Mission 02 banner and its autosave; the MAIN MISSION 01 COMPLETE card waits for A (console B, 2026-11-10)",
+        "action": "mash_to_move_hints"
       }
     ],
     "metadata": {
