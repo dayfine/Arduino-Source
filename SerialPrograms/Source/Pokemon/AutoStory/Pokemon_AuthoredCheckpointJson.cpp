@@ -1,5 +1,7 @@
 /*  Shared Authored Checkpoint JSON
+ *
  *  From: https://github.com/PokemonAutomation/
+ *
  */
 
 #include <format>
@@ -61,6 +63,7 @@ AuthoredCheckpoint load_authored_checkpoint(
     }
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Authored checkpoint is not embedded: " + std::string(file));
 }
+
 
 
 } // namespace Pokemon
