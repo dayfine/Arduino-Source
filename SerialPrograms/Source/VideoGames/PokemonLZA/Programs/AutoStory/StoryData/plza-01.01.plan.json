@@ -1,0 +1,49 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "plza",
+  "checkpoint": {
+    "id": "01.01",
+    "title": "Starter and the first battle",
+    "start": {
+      "map": "LumioseCity"
+    },
+    "events": [
+      {
+        "id": "approach_starter",
+        "kind": "game_action",
+        "why": "step 13: walk up to the starter (only Chikorita's walk was recorded)",
+        "action": "approach_starter"
+      },
+      {
+        "id": "talk_to_starter",
+        "kind": "talk",
+        "why": "step 13: A at \"A Talk Chikorita\""
+      },
+      {
+        "id": "andi_battle_start",
+        "kind": "game_action",
+        "why": "steps 14-15: choose it, the pre-battle talk, \"Go! Chikorita!\", the battling tutorial",
+        "action": "story_battle_start"
+      },
+      {
+        "id": "andi_battle",
+        "kind": "game_action",
+        "why": "step 16: beat Andi's Pancham (Lv 6), until Andi's speech",
+        "action": "story_battle"
+      },
+      {
+        "id": "after_andi",
+        "kind": "scene",
+        "why": "step 17: fist bump, night in the Battle Zone, the Main Mission 02 banner and its autosave",
+        "action": "a"
+      }
+    ],
+    "metadata": {
+      "phase": "testing",
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game"
+    }
+  },
+  "execution": {
+    "save": "autosave"
+  }
+}

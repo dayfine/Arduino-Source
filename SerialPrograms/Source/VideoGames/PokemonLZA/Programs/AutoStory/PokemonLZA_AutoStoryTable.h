@@ -25,27 +25,35 @@
 #include <map>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
+#include "Pokemon/AutoStory/Pokemon_ScreenEventTypes.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
 #include "PokemonLZA_AutoStoryMoves.h"
-#include "PokemonLZA_AutoStoryExecutor.h"
+#include "PokemonLZA_AutoStoryBackend.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  The story's checkpoints in order: 01.xx Main Mission 01 (new game,
-//  Pancham, the starter), 02.01 Main Mission 02 (out of the Battle Zone to
-//  Hotel Z, the first night), 03.xx Main Mission 03 (Taunie's battle, the
-//  Pokemon Center, Wild Zone 1, Mable's Rock Smash TM). Only 01.00, a new
-//  game, starts without a save; it starts on the title screen.
+//  The checked-in checkpoint files, StoryData/plza-<id>.plan.json, built
+//  into the program (cmake/EmbedTextFiles.cmake): (name, text), by name.
+const std::vector<std::pair<std::string, std::string>>& autostory_checkpoint_json();
+
+//  The story's checkpoints in order, read from autostory_checkpoint_json()
+//  against plza_story_specs(): 01.xx Main Mission 01 (new game, Pancham,
+//  the starter), 02.01 Main Mission 02 (out of the Battle Zone to Hotel Z,
+//  the first night), 03.xx Main Mission 03 (Taunie's battle, the Pokemon
+//  Center, Wild Zone 1, Mable's Rock Smash TM). Only 01.00, a new game,
+//  starts without a save; it starts on the title screen.
 const std::vector<Pokemon::StoryCheckpoint>& story_checkpoints();
 
 //  The rows that end on one of the game's autosaves and do not save
-//  themselves: before 03.02 the main menu cannot save. Each ends where the
-//  game autosaved in the recording (before the starter, the Main Mission 02
-//  and 03 banners, the Hotel Z lobby scene), so the next row reloads there.
+//  themselves (their JSON "execution": {"save": "autosave"}): before 03.02
+//  the main menu cannot save. Each ends where the game autosaved in the
+//  recording (before the starter, the Main Mission 02 and 03 banners, the
+//  Hotel Z lobby scene), so the next row reloads there.
 const std::set<std::string, std::less<>>& story_autosave_rows();
 
 //  Whether `row` saves through the menu at its end: every row but
@@ -58,6 +66,11 @@ size_t story_rows_ready();
 
 //  The overworld walks the table's GAME steps name, by name.
 const std::map<std::string, StoryMove, std::less<>>& story_moves();
+
+//  The moves of story_moves() that end on a screen event: the walk holds its
+//  last leg until the event shows, the leg's time as the upper bound
+//  (walk_until()). Every other move walks its times.
+const std::map<std::string, Pokemon::ScreenEvent, std::less<>>& story_move_ends();
 
 //  The walk to each starter, for the "approach_starter" step; a starter
 //  without one was not recorded.

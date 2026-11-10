@@ -6,6 +6,7 @@
 
 #include <format>
 #include <optional>
+#include <span>
 #include <string>
 #include <vector>
 #include "CommonFramework/Exceptions/OperationFailedException.h"
@@ -15,11 +16,10 @@
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
 #include "Pokemon/AutoStory/Pokemon_StoryLog.h"
-#include "Pokemon/AutoStory/Pokemon_StorySegments.h"
+#include "Pokemon/AutoStory/Engine/Pokemon_StoryEngine.h"
 #include "Pokemon/Options/Pokemon_GameLanguages.h"
 #include "Pokemon/Pokemon_Strings.h"
-#include "VideoGames/PokemonLZA/Programs/PokemonLZA_GameEntry.h"
-#include "PokemonLZA_AutoStoryActions.h"
+#include "PokemonLZA_AutoStoryGame.h"
 #include "PokemonLZA_AutoStoryTable.h"
 #include "PokemonLZA_AutoStory.h"
 
@@ -62,45 +62,6 @@ const StringSelectDatabase& checkpoint_database(){
     return database;
 }
 
-//  Each row saves at its end; a failed attempt resets the game from HOME,
-//  which loads the save the row before it made.
-SegmentHooks story_hooks(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
-    SegmentHooks hooks;
-    hooks.save = [&env, &context](RunState&){
-        save_story_game(env.console, context);
-        return outcome_ok();
-    };
-    hooks.reload = [&env, &context](RunState&){
-        go_home(env.console, context);
-        if (!reset_game_from_home(env, env.console, context)){
-            return outcome_failed("reload_failed", "Failed to reset the game from HOME.");
-        }
-        return outcome_ok();
-    };
-    hooks.log = [&env](const std::string& line){
-        env.log(line, COLOR_BLUE);
-    };
-    hooks.status = [&env](const std::string& line){
-        env.console.overlay().add_log(line);
-    };
-    return hooks;
-}
-
-//  Verify mode: the start checkpoint as many times as asked, from its save.
-void verify_story_checkpoint(
-    SingleSwitchProgramEnvironment& env, RunState& state, Segment& segment, SegmentHooks& hooks,
-    const std::string& id, const VerifyPolicy& policy
-){
-    const VerifyReport report = verify_checkpoint(state, segment, id, policy, hooks);
-    const std::string summary = std::format(
-        "AutoStory verify: {} {}/{} passed, {} needed.", id, report.passes, policy.runs, policy.passes_needed
-    );
-    if (!report.verified){
-        throw OperationFailedException(ErrorReportMode::NO_ERROR_REPORT, summary);
-    }
-    env.console.log(summary);
-}
-
 } // namespace
 
 
@@ -139,24 +100,36 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     }
     require_player(env.console, context, BUTTON_L);
 
-    StoryEnv story{.env = env, .context = context, .starter = STARTER, .language = RUN.language(), .battle_ai = BATTLE_AI};
-    StoryExecutor executor(story);
-    Segment segment = make_story_segment(rows, executor);
-    SegmentHooks hooks = story_hooks(env, context);
+    StoryEnv story{.env = env, .context = context, .language = RUN.language(), .battle_ai = BATTLE_AI};
+    PlzaConsoleBackend backend(story);
+    const StoryGame<ZonePose> game = make_plza_story_game(story, STARTER);
+    StoryEngine<ZonePose> engine(game, backend);
     RunState state;
 
     if (const std::optional<VerifyPolicy> verify = RUN.VERIFY.policy()){
-        verify_story_checkpoint(env, state, segment, hooks, rows[first].id, *verify);
+        const VerifyReport report = engine.verify_checkpoint(rows[first], state, *verify);
+        if (!report.verified){
+            throw OperationFailedException(
+                ErrorReportMode::NO_ERROR_REPORT,
+                std::format(
+                    "AutoStory verify: {} {}/{} passed, {} needed{}", report.checkpoint, report.passes, report.runs,
+                    verify->passes_needed, report.failure.succeeded() ? std::string() : ": " + to_string(report.failure)
+                )
+            );
+        }
         send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH);
         return;
     }
-    const SegmentReport report = run_segment(state, segment, SegmentRange{rows[first].id, rows[last].id}, RUN.policy(), hooks);
+    const std::span<const StoryCheckpoint> checkpoints(rows.data() + first, last - first + 1);
+    const SegmentReport report = engine.run_segment("plza", checkpoints, state, RUN.policy().attempts_per_checkpoint);
     record_story_counts(env.current_stats<AutoStoryStats>(), report.story_counts());
     env.update_stats();
     if (!report.completed){
         throw OperationFailedException(
             ErrorReportMode::NO_ERROR_REPORT,
-            std::format("AutoStory stopped at {} {}: {}", report.failed_checkpoint, report.failed_event, to_string(report.failure))
+            std::format(
+                "AutoStory stopped at {} {}: {}", report.failed_checkpoint, report.failed_event, to_string(report.failure)
+            )
         );
     }
     env.console.log("AutoStory: done through " + rows[last].id + ".");

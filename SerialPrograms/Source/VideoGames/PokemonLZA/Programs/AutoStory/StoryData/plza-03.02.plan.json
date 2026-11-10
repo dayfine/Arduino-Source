@@ -1,0 +1,79 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "plza",
+  "checkpoint": {
+    "id": "03.02",
+    "title": "Out of Hotel Z, battle Taunie",
+    "start": {
+      "map": "HotelZ"
+    },
+    "events": [
+      {
+        "id": "to_hotel_front_door",
+        "kind": "game_action",
+        "why": "step 40: across the lobby to the front door's \"A Leave\"",
+        "action": "to_hotel_front_door"
+      },
+      {
+        "id": "leave_hotel_z",
+        "kind": "scene",
+        "why": "steps 40-41: A Leave, the Main Menu tutorial card",
+        "action": "a"
+      },
+      {
+        "id": "to_taunie_at_gate",
+        "kind": "game_action",
+        "why": "step 41: to Taunie at the gate, \"A Talk Taunie\"",
+        "action": "to_taunie_at_gate"
+      },
+      {
+        "id": "talk_to_taunie",
+        "kind": "talk",
+        "why": "step 42: A at Taunie"
+      },
+      {
+        "id": "taunie_battle_start",
+        "kind": "game_action",
+        "why": "step 42: A through her talk to \"Taunie sent out Totodile!\"",
+        "action": "story_battle_start"
+      },
+      {
+        "id": "battle_totodile",
+        "kind": "game_action",
+        "why": "step 43: beat Totodile, until \"We're not done just yet!\"",
+        "action": "story_battle"
+      },
+      {
+        "id": "taunie_sends_tepig",
+        "kind": "game_action",
+        "why": "step 44: the Type Matchups tutorial (3 pages), Tepig sent out",
+        "action": "story_battle_start"
+      },
+      {
+        "id": "battle_tepig",
+        "kind": "game_action",
+        "why": "step 44: beat Tepig, until Taunie's speech",
+        "action": "story_battle"
+      },
+      {
+        "id": "after_taunie_battle",
+        "kind": "game_action",
+        "why": "step 45: Taunie's talk, closing the map it opens with B",
+        "action": "talk_through_map_screen"
+      },
+      {
+        "id": "taunie_runs_off",
+        "kind": "scene",
+        "why": "step 45: the Main Missions tutorial, Taunie runs off",
+        "action": "a"
+      }
+    ],
+    "metadata": {
+      "phase": "testing",
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game"
+    }
+  },
+  "execution": {
+    "save": "menu"
+  }
+}

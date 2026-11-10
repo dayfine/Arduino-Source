@@ -1,0 +1,127 @@
+/*  PokemonLZA AutoStory - Scene machine
+ *
+ *  From: https://github.com/PokemonAutomation/
+ *
+ *  01.00's scenes as ScreenMachine states (CommonTools/ScreenMachine) that
+ *  match on what the backend observed (ScreenState::matches_observation),
+ *  so they run on the console and on a scripted backend alike: every look
+ *  picks one state, the state takes one step, and each change of state is
+ *  logged with the look's events. That log says when the player gets
+ *  control, which the tutorial shows with no party bar (only the Move /
+ *  Control Camera hints, which have no detector yet: no frame of them has
+ *  been kept).
+ *
+ *  The walks between the scenes are PokemonLZA_AutoStoryGuardedWalks.h.
+ *
+ */
+
+#ifndef PokemonAutomation_PokemonLZA_AutoStorySceneMachine_H
+#define PokemonAutomation_PokemonLZA_AutoStorySceneMachine_H
+
+#include <optional>
+#include <string>
+#include <string_view>
+#include "Common/Cpp/Time.h"
+#include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "CommonTools/ScreenMachine/ScreenObservation.h"
+#include "NintendoSwitch/Controllers/NintendoSwitch_ControllerButtons.h"
+#include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
+#include "PokemonLZA_AutoStoryObservation.h"
+#include "PokemonLZA_AutoStoryBackend.h"
+#include "PokemonLZA_AutoStoryScreenEvents.h"
+
+namespace PokemonAutomation{
+namespace NintendoSwitch{
+namespace PokemonLZA{
+
+
+//  What a scene machine is after, and how it presses.
+struct SceneMachineConfig{
+    SceneMashGoal goal = SceneMashGoal::OVERWORLD;
+    //  Advances the text (A or B).
+    Button text_button = BUTTON_A;
+    //  OVERWORLD only: also done once nothing busy (box, choice, battle,
+    //  fade) has shown for this long...
+    std::optional<Milliseconds> quiet = std::nullopt;
+    //  ...and this long has passed since the start: a cutscene can hold a
+    //  still frame longer than `quiet`.
+    Milliseconds min_length = Milliseconds(0);
+};
+
+//  The states a scene machine tells apart, in the order it tries them.
+enum class SceneScreen{
+    GOAL_CHOICE,    //  terminal: a choice, when it is the goal
+    GOAL_BATTLE,    //  terminal: the battle HUD, when it is the goal
+    FADE_BLACK,     //  wait until it lifts
+    FADE_WHITE,     //  wait until it lifts
+    CHOICE,         //  A: the top choice
+    DIALOG,         //  the text button
+    CAN_MOVE,       //  terminal: the party bar, held a second
+    PARTY_BAR,      //  wait: the party bar, not held a second yet
+    QUIET_END,      //  terminal: nothing busy for the quiet time, past the minimum length
+    SCENE_MOVING,   //  no box, the screen changing: a cutscene, or the player in control
+    SCENE_STILL,    //  no box, the screen still since the read before
+};
+
+//  "fade_black", the state's name in the StepTrace log.
+std::string_view scene_screen_name(SceneScreen screen);
+
+//  Whether the machine ends after this state's step.
+bool scene_screen_terminal(SceneScreen screen);
+
+//  The press a state takes: DONE for a terminal state; WAIT for a fade, the
+//  party bar, and a screen with no box in an A mash (A would talk to whoever
+//  stands in front); PRESS_B there in a B mash (closes the map and Pokedex
+//  screens), PRESS_A when the goal is a battle (cards, the VS splash).
+SceneMashAction scene_screen_action(SceneScreen screen, const SceneMachineConfig& config);
+
+//  The time-dependent part of the machine, apart from the backend so tests
+//  can feed it looks: when the screen was last busy, since when the party
+//  bar shows. A look's time is its `when`.
+class SceneTimeline{
+public:
+    SceneTimeline(SceneMachineConfig config, WallClock start);
+
+    //  The state for `look` (STILL: the screen barely changed since the
+    //  look before). Does not change the timeline.
+    SceneScreen classify(const ScreenObservation& look) const;
+
+    //  Takes in the look the machine acted on.
+    void record(const ScreenObservation& look);
+
+    //  When the quiet end is due if nothing busy shows before; none
+    //  without a quiet time.
+    std::optional<WallClock> quiet_end_due() const;
+
+    const SceneMachineConfig& config() const{
+        return m_config;
+    }
+
+private:
+    SceneMachineConfig m_config;
+    WallClock m_quiet_from;
+    WallClock m_last_busy;
+    std::optional<WallClock> m_party_bar_since;
+};
+
+
+//  Presses through a scene until `config.goal` shows (OVERWORLD: the party
+//  bar held a second, or the quiet end), on run_screen_machine_on_observations().
+//  `label` names its log lines ("[PLZA opening] dialog: text box"). Fails as
+//  "scene_timeout" when `timeout` passes (by the looks' time),
+//  "scene_unknown" on a look no state takes and "scene_stuck" on a state
+//  that comes up too often or a screen that stops changing.
+Pokemon::Outcome run_scene_machine(
+    PlzaBackend& backend, std::string_view label, const SceneMachineConfig& config, Milliseconds timeout
+);
+
+//  Registers the scene machine's tests: its states on sequences of events,
+//  no frames needed.
+void add_tests_AutoStorySceneMachine(UnitTestDatabase& database);
+
+
+
+} // namespace PokemonLZA
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
+#endif

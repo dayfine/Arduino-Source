@@ -4,9 +4,8 @@
  *
  */
 
-#include <cmath>
 #include <format>
-#include <numbers>
+#include <optional>
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_BasicNavigation.h"
@@ -20,56 +19,56 @@ namespace PokemonLZA{
 using namespace std::chrono_literals;
 
 
-double read_heading(ConsoleHandle& console, ProControllerContext& context){
-    return get_facing_direction(console, context);
-}
-
 namespace{
 
-//  Recenters the camera behind the player (L), then taps the stick
-//  `degrees` clockwise of straight ahead, which turns the player that way
-//  (and steps it a little). 150 ms is the tap the story was recorded with
-//  (console B, 2026-11-08).
-void turn_by(ProControllerContext& context, double degrees){
-    const double radians = degrees * std::numbers::pi / 180.0;
-    pbf_press_button(context, BUTTON_L, 100ms, 400ms);
-    pbf_move_left_joystick(context, {std::sin(radians), std::cos(radians)}, 150ms, 300ms);
+//  The heading on a fresh look, read by `reader` when there is one.
+std::optional<int> read_heading(PlzaBackend& backend, const PlzaReader& reader){
+    Pokemon::Observation<Pokemon::ZonePose> look = backend.observe();
+    if (reader){
+        reader(backend, look);
+    }
+    return Pokemon::story_heading(look);
 }
 
 } // namespace
 
-double face_heading(ConsoleHandle& console, ProControllerContext& context, double heading, double tolerance){
-    double now = get_facing_direction(console, context);
-    for (size_t attempt = 0; attempt < 4 && get_angle_between_facing_directions(now, heading) > tolerance; attempt++){
-        turn_by(context, heading - now);
-        context.wait_for_all_requests();
-        now = get_facing_direction(console, context);
+
+Pokemon::Outcome face_heading(PlzaBackend& backend, const PlzaReader& reader, double heading, double tolerance){
+    std::optional<int> now = read_heading(backend, reader);
+    for (size_t attempt = 0; attempt < 4 && now && get_angle_between_facing_directions(*now, heading) > tolerance; attempt++){
+        story_turn(backend, heading - *now);
+        now = read_heading(backend, reader);
     }
-    if (get_angle_between_facing_directions(now, heading) > tolerance){
-        OperationFailedExceptionWithScreenshot::fire(
-            ErrorReportMode::SEND_ERROR_REPORT,
-            std::format("face_heading(): facing {:.0f} deg, wanted {:.0f} +/- {:.0f}.", now, heading, tolerance),
-            console
+    if (!now){
+        return Pokemon::outcome_failed("heading_unread", "no look read the minimap's heading");
+    }
+    if (get_angle_between_facing_directions(*now, heading) > tolerance){
+        return Pokemon::outcome_failed(
+            "heading_missed",
+            std::format("facing {} deg, wanted {:.0f} +/- {:.0f}", *now, heading, tolerance)
         );
     }
-    return now;
+    return Pokemon::outcome_ok();
 }
 
-void run_story_move(ConsoleHandle& console, ProControllerContext& context, const StoryMove& move){
+Pokemon::Outcome run_story_move(PlzaBackend& backend, const StoryMove& move, const PlzaReader& heading){
     if (move.heading){
-        face_heading(console, context, *move.heading, 10.0);
+        const Pokemon::Outcome faced = face_heading(backend, heading, *move.heading, 10.0);
+        if (!faced.succeeded()){
+            return faced;
+        }
     }
     for (const StoryWalkLeg& leg : move.legs){
         if (leg.turn != 0){
             //  The walk goes where the camera looks: recenter it after the turn.
-            turn_by(context, leg.turn);
-            pbf_press_button(context, BUTTON_L, 100ms, 400ms);
+            story_turn(backend, leg.turn);
+            backend.press(BUTTON_L, 100ms, 400ms);
         }
         if (leg.walk > Milliseconds(0)){
-            pbf_move_left_joystick(context, {0, 1}, leg.walk, 0ms);
+            backend.hold(Pokemon::Direction::NORTH, leg.walk, Pokemon::StoryPace::WALK);
         }
     }
-    context.wait_for_all_requests();
+    return Pokemon::outcome_ok();
 }
 
 

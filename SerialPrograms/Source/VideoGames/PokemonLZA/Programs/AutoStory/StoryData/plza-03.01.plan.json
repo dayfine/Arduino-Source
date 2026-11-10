@@ -1,0 +1,55 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "plza",
+  "checkpoint": {
+    "id": "03.01",
+    "title": "Down to the lobby",
+    "start": {
+      "map": "HotelZ"
+    },
+    "events": [
+      {
+        "id": "out_of_room_202",
+        "kind": "game_action",
+        "why": "step 36: to the room door's \"A Leave\"",
+        "action": "out_of_room_202"
+      },
+      {
+        "id": "leave_room_202",
+        "kind": "scene",
+        "why": "step 36: A Leave, the loading screen",
+        "action": "a"
+      },
+      {
+        "id": "to_2f_elevator",
+        "kind": "game_action",
+        "why": "step 37: down the 2F hallway to \"A Take Elevator\"",
+        "action": "to_2f_elevator"
+      },
+      {
+        "id": "take_elevator_down",
+        "kind": "talk",
+        "why": "step 37: A Take Elevator, \"Which floor?\""
+      },
+      {
+        "id": "ride_to_lobby",
+        "kind": "game_action",
+        "why": "step 38: \"1F (Lobby)\", the first floor listed",
+        "action": "choose_0"
+      },
+      {
+        "id": "lobby_scene",
+        "kind": "scene",
+        "why": "step 39: Z-A Royale, the app, the new outfit, AZ, Lida; autosave",
+        "action": "a"
+      }
+    ],
+    "metadata": {
+      "phase": "testing",
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game"
+    }
+  },
+  "execution": {
+    "save": "autosave"
+  }
+}

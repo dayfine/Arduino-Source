@@ -1,0 +1,86 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "plza",
+  "checkpoint": {
+    "id": "01.00",
+    "title": "New game to the starter",
+    "events": [
+      {
+        "id": "language",
+        "kind": "game_action",
+        "why": "step 1: start a new game in English",
+        "action": "new_game_language"
+      },
+      {
+        "id": "look",
+        "kind": "game_action",
+        "why": "step 2: pick the first look",
+        "action": "pick_look"
+      },
+      {
+        "id": "name",
+        "kind": "game_action",
+        "why": "steps 3-4: name the player and confirm",
+        "action": "type_player_name"
+      },
+      {
+        "id": "opening",
+        "kind": "game_action",
+        "why": "step 5: the opening cutscene until the Move / Camera hints",
+        "action": "mash_to_move_hints",
+        "args": {
+          "min_length_ms": 60000
+        }
+      },
+      {
+        "id": "platform_to_plaza",
+        "kind": "game_action",
+        "why": "steps 6-7: down the platform, then right until the white fade",
+        "action": "platform_to_plaza"
+      },
+      {
+        "id": "arrival_scenes",
+        "kind": "game_action",
+        "why": "steps 8-10: \"That I am\", Jett's ad, \"So you hired a Pokemon...\" (top choices)",
+        "action": "mash_to_move_hints",
+        "args": {
+          "min_length_ms": 40000
+        }
+      },
+      {
+        "id": "chase_pancham",
+        "kind": "game_action",
+        "why": "step 11: after Pancham, through the archway, around the starters into the scene",
+        "action": "chase_pancham"
+      },
+      {
+        "id": "pancham_cornered",
+        "kind": "game_action",
+        "why": "step 12: the scene up to its choice",
+        "action": "text_to_choice"
+      },
+      {
+        "id": "battle_with_pokemon",
+        "kind": "game_action",
+        "why": "step 12: choose \"Battle with Pokemon!\" (second choice)",
+        "action": "choose_1"
+      },
+      {
+        "id": "battle_area",
+        "kind": "game_action",
+        "why": "step 12: the scene until free control in the battle area; autosave",
+        "action": "mash_to_move_hints",
+        "args": {
+          "min_length_ms": 20000
+        }
+      }
+    ],
+    "metadata": {
+      "phase": "testing",
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game"
+    }
+  },
+  "execution": {
+    "save": "autosave"
+  }
+}
