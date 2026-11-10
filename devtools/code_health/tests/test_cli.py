@@ -82,6 +82,29 @@ class CliTests(unittest.TestCase):
         self.assertNotIn('char*', result.stderr)
         self.assertIn('Bypass: Common/api.h:23: char_pointer bypassed by the tag at line 22', result.stdout)
 
+    def test_allow_tag_waives_advisory_style_findings(self):
+        self.source(3)
+        self.commit()
+        (self.root / 'Common/concat.cpp').write_text(
+            'void f(const std::string& b){\n'
+            '    // code-health: allow string_concat -- the Qt translation macro needs a plain concat\n'
+            '    auto s = "a" + b;\n'
+            '}\n'
+            '// code-health: allow out_param_order -- the action registry fixes this callback shape\n'
+            'Outcome take_warp(Lab& lab, const Call& call);\n'
+            '// code-health: allow string_concat -- this tag has no concatenation under it to waive\n'
+            'int k = 1;\n')
+        self.git('add', '.')
+        result = self.cli()
+        self.assertEqual(1, result.returncode, result.stderr)
+        self.assertIn('Bypass: Common/concat.cpp:3: string_concat bypassed by the tag at line 2', result.stdout)
+        self.assertIn('Bypass: Common/concat.cpp:6: out_param_order bypassed by the tag at line 5', result.stdout)
+        self.assertNotIn('Advisory: Common/concat.cpp:3', result.stdout)
+        self.assertNotIn('Advisory: Common/concat.cpp:6', result.stdout)
+        unattached = [line for line in result.stderr.splitlines() if 'attaches to nothing' in line]
+        self.assertEqual(['Common/concat.cpp:7: code-health tag: string_concat attaches to nothing; '
+                          'put the tag on or directly above the flagged line'], unattached)
+
     def test_unchanged_bad_function_in_changed_file_passes(self):
         self.source(60)
         self.commit()
