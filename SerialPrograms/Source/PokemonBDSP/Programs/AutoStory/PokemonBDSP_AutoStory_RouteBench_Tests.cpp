@@ -25,6 +25,7 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/Navigation/Pokemon_RouteScorer.h"
 #include "Data/PokemonBDSP_AutoStory_WallRecovery.h"
+#include "Utils/PokemonBDSP_AutoStory_RouteChoice.h"
 #include "Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP_AutoStory_StoryExecutor.h"
 #include "PokemonBDSP_AutoStory_StoryPlaces.h"
@@ -45,12 +46,6 @@ using Pokemon::ScoredLeg;
 using Pokemon::ScoredLegKind;
 using Pokemon::TilePos;
 
-//  A tap of walk_tiles_dpad(): it allows 800 ms a tile, and the console
-//  taps took about that (00.04's "west 16 (open)" took 12.8 s).
-constexpr long long TAP_MS = 800;
-//  Confirming a stop at a wall: walk_until_dpad() watches a still screen.
-constexpr long long WALL_STOP_MS = 1000;
-
 //  One route to score: the plan the program walks today, or one hand-written.
 struct BenchCase{
     std::string name;
@@ -69,52 +64,20 @@ struct BenchCase{
 };
 
 Pokemon::ScoreMap bench_map(const BenchCase& bench){
-    const StoryWorld& world = *bench.world;
-    return {
-        .step = [&world](const TilePos& from, Direction direction) -> std::optional<TilePos>{
-            const std::optional<TilePos> next = step(world, from, direction);
-            if (!next && world.tile(from.next(direction)) == Pokemon::TileKind::DOOR){
-                return from.next(direction);
-            }
-            return next;
-        },
-        .risk = [&world, &bench](const TilePos& pos){
-            if (std::find(bench.triggers.begin(), bench.triggers.end(), pos) != bench.triggers.end()){
-                return Pokemon::TileRisk::TRIGGER;
-            }
-            const std::optional<Pokemon::TileKind> tile = world.tile(pos);
-            if (tile == Pokemon::TileKind::DOOR){
-                return Pokemon::TileRisk::WARP;
-            }
-            if (tile == Pokemon::TileKind::TALL_GRASS){
-                return Pokemon::TileRisk::ENCOUNTER;
-            }
-            return wandering_hazard(world, pos) ? Pokemon::TileRisk::WANDERER : Pokemon::TileRisk::NONE;
-        },
-    };
+    return route_score_map(*bench.world, bench.triggers);
 }
 
 Pokemon::RoutePaces bench_paces(){
-    return {
-        .ms_per_tile = [](Direction direction, bool run){
-            return (long long)route_ms_per_tile(direction, run ? MoveSpeed::RUN : MoveSpeed::WALK).count();
-        },
-        .start_ms = ROUTE_START_DELAY.count(),
-        .tap_ms = TAP_MS,
-        .press_ms = ROUTE_TURN_TAP.count() * 2,
-        .stop_ms = WALL_STOP_MS,
-    };
+    return route_score_paces();
 }
 
-//  The legs as RouteWalker walks them: legs to a wall held (at a run once
-//  the Running Shoes are ours), open legs tapped.
+MoveSpeed bench_speed(bool run){
+    return run ? MoveSpeed::RUN : MoveSpeed::WALK;
+}
+
+//  The legs as RouteWalker walks them (route_scored_legs()).
 std::vector<ScoredLeg> walked_legs(const std::vector<PlannedLeg>& legs, bool run){
-    std::vector<ScoredLeg> out;
-    for (const PlannedLeg& planned : legs){
-        out.push_back({.direction = planned.leg.direction, .tiles = planned.leg.tiles,
-            .kind = planned.leg.ends_at_wall ? ScoredLegKind::TO_WALL : ScoredLegKind::TAPS, .run = run});
-    }
-    return out;
+    return route_scored_legs(legs, bench_speed(run));
 }
 
 RouteScore score_case(const BenchCase& bench){
@@ -248,6 +211,49 @@ BenchCase moms_call_target(const BenchCase& current){
     return target;
 }
 
+//  00.04 "into_twinleaf", lab-B run 4 (2026-11-09 18:50): "south 33 (open)"
+//  was blocked after 22 taps, counted at Twinleaf (15, 11), by someone on
+//  (15, 12). The plan from that one tile, "west 1 (to wall)", walked six
+//  tiles west, and the walk ended beside the house, east of its door. A
+//  blocked count can be a tile off (blocked_stop_tiles()): both cases are
+//  scored from every tile it gives, the blocker on the map. "counted tile"
+//  is the plan walk_route() made then, from the count alone; the other is
+//  the plan it makes now.
+const StoryWorld& run4_world(const StoryWorld& world){
+    static const StoryWorld blocked = [&world]{
+        StoryWorld out = world;
+        out.block(story_to_world(world, "TwinleafTown", {15, 12}));
+        return out;
+    }();
+    return blocked;
+}
+void add_run4_cases(std::vector<BenchCase>& cases){
+    const BenchCase& route = cases[case_index(cases, "00.04 into_twinleaf")];
+    const StoryWorld& world = run4_world(*route.world);
+    const TilePos counted = story_to_world(world, "TwinleafTown", {15, 11});
+    const std::vector<TilePos> targets = route.goal;
+    const auto goal = [targets](const TilePos& pos){
+        return std::find(targets.begin(), targets.end(), pos) != targets.end();
+    };
+    BenchCase recovery = route;
+    recovery.world = &world;
+    recovery.from = blocked_stop_tiles(world, {counted}, Direction::SOUTH);
+    recovery.human = std::nullopt;
+    const std::optional<std::vector<PlannedLeg>> old_plan = plan_recovered_route(world, {counted}, goal, *recovery.costs);
+    BenchCase old_case = recovery;
+    old_case.name = "00.04 into_twinleaf after run 4's block, planned from the counted tile";
+    old_case.legs = old_plan ? walked_legs(*old_plan, recovery.run) : std::vector<ScoredLeg>{};
+    old_case.planned = old_plan.has_value();
+    cases.push_back(std::move(old_case));
+    const std::optional<std::vector<PlannedLeg>> new_plan = plan_fastest_route({
+        .world = world, .from = recovery.from, .goal = goal, .costs = *recovery.costs, .speed = bench_speed(recovery.run),
+    });
+    recovery.name = "00.04 into_twinleaf after run 4's block";
+    recovery.legs = new_plan ? walked_legs(*new_plan, recovery.run) : std::vector<ScoredLeg>{};
+    recovery.planned = new_plan.has_value();
+    cases.push_back(std::move(recovery));
+}
+
 //  A human run recorded on the console, as legs: replaces a case's stand-in.
 struct RecordedHumanRun{
     std::string case_name;
@@ -278,6 +284,7 @@ std::vector<BenchCase> bench_cases(){
     add_target(cases, "00.04 along_route_201_road", road_target);
     add_target(cases, "00.04 into_twinleaf", twinleaf_target);
     add_target(cases, "00.04 into_moms_call + the tap into her call", moms_call_target);
+    add_run4_cases(cases);
     for (const RecordedHumanRun& run : recorded_human_runs()){
         BenchCase& bench = cases[case_index(cases, run.case_name)];
         bench.human = run.legs;

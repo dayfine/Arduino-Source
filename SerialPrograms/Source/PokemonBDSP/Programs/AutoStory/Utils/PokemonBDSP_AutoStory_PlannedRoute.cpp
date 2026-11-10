@@ -15,6 +15,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_WallRecovery.h"
 #include "PokemonBDSP_AutoStory_LegBattle.h"
 #include "PokemonBDSP_AutoStory_Location.h"
+#include "PokemonBDSP_AutoStory_RouteChoice.h"
 #include "PokemonBDSP_AutoStory_RouteIO.h"
 #include "PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP_AutoStory_PlannedRoute.h"
@@ -251,6 +252,7 @@ private:
 
     //  Open legs, tapped.
     LegNext open_leg(LegWalk& walk);
+    LegNext held_leg(LegWalk& walk);
     LegNext interrupted_open_leg(LegWalk& walk);
     void turn_tap(LegWalk& walk);
     LegNext blocked_open_leg(LegWalk& walk, size_t moved);
@@ -310,7 +312,7 @@ RouteEnd RouteWalker::run(std::vector<TilePos> from){
 }
 
 std::vector<PlannedLeg> RouteWalker::plan_legs() const{
-    std::optional<std::vector<PlannedLeg>> legs = plan_recovered_route(m_grid, m_from, m_plan.goal, m_plan.costs);
+    std::optional<std::vector<PlannedLeg>> legs = plan_fastest_route({m_grid, m_from, m_plan.goal, m_plan.costs, m_plan.speed, {}});
     if (!legs){
         //  From a few possible tiles the exact-open-leg costs found no
         //  plan where the default ones did (r240a, three tiles on Route
@@ -340,7 +342,7 @@ LegNext RouteWalker::walk_leg(const PlannedLeg& planned, size_t number, size_t c
         .map_before = map_of(m_maps, m_from),
         .map_after = map_of(m_maps, planned.after),
     };
-    const LegNext next = planned.leg.ends_at_wall ? wall_leg(walk) : open_leg(walk);
+    const LegNext next = planned.leg.ends_at_wall ? wall_leg(walk) : planned.leg.held ? held_leg(walk) : open_leg(walk);
     if (next == LegNext::REPLAN){
         return next;
     }
@@ -609,6 +611,18 @@ LegNext RouteWalker::open_leg(LegWalk& walk){
     return LegNext::NEXT_LEG;
 }
 
+//  An open leg held for its time at the plan's speed (TileLeg::held).
+LegNext RouteWalker::held_leg(LegWalk& walk){
+    const TileLeg& leg = walk.planned.leg;
+    const Milliseconds per_tile = route_ms_per_tile(leg.direction, m_plan.speed);
+    walk.result = m_io.walk_to_wall({.direction = leg.direction, .limit = ROUTE_START_DELAY + per_tile * leg.tiles - per_tile / 2,
+        .label = walk.label, .options = run_watching(walk)});
+    if (walk.result.wild_battles > 0 || walk.result.stop != WalkStop::BLOCKED){
+        return walk.result.wild_battles > 0 ? interrupted_open_leg(walk) : LegNext::NEXT_LEG;
+    }
+    return blocked_open_leg(walk, std::min(leg.tiles, tiles_moved(walk.result, per_tile)));
+}
+
 //  Where an open leg's battle left us: where its screen events place it
 //  (place_leg_battle()), a tile or so from where the taps left us; else
 //  any tile of the leg from where it began, none moved to all. A battle that may have begun before the leg
@@ -651,6 +665,7 @@ LegNext RouteWalker::blocked_open_leg(LegWalk& walk, size_t moved){
     }
     stopped = sorted_unique(std::move(stopped));
     mark_blocker(walk, stopped);
+    stopped = blocked_stop_tiles(m_grid, stopped, walk.planned.leg.direction);
     return replan_from(walk, std::move(stopped),
         "blocked after " + std::to_string(moved) + " of " + std::to_string(walk.planned.leg.tiles) + " tiles");
 }
@@ -978,8 +993,6 @@ size_t walk_counted_wall_leg(RouteIO& io, const CountedWallLeg& leg){
     }
     return walked;
 }
-
-
 
 } // namespace PokemonBDSP
 } // namespace NintendoSwitch

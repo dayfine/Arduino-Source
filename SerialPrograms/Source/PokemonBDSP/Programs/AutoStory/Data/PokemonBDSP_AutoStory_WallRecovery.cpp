@@ -63,7 +63,7 @@ public:
         }
         return Pokemon::WallRecoveryStep<Hypothesis, Hold>{
             .positions = std::move(ends),
-            .hold = {.direction = direction, .tiles = longest, .ends_at_wall = true},
+            .hold = {.direction = direction, .tiles = longest, .ends_at_wall = true, .held = false},
         };
     }
 

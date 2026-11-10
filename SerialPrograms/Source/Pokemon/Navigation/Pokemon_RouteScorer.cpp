@@ -30,6 +30,10 @@ std::string to_string(const ScoredLeg& leg){
     return std::format("{} {} ({})", direction_name(leg.direction), leg.tiles, how);
 }
 
+size_t open_hold_error(size_t tiles){
+    return 1 + tiles / 5;
+}
+
 const char* verdict_name(RouteVerdict verdict){
     switch (verdict){
     case RouteVerdict::PASS:
@@ -140,9 +144,9 @@ std::string unsafe_overshoot(const ScoreMap& map, const TilePos& before, const T
 }
 
 LegWalk walk_open_hold(const ScoreMap& map, const TilePos& from, const ScoredLeg& leg,
-    const RoutePaces& paces, const InterruptModel& model, const std::function<bool(const TilePos&)>& goal
+    const RoutePaces& paces, const std::function<bool(const TilePos&)>& goal
 ){
-    const size_t error = (size_t)model.open_error + leg.tiles / (size_t)std::max(1, model.open_error_per);
+    const size_t error = open_hold_error(leg.tiles);
     const size_t fewest = leg.tiles > error ? leg.tiles - error : 0;
     const std::vector<TilePos> all = walk_steps(map, from, leg.direction, leg.tiles + error);
     LegWalk walk;
@@ -158,7 +162,7 @@ LegWalk walk_open_hold(const ScoreMap& map, const TilePos& from, const ScoredLeg
 }
 
 LegWalk walk_leg(const ScoreMap& map, const TilePos& from, const ScoredLeg& leg,
-    const RoutePaces& paces, const InterruptModel& model, const std::function<bool(const TilePos&)>& goal
+    const RoutePaces& paces, const std::function<bool(const TilePos&)>& goal
 ){
     LegWalk walk;
     switch (leg.kind){
@@ -169,7 +173,7 @@ LegWalk walk_leg(const ScoreMap& map, const TilePos& from, const ScoredLeg& leg,
         walk = walk_taps(map, from, leg, paces);
         break;
     case ScoredLegKind::OPEN_HOLD:
-        walk = walk_open_hold(map, from, leg, paces, model, goal);
+        walk = walk_open_hold(map, from, leg, paces, goal);
         break;
     }
     walk.ms += paces.press_ms;
@@ -311,7 +315,7 @@ void Scorer::add_interruptions(PlanWalk& out, Branch& branch, size_t index, cons
 void Scorer::walk_branch(PlanWalk& out, const Branch& branch, size_t index, const ScoredLeg& leg,
     bool last, std::map<std::string, Branch>& next
 ) const{
-    const LegWalk walk = walk_leg(m_map, branch.pos, leg, m_paces, m_model, m_goal);
+    const LegWalk walk = walk_leg(m_map, branch.pos, leg, m_paces, m_goal);
     if (!walk.unsafe.empty() && out.fail.empty()){
         out.fail = std::format("leg {} ({}) from {} may overshoot onto {}", index + 1, to_string(leg), to_string(branch.pos), walk.unsafe);
     }

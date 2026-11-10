@@ -9,6 +9,7 @@
 #include "Data/PokemonBDSP_AutoStory_WallRecovery.h"
 #include "PokemonBDSP_AutoStory_StoryExecutor.h"
 #include "PokemonBDSP_AutoStory_StoryPlaces.h"
+#include "Utils/PokemonBDSP_AutoStory_RouteChoice.h"
 #include "PokemonBDSP_AutoStory_StoryTable.h"
 #include "PokemonBDSP_AutoStory_StoryWalkSteps.h"
 #include "PokemonBDSP_AutoStory_TableRoutes.h"
@@ -82,7 +83,10 @@ RouteStepPlan plan_table_route(const TableRoute& route){
     const std::vector<TilePos> targets = world_tiles(world, *route.step->target);
     const auto goal = [&](const TilePos& pos){ return std::find(targets.begin(), targets.end(), pos) != targets.end(); };
     RouteStepPlan plan{.start = world_tiles(world, *route.from)};
-    plan.legs = plan_recovered_route(world, plan.start, goal, *story_route_costs(route.step->variant));
+    const MoveSpeed speed = route.row > std::string(RUNNING_SHOES_ROW) ? MoveSpeed::RUN : MoveSpeed::WALK;
+    plan.legs = plan_fastest_route({
+        .world = world, .from = plan.start, .goal = goal, .costs = *story_route_costs(route.step->variant), .speed = speed,
+    });
     if (!plan.legs){
         plan.legs = plan_recovered_route(world, plan.start, goal, RobustPlanCosts());
         plan.default_costs = plan.legs.has_value();

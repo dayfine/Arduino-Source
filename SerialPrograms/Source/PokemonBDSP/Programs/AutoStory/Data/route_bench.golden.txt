@@ -65,3 +65,5 @@ above 1.5 is flagged "!".
 TARGET 00.04 along_route_201_road | 11333 | 12300 | 12300 | 2 | 0 | 0 | 0.92 | 1.00 | 1.00 | 12300 ms (user's route) | FAIL (may end on (41, 56), off the goal)
 TARGET 00.04 into_twinleaf | 10200 | 10200 | 10200 | 1 | 0 | 0 | 1.00 | 1.00 | 1.00 | 10200 ms (user's route) | PASS
 TARGET 00.04 into_moms_call + the tap into her call | 2550 | 2550 | 2550 | 1 | 0 | 0 | 1.00 | 1.00 | 1.00 | 2550 ms (user's route) | PASS
+00.04 into_twinleaf after run 4's block, planned from the counted tile | 11250 | 11250 | 11250 | 1 | 0 | 0 | 5.00! | 1.00 | 2.00! | 2250 ms (stand-in) | FAIL (may end on (47, 85), off the goal)
+00.04 into_twinleaf after run 4's block | 12750 | 12750 | 12750 | 2 | 0 | 0 | 5.67! | 1.00 | 3.00! | 2250 ms (stand-in) | PASS

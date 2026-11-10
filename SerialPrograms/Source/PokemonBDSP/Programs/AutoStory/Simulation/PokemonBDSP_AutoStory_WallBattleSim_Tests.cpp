@@ -114,7 +114,7 @@ public:
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const std::string leg = "wall leg battle: " + to_string(TileLeg{.direction = Direction::EAST, .tiles = 21, .ends_at_wall = true});
+        const std::string leg = "wall leg battle: " + to_string(TileLeg{.direction = Direction::EAST, .tiles = 21, .ends_at_wall = true, .held = false});
         const WallBattleWalk walk = walk_wall_battle(leg, m_case.input.battle);
         if (!walk.error.empty()){
             return walk.error;

@@ -74,6 +74,13 @@ struct RoutePaces{
     long long stop_ms = 1000;       //  confirming a stop at a wall (a re-localization)
 };
 
+//  How many tiles short or long a held open leg of `tiles` tiles may end:
+//  one, and one more every 5 tiles (on the console a 7-tile walk went 9).
+//  Measured walking only; a run is assumed the same. The one model of a
+//  timed hold's error, for the scorer and the planners: replace it here
+//  once the console has measured it.
+size_t open_hold_error(size_t tiles);
+
 //  How interruptions are charged.
 struct InterruptModel{
     double encounter_per_tile = 0.1;
@@ -82,10 +89,6 @@ struct InterruptModel{
     long long wanderer_ms = 2500;       //  waiting for them to move on
     long long trainer_ms = 45000;       //  a trainer battle
     long long replan_ms = 2000;         //  a stop and a new plan
-    //  A held open leg of n tiles may end open_error + n / open_error_per
-    //  tiles short or long.
-    int open_error = 1;
-    int open_error_per = 5;
     //  Most recoveries in a row before the plan counts as stuck.
     size_t max_recoveries = 3;
     //  Most tiles the player may be on at once, before a plan is too loose.
