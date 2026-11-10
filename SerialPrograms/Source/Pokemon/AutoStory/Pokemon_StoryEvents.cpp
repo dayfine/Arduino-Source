@@ -68,11 +68,13 @@ Outcome outcome_ok(Pose pose){
     outcome.pose = std::move(pose);
     return outcome;
 }
+
 Outcome outcome_unchanged(){
     Outcome outcome;
     outcome.changed_nothing = true;
     return outcome;
 }
+
 Outcome outcome_failed(std::string failure, std::string detail){
     Outcome outcome;
     outcome.failure = std::move(failure);

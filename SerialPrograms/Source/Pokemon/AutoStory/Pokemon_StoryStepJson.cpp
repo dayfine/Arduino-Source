@@ -1,19 +1,31 @@
 /*  Story Step JSON
+ *
  *  From: https://github.com/PokemonAutomation/
+ *
  */
+
 #include <array>
 #include <format>
 #include <initializer_list>
 #include <limits>
+#include <memory>
 #include <set>
+#include <span>
 #include <utility>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
+#include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "Pokemon_StoryStepJson.h"
+
 namespace PokemonAutomation{
 namespace Pokemon{
+
+
 namespace{
+
+
+//  The wire names of the step kinds.
 constexpr std::array<std::pair<StoryStepKind, std::string_view>, 15> KINDS{{
     {StoryStepKind::NEW_GAME, "new_game"},
     {StoryStepKind::OPTIONS, "options"},
@@ -31,6 +43,8 @@ constexpr std::array<std::pair<StoryStepKind, std::string_view>, 15> KINDS{{
     {StoryStepKind::READY, "ready"},
     {StoryStepKind::GAME, "game_action"},
 }};
+
+//  The wire names of the pose certainties.
 constexpr std::array<std::pair<PoseCertainty, std::string_view>, 5> CERTAINTIES{{
     {PoseCertainty::TILE, "tile"},
     {PoseCertainty::COLUMN, "column"},
@@ -38,6 +52,8 @@ constexpr std::array<std::pair<PoseCertainty, std::string_view>, 5> CERTAINTIES{
     {PoseCertainty::SET, "set"},
     {PoseCertainty::UNKNOWN, "unknown"},
 }};
+
+//  The wire names of the directions.
 constexpr std::array<std::pair<Direction, std::string_view>, 4> DIRECTIONS{{
     {Direction::NORTH, "north"},
     {Direction::EAST, "east"},
@@ -45,6 +61,8 @@ constexpr std::array<std::pair<Direction, std::string_view>, 4> DIRECTIONS{{
     {Direction::WEST, "west"},
 }};
 
+
+//  `value` as an object with no field outside `keys`.
 const JsonObject& fields(const JsonValue& value, std::initializer_list<std::string_view> keys, std::string_view source){
     const JsonObject& object = value.to_object_throw(std::string(source));
     for (const auto& [key, unused] : object){
@@ -102,7 +120,7 @@ JsonValue count_json(size_t value){
     return (uint64_t)value;
 }
 
-JsonArray strings_json(const std::vector<std::string>& strings){
+JsonArray strings_json(std::span<const std::string> strings){
     JsonArray result;
     for (const std::string& value : strings){
         result.push_back(value);
@@ -118,7 +136,7 @@ std::vector<std::string> read_strings(const JsonValue& value, std::string_view s
     return result;
 }
 
-JsonArray legs_json(const std::vector<StoryLeg>& legs){
+JsonArray legs_json(std::span<const StoryLeg> legs){
     JsonArray result;
     for (const StoryLeg& leg : legs){
         JsonObject item;
@@ -139,7 +157,7 @@ std::vector<StoryLeg> read_legs(const JsonValue& value, std::string_view source)
     return result;
 }
 
-JsonArray items_json(const std::vector<StoryItem>& items){
+JsonArray items_json(std::span<const StoryItem> items){
     JsonArray result;
     for (const StoryItem& item : items){
         JsonObject row;
@@ -158,6 +176,8 @@ std::vector<StoryItem> read_items(const JsonValue& value, std::string_view sourc
     }
     return result;
 }
+
+//  `result` with the step's yes/no and count fields read from `root`.
 StoryStep read_step_options(StoryStep result, const JsonObject& root, std::string_view source){
     if (const JsonValue* field = root.get_value("fight_wild")){
         result.fight_wild = field->to_boolean_throw();
@@ -174,7 +194,9 @@ StoryStep read_step_options(StoryStep result, const JsonObject& root, std::strin
     return result;
 }
 
+
 } // namespace
+
 
 JsonValue story_pose_json(const Pose& pose){
     JsonObject result;
@@ -191,7 +213,8 @@ JsonValue story_pose_json(const Pose& pose){
         JsonArray positions;
         for (const TilePos& tile : tiles->tiles){
             JsonArray pair;
-            pair.push_back(tile.x); pair.push_back(tile.y);
+            pair.push_back(tile.x);
+            pair.push_back(tile.y);
             positions.push_back(std::move(pair));
         }
         where["tiles"] = std::move(positions);
@@ -351,5 +374,8 @@ StoryCheckpoint read_story_checkpoint(const JsonValue& value, std::string_view s
     }
     return result;
 }
+
+
+
 } // namespace Pokemon
 } // namespace PokemonAutomation

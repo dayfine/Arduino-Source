@@ -1,7 +1,16 @@
 /*  Story Step JSON Tests
+ *
  *  From: https://github.com/PokemonAutomation/
+ *
+ *  Each case reads a record from JSON and writes it back: the canonical
+ *  form, or a rejection. Built standalone (PA_STORY_DATA_STANDALONE), it
+ *  also checks the shared case file the Python reader checks.
+ *
  */
+
 #include <iostream>
+#include <string>
+#include <string_view>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonObject.h"
 #include "Common/Cpp/Json/JsonArray.h"
@@ -9,23 +18,39 @@
 #ifndef PA_STORY_DATA_STANDALONE
 #include "Pokemon_AutoStory_Tests.h"
 #endif
+
 namespace PokemonAutomation{
 namespace Pokemon{
+
+
 namespace{
-enum class Record{ POSE, STEP, CHECKPOINT };
+
+
+//  Which record a case reads.
+enum class Record{
+    POSE,
+    STEP,
+    CHECKPOINT,
+};
+
+//  A record to read, and which kind it is.
 struct WireInput{
     std::string_view name;
     Record record = Record::STEP;
     std::string_view json;
 };
+
+//  What reading it gives: the canonical record, or a rejection.
 struct WireExpectation{
     std::string_view canonical = {};
     bool rejected = false;
 };
+
 struct WireCase{
     WireInput input;
     WireExpectation expectation;
 };
+
 const WireCase CASES[] = {
     {.input = {.name = "default fields", .json = R"({"id":"talk","kind":"talk"})"}, .expectation = {.canonical = R"({"id":"talk","kind":"talk"})"}},
     {.input = {.name = "all shared fields", .json = R"({"id":"all","kind":"game_action","why":"source reason","direction":"west","legs":[{"direction":"south","tiles":0}],"fight_wild":true,"yes":false,"may_lose":true,"battles":3,"items":[{"item":"potion","quantity":0}],"variant":"profile","skip_if":["flag"],"target":{"map":"A","certainty":"unknown","where":{"kind":"unknown"}},"declared_after":{"map":"B","certainty":"set","where":{"kind":"tiles","tiles":[[0,0],[1,0]],"facing":"east"}}})"}, .expectation = {.canonical = R"({"id":"all","kind":"game_action","why":"source reason","direction":"west","legs":[{"direction":"south","tiles":0}],"fight_wild":true,"yes":false,"may_lose":true,"battles":3,"items":[{"item":"potion","quantity":0}],"variant":"profile","skip_if":["flag"],"target":{"map":"A","certainty":"unknown","where":{"kind":"unknown"}},"declared_after":{"map":"B","certainty":"set","where":{"kind":"tiles","tiles":[[0,0],[1,0]],"facing":"east"}}})"}},
@@ -42,16 +67,22 @@ const WireCase CASES[] = {
     {.input = {.name = "duplicate events", .record = Record::CHECKPOINT, .json = R"({"id":"x","title":"X","events":[{"id":"a","kind":"talk"},{"id":"a","kind":"talk"}]})"}, .expectation = {.rejected = true}},
 };
 
+
+//  `input` read and written back.
 JsonValue round_trip(const WireInput& input){
     const JsonValue value = parse_json(std::string(input.json));
     switch (input.record){
-    case Record::POSE: return story_pose_json(read_story_pose(value, input.name));
-    case Record::STEP: return story_step_json(read_story_step(value, input.name));
-    case Record::CHECKPOINT: return story_checkpoint_json(read_story_checkpoint(value, input.name));
+    case Record::POSE:
+        return story_pose_json(read_story_pose(value, input.name));
+    case Record::STEP:
+        return story_step_json(read_story_step(value, input.name));
+    case Record::CHECKPOINT:
+        return story_checkpoint_json(read_story_checkpoint(value, input.name));
     }
     throw ParseException("Unknown test record.");
 }
 
+//  "" when `test` reads as expected, else what was expected and what was read.
 std::string check_case(const WireCase& test){
     try{
         const JsonValue actual = round_trip(test.input);
@@ -67,7 +98,11 @@ std::string check_case(const WireCase& test){
     }
     return "";
 }
+
+
 #ifdef PA_STORY_DATA_STANDALONE
+
+//  A shared case file's record kind.
 Record record_kind(const std::string& name){
     if (name == "pose"){
         return Record::POSE;
@@ -81,6 +116,7 @@ Record record_kind(const std::string& name){
     throw ParseException("Unsupported shared case record kind.");
 }
 
+//  Checks every case of the shared file `filename`; nonzero if any failed.
 int check_shared_file(const std::string& filename){
     const JsonValue document = load_json_file(filename);
     const JsonObject& root = document.to_object_throw(filename);
@@ -109,32 +145,52 @@ int check_shared_file(const std::string& filename){
     std::cout << "Checked " << root.get_array_throw("cases").size() << " shared story records.\n";
     return failed != 0;
 }
+
 #endif
 
+
 #ifndef PA_STORY_DATA_STANDALONE
+
 class StoryJsonTest : public UnitTest{
 public:
     explicit StoryJsonTest(WireCase test)
-        : UnitTest("Pokemon::StoryStepJson - " + std::string(test.input.name)), m_case(test){}
+        : UnitTest("Pokemon::StoryStepJson - " + std::string(test.input.name))
+        , m_case(test)
+    {}
+
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         const std::string error = check_case(m_case);
         return error.empty() ? UnitTestResult(true) : UnitTestResult(error);
     }
+
 private:
     WireCase m_case;
 };
+
 #endif
+
+
 } // namespace
+
+
 #ifndef PA_STORY_DATA_STANDALONE
+
 void add_tests_StoryStepJson(UnitTestDatabase& database){
     for (const WireCase& test : CASES){
         database.add<StoryJsonTest>(test);
     }
 }
+
 #endif
+
+
+
 } // namespace Pokemon
 } // namespace PokemonAutomation
+
+
 #ifdef PA_STORY_DATA_STANDALONE
+
 int main(int argc, char** argv){
     if (argc == 2){
         return PokemonAutomation::Pokemon::check_shared_file(argv[1]);
@@ -147,4 +203,5 @@ int main(int argc, char** argv){
     }
     return failed != 0;
 }
+
 #endif
