@@ -1493,6 +1493,9 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Options/Pokemon_NameSelectWidget.h
     Source/Pokemon/Options/Pokemon_StatsHuntFilter.cpp
     Source/Pokemon/Options/Pokemon_StatsHuntFilter.h
+    Source/Pokemon/Options/Pokemon_StoryRangeOptions.cpp
+    Source/Pokemon/Options/Pokemon_StoryRangeOptions.h
+    Source/Pokemon/Options/Pokemon_StoryRangeOptions_Tests.cpp
     Source/Pokemon/Options/Pokemon_StoryRunOptions.cpp
     Source/Pokemon/Options/Pokemon_StoryRunOptions.h
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect.h
@@ -1517,6 +1520,9 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_StoryInterrupts.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryInterrupts.h
     Source/Pokemon/AutoStory/Pokemon_StoryInterrupts_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryLog.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryLog.h
+    Source/Pokemon/AutoStory/Pokemon_StoryLog_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_StorySegments.cpp
     Source/Pokemon/AutoStory/Pokemon_StorySegments.h
     Source/Pokemon/AutoStory/Pokemon_StorySegments_Tests.cpp
@@ -1528,6 +1534,7 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_StoryStepJson.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryStepJson.h
     Source/Pokemon/AutoStory/Pokemon_StoryStepJson_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryArgs_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_StorySteps.cpp
     Source/Pokemon/AutoStory/Pokemon_StorySteps.h
     Source/Pokemon/AutoStory/Pokemon_StorySteps_Tests.cpp
@@ -1536,6 +1543,14 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_Transitions.cpp
     Source/Pokemon/AutoStory/Pokemon_Transitions.h
     Source/Pokemon/AutoStory/Pokemon_Transitions_Tests.cpp
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryArgs.cpp
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryArgs.h
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryChecks.cpp
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryChecks.h
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryStep.h
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryStepKind.cpp
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryStepKind.h
     Source/Pokemon/Pokemon_AdvRng.cpp
     Source/Pokemon/Pokemon_AdvRng.h
     Source/Pokemon/Pokemon_BdspRng.cpp
