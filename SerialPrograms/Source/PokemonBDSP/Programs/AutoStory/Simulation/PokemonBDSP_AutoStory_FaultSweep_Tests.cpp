@@ -86,9 +86,6 @@ const char* LAST_ROW = "01.11";
 
 //  Sweeps the program fails today, by test name, with the likely fix.
 const std::map<std::string, std::string> KNOWN_FAILING{
-    {"PokemonBDSP::AutoStory - Fault sweep: 01.06, wild battles on every grass pass",
-        "below_rowans_trigger's open leg west 57: a battle in its grass leaves it on Jubilife's (44, 22) or (45, 22), "
-        "from which the Ace Trainer's (45..47, 21) leaves no plan: end the long leg on a column both of whose candidates clip north to row 8"},
 };
 
 //  Scenes whose end the console has proven, by step name: the sweep leaves

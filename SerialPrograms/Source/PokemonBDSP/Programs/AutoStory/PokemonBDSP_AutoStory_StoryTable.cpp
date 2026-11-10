@@ -901,8 +901,16 @@ std::vector<StoryCheckpoint> to_floaroma(){
         row("01.06", "Route 203 to Jubilife", out_of_oreburgh_gate(), {
             //  Trainers who saw us going east in 01.02 are beaten; any other
             //  sees us here and is fought (route_203_trainer_sights()).
-            route("below_rowans_trigger", below_rowans_trigger(),
-                "down Route 203 (its ledges only south), west along it into Jubilife's street, north up the road", "town"),
+            //  Up the road's west column 41 to its corner (41, 8) first:
+            //  from (41, 22), or (42, 22) where a wild battle in the grass
+            //  cuts the long leg west a tile short, the walls bring us there.
+            //  One route to the trigger turned north at column 44: such a
+            //  battle left it on (44, 22) or (45, 22), and column 45 has no
+            //  wall up the road, nor a way round the Ace Trainer who wanders
+            //  (45..47, 21) (fault sweep).
+            route("up_jubilifes_road", at(JUBILIFE, 41, 8, NORTH),
+                "down Route 203 (its ledges only south), west along it into Jubilife's street, north up the road's west column", "town"),
+            route("below_rowans_trigger", below_rowans_trigger(), "east along row 8 to the sign's wall", "town"),
         }),
         rowan_and_the_grunts(),
         row("01.08", "Jubilife to the Ravaged Path", after_the_grunts(), {

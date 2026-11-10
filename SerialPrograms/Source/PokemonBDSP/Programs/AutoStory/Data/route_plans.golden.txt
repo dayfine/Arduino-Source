@@ -360,17 +360,23 @@ anchor); 0 from one start tile.
   6. west 3 (open) -> OreburghGate (5, 22)
   totals: 6 legs, 5 turns, 1 open, 3 localization
 
-== 01.06 below_rowans_trigger (costs: town)
+== 01.06 up_jubilifes_road (costs: town)
   from: Route203 (55, 9) facing west (tile)
-  target: JubilifeCity (47, 8) facing north (tile)
+  target: JubilifeCity (41, 8) facing north (tile)
   start candidates: Route 203 (55, 9)
   1. south 10 (to wall) -> Route 203 (55, 19)
   2. west 17 (to wall) -> Route 203 (38, 19)
   3. north 1 (open) -> Route 203 (38, 18)
-  4. west 57 (open) -> Jubilife City (44, 22)
-  5. north 14 (to wall) -> Jubilife City (44, 8)
-  6. east 3 (to wall) -> Jubilife City (47, 8)
-  totals: 6 legs, 5 turns, 2 open, 0 localization
+  4. west 60 (open) -> Jubilife City (41, 22)
+  5. north 14 (to wall) -> Jubilife City (41, 8)
+  totals: 5 legs, 4 turns, 2 open, 0 localization
+
+== 01.06 below_rowans_trigger (costs: town)
+  from: JubilifeCity (41, 8) facing north (tile)
+  target: JubilifeCity (47, 8) facing north (tile)
+  start candidates: Jubilife City (41, 8)
+  1. east 6 (to wall) -> Jubilife City (47, 8)
+  totals: 1 legs, 0 turns, 0 open, 0 localization
 
 == 01.08 below_the_ravaged_path (costs: town)
   from: JubilifeCity (44, 5) facing west (tile)
