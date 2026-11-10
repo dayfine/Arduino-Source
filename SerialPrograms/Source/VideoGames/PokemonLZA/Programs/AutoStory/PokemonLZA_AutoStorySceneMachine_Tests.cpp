@@ -199,19 +199,27 @@ UnitTestResult test_move_ends(Logger&){
 }
 
 
-struct SceneMachineCase{
+struct SceneMachineInput{
     std::string name;
     std::function<UnitTestResult(Logger&)> body;
+};
+
+struct SceneMachineExpectation{
+};
+
+struct SceneMachineCase{
+    SceneMachineInput input;
+    SceneMachineExpectation expectation;
 };
 
 class Test_AutoStorySceneMachine : public UnitTest{
 public:
     explicit Test_AutoStorySceneMachine(SceneMachineCase test_case)
-        : UnitTest("PokemonLZA::AutoStorySceneMachine - " + test_case.name)
+        : UnitTest("PokemonLZA::AutoStorySceneMachine - " + test_case.input.name)
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
-        return m_case.body(logger);
+        return m_case.input.body(logger);
     }
 
 private:
@@ -221,18 +229,43 @@ private:
 } // namespace
 
 
+const SceneMachineCase SCENE_MACHINE_CASES[] = {
+    {
+        .input = {"quiet end waits for the scene's minimum length", test_quiet_waits_for_min_length},
+        .expectation = {},
+    },
+    {
+        .input = {"a box or a fade restarts the quiet time", test_quiet_restarts_on_busy},
+        .expectation = {},
+    },
+    {
+        .input = {"the party bar held a second ends the scene", test_party_bar_held},
+        .expectation = {},
+    },
+    {
+        .input = {"without a quiet time a still screen never ends it", test_no_quiet_never_ends_still},
+        .expectation = {},
+    },
+    {
+        .input = {"B through the text to the choice", test_text_to_choice},
+        .expectation = {},
+    },
+    {
+        .input = {"A through the cards to the battle HUD", test_to_battle},
+        .expectation = {},
+    },
+    {
+        .input = {"what each state presses", test_state_actions},
+        .expectation = {},
+    },
+    {
+        .input = {"walks that end on a fade", test_move_ends},
+        .expectation = {},
+    },
+};
+
 void add_tests_AutoStorySceneMachine(UnitTestDatabase& database){
-    const SceneMachineCase cases[] = {
-        {"quiet end waits for the scene's minimum length", test_quiet_waits_for_min_length},
-        {"a box or a fade restarts the quiet time", test_quiet_restarts_on_busy},
-        {"the party bar held a second ends the scene", test_party_bar_held},
-        {"without a quiet time a still screen never ends it", test_no_quiet_never_ends_still},
-        {"B through the text to the choice", test_text_to_choice},
-        {"A through the cards to the battle HUD", test_to_battle},
-        {"what each state presses", test_state_actions},
-        {"walks that end on a fade", test_move_ends},
-    };
-    for (const SceneMachineCase& item : cases){
+    for (const SceneMachineCase& item : SCENE_MACHINE_CASES){
         database.add<Test_AutoStorySceneMachine>(item);
     }
 }

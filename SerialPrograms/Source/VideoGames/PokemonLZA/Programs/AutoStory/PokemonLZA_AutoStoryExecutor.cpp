@@ -12,6 +12,7 @@
 #include "VideoGames/PokemonLZA/Resources/PokemonLZA_Locations.h"
 #include "PokemonLZA_AutoStoryActions.h"
 #include "PokemonLZA_AutoStoryDialogs.h"
+#include "PokemonLZA_AutoStoryGuardedWalks.h"
 #include "PokemonLZA_AutoStoryMoves.h"
 #include "PokemonLZA_AutoStorySceneMachine.h"
 #include "PokemonLZA_AutoStoryScenes.h"
@@ -242,7 +243,7 @@ void StoryExecutor::scene(const StoryStep& step){
     run_scene_machine(console(), context(), step.name, config, 180s);
 }
 
-void StoryExecutor::walk(const std::string& name, const StoryMove& move){
+void StoryExecutor::walk(std::string_view name, const StoryMove& move){
     check_can_walk(console(), context(), name);
     const auto end = story_move_ends().find(name);
     if (end != story_move_ends().end()){

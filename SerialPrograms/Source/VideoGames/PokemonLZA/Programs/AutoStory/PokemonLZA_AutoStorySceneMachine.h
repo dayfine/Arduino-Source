@@ -9,8 +9,7 @@
  *  no party bar (only the Move / Control Camera hints, which have no detector
  *  yet: no frame of them has been kept).
  *
- *  The walks between the scenes start only on a screen with no box, choice,
- *  fade or battle, and a walk that ends on a fade stops on it.
+ *  The walks between the scenes are PokemonLZA_AutoStoryGuardedWalks.h.
  *
  */
 
@@ -19,13 +18,13 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
 #include "Common/Cpp/Time.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "NintendoSwitch/Controllers/NintendoSwitch_ControllerButtons.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "Pokemon/AutoStory/Pokemon_ScreenEvents.h"
-#include "PokemonLZA_AutoStoryMoves.h"
 #include "PokemonLZA_AutoStoryScreenEvents.h"
 
 namespace PokemonAutomation{
@@ -62,7 +61,7 @@ enum class SceneScreen{
 };
 
 //  "fade_black", the state's name in the StepTrace log.
-const char* scene_screen_name(SceneScreen screen);
+std::string_view scene_screen_name(SceneScreen screen);
 
 //  Whether the machine ends after this state's step.
 bool scene_screen_terminal(SceneScreen screen);
@@ -109,20 +108,7 @@ private:
 //  OperationFailedException on a timeout or a state that comes up too often.
 void run_scene_machine(
     ConsoleHandle& console, ProControllerContext& context,
-    const std::string& label, const SceneMachineConfig& config, Milliseconds timeout
-);
-
-//  Throws OperationFailedException unless the screen shows no box, choice,
-//  fade or battle on two reads: a walk started anywhere else walks blind.
-//  The tutorial has no party bar, so it is not required.
-void check_can_walk(ConsoleHandle& console, ProControllerContext& context, const std::string& walk);
-
-//  Walks `move`, holding its last leg until `end` shows (a fade), the leg's
-//  time as the upper bound. Throws OperationFailedException if `end` does
-//  not show within it.
-void walk_until(
-    ConsoleHandle& console, ProControllerContext& context,
-    const std::string& walk, const StoryMove& move, Pokemon::ScreenEvent end
+    std::string_view label, const SceneMachineConfig& config, Milliseconds timeout
 );
 
 //  Registers the scene machine's tests: its states on sequences of events,

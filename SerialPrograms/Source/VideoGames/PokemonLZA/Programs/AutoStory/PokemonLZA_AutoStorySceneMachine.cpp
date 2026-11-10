@@ -6,12 +6,12 @@
 
 #include <algorithm>
 #include <format>
+#include <string>
+#include <string_view>
 #include <stdint.h>
 #include <vector>
-#include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/ImageTools/ImageDiff.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
-#include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/ScreenMachine/ScreenMachine.h"
 #include "CommonTools/ScreenMachine/StepTrace.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
@@ -63,7 +63,7 @@ bool same_size(const ImageViewRGB32& a, const ImageViewRGB32& b){
 } // namespace
 
 
-const char* scene_screen_name(SceneScreen screen){
+std::string_view scene_screen_name(SceneScreen screen){
     switch (screen){
     case SceneScreen::GOAL_CHOICE:
         return "goal_choice";
@@ -303,14 +303,14 @@ size_t max_visits(SceneScreen screen){
 
 void run_scene_machine(
     ConsoleHandle& console, ProControllerContext& context,
-    const std::string& label, const SceneMachineConfig& config, Milliseconds timeout
+    std::string_view label, const SceneMachineConfig& config, Milliseconds timeout
 ){
-    StepTrace trace(console, "PLZA " + label);
+    StepTrace trace(console, "PLZA " + std::string(label));
     SceneReader reader(console, context, trace, config);
     std::vector<ScreenState> states;
     for (const SceneScreen screen : ALL_SCREENS){
         ScreenState state;
-        state.name = scene_screen_name(screen);
+        state.name = std::string(scene_screen_name(screen));
         state.matches = [&reader, screen](const ImageViewRGB32& frame){
             return reader.read(frame) == screen;
         };
@@ -324,62 +324,6 @@ void run_scene_machine(
     const std::string end = run_screen_machine(console, context, trace, states, timeout);
     console.log(std::format("[PLZA {}] done on {}.", label, end));
 }
-
-
-void check_can_walk(ConsoleHandle& console, ProControllerContext& context, const std::string& walk){
-    context.wait_for_all_requests();
-    PlzaScreenObserver observer;
-    for (int read = 0; read < 2; read++){
-        if (read > 0){
-            context.wait_for(150ms);
-        }
-        const VideoSnapshot frame = console.video().snapshot();
-        const ScreenEvents events = frame ? observer.read(*frame.frame) : ScreenEvents{};
-        if (!frame || events.any_of(busy_events())){
-            OperationFailedExceptionWithScreenshot::fire(
-                ErrorReportMode::SEND_ERROR_REPORT,
-                std::format("{}: the walk would start on \"{}\", not free control.",
-                    walk, frame ? Pokemon::describe(events) : std::string("no video")),
-                console
-            );
-        }
-    }
-}
-
-void walk_until(
-    ConsoleHandle& console, ProControllerContext& context,
-    const std::string& walk, const StoryMove& move, ScreenEvent end
-){
-    StoryMove head = move;
-    Milliseconds hold = 0ms;
-    if (!head.legs.empty()){
-        hold = head.legs.back().walk;
-        head.legs.back().walk = 0ms;
-    }
-    run_story_move(console, context, head);
-
-    PlzaScreenObserver observer;
-    Pokemon::ScreenEventWatcher watcher(observer, ScreenEvents{end});
-    const WallClock start = current_time();
-    const int ret = run_until<ProControllerContext>(
-        console, context,
-        [hold](ProControllerContext& subcontext){
-            pbf_move_left_joystick(subcontext, {0, 1}, hold, 0ms);
-        },
-        {watcher}
-    );
-    const long long held = std::chrono::duration_cast<Milliseconds>(current_time() - start).count();
-    if (ret < 0){
-        OperationFailedExceptionWithScreenshot::fire(
-            ErrorReportMode::SEND_ERROR_REPORT,
-            std::format("{}: no {} within {} ms of the last leg.",
-                walk, Pokemon::screen_event_name(end), hold.count()),
-            console
-        );
-    }
-    console.log(std::format("{}: {} after {} ms of the last leg.", walk, Pokemon::screen_event_name(end), held));
-}
-
 
 
 } // namespace PokemonLZA

@@ -41,6 +41,7 @@
 #include <functional>
 #include <map>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "CommonFramework/Language.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
@@ -114,7 +115,7 @@ private:
     void scene(const Pokemon::StoryStep& step);
     //  Walks the move `name` once the screen shows free control
     //  (check_can_walk()), until its end event if it has one (story_move_ends()).
-    void walk(const std::string& name, const StoryMove& move);
+    void walk(std::string_view name, const StoryMove& move);
 
     ConsoleHandle& console(){
         return m_env.env.console;
