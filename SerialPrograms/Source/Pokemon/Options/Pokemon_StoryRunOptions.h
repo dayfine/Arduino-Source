@@ -18,7 +18,6 @@
 #include <optional>
 #include <span>
 #include <string>
-#include "Common/Cpp/Options/BooleanCheckBoxOption.h"
 #include "Common/Cpp/Options/EnumDropdownOption.h"
 #include "Common/Cpp/Options/GroupOption.h"
 #include "Common/Cpp/Options/SimpleIntegerOption.h"
@@ -34,16 +33,10 @@ namespace Pokemon{
 
 
 //  A checkpoint's label in the start and end dropdowns, as SV labels its
-//  segments: "00.09 Pewter Gym: Camper Liam, then Brock".
+//  segments: "00.09 Pewter Gym: Camper Liam, then Brock". The labels of a
+//  story's checkpoints, in order, make its dropdowns
+//  (story_checkpoint_database()).
 std::string story_checkpoint_label(const StoryCheckpoint& checkpoint);
-
-//  The start/end dropdown database of a story's checkpoints, `rows` in
-//  order, slugged by their index in it, as make_story_select_database()
-//  slugs SV's. A game whose story is in sections (BDSP's segments 00 and
-//  01) passes them joined: a section's entry i is then story_index(true,
-//  i, first of the section). The program keeps it in a function-local
-//  static: the options hold a reference.
-StringSelectDatabase story_checkpoint_database(std::span<const StoryCheckpoint> rows);
 
 
 //  Verify mode, off by default (verify_checkpoint()): the start checkpoint
@@ -77,8 +70,7 @@ public:
     //  The range's check, then verify mode's: one checkpoint only.
     virtual std::string check_validity() const override;
 
-    //  The policy these options set. In-place recoveries are the game's to
-    //  set, not the user's.
+    //  The policy these options set.
     SegmentPolicy policy() const;
     //  The checks level, for the game's steps to read.
     StoryCheckLevel check_level() const;
@@ -87,7 +79,6 @@ public:
 
 public:
     SimpleIntegerOption<uint8_t> ATTEMPTS_PER_CHECKPOINT;
-    BooleanCheckBoxOption STOP_AT_FIRST_FAILURE;
     EnumDropdownOption<StoryCheckLevel> CHECKS;
     //  Any language the game has, whether or not a reader supports it:
     //  steps without one use language-free checks, so none is refused.

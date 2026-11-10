@@ -11,6 +11,7 @@
 #include <iostream>
 #include <string>
 #include <string_view>
+#include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonObject.h"
 #include "Common/Cpp/Json/JsonArray.h"
@@ -52,37 +53,62 @@ struct WireCase{
 };
 
 const WireCase CASES[] = {
-    {.input = {.name = "default fields", .json = R"({"id":"talk","kind":"talk"})"}, .expectation = {.canonical = R"({"id":"talk","kind":"talk"})"}},
-    {.input = {.name = "all shared fields", .json = R"({"id":"all","kind":"game_action","why":"source reason","direction":"west","legs":[{"direction":"south","tiles":0}],"fight_wild":true,"yes":false,"may_lose":true,"battles":3,"items":[{"item":"potion","quantity":0}],"variant":"profile","skip_if":["flag"],"target":{"map":"A","certainty":"unknown","where":{"kind":"unknown"}},"declared_after":{"map":"B","certainty":"set","where":{"kind":"tiles","tiles":[[0,0],[1,0]],"facing":"east"}}})"}, .expectation = {.canonical = R"({"id":"all","kind":"game_action","why":"source reason","direction":"west","legs":[{"direction":"south","tiles":0}],"fight_wild":true,"yes":false,"may_lose":true,"battles":3,"items":[{"item":"potion","quantity":0}],"variant":"profile","skip_if":["flag"],"target":{"map":"A","certainty":"unknown","where":{"kind":"unknown"}},"declared_after":{"map":"B","certainty":"set","where":{"kind":"tiles","tiles":[[0,0],[1,0]],"facing":"east"}}})"}},
-    {.input = {.name = "unknown facing stays absent", .record = Record::POSE, .json = R"({"map":"M","certainty":"tile","where":{"kind":"tiles","tiles":[[0,0]]}})"}, .expectation = {.canonical = R"({"map":"M","certainty":"tile","where":{"kind":"tiles","tiles":[[0,0]]}})"}},
-    {.input = {.name = "empty position differs from no position", .record = Record::POSE, .json = R"({"map":"M","certainty":"unknown","where":{"kind":"tiles","tiles":[]}})"}, .expectation = {.canonical = R"({"map":"M","certainty":"unknown","where":{"kind":"tiles","tiles":[]}})"}},
-    {.input = {.name = "ordered checkpoint", .record = Record::CHECKPOINT, .json = R"({"id":"00.05","title":"Parcel","events":[{"id":"first","kind":"route"},{"id":"second","kind":"scene"}]})"}, .expectation = {.canonical = R"({"id":"00.05","title":"Parcel","events":[{"id":"first","kind":"route"},{"id":"second","kind":"scene"}]})"}},
-    {.input = {.name = "args", .json = R"({"id":"buy","kind":"game_action","variant":"mart","args":{"map":"CeruleanCity_Mart","budget":3000,"if_present":true}})"}, .expectation = {.canonical = R"({"id":"buy","kind":"game_action","variant":"mart","args":{"budget":3000,"if_present":true,"map":"CeruleanCity_Mart"}})"}},
-    {.input = {.name = "empty args are omitted", .json = R"({"id":"buy","kind":"game_action","variant":"mart","args":{}})"}, .expectation = {.canonical = R"({"id":"buy","kind":"game_action","variant":"mart"})"}},
-    {.input = {.name = "fractional arg", .json = R"({"id":"a","kind":"game_action","variant":"mart","args":{"budget":1.5}})"}, .expectation = {.rejected = true}},
-    {.input = {.name = "nested arg", .json = R"({"id":"a","kind":"game_action","variant":"mart","args":{"items":[1]}})"}, .expectation = {.rejected = true}},
-    {.input = {.name = "args not an object", .json = R"({"id":"a","kind":"game_action","variant":"mart","args":["map"]})"}, .expectation = {.rejected = true}},
+    {.input = {.name = "no args", .json = R"({"id":"talk","kind":"talk"})"}, .expectation = {.canonical = R"({"id":"talk","kind":"talk"})"}},
+    {.input = {.name = "all shared fields", .json = R"({"id":"all","kind":"game_action","why":"source reason","action":"profile","skip_if":["flag"],"declared_after":{"map":"B","tiles":[[0,0],[1,0]],"facing":"east"}})"}, .expectation = {.canonical = R"({"id":"all","kind":"game_action","why":"source reason","action":"profile","skip_if":["flag"],"declared_after":{"map":"B","tiles":[[0,0],[1,0]],"facing":"east"}})"}},
+    {.input = {.name = "route fills its fallback", .json = R"({"id":"r","kind":"route","args":{"target":{"map":"A","tiles":[[1,2]]}}})"}, .expectation = {.canonical = R"({"id":"r","kind":"route","args":{"fight_wild":false,"target":{"map":"A","tiles":[[1,2]]}}})"}},
+    {.input = {.name = "legs", .json = R"({"id":"l","kind":"legs","action":"legs","args":{"legs":[{"direction":"south","tiles":2}],"fight_wild":true}})"}, .expectation = {.canonical = R"({"id":"l","kind":"legs","action":"legs","args":{"fight_wild":true,"legs":[{"direction":"south","tiles":2}]}})"}},
+    {.input = {.name = "direction", .json = R"({"id":"s","kind":"step","args":{"direction":"west"}})"}, .expectation = {.canonical = R"({"id":"s","kind":"step","args":{"direction":"west"}})"}},
+    {.input = {.name = "items", .json = R"({"id":"s","kind":"shop","args":{"items":[{"item":"potion","quantity":5}]}})"}, .expectation = {.canonical = R"({"id":"s","kind":"shop","args":{"items":[{"item":"potion","quantity":5}]}})"}},
+    {.input = {.name = "game args", .json = R"({"id":"buy","kind":"game_action","action":"mart","args":{"map":"CeruleanCity_Mart","budget":3000,"if_present":true}})"}, .expectation = {.canonical = R"({"id":"buy","kind":"game_action","action":"mart","args":{"budget":3000,"if_present":true,"map":"CeruleanCity_Mart"}})"}},
+    {.input = {.name = "game words", .json = R"({"id":"buy","kind":"game_action","action":"mart","args":{"map":"M","budget":1,"skip":["a","b"]}})"}, .expectation = {.canonical = R"({"id":"buy","kind":"game_action","action":"mart","args":{"budget":1,"if_present":false,"map":"M","skip":["a","b"]}})"}},
+    {.input = {.name = "unknown arg", .json = R"({"id":"a","kind":"game_action","action":"mart","args":{"map":"M","budget":1,"budgte":1}})"}, .expectation = {.rejected = true}},
+    {.input = {.name = "missing required arg", .json = R"({"id":"a","kind":"game_action","action":"mart","args":{"map":"M"}})"}, .expectation = {.rejected = true}},
+    {.input = {.name = "route without target", .json = R"({"id":"a","kind":"route"})"}, .expectation = {.rejected = true}},
+    {.input = {.name = "args on a kind with none", .json = R"({"id":"a","kind":"talk","args":{"yes":true}})"}, .expectation = {.rejected = true}},
+    {.input = {.name = "game step without action", .json = R"({"id":"a","kind":"game_action"})"}, .expectation = {.rejected = true}},
+    {.input = {.name = "unknown action name", .json = R"({"id":"a","kind":"game_action","action":"dance"})"}, .expectation = {.rejected = true}},
+    {.input = {.name = "fractional arg", .json = R"({"id":"a","kind":"game_action","action":"mart","args":{"map":"M","budget":1.5}})"}, .expectation = {.rejected = true}},
+    {.input = {.name = "args not an object", .json = R"({"id":"a","kind":"game_action","action":"mart","args":["map"]})"}, .expectation = {.rejected = true}},
+    {.input = {.name = "old field", .json = R"({"id":"a","kind":"battle","may_lose":true})"}, .expectation = {.rejected = true}},
+    {.input = {.name = "old variant", .json = R"({"id":"a","kind":"game_action","variant":"mart"})"}, .expectation = {.rejected = true}},
     {.input = {.name = "unknown field", .json = R"({"id":"a","kind":"talk","mystery":0})"}, .expectation = {.rejected = true}},
-    {.input = {.name = "unknown action", .json = R"({"id":"a","kind":"magic"})"}, .expectation = {.rejected = true}},
-    {.input = {.name = "negative count", .json = R"({"id":"a","kind":"train","battles":-1})"}, .expectation = {.rejected = true}},
-    {.input = {.name = "boolean count", .json = R"({"id":"a","kind":"train","battles":false})"}, .expectation = {.rejected = true}},
-    {.input = {.name = "wrong bool", .json = R"({"id":"a","kind":"answer","yes":0})"}, .expectation = {.rejected = true}},
-    {.input = {.name = "unknown position", .record = Record::POSE, .json = R"({"map":"M","certainty":"unknown","where":{"kind":"gps"}})"}, .expectation = {.rejected = true}},
-    {.input = {.name = "bad coordinate", .record = Record::POSE, .json = R"({"map":"M","certainty":"tile","where":{"kind":"tiles","tiles":[[0,true]]}})"}, .expectation = {.rejected = true}},
+    {.input = {.name = "unknown kind", .json = R"({"id":"a","kind":"magic"})"}, .expectation = {.rejected = true}},
+    {.input = {.name = "boolean count", .json = R"({"id":"a","kind":"train","args":{"battles":false}})"}, .expectation = {.rejected = true}},
+    {.input = {.name = "wrong bool", .json = R"({"id":"a","kind":"answer","args":{"yes":0}})"}, .expectation = {.rejected = true}},
+    {.input = {.name = "unknown facing stays absent", .record = Record::POSE, .json = R"({"map":"M","tiles":[[0,0]]})"}, .expectation = {.canonical = R"({"map":"M","tiles":[[0,0]]})"}},
+    {.input = {.name = "no tiles", .record = Record::POSE, .json = R"({"map":"M","tiles":[]})"}, .expectation = {.canonical = R"({"map":"M","tiles":[]})"}},
+    {.input = {.name = "old pose", .record = Record::POSE, .json = R"({"map":"M","certainty":"unknown","where":{"kind":"unknown"}})"}, .expectation = {.rejected = true}},
+    {.input = {.name = "bad coordinate", .record = Record::POSE, .json = R"({"map":"M","tiles":[[0,true]]})"}, .expectation = {.rejected = true}},
+    {.input = {.name = "ordered checkpoint", .record = Record::CHECKPOINT, .json = R"({"id":"00.05","title":"Parcel","events":[{"id":"first","kind":"talk"},{"id":"second","kind":"scene"}]})"}, .expectation = {.canonical = R"({"id":"00.05","title":"Parcel","events":[{"id":"first","kind":"talk"},{"id":"second","kind":"scene"}]})"}},
     {.input = {.name = "duplicate events", .record = Record::CHECKPOINT, .json = R"({"id":"x","title":"X","events":[{"id":"a","kind":"talk"},{"id":"a","kind":"talk"}]})"}, .expectation = {.rejected = true}},
 };
+
+//  The built-in actions and a game's: a Mart step (GAME "mart") and a
+//  profile check that takes no args.
+std::vector<StoryActionSpec> test_actions(){
+    std::vector<StoryActionSpec> actions(builtin_story_actions().begin(), builtin_story_actions().end());
+    actions.push_back({.kind = StoryStepKind::GAME, .name = "mart", .args = {
+        {.key = "map", .type = StoryArgType::WORD, .required = true, .fallback = std::nullopt, .why = "the Mart's map"},
+        {.key = "budget", .type = StoryArgType::INTEGER, .required = true, .fallback = std::nullopt, .why = "money to spend"},
+        {.key = "if_present", .type = StoryArgType::BOOLEAN, .required = false, .fallback = false, .why = ""},
+        {.key = "skip", .type = StoryArgType::WORDS, .required = false, .fallback = std::nullopt, .why = ""},
+    }});
+    actions.push_back({.kind = StoryStepKind::GAME, .name = "profile", .args = {}});
+    return actions;
+}
 
 
 //  `input` read and written back.
 JsonValue round_trip(const WireInput& input){
+    static const std::vector<StoryActionSpec> actions = test_actions();
     const JsonValue value = parse_json(std::string(input.json));
     switch (input.record){
     case Record::POSE:
-        return story_pose_json(read_story_pose(value, input.name));
+        return grid_pose_json(read_grid_pose(value, input.name));
     case Record::STEP:
-        return story_step_json(read_story_step(value, input.name));
+        return story_step_json(read_story_step(value, input.name, actions));
     case Record::CHECKPOINT:
-        return story_checkpoint_json(read_story_checkpoint(value, input.name));
+        return story_checkpoint_json(read_story_checkpoint(value, input.name, actions));
     }
     throw ParseException("Unknown test record.");
 }

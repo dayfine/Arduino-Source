@@ -14,7 +14,7 @@
 #include <optional>
 #include <string>
 #include <vector>
-#include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
+#include "Pokemon_GridPose.h"
 #include "Pokemon_StoryStep.h"
 
 namespace PokemonAutomation{
@@ -26,7 +26,7 @@ struct StoryCheckpoint{
     std::string id;
     std::string title;
     //  Where its starting save leaves the player; none for a new game.
-    std::optional<Pose> start;
+    std::optional<GridPose> start;
     std::vector<StoryStep> steps;
 };
 

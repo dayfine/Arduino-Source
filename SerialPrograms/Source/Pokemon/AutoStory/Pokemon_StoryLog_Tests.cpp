@@ -9,7 +9,7 @@
 #include <utility>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon_AutoStory_Tests.h"
+#include "Pokemon_StoryRun_Tests.h"
 #include "Pokemon_StoryLog.h"
 
 namespace PokemonAutomation{
