@@ -205,6 +205,80 @@ private:
     PlzaReader m_heading;
 };
 
+//  What a platform wait needs before the platform counts.
+enum class PlatformWait{
+    PLATFORM_ONLY,      //  "wait_for_platform": a start check
+    AFTER_AUTOSAVE,     //  "opening_to_platform": the autosave badge first
+};
+
+//  Looks every PLATFORM_POLL: the autosave badge shows for 1-3 s (console B,
+//  2026-11-10), so at least 2 looks a second.
+constexpr Milliseconds PLATFORM_POLL(300);
+constexpr size_t PLATFORM_LOOKS = 2;
+
+//  One platform wait's progress over its looks.
+struct PlatformProgress{
+    bool autosave_seen = false;
+    bool skip_prompt = false;
+    size_t streak = 0;
+};
+
+//  Takes `look` into `progress`; logs the skip prompt and the autosave
+//  when they show. True once the platform has held PLATFORM_LOOKS looks.
+bool platform_look(Pokemon::StoryBackend<ZonePose>& backend, const ScreenObservation& look, PlatformWait wait, PlatformProgress& progress){
+    const bool skip_now = look.readings.contains(SKIP_PROMPT_READING);
+    if (skip_now && !progress.skip_prompt){
+        backend.log("[PLZA] platform wait: the skip prompt is on screen");
+    }
+    progress.skip_prompt = skip_now;
+    if (look.readings.contains(AUTOSAVE_READING)){
+        if (!progress.autosave_seen){
+            backend.log("[PLZA] platform wait: the autosave badge is on screen");
+        }
+        progress.autosave_seen = true;
+        progress.streak = 0;
+        return false;
+    }
+    const bool counts = wait == PlatformWait::PLATFORM_ONLY || progress.autosave_seen;
+    progress.streak = counts && look.readings.contains(PLATFORM_READING) ? progress.streak + 1 : 0;
+    return progress.streak >= PLATFORM_LOOKS;
+}
+
+//  The station platform after the opening cutscene, with no input (A does
+//  not advance the cutscene): PLATFORM_READING on PLATFORM_LOOKS looks in a
+//  row; AFTER_AUTOSAVE counts them only once the autosave badge has shown
+//  and gone. Fails after `timeout`.
+Outcome wait_for_platform(Pokemon::StoryBackend<ZonePose>& backend, Milliseconds timeout, PlatformWait wait){
+    //  The looks bound a script whose time stands still.
+    const size_t max_looks = (size_t)(timeout / PLATFORM_POLL) + 1;
+    std::optional<WallClock> start;
+    PlatformProgress progress;
+    for (size_t looks = 0; looks < max_looks; looks++){
+        backend.scope().throw_if_cancelled();
+        const Pokemon::Observation<ZonePose> look = backend.observe();
+        start = start.value_or(look.when);
+        if (platform_look(backend, look, wait, progress)){
+            backend.log(std::format("[PLZA] platform wait: on the platform after {} looks", looks + 1));
+            return Pokemon::outcome_ok();
+        }
+        if (look.when - *start >= timeout){
+            break;
+        }
+        backend.wait(PLATFORM_POLL);
+    }
+    return Pokemon::outcome_failed("platform_not_seen", std::format(
+        "No platform on {} looks in a row within {} ms (autosave {}).",
+        PLATFORM_LOOKS, timeout.count(), progress.autosave_seen ? "seen" : "not seen"
+    ));
+}
+
+//  The handler of "wait_for_platform" or "opening_to_platform".
+Handler platform_handler(PlatformWait wait){
+    return [wait](Pokemon::StoryBackend<ZonePose>& backend, Pokemon::RunState&, const StoryActionCall& call){
+        return wait_for_platform(backend, Milliseconds(Pokemon::story_arg<int64_t>(call.args, "timeout_ms")), wait);
+    };
+}
+
 //  mash_scene() to `goal`, pressing `button` through the text.
 ConsoleBody mash(SceneMashGoal goal, Button button, Milliseconds timeout){
     return [=](StoryEnv& env, const StoryActionArgs&){
@@ -305,6 +379,9 @@ Handler plza_handler(const PlzaActions& make, const StoryActionSpec& spec){
             buy_items(env.env.console, env.context, items);
         });
     default:
+        if (name == "wait_for_platform" || name == "opening_to_platform"){
+            return platform_handler(name == "wait_for_platform" ? PlatformWait::PLATFORM_ONLY : PlatformWait::AFTER_AUTOSAVE);
+        }
         return game_handler(make, name);
     }
 }
@@ -354,6 +431,12 @@ std::vector<StoryActionSpec> plza_story_action_specs(){
         game_spec("mash_to_move_hints", {
             optional_ms("min_length_ms", 0, "the scene's rough length: no quiet end before it"),
             optional_ms("quiet_ms", 8000, "nothing busy this long ends the scene"),
+        }),
+        game_spec("wait_for_platform", {
+            optional_ms("timeout_ms", 180000, "no platform this long fails the step"),
+        }),
+        game_spec("opening_to_platform", {
+            optional_ms("timeout_ms", 240000, "no autosave and platform this long fails the step"),
         }),
     };
     for (const std::string& name : backend_game_actions()){

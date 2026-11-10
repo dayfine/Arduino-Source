@@ -3,7 +3,7 @@
   "game": "plza",
   "checkpoint": {
     "id": "01.00",
-    "title": "New game to the starter",
+    "title": "New game to the station platform",
     "events": [
       {
         "id": "language",
@@ -26,52 +26,10 @@
       {
         "id": "opening",
         "kind": "game_action",
-        "why": "step 5: the opening cutscene until the Move / Camera hints",
-        "action": "mash_to_move_hints",
+        "why": "step 5: the opening cutscene, no presses (A does not advance it), until the autosave badge has shown and the station platform holds",
+        "action": "opening_to_platform",
         "args": {
-          "min_length_ms": 60000
-        }
-      },
-      {
-        "id": "platform_to_plaza",
-        "kind": "game_action",
-        "why": "steps 6-7: down the platform, then right until the white fade",
-        "action": "platform_to_plaza"
-      },
-      {
-        "id": "arrival_scenes",
-        "kind": "game_action",
-        "why": "steps 8-10: \"That I am\", Jett's ad, \"So you hired a Pokemon...\" (top choices)",
-        "action": "mash_to_move_hints",
-        "args": {
-          "min_length_ms": 40000
-        }
-      },
-      {
-        "id": "chase_pancham",
-        "kind": "game_action",
-        "why": "step 11: after Pancham, through the archway, around the starters into the scene",
-        "action": "chase_pancham"
-      },
-      {
-        "id": "pancham_cornered",
-        "kind": "game_action",
-        "why": "step 12: the scene up to its choice",
-        "action": "text_to_choice"
-      },
-      {
-        "id": "battle_with_pokemon",
-        "kind": "game_action",
-        "why": "step 12: choose \"Battle with Pokemon!\" (second choice)",
-        "action": "choose_1"
-      },
-      {
-        "id": "battle_area",
-        "kind": "game_action",
-        "why": "step 12: the scene until free control in the battle area; autosave",
-        "action": "mash_to_move_hints",
-        "args": {
-          "min_length_ms": 20000
+          "timeout_ms": 240000
         }
       }
     ],

@@ -231,6 +231,8 @@ pa_embed_text_files(SerialProgramsLib Source/Pokemon/Navigation/TestMaps
     Pokemon/Navigation/Pokemon_Navigation_Tests.h PokemonAutomation::Pokemon navigation_test_map_json)
 pa_embed_text_files(SerialProgramsLib Source/VideoGames/PokemonLZA/Programs/AutoStory/StoryData
     VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryTable.h PokemonAutomation::NintendoSwitch::PokemonLZA autostory_checkpoint_json)
+pa_embed_text_files(SerialProgramsLib Source/VideoGames/PokemonLZA/Programs/AutoStory/ReferenceData
+    VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryOpeningDetectors.h PokemonAutomation::NintendoSwitch::PokemonLZA autostory_reference_json)
 
 
 # Create binary target
