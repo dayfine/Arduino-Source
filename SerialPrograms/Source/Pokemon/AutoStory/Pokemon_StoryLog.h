@@ -7,7 +7,7 @@
  *  Pokemon_StorySegments.h) writes them, and a game with its own checkpoint
  *  loop (SV's) writes the same lines, so the lab watcher and whoever reads
  *  a log find each checkpoint's start, attempts, resets and pass the same
- *  way. Also the program's stats counts. Nothing here runs a story.
+ *  way. Nothing here runs a story.
  *
  */
 
@@ -18,7 +18,6 @@
 #include <optional>
 #include <string>
 #include <string_view>
-#include "Pokemon_AutoStoryStats.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -52,22 +51,10 @@ std::string checkpoint_pass_line(std::string_view checkpoint, size_t attempt, si
 //  attempt `next_attempt`:
 //      [Checkpoint] 00.04: failed, resetting for attempt 2
 std::string checkpoint_reset_line(std::string_view checkpoint, size_t next_attempt);
+
 //  The story engine reloads within segment `segment`, out of `attempts`:
 //      [Segment] 00: 00.02 failed, reloading for attempt 2/3
 std::string segment_reload_line(std::string_view segment, std::string_view checkpoint, size_t next_attempt, size_t attempts);
-
-
-//  What a story run adds to the program's stats.
-struct StoryRunCounts{
-    size_t segments = 0;
-    //  Checkpoints passed (and saved at).
-    size_t checkpoints = 0;
-    //  Game resets or reloads after failed attempts.
-    size_t resets = 0;
-};
-
-//  Adds `counts` to the shared AutoStory stats.
-void record_story_counts(AutoStoryStats& stats, const StoryRunCounts& counts);
 
 
 

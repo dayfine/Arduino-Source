@@ -20,13 +20,13 @@ void InterruptHandlerTable::add(InterruptKind kind, InterruptHandler handler){
     if (kind == InterruptKind::NONE || kind == InterruptKind::UNSETTLED){
         throw InternalProgramError(
             nullptr, PA_CURRENT_FUNCTION,
-            std::string("No handler can clear ") + interrupt_kind_name(kind) + "."
+            std::format("No handler can clear {}.", interrupt_kind_name(kind))
         );
     }
     if (!m_handlers.emplace(kind, std::move(handler)).second){
         throw InternalProgramError(
             nullptr, PA_CURRENT_FUNCTION,
-            std::string("A second interrupt handler for ") + interrupt_kind_name(kind)
+            std::format("A second interrupt handler for {}", interrupt_kind_name(kind))
         );
     }
 }
@@ -137,16 +137,16 @@ std::string describe(const ScreenSettle& settle){
     }
     const std::string quiet = std::format("quiet {:.1f} s", settle.quiet.count() / 1000.0);
     if (on_home_menu(settle)){
-        return "Switch HOME menu (" + quiet + ")";
+        return std::format("Switch HOME menu ({})", quiet);
     }
     if (is_settled(settle)){
-        return "settled overworld (" + quiet + ")";
+        return std::format("settled overworld ({})", quiet);
     }
-    return describe(settle.showing) + " showing (" + quiet + ")";
+    return std::format("{} showing ({})", describe(settle.showing), quiet);
 }
 
 
-InterruptCheck clear_story_interrupt(const StoryInterrupts& interrupts, RunState& state, const StoryStep& step){
+InterruptCheck clear_story_interrupt(const StoryInterrupts& interrupts, const StoryStep& step, RunState& state){
     InterruptCheck out;
     out.verdict = settled_verdict(interrupts, step.kind, out.screen);
     if (on_home_menu(out.screen)){
@@ -168,15 +168,15 @@ InterruptCheck clear_story_interrupt(const StoryInterrupts& interrupts, RunState
     }
     const InterruptHandler* handler = interrupts.handlers.find(kind);
     if (handler == nullptr || !handler->handle){
-        out.outcome = outcome_failed("unhandled_interrupt", std::string(interrupt_kind_name(kind)) + " before " + step.name);
+        out.outcome = outcome_failed("unhandled_interrupt", std::format("{} before {}", interrupt_kind_name(kind), step.name));
         return out;
     }
-    const Outcome handled = handler->handle(state, out.verdict);
+    const Outcome handled = handler->handle(out.verdict, state);
     if (!handled.succeeded()){
-        out.outcome = outcome_failed("interrupt_failed", std::string(interrupt_kind_name(kind)) + ": " + to_string(handled));
+        out.outcome = outcome_failed("interrupt_failed", std::format("{}: {}", interrupt_kind_name(kind), to_string(handled)));
         return out;
     }
-    apply_interrupt_pose(state.pose, handler->pose);
+    apply_interrupt_pose(handler->pose, state.pose);
     return out;
 }
 

@@ -62,7 +62,7 @@ StoryCheckpoint load_authored_checkpoint(
             return read_authored_checkpoint(parse_json(text), game, file, read_execution, actions);
         }
     }
-    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Authored checkpoint is not embedded: " + std::string(file));
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("Authored checkpoint is not embedded: {}", file));
 }
 
 

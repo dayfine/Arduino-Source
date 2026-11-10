@@ -40,7 +40,7 @@ public:
     virtual void begin_attempt(const StoryCheckpoint& data) override{
         m_checkpoint = data.id;
     }
-    virtual Pokemon::Outcome run(Pokemon::RunState&, const StoryStep& step) override{
+    virtual Pokemon::Outcome run(const StoryStep& step, Pokemon::RunState&) override{
         trace.push_back(std::format("{} {} {}", m_checkpoint, Pokemon::story_step_kind_name(step.kind), step.name));
         return Pokemon::outcome_ok();
     }
@@ -59,11 +59,11 @@ UnitTestResult test_story_table_lints(Logger&){
         }
         previous = row.id;
         if (!row.start && row.id != "01.00"){
-            return row.id + ": no start; every row after the new game starts from a save.";
+            return std::format("{}: no start; every row after the new game starts from a save.", row.id);
         }
         const std::vector<std::string> problems = Pokemon::lint_story_checkpoint(row);
         if (!problems.empty()){
-            return row.id + ": " + problems[0];
+            return std::format("{}: {}", row.id, problems[0]);
         }
         for (const StoryStep& step : row.steps){
             if (!story_step_supported(step)){
@@ -85,7 +85,7 @@ UnitTestResult test_story_table_lints(Logger&){
 //  walk somewhere. Empty when there is none.
 std::string move_problem(const std::string& name, const StoryMove& move){
     if (move.legs.empty()){
-        return "Move " + name + " has no legs.";
+        return std::format("Move {} has no legs.", name);
     }
     bool goes = false;
     for (const StoryWalkLeg& leg : move.legs){
@@ -95,7 +95,7 @@ std::string move_problem(const std::string& name, const StoryMove& move){
         goes = goes || leg.walk.count() > 0;
     }
     if (!goes){
-        return "Move " + name + " walks nowhere.";
+        return std::format("Move {} walks nowhere.", name);
     }
     if (move.heading && (*move.heading < 0 || *move.heading >= 360)){
         return std::format("Move {} heads {} deg, expected [0, 360).", name, *move.heading);
@@ -116,7 +116,7 @@ UnitTestResult test_story_moves_known(Logger&){
     }
     for (const auto& [name, move] : story_moves()){
         if (!used.contains(name)){
-            return "Move " + name + " is in no step.";
+            return std::format("Move {} is in no step.", name);
         }
         const std::string problem = move_problem(name, move);
         if (!problem.empty()){
@@ -139,13 +139,13 @@ UnitTestResult test_not_implemented_actions(Logger&){
     }
     for (const auto& [name, todo] : story_actions_not_implemented()){
         if (todo.empty()){
-            return name + ": no TODO.";
+            return std::format("{}: no TODO.", name);
         }
         if (story_moves().contains(name)){
-            return name + ": also a move's name.";
+            return std::format("{}: also a move's name.", name);
         }
         if (!used.contains(name)){
-            return name + ": in no step.";
+            return std::format("{}: in no step.", name);
         }
     }
     return true;
@@ -192,7 +192,7 @@ UnitTestResult test_story_table_runs(Logger&){
     };
     hooks.log = [](const std::string&){};
     Pokemon::RunState state;
-    const Pokemon::SegmentReport report = Pokemon::run_segment(state, segment, {}, Pokemon::SegmentPolicy{}, hooks);
+    const Pokemon::SegmentReport report = Pokemon::run_segment({}, Pokemon::SegmentPolicy{}, segment, hooks, state);
     if (!report.completed){
         return std::format("Expected the table to run, stopped at {} {}.", report.failed_checkpoint, report.failed_event);
     }
@@ -320,14 +320,14 @@ struct AutoStoryTableCase{
 class Test_AutoStoryTable : public UnitTest{
 public:
     explicit Test_AutoStoryTable(AutoStoryTableCase test_case)
-        : UnitTest("PokemonLZA::AutoStory - " + test_case.input.name)
+        : UnitTest(std::format("PokemonLZA::AutoStory - {}", test_case.input.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
         try{
             return m_case.input.body(logger);
         }catch (Exception& e){
-            return std::string(e.name()) + ": " + e.message();
+            return std::format("{}: {}", e.name(), e.message());
         }
     }
 

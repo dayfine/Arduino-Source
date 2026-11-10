@@ -40,7 +40,7 @@ Event story_event(const StoryStep& step, StoryStepExecutor& executor){
         }));
     }
     event.act = [&executor, &step](RunState& state){
-        return executor.run(state, step);
+        return executor.run(step, state);
     };
     if (step.pose_after){
         event.pose_learned = pose_of(*step.pose_after);
@@ -68,7 +68,7 @@ namespace{
 //  `event`, for a once_per_save step known in `prepared` as `key`: skipped
 //  while `prepared` has it, and added to it when it succeeds changing
 //  nothing.
-void run_once_per_save(Event& event, std::string key, PreparedSteps& prepared){
+void run_once_per_save(std::string key, Event& event, PreparedSteps& prepared){
     event.skip_if.push_back(condition("done_from_this_save", [&prepared, key](RunState&){
         return prepared.contains(key);
     }));
@@ -93,7 +93,7 @@ Checkpoint build_story_checkpoint(const StoryCheckpoint& data, StoryStepExecutor
     for (const StoryStep& step : data.steps){
         checkpoint.events.push_back(story_event(step, executor));
         if (prepared != nullptr && step.once_per_save){
-            run_once_per_save(checkpoint.events.back(), data.id + "/" + step.name, *prepared);
+            run_once_per_save(std::format("{}/{}", data.id, step.name), checkpoint.events.back(), *prepared);
         }
     }
     return checkpoint;
@@ -139,7 +139,7 @@ std::vector<std::string> lint_story_checkpoint(const StoryCheckpoint& data){
         const StoryStep& step = data.steps[c];
         const std::string where = std::format("{} step {}", data.id, c + 1);
         if (step.name.empty()){
-            problems.emplace_back(where + ": no name");
+            problems.emplace_back(std::format("{}: no name", where));
         }else if (!names.insert(step.name).second){
             problems.emplace_back(std::format("{}: a second step named {}", where, step.name));
         }
