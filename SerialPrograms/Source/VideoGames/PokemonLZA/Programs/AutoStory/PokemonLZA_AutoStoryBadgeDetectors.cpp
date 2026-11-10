@@ -243,7 +243,7 @@ struct BlobImage{
 constexpr uint32_t UNLABELLED = UINT32_MAX;
 
 //  Labels the blob of mask pixels 4-connected to (x, y).
-void flood_blob(BlobImage& image, size_t x, size_t y){
+void flood_blob(size_t x, size_t y, BlobImage& image){
     const uint32_t label = (uint32_t)image.blobs.size() + 1;
     Blob blob{x, y, x, y, 0};
     std::vector<std::pair<size_t, size_t>> stack{{x, y}};
@@ -296,7 +296,7 @@ BlobImage find_blobs(const ImageViewRGB32& area, In&& in){
     for (size_t y = 0; y < image.height; y++){
         for (size_t x = 0; x < image.width; x++){
             if (image.label(x, y) == UNLABELLED){
-                flood_blob(image, x, y);
+                flood_blob(x, y, image);
             }
         }
     }

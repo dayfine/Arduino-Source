@@ -122,13 +122,13 @@ public:
     //  ends the run.
     Handler console(std::string name, ConsoleBody body) const{
         if (m_env == nullptr){
-            return [name = std::move(name)](Pokemon::StoryBackend<ZonePose>&, Pokemon::RunState&, const StoryActionCall&){
-                return Pokemon::outcome_failed(std::string(Pokemon::CONSOLE_ONLY), name + " runs only on a console");
+            return [name = std::move(name)](Pokemon::StoryBackend<ZonePose>&, const StoryActionCall&, Pokemon::RunState&){
+                return Pokemon::outcome_failed(std::string(Pokemon::CONSOLE_ONLY), std::format("{} runs only on a console", name));
             };
         }
         StoryEnv& env = *m_env;
         return [&env, name = std::move(name), body = std::move(body)](
-            Pokemon::StoryBackend<ZonePose>& backend, Pokemon::RunState&, const StoryActionCall& call
+            Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&
         ){
             try{
                 body(env, call.args);
@@ -145,7 +145,7 @@ public:
     //  The move `name`, walked once the screen shows free control.
     Handler walk(std::string name, StoryMove move) const{
         return [name = std::move(name), move = std::move(move), heading = m_heading](
-            Pokemon::StoryBackend<ZonePose>& backend, Pokemon::RunState&, const StoryActionCall&
+            Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&
         ){
             const Outcome free = check_can_walk(backend, name);
             if (!free.succeeded()){
@@ -168,7 +168,7 @@ public:
 
     static Handler not_implemented(std::string name, std::string todo){
         return [name = std::move(name), todo = std::move(todo)](
-            Pokemon::StoryBackend<ZonePose>& backend, Pokemon::RunState&, const StoryActionCall&
+            Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&
         ) -> Outcome{
             const std::string message = std::format("PLZA AutoStory: {} is not implemented yet. TODO: {}", name, todo);
             backend.log(message);
@@ -186,7 +186,7 @@ public:
     //  quiet time fails the step. After 5 s with nothing busy and no sign
     //  of control, A every 2 s, for text the detectors miss (01.01's ad).
     static Handler move_hints(){
-        return [](Pokemon::StoryBackend<ZonePose>& backend, Pokemon::RunState&, const StoryActionCall& call){
+        return [](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
             SceneMachineConfig config;
             config.quiet = Milliseconds(Pokemon::story_arg<int64_t>(call.args, "quiet_ms"));
             config.min_length = Milliseconds(Pokemon::story_arg<int64_t>(call.args, "min_length_ms"));
@@ -196,7 +196,7 @@ public:
     }
 
     static Handler text_to_choice(){
-        return [](Pokemon::StoryBackend<ZonePose>& backend, Pokemon::RunState&, const StoryActionCall&){
+        return [](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
             SceneMachineConfig config;
             config.goal = SceneMashGoal::CHOICE;
             config.text_button = BUTTON_B;
@@ -281,7 +281,7 @@ Outcome wait_for_platform(Pokemon::StoryBackend<ZonePose>& backend, Milliseconds
 
 //  The handler of "wait_for_platform" or "opening_to_platform".
 Handler platform_handler(PlatformWait wait){
-    return [wait](Pokemon::StoryBackend<ZonePose>& backend, Pokemon::RunState&, const StoryActionCall& call){
+    return [wait](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
         return wait_for_platform(backend, Milliseconds(Pokemon::story_arg<int64_t>(call.args, "timeout_ms")), wait);
     };
 }
@@ -354,8 +354,8 @@ Handler plza_handler(const PlzaActions& make, const StoryActionSpec& spec){
             fly_to(env.env.console, env.context, env.language, get_location_item_from_slug(target.map).location);
         });
         //  Flown: the player is at the target.
-        return [fly = std::move(fly)](Pokemon::StoryBackend<ZonePose>& backend, Pokemon::RunState& state, const StoryActionCall& call){
-            Outcome outcome = fly(backend, state, call);
+        return [fly = std::move(fly)](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState& state){
+            Outcome outcome = fly(backend, call, state);
             if (outcome.succeeded()){
                 outcome.pose = Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(call.args, "target"));
             }

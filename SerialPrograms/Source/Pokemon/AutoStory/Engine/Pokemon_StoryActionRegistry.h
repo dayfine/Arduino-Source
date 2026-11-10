@@ -59,7 +59,7 @@ public:
     //  Runs `step`'s action with its args' fallbacks filled in; a step with
     //  no registered action fails as unsupported_step(), a console_only
     //  action on another backend as CONSOLE_ONLY, before any input.
-    Outcome dispatch(StoryBackend<PoseType>& backend, RunState& state, const StoryStep& step) const;
+    Outcome dispatch(StoryBackend<PoseType>& backend, const StoryStep& step, RunState& state) const;
 
 private:
     //  The action of `kind` named `name`; for an empty name, the kind's

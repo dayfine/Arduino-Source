@@ -179,7 +179,7 @@ void PlzaConsoleBackend::capture(const Pokemon::Observation<Pokemon::ZonePose>& 
         return;
     }
     if (m_capture_folder.empty()){
-        m_capture_folder = SCREENSHOTS_PATH() + "PLZA-capture/" + now_to_filestring() + "/";
+        m_capture_folder = std::format("{}PLZA-capture/{}/", SCREENSHOTS_PATH(), now_to_filestring());
         Filesystem::create_directories(Filesystem::Path(m_capture_folder));
     }
     m_captures++;

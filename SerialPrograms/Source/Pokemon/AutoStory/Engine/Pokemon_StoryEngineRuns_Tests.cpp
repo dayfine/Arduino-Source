@@ -31,7 +31,7 @@
 #include "Pokemon/AutoStory/Data/Pokemon_StoryStepJson.h"
 #include "Pokemon_StoryEngine.h"
 #include "Pokemon_StoryFakeBackend.h"
-#include "Pokemon_StoryEngine_Tests.h"
+#include "Pokemon_StoryEngineRuns_Tests.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -72,7 +72,7 @@ size_t count_lines(const FakeStoryBackend<PoseType>& backend, std::string_view l
 template <StoryPose PoseType>
 std::string expect_inputs(const FakeStoryBackend<PoseType>& backend, std::string_view expected){
     const std::string got = joined(backend.inputs());
-    return got == expected ? "" : "expected inputs \"" + std::string(expected) + "\", got \"" + got + "\"";
+    return got == expected ? "" : std::format("expected inputs \"{}\", got \"{}\"", expected, got);
 }
 
 template <StoryPose PoseType>
@@ -121,14 +121,14 @@ StoryGame<PoseType> flaky_game(size_t failures){
     StoryGame<PoseType> game;
     game.id = "test";
     std::shared_ptr<size_t> calls = std::make_shared<size_t>(0);
-    game.actions.push_back(game_action<PoseType>("flaky", [calls, failures](StoryBackend<PoseType>&, RunState&, const StoryActionCall&){
+    game.actions.push_back(game_action<PoseType>("flaky", [calls, failures](StoryBackend<PoseType>&, const StoryActionCall&, RunState&){
         return (*calls)++ < failures ? outcome_failed("flaky_failed") : outcome_ok();
     }));
-    game.actions.push_back(game_action<PoseType>("fine", [](StoryBackend<PoseType>&, RunState&, const StoryActionCall&){
+    game.actions.push_back(game_action<PoseType>("fine", [](StoryBackend<PoseType>&, const StoryActionCall&, RunState&){
         return outcome_ok();
     }));
     game.save = [](StoryBackend<PoseType>& backend, const StoryCheckpoint& checkpoint){
-        backend.log("[Test] save " + checkpoint.id);
+        backend.log(std::format("[Test] save {}", checkpoint.id));
         return outcome_ok();
     };
     game.reload = [](StoryBackend<PoseType>& backend){
@@ -150,11 +150,11 @@ std::string zone_checkpoint_runs(CancellableScope& scope){
         "events": [{"id": "walk", "kind": "game_action", "action": "fine", "declared_after": {"map": "HotelZLobby"}}]
     })"), "zone", engine.registry().specs());
     RunState state;
-    const StoryEngineReport report = engine.run_checkpoint(checkpoint, state);
+    const StoryEngineReport report = engine.run_checkpoint(checkpoint, SavePoint::RUN_END, state);
     if (report.verdict != CheckpointVerdict::PASSED){
-        return "expected a pass, got " + to_string(report.run.failure);
+        return std::format("expected a pass, got {}", to_string(report.run.failure));
     }
-    return state.pose.map == "HotelZLobby" ? "" : "expected the run's pose in HotelZLobby, got \"" + state.pose.map + "\"";
+    return state.pose.map == "HotelZLobby" ? "" : std::format("expected the run's pose in HotelZLobby, got \"{}\"", state.pose.map);
 }
 
 //  Gap 9: a declared pose with tiles is no zone.
@@ -166,12 +166,12 @@ std::string zone_rejects_tiles(CancellableScope& scope){
     checkpoint.start = GridPose{.map = "HotelZ", .tiles = {{1, 2}}, .facing = std::nullopt};
     const std::vector<std::string> lint = engine.registry().lint(checkpoint);
     if (lint.size() != 1 || !lint[0].starts_with("03.01 start: \"HotelZ (1, 2)\" has tiles")){
-        return "expected one start problem, got \"" + joined(lint) + "\"";
+        return std::format("expected one start problem, got \"{}\"", joined(lint));
     }
     RunState state;
-    const StoryEngineReport report = engine.run_checkpoint(checkpoint, state);
+    const StoryEngineReport report = engine.run_checkpoint(checkpoint, SavePoint::RUN_END, state);
     if (report.run.failure.failure != "lint_failed"){
-        return "expected lint_failed, got " + to_string(report.run.failure);
+        return std::format("expected lint_failed, got {}", to_string(report.run.failure));
     }
     return expect_inputs(backend, "");
 }
@@ -191,7 +191,7 @@ std::string tile_actions_only_with_tiles(CancellableScope&){
     const StoryGame<ZonePose> zone_game;
     const StoryActionRegistry<ZonePose> zone(zone_game);
     if (joined(zone.check(legs)) != "unknown action \"\" for LEGS" || joined(zone.check(face)) != "unknown action \"face\" for STEP"){
-        return "expected the zone game to have no legs or face, got \"" + joined(zone.check(legs)) + "\", \"" + joined(zone.check(face)) + "\"";
+        return std::format("expected the zone game to have no legs or face, got \"{}\", \"{}\"", joined(zone.check(legs)), joined(zone.check(face)));
     }
     const StoryGame<GridPose> grid_game;
     const StoryActionRegistry<GridPose> grid(grid_game);
@@ -258,8 +258,8 @@ std::vector<ScreenState> choice_states(std::vector<std::string>& acted){
 //  The machine over `events`, one look each, the last repeating, a second
 //  apart.
 ScreenMachineResult run_on_events(
-    const std::vector<ScreenEvent>& events, std::vector<std::string>& acted, std::vector<std::string>& lines,
-    CancellableScope& scope, Milliseconds timeout
+    const std::vector<ScreenEvent>& events, CancellableScope& scope, Milliseconds timeout,
+    std::vector<std::string>& acted, std::vector<std::string>& lines
 ){
     const std::vector<ScreenState> states = choice_states(acted);
     StepTrace trace("test", [&lines](const std::string& line){
@@ -274,23 +274,23 @@ ScreenMachineResult run_on_events(
         next++;
         return observation;
     };
-    return run_screen_machine_on_observations(observe, scope, trace, states, timeout);
+    return run_screen_machine_on_observations(observe, scope, states, timeout, trace);
 }
 
 std::string observation_machine_ends(CancellableScope& scope){
     std::vector<std::string> acted;
     std::vector<std::string> lines;
     const ScreenMachineResult result = run_on_events(
-        {ScreenEvent::INTERACT_PROMPT, ScreenEvent::TEXT_BOX, ScreenEvent::CHOICE_BOX}, acted, lines, scope, 60s
+        {ScreenEvent::INTERACT_PROMPT, ScreenEvent::TEXT_BOX, ScreenEvent::CHOICE_BOX}, scope, 60s, acted, lines
     );
     if (!result.succeeded() || result.terminal != "choice"){
-        return "expected the run to end on choice, got \"" + result.failure + "\"";
+        return std::format("expected the run to end on choice, got \"{}\"", result.failure);
     }
     if (joined(acted) != "prompt, text, choice"){
-        return "expected the states to act in order, got " + joined(acted);
+        return std::format("expected the states to act in order, got {}", joined(acted));
     }
     if (lines.size() != 3 || !lines[0].starts_with("[test] screen 1: prompt at ")){
-        return "expected a trace line per screen, got " + joined(lines);
+        return std::format("expected a trace line per screen, got {}", joined(lines));
     }
     return "";
 }
@@ -298,17 +298,17 @@ std::string observation_machine_ends(CancellableScope& scope){
 std::string observation_machine_fails(CancellableScope& scope){
     std::vector<std::string> acted;
     std::vector<std::string> lines;
-    ScreenMachineResult result = run_on_events({ScreenEvent::BATTLE}, acted, lines, scope, 60s);
+    ScreenMachineResult result = run_on_events({ScreenEvent::BATTLE}, scope, 60s, acted, lines);
     if (result.failure != "The screen matches none of the known states."){
-        return "expected no state to match, got \"" + result.failure + "\"";
+        return std::format("expected no state to match, got \"{}\"", result.failure);
     }
-    result = run_on_events({ScreenEvent::TEXT_BOX}, acted, lines, scope, 60s);
+    result = run_on_events({ScreenEvent::TEXT_BOX}, scope, 60s, acted, lines);
     if (!result.failure.starts_with("Screen \"text\" came up more than 3 times")){
-        return "expected text to come up too often, got \"" + result.failure + "\"";
+        return std::format("expected text to come up too often, got \"{}\"", result.failure);
     }
-    result = run_on_events({ScreenEvent::TEXT_BOX, ScreenEvent::INTERACT_PROMPT, ScreenEvent::TEXT_BOX}, acted, lines, scope, 1s);
+    result = run_on_events({ScreenEvent::TEXT_BOX, ScreenEvent::INTERACT_PROMPT, ScreenEvent::TEXT_BOX}, scope, 1s, acted, lines);
     if (result.failure != "Did not finish within 1s."){
-        return "expected the looks' time to run out, got \"" + result.failure + "\"";
+        return std::format("expected the looks' time to run out, got \"{}\"", result.failure);
     }
     return "";
 }
@@ -357,7 +357,7 @@ ScreenMachineResult run_still_states(const std::vector<Observation<ZonePose>>& l
     const std::function<ScreenObservation()> observe = [&backend]() -> ScreenObservation{
         return backend.observe();
     };
-    return run_screen_machine_on_observations(observe, scope, trace, states, 600s);
+    return run_screen_machine_on_observations(observe, scope, states, 600s, trace);
 }
 
 //  A waiting state may stay still up to its own limit; a state that
@@ -371,7 +371,7 @@ std::string still_states(CancellableScope& scope){
     waits.push_back(framed_look(start, 12, 0xff808080, ScreenEvent::CAN_MOVE));
     ScreenMachineResult result = run_still_states(waits, scope);
     if (result.terminal != "done"){
-        return "expected a 12 s still fade to end on done, got \"" + result.failure + "\"";
+        return std::format("expected a 12 s still fade to end on done, got \"{}\"", result.failure);
     }
     std::vector<Observation<ZonePose>> too_long;
     for (int second = 0; second < 40; second++){
@@ -379,7 +379,7 @@ std::string still_states(CancellableScope& scope){
     }
     result = run_still_states(too_long, scope);
     if (result.failure != "The screen stayed still on \"fade\" for more than 30s."){
-        return "expected the fade to stay still too long, got \"" + result.failure + "\"";
+        return std::format("expected the fade to stay still too long, got \"{}\"", result.failure);
     }
     std::vector<Observation<ZonePose>> presses;
     for (int second = 0; second < 12; second++){
@@ -387,7 +387,7 @@ std::string still_states(CancellableScope& scope){
     }
     result = run_still_states(presses, scope);
     if (result.failure != "The screen stopped changing: 8 steps on \"text\" did nothing."){
-        return "expected the box to stall, got \"" + result.failure + "\"";
+        return std::format("expected the box to stall, got \"{}\"", result.failure);
     }
     return "";
 }
@@ -399,7 +399,7 @@ StoryGameReader<GridPose> logging_reader(std::string name, std::vector<std::stri
     reader.supplies = std::move(supplies);
     reader.use = use;
     reader.read = [name](StoryBackend<GridPose>& backend, Observation<GridPose>&){
-        backend.log("[Test] read " + name);
+        backend.log(std::format("[Test] read {}", name));
     };
     return reader;
 }
@@ -434,39 +434,39 @@ std::string readers_opt_in(CancellableScope& scope){
     items.postconditions.items = {{.item = "POTION", .quantity = 1}};
     std::string read = readers_run(items, StoryBackendKind::SCRIPT, scope);
     if (read != "bag"){
-        return "expected only the bag read for an item, got \"" + read + "\"";
+        return std::format("expected only the bag read for an item, got \"{}\"", read);
     }
     StoryCheckpoint place = checkpoint_of("02", {});
     place.postconditions.position = GridPose{.map = "Town", .tiles = {{1, 2}}, .facing = std::nullopt};
     place.postconditions.flags = {"DOOR"};
     read = readers_run(place, StoryBackendKind::SCRIPT, scope);
     if (read != "pose"){
-        return "expected only the pose read off a console, got \"" + read + "\"";
+        return std::format("expected only the pose read off a console, got \"{}\"", read);
     }
     read = readers_run(place, StoryBackendKind::CONSOLE, scope);
     if (read != "pose, flags"){
-        return "expected the pose and the console's flags read, got \"" + read + "\"";
+        return std::format("expected the pose and the console's flags read, got \"{}\"", read);
     }
     read = readers_run(checkpoint_of("03", {}), StoryBackendKind::CONSOLE, scope);
-    return read.empty() ? "" : "expected no reader without postconditions, got \"" + read + "\"";
+    return read.empty() ? "" : std::format("expected no reader without postconditions, got \"{}\"", read);
 }
 
 //  Gap 5: an action sees its step.
 std::string handler_sees_step(CancellableScope& scope){
     StoryGame<GridPose> game;
     std::shared_ptr<std::string> seen = std::make_shared<std::string>();
-    game.actions.push_back(game_action<GridPose>("scene", [seen](StoryBackend<GridPose>&, RunState&, const StoryActionCall& call){
-        *seen = call.step.name + " / " + call.step.why;
+    game.actions.push_back(game_action<GridPose>("scene", [seen](StoryBackend<GridPose>&, const StoryActionCall& call, RunState&){
+        *seen = std::format("{} / {}", call.step.name, call.step.why);
         return outcome_ok();
     }));
     const StoryActionRegistry<GridPose> registry(game);
     FakeStoryBackend<GridPose> backend({}, scope);
     RunState state;
-    const Outcome outcome = registry.dispatch(backend, state, game_step("opening", "scene", "the long intro"));
+    const Outcome outcome = registry.dispatch(backend, game_step("opening", "scene", "the long intro"), state);
     if (!outcome.succeeded()){
-        return "expected a pass, got " + to_string(outcome);
+        return std::format("expected a pass, got {}", to_string(outcome));
     }
-    return *seen == "opening / the long intro" ? "" : "expected the step, got \"" + *seen + "\"";
+    return *seen == "opening / the long intro" ? "" : std::format("expected the step, got \"{}\"", *seen);
 }
 
 //  Gap 6: the save is told its checkpoint, at the end and at a SAVE step.
@@ -479,19 +479,19 @@ std::string save_gets_checkpoint(CancellableScope& scope){
     save.name = "save_here";
     const StoryCheckpoint checkpoint = in_phase(checkpoint_of("02.01", {game_step("walk", "fine"), save}), StoryPhase::REPRODUCTION, engine);
     RunState state;
-    const StoryEngineReport report = engine.run_checkpoint(checkpoint, state, SavePoint::CHECKPOINT_END);
+    const StoryEngineReport report = engine.run_checkpoint(checkpoint, SavePoint::CHECKPOINT_END, state);
     if (!report.saved){
         return "expected the checkpoint to save at its end";
     }
     const size_t saves = count_lines(backend, "[Test] save 02.01");
-    return saves == 2 ? "" : "expected 2 saves of 02.01, got " + std::to_string(saves) + ": " + joined(backend.lines());
+    return saves == 2 ? "" : std::format("expected 2 saves of 02.01, got {}: {}", saves, joined(backend.lines()));
 }
 
 //  Gap 8: a console_only action is refused, before any input, on a backend
 //  that is no console; it runs on one.
 StoryGame<GridPose> console_game(){
     StoryGame<GridPose> game = flaky_game<GridPose>(0);
-    StoryAction<GridPose> menu = game_action<GridPose>("open_menu", [](StoryBackend<GridPose>& backend, RunState&, const StoryActionCall&){
+    StoryAction<GridPose> menu = game_action<GridPose>("open_menu", [](StoryBackend<GridPose>& backend, const StoryActionCall&, RunState&){
         backend.press(NintendoSwitch::BUTTON_X, 80ms, 120ms);
         return outcome_ok();
     });
@@ -505,16 +505,16 @@ std::string console_only_refused(CancellableScope& scope){
     const StoryActionRegistry<GridPose> registry(game);
     RunState state;
     FakeStoryBackend<GridPose> script({}, scope);
-    const Outcome refused = registry.dispatch(script, state, game_step("menu", "open_menu"));
+    const Outcome refused = registry.dispatch(script, game_step("menu", "open_menu"), state);
     if (refused.failure != CONSOLE_ONLY || refused.detail != "open_menu runs only on a console, not on a script backend"){
-        return "expected console_only, got " + to_string(refused);
+        return std::format("expected console_only, got {}", to_string(refused));
     }
     const std::string none = expect_inputs(script, "");
     if (!none.empty()){
         return none;
     }
     FakeStoryBackend<GridPose> console({.kind = StoryBackendKind::CONSOLE}, scope);
-    if (!registry.dispatch(console, state, game_step("menu", "open_menu")).succeeded()){
+    if (!registry.dispatch(console, game_step("menu", "open_menu"), state).succeeded()){
         return "expected the action to run on a console";
     }
     return expect_inputs(console, "press X");
@@ -528,9 +528,9 @@ std::string segment_no_reload_for_console_only(CancellableScope& scope){
     StoryEngine<GridPose> engine(game, backend);
     const std::vector<StoryCheckpoint> checkpoints{checkpoint_of("01", {game_step("menu", "open_menu")})};
     RunState state;
-    const SegmentReport report = engine.run_segment("seg", checkpoints, state, 3);
+    const SegmentReport report = engine.run_segment("seg", checkpoints, 3, state);
     if (report.completed || report.failure.failure != CONSOLE_ONLY || report.failed_event != "menu"){
-        return "expected the segment to stop on console_only at menu, got " + to_string(report.failure);
+        return std::format("expected the segment to stop on console_only at menu, got {}", to_string(report.failure));
     }
     return count_lines(backend, "[Test] reload") == 0 ? "" : "expected no reload";
 }
@@ -573,10 +573,10 @@ std::string check_segment(const SegmentCase& test, CancellableScope& scope){
     std::vector<StoryCheckpoint> checkpoints;
     for (size_t c = 0; c < 2; c++){
         const std::string action = c == test.input.flaky ? "flaky" : "fine";
-        checkpoints.push_back(in_phase(checkpoint_of("0" + std::to_string(c + 1), {game_step("walk", action)}), test.input.phase, engine));
+        checkpoints.push_back(in_phase(checkpoint_of(std::format("0{}", c + 1), {game_step("walk", action)}), test.input.phase, engine));
     }
     RunState state;
-    const SegmentReport report = engine.run_segment("seg", checkpoints, state, 3);
+    const SegmentReport report = engine.run_segment("seg", checkpoints, 3, state);
     const size_t reloads = count_lines(backend, "[Test] reload");
     const size_t saves = count_lines(backend, "[Test] save 01") + count_lines(backend, "[Test] save 02");
     if (report.completed != test.expectation.completed || reloads != test.expectation.reloads || saves != test.expectation.saves){
@@ -592,7 +592,7 @@ std::string check_segment(const SegmentCase& test, CancellableScope& scope){
 class StorySegmentTest : public UnitTest{
 public:
     explicit StorySegmentTest(SegmentCase test)
-        : UnitTest("Pokemon::StoryEngine segment - " + std::string(test.input.name))
+        : UnitTest(std::format("Pokemon::StoryEngine segment - {}", test.input.name))
         , m_case(std::move(test))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
@@ -612,7 +612,7 @@ std::string verify_saves_after_all_passed(CancellableScope& scope){
         StoryEngine<GridPose> engine(game, backend);
         const StoryCheckpoint checkpoint = in_phase(checkpoint_of("00.15b", {game_step("battle", "flaky")}), StoryPhase::VERIFICATION, engine);
         RunState state;
-        const VerifyReport report = engine.verify_checkpoint(checkpoint, state, VerifyPolicy{.runs = 3, .passes_needed = 2});
+        const VerifyReport report = engine.verify_checkpoint(checkpoint, VerifyPolicy{.runs = 3, .passes_needed = 2}, state);
         const size_t saves = count_lines(backend, "[Test] save 00.15b");
         const size_t reloads = count_lines(backend, "[Test] reload");
         const size_t passes = 3 - failures;
@@ -663,7 +663,7 @@ const RunsCase RUNS_CASES[] = {
 class StoryEngineRunsTest : public UnitTest{
 public:
     explicit StoryEngineRunsTest(RunsCase test)
-        : UnitTest("Pokemon::StoryEngine runs - " + std::string(test.input.name))
+        : UnitTest(std::format("Pokemon::StoryEngine runs - {}", test.input.name))
         , m_case(std::move(test))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{

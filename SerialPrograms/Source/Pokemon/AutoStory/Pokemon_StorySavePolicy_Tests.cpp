@@ -10,6 +10,7 @@
  */
 
 #include <algorithm>
+#include <format>
 #include <map>
 #include <optional>
 #include <string>
@@ -20,8 +21,8 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Data/Pokemon_StoryStepJson.h"
 #include "Pokemon_StoryPostconditionCheck.h"
+#include "Pokemon_StorySavePolicy_Tests.h"
 #include "Pokemon_StorySegments.h"
-#include "Pokemon_AutoStory_Tests.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -56,9 +57,11 @@ constexpr SaveDecision SAVE_DECISIONS[] = {
 UnitTestResult test_decision_table(){
     for (const SaveDecision& row : SAVE_DECISIONS){
         if (story_save_allowed(row.mode, row.verdict, row.point) != row.saves){
-            return "Wrong decision for " + story_save_mode_name(row.mode)
-                + (row.verdict == CheckpointVerdict::PASSED ? ", passed" : ", failed")
-                + (row.point == SavePoint::RUN_END ? ", run end" : ", mid-run");
+            return std::format(
+                "Wrong decision for {}{}{}", story_save_mode_name(row.mode),
+                row.verdict == CheckpointVerdict::PASSED ? ", passed" : ", failed",
+                row.point == SavePoint::RUN_END ? ", run end" : ", mid-run"
+            );
         }
     }
     return true;
@@ -87,8 +90,8 @@ struct Lab{
         };
         hooks.log = [this](const std::string& line){ lines.push_back(line); };
         if (postconditions){
-            hooks.check_postconditions = [this](RunState&, const std::string& id){
-                trace.push_back("check " + id);
+            hooks.check_postconditions = [this](const std::string& id, RunState&){
+                trace.push_back(std::format("check {}", id));
                 return *postconditions;
             };
         }
@@ -100,13 +103,13 @@ struct Lab{
     std::string all() const{
         std::string text;
         for (const std::string& line : lines){
-            text += "\n" + line;
+            text += std::format("\n{}", line);
         }
         return text;
     }
 };
 
-CheckpointSpec walk_row(Lab& lab, std::string id){
+CheckpointSpec walk_row(std::string id, Lab& lab){
     CheckpointSpec spec;
     spec.id = id;
     spec.saves = true;
@@ -137,50 +140,50 @@ Segment three_rows(Lab& lab){
     Segment segment;
     segment.id = "00";
     for (std::string_view id : {"00.01", "00.02", "00.03"}){
-        segment.checkpoints.push_back(walk_row(lab, std::string(id)));
+        segment.checkpoints.push_back(walk_row(std::string(id), lab));
     }
     return segment;
 }
 
-SegmentReport run_in(Lab& lab, StorySaveMode mode){
+SegmentReport run_in(StorySaveMode mode, Lab& lab){
     Segment segment = three_rows(lab);
     SegmentHooks hooks = lab.hooks();
     RunState state;
-    return run_segment(state, segment, SegmentRange{}, SegmentPolicy{.save_mode = mode}, hooks);
+    return run_segment(SegmentRange{}, SegmentPolicy{.save_mode = mode}, segment, hooks, state);
 }
 
 UnitTestResult test_none_never_saves(){
     Lab lab;
-    const SegmentReport report = run_in(lab, StorySaveMode::NONE);
+    const SegmentReport report = run_in(StorySaveMode::NONE, lab);
     const std::vector<std::string> expected = {"00.01", "00.02", "00.03"};
     if (!report.completed || lab.trace != expected){
-        return "Expected three checkpoints and no save:" + lab.all();
+        return std::format("Expected three checkpoints and no save:{}", lab.all());
     }
     if (!lab.has("[Segment] 00: save mode none") || !lab.has("[Checkpoint] 00.02: not saving (save mode none)")){
-        return "Expected the skipped saves logged:" + lab.all();
+        return std::format("Expected the skipped saves logged:{}", lab.all());
     }
     return true;
 }
 
 UnitTestResult test_per_checkpoint_saves_each(){
     Lab lab;
-    const SegmentReport report = run_in(lab, StorySaveMode::PER_CHECKPOINT);
+    const SegmentReport report = run_in(StorySaveMode::PER_CHECKPOINT, lab);
     const std::vector<std::string> expected = {"00.01", "save", "00.02", "save", "00.03", "save"};
     if (!report.completed || lab.trace != expected){
-        return "Expected a save after each checkpoint:" + lab.all();
+        return std::format("Expected a save after each checkpoint:{}", lab.all());
     }
     return true;
 }
 
 UnitTestResult test_after_verification_saves_at_the_end(){
     Lab lab;
-    const SegmentReport report = run_in(lab, StorySaveMode::AFTER_VERIFICATION);
+    const SegmentReport report = run_in(StorySaveMode::AFTER_VERIFICATION, lab);
     const std::vector<std::string> expected = {"00.01", "00.02", "00.03", "save"};
     if (!report.completed || lab.trace != expected){
-        return "Expected one save, at the end:" + lab.all();
+        return std::format("Expected one save, at the end:{}", lab.all());
     }
     if (!lab.has("[Postcondition] 00.03: not checked: the game has no postcondition check")){
-        return "Expected the missing check logged as not checked:" + lab.all();
+        return std::format("Expected the missing check logged as not checked:{}", lab.all());
     }
     return true;
 }
@@ -188,10 +191,10 @@ UnitTestResult test_after_verification_saves_at_the_end(){
 UnitTestResult test_after_verification_checks_before_saving(){
     Lab lab;
     lab.postconditions = outcome_ok();
-    const SegmentReport report = run_in(lab, StorySaveMode::AFTER_VERIFICATION);
+    const SegmentReport report = run_in(StorySaveMode::AFTER_VERIFICATION, lab);
     const std::vector<std::string> expected = {"00.01", "00.02", "00.03", "check 00.03", "save"};
     if (!report.completed || lab.trace != expected){
-        return "Expected the check, then the save:" + lab.all();
+        return std::format("Expected the check, then the save:{}", lab.all());
     }
     return true;
 }
@@ -200,15 +203,15 @@ UnitTestResult test_after_verification_checks_before_saving(){
 UnitTestResult test_failed_postconditions_never_save(){
     Lab lab;
     lab.postconditions = outcome_failed("postconditions", "map: expected RocketHideout_B3F, read RocketHideout_B4F");
-    const SegmentReport report = run_in(lab, StorySaveMode::AFTER_VERIFICATION);
+    const SegmentReport report = run_in(StorySaveMode::AFTER_VERIFICATION, lab);
     if (report.completed || report.failed_checkpoint != "00.03"){
-        return "Expected the run failed at its last checkpoint:" + lab.all();
+        return std::format("Expected the run failed at its last checkpoint:{}", lab.all());
     }
     if (std::find(lab.trace.begin(), lab.trace.end(), "save") != lab.trace.end()){
-        return "A run whose postconditions failed must not save:" + lab.all();
+        return std::format("A run whose postconditions failed must not save:{}", lab.all());
     }
     if (!lab.has("[Checkpoint] 00.03: postconditions failed, not saving")){
-        return "Expected the refused save logged:" + lab.all();
+        return std::format("Expected the refused save logged:{}", lab.all());
     }
     return true;
 }
@@ -217,13 +220,13 @@ UnitTestResult test_failed_postconditions_never_save(){
 UnitTestResult test_no_reload_after_the_first(){
     Lab lab;
     lab.failures["00.02"] = 1;
-    const SegmentReport report = run_in(lab, StorySaveMode::NONE);
+    const SegmentReport report = run_in(StorySaveMode::NONE, lab);
     const std::vector<std::string> expected = {"00.01", "00.02"};
     if (report.completed || report.reloads != 0 || lab.trace != expected){
-        return "Expected 00.02 to fail without a reload:" + lab.all();
+        return std::format("Expected 00.02 to fail without a reload:{}", lab.all());
     }
     if (!lab.has("[Segment] 00: 00.02 failed; save mode none left no save at its start, so no reload")){
-        return "Expected why it didn't reload:" + lab.all();
+        return std::format("Expected why it didn't reload:{}", lab.all());
     }
     return true;
 }
@@ -231,31 +234,31 @@ UnitTestResult test_no_reload_after_the_first(){
 UnitTestResult test_first_row_still_reloads(){
     Lab lab;
     lab.failures["00.01"] = 1;
-    const SegmentReport report = run_in(lab, StorySaveMode::NONE);
+    const SegmentReport report = run_in(StorySaveMode::NONE, lab);
     const std::vector<std::string> expected = {"00.01", "reload", "00.01", "00.02", "00.03"};
     if (!report.completed || report.reloads != 1 || lab.trace != expected){
-        return "Expected the first checkpoint retried from the start save:" + lab.all();
+        return std::format("Expected the first checkpoint retried from the start save:{}", lab.all());
     }
     return true;
 }
 
-VerifyReport verify_in(Lab& lab, StorySaveMode mode){
+VerifyReport verify_in(StorySaveMode mode, Lab& lab){
     Segment segment = three_rows(lab);
     SegmentHooks hooks = lab.hooks();
     RunState state;
     const VerifyPolicy policy{.runs = 3, .passes_needed = 2, .save_mode = mode};
-    return verify_checkpoint(state, segment, "00.02", policy, hooks);
+    return verify_checkpoint("00.02", policy, segment, hooks, state);
 }
 
 UnitTestResult test_verify_saves_once_every_run_passed(){
     Lab lab;
-    const VerifyReport report = verify_in(lab, StorySaveMode::AFTER_VERIFICATION);
+    const VerifyReport report = verify_in(StorySaveMode::AFTER_VERIFICATION, lab);
     const std::vector<std::string> expected = {"00.02", "reload", "00.02", "reload", "00.02", "save"};
     if (!report.verified || !report.saved || lab.trace != expected){
-        return "Expected one save, after the last run:" + lab.all();
+        return std::format("Expected one save, after the last run:{}", lab.all());
     }
     if (!lab.has("[Verify] 00.02: every run passed: saved at the end state")){
-        return "Expected the save logged:" + lab.all();
+        return std::format("Expected the save logged:{}", lab.all());
     }
     return true;
 }
@@ -263,12 +266,12 @@ UnitTestResult test_verify_saves_once_every_run_passed(){
 UnitTestResult test_verify_no_save_after_a_failed_run(){
     Lab lab;
     lab.failures["00.02"] = 1;
-    const VerifyReport report = verify_in(lab, StorySaveMode::AFTER_VERIFICATION);
+    const VerifyReport report = verify_in(StorySaveMode::AFTER_VERIFICATION, lab);
     if (!report.verified || report.saved || std::find(lab.trace.begin(), lab.trace.end(), "save") != lab.trace.end()){
-        return "Verified 2/3, but a failed run means no save:" + lab.all();
+        return std::format("Verified 2/3, but a failed run means no save:{}", lab.all());
     }
     if (!lab.has("[Verify] 00.02: not every run passed: not saving")){
-        return "Expected why it didn't save:" + lab.all();
+        return std::format("Expected why it didn't save:{}", lab.all());
     }
     return true;
 }
@@ -313,7 +316,7 @@ UnitTestResult test_postconditions_json(){
     }
     const StoryCheckpoint again = read_story_checkpoint(story_checkpoint_json(checkpoint), "again");
     if (again.postconditions != post){
-        return "The postconditions should survive a write and read: " + story_checkpoint_json(checkpoint).dump();
+        return std::format("The postconditions should survive a write and read: {}", story_checkpoint_json(checkpoint).dump());
     }
     return true;
 }
@@ -322,7 +325,7 @@ UnitTestResult test_postconditions_pass(){
     const PostconditionReport report = check_postconditions(checkpoint_0031(), read_0031("RocketHideout_B3F", 2));
     const std::vector<std::string> lines = postcondition_log_lines(report);
     if (!report.all_passed() || lines.back() != "[Postcondition] 00.31: 5 passed, 0 failed, 0 not checked: passed"){
-        return "Expected every postcondition passed: " + lines.back();
+        return std::format("Expected every postcondition passed: {}", lines.back());
     }
     return true;
 }
@@ -342,9 +345,9 @@ UnitTestResult test_postconditions_fail(){
     if (lines != expected){
         std::string text;
         for (const std::string& line : lines){
-            text += "\n" + line;
+            text += std::format("\n{}", line);
         }
-        return "Unexpected lines:" + text;
+        return std::format("Unexpected lines:{}", text);
     }
     return true;
 }
@@ -359,7 +362,7 @@ UnitTestResult test_postconditions_not_checked(){
     if (report.all_passed() || report.count(PostconditionVerdict::NOT_CHECKED) != 5
         || lines.back() != "[Postcondition] 00.31: 1 passed, 0 failed, 5 not checked: incomplete"
     ){
-        return "What isn't read is not checked, never passed: " + lines.back();
+        return std::format("What isn't read is not checked, never passed: {}", lines.back());
     }
     observed.flags["hideout_lift_key_grunt"] = false;
     if (check_postconditions(checkpoint, observed).count(PostconditionVerdict::FAILED) != 1){
@@ -409,7 +412,7 @@ struct SavePolicyCase{
 class Test_StorySavePolicy : public UnitTest{
 public:
     explicit Test_StorySavePolicy(SavePolicyCase test_case)
-        : UnitTest("Pokemon::StorySavePolicy - " + test_case.input.name)
+        : UnitTest(std::format("Pokemon::StorySavePolicy - {}", test_case.input.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{

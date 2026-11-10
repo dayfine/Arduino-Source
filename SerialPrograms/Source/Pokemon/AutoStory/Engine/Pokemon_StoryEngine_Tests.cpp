@@ -10,6 +10,7 @@
  */
 
 #include <chrono>
+#include <format>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -68,7 +69,7 @@ bool has_line(const FakeStoryBackend<GridPose>& backend, std::string_view line){
 //  warp is a fade out, then a fade in on the target's map. No fade is not
 //  "arrived": FRLG 00.31 (console B, 2026-11-10) took it so and saved on
 //  the wrong floor.
-Outcome take_warp(StoryBackend<GridPose>& backend, RunState&, const StoryActionCall& call){
+Outcome take_warp(StoryBackend<GridPose>& backend, const StoryActionCall& call, RunState&){
     const Direction direction = story_arg<Direction>(call.args, "direction");
     const GridPose& to = story_arg<GridPose>(call.args, "to");
     backend.hold(direction, 400ms, StoryPace::WALK);
@@ -99,7 +100,7 @@ StoryGame<GridPose> test_game(std::optional<int> door_open = std::nullopt){
     });
     game.actions.push_back({
         .spec = *find_story_action(builtin_story_actions(), StoryStepKind::ROUTE, "route"),
-        .handler = [](StoryBackend<GridPose>& backend, RunState&, const StoryActionCall&){
+        .handler = [](StoryBackend<GridPose>& backend, const StoryActionCall&, RunState&){
             backend.hold(Direction::NORTH, 100ms, StoryPace::RUN);
             return outcome_ok();
         },
@@ -174,19 +175,19 @@ std::string check_registry(const RegistryCase& test, CancellableScope& scope){
     const StoryActionRegistry<GridPose> registry(game);
     std::vector<std::string> lint = registry.check(test.input.step);
     if (joined(lint) != test.expectation.lint){
-        return "expected lint \"" + std::string(test.expectation.lint) + "\", got \"" + joined(lint) + "\"";
+        return std::format("expected lint \"{}\", got \"{}\"", test.expectation.lint, joined(lint));
     }
     if (!lint.empty()){
         return "";
     }
     FakeStoryBackend<GridPose> backend({.looks = {look({ScreenEvent::TEXT_BOX}), look({ScreenEvent::TEXT_BOX}), look({ScreenEvent::CAN_MOVE})}}, scope);
     RunState state;
-    const Outcome outcome = registry.dispatch(backend, state, test.input.step);
+    const Outcome outcome = registry.dispatch(backend, test.input.step, state);
     if (outcome.failure != test.expectation.failure){
-        return "expected failure \"" + std::string(test.expectation.failure) + "\", got \"" + to_string(outcome) + "\"";
+        return std::format("expected failure \"{}\", got \"{}\"", test.expectation.failure, to_string(outcome));
     }
     if (joined(backend.inputs()) != test.expectation.inputs){
-        return "expected inputs \"" + std::string(test.expectation.inputs) + "\", got \"" + joined(backend.inputs()) + "\"";
+        return std::format("expected inputs \"{}\", got \"{}\"", test.expectation.inputs, joined(backend.inputs()));
     }
     return "";
 }
@@ -194,7 +195,7 @@ std::string check_registry(const RegistryCase& test, CancellableScope& scope){
 class StoryActionRegistryTest : public UnitTest{
 public:
     explicit StoryActionRegistryTest(RegistryCase test)
-        : UnitTest("Pokemon::StoryEngine registry - " + std::string(test.input.name))
+        : UnitTest(std::format("Pokemon::StoryEngine registry - {}", test.input.name))
         , m_case(std::move(test))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
@@ -252,16 +253,16 @@ std::string check_runner(const RunnerCase& test, CancellableScope& scope){
     RunState state;
     state.flags.insert(test.input.flags.begin(), test.input.flags.end());
     const StoryStep step = read_story_step(parse_json(std::string(test.input.step)), test.input.name, registry.specs());
-    const Outcome outcome = runner.run(state, step);
+    const Outcome outcome = runner.run(step, state);
     if (outcome.failure != test.expectation.failure){
-        return "expected failure \"" + std::string(test.expectation.failure) + "\", got \"" + to_string(outcome) + "\"";
+        return std::format("expected failure \"{}\", got \"{}\"", test.expectation.failure, to_string(outcome));
     }
     if (!has_line(backend, test.expectation.line)){
-        return "expected the line \"" + std::string(test.expectation.line) + "\", logged: " + joined(backend.lines());
+        return std::format("expected the line \"{}\", logged: {}", test.expectation.line, joined(backend.lines()));
     }
     const std::string map = outcome.pose ? outcome.pose->map : "";
     if (map != test.expectation.pose_map){
-        return "expected the pose on \"" + std::string(test.expectation.pose_map) + "\", got \"" + map + "\"";
+        return std::format("expected the pose on \"{}\", got \"{}\"", test.expectation.pose_map, map);
     }
     return "";
 }
@@ -269,7 +270,7 @@ std::string check_runner(const RunnerCase& test, CancellableScope& scope){
 class StoryStepRunnerTest : public UnitTest{
 public:
     explicit StoryStepRunnerTest(RunnerCase test)
-        : UnitTest("Pokemon::StoryEngine runner - " + std::string(test.input.name))
+        : UnitTest(std::format("Pokemon::StoryEngine runner - {}", test.input.name))
         , m_case(std::move(test))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
@@ -320,9 +321,9 @@ std::string check_warp(const WarpCase& test, CancellableScope& scope){
         {"direction", Direction::NORTH},
         {"to", on_map("RocketHideout_B3F")},
     });
-    const Outcome outcome = runner.run(state, step);
+    const Outcome outcome = runner.run(step, state);
     if (outcome.failure != test.expectation.failure){
-        return "expected \"" + std::string(test.expectation.failure) + "\", got \"" + to_string(outcome) + "\"";
+        return std::format("expected \"{}\", got \"{}\"", test.expectation.failure, to_string(outcome));
     }
     if (outcome.succeeded() && (!outcome.pose || outcome.pose->map != "RocketHideout_B3F")){
         return "expected the pose on RocketHideout_B3F";
@@ -333,7 +334,7 @@ std::string check_warp(const WarpCase& test, CancellableScope& scope){
 class StoryTakeWarpTest : public UnitTest{
 public:
     explicit StoryTakeWarpTest(WarpCase test)
-        : UnitTest("Pokemon::StoryEngine take_warp - " + std::string(test.input.name))
+        : UnitTest(std::format("Pokemon::StoryEngine take_warp - {}", test.input.name))
         , m_case(std::move(test))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{

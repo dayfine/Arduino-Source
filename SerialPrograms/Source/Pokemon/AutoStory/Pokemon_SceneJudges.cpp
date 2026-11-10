@@ -4,6 +4,7 @@
  *
  */
 
+#include <format>
 #include "Pokemon_SceneJudges.h"
 
 namespace PokemonAutomation{
@@ -26,7 +27,7 @@ std::string describe(const WarpSeen& seen){
     }
     std::string out = seen.fade == WarpFade::NONE ? "" : warp_fade_name(seen.fade);
     if (!seen.banner.empty()){
-        out += (out.empty() ? "banner \"" : ", banner \"") + seen.banner + "\"";
+        out += std::format("{}banner \"{}\"", out.empty() ? "" : ", ", seen.banner);
     }
     return out;
 }

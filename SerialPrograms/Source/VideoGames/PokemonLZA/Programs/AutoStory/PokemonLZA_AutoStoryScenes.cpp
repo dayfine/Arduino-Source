@@ -95,7 +95,7 @@ void log_event_change(ConsoleHandle& console, const Pokemon::ScreenEvents& event
             names += Pokemon::screen_event_name(event);
         }
     }
-    console.log("mash_scene(): screen now: " + (names.empty() ? std::string("nothing") : names));
+    console.log(std::format("mash_scene(): screen now: {}", names.empty() ? std::string("nothing") : names));
 }
 
 } // namespace

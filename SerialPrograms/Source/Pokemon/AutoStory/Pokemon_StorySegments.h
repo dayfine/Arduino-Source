@@ -61,7 +61,7 @@ struct SegmentHooks{
     //  (check_postconditions(), Pokemon_StoryPostconditionCheck.h), run
     //  before a save in AFTER_VERIFICATION mode: one that failed stops the
     //  save and fails the run. The game logs its lines.
-    MoveOnlyFunction<Outcome(RunState& state, const std::string& checkpoint)> check_postconditions;
+    MoveOnlyFunction<Outcome(const std::string& checkpoint, RunState& state)> check_postconditions;
 };
 
 //  Runs the checkpoints in `range`, in order, saving as `policy.save_mode`
@@ -75,8 +75,8 @@ struct SegmentHooks{
 //      [Segment] 00: done, 3 checkpoints
 //      [Segment] 00: failed at 00.02 talk_mom: expect_failed: dialogue opened
 SegmentReport run_segment(
-    RunState& state, Segment& segment, const SegmentRange& range,
-    const SegmentPolicy& policy, SegmentHooks& hooks
+    const SegmentRange& range, const SegmentPolicy& policy,
+    Segment& segment, SegmentHooks& hooks, RunState& state
 );
 
 
@@ -118,8 +118,8 @@ struct VerifyReport{
 //      [Verify] 00.15b: run 2/3 failed at rival_battle: battle_lost
 //      [Verify] 00.15b: 2/3 passed, 2 needed: verified
 VerifyReport verify_checkpoint(
-    RunState& state, Segment& segment, const std::string& id,
-    const VerifyPolicy& policy, SegmentHooks& hooks
+    const std::string& id, const VerifyPolicy& policy,
+    Segment& segment, SegmentHooks& hooks, RunState& state
 );
 
 //  A readable dump for review: the rows, then each checkpoint built once

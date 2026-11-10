@@ -39,7 +39,7 @@ UnitTestResult test_story_table_lints(Logger&){
         }
         previous = row.id;
         if (!row.start && row.id != "01.00"){
-            return row.id + ": no start; every row after the new game starts from a save.";
+            return std::format("{}: no start; every row after the new game starts from a save.", row.id);
         }
         const std::vector<std::string> problems = plza_story_lint(row);
         if (!problems.empty()){
@@ -57,7 +57,7 @@ UnitTestResult test_story_table_lints(Logger&){
 //  walk somewhere. Empty when there is none.
 std::string move_problem(const std::string& name, const StoryMove& move){
     if (move.legs.empty()){
-        return "Move " + name + " has no legs.";
+        return std::format("Move {} has no legs.", name);
     }
     bool goes = false;
     for (const StoryWalkLeg& leg : move.legs){
@@ -67,7 +67,7 @@ std::string move_problem(const std::string& name, const StoryMove& move){
         goes = goes || leg.walk.count() > 0;
     }
     if (!goes){
-        return "Move " + name + " walks nowhere.";
+        return std::format("Move {} walks nowhere.", name);
     }
     if (move.heading && (*move.heading < 0 || *move.heading >= 360)){
         return std::format("Move {} heads {} deg, expected [0, 360).", name, *move.heading);
@@ -88,7 +88,7 @@ UnitTestResult test_story_moves_known(Logger&){
     }
     for (const auto& [name, move] : story_moves()){
         if (!used.contains(name)){
-            return "Move " + name + " is in no step.";
+            return std::format("Move {} is in no step.", name);
         }
         const std::string problem = move_problem(name, move);
         if (!problem.empty()){
@@ -111,13 +111,13 @@ UnitTestResult test_not_implemented_actions(Logger&){
     }
     for (const auto& [name, todo] : story_actions_not_implemented()){
         if (todo.empty()){
-            return name + ": no TODO.";
+            return std::format("{}: no TODO.", name);
         }
         if (story_moves().contains(name)){
-            return name + ": also a move's name.";
+            return std::format("{}: also a move's name.", name);
         }
         if (!used.contains(name)){
-            return name + ": in no step.";
+            return std::format("{}: in no step.", name);
         }
     }
     return true;
@@ -135,7 +135,7 @@ UnitTestResult test_autosave_rows(Logger&){
         }
         seen++;
         if (menu_saves){
-            return row.id + ": relies on an autosave after a row that saves through the menu.";
+            return std::format("{}: relies on an autosave after a row that saves through the menu.", row.id);
         }
     }
     if (seen != story_autosave_rows().size()){
@@ -151,7 +151,7 @@ UnitTestResult test_ready_to_wild_zone_1(Logger&){
     if (ready == 0 || story_checkpoints()[ready - 1].id < "03.05"){
         return std::format(
             "Expected rows 01.00-03.05 to be ready, {} are ({}).",
-            ready, ready == 0 ? std::string("none") : "up to " + story_checkpoints()[ready - 1].id
+            ready, ready == 0 ? std::string("none") : std::format("up to {}", story_checkpoints()[ready - 1].id)
         );
     }
     return true;
@@ -222,14 +222,14 @@ struct AutoStoryTableCase{
 class Test_AutoStoryTable : public UnitTest{
 public:
     explicit Test_AutoStoryTable(AutoStoryTableCase test_case)
-        : UnitTest("PokemonLZA::AutoStory - " + test_case.input.name)
+        : UnitTest(std::format("PokemonLZA::AutoStory - {}", test_case.input.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
         try{
             return m_case.input.body(logger);
         }catch (Exception& e){
-            return std::string(e.name()) + ": " + e.message();
+            return std::format("{}: {}", e.name(), e.message());
         }
     }
 

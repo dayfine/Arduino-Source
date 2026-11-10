@@ -31,7 +31,7 @@ inline constexpr size_t MAX_OPEN_LOOKS = 20;
 //  The action of a built-in that needs the game's own code.
 template <StoryPose PoseType>
 StoryActionHandler<PoseType> needs_game(std::string name){
-    return [name = std::move(name)](StoryBackend<PoseType>&, RunState&, const StoryActionCall&){
+    return [name = std::move(name)](StoryBackend<PoseType>&, const StoryActionCall&, RunState&){
         return outcome_failed(
             "unsupported_step",
             std::format("{} needs the game's own action: register one named \"{}\" in StoryGame::actions", name, name)
@@ -41,7 +41,7 @@ StoryActionHandler<PoseType> needs_game(std::string name){
 
 //  The SAVE step outside StoryEngine.
 template <StoryPose PoseType>
-Outcome needs_engine_save(StoryBackend<PoseType>&, RunState&, const StoryActionCall&){
+Outcome needs_engine_save(StoryBackend<PoseType>&, const StoryActionCall&, RunState&){
     return outcome_failed("unsupported_step", "a SAVE step runs through StoryEngine, which calls StoryGame::save");
 }
 
@@ -60,14 +60,14 @@ Outcome mash_to_overworld(StoryBackend<PoseType>& backend){
 }
 
 template <StoryPose PoseType>
-Outcome mash(StoryBackend<PoseType>& backend, RunState&, const StoryActionCall&){
+Outcome mash(StoryBackend<PoseType>& backend, const StoryActionCall&, RunState&){
     return mash_to_overworld(backend);
 }
 
 //  A at what the player faces must open a text box; then text to the
 //  overworld. No box is a failure: nobody was there to talk to.
 template <StoryPose PoseType>
-Outcome talk(StoryBackend<PoseType>& backend, RunState&, const StoryActionCall&){
+Outcome talk(StoryBackend<PoseType>& backend, const StoryActionCall&, RunState&){
     using namespace std::chrono_literals;
     backend.press(NintendoSwitch::BUTTON_A, 80ms, 120ms);
     for (size_t c = 0; c < MAX_OPEN_LOOKS; c++){
@@ -95,7 +95,7 @@ inline std::optional<Pose> after_legs(const Pose& start, const std::vector<Story
 }
 
 template <StoryPose PoseType>
-Outcome walk_legs(StoryBackend<PoseType>& backend, RunState& state, const StoryActionCall& call){
+Outcome walk_legs(StoryBackend<PoseType>& backend, const StoryActionCall& call, RunState& state){
     const std::vector<StoryLeg>& legs = story_arg<std::vector<StoryLeg>>(call.args, "legs");
     for (const StoryLeg& leg : legs){
         for (int c = 0; c < leg.tiles; c++){
@@ -106,20 +106,20 @@ Outcome walk_legs(StoryBackend<PoseType>& backend, RunState& state, const StoryA
 }
 
 template <StoryPose PoseType>
-Outcome face(StoryBackend<PoseType>& backend, RunState&, const StoryActionCall& call){
+Outcome face(StoryBackend<PoseType>& backend, const StoryActionCall& call, RunState&){
     backend.tap(story_arg<Direction>(call.args, "direction"));
     return outcome_ok();
 }
 
 template <StoryPose PoseType>
-Outcome answer(StoryBackend<PoseType>& backend, RunState&, const StoryActionCall& call){
+Outcome answer(StoryBackend<PoseType>& backend, const StoryActionCall& call, RunState&){
     using namespace std::chrono_literals;
     backend.press(story_arg<bool>(call.args, "yes") ? NintendoSwitch::BUTTON_A : NintendoSwitch::BUTTON_B, 80ms, 120ms);
     return outcome_ok();
 }
 
 template <StoryPose PoseType>
-Outcome fight(StoryBackend<PoseType>& backend, RunState&, const StoryActionCall& call){
+Outcome fight(StoryBackend<PoseType>& backend, const StoryActionCall& call, RunState&){
     return backend.battle(call.args);
 }
 

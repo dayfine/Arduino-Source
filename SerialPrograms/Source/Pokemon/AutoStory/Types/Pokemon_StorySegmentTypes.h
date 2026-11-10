@@ -14,8 +14,8 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
 #include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
-#include "Pokemon/AutoStory/Pokemon_StoryLog.h"
 #include "Pokemon_StorySaveMode.h"
 
 namespace PokemonAutomation{

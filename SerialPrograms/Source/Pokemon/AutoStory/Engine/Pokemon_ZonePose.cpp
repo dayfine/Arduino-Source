@@ -4,6 +4,7 @@
  *
  */
 
+#include <format>
 #include <string>
 #include "Pokemon_ZonePose.h"
 
@@ -16,7 +17,7 @@ bool pose_matches(const ZonePose& actual, const ZonePose& target){
 }
 
 std::string pose_text(const ZonePose& pose){
-    return "zone " + (pose.zone.empty() ? std::string("unknown") : pose.zone);
+    return std::format("zone {}", (pose.zone.empty() ? std::string("unknown") : pose.zone));
 }
 
 
