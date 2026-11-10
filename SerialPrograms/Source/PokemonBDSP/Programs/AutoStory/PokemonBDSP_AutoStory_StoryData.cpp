@@ -5,6 +5,7 @@
  */
 
 #include <algorithm>
+#include <format>
 #include <utility>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonObject.h"
@@ -81,6 +82,30 @@ StoryFailure read_failure(std::string_view value){
     throw ParseException("Unsupported BDSP failure policy: " + std::string(value));
 }
 
+//  The file without its "metadata", which the shared reader doesn't take
+//  (yet): {"phase": testing, verification or reproduction}, how far the
+//  checkpoint is trusted to save (the engine's save policy reads it).
+JsonValue without_metadata(const JsonValue& value, std::string_view source){
+    JsonObject stripped;
+    for (const auto& [key, field] : value.to_object_throw(std::string(source))){
+        if (key != "metadata"){
+            stripped[key] = field.clone();
+            continue;
+        }
+        const JsonObject& metadata = field.to_object_throw(std::string(source));
+        for (const auto& [metadata_key, unused] : metadata){
+            if (metadata_key != "phase"){
+                throw ParseException(std::format("{}: unsupported metadata field {}", source, metadata_key));
+            }
+        }
+        const std::string& phase = metadata.get_string_throw("phase", std::string(source));
+        if (phase != "testing" && phase != "verification" && phase != "reproduction"){
+            throw ParseException(std::format("{}: unknown phase {}", source, phase));
+        }
+    }
+    return JsonValue(std::move(stripped));
+}
+
 } // namespace
 
 std::span<const Pokemon::StoryActionSpec> bdsp_story_actions(){
@@ -101,7 +126,7 @@ StoryCheckpoint read_authored_checkpoint(const JsonValue& value, std::string_vie
     };
     StoryCheckpoint result;
     static_cast<Pokemon::StoryCheckpoint&>(result) = Pokemon::read_authored_checkpoint(
-        value, "bdsp", source, read_execution, bdsp_story_actions()
+        without_metadata(value, source), "bdsp", source, read_execution, bdsp_story_actions()
     );
     result.on_failure = on_failure;
     result.saves_in = std::move(saves_in);
