@@ -46,7 +46,8 @@
 #include "CommonFramework/Language.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
-#include "Pokemon/AutoStory/Pokemon_StorySteps.h"
+#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
 
 namespace PokemonAutomation{
@@ -84,15 +85,15 @@ struct MartPlan{
     std::optional<size_t> money_floor = std::nullopt;
 };
 
-//  The prefix of a GAME step's variant that names a Mart step.
-inline constexpr std::string_view MART_VARIANT_PREFIX = "mart ";
-
-//  `plan` as a variant: "mart PewterCity_Mart budget=2000 floor=2400
-//  potion=5 repel=3", the lines in order.
-std::string mart_variant(const MartPlan& plan);
-//  A variant from mart_variant(); nothing if it isn't one, has no line, or
+//  The GAME action of a Mart step: map WORD (required), the Mart's map;
+//  budget INTEGER (required); floor INTEGER (optional), the money floor;
+//  items ITEMS (required), the lines in order.
+inline const std::string MART_ACTION = "mart";
+//  `plan` as its action's args.
+Pokemon::StoryActionArgs mart_args(const MartPlan& plan);
+//  The plan a MART_ACTION step's args give; nothing if it has no line or
 //  names an item its Mart doesn't sell.
-std::optional<MartPlan> parse_mart_variant(std::string_view variant);
+std::optional<MartPlan> mart_plan_of(const Pokemon::StoryActionArgs& args);
 
 //  The table's Mart step.
 Pokemon::StoryStep mart_step(std::string name, std::string why, const MartPlan& plan);

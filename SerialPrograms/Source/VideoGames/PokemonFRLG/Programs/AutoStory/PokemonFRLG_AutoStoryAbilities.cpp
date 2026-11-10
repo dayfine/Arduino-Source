@@ -77,29 +77,28 @@ Outcome fossil(Logger& logger, Fossil fossil, StoryAbilities& abilities){
 std::optional<Outcome> run_ability_game_step(
     Logger& logger, VideoStream* stream, const Pokemon::StoryStep& step, StoryAbilities& abilities
 ){
-    const std::string_view variant = step.variant;
-    if (variant.starts_with(MART_VARIANT_PREFIX)){
-        const std::optional<MartPlan> plan = parse_mart_variant(variant);
-        return plan ? mart(logger, *plan, abilities) : Pokemon::outcome_failed("bad_variant", step.variant);
+    if (step.action == MART_ACTION){
+        const std::optional<MartPlan> plan = mart_plan_of(step.args);
+        return plan ? mart(logger, *plan, abilities) : Pokemon::outcome_failed("bad_args", step.action);
     }
-    if (variant.starts_with(TEACH_VARIANT_PREFIX)){
-        const std::optional<TeachPlan> plan = parse_teach_variant(variant);
-        return plan ? teach(logger, *plan, abilities) : Pokemon::outcome_failed("bad_variant", step.variant);
+    if (step.action == TEACH_ACTION){
+        const std::optional<TeachPlan> plan = teach_plan_of(step.args);
+        return plan ? teach(logger, *plan, abilities) : Pokemon::outcome_failed("bad_args", step.action);
     }
-    if (variant.starts_with(LEVEL_VARIANT_PREFIX)){
-        const std::optional<LevelCheck> check = parse_level_variant(variant);
-        return check ? level(logger, *check, abilities) : Pokemon::outcome_failed("bad_variant", step.variant);
+    if (step.action == LEVEL_ACTION){
+        const std::optional<LevelCheck> check = level_check_of(step.args);
+        return check ? level(logger, *check, abilities) : Pokemon::outcome_failed("bad_args", step.action);
     }
-    if (variant.starts_with(GRIND_VARIANT_PREFIX)){
-        const std::optional<GrindPlan> plan = parse_grind_variant(variant);
-        if (!plan || !step.target){
-            return Pokemon::outcome_failed("bad_variant", step.variant + (step.target ? "" : " (no nurse)"));
+    if (step.action == GRIND_ACTION){
+        const std::optional<GrindPlan> plan = grind_plan_of(step.args);
+        if (!plan || !step.args.contains("nurse")){
+            return Pokemon::outcome_failed("bad_args", step.action + (step.args.contains("nurse") ? "" : " (no nurse)"));
         }
         return grind(logger, stream, *plan, abilities);
     }
-    if (variant.starts_with(FOSSIL_VARIANT_PREFIX)){
-        const std::optional<Fossil> choice = parse_fossil_variant(variant);
-        return choice ? fossil(logger, *choice, abilities) : Pokemon::outcome_failed("bad_variant", step.variant);
+    if (step.action == FOSSIL_ACTION){
+        const std::optional<Fossil> choice = fossil_of(step.args);
+        return choice ? fossil(logger, *choice, abilities) : Pokemon::outcome_failed("bad_args", step.action);
     }
     return std::nullopt;
 }

@@ -335,25 +335,27 @@ UnitTestResult test_quantity_presses(){
 }
 
 
-UnitTestResult test_mart_variant(){
+UnitTestResult test_mart_args(){
     const MartPlan plan = pewter_plan(2000, {{"potion", 5}, {"repel", 3}}, 2400);
-    const std::string variant = mart_variant(plan);
-    if (variant != "mart PewterCity_Mart budget=2000 floor=2400 potion=5 repel=3"){
-        return "Unexpected variant \"" + variant + "\".";
-    }
-    const std::optional<MartPlan> back = parse_mart_variant(variant);
+    const Pokemon::StoryActionArgs args = mart_args(plan);
+    const std::optional<MartPlan> back = mart_plan_of(args);
     if (!back || back->map != plan.map || back->budget != 2000 || back->money_floor != plan.money_floor
         || back->lines.size() != 2 || back->lines[1].item != "repel" || back->lines[1].quantity != 3
     ){
-        return "\"" + variant + "\" didn't read back as its plan.";
+        return "The Pewter plan didn't read back from its args.";
     }
-    for (std::string_view bad : {
-        "mart", "mart PewterCity_Mart budget=2000", "mart Nowhere_Mart potion=1",
-        "mart ViridianCity_Mart repel=1", "mart PewterCity_Mart potion=0", "mart PewterCity_Mart potion=100",
-        "mart PewterCity_Mart potion", "teach hm03 surf slot=1",
-    }){
-        if (parse_mart_variant(bad)){
-            return "Expected \"" + std::string(bad) + "\" refused.";
+    const std::vector<std::pair<std::string, Pokemon::StoryArgValue>> bad_args{
+        {"items", std::vector<Pokemon::StoryItem>{}},
+        {"map", std::string("Nowhere_Mart")},
+        {"map", std::string("ViridianCity_Mart")},
+        {"items", std::vector<Pokemon::StoryItem>{{"potion", 0}}},
+        {"items", std::vector<Pokemon::StoryItem>{{"potion", 100}}},
+    };
+    for (const auto& [key, value] : bad_args){
+        Pokemon::StoryActionArgs bad = args;
+        bad[key] = value;
+        if (mart_plan_of(bad)){
+            return "Expected a bad " + key + " refused.";
         }
     }
     return true;
@@ -406,7 +408,7 @@ const AutoStoryMartCase AUTO_STORY_MART_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"the table's variant", test_mart_variant},
+        .input = {"the step's args", test_mart_args},
         .expectation = {},
     },
     {
