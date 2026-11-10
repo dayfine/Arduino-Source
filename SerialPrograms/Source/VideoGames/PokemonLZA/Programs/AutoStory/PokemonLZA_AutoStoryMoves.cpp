@@ -62,7 +62,7 @@ Pokemon::Outcome run_story_move(PlzaBackend& backend, const StoryMove& move, con
         if (leg.turn != 0){
             //  The walk goes where the camera looks: recenter it after the turn.
             story_turn(backend, leg.turn);
-            backend.press(BUTTON_L, 100ms, 400ms);
+            backend.press(BUTTON_L, 100ms, 150ms);
         }
         if (leg.walk > Milliseconds(0)){
             backend.hold(Pokemon::Direction::NORTH, leg.walk, Pokemon::StoryPace::WALK);

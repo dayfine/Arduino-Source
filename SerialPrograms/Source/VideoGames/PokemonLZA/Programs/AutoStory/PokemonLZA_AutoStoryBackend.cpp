@@ -216,10 +216,10 @@ CancellableScope& PlzaConsoleBackend::scope(){
 }
 
 void story_turn(PlzaBackend& backend, double degrees){
-    //  150 ms is the tap the story was recorded with (console B, 2026-11-08);
-    //  the 300 ms release after it lets the turn finish.
-    backend.press(BUTTON_L, 100ms, 400ms);
-    backend.stick(degrees, 150ms, 300ms, Pokemon::StoryPace::WALK);
+    //  150 ms is the tap the story was recorded with (console B, 2026-11-08).
+    //  Short releases: the legs run back to back, as when played by hand.
+    backend.press(BUTTON_L, 100ms, 150ms);
+    backend.stick(degrees, 150ms, 100ms, Pokemon::StoryPace::WALK);
 }
 
 PlzaReader heading_reader(StoryEnv& env){
