@@ -191,7 +191,15 @@ Milliseconds tile_time(const RouteStep& step, MoveSpeed speed){
     if (step.surfing){
         return SURF_TILE_TIME;
     }
-    return step_speed(step, speed) == MoveSpeed::RUN ? RUN_TILE_TIME : TILE_TIME;
+    switch (step_speed(step, speed)){
+    case MoveSpeed::RUN:
+        return RUN_TILE_TIME;
+    case MoveSpeed::BIKE:
+        return BIKE_TILE_TIME;
+    case MoveSpeed::WALK:
+        break;
+    }
+    return TILE_TIME;
 }
 
 Pokemon::LegMover<ProControllerContext> leg_mover(const RouteStep& step, MoveSpeed speed){
@@ -469,6 +477,8 @@ const char* move_speed_name(MoveSpeed speed){
         return "walk";
     case MoveSpeed::RUN:
         return "run";
+    case MoveSpeed::BIKE:
+        return "bike";
     }
     return "?";
 }
@@ -536,6 +546,10 @@ void walk_step_leg(
         console, context, leg_mover(step, speed), step.wild ? interrupts.wild : interrupts.other,
         leg_spec(step, speed), MAX_INTERRUPTIONS_PER_LEG, warp_hold_watchers(step, fade)
     );
+    if (step.spin_tiles){
+        //  The hold let go on the spinner; the game slides the player on.
+        pbf_wait(context, SPIN_TILE_TIME * *step.spin_tiles + SPIN_STOP_SETTLE);
+    }
     if (!step.warps){
         return;
     }

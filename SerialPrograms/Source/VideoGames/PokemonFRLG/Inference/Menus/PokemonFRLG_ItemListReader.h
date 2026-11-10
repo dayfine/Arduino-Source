@@ -36,7 +36,8 @@ ImageFloatBox item_list_name_box(int row);
 ImageFloatBox bag_item_count_box(int row);
 
 //  The item named in row `row`: a slug such as "potion", "antidote",
-//  "parlyz-heal", "awakening", "poke-ball", or "cancel" for the list's last row, in a
+//  "parlyz-heal", "awakening", "poke-ball", "repel",
+//  "super-repel", "max-repel", "escape-rope", "bicycle", or "cancel" for the list's last row, in a
 //  game in `language`; empty if it can't be read, as in a language the
 //  reader has no names for.
 std::string read_item_list_name(Logger& logger, Language language, const ImageViewRGB32& screen, int row);

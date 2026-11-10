@@ -63,6 +63,10 @@ struct StoryPose{
 //  The variant of a ROUTE or LEGS step that runs, with B held: the player
 //  has the Running Shoes (00.10 on).
 inline const std::string RUN_VARIANT = "run";
+//  The variant of a ROUTE or LEGS step ridden on the Bicycle, mounted by a
+//  RIDE_BIKE_VARIANT step before it (PokemonFRLG_AutoStoryItemUse.h).
+//  Indoors, where the game doesn't let the player ride, it walks.
+inline const std::string BIKE_VARIANT = "bike";
 
 //  The variant of a STEP into a trainer's line: a tile at a time, at most
 //  TRAINER_LINE_TILES, until the trainer sees the player
@@ -101,7 +105,8 @@ inline const std::string CLOSE_TRAINER_CARD = "close_trainer_card";
 //  the overworld.
 inline const std::string LEAVE_GIFT_SUMMARY = "leave_gift_summary";
 
-//  How `step`, a ROUTE or LEGS, moves the player: RUN_VARIANT runs.
+//  How `step`, a ROUTE or LEGS, moves the player: RUN_VARIANT runs,
+//  BIKE_VARIANT rides.
 MoveSpeed move_speed(const StoryStep& step);
 
 

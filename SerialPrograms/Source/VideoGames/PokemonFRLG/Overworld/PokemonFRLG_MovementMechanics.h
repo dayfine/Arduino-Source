@@ -48,6 +48,12 @@ inline constexpr Milliseconds TILE_TIME(267);
 inline constexpr Milliseconds RUN_TILE_TIME(133);
 //  Surfing: a tile per 8 frames.
 inline constexpr Milliseconds SURF_TILE_TIME(133);
+//  Riding the Bicycle, measured on console B (2026-11-09, Lavender Town
+//  row 13, wall to wall, from rest): 16 tiles (1, 13) to (17, 13) in
+//  1800 ms of motion, east and back west alike, 112 ms a tile; 5 tiles
+//  from rest in 600 ms (120 ms a tile, the start up included). Not the
+//  decompilation's 4 frames a tile (67 ms): the bike speeds up from rest.
+inline constexpr Milliseconds BIKE_TILE_TIME(112);
 //  The longest tap measured to only turn a player facing another way, and
 //  to take exactly one step for one facing its way.
 inline constexpr Milliseconds LONGEST_TAP(133);
@@ -62,6 +68,10 @@ inline constexpr Milliseconds STEP_TAP_SPACING_WORKED(666);
 //  the D-pad this long. Not measured: pokefirered's fade from black is 16
 //  frames, then the field takes input; a tap sent at once was lost.
 inline constexpr Milliseconds BATTLE_EXIT_LOCKOUT(500);
+//  A spinner tile (Rocket Hideout, Viridian Gym) slides the player a tile
+//  per 8 frames (pokefirered PlayerGoSpin(): MOVE_SPEED_FAST_1). Not
+//  measured on the console.
+inline constexpr Milliseconds SPIN_TILE_TIME(133);
 
 
 //  The walker's presses.
@@ -87,6 +97,9 @@ inline constexpr Milliseconds STEP_TAP_RELEASE(700);
 //  How long the overworld must show nothing (no box, fade or battle) after
 //  a battle before the next tap: twice the lockout.
 inline constexpr Milliseconds AFTER_BATTLE_QUIET(1000);
+//  The wait after a slide's last tile before the next press: the spin's
+//  last frames and the facing it leaves. Not measured.
+inline constexpr Milliseconds SPIN_STOP_SETTLE(300);
 
 static_assert(TURN_TAP <= LONGEST_TAP && FACE_HOLD <= LONGEST_TAP && STEP_TAP <= LONGEST_TAP);
 static_assert(STEP_TAP + STEP_TAP_RELEASE > STEP_TAP_SPACING_WORKED);

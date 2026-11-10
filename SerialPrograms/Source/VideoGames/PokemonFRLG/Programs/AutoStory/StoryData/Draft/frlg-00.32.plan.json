@@ -1,0 +1,107 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "00.32",
+    "title": "Rocket Hideout: the lift to B4F, the two door guards, two Rare Candies, Blastoise, Giovanni and the SILPH SCOPE",
+    "start": {"certainty": "tile", "map": "RocketHideout_B3F", "where": {"facing": "north", "kind": "tiles", "tiles": [[12, 13]]}},
+    "events": [
+      {
+        "id": "b2f_lift",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "RocketHideout_B2F", "where": {"facing": "north", "kind": "tiles", "tiles": [[28, 17]]}},
+        "variant": "run",
+        "why": "up to B2F, along the arrow tiles to the lift (28..29, 16)"
+      },
+      {
+        "id": "lift_to_b4f",
+        "kind": "game_action",
+        "declared_after": {"certainty": "tile", "map": "RocketHideout_B4F", "where": {"facing": "south", "kind": "tiles", "tiles": [[20, 23]]}},
+        "variant": "lift_floor B2F B4F",
+        "why": "the lift script: in through the door (28, 16), to the panel, B4F with the LIFT KEY, out onto B4F's lift door; no map of the lift"
+      },
+      {
+        "id": "b4f_below_guards",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "RocketHideout_B4F", "where": {"facing": "north", "kind": "tiles", "tiles": [[17, 16]]}},
+        "variant": "run",
+        "why": "from the lift door to below the two Grunts (16, 14) and (19, 14)"
+      },
+      {
+        "id": "talk_left_guard",
+        "kind": "talk",
+        "why": "the left door guard"
+      },
+      {
+        "id": "hideout-left-guard",
+        "kind": "battle",
+        "declared_after": {"certainty": "tile", "map": "RocketHideout_B4F", "where": {"facing": "north", "kind": "tiles", "tiles": [[17, 16]]}},
+        "why": "Rocket Grunt (TRAINER_TEAM_ROCKET_GRUNT_16): Sandshrew, Sandslash, Ekans Lv23"
+      },
+      {
+        "id": "talk_right_guard",
+        "kind": "talk",
+        "why": "the right door guard"
+      },
+      {
+        "id": "hideout-right-guard",
+        "kind": "battle",
+        "declared_after": {"certainty": "tile", "map": "RocketHideout_B4F", "where": {"facing": "north", "kind": "tiles", "tiles": [[17, 16]]}},
+        "why": "Rocket Grunt (TRAINER_TEAM_ROCKET_GRUNT_17): Ekans, Sandshrew, Arbok Lv23; the door opens"
+      },
+      {
+        "id": "rare_candy_1",
+        "kind": "game_action",
+        "variant": "use_item rare-candy slot=1",
+        "why": "Rare Candy: Lv35 (pokeguy 1:00:25)"
+      },
+      {
+        "id": "rare_candy_2",
+        "kind": "game_action",
+        "variant": "use_item rare-candy slot=1",
+        "why": "Rare Candy: Lv36, Wartortle evolves"
+      },
+      {
+        "id": "evolve_blastoise",
+        "kind": "scene",
+        "why": "Wartortle evolves into Blastoise; do not press B"
+      },
+      {
+        "id": "below_giovanni",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "RocketHideout_B4F", "where": {"facing": "north", "kind": "tiles", "tiles": [[19, 5]]}},
+        "why": "through the door to below Giovanni (19, 4)"
+      },
+      {
+        "id": "talk_giovanni",
+        "kind": "talk",
+        "why": "Giovanni"
+      },
+      {
+        "id": "hideout-giovanni",
+        "kind": "battle",
+        "declared_after": {"certainty": "tile", "map": "RocketHideout_B4F", "where": {"facing": "north", "kind": "tiles", "tiles": [[19, 5]]}},
+        "why": "Giovanni (TRAINER_BOSS_GIOVANNI): Onix, Rhyhorn, Kangaskhan"
+      },
+      {
+        "id": "beside_silph_scope",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "RocketHideout_B4F", "where": {"facing": "west", "kind": "tiles", "tiles": [[21, 5]]}},
+        "why": "round to east of the SILPH SCOPE (20, 5)"
+      },
+      {
+        "id": "silph_scope",
+        "kind": "talk",
+        "why": "pick up the SILPH SCOPE"
+      },
+      {
+        "id": "escape_rope_hideout",
+        "kind": "game_action",
+        "declared_after": {"certainty": "tile", "map": "CeladonCity", "where": {"facing": "south", "kind": "tiles", "tiles": [[34, 22]]}},
+        "variant": "use_item escape-rope",
+        "why": "out to the Game Corner's door (pokeguy 1:02:10)"
+      }
+    ]
+  },
+  "execution": {"menu": "full"}
+}
