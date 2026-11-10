@@ -220,7 +220,7 @@ inline constexpr std::string_view ROUTE_B3F = R"([{"id": "go", "kind": "route", 
 
 const HashCase HASH_CASES[] = {
     {.input = {.name = "pinned", .a = ROUTE_B3F, .b = ROUTE_B3F},
-     .expectation = {.same = true, .hash_a = "sha256:PIN"}},
+     .expectation = {.same = true, .hash_a = "sha256:c4b4a5c60e0a2b65b188f75f64b699073485aafa278fcbdd4afbd055da878af0"}},
     {.input = {.name = "why is not hashed", .a = R"([{"id": "t", "kind": "talk", "why": "a"}])", .b = R"([{"id": "t", "kind": "talk", "why": "b"}])"},
      .expectation = {.same = true}},
     {.input = {.name = "fallbacks are filled", .a = R"([{"id": "f", "kind": "battle"}])", .b = R"([{"id": "f", "kind": "battle", "args": {"may_lose": false}}])"},
