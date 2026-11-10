@@ -826,6 +826,10 @@ StoryCheckpoint joined_rows(const StoryCheckpoint& first, const StoryCheckpoint&
     row.live_start = first.live_start;
     row.steps = first.steps;
     row.steps.insert(row.steps.end(), second.steps.begin(), second.steps.end());
+    row.notes = first.notes;
+    row.notes.insert(row.notes.end(), second.notes.begin(), second.notes.end());
+    row.sections = first.sections;
+    row.sections.insert(row.sections.end(), second.sections.begin(), second.sections.end());
     return row;
 }
 

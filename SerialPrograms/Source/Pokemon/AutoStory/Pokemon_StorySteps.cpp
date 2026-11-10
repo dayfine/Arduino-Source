@@ -163,6 +163,7 @@ Event story_event(const StoryStep& step, StoryStepExecutor& executor){
     Event event;
     event.name = step.name;
     event.why = step.why;
+    event.section = step.section;
     for (const std::string& name : step.skip_if){
         event.skip_if.push_back(condition(name, [&executor, name](RunState& state){
             return executor.holds(name, state);
@@ -267,8 +268,39 @@ std::string missing_field(const StoryStep& step){
 
 } // namespace
 
-std::vector<std::string> lint_story_checkpoint(const StoryCheckpoint& data){
+namespace{
+
+//  With sections, each step's names one, in the sections' order, and every
+//  section has a step.
+std::vector<std::string> section_problems(const StoryCheckpoint& data){
     std::vector<std::string> problems;
+    if (data.sections.empty()){
+        return problems;
+    }
+    size_t at = 0;
+    std::vector<bool> used(data.sections.size(), false);
+    for (const StoryStep& step : data.steps){
+        while (at < data.sections.size() && data.sections[at].id != step.section){
+            at++;
+        }
+        if (at == data.sections.size()){
+            problems.push_back(std::format("{} {}: section {} is not one of the checkpoint's, in order", data.id, step.name, step.section));
+            return problems;
+        }
+        used[at] = true;
+    }
+    for (size_t c = 0; c < used.size(); c++){
+        if (!used[c]){
+            problems.push_back(std::format("{}: section {} has no step", data.id, data.sections[c].id));
+        }
+    }
+    return problems;
+}
+
+} // namespace
+
+std::vector<std::string> lint_story_checkpoint(const StoryCheckpoint& data){
+    std::vector<std::string> problems = section_problems(data);
     if (data.id.empty()){
         problems.emplace_back("a checkpoint has no id");
     }

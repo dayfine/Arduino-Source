@@ -2,6 +2,7 @@
  *  From: https://github.com/PokemonAutomation/
  */
 
+#include <algorithm>
 #include <format>
 #include <initializer_list>
 #include <limits>
@@ -11,6 +12,15 @@
 #include "Common/Cpp/Json/JsonObject.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepJson.h"
 #include "Pokemon/AutoStory/Pokemon_AuthoredCheckpointJson.h"
+#include "VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryCapture.h"
+#include "VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryChoice.h"
+#include "VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryGrind.h"
+#include "VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryMart.h"
+#include "VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryMember.h"
+#include "VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryParty.h"
+#include "VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryPcStorage.h"
+#include "VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryTeach.h"
+#include "VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryTrashCans.h"
 #include "LegacyJsonFormat.h"
 #include "JsonParser.h"
 
@@ -175,20 +185,142 @@ void check_envelope(const JsonObject& root, std::string_view source){
     }
 }
 
+constexpr std::pair<StoryHandoff, std::string_view> HANDOFFS[]{
+    {StoryHandoff::NONE, "none"},
+    {StoryHandoff::SID_HELPER, "sid_helper"},
+    {StoryHandoff::STARTER_RNG, "starter_rng"},
+    {StoryHandoff::GIFT_RNG, "gift_rng"},
+};
+
+//  The healing items a checkpoint starts with, and its lead: a new game's
+//  unless "lead" names the one after Brock (story_lead_after_brock()).
+Supplies read_authored_supplies(const JsonValue& value, std::string_view source){
+    const JsonObject& root = fields(value, {"potions", "antidotes", "parlyz_heals", "lead"}, source);
+    Supplies result;
+    if (const JsonValue* field = root.get_value("potions")){
+        result.potions = read_int(*field, source);
+    }
+    if (const JsonValue* field = root.get_value("antidotes")){
+        result.antidotes = read_int(*field, source);
+    }
+    if (const JsonValue* field = root.get_value("parlyz_heals")){
+        result.parlyz_heals = read_int(*field, source);
+    }
+    if (const JsonValue* field = root.get_value("lead")){
+        if (field->to_string_throw(std::string(source)) != "after_brock"){
+            throw ParseException(std::format("{}: unsupported lead {}", source, field->to_string_throw()));
+        }
+        result.lead = story_lead_after_brock();
+    }
+    return result;
+}
+
+//  Whether `variant` names a GAME step FRLG's executor does.
+bool known_game_variant(const std::string& variant){
+    for (const std::string& name : {CLOSE_TRAINER_CARD, LEAVE_GIFT_SUMMARY, CUT_TREE_VARIANT, TRASH_CANS_VARIANT}){
+        if (variant == name){
+            return true;
+        }
+    }
+    return parse_capture_variant(variant) || parse_pc_variant(variant) || parse_mart_variant(variant)
+        || parse_teach_variant(variant) || parse_grind_variant(variant) || parse_grind_check_variant(variant)
+        || parse_fossil_variant(variant) || parse_level_variant(variant);
+}
+
+//  Whether FRLG does `step`'s kind the way its variant names.
+bool known_variant(const StoryStep& step){
+    switch (step.kind){
+    case StoryStepKind::ROUTE:
+    case StoryStepKind::LEGS:
+        return step.variant.empty() || step.variant == RUN_VARIANT;
+    case StoryStepKind::STEP:
+        return step.variant.empty() || step.variant == TRAINER_LINE_VARIANT || step.variant == TRAINER_WAIT_VARIANT;
+    case StoryStepKind::GAME:
+        return known_game_variant(step.variant);
+    default:
+        return step.variant.empty();
+    }
+}
+
+//  The checkpoint's steps against what FRLG can do: each variant known,
+//  and nothing lint_story_checkpoint() finds.
+void check_steps(const StoryCheckpoint& checkpoint, std::string_view source){
+    for (const StoryStep& step : checkpoint.steps){
+        if (!known_variant(step)){
+            throw ParseException(std::format("{}: {} has an unsupported variant \"{}\"", source, step.name, step.variant));
+        }
+    }
+    const std::vector<std::string> problems = Pokemon::lint_story_checkpoint(checkpoint);
+    if (!problems.empty()){
+        throw ParseException(std::format("{}: {}", source, problems.front()));
+    }
+}
+
 StoryCheckpoint apply_execution(Pokemon::AuthoredCheckpoint parsed, std::string_view source){
     const JsonObject& execution = parsed.execution;
-    Pokemon::require_story_json_fields(execution, {"menu"}, source);
+    for (const auto& [key, unused] : execution){
+        if (key != "menu" && key != "supplies" && key != "live_start" && key != "handoff"){
+            throw ParseException(std::format("{}: unsupported execution field {}", source, key));
+        }
+    }
     StoryCheckpoint result;
     static_cast<Pokemon::StoryCheckpoint&>(result) = std::move(parsed.checkpoint);
-    const std::string& menu = execution.get_string_throw("menu");
-    if (menu == "before_pokemon"){
-        result.menu = StartMenu::BEFORE_POKEMON;
-    }else if (menu == "before_pokedex"){
-        result.menu = StartMenu::BEFORE_POKEDEX;
-    }else if (menu == "full"){
-        result.menu = StartMenu::FULL;
-    }else{
-        throw ParseException("Unsupported authored checkpoint menu.");
+    result.menu = read_named({StartMenu::BEFORE_POKEMON, StartMenu::BEFORE_POKEDEX, StartMenu::FULL},
+        StoryJsonInternal::menu_name, execution.get_string_throw("menu", std::string(source)), source);
+    if (const JsonValue* field = execution.get_value("supplies")){
+        result.supplies = read_authored_supplies(*field, source);
+    }
+    if (const JsonValue* field = execution.get_value("live_start")){
+        result.live_start = field->to_boolean_throw(std::string(source));
+    }
+    if (const JsonValue* field = execution.get_value("handoff")){
+        const std::string& name = field->to_string_throw(std::string(source));
+        bool found = false;
+        for (const auto& [handoff, label] : HANDOFFS){
+            if (name == label){
+                result.handoff = handoff;
+                found = true;
+            }
+        }
+        if (!found){
+            throw ParseException(std::format("{}: unsupported handoff {}", source, name));
+        }
+    }
+    check_steps(result, source);
+    return result;
+}
+
+//  Whether two leads are the same as far as a checkpoint's row sets them.
+bool same_lead(const PartyMember& a, const PartyMember& b){
+    if (a.species != b.species || a.level != b.level || a.moves_through_level != b.moves_through_level
+        || a.moves_read != b.moves_read || a.moves.size() != b.moves.size()
+    ){
+        return false;
+    }
+    for (size_t c = 0; c < a.moves.size(); c++){
+        if (a.moves[c].move != b.moves[c].move || a.moves[c].pp != b.moves[c].pp){
+            return false;
+        }
+    }
+    return true;
+}
+
+//  The supplies as authored: what differs from a new game's.
+JsonObject authored_supplies_json(const Supplies& supplies){
+    JsonObject result;
+    if (supplies.potions){
+        result["potions"] = supplies.potions;
+    }
+    if (supplies.antidotes){
+        result["antidotes"] = supplies.antidotes;
+    }
+    if (supplies.parlyz_heals){
+        result["parlyz_heals"] = supplies.parlyz_heals;
+    }
+    if (same_lead(supplies.lead, story_lead_after_brock())){
+        result["lead"] = "after_brock";
+    }else if (!same_lead(supplies.lead, Supplies{}.lead)){
+        throw ParseException("Only a new game's lead or the lead after Brock can be authored.");
     }
     return result;
 }
@@ -202,6 +334,44 @@ StoryCheckpoint read_authored_checkpoint(const JsonValue& value, std::string_vie
 
 StoryCheckpoint load_authored_checkpoint(std::string_view file){
     return apply_execution(Pokemon::load_authored_checkpoint(autostory_checkpoint_json(), file, "frlg"), file);
+}
+
+std::vector<StoryCheckpoint> load_authored_story(){
+    std::vector<StoryCheckpoint> result;
+    for (const auto& [name, text] : autostory_checkpoint_json()){
+        if (name.ends_with(".plan")){
+            result.push_back(read_authored_checkpoint(parse_json(text), name));
+        }
+    }
+    std::sort(result.begin(), result.end(), [](const StoryCheckpoint& a, const StoryCheckpoint& b){
+        return a.id < b.id;
+    });
+    for (size_t c = 1; c < result.size(); c++){
+        if (result[c].id == result[c - 1].id){
+            throw ParseException("Two authored checkpoints are " + result[c].id + ".");
+        }
+    }
+    return result;
+}
+
+JsonValue authored_checkpoint_json(const StoryCheckpoint& checkpoint){
+    JsonObject execution;
+    execution["menu"] = StoryJsonInternal::menu_name(checkpoint.menu);
+    JsonObject supplies = authored_supplies_json(checkpoint.supplies);
+    if (supplies.size() != 0){
+        execution["supplies"] = std::move(supplies);
+    }
+    if (checkpoint.live_start){
+        execution["live_start"] = true;
+    }
+    if (checkpoint.handoff != StoryHandoff::NONE){
+        for (const auto& [handoff, label] : HANDOFFS){
+            if (handoff == checkpoint.handoff){
+                execution["handoff"] = std::string(label);
+            }
+        }
+    }
+    return Pokemon::authored_checkpoint_json(checkpoint, "frlg", std::move(execution));
 }
 
 StoryCheckpoint read_story_checkpoint_export(const JsonValue& value, std::string_view source){

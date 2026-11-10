@@ -165,6 +165,8 @@ struct Recovery{
 struct Event{
     std::string name;
     std::string why;
+    //  The checkpoint's section the event is in, for the log; may be empty.
+    std::string section;
     //  Skipped when all of these hold (and there is at least one).
     std::vector<Condition> skip_if;
     //  Must hold before `act`; a failure is "require_failed".
@@ -240,7 +242,12 @@ using EventLogger = MoveOnlyFunction<void(const std::string& line)>;
 //  One log line, in a format the lab watcher parses:
 //      [Event] 00.04/3 talk_mom: start
 //      [Event] 00.04/3 talk_mom: failed: expect_failed: has_parcel
-std::string event_log_line(const std::string& checkpoint, size_t number, const std::string& event, const std::string& status);
+//  An event in a section names it before the event:
+//      [Event] 00.28/12 [b1f_east] winston_line: start
+std::string event_log_line(
+    const std::string& checkpoint, size_t number, const std::string& event, const std::string& status,
+    const std::string& section = ""
+);
 
 //  Problems an author should fix before running: unnamed or empty events,
 //  missing actions, recoveries out of escalation order.

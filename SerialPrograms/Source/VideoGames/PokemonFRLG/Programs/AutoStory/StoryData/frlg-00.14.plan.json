@@ -1,0 +1,96 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "00.14",
+    "title": "Route 4: Mega Kick from its tutor, then east to Cerulean's Pokemon Center",
+    "notes": [
+      "Route 4 east of Mt. Moon (Route4 map.json) joins Cerulean City at its east end (x 107; Route 4's row 3 is the city's row 13). Its upper road (rows 2..8) reaches the city only by water: the way on by land is down the ledge row 9 at x 90..96 to the lower road (rows 10..12), which joins the city's rows 20..22. Lass Crissy (75, 3) faces east, sight 4, over row 3 from x 76 to 79; the way east keeps out of her line and off the grass south of the road (75..87, 11..17).",
+      "On the way, the Mega Kick tutor (Black Belt (50, 3), facing west, Route4_EventScript_MegaKickTutor) stands in a pen (46..51, 2..4) north of the road, beside the Mega Punch tutor (47, 3); the pen opens south only on (48, 5) and (49, 5), the rest of row 5 ledges out of it. From Mt. Moon's exit the walk goes east and up into the pen to (50, 4), below the tutor, and Mega Kick takes Withdraw's slot. Cerulean can't be walked back to Route 4's upper road without Surf, so it is now or much later.",
+      "The open leg east across the city's edge ended a tile short on the console (2026-11-03: on (6, 20), not (7, 20)), and no hold to a wall in the city's west end finds the player from there: the next hold south met the fence on (6, 23) and the walk went on a column off. So the entry ends on (9, 20), and only legs to walls follow: north up column 9 (or 8, a tile short) to row 12, west to (8, 12), east to (30, 12) beside the policeman (31, 12), south to (30, 17), west to (25, 17), and down the ledge row 18 to (25, 19), a few tiles from the door (22, 19). The way keeps out of the boy's (16, 18..24) and the balding man's (8..10, 22..24) wander boxes."
+    ],
+    "start": {"certainty": "tile", "map": "Route4", "where": {"facing": "south", "kind": "tiles", "tiles": [[32, 6]]}},
+    "sections": [
+      {
+        "id": "mega_kick_tutor",
+        "title": "Route 4: the Mega Kick tutor",
+        "events": [
+          {
+            "id": "mega_kick_tutor",
+            "kind": "route",
+            "variant": "run",
+            "target": {"certainty": "tile", "map": "Route4", "where": {"facing": "north", "kind": "tiles", "tiles": [[50, 4]]}},
+            "why": "east and up through (48, 5) into the tutors' pen, below the Mega Kick tutor (50, 3)"
+          },
+          {
+            "id": "teach_mega_kick",
+            "kind": "game_action",
+            "variant": "teach tutor mega-kick slot=1 forget=withdraw",
+            "once_per_save": true,
+            "why": "the tutor's Mega Kick in place of Withdraw, unless the lead knows it"
+          }
+        ]
+      },
+      {
+        "id": "route4_east",
+        "title": "Route 4's upper road and its ledge",
+        "events": [
+          {
+            "id": "above_ledge",
+            "kind": "route",
+            "variant": "run",
+            "target": {"certainty": "tile", "map": "Route4", "where": {"facing": "south", "kind": "tiles", "tiles": [[93, 8]]}},
+            "why": "east along Route 4's upper road to above the ledge row 9"
+          },
+          {
+            "id": "ledge_hop",
+            "kind": "step",
+            "direction": "south",
+            "declared_after": {"certainty": "tile", "map": "Route4", "where": {"facing": "south", "kind": "tiles", "tiles": [[93, 10]]}},
+            "why": "down the ledge (93, 9) to the lower road"
+          }
+        ]
+      },
+      {
+        "id": "cerulean",
+        "title": "Cerulean City to its Pokemon Center",
+        "events": [
+          {
+            "id": "cerulean_entry",
+            "kind": "route",
+            "variant": "run",
+            "target": {"certainty": "tile", "map": "CeruleanCity", "where": {"facing": "east", "kind": "tiles", "tiles": [[9, 20]]}},
+            "why": "east into Cerulean City, to (9, 20) below column 9"
+          },
+          {
+            "id": "above_city_ledge",
+            "kind": "legs",
+            "variant": "run",
+            "legs": [{"direction": "north", "tiles": 8}, {"direction": "west", "tiles": 1}, {"direction": "east", "tiles": 22}, {"direction": "south", "tiles": 5}, {"direction": "west", "tiles": 5}],
+            "why": "to walls: (9, 12), (8, 12), (30, 12), (30, 17), (25, 17)"
+          },
+          {
+            "id": "city_ledge_hop",
+            "kind": "step",
+            "direction": "south",
+            "declared_after": {"certainty": "tile", "map": "CeruleanCity", "where": {"facing": "south", "kind": "tiles", "tiles": [[25, 19]]}},
+            "why": "down the ledge (25, 18)"
+          },
+          {
+            "id": "cerulean_nurse",
+            "kind": "route",
+            "variant": "run",
+            "target": {"certainty": "tile", "map": "CeruleanCity_PokemonCenter_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 4]]}},
+            "why": "west along row 20 to the Pokemon Center's door (22, 19)"
+          },
+          {
+            "id": "heal_cerulean",
+            "kind": "heal",
+            "why": "full HP"
+          }
+        ]
+      }
+    ]
+  },
+  "execution": {"menu": "full", "supplies": {"lead": "after_brock"}}
+}

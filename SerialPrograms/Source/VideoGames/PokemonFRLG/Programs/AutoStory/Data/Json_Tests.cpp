@@ -10,6 +10,7 @@
 #include "JsonWriter.h"
 #include "VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryTable.h"
 #include "VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_StoryReplay.h"
+#include "AuthoredStory_Tests.h"
 #include "Json_Tests.h"
 
 namespace PokemonAutomation{
@@ -271,6 +272,7 @@ private:
 
 void add_tests_AutoStoryJson(UnitTestDatabase& database){
     add_tests_StoryReplay(database);
+    add_tests_AuthoredStory(database);
     for (const ExportCase& test : CASES){
         database.add<ExportTest>(test);
     }

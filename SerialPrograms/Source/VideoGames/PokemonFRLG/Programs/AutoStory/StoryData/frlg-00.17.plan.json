@@ -1,0 +1,146 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "00.17",
+    "title": "Route 24 and 25 to Bill's Sea Cottage: Franklin, Kelsey, Nob and Haley",
+    "notes": [
+      "Route 24 north of Nugget Bridge (Route24 map.json) joins Route 25 by its rows 7..9; the ledges on Route 25's row 6 (x 0..9) leave the way north at x 12..13. Route 25 (Route25 map.json, scripts.inc) to Bill's Sea Cottage door (51, 4): of its nine trainers, four can't be walked around.",
+      "- Hiker Franklin (11, 4) faces east, sight 4, over (12..15, 4), and Hiker Wayne (17, 7) east over (18..19, 7): the only ways east past x 15. Franklin is fought, from (15, 5) on the step onto (15, 4), the end of his line: he walks up to (14, 4).",
+      "- Youngster Joey (18, 2) faces south over (18, 3..4): the way keeps off column 18, south round Wayne to (19, 6) and up to (19, 4).",
+      "- Youngster Dan (22, 4) looks around, sight 2, over the only way east, (20..21, 4). On (20, 4), a one-tile leg, he may see the player and walk up to (21, 4); so the way goes north from there to row 2, east, and down column 23 past him to (23, 5), off every tile he may walk up to. Where his sight is crossed, the leg ends on a wall or is one tile; if he looks the player's way, story_interrupts() fight him.",
+      "- Picnicker Kelsey (22, 8) faces east over (23..24, 8), across the only way on: fought on the step onto (24, 8); she walks up to (23, 8).",
+      "- Hiker Nob (27, 9) faces north over (27, 6..8), Camper Flint (28, 4) south over (28, 5..7): every way east crosses one. Nob is fought on the step onto (27, 8), beside him; the way on keeps off Flint's column, by one-tile legs and legs to walls.",
+      "- Youngster Chad (36, 4) walks up and down column 36 (rows 2..7), so he may see any tile of it down to row 9. The way crosses his column on row 9, a leg to the water at (42, 9), where he can only walk up beside it.",
+      "- Lass Haley (42, 5) faces south over (42, 6..8), the only way east of x 42: fought on the step onto (42, 8); she walks up to (42, 7). The row saves inside the Sea Cottage, which the save card names ROUTE 25."
+    ],
+    "start": {"certainty": "tile", "map": "Route24", "where": {"facing": "east", "kind": "tiles", "tiles": [[11, 15]]}},
+    "sections": [
+      {
+        "id": "route24_franklin",
+        "title": "Off the bridge to Hiker Franklin",
+        "events": [
+          {
+            "id": "below_franklin_line",
+            "kind": "route",
+            "variant": "run",
+            "target": {"certainty": "tile", "map": "Route25", "where": {"facing": "north", "kind": "tiles", "tiles": [[15, 5]]}},
+            "why": "north off Nugget Bridge, east into Route 25, round its ledges to (15, 5), below the end of Franklin's line"
+          },
+          {
+            "id": "franklin_line",
+            "kind": "step",
+            "variant": "trainer_line",
+            "direction": "north",
+            "why": "onto (15, 4), at the end of Franklin's line"
+          },
+          {
+            "id": "hiker_franklin",
+            "kind": "battle",
+            "declared_after": {"certainty": "tile", "map": "Route25", "where": {"facing": "north", "kind": "tiles", "tiles": [[15, 4]]}},
+            "why": "Machop and Geodude, Lv15; Franklin stops at (14, 4)"
+          }
+        ]
+      },
+      {
+        "id": "route25_kelsey",
+        "title": "Round Dan to Picnicker Kelsey",
+        "events": [
+          {
+            "id": "west_of_dan",
+            "kind": "legs",
+            "variant": "run",
+            "legs": [{"direction": "east", "tiles": 2}, {"direction": "south", "tiles": 2}, {"direction": "east", "tiles": 2}, {"direction": "north", "tiles": 2}],
+            "why": "to (17, 4), short of Joey's (18, 4); round Wayne (17, 7) to (19, 6); up to (19, 4)"
+          },
+          {
+            "id": "round_dan",
+            "kind": "legs",
+            "variant": "run",
+            "legs": [
+              {"direction": "east", "tiles": 1}, {"direction": "north", "tiles": 2}, {"direction": "east", "tiles": 4}, {"direction": "west", "tiles": 1}, {"direction": "south", "tiles": 3}, {"direction": "east", "tiles": 1},
+              {"direction": "south", "tiles": 2}
+            ],
+            "why": "onto (20, 4); up to (20, 2), east to (24, 2), down column 23 past Dan to (23, 5), to (24, 7) above Kelsey's line"
+          },
+          {
+            "id": "kelsey_line",
+            "kind": "step",
+            "variant": "trainer_line",
+            "direction": "south",
+            "why": "onto (24, 8), at the end of Kelsey's line"
+          },
+          {
+            "id": "picnicker_kelsey",
+            "kind": "battle",
+            "declared_after": {"certainty": "tile", "map": "Route25", "where": {"facing": "south", "kind": "tiles", "tiles": [[24, 8]]}},
+            "why": "Nidoran M and Nidoran F, Lv15; Kelsey stops at (23, 8)"
+          }
+        ]
+      },
+      {
+        "id": "route25_nob",
+        "title": "Hiker Nob",
+        "events": [
+          {
+            "id": "west_of_nob_line",
+            "kind": "legs",
+            "variant": "run",
+            "legs": [{"direction": "east", "tiles": 2}],
+            "why": "along row 8 to (26, 8)"
+          },
+          {
+            "id": "nob_line",
+            "kind": "step",
+            "variant": "trainer_line",
+            "direction": "east",
+            "why": "onto (27, 8), above Nob"
+          },
+          {
+            "id": "hiker_nob",
+            "kind": "battle",
+            "declared_after": {"certainty": "tile", "map": "Route25", "where": {"facing": "east", "kind": "tiles", "tiles": [[27, 8]]}},
+            "why": "three Geodude and a Machop, Lv13"
+          }
+        ]
+      },
+      {
+        "id": "route25_haley",
+        "title": "Past Chad to Lass Haley and the Sea Cottage",
+        "events": [
+          {
+            "id": "below_haley_line",
+            "kind": "legs",
+            "variant": "run",
+            "legs": [
+              {"direction": "east", "tiles": 1}, {"direction": "south", "tiles": 1}, {"direction": "east", "tiles": 1}, {"direction": "north", "tiles": 3}, {"direction": "east", "tiles": 5}, {"direction": "south", "tiles": 3},
+              {"direction": "east", "tiles": 8}
+            ],
+            "why": "below Flint's column to (29, 9), up to (29, 6), east to (34, 6), down to (34, 9), east along row 9 past Chad's column to the water, (42, 9)"
+          },
+          {
+            "id": "haley_line",
+            "kind": "step",
+            "variant": "trainer_line",
+            "direction": "north",
+            "why": "onto (42, 8), at the end of Haley's line"
+          },
+          {
+            "id": "lass_haley",
+            "kind": "battle",
+            "declared_after": {"certainty": "tile", "map": "Route25", "where": {"facing": "north", "kind": "tiles", "tiles": [[42, 8]]}},
+            "why": "Oddish, Pidgey and Oddish, Lv13; Haley stops at (42, 7)"
+          },
+          {
+            "id": "sea_cottage",
+            "kind": "route",
+            "variant": "run",
+            "target": {"certainty": "tile", "map": "Route25_SeaCottage", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 8]]}},
+            "why": "east along row 8, up column 51 into the Sea Cottage (51, 4), a step in from its mat"
+          }
+        ]
+      }
+    ]
+  },
+  "execution": {"menu": "full", "supplies": {"lead": "after_brock"}}
+}
