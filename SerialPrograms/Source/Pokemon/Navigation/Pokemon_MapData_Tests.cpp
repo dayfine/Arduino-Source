@@ -181,7 +181,7 @@ UnitTestResult test_lists_may_be_left_out(){
 }
 
 UnitTestResult test_glyphs_round_trip(){
-    for (char glyph : std::string("#.~wv^<>DS 8246")){
+    for (char glyph : std::string("#.~wv^<>DS 8246udlroHB")){
         const std::optional<TileKind> tile = tile_from_glyph(glyph);
         if (!tile || glyph_of(*tile) != glyph){
             return std::string("Glyph '") + glyph + "' does not round-trip.";
@@ -189,6 +189,27 @@ UnitTestResult test_glyphs_round_trip(){
     }
     if (tile_from_glyph('?')){
         return "'?' is not a glyph.";
+    }
+    return true;
+}
+
+//  PokemonSimulation's tile-legend.json glyphs for forced movement, holes and
+//  boulder switches, in a map's rows.
+UnitTestResult test_spin_hole_and_button_glyphs_parse(){
+    const std::string json = R"({
+    "name": "SpinRoom",
+    "source": {"decomp_file": "f", "revision": "r", "date": "d"},
+    "tiles": ["udlroHB"]
+})";
+    const MapData map = parse_map(parse_json(json), "SpinRoom.json");
+    constexpr TileKind EXPECTED[] = {
+        TileKind::SPIN_NORTH, TileKind::SPIN_SOUTH, TileKind::SPIN_WEST, TileKind::SPIN_EAST,
+        TileKind::STOP_SPIN, TileKind::FALL_HOLE, TileKind::STRENGTH_BUTTON,
+    };
+    for (int x = 0; x < (int)std::size(EXPECTED); x++){
+        if (map.tiles.at({x, 0}) != EXPECTED[x]){
+            return std::format("Tile ({}, 0) read '{}'.", x, glyph_of(map.tiles.at({x, 0})));
+        }
     }
     return true;
 }
@@ -483,6 +504,10 @@ const MapDataTestCase MAP_DATA_CASES[] = {
     {
         .input = {.name = "glyphs round-trip", .test = test_glyphs_round_trip},
         .expectation = {.description = "converts between tile characters and enum kinds"},
+    },
+    {
+        .input = {.name = "spin, hole and button glyphs", .test = test_spin_hole_and_button_glyphs_parse},
+        .expectation = {.description = "parses u d l r o H B as the tile legend's spin, stop, hole and switch tiles"},
     },
     {
         .input = {.name = "each error class", .test = test_each_error_class},
