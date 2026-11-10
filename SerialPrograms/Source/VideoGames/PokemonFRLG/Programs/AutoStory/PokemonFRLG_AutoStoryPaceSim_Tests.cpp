@@ -111,6 +111,79 @@ UnitTestResult test_capture_paced_in_trainer_sight(){
 }
 
 
+//  A capture on the sim as ConsoleCaptureActions paces it: each search for
+//  a battle with its own PatchSteps, east and back, `species` read in turn.
+class SimConsoleCapture : public CaptureActions{
+public:
+    SimConsoleCapture(Logger& logger, OverworldSim& sim, std::vector<std::string> species)
+        : m_logger(logger), m_sim(sim), m_species(std::move(species))
+    {}
+    virtual bool find_encounter(Direction) override{
+        SimPatch pacing(m_sim, Direction::EAST, Direction::WEST);
+        return pace_until_battle(m_logger, pacing, PACE_MAX_STEPS);
+    }
+    virtual EncounterSeen read_encounter() override{
+        const std::string species = m_read < m_species.size() ? m_species[m_read] : m_species.back();
+        m_read++;
+        return EncounterSeen{.species = species};
+    }
+    virtual bool flee() override{
+        const bool ended = m_sim.handle_battle(SimBattleChoice::RUN) == SimBattleEnd::ENDED;
+        tiles.push_back(m_sim.state().position);
+        return ended;
+    }
+    virtual FoeHp read_foe_hp() override{ return FoeHp::UNKNOWN; }
+    virtual TurnEnd attack(size_t) override{ return TurnEnd::FAILED; }
+    virtual ThrowEnd throw_ball() override{ return ThrowEnd::CAUGHT; }
+    virtual bool finish_catch(CatchDestination) override{
+        return m_sim.handle_battle(SimBattleChoice::FIGHT) == SimBattleEnd::ENDED;
+    }
+    //  Where each battle run from left the player.
+    std::vector<MapPosition> tiles;
+private:
+    Logger& m_logger;
+    OverworldSim& m_sim;
+    std::vector<std::string> m_species;
+    size_t m_read = 0;
+};
+
+//  Console B, 2026-11-09 (00.30 run 5): catch_pidgey started on Route 7's
+//  (14, 6) on the Bicycle, ran from 4 wild battles and then paced 4 minutes
+//  on the flowers east of the grass (11..18, 2..6). On the Bicycle a tap
+//  facing another way steps too, so each turn of the pace took a tile, and
+//  each search began its pace afresh from where the last battle left the
+//  player. On the sim, from (14, 6) on the Bicycle, 6 battles, the Pidgey
+//  last: every battle starts on (14, 6) or (15, 6), on foot.
+UnitTestResult test_capture_paced_on_bike_stays_in_grass(){
+    const MapPosition patch{"Route7", {14, 6}};
+    const CapturePlan plan{.species = "pidgey", .max_encounters = 30, .pace = Direction::EAST};
+    SimScript script;
+    script.on_bike = true;
+    script.bike_registered = true;
+    for (int grass_step : {2, 5, 6, 9, 12, 13}){
+        script.encounters.push_back(SimEncounter{.grass_step = grass_step});
+    }
+    OverworldSim sim(story_maps(), patch, Direction::EAST, script);
+    LinesLogger logger;
+    SimConsoleCapture actions(logger, sim, {"rattata", "spearow", "rattata", "oddish", "meowth", "pidgey"});
+    const CaptureResult result = run_capture(logger, actions, plan, 5);
+    if (result.end != CaptureEnd::CAUGHT || result.encounters != 6){
+        return capture_message(plan, result) + joined(logger.lines) + joined(sim.state().log);
+    }
+    const MapPosition east{"Route7", {15, 6}};
+    for (size_t c = 0; c < actions.tiles.size(); c++){
+        if (!(actions.tiles[c] == patch) && !(actions.tiles[c] == east)){
+            return std::format("Battle {} left the player on {}, off the pace's tiles.", c + 1, to_string(actions.tiles[c]))
+                + joined(sim.state().log);
+        }
+    }
+    if (sim.state().on_bike){
+        return "Paced on the Bicycle." + joined(sim.state().log);
+    }
+    return true;
+}
+
+
 struct AutoStoryPaceSimInput{
     std::string name;
     std::function<UnitTestResult()> body;
@@ -151,6 +224,15 @@ const AutoStoryPaceSimTestCase AUTO_STORY_PACE_SIM_CASES[] = {
         },
         .expectation = {
             .description = "handles trainer encounter while pacing and resumes capture sequence",
+        },
+    },
+    {
+        .input = {
+            .name = "a capture started on the Bicycle paces on foot in the grass",
+            .body = test_capture_paced_on_bike_stays_in_grass,
+        },
+        .expectation = {
+            .description = "every battle starts on one of the pace's two tiles, off the Bicycle",
         },
     },
 };
