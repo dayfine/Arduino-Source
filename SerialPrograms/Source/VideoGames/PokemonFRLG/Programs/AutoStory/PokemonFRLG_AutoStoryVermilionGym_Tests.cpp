@@ -2,7 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Rows 00.23 to 00.25 (PokemonFRLG_AutoStoryTableVermilionGym.cpp) on the
+ *  Rows 00.23 to 00.25 (StoryData/frlg-00.23..25.plan.json) on the
  *  overworld sim: the tree cut on the way in and out, the gym's three
  *  trainers fought where the table says, the trash can search walking
  *  between the cans clear of where the trainers stand after their battles
@@ -31,7 +31,6 @@
 #include "PokemonFRLG_AutoStoryParty.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryTable.h"
-#include "PokemonFRLG_AutoStoryTableSteps.h"
 #include "PokemonFRLG_AutoStoryTrashCans.h"
 #include "PokemonFRLG_AutoStoryWinChance.h"
 
@@ -79,7 +78,10 @@ private:
     AutoStoryVermilionGymCase m_case;
 };
 
-const char* const GYM = StoryTable::VERMILION_GYM;
+const std::string GYM = "VermilionCity_Gym";
+const std::string ROUTE6 = "Route6";
+const std::string VERMILION = "VermilionCity";
+const std::string VERMILION_CENTER = "VermilionCity_PokemonCenter_1F";
 
 const StoryCheckpoint& checkpoint(std::string_view id){
     const std::vector<StoryCheckpoint>& rows = story_checkpoints();
@@ -121,7 +123,7 @@ std::vector<MapData> maps_after_gym(std::vector<MapData> maps = story_maps()){
     for (MapObject& object : map_named(maps, GYM).objects){
         object.trainer.reset();
     }
-    for (MapObject& object : map_named(maps, StoryTable::ROUTE6).objects){
+    for (MapObject& object : map_named(maps, ROUTE6).objects){
         if (object.name == "camper" && object.trainer){
             object.trainer.reset();
         }
@@ -173,7 +175,7 @@ std::string walk_to_stand(OverworldSim& sim, StoryPose& at, int can){
 //  the GRIND and the talks the sim hasn't got pass.
 std::string gym_step_on_sim(OverworldSim& sim, StoryPose& at, const StoryStep& step, const std::string& id){
     if (step.kind == StoryStepKind::BATTLE && step.name == "lt_surge"){
-        at = *story_pose(*step.pose_after);
+        at = *story_pose(Pokemon::pose_of(*step.pose_after));
         return "";
     }
     return row_step_on_sim(sim, at, step, id);
@@ -235,7 +237,7 @@ std::string run_gym_steps(OverworldSim& sim, StoryPose& at, size_t first, size_t
     const StoryCheckpoint& row = checkpoint("00.23");
     for (size_t c = first; c < last; c++){
         const StoryStep& step = row.steps[c];
-        if (step.variant == TRASH_CANS_VARIANT){
+        if (step.action == TRASH_CANS_VARIANT){
             QuietLogger logger;
             SimGym gym(sim, at, draws);
             const TrashCanResult result = run_trash_cans(logger, [&](int can){ return gym.check(can); });
@@ -259,7 +261,7 @@ std::string run_gym_steps(OverworldSim& sim, StoryPose& at, size_t first, size_t
 UnitTestResult test_gym_row(){
     const StoryCheckpoint& row = checkpoint("00.23");
     for (const std::vector<Switches>& draws : {std::vector<Switches>{{3, 4}}, std::vector<Switches>{{3, 8}, {13, 14}}}){
-        StoryPose at = *story_pose(*row.start);
+        StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
         OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
         if (const std::string failure = run_gym_steps(sim, at, 0, row.steps.size(), draws); !failure.empty()){
             return failure + " Beat" + beaten_list(sim) + ".";
@@ -268,7 +270,7 @@ UnitTestResult test_gym_row(){
         if (sim.state().trainers_beaten != expected || !sim.state().violations.empty()){
             return "00.23: expected Dwayne, Baily and Tucker beaten and no violation; beat" + beaten_list(sim) + ".";
         }
-        if (!(sim.state().position == MapPosition{StoryTable::VERMILION_CENTER, {7, 4}})){
+        if (!(sim.state().position == MapPosition{VERMILION_CENTER, {7, 4}})){
             return "00.23: expected to end at Vermilion's nurse, not " + to_string(sim.state().position) + ".";
         }
     }
@@ -280,7 +282,7 @@ UnitTestResult test_gym_row(){
 //  every other stand, and the way out to the nurse from every stand.
 UnitTestResult test_cans_from_everywhere(){
     const StoryCheckpoint& row = checkpoint("00.23");
-    StoryPose at = *story_pose(*row.start);
+    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
     OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
     const size_t cans = step_index(row, "trash_cans");
     if (const std::string failure = run_gym_steps(sim, at, 0, cans, {}); !failure.empty()){
@@ -306,7 +308,7 @@ UnitTestResult test_cans_from_everywhere(){
         if (const std::string failure = run_gym_steps(out, here, cans + 1, row.steps.size(), {}); !failure.empty()){
             return std::format("Out from can {}: ", from) + failure;
         }
-        if (!(out.state().position == MapPosition{StoryTable::VERMILION_CENTER, {7, 4}}) || !out.state().violations.empty()){
+        if (!(out.state().position == MapPosition{VERMILION_CENTER, {7, 4}}) || !out.state().violations.empty()){
             return std::format("Out from can {}: expected the nurse and no violation, on {}.", from, to_string(out.state().position));
         }
     }
@@ -316,20 +318,20 @@ UnitTestResult test_cans_from_everywhere(){
 //  The tree shuts the gym's yard: no way from above it to the door.
 UnitTestResult test_tree_shuts_the_yard(){
     const RouteGoal door{{GYM, {5, 19}}, std::nullopt};
-    if (plan_overworld_route(story_maps(), MapPosition{StoryTable::VERMILION, {19, 23}}, door, story_route_costs(), Direction::SOUTH)){
+    if (plan_overworld_route(story_maps(), MapPosition{VERMILION, {19, 23}}, door, story_route_costs(), Direction::SOUTH)){
         return "Planned a way into the gym past the uncut tree (19, 24).";
     }
-    if (!plan_overworld_route(story_maps(), MapPosition{StoryTable::VERMILION, {19, 24}}, door, story_route_costs(), Direction::SOUTH)){
+    if (!plan_overworld_route(story_maps(), MapPosition{VERMILION, {19, 24}}, door, story_route_costs(), Direction::SOUTH)){
         return "No way from the tree's tile to the gym.";
     }
     //  The sim: no step onto the tree; cut, it's gone; a warp grows it back.
-    OverworldSim sim(story_maps(), MapPosition{StoryTable::VERMILION, {19, 23}}, Direction::SOUTH);
+    OverworldSim sim(story_maps(), MapPosition{VERMILION, {19, 23}}, Direction::SOUTH);
     sim.tap(Direction::SOUTH);
-    if (!(sim.state().position == MapPosition{StoryTable::VERMILION, {19, 23}}) || !sim.cut_tree()){
+    if (!(sim.state().position == MapPosition{VERMILION, {19, 23}}) || !sim.cut_tree()){
         return "Expected the tree to stop the player, then be cut.";
     }
     sim.tap(Direction::SOUTH);
-    if (!(sim.state().position == MapPosition{StoryTable::VERMILION, {19, 24}})){
+    if (!(sim.state().position == MapPosition{VERMILION, {19, 24}})){
         return "Expected a step onto the cut tree's tile.";
     }
     return true;
@@ -341,7 +343,7 @@ UnitTestResult test_tree_shuts_the_yard(){
 UnitTestResult test_to_surge_and_out(){
     for (const char* id : {"00.24", "00.25"}){
         const StoryCheckpoint& row = checkpoint(id);
-        StoryPose at = *story_pose(*row.start);
+        StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
         OverworldSim sim(maps_after_gym(), MapPosition{at.map, at.tile}, *at.facing);
         for (const StoryStep& step : row.steps){
             if (const std::string failure = gym_step_on_sim(sim, at, step, row.id); !failure.empty()){
@@ -351,12 +353,12 @@ UnitTestResult test_to_surge_and_out(){
         if (!sim.state().trainers_beaten.empty() || !sim.state().violations.empty()){
             return std::string(id) + ": a battle or a violation on the way.";
         }
-        const MapPosition end = std::string(id) == "00.24" ? MapPosition{GYM, {5, 3}} : MapPosition{StoryTable::VERMILION_CENTER, {7, 4}};
+        const MapPosition end = std::string(id) == "00.24" ? MapPosition{GYM, {5, 3}} : MapPosition{VERMILION_CENTER, {7, 4}};
         if (!(sim.state().position == end)){
             return std::string(id) + ": ended on " + to_string(sim.state().position) + ", not " + to_string(end) + ".";
         }
     }
-    const StoryPose next = *story_pose(*checkpoint("00.25").start);
+    const StoryPose next = *story_pose(Pokemon::pose_of(*checkpoint("00.25").start));
     if (!(next.tile == TilePos{5, 3}) || next.map != GYM){
         return "00.25 doesn't start where 00.24 ends.";
     }
@@ -371,18 +373,18 @@ UnitTestResult test_to_surge_and_out(){
 UnitTestResult test_out_past_oaks_aide(){
     const StoryCheckpoint& row = checkpoint("00.25");
     const std::vector<MapData> maps = maps_after_surge();
-    const MapData& city = *std::find_if(maps.begin(), maps.end(), [](const MapData& map){ return map.name == StoryTable::VERMILION; });
+    const MapData& city = *std::find_if(maps.begin(), maps.end(), [](const MapData& map){ return map.name == VERMILION; });
     if (object_at(city, {25, 7}) == nullptr){
         return "Expected Oak's aide on (25, 7) after Lt. Surge.";
     }
-    StoryPose at = *story_pose(*row.start);
+    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
     OverworldSim sim(maps, MapPosition{at.map, at.tile}, *at.facing);
     for (const StoryStep& step : row.steps){
         if (const std::string failure = gym_step_on_sim(sim, at, step, row.id); !failure.empty()){
             return failure;
         }
     }
-    const MapPosition nurse{StoryTable::VERMILION_CENTER, {7, 4}};
+    const MapPosition nurse{VERMILION_CENTER, {7, 4}};
     if (!sim.state().violations.empty() || !(sim.state().position == nurse)){
         return "Expected the nurse reached past Oak's aide; on " + to_string(sim.state().position) + (sim.state().violations.empty() ? "." : ", " + sim.state().violations.back());
     }
@@ -496,10 +498,10 @@ UnitTestResult test_surge_dig_two_turns(){
 UnitTestResult test_surge_winnable_skips_grind(){
     const StoryCheckpoint& row = checkpoint("00.24");
     const StoryStep& check = row.steps.front();
-    if (!parse_grind_check_variant(check.variant)){
+    if (check.action != GRIND_CHECK_ACTION || !grind_plan_of(check.args)){
         return "Expected 00.24 to start with the grind's check, not " + check.name + ".";
     }
-    StoryPose at = *story_pose(*row.start);
+    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
     OverworldSim sim(maps_after_gym(), MapPosition{at.map, at.tile}, *at.facing);
     std::vector<std::string> skipped;
     for (const StoryStep& step : row.steps){

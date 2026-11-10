@@ -2,7 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Rows from 00.26 on (PokemonFRLG_AutoStoryTableCeladon.cpp) on the
+ *  Rows from 00.26 on (StoryData/frlg-00.26.plan.json and after) on the
  *  overworld sim: 00.26 from where 00.25 ends, to the Fan Club's chairman,
  *  north past Route 6's trainers, through the tree into Cerulean, to the
  *  Bike Shop's clerk, the Mart and the nurse, with Oak's aide on
@@ -21,6 +21,8 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
+#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMap.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
@@ -28,7 +30,6 @@
 #include "PokemonFRLG_AutoStoryMart.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryTable.h"
-#include "PokemonFRLG_AutoStoryTableSteps.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -36,6 +37,14 @@ namespace PokemonFRLG{
 
 
 namespace{
+
+const std::string ROUTE6 = "Route6";
+const std::string VERMILION = "VermilionCity";
+const std::string BIKE_SHOP = "CeruleanCity_BikeShop";
+const std::string CERULEAN_CENTER = "CeruleanCity_PokemonCenter_1F";
+const std::string CERULEAN_MART = "CeruleanCity_Mart";
+const std::string ROUTE10_CENTER = "Route10_PokemonCenter_1F";
+const std::string ROUTE9 = "Route9";
 
 struct AutoStoryCeladonInput{
     std::string name;
@@ -99,7 +108,7 @@ std::vector<MapData> maps_after_surge(){
     flags.merge(map_flag_set(all, "new_game"));
     flags.erase("FLAG_HIDE_VERMILION_CITY_OAKS_AIDE");
     std::vector<MapData> maps = overworld_maps(flags);
-    for (MapObject& object : map_named(maps, StoryTable::ROUTE6).objects){
+    for (MapObject& object : map_named(maps, ROUTE6).objects){
         if (object.name == "camper" && object.trainer){
             object.trainer.reset();
         }
@@ -124,8 +133,8 @@ const MapObject* object_ahead(const std::vector<MapData>& maps, const StoryPose&
 //  The row's last route's target.
 std::optional<StoryPose> last_target(const StoryCheckpoint& row){
     for (auto step = row.steps.rbegin(); step != row.steps.rend(); ++step){
-        if (step->kind == StoryStepKind::ROUTE && step->target){
-            return story_pose(*step->target);
+        if (step->kind == StoryStepKind::ROUTE && step->args.contains("target")){
+            return story_pose(Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(step->args, "target")));
         }
     }
     return std::nullopt;
@@ -140,7 +149,7 @@ UnitTestResult starts_where_ends(const std::string& previous, const std::string&
     }
     const std::optional<StoryPose> end = last_target(checkpoint(previous));
     const StoryCheckpoint& row = checkpoint(id);
-    const std::optional<StoryPose> start = row.start ? story_pose(*row.start) : std::nullopt;
+    const std::optional<StoryPose> start = row.start ? story_pose(Pokemon::pose_of(*row.start)) : std::nullopt;
     if (!end || !start || start->map != end->map || !(start->tile == end->tile) || start->facing != end->facing){
         return "Expected " + id + " to start where " + previous + "'s last walk ends.";
     }
@@ -165,17 +174,17 @@ UnitTestResult test_starts_where_bicycle_ends(){
 UnitTestResult test_bike_voucher_row(){
     const StoryCheckpoint& row = checkpoint("00.26");
     const std::vector<MapData> maps = maps_after_surge();
-    const MapData& city = *std::find_if(maps.begin(), maps.end(), [](const MapData& map){ return map.name == StoryTable::VERMILION; });
+    const MapData& city = *std::find_if(maps.begin(), maps.end(), [](const MapData& map){ return map.name == VERMILION; });
     if (object_at(city, {25, 7}) == nullptr){
         return "Expected Oak's aide on (25, 7) after Lt. Surge.";
     }
-    StoryPose at = *story_pose(*row.start);
+    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
     OverworldSim sim(maps, MapPosition{at.map, at.tile}, *at.facing);
     std::vector<std::string> talked_to;
     for (const StoryStep& step : row.steps){
         if (step.kind == StoryStepKind::TALK){
             const StoryPose here{sim.state().position.map, sim.state().position.point, sim.state().facing};
-            const bool counter = here.map == StoryTable::BIKE_SHOP;
+            const bool counter = here.map == BIKE_SHOP;
             const MapObject* person = object_ahead(maps, here, counter ? 2 : 1);
             if (person == nullptr || (counter && object_ahead(maps, here, 1) != nullptr)){
                 return std::format("00.26/{}: no one to talk to from {}.", step.name, to_string(sim.state().position));
@@ -197,7 +206,7 @@ UnitTestResult test_bike_voucher_row(){
     if (!sim.state().trainers_beaten.empty() || !sim.state().violations.empty()){
         return "00.26: a battle or a violation on the way" + (sim.state().violations.empty() ? std::string(".") : ": " + sim.state().violations.back());
     }
-    const MapPosition nurse{StoryTable::CERULEAN_CENTER, {7, 4}};
+    const MapPosition nurse{CERULEAN_CENTER, {7, 4}};
     if (!(sim.state().position == nurse)){
         return "00.26: ended on " + to_string(sim.state().position) + ", not Cerulean's nurse.";
     }
@@ -209,13 +218,17 @@ UnitTestResult test_bike_voucher_row(){
 UnitTestResult test_repels_and_escape_ropes(){
     const StoryCheckpoint& row = checkpoint("00.26");
     const auto step = std::find_if(row.steps.begin(), row.steps.end(), [](const StoryStep& data){
-        return parse_mart_variant(data.variant).has_value();
+        return data.action == MART_ACTION;
     });
     if (step == row.steps.end()){
         return "00.26: expected a Mart step.";
     }
-    const MartPlan plan = *parse_mart_variant(step->variant);
-    if (plan.map != StoryTable::CERULEAN_MART || !plan.money_floor){
+    const std::optional<MartPlan> parsed = mart_plan_of(step->args);
+    if (!parsed){
+        return "00.26: expected a Mart plan.";
+    }
+    const MartPlan& plan = *parsed;
+    if (plan.map != CERULEAN_MART || !plan.money_floor){
         return "00.26: expected the Mart step at Cerulean's Mart, with a money floor.";
     }
     const std::optional<std::vector<MartBuy>> buys = plan_mart_buys(mart_stock(plan.map), plan, *plan.money_floor);
@@ -244,14 +257,14 @@ UnitTestResult test_repels_and_escape_ropes(){
 UnitTestResult test_route10_row(){
     const StoryCheckpoint& row = checkpoint("00.27");
     const std::vector<MapData> maps = maps_after_surge();
-    StoryPose at = *story_pose(*row.start);
+    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
     OverworldSim sim(maps, MapPosition{at.map, at.tile}, *at.facing);
     for (const StoryStep& step : row.steps){
         if (const std::string failure = row_step_on_sim(sim, at, step, row.id); !failure.empty()){
             return failure;
         }
         //  A step into a trainer's line ends where the battle after it says.
-        const bool into_line = step.kind == StoryStepKind::STEP && !step.variant.empty();
+        const bool into_line = step.kind == StoryStepKind::STEP && !step.action.empty();
         if (!into_line && !(sim.state().position == MapPosition{at.map, at.tile})){
             return std::format("00.27/{}: expected {}, on {}.", step.name, to_string(MapPosition{at.map, at.tile}), to_string(sim.state().position));
         }
@@ -262,7 +275,7 @@ UnitTestResult test_route10_row(){
     if (!sim.state().violations.empty()){
         return "00.27: a violation on the way: " + sim.state().violations.back();
     }
-    const MapPosition nurse{StoryTable::ROUTE10_CENTER, {7, 4}};
+    const MapPosition nurse{ROUTE10_CENTER, {7, 4}};
     if (!(sim.state().position == nurse)){
         return "00.27: ended on " + to_string(sim.state().position) + ", not Route 10's nurse.";
     }
@@ -272,7 +285,7 @@ UnitTestResult test_route10_row(){
 //  The next row starts from 00.27's save in Route 10's Center, whose save
 //  card says ROUTE 10: a place of its own, not Route 1's.
 UnitTestResult test_route10_save_place(){
-    if (save_card_place(StoryTable::ROUTE10_CENTER) != "route-10" || save_card_place("Route1") == "route-10"){
+    if (save_card_place(ROUTE10_CENTER) != "route-10" || save_card_place("Route1") == "route-10"){
         return "Wrong save card place for Route 10's Pokemon Center.";
     }
     return true;
@@ -301,7 +314,7 @@ std::vector<StoryStep> route10_walk(){
     return std::vector<StoryStep>(first, last + 1);
 }
 
-const StoryPose ROUTE10_WALK_START{StoryTable::ROUTE9, {70, 8}, Direction::EAST};
+const StoryPose ROUTE10_WALK_START{ROUTE9, {70, 8}, Direction::EAST};
 
 //  `steps` from `first` on, on `sim` from `at`, where the table says the
 //  player stands: the failure, or empty once at Route 10's nurse.
@@ -310,7 +323,7 @@ std::string route10_walk_rest(OverworldSim& sim, StoryPose at, const std::vector
     for (size_t c = first; c < steps.size() && failure.empty(); c++){
         failure = row_step_on_sim(sim, at, steps[c], "00.27");
     }
-    const MapPosition nurse{StoryTable::ROUTE10_CENTER, {7, 4}};
+    const MapPosition nurse{ROUTE10_CENTER, {7, 4}};
     if (!failure.empty() || !(sim.state().position == nurse)){
         return std::format("ended on {}, not Route 10's nurse; {}", to_string(sim.state().position), failure);
     }
