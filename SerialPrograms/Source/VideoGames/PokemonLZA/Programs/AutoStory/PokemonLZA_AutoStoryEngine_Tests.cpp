@@ -179,7 +179,7 @@ UnitTestResult test_walk_ends_on_white_fade(CancellableScope& scope){
         return "Expected the walk to end on the white fade: " + to_string(report.run.failure);
     }
     return expect_inputs(backend, {
-        "wait 150ms", "hold north 5500ms walk", "press L", "stick 90deg 150ms walk, release 300ms", "press L",
+        "wait 150ms", "hold north 4500ms walk", "press L", "stick 90deg 150ms walk, release 300ms", "press L",
         "hold north 250ms walk", "hold north 250ms walk", "hold north 250ms walk",
     });
 }
