@@ -1,0 +1,33 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "00.06",
+    "title": "Oak's Parcel to the Pokedex",
+    "start": {"map": "ViridianCity_Mart", "tiles": [[4, 3]], "facing": "west"},
+    "events": [
+      {
+        "id": "below_oak",
+        "kind": "route",
+        "args": {
+          "target": {"map": "PalletTown_ProfessorOaksLab", "tiles": [[6, 4]], "facing": "north"}
+        },
+        "why": "back down Route 1 to Oak"
+      },
+      {
+        "id": "give_parcel",
+        "kind": "talk",
+        "why": "Oak takes the parcel"
+      },
+      {
+        "id": "pokedex_scene",
+        "kind": "scene",
+        "declared_after": {"map": "PalletTown_ProfessorOaksLab", "tiles": [[6, 4]], "facing": "south"},
+        "why": "the rival comes in, Pokedexes from the desk; the player ends facing south (console B, 2026-11-01)"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full"
+  }
+}

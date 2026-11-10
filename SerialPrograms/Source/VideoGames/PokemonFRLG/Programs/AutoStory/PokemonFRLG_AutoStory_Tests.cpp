@@ -84,7 +84,8 @@ std::string describe(const StoryPose& pose){
 }
 
 //  A table pose as a StoryPose; FRLG's table has one-tile poses only.
-StoryPose one_tile(const Pokemon::Pose& pose){
+StoryPose one_tile(const Pokemon::GridPose& grid_pose){
+    const Pokemon::Pose pose = Pokemon::pose_of(grid_pose);
     const std::optional<StoryPose> ret = story_pose(pose);
     if (!ret){
         throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Not a one-tile pose: " + Pokemon::to_string(pose));
@@ -138,7 +139,7 @@ UnitTestResult check_held_legs(const std::string& name, const std::vector<RouteS
 
 //  Walks `step`'s fixed legs from `pose` and moves `pose` to their end.
 UnitTestResult check_legs(StoryPose& pose, const StoryStep& step){
-    const std::optional<std::vector<RouteStep>> route = fixed_route(story_maps(), MapPosition{pose.map, pose.tile}, step.legs);
+    const std::optional<std::vector<RouteStep>> route = fixed_route(story_maps(), MapPosition{pose.map, pose.tile}, Pokemon::story_arg<std::vector<StoryLeg>>(step.args, "legs"));
     if (!route || route->empty()){
         return step.name + ": the legs can't be walked from " + describe(pose) + ".";
     }
@@ -163,10 +164,7 @@ UnitTestResult check_route(StoryPose& pose, const StoryStep& step){
             return step.name + ": the facing is unknown at " + describe(pose) + " and no wall is beside it.";
         }
     }
-    if (!step.target){
-        return step.name + ": no target.";
-    }
-    const StoryPose target = one_tile(*step.target);
+    const StoryPose target = one_tile(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target"));
     const RouteGoal goal{{target.map, target.tile}, target.facing};
     const std::optional<std::vector<RouteStep>> route = plan_overworld_route(story_maps(), start, goal, default_route_costs(), facing);
     if (!route){
@@ -214,7 +212,8 @@ UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& po
                 return checkpoint.id + " " + result.message;
             }
         }else if (step.kind == StoryStepKind::STEP){
-            pose = StoryPose{pose.map, pose.tile.next(step.direction), step.direction};
+            const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
+            pose = StoryPose{pose.map, pose.tile.next(direction), direction};
         }
         if (step.pose_after){
             pose = one_tile(*step.pose_after);

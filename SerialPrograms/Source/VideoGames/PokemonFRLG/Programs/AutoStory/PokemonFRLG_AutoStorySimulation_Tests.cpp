@@ -22,7 +22,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
-#include "Pokemon/AutoStory/Pokemon_StorySteps.h"
+#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
 #include "PokemonFRLG_AutoStoryTable.h"
@@ -43,6 +43,14 @@ std::string joined(const std::vector<std::string>& lines){
         text += "\n    " + line;
     }
     return text;
+}
+
+//  A checkpoint's start as the engine's Pose: nothing for a new game.
+std::optional<Pokemon::Pose> start_pose(const StoryCheckpoint& checkpoint){
+    if (!checkpoint.start){
+        return std::nullopt;
+    }
+    return Pokemon::pose_of(*checkpoint.start);
 }
 
 const MapData* map_named(const std::string& name){
@@ -133,48 +141,66 @@ public:
             failure->second.times--;
             return Pokemon::outcome_failed(failure->second.failure, key);
         }
-        return Pokemon::StoryStepExecutor::run(state, step);
+        return act(state, step);
     }
-protected:
-    virtual Outcome route(RunState& state, const StoryStep& step) override{
-        return walk_to(state.pose, step);
+private:
+    //  The step by its kind, as the console does it (StoryExecutor), with
+    //  nothing done on a screen.
+    Outcome act(RunState& state, const StoryStep& step){
+        switch (step.kind){
+        case StoryStepKind::ROUTE:
+            return walk_to(state.pose, step);
+        case StoryStepKind::LEGS:
+            return legs(state, step);
+        case StoryStepKind::STEP:
+            return take_step(state, step);
+        case StoryStepKind::READY:
+            return ready(state, step);
+        case StoryStepKind::SHOP:
+            return shop(step);
+        case StoryStepKind::NEW_GAME:
+        case StoryStepKind::OPTIONS:
+        case StoryStepKind::TALK:
+        case StoryStepKind::ANSWER:
+        case StoryStepKind::MASH:
+        case StoryStepKind::BATTLE:
+        case StoryStepKind::HEAL:
+            return Pokemon::outcome_ok();
+        default:
+            return Pokemon::unsupported_step(step);
+        }
     }
-    virtual Outcome legs(RunState& state, const StoryStep& step) override{
+    Outcome legs(RunState& state, const StoryStep& step){
         const Standing at = standing(state.pose);
         if (!at.error.empty()){
             return Pokemon::outcome_failed("no_pose", at.error);
         }
-        const std::optional<std::vector<RouteStep>> route = fixed_route(story_maps(), at.position, step.legs);
+        const std::optional<std::vector<RouteStep>> route = fixed_route(story_maps(), at.position, Pokemon::story_arg<std::vector<StoryLeg>>(step.args, "legs"));
         if (!route || route->empty()){
             return Pokemon::outcome_failed("bad_legs", to_string(at.position));
         }
         return Pokemon::outcome_ok(to_pose(StoryPose{route->back().end.map, route->back().end.point, route->back().facing_after}));
     }
-    virtual Outcome step(RunState& state, const StoryStep& step) override{
+    Outcome take_step(RunState& state, const StoryStep& step){
         const std::optional<StoryPose> at = story_pose(state.pose);
         if (!at){
             return Pokemon::outcome_failed("no_pose", Pokemon::to_string(state.pose));
         }
-        return Pokemon::outcome_ok(to_pose(StoryPose{at->map, at->tile.next(step.direction), step.direction}));
+        const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
+        return Pokemon::outcome_ok(to_pose(StoryPose{at->map, at->tile.next(direction), direction}));
     }
     //  The nurse's way must plan too, but the run goes on from where it stands.
-    virtual Outcome ready(RunState& state, const StoryStep& step) override{
+    Outcome ready(RunState& state, const StoryStep& step){
         const Outcome to_nurse = walk_to(state.pose, step);
         return to_nurse.succeeded() ? Pokemon::outcome_ok() : to_nurse;
     }
-    virtual Outcome new_game(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
-    virtual Outcome options(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
-    virtual Outcome talk(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
-    virtual Outcome answer(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
-    virtual Outcome mash(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
-    virtual Outcome battle(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
-    virtual Outcome heal(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
     //  The Viridian Mart's list as the game shows it. After a purchase the
     //  cursor stays on the row bought (console B, 2026-11-01), so each
     //  order moves it from there, as buy_items() does since ad5d40885.
-    virtual Outcome shop(RunState&, const StoryStep& step) override{
+    Outcome shop(const StoryStep& step){
+        const std::vector<Pokemon::StoryItem>& items = Pokemon::story_arg<std::vector<Pokemon::StoryItem>>(step.args, "items");
         static const std::vector<std::string> LIST{"poke_ball", "potion", "antidote", "parlyz_heal", "cancel"};
-        const std::optional<std::vector<MartOrder>> orders = viridian_mart_orders(step.items);
+        const std::optional<std::vector<MartOrder>> orders = viridian_mart_orders(items);
         if (!orders){
             return Pokemon::outcome_failed("unknown_item", step.name);
         }
@@ -186,21 +212,20 @@ protected:
             if (cursor < 0 || cursor >= (int)LIST.size() || LIST[cursor] == "cancel"){
                 return Pokemon::outcome_failed("mart_cancel", std::format("order {} ends on row {}", c + 1, cursor + 1));
             }
-            if (LIST[cursor] != step.items[c].item){
-                return Pokemon::outcome_failed("wrong_item", std::format("{} instead of {}", LIST[cursor], step.items[c].item));
+            if (LIST[cursor] != items[c].item){
+                return Pokemon::outcome_failed("wrong_item", std::format("{} instead of {}", LIST[cursor], items[c].item));
             }
             bag[LIST[cursor]] += order.quantity;
         }
         return Pokemon::outcome_ok();
     }
 
-private:
     Outcome walk_to(const Pokemon::Pose& pose, const StoryStep& step){
         const Standing at = standing(pose);
         if (!at.error.empty()){
             return Pokemon::outcome_failed("no_pose", at.error);
         }
-        const std::optional<StoryPose> target = story_pose(*step.target);
+        const std::optional<StoryPose> target = story_pose(Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target")));
         const RouteGoal goal{{target->map, target->tile}, target->facing};
         const std::optional<std::vector<RouteStep>> route = plan_overworld_route(
             story_maps(), at.position, goal, default_route_costs(), at.facing
@@ -232,9 +257,7 @@ struct Simulation{
     std::vector<std::pair<std::string, Pokemon::Pose>> saves;
     Pokemon::SegmentPolicy policy;
 
-    //  A language no reader supports, so a step that needed text would show.
     Pokemon::SegmentReport run(const Pokemon::SegmentRange& range){
-        game.set_language(Language::Japanese);
         Pokemon::Segment segment;
         segment.id = "00";
         for (const StoryCheckpoint& data : story_checkpoints()){
@@ -242,7 +265,7 @@ struct Simulation{
                 .id = data.id, .title = data.title, .saves = true,
                 .build = [this, &data]{
                     Pokemon::Checkpoint checkpoint = Pokemon::build_story_checkpoint(data, game);
-                    add_start_pose_check(checkpoint, data.start, [this]{ return game.save_stands; }, [this](const std::string& line){ lines.push_back(line); });
+                    add_start_pose_check(checkpoint, start_pose(data), [this]{ return game.save_stands; }, [this](const std::string& line){ lines.push_back(line); });
                     return checkpoint;
                 },
             });
@@ -333,13 +356,13 @@ UnitTestResult test_whole_story(){
     //  Each checkpoint starts where the save before it stands.
     for (size_t c = 1; c < story_checkpoints().size(); c++){
         const StoryCheckpoint& data = story_checkpoints()[c];
-        const std::optional<StoryPose> start = story_pose(*data.start);
+        const std::optional<StoryPose> start = story_pose(*start_pose(data));
         const std::optional<StoryPose> saved = story_pose(sim.saves[c - 1].second);
         const bool same = start && saved && start->map == saved->map && start->tile == saved->tile
             && (!start->facing || start->facing == saved->facing);
         if (!same){
             return std::format("{} starts at {}, but {} saved at {}.", data.id,
-                Pokemon::to_string(*data.start), sim.saves[c - 1].first, Pokemon::to_string(sim.saves[c - 1].second));
+                Pokemon::to_string(*start_pose(data)), sim.saves[c - 1].first, Pokemon::to_string(sim.saves[c - 1].second));
         }
     }
     if (report.one_shot_passes() != report.checkpoints_run){
