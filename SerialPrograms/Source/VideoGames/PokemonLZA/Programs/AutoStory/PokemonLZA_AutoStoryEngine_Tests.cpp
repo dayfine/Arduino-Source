@@ -158,14 +158,19 @@ UnitTestResult test_start_check_needs_platform(CancellableScope& scope){
 }
 
 //  A walk starts only on free control: platform_to_plaza on a text box
-//  fails before any input.
+//  waits for it, then fails with no input but its waits.
 UnitTestResult test_walk_needs_free_control(CancellableScope& scope){
     FakeBackend backend = fake_plza({look_at(0ms, {EngineEvent::TEXT_BOX})}, scope);
     const Pokemon::StoryEngineReport report = run_plza(backend, step_of("01.01", "platform_to_plaza"));
     if (report.run.completed || report.run.failure.failure != "walk_not_free"){
-        return "Expected walk_not_free, got " + to_string(report.run.failure);
+        return std::format("Expected walk_not_free, got {}", to_string(report.run.failure));
     }
-    return expect_inputs(backend, {});
+    for (const std::string& input : backend.inputs()){
+        if (input != "wait 250ms"){
+            return std::format("Expected only waits, got {}", input);
+        }
+    }
+    return true;
 }
 
 //  platform_to_plaza: the first leg, the turn (L, the stick tapped at 90
@@ -181,7 +186,7 @@ UnitTestResult test_walk_ends_on_white_fade(CancellableScope& scope){
         return "Expected the walk to end on the white fade: " + to_string(report.run.failure);
     }
     return expect_inputs(backend, {
-        "wait 150ms", "hold north 4500ms walk", "press L", "stick 90deg 150ms walk, release 300ms", "press L",
+        "wait 250ms", "hold north 4500ms walk", "press L", "stick 90deg 150ms walk, release 300ms", "press L",
         "hold north 250ms walk", "hold north 250ms walk", "hold north 250ms walk",
     });
 }
