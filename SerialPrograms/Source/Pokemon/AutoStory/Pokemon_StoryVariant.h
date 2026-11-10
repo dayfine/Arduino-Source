@@ -65,7 +65,7 @@ struct LegacyVariant{
 //  if_present"): its first word is the name; the next plain words take the
 //  keys in `positional`, in order, and plain words after those are flags;
 //  "key=value" words are numbers when all digits, else words. It reads no
-//  action's specs: check the args against them (story_args_error()).
+//  action's specs: check the args against them (story_args_errors()).
 LegacyVariant split_legacy_variant(std::string_view variant, std::span<const std::string_view> positional = {});
 
 

@@ -14,7 +14,7 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-void require_story_json_fields(
+void validate_json_fields(
     const JsonObject& object, std::initializer_list<std::string_view> fields, std::string_view source
 ){
     if (object.size() != fields.size()){
@@ -26,12 +26,12 @@ void require_story_json_fields(
 }
 
 AuthoredCheckpoint read_authored_checkpoint(
-    const JsonValue& value, std::string_view expected_game, std::string_view source
+    const JsonValue& value, std::string_view game, std::string_view source
 ){
     const JsonObject& root = value.to_object_throw(std::string(source));
-    require_story_json_fields(root, {"format", "game", "checkpoint", "execution"}, source);
-    if (expected_game.empty() || root.get_string_throw("format") != "pokesim-authored-checkpoint/1"
-        || root.get_string_throw("game") != expected_game
+    validate_json_fields(root, {"format", "game", "checkpoint", "execution"}, source);
+    if (game.empty() || root.get_string_throw("format") != "pokesim-authored-checkpoint/1"
+        || root.get_string_throw("game") != game
     ){
         throw ParseException(std::format("{}: unsupported authored checkpoint format/game.", source));
     }
@@ -54,11 +54,11 @@ JsonValue authored_checkpoint_json(const StoryCheckpoint& checkpoint, std::strin
 }
 
 AuthoredCheckpoint load_authored_checkpoint(
-    std::span<const std::pair<std::string, std::string>> files, std::string_view file, std::string_view expected_game
+    std::span<const EmbeddedJsonFile> files, std::string_view file, std::string_view game
 ){
     for (const auto& [name, text] : files){
         if (name == file){
-            return read_authored_checkpoint(parse_json(text), expected_game, file);
+            return read_authored_checkpoint(parse_json(text), game, file);
         }
     }
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Authored checkpoint is not embedded: " + std::string(file));

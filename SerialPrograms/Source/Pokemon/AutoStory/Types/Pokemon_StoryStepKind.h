@@ -10,6 +10,8 @@
 #ifndef PokemonAutomation_Pokemon_StoryStepKind_H
 #define PokemonAutomation_Pokemon_StoryStepKind_H
 
+#include <string>
+
 namespace PokemonAutomation{
 namespace Pokemon{
 
@@ -34,7 +36,7 @@ enum class StoryStepKind{
 };
 
 // Returns the readable string representation of a story step kind.
-const char* story_step_kind_name(StoryStepKind kind);
+std::string story_step_kind_name(StoryStepKind kind);
 
 
 

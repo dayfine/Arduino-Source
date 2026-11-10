@@ -1481,6 +1481,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Options/Pokemon_BoxSortingTable.cpp
     Source/Pokemon/Options/Pokemon_BoxSortingTable.h
     Source/Pokemon/Options/Pokemon_EncounterBotOptions.h
+    Source/Pokemon/Options/Pokemon_GameLanguages.cpp
+    Source/Pokemon/Options/Pokemon_GameLanguages.h
     Source/Pokemon/Options/Pokemon_HomeSpriteSelectOption.cpp
     Source/Pokemon/Options/Pokemon_HomeSpriteSelectOption.h
     Source/Pokemon/Options/Pokemon_IvJudgeOption.cpp

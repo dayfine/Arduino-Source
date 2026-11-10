@@ -21,6 +21,7 @@
 #include <string>
 #include <string_view>
 #include <variant>
+#include <vector>
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -45,7 +46,7 @@ bool story_arg_flag(const StoryArgs& args, std::string_view key);
 
 //  The type an action declares for an argument.
 enum class StoryArgType{
-    FLAG,
+    BOOLEAN,
     NUMBER,
     TEXT,
 };
@@ -57,9 +58,9 @@ struct StoryArgSpec{
     bool required = false;
 };
 
-//  Why `args` don't fit `specs`: a key no spec names, a value of another
-//  type, or a required one missing. Empty when they fit.
-std::string story_args_error(const StoryArgs& args, std::span<const StoryArgSpec> specs);
+//  Each way `args` don't fit `specs`: a key no spec names, a value of
+//  another type, a required one missing. Empty when they fit.
+std::vector<std::string> story_args_errors(const StoryArgs& args, std::span<const StoryArgSpec> specs);
 
 
 

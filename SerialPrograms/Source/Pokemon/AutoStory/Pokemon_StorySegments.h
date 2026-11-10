@@ -22,6 +22,7 @@
 #include <vector>
 #include "Common/Cpp/MoveOnlyFunction.h"
 #include "Pokemon_StoryEvents.h"
+#include "Pokemon_StoryLog.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -112,6 +113,9 @@ struct SegmentReport{
     std::vector<CheckpointRun> runs;
 
     size_t one_shot_passes() const;
+    //  What the run adds to the program's stats (record_story_counts()):
+    //  the segment, each checkpoint that passed, each reload.
+    StoryRunCounts story_counts() const;
 };
 
 //  Runs the checkpoints in `range`, in order. Logs through `hooks.log`,
