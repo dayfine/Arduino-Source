@@ -36,6 +36,13 @@ constexpr std::pair<char, TileKind> GLYPHS[] = {
     {'2', TileKind::CLOSED_SOUTH},
     {'4', TileKind::CLOSED_WEST},
     {'6', TileKind::CLOSED_EAST},
+    {'u', TileKind::SPIN_NORTH},
+    {'d', TileKind::SPIN_SOUTH},
+    {'l', TileKind::SPIN_WEST},
+    {'r', TileKind::SPIN_EAST},
+    {'o', TileKind::STOP_SPIN},
+    {'H', TileKind::FALL_HOLE},
+    {'B', TileKind::STRENGTH_BUTTON},
 };
 
 constexpr std::pair<const char*, WarpEntry> WARP_ENTRIES[] = {
