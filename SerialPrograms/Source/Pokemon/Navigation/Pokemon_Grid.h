@@ -31,7 +31,7 @@ constexpr Direction ALL_DIRECTIONS[] = {
     Direction::NORTH, Direction::EAST, Direction::SOUTH, Direction::WEST,
 };
 // Returns the lowercase name string of a cardinal direction.
-const char* direction_name(Direction direction);
+std::string direction_name(Direction direction);
 
 
 // Grid coordinate with integer x and y components.

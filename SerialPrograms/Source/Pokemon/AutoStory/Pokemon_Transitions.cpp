@@ -41,7 +41,7 @@ const FadeProfile FRLG_FADE_PROFILE{
 };
 
 
-const char* transition_kind_name(TransitionKind kind){
+std::string transition_kind_name(TransitionKind kind){
     switch (kind){
     case TransitionKind::FADE_BLACK:    return "black fade";
     case TransitionKind::FADE_WHITE:    return "white fade";
@@ -76,7 +76,7 @@ std::string offset(std::optional<WallClock> time, WallClock origin){
     }
     return std::format("{:+} ms", std::chrono::duration_cast<Milliseconds>(*time - origin).count());
 }
-const char* scene_change_name(SceneChange change){
+std::string scene_change_name(SceneChange change){
     switch (change){
     case SceneChange::UNKNOWN:      return "scene unknown";
     case SceneChange::SAME:         return "same scene";

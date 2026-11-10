@@ -8,6 +8,7 @@
  */
 
 #include <string>
+#include <string_view>
 #include <utility>
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonValue.h"
@@ -69,10 +70,10 @@ UnitTestResult test_step_of_status(){
     if (step.checkpoint != "00.03" || step.event != "below_oaks_trigger"){
         return "Expected 00.03 below_oaks_trigger, got \"" + step.checkpoint + "\" \"" + step.event + "\"";
     }
-    for (const char* line : {"00: start, 3 checkpoints", "00.02: passed on attempt 1 (one-shot)", "", "a/b"}){
+    for (std::string_view line : {"00: start, 3 checkpoints", "00.02: passed on attempt 1 (one-shot)", "", "a/b"}){
         step = step_of_status(line);
         if (!step.checkpoint.empty() || !step.event.empty()){
-            return std::string("Expected no step in \"") + line + "\"";
+            return "Expected no step in \"" + std::string(line) + "\"";
         }
     }
     return true;
@@ -84,7 +85,7 @@ struct FailureCaptureInput{
 };
 
 struct FailureCaptureExpectation{
-    const char* description;
+    std::string_view description;
 };
 
 struct FailureCaptureTestCase{

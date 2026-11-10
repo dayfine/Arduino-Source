@@ -5,7 +5,7 @@
  *  The GAME steps beyond walking and talking that later checkpoints name
  *  in the table: MART (a budgeted buy list), TEACH (a TM or HM), LEVEL (a
  *  member's level checked), GRIND (wild battles to a level) and
- *  CHOICE(fossil). Each is a variant of a GAME step; this runs the one a
+ *  CHOICE(fossil). Each is an action of a GAME step; this runs the one a
  *  step names with the game steps it is given.
  *
  */
@@ -17,7 +17,7 @@
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "CommonFramework/Tools/VideoStream.h"
 #include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
-#include "Pokemon/AutoStory/Pokemon_StorySteps.h"
+#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "PokemonFRLG_AutoStoryChoice.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
 #include "PokemonFRLG_AutoStoryMart.h"
@@ -39,7 +39,7 @@ struct StoryAbilities{
 };
 
 //  A MART, TEACH, LEVEL, GRIND or fossil step with `abilities`: nothing for
-//  another variant. A GRIND that meets a shiny throws
+//  another action. A GRIND that meets a shiny throws
 //  ProgramFinishedException, with a screenshot from `stream` if given, so
 //  the segment stops without reloading. Any other end but success is a
 //  failed Outcome; a MART that buys nothing because the money doesn't

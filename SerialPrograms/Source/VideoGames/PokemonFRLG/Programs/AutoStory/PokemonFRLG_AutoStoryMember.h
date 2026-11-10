@@ -28,7 +28,8 @@
 #include "CommonFramework/Language.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
-#include "Pokemon/AutoStory/Pokemon_StorySteps.h"
+#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
 #include "PokemonFRLG_AutoStoryDamage.h"
 
 namespace PokemonAutomation{
@@ -72,13 +73,13 @@ struct LevelCheck{
     unsigned level = 1;
 };
 
-//  The prefix of a GAME step's variant that names a LEVEL step.
-inline constexpr std::string_view LEVEL_VARIANT_PREFIX = "level ";
-
-//  `check` as a variant: "level slot=1 min=16", the slot counted from 1.
-std::string level_variant(const LevelCheck& check);
-//  A variant from level_variant(); nothing if it isn't one.
-std::optional<LevelCheck> parse_level_variant(std::string_view variant);
+//  The GAME action of a LEVEL step: slot INTEGER (required, from 1), min
+//  INTEGER (required, 1-100).
+inline const std::string LEVEL_ACTION = "level";
+//  `check` as its action's args.
+Pokemon::StoryActionArgs level_args(const LevelCheck& check);
+//  The check a LEVEL_ACTION step's args give; nothing if one is out of range.
+std::optional<LevelCheck> level_check_of(const Pokemon::StoryActionArgs& args);
 
 //  The table's LEVEL step.
 Pokemon::StoryStep level_step(std::string name, std::string why, const LevelCheck& check);

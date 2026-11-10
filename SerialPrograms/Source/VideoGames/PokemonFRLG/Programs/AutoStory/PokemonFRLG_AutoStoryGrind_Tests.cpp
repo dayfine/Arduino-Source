@@ -17,6 +17,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "PokemonFRLG_AutoStoryBattleSim.h"
+#include "PokemonFRLG_AutoStoryGameArgs.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
 
 namespace PokemonAutomation{
@@ -432,40 +433,54 @@ UnitTestResult test_console_party(){
 }
 
 
-UnitTestResult test_grind_variant(){
+//  A GridPose for the nurse the args carry.
+const Pokemon::GridPose NURSE{"Route4_PokemonCenter_1F", {{7, 4}}, Pokemon::Direction::NORTH};
+
+UnitTestResult test_grind_args(){
     GrindPlan plan = squirtle_to(18);
     plan.max_encounters = 60;
     plan.pace = Pokemon::Direction::NORTH;
     plan.heal_every = 8;
-    const std::string variant = grind_variant(plan);
-    if (variant != "grind slot=1 level=18 encounters=60 pace=north heal_every=8"){
-        return "Unexpected variant \"" + variant + "\".";
-    }
-    const std::optional<GrindPlan> back = parse_grind_variant(variant);
+    const Pokemon::StoryActionArgs args = grind_args(plan, NURSE);
+    const std::optional<GrindPlan> back = grind_plan_of(args);
     if (!back || back->level != 18 || back->max_encounters != 60 || back->pace != Pokemon::Direction::NORTH
-        || back->heal_every != 8 || back->member != 0
+        || back->heal_every != 8 || back->member != 0 || !back->trainer.empty() || args.contains("chance")
     ){
-        return "\"" + variant + "\" didn't read back as its plan.";
+        return "The level-18 plan didn't read back from its args.";
     }
     GrindPlan rival = beat_rival(30);
     rival.max_encounters = 100;
     rival.pace = Pokemon::Direction::WEST;
-    const std::string rival_variant = grind_variant(rival);
-    if (rival_variant != "grind slot=1 level=30 encounters=100 pace=west heal_every=0 beat=TRAINER_RIVAL_CERULEAN_BULBASAUR chance=50"){
-        return "Unexpected variant \"" + rival_variant + "\".";
+    Pokemon::StoryActionArgs rival_args = grind_args(rival, NURSE);
+    const int64_t* chance = game_arg<int64_t>(rival_args, "chance");
+    const std::string* beat = game_arg<std::string>(rival_args, "beat");
+    if (chance == nullptr || *chance != 50 || beat == nullptr || *beat != RIVAL){
+        return "Expected the rival's plan to carry beat and chance=50.";
     }
-    const std::optional<GrindPlan> rival_back = parse_grind_variant(rival_variant + " chance=75");
+    rival_args["chance"] = int64_t(75);
+    const std::optional<GrindPlan> rival_back = grind_plan_of(rival_args);
     if (!rival_back || rival_back->trainer != RIVAL || rival_back->level != 30 || rival_back->min_chance != 0.75){
-        return "\"" + rival_variant + " chance=75\" didn't read back as its plan.";
+        return "The rival's plan with chance=75 didn't read back.";
     }
-    for (std::string_view bad : {
-        "grind", "grind slot=1", "grind slot=1 level=101", "grind slot=7 level=18", "grind level=18 pace=up",
-        "grind level=18 encounters=0", "capture rattata", "grind level=30 beat=", "grind level=30 chance=70",
-        "grind level=30 beat=TRAINER_X chance=0", "grind level=30 beat=TRAINER_X chance=101",
-    }){
-        if (parse_grind_variant(bad)){
-            return "Expected \"" + std::string(bad) + "\" refused.";
+    const std::vector<std::pair<std::string, Pokemon::StoryArgValue>> bad_args{
+        {"level", int64_t(101)},
+        {"slot", int64_t(7)},
+        {"encounters", int64_t(0)},
+        {"beat", std::string("")},
+        {"chance", int64_t(0)},
+        {"chance", int64_t(101)},
+    };
+    for (const auto& [key, value] : bad_args){
+        Pokemon::StoryActionArgs bad = rival_args;
+        bad[key] = value;
+        if (grind_plan_of(bad)){
+            return "Expected a bad " + key + " refused.";
         }
+    }
+    Pokemon::StoryActionArgs no_trainer = rival_args;
+    no_trainer.erase("beat");
+    if (grind_plan_of(no_trainer)){
+        return "Expected a chance with no trainer refused.";
     }
     return true;
 }
@@ -487,9 +502,9 @@ UnitTestResult test_grind_reached_already(){
         }
     }
     const Pokemon::StoryStep check = grind_check_step("rival_winnable", "", beat_rival(30));
-    const std::optional<GrindPlan> back = parse_grind_check_variant(check.variant);
-    if (!back || back->trainer != RIVAL || back->level != 30 || parse_grind_variant(check.variant)){
-        return "\"" + check.variant + "\" didn't read back as its plan, or read as a GRIND step.";
+    const std::optional<GrindPlan> back = grind_plan_of(check.args);
+    if (check.action != GRIND_CHECK_ACTION || !back || back->trainer != RIVAL || back->level != 30 || check.args.contains("nurse")){
+        return "The check's args didn't read back as its plan, or had a nurse.";
     }
     return true;
 }
@@ -504,7 +519,7 @@ const AutoStoryGrindCase AUTO_STORY_GRIND_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"the table's variant", test_grind_variant},
+        .input = {"the step's args", test_grind_args},
         .expectation = {},
     },
     {

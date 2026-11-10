@@ -22,6 +22,7 @@
 #include "VideoGames/PokemonFRLG/Programs/PokemonFRLG_BattleMenuNavigation.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryCapture.h"
+#include "PokemonFRLG_AutoStoryGameArgs.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -35,45 +36,6 @@ namespace{
 
 constexpr size_t PARTY_SIZE = 6;
 constexpr size_t MOVE_COUNT = 4;
-
-std::vector<std::string_view> words_of(std::string_view text){
-    std::vector<std::string_view> words;
-    while (!text.empty()){
-        const size_t space = text.find(' ');
-        const std::string_view word = text.substr(0, space);
-        if (!word.empty()){
-            words.push_back(word);
-        }
-        if (space == std::string_view::npos){
-            break;
-        }
-        text.remove_prefix(space + 1);
-    }
-    return words;
-}
-
-std::optional<size_t> number_of(std::string_view text){
-    if (text.empty() || text.size() > 4){
-        return std::nullopt;
-    }
-    size_t value = 0;
-    for (char c : text){
-        if (c < '0' || c > '9'){
-            return std::nullopt;
-        }
-        value = value * 10 + size_t(c - '0');
-    }
-    return value;
-}
-
-std::optional<Direction> direction_of(std::string_view text){
-    for (Direction direction : Pokemon::ALL_DIRECTIONS){
-        if (text == direction_name(direction)){
-            return direction;
-        }
-    }
-    return std::nullopt;
-}
 
 Direction opposite(Direction direction){
     switch (direction){
@@ -110,57 +72,38 @@ const char* capture_end_name(CaptureEnd end){
 }
 
 
-std::string capture_variant(const CapturePlan& plan){
-    std::string variant = std::format(
-        "{}{} catches={} encounters={} balls={} pace={}",
-        CAPTURE_VARIANT_PREFIX, plan.species, plan.catches, plan.max_encounters, plan.max_balls, direction_name(plan.pace)
-    );
+Pokemon::StoryActionArgs capture_args(const CapturePlan& plan){
+    Pokemon::StoryActionArgs args{
+        {"species", plan.species},
+        {"catches", int64_t(plan.catches)},
+        {"encounters", int64_t(plan.max_encounters)},
+        {"balls", int64_t(plan.max_balls)},
+        {"pace", plan.pace},
+        {"turns", int64_t(plan.max_weaken_turns)},
+    };
     if (plan.weaken_move){
-        variant += std::format(" move={} turns={}", *plan.weaken_move + 1, plan.max_weaken_turns);
+        args.emplace("move", int64_t(*plan.weaken_move + 1));
     }
-    return variant;
+    return args;
 }
 
-std::optional<CapturePlan> parse_capture_variant(std::string_view variant){
-    if (!variant.starts_with(CAPTURE_VARIANT_PREFIX)){
+std::optional<CapturePlan> capture_plan_of(const Pokemon::StoryActionArgs& args){
+    const std::string* species = game_arg<std::string>(args, "species");
+    const std::optional<size_t> catches = number_arg(args, "catches", 1, 999);
+    const std::optional<size_t> encounters = number_arg(args, "encounters", 1, 9999);
+    const std::optional<size_t> balls = number_arg(args, "balls", 1, 999);
+    const std::optional<size_t> turns = number_arg(args, "turns", 0, 99);
+    const Direction* pace = game_arg<Direction>(args, "pace");
+    if (species == nullptr || species->empty() || !catches || !encounters || !balls || !turns || pace == nullptr){
         return std::nullopt;
     }
-    const std::vector<std::string_view> words = words_of(variant.substr(CAPTURE_VARIANT_PREFIX.size()));
-    if (words.empty() || words[0].find('=') != std::string_view::npos){
-        return std::nullopt;
-    }
-    CapturePlan plan;
-    plan.species = std::string(words[0]);
-    for (size_t c = 1; c < words.size(); c++){
-        const size_t equals = words[c].find('=');
-        if (equals == std::string_view::npos){
-            return std::nullopt;
-        }
-        const std::string_view key = words[c].substr(0, equals);
-        const std::string_view value = words[c].substr(equals + 1);
-        if (key == "pace"){
-            const std::optional<Direction> pace = direction_of(value);
-            if (!pace){
-                return std::nullopt;
-            }
-            plan.pace = *pace;
-            continue;
-        }
-        const std::optional<size_t> number = number_of(value);
-        if (!number){
-            return std::nullopt;
-        }
-        if (key == "catches" && *number >= 1){
-            plan.catches = *number;
-        }else if (key == "encounters" && *number >= 1){
-            plan.max_encounters = *number;
-        }else if (key == "balls" && *number >= 1){
-            plan.max_balls = *number;
-        }else if (key == "move" && *number >= 1 && *number <= MOVE_COUNT){
-            plan.weaken_move = *number - 1;
-        }else if (key == "turns"){
-            plan.max_weaken_turns = *number;
-        }else{
+    CapturePlan plan{
+        .species = *species, .catches = *catches, .max_encounters = *encounters, .max_balls = *balls,
+        .pace = *pace, .max_weaken_turns = *turns,
+    };
+    if (args.contains("move")){
+        plan.weaken_move = counted_arg(args, "move", MOVE_COUNT);
+        if (!plan.weaken_move){
             return std::nullopt;
         }
     }
@@ -172,7 +115,8 @@ Pokemon::StoryStep capture_step(std::string name, std::string why, const Capture
     step.kind = Pokemon::StoryStepKind::GAME;
     step.name = std::move(name);
     step.why = std::move(why);
-    step.variant = capture_variant(plan);
+    step.action = CAPTURE_ACTION;
+    step.args = capture_args(plan);
     return step;
 }
 
@@ -181,7 +125,8 @@ Pokemon::StoryStep pc_step(std::string name, std::string why, const PcTransfer& 
     step.kind = Pokemon::StoryStepKind::GAME;
     step.name = std::move(name);
     step.why = std::move(why);
-    step.variant = pc_variant(transfer);
+    step.action = PC_ACTION;
+    step.args = pc_args(transfer);
     return step;
 }
 
@@ -396,10 +341,10 @@ std::optional<Pokemon::Outcome> run_storage_game_step(
     Logger& logger, VideoStream* stream, const Pokemon::StoryStep& step,
     CaptureActions& capture, PcStorageActions& pc
 ){
-    if (step.variant.starts_with(CAPTURE_VARIANT_PREFIX)){
-        const std::optional<CapturePlan> plan = parse_capture_variant(step.variant);
+    if (step.action == CAPTURE_ACTION){
+        const std::optional<CapturePlan> plan = capture_plan_of(step.args);
         if (!plan){
-            return Pokemon::outcome_failed("bad_variant", step.variant);
+            return Pokemon::outcome_failed("bad_args", step.action);
         }
         const CaptureResult result = run_capture(logger, capture, *plan, pc.read_party().size());
         const std::string message = capture_message(*plan, result);
@@ -416,10 +361,10 @@ std::optional<Pokemon::Outcome> run_storage_game_step(
         }
         return Pokemon::outcome_failed(std::string("capture_") + capture_end_name(result.end), message);
     }
-    if (step.variant.starts_with(PC_VARIANT_PREFIX)){
-        const std::optional<PcTransfer> transfer = parse_pc_variant(step.variant);
+    if (step.action == PC_ACTION){
+        const std::optional<PcTransfer> transfer = pc_transfer_of(step.args);
         if (!transfer){
-            return Pokemon::outcome_failed("bad_variant", step.variant);
+            return Pokemon::outcome_failed("bad_args", step.action);
         }
         const PcResult result = run_pc_transfer(logger, pc, *transfer);
         switch (result.end){
@@ -487,7 +432,7 @@ bool ConsolePatchSteps::step(){
     const int ret = run_until<ProControllerContext>(
         m_console, m_context,
         [&](ProControllerContext& context){
-            step_once(context, way, m_spot.facing);
+            step_once(m_console, context, way, m_spot.facing);
         },
         {battle}
     );
@@ -557,6 +502,9 @@ EncounterSeen ConsoleCaptureActions::read_encounter(){
 bool ConsoleCaptureActions::flee(){
     try{
         flee_battle(m_console, m_context);
+        //  The pacing counts its taps: one lost to the battle's exit
+        //  would put it a tile off.
+        wait_out_battle_exit(m_console, m_context);
         return true;
     }catch (OperationFailedException& e){
         m_console.log("Capture: " + e.message(), COLOR_RED);
