@@ -7,6 +7,7 @@
 #ifndef PokemonAutomation_Pokemon_AutoStoryStats_H
 #define PokemonAutomation_Pokemon_AutoStoryStats_H
 
+#include <cstddef>
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 
 namespace PokemonAutomation{
@@ -29,6 +30,19 @@ struct AutoStoryStats : public StatsTracker{
     std::atomic<uint64_t>& m_segment;
     std::atomic<uint64_t>& m_reset;
 };
+
+
+//  What a story run adds to the program's stats.
+struct StoryRunCounts{
+    size_t segments = 0;
+    //  Checkpoints passed (and saved at).
+    size_t checkpoints = 0;
+    //  Game resets or reloads after failed attempts.
+    size_t resets = 0;
+};
+
+//  Adds `counts` to the shared AutoStory stats.
+void record_story_counts(AutoStoryStats& stats, const StoryRunCounts& counts);
 
 
 } // namespace Pokemon
