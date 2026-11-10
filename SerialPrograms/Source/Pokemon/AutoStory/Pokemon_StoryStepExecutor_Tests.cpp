@@ -587,7 +587,13 @@ const std::vector<StoryCheckpoint>& two_sections(){
 }
 
 const StringSelectDatabase& two_sections_database(){
-    static const StringSelectDatabase database = story_checkpoint_database(two_sections());
+    static const StringSelectDatabase database = []{
+        std::vector<std::string> labels;
+        for (const StoryCheckpoint& checkpoint : two_sections()){
+            labels.push_back(story_checkpoint_label(checkpoint));
+        }
+        return story_checkpoint_database(labels);
+    }();
     return database;
 }
 

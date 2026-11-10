@@ -33,16 +33,10 @@ namespace Pokemon{
 
 
 //  A checkpoint's label in the start and end dropdowns, as SV labels its
-//  segments: "00.09 Pewter Gym: Camper Liam, then Brock".
+//  segments: "00.09 Pewter Gym: Camper Liam, then Brock". The labels of a
+//  story's checkpoints, in order, make its dropdowns
+//  (story_checkpoint_database()).
 std::string story_checkpoint_label(const StoryCheckpoint& checkpoint);
-
-//  The start/end dropdown database of a story's checkpoints, `rows` in
-//  order, slugged by their index in it, as make_story_select_database()
-//  slugs SV's. A game whose story is in sections (BDSP's segments 00 and
-//  01) passes them joined: a section's entry i is then story_index(true,
-//  i, first of the section). The program keeps it in a function-local
-//  static: the options hold a reference.
-StringSelectDatabase story_checkpoint_database(std::span<const StoryCheckpoint> rows);
 
 
 //  Verify mode, off by default (verify_checkpoint()): the start checkpoint

@@ -26,13 +26,6 @@ std::string story_checkpoint_label(const StoryCheckpoint& checkpoint){
     return checkpoint.title.empty() ? checkpoint.id : checkpoint.id + " " + checkpoint.title;
 }
 
-StringSelectDatabase story_checkpoint_database(std::span<const StoryCheckpoint> rows){
-    StringSelectDatabase database;
-    for (size_t c = 0; c < rows.size(); c++){
-        database.add_entry(StringSelectEntry(std::to_string(c), story_checkpoint_label(rows[c])));
-    }
-    return database;
-}
 
 
 StoryVerifyOptions::StoryVerifyOptions()
