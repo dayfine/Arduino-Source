@@ -10,6 +10,7 @@
 #include "Common/Cpp/Color.h"
 #include "VideoGames/PokemonLZA/Resources/PokemonLZA_Locations.h"
 #include "PokemonLZA_AutoStoryActions.h"
+#include "PokemonLZA_AutoStoryScenes.h"
 #include "PokemonLZA_AutoStoryTable.h"
 #include "PokemonLZA_AutoStoryExecutor.h"
 

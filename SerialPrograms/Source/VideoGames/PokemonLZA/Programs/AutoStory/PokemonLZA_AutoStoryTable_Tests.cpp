@@ -8,6 +8,7 @@
 #include <functional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
@@ -259,7 +260,7 @@ UnitTestResult test_scene_mash_rule(Logger&){
     using Pokemon::ScreenEvent;
     using Pokemon::ScreenEvents;
     struct Case{
-        const char* name;
+        std::string_view name;
         ScreenEvents events;
         SceneMashGoal goal;
         bool text_b;
