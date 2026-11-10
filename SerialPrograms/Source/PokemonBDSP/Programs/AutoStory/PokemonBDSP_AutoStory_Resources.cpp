@@ -45,6 +45,9 @@ const std::string_view PATHS[] = {
     //  Inference/PokemonBDSP_SelectionArrow.cpp and
     //  PokemonBDSP_NameListDetector.cpp
     "PokemonBDSP/SelectionArrow.png",
+    //  Actions/PokemonBDSP_AutoStory_BattleMoves.cpp: the move names in
+    //  every language.
+    "PokemonSV/PokemonMovesOCR.json",
 };
 
 } // namespace

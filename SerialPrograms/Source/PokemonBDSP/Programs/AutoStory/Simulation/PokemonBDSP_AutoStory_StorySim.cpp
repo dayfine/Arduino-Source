@@ -355,6 +355,8 @@ std::vector<ConsoleTrigger> console_triggers(){
         //  it went out of the door, where the same step on 2026-11-04 12:20,
         //  pressed inside her scene, moved nobody. The map has the mat (6, 10)
         //  (r45, r46: her line came after that step was pressed).
+        //  Verify runs 1-3 (lab-B 2026-11-09 18:19, 18:30, 18:41): from (7, 9)
+        //  west, her call stopped us after at most 1 tile, on (6, 9) each time.
         {.map = "PlayerHouse1F", .name = "moms_call", .tiles = {{6, 9}}},
     };
 }
@@ -848,6 +850,8 @@ Outcome SimExecutor::run(RunState& state, const StoryStep& step){
         m_astray = false;
         m_misplaced = false;
         sync(*step.pose_after);
+    }
+    if (outcome.succeeded()){
         land(step.name);
     }
     m_logger.log(std::format("[{}] {}: {}, the player at {}.", m_row, step.name, Pokemon::to_string(outcome), to_string(m_sim.player().pos)));

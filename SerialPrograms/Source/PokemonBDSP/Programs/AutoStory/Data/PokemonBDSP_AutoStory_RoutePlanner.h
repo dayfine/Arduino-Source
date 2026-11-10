@@ -36,11 +36,25 @@ struct WallHit{
 WallHit slide_to_wall(const StoryWorld& world, const Pokemon::TilePos& from, Pokemon::Direction direction);
 
 
+//  How many tiles short or long a timed hold of `tiles` tiles may end: one.
+//  On lab-B (2026-11-09, Route 202's lawn, the stick held west, then taps
+//  back to the wall counting the taps), holds of 200 to 1200 ms moved 2,
+//  3, 3, 5, 7, 7, 7, 8 and 9 tiles, each the same on every try (600 ms: 5
+//  of 5, with or without B): the error is the rounding of the time to a
+//  tile, not a drift that grows. Holds of 15 to 30 tiles are not measured
+//  yet. BDSP's one model of a timed hold's error, for the planner and the
+//  route scorer (route_score_paces()).
+size_t open_hold_error(size_t tiles);
+
 //  A straight run in one direction.
 struct TileLeg{
     Pokemon::Direction direction = Pokemon::Direction::NORTH;
     size_t tiles = 0;           //  tiles travelled; a ledge hop counts 2
     bool ends_at_wall = false;  //  the next tile in `direction` stops the player
+    //  An open leg held for its tiles' time instead of tapped a tile at a
+    //  time: much faster, but it may end open_hold_error() tiles
+    //  short or long (RobustPlanCosts::hold_open_legs).
+    bool held = false;
 };
 //  Formats tile movement leg into human-readable string representation.
 std::string to_string(const TileLeg& leg);
@@ -104,10 +118,8 @@ std::string to_string(const PlannedLeg& leg);
 
 //  Cost configuration parameters accounting for movement execution tolerances.
 struct RobustPlanCosts : TilePlanCosts{
-    //  An open leg of n tiles may end open_error + n / open_error_per tiles
-    //  short or long: on the console 7 tiles went 9.
-    int open_error = 1;
-    int open_error_per = 5;
+    //  An open leg of n tiles may end open_hold_error(n) tiles
+    //  short or long.
     //  Open legs this many tiles or shorter land exactly: a short hold moves
     //  whole tiles. 0 keeps every open leg uncertain.
     int exact_open_tiles = 0;
@@ -115,6 +127,19 @@ struct RobustPlanCosts : TilePlanCosts{
     //  so a short step after a wall beats a long open leg.
     int per_open_tile = 0;
     int max_open_tiles = 12;    //  longest open leg to consider
+    //  Open legs longer than exact_open_tiles are held for their time
+    //  (TileLeg::held), not tapped: no leg is planned whose possible ends
+    //  past its shortest cross tall grass, a wanderer's zone or a ledge, so
+    //  a long or short hold meets nothing a tap would not have. Off, such
+    //  legs are planned as uncertain but walked in taps.
+    bool hold_open_legs = false;
+    //  Extra per tall-grass tile an open leg enters. A wild battle on a leg
+    //  to a wall costs nothing to recover from: RouteWalker walks to the
+    //  wall again. On an open leg it loses the tile count, and the walk
+    //  plans again from the tiles round it, often back through the same
+    //  grass (00.04b to_catch_grass, 00.04d north_to_jubilife and 01.06
+    //  up_jubilifes_road were scored STRAND for that).
+    int per_open_grass_tile = 0;
     size_t max_spread = 5;      //  most tiles the player may be on after a leg
     //  Most sets of possible tiles to search before giving up. The search is
     //  over sets, not tiles, so it grows far faster than the map: all of
@@ -127,7 +152,7 @@ struct RobustPlanCosts : TilePlanCosts{
 };
 
 //  Cheapest legs that take the player from any of the tiles in `from` to tiles
-//  that are all `goal`, even if every open leg ends up to `open_error` tiles
+//  that are all `goal`, even if every open leg ends up open_hold_error() tiles
 //  off: the walls of later legs must bring the possible positions together.
 //  Legs that would leave the maps or enter a door are not used, nor legs that
 //  run along a zone where someone wanders: two tiles of it in a row, the

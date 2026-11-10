@@ -215,7 +215,8 @@ Pose StoryWalkSteps::walk_to(const Pose& from, const Pose& goal, const StoryStep
     };
     const RouteWalkPlan plan{
         [&](const TilePos& pos){ return std::find(targets.begin(), targets.end(), pos) != targets.end(); },
-        label_of(step), {}, *costs, m_can_run ? MoveSpeed::RUN : MoveSpeed::WALK, m_scene_next.contains(step.name)
+        label_of(step), {}, *costs, m_can_run ? MoveSpeed::RUN : MoveSpeed::WALK, m_scene_next.contains(step.name),
+        step.variant == ROUTE_ONTO_TRIGGER,
     };
     RouteEnd end = walk_route_to_warp(m_route, *maps, start, trainers, plan);
     sights = std::move(trainers.sights);

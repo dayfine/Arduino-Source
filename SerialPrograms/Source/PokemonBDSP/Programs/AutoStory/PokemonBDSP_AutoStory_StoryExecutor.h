@@ -29,6 +29,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
@@ -84,10 +85,15 @@ struct StoryEnv{
 };
 
 
-//  The plan costs a ROUTE step's variant names: "" the route costs,
-//  "town" town_plan_costs(), "robust" the planner's defaults, "line"
-//  waypoint_plan_costs() (a stretch of a line a human walked). Nothing for
-//  another name.
+//  The variant of a ROUTE step whose target is the next scene's trigger:
+//  the scene starts there and stops the walk, as a wall would (00.04's
+//  Mom's call on (6, 9)). It plans with the route costs.
+inline constexpr std::string_view ROUTE_ONTO_TRIGGER = "trigger";
+
+//  The plan costs a ROUTE step's variant names: "" and ROUTE_ONTO_TRIGGER
+//  the route costs, "town" town_plan_costs(), "robust" the planner's
+//  defaults, "line" waypoint_plan_costs() (a stretch of a line a human
+//  walked). Nothing for another name.
 std::optional<RobustPlanCosts> story_route_costs(const std::string& variant);
 
 
