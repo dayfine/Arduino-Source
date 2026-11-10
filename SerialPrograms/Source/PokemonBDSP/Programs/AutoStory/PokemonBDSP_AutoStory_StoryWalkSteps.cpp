@@ -50,8 +50,29 @@ std::string label_of(const StoryStep& step){
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "RouteIO::note() returned from a failure: " + message);
 }
 
+//  A trainer every pass of a row fights, by that row.
+struct FoughtTrainer{
+    const char* row;
+    const char* name;
+};
+//  01.02's walk east along Route 203's row 18 crosses his sight down
+//  column 31 (route_203_trainer_sights()).
+const FoughtTrainer FOUGHT_TRAINERS[] = {
+    {"01.02", "Youngster (above row 18)"},
+};
+
 } // namespace
 
+
+std::vector<TrainerSight> row_trainers(const StoryWorld& world, const std::string& row){
+    std::vector<TrainerSight> sights = story_trainers(world);
+    std::erase_if(sights, [&row](const TrainerSight& sight){
+        return std::any_of(std::begin(FOUGHT_TRAINERS), std::end(FOUGHT_TRAINERS), [&](const FoughtTrainer& fought){
+            return row > std::string(fought.row) && sight.name == fought.name;
+        });
+    });
+    return sights;
+}
 
 CenterEntry run_into_center(StoryStepIO& io, bool run, const std::function<bool()>& inside, const std::function<void()>& line_up){
     if (io.run_into_door(Direction::NORTH, run).any()){
@@ -127,7 +148,7 @@ Pose StoryWalkSteps::walk_to(const Pose& from, const Pose& goal, const StoryStep
         targets.push_back(story_to_world(*maps, goal.map, pos));
     }
     //  The ones fought stay off m_trainers until the next attempt.
-    std::vector<TrainerSight>& sights = m_trainers.try_emplace(maps, story_trainers(*maps)).first->second;
+    std::vector<TrainerSight>& sights = m_trainers.try_emplace(maps, row_trainers(*maps, m_row)).first->second;
     RouteTrainers trainers{
         sights,
         [this](const std::string& trainer){ m_io.fight(trainer); }
