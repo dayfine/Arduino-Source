@@ -15,6 +15,10 @@ authorize an agent to publish upstream.
   description must be written personally by the user** (2026-11-06). Agents must
   not draft, write, rewrite or publish upstream PR descriptions. Prepare code,
   tests and factual handoff notes; leave PR authorship and submission to the user.
+- **Fix every code-health finding before a PR goes upstream**, advisory ones
+  included. `out_param_order` and `string_concat` are advisory on the fork
+  only until the open stacks are cleaned (user, 2026-11-10); an upstream
+  handoff has none of them.
 - **At most three open upstream PRs from us, drafts included** (the user's
   call on 2026-11-03; upstream CONTRIBUTING.md asks new contributors for two). This is a limit for the user's upstream handoff, not
   permission for an agent to create a PR.

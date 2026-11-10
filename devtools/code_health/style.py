@@ -853,8 +853,10 @@ def check(path, source, previous_source):
                                              bool_signatures(previous_statements),
                                              previous_source is None)
     errors += namespace_closes(path, raw_lines, statements_, added)
-    errors += out_param_checks(path, statements_, added, out_param_signatures(previous_statements))
-    errors += string_concat_checks(path, raw, code, added)
+    #  Advisory until the open PR stacks are cleaned up (user's call, 2026-11-10): the
+    #  hook checks a whole PR against its base, so blocking would fail every open PR.
+    warnings += out_param_checks(path, statements_, added, out_param_signatures(previous_statements))
+    warnings += string_concat_checks(path, raw, code, added)
     if path.endswith('_Tests.cpp'):
         errors += native_cases(path, '\n'.join(code), statements_, added)
     if path.endswith(HEADERS):

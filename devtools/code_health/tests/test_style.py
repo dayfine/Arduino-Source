@@ -28,6 +28,11 @@ class StyleCase(unittest.TestCase):
         messages = [m for m in self.errors(source, path) if fragment in m]
         self.assertEqual(count, len(messages), self.errors(source, path))
 
+    def assertAdvisory(self, fragment, source, path=CPP, count=1):
+        # out_param_order and string_concat are advisory until the open stacks are clean.
+        messages = [m for m in self.warnings(source, path) if fragment in m]
+        self.assertEqual(count, len(messages), self.warnings(source, path))
+
     def assertClean(self, source, path=CPP):
         self.assertEqual([], self.errors(source, path))
         self.assertEqual([], self.warnings(source, path))
@@ -181,15 +186,15 @@ class DeclarationTests(StyleCase):
 
 class OutParamOrderTests(StyleCase):
     def test_output_reference_before_an_input(self):
-        self.assertFlags("output parameter 'AutoStoryStats& stats'",
+        self.assertAdvisory("output parameter 'AutoStoryStats& stats'",
                          wrap('void record_story_counts(AutoStoryStats& stats, const StoryRunCounts& counts);'),
                          HEADER)
-        self.assertFlags("'std::vector<std::string>& problems'",
+        self.assertAdvisory("'std::vector<std::string>& problems'",
                          wrap('static void lint(std::vector<std::string>& problems, const Event& event){\n}'))
-        self.assertFlags("'RunState& state'", wrap('Outcome run(ConsoleHandle& console, RunState& state, int x);'),
+        self.assertAdvisory("'RunState& state'", wrap('Outcome run(ConsoleHandle& console, RunState& state, int x);'),
                          HEADER)
-        self.assertFlags("'Pose& pose'", wrap('struct A{\n    void apply(Pose& pose, Move&& move);\n};'), HEADER)
-        self.assertFlags("'Lab&'", wrap('void f(Lab&, std::string name);'), HEADER)
+        self.assertAdvisory("'Pose& pose'", wrap('struct A{\n    void apply(Pose& pose, Move&& move);\n};'), HEADER)
+        self.assertAdvisory("'Lab&'", wrap('void f(Lab&, std::string name);'), HEADER)
 
     def test_inputs_first_and_context_handles_pass(self):
         self.assertClean(wrap(
@@ -212,13 +217,13 @@ class OutParamOrderTests(StyleCase):
             '    Outcome run(RunState& state, const Step& step) override;\n'
             '    void f(Out& out, int x) = delete;\n};\n'
             'A::A(QWidget& parent, int x){\n}'), HEADER)
-        self.assertEqual([], [m for m in self.errors(wrap('Outcome A::run(RunState& state, const Step& step){\n}'))
+        self.assertEqual([], [m for m in self.warnings(wrap('Outcome A::run(RunState& state, const Step& step){\n}'))
                               if 'output parameter' in m])
 
     def test_unchanged_parameter_kinds_are_not_reported_when_the_line_changes(self):
         previous = wrap('void f(Stats& stats, int counts);')
-        self.assertEqual([], self.errors(wrap('void f(Stats& totals, int counts);'), HEADER, previous))
-        self.assertEqual(1, len(self.errors(wrap('void f(Stats& stats, int counts, int more);'), HEADER, previous)))
+        self.assertEqual([], self.warnings(wrap('void f(Stats& totals, int counts);'), HEADER, previous))
+        self.assertEqual(1, len(self.warnings(wrap('void f(Stats& stats, int counts, int more);'), HEADER, previous)))
 
 
 class StringConcatTests(StyleCase):
@@ -233,14 +238,14 @@ class StringConcatTests(StyleCase):
                      'auto s = a\n    + "tail";',
                      'auto s = u8"x" + b;'):
             with self.subTest(line=line):
-                self.assertFlags('std::format', in_function(line))
+                self.assertAdvisory('std::format', in_function(line))
 
     def test_appends_arithmetic_and_qt_files_pass(self):
         self.assertClean(in_function(
             'text += "suffix";\ntext += name;\nint k = a + 1;\nconst char c = \'+\';\n'
             'auto p = data + offset;\ni++;\nlog("a + b");\nauto s = std::format("{} {}", a, b);\n'
             'auto t = std::to_string(n);\nauto u = std::string("a");\nf(std::to_string(n), "x");'))
-        self.assertEqual([], self.errors('#include <QString>\n' + in_function('QString s = "a" + b;')))
+        self.assertEqual([], self.warnings('#include <QString>\n' + in_function('QString s = "a" + b;')))
 
     def test_allow_tags_waive_both_rules(self):
         source = wrap('// code-health: allow string_concat -- the Qt translation macro needs a plain concat\n'
@@ -249,7 +254,7 @@ class StringConcatTests(StyleCase):
                       'Outcome take_warp(Lab& lab, const Call& call);')
         allowances, tag_errors = allow.parse(HEADER, source)
         self.assertEqual([], tag_errors)
-        found = [f for f in check(HEADER, source, None)[0] if f.check]
+        found = [f for f in check(HEADER, source, None)[1] if f.check]
         self.assertEqual({'string_concat', 'out_param_order'}, {f.check for f in found})
         kept, notices, unattached = allow.waive(HEADER, source, allowances, found)
         self.assertEqual(([], 2, []), (kept, len(notices), unattached))
