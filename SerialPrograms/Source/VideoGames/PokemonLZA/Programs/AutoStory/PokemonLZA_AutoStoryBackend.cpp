@@ -87,6 +87,15 @@ Pokemon::Observation<Pokemon::ZonePose> PlzaConsoleBackend::observe(){
     Pokemon::Observation<Pokemon::ZonePose> look;
     if (frame){
         static_cast<ScreenObservation&>(look) = plza_observation(m_observer.read(*frame.frame));
+        if (m_platform.detect(*frame.frame)){
+            look.readings[std::string(PLATFORM_READING)] = 1;
+        }
+        if (m_skip_prompt.detect(*frame.frame)){
+            look.readings[std::string(SKIP_PROMPT_READING)] = 1;
+        }
+        if (m_autosave.detect(*frame.frame)){
+            look.readings[std::string(AUTOSAVE_READING)] = 1;
+        }
         if (same_screen(m_previous, frame)){
             look.events.add(PokemonAutomation::ScreenEvent::STILL);
         }
@@ -102,7 +111,7 @@ namespace{
 
 std::string events_text(const PokemonAutomation::ScreenEvents& events){
     using EngineEvent = PokemonAutomation::ScreenEvent;
-    const std::pair<EngineEvent, const char*> names[] = {
+    const std::pair<EngineEvent, std::string_view> names[] = {
         {EngineEvent::FADE_BLACK, "fade_black"},
         {EngineEvent::FADE_WHITE, "fade_white"},
         {EngineEvent::TEXT_BOX, "text_box"},
@@ -122,6 +131,22 @@ std::string events_text(const PokemonAutomation::ScreenEvents& events){
     return text.empty() ? std::string("nothing") : text;
 }
 
+//  The look's events and readings: "fade_black+still",
+//  "nothing+skip_prompt", "can_move+platform+autosave".
+std::string look_text(const ScreenObservation& look){
+    std::string text = events_text(look.events);
+    if (look.readings.contains(PLATFORM_READING)){
+        text += "+platform";
+    }
+    if (look.readings.contains(SKIP_PROMPT_READING)){
+        text += "+skip_prompt";
+    }
+    if (look.readings.contains(AUTOSAVE_READING)){
+        text += "+autosave";
+    }
+    return text;
+}
+
 constexpr Milliseconds CAPTURE_EVERY(2000);
 
 } // namespace
@@ -130,8 +155,8 @@ void PlzaConsoleBackend::capture(const Pokemon::Observation<Pokemon::ZonePose>& 
     if (!look.frame || !look.frame->frame){
         return;
     }
-    PokemonAutomation::ScreenEvents events = look.events;
-    const bool changed = !m_captured_events || !(*m_captured_events == events);
+    const std::string text = look_text(look);
+    const bool changed = m_captured_text != text;
     if (!changed && look.when - m_captured_at < CAPTURE_EVERY){
         return;
     }
@@ -140,11 +165,11 @@ void PlzaConsoleBackend::capture(const Pokemon::Observation<Pokemon::ZonePose>& 
         Filesystem::create_directories(Filesystem::Path(m_capture_folder));
     }
     m_captures++;
-    const std::string text = events_text(events);
     const std::string path = std::format("{}{:04}-{}.png", m_capture_folder, m_captures, text);
     look.frame->frame->save(path);
-    m_env.env.console.log(std::format("[PLZA capture] {:04} {}{}", m_captures, text, changed ? " (changed)" : ""));
-    m_captured_events = events;
+    m_env.env.console.log(std::format("[PLZA capture] {:04} {}{}, platform {}", m_captures, text,
+        changed ? " (changed)" : "", to_string(m_platform.last_distances())));
+    m_captured_text = text;
     m_captured_at = look.when;
 }
 

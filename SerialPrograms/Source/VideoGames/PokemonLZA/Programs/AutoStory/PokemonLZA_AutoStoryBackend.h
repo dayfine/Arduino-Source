@@ -27,6 +27,7 @@
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryGame.h"
 #include "VideoGames/PokemonLZA/Options/PokemonLZA_BattleAIOption.h"
 #include "PokemonLZA_AutoStoryObservation.h"
+#include "PokemonLZA_AutoStoryOpeningDetectors.h"
 #include "PokemonLZA_AutoStoryScreenEvents.h"
 
 namespace PokemonAutomation{
@@ -90,7 +91,8 @@ public:
     virtual void wait(Milliseconds duration) override;
     //  Once the inputs are done: PlzaScreenObserver's events on a frame
     //  (plza_observation()), STILL when it barely differs from the frame
-    //  of the look before.
+    //  of the look before, and the readings PLATFORM_READING,
+    //  SKIP_PROMPT_READING and AUTOSAVE_READING.
     virtual Pokemon::Observation<Pokemon::ZonePose> observe() override;
     //  fight_battle() with the run's battle AI; a failure is an Outcome.
     virtual Pokemon::Outcome battle(const Pokemon::StoryActionArgs& args) override;
@@ -100,13 +102,16 @@ public:
 private:
     StoryEnv& m_env;
     PlzaScreenObserver m_observer;
+    PlatformArrivalDetector m_platform;
+    SkipPromptDetector m_skip_prompt;
+    AutosaveDetector m_autosave;
     VideoSnapshot m_previous;
     //  Every look's events, and a frame each time they change (and every
     //  CAPTURE_EVERY), go to the log and a capture folder: the record of
     //  what the detectors saw, to find the screens they miss.
     void capture(const Pokemon::Observation<Pokemon::ZonePose>& look);
     std::string m_capture_folder;
-    std::optional<PokemonAutomation::ScreenEvents> m_captured_events;
+    std::optional<std::string> m_captured_text;
     WallClock m_captured_at;
     size_t m_captures = 0;
 };

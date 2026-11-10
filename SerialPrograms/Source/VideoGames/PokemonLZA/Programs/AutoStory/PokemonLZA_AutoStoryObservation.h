@@ -21,6 +21,17 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
+//  The reading (ScreenObservation::readings) set to 1 when the station
+//  platform shows with free control after the opening cutscene
+//  (PlatformArrivalDetector).
+constexpr std::string_view PLATFORM_READING = "scene.platform";
+//  The reading set to 1 when the cutscene's "Hold button to skip" badge
+//  shows (SkipPromptDetector).
+constexpr std::string_view SKIP_PROMPT_READING = "scene.skip_prompt";
+//  The reading set to 1 while the autosave badge (a pencil and "Saving...",
+//  top right) shows: the game has autosaved (AutosaveDetector).
+constexpr std::string_view AUTOSAVE_READING = "scene.autosave";
+
 //  PlzaScreenObserver's events as one look for the story engine:
 //  DIALOG_BOX is TEXT_BOX; CHOICE_BOX adds TEXT_BOX;
 //  BATTLE_STARTED is BATTLE; PLAYER_CAN_MOVE (the party bar) is CAN_MOVE;
