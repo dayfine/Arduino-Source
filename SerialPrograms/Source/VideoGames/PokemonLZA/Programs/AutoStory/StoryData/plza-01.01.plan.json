@@ -3,7 +3,7 @@
   "game": "plza",
   "checkpoint": {
     "id": "01.01",
-    "title": "The platform to the first battle",
+    "title": "The platform to Main Mission 01",
     "start": {
       "map": "LumioseCity"
     },
@@ -28,62 +28,6 @@
         "kind": "game_action",
         "why": "steps 8-10: the white title card (~15 s), the text-free city flyover (~20 s), the starters and the girl, \"You're a tourist?\" (top choice), the ad, Pancham steals the bag; ends on the \"MAIN MISSION 01: get the bag back\" banner (once it has gone), or on the controls hint (free control)",
         "action": "mash_to_move_hints"
-      },
-      {
-        "id": "chase_pancham",
-        "kind": "game_action",
-        "why": "step 11: after Pancham, through the archway, around the starters into the scene",
-        "action": "chase_pancham"
-      },
-      {
-        "id": "pancham_cornered",
-        "kind": "game_action",
-        "why": "step 12: the scene up to its choice",
-        "action": "text_to_choice"
-      },
-      {
-        "id": "battle_with_pokemon",
-        "kind": "game_action",
-        "why": "step 12: choose \"Battle with Pokemon!\" (second choice)",
-        "action": "choose_1"
-      },
-      {
-        "id": "battle_area",
-        "kind": "game_action",
-        "why": "step 12: the scene until free control in the battle area; autosave",
-        "action": "mash_to_move_hints",
-        "args": {
-          "min_length_ms": 20000
-        }
-      },
-      {
-        "id": "approach_starter",
-        "kind": "game_action",
-        "why": "step 13: walk up to the starter (only Chikorita's walk was recorded)",
-        "action": "approach_starter"
-      },
-      {
-        "id": "talk_to_starter",
-        "kind": "talk",
-        "why": "step 13: A at \"A Talk Chikorita\""
-      },
-      {
-        "id": "andi_battle_start",
-        "kind": "game_action",
-        "why": "steps 14-15: choose it, the pre-battle talk, \"Go! Chikorita!\", the battling tutorial",
-        "action": "story_battle_start"
-      },
-      {
-        "id": "andi_battle",
-        "kind": "game_action",
-        "why": "step 16: beat Andi's Pancham (Lv 6), until Andi's speech",
-        "action": "story_battle"
-      },
-      {
-        "id": "after_andi",
-        "kind": "scene",
-        "why": "step 17: fist bump, night in the Battle Zone, the Main Mission 02 banner and its autosave",
-        "action": "a"
       }
     ],
     "metadata": {

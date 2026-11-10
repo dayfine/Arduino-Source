@@ -239,7 +239,7 @@ UnitTestResult test_face_heading(CancellableScope& scope){
 UnitTestResult test_text_to_choice(CancellableScope& scope){
     const Observation<ZonePose> choice = look_at(2000ms, {EngineEvent::TEXT_BOX, EngineEvent::CHOICE_BOX});
     FakeBackend backend = fake_plza({look_at(0ms, {EngineEvent::TEXT_BOX}), choice}, scope);
-    const Pokemon::StoryEngineReport report = run_plza(backend, step_of("01.01", "pancham_cornered"));
+    const Pokemon::StoryEngineReport report = run_plza(backend, step_of("01.02", "pancham_cornered"));
     if (report.verdict != Pokemon::CheckpointVerdict::PASSED){
         return "Expected the scene to end at the choice: " + to_string(report.run.failure);
     }
