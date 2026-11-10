@@ -24,5 +24,6 @@
         "Starter RNG starts from a save south of the table, facing the ball."
       ]
     }
-  }
+  },
+  "metadata": {"phase": "testing"}
 }
