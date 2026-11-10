@@ -29,122 +29,20 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Common/Cpp/Time.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "PokemonFRLG_OverworldRecovery.h"
 #include "PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_OverworldWalk.h"
+#include "PokemonFRLG_OverworldSimState.h"
+#include "PokemonFRLG_OverworldSimScreens.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
 
-
-//  What the screen shows, as the walker's detectors see it.
-enum class SimScreen{
-    OVERWORLD,
-    MESSAGE,        //  a white message box: a sign, a trainer
-    START_MENU,
-    BATTLE_FLASH,   //  a wild battle's opening flashes
-    BATTLE_WIPE,    //  black, as a wild battle's wipe ends, before its text box
-    BATTLE_OPENING, //  a battle's text box, empty, before the HP boxes
-    BATTLE,         //  a battle's text box with the HP boxes
-    FADE,           //  a warp's fade out and in
-};
-//  The human-readable name of a simulated screen.
-const char* sim_screen_name(SimScreen screen);
-
-//  What the walker watches the screen with.
-enum class SimWatcher{
-    FLASH,          //  BattleFlashWatcher: a battle's flashes, and a warp's fade
-    BATTLE_SCREEN,  //  BattleScreenWatcher: the battle menu or an HP box
-    //  BattleDialogDetector, which the walker used before BattleScreenWatcher:
-    //  the battle text box alone, which black below a small room passes for.
-    BATTLE_TEXT_BOX,
-    MESSAGE,        //  WhiteDialogWatcher
-    FADE,           //  BlackScreenWatcher: a warp's fade
-};
-
-//  A wild battle on the player's `grass_step`th step onto tall grass (from
-//  1), or onto any tile of a map in SimScript::wild_floor_maps. Seen late:
-//  its flashes are missed, and only the battle screen shows.
-struct SimEncounter{
-    int grass_step = 1;
-    bool seen_late = false;
-};
-
-//  How long after a step's press each thing shows. The walker's own
-//  detection delays (OverworldInterrupt::detection_delay()) are its guesses
-//  at these.
-struct SimTiming{
-    Milliseconds tile{267};
-    Milliseconds flash{300};
-    Milliseconds battle_screen{3700};
-    //  A wild battle's text box, before the HP boxes (battle_screen). Not
-    //  set: not modelled, the battle screen shows at once.
-    std::optional<Milliseconds> battle_opening;
-    //  Black, from the end of a wild battle's wipe until its text box
-    //  (battle_opening) or HP boxes. Not set: not modelled.
-    std::optional<Milliseconds> battle_wipe;
-    Milliseconds message{400};
-    Milliseconds fade{1000};            //  from the step's end to the new map
-    Milliseconds trainer_notice{1000};  //  "!" over the trainer, before they walk up
-    Milliseconds trainer_battle{2000};  //  after the trainer's message closes
-};
-
-//  What a test sets up beyond the maps.
-struct SimScript{
-    std::vector<SimEncounter> encounters;
-    //  The START menu is open at the start: the D-pad moves its cursor.
-    bool start_menu_open = false;
-    //  The hold numbered by the key (from 1) stops this many tiles short,
-    //  with nothing on screen (the forest drift, console B, 2026-11-01).
-    std::map<int, int> short_holds;
-    //  Maps where every step can start a wild battle, also on tiles the maps
-    //  don't mark as grass: Mt. Moon B2F's tiles closed on one side ('8')
-    //  are cave floor too (console B, 2026-11-03).
-    std::set<std::string> wild_floor_maps;
-    SimTiming timing;
-};
-
-//  The player and the screen, and what went wrong that the game would show.
-struct SimState{
-    MapPosition position;
-    Direction facing = Direction::SOUTH;
-    SimScreen screen = SimScreen::OVERWORLD;
-    //  Whether black shows below the map: the player stands near the bottom
-    //  of a map with nothing joined to it (a small room or a gate).
-    bool black_below = false;
-    int steps = 0;
-    int warps = 0;
-    int signs_read = 0;
-    std::vector<std::string> trainers_beaten;
-    //  Things the walker did that the game wouldn't let pass: D-pad holds
-    //  under a battle, a trainer's battle fled, a battle fought that wasn't
-    //  there.
-    std::vector<std::string> violations;
-    std::vector<std::string> log;
-};
-
-//  A watcher that fired: which (an index into the watchers asked for), and
-//  how long after the hold or watch started.
-struct SimSeen{
-    size_t watcher = 0;
-    Milliseconds elapsed{0};
-};
-
-//  How the walker handles the battle on screen.
-enum class SimBattleChoice{
-    RUN,
-    FIGHT,
-};
-//  How a simulated battle concluded.
-enum class SimBattleEnd{
-    ENDED,
-    CANT_RUN,       //  a trainer's battle: "No! There's no running from a TRAINER battle!"
-    NO_BATTLE,      //  there was none, on screen or about to show
-};
 
 //  Simulates overworld movement, encounters and dialogs.
 class OverworldSim{

@@ -235,7 +235,7 @@ void check_overworld(ConsoleHandle& console, ProControllerContext& context, cons
     if (!screen){
         return;
     }
-    const char* open = nullptr;
+    std::string_view open;
     if (StartMenuDetector(COLOR_RED).detect(screen)){
         open = "the START menu";
     }else if (SelectionDialogDetector(COLOR_RED).detect(screen)){
@@ -243,10 +243,10 @@ void check_overworld(ConsoleHandle& console, ProControllerContext& context, cons
     }else if (WhiteDialogDetector(COLOR_RED).detect(screen)){
         open = "a message";
     }
-    if (open != nullptr){
+    if (!open.empty()){
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::SEND_ERROR_REPORT,
-            std::string("walk_overworld_route(): ") + open + " is open, before: " + to_string(step),
+            std::format("walk_overworld_route(): {} is open, before: {}", open, to_string(step)),
             console
         );
     }
@@ -274,12 +274,12 @@ void clear_open_message(
 namespace{
 
 //  What on screen shows a wild battle on its way: its text box, or the
-//  black of its wipe. Nothing if neither shows.
-const char* battle_on_its_way(ConsoleHandle& console, ProControllerContext& context){
+//  black of its wipe. Empty if neither shows.
+std::string_view battle_on_its_way(ConsoleHandle& console, ProControllerContext& context){
     context.wait_for_all_requests();
     VideoSnapshot screen = console.video().snapshot();
     if (!screen){
-        return nullptr;
+        return {};
     }
     if (BattleTextBoxDetector(COLOR_RED).detect(screen)){
         return "a battle's text box";
@@ -287,7 +287,7 @@ const char* battle_on_its_way(ConsoleHandle& console, ProControllerContext& cont
     if (BlackScreenDetector(COLOR_RED).detect(screen)){
         return "a black screen";
     }
-    return nullptr;
+    return {};
 }
 
 } // namespace
@@ -299,8 +299,8 @@ size_t clear_unseen_battle(
     if (step.action != RouteAction::WALK || step.warps){
         return 0;
     }
-    const char* seen = battle_on_its_way(console, context);
-    if (seen == nullptr){
+    const std::string_view seen = battle_on_its_way(console, context);
+    if (seen.empty()){
         return 0;
     }
     console.log(std::format("Route: {} after {}, which nothing stopped: watching on for a wild battle.", seen, to_string(step)), COLOR_ORANGE);
@@ -311,8 +311,8 @@ size_t clear_battle_before(
     ConsoleHandle& console, ProControllerContext& context,
     const OverworldInterrupts& wild, const RouteStep& step
 ){
-    const char* seen = battle_on_its_way(console, context);
-    if (seen == nullptr){
+    const std::string_view seen = battle_on_its_way(console, context);
+    if (seen.empty()){
         return 0;
     }
     console.log(std::format("Route: {} before {}: watching on for a wild battle set off before it.", seen, to_string(step)), COLOR_ORANGE);
@@ -393,7 +393,7 @@ void start_surf(ConsoleHandle& console, ProControllerContext& context, Direction
 
 
 
-const char* move_speed_name(MoveSpeed speed){
+std::string_view move_speed_name(MoveSpeed speed){
     switch (speed){
     case MoveSpeed::WALK:
         return "walk";

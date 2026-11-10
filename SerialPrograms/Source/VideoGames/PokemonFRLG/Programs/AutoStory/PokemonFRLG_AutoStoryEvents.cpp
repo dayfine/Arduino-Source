@@ -24,7 +24,6 @@
 #include "PokemonFRLG_AutoStorySummary.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 #include "PokemonFRLG_AutoStoryTeachScreens.h"
-#include "PokemonFRLG_AutoStoryWinChance.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -173,33 +172,11 @@ Outcome take_step(StoryEnv& env, RunState& state, const StoryStep& step){
     return Pokemon::outcome_ok(to_pose(StoryPose{state.pose.map, tiles[0].next(direction), direction}));
 }
 
-//  Before a BattleRisk::HIGH battle the story may lose: the sim's win
-//  chance, the HP as the last bar read left it. Why not to fight, if so.
-std::optional<std::string> refuse_battle(StoryEnv& env, const StoryStep& step, std::string_view trainer){
-    const Supplies& supplies = env.supplies;
-    if (arg<bool>(step, "may_lose") || supplies.risk != BattleRisk::HIGH){
-        return std::nullopt;
-    }
-    const std::optional<WinEstimate> estimate = story_win_chance(supplies.lead, supplies.potions, supplies.hp_fill, trainer);
-    if (!estimate){
-        return std::nullopt;
-    }
-    env.console.log(std::format(
-        "Story: {} against {}: the sim wins {} of {} ({:.0f}%) with {}.",
-        step.name, trainer, estimate->wins, estimate->battles, 100 * estimate->chance, estimate->inputs
-    ));
-    return win_chance_refusal(*estimate);
-}
-
 Outcome battle(StoryEnv& env, const StoryStep& step){
     const std::optional<std::string_view> trainer = step.pose_after ? story_trainer(step.pose_after->map, step.name) : std::nullopt;
     env.supplies.trainer = trainer ? std::string(*trainer) : "";
     env.supplies.risk = trainer ? story_battle_risk(step.pose_after->map, step.name) : BattleRisk::LOW;
-    env.supplies.foe_out.reset();
-    if (const std::optional<std::string> refusal = trainer ? refuse_battle(env, step, *trainer) : std::nullopt){
-        env.console.log("Story: " + step.name + ": " + *refusal + ".", COLOR_RED);
-        return Pokemon::outcome_failed("win_chance", *refusal);
-    }
+    env.supplies.foe_out.clear();
     if (advance_text(env.console, env.context, BATTLE_TEXT_TIMEOUT, true) != TextEnd::BATTLE){
         return Pokemon::outcome_failed("no_battle");
     }
@@ -213,7 +190,7 @@ Outcome battle(StoryEnv& env, const StoryStep& step){
     const BattleEnd end = fight_battle(env.console, env.context, env.supplies, BattleKind::TRAINER, env.checks, env.language);
     env.supplies.foes.clear();
     env.supplies.trainer.clear();
-    env.supplies.foe_out.reset();
+    env.supplies.foe_out.clear();
     if (end == BattleEnd::LOST && !arg<bool>(step, "may_lose")){
         return Pokemon::outcome_failed("blackout");
     }
@@ -247,11 +224,11 @@ Outcome get_ready(StoryEnv& env, RunState& state, const StoryStep& step){
 //  POKE BALL, POTION (300), ANTIDOTE (100), PARLYZ HEAL (200). Each item
 //  the story buys: its row, and where the bag's count is kept.
 struct MartItem{
-    const char* item;
+    std::string_view item;
     int row;
     int Supplies::* count;
     //  The name the item list reader reads (read_item_list_name()).
-    const char* slug;
+    std::string_view slug;
 };
 constexpr MartItem VIRIDIAN_MART_ITEMS[] = {
     {.item = "potion", .row = 1, .count = &Supplies::potions, .slug = "potion"},
@@ -336,7 +313,7 @@ std::optional<StoryPose> story_pose(const Pokemon::Pose& pose){
 std::string save_card_place(const std::string& map){
     //  A map of the place, or a building in it ("Route4_PokemonCenter_1F"
     //  is on Route 4, "Route24" isn't on Route 2).
-    static const std::pair<std::string, const char*> PLACES[] = {
+    static const std::pair<std::string, std::string_view> PLACES[] = {
         {"PalletTown", "pallet-town"},
         {"ViridianForest", "viridian-forest"},
         {"ViridianCity", "viridian-city"},
@@ -346,7 +323,7 @@ std::string save_card_place(const std::string& map){
     };
     for (const auto& [prefix, place] : PLACES){
         if (map == prefix || map.rfind(prefix + "_", 0) == 0){
-            return place;
+            return std::string(place);
         }
     }
     return "";
@@ -483,7 +460,7 @@ ConsoleAction console_action_of(StoryActionId id){
     case StoryActionId::GAME:
         break;
     }
-    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::string("No console action for ") + story_action_name(id));
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("No console action for {}", story_action_name(id)));
 }
 
 } // namespace

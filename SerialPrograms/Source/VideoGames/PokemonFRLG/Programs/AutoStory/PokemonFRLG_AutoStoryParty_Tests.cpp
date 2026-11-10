@@ -35,7 +35,7 @@ struct AutoStoryPartyInput{
 };
 
 struct AutoStoryPartyExpectation{
-    const char* description;
+    std::string_view description;
 };
 
 struct AutoStoryPartyTestCase{

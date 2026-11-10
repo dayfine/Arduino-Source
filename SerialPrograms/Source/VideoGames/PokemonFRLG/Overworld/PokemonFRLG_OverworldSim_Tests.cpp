@@ -68,14 +68,14 @@ const std::vector<MapData>& maps(){
     return MAPS;
 }
 
-MapPosition at(const char* map, int x, int y){
+MapPosition at(const std::string& map, int x, int y){
     return MapPosition{map, {x, y}};
 }
 
 //  Where a warp to point `point` of `map` puts the player: there, or a tile
 //  south when the game walks them out of a door.
-MapPosition arrival(const char* map, const char* point){
-    const TilePos tile = map_point(maps(), map, point);
+MapPosition arrival(const std::string& map, std::string_view point){
+    const TilePos tile = map_point(maps(), map, std::string(point));
     for (const MapData& data : maps()){
         if (data.name == map && walks_out_on_arrival(data, tile)){
             return MapPosition{map, tile.next(Direction::SOUTH)};

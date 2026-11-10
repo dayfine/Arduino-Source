@@ -187,7 +187,7 @@ const std::vector<ShinyRow> SHINY_ROWS = {
     {.input = {.name = "no match", .hits = {}}, .expectation = {.expected = StarterRngOutcome::shiny}},
 };
 
-const char* outcome_name(StarterRngOutcome outcome){
+std::string outcome_name(StarterRngOutcome outcome){
     switch (outcome){
     case StarterRngOutcome::shiny:              return "shiny";
     case StarterRngOutcome::shiny_on_target:    return "shiny_on_target";

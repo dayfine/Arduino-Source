@@ -90,7 +90,7 @@ const std::vector<MartStockItem>& mart_stock(std::string_view map){
     return found == mart_stocks().end() ? NONE : found->second;
 }
 
-const char* mart_end_name(MartEnd end){
+std::string_view mart_end_name(MartEnd end){
     switch (end){
     case MartEnd::DONE:             return "done";
     case MartEnd::NOTHING_TO_BUY:   return "nothing_to_buy";

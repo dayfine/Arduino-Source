@@ -49,116 +49,13 @@
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
+#include "PokemonFRLG_AutoStoryMartBuys.h"
+#include "PokemonFRLG_AutoStoryMartPlan.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
 
-
-//  One item a Mart sells: its slug (as read_item_list_name() names it,
-//  e.g. "parlyz-heal") and its price (pokefirered items.json).
-struct MartStockItem{
-    std::string_view item;
-    size_t price;
-};
-
-//  The BUY list of the Mart on map `map` (e.g. "PewterCity_Mart"), in row
-//  order, CANCEL not included; empty for a map whose stock isn't known.
-const std::vector<MartStockItem>& mart_stock(std::string_view map);
-
-//  One line of a buy list: an item and how many.
-struct MartLine{
-    std::string item = {};
-    size_t quantity = 1;
-};
-
-//  What a Mart step buys.
-struct MartPlan{
-    //  The Mart's map, for its stock.
-    std::string map = {};
-    //  In priority order.
-    std::vector<MartLine> lines = {};
-    //  The most the step spends.
-    size_t budget = 0;
-    //  The least money the player has here, from the money plan: used
-    //  when the money box can't be read.
-    std::optional<size_t> money_floor = std::nullopt;
-};
-
-//  The GAME action of a Mart step: map WORD (required), the Mart's map;
-//  budget INTEGER (required); floor INTEGER (optional), the money floor;
-//  items ITEMS (required), the lines in order.
-inline const std::string MART_ACTION = "mart";
-//  `plan` as its action's args.
-Pokemon::StoryActionArgs mart_args(const MartPlan& plan);
-//  The plan a MART_ACTION step's args give; nothing if it has no line or
-//  names an item its Mart doesn't sell.
-std::optional<MartPlan> mart_plan_of(const Pokemon::StoryActionArgs& args);
-
-//  The table's Mart step.
-Pokemon::StoryStep mart_step(std::string name, std::string why, const MartPlan& plan);
-
-
-//  One purchase the step makes.
-struct MartBuy{
-    //  The list's row, from 0.
-    size_t row = 0;
-    std::string item = {};
-    size_t quantity = 0;
-    size_t cost = 0;
-};
-
-//  What `plan` buys at a Mart with `stock` and `money`: each line as many
-//  as fit in the budget and the money left, in order, at most 99; lines
-//  that buy none are left out. Nothing if a line's item isn't stocked.
-std::optional<std::vector<MartBuy>> plan_mart_buys(
-    const std::vector<MartStockItem>& stock, const MartPlan& plan, size_t money
-);
-
-//  The presses that turn the quantity box from 1 into `quantity` without
-//  passing its most: RIGHT adds ten, then UP one at a time.
-struct QuantityPresses{
-    size_t right = 0;
-    size_t up = 0;
-};
-//  Calculates D-pad presses needed to select a purchase quantity.
-QuantityPresses quantity_presses(size_t quantity);
-
-
-//  The outcome of attempting to buy an item at the Mart.
-enum class PurchaseEnd{
-    //  "Here you are!": bought, back at the list.
-    BOUGHT,
-    //  "You don't have enough money.": back at the list.
-    NOT_ENOUGH_MONEY,
-    //  The quantity box showed another number: backed out with B.
-    WRONG_QUANTITY,
-    FAILED,
-};
-
-//  The game steps a Mart step takes, injected so its decisions run in
-//  tests.
-class MartActions{
-public:
-    virtual ~MartActions() = default;
-
-    //  Facing the clerk: talk, BUY, to the list with the cursor on its top
-    //  row. False if the list didn't show.
-    virtual bool open_buy_list() = 0;
-    //  On the list: the money box; nothing if it can't be read.
-    virtual std::optional<size_t> read_money() = 0;
-    //  On the list: the cursor from row `from` to row `to`.
-    virtual void move_cursor(size_t from, size_t to) = 0;
-    //  On the list: row `row`'s item slug; empty if it can't be read.
-    virtual std::string read_row(size_t row) = 0;
-    //  On the list, the cursor on `buy`'s row: A, its quantity typed as
-    //  quantity_presses() says, A, YES. The quantity box is read before
-    //  the A, if it can be: another number backs out.
-    virtual PurchaseEnd buy(const MartBuy& buy) = 0;
-    //  From the list: CANCEL, SEE YA!, to the overworld. False if it didn't
-    //  come back.
-    virtual bool leave() = 0;
-};
 
 //  How a Mart shopping trip concluded.
 enum class MartEnd{
@@ -171,7 +68,7 @@ enum class MartEnd{
     FAILED,
 };
 //  The human-readable name of a Mart outcome.
-const char* mart_end_name(MartEnd end);
+std::string_view mart_end_name(MartEnd end);
 
 //  The summary result of a Mart shopping session.
 struct MartResult{

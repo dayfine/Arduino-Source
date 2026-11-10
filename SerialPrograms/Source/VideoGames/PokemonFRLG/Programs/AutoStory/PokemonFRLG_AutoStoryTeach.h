@@ -49,103 +49,13 @@
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
 #include "PokemonFRLG_AutoStoryMember.h"
+#include "PokemonFRLG_AutoStoryTeachActions.h"
+#include "PokemonFRLG_AutoStoryTeachPlan.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
 
-
-//  What a TEACH step teaches.
-struct TeachPlan{
-    //  The TM or HM's slug, e.g. "hm03", "tm28".
-    std::string item = {};
-    //  The move it holds, e.g. "surf".
-    std::string move = {};
-    //  The party slot (0-5).
-    size_t member = 0;
-    //  The move to forget when it knows four: by name, or else by its
-    //  slot (0-3). Neither: it must have a free slot.
-    std::string forget_move = {};
-    std::optional<size_t> forget_slot = std::nullopt;
-};
-
-//  Whether `move` is an HM's, which the game won't let a Pokemon forget.
-bool is_hm_move(std::string_view move);
-
-//  The GAME action of a TEACH step: item WORD (required), the TM or HM,
-//  e.g. "hm03"; move WORD (required), e.g. "surf"; slot INTEGER
-//  (required, from 1); forget WORD or forget_slot INTEGER (from 1)
-//  (optional): the move to forget when it knows four.
-inline const std::string TEACH_ACTION = "teach";
-//  `plan` as its action's args.
-Pokemon::StoryActionArgs teach_args(const TeachPlan& plan);
-//  The plan a TEACH_ACTION step's args give; nothing if the item isn't a
-//  TM or HM or a slot is out of range.
-std::optional<TeachPlan> teach_plan_of(const Pokemon::StoryActionArgs& args);
-
-//  Constructs an auto-story step for teaching a TM or HM.
-Pokemon::StoryStep teach_step(std::string name, std::string why, const TeachPlan& plan);
-
-
-//  The move slot `plan` forgets for a member that knows `moves`: nothing
-//  when it has room. Empty `error` if it can be taught, else why not.
-struct TeachDecision{
-    std::optional<size_t> forget = std::nullopt;
-    std::string error = {};
-    //  It knows the move already: nothing to do.
-    bool already_known = false;
-};
-//  Determines which move slot to overwrite given current moves.
-TeachDecision decide_teach(const TeachPlan& plan, const std::vector<std::string>& moves);
-
-
-//  What A on the member showed.
-enum class TeachPrompt{
-    LEARNED,
-    //  "Delete an older move to make room?"
-    DELETE_PROMPT,
-    NOT_COMPATIBLE,
-    ALREADY_KNOWS,
-    FAILED,
-};
-
-//  The outcome of attempting to forget a move.
-enum class ForgetEnd{
-    LEARNED,
-    //  "HM moves can't be forgotten now.": back on the moves page.
-    HM_REFUSED,
-    FAILED,
-};
-
-//  What opening the TM or HM from the bag came to.
-enum class ItemOpen{
-    //  On "Teach which POKEMON?".
-    OPENED,
-    //  The TM CASE's list was read and hasn't got it.
-    NOT_IN_CASE,
-    FAILED,
-};
-
-//  The game steps a TEACH step takes, injected so its decisions run in
-//  tests.
-class TeachActions{
-public:
-    virtual ~TeachActions() = default;
-
-    //  From the overworld: the bag, the TM Case, `item` (which holds
-    //  `move`), USE, to the party menu.
-    virtual ItemOpen open_item(std::string_view item, std::string_view move) = 0;
-    //  On "Teach which POKEMON?": A on `slot`.
-    virtual TeachPrompt choose_member(size_t slot) = 0;
-    //  On "Delete an older move?": YES, then A on move `slot` (0-3).
-    virtual ForgetEnd forget(size_t slot) = 0;
-    //  From any of its prompts: give up teaching (NO, "Stop trying?" YES).
-    virtual void stop_teaching() = 0;
-    //  Back to the overworld. False if it didn't come back.
-    virtual bool leave() = 0;
-    //  Saves the screen as a debug image, named `label`: the step failed.
-    virtual void dump_screen(std::string_view label) = 0;
-};
 
 //  How a move teaching sequence concluded.
 enum class TeachEnd{
@@ -160,7 +70,7 @@ enum class TeachEnd{
     FAILED,
 };
 //  The human-readable name of a teach outcome.
-const char* teach_end_name(TeachEnd end);
+std::string_view teach_end_name(TeachEnd end);
 
 //  The summary result of a move teaching operation.
 struct TeachResult{

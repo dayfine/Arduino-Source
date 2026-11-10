@@ -21,7 +21,7 @@ namespace PokemonFRLG{
 using namespace std::chrono_literals;
 
 
-const char* teach_press_name(TeachPress press){
+std::string_view teach_press_name(TeachPress press){
     switch (press){
     case TeachPress::A:     return "A";
     case TeachPress::B:     return "B";
@@ -286,6 +286,7 @@ bool ScreenTeachActions::leave(){
         case TeachScreen::ITEM_MENU:
         case TeachScreen::TM_CASE:
         case TeachScreen::PARTY_PROMPT:
+        case TeachScreen::TM_SCENE:
             press(TeachPress::B);
             break;
         case TeachScreen::PARTY_TEXT:
@@ -374,7 +375,7 @@ void ConsoleTeachScreens::log_view(const TeachView& view){
         line += " (" + rows_text(view.rows) + ")";
     }
     if (view.text != TeachText::UNKNOWN){
-        line += std::string(", \"") + teach_text_name(view.text) + "\"";
+        line += std::format(", \"{}\"", teach_text_name(view.text));
     }
     if (line != m_logged){
         m_console.log(line + ".");

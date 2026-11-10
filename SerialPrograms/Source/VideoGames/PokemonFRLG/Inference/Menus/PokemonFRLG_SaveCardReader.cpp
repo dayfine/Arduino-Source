@@ -4,6 +4,8 @@
  *
  */
 
+#include <string_view>
+#include <format>
 #include "Common/Cpp/Color.h"
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/Json/JsonArray.h"
@@ -62,7 +64,7 @@ private:
     static JsonObject dictionary(){
         JsonObject english;
         for (const auto& [slug, name] : {
-            std::pair<const char*, const char*>{"pallet-town", "Pallet Town"},
+            std::pair<std::string_view, std::string_view>{"pallet-town", "Pallet Town"},
             {"viridian-city", "Viridian City"},
             {"viridian-forest", "Viridian Forest"},
             {"pewter-city", "Pewter City"},
@@ -70,10 +72,18 @@ private:
             {"route-2", "Route 2"},
             {"route-3", "Route 3"},
             {"route-4", "Route 4"},
+            {"cerulean-city", "Cerulean City"},
+            {"route-24", "Route 24"},
+            {"route-25", "Route 25"},
+            {"route-10", "Route 10"},
+            {"lavender-town", "Lavender Town"},
+            {"vermilion-city", "Vermilion City"},
+            {"celadon-city", "Celadon City"},
+            {"rocket-hideout", "Rocket Hideout"},
         }){
             JsonArray names;
-            names.push_back(name);
-            english[slug] = std::move(names);
+            names.push_back(std::string(name));
+            english[std::string(slug)] = std::move(names);
         }
         JsonObject json;
         json["eng"] = std::move(english);
@@ -102,7 +112,7 @@ namespace{
 class Test_SaveCard : public ImageUnitTest{
 public:
     Test_SaveCard(const std::string& image)
-        : ImageUnitTest("PokemonFRLG::SaveCardReader - " + image, {image})
+        : ImageUnitTest(std::format("PokemonFRLG::SaveCardReader - {}", image), {image})
     {}
 
     virtual UnitTestResult run_on_images(
@@ -116,7 +126,7 @@ public:
         const std::string& language_word = words[words.size() - 2];
         const Language language = language_code_to_enum(language_word);
         if (language == Language::None || language == Language::EndOfList){
-            return "Error: invalid language word in filename: " + language_word;
+            return std::format("Error: invalid language word in filename: {}", language_word);
         }
 
         const std::string read = read_save_card_location(logger, language, images[0]);

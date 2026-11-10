@@ -4,6 +4,7 @@
  *
  */
 
+#include <format>
 #include "Common/Cpp/Color.h"
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/Json/JsonArray.h"
@@ -44,8 +45,8 @@ const std::vector<OCR::TextColorRange>& VALUE_TEXT_FILTERS(){
 }
 
 struct OptionValue{
-    const char* slug;
-    const char* english;
+    std::string_view slug;
+    std::string_view english;
 };
 
 //  One matcher per item, so a value is only matched against its own row's.
@@ -75,8 +76,8 @@ private:
         JsonObject english;
         for (const OptionValue& value : values){
             JsonArray names;
-            names.push_back(value.english);
-            english[value.slug] = std::move(names);
+            names.push_back(std::string(value.english));
+            english[std::string(value.slug)] = std::move(names);
         }
         JsonObject json;
         json["eng"] = std::move(english);
@@ -97,14 +98,14 @@ std::vector<std::string> slugs_of(const std::vector<OptionValue>& values){
 //  An item's name, its row (option_menu.c MENUITEM_*), its values and their
 //  matcher.
 struct OptionItem{
-    OptionItem(const char* name, size_t row, const std::vector<OptionValue>& values, double max_log10p)
+    OptionItem(std::string_view name, size_t row, const std::vector<OptionValue>& values, double max_log10p)
         : name(name)
         , row(row)
         , slugs(slugs_of(values))
         , matcher(values, max_log10p)
     {}
 
-    const char* name;
+    std::string_view name;
     size_t row;
     std::vector<std::string> slugs;
     OptionValueMatcher matcher;
@@ -130,7 +131,7 @@ const OptionItem& option_item(OptionMenuItem item){
 } // namespace
 
 
-const char* option_menu_name(OptionMenuItem item){
+std::string_view option_menu_name(OptionMenuItem item){
     return option_item(item).name;
 }
 
@@ -161,7 +162,7 @@ namespace{
 class Test_OptionMenu : public ImageUnitTest{
 public:
     Test_OptionMenu(const std::string& image)
-        : ImageUnitTest("PokemonFRLG::OptionMenuReader - " + image, {image})
+        : ImageUnitTest(std::format("PokemonFRLG::OptionMenuReader - {}", image), {image})
     {}
 
     virtual UnitTestResult run_on_images(
@@ -175,7 +176,7 @@ public:
         const std::string& language_word = words[words.size() - 4];
         const Language language = language_code_to_enum(language_word);
         if (language == Language::None || language == Language::EndOfList){
-            return "Error: invalid language word in filename: " + language_word;
+            return std::format("Error: invalid language word in filename: {}", language_word);
         }
 
         const OptionMenuItem items[] = {OptionMenuItem::TEXT_SPEED, OptionMenuItem::BATTLE_SCENE, OptionMenuItem::BATTLE_STYLE};

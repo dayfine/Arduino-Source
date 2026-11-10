@@ -62,7 +62,6 @@ public:
     virtual GrindFight fight() override{ return GrindFight::FAILED; }
     virtual bool needs_heal() override{ return false; }
     virtual bool heal_trip() override{ return true; }
-    virtual std::optional<WinEstimate> win_chance(const MemberInfo&, std::string_view) override{ return std::nullopt; }
 };
 
 class StubFossils : public ChoiceActions{

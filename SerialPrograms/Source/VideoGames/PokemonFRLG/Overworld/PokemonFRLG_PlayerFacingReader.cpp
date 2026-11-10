@@ -4,6 +4,7 @@
  *
  */
 
+#include <format>
 #include <algorithm>
 #include <cctype>
 #include <cstdlib>
@@ -29,7 +30,7 @@ namespace{
 
 //  The sprite sheet's frames are 16x32, and the standing ones are 0 (south),
 //  1 (north) and 2 (west). Rows 12 to 30 are drawn; the rest is empty.
-const char PLAYER_SPRITE_SHEET[] = "PokemonFRLG/PlayerSprites/red_normal.png";
+constexpr std::string_view PLAYER_SPRITE_SHEET = "PokemonFRLG/PlayerSprites/red_normal.png";
 constexpr int SHEET_FRAME_WIDTH = 16;
 constexpr int SHEET_FIRST_ROW = 12;
 
@@ -84,7 +85,7 @@ double difference(const ImageViewRGB32& game, const ImageViewRGB32& sprite, bool
 
 const PlayerSprites& player_sprites(){
     static const PlayerSprites SPRITES = []{
-        const ImageRGB32 sheet(RESOURCE_PATH() + PLAYER_SPRITE_SHEET);
+        const ImageRGB32 sheet(std::format("{}{}", RESOURCE_PATH(), PLAYER_SPRITE_SHEET));
         return PlayerSprites{sheet_frame(sheet, 0), sheet_frame(sheet, 1), sheet_frame(sheet, 2)};
     }();
     return SPRITES;

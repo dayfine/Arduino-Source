@@ -21,7 +21,7 @@ Outcome mart(Logger& logger, const MartPlan& plan, StoryAbilities& abilities){
     const std::string message = mart_message(plan, result);
     const bool ok = result.end == MartEnd::DONE || result.end == MartEnd::NOTHING_TO_BUY;
     logger.log(message, result.end == MartEnd::DONE ? COLOR_BLACK : COLOR_RED);
-    return ok ? Pokemon::outcome_ok() : Pokemon::outcome_failed(std::string("mart_") + mart_end_name(result.end), message);
+    return ok ? Pokemon::outcome_ok() : Pokemon::outcome_failed(std::string("mart_") + std::string(mart_end_name(result.end)), message);
 }
 
 Outcome teach(Logger& logger, const TeachPlan& plan, StoryAbilities& abilities){
@@ -30,7 +30,7 @@ Outcome teach(Logger& logger, const TeachPlan& plan, StoryAbilities& abilities){
     if (result.end == TeachEnd::LEARNED || result.end == TeachEnd::ALREADY_KNOWN || result.end == TeachEnd::NO_ITEM){
         return Pokemon::outcome_ok();
     }
-    return Pokemon::outcome_failed(std::string("teach_") + teach_end_name(result.end), teach_message(plan, result));
+    return Pokemon::outcome_failed(std::string("teach_") + std::string(teach_end_name(result.end)), teach_message(plan, result));
 }
 
 Outcome level(Logger& logger, const LevelCheck& check, StoryAbilities& abilities){
@@ -59,7 +59,7 @@ Outcome grind(Logger& logger, VideoStream* stream, const GrindPlan& plan, StoryA
     if (result.end == GrindEnd::REACHED){
         return Pokemon::outcome_ok();
     }
-    return Pokemon::outcome_failed(std::string("grind_") + grind_end_name(result.end), message);
+    return Pokemon::outcome_failed(std::string("grind_") + std::string(grind_end_name(result.end)), message);
 }
 
 Outcome fossil(Logger& logger, Fossil fossil, StoryAbilities& abilities){
@@ -68,7 +68,7 @@ Outcome fossil(Logger& logger, Fossil fossil, StoryAbilities& abilities){
         return Pokemon::outcome_ok();
     }
     logger.log("Choice: " + result.detail, COLOR_RED);
-    return Pokemon::outcome_failed(std::string("fossil_") + choice_end_name(result.end), result.detail);
+    return Pokemon::outcome_failed(std::string("fossil_") + std::string(choice_end_name(result.end)), result.detail);
 }
 
 } // namespace
