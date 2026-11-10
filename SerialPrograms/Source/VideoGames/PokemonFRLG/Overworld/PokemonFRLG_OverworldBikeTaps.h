@@ -32,13 +32,20 @@ struct BikeTap{
     //  cleared already: a trainer who saw the player, a battle seen late.
     bool cleared_late = false;
 };
-//  The console side of count_bike_taps(): `tap` taps once and judges it;
+//  The console side of count_bike_taps(): `tap` taps once, for the leg's
+//  `tap`th tile (from 1), and judges it;
 //  `clear` clears interrupt i.
 struct BikeTapCalls{
-    std::function<BikeTap()> tap;
+    std::function<BikeTap(int tap)> tap;
     std::function<void(size_t interrupt)> clear;
     std::function<void(const std::string& message)> log;
+    //  Taps per tile before one that doesn't move counts as blocked: on
+    //  foot a tap facing another way only turns the player
+    //  (STEP_TAP_TRIES).
+    int tries = 1;
 };
+//  Taps per tile on foot: the first tap of a leg may only turn.
+constexpr int STEP_TAP_TRIES = 2;
 //  How far a sure start may be off before a blocked tap finds the player:
 //  three runs of 00.30 stood 3 tiles off (console B, 2026-11-09).
 constexpr int BLOCKED_TAP_SLACK = 3;
@@ -52,6 +59,16 @@ constexpr int BLOCKED_TAP_SLACK = 3;
 //  the tiles with a blocked one ahead); interrupted, the taps that moved
 //  and one more, which may have moved before its battle showed.
 StepOutcome count_bike_taps(const RouteStep& step, const BikeTapCalls& calls);
+
+//  Whether `step` is walked on foot a tap at a time (RouteStep::tapped),
+//  each a tile, by count_bike_taps() with STEP_TAP_TRIES: an open leg or
+//  one to a wall or onto a spinner, not onto a warp or over a connection.
+bool counts_step_taps(const RouteStep& step);
+
+//  How long after a step tap of `step`, the `tap`th (from 1), the screen
+//  is still: the step, and on the last tap of a leg onto a spinner the
+//  slide (RouteStep::spin_tiles) and its settle.
+Milliseconds step_tap_settle(const RouteStep& step, int tap);
 
 
 

@@ -64,6 +64,11 @@ struct StoryPose{
 //  has the Running Shoes (00.10 on).
 inline const std::string RUN_VARIANT = "run";
 
+//  The variant of LEGS walked on foot a tap at a time, each tap checked to
+//  have moved the player a tile (RouteStep::tapped): the Rocket Hideout's
+//  arrow floors, where a hold a tile off slides the player elsewhere.
+inline const std::string TAPS_VARIANT = "taps";
+
 //  The variant of a STEP into a trainer's line: a tile at a time, at most
 //  TRAINER_LINE_TILES, until the trainer sees the player
 //  (step_until_seen()). The battle after it starts on the trainer's row

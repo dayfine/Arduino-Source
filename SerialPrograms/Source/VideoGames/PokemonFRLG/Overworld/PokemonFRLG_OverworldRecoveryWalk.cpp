@@ -76,14 +76,23 @@ double top_band_change(const ImageViewRGB32& before, const ImageViewRGB32& after
     return ImageMatch::pixel_RMSD(extract_box_reference(before, band), extract_box_reference(after, band));
 }
 
-//  One tap of a leg counted out on the Bicycle (count_bike_taps()): a
-//  BIKE_TAP press released to a BIKE_TAP_PERIOD period, then
-//  BIKE_TAP_SETTLE for the screen to show the step, watching `interrupts`
-//  throughout. A tap that didn't scroll the screen is watched on for a
-//  late interrupt, which is cleared.
+//  A counted tap's press, its release and the wait after it for the
+//  screen to show the step.
+struct TapTiming{
+    Milliseconds press;
+    Milliseconds release;
+    Milliseconds settle;
+};
+//  On the Bicycle: a BIKE_TAP press released to a BIKE_TAP_PERIOD period,
+//  then BIKE_TAP_SETTLE.
+constexpr TapTiming BIKE_TAP_TIMING{BIKE_TAP, BIKE_TAP_PERIOD - BIKE_TAP, BIKE_TAP_SETTLE};
+
+//  One tap of a leg counted out (count_bike_taps()), timed by `timing`,
+//  watching `interrupts` throughout. A tap that didn't scroll the screen
+//  is watched on for a late interrupt, which is cleared.
 BikeTap console_bike_tap(
     ConsoleHandle& console, ProControllerContext& context,
-    const RouteStep& step, const OverworldInterrupts& interrupts
+    const RouteStep& step, const OverworldInterrupts& interrupts, const TapTiming& timing
 ){
     context.wait_for_all_requests();
     const VideoSnapshot before = console.video().snapshot();
@@ -96,8 +105,8 @@ BikeTap console_bike_tap(
     const int ret = run_until<ProControllerContext>(
         console, context,
         [&](ProControllerContext& context){
-            pbf_press_dpad(context, dpad(step.direction), BIKE_TAP, BIKE_TAP_PERIOD - BIKE_TAP);
-            pbf_wait(context, BIKE_TAP_SETTLE);
+            pbf_press_dpad(context, dpad(step.direction), timing.press, timing.release);
+            pbf_wait(context, timing.settle);
             context.wait_for_all_requests();
         },
         callbacks
@@ -122,9 +131,32 @@ StepWalk walk_bike_taps(
     StepWalk out{std::nullopt, current_time(), false, false};
     const OverworldInterrupts& watched = step.wild ? interrupts.wild : interrupts.other;
     BikeTapCalls calls;
-    calls.tap = [&]{ return console_bike_tap(console, context, step, watched); };
+    calls.tap = [&](int){ return console_bike_tap(console, context, step, watched, BIKE_TAP_TIMING); };
     calls.clear = [&](size_t index){ watched[index]->clear(console, context); };
     calls.log = [&](const std::string& message){ console.log(message, COLOR_ORANGE); };
+    const StepOutcome outcome = count_bike_taps(step, calls);
+    out.stopped = outcome.walked;
+    out.blocked = outcome.blocked;
+    return out;
+}
+
+//  A leg on foot, a step tap at a time (counts_step_taps()): STEP_TAP
+//  pressed and STEP_TAP_RELEASE let go, past the step's lockout, then the
+//  slide off a spinner waited out (step_tap_settle()).
+StepWalk walk_step_taps(
+    ConsoleHandle& console, ProControllerContext& context,
+    const RouteStep& step, const OverworldInterruptSet& interrupts
+){
+    StepWalk out{std::nullopt, current_time(), false, false};
+    const OverworldInterrupts& watched = step.wild ? interrupts.wild : interrupts.other;
+    BikeTapCalls calls;
+    calls.tap = [&](int tap){
+        const TapTiming timing{STEP_TAP, STEP_TAP_RELEASE, step_tap_settle(step, tap)};
+        return console_bike_tap(console, context, step, watched, timing);
+    };
+    calls.clear = [&](size_t index){ watched[index]->clear(console, context); };
+    calls.log = [&](const std::string& message){ console.log(message, COLOR_ORANGE); };
+    calls.tries = STEP_TAP_TRIES;
     const StepOutcome outcome = count_bike_taps(step, calls);
     out.stopped = outcome.walked;
     out.blocked = outcome.blocked;
@@ -264,9 +296,14 @@ StepOutcome walk_and_watch(
     clear_open_message(console, context, step.wild ? interrupts.wild : interrupts.other, step);
     check_overworld(console, context, step);
     const LegRecorder recorder(console, context, interrupts, step);
-    const StepWalk walked = counts_bike_taps(step, speed)
-        ? walk_bike_taps(console, context, step, interrupts)
-        : walk_step(console, context, step, facing, interrupts, speed);
+    StepWalk walked;
+    if (counts_step_taps(step)){
+        walked = walk_step_taps(console, context, step, interrupts);
+    }else if (counts_bike_taps(step, speed)){
+        walked = walk_bike_taps(console, context, step, interrupts);
+    }else{
+        walked = walk_step(console, context, step, facing, interrupts, speed);
+    }
     if (walked.stopped){
         return StepOutcome{.end = StepEnd::STOPPED, .walked = walked.stopped, .blocked = walked.blocked};
     }

@@ -212,6 +212,44 @@ UnitTestResult test_coded_spinners(){
     return true;
 }
 
+//  00.31's taps through B3F's arrow floor (frlg-00.31.plan.json's
+//  b3f_arrow_maze, pokeguy's way) on the sim, from the stairs (18, 2)
+//  to below the stairs to B4F (15, 19): as planned, and with each of the
+//  turns the taps make dropped in turn (a tap facing another way only
+//  turns the player, and a dropped one doesn't even turn them).
+UnitTestResult test_b3f_maze_taps(){
+    using Pokemon::StoryLeg;
+    const std::vector<StoryLeg> legs{
+        {Direction::WEST, 6}, {Direction::SOUTH, 5}, {Direction::WEST, 7}, {Direction::SOUTH, 2}, {Direction::WEST, 1},
+        {Direction::SOUTH, 2}, {Direction::WEST, 2}, {Direction::SOUTH, 3}, {Direction::WEST, 3}, {Direction::SOUTH, 2},
+        {Direction::EAST, 2}, {Direction::WEST, 2}, {Direction::SOUTH, 5}, {Direction::EAST, 10}, {Direction::NORTH, 6},
+    };
+    const std::vector<MapData>& maps = story_maps();
+    const MapPosition start{"RocketHideout_B3F", {18, 2}};
+    const MapPosition goal{"RocketHideout_B3F", {15, 19}};
+    std::optional<std::vector<RouteStep>> route = fixed_route(maps, start, legs);
+    if (!route || !(route->back().end == goal)){
+        return std::string("The legs don't end below B3F's stairs to B4F.");
+    }
+    for (RouteStep& step : *route){
+        step.tapped = true;
+    }
+    for (int dropped = 0; dropped <= (int)legs.size(); dropped++){
+        SimScript script;
+        if (dropped > 0){
+            script.dropped_turn_taps = {dropped};
+        }
+        OverworldSim sim(maps, start, Direction::EAST, script);
+        OverworldSimWalker walker(sim);
+        const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = start, .label = "Sim"};
+        const std::string failure = walker.run(*route, planning);
+        if (!failure.empty() || !(sim.state().position == goal)){
+            return std::format("With turn tap {} dropped, walked to {}, failure \"{}\".", dropped, to_string(sim.state().position), failure);
+        }
+    }
+    return true;
+}
+
 struct AutoStoryHideoutBodyInput{
     std::string name;
     UnitTestResult (*body)();
@@ -250,6 +288,10 @@ const AutoStoryHideoutBodyCase HIDEOUT_BODY_CASES[] = {
     {
         .input = {.name = "coded spinners", .body = test_coded_spinners},
         .expectation = {.description = "B2F's and B3F's arrows come from code, not the map"},
+    },
+    {
+        .input = {.name = "B3F's arrow floor a tap at a time", .body = test_b3f_maze_taps},
+        .expectation = {.description = "below the stairs to B4F, with any one turn dropped"},
     },
 };
 

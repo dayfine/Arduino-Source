@@ -16,6 +16,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldReanchor.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecoveryWalk.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSpin.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
 #include "PokemonFRLG_AutoStoryAbilities.h"
 #include "PokemonFRLG_AutoStoryBattleData.h"
@@ -166,7 +167,12 @@ Outcome walk_legs(StoryEnv& env, RunState& state, const StoryStep& step){
     if (!facing){
         facing = face_a_wall(env, start);
     }
-    const std::optional<std::vector<RouteStep>> route = fixed_route(story_maps(), start, step.legs);
+    std::optional<std::vector<RouteStep>> route = fixed_route(story_maps(), start, step.legs);
+    if (route && step.variant == TAPS_VARIANT){
+        for (RouteStep& leg : *route){
+            leg.tapped = true;
+        }
+    }
     if (!facing || !route || route->empty()){
         return Pokemon::outcome_failed("bad_legs", to_string(start));
     }
@@ -439,6 +445,24 @@ void add_start_pose_check(
     add_start_check(checkpoint, start, std::move(reader), std::move(log));
 }
 
+namespace{
+
+//  A leg's step onto a spinner: only its last (`last`), which slides
+//  `player` on to where the slide ends, facing its way (spin_slide()).
+//  False mid-leg, or for a slide that loops or leaves through a warp.
+bool land_on_spinner(const MapData& map, PlayerState& player, bool last, RouteStep& step){
+    const std::optional<SpinSlide> slide = spin_slide(map, player);
+    if (!last || !slide){
+        return false;
+    }
+    player = slide->end;
+    step.spin_tiles = slide->tiles;
+    step.facing_after = slide->facing;
+    return true;
+}
+
+}
+
 std::optional<std::vector<RouteStep>> fixed_route(
     const std::vector<MapData>& maps, const MapPosition& start, const std::vector<StoryLeg>& legs
 ){
@@ -467,8 +491,11 @@ std::optional<std::vector<RouteStep>> fixed_route(
             }
             step.wild |= is_tall_grass(*map, next);
             player = after_step(*map, player, leg.direction, kind);
+            if (spin_direction(*map, player.position) && !land_on_spinner(*map, player, c + 1 == leg.tiles, step)){
+                return std::nullopt;
+            }
         }
-        step.to_wall = classify_step(*map, player, leg.direction) == StepKind::BLOCKED;
+        step.to_wall = !step.spin_tiles && classify_step(*map, player, leg.direction) == StepKind::BLOCKED;
         step.end = MapPosition{map->name, player.position};
         route.push_back(step);
     }

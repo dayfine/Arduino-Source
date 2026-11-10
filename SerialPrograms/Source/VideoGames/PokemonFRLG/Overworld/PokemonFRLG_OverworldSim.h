@@ -553,6 +553,9 @@ private:
     //  count_bike_taps() on the sim.
     StepOutcome walk_bike_taps(const RouteStep& step);
     BikeTap bike_tap(const RouteStep& step);
+    //  count_bike_taps() on foot (counts_step_taps()).
+    StepOutcome walk_step_taps(const RouteStep& step);
+    BikeTap step_tap(const RouteStep& step, int tap);
     std::optional<WalkedTiles> late_stop(const RouteStep& step);
     //  stop_tiles(); without SimWalkerRules::whole_leg_in_dark, the dark
     //  screen places the stop at the hold's start.

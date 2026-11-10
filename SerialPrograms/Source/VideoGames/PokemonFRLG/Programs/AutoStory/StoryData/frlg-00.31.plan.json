@@ -59,11 +59,25 @@
         "why": "west to (21, 4), a tile short of the Grunt's north line (20, 4..5), and up column 21 to the wall, onto the stairs (21, 2), whose warp is a step east"
       },
       {
+        "id": "b3f_off_stairs",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "RocketHideout_B3F", "where": {"facing": "east", "kind": "tiles", "tiles": [[18, 2]]}},
+        "variant": "run",
+        "why": "east off the stairs (21, 2) to B3F, onto its stairs (18, 2)"
+      },
+      {
+        "id": "b3f_arrow_maze",
+        "kind": "legs",
+        "variant": "taps",
+        "legs": [{"direction": "west", "tiles": 6}, {"direction": "south", "tiles": 5}, {"direction": "west", "tiles": 7}, {"direction": "south", "tiles": 2}, {"direction": "west", "tiles": 1}, {"direction": "south", "tiles": 2}, {"direction": "west", "tiles": 2}, {"direction": "south", "tiles": 3}, {"direction": "west", "tiles": 3}, {"direction": "south", "tiles": 2}, {"direction": "east", "tiles": 2}, {"direction": "west", "tiles": 2}, {"direction": "south", "tiles": 5}, {"direction": "east", "tiles": 10}, {"direction": "north", "tiles": 6}],
+        "why": "pokeguy's way through the arrow floor (video 56:39-56:50), a tap a tile: west along the top corridor and down column 12 to row 7, west to (5, 7), down to (5, 9) between the arrows; west onto (4, 9), which slides to the stop (2, 9); south onto (2, 11), which slides east to the stop (6, 11); west to (4, 11), down column 4 to (4, 14), west to the wall (1, 14), down to (1, 16); east onto (3, 16), which slides east and, turned by (7, 16), south to the stop (7, 20); west to (5, 20), down column 5 to row 25, east to column 15 and up to (15, 19), below the stairs to B4F (15, 18). He detours to the BLACKGLASSES on the way down column 5; we don't."
+      },
+      {
         "id": "hideout_b4f_west",
         "kind": "route",
         "target": {"certainty": "tile", "map": "RocketHideout_B4F", "where": {"facing": "west", "kind": "tiles", "tiles": [[5, 3]]}},
         "variant": "run",
-        "why": "east off the stairs to B3F, B3F to B4F (15, 18), round to (5, 3), east of the tile below the Grunt (4, 2)"
+        "why": "up onto the stairs (15, 18) to B4F (11, 15), round to (5, 3), east of the tile below the Grunt (4, 2)"
       },
       {
         "id": "key_grunt_line",
@@ -91,11 +105,25 @@
         "why": "pick up the LIFT KEY (pokeguy 57:33)"
       },
       {
+        "id": "b3f_from_b4f",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "RocketHideout_B3F", "where": {"facing": "west", "kind": "tiles", "tiles": [[15, 18]]}},
+        "variant": "run",
+        "why": "back to B4F's stairs (11, 15) and up them to B3F's (15, 18)"
+      },
+      {
+        "id": "b3f_back_to_candy_row",
+        "kind": "legs",
+        "variant": "taps",
+        "legs": [{"direction": "south", "tiles": 2}, {"direction": "west", "tiles": 5}, {"direction": "north", "tiles": 6}],
+        "why": "pokeguy's way back (video 57:39-57:42), a tap a tile: down to row 20, west to column 10, up it onto the arrow (10, 14), which slides a tile north to the stop (10, 13)"
+      },
+      {
         "id": "beside_b3f_rare_candy",
         "kind": "route",
         "target": {"certainty": "tile", "map": "RocketHideout_B3F", "where": {"facing": "north", "kind": "tiles", "tiles": [[12, 13]]}},
         "variant": "run",
-        "why": "back up the stairs to B3F, below the Rare Candy (12, 12) beside the arrow tiles"
+        "why": "east along row 13 to the wall, below the Rare Candy (12, 12)"
       },
       {
         "id": "b3f_rare_candy",
