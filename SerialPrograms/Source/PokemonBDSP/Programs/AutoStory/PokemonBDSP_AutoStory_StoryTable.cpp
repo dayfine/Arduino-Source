@@ -683,10 +683,17 @@ StoryCheckpoint oreburgh_to_route_203(){
             "west along the street, north up the stairs west of the houses, west along the Gate's row", "town"),
         step_into("barrys_trigger", WEST, "the trigger (6, 12..15)"),
         scene("barry_bumps_into_us", at(OREBURGH, 5, 13, EAST), "Barry runs into us, talks of Eterna, and leaves (assumed: the push)"),
-        //  Straight west from where Barry leaves us into the Gate's mouth
-        //  (1, 13), running until the fade; the warp's other end is the
-        //  Gate's (27, 22), beside its east mouth. Not an open walk to the
-        //  tile beside the mouth and then a tap: that walk slid onto the warp
+        //  Where the push leaves us is assumed: a row up or down, the run
+        //  west below missed the mouth. South to the wall, row 17, and west
+        //  to it, column 2, from any of those tiles; then taps up to the
+        //  mouth's row.
+        anchored(to_walls("below_the_gates_mouth", {{.direction = SOUTH, .tiles = 6}, {.direction = WEST, .tiles = 6}},
+            "south to row 17's wall, then west to column 2's"), at(OREBURGH, 2, 17, WEST)),
+        legs("to_the_gates_row", {{.direction = NORTH, .tiles = 4}}, "taps up column 2 to the mouth's row 13"),
+        //  West from there into the Gate's mouth (1, 13), running until
+        //  the fade; the warp's other end is the Gate's (27, 22), beside
+        //  its east mouth. Not an open walk to the tile beside the mouth
+        //  and then a tap: that walk slid onto the warp
         //  (screen change 177 at 1.6 s), the banner came and went unwatched,
         //  and the tap step took the Gate's dim floor for its fade and waited
         //  for a banner already gone (lab-B, 2026-11-08 15:31, 15:39, 15:47,
