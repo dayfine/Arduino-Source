@@ -61,7 +61,7 @@ public:
     virtual void begin_attempt(const StoryCheckpoint& data);
 
     //  Does `step`, from the run so far.
-    virtual Outcome run(RunState& state, const StoryStep& step) = 0;
+    virtual Outcome run(const StoryStep& step, RunState& state) = 0;
 
     //  Whether the condition named in a step's skip_if holds: by default,
     //  whether the run has the flag (set by an earlier step's action).

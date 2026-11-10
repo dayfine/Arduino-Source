@@ -14,6 +14,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Data/PokemonBDSP_AutoStory_StoryWorld.h"
+#include "Data/PokemonBDSP_AutoStory_WalkRules.h"
 #include "PokemonBDSP_AutoStory_StoryWorld_Tests.h"
 
 namespace PokemonAutomation{
