@@ -1467,22 +1467,27 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Navigation/Pokemon_RouteLogTypes.h
     Source/Pokemon/Navigation/Pokemon_WallRecovery.h
     Source/Pokemon/Navigation/Pokemon_WallRecovery_Tests.cpp
+    Source/Pokemon/Navigation/Pokemon_WallRecovery_Tests.h
     Source/Pokemon/Navigation/Pokemon_LegPlanner.h
     Source/Pokemon/Navigation/Pokemon_LegPlanner_Tests.cpp
+    Source/Pokemon/Navigation/Pokemon_LegPlanner_Tests.h
     Source/Pokemon/Navigation/Pokemon_LegWalker.cpp
     Source/Pokemon/Navigation/Pokemon_LegWalker.h
     Source/Pokemon/Navigation/Pokemon_LegWalker_Tests.cpp
+    Source/Pokemon/Navigation/Pokemon_LegWalker_Tests.h
     Source/Pokemon/Navigation/Pokemon_MapData.cpp
     Source/Pokemon/Navigation/Pokemon_MapData.h
     Source/Pokemon/Navigation/Pokemon_MapData_Tests.cpp
+    Source/Pokemon/Navigation/Pokemon_MapData_Tests.h
     Source/Pokemon/Navigation/Pokemon_RuntimeMap.cpp
     Source/Pokemon/Navigation/Pokemon_RuntimeMap.h
     Source/Pokemon/Navigation/Pokemon_RuntimeMap_Tests.cpp
     Source/Pokemon/Navigation/Pokemon_RuntimeMap_Tests.h
-    Source/Pokemon/Navigation/Pokemon_Navigation_Tests.h
+    Source/Pokemon/Navigation/Pokemon_NavigationTestMaps.h
     Source/Pokemon/Navigation/Pokemon_RouteLog.cpp
     Source/Pokemon/Navigation/Pokemon_RouteLog.h
     Source/Pokemon/Navigation/Pokemon_RouteLog_Tests.cpp
+    Source/Pokemon/Navigation/Pokemon_RouteLog_Tests.h
     Source/Pokemon/Options/Pokemon_BoxSortingTable.cpp
     Source/Pokemon/Options/Pokemon_BoxSortingTable.h
     Source/Pokemon/Options/Pokemon_EncounterBotOptions.h
@@ -1518,6 +1523,7 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_AutoStoryStats.cpp
     Source/Pokemon/AutoStory/Pokemon_AutoStoryStats.h
     Source/Pokemon/AutoStory/Pokemon_AutoStoryStats_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_AutoStoryStats_Tests.h
     Source/Pokemon/AutoStory/Pokemon_AutoStory_Tests.h
     Source/Pokemon/AutoStory/Pokemon_BuiltinStoryActions.cpp
     Source/Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h
@@ -1527,14 +1533,17 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_StoryEvents.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryEvents.h
     Source/Pokemon/AutoStory/Pokemon_StoryEvents_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryEvents_Tests.h
     Source/Pokemon/AutoStory/Pokemon_StoryLog.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryLog.h
     Source/Pokemon/AutoStory/Pokemon_StoryLog_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryLog_Tests.h
     Source/Pokemon/AutoStory/Pokemon_StoryOutcome.h
     Source/Pokemon/AutoStory/Pokemon_StoryPose.h
     Source/Pokemon/AutoStory/Pokemon_StorySegments.cpp
     Source/Pokemon/AutoStory/Pokemon_StorySegments.h
     Source/Pokemon/AutoStory/Pokemon_StorySegments_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_StorySegments_Tests.h
     Source/Pokemon/AutoStory/Pokemon_StoryStepExecutor.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryStepExecutor.h
     Source/Pokemon/AutoStory/Pokemon_StoryStepExecutor_Tests.cpp
