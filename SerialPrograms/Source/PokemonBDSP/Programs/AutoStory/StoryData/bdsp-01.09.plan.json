@@ -91,5 +91,8 @@
     "saves_in": "Ravaged Path"
   },
   "format": "pokesim-authored-checkpoint/1",
-  "game": "bdsp"
+  "game": "bdsp",
+  "metadata": {
+    "phase": "testing"
+  }
 }

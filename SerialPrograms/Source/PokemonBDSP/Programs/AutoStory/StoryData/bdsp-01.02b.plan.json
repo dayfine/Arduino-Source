@@ -110,5 +110,8 @@
   "execution": {
     "on_failure": "reload_and_retry",
     "saves_in": "Oreburgh City"
+  },
+  "metadata": {
+    "phase": "reproduction"
   }
-}
+}
