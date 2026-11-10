@@ -51,6 +51,9 @@ constexpr int TAPPED_BACK_TILES = 8;
 //  per_open_grass_tile): a wall leg through grass beats an open one unless
 //  it walks this many tiles further.
 constexpr int REPLAN_OPEN_GRASS_COST = 12;
+//  How much shorter or longer than the plan's open leg a hold into a
+//  funnel is tried (add_funnel_holds()).
+constexpr size_t FUNNEL_SLIDE = 2;
 
 //  The costs plan_fastest_route() tries besides the route's own:
 //   -  open legs held from 2 tiles, as long as a held leg may be (a column
@@ -83,21 +86,23 @@ std::vector<RobustPlanCosts> other_costs(const RobustPlanCosts& costs){
     return out;
 }
 
-//  Expected time a plan must save to walk back more than the route's own
-//  plan: a run past the goal to a wall and taps back saved 16 s into
-//  Twinleaf, the user's own route there; a second or two elsewhere is not
-//  worth the change of route.
-constexpr double WALK_BACK_WORTH_MS = 5000;
+//  Expected time a plan must save for each tile it walks back beyond the
+//  route's own plan: the user's road route on Route 201 walks back 3
+//  more and saves 24 s; 2 more to save 4.6 s (00.04b to_center_sign) or
+//  10 more to save 10 s (01.05 east_of_barrys_trigger) is not worth the
+//  change of route.
+constexpr double WALK_BACK_WORTH_MS_PER_TILE = 3000;
 
 //  Whether `score` is no worse than the route's own plan's in what the
 //  golden bench checks besides the expected time: its worst time, its
-//  places to be interrupted, its replans, and its backtracking (replans
-//  and tiles walked back), unless it saves WALK_BACK_WORTH_MS.
+//  places to be interrupted, its replans, and its tiles walked back
+//  (Pokemon::tiles_walked_back()) unless each extra one saves
+//  WALK_BACK_WORTH_MS_PER_TILE.
 bool no_worse(const Pokemon::RouteScore& score, size_t back, const Pokemon::RouteScore& own, size_t own_back){
     if (score.worst_ms > own.worst_ms || score.recoveries > own.recoveries || score.replans > own.replans){
         return false;
     }
-    return score.replans + back <= own.replans + own_back || own.expected_ms - score.expected_ms >= WALK_BACK_WORTH_MS;
+    return back <= own_back || own.expected_ms - score.expected_ms >= WALK_BACK_WORTH_MS_PER_TILE * (double)(back - own_back);
 }
 
 //  A replanner for the scorer that plans each set of tiles once, for every
@@ -137,6 +142,124 @@ private:
     const ScoredRoute& m_route;
     std::map<std::vector<TilePos>, std::optional<std::vector<ScoredLeg>>, TileLess> m_plans;
 };
+
+Direction opposite(Direction direction){
+    return Direction(((int)direction + 2) % 4);
+}
+
+//  Where every tile of `from` stops walking `direction` to a wall, or
+//  nothing unless each is held at one (WallHit::anchored).
+std::optional<PlannedLeg> wall_leg_from(const StoryWorld& world, const std::vector<TilePos>& from, Direction direction){
+    PlannedLeg out{.leg = {.direction = direction, .tiles = 0, .ends_at_wall = true, .held = false}, .after = {}};
+    for (const TilePos& pos : from){
+        const WallHit hit = slide_to_wall(world, pos, direction);
+        if (!hit.anchored || hit.tiles == 0){
+            return std::nullopt;
+        }
+        out.leg.tiles = std::max(out.leg.tiles, hit.tiles);
+        if (std::find(out.after.begin(), out.after.end(), hit.stop) == out.after.end()){
+            out.after.push_back(hit.stop);
+        }
+    }
+    return out;
+}
+
+//  `legs` with its open leg `index`, from the one tile `from`, run on to
+//  the wall past its end and tapped back: 00.04 into_twinleaf, "south 33"
+//  tapped (26.5 s) or run south 37 to the wall and 4 taps north (10.2 s).
+std::optional<std::vector<PlannedLeg>> overshoot_to_wall(
+    const StoryWorld& world, const TilePos& from, const std::vector<PlannedLeg>& legs, size_t index
+){
+    const PlannedLeg& open = legs[index];
+    const std::optional<PlannedLeg> wall = wall_leg_from(world, {from}, open.leg.direction);
+    if (!wall || open.after.size() != 1 || wall->leg.tiles <= open.leg.tiles){
+        return std::nullopt;
+    }
+    const TilePos end = open.after.front();
+    const TilePos stop = wall->after.front();
+    const size_t back = (size_t)(std::abs(stop.x - end.x) + std::abs(stop.y - end.y));
+    if (stop.x != end.x && stop.y != end.y){
+        return std::nullopt;
+    }
+    std::vector<PlannedLeg> out(legs.begin(), legs.begin() + index);
+    out.push_back(*wall);
+    out.push_back({.leg = {.direction = opposite(open.leg.direction), .tiles = back, .ends_at_wall = false, .held = false}, .after = {end}});
+    out.insert(out.end(), legs.begin() + index + 1, legs.end());
+    return out;
+}
+
+//  `legs` up to its open leg `index`, that leg held for its time from the
+//  one tile `from` (it may end a tile short or long), then a run to the
+//  wall across it that stops every end, and a plan on from there (walls
+//  that bring the ends to one tile first): 00.04 along_route_201_road, run
+//  west along the road into the funnel whose walls stop a run north.
+std::optional<std::vector<PlannedLeg>> hold_into_funnel(
+    const ScoredRoute& route, const TilePos& from, const std::vector<PlannedLeg>& legs, size_t index, size_t tiles, Direction across
+){
+    const TileLeg& open = legs[index].leg;
+    const size_t error = open_hold_error(tiles);
+    std::vector<TilePos> ends;
+    TilePos at = from;
+    for (size_t n = 1; n <= tiles + error; n++){
+        const std::optional<TilePos> next = step(route.world, at, open.direction);
+        if (!next || std::abs(next->x - at.x) + std::abs(next->y - at.y) != 1){
+            return std::nullopt;
+        }
+        at = *next;
+        if (n + error >= tiles){
+            ends.push_back(at);
+        }
+    }
+    const std::optional<PlannedLeg> wall = wall_leg_from(route.world, ends, across);
+    if (!wall){
+        return std::nullopt;
+    }
+    const std::optional<std::vector<PlannedLeg>> rest = plan_recovered_route(route.world, wall->after, route.goal, route.costs);
+    if (!rest){
+        return std::nullopt;
+    }
+    std::vector<PlannedLeg> out(legs.begin(), legs.begin() + index);
+    out.push_back({.leg = {.direction = open.direction, .tiles = tiles, .ends_at_wall = false, .held = true}, .after = ends});
+    out.push_back(*wall);
+    out.insert(out.end(), rest->begin(), rest->end());
+    return out;
+}
+
+//  hold_into_funnel() for open leg `index` held a little shorter or longer
+//  than the plan has it, to end where a funnel catches every end: 00.04's
+//  road plan taps 16 west, the funnel is 17.
+void add_funnel_holds(std::vector<std::vector<PlannedLeg>>& out,
+    const ScoredRoute& route, const TilePos& from, const std::vector<PlannedLeg>& legs, size_t index
+){
+    const TileLeg& leg = legs[index].leg;
+    for (size_t tiles = leg.tiles > FUNNEL_SLIDE + 2 ? leg.tiles - FUNNEL_SLIDE : 2; tiles <= leg.tiles + FUNNEL_SLIDE; tiles++){
+        for (Direction across : {Direction((int(leg.direction) + 1) % 4), Direction((int(leg.direction) + 3) % 4)}){
+            if (std::optional<std::vector<PlannedLeg>> legs_out = hold_into_funnel(route, from, legs, index, tiles, across)){
+                out.push_back(std::move(*legs_out));
+            }
+        }
+    }
+}
+
+//  Plans made from `legs` the way a player runs: each open leg from a
+//  known tile run on to a wall and tapped back, or held into a wall that
+//  re-localizes it. The search over sets of tiles (RobustSearch) seldom
+//  finds these within its budget once holds are allowed.
+std::vector<std::vector<PlannedLeg>> run_variants(const ScoredRoute& route, const std::vector<PlannedLeg>& legs){
+    std::vector<std::vector<PlannedLeg>> out;
+    std::vector<TilePos> at = route.from;
+    for (size_t i = 0; i < legs.size(); i++){
+        const TileLeg& leg = legs[i].leg;
+        if (!leg.ends_at_wall && !leg.held && at.size() == 1){
+            if (std::optional<std::vector<PlannedLeg>> legs_out = overshoot_to_wall(route.world, at.front(), legs, i)){
+                out.push_back(std::move(*legs_out));
+            }
+            add_funnel_holds(out, route, at.front(), legs, i);
+        }
+        at = legs[i].after;
+    }
+    return out;
+}
 
 Pokemon::RouteScore score_with(const ScoredRoute& route, const std::vector<PlannedLeg>& legs, const Pokemon::RouteReplanner& replan){
     return Pokemon::score_route(route_score_map(route.world, route.triggers), route.from, route.goal,
@@ -247,16 +370,18 @@ std::optional<std::vector<PlannedLeg>> plan_fastest_route(const ScoredRoute& rou
     const bool own_passes = own.verdict == Pokemon::RouteVerdict::PASS;
     const size_t own_back = Pokemon::tiles_walked_back(route_scored_legs(*best, route.speed));
     double best_ms = own_passes ? own.expected_ms : -1;
+    std::vector<std::vector<PlannedLeg>> candidates = run_variants(route, *best);
     for (const RobustPlanCosts& costs : other_costs(route.costs)){
-        std::optional<std::vector<PlannedLeg>> legs = plan_recovered_route(route.world, route.from, route.goal, costs);
-        if (!legs){
-            continue;
+        if (std::optional<std::vector<PlannedLeg>> legs = plan_recovered_route(route.world, route.from, route.goal, costs)){
+            candidates.push_back(std::move(*legs));
         }
-        const Pokemon::RouteScore score = score_with(route, *legs, replan);
+    }
+    for (std::vector<PlannedLeg>& legs : candidates){
+        const Pokemon::RouteScore score = score_with(route, legs, replan);
         if (score.verdict != Pokemon::RouteVerdict::PASS || (best_ms >= 0 && score.expected_ms >= best_ms)){
             continue;
         }
-        if (own_passes && !no_worse(score, Pokemon::tiles_walked_back(route_scored_legs(*legs, route.speed)), own, own_back)){
+        if (own_passes && !no_worse(score, Pokemon::tiles_walked_back(route_scored_legs(legs, route.speed)), own, own_back)){
             continue;
         }
         best = std::move(legs);

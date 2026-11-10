@@ -36,11 +36,14 @@ struct WallHit{
 WallHit slide_to_wall(const StoryWorld& world, const Pokemon::TilePos& from, Pokemon::Direction direction);
 
 
-//  How many tiles short or long a timed hold of `tiles` tiles may end: one,
-//  and one more every 5 tiles (on the console a 7-tile walk went 9).
-//  Measured walking only; a run is assumed the same. BDSP's one model of a
-//  timed hold's error, for the planner and the route scorer
-//  (route_score_paces()).
+//  How many tiles short or long a timed hold of `tiles` tiles may end: one.
+//  On lab-B (2026-11-09, Route 202's lawn, the stick held west, then taps
+//  back to the wall counting the taps), holds of 200 to 1200 ms moved 2,
+//  3, 3, 5, 7, 7, 7, 8 and 9 tiles, each the same on every try (600 ms: 5
+//  of 5, with or without B): the error is the rounding of the time to a
+//  tile, not a drift that grows. Holds of 15 to 30 tiles are not measured
+//  yet. BDSP's one model of a timed hold's error, for the planner and the
+//  route scorer (route_score_paces()).
 size_t open_hold_error(size_t tiles);
 
 //  A straight run in one direction.
@@ -116,7 +119,7 @@ std::string to_string(const PlannedLeg& leg);
 //  Cost configuration parameters accounting for movement execution tolerances.
 struct RobustPlanCosts : TilePlanCosts{
     //  An open leg of n tiles may end open_hold_error(n) tiles
-    //  short or long: on the console 7 tiles went 9.
+    //  short or long.
     //  Open legs this many tiles or shorter land exactly: a short hold moves
     //  whole tiles. 0 keeps every open leg uncertain.
     int exact_open_tiles = 0;

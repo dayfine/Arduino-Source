@@ -507,8 +507,8 @@ private:
 
 } // namespace
 
-size_t open_hold_error(size_t tiles){
-    return 1 + tiles / 5;
+size_t open_hold_error(size_t){
+    return 1;
 }
 
 std::optional<std::vector<PlannedLeg>> plan_robust_route(

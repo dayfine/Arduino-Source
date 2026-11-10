@@ -79,10 +79,12 @@ std::vector<Pokemon::TilePos> blocked_stop_tiles(
 //  a few others (open legs held, costs shaped like the time, open legs
 //  dear in grass), the one the scorer passes in the least expected time.
 //  If the plan with the route's own costs passes, the one picked is no
-//  worse than it in worst time, places to be interrupted or replans, nor
-//  walks back more (tiles opposite to an earlier leg; a planned stop at a
-//  wall is not backtracking) unless that saves 5 s. The first if none
-//  passes; nothing if none plans.
+//  worse than it in worst time, places to be interrupted or replans, and
+//  walks back no more (Pokemon::tiles_walked_back(): a planned stop at a
+//  wall and the taps back from it are not) unless each extra tile saves 3
+//  seconds. Besides the searches, it tries each
+//  open leg run on to the wall and tapped back, and held into a wall
+//  across it. The first if none passes; nothing if none plans.
 std::optional<std::vector<PlannedLeg>> plan_fastest_route(const ScoredRoute& route);
 
 //  The plan walk_route() walks: a step's `first` plan is

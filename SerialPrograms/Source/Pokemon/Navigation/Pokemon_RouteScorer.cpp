@@ -34,6 +34,9 @@ size_t tiles_walked_back(const std::vector<ScoredLeg>& legs){
     size_t tiles = 0;
     for (size_t i = 0; i < legs.size(); i++){
         const Direction back = Direction(((int)legs[i].direction + 2) % 4);
+        if (i > 0 && legs[i - 1].kind == ScoredLegKind::TO_WALL && legs[i - 1].direction == back){
+            continue;
+        }
         for (size_t j = 0; j < i; j++){
             if (legs[j].direction == back){
                 tiles += legs[i].tiles;

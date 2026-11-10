@@ -72,8 +72,9 @@ struct ScoredLeg{
 std::string to_string(const ScoredLeg& leg);
 
 //  Tiles `legs` walk back: each leg opposite to a leg before it. A planned
-//  stop at a wall re-localizes and is not counted; running past the goal
-//  to a wall and tapping back is.
+//  stop at a wall re-localizes and is not counted, nor are the taps back
+//  from it right after (running past the goal to a wall and tapping back,
+//  as the user walks into Twinleaf).
 size_t tiles_walked_back(const std::vector<ScoredLeg>& legs);
 
 //  The game's measured times. The game sets every field.
