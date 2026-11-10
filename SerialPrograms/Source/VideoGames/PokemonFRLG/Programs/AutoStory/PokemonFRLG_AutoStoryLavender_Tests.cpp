@@ -15,6 +15,7 @@
 #include <format>
 #include <functional>
 #include <map>
+#include <memory>
 #include <numeric>
 #include <optional>
 #include <random>
@@ -709,6 +710,47 @@ UnitTestResult test_celadon_save_place(Logger&){
     return true;
 }
 
+//  00.31 on the sim: out of Celadon's Center, the Game Corner's poster
+//  Grunt, the switch, the Rocket Hideout down to B4F's Lift Key Grunt, the
+//  LIFT KEY, and back up to B3F below its Rare Candy.
+//  A battle a talk starts (the poster Grunt's) is the sim's to skip: it
+//  leaves the player where the plan says, and the trainer walks off
+//  (talk_battle_hide_flag()).
+UnitTestResult test_hideout_row(Logger&){
+    const StoryCheckpoint& row = checkpoint("00.31");
+    StoryPose at = *story_pose(*row.start);
+    std::vector<MapData> maps = maps_after_route10();
+    auto sim = std::make_unique<OverworldSim>(maps, MapPosition{at.map, at.tile}, *at.facing);
+    std::vector<std::string> fought;
+    for (const StoryStep& step : row.steps){
+        const std::optional<std::string> hidden = talk_battle_hide_flag(step);
+        if (!hidden){
+            if (const std::string failure = row_step_on_sim(*sim, at, step, row.id); !failure.empty()){
+                return "00.31: ended on " + to_string(sim->state().position) + "; " + failure;
+            }
+            continue;
+        }
+        at = *story_pose(*step.pose_after);
+        for (MapData& map : maps){
+            hide_objects(map, {*hidden});
+        }
+        fought = sim->state().trainers_beaten;
+        sim = std::make_unique<OverworldSim>(maps, MapPosition{at.map, at.tile}, *at.facing);
+    }
+    fought.insert(fought.end(), sim->state().trainers_beaten.begin(), sim->state().trainers_beaten.end());
+    if (fought != std::vector<std::string>{"rocket_m"}){
+        return std::format("00.31: fought {} trainers on the sim, not the Lift Key Grunt alone.", fought.size());
+    }
+    if (!sim->state().violations.empty()){
+        return "00.31: a violation on the way: " + sim->state().violations.back();
+    }
+    const MapPosition end{"RocketHideout_B3F", {12, 13}};
+    if (!(sim->state().position == end)){
+        return "00.31: ended on " + to_string(sim->state().position) + ", not " + to_string(end) + ".";
+    }
+    return true;
+}
+
 } // namespace
 
 
@@ -731,6 +773,7 @@ const AutoStoryLavenderCase AUTO_STORY_LAVENDER_CASES[] = {
     {.input = {"00.30 a wild battle on the step into Route 7's grass", test_route7_grass_battles}, .expectation = {}},
     {.input = {"00.30 Route 8 west from a start up to 3 tiles off", test_route8_west_off_start}, .expectation = {}},
     {.input = {"00.30 saves in Celadon City's Pokemon Center", test_celadon_save_place}, .expectation = {}},
+    {.input = {"00.31 the Game Corner's poster, the Rocket Hideout to B4F's LIFT KEY and B3F's Rare Candy", test_hideout_row}, .expectation = {}},
 };
 
 void add_tests_AutoStoryLavender(UnitTestDatabase& database){

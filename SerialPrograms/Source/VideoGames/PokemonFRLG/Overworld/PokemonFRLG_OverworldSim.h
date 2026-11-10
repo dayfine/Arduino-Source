@@ -42,10 +42,14 @@
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Pokemon/AutoStory/Pokemon_ScreenEvents.h"
 #include "PokemonFRLG_MovementMechanics.h"
+#include "PokemonFRLG_BikeSpinPresses.h"
+#include "PokemonFRLG_BikeSpinMechanics.h"
 #include "PokemonFRLG_OverworldBikeTaps.h"
 #include "PokemonFRLG_OverworldRecovery.h"
 #include "PokemonFRLG_OverworldRoute.h"
+#include "PokemonFRLG_OverworldSimField.h"
 #include "PokemonFRLG_OverworldWalk.h"
+#include "PokemonFRLG_OverworldSpin.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -236,26 +240,6 @@ enum class SimBattleEnd{
     NO_BATTLE,      //  there was none, on screen or about to show
 };
 
-//  What A does on the overworld, facing something (OverworldSim::use_field()).
-enum class SimField{
-    //  Cuts the tree the player faces (an object named "cut_tree") with
-    //  YES to the game's question: it is gone until the player next warps,
-    //  as its hide flag is a FLAG_TEMP.
-    CUT_TREE,
-    //  The poster the player faces (an object named "poster"): the switch
-    //  behind it opens the stairs, which takes away the objects named
-    //  "poster_stairs" for good (pokefirered
-    //  CeladonCity_GameCorner_EventScript_Poster's setmetatile). The sim
-    //  adds both to the Game Corner from code (add_coded_objects()).
-    POSTER_SWITCH,
-    //  The panel of the lift the player stands in (SimScript::lift_floors):
-    //  the floor picked, the lift's door now lets out there.
-    LIFT_FLOOR,
-    //  Not A: SELECT, which with the Bicycle registered gets on it where
-    //  running is allowed, or off it, in about
-    //  MovementMechanics::BIKE_SELECT_TIME. (PokemonFRLG_OverworldSimTaps.cpp)
-    BIKE_SELECT,
-};
 
 //  Simulates overworld movement, encounters and dialogs.
 class OverworldSim{
@@ -617,12 +601,6 @@ private:
 void add_tests_OverworldSim(UnitTestDatabase& database);
 //  Register the tests of a warp's fade over before the hold onto it ends.
 void add_tests_OverworldWarpFade(UnitTestDatabase& database);
-//  Register the tests of spinner tiles, the lift's panel and the poster
-//  switch on made-up maps.
-void add_tests_OverworldSpin(UnitTestDatabase& database);
-//  Register the tests of the Bicycle's taps and SELECT on a made-up map.
-void add_tests_OverworldBike(UnitTestDatabase& database);
-
 
 
 } // namespace PokemonFRLG

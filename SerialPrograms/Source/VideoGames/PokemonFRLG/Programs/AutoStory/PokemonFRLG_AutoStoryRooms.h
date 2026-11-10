@@ -47,19 +47,6 @@ struct RoomLeg{
     int tiles = 0;
     bool warps = false;
 };
-//  Into a Center: north through the door, north 4 to the nurse.
-const std::vector<RoomLeg>& center_enter_legs();
-//  Out of a Center: south 4 to the mat, south through the door.
-const std::vector<RoomLeg>& center_exit_legs();
-//  Into the hideout's lift, from below a floor's lift door facing north:
-//  north through the door onto LIFT_ARRIVAL, north 2, west 2 to below the
-//  panel (LIFT_PANEL_FRONT), facing it.
-const std::vector<RoomLeg>& lift_in_legs();
-//  Out of the lift, from below the panel: east 2, south 2 onto the arrow
-//  warp, south through it, onto the floor picked's lift door.
-const std::vector<RoomLeg>& lift_out_legs();
-//  The legs of the Center's step `variant`; empty if it isn't one.
-const std::vector<RoomLeg>& center_legs(std::string_view variant);
 
 //  On the console: the legs, a step tap a tile (step_once()), each warp's
 //  fade waited out. `facing` is the way the player faces at the start, if
@@ -72,7 +59,6 @@ void walk_room_legs(
 
 //  Registers the scripted rooms' tests.
 void add_tests_AutoStoryRooms(UnitTestDatabase& database);
-
 
 
 } // namespace PokemonFRLG

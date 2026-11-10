@@ -8,11 +8,13 @@
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_CodedRooms.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PokemonCenterRoom.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryRooms.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryTableSteps.h"
+#include "PokemonFRLG_AutoStoryFieldSteps.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -62,7 +64,7 @@ std::string in_and_out(const std::string& town, const std::string& center){
     const MapPosition below_door{town, door.next(Direction::SOUTH)};
     OverworldSim sim(maps, below_door, Direction::NORTH);
     StoryPose at{town, below_door.point, Direction::NORTH};
-    std::string failure = row_step_on_sim(sim, at, StoryTable::center_enter("to_nurse", center.c_str(), "test"), "test");
+    std::string failure = row_step_on_sim(sim, at, StoryTable::center_enter("to_nurse", center, "test"), "test");
     if (!failure.empty()){
         return failure;
     }

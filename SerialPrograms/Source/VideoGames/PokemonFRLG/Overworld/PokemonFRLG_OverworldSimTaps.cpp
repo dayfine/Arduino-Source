@@ -10,6 +10,10 @@
 
 #include <format>
 #include "PokemonFRLG_OverworldSim.h"
+#include "PokemonFRLG_OverworldSimField.h"
+#include "PokemonFRLG_BikeSpinMechanics.h"
+#include "PokemonFRLG_BikeSpinPresses.h"
+#include "PokemonFRLG_OverworldBike.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

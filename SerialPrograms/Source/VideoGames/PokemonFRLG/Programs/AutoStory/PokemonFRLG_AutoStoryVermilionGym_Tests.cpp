@@ -25,6 +25,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSimField.h"
 #include "PokemonFRLG_AutoStoryDamage.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryGrind.h"

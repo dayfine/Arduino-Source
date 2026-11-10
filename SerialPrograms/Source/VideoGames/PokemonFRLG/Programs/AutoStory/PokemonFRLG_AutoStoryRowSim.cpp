@@ -18,8 +18,11 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
 #include "PokemonFRLG_AutoStoryHideout.h"
+#include "PokemonFRLG_AutoStoryHideoutLift.h"
 #include "PokemonFRLG_AutoStoryRooms.h"
+#include "PokemonFRLG_AutoStoryRoomLegs.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSimField.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

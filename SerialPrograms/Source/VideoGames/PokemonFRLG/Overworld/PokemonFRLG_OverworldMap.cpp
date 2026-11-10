@@ -8,6 +8,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "PokemonFRLG_CodedRooms.h"
 #include "PokemonFRLG_OverworldMap.h"
+#include "PokemonFRLG_OverworldSpin.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -231,16 +232,16 @@ StepKind classify_step_onto(
     return StepKind::WALK;
 }
 
-const char SPIN_NORTH_REGION[] = "spin_north";
-const char SPIN_SOUTH_REGION[] = "spin_south";
-const char SPIN_WEST_REGION[] = "spin_west";
-const char SPIN_EAST_REGION[] = "spin_east";
-const char SPIN_STOP_REGION[] = "spin_stop";
-
 namespace{
 
-bool in_region(const MapData& map, const char* region, const TilePos& point){
-    const auto tiles = map.regions.find(region);
+//  The regions a map may list spinner tiles in (PokemonFRLG_OverworldSpin.h).
+constexpr std::string_view SPIN_NORTH_REGION = "spin_north";
+constexpr std::string_view SPIN_SOUTH_REGION = "spin_south";
+constexpr std::string_view SPIN_WEST_REGION = "spin_west";
+constexpr std::string_view SPIN_EAST_REGION = "spin_east";
+constexpr std::string_view SPIN_STOP_REGION = "spin_stop";
+bool in_region(const MapData& map, std::string_view region, const TilePos& point){
+    const auto tiles = map.regions.find(std::string(region));
     return tiles != map.regions.end() && std::find(tiles->second.begin(), tiles->second.end(), point) != tiles->second.end();
 }
 
@@ -250,7 +251,7 @@ std::optional<Direction> spin_direction(const MapData& map, const TilePos& point
     if (const std::optional<Direction> coded = coded_spin_direction(map.name, point)){
         return coded;
     }
-    static const std::pair<const char*, Direction> ARROWS[] = {
+    static const std::pair<std::string_view, Direction> ARROWS[] = {
         {SPIN_NORTH_REGION, Direction::NORTH},
         {SPIN_SOUTH_REGION, Direction::SOUTH},
         {SPIN_WEST_REGION, Direction::WEST},

@@ -14,6 +14,7 @@
 #include "Pokemon/Navigation/Pokemon_LegPlanner.h"
 #include "PokemonFRLG_OverworldMaps.h"
 #include "PokemonFRLG_OverworldRoute.h"
+#include "PokemonFRLG_OverworldSpin.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

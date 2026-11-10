@@ -1,0 +1,59 @@
+/*  AutoStory Bag Use
+ *
+ *  From: https://github.com/PokemonAutomation/
+ *
+ *  Using and registering items from the bag, and renewing a Repel, on
+ *  the console or a test's bag.
+ *
+ */
+
+#ifndef PokemonAutomation_PokemonFRLG_AutoStoryBagUse_H
+#define PokemonAutomation_PokemonFRLG_AutoStoryBagUse_H
+
+#include <string_view>
+#include <vector>
+#include "Common/Cpp/Logging/AbstractLogger.h"
+#include "CommonFramework/Language.h"
+#include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
+#include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
+#include "PokemonFRLG_AutoStoryBag.h"
+
+namespace PokemonAutomation{
+namespace NintendoSwitch{
+namespace PokemonFRLG{
+
+
+//  Opens the item's pocket, finds it and uses it, then back to the
+//  overworld.
+ItemUseEnd use_item_from_bag(Logger& logger, ItemUseActions& actions, std::string_view item);
+
+//  The same, REGISTERing it for SELECT (the Bicycle) instead of USE.
+ItemUseEnd register_item_in_bag(Logger& logger, ItemUseActions& actions, std::string_view item);
+
+//  After "REPEL's effect wore off..." has closed: FRLG asks nothing, so
+//  another of the same Repel is used if the bag has one. NONE_LEFT is no
+//  failure: the walk goes on without.
+ItemUseEnd renew_repel(Logger& logger, ItemUseActions& actions, std::string_view item);
+
+//  The console's bag.
+class ConsoleItemUseActions : public ItemUseActions{
+public:
+    ConsoleItemUseActions(ConsoleHandle& console, ProControllerContext& context, Language language);
+
+    virtual bool open_pocket(BagPocket pocket) override;
+    virtual std::vector<BagRow> read_pocket() override;
+    virtual void use_row(size_t row) override;
+    virtual void register_row(size_t row) override;
+    virtual void close_bag() override;
+
+private:
+    ConsoleHandle& m_console;
+    ProControllerContext& m_context;
+    Language m_language;
+};
+
+
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
+#endif

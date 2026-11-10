@@ -230,8 +230,8 @@ UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& po
 
 UnitTestResult test_routes_and_chain(){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
-    if (checkpoints.size() != 37 || checkpoints[0].start){
-        return "Expected 37 checkpoints, the first from a new game.";
+    if (checkpoints.size() != 38 || checkpoints[0].start){
+        return "Expected 38 checkpoints, the first from a new game.";
     }
     StoryPose pose;
     for (size_t c = 0; c < checkpoints.size(); c++){
@@ -603,7 +603,7 @@ UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<const Map
 //  From the Running Shoes on, routes and legs keep out of the grass (but
 //  in caves, which are all grass, onto a GRIND's or a capture's patch, and on legs held to walls round Route 6's trainers), off warps to maps not loaded and out of
 //  trainers' lines, but for the three Route 3 trainers, Mt. Moon's Grunt
-//  at (12, 20), Nugget Bridge's five, Route 25's four, Route 6's Jeff, Vermilion Gym's three, Route 9's three, Rock Tunnel's eight and Route 8's Rich the table steps
+//  at (12, 20), Nugget Bridge's five, Route 25's four, Route 6's Jeff, Vermilion Gym's three, Route 9's three, Rock Tunnel's eight, Route 8's Rich and the Rocket Hideout's Lift Key Grunt the table steps
 //  in front of to fight; where they cross a wandering trainer's sight, the walk can place
 //  the player if the trainer stops them; and where they cross the sight of
 //  one who looks around, on a leg to a wall.
@@ -618,10 +618,10 @@ UnitTestResult test_trainer_lines(){
         }
         has_shoes = has_shoes || checkpoint.id == "00.10";
     }
-    if (beaten.size() != 29){
+    if (beaten.size() != 30){
         return "Expected to fight Colton, Greg and James on Route 3, the Grunt at (12, 20) in Mt. Moon, Nugget Bridge's five"
             ", Franklin, Kelsey, Nob and Haley on Route 25, Jeff on Route 6, Dwayne, Baily and Tucker in Vermilion Gym, Alicia, Jeremy and Conner on Route 9"
-            ", Ashton, Winston, Martha, Allen, Lenny, Sofia, Dudley and Dana in Rock Tunnel and Rich on Route 8; the table fights "
+            ", Ashton, Winston, Martha, Allen, Lenny, Sofia, Dudley and Dana in Rock Tunnel, Rich on Route 8 and the Lift Key Grunt on B4F; the table fights "
             + std::to_string(beaten.size()) + " trainers.";
     }
     return true;

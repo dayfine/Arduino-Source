@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <map>
 #include "PokemonFRLG_CodedRooms.h"
+#include "PokemonFRLG_HideoutLiftRoom.h"
+#include "PokemonFRLG_PokemonCenterRoom.h"
 #include "PokemonFRLG_OverworldMaps.h"
 
 namespace PokemonAutomation{
@@ -88,7 +90,7 @@ MapObject object(std::string name, Pokemon::ObjectKind kind, const TilePos& tile
 //  *_PokemonCenter_1F.json) all have them. The mat's warps: (6..8, 8),
 //  the middle one MB_SOUTH_ARROW_WARP-like ("walk_south"); the stairs to
 //  2F at (1, 6), which isn't loaded.
-const char CENTER_ROOM_JSON[] = R"({
+constexpr std::string_view CENTER_ROOM_JSON = R"({
     "name": "PokemonCenter_1F",
     "source": {"decomp_file": "data/layouts/PokemonCenter_1F/map.bin", "revision": "ce6406d8c2eaf46d543c8a2606de0c3cb1951982", "date": "2026-11-09"},
     "allow_running": false,
@@ -108,7 +110,7 @@ const char CENTER_ROOM_JSON[] = R"({
 //  walls, 3 to 5 floor), the panel's bg event at (0, 2), and warp 1 at
 //  (2, 5), the one MB_SOUTH_ARROW_WARP tile (warp 0 at (1, 5) has no
 //  behaviour, so never fires).
-const char LIFT_ROOM_JSON[] = R"({
+constexpr std::string_view LIFT_ROOM_JSON = R"({
     "name": "RocketHideout_Elevator",
     "source": {"decomp_file": "data/layouts/RocketHideout_Elevator/map.bin", "revision": "ce6406d8c2eaf46d543c8a2606de0c3cb1951982", "date": "2026-11-09"},
     "tiles": ["#####", "#####", "S####", ".....", ".....", ".....", "#####"],
@@ -165,7 +167,7 @@ bool is_pokemon_center(std::string_view map){
 }
 
 MapData pokemon_center_room(const std::string& name, const Pokemon::WarpDestination& outside){
-    MapData room = parse_map(CENTER_ROOM_JSON, name);
+    MapData room = parse_map(std::string(CENTER_ROOM_JSON), name);
     room.name = name;
     for (MapWarp& warp : room.warps){
         if (warp.y == CENTER_MAT.y){
@@ -192,7 +194,7 @@ std::optional<std::string> add_pokemon_center_room(std::vector<MapData>& maps, s
 
 
 MapData rocket_hideout_lift_room(){
-    return parse_map(LIFT_ROOM_JSON, std::string(LIFT_MAP));
+    return parse_map(std::string(LIFT_ROOM_JSON), std::string(LIFT_MAP));
 }
 
 const std::vector<MapPosition>& rocket_hideout_lift_doors(){

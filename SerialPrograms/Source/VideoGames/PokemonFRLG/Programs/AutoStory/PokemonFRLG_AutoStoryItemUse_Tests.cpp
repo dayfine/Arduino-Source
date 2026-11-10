@@ -14,9 +14,12 @@
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_MovementMechanics.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_BikeSpinMechanics.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryItemUse.h"
+#include "PokemonFRLG_AutoStoryBagUse.h"
+#include "PokemonFRLG_AutoStoryBag.h"
 #include "PokemonFRLG_AutoStoryVariantWords.h"
 
 namespace PokemonAutomation{
@@ -216,7 +219,7 @@ struct AutoStoryItemUseBodyInput{
     UnitTestResult (*body)();
 };
 struct AutoStoryItemUseBodyExpectation{
-    const char* description;
+    std::string description;
 };
 struct AutoStoryItemUseBodyCase{
     AutoStoryItemUseBodyInput input;

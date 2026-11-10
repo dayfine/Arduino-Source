@@ -23,6 +23,9 @@
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "PokemonFRLG_PlayerFacingReader.h"
 #include "PokemonFRLG_OverworldWalk.h"
+#include "PokemonFRLG_OverworldBike.h"
+#include "PokemonFRLG_BikeSpinMechanics.h"
+#include "PokemonFRLG_BikeSpinPresses.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

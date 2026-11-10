@@ -7,18 +7,11 @@
     "start": {"certainty": "tile", "map": "CeladonCity_PokemonCenter_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 4]]}},
     "events": [
       {
-        "id": "out_of_celadon_center",
-        "kind": "game_action",
-        "declared_after": {"certainty": "tile", "map": "CeladonCity", "where": {"facing": "south", "kind": "tiles", "tiles": [[48, 12]]}},
-        "variant": "center_exit",
-        "why": "the Center script out: south to the mat and out of the door (48, 11)"
-      },
-      {
         "id": "celadon_below_game_corner",
         "kind": "route",
         "target": {"certainty": "tile", "map": "CeladonCity", "where": {"facing": "north", "kind": "tiles", "tiles": [[34, 22]]}},
         "variant": "run",
-        "why": "west along row 12, down column 41..43 to row 22, west to below the Game Corner (34, 21)"
+        "why": "out of the Center's door (48, 11) (its ground floor coded, pokemon_center_room()), west along row 12, down column 41..43 to row 22, west to below the Game Corner (34, 21)"
       },
       {
         "id": "below_poster_guard",
@@ -33,10 +26,17 @@
         "why": "the Grunt guarding the poster"
       },
       {
-        "id": "hideout-poster-guard",
+        "id": "rocket_grunt",
         "kind": "battle",
         "declared_after": {"certainty": "tile", "map": "CeladonCity_GameCorner", "where": {"facing": "north", "kind": "tiles", "tiles": [[11, 3]]}},
         "why": "Rocket Grunt (TRAINER_TEAM_ROCKET_GRUNT_7): Raticate, Zubat Lv20; he runs off"
+      },
+      {
+        "id": "below_poster",
+        "kind": "step",
+        "declared_after": {"certainty": "tile", "map": "CeladonCity_GameCorner", "where": {"facing": "north", "kind": "tiles", "tiles": [[11, 2]]}},
+        "direction": "north",
+        "why": "a step north, where the Grunt stood: he walks off east and is removed before the script lets go (CeladonCity_GameCorner_Text_DefeatedGrunt), so the route planner's map still has him; the poster (11, 1) stops the player"
       },
       {
         "id": "poster_switch",
@@ -45,11 +45,25 @@
         "why": "the poster (11, 1): the switch opens the stairs (15, 2)"
       },
       {
+        "id": "b2f_east_of_grunt",
+        "kind": "route",
+        "target": {"certainty": "tile", "map": "RocketHideout_B2F", "where": {"facing": "west", "kind": "tiles", "tiles": [[23, 4]]}},
+        "variant": "run",
+        "why": "the stairs (15, 2) down to B1F, B1F to B2F (28, 2), round east of the turning Grunt (20, 6) (sight 2, all four ways) to (23, 4): the shortest way to B3F's stairs (21, 2) crosses his lines"
+      },
+      {
+        "id": "b2f_to_stairs",
+        "kind": "legs",
+        "variant": "run",
+        "legs": [{"direction": "west", "tiles": 2}, {"direction": "north", "tiles": 2}],
+        "why": "west to (21, 4), a tile short of the Grunt's north line (20, 4..5), and up column 21 to the wall, onto the stairs (21, 2), whose warp is a step east"
+      },
+      {
         "id": "hideout_b4f_west",
         "kind": "route",
         "target": {"certainty": "tile", "map": "RocketHideout_B4F", "where": {"facing": "west", "kind": "tiles", "tiles": [[5, 3]]}},
         "variant": "run",
-        "why": "the stairs (15, 2) down to B1F, B1F to B2F (17, 2), B2F's arrow tiles to B3F (21, 2), B3F to B4F (15, 18), round to (5, 3), east of the tile below the Grunt (4, 2)"
+        "why": "east off the stairs to B3F, B3F to B4F (15, 18), round to (5, 3), east of the tile below the Grunt (4, 2)"
       },
       {
         "id": "key_grunt_line",
@@ -59,7 +73,7 @@
         "why": "onto (4, 3), in the Grunt's line (sight 1)"
       },
       {
-        "id": "hideout-key-grunt",
+        "id": "lift_key_grunt",
         "kind": "battle",
         "declared_after": {"certainty": "tile", "map": "RocketHideout_B4F", "where": {"facing": "west", "kind": "tiles", "tiles": [[4, 3]]}},
         "why": "Rocket Grunt (TRAINER_TEAM_ROCKET_GRUNT_18): Koffing, Zubat Lv21; he drops the LIFT KEY"

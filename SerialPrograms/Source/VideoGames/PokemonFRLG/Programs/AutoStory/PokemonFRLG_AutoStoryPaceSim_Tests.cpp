@@ -19,6 +19,8 @@
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryPaceSim.h"
 #include "PokemonFRLG_AutoStoryPacing.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSimField.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldBike.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

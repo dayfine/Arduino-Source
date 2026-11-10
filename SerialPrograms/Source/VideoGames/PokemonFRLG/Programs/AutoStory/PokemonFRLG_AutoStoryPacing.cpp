@@ -7,7 +7,9 @@
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_MovementMechanics.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_BikeSpinPresses.h"
 #include "PokemonFRLG_AutoStoryPacing.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldBike.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

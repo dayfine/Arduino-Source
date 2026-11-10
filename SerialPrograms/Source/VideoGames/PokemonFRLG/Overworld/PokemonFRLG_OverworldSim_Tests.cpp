@@ -24,6 +24,8 @@
 #include "PokemonFRLG_OverworldLateBattle.h"
 #include "PokemonFRLG_OverworldMaps.h"
 #include "PokemonFRLG_OverworldSim.h"
+#include "PokemonFRLG_OverworldSimField.h"
+#include "PokemonFRLG_OverworldSpin.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
