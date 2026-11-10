@@ -239,7 +239,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     const Pokemon::SegmentReport report = run_segment(
         state, segment, Pokemon::SegmentRange{checkpoints[first].id, checkpoints[last].id}, RUN.policy(), hooks
     );
-    Pokemon::record_story_counts(env.current_stats<Pokemon::AutoStoryStats>(), report.story_counts());
+    Pokemon::record_story_counts(report.story_counts(), env.current_stats<Pokemon::AutoStoryStats>());
     env.update_stats();
     if (!report.completed){
         throw OperationFailedException(
