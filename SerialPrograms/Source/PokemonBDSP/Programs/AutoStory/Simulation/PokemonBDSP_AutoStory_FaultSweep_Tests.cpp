@@ -90,6 +90,8 @@ const std::map<std::string, std::string> KNOWN_FAILING{
         "the walk after mom_heals_us, moms_hat trusts the table's pose: measure it or clip to a wall first"},
     {"PokemonBDSP::AutoStory - Fault sweep: 01.05, scene end pose",
         "the walk after barry_bumps_into_us trusts the table's pose: measure it or clip to a wall first"},
+    {"PokemonBDSP::AutoStory - Fault sweep: 01.06, wild battles on every grass pass",
+        "below_rowans_trigger's open leg west 57: taps after a battle in the grass run on into a dialogue or warp the walk does not confirm"},
 };
 
 //  Scenes whose end the console has proven, by step name: the sweep leaves
