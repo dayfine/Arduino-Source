@@ -23,7 +23,7 @@
 #include "Pokemon/Options/Pokemon_StoryRunOptions.h"
 #include "Pokemon_AutoStorySelect.h"
 #include "Pokemon_StoryEvents.h"
-#include "Pokemon_StoryActions.h"
+#include "Pokemon_BuiltinStoryActions.h"
 #include "Pokemon_StorySegments.h"
 #include "Pokemon_StoryStepExecutor.h"
 #include "Pokemon_TilePose.h"

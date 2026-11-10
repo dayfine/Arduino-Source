@@ -20,7 +20,7 @@
 #include <string_view>
 #include <utility>
 #include "Common/Cpp/Json/JsonObject.h"
-#include "Pokemon/AutoStory/Pokemon_StoryActions.h"
+#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
 
 namespace PokemonAutomation{

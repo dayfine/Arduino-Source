@@ -1,4 +1,4 @@
-/*  Story Actions
+/*  Builtin Story Actions
  *
  *  From: https://github.com/PokemonAutomation/
  *
@@ -6,7 +6,7 @@
 
 #include <utility>
 #include <vector>
-#include "Pokemon_StoryActions.h"
+#include "Pokemon_BuiltinStoryActions.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{

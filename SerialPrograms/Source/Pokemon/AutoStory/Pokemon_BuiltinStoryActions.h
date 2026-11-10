@@ -1,4 +1,4 @@
-/*  Story Actions
+/*  Builtin Story Actions
  *
  *  From: https://github.com/PokemonAutomation/
  *
@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef PokemonAutomation_Pokemon_StoryActions_H
-#define PokemonAutomation_Pokemon_StoryActions_H
+#ifndef PokemonAutomation_Pokemon_BuiltinStoryActions_H
+#define PokemonAutomation_Pokemon_BuiltinStoryActions_H
 
 #include <span>
 #include <string>

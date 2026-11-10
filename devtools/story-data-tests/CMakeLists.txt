@@ -10,7 +10,7 @@ set(STORY "${ROOT}/SerialPrograms/Source/Pokemon/AutoStory")
 add_executable(StoryDataTests
     "${STORY}/Data/Pokemon_StoryStepJson.cpp"
     "${STORY}/Data/Pokemon_StoryStepJson_Tests.cpp"
-    "${STORY}/Pokemon_StoryActions.cpp"
+    "${STORY}/Pokemon_BuiltinStoryActions.cpp"
     "${STORY}/Types/Pokemon_StoryActionArg.cpp"
     "${STORY}/Types/Pokemon_StoryActionSpec.cpp"
     "${ROOT}/SerialPrograms/Source/Pokemon/Navigation/Pokemon_Grid.cpp"

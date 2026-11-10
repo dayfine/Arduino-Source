@@ -15,7 +15,7 @@
 #include <span>
 #include <string_view>
 #include "Common/Cpp/Json/JsonValue.h"
-#include "Pokemon/AutoStory/Pokemon_StoryActions.h"
+#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
 

@@ -16,7 +16,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
-#include "Pokemon/AutoStory/Pokemon_StoryActions.h"
+#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon_StoryStepJson.h"
 
 namespace PokemonAutomation{

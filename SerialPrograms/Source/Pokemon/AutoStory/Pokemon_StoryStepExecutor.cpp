@@ -7,7 +7,7 @@
 #include <format>
 #include <set>
 #include <utility>
-#include "Pokemon_StoryActions.h"
+#include "Pokemon_BuiltinStoryActions.h"
 #include "Pokemon_StoryStepExecutor.h"
 
 namespace PokemonAutomation{

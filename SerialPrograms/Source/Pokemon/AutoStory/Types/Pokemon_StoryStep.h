@@ -30,7 +30,7 @@ struct StoryStep{
     std::string why;
 
     //  How the step does its kind: one of the built-in actions
-    //  (Pokemon_StoryActions.h) or the game's own; for a GAME step, the
+    //  (Pokemon_BuiltinStoryActions.h) or the game's own; for a GAME step, the
     //  game's action. Empty is the kind's default action.
     std::string action;
     //  The arguments the action reads, parsed against its spec when the
