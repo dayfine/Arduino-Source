@@ -348,6 +348,17 @@ UnitTestResult starly_opening_after_the_starter(Logger& logger){
     return passes(run_case(logger, "00.02", "00.02", {.fade = {}, .banner = {}}, knobs));
 }
 
+//  00.04b: the run down Route 202's road into Sandgem stopped two columns
+//  west of the table's (29, 5), on (27, 5), and the counted walk on to
+//  the Center's door ended below its west wall: the heal ran north into
+//  the wall (lab-B 2026-11-09 20:09). The walk to the door must find its
+//  column on walls, wherever on the road's last row the run stopped.
+UnitTestResult sandgem_entry_two_columns_west(Logger& logger){
+    SimWorldKnobs knobs;
+    knobs.lands["into_sandgem"] = Pokemon::tile_pose("SandgemTown", {TilePos{27, 5}}, Direction::SOUTH);
+    return passes(run_case(logger, "00.04b", "00.04b", {.fade = {}, .banner = {}}, std::move(knobs)));
+}
+
 //  00.03: Rowan's scene ends at home on (6, 8) beside Mom (lab-B
 //  2026-11-09, 7 of 7 runs). The way out holds south onto the door's tile
 //  (6, 10); from a column west, (5, 8), the hold stops on (5, 10) with no
@@ -604,6 +615,7 @@ const FailureCase AUTO_STORY_FAILURE_CASES[] = {
     {.input = {"00.03 the walk into Sandgem stops on Dawn's trigger mid-run", dawns_scene_mid_run}, .expectation = {}},
     {.input = {"00.04 Mom's call fires above the mat, on (6, 9): the walk ends in it, her hat scene plays it (lab-B 2026-11-09 17:29)", moms_call_above_the_mat}, .expectation = {}},
     {.input = {"00.04 the old walk round Mom to (6, 9) runs into her call: it hands it to her hat scene, not fights it (lab-B 2026-11-09 17:29)", old_walk_hands_moms_call_over}, .expectation = {}},
+    {.input = {"00.04b the run into Sandgem stops two columns west: the walk still ends below the Center's door (lab-B 2026-11-09 20:09)", sandgem_entry_two_columns_west}, .expectation = {}},
     {.input = {"00.04 to the ledge column with a wild battle on each pass through Route 201's grass (lab-B 2026-11-09 16:14)", [](Logger& logger){
         return passes(ledge_walk_in_grass(logger, {}));
     }}, .expectation = {}},

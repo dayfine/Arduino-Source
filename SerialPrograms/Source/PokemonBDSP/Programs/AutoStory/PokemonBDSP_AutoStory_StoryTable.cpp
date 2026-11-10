@@ -90,10 +90,6 @@ Pose on(const char* map, const char* region){
 Pose inside(const char* map){
     return Pokemon::tile_pose(map, {});
 }
-//  Columns from below Sandgem's Pokemon Center sign west to below its door.
-int sandgem_sign_to_center_door(){
-    return map_point(SANDGEM, "pokemon_center_sign").x - map_point(SANDGEM, "pokemon_center_door").x;
-}
 //  The tile below the door `door` of `map` and its neighbours either side:
 //  a door is not lined up with one tile (Jubilife's Center, r85).
 Pose door_front(const char* map, const char* door){
@@ -512,10 +508,13 @@ std::vector<StoryCheckpoint> to_the_catch(){
             //  One walk round the houses ended two tiles short (r252): down
             //  the road first, then the town plan.
             route("into_sandgem", at(SANDGEM, "route_202_entry_stop"), "south down the road to above the Mart", "robust"),
-            route("to_center_sign", next_to(SANDGEM, "pokemon_center_sign", SOUTH), "below the Center's sign, its doorway in sight", "town"),
-            //  From below the sign the finder read the signs' panels as
-            //  doorways (r252, r255): taps instead. One tile short is fine.
-            legs("below_center_door", {{.direction = WEST, .tiles = sandgem_sign_to_center_door()}}, "taps west below the Center's door", "one_short_ok"),
+            //  Walls give the column: the run in stopped two short of (29, 5) and counted legs on ended below the
+            //  Center's wall (lab-B 2026-11-09 20:09). West on the road's last row, south onto the Center's sign.
+            anchored(to_walls("above_center_sign", {{.direction = WEST, .tiles = 12}, {.direction = SOUTH, .tiles = 6}},
+                "west to the road's west wall, then south onto the Center's sign"), next_to(SANDGEM, "pokemon_center_sign", NORTH, SOUTH)),
+            //  Counted, not by the doorway finder, which read the signs' panels as doorways (r252, r255).
+            legs("below_center_door", {{.direction = EAST, .tiles = 1}, {.direction = SOUTH, .tiles = 2}, {.direction = WEST, .tiles = 4}},
+                "taps round the sign to below the Center's door"),
             heal("heal_sandgem", "Sandgem Town Pokemon Center", door_front(SANDGEM, "pokemon_center_door")),
         }),
     };
