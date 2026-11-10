@@ -25,6 +25,10 @@ void add_tests_StorySteps(UnitTestDatabase& database);
 void add_tests_StoryStepJson(UnitTestDatabase& database);
 // Registers unit tests for the shared authored envelope, game identity and embedded-resource loading.
 void add_tests_AuthoredCheckpointJson(UnitTestDatabase& database);
+// Registers unit tests for the shared checkpoint log lines and stats counts.
+void add_tests_StoryLog(UnitTestDatabase& database);
+// Registers unit tests for the shared start/end checkpoint range options.
+void add_tests_StoryRangeOptions(UnitTestDatabase& database);
 
 
 
