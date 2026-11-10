@@ -6,6 +6,7 @@
 
 #include <format>
 #include <utility>
+#include "Pokemon_StoryLog.h"
 #include "Pokemon_StorySegments.h"
 
 namespace PokemonAutomation{
@@ -121,13 +122,6 @@ void add_policy_recoveries(Checkpoint& checkpoint, const SegmentPolicy& policy, 
     }
 }
 
-std::string resets_text(size_t attempts){
-    if (attempts == 1){
-        return "one-shot";
-    }
-    return std::format("{} reset{}", attempts - 1, attempts == 2 ? "" : "s");
-}
-
 //  One row to success, reloading and rebuilding after each failed attempt.
 //  Returns the last attempt's report, or the reload's failure; `run` says
 //  how many attempts and recoveries it took.
@@ -148,11 +142,7 @@ CheckpointReport run_row(
         CheckpointReport result = run_checkpoint(state, checkpoint, log);
         if (result.completed){
             run.passed = true;
-            say(hooks, std::format(
-                "[Checkpoint] {}: passed on attempt {} ({}){}",
-                spec.id, attempt, resets_text(attempt),
-                run.recoveries == 0 ? "" : std::format(", {} in place", run.recoveries)
-            ));
+            say(hooks, checkpoint_pass_line(spec.id, attempt, run.recoveries));
             return result;
         }
         const bool not_running = result.failure.failure == GAME_NOT_RUNNING;
@@ -167,10 +157,7 @@ CheckpointReport run_row(
         if (attempt >= policy.attempts_per_checkpoint){
             return result;
         }
-        say(hooks, std::format(
-            "[Segment] {}: {} failed, reloading for attempt {}/{}",
-            segment.id, spec.id, attempt + 1, policy.attempts_per_checkpoint
-        ));
+        say(hooks, checkpoint_reset_line(segment.id, spec.id, attempt + 1, policy.attempts_per_checkpoint));
         report.reloads++;
         Outcome reloaded = reload(state, hooks);
         if (!reloaded.succeeded()){

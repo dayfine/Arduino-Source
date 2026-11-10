@@ -66,10 +66,12 @@ std::vector<std::string> lint_story_checkpoint(const StoryCheckpoint& data, cons
     std::vector<std::string> problems;
     for (size_t c = 0; c < data.steps.size(); c++){
         const StoryStep& step = data.steps[c];
-        if (table.find(step) == nullptr){
+        const StoryAction* action = table.find(step);
+        const std::string error = action == nullptr ? "no action" : story_args_error(step.args, action->args);
+        if (!error.empty()){
             problems.emplace_back(std::format(
-                "{} step {} {}: no action for {} '{}'",
-                data.id, c + 1, step.name, story_step_kind_name(step.kind), variant_name(step.variant)
+                "{} step {} {}: {} for {} '{}'",
+                data.id, c + 1, step.name, error, story_step_kind_name(step.kind), variant_name(step.variant)
             ));
         }
     }
@@ -124,7 +126,7 @@ Outcome TableExecutor::run_action(RunState& state, const StoryStep& step){
     if (const StoryAction* action = m_table.find(step)){
         return action->act(state, step);
     }
-    return StoryStepExecutor::run(state, step);
+    return unsupported_step(step);
 }
 
 //  Clears what interrupted the player before `step`, counting it in

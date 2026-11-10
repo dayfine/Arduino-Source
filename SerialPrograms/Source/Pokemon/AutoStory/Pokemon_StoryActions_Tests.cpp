@@ -168,10 +168,25 @@ UnitTestResult test_duplicate_actions_throw(){
     return found(table, StoryStepKind::TALK, "bill") == "first" ? UnitTestResult(true) : UnitTestResult("Expected the first action kept.");
 }
 
+//  The args a test Mart takes.
+constexpr StoryArgSpec MART_ARGS[] = {
+    {.key = "map", .type = StoryArgType::TEXT, .required = true},
+    {.key = "budget", .type = StoryArgType::NUMBER, .required = true},
+};
+
+//  `step` with `args`.
+StoryStep with_args(StoryStep step, StoryArgs args){
+    step.args = std::move(args);
+    return step;
+}
+
 UnitTestResult test_lint_names_steps_without_actions(){
     StoryActionTable table;
     table.add(StoryStepKind::ROUTE, "", named("route"));
     table.add_any_kind("bill", named("bill"));
+    StoryAction mart = named("mart");
+    mart.args = MART_ARGS;
+    table.add(StoryStepKind::GAME, "mart", std::move(mart));
     const StoryCheckpoint data{
         .id = "00.05",
         .title = "",
@@ -181,32 +196,41 @@ UnitTestResult test_lint_names_steps_without_actions(){
             make(StoryStepKind::GAME, "meet Bill", "bill"),
             make(StoryStepKind::GAME, "teleporter", "cell_separator x=1"),
             make(StoryStepKind::TALK, "talk"),
+            with_args(make(StoryStepKind::GAME, "buy", "mart"), {{"map", std::string("M")}, {"budget", int64_t(1500)}}),
+            with_args(make(StoryStepKind::GAME, "buy more", "mart"), {{"map", std::string("M")}}),
+            with_args(make(StoryStepKind::GAME, "meet Bill again", "bill"), {{"slot", int64_t(1)}}),
         },
     };
     const std::vector<std::string> problems = lint_story_checkpoint(data, table);
     const std::vector<std::string> expected = {
         "00.05 step 3 teleporter: no action for GAME 'cell_separator'",
         "00.05 step 4 talk: no action for TALK ''",
+        "00.05 step 6 buy more: missing argument \"budget\" for GAME 'mart'",
+        "00.05 step 7 meet Bill again: unknown argument \"slot\" for GAME 'bill'",
     };
     if (problems != expected){
         std::string got;
         for (const std::string& problem : problems){
             got += "\n" + problem;
         }
-        return "Expected two steps without actions, got:" + got;
+        return "Expected two steps without actions and two with bad args, got:" + got;
     }
     return true;
 }
 
 
-//  Steps without an action of their own go to this TALK.
+//  A binding that does TALK itself when its table has no action for it.
 class FakeTableExecutor : public TableExecutor{
 public:
     using TableExecutor::TableExecutor;
 
 protected:
-    virtual Outcome talk(RunState&, const StoryStep&) override{
-        return outcome_failed("talk virtual");
+    virtual Outcome run_action(RunState& state, const StoryStep& step) override{
+        const Outcome outcome = TableExecutor::run_action(state, step);
+        if (step.kind == StoryStepKind::TALK && outcome.failure == "unsupported_step"){
+            return outcome_failed("talk binding");
+        }
+        return outcome;
     }
 };
 
@@ -236,7 +260,7 @@ StoryAction throwing(){
     };
 }
 
-UnitTestResult test_executor_uses_table_then_virtuals(){
+UnitTestResult test_executor_uses_table_then_binding(){
     StoryActionTable table;
     table.add(StoryStepKind::GAME, "bill", named("bill action"));
     FakeGuard guard;
@@ -245,8 +269,8 @@ UnitTestResult test_executor_uses_table_then_virtuals(){
     const std::string bill = executor.run(state, make(StoryStepKind::GAME, "bill", "bill")).failure;
     const std::string talk = executor.run(state, make(StoryStepKind::TALK, "talk")).failure;
     const std::string mash = executor.run(state, make(StoryStepKind::MASH, "mash")).failure;
-    if (bill != "bill action" || talk != "talk virtual" || mash != "unsupported_step"){
-        return "Expected table, virtual, unsupported; got " + bill + ", " + talk + ", " + mash;
+    if (bill != "bill action" || talk != "talk binding" || mash != "unsupported_step"){
+        return "Expected table, binding, unsupported; got " + bill + ", " + talk + ", " + mash;
     }
     if (guard.trace != std::vector<std::string>{"before bill", "before talk", "before mash"}){
         return "Expected the guard before every step.";
@@ -356,8 +380,8 @@ const StoryActionsCase STORY_ACTIONS_CASES[] = {
         .expectation = {.description = "names each step the table has no action for"},
     },
     {
-        .input = {.name = "executor: the table, then the kind's virtual", .test = test_executor_uses_table_then_virtuals},
-        .expectation = {.description = "falls back to the per-kind virtuals, guarded before every step"},
+        .input = {.name = "executor: the table, then the binding", .test = test_executor_uses_table_then_binding},
+        .expectation = {.description = "a step without a table action is the binding's or unsupported, guarded before every step"},
     },
     {
         .input = {.name = "executor: a console failure fails the step", .test = test_guard_turns_failures_into_outcomes},

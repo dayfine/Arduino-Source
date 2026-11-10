@@ -132,6 +132,13 @@ struct SimScript{
     //  (SimWalkerRules::confirm_turn) after 00.28 run 2 (console B,
     //  2026-11-09), where a one-tile leg only turned the player.
     std::set<int> dropped_turn_taps;
+    //  The player rides the Bicycle: a tap facing another way takes a step
+    //  too, a hold through a turn loses no tile
+    //  (MovementMechanics::BIKE_TAP_ONLY_TURNS), and no step tap is
+    //  ignored: a 40ms turn tap and a 56ms hold 340ms after it took two
+    //  tiles (console B, 2026-11-09, 00.30). Set timing.tile to
+    //  MovementMechanics::BIKE_TILE_TIME with it.
+    bool on_bike = false;
     //  Caves dark without Flash (Rock Tunnel): the overworld is black but
     //  for a lit circle on the player, which the walker's battle text box
     //  check and screen observer read as a battle on its way (console B,
@@ -449,6 +456,9 @@ struct SimWalkerRules{
     //  Without it a dropped tap left a one-tile leg turning the player
     //  only, taken as walked (console B, 2026-11-09, 00.28 run 2).
     bool confirm_turn = true;
+    //  The speed the walker goes at: its turn taps
+    //  (OverworldWalkSteps::turns_first()) and its holds' tile time.
+    MoveSpeed speed = MoveSpeed::WALK;
     //  A dark cave's overworld isn't a battle on its way
     //  (OverworldWalkSteps::dark_cave_screen()). Without it the check
     //  before each step watched for a battle on it (console B, 2026-11-09,

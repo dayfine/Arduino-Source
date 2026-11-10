@@ -1,5 +1,7 @@
 /*  Shared Authored Checkpoint JSON
+ *
  *  From: https://github.com/PokemonAutomation/
+ *
  */
 
 #ifndef PokemonAutomation_AuthoredCheckpointJson_H
@@ -11,7 +13,7 @@
 #include <string_view>
 #include <utility>
 #include "Common/Cpp/Json/JsonObject.h"
-#include "Pokemon_StorySteps.h"
+#include "Types/Pokemon_StoryCheckpoint.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -45,6 +47,7 @@ JsonValue authored_checkpoint_json(const StoryCheckpoint& checkpoint, std::strin
 AuthoredCheckpoint load_authored_checkpoint(
     std::span<const std::pair<std::string, std::string>> files, std::string_view file, std::string_view expected_game
 );
+
 
 
 } // namespace Pokemon

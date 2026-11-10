@@ -66,6 +66,32 @@ std::optional<size_t> variant_number(std::string_view text, size_t max_digits){
     return value;
 }
 
+LegacyVariant split_legacy_variant(std::string_view variant, std::span<const std::string_view> positional){
+    LegacyVariant result;
+    const std::vector<std::string_view> words = variant_words(variant);
+    result.name = variant_name(variant);
+    size_t next = 0;
+    for (size_t c = result.name.empty() ? 0 : 1; c < words.size(); c++){
+        std::string key;
+        StoryArgValue value = true;
+        if (const std::optional<VariantPair> pair = variant_pair(words[c])){
+            key = pair->key;
+            const std::optional<size_t> number = variant_number(pair->value, 18);
+            value = number ? StoryArgValue(int64_t(*number)) : StoryArgValue(std::string(pair->value));
+        }else if (next < positional.size()){
+            key = positional[next++];
+            value = std::string(words[c]);
+        }else{
+            key = words[c];
+        }
+        if (!result.args.emplace(std::move(key), std::move(value)).second){
+            result.error = "\"" + std::string(words[c]) + "\" repeats an argument";
+            return result;
+        }
+    }
+    return result;
+}
+
 
 
 } // namespace Pokemon

@@ -66,7 +66,6 @@ private:
 std::vector<std::string> story_sim_trace(const std::vector<StoryCheckpoint>& table){
     const std::vector<StoryCheckpoint> rows = plan_story_run(table, 0, table.size() - 1, StoryHandoffs{}).rows;
     TraceGame game;
-    game.set_language(Language::Japanese);
     Pokemon::Segment segment;
     segment.id = "00";
     for (const StoryCheckpoint& data : rows){

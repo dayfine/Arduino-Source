@@ -436,8 +436,10 @@ public:
     FakeCaptureGame capture;
     IdlePc pc;
 
-protected:
-    virtual Pokemon::Outcome game(Pokemon::RunState&, const StoryStep& step) override{
+    virtual Pokemon::Outcome run(Pokemon::RunState&, const StoryStep& step) override{
+        if (step.kind != Pokemon::StoryStepKind::GAME){
+            return Pokemon::unsupported_step(step);
+        }
         const std::optional<Pokemon::Outcome> outcome = run_storage_game_step(logger, nullptr, step, capture, pc);
         return outcome ? *outcome : Pokemon::unsupported_step(step);
     }

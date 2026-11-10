@@ -14,6 +14,7 @@
 #include <map>
 #include <optional>
 #include <set>
+#include <span>
 #include <string>
 #include <utility>
 #include <vector>
@@ -64,41 +65,53 @@ public:
             left--;
             return outcome_failed("blocked", step.name + " was blocked");
         }
-        return StoryStepExecutor::run(state, step);
+        return run_kind(state, step);
     }
+
     virtual bool holds(const std::string& condition, RunState& state) override{
         return conditions.contains(condition) || StoryStepExecutor::holds(condition, state);
     }
 
-protected:
-    virtual Outcome route(RunState&, const StoryStep& step) override{
-        return outcome_ok(*step.target);
+private:
+    //  The kinds this world has; any other is unsupported.
+    Outcome run_kind(RunState& state, const StoryStep& step){
+        switch (step.kind){
+        case StoryStepKind::ROUTE:
+            return outcome_ok(*step.target);
+        case StoryStepKind::STEP:
+            return step_one_tile(state, step);
+        case StoryStepKind::TALK:
+        case StoryStepKind::MASH:
+            return outcome_ok();
+        case StoryStepKind::BATTLE:
+            //  The first battle is lost; a step that may lose goes on.
+            return step.may_lose ? outcome_ok() : outcome_failed("blackout");
+        case StoryStepKind::SHOP:
+            return shop(step);
+        case StoryStepKind::GAME:
+            return game(state, step);
+        default:
+            return unsupported_step(step);
+        }
     }
-    virtual Outcome step(RunState& state, const StoryStep& step) override{
+
+    Outcome step_one_tile(RunState& state, const StoryStep& step){
         const std::vector<TilePos> tiles = tiles_of(state.pose);
         if (tiles.size() != 1){
             return outcome_failed("no_pose", to_string(state.pose));
         }
         return outcome_ok(tile_pose(state.pose.map, {tiles[0].next(step.direction)}, step.direction));
     }
-    virtual Outcome talk(RunState&, const StoryStep&) override{
-        return outcome_ok();
-    }
-    virtual Outcome mash(RunState&, const StoryStep&) override{
-        return outcome_ok();
-    }
-    virtual Outcome battle(RunState&, const StoryStep& step) override{
-        //  The first battle is lost; a step that may lose goes on.
-        return step.may_lose ? outcome_ok() : outcome_failed("blackout");
-    }
-    virtual Outcome shop(RunState&, const StoryStep& step) override{
+
+    Outcome shop(const StoryStep& step){
         for (const StoryItem& item : step.items){
             trace.push_back("  bought " + std::to_string(item.quantity) + " " + item.item);
         }
         return outcome_ok();
     }
+
     //  A game step sets a run flag named for its variant.
-    virtual Outcome game(RunState& state, const StoryStep& step) override{
+    Outcome game(RunState& state, const StoryStep& step){
         trace.push_back("  game " + step.variant);
         state.flags.insert(step.variant);
         return unchanged.contains(step.name) ? outcome_unchanged() : outcome_ok();
@@ -166,7 +179,7 @@ Run run(const StoryCheckpoint& data, StoryStepExecutor& executor){
     return ret;
 }
 
-std::string joined(const std::vector<std::string>& lines){
+std::string joined(std::span<const std::string> lines){
     std::string text;
     for (const std::string& line : lines){
         text += "\n  " + line;
@@ -300,7 +313,7 @@ UnitTestResult test_unsupported_and_lost_battles(){
 //  Runs `tables` as one segment whose saves and reloads go into the
 //  executor's trace and whose log lines go into `lines`. Whatever blocked a
 //  step has gone by the reload.
-SegmentReport run_tables(const std::vector<StoryCheckpoint>& tables, FakeExecutor& executor, std::vector<std::string>& lines){
+SegmentReport run_tables(std::span<const StoryCheckpoint> tables, FakeExecutor& executor, std::vector<std::string>& lines){
     Segment segment;
     segment.id = "00";
     for (const StoryCheckpoint& data : tables){
@@ -577,32 +590,6 @@ UnitTestResult test_once_per_save_verify(){
 }
 
 
-//  The checks level: THOROUGH by default, and what the program sets is
-//  what a step reads.
-UnitTestResult test_checks_level(){
-    class CheckingExecutor : public FakeExecutor{
-    public:
-        std::vector<std::string> seen;
-        virtual Outcome talk(RunState&, const StoryStep& step) override{
-            seen.push_back(step.name + " " + story_checks_name(checks()));
-            return outcome_ok();
-        }
-    };
-    StoryCheckpoint data = lab_checkpoint();
-    CheckingExecutor executor;
-    run(data, executor);
-    executor.set_checks(StoryChecks::FAST);
-    executor.set_language(Language::Korean);
-    run(data, executor);
-    if (executor.language() != Language::Korean){
-        return "Expected the language set on the executor.";
-    }
-    if (executor.seen != std::vector<std::string>{"talk_oak thorough", "talk_oak fast"}){
-        return "Expected the talk to read thorough, then fast:" + joined(executor.seen);
-    }
-    return true;
-}
-
 //  Two sections of a story, as BDSP has segments 00 and 01.
 const std::vector<StoryCheckpoint>& two_sections(){
     static const std::vector<StoryCheckpoint> rows{
@@ -612,6 +599,7 @@ const std::vector<StoryCheckpoint>& two_sections(){
     };
     return rows;
 }
+
 const StringSelectDatabase& two_sections_database(){
     static const StringSelectDatabase database = story_checkpoint_database(two_sections());
     return database;
@@ -796,10 +784,6 @@ const StoryStepTestCase STORY_STEP_CASES[] = {
     {
         .input = {.name = "lint", .test = test_lint},
         .expectation = {.description = "verifies lint validation rules on story checkpoints"},
-    },
-    {
-        .input = {.name = "the checks level reaches the steps", .test = test_checks_level},
-        .expectation = {.description = "transfers checks granularity option to step execution"},
     },
     {
         .input = {.name = "the run options' defaults", .test = test_run_options},
