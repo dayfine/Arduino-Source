@@ -80,10 +80,11 @@ Pokemon::StoryInterrupts step_interrupts(Pokemon::ScreenLookFunction look, const
 }
 
 
-ConsoleScreenLook::ConsoleScreenLook(VideoStream& stream, ProControllerContext& context)
-    : m_stream(stream)
+ConsoleScreenLook::ConsoleScreenLook(ConsoleHandle& console, ProControllerContext& context)
+    : m_stream(console)
     , m_context(context)
-    , m_watcher(m_observer)
+    , m_eyes(console, m_observer)
+    , m_watcher(m_eyes)
     , m_start(current_time())
 {}
 
@@ -103,6 +104,10 @@ void InterruptLogGuard::on_interrupt(const Pokemon::StoryStep& step, const Pokem
         "Story: {}: before it, {}: {}", step.name,
         Pokemon::interrupt_kind_name(check.verdict.kind), cleared ? "cleared" : Pokemon::to_string(check.outcome)
     ), cleared ? COLOR_ORANGE : COLOR_RED);
+}
+
+void InterruptLogGuard::on_screen(const Pokemon::StoryStep& step, const Pokemon::ScreenSettle& screen){
+    m_logger.log(std::format("[Screen] before {}: {}", step.name, Pokemon::describe(screen)));
 }
 
 
