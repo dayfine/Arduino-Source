@@ -4,6 +4,7 @@
  *
  */
 
+#include <format>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -11,8 +12,8 @@
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStorySelect.h"
-#include "Pokemon/AutoStory/Pokemon_StoryRun_Tests.h"
 #include "Pokemon_StoryRangeOptions.h"
+#include "Pokemon_StoryRangeOptions_Tests.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -70,7 +71,7 @@ struct StoryRangeCase{
 class Test_StoryRange : public UnitTest{
 public:
     Test_StoryRange(StoryRangeCase test_case)
-        : UnitTest("Pokemon::StoryRangeOptions - " + test_case.input.name)
+        : UnitTest(std::format("Pokemon::StoryRangeOptions - {}", test_case.input.name))
         , m_case(std::move(test_case))
     {}
 
@@ -84,15 +85,17 @@ public:
         }
         const StoryRangeExpectation& expected = m_case.expectation;
         if (range.start_index() != expected.start || range.end_index() != expected.end){
-            return "Expected indexes " + std::to_string(expected.start) + " to " + std::to_string(expected.end)
-                + ", got " + std::to_string(range.start_index()) + " to " + std::to_string(range.end_index());
+            return std::format(
+                "Expected indexes {} to {}, got {} to {}",
+                expected.start, expected.end, range.start_index(), range.end_index()
+            );
         }
         const std::string error = range.check_validity();
         if (error.empty() != expected.valid){
-            return expected.valid ? "Expected a valid range, got: " + error : "Expected the range refused.";
+            return expected.valid ? std::format("Expected a valid range, got: {}", error) : "Expected the range refused.";
         }
         if (!expected.valid && error != "The start checkpoint comes after the end checkpoint."){
-            return "Unexpected message: " + error;
+            return std::format("Unexpected message: {}", error);
         }
         return true;
     }
