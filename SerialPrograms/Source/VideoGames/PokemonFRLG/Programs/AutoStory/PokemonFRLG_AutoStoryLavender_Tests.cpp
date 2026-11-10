@@ -755,6 +755,43 @@ UnitTestResult test_hideout_row(Logger&){
 } // namespace
 
 
+//  00.32 on the sim: from below B3F's Rare Candy back up to B2F, through
+//  its arrows (the MOON STONE ball stands in the way and is picked up),
+//  the lift to B4F, the two door guards, Giovanni, and beside the SILPH
+//  SCOPE. The talk-started battles are the sim's to skip; the MOON
+//  STONE's pickup hides its ball, as the game does.
+UnitTestResult test_hideout_giovanni_row(Logger&){
+    const StoryCheckpoint& row = checkpoint("00.32");
+    StoryPose at = *story_pose(*row.start);
+    std::vector<MapData> maps = maps_after_route10();
+    auto sim = std::make_unique<OverworldSim>(maps, MapPosition{at.map, at.tile}, *at.facing);
+    for (const StoryStep& step : row.steps){
+        if (step.name == "escape_rope_hideout"){
+            break;
+        }
+        if (const std::string failure = row_step_on_sim(*sim, at, step, row.id); !failure.empty()){
+            return "00.32: ended on " + to_string(sim->state().position) + "; " + failure;
+        }
+        if (step.name == "moon_stone"){
+            for (MapData& map : maps){
+                hide_objects(map, {"FLAG_HIDE_ROCKET_HIDEOUT_B2F_MOON_STONE"});
+            }
+            sim = std::make_unique<OverworldSim>(maps, sim->state().position, sim->state().facing);
+        }
+    }
+    if (!sim->state().trainers_beaten.empty()){
+        return std::format("00.32: walked into {} trainers' lines on the sim.", sim->state().trainers_beaten.size());
+    }
+    if (!sim->state().violations.empty()){
+        return "00.32: a violation on the way: " + sim->state().violations.back();
+    }
+    const MapPosition end{"RocketHideout_B4F", {21, 5}};
+    if (!(sim->state().position == end)){
+        return "00.32: ended on " + to_string(sim->state().position) + ", not " + to_string(end) + ".";
+    }
+    return true;
+}
+
 const AutoStoryLavenderCase AUTO_STORY_LAVENDER_CASES[] = {
     {.input = {"00.28 the tree, Rock Tunnel's nine trainers, out of its south mouth", test_rock_tunnel_row}, .expectation = {}},
     {.input = {"00.28 a wild battle mid-leg in the tunnel", test_rock_tunnel_wild_battles}, .expectation = {}},
@@ -775,6 +812,7 @@ const AutoStoryLavenderCase AUTO_STORY_LAVENDER_CASES[] = {
     {.input = {"00.30 Route 8 west from a start up to 3 tiles off", test_route8_west_off_start}, .expectation = {}},
     {.input = {"00.30 saves in Celadon City's Pokemon Center", test_celadon_save_place}, .expectation = {}},
     {.input = {"00.31 the Game Corner's poster, the Rocket Hideout to B4F's LIFT KEY and B3F's Rare Candy", test_hideout_row}, .expectation = {}},
+    {.input = {"00.32 B2F's arrows, the lift, the door guards, Giovanni and the SILPH SCOPE", test_hideout_giovanni_row}, .expectation = {}},
 };
 
 void add_tests_AutoStoryLavender(UnitTestDatabase& database){
