@@ -22,6 +22,7 @@
 #include "Pokemon/Options/Pokemon_GameLanguages.h"
 #include "Pokemon/Options/Pokemon_StoryRunOptions.h"
 #include "Pokemon_AutoStorySelect.h"
+#include "Pokemon_AutoStoryStats.h"
 #include "Pokemon_StoryEvents.h"
 #include "Pokemon_BuiltinStoryActions.h"
 #include "Pokemon_StorySegments.h"
