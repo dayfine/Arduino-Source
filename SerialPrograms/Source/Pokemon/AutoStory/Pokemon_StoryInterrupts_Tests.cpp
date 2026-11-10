@@ -183,7 +183,7 @@ private:
     FakeGame& m_game;
 };
 
-//  `step` (variant "act") run once by a TableExecutor with the fake
+//  `step` (action "act") run once by a TableExecutor with the fake
 //  game's interrupts, from a known pose.
 struct FakeRun{
     Outcome outcome;
@@ -197,7 +197,7 @@ FakeRun run_step(FakeGame& game, StoryInterrupts& interrupts, StoryStep step, Fa
     FakeRun out;
     out.state.pose.map = "Town";
     out.state.pose.certainty = PoseCertainty::TILE;
-    step.variant = "act";
+    step.action = "act";
     out.outcome = executor.run(out.state, step);
     return out;
 }
@@ -225,7 +225,7 @@ UnitTestResult test_no_interrupts_set(){
     TableExecutor executor(table, guard);
     RunState state;
     StoryStep step = make(StoryStepKind::ROUTE, "walk");
-    step.variant = "act";
+    step.action = "act";
     const Outcome outcome = executor.run(state, step);
     if (!outcome.succeeded()){
         return "Expected the step to succeed, got " + to_string(outcome);
@@ -475,7 +475,7 @@ UnitTestResult test_screen_before_each_step(){
     executor.set_interrupts(&interrupts);
     RunState state;
     StoryStep step = make(StoryStepKind::ROUTE, "by_the_counter");
-    step.variant = "act";
+    step.action = "act";
     const Outcome faded = executor.run(state, step);
     if (faded.succeeded()){
         return "Expected a step in a fade to fail unsettled, got " + to_string(faded);
@@ -508,7 +508,7 @@ UnitTestResult test_home_menu_before_a_step(){
         executor.set_interrupts(&interrupts);
         RunState state;
         StoryStep step = make(kind, "save");
-        step.variant = "act";
+        step.action = "act";
         const Outcome outcome = executor.run(state, step);
         if (to_string(outcome) != "game_not_running: the game is not running: the Switch HOME menu is showing"){
             return "Expected the step on HOME to fail as game_not_running, got " + to_string(outcome);
@@ -553,12 +553,8 @@ UnitTestResult test_home_menu_stops_the_segment(){
         trace.push_back("reload");
         return outcome_ok();
     };
-    hooks.recover = [&trace](RunState&, const std::string&){
-        trace.push_back("recover in place");
-        return outcome_ok();
-    };
     RunState state;
-    const SegmentReport report = run_segment(state, segment, SegmentRange{}, SegmentPolicy{.recoveries_per_event = 2}, hooks);
+    const SegmentReport report = run_segment(state, segment, SegmentRange{}, SegmentPolicy{}, hooks);
     if (report.completed || report.failure.failure != "game_not_running" || report.reloads != 0){
         return "Expected the segment to stop on game_not_running with no reload, got " + to_string(report.failure);
     }
