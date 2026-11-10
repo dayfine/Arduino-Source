@@ -37,16 +37,6 @@ constexpr double WANDERER_PER_TILE = 0.25;
 constexpr long long WANDERER_WAIT_MS = 2500;
 constexpr long long TRAINER_BATTLE_MS = 45000;
 constexpr long long REPLAN_MS = 2000;
-//  Most sets a search with held legs looks through: their wide ends make
-//  many more sets than taps do, so a held plan not found quickly is left
-//  to the taps.
-constexpr size_t HELD_MAX_SEARCHED = 3000;
-//  A tapped tile costs this many run tiles in a plan's search: a tap takes
-//  TAP_MS, a run about 250 ms a tile.
-constexpr int TAP_TILE_COST = 3;
-//  Taps this many tiles or fewer in the time-shaped costs: tapping back
-//  from a wall onto the goal.
-constexpr int TAPPED_BACK_TILES = 8;
 //  An open leg's extra per grass tile in a replan (RobustPlanCosts::
 //  per_open_grass_tile): a wall leg through grass beats an open one unless
 //  it walks this many tiles further.
@@ -55,36 +45,6 @@ constexpr int REPLAN_OPEN_GRASS_COST = 12;
 //  funnel is tried (add_funnel_holds()).
 constexpr size_t FUNNEL_SLIDE = 2;
 
-//  The costs plan_fastest_route() tries besides the route's own:
-//   -  open legs held from 2 tiles, as long as a held leg may be (a column
-//      of 33 tiles into Twinleaf), with and without the route's charge for
-//      ending in the open;
-//   -  costs shaped like the time: a tapped tile dearer than a run one,
-//      no charge for ending in the open, so a run to a wall past the goal
-//      and taps back beat taps all the way (00.04 into_twinleaf);
-//   -  the route's own, with open legs dear in grass (replan_costs()).
-std::vector<RobustPlanCosts> other_costs(const RobustPlanCosts& costs){
-    std::vector<RobustPlanCosts> out;
-    for (int not_at_wall : {costs.leg_not_at_wall, 0}){
-        RobustPlanCosts held = costs;
-        held.hold_open_legs = true;
-        held.exact_open_tiles = 1;
-        held.max_open_tiles = 36;
-        held.leg_not_at_wall = not_at_wall;
-        held.max_searched = std::min<size_t>(costs.max_searched, HELD_MAX_SEARCHED);
-        out.push_back(held);
-    }
-    RobustPlanCosts timed = costs;
-    timed.hold_open_legs = true;
-    timed.exact_open_tiles = TAPPED_BACK_TILES;
-    timed.max_open_tiles = 36;
-    timed.per_open_tile = TAP_TILE_COST;
-    timed.leg_not_at_wall = 0;
-    timed.max_searched = std::min<size_t>(costs.max_searched, HELD_MAX_SEARCHED);
-    out.push_back(timed);
-    out.push_back(replan_costs(costs));
-    return out;
-}
 
 //  Expected time a plan must save for each tile it walks back beyond the
 //  route's own plan: the user's road route on Route 201 walks back 3
@@ -371,10 +331,8 @@ std::optional<std::vector<PlannedLeg>> plan_fastest_route(const ScoredRoute& rou
     const size_t own_back = Pokemon::tiles_walked_back(route_scored_legs(*best, route.speed));
     double best_ms = own_passes ? own.expected_ms : -1;
     std::vector<std::vector<PlannedLeg>> candidates = run_variants(route, *best);
-    for (const RobustPlanCosts& costs : other_costs(route.costs)){
-        if (std::optional<std::vector<PlannedLeg>> legs = plan_recovered_route(route.world, route.from, route.goal, costs)){
-            candidates.push_back(std::move(*legs));
-        }
+    if (std::optional<std::vector<PlannedLeg>> legs = plan_recovered_route(route.world, route.from, route.goal, replan_costs(route.costs))){
+        candidates.push_back(std::move(*legs));
     }
     for (std::vector<PlannedLeg>& legs : candidates){
         const Pokemon::RouteScore score = score_with(route, legs, replan);
