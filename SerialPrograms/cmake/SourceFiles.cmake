@@ -102,6 +102,8 @@ file(GLOB CORE_LIBRARY_SOURCES
     ../Common/Cpp/Json/JsonObject.h
     ../Common/Cpp/Json/JsonTools.cpp
     ../Common/Cpp/Json/JsonTools.h
+    ../Common/Cpp/Json/JsonTools_Tests.cpp
+    ../Common/Cpp/Json/JsonTools_Tests.h
     ../Common/Cpp/Json/JsonValue.cpp
     ../Common/Cpp/Json/JsonValue.h
     ../Common/Cpp/LifetimeSanitizer.cpp
@@ -416,6 +418,7 @@ file(GLOB LIBRARY_SOURCES
     ../Common/Cpp/Sockets/ServerSocket_POSIX.h
     ../Common/Cpp/Sockets/ServerSocket_WinSocket.h
     ../Common/Cpp/Sockets/ServerSocket_Qt.h
+    ../Common/Cpp/Sockets/ServerSocket.h
     ../Common/Cpp/Sockets/Sockets_Tests.cpp
     ../Common/Cpp/Sockets/Sockets_Tests.h
     ../Common/Cpp/StreamConnections/MockDevice.cpp
