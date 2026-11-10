@@ -22,6 +22,7 @@
 #include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "Pokemon/AutoStory/Pokemon_FrameReplay.h"
 #include "Pokemon/AutoStory/Pokemon_Interrupts.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_MovementMechanics.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
 #include "PokemonFRLG_AutoStoryFrameReplay_Tests.h"
 #include "PokemonFRLG_AutoStoryScreenEvents.h"
@@ -40,7 +41,7 @@ const WallClock T0 = WallClock() + std::chrono::hours(1);
 constexpr Milliseconds WARP_WAIT = 8000ms;
 
 //  A one-tile walk onto a door: a tile's time, then the release.
-constexpr Milliseconds ONE_TILE_HOLD = OverworldWalkSteps::TILE_TIME + OverworldWalkSteps::STEP_RELEASE;
+constexpr Milliseconds ONE_TILE_HOLD = MovementMechanics::TILE_TIME + MovementMechanics::STEP_RELEASE;
 
 //  A warp leg: the player holds onto the door for `hold`, watched for the
 //  fade (warp_hold_watchers()), and the walk then waits out the rest of it

@@ -178,14 +178,20 @@ UnitTestResult test_fossil_choice(){
 }
 
 
-UnitTestResult test_fossil_variant(){
-    if (fossil_variant(Fossil::HELIX) != "fossil helix" || parse_fossil_variant("fossil dome") != Fossil::DOME){
-        return "Expected \"fossil helix\" and \"fossil dome\".";
+UnitTestResult test_fossil_args(){
+    const Pokemon::StoryStep step = fossil_step("helix", "", Fossil::HELIX);
+    if (step.action != FOSSIL_ACTION || fossil_of(step.args) != Fossil::HELIX
+        || fossil_of({{"fossil", std::string("dome")}}) != Fossil::DOME
+    ){
+        return "Expected the HELIX step and \"dome\" to read back.";
     }
-    for (std::string_view bad : {"fossil", "fossil old_amber", "fossil helix dome", "grind level=18"}){
-        if (parse_fossil_variant(bad)){
-            return "Expected \"" + std::string(bad) + "\" refused.";
+    for (const std::string& bad : {"", "old_amber", "helix dome"}){
+        if (fossil_of({{"fossil", bad}})){
+            return "Expected \"" + bad + "\" refused.";
         }
+    }
+    if (fossil_of({})){
+        return "Expected a step with no fossil refused.";
     }
     //  MtMoon_B2F map.json: DOME at (13, 7), HELIX at (14, 7).
     if (!(fossil_tile(Fossil::DOME) == Pokemon::TilePos{13, 7}) || !(fossil_tile(Fossil::HELIX) == Pokemon::TilePos{14, 7})){
@@ -203,7 +209,7 @@ const AutoStoryChoiceCase AUTO_STORY_CHOICE_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"the table's variant", test_fossil_variant},
+        .input = {"the step's args", test_fossil_args},
         .expectation = {},
     },
 };

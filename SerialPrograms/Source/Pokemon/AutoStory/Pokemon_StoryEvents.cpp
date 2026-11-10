@@ -14,7 +14,7 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-const char* certainty_name(PoseCertainty certainty){
+std::string certainty_name(PoseCertainty certainty){
     switch (certainty){
     case PoseCertainty::TILE:
         return "tile";
@@ -60,10 +60,7 @@ std::string to_string(const Pose& pose){
 bool Outcome::succeeded() const{
     return failure.empty();
 }
-Outcome outcome_ok(){
-    return Outcome{};
-}
-Outcome outcome_ok(Pose pose){
+Outcome outcome_ok(std::optional<Pose> pose){
     Outcome outcome;
     outcome.pose = std::move(pose);
     return outcome;
@@ -86,7 +83,7 @@ std::string to_string(const Outcome& outcome){
 }
 
 Outcome outcome_game_not_running(){
-    return outcome_failed(GAME_NOT_RUNNING, "the game is not running: the Switch HOME menu is showing");
+    return outcome_failed(std::string(GAME_NOT_RUNNING), "the game is not running: the Switch HOME menu is showing");
 }
 
 Condition condition(std::string name, Check check){
@@ -100,7 +97,7 @@ Condition pose_known(std::string map, PoseCertainty need){
     });
 }
 
-const char* recovery_name(RecoveryKind kind){
+std::string recovery_name(RecoveryKind kind){
     switch (kind){
     case RecoveryKind::WAIT:
         return "wait";
