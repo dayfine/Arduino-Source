@@ -36,11 +36,11 @@ std::string to_string(const RouteLogLeg& leg){
     case RouteLegAction::WALK:
         break;
     }
-    const char* end = leg.end == RouteLegEnd::WALL ? " (to wall)" : leg.end == RouteLegEnd::WARP ? " (warp)" : " (open)";
-    return direction + " " + std::to_string(leg.tiles) + end;
+    const std::string_view end = leg.end == RouteLegEnd::WALL ? " (to wall)" : leg.end == RouteLegEnd::WARP ? " (warp)" : " (open)";
+    return direction + " " + std::to_string(leg.tiles) + std::string(end);
 }
 
-const char* basis_name(EndBasis basis){
+std::string basis_name(EndBasis basis){
     switch (basis){
     case EndBasis::WALKED:
         return "walked";
@@ -53,16 +53,21 @@ const char* basis_name(EndBasis basis){
 }
 
 
+//  "<leg> to <tiles>", as the plan and the leg lines both write a leg.
+static std::string planned_leg_text(const PlannedRouteLeg& leg){
+    return to_string(leg.leg) + " to " + describe(leg.after);
+}
+
 std::string route_plan_line(const std::string& label, const std::vector<RouteTile>& from, const std::vector<PlannedRouteLeg>& legs){
     std::string text = label + ": plan from " + describe(from) + ":";
-    for (const PlannedRouteLeg& leg : legs){
-        text += "\n    " + to_string(leg.leg) + " to " + describe(leg.after);
+    for (size_t i = 0; i < legs.size(); i++){
+        text += (i == 0 ? " " : "; ") + planned_leg_text(legs[i]);
     }
     return text;
 }
 
 std::string route_leg_line(size_t number, size_t count, const PlannedRouteLeg& leg){
-    return std::format("Leg {}/{}: {} to {}", number, count, to_string(leg.leg), describe(leg.after));
+    return std::format("Leg {}/{}: {}", number, count, planned_leg_text(leg));
 }
 
 std::string route_leg_end_line(

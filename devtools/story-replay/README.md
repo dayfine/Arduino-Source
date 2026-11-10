@@ -23,7 +23,9 @@ GitHub CI builds/tests on the fork; Ubuntu additionally uploads
 
 `Programs/AutoStory/ReplayData/` contains exact `binding.json` / `cases.json`
 copies from the immutable PokemonSimulation revision in `pin.json`. The capture
-itself is the existing `StoryData/frlg-parcel-00.05.json`. These are **PR #73
+is `capture.json` there, the bytes of the old table export of 00.05 that
+`binding.json` pins; the replay reads its checkpoint in the #312 step format
+(a route's target and a step's direction as args). These are **PR #73
 preview test fixtures**, not an approved resource/production-plan adoption.
 The 53-map production resource pin is unchanged. Every selected native embedded
 map must match its Python fixture's exact raw-byte SHA-256 before execution.

@@ -27,10 +27,13 @@
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_StartMenuDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_SelectionArrowDetector.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "VideoGames/PokemonFRLG/Programs/PokemonFRLG_NamingScreen.h"
 #include "VideoGames/PokemonFRLG/Programs/PokemonFRLG_StartMenuNavigation.h"
 #include "PokemonFRLG_AutoStoryActions.h"
+#include "PokemonFRLG_AutoStoryStepInterrupts.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -56,9 +59,6 @@ constexpr Milliseconds INTRO_TIMEOUT = 600000ms;
 //  "Wait about 8 s" after YES at the nurse (console B, 2026-11-01): 1.5 s
 //  between presses did not heal.
 constexpr Milliseconds HEAL_TIME = 8000ms;
-//  FRLG takes a tap this short as a turn, without a step.
-constexpr Milliseconds TURN_TAP = 40ms;
-constexpr Milliseconds TURN_SETTLE = 300ms;
 
 DpadPosition dpad(Direction direction){
     switch (direction){
@@ -579,12 +579,13 @@ std::optional<size_t> talk_and_count_pages(ConsoleHandle& console, ProController
     return pages;
 }
 
-void step_once(ProControllerContext& context, Direction direction, std::optional<Direction> facing){
+void step_once(ConsoleHandle& console, ProControllerContext& context, Direction direction, std::optional<Direction> facing){
     if (facing != direction){
-        pbf_press_dpad(context, dpad(direction), TURN_TAP, TURN_SETTLE);
+        OverworldWalkSteps::turn_to(console, context, direction);
     }
-    //  A step, once started, finishes on its own.
-    pbf_press_dpad(context, dpad(direction), 120ms, 500ms);
+    //  A step, once started, finishes on its own. The release waits out the
+    //  lockout before a next step tap (MovementMechanics::STEP_TAP_LOCKOUT).
+    pbf_press_dpad(context, dpad(direction), MovementMechanics::STEP_TAP, MovementMechanics::STEP_TAP_RELEASE);
     context.wait_for_all_requests();
 }
 
@@ -598,6 +599,17 @@ std::optional<int> step_until_seen(int max_tiles, const std::function<void()>& s
     return std::nullopt;
 }
 
+void wait_out_battle_exit(ConsoleHandle& console, ProControllerContext& context){
+    context.wait_for_all_requests();
+    ConsoleScreenLook eyes(console, context);
+    const Pokemon::ScreenSettle settle = wait_for_quiet_overworld(
+        [&eyes](bool fresh){ return eyes.look(fresh); },
+        MovementMechanics::AFTER_BATTLE_QUIET, BATTLE_EXIT_TIMEOUT
+    );
+    const bool quiet = quiet_overworld(settle, MovementMechanics::AFTER_BATTLE_QUIET);
+    console.log("Story: after the battle, " + Pokemon::describe(settle), quiet ? COLOR_BLACK : COLOR_RED);
+}
+
 std::optional<int> step_into_line(
     ConsoleHandle& console, ProControllerContext& context,
     Direction direction, std::optional<Direction> facing, int max_tiles, Milliseconds watch
@@ -605,20 +617,26 @@ std::optional<int> step_into_line(
     return step_until_seen(
         max_tiles,
         [&]{
-            step_once(context, direction, facing);
+            step_once(console, context, direction, facing);
             facing = direction;
         },
         [&]{
             WhiteDialogWatcher message(COLOR_RED);
             BattleScreenWatcher battle(COLOR_RED);
-            return wait_until(console, context, watch, {message, battle}) >= 0;
+            const int seen = wait_until(console, context, std::max(watch, WILD_BATTLE_IN_LINE_WATCH), {message, battle});
+            if (seen == 1){
+                console.log("Story: a wild battle on the step into a trainer's line; running from it, then stepping on.", COLOR_ORANGE);
+                flee_battle(console, context);
+                wait_out_battle_exit(console, context);
+                return false;
+            }
+            return seen == 0;
         }
     );
 }
 
-void face_wall(ProControllerContext& context, Direction direction){
-    pbf_press_dpad(context, dpad(direction), TURN_TAP, TURN_SETTLE);
-    context.wait_for_all_requests();
+void face_wall(ConsoleHandle& console, ProControllerContext& context, Direction direction){
+    OverworldWalkSteps::turn_to(console, context, direction);
 }
 
 SaveAction SaveDialog::next(SaveScreen screen){
@@ -895,7 +913,7 @@ static void check_mart_row(ConsoleHandle& console, ProControllerContext& context
 
 void buy_items(
     ConsoleHandle& console, ProControllerContext& context,
-    const std::vector<MartOrder>& orders, StoryChecks checks, Language language
+    const std::vector<MartOrder>& orders, Pokemon::StoryCheckLevel checks, Language language
 ){
     //  "May I help you?" with BUY on top, then the list, cursor on its top.
     press(context, BUTTON_A, 2000ms);
@@ -912,7 +930,7 @@ void buy_items(
         }
         cursor = order.row;
         mart_shot(console, context, std::format("row{}-list", order.row + 1));
-        if (checks == StoryChecks::THOROUGH){
+        if (checks_screen(checks)){
             check_mart_row(console, context, order, language);
         }
         //  "How many?" drops presses while its text prints.

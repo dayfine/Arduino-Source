@@ -17,6 +17,9 @@ namespace PokemonFRLG{
 namespace{
 
 constexpr size_t MAX_HOLDS = 3;
+//  How many of the route's steps after a leg walked on may go by before
+//  they find the player.
+constexpr size_t MAX_WALK_ON_STEPS = 4;
 
 Direction opposite(Direction direction){
     return (Direction)(((int)direction + 2) % 4);
@@ -236,14 +239,46 @@ bool walks_same_everywhere(
     return true;
 }
 
-//  The ways to find the player from all of `positions`: fewest holds first,
-//  then fewest tiles held. None needed if they are all on one tile.
+int held_tiles(const std::vector<RouteStep>& holds){
+    int tiles = 0;
+    for (const RouteStep& hold : holds){
+        tiles += hold.tiles;
+    }
+    return tiles;
+}
+
+//  The ways to find the player from all of `positions`, fewest holds first,
+//  then fewest tiles held. None needed if they are all on one tile. Not
+//  only the fewest holds: for each first hold, the fewest after it, so a
+//  caller can pick a way that keeps what a stopped leg walked. On Rock
+//  Tunnel B1F row 37 the one single hold went back east to the wall
+//  behind the leg's start, while a hold south and one west, ahead, were
+//  found too (console B, 2026-11-09).
 std::vector<Found> find_player(
     const std::vector<std::vector<MapData>>& worlds, const std::vector<Hypothesis>& positions, bool surfing
 ){
-    return Pokemon::find_wall_anchors<ReanchorPolicy>(
-        positions, ReanchorContext{.worlds = worlds, .surfing = surfing}, {.max_holds = MAX_HOLDS}
-    );
+    const ReanchorContext context{.worlds = worlds, .surfing = surfing};
+    std::vector<Found> found = Pokemon::find_wall_anchors<ReanchorPolicy>(positions, context, {.max_holds = 0});
+    if (!found.empty()){
+        return found;
+    }
+    for (Direction direction : Pokemon::ALL_DIRECTIONS){
+        const auto first = ReanchorPolicy::hold(context, positions, direction);
+        if (!first || first->positions == positions || first->hold.tiles == 0){
+            continue;
+        }
+        for (Found& rest : Pokemon::find_wall_anchors<ReanchorPolicy>(first->positions, context, {.max_holds = MAX_HOLDS - 1})){
+            rest.holds.insert(rest.holds.begin(), first->hold);
+            found.push_back(std::move(rest));
+        }
+    }
+    std::stable_sort(found.begin(), found.end(), [](const Found& a, const Found& b){
+        if (a.holds.size() != b.holds.size()){
+            return a.holds.size() < b.holds.size();
+        }
+        return held_tiles(a.holds) < held_tiles(b.holds);
+    });
+    return found;
 }
 
 } // namespace
@@ -288,6 +323,10 @@ WalkedTiles whole_leg(const RouteStep& step){
     return WalkedTiles{.min = 0, .max = step.tiles};
 }
 
+WalkedTiles stop_tiles(const RouteStep& step, WalkedTiles timed, bool dark){
+    return dark ? whole_leg(step) : timed;
+}
+
 std::string to_string(const StopCandidate& candidate){
     std::string text = to_string(candidate.player);
     if (candidate.trainer){
@@ -326,6 +365,86 @@ std::vector<StopCandidate> stop_candidates(
     return candidates;
 }
 
+int reanchor_tiles(const Reanchor& anchor){
+    return held_tiles(anchor.holds) + held_tiles(anchor.back);
+}
+
+namespace{
+
+//  How much more a tile of an open leg costs than one held to a wall: a
+//  wild battle on a hold costs only the battle, as the hold goes on to its
+//  wall, while one on an open leg stops it and needs finding the player
+//  again. Not measured: weighted so that on Rock Tunnel B1F row 38 the way
+//  west to the wall (1, 38) and 13 tiles back beats 10 held east to the
+//  wall (30, 38) and 17 back.
+constexpr int OPEN_TILE_WEIGHT = 4;
+
+//  How costly `anchor` is to walk: its tiles, with open legs' weighted.
+int reanchor_cost(const Reanchor& anchor){
+    int open = 0;
+    for (const RouteStep& step : anchor.back){
+        if (step.action == RouteAction::WALK && !step.to_wall && !step.warps){
+            open += step.tiles;
+        }
+    }
+    return reanchor_tiles(anchor) + (OPEN_TILE_WEIGHT - 1) * open;
+}
+
+//  Whether `holds`, from any of `positions`, pass a tile a trainer may see.
+//  A trainer the route keeps clear of would stop the player and fight
+//  (the sim, 2026-11-09: Hiker Lucas, on a hold down Rock Tunnel 1F's
+//  column 16 after a wild battle below the ladder (20, 13)).
+bool holds_in_sight(
+    const std::vector<std::vector<MapData>>& worlds, const std::vector<Hypothesis>& positions, const std::vector<RouteStep>& holds
+){
+    for (const Hypothesis& position : positions){
+        const std::vector<MapData>& world = worlds[position.world];
+        MapPosition at = position.at;
+        for (const RouteStep& hold : holds){
+            const std::optional<WallHold> wall = hold_to_wall(world, at, hold.surfing, hold.direction);
+            if (!wall){
+                break;
+            }
+            RouteStep held = hold;
+            held.tiles = wall->tiles;
+            for (const MapPosition& tile : leg_tiles(world, at, held)){
+                if (!trainers_seeing(world, tile).empty()){
+                    return true;
+                }
+            }
+            at = wall->end;
+        }
+    }
+    return false;
+}
+
+//  Ways whose holds pass a trainer's sight come after every other way.
+constexpr int IN_SIGHT_COST = 1000;
+
+//  The maps as they may stand after a stop on one of `candidates`: as they
+//  are, and with each trainer who may have walked up; where those trainers
+//  stand, and where the player may be on which of the maps.
+struct StopWorlds{
+    std::vector<std::vector<MapData>> worlds;
+    std::vector<MapPosition> trainers;
+    std::vector<Hypothesis> positions;
+};
+StopWorlds stop_worlds(const std::vector<MapData>& maps, const std::vector<StopCandidate>& candidates){
+    StopWorlds out{.worlds = {maps}, .trainers = {}, .positions = {}};
+    for (const StopCandidate& candidate : candidates){
+        size_t world = 0;
+        if (candidate.trainer){
+            out.worlds.push_back(with_trainers(maps, {candidate.trainer->at}));
+            world = out.worlds.size() - 1;
+            add_unique(out.trainers, candidate.trainer->at);
+        }
+        add_unique(out.positions, Hypothesis{world, candidate.player});
+    }
+    return out;
+}
+
+} // namespace
+
 std::optional<Reanchor> plan_reanchor(
     const std::vector<MapData>& maps,
     const std::vector<StopCandidate>& candidates,
@@ -336,22 +455,18 @@ std::optional<Reanchor> plan_reanchor(
         return std::nullopt;
     }
 
-    //  The maps as they may stand: as they are, and with each trainer who
-    //  may have walked up.
-    std::vector<std::vector<MapData>> worlds{maps};
-    std::vector<MapPosition> trainers;
-    std::vector<Hypothesis> positions;
-    for (const StopCandidate& candidate : candidates){
-        size_t world = 0;
-        if (candidate.trainer){
-            worlds.push_back(with_trainers(maps, {candidate.trainer->at}));
-            world = worlds.size() - 1;
-            add_unique(trainers, candidate.trainer->at);
-        }
-        add_unique(positions, Hypothesis{world, candidate.player});
-    }
+    const StopWorlds stop = stop_worlds(maps, candidates);
+    const std::vector<std::vector<MapData>>& worlds = stop.worlds;
+    const std::vector<MapPosition>& trainers = stop.trainers;
+    const std::vector<Hypothesis>& positions = stop.positions;
 
+    //  Of the ways found, the cheapest (reanchor_cost()): it keeps the most
+    //  of what the leg walked. A wild battle every 10 to 14 tiles stopped
+    //  every try of a leg whose way back started behind it (console B,
+    //  2026-11-09, Rock Tunnel B1F row 37).
     const std::vector<MapData> clear_of_trainers = with_trainers(maps, trainers);
+    std::optional<Reanchor> best;
+    int best_cost = 0;
     for (const Found& at : find_player(worlds, positions, step.surfing)){
         const Direction facing = at.holds.empty() ? step.direction : at.holds.back().direction;
         //  The way back keeps clear of every trainer who may stand in it if
@@ -360,8 +475,137 @@ std::optional<Reanchor> plan_reanchor(
         if (!back && !trainers.empty()){
             back = plan_overworld_route(maps, at.at, RouteGoal{step.end, std::nullopt}, costs, facing);
         }
-        if (back && (trainers.empty() || walks_same_everywhere(worlds, positions, at.at, *back))){
-            return Reanchor{.holds = at.holds, .found = at.at, .back = std::move(*back)};
+        if (!back || (!trainers.empty() && !walks_same_everywhere(worlds, positions, at.at, *back))){
+            continue;
+        }
+        Reanchor anchor{.holds = at.holds, .found = at.at, .back = std::move(*back)};
+        const int cost = reanchor_cost(anchor) + (holds_in_sight(worlds, positions, anchor.holds) ? IN_SIGHT_COST : 0);
+        if (!best || cost < best_cost){
+            best = std::move(anchor);
+            best_cost = cost;
+        }
+    }
+    return best;
+}
+
+namespace{
+
+//  How many tiles `from` is before `to`, walking `direction` on one map;
+//  nothing if `to` isn't ahead on that line within `max_tiles`.
+std::optional<int> tiles_ahead(const MapPosition& from, const MapPosition& to, Direction direction, int max_tiles){
+    if (from.map != to.map){
+        return std::nullopt;
+    }
+    TilePos at = from.point;
+    for (int c = 0; c <= max_tiles; c++){
+        if (at == to.point){
+            return c;
+        }
+        at = at.next(direction);
+    }
+    return std::nullopt;
+}
+
+//  One candidate's way on: the tiles it walks, and where it stands.
+struct WayOn{
+    std::vector<MapPosition> tiles;
+    MapPosition at;
+};
+
+//  `step`, a hold to a wall or an open leg onto no warp, from where each of
+//  `ways` stands. False if a hold isn't stopped by a wall, an open leg is
+//  stopped short, or either may be stopped short by a person.
+bool walk_ways(const std::vector<MapData>& maps, const RouteStep& step, std::vector<WayOn>& ways){
+    if (step.action != RouteAction::WALK || step.warps || !step.connection_steps.empty()){
+        return false;
+    }
+    for (WayOn& way : ways){
+        std::optional<WallHold> walked = step.to_wall
+            ? hold_to_wall(maps, way.at, step.surfing, step.direction)
+            : std::optional<WallHold>(WallHold{.end = way.at, .tiles = step.tiles});
+        if (!walked || person_on_the_way(maps, way.at, step.surfing, step.direction, *walked)){
+            return false;
+        }
+        RouteStep held = step;
+        held.tiles = walked->tiles;
+        const std::vector<MapPosition> tiles = leg_tiles(maps, way.at, held);
+        if (tiles.size() != (size_t)held.tiles + 1){
+            return false;
+        }
+        way.tiles.insert(way.tiles.end(), tiles.begin() + 1, tiles.end());
+        way.at = tiles.back();
+    }
+    return true;
+}
+
+//  Whether any of `ways` walks onto a tile off `planned` that a trainer may
+//  see: walking on a few tiles off the planned way may cross a trainer's
+//  line the route keeps clear of.
+bool off_way_in_sight(const std::vector<MapData>& maps, const std::vector<WayOn>& ways, const std::vector<MapPosition>& planned){
+    for (const WayOn& way : ways){
+        for (const MapPosition& tile : way.tiles){
+            const bool off_way = std::find(planned.begin(), planned.end(), tile) == planned.end();
+            if (off_way && !trainers_seeing(maps, tile).empty()){
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+//  Each of `candidates` walking `rest`; nothing if any is stopped short.
+std::optional<std::vector<WayOn>> walk_rest(
+    const std::vector<MapData>& maps, const std::vector<StopCandidate>& candidates, const RouteStep& rest
+){
+    std::vector<WayOn> ways;
+    for (const StopCandidate& candidate : candidates){
+        std::vector<MapPosition> tiles = leg_tiles(maps, candidate.player, rest);
+        if (tiles.size() != (size_t)rest.tiles + 1){
+            return std::nullopt;
+        }
+        const MapPosition at = tiles.back();
+        ways.push_back(WayOn{std::move(tiles), at});
+    }
+    return ways;
+}
+
+} // namespace
+
+std::optional<Resume> plan_resume(
+    const std::vector<MapData>& maps,
+    const std::vector<StopCandidate>& candidates,
+    const RouteStep& step,
+    const std::vector<RouteStep>& after
+){
+    const bool open_leg = step.action == RouteAction::WALK && !step.to_wall && !step.warps && step.connection_steps.empty();
+    const bool by_trainer = std::any_of(candidates.begin(), candidates.end(), [](const StopCandidate& c){ return c.trainer.has_value(); });
+    if (candidates.size() < 2 || !open_leg || by_trainer){
+        return std::nullopt;
+    }
+    const std::optional<int> remaining = tiles_ahead(candidates[candidates.size() / 2].player, step.end, step.direction, step.tiles);
+    if (!remaining){
+        return std::nullopt;
+    }
+    Resume resume{.rest = step, .steps = 0, .starts = {{}}};
+    resume.rest.tiles = *remaining;
+    for (const StopCandidate& candidate : candidates){
+        resume.starts[0].push_back(candidate.player);
+    }
+    std::optional<std::vector<WayOn>> ways = walk_rest(maps, candidates, resume.rest);
+    //  The way as planned, from the leg's end.
+    std::vector<WayOn> planned{WayOn{{step.end}, step.end}};
+    for (size_t c = 0; ways && c < after.size() && c < MAX_WALK_ON_STEPS; c++){
+        resume.starts.emplace_back();
+        for (const WayOn& way : *ways){
+            resume.starts.back().push_back(way.at);
+        }
+        if (!walk_ways(maps, after[c], *ways) || !walk_ways(maps, after[c], planned)){
+            return std::nullopt;
+        }
+        const bool found = after[c].to_wall && std::all_of(ways->begin(), ways->end(), [&](const WayOn& way){ return way.at == after[c].end; });
+        if (found){
+            resume.steps = c + 1;
+            return off_way_in_sight(maps, *ways, planned[0].tiles) ? std::nullopt : std::optional<Resume>(std::move(resume));
         }
     }
     return std::nullopt;

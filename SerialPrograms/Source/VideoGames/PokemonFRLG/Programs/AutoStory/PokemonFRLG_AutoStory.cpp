@@ -14,7 +14,9 @@
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStoryFailureCapture.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
+#include "Pokemon/AutoStory/Pokemon_StoryLog.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
+#include "Pokemon/Options/Pokemon_GameLanguages.h"
 #include "Pokemon/Pokemon_Strings.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "VideoGames/PokemonFRLG/Programs/PokemonFRLG_NamingScreenKeyboard.h"
@@ -59,7 +61,14 @@ namespace{
 //  The start and end dropdowns' entries: the table's checkpoints, 00.01 to
 //  00.12b. The options hold a reference to it.
 const StringSelectDatabase& checkpoint_database(){
-    static const StringSelectDatabase database = Pokemon::story_checkpoint_database(story_checkpoints());
+    static const std::vector<std::string> labels = []{
+        std::vector<std::string> result;
+        for (const StoryCheckpoint& checkpoint : story_checkpoints()){
+            result.push_back(Pokemon::story_checkpoint_label(checkpoint));
+        }
+        return result;
+    }();
+    static const StringSelectDatabase database = Pokemon::story_checkpoint_database(labels);
     return database;
 }
 
@@ -87,7 +96,7 @@ const char* const RUN_GIFT_RNG_TEXT =
     "English only. The Magikarp costs 500 and needs a free party slot; AutoStory's options leave the text fast.";
 
 AutoStory::AutoStory()
-    : RUN(checkpoint_database())
+    : RUN(checkpoint_database(), Pokemon::FireRedLeafGreenLanguages_Database())
     , NEW_GAME_FROM_TITLE(
         "<b>New game from the title screen:</b><br>The game is on its title screen with no save data. "
         "Needed to start at 00.01. Otherwise the program loads the save, which must be the one the start checkpoint begins from.",
@@ -172,7 +181,7 @@ void check_player_name(ConsoleHandle& console, const std::string& name){
 //  the screen as its frame if `keep_start_frame` (a save made by hand).
 StoryEnv story_env(
     SingleSwitchProgramEnvironment& env, ProControllerContext& context,
-    const StoryCheckpoint& checkpoint, StoryChecks checks, bool keep_start_frame
+    const StoryCheckpoint& checkpoint, Pokemon::StoryCheckLevel checks, bool keep_start_frame
 ){
     StoryEnv story{env.console, context, checkpoint.supplies, checkpoint.supplies, false, checks};
     story.start_frames = program_start_frames();
@@ -252,11 +261,10 @@ void verify_story_checkpoint(
 ){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
     const StoryCheckpoint& checkpoint = checkpoints[run.start_index()];
-    StoryEnv story = story_env(env, context, checkpoint, run.checks(), false);
+    StoryEnv story = story_env(env, context, checkpoint, run.check_level(), false);
     load_verify_save(env, context, story, checkpoint);
+    story.language = run.language();
     StoryExecutor executor(story);
-    executor.set_checks(run.checks());
-    executor.set_language(run.language());
     Pokemon::Segment segment = make_story_segment(checkpoints, executor);
     Pokemon::SegmentHooks hooks = story_hooks(env, story);
     //  Each failed run's stream history, screenshot and log, for a replay test.
@@ -473,7 +481,7 @@ static void run_story_rows(
         capture.save_thrown(e.message());
         throw;
     }
-    Pokemon::record_story_stats(env.current_stats<Pokemon::AutoStoryStats>(), report);
+    Pokemon::record_story_counts(env.current_stats<Pokemon::AutoStoryStats>(), report.story_counts());
     env.update_stats();
     throw_if_failed(report);
 }
@@ -681,13 +689,12 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         first = checkpoint_index(checkpoints, "00.01b");
         plan = plan_story_run(checkpoints, first, last, handoffs);
     }
-    StoryEnv story = story_env(env, context, checkpoints[first], RUN.checks(), KEEP_START_FRAME);
+    StoryEnv story = story_env(env, context, checkpoints[first], RUN.check_level(), KEEP_START_FRAME);
     story.player_name = player_name;
     const bool at_gift_rng = plan.stop == StoryHandoff::GIFT_RNG && plan.rows.empty();
     prepare_start(env, context, checkpoints, first, story, at_gift_rng);
+    story.language = RUN.language();
     StoryExecutor executor(story);
-    executor.set_checks(RUN.checks());
-    executor.set_language(RUN.language());
 
     const std::optional<std::string> done_through = at_gift_rng
         ? run_from_gift_rng_save(env, context, story, executor, first)

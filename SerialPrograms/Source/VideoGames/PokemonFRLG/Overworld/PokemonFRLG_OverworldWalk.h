@@ -23,10 +23,12 @@
 #include <string>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "Pokemon/AutoStory/Pokemon_ScreenEvents.h"
 #include "Pokemon/Navigation/Pokemon_LegWalker.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
+#include "PokemonFRLG_MovementMechanics.h"
 #include "PokemonFRLG_OverworldRoute.h"
 
 namespace PokemonAutomation{
@@ -99,21 +101,9 @@ void walk_overworld_route(
 //  walk_overworld_route() describes.
 namespace OverworldWalkSteps{
 
-//  Walking duration for a single tile (16 frames at 60 fps).
-inline constexpr Milliseconds TILE_TIME(267);
-//  Surfing duration for a single tile.
-inline constexpr Milliseconds SURF_TILE_TIME(133);
-//  8 frames: running is 2 pixels a frame, twice walking. Not measured on the
-//  console yet; the walker logs each leg to a wall (speed_note()) for that.
-inline constexpr Milliseconds RUN_TILE_TIME(133);
-//  turns a player facing another way, without a step.
-inline constexpr Milliseconds TURN_TAP(40);
-//  duration to wait after turning to allow state to settle.
-inline constexpr Milliseconds TURN_SETTLE(300);
-//  short enough to turn without stepping.
-inline constexpr Milliseconds FACE_HOLD(40);
-//  duration of button release between movement steps.
-inline constexpr Milliseconds STEP_RELEASE(100);
+//  The pace, tap and release times are the game's movement mechanics
+//  (PokemonFRLG_MovementMechanics.h).
+
 //  After a warp's fade: leaving by a door the game walks the player a tile out
 //  on its own, and a leg started before that ends loses tiles (on the console a
 //  600ms wait cost 2 tiles).
@@ -176,7 +166,16 @@ Milliseconds leg_hold_time(const RouteStep& step, MoveSpeed speed);
 //  the tiles at the assumed pace and the hold. Empty for other steps.
 std::string speed_note(const RouteStep& step, MoveSpeed speed);
 
-//  After a hold onto `step`'s warp: waits out its fade.
+//  The hold watchers (Pokemon::walk_leg()) of a leg onto `step`: `fade`,
+//  which watches for the warp's fade from the start of the hold, if the
+//  step warps. A fade can be over before the hold ends.
+std::vector<Pokemon::WatchAlong*> warp_hold_watchers(const RouteStep& step, Pokemon::WatchAlong& fade);
+
+//  After a hold onto `step`'s warp: waits out its fade, unless `fade`, a
+//  BlackScreenOverWatcher watched along the hold, saw it over already;
+//  else waits on with that watcher, which may have seen the black.
+void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step, Pokemon::WatchAlong& fade);
+//  The same, watching only from now: for a caller that saw the black itself.
 void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step);
 
 //  Before `step`: fails unless the overworld is up.
@@ -215,6 +214,16 @@ size_t clear_battle_before(
     const OverworldInterrupts& wild, const RouteStep& step
 );
 
+//  Whether `screen` is the overworld of a cave dark without Flash (Rock
+//  Tunnel): black around a lit circle on the player in the middle. The
+//  battle text box detector and the black screen check read its black as
+//  a battle on its way (console B, 2026-11-09, 00.28: the check before
+//  each step ran a 15 s battle loop on it, "not a battle", and an open
+//  leg's stop was placed by it 0 to 3 tiles in, where the battle came at
+//  the leg's end). A battle's wipe is black in the middle too; its text
+//  box and HP boxes aren't black in the corners.
+bool dark_cave_screen(const ImageViewRGB32& screen);
+
 //  After a warp's fade: if it was a wild battle's, runs from the battle and
 //  returns true.
 bool run_from_battle_after_warp(ConsoleHandle& console, ProControllerContext& context);
@@ -225,6 +234,17 @@ void check_warp_was_no_battle(ConsoleHandle& console, ProControllerContext& cont
 
 //  The way the player faces, read from the screen; nothing if it can't be read.
 std::optional<Direction> read_facing(ConsoleHandle& console, ProControllerContext& context);
+
+//  Turns the player to `direction` with a tap (TURN_TAP), then reads the
+//  facing from the screen and taps again while it shows another way, up to
+//  MAX_TURN_TAPS taps. A tap the game misses leaves the player facing the
+//  old way, and a leg's hold then spends its first 8 frames turning
+//  (pokefirered PlayerTurnInPlace(), a fast walk in place): a one-tile
+//  hold only turns the player, with nothing to show it (console B,
+//  2026-11-09, 00.28 run 2: the step north onto Rock Tunnel B1F row 34).
+//  A facing that can't be read is taken as turned: a tap while facing the
+//  way already would take a step.
+void turn_to(ConsoleHandle& console, ProControllerContext& context, Direction direction);
 
 //  Facing `direction` (turning first unless `facing_water`), starts Surf.
 void start_surf(ConsoleHandle& console, ProControllerContext& context, Direction direction, bool facing_water);
