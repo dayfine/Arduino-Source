@@ -16,7 +16,7 @@
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Pokemon_StoryStepJson.h"
 #ifndef PA_STORY_DATA_STANDALONE
-#include "Pokemon_AutoStory_Tests.h"
+#include "Pokemon/AutoStory/Pokemon_AutoStory_Tests.h"
 #endif
 
 namespace PokemonAutomation{
@@ -108,7 +108,7 @@ std::string check_case(const WireCase& test){
 #ifdef PA_STORY_DATA_STANDALONE
 
 //  A shared case file's record kind.
-Record record_kind(const std::string& name){
+Record record_kind(std::string_view name){
     if (name == "pose"){
         return Record::POSE;
     }

@@ -32,6 +32,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Common/Cpp/MoveOnlyFunction.h"
 #include "Pokemon_StoryLog.h"
@@ -119,7 +120,7 @@ std::string to_string(const Outcome& outcome);
 //  The failure of a step that found the Switch's HOME menu instead of the
 //  game. Nothing in the story can answer it, as every press goes to the
 //  console's menus: no recovery runs and no reload, the run stops.
-constexpr const char* GAME_NOT_RUNNING = "game_not_running";
+inline constexpr std::string_view GAME_NOT_RUNNING = "game_not_running";
 //  GAME_NOT_RUNNING, saying so for the run log.
 Outcome outcome_game_not_running();
 

@@ -10,25 +10,10 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-const EnumDropdownDatabase<StoryChecks>& StoryChecks_Database(){
-    static const EnumDropdownDatabase<StoryChecks> database({
-        {StoryChecks::THOROUGH, "thorough", "Thorough: confirm purchases, the Bag, status and position on screen"},
-        {StoryChecks::FAST,     "fast",     "Fast: trust counts and timings"},
-    });
-    return database;
-}
-
-const EnumDropdownDatabase<Language>& StoryLanguage_Database(){
-    static const EnumDropdownDatabase<Language> database({
-        {Language::English,            "en",      "English"},
-        {Language::Japanese,           "ja",      "Japanese"},
-        {Language::Spanish,            "es",      "Spanish"},
-        {Language::French,             "fr",      "French"},
-        {Language::German,             "de",      "German"},
-        {Language::Italian,            "it",      "Italian"},
-        {Language::Korean,             "ko",      "Korean"},
-        {Language::ChineseSimplified,  "zh-Hans", "Chinese (Simplified)"},
-        {Language::ChineseTraditional, "zh-Hant", "Chinese (Traditional)"},
+const EnumDropdownDatabase<StoryCheckLevel>& StoryCheckLevel_Database(){
+    static const EnumDropdownDatabase<StoryCheckLevel> database({
+        {StoryCheckLevel::THOROUGH, "thorough", "Thorough: confirm purchases, the Bag, status and position on screen"},
+        {StoryCheckLevel::FAST,     "fast",     "Fast: trust counts and timings"},
     });
     return database;
 }
@@ -36,6 +21,14 @@ const EnumDropdownDatabase<Language>& StoryLanguage_Database(){
 
 std::string story_checkpoint_label(const StoryCheckpoint& checkpoint){
     return checkpoint.title.empty() ? checkpoint.id : checkpoint.id + " " + checkpoint.title;
+}
+
+StringSelectDatabase story_checkpoint_database(std::span<const StoryCheckpoint> rows){
+    StringSelectDatabase database;
+    for (size_t c = 0; c < rows.size(); c++){
+        database.add_entry(StringSelectEntry(std::to_string(c), story_checkpoint_label(rows[c])));
+    }
+    return database;
 }
 
 
@@ -75,7 +68,7 @@ std::string StoryVerifyOptions::check_validity() const{
 }
 
 
-StoryRunOptions::StoryRunOptions(const StringSelectDatabase& checkpoints)
+StoryRunOptions::StoryRunOptions(const StringSelectDatabase& checkpoints, const EnumDropdownDatabase<Language>& languages)
     : StoryRangeOptions("Story Run", checkpoints)
     , ATTEMPTS_PER_CHECKPOINT(
         "<b>Attempts per checkpoint:</b><br>A failed checkpoint reloads its save and runs again, up to this many times in all.",
@@ -89,14 +82,14 @@ StoryRunOptions::StoryRunOptions(const StringSelectDatabase& checkpoints)
     )
     , CHECKS(
         "<b>Checks:</b><br>Thorough reads the screen to confirm what each step did; Fast trusts counts and timings, for a run in a rush.",
-        StoryChecks_Database(),
+        StoryCheckLevel_Database(),
         LockMode::LOCK_WHILE_RUNNING,
-        StoryChecks::THOROUGH
+        StoryCheckLevel::THOROUGH
     )
     , LANGUAGE(
         "<b>Game language:</b><br>For the few reads that need text (item names in a shop or the Bag). "
         "Story steps never match dialogue text; with no reader for this language they check positions, digits and the screen instead.",
-        StoryLanguage_Database(),
+        languages,
         LockMode::LOCK_WHILE_RUNNING,
         Language::English
     )
@@ -126,7 +119,7 @@ SegmentPolicy StoryRunOptions::policy() const{
     return policy;
 }
 
-StoryChecks StoryRunOptions::checks() const{
+StoryCheckLevel StoryRunOptions::check_level() const{
     return CHECKS;
 }
 

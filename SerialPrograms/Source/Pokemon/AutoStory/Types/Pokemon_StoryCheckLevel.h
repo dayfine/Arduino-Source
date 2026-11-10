@@ -1,4 +1,4 @@
-/*  Story Checks
+/*  Story Check Level
  *
  *  From: https://github.com/PokemonAutomation/
  *
@@ -8,15 +8,17 @@
  *
  */
 
-#ifndef PokemonAutomation_Pokemon_StoryChecks_H
-#define PokemonAutomation_Pokemon_StoryChecks_H
+#ifndef PokemonAutomation_Pokemon_StoryCheckLevel_H
+#define PokemonAutomation_Pokemon_StoryCheckLevel_H
+
+#include <string>
 
 namespace PokemonAutomation{
 namespace Pokemon{
 
 
 //  How much a step reads the screen to confirm what it did.
-enum class StoryChecks{
+enum class StoryCheckLevel{
     //  Confirm on screen: purchases, the Bag, status after battles, position.
     THOROUGH,
     //  In a rush: trust counts and timings.
@@ -24,7 +26,7 @@ enum class StoryChecks{
 };
 
 // Returns the readable string representation of a story check level.
-const char* story_checks_name(StoryChecks checks);
+std::string story_check_level_name(StoryCheckLevel level);
 
 
 

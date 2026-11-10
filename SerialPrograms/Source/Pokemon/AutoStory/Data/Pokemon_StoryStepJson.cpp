@@ -79,7 +79,7 @@ const JsonObject& fields(const JsonValue& value, std::initializer_list<std::stri
 }
 
 template <typename Enum, size_t N>
-Enum read_enum(const std::array<std::pair<Enum, std::string_view>, N>& names, const std::string& name, std::string_view source){
+Enum read_enum(const std::array<std::pair<Enum, std::string_view>, N>& names, std::string_view name, std::string_view source){
     for (const auto& [value, label] : names){
         if (label == name){
             return value;

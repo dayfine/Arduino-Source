@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -31,8 +32,8 @@ struct NamedCheckpoint{
 const std::vector<std::unique_ptr<NamedCheckpoint>>& story_list(){
     static const std::vector<std::unique_ptr<NamedCheckpoint>> list = []{
         std::vector<std::unique_ptr<NamedCheckpoint>> ret;
-        for (const char* label : {"tutorial 0", "tutorial 1", "main 0", "main 1", "main 2"}){
-            ret.emplace_back(std::make_unique<NamedCheckpoint>(NamedCheckpoint{.label = label}));
+        for (std::string_view label : {"tutorial 0", "tutorial 1", "main 0", "main 1", "main 2"}){
+            ret.emplace_back(std::make_unique<NamedCheckpoint>(NamedCheckpoint{.label = std::string(label)}));
         }
         return ret;
     }();

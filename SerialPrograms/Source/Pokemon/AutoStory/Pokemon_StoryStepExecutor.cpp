@@ -1,15 +1,13 @@
-/*  Story Steps
+/*  Story Step Executor
  *
  *  From: https://github.com/PokemonAutomation/
  *
  */
 
 #include <format>
-#include <memory>
 #include <set>
 #include <utility>
-#include "Pokemon_StoryLog.h"
-#include "Pokemon_StorySteps.h"
+#include "Pokemon_StoryStepExecutor.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -22,8 +20,8 @@ Outcome unsupported_step(const StoryStep& step){
 
 void StoryStepExecutor::begin_attempt(const StoryCheckpoint&){}
 
-bool StoryStepExecutor::holds(const std::string& condition, RunState& state){
-    return state.flags.contains(condition);
+bool StoryStepExecutor::holds(std::string_view condition, RunState& state){
+    return state.flags.contains(std::string(condition));
 }
 
 
@@ -58,19 +56,6 @@ Event from_save_event(const Pose& start){
 
 } // namespace
 
-Checkpoint build_story_checkpoint(const StoryCheckpoint& data, StoryStepExecutor& executor){
-    executor.begin_attempt(data);
-    Checkpoint checkpoint;
-    checkpoint.id = data.id;
-    if (data.start){
-        checkpoint.events.push_back(from_save_event(*data.start));
-    }
-    for (const StoryStep& step : data.steps){
-        checkpoint.events.push_back(story_event(step, executor));
-    }
-    return checkpoint;
-}
-
 namespace{
 
 //  `event`, for a once_per_save step known in `prepared` as `key`: skipped
@@ -91,13 +76,17 @@ void run_once_per_save(Event& event, std::string key, PreparedSteps& prepared){
 
 } // namespace
 
-Checkpoint build_story_checkpoint(const StoryCheckpoint& data, StoryStepExecutor& executor, PreparedSteps& prepared){
-    Checkpoint checkpoint = build_story_checkpoint(data, executor);
-    //  After "from_save", the events are the steps in order.
-    const size_t first = data.start ? 1 : 0;
-    for (size_t c = 0; c < data.steps.size(); c++){
-        if (data.steps[c].once_per_save){
-            run_once_per_save(checkpoint.events[first + c], data.id + "/" + data.steps[c].name, prepared);
+Checkpoint build_story_checkpoint(const StoryCheckpoint& data, StoryStepExecutor& executor, PreparedSteps* prepared){
+    executor.begin_attempt(data);
+    Checkpoint checkpoint;
+    checkpoint.id = data.id;
+    if (data.start){
+        checkpoint.events.push_back(from_save_event(*data.start));
+    }
+    for (const StoryStep& step : data.steps){
+        checkpoint.events.push_back(story_event(step, executor));
+        if (prepared != nullptr && step.once_per_save){
+            run_once_per_save(checkpoint.events.back(), data.id + "/" + step.name, *prepared);
         }
     }
     return checkpoint;
@@ -159,32 +148,6 @@ std::vector<std::string> lint_story_checkpoint(const StoryCheckpoint& data){
         }
     }
     return problems;
-}
-
-
-void record_story_stats(AutoStoryStats& stats, const SegmentReport& report){
-    StoryRunCounts counts{.segments = 1, .checkpoints = 0, .resets = report.reloads};
-    for (const CheckpointRun& run : report.runs){
-        if (run.passed){
-            counts.checkpoints++;
-        }
-    }
-    record_story_counts(stats, counts);
-}
-
-
-Pose tile_pose(std::string map, std::vector<TilePos> tiles, std::optional<Direction> facing){
-    Pose pose;
-    pose.map = std::move(map);
-    pose.certainty = tiles.empty() ? PoseCertainty::UNKNOWN
-        : tiles.size() == 1 ? PoseCertainty::TILE : PoseCertainty::SET;
-    pose.where = std::make_shared<const TilePose>(std::move(tiles), facing);
-    return pose;
-}
-
-std::optional<Direction> facing_of(const Pose& pose){
-    const TilePose* tile_pose = dynamic_cast<const TilePose*>(pose.where.get());
-    return tile_pose ? tile_pose->facing : std::nullopt;
 }
 
 
