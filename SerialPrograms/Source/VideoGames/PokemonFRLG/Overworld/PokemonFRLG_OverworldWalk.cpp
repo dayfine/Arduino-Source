@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <format>
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
+#include "CommonFramework/ImageTools/ImageBoxes.h"
+#include "CommonFramework/ImageTools/ImageStats.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
@@ -18,6 +20,7 @@
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleTextBoxDetector.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "PokemonFRLG_PlayerFacingReader.h"
 #include "PokemonFRLG_OverworldWalk.h"
 
@@ -26,12 +29,12 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 using namespace std::chrono_literals;
+using namespace MovementMechanics;
 using namespace OverworldWalkSteps;
 
 
 namespace{
 
-constexpr Milliseconds FACE_SETTLE = 300ms;     //  the turn animation, before A reaches what is ahead
 //  From the end of the hold, through the fade out and in.
 constexpr Milliseconds WARP_TIMEOUT = 8000ms;
 constexpr Milliseconds SURF_PROMPT_TIMEOUT = 5000ms;
@@ -213,18 +216,34 @@ std::string speed_note(const RouteStep& step, MoveSpeed speed){
     );
 }
 
+std::vector<Pokemon::WatchAlong*> warp_hold_watchers(const RouteStep& step, Pokemon::WatchAlong& fade){
+    if (!step.warps){
+        return {};
+    }
+    return {&fade};
+}
+
 //  One watcher for the whole fade: a ladder's black is short enough to be
 //  over before a second watcher, started once the fade is seen, looks.
-void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step){
-    BlackScreenOverWatcher arrival(COLOR_RED);
+void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step, Pokemon::WatchAlong& fade){
+    if (fade.fired()){
+        console.log("Route: the fade to " + step.end.map + " was over before the hold ended.");
+        return;
+    }
     context.wait_for_all_requests();
-    if (wait_until(console, context, WARP_TIMEOUT, {arrival}) < 0){
+    if (wait_until(console, context, WARP_TIMEOUT, {fade.watcher()}) < 0){
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::SEND_ERROR_REPORT,
             "walk_overworld_route(): no fade in and out after walking onto the warp to " + step.end.map + ".",
             console
         );
     }
+}
+
+void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step){
+    BlackScreenOverWatcher arrival(COLOR_RED);
+    Pokemon::WatchAlong fade(arrival);
+    wait_out_warp(console, context, step, fade);
 }
 
 //  Fails unless the overworld is up. Under the START menu or a message the
@@ -276,11 +295,12 @@ void clear_open_message(
 namespace{
 
 //  What on screen shows a wild battle on its way: its text box, or the
-//  black of its wipe. Nothing if neither shows.
+//  black of its wipe. Nothing if neither shows, or on a dark cave's
+//  overworld (dark_cave_screen()).
 const char* battle_on_its_way(ConsoleHandle& console, ProControllerContext& context){
     context.wait_for_all_requests();
     VideoSnapshot screen = console.video().snapshot();
-    if (!screen){
+    if (!screen || dark_cave_screen(*screen.frame)){
         return nullptr;
     }
     if (BattleTextBoxDetector(COLOR_RED).detect(screen)){
@@ -292,7 +312,39 @@ const char* battle_on_its_way(ConsoleHandle& console, ProControllerContext& cont
     return nullptr;
 }
 
+//  The parts of the game screen a dark cave shows black (its corners) and
+//  lit (the player's tile and the ones next to it), and how bright each
+//  may be, as the sum of the average's channels. Not measured on the
+//  console's frames yet: the corners are a GBA screen's 2 by 2 tiles, the
+//  middle its player's tile.
+constexpr double DARK_CORNER_MAX = 45.0;
+constexpr double LIT_MIDDLE_MIN = 120.0;
+
+bool box_brightness_below(const ImageViewRGB32& screen, const ImageFloatBox& box, double limit){
+    return image_stats(extract_box_reference(screen, box)).average.sum() < limit;
+}
+
 } // namespace
+
+bool dark_cave_screen(const ImageViewRGB32& screen){
+    if (screen.width() == 0 || screen.height() == 0){
+        return false;
+    }
+    const ImageFloatBox game = GameSettings::instance().GAME_BOX;
+    auto part = [&](double x, double y, double width, double height){
+        return ImageFloatBox(game.x + game.width * x, game.y + game.height * y, game.width * width, game.height * height);
+    };
+    const ImageFloatBox corners[] = {
+        part(0.00, 0.00, 0.13, 0.20), part(0.87, 0.00, 0.13, 0.20),
+        part(0.00, 0.80, 0.13, 0.20), part(0.87, 0.80, 0.13, 0.20),
+    };
+    for (const ImageFloatBox& corner : corners){
+        if (!box_brightness_below(screen, corner, DARK_CORNER_MAX)){
+            return false;
+        }
+    }
+    return !box_brightness_below(screen, part(0.45, 0.42, 0.10, 0.16), LIT_MIDDLE_MIN);
+}
 
 size_t clear_unseen_battle(
     ConsoleHandle& console, ProControllerContext& context,
@@ -359,6 +411,22 @@ std::optional<Direction> read_facing(ConsoleHandle& console, ProControllerContex
     }
     console.log(std::string("Route: the player faces ") + (facing ? Pokemon::direction_name(*facing) : "an unknown way") + ".");
     return facing;
+}
+
+void turn_to(ConsoleHandle& console, ProControllerContext& context, Direction direction){
+    for (size_t tap = 1; tap <= MAX_TURN_TAPS; tap++){
+        pbf_press_dpad(context, dpad(direction), TURN_TAP, TURN_SETTLE);
+        context.wait_for_all_requests();
+        VideoSnapshot screen = console.video().snapshot();
+        const std::optional<Direction> facing = screen ? read_player_facing(screen) : std::nullopt;
+        if (!facing || *facing == direction){
+            return;
+        }
+        console.log(std::format(
+            "Route: after turn tap {} {}, the player faces {}.",
+            tap, Pokemon::direction_name(direction), Pokemon::direction_name(*facing)
+        ), COLOR_ORANGE);
+    }
 }
 
 void start_surf(ConsoleHandle& console, ProControllerContext& context, Direction direction, bool facing_water){
@@ -454,6 +522,31 @@ const OverworldInterruptSet& default_overworld_interrupts(){
 }
 
 
+namespace{
+
+//  A WALK step's leg, and the fade of the warp it walks onto, watched from
+//  the start of the hold.
+void walk_step_leg(
+    ConsoleHandle& console, ProControllerContext& context,
+    const RouteStep& step, const OverworldInterruptSet& interrupts, MoveSpeed speed
+){
+    BlackScreenOverWatcher arrival(COLOR_RED);
+    Pokemon::WatchAlong fade(arrival);
+    Pokemon::walk_leg(
+        console, context, leg_mover(step, speed), step.wild ? interrupts.wild : interrupts.other,
+        leg_spec(step, speed), MAX_INTERRUPTIONS_PER_LEG, warp_hold_watchers(step, fade)
+    );
+    if (!step.warps){
+        return;
+    }
+    wait_out_warp(console, context, step, fade);
+    static_assert(AFTER_WARP_BATTLE_WATCH >= AFTER_WARP);
+    check_warp_was_no_battle(console, context, step);
+}
+
+} // namespace
+
+
 void walk_overworld_route(
     ConsoleHandle& console, ProControllerContext& context,
     const std::vector<RouteStep>& route,
@@ -474,17 +567,12 @@ void walk_overworld_route(
             //  facing the right way: holding through a turn lost a tile on the
             //  console, while holds from a standstill were exact over 15 tiles.
             if (facing != step.direction){
-                pbf_press_dpad(context, dpad(step.direction), TURN_TAP, TURN_SETTLE);
+                turn_to(console, context, step.direction);
             }
             if (const std::string note = speed_note(step, speed); !note.empty()){
                 console.log(note);
             }
-            Pokemon::walk_leg(console, context, leg_mover(step, speed), step.wild ? interrupts.wild : interrupts.other, leg_spec(step, speed), MAX_INTERRUPTIONS_PER_LEG);
-            if (step.warps){
-                wait_out_warp(console, context, step);
-                static_assert(AFTER_WARP_BATTLE_WATCH >= AFTER_WARP);
-                check_warp_was_no_battle(console, context, step);
-            }
+            walk_step_leg(console, context, step, interrupts, speed);
             break;
         case RouteAction::SURF:
             start_surf(console, context, step.direction, facing == step.direction);

@@ -87,6 +87,9 @@ struct BattleTextScreen{
     bool arrow = false;
     //  A YES/NO box.
     bool yes_no = false;
+    //  The overworld of a cave dark without Flash (dark_cave_screen()),
+    //  whose black reads as the text box.
+    bool dark_cave = false;
 };
 
 //  Answer to an in-battle prompt dialogue.
@@ -193,6 +196,10 @@ private:
 //  battle loop's B presses).
 class EvolutionHold{
 public:
+    //  The longest one hold lasts: as long as exit_wild_battle()
+    //  (PokemonFRLG_Navigation.cpp) waits for an evolution.
+    static constexpr Milliseconds MAX_HOLD = std::chrono::milliseconds(20000);
+
     explicit EvolutionHold(PartyMember& lead);
 
     //  The loop took a turn: only one that attacked can end the battle in a
@@ -201,7 +208,9 @@ public:
     //  Whether `screen` may be an evolution: after a turn that attacked (not
     //  after RUN: console B, 2026-11-03, a minute without B after "Got away
     //  safely!"), the text box with no HP box and no arrow or YES/NO, as
-    //  "What? <Pokemon> is evolving!" shows through the animation. Nothing
+    //  "What? <Pokemon> is evolving!" shows through the animation; not a
+    //  dark cave's overworld, whose black reads as the text box (console B,
+    //  2026-11-09, 00.28 hiker_lenny: three holds, then a stop). Nothing
     //  is pressed while it shows, for at most EVOLUTION_HOLDS in all in a
     //  battle, in case it is something else.
     bool holds(const BattleTextScreen& screen) const;

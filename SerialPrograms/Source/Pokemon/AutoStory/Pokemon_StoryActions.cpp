@@ -87,6 +87,8 @@ void StepGuard::on_failure(const StoryStep&, const OperationFailedException&){}
 
 void StepGuard::on_interrupt(const StoryStep&, const InterruptCheck&){}
 
+void StepGuard::on_screen(const StoryStep&, const ScreenSettle&){}
+
 
 TableExecutor::TableExecutor(const StoryActionTable& table, StepGuard& guard)
     : m_table(table)
@@ -133,8 +135,10 @@ std::optional<Outcome> TableExecutor::clear_interrupts(RunState& state, const St
         return std::nullopt;
     }
     InterruptCheck check = clear_story_interrupt(*m_interrupts, state, step);
+    m_guard.on_screen(step, check.screen);
     if (check.verdict.kind == InterruptKind::NONE){
-        return std::nullopt;
+        //  Nothing interrupted; failed only when the game is not running.
+        return check.outcome.succeeded() ? std::nullopt : std::optional<Outcome>(check.outcome);
     }
     if (check.outcome.succeeded() && ++cleared > m_interrupts->max_per_step){
         check.outcome = outcome_failed("too_many_interrupts", step.name);

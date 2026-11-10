@@ -75,6 +75,17 @@ constexpr StoryTrainer STORY_TRAINERS[] = {
     {.map = "Route9", .battle = "picnicker_alicia", .trainer = "TRAINER_PICNICKER_ALICIA"},
     {.map = "Route9", .battle = "hiker_jeremy", .trainer = "TRAINER_HIKER_JEREMY"},
     {.map = "Route9", .battle = "bug_catcher_conner", .trainer = "TRAINER_BUG_CATCHER_CONNER"},
+    //  Rock Tunnel's nine the way can't walk around (RockTunnel_1F,
+    //  RockTunnel_B1F scripts.inc).
+    {.map = "RockTunnel_1F", .battle = "pokemaniac_ashton", .trainer = "TRAINER_POKEMANIAC_ASHTON"},
+    {.map = "RockTunnel_B1F", .battle = "pokemaniac_winston", .trainer = "TRAINER_POKEMANIAC_WINSTON"},
+    {.map = "RockTunnel_B1F", .battle = "picnicker_martha", .trainer = "TRAINER_PICNICKER_MARTHA"},
+    {.map = "RockTunnel_B1F", .battle = "hiker_allen", .trainer = "TRAINER_HIKER_ALLEN"},
+    {.map = "RockTunnel_1F", .battle = "hiker_lenny", .trainer = "TRAINER_HIKER_LENNY"},
+    {.map = "RockTunnel_B1F", .battle = "picnicker_sofia", .trainer = "TRAINER_PICNICKER_SOFIA"},
+    {.map = "RockTunnel_B1F", .battle = "hiker_dudley", .trainer = "TRAINER_HIKER_DUDLEY"},
+    {.map = "RockTunnel_B1F", .battle = "pokemaniac_cooper", .trainer = "TRAINER_POKEMANIAC_COOPER"},
+    {.map = "RockTunnel_1F", .battle = "picnicker_dana", .trainer = "TRAINER_PICNICKER_DANA"},
 };
 
 using JsonTable = std::map<std::string, JsonValue, std::less<>>;

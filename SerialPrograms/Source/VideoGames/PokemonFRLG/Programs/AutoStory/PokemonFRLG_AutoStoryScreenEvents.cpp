@@ -4,6 +4,7 @@
  *
  */
 
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
 #include "PokemonFRLG_AutoStoryScreenEvents.h"
 
 namespace PokemonAutomation{
@@ -26,6 +27,10 @@ ScreenEvents FrlgScreenObserver::observe(const VideoSnapshot& frame, WallClock){
         return {};
     }
     const ImageViewRGB32& screen = *frame.frame;
+    if (OverworldWalkSteps::dark_cave_screen(screen)){
+        //  Its black below passes for a battle's text box.
+        return {};
+    }
     ScreenEvents out = Pokemon::fade_events(Pokemon::fade_of_screen(screen));
     if (Pokemon::fade_in(out) != Pokemon::WarpFade::NONE){
         //  A uniform screen has no box or menu to read.

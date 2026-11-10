@@ -121,8 +121,11 @@ std::optional<size_t> talk_and_count_pages(ConsoleHandle& console, ProController
 
 //  From the overworld: one step `direction`, onto a trigger or into a door.
 //  `facing` is the way the player faces, if known; a player facing another
-//  way is turned first.
-void step_once(ProControllerContext& context, Pokemon::Direction direction, std::optional<Pokemon::Direction> facing);
+//  way is turned first (OverworldWalkSteps::turn_to()).
+void step_once(
+    ConsoleHandle& console, ProControllerContext& context,
+    Pokemon::Direction direction, std::optional<Pokemon::Direction> facing
+);
 
 //  Steps with `step` a tile at a time, at most `max_tiles`, until `seen`
 //  says a trainer saw the player. Returns the tiles stepped, or nothing
@@ -136,6 +139,24 @@ std::optional<int> step_until_seen(int max_tiles, const std::function<void()>& s
 //  "!", then their words, as the route walker watches for a trainer
 //  with no tiles to walk up (PokemonFRLG_OverworldRecoveryWalk.cpp).
 inline constexpr Milliseconds TRAINER_LINE_WATCH(2500);
+//  How long a step into a trainer's line is watched for a wild battle it
+//  set off: its HP boxes, with no message before them, came over 5 s after
+//  the step in Mt. Moon (UNSEEN_BATTLE_WATCH). The trainer didn't see the
+//  player on that step (the game looks for trainers before it rolls for a
+//  wild battle), so it is run from and the stepping goes on: in Rock
+//  Tunnel the battle step after it found no trainer's message (the sim,
+//  2026-11-09).
+inline constexpr Milliseconds WILD_BATTLE_IN_LINE_WATCH(5000);
+
+//  The longest wait_out_battle_exit() waits for the overworld.
+inline constexpr Milliseconds BATTLE_EXIT_TIMEOUT(10000);
+
+//  After a battle run from or won: waits until the overworld has shown
+//  nothing (wait_for_quiet_overworld()) for MovementMechanics::
+//  AFTER_BATTLE_QUIET, at most BATTLE_EXIT_TIMEOUT, and logs how the screen
+//  ended. A tap sent as the battle's black ends is lost (console B,
+//  2026-11-09, 00.28 winston_line).
+void wait_out_battle_exit(ConsoleHandle& console, ProControllerContext& context);
 
 //  How long a step into the line of a trainer who looks around waits for
 //  them to turn to the player (TRAINER_WAIT_VARIANT).
@@ -143,7 +164,8 @@ inline constexpr Milliseconds TRAINER_WAIT_WATCH(30000);
 
 //  From the overworld: step_until_seen() `direction`, turning first
 //  unless `facing` is `direction`, each step watched `watch` for a
-//  trainer's message or battle.
+//  trainer's message, and at least WILD_BATTLE_IN_LINE_WATCH for a wild
+//  battle, which is run from.
 std::optional<int> step_into_line(
     ConsoleHandle& console, ProControllerContext& context,
     Pokemon::Direction direction, std::optional<Pokemon::Direction> facing, int max_tiles,
@@ -151,8 +173,8 @@ std::optional<int> step_into_line(
 );
 
 //  From the overworld, turns to face `direction` without stepping: the
-//  player must have a wall that way.
-void face_wall(ProControllerContext& context, Pokemon::Direction direction);
+//  player must have a wall that way (OverworldWalkSteps::turn_to()).
+void face_wall(ConsoleHandle& console, ProControllerContext& context, Pokemon::Direction direction);
 
 //  The save dialog after SAVE, as pokefirered's start_menu.c runs it:
 //  "Would you like to save the game?" YES/NO (YES first). Then, over a save

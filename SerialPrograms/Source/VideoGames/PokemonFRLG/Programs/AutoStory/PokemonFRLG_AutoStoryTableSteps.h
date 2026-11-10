@@ -101,6 +101,14 @@ inline constexpr const char* ROUTE9 = "Route9";
 inline constexpr const char* ROUTE10 = "Route10";
 //  Route 10 Pokemon Center map.
 inline constexpr const char* ROUTE10_CENTER = "Route10_PokemonCenter_1F";
+//  Rock Tunnel 1F map.
+inline constexpr const char* ROCK_TUNNEL_1F = "RockTunnel_1F";
+//  Rock Tunnel B1F map.
+inline constexpr const char* ROCK_TUNNEL_B1F = "RockTunnel_B1F";
+//  Lavender Town overworld map.
+inline constexpr const char* LAVENDER = "LavenderTown";
+//  Lavender Town Pokemon Center map.
+inline constexpr const char* LAVENDER_CENTER = "LavenderTown_PokemonCenter_1F";
 
 //  Constructs pose at map coordinates.
 Pokemon::Pose at(const char* map, int x, int y, std::optional<Direction> facing = std::nullopt);
@@ -187,6 +195,10 @@ StoryCheckpoint lt_surge();
 StoryCheckpoint bike_voucher();
 //  Route 10 Pokemon Center navigation checkpoint.
 StoryCheckpoint route10_center();
+//  Through Rock Tunnel to Route 10 south of it (PokemonFRLG_AutoStoryTableLavender.cpp).
+StoryCheckpoint rock_tunnel();
+//  Route 10 south to Lavender Town's Pokemon Center.
+StoryCheckpoint lavender_center();
 
 
 

@@ -434,6 +434,7 @@ void add_tests_AutoStoryCeladon(UnitTestDatabase& database){
     for (const auto& item : AUTO_STORY_CELADON_CASES){
         database.add<Test_AutoStoryCeladon>(item);
     }
+    add_tests_AutoStoryLavender(database);
 }
 
 

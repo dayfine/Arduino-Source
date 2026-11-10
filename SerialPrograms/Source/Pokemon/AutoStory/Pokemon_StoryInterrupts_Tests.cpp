@@ -19,6 +19,7 @@
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "Pokemon_StoryActions.h"
 #include "Pokemon_StoryInterrupts.h"
+#include "Pokemon_StorySegments.h"
 #include "Pokemon_AutoStory_Tests.h"
 
 namespace PokemonAutomation{
@@ -41,6 +42,8 @@ const ScreenEvents WHITE{ScreenEvent::FADE_WHITE};
 const ScreenEvents BLACK{ScreenEvent::FADE_BLACK};
 const ScreenEvents BATTLE{ScreenEvent::BATTLE_STARTED};
 const ScreenEvents BANNER{ScreenEvent::LOCATION_BANNER, ScreenEvent::PLAYER_CAN_MOVE};
+//  The Switch's HOME menu: the game is not running.
+const ScreenEvents HOME{ScreenEvent::SWITCH_HOME_MENU};
 
 //  A look at `frames`, judged up to `until_ms`.
 ScreenLook look_of(const std::vector<Frame>& frames, int until_ms){
@@ -71,9 +74,27 @@ ScreenLook warp(){
 ScreenLook white_unsettled(){
     return look_of({{0, WALK}, {100, WHITE}, {700, WALK}}, 1000);
 }
+//  A trainer's lines, then the battle's black, still down: no battle yet.
+ScreenLook trainer_opening(){
+    return look_of({{0, WALK}, {100, BOX}, {2000, BLACK}}, 2100);
+}
+//  A door's black, back up with no box before it: a warp, not yet settled.
+ScreenLook black_unsettled(){
+    return look_of({{0, WALK}, {100, BLACK}, {700, WALK}}, 1000);
+}
 //  The same white, looked at for long enough after it: a cave exit.
 ScreenLook white_settled(){
     return look_of({{0, WALK}, {100, WHITE}, {700, WALK}, {10000, WALK}}, 10000);
+}
+//  The HOME menu, still: the program started with the game closed.
+ScreenLook home_menu(){
+    return look_of({{0, HOME}, {300, HOME}}, 300);
+}
+//  The same, with a game's detectors reading it as the overworld too.
+ScreenLook home_read_as_overworld(){
+    ScreenEvents both = HOME;
+    both.set(ScreenEvent::PLAYER_CAN_MOVE, true);
+    return look_of({{0, both}}, 300);
 }
 
 
@@ -298,15 +319,71 @@ UnitTestResult test_unsettled_looks_again(){
     return expect_trace(game, {"look", "look again", "clear warp", "told warp ", "run walk"});
 }
 
+//  A door's fade is no battle's opening: three looks, as before.
 UnitTestResult test_unsettled_is_bounded(){
     FakeGame game;
-    game.screens = {white_unsettled()};
+    game.screens = {black_unsettled()};
     StoryInterrupts interrupts = fake_interrupts(game);
     const FakeRun run = run_step(game, interrupts, make(StoryStepKind::ROUTE, "walk"));
     if (run.outcome.failure != "interrupt_unsettled"){
         return "Expected interrupt_unsettled, got " + to_string(run.outcome);
     }
     return expect_trace(game, {"look", "look again", "look again", "told unsettled interrupt_unsettled: walk"});
+}
+
+//  A battle's opening still playing when a step that starts on a battle
+//  begins (BDSP's Starly battle, right after the starter is picked): the
+//  step's, on the first look, not interrupt_unsettled.
+UnitTestResult test_unsettled_before_a_battle(){
+    FakeGame game;
+    game.screens = {white_unsettled()};
+    StoryInterrupts interrupts = fake_interrupts(game);
+    interrupts.handlers.starts_on(StoryStepKind::BATTLE, InterruptKind::WILD_ENCOUNTER);
+    const FakeRun run = run_step(game, interrupts, make(StoryStepKind::BATTLE, "starly"));
+    if (!run.outcome.succeeded()){
+        return "Expected the battle step to run, got " + to_string(run.outcome);
+    }
+    return expect_trace(game, {"look", "run starly"});
+}
+
+//  A battle's opening still playing when a walk step begins: the walk
+//  before it ended in grass or in a trainer's sight (BDSP fault sweep, 51
+//  steps of 00.01-01.11). The looks wait for the battle, past max_looks,
+//  and its handler clears it before the step.
+UnitTestResult test_opening_before_a_walk(ScreenLook opening, ScreenLook battle, const std::string& kind, const std::string& handler){
+    FakeGame game;
+    game.screens = {opening, opening, opening, opening, std::move(battle), quiet()};
+    StoryInterrupts interrupts = fake_interrupts(game);
+    const FakeRun run = run_step(game, interrupts, make(StoryStepKind::ROUTE, "walk"));
+    if (!run.outcome.succeeded()){
+        return "Expected the walk to run after the battle, got " + to_string(run.outcome);
+    }
+    return expect_trace(game, {
+        "look", "look again", "look again", "look again", "look again",
+        "clear " + handler, "told " + kind + " ", "run walk",
+    });
+}
+UnitTestResult test_wild_opening_before_a_walk(){
+    return test_opening_before_a_walk(white_unsettled(), wild(), "wild encounter", "wild");
+}
+UnitTestResult test_trainer_opening_before_a_walk(){
+    return test_opening_before_a_walk(trainer_opening(), trainer(), "trainer sight", "trainer");
+}
+
+//  A white that shows no battle and does not settle: max_opening_looks.
+UnitTestResult test_opening_is_bounded(){
+    FakeGame game;
+    game.screens = {white_unsettled()};
+    StoryInterrupts interrupts = fake_interrupts(game);
+    interrupts.max_opening_looks = 5;
+    const FakeRun run = run_step(game, interrupts, make(StoryStepKind::ROUTE, "walk"));
+    if (run.outcome.failure != "interrupt_unsettled"){
+        return "Expected interrupt_unsettled, got " + to_string(run.outcome);
+    }
+    return expect_trace(game, {
+        "look", "look again", "look again", "look again", "look again",
+        "told unsettled interrupt_unsettled: walk",
+    });
 }
 
 UnitTestResult test_failure_explained(bool throws){
@@ -365,6 +442,155 @@ UnitTestResult test_table_rejects(){
     }
     if (table.find(InterruptKind::DIALOG) == nullptr || table.find(InterruptKind::WARP) != nullptr){
         return "Expected the dialog's handler found and no warp's.";
+    }
+    return true;
+}
+
+//  A guard that notes how the screen looked before each step.
+class ScreenGuard : public StepGuard{
+public:
+    explicit ScreenGuard(FakeGame& game)
+        : m_game(game)
+    {}
+    virtual void on_screen(const StoryStep& step, const ScreenSettle& screen) override{
+        m_game.trace.push_back("before " + step.name + ": " + describe(screen));
+    }
+
+private:
+    FakeGame& m_game;
+};
+
+//  The guard hears how the screen looked before every step, interrupt or
+//  not: the run log's answer to "had the scene ended before the input?".
+UnitTestResult test_screen_before_each_step(){
+    FakeGame game;
+    //  A scene's closing fade still down: no battle comes, so the step
+    //  fails unsettled, and the guard hears the fade was showing.
+    game.screens = {look_of({{0, WALK}, {100, BLACK}}, 300)};
+    StoryInterrupts interrupts = fake_interrupts(game);
+    interrupts.max_opening_looks = 2;
+    const StoryActionTable table = table_of(game, {});
+    ScreenGuard guard(game);
+    TableExecutor executor(table, guard);
+    executor.set_interrupts(&interrupts);
+    RunState state;
+    StoryStep step = make(StoryStepKind::ROUTE, "by_the_counter");
+    step.variant = "act";
+    const Outcome faded = executor.run(state, step);
+    if (faded.succeeded()){
+        return "Expected a step in a fade to fail unsettled, got " + to_string(faded);
+    }
+    game.screens = {quiet()};
+    game.looks = 0;
+    const Outcome settled = executor.run(state, step);
+    if (!settled.succeeded()){
+        return "Expected the step on a quiet screen to run, got " + to_string(settled);
+    }
+    return expect_trace(game, {
+        "look", "look again", "before by_the_counter: black fade showing (quiet 0.2 s)",
+        "look", "before by_the_counter: settled overworld (quiet 0.3 s)", "run by_the_counter",
+    });
+}
+
+//  The program started on the HOME menu (lab-B 2026-11-09 15:31: "before
+//  save: settled overworld", then X on HOME and a 22-tile walk on it). The
+//  screen is told as HOME and the step fails at once, before any input,
+//  and before a step that starts on a battle's opening too.
+UnitTestResult test_home_menu_before_a_step(){
+    for (StoryStepKind kind : {StoryStepKind::SAVE, StoryStepKind::ROUTE, StoryStepKind::BATTLE}){
+        FakeGame game;
+        game.screens = {home_menu()};
+        StoryInterrupts interrupts = fake_interrupts(game);
+        interrupts.handlers.starts_on(StoryStepKind::BATTLE, InterruptKind::TRAINER_SIGHT);
+        const StoryActionTable table = table_of(game, {});
+        ScreenGuard guard(game);
+        TableExecutor executor(table, guard);
+        executor.set_interrupts(&interrupts);
+        RunState state;
+        StoryStep step = make(kind, "save");
+        step.variant = "act";
+        const Outcome outcome = executor.run(state, step);
+        if (to_string(outcome) != "game_not_running: the game is not running: the Switch HOME menu is showing"){
+            return "Expected the step on HOME to fail as game_not_running, got " + to_string(outcome);
+        }
+        if (UnitTestResult trace = expect_trace(game, {"look", "before save: Switch HOME menu (quiet 0.3 s)"}); trace.result != UnitTestResult::PASSED){
+            return trace;
+        }
+    }
+    return true;
+}
+
+//  A checkpoint that fails on the HOME menu is neither recovered in place
+//  nor reloaded: every press would go to the console's menus.
+UnitTestResult test_home_menu_stops_the_segment(){
+    std::vector<std::string> trace;
+    CheckpointSpec spec;
+    spec.id = "00.03";
+    spec.build = [&trace]{
+        Checkpoint checkpoint;
+        checkpoint.id = "00.03";
+        Event save;
+        save.name = "save";
+        save.act = [&trace](RunState&){
+            trace.push_back("save");
+            return outcome_failed("game_not_running", "the game is not running: the Switch HOME menu is showing");
+        };
+        Recovery wait;
+        wait.kind = RecoveryKind::WAIT;
+        wait.prepare = [&trace](RunState&){
+            trace.push_back("recover");
+            return outcome_ok();
+        };
+        save.recoveries.push_back(std::move(wait));
+        checkpoint.events.push_back(std::move(save));
+        return checkpoint;
+    };
+    Segment segment;
+    segment.id = "00";
+    segment.checkpoints.push_back(std::move(spec));
+    SegmentHooks hooks;
+    hooks.reload = [&trace](RunState&){
+        trace.push_back("reload");
+        return outcome_ok();
+    };
+    hooks.recover = [&trace](RunState&, const std::string&){
+        trace.push_back("recover in place");
+        return outcome_ok();
+    };
+    RunState state;
+    const SegmentReport report = run_segment(state, segment, SegmentRange{}, SegmentPolicy{.recoveries_per_event = 2}, hooks);
+    if (report.completed || report.failure.failure != "game_not_running" || report.reloads != 0){
+        return "Expected the segment to stop on game_not_running with no reload, got " + to_string(report.failure);
+    }
+    if (trace != std::vector<std::string>{"save"}){
+        std::string got;
+        for (const std::string& line : trace){
+            got += " " + line;
+        }
+        return "Expected the save tried once and nothing else, got:" + got;
+    }
+    return true;
+}
+
+UnitTestResult test_settle_of_a_look(){
+    struct Row{
+        const char* name;
+        ScreenLook look;
+        const char* expected;
+    };
+    const std::vector<Row> rows = {
+        {"no frame", ScreenLook{}, "no frame seen"},
+        {"a quiet overworld", quiet(), "settled overworld (quiet 0.3 s)"},
+        {"a box", dialog(), "dialog box, player can move showing (quiet 0.2 s)"},
+        {"a door's fade back up", black_unsettled(), "settled overworld (quiet 0.3 s)"},
+        {"the HOME menu", home_menu(), "Switch HOME menu (quiet 0.3 s)"},
+        {"HOME read as a quiet overworld too", home_read_as_overworld(), "Switch HOME menu (quiet 0.3 s)"},
+    };
+    for (const Row& row : rows){
+        const std::string got = describe(judge_settle(row.look));
+        if (got != row.expected){
+            return std::format("{}: expected \"{}\", got \"{}\"", row.name, row.expected, got);
+        }
     }
     return true;
 }
@@ -441,7 +667,23 @@ const StoryInterruptsCase STORY_INTERRUPTS_CASES[] = {
     },
     {
         .input = {.name = "unsettled: at most max_looks looks", .test = test_unsettled_is_bounded},
-        .expectation = {.description = "interrupt_unsettled after three looks"},
+        .expectation = {.description = "a door's fade: interrupt_unsettled after three looks"},
+    },
+    {
+        .input = {.name = "unsettled: a battle's opening before a battle step", .test = test_unsettled_before_a_battle},
+        .expectation = {.description = "the step's, after one look"},
+    },
+    {
+        .input = {.name = "unsettled: a wild battle's opening before a walk", .test = test_wild_opening_before_a_walk},
+        .expectation = {.description = "waits for the battle, clears it, then the walk"},
+    },
+    {
+        .input = {.name = "unsettled: a trainer battle's opening before a walk", .test = test_trainer_opening_before_a_walk},
+        .expectation = {.description = "waits for the battle, fights it, then the walk"},
+    },
+    {
+        .input = {.name = "unsettled: at most max_opening_looks for an opening", .test = test_opening_is_bounded},
+        .expectation = {.description = "a white with no battle: interrupt_unsettled"},
     },
     {
         .input = {.name = "a failed step an interrupt explains runs again", .test = test_failed_outcome_explained},
@@ -462,6 +704,22 @@ const StoryInterruptsCase STORY_INTERRUPTS_CASES[] = {
     {
         .input = {.name = "table: one handler a kind that can be cleared", .test = test_table_rejects},
         .expectation = {.description = "rejects NONE, UNSETTLED and a second handler"},
+    },
+    {
+        .input = {.name = "the screen before each step, for the log", .test = test_screen_before_each_step},
+        .expectation = {.description = "a fade still down is told, and fails unsettled; a quiet overworld is settled"},
+    },
+    {
+        .input = {.name = "how a look ended", .test = test_settle_of_a_look},
+        .expectation = {.description = "the last frame's events and how long they held"},
+    },
+    {
+        .input = {.name = "the HOME menu before a step", .test = test_home_menu_before_a_step},
+        .expectation = {.description = "told as HOME; game_not_running before any input"},
+    },
+    {
+        .input = {.name = "the HOME menu stops the segment", .test = test_home_menu_stops_the_segment},
+        .expectation = {.description = "no recovery in place, no reload"},
     },
 };
 
