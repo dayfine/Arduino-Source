@@ -64,5 +64,6 @@
         "The rival leaves; PlayerWatchRivalExitAfterBattleRight ends facing down."
       ]
     }
-  }
+  },
+  "metadata": {"phase": "testing"}
 }

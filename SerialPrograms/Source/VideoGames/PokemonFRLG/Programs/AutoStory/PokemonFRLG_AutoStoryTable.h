@@ -26,6 +26,9 @@
  *                  reasons behind a step that a reader of the file needs.
  *                  The program doesn't read them.
  *
+ *  Beside "execution", "metadata": {"phase": testing, verification or
+ *  reproduction}: how far the checkpoint is trusted.
+ *
  */
 
 #ifndef PokemonAutomation_PokemonFRLG_AutoStoryTable_H
