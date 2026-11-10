@@ -93,12 +93,13 @@ anchor); 0 from one start tile.
   totals: 3 legs, 2 turns, 1 open, 2 localization
 
 == 00.04 to_ledge_column (costs: line)
-  from: Route201 (57, 5) (58, 5) (59, 5) (60, 5) (61, 5) (62, 5) (63, 5) facing west (set)
+  from: Route201 (57, 4) (58, 4) (59, 4) (60, 4) (61, 4) (62, 4) (63, 4) facing north (set)
   target: Route201 (55, 5) facing west (tile)
-  start candidates: Route 201 (57, 5), Route 201 (58, 5), Route 201 (59, 5), Route 201 (60, 5), Route 201 (61, 5), Route 201 (62, 5), Route 201 (63, 5)
-  1. west 21 (to wall) -> Route 201 (42, 5)
-  2. east 13 (open) -> Route 201 (55, 5)
-  totals: 2 legs, 1 turns, 1 open, 1 localization
+  start candidates: Route 201 (57, 4), Route 201 (58, 4), Route 201 (59, 4), Route 201 (60, 4), Route 201 (61, 4), Route 201 (62, 4), Route 201 (63, 4)
+  1. west 7 (to wall) -> Route 201 (56, 4)
+  2. south 1 (open) -> Route 201 (56, 5)
+  3. west 1 (open) -> Route 201 (55, 5)
+  totals: 3 legs, 2 turns, 2 open, 1 localization
 
 == 00.04 along_route_201_road (costs: line)
   from: Route201 (55, 14) facing south (tile)
