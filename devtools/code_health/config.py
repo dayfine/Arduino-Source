@@ -6,13 +6,19 @@ CLASS_LIMITS = {
     'single_method_interface': 0,
 }
 
+# Distinct public namespace-scope names (types, aliases, functions, constants) per header.
+HEADER_LIMITS = {'header_symbols': 8}
+
 # Advisory floors: new or changed values above these (and within the limit) are reported.
 # Changed files above their floor are always reported.
-ADVISORY = {'file_lines': 500, 'function_lines': 25, 'public_methods': 5}
+ADVISORY = {'file_lines': 500, 'function_lines': 25, 'public_methods': 5,
+            'header_symbols': 6}
 
 HINTS = {
     'public_methods': 'split the class or move helpers into free functions',
     'public_data': 'make data private, or split it into a plain struct without methods',
+    'header_symbols': 'split the header by concern, or move helpers into a detail namespace '
+                      'or the .cpp',
     'single_method_interface': 'prefer a callable (MoveOnlyFunction / std::function) '
                                'over a single-method interface',
 }

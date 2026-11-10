@@ -49,6 +49,7 @@ are included. Missing base revisions and analysis errors fail the command.
 | Public methods per class/struct | 7 (excluding ctors, dtors, operators, deleted and Qt signals); 6-7 advisory |
 | Public non-static data in a class with mutating methods | 0 (exempt: plain structs, value types with only const/static methods, const fields, `*Option`/`*Cell` fields, test files) |
 | Single-method interface (one pure virtual + optional virtual dtor, no bases) | not allowed: prefer a callable (`MoveOnlyFunction` / `std::function`) |
+| Public names per header: distinct namespace-scope types, enums, aliases, free functions (overloads count once) and constants/variables, outside anonymous, `detail`, `internal` and `*Internal` namespaces; class members, operators, forward declarations and macros excluded (`header_api.py`) | 8; 7-8 advisory |
 
 New files/functions must meet these limits. In modified files, compare each
 metric with its value at the base revision: existing violations may remain or
@@ -94,11 +95,14 @@ void load_move_table(){
 `// code-health: allow <check>[,<check>] -- <justification>` lets the listed metrics of one
 function or class exceed their limit. Checks are the metric names in the table above:
 `file_lines`, `function_lines`, `nesting`, `parameters`, `public_methods`, `public_data`,
-`single_method_interface`. Style and layering findings have no bypass.
+`single_method_interface`, `header_symbols`. Two style findings take a tag too: `char_pointer` and
+`overload_prefix`, for a C API or a fixed interface that needs them. Other style and layering
+findings have no bypass.
 
 - **Place it** on the function's or class's first line, or in the comment block directly above
   it (only `//` comment and `template` lines between). A `file_lines` tag goes in the first 20
-  lines of the file. A tag that attaches to nothing fails.
+  lines of the file, and so does a `header_symbols` tag. A `char_pointer` or `overload_prefix` tag goes on
+  the flagged line or in the comment block directly above it. A tag that attaches to nothing fails.
 - **Justify it:** the text after `--`, on the tag line itself, must be at least 40 characters and 6 words,
   and say why splitting would make the code worse. Unknown checks, a missing or short
   justification, or a malformed tag fail.
@@ -148,6 +152,8 @@ lexer, not a parser: rules that need types stay in review.
 | A defaulted `bool` parameter, or 2+ `bool` parameters (not `override`/`final`, not an unchanged signature) | error | TotW #94 |
 | `using namespace` at namespace scope in a header | error | TotW #153 |
 | Forward `class`/`struct` declaration in a header: new header / existing header | error / advisory | fork AGENTS.md "Forward declarations" |
+| `char*` / `const char*` / `char**` types and named `char` arrays (`char buf[8]`); not `unsigned`/`signed char`, `char8_t`-`char32_t`, `wchar_t`, a plain `char`, `*_cast<char*>`, or `main(argc, argv)` | error (tag: `char_pointer`) | fork AGENTS.md "Strings" |
+| In a header, two declarations of one function in the same scope (namespace or class) whose parameter types are a strict prefix of each other, one of them on an added line; not constructors, operators, `= delete`, variadic packs, or overloads that differ in a parameter's type | error (tag: `overload_prefix`) | fork AGENTS.md "Functions" |
 | A comment whose first sentence describes the neighbouring function, none of its own | advisory | CONTRIBUTING; Google "Function Comments" |
 
 Advisories print as `Advisory:` lines and `::warning` annotations and never fail.

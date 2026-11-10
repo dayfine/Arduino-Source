@@ -12,6 +12,7 @@ class Finding:
     path: str
     line: int
     message: str
+    check: str = ''  # set on findings an allow tag can bypass (allow.STYLE_CHECKS)
 
     def __str__(self):
         return f'{self.path}:{self.line}: {self.message}'
