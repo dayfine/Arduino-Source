@@ -209,6 +209,15 @@ struct SimWallEncounter{
     Pokemon::Direction direction = Pokemon::Direction::NORTH;
     SimWildBattle battle;
 };
+//  Wild battles in tall grass on every pass: one each `every` grass tiles
+//  the player steps onto, counted across walks, each run from at once. A
+//  fixed count, not the game's dice, so a route that crosses the grass
+//  again after each battle's replan meets a battle every time (00.04 on
+//  Route 201's row 5, lab-B 2026-11-09 16:14: a battle on each of four
+//  passes of 10 grass tiles). 0: no grass battles.
+struct SimGrassBattles{
+    size_t every = 0;
+};
 
 //  The walker's RouteIO on a GridSim. A failure throws GridSimFailure.
 class GridSimRouteIO : public RouteIO{
@@ -216,12 +225,14 @@ public:
     //  Every line noted goes to `notes`, which must outlive this.
     GridSimRouteIO(
         GridSim& sim, std::vector<std::string>& notes,
-        std::vector<SimWildTap> encounters = {}, std::vector<SimWallEncounter> wall_encounters = {}
+        std::vector<SimWildTap> encounters = {}, std::vector<SimWallEncounter> wall_encounters = {},
+        SimGrassBattles grass = {}
     )
         : m_sim(sim)
         , m_notes(notes)
         , m_encounters(std::move(encounters))
         , m_wall_encounters(std::move(wall_encounters))
+        , m_grass(grass)
     {}
 
     virtual WalkResult walk_to_wall(const RouteWallWalk& walk) override;
@@ -238,11 +249,15 @@ private:
     //  The escape policy on `battle`; notes a FAILURE where the console
     //  would fail the program.
     void escape_scripted_battle(const SimWildBattle& battle, const std::string& label);
+    //  Whether stepping onto `tile` sets off a grass battle (SimGrassBattles).
+    bool grass_battle(const Pokemon::TilePos& tile);
 
     GridSim& m_sim;
     std::vector<std::string>& m_notes;
     std::vector<SimWildTap> m_encounters;
     std::vector<SimWallEncounter> m_wall_encounters;
+    SimGrassBattles m_grass;
+    size_t m_grass_tiles = 0;   //  grass tiles stepped onto since the last grass battle
 };
 
 //  What GridSimRouteIO throws for RouteNote::FAILURE.

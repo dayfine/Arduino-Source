@@ -442,6 +442,19 @@ void GridSimRouteIO::escape_scripted_battle(const SimWildBattle& battle, const s
     m_notes.push_back(std::format("[Sim] {}: wild battle {}.", label, ended));
 }
 
+bool GridSimRouteIO::grass_battle(const TilePos& tile){
+    if (m_grass.every == 0 || m_sim.world().tile(tile) != TileKind::TALL_GRASS){
+        return false;
+    }
+    if (++m_grass_tiles < m_grass.every){
+        return false;
+    }
+    m_grass_tiles = 0;
+    return true;
+}
+
+//  A grass battle on the hold does not stop it: the hold goes on to the
+//  wall after it, as a scripted one's does.
 WalkResult GridSimRouteIO::walk_to_wall(const RouteWallWalk& walk){
     size_t wild_battles = 0;
     if (const auto encounter = take_wall_encounter(walk)){
@@ -449,7 +462,15 @@ WalkResult GridSimRouteIO::walk_to_wall(const RouteWallWalk& walk){
         wild_battles = 1;
     }
     const SimPace pace = walk.options.pace == DpadPace::RUN ? SimPace::RUN : SimPace::WALK;
+    TilePos stepped = nearest_tile(m_sim.player().pos);
     const SimMove move = m_sim.hold(walk.direction, walk.limit, pace);
+    for (int tile = 0; tile < move.distance / SIM_TILE; tile++){
+        stepped = stepped.next(walk.direction);
+        if (grass_battle(stepped)){
+            escape_scripted_battle(SimWildBattle{}, walk.label);
+            wild_battles++;
+        }
+    }
     m_notes.push_back(std::format("[Sim] {}: held {} to {} at {}.", walk.label, direction_name(walk.direction),
         sim_stop_name(move.stop), to_string(m_sim.player().pos)));
     WalkResult result{.stop = walk_stop(move.stop), .walked = move.time, .wild_battles = wild_battles, .moved_chunks = (size_t)(move.distance / SIM_TILE)};
@@ -478,9 +499,12 @@ WalkResult GridSimRouteIO::walk_taps(Direction direction, size_t tiles, const st
     size_t still = 0;
     size_t moved_at_battle = 0;
     for (size_t tap = 0; tap < tiles && result.stop == WalkStop::LIMIT; tap++){
-        const auto encounter = take_encounter(direction, tiles, tap + 1, label);
+        std::optional<SimWildTap> encounter = take_encounter(direction, tiles, tap + 1, label);
         const SimMove move = encounter && encounter->phase == SimEncounterPhase::BEFORE_MOVEMENT
             ? SimMove{} : m_sim.tap(direction, ROUTE_MS_PER_TILE_ACROSS, false);
+        if (!encounter && move.distance > 0 && grass_battle(nearest_tile(m_sim.player().pos))){
+            encounter = SimWildTap{.label = label, .direction = direction, .requested_tiles = tiles, .tap = tap + 1};
+        }
         result.walked += 800ms;
         if (encounter){
             //  Match the production escape_battle() credit, independently

@@ -397,13 +397,24 @@ StoryStep out_of_the_lab_into_dawns_tour(){
 }
 
 //  West along Route 201 to Mom's doorstep:
-//  1. Over the ledge at column 57 down onto Route 201's main road (row 14).
+//  0. A tap north onto the border sign's row 4, west to the sign (55, 4),
+//     which stops us on (56, 4) from any of the seven tiles the run in left
+//     us on, then a row south and a tile west to ledge column 55. Row 5's
+//     own wall is past its tall grass (x 42 to 52): the old route ran west
+//     through it to the wall at x 41 and back east, met a wild battle on
+//     each pass, and each replan went back through it until "too many
+//     plans" (lab-B 2026-11-09 16:14).
+//  1. Over the ledge at column 55 down onto Route 201's main road (row 14).
 //  2. West along the main road (row 14) to the Twinleaf path at column 15.
 //  3. South down column 15 into Twinleaf Town to row 22.
 //  4. East to Mom's house doorstep at (20, 22), facing north into the door.
 std::vector<StoryStep> home_to_the_doors_column(){
     return {
-        route("to_ledge_column", at(ROUTE_201, 55, 5, WEST), "west to ledge column 55", "line"),
+        anchored(legs("to_the_signs_row", {{.direction = NORTH, .tiles = 1}}, "a tap north onto the border sign's row"),
+            Pokemon::tile_pose(ROUTE_201, {
+                TilePos{57, 4}, TilePos{58, 4}, TilePos{59, 4}, TilePos{60, 4}, TilePos{61, 4}, TilePos{62, 4}, TilePos{63, 4}
+            }, NORTH)),
+        route("to_ledge_column", at(ROUTE_201, 55, 5, WEST), "west to the border sign, a row south, west to ledge column 55", "line"),
         anchored(legs("over_the_ledge", {{.direction = SOUTH, .tiles = 8}}, "south over the ledge to the lower road"),
             at(ROUTE_201, 55, 14, SOUTH)),
         route("along_route_201_road", at(ROUTE_201, 15, 14, WEST), "west along Route 201's road to the Twinleaf path", "line"),
