@@ -36,82 +36,15 @@
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryParty.h"
+#include "PokemonFRLG_AutoStoryItemsPocket.h"
+#include "PokemonFRLG_AutoStoryStatusBadge.h"
+#include "PokemonFRLG_AutoStoryTrainerMessage.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-//  A status condition, as far as the story treats them: the ones it carries
-//  items for, and the rest, which only a nurse cures.
-enum class StatusCondition{
-    NONE,
-    POISON,
-    PARALYSIS,
-    SLEEP,
-    OTHER,      //  BRN, FRZ
-};
-//  String representation of a status condition.
-const char* status_name(StatusCondition status);
-
-//  The healing items in the Items pocket, in the order they were bought:
-//  Potions, Antidotes, then Parlyz Heals; Awakenings from Cerulean's Mart.
-struct Supplies{
-    int potions = 0;
-    int antidotes = 0;
-    int parlyz_heals = 0;
-    int awakenings = 0;
-    //  The Items pocket's order, by slug (see read_item_list_name()): the
-    //  order bought, or as read from the bag, with "" for a row whose name
-    //  couldn't be read. A counted item with none left takes no row; the
-    //  others always take theirs.
-    std::vector<std::string> pocket = {"potion", "antidote", "parlyz-heal"};
-    //  The starter's status at the last battle screen that showed it, and
-    //  not cured since.
-    StatusCondition status = StatusCondition::NONE;
-    //  The starter's HP bar wasn't green (or was red) at the last battle
-    //  screen that showed it, and no Potion or nurse healed it since.
-    bool hurt = false;
-    bool hp_red = false;
-    //  The starter's HP bar's filled share at the last battle screen that
-    //  showed it, 1 after the nurse or a Potion on the overworld.
-    double hp_fill = 1.0;
-    //  The starter's moves and their PP, as far as the story knows them:
-    //  a new game's Squirtle unless a checkpoint's row says otherwise.
-    PartyMember lead = new_member("squirtle", 5);
-    //  Party slots (from 0, the lead) that are never sent in when the lead
-    //  faints, so they gain no EXP and learn or evolve nothing: a member
-    //  kept for later, or one the user keeps for a trade.
-    std::vector<size_t> protected_slots = {};
-    //  The party of the trainer the table's battle step fights, when the
-    //  story knows it (trainer_party()): the lead's attacks are chosen
-    //  against it while the one out isn't known. Empty otherwise; wild
-    //  battles never use it.
-    std::vector<std::string> foes = {};
-    //  That trainer (story_trainer()), "" otherwise.
-    std::string trainer = {};
-    //  How carefully that battle is fought (story_battle_risk()).
-    BattleRisk risk = BattleRisk::LOW;
-    //  The slot of the trainer's party out, as the battle loop tracks it
-    //  (TrainerFoeTracker): the lead's attacks are chosen against it.
-    std::optional<size_t> foe_out = {};
-    //  The wild Pokemon of the battle going on, as read at its first battle
-    //  menu (read_wild_foes()): the lead's attacks are chosen against it.
-    //  Empty when it wasn't read; trainer battles never use it.
-    std::vector<std::string> wild_foes = {};
-};
-
-//  The nurse healed the party: HP, status and PP.
-void healed_by_nurse(Supplies& supplies);
-
-//  The lead's attacks are low on PP: the nurse before a fight that needs them.
-bool attacks_low_on_pp(const Supplies& supplies);
-
-//  Before a trainer's battle, once the items are used: the nurse for HP
-//  not green (no Potion left to heal it), a status no item cured, or
-//  attacks low on PP. Yellow HP counts (console B, 2026-11-03: 17/55 HP
-//  and no Potion into Miguel's battle, which only red would have stopped).
-bool nurse_before_battle(const Supplies& supplies);
 
 //  Type of battle engagement strategy.
 enum class BattleKind{
@@ -129,32 +62,7 @@ enum class BattleEnd{
     LOST,
 };
 
-//  How many of `item` (a slug) the bag holds, as far as known.
-int item_count(const Supplies& supplies, const std::string& item);
 
-//  The row (from 0) of `item` in the Items pocket, or -1 if none is left.
-//  Items the story doesn't count, such as a MOON STONE, take rows too.
-int item_row(const Supplies& supplies, const std::string& item);
-
-//  Sets the counts and the pocket's order from the Items pocket as read.
-//  A row whose count couldn't be read still holds at least one: it keeps
-//  the count known before (the order bought), or 1. Returns those rows'
-//  items, for the log.
-std::vector<std::string> set_from_bag(Supplies& supplies, const std::vector<BagRow>& rows);
-
-//  After a save is loaded: the Items pocket as read, taken into `supplies`
-//  and `saved` (what a reload restores) in place of the row's counts, as
-//  set_from_bag() does. With nothing read both keep the row's. Returns the
-//  items whose count couldn't be read.
-std::vector<std::string> set_from_loaded_bag(Supplies& supplies, Supplies& saved, const std::vector<BagRow>& rows);
-
-//  From the overworld: opens the Items pocket, reads it, and closes the
-//  bag again. Empty if nothing could be read.
-std::vector<BagRow> read_items_pocket(ConsoleHandle& console, ProControllerContext& context, Language language);
-
-
-//  The status badge left of the player's HP numbers, by its mean color.
-StatusCondition read_status_badge(const ImageViewRGB32& badge);
 
 //  What the HP bar (read_player_hp_bar()) and the status badge of the
 //  player's Pokemon show, on a battle screen with its box. The badge's
@@ -190,24 +98,6 @@ BattleEnd fight_battle(
     Supplies& supplies, BattleKind kind, Pokemon::StoryCheckLevel checks, Language language
 );
 
-
-//  From the overworld, after a battle: an Antidote for PSN, a Parlyz Heal
-//  for PAR, then a Potion if the HP bar wasn't green, each if one is left.
-//  The bag's inputs are not checked on the console yet.
-void recover_after_battle(
-    ConsoleHandle& console, ProControllerContext& context,
-    Supplies& supplies, Pokemon::StoryCheckLevel checks, Language language
-);
-
-
-//  From a message on the overworld: advances it until the overworld is back
-//  and, when a battle starts after it (a trainer who saw the player),
-//  fights it and recovers after it. A battle lost (a blackout) throws
-//  OperationFailedException.
-void clear_overworld_message(
-    ConsoleHandle& console, ProControllerContext& context,
-    Supplies& supplies, Pokemon::StoryCheckLevel checks, Language language
-);
 
 
 //  The interrupts for walking story routes. Wild battles are run from, or

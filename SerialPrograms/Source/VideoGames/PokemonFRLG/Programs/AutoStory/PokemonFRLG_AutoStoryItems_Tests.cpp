@@ -46,7 +46,7 @@ struct AutoStoryItemsInput{
 };
 
 struct AutoStoryItemsExpectation{
-    const char* description;
+    std::string_view description;
 };
 
 struct AutoStoryItemsTestCase{
@@ -471,13 +471,13 @@ void add_tests_AutoStoryItems(UnitTestDatabase& database){
     //  text box (console B, 2026-11-03: 9 minutes of A and B there).
     database.add<Test_BattleShows>("PokemonFRLG/WildEncounterReader/eng_chansey.jpg", true);
     database.add<Test_BattleShows>("PokemonFRLG/AutoStoryBattle/MtMoonB2F_AfterRun_False.png");
-    for (const char* image : {
+    for (std::string_view image : {
         "MtMoon1F_HpGreen_45of45.png",
         "MtMoon1F_HpGreen_27of45.png",
         "MtMoonB2F_HpYellow_17of55.png",
         "MtMoonB2F_HpYellow_17of55_BarLow.png",
     }){
-        database.add<Test_PartyHp>(std::string("PokemonFRLG/AutoStoryBattle/") + image);
+        database.add<Test_PartyHp>(std::format("PokemonFRLG/AutoStoryBattle/{}", image));
     }
     //  The battle's choices, registered here to keep add_tests() within its size.
     add_tests_AutoStoryParty(database);

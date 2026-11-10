@@ -15,6 +15,7 @@
 #define PokemonAutomation_PokemonFRLG_OptionMenuReader_H
 
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
@@ -35,7 +36,7 @@ enum class OptionMenuItem{
 };
 
 //  "TEXT SPEED", "BATTLE SCENE", "BATTLE STYLE", for logs.
-const char* option_menu_name(OptionMenuItem item);
+std::string_view option_menu_name(OptionMenuItem item);
 
 //  The item's row in the menu, from 0. The cursor opens on row 0.
 size_t option_menu_row(OptionMenuItem item);

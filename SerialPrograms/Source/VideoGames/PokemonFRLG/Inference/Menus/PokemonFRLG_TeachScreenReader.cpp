@@ -32,6 +32,11 @@ namespace PokemonFRLG{
 
 namespace{
 
+//  The number of visible rows in the TM Case.
+constexpr size_t TM_CASE_ROWS = 5;
+//  The number of visible rows in the item menu.
+constexpr size_t ITEM_MENU_ROWS = 3;
+
 //  A box in the game's 240x160 pixels.
 struct GameBox{
     double x;
@@ -57,6 +62,12 @@ bool solid(const ImageViewRGB32& screen, const GameBox& box, const FloatPixel& c
     return euclidean_distance(stats.average, color) < 40 && stats.stddev.sum() < 40;
 }
 
+//  The box is a fine pattern of light colors averaging near `color`.
+bool patterned(const ImageViewRGB32& screen, const GameBox& box, const FloatPixel& color){
+    const ImageStats stats = image_stats(game_crop(screen, box));
+    return euclidean_distance(stats.average, color) < 30 && stats.stddev.sum() < 70;
+}
+
 //  Measured on the captures (console B, 2026-11-03). Left of the title, the
 //  frame's color tells the screen: the bag's orange, the TM CASE's mint,
 //  the party menu's dark teal.
@@ -65,6 +76,11 @@ const FloatPixel BAG_ORANGE(255, 210, 94);
 const FloatPixel TM_CASE_MINT(193, 234, 207);
 const FloatPixel PARTY_TEAL(18, 109, 107);
 const FloatPixel WHITE(255, 255, 255);
+//  The TM's scene: pale blue diamonds on both sides of the member, around
+//  (198, 234, 255) with a stddev near 30 for the pattern.
+constexpr GameBox SCENE_LEFT{0, 20, 16, 90};
+constexpr GameBox SCENE_RIGHT{224, 20, 16, 90};
+const FloatPixel SCENE_BLUE(198, 234, 255);
 
 //  The item menu's box, between its rows (OPEN at y 109, REGISTER 125,
 //  CANCEL 141); blue text box or list below it when it is closed.
@@ -115,7 +131,7 @@ double dark_share(const ImageViewRGB32& cell){
 //  Small OCR dictionaries of English names: slug -> how the game writes it.
 class NameMatcher : public OCR::SmallDictionaryMatcher{
 public:
-    NameMatcher(std::initializer_list<std::pair<const char*, const char*>> names)
+    NameMatcher(std::initializer_list<std::pair<std::string_view, std::string_view>> names)
         : SmallDictionaryMatcher(dictionary(names))
     {}
 
@@ -145,12 +161,12 @@ public:
     }
 
 private:
-    static JsonObject dictionary(std::initializer_list<std::pair<const char*, const char*>> names){
+    static JsonObject dictionary(std::initializer_list<std::pair<std::string_view, std::string_view>> names){
         JsonObject english;
         for (const auto& [slug, name] : names){
             JsonArray candidates;
-            candidates.push_back(name);
-            english[slug] = std::move(candidates);
+            candidates.push_back(std::string(name));
+            english[std::string(slug)] = std::move(candidates);
         }
         JsonObject json;
         json["eng"] = std::move(english);
@@ -202,6 +218,8 @@ const NameMatcher& text_matcher(){
         {"stop-question", "Stop trying to teach"},
         {"did-not-learn", "did not learn the"},
         {"not-compatible", "are not compatible"},
+        {"machine-set", "Machine set"},
+        {"learned", "learned"},
     };
     return matcher;
 }
@@ -216,6 +234,8 @@ TeachText teach_text(const std::string& slug){
         {"stop-question", TeachText::STOP_QUESTION},
         {"did-not-learn", TeachText::DID_NOT_LEARN},
         {"not-compatible", TeachText::NOT_COMPATIBLE},
+        {"machine-set", TeachText::MACHINE_SET},
+        {"learned", TeachText::LEARNED},
     };
     for (const auto& [name, text] : texts){
         if (name == slug){
@@ -261,7 +281,7 @@ TeachScreen read_party_screen(const ImageViewRGB32& screen){
 } // namespace
 
 
-const char* teach_screen_name(TeachScreen screen){
+std::string_view teach_screen_name(TeachScreen screen){
     switch (screen){
     case TeachScreen::OTHER:        return "other";
     case TeachScreen::BAG:          return "bag";
@@ -271,11 +291,12 @@ const char* teach_screen_name(TeachScreen screen){
     case TeachScreen::PARTY_TEXT:   return "party_text";
     case TeachScreen::PARTY_YES_NO: return "party_yes_no";
     case TeachScreen::KNOWN_MOVES:  return "known_moves";
+    case TeachScreen::TM_SCENE:     return "tm_scene";
     }
     return "?";
 }
 
-const char* teach_text_name(TeachText text){
+std::string_view teach_text_name(TeachText text){
     switch (text){
     case TeachText::UNKNOWN:         return "unknown";
     case TeachText::TEACH_WHICH:     return "teach_which";
@@ -286,6 +307,8 @@ const char* teach_text_name(TeachText text){
     case TeachText::STOP_QUESTION:   return "stop_question";
     case TeachText::DID_NOT_LEARN:   return "did_not_learn";
     case TeachText::NOT_COMPATIBLE:  return "not_compatible";
+    case TeachText::MACHINE_SET:     return "machine_set";
+    case TeachText::LEARNED:         return "learned";
     }
     return "?";
 }
@@ -300,6 +323,9 @@ TeachScreen read_teach_screen(const ImageViewRGB32& screen){
     }
     if (solid(screen, CORNER, PARTY_TEAL)){
         return read_party_screen(screen);
+    }
+    if (patterned(screen, SCENE_LEFT, SCENE_BLUE) && patterned(screen, SCENE_RIGHT, SCENE_BLUE)){
+        return TeachScreen::TM_SCENE;
     }
     if (read_summary_move_cursor(screen)){
         return TeachScreen::KNOWN_MOVES;
@@ -334,23 +360,31 @@ std::string read_pocket_name(Logger& logger, Language language, const ImageViewR
     return pocket_matcher().read(logger, language, game_crop(screen, POCKET_TITLE), BRIGHT_TEXT_FILTERS());
 }
 
+namespace{
+
+//  The key item in the bag's row `row`: "tm-case", "teachy-tv", ... or
+//  "cancel"; empty if not read.
 std::string read_key_item(Logger& logger, Language language, const ImageViewRGB32& screen, size_t row){
     const ImageViewRGB32 name = extract_box_reference(game_box(screen), item_list_name_box(int(row)));
     return key_item_matcher().read(logger, language, name, LIST_TEXT_FILTERS());
 }
 
+//  The move of the TM or HM in the TM CASE's row `row`, as a slug such as
+//  "water-pulse"; empty for CLOSE or a move not read.
 std::string read_tm_case_move(Logger& logger, Language language, const ImageViewRGB32& screen, size_t row){
     const ImageFloatBox name = item_list_name_box(int(row));
     const GameBox box{TM_MOVE_LEFT, name.y * 160, 200 - TM_MOVE_LEFT, name.height * 160};
     return read_move_name(logger, language, game_crop(screen, box));
 }
 
+} // namespace
+
 TeachText read_teach_text(Logger& logger, Language language, const ImageViewRGB32& screen){
     const TeachScreen kind = read_teach_screen(screen);
     if (kind == TeachScreen::PARTY_PROMPT){
         return teach_text(text_matcher().read(logger, language, game_crop(screen, PROMPT_LINE), DARK_TEXT_FILTERS()));
     }
-    if (kind != TeachScreen::PARTY_TEXT && kind != TeachScreen::PARTY_YES_NO){
+    if (kind != TeachScreen::PARTY_TEXT && kind != TeachScreen::PARTY_YES_NO && kind != TeachScreen::TM_SCENE){
         return TeachText::UNKNOWN;
     }
     //  The phrase either line matches best.
@@ -399,8 +433,8 @@ std::string cursor_value(const std::optional<size_t>& cursor){
 //  What a list or menu shows: its rows from the top to the first not read,
 //  and its cursor.
 void add_list(
-    std::vector<std::string>& labels, std::vector<std::string>& values,
-    const std::vector<std::string>& rows, const std::optional<size_t>& cursor
+    const std::vector<std::string>& rows, const std::optional<size_t>& cursor,
+    std::vector<std::string>& labels, std::vector<std::string>& values
 ){
     for (size_t c = 0; c < rows.size(); c++){
         labels.push_back(std::format("row {}", c + 1));
@@ -415,12 +449,12 @@ void add_list(
 //  then: in the bag, its pocket, the key items from the top (KEY ITEMS
 //  only) and the cursor's row (from 1, or "none"); in the TM CASE, its
 //  moves from the top and the cursor's row; in an item menu or YES/NO, the
-//  cursor's row; over the party menu, the message; on KNOWN MOVES, the five
-//  rows' moves and the cursor's row.
+//  cursor's row; over the party menu or in the TM's scene, the message; on
+//  KNOWN MOVES, the five rows' moves and the cursor's row.
 class Test_TeachScreen : public ImageUnitTest{
 public:
     Test_TeachScreen(const std::string& image)
-        : ImageUnitTest("PokemonFRLG::TeachScreenReader - " + image, {image})
+        : ImageUnitTest(std::format("PokemonFRLG::TeachScreenReader - {}", image), {image})
     {}
 
     virtual UnitTestResult run_on_images(
@@ -434,7 +468,7 @@ public:
         const ImageViewRGB32& screen = images[0];
         const TeachScreen kind = read_teach_screen(screen);
         std::vector<std::string> labels{"screen"};
-        std::vector<std::string> values{teach_screen_name(kind)};
+        std::vector<std::string> values{std::string(teach_screen_name(kind))};
         add_details(logger, language, screen, kind, labels, values);
         return check_against_golden_file(UNIT_TEST_RESOURCE_PATH() + image_paths()[0], labels, values);
     }
@@ -452,14 +486,14 @@ private:
             const std::vector<std::string> rows = pocket == "key-items"
                 ? read_teach_rows(logger, language, screen, kind)
                 : std::vector<std::string>{};
-            add_list(labels, values, rows, read_teach_cursor(kind, screen));
+            add_list(rows, read_teach_cursor(kind, screen), labels, values);
             return;
         }
         case TeachScreen::TM_CASE:
-            add_list(labels, values, read_teach_rows(logger, language, screen, kind), read_teach_cursor(kind, screen));
+            add_list(read_teach_rows(logger, language, screen, kind), read_teach_cursor(kind, screen), labels, values);
             return;
         case TeachScreen::ITEM_MENU:
-            add_list(labels, values, {}, read_teach_cursor(kind, screen));
+            add_list({}, read_teach_cursor(kind, screen), labels, values);
             return;
         case TeachScreen::PARTY_YES_NO:
             labels.push_back("cursor");
@@ -467,8 +501,9 @@ private:
             [[fallthrough]];
         case TeachScreen::PARTY_PROMPT:
         case TeachScreen::PARTY_TEXT:
+        case TeachScreen::TM_SCENE:
             labels.push_back("text");
-            values.push_back(teach_text_name(read_teach_text(logger, language, screen)));
+            values.emplace_back(teach_text_name(read_teach_text(logger, language, screen)));
             return;
         case TeachScreen::KNOWN_MOVES:
             for (size_t row = 0; row < SUMMARY_MOVE_ROWS; row++){
@@ -491,7 +526,7 @@ void add_tests_TeachScreenReader(UnitTestDatabase& database){
     //  FireRed on console B, 2026-11-03: TM03 taught to the lead from the
     //  bag, B on the move to forget, and YES to stop. Listed in the order
     //  the screens came up.
-    for (const char* image : {
+    for (std::string_view image : {
         "BagItems_eng.png",
         "BagKeyItems_eng.png",
         "KeyItemsTmCase_eng.png",
@@ -506,8 +541,10 @@ void add_tests_TeachScreenReader(UnitTestDatabase& database){
         "KnownMoves_eng.png",
         "StopQuestion_eng.png",
         "DidNotLearn_eng.png",
+        //  HM01 to an Oddish with two free slots (00.23, console B).
+        "MachineSet_eng.png",
     }){
-        database.add<Test_TeachScreen>(std::string("PokemonFRLG/TeachScreenReader/") + image);
+        database.add<Test_TeachScreen>(std::format("PokemonFRLG/TeachScreenReader/{}", image));
     }
 }
 

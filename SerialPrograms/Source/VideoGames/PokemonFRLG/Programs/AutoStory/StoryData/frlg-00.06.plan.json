@@ -29,5 +29,6 @@
   },
   "execution": {
     "menu": "full"
-  }
+  },
+  "metadata": {"phase": "testing"}
 }

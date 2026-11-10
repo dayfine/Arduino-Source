@@ -4,8 +4,6 @@
  *
  */
 
-#include <algorithm>
-#include <cmath>
 #include <format>
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "PokemonFRLG_AutoStoryActions.h"
@@ -19,11 +17,9 @@ namespace PokemonFRLG{
 using Pokemon::Direction;
 
 
-const char* grind_end_name(GrindEnd end){
+std::string_view grind_end_name(GrindEnd end){
     switch (end){
     case GrindEnd::REACHED:             return "reached";
-    case GrindEnd::LEVEL_CAP:           return "level_cap";
-    case GrindEnd::NO_ESTIMATE:         return "no_estimate";
     case GrindEnd::OUT_OF_ENCOUNTERS:   return "out_of_encounters";
     case GrindEnd::NO_ENCOUNTER:        return "no_encounter";
     case GrindEnd::SHINY:               return "shiny";
@@ -45,10 +41,6 @@ Pokemon::StoryActionArgs grind_args(const GrindPlan& plan, Pokemon::GridPose nur
         {"heal_every", int64_t(plan.heal_every)},
         {"nurse", std::move(nurse)},
     };
-    if (!plan.trainer.empty()){
-        args.emplace("beat", plan.trainer);
-        args.emplace("chance", int64_t(std::lround(100 * plan.min_chance)));
-    }
     return args;
 }
 
@@ -61,25 +53,10 @@ std::optional<GrindPlan> grind_plan_of(const Pokemon::StoryActionArgs& args){
     if (!member || !level || !encounters || !heal_every || pace == nullptr){
         return std::nullopt;
     }
-    GrindPlan plan{
+    return GrindPlan{
         .member = *member, .level = (unsigned)*level, .max_encounters = *encounters,
         .pace = *pace, .heal_every = *heal_every,
     };
-    if (const std::string* trainer = game_arg<std::string>(args, "beat")){
-        if (trainer->empty()){
-            return std::nullopt;
-        }
-        plan.trainer = *trainer;
-    }
-    if (args.contains("chance")){
-        const std::optional<size_t> chance = number_arg(args, "chance", 1, 100);
-        //  A chance needs a trainer to be against.
-        if (!chance || plan.trainer.empty()){
-            return std::nullopt;
-        }
-        plan.min_chance = static_cast<double>(*chance) / 100;
-    }
-    return plan;
 }
 
 Pokemon::StoryStep grind_step(std::string name, std::string why, const GrindPlan& plan, Pokemon::GridPose nurse){
@@ -146,45 +123,19 @@ private:
             return false;
         }
         m_result.level = member->level;
-        m_member = std::move(*member);
         return true;
     }
     bool reached() const{
         return m_result.level && *m_result.level >= m_plan.level;
     }
     //  Whether the step ends at the member just read, its end set if so:
-    //  the level reached; or with a trainer, the win chance reached, else
-    //  the level cap.
+    //  the level reached.
     bool over(){
-        if (!m_plan.trainer.empty()){
-            return chance_over();
-        }
         if (!reached()){
             return false;
         }
         end(GrindEnd::REACHED, "");
         return true;
-    }
-    bool chance_over(){
-        const std::optional<WinEstimate> estimate = m_actions.win_chance(m_member, m_plan.trainer);
-        if (!estimate){
-            end(GrindEnd::NO_ESTIMATE, std::format("the sim has no win chance against {}", m_plan.trainer));
-            return true;
-        }
-        m_result.chance = estimate->chance;
-        m_logger.log(std::format(
-            "Grind: level {} against {}: the sim wins {:.0f}% with {}.",
-            *m_result.level, m_plan.trainer, 100 * estimate->chance, estimate->inputs
-        ));
-        if (estimate->chance >= m_plan.min_chance){
-            end(GrindEnd::REACHED, "");
-            return true;
-        }
-        if (reached()){
-            end(GrindEnd::LEVEL_CAP, std::format("Lv{} is the cap, short of the win chance", m_plan.level));
-            return true;
-        }
-        return false;
     }
     bool heal_due(){
         return m_actions.needs_heal() || (m_plan.heal_every > 0 && m_since_heal >= m_plan.heal_every);
@@ -234,7 +185,6 @@ private:
     const MemberReader& m_reader;
     const GrindPlan& m_plan;
     size_t m_since_heal = 0;
-    MemberInfo m_member;
     GrindResult m_result;
 };
 
@@ -248,12 +198,8 @@ GrindResult run_grind(Logger& logger, GrindActions& actions, const MemberReader&
 
 std::string grind_message(const GrindPlan& plan, const GrindResult& result){
     const std::string level = result.level ? std::to_string(*result.level) : "?";
-    const std::string chance = plan.trainer.empty() ? "" : std::format(
-        ", win chance {} of {:.0f}% against {}",
-        result.chance ? std::format("{:.0f}%", 100 * *result.chance) : "?", 100 * plan.min_chance, plan.trainer
-    );
     const std::string tally = std::format(
-        "level {} of {}{}, {} encounters, {} trips to the nurse", level, plan.level, chance, result.encounters, result.heals
+        "level {} of {}, {} encounters, {} trips to the nurse", level, plan.level, result.encounters, result.heals
     );
     if (result.end == GrindEnd::SHINY){
         return std::format(
@@ -266,25 +212,6 @@ std::string grind_message(const GrindPlan& plan, const GrindResult& result){
     }
     return std::format("Grind slot {}: {}: {}: {}.", plan.member + 1, grind_end_name(result.end), result.detail, tally);
 }
-
-PartyMember lead_as_read(const MemberInfo& read, const PartyMember& tracked){
-    std::vector<SummaryMove> moves;
-    for (const std::string& move : read.moves){
-        const auto known = std::find_if(tracked.moves.begin(), tracked.moves.end(), [&](const KnownMove& item){
-            return item.move == move;
-        });
-        const int full = max_pp(move);
-        moves.emplace_back(SummaryMove{.move = move, .pp = known == tracked.moves.end() ? full : known->pp, .max_pp = full});
-    }
-    const uint8_t level = read.level ? static_cast<uint8_t>(std::min(*read.level, 100u)) : battle_level(tracked);
-    return member_from_summary(read.species.empty() ? tracked.species : read.species, level, moves, read.stats);
-}
-
-std::optional<WinEstimate> healed_win_chance(PartyMember lead, const SimItems& items, std::string_view trainer){
-    restore_pp(lead);
-    return story_win_chance(lead, items, 1.0, trainer);
-}
-
 
 ConsoleGrindActions::ConsoleGrindActions(
     ConsoleHandle& console, ProControllerContext& context, Language language,
@@ -323,11 +250,6 @@ GrindFight ConsoleGrindActions::fight(){
 
 bool ConsoleGrindActions::needs_heal(){
     return m_supplies.hurt || m_supplies.status != StatusCondition::NONE || attacks_low_on_pp(m_supplies);
-}
-
-std::optional<WinEstimate> ConsoleGrindActions::win_chance(const MemberInfo& member, std::string_view trainer){
-    m_supplies.lead = lead_as_read(member, m_supplies.lead);
-    return healed_win_chance(m_supplies.lead, SimItems{.potions = m_supplies.potions, .awakenings = m_supplies.awakenings}, trainer);
 }
 
 bool ConsoleGrindActions::heal_trip(){
