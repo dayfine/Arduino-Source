@@ -23,8 +23,8 @@ void add_tests_StorySegments(UnitTestDatabase& database);
 void add_tests_StoryStepExecutor(UnitTestDatabase& database);
 // Registers unit tests for the lossless shared story-data wire contract.
 void add_tests_StoryStepJson(UnitTestDatabase& database);
-// Registers unit tests for step args: action specs and reading old variant strings.
-void add_tests_StoryArgs(UnitTestDatabase& database);
+// Registers unit tests for step args: checking them against an action's spec.
+void add_tests_StoryActionArg(UnitTestDatabase& database);
 // Registers unit tests for the shared authored envelope, game identity and embedded-resource loading.
 void add_tests_AuthoredCheckpointJson(UnitTestDatabase& database);
 // Registers unit tests for the shared checkpoint log lines and stats counts.
@@ -38,7 +38,7 @@ inline void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_StorySegments(database);
     add_tests_StoryStepExecutor(database);
     add_tests_StoryStepJson(database);
-    add_tests_StoryArgs(database);
+    add_tests_StoryActionArg(database);
     add_tests_AuthoredCheckpointJson(database);
     add_tests_StoryLog(database);
     add_tests_StoryRangeOptions(database);

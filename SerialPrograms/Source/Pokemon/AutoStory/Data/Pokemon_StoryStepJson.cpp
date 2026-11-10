@@ -4,6 +4,7 @@
  *
  */
 
+#include <algorithm>
 #include <array>
 #include <format>
 #include <initializer_list>
@@ -12,11 +13,10 @@
 #include <set>
 #include <span>
 #include <utility>
-#include <variant>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
-#include "Pokemon/AutoStory/Pokemon_TilePose.h"
+#include "Pokemon/AutoStory/Pokemon_StoryActions.h"
 #include "Pokemon_StoryStepJson.h"
 
 namespace PokemonAutomation{
@@ -43,15 +43,6 @@ constexpr std::array<std::pair<StoryStepKind, std::string_view>, 15> KINDS{{
     {StoryStepKind::SAVE, "save"},
     {StoryStepKind::READY, "ready"},
     {StoryStepKind::GAME, "game_action"},
-}};
-
-//  The wire names of the pose certainties.
-constexpr std::array<std::pair<PoseCertainty, std::string_view>, 5> CERTAINTIES{{
-    {PoseCertainty::TILE, "tile"},
-    {PoseCertainty::COLUMN, "column"},
-    {PoseCertainty::ROW, "row"},
-    {PoseCertainty::SET, "set"},
-    {PoseCertainty::UNKNOWN, "unknown"},
 }};
 
 //  The wire names of the directions.
@@ -178,109 +169,138 @@ std::vector<StoryItem> read_items(const JsonValue& value, std::string_view sourc
     return result;
 }
 
-JsonObject args_json(const StoryArgs& args){
-    JsonObject result;
-    for (const auto& [key, value] : args){
-        std::visit([&](const auto& held){ result[key] = held; }, value);
+JsonArray tiles_json(std::span<const TilePos> tiles){
+    JsonArray result;
+    for (const TilePos& tile : tiles){
+        JsonArray pair;
+        pair.push_back(tile.x);
+        pair.push_back(tile.y);
+        result.push_back(std::move(pair));
     }
     return result;
 }
 
-//  A step's args: flags, whole numbers and words; any other value fails.
-StoryArgs read_args(const JsonValue& value, std::string_view source){
-    StoryArgs result;
-    for (const auto& [key, item] : value.to_object_throw(std::string(source))){
-        if (item.is_boolean()){
-            result[key] = item.to_boolean_throw();
-        }else if (item.is_integer()){
-            result[key] = item.to_integer_throw();
-        }else if (item.is_string()){
-            result[key] = item.to_string_throw();
-        }else{
-            throw ParseException(std::format("{}: argument {} is not a flag, whole number or word", source, key));
+std::vector<TilePos> read_tiles(const JsonValue& value, std::string_view source){
+    std::vector<TilePos> result;
+    for (const JsonValue& item : value.to_array_throw(std::string(source))){
+        const JsonArray& pair = item.to_array_throw(std::string(source));
+        if (pair.size() != 2){
+            throw ParseException(std::format("{}: a tile needs two coordinates", source));
+        }
+        result.push_back({integer(pair[0], source), integer(pair[1], source)});
+    }
+    return result;
+}
+
+//  One arg's value as JSON.
+JsonValue arg_json(const StoryArgValue& value){
+    switch (story_arg_type(value)){
+    case StoryArgType::BOOLEAN:
+        return std::get<bool>(value);
+    case StoryArgType::INTEGER:
+        return std::get<int64_t>(value);
+    case StoryArgType::WORD:
+        return std::get<std::string>(value);
+    case StoryArgType::DIRECTION:
+        return enum_name(DIRECTIONS, std::get<Direction>(value));
+    case StoryArgType::GRID_POSE:
+        return grid_pose_json(std::get<GridPose>(value));
+    case StoryArgType::LEGS:
+        return legs_json(std::get<std::vector<StoryLeg>>(value));
+    case StoryArgType::WORDS:
+        return strings_json(std::get<std::vector<std::string>>(value));
+    case StoryArgType::ITEMS:
+        return items_json(std::get<std::vector<StoryItem>>(value));
+    }
+    throw ParseException("Unsupported story arg type.");
+}
+
+//  One arg's value read as `type`.
+StoryArgValue read_arg(const JsonValue& value, StoryArgType type, std::string_view source){
+    switch (type){
+    case StoryArgType::BOOLEAN:
+        return value.to_boolean_throw(std::string(source));
+    case StoryArgType::INTEGER:
+        return value.to_integer_throw(std::string(source));
+    case StoryArgType::WORD:
+        return value.to_string_throw(std::string(source));
+    case StoryArgType::DIRECTION:
+        return read_enum(DIRECTIONS, value.to_string_throw(std::string(source)), source);
+    case StoryArgType::GRID_POSE:
+        return read_grid_pose(value, source);
+    case StoryArgType::LEGS:
+        return read_legs(value, source);
+    case StoryArgType::WORDS:
+        return read_strings(value, source);
+    case StoryArgType::ITEMS:
+        return read_items(value, source);
+    }
+    throw ParseException(std::format("{}: unsupported story arg type", source));
+}
+
+//  The step's action among `actions`: the named one, or the kind's default.
+//  Null for a kind with no action that names none.
+const StoryActionSpec* step_action(
+    const StoryStep& step, std::span<const StoryActionSpec> actions, std::string_view source
+){
+    if (step.kind == StoryStepKind::GAME && step.action.empty()){
+        throw ParseException(std::format("{}: game_action step {} names no action", source, step.name));
+    }
+    const StoryActionSpec* spec = find_story_action(actions, step.kind, step.action);
+    if (spec == nullptr && !step.action.empty()){
+        throw ParseException(std::format("{}: step {}: unknown action {}", source, step.name, step.action));
+    }
+    return spec;
+}
+
+//  The step's args, read against its action's spec, with the fallbacks
+//  filled in.
+StoryActionArgs read_args(
+    const JsonValue* value, const StoryActionSpec* spec, const StoryStep& step, std::string_view source
+){
+    const StoryActionSpec none{.kind = step.kind, .name = "", .args = {}};
+    const StoryActionSpec& action = spec ? *spec : none;
+    StoryActionArgs result;
+    if (value != nullptr){
+        for (const auto& [key, item] : value->to_object_throw(std::string(source))){
+            const auto arg = std::find_if(action.args.begin(), action.args.end(), [&](const StoryArgSpec& candidate){
+                return candidate.key == key;
+            });
+            if (arg == action.args.end()){
+                throw ParseException(std::format("{}: step {}: unknown argument \"{}\"", source, step.name, key));
+            }
+            result[key] = read_arg(item, arg->type, source);
         }
     }
-    return result;
-}
-
-//  `result` with the step's yes/no and count fields read from `root`.
-StoryStep read_step_options(StoryStep result, const JsonObject& root, std::string_view source){
-    if (const JsonValue* field = root.get_value("fight_wild")){
-        result.fight_wild = field->to_boolean_throw();
+    const std::vector<std::string> errors = story_args_errors(action, result);
+    if (!errors.empty()){
+        throw ParseException(std::format("{}: step {}: {}", source, step.name, errors.front()));
     }
-    if (const JsonValue* field = root.get_value("yes")){
-        result.yes = field->to_boolean_throw();
-    }
-    if (const JsonValue* field = root.get_value("may_lose")){
-        result.may_lose = field->to_boolean_throw();
-    }
-    if (const JsonValue* field = root.get_value("battles")){
-        result.battles = count(*field, source);
-    }
-    return result;
+    return with_fallbacks(action, std::move(result));
 }
 
 
 } // namespace
 
 
-JsonValue story_pose_json(const Pose& pose){
+JsonValue grid_pose_json(const GridPose& pose){
     JsonObject result;
     result["map"] = pose.map;
-    result["certainty"] = enum_name(CERTAINTIES, pose.certainty);
-    JsonObject where;
-    where["kind"] = "unknown";
-    if (pose.where){
-        const auto* tiles = dynamic_cast<const TilePose*>(pose.where.get());
-        if (!tiles){
-            throw ParseException("Unsupported story Position subtype.");
-        }
-        where["kind"] = "tiles";
-        JsonArray positions;
-        for (const TilePos& tile : tiles->tiles){
-            JsonArray pair;
-            pair.push_back(tile.x);
-            pair.push_back(tile.y);
-            positions.push_back(std::move(pair));
-        }
-        where["tiles"] = std::move(positions);
-        if (tiles->facing){
-            where["facing"] = enum_name(DIRECTIONS, *tiles->facing);
-        }
+    result["tiles"] = tiles_json(pose.tiles);
+    if (pose.facing){
+        result["facing"] = enum_name(DIRECTIONS, *pose.facing);
     }
-    result["where"] = std::move(where);
     return result;
 }
 
-Pose read_story_pose(const JsonValue& value, std::string_view source){
-    const JsonObject& root = fields(value, {"map", "certainty", "where"}, source);
-    Pose result;
+GridPose read_grid_pose(const JsonValue& value, std::string_view source){
+    const JsonObject& root = fields(value, {"map", "tiles", "facing"}, source);
+    GridPose result;
     result.map = root.get_string_throw("map");
-    result.certainty = read_enum(CERTAINTIES, root.get_string_throw("certainty"), source);
-    const JsonObject& where = fields(root.get_value_throw("where"), {"kind", "tiles", "facing"}, source);
-    const std::string& kind = where.get_string_throw("kind");
-    if (kind == "unknown"){
-        if (where.size() != 1){
-            throw ParseException("Unknown story position has extra fields.");
-        }
-        return result;
+    result.tiles = read_tiles(root.get_value_throw("tiles"), source);
+    if (const JsonValue* field = root.get_value("facing")){
+        result.facing = read_enum(DIRECTIONS, field->to_string_throw(), source);
     }
-    if (kind != "tiles"){
-        throw ParseException("Unsupported story position kind.");
-    }
-    std::vector<TilePos> tiles;
-    for (const JsonValue& item : where.get_array_throw("tiles")){
-        const JsonArray& pair = item.to_array_throw(std::string(source));
-        if (pair.size() != 2){
-            throw ParseException("Story tile needs two coordinates.");
-        }
-        tiles.push_back({integer(pair[0], source), integer(pair[1], source)});
-    }
-    std::optional<Direction> facing;
-    if (const JsonValue* field = where.get_value("facing")){
-        facing = read_enum(DIRECTIONS, field->to_string_throw(), source);
-    }
-    result.where = std::make_shared<TilePose>(std::move(tiles), facing);
     return result;
 }
 
@@ -291,48 +311,27 @@ JsonValue story_step_json(const StoryStep& step){
     if (!step.why.empty()){
         result["why"] = step.why;
     }
-    if (step.target){
-        result["target"] = story_pose_json(*step.target);
-    }
-    if (step.direction != Direction::NORTH){
-        result["direction"] = enum_name(DIRECTIONS, step.direction);
-    }
-    if (!step.legs.empty()){
-        result["legs"] = legs_json(step.legs);
-    }
-    if (step.fight_wild){
-        result["fight_wild"] = true;
-    }
-    if (!step.yes){
-        result["yes"] = false;
-    }
-    if (step.may_lose){
-        result["may_lose"] = true;
-    }
-    if (step.battles){
-        result["battles"] = count_json(step.battles);
-    }
-    if (!step.items.empty()){
-        result["items"] = items_json(step.items);
-    }
-    if (!step.variant.empty()){
-        result["variant"] = step.variant;
+    if (!step.action.empty()){
+        result["action"] = step.action;
     }
     if (!step.args.empty()){
-        result["args"] = args_json(step.args);
+        JsonObject args;
+        for (const auto& [key, value] : step.args){
+            args[key] = arg_json(value);
+        }
+        result["args"] = std::move(args);
     }
     if (!step.skip_if.empty()){
         result["skip_if"] = strings_json(step.skip_if);
     }
     if (step.pose_after){
-        result["declared_after"] = story_pose_json(*step.pose_after);
+        result["declared_after"] = grid_pose_json(*step.pose_after);
     }
     return result;
 }
 
-StoryStep read_story_step(const JsonValue& value, std::string_view source){
-    const JsonObject& root = fields(value, {"id", "kind", "why", "target", "direction", "legs", "fight_wild", "yes",
-        "may_lose", "battles", "items", "variant", "args", "skip_if", "declared_after"}, source);
+StoryStep read_story_step(const JsonValue& value, std::string_view source, std::span<const StoryActionSpec> actions){
+    const JsonObject& root = fields(value, {"id", "kind", "why", "action", "args", "skip_if", "declared_after"}, source);
     StoryStep result;
     result.name = root.get_string_throw("id");
     if (result.name.empty()){
@@ -342,30 +341,15 @@ StoryStep read_story_step(const JsonValue& value, std::string_view source){
     if (const JsonValue* field = root.get_value("why")){
         result.why = field->to_string_throw();
     }
-    if (const JsonValue* field = root.get_value("target")){
-        result.target = read_story_pose(*field, source);
+    if (const JsonValue* field = root.get_value("action")){
+        result.action = field->to_string_throw();
     }
-    if (const JsonValue* field = root.get_value("direction")){
-        result.direction = read_enum(DIRECTIONS, field->to_string_throw(), source);
-    }
-    if (const JsonValue* field = root.get_value("legs")){
-        result.legs = read_legs(*field, source);
-    }
-    result = read_step_options(std::move(result), root, source);
-    if (const JsonValue* field = root.get_value("items")){
-        result.items = read_items(*field, source);
-    }
-    if (const JsonValue* field = root.get_value("variant")){
-        result.variant = field->to_string_throw();
-    }
-    if (const JsonValue* field = root.get_value("args")){
-        result.args = read_args(*field, source);
-    }
+    result.args = read_args(root.get_value("args"), step_action(result, actions, source), result, source);
     if (const JsonValue* field = root.get_value("skip_if")){
         result.skip_if = read_strings(*field, source);
     }
     if (const JsonValue* field = root.get_value("declared_after")){
-        result.pose_after = read_story_pose(*field, source);
+        result.pose_after = read_grid_pose(*field, source);
     }
     return result;
 }
@@ -375,7 +359,7 @@ JsonValue story_checkpoint_json(const StoryCheckpoint& checkpoint){
     result["id"] = checkpoint.id;
     result["title"] = checkpoint.title;
     if (checkpoint.start){
-        result["start"] = story_pose_json(*checkpoint.start);
+        result["start"] = grid_pose_json(*checkpoint.start);
     }
     JsonArray events;
     for (const StoryStep& step : checkpoint.steps){
@@ -385,7 +369,7 @@ JsonValue story_checkpoint_json(const StoryCheckpoint& checkpoint){
     return result;
 }
 
-StoryCheckpoint read_story_checkpoint(const JsonValue& value, std::string_view source){
+StoryCheckpoint read_story_checkpoint(const JsonValue& value, std::string_view source, std::span<const StoryActionSpec> actions){
     const JsonObject& root = fields(value, {"id", "title", "start", "events"}, source);
     StoryCheckpoint result;
     result.id = root.get_string_throw("id");
@@ -394,11 +378,11 @@ StoryCheckpoint read_story_checkpoint(const JsonValue& value, std::string_view s
     }
     result.title = root.get_string_throw("title");
     if (const JsonValue* start = root.get_value("start")){
-        result.start = read_story_pose(*start, source);
+        result.start = read_grid_pose(*start, source);
     }
     std::set<std::string> names;
     for (const JsonValue& event : root.get_array_throw("events")){
-        StoryStep step = read_story_step(event, source);
+        StoryStep step = read_story_step(event, source, actions);
         if (step.name.empty() || !names.insert(step.name).second){
             throw ParseException("Empty or duplicate story event id.");
         }

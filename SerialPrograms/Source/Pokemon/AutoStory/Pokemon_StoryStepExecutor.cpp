@@ -7,11 +7,16 @@
 #include <format>
 #include <set>
 #include <utility>
+#include "Pokemon_StoryActions.h"
 #include "Pokemon_StoryStepExecutor.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
 
+
+Pose pose_of(const GridPose& pose){
+    return tile_pose(pose.map, pose.tiles, pose.facing);
+}
 
 Outcome unsupported_step(const StoryStep& step){
     return outcome_failed("unsupported_step", std::format("{} {}", story_step_kind_name(step.kind), step.name));
@@ -37,7 +42,9 @@ Event story_event(const StoryStep& step, StoryStepExecutor& executor){
     event.act = [&executor, &step](RunState& state){
         return executor.run(state, step);
     };
-    event.pose_learned = step.pose_after;
+    if (step.pose_after){
+        event.pose_learned = pose_of(*step.pose_after);
+    }
     return event;
 }
 
@@ -81,7 +88,7 @@ Checkpoint build_story_checkpoint(const StoryCheckpoint& data, StoryStepExecutor
     Checkpoint checkpoint;
     checkpoint.id = data.id;
     if (data.start){
-        checkpoint.events.push_back(from_save_event(*data.start));
+        checkpoint.events.push_back(from_save_event(pose_of(*data.start)));
     }
     for (const StoryStep& step : data.steps){
         checkpoint.events.push_back(story_event(step, executor));
@@ -95,31 +102,29 @@ Checkpoint build_story_checkpoint(const StoryCheckpoint& data, StoryStepExecutor
 
 namespace{
 
-//  What a step of its kind must have, or "" if it has it.
-std::string missing_field(const StoryStep& step){
-    switch (step.kind){
-    case StoryStepKind::ROUTE:
-    case StoryStepKind::READY:
-        return step.target ? "" : "no target";
-    case StoryStepKind::LEGS:
-        if (step.legs.empty()){
-            return "no legs";
-        }
-        for (const StoryLeg& leg : step.legs){
-            if (leg.tiles <= 0){
-                return "a leg of no tiles";
-            }
-        }
-        return "";
-    case StoryStepKind::TRAIN:
-        return step.battles > 0 ? "" : "no battles";
-    case StoryStepKind::SHOP:
-        return step.items.empty() ? "no items" : "";
-    case StoryStepKind::GAME:
-        return step.variant.empty() ? "no variant" : "";
-    default:
-        return "";
+//  What is wrong with a step's action and args, each as a line: a GAME
+//  step without an action, args that don't fit a built-in action's spec,
+//  an empty leg.
+std::vector<std::string> action_problems(const StoryStep& step){
+    if (step.kind == StoryStepKind::GAME){
+        return step.action.empty() ? std::vector<std::string>{"no action"} : std::vector<std::string>{};
     }
+    const StoryActionSpec* spec = find_story_action(builtin_story_actions(), step.kind, step.action);
+    if (spec == nullptr){
+        //  A game's own action: the game checks it when it loads the step.
+        return {};
+    }
+    std::vector<std::string> problems = story_args_errors(*spec, step.args);
+    const std::vector<StoryLeg>* legs = value_if_at_it<std::vector<StoryLeg>>(step.args, step.args.find("legs"));
+    if (legs != nullptr && legs->empty()){
+        problems.emplace_back("no legs");
+    }
+    for (const StoryLeg& leg : legs ? *legs : std::vector<StoryLeg>{}){
+        if (leg.tiles <= 0){
+            problems.emplace_back("a leg of no tiles");
+        }
+    }
+    return problems;
 }
 
 } // namespace
@@ -138,9 +143,8 @@ std::vector<std::string> lint_story_checkpoint(const StoryCheckpoint& data){
         }else if (!names.insert(step.name).second){
             problems.emplace_back(std::format("{}: a second step named {}", where, step.name));
         }
-        const std::string missing = missing_field(step);
-        if (!missing.empty()){
-            problems.emplace_back(std::format("{} {}: {} {}", where, step.name, story_step_kind_name(step.kind), missing));
+        for (const std::string& problem : action_problems(step)){
+            problems.emplace_back(std::format("{} {}: {} {}", where, step.name, story_step_kind_name(step.kind), problem));
         }
         //  skip_if's conditions must all hold; once per save is one more.
         if (step.once_per_save && !step.skip_if.empty()){

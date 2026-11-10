@@ -18,7 +18,6 @@
 #include <optional>
 #include <span>
 #include <string>
-#include "Common/Cpp/Options/BooleanCheckBoxOption.h"
 #include "Common/Cpp/Options/EnumDropdownOption.h"
 #include "Common/Cpp/Options/GroupOption.h"
 #include "Common/Cpp/Options/SimpleIntegerOption.h"
@@ -77,8 +76,7 @@ public:
     //  The range's check, then verify mode's: one checkpoint only.
     virtual std::string check_validity() const override;
 
-    //  The policy these options set. In-place recoveries are the game's to
-    //  set, not the user's.
+    //  The policy these options set.
     SegmentPolicy policy() const;
     //  The checks level, for the game's steps to read.
     StoryCheckLevel check_level() const;
@@ -87,7 +85,6 @@ public:
 
 public:
     SimpleIntegerOption<uint8_t> ATTEMPTS_PER_CHECKPOINT;
-    BooleanCheckBoxOption STOP_AT_FIRST_FAILURE;
     EnumDropdownOption<StoryCheckLevel> CHECKS;
     //  Any language the game has, whether or not a reader supports it:
     //  steps without one use language-free checks, so none is refused.

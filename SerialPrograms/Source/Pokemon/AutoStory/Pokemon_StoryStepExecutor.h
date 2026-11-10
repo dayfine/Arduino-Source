@@ -38,6 +38,7 @@
 #include <vector>
 #include "Pokemon_StoryEvents.h"
 #include "Pokemon_TilePose.h"
+#include "Types/Pokemon_GridPose.h"
 #include "Types/Pokemon_StoryCheckpoint.h"
 #include "Types/Pokemon_StoryStep.h"
 #include "Types/Pokemon_StoryStepKind.h"
@@ -67,6 +68,9 @@ public:
     virtual bool holds(std::string_view condition, RunState& state);
 };
 
+//  `pose` as the engine's Pose: a TilePose, TILE for one tile, SET for several.
+Pose pose_of(const GridPose& pose);
+
 //  "unsupported_step: TRAIN train_in_grass": what an executor without the kind returns.
 Outcome unsupported_step(const StoryStep& step);
 
@@ -92,8 +96,8 @@ Checkpoint build_story_checkpoint(
 );
 
 //  Problems an author should fix before running: an empty id, unnamed or
-//  repeated steps, a route or READY without a target, empty legs, a GAME
-//  step without a variant, TRAIN without battles, SHOP without items.
+//  repeated steps, a GAME step without an action, a built-in action's args
+//  that don't fit its spec (a route without a target), empty legs.
 std::vector<std::string> lint_story_checkpoint(const StoryCheckpoint& data);
 
 
