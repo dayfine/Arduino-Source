@@ -55,6 +55,7 @@ enum class StoryArgType{
     LEGS,
     WORDS,
     ITEMS,
+    INTEGER_ROWS,
 };
 
 //  One argument's value; the index is its StoryArgType.
@@ -63,7 +64,8 @@ using StoryArgValue = std::variant<
     Direction, GridPose,                    //  DIRECTION, GRID_POSE
     std::vector<StoryLeg>,                  //  LEGS
     std::vector<std::string>,               //  WORDS
-    std::vector<StoryItem>                  //  ITEMS
+    std::vector<StoryItem>,                 //  ITEMS
+    std::vector<std::vector<int64_t>>       //  INTEGER_ROWS: [[0, 4500], [90, 0]]
 >;
 
 //  A step's arguments by key.

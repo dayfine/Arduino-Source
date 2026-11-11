@@ -169,6 +169,30 @@ std::vector<StoryItem> read_items(const JsonValue& value, std::string_view sourc
     return result;
 }
 
+JsonArray integer_rows_json(std::span<const std::vector<int64_t>> rows){
+    JsonArray result;
+    for (const std::vector<int64_t>& row : rows){
+        JsonArray numbers;
+        for (int64_t number : row){
+            numbers.push_back(number);
+        }
+        result.push_back(std::move(numbers));
+    }
+    return result;
+}
+
+std::vector<std::vector<int64_t>> read_integer_rows(const JsonValue& value, std::string_view source){
+    std::vector<std::vector<int64_t>> result;
+    for (const JsonValue& item : value.to_array_throw(std::string(source))){
+        std::vector<int64_t> row;
+        for (const JsonValue& number : item.to_array_throw(std::string(source))){
+            row.push_back(number.to_integer_throw(std::string(source)));
+        }
+        result.push_back(std::move(row));
+    }
+    return result;
+}
+
 JsonArray tiles_json(std::span<const TilePos> tiles){
     JsonArray result;
     for (const TilePos& tile : tiles){
@@ -211,6 +235,8 @@ JsonValue arg_json(const StoryArgValue& value){
         return strings_json(std::get<std::vector<std::string>>(value));
     case StoryArgType::ITEMS:
         return items_json(std::get<std::vector<StoryItem>>(value));
+    case StoryArgType::INTEGER_ROWS:
+        return integer_rows_json(std::get<std::vector<std::vector<int64_t>>>(value));
     }
     throw ParseException("Unsupported story arg type.");
 }
@@ -234,6 +260,8 @@ StoryArgValue read_arg(const JsonValue& value, StoryArgType type, std::string_vi
         return read_strings(value, source);
     case StoryArgType::ITEMS:
         return read_items(value, source);
+    case StoryArgType::INTEGER_ROWS:
+        return read_integer_rows(value, source);
     }
     throw ParseException(std::format("{}: unsupported story arg type", source));
 }
@@ -280,6 +308,101 @@ StoryActionArgs read_args(
 }
 
 
+JsonValue postconditions_json(const StoryPostconditions& postconditions){
+    JsonObject result;
+    if (postconditions.position){
+        result["position"] = grid_pose_json(*postconditions.position);
+    }
+    if (!postconditions.items.empty()){
+        result["items"] = items_json(postconditions.items);
+    }
+    if (!postconditions.flags.empty()){
+        result["flags"] = strings_json(postconditions.flags);
+    }
+    return result;
+}
+
+StoryPostconditions read_postconditions(const JsonValue& value, std::string_view source){
+    const JsonObject& root = fields(value, {"position", "items", "flags"}, source);
+    StoryPostconditions result;
+    if (const JsonValue* field = root.get_value("position")){
+        result.position = read_grid_pose(*field, source);
+    }
+    if (const JsonValue* field = root.get_value("items")){
+        result.items = read_items(*field, source);
+    }
+    if (const JsonValue* field = root.get_value("flags")){
+        result.flags = read_strings(*field, source);
+    }
+    return result;
+}
+
+
+JsonValue verification_json(const StoryVerification& verified){
+    JsonObject result;
+    result["steps_hash"] = verified.steps_hash;
+    result["build"] = verified.build;
+    result["date"] = verified.date;
+    result["runs"] = verified.runs;
+    return result;
+}
+
+StoryVerification read_verification(const JsonValue& value, std::string_view source){
+    const JsonObject& root = fields(value, {"steps_hash", "build", "date", "runs"}, source);
+    StoryVerification result;
+    result.steps_hash = root.get_string_throw("steps_hash");
+    if (const JsonValue* field = root.get_value("build")){
+        result.build = field->to_string_throw();
+    }
+    if (const JsonValue* field = root.get_value("date")){
+        result.date = field->to_string_throw();
+    }
+    if (const JsonValue* field = root.get_value("runs")){
+        result.runs = field->to_string_throw();
+    }
+    return result;
+}
+
+//  The "metadata" object: the phase, the verification, the source and the
+//  postconditions.
+JsonValue metadata_json(const StoryCheckpoint& checkpoint){
+    JsonObject result;
+    result["phase"] = story_phase_name(checkpoint.metadata.phase);
+    if (checkpoint.metadata.verified){
+        result["verified"] = verification_json(*checkpoint.metadata.verified);
+    }
+    if (!checkpoint.metadata.source.empty()){
+        result["source"] = checkpoint.metadata.source;
+    }
+    if (checkpoint.postconditions != StoryPostconditions{}){
+        result["postconditions"] = postconditions_json(checkpoint.postconditions);
+    }
+    return result;
+}
+
+//  Reads "metadata" into `checkpoint`. A missing phase is testing.
+void read_metadata(const JsonValue& value, std::string_view source, StoryCheckpoint& checkpoint){
+    const JsonObject& root = fields(value, {"phase", "verified", "source", "postconditions"}, source);
+    if (const JsonValue* field = root.get_value("phase")){
+        const std::string name = field->to_string_throw();
+        const std::optional<StoryPhase> phase = read_story_phase(name);
+        if (!phase){
+            throw ParseException(std::format("{}: unknown phase {}", source, name));
+        }
+        checkpoint.metadata.phase = *phase;
+    }
+    if (const JsonValue* field = root.get_value("verified")){
+        checkpoint.metadata.verified = read_verification(*field, source);
+    }
+    if (const JsonValue* field = root.get_value("source")){
+        checkpoint.metadata.source = field->to_string_throw();
+    }
+    if (const JsonValue* field = root.get_value("postconditions")){
+        checkpoint.postconditions = read_postconditions(*field, source);
+    }
+}
+
+
 } // namespace
 
 
@@ -297,7 +420,10 @@ GridPose read_grid_pose(const JsonValue& value, std::string_view source){
     const JsonObject& root = fields(value, {"map", "tiles", "facing"}, source);
     GridPose result;
     result.map = root.get_string_throw("map");
-    result.tiles = read_tiles(root.get_value_throw("tiles"), source);
+    //  None: any tile of the map, or a game with no tiles (a zone).
+    if (const JsonValue* field = root.get_value("tiles")){
+        result.tiles = read_tiles(*field, source);
+    }
     if (const JsonValue* field = root.get_value("facing")){
         result.facing = read_enum(DIRECTIONS, field->to_string_throw(), source);
     }
@@ -366,11 +492,14 @@ JsonValue story_checkpoint_json(const StoryCheckpoint& checkpoint){
         events.push_back(story_step_json(step));
     }
     result["events"] = std::move(events);
+    if (checkpoint.postconditions != StoryPostconditions{} || checkpoint.metadata != StoryCheckpointMetadata{}){
+        result["metadata"] = metadata_json(checkpoint);
+    }
     return result;
 }
 
 StoryCheckpoint read_story_checkpoint(const JsonValue& value, std::string_view source, std::span<const StoryActionSpec> actions){
-    const JsonObject& root = fields(value, {"id", "title", "start", "events"}, source);
+    const JsonObject& root = fields(value, {"id", "title", "start", "events", "metadata"}, source);
     StoryCheckpoint result;
     result.id = root.get_string_throw("id");
     if (result.id.empty()){
@@ -387,6 +516,9 @@ StoryCheckpoint read_story_checkpoint(const JsonValue& value, std::string_view s
             throw ParseException("Empty or duplicate story event id.");
         }
         result.steps.push_back(std::move(step));
+    }
+    if (const JsonValue* metadata = root.get_value("metadata")){
+        read_metadata(*metadata, source, result);
     }
     return result;
 }
