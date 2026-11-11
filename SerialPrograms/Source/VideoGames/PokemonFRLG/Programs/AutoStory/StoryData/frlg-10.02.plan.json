@@ -590,14 +590,14 @@
           },
           {
             "direction": "east",
-            "tiles": 5
+            "tiles": 2
           },
           {
             "direction": "north",
-            "tiles": 3
+            "tiles": 2
           }
         ],
-        "why": "from the mat (4, 7): east to (6, 7), up to (6, 6), east to the Psyduck (9, 6) and up column 8 to the wall (8, 3), each of the last two legs held long enough to end on (8, 4) from any tile round the mats"
+        "why": "from the mat (4, 7): east to (6, 7), up to (6, 6), east to the Psyduck (9, 6) and up column 8 to the wall (8, 3)"
       },
       {
         "id": "beside_fuji",
