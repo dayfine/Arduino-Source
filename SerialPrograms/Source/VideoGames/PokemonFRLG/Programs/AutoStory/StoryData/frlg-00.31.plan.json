@@ -68,7 +68,7 @@
       {
         "id": "b3f_arrow_maze",
         "kind": "legs",
-        "variant": "taps",
+        "variant": "blind_taps",
         "legs": [{"direction": "west", "tiles": 6}, {"direction": "south", "tiles": 5}, {"direction": "west", "tiles": 7}, {"direction": "south", "tiles": 2}, {"direction": "west", "tiles": 1}, {"direction": "south", "tiles": 2}, {"direction": "west", "tiles": 2}, {"direction": "south", "tiles": 3}, {"direction": "west", "tiles": 3}, {"direction": "south", "tiles": 2}, {"direction": "east", "tiles": 2}, {"direction": "west", "tiles": 2}, {"direction": "south", "tiles": 5}, {"direction": "east", "tiles": 10}, {"direction": "north", "tiles": 6}],
         "why": "pokeguy's way through the arrow floor (video 56:39-56:50), a tap a tile: west along the top corridor and down column 12 to row 7, west to (5, 7), down to (5, 9) between the arrows; west onto (4, 9), which slides to the stop (2, 9); south onto (2, 11), which slides east to the stop (6, 11); west to (4, 11), down column 4 to (4, 14), west to the wall (1, 14), down to (1, 16); east onto (3, 16), which slides east and, turned by (7, 16), south to the stop (7, 20); west to (5, 20), down column 5 to row 25, east to column 15 and up to (15, 19), below the stairs to B4F (15, 18). He detours to the BLACKGLASSES on the way down column 5; we don't."
       },
@@ -128,7 +128,7 @@
       {
         "id": "b3f_back_to_candy_row",
         "kind": "legs",
-        "variant": "taps",
+        "variant": "blind_taps",
         "legs": [{"direction": "south", "tiles": 2}, {"direction": "west", "tiles": 5}, {"direction": "north", "tiles": 6}],
         "why": "pokeguy's way back (video 57:39-57:42), a tap a tile: down to row 20, west to column 10, up it onto the arrow (10, 14), which slides a tile north to the stop (10, 13)"
       },

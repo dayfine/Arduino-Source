@@ -239,7 +239,8 @@ bool known_variant(const StoryStep& step){
     case StoryStepKind::ROUTE:
         return step.variant.empty() || step.variant == RUN_VARIANT || step.variant == BIKE_VARIANT;
     case StoryStepKind::LEGS:
-        return step.variant.empty() || step.variant == RUN_VARIANT || step.variant == BIKE_VARIANT || step.variant == TAPS_VARIANT;
+        return step.variant.empty() || step.variant == RUN_VARIANT || step.variant == BIKE_VARIANT
+            || step.variant == TAPS_VARIANT || step.variant == BLIND_TAPS_VARIANT;
     case StoryStepKind::STEP:
         return step.variant.empty() || step.variant == TRAINER_LINE_VARIANT || step.variant == TRAINER_WAIT_VARIANT;
     case StoryStepKind::GAME:

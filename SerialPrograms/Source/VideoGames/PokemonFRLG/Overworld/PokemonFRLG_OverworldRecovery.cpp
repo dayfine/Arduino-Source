@@ -445,7 +445,7 @@ private:
     //  only holds walk 30. An open leg after a short one walks on off the
     //  route, which isn't checked.
     void check_open_leg(const RouteStep& step, const std::optional<MapPosition>& start){
-        if (maps() == nullptr || m_planning->open_leg_check != OpenLegCheck::REANCHOR || !start
+        if (maps() == nullptr || m_planning->open_leg_check != OpenLegCheck::REANCHOR || !start || step.blind_taps > 0
             || step.action != RouteAction::WALK || step.to_wall || step.warps
             || m_next >= m_plan.size() || !(is_wall_hold(m_plan[m_next]) || is_slide(m_plan[m_next]))
         ){
