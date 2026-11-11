@@ -18,7 +18,10 @@ authorize an agent to publish upstream.
 - **Fix every code-health finding before a PR goes upstream**, advisory ones
   included. `out_param_order` and `string_concat` are advisory on the fork
   only until the open stacks are cleaned (user, 2026-11-10); an upstream
-  handoff has none of them.
+  handoff has none of them. The pre-push hook blocks only upstream-bound
+  branches (`git config branch.<name>.upstream-bound true`; `--no-verify` there
+  only with the user's OK); fork PR and lab pushes report the count, and CI's
+  Code Health job is advisory on fork PRs (user, 2026-11-11).
 - **At most three open upstream PRs from us, drafts included** (the user's
   call on 2026-11-03; upstream CONTRIBUTING.md asks new contributors for two). This is a limit for the user's upstream handoff, not
   permission for an agent to create a PR.

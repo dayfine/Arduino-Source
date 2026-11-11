@@ -1,17 +1,19 @@
 #!/bin/sh
-# Pre-push code-health gate: the same check as CI's "C++ Code Health" job, run locally (about 1 s).
+# Pre-push code-health check: the same check as CI's "C++ Code Health" job, run locally (about 1 s).
 # Installed by tools/install_hooks.sh as a stub that runs the latest copy from origin/agents.
 #
 # For each pushed branch whose commit is this worktree's HEAD, run the code-health linter against a base
-# and refuse the push on any failure. The base is, in order: the branch's fork PR base; the branch's
+# and print the failure count. It refuses the push only for an upstream-bound branch, one opted in with
+# git config branch.<name>.upstream-bound true (set it when the branch is prepared for upstream handoff);
+# for every other branch (fork PRs, lab branches) the count is reported and the push goes ahead. The base is, in order: the branch's fork PR base; the branch's
 # recorded base (git config branch.<name>.pr-base <base branch>; set it before a stacked branch's
 # first push, when it has no PR yet); for a branch already on the remote (lab/main and other branches
 # without a PR), the remote's current tip, so only what this push adds is checked; else origin/main. Pushes of other commits
 # (e.g. pa-sync's merges made without a checkout), deletions and tags are not checked, nor are pushes
 # from a tree without SerialPrograms/ (the agents branch).
 # The linter is devtools/code_health on origin/agents, like this hook; PA_AGENTS_DIR=<agents checkout>
-# runs a local copy instead (to try linter changes). Bypass (git push --no-verify) only with the user's
-# OK for that push.
+# runs a local copy instead (to try linter changes). For an upstream-bound branch, bypass
+# (git push --no-verify) only with the user's OK for that push.
 remote=$1
 case "$(git remote get-url "$remote" 2>/dev/null)" in *dayfine/Arduino-Source*) ;; *) exit 0;; esac
 [ -d SerialPrograms ] || exit 0
@@ -62,8 +64,14 @@ while read -r lref lsha rref rsha; do
     n=$(printf '%s\n' "$out" | sed -n 's/^Code health: \([0-9]*\) failure.*/\1/p')
     if [ $rc != 0 ] || { [ -n "$n" ] && [ "$n" != 0 ]; }; then
         printf '%s\n' "$out" | grep -v '^Advisory' | tail -25 >&2
-        echo "pre-push: $br fails code health (${n:-?} failures vs $base); push refused. Fix in this PR's commits, or set git config branch.$br.pr-base if the base is wrong." >&2
-        status=1
+        if [ "$(git config --bool "branch.$br.upstream-bound")" = true ]; then
+            echo "pre-push: $br fails code health (${n:-?} failures vs $base); push refused (upstream-bound). Fix in this PR's commits, or set git config branch.$br.pr-base if the base is wrong." >&2
+            status=1
+        else
+            echo "pre-push: $br: code health ${n:-?} failures vs $base (advisory; not upstream-bound, push allowed)." >&2
+        fi
+    else
+        echo "pre-push: $br: code health 0 failures vs $base." >&2
     fi
 done
 exit $status

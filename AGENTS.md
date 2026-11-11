@@ -43,7 +43,8 @@ There are two different checks, and neither replaces the other:
 1. **Code Health** checks C++ code changes on code branches (function length, public methods per
    class, layering, style findings). The linter is [devtools/code_health/](devtools/code_health/README.md)
    on this branch; run it from a checkout of `agents` with `--root <code checkout>`.
-   It runs in CI's "C++ Code Health" job and in the pre-push hook, and counts toward CI green.
+   It runs in CI's "C++ Code Health" job and in the pre-push hook. It blocks only upstream-bound
+   branches; on fork PRs and lab branches the CI job is advisory and the hook reports the count.
 2. **Harness checks** check this `agents` branch only: `bin/agent-harness-check.sh` (every
    `.agents/agents`, `.agents/rules` file, workflow and `dev/lib` script carries a `harness:`
    field) and `bin/agent-standing-rules-check.sh` (agent definitions still carry the
@@ -53,7 +54,7 @@ There are two different checks, and neither replaces the other:
 | What | Where | Use |
 |---|---|---|
 | Code health linter | [devtools/code_health/](devtools/code_health/README.md) (here only; self-tests in `devtools/code_health/tests`, run by Agents Check) | By hand: `cd ~/Projects/Arduino-Source-agents && ~/.venvs/code-health/bin/python -m devtools.code_health --root <code checkout> --base-ref origin/<PR base>`. Full gate: [devtools/verify.py](devtools/verify.py) ([details](#c-harness-and-verification-fork-issue-40)). |
-| Pre-push hook | [tools/hooks/pre-push](tools/hooks/pre-push), [tools/install_hooks.sh](tools/install_hooks.sh) | Once per clone: `sh <(git show origin/agents:tools/install_hooks.sh)`. Creates the venv `~/.venvs/code-health`. Never `--no-verify` without the user's OK. |
+| Pre-push hook | [tools/hooks/pre-push](tools/hooks/pre-push), [tools/install_hooks.sh](tools/install_hooks.sh) | Once per clone: `sh <(git show origin/agents:tools/install_hooks.sh)`. Creates the venv `~/.venvs/code-health`. Blocks only upstream-bound branches (`git config branch.<name>.upstream-bound true`); there, never `--no-verify` without the user's OK. Other pushes report the count only. |
 | CI workflows (code) | `.github/workflows/` on `main`: `cpp-ci-serial-programs-{mac,mac-intel,ubuntu-clang,ubuntu-default,windows-clang,windows-default}.yml`, `code-health.yml` (stub: checks out `agents` into `.agents-tools` and runs the linter from there), `tabs.yml` | Drafts skip the C++ jobs and run only `fork-draft-ci.yml` (Ubuntu GCC build + unit tests); marking a fork PR ready runs all six. Or dispatch: `gh workflow run cpp-ci-serial-programs-<os>.yml -R dayfine/Arduino-Source --ref <branch>`. |
 | CI workflow (this branch) | `.github/workflows/harness-check.yml`, `.github/workflows/agents-check.yml` | Run on PRs into `agents`; Agents Check also runs the linter self-tests. |
 | Waiting on CI | [lab/scripts/wait_for.sh](lab/scripts/wait_for.sh) (`checks <PR>`, `log <file> 'Tests Finished'`, `proc <ERE>`); `lab/scripts/ciwait.sh` is superseded | Main session only, in the background; read `fail=` when it fires. Expected failures: `FileException` for fork-only test images (FRLG SaveCardReader, OptionMenuReader, ItemListReader; BDSP MenuDetector, ShortDialogDetector). |
@@ -96,10 +97,13 @@ Once per clone, install the pre-push code-health gate (it covers every worktree)
 sh <(git show origin/agents:tools/install_hooks.sh)
 ```
 
-A push of a branch that fails code health against its fork PR base is refused, the same check as
-CI's "C++ Code Health" job. The hook runs the linter from `origin/agents` (`git fetch origin agents`
-keeps it current); `PA_AGENTS_DIR=<agents checkout>` runs a local copy instead. Fix the failures in that PR's own commits; `--no-verify` only
-with the user's OK. A PR is not "CI green" while Code Health is red.
+The hook runs the same check as CI's "C++ Code Health" job against the branch's fork PR base and
+prints the failure count. It refuses the push only for an upstream-bound branch: one opted in with
+`git config branch.<name>.upstream-bound true` when it is prepared for upstream handoff (user decision
+2026-11-11). For those, fix the failures in that PR's own commits; `--no-verify` only with the user's
+OK. Fork PRs and lab branches push regardless; report the count, and CI's Code Health job is advisory
+on fork PRs. The hook runs the linter from `origin/agents` (`git fetch origin agents` keeps it
+current); `PA_AGENTS_DIR=<agents checkout>` runs a local copy instead.
 
 All linked worktrees share these remote refs. Re-read the PR rule before any
 GitHub PR mutation. If fetching fails, report that the cached rules may be
