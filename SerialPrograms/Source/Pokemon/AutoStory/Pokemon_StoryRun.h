@@ -8,9 +8,19 @@
  *  A game lends only what really differs: how it loads its save (BDSP
  *  resets from HOME, FRLG soft-resets) and how it checks where the save is.
  *
- *  Two rules hold for every game:
+ *  These rules hold for every game:
+ *  -   Before anything is pressed, the game's preflight must see the video
+ *      alive, the controller ready and the game running (not HOME). One
+ *      that fails is the setup's failure, not the story's: nothing is
+ *      touched.
  *  -   A run that starts at a checkpoint with a save loads that save first,
- *      so it never walks from wherever the game was left.
+ *      so it never walks from wherever the game was left. There is no
+ *      "just loaded" shortcut: a load or place check that fails stops the
+ *      run before anything is saved.
+ *  -   The first checkpoint's own save at its start runs only for a new
+ *      game: after a load the save is already there, and from the game as
+ *      it is the place is unconfirmed (console B, 2026-11-11: a run on the
+ *      HOME menu "saved" first).
  *  -   A failure leaves the game where it failed. Nothing here closes the
  *      game; the user (or the next run from the save) resumes from there.
  *
@@ -26,23 +36,18 @@
 #include "Pokemon_StoryCheckpointTypes.h"
 #include "Pokemon_StoryOutcome.h"
 #include "Pokemon_StorySegments.h"
+#include "Pokemon_StoryPreflight.h"
+#include "Types/Pokemon_StoryStart.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
 
 
-//  How the game reaches the start checkpoint.
-enum class StoryStart{
-    //  A new game from the title screen: there is no save.
-    NEW_GAME,
-    //  The game as another program left it: nothing is loaded.
-    LIVE,
-    //  The checkpoint's save, loaded first.
-    FROM_SAVE,
-};
-
 //  What a game lends the story run.
 struct StoryGameHooks{
+    //  Reads the console before anything else (see StoryPreflight). Without
+    //  it the run logs that nothing was checked.
+    MoveOnlyFunction<StoryPreflight()> preflight;
     //  Loads the last save: the game reset (from HOME or soft) and back in
     //  the overworld. A failed Outcome says why.
     Act load_save;
@@ -63,8 +68,11 @@ struct StoryGameHooks{
 inline constexpr std::string_view STORY_LEFT_WHERE_FAILED = "AutoStory failed: the game stays where it failed.";
 
 //  Gets the game to where checkpoint `checkpoint` starts, as `start` says.
-//  FROM_SAVE always loads the save (logging "[Story] 00.04b: loading the
-//  save"), checks its place and rereads it, and sets the "save_loaded" flag.
+//  First logs the checkpoint starting ("[Story] start: checkpoint 00.04b,
+//  from its save") and runs the game's preflight; one that fails returns
+//  StoryPreflight::FAILURE with nothing pressed. FROM_SAVE then always
+//  loads the save (logging "[Story] 00.04b: loading the save"), checks its
+//  place and rereads it, and sets the "save_loaded" flag.
 Outcome prepare_story_start(std::string_view checkpoint, StoryStart start, StoryGameHooks& game, RunState& state);
 
 //  The runner's hooks: reload is load_story_save(); save, log and status

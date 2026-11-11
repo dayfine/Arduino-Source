@@ -15,6 +15,19 @@ namespace Pokemon{
 
 namespace{
 
+//  "its save", "a new game", "the game as it is": for the start line.
+std::string_view story_start_name(StoryStart start){
+    switch (start){
+    case StoryStart::NEW_GAME:
+        return "a new game";
+    case StoryStart::LIVE:
+        return "the game as it is";
+    case StoryStart::FROM_SAVE:
+        return "its save";
+    }
+    return "?";
+}
+
 void log_line(const std::string& line, StoryGameHooks& game){
     if (game.log){
         game.log(line);
@@ -35,6 +48,18 @@ std::string story_verify_summary(std::string_view checkpoint, const VerifyPolicy
     return std::format(
         "AutoStory verify: {} {}/{} passed, {} needed.", checkpoint, report.passes, policy.runs, policy.passes_needed
     );
+}
+
+Outcome run_story_preflight(StoryGameHooks& game){
+    if (!game.preflight){
+        log_line("[Story] preflight: not checked: the game has no preflight", game);
+        return outcome_ok();
+    }
+    const Outcome outcome = game.preflight().check();
+    if (!outcome.succeeded()){
+        log_line(std::format("[Story] preflight failed, nothing pressed: {}", outcome.detail), game);
+    }
+    return outcome;
 }
 
 Outcome load_story_save(std::string_view reason, StoryGameHooks& game, RunState& state){
@@ -58,6 +83,11 @@ Outcome load_story_save(std::string_view reason, StoryGameHooks& game, RunState&
 } // namespace
 
 Outcome prepare_story_start(std::string_view checkpoint, StoryStart start, StoryGameHooks& game, RunState& state){
+    log_line(std::format("[Story] start: checkpoint {}, from {}", checkpoint, story_start_name(start)), game);
+    const Outcome preflight = run_story_preflight(game);
+    if (!preflight.succeeded()){
+        return preflight;
+    }
     switch (start){
     case StoryStart::NEW_GAME:
         log_line(std::format("[Story] {}: starts a new game, no save to load", checkpoint), game);
