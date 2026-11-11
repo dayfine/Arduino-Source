@@ -29,9 +29,9 @@
         "kind": "legs",
         "action": "taps",
         "args": {
-          "legs": [{"direction": "south", "tiles": 2}, {"direction": "east", "tiles": 2}, {"direction": "south", "tiles": 5}, {"direction": "west", "tiles": 6}, {"direction": "north", "tiles": 4}, {"direction": "south", "tiles": 1}, {"direction": "west", "tiles": 1}]
+          "legs": [{"direction": "south", "tiles": 2}, {"direction": "east", "tiles": 2}, {"direction": "south", "tiles": 5}, {"direction": "west", "tiles": 6}, {"direction": "north", "tiles": 3}, {"direction": "west", "tiles": 1}]
         },
-        "why": "a tap a tile around the Grunt (20, 6), who looks every way (sight 2), with no leg ending, a tile off included, in his lines: down to (21, 4), east to the wall at (23, 4), down to the wall at (23, 9), west to the wall at (17, 9), up to the wall at (17, 5), down to (17, 6), west onto the arrow (16, 6), which slides west and, turned at (11, 6) and (11, 4), on to the stop (1, 4); the old way by (19, 5) met him on console B (2026-11-11 15:03) when a south 2 went one tile on to (19, 6)"
+        "why": "a tap a tile around the Grunt (20, 6), who looks every way (sight 2), with no leg ending, a tile off included, in his lines: down to (21, 4), east to the wall at (23, 4), down to the wall at (23, 9), west to the wall at (17, 9), up column 17 to (17, 6) (not on to the wall (17, 5) and back: a tile out and back), west onto the arrow (16, 6), which slides west and, turned at (11, 6) and (11, 4), on to the stop (1, 4); the old way by (19, 5) met him on console B (2026-11-11 15:03) when a south 2 went one tile on to (19, 6)"
       },
       {
         "id": "beside_moon_stone",

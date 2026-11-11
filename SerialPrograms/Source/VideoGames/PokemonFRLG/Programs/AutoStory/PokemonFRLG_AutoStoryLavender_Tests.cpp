@@ -856,6 +856,86 @@ UnitTestResult test_b2f_grunt_lines_with_tile_off(Logger&){
     return true;
 }
 
+//  The tiles `route` walks from `from`, each on its map: a walk leg's
+//  tiles one by one, a slide's stop alone (the slide is the arrows'), a
+//  warp's tiles up to it and the tile it lands on.
+std::vector<MapPosition> walked_tiles(MapPosition from, const std::vector<RouteStep>& route){
+    std::vector<MapPosition> tiles;
+    for (const RouteStep& leg : route){
+        if (leg.action != RouteAction::WALK){
+            continue;
+        }
+        const int straight = leg.spin_tiles ? 0 : leg.warps ? leg.tiles - 1 : leg.tiles;
+        TilePos tile = from.point;
+        for (int c = 0; c < straight; c++){
+            tile = tile.next(leg.direction);
+            tiles.push_back({from.map, tile});
+        }
+        if (straight != leg.tiles){
+            tiles.push_back(leg.end);
+        }
+        from = leg.end;
+    }
+    return tiles;
+}
+
+//  09.02 goes the direct way on B3F and B2F: no tile there is walked twice.
+//  The old B2F legs went up column 17 to the wall (17, 5) and back down a
+//  tile to (17, 6). The one forced turn back, east from the stop (1, 4) to
+//  (2, 4), which the slide passed, is not counted: a slide counts its stop
+//  alone. The MOON STONE stays: its ball (2, 5) is an object, which stops
+//  the player (pokefirered DoForcedMovement()), in the one way down from
+//  row 4. below_lift's two tiles to the wall (30, 17) and back stay too:
+//  console B, 2026-11-11 01:04, its taps ran on past the lift to the wall
+//  (test_below_lift_one_backtrack()).
+UnitTestResult test_hideout_giovanni_row_no_tile_twice(Logger&){
+    const StoryCheckpoint& row = checkpoint("09.02");
+    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    std::vector<MapData> maps = maps_after_route10();
+    if (std::none_of(maps.begin(), maps.end(), [](const MapData& map){ return map.name == LIFT_MAP; })){
+        maps.push_back(rocket_hideout_lift_room());
+    }
+    SimScript script;
+    script.lift_floors[std::string(LIFT_MAP)] = rocket_hideout_lift_exits();
+    auto sim = std::make_unique<OverworldSim>(maps, MapPosition{at.map, at.tile}, *at.facing, script);
+    std::vector<MapPosition> walked{{at.map, at.tile}};
+    for (const StoryStep& step : row.steps){
+        if (step.name == "escape_rope_hideout"){
+            break;
+        }
+        if (step.kind == StoryStepKind::BATTLE){
+            at = *story_pose(Pokemon::pose_of(*step.pose_after));
+            continue;
+        }
+        if (step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS){
+            const std::optional<std::vector<RouteStep>> route = walked_route(at, step);
+            if (!route){
+                return std::format("09.02/{}: no route.", step.name);
+            }
+            for (const MapPosition& tile : walked_tiles({at.map, at.tile}, *route)){
+                const bool floor = tile.map == "RocketHideout_B3F" || tile.map == "RocketHideout_B2F";
+                if (!floor || step.name == "below_lift"){
+                    continue;
+                }
+                if (std::find(walked.begin(), walked.end(), tile) != walked.end()){
+                    return std::format("09.02/{}: walks {} a second time.", step.name, to_string(tile));
+                }
+                walked.push_back(tile);
+            }
+        }
+        if (const std::string failure = row_step_on_sim(*sim, at, step, row.id); !failure.empty()){
+            return std::format("09.02: {}", failure);
+        }
+        if (step.name == "moon_stone"){
+            for (MapData& map : maps){
+                hide_objects(map, {"FLAG_HIDE_ROCKET_HIDEOUT_B2F_MOON_STONE"});
+            }
+            sim = std::make_unique<OverworldSim>(maps, sim->state().position, sim->state().facing, script);
+        }
+    }
+    return true;
+}
+
 const AutoStoryLavenderCase AUTO_STORY_LAVENDER_CASES[] = {
     {.input = {"08.01 the tree, Rock Tunnel's nine trainers, out of its south mouth", test_rock_tunnel_row}, .expectation = {}},
     {.input = {"08.01 a wild battle mid-leg in the tunnel", test_rock_tunnel_wild_battles}, .expectation = {}},
@@ -878,6 +958,7 @@ const AutoStoryLavenderCase AUTO_STORY_LAVENDER_CASES[] = {
     {.input = {"08.03 saves in Celadon City's Pokemon Center", test_celadon_save_place}, .expectation = {}},
     {.input = {"09.01 the Game Corner's poster, the Rocket Hideout to B4F's LIFT KEY and B3F's Rare Candy", test_hideout_row}, .expectation = {}},
     {.input = {"09.02 B2F's arrows, the lift, the door guards, Giovanni and the SILPH SCOPE", test_hideout_giovanni_row}, .expectation = {}},
+    {.input = {"09.02 no tile of B3F or B2F walked twice: no way out and back", test_hideout_giovanni_row_no_tile_twice}, .expectation = {}},
 };
 
 void add_tests_AutoStoryLavender(UnitTestDatabase& database){
