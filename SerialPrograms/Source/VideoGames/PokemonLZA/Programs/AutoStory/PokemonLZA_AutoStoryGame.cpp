@@ -16,6 +16,7 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
+#include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
@@ -95,6 +96,19 @@ const std::map<std::string, ConsoleStep, std::less<>>& console_game_actions(){
         }},
         {"catch_in_zone", [](StoryEnv& env){ catch_in_zone(env.env.console, env.context, 1, 6); }},
         {"walk_to_zone_gate", [](StoryEnv& env){ walk_to_zone_gate(env.env.console, env.context); }},
+        //  For reruns in the lab: the title screen's Up + B + X loads the save
+        //  before the last one, as a catch's autosave moves the save past a
+        //  checkpoint's start (03.07, console B 2026-11-10).
+        {"load_backup_save", [](StoryEnv& env){
+            go_home(env.env.console, env.context);
+            if (!reset_game_from_home(env.env, env.env.console, env.context, true)){
+                OperationFailedExceptionWithScreenshot::fire(
+                    ErrorReportMode::SEND_ERROR_REPORT,
+                    "load_backup_save: failed to reset the game from HOME.",
+                    env.env.console
+                );
+            }
+        }},
     };
     return actions;
 }
