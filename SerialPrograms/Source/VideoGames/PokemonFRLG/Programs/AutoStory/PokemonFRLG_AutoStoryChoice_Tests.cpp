@@ -185,7 +185,7 @@ UnitTestResult test_fossil_args(){
     ){
         return "Expected the HELIX step and \"dome\" to read back.";
     }
-    for (const std::string& bad : {"", "old_amber", "helix dome"}){
+    for (const std::string bad : {"", "old_amber", "helix dome"}){
         if (fossil_of({{"fossil", bad}})){
             return "Expected \"" + bad + "\" refused.";
         }
