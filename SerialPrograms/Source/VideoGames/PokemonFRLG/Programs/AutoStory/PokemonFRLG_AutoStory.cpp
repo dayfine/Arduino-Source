@@ -177,7 +177,7 @@ StoryEnv story_env(
 
 //  The start gate's preflight failed: the console's setup, nothing pressed.
 void throw_if_not_started(ConsoleHandle& console, const Pokemon::Outcome& outcome){
-    if (outcome.failure == Pokemon::STORY_PRECONDITION_FAILED){
+    if (outcome.failure == Pokemon::StoryPreflight::FAILURE){
         throw UserSetupError(console, "AutoStory did not start, nothing was pressed: " + outcome.detail);
     }
 }
@@ -185,7 +185,7 @@ void throw_if_not_started(ConsoleHandle& console, const Pokemon::Outcome& outcom
 //  The start gate's preflight on its own, for the steps that press before
 //  the start checkpoint is reached (SID Helper's name, the RNG plan's TID).
 void require_preflight(ConsoleHandle& console, ProControllerContext& context){
-    throw_if_not_started(console, Pokemon::check_story_preflight(Pokemon::read_story_preflight(console, context)));
+    throw_if_not_started(console, Pokemon::read_story_preflight(console, context).check());
 }
 
 //  What FRLG lends the shared shell: the console's preflight; a load is a soft reset, checked
