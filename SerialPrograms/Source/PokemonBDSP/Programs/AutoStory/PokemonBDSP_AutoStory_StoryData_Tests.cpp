@@ -137,14 +137,7 @@ UnitTestResult check_parity_01_02b(){
 }
 
 UnitTestResult run_envelope_case(const StoryDataCase& test_case){
-    const auto& table = story_checkpoints();
-    auto it = std::find_if(table.begin(), table.end(), [](const StoryCheckpoint& cp){
-        return cp.id == "00.01";
-    });
-    if (it == table.end()){
-        return "00.01 checkpoint not found";
-    }
-    JsonValue val = authored_checkpoint_json(*it);
+    JsonValue val = authored_checkpoint_document("bdsp-00.01.plan");
     if (test_case.input.mutate != nullptr){
         test_case.input.mutate(val.to_object_throw());
     }

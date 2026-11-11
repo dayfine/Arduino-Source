@@ -388,7 +388,7 @@ std::vector<StoryCheckpoint> table_with_row(const std::string& id, const Pose& s
     std::vector<StoryCheckpoint> rows = story_checkpoints();
     for (StoryCheckpoint& checkpoint : rows){
         if (checkpoint.id == id){
-            checkpoint.start = GridPose{start.map, Pokemon::tiles_of(start), Pokemon::facing_of(start)};
+            checkpoint.start = Pokemon::TileDeclared{start.map, Pokemon::tiles_of(start), Pokemon::facing_of(start)};
             checkpoint.steps = {step};
         }
     }
@@ -474,7 +474,8 @@ std::string ledge_walk_in_grass(Logger& logger, const std::set<std::string>& ski
     std::vector<StoryCheckpoint> rows = story_checkpoints();
     for (StoryCheckpoint& checkpoint : rows){
         if (checkpoint.id == "00.04"){
-            checkpoint.start = story_arg<GridPose>(table_step("00.04", "onto_the_path").args, "target");
+            const GridPose target = story_arg<GridPose>(table_step("00.04", "onto_the_path").args, "target");
+            checkpoint.start = Pokemon::TileDeclared{target.map, target.tiles, target.facing};
             checkpoint.steps = ledge_walk(skip);
         }
     }
