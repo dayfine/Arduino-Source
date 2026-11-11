@@ -16,7 +16,7 @@
 #include "PokemonFRLG_AutoStoryBag.h"
 #include "PokemonFRLG_AutoStoryRooms.h"
 #include "PokemonFRLG_AutoStoryRoomLegs.h"
-#include "PokemonFRLG_AutoStoryVariantWords.h"
+#include "PokemonFRLG_AutoStoryGameArgs.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -47,12 +47,16 @@ std::optional<size_t> floor_row(std::string_view floor){
 } // namespace
 
 std::optional<LiftRide> parse_lift_floor_step(const Pokemon::StoryStep& step){
-    const Pokemon::StoryArgs* args = game_step_args(step, LIFT_FLOOR_VARIANT, LIFT_FLOOR_ARGS);
-    if (args == nullptr){
+    if (step.action != LIFT_FLOOR_VARIANT){
         return std::nullopt;
     }
-    const std::optional<size_t> from = floor_row(*Pokemon::story_arg_text(*args, "from"));
-    const std::optional<size_t> to = floor_row(*Pokemon::story_arg_text(*args, "to"));
+    const std::string* from_name = game_arg<std::string>(step.args, "from");
+    const std::string* to_name = game_arg<std::string>(step.args, "to");
+    if (from_name == nullptr || to_name == nullptr){
+        return std::nullopt;
+    }
+    const std::optional<size_t> from = floor_row(*from_name);
+    const std::optional<size_t> to = floor_row(*to_name);
     if (!from || !to){
         return std::nullopt;
     }
@@ -72,7 +76,28 @@ MenuPresses lift_menu_presses(const LiftRide& ride, size_t entries){
 }
 
 bool is_hideout_step(const Pokemon::StoryStep& step){
-    return (step.variant == POSTER_SWITCH_VARIANT && step.args.empty()) || parse_lift_floor_step(step).has_value();
+    return (step.action == POSTER_SWITCH_VARIANT && step.args.empty()) || parse_lift_floor_step(step).has_value();
+}
+
+std::vector<Pokemon::StoryActionSpec> field_action_specs(){
+    using Pokemon::StoryArgType;
+    using Pokemon::StoryStepKind;
+    std::vector<Pokemon::StoryActionSpec> specs{
+        {.kind = StoryStepKind::GAME, .name = POSTER_SWITCH_VARIANT, .args = {}},
+        {.kind = StoryStepKind::GAME, .name = LIFT_FLOOR_VARIANT, .args = {
+            required_arg("from", StoryArgType::WORD, "the floor the lift stands at, as the panel names it (B1F, B2F, B4F)"),
+            required_arg("to", StoryArgType::WORD, "the floor it rides to"),
+        }},
+        {.kind = StoryStepKind::GAME, .name = USE_ITEM_VARIANT, .args = {
+            required_arg("item", StoryArgType::WORD, "the item's slug, as read_item_list_name() names it"),
+        }},
+        {.kind = StoryStepKind::GAME, .name = RIDE_BIKE_VARIANT, .args = {}},
+        {.kind = StoryStepKind::GAME, .name = REGISTER_BIKE_VARIANT, .args = {}},
+    };
+    for (const std::string& center : {CENTER_ENTER_VARIANT, CENTER_EXIT_VARIANT}){
+        specs.push_back({.kind = StoryStepKind::GAME, .name = center, .args = {}});
+    }
+    return specs;
 }
 
 
@@ -120,34 +145,34 @@ std::optional<Pokemon::Outcome> run_field_game_step(
     ConsoleHandle& console, ProControllerContext& context, Language language, const Pokemon::StoryStep& step
 ){
     const auto done = [&step]{
-        return step.pose_after ? Pokemon::outcome_ok(*step.pose_after) : Pokemon::outcome_ok();
+        return step.pose_after ? Pokemon::outcome_ok(Pokemon::pose_of(*step.pose_after)) : Pokemon::outcome_ok();
     };
     if (const std::optional<LiftRide> ride = parse_lift_floor_step(step)){
         ride_lift(console, context, *ride);
         return done();
     }
-    if (is_center_variant(step.variant)){
+    if (is_center_variant(step.action)){
         //  Both start facing north: at the door, or at the nurse.
-        walk_room_legs(console, context, center_legs(step.variant), Pokemon::Direction::NORTH);
+        walk_room_legs(console, context, center_legs(step.action), Pokemon::Direction::NORTH);
         return done();
     }
-    if (step.variant == POSTER_SWITCH_VARIANT){
+    if (step.action == POSTER_SWITCH_VARIANT){
         push_poster_switch(console, context);
         return Pokemon::outcome_ok();
     }
     if (!is_item_use_step(step)){
         return std::nullopt;
     }
-    if (step.variant == RIDE_BIKE_VARIANT){
+    if (step.action == RIDE_BIKE_VARIANT){
         OverworldWalkSteps::get_on_bike(console, context);
         return done();
     }
     ConsoleItemUseActions bag(console, context, language);
-    const ItemUseEnd end = step.variant == REGISTER_BIKE_VARIANT
+    const ItemUseEnd end = step.action == REGISTER_BIKE_VARIANT
         ? register_item_in_bag(console.logger(), bag, "bicycle")
         : use_item_from_bag(console.logger(), bag, *parse_use_item_step(step));
     if (end != ItemUseEnd::USED){
-        return Pokemon::outcome_failed(std::string("use_item_") + item_use_end_name(end), step.variant);
+        return Pokemon::outcome_failed(std::string("use_item_") + item_use_end_name(end), step.action);
     }
     return done();
 }

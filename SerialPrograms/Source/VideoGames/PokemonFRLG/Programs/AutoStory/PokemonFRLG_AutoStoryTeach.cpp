@@ -6,8 +6,8 @@
 
 #include <algorithm>
 #include <format>
+#include "PokemonFRLG_AutoStoryGameArgs.h"
 #include "PokemonFRLG_AutoStoryTeach.h"
-#include "PokemonFRLG_AutoStoryVariantWords.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -24,7 +24,7 @@ bool is_hm_move(std::string_view move){
     return false;
 }
 
-const char* teach_end_name(TeachEnd end){
+std::string_view teach_end_name(TeachEnd end){
     switch (end){
     case TeachEnd::LEARNED:         return "learned";
     case TeachEnd::ALREADY_KNOWN:   return "already_known";
@@ -37,53 +37,46 @@ const char* teach_end_name(TeachEnd end){
 }
 
 
-Pokemon::StoryArgs teach_args(const TeachPlan& plan){
-    Pokemon::StoryArgs args{
-        {"item", plan.item},
-        {"move", plan.move},
-        {"slot", static_cast<int64_t>(plan.member + 1)},
-    };
-    if (!plan.forget_move.empty()){
-        args["forget"] = plan.forget_move;
-    }else if (plan.forget_slot){
-        args["forget_slot"] = static_cast<int64_t>(*plan.forget_slot + 1);
-    }
-    return args;
-}
-
 namespace{
 
 bool is_tm_or_hm(std::string_view item){
     return item.size() == 4 && (item.starts_with("tm") || item.starts_with("hm"))
-        && variant_number(item.substr(2), 2).has_value();
+        && item[2] >= '0' && item[2] <= '9' && item[3] >= '0' && item[3] <= '9';
 }
 
 } // namespace
 
-std::optional<TeachPlan> parse_teach_step(const Pokemon::StoryStep& step){
-    const Pokemon::StoryArgs* args = game_step_args(step, TEACH_VARIANT, TEACH_ARGS);
-    if (args == nullptr
-        || !arg_number_within(*args, "slot", 1, static_cast<int64_t>(PARTY_SLOTS))
-        || !arg_number_within(*args, "forget_slot", 1, static_cast<int64_t>(MOVE_SLOTS))
-    ){
-        return std::nullopt;
-    }
-    TeachPlan plan{
-        .item = std::string(*Pokemon::story_arg_text(*args, "item")),
-        .move = std::string(*Pokemon::story_arg_text(*args, "move")),
-        .member = static_cast<size_t>(*Pokemon::story_arg_number(*args, "slot")) - 1,
+Pokemon::StoryActionArgs teach_args(const TeachPlan& plan){
+    Pokemon::StoryActionArgs args{
+        {"item", plan.item}, {"move", plan.move}, {"slot", int64_t(plan.member + 1)},
     };
-    if (!(is_tm_or_hm(plan.item) || plan.item == TEACH_TUTOR) || plan.move.empty()){
+    if (!plan.forget_move.empty()){
+        args.emplace("forget", plan.forget_move);
+    }else if (plan.forget_slot){
+        args.emplace("forget_slot", int64_t(*plan.forget_slot + 1));
+    }
+    return args;
+}
+
+std::optional<TeachPlan> teach_plan_of(const Pokemon::StoryActionArgs& args){
+    const std::string* item = game_arg<std::string>(args, "item");
+    const std::string* move = game_arg<std::string>(args, "move");
+    const std::optional<size_t> member = counted_arg(args, "slot", PARTY_SLOTS);
+    if (item == nullptr || !(is_tm_or_hm(*item) || *item == TEACH_TUTOR) || move == nullptr || move->empty() || !member){
         return std::nullopt;
     }
-    if (const std::optional<std::string_view> forget = Pokemon::story_arg_text(*args, "forget")){
+    TeachPlan plan{.item = *item, .move = *move, .member = *member};
+    if (const std::string* forget = game_arg<std::string>(args, "forget")){
         if (forget->empty()){
             return std::nullopt;
         }
-        plan.forget_move = std::string(*forget);
+        plan.forget_move = *forget;
     }
-    if (const std::optional<int64_t> forget_slot = Pokemon::story_arg_number(*args, "forget_slot")){
-        plan.forget_slot = static_cast<size_t>(*forget_slot) - 1;
+    if (args.contains("forget_slot")){
+        plan.forget_slot = counted_arg(args, "forget_slot", MOVE_SLOTS);
+        if (!plan.forget_slot){
+            return std::nullopt;
+        }
     }
     return plan;
 }
@@ -93,7 +86,7 @@ Pokemon::StoryStep teach_step(std::string name, std::string why, const TeachPlan
     step.kind = Pokemon::StoryStepKind::GAME;
     step.name = std::move(name);
     step.why = std::move(why);
-    step.variant = TEACH_VARIANT;
+    step.action = TEACH_ACTION;
     step.args = teach_args(plan);
     step.once_per_save = true;
     return step;
@@ -188,7 +181,7 @@ private:
     }
     //  Sets the result, saves the screen and gives up teaching. False.
     bool give_up(TeachEnd end, std::string detail){
-        m_actions.dump_screen(std::string("gave-up-") + teach_end_name(end));
+        m_actions.dump_screen(std::string("gave-up-") + std::string(teach_end_name(end)));
         m_actions.stop_teaching();
         m_result.end = end;
         m_result.detail = std::move(detail);

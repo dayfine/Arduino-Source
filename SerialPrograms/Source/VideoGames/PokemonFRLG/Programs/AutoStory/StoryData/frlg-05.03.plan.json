@@ -4,94 +4,97 @@
   "checkpoint": {
     "id": "05.03",
     "title": "Cerulean: Water Pulse, Potions, a GRIND until the rival is winnable, then saved below his trigger",
-    "notes": [
-      "Before the rival north of Cerulean (cerulean_rival()), from the Center: first TM03 Water Pulse over Tail Whip, if the lead doesn't know it yet, so the GRIND's sim plays it (a run without TM03 from Misty skips the step). Then 3 Potions at the Mart (CeruleanCity_Mart_Items: POTION is row 3, 300 each; Mt. Moon's trainers leave well over the floor) and 2 Awakenings (row 6, 250 each; pokefirered items.json) for the rival's Bulbasaur's Sleep Powder (console B, m56: asleep at 34/65 HP, it fainted two turns later with 15 Potions), 1400 of the floor's 1500. Then a GRIND on Route 4's grass east of Mt. Moon (75..86, 11..17; Spearow, Rattata, Ekans and Mankey around Lv10, about 80 EXP each), healing at the Center, until the battle sim beats the rival 05.04 fights 50% or more: the win chance his battle refuses below. Console B's Wartortle (Lv22, 65 HP, Water Pulse) is about 42% there and 62% at Lv23; Lv28 (about 88%, some 120 battles from Lv22) is the cap. Then the nurse, and the save on (23, 7), the tile below his trigger: his battle is its own checkpoint, 05.04, verified and retried from this save."
-    ],
-    "start": {"certainty": "tile", "map": "CeruleanCity_PokemonCenter_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 4]]}},
-    "sections": [
+    "start": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
+    "events": [
       {
-        "id": "water_pulse",
-        "title": "Water Pulse in the Center",
-        "events": [
-          {
-            "id": "teach_water_pulse",
-            "kind": "game_action",
-            "variant": "teach",
-            "args": {"item": "tm03", "move": "water-pulse", "slot": 1, "forget": "tail-whip"},
-            "once_per_save": true,
-            "why": "TM03 Water Pulse in place of Tail Whip, unless the lead knows it or there is no TM03"
-          }
-        ]
+        "id": "teach_water_pulse",
+        "kind": "game_action",
+        "action": "teach",
+        "args": {
+          "item": "tm03",
+          "move": "water-pulse",
+          "slot": 1,
+          "forget": "tail-whip"
+        },
+        "why": "TM03 Water Pulse in place of Tail Whip, unless the lead knows it or there is no TM03"
       },
       {
-        "id": "cerulean_mart",
-        "title": "Cerulean Mart",
-        "events": [
-          {
-            "id": "mart_clerk",
-            "kind": "route",
-            "variant": "run",
-            "target": {"certainty": "tile", "map": "CeruleanCity_Mart", "where": {"facing": "west", "kind": "tiles", "tiles": [[4, 3]]}},
-            "why": "out of the Center to the Mart's clerk"
-          },
-          {
-            "id": "buy_potions",
-            "kind": "game_action",
-            "variant": "mart",
-            "args": {"map": "CeruleanCity_Mart", "budget": 1500, "floor": 1500},
-            "items": [{"item": "potion", "quantity": 3}, {"item": "awakening", "quantity": 2}],
-            "once_per_save": true,
-            "why": "3 Potions: the GRIND fights wild battles only with 2 or more; 2 Awakenings for the rival's Sleep Powder"
-          }
-        ]
+        "id": "mart_clerk",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeruleanCity_Mart", "tiles": [[4, 3]], "facing": "west"}
+        },
+        "why": "out of the Center to the Mart's clerk"
       },
       {
-        "id": "grind",
-        "title": "Route 4's grass: a GRIND until the rival is winnable",
-        "events": [
-          {
-            "id": "grind_patch",
-            "kind": "route",
-            "variant": "run",
-            "target": {"certainty": "tile", "map": "Route4", "where": {"facing": "west", "kind": "tiles", "tiles": [[86, 16]]}},
-            "why": "west out of the city along Route 4's lower road onto its grass's east edge"
-          },
-          {
-            "id": "grind_for_rival",
-            "kind": "game_action",
-            "variant": "grind",
-            "args": {"slot": 1, "level": 28, "encounters": 150, "pace": "west", "heal_every": 0, "beat": "TRAINER_RIVAL_CERULEAN_BULBASAUR", "chance": 50},
-            "target": {"certainty": "tile", "map": "CeruleanCity_PokemonCenter_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 4]]}},
-            "why": "wild battles until the sim beats the rival 50% or more, Lv28 at most; the nurse when hurt or low on PP"
-          },
-          {
-            "id": "cerulean_nurse",
-            "kind": "route",
-            "variant": "run",
-            "target": {"certainty": "tile", "map": "CeruleanCity_PokemonCenter_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 4]]}},
-            "why": "back to the Center: the rival's battle starts at full HP and PP"
-          },
-          {
-            "id": "heal_cerulean",
-            "kind": "heal",
-            "why": "full HP"
-          }
-        ]
+        "id": "buy_potions",
+        "kind": "game_action",
+        "action": "mart",
+        "args": {
+          "map": "CeruleanCity_Mart",
+          "budget": 1500,
+          "items": [{"item": "potion", "quantity": 3}, {"item": "awakening", "quantity": 2}],
+          "floor": 1500
+        },
+        "why": "3 Potions: the GRIND fights wild battles only with 2 or more; 2 Awakenings for the rival's Sleep Powder"
       },
       {
-        "id": "rival_trigger",
-        "title": "North to below the rival's trigger",
-        "events": [
-          {
-            "id": "below_rival_trigger",
-            "kind": "route",
-            "variant": "run",
-            "target": {"certainty": "tile", "map": "CeruleanCity", "where": {"facing": "north", "kind": "tiles", "tiles": [[23, 7]]}},
-            "why": "out of the Center, north up to (23, 7), short of the trigger row 6"
-          }
-        ]
+        "id": "grind_patch",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "Route4", "tiles": [[86, 16]], "facing": "west"}
+        },
+        "why": "west out of the city along Route 4's lower road onto its grass's east edge"
+      },
+      {
+        "id": "grind_for_rival",
+        "kind": "game_action",
+        "action": "grind",
+        "args": {
+          "slot": 1,
+          "level": 22,
+          "encounters": 150,
+          "pace": "west",
+          "heal_every": 0,
+          "nurse": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
+        },
+        "why": "wild battles to Lv22, where console B's Wartortle beat the rival (m56); the nurse when hurt or low on PP"
+      },
+      {
+        "id": "cerulean_nurse",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
+        },
+        "why": "back to the Center: the rival's battle starts at full HP and PP"
+      },
+      {
+        "id": "heal_cerulean",
+        "kind": "heal",
+        "why": "full HP"
+      },
+      {
+        "id": "below_rival_trigger",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeruleanCity", "tiles": [[23, 7]], "facing": "north"}
+        },
+        "why": "out of the Center, north up to (23, 7), short of the trigger row 6"
       }
     ]
   },
-  "execution": {"menu": "full", "supplies": {"lead": "after_brock"}}
+  "execution": {
+    "menu": "full",
+    "lead": "after_brock",
+    "notes": {
+      "checkpoint": [
+        "Before the rival north of Cerulean (05.04), from the Center: first TM03 Water Pulse over Tail Whip, if the lead doesn't know it yet, so the GRIND's sim plays it (a run without TM03 from Misty skips the step). Then 3 Potions at the Mart (CeruleanCity_Mart_Items: POTION is row 3, 300 each; Mt. Moon's trainers leave well over the floor) and 2 Awakenings (row 6, 250 each; pokefirered items.json) for the rival's Bulbasaur's Sleep Powder (console B, m56: asleep at 34/65 HP, it fainted two turns later with 15 Potions), 1400 of the floor's 1500. Then a GRIND on Route 4's grass east of Mt. Moon (75..86, 11..17; Spearow, Rattata, Ekans and Mankey around Lv10, about 80 EXP each), healing at the Center, until the battle sim beats the rival 05.04 fights 50% or more: the win chance his battle refuses below. Console B's Wartortle (Lv22, 65 HP, Water Pulse) is about 42% there and 62% at Lv23; Lv28 (about 88%, some 120 battles from Lv22) is the cap. Then the nurse, and the save on (23, 7), the tile below his trigger: his battle is its own checkpoint, 05.04, verified and retried from this save."
+      ]
+    }
+  },
+  "metadata": {"phase": "testing"}
 }

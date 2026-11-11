@@ -5,9 +5,9 @@
  */
 
 #include <format>
+#include "PokemonFRLG_AutoStoryGameArgs.h"
 #include "PokemonFRLG_AutoStoryMember.h"
 #include "PokemonFRLG_AutoStorySummary.h"
-#include "PokemonFRLG_AutoStoryVariantWords.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -30,18 +30,17 @@ MemberReader console_member_reader(ConsoleHandle& console, ProControllerContext&
 }
 
 
-std::optional<LevelCheck> parse_level_step(const Pokemon::StoryStep& step){
-    const Pokemon::StoryArgs* args = game_step_args(step, LEVEL_VARIANT, LEVEL_ARGS);
-    if (args == nullptr
-        || !arg_number_within(*args, "slot", 1, static_cast<int64_t>(PARTY_SLOTS))
-        || !arg_number_within(*args, "min", 1, 100)
-    ){
+Pokemon::StoryActionArgs level_args(const LevelCheck& check){
+    return {{"slot", int64_t(check.slot + 1)}, {"min", int64_t(check.level)}};
+}
+
+std::optional<LevelCheck> level_check_of(const Pokemon::StoryActionArgs& args){
+    const std::optional<size_t> slot = counted_arg(args, "slot", PARTY_SLOTS);
+    const std::optional<size_t> level = number_arg(args, "min", 1, 100);
+    if (!slot || !level){
         return std::nullopt;
     }
-    return LevelCheck{
-        .slot = static_cast<size_t>(*Pokemon::story_arg_number(*args, "slot")) - 1,
-        .level = static_cast<unsigned>(*Pokemon::story_arg_number(*args, "min")),
-    };
+    return LevelCheck{.slot = *slot, .level = (unsigned)*level};
 }
 
 Pokemon::StoryStep level_step(std::string name, std::string why, const LevelCheck& check){
@@ -49,11 +48,8 @@ Pokemon::StoryStep level_step(std::string name, std::string why, const LevelChec
     step.kind = Pokemon::StoryStepKind::GAME;
     step.name = std::move(name);
     step.why = std::move(why);
-    step.variant = LEVEL_VARIANT;
-    step.args = {
-        {"slot", static_cast<int64_t>(check.slot + 1)},
-        {"min", static_cast<int64_t>(check.level)},
-    };
+    step.action = LEVEL_ACTION;
+    step.args = level_args(check);
     return step;
 }
 

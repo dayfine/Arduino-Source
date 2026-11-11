@@ -9,15 +9,11 @@
 
 #include <format>
 #include <functional>
-#include <map>
-#include <span>
 #include <string>
-#include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/Exceptions/ProgramFinishedException.h"
 #include "PokemonFRLG_AutoStoryAbilities.h"
-#include "PokemonFRLG_AutoStoryVariantWords.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -66,7 +62,6 @@ public:
     virtual GrindFight fight() override{ return GrindFight::FAILED; }
     virtual bool needs_heal() override{ return false; }
     virtual bool heal_trip() override{ return true; }
-    virtual std::optional<WinEstimate> win_chance(const MemberInfo&, std::string_view) override{ return std::nullopt; }
 };
 
 class StubFossils : public ChoiceActions{
@@ -119,27 +114,12 @@ private:
 };
 
 
-//  A GAME step written the old way ("mart PewterCity_Mart budget=2000
-//  potion=5"), a Mart's purchases as its items.
-Pokemon::StoryStep game_step(std::string_view text){
-    static const std::map<std::string_view, std::vector<std::string_view>> POSITIONAL{
-        {MART_VARIANT, {"map"}}, {TEACH_VARIANT, {"item", "move"}}, {"capture", {"species"}},
-    };
-    const auto found = POSITIONAL.find(text.substr(0, text.find(' ')));
-    Pokemon::StoryStep step = legacy_game_step(text, found == POSITIONAL.end() ? std::span<const std::string_view>() : found->second);
+Pokemon::StoryStep game_step(std::string action, Pokemon::StoryActionArgs args){
+    Pokemon::StoryStep step;
+    step.kind = Pokemon::StoryStepKind::GAME;
     step.name = "test";
-    if (step.variant != MART_VARIANT){
-        return step;
-    }
-    for (auto it = step.args.begin(); it != step.args.end();){
-        const std::optional<int64_t> quantity = Pokemon::story_arg_number(step.args, it->first);
-        if (!quantity || it->first == "budget" || it->first == "floor"){
-            ++it;
-            continue;
-        }
-        step.items.push_back({it->first, static_cast<size_t>(*quantity)});
-        it = step.args.erase(it);
-    }
+    step.action = std::move(action);
+    step.args = std::move(args);
     return step;
 }
 
@@ -171,20 +151,21 @@ struct StepCase{
 
 std::vector<StepCase> step_cases(){
     const auto none = [](StubGame&){};
+    const Pokemon::StoryStep mart = mart_step("mart", "", {.map = "PewterCity_Mart", .lines = {{"potion", 5}}, .budget = 2000});
     const Pokemon::StoryStep grind = grind_step("grind", "", {.member = 0, .level = 20, .max_encounters = 5, .pace = Pokemon::Direction::EAST, .heal_every = 0}, {});
     return {
         {"level reached", none, level_step("check", "", {.slot = 0, .level = 16}), "unchanged"},
         {"level below", none, level_step("check", "", {.slot = 0, .level = 17}), "level_below"},
         {"level unread", [](StubGame& game){ game.level.reset(); }, level_step("check", "", {.slot = 0, .level = 16}), "level_unread"},
-        {"a Mart with too little money succeeds", [](StubGame& game){ game.mart.money = 100; }, game_step("mart PewterCity_Mart budget=2000 potion=5"), "unchanged"},
-        {"a Mart purchase that fails", none, game_step("mart PewterCity_Mart budget=2000 potion=5"), "mart_failed"},
-        {"a move it knows already succeeds", none, game_step("teach hm03 surf slot=1"), "unchanged"},
-        {"a TM not in the TM Case is skipped", none, game_step("teach tm03 water-pulse slot=1 forget=water-gun"), "unchanged"},
+        {"a Mart with too little money succeeds", [](StubGame& game){ game.mart.money = 100; }, mart, "unchanged"},
+        {"a Mart purchase that fails", none, mart, "mart_failed"},
+        {"a move it knows already succeeds", none, teach_step("teach", "", {.item = "hm03", .move = "surf", .member = 0}), "unchanged"},
+        {"a TM not in the TM Case is skipped", none, teach_step("teach", "", {.item = "tm03", .move = "water-pulse", .member = 0, .forget_move = "water-gun"}), "unchanged"},
         {"a level that can't be read stops a GRIND", [](StubGame& game){ game.level.reset(); }, grind, "grind_unread"},
-        {"a GRIND without a nurse", none, game_step("grind slot=1 level=20"), "bad_variant"},
+        {"a GRIND without a nurse", none, game_step(GRIND_ACTION, {{"slot", int64_t(1)}, {"level", int64_t(20)}}), "bad_args"},
         {"no YES/NO at the fossil", none, fossil_step("fossil", "", Fossil::HELIX), "fossil_failed"},
-        {"a bad variant", none, game_step("mart PewterCity_Mart"), "bad_variant"},
-        {"another game step", none, game_step("capture rattata"), "none"},
+        {"bad args", none, game_step(MART_ACTION, {{"map", std::string("PewterCity_Mart")}}), "bad_args"},
+        {"another game step", none, capture_step("capture", "", {.species = "rattata"}), "none"},
     };
 }
 
@@ -237,16 +218,21 @@ UnitTestResult test_grind_shiny_stops(){
 }
 
 
-UnitTestResult test_level_variant(){
-    const Pokemon::StoryStep step = level_step("level", "", {.slot = 1, .level = 23});
-    const std::optional<LevelCheck> back = parse_level_step(step);
-    const Pokemon::StoryArgs expected{{"slot", int64_t(2)}, {"min", int64_t(23)}};
-    if (step.variant != LEVEL_VARIANT || step.args != expected || !back || back->slot != 1 || back->level != 23){
-        return "Unexpected LEVEL step \"" + step.variant + "\".";
+UnitTestResult test_level_args(){
+    const std::optional<LevelCheck> back = level_check_of(level_args({.slot = 1, .level = 23}));
+    if (!back || back->slot != 1 || back->level != 23){
+        return "Expected slot 2, level 23 to read back.";
     }
-    for (std::string_view bad : {"level", "level slot=1", "level min=5", "level slot=0 min=5", "level slot=1 min=101"}){
-        if (parse_level_step(legacy_game_step(bad))){
-            return "Expected \"" + std::string(bad) + "\" refused.";
+    const std::vector<Pokemon::StoryActionArgs> bad_args{
+        {},
+        {{"slot", int64_t(1)}},
+        {{"min", int64_t(5)}},
+        {{"slot", int64_t(0)}, {"min", int64_t(5)}},
+        {{"slot", int64_t(1)}, {"min", int64_t(101)}},
+    };
+    for (const Pokemon::StoryActionArgs& bad : bad_args){
+        if (level_check_of(bad)){
+            return "Expected args with a missing or out-of-range value refused.";
         }
     }
     return true;
@@ -265,7 +251,7 @@ const AutoStoryAbilitiesCase AUTO_STORY_ABILITIES_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"the LEVEL step's variant", test_level_variant},
+        .input = {"the LEVEL step's args", test_level_args},
         .expectation = {},
     },
     {

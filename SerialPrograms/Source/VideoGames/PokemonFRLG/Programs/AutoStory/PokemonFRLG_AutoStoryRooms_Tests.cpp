@@ -13,7 +13,6 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryRooms.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
-#include "PokemonFRLG_AutoStoryTableSteps.h"
 #include "PokemonFRLG_AutoStoryFieldSteps.h"
 
 namespace PokemonAutomation{
@@ -64,12 +63,12 @@ std::string in_and_out(const std::string& town, const std::string& center){
     const MapPosition below_door{town, door.next(Direction::SOUTH)};
     OverworldSim sim(maps, below_door, Direction::NORTH);
     StoryPose at{town, below_door.point, Direction::NORTH};
-    std::string failure = row_step_on_sim(sim, at, StoryTable::center_enter("to_nurse", center, "test"), "test");
+    std::string failure = row_step_on_sim(sim, at, center_enter_step("to_nurse", center), "test");
     if (!failure.empty()){
         return failure;
     }
-    const Pokemon::Pose outside = StoryTable::at(town.c_str(), below_door.point.x, below_door.point.y, Direction::SOUTH);
-    failure = row_step_on_sim(sim, at, StoryTable::center_exit("out", outside, "test"), "test");
+    const Pokemon::GridPose outside{town, {below_door.point}, Direction::SOUTH};
+    failure = row_step_on_sim(sim, at, center_exit_step("out", outside), "test");
     if (!failure.empty()){
         return failure;
     }

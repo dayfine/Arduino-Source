@@ -11,6 +11,7 @@
 #include <initializer_list>
 #include <set>
 #include <string>
+#include <string_view>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "PokemonFRLG_OverworldMap.h"
@@ -31,7 +32,7 @@ struct OverworldMapsInput{
 };
 
 struct OverworldMapsExpectation{
-    const char* description;
+    std::string_view description;
 };
 
 struct OverworldMapsTestCase{
@@ -58,7 +59,7 @@ private:
 };
 
 
-const char* const VALID_MAP = R"({
+const std::string VALID_MAP = R"({
     "name": "Test",
     "source": {"decomp_file": "data/maps/Test/map.json", "revision": "test", "date": "2026-10-31"},
     "tiles": ["#.w", "~D."],
@@ -84,8 +85,8 @@ std::string parse_error(const std::string& json){
 }
 
 //  Whether `text` contains every one of `parts`.
-bool mentions(const std::string& text, std::initializer_list<const char*> parts){
-    for (const char* part : parts){
+bool mentions(const std::string& text, std::initializer_list<std::string_view> parts){
+    for (std::string_view part : parts){
         if (text.find(part) == std::string::npos){
             return false;
         }
@@ -178,7 +179,7 @@ UnitTestResult test_unknown_tile(){
 //  Route 3's Lass Robin, shrunk: she wanders x 2, y 2..4 looking north and
 //  south, sight 3, below a corridor (row 1) walled off at x 2 above it; a
 //  bug catcher at (5, 4) looks west, sight 2.
-const char* const TRAINERS_MAP = R"({
+const std::string TRAINERS_MAP = R"({
     "name": "Trainers",
     "source": {"decomp_file": "", "revision": "test", "date": "2026-11-02"},
     "tiles": ["##.####", ".......", ".......", ".......", ".......", "~~~~~~~"],
@@ -240,7 +241,7 @@ const MapData* built_in(const std::vector<MapData>& maps, const std::string& nam
 //  Center doesn't let the player run, the routes do.
 UnitTestResult test_route3_route4_maps(){
     const std::vector<MapData> maps = overworld_maps();
-    for (const char* name : {"Route3", "Route4", "Route4_PokemonCenter_1F"}){
+    for (const std::string& name : std::vector<std::string>{"Route3", "Route4", "Route4_PokemonCenter_1F"}){
         if (built_in(maps, name) == nullptr){
             return std::string("Missing map ") + name + ".";
         }
@@ -269,7 +270,7 @@ UnitTestResult test_route3_route4_maps(){
 //  tile south, facing south.
 UnitTestResult test_mt_moon_maps(){
     const std::vector<MapData> maps = overworld_maps({"FLAG_HIDE_DOME_FOSSIL", "FLAG_HIDE_HELIX_FOSSIL"});
-    for (const char* name : {"MtMoon_1F", "MtMoon_B1F", "MtMoon_B2F"}){
+    for (const std::string& name : std::vector<std::string>{"MtMoon_1F", "MtMoon_B1F", "MtMoon_B2F"}){
         const MapData* map = built_in(maps, name);
         if (map == nullptr){
             return std::string("Missing map ") + name + ".";
@@ -339,9 +340,9 @@ bool plans_from_cerulean_nurse(const std::vector<MapData>& maps, const RouteGoal
 //  Bridge (Route 24) and east along Route 25 into Bill's Sea Cottage.
 UnitTestResult test_cerulean_maps(){
     const std::vector<MapData> maps = overworld_maps();
-    for (const char* name : {"CeruleanCity_Mart", "CeruleanCity_Gym", "Route25", "Route25_SeaCottage"}){
-        if (built_in(maps, name) == nullptr){
-            return std::string("Missing map ") + name + ".";
+    for (std::string_view name : {"CeruleanCity_Mart", "CeruleanCity_Gym", "Route25", "Route25_SeaCottage"}){
+        if (built_in(maps, std::string(name)) == nullptr){
+            return std::format("Missing map {}.", name);
         }
     }
     const MapPosition clerk{"CeruleanCity_Mart", map_point(maps, "CeruleanCity_Mart", "clerk_front")};
@@ -372,13 +373,13 @@ UnitTestResult test_cerulean_maps(){
 //  Surf's cost below 0, no route surfs.
 UnitTestResult test_vermilion_maps(){
     const std::vector<MapData> all = overworld_maps();
-    for (const char* name : {
+    for (std::string_view name : {
         "CeruleanCity_House2", "Route5", "UndergroundPath_NorthEntrance", "UndergroundPath_NorthSouthTunnel", "UndergroundPath_SouthEntrance",
         "Route6", "VermilionCity", "VermilionCity_PokemonCenter_1F",
         "SSAnne_Exterior", "SSAnne_1F_Corridor", "SSAnne_2F_Corridor", "SSAnne_CaptainsOffice",
     }){
-        if (built_in(all, name) == nullptr){
-            return std::string("Missing map ") + name + ".";
+        if (built_in(all, std::string(name)) == nullptr){
+            return std::format("Missing map {}.", name);
         }
     }
     const std::set<std::string> new_game = map_flag_set(all, "new_game");
@@ -446,7 +447,7 @@ UnitTestResult test_vermilion_gym_map(){
         }
     }
     struct Seen{
-        const char* name;
+        std::string_view name;
         TilePos tile;
         bool seen;
     };
@@ -519,7 +520,7 @@ UnitTestResult test_route4_center_escalator(){
 
 //  A hall with an escalator at (1, 2) to a floor that isn't loaded, like
 //  Route 4's Pokemon Center.
-const char* const ESCALATOR_HALL = R"({
+const std::string ESCALATOR_HALL = R"({
     "name": "Hall", "source": {"decomp_file": "", "revision": "test", "date": "2026-11-02"},
     "tiles": ["######", "#....#", "#....#", "######"],
     "warps": [{"x": 1, "y": 2, "enter": "step_on"}]
@@ -607,7 +608,7 @@ UnitTestResult test_found_again_route3_route4(){
 UnitTestResult test_trainer_stops(){
     const std::vector<MapData> maps = overworld_maps();
     struct Case{
-        const char* name;
+        std::string_view name;
         MapPosition start;
         Direction direction;
         int tiles;

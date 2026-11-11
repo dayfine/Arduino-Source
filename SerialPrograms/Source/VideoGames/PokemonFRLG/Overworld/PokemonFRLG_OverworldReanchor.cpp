@@ -8,6 +8,7 @@
 #include <format>
 #include "Pokemon/Navigation/Pokemon_WallRecovery.h"
 #include "PokemonFRLG_OverworldReanchor.h"
+#include "PokemonFRLG_OverworldResume.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

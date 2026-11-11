@@ -19,7 +19,6 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "PokemonFRLG_AutoStoryMart.h"
-#include "PokemonFRLG_AutoStoryVariantWords.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -336,38 +335,27 @@ UnitTestResult test_quantity_presses(){
 }
 
 
-UnitTestResult test_mart_variant(){
+UnitTestResult test_mart_args(){
     const MartPlan plan = pewter_plan(2000, {{"potion", 5}, {"repel", 3}}, 2400);
-    const Pokemon::StoryStep step = mart_step("buy", "", plan);
-    const Pokemon::StoryArgs expected{{"map", "PewterCity_Mart"}, {"budget", int64_t(2000)}, {"floor", int64_t(2400)}};
-    if (step.variant != MART_VARIANT || step.args != expected || step.items.size() != 2 || step.items[0].item != "potion"){
-        return "Unexpected Mart step \"" + step.variant + "\".";
-    }
-    const std::optional<MartPlan> back = parse_mart_step(step);
+    const Pokemon::StoryActionArgs args = mart_args(plan);
+    const std::optional<MartPlan> back = mart_plan_of(args);
     if (!back || back->map != plan.map || back->budget != 2000 || back->money_floor != plan.money_floor
         || back->lines.size() != 2 || back->lines[1].item != "repel" || back->lines[1].quantity != 3
     ){
-        return "The Mart step didn't read back as its plan.";
+        return "The Pewter plan didn't read back from its args.";
     }
-    //  Each with what makes it bad; items as {item, quantity}.
-    const std::vector<std::pair<std::string_view, std::vector<Pokemon::StoryItem>>> bad_steps = {
-        {"mart", {{"potion", 1}}},
-        {"mart PewterCity_Mart budget=2000", {}},
-        {"mart PewterCity_Mart", {{"potion", 1}}},
-        {"mart Nowhere_Mart budget=2000", {{"potion", 1}}},
-        {"mart ViridianCity_Mart budget=2000", {{"repel", 1}}},
-        {"mart PewterCity_Mart budget=2000", {{"potion", 0}}},
-        {"mart PewterCity_Mart budget=2000", {{"potion", 100}}},
-        {"mart PewterCity_Mart budget=2000 potion", {{"potion", 1}}},
-        {"mart PewterCity_Mart budget=2000 colour=red", {{"potion", 1}}},
-        {"teach hm03 surf budget=2000", {{"potion", 1}}},
+    const std::vector<std::pair<std::string, Pokemon::StoryArgValue>> bad_args{
+        {"items", std::vector<Pokemon::StoryItem>{}},
+        {"map", std::string("Nowhere_Mart")},
+        {"map", std::string("ViridianCity_Mart")},
+        {"items", std::vector<Pokemon::StoryItem>{{"potion", 0}}},
+        {"items", std::vector<Pokemon::StoryItem>{{"potion", 100}}},
     };
-    const std::string_view positional[] = {"map"};
-    for (const auto& [text, items] : bad_steps){
-        Pokemon::StoryStep bad = legacy_game_step(text, positional);
-        bad.items = items;
-        if (parse_mart_step(bad)){
-            return "Expected \"" + std::string(text) + "\" refused.";
+    for (const auto& [key, value] : bad_args){
+        Pokemon::StoryActionArgs bad = args;
+        bad[key] = value;
+        if (mart_plan_of(bad)){
+            return "Expected a bad " + key + " refused.";
         }
     }
     return true;
@@ -423,7 +411,7 @@ const AutoStoryMartCase AUTO_STORY_MART_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"the table's variant", test_mart_variant},
+        .input = {"the step's args", test_mart_args},
         .expectation = {},
     },
     {

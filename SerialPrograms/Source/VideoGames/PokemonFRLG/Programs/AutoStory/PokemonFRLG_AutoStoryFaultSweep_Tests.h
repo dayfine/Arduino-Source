@@ -10,7 +10,7 @@
 #include <optional>
 #include <string>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
-#include "Pokemon/AutoStory/Pokemon_StorySteps.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

@@ -49,171 +49,18 @@
 #include <vector>
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryArgs.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
 #include "VideoGames/PokemonFRLG/Inference/Box/PokemonFRLG_PcScreenReader.h"
+#include "PokemonFRLG_AutoStoryPcRun.h"
+#include "PokemonFRLG_AutoStoryPcDialog.h"
+#include "PokemonFRLG_AutoStoryPcTransfer.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
 
-
-//  The storage operation to perform at the PC.
-enum class PcAction{
-    DEPOSIT,
-    WITHDRAW,
-};
-
-//  What a DEPOSIT does when the party hasn't got its slot: refuse, or
-//  skip it as done (the Magikarp from Gift RNG, when Gift RNG didn't run).
-enum class PcMissing{
-    REFUSE,
-    SKIP,
-};
-
-//  What a PC step does. Slots and boxes count from 0.
-struct PcTransfer{
-    PcAction action = PcAction::DEPOSIT;
-    //  DEPOSIT: the party slot to store.
-    size_t party_slot = 0;
-    //  DEPOSIT: the box to store it in. WITHDRAW: the box to take from,
-    //  which must be the box the PC shows (the last one viewed).
-    size_t box = 0;
-    //  WITHDRAW: the box slot, row by row, six to a row.
-    size_t box_slot = 0;
-    PcMissing if_missing = PcMissing::REFUSE;
-};
-
-//  The variant of a GAME step that is a PC step.
-inline constexpr std::string_view PC_VARIANT = "pc";
-//  Its args: "deposit" or "withdraw", the slot (the party's for a deposit,
-//  the box's for a withdrawal) and the box; a deposit with if_present skips
-//  a slot the party hasn't got.
-inline constexpr Pokemon::StoryArgSpec PC_ARGS[] = {
-    {"op", Pokemon::StoryArgType::TEXT, true},
-    {"slot", Pokemon::StoryArgType::NUMBER, true},
-    {"box", Pokemon::StoryArgType::NUMBER, true},
-    {"if_present", Pokemon::StoryArgType::FLAG, false},
-};
-
-//  `transfer` for the log: "pc deposit slot=2 box=1" or "pc withdraw box=1
-//  slot=7", slots and boxes counted from 1 as the game shows them; a
-//  deposit with PcMissing::SKIP ends in " if_present".
-std::string pc_transfer_text(const PcTransfer& transfer);
-//  `transfer` as a PC step's args, counted from 1 as pc_transfer_text().
-Pokemon::StoryArgs pc_args(const PcTransfer& transfer);
-//  The transfer a PC step (pc_step()) makes; nothing if it isn't one, or
-//  names a slot or box the game hasn't got.
-std::optional<PcTransfer> parse_pc_step(const Pokemon::StoryStep& step);
-
-
-//  A party member as far as a PC step needs to know.
-struct PcPartyMember{
-    //  Its species' slug, or empty if not read.
-    std::string species = {};
-    bool fainted = false;
-};
-
-//  Why `transfer` can't be done with `party`, or empty if it can: a
-//  deposit of a slot the party hasn't got, of its last Pokemon, or of its
-//  last one that can fight; a withdrawal into a full party.
-std::string pc_transfer_error(const PcTransfer& transfer, const std::vector<PcPartyMember>& party);
-
-
-//  A controller action taken during a PC dialog sequence.
-enum class PcPress{
-    A,
-    B,
-    UP,
-    DOWN,
-    LEFT,
-    RIGHT,
-    //  Nothing: look again.
-    WAIT,
-    //  The transfer is made and the overworld is back.
-    DONE,
-    FAIL,
-};
-//  The human-readable name of a PC controller action.
-const char* pc_press_name(PcPress press);
-
-//  The next action decided by the PC dialog state machine.
-struct PcDecision{
-    PcPress press = PcPress::WAIT;
-    //  FAIL: why.
-    std::string reason = {};
-};
-
-//  What the PC step presses on each screen it reads, from the overworld
-//  facing the PC to the overworld again with the transfer made.
-class PcStorageDialog{
-public:
-    explicit PcStorageDialog(const PcTransfer& transfer);
-
-    PcDecision next(const PcView& view);
-
-    //  Whether the transfer was made: the last press that makes it was sent.
-    bool transferred() const{
-        return m_transferred;
-    }
-
-private:
-    PcDecision on_overworld();
-    PcDecision on_storage_menu(const PcView& view);
-    PcDecision on_party_panel(const PcView& view);
-    PcDecision on_box_grid(const PcView& view);
-    PcDecision on_mon_menu(const PcView& view);
-    PcDecision on_box_chooser(const PcView& view);
-
-    PcTransfer m_transfer;
-    bool m_booted = false;
-    //  The overworld read since A at the PC, while the PC boots.
-    size_t m_booting_reads = 0;
-    bool m_transferred = false;
-    //  BOX_CHOOSER opens on BOX 1 each time the PC is entered.
-    bool m_chooser_seen = false;
-    size_t m_others_in_a_row = 0;
-};
-
-
-//  The game steps a PC step takes, injected so its decisions run in tests.
-class PcStorageActions{
-public:
-    virtual ~PcStorageActions() = default;
-
-    //  From the overworld: the party, read from the party menu, which is
-    //  closed again.
-    virtual std::vector<PcPartyMember> read_party() = 0;
-    //  What shows now.
-    virtual PcView read_view() = 0;
-    //  One press (A, B or the D-pad), and the wait for the screen to answer.
-    virtual void press(PcPress press) = 0;
-};
-
-//  How a PC transfer sequence concluded.
-enum class PcEnd{
-    DONE,
-    //  A DEPOSIT with PcMissing::SKIP whose slot the party hasn't got: the
-    //  PC wasn't touched.
-    SKIPPED,
-    //  pc_transfer_error() refused it before the PC was touched.
-    REFUSED,
-    FAILED,
-};
-//  The result of a PC transfer operation.
-struct PcResult{
-    PcEnd end = PcEnd::FAILED;
-    std::string detail = {};
-};
-
-//  Reads after this many presses without the overworld back: a failure.
-constexpr size_t PC_MAX_PRESSES = 80;
-//  OTHER read this many times in a row: a failure.
-constexpr size_t PC_MAX_OTHER_IN_A_ROW = 10;
-//  The overworld read this many times after A at the PC: it didn't boot.
-constexpr size_t PC_BOOT_READS = 4;
 
 //  From the overworld, facing the PC: the transfer, back to the overworld.
 PcResult run_pc_transfer(Logger& logger, PcStorageActions& actions, const PcTransfer& transfer);

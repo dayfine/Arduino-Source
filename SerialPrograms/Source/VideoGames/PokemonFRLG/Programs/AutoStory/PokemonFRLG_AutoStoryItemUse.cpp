@@ -12,7 +12,7 @@
 #include "PokemonFRLG_AutoStoryItemUse.h"
 #include "PokemonFRLG_AutoStoryBagUse.h"
 #include "PokemonFRLG_AutoStoryBag.h"
-#include "PokemonFRLG_AutoStoryVariantWords.h"
+#include "PokemonFRLG_AutoStoryGameArgs.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -23,10 +23,10 @@ using namespace std::chrono_literals;
 
 
 MoveSpeed move_speed(const StoryStep& step){
-    if (step.variant == BIKE_VARIANT){
+    if (step.action == BIKE_VARIANT){
         return MoveSpeed::BIKE;
     }
-    return step.variant == RUN_VARIANT ? MoveSpeed::RUN : MoveSpeed::WALK;
+    return step.action == RUN_VARIANT ? MoveSpeed::RUN : MoveSpeed::WALK;
 }
 
 std::optional<BagPocket> usable_item_pocket(std::string_view item){
@@ -43,18 +43,14 @@ bool is_repel(std::string_view item){
 }
 
 std::optional<std::string> parse_use_item_step(const Pokemon::StoryStep& step){
-    const Pokemon::StoryArgs* args = game_step_args(step, USE_ITEM_VARIANT, USE_ITEM_ARGS);
-    if (args == nullptr || args->contains("slot")){
+    const std::string* item = step.action == USE_ITEM_VARIANT ? game_arg<std::string>(step.args, "item") : nullptr;
+    if (item == nullptr || step.args.contains("slot") || !usable_item_pocket(*item)){
         return std::nullopt;
     }
-    const std::string_view item = *Pokemon::story_arg_text(*args, "item");
-    if (!usable_item_pocket(item)){
-        return std::nullopt;
-    }
-    return std::string(item);
+    return *item;
 }
 bool is_item_use_step(const Pokemon::StoryStep& step){
-    const bool bike = step.variant == RIDE_BIKE_VARIANT || step.variant == REGISTER_BIKE_VARIANT;
+    const bool bike = step.action == RIDE_BIKE_VARIANT || step.action == REGISTER_BIKE_VARIANT;
     return (bike && step.args.empty()) || parse_use_item_step(step).has_value();
 }
 

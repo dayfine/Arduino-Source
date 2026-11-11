@@ -26,55 +26,13 @@
 #include "PokemonFRLG_RngCalibration.h"
 #include "PokemonFRLG_RngDisplays.h"
 #include "PokemonFRLG_SeedsDatabase.h"
+#include "PokemonFRLG_StarterRngOutcome.h"
+#include "PokemonFRLG_StarterRngTarget.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
 
-
-//  Selectable Kanto starter species.
-enum class StarterSpecies{
-    bulbasaur,
-    squirtle,
-    charmander
-};
-
-//  The species' base stats.
-BaseStats starter_base_stats(StarterSpecies starter);
-//  The EVs the rival's starter gives when the player's "starter" beats it.
-EVs rival_ev_yield(StarterSpecies starter);
-//  After taking "starter" from its ball and dodging the rival, the steps
-//  left that line the player up with the lab's door.
-int steps_left_to_lab_door(StarterSpecies starter);
-
-
-//  Statistical counters for Starter RNG attempts.
-struct StarterRngStats : public StatsTracker{
-    StarterRngStats();
-
-    std::atomic<uint64_t>& resets;
-    std::atomic<uint64_t>& shinies;
-    std::atomic<uint64_t>& nonshiny;
-    std::atomic<uint64_t>& wildshinies;
-    std::atomic<uint64_t>& errors;
-};
-
-
-//  Target criteria for starter manipulation.
-struct StarterRngTarget{
-    StarterSpecies starter = StarterSpecies::bulbasaur;
-    uint16_t seed = 0;
-    uint64_t advances = 0;
-    //  The seed's entry in the seeds database (found).
-    SeedMatch seed_match;
-};
-
-//  Where an attempt is after a reset: the resets so far, and the
-//  calibration that reset was timed with.
-struct StarterRngProgress{
-    uint64_t resets = 0;
-    RngCalibrations calibrations{};
-};
 
 //  What a reset's reads came to, once its search is done. Gift RNG's
 //  attempts report theirs this way too.
@@ -133,22 +91,6 @@ struct StarterRngNotifications{
     EventNotificationOption& error_recoverable;
 };
 
-
-//  Result outcome of an individual starter attempt.
-enum class StarterRngOutcome{
-    shiny,          //  The starter was shiny after a reset; not known if on the target.
-    shiny_on_target,    //  Shiny, and the target is among the states its stats match.
-    shiny_off_target,   //  Shiny, and the states its stats match aren't the target.
-    target_hit,     //  The calibration shows the target was hit; not shiny.
-    wild_shiny,     //  A wild shiny on Route 1, with ignore_wild_shinies off.
-    out_of_resets,  //  More resets than max_resets.
-    no_matches,     //  5 searches in a row matched no state near the target.
-};
-
-//  A shiny's outcome from the states its stats match near the target
-//  ("hits"): on the target if it is among them, off it if not, and just
-//  shiny if none match.
-StarterRngOutcome identify_shiny(uint16_t seed, uint64_t advances, const std::vector<AdvRngState>& hits);
 
 //  Complete result report from starter RNG execution.
 struct StarterRngResult{

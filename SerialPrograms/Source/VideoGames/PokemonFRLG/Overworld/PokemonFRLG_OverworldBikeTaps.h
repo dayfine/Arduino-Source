@@ -58,9 +58,7 @@ constexpr int BLOCKED_TAP_SLACK = 3;
 //  STOPPED, with the tiles walked: blocked, the taps that moved, and up
 //  to BLOCKED_TAP_SLACK more for a start that was off (run_route() keeps
 //  the tiles with a blocked one ahead); interrupted, the taps that moved
-//  and one more, which may have moved before its battle showed. A blind
-//  leg (RouteStep::blind_taps) plays its taps, numbered from 0 with a turn
-//  tap first, and is DONE.
+//  and one more, which may have moved before its battle showed.
 StepOutcome count_bike_taps(const RouteStep& step, const BikeTapCalls& calls);
 
 //  Whether `step` is walked on foot a tap at a time (RouteStep::tapped),

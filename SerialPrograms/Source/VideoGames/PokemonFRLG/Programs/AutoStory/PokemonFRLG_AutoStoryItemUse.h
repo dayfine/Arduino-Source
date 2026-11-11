@@ -23,7 +23,7 @@
 #include "CommonFramework/Language.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryArgs.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_ItemListReader.h"
 
@@ -35,12 +35,7 @@ namespace PokemonFRLG{
 //  The GAME step that uses an item from the bag on the overworld, its
 //  args the item's slug as read_item_list_name() names it, and for an item
 //  used on a Pokemon the party slot (none the story uses yet).
-inline constexpr std::string_view USE_ITEM_VARIANT = "use_item";
-//  Its args: the item, and the party slot it is used on.
-inline constexpr Pokemon::StoryArgSpec USE_ITEM_ARGS[] = {
-    {"item", Pokemon::StoryArgType::TEXT, true},
-    {"slot", Pokemon::StoryArgType::NUMBER, false},
-};
+inline const std::string USE_ITEM_VARIANT = "use_item";
 //  The GAME step that gets on the registered Bicycle with SELECT
 //  (OverworldWalkSteps::get_on_bike()). The ROUTE steps after it ride
 //  (BIKE_VARIANT).

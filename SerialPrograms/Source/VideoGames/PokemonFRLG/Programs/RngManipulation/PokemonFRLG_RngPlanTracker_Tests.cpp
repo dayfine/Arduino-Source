@@ -32,7 +32,7 @@ struct RngPlanTrackerInput{
 };
 
 struct RngPlanTrackerExpectation{
-    const char* description;
+    std::string_view description;
 };
 
 struct RngPlanTrackerTestCase{
@@ -86,7 +86,7 @@ UnitTestResult test_classify(Logger&){
 }
 
 
-const char* step_name(RngPlanStep step){
+std::string step_name(RngPlanStep step){
     switch (step){
     case RngPlanStep::RUN_ATTEMPT:     return "RUN_ATTEMPT";
     case RngPlanStep::GOT_SHINY:       return "GOT_SHINY";

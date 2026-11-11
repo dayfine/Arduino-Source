@@ -304,8 +304,6 @@ constexpr int SCREEN_TILES_X = 15;
 constexpr int SCREEN_TILES_Y = 10;
 //  From the fade's end until the new map is in full light.
 constexpr Milliseconds WARP_FADE_IN(300);
-//  Between screens compared for a dim warp's fade (wait_out_dim_warp()).
-constexpr Milliseconds DIM_WARP_POLL(150);
 
 //  The RMSD of `before` and `after` where they overlap, with the scene
 //  scrolled `dx`, `dy` pixels: `after` at (x, y) shows `before` at
@@ -384,44 +382,6 @@ void wait_out_fade(ConsoleHandle& console, ProControllerContext& context, const 
     );
 }
 
-//  After the steps onto a warp whose fade only dims the screen
-//  (RouteStep::fade_dims): waits, up to the warp timeout, for the scene
-//  from `before`, taken before the first of those steps, to be gone and
-//  the screen settled; fails if it never is.
-void wait_out_dim_warp(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step, const VideoSnapshot& before){
-    context.wait_for_all_requests();
-    if (!before){
-        OperationFailedExceptionWithScreenshot::fire(
-            ErrorReportMode::SEND_ERROR_REPORT,
-            std::format("walk_overworld_route(): no screen before the steps onto the warp to {}.", step.end.map),
-            console
-        );
-    }
-    const ImageFloatBox& game = GameSettings::instance().GAME_BOX;
-    VideoSnapshot last;
-    const WallClock deadline = current_time() + WARP_TIMEOUT;
-    while (current_time() < deadline){
-        context.wait_for(DIM_WARP_POLL);
-        VideoSnapshot now = console.video().snapshot();
-        if (!now){
-            continue;
-        }
-        const bool left = warp_left_scene(*before.frame, *now.frame, game, step.direction, step.tiles + 2);
-        if (left && last && scrolled_rmsd(
-            extract_box_reference(*last.frame, game), extract_box_reference(*now.frame, game), 0, 0
-        ) < SAME_SCENE_RMSD){
-            console.log(std::format("Route: the dim fade to {} is over.", step.end.map));
-            return;
-        }
-        last = left ? std::move(now) : VideoSnapshot();
-    }
-    OperationFailedExceptionWithScreenshot::fire(
-        ErrorReportMode::SEND_ERROR_REPORT,
-        std::format("walk_overworld_route(): the scene from before the steps onto the warp to {} is still up.", step.end.map),
-        console
-    );
-}
-
 } // namespace
 
 //  A black screen that clears with the player where they were is no warp
@@ -453,10 +413,6 @@ void wait_out_warp(
 void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step, const VideoSnapshot& before){
     BlackScreenOverWatcher arrival(COLOR_RED);
     Pokemon::WatchAlong fade(arrival);
-    if (step.fade_dims){
-        wait_out_dim_warp(console, context, step, before);
-        return;
-    }
     wait_out_warp(console, context, step, fade, before);
 }
 
@@ -470,7 +426,7 @@ void check_overworld(ConsoleHandle& console, ProControllerContext& context, cons
     if (!screen){
         return;
     }
-    const char* open = nullptr;
+    std::string_view open;
     if (StartMenuDetector(COLOR_RED).detect(screen)){
         open = "the START menu";
     }else if (SelectionDialogDetector(COLOR_RED).detect(screen)){
@@ -478,10 +434,10 @@ void check_overworld(ConsoleHandle& console, ProControllerContext& context, cons
     }else if (WhiteDialogDetector(COLOR_RED).detect(screen)){
         open = "a message";
     }
-    if (open != nullptr){
+    if (!open.empty()){
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::SEND_ERROR_REPORT,
-            std::string("walk_overworld_route(): ") + open + " is open, before: " + to_string(step),
+            std::format("walk_overworld_route(): {} is open, before: {}", open, to_string(step)),
             console
         );
     }
@@ -509,13 +465,13 @@ void clear_open_message(
 namespace{
 
 //  What on screen shows a wild battle on its way: its text box, or the
-//  black of its wipe. Nothing if neither shows, or on a dark cave's
+//  black of its wipe. Empty if neither shows, or on a dark cave's
 //  overworld (dark_cave_screen()).
-const char* battle_on_its_way(ConsoleHandle& console, ProControllerContext& context){
+std::string_view battle_on_its_way(ConsoleHandle& console, ProControllerContext& context){
     context.wait_for_all_requests();
     VideoSnapshot screen = console.video().snapshot();
     if (!screen || dark_cave_screen(*screen.frame)){
-        return nullptr;
+        return {};
     }
     if (BattleTextBoxDetector(COLOR_RED).detect(screen)){
         return "a battle's text box";
@@ -523,7 +479,7 @@ const char* battle_on_its_way(ConsoleHandle& console, ProControllerContext& cont
     if (BlackScreenDetector(COLOR_RED).detect(screen)){
         return "a black screen";
     }
-    return nullptr;
+    return {};
 }
 
 //  The parts of the game screen a dark cave shows black (its corners) and
@@ -567,8 +523,8 @@ size_t clear_unseen_battle(
     if (step.action != RouteAction::WALK || step.warps){
         return 0;
     }
-    const char* seen = battle_on_its_way(console, context);
-    if (seen == nullptr){
+    const std::string_view seen = battle_on_its_way(console, context);
+    if (seen.empty()){
         return 0;
     }
     console.log(std::format("Route: {} after {}, which nothing stopped: watching on for a wild battle.", seen, to_string(step)), COLOR_ORANGE);
@@ -579,8 +535,8 @@ size_t clear_battle_before(
     ConsoleHandle& console, ProControllerContext& context,
     const OverworldInterrupts& wild, const RouteStep& step
 ){
-    const char* seen = battle_on_its_way(console, context);
-    if (seen == nullptr){
+    const std::string_view seen = battle_on_its_way(console, context);
+    if (seen.empty()){
         return 0;
     }
     console.log(std::format("Route: {} before {}: watching on for a wild battle set off before it.", seen, to_string(step)), COLOR_ORANGE);
@@ -677,7 +633,7 @@ void start_surf(ConsoleHandle& console, ProControllerContext& context, Direction
 
 
 
-const char* move_speed_name(MoveSpeed speed){
+std::string_view move_speed_name(MoveSpeed speed){
     switch (speed){
     case MoveSpeed::WALK:
         return "walk";

@@ -8,6 +8,7 @@
  */
 
 #include <algorithm>
+#include <format>
 #include <functional>
 #include <memory>
 #include <stdexcept>
@@ -17,8 +18,8 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon_StoryEvents.h"
 #include "Pokemon_StorySegments.h"
+#include "Pokemon_StorySegments_Tests.h"
 #include "Pokemon_TilePose.h"
-#include "Pokemon_AutoStory_Tests.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -76,7 +77,7 @@ struct Lab{
     std::string all() const{
         std::string text;
         for (const std::string& line : lines){
-            text += "\n" + line;
+            text += std::format("\n{}", line);
         }
         return text;
     }
@@ -89,8 +90,8 @@ Event make_event(std::string name, Act act){
     return event;
 }
 
-Condition on_map(World& world, std::string map){
-    return condition("on " + map, [&world, map](RunState&){ return world.map == map; });
+Condition on_map(std::string map, World& world){
+    return condition(std::format("on {}", map), [&world, map](RunState&){ return world.map == map; });
 }
 
 CheckpointSpec leave_home(World& world){
@@ -107,9 +108,9 @@ CheckpointSpec leave_home(World& world){
             return outcome_ok();
         });
         walk.why = "the story starts outside";
-        walk.skip_if.push_back(on_map(world, "Route 201"));
+        walk.skip_if.push_back(on_map("Route 201", world));
         checkpoint.events.push_back(std::move(walk));
-        checkpoint.end.push_back(on_map(world, "Route 201"));
+        checkpoint.end.push_back(on_map("Route 201", world));
         return checkpoint;
     };
     return spec;
@@ -131,8 +132,8 @@ CheckpointSpec walk_to_sandgem(World& world){
             world.map = "Sandgem Town";
             return outcome_ok();
         });
-        walk.require.push_back(on_map(world, "Route 201"));
-        walk.expect.push_back(on_map(world, "Sandgem Town"));
+        walk.require.push_back(on_map("Route 201", world));
+        walk.expect.push_back(on_map("Sandgem Town", world));
         Recovery stop;
         stop.kind = RecoveryKind::STOP;
         stop.why = "the path is one tile wide";
@@ -178,13 +179,13 @@ UnitTestResult test_runs_checkpoints_in_order(){
     Segment segment = twinleaf_to_sandgem(lab.world);
     SegmentHooks hooks = lab.hooks();
     RunState state;
-    const SegmentReport report = run_segment(state, segment, SegmentRange{}, SegmentPolicy{}, hooks);
+    const SegmentReport report = run_segment(SegmentRange{}, SegmentPolicy{}, segment, hooks, state);
     const std::vector<std::string> expected = {"walk_out", "save", "walk_south", "talk_clerk"};
     if (!report.completed || report.checkpoints_run != 3 || lab.world.trace != expected){
-        return "Expected three checkpoints, saved after the first:" + lab.all();
+        return std::format("Expected three checkpoints, saved after the first:{}", lab.all());
     }
     if (!lab.has("[Segment] 00: start, 3 checkpoints") || lab.lines.back() != "[Segment] 00: done, 3 checkpoints"){
-        return "Unexpected log:" + lab.all();
+        return std::format("Unexpected log:{}", lab.all());
     }
     if (lab.saved.map != "Route 201"){
         return "The save should hold the world after the first checkpoint.";
@@ -198,13 +199,13 @@ UnitTestResult test_reloads_a_failed_checkpoint(){
     Segment segment = twinleaf_to_sandgem(lab.world);
     SegmentHooks hooks = lab.hooks();
     RunState state;
-    const SegmentReport report = run_segment(state, segment, SegmentRange{}, SegmentPolicy{}, hooks);
+    const SegmentReport report = run_segment(SegmentRange{}, SegmentPolicy{}, segment, hooks, state);
     const std::vector<std::string> expected = {"walk_out", "save", "walk_south", "reload", "walk_south", "talk_clerk"};
     if (!report.completed || report.reloads != 1 || lab.world.trace != expected){
-        return "Expected a reload, then the walk again:" + lab.all();
+        return std::format("Expected a reload, then the walk again:{}", lab.all());
     }
     if (!lab.has("[Segment] 00: 00.02 failed, reloading for attempt 2/3")){
-        return "Expected the reload logged:" + lab.all();
+        return std::format("Expected the reload logged:{}", lab.all());
     }
     return true;
 }
@@ -215,18 +216,18 @@ UnitTestResult test_gives_up_and_names_the_failure(){
     Segment segment = twinleaf_to_sandgem(lab.world);
     SegmentHooks hooks = lab.hooks();
     RunState state;
-    const SegmentReport report = run_segment(state, segment, SegmentRange{}, SegmentPolicy{.attempts_per_checkpoint = 2}, hooks);
+    const SegmentReport report = run_segment(SegmentRange{}, SegmentPolicy{.attempts_per_checkpoint = 2}, segment, hooks, state);
     if (report.completed || report.failed_checkpoint != "00.02" || report.failed_event != "walk_south"){
-        return "Expected the failed checkpoint and event named:" + lab.all();
+        return std::format("Expected the failed checkpoint and event named:{}", lab.all());
     }
     if (report.failure.failure != "blocked" || report.reloads != 1 || report.checkpoints_run != 2){
-        return "Expected two attempts with one reload between them:" + lab.all();
+        return std::format("Expected two attempts with one reload between them:{}", lab.all());
     }
     if (lab.world.parcel || lab.lines.back() != "[Segment] 00: failed at 00.02 walk_south: blocked: a wanderer on the path"){
-        return "Nothing after the failed checkpoint should run:" + lab.all();
+        return std::format("Nothing after the failed checkpoint should run:{}", lab.all());
     }
     if (state.pose.map != "Twinleaf Town" || state.pose.certainty != PoseCertainty::TILE){
-        return "The reload should have set the pose: " + to_string(state.pose);
+        return std::format("The reload should have set the pose: {}", to_string(state.pose));
     }
     return true;
 }
@@ -237,17 +238,17 @@ UnitTestResult test_range(){
     Segment segment = twinleaf_to_sandgem(lab.world);
     SegmentHooks hooks = lab.hooks();
     RunState state;
-    SegmentReport report = run_segment(state, segment, SegmentRange{.from = "00.02", .to = "00.02"}, SegmentPolicy{}, hooks);
+    SegmentReport report = run_segment(SegmentRange{.from = "00.02", .to = "00.02"}, SegmentPolicy{}, segment, hooks, state);
     if (!report.completed || lab.world.trace != std::vector<std::string>{"walk_south"}){
-        return "Expected only the second checkpoint:" + lab.all();
+        return std::format("Expected only the second checkpoint:{}", lab.all());
     }
-    report = run_segment(state, segment, SegmentRange{.from = "00.09", .to = std::nullopt}, SegmentPolicy{}, hooks);
+    report = run_segment(SegmentRange{.from = "00.09", .to = std::nullopt}, SegmentPolicy{}, segment, hooks, state);
     if (report.completed || report.failure.failure != "unknown_checkpoint" || report.failure.detail != "00.09"){
-        return "Expected the unknown id reported:" + lab.all();
+        return std::format("Expected the unknown id reported:{}", lab.all());
     }
-    report = run_segment(state, segment, SegmentRange{.from = "00.03", .to = "00.01"}, SegmentPolicy{}, hooks);
+    report = run_segment(SegmentRange{.from = "00.03", .to = "00.01"}, SegmentPolicy{}, segment, hooks, state);
     if (report.completed || report.failure.failure != "bad_range"){
-        return "Expected the reversed range reported:" + lab.all();
+        return std::format("Expected the reversed range reported:{}", lab.all());
     }
     return true;
 }
@@ -261,14 +262,14 @@ UnitTestResult test_status_lines(){
     std::vector<std::string> status;
     hooks.status = [&status](const std::string& line){ status.push_back(line); };
     RunState state;
-    run_segment(state, segment, SegmentRange{}, SegmentPolicy{}, hooks);
+    run_segment(SegmentRange{}, SegmentPolicy{}, segment, hooks, state);
     if (status.size() != lab.lines.size() || status.empty()){
-        return "Expected a status line per log line:" + lab.all();
+        return std::format("Expected a status line per log line:{}", lab.all());
     }
     for (size_t c = 0; c < status.size(); c++){
         const std::string& line = lab.lines[c];
         if (line.size() <= status[c].size() || line.compare(line.size() - status[c].size(), status[c].size(), status[c]) != 0){
-            return "Status \"" + status[c] + "\" isn't log line \"" + line + "\" without its tag.";
+            return std::format("Status \"{}\" isn't log line \"{}\" without its tag.", status[c], line);
         }
     }
     if (std::find(status.begin(), status.end(), "00.01/1 walk_out: start") == status.end()){
@@ -297,12 +298,12 @@ UnitTestResult test_throwing_event_is_logged(){
     SegmentHooks hooks = lab.hooks();
     RunState state;
     try{
-        run_segment(state, segment, SegmentRange{}, SegmentPolicy{}, hooks);
+        run_segment(SegmentRange{}, SegmentPolicy{}, segment, hooks, state);
     }catch (std::runtime_error&){
         if (!lab.has("[Event] 00.09/1 brock: failed: the console vanished")
             || !lab.has("[Checkpoint] 00.09: failed at 1 brock: the console vanished")
         ){
-            return "Expected the event and checkpoint logged as failed:" + lab.all();
+            return std::format("Expected the event and checkpoint logged as failed:{}", lab.all());
         }
         return true;
     }
@@ -319,17 +320,17 @@ UnitTestResult test_verify_runs_from_one_save(){
     Segment segment = twinleaf_to_sandgem(lab.world);
     SegmentHooks hooks = lab.hooks();
     RunState state;
-    const VerifyReport report = verify_checkpoint(state, segment, "00.02", VerifyPolicy{}, hooks);
+    const VerifyReport report = verify_checkpoint("00.02", VerifyPolicy{}, segment, hooks, state);
     const std::vector<std::string> expected = {"walk_south", "reload", "walk_south", "reload", "walk_south"};
     if (!report.verified || report.runs != 3 || report.passes != 2 || lab.world.trace != expected){
-        return "Expected three runs, reloading between them, two passing:" + lab.all();
+        return std::format("Expected three runs, reloading between them, two passing:{}", lab.all());
     }
     if (!lab.has("[Verify] 00.02: start, 3 runs from one save, 2 must pass")
         || !lab.has("[Verify] 00.02: run 1/3 failed at walk_south: blocked: a wanderer on the path")
         || !lab.has("[Verify] 00.02: run 2/3 passed")
         || lab.lines.back() != "[Verify] 00.02: 2/3 passed, 2 needed: verified"
     ){
-        return "Expected a line per run, then the summary:" + lab.all();
+        return std::format("Expected a line per run, then the summary:{}", lab.all());
     }
     return true;
 }
@@ -341,10 +342,10 @@ UnitTestResult test_verify_skips_the_end_save(){
     Segment segment = twinleaf_to_sandgem(lab.world);
     SegmentHooks hooks = lab.hooks();
     RunState state;
-    const VerifyReport report = verify_checkpoint(state, segment, "00.01", VerifyPolicy{.runs = 2, .passes_needed = 2}, hooks);
+    const VerifyReport report = verify_checkpoint("00.01", VerifyPolicy{.runs = 2, .passes_needed = 2}, segment, hooks, state);
     const std::vector<std::string> expected = {"walk_out", "reload", "walk_out"};
     if (!report.verified || lab.world.trace != expected || lab.saved.map != "Twinleaf Town"){
-        return "Expected two runs from Twinleaf Town and no save:" + lab.all();
+        return std::format("Expected two runs from Twinleaf Town and no save:{}", lab.all());
     }
     return true;
 }
@@ -357,19 +358,19 @@ UnitTestResult test_verify_too_few_passes(){
     Segment segment = twinleaf_to_sandgem(lab.world);
     SegmentHooks hooks = lab.hooks();
     RunState state;
-    const VerifyReport report = verify_checkpoint(state, segment, "00.02", VerifyPolicy{}, hooks);
+    const VerifyReport report = verify_checkpoint("00.02", VerifyPolicy{}, segment, hooks, state);
     if (report.verified || report.runs != 3 || report.passes != 1
         || lab.lines.back() != "[Verify] 00.02: 1/3 passed, 2 needed: not verified"
     ){
-        return "Expected 1 of 3, not verified:" + lab.all();
+        return std::format("Expected 1 of 3, not verified:{}", lab.all());
     }
-    VerifyReport bad = verify_checkpoint(state, segment, "00.02", VerifyPolicy{.runs = 2, .passes_needed = 3}, hooks);
+    VerifyReport bad = verify_checkpoint("00.02", VerifyPolicy{.runs = 2, .passes_needed = 3}, segment, hooks, state);
     if (bad.verified || bad.runs != 0 || bad.failure.failure != "bad_verify_policy"){
-        return "Expected more passes than runs refused:" + lab.all();
+        return std::format("Expected more passes than runs refused:{}", lab.all());
     }
-    bad = verify_checkpoint(state, segment, "00.09", VerifyPolicy{}, hooks);
+    bad = verify_checkpoint("00.09", VerifyPolicy{}, segment, hooks, state);
     if (bad.verified || bad.runs != 0 || bad.failure.failure != "unknown_checkpoint"){
-        return "Expected an unknown checkpoint refused:" + lab.all();
+        return std::format("Expected an unknown checkpoint refused:{}", lab.all());
     }
     return true;
 }
@@ -397,7 +398,7 @@ UnitTestResult test_describe(){
         "    pose_learned: Twinleaf Town (5, 9) facing south (tile)\n";
     const std::string text = describe(segment);
     if (text != expected){
-        return "Unexpected description:\n" + text;
+        return std::format("Unexpected description:\n{}", text);
     }
     if (!lab.world.trace.empty()){
         return "Describing a segment should run nothing.";
@@ -412,7 +413,7 @@ struct StorySegmentInput{
 };
 
 struct StorySegmentExpectation{
-    const char* description;
+    std::string_view description;
 };
 
 struct StorySegmentTestCase{
@@ -423,7 +424,7 @@ struct StorySegmentTestCase{
 class Test_StorySegments : public UnitTest{
 public:
     explicit Test_StorySegments(StorySegmentTestCase scenario)
-        : UnitTest("Pokemon::StorySegments - " + scenario.input.name)
+        : UnitTest(std::format("Pokemon::StorySegments - {}", scenario.input.name))
         , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{

@@ -15,13 +15,6 @@ const std::string& story_replay_fixture(std::string_view name){
             return text;
         }
     }
-    if (name == "capture"){
-        for (const auto& [file, text] : autostory_checkpoint_json()){
-            if (file == "frlg-parcel-02.01"){
-                return text;
-            }
-        }
-    }
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("Unknown replay fixture {}", name));
 }
 JsonValue replay_story_checkpoint(std::string_view capture, std::string_view binding,

@@ -43,16 +43,16 @@ const StoryStepKind ALL_KINDS[] = {
 
 //  The action StoryExecutor::game() ran for a GAME `step` before the table.
 StoryActionId old_game_dispatch(const StoryStep& step){
-    if (step.variant == CLOSE_TRAINER_CARD){
+    if (step.action == CLOSE_TRAINER_CARD){
         return StoryActionId::CLOSE_TRAINER_CARD;
     }
-    if (step.variant == LEAVE_GIFT_SUMMARY){
+    if (step.action == LEAVE_GIFT_SUMMARY){
         return StoryActionId::LEAVE_GIFT_SUMMARY;
     }
-    if (step.variant == CUT_TREE_VARIANT){
+    if (step.action == CUT_TREE_VARIANT){
         return StoryActionId::CUT_TREE;
     }
-    if (step.variant == TRASH_CANS_VARIANT){
+    if (step.action == TRASH_CANS_VARIANT){
         return StoryActionId::TRASH_CANS;
     }
     return StoryActionId::GAME;
@@ -98,12 +98,12 @@ public:
     Pokemon::Outcome run(const StoryStep& step, std::vector<std::string>& trace){
         m_trace = &trace;
         Pokemon::RunState state;
-        return m_executor.run(state, step);
+        return m_executor.run(step, state);
     }
 
 private:
     Pokemon::StoryAction recorder(StoryActionId id){
-        return {.act = [this, id](Pokemon::RunState&, const StoryStep&){
+        return {.act = [this, id](const StoryStep&, Pokemon::RunState&){
             m_trace->emplace_back(story_action_name(id));
             return Pokemon::outcome_ok();
         }};
@@ -120,14 +120,14 @@ std::string parity_error(FakeGame& game, const StoryStep& step){
     std::vector<std::string> trace;
     const Pokemon::Outcome outcome = game.run(step, trace);
     const std::optional<StoryActionId> expected = old_dispatch(step);
-    const std::string label = std::format("{} '{}' ({})", Pokemon::story_step_kind_name(step.kind), step.variant, step.name);
+    const std::string label = std::format("{} '{}' ({})", Pokemon::story_step_kind_name(step.kind), step.action, step.name);
     if (!expected){
         if (!trace.empty() || outcome.failure != "unsupported_step"){
             return label + ": expected unsupported, ran " + (trace.empty() ? outcome.failure : trace[0]);
         }
         return "";
     }
-    if (trace != std::vector<std::string>{story_action_name(*expected)} || !outcome.succeeded()){
+    if (trace != std::vector<std::string>{std::string(story_action_name(*expected))} || !outcome.succeeded()){
         return std::format("{}: expected {}, ran {} action(s){}", label, story_action_name(*expected),
             trace.size(), trace.empty() ? "" : ", first " + trace[0]);
     }
@@ -151,7 +151,7 @@ std::vector<StoryStep> every_kind_and_variant(){
             StoryStep step;
             step.kind = kind;
             step.name = "synthetic";
-            step.variant = variant;
+            step.action = variant;
             steps.push_back(std::move(step));
         }
     }
@@ -203,7 +203,7 @@ struct StepTableInput{
 };
 
 struct StepTableExpectation{
-    const char* description;
+    std::string_view description;
 };
 
 struct StepTableTestCase{
