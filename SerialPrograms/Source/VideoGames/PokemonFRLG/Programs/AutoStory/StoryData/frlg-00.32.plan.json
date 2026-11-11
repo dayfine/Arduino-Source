@@ -20,6 +20,11 @@
     },
     "events": [
       {
+        "id": "rare_candy",
+        "kind": "talk",
+        "why": "pick up the RARE CANDY (12, 12), straight north of the start (missed by 00.31's false pass; user 2026-11-10)"
+      },
+      {
         "id": "b3f_to_top_corridor",
         "kind": "legs",
         "variant": "taps",
