@@ -313,6 +313,39 @@ const TapMechanicsCase TAP_MECHANICS_CASES[] = {
 } // namespace
 
 
+//  Console B, 2026-11-11 15:36 (09.02 beside_moon_stone): the step tap of
+//  "east 1 (open)" from Rocket Hideout B2F (1, 4), facing east already,
+//  moved the player but the screen check read no move; the walker tapped
+//  again and ended on (3, 4), not (2, 4).
+class Test_OverworldUnseenStepTap : public UnitTest{
+public:
+    Test_OverworldUnseenStepTap()
+        : UnitTest("PokemonFRLG::OverworldWalk - step tap read as not moved")
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        static const std::vector<MapData> MAPS = overworld_maps();
+        const MapPosition start{"RocketHideout_B2F", {1, 4}};
+        const MapPosition end{"RocketHideout_B2F", {2, 4}};
+        RouteStep east;
+        east.action = RouteAction::WALK;
+        east.direction = Direction::EAST;
+        east.tiles = 1;
+        east.tapped = true;
+        east.facing_after = Direction::EAST;
+        east.end = end;
+        SimScript script;
+        script.unseen_step_taps = {1};
+        OverworldSim sim(MAPS, start, Direction::EAST, script);
+        OverworldSimWalker walker(sim);
+        const RoutePlanning planning{.maps = &MAPS, .costs = default_route_costs(), .start = start, .label = "Sim"};
+        const std::string failure = walker.run({east}, planning);
+        if (sim.state().position == end){
+            return true;
+        }
+        return std::format("Expected the leg to end on {}; ended on {}, failure \"{}\".", to_string(end), to_string(sim.state().position), failure);
+    }
+};
+
 void add_tests_OverworldWalk(UnitTestDatabase& database){
     for (const auto& scenario : OVERWORLD_WALK_CASES){
         database.add<Test_OverworldWalk>(scenario);
@@ -323,6 +356,7 @@ void add_tests_OverworldWalk(UnitTestDatabase& database){
     for (const TapMechanicsCase& item : TAP_MECHANICS_CASES){
         database.add<Test_OverworldTapMechanics>(item);
     }
+    database.add<Test_OverworldUnseenStepTap>();
 }
 
 
