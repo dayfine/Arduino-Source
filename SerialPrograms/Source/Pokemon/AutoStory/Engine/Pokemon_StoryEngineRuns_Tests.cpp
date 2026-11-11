@@ -146,8 +146,8 @@ std::string zone_checkpoint_runs(CancellableScope& scope){
     FakeStoryBackend<ZonePose> backend({.looks = {look<ZonePose>({ScreenEvent::CAN_MOVE})}}, scope);
     StoryEngine<ZonePose> engine(game, backend);
     const StoryCheckpoint checkpoint = read_story_checkpoint(parse_json(R"({
-        "id": "03.01", "title": "Down to the lobby", "start": {"map": "HotelZ"},
-        "events": [{"id": "walk", "kind": "game_action", "action": "fine", "declared_after": {"map": "HotelZLobby"}}]
+        "id": "03.01", "title": "Down to the lobby", "start": {"place": "HotelZ", "spot": "Room", "heading": 180},
+        "events": [{"id": "walk", "kind": "game_action", "action": "fine", "declared_after": {"place": "HotelZLobby"}}]
     })"), "zone", engine.registry().specs());
     RunState state;
     const StoryEngineReport report = engine.run_checkpoint(checkpoint, SavePoint::RUN_END, state);
@@ -157,15 +157,15 @@ std::string zone_checkpoint_runs(CancellableScope& scope){
     return state.pose.map == "HotelZLobby" ? "" : std::format("expected the run's pose in HotelZLobby, got \"{}\"", state.pose.map);
 }
 
-//  Gap 9: a declared pose with tiles is no zone.
+//  Gap 9: a declared tile pose is no zone.
 std::string zone_rejects_tiles(CancellableScope& scope){
     StoryGame<ZonePose> game = flaky_game<ZonePose>(0);
     FakeStoryBackend<ZonePose> backend({}, scope);
     StoryEngine<ZonePose> engine(game, backend);
     StoryCheckpoint checkpoint = checkpoint_of("03.01", {game_step("walk", "fine")});
-    checkpoint.start = GridPose{.map = "HotelZ", .tiles = {{1, 2}}, .facing = std::nullopt};
+    checkpoint.start = TileDeclared{.map = "HotelZ", .tiles = {{1, 2}}, .facing = std::nullopt};
     const std::vector<std::string> lint = engine.registry().lint(checkpoint);
-    if (lint.size() != 1 || !lint[0].starts_with("03.01 start: \"HotelZ (1, 2)\" has tiles")){
+    if (lint.size() != 1 || !lint[0].starts_with("03.01 start: \"HotelZ\" is a map")){
         return std::format("expected one start problem, got \"{}\"", joined(lint));
     }
     RunState state;
@@ -174,6 +174,54 @@ std::string zone_rejects_tiles(CancellableScope& scope){
         return std::format("expected lint_failed, got {}", to_string(report.run.failure));
     }
     return expect_inputs(backend, "");
+}
+
+//  A tile game's checkpoint that declares a place, at its start or after
+//  a step, fails the lint.
+std::string grid_rejects_places(CancellableScope&){
+    const StoryGame<GridPose> game = flaky_game<GridPose>(0);
+    const StoryActionRegistry<GridPose> registry(game);
+    StoryCheckpoint checkpoint = checkpoint_of("00.01", {game_step("walk", "fine")});
+    checkpoint.start = ZoneDeclared{.place = "PalletTown", .spot = std::nullopt, .heading = std::nullopt};
+    checkpoint.steps[0].pose_after = ZoneDeclared{.place = "Route1", .spot = "Gate", .heading = 90};
+    const std::string lint = joined(registry.lint(checkpoint));
+    const std::string expected =
+        "00.01 start: \"PalletTown\" is a place, but this game's poses are tiles: declare a map, tiles and a facing, "
+        "00.01 step 1 walk: declared_after: \"Route1\" is a place, but this game's poses are tiles: declare a map, tiles and a facing";
+    return lint == expected ? "" : std::format("expected \"{}\", got \"{}\"", expected, lint);
+}
+
+//  A zone game may not use tile args: not in a step (a route's GRID_POSE
+//  target), not in its own actions (a LEGS arg). Timed legs are fine.
+std::string zone_rejects_tile_args(CancellableScope&){
+    StoryGame<ZonePose> game;
+    game.actions.push_back({
+        .spec = {.kind = StoryStepKind::GAME, .name = "walk", .args = {
+            {.key = "legs", .type = StoryArgType::LEGS, .required = true, .fallback = std::nullopt, .why = ""},
+        }},
+        .handler = nullptr,
+    });
+    game.actions.push_back({
+        .spec = {.kind = StoryStepKind::GAME, .name = "timed_walk", .args = {
+            {.key = "legs", .type = StoryArgType::TIMED_LEGS, .required = true, .fallback = std::nullopt, .why = ""},
+        }},
+        .handler = nullptr,
+    });
+    const StoryActionRegistry<ZonePose> registry(game);
+    StoryStep route;
+    route.kind = StoryStepKind::ROUTE;
+    route.name = "route";
+    route.args = {{"target", GridPose{.map = "HotelZ", .tiles = {}, .facing = std::nullopt}}};
+    StoryStep timed;
+    timed.kind = StoryStepKind::GAME;
+    timed.name = "timed";
+    timed.action = "timed_walk";
+    timed.args = {{"legs", std::vector<StoryTimedLeg>{{.turn = 90, .ms = 1200}}}};
+    const std::string lint = joined(registry.lint(checkpoint_of("03.01", {route, timed})));
+    const std::string expected =
+        "action walk takes a tile argument \"legs\", but this game has no tiles, "
+        "03.01 step 1 route: argument \"target\" is a tile one, but this game has no tiles";
+    return lint == expected ? "" : std::format("expected \"{}\", got \"{}\"", expected, lint);
 }
 
 //  Gap 10: no tile actions in a zone game, so a legs step fails the lint;
@@ -646,6 +694,8 @@ struct RunsCase{
 const RunsCase RUNS_CASES[] = {
     {.input = {.name = "zone checkpoint on a fake backend", .check = &zone_checkpoint_runs}, .expectation = {}},
     {.input = {.name = "zone start with tiles fails the lint", .check = &zone_rejects_tiles}, .expectation = {}},
+    {.input = {.name = "tile start with a place fails the lint", .check = &grid_rejects_places}, .expectation = {}},
+    {.input = {.name = "zone game rejects tile args", .check = &zone_rejects_tile_args}, .expectation = {}},
     {.input = {.name = "tile actions only with tiles", .check = &tile_actions_only_with_tiles}, .expectation = {}},
     {.input = {.name = "stick and heading", .check = &stick_and_heading}, .expectation = {}},
     {.input = {.name = "buttons by name", .check = &buttons_by_name}, .expectation = {}},

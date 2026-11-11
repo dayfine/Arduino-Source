@@ -1608,6 +1608,7 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_Transitions_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_Transitions_Tests.h
     Source/Pokemon/AutoStory/Pokemon_WarpJudge.h
+    Source/Pokemon/AutoStory/Types/Pokemon_DeclaredPose.h
     Source/Pokemon/AutoStory/Types/Pokemon_GridPose.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryActionArg.cpp
     Source/Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h

@@ -56,7 +56,7 @@ public:
         return m_registry;
     }
 
-    //  story_steps_hash() of `checkpoint` with this game's actions.
+    //  story_steps_hash() of `checkpoint`.
     std::string steps_hash(const StoryCheckpoint& checkpoint) const;
 
     //  Runs `checkpoint` from `state`, then checks its postconditions and

@@ -8,6 +8,7 @@
 #include <format>
 #include <set>
 #include <utility>
+#include <variant>
 #include "Pokemon/AutoStory/Pokemon_MapUtil.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "Pokemon_StoryActionRegistry.h"
@@ -39,9 +40,37 @@ inline std::vector<std::string> leg_problems(const StoryActionArgs& args){
 }
 
 
-//  Why `declared` is no pose of the game's type.
-inline std::string undeclarable(const GridPose& declared){
-    return std::format("\"{}\" has tiles or a facing, which this game's poses cannot say: declare only the map", pose_text(declared));
+//  Why `declared` is no pose of a game whose poses are `tile` ones or not.
+inline std::string undeclarable(const DeclaredPose& declared, bool tile){
+    const std::string name = std::holds_alternative<TileDeclared>(declared)
+        ? std::get<TileDeclared>(declared).map
+        : std::get<ZoneDeclared>(declared).place;
+    return tile
+        ? std::format("\"{}\" is a place, but this game's poses are tiles: declare a map, tiles and a facing", name)
+        : std::format("\"{}\" is a map, but this game has no tiles: declare a place, a spot and a heading", name);
+}
+
+//  Whether an arg of `type` only means something on a tile grid.
+inline bool tile_arg(StoryArgType type){
+    return type == StoryArgType::DIRECTION || type == StoryArgType::LEGS || type == StoryArgType::GRID_POSE;
+}
+
+//  Each tile arg among `game`'s own actions, for a game with no tiles.
+template <StoryPose PoseType>
+std::vector<std::string> tile_arg_problems(const StoryGame<PoseType>& game){
+    std::vector<std::string> problems;
+    if constexpr (!StoryPoseTraits<PoseType>::TILE_MOVES){
+        for (const StoryAction<PoseType>& action : game.actions){
+            for (const StoryArgSpec& arg : action.spec.args){
+                if (tile_arg(arg.type)){
+                    problems.push_back(std::format(
+                        "action {} takes a tile argument \"{}\", but this game has no tiles", action.spec.name, arg.key
+                    ));
+                }
+            }
+        }
+    }
+    return problems;
 }
 
 
@@ -52,6 +81,7 @@ template <StoryPose PoseType>
 StoryActionRegistry<PoseType>::StoryActionRegistry(const StoryGame<PoseType>& game)
     : m_game(game)
     , m_actions(builtin_story_handlers<PoseType>())
+    , m_game_problems(tile_arg_problems(game))
 {
     //  A game's action replaces the built-in of its kind and name in place,
     //  so a kind's default stays the built-in one's position.
@@ -93,17 +123,25 @@ std::vector<std::string> StoryActionRegistry<PoseType>::check(const StoryStep& s
     for (std::string& problem : leg_problems(step.args)){
         problems.push_back(std::move(problem));
     }
+    if constexpr (!StoryPoseTraits<PoseType>::TILE_MOVES){
+        for (const auto& [key, value] : step.args){
+            if (tile_arg(story_arg_type(value))){
+                problems.push_back(std::format("argument \"{}\" is a tile one, but this game has no tiles", key));
+            }
+        }
+    }
     return problems;
 }
 
 template <StoryPose PoseType>
 std::vector<std::string> StoryActionRegistry<PoseType>::lint(const StoryCheckpoint& checkpoint) const{
-    std::vector<std::string> problems;
+    constexpr bool TILE = StoryPoseTraits<PoseType>::TILE_MOVES;
+    std::vector<std::string> problems = m_game_problems;
     if (checkpoint.id.empty()){
         problems.emplace_back("a checkpoint has no id");
     }
-    if (checkpoint.start && !StoryPoseTraits<PoseType>::from_declared(*checkpoint.start)){
-        problems.push_back(std::format("{} start: {}", checkpoint.id, undeclarable(*checkpoint.start)));
+    if (checkpoint.start && !check_declared<PoseType>(*checkpoint.start)){
+        problems.push_back(std::format("{} start: {}", checkpoint.id, undeclarable(*checkpoint.start, TILE)));
     }
     std::set<std::string> names;
     for (size_t c = 0; c < checkpoint.steps.size(); c++){
@@ -115,8 +153,8 @@ std::vector<std::string> StoryActionRegistry<PoseType>::lint(const StoryCheckpoi
         for (const std::string& problem : check(step)){
             problems.push_back(std::format("{}: {}", where, problem));
         }
-        if (step.pose_after && !StoryPoseTraits<PoseType>::from_declared(*step.pose_after)){
-            problems.push_back(std::format("{}: declared_after: {}", where, undeclarable(*step.pose_after)));
+        if (step.pose_after && !check_declared<PoseType>(*step.pose_after)){
+            problems.push_back(std::format("{}: declared_after: {}", where, undeclarable(*step.pose_after, TILE)));
         }
     }
     return problems;
