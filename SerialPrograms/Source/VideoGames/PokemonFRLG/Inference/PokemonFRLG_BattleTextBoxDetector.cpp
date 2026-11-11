@@ -4,6 +4,7 @@
  *
  */
 
+#include <format>
 #include "CommonTools/Images/SolidColorTest.h"
 #include "Tests/ImageUnitTest.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
@@ -54,7 +55,7 @@ bool BattleTextBoxDetector::detect(const ImageViewRGB32& screen){
 class Test_BattleTextBoxDetector : public ImageUnitTest{
 public:
     Test_BattleTextBoxDetector(const std::string& image, bool expected)
-        : ImageUnitTest("PokemonFRLG::BattleTextBoxDetector - " + image, {image})
+        : ImageUnitTest(std::format("PokemonFRLG::BattleTextBoxDetector - {}", image), {image})
         , m_expected(expected)
     {}
 

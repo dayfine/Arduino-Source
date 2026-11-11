@@ -4,7 +4,8 @@
  *
  *  Rows from 00.28 on (PokemonFRLG_AutoStoryTableLavender.cpp) on the
  *  overworld sim: 00.28 from Route 10's Pokemon Center through Rock Tunnel
- *  to its south mouth, and 00.29 down Route 10 to Lavender Town's Center.
+ *  to its south mouth, 00.29 down Route 10 to Lavender Town's Center, and
+ *  00.30 west over Route 8 and under Saffron to Celadon City.
  *  Each row whole, each open leg a tile short or long, and a wild battle
  *  on every open leg in the tunnel.
  *
@@ -14,19 +15,24 @@
 #include <format>
 #include <functional>
 #include <map>
+#include <memory>
 #include <numeric>
+#include <optional>
 #include <random>
 #include <set>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_HideoutLiftRoom.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMap.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
+#include "PokemonFRLG_AutoStoryLegs.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryFaultSweep_Tests.h"
 #include "PokemonFRLG_AutoStoryResources.h"
@@ -580,8 +586,229 @@ UnitTestResult test_save_places(Logger&){
     return true;
 }
 
+//  00.30 on the sim: the Mart, Route 8 with only Rich fought (the walker
+//  keeps out of the other trainers' lines), the Underground Path, the
+//  Pidgey's grass and Celadon City, below its Center's door. The Center
+//  has no map: its way in is stubbed.
+UnitTestResult test_celadon_way_row(Logger&){
+    return row_on_sim("00.30", SimScript{}, {{"old_man_1"}}, MapPosition{"CeladonCity", {48, 12}});
+}
+
+//  00.30's walk into Route 7's grass with a wild battle on its one grass
+//  step (Route 7's land rate is 21): it still ends on the Pidgey's tile.
+UnitTestResult test_route7_grass_battles(Logger&){
+    const StoryCheckpoint& row = checkpoint("00.30");
+    const size_t index = step_index(row, "pidgey_grass");
+    const MapPosition end{"Route7", {14, 6}};
+    SimScript script;
+    script.encounters.push_back(SimEncounter{.grass_step = 1});
+    StoryPose at{"Route7", {7, 15}, Direction::SOUTH};
+    OverworldSim sim(maps_after_route10(), MapPosition{at.map, at.tile}, *at.facing, script);
+    if (const std::string failure = row_step_on_sim(sim, at, row.steps[index], row.id); !failure.empty()){
+        return failure;
+    }
+    if (!(sim.state().position == end) || sim.state().wild_battles != 1){
+        return std::format("Ended on {} after {} wild battles, not on {} after 1.", to_string(sim.state().position), sim.state().wild_battles, to_string(end));
+    }
+    return true;
+}
+
+//  The maps after Gamer Rich's battle: Rich, beaten, stands where he
+//  walked down to (55, 17).
+std::vector<MapData> maps_after_rich(){
+    std::vector<MapData> maps = maps_after_route10();
+    for (MapData& map : maps){
+        if (map.name != "Route8"){
+            continue;
+        }
+        for (MapObject& object : map.objects){
+            if (object.name == "old_man_1"){
+                object.y = 17;
+                object.trainer.reset();
+            }
+        }
+    }
+    return maps;
+}
+
+//  The walker believes the player stands on `believed`, a tile 00.30's
+//  steps from Rich's battle on pass through, while the player stands on
+//  `actual`.
+struct OffStart{
+    TilePos believed;
+    TilePos actual;
+};
+
+const OffStart ROUTE8_OFF_STARTS[] = {
+    {{55, 18}, {58, 18}},
+    {{55, 18}, {52, 18}},
+    {{48, 7}, {45, 7}},
+    {{48, 7}, {50, 7}},
+    {{26, 7}, {29, 7}},
+    {{26, 7}, {26, 6}},
+    {{26, 7}, {26, 9}},
+    {{26, 7}, {28, 10}},
+};
+
+//  00.30's steps from `first` to `last`, as the table lays them out from
+//  `at`: the first that starts on `tile`, and where the table says the
+//  player stands then. Nothing if none does.
+std::optional<std::pair<size_t, StoryPose>> step_starting_on(
+    const StoryCheckpoint& row, size_t first, size_t last, StoryPose at, const TilePos& tile
+){
+    for (size_t c = first; c <= last; c++){
+        if (at.map == "Route8" && at.tile == tile){
+            return std::make_pair(c, at);
+        }
+        const std::optional<std::vector<RouteStep>> route = walked_route(at, row.steps[c]);
+        if (!route || route->empty()){
+            return std::nullopt;
+        }
+        at = StoryPose{route->back().end.map, route->back().end.point, route->back().facing_after};
+    }
+    return std::nullopt;
+}
+
+//  Console B, 2026-11-09 (00.30, three runs): after Route 8's open legs
+//  the player stood 3 tiles east of where the walker believed, the hold
+//  north to the Underground Path's door ran up column 17 to the cliff
+//  (16, 2), and the step onto the door bumped the house: "no fade in and
+//  out after walking onto the warp". From a start up to 3 tiles off, the
+//  steps on to Route 7 meet no trainer and come out of the Underground
+//  Path where the table says.
+UnitTestResult test_route8_west_off_start(Logger&){
+    const StoryCheckpoint& row = checkpoint("00.30");
+    const size_t first = step_index(row, "west_of_glenn_column");
+    const size_t last = step_index(row, "route7_underground_exit");
+    const StoryPose after_rich{"Route8", {55, 18}, Direction::NORTH};
+    const std::vector<MapData> maps = maps_after_rich();
+    const MapPosition end{"Route7", {7, 15}};
+    std::string failures;
+    for (const OffStart& off : ROUTE8_OFF_STARTS){
+        const std::optional<std::pair<size_t, StoryPose>> from = step_starting_on(row, first, last, after_rich, off.believed);
+        std::string failure = from ? "" : "no step starts there.";
+        StoryPose at = from ? from->second : after_rich;
+        OverworldSim sim(maps, MapPosition{at.map, off.actual}, at.facing.value_or(Direction::NORTH));
+        for (size_t c = from ? from->first : last + 1; c <= last && failure.empty(); c++){
+            failure = row_step_on_sim(sim, at, row.steps[c], row.id);
+        }
+        if (failure.empty() && !(sim.state().position == end)){
+            failure = std::format("ended on {}, not {}.", to_string(sim.state().position), to_string(end));
+        }
+        if (failure.empty() && !sim.state().trainers_beaten.empty()){
+            failure = "fought " + sim.state().trainers_beaten.front() + ".";
+        }
+        if (failure.empty() && !sim.state().violations.empty()){
+            failure = "a violation on the way: " + sim.state().violations.back();
+        }
+        if (!failure.empty()){
+            failures += std::format("{}from {}, not {}: {}", failures.empty() ? "" : " | ", to_string(off.actual), to_string(off.believed), failure);
+        }
+    }
+    if (!failures.empty()){
+        return failures;
+    }
+    return true;
+}
+
+//  00.30 saves in Celadon City's Pokemon Center: CELADON CITY on the save
+//  card.
+UnitTestResult test_celadon_save_place(Logger&){
+    if (save_card_place("CeladonCity_PokemonCenter_1F") != "celadon-city"){
+        return "Wrong save card place for Celadon City's Pokemon Center.";
+    }
+    return true;
+}
+
+//  00.31 on the sim: out of Celadon's Center, the Game Corner's poster
+//  Grunt, the switch, the Rocket Hideout down to B4F's Lift Key Grunt, the
+//  LIFT KEY, and back up to B3F below its Rare Candy.
+//  A battle a talk starts (the poster Grunt's) is the sim's to skip: it
+//  leaves the player where the plan says, and the trainer walks off
+//  (talk_battle_hide_flag()).
+UnitTestResult test_hideout_row(Logger&){
+    const StoryCheckpoint& row = checkpoint("00.31");
+    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    std::vector<MapData> maps = maps_after_route10();
+    auto sim = std::make_unique<OverworldSim>(maps, MapPosition{at.map, at.tile}, *at.facing);
+    std::vector<std::string> fought;
+    for (const StoryStep& step : row.steps){
+        const std::optional<std::string> hidden = talk_battle_hide_flag(step);
+        if (!hidden){
+            if (const std::string failure = row_step_on_sim(*sim, at, step, row.id); !failure.empty()){
+                return "00.31: ended on " + to_string(sim->state().position) + "; " + failure;
+            }
+            continue;
+        }
+        at = *story_pose(Pokemon::pose_of(*step.pose_after));
+        for (MapData& map : maps){
+            hide_objects(map, {*hidden});
+        }
+        fought = sim->state().trainers_beaten;
+        sim = std::make_unique<OverworldSim>(maps, MapPosition{at.map, at.tile}, *at.facing);
+    }
+    fought.insert(fought.end(), sim->state().trainers_beaten.begin(), sim->state().trainers_beaten.end());
+    if (fought != std::vector<std::string>{"rocket_m"}){
+        return std::format("00.31: fought {} trainers on the sim, not the Lift Key Grunt alone.", fought.size());
+    }
+    if (!sim->state().violations.empty()){
+        return "00.31: a violation on the way: " + sim->state().violations.back();
+    }
+    const MapPosition end{"RocketHideout_B3F", {12, 13}};
+    if (!(sim->state().position == end)){
+        return "00.31: ended on " + to_string(sim->state().position) + ", not " + to_string(end) + ".";
+    }
+    return true;
+}
+
 } // namespace
 
+
+//  00.32 on the sim: from below B3F's Rare Candy back up to B2F, through
+//  its arrows (the MOON STONE ball stands in the way and is picked up),
+//  the lift to B4F, the two door guards, Giovanni, and beside the SILPH
+//  SCOPE. The talk-started battles are the sim's to skip; the MOON
+//  STONE's pickup hides its ball, as the game does.
+UnitTestResult test_hideout_giovanni_row(Logger&){
+    const StoryCheckpoint& row = checkpoint("00.32");
+    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    std::vector<MapData> maps = maps_after_route10();
+    if (std::none_of(maps.begin(), maps.end(), [](const MapData& map){ return map.name == LIFT_MAP; })){
+        maps.push_back(rocket_hideout_lift_room());
+    }
+    SimScript script;
+    script.lift_floors[std::string(LIFT_MAP)] = rocket_hideout_lift_doors();
+    auto sim = std::make_unique<OverworldSim>(maps, MapPosition{at.map, at.tile}, *at.facing, script);
+    for (const StoryStep& step : row.steps){
+        if (step.name == "escape_rope_hideout"){
+            break;
+        }
+        if (step.kind == StoryStepKind::BATTLE){
+            at = *story_pose(Pokemon::pose_of(*step.pose_after));
+            continue;
+        }
+        if (const std::string failure = row_step_on_sim(*sim, at, step, row.id); !failure.empty()){
+            return "00.32: ended on " + to_string(sim->state().position) + "; " + failure;
+        }
+        if (step.name == "moon_stone"){
+            for (MapData& map : maps){
+                hide_objects(map, {"FLAG_HIDE_ROCKET_HIDEOUT_B2F_MOON_STONE"});
+            }
+            sim = std::make_unique<OverworldSim>(maps, sim->state().position, sim->state().facing, script);
+        }
+    }
+    if (!sim->state().trainers_beaten.empty()){
+        return std::format("00.32: walked into {} trainers' lines on the sim.", sim->state().trainers_beaten.size());
+    }
+    if (!sim->state().violations.empty()){
+        return "00.32: a violation on the way: " + sim->state().violations.back();
+    }
+    const MapPosition end{"RocketHideout_B4F", {21, 5}};
+    if (!(sim->state().position == end)){
+        return "00.32: ended on " + to_string(sim->state().position) + ", not " + to_string(end) + ".";
+    }
+    return true;
+}
 
 const AutoStoryLavenderCase AUTO_STORY_LAVENDER_CASES[] = {
     {.input = {"00.28 the tree, Rock Tunnel's nine trainers, out of its south mouth", test_rock_tunnel_row}, .expectation = {}},
@@ -598,6 +825,12 @@ const AutoStoryLavenderCase AUTO_STORY_LAVENDER_CASES[] = {
     {.input = {"00.29 Route 10 south, the ledge, Lavender Town's Pokemon Center", test_lavender_row}, .expectation = {}},
     {.input = {"00.29 a tile off after each open leg", test_lavender_tile_off}, .expectation = {}},
     {.input = {"00.28 and 00.29 save on Route 10 and in Lavender Town", test_save_places}, .expectation = {}},
+    {.input = {"00.30 Lavender's Mart, Route 8 past Rich alone, the Underground Path, Route 7 to Celadon City", test_celadon_way_row}, .expectation = {}},
+    {.input = {"00.30 a wild battle on the step into Route 7's grass", test_route7_grass_battles}, .expectation = {}},
+    {.input = {"00.30 Route 8 west from a start up to 3 tiles off", test_route8_west_off_start}, .expectation = {}},
+    {.input = {"00.30 saves in Celadon City's Pokemon Center", test_celadon_save_place}, .expectation = {}},
+    {.input = {"00.31 the Game Corner's poster, the Rocket Hideout to B4F's LIFT KEY and B3F's Rare Candy", test_hideout_row}, .expectation = {}},
+    {.input = {"00.32 B2F's arrows, the lift, the door guards, Giovanni and the SILPH SCOPE", test_hideout_giovanni_row}, .expectation = {}},
 };
 
 void add_tests_AutoStoryLavender(UnitTestDatabase& database){

@@ -6,7 +6,9 @@
 
 #include <algorithm>
 #include "Common/Cpp/Exceptions.h"
+#include "PokemonFRLG_CodedRooms.h"
 #include "PokemonFRLG_OverworldMap.h"
+#include "PokemonFRLG_OverworldSpin.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -44,13 +46,13 @@ bool is_ledge(const MapData& map, const TilePos& point){
 bool is_water(const MapData& map, const TilePos& point){
     return tile_at(map, point) == TileKind::WATER;
 }
-const char WILD_REGION[] = "wild";
+
 
 bool is_tall_grass(const MapData& map, const TilePos& point){
     if (tile_at(map, point) == TileKind::TALL_GRASS){
         return true;
     }
-    const auto wild = map.regions.find(WILD_REGION);
+    const auto wild = map.regions.find(std::string(WILD_REGION));
     return wild != map.regions.end() && std::find(wild->second.begin(), wild->second.end(), point) != wild->second.end();
 }
 
@@ -228,6 +230,71 @@ StepKind classify_step_onto(
         return StepKind::BLOCKED;
     }
     return StepKind::WALK;
+}
+
+namespace{
+
+//  The regions a map may list spinner tiles in (PokemonFRLG_OverworldSpin.h).
+constexpr std::string_view SPIN_NORTH_REGION = "spin_north";
+constexpr std::string_view SPIN_SOUTH_REGION = "spin_south";
+constexpr std::string_view SPIN_WEST_REGION = "spin_west";
+constexpr std::string_view SPIN_EAST_REGION = "spin_east";
+constexpr std::string_view SPIN_STOP_REGION = "spin_stop";
+bool in_region(const MapData& map, std::string_view region, const TilePos& point){
+    const auto tiles = map.regions.find(std::string(region));
+    return tiles != map.regions.end() && std::find(tiles->second.begin(), tiles->second.end(), point) != tiles->second.end();
+}
+
+} // namespace
+
+std::optional<Direction> spin_direction(const MapData& map, const TilePos& point){
+    if (const std::optional<Direction> coded = coded_spin_direction(map.name, point)){
+        return coded;
+    }
+    static const std::pair<std::string_view, Direction> ARROWS[] = {
+        {SPIN_NORTH_REGION, Direction::NORTH},
+        {SPIN_SOUTH_REGION, Direction::SOUTH},
+        {SPIN_WEST_REGION, Direction::WEST},
+        {SPIN_EAST_REGION, Direction::EAST},
+    };
+    for (const auto& [region, direction] : ARROWS){
+        if (in_region(map, region, point)){
+            return direction;
+        }
+    }
+    return std::nullopt;
+}
+bool stops_spinning(const MapData& map, const TilePos& point){
+    return coded_spin_stop(map.name, point) || in_region(map, SPIN_STOP_REGION, point);
+}
+
+std::optional<SpinSlide> spin_slide(const MapData& map, const PlayerState& state){
+    std::optional<Direction> arrow = spin_direction(map, state.position);
+    if (!arrow){
+        return std::nullopt;
+    }
+    SpinSlide slide{state, *arrow, 0};
+    //  A slide longer than the map has tiles has gone round a loop.
+    const int max_tiles = map.tiles.width * map.tiles.height;
+    while (slide.tiles <= max_tiles){
+        const StepKind kind = classify_step(map, slide.end, slide.facing);
+        if (kind != StepKind::WALK){
+            return slide;
+        }
+        slide.end = after_step(map, slide.end, slide.facing, kind);
+        slide.tiles++;
+        if (warp_at(map, slide.end.position) != nullptr){
+            return std::nullopt;
+        }
+        if (stops_spinning(map, slide.end.position)){
+            return slide;
+        }
+        arrow = spin_direction(map, slide.end.position);
+        if (arrow){
+            slide.facing = *arrow;
+        }
+    }
+    return std::nullopt;
 }
 
 PlayerState after_step(const MapData& map, const PlayerState& state, Direction direction, StepKind kind){

@@ -50,7 +50,7 @@ std::string rng_log_attempt(size_t index, const RngAttempt& attempt){
 
 namespace{
 
-const char* outcome_name(RngAttemptOutcome outcome){
+std::string_view outcome_name(RngAttemptOutcome outcome){
     switch (outcome){
     case RngAttemptOutcome::SHINY:
         return "shiny";
@@ -66,7 +66,7 @@ const char* outcome_name(RngAttemptOutcome outcome){
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Unknown RngAttemptOutcome.");
 }
 
-const char* next_name(RngPlanNext next){
+std::string_view next_name(RngPlanNext next){
     switch (next){
     case RngPlanNext::RETRY:
         return "retry";

@@ -13,6 +13,7 @@
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStoryFailureCapture.h"
+#include "Pokemon/AutoStory/Pokemon_AutoStorySelect.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
 #include "Pokemon/AutoStory/Pokemon_StoryLog.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
@@ -72,21 +73,21 @@ const StringSelectDatabase& checkpoint_database(){
     return database;
 }
 
-const char* const KEEP_START_FRAME_TEXT =
+const std::string KEEP_START_FRAME_TEXT =
     "<b>Keep the start frame:</b><br>Off by default. The save loaded was made by hand where the start checkpoint "
     "begins: keep the screen after loading it as that checkpoint's start frame, which later runs compare their "
     "save with. The program keeps one by itself at each save it makes.";
 
 } // namespace
 
-const char* const RUN_STARTER_RNG_TEXT =
+const std::string RUN_STARTER_RNG_TEXT =
     "<b>Run Starter RNG in AutoStory:</b><br>Off by default. Instead of stopping for them, run SID Helper's steps on the "
     "new game's keyboard when the RNG plan has no SID, and Starter RNG's attempts from a save south of the table at the "
     "end of 00.04, as the RNG plan lists them. A shiny Squirtle goes on to the rival's battle, saves after it and the run "
     "goes on; otherwise the run stops with the save south of the table.<br>"
     "SID Helper's timing needs the text speed and button settings already saved, as with Stop for SID Helper.";
 
-const char* const RUN_GIFT_RNG_TEXT =
+const std::string RUN_GIFT_RNG_TEXT =
     "<b>Run Gift RNG in AutoStory:</b><br>Off by default. After 00.12 saves beside the Magikarp salesman in Route 4's "
     "Pokemon Center, run Gift RNG's attempts for the Magikarp from that save, as the RNG plan lists them for its TID and "
     "SID (set by Run Starter RNG in AutoStory, or typed in). A shiny Magikarp is saved there (00.12b) and the run goes "
@@ -481,7 +482,7 @@ static void run_story_rows(
         capture.save_thrown(e.message());
         throw;
     }
-    Pokemon::record_story_counts(env.current_stats<Pokemon::AutoStoryStats>(), report.story_counts());
+    Pokemon::record_story_counts(report.story_counts(), env.current_stats<Pokemon::AutoStoryStats>());
     env.update_stats();
     throw_if_failed(report);
 }

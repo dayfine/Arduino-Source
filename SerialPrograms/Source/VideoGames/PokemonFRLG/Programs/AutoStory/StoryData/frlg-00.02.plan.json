@@ -18,5 +18,6 @@
   },
   "execution": {
     "menu": "before_pokemon"
-  }
+  },
+  "metadata": {"phase": "testing"}
 }

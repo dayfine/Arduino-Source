@@ -32,127 +32,26 @@
 #include <string_view>
 #include <vector>
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_SummaryMovesReader.h"
-#include "PokemonFRLG_AutoStoryDamage.h"
+#include "PokemonFRLG_AutoStoryStats.h"
+#include "PokemonFRLG_AutoStoryNewMembers.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-//  The move slots, in the order of the battle's move list and the summary.
-inline constexpr size_t TOP_LEFT_MOVE = 0;
-//  Move slot index for bottom-left move.
-inline constexpr size_t BOTTOM_LEFT_MOVE = 2;
-//  Maximum number of moves a Pokemon can know.
-inline constexpr size_t MAX_MOVES = 4;
-
-//  A move the lead knows, by slug ("water-gun"), and the PP the story
-//  counts left.
-struct KnownMove{
-    std::string move;
-    uint8_t pp = 0;
-};
-
-//  Party member Pokemon status and learned moves.
-struct PartyMember{
-    std::string species;
-    //  In slot order. Fewer than four while moves learned into free slots
-    //  haven't been taken in yet (see the top of this file).
-    std::vector<KnownMove> moves;
-    //  The level of the last level-up move offered to it, learned or not.
-    uint8_t moves_through_level = 0;
-    //  The moves were read off its summary: they are all it knows, even
-    //  fewer than four.
-    bool moves_read = false;
-    //  Its level as its summary showed it, 0 if not read. Level-ups since
-    //  aren't seen: battle_level() takes the higher of this and
-    //  moves_through_level.
-    uint8_t level = {};
-    //  Its stats as POKEMON SKILLS showed them at `level`, as this
-    //  species; none if not read, or once it evolves.
-    std::optional<Stats> stats = {};
-};
-
-//  The level the battle sim takes for `member`.
-uint8_t battle_level(const PartyMember& member);
-
-//  The species `species` evolves into by level, and at which level.
-struct LevelEvolution{
-    std::string_view into;
-    uint8_t level = 0;
-};
-//  Level-up evolution target if species evolves by level.
-std::optional<LevelEvolution> level_evolution(std::string_view species);
-
-//  A move's full PP; 0 for a move the table doesn't have.
-uint8_t max_pp(std::string_view move);
-
-//  A move's power; 0 for one that does no damage, or that the table
-//  doesn't have.
-uint8_t move_power(std::string_view move);
-
-//  As the game gives `species` at `level` (a starter, a gift): its last four
-//  level-up moves up to `level`, at full PP.
-PartyMember new_member(std::string_view species, uint8_t level);
-
-//  The member as the story plays it up to `level`: each level-up move is
-//  learned into a free slot or answered as learn_move() says, and it
-//  evolves at its level. For the rows that start after a part of the story.
-PartyMember grown_to(PartyMember member, uint8_t level);
-
-//  Squirtle as the story leaves it after Brock (Lv13, Water Gun offered).
-PartyMember story_lead_after_brock();
-
-//  `species` at `level` with `moves` as its summary shows them, in slot
-//  order, and its `stats` if POKEMON SKILLS was read. A PP that wasn't
-//  read is taken as half the move's full PP: the game draws the PP in
-//  color from half down (pokefirered pokemon_summary_screen.c), which the
-//  reader may not read.
-PartyMember member_from_summary(
-    std::string_view species, uint8_t level, const std::vector<SummaryMove>& moves,
-    const std::optional<Stats>& stats = std::nullopt
-);
-
-
-//  The answer to "Delete a move to make room for <move>?".
-struct LearnDecision{
-    //  The move offered, if the table knows which one it is.
-    std::optional<std::string> move = {};
-    //  The slot to forget for it, or none to keep the moves as they are.
-    std::optional<size_t> forget_slot = {};
-};
-
-//  At "Delete a move to make room for ...?": takes in the moves learned
-//  into free slots since the last prompt, decides on the move offered, and
-//  leaves `member` as that answer will.
-LearnDecision learn_move(PartyMember& member);
-
-//  The lead evolved: its species becomes what it evolves into.
-void evolve(PartyMember& member);
-
 
 //  The slot to attack with: the first of the plan's attacks for its line
-//  that it knows with PP left, else its strongest damaging move with PP
-//  left, else any move with PP left, else the top left (Struggle). None
-//  while the story doesn't know all its moves (fewer than four, not read).
+//  that it knows with PP left, else its first damaging move with PP left,
+//  else any move with PP left, else the top left (Struggle). None while the
+//  story doesn't know all its moves (fewer than four, not read).
 std::optional<size_t> attack_slot(const PartyMember& member);
 
-//  The species of `trainer`'s party, in order: pret's constant
-//  ("TRAINER_LEADER_MISTY", see story_trainer()), from pret/pokefirered
-//  src/data/trainer_parties.h. Empty for a trainer the data doesn't have.
-std::vector<std::string> trainer_party(std::string_view trainer);
-
 //  The slot to attack `foes` with, any of them as likely to be out: the
-//  move with PP left that does the most expected damage, ties going to
-//  attack_slot()'s order. Expected damage, summed over the foes, is power
-//  times STAB times the type chart, times the lead's base Attack or Sp.
-//  Atk, whichever the move's type uses (Gen 3: Fire, Water, Grass,
-//  Electric, Psychic, Ice, Dragon and Dark are special): Water Gun and Bite
-//  compare on Sp. Atk, Tackle on Attack. The foe's defenses are left out,
-//  so a frail foe's low Defense doesn't pull Tackle ahead of a type
-//  advantage. A foe the data doesn't
-//  have is left out; with none left, or while the story doesn't know all
-//  the lead's moves, attack_slot() itself (the plan's order).
+//  damaging move with PP left whose type multiplier, summed over the foes,
+//  is best; ties go to the plan's attacks, then slot order. A foe the data
+//  doesn't have is left out; with none left, or while the story doesn't
+//  know all the lead's moves, attack_slot() itself.
 std::optional<size_t> attack_slot_against(const PartyMember& member, const std::vector<std::string>& foes);
 
 //  The PP left in the damaging moves it knows.

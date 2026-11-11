@@ -14,7 +14,7 @@
 #include "Common/Cpp/Json/JsonValue.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon_AutoStoryFailureCapture.h"
-#include "Pokemon_AutoStory_Tests.h"
+#include "Pokemon_AutoStoryFailureCapture_Tests.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{

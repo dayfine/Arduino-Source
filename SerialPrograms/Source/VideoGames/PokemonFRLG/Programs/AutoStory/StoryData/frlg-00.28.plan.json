@@ -73,6 +73,10 @@
       {
         "id": "pokemaniac_ashton",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_POKEMANIAC_ASHTON",
+          "foes": ["cubone", "slowpoke"]
+        },
         "declared_after": {"map": "RockTunnel_1F", "tiles": [[24, 10]], "facing": "east"},
         "why": "Slowpoke, Slowpoke and Slowpoke"
       },
@@ -106,6 +110,10 @@
       {
         "id": "pokemaniac_winston",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_POKEMANIAC_WINSTON",
+          "foes": ["slowpoke"]
+        },
         "declared_after": {"map": "RockTunnel_B1F", "tiles": [[29, 37]], "facing": "north"},
         "why": "Slowpoke and Slowpoke"
       },
@@ -130,6 +138,10 @@
       {
         "id": "picnicker_martha",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_PICNICKER_MARTHA",
+          "foes": ["oddish", "bulbasaur"]
+        },
         "declared_after": {"map": "RockTunnel_B1F", "tiles": [[16, 33]], "facing": "west"},
         "why": "Oddish and Bulbasaur"
       },
@@ -154,6 +166,10 @@
       {
         "id": "hiker_allen",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_HIKER_ALLEN",
+          "foes": ["geodude"]
+        },
         "declared_after": {"map": "RockTunnel_B1F", "tiles": [[36, 12]], "facing": "north"},
         "why": "Geodude, Geodude and Graveler"
       },
@@ -196,6 +212,10 @@
       {
         "id": "hiker_lenny",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_HIKER_LENNY",
+          "foes": ["geodude", "machop", "geodude", "geodude"]
+        },
         "declared_after": {"map": "RockTunnel_1F", "tiles": [[7, 9]], "facing": "north"},
         "why": "Machop and Onix"
       },
@@ -238,6 +258,10 @@
       {
         "id": "picnicker_sofia",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_PICNICKER_SOFIA",
+          "foes": ["jigglypuff", "pidgey", "meowth"]
+        },
         "declared_after": {"map": "RockTunnel_B1F", "tiles": [[11, 16]], "facing": "north"},
         "why": "Pidgey, Pidgey and Pidgeotto"
       },
@@ -262,6 +286,10 @@
       {
         "id": "hiker_dudley",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_HIKER_DUDLEY",
+          "foes": ["geodude", "geodude", "graveler"]
+        },
         "declared_after": {"map": "RockTunnel_B1F", "tiles": [[5, 15]], "facing": "north"},
         "why": "Geodude, Geodude and Graveler"
       },
@@ -304,6 +332,10 @@
       {
         "id": "picnicker_dana",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_PICNICKER_DANA",
+          "foes": ["meowth", "oddish", "pidgey"]
+        },
         "declared_after": {"map": "RockTunnel_1F", "tiles": [[26, 31]], "facing": "north"},
         "why": "Meowth, Oddish and Pidgey"
       },

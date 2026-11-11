@@ -7,6 +7,7 @@
  *
  */
 
+#include <format>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -22,7 +23,7 @@ namespace PokemonFRLG{
 namespace{
 
 struct ResourcesInput{
-    const char* name;
+    std::string_view name;
     const std::vector<std::string_view>& (*paths)();
 };
 struct ResourcesExpectation{
@@ -37,7 +38,7 @@ struct ResourcesCase{
 class Test_AutoStoryResources : public UnitTest{
 public:
     explicit Test_AutoStoryResources(ResourcesCase test_case)
-        : UnitTest(std::string("PokemonFRLG::AutoStoryResources - ") + test_case.input.name)
+        : UnitTest(std::format("PokemonFRLG::AutoStoryResources - {}", test_case.input.name))
         , m_case(test_case)
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{

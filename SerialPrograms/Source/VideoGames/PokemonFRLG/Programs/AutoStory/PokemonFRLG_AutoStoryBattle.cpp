@@ -29,7 +29,6 @@
 #include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
-#include "PokemonFRLG_AutoStoryFoeTracker.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -83,7 +82,7 @@ enum class BattleScreen{
     NONE,       //  no battle on screen
 };
 
-const char* screen_name(BattleScreen screen){
+std::string_view screen_name(BattleScreen screen){
     switch (screen){
     case BattleScreen::MENU:
         return "battle menu";
@@ -307,7 +306,6 @@ public:
         , m_supplies(supplies)
         , m_decisions(supplies, kind)
         , m_evolution(supplies.lead)
-        , m_foes(kind == BattleKind::TRAINER ? supplies.trainer : "", supplies.lead)
         , m_kind(kind)
         , m_checks(checks)
         , m_language(language)
@@ -378,7 +376,6 @@ private:
         m_last_battle = now;
         read_hp(screen);
         watch_for_faint(screen);
-        m_foes.boxes_seen(BattleBoxes{.lead = BattlePokemonDetector(COLOR_RED).detect(screen), .foe = BattleOpponentDetector(COLOR_RED).detect(screen)});
         act(seen, screen, now);
         return false;
     }
@@ -582,11 +579,8 @@ private:
         if (m_kind != BattleKind::TRAINER && m_decisions.turns() == 0){
             m_supplies.wild_foes = read_wild_foes(m_console.logger(), m_language, screen);
         }
-        if (!m_foes.species().empty()){
-            m_foes.at_menu(read_trainer_foe(m_console.logger(), m_language, screen, m_foes.species()));
-            m_supplies.foe_out = m_foes.out();
-            m_supplies.foes_fainted = m_foes.fainted();
-            m_supplies.foe_hp_fill = read_opponent_hp_fill(screen);
+        if (m_kind == BattleKind::TRAINER && !m_supplies.foes.empty()){
+            m_supplies.foe_out = read_trainer_foe(m_console.logger(), m_language, screen, m_supplies.foes);
         }
         if (m_refusal.refused(current_time())){
             m_console.log("Battle: the move list came back without a turn (Disable?); choosing another move.", COLOR_ORANGE);
@@ -643,7 +637,6 @@ private:
     Supplies& m_supplies;
     BattleDecisions m_decisions;
     EvolutionHold m_evolution;
-    TrainerFoeTracker m_foes;
     BattleEndWatch m_end;
     MoveRefusalWatch m_refusal;
     const BattleKind m_kind;
@@ -782,7 +775,7 @@ private:
 } // namespace
 
 
-const char* status_name(StatusCondition status){
+std::string_view status_name(StatusCondition status){
     switch (status){
     case StatusCondition::NONE:
         return "no status";

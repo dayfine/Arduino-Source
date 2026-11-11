@@ -81,7 +81,7 @@ std::string joined_ids(const std::vector<StoryCheckpoint>& rows){
     return text;
 }
 
-const char* handoff_name(StoryHandoff handoff){
+std::string handoff_name(StoryHandoff handoff){
     switch (handoff){
     case StoryHandoff::NONE:
         return "none";
@@ -139,7 +139,7 @@ private:
     const RunPlanScenario m_scenario;
 };
 
-const std::string TODAY = "00.01 00.02 00.03 00.04 00.05 00.06 00.07 00.08 00.09 00.10 00.11 00.12 00.12c 00.13 00.14 00.14b 00.14c 00.15 00.15b 00.16 00.17 00.18 00.19 00.20 00.21 00.22 00.23 00.24 00.25 00.26 00.27 00.28 00.29";
+const std::string TODAY = "00.01 00.02 00.03 00.04 00.05 00.06 00.07 00.08 00.09 00.10 00.11 00.12 00.12c 00.13 00.14 00.14b 00.14c 00.15 00.15b 00.16 00.17 00.18 00.19 00.20 00.21 00.22 00.23 00.24 00.25 00.26 00.27 00.28 00.29 00.30 00.31 00.32";
 
 const RunPlanScenario RUN_PLAN_CASES[] = {
     {
@@ -230,11 +230,11 @@ const RunPlanScenario RUN_PLAN_CASES[] = {
     },
     {
         .input = {.name = "Gift RNG off: 00.12b is passed over", .first = "00.11"},
-        .expectation = {.expected_ids = "00.11 00.12 00.12c 00.13 00.14 00.14b 00.14c 00.15 00.15b 00.16 00.17 00.18 00.19 00.20 00.21 00.22 00.23 00.24 00.25 00.26 00.27 00.28 00.29"},
+        .expectation = {.expected_ids = "00.11 00.12 00.12c 00.13 00.14 00.14b 00.14c 00.15 00.15b 00.16 00.17 00.18 00.19 00.20 00.21 00.22 00.23 00.24 00.25 00.26 00.27 00.28 00.29 00.30 00.31 00.32"},
     },
     {
         .input = {.name = "Gift RNG off: 00.12b runs when started at", .first = "00.12b"},
-        .expectation = {.expected_ids = "00.12b 00.12c 00.13 00.14 00.14b 00.14c 00.15 00.15b 00.16 00.17 00.18 00.19 00.20 00.21 00.22 00.23 00.24 00.25 00.26 00.27 00.28 00.29"},
+        .expectation = {.expected_ids = "00.12b 00.12c 00.13 00.14 00.14b 00.14c 00.15 00.15b 00.16 00.17 00.18 00.19 00.20 00.21 00.22 00.23 00.24 00.25 00.26 00.27 00.28 00.29 00.30 00.31 00.32"},
     },
     {
         .input = {            .name = "Gift RNG: started at 00.12b, from the save beside the salesman",
@@ -259,7 +259,7 @@ const RunPlanScenario RUN_PLAN_CASES[] = {
     },
     {
         .input = {.name = "Starter RNG alone: 00.12b runs when started at", .first = "00.12b", .handoffs = {.starter_rng = true}},
-        .expectation = {.expected_ids = "00.12b 00.12c 00.13 00.14 00.14b 00.14c 00.15 00.15b 00.16 00.17 00.18 00.19 00.20 00.21 00.22 00.23 00.24 00.25 00.26 00.27 00.28 00.29"},
+        .expectation = {.expected_ids = "00.12b 00.12c 00.13 00.14 00.14b 00.14c 00.15 00.15b 00.16 00.17 00.18 00.19 00.20 00.21 00.22 00.23 00.24 00.25 00.26 00.27 00.28 00.29 00.30 00.31 00.32"},
     },
     {
         .input = {            .name = "Starter RNG first, with both on",
@@ -397,8 +397,8 @@ bool plans(const Pokemon::Pose& from, const Pokemon::Pose& to){
 //  GRIND; Potions from Cerulean's Mart (a loaded save's bag may hold too
 //  few for the wild battles a GRIND fights), and at its money floor 2 or
 //  more Awakenings for the rival's Sleep Powder; then a GRIND on Route 4's
-//  grass east of Mt. Moon until the sim beats the rival 00.15b fights 50%
-//  or more, healing at Cerulean's Center; its trip there plans both ways.
+//  grass east of Mt. Moon to Lv22, where console B's lead beat the rival
+//  00.15b fights, healing at Cerulean's Center; its trip there plans both ways.
 UnitTestResult test_cerulean_mart_and_grind(){
     const StoryCheckpoint& row = story_checkpoints()[row_index("00.15")];
     const std::vector<StoryStep>& steps = row.steps;
@@ -414,14 +414,12 @@ UnitTestResult test_cerulean_mart_and_grind(){
         const std::optional<MartPlan> plan = mart_of(step);
         return plan && plan->map == "CeruleanCity_Mart" && !plan->lines.empty() && plan->lines[0].item == "potion";
     });
-    const std::optional<std::string_view> rival = story_trainer("CeruleanCity", "rival_cerulean");
     const size_t grind = find_step(steps, mart, [&](const StoryStep& step){
         const std::optional<GrindPlan> plan = grind_of(step);
-        return plan && plan->member == 0 && rival && plan->trainer == *rival && plan->min_chance == MIN_WIN_CHANCE
-            && plan->level > 25;
+        return plan && plan->member == 0 && plan->level >= 22;
     });
     if (mart == steps.size() || grind == steps.size()){
-        return "00.15: expected a Cerulean Mart step buying Potions, then a GRIND of the lead until the rival is 50%, capped above Lv25.";
+        return "00.15: expected a Cerulean Mart step buying Potions, then a GRIND of the lead to Lv22 or more.";
     }
     const MartPlan plan = *mart_of(steps[mart]);
     const std::optional<std::vector<MartBuy>> buys = plan.money_floor

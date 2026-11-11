@@ -7,7 +7,9 @@
 #include <algorithm>
 #include <format>
 #include "Pokemon/Navigation/Pokemon_RouteLog.h"
+#include "PokemonFRLG_OverworldBikeTaps.h"
 #include "PokemonFRLG_OverworldReanchor.h"
+#include "PokemonFRLG_OverworldResume.h"
 #include "PokemonFRLG_OverworldRecovery.h"
 
 namespace PokemonAutomation{
@@ -58,6 +60,13 @@ int sight_onto(const std::vector<MapData>& maps, const MapPosition& tile){
     return sight;
 }
 
+//  How far the holds that find the player after an open leg, and the way
+//  back, may walk, per tile of the leg. 2 left Rocket Hideout B3F's "west
+//  7" off the stairs unchecked: the hold to its west wall and back walk up
+//  to 18, and the leg ended short (00.31 r1, console B, 2026-11-10). Route
+//  1's "west 4", whose holds walk 30, stays unchecked.
+constexpr int OPEN_LEG_CHECK_TILES_PER_TILE = 3;
+
 //  The tiles an open `step` from `start` may have ended on with nothing
 //  seen: its end, and up to OPEN_LEG_SHORTFALL tiles before it.
 std::vector<StopCandidate> short_candidates(const std::vector<MapData>& maps, const MapPosition& start, const RouteStep& step){
@@ -72,6 +81,15 @@ std::vector<StopCandidate> short_candidates(const std::vector<MapData>& maps, co
 //  Whether `next` is a hold to a wall.
 bool is_wall_hold(const RouteStep& next){
     return next.action == RouteAction::WALK && next.to_wall && !next.warps;
+}
+
+//  Whether `next` steps onto a spinner. From a tile short of its start it
+//  misses the arrow, or walks onto another, and ends elsewhere in the maze:
+//  "south 2" before Rocket Hideout B3F's "east 2" onto the arrow (3, 16)
+//  ended a tile short, the east leg walked into a wall, and the walk after
+//  it slid up to (10, 13) (00.31 r1 run 3, console B, 2026-11-10).
+bool is_slide(const RouteStep& next){
+    return next.action == RouteAction::WALK && next.spin_tiles && !next.warps;
 }
 
 //  Whether `next`, a hold to a wall, ends on its planned tile from each of
@@ -313,7 +331,34 @@ private:
             return false;
         }
         const WalkedTiles walked = outcome.walked.value_or(whole_leg(step));
-        return rejoin(step, candidates_on(step, start, walked), walked);
+        if (!outcome.blocked){
+            return rejoin(step, candidates_on(step, start, walked), walked);
+        }
+        //  Past the leg's end too: a start that was off ahead takes the
+        //  taps there.
+        RouteStep longer = step;
+        longer.tiles += BLOCKED_TAP_SLACK;
+        return rejoin(step, blocked_ahead(step, candidates_on(longer, start, walked)), walked);
+    }
+
+    //  Of `candidates`, where a Bicycle tap along `step` stopped the
+    //  player, those the maps block the way ahead of; all of them if none.
+    std::vector<StopCandidate> blocked_ahead(const RouteStep& step, std::vector<StopCandidate> candidates) const{
+        std::vector<StopCandidate> blocked;
+        for (const StopCandidate& candidate : candidates){
+            RouteStep ahead;
+            ahead.direction = step.direction;
+            ahead.tiles = 1;
+            ahead.surfing = step.surfing;
+            if (!candidate.trainer && leg_tiles(*maps(), candidate.player, ahead).size() < 2){
+                blocked.push_back(candidate);
+            }
+        }
+        if (blocked.empty()){
+            m_calls.log("Route: a Bicycle tap was blocked where the maps show the way open: finding the player from the tiles the taps put them on.");
+            return candidates;
+        }
+        return blocked;
     }
 
     //  Whether `step`, a leg with wild battles stopped part-way, was stopped
@@ -389,7 +434,7 @@ private:
     //  with nothing to show it (r16), unless it ends on its tile from
     //  wherever the leg left the player. If it doesn't, finds the player at
     //  walls first; without such holds, or if they and the way back walk
-    //  farther than the leg there and back, trusts the leg. Only there, and
+    //  farther than OPEN_LEG_CHECK_TILES_PER_TILE times the leg, trusts the leg. Only there, and
     //  only that far, to keep the check cheap: in Viridian Forest (r16) it
     //  walks 10 tiles after "west 6", while after Route 1's "west 4" the
     //  only holds walk 30. An open leg after a short one walks on off the
@@ -397,17 +442,17 @@ private:
     void check_open_leg(const RouteStep& step, const std::optional<MapPosition>& start){
         if (maps() == nullptr || m_planning->open_leg_check != OpenLegCheck::REANCHOR || !start
             || step.action != RouteAction::WALK || step.to_wall || step.warps
-            || m_next >= m_plan.size() || !is_wall_hold(m_plan[m_next])
+            || m_next >= m_plan.size() || !(is_wall_hold(m_plan[m_next]) || is_slide(m_plan[m_next]))
         ){
             return;
         }
         const std::vector<StopCandidate> candidates = short_candidates(*maps(), *start, step);
-        if (candidates.size() < 2 || hold_finds(*maps(), candidates, m_plan[m_next])){
+        if (candidates.size() < 2 || (is_wall_hold(m_plan[m_next]) && hold_finds(*maps(), candidates, m_plan[m_next]))){
             return;
         }
         const std::optional<Reanchor> anchor = plan_reanchor(*maps(), candidates, step, m_planning->costs);
-        if (!anchor || anchor->holds.empty() || reanchor_tiles(*anchor) > 2 * step.tiles){
-            m_calls.log("Route: no holds to walls within " + std::to_string(2 * step.tiles) + " tiles find the player if " + to_string(step) + " ended short; taken as walked.");
+        if (!anchor || anchor->holds.empty() || reanchor_tiles(*anchor) > OPEN_LEG_CHECK_TILES_PER_TILE * step.tiles){
+            m_calls.log("Route: no holds to walls within " + std::to_string(OPEN_LEG_CHECK_TILES_PER_TILE * step.tiles) + " tiles find the player if " + to_string(step) + " ended short; taken as walked.");
             return;
         }
         m_calls.log(std::format(

@@ -8,6 +8,7 @@
 #define PokemonAutomation_Pokemon_AutoStorySelect_H
 
 #include <memory>
+#include <span>
 #include <string>
 #include <vector>
 #include "CommonTools/Options/StringSelectOption.h"
@@ -29,6 +30,22 @@ StringSelectDatabase make_story_select_database(
         ret.add_entry(StringSelectEntry(std::to_string(i), list[i]->name()));
     }
     return ret;
+}
+
+
+//  The start/end dropdown database of a story's checkpoints, given by their
+//  labels in order ("00.09 Pewter Gym: Camper Liam, then Brock"), slugged
+//  by their index, as make_story_select_database() slugs SV's. A game whose
+//  story is in sections (BDSP's segments 00 and 01) passes them joined: a
+//  section's entry i is then story_index(true, i, first of the section).
+//  The program keeps it in a function-local static: the options hold a
+//  reference.
+inline StringSelectDatabase story_checkpoint_database(std::span<const std::string> labels){
+    StringSelectDatabase database;
+    for (size_t c = 0; c < labels.size(); c++){
+        database.add_entry(StringSelectEntry(std::to_string(c), labels[c]));
+    }
+    return database;
 }
 
 
