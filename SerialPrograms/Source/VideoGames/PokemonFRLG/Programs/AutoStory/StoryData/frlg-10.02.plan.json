@@ -3,9 +3,10 @@
   "game": "frlg",
   "checkpoint": {
     "id": "10.02",
-    "title": "Pokemon Tower to 6F: the rival on 2F, a Super Repel, Ruth and Tammy on 5F, Jennifer and Emilia on 6F, the Rare Candy and the Marowak ghost",
+    "title": "The Pokemon Tower: the rival on 2F, a Super Repel, Ruth and Tammy on 5F, Jennifer and Emilia on 6F, the Rare Candy, the Marowak ghost, 7F's three Grunts and Mr. Fuji, the POKE FLUTE in his house",
     "notes": [
-      "Pokemon Tower: pret data/maps/PokemonTower_*/map.json and scripts.inc. The way up avoids every Channeler a route can go round; 5F's Ruth and Tammy and 6F's Jennifer and Emilia stand in the only ways on (pokeguy fights Tammy, Jennifer and Emilia)."
+      "Pokemon Tower: pret data/maps/PokemonTower_*/map.json and scripts.inc. The way up avoids every Channeler a route can go round; 5F's Ruth and Tammy and 6F's Jennifer and Emilia stand in the only ways on (pokeguy fights Tammy, Jennifer and Emilia).",
+      "7F's three Grunts stand on the only way up (columns 9..13); each sees four tiles and leaves after the battle. Mr. Fuji's talk warps the player to his house, where a second talk gives the POKE FLUTE. The checkpoint ends there: the house's exit mats are three wide and the warp's arrival tile is not yet seen on a console."
     ],
     "start": {
       "certainty": "tile",
@@ -107,6 +108,26 @@
         "why": "3F up are full of ghosts (pokeguy uses a Super Repel at 1:03:50)"
       },
       {
+        "id": "tower_3f_row7",
+        "kind": "route",
+        "variant": "run",
+        "target": {
+          "certainty": "tile",
+          "map": "PokemonTower_3F",
+          "where": {
+            "facing": "north",
+            "kind": "tiles",
+            "tiles": [
+              [
+                7,
+                7
+              ]
+            ]
+          }
+        },
+        "why": "down column 4, east along row 14 to column 7, west of Patricia's line (10, 15..16), and up column 7 to row 7"
+      },
+      {
         "id": "tower_3f_stairs",
         "kind": "route",
         "variant": "run",
@@ -124,7 +145,7 @@
             ]
           }
         },
-        "why": "down column 4, east along row 14 to column 7, up it to row 7 and east along row 7 above Carly's line (9, 10..12), down column 18 to the stairs (18, 10), onto 4F a step down"
+        "why": "east along row 7 above Carly's line (9, 10..12), down column 18 to the stairs (18, 10), onto 4F a step down"
       },
       {
         "id": "tower_4f_stairs",
@@ -399,6 +420,173 @@
           }
         },
         "why": "the Silph Scope shows the ghost: MAROWAK Lv30 (setwildbattle SPECIES_MAROWAK, 30), which has to be beaten (fleeing walks the player back up); then Cubone's mother's spirit is calmed"
+      },
+      {
+        "id": "below_grunt1_line",
+        "kind": "route",
+        "variant": "run",
+        "target": {
+          "certainty": "tile",
+          "map": "PokemonTower_7F",
+          "where": {
+            "facing": "north",
+            "kind": "tiles",
+            "tiles": [
+              [
+                11,
+                12
+              ]
+            ]
+          }
+        },
+        "why": "down onto the stairs (11, 16), onto 7F, and up column 11 to (11, 12), two below Grunt 1's line (10..13, 10)"
+      },
+      {
+        "id": "grunt1_line",
+        "kind": "step",
+        "variant": "trainer_line",
+        "direction": "north",
+        "why": "a tile at a time onto (11, 10): Grunt 1 (9, 10) walks to (10, 10)"
+      },
+      {
+        "id": "tower_grunt1",
+        "kind": "battle",
+        "declared_after": {
+          "certainty": "tile",
+          "map": "PokemonTower_7F",
+          "where": {
+            "facing": "west",
+            "kind": "tiles",
+            "tiles": [
+              [
+                11,
+                10
+              ]
+            ]
+          }
+        },
+        "why": "Rocket Grunt (TRAINER_TEAM_ROCKET_GRUNT_19): Zubat, Zubat, Golbat (pokeguy 1:08:32)"
+      },
+      {
+        "id": "grunt2_line",
+        "kind": "step",
+        "variant": "trainer_line",
+        "direction": "north",
+        "why": "a tile at a time onto (11, 8): Grunt 2 (13, 8) walks to (12, 8)"
+      },
+      {
+        "id": "tower_grunt2",
+        "kind": "battle",
+        "declared_after": {
+          "certainty": "tile",
+          "map": "PokemonTower_7F",
+          "where": {
+            "facing": "east",
+            "kind": "tiles",
+            "tiles": [
+              [
+                11,
+                8
+              ]
+            ]
+          }
+        },
+        "why": "Rocket Grunt (TRAINER_TEAM_ROCKET_GRUNT_20): Koffing, Drowzee (pokeguy 1:09:20)"
+      },
+      {
+        "id": "grunt3_line",
+        "kind": "step",
+        "variant": "trainer_line",
+        "direction": "north",
+        "why": "a tile at a time onto (11, 6): Grunt 3 (9, 6) walks to (10, 6)"
+      },
+      {
+        "id": "tower_grunt3",
+        "kind": "battle",
+        "declared_after": {
+          "certainty": "tile",
+          "map": "PokemonTower_7F",
+          "where": {
+            "facing": "west",
+            "kind": "tiles",
+            "tiles": [
+              [
+                11,
+                6
+              ]
+            ]
+          }
+        },
+        "why": "Rocket Grunt (TRAINER_TEAM_ROCKET_GRUNT_21): Zubat, Zubat, Rattata, Raticate (pokeguy 1:10:12)"
+      },
+      {
+        "id": "below_fuji",
+        "kind": "route",
+        "variant": "run",
+        "target": {
+          "certainty": "tile",
+          "map": "PokemonTower_7F",
+          "where": {
+            "facing": "north",
+            "kind": "tiles",
+            "tiles": [
+              [
+                11,
+                5
+              ]
+            ]
+          }
+        },
+        "why": "a tile up, below Mr. Fuji (11, 4)"
+      },
+      {
+        "id": "mr_fuji",
+        "kind": "talk",
+        "why": "\"Follow me\": the game warps the player into his house"
+      },
+      {
+        "id": "fuji_house",
+        "kind": "scene",
+        "declared_after": {
+          "certainty": "tile",
+          "map": "LavenderTown_VolunteerPokemonHouse",
+          "where": {
+            "facing": "north",
+            "kind": "tiles",
+            "tiles": [
+              [
+                4,
+                7
+              ]
+            ]
+          }
+        },
+        "why": "warp MAP_LAVENDER_TOWN_VOLUNTEER_POKEMON_HOUSE, 4, 7 (PokemonTower_7F_EventScript_MrFuji); the facing on arrival is not yet seen on a console"
+      },
+      {
+        "id": "beside_fuji",
+        "kind": "route",
+        "variant": "run",
+        "target": {
+          "certainty": "tile",
+          "map": "LavenderTown_VolunteerPokemonHouse",
+          "where": {
+            "facing": "west",
+            "kind": "tiles",
+            "tiles": [
+              [
+                4,
+                3
+              ]
+            ]
+          }
+        },
+        "why": "up column 4 to (4, 3), east of Mr. Fuji (3, 3); the Youngster (3, 5) stands below him"
+      },
+      {
+        "id": "poke_flute",
+        "kind": "talk",
+        "why": "\"I'd like you to have this\": the POKE FLUTE (pokeguy 1:11:04, a second talk after the warp)"
       }
     ]
   },
