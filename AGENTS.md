@@ -56,7 +56,7 @@ There are two different checks, and neither replaces the other:
 | Pre-push hook | [tools/hooks/pre-push](tools/hooks/pre-push), [tools/install_hooks.sh](tools/install_hooks.sh) | Once per clone: `sh <(git show origin/agents:tools/install_hooks.sh)`. Creates the venv `~/.venvs/code-health`. Never `--no-verify` without the user's OK. |
 | CI workflows (code) | `.github/workflows/` on `main`: `cpp-ci-serial-programs-{mac,mac-intel,ubuntu-clang,ubuntu-default,windows-clang,windows-default}.yml`, `code-health.yml` (stub: checks out `agents` into `.agents-tools` and runs the linter from there), `tabs.yml` | Drafts skip the C++ jobs and run only `fork-draft-ci.yml` (Ubuntu GCC build + unit tests); marking a fork PR ready runs all six. Or dispatch: `gh workflow run cpp-ci-serial-programs-<os>.yml -R dayfine/Arduino-Source --ref <branch>`. |
 | CI workflow (this branch) | `.github/workflows/harness-check.yml`, `.github/workflows/agents-check.yml` | Run on PRs into `agents`; Agents Check also runs the linter self-tests. |
-| Waiting on CI | [lab/scripts/ciwait.sh](lab/scripts/ciwait.sh), `dev/lib/wait-pr-checks.sh` | Main session only, in the background. Expected failures: `FileException` for fork-only test images (FRLG SaveCardReader, OptionMenuReader, ItemListReader; BDSP MenuDetector, ShortDialogDetector). |
+| Waiting on CI | [lab/scripts/wait_for.sh](lab/scripts/wait_for.sh) (`checks <PR>`, `log <file> 'Tests Finished'`, `proc <ERE>`); `lab/scripts/ciwait.sh` is superseded | Main session only, in the background; read `fail=` when it fires. Expected failures: `FileException` for fork-only test images (FRLG SaveCardReader, OptionMenuReader, ItemListReader; BDSP MenuDetector, ShortDialogDetector). |
 
 **Lab and console B**
 
@@ -159,10 +159,14 @@ Dispatched agents follow [agent-harness](https://github.com/dayfine/agent-harnes
 long-chain rules: [.agents/rules/agent-liveness.md](.agents/rules/agent-liveness.md) and
 [.agents/rules/long-chain-ownership.md](.agents/rules/long-chain-ownership.md). In short, a subagent
 never waits on anything outside its own turn: it pushes, opens or updates the draft fork PR, reports
-the PR number and tip SHA, and stops. The main session waits on CI with
-`sh dev/lib/wait-pr-checks.sh <PR> -R dayfine/Arduino-Source` as a tracked background task (0
-green, 10 a check failed, 1 still pending at the cap), and `dev/lib/chain-runner.sh` runs longer
-chains.
+the PR number and tip SHA, and stops; it never waits for CI (foreground Bash caps at 10 minutes, and
+a background wait in an agent may never wake it). The main session waits with
+`sh lab/scripts/wait_for.sh --max-minutes 60 checks <PR>` as one background task: no model calls
+while it sleeps, one wake when it exits (0 all checks completed, 2 timed out, 3 no GitHub backend).
+Exit 0 is not green: read `fail=` in its line. Use `wait_for.sh log <file> 'Tests Finished'` for a
+`--command-line-test-mode` run and `wait_for.sh proc <ERE>` for stray local test processes.
+Dispatch a reviewer or QC agent only against green CI on the PR head. `dev/lib/chain-runner.sh`
+runs longer chains.
 
 Each role has a definition under `.agents/agents/`, carrying its standing rules (build, test,
 checkout and finish commands): `autostory-code`, `pr-maintenance`, `run-records` and `reviewer`.

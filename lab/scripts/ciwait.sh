@@ -1,4 +1,6 @@
 #!/bin/sh
+# SUPERSEDED by lab/scripts/wait_for.sh: use `sh lab/scripts/wait_for.sh --max-minutes 60 checks <PR>`.
+# Kept for old notes that call it by run id.
 # ciwait.sh RUN_ID... : wait (max CI_WAIT_MIN, default 60 min) for GitHub Actions runs on the fork,
 # then print branch / workflow / conclusion and up to five failed test names per run.
 # Exit 0 when all runs completed, 1 when some were still running at the cap.
