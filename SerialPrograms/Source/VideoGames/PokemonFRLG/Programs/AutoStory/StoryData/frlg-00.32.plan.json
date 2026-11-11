@@ -97,10 +97,11 @@
       {
         "id": "below_left_guard",
         "kind": "legs",
+        "action": "run",
         "args": {
           "legs": [{"direction": "south", "tiles": 2}, {"direction": "west", "tiles": 4}, {"direction": "north", "tiles": 10}]
         },
-        "why": "the lift door lets out a tile south of (20, 23), on (20, 24) (console B, 2026-11-11), and B4F has no arrows: held, south to the bottom wall finds the player on row 25 from either tile, west to (16, 25) and up column 16 to below the left door Grunt (16, 14); row 24 west of x 14 has potted plants (12, 24) and (13, 24)"
+        "why": "the lift door lets out a tile south of (20, 23), on (20, 24) (console B, 2026-11-11), and B4F has no arrows: run, south to the bottom wall finds the player on row 25 from either tile, west to (16, 25) and up column 16 to below the left door Grunt (16, 14); row 24 west of x 14 has potted plants (12, 24) and (13, 24)"
       },
       {
         "id": "talk_left_guard",
