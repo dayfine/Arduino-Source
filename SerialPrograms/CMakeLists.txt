@@ -226,7 +226,7 @@ add_library(SerialProgramsLib STATIC ${CORE_LIBRARY_SOURCES} ${LIBRARY_SOURCES})
 # Data files built into the program (see cmake/EmbedTextFiles.cmake).
 include(cmake/EmbedTextFiles.cmake)
 pa_embed_text_files(SerialProgramsLib Source/Pokemon/Navigation/TestMaps
-    Pokemon/Navigation/Pokemon_Navigation_Tests.h PokemonAutomation::Pokemon navigation_test_map_json)
+    Pokemon/Navigation/Pokemon_NavigationTestMaps.h PokemonAutomation::Pokemon navigation_test_map_json)
 include(cmake/PokesimMapResources.cmake)
 pa_frlg_map_resources(FRLG_MAP_RESOURCES)
 pa_embed_text_files(SerialProgramsLib "${FRLG_MAP_RESOURCES}"

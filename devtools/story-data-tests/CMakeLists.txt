@@ -13,6 +13,7 @@ add_executable(StoryDataTests
     "${STORY}/Pokemon_BuiltinStoryActions.cpp"
     "${STORY}/Types/Pokemon_StoryActionArg.cpp"
     "${STORY}/Types/Pokemon_StoryActionSpec.cpp"
+    "${STORY}/Types/Pokemon_StoryCheckpointMetadata.cpp"
     "${ROOT}/SerialPrograms/Source/Pokemon/Navigation/Pokemon_Grid.cpp"
     "${ROOT}/Common/Cpp/Exceptions.cpp"
     "${ROOT}/Common/Cpp/Json/JsonValue.cpp"
