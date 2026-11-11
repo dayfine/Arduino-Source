@@ -14,6 +14,7 @@
 #include <optional>
 #include <string>
 #include "Common/Cpp/Time.h"
+#include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "NintendoSwitch/Controllers/NintendoSwitch_ControllerButtons.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
@@ -32,6 +33,8 @@ namespace PokemonLZA{
 //  (only the Move / Control Camera hints, which have no detector yet).
 //  A cutscene can hold a still frame longer than `quiet`, so the quiet end
 //  waits for `min_length`, the scene's rough recorded length, to pass.
+//  A tutorial card gets A whatever `text_button` is: only A turns its pages
+//  (tutorial_card_shows()).
 //  Throws OperationFailedException if the goal does not show within `timeout`.
 void mash_scene(
     ConsoleHandle& console, ProControllerContext& context,
@@ -39,6 +42,11 @@ void mash_scene(
     std::optional<Milliseconds> quiet = std::nullopt,
     Milliseconds min_length = Milliseconds(0)
 );
+
+
+//  A tutorial card on screen (Map & Missions, Main Missions, Pokedex, ...):
+//  a bright panel in the middle over dark, even edges.
+bool tutorial_card_shows(const ImageViewRGB32& frame);
 
 
 //  The new game's opening, as recorded 2026-11-08 on console B. None of it
