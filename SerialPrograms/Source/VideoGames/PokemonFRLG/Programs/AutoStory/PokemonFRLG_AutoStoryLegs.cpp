@@ -71,6 +71,20 @@ std::optional<std::vector<RouteStep>> fixed_route(
     return route;
 }
 
+void tap_legs(std::vector<RouteStep>& route){
+    for (RouteStep& step : route){
+        step.tapped = true;
+    }
+}
+
+void blind_tap_legs(Direction facing, std::vector<RouteStep>& route){
+    for (RouteStep& step : route){
+        step.tapped = true;
+        step.blind_taps = step.tiles + (step.direction == facing ? 0 : 1);
+        facing = step.facing_after;
+    }
+}
+
 
 } // namespace PokemonFRLG
 } // namespace NintendoSwitch

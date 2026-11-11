@@ -170,13 +170,13 @@ Outcome walk_legs(StoryEnv& env, RunState& state, const StoryStep& step){
         facing = face_a_wall(env, start);
     }
     std::optional<std::vector<RouteStep>> route = fixed_route(story_maps(), start, step.legs);
-    if (route && step.variant == TAPS_VARIANT){
-        for (RouteStep& leg : *route){
-            leg.tapped = true;
-        }
-    }
     if (!facing || !route || route->empty()){
         return Pokemon::outcome_failed("bad_legs", to_string(start));
+    }
+    if (step.variant == TAPS_VARIANT){
+        tap_legs(*route);
+    }else if (step.variant == BLIND_TAPS_VARIANT){
+        blind_tap_legs(*facing, *route);
     }
     const OverworldInterruptSet interrupts = walk_interrupts(env, step);
     //  Planning lets the walker recover a stopped open leg: it plans back to

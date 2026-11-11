@@ -6,6 +6,7 @@
 
 #include <format>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -14,6 +15,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_MovementMechanics.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecovery.h"
 #include "PokemonFRLG_AutoStoryHideout.h"
 #include "PokemonFRLG_AutoStoryHideoutLift.h"
 #include "PokemonFRLG_AutoStoryLegs.h"
@@ -375,6 +377,97 @@ UnitTestResult test_b2f_maze_taps(){
     return true;
 }
 
+//  Console B, 2026-11-10 22:08: on 00.32's B2F taps "west 2" from
+//  (19, 5) to (17, 5), beside the arrow (16, 5), no tap moved the player.
+//  The blocked tap was taken to stand where the way ahead is blocked, and
+//  the arrow ahead of (17, 5) counted as blocked: the player was "found" on
+//  (17, 5) with no holds, and the slide on to the MOON STONE's stop (1, 4)
+//  was walked from wherever they stood. An arrow ahead is no wall: the
+//  player is found from every tile the taps may have left them on.
+UnitTestResult test_b2f_blocked_tap_beside_arrow(){
+    const std::vector<MapData>& maps = story_maps();
+    const MapPosition start{"RocketHideout_B2F", {19, 5}};
+    const std::optional<std::vector<RouteStep>> route = fixed_route(maps, start, {
+        {Direction::WEST, 2}, {Direction::SOUTH, 1}, {Direction::WEST, 1},
+    });
+    if (!route || !(route->back().end == MapPosition{"RocketHideout_B2F", {1, 4}})){
+        return "Expected the legs from (19, 5) to slide to (1, 4).";
+    }
+    std::vector<RouteStep> tapped = *route;
+    for (RouteStep& step : tapped){
+        step.tapped = true;
+    }
+    std::vector<std::string> logs;
+    size_t walks = 0;
+    RouteCalls calls;
+    calls.walk = [&](const RouteStep&, std::optional<Direction>){
+        return walks++ == 0
+            ? StepOutcome{.end = StepEnd::STOPPED, .walked = WalkedTiles{0, BLOCKED_TAP_SLACK}, .blocked = true}
+            : StepOutcome{};
+    };
+    calls.hold_to_warp = [](const RouteStep&){};
+    calls.log = [&](const std::string& message){ logs.push_back(message); };
+    calls.fail = [](const std::string& message){ throw std::runtime_error(message); };
+    const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = start, .label = "Sim", .wall_check = WallCheck::SKIP};
+    try{
+        run_route(tapped, Direction::WEST, &planning, calls);
+    }catch (std::runtime_error&){}
+    for (const std::string& line : logs){
+        if (line.find("the player is on one of: RocketHideout_B2F (17, 5).") != std::string::npos){
+            return std::format("The arrow ahead of (17, 5) was taken for a wall: {}", line);
+        }
+    }
+    return true;
+}
+
+//  `legs` from `start`, facing `facing`, tapped blind on the sim
+//  (BLIND_TAPS_VARIANT). Empty if the taps end where the legs do.
+std::string blind_legs_on_sim(const MapPosition& start, Direction facing, const std::vector<Pokemon::StoryLeg>& legs){
+    const std::vector<MapData>& maps = story_maps();
+    std::optional<std::vector<RouteStep>> route = fixed_route(maps, start, legs);
+    if (!route || route->empty()){
+        return std::format("No legs from {}.", to_string(start));
+    }
+    blind_tap_legs(facing, *route);
+    OverworldSim sim(maps, start, facing, SimScript{});
+    OverworldSimWalker walker(sim);
+    const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = start, .label = "Sim"};
+    const std::string failure = walker.run(*route, planning);
+    if (!failure.empty() || !(sim.state().position == route->back().end)){
+        return std::format("Blind taps from {} walked to {}, not {}, failure \"{}\".", to_string(start), to_string(sim.state().position), to_string(route->back().end), failure);
+    }
+    return "";
+}
+
+//  The spinner mazes' blind legs: 00.31's B3F maze and way back, 00.32's
+//  B2F legs to the MOON STONE and to the lift room.
+UnitTestResult test_blind_maze_taps(){
+    using Pokemon::StoryLeg;
+    const std::vector<std::string> failures{
+        blind_legs_on_sim({"RocketHideout_B3F", {18, 2}}, Direction::EAST, {
+            {Direction::WEST, 6}, {Direction::SOUTH, 5}, {Direction::WEST, 7}, {Direction::SOUTH, 2}, {Direction::WEST, 1},
+            {Direction::SOUTH, 2}, {Direction::WEST, 2}, {Direction::SOUTH, 3}, {Direction::WEST, 3}, {Direction::SOUTH, 2},
+            {Direction::EAST, 2}, {Direction::WEST, 2}, {Direction::SOUTH, 5}, {Direction::EAST, 10}, {Direction::NORTH, 6},
+        }),
+        blind_legs_on_sim({"RocketHideout_B3F", {15, 18}}, Direction::WEST, {
+            {Direction::SOUTH, 2}, {Direction::WEST, 5}, {Direction::NORTH, 6},
+        }),
+        blind_legs_on_sim({"RocketHideout_B2F", {21, 2}}, Direction::EAST, {
+            {Direction::SOUTH, 1}, {Direction::WEST, 2}, {Direction::SOUTH, 2}, {Direction::WEST, 2}, {Direction::SOUTH, 1}, {Direction::WEST, 1},
+        }),
+        blind_legs_on_sim({"RocketHideout_B2F", {2, 4}}, Direction::SOUTH, {
+            {Direction::SOUTH, 4}, {Direction::EAST, 1}, {Direction::SOUTH, 1}, {Direction::EAST, 1}, {Direction::EAST, 2}, {Direction::WEST, 2},
+            {Direction::EAST, 3}, {Direction::SOUTH, 2}, {Direction::WEST, 1}, {Direction::EAST, 1}, {Direction::SOUTH, 1},
+        }),
+    };
+    for (const std::string& failure : failures){
+        if (!failure.empty()){
+            return failure;
+        }
+    }
+    return true;
+}
+
 struct AutoStoryHideoutBodyInput{
     std::string name;
     UnitTestResult (*body)();
@@ -421,6 +514,14 @@ const AutoStoryHideoutBodyCase HIDEOUT_BODY_CASES[] = {
     {
         .input = {.name = "B2F's arrow floor to the lift a tap at a time", .body = test_b2f_maze_taps},
         .expectation = {.description = "00.32's taps and the routes between them, any turn dropped or hold short"},
+    },
+    {
+        .input = {.name = "a blocked tap beside B2F's arrow", .body = test_b2f_blocked_tap_beside_arrow},
+        .expectation = {.description = "an arrow ahead is no wall: the player isn't placed beside it"},
+    },
+    {
+        .input = {.name = "the spinner mazes tapped blind", .body = test_blind_maze_taps},
+        .expectation = {.description = "00.31's and 00.32's blind legs end where the legs do"},
     },
 };
 

@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <format>
 #include "Pokemon/Navigation/Pokemon_RouteLog.h"
+#include "PokemonFRLG_CodedRooms.h"
 #include "PokemonFRLG_OverworldBikeTaps.h"
 #include "PokemonFRLG_OverworldReanchor.h"
 #include "PokemonFRLG_OverworldRecovery.h"
@@ -342,6 +343,8 @@ private:
 
     //  Of `candidates`, where a Bicycle tap along `step` stopped the
     //  player, those the maps block the way ahead of; all of them if none.
+    //  A spinner ahead is no block: a tap steps onto it and slides (B2F's
+    //  (16, 5), console B, 2026-11-10), though leg_tiles() stops before it.
     std::vector<StopCandidate> blocked_ahead(const RouteStep& step, std::vector<StopCandidate> candidates) const{
         std::vector<StopCandidate> blocked;
         for (const StopCandidate& candidate : candidates){
@@ -349,7 +352,10 @@ private:
             ahead.direction = step.direction;
             ahead.tiles = 1;
             ahead.surfing = step.surfing;
-            if (!candidate.trainer && leg_tiles(*maps(), candidate.player, ahead).size() < 2){
+            const TilePos next = candidate.player.point.next(step.direction);
+            if (!candidate.trainer && !coded_spin_direction(candidate.player.map, next)
+                && leg_tiles(*maps(), candidate.player, ahead).size() < 2
+            ){
                 blocked.push_back(candidate);
             }
         }
@@ -439,7 +445,7 @@ private:
     //  only holds walk 30. An open leg after a short one walks on off the
     //  route, which isn't checked.
     void check_open_leg(const RouteStep& step, const std::optional<MapPosition>& start){
-        if (maps() == nullptr || m_planning->open_leg_check != OpenLegCheck::REANCHOR || !start
+        if (maps() == nullptr || m_planning->open_leg_check != OpenLegCheck::REANCHOR || !start || step.blind_taps > 0
             || step.action != RouteAction::WALK || step.to_wall || step.warps
             || m_next >= m_plan.size() || !(is_wall_hold(m_plan[m_next]) || is_slide(m_plan[m_next]))
         ){

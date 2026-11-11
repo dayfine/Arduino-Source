@@ -360,7 +360,7 @@ UnitTestResult test_runs_after_shoes(){
     size_t runs = 0;
     for (const StoryCheckpoint& checkpoint : story_checkpoints()){
         for (const StoryStep& step : checkpoint.steps){
-            if ((step.kind != StoryStepKind::ROUTE && step.kind != StoryStepKind::LEGS) || step.variant == TAPS_VARIANT){
+            if ((step.kind != StoryStepKind::ROUTE && step.kind != StoryStepKind::LEGS) || step.variant == TAPS_VARIANT || step.variant == BLIND_TAPS_VARIANT){
                 continue;
             }
             const MoveSpeed expected = has_shoes ? MoveSpeed::RUN : MoveSpeed::WALK;
