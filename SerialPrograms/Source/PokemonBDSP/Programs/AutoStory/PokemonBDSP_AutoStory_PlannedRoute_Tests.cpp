@@ -559,15 +559,12 @@ private:
 //  are tile-exact and walks to a wall end at the wall.
 class OvershootingRouteIO : public RouteIO{
 public:
-    OvershootingRouteIO(const StoryWorld& world, TilePos at, std::vector<std::string>& notes)
+    //  `at` is where the player stands, moved by every walk.
+    OvershootingRouteIO(const StoryWorld& world, TilePos& at, std::vector<std::string>& notes)
         : m_world(world)
         , m_at(at)
         , m_notes(notes)
     {}
-
-    const TilePos& at() const{
-        return m_at;
-    }
 
     virtual WalkResult walk_to_wall(const RouteWallWalk& walk) override{
         count_call();
@@ -625,7 +622,7 @@ public:
 private:
     void count_call(){
         if (++m_calls > MAX_CALLS){
-            throw RouteFailed{"the walker made more than " + std::to_string(MAX_CALLS) + " calls."};
+            throw RouteFailed{std::format("the walker made more than {} calls.", MAX_CALLS)};
         }
     }
     size_t move(Direction direction, size_t tiles){
@@ -643,7 +640,7 @@ private:
 
     static constexpr size_t MAX_CALLS = 300;
     const StoryWorld& m_world;
-    TilePos m_at;
+    TilePos& m_at;
     std::vector<std::string>& m_notes;
     size_t m_calls = 0;
 };
@@ -657,7 +654,8 @@ UnitTestResult test_jubilife_center_held_overshoot(Logger&){
     const TilePos from{48, 62};
     const TilePos goal{52, 41};
     std::vector<std::string> notes;
-    OvershootingRouteIO io(world, from, notes);
+    TilePos at = from;
+    OvershootingRouteIO io(world, at, notes);
     RouteTrainers trainers{.sights = {}, .fight = [](const std::string&){}};
     try{
         walk_route(io, world, {from}, trainers, {
@@ -668,10 +666,10 @@ UnitTestResult test_jubilife_center_held_overshoot(Logger&){
             .speed = MoveSpeed::RUN,
         });
     }catch (const RouteFailed& e){
-        return "failed: " + e.message;
+        return std::format("failed: {}", e.message);
     }
-    if (io.at() != goal){
-        return "ended at " + Pokemon::to_string(io.at()) + ", not at (52, 41).";
+    if (at != goal){
+        return std::format("ended at {}, not at (52, 41).", Pokemon::to_string(at));
     }
     return true;
 }
