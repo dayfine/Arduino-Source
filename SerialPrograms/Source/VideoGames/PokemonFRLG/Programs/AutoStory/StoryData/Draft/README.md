@@ -6,7 +6,7 @@ story table doesn't load them: `pa_embed_text_files()` embeds only
 so this README is where they are marked unverified.
 
 Each file is a `pokesim-authored-checkpoint/1` plan in the same format as
-`../frlg-parcel-00.05.plan.json`. The order and the item stops follow PokeGuy's
+`../frlg-parcel-02.01.plan.json`. The order and the item stops follow PokeGuy's
 LeafGreen run (PokemonSimulation `data/runs/pokeguy-leafgreen-15934/events.json`
 and `external/pokeguy-notes.md`). 00.28 and 00.29 are table rows on
 `frlg/stage8-rocktunnel` (#293); 00.29 ends at Lavender's nurse, where 00.30
