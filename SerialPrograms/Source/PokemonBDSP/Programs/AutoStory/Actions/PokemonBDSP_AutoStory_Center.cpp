@@ -25,7 +25,6 @@
 #include "PokemonBDSP_AutoStory_Center.h"
 #include "PokemonBDSP_AutoStory_TalkOver.h"
 #include "PokemonBDSP_AutoStory_LitDoorway.h"
-#include "PokemonBDSP_AutoStory_TalkOver.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
