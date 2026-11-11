@@ -321,7 +321,7 @@ UnitTestResult test_b3f_maze_taps(){
 //  00.32's taps (frlg-00.32.plan.json): B3F from below its Rare Candy up
 //  to the top corridor, and B2F's arrows to the MOON STONE's stop and on
 //  to the lift room's stop (13, 20), up to row 17 and on to below the
-//  lift, and B4F from the lift door to the guards, Giovanni and the
+//  lift, and B4F from the left Grunt to the right one, Giovanni and the
 //  SILPH SCOPE, with any one turn dropped; the stairs up from B3F, which
 //  end on their warp, with any hold short.
 UnitTestResult test_b2f_maze_taps(){
@@ -352,9 +352,6 @@ UnitTestResult test_b2f_maze_taps(){
         tap_legs_on_sim({"RocketHideout_B2F", {15, 17}}, Direction::NORTH, {
             {Direction::EAST, 12}, {Direction::SOUTH, 1}, {Direction::EAST, 1}, {Direction::NORTH, 1},
         }, {"RocketHideout_B2F", {28, 17}}),
-        tap_legs_on_sim({"RocketHideout_B4F", {20, 23}}, Direction::SOUTH, {
-            {Direction::SOUTH, 1}, {Direction::WEST, 4}, {Direction::NORTH, 9},
-        }, left_guard),
         tap_legs_on_sim(left_guard, Direction::NORTH, {
             {Direction::SOUTH, 1}, {Direction::EAST, 3}, {Direction::NORTH, 1},
         }, right_guard),
@@ -368,6 +365,36 @@ UnitTestResult test_b2f_maze_taps(){
     for (const std::string& failure : failures){
         if (!failure.empty()){
             return failure;
+        }
+    }
+    return true;
+}
+
+//  Console B, 2026-11-11 01:05: 00.32's below_left_guard was planned from
+//  the lift door (20, 23), but the door lets the player out a tile south,
+//  on (20, 24). Every leg ran a row low: "west 4" ended on (16, 25), the
+//  hold west on along row 25 and "east 2" left the player below the
+//  potted plants (12, 24) and (13, 24), and "north 9" was blocked at once.
+//  B4F has no arrows, so the legs are held: south to the bottom wall finds
+//  the player on row 25 from either tile, and column 16 runs up from there
+//  to the Grunt (16, 14).
+UnitTestResult test_b4f_left_guard_from_below_lift_door(){
+    const std::vector<MapData>& maps = story_maps();
+    const MapPosition planned{"RocketHideout_B4F", {20, 23}};
+    const MapPosition left_guard{"RocketHideout_B4F", {16, 15}};
+    const std::optional<std::vector<RouteStep>> route = fixed_route(maps, planned, {
+        {Direction::SOUTH, 2}, {Direction::WEST, 4}, {Direction::NORTH, 10},
+    });
+    if (!route || !(route->back().end == left_guard)){
+        return "Expected the legs from the lift door (20, 23) to end below the left Grunt (16, 15).";
+    }
+    for (const MapPosition& start : {planned, MapPosition{"RocketHideout_B4F", {20, 24}}}){
+        OverworldSim sim(maps, start, Direction::SOUTH, SimScript{});
+        OverworldSimWalker walker(sim);
+        const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = planned, .label = "Sim"};
+        const std::string failure = walker.run(*route, planning);
+        if (!failure.empty() || !(sim.state().position == left_guard)){
+            return std::format("From {}, walked to {}, failure \"{}\".", to_string(start), to_string(sim.state().position), failure);
         }
     }
     return true;
@@ -419,6 +446,10 @@ const AutoStoryHideoutBodyCase HIDEOUT_BODY_CASES[] = {
     {
         .input = {.name = "B2F's arrow floor to the lift a tap at a time", .body = test_b2f_maze_taps},
         .expectation = {.description = "00.32's taps and the routes between them, any turn dropped or hold short"},
+    },
+    {
+        .input = {.name = "B4F's left Grunt from a tile below the lift door", .body = test_b4f_left_guard_from_below_lift_door},
+        .expectation = {.description = "south to the bottom wall finds the player from either tile below the lift"},
     },
 };
 
