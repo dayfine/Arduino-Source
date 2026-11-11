@@ -57,9 +57,15 @@ struct SegmentHooks{
     //  overlay, so whoever watches the stream sees the step under way; and,
     //  once run records land (#132), for the run's events.
     EventLogger status;
+    //  Optional: the game's postcondition check of a checkpoint, by id
+    //  (check_postconditions(), Pokemon_StoryPostconditionCheck.h), run
+    //  before a save in AFTER_VERIFICATION mode: one that failed stops the
+    //  save and fails the run. The game logs its lines.
+    MoveOnlyFunction<Outcome(const std::string& checkpoint, RunState& state)> check_postconditions;
 };
 
-//  Runs the checkpoints in `range`, in order. Logs through `hooks.log`,
+//  Runs the checkpoints in `range`, in order, saving as `policy.save_mode`
+//  allows (story_save_allowed()). Logs through `hooks.log`,
 //  around the checkpoint lines:
 //      [Segment] 00: start, 3 checkpoints
 //      [Segment] 00: 00.02 failed, reloading for attempt 2/3
@@ -83,6 +89,9 @@ struct VerifyPolicy{
     size_t runs = 3;
     //  Passing runs the checkpoint needs to be verified.
     size_t passes_needed = 2;
+    //  AFTER_VERIFICATION saves once, at the end of the last run, when
+    //  every run passed; any other mode never saves.
+    StorySaveMode save_mode = StorySaveMode::NONE;
 };
 
 // Verification results for multiple runs of a checkpoint.
@@ -92,13 +101,17 @@ struct VerifyReport{
     size_t passes = 0;
     //  At least VerifyPolicy::passes_needed runs passed.
     bool verified = false;
+    //  AFTER_VERIFICATION: every run passed and the last saved at its end.
+    bool saved = false;
     //  What stopped the runs early: an unknown checkpoint, a bad policy or
     //  a failed reload. Runs that fail are counted, not stopped at.
     Outcome failure;
 };
 
 //  Runs checkpoint `id` of `segment` as `policy` says, from the save the
-//  game is on. No retries, no in-place recoveries and no save at its end.
+//  game is on. No retries, no in-place recoveries and no save at its end,
+//  but for `policy.save_mode` AFTER_VERIFICATION's one save at the end of
+//  the last run, when every run passed (after the postcondition check).
 //  Logs through `hooks.log`, after each run's checkpoint lines:
 //      [Verify] 00.15b: start, 3 runs from one save, 2 must pass
 //      [Verify] 00.15b: run 1/3 passed
