@@ -38,20 +38,20 @@
       {
         "args": {
           "fight_wild": false,
-          "target": {
-            "facing": "east",
-            "map": "PlayerHouse2F",
-            "tiles": [
-              [
-                8,
-                4
-              ]
-            ]
-          }
+          "legs": [
+            {
+              "direction": "north",
+              "tiles": 1
+            },
+            {
+              "direction": "east",
+              "tiles": 1
+            }
+          ]
         },
         "id": "onto_the_flute_tile",
-        "kind": "route",
-        "why": "onto the top of the stairs' mat (8, 4), past the flute's tile"
+        "kind": "legs",
+        "why": "up onto (7, 4), then east onto the top of the stairs' mat (8, 4)"
       },
       {
         "args": {
@@ -114,29 +114,6 @@
         "args": {
           "direction": "south"
         },
-        "id": "mom_warning",
-        "kind": "step",
-        "why": "the door's tile (6, 10): Mom's warning (coord event, VAR_PLAYER_HOUSE_STATE 1)"
-      },
-      {
-        "declared_after": {
-          "facing": "south",
-          "map": "PlayerHouse1F",
-          "tiles": [
-            [
-              6,
-              10
-            ]
-          ]
-        },
-        "id": "mom_warns_us",
-        "kind": "scene",
-        "why": "\"don't go into the tall grass\""
-      },
-      {
-        "args": {
-          "direction": "south"
-        },
         "declared_after": {
           "facing": "south",
           "map": "TwinleafTown",
@@ -149,7 +126,7 @@
         },
         "id": "out_of_the_house",
         "kind": "step",
-        "why": "out of the door"
+        "why": "onto the door's tile (6, 10), and out"
       },
       {
         "args": {
@@ -211,24 +188,6 @@
       },
       {
         "args": {
-          "fight_wild": false,
-          "target": {
-            "facing": "north",
-            "map": "TwinleafTown",
-            "tiles": [
-              [
-                9,
-                12
-              ]
-            ]
-          }
-        },
-        "id": "back_onto_barrys_doorstep",
-        "kind": "route",
-        "why": "back to his doorstep (9, 12); its trigger is spent"
-      },
-      {
-        "args": {
           "direction": "north"
         },
         "declared_after": {
@@ -243,7 +202,7 @@
         },
         "id": "into_barrys_house",
         "kind": "step",
-        "why": "his door"
+        "why": "past (9, 12) into his door"
       },
       {
         "args": {
@@ -313,20 +272,91 @@
       {
         "args": {
           "fight_wild": false,
-          "target": {
-            "facing": "west",
-            "map": "RivalHouse2F",
-            "tiles": [
-              [
-                3,
-                4
-              ]
-            ]
-          }
+          "legs": [
+            {
+              "direction": "east",
+              "tiles": 1
+            }
+          ]
         },
-        "id": "above_barrys_stairs",
-        "kind": "route",
-        "why": "back to the top of the stairs' mat"
+        "declared_after": {
+          "facing": "north",
+          "map": "RivalHouse2F",
+          "tiles": [
+            [
+              3,
+              4
+            ],
+            [
+              4,
+              4
+            ],
+            [
+              5,
+              4
+            ],
+            [
+              3,
+              5
+            ],
+            [
+              4,
+              5
+            ],
+            [
+              5,
+              5
+            ],
+            [
+              3,
+              6
+            ],
+            [
+              4,
+              6
+            ],
+            [
+              5,
+              6
+            ]
+          ]
+        },
+        "id": "off_barrys_west_wall",
+        "kind": "legs",
+        "why": "a tap east, clear of the west wall"
+      },
+      {
+        "action": "to_wall",
+        "args": {
+          "fight_wild": false,
+          "legs": [
+            {
+              "direction": "north",
+              "tiles": 3
+            }
+          ]
+        },
+        "declared_after": {
+          "facing": "north",
+          "map": "RivalHouse2F",
+          "tiles": [
+            [
+              3,
+              4
+            ],
+            [
+              4,
+              4
+            ],
+            [
+              5,
+              4
+            ]
+          ]
+        },
+        "id": "up_to_barrys_back_wall",
+        "kind": "legs",
+        "why": "north to the room's back wall"
       },
       {
         "args": {
@@ -343,7 +373,7 @@
         },
         "id": "down_barrys_stairs",
         "kind": "step",
-        "why": "onto the stairs"
+        "why": "west along row 4 onto the stairs"
       },
       {
         "args": {
@@ -384,20 +414,30 @@
       {
         "args": {
           "fight_wild": false,
-          "target": {
-            "facing": "north",
-            "map": "Route201",
-            "tiles": [
-              [
-                15,
-                19
-              ]
+          "legs": [
+            {
+              "direction": "east",
+              "tiles": 6
+            },
+            {
+              "direction": "north",
+              "tiles": 18
+            }
+          ]
+        },
+        "declared_after": {
+          "facing": "north",
+          "map": "Route201",
+          "tiles": [
+            [
+              15,
+              19
             ]
-          }
+          ]
         },
         "id": "below_barrys_warning",
-        "kind": "route",
-        "why": "below the trigger, up Twinleaf's exit to Route 201 (15, 19)"
+        "kind": "legs",
+        "why": "along row 12, then up Twinleaf's exit to Route 201 (15, 19)"
       },
       {
         "args": {
@@ -424,20 +464,20 @@
       {
         "args": {
           "fight_wild": false,
-          "target": {
-            "facing": "west",
-            "map": "Route201",
-            "tiles": [
-              [
-                12,
-                17
-              ]
-            ]
-          }
+          "legs": [
+            {
+              "direction": "west",
+              "tiles": 1
+            },
+            {
+              "direction": "north",
+              "tiles": 2
+            }
+          ]
         },
         "id": "away_from_barry",
-        "kind": "route",
-        "why": "to (12, 17): row 18 west of the path is trees, the dirt goes on along row 17"
+        "kind": "legs",
+        "why": "to (14, 16): row 18 west of the path is trees (r16) and (13, 17) is the 201 sign (probe-r201-sign), so clear both onto row 16"
       },
       {
         "args": {

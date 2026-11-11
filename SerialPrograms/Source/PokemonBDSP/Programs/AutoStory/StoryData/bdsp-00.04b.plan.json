@@ -118,23 +118,55 @@
         "why": "south down the road to above the Mart"
       },
       {
-        "action": "town",
+        "action": "to_wall",
         "args": {
           "fight_wild": false,
-          "target": {
-            "facing": "north",
-            "map": "SandgemTown",
-            "tiles": [
-              [
-                17,
-                11
-              ]
+          "legs": [
+            {
+              "direction": "west",
+              "tiles": 12
+            },
+            {
+              "direction": "south",
+              "tiles": 6
+            }
+          ]
+        },
+        "declared_after": {
+          "facing": "south",
+          "map": "SandgemTown",
+          "tiles": [
+            [
+              20,
+              9
             ]
-          }
+          ]
+        },
+        "id": "above_center_sign",
+        "kind": "legs",
+        "why": "west to the road's west wall, then south onto the Center's sign"
+      },
+      {
+        "args": {
+          "fight_wild": false,
+          "legs": [
+            {
+              "direction": "east",
+              "tiles": 1
+            },
+            {
+              "direction": "south",
+              "tiles": 2
+            },
+            {
+              "direction": "west",
+              "tiles": 4
+            }
+          ]
         },
         "id": "below_center_door",
-        "kind": "route",
-        "why": "below the Center's door"
+        "kind": "legs",
+        "why": "taps round the sign to below the Center's door"
       },
       {
         "declared_after": {

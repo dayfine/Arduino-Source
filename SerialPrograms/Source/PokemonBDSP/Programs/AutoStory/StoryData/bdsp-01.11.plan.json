@@ -2,22 +2,51 @@
   "checkpoint": {
     "events": [
       {
+        "action": "to_wall",
         "args": {
           "fight_wild": false,
-          "target": {
-            "facing": "west",
-            "map": "FloaromaTown",
-            "tiles": [
-              [
-                3,
-                29
-              ]
-            ]
-          }
+          "legs": [
+            {
+              "direction": "west",
+              "tiles": 13
+            }
+          ]
         },
-        "id": "west_along_the_field",
-        "kind": "route",
-        "why": "west along row 29"
+        "declared_after": {
+          "facing": "west",
+          "map": "FloaromaTown",
+          "tiles": [
+            [
+              0,
+              27
+            ],
+            [
+              0,
+              28
+            ],
+            [
+              0,
+              29
+            ]
+          ]
+        },
+        "id": "west_to_the_field_edge",
+        "kind": "legs",
+        "why": "until the field's edge stops us"
+      },
+      {
+        "args": {
+          "fight_wild": false,
+          "legs": [
+            {
+              "direction": "east",
+              "tiles": 4
+            }
+          ]
+        },
+        "id": "below_her_column",
+        "kind": "legs",
+        "why": "4 taps east to her column (westedge batch 2026-11-08)"
       },
       {
         "action": "to_wall",
@@ -67,16 +96,12 @@
       {
         "args": {
           "fight_wild": false,
-          "target": {
-            "facing": "west",
-            "map": "FloaromaTown",
-            "tiles": [
-              [
-                3,
-                26
-              ]
-            ]
-          }
+          "legs": [
+            {
+              "direction": "west",
+              "tiles": 1
+            }
+          ]
         },
         "declared_after": {
           "facing": "north",
@@ -89,7 +114,7 @@
           ]
         },
         "id": "below_the_old_man",
-        "kind": "route",
+        "kind": "legs",
         "why": "a tile west"
       },
       {
@@ -123,6 +148,14 @@
       "facing": "north",
       "map": "FloaromaTown",
       "tiles": [
+        [
+          11,
+          27
+        ],
+        [
+          11,
+          28
+        ],
         [
           11,
           29
