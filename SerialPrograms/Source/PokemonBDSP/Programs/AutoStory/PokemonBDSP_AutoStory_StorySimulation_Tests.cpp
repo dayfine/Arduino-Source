@@ -192,11 +192,22 @@ Walked walk_legs(const Pose& from, const StoryStep& step){
         }
         at = std::move(next);
     }
+    //  Legs may cross onto a neighbouring map of the same world (Route 201's
+    //  east end into Sandgem): the pose lands on the map the tiles are on.
+    std::string map;
     std::vector<TilePos> local;
     for (const TilePos& pos : at){
-        local.push_back(*story_to_local(*world, from.map, pos));
+        const std::optional<MapTile> tile = story_to_local(*world, pos);
+        if (!tile){
+            return {std::nullopt, step.name + ": the legs end off every map, at " + Pokemon::to_string(pos) + ".", ""};
+        }
+        if (!map.empty() && tile->map != map){
+            return {std::nullopt, step.name + ": the legs end across " + map + " and " + tile->map + ".", ""};
+        }
+        map = tile->map;
+        local.push_back(tile->pos);
     }
-    return {Pokemon::tile_pose(from.map, local, legs.back().direction), "", ""};
+    return {Pokemon::tile_pose(map, local, legs.back().direction), "", ""};
 }
 
 //  A STEP onto the next tile of the same map.
@@ -475,6 +486,22 @@ UnitTestResult test_poses_chain(Logger&){
     return true;
 }
 
+//  Legs that run off the end of their map land on the next one of the same
+//  world: east along Route 201's top row ends in Sandgem, not off the map.
+UnitTestResult test_legs_cross_maps(Logger&){
+    const Pose from = Pokemon::tile_pose("Route201", {{42, 5}}, Direction::EAST);
+    StoryStep step{.kind = StoryStepKind::LEGS, .name = "east into Sandgem"};
+    step.args["legs"] = std::vector<StoryLeg>{{Direction::EAST, 22}};
+    const Walked walked = walk_legs(from, step);
+    if (!walked.error.empty()){
+        return walked.error;
+    }
+    if (!walked.at || walked.at->map != "SandgemTown"){
+        return "The legs end on " + (walked.at ? walked.at->map : std::string("no pose")) + ", not SandgemTown.";
+    }
+    return true;
+}
+
 //  With no reader for the game's language, the reads that used text give
 //  way: a banner or save card that showed matches any map.
 UnitTestResult test_no_text_reader(Logger&){
@@ -546,6 +573,10 @@ const AutoStoryStorySimulationCase AUTO_STORY_STORY_SIMULATION_CASES[] = {
     },
     {
         .input = {"each start pose is where the row before ends; routes plan on the maps", test_poses_chain},
+        .expectation = {},
+    },
+    {
+        .input = {"legs that run off their map land on the next", test_legs_cross_maps},
         .expectation = {},
     },
     {
