@@ -49,3 +49,19 @@ The console may sit at the HOME menu between CFR batches (after a failed run, a 
 when the app reconnects the controller). Then the next stick or D-pad moves the HOME cursor and
 can launch another game. Start each batch with `shot` (or `detect home`); if it shows HOME with the
 game still suspended, `press A` first to return to the game.
+
+## Claude triage and watchdog
+
+`triage_failure.py` and `watchdog_shot.py` call Claude through the official `anthropic` SDK
+(`pip install anthropic`; Pillow optional, else `sips` downscales frames to 640 px). Credentials:
+`ant auth login` or `ANTHROPIC_API_KEY`. Shared setup is in `lab_claude.py`. `--dry-run` prints the
+request (images shortened) without network or SDK.
+
+- `python3 lab/scripts/triage_failure.py --frame fail.png --checkpoint 00.04 --step step.json --notes ~/BDSPLab/notes/<date>-checklist.md [--map-slice slice.txt]`
+  sends the frames, the last 200 lines of the lab-B log, the step and map slice to `claude-opus-5-5`
+  (adaptive thinking, effort high, server-side fallback) and appends a fault-class verdict with cited
+  evidence to the notes file.
+- `python3 lab/scripts/watchdog_shot.py shot.png` classifies one frame with `claude-haiku-5-5`
+  (effort low), prints the JSON verdict and exits 2 on a dead feed, color bars or HOME, 1 on error.
+
+Tests (mocked client): `python3 -m unittest discover -s lab/scripts -p test_lab_claude.py -v`.
