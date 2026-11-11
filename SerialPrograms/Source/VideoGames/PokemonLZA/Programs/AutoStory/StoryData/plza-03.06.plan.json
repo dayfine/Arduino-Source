@@ -22,9 +22,9 @@
       },
       {
         "id": "after_catches",
-        "kind": "scene",
+        "kind": "game_action",
         "why": "step 61: Taunie: tall grass, more Poke Balls, moves smash boulders",
-        "action": "a"
+        "action": "mash_to_move_hints"
       }
     ],
     "metadata": {

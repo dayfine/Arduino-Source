@@ -21,6 +21,7 @@
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_GameEntry.h"
 #include "VideoGames/PokemonLZA/Resources/PokemonLZA_Locations.h"
 #include "PokemonLZA_AutoStoryActions.h"
+#include "PokemonLZA_AutoStoryCatches.h"
 #include "PokemonLZA_AutoStoryDialogs.h"
 #include "PokemonLZA_AutoStoryGuardedWalks.h"
 #include "PokemonLZA_AutoStoryMoves.h"
@@ -47,8 +48,6 @@ using Handler = Pokemon::StoryActionHandler<ZonePose>;
 
 const std::map<std::string, std::string, std::less<>>& story_actions_not_implemented(){
     static const std::map<std::string, std::string, std::less<>> todos{
-        {"catch_tutorial", "a throw: ZL+ZR held 1500 ms, then release (500 ms only aims); retry while the catch HUD comes back (it broke out) until \"You caught\"; turn to find the target; balls as a budget."},
-        {"battle_then_catch", "fight at once (the target attacks first) until the \"catch window\" line, A twice (a throw is ignored while a dialog shows), then the 1500 ms ZL+ZR throw."},
         {"register_five_species", "find a wild Pokemon of a new species, approach, ZL lock and throw, read caught / broke out, count from the quest panel to 5/5; then back to the lab gate (route not recorded)."},
         {"mash_to_instruction", "a mash that stops at an instruction line (\"Press X to open the main menu...\"): A once to close it, then X; X is ignored while the line shows."},
         {"claim_mable_research_reward", "the main menu: DOWN x3 to \"Mable's Research\", A, the Rewards page (TM004 Rock Smash)."},
@@ -186,6 +185,7 @@ const std::vector<std::string>& console_game_actions(){
         "new_game_language", "pick_look", "type_player_name",
         "story_battle_start",
         "talk_through_map_screen", "talk_to_pokedex_screen", "climb_ladder",
+        "catch_tutorial", "battle_then_catch",
         "choose_0", "choose_1",
     };
     return actions;
@@ -472,6 +472,28 @@ Handler platform_handler(PlatformWait wait){
 }
 
 //  mash_scene() to `goal`, pressing `button` through the text.
+//  The console actions with no args that call one function.
+void run_console_action(StoryEnv& env, std::string_view name){
+    ConsoleHandle& console = env.env.console;
+    if (name == "story_battle"){
+        fight_battle_in_progress(env.env, console, env.context, env.battle_ai, 120s);
+    }else if (name == "catch_tutorial"){
+        catch_tutorial(console, env.context, 6);
+    }else if (name == "battle_then_catch"){
+        battle_then_catch(env.env, console, env.context, env.battle_ai, 6);
+    }else if (name == "new_game_language"){
+        new_game_language(console, env.context);
+    }else if (name == "pick_look"){
+        pick_first_look(console, env.context);
+    }else if (name == "type_player_name"){
+        type_player_name(console, env.context, env.player_name);
+    }else if (name == "talk_through_map_screen"){
+        talk_through_map_screen(console, env.context);
+    }else{
+        climb_ladder(console, env.context);
+    }
+}
+
 ConsoleBody mash(SceneMashGoal goal, Button button, Milliseconds timeout){
     return [=](StoryEnv& env, const StoryActionArgs&){
         mash_scene(env.env.console, env.context, goal, button, timeout);
@@ -510,23 +532,8 @@ Handler game_handler(const PlzaActions& make, const std::string& name){
         //  motions).
         return make.console(name, mash(SceneMashGoal::OVERWORLD, BUTTON_B, 90s));
     }
-    if (name == "story_battle"){
-        return make.console(name, [](StoryEnv& env, const StoryActionArgs&){
-            fight_battle_in_progress(env.env, env.env.console, env.context, env.battle_ai, 120s);
-        });
-    }
     return make.console(name, [name](StoryEnv& env, const StoryActionArgs&){
-        if (name == "new_game_language"){
-            new_game_language(env.env.console, env.context);
-        }else if (name == "pick_look"){
-            pick_first_look(env.env.console, env.context);
-        }else if (name == "type_player_name"){
-            type_player_name(env.env.console, env.context, env.player_name);
-        }else if (name == "talk_through_map_screen"){
-            talk_through_map_screen(env.env.console, env.context);
-        }else{
-            climb_ladder(env.env.console, env.context);
-        }
+        run_console_action(env, name);
     });
 }
 
