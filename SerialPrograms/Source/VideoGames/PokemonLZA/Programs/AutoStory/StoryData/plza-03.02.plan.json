@@ -39,27 +39,15 @@
         "why": "step 42: A at Taunie"
       },
       {
-        "id": "taunie_battle_start",
-        "kind": "game_action",
-        "why": "step 42: A through her talk to \"Taunie sent out Totodile!\"",
-        "action": "story_battle_start"
-      },
-      {
         "id": "battle_totodile",
         "kind": "game_action",
-        "why": "step 43: beat Totodile, until \"We're not done just yet!\"",
+        "why": "steps 42-43: A through her talk and challenge (no A hint, a subtitle with no text box), then beat Totodile, until \"We're not done just yet!\"",
         "action": "story_battle"
-      },
-      {
-        "id": "taunie_sends_tepig",
-        "kind": "game_action",
-        "why": "step 44: the Type Matchups tutorial (3 pages), Tepig sent out",
-        "action": "story_battle_start"
       },
       {
         "id": "battle_tepig",
         "kind": "game_action",
-        "why": "step 44: beat Tepig, until Taunie's speech",
+        "why": "step 44: A through the Type Matchups tutorial (3 pages) and Tepig's send-out, then beat Tepig, until Taunie's speech",
         "action": "story_battle"
       },
       {
