@@ -103,6 +103,16 @@ AutoStory::AutoStory()
         LockMode::LOCK_WHILE_RUNNING,
         true
     )
+    , PLAYER_GENDER(
+        "<b>Player:</b><br>Who a new game plays as, picked at \"Are you a boy or a girl?\". "
+        "A save of either player runs whatever this says.",
+        {
+            {PlayerGender::BOY, "boy", "Boy"},
+            {PlayerGender::GIRL, "girl", "Girl"},
+        },
+        LockMode::LOCK_WHILE_RUNNING,
+        PlayerGender::BOY
+    )
     , PLAYER_NAME(
         false,
         "<b>Player name:</b><br>Typed on the new game's keyboard (01.01). Empty keeps the game's default name. "
@@ -136,6 +146,7 @@ AutoStory::AutoStory()
 {
     PA_ADD_OPTION(RUN);
     PA_ADD_OPTION(NEW_GAME_FROM_TITLE);
+    PA_ADD_OPTION(PLAYER_GENDER);
     PA_ADD_OPTION(KEEP_START_FRAME);
     PA_ADD_OPTION(PLAYER_NAME);
     PA_ADD_OPTION(STOP_FOR_SID_HELPER);
@@ -356,9 +367,9 @@ static void stop_for_handoff(
 
 static void stop_for_sid_helper(
     SingleSwitchProgramEnvironment& env, ProControllerContext& context,
-    EventNotificationOption& notification, const std::string& player_name
+    EventNotificationOption& notification, const std::string& player_name, PlayerGender gender
 ){
-    play_new_game_to_player_name(env.console, context, player_name);
+    play_new_game_to_player_name(env.console, context, player_name, gender);
     stop_for_handoff(env, notification,
         "Stopped for SID Helper: the player's name is typed and OK is not pressed. Run SID Helper now, "
         "enter its Target Advances and # Candidate SIDs in the RNG plan, then start AutoStory at 01.02."
@@ -476,13 +487,13 @@ static void run_story_rows(
 //  starts.
 static void set_sid_in_program(
     SingleSwitchProgramEnvironment& env, ProControllerContext& context,
-    const std::string& player_name, const StarterRngPlanOptions& options, Language language
+    const std::string& player_name, PlayerGender gender, const StarterRngPlanOptions& options, Language language
 ){
     const uint32_t target_advances = options.SID_HELPER_ADVANCES;
     if (target_advances % 2 == 0){
         throw UserSetupError(env.console, "RNG plan: SID Helper's Target Advances must be odd.");
     }
-    play_new_game_to_player_name(env.console, context, player_name);
+    play_new_game_to_player_name(env.console, context, player_name, gender);
     const SidTiming timing = sid_timing(language, target_advances);
     env.log("SID Helper's steps: delay " + std::to_string(timing.delay_ms) + "ms");
     set_sid_from_name_screen(context, timing);
@@ -661,7 +672,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     const std::string sid_before = RNG_PLAN.SID;
     StoryRunPlan plan = plan_story_run(checkpoints, first, last, handoffs);
     if (plan.stop == StoryHandoff::SID_HELPER && !RUN_STARTER_RNG){
-        stop_for_sid_helper(env, context, NOTIFICATION_PROGRAM_FINISH, player_name);
+        stop_for_sid_helper(env, context, NOTIFICATION_PROGRAM_FINISH, player_name, PLAYER_GENDER);
         return;
     }
     if (plan.stop != StoryHandoff::NONE){
@@ -669,11 +680,12 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         RNG_PLAN.check(env.console);
     }
     if (plan.stop == StoryHandoff::SID_HELPER){
-        set_sid_in_program(env, context, player_name, RNG_PLAN, RUN.language());
+        set_sid_in_program(env, context, player_name, PLAYER_GENDER, RNG_PLAN, RUN.language());
         first = checkpoint_index(checkpoints, "01.02");
         plan = plan_story_run(checkpoints, first, last, handoffs);
     }
     StoryEnv story = story_env(env, context, checkpoints[first], RUN.check_level(), KEEP_START_FRAME);
+    story.player_gender = PLAYER_GENDER;
     story.player_name = player_name;
     const bool at_gift_rng = plan.stop == StoryHandoff::GIFT_RNG && plan.rows.empty();
     prepare_start(env, context, checkpoints, first, story, at_gift_rng);

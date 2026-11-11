@@ -1041,6 +1041,32 @@ UnitTestResult test_magikarp_deposit_skippable(){
     return "No checkpoint 04.04.";
 }
 
+//  The BOY/GIRL menu, the boy then the girl: the boy is left to the A that
+//  advances the intro, as before; the girl moves down from BOY and is
+//  picked on GIRL.
+UnitTestResult test_intro_gender(){
+    struct Case{
+        std::string_view what;
+        std::optional<int> cursor_row;
+        PlayerGender wanted;
+        GenderMenuStep expected;
+    };
+    const std::vector<Case> cases{
+        {.what = "boy, no menu", .cursor_row = std::nullopt, .wanted = PlayerGender::BOY, .expected = GenderMenuStep::NONE},
+        {.what = "boy, cursor on BOY", .cursor_row = 0, .wanted = PlayerGender::BOY, .expected = GenderMenuStep::NONE},
+        {.what = "girl, no menu", .cursor_row = std::nullopt, .wanted = PlayerGender::GIRL, .expected = GenderMenuStep::NONE},
+        {.what = "girl, cursor on BOY", .cursor_row = 0, .wanted = PlayerGender::GIRL, .expected = GenderMenuStep::DOWN},
+        {.what = "girl, cursor on GIRL", .cursor_row = 1, .wanted = PlayerGender::GIRL, .expected = GenderMenuStep::CONFIRM},
+    };
+    for (const Case& c : cases){
+        const GenderMenuStep step = gender_menu_step(c.cursor_row, c.wanted);
+        if (step != c.expected){
+            return std::format("{}: expected step {}, got {}.", c.what, static_cast<int>(c.expected), static_cast<int>(step));
+        }
+    }
+    return true;
+}
+
 //  set_options()'s RIGHT presses from each value an old save can leave:
 //  on console B a save with FAST and SET became SLOW and SHIFT when the
 //  presses assumed MID and SHIFT.
@@ -1129,6 +1155,10 @@ const AutoStoryTestCase AUTO_STORY_CASES[] = {
     {
         .input = {.name = "intro: names, the rival's from the list", .body = test_intro_names},
         .expectation = {.description = "verifies character and rival naming inputs"},
+    },
+    {
+        .input = {.name = "intro: the boy, then the girl, on the BOY/GIRL menu", .body = test_intro_gender},
+        .expectation = {.description = "leaves the boy to A; moves to GIRL and picks it"},
     },
     {
         .input = {.name = "options: RIGHT presses from the shown value", .body = test_option_presses},
