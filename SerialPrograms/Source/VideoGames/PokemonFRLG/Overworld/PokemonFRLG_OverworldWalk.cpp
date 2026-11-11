@@ -583,13 +583,32 @@ std::optional<Direction> read_facing(ConsoleHandle& console, ProControllerContex
     return facing;
 }
 
+//  Reads of the facing after a turn tap before one that can't be read is
+//  taken as turned, TURN_FACING_REREAD apart: a tap again while facing
+//  that way already would take a step.
+constexpr size_t TURN_FACING_READS = 3;
+constexpr Milliseconds TURN_FACING_REREAD(100);
+
 void turn_to(ConsoleHandle& console, ProControllerContext& context, Direction direction){
     for (size_t tap = 1; tap <= MAX_TURN_TAPS; tap++){
         pbf_press_dpad(context, dpad(direction), TURN_TAP, TURN_SETTLE);
-        context.wait_for_all_requests();
-        VideoSnapshot screen = console.video().snapshot();
-        const std::optional<Direction> facing = screen ? read_player_facing(screen) : std::nullopt;
-        if (!facing || *facing == direction){
+        std::optional<Direction> facing;
+        for (size_t read = 1; read <= TURN_FACING_READS && !facing; read++){
+            if (read > 1){
+                pbf_wait(context, TURN_FACING_REREAD);
+            }
+            context.wait_for_all_requests();
+            VideoSnapshot screen = console.video().snapshot();
+            facing = screen ? read_player_facing(screen) : std::nullopt;
+        }
+        if (!facing){
+            console.log(std::format(
+                "Route: after turn tap {} {}, the facing can't be read: taken as turned.",
+                tap, Pokemon::direction_name(direction)
+            ), COLOR_ORANGE);
+            return;
+        }
+        if (*facing == direction){
             return;
         }
         console.log(std::format(

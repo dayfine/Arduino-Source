@@ -623,6 +623,15 @@ void OverworldSim::hold_on(Direction direction, Milliseconds end){
     press.end = end;
 }
 
+bool OverworldSim::hides_moved_step_tap(){
+    m_state.moved_step_taps++;
+    if (!m_script.unseen_step_taps.contains(m_state.moved_step_taps)){
+        return false;
+    }
+    note(std::format("step tap {} moves the player, read as not moved.", m_state.moved_step_taps));
+    return true;
+}
+
 bool OverworldSim::drops_turn_tap(){
     m_turn_taps++;
     return m_script.dropped_turn_taps.contains(m_turn_taps);

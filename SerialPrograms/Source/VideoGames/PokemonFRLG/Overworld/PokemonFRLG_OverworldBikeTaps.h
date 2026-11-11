@@ -39,13 +39,20 @@ struct BikeTapCalls{
     std::function<BikeTap(int tap)> tap;
     std::function<void(size_t interrupt)> clear;
     std::function<void(const std::string& message)> log;
+    //  The way the player faces, read from the screen before each tap;
+    //  nothing if it can't be read. A tap that showed no step is tapped
+    //  again only if this read another way before it. Unset on the Bicycle.
+    std::function<std::optional<Direction>()> facing;
     //  Taps per tile before one that doesn't move counts as blocked: on
     //  foot a tap facing another way only turns the player
     //  (STEP_TAP_TRIES).
     int tries = 1;
 };
 //  Taps per tile on foot: the first tap of a leg may only turn, and the
-//  game may miss a turn tap (MovementMechanics::MAX_TURN_TAPS).
+//  game may miss a turn tap (MovementMechanics::MAX_TURN_TAPS). Only a
+//  tap read facing another way before it is tapped again: the screen
+//  check misses real steps on Rocket Hideout B2F's floor, and a tap again
+//  there took a second tile (console B, 2026-11-11 15:03 and 15:36, 09.02).
 constexpr int STEP_TAP_TRIES = 3;
 //  How far a sure start may be off before a blocked tap finds the player:
 //  three runs of 08.03 stood 3 tiles off (console B, 2026-11-09).

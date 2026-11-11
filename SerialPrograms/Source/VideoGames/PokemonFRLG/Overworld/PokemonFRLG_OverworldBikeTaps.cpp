@@ -14,12 +14,33 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
+namespace{
+
+//  The facing before a tap, if `calls` reads it.
+std::optional<Direction> facing_before(const BikeTapCalls& calls){
+    if (!calls.facing){
+        return std::nullopt;
+    }
+    return calls.facing();
+}
+
+}
+
 StepOutcome count_bike_taps(const RouteStep& step, const BikeTapCalls& calls){
     int moved = 0;
     for (int tap = 1; tap <= step.tiles; tap++){
+        std::optional<Direction> before = facing_before(calls);
         BikeTap result = calls.tap(tap);
         for (int retry = 1; retry < calls.tries && !result.moved && !result.interrupt && !result.cleared_late; retry++){
-            calls.log(std::format("Taps: tap {} of {} didn't move: tapping again, it may only have turned the player.", tap, step.tiles));
+            if (!before || *before == step.direction){
+                calls.log(std::format(
+                    "Taps: tap {} of {} showed no step, facing {} before it: not tapping again, it may have stepped unseen.",
+                    tap, step.tiles, before ? Pokemon::direction_name(*before) : "an unknown way"
+                ));
+                break;
+            }
+            calls.log(std::format("Taps: tap {} of {} didn't move: tapping again, it only turned the player.", tap, step.tiles));
+            before = facing_before(calls);
             result = calls.tap(tap);
         }
         if (result.interrupt || result.cleared_late){

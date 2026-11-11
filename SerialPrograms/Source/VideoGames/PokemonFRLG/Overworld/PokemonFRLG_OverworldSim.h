@@ -66,6 +66,10 @@ public:
 
     const SimState& state() const{ return m_state; }
 
+    //  Counts a walker step tap that moved the player; whether the
+    //  walker's screen check misses it (SimScript::unseen_step_taps).
+    bool hides_moved_step_tap();
+
     //  Holds `direction` for `duration` then lets go for `release`, while
     //  `watchers` watch until `watch` (at least the hold and release) from
     //  the start. Returns the first that saw its screen, as run_until().

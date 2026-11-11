@@ -55,6 +55,12 @@ struct SimScript{
     //  (SimWalkerRules::confirm_turn) after 08.01 run 2 (console B,
     //  2026-11-09), where a one-tile leg only turned the player.
     std::set<int> dropped_turn_taps;
+    //  Fault injection: walker step taps that moved the player, by number
+    //  from 1 among those that moved, which the walker's screen check reads
+    //  as not moved. On Rocket Hideout B2F's floor a real step read so, and
+    //  the tap again took a second tile (console B, 2026-11-11 15:03 and
+    //  15:36, 09.02).
+    std::set<int> unseen_step_taps;
     //  Fault injection: steps onto a warp, by number from 1, that show the
     //  fade's black and clear with the player where they were, not warped
     //  (console B, 2026-11-10 01:44, 09.01 run 4, "east 1 (warp)" on B4F).
@@ -122,6 +128,8 @@ struct SimState{
     //  Step taps the game ignored, inside the lockout after the last one
     //  (MovementMechanics::STEP_TAP_LOCKOUT).
     int step_taps_ignored = 0;
+    //  Walker step taps that moved the player (SimScript::unseen_step_taps).
+    int moved_step_taps = 0;
     std::vector<std::string> trainers_beaten;
     //  Things the walker did that the game wouldn't let pass: D-pad holds
     //  under a battle, a trainer's battle fled, a battle fought that wasn't
