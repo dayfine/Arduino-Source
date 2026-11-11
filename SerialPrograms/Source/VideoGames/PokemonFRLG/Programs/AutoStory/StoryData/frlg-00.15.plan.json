@@ -54,15 +54,13 @@
         "action": "grind",
         "args": {
           "slot": 1,
-          "level": 28,
+          "level": 22,
           "encounters": 150,
           "pace": "west",
           "heal_every": 0,
-          "nurse": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
-          "beat": "TRAINER_RIVAL_CERULEAN_BULBASAUR",
-          "chance": 50
+          "nurse": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
         },
-        "why": "wild battles until the sim beats the rival 50% or more, Lv28 at most; the nurse when hurt or low on PP"
+        "why": "wild battles to Lv22, where console B's Wartortle beat the rival (m56); the nurse when hurt or low on PP"
       },
       {
         "id": "cerulean_nurse",

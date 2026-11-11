@@ -35,6 +35,7 @@
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
 #include "PokemonFRLG_AutoStoryScreenEvents.h"
+#include "PokemonFRLG_AutoStoryQuietOverworld.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -93,20 +94,6 @@ private:
     Pokemon::ScreenEventWatcher m_watcher;
     WallClock m_start;
 };
-
-//  Whether a look ended on FRLG's overworld at rest: nothing showing (no
-//  box, fade or battle; FrlgScreenObserver reports no PLAYER_CAN_MOVE, so
-//  Pokemon::is_settled() never holds) for at least `quiet`.
-bool quiet_overworld(const Pokemon::ScreenSettle& settle, Milliseconds quiet);
-
-//  Looks with `look`, fresh and then on from it, until it ends on
-//  quiet_overworld() for `quiet`, or has looked for `timeout`. Returns how
-//  the last look ended. After a battle, the next tap waits for this
-//  (MovementMechanics::AFTER_BATTLE_QUIET): one sent at its black's end
-//  is lost (BATTLE_EXIT_LOCKOUT).
-Pokemon::ScreenSettle wait_for_quiet_overworld(
-    const Pokemon::ScreenLookFunction& look, Milliseconds quiet, Milliseconds timeout
-);
 
 //  The console's guard: a failed step fails it, as before; each interrupt
 //  found between steps is logged, cleared or not, and how the screen looked

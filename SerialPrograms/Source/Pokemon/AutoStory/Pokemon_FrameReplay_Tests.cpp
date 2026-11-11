@@ -18,7 +18,7 @@
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "Pokemon/Navigation/Pokemon_LegWalker.h"
-#include "Pokemon_AutoStory_Tests.h"
+#include "Pokemon_FrameReplay_Tests.h"
 #include "Pokemon_FrameReplay.h"
 #include "Pokemon_Interrupts.h"
 #include "Pokemon_ScreenEvents.h"

@@ -110,7 +110,7 @@ std::string pc_transfer_error(const PcTransfer& transfer, const std::vector<PcPa
 }
 
 
-const char* pc_press_name(PcPress press){
+std::string_view pc_press_name(PcPress press){
     switch (press){
     case PcPress::A:        return "A";
     case PcPress::B:        return "B";
@@ -314,7 +314,7 @@ PcResult run_pc_transfer(Logger& logger, PcStorageActions& actions, const PcTran
             return {PcEnd::DONE, ""};
         }
         if (decision.press == PcPress::FAIL){
-            logger.log("PC: \"" + name + "\" failed on the " + pc_screen_name(view.screen) + ": " + decision.reason + ".", COLOR_RED);
+            logger.log(std::format("PC: \"{}\" failed on the {}: {}.", name, pc_screen_name(view.screen), decision.reason), COLOR_RED);
             return {PcEnd::FAILED, decision.reason};
         }
         logger.log(std::format(

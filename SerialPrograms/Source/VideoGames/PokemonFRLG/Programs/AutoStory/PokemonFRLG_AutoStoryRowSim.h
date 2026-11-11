@@ -22,51 +22,13 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryRowSimStubs.h"
 #include "PokemonFRLG_AutoStoryStepInterrupts.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
-
-
-//  The steps of one attempt at a row that a simulation did not play.
-struct RowStubs{
-    std::string row;
-    std::vector<std::string> steps;
-};
-
-//  The steps a simulation stubs, by row: the stand-in it binds to each
-//  action it cannot play.
-class SimStubs{
-public:
-    //  An attempt at `row` begins; its stubs are listed apart from the last.
-    void begin_row(std::string row);
-    //  Needs the console; adds the step to the row's stubs, then does
-    //  `then` (what the simulation keeps of the step: where pacing leaves
-    //  the player), or passes with the pose as it was.
-    Pokemon::StoryAction stub(Pokemon::StoryActionFunction then = {});
-    const std::vector<RowStubs>& rows() const{
-        return m_rows;
-    }
-
-private:
-    void record(const StoryStep& step);
-
-    std::vector<RowStubs> m_rows;
-};
-
-//  Each attempt's stubs, a line a row: "00.03: 2 stubbed: oak, rival".
-std::string stub_report(const std::vector<RowStubs>& rows);
-
-//  A failed step fails the run as it threw: a simulation has no save to
-//  reload.
-class SimStepGuard : public Pokemon::StepGuard{
-public:
-    virtual bool stops_on_failure(const Pokemon::StoryStep&) const override{
-        return true;
-    }
-};
 
 
 //  What happens on the story maps besides the story's steps.
@@ -183,6 +145,9 @@ private:
     std::string step_onto(const StoryStep& step);
     std::string cut(const StoryStep& step);
     std::string battle(const StoryStep& step);
+    Pokemon::StoryAction hideout_or_stub();
+    std::string hideout(const StoryStep& step);
+    std::string ended_on(const StoryStep& step);
 
     OverworldSim& m_sim;
     StoryPose m_at;

@@ -67,7 +67,7 @@ JsonObject supplies_json(const Supplies& supplies){
     result["antidotes"] = supplies.antidotes;
     result["parlyz_heals"] = supplies.parlyz_heals;
     result["pocket"] = strings(supplies.pocket);
-    result["status"] = status_name(supplies.status);
+    result["status"] = std::string(status_name(supplies.status));
     result["hurt"] = supplies.hurt;
     result["hp_red"] = supplies.hp_red;
     result["hp_fill"] = supplies.hp_fill;
@@ -79,8 +79,8 @@ JsonObject supplies_json(const Supplies& supplies){
     result["protected_slots"] = std::move(protected_slots);
     result["foes"] = strings(supplies.foes);
     result["trainer"] = supplies.trainer;
-    result["risk"] = battle_risk_name(supplies.risk);
-    result["foe_out"] = supplies.foe_out ? JsonValue(count(*supplies.foe_out)) : JsonValue();
+    result["risk"] = std::string(battle_risk_name(supplies.risk));
+    result["foe_out"] = supplies.foe_out.empty() ? JsonValue() : JsonValue(supplies.foe_out);
     result["wild_foes"] = strings(supplies.wild_foes);
     return result;
 }
@@ -95,7 +95,7 @@ JsonValue story_checkpoint_export(const StoryCheckpoint& checkpoint){
     result["status"] = std::string(StoryJsonInternal::STATUS);
     result["checkpoint"] = Pokemon::story_checkpoint_json(checkpoint);
     JsonObject native;
-    native["menu"] = StoryJsonInternal::menu_name(checkpoint.menu);
+    native["menu"] = std::string(StoryJsonInternal::menu_name(checkpoint.menu));
     native["supplies"] = supplies_json(checkpoint.supplies);
     result["native_fields"] = std::move(native);
     result["state_basis"] = std::string(StoryJsonInternal::STATE_BASIS);

@@ -31,7 +31,7 @@ struct OverworldReanchorInput{
 };
 
 struct OverworldReanchorExpectation{
-    const char* description;
+    std::string_view description;
 };
 
 struct OverworldReanchorTestCase{
@@ -145,7 +145,7 @@ UnitTestResult test_viridian_forest(){
 }
 
 //  A field with a wall at its east end and a row of ledges to the south.
-const char* const TEST_FIELD_JSON = R"({
+const std::string TEST_FIELD_JSON = R"({
     "name": "Field", "source": {"decomp_file": "", "revision": "test", "date": "2026-10-31"},
     "tiles": ["########", "#......#", "#......#", "#vvvvvv#", "#......#"],
     "elevation": ["33333333", "33333333", "33333333", "33333333", "33333333"]
@@ -219,7 +219,7 @@ UnitTestResult test_timing(){
 }
 
 //  A field with someone standing in the middle of its north row.
-const char* const TEST_PERSON_JSON = R"({
+const std::string TEST_PERSON_JSON = R"({
     "name": "Person", "source": {"decomp_file": "", "revision": "test", "date": "2026-11-02"},
     "tiles": ["#######", "#.....#", "#.....#", "#######"],
     "objects": [{"name": "youngster", "kind": "npc", "x": 3, "y": 1}]

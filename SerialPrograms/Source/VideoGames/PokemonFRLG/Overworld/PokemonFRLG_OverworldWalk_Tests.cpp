@@ -13,6 +13,7 @@
 #include "PokemonFRLG_OverworldMaps.h"
 #include "PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_OverworldWalk.h"
+#include "PokemonFRLG_BikeSpinMechanics.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -25,7 +26,7 @@ using namespace OverworldWalkSteps;
 namespace{
 
 struct OverworldWalkInput{
-    const char* name;
+    std::string_view name;
     MoveSpeed speed;
     int tiles;
     bool to_wall;
@@ -35,7 +36,7 @@ struct OverworldWalkInput{
 
 struct OverworldWalkExpectation{
     Milliseconds hold;
-    const char* note;
+    std::string_view note;
     bool runs = false;
 };
 
@@ -118,6 +119,16 @@ const OverworldWalkTestCase OVERWORLD_WALK_CASES[] = {
         .input = {.name = "walk, surfing", .speed = MoveSpeed::WALK, .tiles = 3, .to_wall = false, .surfing = true},
         .expectation = {.hold = Milliseconds(2 * 133 + 66), .note = ""},
     },
+    //  Console B, 2026-11-09: on the bike, 1450ms moved 15 tiles and 50ms
+    //  (a tap) one; 1736ms, held for "west 16 (open)", went past 16.
+    {
+        .input = {.name = "bike, open 16", .speed = MoveSpeed::BIKE, .tiles = 16, .to_wall = false, .surfing = false},
+        .expectation = {.hold = Milliseconds(1550), .note = ""},
+    },
+    {
+        .input = {.name = "bike, open 1", .speed = MoveSpeed::BIKE, .tiles = 1, .to_wall = false, .surfing = false},
+        .expectation = {.hold = Milliseconds(50), .note = ""},
+    },
 };
 
 
@@ -127,6 +138,8 @@ struct TurnTapInput{
     std::set<int> dropped_turn_taps;
     //  SimWalkerRules::confirm_turn.
     bool confirm_turn = true;
+    //  On the Bicycle (SimScript::on_bike, SimWalkerRules::speed).
+    bool on_bike = false;
 };
 
 struct TurnTapExpectation{
@@ -162,6 +175,11 @@ public:
         script.dropped_turn_taps = m_case.input.dropped_turn_taps;
         SimWalkerRules rules;
         rules.confirm_turn = m_case.input.confirm_turn;
+        if (m_case.input.on_bike){
+            script.on_bike = true;
+            script.timing.tile = BIKE_TILE_TIME;
+            rules.speed = MoveSpeed::BIKE;
+        }
         OverworldSim sim(MAPS, TURN_START, Direction::NORTH, script);
         OverworldSimWalker walker(sim, rules);
         const RoutePlanning planning{.maps = &MAPS, .costs = default_route_costs(), .start = TURN_START, .label = "Sim"};
@@ -184,6 +202,10 @@ const TurnTapCase TURN_TAP_CASES[] = {
     {.input = {.name = "dropped, tapped again", .dropped_turn_taps = {1}}, .expectation = {.end = TURN_END}},
     {.input = {.name = "dropped twice, tapped again", .dropped_turn_taps = {1, 2}}, .expectation = {.end = TURN_END}},
     {.input = {.name = "dropped, not checked: the leg only turns", .dropped_turn_taps = {1}, .confirm_turn = false}, .expectation = {.end = TURN_START}},
+    //  Console B, 2026-11-09 (00.30): on the Bicycle the turn tap took a
+    //  step, each one-tile leg went two, and the walk to Route 8 ended on
+    //  Route 12.
+    {.input = {.name = "on the bike, no turn tap", .on_bike = true}, .expectation = {.end = TURN_END}},
 };
 
 

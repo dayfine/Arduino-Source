@@ -9,9 +9,11 @@
 #include <set>
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
+#include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "Pokemon/Navigation/Pokemon_RouteLog.h"
+#include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldReanchor.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecoveryWalk.h"
@@ -23,13 +25,14 @@
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
 #include "PokemonFRLG_AutoStoryGameArgs.h"
+#include "PokemonFRLG_AutoStoryHideout.h"
+#include "PokemonFRLG_AutoStoryLegs.h"
 #include "PokemonFRLG_AutoStoryScreenEvents.h"
 #include "PokemonFRLG_AutoStorySummary.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 #include "PokemonFRLG_AutoStoryTeachScreens.h"
 #include "PokemonFRLG_AutoStoryTrashCans.h"
 #include "PokemonFRLG_AutoStoryViridianMart.h"
-#include "PokemonFRLG_AutoStoryWinChance.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -179,7 +182,12 @@ Outcome walk_legs(StoryEnv& env, RunState& state, const StoryStep& step){
     if (!facing){
         facing = face_a_wall(env, start);
     }
-    const std::optional<std::vector<RouteStep>> route = fixed_route(story_maps(), start, arg<std::vector<StoryLeg>>(step, "legs"));
+    std::optional<std::vector<RouteStep>> route = fixed_route(story_maps(), start, arg<std::vector<StoryLeg>>(step, "legs"));
+    if (route && step.action == TAPS_VARIANT){
+        for (RouteStep& leg : *route){
+            leg.tapped = true;
+        }
+    }
     if (!facing || !route || route->empty()){
         return Pokemon::outcome_failed("bad_legs", to_string(start));
     }
@@ -220,48 +228,24 @@ Outcome take_step(StoryEnv& env, RunState& state, const StoryStep& step){
     return Pokemon::outcome_ok(to_pose(StoryPose{state.pose.map, onto, direction}));
 }
 
-//  Before a BattleRisk::HIGH battle the story may lose: the sim's win
-//  chance, the HP as the last bar read left it. Why not to fight, if so.
-std::optional<std::string> refuse_battle(StoryEnv& env, const StoryStep& step, std::string_view trainer){
-    const Supplies& supplies = env.supplies;
-    if (arg<bool>(step, "may_lose") || supplies.risk != BattleRisk::HIGH){
-        return std::nullopt;
-    }
-    const SimItems items{.potions = supplies.potions, .awakenings = supplies.awakenings, .antidotes = supplies.antidotes};
-    const std::optional<WinEstimate> estimate = story_win_chance(supplies.lead, items, supplies.hp_fill, trainer);
-    if (!estimate){
-        return std::nullopt;
-    }
-    env.console.log(std::format(
-        "Story: {} against {}: the sim wins {} of {} ({:.0f}%) with {}; {}.",
-        step.name, trainer, estimate->wins, estimate->battles, 100 * estimate->chance, estimate->inputs, loss_text(*estimate)
-    ));
-    return win_chance_refusal(*estimate);
-}
-
 Outcome battle(StoryEnv& env, const StoryStep& step){
-    const std::optional<std::string_view> trainer = step.pose_after ? story_trainer(step.pose_after->map, step.name) : std::nullopt;
-    env.supplies.trainer = trainer ? std::string(*trainer) : "";
-    env.supplies.risk = trainer ? story_battle_risk(step.pose_after->map, step.name) : BattleRisk::LOW;
-    env.supplies.foe_out.reset();
-    if (const std::optional<std::string> refusal = trainer ? refuse_battle(env, step, *trainer) : std::nullopt){
-        env.console.log("Story: " + step.name + ": " + *refusal + ".", COLOR_RED);
-        return Pokemon::outcome_failed("win_chance", *refusal);
-    }
+    env.supplies.trainer = arg<std::string>(step, "trainer");
+    env.supplies.risk = default_battle_risk(env.supplies.trainer);
+    env.supplies.foe_out.clear();
     if (advance_text(env.console, env.context, BATTLE_TEXT_TIMEOUT, true) != TextEnd::BATTLE){
         return Pokemon::outcome_failed("no_battle");
     }
-    env.supplies.foes = trainer ? trainer_party(*trainer) : std::vector<std::string>{};
+    env.supplies.foes = arg<std::vector<std::string>>(step, "foes");
     if (!env.supplies.foes.empty()){
         env.console.log(std::format(
             "Story: {} is {}, risk {}; attacks are chosen against the foe out.",
-            step.name, *trainer, battle_risk_name(env.supplies.risk)
+            step.name, env.supplies.trainer, battle_risk_name(env.supplies.risk)
         ));
     }
     const BattleEnd end = fight_battle(env.console, env.context, env.supplies, BattleKind::TRAINER, env.checks, env.language);
     env.supplies.foes.clear();
     env.supplies.trainer.clear();
-    env.supplies.foe_out.reset();
+    env.supplies.foe_out.clear();
     if (end == BattleEnd::LOST && !arg<bool>(step, "may_lose")){
         return Pokemon::outcome_failed("blackout");
     }
@@ -308,13 +292,12 @@ const std::vector<MapData>& story_maps(){
         const std::vector<MapData> all = overworld_maps();
         std::set<std::string> flags = map_flag_set(all, "after_hall_of_fame");
         flags.merge(map_flag_set(all, "new_game"));
+        //  The one ball the story picks up in its way: B2F's MOON STONE
+        //  blocks column 2 of the arrow floor (00.32's moon_stone).
+        flags.insert("FLAG_HIDE_ROCKET_HIDEOUT_B2F_MOON_STONE");
         return overworld_maps(flags);
     }();
     return maps;
-}
-
-MoveSpeed move_speed(const StoryStep& step){
-    return step.action == RUN_VARIANT ? MoveSpeed::RUN : MoveSpeed::WALK;
 }
 
 Pokemon::Pose to_pose(const StoryPose& pose){
@@ -332,7 +315,7 @@ std::optional<StoryPose> story_pose(const Pokemon::Pose& pose){
 std::string save_card_place(const std::string& map){
     //  A map of the place, or a building in it ("Route4_PokemonCenter_1F"
     //  is on Route 4, "Route24" isn't on Route 2).
-    static const std::pair<std::string, const char*> PLACES[] = {
+    static const std::pair<std::string, std::string_view> PLACES[] = {
         {"PalletTown", "pallet-town"},
         {"ViridianForest", "viridian-forest"},
         {"ViridianCity", "viridian-city"},
@@ -345,10 +328,12 @@ std::string save_card_place(const std::string& map){
         {"VermilionCity", "vermilion-city"},
         {"Route10", "route-10"},
         {"LavenderTown", "lavender-town"},
+        {"CeladonCity", "celadon-city"},
+        {"RocketHideout", "rocket-hideout"},
     };
     for (const auto& [prefix, place] : PLACES){
         if (map == prefix || map.rfind(prefix + "_", 0) == 0){
-            return place;
+            return std::string(place);
         }
     }
     return "";
@@ -388,42 +373,6 @@ void add_start_pose_check(
         return mismatch.empty() ? StartRead{StartFound::AT_START} : StartRead{StartFound::ELSEWHERE, mismatch};
     };
     add_start_check(checkpoint, start, std::move(reader), std::move(log));
-}
-
-std::optional<std::vector<RouteStep>> fixed_route(
-    const std::vector<MapData>& maps, const MapPosition& start, const std::vector<StoryLeg>& legs
-){
-    const MapData* map = nullptr;
-    for (const MapData& candidate : maps){
-        if (candidate.name == start.map){
-            map = &candidate;
-        }
-    }
-    if (map == nullptr || !in_bounds(*map, start.point)){
-        return std::nullopt;
-    }
-    std::vector<RouteStep> route;
-    PlayerState player{start.point, elevation_at(*map, start.point), false};
-    for (const StoryLeg& leg : legs){
-        RouteStep step;
-        step.direction = leg.direction;
-        step.tiles = leg.tiles;
-        step.facing_after = leg.direction;
-        step.walk_only = !map->allow_running;
-        for (int c = 0; c < leg.tiles; c++){
-            const StepKind kind = classify_step(*map, player, leg.direction);
-            const TilePos next = player.position.next(leg.direction);
-            if (kind != StepKind::WALK || !in_bounds(*map, next) || warps_on_step(*map, next)){
-                return std::nullopt;
-            }
-            step.wild |= is_tall_grass(*map, next);
-            player = after_step(*map, player, leg.direction, kind);
-        }
-        step.to_wall = classify_step(*map, player, leg.direction) == StepKind::BLOCKED;
-        step.end = MapPosition{map->name, player.position};
-        route.push_back(step);
-    }
-    return route;
 }
 
 Pokemon::Pose paced_pose(const Pokemon::Pose& patch, const StoryStep& step){
@@ -474,6 +423,22 @@ std::optional<Direction> wall_beside(const MapData& map, const TilePos& tile){
 }
 
 namespace{
+
+//  A talk to a person or an item ball opens a message; an A that opens
+//  none faced nothing (00.31 b3f_rare_candy, console B, 2026-11-10: one A,
+//  "done", on the wrong floor). The message is left open for the next step.
+bool talk_opens_message(ConsoleHandle& console, ProControllerContext& context){
+    WhiteDialogWatcher opened(COLOR_RED);
+    const int shown = run_until<ProControllerContext>(
+        console, context,
+        [](ProControllerContext& context){
+            pbf_press_button(context, BUTTON_A, 160ms, 2000ms);
+        },
+        {opened}
+    );
+    return shown >= 0;
+}
+
 
 bool walked(StoryEnv& env, RunState& state, const StoryStep& step){
     const Outcome outcome = walk_route(env, state, step);
@@ -628,7 +593,7 @@ Outcome open_gym_door(StoryEnv& env, RunState& state, const StoryStep& step){
     ConsoleTrashCans cans(env, state, step);
     const TrashCanResult result = run_trash_cans(env.console, [&](int can){ return cans.check(can); });
     if (result.end != TrashCanEnd::OPENED){
-        return Pokemon::outcome_failed(std::string("trash_cans_") + trash_can_end_name(result.end), std::format("{} checks", result.checks));
+        return Pokemon::outcome_failed(std::format("trash_cans_{}", trash_can_end_name(result.end)), std::format("{} checks", result.checks));
     }
     return Pokemon::outcome_ok(state.pose);
 }
@@ -641,7 +606,10 @@ Outcome other_game_step(StoryEnv& env, RunState& state, const StoryStep& step){
         pace_trainer_battle(env, state, step, patch);
     });
     ConsolePcStorageActions pc(env.console, env.context);
-    std::optional<Outcome> done = run_storage_game_step(env.console.logger(), &env.console, step, capture, pc);
+    std::optional<Outcome> done = run_field_game_step(env.console, env.context, env.language, step);
+    if (!done){
+        done = run_storage_game_step(env.console.logger(), &env.console, step, capture, pc);
+    }
     if (!done){
         done = run_abilities(env, state, step);
     }
@@ -700,7 +668,9 @@ ConsoleAction console_action_of(StoryActionId id){
         return take_step;
     case StoryActionId::TALK:
         return [](StoryEnv& env, RunState&, const StoryStep&){
-            pbf_press_button(env.context, BUTTON_A, 160ms, 800ms);
+            if (!talk_opens_message(env.console, env.context)){
+                return Pokemon::outcome_failed("no_message", "talk: A opened no message; nothing to talk to or pick up here.");
+            }
             return Pokemon::outcome_ok();
         };
     case StoryActionId::ANSWER:
@@ -728,7 +698,7 @@ ConsoleAction console_action_of(StoryActionId id){
     default:
         break;
     }
-    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::string("No console action for ") + story_action_name(id));
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("No console action for {}", story_action_name(id)));
 }
 
 } // namespace

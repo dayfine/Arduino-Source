@@ -22,7 +22,8 @@
  *      (walked_before_warp()), and the way back goes on through the warp;
  *    - an open leg that ended with nothing seen may still have ended up to
  *      OPEN_LEG_SHORTFALL tiles short. When the next step is a hold to a
- *      wall that doesn't end on its tile from each of those, the player is
+ *      wall that doesn't end on its tile from each of those, or a step onto
+ *      a spinner (which a short start misses), the player is
  *      found at walls the same way and walked back to the leg's end first.
  *      When no holds find them, the leg is taken as walked, as before.
  *
@@ -44,57 +45,13 @@
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "PokemonFRLG_OverworldReanchor.h"
 #include "PokemonFRLG_OverworldRoute.h"
+#include "PokemonFRLG_OverworldTrainerCrossing.h"
+#include "PokemonFRLG_OverworldStepChecks.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
 
-
-//  How one step of a route ended.
-enum class StepEnd{
-    DONE,
-    STOPPED,    //  stopped part-way: where the player is isn't known
-    LATE,       //  something was seen after the hold, which may have
-                //  stopped the player before the end
-    //  Not walked: a wild battle set off before the step showed before it
-    //  started. The step before it may have stopped part-way: its
-    //  battle was seen too late (console B, 2026-11-03, Mt. Moon B2F).
-    BATTLE_BEFORE,
-};
-
-//  How a step ended, and for an open leg STOPPED part-way, how many of its
-//  tiles the timing of the stop says the player walked. Not set: anywhere
-//  on the leg.
-struct StepOutcome{
-    StepEnd end = StepEnd::DONE;
-    std::optional<WalkedTiles> walked;
-};
-
-//  Whether, after each leg to a wall, the walker taps once more toward the
-//  wall and logs whether the player moved (see RouteCalls).
-enum class WallCheck{
-    TAP,
-    SKIP,
-};
-
-//  The most tiles an open leg has been seen to end short with nothing on
-//  screen: "west 6" in Viridian Forest ended 2 short (r16, console B,
-//  2026-11-01); on Route 1 a column was lost (cp0006-b). The cause isn't
-//  known (the forest drift), so this is what was seen, not a bound.
-constexpr int OPEN_LEG_SHORTFALL = 2;
-
-//  Where a leg onto a warp stopped when its fade was a wild battle's: the
-//  battle's wipe passes for the fade (console B, 2026-11-03, Mt. Moon 1F),
-//  so the stop isn't timed. The battle started on one of the leg's steps
-//  before the warp. The walker reports the leg STOPPED there.
-WalkedTiles walked_before_warp(const RouteStep& step);
-
-//  Whether, after an open leg that ended with nothing seen, the player is
-//  found again at walls when where they stand matters (see run_route()).
-enum class OpenLegCheck{
-    REANCHOR,
-    TRUST,      //  taken to have ended where planned
-};
 
 //  What the route was planned with, to plan the way back onto it: the maps
 //  (with the event flags the caller set) and the costs; and, for the route
@@ -128,19 +85,6 @@ struct RouteCalls{
     std::function<StepEnd(const RouteStep& step, int approach_tiles)> watch_for_trainer;
 };
 
-//  Where a WALK leg crosses the sight of its maps' trainers
-//  (trainer_may_see()): the tiles of the leg after its start that one may
-//  see, in order, and the farthest any of them walks up to the player
-//  (their sight), to watch for them that long. Trainers already beaten are
-//  counted too: the maps don't know them.
-struct TrainerCrossing{
-    std::vector<MapPosition> seen;
-    int approach_tiles = 0;
-};
-//  Nothing if `step`, from `start`, crosses no trainer's sight.
-std::optional<TrainerCrossing> trainer_crossing(
-    const std::vector<MapData>& maps, const MapPosition& start, const RouteStep& step
-);
 
 //  How often a route may stop part-way before it gives up.
 constexpr size_t MAX_ROUTE_STOPS = 8;

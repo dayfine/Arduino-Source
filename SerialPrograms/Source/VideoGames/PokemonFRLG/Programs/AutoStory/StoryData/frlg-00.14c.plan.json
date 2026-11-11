@@ -23,6 +23,10 @@
       {
         "id": "misty",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_LEADER_MISTY",
+          "foes": ["staryu", "starmie"]
+        },
         "declared_after": {"map": "CeruleanCity_Gym", "tiles": [[9, 6]], "facing": "west"},
         "why": "Staryu and Starmie, with Bite; CASCADE BADGE and TM03"
       },

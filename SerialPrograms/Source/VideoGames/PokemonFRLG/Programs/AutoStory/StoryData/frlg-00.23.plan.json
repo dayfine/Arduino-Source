@@ -78,6 +78,10 @@
       {
         "id": "sailor_dwayne",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_SAILOR_DWAYNE",
+          "foes": ["pikachu", "pikachu"]
+        },
         "declared_after": {"map": "VermilionCity_Gym", "tiles": [[8, 15]], "facing": "north"},
         "why": "two Pikachu, Lv21"
       },
@@ -102,6 +106,10 @@
       {
         "id": "engineer_baily",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_ENGINEER_BAILY",
+          "foes": ["voltorb", "magnemite"]
+        },
         "declared_after": {"map": "VermilionCity_Gym", "tiles": [[2, 13]], "facing": "north"},
         "why": "Voltorb and Magnemite, Lv21"
       },
@@ -126,6 +134,10 @@
       {
         "id": "gentleman_tucker",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_GENTLEMAN_TUCKER",
+          "foes": ["pikachu"]
+        },
         "declared_after": {"map": "VermilionCity_Gym", "tiles": [[5, 8]], "facing": "east"},
         "why": "Pikachu, Lv23"
       },
@@ -175,7 +187,7 @@
     "lead": "after_brock",
     "notes": {
       "checkpoint": [
-        "HM01 Cut, from the S.S. Anne (00.22), to the Oddish (00.20), second in the party: a wild Oddish of Lv12 to 14 knows 2 or 3 moves (Absorb, Sweet Scent, Poison Powder at 14), so it has room. TM28 Dig, from the Cerulean Rocket (00.21), to the lead in place of Withdraw: Ground, twice as strong on Lt. Surge's three, it takes the sim's chance against him for a Lv28 Wartortle with 14 Potions from 6% to 47%. Vermilion's tree (19, 24) (EventScript_CutTree) is the only way into the gym's yard, row 24 being walls but for it; the gym's door is (14, 25). In the gym, the trainers as below, then the trash cans until the door opens; out, the tree cut again from below, and back to the nurse.",
+        "HM01 Cut, from the S.S. Anne (00.22), to the Oddish (00.20), second in the party: a wild Oddish of Lv12 to 14 knows 2 or 3 moves (Absorb, Sweet Scent, Poison Powder at 14), so it has room. TM28 Dig, from the Cerulean Rocket (00.21), to the lead in place of Withdraw: Ground, twice as strong on Lt. Surge's three, it is the lead's best move against him. Vermilion's tree (19, 24) (EventScript_CutTree) is the only way into the gym's yard, row 24 being walls but for it; the gym's door is (14, 25). In the gym, the trainers as below, then the trash cans until the door opens; out, the tree cut again from below, and back to the nurse.",
         "The gym (VermilionCity_Gym map.json, scripts.inc), 11 x 20, entered on (5, 19): the cans on rows 10, 12 and 14 at x 1, 3, 5, 7, 9 (PokemonFRLG_AutoStoryTrashCans.h), the beams across rows 6 and 7 that the two switches turn off, Lt. Surge (5, 2) facing down above them. Its trainers, sight 3:",
         "Sailor Dwayne (8, 13) and Engineer Baily (2, 11) look around (MOVEMENT_TYPE_LOOK_AROUND): between them they see across rows 11 and 13 and down columns 2 and 8, so no way from the door to the cans keeps out of their sight. Each is fought from the second tile of his line, stepped onto from beside it, out of sight, and waited on there until he turns to the player (\"trainer_wait\"): Dwayne from (8, 15), stepped onto from (7, 15), Baily from (2, 13), from (3, 13). Each walks up a tile, Dwayne to (8, 14), Baily to (2, 12), and stays there while the player is in the gym.",
         "Gentleman Tucker (7, 8) faces west over (4..6, 8): fought on the step up from (5, 9) onto (5, 8); he walks up to (6, 8).",

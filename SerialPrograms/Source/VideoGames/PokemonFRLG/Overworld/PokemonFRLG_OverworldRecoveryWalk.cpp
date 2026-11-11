@@ -4,6 +4,7 @@
  *
  */
 
+#include <algorithm>
 #include <format>
 #include <memory>
 #include <optional>
@@ -18,8 +19,11 @@
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
+#include "PokemonFRLG_OverworldBikeTaps.h"
 #include "PokemonFRLG_OverworldLateBattle.h"
 #include "PokemonFRLG_OverworldRecoveryWalk.h"
+#include "PokemonFRLG_BikeSpinPresses.h"
+#include "PokemonFRLG_OverworldBike.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -54,7 +58,116 @@ struct StepWalk{
     std::optional<WalkedTiles> stopped;
     WallClock hold_start;
     bool dark = false;
+    //  Stopped by a Bicycle tap that didn't move (StepOutcome::blocked).
+    bool blocked = false;
 };
+
+} // namespace
+
+double tap_scroll_change(const ImageViewRGB32& before, const ImageViewRGB32& after, const ImageFloatBox& game){
+    const double w = game.width * 0.25;
+    const double h = game.height * 0.25;
+    const ImageFloatBox bands[] = {
+        {game.x, game.y, game.width, h},
+        {game.x, game.y + game.height - h, game.width, h},
+        {game.x, game.y, w, game.height},
+        {game.x + game.width - w, game.y, w, game.height},
+    };
+    double most = 0;
+    for (const ImageFloatBox& band : bands){
+        most = std::max(most, ImageMatch::pixel_RMSD(extract_box_reference(before, band), extract_box_reference(after, band)));
+    }
+    return most;
+}
+
+namespace{
+
+//  A counted tap's press, its release and the wait after it for the
+//  screen to show the step.
+struct TapTiming{
+    Milliseconds press;
+    Milliseconds release;
+    Milliseconds settle;
+};
+//  On the Bicycle: a BIKE_TAP press released to a BIKE_TAP_PERIOD period,
+//  then BIKE_TAP_SETTLE.
+constexpr TapTiming BIKE_TAP_TIMING{BIKE_TAP, BIKE_TAP_PERIOD - BIKE_TAP, BIKE_TAP_SETTLE};
+
+//  One tap of a leg counted out (count_bike_taps()), timed by `timing`,
+//  watching `interrupts` throughout. A tap that didn't scroll the screen
+//  is watched on for a late interrupt, which is cleared.
+BikeTap console_bike_tap(
+    ConsoleHandle& console, ProControllerContext& context,
+    const RouteStep& step, const OverworldInterrupts& interrupts, const TapTiming& timing
+){
+    context.wait_for_all_requests();
+    const VideoSnapshot before = console.video().snapshot();
+    std::vector<std::unique_ptr<VisualInferenceCallback>> watchers;
+    std::vector<PeriodicInferenceCallback> callbacks;
+    for (const auto& interrupt : interrupts){
+        watchers.emplace_back(interrupt->make_watcher());
+        callbacks.emplace_back(*watchers.back());
+    }
+    const int ret = run_until<ProControllerContext>(
+        console, context,
+        [&](ProControllerContext& context){
+            pbf_press_dpad(context, dpad(step.direction), timing.press, timing.release);
+            pbf_wait(context, timing.settle);
+            context.wait_for_all_requests();
+        },
+        callbacks
+    );
+    if (ret >= 0){
+        console.log("Bike: " + interrupts[ret]->name() + " on a tap of " + to_string(step) + ".", COLOR_ORANGE);
+        return BikeTap{.moved = false, .interrupt = (size_t)ret};
+    }
+    const VideoSnapshot after = console.video().snapshot();
+    if (before && after && tap_scroll_change(before, after, GameSettings::instance().GAME_BOX) > WALL_TAP_MOVED_RMSD){
+        return BikeTap{.moved = true};
+    }
+    const bool late = Pokemon::clear_late_interrupts(console, context, interrupts, AFTER_LEG_WATCH, MAX_INTERRUPTIONS_PER_LEG) > 0;
+    return BikeTap{.moved = false, .interrupt = std::nullopt, .cleared_late = late};
+}
+
+//  An open leg on the Bicycle, a tap at a time (count_bike_taps()).
+StepWalk walk_bike_taps(
+    ConsoleHandle& console, ProControllerContext& context,
+    const RouteStep& step, const OverworldInterruptSet& interrupts
+){
+    StepWalk out{std::nullopt, current_time(), false, false};
+    const OverworldInterrupts& watched = step.wild ? interrupts.wild : interrupts.other;
+    BikeTapCalls calls;
+    calls.tap = [&](int){ return console_bike_tap(console, context, step, watched, BIKE_TAP_TIMING); };
+    calls.clear = [&](size_t index){ watched[index]->clear(console, context); };
+    calls.log = [&](const std::string& message){ console.log(message, COLOR_ORANGE); };
+    const StepOutcome outcome = count_bike_taps(step, calls);
+    out.stopped = outcome.walked;
+    out.blocked = outcome.blocked;
+    return out;
+}
+
+//  A leg on foot, a step tap at a time (counts_step_taps()): STEP_TAP
+//  pressed and STEP_TAP_RELEASE let go, past the step's lockout, then the
+//  slide off a spinner waited out (step_tap_settle()).
+StepWalk walk_step_taps(
+    ConsoleHandle& console, ProControllerContext& context,
+    const RouteStep& step, const OverworldInterruptSet& interrupts
+){
+    StepWalk out{std::nullopt, current_time(), false, false};
+    const OverworldInterrupts& watched = step.wild ? interrupts.wild : interrupts.other;
+    BikeTapCalls calls;
+    calls.tap = [&](int tap){
+        const TapTiming timing{STEP_TAP, STEP_TAP_RELEASE, step_tap_settle(step, tap)};
+        return console_bike_tap(console, context, step, watched, timing);
+    };
+    calls.clear = [&](size_t index){ watched[index]->clear(console, context); };
+    calls.log = [&](const std::string& message){ console.log(message, COLOR_ORANGE); };
+    calls.tries = STEP_TAP_TRIES;
+    const StepOutcome outcome = count_bike_taps(step, calls);
+    out.stopped = outcome.walked;
+    out.blocked = outcome.blocked;
+    return out;
+}
 
 //  stop_tiles(), logged when the leg started in a dark cave.
 WalkedTiles logged_stop_tiles(ConsoleHandle& console, const RouteStep& step, bool dark, WalkedTiles timed){
@@ -79,13 +192,12 @@ StepWalk walk_step(
     const RouteStep& step, std::optional<Direction> facing,
     const OverworldInterruptSet& interrupts, MoveSpeed speed
 ){
-    StepWalk out{std::nullopt, current_time(), false};
+    StepWalk out{std::nullopt, current_time(), false, false};
     switch (step.action){
     case RouteAction::WALK:{
-        //  Turning first, with a tap, makes the hold start from a standstill
-        //  facing the right way: holding through a turn lost a tile on the
-        //  console, while holds from a standstill were exact over 15 tiles.
-        if (facing != step.direction){
+        //  Turning first, with a tap, starts the hold from a standstill facing
+        //  the right way: exact over 15 tiles, where a turn lost one.
+        if (turns_first(step, speed, facing)){
             turn_to(console, context, step.direction);
         }
         if (const std::string note = speed_note(step, speed); !note.empty()){
@@ -93,6 +205,7 @@ StepWalk walk_step(
         }
         context.wait_for_all_requests();
         out.dark = on_dark_cave(console);
+        const VideoSnapshot before = console.video().snapshot();
         out.hold_start = current_time();
         BlackScreenOverWatcher arrival(COLOR_RED);
         Pokemon::WatchAlong fade(arrival);
@@ -105,7 +218,7 @@ StepWalk walk_step(
             return out;
         }
         if (step.warps){
-            wait_out_warp(console, context, step, fade);
+            wait_out_warp(console, context, step, fade, before);
             static_assert(AFTER_WARP_BATTLE_WATCH >= AFTER_WARP);
             if (run_from_battle_after_warp(console, context)){
                 console.log("Route: a wild battle, not the warp to " + step.end.map + "; the player is on " + to_string(step) + " before the warp.", COLOR_ORANGE);
@@ -189,9 +302,16 @@ StepOutcome walk_and_watch(
     clear_open_message(console, context, step.wild ? interrupts.wild : interrupts.other, step);
     check_overworld(console, context, step);
     const LegRecorder recorder(console, context, interrupts, step);
-    const StepWalk walked = walk_step(console, context, step, facing, interrupts, speed);
+    StepWalk walked;
+    if (counts_step_taps(step)){
+        walked = walk_step_taps(console, context, step, interrupts);
+    }else if (counts_bike_taps(step, speed)){
+        walked = walk_bike_taps(console, context, step, interrupts);
+    }else{
+        walked = walk_step(console, context, step, facing, interrupts, speed);
+    }
     if (walked.stopped){
-        return StepOutcome{.end = StepEnd::STOPPED, .walked = walked.stopped};
+        return StepOutcome{.end = StepEnd::STOPPED, .walked = walked.stopped, .blocked = walked.blocked};
     }
     if (step.action == RouteAction::FACE){
         return StepOutcome{};
@@ -235,6 +355,7 @@ void hold_to_warp(
             callbacks.emplace_back(*watchers.back());
         }
         context.wait_for_all_requests();
+        const VideoSnapshot before = console.video().snapshot();
         const int ret = run_until<ProControllerContext>(
             console, context,
             [&](ProControllerContext& context){
@@ -244,7 +365,7 @@ void hold_to_warp(
             callbacks
         );
         if (ret == 0){
-            wait_out_warp(console, context, step);
+            wait_out_warp(console, context, step, before);
             check_warp_was_no_battle(console, context, step);
             return;
         }
@@ -285,12 +406,6 @@ StepEnd watch_for_trainer(
 }
 
 //  TODO(forest drift, 2026-11-01): diagnostic; remove or turn into a recovery once the cause is known.
-//  How much the game screen's top quarter, clear of the player in the
-//  middle, may change when a tap toward a wall only bumps the player (the
-//  player's own animation, an animated tile). A step scrolls the whole map
-//  by a tile. Not yet measured on the console: a guess on the safe side.
-constexpr double WALL_TAP_MOVED_RMSD = 20.0;
-
 //  Taps once toward the wall `step` ended at (the player faces it, so a tap
 //  steps if it can) and says whether the map scrolled: whether the player
 //  moved instead of bumping into the wall.
@@ -303,9 +418,7 @@ bool moved_past_wall(ConsoleHandle& console, ProControllerContext& context, cons
     if (!before || !after){
         return false;
     }
-    const ImageFloatBox game = GameSettings::instance().GAME_BOX;
-    const ImageFloatBox band(game.x, game.y, game.width, game.height * 0.25);
-    const double change = ImageMatch::pixel_RMSD(extract_box_reference(before, band), extract_box_reference(after, band));
+    const double change = tap_scroll_change(before, after, GameSettings::instance().GAME_BOX);
     console.log(std::format("Position check: a tap toward the wall of {} changed the screen by {:.1f}.", to_string(step), change));
     return change > WALL_TAP_MOVED_RMSD;
 }
@@ -327,12 +440,26 @@ void walk_overworld_route_with_recovery(
     if (!facing){
         facing = read_facing(console, context);
     }
+    //  A door takes the player off the Bicycle; the next leg where it may
+    //  be ridden gets on again with SELECT. A battle leaves them on.
+    bool riding = speed == MoveSpeed::BIKE;
     RouteCalls calls;
     calls.walk = [&](const RouteStep& step, std::optional<Direction> from_facing){
-        return walk_and_watch(console, context, step, from_facing, interrupts, speed);
+        if (gets_on_bike(step, speed, riding)){
+            get_on_bike(console, context);
+            riding = true;
+            from_facing = std::nullopt;
+        }
+        const StepOutcome outcome = walk_and_watch(console, context, step, from_facing, interrupts, riding ? speed : on_foot(speed));
+        if (riding && step.warps){
+            console.log("Bike: through the warp to " + step.end.map + ", off the Bicycle.");
+            riding = false;
+        }
+        return outcome;
     };
     calls.hold_to_warp = [&](const RouteStep& step){
-        hold_to_warp(console, context, step, step.wild ? interrupts.wild : interrupts.other, speed);
+        hold_to_warp(console, context, step, step.wild ? interrupts.wild : interrupts.other, riding ? speed : on_foot(speed));
+        riding = false;
     };
     calls.log = [&](const std::string& message){ console.log(message, COLOR_ORANGE); };
     calls.fail = [&](const std::string& message){

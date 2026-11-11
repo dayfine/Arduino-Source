@@ -7,7 +7,9 @@
 #include <algorithm>
 #include <format>
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
+#include <cstdlib>
 #include "CommonFramework/ImageTools/ImageBoxes.h"
+#include "CommonFramework/ImageTools/ImageDiff.h"
 #include "CommonFramework/ImageTools/ImageStats.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/VisualDetectors/BlackScreenDetector.h"
@@ -23,6 +25,9 @@
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "PokemonFRLG_PlayerFacingReader.h"
 #include "PokemonFRLG_OverworldWalk.h"
+#include "PokemonFRLG_OverworldBike.h"
+#include "PokemonFRLG_BikeSpinMechanics.h"
+#include "PokemonFRLG_BikeSpinPresses.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -191,7 +196,74 @@ Milliseconds tile_time(const RouteStep& step, MoveSpeed speed){
     if (step.surfing){
         return SURF_TILE_TIME;
     }
-    return step_speed(step, speed) == MoveSpeed::RUN ? RUN_TILE_TIME : TILE_TIME;
+    switch (step_speed(step, speed)){
+    case MoveSpeed::RUN:
+        return RUN_TILE_TIME;
+    case MoveSpeed::BIKE:
+        return BIKE_TILE_TIME;
+    case MoveSpeed::WALK:
+        break;
+    }
+    return TILE_TIME;
+}
+
+bool turns_first(const RouteStep& step, MoveSpeed speed, std::optional<Direction> facing){
+    if (facing == step.direction){
+        return false;
+    }
+    return step.surfing || step_speed(step, speed) != MoveSpeed::BIKE || BIKE_TAP_ONLY_TURNS;
+}
+
+bool counts_bike_taps(const RouteStep& step, MoveSpeed speed){
+    return step.action == RouteAction::WALK && step_speed(step, speed) == MoveSpeed::BIKE
+        && !step.surfing && !step.to_wall && !step.warps && !step.spin_tiles
+        && step.connection_steps.empty() && step.tiles > 0;
+}
+
+bool gets_on_bike(const RouteStep& step, MoveSpeed speed, bool riding){
+    return speed == MoveSpeed::BIKE && !riding && step.action == RouteAction::WALK
+        && !step.walk_only && !step.surfing;
+}
+
+bool select_onto_bike(const BikeSelectCalls& calls){
+    for (int press = 1; press <= 2; press++){
+        calls.press_select();
+        if (calls.riding()){
+            return true;
+        }
+    }
+    return false;
+}
+
+bool screen_shows_riding(const ImageViewRGB32& screen){
+    if (StartMenuDetector(COLOR_RED).detect(screen) || SelectionDialogDetector(COLOR_RED).detect(screen)
+        || WhiteDialogDetector(COLOR_RED).detect(screen)
+    ){
+        return false;
+    }
+    return !read_player_facing(screen).has_value();
+}
+
+void get_on_bike(ConsoleHandle& console, ProControllerContext& context){
+    BikeSelectCalls calls;
+    calls.press_select = [&]{
+        pbf_press_button(context, BUTTON_MINUS, BIKE_SELECT_PRESS, BIKE_SELECT_SETTLE);
+    };
+    calls.riding = [&]{
+        context.wait_for_all_requests();
+        VideoSnapshot screen = console.video().snapshot();
+        const bool riding = screen && screen_shows_riding(*screen.frame);
+        console.log(riding ? "Bike: riding." : "Bike: not riding after SELECT.", riding ? COLOR_BLACK : COLOR_ORANGE);
+        return riding;
+    };
+    console.log("Bike: SELECT (MINUS) onto the Bicycle.");
+    if (!select_onto_bike(calls)){
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::SEND_ERROR_REPORT,
+            "get_on_bike(): not on the Bicycle after SELECT twice. Is it registered?",
+            console
+        );
+    }
 }
 
 Pokemon::LegMover<ProControllerContext> leg_mover(const RouteStep& step, MoveSpeed speed){
@@ -223,27 +295,125 @@ std::vector<Pokemon::WatchAlong*> warp_hold_watchers(const RouteStep& step, Poke
     return {&fade};
 }
 
+namespace{
+
+//  How close (pixel RMSD) the overlap of two screens is for the same scene.
+constexpr double SAME_SCENE_RMSD = 25;
+//  The GBA screen's tiles across and down.
+constexpr int SCREEN_TILES_X = 15;
+constexpr int SCREEN_TILES_Y = 10;
+//  From the fade's end until the new map is in full light.
+constexpr Milliseconds WARP_FADE_IN(300);
+
+//  The RMSD of `before` and `after` where they overlap, with the scene
+//  scrolled `dx`, `dy` pixels: `after` at (x, y) shows `before` at
+//  (x + dx, y + dy).
+double scrolled_rmsd(const ImageViewRGB32& before, const ImageViewRGB32& after, int dx, int dy){
+    const size_t width = before.width() - (size_t)std::abs(dx);
+    const size_t height = before.height() - (size_t)std::abs(dy);
+    const ImageViewRGB32 old_part = before.sub_image(dx > 0 ? dx : 0, dy > 0 ? dy : 0, width, height);
+    const ImageViewRGB32 new_part = after.sub_image(dx < 0 ? -dx : 0, dy < 0 ? -dy : 0, width, height);
+    return ImageMatch::pixel_RMSD(old_part, new_part);
+}
+
+//  Whether `after` no longer shows the scene `before` showed, scrolled 0 to
+//  `max_tiles` tiles on toward `direction` inside the game box `game`: black
+//  then clear with the old scene back is no warp. A screen too dark to
+//  compare (a dark cave) counts as left.
+bool warp_left_scene(
+    const ImageViewRGB32& before, const ImageViewRGB32& after,
+    const ImageFloatBox& game, Direction direction, int max_tiles
+){
+    const ImageViewRGB32 old_box = extract_box_reference(before, game);
+    const ImageViewRGB32 new_box = extract_box_reference(after, game);
+    if (old_box.width() != new_box.width() || old_box.height() != new_box.height()){
+        return true;
+    }
+    if (dark_cave_screen(before) || dark_cave_screen(after)){
+        return true;
+    }
+    const int tile_x = (int)old_box.width() / SCREEN_TILES_X;
+    const int tile_y = (int)old_box.height() / SCREEN_TILES_Y;
+    //  Keep at least 5 tiles of overlap to compare.
+    const int most = std::min(max_tiles, (direction == Direction::NORTH || direction == Direction::SOUTH ? SCREEN_TILES_Y : SCREEN_TILES_X) - 5);
+    for (int tiles = 0; tiles <= most; tiles++){
+        int dx = 0;
+        int dy = 0;
+        switch (direction){
+        case Direction::NORTH: dy = -tiles * tile_y; break;
+        case Direction::SOUTH: dy = tiles * tile_y; break;
+        case Direction::WEST:  dx = -tiles * tile_x; break;
+        case Direction::EAST:  dx = tiles * tile_x; break;
+        }
+        if (scrolled_rmsd(old_box, new_box, dx, dy) < SAME_SCENE_RMSD){
+            return false;
+        }
+    }
+    return true;
+}
+
 //  One watcher for the whole fade: a ladder's black is short enough to be
 //  over before a second watcher, started once the fade is seen, looks.
-void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step, Pokemon::WatchAlong& fade){
+void wait_out_fade(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step, Pokemon::WatchAlong& fade){
     if (fade.fired()){
         console.log("Route: the fade to " + step.end.map + " was over before the hold ended.");
         return;
     }
     context.wait_for_all_requests();
-    if (wait_until(console, context, WARP_TIMEOUT, {fade.watcher()}) < 0){
+    if (wait_until(console, context, WARP_TIMEOUT, {fade.watcher()}) >= 0){
+        return;
+    }
+    //  A hold that ended short of a stairs or door warp, or on an arrow
+    //  warp: a step more at a time, twice, takes it. A hold ends up to two
+    //  tiles short, and an arrow warp fires on the press made standing on it.
+    for (int tap = 0; tap < 2; tap++){
+        console.log("Route: no fade; one more step into the warp.", COLOR_ORANGE);
+        BlackScreenOverWatcher arrival(COLOR_RED);
+        Pokemon::WatchAlong retry_fade(arrival);
+        pbf_press_dpad(context, dpad(step.direction), STEP_TAP, STEP_TAP_RELEASE);
+        if (wait_until(console, context, WARP_TIMEOUT, {retry_fade.watcher()}) >= 0){
+            return;
+        }
+    }
+    OperationFailedExceptionWithScreenshot::fire(
+        ErrorReportMode::SEND_ERROR_REPORT,
+        "walk_overworld_route(): no fade in and out after walking onto the warp to " + step.end.map + ".",
+        console
+    );
+}
+
+} // namespace
+
+//  A black screen that clears with the player where they were is no warp
+//  (console B, 2026-11-10 01:44, 00.31 run 4: "east 1 (warp)" was taken as
+//  walked while the player stayed on B4F).
+void wait_out_warp(
+    ConsoleHandle& console, ProControllerContext& context, const RouteStep& step,
+    Pokemon::WatchAlong& fade, const VideoSnapshot& before
+){
+    wait_out_fade(console, context, step, fade);
+    if (!before){
+        return;
+    }
+    pbf_wait(context, WARP_FADE_IN);
+    context.wait_for_all_requests();
+    const VideoSnapshot after = console.video().snapshot();
+    if (!after){
+        return;
+    }
+    if (!warp_left_scene(*before.frame, *after.frame, GameSettings::instance().GAME_BOX, step.direction, step.tiles + step.warp_slack + 2)){
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::SEND_ERROR_REPORT,
-            "walk_overworld_route(): no fade in and out after walking onto the warp to " + step.end.map + ".",
+            "walk_overworld_route(): the warp to " + step.end.map + " not confirmed: the screen after the fade shows the scene from before the hold.",
             console
         );
     }
 }
 
-void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step){
+void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step, const VideoSnapshot& before){
     BlackScreenOverWatcher arrival(COLOR_RED);
     Pokemon::WatchAlong fade(arrival);
-    wait_out_warp(console, context, step, fade);
+    wait_out_warp(console, context, step, fade, before);
 }
 
 //  Fails unless the overworld is up. Under the START menu or a message the
@@ -256,7 +426,7 @@ void check_overworld(ConsoleHandle& console, ProControllerContext& context, cons
     if (!screen){
         return;
     }
-    const char* open = nullptr;
+    std::string_view open;
     if (StartMenuDetector(COLOR_RED).detect(screen)){
         open = "the START menu";
     }else if (SelectionDialogDetector(COLOR_RED).detect(screen)){
@@ -264,10 +434,10 @@ void check_overworld(ConsoleHandle& console, ProControllerContext& context, cons
     }else if (WhiteDialogDetector(COLOR_RED).detect(screen)){
         open = "a message";
     }
-    if (open != nullptr){
+    if (!open.empty()){
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::SEND_ERROR_REPORT,
-            std::string("walk_overworld_route(): ") + open + " is open, before: " + to_string(step),
+            std::format("walk_overworld_route(): {} is open, before: {}", open, to_string(step)),
             console
         );
     }
@@ -295,13 +465,13 @@ void clear_open_message(
 namespace{
 
 //  What on screen shows a wild battle on its way: its text box, or the
-//  black of its wipe. Nothing if neither shows, or on a dark cave's
+//  black of its wipe. Empty if neither shows, or on a dark cave's
 //  overworld (dark_cave_screen()).
-const char* battle_on_its_way(ConsoleHandle& console, ProControllerContext& context){
+std::string_view battle_on_its_way(ConsoleHandle& console, ProControllerContext& context){
     context.wait_for_all_requests();
     VideoSnapshot screen = console.video().snapshot();
     if (!screen || dark_cave_screen(*screen.frame)){
-        return nullptr;
+        return {};
     }
     if (BattleTextBoxDetector(COLOR_RED).detect(screen)){
         return "a battle's text box";
@@ -309,7 +479,7 @@ const char* battle_on_its_way(ConsoleHandle& console, ProControllerContext& cont
     if (BlackScreenDetector(COLOR_RED).detect(screen)){
         return "a black screen";
     }
-    return nullptr;
+    return {};
 }
 
 //  The parts of the game screen a dark cave shows black (its corners) and
@@ -353,8 +523,8 @@ size_t clear_unseen_battle(
     if (step.action != RouteAction::WALK || step.warps){
         return 0;
     }
-    const char* seen = battle_on_its_way(console, context);
-    if (seen == nullptr){
+    const std::string_view seen = battle_on_its_way(console, context);
+    if (seen.empty()){
         return 0;
     }
     console.log(std::format("Route: {} after {}, which nothing stopped: watching on for a wild battle.", seen, to_string(step)), COLOR_ORANGE);
@@ -365,8 +535,8 @@ size_t clear_battle_before(
     ConsoleHandle& console, ProControllerContext& context,
     const OverworldInterrupts& wild, const RouteStep& step
 ){
-    const char* seen = battle_on_its_way(console, context);
-    if (seen == nullptr){
+    const std::string_view seen = battle_on_its_way(console, context);
+    if (seen.empty()){
         return 0;
     }
     console.log(std::format("Route: {} before {}: watching on for a wild battle set off before it.", seen, to_string(step)), COLOR_ORANGE);
@@ -463,14 +633,20 @@ void start_surf(ConsoleHandle& console, ProControllerContext& context, Direction
 
 
 
-const char* move_speed_name(MoveSpeed speed){
+std::string_view move_speed_name(MoveSpeed speed){
     switch (speed){
     case MoveSpeed::WALK:
         return "walk";
     case MoveSpeed::RUN:
         return "run";
+    case MoveSpeed::BIKE:
+        return "bike";
     }
     return "?";
+}
+
+MoveSpeed on_foot(MoveSpeed speed){
+    return speed == MoveSpeed::BIKE ? MoveSpeed::RUN : speed;
 }
 
 OverworldInterruptSet overworld_interrupts_with_repel(int max_repel_slot){
@@ -530,16 +706,22 @@ void walk_step_leg(
     ConsoleHandle& console, ProControllerContext& context,
     const RouteStep& step, const OverworldInterruptSet& interrupts, MoveSpeed speed
 ){
+    context.wait_for_all_requests();
+    const VideoSnapshot before = console.video().snapshot();
     BlackScreenOverWatcher arrival(COLOR_RED);
     Pokemon::WatchAlong fade(arrival);
     Pokemon::walk_leg(
         console, context, leg_mover(step, speed), step.wild ? interrupts.wild : interrupts.other,
         leg_spec(step, speed), MAX_INTERRUPTIONS_PER_LEG, warp_hold_watchers(step, fade)
     );
+    if (step.spin_tiles){
+        //  The hold let go on the spinner; the game slides the player on.
+        pbf_wait(context, SPIN_TILE_TIME * *step.spin_tiles + SPIN_STOP_SETTLE);
+    }
     if (!step.warps){
         return;
     }
-    wait_out_warp(console, context, step, fade);
+    wait_out_warp(console, context, step, fade, before);
     static_assert(AFTER_WARP_BATTLE_WATCH >= AFTER_WARP);
     check_warp_was_no_battle(console, context, step);
 }
@@ -566,7 +748,8 @@ void walk_overworld_route(
             //  Turning first, with a tap, makes the hold start from a standstill
             //  facing the right way: holding through a turn lost a tile on the
             //  console, while holds from a standstill were exact over 15 tiles.
-            if (facing != step.direction){
+            //  Not on the Bicycle, where the tap is a step.
+            if (turns_first(step, speed, facing)){
                 turn_to(console, context, step.direction);
             }
             if (const std::string note = speed_note(step, speed); !note.empty()){
