@@ -13,6 +13,9 @@
  *    land encounters, over GAME_ODDS_SEEDS seeds (08.01's Rock Tunnel).
  *  - LATE_FADE: every warp's fade ends LATE_FADE later than the sim's
  *    usual (07.02's warp to Cerulean City).
+ *  - SLOW_FADE_IN: after every warp's fade the new map fades in for
+ *    SLOW_FADE_IN, the game taking no input yet: a fixed wait after a
+ *    fade, then a move (BDSP 00.04b heal_sandgem, lab-B 2026-11-10).
  *  - DARK_CAVE: the caves without Flash dark (DARK_MAPS), so each
  *    battle there ends on the dark cave's overworld, with no wild
  *    battles and with them at the game's odds (08.01 hiker_lenny, lab-B
@@ -70,6 +73,7 @@ enum class FaultClass{
     SCENE_END_POSE,
     WILD_BATTLES,
     LATE_FADE,
+    SLOW_FADE_IN,
     DARK_CAVE,
     LOST_TAP,
 };
@@ -81,6 +85,8 @@ std::string_view fault_class_name(FaultClass fault){
         return "wild battles at the game's odds";
     case FaultClass::LATE_FADE:
         return "late warp fade";
+    case FaultClass::SLOW_FADE_IN:
+        return "slow fade-in after every warp";
     case FaultClass::DARK_CAVE:
         return "dark cave without Flash";
     case FaultClass::LOST_TAP:
@@ -116,6 +122,9 @@ constexpr unsigned DARK_CAVE_SEEDS = 10;
 //  How much later than SimTiming's a late fade ends: the new map shows
 //  this long after the usual.
 constexpr Milliseconds LATE_FADE = 1500ms;
+//  How long the new map fades in after a warp's fade, taking no input: a
+//  model, longer than the GBA's fade-in, to find moves made in it.
+constexpr Milliseconds SLOW_FADE_IN = 1000ms;
 
 //  The maps as the story after the Hall of Fame and a new game flag them:
 //  the same set for every row, as each stage's tests use.
@@ -391,6 +400,18 @@ UnitTestResult sweep_late_fade(Logger& logger, const StoryCheckpoint& row, const
     return sweep_result(logger, FaultClass::LATE_FADE, row.id, 1, failures);
 }
 
+//  Row `row` with every warp's new map fading in for SLOW_FADE_IN.
+UnitTestResult sweep_slow_fade_in(Logger& logger, const StoryCheckpoint& row, const RowRun& clean){
+    SimScript script;
+    script.timing.fade_in = SLOW_FADE_IN;
+    const std::string stopped = differs(run_row(row, script, {}, clean.scripted), clean);
+    std::vector<SweepFailure> failures;
+    if (!stopped.empty()){
+        failures.push_back({"", std::format("every warp fading in {} ms", SLOW_FADE_IN.count()), stopped});
+    }
+    return sweep_result(logger, FaultClass::SLOW_FADE_IN, row.id, 1, failures);
+}
+
 //  Row `row` with DARK_MAPS dark: once with no wild battles, then with
 //  them at the game's odds from DARK_CAVE_SEEDS seeds. Each trainer's
 //  battle there ends on the dark overworld (battle_end_on_sim() in
@@ -546,6 +567,8 @@ private:
             return sweep_wild_battles(logger, m_row, clean);
         case FaultClass::LATE_FADE:
             return sweep_late_fade(logger, m_row, clean);
+        case FaultClass::SLOW_FADE_IN:
+            return sweep_slow_fade_in(logger, m_row, clean);
         case FaultClass::DARK_CAVE:
             return sweep_dark_cave(logger, m_row, clean);
         case FaultClass::LOST_TAP:
@@ -565,6 +588,7 @@ const FaultSweepCase FAULT_SWEEP_CASES[] = {
     {.input = {.fault = FaultClass::SCENE_END_POSE}, .expectation = {}},
     {.input = {.fault = FaultClass::WILD_BATTLES}, .expectation = {}},
     {.input = {.fault = FaultClass::LATE_FADE}, .expectation = {}},
+    {.input = {.fault = FaultClass::SLOW_FADE_IN}, .expectation = {}},
     {.input = {.fault = FaultClass::DARK_CAVE}, .expectation = {}},
     {.input = {.fault = FaultClass::LOST_TAP}, .expectation = {}},
 };
