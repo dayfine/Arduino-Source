@@ -2,7 +2,7 @@
   "format": "pokesim-story-replay-binding/1",
   "capture": {
     "file": "data/story/native/frlg-parcel-00.05.json",
-    "sha256": "8b0c04f2e1507aee0f0927a8d022b8b431036431e95f8893aa7a2383360f8504",
+    "sha256": "793abfef624f690c73cd0bb2e2a149da5f4c8654b50ffbd5905e27d88e1b0c04",
     "source_revision": "b170b7d2103e887ded825c37fdbdc19fd654fca8"
   },
   "map_revision": "e52be04ed7bb007c7219c7d2c96963cf053e0000",
