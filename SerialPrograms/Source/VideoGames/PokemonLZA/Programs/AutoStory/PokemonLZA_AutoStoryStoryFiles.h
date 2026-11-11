@@ -43,7 +43,7 @@ const StoryData& builtin_story_data();
 
 //  The built-in story (load_story_data() with no dev files), read once:
 //  what the tests, the lint and the program's dropdowns use. 01.xx Main
-//  Mission 01 (new game, Pancham, the starter), 02.01 Main Mission 02 (out
+//  Mission 01 (new game, Pancham, the starter), 02.xx Main Mission 02 (out
 //  of the Battle Zone to Hotel Z, the first night), 03.xx Main Mission 03
 //  (Taunie's battle, the Pokemon Center, Wild Zone 1, Mable's Rock Smash
 //  TM). Only 01.00, a new game, starts without a save; it starts on the

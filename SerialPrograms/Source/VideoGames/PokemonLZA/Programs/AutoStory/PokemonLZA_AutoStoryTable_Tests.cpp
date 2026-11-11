@@ -150,15 +150,11 @@ UnitTestResult test_autosave_rows(Logger&){
     return true;
 }
 
-//  A run can play from the new game to Wild Zone 1's gate (03.05) with no
-//  action that is not implemented.
-UnitTestResult test_ready_to_wild_zone_1(Logger&){
+//  A run can play every row: none names an action that is not implemented.
+UnitTestResult test_every_row_ready(Logger&){
     const size_t ready = story_rows_ready(story_checkpoints());
-    if (ready == 0 || story_checkpoints()[ready - 1].id < "03.05"){
-        return std::format(
-            "Expected rows 01.00-03.05 to be ready, {} are ({}).",
-            ready, ready == 0 ? std::string("none") : std::format("up to {}", story_checkpoints()[ready - 1].id)
-        );
+    if (ready != story_checkpoints().size()){
+        return std::format("Expected all {} rows to be ready, {} are.", story_checkpoints().size(), ready);
     }
     return true;
 }
@@ -353,7 +349,7 @@ const AutoStoryTableCase AUTO_STORY_TABLE_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"Story table: ready from the new game to Wild Zone 1", test_ready_to_wild_zone_1},
+        .input = {"Story table: every row is ready", test_every_row_ready},
         .expectation = {},
     },
     {
