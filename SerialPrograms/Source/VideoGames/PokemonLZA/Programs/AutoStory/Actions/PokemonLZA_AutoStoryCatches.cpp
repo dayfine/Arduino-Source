@@ -17,6 +17,7 @@
 #include "VideoGames/PokemonLZA/Inference/Battles/PokemonLZA_MoveEffectivenessSymbol.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_DialogDetector.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_TrainerBattle.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryCaughtMarkReader.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDexRegisteredDetector.h"
 #include "PokemonLZA_AutoStoryCatches.h"
 #include "PokemonLZA_AutoStoryScenes.h"
@@ -111,6 +112,16 @@ bool lock_on_near(ConsoleHandle& console, ProControllerContext& context){
     return false;
 }
 
+//  Holds ZL at the target and reads its name plate while it shows: whether
+//  its species is already caught (lock_target_caught()).
+std::optional<bool> aim_and_read_caught(ConsoleHandle& console, ProControllerContext& context){
+    pbf_press_button(context, BUTTON_ZL, 1500ms, 0ms);
+    context.wait_for(900ms);
+    const VideoSnapshot frame = console.video().snapshot();
+    context.wait_for_all_requests();
+    return frame ? lock_target_caught(frame) : std::nullopt;
+}
+
 //  Turns the camera, without walking, until the objective marker is in the
 //  middle (15 turns at most).
 void face_objective(ConsoleHandle& console, ProControllerContext& context){
@@ -138,10 +149,13 @@ std::optional<ObjectiveMarker> read_objective_marker(Logger& logger, const Image
     std::optional<WaterfillObject> best;
     WaterfillObject object;
     while (iter->find_next(object, false)){
-        const double x = object.center_of_gravity_x() / screen.width();
-        const double y = object.center_of_gravity_y() / screen.height();
-        const bool in_minimap = x < 0.20 && y < 0.45;
-        const bool in_party_bar = y > 0.70;
+        //  The minimap: a circle of radius 125 around (180, 180) on
+        //  1920x1080. A box around it also covered the real marker when it
+        //  sat at the left edge, high up (console B, 2026-11-10).
+        const double dx = object.center_of_gravity_x() / scale - 180;
+        const double dy = object.center_of_gravity_y() / scale - 180;
+        const bool in_minimap = dx * dx + dy * dy < 140 * 140;
+        const bool in_party_bar = object.center_of_gravity_y() / screen.height() > 0.70;
         const double aspect = object.aspect_ratio();
         if (in_minimap || in_party_bar || object.area > 4000 * scale * scale || aspect < 0.6 || aspect > 1.4){
             continue;
@@ -171,6 +185,7 @@ std::optional<int> walk_to_objective(ConsoleHandle& console, ProControllerContex
     PlzaScreenObserver observer;
     const WallClock deadline = current_time() + limit;
     int unseen = 0;
+    double last_x = 0.5;
     std::optional<int> last;
     while (current_time() < deadline){
         context.wait_for_all_requests();
@@ -180,14 +195,16 @@ std::optional<int> walk_to_objective(ConsoleHandle& console, ProControllerContex
         }
         const std::optional<ObjectiveMarker> marker = read_objective_marker(console, frame);
         if (!marker){
-            //  Behind us: turn the camera until it shows.
+            //  Behind us: turn the camera, toward where it was last, until it
+            //  shows.
             if (++unseen > 12){
                 return std::nullopt;
             }
-            pbf_move_right_joystick(context, {0.5, 0}, 500ms, 200ms);
+            pbf_move_right_joystick(context, {last_x < 0.5 ? -0.5 : 0.5, 0}, 500ms, 200ms);
             continue;
         }
         unseen = 0;
+        last_x = marker->x;
         //  Off screen, the game pins the marker to the edge with no digits
         //  (anything read there is noise): turn to it before walking.
         if (marker->x < 0.10 || marker->x > 0.90){
@@ -234,7 +251,16 @@ void catch_in_zone(ConsoleHandle& console, ProControllerContext& context, int ne
     int steps = 0;
     for (; steps < 3 && found < new_species_wanted && throws < max_throws; steps++){
         pbf_move_left_joystick(context, {1, 0}, 1000ms, 300ms);
-        while (found < new_species_wanted && throws < max_throws && lock_on_near(console, context)){
+        int skips = 0;
+        while (found < new_species_wanted && throws < max_throws && skips < 4 && lock_on_near(console, context)){
+            //  A species already caught: its plate shows a Poke Ball. Look
+            //  further right instead of throwing.
+            if (aim_and_read_caught(console, context) == true){
+                console.log("catch_in_zone(): locked on to a species already caught: skipping it.");
+                skips++;
+                pbf_move_right_joystick(context, {0.5, 0}, 400ms, 300ms);
+                continue;
+            }
             throws++;
             const bool registered = throw_ball(console, context);
             found += registered ? 1 : 0;
