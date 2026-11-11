@@ -23,7 +23,7 @@ Pokemon::StoryActionTable story_action_table(StoryWalkSteps& walks, const StoryB
     using WalkMethod = Outcome (StoryWalkSteps::*)(RunState&, const StoryStep&);
     const auto walk = [&](StoryStepKind kind, WalkMethod method){
         table.add(kind, "", StoryAction{
-            .act = [&walks, method](RunState& state, const StoryStep& step){
+            .act = [&walks, method](const StoryStep& step, RunState& state){
                 return (walks.*method)(state, step);
             },
         });

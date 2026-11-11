@@ -43,7 +43,7 @@ include("${ROOT}/SerialPrograms/cmake/EmbedTextFiles.cmake")
 file(GLOB CANONICAL_MAPS "${NAV}/TestMaps/*.json")
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${CANONICAL_MAPS})
 pa_embed_text_files(RuntimeMapLegacyTests ../../SerialPrograms/Source/Pokemon/Navigation/TestMaps
-    Pokemon/Navigation/Pokemon_Navigation_Tests.h PokemonAutomation::Pokemon navigation_test_map_json)
+    Pokemon/Navigation/Pokemon_NavigationTestMaps.h PokemonAutomation::Pokemon navigation_test_map_json)
 get_property(MAP_DEPENDENCIES DIRECTORY PROPERTY CMAKE_CONFIGURE_DEPENDS)
 foreach(INPUT IN LISTS MAP_DEPENDENCIES)
     if(INPUT MATCHES "TestMaps/.*\\.json$")

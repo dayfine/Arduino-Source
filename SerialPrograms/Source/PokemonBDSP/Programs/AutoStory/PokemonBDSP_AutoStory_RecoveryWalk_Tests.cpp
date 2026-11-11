@@ -21,6 +21,7 @@
 #include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkResult.h"
 #include "Simulation/PokemonBDSP_AutoStory_GridSim.h"
 #include "PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP_AutoStory_StoryStepIO.h"

@@ -4,6 +4,7 @@
  *
  */
 
+#include <format>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -14,7 +15,7 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "Pokemon_StoryActions.h"
-#include "Pokemon_AutoStory_Tests.h"
+#include "Pokemon_StoryActions_Tests.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -33,7 +34,7 @@ StoryStep make(StoryStepKind kind, std::string name, std::string action = ""){
 //  An action that fails with `name`, so a test sees which one ran.
 StoryAction named(std::string name){
     return StoryAction{
-        .act = [name](RunState&, const StoryStep&){
+        .act = [name](const StoryStep&, RunState&){
             return outcome_failed(name);
         },
     };
@@ -47,7 +48,7 @@ std::string found(const StoryActionTable& table, StoryStepKind kind, std::string
         return "none";
     }
     RunState state;
-    return action->act(state, make(kind, "step")).failure;
+    return action->act(make(kind, "step"), state).failure;
 }
 
 
@@ -68,7 +69,7 @@ UnitTestResult test_lookup_order(){
     };
     for (const auto& [actual, expected] : checks){
         if (actual != expected){
-            return "Expected " + expected + ", got " + actual;
+            return std::format("Expected {}, got {}", expected, actual);
         }
     }
     return true;
@@ -141,9 +142,9 @@ UnitTestResult test_lint_names_steps_without_actions(){
     if (problems != expected){
         std::string got;
         for (const std::string& problem : problems){
-            got += "\n" + problem;
+            got += std::format("\n{}", problem);
         }
-        return "Expected two steps without actions and two with bad args, got:" + got;
+        return std::format("Expected two steps without actions and two with bad args, got:{}", got);
     }
     return true;
 }
@@ -155,8 +156,8 @@ public:
     using TableExecutor::TableExecutor;
 
 protected:
-    virtual Outcome run_action(RunState& state, const StoryStep& step) override{
-        const Outcome outcome = TableExecutor::run_action(state, step);
+    virtual Outcome run_action(const StoryStep& step, RunState& state) override{
+        const Outcome outcome = TableExecutor::run_action(step, state);
         if (step.kind == StoryStepKind::TALK && outcome.failure == "unsupported_step"){
             return outcome_failed("talk binding");
         }
@@ -171,19 +172,19 @@ public:
     bool stops = false;
 
     virtual void before_step(const StoryStep& step) override{
-        trace.push_back("before " + step.name);
+        trace.push_back(std::format("before {}", step.name));
     }
     virtual bool stops_on_failure(const StoryStep&) const override{
         return stops;
     }
     virtual void on_failure(const StoryStep& step, const OperationFailedException& error) override{
-        trace.push_back("failed " + step.name + ": " + error.message());
+        trace.push_back(std::format("failed {}: {}", step.name, error.message()));
     }
 };
 
 StoryAction throwing(){
     return StoryAction{
-        .act = [](RunState&, const StoryStep&) -> Outcome{
+        .act = [](const StoryStep&, RunState&) -> Outcome{
             throw OperationFailedException(ErrorReportMode::NO_ERROR_REPORT, "no dialog");
         },
         .needs_console = true,
@@ -196,11 +197,11 @@ UnitTestResult test_executor_uses_table_then_binding(){
     FakeGuard guard;
     FakeTableExecutor executor(table, guard);
     RunState state;
-    const std::string bill = executor.run(state, make(StoryStepKind::GAME, "bill", "bill")).failure;
-    const std::string talk = executor.run(state, make(StoryStepKind::TALK, "talk")).failure;
-    const std::string mash = executor.run(state, make(StoryStepKind::MASH, "mash")).failure;
+    const std::string bill = executor.run(make(StoryStepKind::GAME, "bill", "bill"), state).failure;
+    const std::string talk = executor.run(make(StoryStepKind::TALK, "talk"), state).failure;
+    const std::string mash = executor.run(make(StoryStepKind::MASH, "mash"), state).failure;
     if (bill != "bill action" || talk != "talk binding" || mash != "unsupported_step"){
-        return "Expected table, binding, unsupported; got " + bill + ", " + talk + ", " + mash;
+        return std::format("Expected table, binding, unsupported; got {}, {}, {}", bill, talk, mash);
     }
     if (guard.trace != std::vector<std::string>{"before bill", "before talk", "before mash"}){
         return "Expected the guard before every step.";
@@ -214,9 +215,9 @@ UnitTestResult test_guard_turns_failures_into_outcomes(){
     FakeGuard guard;
     TableExecutor executor(table, guard);
     RunState state;
-    const Outcome outcome = executor.run(state, make(StoryStepKind::TALK, "oak"));
+    const Outcome outcome = executor.run(make(StoryStepKind::TALK, "oak"), state);
     if (outcome.failure != "operation_failed" || outcome.detail != "no dialog"){
-        return "Expected operation_failed: no dialog, got " + to_string(outcome);
+        return std::format("Expected operation_failed: no dialog, got {}", to_string(outcome));
     }
     if (guard.trace != std::vector<std::string>{"before oak", "failed oak: no dialog"}){
         return "Expected the guard told of the failure.";
@@ -228,7 +229,7 @@ UnitTestResult test_guard_stop_rethrows(){
     StoryActionTable table;
     table.add(StoryStepKind::TALK, "", throwing());
     table.add(StoryStepKind::MASH, "", StoryAction{
-        .act = [](RunState&, const StoryStep&) -> Outcome{
+        .act = [](const StoryStep&, RunState&) -> Outcome{
             throw std::runtime_error("not a console failure");
         },
     });
@@ -237,12 +238,12 @@ UnitTestResult test_guard_stop_rethrows(){
     TableExecutor executor(table, guard);
     RunState state;
     try{
-        executor.run(state, make(StoryStepKind::TALK, "oak"));
+        executor.run(make(StoryStepKind::TALK, "oak"), state);
         return "Expected a stop row's failure rethrown.";
     }catch (OperationFailedException&){}
     guard.stops = false;
     try{
-        executor.run(state, make(StoryStepKind::MASH, "scene"));
+        executor.run(make(StoryStepKind::MASH, "scene"), state);
         return "Expected other exceptions passed through.";
     }catch (std::runtime_error&){}
     if (guard.trace != std::vector<std::string>{"before oak", "before scene"}){
@@ -269,7 +270,7 @@ struct StoryActionsCase{
 class Test_StoryActions : public UnitTest{
 public:
     explicit Test_StoryActions(StoryActionsCase scenario)
-        : UnitTest("Pokemon::StoryActions - " + std::string(scenario.input.name))
+        : UnitTest(std::format("Pokemon::StoryActions - {}", scenario.input.name))
         , m_scenario(scenario)
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{

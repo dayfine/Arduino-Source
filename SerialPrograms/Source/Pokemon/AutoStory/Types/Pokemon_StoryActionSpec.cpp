@@ -41,7 +41,7 @@ std::vector<std::string> story_args_errors(const StoryActionSpec& spec, const St
     }
     for (const StoryArgSpec& arg : spec.args){
         if (arg.required && args.find(arg.key) == args.end()){
-            errors.emplace_back(std::format("missing argument \"{}\"{}", arg.key, arg.why.empty() ? "" : " (" + arg.why + ")"));
+            errors.emplace_back(std::format("missing argument \"{}\"{}", arg.key, arg.why.empty() ? "" : std::format(" ({})", arg.why)));
         }
     }
     return errors;

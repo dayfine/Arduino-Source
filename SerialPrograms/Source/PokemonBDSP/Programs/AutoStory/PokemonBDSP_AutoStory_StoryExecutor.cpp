@@ -25,6 +25,9 @@
 #include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
+#include "Actions/PokemonBDSP_AutoStory_LitDoorway.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RobustRoute.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_TrainerSight.h"
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_PlanCosts.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Indoors.h"
@@ -37,6 +40,9 @@
 #include "Actions/PokemonBDSP_AutoStory_Events.h"
 #include "Actions/PokemonBDSP_AutoStory_NewGame.h"
 #include "Actions/PokemonBDSP_AutoStory_Settings.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkDpad.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkResult.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkScreen.h"
 #include "PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP_AutoStory_StoryTable.h"
 #include "Actions/PokemonBDSP_AutoStory_Talks.h"
@@ -147,7 +153,7 @@ StoryExecutor::StoryExecutor(StoryEnv& env)
 
 StoryBoundActions StoryExecutor::console_actions(){
     const auto method = [this](Outcome (StoryExecutor::*action)(RunState&, const StoryStep&)){
-        return [this, action](RunState& state, const StoryStep& step){
+        return [this, action](const StoryStep& step, RunState& state){
             return (this->*action)(state, step);
         };
     };
@@ -160,7 +166,7 @@ StoryBoundActions StoryExecutor::console_actions(){
         .heal = method(&StoryExecutor::heal),
         .save = method(&StoryExecutor::save),
         .event = [this](const std::string& name) -> Pokemon::StoryActionFunction{
-            return [this, event = story_events().at(name)](RunState& state, const StoryStep& step){
+            return [this, event = story_events().at(name)](const StoryStep& step, RunState& state){
                 return event(*this, state, step);
             };
         },
@@ -171,17 +177,17 @@ StoryBoundActions StoryExecutor::console_actions(){
 //  warp's scene pressed through to the quiet overworld.
 StoryInterruptActions StoryExecutor::console_interrupt_actions(){
     const auto settle = [this](std::string label){
-        return [this, label](RunState&, const Pokemon::InterruptVerdict&){
+        return [this, label](const Pokemon::InterruptVerdict&, RunState&){
             m_io.settle(BUTTON_B, label, false, "");
             return Pokemon::outcome_ok();
         };
     };
     return StoryInterruptActions{
-        .wild = [this](RunState&, const Pokemon::InterruptVerdict&){
+        .wild = [this](const Pokemon::InterruptVerdict&, RunState&){
             run_from_wild_battle(stream(), context());
             return Pokemon::outcome_ok();
         },
-        .trainer = [this](RunState&, const Pokemon::InterruptVerdict&){
+        .trainer = [this](const Pokemon::InterruptVerdict&, RunState&){
             m_io.fight("");
             return Pokemon::outcome_ok();
         },
@@ -355,7 +361,7 @@ Pokemon::Segment make_story_segment(
                 //  resets and does not save again.
                 save.act = [&executor, &saved, id = row.id, save_at_start](RunState& state){
                     saved.insert(id);
-                    return executor.run(state, save_at_start);
+                    return executor.run(save_at_start, state);
                 };
                 Pokemon::Checkpoint checkpoint;
                 checkpoint.id = row.id;

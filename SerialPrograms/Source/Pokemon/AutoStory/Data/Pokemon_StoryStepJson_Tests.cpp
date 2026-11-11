@@ -8,6 +8,7 @@
  *
  */
 
+#include <format>
 #include <iostream>
 #include <string>
 #include <string_view>
@@ -17,7 +18,7 @@
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Pokemon_StoryStepJson.h"
 #ifndef PA_STORY_DATA_STANDALONE
-#include "Pokemon/AutoStory/Pokemon_AutoStory_Tests.h"
+#include "Pokemon_StoryStepJson_Tests.h"
 #endif
 
 namespace PokemonAutomation{
@@ -122,10 +123,10 @@ std::string check_case(const WireCase& test){
         }
         const JsonValue expected = parse_json(std::string(test.expectation.canonical));
         if (!(actual == expected)){
-            return "Expected " + expected.dump() + ", read " + actual.dump();
+            return std::format("Expected {}, read {}", expected.dump(), actual.dump());
         }
     }catch (const ParseException& error){
-        return test.expectation.rejected ? "" : "Unexpected parse failure: " + error.message();
+        return test.expectation.rejected ? "" : std::format("Unexpected parse failure: {}", error.message());
     }
     return "";
 }
@@ -185,7 +186,7 @@ int check_shared_file(const std::string& filename){
 class StoryJsonTest : public UnitTest{
 public:
     explicit StoryJsonTest(WireCase test)
-        : UnitTest("Pokemon::StoryStepJson - " + std::string(test.input.name))
+        : UnitTest(std::format("Pokemon::StoryStepJson - {}", test.input.name))
         , m_case(test)
     {}
 

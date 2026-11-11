@@ -5,6 +5,7 @@
  */
 
 #include "PokemonBDSP_AutoStory_PlanCosts.h"
+#include "PokemonBDSP_AutoStory_RobustRoute.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

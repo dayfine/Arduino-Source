@@ -29,9 +29,9 @@ namespace Segment00Lines{
 
 //  Map names in segment00_maps(); Route 201 and Sandgem Town go by
 //  StoryMaps' MAP_ROUTE_201 and MAP_SANDGEM_TOWN.
-extern const char* const MAP_TWINLEAF_TOWN;
+inline const std::string MAP_TWINLEAF_TOWN = "Twinleaf Town";
 //  Verity Lakefront overworld map name.
-extern const char* const MAP_VERITY_LAKEFRONT;
+inline const std::string MAP_VERITY_LAKEFRONT = "Verity Lakefront";
 
 //  Twinleaf Town, Route 201, the Verity Lakefront and Sandgem Town joined on
 //  one grid at their world offsets from the decomp. Lake Verity is not in

@@ -23,6 +23,8 @@
 #include "PokemonBDSP/Inference/PokemonBDSP_MenuDetector.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_NameListDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_IntroMenuDetector.h"
+#include "PokemonBDSP_AutoStory_IntroProbe.h"
+#include "PokemonBDSP_AutoStory_IntroSteps.h"
 #include "PokemonBDSP_AutoStory_NewGame.h"
 
 namespace PokemonAutomation{
@@ -499,7 +501,7 @@ void wait_out_boot(VideoStream& stream, ProControllerContext& context, StepTrace
 //  The machine's states: the screens classify_intro_screen() tells apart, with
 //  the keyboard split by whose name it asks for. Each state's step is act().
 std::vector<ScreenState> intro_states(IntroRun& run){
-    auto screen_is = [&run](const ImageViewRGB32& screen, const char* name){
+    auto screen_is = [&run](const ImageViewRGB32& screen, const std::string& name){
         return classify_intro_screen(&run.env.console, screen) == name;
     };
     return {
@@ -593,7 +595,7 @@ void play_new_game_intro(
     trace.action(std::string("Picks: language ") + language_data(picks.game_language).name +
         ", look " + std::to_string(picks.look + 1) + ".");
     const std::vector<ScreenState> states = intro_states(run);
-    run_screen_machine(stream, context, trace, states, std::chrono::minutes(15));
+    run_screen_machine(stream, context, states, std::chrono::minutes(15), trace);
     trace.action("Intro done.");
 }
 
