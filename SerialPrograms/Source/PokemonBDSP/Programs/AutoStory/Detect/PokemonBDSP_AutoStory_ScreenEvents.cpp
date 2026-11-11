@@ -5,6 +5,7 @@
  */
 
 #include <utility>
+#include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Walk.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkScreen.h"
 #include "PokemonBDSP_AutoStory_ScreenEvents.h"
@@ -15,6 +16,12 @@ namespace PokemonBDSP{
 
 using Pokemon::ScreenEvent;
 using Pokemon::ScreenEvents;
+
+namespace{
+//  Around the player, whom the camera keeps in the middle: PLAYER_STILL's
+//  box. People walking elsewhere on the screen stay out of it.
+const ImageFloatBox PLAYER_BOX(0.42, 0.34, 0.16, 0.32);
+}
 
 
 BdspScreenObserver::BdspScreenObserver(BattleCue cue, std::string banner)
@@ -36,6 +43,9 @@ ScreenEvents BdspScreenObserver::observe(const VideoSnapshot& frame, WallClock n
     out.set(ScreenEvent::DIALOG_BOX, m_dialog.detect(screen));
     out.set(ScreenEvent::PLAYER_CAN_MOVE, m_overworld.detect(screen));
     out.set(ScreenEvent::SCREEN_STILL, m_previous && walk_screen_change(*m_previous.frame, screen) < WALK_TAP_BLOCKED_CHANGE);
+    out.set(ScreenEvent::PLAYER_STILL, m_previous && walk_screen_change(
+        extract_box_reference(*m_previous.frame, PLAYER_BOX), extract_box_reference(screen, PLAYER_BOX)) < WALK_TAP_BLOCKED_CHANGE);
+
     out.merge(Pokemon::fade_events(fade_of_screen(screen)));
     out.set(ScreenEvent::LOCATION_BANNER, !m_banner.empty() && location_banner_matches(m_reads.read(screen, now), m_banner));
     m_previous = frame;

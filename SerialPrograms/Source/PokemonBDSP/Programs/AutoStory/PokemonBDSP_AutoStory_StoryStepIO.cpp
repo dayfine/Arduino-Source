@@ -312,6 +312,11 @@ void ConsoleStoryStepIO::settle(Button button, const std::string& label, bool fa
     talk_over(m_stream, m_context, label, {.next = button, .rule = {.warp = fade}, .banner = banner});
 }
 
+void ConsoleStoryStepIO::settle_door(const std::string& label){
+    talk_over(m_stream, m_context, label, {.rule = {.door = true}});
+}
+
+
 
 
 } // namespace PokemonBDSP

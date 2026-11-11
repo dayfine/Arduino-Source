@@ -113,18 +113,23 @@ namespace detail{
 //  One beat of a scripted scene: a line, up until a press, or `length` of
 //  screen with no box, `overworld` or not (a battle's end, a fade),
 //  `moving` (someone walking, the camera panning) or still, faded as `fade`.
+//  `at_player`: the moving reaches the box around the player.
 struct SimBeat{
     std::string what;
     bool line = false;
     Milliseconds length = Milliseconds(0);
     bool overworld = true;
     bool moving = false;
+    bool at_player = false;
     WarpFade fade = WarpFade::NONE;
 };
 //  A line, up until a press.
 SimBeat sim_line(std::string what);
 //  `length` of overworld with no box, someone moving or not.
 SimBeat sim_pause(std::string what, Milliseconds length, bool moving);
+//  `length` of overworld with someone walking right past the player.
+SimBeat sim_walk_past(std::string what, Milliseconds length);
+
 //  `length` of a fade, as BDSP's eyes see it: no box, so the overworld,
 //  and still (a black frame matches the one before).
 SimBeat sim_fade(std::string what, Milliseconds length, WarpFade fade = WarpFade::BLACK);

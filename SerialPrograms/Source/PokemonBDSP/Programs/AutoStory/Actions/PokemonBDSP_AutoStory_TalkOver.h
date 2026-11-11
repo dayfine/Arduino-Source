@@ -39,6 +39,14 @@ using Pokemon::TalkOver;
 constexpr Milliseconds TALK_OVER_HOLD = Milliseconds(80);
 //  then released this long before the next look.
 constexpr Milliseconds TALK_OVER_RELEASE = Milliseconds(1200);
+//  A door's settle (TalkOverRule::door) has no text to wait out: it looks
+//  this often, to see its short still spell when it comes.
+constexpr Milliseconds TALK_OVER_DOOR_RELEASE = Milliseconds(200);
+//  The release before the next look under `rule`.
+inline Milliseconds talk_over_release(const TalkOverRule& rule){
+    return rule.door ? TALK_OVER_DOOR_RELEASE : TALK_OVER_RELEASE;
+}
+
 //  How long a talk-over may take before the step fails.
 constexpr Milliseconds TALK_OVER_LIMIT = Milliseconds(120000);
 

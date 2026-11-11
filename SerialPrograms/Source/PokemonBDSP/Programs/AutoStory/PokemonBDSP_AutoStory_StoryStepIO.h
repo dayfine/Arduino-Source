@@ -75,6 +75,13 @@ public:
     //  warp must come first (a map change): a fade, or the banner `banner`
     //  ("" for a fade only). Fails otherwise.
     virtual void settle(Button button, const std::string& label, bool fade, const std::string& banner) = 0;
+    //  The settle after a door or a way through, with no text to come: the
+    //  fade back up and a short still spell around the player, people
+    //  walking about ignored (TalkOverRule::door). A model with no screen
+    //  settles as settle() does.
+    virtual void settle_door(const std::string& label){
+        settle(BUTTON_B, label, false, "");
+    }
 };
 
 
@@ -93,8 +100,10 @@ public:
         Milliseconds dark_from = Milliseconds(0), const std::string& banner = "") override;
     virtual std::optional<size_t> tap_to_banner(Pokemon::Direction direction, const std::string& map, size_t max_taps) override;
     virtual void settle(Button button, const std::string& label, bool fade, const std::string& banner) override;
+    virtual void settle_door(const std::string& label) override;
 
 private:
+
     VideoStream& m_stream;
     ProControllerContext& m_context;
     WildBattleEscape m_escape;

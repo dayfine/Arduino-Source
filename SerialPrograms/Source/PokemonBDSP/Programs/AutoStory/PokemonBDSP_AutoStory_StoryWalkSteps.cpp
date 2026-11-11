@@ -139,7 +139,7 @@ CenterEntry run_into_center(
     }else{
         line_up();
     }
-    io.settle(BUTTON_B, std::format("{}: into the Center", label), false, "");
+    io.settle_door(std::format("{}: into the Center", label));
     return entry;
 }
 
@@ -353,7 +353,7 @@ Outcome StoryWalkSteps::tap_to_banner(const Pose& from, const StoryStep& step){
     //  then goes nowhere (lab-B 2026-11-10, 00.04b's Center): settle, as
     //  after a door.
     if (through_already(step)){
-        m_io.settle(BUTTON_B, label_of(step), false, "");
+        m_io.settle_door(label_of(step));
         return Pokemon::outcome_ok();
     }
     const size_t limit = taps_to_banner(from, direction);
@@ -367,9 +367,10 @@ Outcome StoryWalkSteps::tap_to_banner(const Pose& from, const StoryStep& step){
     }else{
         log(std::format("[{}] {}: through to {} after {} taps {}.", m_row, step.name, map, *taps, direction_name(direction)));
     }
-    m_io.settle(BUTTON_B, label_of(step), false, "");
+    m_io.settle_door(label_of(step));
     return Pokemon::outcome_ok();
 }
+
 
 //  A STEP "or_legs" whose run into the door saw nothing (`seen`): the run
 //  stopped beside the door's column, against the wall it is in. The step's
