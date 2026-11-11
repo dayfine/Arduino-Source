@@ -26,7 +26,7 @@ namespace MovementMechanics{
 //  tiles, the same each time: a tile per 100ms, so an open leg's hold of
 //  (n - 1) tiles and a half moves n. 112ms a tile (a wall-to-wall time
 //  of the motion on screen) held "west 16 (open)" for 17 or 18 tiles on
-//  Route 8 (00.30 run 2). Not the decompilation's 4 frames a tile (67ms):
+//  Route 8 (08.03 run 2). Not the decompilation's 4 frames a tile (67ms):
 //  the bike speeds up from rest.
 inline constexpr Milliseconds BIKE_TILE_TIME(100);
 

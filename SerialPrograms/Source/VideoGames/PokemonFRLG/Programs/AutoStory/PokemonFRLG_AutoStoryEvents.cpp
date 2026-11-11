@@ -293,7 +293,7 @@ const std::vector<MapData>& story_maps(){
         std::set<std::string> flags = map_flag_set(all, "after_hall_of_fame");
         flags.merge(map_flag_set(all, "new_game"));
         //  The one ball the story picks up in its way: B2F's MOON STONE
-        //  blocks column 2 of the arrow floor (00.32's moon_stone).
+        //  blocks column 2 of the arrow floor (09.02's moon_stone).
         flags.insert("FLAG_HIDE_ROCKET_HIDEOUT_B2F_MOON_STONE");
         return overworld_maps(flags);
     }();
@@ -425,7 +425,7 @@ std::optional<Direction> wall_beside(const MapData& map, const TilePos& tile){
 namespace{
 
 //  A talk to a person or an item ball opens a message; an A that opens
-//  none faced nothing (00.31 b3f_rare_candy, console B, 2026-11-10: one A,
+//  none faced nothing (09.01 b3f_rare_candy, console B, 2026-11-10: one A,
 //  "done", on the wrong floor). The message is left open for the next step.
 bool talk_opens_message(ConsoleHandle& console, ProControllerContext& context){
     WhiteDialogWatcher opened(COLOR_RED);

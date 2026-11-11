@@ -303,7 +303,7 @@ UnitTestResult test_grind_args(){
 }
 
 //  The check in the Center before the walk out: a lead already at the
-//  plan's level needs no trip (00.24 walked to Route 6's grass and back at
+//  plan's level needs no trip (06.03 walked to Route 6's grass and back at
 //  Lv29, console B, 2026-11-03); one short of it does. Nothing is fought
 //  either way.
 UnitTestResult test_grind_reached_already(){

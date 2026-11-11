@@ -1,24 +1,24 @@
 {
   "format": "pokesim-native-replay-preview/1",
   "repository": "dayfine/PokemonSimulation",
-  "revision": "bdca47c5045797be1d2a1f0931ad6a8f15ab3225",
+  "revision": "d3eea1b5c04180f8b60eb98b0d65f70aca6b1abb",
   "status": "preview-unmerged-PR-73",
   "files": {
     "binding": {
       "path": "data/story/parcel-pilot/binding.json",
-      "sha256": "ce91aba96599f443910dc76a985b97a45b8a76bcbbb1c9824cd247a627d946f4"
+      "sha256": "a29dd87a33c56dd108956d3a691646dbed850b376df6b9f019977dac979a5ed2"
     },
     "cases": {
       "path": "data/story/parcel-pilot/cases.json",
       "sha256": "0dee2991120d12f01e67f6e97a4fb815b4d2f54a423739bc1a6aa4f2509f599e"
     },
     "capture": {
-      "path": "data/story/native/frlg-parcel-00.05.json",
-      "sha256": "8b0c04f2e1507aee0f0927a8d022b8b431036431e95f8893aa7a2383360f8504"
+      "path": "data/story/native/frlg-parcel-02.01.json",
+      "sha256": "793abfef624f690c73cd0bb2e2a149da5f4c8654b50ffbd5905e27d88e1b0c04"
     }
   },
   "candidate": {
-    "sha256": "78219878fedc2c531a4b0faabbe215193ebc7e842dee0237ff52d296a6d614ac",
+    "sha256": "019e0d77f4f2c15a295e6ac2cfdf31ad836255acdc40a54fee042fddc96373fb",
     "producer": "checkpoint_replay.run actual route actions; expectations are not read"
   }
 }

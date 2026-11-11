@@ -23,7 +23,7 @@ GitHub CI builds/tests on the fork; Ubuntu additionally uploads
 
 `Programs/AutoStory/ReplayData/` contains exact `binding.json` / `cases.json`
 copies from the immutable PokemonSimulation revision in `pin.json`. The capture
-is `capture.json` there, the bytes of the old table export of 00.05 that
+is `capture.json` there, the bytes of the old table export of 02.01 that
 `binding.json` pins; the replay reads its checkpoint in the #312 step format
 (a route's target and a step's direction as args). These are **PR #73
 preview test fixtures**, not an approved resource/production-plan adoption.

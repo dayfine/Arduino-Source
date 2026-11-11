@@ -40,8 +40,8 @@ struct SimScript{
     std::set<std::string> wild_floor_maps;
     //  Whether the game holds the player up a tile on a step onto a
     //  connected map. It did north onto Nugget Bridge (console B,
-    //  2026-11-03, rows 00.16 and 00.20), not south from Route 6 into
-    //  Vermilion City (row 00.24).
+    //  2026-11-03, rows 05.05 and 05.09), not south from Route 6 into
+    //  Vermilion City (row 06.03).
     bool connections_stall = true;
     //  Wild battles at the game's own odds instead of `encounters`, on the
     //  maps named here, with their land encounter rate (pokefirered
@@ -52,18 +52,18 @@ struct SimScript{
     //  the game misses, by number from 1; the player goes on facing the old
     //  way. The game drops none from a standstill (MovementMechanics: 70 of
     //  70 turned); these test the walker's check of the turn
-    //  (SimWalkerRules::confirm_turn) after 00.28 run 2 (console B,
+    //  (SimWalkerRules::confirm_turn) after 08.01 run 2 (console B,
     //  2026-11-09), where a one-tile leg only turned the player.
     std::set<int> dropped_turn_taps;
     //  Fault injection: steps onto a warp, by number from 1, that show the
     //  fade's black and clear with the player where they were, not warped
-    //  (console B, 2026-11-10 01:44, 00.31 run 4, "east 1 (warp)" on B4F).
+    //  (console B, 2026-11-10 01:44, 09.01 run 4, "east 1 (warp)" on B4F).
     std::set<int> black_without_warp;
     //  The player rides the Bicycle: a tap facing another way takes a step
     //  too, a hold through a turn loses no tile
     //  (MovementMechanics::BIKE_TAP_ONLY_TURNS), and no step tap is
     //  ignored: a 40ms turn tap and a 56ms hold 340ms after it took two
-    //  tiles (console B, 2026-11-09, 00.30). At the start: SELECT gets on
+    //  tiles (console B, 2026-11-09, 08.03). At the start: SELECT gets on
     //  and off (OverworldSim::press_select()), a warp gets off. Each tap is
     //  a tile; one in MovementMechanics::BIKE_FAST_TAP_DROP_EVERY of those
     //  that start sooner than BIKE_TAP_DROP_PERIOD after the last is
@@ -75,7 +75,7 @@ struct SimScript{
     //  Caves dark without Flash (Rock Tunnel): the overworld is black but
     //  for a lit circle on the player, which the walker's battle text box
     //  check and screen observer read as a battle on its way (console B,
-    //  2026-11-09, 00.28), unless SimWalkerRules::dark_cave_not_battle.
+    //  2026-11-09, 08.01), unless SimWalkerRules::dark_cave_not_battle.
     std::set<std::string> dark_maps;
     //  A lift's map, and where its door lets the player out for each floor
     //  on its panel's menu, top first (pokefirered setdynamicwarp in

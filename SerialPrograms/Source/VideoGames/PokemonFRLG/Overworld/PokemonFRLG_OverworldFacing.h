@@ -28,7 +28,7 @@ std::optional<Direction> read_facing(ConsoleHandle& console, ProControllerContex
 //  old way, and a leg's hold then spends its first 8 frames turning
 //  (pokefirered PlayerTurnInPlace(), a fast walk in place): a one-tile
 //  hold only turns the player, with nothing to show it (console B,
-//  2026-11-09, 00.28 run 2: the step north onto Rock Tunnel B1F row 34).
+//  2026-11-09, 08.01 run 2: the step north onto Rock Tunnel B1F row 34).
 //  A facing that can't be read is taken as turned: a tap while facing the
 //  way already would take a step.
 void turn_to(ConsoleHandle& console, ProControllerContext& context, Direction direction);

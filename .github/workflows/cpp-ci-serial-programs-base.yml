@@ -106,7 +106,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: dayfine/PokemonSimulation
-          ref: bdca47c5045797be1d2a1f0931ad6a8f15ab3225
+          ref: d3eea1b5c04180f8b60eb98b0d65f70aca6b1abb
           path: StoryReplaySource
 
       - name: Verify replay preview bytes and independently regenerate its route input
@@ -127,7 +127,7 @@ jobs:
           assert pin['status'] == 'preview-unmerged-PR-73' and revision == pin['revision']
           for name, entry in pin['files'].items():
               published = (source / entry['path']).read_bytes()
-              copied = (native / 'StoryData/frlg-parcel-00.05.json' if name == 'capture' else folder / (name + '.json')).read_bytes()
+              copied = (native / 'StoryData/frlg-parcel-02.01.json' if name == 'capture' else folder / (name + '.json')).read_bytes()
               assert hashlib.sha256(published).hexdigest() == entry['sha256'], name
               assert copied == published, name
           binding = load_binding(source / pin['files']['binding']['path'], source)
@@ -277,12 +277,12 @@ jobs:
         if: startsWith(inputs.os, 'ubuntu') && inputs.run-tests
         run: |
           cd Arduino-Source/SerialPrograms/bin
-          ./StoryCheckpointExport 00.05 > frlg-parcel.native.json
+          ./StoryCheckpointExport 02.01 > frlg-parcel.native.json
           python3 - <<'PYTHON'
           import json
           from pathlib import Path
           data = json.loads(Path('frlg-parcel.native.json').read_text())
-          assert data['game'] == 'frlg' and data['checkpoint']['id'] == '00.05'
+          assert data['game'] == 'frlg' and data['checkpoint']['id'] == '02.01'
           assert len(data['checkpoint']['events']) == 3
           PYTHON
 

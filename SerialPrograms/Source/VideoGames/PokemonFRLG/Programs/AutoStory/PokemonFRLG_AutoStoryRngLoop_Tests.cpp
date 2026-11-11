@@ -118,11 +118,11 @@ std::string first_step(const StoryRunPlan& plan){
     return plan.rows.empty() || plan.rows.front().steps.empty() ? "" : plan.rows.front().steps.front().name;
 }
 
-//  After a shiny, 00.04b picks up at the rival's trigger and runs on, to
+//  After a shiny, 01.06 picks up at the rival's trigger and runs on, to
 //  Gift RNG's stop when it is on.
 UnitTestResult test_rows_after_shiny(){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
-    const size_t ball_row = row_index("00.04");
+    const size_t ball_row = row_index("01.05");
     struct Case{
         std::string last;
         StoryHandoffs handoffs = {};
@@ -130,14 +130,14 @@ UnitTestResult test_rows_after_shiny(){
         StoryHandoff stop = StoryHandoff::NONE;
     };
     const std::vector<Case> cases = {
-        {.last = "00.04", .ids = "00.04b"},
-        {.last = "00.04b", .ids = "00.04b"},
-        {.last = "00.05", .ids = "00.04b,00.05"},
-        {.last = "00.12b", .ids = "00.04b,00.05,00.06,00.07,00.08,00.09,00.10,00.11,00.12"},
+        {.last = "01.05", .ids = "01.06"},
+        {.last = "01.06", .ids = "01.06"},
+        {.last = "02.01", .ids = "01.06,02.01"},
+        {.last = "04.03", .ids = "01.06,02.01,02.02,02.03,03.01,03.02,03.03,04.01,04.02"},
         {
-            .last = "00.12b",
+            .last = "04.03",
             .handoffs = {.starter_rng = true, .gift_rng = true},
-            .ids = "00.04b,00.05,00.06,00.07,00.08,00.09,00.10,00.11,00.12",
+            .ids = "01.06,02.01,02.02,02.03,03.01,03.02,03.03,04.01,04.02",
             .stop = StoryHandoff::GIFT_RNG,
         },
     };
@@ -154,24 +154,24 @@ UnitTestResult test_rows_after_shiny(){
 }
 
 
-//  What the run says when Gift RNG's loop ends: a shiny goes on to 00.12b;
+//  What the run says when Gift RNG's loop ends: a shiny goes on to 04.03;
 //  otherwise the save beside the salesman is where to go on from.
 UnitTestResult test_gift_messages(){
     struct Case{
         StarterRngLoopResult result;
         std::string expected;
     };
-    const std::string save = "The save is still beside the salesman, facing him: start AutoStory at 00.12b with Run Gift "
+    const std::string save = "The save is still beside the salesman, facing him: start AutoStory at 04.03 with Run Gift "
         "RNG in AutoStory on to try again, or run Gift RNG (Magikarp) from it by hand with an attempt from the log, then "
-        "start AutoStory at 00.12b with that option off.";
+        "start AutoStory at 04.03 with that option off.";
     const std::vector<Case> cases = {
         {
             .result = {.end = StarterRngLoopEnd::SHINY, .attempts_run = 1, .remaining_sids = {300}, .sid = uint16_t(300)},
-            .expected = "Gift RNG: shiny Magikarp, on the planned target. 00.12b saves it.",
+            .expected = "Gift RNG: shiny Magikarp, on the planned target. 04.03 saves it.",
         },
         {
             .result = {.end = StarterRngLoopEnd::SHINY_OFF_TARGET, .attempts_run = 1, .remaining_sids = {300}, .sid = std::nullopt},
-            .expected = "Gift RNG: shiny Magikarp, but not the planned target. 00.12b saves it.",
+            .expected = "Gift RNG: shiny Magikarp, but not the planned target. 04.03 saves it.",
         },
         {
             .result = {.end = StarterRngLoopEnd::OUT_OF_ATTEMPTS, .attempts_run = 3, .remaining_sids = {}, .sid = std::nullopt},
@@ -192,24 +192,24 @@ UnitTestResult test_gift_messages(){
     return true;
 }
 
-//  00.12 saves facing the salesman for Gift RNG; after a shiny Magikarp,
-//  00.12b leaves its summary and saves there, then the run goes on.
+//  04.02 saves facing the salesman for Gift RNG; after a shiny Magikarp,
+//  04.03 leaves its summary and saves there, then the run goes on.
 UnitTestResult test_rows_after_magikarp(){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
-    const size_t salesman_row = row_index("00.12");
+    const size_t salesman_row = row_index("04.02");
     const StoryCheckpoint& salesman = checkpoints[salesman_row];
     const StoryCheckpoint& after = checkpoints[salesman_row + 1];
     const std::optional<StoryPose> start = after.start ? story_pose(Pokemon::pose_of(*after.start)) : std::nullopt;
     if (salesman.handoff != StoryHandoff::GIFT_RNG || !after.live_start || !start
         || start->map != "Route4_PokemonCenter_1F" || !(start->tile == TilePos{2, 3}) || start->facing != Direction::WEST
     ){
-        return "Expected 00.12 to be Gift RNG's handoff and 00.12b to start from the live game at (2, 3) facing west.";
+        return "Expected 04.02 to be Gift RNG's handoff and 04.03 to start from the live game at (2, 3) facing west.";
     }
-    for (std::string_view last : {"00.12", "00.12b"}){
+    for (std::string_view last : {"04.02", "04.03"}){
         const StoryRunPlan plan = rows_after_gift_rng(checkpoints, salesman_row, row_index(last), StoryHandoffs{.gift_rng = true});
-        if (joined_ids(plan) != "00.12b" || first_step(plan) != LEAVE_GIFT_SUMMARY || plan.stop != StoryHandoff::NONE){
+        if (joined_ids(plan) != "04.03" || first_step(plan) != LEAVE_GIFT_SUMMARY || plan.stop != StoryHandoff::NONE){
             return std::format(
-                "To {}: expected 00.12b from {}; got {} from {}", last, LEAVE_GIFT_SUMMARY, joined_ids(plan), first_step(plan)
+                "To {}: expected 04.03 from {}; got {} from {}", last, LEAVE_GIFT_SUMMARY, joined_ids(plan), first_step(plan)
             );
         }
     }
@@ -356,7 +356,7 @@ const AutoStoryRngLoopTestCase AUTO_STORY_RNG_LOOP_CASES[] = {
         .expectation = {.description = "formats notifications for gift rng encounters"},
     },
     {
-        .input = {.name = "00.12 and 00.12b: rows after a shiny Magikarp", .body = test_rows_after_magikarp},
+        .input = {.name = "04.02 and 04.03: rows after a shiny Magikarp", .body = test_rows_after_magikarp},
         .expectation = {.description = "plans continuation rows following shiny magikarp"},
     },
     {

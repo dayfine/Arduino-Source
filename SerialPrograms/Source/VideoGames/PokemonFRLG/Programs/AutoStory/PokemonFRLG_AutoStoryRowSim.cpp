@@ -398,7 +398,7 @@ namespace{
 //  with a move: the battle loop's polls replayed through its EvolutionHold
 //  and BattleEndWatch, as BattleLoop::step() takes them. The overworld of a
 //  dark cave reads as the battle's text box with no HP box (console B,
-//  2026-11-09, 00.28 hiker_lenny: three 20 s holds for an evolution, then
+//  2026-11-09, 08.01 hiker_lenny: three 20 s holds for an evolution, then
 //  "no battle screen and no START menu for 60 s after the battle"). Empty
 //  once START would look for the overworld, else the loop's failure.
 std::string battle_end_on_sim(const OverworldSim& sim){
@@ -559,7 +559,7 @@ namespace{
 
 //  Whether the sim can walk a Pokemon Center's way in or out of `step`:
 //  the map it ends on is built into the program. Celadon's Center has no
-//  map yet (00.30), so its way in is stubbed.
+//  map yet (08.03), so its way in is stubbed.
 bool center_walkable(const StoryStep& step){
     if (!is_center_variant(step.action)){
         return false;
