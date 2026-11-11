@@ -29,6 +29,9 @@
  *    no fade and no move, so the step that walks onto the first of them
  *    must stop there, not go on as if warped (09.01's B4F stairs, console
  *    B, 2026-11-10, reported as walked to B3F).
+ *  - UNSEEN_STEP: each step tap that moved the player, one at a time, read
+ *    by the walker as not moved: it must not tap again into a second
+ *    tile (09.02 Rocket Hideout B2F, console B, 2026-11-11 15:03 and 15:36).
  *
  *  Not swept here: a missed fade, which needs a knob in OverworldSim; a
  *  battle's opening at a step's start, which needs one in OverworldStepSim;
@@ -81,6 +84,7 @@ enum class FaultClass{
     DARK_CAVE,
     LOST_TAP,
     WARP_NO_OP,
+    UNSEEN_STEP,
 };
 std::string_view fault_class_name(FaultClass fault){
     switch (fault){
@@ -98,6 +102,8 @@ std::string_view fault_class_name(FaultClass fault){
         return "lost tap after a battle in a trainer's line";
     case FaultClass::WARP_NO_OP:
         return "warp no-op";
+    case FaultClass::UNSEEN_STEP:
+        return "step tap read as not moved";
     }
     return "?";
 }
@@ -178,6 +184,7 @@ struct RowRun{
     int steps = 0;
     int wild_battles = 0;
     Milliseconds in_wild_battles{0};
+    int moved_step_taps = 0;
 };
 
 //  Where a stubbed step leaves the player instead of its pose_after: by step index.
@@ -266,6 +273,7 @@ RowRun run_row(
         out.steps += state.steps;
         out.wild_battles += state.wild_battles;
         out.in_wild_battles += state.in_wild_battles;
+        out.moved_step_taps += state.moved_step_taps;
     };
     for (size_t c = 0; c < row.steps.size() && out.failure.empty(); c++){
         const StoryStep& step = row.steps[c];
@@ -572,6 +580,21 @@ UnitTestResult sweep_warp_no_op(Logger& logger, const StoryCheckpoint& row, cons
     return sweep_result(logger, FaultClass::WARP_NO_OP, row.id, warps.size(), failures);
 }
 
+//  Row `row` with each step tap that moved the player read as not moved,
+//  one at a time, counted across the row's sims.
+UnitTestResult sweep_unseen_step(Logger& logger, const StoryCheckpoint& row, const RowRun& clean){
+    std::vector<SweepFailure> failures;
+    for (int tap = 1; tap <= clean.moved_step_taps; tap++){
+        SimScript script;
+        script.unseen_step_taps = {tap};
+        const std::string stopped = differs(run_row(row, script, {}, clean.scripted), clean);
+        if (!stopped.empty()){
+            failures.push_back({"", std::format("step tap {} read as not moved", tap), stopped});
+        }
+    }
+    return sweep_result(logger, FaultClass::UNSEEN_STEP, row.id, (size_t)clean.moved_step_taps, failures);
+}
+
 //  A fault class swept over row `row` (empty in FAULT_SWEEP_CASES: each
 //  row with a start).
 struct FaultSweepInput{
@@ -643,6 +666,8 @@ private:
             return sweep_lost_tap(logger, m_row, clean);
         case FaultClass::WARP_NO_OP:
             return sweep_warp_no_op(logger, m_row, clean);
+        case FaultClass::UNSEEN_STEP:
+            return sweep_unseen_step(logger, m_row, clean);
         }
         return true;
     }
@@ -662,6 +687,7 @@ const FaultSweepCase FAULT_SWEEP_CASES[] = {
     {.input = {.fault = FaultClass::DARK_CAVE}, .expectation = {}},
     {.input = {.fault = FaultClass::LOST_TAP}, .expectation = {}},
     {.input = {.fault = FaultClass::WARP_NO_OP}, .expectation = {}},
+    {.input = {.fault = FaultClass::UNSEEN_STEP}, .expectation = {}},
 };
 
 std::optional<std::string> talk_battle_hide_flag(const StoryStep& step){
