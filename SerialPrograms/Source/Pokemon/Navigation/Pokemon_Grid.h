@@ -14,7 +14,7 @@
 #include <functional>
 #include <string>
 #include <vector>
-#include "Pokemon/Pokemon_Direction.h"
+#include "Pokemon_Direction.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{

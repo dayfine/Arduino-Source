@@ -1458,6 +1458,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Inference/Pokemon_TrainPokemonOCR.h
     Source/Pokemon/Inference/Pokemon_TypeReader.cpp
     Source/Pokemon/Inference/Pokemon_TypeReader.h
+    Source/Pokemon/Navigation/Pokemon_Direction.cpp
+    Source/Pokemon/Navigation/Pokemon_Direction.h
     Source/Pokemon/Navigation/Pokemon_Grid.cpp
     Source/Pokemon/Navigation/Pokemon_Grid.h
     Source/Pokemon/Options/Pokemon_BoxSortingTable.cpp
@@ -1514,8 +1516,6 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Pokemon_CollectedPokemonInfo.cpp
     Source/Pokemon/Pokemon_CollectedPokemonInfo.h
     Source/Pokemon/Pokemon_DataTypes.h
-    Source/Pokemon/Pokemon_Direction.cpp
-    Source/Pokemon/Pokemon_Direction.h
     Source/Pokemon/Pokemon_EncounterStats.cpp
     Source/Pokemon/Pokemon_EncounterStats.h
     Source/Pokemon/Pokemon_Gf2Matrix.cpp
