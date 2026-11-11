@@ -138,6 +138,9 @@ void catch_in_zone(ConsoleHandle& console, ProControllerContext& context, int ca
     pbf_press_button(context, BUTTON_L, 160ms, 400ms);
     context.wait_for_all_requests();
     const double start_heading = get_facing_direction(console, context);
+    //  Nothing spawns at 03.07's start (console B, 2026-11-10): out into
+    //  the zone first.
+    pbf_move_left_joystick(context, {0, 1}, 5000ms, 300ms);
     ThrowCount count = throw_at_what_locks(console, context, ThrowCount(), max_throws);
     for (double spoke : SPOKES){
         if (count.caught >= catches_wanted || count.throws >= max_throws){
@@ -150,6 +153,8 @@ void catch_in_zone(ConsoleHandle& console, ProControllerContext& context, int ca
         face_compass(console, context, std::fmod(start_heading + spoke + 360, 360));
         pbf_move_left_joystick(context, {0, -1}, 3000ms, 300ms);
     }
+    face_compass(console, context, start_heading);
+    pbf_move_left_joystick(context, {0, -1}, 5000ms, 300ms);
     face_compass(console, context, start_heading);
     console.log(std::format("catch_in_zone(): {} catches in {} throws.", count.caught, count.throws));
     if (count.caught < catches_wanted){
