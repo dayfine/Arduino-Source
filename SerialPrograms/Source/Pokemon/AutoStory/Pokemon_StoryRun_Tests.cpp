@@ -19,6 +19,7 @@ namespace{
 
 //  A game that records what the story run asked of it.
 struct FakeGame{
+    StoryPreflight preflight{.video_alive = true, .controller_ready = true, .game_running = true};
     std::string place_error;
     size_t loads = 0;
     size_t rereads = 0;
@@ -27,6 +28,9 @@ struct FakeGame{
 
     StoryGameHooks hooks(){
         StoryGameHooks game;
+        game.preflight = [this]{
+            return preflight;
+        };
         game.load_save = [this](RunState&){
             loads++;
             return outcome_ok();
@@ -58,38 +62,69 @@ struct FakeGame{
 };
 
 //  A start as the program asks for it, and what the game must have done.
-struct StartCase{
+struct StartInput{
     std::string name;
     StoryStart start;
     std::string place_error;
+    StoryPreflight preflight;
+};
+struct StartExpectation{
     bool succeeds;
     size_t loads;
     size_t rereads;
     bool save_loaded;
 };
+struct StartCase{
+    StartInput input;
+    StartExpectation expectation;
+};
+
+constexpr StoryPreflight READY{.video_alive = true, .controller_ready = true, .game_running = true};
+constexpr StoryPreflight ON_HOME{.video_alive = true, .controller_ready = true, .game_running = false};
+constexpr StoryPreflight NO_VIDEO{.video_alive = false, .controller_ready = true, .game_running = true};
+constexpr StoryPreflight NO_CONTROLLER{.video_alive = true, .controller_ready = false, .game_running = true};
+
+std::string_view start_name(StoryStart start){
+    switch (start){
+    case StoryStart::NEW_GAME:
+        return "a new game";
+    case StoryStart::LIVE:
+        return "the game as it is";
+    case StoryStart::FROM_SAVE:
+        return "its save";
+    }
+    return "?";
+}
 
 class Test_StoryStart : public UnitTest{
 public:
     Test_StoryStart(StartCase test_case)
-        : UnitTest(std::format("Pokemon::StoryRun - start: {}", test_case.name))
+        : UnitTest(std::format("Pokemon::StoryRun - start: {}", test_case.input.name))
         , m_case(std::move(test_case))
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         FakeGame fake;
-        fake.place_error = m_case.place_error;
+        fake.place_error = m_case.input.place_error;
+        fake.preflight = m_case.input.preflight;
         StoryGameHooks game = fake.hooks();
         RunState state;
-        const Outcome outcome = prepare_story_start("00.04b", m_case.start, game, state);
+        const Outcome outcome = prepare_story_start("00.04b", m_case.input.start, game, state);
         const bool save_loaded = state.flags.contains("save_loaded");
-        if (outcome.succeeded() != m_case.succeeds || fake.loads != m_case.loads
-            || fake.rereads != m_case.rereads || save_loaded != m_case.save_loaded
+        if (outcome.succeeded() != m_case.expectation.succeeds || fake.loads != m_case.expectation.loads
+            || fake.rereads != m_case.expectation.rereads || save_loaded != m_case.expectation.save_loaded
         ){
             return std::format(
                 "Expected ok={} loads={} rereads={} save_loaded={}, got {} {} {} {} ({})",
-                m_case.succeeds, m_case.loads, m_case.rereads, m_case.save_loaded,
+                m_case.expectation.succeeds, m_case.expectation.loads, m_case.expectation.rereads, m_case.expectation.save_loaded,
                 outcome.succeeded(), fake.loads, fake.rereads, save_loaded, to_string(outcome)
             );
+        }
+        if (!fake.logged(std::format("[Story] start: checkpoint 00.04b, from {}", start_name(m_case.input.start)))){
+            return "Expected the line naming the checkpoint that starts";
+        }
+        if (!m_case.input.preflight.game_running && outcome.failure != STORY_PRECONDITION_FAILED){
+            return std::format("Expected {}, got {}", STORY_PRECONDITION_FAILED, to_string(outcome));
         }
         return true;
     }
@@ -101,10 +136,126 @@ private:
 const StartCase START_CASES[] = {
     //  Console B, 2026-11-11: a BDSP run started at 00.04b with the game
     //  left at 00.04d walked from 00.04d's position.
-    {"a checkpoint with a save loads it first", StoryStart::FROM_SAVE, "", true, 1, 1, true},
-    {"a save in the wrong place fails before rereading it", StoryStart::FROM_SAVE, "The save is in Pewter City.", false, 1, 0, false},
-    {"a new game loads nothing", StoryStart::NEW_GAME, "", true, 0, 0, false},
-    {"a live start loads nothing", StoryStart::LIVE, "", true, 0, 0, false},
+    {
+        .input = {.name = "a checkpoint with a save loads it first", .start = StoryStart::FROM_SAVE, .place_error = "", .preflight = READY},
+        .expectation = {.succeeds = true, .loads = 1, .rereads = 1, .save_loaded = true},
+    },
+    {
+        .input = {.name = "a save in the wrong place fails before rereading it", .start = StoryStart::FROM_SAVE, .place_error = "The save is in Pewter City.", .preflight = READY},
+        .expectation = {.succeeds = false, .loads = 1, .rereads = 0, .save_loaded = false},
+    },
+    {
+        .input = {.name = "a new game loads nothing", .start = StoryStart::NEW_GAME, .place_error = "", .preflight = READY},
+        .expectation = {.succeeds = true, .loads = 0, .rereads = 0, .save_loaded = false},
+    },
+    {
+        .input = {.name = "a live start loads nothing", .start = StoryStart::LIVE, .place_error = "", .preflight = READY},
+        .expectation = {.succeeds = true, .loads = 0, .rereads = 0, .save_loaded = false},
+    },
+    //  Console B, 2026-11-11 13:32: the game was on HOME; the run saved,
+    //  pressed X/R/ZL on HOME, then "loaded" nothing. The preflight stops it
+    //  before any press.
+    {
+        .input = {.name = "the HOME menu stops the run before the load", .start = StoryStart::FROM_SAVE, .place_error = "", .preflight = ON_HOME},
+        .expectation = {.succeeds = false, .loads = 0, .rereads = 0, .save_loaded = false},
+    },
+    {
+        .input = {.name = "the HOME menu stops a live start", .start = StoryStart::LIVE, .place_error = "", .preflight = ON_HOME},
+        .expectation = {.succeeds = false, .loads = 0, .rereads = 0, .save_loaded = false},
+    },
+    {
+        .input = {.name = "dead video stops the run before the load", .start = StoryStart::FROM_SAVE, .place_error = "", .preflight = NO_VIDEO},
+        .expectation = {.succeeds = false, .loads = 0, .rereads = 0, .save_loaded = false},
+    },
+    {
+        .input = {.name = "a controller not ready stops the run before the load", .start = StoryStart::FROM_SAVE, .place_error = "", .preflight = NO_CONTROLLER},
+        .expectation = {.succeeds = false, .loads = 0, .rereads = 0, .save_loaded = false},
+    },
+};
+
+
+//  A preflight's checks, and the failure it reads as: the setup's, not
+//  the story's, naming every check that failed.
+struct PreflightInput{
+    std::string name;
+    StoryPreflight preflight;
+};
+struct PreflightExpectation{
+    std::string outcome;
+};
+struct PreflightCase{
+    PreflightInput input;
+    PreflightExpectation expectation;
+};
+
+class Test_StoryPreflight : public UnitTest{
+public:
+    Test_StoryPreflight(PreflightCase test_case)
+        : UnitTest(std::format("Pokemon::StoryRun - preflight: {}", test_case.input.name))
+        , m_case(std::move(test_case))
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const std::string got = to_string(check_story_preflight(m_case.input.preflight));
+        if (got != m_case.expectation.outcome){
+            return std::format("Expected \"{}\", got \"{}\"", m_case.expectation.outcome, got);
+        }
+        return true;
+    }
+
+private:
+    const PreflightCase m_case;
+};
+
+const PreflightCase PREFLIGHT_CASES[] = {
+    {.input = {.name = "a ready console passes", .preflight = READY}, .expectation = {.outcome = ""}},
+    {
+        .input = {.name = "the HOME menu", .preflight = ON_HOME},
+        .expectation = {.outcome = "precondition_failed: the game is not running"},
+    },
+    {
+        .input = {.name = "every check failed", .preflight = StoryPreflight{}},
+        .expectation = {.outcome = "precondition_failed: no live video; the controller is not ready; the game is not running"},
+    },
+};
+
+
+//  Whether the first checkpoint saves at its start: only a new game's. After
+//  a load the save is already there; from the game as it is the place is
+//  unconfirmed (console B, 2026-11-11: "save" ran first on HOME).
+struct FirstSaveInput{
+    StoryStart start;
+};
+struct FirstSaveExpectation{
+    bool saves;
+};
+struct FirstSaveCase{
+    FirstSaveInput input;
+    FirstSaveExpectation expectation;
+};
+
+class Test_StoryFirstSave : public UnitTest{
+public:
+    Test_StoryFirstSave(FirstSaveCase test_case)
+        : UnitTest(std::format("Pokemon::StoryRun - first save: {}", start_name(test_case.input.start)))
+        , m_case(test_case)
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        if (story_first_save_allowed(m_case.input.start) != m_case.expectation.saves){
+            return std::format("Expected saves={} from {}", m_case.expectation.saves, start_name(m_case.input.start));
+        }
+        return true;
+    }
+
+private:
+    const FirstSaveCase m_case;
+};
+
+const FirstSaveCase FIRST_SAVE_CASES[] = {
+    {.input = {.start = StoryStart::NEW_GAME}, .expectation = {.saves = true}},
+    {.input = {.start = StoryStart::FROM_SAVE}, .expectation = {.saves = false}},
+    {.input = {.start = StoryStart::LIVE}, .expectation = {.saves = false}},
 };
 
 
@@ -223,6 +374,12 @@ public:
 void add_tests_StoryRun(UnitTestDatabase& database){
     for (const StartCase& test_case : START_CASES){
         database.add<Test_StoryStart>(test_case);
+    }
+    for (const PreflightCase& test_case : PREFLIGHT_CASES){
+        database.add<Test_StoryPreflight>(test_case);
+    }
+    for (const FirstSaveCase& test_case : FIRST_SAVE_CASES){
+        database.add<Test_StoryFirstSave>(test_case);
     }
     database.add<Test_StoryReload>();
     database.add<Test_StoryFailureLeavesGame>();
