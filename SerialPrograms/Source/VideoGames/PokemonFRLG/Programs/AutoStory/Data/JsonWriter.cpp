@@ -93,7 +93,6 @@ JsonValue story_checkpoint_export(const StoryCheckpoint& checkpoint){
     result["format"] = std::string(StoryJsonInternal::FORMAT);
     result["game"] = std::string(StoryJsonInternal::GAME);
     result["status"] = std::string(StoryJsonInternal::STATUS);
-    result["checkpoint"] = Pokemon::story_checkpoint_json(checkpoint);
     JsonObject native;
     native["menu"] = std::string(StoryJsonInternal::menu_name(checkpoint.menu));
     native["supplies"] = supplies_json(checkpoint.supplies);

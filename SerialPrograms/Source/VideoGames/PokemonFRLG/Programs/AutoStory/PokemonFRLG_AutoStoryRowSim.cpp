@@ -36,9 +36,9 @@ void SimStubs::record(const StoryStep& step){
 }
 Pokemon::StoryAction SimStubs::stub(Pokemon::StoryActionFunction then){
     return {
-        .act = [this, then = std::move(then)](RunState& state, const StoryStep& step){
+        .act = [this, then = std::move(then)](const StoryStep& step, RunState& state){
             record(step);
-            return then ? then(state, step) : Pokemon::outcome_ok();
+            return then ? then(step, state) : Pokemon::outcome_ok();
         },
         .needs_console = true,
     };
@@ -147,22 +147,22 @@ void StoryMapsSim::begin_attempt(const Pokemon::StoryCheckpoint& data){
     m_dialog_up = m_dialog_rose = false;
 }
 
-Outcome StoryMapsSim::run(RunState& state, const StoryStep& step){
+Outcome StoryMapsSim::run(const StoryStep& step, RunState& state){
     if (m_knobs.dialog_before && m_knobs.dialog_before(m_row, step.name)){
         m_dialog_up = m_dialog_rose = true;
         m_dialog_notes.push_back(m_row + "/" + step.name + ": a dialog pops up before it.");
     }
-    return Pokemon::TableExecutor::run(state, step);
+    return Pokemon::TableExecutor::run(step, state);
 }
 
-Outcome StoryMapsSim::run_action(RunState& state, const StoryStep& step){
+Outcome StoryMapsSim::run_action(const StoryStep& step, RunState& state){
     if (m_dialog_up){
         if (!presses_through_text(step.kind)){
             return Pokemon::outcome_failed("dialog", step.name + ": a dialog that popped up before it is still up");
         }
         m_dialog_up = false;
     }
-    return Pokemon::TableExecutor::run_action(state, step);
+    return Pokemon::TableExecutor::run_action(step, state);
 }
 
 Pokemon::ScreenLook StoryMapsSim::look(){
@@ -180,7 +180,7 @@ Pokemon::ScreenLook StoryMapsSim::look(){
 //  the dialogs it pops up.
 StepInterruptActions StoryMapsSim::sim_interrupt_actions(){
     const auto cleared = [this](std::string_view what){
-        return [this, what](RunState&, const Pokemon::InterruptVerdict&){
+        return [this, what](const Pokemon::InterruptVerdict&, RunState&){
             m_dialog_notes.push_back(std::format("{} cleared before the next step.", what));
             m_dialog_up = false;
             return Pokemon::outcome_ok();
@@ -197,26 +197,26 @@ StepInterruptActions StoryMapsSim::sim_interrupt_actions(){
 Pokemon::StoryAction StoryMapsSim::action(StoryActionId id){
     switch (id){
     case StoryActionId::ROUTE:
-        return played([this](RunState& state, const StoryStep& step){ return walk_to(state.pose, step); });
+        return played([this](const StoryStep& step, RunState& state){ return walk_to(state.pose, step); });
     case StoryActionId::LEGS:
-        return played([this](RunState& state, const StoryStep& step){ return legs(state.pose, step); });
+        return played([this](const StoryStep& step, RunState& state){ return legs(state.pose, step); });
     case StoryActionId::STEP:
-        return played([this](RunState& state, const StoryStep& step){ return step_ahead(state.pose, step); });
+        return played([this](const StoryStep& step, RunState& state){ return step_ahead(state.pose, step); });
     //  The nurse's way must plan too, but the run goes on from where it stands.
     case StoryActionId::READY:
-        return played([this](RunState& state, const StoryStep& step){
+        return played([this](const StoryStep& step, RunState& state){
             const Outcome to_nurse = walk_to(state.pose, step);
             return to_nurse.succeeded() ? Pokemon::outcome_ok() : to_nurse;
         });
     case StoryActionId::SHOP:
-        return played([this](RunState&, const StoryStep& step){ return shop(step); });
+        return played([this](const StoryStep& step, RunState&){ return shop(step); });
     //  Pacing leaves the player on either of its tiles, as on the console.
     case StoryActionId::CLOSE_TRAINER_CARD:
     case StoryActionId::LEAVE_GIFT_SUMMARY:
     case StoryActionId::CUT_TREE:
     case StoryActionId::TRASH_CANS:
     case StoryActionId::GAME:
-        return m_stubs.stub([](RunState& state, const StoryStep& step){
+        return m_stubs.stub([](const StoryStep& step, RunState& state){
             return Pokemon::outcome_ok(paced_pose(state.pose, step));
         });
     case StoryActionId::NEW_GAME:
@@ -375,7 +375,7 @@ Pokemon::StoryAction OverworldStepSim::action(StoryActionId id){
     default:
         return m_stubs.stub();
     }
-    return played([this, body](RunState&, const StoryStep& step){
+    return played([this, body](const StoryStep& step, RunState&){
         const std::string failure = (this->*body)(step);
         return failure.empty() ? Pokemon::outcome_ok() : Pokemon::outcome_failed("sim_failure", failure);
     });
@@ -462,7 +462,7 @@ std::string OverworldStepSim::battle(const StoryStep& step){
 std::string row_step_on_sim(OverworldSim& sim, StoryPose& at, const StoryStep& step, const std::string& id){
     OverworldStepSim executor(sim, id, at);
     RunState state;
-    const Outcome outcome = executor.run(state, step);
+    const Outcome outcome = executor.run(step, state);
     at = executor.at();
     if (outcome.succeeded()){
         return "";
