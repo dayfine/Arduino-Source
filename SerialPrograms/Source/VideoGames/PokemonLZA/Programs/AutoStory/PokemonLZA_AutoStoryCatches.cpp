@@ -76,12 +76,26 @@ void battle_then_catch(
     ProgramEnvironment& env, ConsoleHandle& console, ProControllerContext& context,
     BattleAIOption& battle_ai, int max_rounds
 ){
+    //  D-pad up is ignored while Bunnelby's "weaken it" banner shows.
+    pbf_press_button(context, BUTTON_A, 160ms, 840ms);
+    advance_text_and_cards(console, context);
     pbf_press_dpad(context, DPAD_UP, 100ms, 2000ms);
     TrainerBattleState battle_state(battle_ai);
     for (int round = 0; round < max_rounds; round++){
         int landed = 0;
+        int misses = 0;
+        int sends = 0;
         for (int tries = 0; tries < 12 && landed < 3; tries++){
-            landed += battle_state.attempt_one_attack(env, console, context) ? 1 : 0;
+            if (battle_state.attempt_one_attack(env, console, context)){
+                landed++;
+                misses = 0;
+            }else if (++misses == 2 && sends < 2){
+                //  No move symbols twice: the partner may not be out.
+                console.log("battle_then_catch(): no lock-on twice: D-pad up to send the partner out.");
+                pbf_press_dpad(context, DPAD_UP, 100ms, 2000ms);
+                misses = 0;
+                sends++;
+            }
         }
         if (landed == 0 && round > 0){
             console.log(std::format("battle_then_catch(): nothing to lock on in round {}: caught.", round + 1));
