@@ -403,17 +403,18 @@ public:
         m_safe_taps = safe;
         m_lost_taps = lost;
     }
-    //  Fault class "open leg comes up short": an open leg of n tiles stops
-    //  up to min(4, n / 4) tiles early, unseen (lab-B 2026-11-11: "north 20
-    //  (open)" ended about 4 short). Each open leg loses min(`lost`, that).
-    void stop_open_legs_short(size_t lost){
-        m_short_open = lost;
+    //  Fault class "a timed hold overshoots": a stick hold timed for n
+    //  tiles goes 0..ceil(0.35 n) tiles further, unseen, until a wall stops
+    //  it (lab-B 2026-11-11, Jubilife: runs timed for 10 tiles went about 13,
+    //  three of three). D-pad taps are tile-exact (5 to 20 taps, every one
+    //  moved) and walks to a wall end at the wall, so neither has a fault.
+    void overshoot_timed_holds(bool overshoot){
+        m_overshoot = overshoot;
     }
 
     virtual WalkResult walk_taps(Direction direction, size_t tiles, const std::string&) override{
         count_call();
-        const size_t long_lost = tiles > m_safe_taps ? std::min(m_lost_taps, tiles) : 0;
-        const size_t lost = std::max(long_lost, std::min({m_short_open, (size_t)4, tiles / 4}));
+        const size_t lost = tiles > m_safe_taps ? std::min(m_lost_taps, tiles) : 0;
         const size_t moved = move(direction, tiles - lost);
         if (moved < tiles - lost){
             return {.stop = WalkStop::BLOCKED, .walked = 250ms * tiles, .wild_battles = 0, .moved_chunks = moved};
@@ -429,6 +430,15 @@ public:
         //  A tap under 100 ms only turns (route_turn_tap()).
         if (input.kind == RouteInputKind::DPAD && input.hold >= 100ms){
             move(input.direction, input.count);
+        }
+        //  A stick hold is timed: route_open_hold() is half a tile under n.
+        if (input.kind == RouteInputKind::STICK){
+            const Milliseconds per_tile = route_ms_per_tile(input.direction, MoveSpeed::WALK);
+            const size_t tiles = (size_t)((input.hold + per_tile / 2) / per_tile);
+            const size_t over = m_overshoot ? (tiles * 35 + 99) / 100 : 0;
+            for (size_t press = 0; press < input.count; press++){
+                move(input.direction, tiles + over);
+            }
         }
     }
     virtual bool dialog_within(Milliseconds, Color) override{
@@ -476,7 +486,7 @@ private:
     size_t m_walked = 0;
     size_t m_safe_taps = SIZE_MAX;
     size_t m_lost_taps = 0;
-    size_t m_short_open = 0;
+    bool m_overshoot = false;
 };
 
 StoryWorld jubilife_world(){
@@ -644,9 +654,9 @@ std::vector<StoryRoute> story_routes(){
 }
 
 //  Walks `route` from each of its start tiles on the simulated console,
-//  every open leg `lost` tiles short (capped per leg). Returns the tiles
-//  walked from each start, or why it failed.
-std::string sweep_story_route(const StoryRoute& route, size_t lost, std::vector<size_t>& walked){
+//  every timed hold overshooting if `overshoot`. Returns the tiles walked
+//  from each start, or why it failed.
+std::string sweep_story_route(const StoryRoute& route, bool overshoot, std::vector<size_t>& walked){
     const StoryWorld* world = story_plan_world(route.from.map, route.goal.map);
     const std::optional<RobustPlanCosts> costs = story_route_costs(route.costs);
     if (world == nullptr || !costs){
@@ -663,7 +673,7 @@ std::string sweep_story_route(const StoryRoute& route, size_t lost, std::vector<
     for (const TilePos& from : start){
         std::vector<std::string> notes;
         SimulatedRouteIO io(*world, from, {}, notes);
-        io.stop_open_legs_short(lost);
+        io.overshoot_timed_holds(overshoot);
         RouteTrainers trainers{.sights = story_trainers(*world), .fight = [](const std::string&){}};
         try{
             walk_route(io, *world, start, trainers, {
@@ -678,28 +688,28 @@ std::string sweep_story_route(const StoryRoute& route, size_t lost, std::vector<
             for (size_t i = notes.size() > 4 ? notes.size() - 4 : 0; i < notes.size(); i++){
                 last += "\n        " + notes[i];
             }
-            return std::format("{} from {}, open legs {} short: {}{}", route.name, Pokemon::to_string(from), lost, e.message, last);
+            return std::format("{} from {}{}: {}{}", route.name, Pokemon::to_string(from), overshoot ? ", holds overshooting" : "", e.message, last);
         }
         if (std::find(targets.begin(), targets.end(), io.at()) == targets.end()){
-            return std::format("{} from {}, open legs {} short: ended at {}.", route.name, Pokemon::to_string(from), lost, Pokemon::to_string(io.at()));
+            return std::format("{} from {}{}: ended at {}.", route.name, Pokemon::to_string(from), overshoot ? ", holds overshooting" : "", Pokemon::to_string(io.at()));
         }
         walked.push_back(io.tiles_walked());
     }
     return "";
 }
 
-//  Fault sweep: every story route, walked with every open leg coming up
-//  short by 4 tiles (at most a quarter of the leg), still ends on its
-//  target. The log line per route gives the most tiles walked from any of
-//  its start tiles, without the fault and with it.
-UnitTestResult test_story_routes_open_legs_short(Logger& logger){
+//  Fault sweep: every story route, walked with every timed hold
+//  overshooting, still ends on its target. The log line per route gives the
+//  most tiles walked from any of its start tiles, without the fault and with
+//  it.
+UnitTestResult test_story_routes_holds_overshoot(Logger& logger){
     std::string failures;
     const std::vector<StoryRoute> routes = story_routes();
     for (const StoryRoute& route : routes){
         std::string line = route.name + ":";
-        for (size_t lost : {(size_t)0, (size_t)4}){
+        for (bool overshoot : {false, true}){
             std::vector<size_t> walked;
-            const std::string error = sweep_story_route(route, lost, walked);
+            const std::string error = sweep_story_route(route, overshoot, walked);
             if (!error.empty()){
                 failures += "\n    " + error;
                 line += " FAIL";
@@ -711,7 +721,7 @@ UnitTestResult test_story_routes_open_legs_short(Logger& logger){
             }
             line += " " + std::to_string(most);
         }
-        logger.log("[open legs short: 0, 4] " + line);
+        logger.log("[timed holds overshoot: no, yes] " + line);
     }
     if (!failures.empty()){
         return std::format("{} routes swept:{}", routes.size(), failures);
@@ -780,7 +790,7 @@ const PlannedRouteCase PLANNED_ROUTE_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"fault sweep: every story route with open legs coming up short", test_story_routes_open_legs_short},
+        .input = {"fault sweep: every story route with timed holds overshooting", test_story_routes_holds_overshoot},
         .expectation = {},
     },
 };
