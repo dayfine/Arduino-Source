@@ -391,8 +391,17 @@ public:
 
     virtual WalkResult walk_to_wall(const RouteWallWalk& walk) override{
         count_call();
-        const size_t moved = move(walk.direction, SIZE_MAX);
         const Milliseconds per_tile = route_ms_per_tile(walk.direction, MoveSpeed::WALK);
+        if (m_overshoot && walk.limit > ROUTE_START_DELAY){
+            //  A hold timed for n tiles (ROUTE_START_DELAY, then half a
+            //  tile under n) goes on past them until a wall stops it.
+            const size_t tiles = (size_t)((walk.limit - ROUTE_START_DELAY + per_tile / 2) / per_tile);
+            const size_t want = tiles + (tiles * 35 + 99) / 100;
+            const size_t moved = move(walk.direction, want);
+            return {.stop = moved < want ? WalkStop::BLOCKED : WalkStop::LIMIT, .walked = walk.limit,
+                .wild_battles = 0, .moved_chunks = moved};
+        }
+        const size_t moved = move(walk.direction, SIZE_MAX);
         return {.stop = WalkStop::BLOCKED, .walked = ROUTE_START_DELAY + 800ms + per_tile * moved + per_tile / 2,
             .wild_battles = 0, .moved_chunks = moved};
     }
@@ -532,33 +541,33 @@ size_t jubilife_shortest(const StoryWorld& world, TilePos from, TilePos goal){
     return plan ? tiles_of(*plan) : 0;
 }
 
-//  lab-B 2026-11-11 11:16 (00.05 to_the_center from (48, 62)): "north 20
-//  (open)" ended about 4 tiles short, by the kids at (52, 46) and (54, 46),
-//  and the replan went "west 33 (to wall)", "east 42 (to wall)". No open
-//  leg may run longer than one leg can (max_open_tiles), so a long stretch
-//  meets a wall on the way, and the plan stays near the shortest way.
-UnitTestResult test_jubilife_center_open_legs(Logger& logger){
+//  lab-B 2026-11-11 13:38 (00.05 to_the_center from (48, 62)): "north 20
+//  (open)" walked as a held run (3175 ms) overshot, the west leg after it
+//  stopped 9 tiles in, the walker put walls at (54, 41..43) and "arrived"
+//  at (52, 41) nowhere near the Center. Timed holds overshoot by up to
+//  ceil(0.35 n) tiles (three runs of 10 went about 13); taps are exact.
+//  With every timed hold overshooting the walk still ends on the tile.
+UnitTestResult test_jubilife_center_held_overshoot(Logger&){
     const StoryWorld world = jubilife_world();
     const TilePos from{48, 62};
     const TilePos goal{52, 41};
-    const RobustPlanCosts costs = town_plan_costs();
-    const auto plan = plan_robust_route(world, from, goal, costs);
-    if (!plan){
-        return "no plan from (48, 62).";
+    std::vector<std::string> notes;
+    SimulatedRouteIO io(world, from, {}, notes);
+    io.overshoot_timed_holds(true);
+    RouteTrainers trainers{.sights = {}, .fight = [](const std::string&){}};
+    try{
+        walk_route(io, world, {from}, trainers, {
+            .goal = [goal](const TilePos& pos){ return pos == goal; },
+            .label = "T",
+            .avoid = {},
+            .costs = town_plan_costs(),
+            .speed = MoveSpeed::WALK,
+        });
+    }catch (const RouteFailed& e){
+        return "failed: " + e.message;
     }
-    std::string legs;
-    for (const PlannedLeg& leg : *plan){
-        legs += " " + to_string(leg.leg);
-    }
-    logger.log("Jubilife to the Center:" + legs);
-    for (const PlannedLeg& leg : *plan){
-        if (!leg.leg.ends_at_wall && leg.leg.tiles > (size_t)costs.max_open_tiles){
-            return std::format("an open leg of {} tiles, over {}:{}", leg.leg.tiles, costs.max_open_tiles, legs);
-        }
-    }
-    const size_t least = jubilife_shortest(world, from, goal);
-    if (tiles_of(*plan) * 10 > least * 13){
-        return std::format("walks {} tiles where {} would do:{}", tiles_of(*plan), least, legs);
+    if (io.at() != goal){
+        return "ended at " + Pokemon::to_string(io.at()) + ", not at (52, 41).";
     }
     return true;
 }
@@ -762,7 +771,7 @@ const PlannedRouteCase PLANNED_ROUTE_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"Jubilife to the Center: open legs no longer than one leg", test_jubilife_center_open_legs},
+        .input = {"Jubilife to the Center with timed holds overshooting", test_jubilife_center_held_overshoot},
         .expectation = {},
     },
     {
