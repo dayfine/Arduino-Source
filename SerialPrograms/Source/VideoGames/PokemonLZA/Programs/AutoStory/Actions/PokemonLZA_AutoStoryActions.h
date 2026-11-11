@@ -36,7 +36,6 @@ class StoryActionNotImplemented : public OperationFailedException{
 public:
     explicit StoryActionNotImplemented(std::string message);
 
-    //  code-health: allow char_pointer -- the exception base class's name() returns const char*
     virtual const char* name() const override{
         return "StoryActionNotImplemented";
     }
@@ -52,9 +51,12 @@ void fight_battle(
     BattleAIOption& battle_ai
 );
 
-//  In a battle that is already on screen: attacks with TrainerBattleState
-//  until a dialog box shows (the speech after a win or a loss). For story
-//  battles, which show no Run prompt for fight_battle() to start on.
+//  A story battle, from the talk before it: attacks with TrainerBattleState
+//  until a dialog box shows (the speech after a win or a loss). Until the
+//  first attack lands, a dialog box or a failed lock-on gets A instead: the
+//  trainer's lines, the challenge cutscene's subtitle (no text box) and
+//  tutorial cards (Taunie's battle in 03.02, console B 2026-11-10). For
+//  story battles, which show no Run prompt for fight_battle() to start on.
 //  Throws OperationFailedException after `timeout`.
 void fight_battle_in_progress(
     ProgramEnvironment& env, ConsoleHandle& console, ProControllerContext& context,

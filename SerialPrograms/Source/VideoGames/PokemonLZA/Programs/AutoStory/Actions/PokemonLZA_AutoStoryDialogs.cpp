@@ -88,7 +88,15 @@ std::optional<double> wait_for_choice_arrow(ConsoleHandle& console, ProControlle
 } // namespace
 
 void choose_dialog_option(ConsoleHandle& console, ProControllerContext& context, size_t index){
-    std::optional<double> row = wait_for_choice_arrow(console, context, 10s);
+    //  Some questions show their choices only after A closes the question's
+    //  text: the Research Lab elevator's "which floor?" (console B,
+    //  2026-11-10). A press comes only after 3 s without choices, so it
+    //  cannot pick the first choice the moment the choices appear.
+    std::optional<double> row = wait_for_choice_arrow(console, context, 3s);
+    for (int press = 0; !row && press < 3; press++){
+        pbf_press_button(context, BUTTON_A, 160ms, 240ms);
+        row = wait_for_choice_arrow(console, context, 3s);
+    }
     if (!row){
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::SEND_ERROR_REPORT,

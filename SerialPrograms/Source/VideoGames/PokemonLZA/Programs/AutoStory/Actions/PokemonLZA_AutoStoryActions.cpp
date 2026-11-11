@@ -86,10 +86,12 @@ void fight_battle_in_progress(
     BlueDialogDetector blue_dialog;
     TealDialogDetector teal_dialog;
     const WallClock deadline = current_time() + timeout;
+    bool attacked = false;
     while (true){
         context.wait_for_all_requests();
         const VideoSnapshot screen = console.video().snapshot();
-        if (white_dialog.detect(screen) || blue_dialog.detect(screen) || teal_dialog.detect(screen)){
+        const bool dialog = white_dialog.detect(screen) || blue_dialog.detect(screen) || teal_dialog.detect(screen);
+        if (dialog && attacked){
             return;
         }
         if (current_time() > deadline){
@@ -99,7 +101,13 @@ void fight_battle_in_progress(
                 console
             );
         }
-        battle_state.attempt_one_attack(env, console, context);
+        if (dialog || !battle_state.attempt_one_attack(env, console, context)){
+            if (!attacked){
+                pbf_press_button(context, BUTTON_A, 160ms, 400ms);
+            }
+            continue;
+        }
+        attacked = true;
     }
 }
 
