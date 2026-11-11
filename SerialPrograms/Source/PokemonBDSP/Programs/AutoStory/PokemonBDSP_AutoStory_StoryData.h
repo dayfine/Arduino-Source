@@ -37,8 +37,8 @@ StoryCheckpoint load_authored_checkpoint(std::string_view file);
 //  Load all embedded authored checkpoints in id order.
 std::vector<StoryCheckpoint> load_authored_story();
 
-//  Encode a BDSP checkpoint into the shared authored envelope JSON.
-JsonValue authored_checkpoint_json(const StoryCheckpoint& checkpoint);
+//  The embedded authored checkpoint file, parsed but not read.
+JsonValue authored_checkpoint_document(std::string_view file);
 
 
 } // namespace PokemonBDSP

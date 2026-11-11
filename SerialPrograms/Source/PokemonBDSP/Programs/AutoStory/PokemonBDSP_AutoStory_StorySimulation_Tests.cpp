@@ -441,10 +441,10 @@ UnitTestResult test_poses_chain(Logger&){
         if (row.start){
             const Pose start_pose = Pokemon::pose_of(*row.start);
             const std::vector<TilePos> start = Pokemon::tiles_of(start_pose);
-            if (at && (at->map != row.start->map ||
+            if (at && (at->map != Pokemon::grid_pose_of(*row.start).map ||
                 !std::ranges::all_of(Pokemon::tiles_of(*at), [&](const TilePos& pos){ return contains(start, pos); }))
             ){
-                return std::format("{} starts at{}, but {} may end at{}.", row.id, describe(row.start->map, start),
+                return std::format("{} starts at{}, but {} may end at{}.", row.id, describe(Pokemon::grid_pose_of(*row.start).map, start),
                     last, describe(at->map, Pokemon::tiles_of(*at)));
             }
             at = start_pose;

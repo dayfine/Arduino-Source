@@ -133,13 +133,17 @@ StoryCheckpoint read_authored_checkpoint(const JsonValue& value, std::string_vie
     return result;
 }
 
-StoryCheckpoint load_authored_checkpoint(std::string_view file){
+JsonValue authored_checkpoint_document(std::string_view file){
     for (const auto& [name, text] : bdsp_checkpoint_json()){
         if (name == file){
-            return read_authored_checkpoint(parse_json(text), file);
+            return parse_json(text);
         }
     }
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Authored checkpoint is not embedded: " + std::string(file));
+}
+
+StoryCheckpoint load_authored_checkpoint(std::string_view file){
+    return read_authored_checkpoint(authored_checkpoint_document(file), file);
 }
 
 std::vector<StoryCheckpoint> load_authored_story(){
@@ -160,12 +164,6 @@ std::vector<StoryCheckpoint> load_authored_story(){
     return result;
 }
 
-JsonValue authored_checkpoint_json(const StoryCheckpoint& checkpoint){
-    JsonObject execution;
-    execution["on_failure"] = checkpoint.on_failure == StoryFailure::RELOAD_AND_RETRY ? "reload_and_retry" : "stop";
-    execution["saves_in"] = checkpoint.saves_in;
-    return Pokemon::authored_checkpoint_json(checkpoint, "bdsp", std::move(execution));
-}
 
 
 } // namespace PokemonBDSP
