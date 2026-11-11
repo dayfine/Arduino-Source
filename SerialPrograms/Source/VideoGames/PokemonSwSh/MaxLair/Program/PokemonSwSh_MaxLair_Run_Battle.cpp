@@ -361,8 +361,8 @@ StateMachineAction throw_balls(
 
     bool boss = inferred.wins == 4;
     if (boss){
-        //  Still crashes (BossFinder throws on an empty boss) if no battle-screen
-        //  or summary read in the boss battle gave a boss species (OCR misses).
+        //  This will crash if `inferred.boss` is still empty after battle-screen
+        //  and the fallback summary read (OCR misses).
         ball = decider.boss_ball(console_index, inferred.boss);
     }else{
         ball = decider.normal_ball(console_index);
