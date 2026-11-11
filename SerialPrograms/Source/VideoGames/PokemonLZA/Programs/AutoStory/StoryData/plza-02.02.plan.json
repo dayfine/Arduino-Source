@@ -25,8 +25,13 @@
       },
       {
         "id": "leave_battle_zone",
+        "kind": "talk",
+        "why": "step 22: A at the gate's \"A Leave\", where the street scene ends; Taunie's first line ~3.5 s later (console B, 2026-11-10)"
+      },
+      {
+        "id": "out_of_battle_zone",
         "kind": "scene",
-        "why": "steps 22-23: A Leave, Taunie: Hotel Z's just through here",
+        "why": "step 23: Taunie: out of the Battle Zone, Hotel Z's just through here",
         "action": "a"
       },
       {
