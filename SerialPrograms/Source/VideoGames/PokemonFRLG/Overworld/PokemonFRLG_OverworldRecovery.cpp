@@ -443,8 +443,14 @@ private:
     //  tiles short of its arrow left out that stop, and the hold west "to
     //  the wall (7, 11)" after Rocket Hideout B2F's "east 2" to the stop
     //  (14, 13) slid from there to (10, 15) (09.02, console B, 2026-11-11).
+    //  A leg tapped a tile at a time (counts_step_taps()) that ended DONE
+    //  had every tap seen to move: it ended on its tile, and a check walks
+    //  back over tiles already walked (09.02's B2F, console B, 2026-11-11
+    //  15:34: a hold back north to (21, 2) after "south 2" and to the wall
+    //  (17, 5) after "north 3").
     void check_open_leg(const RouteStep& step, const std::optional<MapPosition>& start){
         if (maps() == nullptr || m_planning->open_leg_check != OpenLegCheck::REANCHOR || !start
+            || counts_step_taps(step)
             || step.action != RouteAction::WALK || step.to_wall || step.warps || step.spin_tiles
             || m_next >= m_plan.size() || !(is_wall_hold(m_plan[m_next]) || is_slide(m_plan[m_next]))
         ){
