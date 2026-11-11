@@ -5,7 +5,7 @@
     "id": "03.04",
     "title": "Pokemon Center, the Pokedex",
     "start": {
-      "map": "LumioseCity"
+      "place": "LumioseCity"
     },
     "events": [
       {
