@@ -49,10 +49,6 @@ struct RobustPlanCosts : TilePlanCosts{
     //  so a short step after a wall beats a long open leg.
     int per_open_tile = 0;
     int max_open_tiles = 12;    //  longest open leg to consider
-    //  Longest straight run of open legs one after another, 0 for no limit.
-    //  Taps of one run lose count past about 12: on lab-B (2026-11-11)
-    //  "north 20 (open)" through Jubilife ended about 4 tiles short.
-    int max_open_run = 0;
     size_t max_spread = 5;      //  most tiles the player may be on after a leg
     //  Most sets of possible tiles to search before giving up. The search is
     //  over sets, not tiles, so it grows far faster than the map: all of
