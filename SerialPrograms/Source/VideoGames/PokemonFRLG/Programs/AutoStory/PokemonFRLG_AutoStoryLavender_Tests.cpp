@@ -31,6 +31,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_HideoutLiftRoom.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMap.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldObjects.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryLegs.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
@@ -810,11 +811,57 @@ UnitTestResult test_hideout_giovanni_row(Logger&){
     return true;
 }
 
+//  09.02's walk past B2F's Grunt (20, 6), who looks around (sight 2): no
+//  tile of a walk leg, nor the tile past an open leg's end, is in a way he
+//  may look. On console B, 2026-11-11 15:03, a south 2 to (19, 5) whose
+//  first tap read as a turn went on to (19, 6), in his west line, and the
+//  next leg met him.
+UnitTestResult test_b2f_grunt_lines_with_tile_off(Logger&){
+    const StoryCheckpoint& row = checkpoint("09.02");
+    const auto step = std::find_if(row.steps.begin(), row.steps.end(), [](const StoryStep& s){ return s.name == "b2f_arrows_to_moon_stone"; });
+    const std::vector<MapData>& maps = story_maps();
+    const auto map = std::find_if(maps.begin(), maps.end(), [](const MapData& data){ return data.name == "RocketHideout_B2F"; });
+    if (step == row.steps.end() || map == maps.end()){
+        return "09.02: no b2f_arrows_to_moon_stone or no RocketHideout_B2F.";
+    }
+    const StoryPose at{"RocketHideout_B2F", {21, 2}, Direction::EAST};
+    const std::optional<std::vector<RouteStep>> route = walked_route(at, *step);
+    if (!route){
+        return "09.02: b2f_arrows_to_moon_stone has no route.";
+    }
+    TilePos from = at.tile;
+    for (const RouteStep& leg : *route){
+        if (leg.action != RouteAction::WALK || leg.spin_tiles){
+            break;
+        }
+        std::vector<TilePos> exposed;
+        TilePos tile = from;
+        for (int c = 0; c < leg.tiles; c++){
+            tile = tile.next(leg.direction);
+            exposed.push_back(tile);
+        }
+        const TilePos past = tile.next(leg.direction);
+        if (!leg.to_wall && in_bounds(*map, past) && tile_at(*map, past) == TileKind::OPEN){
+            exposed.push_back(past);
+        }
+        for (const TilePos& seen : exposed){
+            for (const MapObject& object : map->objects){
+                if (trainer_may_see(*map, object, seen)){
+                    return std::format("09.02: leg {} may end on {}, in the sight of the trainer on ({}, {}).", to_string(leg), to_string(seen), object.x, object.y);
+                }
+            }
+        }
+        from = leg.end.point;
+    }
+    return true;
+}
+
 const AutoStoryLavenderCase AUTO_STORY_LAVENDER_CASES[] = {
     {.input = {"08.01 the tree, Rock Tunnel's nine trainers, out of its south mouth", test_rock_tunnel_row}, .expectation = {}},
     {.input = {"08.01 a wild battle mid-leg in the tunnel", test_rock_tunnel_wild_battles}, .expectation = {}},
     {.input = {"08.01 dark: each trainer's battle ends on the dark cave's overworld", test_rock_tunnel_dark_battle_ends}, .expectation = {}},
     {.input = {"08.01 a tile off after each open leg", test_rock_tunnel_tile_off}, .expectation = {}},
+    {.input = {"09.02 B2F's turning Grunt: no leg ends in his lines, a tile off included", test_b2f_grunt_lines_with_tile_off}, .expectation = {}},
     {.input = {"08.01 B1F row 37 with a wild battle every 10 to 14 steps", test_b1f_row37_battles_every_12}, .expectation = {}},
     {.input = {"08.01 a wild battle every 7 to 25 steps, 12 seeds", test_rock_tunnel_frequent_battles}, .expectation = {}},
     {.input = {"08.01 wild battles at the game's odds, 30 seeds", test_rock_tunnel_game_odds}, .expectation = {}},
