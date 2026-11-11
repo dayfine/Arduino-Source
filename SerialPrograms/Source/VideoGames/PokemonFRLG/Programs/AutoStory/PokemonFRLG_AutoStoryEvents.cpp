@@ -267,6 +267,11 @@ Outcome battle(StoryEnv& env, const StoryStep& step){
         return Pokemon::outcome_failed("blackout");
     }
     mash_until_overworld(env.console, env.context, SCENE_TIMEOUT);
+    //  Console B 2026-11-11, 09.02: a Grunt's battle left the starter
+    //  poisoned and the story walked on with it uncured.
+    if (end != BattleEnd::LOST){
+        recover_after_battle(env.console, env.context, env.supplies, env.checks, env.language);
+    }
     return Pokemon::outcome_ok();
 }
 
@@ -859,6 +864,8 @@ void read_bag_supplies(StoryEnv& env, StartMenu menu){
         ), COLOR_ORANGE);
     }
     env.bag_read = unread.empty();
+    //  A status or HP the checkpoint was saved with.
+    recover_after_battle(env.console, env.context, env.supplies, env.checks, env.language);
 }
 
 namespace{
