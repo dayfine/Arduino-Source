@@ -1,0 +1,93 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "plza",
+  "checkpoint": {
+    "id": "02.04",
+    "title": "Main Mission 02: Hotel Z room 202 to the first night",
+    "start": {
+      "map": "LumioseCity"
+    },
+    "events": [
+      {
+        "id": "to_lobby_elevator",
+        "kind": "game_action",
+        "why": "step 28: to the elevator's \"A Take Elevator\". Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {"legs": [[0, 2000]]}
+      },
+      {
+        "id": "take_elevator_up",
+        "kind": "talk",
+        "why": "step 28: A Take Elevator, \"Which floor?\""
+      },
+      {
+        "id": "ride_to_2f",
+        "kind": "game_action",
+        "why": "step 28: \"2F\", the first floor listed",
+        "action": "choose_0"
+      },
+      {
+        "id": "arrive_2f",
+        "kind": "scene",
+        "why": "step 28: the ride, until control on 2F"
+      },
+      {
+        "id": "to_room_202",
+        "kind": "game_action",
+        "why": "step 29: to \"Room 202 / A Enter\". Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {"legs": [[-15, 2000]]}
+      },
+      {
+        "id": "enter_room_202",
+        "kind": "scene",
+        "why": "step 30: A Enter, \"Here's room 202.\", until control in the room",
+        "action": "a"
+      },
+      {
+        "id": "to_bed",
+        "kind": "game_action",
+        "why": "step 31: to the bed's \"A Rest\". 1.5 s explored, 1 s enough. Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {"legs": [[45, 1000]]}
+      },
+      {
+        "id": "rest",
+        "kind": "talk",
+        "why": "step 31: A Rest, \"Rest until tomorrow morning?\""
+      },
+      {
+        "id": "rest_until_morning",
+        "kind": "game_action",
+        "why": "step 31: yes",
+        "action": "choose_0"
+      },
+      {
+        "id": "wake_up",
+        "kind": "scene",
+        "why": "step 32: sleep and wake up, until control facing the door",
+        "action": "a"
+      },
+      {
+        "id": "to_room_door",
+        "kind": "game_action",
+        "why": "step 33: to the door's \"A Leave\". Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {"legs": [[0, 2000]]}
+      },
+      {
+        "id": "first_evening",
+        "kind": "scene",
+        "why": "steps 33-35: Taunie, the rooftop, AZ, the Main Mission 03 banner and its autosave",
+        "action": "a"
+      }
+    ],
+    "metadata": {
+      "phase": "testing",
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game; split from 02.03 at the autosave after the check-in (2026-11-10)"
+    }
+  },
+  "execution": {
+    "save": "autosave"
+  }
+}
