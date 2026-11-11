@@ -26,7 +26,8 @@ namespace Pokemon{
 //  A grid pose: {"map": "PalletTown", "tiles": [[3, 4]], "facing": "north"}.
 JsonValue grid_pose_json(const GridPose& pose);
 
-//  Read a grid pose; malformed and unknown fields fail.
+//  Read a grid pose; malformed and unknown fields fail. No "tiles" reads
+//  as none (any tile, or a game with no tiles).
 GridPose read_grid_pose(const JsonValue& value, std::string_view source);
 
 
