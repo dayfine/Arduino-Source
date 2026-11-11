@@ -1543,10 +1543,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect.h
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.h
-    Source/Pokemon/AutoStory/Pokemon_AutoStoryShell.cpp
-    Source/Pokemon/AutoStory/Pokemon_AutoStoryShell.h
-    Source/Pokemon/AutoStory/Pokemon_AutoStoryShell_Tests.cpp
-    Source/Pokemon/AutoStory/Pokemon_AutoStoryShell_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_StoryRun.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryRun.h
+    Source/Pokemon/AutoStory/Pokemon_StoryRun_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryRun_Tests.h
     Source/Pokemon/AutoStory/Pokemon_AutoStoryStats.cpp
     Source/Pokemon/AutoStory/Pokemon_AutoStoryStats.h
     Source/Pokemon/AutoStory/Pokemon_AutoStoryStats_Tests.cpp

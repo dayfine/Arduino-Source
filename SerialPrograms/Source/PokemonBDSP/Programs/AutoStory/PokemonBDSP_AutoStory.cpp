@@ -13,7 +13,7 @@
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
-#include "Pokemon/AutoStory/Pokemon_AutoStoryShell.h"
+#include "Pokemon/AutoStory/Pokemon_StoryRun.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStorySelect.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
 #include "Pokemon/AutoStory/Pokemon_StoryLog.h"
