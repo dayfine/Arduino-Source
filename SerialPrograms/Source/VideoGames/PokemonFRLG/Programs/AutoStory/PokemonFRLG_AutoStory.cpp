@@ -12,7 +12,7 @@
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
-#include "Pokemon/AutoStory/Pokemon_AutoStoryShell.h"
+#include "Pokemon/AutoStory/Pokemon_StoryRun.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStorySelect.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
 #include "Pokemon/AutoStory/Pokemon_StoryLog.h"
@@ -222,7 +222,7 @@ Pokemon::StoryGameHooks story_game(SingleSwitchProgramEnvironment& env, StoryEnv
     return game;
 }
 
-//  Loads the save checkpoint `checkpoint` starts from through the shell,
+//  Loads the save checkpoint `checkpoint` starts from through the story run,
 //  which checks it is where the checkpoint starts (console B, 2026-11-01:
 //  03.02 on the forest's save), then reads the lead's moves.
 void load_start_save(

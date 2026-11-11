@@ -1,4 +1,4 @@
-/*  AutoStory Program Shell
+/*  AutoStory Story Run
  *
  *  From: https://github.com/PokemonAutomation/
  *
@@ -7,7 +7,7 @@
 #include <format>
 #include <utility>
 #include "CommonFramework/Exceptions/OperationFailedException.h"
-#include "Pokemon_AutoStoryShell.h"
+#include "Pokemon_StoryRun.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
