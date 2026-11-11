@@ -79,9 +79,18 @@
         "kind": "legs",
         "action": "taps",
         "args": {
-          "legs": [{"direction": "east", "tiles": 12}, {"direction": "south", "tiles": 1}, {"direction": "east", "tiles": 1}, {"direction": "north", "tiles": 1}]
+          "legs": [{"direction": "east", "tiles": 15}, {"direction": "west", "tiles": 2}]
         },
-        "why": "a tap a tile along row 17 to (27, 17), down to row 18 and east to (28, 18), and up to below the lift door (28, 16), facing it"
+        "why": "a tap a tile along row 17 to its wall at (30, 17), then back west to below the lift door (28, 16), at (28, 17); an overshoot east only meets the wall"
+      },
+      {
+        "id": "face_lift",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "RocketHideout_B2F", "tiles": [[28, 17]], "facing": "north"}
+        },
+        "why": "turn to face the lift door (28, 16): no tile to walk"
       },
       {
         "id": "lift_to_b4f",

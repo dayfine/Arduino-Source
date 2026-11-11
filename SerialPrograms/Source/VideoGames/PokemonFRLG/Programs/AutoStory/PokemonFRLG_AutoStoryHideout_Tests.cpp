@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_CodedRooms.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_HideoutLiftRoom.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_MovementMechanics.h"
@@ -18,6 +19,7 @@
 #include "PokemonFRLG_AutoStoryHideoutLift.h"
 #include "PokemonFRLG_AutoStoryLegs.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
+#include "PokemonFRLG_AutoStoryTable.h"
 #include "PokemonFRLG_AutoStoryFieldSteps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSpin.h"
 
@@ -350,7 +352,7 @@ UnitTestResult test_b2f_maze_taps(){
             {Direction::EAST, 1},
         }, {"RocketHideout_B2F", {2, 4}}),
         tap_legs_on_sim({"RocketHideout_B2F", {15, 17}}, Direction::NORTH, {
-            {Direction::EAST, 12}, {Direction::SOUTH, 1}, {Direction::EAST, 1}, {Direction::NORTH, 1},
+            {Direction::EAST, 15}, {Direction::WEST, 2},
         }, {"RocketHideout_B2F", {28, 17}}),
         tap_legs_on_sim(left_guard, Direction::NORTH, {
             {Direction::SOUTH, 1}, {Direction::EAST, 3}, {Direction::NORTH, 1},
@@ -395,6 +397,48 @@ UnitTestResult test_b4f_left_guard_from_below_lift_door(){
         const std::string failure = walker.run(*route, planning);
         if (!failure.empty() || !(sim.state().position == left_guard)){
             return std::format("From {}, walked to {}, failure \"{}\".", to_string(start), to_string(sim.state().position), failure);
+        }
+    }
+    return true;
+}
+
+//  Console B, 2026-11-11 01:04: 00.32's below_lift tapped east past
+//  (27, 17) to the wall at (30, 17), was found there, and walked the rest
+//  of its legs back from (27, 17): west 3, south, east and north round a
+//  square to the lift door's (28, 17). The legs are east to the wall and
+//  one leg back to below the door, so an overshoot has nothing to undo.
+UnitTestResult test_below_lift_one_backtrack(){
+    const std::vector<MapData>& maps = story_maps();
+    const MapPosition row_17{"RocketHideout_B2F", {15, 17}};
+    const MapPosition wall{"RocketHideout_B2F", {30, 17}};
+    const MapPosition below_door{"RocketHideout_B2F", {28, 17}};
+    const StoryStep* below_lift = nullptr;
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        for (const StoryStep& step : row.steps){
+            if (row.id == "00.32" && step.name == "below_lift"){
+                below_lift = &step;
+            }
+        }
+    }
+    if (below_lift == nullptr){
+        return "Expected 00.32's step below_lift.";
+    }
+    const std::vector<Pokemon::StoryLeg> legs = Pokemon::story_arg<std::vector<Pokemon::StoryLeg>>(below_lift->args, "legs");
+    const std::optional<std::vector<RouteStep>> route = fixed_route(maps, row_17, legs);
+    if (!route || route->size() != 2
+        || (*route)[0].direction != Direction::EAST || !(*route)[0].to_wall || !((*route)[0].end == wall)
+        || (*route)[1].direction != Direction::WEST || !((*route)[1].end == below_door)
+    ){
+        return "Expected below_lift to be east to the wall (30, 17), then one leg west to (28, 17).";
+    }
+    const std::vector<Pokemon::StoryLeg> after_wall(legs.begin() + 1, legs.end());
+    const std::vector<std::string> failures{
+        tap_legs_on_sim(row_17, Direction::NORTH, legs, below_door),
+        tap_legs_on_sim(wall, Direction::EAST, after_wall, below_door),
+    };
+    for (const std::string& failure : failures){
+        if (!failure.empty()){
+            return failure;
         }
     }
     return true;
@@ -450,6 +494,10 @@ const AutoStoryHideoutBodyCase HIDEOUT_BODY_CASES[] = {
     {
         .input = {.name = "B4F's left Grunt from a tile below the lift door", .body = test_b4f_left_guard_from_below_lift_door},
         .expectation = {.description = "south to the bottom wall finds the player from either tile below the lift"},
+    },
+    {
+        .input = {.name = "below B2F's lift: the wall, then one leg back", .body = test_below_lift_one_backtrack},
+        .expectation = {.description = "east to the wall (30, 17) and west to below the door (28, 17), no loop"},
     },
 };
 
