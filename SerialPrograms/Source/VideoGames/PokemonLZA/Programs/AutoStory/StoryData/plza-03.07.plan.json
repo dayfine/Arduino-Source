@@ -22,9 +22,10 @@
       },
       {
         "id": "leave_zone_1",
-        "kind": "scene",
-        "why": "step 62: A Leave, out on the street",
-        "action": "a"
+        "kind": "game_action",
+        "why": "step 62: A Leave, out on the street (a plain scene step ends at once on the gate's prompt with the party bar up; console B, 2026-11-10)",
+        "action": "mash_to_move_hints",
+        "args": {"press_a_first": true}
       },
       {
         "id": "to_research_lab",
