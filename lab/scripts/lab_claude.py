@@ -5,8 +5,10 @@ Uses the official `anthropic` SDK. Credentials: zero-arg Anthropic() reads ANTHR
 """
 
 import base64
+import datetime
 import io
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -15,6 +17,68 @@ from pathlib import Path
 
 FALLBACK_BETA = "server-side-fallback-2026-07-01"
 MAX_SIDE = 640
+
+
+# Budget: the lab pays from the Console org's API credit, $120/month (user, 2026-11-11), paced
+# per day. Every call is priced from response.usage and appended to a local ledger; a call is
+# refused once today's or this month's spend reaches its cap. Override with the env vars.
+MONTHLY_USD = float(os.environ.get("LAB_CLAUDE_MONTHLY_USD", "120"))
+DAILY_USD = float(os.environ.get("LAB_CLAUDE_DAILY_USD", "4"))
+LEDGER = Path(os.environ.get("LAB_CLAUDE_LEDGER", str(Path.home() / "BDSPLab" / "claude-spend.jsonl")))
+
+# USD per million tokens: (input, output, cache read). Unknown models price as Opus 5.5.
+PRICES = {
+    "claude-opus-5-5": (4.00, 20.00, 0.20),
+    "claude-sonnet-5-5": (2.00, 10.00, 0.20),
+    "claude-haiku-5-5": (0.10, 0.50, 0.01),
+}
+
+
+class BudgetExceeded(RuntimeError):
+    pass
+
+
+def cost_usd(model, usage, batch=False):
+    inp, out, cache = PRICES.get(model, PRICES["claude-opus-5-5"])
+    cost = (getattr(usage, "input_tokens", 0) * inp
+            + (getattr(usage, "cache_creation_input_tokens", 0) or 0) * inp * 1.25
+            + (getattr(usage, "cache_read_input_tokens", 0) or 0) * cache
+            + getattr(usage, "output_tokens", 0) * out) / 1e6
+    return cost / 2 if batch else cost
+
+
+def spent(ledger=None, today=None):
+    """(today's USD, this month's USD) from the ledger."""
+    ledger = Path(ledger or LEDGER)
+    today = today or datetime.date.today()
+    day = month = 0.0
+    if ledger.exists():
+        for line in ledger.read_text().splitlines():
+            entry = json.loads(line)
+            date = datetime.date.fromisoformat(entry["date"])
+            if (date.year, date.month) == (today.year, today.month):
+                month += entry["usd"]
+                if date == today:
+                    day += entry["usd"]
+    return day, month
+
+
+def check_budget(ledger=None, today=None):
+    day, month = spent(ledger, today)
+    if month >= MONTHLY_USD:
+        raise BudgetExceeded(f"monthly Claude budget used: ${month:.2f} of ${MONTHLY_USD:.2f}")
+    if day >= DAILY_USD:
+        raise BudgetExceeded(f"daily Claude budget used: ${day:.2f} of ${DAILY_USD:.2f}")
+
+
+def record_spend(model, usage, script, batch=False, ledger=None, today=None):
+    ledger = Path(ledger or LEDGER)
+    ledger.parent.mkdir(parents=True, exist_ok=True)
+    entry = {"date": (today or datetime.date.today()).isoformat(), "script": script,
+             "model": model, "usd": round(cost_usd(model, usage, batch), 6)}
+    with ledger.open("a") as f:
+        f.write(json.dumps(entry) + "\n")
+    return entry["usd"]
 
 
 def make_client():
@@ -73,9 +137,11 @@ def send(request, client=None, beta=False):
     beta=True goes through client.beta.messages (needed for `betas` / `fallbacks`).
     Raises RuntimeError on a refusal or a cut-off answer.
     """
+    check_budget()
     client = client or make_client()
     api = client.beta.messages if beta else client.messages
     response = api.create(**request)
+    record_spend(request["model"], response.usage, Path(sys.argv[0]).name)
     if response.stop_reason == "refusal":
         raise RuntimeError(f"model refused: {getattr(response, 'stop_details', None)}")
     if response.stop_reason == "max_tokens":
