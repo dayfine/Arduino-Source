@@ -122,6 +122,8 @@ void sim_forget_warp(GridSim& sim);
 //  Set simulated fight.
 void sim_fight(GridSim& sim);
 } // namespace detail
+//  What a simulated run's world holds besides its maps: trainers,
+//  triggers, doors and whether the player can run.
 struct SimWorld{
     const StoryWorld* world = nullptr;
     std::vector<TrainerSight> trainers = {};
