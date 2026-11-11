@@ -37,7 +37,7 @@ public:
     //  FRLG's story action table (story_action_rows()) with ordered authored
     //  completions and lost-pose handling, and FRLG's interrupts between
     //  steps (step_interrupts()) on the scenario's scripted screens.
-    virtual Pokemon::Outcome run(Pokemon::RunState& state, const StoryStep& step) override;
+    virtual Pokemon::Outcome run(const StoryStep& step, Pokemon::RunState& state) override;
     //  Build the existing checkpoint, keeping its from_save initializer explicit.
     Pokemon::Checkpoint build();
     //  Serialize independently computed effects/actions and raw engine/walker diagnostics.
