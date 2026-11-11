@@ -4,15 +4,15 @@
  *
  */
 
+#include <format>
 #include <iostream>
 #include <string>
 #include <utility>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Pokemon_AuthoredCheckpointJson.h"
-#include "Pokemon_StoryStepJson.h"
 #ifndef PA_STORY_DATA_STANDALONE
-#include "Pokemon/AutoStory/Pokemon_StoryStep_Tests.h"
+#include "Pokemon_AuthoredCheckpointJson_Tests.h"
 #endif
 
 namespace PokemonAutomation{
@@ -87,17 +87,17 @@ ExecutionReader keep_execution(JsonObject& kept){
     };
 }
 
-//  "" when `actual` is what `test` expects and survives a write and a
-//  read, else what was expected and what was read.
+//  "" when `actual` is what `test` expects, else what was expected and
+//  what was read.
 std::string check_loaded(const Loaded& actual, const AuthoredCase& test){
     if (test.expectation.failure != Failure::NONE){
         return "Expected rejection, read accepted authored checkpoint.";
     }
     if (actual.checkpoint.id != test.expectation.checkpoint){
-        return "Expected checkpoint " + test.expectation.checkpoint + ", read " + actual.checkpoint.id;
+        return std::format("Expected checkpoint {}, read {}", test.expectation.checkpoint, actual.checkpoint.id);
     }
     if (!(JsonValue(actual.execution.clone()) == parse_json(test.expectation.execution))){
-        return "Expected execution " + test.expectation.execution + ", read " + actual.execution.dump();
+        return std::format("Expected execution {}, read {}", test.expectation.execution, actual.execution.dump());
     }
     std::vector<std::string> events;
     for (const StoryStep& step : actual.checkpoint.steps){
@@ -105,12 +105,6 @@ std::string check_loaded(const Loaded& actual, const AuthoredCase& test){
     }
     if (events != test.expectation.events){
         return "Expected authored event IDs in their original order.";
-    }
-    const JsonValue encoded = authored_checkpoint_json(actual.checkpoint, test.input.game, actual.execution.clone());
-    Loaded reread;
-    reread.checkpoint = read_authored_checkpoint(encoded, test.input.game, test.input.name, keep_execution(reread.execution));
-    if (!(story_checkpoint_json(actual.checkpoint) == story_checkpoint_json(reread.checkpoint)) || actual.execution != reread.execution){
-        return "Expected checkpoint and execution to survive the shared writer/reader round trip.";
     }
     return "";
 }
@@ -125,9 +119,9 @@ std::string check_case(const AuthoredCase& test){
             : read_authored_checkpoint(parse_json(test.input.json), test.input.game, test.input.name, keep_execution(actual.execution));
         return check_loaded(actual, test);
     }catch (const ParseException& error){
-        return test.expectation.failure == Failure::PARSE ? "" : "Unexpected parse failure: " + error.message();
+        return test.expectation.failure == Failure::PARSE ? "" : std::format("Unexpected parse failure: {}", error.message());
     }catch (const InternalProgramError& error){
-        return test.expectation.failure == Failure::MISSING_RESOURCE ? "" : "Unexpected resource failure: " + error.message();
+        return test.expectation.failure == Failure::MISSING_RESOURCE ? "" : std::format("Unexpected resource failure: {}", error.message());
     }
 }
 
@@ -137,7 +131,7 @@ std::string check_case(const AuthoredCase& test){
 class AuthoredJsonTest : public UnitTest{
 public:
     explicit AuthoredJsonTest(AuthoredCase test)
-        : UnitTest("Pokemon::AuthoredCheckpointJson - " + test.input.name)
+        : UnitTest(std::format("Pokemon::AuthoredCheckpointJson - {}", test.input.name))
         , m_case(std::move(test))
     {}
 

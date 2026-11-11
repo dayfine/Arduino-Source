@@ -96,9 +96,9 @@ std::string describe(const Transition& transition, WallClock origin){
         offset(transition.rise, origin)
     );
     if (!transition.end){
-        return out + ", in progress";
+        return std::format("{}, in progress", out);
     }
-    return out + std::format(", end {}, {}", offset(transition.end, origin), scene_change_name(transition.change));
+    return std::format("{}, end {}, {}", out, offset(transition.end, origin), scene_change_name(transition.change));
 }
 
 
