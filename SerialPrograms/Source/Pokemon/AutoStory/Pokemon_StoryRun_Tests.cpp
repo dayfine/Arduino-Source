@@ -123,8 +123,8 @@ public:
         if (!fake.logged(std::format("[Story] start: checkpoint 00.04b, from {}", start_name(m_case.input.start)))){
             return "Expected the line naming the checkpoint that starts";
         }
-        if (!m_case.input.preflight.game_running && outcome.failure != STORY_PRECONDITION_FAILED){
-            return std::format("Expected {}, got {}", STORY_PRECONDITION_FAILED, to_string(outcome));
+        if (!m_case.input.preflight.game_running && outcome.failure != StoryPreflight::FAILURE){
+            return std::format("Expected {}, got {}", StoryPreflight::FAILURE, to_string(outcome));
         }
         return true;
     }
@@ -196,7 +196,7 @@ public:
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const std::string got = to_string(check_story_preflight(m_case.input.preflight));
+        const std::string got = to_string(m_case.input.preflight.check());
         if (got != m_case.expectation.outcome){
             return std::format("Expected \"{}\", got \"{}\"", m_case.expectation.outcome, got);
         }
