@@ -44,9 +44,8 @@
       },
       {
         "id": "mable_talk",
-        "kind": "game_action",
-        "why": "step 69: Mable's research requests, until \"Press X...\", then X",
-        "action": "mash_to_instruction"
+        "kind": "scene",
+        "why": "step 69: Mable's research requests, until control in her office: A takes her first question's top answer (\"Yes\") and closes her \"Press X...\" line."
       },
       {
         "id": "rock_smash_tm",
