@@ -377,14 +377,14 @@ jobs:
       # The unit tests assume the downloadable resources they need are already downloaded
       # (see Packages/Resources/ResourceDownloadList.json). Unzip them from the Packages
       # checkout into where the program looks for them, DOWNLOADED_RESOURCE_PATH():
-      # the working directory on Windows/Linux, and ~/Library/Application Support/SerialPrograms
-      # on macOS.
+      # the working directory on Windows/Linux, and ~/Library/Application Support/SerialPrograms/Profiles/unit-tests
+      # on macOS (the isolated test profile).
       - name: Install downloadable resources for tests
         if: inputs.run-tests
         shell: bash
         run: |
           if [[ "${{inputs.os}}" == mac* ]]; then
-            DOWNLOADED_RESOURCES="$HOME/Library/Application Support/SerialPrograms/DownloadedResources"
+            DOWNLOADED_RESOURCES="$HOME/Library/Application Support/SerialPrograms/Profiles/unit-tests/DownloadedResources"
           else
             DOWNLOADED_RESOURCES="Arduino-Source/SerialPrograms/bin/DownloadedResources"
           fi
@@ -414,6 +414,27 @@ jobs:
         run: |
           cd Arduino-Source/SerialPrograms/bin
           ./SerialPrograms --command-line-test-mode
+
+      - name: Reject unsafe lab launches (Mac)
+        if: startsWith(inputs.os, 'mac') && inputs.run-tests
+        shell: bash
+        run: |
+          cd Arduino-Source/SerialPrograms/bin
+          binary=./SerialPrograms.app/Contents/MacOS/SerialPrograms
+          expect_rejection() {
+            local status=0
+            "$binary" "$@" || status=$?
+            if [[ "$status" != 2 ]]; then
+              echo "Expected startup rejection (2), read $status"
+              exit 1
+            fi
+          }
+          expect_rejection --test bdsp
+          expect_rejection --profile
+          expect_rejection --profile ../lab-A
+          expect_rejection --command-line-test-mode --profile lab-A
+          # CI's default build has no PA_LAB_PROFILE: unprofiled relaunch must fail.
+          expect_rejection
 
       - name: Run tests (Mac)
         if: startsWith(inputs.os, 'mac') && inputs.run-tests

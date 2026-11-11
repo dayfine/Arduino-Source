@@ -22,6 +22,7 @@
 #ifndef PokemonAutomation_Filesystem_Filesystem_H
 #define PokemonAutomation_Filesystem_Filesystem_H
 
+#include <string_view>
 #include <cstdint>
 #include <vector>
 #include "FilePath.h"
@@ -115,11 +116,11 @@ Path application_install_path();
 Path application_scratch_path();
 
 
-// Set a profile for program settings (/UserSettings/PROFILE_NAME/) on MacOS.
-// Have to run the program with command-line argument "open -n PATH_TO_APP --args --profile PROFILE_NAME" to set the profile and launch a new window.
-// This allows multiple instances of the program to run since settings are no longer shared.
 #if defined(__APPLE__)
-void set_startup_profile(int& argc, char* argv[]);
+// Set a validated macOS settings profile before any settings paths are cached.
+// GUI launch uses --profile NAME or the build-bound PA_LAB_PROFILE identity.
+void set_startup_profile(std::string_view profile);
+// Return the identity used for the window title and scratch directory.
 const std::string& STARTUP_PROFILE();
 #endif
 
