@@ -105,6 +105,10 @@
       {
         "id": "gamer_rich",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_GAMER_RICH",
+          "foes": ["growlithe", "vulpix"]
+        },
         "declared_after": {"map": "Route8", "tiles": [[55, 18]], "facing": "north"},
         "why": "Gamer Rich (TRAINER_GAMER_RICH): Growlithe, Vulpix Lv24"
       },

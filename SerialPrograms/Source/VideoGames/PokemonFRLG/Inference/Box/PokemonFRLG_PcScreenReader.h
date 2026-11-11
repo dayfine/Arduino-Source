@@ -29,6 +29,7 @@
 
 #include <cstddef>
 #include <optional>
+#include <string_view>
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
@@ -62,7 +63,7 @@ enum class PcScreen{
     OTHER,
 };
 //  The human-readable name of the PC screen.
-const char* pc_screen_name(PcScreen screen);
+std::string_view pc_screen_name(PcScreen screen);
 
 //  The state and cursor position read from a PC screen.
 struct PcView{

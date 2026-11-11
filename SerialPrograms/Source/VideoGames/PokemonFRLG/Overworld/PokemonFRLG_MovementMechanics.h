@@ -32,6 +32,8 @@
 
 #include <cstddef>
 #include "Common/Cpp/Time.h"
+#include "PokemonFRLG_MovementStepPresses.h"
+#include "PokemonFRLG_MovementTurnPresses.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -63,31 +65,6 @@ inline constexpr Milliseconds STEP_TAP_SPACING_WORKED(666);
 //  frames, then the field takes input; a tap sent at once was lost.
 inline constexpr Milliseconds BATTLE_EXIT_LOCKOUT(500);
 
-
-//  The walker's presses.
-
-//  Turns a player facing another way, without a step.
-inline constexpr Milliseconds TURN_TAP(40);
-//  How long to wait after a turn tap for the turn to show.
-inline constexpr Milliseconds TURN_SETTLE(300);
-//  How many taps turn_to() tries before it takes the player as turned.
-inline constexpr size_t MAX_TURN_TAPS = 3;
-//  Turns the player to face something, short enough not to step.
-inline constexpr Milliseconds FACE_HOLD(40);
-//  The turn animation, before an A press reaches what is ahead.
-inline constexpr Milliseconds FACE_SETTLE(300);
-//  The release between a leg's hold and what comes next.
-inline constexpr Milliseconds STEP_RELEASE(100);
-//  A one-step tap (step_once()).
-inline constexpr Milliseconds STEP_TAP(66);
-//  The release after a step tap: the next one starts STEP_TAP +
-//  STEP_TAP_RELEASE after it, past the lockout.
-inline constexpr Milliseconds STEP_TAP_RELEASE(700);
-
-
-//  How long the overworld must show nothing (no box, fade or battle) after
-//  a battle before the next tap: twice the lockout.
-inline constexpr Milliseconds AFTER_BATTLE_QUIET(1000);
 
 static_assert(TURN_TAP <= LONGEST_TAP && FACE_HOLD <= LONGEST_TAP && STEP_TAP <= LONGEST_TAP);
 static_assert(STEP_TAP + STEP_TAP_RELEASE > STEP_TAP_SPACING_WORKED);

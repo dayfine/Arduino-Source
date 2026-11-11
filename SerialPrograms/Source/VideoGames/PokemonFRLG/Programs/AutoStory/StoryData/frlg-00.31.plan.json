@@ -32,6 +32,10 @@
       {
         "id": "rocket_grunt",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_TEAM_ROCKET_GRUNT_7",
+          "foes": ["raticate", "zubat"]
+        },
         "declared_after": {"map": "CeladonCity_GameCorner", "tiles": [[11, 3]], "facing": "north"},
         "why": "Rocket Grunt (TRAINER_TEAM_ROCKET_GRUNT_7): Raticate, Zubat Lv20; he runs off"
       },
@@ -107,6 +111,10 @@
       {
         "id": "lift_key_grunt",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_TEAM_ROCKET_GRUNT_18",
+          "foes": ["koffing", "zubat"]
+        },
         "declared_after": {"map": "RocketHideout_B4F", "tiles": [[4, 3]], "facing": "west"},
         "why": "Rocket Grunt (TRAINER_TEAM_ROCKET_GRUNT_18): Koffing, Zubat Lv21; he drops the LIFT KEY"
       },

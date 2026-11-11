@@ -73,7 +73,7 @@ enum class FaultClass{
     DARK_CAVE,
     LOST_TAP,
 };
-const char* fault_class_name(FaultClass fault){
+std::string_view fault_class_name(FaultClass fault){
     switch (fault){
     case FaultClass::SCENE_END_POSE:
         return "scene end pose";

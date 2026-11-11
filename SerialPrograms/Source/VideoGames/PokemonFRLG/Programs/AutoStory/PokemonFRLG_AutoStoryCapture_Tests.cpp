@@ -143,19 +143,19 @@ public:
         }
         const CatchDestination where = party < 6 ? CatchDestination::PARTY : CatchDestination::PC;
         if (destination != where){
-            error = std::string("expected the catch to go to the ") + destination_name(where);
+            error = std::string("expected the catch to go to the ") + std::string(destination_name(where));
         }
         if (where == CatchDestination::PARTY){
             party++;
         }
-        trace.push_back(std::string("to ") + destination_name(where));
+        trace.push_back(std::string("to ") + std::string(destination_name(where)));
         m_caught = false;
         m_in_battle = false;
         return true;
     }
 
 private:
-    void check_in_battle(const char* step){
+    void check_in_battle(std::string_view step){
         if (!m_in_battle){
             error = std::string(step) + " outside a battle";
         }

@@ -51,7 +51,7 @@ const std::vector<int>& trash_can_order(){
 
 std::vector<Pokemon::MapData> trash_can_maps(const std::vector<Pokemon::MapData>& maps){
     struct Moved{
-        const char* name;
+        std::string_view name;
         TilePos tile;
     };
     static constexpr Moved MOVED[] = {
@@ -77,7 +77,7 @@ std::vector<Pokemon::MapData> trash_can_maps(const std::vector<Pokemon::MapData>
     return moved;
 }
 
-const char* trash_can_end_name(TrashCanEnd end){
+std::string_view trash_can_end_name(TrashCanEnd end){
     switch (end){
     case TrashCanEnd::OPENED:   return "opened";
     case TrashCanEnd::GAVE_UP:  return "gave_up";

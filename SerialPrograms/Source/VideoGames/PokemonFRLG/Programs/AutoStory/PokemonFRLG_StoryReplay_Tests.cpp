@@ -154,10 +154,10 @@ JsonValue with_dialogs_between_steps(const JsonValue& test){
     JsonValue out = test.clone();
     JsonObject& row = out.to_object_throw();
     JsonObject between;
-    for (const char* step : {"below_mart_door", "parcel_from_clerk"}){
+    for (std::string_view step : {"below_mart_door", "parcel_from_clerk"}){
         JsonObject shown;
         shown["kind"] = "dialog";
-        between[step] = std::move(shown);
+        between[std::string(step)] = std::move(shown);
     }
     row.get_object_throw("input")["between_steps"] = std::move(between);
     JsonArray& expected = row.get_object_throw("expectation").get_array_throw("actions");

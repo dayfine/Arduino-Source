@@ -8,6 +8,7 @@
  *
  */
 
+#include <format>
 #include <algorithm>
 #include <optional>
 #include <string>
@@ -85,9 +86,9 @@ private:
         return out;
     }
     StepInterruptActions noting(){
-        const auto note = [this](const char* kind){
+        const auto note = [this](std::string_view kind){
             return [this, kind](Pokemon::RunState&, const Pokemon::InterruptVerdict&){
-                trace.push_back(std::string("clear ") + kind);
+                trace.push_back(std::format("clear {}", kind));
                 return Pokemon::outcome_ok();
             };
         };
@@ -177,7 +178,7 @@ struct StepInterruptsInput{
     UnitTestResult (*body)();
 };
 struct StepInterruptsExpectation{
-    const char* description;
+    std::string_view description;
 };
 struct StepInterruptsTestCase{
     StepInterruptsInput input;

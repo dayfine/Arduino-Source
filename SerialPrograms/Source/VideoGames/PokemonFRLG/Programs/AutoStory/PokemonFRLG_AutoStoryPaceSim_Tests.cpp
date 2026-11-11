@@ -12,6 +12,7 @@
 #include <functional>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -198,7 +199,7 @@ struct AutoStoryPaceSimInput{
 };
 
 struct AutoStoryPaceSimExpectation{
-    const char* description;
+    std::string_view description;
 };
 
 struct AutoStoryPaceSimTestCase{

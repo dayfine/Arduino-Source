@@ -9,6 +9,7 @@
 #include "Pokemon/Navigation/Pokemon_RouteLog.h"
 #include "PokemonFRLG_OverworldBikeTaps.h"
 #include "PokemonFRLG_OverworldReanchor.h"
+#include "PokemonFRLG_OverworldResume.h"
 #include "PokemonFRLG_OverworldRecovery.h"
 
 namespace PokemonAutomation{

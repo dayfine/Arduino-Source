@@ -51,7 +51,7 @@ Direction opposite(Direction direction){
 } // namespace
 
 
-const char* destination_name(CatchDestination destination){
+std::string_view destination_name(CatchDestination destination){
     switch (destination){
     case CatchDestination::PARTY:   return "party";
     case CatchDestination::PC:      return "PC";
@@ -59,7 +59,7 @@ const char* destination_name(CatchDestination destination){
     return "?";
 }
 
-const char* capture_end_name(CaptureEnd end){
+std::string_view capture_end_name(CaptureEnd end){
     switch (end){
     case CaptureEnd::CAUGHT:            return "caught";
     case CaptureEnd::OUT_OF_ENCOUNTERS: return "out_of_encounters";
@@ -360,7 +360,7 @@ std::optional<Pokemon::Outcome> run_storage_game_step(
         if (result.end == CaptureEnd::CAUGHT){
             return Pokemon::outcome_ok();
         }
-        return Pokemon::outcome_failed(std::string("capture_") + capture_end_name(result.end), message);
+        return Pokemon::outcome_failed(std::string("capture_") + std::string(capture_end_name(result.end)), message);
     }
     if (step.action == PC_ACTION){
         const std::optional<PcTransfer> transfer = pc_transfer_of(step.args);
@@ -600,7 +600,7 @@ ThrowEnd ConsoleCaptureActions::wait_for_throw(){
 }
 
 bool ConsoleCaptureActions::finish_catch(CatchDestination destination){
-    m_console.log(std::string("Capture: no nickname; it goes to the ") + destination_name(destination) + ".");
+    m_console.log(std::string("Capture: no nickname; it goes to the ") + std::string(destination_name(destination)) + ".");
     try{
         //  B answers the nickname NO and moves the messages on.
         mash_until_overworld(m_console, m_context, 30000ms);

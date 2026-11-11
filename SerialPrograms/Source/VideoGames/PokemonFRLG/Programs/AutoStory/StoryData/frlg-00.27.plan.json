@@ -65,6 +65,10 @@
       {
         "id": "picnicker_alicia",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_PICNICKER_ALICIA",
+          "foes": ["oddish", "bellsprout", "oddish", "bellsprout"]
+        },
         "declared_after": {"map": "Route9", "tiles": [[11, 10]], "facing": "east"},
         "why": "Oddish, Bellsprout, Oddish and Bellsprout, Lv18"
       },
@@ -98,6 +102,10 @@
       {
         "id": "hiker_jeremy",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_HIKER_JEREMY",
+          "foes": ["machop", "onix"]
+        },
         "declared_after": {"map": "Route9", "tiles": [[20, 13]], "facing": "south"},
         "why": "Machop and Onix, Lv20"
       },
@@ -122,6 +130,10 @@
       {
         "id": "bug_catcher_conner",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_BUG_CATCHER_CONNER",
+          "foes": ["caterpie", "weedle", "venonat"]
+        },
         "declared_after": {"map": "Route9", "tiles": [[52, 7]], "facing": "west"},
         "why": "Caterpie, Weedle and Venonat, Lv20"
       },

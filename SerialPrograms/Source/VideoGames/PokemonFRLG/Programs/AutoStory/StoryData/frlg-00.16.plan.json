@@ -41,6 +41,10 @@
       {
         "id": "bug_catcher_cale",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_BUG_CATCHER_CALE",
+          "foes": ["caterpie", "weedle", "metapod", "kakuna"]
+        },
         "declared_after": {"map": "Route24", "tiles": [[11, 31]], "facing": "north"},
         "why": "his Bug Pokemon"
       },
@@ -65,6 +69,10 @@
       {
         "id": "lass_ali",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_LASS_ALI",
+          "foes": ["pidgey", "oddish", "bellsprout"]
+        },
         "declared_after": {"map": "Route24", "tiles": [[11, 28]], "facing": "north"},
         "why": "her Pokemon"
       },
@@ -89,6 +97,10 @@
       {
         "id": "youngster_timmy",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_YOUNGSTER_TIMMY",
+          "foes": ["sandshrew", "ekans"]
+        },
         "declared_after": {"map": "Route24", "tiles": [[11, 25]], "facing": "north"},
         "why": "his Pokemon"
       },
@@ -113,6 +125,10 @@
       {
         "id": "lass_reli",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_LASS_RELI",
+          "foes": ["nidoran-m", "nidoran-f"]
+        },
         "declared_after": {"map": "Route24", "tiles": [[11, 22]], "facing": "north"},
         "why": "her Pokemon"
       },
@@ -137,6 +153,10 @@
       {
         "id": "camper_ethan",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_CAMPER_ETHAN",
+          "foes": ["mankey"]
+        },
         "declared_after": {"map": "Route24", "tiles": [[11, 19]], "facing": "north"},
         "why": "his Pokemon"
       },
@@ -168,6 +188,10 @@
       {
         "id": "rocket_grunt",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_TEAM_ROCKET_GRUNT_6",
+          "foes": ["ekans", "zubat"]
+        },
         "declared_after": {"map": "Route24", "tiles": [[11, 15]], "facing": "east"},
         "why": "the NUGGET, then Ekans and Zubat, Lv15"
       }

@@ -87,6 +87,10 @@
       {
         "id": "rocket_grunt",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_TEAM_ROCKET_GRUNT",
+          "foes": ["rattata", "zubat"]
+        },
         "declared_after": {"map": "MtMoon_B2F", "tiles": [[12, 21]], "facing": "east"},
         "why": "Rattata and Zubat, Lv13"
       },
@@ -118,6 +122,10 @@
       {
         "id": "super_nerd_miguel",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_SUPER_NERD_MIGUEL",
+          "foes": ["grimer", "voltorb", "koffing"]
+        },
         "declared_after": {"map": "MtMoon_B2F", "tiles": [[14, 11]], "facing": "north"},
         "why": "Grimer, Voltorb and Koffing, Lv12; \"We'll each take one!\""
       },

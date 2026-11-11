@@ -111,6 +111,10 @@
       {
         "id": "left_guard",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_TEAM_ROCKET_GRUNT_16",
+          "foes": ["sandshrew", "ekans", "sandslash"]
+        },
         "declared_after": {"map": "RocketHideout_B4F", "tiles": [[16, 15]], "facing": "north"},
         "why": "Rocket Grunt (TRAINER_TEAM_ROCKET_GRUNT_16): Sandshrew, Sandslash, Ekans Lv23"
       },
@@ -131,6 +135,10 @@
       {
         "id": "right_guard",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_TEAM_ROCKET_GRUNT_17",
+          "foes": ["ekans", "sandshrew", "arbok"]
+        },
         "declared_after": {"map": "RocketHideout_B4F", "tiles": [[19, 15]], "facing": "north"},
         "why": "Rocket Grunt (TRAINER_TEAM_ROCKET_GRUNT_17): Ekans, Sandshrew, Arbok Lv23 (Arbok's Glare paralysed pokeguy's Wartortle, 59:44)"
       },
@@ -160,6 +168,10 @@
       {
         "id": "giovanni",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_BOSS_GIOVANNI",
+          "foes": ["onix", "rhyhorn", "kangaskhan"]
+        },
         "declared_after": {"map": "RocketHideout_B4F", "tiles": [[19, 5]], "facing": "north"},
         "why": "Giovanni (TRAINER_BOSS_GIOVANNI): Onix, Rhyhorn, Kangaskhan"
       },
