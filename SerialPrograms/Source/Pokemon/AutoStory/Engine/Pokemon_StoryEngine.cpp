@@ -170,7 +170,7 @@ StoryEngine<PoseType>::StoryEngine(const StoryGame<PoseType>& game, StoryBackend
 
 template <StoryPose PoseType>
 std::string StoryEngine<PoseType>::steps_hash(const StoryCheckpoint& checkpoint) const{
-    return story_steps_hash(checkpoint, m_registry.specs());
+    return story_steps_hash(checkpoint);
 }
 
 template <StoryPose PoseType>
