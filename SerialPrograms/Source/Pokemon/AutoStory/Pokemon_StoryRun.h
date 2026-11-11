@@ -37,20 +37,11 @@
 #include "Pokemon_StoryOutcome.h"
 #include "Pokemon_StorySegments.h"
 #include "Pokemon_StoryPreflight.h"
+#include "Pokemon_StoryStart.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
 
-
-//  How the game reaches the start checkpoint.
-enum class StoryStart{
-    //  A new game from the title screen: there is no save.
-    NEW_GAME,
-    //  The game as another program left it: nothing is loaded.
-    LIVE,
-    //  The checkpoint's save, loaded first.
-    FROM_SAVE,
-};
 
 //  What a game lends the story run.
 struct StoryGameHooks{
@@ -83,10 +74,6 @@ inline constexpr std::string_view STORY_LEFT_WHERE_FAILED = "AutoStory failed: t
 //  loads the save (logging "[Story] 00.04b: loading the save"), checks its
 //  place and rereads it, and sets the "save_loaded" flag.
 Outcome prepare_story_start(std::string_view checkpoint, StoryStart start, StoryGameHooks& game, RunState& state);
-
-//  Whether the first checkpoint's own save at its start may run, for a run
-//  that starts as `start` says: only a new game's (see the rules above).
-bool story_first_save_allowed(StoryStart start);
 
 //  The runner's hooks: reload is load_story_save(); save, log and status
 //  are the game's. `game` must outlive them.

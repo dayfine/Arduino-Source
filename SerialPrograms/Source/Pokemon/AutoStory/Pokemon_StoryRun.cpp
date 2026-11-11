@@ -82,10 +82,6 @@ Outcome load_story_save(std::string_view reason, StoryGameHooks& game, RunState&
 
 } // namespace
 
-bool story_first_save_allowed(StoryStart start){
-    return start == StoryStart::NEW_GAME;
-}
-
 Outcome prepare_story_start(std::string_view checkpoint, StoryStart start, StoryGameHooks& game, RunState& state){
     log_line(std::format("[Story] start: checkpoint {}, from {}", checkpoint, story_start_name(start)), game);
     const Outcome preflight = run_story_preflight(game);
