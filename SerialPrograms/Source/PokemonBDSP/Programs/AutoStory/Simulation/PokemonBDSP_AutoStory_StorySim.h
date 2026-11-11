@@ -14,6 +14,7 @@
 #ifndef PokemonAutomation_PokemonBDSP_AutoStory_StorySim_H
 #define PokemonAutomation_PokemonBDSP_AutoStory_StorySim_H
 
+#include <format>
 #include <functional>
 #include <map>
 #include <memory>
@@ -319,7 +320,7 @@ public:
     //  (story_arrival_banner(): the sim's maps have no banners of their own).
     virtual WarpSeen run_into_door(Pokemon::Direction direction, bool run, Milliseconds timeout = Milliseconds(12000),
         Milliseconds dark_from = Milliseconds(0), const std::string& banner = "") override{
-        m_route.check_fade_in(m_step + ": run into the door");
+        m_route.check_fade_in(std::format("{}: run into the door", m_step));
         const SimPace pace = run ? SimPace::RUN : SimPace::WALK;
         if (false_dark() && dark_from <= detail::SIM_FALSE_DARK && detail::SIM_FALSE_DARK < timeout){
             m_sim.hold(direction, detail::SIM_FALSE_DARK, pace);

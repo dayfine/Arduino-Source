@@ -247,7 +247,7 @@ std::optional<size_t> SimStoryStepIO::taps_to_banner(Direction direction, const 
     if (std::exchange(m_misses.banner_up, "") == map){
         return 0;
     }
-    m_route.check_fade_in(m_step + ": taps toward " + map);
+    m_route.check_fade_in(std::format("{}: taps toward {}", m_step, map));
     bool crossed = false;
     for (size_t tap = 1; tap <= max_taps; tap++){
         const SimMove move = m_sim.tap(direction, 160ms, false);
@@ -270,7 +270,7 @@ std::optional<size_t> SimStoryStepIO::taps_to_banner(Direction direction, const 
 
 void SimKnobRouteIO::check_fade_in(const std::string& label){
     if (m_knobs.slow_fade_in && std::exchange(m_misses.fading_in, false)){
-        note(label + ": moved while the last warp still faded in (no settle after it).", RouteNote::FAILURE);
+        note(std::format("{}: moved while the last warp still faded in (no settle after it).", label), RouteNote::FAILURE);
     }
 }
 

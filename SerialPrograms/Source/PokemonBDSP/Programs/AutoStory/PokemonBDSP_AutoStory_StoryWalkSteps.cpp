@@ -139,7 +139,7 @@ CenterEntry run_into_center(
     }else{
         line_up();
     }
-    io.settle(BUTTON_B, label + ": into the Center", false, "");
+    io.settle(BUTTON_B, std::format("{}: into the Center", label), false, "");
     return entry;
 }
 

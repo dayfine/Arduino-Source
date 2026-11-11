@@ -22,6 +22,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
@@ -291,7 +292,7 @@ UnitTestResult roark_badge_speech(Logger& logger){
 //  still ends it TALK_OVER_CALM after the fade. Either way it is bounded.
 UnitTestResult center_inside_settles(Logger& logger){
     struct Inside{
-        const char* what;
+        std::string_view what;
         bool moving;
         Milliseconds most;
     };
@@ -304,7 +305,7 @@ UnitTestResult center_inside_settles(Logger& logger){
     for (const Inside& inside : cases){
         const SimScene scene{
             sim_fade("the Center's door fade", fade),
-            sim_pause(inside.what, 60000ms, inside.moving),
+            sim_pause(std::string(inside.what), 60000ms, inside.moving),
         };
         const std::string over = play_scene(scene, {});
         logger.log(std::format("Center inside, {}: {}", inside.what, over));

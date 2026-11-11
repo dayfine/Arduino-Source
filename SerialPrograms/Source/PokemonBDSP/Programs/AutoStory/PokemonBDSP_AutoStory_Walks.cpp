@@ -9,6 +9,7 @@
  */
 
 #include <cstdlib>
+#include <format>
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
@@ -232,7 +233,7 @@ void walk_out_of_center(VideoStream& stream, ProControllerContext& context, cons
             // lost and the gym's door ended a tile away (r215d, r216d; a shot
             // per press by hand showed the black frame). Settle: the fade
             // back up and a quiet overworld, not a fixed wait.
-            talk_over(stream, context, label + ": out of the Center");
+            talk_over(stream, context, std::format("{}: out of the Center", label));
             return;
         }
     }
