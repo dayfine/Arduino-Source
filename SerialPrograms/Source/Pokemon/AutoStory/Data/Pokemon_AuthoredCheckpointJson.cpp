@@ -41,18 +41,6 @@ StoryCheckpoint read_authored_checkpoint(
     return checkpoint;
 }
 
-JsonValue authored_checkpoint_json(const StoryCheckpoint& checkpoint, std::string_view game, JsonObject execution){
-    if (game.empty()){
-        throw ParseException("Authored checkpoint game must not be empty.");
-    }
-    JsonObject result;
-    result["format"] = "pokesim-authored-checkpoint/1";
-    result["game"] = std::string(game);
-    result["checkpoint"] = story_checkpoint_json(checkpoint);
-    result["execution"] = std::move(execution);
-    return result;
-}
-
 StoryCheckpoint load_authored_checkpoint(
     std::span<const EmbeddedJsonFile> files, std::string_view file, std::string_view game,
     const ExecutionReader& read_execution, std::span<const StoryActionSpec> actions
@@ -62,7 +50,7 @@ StoryCheckpoint load_authored_checkpoint(
             return read_authored_checkpoint(parse_json(text), game, file, read_execution, actions);
         }
     }
-    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Authored checkpoint is not embedded: " + std::string(file));
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("Authored checkpoint is not embedded: {}", file));
 }
 
 
