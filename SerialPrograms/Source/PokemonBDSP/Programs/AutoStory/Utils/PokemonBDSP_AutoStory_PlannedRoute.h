@@ -17,11 +17,14 @@
 #include "CommonFramework/Tools/VideoStream.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_PlanCosts.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RobustRoute.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RoutePlanner.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryWorld.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_TrainerSight.h"
 #include "PokemonBDSP_AutoStory_RouteIO.h"
 #include "PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP_AutoStory_Walk.h"
+#include "PokemonBDSP_AutoStory_WalkResult.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -103,49 +106,6 @@ std::vector<Pokemon::TilePos> walk_waypoints(
     const StoryWorld& maps, std::vector<Pokemon::TilePos> from,
     RouteTrainers& trainers, const WaypointWalkPlan& plan
 );
-
-//  Whom talk_to_npc() talks to: the NPC on world tile `npc`, from the sides
-//  in `sides` (the side of the NPC to stand on), in order.
-struct NpcTalk{
-    Pokemon::TilePos npc;
-    std::vector<Pokemon::Direction> sides;
-    std::string label;
-};
-
-//  Walks next to `talk.npc`, faces them and presses A, trying each side
-//  until a dialogue opens. `at` is where the player may be, and is updated.
-//  Fails with a screenshot if no side starts a dialogue. A press from a
-//  diagonal tile, or from a tile a row off, talks to nobody, so each side is
-//  tried in turn.
-void talk_to_npc(
-    VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
-    const StoryWorld& maps, std::vector<Pokemon::TilePos>& at,
-    RouteTrainers& trainers, const NpcTalk& talk
-);
-//  talk_to_npc() through `io`.
-void talk_to_npc(
-    RouteIO& io, const StoryWorld& maps, std::vector<Pokemon::TilePos>& at,
-    RouteTrainers& trainers, const NpcTalk& talk
-);
-
-//  A leg held toward a wall the map has between `fewest` and `most` tiles
-//  ahead (from each tile the player may stand on), its tiles counted by time
-//  at `speed`.
-struct CountedWallLeg{
-    Pokemon::Direction direction;
-    size_t fewest;
-    size_t most;
-    MoveSpeed speed;
-    std::string label;
-};
-//  Walks `leg` to its wall and returns about how many tiles it took. Someone
-//  walking about who stops it short is waited for, and the walk goes on
-//  (Oreburgh's Hiker crosses column 46 on rows 25 to 27). Fails when the
-//  count is far off the map's: a walk that went astray is not at its wall
-//  (lab-B 2026-11-08 13:50: a hold east from (48, 57) moved 0 where the map
-//  has (49, 57) open), nor is one through a door or into a dialogue.
-size_t walk_counted_wall_leg(RouteIO& io, const CountedWallLeg& leg);
-
 
 
 } // namespace PokemonBDSP

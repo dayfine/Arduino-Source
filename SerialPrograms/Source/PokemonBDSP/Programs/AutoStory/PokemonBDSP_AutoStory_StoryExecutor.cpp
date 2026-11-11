@@ -25,6 +25,8 @@
 #include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RobustRoute.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_TrainerSight.h"
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_PlanCosts.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Indoors.h"
@@ -37,6 +39,9 @@
 #include "Actions/PokemonBDSP_AutoStory_Events.h"
 #include "Actions/PokemonBDSP_AutoStory_NewGame.h"
 #include "Actions/PokemonBDSP_AutoStory_Settings.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkDpad.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkResult.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkScreen.h"
 #include "PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP_AutoStory_StoryTable.h"
 #include "Actions/PokemonBDSP_AutoStory_Talks.h"
@@ -122,7 +127,7 @@ void StoryExecutor::begin_attempt(const Pokemon::StoryCheckpoint& data){
     m_trainers.clear();
 }
 
-Outcome StoryExecutor::run(RunState& state, const StoryStep& step){
+Outcome StoryExecutor::run(const StoryStep& step, RunState& state){
     stream().log(std::format("[{}] {} {}: {}", m_checkpoint, Pokemon::story_step_kind_name(step.kind), step.name, step.why), COLOR_BLUE);
     try{
         Outcome outcome = run_guarded(state, step);
@@ -674,7 +679,7 @@ Pokemon::Segment make_story_segment(
                 //  resets and does not save again.
                 save.act = [&executor, &saved, id = row.id, save_at_start](RunState& state){
                     saved.insert(id);
-                    return executor.run(state, save_at_start);
+                    return executor.run(save_at_start, state);
                 };
                 Pokemon::Checkpoint checkpoint;
                 checkpoint.id = row.id;
