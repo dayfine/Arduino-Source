@@ -48,7 +48,6 @@ using Handler = Pokemon::StoryActionHandler<ZonePose>;
 
 const std::map<std::string, std::string, std::less<>>& story_actions_not_implemented(){
     static const std::map<std::string, std::string, std::less<>> todos{
-        {"register_five_species", "find a wild Pokemon of a new species, approach, ZL lock and throw, read caught / broke out, count from the quest panel to 5/5; then back to the lab gate (route not recorded)."},
         {"mash_to_instruction", "a mash that stops at an instruction line (\"Press X to open the main menu...\"): A once to close it, then X; X is ignored while the line shows."},
         {"claim_mable_research_reward", "the main menu: DOWN x3 to \"Mable's Research\", A, the Rewards page (TM004 Rock Smash)."},
     };
@@ -185,7 +184,7 @@ const std::vector<std::string>& console_game_actions(){
         "new_game_language", "pick_look", "type_player_name",
         "story_battle_start",
         "talk_through_map_screen", "talk_to_pokedex_screen", "climb_ladder",
-        "catch_tutorial", "battle_then_catch",
+        "catch_tutorial", "battle_then_catch", "catch_in_zone",
         "choose_0", "choose_1",
     };
     return actions;
@@ -481,6 +480,8 @@ void run_console_action(StoryEnv& env, std::string_view name){
         catch_tutorial(console, env.context, 6);
     }else if (name == "battle_then_catch"){
         battle_then_catch(env.env, console, env.context, env.battle_ai, 6);
+    }else if (name == "catch_in_zone"){
+        catch_in_zone(console, env.context, 4, 15);
     }else if (name == "new_game_language"){
         new_game_language(console, env.context);
     }else if (name == "pick_look"){

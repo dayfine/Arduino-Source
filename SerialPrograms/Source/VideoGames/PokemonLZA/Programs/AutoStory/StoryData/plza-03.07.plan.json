@@ -9,6 +9,12 @@
     },
     "events": [
       {
+        "id": "catch_more_species",
+        "kind": "game_action",
+        "why": "step 64: the lab gate asks for five registered species (3/5 after the tutorial). Catch more here in Wild Zone 1 before leaving, so the gate's scene finds 5/5: lock-on throws from spokes out and back (catch_in_zone).",
+        "action": "catch_in_zone"
+      },
+      {
         "id": "zone_1_to_far_gate",
         "kind": "game_action",
         "why": "step 62: back across Wild Zone 1 to its gate's \"A Leave\". Measured 2026-11-08 on console B, walk not run.",
@@ -35,14 +41,8 @@
       {
         "id": "research_lab_gate",
         "kind": "scene",
-        "why": "step 63: Taunie at the lab gate: register five species",
+        "why": "step 63: Taunie at the lab gate; with five species registered she goes on",
         "action": "a"
-      },
-      {
-        "id": "register_five_species",
-        "kind": "game_action",
-        "why": "step 64: register five species (3/5 after the tutorial), back to the lab gate",
-        "action": "register_five_species"
       },
       {
         "id": "five_registered",

@@ -2,7 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Wild Zone 1's tutorial catches (03.06), from console B, 2026-11-10.
+ *  Wild Zone 1's catches (03.06's tutorial, 03.07's five species), from
+ *  console B, 2026-11-10.
  *
  */
 
@@ -37,6 +38,16 @@ void battle_then_catch(
     ProgramEnvironment& env, ConsoleHandle& console, ProControllerContext& context,
     BattleAIOption& battle_ai, int max_rounds
 );
+
+//  03.07's catches for the "register five species" quest (3/5 after the
+//  tutorial), from where the player stands in Wild Zone 1: throws at what
+//  locks on there, then walks 3 s spokes out and back (ahead, then left and
+//  right in turn, by the minimap's heading) and throws at what locks on at
+//  each end, then faces the start heading again. A throw followed by text
+//  or a card counts as a catch; a repeat species counts too, so ask for
+//  more than are needed. Throws OperationFailedException with fewer than
+//  `catches_wanted` after the spokes or `max_throws`.
+void catch_in_zone(ConsoleHandle& console, ProControllerContext& context, int catches_wanted, int max_throws);
 
 
 
