@@ -111,7 +111,6 @@ const Pokemon::StoryStep& mine_step(){
         Pokemon::StoryStep step;
         step.kind = Pokemon::StoryStepKind::LEGS;
         step.name = "below_roark";
-        step.action = "open";
         step.args["legs"] = std::vector<Pokemon::StoryLeg>{
             {.direction = Direction::EAST,  .tiles = 1},
             {.direction = Direction::SOUTH, .tiles = 2},

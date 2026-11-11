@@ -636,6 +636,9 @@ Outcome StoryWalkSteps::legs(RunState& state, const StoryStep& step){
     if (step.action == "to_map"){
         return leg_to_map(step);
     }
+    if (step.action == "to_dialogue"){
+        return run_to_dialogue(step);
+    }
     if (step.action != "one_short_ok" && !step.action.empty() && step.action != "legs"){
         return Pokemon::outcome_failed("unknown_action", step.action);
     }
