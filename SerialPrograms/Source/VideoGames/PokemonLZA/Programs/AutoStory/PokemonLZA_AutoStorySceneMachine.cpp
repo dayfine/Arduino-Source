@@ -466,6 +466,32 @@ void press_banner_away(PlzaBackend& backend, std::string_view label){
 }
 
 
+//  The step's outcome from where the machine ended.
+Pokemon::Outcome scene_outcome(
+    PlzaBackend& backend, std::string_view label, const SceneMachineConfig& config, const ScreenMachineResult& result
+){
+    if (!result.succeeded()){
+        return scene_failure(label, result.failure);
+    }
+    if (result.terminal == scene_screen_name(SceneScreen::QUIET_END) && config.quiet_is_control){
+        backend.log(std::format("[PLZA {}] done: quiet, taken as control.", label));
+        return Pokemon::outcome_ok();
+    }
+    if (result.terminal == scene_screen_name(SceneScreen::QUIET_END)){
+        //  Nothing busy for the quiet time, and no party bar or controls
+        //  hint: a cutscene with no text, or control the detectors miss.
+        return Pokemon::outcome_failed("scene_quiet", std::format(
+            "{}: nothing busy for {} ms and no sign of control.", label, config.quiet ? config.quiet->count() : 0
+        ));
+    }
+    if (result.terminal == scene_screen_name(SceneScreen::MISSION_BANNER) && !wait_banner_gone(backend, label)){
+        press_banner_away(backend, label);
+    }
+    backend.log(std::format("[PLZA {}] done on {}.", label, result.terminal));
+    return Pokemon::outcome_ok();
+}
+
+
 } // namespace
 
 
@@ -502,25 +528,7 @@ Pokemon::Outcome run_scene_machine(
         backend.log(line);
     });
     const ScreenMachineResult result = run_screen_machine_on_observations(observe, backend.scope(), states, timeout, trace);
-    if (!result.succeeded()){
-        return scene_failure(label, result.failure);
-    }
-    if (result.terminal == scene_screen_name(SceneScreen::QUIET_END) && config.quiet_is_control){
-        backend.log(std::format("[PLZA {}] done: quiet, taken as control.", label));
-        return Pokemon::outcome_ok();
-    }
-    if (result.terminal == scene_screen_name(SceneScreen::QUIET_END)){
-        //  Nothing busy for the quiet time, and no party bar or controls
-        //  hint: a cutscene with no text, or control the detectors miss.
-        return Pokemon::outcome_failed("scene_quiet", std::format(
-            "{}: nothing busy for {} ms and no sign of control.", label, config.quiet ? config.quiet->count() : 0
-        ));
-    }
-    if (result.terminal == scene_screen_name(SceneScreen::MISSION_BANNER) && !wait_banner_gone(backend, label)){
-        press_banner_away(backend, label);
-    }
-    backend.log(std::format("[PLZA {}] done on {}.", label, result.terminal));
-    return Pokemon::outcome_ok();
+    return scene_outcome(backend, label, config, result);
 }
 
 
