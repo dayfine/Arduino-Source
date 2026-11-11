@@ -299,7 +299,7 @@ Outcome StoryWalkSteps::run_to_dialogue(const StoryStep& step){
 Outcome StoryWalkSteps::leg_to_map(const StoryStep& step){
     const auto& legs_list = story_arg<std::vector<Pokemon::StoryLeg>>(step.args, "legs");
     const Pokemon::StoryLeg& leg = legs_list.front();
-    const std::string map = step.pose_after ? step.pose_after->map : "";
+    const std::string map = step.pose_after ? Pokemon::grid_pose_of(*step.pose_after).map : "";
     turn(leg.direction);
     const bool arrived = m_io.run_until_map(leg.direction, Milliseconds(250) * leg.tiles + 2000ms, map, step.name);
     return arrived ? Pokemon::outcome_ok() : Pokemon::outcome_failed("no_banner", map);
@@ -340,7 +340,7 @@ size_t taps_to_banner(const Pose& from, Direction direction){
 //  there; a banner before any tap means the walk before took us through.
 Outcome StoryWalkSteps::tap_to_banner(const Pose& from, const StoryStep& step){
     const Direction direction = story_arg<Direction>(step.args, "direction");
-    const std::string map = step.pose_after ? step.pose_after->map : "";
+    const std::string map = step.pose_after ? Pokemon::grid_pose_of(*step.pose_after).map : "";
     if (through_already(step)){
         return Pokemon::outcome_ok();
     }
@@ -392,7 +392,7 @@ bool StoryWalkSteps::through_already(const StoryStep& step){
     if (!through.any()){
         return false;
     }
-    const std::string map = step.pose_after ? step.pose_after->map : "";
+    const std::string map = step.pose_after ? Pokemon::grid_pose_of(*step.pose_after).map : "";
     if (!through.banner.empty() && !location_banner_matches(through.banner, story_banner_name(map))){
         fail(m_route, std::format("{}: the walk before went through a warp to \"{}\", not {}.", step.name, through.banner, map));
     }
@@ -653,12 +653,12 @@ Outcome StoryWalkSteps::step(RunState& state, const StoryStep& step){
     //  from the door, a 50 ms turn tap can step in before run_into_door() watches.
     //  A fade or the far map's banner is the way through, either one (#268
     //  slice 1); with neither yet, settle() waits for one.
-    if (step.pose_after && step.pose_after->map != state.pose.map){
+    if (step.pose_after && Pokemon::grid_pose_of(*step.pose_after).map != state.pose.map){
         if (through_already(step)){
             m_io.settle(BUTTON_B, label_of(step), false, "");
             return Pokemon::outcome_ok();
         }
-        const std::string banner = story_arrival_banner(state.pose.map, step.pose_after->map);
+        const std::string banner = story_arrival_banner(state.pose.map, Pokemon::grid_pose_of(*step.pose_after).map);
         const DoorRun door = door_run(state.pose.map, state.pose, direction, m_can_run);
         WarpSeen seen = m_io.run_into_door(direction, m_can_run, door.timeout, door.dark_from, banner);
         log(std::format("[{}] {}: {} through the door (timeout {} ms, dark from {} ms): {}.", m_row, step.name,
@@ -719,8 +719,8 @@ Outcome StoryWalkSteps::mash(RunState& state, const StoryStep& step){
         m_route.note(label_of(step) + ": no line within 15 s; the step before played it.", RouteNote::WARNING);
     }
     m_io.settle(step.action == "a" ? BUTTON_A : BUTTON_B, label_of(step),
-        step.pose_after && step.pose_after->map != state.pose.map &&
-        story_plan_world(state.pose.map, step.pose_after->map) == nullptr, "");
+        step.pose_after && Pokemon::grid_pose_of(*step.pose_after).map != state.pose.map &&
+        story_plan_world(state.pose.map, Pokemon::grid_pose_of(*step.pose_after).map) == nullptr, "");
     if (m_row == RUNNING_SHOES_ROW && step.name == RUNNING_SHOES_STEP){
         m_can_run = true;
     }
