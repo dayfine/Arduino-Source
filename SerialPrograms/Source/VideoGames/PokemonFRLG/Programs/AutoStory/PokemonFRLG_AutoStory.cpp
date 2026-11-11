@@ -12,6 +12,7 @@
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
+#include "Pokemon/AutoStory/Pokemon_AutoStoryShell.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStorySelect.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
 #include "Pokemon/AutoStory/Pokemon_StoryLog.h"
@@ -147,22 +148,6 @@ AutoStory::AutoStory()
 }
 
 
-//  The save loaded must be the one checkpoint `first` starts from: one left
-//  by an earlier checkpoint (a run that failed before saving) would start
-//  it in the wrong place (console B, 2026-11-01: 03.02 on the forest's
-//  save). Checked on the SAVE card; a card that can't be read is let pass.
-static void check_start_save(
-    SingleSwitchProgramEnvironment& env, StoryEnv& story, const StoryCheckpoint& checkpoint
-){
-    if (!checkpoint.start){
-        return;
-    }
-    const std::string error = check_save_place(story, Pokemon::grid_pose_of(*checkpoint.start).map);
-    if (!error.empty()){
-        throw UserSetupError(env.console, error + " Start at the checkpoint " + checkpoint.id + " the save is for.");
-    }
-}
-
 namespace{
 
 //  Before the new game starts: a name the keyboard can't type is the user's to fix.
@@ -189,28 +174,36 @@ StoryEnv story_env(
     return story;
 }
 
-//  A failed attempt reloads the last save, with the supplies it had, read
-//  from its bag again; the engine's lines go to the console's log.
-Pokemon::SegmentHooks story_hooks(SingleSwitchProgramEnvironment& env, StoryEnv& story){
-    Pokemon::SegmentHooks hooks;
-    hooks.reload = [&story](Pokemon::RunState&){
+//  What FRLG lends the shared shell: a load is a soft reset, checked
+//  against the save card for the map the checkpoint under way starts on,
+//  then the supplies the save had, read from its bag again; the engine's
+//  lines go to the console's log.
+Pokemon::StoryGameHooks story_game(SingleSwitchProgramEnvironment& env, StoryEnv& story){
+    Pokemon::StoryGameHooks game;
+    game.load_save = [&story](Pokemon::RunState&){
         if (!story.has_save){
             return Pokemon::outcome_failed("no_save", "nothing saved yet");
         }
-        //  The save reloaded must be where the checkpoint starts: a save
-        //  that didn't happen leaves an older one (console B, 2026-11-02:
-        //  01.03 walked the bedroom's route in Pewter City).
         try{
             soft_reset(story.console, story.context);
-            const std::string error = check_save_place(story, story.start_map);
-            if (!error.empty()){
-                return Pokemon::outcome_failed("wrong_save", error);
-            }
-            story.supplies = story.saved_supplies;
-            //  Until read in full, so each verify run starts from the bag
-            //  as the save holds it, not from a count once read wrong or
-            //  not at all (console B, 2026-11-03: 0 Potions in all 3
-            //  runs). Once read, a reload of the same save restores it.
+        }catch (OperationFailedException& e){
+            return Pokemon::outcome_failed("reload_failed", e.message());
+        }
+        return Pokemon::outcome_ok();
+    };
+    //  The save reloaded must be where the checkpoint starts: a save that
+    //  didn't happen leaves an older one (console B, 2026-11-02: 01.03
+    //  walked the bedroom's route in Pewter City).
+    game.check_save_place = [&story]{
+        return check_save_place(story, story.start_map);
+    };
+    game.after_load = [&story](Pokemon::RunState&){
+        story.supplies = story.saved_supplies;
+        //  Until read in full, so each verify run starts from the bag as
+        //  the save holds it, not from a count once read wrong or not at
+        //  all (console B, 2026-11-03: 0 Potions in all 3 runs). Once
+        //  read, a reload of the same save restores it.
+        try{
             if (!story.bag_read){
                 read_bag_supplies(story, story.start_menu);
             }
@@ -219,20 +212,44 @@ Pokemon::SegmentHooks story_hooks(SingleSwitchProgramEnvironment& env, StoryEnv&
         }
         return Pokemon::outcome_ok();
     };
-    hooks.log = [&env](const std::string& line){
+    game.log = [&env](const std::string& line){
         env.console.log(line);
     };
     //  The checkpoint and the step under way, for whoever watches the stream.
-    hooks.status = [&env](const std::string& line){
+    game.status = [&env](const std::string& line){
         env.console.overlay().add_log(line);
     };
-    return hooks;
+    return game;
+}
+
+//  Loads the save checkpoint `checkpoint` starts from through the shell,
+//  which checks it is where the checkpoint starts (console B, 2026-11-01:
+//  03.02 on the forest's save), then reads the lead's moves.
+void load_start_save(
+    SingleSwitchProgramEnvironment& env, StoryEnv& story, Pokemon::StoryGameHooks& game,
+    Pokemon::RunState& state, const StoryCheckpoint& checkpoint
+){
+    story.has_save = true;
+    story.start_map = Pokemon::grid_pose_of(*checkpoint.start).map;
+    story.start_menu = checkpoint.menu;
+    const Pokemon::Outcome loaded = Pokemon::prepare_story_start(checkpoint.id, Pokemon::StoryStart::FROM_SAVE, game, state);
+    if (loaded.failure == "wrong_save"){
+        throw UserSetupError(env.console, loaded.detail + " Start at the checkpoint " + checkpoint.id + " the save is for.");
+    }
+    if (!loaded.succeeded()){
+        Pokemon::log_story_failure(game);
+        throw OperationFailedException(
+            ErrorReportMode::NO_ERROR_REPORT, "AutoStory could not load the save for " + checkpoint.id + ": " + Pokemon::to_string(loaded)
+        );
+    }
+    read_lead_moves(story, checkpoint.menu);
 }
 
 //  The game on the save checkpoint `checkpoint` starts from, with the
 //  supplies and moves read from it.
 void load_verify_save(
-    SingleSwitchProgramEnvironment& env, ProControllerContext& context, StoryEnv& story, const StoryCheckpoint& checkpoint
+    SingleSwitchProgramEnvironment& env, StoryEnv& story, Pokemon::StoryGameHooks& game,
+    Pokemon::RunState& state, const StoryCheckpoint& checkpoint
 ){
     if (!checkpoint.start){
         throw UserSetupError(env.console,
@@ -244,12 +261,7 @@ void load_verify_save(
             "Verify mode reloads the checkpoint's save between runs: " + checkpoint.id + " starts from the game as it is, with no save."
         );
     }
-    env.console.log("Verify mode: loading the save for " + checkpoint.id + ".");
-    soft_reset(env.console, context);
-    story.has_save = true;
-    check_start_save(env, story, checkpoint);
-    read_lead_moves(story, checkpoint.menu);
-    read_bag_supplies(story, checkpoint.menu);
+    load_start_save(env, story, game, state, checkpoint);
 }
 
 //  Verify mode: the start checkpoint run from its save as `policy` says,
@@ -262,21 +274,22 @@ void verify_story_checkpoint(
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
     const StoryCheckpoint& checkpoint = checkpoints[run.start_index()];
     StoryEnv story = story_env(env, context, checkpoint, run.check_level(), false);
-    load_verify_save(env, context, story, checkpoint);
     story.language = run.language();
+    Pokemon::StoryGameHooks game = story_game(env, story);
+    Pokemon::RunState state;
+    load_verify_save(env, story, game, state, checkpoint);
     StoryExecutor executor(story);
     Pokemon::Segment segment = make_story_segment(checkpoints, executor);
-    Pokemon::SegmentHooks hooks = story_hooks(env, story);
+    Pokemon::SegmentHooks hooks = Pokemon::story_segment_hooks(game);
 
-    Pokemon::RunState state;
-    const Pokemon::VerifyReport report = Pokemon::verify_checkpoint(checkpoint.id, policy, segment, hooks, state);
-    const std::string summary = std::format(
-        "AutoStory verify: {} {}/{} passed, {} needed.", checkpoint.id, report.passes, policy.runs, policy.passes_needed
-    );
-    if (!report.verified){
-        throw OperationFailedException(ErrorReportMode::NO_ERROR_REPORT, summary);
+    Pokemon::VerifyReport report;
+    try{
+        report = Pokemon::verify_checkpoint(checkpoint.id, policy, segment, hooks, state);
+    }catch (OperationFailedException&){
+        Pokemon::log_story_failure(game);
+        throw;
     }
-    env.console.log(summary);
+    const std::string summary = Pokemon::finish_story_verify(checkpoint.id, policy, report, game);
     send_program_finished_notification(env, finished, summary);
 }
 
@@ -299,25 +312,12 @@ static void check_setup(
     }
 }
 
-static void throw_if_failed(const Pokemon::SegmentReport& report){
-    if (report.completed){
-        return;
-    }
-    throw OperationFailedException(
-        ErrorReportMode::NO_ERROR_REPORT,
-        std::format(
-            "AutoStory stopped at {} {}: {}",
-            report.failed_checkpoint, report.failed_event, Pokemon::to_string(report.failure)
-        )
-    );
-}
-
 //  Gets the game to where checkpoint `first` starts: a new game from the
 //  title screen, the game as another program left it, or the checkpoint's
 //  save loaded. `at_handoff`: the run starts with the RNG handoff before a
 //  live-start row, whose save is where that row starts, so it is loaded.
 static void prepare_start(
-    SingleSwitchProgramEnvironment& env, ProControllerContext& context,
+    SingleSwitchProgramEnvironment& env,
     const std::vector<StoryCheckpoint>& checkpoints, size_t first, StoryEnv& story, bool at_handoff
 ){
     const StoryCheckpoint& checkpoint = checkpoints[first];
@@ -328,12 +328,9 @@ static void prepare_start(
         env.console.log(checkpoint.id + " starts from the game as it is: no save to load.");
         return;
     }
-    env.console.log("Loading the save for " + checkpoint.id + ".");
-    soft_reset(env.console, context);
-    story.has_save = true;
-    check_start_save(env, story, checkpoints[first]);
-    read_lead_moves(story, checkpoints[first].menu);
-    read_bag_supplies(story, checkpoints[first].menu);
+    Pokemon::StoryGameHooks game = story_game(env, story);
+    Pokemon::RunState state;
+    load_start_save(env, story, game, state, checkpoint);
 }
 
 //  The run stopped for an RNG program, as its option asked: the user's
@@ -459,15 +456,24 @@ static void run_story_rows(
     if (before){
         before_last_save(segment, std::move(before));
     }
-    Pokemon::SegmentHooks hooks = story_hooks(env, story);
+    Pokemon::StoryGameHooks game = story_game(env, story);
+    Pokemon::SegmentHooks hooks = Pokemon::story_segment_hooks(game);
 
     Pokemon::RunState state;
-    const Pokemon::SegmentReport report = run_segment(
-        Pokemon::SegmentRange{rows.front().id, rows.back().id}, policy, segment, hooks, state
-    );
-    Pokemon::record_story_counts(report.story_counts(), env.current_stats<Pokemon::AutoStoryStats>());
+    Pokemon::SegmentReport report;
+    try{
+        report = run_segment(Pokemon::SegmentRange{rows.front().id, rows.back().id}, policy, segment, hooks, state);
+    }catch (OperationFailedException&){
+        Pokemon::log_story_failure(game);
+        throw;
+    }
+    try{
+        Pokemon::finish_story_run(report, rows.back().id, env.current_stats<Pokemon::AutoStoryStats>(), game);
+    }catch (OperationFailedException&){
+        env.update_stats();
+        throw;
+    }
     env.update_stats();
-    throw_if_failed(report);
 }
 
 //  SID Helper's steps in the program, from the player's keyboard: the name
@@ -676,7 +682,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     StoryEnv story = story_env(env, context, checkpoints[first], RUN.check_level(), KEEP_START_FRAME);
     story.player_name = player_name;
     const bool at_gift_rng = plan.stop == StoryHandoff::GIFT_RNG && plan.rows.empty();
-    prepare_start(env, context, checkpoints, first, story, at_gift_rng);
+    prepare_start(env, checkpoints, first, story, at_gift_rng);
     story.language = RUN.language();
     StoryExecutor executor(story);
 
