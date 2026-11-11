@@ -37,7 +37,7 @@
 #include "Pokemon_StoryOutcome.h"
 #include "Pokemon_StorySegments.h"
 #include "Pokemon_StoryPreflight.h"
-#include "Pokemon_StoryStart.h"
+#include "Types/Pokemon_StoryStart.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
