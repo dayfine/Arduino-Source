@@ -24,6 +24,7 @@
 #include "PokemonBDSP_AutoStory_Indoors.h"
 #include "PokemonBDSP_AutoStory_OverlayLog.h"
 #include "PokemonBDSP_AutoStory_RouteWalk.h"
+#include "PokemonBDSP_AutoStory_WalkResult.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

@@ -19,9 +19,11 @@
 #include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
 #include "Data/PokemonBDSP_AutoStory_Maps.h"
 #include "Data/PokemonBDSP_AutoStory_PlanCosts.h"
+#include "Data/PokemonBDSP_AutoStory_RobustRoute.h"
 #include "Data/PokemonBDSP_AutoStory_RoutePlanner.h"
 #include "Data/PokemonBDSP_AutoStory_StoryMaps.h"
 #include "Actions/PokemonBDSP_AutoStory_Events.h"
+#include "Data/PokemonBDSP_AutoStory_WalkRules.h"
 #include "PokemonBDSP_AutoStory_StoryTable.h"
 #include "PokemonBDSP_AutoStory_StoryTable_Tests.h"
 

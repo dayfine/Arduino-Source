@@ -20,6 +20,7 @@
 #include "Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RoutePlanner.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_TrainerSight.h"
 #include "PokemonBDSP_AutoStory_StoryStepIO.h"
 
 namespace PokemonAutomation{

@@ -14,7 +14,10 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "Data/PokemonBDSP_AutoStory_RobustRoute.h"
 #include "Data/PokemonBDSP_AutoStory_RoutePlanner.h"
+#include "Data/PokemonBDSP_AutoStory_TrainerSight.h"
+#include "Data/PokemonBDSP_AutoStory_WalkRules.h"
 #include "Data/PokemonBDSP_AutoStory_WallRecovery.h"
 #include "Data/PokemonBDSP_AutoStory_Maps.h"
 #include "Simulation/PokemonBDSP_AutoStory_GridSim.h"
@@ -207,7 +210,7 @@ Pokemon::MapData recovery_map(const RecoveryGeometryInput& input){
     }
     map.name = "RecoveryDiagnostic";
     map.tiles = Pokemon::Grid<Pokemon::TileKind>{7, 3, {}};
-    for (const char* row : {"#######", "#.....#", "#######"}){
+    for (std::string_view row : {"#######", "#.....#", "#######"}){
         for (char glyph : std::string(row)){
             map.tiles.cells.push_back(*Pokemon::tile_from_glyph(glyph));
         }

@@ -30,6 +30,7 @@
 #include <vector>
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RobustRoute.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryWorld.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
@@ -109,7 +110,7 @@ public:
     }
     //  A new attempt of a row: every trainer can see us again.
     virtual void begin_attempt(const Pokemon::StoryCheckpoint& data) override;
-    virtual Pokemon::Outcome run(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
+    virtual Pokemon::Outcome run(const Pokemon::StoryStep& step, Pokemon::RunState& state) override;
 
 protected:
     //  The row running now.

@@ -18,6 +18,7 @@
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonTools/OCR/OCR_RawTesseractOCR.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_StoryLanguage.h"
 #include "PokemonBDSP_AutoStory_BattleMoves.h"
 
 namespace PokemonAutomation{
@@ -30,8 +31,8 @@ namespace{
 // Early moves the starters and their foes have, as type, power and
 // most PP. A status move has power 0.
 struct KnownMove{
-    const char* name;
-    const char* type;
+    std::string name;
+    std::string type;
     int power;
     int pp;
 };
