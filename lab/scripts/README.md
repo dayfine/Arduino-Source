@@ -65,3 +65,13 @@ request (images shortened) without network or SDK.
   (effort low), prints the JSON verdict and exits 2 on a dead feed, color bars or HOME, 1 on error.
 
 Tests (mocked client): `python3 -m unittest discover -s lab/scripts -p test_lab_claude.py -v`.
+
+## Claude route review
+
+`python3 lab/scripts/review_route.py --plan <code worktree>/.../StoryData/bdsp-00.04.plan.json --notes ~/BDSPLab/notes/<date>-routes.md [--map-slice slice.txt] [--sim sim.txt]`
+reviews one checkpoint plan before coding it, with `claude-opus-5-5` (adaptive thinking, effort high,
+server-side fallback). It scores the route by the user's preferences (few unprotected moves with wide
+margin, one localization, few turns, walls and funnels over step counts, long open legs flagged) and
+appends a per-leg table (kind, risk, reason), totals and suggestions to the notes file. It reports
+only what the plan, map slice and sim output show. `--dry-run` prints the request without network.
+Tests: `python3 -m unittest discover -s lab/scripts -p test_review_route.py -v`.
