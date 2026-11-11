@@ -21,31 +21,31 @@ bool is_center_variant(std::string_view variant){
 
 const std::vector<RoomLeg>& center_enter_legs(){
     static const std::vector<RoomLeg> LEGS{
-        {Pokemon::Direction::NORTH, 1, true, false, "the Center"},
-        {Pokemon::Direction::NORTH, 4, false},
+        {.direction = Pokemon::Direction::NORTH, .tiles = 1, .warps = true, .to = "the Center"},
+        {.direction = Pokemon::Direction::NORTH, .tiles = 4},
     };
     return LEGS;
 }
 const std::vector<RoomLeg>& center_exit_legs(){
     static const std::vector<RoomLeg> LEGS{
-        {Pokemon::Direction::SOUTH, 4, false},
-        {Pokemon::Direction::SOUTH, 1, true, false, "outside the Center"},
+        {.direction = Pokemon::Direction::SOUTH, .tiles = 4},
+        {.direction = Pokemon::Direction::SOUTH, .tiles = 1, .warps = true, .to = "outside the Center"},
     };
     return LEGS;
 }
 const std::vector<RoomLeg>& lift_in_legs(){
     static const std::vector<RoomLeg> LEGS{
-        {Pokemon::Direction::NORTH, 1, true, false, LIFT_MAP},
-        {Pokemon::Direction::NORTH, 2, false},
-        {Pokemon::Direction::WEST, 2, false},
-        {Pokemon::Direction::NORTH, 0, false},
+        {.direction = Pokemon::Direction::NORTH, .tiles = 1, .warps = true, .to = LIFT_MAP},
+        {.direction = Pokemon::Direction::NORTH, .tiles = 2},
+        {.direction = Pokemon::Direction::WEST, .tiles = 2},
+        {.direction = Pokemon::Direction::NORTH, .tiles = 0},
     };
     return LEGS;
 }
 const std::vector<RoomLeg>& lift_out_legs(){
     static const std::vector<RoomLeg> LEGS{
-        {Pokemon::Direction::EAST, 2, false},
-        {Pokemon::Direction::SOUTH, 3, true, true, "the lift's floor picked"},
+        {.direction = Pokemon::Direction::EAST, .tiles = 2},
+        {.direction = Pokemon::Direction::SOUTH, .tiles = 3, .warps = true, .dims = true, .to = "the lift's floor picked"},
     };
     return LEGS;
 }

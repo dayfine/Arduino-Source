@@ -384,10 +384,6 @@ void wait_out_fade(ConsoleHandle& console, ProControllerContext& context, const 
     );
 }
 
-} // namespace
-
-namespace{
-
 //  After the steps onto a warp whose fade only dims the screen
 //  (RouteStep::fade_dims): waits, up to the warp timeout, for the scene
 //  from `before`, taken before the first of those steps, to be gone and
