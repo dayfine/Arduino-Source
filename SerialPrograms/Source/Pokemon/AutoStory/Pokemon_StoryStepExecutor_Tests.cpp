@@ -10,6 +10,7 @@
  */
 
 #include <algorithm>
+#include <format>
 #include <functional>
 #include <map>
 #include <optional>
@@ -22,12 +23,13 @@
 #include "Pokemon/Options/Pokemon_GameLanguages.h"
 #include "Pokemon/Options/Pokemon_StoryRunOptions.h"
 #include "Pokemon_AutoStorySelect.h"
+#include "Pokemon_AutoStoryStats.h"
 #include "Pokemon_StoryEvents.h"
 #include "Pokemon_BuiltinStoryActions.h"
 #include "Pokemon_StorySegments.h"
 #include "Pokemon_StoryStepExecutor.h"
 #include "Pokemon_TilePose.h"
-#include "Pokemon_AutoStory_Tests.h"
+#include "Pokemon_StoryStepExecutor_Tests.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -57,18 +59,18 @@ public:
         attempts.push_back(data.id);
     }
 
-    virtual Outcome run(RunState& state, const StoryStep& step) override{
+    virtual Outcome run(const StoryStep& step, RunState& state) override{
         poses_seen.emplace_back(step.name, to_string(state.pose));
-        trace.push_back(std::string(story_step_kind_name(step.kind)) + " " + step.name);
+        trace.push_back(std::format("{} {}", story_step_kind_name(step.kind), step.name));
         if (failing.contains(step.name)){
-            return outcome_failed("blocked", step.name + " was blocked");
+            return outcome_failed("blocked", std::format("{} was blocked", step.name));
         }
         size_t& left = failures_left[step.name];
         if (left > 0){
             left--;
-            return outcome_failed("blocked", step.name + " was blocked");
+            return outcome_failed("blocked", std::format("{} was blocked", step.name));
         }
-        return run_kind(state, step);
+        return run_kind(step, state);
     }
 
     virtual bool holds(std::string_view condition, RunState& state) override{
@@ -77,12 +79,12 @@ public:
 
 private:
     //  The kinds this world has; any other is unsupported.
-    Outcome run_kind(RunState& state, const StoryStep& step){
+    Outcome run_kind(const StoryStep& step, RunState& state){
         switch (step.kind){
         case StoryStepKind::ROUTE:
             return outcome_ok(pose_of(story_arg<GridPose>(step.args, "target")));
         case StoryStepKind::STEP:
-            return step_one_tile(state, step);
+            return step_one_tile(step, state);
         case StoryStepKind::TALK:
         case StoryStepKind::MASH:
             return outcome_ok();
@@ -92,13 +94,13 @@ private:
         case StoryStepKind::SHOP:
             return shop(step);
         case StoryStepKind::GAME:
-            return game(state, step);
+            return game(step, state);
         default:
             return unsupported_step(step);
         }
     }
 
-    Outcome step_one_tile(RunState& state, const StoryStep& step){
+    Outcome step_one_tile(const StoryStep& step, const RunState& state){
         const std::vector<TilePos> tiles = tiles_of(state.pose);
         if (tiles.size() != 1){
             return outcome_failed("no_pose", to_string(state.pose));
@@ -109,14 +111,14 @@ private:
 
     Outcome shop(const StoryStep& step){
         for (const StoryItem& item : story_arg<std::vector<StoryItem>>(step.args, "items")){
-            trace.push_back("  bought " + std::to_string(item.quantity) + " " + item.item);
+            trace.push_back(std::format("  bought {} {}", item.quantity, item.item));
         }
         return outcome_ok();
     }
 
     //  A game step sets a run flag named for its action.
-    Outcome game(RunState& state, const StoryStep& step){
-        trace.push_back("  game " + step.action);
+    Outcome game(const StoryStep& step, RunState& state){
+        trace.push_back(std::format("  game {}", step.action));
         state.flags.insert(step.action);
         return unchanged.contains(step.name) ? outcome_unchanged() : outcome_ok();
     }
@@ -195,7 +197,7 @@ Run run(const StoryCheckpoint& data, StoryStepExecutor& executor){
 std::string joined(std::span<const std::string> lines){
     std::string text;
     for (const std::string& line : lines){
-        text += "\n  " + line;
+        text += std::format("\n  {}", line);
     }
     return text;
 }
@@ -217,12 +219,12 @@ UnitTestResult test_events_in_table_order(){
         "  game dance",
     };
     if (!result.report.completed || executor.trace != expected){
-        return "Expected the steps in table order:" + joined(expected) + "\nbut ran:" + joined(executor.trace);
+        return std::format("Expected the steps in table order:{}\nbut ran:{}", joined(expected), joined(executor.trace));
     }
     //  "from_save" is the engine's own event: the executor is not asked.
     const std::string first = event_log_line("00.03", 1, "from_save", "start");
     if (result.lines.empty() || std::find(result.lines.begin(), result.lines.end(), first) == result.lines.end()){
-        return "Expected the from_save event first:" + joined(result.lines);
+        return std::format("Expected the from_save event first:{}", joined(result.lines));
     }
     return true;
 }
@@ -236,13 +238,13 @@ UnitTestResult test_skip_if(){
     //  The route is skipped; the talk needs both conditions, so it runs.
     const Run result = run(data, executor);
     if (!result.report.completed || result.report.events_skipped != 1){
-        return "Expected one step skipped, got " + std::to_string(result.report.events_skipped) + ":" + joined(result.lines);
+        return std::format("Expected one step skipped, got {}:{}", result.report.events_skipped, joined(result.lines));
     }
     if (std::find(executor.trace.begin(), executor.trace.end(), "ROUTE below_trigger") != executor.trace.end()){
-        return "Expected the route skipped:" + joined(executor.trace);
+        return std::format("Expected the route skipped:{}", joined(executor.trace));
     }
     if (std::find(executor.trace.begin(), executor.trace.end(), "TALK talk_oak") == executor.trace.end()){
-        return "Expected the talk run, one of its conditions not holding:" + joined(executor.trace);
+        return std::format("Expected the talk run, one of its conditions not holding:{}", joined(executor.trace));
     }
 
     //  By default a condition is a run flag: the game step "dance" sets
@@ -254,7 +256,7 @@ UnitTestResult test_skip_if(){
     FakeExecutor plain;
     const Run flagged = run(data, plain);
     if (!flagged.report.completed || flagged.report.events_skipped != 1 || plain.trace.back() != "  game dance"){
-        return "Expected the talk after the dance skipped on its flag:" + joined(plain.trace);
+        return std::format("Expected the talk after the dance skipped on its flag:{}", joined(plain.trace));
     }
     return true;
 }
@@ -277,12 +279,12 @@ UnitTestResult test_pose_propagation(){
     if (!result.report.completed || executor.poses_seen != expected){
         std::string text;
         for (const auto& item : executor.poses_seen){
-            text += "\n  " + item.first + ": " + item.second;
+            text += std::format("\n  {}: {}", item.first, item.second);
         }
-        return "Unexpected poses at the steps' starts:" + text;
+        return std::format("Unexpected poses at the steps' starts:{}", text);
     }
     if (to_string(result.state.pose) != "Lab (6, 4) facing north (tile)"){
-        return "Expected the run to end at the scene's end, got " + to_string(result.state.pose);
+        return std::format("Expected the run to end at the scene's end, got {}", to_string(result.state.pose));
     }
     return true;
 }
@@ -296,10 +298,10 @@ UnitTestResult test_failure_names_the_step(){
     if (result.report.completed || result.report.failed_event != 3 || result.report.failed_name != "trigger"
         || result.report.failure.failure != "blocked"
     ){
-        return "Expected a failure at event 3 trigger, blocked:" + joined(result.lines);
+        return std::format("Expected a failure at event 3 trigger, blocked:{}", joined(result.lines));
     }
     if (executor.trace.size() != 2){
-        return "Expected nothing run after the failed step:" + joined(executor.trace);
+        return std::format("Expected nothing run after the failed step:{}", joined(executor.trace));
     }
     return true;
 }
@@ -311,14 +313,14 @@ UnitTestResult test_unsupported_and_lost_battles(){
     FakeExecutor executor;
     Run result = run(StoryCheckpoint{.id = "01", .title = "", .start = std::nullopt, .steps = {train}}, executor);
     if (result.report.completed || result.report.failure.failure != "unsupported_step" || result.report.failure.detail != "TRAIN train"){
-        return "Expected TRAIN unsupported:" + joined(result.lines);
+        return std::format("Expected TRAIN unsupported:{}", joined(result.lines));
     }
     StoryStep rival = make(StoryStepKind::BATTLE, "rival");
     rival.args = {{"may_lose", true}};
     StoryStep brock = make(StoryStepKind::BATTLE, "brock");
     result = run(StoryCheckpoint{.id = "02", .title = "", .start = std::nullopt, .steps = {rival, brock}}, executor);
     if (result.report.completed || result.report.failed_name != "brock" || result.report.failure.failure != "blackout"){
-        return "Expected the rival's battle passed and Brock's lost:" + joined(result.lines);
+        return std::format("Expected the rival's battle passed and Brock's lost:{}", joined(result.lines));
     }
     return true;
 }
@@ -347,7 +349,7 @@ SegmentReport run_tables(std::span<const StoryCheckpoint> tables, FakeExecutor& 
     };
     hooks.log = [&lines](const std::string& line){ lines.push_back(line); };
     RunState state;
-    return run_segment(state, segment, SegmentRange{}, SegmentPolicy{}, hooks);
+    return run_segment(SegmentRange{}, SegmentPolicy{}, segment, hooks, state);
 }
 
 UnitTestResult test_segment_of_tables(){
@@ -371,11 +373,11 @@ UnitTestResult test_segment_of_tables(){
     const bool tail_matches = executor.trace.size() >= tail.size()
         && std::equal(tail.begin(), tail.end(), executor.trace.end() - (std::ptrdiff_t)tail.size());
     if (!report.completed || report.reloads != 1 || !tail_matches){
-        return "Expected 00.04 reloaded once and passed:" + joined(executor.trace) + joined(lines);
+        return std::format("Expected 00.04 reloaded once and passed:{}{}", joined(executor.trace), joined(lines));
     }
     //  Each attempt is begun anew: 00.03 once, 00.04 twice.
     if (executor.attempts != std::vector<std::string>{"00.03", "00.04", "00.04"}){
-        return "Expected the executor told of each attempt:" + joined(executor.attempts);
+        return std::format("Expected the executor told of each attempt:{}", joined(executor.attempts));
     }
     //  The report and the log tell a one-shot pass from a retried one.
     const bool runs_ok = report.runs.size() == 2
@@ -390,7 +392,7 @@ UnitTestResult test_segment_of_tables(){
         || !has("[Checkpoint] 00.04: passed on attempt 2 (1 reset)")
         || !has("[Segment] 00: 1 of 2 checkpoints one-shot")
     ){
-        return "Expected 00.03 one-shot and 00.04 passed on attempt 2:" + joined(lines);
+        return std::format("Expected 00.03 one-shot and 00.04 passed on attempt 2:{}", joined(lines));
     }
     return true;
 }
@@ -431,7 +433,7 @@ struct PolicyLab{
         };
         hooks.log = [this](const std::string& line){ lines.push_back(line); };
         RunState state;
-        return run_segment(state, segment, SegmentRange{}, policy, hooks);
+        return run_segment(SegmentRange{}, policy, segment, hooks, state);
     }
     bool has(std::string_view line) const{
         return std::find(lines.begin(), lines.end(), line) != lines.end();
@@ -450,7 +452,7 @@ UnitTestResult test_policy_attempts_then_fail(){
         || report.runs.size() != 2 || report.runs[1].passed || report.runs[1].attempts != 3
         || report.failed_checkpoint != "00.04" || report.failure.failure != "blocked"
     ){
-        return "Expected 00.04 tried 3 times, then failed:" + joined(lab.executor.trace) + joined(lab.lines);
+        return std::format("Expected 00.04 tried 3 times, then failed:{}{}", joined(lab.executor.trace), joined(lab.lines));
     }
     return true;
 }
@@ -462,7 +464,7 @@ UnitTestResult test_policy_stop_at_first_failure(){
     if (report.completed || report.reloads != 0 || lab.count("reload") != 0
         || lab.count("TALK give_parcel") != 1
     ){
-        return "Expected a stop at the first failure, with no reload:" + joined(lab.executor.trace) + joined(lab.lines);
+        return std::format("Expected a stop at the first failure, with no reload:{}{}", joined(lab.executor.trace), joined(lab.lines));
     }
     return true;
 }
@@ -530,11 +532,11 @@ UnitTestResult test_once_per_save_retry(){
     Segment segment = lab.segment();
     SegmentHooks hooks = lab.hooks();
     RunState state;
-    const SegmentReport report = run_segment(state, segment, SegmentRange{}, SegmentPolicy{}, hooks);
+    const SegmentReport report = run_segment(SegmentRange{}, SegmentPolicy{}, segment, hooks, state);
     if (!report.completed || report.reloads != 1 || lab.count("GAME teach_known") != 1
         || lab.count("GAME teach_new") != 2 || lab.count("BATTLE rival") != 2
     ){
-        return "Expected the known TEACH once, the new one twice, the battle twice:" + joined(lab.executor.trace) + joined(lab.lines);
+        return std::format("Expected the known TEACH once, the new one twice, the battle twice:{}{}", joined(lab.executor.trace), joined(lab.lines));
     }
     if (!lab.prepared.empty()){
         return "Expected the save to empty the prepared steps.";
@@ -552,11 +554,11 @@ UnitTestResult test_once_per_save_verify(){
     Segment segment = lab.segment();
     SegmentHooks hooks = lab.hooks();
     RunState state;
-    const VerifyReport report = verify_checkpoint(state, segment, "00.15b", VerifyPolicy{}, hooks);
+    const VerifyReport report = verify_checkpoint("00.15b", VerifyPolicy{}, segment, hooks, state);
     if (!report.verified || report.runs != 3 || lab.count("GAME teach_known") != 1
         || lab.count("GAME teach_new") != 3 || lab.count("BATTLE rival") != 3
     ){
-        return "Expected the known TEACH once in 3 runs, the new one each run:" + joined(lab.executor.trace) + joined(lab.lines);
+        return std::format("Expected the known TEACH once in 3 runs, the new one each run:{}{}", joined(lab.executor.trace), joined(lab.lines));
     }
     //  Without the memory, every run prepares.
     FakeExecutor plain;
@@ -568,9 +570,9 @@ UnitTestResult test_once_per_save_verify(){
         .build = [&]{ return build_story_checkpoint(lab.table, plain); },
     });
     RunState again;
-    verify_checkpoint(again, without, "00.15b", VerifyPolicy{}, hooks);
+    verify_checkpoint("00.15b", VerifyPolicy{}, without, hooks, again);
     if (std::count(plain.trace.begin(), plain.trace.end(), "GAME teach_known") != 3){
-        return "Expected every run to prepare without PreparedSteps:" + joined(plain.trace);
+        return std::format("Expected every run to prepare without PreparedSteps:{}", joined(plain.trace));
     }
     return true;
 }
@@ -603,11 +605,11 @@ UnitTestResult test_checkpoint_dropdowns(){
     const StringSelectDatabase& database = two_sections_database();
     const std::vector<std::string> expected{"00.01 Leave the house", "00.02 Walk to Sandgem Town", "01.01 Jubilife to Barry"};
     if (database.size() != expected.size()){
-        return "Expected 3 entries, got " + std::to_string(database.size());
+        return std::format("Expected 3 entries, got {}", database.size());
     }
     for (size_t c = 0; c < expected.size(); c++){
         if (database[c].display_name != expected[c] || database[c].slug != std::to_string(c)){
-            return "Unexpected entry " + std::to_string(c) + ": " + database[c].slug + " " + database[c].display_name;
+            return std::format("Unexpected entry {}: {} {}", c, database[c].slug, database[c].display_name);
         }
     }
     if (database[story_index(true, 0, 2)].display_name != "01.01 Jubilife to Barry"){
@@ -640,7 +642,7 @@ UnitTestResult test_story_stats(){
         CheckpointRun{.id = "00.05", .passed = false, .attempts = 1},
     };
     AutoStoryStats stats;
-    record_story_counts(stats, report.story_counts());
+    record_story_counts(report.story_counts(), stats);
     if (stats.m_segment != 1 || stats.m_checkpoint != 2 || stats.m_reset != 2){
         return "Expected 1 segment, 2 checkpoints and 2 resets.";
     }
@@ -684,7 +686,7 @@ UnitTestResult test_verify_options(){
     options.END_CHECKPOINT.set_by_index(options.start_index());
     const std::optional<VerifyPolicy> policy = options.VERIFY.policy();
     if (!options.check_validity().empty() || !policy || policy->runs != 3 || policy->passes_needed != 2){
-        return "Expected 3 runs and 2 passes on one checkpoint: " + options.check_validity();
+        return std::format("Expected 3 runs and 2 passes on one checkpoint: {}", options.check_validity());
     }
     options.VERIFY.RUNS.set(2);
     options.VERIFY.PASSES.set(3);
@@ -711,10 +713,10 @@ UnitTestResult test_lint(){
     };
     const std::vector<std::string> problems = lint_story_checkpoint(data);
     if (problems != expected){
-        return "Unexpected lint:" + joined(problems);
+        return std::format("Unexpected lint:{}", joined(problems));
     }
     if (!lint_story_checkpoint(lab_checkpoint()).empty()){
-        return "Expected the lab checkpoint to lint clean:" + joined(lint_story_checkpoint(lab_checkpoint()));
+        return std::format("Expected the lab checkpoint to lint clean:{}", joined(lint_story_checkpoint(lab_checkpoint())));
     }
     return true;
 }
@@ -737,7 +739,7 @@ struct StoryStepTestCase{
 class Test_StoryStepExecutor : public UnitTest{
 public:
     explicit Test_StoryStepExecutor(StoryStepTestCase scenario)
-        : UnitTest("Pokemon::StoryStepExecutor - " + scenario.input.name)
+        : UnitTest(std::format("Pokemon::StoryStepExecutor - {}", scenario.input.name))
         , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{

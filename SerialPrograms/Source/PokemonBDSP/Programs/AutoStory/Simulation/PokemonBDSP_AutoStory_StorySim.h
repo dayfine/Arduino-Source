@@ -39,6 +39,8 @@
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryStepIO.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryTable.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryWalkSteps.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkResult.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkScreen.h"
 #include "PokemonBDSP_AutoStory_GridSim.h"
 #include "PokemonBDSP_AutoStory_SimDisturbance.h"
 
@@ -455,12 +457,12 @@ public:
         m_walks.begin_attempt(data.id, data.steps);
         arm("");
     }
-    virtual Pokemon::Outcome run(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
+    virtual Pokemon::Outcome run(const Pokemon::StoryStep& step, Pokemon::RunState& state) override;
 
 protected:
     //  A dialog that popped up and is still up stops a step that walks or
     //  talks; a step that presses through text closes it.
-    virtual Pokemon::Outcome run_action(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
+    virtual Pokemon::Outcome run_action(const Pokemon::StoryStep& step, Pokemon::RunState& state) override;
     virtual Pokemon::Outcome heal(Pokemon::RunState& state, const Pokemon::StoryStep& step);
     virtual Pokemon::Outcome new_game(Pokemon::RunState&, const Pokemon::StoryStep&){ return stub(); }
     virtual Pokemon::Outcome options(Pokemon::RunState&, const Pokemon::StoryStep&){ return stub(); }
@@ -505,7 +507,7 @@ private:
     std::vector<SimWanderer> wanderers(const StoryWorld& world) const;
     std::string off_pose(const Pokemon::Pose& pose) const;
     std::string check(const Pokemon::StoryStep& step, const Pokemon::Outcome& outcome);
-    Pokemon::Outcome run_step(Pokemon::RunState& state, const Pokemon::StoryStep& step);
+    Pokemon::Outcome run_step(const Pokemon::StoryStep& step, Pokemon::RunState& state);
     void place(const StoryWorld* world, const Pokemon::TilePos& start, std::optional<Pokemon::Direction> facing);
     bool settled() const;
     void record_failure(const Pokemon::Outcome& outcome, const Pokemon::StoryStep& step, size_t battles_before);

@@ -7,13 +7,15 @@
  *
  */
 
+#include <format>
 #include <string>
 #include <utility>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon_Navigation_Tests.h"
+#include "Pokemon_LegTrace_Tests.h"
 #include "Pokemon_RouteLog.h"
+#include "Pokemon_RouteLog_Tests.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -36,13 +38,15 @@ struct RouteLogTestCase{
 class Test_RouteLog : public UnitTest{
 public:
     explicit Test_RouteLog(RouteLogTestCase scenario)
-        : UnitTest("Pokemon::RouteLog - " + scenario.input.name)
+        : UnitTest(std::format("Pokemon::RouteLog - {}", scenario.input.name))
         , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         if (m_scenario.input.line != m_scenario.expectation.expected){
-            return m_scenario.input.name + ": expected \"" + m_scenario.expectation.expected +
-                "\", got \"" + m_scenario.input.line + "\".";
+            return std::format(
+                "{}: expected \"{}\", got \"{}\".",
+                m_scenario.input.name, m_scenario.expectation.expected, m_scenario.input.line
+            );
         }
         return true;
     }

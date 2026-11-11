@@ -3,6 +3,9 @@
  *  From: https://github.com/PokemonAutomation/
  */
 #include <algorithm>
+#include "PokemonBDSP_AutoStory_RobustRoute.h"
+#include "PokemonBDSP_AutoStory_RoutePlanner.h"
+#include "PokemonBDSP_AutoStory_WalkRules.h"
 #include "PokemonBDSP_AutoStory_WallRecovery.h"
 
 namespace PokemonAutomation{

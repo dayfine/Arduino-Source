@@ -18,6 +18,7 @@
 #include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
+#include "Data/PokemonBDSP_AutoStory_RobustRoute.h"
 #include "Data/PokemonBDSP_AutoStory_RoutePlanner.h"
 #include "Data/PokemonBDSP_AutoStory_StoryWorld.h"
 

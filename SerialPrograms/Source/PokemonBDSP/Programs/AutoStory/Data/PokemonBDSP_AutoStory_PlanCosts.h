@@ -11,6 +11,7 @@
 #ifndef PokemonAutomation_PokemonBDSP_AutoStory_PlanCosts_H
 #define PokemonAutomation_PokemonBDSP_AutoStory_PlanCosts_H
 
+#include "PokemonBDSP_AutoStory_RobustRoute.h"
 #include "PokemonBDSP_AutoStory_RoutePlanner.h"
 
 namespace PokemonAutomation{

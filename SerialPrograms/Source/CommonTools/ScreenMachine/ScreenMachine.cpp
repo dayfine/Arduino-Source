@@ -5,6 +5,7 @@
  */
 
 #include <algorithm>
+#include <format>
 #include "CommonFramework/ImageTools/ImageDiff.h"
 #include "ScreenMachine.h"
 
@@ -28,8 +29,8 @@ const ScreenState* classify(const std::vector<ScreenState>& states, const ImageV
 
 
 const ScreenState& read_screen_state(
-    VideoStream& stream, CancellableScope& scope, StepTrace& trace,
-    const std::vector<ScreenState>& states, VideoSnapshot& frame
+    VideoStream& stream, CancellableScope& scope,
+    const std::vector<ScreenState>& states, StepTrace& trace, VideoSnapshot& frame
 ){
     const ScreenState* last = nullptr;
     WallClock video_lost = WallClock::max();
@@ -67,8 +68,9 @@ void ScreenMachineChecks::check(const ScreenState& state, VideoSnapshot frame){
         m_last_frame->width() == frame->width() && m_last_frame->height() == frame->height();
     if (same_size && ImageMatch::pixel_RMSD(m_last_frame, frame) < 2.0){
         if (++m_unchanged >= MAX_UNCHANGED){
-            m_trace.fail("The screen stopped changing: " + std::to_string(MAX_UNCHANGED) +
-                " steps on \"" + state.name + "\" did nothing.");
+            m_trace.fail(std::format(
+                "The screen stopped changing: {} steps on \"{}\" did nothing.", MAX_UNCHANGED, state.name
+            ));
         }
     }else{
         m_unchanged = 0;
@@ -78,16 +80,20 @@ void ScreenMachineChecks::check(const ScreenState& state, VideoSnapshot frame){
     if (m_previous != nullptr && m_previous != &state && !m_previous->next.empty() &&
         std::find(m_previous->next.begin(), m_previous->next.end(), state.name) == m_previous->next.end()
     ){
-        m_trace.fail("Unexpected screen after \"" + m_previous->name + "\": \"" + state.name + "\".");
+        m_trace.fail(std::format("Unexpected screen after \"{}\": \"{}\".", m_previous->name, state.name));
     }
     m_in_a_row = m_previous == &state ? m_in_a_row + 1 : 1;
     if (m_in_a_row > state.max_in_a_row){
-        m_trace.fail("Screen \"" + state.name + "\" came up " + std::to_string(m_in_a_row) +
-            " times in a row: the step for it is not getting anywhere.");
+        m_trace.fail(std::format(
+            "Screen \"{}\" came up {} times in a row: the step for it is not getting anywhere.",
+            state.name, m_in_a_row
+        ));
     }
     if (++m_visits[state.name] > state.max_visits){
-        m_trace.fail("Screen \"" + state.name + "\" came up more than " +
-            std::to_string(state.max_visits) + " times: the step for it is not working.");
+        m_trace.fail(std::format(
+            "Screen \"{}\" came up more than {} times: the step for it is not working.",
+            state.name, state.max_visits
+        ));
     }
     m_previous = &state;
 }

@@ -38,7 +38,7 @@ namespace Pokemon{
 
 
 //  Does `step`, from the run so far.
-using StoryActionFunction = std::function<Outcome(RunState& state, const StoryStep& step)>;
+using StoryActionFunction = std::function<Outcome(const StoryStep& step, RunState& state)>;
 
 //  A row of a StoryActionTable: what does a step, and what it needs.
 struct StoryAction{
@@ -122,7 +122,7 @@ public:
     //  With interrupts set, each step first clears what stopped the player
     //  since the step before, and a failed step that an interrupt explains
     //  runs again once it is cleared.
-    virtual Outcome run(RunState& state, const StoryStep& step) override;
+    virtual Outcome run(const StoryStep& step, RunState& state) override;
 
     //  The game's interrupts between steps, which must outlive the
     //  executor; none (the default) looks for none.
@@ -134,11 +134,11 @@ protected:
     //  The table's action for the step, or unsupported_step() with none:
     //  what run() runs once the screen is clear. A binding may wrap it, or
     //  do the kinds its table does not have yet.
-    virtual Outcome run_action(RunState& state, const StoryStep& step);
+    virtual Outcome run_action(const StoryStep& step, RunState& state);
 
 private:
-    std::optional<Outcome> clear_interrupts(RunState& state, const StoryStep& step, size_t& cleared);
-    bool cleared_after_failure(RunState& state, const StoryStep& step, size_t& cleared);
+    std::optional<Outcome> clear_interrupts(const StoryStep& step, RunState& state, size_t& cleared);
+    bool cleared_after_failure(const StoryStep& step, RunState& state, size_t& cleared);
 
     const StoryActionTable& m_table;
     StepGuard& m_guard;

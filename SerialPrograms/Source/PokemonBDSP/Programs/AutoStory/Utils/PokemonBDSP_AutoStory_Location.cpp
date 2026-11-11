@@ -16,6 +16,8 @@
 #include "CommonTools/Images/ImageFilter.h"
 #include "CommonTools/OCR/OCR_RawTesseractOCR.h"
 #include "PokemonBDSP_AutoStory_Location.h"
+#include "PokemonBDSP_AutoStory_LocationBannerWatcher.h"
+#include "PokemonBDSP_AutoStory_StoryLanguage.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -75,12 +77,8 @@ void set_story_language(Language language){
     story_language_setting() = language;
 }
 
-bool story_reads_text(){
-    return story_reads_text(story_language());
-}
-
-bool story_reads_text(Language language){
-    return language == Language::English;
+bool story_reads_text(std::optional<Language> language){
+    return language.value_or(story_language()) == Language::English;
 }
 
 bool location_banner_showing(const ImageViewRGB32& screen){

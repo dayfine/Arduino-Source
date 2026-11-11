@@ -14,7 +14,7 @@
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon_LegTrace.h"
-#include "Pokemon_Navigation_Tests.h"
+#include "Pokemon_LegTrace_Tests.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{

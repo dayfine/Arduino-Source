@@ -17,6 +17,8 @@
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkResult.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkScreen.h"
 #include "PokemonBDSP_AutoStory_StorySim.h"
 
 namespace PokemonAutomation{
@@ -722,18 +724,18 @@ Outcome SimExecutor::stub(){
 //  The steps that need the console: stubbed, but for the Center's door and
 //  the speeches after a battle.
 StoryBoundActions SimExecutor::sim_actions(){
-    const auto stubbed = [this](RunState&, const StoryStep&){
+    const auto stubbed = [this](const StoryStep&, RunState&){
         return stub();
     };
     return StoryBoundActions{
         .new_game = stubbed,
         .options = stubbed,
         .answer = stubbed,
-        .battle = [this](RunState& state, const StoryStep& step){
+        .battle = [this](const StoryStep& step, RunState& state){
             return battle(state, step);
         },
         .train = stubbed,
-        .heal = [this](RunState& state, const StoryStep& step){
+        .heal = [this](const StoryStep& step, RunState& state){
             return heal(state, step);
         },
         .save = stubbed,
@@ -770,7 +772,7 @@ Pokemon::ScreenLook SimExecutor::look(bool fresh){
 //  walk before ran into goes on after it.
 StoryInterruptActions SimExecutor::sim_interrupt_actions(){
     const auto cleared = [this](std::string_view what){
-        return [this, what](RunState&, const Pokemon::InterruptVerdict&){
+        return [this, what](const Pokemon::InterruptVerdict&, RunState&){
             m_logger.log(std::format("[{}] {}: {} cleared before it.", m_row, m_step, what));
             m_dialog_up = false;
             m_sim.end_dialogue();
@@ -778,7 +780,7 @@ StoryInterruptActions SimExecutor::sim_interrupt_actions(){
         };
     };
     const auto battled = [this](std::string_view what){
-        return [this, what](RunState&, const Pokemon::InterruptVerdict&){
+        return [this, what](const Pokemon::InterruptVerdict&, RunState&){
             m_logger.log(std::format("[{}] {}: {} cleared before it.", m_row, m_step, what));
             m_battle_opening = false;
             return Pokemon::outcome_ok();
@@ -792,17 +794,17 @@ StoryInterruptActions SimExecutor::sim_interrupt_actions(){
     };
 }
 
-Outcome SimExecutor::run_action(RunState& state, const StoryStep& step){
+Outcome SimExecutor::run_action(const StoryStep& step, RunState& state){
     if (m_dialog_up){
         if (!presses_through_text(step.kind)){
             return Pokemon::outcome_failed("dialog", step.name + ": a dialog that popped up before it is still up");
         }
         m_dialog_up = false;
     }
-    return Pokemon::TableExecutor::run_action(state, step);
+    return Pokemon::TableExecutor::run_action(step, state);
 }
 
-Outcome SimExecutor::run_step(RunState& state, const StoryStep& step){
+Outcome SimExecutor::run_step(const StoryStep& step, RunState& state){
     if (!m_start_mismatch.empty()){
         return Pokemon::outcome_failed("sim_mismatch", "the row before " + std::exchange(m_start_mismatch, ""));
     }
@@ -829,7 +831,7 @@ Outcome SimExecutor::run_step(RunState& state, const StoryStep& step){
     if (walks && m_knobs.scene_at_walk_end && m_knobs.scene_at_walk_end(m_row, step.name)){
         start_scene_at_end(step);
     }
-    return Pokemon::TableExecutor::run(state, step);
+    return Pokemon::TableExecutor::run(step, state);
 }
 
 //  Puts the player on `start` of `world`: on the grid, no drift.
@@ -868,7 +870,8 @@ void SimExecutor::show_before(const StoryStep& step){
         m_logger.log(std::format("[{}] {}: a battle's opening is still playing before it.", m_row, step.name));
     }
 }
-Outcome SimExecutor::run(RunState& state, const StoryStep& step){
+
+Outcome SimExecutor::run(const StoryStep& step, RunState& state){
     Outcome outcome;
     m_passed_over = false;
     m_step = step.name;
@@ -876,7 +879,7 @@ Outcome SimExecutor::run(RunState& state, const StoryStep& step){
     show_before(step);
     const size_t battles_before = m_noise == nullptr ? 0 : m_noise->battles();
     try{
-        outcome = run_step(state, step);
+        outcome = run_step(step, state);
     }catch (const GridSimFailure& e){
         outcome = Pokemon::outcome_failed("sim_failure", e.message);
     }
@@ -930,7 +933,7 @@ Pokemon::SegmentReport run_rows_on(
     hooks.reload = [](RunState&){ return Pokemon::outcome_ok(); };
     hooks.log = [&logger](const std::string& line){ logger.log(line); };
     RunState state;
-    return Pokemon::run_segment(state, segment, range, policy, hooks);
+    return Pokemon::run_segment(range, policy, segment, hooks, state);
 }
 
 //  Runs `range` of the table on the simulation, stopping at the first failure.

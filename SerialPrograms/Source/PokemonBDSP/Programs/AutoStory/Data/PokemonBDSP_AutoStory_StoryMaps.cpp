@@ -7,6 +7,9 @@
 #include <algorithm>
 #include "PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP_AutoStory_StoryMaps.h"
+#include "PokemonBDSP_AutoStory_StorySpots.h"
+#include "PokemonBDSP_AutoStory_StoryTrainers.h"
+#include "PokemonBDSP_AutoStory_TrainerSight.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -17,25 +20,14 @@ using Pokemon::MapData;
 using Pokemon::TilePos;
 
 
-const char* const MAP_ROUTE_201 = "Route 201";
-const char* const MAP_SANDGEM_TOWN = "Sandgem Town";
-const char* const MAP_ROUTE_202 = "Route 202";
-const char* const MAP_JUBILIFE_CITY = "Jubilife City";
-const char* const MAP_OREBURGH_MINE = "Oreburgh Mine";
-const char* const MAP_RAVAGED_PATH = "Ravaged Path";
-const char* const MAP_ROUTE_204 = "Route 204";
-const char* const MAP_OREBURGH_CITY = "Oreburgh City";
-const char* const MAP_FLOAROMA_TOWN = "Floaroma Town";
-const char* const MAP_ROUTE_204_SOUTH = "Route 204 South";
-const char* const MAP_ROUTE_203 = "Route 203";
 
 
 namespace{
 
 //  One map on its own.
-StoryWorld single(const char* name, const std::string& json_map){
+StoryWorld single(std::string_view name, const std::string& json_map){
     StoryWorld world;
-    world.add(name, story_map(json_map), {0, 0});
+    world.add(std::string(name), story_map(json_map), {0, 0});
     return world;
 }
 
@@ -161,7 +153,7 @@ StoryWorld ravaged_path_maps(const std::vector<TilePos>& smashed){
     MapData map = story_map("RavagedPath");
     for (const TilePos& rock : smashed){
         if (map.tiles.contains(rock)){
-            Pokemon::cell_at(map.tiles, rock) = Pokemon::TileKind::OPEN;
+            Pokemon::cell_at(rock, map.tiles) = Pokemon::TileKind::OPEN;
         }
     }
     StoryWorld maps;
@@ -210,14 +202,14 @@ std::vector<TilePos> story_save_spots(){
     };
 }
 
-std::vector<TilePos> story_door_front(const char* map, const TilePos& door){
-    const TilePos below = story_maps().to_world(map, door.next(Direction::SOUTH));
+std::vector<TilePos> story_door_front(std::string_view map, const TilePos& door){
+    const TilePos below = story_maps().to_world(std::string(map), door.next(Direction::SOUTH));
     return {below.next(Direction::WEST), below, below.next(Direction::EAST)};
 }
 
 namespace{
 //  A region of Route 202, in world tiles of story_maps().
-std::vector<TilePos> route202_region(const char* region){
+std::vector<TilePos> route202_region(std::string_view region){
     std::vector<TilePos> tiles;
     for (const TilePos& pos : map_region("Route202", region)){
         tiles.push_back(story_maps().to_world(MAP_ROUTE_202, pos));
@@ -255,7 +247,7 @@ std::vector<TrainerSight> route202_trainer_sights(){
 }
 
 std::vector<TrainerSight> route204_north_trainer_sights(){
-    const auto at = [](const char* point){ return map_point("Route204North", point); };
+    const auto at = [](std::string_view point){ return map_point("Route204North", point); };
     return {
         {.name = "Twins (left)", .pos = at("trainer_twin_left"), .facing = Direction::SOUTH, .range = 3},
         {.name = "Twins (right)", .pos = at("trainer_twin_right"), .facing = Direction::SOUTH, .range = 4},
@@ -275,7 +267,7 @@ std::vector<TrainerSight> route204_north_trainer_sights(){
 //  fought). The planner cannot avoid it: she is listed so the route knows
 //  whom it may meet, with the range that fits.
 std::vector<TrainerSight> route204_south_trainer_sights(){
-    const auto at = [](const char* point){ return map_point("Route204South", point); };
+    const auto at = [](std::string_view point){ return map_point("Route204South", point); };
     return {
         {.name = "Lass Samantha", .pos = at("trainer_samantha"), .facing = Direction::SOUTH, .range = 4},
         {.name = "Lass Sarah", .pos = at("trainer_sarah"), .facing = Direction::NORTH, .range = 4},

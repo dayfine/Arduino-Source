@@ -6,7 +6,7 @@
 #include "Common/Cpp/CancellableScope.h"
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
-#include "Pokemon/Navigation/Pokemon_Navigation_Tests.h"
+#include "Pokemon/Navigation/Pokemon_MapData_Tests.h"
 
 namespace PokemonAutomation{
 namespace{
