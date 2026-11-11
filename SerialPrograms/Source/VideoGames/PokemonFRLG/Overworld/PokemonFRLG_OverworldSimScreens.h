@@ -71,6 +71,10 @@ struct SimTiming{
     //  (battle_opening) or HP boxes. Not set: not modelled.
     std::optional<Milliseconds> battle_wipe;
     Milliseconds message{400};
+    //  The hideout lift's ride, from the floor picked to the player moving
+    //  again: 24 shakes of 3 frames for two floors (sElevatorAnimationDuration,
+    //  pokefirered field_specials.c), and its chime. Not measured on the console.
+    Milliseconds lift_ride{1500};
     Milliseconds fade{1000};            //  from the step's end to the new map
     //  From the fade's end, the new map fades in this long, and the game
     //  takes no input yet (fault-class sweep; BDSP's Center, lab-B
