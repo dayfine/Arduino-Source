@@ -23,6 +23,16 @@ const EnumDropdownDatabase<StoryCheckLevel>& StoryCheckLevel_Database(){
 }
 
 
+const EnumDropdownDatabase<StorySaveMode>& StorySaveMode_Database(){
+    static const EnumDropdownDatabase<StorySaveMode> database({
+        {StorySaveMode::NONE,               "none",               "None: never save (testing a checkpoint; the start save stays)"},
+        {StorySaveMode::AFTER_VERIFICATION, "after_verification", "After verification: save once, at the end of a run that passed"},
+        {StorySaveMode::PER_CHECKPOINT,     "per_checkpoint",     "Each checkpoint: save after each checkpoint that passed (a playthrough)"},
+    });
+    return database;
+}
+
+
 std::string story_checkpoint_label(const StoryCheckpoint& checkpoint){
     return checkpoint.title.empty() ? checkpoint.id : std::format("{} {}", checkpoint.id, checkpoint.title);
 }
@@ -86,11 +96,27 @@ StoryRunOptions::StoryRunOptions(const StringSelectDatabase& checkpoints, const 
         LockMode::LOCK_WHILE_RUNNING,
         Language::English
     )
+    , SAVE_MODE(
+        "<b>Save:</b><br>When the run saves the game. A failed run never saves. "
+        "None keeps the save the run started from; After verification saves once at the end, after the checkpoint "
+        "passed 2-3 times; Each checkpoint is for a playthrough of verified checkpoints.",
+        StorySaveMode_Database(),
+        LockMode::LOCK_WHILE_RUNNING,
+        StorySaveMode::NONE
+    )
+    , POSTCONDITIONS_ONLY(
+        "<b>Check postconditions only:</b><br>Run nothing: read where the game stands and check the end checkpoint's "
+        "position, items and flags. What the game can't read yet is reported as not checked.",
+        LockMode::LOCK_WHILE_RUNNING,
+        false
+    )
 {
     PA_ADD_OPTION(ATTEMPTS_PER_CHECKPOINT);
     PA_ADD_OPTION(CHECKS);
     PA_ADD_OPTION(LANGUAGE);
     PA_ADD_OPTION(VERIFY);
+    PA_ADD_OPTION(SAVE_MODE);
+    PA_ADD_OPTION(POSTCONDITIONS_ONLY);
 }
 
 std::string StoryRunOptions::check_validity() const{
@@ -101,12 +127,24 @@ std::string StoryRunOptions::check_validity() const{
     if (VERIFY.enabled() && start_index() != end_index()){
         return "Verify mode runs one checkpoint: set the end checkpoint to the start checkpoint.";
     }
+    if (VERIFY.enabled() && POSTCONDITIONS_ONLY){
+        return "Check postconditions only runs nothing: turn off Verify Mode.";
+    }
     return error;
 }
 
 SegmentPolicy StoryRunOptions::policy() const{
     SegmentPolicy policy;
     policy.attempts_per_checkpoint = ATTEMPTS_PER_CHECKPOINT;
+    policy.save_mode = SAVE_MODE;
+    return policy;
+}
+
+std::optional<VerifyPolicy> StoryRunOptions::verify_policy() const{
+    std::optional<VerifyPolicy> policy = VERIFY.policy();
+    if (policy){
+        policy->save_mode = SAVE_MODE;
+    }
     return policy;
 }
 

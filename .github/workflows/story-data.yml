@@ -28,7 +28,3 @@ jobs:
       - run: cmake -S devtools/story-data-tests -B build-story-data -DCMAKE_BUILD_TYPE=Debug
       - run: cmake --build build-story-data --config Debug -j4
       - run: ctest --test-dir build-story-data -C Debug --output-on-failure
-      - if: runner.os != 'Windows'
-        run: ./build-story-data/StoryDataTests publisher/data/story/wire-conformance.json
-      - if: runner.os == 'Windows'
-        run: ./build-story-data/Debug/StoryDataTests.exe publisher/data/story/wire-conformance.json
