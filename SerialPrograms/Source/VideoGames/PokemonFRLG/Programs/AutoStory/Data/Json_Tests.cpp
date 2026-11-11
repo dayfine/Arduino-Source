@@ -32,8 +32,8 @@ struct ExportCase{
 };
 
 const ExportCase CASES[] = {
-    {.input = {.id = "00.05"}, .expectation = {.menu = "before_pokedex"}},
-    {.input = {.id = "00.05", .custom = true}, .expectation = {
+    {.input = {.id = "02.01"}, .expectation = {.menu = "before_pokedex"}},
+    {.input = {.id = "02.01", .custom = true}, .expectation = {
         .menu = "full",
         .native_json = R"({"menu":"full","supplies":{"potions":2,"antidotes":3,"parlyz_heals":4,"pocket":["antidote",""],"status":"PSN","hurt":true,"hp_red":true,"hp_fill":0.25,"lead":{"species":"wartortle","moves":[{"move":"bite","pp":0}],"moves_through_level":18,"moves_read":true,"level":19,"stats":{"hp":50,"attack":20,"defense":30,"sp_attack":40,"sp_defense":35,"speed":25}},"protected_slots":[0,2],"foes":["staryu"],"trainer":"misty","risk":"high","foe_out":"staryu","wild_foes":["pidgey"]}})"
     }},

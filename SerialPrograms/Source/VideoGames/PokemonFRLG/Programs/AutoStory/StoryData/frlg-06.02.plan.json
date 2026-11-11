@@ -1,0 +1,199 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "06.02",
+    "title": "Vermilion Gym: Cut and Dig, the tree, Dwayne, Baily and Tucker, the trash cans",
+    "start": {"map": "VermilionCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
+    "events": [
+      {
+        "id": "teach_cut",
+        "kind": "game_action",
+        "action": "teach",
+        "args": {
+          "item": "hm01",
+          "move": "cut",
+          "slot": 2
+        },
+        "why": "HM01 Cut to the Oddish, second in the party, unless it knows it"
+      },
+      {
+        "id": "teach_dig",
+        "kind": "game_action",
+        "action": "teach",
+        "args": {
+          "item": "tm28",
+          "move": "dig",
+          "slot": 1,
+          "forget": "withdraw"
+        },
+        "why": "TM28 Dig in place of Withdraw, for Lt. Surge, unless the lead knows it or there is no TM28"
+      },
+      {
+        "id": "above_gym_tree",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "VermilionCity", "tiles": [[19, 23]], "facing": "south"}
+        },
+        "why": "out of the Center, south through the city to above the tree (19, 24)"
+      },
+      {
+        "id": "cut_gym_tree",
+        "kind": "game_action",
+        "action": "cut_tree",
+        "args": {
+          "direction": "south"
+        },
+        "declared_after": {"map": "VermilionCity", "tiles": [[19, 24]], "facing": "south"},
+        "why": "the Oddish cuts the tree; a step onto its tile"
+      },
+      {
+        "id": "gym_door",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "VermilionCity_Gym", "tiles": [[5, 19]], "facing": "north"}
+        },
+        "why": "down into the yard and in by the gym's door (14, 25)"
+      },
+      {
+        "id": "west_of_dwayne_line",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [{"direction": "north", "tiles": 4}, {"direction": "east", "tiles": 2}]
+        },
+        "why": "up column 5 to the can (5, 14), east to (7, 15): out of Dwayne's and Baily's sight"
+      },
+      {
+        "id": "dwayne_sight",
+        "kind": "step",
+        "action": "trainer_wait",
+        "args": {
+          "direction": "east"
+        },
+        "why": "onto (8, 15), two below Dwayne (8, 13): he turns to the player and walks up to (8, 14)"
+      },
+      {
+        "id": "sailor_dwayne",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_SAILOR_DWAYNE",
+          "foes": ["pikachu", "pikachu"]
+        },
+        "declared_after": {"map": "VermilionCity_Gym", "tiles": [[8, 15]], "facing": "north"},
+        "why": "two Pikachu, Lv21"
+      },
+      {
+        "id": "east_of_baily_line",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [{"direction": "west", "tiles": 4}, {"direction": "north", "tiles": 2}, {"direction": "west", "tiles": 1}]
+        },
+        "why": "west along row 15 to (4, 15), up to (4, 13), west to (3, 13): out of Baily's sight"
+      },
+      {
+        "id": "baily_sight",
+        "kind": "step",
+        "action": "trainer_wait",
+        "args": {
+          "direction": "west"
+        },
+        "why": "onto (2, 13), two below Baily (2, 11): he turns to the player and walks up to (2, 12)"
+      },
+      {
+        "id": "engineer_baily",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_ENGINEER_BAILY",
+          "foes": ["voltorb", "magnemite"]
+        },
+        "declared_after": {"map": "VermilionCity_Gym", "tiles": [[2, 13]], "facing": "north"},
+        "why": "Voltorb and Magnemite, Lv21"
+      },
+      {
+        "id": "below_tucker_line",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [{"direction": "east", "tiles": 2}, {"direction": "north", "tiles": 4}, {"direction": "east", "tiles": 1}]
+        },
+        "why": "east to (4, 13), up column 4 past Baily's row to (4, 9), east to (5, 9): below Tucker's line, not on it"
+      },
+      {
+        "id": "tucker_line",
+        "kind": "step",
+        "action": "trainer_line",
+        "args": {
+          "direction": "north"
+        },
+        "why": "onto (5, 8), in Tucker's line: he walks up to (6, 8)"
+      },
+      {
+        "id": "gentleman_tucker",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_GENTLEMAN_TUCKER",
+          "foes": ["pikachu"]
+        },
+        "declared_after": {"map": "VermilionCity_Gym", "tiles": [[5, 8]], "facing": "east"},
+        "why": "Pikachu, Lv23"
+      },
+      {
+        "id": "trash_cans",
+        "kind": "game_action",
+        "action": "trash_cans",
+        "why": "the cans until both locks open; a wrong second can resets them"
+      },
+      {
+        "id": "below_gym_tree",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "VermilionCity", "tiles": [[19, 25]], "facing": "north"}
+        },
+        "why": "out of the gym, east to below the tree, grown back"
+      },
+      {
+        "id": "cut_tree_out",
+        "kind": "game_action",
+        "action": "cut_tree",
+        "args": {
+          "direction": "north"
+        },
+        "declared_after": {"map": "VermilionCity", "tiles": [[19, 24]], "facing": "north"},
+        "why": "the tree again; a step onto its tile"
+      },
+      {
+        "id": "vermilion_nurse",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "VermilionCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
+        },
+        "why": "north through the city to the Pokemon Center"
+      },
+      {
+        "id": "heal_vermilion",
+        "kind": "heal",
+        "why": "full HP"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "lead": "after_brock",
+    "notes": {
+      "checkpoint": [
+        "HM01 Cut, from the S.S. Anne (06.01), to the Oddish (05.09), second in the party: a wild Oddish of Lv12 to 14 knows 2 or 3 moves (Absorb, Sweet Scent, Poison Powder at 14), so it has room. TM28 Dig, from the Cerulean Rocket (05.10), to the lead in place of Withdraw: Ground, twice as strong on Lt. Surge's three, it is the lead's best move against him. Vermilion's tree (19, 24) (EventScript_CutTree) is the only way into the gym's yard, row 24 being walls but for it; the gym's door is (14, 25). In the gym, the trainers as below, then the trash cans until the door opens; out, the tree cut again from below, and back to the nurse.",
+        "The gym (VermilionCity_Gym map.json, scripts.inc), 11 x 20, entered on (5, 19): the cans on rows 10, 12 and 14 at x 1, 3, 5, 7, 9 (PokemonFRLG_AutoStoryTrashCans.h), the beams across rows 6 and 7 that the two switches turn off, Lt. Surge (5, 2) facing down above them. Its trainers, sight 3:",
+        "Sailor Dwayne (8, 13) and Engineer Baily (2, 11) look around (MOVEMENT_TYPE_LOOK_AROUND): between them they see across rows 11 and 13 and down columns 2 and 8, so no way from the door to the cans keeps out of their sight. Each is fought from the second tile of his line, stepped onto from beside it, out of sight, and waited on there until he turns to the player (\"trainer_wait\"): Dwayne from (8, 15), stepped onto from (7, 15), Baily from (2, 13), from (3, 13). Each walks up a tile, Dwayne to (8, 14), Baily to (2, 12), and stays there while the player is in the gym.",
+        "Gentleman Tucker (7, 8) faces west over (4..6, 8): fought on the step up from (5, 9) onto (5, 8); he walks up to (6, 8).",
+        "The cans' stands, on rows 9, 11 and 13 above each, are clear of where the three stand after their battles. Leaving the gym puts them back where the map has them, beaten, and grows the tree back."
+      ]
+    }
+  },
+  "metadata": {"phase": "testing"}
+}

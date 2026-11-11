@@ -58,7 +58,7 @@ private:
 
 //  The rows a run takes after a shiny from the loop, which leaves the player
 //  under Squirtle's ball with the rival's ball taken: the row after
-//  `ball_row` (00.04b) from its step after "rival_takes_bulbasaur", then
+//  `ball_row` (01.06) from its step after "rival_takes_bulbasaur", then
 //  the rows after it to `last` as plan_story_run() takes them with
 //  `handoffs`, with the handoff they stop at. Throws InternalProgramError
 //  for a table without that row or step.
@@ -68,7 +68,7 @@ StoryRunPlan rows_after_starter_rng(
 
 //  The rows a run takes after a shiny Magikarp from the loop, which leaves
 //  its summary open beside the salesman: the row after `salesman_row`
-//  (00.12b), which leaves the summary and saves, then the rows after it to
+//  (04.03), which leaves the summary and saves, then the rows after it to
 //  `last` as plan_story_run() takes them with `handoffs`. Throws
 //  InternalProgramError for a table whose next row doesn't leave the
 //  summary.

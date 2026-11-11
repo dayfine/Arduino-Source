@@ -72,7 +72,7 @@ public:
     const std::map<std::string, int>& bag() const{
         return m_bag;
     }
-    //  "00.03/oak: a dialog pops up before it.", and how it was cleared.
+    //  "01.04/oak: a dialog pops up before it.", and how it was cleared.
     const std::vector<std::string>& dialog_notes() const{
         return m_dialog_notes;
     }

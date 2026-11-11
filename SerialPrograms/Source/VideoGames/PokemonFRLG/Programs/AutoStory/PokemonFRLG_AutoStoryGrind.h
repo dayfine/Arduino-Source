@@ -55,7 +55,7 @@ namespace PokemonFRLG{
 GrindResult run_grind(Logger& logger, GrindActions& actions, const MemberReader& reader, const GrindPlan& plan);
 
 //  Before the walk out to the patch: whether the member `plan` grinds, as
-//  read, already has its level. Nothing is fought. 00.24 walked to Route
+//  read, already has its level. Nothing is fought. 06.03 walked to Route
 //  6's grass and back at Lv29 (console B, 2026-11-03).
 bool grind_reached_already(Logger& logger, GrindActions& actions, const MemberReader& reader, const GrindPlan& plan);
 

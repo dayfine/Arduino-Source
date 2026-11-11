@@ -925,8 +925,8 @@ later change):
 | `capture` | `species` word, `catches`, `encounters`, `balls` numbers, all required; `pace` word | |
 | `level` | `slot`, `min` numbers, required | Built in C++, not in a plan. |
 | `fossil` | `fossil` word (`helix`, `dome`), required | |
-| `use_item` | `item` word, required; `slot` number | 00.30 onwards. |
-| `lift_floor` | `from`, `to` words, required | 00.30 onwards. |
+| `use_item` | `item` word, required; `slot` number | 08.03 onwards. |
+| `lift_floor` | `from`, `to` words, required | 08.03 onwards. |
 
 Plain names such as `run`, `trainer_line`, `cut_tree` and `bike` take no
 arguments and stay as they are.

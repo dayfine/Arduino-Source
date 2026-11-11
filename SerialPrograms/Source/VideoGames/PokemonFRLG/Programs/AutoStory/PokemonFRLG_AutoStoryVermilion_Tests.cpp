@@ -2,7 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Rows 00.21 (Cerulean to Vermilion City) and 00.22 (the S.S. Anne) on
+ *  Rows 05.10 (Cerulean to Vermilion City) and 06.01 (the S.S. Anne) on
  *  the overworld sim: their walks reach their ends, and meet only the
  *  trainers the table fights.
  *
@@ -83,7 +83,7 @@ size_t step_index(const StoryCheckpoint& row, const std::string& name){
     return step - row.steps.begin();
 }
 
-//  Runs row 00.21's steps from `first` to its end on `sim` from `at`, and
+//  Runs row 05.10's steps from `first` to its end on `sim` from `at`, and
 //  checks that only Jeff ("camper") was fought and the walk ended at
 //  Vermilion's nurse.
 std::string run_to_vermilion(OverworldSim& sim, StoryPose at, const StoryCheckpoint& row, size_t first){
@@ -94,15 +94,15 @@ std::string run_to_vermilion(OverworldSim& sim, StoryPose at, const StoryCheckpo
         }
     }
     if (sim.state().trainers_beaten != std::vector<std::string>{"camper"} || !sim.state().violations.empty()){
-        return "00.21: expected Jeff alone beaten and no violation; beat" + beaten_list(sim) + ".";
+        return "05.10: expected Jeff alone beaten and no violation; beat" + beaten_list(sim) + ".";
     }
     if (!(sim.state().position == MapPosition{"VermilionCity_PokemonCenter_1F", {7, 4}})){
-        return "00.21: expected to end at Vermilion's nurse, not " + to_string(sim.state().position) + ".";
+        return "05.10: expected to end at Vermilion's nurse, not " + to_string(sim.state().position) + ".";
     }
     return "";
 }
 
-//  00.21 on the sim, from Cerulean's Pokemon Center through the burgled
+//  05.10 on the sim, from Cerulean's Pokemon Center through the burgled
 //  house to (32, 7), west of the Rocket, meeting no one; his trigger and
 //  battle aren't the sim's, so from where his battle leaves the player:
 //  Route 5, the Underground Path and Route 6, down column 15 out of
@@ -111,9 +111,9 @@ std::string run_to_vermilion(OverworldSim& sim, StoryPose at, const StoryCheckpo
 //  walk onto Route 6's column 15 ended a tile short, on column 16: the
 //  same.
 UnitTestResult test_route6_jeff_only(){
-    const StoryCheckpoint* row = checkpoint("00.21");
+    const StoryCheckpoint* row = checkpoint("05.10");
     if (row == nullptr){
-        return "No checkpoint 00.21.";
+        return "No checkpoint 05.10.";
     }
     StoryPose at = *story_pose(Pokemon::pose_of(*row->start));
     OverworldSim house(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
@@ -124,7 +124,7 @@ UnitTestResult test_route6_jeff_only(){
         }
     }
     if (!(house.state().position == MapPosition{"CeruleanCity", {32, 7}}) || !house.state().trainers_beaten.empty()){
-        return std::format("00.21: expected to reach (32, 7) west of the Rocket, meeting no one, not {}.", to_string(house.state().position));
+        return std::format("05.10: expected to reach (32, 7) west of the Rocket, meeting no one, not {}.", to_string(house.state().position));
     }
     const size_t battle = step_index(*row, "rocket_grunt");
     const StoryPose after_rocket = *story_pose(Pokemon::pose_of(*row->steps[battle].pose_after));
@@ -166,15 +166,15 @@ StoryPose pose_after(const StoryPose& at, const StoryStep& step){
     return at;
 }
 
-//  00.22's walks on the sim, each from where the table says it starts: to
+//  06.01's walks on the sim, each from where the table says it starts: to
 //  the harbor short of the ticket check, aboard and along 2F short of the
 //  rival's trigger row (30..32, 6), into the Captain's office behind him,
 //  back to 1F's door, and from the pier to the nurse. None meets a
 //  trainer: the ship's are in its cabins and on its deck.
 UnitTestResult test_ss_anne_walks(){
-    const StoryCheckpoint* row = checkpoint("00.22");
+    const StoryCheckpoint* row = checkpoint("06.01");
     if (row == nullptr){
-        return "No checkpoint 00.22.";
+        return "No checkpoint 06.01.";
     }
     StoryPose at = *story_pose(Pokemon::pose_of(*row->start));
     bool before_rival = true;
@@ -186,27 +186,27 @@ UnitTestResult test_ss_anne_walks(){
         }
         const std::optional<std::vector<RouteStep>> route = walked_route(at, step);
         if (!route || route->empty()){
-            return "00.22/" + step.name + ": no route.";
+            return "06.01/" + step.name + ": no route.";
         }
         const MapPosition start{at.map, at.tile};
         if (steps_onto(*route, start, "VermilionCity", {{22, 33}, {23, 33}})
             || (before_rival && steps_onto(*route, start, "SSAnne_2F_Corridor", {{30, 6}, {31, 6}, {32, 6}}))
         ){
-            return "00.22/" + step.name + ": crosses a trigger before its step.";
+            return "06.01/" + step.name + ": crosses a trigger before its step.";
         }
         OverworldSim sim(story_maps(), start, *at.facing);
         if (const std::string failure = row_step_on_sim(sim, at, step, row->id); !failure.empty()){
             return failure;
         }
         if (!(sim.state().position == MapPosition{at.map, at.tile})){
-            return "00.22/" + step.name + ": ended on " + to_string(sim.state().position) + ", not " + to_string(MapPosition{at.map, at.tile}) + ".";
+            return "06.01/" + step.name + ": ended on " + to_string(sim.state().position) + ", not " + to_string(MapPosition{at.map, at.tile}) + ".";
         }
         if (!sim.state().trainers_beaten.empty() || !sim.state().violations.empty()){
-            return "00.22/" + step.name + ": a trainer's battle or a violation on the way.";
+            return "06.01/" + step.name + ": a trainer's battle or a violation on the way.";
         }
     }
     if (!(MapPosition{at.map, at.tile} == MapPosition{"VermilionCity_PokemonCenter_1F", {7, 4}})){
-        return "00.22: expected to end at Vermilion's nurse.";
+        return "06.01: expected to end at Vermilion's nurse.";
     }
     return true;
 }
@@ -216,11 +216,11 @@ UnitTestResult test_ss_anne_walks(){
 
 const AutoStoryVermilionCase AUTO_STORY_VERMILION_CASES[] = {
     {
-        .input = {"00.21 to Vermilion, only Jeff on Route 6, the walk onto column 15 whole or a tile short", test_route6_jeff_only},
+        .input = {"05.10 to Vermilion, only Jeff on Route 6, the walk onto column 15 whole or a tile short", test_route6_jeff_only},
         .expectation = {},
     },
     {
-        .input = {"00.22 the S.S. Anne's walks, short of the ticket check and the rival's trigger", test_ss_anne_walks},
+        .input = {"06.01 the S.S. Anne's walks, short of the ticket check and the rival's trigger", test_ss_anne_walks},
         .expectation = {},
     },
 };

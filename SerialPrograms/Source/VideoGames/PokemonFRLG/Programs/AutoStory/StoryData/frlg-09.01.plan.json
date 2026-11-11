@@ -1,0 +1,197 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "09.01",
+    "title": "Celadon Game Corner and the Rocket Hideout down to B4F: the poster guard, the Lift Key Grunt, the LIFT KEY and B3F's Rare Candy",
+    "start": {"map": "CeladonCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
+    "events": [
+      {
+        "id": "celadon_below_game_corner",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeladonCity", "tiles": [[34, 22]], "facing": "north"}
+        },
+        "why": "out of the Center's door (48, 11) (its ground floor coded, pokemon_center_room()), west along row 12, down column 41..43 to row 22, west to below the Game Corner (34, 21)"
+      },
+      {
+        "id": "below_poster_guard",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeladonCity_GameCorner", "tiles": [[11, 3]], "facing": "north"}
+        },
+        "why": "into the Game Corner, up the slot rows to below the Grunt (11, 2) in front of the poster"
+      },
+      {
+        "id": "talk_poster_guard",
+        "kind": "talk",
+        "why": "the Grunt guarding the poster"
+      },
+      {
+        "id": "rocket_grunt",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_TEAM_ROCKET_GRUNT_7",
+          "foes": ["raticate", "zubat"]
+        },
+        "declared_after": {"map": "CeladonCity_GameCorner", "tiles": [[11, 3]], "facing": "north"},
+        "why": "Rocket Grunt (TRAINER_TEAM_ROCKET_GRUNT_7): Raticate, Zubat Lv20; he runs off"
+      },
+      {
+        "id": "below_poster",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "declared_after": {"map": "CeladonCity_GameCorner", "tiles": [[11, 2]], "facing": "north"},
+        "why": "a step north, where the Grunt stood: he walks off east and is removed before the script lets go (CeladonCity_GameCorner_Text_DefeatedGrunt), so the route planner's map still has him; the poster (11, 1) stops the player"
+      },
+      {
+        "id": "poster_switch",
+        "kind": "game_action",
+        "action": "poster_switch",
+        "why": "the poster (11, 1): the switch opens the stairs (15, 2)"
+      },
+      {
+        "id": "b2f_east_of_grunt",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "RocketHideout_B2F", "tiles": [[23, 4]], "facing": "west"}
+        },
+        "why": "the stairs (15, 2) down to B1F, B1F to B2F (28, 2), round east of the turning Grunt (20, 6) (sight 2, all four ways) to (23, 4): the shortest way to B3F's stairs (21, 2) crosses his lines"
+      },
+      {
+        "id": "b2f_to_stairs",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [{"direction": "west", "tiles": 2}, {"direction": "north", "tiles": 2}]
+        },
+        "why": "west to (21, 4), a tile short of the Grunt's north line (20, 4..5), and up column 21 to the wall, onto the stairs (21, 2), whose warp is a step east"
+      },
+      {
+        "id": "b3f_off_stairs",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "RocketHideout_B3F", "tiles": [[18, 2]], "facing": "east"}
+        },
+        "why": "east off the stairs (21, 2) to B3F, onto its stairs (18, 2)"
+      },
+      {
+        "id": "b3f_arrow_maze",
+        "kind": "legs",
+        "action": "taps",
+        "args": {
+          "legs": [{"direction": "west", "tiles": 6}, {"direction": "south", "tiles": 5}, {"direction": "west", "tiles": 7}, {"direction": "south", "tiles": 2}, {"direction": "west", "tiles": 1}, {"direction": "south", "tiles": 2}, {"direction": "west", "tiles": 2}, {"direction": "south", "tiles": 3}, {"direction": "west", "tiles": 3}, {"direction": "south", "tiles": 2}, {"direction": "east", "tiles": 2}, {"direction": "west", "tiles": 2}, {"direction": "south", "tiles": 5}, {"direction": "east", "tiles": 10}, {"direction": "north", "tiles": 6}]
+        },
+        "why": "pokeguy's way through the arrow floor (video 56:39-56:50), a tap a tile: west along the top corridor and down column 12 to row 7, west to (5, 7), down to (5, 9) between the arrows; west onto (4, 9), which slides to the stop (2, 9); south onto (2, 11), which slides east to the stop (6, 11); west to (4, 11), down column 4 to (4, 14), west to the wall (1, 14), down to (1, 16); east onto (3, 16), which slides east and, turned by (7, 16), south to the stop (7, 20); west to (5, 20), down column 5 to row 25, east to column 15 and up to (15, 19), below the stairs to B4F (15, 18). He detours to the BLACKGLASSES on the way down column 5; we don't."
+      },
+      {
+        "id": "hideout_b4f_west",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "RocketHideout_B4F", "tiles": [[5, 3]], "facing": "west"}
+        },
+        "why": "up onto the stairs (15, 18) to B4F (11, 15), round to (5, 3), east of the tile below the Grunt (4, 2)"
+      },
+      {
+        "id": "key_grunt_line",
+        "kind": "step",
+        "action": "trainer_line",
+        "args": {
+          "direction": "west"
+        },
+        "why": "onto (4, 3), in the Grunt's line (sight 1)"
+      },
+      {
+        "id": "lift_key_grunt",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_TEAM_ROCKET_GRUNT_18",
+          "foes": ["koffing", "zubat"]
+        },
+        "declared_after": {"map": "RocketHideout_B4F", "tiles": [[4, 3]], "facing": "west"},
+        "why": "Rocket Grunt (TRAINER_TEAM_ROCKET_GRUNT_18): Koffing, Zubat Lv21; he drops the LIFT KEY"
+      },
+      {
+        "id": "beside_lift_key",
+        "kind": "legs",
+        "action": "taps",
+        "args": {
+          "legs": [{"direction": "west", "tiles": 1}]
+        },
+        "why": "a tap west from the Grunt's line (4, 3) to below the LIFT KEY (3, 3)"
+      },
+      {
+        "id": "below_lift_key",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "RocketHideout_B4F", "tiles": [[3, 3]], "facing": "north"}
+        },
+        "why": "turn to face the LIFT KEY (3, 2): no tile to walk"
+      },
+      {
+        "id": "lift_key",
+        "kind": "talk",
+        "why": "pick up the LIFT KEY (pokeguy 57:33)"
+      },
+      {
+        "id": "b4f_to_stairs",
+        "kind": "legs",
+        "action": "taps",
+        "args": {
+          "legs": [{"direction": "east", "tiles": 3}, {"direction": "south", "tiles": 4}, {"direction": "east", "tiles": 5}, {"direction": "south", "tiles": 8}]
+        },
+        "why": "a tap a tile from below the LIFT KEY (3, 3): east to the wall (6, 3), down to (6, 7), east to (11, 7) and down onto the stairs (11, 15)"
+      },
+      {
+        "id": "b3f_from_b4f",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "RocketHideout_B3F", "tiles": [[15, 18]], "facing": "west"}
+        },
+        "why": "east up B4F's stairs (11, 15) to B3F's (15, 18)"
+      },
+      {
+        "id": "b3f_back_to_candy_row",
+        "kind": "legs",
+        "action": "taps",
+        "args": {
+          "legs": [{"direction": "south", "tiles": 2}, {"direction": "west", "tiles": 5}, {"direction": "north", "tiles": 6}]
+        },
+        "why": "pokeguy's way back (video 57:39-57:42), a tap a tile: down to row 20, west to column 10, up it onto the arrow (10, 14), which slides a tile north to the stop (10, 13)"
+      },
+      {
+        "id": "beside_b3f_rare_candy",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "RocketHideout_B3F", "tiles": [[12, 13]], "facing": "north"}
+        },
+        "why": "east along row 13 to the wall, below the Rare Candy (12, 12)"
+      },
+      {
+        "id": "b3f_rare_candy",
+        "kind": "talk",
+        "why": "pick up the Rare Candy: two, with Route 9's"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full"
+  },
+  "metadata": {
+    "phase": "testing",
+    "postconditions": {
+      "position": {"map": "RocketHideout_B3F", "tiles": [[12, 13]], "facing": "north"},
+      "items": {"LIFT_KEY": 1, "RARE_CANDY": 2}
+    }
+  }
+}

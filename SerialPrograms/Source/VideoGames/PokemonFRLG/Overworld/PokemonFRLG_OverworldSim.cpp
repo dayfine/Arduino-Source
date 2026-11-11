@@ -377,7 +377,10 @@ bool OverworldSim::after_step(const Step& step, Milliseconds pressed){
         }
         m_frozen = true;
         schedule(pressed + timing.tile, SimScreen::FADE, false);
-        schedule(pressed + timing.tile + timing.fade, SimScreen::OVERWORLD, true);
+        schedule(pressed + timing.tile + timing.fade, SimScreen::OVERWORLD, timing.fade_in == 0ms);
+        if (timing.fade_in > 0ms){
+            schedule(pressed + timing.tile + timing.fade + timing.fade_in, SimScreen::OVERWORLD, true);
+        }
         note("warped to " + to_string(m_state.position) + ".");
         return true;
     }
@@ -499,7 +502,7 @@ void OverworldSim::take_steps(Direction direction, Milliseconds pressed, Millise
         if (m_script.connections_stall && step->map != m_map && !step->warped){
             //  The step onto a connected map waits a tile while the game
             //  loads it: a hold timed by its tiles alone ended a tile short
-            //  (console B, 2026-11-03, rows 00.14, 00.16 and 00.20).
+            //  (console B, 2026-11-03, rows 04.06, 05.05 and 05.09).
             pressed += tile;
             if (pressed >= end){
                 return;

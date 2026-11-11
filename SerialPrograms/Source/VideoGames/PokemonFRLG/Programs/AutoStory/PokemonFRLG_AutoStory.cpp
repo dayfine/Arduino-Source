@@ -58,8 +58,8 @@ std::unique_ptr<StatsTracker> AutoStory_Descriptor::make_stats() const{
 
 namespace{
 
-//  The start and end dropdowns' entries: the table's checkpoints, 00.01 to
-//  00.12b. The options hold a reference to it.
+//  The start and end dropdowns' entries: the table's checkpoints, 01.01 to
+//  04.03. The options hold a reference to it.
 const StringSelectDatabase& checkpoint_database(){
     static const std::vector<std::string> labels = []{
         std::vector<std::string> result;
@@ -82,37 +82,37 @@ const std::string KEEP_START_FRAME_TEXT =
 const std::string RUN_STARTER_RNG_TEXT =
     "<b>Run Starter RNG in AutoStory:</b><br>Off by default. Instead of stopping for them, run SID Helper's steps on the "
     "new game's keyboard when the RNG plan has no SID, and Starter RNG's attempts from a save south of the table at the "
-    "end of 00.04, as the RNG plan lists them. A shiny Squirtle goes on to the rival's battle, saves after it and the run "
+    "end of 01.05, as the RNG plan lists them. A shiny Squirtle goes on to the rival's battle, saves after it and the run "
     "goes on; otherwise the run stops with the save south of the table.<br>"
     "SID Helper's timing needs the text speed and button settings already saved, as with Stop for SID Helper.";
 
 const std::string RUN_GIFT_RNG_TEXT =
-    "<b>Run Gift RNG in AutoStory:</b><br>Off by default. After 00.12 saves beside the Magikarp salesman in Route 4's "
+    "<b>Run Gift RNG in AutoStory:</b><br>Off by default. After 04.02 saves beside the Magikarp salesman in Route 4's "
     "Pokemon Center, run Gift RNG's attempts for the Magikarp from that save, as the RNG plan lists them for its TID and "
-    "SID (set by Run Starter RNG in AutoStory, or typed in). A shiny Magikarp is saved there (00.12b) and the run goes "
+    "SID (set by Run Starter RNG in AutoStory, or typed in). A shiny Magikarp is saved there (04.03) and the run goes "
     "on; otherwise the run stops with the save beside the salesman.<br>"
-    "To try again from that save, start at 00.12b with this on: it loads the save and runs the attempts first. "
-    "After Gift RNG run by hand, start at 00.12b with this off.<br>"
+    "To try again from that save, start at 04.03 with this on: it loads the save and runs the attempts first. "
+    "After Gift RNG run by hand, start at 04.03 with this off.<br>"
     "English only. The Magikarp costs 500 and needs a free party slot; AutoStory's options leave the text fast.";
 
 AutoStory::AutoStory()
     : RUN(checkpoint_database(), Pokemon::FireRedLeafGreenLanguages_Database())
     , NEW_GAME_FROM_TITLE(
         "<b>New game from the title screen:</b><br>The game is on its title screen with no save data. "
-        "Needed to start at 00.01. Otherwise the program loads the save, which must be the one the start checkpoint begins from.",
+        "Needed to start at 01.01. Otherwise the program loads the save, which must be the one the start checkpoint begins from.",
         LockMode::LOCK_WHILE_RUNNING,
         true
     )
     , PLAYER_NAME(
         false,
-        "<b>Player name:</b><br>Typed on the new game's keyboard (00.01). Empty keeps the game's default name. "
+        "<b>Player name:</b><br>Typed on the new game's keyboard (01.01). Empty keeps the game's default name. "
         "The rival always keeps the default name.",
         LockMode::LOCK_WHILE_RUNNING,
         "Kosmos", ""
     )
     , STOP_FOR_SID_HELPER(
-        "<b>Stop for SID Helper:</b><br>Off by default. At 00.01, stop on the player's keyboard with the name typed and OK not pressed, "
-        "where the SID Helper program starts. After SID Helper, start AutoStory at 00.01b, with the game as SID Helper left it "
+        "<b>Stop for SID Helper:</b><br>Off by default. At 01.01, stop on the player's keyboard with the name typed and OK not pressed, "
+        "where the SID Helper program starts. After SID Helper, start AutoStory at 01.02, with the game as SID Helper left it "
         "(the Trainer Card, or HOME): it closes the card, sets the options and saves in the bedroom.<br>"
         "SID Helper needs the text speed and button settings already saved. On a cartridge with that save, choose NEW GAME "
         "by hand and start AutoStory on the first message.",
@@ -120,10 +120,10 @@ AutoStory::AutoStory()
         false
     )
     , STOP_FOR_STARTER_RNG(
-        "<b>Stop for Starter RNG:</b><br>Off by default. At the end of 00.04, save south of the table facing Squirtle's ball "
+        "<b>Stop for Starter RNG:</b><br>Off by default. At the end of 01.05, save south of the table facing Squirtle's ball "
         "and stop, where the Starter RNG program starts. After Starter RNG, save right after the rival's battle without moving "
-        "and start AutoStory at 00.05, listing the targets to try from the RNG plan.<br>"
-        "With this off, 00.04 and 00.04b run as one checkpoint, as before.",
+        "and start AutoStory at 02.01, listing the targets to try from the RNG plan.<br>"
+        "With this off, 01.05 and 01.06 run as one checkpoint, as before.",
         LockMode::LOCK_WHILE_RUNNING,
         false
     )
@@ -149,7 +149,7 @@ AutoStory::AutoStory()
 
 //  The save loaded must be the one checkpoint `first` starts from: one left
 //  by an earlier checkpoint (a run that failed before saving) would start
-//  it in the wrong place (console B, 2026-11-01: 00.09 on the forest's
+//  it in the wrong place (console B, 2026-11-01: 03.02 on the forest's
 //  save). Checked on the SAVE card; a card that can't be read is let pass.
 static void check_start_save(
     SingleSwitchProgramEnvironment& env, StoryEnv& story, const StoryCheckpoint& checkpoint
@@ -199,7 +199,7 @@ Pokemon::SegmentHooks story_hooks(SingleSwitchProgramEnvironment& env, StoryEnv&
         }
         //  The save reloaded must be where the checkpoint starts: a save
         //  that didn't happen leaves an older one (console B, 2026-11-02:
-        //  00.02 walked the bedroom's route in Pewter City).
+        //  01.03 walked the bedroom's route in Pewter City).
         try{
             soft_reset(story.console, story.context);
             const std::string error = check_save_place(story, story.start_map);
@@ -292,7 +292,7 @@ static void check_setup(
         throw UserSetupError(console, "The start checkpoint must not come after the end checkpoint.");
     }
     if (first == 0 && !new_game_from_title){
-        throw UserSetupError(console, "Checkpoint 00.01 starts a new game: start on the title screen with no save.");
+        throw UserSetupError(console, "Checkpoint 01.01 starts a new game: start on the title screen with no save.");
     }
     if (first == 0){
         check_player_name(console, player_name);
@@ -361,7 +361,7 @@ static void stop_for_sid_helper(
     play_new_game_to_player_name(env.console, context, player_name);
     stop_for_handoff(env, notification,
         "Stopped for SID Helper: the player's name is typed and OK is not pressed. Run SID Helper now, "
-        "enter its Target Advances and # Candidate SIDs in the RNG plan, then start AutoStory at 00.01b."
+        "enter its Target Advances and # Candidate SIDs in the RNG plan, then start AutoStory at 01.02."
     );
 }
 
@@ -434,7 +434,7 @@ static void stop_for_starter_rng(
         "Run Starter RNG (Squirtle, FireRed, Sound " + sound + ") with attempt 1's Target Seed and Advances. "
         "If it hits the target and it isn't shiny, load this save and run the next attempt. If it is shiny, "
         "its SID is the one listed (or one of them): enter it as the RNG plan's SID. "
-        "Then save right after the rival's battle, without moving, and start AutoStory at 00.05.",
+        "Then save right after the rival's battle, without moving, and start AutoStory at 02.01.",
         attempts
     );
 }
@@ -472,7 +472,7 @@ static void run_story_rows(
 
 //  SID Helper's steps in the program, from the player's keyboard: the name
 //  typed, then the intro at SID Helper's timing into the bedroom, and the
-//  Trainer Card opened to read the TID. Ends on the card, where 00.01b
+//  Trainer Card opened to read the TID. Ends on the card, where 01.02
 //  starts.
 static void set_sid_in_program(
     SingleSwitchProgramEnvironment& env, ProControllerContext& context,
@@ -491,7 +491,7 @@ static void set_sid_in_program(
     navigate_to_trainer_card(env.console, context);
     const std::optional<uint16_t> tid = try_read_trainer_card_tid(env.console, context, language);
     if (!tid){
-        env.console.log("Couldn't read the TID on the Trainer Card; 00.04 reads it again.", COLOR_ORANGE);
+        env.console.log("Couldn't read the TID on the Trainer Card; 01.05 reads it again.", COLOR_ORANGE);
         return;
     }
     env.console.log(rng_log_tid(*tid, true));
@@ -593,7 +593,7 @@ static bool run_gift_rng_in_program(
 }
 
 //  After a shiny Squirtle: off its summary, and the rows to run next: the
-//  rival's battle, which saves (00.04b), and the rows after it to `last`.
+//  rival's battle, which saves (01.06), and the rows after it to `last`.
 //  Until that save, a reload would load the save under the ball and lose
 //  the shiny, so a failure stops the run instead.
 static StoryRunPlan after_shiny_starter(
@@ -610,7 +610,7 @@ static StoryRunPlan after_shiny_starter(
     return plan;
 }
 
-//  After a shiny Magikarp: the rows to run next, from 00.12b, which leaves
+//  After a shiny Magikarp: the rows to run next, from 04.03, which leaves
 //  its summary and saves, to `last`. Until that save, a failure stops the
 //  run, as after a shiny Squirtle.
 static StoryRunPlan after_shiny_magikarp(
@@ -638,8 +638,8 @@ static void send_story_finished(
 }
 
 StoryHandoffs AutoStory::story_handoffs() const{
-    //  Running Starter RNG here splits 00.04 at the ball as its stop does,
-    //  and sets the SID at 00.01 when it isn't known.
+    //  Running Starter RNG here splits 01.05 at the ball as its stop does,
+    //  and sets the SID at 01.01 when it isn't known.
     return StoryHandoffs{
         .sid_helper = RUN_STARTER_RNG ? static_cast<std::string>(RNG_PLAN.SID).empty() : bool(STOP_FOR_SID_HELPER),
         .starter_rng = STOP_FOR_STARTER_RNG || RUN_STARTER_RNG,
@@ -670,7 +670,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     }
     if (plan.stop == StoryHandoff::SID_HELPER){
         set_sid_in_program(env, context, player_name, RNG_PLAN, RUN.language());
-        first = checkpoint_index(checkpoints, "00.01b");
+        first = checkpoint_index(checkpoints, "01.02");
         plan = plan_story_run(checkpoints, first, last, handoffs);
     }
     StoryEnv story = story_env(env, context, checkpoints[first], RUN.check_level(), KEEP_START_FRAME);
