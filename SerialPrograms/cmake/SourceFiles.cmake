@@ -1553,13 +1553,36 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_AutoStory_Tests.h
     Source/Pokemon/AutoStory/Pokemon_BuiltinStoryActions.cpp
     Source/Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h
+    Source/Pokemon/AutoStory/Pokemon_FadeProfiles.h
+    Source/Pokemon/AutoStory/Pokemon_InterruptHandlers.h
+    Source/Pokemon/AutoStory/Pokemon_Interrupts.cpp
+    Source/Pokemon/AutoStory/Pokemon_Interrupts.h
+    Source/Pokemon/AutoStory/Pokemon_Interrupts_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_Interrupts_Tests.h
     Source/Pokemon/AutoStory/Pokemon_MapUtil.h
+    Source/Pokemon/AutoStory/Pokemon_SceneJudges.cpp
+    Source/Pokemon/AutoStory/Pokemon_SceneJudges.h
+    Source/Pokemon/AutoStory/Pokemon_ScreenEventLog.h
+    Source/Pokemon/AutoStory/Pokemon_ScreenEventTypes.h
+    Source/Pokemon/AutoStory/Pokemon_ScreenEvents.cpp
+    Source/Pokemon/AutoStory/Pokemon_ScreenEvents.h
+    Source/Pokemon/AutoStory/Pokemon_ScreenEvents_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_ScreenEvents_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_ScreenFades.h
+    Source/Pokemon/AutoStory/Pokemon_StoryActions.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryActions.h
+    Source/Pokemon/AutoStory/Pokemon_StoryActions_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryActions_Tests.h
     Source/Pokemon/AutoStory/Pokemon_StoryCheckpointTypes.h
     Source/Pokemon/AutoStory/Pokemon_StoryEvent.h
     Source/Pokemon/AutoStory/Pokemon_StoryEvents.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryEvents.h
     Source/Pokemon/AutoStory/Pokemon_StoryEvents_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryEvents_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_StoryInterrupts.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryInterrupts.h
+    Source/Pokemon/AutoStory/Pokemon_StoryInterrupts_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryInterrupts_Tests.h
     Source/Pokemon/AutoStory/Pokemon_StoryLog.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryLog.h
     Source/Pokemon/AutoStory/Pokemon_StoryLog_Tests.cpp
@@ -1580,6 +1603,11 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_StoryStepExecutor_Tests.h
     Source/Pokemon/AutoStory/Pokemon_TilePose.cpp
     Source/Pokemon/AutoStory/Pokemon_TilePose.h
+    Source/Pokemon/AutoStory/Pokemon_Transitions.cpp
+    Source/Pokemon/AutoStory/Pokemon_Transitions.h
+    Source/Pokemon/AutoStory/Pokemon_Transitions_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_Transitions_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_WarpJudge.h
     Source/Pokemon/AutoStory/Types/Pokemon_GridPose.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryActionArg.cpp
     Source/Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h
@@ -1914,6 +1942,10 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/Farming/PokemonFRLG_NuggetBridgeFarmer.h
     Source/VideoGames/PokemonFRLG/Programs/Farming/PokemonFRLG_PickupFarmer.cpp
     Source/VideoGames/PokemonFRLG/Programs/Farming/PokemonFRLG_PickupFarmer.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryScreenEvents.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryScreenEvents.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryScreenEvents_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryScreenEvents_Tests.h
     Source/VideoGames/PokemonFRLG/Programs/PokemonFRLG_BattleMenuNavigation.cpp
     Source/VideoGames/PokemonFRLG/Programs/PokemonFRLG_BattleMenuNavigation.h
     Source/VideoGames/PokemonFRLG/Programs/PokemonFRLG_SafariOptimalAction.cpp
