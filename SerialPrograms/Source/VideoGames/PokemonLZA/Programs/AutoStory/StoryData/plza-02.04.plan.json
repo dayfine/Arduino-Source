@@ -3,7 +3,7 @@
   "game": "plza",
   "checkpoint": {
     "id": "02.04",
-    "title": "Main Mission 02: Hotel Z room 202 to the first night",
+    "title": "Main Mission 02: Hotel Z elevator to Room 202",
     "start": {
       "map": "LumioseCity"
     },
@@ -19,7 +19,7 @@
         "id": "take_elevator_up",
         "kind": "talk",
         "why": "step 28: A Take Elevator, \"Which floor?\""
-      },
+      },
       {
         "id": "floor_question",
         "kind": "game_action",
@@ -32,7 +32,7 @@
         "kind": "game_action",
         "why": "step 28: \"2F\", the first floor listed",
         "action": "choose_0"
-      },
+      },
       {
         "id": "arrive_2f",
         "kind": "game_action",
@@ -53,52 +53,6 @@
         "why": "step 30: A Enter, \"Here's room 202.\", the fade, until control in the room; no party bar or prompt there (console B, 2026-11-10)",
         "action": "mash_to_move_hints",
         "args": {"press_a_first": true, "quiet_ms": 3000, "min_length_ms": 5000, "quiet_is_control": true}
-      },
-      {
-        "id": "to_bed",
-        "kind": "game_action",
-        "why": "step 31: to the bed's \"A Rest\". 1.5 s explored, 1 s enough. Measured 2026-11-08 on console B, walk not run.",
-        "action": "walk",
-        "args": {"legs": [[45, 1000]], "held": true}
-      },
-      {
-        "id": "rest",
-        "kind": "talk",
-        "why": "step 31: A Rest, \"Rest until tomorrow morning?\""
-      },
-      {
-        "id": "rest_question",
-        "kind": "game_action",
-        "why": "step 31: \"Rest until tomorrow morning?\" before the choice shows",
-        "action": "text_to_choice",
-        "args": {"advance_with_a": true}
-      },
-      {
-        "id": "rest_until_morning",
-        "kind": "game_action",
-        "why": "step 31: yes",
-        "action": "choose_0"
-      },
-      {
-        "id": "wake_up",
-        "kind": "game_action",
-        "why": "step 32: sleep and wake up, until control facing the door; the room shows no party bar or prompt, so the quiet time is control",
-        "action": "mash_to_move_hints",
-        "args": {"quiet_ms": 3000, "min_length_ms": 8000, "quiet_is_control": true}
-      },
-      {
-        "id": "to_room_door",
-        "kind": "game_action",
-        "why": "step 33: to the door's \"A Leave\". Measured 2026-11-08 on console B, walk not run.",
-        "action": "walk",
-        "args": {"legs": [[0, 2000]]}
-      },
-      {
-        "id": "first_evening",
-        "kind": "game_action",
-        "why": "steps 33-35: A Leave at the door, Taunie, the rooftop, AZ, the Main Mission 03 banner and its autosave",
-        "action": "mash_to_move_hints",
-        "args": {"press_a_first": true}
       }
     ],
     "metadata": {
