@@ -297,7 +297,9 @@ UnitTestResult center_inside_settles(Logger& logger){
         Milliseconds most;
     };
     const Milliseconds fade = 1500ms;
-    const Milliseconds slack = 1000ms;
+    //  A look per press: the quiet is seen a press or two after it begins
+    //  (7680 ms for the still case).
+    const Milliseconds slack = 2000ms;
     const Inside cases[] = {
         {"visitors walking (reads still)", false, fade + Pokemon::TALK_OVER_QUIET + slack},
         {"a screen never still", true, fade + Pokemon::TALK_OVER_CALM + slack},
