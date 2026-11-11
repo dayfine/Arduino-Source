@@ -271,7 +271,7 @@ Outcome StoryExecutor::heal(RunState&, const StoryStep& step){
         return screen && pokemon_center_inside(*screen.frame);
     }, [&]{
         enter_lit_door(stream(), context(), label_of(step));
-    });
+    }, label_of(step));
     stream().log(std::format("[{}] {}: north into the Center: {}.", m_checkpoint, step.name,
         in == CenterEntry::FADED ? "faded" : in == CenterEntry::INSIDE ? "no fade, but inside" : "no fade; lined up by sight"));
     if (in == CenterEntry::FADED){

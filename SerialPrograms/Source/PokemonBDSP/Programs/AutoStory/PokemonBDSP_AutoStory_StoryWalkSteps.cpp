@@ -124,7 +124,11 @@ std::vector<TrainerSight> row_trainers(const StoryWorld& world, const std::strin
     return sights;
 }
 
-CenterEntry run_into_center(StoryStepIO& io, bool run, const std::function<bool()>& inside, const std::function<void()>& line_up){
+CenterEntry run_into_center(
+    StoryStepIO& io, bool run,
+    const std::function<bool()>& inside, const std::function<void()>& line_up,
+    const std::string& label
+){
     if (io.run_into_door(Direction::NORTH, run).any()){
         return CenterEntry::FADED;
     }
