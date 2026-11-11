@@ -398,7 +398,7 @@ ConsoleAction console_action_of(StoryActionId id){
     switch (id){
     case StoryActionId::NEW_GAME:
         return [](StoryEnv& env, RunState&, const StoryStep&){
-            play_new_game_intro(env.console, env.context);
+            play_new_game_intro(env.console, env.context, env.player_gender);
             return Pokemon::outcome_ok();
         };
     case StoryActionId::ROUTE:

@@ -22,6 +22,7 @@
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.h"
 #include "Pokemon/Navigation/Pokemon_Grid.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PlayerFacingReader.h"
 #include "PokemonFRLG_AutoStoryPresses.h"
 
 namespace PokemonAutomation{
@@ -35,6 +36,19 @@ namespace PokemonFRLG{
 //  on NEW NAME. The intro's YES/NO boxes open in the same corner but are
 //  6x4 tiles: the list is told from them by its white past their frame.
 std::optional<int> rival_name_list_cursor(const ImageViewRGB32& screen);
+
+//  What the intro does on the BOY/GIRL menu. The boy is left to the A every
+//  1.5 s that advances the intro, as before; the girl is moved to and
+//  picked.
+enum class GenderMenuStep{
+    NONE,
+    DOWN,
+    UP,
+    CONFIRM,
+};
+//  The step for the arrow on row `cursor_row` (0 BOY, 1 GIRL), or none if
+//  the menu doesn't show.
+GenderMenuStep gender_menu_step(std::optional<int> cursor_row, PlayerGender wanted);
 
 //  What shows in the new game's intro, as far as the names go.
 enum class IntroNameScreen{
@@ -58,10 +72,10 @@ constexpr size_t RIVAL_PRESET_TRIES = 3;
 //  Determines the next input step in character/rival naming sequence.
 IntroNameStep intro_name_step(IntroNameScreen screen, size_t keyboards_seen, size_t presets_picked);
 //  From the title screen of a game with no save, to the bedroom: the
-//  controls pages, Oak's speech, BOY, the default name for the player (an
-//  empty name confirmed) and the rival's first preset name. Returns on the
-//  overworld.
-void play_new_game_intro(ConsoleHandle& console, ProControllerContext& context);
+//  controls pages, Oak's speech, `gender` on the BOY/GIRL menu, the default
+//  name for the player (an empty name confirmed) and the rival's first
+//  preset name. Returns on the overworld.
+void play_new_game_intro(ConsoleHandle& console, ProControllerContext& context, PlayerGender gender);
 
 
 
