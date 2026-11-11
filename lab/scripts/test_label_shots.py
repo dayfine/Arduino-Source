@@ -1,5 +1,6 @@
 """Offline tests with a mocked client: python3 -m unittest discover -s lab/scripts -p test_label_shots.py -v."""
 
+import datetime
 import io
 import json
 import tempfile
@@ -9,6 +10,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+import lab_claude
 import label_shots
 from test_lab_claude import tiny_png
 
@@ -19,6 +21,7 @@ def label(screen):
 
 def result(cid, payload):
     message = SimpleNamespace(stop_reason="end_turn",
+                              usage=SimpleNamespace(input_tokens=1_000_000, output_tokens=0),
                               content=[SimpleNamespace(type="text", text=json.dumps(payload))])
     return SimpleNamespace(custom_id=cid, result=SimpleNamespace(type="succeeded", message=message))
 
@@ -33,6 +36,10 @@ class LabelShotsTests(unittest.TestCase):
             (self.dir / name).write_bytes(tiny_png())
         (self.dir / "notes.txt").write_text("x")
         self.out = Path(tmp.name) / "labels.jsonl"
+        self.ledger = Path(tmp.name) / "spend.jsonl"
+        old_ledger = lab_claude.LEDGER
+        lab_claude.LEDGER = self.ledger
+        self.addCleanup(setattr, lab_claude, "LEDGER", old_ledger)
 
     def args(self, *extra):
         return [str(self.dir), "--game", "bdsp", "--out", str(self.out), *extra]
@@ -81,6 +88,25 @@ class LabelShotsTests(unittest.TestCase):
         self.assertEqual({r["custom_id"] for r in sent},
                          {label_shots.custom_id("b.png"), label_shots.custom_id("sub/c.png")})
         self.assertEqual(len(self.out.read_text().splitlines()), 2)
+
+    def test_budget_refusal_blocks_submit(self):
+        today = datetime.date.today().isoformat()
+        self.ledger.write_text(json.dumps({"date": today, "script": "x", "model": "m",
+                                           "usd": lab_claude.DAILY_USD}) + "\n")
+        client = self.client([])
+        with redirect_stdout(io.StringIO()):
+            self.assertEqual(label_shots.main(self.args(), client=client), 3)
+        client.messages.batches.create.assert_not_called()
+
+    def test_collected_results_recorded_at_half_price(self):
+        client = self.client([result(label_shots.custom_id("a.png"), label("menu"))])
+        with redirect_stdout(io.StringIO()):
+            label_shots.main(self.args(), client=client)
+        entries = [json.loads(line) for line in self.ledger.read_text().splitlines()]
+        self.assertEqual(len(entries), 1)
+        full = lab_claude.cost_usd(label_shots.DEFAULT_MODEL,
+                                   SimpleNamespace(input_tokens=1_000_000, output_tokens=0))
+        self.assertAlmostEqual(entries[0]["usd"], full / 2, places=5)
 
     def test_resume_collects_without_submitting(self):
         client = self.client([result(label_shots.custom_id("b.png"), label("menu"))])

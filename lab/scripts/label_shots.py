@@ -105,6 +105,7 @@ def collect(client, batch_id, id_to_path, out_path, model):
                 failed += 1
                 continue
             message = result.result.message
+            lab_claude.record_spend(model, message.usage, "label_shots.py", batch=True)
             if message.stop_reason in ("refusal", "max_tokens"):
                 print(f"{path}: stop_reason {message.stop_reason}", file=sys.stderr)
                 failed += 1
@@ -147,6 +148,11 @@ def main(argv=None, client=None):
     client = client or lab_claude.make_client()
     batch_id = args.resume
     if batch_id is None:
+        try:
+            lab_claude.check_budget()
+        except lab_claude.BudgetExceeded as e:
+            print(f"not submitting: {e}", file=sys.stderr)
+            return 3
         requests = [build_request(shot, rel, args.game, args.model) for shot, rel in todo]
         batch_id = client.messages.batches.create(requests=requests).id
         print(f"submitted {batch_id} with {len(requests)} shots")
