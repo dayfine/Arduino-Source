@@ -148,6 +148,18 @@
         "why": "east along row 7 above Carly's line (9, 10..12), down column 18 to the stairs (18, 10), onto 4F a step down"
       },
       {
+        "id": "west_of_laurel_line",
+        "kind": "legs",
+        "variant": "run",
+        "legs": [
+          {
+            "direction": "west",
+            "tiles": 2
+          }
+        ],
+        "why": "west along row 11 to (16, 11), below and west of Laurel's line (17, 8..10)"
+      },
+      {
         "id": "tower_4f_stairs",
         "kind": "route",
         "variant": "run",
@@ -165,7 +177,7 @@
             ]
           }
         },
-        "why": "west of Laurel's line (17, 8..10) up column 16, along row 6 to column 11, round by row 3 and down column 9 to row 9, west to 4F's stairs (4, 10), onto 5F a step down"
+        "why": "up column 16, along row 6 to column 11, round by row 3 and down column 9 to row 9, west to 4F's stairs (4, 10), onto 5F a step down"
       },
       {
         "id": "west_of_ruth_line",
@@ -564,6 +576,30 @@
         "why": "warp MAP_LAVENDER_TOWN_VOLUNTEER_POKEMON_HOUSE, 4, 7 (PokemonTower_7F_EventScript_MrFuji); the facing on arrival is not yet seen on a console"
       },
       {
+        "id": "house_east_side",
+        "kind": "legs",
+        "variant": "run",
+        "legs": [
+          {
+            "direction": "east",
+            "tiles": 2
+          },
+          {
+            "direction": "north",
+            "tiles": 1
+          },
+          {
+            "direction": "east",
+            "tiles": 2
+          },
+          {
+            "direction": "north",
+            "tiles": 2
+          }
+        ],
+        "why": "from the mat (4, 7): east to (6, 7), up to (6, 6), east to the Psyduck (9, 6) and up column 8 to the wall (8, 3); from any tile round the mats the walls and the Psyduck end it on (8, 4) too"
+      },
+      {
         "id": "beside_fuji",
         "kind": "route",
         "variant": "run",
@@ -581,7 +617,7 @@
             ]
           }
         },
-        "why": "up column 4 to (4, 3), east of Mr. Fuji (3, 3); the Youngster (3, 5) stands below him"
+        "why": "west along row 4, round the wall (5..6, 4) by row 3, to (4, 3), east of Mr. Fuji (3, 3)"
       },
       {
         "id": "poke_flute",
