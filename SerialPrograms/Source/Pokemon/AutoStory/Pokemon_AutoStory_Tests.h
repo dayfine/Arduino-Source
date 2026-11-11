@@ -12,23 +12,30 @@
 #define PokemonAutomation_Pokemon_AutoStory_Tests_H
 
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "Data/Pokemon_AuthoredCheckpointJson_Tests.h"
+#include "Data/Pokemon_StoryStepJson_Tests.h"
+#include "Engine/Pokemon_StoryEnginePolicy_Tests.h"
+#include "Engine/Pokemon_StoryEngineRuns_Tests.h"
+#include "Engine/Pokemon_StoryEngine_Tests.h"
 #include "Pokemon/Options/Pokemon_StoryRangeOptions_Tests.h"
 #include "Pokemon_AutoStorySelect_Tests.h"
-#include "Pokemon_ScreenStory_Tests.h"
-#include "Pokemon_StoryStep_Tests.h"
+#include "Pokemon_AutoStoryStats_Tests.h"
+#include "Pokemon_Interrupts_Tests.h"
+#include "Pokemon_SceneJudges_Tests.h"
+#include "Pokemon_ScreenEvents_Tests.h"
+#include "Pokemon_StoryActions_Tests.h"
+#include "Pokemon_StoryEvents_Tests.h"
+#include "Pokemon_StoryInterrupts_Tests.h"
+#include "Pokemon_StoryLog_Tests.h"
+#include "Pokemon_StorySavePolicy_Tests.h"
+#include "Pokemon_StorySegments_Tests.h"
+#include "Pokemon_StoryStepExecutor_Tests.h"
+#include "Pokemon_Transitions_Tests.h"
+#include "Types/Pokemon_StoryActionArg_Tests.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
 
-
-// Registers unit tests for the shared checkpoint log lines.
-void add_tests_StoryLog(UnitTestDatabase& database);
-// Registers unit tests for the story counts added to the AutoStory stats.
-void add_tests_AutoStoryStats(UnitTestDatabase& database);
-// Registers unit tests for story event sequencing and execution.
-void add_tests_StoryEvents(UnitTestDatabase& database);
-// Registers unit tests for story segment running, verification, and branching.
-void add_tests_StorySegments(UnitTestDatabase& database);
 
 // Registers every shared AutoStory suite, for the unit test runner.
 inline void add_tests_AutoStory(UnitTestDatabase& database){
@@ -42,7 +49,12 @@ inline void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_StoryStepJson(database);
     add_tests_StoryActionArg(database);
     add_tests_AuthoredCheckpointJson(database);
+    add_tests_StorySavePolicy(database);
+    add_tests_StoryEngine(database);
+    add_tests_StoryEnginePolicy(database);
+    add_tests_StoryEngineRuns(database);
     add_tests_ScreenEvents(database);
+    add_tests_SceneJudges(database);
     add_tests_Interrupts(database);
     add_tests_Transitions(database);
     add_tests_StoryActions(database);
