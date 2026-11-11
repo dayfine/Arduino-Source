@@ -178,9 +178,9 @@ Pokemon::ScreenLook StoryMapsSim::look(){
 //  Every kind closes what is up and notes it: the simulation shows only
 //  the dialogs it pops up.
 StepInterruptActions StoryMapsSim::sim_interrupt_actions(){
-    const auto cleared = [this](const char* what){
+    const auto cleared = [this](std::string_view what){
         return [this, what](RunState&, const Pokemon::InterruptVerdict&){
-            m_dialog_notes.push_back(std::string(what) + " cleared before the next step.");
+            m_dialog_notes.push_back(std::format("{} cleared before the next step.", what));
             m_dialog_up = false;
             return Pokemon::outcome_ok();
         };

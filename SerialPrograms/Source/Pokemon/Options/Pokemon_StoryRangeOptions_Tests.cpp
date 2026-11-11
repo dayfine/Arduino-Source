@@ -11,8 +11,8 @@
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStorySelect.h"
-#include "Pokemon/AutoStory/Pokemon_StoryRun_Tests.h"
 #include "Pokemon_StoryRangeOptions.h"
+#include "Pokemon_StoryRangeOptions_Tests.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{

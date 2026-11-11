@@ -4,6 +4,7 @@
  *
  */
 
+#include <format>
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/ImageTools/ImageStats.h"
@@ -142,7 +143,7 @@ public:
         const std::string& image,
         bool expected
     )
-        : ImageUnitTest("PokemonFRLG::WhiteDialogDetector - " + image, {image})
+        : ImageUnitTest(std::format("PokemonFRLG::WhiteDialogDetector - {}", image), {image})
         , m_expected(expected)
     {}
 
@@ -159,7 +160,7 @@ private:
     bool m_expected;
 };
 
-void add_tests_WhiteDialogDetector(UnitTestDatabase& database){
+static void add_tests_WhiteDialogDetector(UnitTestDatabase& database){
     //  The S.S. Anne's white hull fills the dialog area, with no frame around it.
     database.add<Test_WhiteDialogDetector>("PokemonFRLG/WhiteDialogDetector/SSAnne1F_Corridor_False.png", false);
     database.add<Test_WhiteDialogDetector>("PokemonFRLG/WhiteDialogDetector/SSAnne1F_CorridorWorker_False.png", false);
@@ -180,7 +181,7 @@ public:
         const std::string& image,
         bool expected
     )
-        : ImageUnitTest("PokemonFRLG::AdvanceWhiteDialogDetector - " + image, {image})
+        : ImageUnitTest(std::format("PokemonFRLG::AdvanceWhiteDialogDetector - {}", image), {image})
         , m_expected(expected)
     {}
 
@@ -198,6 +199,7 @@ private:
 };
 
 void add_tests_AdvanceWhiteDialogDetector(UnitTestDatabase& database){
+    add_tests_WhiteDialogDetector(database);
     database.add<Test_AdvanceWhiteDialogDetector>("PokemonFRLG/AdvanceWhiteDialogDetector/Eng-Select_False.png", false);
     database.add<Test_AdvanceWhiteDialogDetector>("PokemonFRLG/AdvanceWhiteDialogDetector/English-Bulba_True.png", true);
     database.add<Test_AdvanceWhiteDialogDetector>("PokemonFRLG/AdvanceWhiteDialogDetector/Ger-KennyExile-Bulba_True.png", true);
@@ -217,7 +219,7 @@ public:
         const std::string& image,
         bool expected
     )
-        : ImageUnitTest("PokemonFRLG::SelectionDialogDetector - " + image, {image})
+        : ImageUnitTest(std::format("PokemonFRLG::SelectionDialogDetector - {}", image), {image})
         , m_expected(expected)
     {}
 

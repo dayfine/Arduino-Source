@@ -58,7 +58,7 @@ enum class StoryActionId{
     GAME,
 };
 //  "route", "game": the action's name in logs and test traces.
-const char* story_action_name(StoryActionId id);
+std::string_view story_action_name(StoryActionId id);
 
 //  A row of FRLG's table: the action for steps of `kind` whose variant is
 //  named `variant`, or for every other step of `kind` if it is empty.

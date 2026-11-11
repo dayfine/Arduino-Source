@@ -8,7 +8,10 @@
  *
  */
 
+//  code-health: allow file_lines -- stage 4 adds the Cerulean trigger and Nugget Bridge walk tests, which share this file's walk helpers; split with them later
+
 #include <algorithm>
+#include <format>
 #include <functional>
 #include <optional>
 #include <set>
@@ -26,6 +29,8 @@
 #include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
 #include "PokemonFRLG_AutoStoryPcStorage.h"
+#include "PokemonFRLG_AutoStoryMoveData.h"
+#include "PokemonFRLG_AutoStoryStepTable.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 
 namespace PokemonAutomation{
@@ -40,7 +45,7 @@ struct AutoStoryInput{
 };
 
 struct AutoStoryExpectation{
-    const char* description;
+    std::string_view description;
 };
 
 struct AutoStoryTestCase{
@@ -361,7 +366,7 @@ UnitTestResult test_runs_after_shoes(){
             }
             const MoveSpeed expected = has_shoes ? MoveSpeed::RUN : MoveSpeed::WALK;
             if (move_speed(step) != expected){
-                return checkpoint.id + "/" + step.name + ": expected to " + move_speed_name(expected) + ", it would " + move_speed_name(move_speed(step)) + ".";
+                return std::format("{}/{}: expected to {}, it would {}.", checkpoint.id, step.name, move_speed_name(expected), move_speed_name(move_speed(step)));
             }
             runs += has_shoes ? 1 : 0;
         }
@@ -798,7 +803,7 @@ UnitTestResult test_save_place_error(){
     return true;
 }
 
-const char* save_action_name(SaveAction action){
+std::string_view save_action_name(SaveAction action){
     switch (action){
     case SaveAction::WAIT:
         return "WAIT";
@@ -838,8 +843,7 @@ UnitTestResult test_save_dialog(){
         for (size_t i = 0; i < c.screens.size(); i++){
             const SaveAction action = dialog.next(c.screens[i].first);
             if (action != c.screens[i].second){
-                return c.name + ", screen " + std::to_string(i + 1) + ": expected " + save_action_name(c.screens[i].second) +
-                    ", got " + save_action_name(action) + ".";
+                return std::format("{}, screen {}: expected {}, got {}.", c.name, i + 1, save_action_name(c.screens[i].second), save_action_name(action));
             }
         }
     }
@@ -847,11 +851,43 @@ UnitTestResult test_save_dialog(){
 }
 
 UnitTestResult test_lint(){
+    //  FRLG's own action args (a battle's trainer and foes), with no console.
+    const Pokemon::StoryActionTable table = make_story_action_table([](StoryActionId){
+        return Pokemon::StoryAction{};
+    });
     for (const StoryCheckpoint& checkpoint : story_checkpoints()){
-        const std::vector<std::string> problems = Pokemon::lint_story_checkpoint(checkpoint);
+        const std::vector<std::string> problems = Pokemon::lint_story_checkpoint(checkpoint, table);
         if (!problems.empty()){
             return problems[0];
         }
+    }
+    return true;
+}
+
+//  Every battle step in the table names its trainer and that trainer's
+//  party, each species one the battle data has.
+UnitTestResult test_story_trainers(){
+    size_t battles = 0;
+    for (const StoryCheckpoint& checkpoint : story_checkpoints()){
+        for (const StoryStep& step : checkpoint.steps){
+            if (step.kind != StoryStepKind::BATTLE){
+                continue;
+            }
+            battles++;
+            const std::string& trainer = Pokemon::story_arg<std::string>(step.args, "trainer");
+            const std::vector<std::string>& foes = Pokemon::story_arg<std::vector<std::string>>(step.args, "foes");
+            if (trainer.empty() || foes.empty()){
+                return std::format("{}, {}: no trainer or no foes.", checkpoint.id, step.name);
+            }
+            for (const std::string& foe : foes){
+                if (species_data(foe) == nullptr){
+                    return std::format("{}, {}: unknown foe {}.", checkpoint.id, step.name, foe);
+                }
+            }
+        }
+    }
+    if (battles == 0){
+        return "Expected battle steps in the table.";
     }
     return true;
 }
@@ -873,7 +909,7 @@ UnitTestResult test_unique_names(){
 //  was missed.
 UnitTestResult test_intro_names(){
     struct Case{
-        const char* what;
+        std::string_view what;
         IntroNameScreen screen;
         size_t keyboards_seen;
         size_t presets_picked;
@@ -964,22 +1000,75 @@ UnitTestResult test_option_presses(){
 }
 
 const AutoStoryTestCase AUTO_STORY_CASES[] = {
-    {.input = {.name = "every route plans, and checkpoints chain", .body = test_routes_and_chain}, .expectation = {.description = "verifies route planning validity across all chained checkpoints"},},
-    {.input = {.name = "step names are unique per checkpoint", .body = test_unique_names}, .expectation = {.description = "ensures step identifier uniqueness within checkpoints"},},
-    {.input = {.name = "every save has a place on the save card", .body = test_save_places}, .expectation = {.description = "validates save location identifiers on save card"},},
-    {.input = {.name = "a reload's save is checked against the start", .body = test_save_place_error}, .expectation = {.description = "detects mismatch between checkpoint initial state and save point"},},
-    {.input = {.name = "save dialogs: every YES/NO is YES, a cancel fails", .body = test_save_dialog}, .expectation = {.description = "verifies save confirmation prompt interactions"},},
-    {.input = {.name = "every checkpoint lints clean", .body = test_lint}, .expectation = {.description = "validates semantic lint rules across story step sequence"},},
-    {.input = {.name = "Pewter Gym walks", .body = test_pewter_gym_walks}, .expectation = {.description = "verifies Pewter Gym route planning and obstacle avoidance"},},
-    {.input = {.name = "Pewter: to the aide's trigger", .body = test_pewter_aide_walk}, .expectation = {.description = "plans path to Running Shoes aide trigger tile"},},
-    {.input = {.name = "routes run after the Running Shoes", .body = test_runs_after_shoes}, .expectation = {.description = "switches movement speed to running once shoes acquired"},},
-    {.input = {.name = "intro: names, the rival's from the list", .body = test_intro_names}, .expectation = {.description = "verifies character and rival naming inputs"},},
-    {.input = {.name = "options: RIGHT presses from the shown value", .body = test_option_presses}, .expectation = {.description = "calculates Dpad RIGHT inputs for setting game options"},},
-    {.input = {.name = "Route 3: only the planned trainers' lines", .body = test_trainer_lines}, .expectation = {.description = "verifies route 3 trainer interaction sightlines"},},
-    {.input = {.name = "Route 3: Lass Robin stops the walk on (40, 9)", .body = test_robin_crossing}, .expectation = {.description = "verifies trainer interruption on route 3"},},
-    {.input = {.name = "00.12c: the Magikarp's deposit is skipped without Gift RNG", .body = test_magikarp_deposit_skippable}, .expectation = {.description = "skips magikarp deposit when gift rng is disabled"},},
-    {.input = {"Cerulean: the rival's and the Rocket's triggers", test_cerulean_triggers}, .expectation = {},},
-    {.input = {"Nugget Bridge: its five trainers, south to north", test_nugget_bridge_order}, .expectation = {},},};
+    {
+        .input = {.name = "every route plans, and checkpoints chain", .body = test_routes_and_chain},
+        .expectation = {.description = "verifies route planning validity across all chained checkpoints"},
+    },
+    {
+        .input = {.name = "step names are unique per checkpoint", .body = test_unique_names},
+        .expectation = {.description = "ensures step identifier uniqueness within checkpoints"},
+    },
+    {
+        .input = {.name = "every save has a place on the save card", .body = test_save_places},
+        .expectation = {.description = "validates save location identifiers on save card"},
+    },
+    {
+        .input = {.name = "a reload's save is checked against the start", .body = test_save_place_error},
+        .expectation = {.description = "detects mismatch between checkpoint initial state and save point"},
+    },
+    {
+        .input = {.name = "save dialogs: every YES/NO is YES, a cancel fails", .body = test_save_dialog},
+        .expectation = {.description = "verifies save confirmation prompt interactions"},
+    },
+    {
+        .input = {.name = "every checkpoint lints clean", .body = test_lint},
+        .expectation = {.description = "validates semantic lint rules across story step sequence"},
+    },
+    {
+        .input = {.name = "every story battle's plan names a trainer and its party", .body = test_story_trainers},
+        .expectation = {.description = "ensures all scripted story battles list known foes"},
+    },
+    {
+        .input = {.name = "Pewter Gym walks", .body = test_pewter_gym_walks},
+        .expectation = {.description = "verifies Pewter Gym route planning and obstacle avoidance"},
+    },
+    {
+        .input = {.name = "Pewter: to the aide's trigger", .body = test_pewter_aide_walk},
+        .expectation = {.description = "plans path to Running Shoes aide trigger tile"},
+    },
+    {
+        .input = {.name = "routes run after the Running Shoes", .body = test_runs_after_shoes},
+        .expectation = {.description = "switches movement speed to running once shoes acquired"},
+    },
+    {
+        .input = {.name = "intro: names, the rival's from the list", .body = test_intro_names},
+        .expectation = {.description = "verifies character and rival naming inputs"},
+    },
+    {
+        .input = {.name = "options: RIGHT presses from the shown value", .body = test_option_presses},
+        .expectation = {.description = "calculates Dpad RIGHT inputs for setting game options"},
+    },
+    {
+        .input = {.name = "Route 3: only the planned trainers' lines", .body = test_trainer_lines},
+        .expectation = {.description = "verifies route 3 trainer interaction sightlines"},
+    },
+    {
+        .input = {.name = "Route 3: Lass Robin stops the walk on (40, 9)", .body = test_robin_crossing},
+        .expectation = {.description = "verifies trainer interruption on route 3"},
+    },
+    {
+        .input = {.name = "00.12c: the Magikarp's deposit is skipped without Gift RNG", .body = test_magikarp_deposit_skippable},
+        .expectation = {.description = "skips magikarp deposit when gift rng is disabled"},
+    },
+    {
+        .input = {.name = "Cerulean: the rival's and the Rocket's triggers", .body = test_cerulean_triggers},
+        .expectation = {.description = "verifies the Cerulean rival's and the Nugget Bridge Rocket's triggers"},
+    },
+    {
+        .input = {.name = "Nugget Bridge: its five trainers, south to north", .body = test_nugget_bridge_order},
+        .expectation = {.description = "verifies the Nugget Bridge trainers' order"},
+    },
+};
 
 } // namespace
 

@@ -48,7 +48,7 @@ struct AutoStoryItemsInput{
 };
 
 struct AutoStoryItemsExpectation{
-    const char* description;
+    std::string_view description;
 };
 
 struct AutoStoryItemsTestCase{
@@ -519,24 +519,24 @@ void add_tests_AutoStoryItems(UnitTestDatabase& database){
     //  text box (console B, 2026-11-03: 9 minutes of A and B there).
     database.add<Test_BattleShows>("PokemonFRLG/WildEncounterReader/eng_chansey.jpg", true);
     database.add<Test_BattleShows>("PokemonFRLG/AutoStoryBattle/MtMoonB2F_AfterRun_False.png");
-    for (const char* image : {
+    for (std::string_view image : {
         "MtMoon1F_HpGreen_45of45.png",
         "MtMoon1F_HpGreen_27of45.png",
         "MtMoonB2F_HpYellow_17of55.png",
         "MtMoonB2F_HpYellow_17of55_BarLow.png",
     }){
-        database.add<Test_PartyHp>(std::string("PokemonFRLG/AutoStoryBattle/") + image);
+        database.add<Test_PartyHp>(std::format("PokemonFRLG/AutoStoryBattle/{}", image));
     }
     //  The YES/NO to "Delete a move to make room for BITE?" (Miguel), and the
     //  S.S. Anne rival's and Misty's send-outs, which the move prompt's
     //  detector alone took for one (console B, 2026-11-03).
-    for (const char* image : {
+    for (std::string_view image : {
         "Miguel_DeleteMoveForBite_YesNo_True.png",
         "SSAnneRival_SentOutRaticate_YesNo_False.png",
         "SSAnneRival_SentOutKadabra_YesNo_False.png",
         "Misty_SentOutStarmie_YesNo_False.png",
     }){
-        database.add<Test_BattleYesNo>(std::string("PokemonFRLG/AutoStoryBattle/") + image);
+        database.add<Test_BattleYesNo>(std::format("PokemonFRLG/AutoStoryBattle/{}", image));
     }
     //  The S.S. Anne rival's Pidgeotto at full HP, its Raticate low.
     database.add<Test_FoeHp>("PokemonFRLG/AutoStoryBattle/SSAnneRival_Pidgeotto_FoeHp_48of48.png");

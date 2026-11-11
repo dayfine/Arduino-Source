@@ -68,14 +68,14 @@ const std::vector<MapData>& maps(){
     return MAPS;
 }
 
-MapPosition at(const char* map, int x, int y){
+MapPosition at(const std::string& map, int x, int y){
     return MapPosition{map, {x, y}};
 }
 
 //  Where a warp to point `point` of `map` puts the player: there, or a tile
 //  south when the game walks them out of a door.
-MapPosition arrival(const char* map, const char* point){
-    const TilePos tile = map_point(maps(), map, point);
+MapPosition arrival(const std::string& map, std::string_view point){
+    const TilePos tile = map_point(maps(), map, std::string(point));
     for (const MapData& data : maps()){
         if (data.name == map && walks_out_on_arrival(data, tile)){
             return MapPosition{map, tile.next(Direction::SOUTH)};
@@ -868,7 +868,7 @@ UnitTestResult test_cerulean_gym_lines(){
         MapPosition from;
         Direction direction;
         MapPosition onto;
-        const char* trainer;
+        std::string_view trainer;
     } LINES[] = {
         {at("CeruleanCity_Gym", 9, 13), Direction::NORTH, at("CeruleanCity_Gym", 9, 12), "swimmer_m_water"},
         {at("CeruleanCity_Gym", 9, 7), Direction::WEST, at("CeruleanCity_Gym", 8, 7), "picnicker"},
@@ -877,7 +877,7 @@ UnitTestResult test_cerulean_gym_lines(){
         SimCase c{.start = line.from, .facing = line.direction, .goal = line.onto};
         c.route = std::vector<RouteStep>{leg(line.direction, 1, c.goal, false)};
         const SimRun now = run_case(c);
-        if (!arrived(now, c.goal) || now.state.trainers_beaten != std::vector<std::string>{line.trainer}){
+        if (!arrived(now, c.goal) || now.state.trainers_beaten != std::vector<std::string>{std::string(line.trainer)}){
             return std::format("Expected the {} fought on the step onto {}:", line.trainer, to_string(line.onto)) + describe(now);
         }
     }
@@ -912,13 +912,13 @@ UnitTestResult test_nugget_bridge_legs(){
     }
     const struct{
         int row;
-        const char* trainer;
+        std::string_view trainer;
     } LINES[] = {{31, "bug_catcher"}, {28, "lass"}, {25, "youngster"}, {22, "lass"}, {19, "camper"}};
     for (const auto& line : LINES){
         SimCase c{.start = at("Route24", 11, line.row + 1), .facing = Direction::NORTH, .goal = at("Route24", 11, line.row)};
         c.route = std::vector<RouteStep>{leg(Direction::NORTH, 1, c.goal, false)};
         const SimRun now = run_case(c);
-        if (!arrived(now, c.goal) || now.state.trainers_beaten != std::vector<std::string>{line.trainer}){
+        if (!arrived(now, c.goal) || now.state.trainers_beaten != std::vector<std::string>{std::string(line.trainer)}){
             return std::format("Expected the {} on row {} fought beside the player:", line.trainer, line.row) + describe(now);
         }
     }

@@ -123,7 +123,7 @@ UnitTestResult test_route6_jeff_only(){
         }
     }
     if (!(house.state().position == MapPosition{"CeruleanCity", {32, 7}}) || !house.state().trainers_beaten.empty()){
-        return "00.21: expected to reach (32, 7) west of the Rocket, meeting no one, not " + to_string(house.state().position) + ".";
+        return std::format("00.21: expected to reach (32, 7) west of the Rocket, meeting no one, not {}.", to_string(house.state().position));
     }
     const size_t battle = step_index(*row, "rocket_grunt");
     const StoryPose after_rocket = *story_pose(Pokemon::pose_of(*row->steps[battle].pose_after));

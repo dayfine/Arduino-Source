@@ -71,7 +71,7 @@ public:
         return view;
     }
     virtual void press(PcPress press) override{
-        presses.push_back(pc_press_name(press));
+        presses.emplace_back(pc_press_name(press));
         switch (m_screen){
         case PcScreen::OVERWORLD:
             if (press == PcPress::A){

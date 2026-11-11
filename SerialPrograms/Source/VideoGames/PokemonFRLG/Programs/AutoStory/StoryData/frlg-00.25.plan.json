@@ -14,6 +14,10 @@
       {
         "id": "lt_surge",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_LEADER_LT_SURGE",
+          "foes": ["voltorb", "pikachu", "raichu"]
+        },
         "declared_after": {"map": "VermilionCity_Gym", "tiles": [[5, 3]], "facing": "north"},
         "why": "Voltorb, Pikachu and Raichu; THUNDERBADGE and TM34"
       },
