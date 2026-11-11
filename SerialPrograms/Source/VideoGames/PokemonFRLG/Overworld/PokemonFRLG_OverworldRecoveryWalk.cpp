@@ -162,6 +162,7 @@ StepWalk walk_step_taps(
     };
     calls.clear = [&](size_t index){ watched[index]->clear(console, context); };
     calls.log = [&](const std::string& message){ console.log(message, COLOR_ORANGE); };
+    calls.facing = [&]{ return read_facing(console, context); };
     calls.tries = STEP_TAP_TRIES;
     const StepOutcome outcome = count_bike_taps(step, calls);
     out.stopped = outcome.walked;
