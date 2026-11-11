@@ -18,6 +18,8 @@
 #include "VideoGames/PokemonLZA/Inference/Battles/PokemonLZA_MoveEffectivenessSymbol.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_DialogDetector.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_TrainerBattle.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryAutosaveDetector.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryPartyRowCount.h"
 #include "PokemonLZA_AutoStoryCatches.h"
 #include "PokemonLZA_AutoStoryScenes.h"
 
@@ -63,11 +65,29 @@ ScreensPassed advance_text_and_cards(ConsoleHandle& console, ProControllerContex
 }
 
 //  ZL+ZR held 1.5 s throws a ball at the locked target (0.5 s only aims),
-//  then the ball's flight, shakes and any loading screen.
-void throw_ball(ProControllerContext& context){
-    pbf_press_button(context, BUTTON_ZL, 500ms, 100ms);
-    pbf_press_button(context, BUTTON_ZL | BUTTON_ZR, 1500ms, 6000ms);
+//  then the ball's flight, shakes and any loading screen. Returns whether
+//  the autosave badge showed meanwhile: the game autosaves on a catch.
+bool throw_ball(ConsoleHandle& console, ProControllerContext& context){
+    DetectorToFinder<AutosaveDetector> autosave("AutosaveWatcher", 100ms);
+    const int ret = run_until<ProControllerContext>(
+        console, context,
+        [](ProControllerContext& context){
+            pbf_press_button(context, BUTTON_ZL, 500ms, 100ms);
+            pbf_press_button(context, BUTTON_ZL | BUTTON_ZR, 1500ms, 6000ms);
+        },
+        {autosave}
+    );
+    if (ret == 0){
+        context.wait_for(3000ms);
+    }
     context.wait_for_all_requests();
+    return ret == 0;
+}
+
+//  The party row's count now.
+size_t party_row_now(ConsoleHandle& console){
+    const VideoSnapshot frame = console.video().snapshot();
+    return frame ? party_row_count(frame) : 0;
 }
 
 //  Turns the camera in place (10 x 1 s), mashing ZL, until the move
@@ -115,13 +135,20 @@ ThrowCount throw_here(ConsoleHandle& console, ProControllerContext& context, Thr
         if (!lock_on_ahead(console, context) && !scan_for_lock_on(console, context)){
             break;
         }
-        throw_ball(context);
+        //  A catch shows no text (Scatterbug, console B 2026-11-10): it
+        //  autosaves, and the party row gains a Pokemon until it is full.
+        const size_t party_before = party_row_now(console);
+        const bool saved = throw_ball(console, context);
         count.throws++;
-        const ScreensPassed passed = advance_text_and_cards(console, context);
+        advance_text_and_cards(console, context);
+        const size_t party_after = party_row_now(console);
         pbf_press_button(context, BUTTON_L, 160ms, 400ms);
-        if (passed.card || passed.text){
+        console.log(std::format(
+            "catch_in_zone(): throw {}: autosave {}, party row {} -> {}.",
+            count.throws, saved ? "seen" : "not seen", party_before, party_after
+        ));
+        if (saved || party_after > party_before){
             count.caught++;
-            console.log(std::format("catch_in_zone(): throw {}: text after it, a catch.", count.throws));
         }
     }
     return count;
@@ -215,8 +242,13 @@ void catch_in_zone(ConsoleHandle& console, ProControllerContext& context, int ca
     //  to throw at what is in front: 03.07 starts at 127 (console B,
     //  2026-11-10), with nothing to catch at the start.
     //  Taunie's two rocks stand between the start and the marker: a step
-    //  right first, around them.
-    pbf_move_left_joystick(context, {1, 0}, 1000ms, 300ms);
+    //  right first, around them, from the start (a catch's autosave can
+    //  leave the save further on).
+    context.wait_for_all_requests();
+    const std::optional<ObjectiveMarker> start = read_objective_marker(console, console.video().snapshot());
+    if (start && start->distance >= 115){
+        pbf_move_left_joystick(context, {1, 0}, 1000ms, 300ms);
+    }
     ThrowCount count;
     for (int stop_at : {100, 60}){
         if (count.caught >= catches_wanted){
@@ -250,7 +282,7 @@ void walk_to_zone_gate(ConsoleHandle& console, ProControllerContext& context){
 
 void catch_tutorial(ConsoleHandle& console, ProControllerContext& context, int max_throws){
     for (int i = 0; i < max_throws; i++){
-        throw_ball(context);
+        throw_ball(console, context);
         if (advance_text_and_cards(console, context).card){
             console.log(std::format("catch_tutorial(): caught on throw {}.", i + 1));
             return;
@@ -293,7 +325,7 @@ void battle_then_catch(
             return;
         }
         advance_text_and_cards(console, context);
-        throw_ball(context);
+        throw_ball(console, context);
         advance_text_and_cards(console, context);
     }
     OperationFailedExceptionWithScreenshot::fire(
