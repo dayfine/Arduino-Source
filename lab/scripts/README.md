@@ -64,16 +64,21 @@ The SDK needs Python 3.9+; the default `python3`/`pip3` on the lab Mac is 3.8, s
 ```sh
 /opt/homebrew/bin/python3.12 -m venv ~/.venvs/lab-claude
 ~/.venvs/lab-claude/bin/pip install anthropic pillow   # pillow downscales frames; sips is the fallback
-brew install anthropics/tap/ant
-ant auth login        # browser login; stores ~/.config/anthropic/credentials/default.json
-ant auth status       # should show "Active profile: default"
 ```
 
-No API key is needed: `Anthropic()` reads the `ant` profile. `ANTHROPIC_API_KEY`, if set, wins
-over the profile (unset it if requests go to the wrong account). Check the setup:
+The scripts use the lab's own API key, never your login or `ANTHROPIC_API_KEY`, so lab spend is
+tracked apart from other usage:
+
+1. In the Claude Console, create a workspace `pa-lab` and set its monthly spend limit ($120).
+2. Create an API key in that workspace.
+3. Copy it, then:
+   `mkdir -p ~/.config/pokemonautomation && pbpaste > ~/.config/pokemonautomation/claude-lab.key && chmod 600 ~/.config/pokemonautomation/claude-lab.key`
+   (`LAB_CLAUDE_KEY_FILE` overrides the path.) Without the file the scripts stop with an error.
+
+Check the setup:
 
 ```sh
-~/.venvs/lab-claude/bin/python -c "import anthropic; print(anthropic.Anthropic().models.retrieve('claude-haiku-5-5').id)"
+cd lab/scripts && ~/.venvs/lab-claude/bin/python -c "import lab_claude; print(lab_claude.make_client().models.retrieve('claude-haiku-5-5').id)"
 ```
 
 Run every script below with `~/.venvs/lab-claude/bin/python` (written `python3` below for short).
@@ -94,6 +99,20 @@ workspace spend limit in the Console.
   (effort low), prints the JSON verdict and exits 2 on a dead feed, color bars or HOME, 1 on error.
 
 Tests (mocked client): `python3 -m unittest discover -s lab/scripts -p test_lab_claude.py -v`.
+
+## Labeling shots for detector sets
+
+`label_shots.py` labels a directory of lab screenshots through the Message Batches API (half price)
+with `claude-haiku-5-5` (`--model` to override). Each label is `screen` (overworld, battle, dialog,
+menu, home, fade_black, color_bars, other), `player_visible`, `text_box_visible` and a short `note`.
+
+- `python3 lab/scripts/label_shots.py ~/BDSPLab/shots/<run> --game bdsp --out labels.jsonl --dry-run`
+  prints the shot count and the first request, without network or SDK.
+- Without `--dry-run` it submits one batch, polls up to `--max-minutes` (default 60) and appends
+  `{path, label, model}` lines keyed by custom_id. If the batch is still running it prints the batch
+  id and exits 2; collect later with `--resume <batch_id>`. Shots already in the output are skipped.
+
+Tests (mocked client): `python3 -m unittest discover -s lab/scripts -p test_label_shots.py -v`.
 
 ## Claude route review
 
