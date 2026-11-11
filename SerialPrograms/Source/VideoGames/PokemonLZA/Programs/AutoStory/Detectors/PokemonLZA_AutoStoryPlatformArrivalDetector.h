@@ -1,22 +1,20 @@
-/*  PokemonLZA AutoStory - Opening detectors
+/*  PokemonLZA AutoStory - Platform arrival detector
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The station platform once the new game's opening cutscene ends once the cutscene ends and the player has control
- *    (PlatformArrivalDetector): the frame's top and sides against a
- *    reference of that first frame, with the player cropped out. The
- *    badges seen on the way are PokemonLZA_AutoStoryBadgeDetectors.h.
+ *  The station platform once the new game's opening cutscene ends and the
+ *  player has control (PlatformArrivalDetector): the frame's top and sides
+ *  against a reference of that first frame, with the player cropped out.
  *
  */
 
-#ifndef PokemonAutomation_PokemonLZA_AutoStoryOpeningDetectors_H
-#define PokemonAutomation_PokemonLZA_AutoStoryOpeningDetectors_H
+#ifndef PokemonAutomation_PokemonLZA_AutoStoryPlatformArrivalDetector_H
+#define PokemonAutomation_PokemonLZA_AutoStoryPlatformArrivalDetector_H
 
 #include <string>
 #include <utility>
 #include <vector>
 #include "Common/Cpp/Color.h"
-#include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonTools/VisualDetector.h"
@@ -76,12 +74,6 @@ private:
     Color m_color;
     PlatformDistances m_last{.top = 0, .left = 0, .right = 0};
 };
-
-
-//  Registers the tests of these and the badge detectors: synthetic frames always; the opening's
-//  frames from the folders in PLZA_OPENING_FRAMES and PLZA_USER_OPENING_FRAMES,
-//  and 01.01's from PLZA_0101_RUN1_FRAMES, each skipped when unset.
-void add_tests_AutoStoryOpeningDetectors(UnitTestDatabase& database);
 
 
 

@@ -32,12 +32,6 @@ StoryActionNotImplemented::StoryActionNotImplemented(std::string message)
     : OperationFailedException(ErrorReportMode::NO_ERROR_REPORT, std::move(message))
 {}
 
-void throw_not_implemented(ConsoleHandle& console, std::string_view action, std::string_view todo){
-    const std::string message = std::format("PLZA AutoStory: {} is not implemented yet. TODO: {}", action, todo);
-    console.log(message, COLOR_RED);
-    throw StoryActionNotImplemented(message);
-}
-
 
 void fight_battle(
     ProgramEnvironment& env, ConsoleHandle& console, ProControllerContext& context,
@@ -117,19 +111,6 @@ void fight_battle_in_progress(
     }
 }
 
-void heal_at_pokemon_center(ConsoleHandle& console, ProControllerContext&){
-    throw_not_implemented(
-        console, "heal_at_pokemon_center",
-        "talk to the nurse: no LZA program heals at a Pokemon Center yet."
-    );
-}
-
-void buy_items(ConsoleHandle& console, ProControllerContext&, const std::vector<std::string>& items){
-    throw_not_implemented(
-        console, std::format("buy_items ({} items)", items.size()),
-        "the Center counter's shop menu. StallBuyer's purchase loop is for stalls and lives in that program."
-    );
-}
 
 
 namespace{

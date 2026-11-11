@@ -26,9 +26,14 @@
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryBackend.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryGame.h"
 #include "VideoGames/PokemonLZA/Options/PokemonLZA_BattleAIOption.h"
-#include "PokemonLZA_AutoStoryBadgeDetectors.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryAdvanceArrowDetector.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryAutosaveDetector.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryControlsHintDetector.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMainMissionBannerDetector.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMissionCompleteDetector.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryPlatformArrivalDetector.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStorySkipPromptDetector.h"
 #include "PokemonLZA_AutoStoryObservation.h"
-#include "PokemonLZA_AutoStoryOpeningDetectors.h"
 #include "PokemonLZA_AutoStoryScreenEvents.h"
 
 namespace PokemonAutomation{

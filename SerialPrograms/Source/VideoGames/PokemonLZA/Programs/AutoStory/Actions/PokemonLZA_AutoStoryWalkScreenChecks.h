@@ -1,21 +1,22 @@
-/*  PokemonLZA AutoStory - Guarded walks
+/*  PokemonLZA AutoStory - Walk screen checks
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The checks around a story walk (PokemonLZA_AutoStoryMoves.h), which
- *  itself reads nothing: it starts only on a screen with no box, choice,
- *  fade or battle, and a walk that ends on a fade stops on it.
+ *  What a story walk (run_story_move(), PokemonLZA_AutoStoryMoves.h) reads
+ *  of the screen, since the walk itself reads nothing: before it, that the
+ *  player has free control (check_can_walk()); during its last leg, the
+ *  fade it ends on (walk_until()).
  *
  */
 
-#ifndef PokemonAutomation_PokemonLZA_AutoStoryGuardedWalks_H
-#define PokemonAutomation_PokemonLZA_AutoStoryGuardedWalks_H
+#ifndef PokemonAutomation_PokemonLZA_AutoStoryWalkScreenChecks_H
+#define PokemonAutomation_PokemonLZA_AutoStoryWalkScreenChecks_H
 
 #include <string_view>
 #include "CommonTools/ScreenMachine/ScreenObservation.h"
 #include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
-#include "PokemonLZA_AutoStoryObservation.h"
-#include "PokemonLZA_AutoStoryBackend.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryObservation.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBackend.h"
 #include "PokemonLZA_AutoStoryMoves.h"
 
 namespace PokemonAutomation{

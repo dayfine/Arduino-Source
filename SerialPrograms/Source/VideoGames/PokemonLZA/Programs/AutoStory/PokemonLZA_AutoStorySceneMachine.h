@@ -16,7 +16,7 @@
  *  and it counts as busy. The advance chevron (ADVANCE_ARROW_READING) is
  *  text to press on, with or without a box.
  *
- *  The walks between the scenes are PokemonLZA_AutoStoryGuardedWalks.h.
+ *  The walks between the scenes are Actions/PokemonLZA_AutoStoryWalkScreenChecks.h.
  *
  */
 

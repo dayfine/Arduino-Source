@@ -16,7 +16,7 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "PokemonLZA_AutoStoryGame.h"
 #include "PokemonLZA_AutoStoryScreenEvents.h"
-#include "PokemonLZA_AutoStoryTable.h"
+#include "PokemonLZA_AutoStoryStoryFiles.h"
 #include "PokemonLZA_AutoStoryTable_Tests.h"
 
 namespace PokemonAutomation{
@@ -137,10 +137,10 @@ UnitTestResult test_not_implemented_actions(Logger&){
 UnitTestResult test_autosave_rows(Logger&){
     size_t seen = 0;
     for (const StoryCheckpoint& row : story_checkpoints()){
-        if (row.id == "01.03" && !story_row_saves(row)){
+        if (row.id == "01.03" && !story_row_saves(builtin_story_data(), row)){
             return "Expected 01.03 to save through the menu.";
         }
-        if (!story_row_saves(row)){
+        if (!story_row_saves(builtin_story_data(), row)){
             seen++;
         }
     }
@@ -153,7 +153,7 @@ UnitTestResult test_autosave_rows(Logger&){
 //  A run can play from the new game to Wild Zone 1's gate (03.05) with no
 //  action that is not implemented.
 UnitTestResult test_ready_to_wild_zone_1(Logger&){
-    const size_t ready = story_rows_ready();
+    const size_t ready = story_rows_ready(story_checkpoints());
     if (ready == 0 || story_checkpoints()[ready - 1].id < "03.05"){
         return std::format(
             "Expected rows 01.00-03.05 to be ready, {} are ({}).",
