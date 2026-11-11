@@ -43,7 +43,7 @@
         ]
       ]
     },
-    "title": "Potions, back to Route 202's save spot"
+    "title": "Poke Mart lady for Potions, back to Route 202's save spot"
   },
   "execution": {
     "on_failure": "reload_and_retry",
