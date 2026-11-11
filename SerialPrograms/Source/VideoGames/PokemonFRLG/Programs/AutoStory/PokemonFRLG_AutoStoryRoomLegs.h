@@ -30,8 +30,10 @@ const std::vector<RoomLeg>& center_exit_legs();
 //  panel (LIFT_PANEL_FRONT), facing it.
 const std::vector<RoomLeg>& lift_in_legs();
 
-//  Out of the lift, from below the panel: east 2, south 2 onto the arrow
-//  warp, south through it, onto the floor picked's lift door.
+//  Out of the lift, from below the panel: east 2, south 3 onto the arrow
+//  warp and through it, onto the floor picked's lift door. On the console
+//  the second step may take the warp; the third then walks into the wall
+//  below the door. The fade only dims the screen (RoomLeg::dims).
 const std::vector<RoomLeg>& lift_out_legs();
 
 //  The legs of the Center's step `variant`; empty if it isn't one.

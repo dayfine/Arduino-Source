@@ -41,11 +41,17 @@ bool is_center_variant(std::string_view variant);
 
 //  A straight piece of a room's script: `tiles` steps `direction`, one
 //  tap a tile; none: a turn to face `direction`. `warps`: the last step
-//  takes a warp, whose fade is waited out.
+//  takes a warp, whose fade is waited out. `dims`: the warp's fade only
+//  dims the screen, never black (the lift's way out; console B,
+//  2026-11-10, 00.32 lift_to_b4f), so the warp is confirmed by the scene
+//  from before the leg's first step gone and settled, and any step of the
+//  leg may take it. `to`: the warp's place, for the log.
 struct RoomLeg{
     Pokemon::Direction direction = Pokemon::Direction::NORTH;
     int tiles = 0;
     bool warps = false;
+    bool dims = false;
+    std::string_view to = {};
 };
 
 //  On the console: the legs, a step tap a tile (step_once()), each warp's
