@@ -19,9 +19,10 @@
       },
       {
         "id": "leave_hotel_z",
-        "kind": "scene",
-        "why": "steps 40-41: A Leave, the Main Menu tutorial card",
-        "action": "a"
+        "kind": "game_action",
+        "why": "steps 40-41: A Leave at the door (a scene step ends at once on its prompt), the Main Menu tutorial card",
+        "action": "mash_to_move_hints",
+        "args": {"press_a_first": true}
       },
       {
         "id": "to_taunie_at_gate",

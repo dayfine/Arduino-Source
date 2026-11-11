@@ -54,9 +54,9 @@
       {
         "id": "lobby_scene",
         "kind": "game_action",
-        "why": "step 39: the ride, Z-A Royale, the app, the new outfit, AZ, Lida; autosave. The lobby may show no party bar, so a long quiet is control",
+        "why": "step 39: the ride, Z-A Royale, the app, the new outfit, AZ, Lida; autosave. The lobby shows no party bar; the ride and the scene start hold 8+ s with no text, and two cards (blind A) close it, so 20 s quiet is control (console B, 2026-11-10)",
         "action": "mash_to_move_hints",
-        "args": {"quiet_ms": 8000, "min_length_ms": 10000, "quiet_is_control": true}
+        "args": {"quiet_ms": 20000, "min_length_ms": 30000, "quiet_is_control": true}
       }
     ],
     "metadata": {
