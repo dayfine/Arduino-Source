@@ -355,6 +355,12 @@ const AutoStoryStorySimCase AUTO_STORY_STORY_SIM_CASES[] = {
         .expectation = {},
     },
     {
+        .input = {"00.04b, the walk to the nurse waits out the Center's fade-in (lab-B, 2026-11-10)", [](Logger& logger){
+            return run_rows(logger, {.from = "00.04b", .to = "00.04b"});
+        }},
+        .expectation = {},
+    },
+    {
         .input = {"01.03, counted 19 taps south leaves player in hall", [](Logger& logger){
             return test_story_sim_step_failure(logger, "01.03", old_mine_hall_19("into_the_coal_room", Direction::SOUTH), "01.03 south_to_the_rock", "warp instead of a stop.");
         }},
