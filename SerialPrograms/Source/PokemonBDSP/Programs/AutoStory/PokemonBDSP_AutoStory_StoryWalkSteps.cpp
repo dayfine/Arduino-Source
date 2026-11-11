@@ -129,15 +129,18 @@ CenterEntry run_into_center(
     const std::function<bool()>& inside, const std::function<void()>& line_up,
     const std::string& label
 ){
+    //  Every way in settles before the walk to the nurse: the inside can
+    //  still fade in whether or not the run saw the fade.
+    CenterEntry entry = CenterEntry::LINED_UP;
     if (io.run_into_door(Direction::NORTH, run).any()){
-        io.settle(BUTTON_B, label + ": into the Center", false, "");
-        return CenterEntry::FADED;
+        entry = CenterEntry::FADED;
+    }else if (inside()){
+        entry = CenterEntry::INSIDE;
+    }else{
+        line_up();
     }
-    if (inside()){
-        return CenterEntry::INSIDE;
-    }
-    line_up();
-    return CenterEntry::LINED_UP;
+    io.settle(BUTTON_B, label + ": into the Center", false, "");
+    return entry;
 }
 
 TappedEnd tapped_end(const StoryWorld& world, const std::string& map, const TilePos& pos, const Pokemon::StoryLeg& leg){
@@ -346,7 +349,11 @@ size_t taps_to_banner(const Pose& from, Direction direction){
 Outcome StoryWalkSteps::tap_to_banner(const Pose& from, const StoryStep& step){
     const Direction direction = story_arg<Direction>(step.args, "direction");
     const std::string map = step.pose_after ? step.pose_after->map : "";
+    //  After the way through, the far side may still fade in, and a walk
+    //  then goes nowhere (lab-B 2026-11-10, 00.04b's Center): settle, as
+    //  after a door.
     if (through_already(step)){
+        m_io.settle(BUTTON_B, label_of(step), false, "");
         return Pokemon::outcome_ok();
     }
     const size_t limit = taps_to_banner(from, direction);
@@ -360,6 +367,7 @@ Outcome StoryWalkSteps::tap_to_banner(const Pose& from, const StoryStep& step){
     }else{
         log(std::format("[{}] {}: through to {} after {} taps {}.", m_row, step.name, map, *taps, direction_name(direction)));
     }
+    m_io.settle(BUTTON_B, label_of(step), false, "");
     return Pokemon::outcome_ok();
 }
 

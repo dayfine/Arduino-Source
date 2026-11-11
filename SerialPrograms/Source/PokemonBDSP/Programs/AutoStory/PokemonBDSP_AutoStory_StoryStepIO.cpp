@@ -294,7 +294,7 @@ std::optional<size_t> ConsoleStoryStepIO::tap_to_banner(Direction direction, con
             m_stream.log("[Banner] a fade, no \"" + banner + "\" banner after it: counting the fade.", COLOR_ORANGE);
         }
         if (look != TapLook::NOTHING){
-            m_context.wait_for(1000ms);
+            //  No fixed wait: the step settles after it (talk_over()).
             return tap;
         }
     }

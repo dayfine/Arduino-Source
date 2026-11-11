@@ -15,6 +15,7 @@
  *
  */
 
+#include <cstdio>
 #include <format>
 #include <functional>
 #include <map>
@@ -279,6 +280,40 @@ UnitTestResult roark_badge_speech(Logger& logger){
     const std::string early = play_scene(scene, {});
     logger.log("Roark's badge speech: " + (early.empty() ? std::string("over after the last line") : early));
     return passes(early);
+}
+
+//  How long talk_over() takes to settle inside a Pokemon Center after its
+//  fade (the heal's settle, lab-B 2026-11-10 00.04b), with the inside's
+//  visitors walking about the whole time. A visitor walking past changes
+//  the screen by 10 to 13.4 (WALK_TAP_BLOCKED_CHANGE's note, r244a), under
+//  its 16, so it reads still: settled TALK_OVER_QUIET after the fade. If the
+//  inside never read still (a screen moving more than that), the calm rule
+//  still ends it TALK_OVER_CALM after the fade. Either way it is bounded.
+UnitTestResult center_inside_settles(Logger& logger){
+    struct Inside{
+        const char* what;
+        bool moving;
+        Milliseconds most;
+    };
+    const Milliseconds fade = 1500ms;
+    const Milliseconds slack = 1000ms;
+    const Inside cases[] = {
+        {"visitors walking (reads still)", false, fade + Pokemon::TALK_OVER_QUIET + slack},
+        {"a screen never still", true, fade + Pokemon::TALK_OVER_CALM + slack},
+    };
+    for (const Inside& inside : cases){
+        const SimScene scene{
+            sim_fade("the Center's door fade", fade),
+            sim_pause(inside.what, 60000ms, inside.moving),
+        };
+        const std::string over = play_scene(scene, {});
+        logger.log(std::format("Center inside, {}: {}", inside.what, over));
+        long long ms = -1;
+        if (std::sscanf(over.c_str(), "judged over %lld ms in", &ms) != 1 || ms < fade.count() || ms > inside.most.count()){
+            return std::format("Center inside, {}: not settled between {} and {} ms: {}", inside.what, fade.count(), inside.most.count(), over);
+        }
+    }
+    return true;
 }
 
 //  01.07: after the tag battle the screen fades back from the battle and
@@ -613,6 +648,7 @@ const FailureCase AUTO_STORY_FAILURE_CASES[] = {
         return wanderers_move(logger, "01.08");
     }}, .expectation = {}},
     {.input = {"01.04 Roark's badge speech: the fanfare's pause, then a scene", roark_badge_speech}, .expectation = {}},
+    {.input = {"inside a Pokemon Center, the settle after the door's fade ends in bounded time with visitors walking", center_inside_settles}, .expectation = {}},
     {.input = {"01.07 after the tag battle the grunts run off before anyone speaks", grunts_run_off_before_rowan}, .expectation = {}},
     {.input = {"00.03 Rowan's scene opens with no box and fades home", rowans_scene_opens_with_no_box}, .expectation = {}},
     {.input = {"00.03 Mom's scene ends with a closing fade: over once it is back up (lab-B 2026-11-09)", moms_scene_ends_with_a_fade}, .expectation = {}},

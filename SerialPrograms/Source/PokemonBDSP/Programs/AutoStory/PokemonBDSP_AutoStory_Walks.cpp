@@ -13,6 +13,7 @@
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
+#include "Actions/PokemonBDSP_AutoStory_TalkOver.h"
 #include "Actions/PokemonBDSP_AutoStory_Talks.h"
 #include "Actions/PokemonBDSP_AutoStory_WildBattle.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkResult.h"
@@ -229,16 +230,9 @@ void walk_out_of_center(VideoStream& stream, ProControllerContext& context, cons
             // "No floor" also reads true on the door's black fade, and the game
             // takes no input until it ends: the first D-pad taps after it were
             // lost and the gym's door ended a tile away (r215d, r216d; a shot
-            // per press by hand showed the black frame). Wait for daylight.
-            const auto start = current_time();
-            while (current_time() - start < 6000ms){
-                context.wait_for(100ms);
-                const VideoSnapshot frame = stream.video().snapshot();
-                if (frame && mean_brightness(*frame.frame) > 40){
-                    break;
-                }
-            }
-            context.wait_for(1000ms);
+            // per press by hand showed the black frame). Settle: the fade
+            // back up and a quiet overworld, not a fixed wait.
+            talk_over(stream, context, label + ": out of the Center");
             return;
         }
     }
