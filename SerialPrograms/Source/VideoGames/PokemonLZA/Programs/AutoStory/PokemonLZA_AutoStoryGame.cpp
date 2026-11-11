@@ -346,9 +346,14 @@ public:
     //  quiet time fails the step. After 5 s with nothing busy and no sign
     //  of control, A every 2 s, for text the detectors miss (01.01's ad).
     //  A banner that stays past the 10 s gets A up to 3 times (01.03's
-    //  "MAIN MISSION 02"), so the step ends with control.
+    //  "MAIN MISSION 02"), so the step ends with control. "press_a_first"
+    //  presses A once at a prompt (02.03's Hotel Z door, "A Enter"), which
+    //  would otherwise end the step at once as control.
     static Handler move_hints(){
         return [](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
+            if (Pokemon::story_arg<bool>(call.args, "press_a_first")){
+                backend.press(BUTTON_A, 160ms, 400ms);
+            }
             SceneMachineConfig config;
             config.quiet = Milliseconds(Pokemon::story_arg<int64_t>(call.args, "quiet_ms"));
             config.min_length = Milliseconds(Pokemon::story_arg<int64_t>(call.args, "min_length_ms"));
@@ -618,6 +623,10 @@ std::vector<StoryActionSpec> plza_story_action_specs(){
         game_spec("mash_to_move_hints", {
             optional_ms("min_length_ms", 0, "the scene's rough length: no quiet failure before it"),
             optional_ms("quiet_ms", 60000, "nothing busy and no control this long fails the step"),
+            StoryArgSpec{
+                .key = "press_a_first", .type = StoryArgType::BOOLEAN, .required = false, .fallback = false,
+                .why = "press A once first, at the prompt that starts the scene (a door's \"A Enter\")",
+            },
         }),
         game_spec("wait_for_platform", {
             optional_ms("timeout_ms", 180000, "no platform this long fails the step"),

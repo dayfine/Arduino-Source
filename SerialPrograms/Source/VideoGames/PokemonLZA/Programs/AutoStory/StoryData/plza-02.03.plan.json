@@ -19,9 +19,10 @@
       },
       {
         "id": "hotel_z_lobby",
-        "kind": "scene",
-        "why": "steps 24-25: A Enter, the loading screen, the lobby scene with Taunie",
-        "action": "a"
+        "kind": "game_action",
+        "why": "steps 24-25: A Enter at the door, the loading screen, the lobby scene with Taunie (a plain scene step ends at once on the door's prompt; console B, 2026-11-10)",
+        "action": "mash_to_move_hints",
+        "args": {"press_a_first": true}
       },
       {
         "id": "to_front_counter",
