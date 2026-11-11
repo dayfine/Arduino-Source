@@ -122,29 +122,39 @@ const BossStateTestCase CASES[] = {
     },
 };
 
-struct SummaryReadTestCase{
+struct SummaryReadTestCaseInput{
     std::string name;
     uint8_t wins;
     std::set<std::string> opponent;
     std::string boss;
+};
+
+struct SummaryReadTestCaseExpectation{
     bool needs_summary_read;
+};
+
+struct SummaryReadTestCase{
+    SummaryReadTestCaseInput input;
+    SummaryReadTestCaseExpectation expectation;
 };
 
 class Test_MaxLairSummaryRead : public UnitTest{
 public:
     explicit Test_MaxLairSummaryRead(SummaryReadTestCase scenario)
-        : UnitTest("PokemonSwSh::MaxLairSummaryRead - " + scenario.name)
+        : UnitTest(std::format("PokemonSwSh::MaxLairSummaryRead - {}", scenario.input.name))
         , m_scenario(std::move(scenario))
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const SummaryReadTestCaseInput& input = m_scenario.input;
+        const SummaryReadTestCaseExpectation& expected = m_scenario.expectation;
         GlobalState state;
-        state.wins = m_scenario.wins;
-        state.opponent = m_scenario.opponent;
-        state.boss = m_scenario.boss;
+        state.wins = input.wins;
+        state.opponent = input.opponent;
+        state.boss = input.boss;
         const bool needs_read = state.opponent_needs_summary_read();
-        if (needs_read != m_scenario.needs_summary_read){
-            return std::format("Expected needs_summary_read={}, got {}", m_scenario.needs_summary_read, needs_read);
+        if (needs_read != expected.needs_summary_read){
+            return std::format("Expected needs_summary_read={}, got {}", expected.needs_summary_read, needs_read);
         }
         return true;
     }
@@ -154,15 +164,35 @@ private:
 };
 
 const SummaryReadTestCase SUMMARY_READ_CASES[] = {
-    {.name = "rental before three wins", .wins = 2, .opponent = {"mimikyu-disguised"}, .boss = "", .needs_summary_read = false},
-    {.name = "boss before three wins", .wins = 2, .opponent = {"kyurem"}, .boss = "", .needs_summary_read = true},
-    {.name = "rental at boss stage with unknown boss", .wins = 3, .opponent = {"mimikyu-disguised"}, .boss = "", .needs_summary_read = true},
-    {.name = "empty read at boss stage with unknown boss", .wins = 3, .opponent = {}, .boss = "", .needs_summary_read = true},
-    {.name = "ambiguous read at boss stage with unknown boss", .wins = 3, .opponent = {"kyurem", "mimikyu-disguised"}, .boss = "", .needs_summary_read = true},
-    {.name = "boss at boss stage", .wins = 3, .opponent = {"kyurem"}, .boss = "", .needs_summary_read = false},
-    {.name = "rental at boss stage with known boss", .wins = 3, .opponent = {"mimikyu-disguised"}, .boss = "kyurem", .needs_summary_read = false},
+    {
+        .input = {.name = "rental before three wins", .wins = 2, .opponent = {"mimikyu-disguised"}, .boss = ""},
+        .expectation = {.needs_summary_read = false},
+    },
+    {
+        .input = {.name = "boss before three wins", .wins = 2, .opponent = {"kyurem"}, .boss = ""},
+        .expectation = {.needs_summary_read = true},
+    },
+    {
+        .input = {.name = "rental at boss stage with unknown boss", .wins = 3, .opponent = {"mimikyu-disguised"}, .boss = ""},
+        .expectation = {.needs_summary_read = true},
+    },
+    {
+        .input = {.name = "empty read at boss stage with unknown boss", .wins = 3, .opponent = {}, .boss = ""},
+        .expectation = {.needs_summary_read = true},
+    },
+    {
+        .input = {.name = "ambiguous read at boss stage with unknown boss", .wins = 3, .opponent = {"kyurem", "mimikyu-disguised"}, .boss = ""},
+        .expectation = {.needs_summary_read = true},
+    },
+    {
+        .input = {.name = "boss at boss stage", .wins = 3, .opponent = {"kyurem"}, .boss = ""},
+        .expectation = {.needs_summary_read = false},
+    },
+    {
+        .input = {.name = "rental at boss stage with known boss", .wins = 3, .opponent = {"mimikyu-disguised"}, .boss = "kyurem"},
+        .expectation = {.needs_summary_read = false},
+    },
 };
-
 }
 
 void add_tests_MaxLairBossState(UnitTestDatabase& database){

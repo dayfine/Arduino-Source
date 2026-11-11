@@ -358,12 +358,9 @@ StateMachineAction throw_balls(
     state.players[2].health.value.dead = 0;
     state.players[3].health.value.dead = 0;
 
-
     GlobalState inferred = state_tracker.synchronize(stream.logger(), console_index);
 
-
     std::string ball;
-
     bool boss = inferred.wins == 4;
     if (boss){
         if (inferred.boss.empty()){
