@@ -119,6 +119,7 @@ CenterEntry run_into_center(
     const std::string& label
 ){
     if (io.run_into_door(Direction::NORTH, run).any()){
+        io.settle(BUTTON_B, label + ": into the Center", false, "");
         return CenterEntry::FADED;
     }
     if (inside()){
