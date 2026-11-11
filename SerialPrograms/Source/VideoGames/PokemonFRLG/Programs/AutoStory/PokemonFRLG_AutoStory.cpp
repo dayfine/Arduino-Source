@@ -145,7 +145,7 @@ static void check_start_save(
     if (!checkpoint.start){
         return;
     }
-    const std::string error = check_save_place(story, checkpoint.start->map);
+    const std::string error = check_save_place(story, Pokemon::grid_pose_of(*checkpoint.start).map);
     if (!error.empty()){
         throw UserSetupError(env.console, error + " Start at the checkpoint " + checkpoint.id + " the save is for.");
     }
@@ -254,7 +254,7 @@ void verify_story_checkpoint(
     Pokemon::SegmentHooks hooks = story_hooks(env, story);
 
     Pokemon::RunState state;
-    const Pokemon::VerifyReport report = Pokemon::verify_checkpoint(state, segment, checkpoint.id, policy, hooks);
+    const Pokemon::VerifyReport report = Pokemon::verify_checkpoint(checkpoint.id, policy, segment, hooks, state);
     const std::string summary = std::format(
         "AutoStory verify: {} {}/{} passed, {} needed.", checkpoint.id, report.passes, policy.runs, policy.passes_needed
     );
@@ -443,7 +443,7 @@ static void run_story_rows(
 
     Pokemon::RunState state;
     const Pokemon::SegmentReport report = run_segment(
-        state, segment, Pokemon::SegmentRange{rows.front().id, rows.back().id}, policy, hooks
+        Pokemon::SegmentRange{rows.front().id, rows.back().id}, policy, segment, hooks, state
     );
     Pokemon::record_story_counts(report.story_counts(), env.current_stats<Pokemon::AutoStoryStats>());
     env.update_stats();

@@ -42,7 +42,7 @@ StepInterruptActions console_interrupt_actions(
     std::function<OverworldInterruptSet()> walker
 ){
     const auto walker_clears = [&console, &context, walker](bool wild){
-        return [&console, &context, walker, wild](Pokemon::RunState&, const Pokemon::InterruptVerdict&){
+        return [&console, &context, walker, wild](const Pokemon::InterruptVerdict&, Pokemon::RunState&){
             const OverworldInterruptSet set = walker();
             (wild ? set.wild : set.other).front()->clear(console, context);
             return Pokemon::outcome_ok();
@@ -52,7 +52,7 @@ StepInterruptActions console_interrupt_actions(
         .wild = walker_clears(true),
         .trainer = walker_clears(false),
         .dialog = walker_clears(false),
-        .warp = [&console, &context](Pokemon::RunState&, const Pokemon::InterruptVerdict&){
+        .warp = [&console, &context](const Pokemon::InterruptVerdict&, Pokemon::RunState&){
             mash_until_overworld(console, context, WARP_SCENE_TIMEOUT);
             return Pokemon::outcome_ok();
         },
