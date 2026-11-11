@@ -1,8 +1,8 @@
-/*  AutoStory Program Shell
+/*  AutoStory Story Run
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  What every game's AutoStory program does around its story rows: get the
+ *  The start and finish of a story run: get the
  *  game to the start checkpoint, lend the segment runner its reload, and
  *  finish a run or a verify run with the same log lines, stats and errors.
  *  A game lends only what really differs: how it loads its save (BDSP
@@ -16,8 +16,8 @@
  *
  */
 
-#ifndef PokemonAutomation_Pokemon_AutoStoryShell_H
-#define PokemonAutomation_Pokemon_AutoStoryShell_H
+#ifndef PokemonAutomation_Pokemon_StoryRun_H
+#define PokemonAutomation_Pokemon_StoryRun_H
 
 #include <string>
 #include <string_view>
@@ -41,7 +41,7 @@ enum class StoryStart{
     FROM_SAVE,
 };
 
-//  What a game lends the shell.
+//  What a game lends the story run.
 struct StoryGameHooks{
     //  Loads the last save: the game reset (from HOME or soft) and back in
     //  the overworld. A failed Outcome says why.
@@ -82,7 +82,7 @@ std::string finish_story_verify(
     std::string_view checkpoint, const VerifyPolicy& policy, const VerifyReport& report, StoryGameHooks& game
 );
 
-//  The failure line, for a game whose run threw before the shell saw it.
+//  The failure line, for a game whose run threw before the story run saw it.
 void log_story_failure(StoryGameHooks& game);
 
 

@@ -1,4 +1,4 @@
-/*  AutoStory Program Shell Tests
+/*  AutoStory Story Run Tests
  *
  *  From: https://github.com/PokemonAutomation/
  *
@@ -9,15 +9,15 @@
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
-#include "Pokemon_AutoStoryShell.h"
-#include "Pokemon_AutoStoryShell_Tests.h"
+#include "Pokemon_StoryRun.h"
+#include "Pokemon_StoryRun_Tests.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
 
 namespace{
 
-//  A game that records what the shell asked of it.
+//  A game that records what the story run asked of it.
 struct FakeGame{
     std::string place_error;
     size_t loads = 0;
@@ -71,7 +71,7 @@ struct StartCase{
 class Test_StoryStart : public UnitTest{
 public:
     Test_StoryStart(StartCase test_case)
-        : UnitTest(std::format("Pokemon::AutoStoryShell - start: {}", test_case.name))
+        : UnitTest(std::format("Pokemon::StoryRun - start: {}", test_case.name))
         , m_case(std::move(test_case))
     {}
 
@@ -112,7 +112,7 @@ const StartCase START_CASES[] = {
 class Test_StoryReload : public UnitTest{
 public:
     Test_StoryReload()
-        : UnitTest("Pokemon::AutoStoryShell - a retry reloads the save")
+        : UnitTest("Pokemon::StoryRun - a retry reloads the save")
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -134,7 +134,7 @@ public:
 class Test_StoryFailureLeavesGame : public UnitTest{
 public:
     Test_StoryFailureLeavesGame()
-        : UnitTest("Pokemon::AutoStoryShell - a failed run leaves the game where it failed")
+        : UnitTest("Pokemon::StoryRun - a failed run leaves the game where it failed")
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -171,7 +171,7 @@ public:
 class Test_StoryFinished : public UnitTest{
 public:
     Test_StoryFinished()
-        : UnitTest("Pokemon::AutoStoryShell - a completed run is done through its last checkpoint")
+        : UnitTest("Pokemon::StoryRun - a completed run is done through its last checkpoint")
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -193,7 +193,7 @@ public:
 class Test_StoryVerifyFailed : public UnitTest{
 public:
     Test_StoryVerifyFailed()
-        : UnitTest("Pokemon::AutoStoryShell - an unverified checkpoint fails with its summary")
+        : UnitTest("Pokemon::StoryRun - an unverified checkpoint fails with its summary")
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -220,7 +220,7 @@ public:
 } // namespace
 
 
-void add_tests_AutoStoryShell(UnitTestDatabase& database){
+void add_tests_StoryRun(UnitTestDatabase& database){
     for (const StartCase& test_case : START_CASES){
         database.add<Test_StoryStart>(test_case);
     }
