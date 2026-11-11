@@ -18,22 +18,20 @@
         "id": "zone_1_to_far_gate",
         "kind": "game_action",
         "why": "step 62: on across Wild Zone 1 to its far gate's \"A Leave\", by the objective marker (the timed legs started at the rocks; the catches leave us elsewhere).",
-        "action": "walk_to_zone_gate"
+        "action": "walk_to_marker"
       },
       {
         "id": "leave_zone_1",
-        "kind": "scene",
-        "why": "step 62: A Leave, out on the street",
-        "action": "a"
+        "kind": "game_action",
+        "why": "step 62: A Leave, out on the street (a plain scene step ends at once on the gate's prompt with the party bar up; console B, 2026-11-10)",
+        "action": "mash_to_move_hints",
+        "args": {"press_a_first": true}
       },
       {
         "id": "to_research_lab",
         "kind": "game_action",
-        "why": "step 63: across to the Pokemon Research Lab's gate, into Taunie's scene. Measured 2026-11-08 on console B, walk not run.",
-        "action": "walk",
-        "args": {
-          "legs": [[45, 4000], [0, 2000], [-90, 2000]]
-        }
+        "why": "step 63: across to the Pokemon Research Lab's gate, into Taunie's scene, by the objective marker: out of the zone's gate the player faces whichever way it faced before (the timed legs from 2026-11-08 depended on that; console B, 2026-11-10).",
+        "action": "walk_to_marker"
       },
       {
         "id": "research_lab_gate",
@@ -50,17 +48,15 @@
       {
         "id": "up_the_lab_steps",
         "kind": "game_action",
-        "why": "step 65: up the steps to the lab's \"A Enter\". 1 s was short. Measured 2026-11-09 on console B, walk not run.",
-        "action": "walk",
-        "args": {
-          "legs": [[0, 1500]]
-        }
+        "why": "step 65: up the steps to the lab's \"A Enter\", by the objective marker.",
+        "action": "walk_to_marker"
       },
       {
         "id": "lab_lobby",
-        "kind": "scene",
-        "why": "steps 65-66: A Enter, the receptionist: third floor; autosave",
-        "action": "a"
+        "kind": "game_action",
+        "why": "steps 65-66: A Enter, the receptionist: third floor; autosave (A first: the door's prompt shows with the party bar up)",
+        "action": "mash_to_move_hints",
+        "args": {"press_a_first": true}
       }
     ],
     "metadata": {

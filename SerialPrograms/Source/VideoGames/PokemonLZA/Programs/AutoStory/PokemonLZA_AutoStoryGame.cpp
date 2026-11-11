@@ -95,7 +95,7 @@ const std::map<std::string, ConsoleStep, std::less<>>& console_game_actions(){
             battle_then_catch(env.env, env.env.console, env.context, env.battle_ai, 6);
         }},
         {"catch_in_zone", [](StoryEnv& env){ catch_in_zone(env.env.console, env.context, 1, 6); }},
-        {"walk_to_zone_gate", [](StoryEnv& env){ walk_to_zone_gate(env.env.console, env.context); }},
+        {"walk_to_marker", [](StoryEnv& env){ walk_to_marker(env.env.console, env.context); }},
         //  For reruns in the lab: the title screen's Up + B + X loads the save
         //  before the last one, as a catch's autosave moves the save past a
         //  checkpoint's start (03.07, console B 2026-11-10).
