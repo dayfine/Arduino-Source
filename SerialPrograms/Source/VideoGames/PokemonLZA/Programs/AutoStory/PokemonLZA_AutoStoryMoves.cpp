@@ -58,9 +58,6 @@ Pokemon::Outcome run_story_move(PlzaBackend& backend, const StoryMove& move, con
             return faced;
         }
     }
-    if (move.wait_first > Milliseconds(0)){
-        backend.wait(move.wait_first);
-    }
     if (move.held){
         for (size_t i = 0; i < move.legs.size(); i++){
             const StoryWalkLeg& leg = move.legs[i];

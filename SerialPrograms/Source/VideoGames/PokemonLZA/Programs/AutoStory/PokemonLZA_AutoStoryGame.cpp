@@ -236,7 +236,7 @@ StoryActionSpec walk_spec(){
         },
         StoryArgSpec{
             .key = "wait_ms", .type = StoryArgType::INTEGER, .required = false, .fallback = std::nullopt,
-            .why = "wait this long before the first leg, for the NPCs to move off",
+            .why = "wait this long before looking for free control: NPCs moving off, a ride's fade starting",
         },
     });
 }
@@ -372,6 +372,9 @@ private:
         Pokemon::StoryBackend<ZonePose>& backend, std::string_view name, const StoryMove& move,
         const StoryActionArgs& args, const PlzaReader& heading
     ){
+        if (move.wait_first > Milliseconds(0)){
+            backend.wait(move.wait_first);
+        }
         const Outcome free = check_can_walk(backend, name);
         if (!free.succeeded()){
             return free;

@@ -201,7 +201,7 @@ UnitTestResult test_held_walk_inputs(CancellableScope& scope){
         return std::format("Expected the held walk to pass: {}", to_string(report.run.failure));
     }
     return expect_inputs(backend, {
-        "wait 250ms", "wait 3000ms", "stick 10deg 4250ms walk, release 0ms",
+        "wait 3000ms", "wait 250ms", "stick 10deg 4250ms walk, release 0ms",
         "press L", "stick 90deg 6000ms walk, release 0ms",
         "press L", "stick 90deg 6500ms walk, release 0ms",
     });

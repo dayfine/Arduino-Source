@@ -34,16 +34,11 @@
         "action": "choose_0"
       },
       {
-        "id": "arrive_2f",
-        "kind": "scene",
-        "why": "step 28: the ride, until control on 2F"
-      },
-      {
         "id": "to_room_202",
         "kind": "game_action",
-        "why": "step 29: to \"Room 202 / A Enter\". Measured 2026-11-08 on console B, walk not run.",
+        "why": "step 29: the elevator ride (2F has no party bar, so no scene step sees control: the wait lets the fade start, the walk then waits it out), then to \"Room 202 / A Enter\". Measured 2026-11-08 on console B, walk not run.",
         "action": "walk",
-        "args": {"legs": [[-15, 2000]]}
+        "args": {"legs": [[-15, 2000]], "wait_ms": 4000}
       },
       {
         "id": "enter_room_202",
