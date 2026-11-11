@@ -23,7 +23,9 @@
 #include "Pokemon_Interrupts_Tests.h"
 #include "Pokemon_SceneJudges_Tests.h"
 #include "Pokemon_ScreenEvents_Tests.h"
+#include "Pokemon_StoryActions_Tests.h"
 #include "Pokemon_StoryEvents_Tests.h"
+#include "Pokemon_StoryInterrupts_Tests.h"
 #include "Pokemon_StoryLog_Tests.h"
 #include "Pokemon_StorySavePolicy_Tests.h"
 #include "Pokemon_StorySegments_Tests.h"
@@ -55,6 +57,8 @@ inline void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_SceneJudges(database);
     add_tests_Interrupts(database);
     add_tests_Transitions(database);
+    add_tests_StoryActions(database);
+    add_tests_StoryInterrupts(database);
 }
 
 
