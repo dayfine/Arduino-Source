@@ -1567,6 +1567,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_MapUtil.h
     Source/Pokemon/AutoStory/Pokemon_SceneJudges.cpp
     Source/Pokemon/AutoStory/Pokemon_SceneJudges.h
+    Source/Pokemon/AutoStory/Pokemon_SceneJudges_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_SceneJudges_Tests.h
     Source/Pokemon/AutoStory/Pokemon_ScreenEventLog.h
     Source/Pokemon/AutoStory/Pokemon_ScreenEventTypes.h
     Source/Pokemon/AutoStory/Pokemon_ScreenEvents.cpp

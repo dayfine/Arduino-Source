@@ -224,14 +224,13 @@ inline constexpr std::string_view ROUTE_B3F = R"([{"id": "go", "kind": "route", 
 
 const HashCase HASH_CASES[] = {
     {.input = {.name = "pinned", .a = ROUTE_B3F, .b = ROUTE_B3F},
-     .expectation = {.same = true, .hash_a = "sha256:c4b4a5c60e0a2b65b188f75f64b699073485aafa278fcbdd4afbd055da878af0"}},
-    {.input = {.name = "why is not hashed", .a = R"([{"id": "t", "kind": "talk", "why": "a"}])", .b = R"([{"id": "t", "kind": "talk", "why": "b"}])"},
+     .expectation = {.same = true, .hash_a = "sha256:13bc877c960a15cd0ed2f37248fa8336308b048a865623dde7654d41ac7147b8"}},
+    {.input = {.name = "whitespace is not hashed", .a = R"([{"id": "t", "kind": "talk"}])", .b = R"([ { "id":"t",  "kind":"talk" } ])"},
      .expectation = {.same = true}},
-    {.input = {.name = "fallbacks are filled", .a = R"([{"id": "f", "kind": "battle"}])", .b = R"([{"id": "f", "kind": "battle", "args": {"may_lose": false}}])"},
-     .expectation = {.same = true}},
-    {.input = {.name = "default action is named", .a = ROUTE_B3F,
-               .b = R"([{"id": "go", "kind": "route", "action": "route", "args": {"target": {"map": "RocketHideout_B3F", "tiles": [[12, 13]]}}}])"},
-     .expectation = {.same = true}},
+    {.input = {.name = "why differs", .a = R"([{"id": "t", "kind": "talk", "why": "a"}])", .b = R"([{"id": "t", "kind": "talk", "why": "b"}])"},
+     .expectation = {.same = false}},
+    {.input = {.name = "written fallback differs", .a = R"([{"id": "f", "kind": "battle"}])", .b = R"([{"id": "f", "kind": "battle", "args": {"may_lose": false}}])"},
+     .expectation = {.same = false}},
     {.input = {.name = "another target differs", .a = ROUTE_B3F,
                .b = R"([{"id": "go", "kind": "route", "args": {"target": {"map": "RocketHideout_B3F", "tiles": [[12, 14]]}}}])"},
      .expectation = {.same = false}},
@@ -241,7 +240,7 @@ const HashCase HASH_CASES[] = {
 
 std::string hash_of(std::string_view events, std::string_view source){
     const std::string json = std::format(R"({{"id": "x", "title": "x", "events": {}}})", events);
-    return story_steps_hash(read_story_checkpoint(parse_json(json), source), builtin_story_actions());
+    return story_steps_hash(read_story_checkpoint(parse_json(json), source));
 }
 
 std::string check_hash(const HashCase& test){
