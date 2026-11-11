@@ -143,6 +143,7 @@ private:
     std::string walk(const StoryStep& step);
     std::string step_ahead(const StoryStep& step);
     std::string step_onto(const StoryStep& step);
+    std::string step_onto_warp(const RouteStep& warp);
     std::string cut(const StoryStep& step);
     std::string battle(const StoryStep& step);
     Pokemon::StoryAction hideout_or_stub();
