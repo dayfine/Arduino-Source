@@ -823,7 +823,7 @@ void OverworldSimWalker::fail_off_route(const RouteStep& step){
 
 std::optional<WalkedTiles> OverworldSimWalker::walk_step(const RouteStep& step, std::optional<Direction> facing){
     if (step.action == RouteAction::FACE){
-        m_sim.tap(step.direction);
+        sim_turn_to(m_sim, step.direction, m_rules.confirm_turn);
         return std::nullopt;
     }
     if (step.action != RouteAction::WALK){

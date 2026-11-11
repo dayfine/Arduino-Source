@@ -761,7 +761,10 @@ void walk_overworld_route(
             start_surf(console, context, step.direction, facing == step.direction);
             break;
         case RouteAction::FACE:
-            pbf_press_dpad(context, dpad(step.direction), FACE_HOLD, STEP_RELEASE);
+            //  Checked by the facing on screen, like a leg's turn: the game
+            //  missed a single tap of "face south" and A found nothing
+            //  (console B, 2026-11-11, 09.02 moon_stone).
+            turn_to(console, context, step.direction);
             break;
         }
         if (step.action != RouteAction::FACE){
