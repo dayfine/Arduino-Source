@@ -186,7 +186,8 @@ void claim_mable_research_reward(ConsoleHandle& console, ProControllerContext& c
 
     //  The page opens on Rewards under Mable's lines on the level 2 reward,
     //  TM004 Rock Smash (console B, 2026-11-10): A while a dialog shows,
-    //  until none has for 3 s, then B back to the overworld.
+    //  until none has for 3 s, then B back to the overworld, through her
+    //  talk after the menu closes (over 20 s; console B, 2026-11-10).
     FlatWhiteDialogDetector white_dialog;
     BlueDialogDetector blue_dialog;
     TealDialogDetector teal_dialog;
@@ -210,7 +211,7 @@ void claim_mable_research_reward(ConsoleHandle& console, ProControllerContext& c
             context.wait_for(250ms);
         }
     }
-    mash_to_overworld(console, context, BUTTON_B, 20s);
+    mash_to_overworld(console, context, BUTTON_B, 60s);
 }
 
 
