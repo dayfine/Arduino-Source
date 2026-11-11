@@ -528,7 +528,7 @@ UnitTestResult advance(StoryPose& pose, const StoryStep& step){
         pose = StoryPose{pose.map, pose.tile.next(direction), direction};
     }
     if (step.pose_after){
-        pose = one_tile(*step.pose_after);
+        pose = one_tile(Pokemon::grid_pose_of(*step.pose_after));
     }
     return true;
 }
@@ -536,7 +536,7 @@ UnitTestResult advance(StoryPose& pose, const StoryStep& step){
 //  `checkpoint`'s routes and legs keep to tiles with no tile_problem(); a
 //  step into a trainer's line is followed by the battle, which beats them.
 UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<const MapObject*>& beaten){
-    StoryPose pose = one_tile(*checkpoint.start);
+    StoryPose pose = one_tile(Pokemon::grid_pose_of(*checkpoint.start));
     for (size_t c = 0; c < checkpoint.steps.size(); c++){
         const StoryStep& step = checkpoint.steps[c];
         const std::string where = checkpoint.id + "/" + step.name + ": ";
@@ -603,7 +603,7 @@ UnitTestResult test_robin_crossing(){
             continue;
         }
         const std::vector<std::optional<MapPosition>> expected{MapPosition{"Route3", {40, 9}}};
-        if (wanderer_stops(one_tile(*checkpoint.start), checkpoint.steps[0]) != expected){
+        if (wanderer_stops(one_tile(Pokemon::grid_pose_of(*checkpoint.start)), checkpoint.steps[0]) != expected){
             return "Expected 00.12/route4_nurse to cross Lass Robin's sight once, the walk placing her stop on Route3 (40, 9).";
         }
         return true;
