@@ -33,6 +33,7 @@ namespace PokemonLZA{
 //  (only the Move / Control Camera hints, which have no detector yet).
 //  A cutscene can hold a still frame longer than `quiet`, so the quiet end
 //  waits for `min_length`, the scene's rough recorded length, to pass.
+//  A tutorial card gets A whatever `text_button` is: only A turns its pages.
 //  Throws OperationFailedException if the goal does not show within `timeout`.
 void mash_scene(
     ConsoleHandle& console, ProControllerContext& context,
