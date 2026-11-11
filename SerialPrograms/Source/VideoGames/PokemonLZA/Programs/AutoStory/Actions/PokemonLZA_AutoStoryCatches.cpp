@@ -14,12 +14,10 @@
 #include "Kernels/Waterfill/Kernels_Waterfill_Session.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
-#include "NintendoSwitch/Commands/NintendoSwitch_Commands_Superscalar.h"
 #include "VideoGames/PokemonLZA/Inference/Battles/PokemonLZA_MoveEffectivenessSymbol.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_DialogDetector.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_TrainerBattle.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryAutosaveDetector.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryPartyRowCount.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDexRegisteredDetector.h"
 #include "PokemonLZA_AutoStoryCatches.h"
 #include "PokemonLZA_AutoStoryScenes.h"
 
@@ -66,16 +64,17 @@ ScreensPassed advance_text_and_cards(ConsoleHandle& console, ProControllerContex
 
 //  ZL+ZR held 1.5 s throws a ball at the locked target (0.5 s only aims),
 //  then the ball's flight, shakes and any loading screen. Returns whether
-//  the autosave badge showed meanwhile: the game autosaves on a catch.
+//  the Pokedex's "Registered!" banner showed meanwhile: a new species
+//  caught. A repeat catch or a break-out shows none.
 bool throw_ball(ConsoleHandle& console, ProControllerContext& context){
-    DetectorToFinder<AutosaveDetector> autosave("AutosaveWatcher", 100ms);
+    DetectorToFinder<DexRegisteredDetector> registered("DexRegisteredWatcher", 100ms);
     const int ret = run_until<ProControllerContext>(
         console, context,
         [](ProControllerContext& context){
             pbf_press_button(context, BUTTON_ZL, 500ms, 100ms);
             pbf_press_button(context, BUTTON_ZL | BUTTON_ZR, 1500ms, 6000ms);
         },
-        {autosave}
+        {registered}
     );
     if (ret == 0){
         context.wait_for(3000ms);
@@ -83,37 +82,6 @@ bool throw_ball(ConsoleHandle& console, ProControllerContext& context){
     context.wait_for_all_requests();
     return ret == 0;
 }
-
-//  The party row's count now.
-size_t party_row_now(ConsoleHandle& console){
-    const VideoSnapshot frame = console.video().snapshot();
-    return frame ? party_row_count(frame) : 0;
-}
-
-//  Turns the camera in place (10 x 1 s), mashing ZL, until the move
-//  symbols of a lock-on show (InPlaceCatcher's scan). Returns whether
-//  something locked on within one full turn.
-bool scan_for_lock_on(ConsoleHandle& console, ProControllerContext& context){
-    MoveEffectivenessSymbolWatcher lock_on(COLOR_RED, &console.overlay(), 100ms);
-    const int ret = run_until<ProControllerContext>(
-        console, context,
-        [](ProControllerContext& context){
-            for (int c = 0; c < 10; c++){
-                ssf_press_right_joystick(context, {-0.5, 0}, 0ms, 1000ms, 0ms);
-                pbf_mash_button(context, BUTTON_ZL, 1000ms);
-            }
-        },
-        {lock_on}
-    );
-    return ret == 0;
-}
-
-//  Lock-ons and throws so far, and how many brought text or a card after
-//  the throw (a catch).
-struct ThrowCount{
-    int throws = 0;
-    int caught = 0;
-};
 
 //  ZL held a moment at what is in front: whether it locks on.
 bool lock_on_ahead(ConsoleHandle& console, ProControllerContext& context){
@@ -128,30 +96,33 @@ bool lock_on_ahead(ConsoleHandle& console, ProControllerContext& context){
     return ret == 0;
 }
 
-//  Up to 3 throws at what locks on in front, else at what a full camera
-//  turn finds, while the total stays under `max_throws`.
-ThrowCount throw_here(ConsoleHandle& console, ProControllerContext& context, ThrowCount count, int max_throws){
-    for (int i = 0; i < 3 && count.throws < max_throws; i++){
-        if (!lock_on_ahead(console, context) && !scan_for_lock_on(console, context)){
-            break;
+//  ZL at what is in front, then again after each of 3 small camera turns
+//  right (the grass side): whether something locked on. No full turn, which
+//  would lock on to whatever is behind, across the road.
+bool lock_on_near(ConsoleHandle& console, ProControllerContext& context){
+    for (int turn = 0; turn < 4; turn++){
+        if (turn > 0){
+            pbf_move_right_joystick(context, {0.5, 0}, 250ms, 200ms);
         }
-        //  A catch shows no text (Scatterbug, console B 2026-11-10): it
-        //  autosaves, and the party row gains a Pokemon until it is full.
-        const size_t party_before = party_row_now(console);
-        const bool saved = throw_ball(console, context);
-        count.throws++;
-        advance_text_and_cards(console, context);
-        const size_t party_after = party_row_now(console);
-        pbf_press_button(context, BUTTON_L, 160ms, 400ms);
-        console.log(std::format(
-            "catch_in_zone(): throw {}: autosave {}, party row {} -> {}.",
-            count.throws, saved ? "seen" : "not seen", party_before, party_after
-        ));
-        if (saved || party_after > party_before){
-            count.caught++;
+        if (lock_on_ahead(console, context)){
+            return true;
         }
     }
-    return count;
+    return false;
+}
+
+//  Turns the camera, without walking, until the objective marker is in the
+//  middle (15 turns at most).
+void face_objective(ConsoleHandle& console, ProControllerContext& context){
+    for (int i = 0; i < 15; i++){
+        context.wait_for_all_requests();
+        const std::optional<ObjectiveMarker> marker = read_objective_marker(console, console.video().snapshot());
+        const double off = marker ? marker->x - 0.5 : 0.5;
+        if (off > -0.06 && off < 0.06){
+            return;
+        }
+        pbf_move_right_joystick(context, {off > 0 ? 0.4 : -0.4, 0}, Milliseconds((int)(std::min(1.0, std::abs(off) * 4) * 400)) + 80ms, 150ms);
+    }
 }
 
 } // namespace
@@ -217,6 +188,12 @@ std::optional<int> walk_to_objective(ConsoleHandle& console, ProControllerContex
             continue;
         }
         unseen = 0;
+        //  Off screen, the game pins the marker to the edge with no digits
+        //  (anything read there is noise): turn to it before walking.
+        if (marker->x < 0.10 || marker->x > 0.90){
+            pbf_move_right_joystick(context, {marker->x < 0.5 ? -0.5 : 0.5, 0}, 400ms, 200ms);
+            continue;
+        }
         if (marker->distance > 0){
             if (last != marker->distance){
                 console.log(std::format("walk_to_objective(): {} to go, marker at x = {:.2f}.", marker->distance, marker->x));
@@ -237,10 +214,7 @@ std::optional<int> walk_to_objective(ConsoleHandle& console, ProControllerContex
     return last;
 }
 
-void catch_in_zone(ConsoleHandle& console, ProControllerContext& context, int catches_wanted, int max_throws){
-    //  Toward the objective (the zone's far gate), stopping at 100 and 60
-    //  to throw at what is in front: 03.07 starts at 127 (console B,
-    //  2026-11-10), with nothing to catch at the start.
+void catch_in_zone(ConsoleHandle& console, ProControllerContext& context, int new_species_wanted, int max_throws){
     //  Taunie's two rocks stand between the start and the marker: a step
     //  right first, around them, from the start (a catch's autosave can
     //  leave the save further on).
@@ -249,19 +223,33 @@ void catch_in_zone(ConsoleHandle& console, ProControllerContext& context, int ca
     if (start && start->distance >= 115){
         pbf_move_left_joystick(context, {1, 0}, 1000ms, 300ms);
     }
-    ThrowCount count;
-    for (int stop_at : {100, 60}){
-        if (count.caught >= catches_wanted){
-            break;
+    //  Mareep, the species still missing after the tutorial, graze in the
+    //  grass right of the road at 55-60 from the far gate, out of lock-on
+    //  range from the road (console B, 2026-11-10). Earlier spots gave only
+    //  repeats (Fletchling, Scatterbug).
+    walk_to_objective(console, context, 60, 90s);
+    face_objective(console, context);
+    int found = 0;
+    int throws = 0;
+    int steps = 0;
+    for (; steps < 3 && found < new_species_wanted && throws < max_throws; steps++){
+        pbf_move_left_joystick(context, {1, 0}, 1000ms, 300ms);
+        while (found < new_species_wanted && throws < max_throws && lock_on_near(console, context)){
+            throws++;
+            const bool registered = throw_ball(console, context);
+            found += registered ? 1 : 0;
+            console.log(std::format("catch_in_zone(): throw {}: {}.", throws, registered ? "a new species registered" : "no new species"));
+            advance_text_and_cards(console, context);
         }
-        walk_to_objective(console, context, stop_at, 30s);
-        count = throw_here(console, context, count, max_throws);
+        face_objective(console, context);
     }
-    console.log(std::format("catch_in_zone(): {} catches in {} throws.", count.caught, count.throws));
-    if (count.caught < catches_wanted){
+    //  Back onto the road.
+    pbf_move_left_joystick(context, {-1, 0}, Milliseconds(1000 * steps), 300ms);
+    console.log(std::format("catch_in_zone(): {} new species in {} throws.", found, throws));
+    if (found < new_species_wanted){
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::SEND_ERROR_REPORT,
-            std::format("catch_in_zone(): {} catches of {} in {} throws.", count.caught, catches_wanted, count.throws),
+            std::format("catch_in_zone(): {} new species of {} in {} throws.", found, new_species_wanted, throws),
             console
         );
     }

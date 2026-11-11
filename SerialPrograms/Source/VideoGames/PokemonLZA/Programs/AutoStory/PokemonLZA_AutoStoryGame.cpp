@@ -93,7 +93,7 @@ const std::map<std::string, ConsoleStep, std::less<>>& console_game_actions(){
         {"battle_then_catch", [](StoryEnv& env){
             battle_then_catch(env.env, env.env.console, env.context, env.battle_ai, 6);
         }},
-        {"catch_in_zone", [](StoryEnv& env){ catch_in_zone(env.env.console, env.context, 2, 15); }},
+        {"catch_in_zone", [](StoryEnv& env){ catch_in_zone(env.env.console, env.context, 1, 6); }},
         {"walk_to_zone_gate", [](StoryEnv& env){ walk_to_zone_gate(env.env.console, env.context); }},
     };
     return actions;
