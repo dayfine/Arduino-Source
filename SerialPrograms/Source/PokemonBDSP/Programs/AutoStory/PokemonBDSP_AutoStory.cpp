@@ -195,7 +195,7 @@ void start_story(
     };
     const Pokemon::Outcome loaded = Pokemon::prepare_story_start(row.id, start, game, state);
     game.check_save_place = nullptr;
-    if (loaded.failure == Pokemon::STORY_PRECONDITION_FAILED){
+    if (loaded.failure == Pokemon::StoryPreflight::FAILURE){
         throw UserSetupError(env.console, std::format("AutoStory did not start, nothing was pressed: {}", loaded.detail));
     }
     if (!loaded.succeeded()){
