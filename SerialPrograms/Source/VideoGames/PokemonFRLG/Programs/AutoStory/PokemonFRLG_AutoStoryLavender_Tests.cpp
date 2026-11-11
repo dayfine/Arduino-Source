@@ -910,7 +910,7 @@ UnitTestResult test_hideout_giovanni_row_no_tile_twice(Logger&){
         if (step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS){
             const std::optional<std::vector<RouteStep>> route = walked_route(at, step);
             if (!route){
-                return "09.02/" + step.name + ": no route.";
+                return std::format("09.02/{}: no route.", step.name);
             }
             for (const MapPosition& tile : walked_tiles({at.map, at.tile}, *route)){
                 const bool floor = tile.map == "RocketHideout_B3F" || tile.map == "RocketHideout_B2F";
@@ -918,13 +918,13 @@ UnitTestResult test_hideout_giovanni_row_no_tile_twice(Logger&){
                     continue;
                 }
                 if (std::find(walked.begin(), walked.end(), tile) != walked.end()){
-                    return "09.02/" + step.name + ": walks " + to_string(tile) + " a second time.";
+                    return std::format("09.02/{}: walks {} a second time.", step.name, to_string(tile));
                 }
                 walked.push_back(tile);
             }
         }
         if (const std::string failure = row_step_on_sim(*sim, at, step, row.id); !failure.empty()){
-            return "09.02: " + failure;
+            return std::format("09.02: {}", failure);
         }
         if (step.name == "moon_stone"){
             for (MapData& map : maps){
