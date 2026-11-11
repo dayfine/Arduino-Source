@@ -391,34 +391,33 @@ public:
 
     virtual WalkResult walk_to_wall(const RouteWallWalk& walk) override{
         count_call();
-        const size_t moved = move(walk.direction, SIZE_MAX);
         const Milliseconds per_tile = route_ms_per_tile(walk.direction, MoveSpeed::WALK);
+        if (m_overshoot && walk.limit > ROUTE_START_DELAY){
+            //  A hold timed for n tiles (ROUTE_START_DELAY, then half a
+            //  tile under n) goes on past them until a wall stops it.
+            const size_t tiles = (size_t)((walk.limit - ROUTE_START_DELAY + per_tile / 2) / per_tile);
+            const size_t want = tiles + (tiles * 35 + 99) / 100;
+            const size_t moved = move(walk.direction, want);
+            return {.stop = moved < want ? WalkStop::BLOCKED : WalkStop::LIMIT, .walked = walk.limit,
+                .wild_battles = 0, .moved_chunks = moved};
+        }
+        const size_t moved = move(walk.direction, SIZE_MAX);
         return {.stop = WalkStop::BLOCKED, .walked = ROUTE_START_DELAY + 800ms + per_tile * moved + per_tile / 2,
             .wild_battles = 0, .moved_chunks = moved};
     }
-    //  Taps of more than `safe` tiles in one walk move `lost` tiles fewer,
-    //  and the count does not see it (lab-B 2026-11-11 11:16: "north 20
-    //  (open)" ended about 4 tiles short).
-    void lose_on_long_taps(size_t safe, size_t lost){
-        m_safe_taps = safe;
-        m_lost_taps = lost;
+    //  Fault class "a timed hold overshoots": a stick hold timed for n
+    //  tiles goes 0..ceil(0.35 n) tiles further, unseen, until a wall stops
+    //  it (lab-B 2026-11-11, Jubilife: runs timed for 10 tiles went about 13,
+    //  three of three). D-pad taps are tile-exact (5 to 20 taps, every one
+    //  moved) and walks to a wall end at the wall, so neither has a fault.
+    void overshoot_timed_holds(bool overshoot){
+        m_overshoot = overshoot;
     }
-    //  Fault class "open leg comes up short": an open leg of n tiles stops
-    //  up to min(4, n / 4) tiles early, unseen (lab-B 2026-11-11: "north 20
-    //  (open)" ended about 4 short). Each open leg loses min(`lost`, that).
-    void stop_open_legs_short(size_t lost){
-        m_short_open = lost;
-    }
-
     virtual WalkResult walk_taps(Direction direction, size_t tiles, const std::string&) override{
         count_call();
-        const size_t long_lost = tiles > m_safe_taps ? std::min(m_lost_taps, tiles) : 0;
-        const size_t lost = std::max(long_lost, std::min({m_short_open, (size_t)4, tiles / 4}));
-        const size_t moved = move(direction, tiles - lost);
-        if (moved < tiles - lost){
-            return {.stop = WalkStop::BLOCKED, .walked = 250ms * tiles, .wild_battles = 0, .moved_chunks = moved};
-        }
-        return {.stop = WalkStop::LIMIT, .walked = 250ms * tiles, .wild_battles = 0, .moved_chunks = tiles};
+        const size_t moved = move(direction, tiles);
+        return {.stop = moved < tiles ? WalkStop::BLOCKED : WalkStop::LIMIT, .walked = 250ms * tiles,
+            .wild_battles = 0, .moved_chunks = moved};
     }
     virtual void press(const RouteInput& input) override{
         //  arrive() pauses for up to 3 s for a location banner the sim never
@@ -429,6 +428,15 @@ public:
         //  A tap under 100 ms only turns (route_turn_tap()).
         if (input.kind == RouteInputKind::DPAD && input.hold >= 100ms){
             move(input.direction, input.count);
+        }
+        //  A stick hold is timed: route_open_hold() is half a tile under n.
+        if (input.kind == RouteInputKind::STICK){
+            const Milliseconds per_tile = route_ms_per_tile(input.direction, MoveSpeed::WALK);
+            const size_t tiles = (size_t)((input.hold + per_tile / 2) / per_tile);
+            const size_t over = m_overshoot ? (tiles * 35 + 99) / 100 : 0;
+            for (size_t press = 0; press < input.count; press++){
+                move(input.direction, tiles + over);
+            }
         }
     }
     virtual bool dialog_within(Milliseconds, Color) override{
@@ -474,9 +482,7 @@ private:
     std::vector<std::string>& m_notes;
     size_t m_calls = 0;
     size_t m_walked = 0;
-    size_t m_safe_taps = SIZE_MAX;
-    size_t m_lost_taps = 0;
-    size_t m_short_open = 0;
+    bool m_overshoot = false;
 };
 
 StoryWorld jubilife_world(){
@@ -535,49 +541,46 @@ size_t jubilife_shortest(const StoryWorld& world, TilePos from, TilePos goal){
     return plan ? tiles_of(*plan) : 0;
 }
 
-//  lab-B 2026-11-11 11:16 (00.05 to_the_center from (48, 62)): "north 20
-//  (open)" ended about 4 tiles short, by the kids at (52, 46) and (54, 46),
-//  and the replan went "west 33 (to wall)", "east 42 (to wall)". No open
-//  leg may run longer than one leg can (max_open_tiles), so a long stretch
-//  meets a wall on the way, and the plan stays near the shortest way.
-UnitTestResult test_jubilife_center_open_legs(Logger& logger){
+//  lab-B 2026-11-11 13:38 (00.05 to_the_center from (48, 62)): "north 20
+//  (open)" walked as a held run (3175 ms) overshot, the west leg after it
+//  stopped 9 tiles in, the walker put walls at (54, 41..43) and "arrived"
+//  at (52, 41) nowhere near the Center. Timed holds overshoot by up to
+//  ceil(0.35 n) tiles (three runs of 10 went about 13); taps are exact.
+//  With every timed hold overshooting the walk still ends on the tile.
+UnitTestResult test_jubilife_center_held_overshoot(Logger&){
     const StoryWorld world = jubilife_world();
     const TilePos from{48, 62};
     const TilePos goal{52, 41};
-    const RobustPlanCosts costs = town_plan_costs();
-    const auto plan = plan_robust_route(world, from, goal, costs);
-    if (!plan){
-        return "no plan from (48, 62).";
+    std::vector<std::string> notes;
+    SimulatedRouteIO io(world, from, {}, notes);
+    io.overshoot_timed_holds(true);
+    RouteTrainers trainers{.sights = {}, .fight = [](const std::string&){}};
+    try{
+        walk_route(io, world, {from}, trainers, {
+            .goal = [goal](const TilePos& pos){ return pos == goal; },
+            .label = "T",
+            .avoid = {},
+            .costs = town_plan_costs(),
+            .speed = MoveSpeed::WALK,
+        });
+    }catch (const RouteFailed& e){
+        return "failed: " + e.message;
     }
-    std::string legs;
-    for (const PlannedLeg& leg : *plan){
-        legs += " " + to_string(leg.leg);
-    }
-    logger.log("Jubilife to the Center:" + legs);
-    for (const PlannedLeg& leg : *plan){
-        if (!leg.leg.ends_at_wall && leg.leg.tiles > (size_t)costs.max_open_tiles){
-            return std::format("an open leg of {} tiles, over {}:{}", leg.leg.tiles, costs.max_open_tiles, legs);
-        }
-    }
-    const size_t least = jubilife_shortest(world, from, goal);
-    if (tiles_of(*plan) * 10 > least * 13){
-        return std::format("walks {} tiles where {} would do:{}", tiles_of(*plan), least, legs);
+    if (io.at() != goal){
+        return "ended at " + Pokemon::to_string(io.at()) + ", not at (52, 41).";
     }
     return true;
 }
 
-//  The same walk on the console: "north 20 (open)" ended on row 46, about
-//  4 tiles short, unseen, and the kids stand at (52, 46) and (54, 46).
-//  Taps longer than one open leg (max_open_tiles) lose 4 tiles here. The
-//  walker must still reach the Center without a long way round (the
-//  console replanned "west 33 (to wall)", "east 42 (to wall)").
+//  The same walk on the console: the kids at (52, 46) and (54, 46) stop a
+//  walk north up their columns. The walker replans from where it stopped
+//  and reaches the Center without a long way round.
 UnitTestResult test_jubilife_center_kids(Logger&){
     const StoryWorld world = jubilife_world();
     const TilePos from{48, 62};
     const TilePos goal{52, 41};
     std::vector<std::string> notes;
     SimulatedRouteIO io(world, from, {{52, 46}, {54, 46}}, notes);
-    io.lose_on_long_taps((size_t)town_plan_costs().max_open_tiles, 4);
     RouteTrainers trainers{.sights = {}, .fight = [](const std::string&){}};
     try{
         walk_route(io, world, {from}, trainers, {
@@ -595,11 +598,7 @@ UnitTestResult test_jubilife_center_kids(Logger&){
     }
     const size_t least = jubilife_shortest(world, from, goal);
     if (io.tiles_walked() * 10 > least * 13 + 40){
-        std::string text;
-        for (const std::string& note : notes){
-            text += "\n    " + note;
-        }
-        return std::format("walked {} tiles where {} would do:{}", io.tiles_walked(), least, text);
+        return std::format("walked {} tiles where {} would do.", io.tiles_walked(), least);
     }
     return true;
 }
@@ -644,9 +643,9 @@ std::vector<StoryRoute> story_routes(){
 }
 
 //  Walks `route` from each of its start tiles on the simulated console,
-//  every open leg `lost` tiles short (capped per leg). Returns the tiles
-//  walked from each start, or why it failed.
-std::string sweep_story_route(const StoryRoute& route, size_t lost, std::vector<size_t>& walked){
+//  every timed hold overshooting if `overshoot`. Returns the tiles walked
+//  from each start, or why it failed.
+std::string sweep_story_route(const StoryRoute& route, bool overshoot, std::vector<size_t>& walked){
     const StoryWorld* world = story_plan_world(route.from.map, route.goal.map);
     const std::optional<RobustPlanCosts> costs = story_route_costs(route.costs);
     if (world == nullptr || !costs){
@@ -663,7 +662,7 @@ std::string sweep_story_route(const StoryRoute& route, size_t lost, std::vector<
     for (const TilePos& from : start){
         std::vector<std::string> notes;
         SimulatedRouteIO io(*world, from, {}, notes);
-        io.stop_open_legs_short(lost);
+        io.overshoot_timed_holds(overshoot);
         RouteTrainers trainers{.sights = story_trainers(*world), .fight = [](const std::string&){}};
         try{
             walk_route(io, *world, start, trainers, {
@@ -678,28 +677,28 @@ std::string sweep_story_route(const StoryRoute& route, size_t lost, std::vector<
             for (size_t i = notes.size() > 4 ? notes.size() - 4 : 0; i < notes.size(); i++){
                 last += "\n        " + notes[i];
             }
-            return std::format("{} from {}, open legs {} short: {}{}", route.name, Pokemon::to_string(from), lost, e.message, last);
+            return std::format("{} from {}{}: {}{}", route.name, Pokemon::to_string(from), overshoot ? ", holds overshooting" : "", e.message, last);
         }
         if (std::find(targets.begin(), targets.end(), io.at()) == targets.end()){
-            return std::format("{} from {}, open legs {} short: ended at {}.", route.name, Pokemon::to_string(from), lost, Pokemon::to_string(io.at()));
+            return std::format("{} from {}{}: ended at {}.", route.name, Pokemon::to_string(from), overshoot ? ", holds overshooting" : "", Pokemon::to_string(io.at()));
         }
         walked.push_back(io.tiles_walked());
     }
     return "";
 }
 
-//  Fault sweep: every story route, walked with every open leg coming up
-//  short by 4 tiles (at most a quarter of the leg), still ends on its
-//  target. The log line per route gives the most tiles walked from any of
-//  its start tiles, without the fault and with it.
-UnitTestResult test_story_routes_open_legs_short(Logger& logger){
+//  Fault sweep: every story route, walked with every timed hold
+//  overshooting, still ends on its target. The log line per route gives the
+//  most tiles walked from any of its start tiles, without the fault and with
+//  it.
+UnitTestResult test_story_routes_holds_overshoot(Logger& logger){
     std::string failures;
     const std::vector<StoryRoute> routes = story_routes();
     for (const StoryRoute& route : routes){
         std::string line = route.name + ":";
-        for (size_t lost : {(size_t)0, (size_t)4}){
+        for (bool overshoot : {false, true}){
             std::vector<size_t> walked;
-            const std::string error = sweep_story_route(route, lost, walked);
+            const std::string error = sweep_story_route(route, overshoot, walked);
             if (!error.empty()){
                 failures += "\n    " + error;
                 line += " FAIL";
@@ -711,7 +710,7 @@ UnitTestResult test_story_routes_open_legs_short(Logger& logger){
             }
             line += " " + std::to_string(most);
         }
-        logger.log("[open legs short: 0, 4] " + line);
+        logger.log("[timed holds overshoot: no, yes] " + line);
     }
     if (!failures.empty()){
         return std::format("{} routes swept:{}", routes.size(), failures);
@@ -772,7 +771,7 @@ const PlannedRouteCase PLANNED_ROUTE_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"Jubilife to the Center: open legs no longer than one leg", test_jubilife_center_open_legs},
+        .input = {"Jubilife to the Center with timed holds overshooting", test_jubilife_center_held_overshoot},
         .expectation = {},
     },
     {
@@ -780,7 +779,7 @@ const PlannedRouteCase PLANNED_ROUTE_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"fault sweep: every story route with open legs coming up short", test_story_routes_open_legs_short},
+        .input = {"fault sweep: every story route with timed holds overshooting", test_story_routes_holds_overshoot},
         .expectation = {},
     },
 };
