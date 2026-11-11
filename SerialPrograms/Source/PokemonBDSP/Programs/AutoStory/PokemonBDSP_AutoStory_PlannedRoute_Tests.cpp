@@ -374,6 +374,9 @@ public:
     const TilePos& at() const{
         return m_at;
     }
+    size_t tiles_walked() const{
+        return m_walked;
+    }
 
     virtual WalkResult walk_to_wall(const RouteWallWalk& walk) override{
         count_call();
@@ -427,6 +430,7 @@ private:
             m_at = *next;
             moved++;
         }
+        m_walked += moved;
         return moved;
     }
 
@@ -436,6 +440,7 @@ private:
     std::vector<TilePos> m_obstacles;
     std::vector<std::string>& m_notes;
     size_t m_calls = 0;
+    size_t m_walked = 0;
 };
 
 StoryWorld jubilife_world(){
@@ -476,6 +481,82 @@ UnitTestResult test_blocked_from_several_tiles(Logger&){
     }
     if (io.at() != goal){
         return "ended at " + Pokemon::to_string(io.at()) + ", not at (52, 41).";
+    }
+    return true;
+}
+
+size_t tiles_of(const std::vector<PlannedLeg>& legs){
+    size_t tiles = 0;
+    for (const PlannedLeg& leg : legs){
+        tiles += leg.leg.tiles;
+    }
+    return tiles;
+}
+
+//  The fewest tiles from `from` to `goal` on Jubilife, open legs exact.
+size_t jubilife_shortest(const StoryWorld& world, TilePos from, TilePos goal){
+    const auto plan = plan_robust_route(world, from, goal, waypoint_plan_costs());
+    return plan ? tiles_of(*plan) : 0;
+}
+
+//  lab-B 2026-11-11 11:16 (00.05 to_the_center from (48, 62)): "north 20
+//  (open)" ended about 4 tiles short, by the kids at (52, 46) and (54, 46),
+//  and the replan went "west 33 (to wall)", "east 42 (to wall)". No open
+//  leg may run longer than one leg can (max_open_tiles), so a long stretch
+//  meets a wall on the way, and the plan stays near the shortest way.
+UnitTestResult test_jubilife_center_open_legs(Logger& logger){
+    const StoryWorld world = jubilife_world();
+    const TilePos from{48, 62};
+    const TilePos goal{52, 41};
+    const RobustPlanCosts costs = town_plan_costs();
+    const auto plan = plan_robust_route(world, from, goal, costs);
+    if (!plan){
+        return "no plan from (48, 62).";
+    }
+    std::string legs;
+    for (const PlannedLeg& leg : *plan){
+        legs += " " + to_string(leg.leg);
+    }
+    logger.log("Jubilife to the Center:" + legs);
+    for (const PlannedLeg& leg : *plan){
+        if (!leg.leg.ends_at_wall && leg.leg.tiles > (size_t)costs.max_open_tiles){
+            return std::format("an open leg of {} tiles, over {}:{}", leg.leg.tiles, costs.max_open_tiles, legs);
+        }
+    }
+    const size_t least = jubilife_shortest(world, from, goal);
+    if (tiles_of(*plan) * 10 > least * 13){
+        return std::format("walks {} tiles where {} would do:{}", tiles_of(*plan), least, legs);
+    }
+    return true;
+}
+
+//  The same walk on the console: the kids at (52, 46) and (54, 46) stop a
+//  walk north up their columns. The walker replans from where it stopped
+//  and reaches the Center without a long way round.
+UnitTestResult test_jubilife_center_kids(Logger&){
+    const StoryWorld world = jubilife_world();
+    const TilePos from{48, 62};
+    const TilePos goal{52, 41};
+    std::vector<std::string> notes;
+    SimulatedRouteIO io(world, from, {{52, 46}, {54, 46}}, notes);
+    RouteTrainers trainers{.sights = {}, .fight = [](const std::string&){}};
+    try{
+        walk_route(io, world, {from}, trainers, {
+            .goal = [goal](const TilePos& pos){ return pos == goal; },
+            .label = "T",
+            .avoid = {},
+            .costs = town_plan_costs(),
+            .speed = MoveSpeed::WALK,
+        });
+    }catch (const RouteFailed& e){
+        return "failed: " + e.message;
+    }
+    if (io.at() != goal){
+        return "ended at " + Pokemon::to_string(io.at()) + ", not at (52, 41).";
+    }
+    const size_t least = jubilife_shortest(world, from, goal);
+    if (io.tiles_walked() * 10 > least * 13 + 40){
+        return std::format("walked {} tiles where {} would do.", io.tiles_walked(), least);
     }
     return true;
 }
@@ -530,6 +611,14 @@ const PlannedRouteCase PLANNED_ROUTE_CASES[] = {
     },
     {
         .input = {"blocked from several possible tiles routes around", test_blocked_from_several_tiles},
+        .expectation = {},
+    },
+    {
+        .input = {"Jubilife to the Center: open legs no longer than one leg", test_jubilife_center_open_legs},
+        .expectation = {},
+    },
+    {
+        .input = {"Jubilife to the Center past the kids", test_jubilife_center_kids},
         .expectation = {},
     },
 };
