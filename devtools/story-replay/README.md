@@ -23,7 +23,7 @@ GitHub CI builds/tests on the fork; Ubuntu additionally uploads
 
 `Programs/AutoStory/ReplayData/` contains exact `binding.json` / `cases.json`
 copies from the immutable PokemonSimulation revision in `pin.json`. The capture
-itself is the existing `StoryData/frlg-parcel-00.05.json`. These are **PR #73
+itself is the existing `StoryData/frlg-parcel-02.01.json`. These are **PR #73
 preview test fixtures**, not an approved resource/production-plan adoption.
 The 53-map production resource pin is unchanged. Every selected native embedded
 map must match its Python fixture's exact raw-byte SHA-256 before execution.

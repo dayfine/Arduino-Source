@@ -1,0 +1,28 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "04.03",
+    "title": "after Gift RNG: save with the Magikarp",
+    "notes": [
+      "Gift RNG buys the Magikarp (500 of the money 04.02 brings) without moving the player and leaves its summary open, or HOME. This saves the shiny where 04.02 ended. A run started here with Gift RNG's handoff on loads the save beside the salesman and runs Gift RNG first."
+    ],
+    "start": {"certainty": "tile", "map": "Route4_PokemonCenter_1F", "where": {"facing": "west", "kind": "tiles", "tiles": [[2, 3]]}},
+    "sections": [
+      {
+        "id": "route4_center",
+        "title": "Back from Gift RNG beside the salesman",
+        "events": [
+          {
+            "id": "leave_gift_summary",
+            "kind": "game_action",
+            "variant": "leave_gift_summary",
+            "declared_after": {"certainty": "tile", "map": "Route4_PokemonCenter_1F", "where": {"facing": "west", "kind": "tiles", "tiles": [[2, 3]]}},
+            "why": "the Magikarp's summary Gift RNG left open, or HOME"
+          }
+        ]
+      }
+    ]
+  },
+  "execution": {"live_start": true, "menu": "full", "supplies": {"lead": "after_brock"}}
+}

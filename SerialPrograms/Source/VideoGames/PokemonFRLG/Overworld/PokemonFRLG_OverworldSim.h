@@ -126,8 +126,8 @@ struct SimScript{
     std::set<std::string> wild_floor_maps;
     //  Whether the game holds the player up a tile on a step onto a
     //  connected map. It did north onto Nugget Bridge (console B,
-    //  2026-11-03, rows 00.16 and 00.20), not south from Route 6 into
-    //  Vermilion City (row 00.24).
+    //  2026-11-03, rows 05.05 and 05.09), not south from Route 6 into
+    //  Vermilion City (row 06.03).
     bool connections_stall = true;
     //  Wild battles at the game's own odds instead of `encounters`, on the
     //  maps named here, with their land encounter rate (pokefirered
@@ -138,18 +138,18 @@ struct SimScript{
     //  the game misses, by number from 1; the player goes on facing the old
     //  way. The game drops none from a standstill (MovementMechanics: 70 of
     //  70 turned); these test the walker's check of the turn
-    //  (SimWalkerRules::confirm_turn) after 00.28 run 2 (console B,
+    //  (SimWalkerRules::confirm_turn) after 08.01 run 2 (console B,
     //  2026-11-09), where a one-tile leg only turned the player.
     std::set<int> dropped_turn_taps;
     //  Fault injection: steps onto a warp, by number from 1, that show the
     //  fade's black and clear with the player where they were, not warped
-    //  (console B, 2026-11-10 01:44, 00.31 run 4, "east 1 (warp)" on B4F).
+    //  (console B, 2026-11-10 01:44, 09.01 run 4, "east 1 (warp)" on B4F).
     std::set<int> black_without_warp;
     //  The player rides the Bicycle: a tap facing another way takes a step
     //  too, a hold through a turn loses no tile
     //  (MovementMechanics::BIKE_TAP_ONLY_TURNS), and no step tap is
     //  ignored: a 40ms turn tap and a 56ms hold 340ms after it took two
-    //  tiles (console B, 2026-11-09, 00.30). At the start: SELECT gets on
+    //  tiles (console B, 2026-11-09, 08.03). At the start: SELECT gets on
     //  and off (OverworldSim::press_select()), a warp gets off. Each tap is
     //  a tile; one in MovementMechanics::BIKE_FAST_TAP_DROP_EVERY of those
     //  that start sooner than BIKE_TAP_DROP_PERIOD after the last is
@@ -161,7 +161,7 @@ struct SimScript{
     //  Caves dark without Flash (Rock Tunnel): the overworld is black but
     //  for a lit circle on the player, which the walker's battle text box
     //  check and screen observer read as a battle on its way (console B,
-    //  2026-11-09, 00.28), unless SimWalkerRules::dark_cave_not_battle.
+    //  2026-11-09, 08.01), unless SimWalkerRules::dark_cave_not_battle.
     std::set<std::string> dark_maps;
     //  A lift's map, and where its door lets the player out for each floor
     //  on its panel's menu, top first (pokefirered setdynamicwarp in
@@ -170,7 +170,7 @@ struct SimScript{
     //  LIFT_MAP, with rocket_hideout_lift_doors().
     std::map<std::string, std::vector<MapPosition>> lift_floors = {};
     //  The fade out of a lift only dims the screen, never black (console B,
-    //  2026-11-10, 00.32 lift_to_b4f): no FADE shows for it.
+    //  2026-11-10, 09.02 lift_to_b4f): no FADE shows for it.
     bool lift_exit_dims = true;
     SimTiming timing;
 };
@@ -440,20 +440,20 @@ struct SimWalkerRules{
     //  A leg onto a warp whose fade was a wild battle's (its wipe passes for
     //  the fade) stops before the warp, and the player is found again on it.
     //  Without it the walker stopped as off the route (console B,
-    //  2026-11-03, Mt. Moon 1F, row 00.13).
+    //  2026-11-03, Mt. Moon 1F, row 04.05).
     bool find_player_after_warp_battle = true;
     //  After a leg's watch saw nothing, a battle's text box on screen (its
     //  HP boxes still to come) is watched on for, and the leg taken as
     //  stopped part-way. Without it the walker took "south 15 (to wall)"
     //  as walked and the next leg into the battle (console B, 2026-11-03,
-    //  Mt. Moon B1F, row 00.13).
+    //  Mt. Moon B1F, row 04.05).
     bool watch_on_for_unseen_battle = true;
     //  The same after a leg the maps see no wild tiles on (RouteStep::wild),
     //  which the leg and its watch don't watch for battles: on Mt. Moon
     //  B2F's tiles closed on one side, which the maps don't mark as wild, a
     //  battle on "east 7 (to wall)" left black after the leg, the leg was
     //  taken as walked and the next one held from where the battle was
-    //  (console B, 2026-11-03, row 00.13).
+    //  (console B, 2026-11-03, row 04.05).
     bool watch_on_after_unmarked_leg = true;
     //  Before a step, a battle on its way (its text box or wipe) is watched
     //  on for, and the step before it taken as stopped part-way, not the
@@ -462,29 +462,29 @@ struct SimWalkerRules{
     //  A hold over a step onto a connected map is a tile longer for it
     //  (RouteStep::connection_steps). Without it the open leg north from
     //  Cerulean City onto Nugget Bridge ended a tile short (console B,
-    //  2026-11-03, rows 00.16 and 00.20).
+    //  2026-11-03, rows 05.05 and 05.09).
     bool hold_over_connections = true;
     //  An open leg after whose hold a wild battle was seen is placed by the
     //  battle's first timed screen event (place_late_stop()). Without it the
     //  player may be anywhere on the leg: on Route 10, "east 11" was found
-    //  again from all 12 of its tiles (console B, 2026-11-09, 00.27 run 2).
+    //  again from all 12 of its tiles (console B, 2026-11-09, 07.02 run 2).
     bool place_late_battle = true;
     //  The watch for a warp's fade starts with the hold onto the warp
     //  (Pokemon::WatchAlong), not when it ends. Without it a fade over
     //  before the hold ended was missed, and the walk stopped on "no fade in
     //  and out after walking onto the warp" though it had warped (console B,
-    //  2026-11-09 01:41, 00.27, the warp to CeruleanCity: the watch started
+    //  2026-11-09 01:41, 07.02, the warp to CeruleanCity: the watch started
     //  about 1.3 s into the hold).
     bool watch_fade_along_hold = true;
     //  A warp's fade is taken as the warp only once the screen after it
     //  shows the player off the map they held from (warp_left_scene()).
     //  Without it a black that cleared with the player where they were was
-    //  taken as the warp (console B, 2026-11-10 01:44, 00.31 run 4).
+    //  taken as the warp (console B, 2026-11-10 01:44, 09.01 run 4).
     bool confirm_warp_destination = true;
     //  A turn tap is checked by the facing on screen, and tapped again
     //  while the player faces another way (OverworldWalkSteps::turn_to()).
     //  Without it a dropped tap left a one-tile leg turning the player
-    //  only, taken as walked (console B, 2026-11-09, 00.28 run 2).
+    //  only, taken as walked (console B, 2026-11-09, 08.01 run 2).
     bool confirm_turn = true;
     //  The speed the walker goes at: its turn taps
     //  (OverworldWalkSteps::turns_first()) and its holds' tile time.
@@ -493,7 +493,7 @@ struct SimWalkerRules{
     //  tile (count_bike_taps()), and one that doesn't move finds the player
     //  ahead of a block. Without it the leg is one hold, and a start off
     //  along the leg ends it off with nothing to show it (console B,
-    //  2026-11-09, 00.30: three runs 3 tiles east after Route 8's legs).
+    //  2026-11-09, 08.03: three runs 3 tiles east after Route 8's legs).
     bool count_bike_taps = true;
     //  How far apart, start to start, the counted taps are
     //  (MovementMechanics::BIKE_TAP_PERIOD).
@@ -505,14 +505,14 @@ struct SimWalkerRules{
     //  A dark cave's overworld isn't a battle on its way
     //  (OverworldWalkSteps::dark_cave_screen()). Without it the check
     //  before each step watched for a battle on it (console B, 2026-11-09,
-    //  00.28: "running from a wild Pokemon", then "not a battle").
+    //  08.01: "running from a wild Pokemon", then "not a battle").
     bool dark_cave_not_battle = true;
     //  A stop on an open leg that started in a dark cave may be anywhere on
     //  the leg (whole_leg()). Without it the stop is placed by the dark
     //  screen's black, read as the battle at the hold's start: a battle at
     //  the end of "east 12" on Rock Tunnel B1F was placed 0 to 3 tiles in,
     //  and the player was found again at a wall 5 tiles off (console B,
-    //  2026-11-09, 00.28).
+    //  2026-11-09, 08.01).
     bool whole_leg_in_dark = true;
     //  The end of a trainer's battle the walker fought, as the story's
     //  battle loop takes it on the screen the sim shows after it: its

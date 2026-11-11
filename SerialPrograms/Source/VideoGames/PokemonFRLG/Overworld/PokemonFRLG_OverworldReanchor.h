@@ -52,7 +52,7 @@ WalkedTiles walked_near(const RouteStep& step, int estimate, Milliseconds tile_t
 //  there, which it doesn't always do: south from Route 6 into Vermilion
 //  City it didn't, the player ended a tile further south, and the north 1
 //  onto the Pokemon Center's door stopped below it (console B, 2026-11-03,
-//  row 00.24). Until a leg to a wall that way or a warp places the player
+//  row 06.03). Until a leg to a wall that way or a warp places the player
 //  again, they may stand a tile further on; a warp walked back that way is
 //  held a tile further for it.
 std::vector<RouteStep> with_warp_slack(std::vector<RouteStep> route);
@@ -63,7 +63,7 @@ WalkedTiles whole_leg(const RouteStep& step);
 //  cave's screen (OverworldWalkSteps::dark_cave_screen()). There the timing
 //  has no basis: the screen is black before any battle's wipe, and a
 //  battle at the end of "east 12" on Rock Tunnel B1F was placed 0 to 3
-//  tiles in (console B, 2026-11-09, 00.28). The player, "found again" at
+//  tiles in (console B, 2026-11-09, 08.01). The player, "found again" at
 //  a wall from those, was 5 tiles off.
 WalkedTiles stop_tiles(const RouteStep& step, WalkedTiles timed, bool dark);
 

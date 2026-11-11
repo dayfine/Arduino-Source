@@ -289,7 +289,7 @@ UnitTestResult test_risks(){
 
 //  The Cerulean rival (Pidgeotto, Abra, Rattata, then a Bulbasaur with
 //  Sleep Powder, Poison Powder and Leech Seed): the Lv22 Wartortle with 5
-//  Potions that 00.15's GRIND plans for wins about a quarter of the sim's
+//  Potions that 05.03's GRIND plans for wins about a quarter of the sim's
 //  battles, and is refused with the reason; at Lv30 it wins over 90%.
 UnitTestResult test_rival_win_chance(){
     const std::optional<WinEstimate> planned = story_win_chance(grown_to(new_member("squirtle", 5), 22), SimItems{.potions = 5}, 1.0, RIVAL);
@@ -469,7 +469,7 @@ UnitTestResult test_rival_real_moves(){
 }
 
 
-//  Console B, 2026-11-03 (m56, 00.15b, run 2): the Wartortle Lv22, 65 HP,
+//  Console B, 2026-11-03 (m56, 05.04, run 2): the Wartortle Lv22, 65 HP,
 //  Bite, Water Pulse, Bubble and Withdraw.
 PartyMember m56_lead(){
     Stats stats = combatant("wartortle", 22, OWN_GENES)->stats;
@@ -660,7 +660,7 @@ UnitTestResult test_rival_potions_raise_chance(){
 
 
 
-//  00.22's lead: Wartortle Lv27 at 78 HP, its other stats at OWN_GENES.
+//  06.01's lead: Wartortle Lv27 at 78 HP, its other stats at OWN_GENES.
 PartyMember ss_anne_lead(){
     Stats stats = combatant("wartortle", 27, OWN_GENES)->stats;
     stats.hp = 78;

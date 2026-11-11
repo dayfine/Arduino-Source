@@ -21,7 +21,7 @@
  *      tap's start is ignored.
  *  -   Taps with no release between them are one hold: after a turn, 3 of
  *      them took 0 or 1 steps.
- *  After a battle (console B, 2026-11-09 15:50, 00.28 winston_line): a
+ *  After a battle (console B, 2026-11-09 15:50, 08.01 winston_line): a
  *  step tap sent as flee_battle() returned, on the black's end, was lost;
  *  one more tap by hand stepped.
  *
@@ -44,7 +44,7 @@ namespace MovementMechanics{
 //  Walking: a tile per 16 frames at 60 fps (console B, 2026-11-09).
 inline constexpr Milliseconds TILE_TIME(267);
 //  Running with B held: a tile per 8 frames (console B, 2026-11-02, video
-//  of run 00.11).
+//  of run 04.01).
 inline constexpr Milliseconds RUN_TILE_TIME(133);
 //  Surfing: a tile per 8 frames.
 inline constexpr Milliseconds SURF_TILE_TIME(133);

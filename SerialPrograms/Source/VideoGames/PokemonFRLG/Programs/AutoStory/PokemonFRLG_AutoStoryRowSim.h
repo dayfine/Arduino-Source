@@ -56,7 +56,7 @@ private:
     std::vector<RowStubs> m_rows;
 };
 
-//  Each attempt's stubs, a line a row: "00.03: 2 stubbed: oak, rival".
+//  Each attempt's stubs, a line a row: "01.04: 2 stubbed: oak, rival".
 std::string stub_report(const std::vector<RowStubs>& rows);
 
 //  A failed step fails the run as it threw: a simulation has no save to
@@ -110,7 +110,7 @@ public:
     const std::map<std::string, int>& bag() const{
         return m_bag;
     }
-    //  "00.03/oak: a dialog pops up before it.", and how it was cleared.
+    //  "01.04/oak: a dialog pops up before it.", and how it was cleared.
     const std::vector<std::string>& dialog_notes() const{
         return m_dialog_notes;
     }

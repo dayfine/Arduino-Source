@@ -425,7 +425,7 @@ void wait_out_dim_warp(ConsoleHandle& console, ProControllerContext& context, co
 } // namespace
 
 //  A black screen that clears with the player where they were is no warp
-//  (console B, 2026-11-10 01:44, 00.31 run 4: "east 1 (warp)" was taken as
+//  (console B, 2026-11-10 01:44, 09.01 run 4: "east 1 (warp)" was taken as
 //  walked while the player stayed on B4F).
 void wait_out_warp(
     ConsoleHandle& console, ProControllerContext& context, const RouteStep& step,
@@ -505,7 +505,7 @@ void clear_open_message(
 //  the watch after "south 15 (to wall)" ended on the box still empty, the
 //  leg was taken as walked to its wall, and the next leg was walked into
 //  the battle, 5 tiles short of where it was planned from (console B,
-//  2026-11-03, row 00.13).
+//  2026-11-03, row 04.05).
 namespace{
 
 //  What on screen shows a wild battle on its way: its text box, or the

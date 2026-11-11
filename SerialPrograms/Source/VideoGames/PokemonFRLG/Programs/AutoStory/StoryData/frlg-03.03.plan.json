@@ -1,0 +1,51 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "03.03",
+    "title": "Pewter: the Running Shoes from Oak's aide",
+    "start": {"certainty": "tile", "map": "PewterCity_Gym", "where": {"facing": "north", "kind": "tiles", "tiles": [[6, 6]]}},
+    "sections": [
+      {
+        "id": "pewter_aide",
+        "title": "Pewter City: Oak's aide and the Running Shoes",
+        "events": [
+          {
+            "id": "before_aide_trigger",
+            "kind": "route",
+            "target": {"certainty": "tile", "map": "PewterCity", "where": {"facing": "east", "kind": "tiles", "tiles": [[45, 21]]}},
+            "why": "out of the Gym, east along row 21, short of the top trigger",
+            "notes": [
+              "Brock's win sets VAR_MAP_SCENE_PEWTER_CITY to 1 and shows the aide at (46, 20); his triggers are (46, 21..23) (PewterCity map.json). The Gym guide's triggers at (42..43, 21..23) need the scene at 0."
+            ]
+          },
+          {
+            "id": "aide_trigger",
+            "kind": "step",
+            "direction": "east",
+            "why": "onto (46, 21), below the aide"
+          },
+          {
+            "id": "shoes_from_aide",
+            "kind": "scene",
+            "declared_after": {"certainty": "tile", "map": "PewterCity", "where": {"facing": "north", "kind": "tiles", "tiles": [[46, 21]]}},
+            "why": "\"Oh, PLAYER!\" ... the Running Shoes; ends facing north",
+            "notes": [
+              "RunningShoesAideTriggerTop: the aide talks from (46, 20), no YES/NO; the player only turns up. He walks off and is removed; FLAG_SYS_B_DASH is set (console B, 2026-11-02: about 20 B presses to the overworld)."
+            ]
+          },
+          {
+            "id": "below_pewter_center",
+            "kind": "route",
+            "target": {"certainty": "tile", "map": "PewterCity", "where": {"facing": "south", "kind": "tiles", "tiles": [[17, 26]]}},
+            "why": "west along row 21 and down to below the Pokemon Center's door (17, 25)",
+            "notes": [
+              "Where the by-hand walk stopped to start 04.01 (console B, 2026-11-02)."
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "execution": {"menu": "full", "supplies": {"lead": "after_brock"}}
+}

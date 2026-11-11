@@ -48,7 +48,7 @@ struct BikeTapCalls{
 //  game may miss a turn tap (MovementMechanics::MAX_TURN_TAPS).
 constexpr int STEP_TAP_TRIES = 3;
 //  How far a sure start may be off before a blocked tap finds the player:
-//  three runs of 00.30 stood 3 tiles off (console B, 2026-11-09).
+//  three runs of 08.03 stood 3 tiles off (console B, 2026-11-09).
 constexpr int BLOCKED_TAP_SLACK = 3;
 
 //  Walks the open leg `step` a tap at a time: on the Bicycle each tap is

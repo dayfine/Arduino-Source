@@ -616,7 +616,7 @@ UnitTestResult test_run_then_overworld(Logger&){
     return "START never looked for the overworld in the dark cave.";
 }
 
-//  Regression: console B, 2026-11-09, 00.28 hiker_lenny in Rock Tunnel
+//  Regression: console B, 2026-11-09, 08.01 hiker_lenny in Rock Tunnel
 //  without Flash: the battle won with a move, then the dark cave's
 //  overworld, black but for the lit circle on the player, read as the
 //  text box with no HP box. The loop held B for an evolution three times

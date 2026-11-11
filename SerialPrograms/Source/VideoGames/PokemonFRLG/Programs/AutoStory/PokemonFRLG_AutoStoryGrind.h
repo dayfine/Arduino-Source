@@ -182,7 +182,7 @@ GrindResult run_grind(Logger& logger, GrindActions& actions, const MemberReader&
 
 //  Before the walk out to the patch: whether the member `plan` grinds, as
 //  read, already has its level, or with a trainer its win chance. Nothing
-//  is fought. 00.24 walked to Route 6's grass and back at Lv29 with the
+//  is fought. 06.03 walked to Route 6's grass and back at Lv29 with the
 //  chance against Lt. Surge already 79% (console B, 2026-11-03).
 bool grind_reached_already(Logger& logger, GrindActions& actions, const MemberReader& reader, const GrindPlan& plan);
 

@@ -7,14 +7,20 @@
  *  Moon to Route 4 east of it, and on to Cerulean City, Misty, its rival,
  *  Nugget Bridge and Bill, then Route 6 to Vermilion City, the S.S.
  *  Anne's HM01 and Lt. Surge, on to Rock Tunnel and Lavender Town, as
- *  story checkpoints 00.01 to 00.29, each saved at its end. After 00.10
+ *  story checkpoints 01.01 to 08.02, each saved at its end. After 03.03
  *  every route and leg runs. Taken from a by-hand run on console B
  *  (2026-11-01) and the pokefirered map scripts.
  *
  *  Each checkpoint is an authored plan, StoryData/frlg-<id>.plan.json
- *  (00.05: frlg-parcel-00.05.plan.json), built into the program and
+ *  (02.01: frlg-parcel-02.01.plan.json), built into the program and
  *  loaded by load_authored_story() (Data/JsonParser.h). Its sections, the
  *  notes on how each step was planned and why, live there too.
+ *
+ *  An id is part.NN, checkpoint NN of that part of Bulbapedia's FireRed
+ *  and LeafGreen walkthrough (parts 1 to 9 here). The order follows our
+ *  setup and can differ in other runs: the rival battles depend on the
+ *  starter, Route 11 and Diglett's Cave are skipped, the Bike Voucher is
+ *  fetched as a detour, and the Rocket Hideout comes before Celadon Gym.
  *
  */
 
@@ -30,12 +36,12 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-//  Checkpoints 00.01 to 00.29, in order of id, as authored in StoryData,
-//  with 00.01b, the way back in after SID Helper, after 00.01, 00.04 split in two at Squirtle's ball for
-//  Starter RNG: 00.04 and 00.04b, 00.12b, the way back in after Gift RNG,
-//  after 00.12, 00.12c, the Magikarp put in BOX 1, after it, 00.14b and
-//  00.14c, Cerulean Gym to a save below Misty's platform and Misty alone
-//  from it, and 00.15b, the rival in Cerulean alone, from 00.15's save
+//  Checkpoints 01.01 to 08.02, in order of id, as authored in StoryData,
+//  with 01.02, the way back in after SID Helper, after 01.01, 01.05 split in two at Squirtle's ball for
+//  Starter RNG: 01.05 and 01.06, 04.03, the way back in after Gift RNG,
+//  after 04.02, 04.04, the Magikarp put in BOX 1, after it, 05.01 and
+//  05.02, Cerulean Gym to a save below Misty's platform and Misty alone
+//  from it, and 05.04, the rival in Cerulean alone, from 05.03's save
 //  below his trigger.
 const std::vector<StoryCheckpoint>& story_checkpoints();
 
@@ -46,14 +52,14 @@ void add_tests_AutoStory(UnitTestDatabase& database);
 void add_tests_AutoStoryRunPlan(UnitTestDatabase& database);
 //  The table run end to end against a fake game (PokemonFRLG_AutoStorySimulation_Tests.cpp).
 void add_tests_AutoStorySimulation(UnitTestDatabase& database);
-//  Rows 00.21 and 00.22 on the overworld sim (PokemonFRLG_AutoStoryVermilion_Tests.cpp).
+//  Rows 05.10 and 06.01 on the overworld sim (PokemonFRLG_AutoStoryVermilion_Tests.cpp).
 void add_tests_AutoStoryVermilion(UnitTestDatabase& database);
-//  Rows 00.23 to 00.25 on the overworld sim (PokemonFRLG_AutoStoryVermilionGym_Tests.cpp).
+//  Rows 06.02 to 06.04 on the overworld sim (PokemonFRLG_AutoStoryVermilionGym_Tests.cpp).
 void add_tests_AutoStoryVermilionGym(UnitTestDatabase& database);
-//  Rows from 00.26 on on the overworld sim (PokemonFRLG_AutoStoryCeladon_Tests.cpp),
+//  Rows from 07.01 on on the overworld sim (PokemonFRLG_AutoStoryCeladon_Tests.cpp),
 //  with add_tests_AutoStoryLavender().
 void add_tests_AutoStoryCeladon(UnitTestDatabase& database);
-//  Rows from 00.28 on on the overworld sim (PokemonFRLG_AutoStoryLavender_Tests.cpp).
+//  Rows from 08.01 on on the overworld sim (PokemonFRLG_AutoStoryLavender_Tests.cpp).
 void add_tests_AutoStoryLavender(UnitTestDatabase& database);
 
 

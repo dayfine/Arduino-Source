@@ -17,7 +17,7 @@ const std::string& story_replay_fixture(std::string_view name){
     }
     if (name == "capture"){
         for (const auto& [file, text] : autostory_checkpoint_json()){
-            if (file == "frlg-parcel-00.05"){
+            if (file == "frlg-parcel-02.01"){
                 return text;
             }
         }

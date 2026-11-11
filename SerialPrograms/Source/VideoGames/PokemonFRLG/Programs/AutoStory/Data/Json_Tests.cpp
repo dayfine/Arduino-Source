@@ -36,8 +36,8 @@ struct ExportCase{
 };
 
 const ExportCase CASES[] = {
-    {.input = {.id = "00.05"}, .expectation = {.events = {"below_mart_door", "mart_door", "parcel_from_clerk"}, .menu = "before_pokedex"}},
-    {.input = {.id = "00.05", .custom = true}, .expectation = {
+    {.input = {.id = "02.01"}, .expectation = {.events = {"below_mart_door", "mart_door", "parcel_from_clerk"}, .menu = "before_pokedex"}},
+    {.input = {.id = "02.01", .custom = true}, .expectation = {
         .events = {"below_mart_door", "mart_door", "parcel_from_clerk"}, .menu = "full",
         .native_json = R"({"menu":"full","supplies":{"potions":2,"antidotes":3,"parlyz_heals":4,"pocket":["antidote",""],"status":"PSN","hurt":true,"hp_red":true,"hp_fill":0.25,"lead":{"species":"wartortle","moves":[{"move":"bite","pp":0}],"moves_through_level":18,"moves_read":true,"level":19,"stats":{"hp":50,"attack":20,"defense":30,"sp_attack":40,"sp_defense":35,"speed":25}},"protected_slots":[0,2],"foes":["staryu"],"trainer":"misty","risk":"high","foe_out":0,"wild_foes":["pidgey"]}})"
     }},
@@ -120,8 +120,8 @@ private:
 
 
 //  Reading the Parcel capture built into the program (StoryData/
-//  frlg-parcel-00.05.json, PokemonSimulation's data/story/native copy of
-//  the export tool's output): as written, it is row 00.05 and exports back
+//  frlg-parcel-02.01.json, PokemonSimulation's data/story/native copy of
+//  the export tool's output): as written, it is row 02.01 and exports back
 //  to the same file; changed, it is refused rather than read with a guess.
 struct LoadInput{
     std::string_view name;
@@ -191,11 +191,11 @@ void unknown_execution_menu(JsonObject& root){
 }
 
 const LoadCase LOAD_CASES[] = {
-    {.input = {.name = "authored Parcel plan", .authored = true}, .expectation = {.row = "00.05"}},
+    {.input = {.name = "authored Parcel plan", .authored = true}, .expectation = {.row = "02.01"}},
     {.input = {.name = "authored plan unknown field", .mutate = add_top_level_field, .authored = true}, .expectation = {.rejected = true}},
     {.input = {.name = "authored plan unknown format", .mutate = change_format, .authored = true}, .expectation = {.rejected = true}},
     {.input = {.name = "authored plan unknown menu", .mutate = unknown_execution_menu, .authored = true}, .expectation = {.rejected = true}},
-    {.input = {.name = "the Parcel capture is row 00.05"}, .expectation = {.row = "00.05"}},
+    {.input = {.name = "the Parcel capture is row 02.01"}, .expectation = {.row = "02.01"}},
     {.input = {.name = "an unknown envelope field", .mutate = add_top_level_field}, .expectation = {.rejected = true}},
     {.input = {.name = "another format", .mutate = change_format}, .expectation = {.rejected = true}},
     {.input = {.name = "an unknown native field", .mutate = add_native_field}, .expectation = {.rejected = true}},
@@ -208,11 +208,11 @@ const LoadCase LOAD_CASES[] = {
 
 const std::string& parcel_text(const LoadInput& input){
     for (const auto& [name, text] : autostory_checkpoint_json()){
-        if (name == (input.authored ? "frlg-parcel-00.05.plan" : "frlg-parcel-00.05")){
+        if (name == (input.authored ? "frlg-parcel-02.01.plan" : "frlg-parcel-02.01")){
             return text;
         }
     }
-    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "StoryData/frlg-parcel-00.05.json is not built into the program.");
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "StoryData/frlg-parcel-02.01.json is not built into the program.");
 }
 
 const StoryCheckpoint* table_row(std::string_view id){

@@ -155,7 +155,7 @@ struct TurnTapCase{
 const MapPosition TURN_START{"ViridianForest", {13, 28}};
 const MapPosition TURN_END{"ViridianForest", {12, 28}};
 
-//  Console B, 2026-11-09 (00.28 run 2): the game missed the turn tap before
+//  Console B, 2026-11-09 (08.01 run 2): the game missed the turn tap before
 //  a one-tile open leg, the leg's hold only turned the player, and the leg
 //  was taken as walked. On the sim, a leg west 1 for a player facing north.
 class Test_OverworldTurnTap : public UnitTest{
@@ -202,7 +202,7 @@ const TurnTapCase TURN_TAP_CASES[] = {
     {.input = {.name = "dropped, tapped again", .dropped_turn_taps = {1}}, .expectation = {.end = TURN_END}},
     {.input = {.name = "dropped twice, tapped again", .dropped_turn_taps = {1, 2}}, .expectation = {.end = TURN_END}},
     {.input = {.name = "dropped, not checked: the leg only turns", .dropped_turn_taps = {1}, .confirm_turn = false}, .expectation = {.end = TURN_START}},
-    //  Console B, 2026-11-09 (00.30): on the Bicycle the turn tap took a
+    //  Console B, 2026-11-09 (08.03): on the Bicycle the turn tap took a
     //  step, each one-tile leg went two, and the walk to Route 8 ended on
     //  Route 12.
     {.input = {.name = "on the bike, no turn tap", .on_bike = true}, .expectation = {.end = TURN_END}},

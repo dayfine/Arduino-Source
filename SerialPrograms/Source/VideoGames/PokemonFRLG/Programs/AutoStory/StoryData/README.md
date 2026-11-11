@@ -1,8 +1,8 @@
 # FRLG authored checkpoints
 
-Every story checkpoint is an authored plan here, one file per checkpoint: `frlg-<id>.plan.json`, and `frlg-parcel-00.05.plan.json` for 00.05. `story_checkpoints()` is `load_authored_story()`: every embedded `*.plan` file, in order of id. There are no C++ row definitions; the files were exported once from the C++ table, and `ReplayData/frlg-story-sim-trace.json` keeps the whole story's sim trace from before that (`PokemonFRLG::AutoStory - Authored` tests it).
+Every story checkpoint is an authored plan here, one file per checkpoint: `frlg-<id>.plan.json`, and `frlg-parcel-02.01.plan.json` for 02.01. `story_checkpoints()` is `load_authored_story()`: every embedded `*.plan` file, in order of id. There are no C++ row definitions; the files were exported once from the C++ table, and `ReplayData/frlg-story-sim-trace.json` keeps the whole story's sim trace from before that (`PokemonFRLG::AutoStory - Authored` tests it).
 
-- A checkpoint has `sections: [{id, title, notes?, events}]`, or plain `events` (one unnamed section, as 00.05 keeps so its bytes stay those PokemonSimulation pins). Events are numbered across the sections, and an event's log line names its section: `[Event] 00.28/12 [b1f_east] winston_line: start`.
+- A checkpoint has `sections: [{id, title, notes?, events}]`, or plain `events` (one unnamed section, as 02.01 keeps so its bytes stay those PokemonSimulation pins). Events are numbered across the sections, and an event's log line names its section: `[Event] 08.01/12 [b1f_east] winston_line: start`.
 - `notes` (a list of paragraphs) on the checkpoint, a section or an event hold what the C++ table's comments said: the maps, trainers, numbers and console runs a step was planned from. No executor reads them.
 - `variant` says how FRLG does a step: `run` or `bike` on a route or legs, `trainer_line`/`trainer_wait` on a step, and on a `game_action` the action's name (`mart`, `teach`, `grind`, `grind_check`, `capture`, `pc`, `fossil`, `level`, `use_item`, `lift_floor`, or `cut_tree`, `trash_cans`, `close_trainer_card`, `leave_gift_summary`, `center_enter`, `center_exit`, `ride_bike` and the Rocket Hideout's other steps from `PokemonFRLG_AutoStoryHideout.h`). An unknown variant is rejected at load.
 - `args` holds what the action reads, e.g. a Mart's `{"map": "CeruleanCity_Mart", "budget": 1500, "floor": 1500}`, with what it buys in `items`. Each action declares its args in the action table (`PokemonFRLG_AutoStoryStepTable.cpp`); a step with an unknown, mistyped or missing one is rejected at load.
@@ -12,16 +12,16 @@ Every story checkpoint is an authored plan here, one file per checkpoint: `frlg-
 
 ## The Parcel pilot
 
-`frlg-parcel-00.05.plan.json` is the production definition of checkpoint `00.05`. The story table loads it with `load_authored_checkpoint()`: there is no second C++ Parcel event list. Its `pokesim-authored-checkpoint/1` contract contains the common checkpoint plus FRLG executor configuration (`execution.menu`). It has no export revision, bookkeeping snapshot, or claimed observation.
+`frlg-parcel-02.01.plan.json` is the production definition of checkpoint `02.01`. The story table loads it with `load_authored_checkpoint()`: there is no second C++ Parcel event list. Its `pokesim-authored-checkpoint/1` contract contains the common checkpoint plus FRLG executor configuration (`execution.menu`). It has no export revision, bookkeeping snapshot, or claimed observation.
 
-The same file is checked into PokemonSimulation at `data/story/parcel-pilot/frlg-parcel-00.05.plan.json`; the paired CI check compares its exact bytes and runs the existing seven replay scenarios there. The schema is `schemas/authored-checkpoint.schema.json`, referencing `story-checkpoint.schema.json`.
+The same file is checked into PokemonSimulation at `data/story/parcel-pilot/frlg-parcel-02.01.plan.json`; the paired CI check compares its exact bytes and runs the existing seven replay scenarios there. The schema is `schemas/authored-checkpoint.schema.json`, referencing `story-checkpoint.schema.json`.
 
 ## The two gates
 
 1. Native tests load the actual table entry through JSON, run the existing engine/fake-game simulator, and compare its events/trace/save pose with the captured pre-migration checkpoint. Existing full-story progression tests also use the JSON-backed table entry. Unsupported fields/menu values and malformed common actions are rejected.
 2. PokemonSimulation loads the same authored file with explicit map/action bindings and scripted evidence, then asserts the seven scenarios, including the full successful semantic action sequence and interruption/failure cases. It does not import the native supplies snapshot as requirements.
 
-`frlg-parcel-00.05.json` is the old table-export fixture used for migration regression checks only. Its provenance and snapshot fields are not part of the authored plan. It can be removed once the native expectations are independent of the capture.
+`frlg-parcel-02.01.json` is the old table-export fixture used for migration regression checks only. Its provenance and snapshot fields are not part of the authored plan. It can be removed once the native expectations are independent of the capture.
 
 ## Semantics
 

@@ -139,7 +139,7 @@ std::string poster_on_sim(){
     const MapPosition below_poster{"CeladonCity_GameCorner", {GAME_CORNER_POSTER.x, GAME_CORNER_POSTER.y + 1}};
     OverworldSim sim({room}, below_poster, Direction::NORTH);
     StoryPose at{below_poster.map, below_poster.point, Direction::NORTH};
-    const std::string failure = row_step_on_sim(sim, at, StoryTable::poster_switch("poster_switch", "test"), "00.31");
+    const std::string failure = row_step_on_sim(sim, at, StoryTable::poster_switch("poster_switch", "test"), "09.01");
     if (!failure.empty()){
         return failure;
     }
@@ -183,7 +183,7 @@ std::string lift_on_sim(){
     const MapPosition below_door{"RocketHideout_B2F", doors[1].point.next(Direction::SOUTH)};
     OverworldSim sim(maps, below_door, Direction::NORTH, script);
     StoryPose at{below_door.map, below_door.point, Direction::NORTH};
-    const std::string failure = row_step_on_sim(sim, at, StoryTable::lift_floor("lift_to_b4f", "B2F", "B4F", "test"), "00.32");
+    const std::string failure = row_step_on_sim(sim, at, StoryTable::lift_floor("lift_to_b4f", "B2F", "B4F", "test"), "09.02");
     if (!failure.empty()){
         return failure;
     }
@@ -271,7 +271,7 @@ std::string short_holds_on_sim(const MapPosition& start, Direction facing, const
     return "";
 }
 
-//  00.31's taps through B3F's arrow floor (frlg-00.31.plan.json's
+//  09.01's taps through B3F's arrow floor (frlg-09.01.plan.json's
 //  b3f_arrow_maze and b3f_back_to_candy_row, pokeguy's way): down from
 //  the stairs (18, 2) to below the stairs to B4F (15, 19), and back from
 //  them (15, 18) to the stop (10, 13). The routes planned after them,
@@ -322,7 +322,7 @@ UnitTestResult test_b3f_maze_taps(){
     return true;
 }
 
-//  00.32's taps (frlg-00.32.plan.json): B3F from below its Rare Candy up
+//  09.02's taps (frlg-09.02.plan.json): B3F from below its Rare Candy up
 //  to the top corridor, and B2F's arrows to the MOON STONE's stop and on
 //  to the lift room's stop (13, 20), up to row 17 and on to below the
 //  lift, and B4F from the lift door to the guards, Giovanni and the
@@ -377,7 +377,7 @@ UnitTestResult test_b2f_maze_taps(){
     return true;
 }
 
-//  Console B, 2026-11-10 22:08: on 00.32's B2F taps "west 2" from
+//  Console B, 2026-11-10 22:08: on 09.02's B2F taps "west 2" from
 //  (19, 5) to (17, 5), beside the arrow (16, 5), no tap moved the player.
 //  The blocked tap was taken to stand where the way ahead is blocked, and
 //  the arrow ahead of (17, 5) counted as blocked: the player was "found" on
@@ -439,7 +439,7 @@ std::string blind_legs_on_sim(const MapPosition& start, Direction facing, const 
     return "";
 }
 
-//  The spinner mazes' blind legs: 00.31's B3F maze and way back, 00.32's
+//  The spinner mazes' blind legs: 09.01's B3F maze and way back, 09.02's
 //  B2F legs to the MOON STONE and to the lift room.
 UnitTestResult test_blind_maze_taps(){
     using Pokemon::StoryLeg;
@@ -513,7 +513,7 @@ const AutoStoryHideoutBodyCase HIDEOUT_BODY_CASES[] = {
     },
     {
         .input = {.name = "B2F's arrow floor to the lift a tap at a time", .body = test_b2f_maze_taps},
-        .expectation = {.description = "00.32's taps and the routes between them, any turn dropped or hold short"},
+        .expectation = {.description = "09.02's taps and the routes between them, any turn dropped or hold short"},
     },
     {
         .input = {.name = "a blocked tap beside B2F's arrow", .body = test_b2f_blocked_tap_beside_arrow},
@@ -521,7 +521,7 @@ const AutoStoryHideoutBodyCase HIDEOUT_BODY_CASES[] = {
     },
     {
         .input = {.name = "the spinner mazes tapped blind", .body = test_blind_maze_taps},
-        .expectation = {.description = "00.31's and 00.32's blind legs end where the legs do"},
+        .expectation = {.description = "09.01's and 09.02's blind legs end where the legs do"},
     },
 };
 

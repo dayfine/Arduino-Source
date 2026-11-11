@@ -12,7 +12,7 @@
  *  pokemon_special_anim.c, Task_UseTM_NoForget / Task_ForgetMove, then
  *  Task_MachineSet): "Machine set!" waits for A and B cancels the teach;
  *  the wobble and "<MON> learned <MOVE>!" run on their own. Console B,
- *  00.23 (2026-11-03): HM01 to an Oddish with two free slots stopped on
+ *  06.02 (2026-11-03): HM01 to an Oddish with two free slots stopped on
  *  "Machine set!", read as "other", and gave up.
  *
  */
@@ -506,7 +506,7 @@ void three_moves_scene_unread(FakeTeachGame& game){
     three_moves(game);
     game.scene_unread = true;
 }
-//  00.23 on console B: HM01 to the Oddish (slot 2), ABSORB and SWEET
+//  06.02 on console B: HM01 to the Oddish (slot 2), ABSORB and SWEET
 //  SCENT.
 void oddish_cut(FakeTeachGame& game){
     game.tms = {{"water-pulse", 1}, {"cut", 1}};
@@ -596,7 +596,7 @@ std::vector<ScreensCase> scene_screens_cases(){
             .moves = {"bite", "bubble", "withdraw", "water-pulse"},
         },
         {
-            .name = "console B 00.23: HM01 to the Oddish, two free slots",
+            .name = "console B 06.02: HM01 to the Oddish, two free slots",
             .setup = oddish_cut,
             .plan = {.item = "hm01", .move = "cut", .member = 1},
             .moves = {"absorb", "sweet-scent", "cut"},

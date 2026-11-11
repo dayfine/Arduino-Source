@@ -8,18 +8,18 @@
  *  - SCENE_END_POSE: a step the sim does not play (a scene, a talk, an
  *    event) that moved the player leaves them on another walkable tile
  *    within one of the table's pose, while the program goes on from the
- *    table's (BDSP 00.03, lab-B 2026-11-09).
+ *    table's (BDSP 01.04, lab-B 2026-11-09).
  *  - WILD_BATTLES: wild battles at the game's own odds on every map with
- *    land encounters, over GAME_ODDS_SEEDS seeds (00.28's Rock Tunnel).
+ *    land encounters, over GAME_ODDS_SEEDS seeds (08.01's Rock Tunnel).
  *  - LATE_FADE: every warp's fade ends LATE_FADE later than the sim's
- *    usual (00.27's warp to Cerulean City).
+ *    usual (07.02's warp to Cerulean City).
  *  - DARK_CAVE: the caves without Flash dark (DARK_MAPS), so each
  *    battle there ends on the dark cave's overworld, with no wild
- *    battles and with them at the game's odds (00.28 hiker_lenny, lab-B
+ *    battles and with them at the game's odds (08.01 hiker_lenny, lab-B
  *    2026-11-09).
  *  - LOST_TAP: a wild battle on each tile of each step into a trainer's
  *    line before its last, so the next tap comes as the overworld comes
- *    back, inside the lockout after a battle (00.28 winston_line, console
+ *    back, inside the lockout after a battle (08.01 winston_line, console
  *    B, 2026-11-09 15:50). The step alone, from where the clean run took
  *    it, on its map made a wild floor.
  *
@@ -89,7 +89,7 @@ const char* fault_class_name(FaultClass fault){
 
 //  Sweeps the program fails today, by test name, with the likely fix.
 const std::map<std::string, std::string> KNOWN_FAILING{
-    {"PokemonFRLG::AutoStory - Fault sweep: 00.06, wild battles at the game's odds",
+    {"PokemonFRLG::AutoStory - Fault sweep: 02.02, wild battles at the game's odds",
         "below_oak on Route 1 gives up after 9 stops part-way (seeds 16, 30): count stops that make no progress, not every battle"},
 };
 

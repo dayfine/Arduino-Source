@@ -1,0 +1,39 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "01.04",
+    "title": "Oak stops the player and walks them to the lab",
+    "start": {"certainty": "tile", "map": "PalletTown", "where": {"facing": "south", "kind": "tiles", "tiles": [[6, 8]]}},
+    "sections": [
+      {
+        "id": "pallet_north",
+        "title": "Pallet Town's north exit to Oak's lab",
+        "events": [
+          {
+            "id": "below_oaks_trigger",
+            "kind": "route",
+            "target": {"certainty": "tile", "map": "PalletTown", "where": {"facing": "north", "kind": "tiles", "tiles": [[12, 2]]}},
+            "why": "below the north exit, short of Oak's trigger at (12, 1)"
+          },
+          {
+            "id": "oaks_trigger",
+            "kind": "step",
+            "direction": "north",
+            "why": "the trigger: \"Don't go out!\""
+          },
+          {
+            "id": "to_the_lab",
+            "kind": "scene",
+            "declared_after": {"certainty": "tile", "map": "PalletTown_ProfessorOaksLab", "where": {"facing": "north", "kind": "tiles", "tiles": [[6, 4]]}},
+            "why": "Oak walks the player into the lab; the scene ends at the table",
+            "notes": [
+              "PlayerEnter walks the player up 8 tiles from the lab's door."
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "execution": {"menu": "before_pokemon"}
+}

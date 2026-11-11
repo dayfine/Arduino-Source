@@ -155,7 +155,7 @@ A seeded fake game with odds from the decomp. Not written yet. Doesn't block M2 
 | E5 | Starter-RNG entry point for GiftRng | new | ~300 | | main; testable from a manual save |
 | M12 | RNG routines made callable, then AutoStory hand-offs | new | not sized | | refactors: main; hand-offs: B15 |
 
-AutoStory joins this track only at the hand-off: names at 00.01 and the starter after 00.03/00.04, both after B15.
+AutoStory joins this track only at the hand-off: names at 01.01 and the starter after 01.04/01.05, both after B15.
 
 ## 5. Lab tooling and run records (M4, [#138](https://github.com/dayfine/Arduino-Source/issues/138))
 

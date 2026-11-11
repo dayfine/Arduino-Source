@@ -1,0 +1,41 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "05.04",
+    "title": "Cerulean: Water Pulse if not known, then the rival north of the city",
+    "notes": [
+      "The rival north of Cerulean (CeruleanCity scripts.inc): the only way north to Nugget Bridge is columns 22..24, and a step onto row 6 there (CeruleanCity_EventScript_RivalTrigger*, VAR_MAP_SCENE_CERULEAN_CITY_RIVAL 0) brings him down to the player. From the middle, (23, 6), he stops at (23, 5); after the battle he walks round the player and off south, and the player, turning to watch him, ends facing south. His FAME CHECKER's text is read to the overworld with the battle's. For a player who took Squirtle he has Pidgeotto Lv17, Abra Lv16, Rattata Lv15 and Bulbasaur Lv18 (sParty_RivalCeruleanBulbasaur), whose Vine Whip and Sleep Powder are the danger. The row starts from 05.03's save below the trigger, and saves after him. First TM03 Water Pulse over Tail Whip (from the bag, where the player stands), if the lead doesn't know it yet: console B's save (2026-11-03) is past Misty's TEACH, which failed there. Where she taught it, the step reads the moves and does nothing."
+    ],
+    "start": {"certainty": "tile", "map": "CeruleanCity", "where": {"facing": "north", "kind": "tiles", "tiles": [[23, 7]]}},
+    "sections": [
+      {
+        "id": "rival_cerulean",
+        "title": "The rival north of Cerulean",
+        "events": [
+          {
+            "id": "teach_water_pulse",
+            "kind": "game_action",
+            "variant": "teach",
+            "args": {"item": "tm03", "move": "water-pulse", "slot": 1, "forget": "tail-whip"},
+            "once_per_save": true,
+            "why": "TM03 Water Pulse in place of Tail Whip, unless the lead knows it"
+          },
+          {
+            "id": "rival_trigger",
+            "kind": "step",
+            "direction": "north",
+            "why": "onto (23, 6), the middle trigger: \"Yo! <player>!\""
+          },
+          {
+            "id": "rival_cerulean",
+            "kind": "battle",
+            "declared_after": {"certainty": "tile", "map": "CeruleanCity", "where": {"facing": "south", "kind": "tiles", "tiles": [[23, 6]]}},
+            "why": "Pidgeotto, Abra, Rattata and Bulbasaur; then the FAME CHECKER"
+          }
+        ]
+      }
+    ]
+  },
+  "execution": {"menu": "full", "supplies": {"lead": "after_brock"}}
+}

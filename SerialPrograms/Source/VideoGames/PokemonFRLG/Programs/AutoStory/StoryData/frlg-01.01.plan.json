@@ -1,0 +1,31 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "01.01",
+    "title": "new game to the bedroom",
+    "sections": [
+      {
+        "id": "new_game",
+        "title": "Title screen to the bedroom",
+        "events": [
+          {
+            "id": "intro",
+            "kind": "new_game",
+            "declared_after": {"certainty": "tile", "map": "PalletTown_PlayersHouse_2F", "where": {"facing": "north", "kind": "tiles", "tiles": [[6, 6]]}},
+            "why": "Oak's speech, BOY, the player's name (default if none is set), rival GREEN",
+            "notes": [
+              "new_game.c: the bedroom at (6, 6), facing the TV."
+            ]
+          },
+          {
+            "id": "options",
+            "kind": "options",
+            "why": "fast text; no switch prompt between a trainer's Pokemon"
+          }
+        ]
+      }
+    ]
+  },
+  "execution": {"handoff": "sid_helper", "menu": "before_pokemon"}
+}

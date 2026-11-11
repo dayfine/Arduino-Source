@@ -131,7 +131,7 @@ inline constexpr Milliseconds AFTER_WILD_LEG_WATCH(3500);
 //  After a leg's watch saw nothing, but the screen shows a battle on its
 //  way: how long to watch on for its HP boxes. In Mt. Moon they came over
 //  5s after the step that set the battle off, after the watch had ended on
-//  the battle's empty text box (console B, 2026-11-03, row 00.13).
+//  the battle's empty text box (console B, 2026-11-03, row 04.05).
 inline constexpr Milliseconds UNSEEN_BATTLE_WATCH(5000);
 //  How long clear_open_message() watches for the message it saw.
 inline constexpr Milliseconds OPEN_MESSAGE_WATCH(1000);
@@ -211,7 +211,7 @@ void clear_open_message(
 //  the maps see no wild tiles (RouteStep::wild): they miss some. Mt. Moon
 //  B2F's tiles closed on one side are cave floor too, and a battle on
 //  "east 7 (to wall)" there left the screen black after the leg, which
-//  was taken as walked (console B, 2026-11-03, row 00.13).
+//  was taken as walked (console B, 2026-11-03, row 04.05).
 size_t clear_unseen_battle(
     ConsoleHandle& console, ProControllerContext& context,
     const OverworldInterrupts& wild, const RouteStep& step
@@ -229,7 +229,7 @@ size_t clear_battle_before(
 //  Whether `screen` is the overworld of a cave dark without Flash (Rock
 //  Tunnel): black around a lit circle on the player in the middle. The
 //  battle text box detector and the black screen check read its black as
-//  a battle on its way (console B, 2026-11-09, 00.28: the check before
+//  a battle on its way (console B, 2026-11-09, 08.01: the check before
 //  each step ran a 15 s battle loop on it, "not a battle", and an open
 //  leg's stop was placed by it 0 to 3 tiles in, where the battle came at
 //  the leg's end). A battle's wipe is black in the middle too; its text
@@ -253,7 +253,7 @@ std::optional<Direction> read_facing(ConsoleHandle& console, ProControllerContex
 //  old way, and a leg's hold then spends its first 8 frames turning
 //  (pokefirered PlayerTurnInPlace(), a fast walk in place): a one-tile
 //  hold only turns the player, with nothing to show it (console B,
-//  2026-11-09, 00.28 run 2: the step north onto Rock Tunnel B1F row 34).
+//  2026-11-09, 08.01 run 2: the step north onto Rock Tunnel B1F row 34).
 //  A facing that can't be read is taken as turned: a tap while facing the
 //  way already would take a step.
 void turn_to(ConsoleHandle& console, ProControllerContext& context, Direction direction);

@@ -127,7 +127,7 @@ jobs:
           assert pin['status'] == 'preview-unmerged-PR-73' and revision == pin['revision']
           for name, entry in pin['files'].items():
               published = (source / entry['path']).read_bytes()
-              copied = (native / 'StoryData/frlg-parcel-00.05.json' if name == 'capture' else folder / (name + '.json')).read_bytes()
+              copied = (native / 'StoryData/frlg-parcel-02.01.json' if name == 'capture' else folder / (name + '.json')).read_bytes()
               assert hashlib.sha256(published).hexdigest() == entry['sha256'], name
               assert copied == published, name
           binding = load_binding(source / pin['files']['binding']['path'], source)
@@ -166,7 +166,7 @@ jobs:
           source = Path('AuthoredStorySource')
           folder = source / 'data/story/parcel-pilot'
           native = Path('Arduino-Source/SerialPrograms/Source/VideoGames/PokemonFRLG/Programs/AutoStory/StoryData')
-          assert (native / 'frlg-parcel-00.05.plan.json').read_bytes() == (folder / 'frlg-parcel-00.05.plan.json').read_bytes()
+          assert (native / 'frlg-parcel-02.01.plan.json').read_bytes() == (folder / 'frlg-parcel-00.05.plan.json').read_bytes()
           binding = load_binding(folder / 'authored-binding.json', source)
           cases = read_cases(folder / 'cases.json')
           for case in cases:
@@ -307,12 +307,12 @@ jobs:
         if: startsWith(inputs.os, 'ubuntu') && inputs.run-tests
         run: |
           cd Arduino-Source/SerialPrograms/bin
-          ./StoryCheckpointExport 00.05 > frlg-parcel.native.json
+          ./StoryCheckpointExport 02.01 > frlg-parcel.native.json
           python3 - <<'PYTHON'
           import json
           from pathlib import Path
           data = json.loads(Path('frlg-parcel.native.json').read_text())
-          assert data['game'] == 'frlg' and data['checkpoint']['id'] == '00.05'
+          assert data['game'] == 'frlg' and data['checkpoint']['id'] == '02.01'
           assert len(data['checkpoint']['events']) == 3
           PYTHON
 

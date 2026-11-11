@@ -17,7 +17,7 @@
  *    pokemon_special_anim.c), the member on pale blue diamonds: "Machine
  *    set!", which waits for A (B there cancels the teach), the disc's
  *    wobble, "<MON> learned <MOVE>!", then the TM CASE's list (console B,
- *    00.23: HM01 to an Oddish with two free slots). With four: "<MON>
+ *    06.02: HM01 to an Oddish with two free slots). With four: "<MON>
  *    wants to learn the move <MOVE>.", "However, <MON> already knows four
  *    moves.", "Should a move be deleted and replaced with <MOVE>?" YES/NO
  *    (YES on top), YES: "Which move should be forgotten?", then KNOWN

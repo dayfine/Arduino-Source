@@ -1,0 +1,112 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "05.07",
+    "title": "Bill's Sea Cottage: the Cell Separator and the S.S. Ticket",
+    "notes": [
+      "Bill's Sea Cottage (Route25_SeaCottage scripts.inc). Bill is the Clefairy at (10, 6) (FLAG_HELPED_BILL_IN_SEA_COTTAGE unset): talked to from (10, 7), below him, he asks \"Help me out!\" (YES/NO; NO goes on the same), says to run the Cell Separation on the PC, and walks up into the right teleporter (10, 3); with the player facing north he walks straight up. The PC (4, 5) answers only from the south, (4, 6). Its scene: the teleporters run, Bill comes out of the left one (3, 3) and walks to (7, 6) (BillWalkToMiddleOfRoom); the player isn't moved. Talked to from (6, 6), Bill gives the S.S. TICKET, no YES/NO, and goes on about the S.S. ANNE (FLAG_GOT_SS_TICKET, which also hides Nugget Bridge's Rocket). Out by the mat (7, 9); the door puts the player on (51, 5), facing south. The maps keep Bill at (7, 5), but after his scene he stands on (7, 6), in the way from (6, 6) to the mat (console B, 2026-11-03), so the walk out goes around him to (7, 8) first."
+    ],
+    "start": {"certainty": "tile", "map": "Route25_SeaCottage", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 8]]}},
+    "sections": [
+      {
+        "id": "clefairy",
+        "title": "Bill as a Clefairy",
+        "events": [
+          {
+            "id": "below_bill_clefairy",
+            "kind": "route",
+            "variant": "run",
+            "target": {"certainty": "tile", "map": "Route25_SeaCottage", "where": {"facing": "north", "kind": "tiles", "tiles": [[10, 7]]}},
+            "why": "below the Clefairy (10, 6), facing it"
+          },
+          {
+            "id": "bill_clefairy",
+            "kind": "talk",
+            "why": "\"Hiya! I'm a POKEMON... ...No I'm not!\" ... \"Help me out!\""
+          },
+          {
+            "id": "help_bill",
+            "kind": "answer",
+            "why": "YES: \"run the Cell Separation on the PC\""
+          },
+          {
+            "id": "bill_into_teleporter",
+            "kind": "scene",
+            "declared_after": {"certainty": "tile", "map": "Route25_SeaCottage", "where": {"facing": "north", "kind": "tiles", "tiles": [[10, 7]]}},
+            "why": "the Clefairy walks up into the right teleporter"
+          }
+        ]
+      },
+      {
+        "id": "cell_separator",
+        "title": "The PC's Cell Separator",
+        "events": [
+          {
+            "id": "pc_front",
+            "kind": "route",
+            "variant": "run",
+            "target": {"certainty": "tile", "map": "Route25_SeaCottage", "where": {"facing": "north", "kind": "tiles", "tiles": [[4, 6]]}},
+            "why": "below the PC (4, 5), facing it"
+          },
+          {
+            "id": "cell_separator",
+            "kind": "talk",
+            "why": "the PC: \"<player> initiated the TELEPORTER's CELL SEPARATOR!\""
+          },
+          {
+            "id": "bill_comes_out",
+            "kind": "scene",
+            "declared_after": {"certainty": "tile", "map": "Route25_SeaCottage", "where": {"facing": "north", "kind": "tiles", "tiles": [[4, 6]]}},
+            "why": "the teleporters run; Bill comes out of the left one and walks to (7, 6)"
+          }
+        ]
+      },
+      {
+        "id": "ss_ticket",
+        "title": "Bill and the S.S. Ticket",
+        "events": [
+          {
+            "id": "beside_bill",
+            "kind": "legs",
+            "variant": "run",
+            "legs": [{"direction": "east", "tiles": 2}],
+            "why": "to (6, 6), west of Bill, facing him"
+          },
+          {
+            "id": "thank_bill",
+            "kind": "talk",
+            "why": "\"Thanks, bud! ... take this\""
+          },
+          {
+            "id": "ss_ticket",
+            "kind": "scene",
+            "declared_after": {"certainty": "tile", "map": "Route25_SeaCottage", "where": {"facing": "east", "kind": "tiles", "tiles": [[6, 6]]}},
+            "why": "the S.S. TICKET; \"... the S.S. ANNE ... go instead\""
+          }
+        ]
+      },
+      {
+        "id": "out",
+        "title": "Round Bill and out of the cottage",
+        "events": [
+          {
+            "id": "around_bill",
+            "kind": "legs",
+            "variant": "run",
+            "legs": [{"direction": "south", "tiles": 2}, {"direction": "east", "tiles": 1}],
+            "why": "to (7, 8), above the mat; Bill stands on (7, 6) after his scene"
+          },
+          {
+            "id": "out_of_cottage",
+            "kind": "route",
+            "variant": "run",
+            "target": {"certainty": "tile", "map": "Route25", "where": {"facing": "south", "kind": "tiles", "tiles": [[51, 5]]}},
+            "why": "down to the mat and out; the door puts the player below it"
+          }
+        ]
+      }
+    ]
+  },
+  "execution": {"menu": "full", "supplies": {"lead": "after_brock"}}
+}

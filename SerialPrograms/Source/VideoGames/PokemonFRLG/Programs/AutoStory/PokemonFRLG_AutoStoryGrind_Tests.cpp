@@ -405,7 +405,7 @@ UnitTestResult test_lead_as_read(){
 }
 
 
-//  Console B at the end of 00.15 (2026-11-03): Wartortle Lv22, 65 HP,
+//  Console B at the end of 05.03 (2026-11-03): Wartortle Lv22, 65 HP,
 //  with Water Pulse taught over Tail Whip, and 10 Potions. The sim, the
 //  levels since the summary added to its stats, wins against the
 //  Cerulean rival about 52% at Lv22 (42% when the sim's Potion was sized
@@ -481,7 +481,7 @@ UnitTestResult test_grind_variant(){
 }
 
 //  The check in the Center before the walk out: a lead that already has
-//  the chance needs no trip (00.24 at Lv29, 79% against Lt. Surge, console
+//  the chance needs no trip (06.03 at Lv29, 79% against Lt. Surge, console
 //  B, 2026-11-03); one short of it does. Nothing is fought either way.
 UnitTestResult test_grind_reached_already(){
     QuietLogger logger;

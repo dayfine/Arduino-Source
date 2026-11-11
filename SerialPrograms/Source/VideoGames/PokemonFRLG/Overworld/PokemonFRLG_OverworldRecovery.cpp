@@ -63,7 +63,7 @@ int sight_onto(const std::vector<MapData>& maps, const MapPosition& tile){
 //  How far the holds that find the player after an open leg, and the way
 //  back, may walk, per tile of the leg. 2 left Rocket Hideout B3F's "west
 //  7" off the stairs unchecked: the hold to its west wall and back walk up
-//  to 18, and the leg ended short (00.31 r1, console B, 2026-11-10). Route
+//  to 18, and the leg ended short (09.01 r1, console B, 2026-11-10). Route
 //  1's "west 4", whose holds walk 30, stays unchecked.
 constexpr int OPEN_LEG_CHECK_TILES_PER_TILE = 3;
 
@@ -87,7 +87,7 @@ bool is_wall_hold(const RouteStep& next){
 //  misses the arrow, or walks onto another, and ends elsewhere in the maze:
 //  "south 2" before Rocket Hideout B3F's "east 2" onto the arrow (3, 16)
 //  ended a tile short, the east leg walked into a wall, and the walk after
-//  it slid up to (10, 13) (00.31 r1 run 3, console B, 2026-11-10).
+//  it slid up to (10, 13) (09.01 r1 run 3, console B, 2026-11-10).
 bool is_slide(const RouteStep& next){
     return next.action == RouteAction::WALK && next.spin_tiles && !next.warps;
 }

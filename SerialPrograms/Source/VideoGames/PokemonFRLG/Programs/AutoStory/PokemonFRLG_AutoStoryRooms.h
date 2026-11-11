@@ -43,7 +43,7 @@ bool is_center_variant(std::string_view variant);
 //  tap a tile; none: a turn to face `direction`. `warps`: the last step
 //  takes a warp, whose fade is waited out. `dims`: the warp's fade only
 //  dims the screen, never black (the lift's way out; console B,
-//  2026-11-10, 00.32 lift_to_b4f), so the warp is confirmed by the scene
+//  2026-11-10, 09.02 lift_to_b4f), so the warp is confirmed by the scene
 //  from before the leg's first step gone and settled, and any step of the
 //  leg may take it. `to`: the warp's place, for the log.
 struct RoomLeg{

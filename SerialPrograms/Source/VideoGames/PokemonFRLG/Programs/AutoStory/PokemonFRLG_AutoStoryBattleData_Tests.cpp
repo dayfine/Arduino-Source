@@ -141,7 +141,7 @@ UnitTestResult test_story_trainers(){
 }
 
 //  The Rocket Hideout's battles, which no table row fights yet (the
-//  00.31 and 00.32 drafts): each names its map's trainer, with pret's
+//  09.01 and 09.02 drafts): each names its map's trainer, with pret's
 //  party.
 UnitTestResult test_hideout_trainers(){
     struct Expected{

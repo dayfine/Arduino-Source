@@ -29,7 +29,7 @@ namespace PokemonFRLG{
 
 namespace{
 
-//  "[Event] 00.28/12 [b1f_east] winston_line: start" without its section,
+//  "[Event] 08.01/12 [b1f_east] winston_line: start" without its section,
 //  as the table logged it before it had sections.
 std::string without_section(const std::string& line){
     const size_t open = line.find(" [", 1);
@@ -98,16 +98,16 @@ std::vector<std::string> story_sim_trace(const std::vector<StoryCheckpoint>& tab
 
 namespace{
 
-//  00.28's plan, changed by `mutate`, read as an authored plan.
+//  08.01's plan, changed by `mutate`, read as an authored plan.
 StoryCheckpoint read_changed_rock_tunnel(void (*mutate)(JsonObject& root)){
     JsonValue plan;
     for (const auto& [name, text] : autostory_checkpoint_json()){
-        if (name == "frlg-00.28.plan"){
+        if (name == "frlg-08.01.plan"){
             plan = parse_json(text);
         }
     }
     mutate(plan.to_object_throw());
-    return read_authored_checkpoint(plan, "frlg-00.28.plan (changed)");
+    return read_authored_checkpoint(plan, "frlg-08.01.plan (changed)");
 }
 
 JsonObject& first_event(JsonObject& root){
@@ -168,8 +168,8 @@ void unchanged(JsonObject&){}
 
 UnitTestResult test_rejects(){
     //  Unchanged, it reads: each rejection is the change's.
-    if (read_changed_rock_tunnel(unchanged).id != "00.28"){
-        return "Expected the unchanged plan to read as 00.28.";
+    if (read_changed_rock_tunnel(unchanged).id != "08.01"){
+        return "Expected the unchanged plan to read as 08.01.";
     }
     for (const RejectCase& test : REJECT_CASES){
         try{
@@ -180,17 +180,17 @@ UnitTestResult test_rejects(){
     return true;
 }
 
-//  00.28 in its sections, numbered across them, each event's line naming
+//  08.01 in its sections, numbered across them, each event's line naming
 //  its section: Winston is event 12 (after from_save), on B1F's east side.
 UnitTestResult test_rock_tunnel_sections(){
     const StoryCheckpoint* rock_tunnel = nullptr;
     for (const StoryCheckpoint& row : story_checkpoints()){
-        if (row.id == "00.28"){
+        if (row.id == "08.01"){
             rock_tunnel = &row;
         }
     }
     if (rock_tunnel == nullptr){
-        return "Expected a checkpoint 00.28.";
+        return "Expected a checkpoint 08.01.";
     }
     std::vector<std::string> ids;
     for (const Pokemon::StorySection& section : rock_tunnel->sections){
@@ -200,13 +200,13 @@ UnitTestResult test_rock_tunnel_sections(){
         "route10_to_mouth", "1f_north", "b1f_east", "1f_west", "b1f_west", "1f_south", "route10_south",
     };
     if (ids != expected){
-        return "Expected 00.28's sections by area, read " + std::to_string(ids.size()) + " others.";
+        return "Expected 08.01's sections by area, read " + std::to_string(ids.size()) + " others.";
     }
     StoryMapsSim game;
     Pokemon::Checkpoint checkpoint = Pokemon::build_story_checkpoint(*rock_tunnel, game);
     const Pokemon::Event& winston = checkpoint.events[11];
     const std::string line = Pokemon::event_log_line(checkpoint.id, 12, winston.name, "start", winston.section);
-    if (line != "[Event] 00.28/12 [b1f_east] winston_line: start"){
+    if (line != "[Event] 08.01/12 [b1f_east] winston_line: start"){
         return "Expected Winston's line in b1f_east, read: " + line;
     }
     return true;
@@ -249,7 +249,7 @@ const AuthoredTestCase AUTHORED_CASES[] = {
     {.input = {.name = "malformed plans are rejected", .body = test_rejects},
      .expectation = {.description = "a ParseException for each change"}},
     {.input = {.name = "Rock Tunnel's sections", .body = test_rock_tunnel_sections},
-     .expectation = {.description = "00.28 split by area, sections in its log lines"}},
+     .expectation = {.description = "08.01 split by area, sections in its log lines"}},
 };
 
 class AuthoredTest : public UnitTest{

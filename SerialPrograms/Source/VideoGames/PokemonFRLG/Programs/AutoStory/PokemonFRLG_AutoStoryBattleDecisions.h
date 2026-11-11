@@ -210,7 +210,7 @@ public:
     //  safely!"), the text box with no HP box and no arrow or YES/NO, as
     //  "What? <Pokemon> is evolving!" shows through the animation; not a
     //  dark cave's overworld, whose black reads as the text box (console B,
-    //  2026-11-09, 00.28 hiker_lenny: three holds, then a stop). Nothing
+    //  2026-11-09, 08.01 hiker_lenny: three holds, then a stop). Nothing
     //  is pressed while it shows, for at most EVOLUTION_HOLDS in all in a
     //  battle, in case it is something else.
     bool holds(const BattleTextScreen& screen) const;

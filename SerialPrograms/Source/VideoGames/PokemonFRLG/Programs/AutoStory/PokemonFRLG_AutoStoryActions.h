@@ -155,7 +155,7 @@ inline constexpr Milliseconds BATTLE_EXIT_TIMEOUT(10000);
 //  nothing (wait_for_quiet_overworld()) for MovementMechanics::
 //  AFTER_BATTLE_QUIET, at most BATTLE_EXIT_TIMEOUT, and logs how the screen
 //  ended. A tap sent as the battle's black ends is lost (console B,
-//  2026-11-09, 00.28 winston_line).
+//  2026-11-09, 08.01 winston_line).
 void wait_out_battle_exit(ConsoleHandle& console, ProControllerContext& context);
 
 //  How long a step into the line of a trainer who looks around waits for
