@@ -214,6 +214,9 @@ void catch_in_zone(ConsoleHandle& console, ProControllerContext& context, int ca
     //  Toward the objective (the zone's far gate), stopping at 100 and 60
     //  to throw at what is in front: 03.07 starts at 127 (console B,
     //  2026-11-10), with nothing to catch at the start.
+    //  Taunie's two rocks stand between the start and the marker: a step
+    //  right first, around them.
+    pbf_move_left_joystick(context, {1, 0}, 1000ms, 300ms);
     ThrowCount count;
     for (int stop_at : {100, 60}){
         if (count.caught >= catches_wanted){
