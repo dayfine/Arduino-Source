@@ -59,15 +59,6 @@ const std::map<std::string, std::string, std::less<>>& story_actions_not_impleme
 
 namespace{
 
-//  The GAME actions that are not walks or todos and run on any backend,
-//  with no args.
-const std::vector<std::string>& backend_game_actions(){
-    static const std::vector<std::string> actions{
-        "text_to_choice",
-    };
-    return actions;
-}
-
 using IntegerRows = std::vector<std::vector<int64_t>>;
 
 //  approach_starter's arg for each starter: the walk to it.
@@ -362,11 +353,14 @@ public:
         };
     }
 
+    //  B advances text by default. "advance_with_a" is for a talk that B
+    //  cancels: Hotel Z's elevator closes on B before "Which floor?"
+    //  (02.04, console B 2026-11-10).
     static Handler text_to_choice(){
-        return [](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+        return [](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
             SceneMachineConfig config;
             config.goal = SceneMashGoal::CHOICE;
-            config.text_button = BUTTON_B;
+            config.text_button = Pokemon::story_arg<bool>(call.args, "advance_with_a") ? BUTTON_A : BUTTON_B;
             return run_scene_machine(backend, "text_to_choice", config, 60s);
         };
     }
@@ -628,6 +622,12 @@ std::vector<StoryActionSpec> plza_story_action_specs(){
                 .why = "press A once first, at the prompt that starts the scene (a door's \"A Enter\")",
             },
         }),
+        game_spec("text_to_choice", {
+            StoryArgSpec{
+                .key = "advance_with_a", .type = StoryArgType::BOOLEAN, .required = false, .fallback = false,
+                .why = "advance the text with A, for a talk that B cancels",
+            },
+        }),
         game_spec("wait_for_platform", {
             optional_ms("timeout_ms", 180000, "no platform this long fails the step"),
         }),
@@ -635,9 +635,6 @@ std::vector<StoryActionSpec> plza_story_action_specs(){
             optional_ms("timeout_ms", 240000, "no autosave and platform this long fails the step"),
         }),
     };
-    for (const std::string& name : backend_game_actions()){
-        specs.push_back(game_spec(name));
-    }
     for (const std::string& name : console_game_actions()){
         specs.push_back(console_only(game_spec(name)));
     }

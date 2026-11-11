@@ -19,6 +19,13 @@
         "id": "take_elevator_up",
         "kind": "talk",
         "why": "step 28: A Take Elevator, \"Which floor?\""
+      },
+      {
+        "id": "floor_question",
+        "kind": "game_action",
+        "why": "step 28: the elevator line, then \"Which floor?\", before the choice shows; B would close the talk (console B, 2026-11-10)",
+        "action": "text_to_choice",
+        "args": {"advance_with_a": true}
       },
       {
         "id": "ride_to_2f",
@@ -55,6 +62,13 @@
         "id": "rest",
         "kind": "talk",
         "why": "step 31: A Rest, \"Rest until tomorrow morning?\""
+      },
+      {
+        "id": "rest_question",
+        "kind": "game_action",
+        "why": "step 31: \"Rest until tomorrow morning?\" before the choice shows",
+        "action": "text_to_choice",
+        "args": {"advance_with_a": true}
       },
       {
         "id": "rest_until_morning",
