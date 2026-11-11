@@ -66,7 +66,7 @@ using Pokemon::story_arg;
 
 
 std::optional<RobustPlanCosts> story_route_costs(const std::string& action){
-    if (action.empty() || action == ROUTE_ONTO_TRIGGER || action == "route"){
+    if (action.empty() || action == ROUTE_ONTO_TRIGGER || action == ROUTE_INTO_SCENE || action == "route"){
         return route_plan_costs();
     }
     if (action == "town"){

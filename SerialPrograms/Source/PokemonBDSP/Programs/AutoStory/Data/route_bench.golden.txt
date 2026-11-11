@@ -23,7 +23,7 @@ walk run with no stops) | verdict (why). A ratio above 1.5 is flagged "!".
 00.03 into_dawns_scene | 61510 | 46690 | 34340 | 4 | 22 | 0 | 5.37! | 1.15 | 56.00! | 11450 ms (stand-in) | PASS
 00.04 onto_the_path | 4050 | 4050 | 4050 | 2 | 0 | 0 | 5.79! | 1.00 | 1.00 | 700 ms (stand-in) | PASS
 00.04 to_ledge_column | 3850 | 3850 | 3850 | 1 | 0 | 0 | 3.21! | 1.00 | 1.00 | 1200 ms (stand-in) | PASS
-00.04 along_route_201_road | 12200 | 12200 | 12200 | 2 | 0 | 0 | 1.00 | 1.00 | 1.20 | 12200 ms (user's route) | PASS
+00.04 along_route_201_road | 36400 | 36400 | 36400 | 0 | 0 | 0 | 2.98! | 1.00 | 0.60 | 12200 ms (user's route) | PASS
 00.04 into_twinleaf | 10200 | 10200 | 10200 | 1 | 0 | 0 | 1.00 | 1.00 | 1.00 | 10200 ms (user's route) | PASS
 00.04 to_moms_doorstep | 4100 | 4100 | 4100 | 0 | 0 | 0 | 5.47! | 1.00 | 1.00 | 750 ms (stand-in) | PASS
 00.04 beside_mom | 900 | 900 | 900 | 0 | 0 | 0 | 2.25! | 1.00 | 1.00 | 400 ms (stand-in) | PASS
@@ -48,7 +48,7 @@ walk run with no stops) | verdict (why). A ratio above 1.5 is flagged "!".
 01.02 west_of_the_welcome | 8550 | 8550 | 8550 | 2 | 0 | 0 | 9.00! | 1.00 | 4.00! | 950 ms (stand-in) | PASS
 01.02b below_the_centers_door | 6663 | 8800 | 5950 | 2 | 1 | 0 | 2.38! | 2.00! | 2.00! | 2800 ms (stand-in) | PASS
 01.03 above_the_mine | 16350 | 16350 | 16350 | 3 | 0 | 0 | 2.75! | 1.00 | 5.00! | 5950 ms (stand-in) | PASS
-01.05 east_of_barrys_trigger | 18850 | 18850 | 18850 | 6 | 0 | 0 | 5.39! | 1.00 | 13.00! | 3500 ms (stand-in) | PASS
+01.05 east_of_barrys_trigger | 26050 | 26050 | 26050 | 3 | 0 | 0 | 7.44! | 1.00 | 14.00! | 3500 ms (stand-in) | PASS
 01.05 through_the_gate | 12050 | 12050 | 12050 | 5 | 0 | 0 | 4.92! | 1.00 | 27.00! | 2450 ms (stand-in) | PASS
 01.06 up_jubilifes_road | 87286 | 119950 | 58350 | 3 | 10 | 4 | 7.66! | 2.20! | 20.00! | 11400 ms (stand-in) | PASS
 01.06 below_rowans_trigger | 1950 | 1950 | 1950 | 1 | 0 | 0 | 2.29! | 1.00 | 1.00 | 850 ms (stand-in) | PASS

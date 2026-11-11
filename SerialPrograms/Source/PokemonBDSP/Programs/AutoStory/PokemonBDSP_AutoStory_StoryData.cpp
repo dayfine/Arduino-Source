@@ -66,9 +66,13 @@ std::vector<Pokemon::StoryActionSpec> make_bdsp_actions(){
             action.args.push_back(opt_legs);
         }
     }
-    for (std::string_view cost : {"town", "overworld", "indoors", "caves", "robust", "line"}){
+    //  "trigger" is ROUTE_ONTO_TRIGGER (StoryExecutor.h).
+    for (std::string_view cost : {"town", "overworld", "indoors", "caves", "robust", "line", "trigger"}){
         actions.push_back({.kind = Pokemon::StoryStepKind::ROUTE, .name = std::string(cost), .args = {route_target, fight_wild, opt_legs}});
     }
+    //  ROUTE_INTO_SCENE (StoryExecutor.h): the route, then its one leg run
+    //  until the scene's dialogue starts (00.03's Rowan and Dawn).
+    actions.push_back({.kind = Pokemon::StoryStepKind::ROUTE, .name = "into_scene", .args = {route_target, fight_wild, legs_arg}});
     for (std::string_view act : {"to_wall", "to_dialogue", "to_map", "one_short_ok", "counted_wall"}){
         actions.push_back({.kind = Pokemon::StoryStepKind::LEGS, .name = std::string(act), .args = {legs_arg, fight_wild}});
     }
