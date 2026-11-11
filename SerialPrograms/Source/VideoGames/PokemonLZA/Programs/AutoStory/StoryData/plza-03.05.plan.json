@@ -43,9 +43,10 @@
       },
       {
         "id": "enter_zone_1",
-        "kind": "scene",
-        "why": "step 58: A Enter, Taunie, the Throwing Poke Balls card",
-        "action": "a"
+        "kind": "game_action",
+        "why": "step 58: A Enter at the gate (a scene step ends at once on its prompt), Taunie, the Throwing Poke Balls card",
+        "action": "mash_to_move_hints",
+        "args": {"press_a_first": true}
       }
     ],
     "metadata": {
