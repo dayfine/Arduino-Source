@@ -37,9 +37,15 @@ enum class CenterEntry{
 };
 
 //  Runs north into the Pokemon Center's door ahead, running with `run`.
+//  After its fade, waits until the inside is a quiet overworld (settle()):
+//  a walk while it still fades in goes nowhere (lab-B 2026-11-10, 00.04b).
 //  Without a fade, `inside` says whether the Center's inside shows, and if
 //  not, `line_up` lines up with the lit doorway and walks in (or fails).
-CenterEntry run_into_center(StoryStepIO& io, bool run, const std::function<bool()>& inside, const std::function<void()>& line_up);
+CenterEntry run_into_center(
+    StoryStepIO& io, bool run,
+    const std::function<bool()>& inside, const std::function<void()>& line_up,
+    const std::string& label
+);
 
 //  Where a leg's taps end, and how many of them moved.
 struct TappedEnd{
