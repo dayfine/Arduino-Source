@@ -13,7 +13,7 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-// Registers unit tests for the shared screen events and the judgements over them.
+// Registers unit tests for the shared screen events.
 void add_tests_ScreenEvents(UnitTestDatabase& database);
 
 
