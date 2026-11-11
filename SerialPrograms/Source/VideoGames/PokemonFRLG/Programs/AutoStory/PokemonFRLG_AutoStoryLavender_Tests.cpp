@@ -861,8 +861,8 @@ const std::vector<Pokemon::StoryLeg> B2F_DRAWN_LEGS{
 //  drawn one and is no longer. The drawn one walks no seen tile; only its
 //  south 3 running a tile on, to (19, 6), meets the Grunt's west line. The
 //  run-4 loop by the wall (23, 9) is seen nowhere, but walks 19 tiles to
-//  the drawn route's 9. Without the sight costs, the planner walks
-//  through his lines.
+//  the drawn route's 9. Without the sight costs (0 by default, see
+//  default_route_costs()), the planner walks through his lines.
 UnitTestResult test_b2f_drawn_route(Logger& logger){
     const std::vector<MapData>& maps = story_maps();
     const MapData* map = story_map("RocketHideout_B2F");
@@ -875,7 +875,10 @@ UnitTestResult test_b2f_drawn_route(Logger& logger){
     const std::optional<std::vector<RouteStep>> loop = fixed_route(maps, stairs, {
         {Direction::SOUTH, 2}, {Direction::EAST, 2}, {Direction::SOUTH, 5}, {Direction::WEST, 6}, {Direction::NORTH, 3}, {Direction::WEST, 1},
     });
-    const std::optional<std::vector<RouteStep>> planned = plan_overworld_route(maps, stairs, RouteGoal{stop, std::nullopt}, default_route_costs(), Direction::EAST);
+    RouteCosts costs = default_route_costs();
+    costs[RouteCost::SIGHT_TILE] = 100;
+    costs[RouteCost::SIGHT_OVERSHOOT] = 10;
+    const std::optional<std::vector<RouteStep>> planned = plan_overworld_route(maps, stairs, RouteGoal{stop, std::nullopt}, costs, Direction::EAST);
     if (!drawn || !(drawn->back().end == stop) || !loop || !planned){
         return "B2F: the drawn legs, the run-4 legs or the plan don't reach (1, 4).";
     }
