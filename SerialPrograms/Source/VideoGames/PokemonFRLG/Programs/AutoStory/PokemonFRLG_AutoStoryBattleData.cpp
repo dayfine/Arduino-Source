@@ -110,18 +110,6 @@ constexpr StoryTrainer STORY_TRAINERS[] = {
     {.map = "PokemonTower_7F", .battle = "tower_grunt3", .trainer = "TRAINER_TEAM_ROCKET_GRUNT_21"},
 };
 
-//  The story's scripted wild battles, which no trainer fights: the battle
-//  step's map and name, and the species (pret setwildbattle).
-struct StoryWildBattle{
-    std::string_view map;
-    std::string_view battle;
-    std::string_view species;
-};
-constexpr StoryWildBattle STORY_WILD_BATTLES[] = {
-    //  PokemonTower_6F_EventScript_MarowakGhost: the Silph Scope shows it.
-    {.map = "PokemonTower_6F", .battle = "marowak_ghost", .species = "marowak"},
-};
-
 using JsonTable = std::map<std::string, JsonValue, std::less<>>;
 
 const JsonValue& file_json(std::string_view name){
@@ -356,15 +344,6 @@ std::optional<std::string_view> story_trainer(std::string_view map, std::string_
     for (const StoryTrainer& entry : STORY_TRAINERS){
         if (entry.map == map && entry.battle == battle){
             return entry.trainer;
-        }
-    }
-    return std::nullopt;
-}
-
-std::optional<std::string_view> story_wild_battle(std::string_view map, std::string_view battle){
-    for (const StoryWildBattle& entry : STORY_WILD_BATTLES){
-        if (entry.map == map && entry.battle == battle){
-            return entry.species;
         }
     }
     return std::nullopt;

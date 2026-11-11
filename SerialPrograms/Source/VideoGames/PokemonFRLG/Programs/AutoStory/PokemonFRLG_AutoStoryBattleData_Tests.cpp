@@ -11,6 +11,7 @@
 #include <format>
 #include <functional>
 #include <optional>
+#include <string_view>
 #include <string>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
@@ -105,6 +106,28 @@ UnitTestResult test_data(){
         return std::format("Expected the 386 species by the program's slugs, got {}.", battle_species().size());
     }
     return true;
+}
+
+//  The story's scripted wild battles, which no trainer fights: the battle
+//  step's map and name, and the species (pret setwildbattle). The battle
+//  step fights them as any battle with no trainer.
+struct StoryWildBattle{
+    std::string_view map;
+    std::string_view battle;
+    std::string_view species;
+};
+constexpr StoryWildBattle STORY_WILD_BATTLES[] = {
+    //  PokemonTower_6F_EventScript_MarowakGhost: the Silph Scope shows it.
+    {.map = "PokemonTower_6F", .battle = "marowak_ghost", .species = "marowak"},
+};
+
+std::optional<std::string_view> story_wild_battle(std::string_view map, std::string_view battle){
+    for (const StoryWildBattle& entry : STORY_WILD_BATTLES){
+        if (entry.map == map && entry.battle == battle){
+            return entry.species;
+        }
+    }
+    return std::nullopt;
 }
 
 //  Every battle step in the table fights a trainer its map battles in
