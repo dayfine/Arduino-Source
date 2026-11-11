@@ -5,7 +5,7 @@
     "id": "02.01",
     "title": "Main Mission 02: Battle Zone to Brigitte",
     "start": {
-      "map": "LumioseCity"
+      "place": "LumioseCity"
     },
     "events": [
       {

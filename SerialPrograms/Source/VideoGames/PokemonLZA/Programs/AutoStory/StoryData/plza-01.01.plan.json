@@ -5,7 +5,7 @@
     "id": "01.01",
     "title": "The platform to Main Mission 01",
     "start": {
-      "map": "LumioseCity"
+      "place": "LumioseCity"
     },
     "events": [
       {
