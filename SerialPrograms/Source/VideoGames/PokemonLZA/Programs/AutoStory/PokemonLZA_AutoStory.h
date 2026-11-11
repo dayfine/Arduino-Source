@@ -51,6 +51,7 @@ public:
 private:
     //  The start and end checkpoints, attempts, checks and language.
     Pokemon::StoryRunOptions RUN;
+    EnumDropdownOption<StarterChoice> STARTER;
     BattleAIOption BATTLE_AI;
 
     GoHomeWhenDoneOption GO_HOME_WHEN_DONE;

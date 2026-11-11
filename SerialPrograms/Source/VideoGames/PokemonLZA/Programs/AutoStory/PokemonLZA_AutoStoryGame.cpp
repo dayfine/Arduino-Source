@@ -73,6 +73,12 @@ const std::map<std::string, ConsoleStep, std::less<>>& console_game_actions(){
         {"type_player_name", [](StoryEnv& env){ type_player_name(env.env.console, env.context, env.player_name); }},
         {"choose_0", [](StoryEnv& env){ choose_dialog_option(env.env.console, env.context, 0); }},
         {"choose_1", [](StoryEnv& env){ choose_dialog_option(env.env.console, env.context, 1); }},
+        {"story_battle_start", [](StoryEnv& env){
+            mash_scene(env.env.console, env.context, SceneMashGoal::BATTLE, BUTTON_A, 90s);
+        }},
+        {"story_battle", [](StoryEnv& env){
+            fight_battle_in_progress(env.env, env.env.console, env.context, env.battle_ai, 120s);
+        }},
     };
     return actions;
 }
@@ -119,6 +125,15 @@ StoryActionSpec walk_spec(){
     });
 }
 
+//  "approach_starter": the walk to each starter, by the starter's key.
+StoryActionSpec approach_starter_spec(){
+    std::vector<StoryArgSpec> args;
+    for (StarterChoice starter : STARTER_CHOICES){
+        args.push_back(legs_arg(std::string(starter_key(starter)), false, "the walk to this starter, as a walk's legs"));
+    }
+    return game_spec("approach_starter", std::move(args));
+}
+
 
 
 //  Builds the handlers. The console actions hold the console; without one
@@ -126,8 +141,9 @@ StoryActionSpec walk_spec(){
 //  refuses them before their handler.
 class PlzaHandlers{
 public:
-    explicit PlzaHandlers(StoryEnv* env)
+    PlzaHandlers(StoryEnv* env, StarterChoice starter)
         : m_env(env)
+        , m_starter(starter)
     {
         if (m_env != nullptr){
             m_heading = heading_reader(*m_env);
@@ -164,6 +180,22 @@ public:
     Handler walk() const{
         return [heading = m_heading](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
             return walk_legs(backend, call.step.name, story_walk_move(call.args, "legs"), call.args, heading);
+        };
+    }
+
+    //  "approach_starter": the walk to the run's starter, from the arg of
+    //  its name. A starter with no walk is not implemented.
+    Handler approach_starter() const{
+        return [heading = m_heading, starter = m_starter](
+            Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState& state
+        ){
+            const std::string_view key = starter_key(starter);
+            if (!call.args.contains(key)){
+                return not_implemented("approach_starter", std::format(
+                    "the walk to {}: only Chikorita's was recorded (console B, 2026-11-08).", key
+                ))(backend, call, state);
+            }
+            return walk_legs(backend, call.step.name, story_walk_move(call.args, key), call.args, heading);
         };
     }
 
@@ -229,6 +261,7 @@ private:
     }
 
     StoryEnv* m_env;
+    StarterChoice m_starter;
     //  The compass for the walks; none without a console, where a look
     //  carries its own heading.
     PlzaReader m_heading;
@@ -314,6 +347,7 @@ using HandlerOf = Handler (*)(const PlzaHandlers& handlers);
 const std::map<std::string, HandlerOf, std::less<>>& story_game_actions(){
     static const std::map<std::string, HandlerOf, std::less<>> actions{
         {"walk", [](const PlzaHandlers& handlers){ return handlers.walk(); }},
+        {"approach_starter", [](const PlzaHandlers& handlers){ return handlers.approach_starter(); }},
         {"mash_to_move_hints", [](const PlzaHandlers&){ return PlzaHandlers::move_hints(); }},
         {"text_to_choice", [](const PlzaHandlers&){ return PlzaHandlers::text_to_choice(); }},
         {"wait_for_platform", [](const PlzaHandlers&){ return platform_handler(PlatformWait::PLATFORM_ONLY); }},
@@ -390,8 +424,8 @@ const Pokemon::StoryActionRegistry<ZonePose>& spec_registry(){
 }
 
 //  PLZA's actions over `env` (none: no console), with no save or reload.
-Pokemon::StoryGame<ZonePose> plza_game_actions(StoryEnv* env){
-    const PlzaHandlers handlers(env);
+Pokemon::StoryGame<ZonePose> plza_game_actions(StoryEnv* env, StarterChoice starter){
+    const PlzaHandlers handlers(env, starter);
     Pokemon::StoryGame<ZonePose> game;
     game.id = "plza";
     for (StoryActionSpec& spec : plza_story_action_specs()){
@@ -432,6 +466,7 @@ std::vector<StoryActionSpec> plza_story_action_specs(){
         specs.push_back(console_only(game_spec(name)));
     }
     specs.push_back(walk_spec());
+    specs.push_back(approach_starter_spec());
     for (const auto& [name, todo] : story_actions_not_implemented()){
         specs.push_back(game_spec(name));
     }
@@ -471,9 +506,9 @@ StoryMove story_walk_move(const StoryActionArgs& args, std::string_view legs){
 }
 
 Pokemon::StoryGame<ZonePose> make_plza_story_game(
-    StoryEnv& env, std::set<std::string, std::less<>> autosave_rows
+    StoryEnv& env, StarterChoice starter, std::set<std::string, std::less<>> autosave_rows
 ){
-    Pokemon::StoryGame<ZonePose> game = plza_game_actions(&env);
+    Pokemon::StoryGame<ZonePose> game = plza_game_actions(&env, starter);
     //  Slow, and it throws without the minimap: never after a checkpoint.
     game.readers.push_back({
         .name = std::string(Pokemon::STORY_HEADING), .supplies = {std::string(Pokemon::STORY_HEADING)},
@@ -501,8 +536,8 @@ Pokemon::StoryGame<ZonePose> make_plza_story_game(
     return game;
 }
 
-Pokemon::StoryGame<ZonePose> make_offline_plza_story_game(){
-    return plza_game_actions(nullptr);
+Pokemon::StoryGame<ZonePose> make_plza_story_game(StarterChoice starter){
+    return plza_game_actions(nullptr, starter);
 }
 
 

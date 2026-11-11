@@ -51,14 +51,19 @@ const std::map<std::string, std::string, std::less<>>& story_actions_not_impleme
 //              reads them; "end", "fade_white" or "fade_black"; "heading"),
 //              walked once the screen shows free control
 //              (check_can_walk()), until its end fade if it has one
-//              (walk_until()); the platform waits "wait_for_platform" and
+//              (walk_until()); "approach_starter" (args "chikorita",
+//              "tepig", "totodile", each a walk's legs: the run's starter's
+//              is walked as "walk" would, a starter with none is not
+//              implemented); the platform waits "wait_for_platform" and
 //              "opening_to_platform"; the scene machines
 //              "mash_to_move_hints" (args min_length_ms, quiet_ms) and
 //              "text_to_choice" (run_scene_machine()); a console step, one
 //              call through the game's own screens with no args: the new
 //              game's "new_game_language", "pick_look", "type_player_name";
 //              "choose_0" / "choose_1" (that row of the choices on screen);
-//              or an action of story_actions_not_implemented()
+//              "story_battle_start" (A to the battle), "story_battle"
+//              (attack until a dialog shows); or an action of
+//              story_actions_not_implemented()
 //
 //  Every action that works through the game's own screens is console_only.
 //  BATTLE is the built-in "fight" (the backend's battle), SAVE the
@@ -76,25 +81,26 @@ const std::vector<Pokemon::StoryActionSpec>& plza_story_specs();
 //  (plza_step_arg_errors(), PokemonLZA_AutoStoryStepValidator.h).
 std::vector<std::string> plza_story_lint(const Pokemon::StoryCheckpoint& checkpoint);
 
-//  The walk of `args`: the legs of its arg `legs` ("legs" for a walk), each [turn in degrees clockwise
+//  The walk of `args`: the legs of its arg `legs` ("legs" for a walk, the
+//  starter's key for approach_starter), each [turn in degrees clockwise
 //  (negative: left), walk ms], and its "heading", if any. The args must
 //  have passed plza_story_lint().
 StoryMove story_walk_move(const Pokemon::StoryActionArgs& args, std::string_view legs);
 
 //  PLZA as a StoryGame on the console `env`, which must outlive it.
-//  The walks read the
+//  `starter` is the one approach_starter walks to; the walks read the
 //  compass with heading_reader(). The save waits out the game's autosave at
 //  the end of the checkpoints of `autosave_rows` (the run's
 //  StoryData::autosaves) and saves through the menu after the others; the
 //  reload resets the game from HOME.
 Pokemon::StoryGame<Pokemon::ZonePose> make_plza_story_game(
-    StoryEnv& env, std::set<std::string, std::less<>> autosave_rows
+    StoryEnv& env, StarterChoice starter, std::set<std::string, std::less<>> autosave_rows
 );
 
 //  The same with no console, for tests and simulations: the console_only
 //  actions fail as "console_only", the walks read the heading the looks
 //  carry, and there is no save or reload.
-Pokemon::StoryGame<Pokemon::ZonePose> make_offline_plza_story_game();
+Pokemon::StoryGame<Pokemon::ZonePose> make_plza_story_game(StarterChoice starter);
 
 
 

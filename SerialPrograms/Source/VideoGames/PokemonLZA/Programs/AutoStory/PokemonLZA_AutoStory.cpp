@@ -37,7 +37,7 @@ AutoStory_Descriptor::AutoStory_Descriptor()
         "PokemonLZA:AutoStory",
         std::format("{} LZA", STRING_POKEMON), "Auto Story",
         "Programs/PokemonLZA/AutoStory.html",
-        "Play the main story of Pokemon Legends: Z-A. Prototype: plays a new game to the station platform, as recorded on a console.",
+        "Play the main story of Pokemon Legends: Z-A. Prototype: Main Mission 01 as recorded on a console; plays from a new game to the starter and Andi.",
         PanelQualityStanding::DEVELOPER,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
@@ -69,6 +69,16 @@ const StringSelectDatabase& checkpoint_database(){
 
 AutoStory::AutoStory()
     : RUN(checkpoint_database(), Gen8ToGen9Languages_Database())
+    , STARTER(
+        "<b>Starter Pokemon:</b>",
+        {
+            {StarterChoice::CHIKORITA, "chikorita", "Chikorita"},
+            {StarterChoice::TEPIG,     "tepig",     "Tepig"},
+            {StarterChoice::TOTODILE,  "totodile",  "Totodile"},
+        },
+        LockMode::LOCK_WHILE_RUNNING,
+        StarterChoice::CHIKORITA
+    )
     , GO_HOME_WHEN_DONE(false)
     , NOTIFICATIONS({
         &NOTIFICATION_PROGRAM_FINISH,
@@ -77,6 +87,7 @@ AutoStory::AutoStory()
     })
 {
     PA_ADD_OPTION(RUN);
+    PA_ADD_OPTION(STARTER);
     PA_ADD_OPTION(BATTLE_AI);
     PA_ADD_OPTION(GO_HOME_WHEN_DONE);
     PA_ADD_OPTION(NOTIFICATIONS);
@@ -135,7 +146,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
 
     StoryEnv story{.env = env, .context = context, .language = RUN.language(), .battle_ai = BATTLE_AI};
     PlzaConsoleBackend backend(story);
-    const StoryGame<ZonePose> game = make_plza_story_game(story, story_data.autosaves);
+    const StoryGame<ZonePose> game = make_plza_story_game(story, STARTER, story_data.autosaves);
     StoryEngine<ZonePose> engine(game, backend);
     RunState state;
     load_start_save(env.console, game, backend, rows, first);

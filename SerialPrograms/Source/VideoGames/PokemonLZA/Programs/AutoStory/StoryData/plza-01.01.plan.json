@@ -1,0 +1,45 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "plza",
+  "checkpoint": {
+    "id": "01.01",
+    "title": "The platform to Main Mission 01",
+    "start": {
+      "map": "LumioseCity"
+    },
+    "events": [
+      {
+        "id": "on_platform",
+        "kind": "game_action",
+        "why": "start check: on the station platform with free control, as 01.00 ends",
+        "action": "wait_for_platform",
+        "args": {
+          "timeout_ms": 10000
+        }
+      },
+      {
+        "id": "platform_to_plaza",
+        "kind": "game_action",
+        "why": "steps 6-7: down the platform, then right until the white fade. Measured 2026-11-08 on console B, walk not run. Holds the last leg until the white fade into the arrival scenes; 6000 ms was the recorded walk, which overshot into it.",
+        "action": "walk",
+        "args": {
+          "legs": [[0, 4500], [90, 10000]],
+          "end": "fade_white"
+        }
+      },
+      {
+        "id": "arrival_scenes",
+        "kind": "game_action",
+        "why": "steps 8-10: the white title card (~15 s), the text-free city flyover (~20 s), the starters and the girl, \"You're a tourist?\" (top choice), the ad, Pancham steals the bag; ends on the \"MAIN MISSION 01: get the bag back\" banner (once it has gone), or on the controls hint (free control)",
+        "action": "mash_to_move_hints"
+      }
+    ],
+    "metadata": {
+      "phase": "testing",
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game"
+    }
+  },
+  "execution": {
+    "save": "autosave"
+  }
+}

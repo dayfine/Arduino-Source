@@ -1,0 +1,50 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "plza",
+  "checkpoint": {
+    "id": "01.02",
+    "title": "Main Mission 01: chase Pancham to the battle area",
+    "start": {
+      "map": "LumioseCity"
+    },
+    "events": [
+      {
+        "id": "chase_pancham",
+        "kind": "game_action",
+        "why": "step 11: after Pancham, through the archway, around the starters into the scene. NEEDS TUNING. Measured 2026-11-08 on console B, walk not run. The sidestep around the starters had no time recorded: 1000 ms is a placeholder.",
+        "action": "walk",
+        "args": {
+          "legs": [[-15, 4000], [-75, 3500], [90, 9000], [-90, 0], [90, 1000], [-90, 4000]]
+        }
+      },
+      {
+        "id": "pancham_cornered",
+        "kind": "game_action",
+        "why": "step 12: the scene up to its choice",
+        "action": "text_to_choice"
+      },
+      {
+        "id": "battle_with_pokemon",
+        "kind": "game_action",
+        "why": "step 12: choose \"Battle with Pokemon!\" (second choice)",
+        "action": "choose_1"
+      },
+      {
+        "id": "battle_area",
+        "kind": "game_action",
+        "why": "step 12: the scene until free control in the battle area; autosave",
+        "action": "mash_to_move_hints",
+        "args": {
+          "min_length_ms": 20000
+        }
+      }
+    ],
+    "metadata": {
+      "phase": "testing",
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game; split from 01.01 at the MAIN MISSION 01 autosave (2026-11-10)"
+    }
+  },
+  "execution": {
+    "save": "autosave"
+  }
+}

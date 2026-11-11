@@ -49,8 +49,38 @@ void add_legs_errors(std::string_view step, std::string_view key, const IntegerR
     }
 }
 
+//  What is wrong with an "approach_starter" step's walks: it needs one.
+std::vector<std::string> starter_walk_errors(const Pokemon::StoryStep& step){
+    std::vector<std::string> errors;
+    bool any = false;
+    for (StarterChoice starter : STARTER_CHOICES){
+        const auto legs = step.args.find(starter_key(starter));
+        if (legs != step.args.end()){
+            any = true;
+            add_legs_errors(step.name, legs->first, std::get<IntegerRows>(legs->second), errors);
+        }
+    }
+    if (!any){
+        errors.push_back(std::format("{}: no walk to any starter", step.name));
+    }
+    return errors;
+}
+
 } // namespace
 
+
+//  approach_starter's arg for each starter: the walk to it.
+std::string_view starter_key(StarterChoice starter){
+    switch (starter){
+    case StarterChoice::CHIKORITA:
+        return "chikorita";
+    case StarterChoice::TEPIG:
+        return "tepig";
+    case StarterChoice::TOTODILE:
+        return "totodile";
+    }
+    return "";
+}
 
 //  A walk's "end" arg as the event it ends on: a fade.
 std::optional<Pokemon::ScreenEvent> walk_end_event(std::string_view end){
@@ -63,12 +93,15 @@ std::optional<Pokemon::ScreenEvent> walk_end_event(std::string_view end){
     return std::nullopt;
 }
 
-//  What is wrong with the args of a "walk" step;
+//  What is wrong with the args of a "walk" or "approach_starter" step;
 //  nothing for any other step.
 std::vector<std::string> plza_step_arg_errors(const Pokemon::StoryStep& step){
     std::vector<std::string> errors;
     if (step.kind != StoryStepKind::GAME){
         return errors;
+    }
+    if (step.action == "approach_starter"){
+        return starter_walk_errors(step);
     }
     if (step.action != "walk"){
         return errors;
