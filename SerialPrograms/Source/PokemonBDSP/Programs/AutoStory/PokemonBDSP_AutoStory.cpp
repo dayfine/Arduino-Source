@@ -99,25 +99,18 @@ Pokemon::SegmentHooks story_hooks(SingleSwitchProgramEnvironment& env, ProContro
     return hooks;
 }
 
-//  Leave the Switch in a known state after a failure: on HOME with the
-//  game closed, so the next run (or the user) starts from there.
-void close_game_after_failure(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
-    env.log("AutoStory failed: going to HOME and closing the game.", COLOR_RED);
-    try{
-        go_home(env.console, context);
-        close_game_from_home(env.console, context);
-    }catch (OperationFailedException& e){
-        env.log("Could not close the game: " + e.message(), COLOR_RED);
-    }
+//  A failed run leaves the game where it failed, so the user (or the
+//  next run from the checkpoint's save) can see and resume from there.
+void log_stop_after_failure(SingleSwitchProgramEnvironment& env){
+    env.log("AutoStory failed: the game stays where it failed.", COLOR_RED);
 }
 
-//  A run that stopped short throws, closing the game first unless it
-//  stopped at the first failure as asked.
-void throw_if_stopped(SingleSwitchProgramEnvironment& env, ProControllerContext& context, const Pokemon::SegmentReport& report){
+//  A run that stopped short throws.
+void throw_if_stopped(SingleSwitchProgramEnvironment& env, const Pokemon::SegmentReport& report){
     if (report.completed){
         return;
     }
-    close_game_after_failure(env, context);
+    log_stop_after_failure(env);
     throw OperationFailedException(
         ErrorReportMode::NO_ERROR_REPORT,
         std::format(
@@ -140,7 +133,7 @@ struct VerifyRequest{
 //  loads the save the first run started from. Throws unless enough runs
 //  pass, closing the game first as after any failure unless `keep_game`.
 void verify_story_checkpoint(
-    SingleSwitchProgramEnvironment& env, ProControllerContext& context, Pokemon::RunState& state,
+    SingleSwitchProgramEnvironment& env, Pokemon::RunState& state,
     Pokemon::Segment& segment, Pokemon::SegmentHooks& hooks, const VerifyRequest& request
 ){
     if (request.new_game){
@@ -152,14 +145,14 @@ void verify_story_checkpoint(
     try{
         report = Pokemon::verify_checkpoint(id, policy, segment, hooks, state);
     }catch (OperationFailedException&){
-        close_game_after_failure(env, context);
+        log_stop_after_failure(env);
         throw;
     }
     const std::string summary = std::format(
         "AutoStory verify: {} {}/{} passed, {} needed.", id, report.passes, policy.runs, policy.passes_needed
     );
     if (!report.verified){
-        close_game_after_failure(env, context);
+        log_stop_after_failure(env);
         throw OperationFailedException(ErrorReportMode::NO_ERROR_REPORT, summary);
     }
     env.console.log(summary);
@@ -244,7 +237,7 @@ void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     }
     if (const std::optional<Pokemon::VerifyPolicy> verify = RUN.VERIFY.policy()){
         const VerifyRequest request{checkpoints[first].id, *verify, first == 0 && NEW_GAME_INTRO};
-        verify_story_checkpoint(env, context, state, segment, hooks, request);
+        verify_story_checkpoint(env, state, segment, hooks, request);
         send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH);
         return;
     }
@@ -252,13 +245,13 @@ void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     try{
         report = run_segment(Pokemon::SegmentRange{checkpoints[first].id, checkpoints[last].id}, RUN.policy(), segment, hooks, state);
     }catch (OperationFailedException&){
-        close_game_after_failure(env, context);
+        log_stop_after_failure(env);
         throw;
     }
     Pokemon::AutoStoryStats& stats = env.current_stats<Pokemon::AutoStoryStats>();
     Pokemon::record_story_counts(report.story_counts(), stats);
     env.update_stats();
-    throw_if_stopped(env, context, report);
+    throw_if_stopped(env, report);
     env.console.log("AutoStory: done through " + checkpoints[last].id + ".");
     send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH);
 }
