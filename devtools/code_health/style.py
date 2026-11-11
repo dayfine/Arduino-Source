@@ -723,6 +723,114 @@ def native_cases(path, code, parsed, changed):
 
 
 
+# ---- Output parameters last ----------------------------------------------------------
+
+# Handles conventionally passed first: program environments (`*Env`, `*Environment`), controller
+# contexts, console and video handles, loggers, cancellation scopes, test registries, streams,
+# story backends, notification `*Option`s and injected `*Actions` seams. They are the function's world, not its result, so a non-const
+# reference to one is not an output parameter.
+CONTEXT_TYPE = re.compile(
+    r'(?:\w*Env(?:ironment)?|\w*Context|\w*Actions|ConsoleHandle|VideoStream|VideoOverlay|VideoFeed|AudioFeed'
+    r'|\w*Logger|\w*Backend|\w*Option|CancellableScope|UnitTestDatabase|AsyncCommandSession'
+    r'|(?:std::)?(?:basic_)?[io]?(?:string|f)?stream)')
+
+
+def parameter_kind(param):
+    """'out' (non-const lvalue reference), 'in' (by value, const&, &&) or '' (pointers,
+    context handles, packs, function types): only an 'out' before an 'in' is reported."""
+    declared = parameter_type(param)
+    plain = ' '.join(without_templates(declared).split())
+    if not plain or plain == 'void' or '...' in plain or '(' in plain or '*' in plain:
+        return ''
+    if not plain.endswith('&') or plain.endswith('&&'):
+        return 'in'
+    if re.search(r'\bconst\b', plain):
+        return 'in'
+    base = ' '.join(re.sub(r'\b(?:volatile|typename|struct|class)\b', '', plain.rstrip('&')).split())
+    context = CONTEXT_TYPE.fullmatch(base) or CONTEXT_TYPE.fullmatch(base.split('::')[-1])
+    return '' if context else 'out'
+
+
+def out_param_problem(sig):
+    """The first output parameter declared before an input parameter, or None."""
+    kinds = [parameter_kind(param) for param in sig.params]
+    if 'in' not in kinds:
+        return None
+    last_input = len(kinds) - 1 - kinds[::-1].index('in')
+    for param, kind in zip(sig.params[:last_input], kinds[:last_input]):
+        if kind == 'out':
+            return default_split(param)[0]
+    return None
+
+
+def constructor(sig, enclosing):
+    parts = sig.name.lstrip('~').split('::')
+    in_class = enclosing and enclosing[-1][0] == 'class' and enclosing[-1][1] == parts[-1]
+    return in_class or (len(parts) >= 2 and parts[-1] == parts[-2]) or sig.name.startswith('~')
+
+
+def out_param_signatures(statements_):
+    return {(sig.name, tuple(parameter_kind(p) for p in sig.params))
+            for sig in map(signature, statements_) if sig}
+
+
+def out_param_checks(path, statements_, added, previous_signatures):
+    """A non-const T& parameter before a by-value / const& / && one (Google "Function
+    Parameter Ordering"): inputs first, then outputs. Not constructors, operators,
+    `override`/`final`, `= delete`, a signature whose parameter kinds are unchanged, or an
+    out-of-class `A::f` definition in a .cpp (its declaration in the header is checked, and
+    there an `override` is visible)."""
+    errors = []
+    for statement, enclosing in scopes(statements_):
+        if statement.line not in added:
+            continue
+        sig = signature(statement)
+        if sig is None or re.search(r'\boperator\b', statement.text) or constructor(sig, enclosing):
+            continue
+        if '::' in sig.name and not path.endswith(HEADERS):
+            continue
+        if re.search(r'\b(override|final)\b|=\s*delete', sig.tail):
+            continue
+        if (sig.name, tuple(parameter_kind(p) for p in sig.params)) in previous_signatures:
+            continue
+        param = out_param_problem(sig)
+        if param:
+            errors.append(Finding(path, statement.line, rule(
+                f"{sig.name}: output parameter '{param}' comes before an input; put inputs "
+                '(by value, const&) first and non-const references last',
+                'Google "Function Parameter Ordering"'), check='out_param_order'))
+    return errors
+
+
+# ---- std::string building with + -----------------------------------------------------
+
+STRING_CALL = re.compile(r'\bstd::(?:to_string|string)\s*\(')
+
+
+def string_concatenations(line):
+    """Whether `line` builds a string with `+` from a literal, std::to_string(...) or
+    std::string(...). `+=` appends and Qt files (QString) are not reported."""
+    if re.search(r'"\s*\+(?![+=])', line) or re.search(r'(?<!\+)\+\s*(?:u8|u|U|L)?"', line):
+        return True
+    for match in STRING_CALL.finditer(line):
+        close = matching(line, match.end() - 1)
+        before = line[:match.start()].rstrip()
+        after = line[close + 1:].lstrip() if close >= 0 else ''
+        if (before.endswith('+') and not before.endswith('++')) or \
+                (after.startswith('+') and not after.startswith(('++', '+='))):
+            return True
+    return False
+
+
+def string_concat_checks(path, raw, code, added):
+    if QT_INCLUDE.search(raw):
+        return []
+    return [Finding(path, number, rule(
+        'build strings with std::format, not + on a literal / std::to_string / std::string',
+        'fork AGENTS.md "Strings"'), check='string_concat')
+        for number in sorted(added) if string_concatenations(code[number - 1])]
+
+
 # ---- Entry point -------------------------------------------------------------------
 
 def check(path, source, previous_source):
@@ -745,6 +853,10 @@ def check(path, source, previous_source):
                                              bool_signatures(previous_statements),
                                              previous_source is None)
     errors += namespace_closes(path, raw_lines, statements_, added)
+    #  Advisory until the open PR stacks are cleaned up (user's call, 2026-11-10): the
+    #  hook checks a whole PR against its base, so blocking would fail every open PR.
+    warnings += out_param_checks(path, statements_, added, out_param_signatures(previous_statements))
+    warnings += string_concat_checks(path, raw, code, added)
     if path.endswith('_Tests.cpp'):
         errors += native_cases(path, '\n'.join(code), statements_, added)
     if path.endswith(HEADERS):

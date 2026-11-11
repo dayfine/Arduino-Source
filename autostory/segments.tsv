@@ -1,0 +1,5 @@
+game	segment	phase	passes	save_holds	postconditions	note
+frlg	00.30	reproduction	1/1	-	Celadon Center 1F (7,4)	passed 2026-11-09 (before this policy)
+frlg	00.31	testing	0	00.31 mid (B4F ~6,11, after Lift Key)	B3F (12,13) N; Lift Key; Rare Candy x2; poster + key Grunts beaten	2026-11-10 false pass: warp leg confirmed B3F without leaving B4F; save overwrote start
+frlg	00.32	testing	0	-	-	blocked on 00.31
+plza	01.00	testing	0	none (new game)	autosave after battle_area	opening scene-end fix e12c7dc9c running 2026-11-10
