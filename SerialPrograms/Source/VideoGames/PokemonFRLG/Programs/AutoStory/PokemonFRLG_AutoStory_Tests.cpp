@@ -223,7 +223,7 @@ UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& po
             pose = StoryPose{pose.map, pose.tile.next(direction), direction};
         }
         if (step.pose_after){
-            pose = one_tile(*step.pose_after);
+            pose = one_tile(Pokemon::grid_pose_of(*step.pose_after));
         }
     }
     return true;
@@ -238,7 +238,7 @@ UnitTestResult test_routes_and_chain(){
     for (size_t c = 0; c < checkpoints.size(); c++){
         const StoryCheckpoint& checkpoint = checkpoints[c];
         if (c > 0){
-            const StoryPose start = one_tile(*checkpoint.start);
+            const StoryPose start = one_tile(Pokemon::grid_pose_of(*checkpoint.start));
             const bool same_facing = !start.facing || start.facing == pose.facing;
             if (start.map != pose.map || !(start.tile == pose.tile) || !same_facing){
                 return checkpoint.id + " starts at " + describe(start) + ", but " + checkpoints[c - 1].id + " ends at " + describe(pose) + ".";
@@ -616,8 +616,8 @@ UnitTestResult test_robin_crossing(){
 //  places of the starts that matter differ.
 UnitTestResult test_save_places(){
     for (const StoryCheckpoint& checkpoint : story_checkpoints()){
-        if (checkpoint.start && save_card_place(checkpoint.start->map).empty()){
-            return checkpoint.id + " starts on " + checkpoint.start->map + ", which has no save card place.";
+        if (checkpoint.start && save_card_place(Pokemon::grid_pose_of(*checkpoint.start).map).empty()){
+            return checkpoint.id + " starts on " + Pokemon::grid_pose_of(*checkpoint.start).map + ", which has no save card place.";
         }
     }
     if (save_card_place("ViridianForest") != "viridian-forest" || save_card_place("ViridianCity_Mart") != "viridian-city"
