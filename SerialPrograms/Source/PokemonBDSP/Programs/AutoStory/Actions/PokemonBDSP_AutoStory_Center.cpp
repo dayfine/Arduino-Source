@@ -20,6 +20,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Walk.h"
 #include "PokemonBDSP_AutoStory_WildBattle.h"
 #include "PokemonBDSP_AutoStory_Center.h"
+#include "PokemonBDSP_AutoStory_TalkOver.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -458,7 +459,15 @@ void talk_to_nurse(
 ){
     //  The nurse's counter is straight ahead of the door.
     route_status(stream, label + ": talking to the nurse.");
-    if (walk_to_talk(stream, context, run_from_wild_battle, {0, 1}, 6000ms, label + ": to the nurse").stop != WalkStop::DIALOG){
+    WalkResult walk = walk_to_talk(stream, context, run_from_wild_battle, {0, 1}, 6000ms, label + ": to the nurse");
+    //  A "transition" before the first step is the inside still fading in,
+    //  not a door (lab-B 2026-11-10, 00.04b): settle, then walk once more.
+    if (walk.stop == WalkStop::TRANSITION && walk.moved_chunks == 0){
+        stream.log("[Route] " + label + ": to the nurse: a fade before the first step; settling, then once more.");
+        talk_over(stream, context, label + ": inside the Center");
+        walk = walk_to_talk(stream, context, run_from_wild_battle, {0, 1}, 6000ms, label + ": to the nurse");
+    }
+    if (walk.stop != WalkStop::DIALOG){
         OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
             label + ": nurse not reached.", stream);
     }

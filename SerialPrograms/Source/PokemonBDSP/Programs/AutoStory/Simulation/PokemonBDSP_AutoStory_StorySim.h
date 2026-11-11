@@ -68,6 +68,10 @@ struct SimMisses{
     size_t doors = 0;
     bool missed = false;
     bool fade_unseen = false;
+    //  A door's fade showed and nothing has settled since: on the console
+    //  the inside is still fading in, and a walk then goes nowhere (lab-B
+    //  2026-11-10, 00.04b heal_sandgem: "nurse not reached").
+    bool fading_in = false;
     bool slid = false;
     std::string banner_up = {};
 };
@@ -302,7 +306,9 @@ public:
         if (m_sim.hold(direction, timeout, pace).stop != SimStop::WARP){
             return {};
         }
-        return door_fade(banner);
+        const WarpSeen seen = door_fade(banner);
+        m_misses.fading_in = seen.any();
+        return seen;
     }
     //  A fade missed on the way in stays missed: it was over before settle()
     //  looked, which then fails as it does on the console after 120 s. The
