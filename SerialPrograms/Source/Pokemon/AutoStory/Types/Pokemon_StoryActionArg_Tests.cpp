@@ -8,13 +8,14 @@
  *
  */
 
+#include <format>
 #include <iostream>
 #include <string>
 #include <string_view>
 #include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon_StoryActionArg.h"
 #ifndef PA_STORY_DATA_STANDALONE
-#include "Pokemon/AutoStory/Pokemon_AutoStory_Tests.h"
+#include "Pokemon_StoryActionArg_Tests.h"
 #endif
 
 namespace PokemonAutomation{
@@ -73,7 +74,7 @@ std::string check_case(const ArgsCase& test){
         error += (error.empty() ? "" : "; ") + each;
     }
     if (error != test.expectation.error){
-        return "expected error \"" + std::string(test.expectation.error) + "\", got \"" + error + "\"";
+        return std::format("expected error \"{}\", got \"{}\"", test.expectation.error, error);
     }
     if (with_fallbacks(mart_spec(), test.input.args) != test.expectation.filled){
         return "filled in other args";
@@ -92,7 +93,7 @@ std::string check_case(const ArgsCase& test){
 class StoryActionArgTest : public UnitTest{
 public:
     explicit StoryActionArgTest(ArgsCase test)
-        : UnitTest("Pokemon::StoryActionArg - " + std::string(test.input.name))
+        : UnitTest(std::format("Pokemon::StoryActionArg - {}", test.input.name))
         , m_case(test)
     {}
 

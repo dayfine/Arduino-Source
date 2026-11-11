@@ -87,7 +87,7 @@ struct InterruptCheck{
 //  interrupted the player, if anything, writing the handler's effect on
 //  the pose into `state`. On the HOME menu it fails as GAME_NOT_RUNNING
 //  and clears nothing, whatever the step starts on.
-InterruptCheck clear_story_interrupt(const StoryInterrupts& interrupts, RunState& state, const StoryStep& step);
+InterruptCheck clear_story_interrupt(const StoryInterrupts& interrupts, const StoryStep& step, RunState& state);
 
 
 

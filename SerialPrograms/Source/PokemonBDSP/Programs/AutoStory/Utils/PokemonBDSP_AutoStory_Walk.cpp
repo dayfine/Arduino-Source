@@ -24,7 +24,12 @@
 #include "PokemonBDSP/Inference/Battles/PokemonBDSP_BattleMenuDetector.h"
 #include "PokemonBDSP_AutoStory_Indoors.h"
 #include "PokemonBDSP_AutoStory_Location.h"
+#include "PokemonBDSP_AutoStory_LocationBannerWatcher.h"
 #include "PokemonBDSP_AutoStory_Walk.h"
+#include "PokemonBDSP_AutoStory_WalkDpad.h"
+#include "PokemonBDSP_AutoStory_WalkProbe.h"
+#include "PokemonBDSP_AutoStory_WalkResult.h"
+#include "PokemonBDSP_AutoStory_WalkScreen.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -33,7 +38,7 @@ namespace PokemonBDSP{
 using namespace std::chrono_literals;
 
 
-const char* walk_stop_name(WalkStop stop){
+std::string walk_stop_name(WalkStop stop){
     switch (stop){
     case WalkStop::ARRIVED:     return "arrived";
     case WalkStop::DIALOG:      return "dialog";

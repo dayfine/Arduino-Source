@@ -37,7 +37,7 @@ using ScreenLookFunction = std::function<ScreenLook(bool fresh)>;
 
 //  Clears an interrupt a look found: flees or fights the battle, closes
 //  the dialog, waits out the warp.
-using InterruptAction = std::function<Outcome(RunState& state, const InterruptVerdict& verdict)>;
+using InterruptAction = std::function<Outcome(const InterruptVerdict& verdict, RunState& state)>;
 
 //  A row of an InterruptHandlerTable.
 struct InterruptHandler{

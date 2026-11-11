@@ -85,7 +85,7 @@ std::optional<FadeSpan> last_fade(const Changes& changes){
 ScreenEvent fade_event(WarpFade fade){
     return fade == WarpFade::WHITE ? ScreenEvent::FADE_WHITE : ScreenEvent::FADE_BLACK;
 }
-void add_fade_evidence(Changes& evidence, const FadeSpan& fade){
+void add_fade_evidence(const FadeSpan& fade, Changes& evidence){
     evidence.push_back({fade.down, fade_event(fade.fade), ScreenEventEdge::ROSE});
     if (fade.up){
         evidence.push_back({*fade.up, fade_event(fade.fade), ScreenEventEdge::FELL});
@@ -141,7 +141,7 @@ std::optional<InterruptVerdict> warp_verdict(
     const std::optional<ScreenEventChange> banner = first_rise(changes, ScreenEvent::LOCATION_BANNER);
     InterruptVerdict out{InterruptKind::WARP, {}, false};
     if (warp.fade && warp.judgement != WarpJudgement::TOO_SHORT){
-        add_fade_evidence(out.evidence, *warp.fade);
+        add_fade_evidence(*warp.fade, out.evidence);
     }
     if (banner){
         out.evidence.push_back(*banner);

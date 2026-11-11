@@ -15,6 +15,8 @@
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "Actions/PokemonBDSP_AutoStory_Talks.h"
 #include "Actions/PokemonBDSP_AutoStory_WildBattle.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkResult.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkScreen.h"
 #include "PokemonBDSP_AutoStory_Walks.h"
 
 namespace PokemonAutomation{

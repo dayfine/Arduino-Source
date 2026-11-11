@@ -15,87 +15,17 @@
 #include <string>
 #include <vector>
 #include "Common/Cpp/Time.h"
-#include "CommonFramework/ImageTools/ImageStats.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/Tools/VideoStream.h"
 #include "Controllers/Joystick.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
-#include "Pokemon/AutoStory/Pokemon_SceneJudges.h"
 #include "Pokemon/AutoStory/Pokemon_ScreenEvents.h"
-#include "Pokemon/AutoStory/Pokemon_Transitions.h"
+#include "PokemonBDSP_AutoStory_WalkResult.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
 
-
-//  Runs from a wild battle that has interrupted a walk, and returns once the
-//  player stands on the overworld again. The walker only sees that a battle
-//  started; how to leave it is the program's battle code, passed in.
-using WildBattleEscape = std::function<void(VideoStream& stream, ProControllerContext& context)>;
-
-//  Possible termination conditions for an automated walking sequence.
-enum class WalkStop{
-    ARRIVED,        //  `arrived` matched.
-    DIALOG,         //  A dialogue box opened: an NPC or a trainer stopped us.
-    TRANSITION,     //  A fade (WalkResult::warp) with no battle after it: a door or a new area.
-    BLOCKED,        //  The screen stopped changing: we are walking into a wall.
-    LIMIT,          //  Walked `limit` without any of the above.
-};
-//  Returns display name string corresponding to given WalkStop condition.
-const char* walk_stop_name(WalkStop stop);
-
-//  Whether the walk has arrived, from the screen after each chunk.
-using WalkArrived = std::function<bool(const ImageViewRGB32& screen)>;
-
-//  An encounter already active at the first input, or found only after a
-//  leg, may belong to earlier movement: it began on the tile that movement
-//  ended on, so the leg's tiles from its start, none moved to all, still
-//  hold where we are.
-enum class WalkOrigin{ CURRENT_LEG, MAY_PRECEDE_LEG };
-
-//  The fade and warp judgements are shared (Pokemon_ScreenEvents.h,
-//  Pokemon_SceneJudges.h); BDSP's walks and steps fill them.
-//  How a screen's fade looks.
-using Pokemon::WarpFade;
-//  "black fade", for the log.
-using Pokemon::warp_fade_name;
-//  A fade's most texture (the walk's black-screen watcher uses it too).
-using Pokemon::FADE_MAX_STDDEV_SUM;
-//  A dark fade's brightest rgb sum (likewise).
-using Pokemon::FADE_MAX_DARK_SUM;
-//  The fade a screen's middle shows, from its stats.
-using Pokemon::fade_of;
-//  The fade a screen shows.
-using Pokemon::fade_of_screen;
-//  What a walk or a step saw of a warp: a fade or a banner.
-using Pokemon::WarpSeen;
-
-//  Result metrics and terminal state returned by automated walking execution.
-struct WalkResult{
-    WalkStop stop;
-    Milliseconds walked{};
-    size_t wild_battles = 0;
-    //  Count of completed steps or taps that clearly moved. Blocked taps do
-    //  not count (r248a: "4 taps before the battle" were 2 steps and 2
-    //  taps into Taylor's freeze).
-    size_t moved_chunks = 0;
-    WalkOrigin origin = WalkOrigin::CURRENT_LEG;
-    //  The fade that ended a TRANSITION, and any location banner read on
-    //  the way (#268 slice 2: walkers report warps).
-    WarpSeen warp = {};
-    //  What the walk's watchers saw, timed, from its first input through
-    //  the watch after it: an encounter's flash, a battle, a box, a fade.
-    //  The shared judges read it (Pokemon::classify_interrupt()) to tell
-    //  what stopped the walk and when its step was taken. Empty where
-    //  nothing recorded it.
-    Pokemon::ScreenEventLog events{};
-    //  When the walk's first input went in; `events` are timed against it.
-    WallClock started = {};
-    //  Chunks that moved after the last wild battle was run from: the taps
-    //  the walk went on with.
-    size_t moved_after_battle = 0;
-};
 
 //  Holds the left stick at `stick` until one of the WalkStop events. Wild battles on
 //  the way are run from, and walking resumes. Does not throw for any WalkStop; the
@@ -104,38 +34,6 @@ WalkResult walk_until(
     VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
     JoystickPosition stick, Milliseconds limit, const std::string& label,
     const WalkArrived& arrived = nullptr
-);
-
-//  How walk_until_dpad() presses: RUN holds B too, twice as fast and as
-//  tile-true.
-enum class DpadPace{
-    WALK,
-    RUN,
-};
-//  Configuration options controlling D-pad based walking maneuvers.
-struct DpadWalkOptions{
-    WalkArrived arrived = nullptr;
-    DpadPace pace = DpadPace::WALK;
-};
-
-//  walk_until() on the D-pad, for a straight walk along a row or a column
-//  (`stick` is one of the four directions). The D-pad moves whole tiles and
-//  keeps to the row: the stick drifts off it, catches tree corners and slides
-//  a row on stairs (Route 203, r226a and r227b; by hand the D-pad went
-//  through the same places).
-WalkResult walk_until_dpad(
-    VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
-    JoystickPosition stick, Milliseconds limit, const std::string& label,
-    const DpadWalkOptions& options = DpadWalkOptions()
-);
-
-//  A set number of whole tiles on the D-pad, a tap a tile (a tap moves
-//  exactly one tile; a stick hold timed for n tiles is a tile or two off),
-//  with the same watch for wild battles and dialogue as walk_until(). Ends
-//  LIMIT after `tiles` taps, or BLOCKED when two taps in a row move nothing.
-WalkResult walk_tiles_dpad(
-    VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
-    JoystickPosition stick, size_t tiles, const std::string& label
 );
 
 //  walk_until() where there are no wild Pokemon (a gym, a building): any
@@ -197,129 +95,6 @@ WalkResult walk_to_talk(
     JoystickPosition stick, Milliseconds limit, const std::string& label
 );
 
-//  How much the screen changed between two frames, 0 for identical. Walking scrolls
-//  the whole view: 16 to 85 per 400ms on Route 202, against about 6 for running in
-//  place against trees.
-double walk_screen_change(const ImageViewRGB32& before, const ImageViewRGB32& after);
-//  Screen change metric threshold indicative of blocked movement against an obstacle.
-constexpr double WALK_BLOCKED_CHANGE = 16.0;
-//  For whole-tile D-pad taps: a tap that moves changes the screen by 21 to 50
-//  (r244a: 40 per tap along Route 204's row 27); a tap into a wall or an NPC
-//  bumps for 10 to 13.4, and an NPC walking past does the same, so 10 counted
-//  bumps as steps (r244a, 2026-10-31).
-constexpr double WALK_TAP_BLOCKED_CHANGE = 16.0;
-//  More than walking changes in 400ms: a new scene, such as a battle opening.
-constexpr double WALK_SCENE_CHANGE = 120.0;
-
-namespace detail{
-
-//  How the view scrolled between two frames, on 192x108 copies: the shift
-//  (dx, dy) of `before` that best lines up with `after`, leaving out the
-//  middle where the player stands, and the mean difference per colour
-//  channel (0 to 255) with and without it. Outside, the camera follows the
-//  player, so a step scrolls everything one way; a TV, a conveyor, a
-//  passer-by or a cloud shadow changes part of the view with no common
-//  scroll. In r83's and r84's Floaroma video, frames 300 ms apart while
-//  standing (screen changes up to 57, cloud shadows, text boxes) never read
-//  as scrolled; walking read a shift 2 to 6 times better than none.
-struct ViewShift{
-    int dx = 0;
-    int dy = 0;
-    double unshifted = 0;
-    double shifted = 0;
-
-    //  A shift lines up at least twice as well as none, and none leaves a
-    //  real difference.
-    bool scrolled() const;
-};
-
-//  Calculates the view scroll shift between before and after images.
-ViewShift walk_view_shift(const ImageViewRGB32& before, const ImageViewRGB32& after);
-
-//  Whether the player moved between `before` and `after`, frames around a
-//  D-pad tap. Outside: only if the view scrolled. Inside, the camera can
-//  stay put while the player crosses a room (the house's 1F), so there a
-//  screen change of at least `line` counts, as it did before.
-bool tap_moved(const ImageViewRGB32& before, const ImageViewRGB32& after, double line);
-
-} // namespace detail
-
-//  View scroll shift calculation.
-using detail::ViewShift;
-//  Calculates the view scroll shift between before and after images.
-using detail::walk_view_shift;
-//  Whether the player moved between before and after frames.
-using detail::tap_moved;
-
-//  Whether two frames show different scenes: a change walking cannot make
-//  (WALK_SCENE_CHANGE). UNKNOWN without both frames.
-Pokemon::SceneChange walk_scenes_differ(const Pokemon::TransitionSample& before, const Pokemon::TransitionSample& after);
-
-//  What a warp's fade must show before a step takes it as one. All of it
-//  reads Pokemon::BDSP_FADE_PROFILE. Dark is the profile's uniform tier, or
-//  with `partial_dark` its partial tier's texture (a doorway's dim fade
-//  frames, which run_into_door() has stopped on since #268) up to the same
-//  dark sum. Dark must hold `dark_for` and white (always uniform) `white_for`.
-struct WarpFadeRule{
-    bool partial_dark = false;
-    Milliseconds dark_for = Milliseconds(0);
-    Milliseconds white_for = Milliseconds(0);
-};
-
-//  A warp's fade followed frame by frame (a Pokemon::TransitionTracker on
-//  BDSP_FADE_PROFILE) rather than judged on one frame. A fade shows when its
-//  dark or white has held as the rule says; or, when its hold fell between
-//  two frames (a 50 ms door fade), at the first frame of another scene
-//  after the fall, as `compare` tells scenes apart. That one unseen hold
-//  used to leave a door run to its 12 s timeout. Not thread-safe.
-class WarpFadeWatch{
-public:
-    explicit WarpFadeWatch(WarpFadeRule rule, Pokemon::TransitionTracker::CompareScenes compare = walk_scenes_differ);
-
-    //  Adds a frame; times must not go back. Returns the fade this frame
-    //  shows, NONE if none (yet).
-    WarpFade push(const Pokemon::TransitionSample& sample);
-    //  When the screen last went dark as the rule counts dark; none if it
-    //  has not.
-    std::optional<WallClock> went_dark() const{
-        return m_went_dark;
-    }
-    //  How the last fade showed, for the log; "" before one.
-    const std::string& how() const{
-        return m_how;
-    }
-
-private:
-    WarpFadeRule m_rule;
-    Pokemon::TransitionTracker m_tracker;
-    std::optional<WallClock> m_dark_since;
-    std::optional<WallClock> m_white_since;
-    std::optional<WallClock> m_went_dark;
-    std::string m_how;
-};
-
-
-//  One straight walk timed finely, to check a map against the game: holds the
-//  stick at `stick` and samples the screen every 100ms until the view has been
-//  still for 800ms or `limit` runs out. Times count from the start of the hold.
-//  A sample moved if it changed by at least `moving_change`: still is 4 to 7,
-//  walking 16 to 85. Handles no battles or dialogs: use it on open ground,
-//  away from tall grass.
-struct WalkProbe{
-    Milliseconds first_move{-1};    //  the first sample that moved; -1 if none did
-    Milliseconds last_move{-1};     //  the last sample that moved; -1 if none did
-    struct Sample{
-        Milliseconds at;
-        double change;              //  walk_screen_change() since the previous sample
-    };
-    std::vector<Sample> samples;
-};
-//  Probes walking movement and records timestamped screen change samples.
-WalkProbe probe_walk(
-    VideoStream& stream, ProControllerContext& context,
-    JoystickPosition stick, Milliseconds limit,
-    double moving_change, const std::string& label
-);
 
 
 } // namespace PokemonBDSP
