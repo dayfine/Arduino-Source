@@ -45,6 +45,9 @@ Pokemon::TilePos story_to_world(const StoryWorld& world, const std::string& map,
 
 //  The world tile `pos` as a tile of `map`, or nothing if it is not on `map`.
 std::optional<Pokemon::TilePos> story_to_local(const StoryWorld& world, const std::string& map, const Pokemon::TilePos& pos);
+//  The world tile `pos` as a tile of whichever JSON map of `world` holds
+//  it, or nothing if none does.
+std::optional<MapTile> story_to_local(const StoryWorld& world, const Pokemon::TilePos& pos);
 
 //  The trainers a walk on `world` may meet (Routes 202 to 204's), in its tiles.
 std::vector<TrainerSight> story_trainers(const StoryWorld& world);
