@@ -37,6 +37,10 @@ Milliseconds optional_duration(const std::vector<std::string>& words, size_t ind
 //  ParseException for an unknown name.
 Button parse_buttons(const std::string& text);
 
+//  Word `index` as buttons (see parse_buttons()), or BUTTON_NONE if it is
+//  missing: the buttons a stick, D-pad or walk line holds with its direction.
+Button optional_buttons(const std::vector<std::string>& words, size_t index);
+
 //  "UP", "DOWN", "LEFT" or "RIGHT". Throws ParseException otherwise.
 DpadPosition parse_dpad(const std::string& text);
 
