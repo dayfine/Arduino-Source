@@ -1514,6 +1514,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson.h
     Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson_Tests.cpp
     Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_AutoStoryFailureCapture.cpp
+    Source/Pokemon/AutoStory/Pokemon_AutoStoryFailureCapture.h
+    Source/Pokemon/AutoStory/Pokemon_AutoStoryFailureCapture_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_AutoStoryFailureCapture_Tests.h
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect.h
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.h

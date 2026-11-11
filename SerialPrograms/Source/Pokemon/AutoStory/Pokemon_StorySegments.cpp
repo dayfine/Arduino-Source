@@ -103,6 +103,12 @@ Outcome reload(RunState& state, SegmentHooks& hooks){
     return outcome_ok();
 }
 
+void tell_failed(SegmentHooks& hooks, const std::string& checkpoint, const CheckpointReport& result){
+    if (hooks.failed){
+        hooks.failed(checkpoint, result.failed_name, result.failure);
+    }
+}
+
 //  One row to success, reloading and rebuilding after each failed attempt.
 //  Returns the last attempt's report, or the reload's failure; `run` says
 //  how many attempts it took.
@@ -125,6 +131,7 @@ CheckpointReport run_row(
             say(checkpoint_pass_line(spec.id, attempt), hooks);
             return result;
         }
+        tell_failed(hooks, spec.id, result);
         if (result.failure.failure == GAME_NOT_RUNNING){
             say(std::format("[Segment] {}: {} failed; the game is not running, so no reload", segment.id, spec.id), hooks);
             return result;
@@ -200,6 +207,7 @@ bool verify_run(
         say(std::format("[Verify] {}: run {}/{} passed", spec.id, run, policy.runs), hooks);
         return true;
     }
+    tell_failed(hooks, spec.id, result);
     say(std::format(
         "[Verify] {}: run {}/{} failed{}: {}",
         spec.id, run, policy.runs,

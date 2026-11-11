@@ -57,6 +57,11 @@ struct SegmentHooks{
     //  overlay, so whoever watches the stream sees the step under way; and,
     //  once run records land (#132), for the run's events.
     EventLogger status;
+    //  Optional: told of each failed checkpoint attempt and verify run, by
+    //  checkpoint, event (empty when no event failed) and failure, right
+    //  after it fails: before any reload, while the screen still shows it.
+    //  An exception out of an event goes on to the game instead.
+    MoveOnlyFunction<void(const std::string& checkpoint, const std::string& event, const Outcome& failure)> failed;
 };
 
 //  Runs the checkpoints in `range`, in order. Logs through `hooks.log`,
