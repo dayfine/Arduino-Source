@@ -25,6 +25,14 @@
  *  is whether holding `direction` keeps the player on this tile: a wall, but
  *  not a person who may walk off or an edge to a map that isn't loaded.
  *
+ *  A model may also have
+ *
+ *      int open_stop_risk(const State& state, Direction direction) const;
+ *
+ *  the extra cost of a leg that ends on `state` walking `direction` where
+ *  the player could keep going: what a tile past the stop would cost, e.g.
+ *  a tile a trainer may see.
+ *
  */
 
 #ifndef PokemonAutomation_Pokemon_LegPlanner_H
@@ -162,7 +170,11 @@ int stop_cost(const Model& model, const Node<State>& node, const LegCosts& costs
     if (!node.moving || model.held_at(node.state, (Direction)node.facing)){
         return 0;
     }
-    return costs.per_open_stop + (node.wild ? costs.per_open_wild_stop : 0);
+    int cost = costs.per_open_stop + (node.wild ? costs.per_open_wild_stop : 0);
+    if constexpr (requires { model.open_stop_risk(node.state, Direction::NORTH); }){
+        cost += model.open_stop_risk(node.state, (Direction)node.facing);
+    }
+    return cost;
 }
 
 // Combines atomic movement steps into contiguous legs.

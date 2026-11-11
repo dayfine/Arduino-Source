@@ -348,7 +348,7 @@ UnitTestResult test_b2f_maze_taps(){
             {Direction::WEST, 4}, {Direction::NORTH, 2}, {Direction::EAST, 4}, {Direction::NORTH, 7},
         }, {"RocketHideout_B3F", {12, 2}}),
         tap_legs_on_sim(b2f_stairs, Direction::EAST, {
-            {Direction::SOUTH, 2}, {Direction::EAST, 2}, {Direction::SOUTH, 5}, {Direction::WEST, 6}, {Direction::NORTH, 3}, {Direction::WEST, 1},
+            {Direction::WEST, 2}, {Direction::SOUTH, 3}, {Direction::WEST, 2}, {Direction::SOUTH, 1}, {Direction::WEST, 1},
         }, {"RocketHideout_B2F", {1, 4}}),
         tap_legs_on_sim({"RocketHideout_B2F", {2, 4}}, Direction::SOUTH, {
             {Direction::SOUTH, 4}, {Direction::EAST, 1}, {Direction::SOUTH, 1}, {Direction::EAST, 1}, {Direction::EAST, 2}, {Direction::WEST, 2},

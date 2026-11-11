@@ -811,11 +811,139 @@ UnitTestResult test_hideout_giovanni_row(Logger&){
     return true;
 }
 
+//  How much of `route` from `from` a trainer on `map` may see: tiles a walk
+//  leg steps on, and open legs whose tile past the end is seen (a leg that
+//  runs a tile on). Legs from the first slide on aren't counted.
+struct SightExposure{
+    int walked = 0;
+    int overshoot = 0;
+};
+SightExposure sight_exposure(const MapData& map, TilePos from, const std::vector<RouteStep>& route){
+    const auto seen = [&](const TilePos& tile){
+        return std::ranges::any_of(map.objects, [&](const MapObject& object){ return trainer_may_see(map, object, tile); });
+    };
+    SightExposure out;
+    for (const RouteStep& leg : route){
+        if (leg.action != RouteAction::WALK || leg.spin_tiles){
+            break;
+        }
+        TilePos tile = from;
+        for (int c = 0; c < leg.tiles; c++){
+            tile = tile.next(leg.direction);
+            out.walked += seen(tile) ? 1 : 0;
+        }
+        const TilePos past = tile.next(leg.direction);
+        if (!leg.to_wall && in_bounds(map, past) && tile_at(map, past) == TileKind::OPEN && seen(past)){
+            out.overshoot++;
+        }
+        from = leg.end.point;
+    }
+    return out;
+}
+
+const MapData* story_map(std::string_view name){
+    const std::vector<MapData>& maps = story_maps();
+    const auto map = std::find_if(maps.begin(), maps.end(), [&](const MapData& data){ return data.name == name; });
+    return map == maps.end() ? nullptr : &*map;
+}
+
+//  The user's drawn route past B2F's Grunt (20, 6), sight 2, any way: from
+//  the stairs (21, 2) west to the wall (19, 2), down column 19 to (19, 5),
+//  the row above his, west along it to (17, 5), down to (17, 6) and west
+//  onto the arrow (16, 6), which slides to the stop (1, 4).
+const std::vector<Pokemon::StoryLeg> B2F_DRAWN_LEGS{
+    {Direction::WEST, 2}, {Direction::SOUTH, 3}, {Direction::WEST, 2}, {Direction::SOUTH, 1}, {Direction::WEST, 1},
+};
+
+//  Drawn routes are tests (Navigation/README.md): the planner, its trainer
+//  sight a cost (RouteCost::SIGHT_TILE, SIGHT_OVERSHOOT), finds a way from
+//  B2F's stairs to the stop (1, 4) that a trainer sees no more than the
+//  drawn one and is no longer. The drawn one walks no seen tile; only its
+//  south 3 running a tile on, to (19, 6), meets the Grunt's west line. The
+//  run-4 loop by the wall (23, 9) is seen nowhere, but walks 19 tiles to
+//  the drawn route's 9. Without the sight costs, the planner walks
+//  through his lines.
+UnitTestResult test_b2f_drawn_route(Logger& logger){
+    const std::vector<MapData>& maps = story_maps();
+    const MapData* map = story_map("RocketHideout_B2F");
+    if (map == nullptr){
+        return "No RocketHideout_B2F.";
+    }
+    const MapPosition stairs{"RocketHideout_B2F", {21, 2}};
+    const MapPosition stop{"RocketHideout_B2F", {1, 4}};
+    const std::optional<std::vector<RouteStep>> drawn = fixed_route(maps, stairs, B2F_DRAWN_LEGS);
+    const std::optional<std::vector<RouteStep>> loop = fixed_route(maps, stairs, {
+        {Direction::SOUTH, 2}, {Direction::EAST, 2}, {Direction::SOUTH, 5}, {Direction::WEST, 6}, {Direction::NORTH, 3}, {Direction::WEST, 1},
+    });
+    const std::optional<std::vector<RouteStep>> planned = plan_overworld_route(maps, stairs, RouteGoal{stop, std::nullopt}, default_route_costs(), Direction::EAST);
+    if (!drawn || !(drawn->back().end == stop) || !loop || !planned){
+        return "B2F: the drawn legs, the run-4 legs or the plan don't reach (1, 4).";
+    }
+    const auto tiles = [](const std::vector<RouteStep>& route){
+        int count = 0;
+        for (const RouteStep& leg : route){
+            count += leg.spin_tiles ? 1 : leg.tiles;
+        }
+        return count;
+    };
+    const SightExposure user = sight_exposure(*map, stairs.point, *drawn);
+    const SightExposure old = sight_exposure(*map, stairs.point, *loop);
+    const SightExposure plan = sight_exposure(*map, stairs.point, *planned);
+    std::string legs;
+    for (const RouteStep& leg : *planned){
+        legs += " " + to_string(leg);
+    }
+    logger.log(std::format(
+        "B2F sight exposure (walked/overshoot, tiles): drawn {}/{} {}, run-4 loop {}/{} {}, planned {}/{} {}:{}",
+        user.walked, user.overshoot, tiles(*drawn), old.walked, old.overshoot, tiles(*loop),
+        plan.walked, plan.overshoot, tiles(*planned), legs
+    ));
+    if (user.walked != 0 || user.overshoot != 1){
+        return std::format("Expected the drawn route to walk no seen tile and overshoot into one, got {}/{}.", user.walked, user.overshoot);
+    }
+    if (plan.walked > user.walked || plan.overshoot > user.overshoot || tiles(*planned) > tiles(*drawn)){
+        return std::format("The plan ({}/{} seen, {} tiles:{}) rates worse than the drawn route (0/1, {} tiles).", plan.walked, plan.overshoot, tiles(*planned), legs, tiles(*drawn));
+    }
+    return true;
+}
+
+//  The drawn legs tapped on the sim: each tap seen to move, so no open leg
+//  is checked by holds to walls, and the walk ends on the stop (1, 4)
+//  without a battle. Console B, 2026-11-11 15:34: after each confirmed
+//  "south 2" and "north 3", the walker held back to a wall to find the
+//  player.
+UnitTestResult test_b2f_tapped_legs_keep_their_tile(Logger&){
+    const std::vector<MapData>& maps = story_maps();
+    const MapPosition stairs{"RocketHideout_B2F", {21, 2}};
+    std::optional<std::vector<RouteStep>> route = fixed_route(maps, stairs, B2F_DRAWN_LEGS);
+    if (!route){
+        return "B2F: the drawn legs don't plan.";
+    }
+    for (RouteStep& step : *route){
+        step.tapped = true;
+    }
+    OverworldSim sim(maps, stairs, Direction::EAST);
+    OverworldSimWalker walker(sim);
+    const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = stairs, .label = "Sim"};
+    const std::string failure = walker.run(*route, planning);
+    for (const std::string& line : walker.log()){
+        if (line.find("position check") != std::string::npos){
+            return "A tapped leg was checked by holds: " + line;
+        }
+    }
+    const MapPosition stop{"RocketHideout_B2F", {1, 4}};
+    if (!failure.empty() || !(sim.state().position == stop) || !sim.state().trainers_beaten.empty()){
+        return std::format("Walked to {}, {} battles, failure \"{}\".", to_string(sim.state().position), sim.state().trainers_beaten.size(), failure);
+    }
+    return true;
+}
+
 //  09.02's walk past B2F's Grunt (20, 6), who looks around (sight 2): no
-//  tile of a walk leg, nor the tile past an open leg's end, is in a way he
-//  may look. On console B, 2026-11-11 15:03, a south 2 to (19, 5) whose
-//  first tap read as a turn went on to (19, 6), in his west line, and the
-//  next leg met him.
+//  tile of a walk leg is in a way he may look, and at most one leg running
+//  a tile on is: the drawn route's south 3 to (19, 5) (test_b2f_drawn_route()).
+//  On console B, 2026-11-11 15:03, a south 2 to (19, 5) whose first tap
+//  read as a turn went on to (19, 6), in his west line; that was a hold,
+//  09.02 now taps.
 UnitTestResult test_b2f_grunt_lines_with_tile_off(Logger&){
     const StoryCheckpoint& row = checkpoint("09.02");
     const auto step = std::find_if(row.steps.begin(), row.steps.end(), [](const StoryStep& s){ return s.name == "b2f_arrows_to_moon_stone"; });
@@ -829,29 +957,9 @@ UnitTestResult test_b2f_grunt_lines_with_tile_off(Logger&){
     if (!route){
         return "09.02: b2f_arrows_to_moon_stone has no route.";
     }
-    TilePos from = at.tile;
-    for (const RouteStep& leg : *route){
-        if (leg.action != RouteAction::WALK || leg.spin_tiles){
-            break;
-        }
-        std::vector<TilePos> exposed;
-        TilePos tile = from;
-        for (int c = 0; c < leg.tiles; c++){
-            tile = tile.next(leg.direction);
-            exposed.push_back(tile);
-        }
-        const TilePos past = tile.next(leg.direction);
-        if (!leg.to_wall && in_bounds(*map, past) && tile_at(*map, past) == TileKind::OPEN){
-            exposed.push_back(past);
-        }
-        for (const TilePos& seen : exposed){
-            for (const MapObject& object : map->objects){
-                if (trainer_may_see(*map, object, seen)){
-                    return std::format("09.02: leg {} may end on {}, in the sight of the trainer on ({}, {}).", to_string(leg), to_string(seen), object.x, object.y);
-                }
-            }
-        }
-        from = leg.end.point;
+    const SightExposure exposure = sight_exposure(*map, at.tile, *route);
+    if (exposure.walked > 0 || exposure.overshoot > 1){
+        return std::format("09.02: b2f_arrows_to_moon_stone walks {} tiles the Grunt may see, and {} legs may run on into his lines.", exposure.walked, exposure.overshoot);
     }
     return true;
 }
@@ -941,7 +1049,9 @@ const AutoStoryLavenderCase AUTO_STORY_LAVENDER_CASES[] = {
     {.input = {"08.01 a wild battle mid-leg in the tunnel", test_rock_tunnel_wild_battles}, .expectation = {}},
     {.input = {"08.01 dark: each trainer's battle ends on the dark cave's overworld", test_rock_tunnel_dark_battle_ends}, .expectation = {}},
     {.input = {"08.01 a tile off after each open leg", test_rock_tunnel_tile_off}, .expectation = {}},
-    {.input = {"09.02 B2F's turning Grunt: no leg ends in his lines, a tile off included", test_b2f_grunt_lines_with_tile_off}, .expectation = {}},
+    {.input = {"09.02 B2F's turning Grunt: no leg ends in his lines, one may run on into them", test_b2f_grunt_lines_with_tile_off}, .expectation = {}},
+    {.input = {"09.02 B2F's drawn route: the plan sees no more of the Grunt, and is no longer", test_b2f_drawn_route}, .expectation = {}},
+    {.input = {"09.02 B2F's tapped legs keep their tile: no holds to walls after them", test_b2f_tapped_legs_keep_their_tile}, .expectation = {}},
     {.input = {"08.01 B1F row 37 with a wild battle every 10 to 14 steps", test_b1f_row37_battles_every_12}, .expectation = {}},
     {.input = {"08.01 a wild battle every 7 to 25 steps, 12 seeds", test_rock_tunnel_frequent_battles}, .expectation = {}},
     {.input = {"08.01 wild battles at the game's odds, 30 seeds", test_rock_tunnel_game_odds}, .expectation = {}},
