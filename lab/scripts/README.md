@@ -99,3 +99,17 @@ workspace spend limit in the Console.
   (effort low), prints the JSON verdict and exits 2 on a dead feed, color bars or HOME, 1 on error.
 
 Tests (mocked client): `python3 -m unittest discover -s lab/scripts -p test_lab_claude.py -v`.
+
+## Labeling shots for detector sets
+
+`label_shots.py` labels a directory of lab screenshots through the Message Batches API (half price)
+with `claude-haiku-5-5` (`--model` to override). Each label is `screen` (overworld, battle, dialog,
+menu, home, fade_black, color_bars, other), `player_visible`, `text_box_visible` and a short `note`.
+
+- `python3 lab/scripts/label_shots.py ~/BDSPLab/shots/<run> --game bdsp --out labels.jsonl --dry-run`
+  prints the shot count and the first request, without network or SDK.
+- Without `--dry-run` it submits one batch, polls up to `--max-minutes` (default 60) and appends
+  `{path, label, model}` lines keyed by custom_id. If the batch is still running it prints the batch
+  id and exits 2; collect later with `--resume <batch_id>`. Shots already in the output are skipped.
+
+Tests (mocked client): `python3 -m unittest discover -s lab/scripts -p test_label_shots.py -v`.
