@@ -9,7 +9,7 @@
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonFramework/StaticGlobals.h"
-#include "Programs/AutoStory/PokemonFRLG_AutoStoryScreenEvents.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryScreenEvents_Tests.h"
 #include "Inference/Box/PokemonFRLG_BoxCellOccupiedDetector.h"
 #include "Inference/Box/PokemonFRLG_BoxCellReader.h"
 #include "Inference/Box/PokemonFRLG_BoxGenderReader.h"
