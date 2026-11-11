@@ -111,7 +111,7 @@ public:
     }
 
     //  The step's action from the table.
-    virtual Pokemon::Outcome run(Pokemon::RunState& state, const StoryStep& step) override;
+    virtual Pokemon::Outcome run(const StoryStep& step, Pokemon::RunState& state) override;
 
 private:
     //  How the console does `id`.

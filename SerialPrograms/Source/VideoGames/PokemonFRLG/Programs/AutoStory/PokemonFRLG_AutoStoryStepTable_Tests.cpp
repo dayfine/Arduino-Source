@@ -76,12 +76,12 @@ public:
     Pokemon::Outcome run(const StoryStep& step, std::vector<std::string>& trace){
         m_trace = &trace;
         Pokemon::RunState state;
-        return m_executor.run(state, step);
+        return m_executor.run(step, state);
     }
 
 private:
     Pokemon::StoryAction recorder(StoryActionId id){
-        return {.act = [this, id](Pokemon::RunState&, const StoryStep&){
+        return {.act = [this, id](const StoryStep&, Pokemon::RunState&){
             m_trace->emplace_back(story_action_name(id));
             return Pokemon::outcome_ok();
         }};
