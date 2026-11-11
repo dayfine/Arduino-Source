@@ -488,6 +488,41 @@ private:
     AutoStoryHideoutBodyCase m_case;
 };
 
+//  Console B, 2026-11-11 14:25: 09.02's b2f_arrows_to_lift_room tapped
+//  "east 2" onto the arrows to the stop (14, 13), and the check after it
+//  took the leg as up to 2 tiles short. Its candidates were the tiles
+//  before the arrow, (8, 11) and (9, 11), not the stop the slide ends on,
+//  so the hold west "to the wall (7, 11)" ran from (14, 13) onto the arrow
+//  (12, 13), slid to the stop (10, 15) and stayed there (the sim walked on
+//  to (9, 15)). The legs after it ran from the wrong tile, and "east 3" to
+//  the wall (13, 15) was blocked after 2.
+UnitTestResult test_b2f_spin_leg_check_from_its_stop(){
+    const std::vector<MapData>& maps = story_maps();
+    const MapPosition start{"RocketHideout_B2F", {2, 4}};
+    const MapPosition lift_stop{"RocketHideout_B2F", {13, 20}};
+    const std::vector<Pokemon::StoryLeg> legs{
+        {Direction::SOUTH, 4}, {Direction::EAST, 1}, {Direction::SOUTH, 1}, {Direction::EAST, 1}, {Direction::EAST, 2}, {Direction::WEST, 2},
+        {Direction::EAST, 3}, {Direction::SOUTH, 2}, {Direction::WEST, 1}, {Direction::EAST, 1}, {Direction::SOUTH, 1},
+    };
+    std::optional<std::vector<RouteStep>> route = fixed_route(maps, start, legs);
+    if (!route){
+        return "Expected 09.02's B2F legs to plan.";
+    }
+    for (RouteStep& step : *route){
+        step.tapped = true;
+    }
+    SimScript script;
+    script.holds_end_at_slide_stop = true;
+    OverworldSim sim(maps, start, Direction::SOUTH, script);
+    OverworldSimWalker walker(sim);
+    const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = start, .label = "Sim"};
+    const std::string failure = walker.run(*route, planning);
+    if (!failure.empty() || !(sim.state().position == lift_stop)){
+        return std::format("Walked to {}, failure \"{}\".", to_string(sim.state().position), failure);
+    }
+    return true;
+}
+
 const AutoStoryHideoutBodyCase HIDEOUT_BODY_CASES[] = {
     {
         .input = {.name = "the poster and lift variants", .body = test_variants},
@@ -508,6 +543,10 @@ const AutoStoryHideoutBodyCase HIDEOUT_BODY_CASES[] = {
     {
         .input = {.name = "B2F's arrow floor to the lift a tap at a time", .body = test_b2f_maze_taps},
         .expectation = {.description = "09.02's taps and the routes between them, any turn dropped or hold short"},
+    },
+    {
+        .input = {.name = "B2F's spin leg checked from its stop", .body = test_b2f_spin_leg_check_from_its_stop},
+        .expectation = {.description = "09.02's B2F legs to the lift stop when a hold ends at a slide's stop"},
     },
     {
         .input = {.name = "B4F's left Grunt from the lift's exit", .body = test_b4f_left_guard_from_below_lift_door},

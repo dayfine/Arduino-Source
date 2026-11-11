@@ -59,6 +59,16 @@ struct SimScript{
     //  fade's black and clear with the player where they were, not warped
     //  (console B, 2026-11-10 01:44, 09.01 run 4, "east 1 (warp)" on B4F).
     std::set<int> black_without_warp;
+    //  Fault injection: a hold that steps onto a spinner ends at the
+    //  slide's stop, not walking on from it. A re-anchor hold west from
+    //  Rocket Hideout B2F's stop (14, 13) slid to the stop (10, 15) and
+    //  stayed there; the legs after it ended a tile short of their wall
+    //  (09.02, console B, 2026-11-11 14:25).
+    bool holds_end_at_slide_stop = false;
+    //  Fault injection: maps whose warps do nothing: a step or press onto
+    //  one leaves the player where they were, with no fade, as a wall would
+    //  (the warp no-op fault class, PokemonFRLG_AutoStoryFaultSweep_Tests.cpp).
+    std::set<std::string> dead_warp_maps;
     //  The player rides the Bicycle: a tap facing another way takes a step
     //  too, a hold through a turn loses no tile
     //  (MovementMechanics::BIKE_TAP_ONLY_TURNS), and no step tap is
@@ -98,6 +108,8 @@ struct SimState{
     bool dark = false;
     int steps = 0;
     int warps = 0;
+    //  The map each warp was taken from, oldest first.
+    std::vector<std::string> warped_from;
     int wild_battles = 0;
     //  From each wild battle's step to the overworld after it, together.
     Milliseconds in_wild_battles{0};

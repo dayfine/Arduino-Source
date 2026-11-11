@@ -30,6 +30,7 @@
 #include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
 #include "PokemonFRLG_AutoStoryPcStorage.h"
+#include "PokemonFRLG_AutoStoryPlanGolden.h"
 #include "PokemonFRLG_AutoStoryMoveData.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
 #include "PokemonFRLG_AutoStoryTable.h"
@@ -164,8 +165,31 @@ UnitTestResult check_legs(StoryPose& pose, const StoryStep& step){
     return true;
 }
 
-//  Plans `step` from `pose` and moves `pose` to its end.
-UnitTestResult check_route(StoryPose& pose, const StoryStep& step){
+//  One line per planned step for the golden: the step, then how it is
+//  walked where to_string() does not say.
+std::string golden_line(const RouteStep& step){
+    std::string line = std::format("  {}", to_string(step));
+    if (step.surfing){
+        line += " [surfing]";
+    }
+    if (step.walk_only){
+        line += " [walk only]";
+    }
+    if (step.tapped){
+        line += " [tapped]";
+    }
+    if (step.wild){
+        line += " [wild]";
+    }
+    for (int connection : step.connection_steps){
+        line += std::format(" [connection {}]", connection);
+    }
+    return line;
+}
+
+//  Plans `step` from `pose` and moves `pose` to its end; adds the plan to
+//  `golden`.
+UnitTestResult check_route(StoryPose& pose, const StoryStep& step, std::vector<std::string>& golden){
     const MapPosition start{pose.map, pose.tile};
     std::optional<Direction> facing = pose.facing;
     if (!facing){
@@ -180,6 +204,11 @@ UnitTestResult check_route(StoryPose& pose, const StoryStep& step){
     const std::optional<std::vector<RouteStep>> route = plan_overworld_route(story_maps(), start, goal, default_route_costs(), facing);
     if (!route){
         return step.name + ": no route from " + to_string(start) + " to " + to_string(goal.position) + ".";
+    }
+    golden.push_back(std::format("{} from {} facing {} to {}{}", step.name, to_string(start), direction_name(*facing),
+        to_string(goal.position), goal.facing ? std::format(" facing {}", direction_name(*goal.facing)) : ""));
+    for (const RouteStep& planned : *route){
+        golden.push_back(golden_line(planned));
     }
     const MapPosition end = follow_overworld_route(story_maps(), start, *route);
     if (!(end == goal.position)){
@@ -205,11 +234,11 @@ UnitTestResult check_route(StoryPose& pose, const StoryStep& step){
     return true;
 }
 
-//  Follows `checkpoint` from its start; `pose` ends where it leaves the player.
-UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& pose){
+//  check_checkpoint()'s walk through the steps.
+UnitTestResult check_checkpoint_steps(const StoryCheckpoint& checkpoint, StoryPose& pose, std::vector<std::string>& golden){
     for (const StoryStep& step : checkpoint.steps){
         if (step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS){
-            UnitTestResult result = step.kind == StoryStepKind::ROUTE ? check_route(pose, step) : check_legs(pose, step);
+            UnitTestResult result = step.kind == StoryStepKind::ROUTE ? check_route(pose, step, golden) : check_legs(pose, step);
             if (result.result != UnitTestResult::PASSED){
                 return checkpoint.id + " " + result.message;
             }
@@ -218,7 +247,7 @@ UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& po
             //  goes on from where the player stands.
             StoryPose nurse_pose = pose;
             StoryStep to_nurse = step;
-            UnitTestResult result = check_route(nurse_pose, to_nurse);
+            UnitTestResult result = check_route(nurse_pose, to_nurse, golden);
             if (result.result != UnitTestResult::PASSED){
                 return checkpoint.id + " " + result.message;
             }
@@ -233,7 +262,20 @@ UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& po
     return true;
 }
 
-UnitTestResult test_routes_and_chain(){
+//  Follows `checkpoint` from its start; `pose` ends where it leaves the
+//  player. Adds each planned route to `golden`, after the checkpoint's id.
+UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& pose, std::vector<std::string>& golden){
+    const size_t first = golden.size();
+    UnitTestResult result = check_checkpoint_steps(checkpoint, pose, golden);
+    for (size_t c = first; c < golden.size(); c++){
+        golden[c] = std::format("{} {}", checkpoint.id, golden[c]);
+    }
+    return result;
+}
+
+//  Plans every route of the story, each checkpoint from where the one
+//  before leaves the player, and adds the plans to `golden`.
+UnitTestResult chain_story_routes(std::vector<std::string>& golden){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
     if (checkpoints.size() != 39 || checkpoints[0].start){
         return "Expected 39 checkpoints, the first from a new game.";
@@ -249,12 +291,46 @@ UnitTestResult test_routes_and_chain(){
             }
             pose = start;
         }
-        UnitTestResult result = check_checkpoint(checkpoint, pose);
+        UnitTestResult result = check_checkpoint(checkpoint, pose, golden);
         if (result.result != UnitTestResult::PASSED){
             return result;
         }
     }
     return true;
+}
+
+UnitTestResult test_routes_and_chain(){
+    std::vector<std::string> golden;
+    return chain_story_routes(golden);
+}
+
+//  Every story route's plan against the stored copy in
+//  PokemonFRLG_AutoStoryPlanGolden.h. A change that should not alter any
+//  plan must leave this byte-identical. To regenerate after an intended plan
+//  change: run this suite, and replace the lines of FRLG_PLAN_GOLDEN with
+//  the lines the failure lists after "GOLDEN|".
+UnitTestResult test_golden_plans(){
+    std::vector<std::string> actual;
+    UnitTestResult result = chain_story_routes(actual);
+    if (result.result != UnitTestResult::PASSED){
+        return result;
+    }
+    const size_t stored = sizeof(FRLG_PLAN_GOLDEN) / sizeof(FRLG_PLAN_GOLDEN[0]);
+    size_t first_diff = 0;
+    while (first_diff < actual.size() && first_diff < stored && actual[first_diff] == FRLG_PLAN_GOLDEN[first_diff]){
+        first_diff++;
+    }
+    if (first_diff == actual.size() && first_diff == stored){
+        return true;
+    }
+    std::string message = std::format("plans differ from the golden at line {} ({} lines now, {} stored): now \"{}\", stored \"{}\". Now:",
+        first_diff + 1, actual.size(), stored,
+        first_diff < actual.size() ? std::string_view(actual[first_diff]) : std::string_view(),
+        first_diff < stored ? FRLG_PLAN_GOLDEN[first_diff] : std::string_view());
+    for (const std::string& line : actual){
+        message += std::format("\nGOLDEN|{}", line);
+    }
+    return message;
 }
 
 struct ExpectedLeg{
@@ -552,7 +628,8 @@ bool grass_held(const StoryPose& pose, const StoryStep& step){
 //  Moves `pose` past `step`, as check_checkpoint() does.
 UnitTestResult advance(StoryPose& pose, const StoryStep& step){
     if (step.kind == StoryStepKind::ROUTE){
-        return check_route(pose, step);
+        std::vector<std::string> golden;
+        return check_route(pose, step, golden);
     }
     if (step.kind == StoryStepKind::LEGS){
         return check_legs(pose, step);
@@ -1008,6 +1085,10 @@ const AutoStoryTestCase AUTO_STORY_CASES[] = {
     {
         .input = {.name = "every route plans, and checkpoints chain", .body = test_routes_and_chain},
         .expectation = {.description = "verifies route planning validity across all chained checkpoints"},
+    },
+    {
+        .input = {.name = "story route plans match the golden", .body = test_golden_plans},
+        .expectation = {.description = "keeps every story route's planned steps byte-identical to the stored copy"},
     },
     {
         .input = {.name = "step names are unique per checkpoint", .body = test_unique_names},

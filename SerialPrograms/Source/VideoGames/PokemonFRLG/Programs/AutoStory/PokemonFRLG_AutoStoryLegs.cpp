@@ -4,6 +4,7 @@
  *
  */
 
+#include <algorithm>
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMap.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSpin.h"
 #include "PokemonFRLG_AutoStoryLegs.h"
@@ -69,6 +70,31 @@ std::optional<std::vector<RouteStep>> fixed_route(
         route.push_back(step);
     }
     return route;
+}
+
+std::optional<RouteStep> warp_press(const std::vector<MapData>& maps, const MapPosition& from, Direction direction){
+    const auto map = std::find_if(maps.begin(), maps.end(), [&](const MapData& data){ return data.name == from.map; });
+    if (map == maps.end() || !in_bounds(*map, from.point)){
+        return std::nullopt;
+    }
+    const TilePos ahead = from.point.next(direction);
+    TilePos warp_tile = ahead;
+    if (exit_mat(*map, from.point) == direction){
+        warp_tile = from.point;
+    }else if (!in_bounds(*map, ahead) || !((direction == Direction::NORTH && is_door(*map, ahead)) || warps_on_step(*map, ahead))){
+        return std::nullopt;
+    }
+    const MapWarp* warp = warp_at(*map, warp_tile);
+    if (warp == nullptr){
+        return std::nullopt;
+    }
+    RouteStep step;
+    step.direction = direction;
+    step.tiles = 1;
+    step.warps = true;
+    step.facing_after = direction;
+    step.end = MapPosition{warp->to ? warp->to->map : map->name, warp_tile};
+    return step;
 }
 
 
