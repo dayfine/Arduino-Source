@@ -36,10 +36,10 @@
       {
         "id": "to_mable",
         "kind": "game_action",
-        "why": "step 68: to the acting director's desk, into her talk. NEEDS TUNING: \"left 0.5 s, right 2 s\", the angles not recorded (90 is a guess). Measured 2026-11-09 on console B, walk not run.",
+        "why": "step 68: from the 3F elevator's door, facing out (the windows), around the left end of the desk and the counter behind it, into her talk: straight 0.7 s, right 1.2 s, right 1.6 s. Measured 2026-11-10 on console B, walking.",
         "action": "walk",
         "args": {
-          "legs": [[-90, 500], [90, 2000]]
+          "legs": [[0, 700], [90, 1200], [90, 1600]]
         }
       },
       {
