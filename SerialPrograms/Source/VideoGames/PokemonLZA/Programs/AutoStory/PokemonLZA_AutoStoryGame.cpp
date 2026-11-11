@@ -56,7 +56,7 @@ const std::map<std::string, std::string, std::less<>>& story_actions_not_impleme
 
 namespace{
 
-using IntegerRows = std::vector<std::vector<int64_t>>;
+using TimedLegs = std::vector<Pokemon::StoryTimedLeg>;
 
 //  What a console action does with the run's console and the step's args.
 using ConsoleBody = std::function<void(StoryEnv& env, const StoryActionArgs& args)>;
@@ -107,7 +107,7 @@ StoryArgSpec optional_ms(std::string key, int64_t fallback, std::string why){
 }
 
 StoryArgSpec legs_arg(std::string key, bool required, std::string why){
-    return StoryArgSpec{.key = std::move(key), .type = StoryArgType::INTEGER_ROWS, .required = required, .fallback = std::nullopt, .why = std::move(why)};
+    return StoryArgSpec{.key = std::move(key), .type = StoryArgType::TIMED_LEGS, .required = required, .fallback = std::nullopt, .why = std::move(why)};
 }
 
 //  "walk": its legs, the fade it ends on, the heading it faces first.
@@ -392,20 +392,27 @@ Handler game_handler(const PlzaHandlers& handlers, const std::string& name){
     return story_game_actions().at(name)(handlers);
 }
 
+//  Where a fly to `args`' "place" leaves the player: in that place.
+Pokemon::Pose flown_to(const StoryActionArgs& args){
+    Pokemon::ZoneDeclared place;
+    place.place = Pokemon::story_arg<std::string>(args, "place");
+    return Pokemon::pose_of(Pokemon::DeclaredPose(std::move(place)));
+}
+
 //  The handler of each of plza_story_action_specs(), by kind and name.
 Handler plza_handler(const PlzaHandlers& handlers, const StoryActionSpec& spec){
     const std::string& name = spec.name;
     switch (spec.kind){
     case StoryStepKind::ROUTE:{
         Handler fly = handlers.console(name, [](StoryEnv& env, const StoryActionArgs& args){
-            const Pokemon::GridPose& target = Pokemon::story_arg<Pokemon::GridPose>(args, "target");
-            fly_to(env.env.console, env.context, env.language, get_location_item_from_slug(target.map).location);
+            const std::string& place = Pokemon::story_arg<std::string>(args, "place");
+            fly_to(env.env.console, env.context, env.language, get_location_item_from_slug(place).location);
         });
         //  Flown: the player is at the target.
         return [fly = std::move(fly)](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState& state){
             Outcome outcome = fly(backend, call, state);
             if (outcome.succeeded()){
-                outcome.pose = Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(call.args, "target"));
+                outcome.pose = flown_to(call.args);
             }
             return outcome;
         };
@@ -462,8 +469,8 @@ std::vector<StoryActionSpec> plza_story_action_specs(){
     std::vector<StoryActionSpec> specs{
         console_only(StoryActionSpec{.kind = StoryStepKind::ROUTE, .name = "fly", .args = {
             StoryArgSpec{
-                .key = "target", .type = StoryArgType::GRID_POSE, .required = true,
-                .fallback = std::nullopt, .why = "the fast travel place, by slug, as the map",
+                .key = "place", .type = StoryArgType::WORD, .required = true,
+                .fallback = std::nullopt, .why = "the fast travel place, by slug",
             },
         }}),
         console_only(builtin_spec(StoryStepKind::TALK, "talk")),
@@ -535,11 +542,8 @@ StoryMove story_walk_move(const StoryActionArgs& args, std::string_view legs){
     if (wait != args.end()){
         move.wait_first = Milliseconds(std::get<int64_t>(wait->second));
     }
-    for (const std::vector<int64_t>& row : Pokemon::story_arg<IntegerRows>(args, legs)){
-        if (row.size() != 2){
-            throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("A walk leg needs 2 numbers, has {}.", row.size()));
-        }
-        move.legs.push_back({.turn = (double)row[0], .walk = Milliseconds(row[1])});
+    for (const Pokemon::StoryTimedLeg& row : Pokemon::story_arg<TimedLegs>(args, legs)){
+        move.legs.push_back({.turn = (double)row.turn, .walk = Milliseconds(row.ms)});
     }
     return move;
 }

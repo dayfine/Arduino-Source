@@ -52,8 +52,10 @@ public:
 
     //  check() for each step of `checkpoint`, its step names (none empty,
     //  none repeated), and its declared poses (its start, each step's
-    //  declared_after): each must read as the game's pose type
-    //  (StoryPoseTraits::from_declared()).
+    //  declared_after): each must be the kind the game's pose type
+    //  declares (check_declared()). In a game with no tiles, a tile arg
+    //  (DIRECTION, LEGS, GRID_POSE) in a step or in one of the game's
+    //  actions fails too.
     std::vector<std::string> lint(const StoryCheckpoint& checkpoint) const;
 
     //  Runs `step`'s action with its args' fallbacks filled in; a step with
@@ -69,6 +71,8 @@ private:
     const StoryGame<PoseType>& m_game;
     std::vector<StoryAction<PoseType>> m_actions;
     std::vector<StoryActionSpec> m_specs;
+    //  What is wrong with the game's own actions, reported with every lint.
+    std::vector<std::string> m_game_problems;
 };
 
 //  Instantiated once, in Pokemon_StoryActionRegistry.cpp.
