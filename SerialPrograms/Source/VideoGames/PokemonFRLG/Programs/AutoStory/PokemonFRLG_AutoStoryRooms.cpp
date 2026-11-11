@@ -43,8 +43,9 @@ const std::vector<RoomLeg>& lift_in_legs(){
 }
 const std::vector<RoomLeg>& lift_out_legs(){
     static const std::vector<RoomLeg> LEGS{
-        {Pokemon::Direction::EAST, 2, false},
+        {Pokemon::Direction::WEST, 4, false},
         {Pokemon::Direction::SOUTH, 2, false},
+        {Pokemon::Direction::EAST, 2, false},
         {Pokemon::Direction::SOUTH, 1, true},
     };
     return LEGS;

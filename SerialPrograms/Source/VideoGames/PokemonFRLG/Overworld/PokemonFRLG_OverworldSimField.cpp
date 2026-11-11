@@ -110,6 +110,9 @@ bool OverworldSim::choose_lift_floor(size_t floor){
     }
     m_lift_floor = floor;
     advance_to(m_now + m_script.timing.message);
+    //  The ride shakes the lift; the player can't move until it stops.
+    m_frozen = true;
+    schedule(m_now + m_script.timing.lift_ride, SimScreen::OVERWORLD, true);
     note("the lift goes to " + to_string(lift->second[floor]) + ".");
     return true;
 }

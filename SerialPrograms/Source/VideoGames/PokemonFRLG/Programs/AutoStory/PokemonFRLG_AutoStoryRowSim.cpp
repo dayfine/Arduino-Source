@@ -627,6 +627,8 @@ std::string OverworldStepSim::hideout(const StoryStep& step){
     if (!m_sim.use_field(SimField::LIFT_FLOOR, ride->to)){
         return "no lift panel for \"" + step.action + "\".";
     }
+    //  pick_lift_floor()'s wait for the ride.
+    sim_wait_out_battle_exit(m_sim);
     sim_walk_room_legs(m_sim, lift_out_legs());
     return ended_on(step);
 }
