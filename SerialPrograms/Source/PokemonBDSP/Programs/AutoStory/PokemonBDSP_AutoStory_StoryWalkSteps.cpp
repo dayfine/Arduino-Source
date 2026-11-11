@@ -139,7 +139,7 @@ CenterEntry run_into_center(
     }else{
         line_up();
     }
-    io.settle_door(std::format("{}: into the Center", label));
+    io.settle(BUTTON_B, std::format("{}: into the Center", label), SettleKind::DOOR, "");
     return entry;
 }
 
@@ -353,7 +353,7 @@ Outcome StoryWalkSteps::tap_to_banner(const Pose& from, const StoryStep& step){
     //  then goes nowhere (lab-B 2026-11-10, 00.04b's Center): settle, as
     //  after a door.
     if (through_already(step)){
-        m_io.settle_door(label_of(step));
+        m_io.settle(BUTTON_B, label_of(step), SettleKind::DOOR, "");
         return Pokemon::outcome_ok();
     }
     const size_t limit = taps_to_banner(from, direction);
@@ -367,7 +367,7 @@ Outcome StoryWalkSteps::tap_to_banner(const Pose& from, const StoryStep& step){
     }else{
         log(std::format("[{}] {}: through to {} after {} taps {}.", m_row, step.name, map, *taps, direction_name(direction)));
     }
-    m_io.settle_door(label_of(step));
+    m_io.settle(BUTTON_B, label_of(step), SettleKind::DOOR, "");
     return Pokemon::outcome_ok();
 }
 
@@ -656,7 +656,7 @@ Outcome StoryWalkSteps::step(RunState& state, const StoryStep& step){
         if (walk.wild_battles > 0){
             return Pokemon::outcome_failed("interrupted_step", step.name);
         }
-        m_io.settle(BUTTON_B, label_of(step), false, "");
+        m_io.settle(BUTTON_B, label_of(step), SettleKind::TALK, "");
         return Pokemon::outcome_ok();
     }
     //  A step through a door: walk (or run) on until the screen goes dark,
@@ -669,7 +669,7 @@ Outcome StoryWalkSteps::step(RunState& state, const StoryStep& step){
     //  slice 1); with neither yet, settle() waits for one.
     if (step.pose_after && step.pose_after->map != state.pose.map){
         if (through_already(step)){
-            m_io.settle(BUTTON_B, label_of(step), false, "");
+            m_io.settle(BUTTON_B, label_of(step), SettleKind::TALK, "");
             return Pokemon::outcome_ok();
         }
         const std::string banner = story_arrival_banner(state.pose.map, step.pose_after->map);
@@ -678,7 +678,7 @@ Outcome StoryWalkSteps::step(RunState& state, const StoryStep& step){
         log(std::format("[{}] {}: {} through the door (timeout {} ms, dark from {} ms): {}.", m_row, step.name,
             direction_name(direction), door.timeout.count(), door.dark_from.count(), seen.any() ? describe(seen) : "nothing yet"));
         seen = door_from_beside(step, seen, door.timeout, banner);
-        m_io.settle(BUTTON_B, label_of(step), !seen.any(), banner);
+        m_io.settle(BUTTON_B, label_of(step), seen.any() ? SettleKind::TALK : SettleKind::AFTER_WARP, banner);
         return Pokemon::outcome_ok();
     }
     return one_step(state, step);
@@ -734,7 +734,7 @@ Outcome StoryWalkSteps::mash(RunState& state, const StoryStep& step){
     }
     m_io.settle(step.action == "a" ? BUTTON_A : BUTTON_B, label_of(step),
         step.pose_after && step.pose_after->map != state.pose.map &&
-        story_plan_world(state.pose.map, step.pose_after->map) == nullptr, "");
+        story_plan_world(state.pose.map, step.pose_after->map) == nullptr ? SettleKind::AFTER_WARP : SettleKind::TALK, "");
     if (m_row == RUNNING_SHOES_ROW && step.name == RUNNING_SHOES_STEP){
         m_can_run = true;
     }

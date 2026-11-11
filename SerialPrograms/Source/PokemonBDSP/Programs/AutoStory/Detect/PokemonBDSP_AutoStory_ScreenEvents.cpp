@@ -21,7 +21,7 @@ namespace{
 //  Around the player, whom the camera keeps in the middle: PLAYER_STILL's
 //  box. People walking elsewhere on the screen stay out of it.
 const ImageFloatBox PLAYER_BOX(0.42, 0.34, 0.16, 0.32);
-}
+} // namespace
 
 
 BdspScreenObserver::BdspScreenObserver(BattleCue cue, std::string banner)

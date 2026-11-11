@@ -343,7 +343,7 @@ public:
     //  run before looked for the banner (run_into_door()), so settle() sees
     //  none here. With a scene in SimWorldKnobs::scenes, the program's
     //  TalkOver plays it instead.
-    virtual void settle(Button, const std::string& label, bool fade, const std::string&) override;
+    virtual void settle(Button, const std::string& label, SettleKind kind, const std::string&) override;
     virtual std::optional<size_t> tap_to_banner(Pokemon::Direction direction, const std::string& map, size_t max_taps) override;
 
 private:

@@ -137,13 +137,14 @@ std::string play_scene(const SimScene& scene, const TalkOverRule& rule){
 //  Plays the step's scene knob through TalkOver if it has one. Without, a
 //  scene may take us to another map (Mom walks us out, 00.04): with a
 //  dialogue open the stub scene plays it. Otherwise only a door fades.
-void SimStoryStepIO::settle(Button, const std::string& label, bool fade, const std::string&){
+void SimStoryStepIO::settle(Button, const std::string& label, SettleKind kind, const std::string&){
+    const bool fade = kind == SettleKind::AFTER_WARP;
     m_misses.fading_in = false;
     const auto scene = m_knobs.scenes.find(m_step);
     if (scene != m_knobs.scenes.end()){
         m_misses.fade_unseen = false;
         m_sim.end_dialogue();
-        const std::string early = play_scene(scene->second, {.warp = fade});
+        const std::string early = play_scene(scene->second, {.warp = fade, .door = kind == SettleKind::DOOR});
         if (!early.empty()){
             m_route.note(label + ": talk-over " + early + ".", RouteNote::FAILURE);
         }

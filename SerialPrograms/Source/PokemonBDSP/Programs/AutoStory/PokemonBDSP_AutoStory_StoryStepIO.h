@@ -40,6 +40,20 @@ constexpr WarpFadeRule DOOR_FADE_RULE{.partial_dark = true, .dark_for = Millisec
 constexpr WarpFadeRule TAP_FADE_RULE{};
 
 
+//  How a settle (StoryStepIO::settle()) ends.
+enum class SettleKind{
+    //  Text and scenes pressed through, then the overworld quiet.
+    TALK,
+    //  As TALK, but a warp (a map change) must come first: a fade, or the
+    //  far map's banner.
+    AFTER_WARP,
+    //  After a door or a way through with no text to come: the fade back
+    //  up and a short still spell around the player, people walking about
+    //  ignored (TalkOverRule::door).
+    DOOR,
+};
+
+
 //  Abstract interface for story step input/output operations.
 class StoryStepIO{
 public:
@@ -71,17 +85,10 @@ public:
     //  way through. The watch starts before the first tap: a banner up then
     //  is 0 taps. Returns the taps it took, or nothing if neither showed.
     virtual std::optional<size_t> tap_to_banner(Pokemon::Direction direction, const std::string& map, size_t max_taps) = 0;
-    //  Presses through any text until the overworld is quiet; with `fade`, a
-    //  warp must come first (a map change): a fade, or the banner `banner`
+    //  Presses through any text until the overworld ends as `kind` says;
+    //  for SettleKind::AFTER_WARP, the warp is a fade or the banner `banner`
     //  ("" for a fade only). Fails otherwise.
-    virtual void settle(Button button, const std::string& label, bool fade, const std::string& banner) = 0;
-    //  The settle after a door or a way through, with no text to come: the
-    //  fade back up and a short still spell around the player, people
-    //  walking about ignored (TalkOverRule::door). A model with no screen
-    //  settles as settle() does.
-    virtual void settle_door(const std::string& label){
-        settle(BUTTON_B, label, false, "");
-    }
+    virtual void settle(Button button, const std::string& label, SettleKind kind, const std::string& banner) = 0;
 };
 
 
@@ -99,8 +106,8 @@ public:
     virtual WarpSeen run_into_door(Pokemon::Direction direction, bool run, Milliseconds timeout = Milliseconds(12000),
         Milliseconds dark_from = Milliseconds(0), const std::string& banner = "") override;
     virtual std::optional<size_t> tap_to_banner(Pokemon::Direction direction, const std::string& map, size_t max_taps) override;
-    virtual void settle(Button button, const std::string& label, bool fade, const std::string& banner) override;
-    virtual void settle_door(const std::string& label) override;
+    virtual void settle(Button button, const std::string& label, SettleKind kind, const std::string& banner) override;
+
 
 private:
 
