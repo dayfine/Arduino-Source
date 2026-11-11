@@ -12,6 +12,7 @@
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "VideoGames/PokemonLZA/Programs/PokemonLZA_MenuNavigation.h"
 #include "VideoGames/PokemonLZA/Inference/Battles/PokemonLZA_RunFromBattleDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_DialogDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_OverworldPartySelectionDetector.h"
@@ -174,6 +175,15 @@ void save_story_game(ConsoleHandle& console, ProControllerContext& context){
         }
     }
     mash_to_overworld(console, context, BUTTON_B, 10s);
+}
+
+void claim_mable_research_reward(ConsoleHandle& console, ProControllerContext& context){
+    overworld_to_main_menu(console, context);
+    for (int i = 0; i < 3; i++){
+        pbf_press_dpad(context, DPAD_DOWN, 160ms, 400ms);
+    }
+    pbf_press_button(context, BUTTON_A, 160ms, 2840ms);
+    context.wait_for_all_requests();
 }
 
 

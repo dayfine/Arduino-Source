@@ -51,8 +51,6 @@ using Handler = Pokemon::StoryActionHandler<ZonePose>;
 
 const std::map<std::string, std::string, std::less<>>& story_actions_not_implemented(){
     static const std::map<std::string, std::string, std::less<>> todos{
-        {"mash_to_instruction", "a mash that stops at an instruction line (\"Press X to open the main menu...\"): A once to close it, then X; X is ignored while the line shows."},
-        {"claim_mable_research_reward", "the main menu: DOWN x3 to \"Mable's Research\", A, the Rewards page (TM004 Rock Smash)."},
     };
     return todos;
 }
@@ -96,6 +94,7 @@ const std::map<std::string, ConsoleStep, std::less<>>& console_game_actions(){
         }},
         {"catch_in_zone", [](StoryEnv& env){ catch_in_zone(env.env.console, env.context, 1, 6); }},
         {"walk_to_marker", [](StoryEnv& env){ walk_to_marker(env.env.console, env.context); }},
+        {"claim_mable_research_reward", [](StoryEnv& env){ claim_mable_research_reward(env.env.console, env.context); }},
         //  For reruns in the lab: the title screen's Up + B + X loads the save
         //  before the last one, as a catch's autosave moves the save past a
         //  checkpoint's start (03.07, console B 2026-11-10).
