@@ -174,6 +174,62 @@ GrassCatches catch_in_grass(ConsoleHandle& console, ProControllerContext& contex
     return out;
 }
 
+//  Off screen, the game pins the marker to the edge with no digits
+//  (anything read there is noise): turns the camera to it. Returns whether
+//  the marker at `x` (0 to 1) was pinned.
+bool turn_to_pinned_marker(ProControllerContext& context, double x){
+    if (x >= 0.10 && x <= 0.90){
+        return false;
+    }
+    pbf_move_right_joystick(context, {x < 0.5 ? -0.5 : 0.5, 0}, 400ms, 200ms);
+    return true;
+}
+
+//  Turns the camera toward the marker at `x` (0 to 1) and walks 0.6 s on.
+void steer_and_step(ProControllerContext& context, double x){
+    const double off = x - 0.5;
+    if (off > 0.06 || off < -0.06){
+        pbf_move_right_joystick(context, {off > 0 ? 0.4 : -0.4, 0}, Milliseconds((int)(std::min(1.0, std::abs(off) * 4) * 400)) + 80ms, 150ms);
+    }
+    pbf_move_left_joystick(context, {0, 1}, 600ms, 0ms);
+}
+
+//  Whether a walk toward the marker is held up: the distance has not
+//  dropped below its best for 4 reads (a fence or a wall in the way, the
+//  Research Lab's front fence on console B, 2026-11-10).
+class StuckWatch{
+public:
+    bool stuck(int distance){
+        if (distance < m_best){
+            m_best = distance;
+            m_still = 0;
+            return false;
+        }
+        if (++m_still < 4){
+            return false;
+        }
+        m_still = 0;
+        return true;
+    }
+    //  Steps sideways around what is in the way: right, then left twice as
+    //  far, and so on (4 at most).
+    void sidestep(ConsoleHandle& console, ProControllerContext& context){
+        if (m_sidesteps >= 4){
+            return;
+        }
+        const bool right = m_sidesteps % 2 == 0;
+        const Milliseconds time = Milliseconds(1500 * (m_sidesteps + 1));
+        console.log(std::format("walk_to_objective(): held up at {}: {} for {} ms.", m_best, right ? "right" : "left", time.count()));
+        pbf_move_left_joystick(context, {right ? 1.0 : -1.0, 0}, time, 200ms);
+        m_sidesteps++;
+    }
+
+private:
+    int m_best = 1 << 30;
+    int m_still = 0;
+    int m_sidesteps = 0;
+};
+
 } // namespace
 
 
@@ -225,6 +281,7 @@ std::optional<int> walk_to_objective(ConsoleHandle& console, ProControllerContex
     int unseen = 0;
     double last_x = 0.5;
     std::optional<int> last;
+    StuckWatch stuck;
     while (current_time() < deadline){
         context.wait_for_all_requests();
         const VideoSnapshot frame = console.video().snapshot();
@@ -244,13 +301,13 @@ std::optional<int> walk_to_objective(ConsoleHandle& console, ProControllerContex
         }
         unseen = 0;
         last_x = marker->x;
-        //  Off screen, the game pins the marker to the edge with no digits
-        //  (anything read there is noise): turn to it before walking.
-        if (marker->x < 0.10 || marker->x > 0.90){
-            pbf_move_right_joystick(context, {marker->x < 0.5 ? -0.5 : 0.5, 0}, 400ms, 200ms);
+        if (turn_to_pinned_marker(context, marker->x)){
             continue;
         }
-        if (marker->distance > 0){
+        //  A read far below the last one is a misread (36, "3", 29 on
+        //  console B): a 0.6 s step covers about 3.
+        const bool plausible = !last || marker->distance >= *last - 12;
+        if (marker->distance > 0 && plausible){
             if (last != marker->distance){
                 console.log(std::format("walk_to_objective(): {} to go, marker at x = {:.2f}.", marker->distance, marker->x));
             }
@@ -259,12 +316,11 @@ std::optional<int> walk_to_objective(ConsoleHandle& console, ProControllerContex
                 console.log(std::format("walk_to_objective(): {} to the objective.", marker->distance));
                 return last;
             }
+            if (stuck.stuck(marker->distance)){
+                stuck.sidestep(console, context);
+            }
         }
-        const double off = marker->x - 0.5;
-        if (off > 0.06 || off < -0.06){
-            pbf_move_right_joystick(context, {off > 0 ? 0.4 : -0.4, 0}, Milliseconds((int)(std::min(1.0, std::abs(off) * 4) * 400)) + 80ms, 150ms);
-        }
-        pbf_move_left_joystick(context, {0, 1}, 600ms, 0ms);
+        steer_and_step(context, marker->x);
     }
     console.log(std::format("walk_to_objective(): not within {} in time (last read {}).", stop_at, last.value_or(-1)));
     return last;
