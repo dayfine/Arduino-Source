@@ -6,8 +6,9 @@
  *  hard to try and how much to check: the shared range group
  *  (Pokemon_StoryRangeOptions.h) plus the run policy, read into the shared
  *  SegmentPolicy (Pokemon/AutoStory/Pokemon_StorySegments.h), the checks
- *  level (Types/Pokemon_StoryCheckLevel.h) and the language the game's steps
- *  read text in.
+ *  level (Types/Pokemon_StoryCheckLevel.h), the language the game's steps
+ *  read text in, when the run saves (Types/Pokemon_StorySaveMode.h) and
+ *  whether it only checks postconditions.
  *
  */
 
@@ -18,6 +19,7 @@
 #include <optional>
 #include <span>
 #include <string>
+#include "Common/Cpp/Options/BooleanCheckBoxOption.h"
 #include "Common/Cpp/Options/EnumDropdownOption.h"
 #include "Common/Cpp/Options/GroupOption.h"
 #include "Common/Cpp/Options/SimpleIntegerOption.h"
@@ -26,6 +28,7 @@
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StorySaveMode.h"
 #include "Pokemon_StoryRangeOptions.h"
 
 namespace PokemonAutomation{
@@ -70,8 +73,10 @@ public:
     //  The range's check, then verify mode's: one checkpoint only.
     virtual std::string check_validity() const override;
 
-    //  The policy these options set.
+    //  The policy these options set, with the save mode.
     SegmentPolicy policy() const;
+    //  Verify mode's runs and passes with the save mode; unset when off.
+    std::optional<VerifyPolicy> verify_policy() const;
     //  The checks level, for the game's steps to read.
     StoryCheckLevel check_level() const;
     //  The game's language, for the steps that read text.
@@ -85,6 +90,11 @@ public:
     EnumDropdownOption<Language> LANGUAGE;
     //  On, it runs one checkpoint: the start, which must also be the end.
     StoryVerifyOptions VERIFY;
+    //  When the run saves; NONE (testing) by default.
+    EnumDropdownOption<StorySaveMode> SAVE_MODE;
+    //  On, nothing runs: the game reads where it stands and checks the end
+    //  checkpoint's postconditions (Pokemon_StoryPostconditionCheck.h).
+    BooleanCheckBoxOption POSTCONDITIONS_ONLY;
 };
 
 

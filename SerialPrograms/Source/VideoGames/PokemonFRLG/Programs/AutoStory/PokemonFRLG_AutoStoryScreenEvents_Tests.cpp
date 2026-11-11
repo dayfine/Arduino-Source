@@ -15,6 +15,7 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "PokemonFRLG_AutoStoryScreenEvents.h"
+#include "PokemonFRLG_AutoStoryScreenEvents_Tests.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -43,7 +44,7 @@ struct ScreenEventsCase{
 class Test_AutoStoryScreenEvents : public UnitTest{
 public:
     explicit Test_AutoStoryScreenEvents(ScreenEventsCase test_case)
-        : UnitTest("PokemonFRLG::AutoStoryScreenEvents - " + test_case.input.name)
+        : UnitTest(std::format("PokemonFRLG::AutoStoryScreenEvents - {}", test_case.input.name))
         , m_case(std::move(test_case))
     {}
 
