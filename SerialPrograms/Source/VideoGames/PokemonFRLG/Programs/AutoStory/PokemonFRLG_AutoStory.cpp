@@ -12,7 +12,7 @@
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
-#include "Pokemon/AutoStory/Pokemon_StoryConsolePreflight.h"
+#include "Pokemon/AutoStory/Pokemon_StoryPreflight.h"
 #include "Pokemon/AutoStory/Pokemon_StoryRun.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStorySelect.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
@@ -185,7 +185,7 @@ void throw_if_not_started(ConsoleHandle& console, const Pokemon::Outcome& outcom
 //  The start gate's preflight on its own, for the steps that press before
 //  the start checkpoint is reached (SID Helper's name, the RNG plan's TID).
 void require_preflight(ConsoleHandle& console, ProControllerContext& context){
-    throw_if_not_started(console, Pokemon::read_story_preflight(console, context).check());
+    throw_if_not_started(console, Pokemon::StoryPreflight::read(console, context).check());
 }
 
 //  What FRLG lends the shared shell: the console's preflight; a load is a soft reset, checked
@@ -195,7 +195,7 @@ void require_preflight(ConsoleHandle& console, ProControllerContext& context){
 Pokemon::StoryGameHooks story_game(SingleSwitchProgramEnvironment& env, StoryEnv& story){
     Pokemon::StoryGameHooks game;
     game.preflight = [&story]{
-        return Pokemon::read_story_preflight(story.console, story.context);
+        return Pokemon::StoryPreflight::read(story.console, story.context);
     };
     game.load_save = [&story](Pokemon::RunState&){
         if (!story.has_save){
