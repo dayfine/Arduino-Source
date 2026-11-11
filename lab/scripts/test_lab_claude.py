@@ -11,6 +11,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+import lab_claude
 import triage_failure
 import watchdog_shot
 
@@ -24,7 +25,9 @@ def tiny_png():
 
 
 def fake_client(payload, stop_reason="end_turn"):
-    response = SimpleNamespace(stop_reason=stop_reason, stop_details=None,
+    usage = SimpleNamespace(input_tokens=1000, output_tokens=200,
+                            cache_creation_input_tokens=0, cache_read_input_tokens=0)
+    response = SimpleNamespace(stop_reason=stop_reason, stop_details=None, usage=usage,
                                content=[SimpleNamespace(type="text", text=json.dumps(payload))])
     client = MagicMock()
     client.messages.create.return_value = response
@@ -39,6 +42,10 @@ class Base(unittest.TestCase):
         self.dir = Path(self.tmp.name)
         self.png = self.dir / "f.png"
         self.png.write_bytes(tiny_png())
+        self.ledger = self.dir / "spend.jsonl"
+        self._old_ledger = lab_claude.LEDGER
+        lab_claude.LEDGER = self.ledger
+        self.addCleanup(setattr, lab_claude, "LEDGER", self._old_ledger)
 
 
 class TriageTests(Base):
@@ -108,6 +115,37 @@ class WatchdogTests(Base):
         client.messages.create.side_effect = ConnectionError("down")
         with redirect_stdout(io.StringIO()):
             self.assertEqual(watchdog_shot.main([str(self.png)], client=client), 1)
+
+
+class BudgetTests(Base):
+    def test_call_is_recorded(self):
+        lab_claude.send({"model": "claude-haiku-5-5"}, client=fake_client({"feed_alive": True}))
+        day, month = lab_claude.spent()
+        self.assertAlmostEqual(day, (1000 * 0.10 + 200 * 0.50) / 1e6)
+        self.assertEqual(day, month)
+
+    def test_daily_cap_refuses(self):
+        import datetime
+        today = datetime.date.today()
+        self.ledger.write_text(json.dumps({"date": today.isoformat(), "script": "x",
+                                           "model": "claude-opus-5-5", "usd": lab_claude.DAILY_USD}) + "\n")
+        client = fake_client({})
+        with self.assertRaises(lab_claude.BudgetExceeded):
+            lab_claude.send({"model": "claude-opus-5-5"}, client=client)
+        client.messages.create.assert_not_called()
+
+    def test_yesterday_counts_for_month_only(self):
+        import datetime
+        today = datetime.date(2026, 11, 11)
+        self.ledger.write_text(json.dumps({"date": "2026-11-10", "script": "x",
+                                           "model": "m", "usd": 10.0}) + "\n"
+                               + json.dumps({"date": "2026-10-31", "script": "x",
+                                             "model": "m", "usd": 99.0}) + "\n")
+        self.assertEqual(lab_claude.spent(today=today), (0.0, 10.0))
+
+    def test_batch_is_half_price(self):
+        usage = SimpleNamespace(input_tokens=1_000_000, output_tokens=0)
+        self.assertAlmostEqual(lab_claude.cost_usd("claude-haiku-5-5", usage, batch=True), 0.05)
 
 
 if __name__ == "__main__":
