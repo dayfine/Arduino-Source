@@ -9,6 +9,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+import lab_claude
 import review_route
 
 REVIEW = {
@@ -21,6 +22,7 @@ REVIEW = {
 
 def fake_client(payload, stop_reason="end_turn"):
     response = SimpleNamespace(stop_reason=stop_reason, stop_details=None,
+                               usage=SimpleNamespace(input_tokens=100, output_tokens=50),
                                content=[SimpleNamespace(type="text", text=json.dumps(payload))])
     client = MagicMock()
     client.beta.messages.create.return_value = response
@@ -32,6 +34,9 @@ class ReviewRouteTest(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.dir = Path(tmp.name)
+        old_ledger = lab_claude.LEDGER
+        lab_claude.LEDGER = self.dir / "spend.jsonl"
+        self.addCleanup(setattr, lab_claude, "LEDGER", old_ledger)
         self.plan = self.dir / "bdsp-00.04.plan.json"
         self.plan.write_text('{"legs": [{"id": 1}]}', encoding="utf-8")
 
