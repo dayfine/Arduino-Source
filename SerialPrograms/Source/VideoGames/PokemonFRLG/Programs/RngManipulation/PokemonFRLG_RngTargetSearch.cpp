@@ -93,7 +93,7 @@ AdvShinyType shiny_type(uint32_t pid, uint16_t tid, uint16_t sid){
 }
 
 HiddenPower hidden_power(const AdvIVs& ivs){
-    static const char* TYPES[] = {
+    static constexpr std::string_view TYPES[] = {
         "Fighting", "Flying", "Poison", "Ground", "Rock", "Bug", "Ghost", "Steel",
         "Fire", "Water", "Grass", "Electric", "Psychic", "Ice", "Dragon", "Dark",
     };
@@ -106,7 +106,7 @@ HiddenPower hidden_power(const AdvIVs& ivs){
         type_bits |= (order[c] & 1) << c;
         power_bits |= ((order[c] >> 1) & 1) << c;
     }
-    return {TYPES[type_bits * 15 / 63], uint8_t(power_bits * 40 / 63 + 30)};
+    return {std::string(TYPES[type_bits * 15 / 63]), uint8_t(power_bits * 40 / 63 + 30)};
 }
 
 

@@ -4,7 +4,8 @@
  *
  */
 
-#include <string.h>
+#include <format>
+#include <span>
 #include "Common/Compiler.h"
 #include "Common/Cpp/Exceptions.h"
 #include "PokemonFRLG_NamingScreenKeyboard.h"
@@ -23,7 +24,7 @@ size_t naming_screen_max_chars(NamingScreenKind kind){
     }
     return 0;
 }
-const char* naming_screen_kind_name(NamingScreenKind kind){
+std::string_view naming_screen_kind_name(NamingScreenKind kind){
     switch (kind){
     case NamingScreenKind::PLAYER:  return "player";
     case NamingScreenKind::RIVAL:   return "rival";
@@ -34,14 +35,14 @@ const char* naming_screen_kind_name(NamingScreenKind kind){
 }
 
 std::string to_string(const NamingCursor& cursor){
-    static const char* const PAGE_NAMES[] = {"UPPER", "LOWER", "SYMBOLS"};
-    return std::string(PAGE_NAMES[(size_t)cursor.page])
-        + " row " + std::to_string(cursor.row)
-        + " column " + std::to_string(cursor.column)
-        + " (remembered row " + std::to_string(cursor.remembered_row) + ")";
+    static constexpr std::string_view PAGE_NAMES[] = {"UPPER", "LOWER", "SYMBOLS"};
+    return std::format(
+        "{} row {} column {} (remembered row {})",
+        PAGE_NAMES[(size_t)cursor.page], cursor.row, cursor.column, cursor.remembered_row
+    );
 }
 
-const char* naming_action_name(NamingAction action){
+std::string_view naming_action_name(NamingAction action){
     switch (action){
     case NamingAction::UP:      return "UP";
     case NamingAction::DOWN:    return "DOWN";
@@ -141,45 +142,54 @@ NamingCursor next_page(NamingCursor cursor){
     return cursor;
 }
 
-const char* key_at(const NamingCursor& cursor){
+std::string_view key_at(const NamingCursor& cursor){
     if (cursor.column >= key_columns(cursor.page)){
-        return nullptr;
+        return {};
     }
     return NAMING_SCREEN_KEYS[(size_t)cursor.page][cursor.row][cursor.column];
 }
 
 
 struct KeyAlias{
-    const char* typed;
-    const char* key;
+    std::string_view typed;
+    std::string_view key;
 };
 // Other spellings of a key's character.
 constexpr KeyAlias KEY_ALIASES[] = {
     {"\xE2\x80\x99", "'"},     //  right single quote: the apostrophe key types it
 };
 
-bool text_has_at(const std::string& text, size_t position, const char* str){
-    return text.compare(position, strlen(str), str) == 0;
+bool text_has_at(const std::string& text, size_t position, std::string_view str){
+    return text.compare(position, str.size(), str) == 0;
 }
 
-// The key text at `position` in `text`, or nullptr if no key types it.
-const char* key_text_at(const std::string& text, size_t position, size_t& length){
-    const char* best = nullptr;
-    length = 0;
+// A key typing the text at a position, and how many bytes of the text it covers.
+struct KeyMatch{
+    std::string_view key;
+    size_t length = 0;
+};
+
+// `best`, or the longest key of `row` that types the text at `position` if it is longer.
+KeyMatch longer_match(KeyMatch best, std::span<const std::string_view> row, const std::string& text, size_t position){
+    for (std::string_view key : row){
+        if (key.size() > best.length && text_has_at(text, position, key)){
+            best = {key, key.size()};
+        }
+    }
+    return best;
+}
+
+// The key text at `position` in `text`; an empty key if no key types it.
+KeyMatch key_text_at(const std::string& text, size_t position){
+    KeyMatch best;
     for (const auto& page : NAMING_SCREEN_KEYS){
         for (const auto& row : page){
-            for (const char* key : row){
-                if (key != nullptr && strlen(key) > length && text_has_at(text, position, key)){
-                    best = key;
-                    length = strlen(key);
-                }
-            }
+            best = longer_match(best, row, text, position);
         }
     }
     for (const KeyAlias& alias : KEY_ALIASES){
-        if (strlen(alias.typed) > length && text_has_at(text, position, alias.typed)){
-            best = alias.key;
-            length = strlen(alias.typed);
+        if (alias.typed.size() > best.length && text_has_at(text, position, alias.typed)){
+            best = {alias.key, alias.typed.size()};
         }
     }
     return best;
@@ -200,19 +210,18 @@ std::string utf8_char_at(const std::string& text, size_t position){
 }
 
 // Splits `text` into the keys that type it. Returns the error, or "" on success.
-std::string split_into_keys(const std::string& text, std::vector<const char*>& keys){
+std::string split_into_keys(const std::string& text, std::vector<std::string_view>& keys){
     keys.clear();
     for (size_t position = 0; position < text.size();){
-        size_t length;
-        const char* key = key_text_at(text, position, length);
-        if (key == nullptr){
+        const KeyMatch match = key_text_at(text, position);
+        if (match.key.empty()){
             return "\"" + text + "\" has a character the naming screen can't type: \""
                 + utf8_char_at(text, position) + "\" (byte " + std::to_string(position) + "). "
                 "It types A-Z, a-z, 0-9, space and . , ! ? / - ' and the game's "
                 "male/female signs, ellipsis and curly quotes.";
         }
-        keys.emplace_back(key);
-        position += length;
+        keys.emplace_back(match.key);
+        position += match.length;
     }
     return "";
 }
@@ -227,7 +236,7 @@ constexpr size_t STATE_COUNT =
 
 // Breadth-first search over cursor states for the fewest presses that reach a key typing `key`.
 // Appends the moves and returns the cursor on that key.
-NamingCursor append_moves_to_key(const NamingCursor& start, const char* key, std::vector<NamingAction>& actions){
+NamingCursor append_moves_to_key(const NamingCursor& start, std::string_view key, std::vector<NamingAction>& actions){
     //  START is left out: it only jumps to OK, which the plan uses once at the end.
     static const NamingAction MOVES[] = {
         NamingAction::UP, NamingAction::DOWN, NamingAction::LEFT, NamingAction::RIGHT, NamingAction::SELECT,
@@ -243,8 +252,7 @@ NamingCursor append_moves_to_key(const NamingCursor& start, const char* key, std
 
     for (size_t head = 0; head < queue.size(); head++){
         const NamingCursor cursor = queue[head];
-        const char* here = key_at(cursor);
-        if (here != nullptr && strcmp(here, key) == 0){
+        if (key_at(cursor) == key){
             std::vector<NamingAction> path;
             for (size_t index = state_index(cursor); index != state_index(start); index = visits[index].parent){
                 path.emplace_back(visits[index].action);
@@ -264,7 +272,7 @@ NamingCursor append_moves_to_key(const NamingCursor& start, const char* key, std
         }
     }
     //  Every key is reachable, so this is a bug.
-    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::string("No path to naming screen key: ") + key);
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("No path to naming screen key: {}", key));
 }
 
 } // namespace
@@ -291,22 +299,24 @@ NamingCursor apply_naming_action(const NamingCursor& cursor, NamingAction action
 
 
 std::string naming_text_error(const std::string& text, NamingScreenKind kind){
-    std::vector<const char*> keys;
+    std::vector<std::string_view> keys;
     std::string error = split_into_keys(text, keys);
     if (!error.empty()){
         return error;
     }
     bool only_spaces = true;
-    for (const char* key : keys){
-        only_spaces &= strcmp(key, " ") == 0;
+    for (std::string_view key : keys){
+        only_spaces &= key == " ";
     }
     if (only_spaces){
         return "The name \"" + text + "\" is empty or only spaces, so the game would not keep it.";
     }
     const size_t max_chars = naming_screen_max_chars(kind);
     if (keys.size() > max_chars){
-        return "\"" + text + "\" is " + std::to_string(keys.size()) + " characters, but a "
-            + naming_screen_kind_name(kind) + " name holds at most " + std::to_string(max_chars) + ".";
+        return std::format(
+            "\"{}\" is {} characters, but a {} name holds at most {}.",
+            text, keys.size(), naming_screen_kind_name(kind), max_chars
+        );
     }
     return "";
 }
@@ -318,12 +328,12 @@ std::vector<NamingAction> plan_naming_keys(
     if (!error.empty()){
         throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, error);
     }
-    std::vector<const char*> keys;
+    std::vector<std::string_view> keys;
     split_into_keys(text, keys);
 
     std::vector<NamingAction> actions;
     NamingCursor cursor = start;
-    for (const char* key : keys){
+    for (std::string_view key : keys){
         cursor = append_moves_to_key(cursor, key, actions);
         actions.emplace_back(NamingAction::A);
     }

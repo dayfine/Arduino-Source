@@ -67,6 +67,10 @@
       {
         "id": "rival_ss_anne",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_RIVAL_SS_ANNE_BULBASAUR",
+          "foes": ["pidgeotto", "raticate", "kadabra", "ivysaur"]
+        },
         "declared_after": {"map": "SSAnne_2F_Corridor", "tiles": [[30, 6]], "facing": "north"},
         "why": "Pidgeotto, Raticate, Kadabra and Ivysaur"
       },

@@ -20,7 +20,7 @@ namespace PokemonFRLG{
 using namespace std::chrono_literals;
 
 
-const char* fossil_name(Fossil fossil){
+std::string_view fossil_name(Fossil fossil){
     switch (fossil){
     case Fossil::DOME:  return "dome";
     case Fossil::HELIX: return "helix";
@@ -41,7 +41,7 @@ Pokemon::TilePos fossil_tile(Fossil fossil){
     return fossil == Fossil::DOME ? Pokemon::TilePos{13, 7} : Pokemon::TilePos{14, 7};
 }
 
-const char* choice_end_name(ChoiceEnd end){
+std::string_view choice_end_name(ChoiceEnd end){
     switch (end){
     case ChoiceEnd::TAKEN:      return "taken";
     case ChoiceEnd::WRONG_ONE:  return "wrong_one";

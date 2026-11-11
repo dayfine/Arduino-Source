@@ -27,6 +27,10 @@
       {
         "id": "hiker_franklin",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_HIKER_FRANKLIN",
+          "foes": ["machop", "geodude"]
+        },
         "declared_after": {"map": "Route25", "tiles": [[15, 4]], "facing": "north"},
         "why": "Machop and Geodude, Lv15; Franklin stops at (14, 4)"
       },
@@ -60,6 +64,10 @@
       {
         "id": "picnicker_kelsey",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_PICNICKER_KELSEY",
+          "foes": ["nidoran-m", "nidoran-f"]
+        },
         "declared_after": {"map": "Route25", "tiles": [[24, 8]], "facing": "south"},
         "why": "Nidoran M and Nidoran F, Lv15; Kelsey stops at (23, 8)"
       },
@@ -84,6 +92,10 @@
       {
         "id": "hiker_nob",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_HIKER_NOB",
+          "foes": ["geodude", "geodude", "machop", "geodude"]
+        },
         "declared_after": {"map": "Route25", "tiles": [[27, 8]], "facing": "east"},
         "why": "three Geodude and a Machop, Lv13"
       },
@@ -108,6 +120,10 @@
       {
         "id": "lass_haley",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_LASS_HALEY",
+          "foes": ["oddish", "pidgey", "oddish"]
+        },
         "declared_after": {"map": "Route25", "tiles": [[42, 8]], "facing": "north"},
         "why": "Oddish, Pidgey and Oddish, Lv13; Haley stops at (42, 7)"
       },

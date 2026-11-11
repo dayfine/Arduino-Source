@@ -91,5 +91,6 @@
         "The gate's north warp lands on the forest's exit mat (29, 62), facing north. The save there keeps a forest failure from going back to Pallet."
       ]
     }
-  }
+  },
+  "metadata": {"phase": "testing"}
 }

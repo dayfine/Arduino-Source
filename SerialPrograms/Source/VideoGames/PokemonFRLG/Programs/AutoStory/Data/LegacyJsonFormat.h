@@ -35,7 +35,7 @@ inline const std::vector<std::string>& unbound_fields(){
 }
 
 //  Stable legacy spellings of the native START menu variants.
-inline const char* menu_name(StartMenu menu){
+inline std::string_view menu_name(StartMenu menu){
     switch (menu){
     case StartMenu::BEFORE_POKEMON: return "before_pokemon";
     case StartMenu::BEFORE_POKEDEX: return "before_pokedex";

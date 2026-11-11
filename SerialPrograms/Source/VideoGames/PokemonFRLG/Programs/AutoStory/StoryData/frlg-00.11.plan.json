@@ -49,6 +49,10 @@
       {
         "id": "bug_catcher_colton",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_BUG_CATCHER_COLTON",
+          "foes": ["caterpie", "weedle", "caterpie"]
+        },
         "declared_after": {"map": "Route3", "tiles": [[14, 6]], "facing": "north"},
         "why": "his Bug Pokemon; Colton stops at (13, 6)"
       },
@@ -72,6 +76,10 @@
       {
         "id": "bug_catcher_greg",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_BUG_CATCHER_GREG",
+          "foes": ["weedle", "kakuna", "caterpie", "metapod"]
+        },
         "declared_after": {"map": "Route3", "tiles": [[25, 5]], "facing": "east"},
         "why": "his Bug Pokemon; Greg is already next to the player"
       },
@@ -95,6 +103,10 @@
       {
         "id": "bug_catcher_james",
         "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_BUG_CATCHER_JAMES",
+          "foes": ["caterpie", "metapod"]
+        },
         "declared_after": {"map": "Route3", "tiles": [[36, 6]], "facing": "south"},
         "why": "his Bug Pokemon; James stops at (35, 6)"
       },
