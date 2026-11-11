@@ -555,7 +555,7 @@ Handler plza_handler(const PlzaActions& make, const StoryActionSpec& spec){
             choose_dialog_option(env.env.console, env.context, Pokemon::story_arg<bool>(args, "yes") ? 0 : 1);
         });
     case StoryStepKind::MASH:
-        //  120 s: a scene can hold a ~25 s black screen (02.04's first evening).
+        //  120 s: a scene can hold a ~25 s black screen (02.06's first evening).
         return make.console(name, mash(SceneMashGoal::OVERWORLD, name == "a" ? BUTTON_A : BUTTON_B, 120s));
     case StoryStepKind::HEAL:
         return make.console(name, [](StoryEnv& env, const StoryActionArgs&){
