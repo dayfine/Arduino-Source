@@ -5,7 +5,7 @@
     "id": "02.06",
     "title": "Main Mission 02: the first evening to Main Mission 03",
     "start": {
-      "map": "LumioseCity"
+      "place": "LumioseCity"
     },
     "events": [
       {

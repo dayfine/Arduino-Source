@@ -5,7 +5,7 @@
     "id": "02.05",
     "title": "Main Mission 02: the night in Room 202",
     "start": {
-      "map": "LumioseCity"
+      "place": "LumioseCity"
     },
     "events": [
       {

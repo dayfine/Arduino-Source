@@ -14,7 +14,7 @@
 #include <optional>
 #include <string>
 #include <vector>
-#include "Pokemon_GridPose.h"
+#include "Pokemon_DeclaredPose.h"
 #include "Pokemon_StoryCheckpointMetadata.h"
 #include "Pokemon_StoryPostconditions.h"
 #include "Pokemon_StoryStep.h"
@@ -28,7 +28,7 @@ struct StoryCheckpoint{
     std::string id;
     std::string title;
     //  Where its starting save leaves the player; none for a new game.
-    std::optional<GridPose> start;
+    std::optional<DeclaredPose> start;
     std::vector<StoryStep> steps;
     //  What must hold when it is done; checked on its own after a run.
     //  JSON: "metadata": {"postconditions": ...}.

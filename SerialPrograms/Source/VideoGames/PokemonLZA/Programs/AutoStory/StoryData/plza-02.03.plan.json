@@ -5,7 +5,7 @@
     "id": "02.03",
     "title": "Main Mission 02: Hotel Z check-in",
     "start": {
-      "map": "LumioseCity"
+      "place": "LumioseCity"
     },
     "events": [
       {
