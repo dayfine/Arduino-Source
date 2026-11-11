@@ -38,19 +38,6 @@ namespace PokemonFRLG{
 //  6x4 tiles: the list is told from them by its white past their frame.
 std::optional<int> rival_name_list_cursor(const ImageViewRGB32& screen);
 
-//  What the intro does on the BOY/GIRL menu. The boy is left to the A every
-//  1.5 s that advances the intro, as before; the girl is moved to and
-//  picked.
-enum class GenderMenuStep{
-    NONE,
-    DOWN,
-    UP,
-    CONFIRM,
-};
-//  The step for the arrow on row `cursor_row` (0 BOY, 1 GIRL), or none if
-//  the menu doesn't show.
-GenderMenuStep gender_menu_step(std::optional<int> cursor_row, PlayerGender wanted);
-
 //  What shows in the new game's intro, as far as the names go.
 enum class IntroNameScreen{
     OTHER,

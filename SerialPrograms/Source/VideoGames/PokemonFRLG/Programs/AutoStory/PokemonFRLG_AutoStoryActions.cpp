@@ -33,6 +33,7 @@
 #include "VideoGames/PokemonFRLG/Programs/PokemonFRLG_NamingScreen.h"
 #include "VideoGames/PokemonFRLG/Programs/PokemonFRLG_StartMenuNavigation.h"
 #include "PokemonFRLG_AutoStoryActions.h"
+#include "PokemonFRLG_AutoStoryGenderMenu.h"
 #include "PokemonFRLG_AutoStoryStepInterrupts.h"
 #include "PokemonFRLG_AutoStoryTrainerMessage.h"
 
@@ -164,32 +165,9 @@ void open_start_menu_row(ConsoleHandle& console, ProControllerContext& context, 
 }
 
 
-//  The arrow's row on the intro's BOY/GIRL menu (0 BOY, 1 GIRL), if it
-//  shows. In pokefirered's oak_speech.c the menu is a 9x4-tile window at
-//  tile (18, 9), rows 16 px apart, the cursor starting on BOY.
-std::optional<int> gender_menu_cursor(const ImageViewRGB32& screen){
-    //  On the 240x160 screen: the menu's window spans x 144-216, y 72-104,
-    //  and this box (x 190-212, y 76-100) is white there, right of BOY and
-    //  GIRL. The intro's message box is lower down.
-    const ImageViewRGB32 game = extract_box_reference(screen, GameSettings::instance().GAME_BOX);
-    if (!is_white(extract_box_reference(game, ImageFloatBox(190.0 / 240, 76.0 / 160, 22.0 / 240, 24.0 / 160)))){
-        return std::nullopt;
-    }
-    for (int row = 0; row < 2; row++){
-        //  rival_name_list_cursor()'s arrow box, moved to the menu's cursor
-        //  at x 144, y 73 + 16 * row.
-        const ImageFloatBox box(142.6 / 240, (73.4 + 16 * row) / 160, 0.0369231, 0.0778846);
-        if (SelectionArrowDetector(COLOR_RED, nullptr, box).detect(screen)){
-            return row;
-        }
-    }
-    return std::nullopt;
-}
-
-
 //  The new game's intro, from the title screen. Everything but the names
 //  is advanced with A, which never hurts there (BOY is the default, the
-//  girl is picked on the BOY/GIRL menu by gender_menu_cursor(), YES to
+//  girl is picked on the BOY/GIRL menu (gender_menu_cursor()), YES to
 //  "So your name is ...?" and "Er, was it GREEN?"); B is never pressed
 //  outside the keyboard, since in the intro it goes back to the controls
 //  pages (console B, 2026-11-01). The controls pages read as a message box
@@ -489,20 +467,6 @@ std::optional<bool> yes_no_cursor(const ImageViewRGB32& screen){
         return false;
     }
     return std::nullopt;
-}
-
-GenderMenuStep gender_menu_step(std::optional<int> cursor_row, PlayerGender wanted){
-    if (!cursor_row || wanted == PlayerGender::BOY){
-        return GenderMenuStep::NONE;
-    }
-    const int target = 1;
-    if (*cursor_row < target){
-        return GenderMenuStep::DOWN;
-    }
-    if (*cursor_row > target){
-        return GenderMenuStep::UP;
-    }
-    return GenderMenuStep::CONFIRM;
 }
 
 std::optional<int> rival_name_list_cursor(const ImageViewRGB32& screen){
