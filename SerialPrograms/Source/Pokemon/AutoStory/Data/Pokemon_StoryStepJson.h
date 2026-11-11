@@ -30,6 +30,16 @@ JsonValue grid_pose_json(const GridPose& pose);
 //  as none (any tile, or a game with no tiles).
 GridPose read_grid_pose(const JsonValue& value, std::string_view source);
 
+//  A declared pose (a checkpoint's "start", a step's "declared_after"): a
+//  tile one as a grid pose, {"map": ..., "tiles": [[x, y]], "facing": ...},
+//  or a zone one, {"place": "LumioseCity", "spot": "HotelZ", "heading": 90}
+//  (spot and heading optional).
+JsonValue declared_pose_json(const DeclaredPose& pose);
+
+//  Read a declared pose; one with both or neither of "map" and "place",
+//  and malformed or unknown fields, fail.
+DeclaredPose read_declared_pose(const JsonValue& value, std::string_view source);
+
 
 //  Encode a step: its kind, action and args. This does not run it.
 JsonValue story_step_json(const StoryStep& step);

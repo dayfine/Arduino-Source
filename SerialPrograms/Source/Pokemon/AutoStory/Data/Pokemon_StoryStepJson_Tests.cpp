@@ -31,6 +31,7 @@ namespace{
 //  Which record a case reads.
 enum class Record{
     POSE,
+    DECLARED,
     STEP,
     CHECKPOINT,
 };
@@ -65,6 +66,8 @@ const WireCase CASES[] = {
     {.input = {.name = "game integer rows", .json = R"({"id":"w","kind":"game_action","action":"walk","args":{"legs":[[0,4500],[-90,0],[]]}})"}, .expectation = {.canonical = R"({"id":"w","kind":"game_action","action":"walk","args":{"legs":[[0,4500],[-90,0],[]]}})"}},
     {.input = {.name = "integer rows, not rows", .json = R"({"id":"w","kind":"game_action","action":"walk","args":{"legs":[0,4500]}})"}, .expectation = {.rejected = true}},
     {.input = {.name = "integer rows, fraction", .json = R"({"id":"w","kind":"game_action","action":"walk","args":{"legs":[[0,4.5]]}})"}, .expectation = {.rejected = true}},
+    {.input = {.name = "timed legs", .json = R"({"id":"w","kind":"game_action","action":"timed_walk","args":{"legs":[[0,4500],[-90,1200]]}})"}, .expectation = {.canonical = R"({"id":"w","kind":"game_action","action":"timed_walk","args":{"legs":[[0,4500],[-90,1200]]}})"}},
+    {.input = {.name = "timed leg of three numbers", .json = R"({"id":"w","kind":"game_action","action":"timed_walk","args":{"legs":[[0,4500,1]]}})"}, .expectation = {.rejected = true}},
     {.input = {.name = "unknown arg", .json = R"({"id":"a","kind":"game_action","action":"mart","args":{"map":"M","budget":1,"budgte":1}})"}, .expectation = {.rejected = true}},
     {.input = {.name = "missing required arg", .json = R"({"id":"a","kind":"game_action","action":"mart","args":{"map":"M"}})"}, .expectation = {.rejected = true}},
     {.input = {.name = "route without target", .json = R"({"id":"a","kind":"route"})"}, .expectation = {.rejected = true}},
@@ -83,6 +86,14 @@ const WireCase CASES[] = {
     {.input = {.name = "no tiles", .record = Record::POSE, .json = R"({"map":"M","tiles":[]})"}, .expectation = {.canonical = R"({"map":"M","tiles":[]})"}},
     {.input = {.name = "old pose", .record = Record::POSE, .json = R"({"map":"M","certainty":"unknown","where":{"kind":"unknown"}})"}, .expectation = {.rejected = true}},
     {.input = {.name = "bad coordinate", .record = Record::POSE, .json = R"({"map":"M","tiles":[[0,true]]})"}, .expectation = {.rejected = true}},
+    {.input = {.name = "declared tile pose", .record = Record::DECLARED, .json = R"({"map":"M","tiles":[[1,2]],"facing":"north"})"}, .expectation = {.canonical = R"({"map":"M","tiles":[[1,2]],"facing":"north"})"}},
+    {.input = {.name = "declared place", .record = Record::DECLARED, .json = R"({"place":"LumioseCity","spot":"HotelZ","heading":90})"}, .expectation = {.canonical = R"({"place":"LumioseCity","spot":"HotelZ","heading":90})"}},
+    {.input = {.name = "declared place alone", .record = Record::DECLARED, .json = R"({"place":"HotelZ"})"}, .expectation = {.canonical = R"({"place":"HotelZ"})"}},
+    {.input = {.name = "declared map and place", .record = Record::DECLARED, .json = R"({"map":"M","place":"HotelZ"})"}, .expectation = {.rejected = true}},
+    {.input = {.name = "declared place with tiles", .record = Record::DECLARED, .json = R"({"place":"HotelZ","tiles":[[1,2]]})"}, .expectation = {.rejected = true}},
+    {.input = {.name = "declared map with heading", .record = Record::DECLARED, .json = R"({"map":"M","heading":90})"}, .expectation = {.rejected = true}},
+    {.input = {.name = "declared neither", .record = Record::DECLARED, .json = R"({"spot":"Lobby"})"}, .expectation = {.rejected = true}},
+    {.input = {.name = "checkpoint starting at a place", .record = Record::CHECKPOINT, .json = R"({"id":"03.01","title":"Lobby","start":{"place":"HotelZ"},"events":[{"id":"down","kind":"scene","declared_after":{"place":"HotelZLobby","heading":180}}]})"}, .expectation = {.canonical = R"({"id":"03.01","title":"Lobby","start":{"place":"HotelZ"},"events":[{"id":"down","kind":"scene","declared_after":{"place":"HotelZLobby","heading":180}}]})"}},
     {.input = {.name = "ordered checkpoint", .record = Record::CHECKPOINT, .json = R"({"id":"00.05","title":"Parcel","events":[{"id":"first","kind":"talk"},{"id":"second","kind":"scene"}]})"}, .expectation = {.canonical = R"({"id":"00.05","title":"Parcel","events":[{"id":"first","kind":"talk"},{"id":"second","kind":"scene"}]})"}},
     {.input = {.name = "duplicate events", .record = Record::CHECKPOINT, .json = R"({"id":"x","title":"X","events":[{"id":"a","kind":"talk"},{"id":"a","kind":"talk"}]})"}, .expectation = {.rejected = true}},
 };
@@ -100,6 +111,9 @@ std::vector<StoryActionSpec> test_actions(){
     actions.push_back({.kind = StoryStepKind::GAME, .name = "walk", .args = {
         {.key = "legs", .type = StoryArgType::INTEGER_ROWS, .required = true, .fallback = std::nullopt, .why = "rows of numbers"},
     }});
+    actions.push_back({.kind = StoryStepKind::GAME, .name = "timed_walk", .args = {
+        {.key = "legs", .type = StoryArgType::TIMED_LEGS, .required = true, .fallback = std::nullopt, .why = "[turn degrees, ms] legs"},
+    }});
     actions.push_back({.kind = StoryStepKind::GAME, .name = "profile", .args = {}});
     return actions;
 }
@@ -112,6 +126,8 @@ JsonValue round_trip(const WireInput& input){
     switch (input.record){
     case Record::POSE:
         return grid_pose_json(read_grid_pose(value, input.name));
+    case Record::DECLARED:
+        return declared_pose_json(read_declared_pose(value, input.name));
     case Record::STEP:
         return story_step_json(read_story_step(value, input.name, actions));
     case Record::CHECKPOINT:
@@ -144,6 +160,9 @@ std::string check_case(const WireCase& test){
 Record record_kind(std::string_view name){
     if (name == "pose"){
         return Record::POSE;
+    }
+    if (name == "declared"){
+        return Record::DECLARED;
     }
     if (name == "step"){
         return Record::STEP;
