@@ -53,14 +53,14 @@
       {
         "id": "after_taunie_battle",
         "kind": "game_action",
-        "why": "step 45: Taunie's talk, closing the map it opens with B",
+        "why": "step 45: Taunie's talk and the Map & Missions card with A, the map closed with B, her talk with B",
         "action": "talk_through_map_screen"
       },
       {
         "id": "taunie_runs_off",
-        "kind": "scene",
-        "why": "step 45: the Main Missions tutorial, Taunie runs off",
-        "action": "a"
+        "kind": "game_action",
+        "why": "step 45: the Main Missions card (A turns its pages; a scene step only waits on it), Taunie runs off (console B, 2026-11-10)",
+        "action": "mash_to_move_hints"
       }
     ],
     "metadata": {

@@ -9,6 +9,7 @@
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_KeyboardCodeEntry.h"
+#include "VideoGames/PokemonLZA/Inference/Map/PokemonLZA_MapDetector.h"
 #include "PokemonLZA_AutoStoryScenes.h"
 
 namespace PokemonAutomation{
@@ -174,6 +175,28 @@ void type_player_name(ConsoleHandle& console, ProControllerContext& context, con
     pbf_press_dpad(context, DPAD_DOWN, 160ms, 400ms);
     pbf_press_button(context, BUTTON_A, 160ms, 2000ms);
     context.wait_for_all_requests();
+}
+
+void talk_through_map_screen(ConsoleHandle& console, ProControllerContext& context){
+    MapDetector map;
+    const WallClock deadline = current_time() + 60s;
+    while (true){
+        context.wait_for_all_requests();
+        if (map.detect(console.video().snapshot())){
+            break;
+        }
+        if (current_time() > deadline){
+            OperationFailedExceptionWithScreenshot::fire(
+                ErrorReportMode::SEND_ERROR_REPORT,
+                "talk_through_map_screen(): the map did not show within 60 s.",
+                console
+            );
+        }
+        pbf_press_button(context, BUTTON_A, 160ms, 840ms);
+    }
+    pbf_press_button(context, BUTTON_B, 160ms, 1500ms);
+    context.wait_for_all_requests();
+    mash_scene(console, context, SceneMashGoal::OVERWORLD, BUTTON_B, 90s);
 }
 
 void climb_ladder(ConsoleHandle&, ProControllerContext& context){
