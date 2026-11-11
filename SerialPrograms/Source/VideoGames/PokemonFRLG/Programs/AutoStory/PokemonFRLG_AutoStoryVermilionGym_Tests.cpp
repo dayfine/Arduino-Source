@@ -340,7 +340,7 @@ UnitTestResult test_tree_shuts_the_yard(){
 //  grass round Isabelle's line and back, to below Surge through the beams,
 //  and from him back out past the tree to the nurse, meeting no one.
 UnitTestResult test_to_surge_and_out(){
-    for (const char* id : {"06.03", "06.04"}){
+    for (std::string_view id : {"06.03", "06.04"}){
         const StoryCheckpoint& row = checkpoint(id);
         StoryPose at = *story_pose(*row.start);
         OverworldSim sim(maps_after_gym(), MapPosition{at.map, at.tile}, *at.facing);
@@ -352,7 +352,7 @@ UnitTestResult test_to_surge_and_out(){
         if (!sim.state().trainers_beaten.empty() || !sim.state().violations.empty()){
             return std::string(id) + ": a battle or a violation on the way.";
         }
-        const MapPosition end = std::string(id) == "06.03" ? MapPosition{GYM, {5, 3}} : MapPosition{StoryTable::VERMILION_CENTER, {7, 4}};
+        const MapPosition end = id == "06.03" ? MapPosition{GYM, {5, 3}} : MapPosition{StoryTable::VERMILION_CENTER, {7, 4}};
         if (!(sim.state().position == end)){
             return std::string(id) + ": ended on " + to_string(sim.state().position) + ", not " + to_string(end) + ".";
         }
