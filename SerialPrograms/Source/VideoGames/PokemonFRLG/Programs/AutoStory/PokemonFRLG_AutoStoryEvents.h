@@ -122,7 +122,7 @@ public:
     }
 
     //  The step's action from the table.
-    virtual Pokemon::Outcome run(Pokemon::RunState& state, const StoryStep& step) override;
+    virtual Pokemon::Outcome run(const StoryStep& step, Pokemon::RunState& state) override;
 
 private:
     //  A GAME step by its action. CLOSE_TRAINER_CARD: back from SID Helper

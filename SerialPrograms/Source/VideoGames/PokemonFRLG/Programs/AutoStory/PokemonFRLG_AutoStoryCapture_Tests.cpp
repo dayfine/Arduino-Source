@@ -446,7 +446,7 @@ public:
     FakeCaptureGame capture;
     IdlePc pc;
 
-    virtual Pokemon::Outcome run(Pokemon::RunState&, const StoryStep& step) override{
+    virtual Pokemon::Outcome run(const StoryStep& step, Pokemon::RunState&) override{
         if (step.kind != Pokemon::StoryStepKind::GAME){
             return Pokemon::unsupported_step(step);
         }
@@ -482,7 +482,7 @@ SegmentRun run_steps(StorageExecutor& executor, const std::vector<StoryStep>& st
     hooks.log = [](const std::string&){};
     Pokemon::RunState state;
     try{
-        run.report = Pokemon::run_segment(state, segment, {}, Pokemon::SegmentPolicy{}, hooks);
+        run.report = Pokemon::run_segment({}, Pokemon::SegmentPolicy{}, segment, hooks, state);
     }catch (ProgramFinishedException&){
         run.finished = true;
     }
