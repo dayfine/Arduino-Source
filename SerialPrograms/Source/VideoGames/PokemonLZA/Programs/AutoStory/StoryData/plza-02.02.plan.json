@@ -1,0 +1,181 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "plza",
+  "checkpoint": {
+    "id": "02.02",
+    "title": "Main Mission 02: after Brigitte to the first night",
+    "start": {
+      "map": "LumioseCity"
+    },
+    "events": [
+      {
+        "id": "to_blocked_street",
+        "kind": "game_action",
+        "why": "step 21: on until the black fade into the street the trainers block. Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[0, 2000], [-75, 3500], [90, 3000]]
+        }
+      },
+      {
+        "id": "street_scene",
+        "kind": "scene",
+        "why": "step 21: a Pokemon drives the trainers off (no battle)",
+        "action": "a"
+      },
+      {
+        "id": "to_battle_zone_gate",
+        "kind": "game_action",
+        "why": "step 22: on to the gate's \"A Leave\". Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[0, 5000]]
+        }
+      },
+      {
+        "id": "leave_battle_zone",
+        "kind": "scene",
+        "why": "steps 22-23: A Leave, Taunie: Hotel Z's just through here",
+        "action": "a"
+      },
+      {
+        "id": "through_covered_passage",
+        "kind": "game_action",
+        "why": "step 23: through the wooden door and the covered passage into the Hotel Z scene. Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[75, 3000], [0, 5000]]
+        }
+      },
+      {
+        "id": "hotel_z_arrival",
+        "kind": "scene",
+        "why": "step 23: the Hotel Z arrival scene",
+        "action": "a"
+      },
+      {
+        "id": "to_hotel_z_door",
+        "kind": "game_action",
+        "why": "step 24: up the steps to the door's \"A Enter\". 3-4.5 s, the longest. Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[0, 4500]]
+        }
+      },
+      {
+        "id": "hotel_z_lobby",
+        "kind": "scene",
+        "why": "steps 24-25: A Enter, the loading screen, the lobby scene with Taunie",
+        "action": "a"
+      },
+      {
+        "id": "to_front_counter",
+        "kind": "game_action",
+        "why": "step 26: along the counter to the clerk's \"A Talk\". 2.25 s was one step short. Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[-5, 2500], [-85, 0]]
+        }
+      },
+      {
+        "id": "talk_to_clerk",
+        "kind": "talk",
+        "why": "step 26: A at the clerk (\"A Talk ???\")"
+      },
+      {
+        "id": "check_in",
+        "kind": "scene",
+        "why": "step 27: check-in with AZ, the Key to Room 202",
+        "action": "a"
+      },
+      {
+        "id": "to_lobby_elevator",
+        "kind": "game_action",
+        "why": "step 28: to the elevator's \"A Take Elevator\". Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[0, 2000]]
+        }
+      },
+      {
+        "id": "take_elevator_up",
+        "kind": "talk",
+        "why": "step 28: A Take Elevator, \"Which floor?\""
+      },
+      {
+        "id": "ride_to_2f",
+        "kind": "game_action",
+        "why": "step 28: \"2F\", the first floor listed",
+        "action": "choose_0"
+      },
+      {
+        "id": "arrive_2f",
+        "kind": "scene",
+        "why": "step 28: the ride, until control on 2F"
+      },
+      {
+        "id": "to_room_202",
+        "kind": "game_action",
+        "why": "step 29: to \"Room 202 / A Enter\". Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[-15, 2000]]
+        }
+      },
+      {
+        "id": "enter_room_202",
+        "kind": "scene",
+        "why": "step 30: A Enter, \"Here's room 202.\", until control in the room",
+        "action": "a"
+      },
+      {
+        "id": "to_bed",
+        "kind": "game_action",
+        "why": "step 31: to the bed's \"A Rest\". 1.5 s explored, 1 s enough. Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[45, 1000]]
+        }
+      },
+      {
+        "id": "rest",
+        "kind": "talk",
+        "why": "step 31: A Rest, \"Rest until tomorrow morning?\""
+      },
+      {
+        "id": "rest_until_morning",
+        "kind": "game_action",
+        "why": "step 31: yes",
+        "action": "choose_0"
+      },
+      {
+        "id": "wake_up",
+        "kind": "scene",
+        "why": "step 32: sleep and wake up, until control facing the door",
+        "action": "a"
+      },
+      {
+        "id": "to_room_door",
+        "kind": "game_action",
+        "why": "step 33: to the door's \"A Leave\". Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[0, 2000]]
+        }
+      },
+      {
+        "id": "first_evening",
+        "kind": "scene",
+        "why": "steps 33-35: Taunie, the rooftop, AZ, the Main Mission 03 banner and its autosave",
+        "action": "a"
+      }
+    ],
+    "metadata": {
+      "phase": "testing",
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game; split from 02.01 at the autosave after Brigitte (2026-11-10)"
+    }
+  },
+  "execution": {
+    "save": "autosave"
+  }
+}
