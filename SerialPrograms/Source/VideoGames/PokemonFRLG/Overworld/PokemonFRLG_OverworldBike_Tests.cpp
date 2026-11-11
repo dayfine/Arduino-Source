@@ -234,7 +234,7 @@ ImageRGB32 periodic_floor(size_t scroll){
     return image;
 }
 
-//  Rocket Hideout B3F (00.32 run 1): a tap east over a floor that repeats
+//  Rocket Hideout B3F (09.02 run 1): a tap east over a floor that repeats
 //  every tile left the top band the same, so the tap read as a turn.
 UnitTestResult test_scroll_over_periodic_floor(){
     const ImageFloatBox game(0, 0, 1, 1);

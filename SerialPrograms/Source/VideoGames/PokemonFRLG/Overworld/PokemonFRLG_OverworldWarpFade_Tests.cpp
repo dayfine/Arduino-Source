@@ -57,7 +57,7 @@ const MapPosition MART{"ViridianCity_Mart", {4, 3}};
 //  Where the Mart's exit mat, (4, 7), puts the player.
 const MapPosition OUTSIDE{"ViridianCity", {36, 20}};
 
-//  00.27 (console B, 2026-11-09 01:41), the warp to CeruleanCity: "no fade
+//  07.02 (console B, 2026-11-09 01:41), the warp to CeruleanCity: "no fade
 //  in and out after walking onto the warp", the watch for the fade having
 //  started about 1.3 s into the hold, after the fade was over. Here the
 //  walk out of Viridian Mart, south 5 onto its mat, is held as to a wall,
@@ -126,7 +126,7 @@ const WarpFadeCase WARP_FADE_CASES[] = {
         .expectation = {.failure = "the warp to ViridianCity not confirmed", .warps = 0},
     },
     {
-        //  00.31 run 4 (console B, 2026-11-10 01:44): taken as walked.
+        //  09.01 run 4 (console B, 2026-11-10 01:44): taken as walked.
         .input = {.name = "black without a warp, any black taken as the warp", .fade = 1000ms, .black_without_warp = {1}, .confirm_destination = false},
         .expectation = {.failure = "", .warps = 0},
     },

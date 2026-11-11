@@ -291,7 +291,7 @@ UnitTestResult check_legs_on(
     return true;
 }
 
-//  00.09, each walk from where the one before leaves the player.
+//  03.02, each walk from where the one before leaves the player.
 UnitTestResult test_pewter_gym_walks(){
     const MapPosition nurse{"PewterCity_PokemonCenter_1F", {7, 4}};
     //  In by the door's mat (6, 14), straight up column 6 to below Liam's row.
@@ -322,7 +322,7 @@ UnitTestResult test_pewter_gym_walks(){
     );
 }
 
-//  00.10: out of the Gym to the aide's top trigger. The route keeps off his
+//  03.03: out of the Gym to the aide's top trigger. The route keeps off his
 //  three trigger tiles (46, 21..23), which would start the scene a step
 //  early, and the step east from its end lands on (46, 21).
 UnitTestResult test_pewter_aide_walk(){
@@ -356,8 +356,8 @@ UnitTestResult test_pewter_aide_walk(){
     return true;
 }
 
-//  Every ROUTE and LEGS after the Running Shoes (00.10) runs, or after the
-//  BICYCLE (00.26) may ride; none before.
+//  Every ROUTE and LEGS after the Running Shoes (03.03) runs, or after the
+//  BICYCLE (07.01) may ride; none before.
 UnitTestResult test_runs_after_shoes(){
     bool has_shoes = false;
     bool has_bike = false;
@@ -373,11 +373,11 @@ UnitTestResult test_runs_after_shoes(){
             }
             runs += has_shoes ? 1 : 0;
         }
-        has_shoes = has_shoes || checkpoint.id == "00.10";
-        has_bike = has_bike || checkpoint.id == "00.26";
+        has_shoes = has_shoes || checkpoint.id == "03.03";
+        has_bike = has_bike || checkpoint.id == "07.01";
     }
     if (!has_shoes || runs == 0){
-        return "No checkpoint 00.10, where the player gets the Running Shoes, or no route after it.";
+        return "No checkpoint 03.03, where the player gets the Running Shoes, or no route after it.";
     }
     return true;
 }
@@ -622,7 +622,7 @@ UnitTestResult test_trainer_lines(){
                 return result;
             }
         }
-        has_shoes = has_shoes || checkpoint.id == "00.10";
+        has_shoes = has_shoes || checkpoint.id == "03.03";
     }
     if (beaten.size() != 30){
         return "Expected to fight Colton, Greg and James on Route 3, the Grunt at (12, 20) in Mt. Moon, Nugget Bridge's five"
@@ -633,22 +633,22 @@ UnitTestResult test_trainer_lines(){
     return true;
 }
 
-//  00.12's walk east over Route 3 crosses Lass Robin's sight (she wanders
+//  04.02's walk east over Route 3 crosses Lass Robin's sight (she wanders
 //  x 40, y 10..12, looking north and south, sight 3) on (40, 9) only: if
 //  she sees the player, the walk goes on from there (console B,
 //  2026-11-02, she stopped "east 11 (to wall)" there).
 UnitTestResult test_robin_crossing(){
     for (const StoryCheckpoint& checkpoint : story_checkpoints()){
-        if (checkpoint.id != "00.12" || checkpoint.steps.empty() || checkpoint.steps[0].name != "route4_nurse"){
+        if (checkpoint.id != "04.02" || checkpoint.steps.empty() || checkpoint.steps[0].name != "route4_nurse"){
             continue;
         }
         const std::vector<std::optional<MapPosition>> expected{MapPosition{"Route3", {40, 9}}};
         if (wanderer_stops(one_tile(Pokemon::grid_pose_of(*checkpoint.start)), checkpoint.steps[0]) != expected){
-            return "Expected 00.12/route4_nurse to cross Lass Robin's sight once, the walk placing her stop on Route3 (40, 9).";
+            return "Expected 04.02/route4_nurse to cross Lass Robin's sight once, the walk placing her stop on Route3 (40, 9).";
         }
         return true;
     }
-    return "No step 00.12/route4_nurse.";
+    return "No step 04.02/route4_nurse.";
 }
 
 //  A scene the table starts on a step onto its trigger, and the walks of
@@ -704,14 +704,14 @@ UnitTestResult check_trigger(const TriggerCase& c){
     return "No step " + c.checkpoint + "/" + c.step + ".";
 }
 
-//  00.15b meets the rival on the middle of his three trigger tiles, row 6
+//  05.04 meets the rival on the middle of his three trigger tiles, row 6
 //  at x 22..24 north of Cerulean (VAR_MAP_SCENE_CERULEAN_CITY_RIVAL 0),
-//  and 00.16 the Rocket on the east one of his two, (10..11, 15) on Nugget
+//  and 05.05 the Rocket on the east one of his two, (10..11, 15) on Nugget
 //  Bridge (VAR_MAP_SCENE_ROUTE24 0), each from the tile below.
 UnitTestResult test_cerulean_triggers(){
     const TriggerCase CASES[] = {
-        {.checkpoint = "00.15b", .step = "rival_trigger", .map = "CeruleanCity", .y = 6, .x0 = 22, .x1 = 24, .onto_x = 23},
-        {.checkpoint = "00.16", .step = "rocket_trigger", .map = "Route24", .y = 15, .x0 = 10, .x1 = 11, .onto_x = 11},
+        {.checkpoint = "05.04", .step = "rival_trigger", .map = "CeruleanCity", .y = 6, .x0 = 22, .x1 = 24, .onto_x = 23},
+        {.checkpoint = "05.05", .step = "rocket_trigger", .map = "Route24", .y = 15, .x0 = 10, .x1 = 11, .onto_x = 11},
     };
     for (const TriggerCase& c : CASES){
         if (UnitTestResult result = check_trigger(c); result.result != UnitTestResult::PASSED){
@@ -721,13 +721,13 @@ UnitTestResult test_cerulean_triggers(){
     return true;
 }
 
-//  00.16 steps beside Nugget Bridge's five trainers from the south, one
+//  05.05 steps beside Nugget Bridge's five trainers from the south, one
 //  step at a time, each battle right after its step: Cale, Ali, Timmy,
 //  Reli and Ethan, by where they stand.
 UnitTestResult test_nugget_bridge_order(){
-    const StoryCheckpoint* checkpoint = find_checkpoint("00.16");
+    const StoryCheckpoint* checkpoint = find_checkpoint("05.05");
     if (checkpoint == nullptr){
-        return "No checkpoint 00.16.";
+        return "No checkpoint 05.05.";
     }
     const std::vector<StoryStep>& steps = checkpoint->steps;
     std::string met;
@@ -736,16 +736,16 @@ UnitTestResult test_nugget_bridge_order(){
         const MapData* map = find_map_named(pose.map);
         const MapObject* trainer = steps[c].kind == StoryStepKind::STEP && map ? trainer_seeing(*map, step_end(pose, steps[c], {}), {}, false) : nullptr;
         if (trainer != nullptr && (c + 1 == steps.size() || steps[c + 1].kind != StoryStepKind::BATTLE)){
-            return "00.16/" + steps[c].name + ": no battle right after the step.";
+            return "05.05/" + steps[c].name + ": no battle right after the step.";
         }
         met += trainer ? " " + to_string(TilePos{trainer->x, trainer->y}) : "";
         if (UnitTestResult result = advance(pose, steps[c]); result.result != UnitTestResult::PASSED){
-            return "00.16 " + result.message;
+            return "05.05 " + result.message;
         }
     }
     const std::string expected = " (12, 31) (10, 28) (12, 25) (10, 22) (12, 19)";
     if (met != expected){
-        return "00.16: expected the five bridge trainers south to north," + expected + "; met" + met + ".";
+        return "05.05: expected the five bridge trainers south to north," + expected + "; met" + met + ".";
     }
     return true;
 }
@@ -781,7 +781,7 @@ UnitTestResult test_save_places(){
 }
 
 //  A reload's save checked against the checkpoint's start: a save left in
-//  Pewter City (a new game whose save didn't happen) can't start 00.02 in
+//  Pewter City (a new game whose save didn't happen) can't start 01.03 in
 //  the bedroom. The check takes no checks level: Fast runs it too.
 UnitTestResult test_save_place_error(){
     struct Case{
@@ -946,11 +946,11 @@ UnitTestResult test_intro_names(){
     return true;
 }
 
-//  00.12c stores the Magikarp Gift RNG bought; with Gift RNG off there is
+//  04.04 stores the Magikarp Gift RNG bought; with Gift RNG off there is
 //  none, and the deposit is skipped instead of refused.
 UnitTestResult test_magikarp_deposit_skippable(){
     for (const StoryCheckpoint& checkpoint : story_checkpoints()){
-        if (checkpoint.id != "00.12c"){
+        if (checkpoint.id != "04.04"){
             continue;
         }
         for (const StoryStep& step : checkpoint.steps){
@@ -959,9 +959,9 @@ UnitTestResult test_magikarp_deposit_skippable(){
                 return true;
             }
         }
-        return "00.12c: expected a deposit of the second slot, skipped if the party hasn't got it.";
+        return "04.04: expected a deposit of the second slot, skipped if the party hasn't got it.";
     }
-    return "No checkpoint 00.12c.";
+    return "No checkpoint 04.04.";
 }
 
 //  set_options()'s RIGHT presses from each value an old save can leave:
@@ -1062,7 +1062,7 @@ const AutoStoryTestCase AUTO_STORY_CASES[] = {
         .expectation = {.description = "verifies trainer interruption on route 3"},
     },
     {
-        .input = {.name = "00.12c: the Magikarp's deposit is skipped without Gift RNG", .body = test_magikarp_deposit_skippable},
+        .input = {.name = "04.04: the Magikarp's deposit is skipped without Gift RNG", .body = test_magikarp_deposit_skippable},
         .expectation = {.description = "skips magikarp deposit when gift rng is disabled"},
     },
     {

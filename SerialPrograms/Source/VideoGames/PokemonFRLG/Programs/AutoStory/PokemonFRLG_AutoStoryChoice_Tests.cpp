@@ -133,7 +133,7 @@ std::vector<ChoiceCase> choice_cases(){
         },
         //  The console has no reader for the prompt's text: the table has
         //  walked the player to face the wanted fossil, so YES takes it
-        //  (console B: answering NO and stopping left 00.13 stuck there).
+        //  (console B: answering NO and stopping left 04.05 stuck there).
         {
             .name = "an unread prompt: YES, facing the wanted fossil",
             .setup = [](FakeFossilRoom& room){ room.offer_readable = false; },

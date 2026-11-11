@@ -44,19 +44,19 @@ std::string starter_rng_loop_message(const StarterRngLoopResult& result){
         );
     case StarterRngLoopEnd::TARGET:
         return "Starter RNG hit the target (shiny not required). Nothing was saved after it: the game is where "
-            "Starter RNG's calibration left it. Play to the rival's battle and save by hand, then start AutoStory at 00.05.";
+            "Starter RNG's calibration left it. Play to the rival's battle and save by hand, then start AutoStory at 02.01.";
     case StarterRngLoopEnd::OUT_OF_ATTEMPTS:
         return std::format(
             "Starter RNG: every planned attempt hit its target and none was shiny. SIDs left: {}. "
-            "The save is still south of the table: raise the RNG plan's max attempts and start AutoStory at 00.04 again.", sids
+            "The save is still south of the table: raise the RNG plan's max attempts and start AutoStory at 01.05 again.", sids
         );
     case StarterRngLoopEnd::MISSED_EVERY_ATTEMPT_LEFT:
         return "Starter RNG: every attempt left missed its target more often than the retries allow, or Starter RNG "
             "refused its timings (see the log). The save is still south of the table: check the RNG plan's sound setting "
-            "and start AutoStory at 00.04 again.";
+            "and start AutoStory at 01.05 again.";
     case StarterRngLoopEnd::OUT_OF_TIME:
         return std::format(
-            "Starter RNG: out of time after {} attempts. The save is still south of the table: start AutoStory at 00.04 again.",
+            "Starter RNG: out of time after {} attempts. The save is still south of the table: start AutoStory at 01.05 again.",
             result.attempts_run
         );
     }
@@ -65,16 +65,16 @@ std::string starter_rng_loop_message(const StarterRngLoopResult& result){
 
 
 std::string gift_rng_loop_message(const StarterRngLoopResult& result){
-    const std::string save = "The save is still beside the salesman, facing him: start AutoStory at 00.12b with Run Gift "
+    const std::string save = "The save is still beside the salesman, facing him: start AutoStory at 04.03 with Run Gift "
         "RNG in AutoStory on to try again, or run Gift RNG (Magikarp) from it by hand with an attempt from the log, then "
-        "start AutoStory at 00.12b with that option off.";
+        "start AutoStory at 04.03 with that option off.";
     switch (result.end){
     case StarterRngLoopEnd::SHINY:
-        return "Gift RNG: shiny Magikarp, on the planned target. 00.12b saves it.";
+        return "Gift RNG: shiny Magikarp, on the planned target. 04.03 saves it.";
     case StarterRngLoopEnd::SHINY_OFF_TARGET:
-        return "Gift RNG: shiny Magikarp, but not the planned target. 00.12b saves it.";
+        return "Gift RNG: shiny Magikarp, but not the planned target. 04.03 saves it.";
     case StarterRngLoopEnd::TARGET:
-        return "Gift RNG hit the target (shiny not required). Nothing was saved after it: start AutoStory at 00.12b "
+        return "Gift RNG hit the target (shiny not required). Nothing was saved after it: start AutoStory at 04.03 "
             "to save the Magikarp where it stands.";
     case StarterRngLoopEnd::OUT_OF_ATTEMPTS:
         return std::format(

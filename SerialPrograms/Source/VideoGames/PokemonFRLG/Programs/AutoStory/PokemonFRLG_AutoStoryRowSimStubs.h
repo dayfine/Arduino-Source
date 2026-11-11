@@ -45,7 +45,7 @@ private:
     std::vector<RowStubs> m_rows;
 };
 
-//  Each attempt's stubs, a line a row: "00.03: 2 stubbed: oak, rival".
+//  Each attempt's stubs, a line a row: "01.04: 2 stubbed: oak, rival".
 std::string stub_report(const std::vector<RowStubs>& rows);
 
 //  A failed step fails the run as it threw: a simulation has no save to

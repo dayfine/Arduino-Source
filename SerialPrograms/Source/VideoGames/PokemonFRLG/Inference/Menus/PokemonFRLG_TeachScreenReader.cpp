@@ -541,7 +541,7 @@ void add_tests_TeachScreenReader(UnitTestDatabase& database){
         "KnownMoves_eng.png",
         "StopQuestion_eng.png",
         "DidNotLearn_eng.png",
-        //  HM01 to an Oddish with two free slots (00.23, console B).
+        //  HM01 to an Oddish with two free slots (06.02, console B).
         "MachineSet_eng.png",
     }){
         database.add<Test_TeachScreen>(std::format("PokemonFRLG/TeachScreenReader/{}", image));

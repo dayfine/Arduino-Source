@@ -31,7 +31,7 @@ namespace OverworldWalkSteps{
 //  the maps see no wild tiles (RouteStep::wild): they miss some. Mt. Moon
 //  B2F's tiles closed on one side are cave floor too, and a battle on
 //  "east 7 (to wall)" there left the screen black after the leg, which
-//  was taken as walked (console B, 2026-11-03, row 00.13).
+//  was taken as walked (console B, 2026-11-03, row 04.05).
 size_t clear_unseen_battle(
     ConsoleHandle& console, ProControllerContext& context,
     const OverworldInterrupts& wild, const RouteStep& step
@@ -53,7 +53,7 @@ bool run_from_battle_after_warp(ConsoleHandle& console, ProControllerContext& co
 //  Whether `screen` is the overworld of a cave dark without Flash (Rock
 //  Tunnel): black around a lit circle on the player in the middle. The
 //  battle text box detector and the black screen check read its black as
-//  a battle on its way (console B, 2026-11-09, 00.28: the check before
+//  a battle on its way (console B, 2026-11-09, 08.01: the check before
 //  each step ran a 15 s battle loop on it, "not a battle", and an open
 //  leg's stop was placed by it 0 to 3 tiles in, where the battle came at
 //  the leg's end). A battle's wipe is black in the middle too; its text

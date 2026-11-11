@@ -58,21 +58,21 @@ private:
         SingleSwitchProgramEnvironment& env, ProControllerContext& context,
         StoryEnv& story, StoryExecutor& executor, StoryRunPlan plan
     );
-    //  After 00.04 saved under Squirtle's ball (row `ball_row`): the stop
+    //  After 01.05 saved under Squirtle's ball (row `ball_row`): the stop
     //  for Starter RNG, or its attempts run here. Returns the rows to run
     //  after a shiny, or nothing once the run has stopped.
     std::optional<StoryRunPlan> after_starter_ball(
         SingleSwitchProgramEnvironment& env, ProControllerContext& context,
         StoryEnv& story, const StarterRngPlanned& planned, size_t ball_row
     );
-    //  Started at 00.12b (row `first`) with Run Gift RNG in AutoStory on,
+    //  Started at 04.03 (row `first`) with Run Gift RNG in AutoStory on,
     //  the save beside the salesman loaded: Gift RNG's attempts, then for a
     //  shiny the rows after them. As run_story_plan() returns.
     std::optional<std::string> run_from_gift_rng_save(
         SingleSwitchProgramEnvironment& env, ProControllerContext& context,
         StoryEnv& story, StoryExecutor& executor, size_t first
     );
-    //  After 00.12 saved beside the Magikarp salesman (row `salesman_row`):
+    //  After 04.02 saved beside the Magikarp salesman (row `salesman_row`):
     //  Gift RNG's attempts run here. Returns the rows to run after a shiny,
     //  or nothing once the run has stopped.
     std::optional<StoryRunPlan> after_magikarp_salesman(
@@ -91,7 +91,7 @@ private:
     //  Runs SID Helper's steps and Starter RNG's attempts in the program
     //  instead of stopping for them.
     BooleanCheckBoxOption RUN_STARTER_RNG;
-    //  Runs Gift RNG's attempts for the Magikarp in the program after 00.12.
+    //  Runs Gift RNG's attempts for the Magikarp in the program after 04.02.
     BooleanCheckBoxOption RUN_GIFT_RNG;
     StarterRngPlanOptions RNG_PLAN;
     EventNotificationOption NOTIFICATION_SHINY;

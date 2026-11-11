@@ -193,7 +193,7 @@ UnitTestResult test_sim_walker_walks_slide(){
 }
 
 
-//  00.31 r1 (console B, 2026-11-10), Rocket Hideout B3F: off the stairs from
+//  09.01 r1 (console B, 2026-11-10), Rocket Hideout B3F: off the stairs from
 //  B2F, the open leg west along the top corridor ended short, so the hold
 //  south to the wall stayed in the corridor, and the legs through the
 //  spinners after it all ran there: the walk ended a few tiles west of the
@@ -224,7 +224,7 @@ UnitTestResult test_short_leg_off_hideout_stairs(){
 }
 
 
-//  00.31 r1 run 3 (console B, 2026-11-10), Rocket Hideout B3F: "south 2"
+//  09.01 r1 run 3 (console B, 2026-11-10), Rocket Hideout B3F: "south 2"
 //  from (1, 14), at the wall, ended a tile short at (1, 15) with nothing
 //  seen. "east 2", meant to step onto the arrow (3, 16), walked into the
 //  wall east of (1, 15); the position check after the next leg took that
