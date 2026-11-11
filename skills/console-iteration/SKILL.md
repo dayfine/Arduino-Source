@@ -158,7 +158,8 @@ transaction:
    thing is how today's runs were stopped and a save was overwritten.
 6. **Budget**: a cycle is about 3 minutes of console time plus the fix.
    Three cycles without a pass is the hard stop (section 9).
-7. **No advance without a clean pass.** A failed checkpoint is rerun from
+7. **No advance without a clean pass** (and, per the save policy, a
+   verification pass with its save). A failed checkpoint is rerun from
    its own save, after the fix, until the program passes it end to end with
    no hand input. Only then start the next one. The next checkpoint's run
    saves at its start and overwrites this one's save (one slot), so a
@@ -192,7 +193,18 @@ transaction:
   RUNNING; console A is not ours.
 
 **Save state**
-- A checkpoint run **saves at its start**. Starting checkpoint N moves the
+- **Phase decides the save** (`autostory/SAVE_POLICY.md` on the agents
+  branch; each segment's phase is in `autostory/segments.tsv`): *testing* =
+  one run, never saves, then a separate postcondition check; *verification*
+  = 2-3 runs from the same start save, one save only after all passed their
+  postcondition checks; *reproduction* = save at each checkpoint. A failed
+  run never saves. Set the run's save option to match and write the phase
+  in the run notes line. Update `segments.tsv` after each run.
+- **Postconditions are checked, not trusted**: after a run, check position
+  (shot + map), items, flags and party yourself. FRLG 00.31 (2026-11-10)
+  "passed" while the player never left B4F and the Rare Candy was never
+  picked up; its save then overwrote the start save.
+- Until the save option exists, a checkpoint run **saves at its start**. Starting checkpoint N moves the
   console's save to N's start. Start a checkpoint only from its own save,
   and never start one to "take a screenshot".
 - Before every `start`, check that the previous checkpoint passed cleanly

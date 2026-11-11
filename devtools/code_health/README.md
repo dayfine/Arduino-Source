@@ -95,14 +95,14 @@ void load_move_table(){
 `// code-health: allow <check>[,<check>] -- <justification>` lets the listed metrics of one
 function or class exceed their limit. Checks are the metric names in the table above:
 `file_lines`, `function_lines`, `nesting`, `parameters`, `public_methods`, `public_data`,
-`single_method_interface`, `header_symbols`. Two style findings take a tag too: `char_pointer` and
-`overload_prefix`, for a C API or a fixed interface that needs them. Other style and layering
+`single_method_interface`, `header_symbols`. Four style findings take a tag too: `char_pointer`,
+`overload_prefix`, `out_param_order` and `string_concat`, for a C API or a fixed interface that needs them. Other style and layering
 findings have no bypass.
 
 - **Place it** on the function's or class's first line, or in the comment block directly above
   it (only `//` comment and `template` lines between). A `file_lines` tag goes in the first 20
-  lines of the file, and so does a `header_symbols` tag. A `char_pointer` or `overload_prefix` tag goes on
-  the flagged line or in the comment block directly above it. A tag that attaches to nothing fails.
+  lines of the file, and so does a `header_symbols` tag. A style tag (`char_pointer`, `overload_prefix`,
+  `out_param_order`, `string_concat`) goes on the flagged line or in the comment block directly above it, and waives the finding whether it is an error or advisory. A tag that attaches to nothing fails.
 - **Justify it:** the text after `--`, on the tag line itself, must be at least 40 characters and 6 words,
   and say why splitting would make the code worse. Unknown checks, a missing or short
   justification, or a malformed tag fail.
@@ -154,6 +154,8 @@ lexer, not a parser: rules that need types stay in review.
 | Forward `class`/`struct` declaration in a header: new header / existing header | error / advisory | fork AGENTS.md "Forward declarations" |
 | `char*` / `const char*` / `char**` types and named `char` arrays (`char buf[8]`); not `unsigned`/`signed char`, `char8_t`-`char32_t`, `wchar_t`, a plain `char`, `*_cast<char*>`, or `main(argc, argv)` | error (tag: `char_pointer`) | fork AGENTS.md "Strings" |
 | In a header, two declarations of one function in the same scope (namespace or class) whose parameter types are a strict prefix of each other, one of them on an added line; not constructors, operators, `= delete`, variadic packs, or overloads that differ in a parameter's type | error (tag: `overload_prefix`) | fork AGENTS.md "Functions" |
+| Output parameters last: a non-const `T&` parameter before a by-value, `const&` or `&&` one. Not reported: context handles conventionally first (`*Env`/`*Environment`, `*Context`, `*Actions`, `*Backend`, `*Option`, `*Logger`, `ConsoleHandle`, `VideoStream`, `VideoOverlay`, `VideoFeed`, `AudioFeed`, `CancellableScope`, `UnitTestDatabase`, `AsyncCommandSession`, `std::*stream`); pointers, packs and function types (neither input nor output); constructors, operators, `override`/`final`, `= delete`; out-of-class `A::f` definitions in a `.cpp` (the header declaration is checked); a changed line whose signature keeps its parameter kinds | advisory for now, error before upstream (tag: `out_param_order`) | Google "Function Parameter Ordering" |
+| Building a string with `+`: a string literal, `std::to_string(...)` or `std::string(...)` next to a binary `+` (also `s += "a" + b`). Not reported: `+=` appends, `++`, numeric/pointer `+`, files including Qt headers (QString) | advisory for now, error before upstream (tag: `string_concat`) | fork AGENTS.md "Strings": use `std::format` |
 | A comment whose first sentence describes the neighbouring function, none of its own | advisory | CONTRIBUTING; Google "Function Comments" |
 
 Advisories print as `Advisory:` lines and `::warning` annotations and never fail.

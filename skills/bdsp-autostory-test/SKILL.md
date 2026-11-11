@@ -18,6 +18,9 @@ with evidence.
 - Do not use macOS accessibility (AX) tools on the lab app.
 - **Stop at the first failure**, close the game (Lab Console `close_game`), report. No retries to
   "gather proof" of a failure you can already see; retries are only for real randomness.
+- **Save policy:** follow the segment's phase in `autostory/SAVE_POLICY.md` /
+  `autostory/segments.tsv` (testing never saves; verification saves once after 2-3 passes;
+  reproduction saves per checkpoint). Check postconditions yourself after every run.
 - **Saves:** a run may save over the console's save. Never start a **new game** (NEW_GAME_INTRO,
   start checkpoint 00.00) without the user's explicit OK in this conversation: it overwrites
   the only save. Note in the report which save the console holds afterwards.

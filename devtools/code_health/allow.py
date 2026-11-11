@@ -2,10 +2,10 @@
 
 A tag on a function's or class's first line, or in the comment block directly above it, lets
 that function's or class's listed metrics exceed their limit up to a hard ceiling. A
-`file_lines` or `header_symbols` tag goes in the first FILE_TAG_LINES lines. A `char_pointer` or
-`overload_prefix` tag waives that style finding on its own line or the line below its comment
-block. Every bypass is printed, quoting
-its justification, so reviewers see it; malformed, unknown or misplaced tags fail."""
+`file_lines` or `header_symbols` tag goes in the first FILE_TAG_LINES lines. A STYLE_CHECKS tag
+(`char_pointer`, `overload_prefix`, `out_param_order`, `string_concat`) waives that style finding
+on its own line or the line below its comment block. Every bypass is printed, quoting its
+justification, so reviewers see it; malformed, unknown or misplaced tags fail."""
 import re
 from dataclasses import dataclass
 
@@ -13,7 +13,7 @@ from .config import CLASS_LIMITS, HEADER_LIMITS
 from .findings import Finding
 
 # Style findings a tag can bypass; they attach like a function's tag, to the finding's line.
-STYLE_CHECKS = ('char_pointer', 'overload_prefix')
+STYLE_CHECKS = ('char_pointer', 'overload_prefix', 'out_param_order', 'string_concat')
 # File-level metrics: the tag goes in the first FILE_TAG_LINES lines.
 FILE_CHECKS = ('file_lines',) + tuple(HEADER_LIMITS)
 CHECKS = (('file_lines', 'function_lines', 'nesting', 'parameters') + tuple(CLASS_LIMITS)

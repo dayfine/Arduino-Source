@@ -1,5 +1,6 @@
 import unittest
 
+from devtools.code_health import allow
 from devtools.code_health.style import added_lines, check, strip_code
 
 
@@ -26,6 +27,11 @@ class StyleCase(unittest.TestCase):
     def assertFlags(self, fragment, source, path=CPP, count=1):
         messages = [m for m in self.errors(source, path) if fragment in m]
         self.assertEqual(count, len(messages), self.errors(source, path))
+
+    def assertAdvisory(self, fragment, source, path=CPP, count=1):
+        # out_param_order and string_concat are advisory until the open stacks are clean.
+        messages = [m for m in self.warnings(source, path) if fragment in m]
+        self.assertEqual(count, len(messages), self.warnings(source, path))
 
     def assertClean(self, source, path=CPP):
         self.assertEqual([], self.errors(source, path))
@@ -176,6 +182,82 @@ class DeclarationTests(StyleCase):
         previous = wrap('void f(bool a, bool b);')
         self.assertEqual([], self.errors(wrap('void f(bool a, bool b);  '), HEADER, previous))
         self.assertEqual(1, len(self.errors(wrap('void f(bool a, bool b, bool c);'), HEADER, previous)))
+
+
+class OutParamOrderTests(StyleCase):
+    def test_output_reference_before_an_input(self):
+        self.assertAdvisory("output parameter 'AutoStoryStats& stats'",
+                         wrap('void record_story_counts(AutoStoryStats& stats, const StoryRunCounts& counts);'),
+                         HEADER)
+        self.assertAdvisory("'std::vector<std::string>& problems'",
+                         wrap('static void lint(std::vector<std::string>& problems, const Event& event){\n}'))
+        self.assertAdvisory("'RunState& state'", wrap('Outcome run(ConsoleHandle& console, RunState& state, int x);'),
+                         HEADER)
+        self.assertAdvisory("'Pose& pose'", wrap('struct A{\n    void apply(Pose& pose, Move&& move);\n};'), HEADER)
+        self.assertAdvisory("'Lab&'", wrap('void f(Lab&, std::string name);'), HEADER)
+
+    def test_inputs_first_and_context_handles_pass(self):
+        self.assertClean(wrap(
+            'void record_story_counts(const StoryRunCounts& counts, AutoStoryStats& stats);\n'
+            'void run(SingleSwitchProgramEnvironment& env, ProControllerContext& context, int x);\n'
+            'void a(ConsoleHandle& console, VideoStream& stream, Logger& logger, const Box& box);\n'
+            'void b(CancellableScope& scope, VideoOverlay& overlay, std::string text);\n'
+            'void c(StoryEnv& env, ItemUseActions& actions, const Step& step);\n'
+            'void d(EventNotificationOption& notify, PlzaBackend& backend, double degrees);\n'
+            'void e(Pokemon::ProgramEnvironment& env, UnitTestDatabase& db, size_t n);\n'
+            'void f(std::ostream& os, const Table& table);\n'
+            'void g(Image* out, const Box& box);\n'
+            'void h(Stats& stats, Counts& counts);\n'
+            'void i(std::function<void(Stats&)> callback, int x);'), HEADER)
+
+    def test_operators_constructors_overrides_and_cpp_member_definitions_pass(self):
+        self.assertClean(wrap(
+            'std::ostream& operator<<(std::ostream& os, const Pose& pose);\n'
+            'struct A : B{\n    A(QWidget& parent, int x);\n    A& operator=(A& other, int);\n'
+            '    Outcome run(RunState& state, const Step& step) override;\n'
+            '    void f(Out& out, int x) = delete;\n};\n'
+            'A::A(QWidget& parent, int x){\n}'), HEADER)
+        self.assertEqual([], [m for m in self.warnings(wrap('Outcome A::run(RunState& state, const Step& step){\n}'))
+                              if 'output parameter' in m])
+
+    def test_unchanged_parameter_kinds_are_not_reported_when_the_line_changes(self):
+        previous = wrap('void f(Stats& stats, int counts);')
+        self.assertEqual([], self.warnings(wrap('void f(Stats& totals, int counts);'), HEADER, previous))
+        self.assertEqual(1, len(self.warnings(wrap('void f(Stats& stats, int counts, int more);'), HEADER, previous)))
+
+
+class StringConcatTests(StyleCase):
+    def test_literal_to_string_and_string_concatenation(self):
+        for line in ('std::string s = "Expected " + name;',
+                     'log(prefix + ": done");',
+                     'auto s = std::to_string(n) + suffix;',
+                     'auto s = label + std::to_string(n);',
+                     'auto s = std::string("a") + b;',
+                     'auto s = std::string(view) + b;',
+                     'text += "\\n" + problem;',
+                     'auto s = a\n    + "tail";',
+                     'auto s = u8"x" + b;'):
+            with self.subTest(line=line):
+                self.assertAdvisory('std::format', in_function(line))
+
+    def test_appends_arithmetic_and_qt_files_pass(self):
+        self.assertClean(in_function(
+            'text += "suffix";\ntext += name;\nint k = a + 1;\nconst char c = \'+\';\n'
+            'auto p = data + offset;\ni++;\nlog("a + b");\nauto s = std::format("{} {}", a, b);\n'
+            'auto t = std::to_string(n);\nauto u = std::string("a");\nf(std::to_string(n), "x");'))
+        self.assertEqual([], self.warnings('#include <QString>\n' + in_function('QString s = "a" + b;')))
+
+    def test_allow_tags_waive_both_rules(self):
+        source = wrap('// code-health: allow string_concat -- the Qt translation macro needs a plain concat\n'
+                      'auto s = "a" + b;\n'
+                      '// code-health: allow out_param_order -- the action registry fixes this callback shape\n'
+                      'Outcome take_warp(Lab& lab, const Call& call);')
+        allowances, tag_errors = allow.parse(HEADER, source)
+        self.assertEqual([], tag_errors)
+        found = [f for f in check(HEADER, source, None)[1] if f.check]
+        self.assertEqual({'string_concat', 'out_param_order'}, {f.check for f in found})
+        kept, notices, unattached = allow.waive(HEADER, source, allowances, found)
+        self.assertEqual(([], 2, []), (kept, len(notices), unattached))
 
 
 class CommentTests(StyleCase):
