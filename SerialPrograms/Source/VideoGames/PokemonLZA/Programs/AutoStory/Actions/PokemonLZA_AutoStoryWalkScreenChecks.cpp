@@ -1,4 +1,4 @@
-/*  PokemonLZA AutoStory - Guarded walks
+/*  PokemonLZA AutoStory - Walk screen checks
  *
  *  From: https://github.com/PokemonAutomation/
  *
@@ -7,7 +7,7 @@
 #include <format>
 #include <string>
 #include <string_view>
-#include "PokemonLZA_AutoStoryGuardedWalks.h"
+#include "PokemonLZA_AutoStoryWalkScreenChecks.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

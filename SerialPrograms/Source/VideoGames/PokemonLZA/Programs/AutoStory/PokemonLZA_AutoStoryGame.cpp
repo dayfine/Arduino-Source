@@ -6,6 +6,8 @@
 
 #include <cstdint>
 #include <format>
+#include <functional>
+#include <map>
 #include <optional>
 #include <set>
 #include <string_view>
@@ -20,14 +22,14 @@
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryActionRegistry.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_GameEntry.h"
 #include "VideoGames/PokemonLZA/Resources/PokemonLZA_Locations.h"
-#include "PokemonLZA_AutoStoryActions.h"
-#include "PokemonLZA_AutoStoryCatches.h"
-#include "PokemonLZA_AutoStoryDialogs.h"
-#include "PokemonLZA_AutoStoryGuardedWalks.h"
-#include "PokemonLZA_AutoStoryMoves.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryActions.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryCatches.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryDialogs.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMoves.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryScenes.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryWalkScreenChecks.h"
 #include "PokemonLZA_AutoStorySceneMachine.h"
-#include "PokemonLZA_AutoStoryScenes.h"
-#include "PokemonLZA_AutoStoryTable.h"
+#include "PokemonLZA_AutoStoryStepValidator.h"
 #include "PokemonLZA_AutoStoryGame.h"
 
 namespace PokemonAutomation{
@@ -59,133 +61,39 @@ namespace{
 
 using IntegerRows = std::vector<std::vector<int64_t>>;
 
-//  approach_starter's arg for each starter: the walk to it.
-std::string_view starter_key(StarterChoice starter){
-    switch (starter){
-    case StarterChoice::CHIKORITA:
-        return "chikorita";
-    case StarterChoice::TEPIG:
-        return "tepig";
-    case StarterChoice::TOTODILE:
-        return "totodile";
-    }
-    return "";
-}
+//  What a console action does with the run's console and the step's args.
+using ConsoleBody = std::function<void(StoryEnv& env, const StoryActionArgs& args)>;
 
-constexpr StarterChoice STARTERS[] = {StarterChoice::CHIKORITA, StarterChoice::TEPIG, StarterChoice::TOTODILE};
+//  A GAME action that only presses through the game's own screens: one
+//  call on the console, with no args.
+using ConsoleStep = void (*)(StoryEnv& env);
 
-//  A walk's "end" arg as the event it ends on: a fade.
-std::optional<Pokemon::ScreenEvent> walk_end_event(std::string_view end){
-    if (end == "fade_white"){
-        return Pokemon::ScreenEvent::FADE_WHITE;
-    }
-    if (end == "fade_black"){
-        return Pokemon::ScreenEvent::FADE_BLACK;
-    }
-    return std::nullopt;
-}
-
-//  What is wrong with the legs `rows` of step `step`: each a [turn, ms]
-//  pair turning at most half a turn either way and walking no negative
-//  time, and at least one that walks.
-void add_legs_errors(std::string_view step, std::string_view key, const IntegerRows& rows, std::vector<std::string>& errors){
-    if (rows.empty()){
-        errors.push_back(std::format("{}: {} has no legs", step, key));
-        return;
-    }
-    bool goes = false;
-    for (size_t i = 0; i < rows.size(); i++){
-        const std::vector<int64_t>& row = rows[i];
-        if (row.size() != 2){
-            errors.push_back(std::format("{}: {} leg {} needs 2 numbers [turn, ms], has {}", step, key, i, row.size()));
-            continue;
-        }
-        if (row[0] < -180 || row[0] > 180){
-            errors.push_back(std::format("{}: {} leg {} turns {} deg, expected -180 to 180", step, key, i, row[0]));
-        }
-        if (row[1] < 0){
-            errors.push_back(std::format("{}: {} leg {} walks {} ms, expected 0 or more", step, key, i, row[1]));
-        }
-        goes = goes || row[1] > 0;
-    }
-    if (!goes){
-        errors.push_back(std::format("{}: {} walks nowhere", step, key));
-    }
-}
-
-//  What is wrong with an "approach_starter" step's walks: it needs one.
-std::vector<std::string> starter_walk_errors(const Pokemon::StoryStep& step){
-    std::vector<std::string> errors;
-    bool any = false;
-    for (StarterChoice starter : STARTERS){
-        const auto legs = step.args.find(starter_key(starter));
-        if (legs != step.args.end()){
-            any = true;
-            add_legs_errors(step.name, legs->first, std::get<IntegerRows>(legs->second), errors);
-        }
-    }
-    if (!any){
-        errors.push_back(std::format("{}: no walk to any starter", step.name));
-    }
-    return errors;
-}
-
-//  What is wrong with the args of a "walk" or "approach_starter" step;
-//  nothing for any other step.
-std::vector<std::string> walk_errors(const Pokemon::StoryStep& step){
-    std::vector<std::string> errors;
-    if (step.kind != StoryStepKind::GAME){
-        return errors;
-    }
-    if (step.action == "approach_starter"){
-        return starter_walk_errors(step);
-    }
-    if (step.action != "walk"){
-        return errors;
-    }
-    const auto legs = step.args.find("legs");
-    if (legs == step.args.end()){
-        return errors;
-    }
-    const IntegerRows& rows = std::get<IntegerRows>(legs->second);
-    add_legs_errors(step.name, "legs", rows, errors);
-    const auto end = step.args.find("end");
-    if (end != step.args.end()){
-        const std::string& name = std::get<std::string>(end->second);
-        if (!walk_end_event(name)){
-            errors.push_back(std::format("{}: end {} is not \"fade_white\" or \"fade_black\"", step.name, name));
-        }
-        if (rows.empty() || rows.back().size() != 2 || rows.back()[1] <= 0){
-            errors.push_back(std::format("{}: the last leg has no walk to hold until the end", step.name));
-        }
-        const auto held = step.args.find("held");
-        if (held != step.args.end() && std::get<bool>(held->second)){
-            errors.push_back(std::format("{}: a held walk cannot end on a fade yet", step.name));
-        }
-    }
-    const auto wait = step.args.find("wait_ms");
-    if (wait != step.args.end() && std::get<int64_t>(wait->second) < 0){
-        errors.push_back(std::format("{}: wait_ms {} is negative", step.name, std::get<int64_t>(wait->second)));
-    }
-    const auto heading = step.args.find("heading");
-    if (heading != step.args.end()){
-        const int64_t degrees = std::get<int64_t>(heading->second);
-        if (degrees < 0 || degrees >= 360){
-            errors.push_back(std::format("{}: heading {} deg, expected 0 to 359", step.name, degrees));
-        }
-    }
-    return errors;
-}
-
-//  The same that work through the game's own screens: console_only.
-const std::vector<std::string>& console_game_actions(){
-    static const std::vector<std::string> actions{
-        "story_battle",
-        "new_game_language", "pick_look", "type_player_name",
-        "story_battle_start",
-        "talk_through_map_screen", "talk_to_pokedex_screen", "climb_ladder",
-        "catch_tutorial", "battle_then_catch", "catch_in_zone",
-        "choose_0", "choose_1",
+//  The GAME actions that are one ConsoleStep each, by name: console_only.
+const std::map<std::string, ConsoleStep, std::less<>>& console_game_actions(){
+    static const std::map<std::string, ConsoleStep, std::less<>> actions{
+        {"new_game_language", [](StoryEnv& env){ new_game_language(env.env.console, env.context); }},
+        {"pick_look", [](StoryEnv& env){ pick_first_look(env.env.console, env.context); }},
+        {"type_player_name", [](StoryEnv& env){ type_player_name(env.env.console, env.context, env.player_name); }},
+        {"choose_0", [](StoryEnv& env){ choose_dialog_option(env.env.console, env.context, 0); }},
+        {"choose_1", [](StoryEnv& env){ choose_dialog_option(env.env.console, env.context, 1); }},
+        {"story_battle_start", [](StoryEnv& env){
+            mash_scene(env.env.console, env.context, SceneMashGoal::BATTLE, BUTTON_A, 90s);
+        }},
+        {"story_battle", [](StoryEnv& env){
+            fight_battle_in_progress(env.env, env.env.console, env.context, env.battle_ai, 120s);
+        }},
+        {"talk_through_map_screen", [](StoryEnv& env){ talk_through_map_screen(env.env.console, env.context); }},
+        //  B through the talk closes the Pokedex entry (A only plays its
+        //  motions).
+        {"talk_to_pokedex_screen", [](StoryEnv& env){
+            mash_scene(env.env.console, env.context, SceneMashGoal::OVERWORLD, BUTTON_B, 90s);
+        }},
+        {"climb_ladder", [](StoryEnv& env){ climb_ladder(env.env.console, env.context); }},
+        {"catch_tutorial", [](StoryEnv& env){ catch_tutorial(env.env.console, env.context, 6); }},
+        {"battle_then_catch", [](StoryEnv& env){
+            battle_then_catch(env.env, env.env.console, env.context, env.battle_ai, 6);
+        }},
+        {"catch_in_zone", [](StoryEnv& env){ catch_in_zone(env.env.console, env.context, 4, 15); }},
     };
     return actions;
 }
@@ -243,22 +151,20 @@ StoryActionSpec walk_spec(){
 //  "approach_starter": the walk to each starter, by the starter's key.
 StoryActionSpec approach_starter_spec(){
     std::vector<StoryArgSpec> args;
-    for (StarterChoice starter : STARTERS){
+    for (StarterChoice starter : STARTER_CHOICES){
         args.push_back(legs_arg(std::string(starter_key(starter)), false, "the walk to this starter, as a walk's legs"));
     }
     return game_spec("approach_starter", std::move(args));
 }
 
-//  What a console action does with the run's console and the step's args.
-using ConsoleBody = std::function<void(StoryEnv& env, const StoryActionArgs& args)>;
 
 
 //  Builds the handlers. The console actions hold the console; without one
 //  (a test, a simulation) their specs are console_only and the engine
 //  refuses them before their handler.
-class PlzaActions{
+class PlzaHandlers{
 public:
-    PlzaActions(StoryEnv* env, StarterChoice starter)
+    PlzaHandlers(StoryEnv* env, StarterChoice starter)
         : m_env(env)
         , m_starter(starter)
     {
@@ -470,80 +376,43 @@ Handler platform_handler(PlatformWait wait){
     };
 }
 
-//  mash_scene() to `goal`, pressing `button` through the text.
-//  The console actions with no args that call one function.
-void run_console_action(StoryEnv& env, std::string_view name){
-    ConsoleHandle& console = env.env.console;
-    if (name == "story_battle"){
-        fight_battle_in_progress(env.env, console, env.context, env.battle_ai, 120s);
-    }else if (name == "catch_tutorial"){
-        catch_tutorial(console, env.context, 6);
-    }else if (name == "battle_then_catch"){
-        battle_then_catch(env.env, console, env.context, env.battle_ai, 6);
-    }else if (name == "catch_in_zone"){
-        catch_in_zone(console, env.context, 4, 15);
-    }else if (name == "new_game_language"){
-        new_game_language(console, env.context);
-    }else if (name == "pick_look"){
-        pick_first_look(console, env.context);
-    }else if (name == "type_player_name"){
-        type_player_name(console, env.context, env.player_name);
-    }else if (name == "talk_through_map_screen"){
-        talk_through_map_screen(console, env.context);
-    }else{
-        climb_ladder(console, env.context);
-    }
-}
-
-ConsoleBody mash(SceneMashGoal goal, Button button, Milliseconds timeout){
-    return [=](StoryEnv& env, const StoryActionArgs&){
-        mash_scene(env.env.console, env.context, goal, button, timeout);
+//  The GAME actions that are not ConsoleSteps, by name: each one's handler
+//  from the run's handlers.
+using HandlerOf = Handler (*)(const PlzaHandlers& handlers);
+const std::map<std::string, HandlerOf, std::less<>>& story_game_actions(){
+    static const std::map<std::string, HandlerOf, std::less<>> actions{
+        {"walk", [](const PlzaHandlers& handlers){ return handlers.walk(); }},
+        {"approach_starter", [](const PlzaHandlers& handlers){ return handlers.approach_starter(); }},
+        {"mash_to_move_hints", [](const PlzaHandlers&){ return PlzaHandlers::move_hints(); }},
+        {"text_to_choice", [](const PlzaHandlers&){ return PlzaHandlers::text_to_choice(); }},
+        {"wait_for_platform", [](const PlzaHandlers&){ return platform_handler(PlatformWait::PLATFORM_ONLY); }},
+        {"opening_to_platform", [](const PlzaHandlers&){ return platform_handler(PlatformWait::AFTER_AUTOSAVE); }},
     };
+    return actions;
 }
 
-//  The handler of the GAME action `name`.
-Handler game_handler(const PlzaActions& make, const std::string& name){
+//  The handler of the GAME action `name`: a todo, a ConsoleStep or one of
+//  story_game_actions().
+Handler game_handler(const PlzaHandlers& handlers, const std::string& name){
     const auto todo = story_actions_not_implemented().find(name);
     if (todo != story_actions_not_implemented().end()){
-        return PlzaActions::not_implemented(name, todo->second);
+        return PlzaHandlers::not_implemented(name, todo->second);
     }
-    if (name == "walk"){
-        return make.walk();
-    }
-    if (name == "choose_0" || name == "choose_1"){
-        const size_t row = name == "choose_0" ? 0 : 1;
-        return make.console(name, [row](StoryEnv& env, const StoryActionArgs&){
-            choose_dialog_option(env.env.console, env.context, row);
+    const auto step = console_game_actions().find(name);
+    if (step != console_game_actions().end()){
+        return handlers.console(name, [step = step->second](StoryEnv& env, const StoryActionArgs&){
+            step(env);
         });
     }
-    if (name == "approach_starter"){
-        return make.approach_starter();
-    }
-    if (name == "mash_to_move_hints"){
-        return PlzaActions::move_hints();
-    }
-    if (name == "text_to_choice"){
-        return PlzaActions::text_to_choice();
-    }
-    if (name == "story_battle_start"){
-        return make.console(name, mash(SceneMashGoal::BATTLE, BUTTON_A, 90s));
-    }
-    if (name == "talk_to_pokedex_screen"){
-        //  B through the talk closes the Pokedex entry (A only plays its
-        //  motions).
-        return make.console(name, mash(SceneMashGoal::OVERWORLD, BUTTON_B, 90s));
-    }
-    return make.console(name, [name](StoryEnv& env, const StoryActionArgs&){
-        run_console_action(env, name);
-    });
+    return story_game_actions().at(name)(handlers);
 }
 
 //  The handler of each of plza_story_action_specs(), by kind and name.
-Handler plza_handler(const PlzaActions& make, const StoryActionSpec& spec){
+Handler plza_handler(const PlzaHandlers& handlers, const StoryActionSpec& spec){
     const std::string& name = spec.name;
     switch (spec.kind){
     case StoryStepKind::ROUTE:{
-        Handler fly = make.console(name, [](StoryEnv& env, const StoryActionArgs& args){
+        Handler fly = handlers.console(name, [](StoryEnv& env, const StoryActionArgs& args){
             const Pokemon::GridPose& target = Pokemon::story_arg<Pokemon::GridPose>(args, "target");
             fly_to(env.env.console, env.context, env.language, get_location_item_from_slug(target.map).location);
         });
@@ -557,33 +426,22 @@ Handler plza_handler(const PlzaActions& make, const StoryActionSpec& spec){
         };
     }
     case StoryStepKind::TALK:
-        return make.console(name, [](StoryEnv& env, const StoryActionArgs&){
+        return handlers.console(name, [](StoryEnv& env, const StoryActionArgs&){
             talk_to_facing(env.env.console, env.context);
         });
     case StoryStepKind::ANSWER:
-        return make.console(name, [](StoryEnv& env, const StoryActionArgs& args){
+        return handlers.console(name, [](StoryEnv& env, const StoryActionArgs& args){
             choose_dialog_option(env.env.console, env.context, Pokemon::story_arg<bool>(args, "yes") ? 0 : 1);
         });
-    case StoryStepKind::MASH:
+    case StoryStepKind::MASH:{
         //  120 s: a scene can hold a ~25 s black screen (02.06's first evening).
-        return make.console(name, mash(SceneMashGoal::OVERWORLD, name == "a" ? BUTTON_A : BUTTON_B, 120s));
-    case StoryStepKind::HEAL:
-        return make.console(name, [](StoryEnv& env, const StoryActionArgs&){
-            heal_at_pokemon_center(env.env.console, env.context);
+        const Button button = name == "a" ? BUTTON_A : BUTTON_B;
+        return handlers.console(name, [button](StoryEnv& env, const StoryActionArgs&){
+            mash_scene(env.env.console, env.context, SceneMashGoal::OVERWORLD, button, 120s);
         });
-    case StoryStepKind::SHOP:
-        return make.console(name, [](StoryEnv& env, const StoryActionArgs& args){
-            std::vector<std::string> items;
-            for (const Pokemon::StoryItem& item : Pokemon::story_arg<std::vector<Pokemon::StoryItem>>(args, "items")){
-                items.push_back(item.item);
-            }
-            buy_items(env.env.console, env.context, items);
-        });
+    }
     default:
-        if (name == "wait_for_platform" || name == "opening_to_platform"){
-            return platform_handler(name == "wait_for_platform" ? PlatformWait::PLATFORM_ONLY : PlatformWait::AFTER_AUTOSAVE);
-        }
-        return game_handler(make, name);
+        return game_handler(handlers, name);
     }
 }
 
@@ -602,11 +460,11 @@ const Pokemon::StoryActionRegistry<ZonePose>& spec_registry(){
 
 //  PLZA's actions over `env` (none: no console), with no save or reload.
 Pokemon::StoryGame<ZonePose> plza_game_actions(StoryEnv* env, StarterChoice starter){
-    const PlzaActions make(env, starter);
+    const PlzaHandlers handlers(env, starter);
     Pokemon::StoryGame<ZonePose> game;
     game.id = "plza";
     for (StoryActionSpec& spec : plza_story_action_specs()){
-        Handler handler = plza_handler(make, spec);
+        Handler handler = plza_handler(handlers, spec);
         game.actions.push_back({.spec = std::move(spec), .handler = std::move(handler)});
     }
     return game;
@@ -627,8 +485,6 @@ std::vector<StoryActionSpec> plza_story_action_specs(){
         console_only(builtin_spec(StoryStepKind::ANSWER, "answer")),
         console_only(builtin_spec(StoryStepKind::MASH, "mash")),
         console_only(StoryActionSpec{.kind = StoryStepKind::MASH, .name = "a", .args = {}}),
-        console_only(StoryActionSpec{.kind = StoryStepKind::HEAL, .name = "heal", .args = {}}),
-        console_only(builtin_spec(StoryStepKind::SHOP, "shop")),
         game_spec("mash_to_move_hints", {
             optional_ms("min_length_ms", 0, "the scene's rough length: no quiet failure before it"),
             optional_ms("quiet_ms", 60000, "nothing busy and no control this long fails the step"),
@@ -654,7 +510,7 @@ std::vector<StoryActionSpec> plza_story_action_specs(){
             optional_ms("timeout_ms", 240000, "no autosave and platform this long fails the step"),
         }),
     };
-    for (const std::string& name : console_game_actions()){
+    for (const auto& [name, step] : console_game_actions()){
         specs.push_back(console_only(game_spec(name)));
     }
     specs.push_back(walk_spec());
@@ -675,7 +531,7 @@ std::vector<std::string> plza_story_lint(const Pokemon::StoryCheckpoint& checkpo
         return errors;
     }
     for (const Pokemon::StoryStep& step : checkpoint.steps){
-        for (std::string& error : walk_errors(step)){
+        for (std::string& error : plza_step_arg_errors(step)){
             errors.push_back(std::format("{}: {}", checkpoint.id, error));
         }
     }

@@ -19,7 +19,7 @@
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
 #include "VideoGames/PokemonLZA/Resources/PokemonLZA_Locations.h"
-#include "PokemonLZA_AutoStoryBackend.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBackend.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

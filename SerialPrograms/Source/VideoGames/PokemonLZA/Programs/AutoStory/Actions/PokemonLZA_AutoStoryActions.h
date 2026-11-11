@@ -2,15 +2,14 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The console actions the story executor (PokemonLZA_AutoStoryExecutor.h)
- *  is made of, with the dialogue ones in PokemonLZA_AutoStoryDialogs.h and
- *  the walks in PokemonLZA_AutoStoryMoves.h. Each is a short function over the LZA navigation, battle and
- *  detector code that already exists (BasicNavigation, FastTravelNavigation,
- *  TrainerBattle, the dialog and selection-arrow detectors). An action the
- *  game has no code for yet throws StoryActionNotImplemented, naming what is
- *  missing, instead of pressing buttons blind.
- *
- *  None of these has run on a console as a story step yet.
+ *  The battle and save actions of the story game (PokemonLZA_AutoStoryGame.h),
+ *  with the dialogue ones in PokemonLZA_AutoStoryDialogs.h, the walks in
+ *  PokemonLZA_AutoStoryMoves.h and the scenes in PokemonLZA_AutoStoryScenes.h.
+ *  Each is a short function over the LZA battle and menu code that already
+ *  exists (TrainerBattle, BasicNavigation, the dialog and selection-arrow
+ *  detectors). An action the game has no code for yet throws
+ *  StoryActionNotImplemented, naming what is missing, instead of pressing
+ *  buttons blind.
  *
  */
 
@@ -19,8 +18,6 @@
 
 #include <chrono>
 #include <string>
-#include <string_view>
-#include <vector>
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Tools/ProgramEnvironment.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
@@ -45,10 +42,6 @@ public:
     }
 };
 
-//  Throws StoryActionNotImplemented for `action`, with `todo` saying what
-//  code it is waiting for.
-[[noreturn]] void throw_not_implemented(ConsoleHandle& console, std::string_view action, std::string_view todo);
-
 
 //  From a trainer's or a wild Pokemon's battle starting, fights it with
 //  TrainerBattleState (`battle_ai`'s moves), pressing B through the text
@@ -70,14 +63,6 @@ void fight_battle_in_progress(
     ProgramEnvironment& env, ConsoleHandle& console, ProControllerContext& context,
     BattleAIOption& battle_ai, std::chrono::seconds timeout
 );
-
-//  At a Pokemon Center: heal the party. Not implemented: throws
-//  StoryActionNotImplemented.
-void heal_at_pokemon_center(ConsoleHandle& console, ProControllerContext& context);
-
-//  At a shop counter: buy `items`. Not implemented: throws
-//  StoryActionNotImplemented.
-void buy_items(ConsoleHandle& console, ProControllerContext& context, const std::vector<std::string>& items);
 
 //  From the overworld, saves the game (save_game_to_menu()) and returns to
 //  the overworld. The first menu of a playthrough shows a save tutorial

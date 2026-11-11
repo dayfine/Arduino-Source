@@ -16,7 +16,7 @@
 #include "PokemonLZA_AutoStoryGame.h"
 #include "PokemonLZA_AutoStoryObservation.h"
 #include "PokemonLZA_AutoStorySceneMachine.h"
-#include "PokemonLZA_AutoStoryTable.h"
+#include "PokemonLZA_AutoStoryStoryFiles.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

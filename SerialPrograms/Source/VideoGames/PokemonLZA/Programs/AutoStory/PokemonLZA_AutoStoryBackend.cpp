@@ -15,7 +15,7 @@
 #include "CommonFramework/ImageTools/ImageDiff.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_BasicNavigation.h"
-#include "PokemonLZA_AutoStoryActions.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryActions.h"
 #include "PokemonLZA_AutoStoryBackend.h"
 
 namespace PokemonAutomation{

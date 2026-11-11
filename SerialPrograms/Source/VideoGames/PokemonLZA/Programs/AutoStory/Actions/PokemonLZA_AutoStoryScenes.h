@@ -19,7 +19,7 @@
 #include "NintendoSwitch/Controllers/NintendoSwitch_ControllerButtons.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
-#include "PokemonLZA_AutoStoryScreenEvents.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryScreenEvents.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
