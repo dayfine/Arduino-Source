@@ -475,6 +475,42 @@ UnitTestResult test_poses_chain(Logger&){
     return true;
 }
 
+//  Walks are planned on the maps: a LEGS step ("east 6, north 18") is
+//  left only where no route can do its job, each with its reason.
+UnitTestResult test_no_hand_written_legs(Logger&){
+    const std::map<std::string, std::string> exceptions = {
+        {"00.01/off_barrys_mat", "steps off a door's mat, where no route starts"},
+        {"00.03/into_sandgem", "walks until Dawn's scene starts, wherever it starts"},
+        {"00.04/to_route_201", "runs until Route 201's banner, wherever it shows"},
+        {"00.04/to_moms_call", "walks until Mom calls, wherever she calls"},
+        {"00.05/up_to_barry", "starts inside the School's door, from no known tile"},
+        {"01.03/down_the_hall", "steps off the hall's warp tile, where no route starts"},
+        {"01.03/down_to_the_boulder", "steps off the coal room's warp tile, where no route starts"},
+        {"01.03/up_the_hall", "steps off the hall's warp tile, where no route starts"},
+        {"01.03/up_to_the_mines_sign", "steps off the mine's exit, where no route starts"},
+        {"01.11/up_to_the_old_woman", "walks until the old woman stops us"},
+    };
+    std::set<std::string> seen;
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        for (const StoryStep& step : row.steps){
+            if (step.kind != StoryStepKind::LEGS){
+                continue;
+            }
+            const std::string key = row.id + "/" + step.name;
+            if (!exceptions.contains(key)){
+                return key + ": hand-written legs; plan a route to where they end.";
+            }
+            seen.insert(key);
+        }
+    }
+    for (const auto& item : exceptions){
+        if (!seen.contains(item.first)){
+            return item.first + ": listed as an exception, but no such LEGS step.";
+        }
+    }
+    return true;
+}
+
 //  With no reader for the game's language, the reads that used text give
 //  way: a banner or save card that showed matches any map.
 UnitTestResult test_no_text_reader(Logger&){
@@ -550,6 +586,10 @@ const AutoStoryStorySimulationCase AUTO_STORY_STORY_SIMULATION_CASES[] = {
     },
     {
         .input = {"no text reader for the game's language", test_no_text_reader},
+        .expectation = {},
+    },
+    {
+        .input = {"no hand-written legs but the listed ones", test_no_hand_written_legs},
         .expectation = {},
     },
 };
