@@ -374,6 +374,7 @@ private:
         Spread parent;
         PlannedLeg leg;
         bool done = false;
+        size_t open_run = 0;    //  tiles of the straight open run ending here
     };
     using Entry = std::pair<long long, Spread>;
     struct EntryGreater{
@@ -402,18 +403,26 @@ private:
         if (expansion.next.size() > m_costs.max_spread || expansion.next == spread){
             return;
         }
+        size_t open_run = expansion.leg.ends_at_wall ? 0 : expansion.leg.tiles;
         if (spread != m_start){
-            const TileLeg& prev = m_nodes.at(spread).leg.leg;
+            const Node& from = m_nodes.at(spread);
+            const TileLeg& prev = from.leg.leg;
             if (expansion.leg.direction == prev.direction && !prev.ends_at_wall){
                 expansion.cost -= m_costs.per_leg;
+                if (!expansion.leg.ends_at_wall){
+                    open_run += from.open_run;
+                }
             }
+        }
+        if (m_costs.max_open_run > 0 && open_run > (size_t)m_costs.max_open_run){
+            return;
         }
         const long long total = cost + expansion.cost;
         auto iter = m_nodes.find(expansion.next);
         if (iter != m_nodes.end() && iter->second.cost <= total){
             return;
         }
-        m_nodes[expansion.next] = Node{total, spread, PlannedLeg{expansion.leg, expansion.next}};
+        m_nodes[expansion.next] = Node{total, spread, PlannedLeg{expansion.leg, expansion.next}, false, open_run};
         m_queue.emplace(total, std::move(expansion.next));
     }
 
