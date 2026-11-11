@@ -71,8 +71,8 @@ void fight_battle_in_progress(
 void save_story_game(ConsoleHandle& console, ProControllerContext& context);
 
 //  From the overworld: the main menu, DOWN x3 to "Mable's Research" (as
-//  recorded on 2026-11-09), A. A first cut that stops on her research
-//  page; the Rewards page and the claim come once a run has shown them.
+//  recorded on 2026-11-09), A; through Mable's lines on the reward, back
+//  to the overworld.
 void claim_mable_research_reward(ConsoleHandle& console, ProControllerContext& context);
 
 

@@ -183,7 +183,34 @@ void claim_mable_research_reward(ConsoleHandle& console, ProControllerContext& c
         pbf_press_dpad(context, DPAD_DOWN, 160ms, 400ms);
     }
     pbf_press_button(context, BUTTON_A, 160ms, 2840ms);
-    context.wait_for_all_requests();
+
+    //  The page opens on Rewards under Mable's lines on the level 2 reward,
+    //  TM004 Rock Smash (console B, 2026-11-10): A while a dialog shows,
+    //  until none has for 3 s, then B back to the overworld.
+    FlatWhiteDialogDetector white_dialog;
+    BlueDialogDetector blue_dialog;
+    TealDialogDetector teal_dialog;
+    ItemReceiveDetector item_receive;
+    const WallClock deadline = current_time() + 60s;
+    WallClock last_dialog = current_time();
+    while (current_time() < last_dialog + 3s){
+        context.wait_for_all_requests();
+        if (current_time() > deadline){
+            OperationFailedExceptionWithScreenshot::fire(
+                ErrorReportMode::SEND_ERROR_REPORT,
+                "claim_mable_research_reward(): Mable's lines did not end within 60 s.",
+                console
+            );
+        }
+        const VideoSnapshot screen = console.video().snapshot();
+        if (white_dialog.detect(screen) || blue_dialog.detect(screen) || teal_dialog.detect(screen) || item_receive.detect(screen)){
+            last_dialog = current_time();
+            pbf_press_button(context, BUTTON_A, 160ms, 840ms);
+        }else{
+            context.wait_for(250ms);
+        }
+    }
+    mash_to_overworld(console, context, BUTTON_B, 20s);
 }
 
 
