@@ -31,7 +31,7 @@ struct StarterRngLoopInput{
 };
 
 struct StarterRngLoopExpectation{
-    const char* description;
+    std::string_view description;
 };
 
 struct StarterRngLoopTestCase{

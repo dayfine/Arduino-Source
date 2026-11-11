@@ -15,13 +15,6 @@ namespace PokemonFRLG{
 
 
 StepOutcome count_bike_taps(const RouteStep& step, const BikeTapCalls& calls){
-    if (step.blind_taps > 0){
-        calls.log(std::format("Taps: {} blind tap(s) for {}, not checked.", step.blind_taps, step.tiles));
-        for (int press = 1; press <= step.blind_taps; press++){
-            calls.tap(press - (step.blind_taps - step.tiles));
-        }
-        return StepOutcome{};
-    }
     int moved = 0;
     for (int tap = 1; tap <= step.tiles; tap++){
         BikeTap result = calls.tap(tap);

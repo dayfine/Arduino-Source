@@ -8,6 +8,7 @@
  *
  */
 
+#include <format>
 #include <algorithm>
 #include <optional>
 #include <string>
@@ -65,7 +66,7 @@ public:
         Pokemon::StoryStep step;
         step.kind = kind;
         step.name = "synthetic";
-        return m_executor.run(state, step);
+        return m_executor.run(step, state);
     }
 
     Pokemon::RunState state{.pose = to_pose(StoryPose{"Route1", TilePos{1, 2}, std::nullopt})};
@@ -85,16 +86,16 @@ private:
         return out;
     }
     StepInterruptActions noting(){
-        const auto note = [this](const char* kind){
-            return [this, kind](Pokemon::RunState&, const Pokemon::InterruptVerdict&){
-                trace.push_back(std::string("clear ") + kind);
+        const auto note = [this](std::string_view kind){
+            return [this, kind](const Pokemon::InterruptVerdict&, Pokemon::RunState&){
+                trace.push_back(std::format("clear {}", kind));
                 return Pokemon::outcome_ok();
             };
         };
         return {.wild = note("wild"), .trainer = note("trainer"), .dialog = note("dialog"), .warp = note("warp")};
     }
     Pokemon::StoryAction recorder(StoryActionId id){
-        return {.act = [this, id](Pokemon::RunState&, const Pokemon::StoryStep&){
+        return {.act = [this, id](const Pokemon::StoryStep&, Pokemon::RunState&){
             trace.emplace_back(story_action_name(id));
             return Pokemon::outcome_ok();
         }};
@@ -177,7 +178,7 @@ struct StepInterruptsInput{
     UnitTestResult (*body)();
 };
 struct StepInterruptsExpectation{
-    const char* description;
+    std::string_view description;
 };
 struct StepInterruptsTestCase{
     StepInterruptsInput input;

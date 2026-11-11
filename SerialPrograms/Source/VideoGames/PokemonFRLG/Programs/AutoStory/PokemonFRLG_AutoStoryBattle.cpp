@@ -29,7 +29,6 @@
 #include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
-#include "PokemonFRLG_AutoStoryFoeTracker.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -83,7 +82,7 @@ enum class BattleScreen{
     NONE,       //  no battle on screen
 };
 
-const char* screen_name(BattleScreen screen){
+std::string_view screen_name(BattleScreen screen){
     switch (screen){
     case BattleScreen::MENU:
         return "battle menu";
@@ -145,9 +144,9 @@ void tap(ProControllerContext& context, DpadPosition position){
 //  no names for) is taken by its position; only another item's name stops it.
 bool bag_row_is(
     ConsoleHandle& console, ProControllerContext& context,
-    int row, const std::string& item, StoryChecks checks, Language language
+    int row, const std::string& item, Pokemon::StoryCheckLevel checks, Language language
 ){
-    if (checks == StoryChecks::FAST){
+    if (!checks_screen(checks)){
         return true;
     }
     context.wait_for_all_requests();
@@ -170,7 +169,7 @@ bool bag_row_is(
 //  Returns whether it was used; else (THOROUGH) backs out to the menu.
 bool use_item(
     ConsoleHandle& console, ProControllerContext& context,
-    int row, const std::string& item, StoryChecks checks, Language language
+    int row, const std::string& item, Pokemon::StoryCheckLevel checks, Language language
 ){
     console.log(std::format("Battle: using the {} in row {} of the Items pocket.", item, row + 1));
     tap(context, DPAD_LEFT);
@@ -300,14 +299,13 @@ class BattleLoop{
 public:
     BattleLoop(
         ConsoleHandle& console, ProControllerContext& context,
-        Supplies& supplies, BattleKind kind, StoryChecks checks, Language language
+        Supplies& supplies, BattleKind kind, Pokemon::StoryCheckLevel checks, Language language
     )
         : m_console(console)
         , m_context(context)
         , m_supplies(supplies)
         , m_decisions(supplies, kind)
         , m_evolution(supplies.lead)
-        , m_foes(kind == BattleKind::TRAINER ? supplies.trainer : "", supplies.lead)
         , m_kind(kind)
         , m_checks(checks)
         , m_language(language)
@@ -378,7 +376,6 @@ private:
         m_last_battle = now;
         read_hp(screen);
         watch_for_faint(screen);
-        m_foes.boxes_seen(BattleBoxes{.lead = BattlePokemonDetector(COLOR_RED).detect(screen), .foe = BattleOpponentDetector(COLOR_RED).detect(screen)});
         act(seen, screen, now);
         return false;
     }
@@ -582,11 +579,8 @@ private:
         if (m_kind != BattleKind::TRAINER && m_decisions.turns() == 0){
             m_supplies.wild_foes = read_wild_foes(m_console.logger(), m_language, screen);
         }
-        if (!m_foes.species().empty()){
-            m_foes.at_menu(read_trainer_foe(m_console.logger(), m_language, screen, m_foes.species()));
-            m_supplies.foe_out = m_foes.out();
-            m_supplies.foes_fainted = m_foes.fainted();
-            m_supplies.foe_hp_fill = read_opponent_hp_fill(screen);
+        if (m_kind == BattleKind::TRAINER && !m_supplies.foes.empty()){
+            m_supplies.foe_out = read_trainer_foe(m_console.logger(), m_language, screen, m_supplies.foes);
         }
         if (m_refusal.refused(current_time())){
             m_console.log("Battle: the move list came back without a turn (Disable?); choosing another move.", COLOR_ORANGE);
@@ -643,11 +637,10 @@ private:
     Supplies& m_supplies;
     BattleDecisions m_decisions;
     EvolutionHold m_evolution;
-    TrainerFoeTracker m_foes;
     BattleEndWatch m_end;
     MoveRefusalWatch m_refusal;
     const BattleKind m_kind;
-    const StoryChecks m_checks;
+    const Pokemon::StoryCheckLevel m_checks;
     const Language m_language;
     const WallClock m_start;
     WallClock m_last_battle;
@@ -682,7 +675,7 @@ void open_items_pocket(ConsoleHandle& console, ProControllerContext& context){
 //  Not run on the console yet.
 bool use_item_on_overworld(
     ConsoleHandle& console, ProControllerContext& context,
-    int row, const std::string& item, StoryChecks checks, Language language
+    int row, const std::string& item, Pokemon::StoryCheckLevel checks, Language language
 ){
     console.log(std::format("Story: using a {} from the bag (Items pocket, row {}).", item, row + 1));
     open_items_pocket(console, context);
@@ -715,7 +708,7 @@ void fail_on_blackout(ConsoleHandle& console, BattleEnd end){
 //  <Pokemon> appeared!".
 class StoryWildBattle : public OverworldInterrupt{
 public:
-    StoryWildBattle(Supplies& supplies, bool fight, bool late, StoryChecks checks, Language language)
+    StoryWildBattle(Supplies& supplies, bool fight, bool late, Pokemon::StoryCheckLevel checks, Language language)
         : m_supplies(supplies)
         , m_checks(checks)
         , m_language(language)
@@ -746,7 +739,7 @@ public:
 
 private:
     Supplies& m_supplies;
-    const StoryChecks m_checks;
+    const Pokemon::StoryCheckLevel m_checks;
     const Language m_language;
     const bool m_fight;
     const bool m_late;
@@ -755,7 +748,7 @@ private:
 //  A message: read to its end, then a trainer's battle if one starts.
 class StoryMessage : public OverworldInterrupt{
 public:
-    StoryMessage(Supplies& supplies, StoryChecks checks, Language language)
+    StoryMessage(Supplies& supplies, Pokemon::StoryCheckLevel checks, Language language)
         : m_supplies(supplies)
         , m_checks(checks)
         , m_language(language)
@@ -775,14 +768,14 @@ public:
 
 private:
     Supplies& m_supplies;
-    const StoryChecks m_checks;
+    const Pokemon::StoryCheckLevel m_checks;
     const Language m_language;
 };
 
 } // namespace
 
 
-const char* status_name(StatusCondition status){
+std::string_view status_name(StatusCondition status){
     switch (status){
     case StatusCondition::NONE:
         return "no status";
@@ -941,7 +934,7 @@ std::vector<BagRow> read_items_pocket(ConsoleHandle& console, ProControllerConte
 
 void recover_after_battle(
     ConsoleHandle& console, ProControllerContext& context,
-    Supplies& supplies, StoryChecks checks, Language language
+    Supplies& supplies, Pokemon::StoryCheckLevel checks, Language language
 ){
     if (supplies.status == StatusCondition::POISON && supplies.antidotes > 0){
         if (use_item_on_overworld(console, context, item_row(supplies, "antidote"), "antidote", checks, language)){
@@ -968,12 +961,12 @@ void recover_after_battle(
 
 BattleEnd fight_battle(
     ConsoleHandle& console, ProControllerContext& context,
-    Supplies& supplies, BattleKind kind, StoryChecks checks, Language language
+    Supplies& supplies, BattleKind kind, Pokemon::StoryCheckLevel checks, Language language
 ){
     return BattleLoop(console, context, supplies, kind, checks, language).run();
 }
 
-void clear_overworld_message(ConsoleHandle& console, ProControllerContext& context, Supplies& supplies, StoryChecks checks, Language language){
+void clear_overworld_message(ConsoleHandle& console, ProControllerContext& context, Supplies& supplies, Pokemon::StoryCheckLevel checks, Language language){
     if (advance_text(console, context, AFTER_BATTLE_TEXT, true) == TextEnd::OVERWORLD){
         return;
     }
@@ -983,7 +976,7 @@ void clear_overworld_message(ConsoleHandle& console, ProControllerContext& conte
     recover_after_battle(console, context, supplies, checks, language);
 }
 
-OverworldInterruptSet story_interrupts(Supplies& supplies, bool fight_wild, StoryChecks checks, Language language){
+OverworldInterruptSet story_interrupts(Supplies& supplies, bool fight_wild, Pokemon::StoryCheckLevel checks, Language language){
     //  Battles first: their screens are checked before the message box's.
     OverworldInterruptSet ret;
     ret.wild.emplace_back(std::make_unique<StoryWildBattle>(supplies, fight_wild, false, checks, language));

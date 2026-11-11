@@ -22,7 +22,7 @@ enum class WireFormat{ LEGACY, COMPACT };
 const JsonObject& object_at(const JsonValue& value, const std::string& where){
     const JsonObject* object = value.to_object();
     if (!object){
-        throw ParseException(where + " is not a JSON object.");
+        throw ParseException(std::format("{} is not a JSON object.", where));
     }
     return *object;
 }
@@ -30,7 +30,7 @@ const JsonObject& object_at(const JsonValue& value, const std::string& where){
 const JsonArray& array_at(const JsonValue& value, const std::string& where){
     const JsonArray* array = value.to_array();
     if (!array){
-        throw ParseException(where + " must be an array.");
+        throw ParseException(std::format("{} must be an array.", where));
     }
     return *array;
 }
@@ -47,14 +47,14 @@ JsonObject copy_without(const JsonObject& object, const std::set<std::string>& o
 
 int coordinate(const JsonValue* value, const std::string& where){
     if (!value){
-        throw ParseException(where + " is missing.");
+        throw ParseException(std::format("{} is missing.", where));
     }
     if (!value->is_integer()){
-        throw ParseException(where + " is not an integer.");
+        throw ParseException(std::format("{} is not an integer.", where));
     }
     const int64_t number = value->to_integer_default();
     if (number < std::numeric_limits<int>::min() || number > std::numeric_limits<int>::max()){
-        throw ParseException(where + " does not fit a native coordinate.");
+        throw ParseException(std::format("{} does not fit a native coordinate.", where));
     }
     return (int)number;
 }
@@ -62,20 +62,20 @@ int coordinate(const JsonValue* value, const std::string& where){
 TilePos pair_at(const JsonObject& object, const std::array<std::string, 3>& keys, WireFormat format, const std::string& where){
     if (format == WireFormat::LEGACY){
         if (object.get_value(keys[2])){
-            throw ParseException(where + keys[2] + " is not a v1 coordinate field.");
+            throw ParseException(std::format("{}{} is not a v1 coordinate field.", where, keys[2]));
         }
         return {coordinate(object.get_value(keys[0]), where + keys[0]), coordinate(object.get_value(keys[1]), where + keys[1])};
     }
     const JsonValue* value = object.get_value(keys[2]);
     if (object.get_value(keys[0]) || object.get_value(keys[1]) || !value){
-        throw ParseException(where + keys[2] + " requires only the v2 coordinate pair.");
+        throw ParseException(std::format("{}{} requires only the v2 coordinate pair.", where, keys[2]));
     }
     const std::string pair_path = where + keys[2];
     const JsonArray& pair = array_at(*value, pair_path);
     if (pair.size() != 2){
-        throw ParseException(where + keys[2] + " requires exactly two integers.");
+        throw ParseException(std::format("{}{} requires exactly two integers.", where, keys[2]));
     }
-    return {coordinate(&pair[0], where + keys[2] + "[0]"), coordinate(&pair[1], where + keys[2] + "[1]")};
+    return {coordinate(&pair[0], std::format("{}{}[0]", where, keys[2])), coordinate(&pair[1], std::format("{}{}[1]", where, keys[2]))};
 }
 
 JsonValue normalize_wander(const JsonValue& value, WireFormat format, const std::string& where){
@@ -83,7 +83,7 @@ JsonValue normalize_wander(const JsonValue& value, WireFormat format, const std:
     const TilePos low = pair_at(source, {"x0", "y0", "min"}, format, where);
     const TilePos high = pair_at(source, {"x1", "y1", "max"}, format, where);
     if (format == WireFormat::COMPACT && (low.x > high.x || low.y > high.y)){
-        throw ParseException(where + "must have inclusive min <= max bounds.");
+        throw ParseException(std::format("{}must have inclusive min <= max bounds.", where));
     }
     JsonObject result = copy_without(source, {"x0", "y0", "x1", "y1", "min", "max"});
     result["x0"] = low.x;
@@ -129,13 +129,13 @@ JsonObject normalize_pickup(JsonObject record, std::string_view where){
     return record;
 }
 
-void append_objects(JsonArray& output, const JsonArray& input, WireFormat format, const std::string& group, const std::string& where){
+void append_objects(const JsonArray& input, WireFormat format, const std::string& group, const std::string& where, JsonArray& output){
     for (size_t i = 0; i < input.size(); i++){
-        const std::string path = where + group + "[" + std::to_string(i) + "].";
+        const std::string path = std::format("{}{}[{}].", where, group, i);
         JsonObject record = normalize_record(input[i], format, path);
         if (format == WireFormat::COMPACT){
             if (record.get_value("kind")){
-                throw ParseException(path + "kind is redundant in v2 typed arrays.");
+                throw ParseException(std::format("{}kind is redundant in v2 typed arrays.", path));
             }
             record["kind"] = group == "npcs" ? "npc" : group == "signs" ? "sign" : "item";
         }
@@ -143,16 +143,16 @@ void append_objects(JsonArray& output, const JsonArray& input, WireFormat format
             const JsonObject* interaction = record.get_object("interaction");
             const std::string* action = interaction ? interaction->get_string("kind") : nullptr;
             if (!action || action->empty() || record.get_value("item") || record.get_value("quantity")){
-                throw ParseException(path + "requires an interaction without an item reward.");
+                throw ParseException(std::format("{}requires an interaction without an item reward.", path));
             }
         }else if (group == "items" && record.get_value("interaction")){
-            throw ParseException(path + "interactions belong in interactables.");
+            throw ParseException(std::format("{}interactions belong in interactables.", path));
         }
         if (group == "items" && (record.get_value("item") || record.get_value("quantity"))){
             record = normalize_pickup(std::move(record), path);
         }
         if (const JsonValue* wander = record.get_value("wander")){
-            record["wander"] = normalize_wander(*wander, format, path + "wander.");
+            record["wander"] = normalize_wander(*wander, format, std::format("{}wander.", path));
         }
         output.push_back(std::move(record));
     }
@@ -170,32 +170,32 @@ WireFormat read_format(const JsonObject& root, const std::string& where){
     if (format && *format == "pokesim-runtime-map/2"){
         return WireFormat::COMPACT;
     }
-    throw ParseException(where + "format is unsupported.");
+    throw ParseException(std::format("{}format is unsupported.", where));
 }
 
-void normalize_objects(JsonObject& output, const JsonObject& root, WireFormat format, const std::string& where){
+void normalize_objects(const JsonObject& root, WireFormat format, const std::string& where, JsonObject& output){
     JsonArray objects;
     const std::array<std::string, 4> groups{"npcs", "items", "signs", "interactables"};
     if (format == WireFormat::LEGACY){
         for (const std::string& group : groups){
             if (root.get_value(group)){
-                throw ParseException(where + group + " is not a v1 object section.");
+                throw ParseException(std::format("{}{} is not a v1 object section.", where, group));
             }
         }
         if (const JsonValue* value = root.get_value("objects")){
-            append_objects(objects, array_at(*value, where + "objects"), format, "objects", where);
+            append_objects(array_at(*value, std::format("{}objects", where)), format, "objects", where, objects);
             output["objects"] = std::move(objects);
         }
         return;
     }
     if (root.get_value("objects")){
-        throw ParseException(where + "objects cannot be combined with v2 typed arrays.");
+        throw ParseException(std::format("{}objects cannot be combined with v2 typed arrays.", where));
     }
     bool present = false;
     for (const std::string& group : groups){
         if (const JsonValue* value = root.get_value(group)){
             present = true;
-            append_objects(objects, array_at(*value, where + group), format, group, where);
+            append_objects(array_at(*value, where + group), format, group, where, objects);
         }
     }
     if (present){
@@ -206,18 +206,18 @@ void normalize_objects(JsonObject& output, const JsonObject& root, WireFormat fo
 } // namespace
 
 JsonValue normalize_runtime_map(const JsonValue& json, std::string_view source_name){
-    const std::string where = std::string(source_name) + ": ";
+    const std::string where = std::format("{}: ", source_name);
     const JsonObject& root = object_at(json, where);
     const WireFormat format = read_format(root, where);
     JsonObject output = copy_without(root, {"format", "objects", "npcs", "items", "signs", "interactables", "warps", "patches", "coord_events"});
-    normalize_objects(output, root, format, where);
+    normalize_objects(root, format, where, output);
     for (const std::string section : {"warps", "patches", "coord_events"}){
         if (const JsonValue* field = root.get_value(section)){
             const std::string section_path = where + section;
             const JsonArray& input = array_at(*field, section_path);
             JsonArray records;
             for (size_t i = 0; i < input.size(); i++){
-                records.push_back(normalize_record(input[i], format, where + section + "[" + std::to_string(i) + "]."));
+                records.push_back(normalize_record(input[i], format, std::format("{}{}[{}].", where, section, i)));
             }
             output[section] = std::move(records);
         }

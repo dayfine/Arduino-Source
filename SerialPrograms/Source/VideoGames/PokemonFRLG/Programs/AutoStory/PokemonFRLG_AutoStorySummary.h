@@ -20,7 +20,7 @@
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_SummaryMovesReader.h"
 #include "PokemonFRLG_AutoStoryActions.h"
-#include "PokemonFRLG_AutoStoryDamage.h"
+#include "PokemonFRLG_AutoStoryStats.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

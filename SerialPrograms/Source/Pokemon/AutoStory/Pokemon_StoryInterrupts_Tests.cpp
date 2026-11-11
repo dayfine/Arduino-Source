@@ -19,8 +19,8 @@
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "Pokemon_StoryActions.h"
 #include "Pokemon_StoryInterrupts.h"
+#include "Pokemon_StoryInterrupts_Tests.h"
 #include "Pokemon_StorySegments.h"
-#include "Pokemon_AutoStory_Tests.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -114,10 +114,10 @@ struct FakeGame{
 };
 
 //  A handler that notes its kind; fails with `failure` if set.
-InterruptHandler noting(FakeGame& game, std::string name, InterruptPose pose = InterruptPose::UNCHANGED, std::string failure = ""){
+InterruptHandler noting(std::string name, InterruptPose pose, std::string failure, FakeGame& game){
     return InterruptHandler{
-        .handle = [&game, name, failure](RunState&, const InterruptVerdict&){
-            game.trace.push_back("clear " + name);
+        .handle = [&game, name, failure](const InterruptVerdict&, RunState&){
+            game.trace.push_back(std::format("clear {}", name));
             return failure.empty() ? outcome_ok() : outcome_failed(failure);
         },
         .pose = pose,
@@ -130,10 +130,10 @@ StoryInterrupts fake_interrupts(FakeGame& game){
     interrupts.look = [&game](bool fresh){
         return game.look(fresh);
     };
-    interrupts.handlers.add(InterruptKind::WILD_ENCOUNTER, noting(game, "wild"));
-    interrupts.handlers.add(InterruptKind::TRAINER_SIGHT, noting(game, "trainer"));
-    interrupts.handlers.add(InterruptKind::DIALOG, noting(game, "dialog"));
-    interrupts.handlers.add(InterruptKind::WARP, noting(game, "warp", InterruptPose::LOST));
+    interrupts.handlers.add(InterruptKind::WILD_ENCOUNTER, noting("wild", InterruptPose::UNCHANGED, "", game));
+    interrupts.handlers.add(InterruptKind::TRAINER_SIGHT, noting("trainer", InterruptPose::UNCHANGED, "", game));
+    interrupts.handlers.add(InterruptKind::DIALOG, noting("dialog", InterruptPose::UNCHANGED, "", game));
+    interrupts.handlers.add(InterruptKind::WARP, noting("warp", InterruptPose::LOST, "", game));
     interrupts.handlers.starts_on(StoryStepKind::MASH, InterruptKind::DIALOG);
     return interrupts;
 }
@@ -151,12 +151,12 @@ struct FakeAction{
     size_t failures = 0;
     bool throws = false;
 };
-StoryActionTable table_of(FakeGame& game, FakeAction action){
+StoryActionTable table_of(FakeAction action, FakeGame& game){
     StoryActionTable table;
     auto runs = std::make_shared<size_t>(0);
     table.add_any_kind("act", StoryAction{
-        .act = [&game, action, runs](RunState&, const StoryStep& step) -> Outcome{
-            game.trace.push_back("run " + step.name);
+        .act = [&game, action, runs](const StoryStep& step, RunState&) -> Outcome{
+            game.trace.push_back(std::format("run {}", step.name));
             if ((*runs)++ >= action.failures){
                 return outcome_ok();
             }
@@ -183,22 +183,22 @@ private:
     FakeGame& m_game;
 };
 
-//  `step` (variant "act") run once by a TableExecutor with the fake
+//  `step` (action "act") run once by a TableExecutor with the fake
 //  game's interrupts, from a known pose.
 struct FakeRun{
     Outcome outcome;
     RunState state;
 };
 FakeRun run_step(FakeGame& game, StoryInterrupts& interrupts, StoryStep step, FakeAction action = {}){
-    const StoryActionTable table = table_of(game, action);
+    const StoryActionTable table = table_of(action, game);
     NotingGuard guard(game);
     TableExecutor executor(table, guard);
     executor.set_interrupts(&interrupts);
     FakeRun out;
     out.state.pose.map = "Town";
     out.state.pose.certainty = PoseCertainty::TILE;
-    step.variant = "act";
-    out.outcome = executor.run(out.state, step);
+    step.action = "act";
+    out.outcome = executor.run(step, out.state);
     return out;
 }
 
@@ -208,11 +208,11 @@ UnitTestResult expect_trace(const FakeGame& game, const std::vector<std::string>
     }
     std::string out = "Expected the trace:";
     for (const std::string& line : expected){
-        out += "\n  " + line;
+        out += std::format("\n  {}", line);
     }
     out += "\ngot:";
     for (const std::string& line : game.trace){
-        out += "\n  " + line;
+        out += std::format("\n  {}", line);
     }
     return out;
 }
@@ -220,15 +220,15 @@ UnitTestResult expect_trace(const FakeGame& game, const std::vector<std::string>
 
 UnitTestResult test_no_interrupts_set(){
     FakeGame game;
-    const StoryActionTable table = table_of(game, {});
+    const StoryActionTable table = table_of({}, game);
     StepGuard guard;
     TableExecutor executor(table, guard);
     RunState state;
     StoryStep step = make(StoryStepKind::ROUTE, "walk");
-    step.variant = "act";
-    const Outcome outcome = executor.run(state, step);
+    step.action = "act";
+    const Outcome outcome = executor.run(step, state);
     if (!outcome.succeeded()){
-        return "Expected the step to succeed, got " + to_string(outcome);
+        return std::format("Expected the step to succeed, got {}", to_string(outcome));
     }
     return expect_trace(game, {"run walk"});
 }
@@ -238,7 +238,7 @@ UnitTestResult test_quiet_screen(){
     StoryInterrupts interrupts = fake_interrupts(game);
     const FakeRun run = run_step(game, interrupts, make(StoryStepKind::ROUTE, "walk"));
     if (!run.outcome.succeeded() || run.state.pose.certainty != PoseCertainty::TILE){
-        return "Expected the step to succeed where it stood, got " + to_string(run.outcome);
+        return std::format("Expected the step to succeed where it stood, got {}", to_string(run.outcome));
     }
     return expect_trace(game, {"look", "run walk"});
 }
@@ -251,12 +251,12 @@ UnitTestResult test_cleared(ScreenLook screen, const std::string& kind, const st
     StoryInterrupts interrupts = fake_interrupts(game);
     const FakeRun run = run_step(game, interrupts, make(StoryStepKind::ROUTE, "walk"));
     if (!run.outcome.succeeded()){
-        return "Expected the step to succeed, got " + to_string(run.outcome);
+        return std::format("Expected the step to succeed, got {}", to_string(run.outcome));
     }
     if (run.state.pose.certainty != pose){
-        return std::string("Expected the pose ") + certainty_name(pose) + ", got " + certainty_name(run.state.pose.certainty);
+        return std::format("Expected the pose {}, got {}", certainty_name(pose), certainty_name(run.state.pose.certainty));
     }
-    return expect_trace(game, {"look", "clear " + handler, "told " + kind + " ", "run walk"});
+    return expect_trace(game, {"look", std::format("clear {}", handler), std::format("told {} ", kind), "run walk"});
 }
 
 UnitTestResult test_wild_encounter(){
@@ -278,7 +278,7 @@ UnitTestResult test_step_starts_on_it(){
     StoryInterrupts interrupts = fake_interrupts(game);
     const FakeRun run = run_step(game, interrupts, make(StoryStepKind::MASH, "scene"));
     if (!run.outcome.succeeded()){
-        return "Expected the step to succeed, got " + to_string(run.outcome);
+        return std::format("Expected the step to succeed, got {}", to_string(run.outcome));
     }
     return expect_trace(game, {"look", "run scene"});
 }
@@ -288,10 +288,10 @@ UnitTestResult test_handler_fails_the_step(){
     game.screens = {dialog()};
     StoryInterrupts interrupts = fake_interrupts(game);
     interrupts.handlers = InterruptHandlerTable();
-    interrupts.handlers.add(InterruptKind::DIALOG, noting(game, "dialog", InterruptPose::UNCHANGED, "still_up"));
+    interrupts.handlers.add(InterruptKind::DIALOG, noting("dialog", InterruptPose::UNCHANGED, "still_up", game));
     const FakeRun run = run_step(game, interrupts, make(StoryStepKind::ROUTE, "walk"));
     if (run.outcome.failure != "interrupt_failed" || run.outcome.detail != "dialog: still_up"){
-        return "Expected interrupt_failed: dialog: still_up, got " + to_string(run.outcome);
+        return std::format("Expected interrupt_failed: dialog: still_up, got {}", to_string(run.outcome));
     }
     return expect_trace(game, {"look", "clear dialog", "told dialog interrupt_failed: dialog: still_up"});
 }
@@ -303,7 +303,7 @@ UnitTestResult test_unhandled_kind(){
     interrupts.handlers = InterruptHandlerTable();
     const FakeRun run = run_step(game, interrupts, make(StoryStepKind::ROUTE, "walk"));
     if (run.outcome.failure != "unhandled_interrupt"){
-        return "Expected unhandled_interrupt, got " + to_string(run.outcome);
+        return std::format("Expected unhandled_interrupt, got {}", to_string(run.outcome));
     }
     return expect_trace(game, {"look", "told trainer sight unhandled_interrupt: trainer sight before walk"});
 }
@@ -314,7 +314,7 @@ UnitTestResult test_unsettled_looks_again(){
     StoryInterrupts interrupts = fake_interrupts(game);
     const FakeRun run = run_step(game, interrupts, make(StoryStepKind::ROUTE, "walk"));
     if (!run.outcome.succeeded()){
-        return "Expected the step to succeed, got " + to_string(run.outcome);
+        return std::format("Expected the step to succeed, got {}", to_string(run.outcome));
     }
     return expect_trace(game, {"look", "look again", "clear warp", "told warp ", "run walk"});
 }
@@ -326,7 +326,7 @@ UnitTestResult test_unsettled_is_bounded(){
     StoryInterrupts interrupts = fake_interrupts(game);
     const FakeRun run = run_step(game, interrupts, make(StoryStepKind::ROUTE, "walk"));
     if (run.outcome.failure != "interrupt_unsettled"){
-        return "Expected interrupt_unsettled, got " + to_string(run.outcome);
+        return std::format("Expected interrupt_unsettled, got {}", to_string(run.outcome));
     }
     return expect_trace(game, {"look", "look again", "look again", "told unsettled interrupt_unsettled: walk"});
 }
@@ -341,7 +341,7 @@ UnitTestResult test_unsettled_before_a_battle(){
     interrupts.handlers.starts_on(StoryStepKind::BATTLE, InterruptKind::WILD_ENCOUNTER);
     const FakeRun run = run_step(game, interrupts, make(StoryStepKind::BATTLE, "starly"));
     if (!run.outcome.succeeded()){
-        return "Expected the battle step to run, got " + to_string(run.outcome);
+        return std::format("Expected the battle step to run, got {}", to_string(run.outcome));
     }
     return expect_trace(game, {"look", "run starly"});
 }
@@ -356,11 +356,11 @@ UnitTestResult test_opening_before_a_walk(ScreenLook opening, ScreenLook battle,
     StoryInterrupts interrupts = fake_interrupts(game);
     const FakeRun run = run_step(game, interrupts, make(StoryStepKind::ROUTE, "walk"));
     if (!run.outcome.succeeded()){
-        return "Expected the walk to run after the battle, got " + to_string(run.outcome);
+        return std::format("Expected the walk to run after the battle, got {}", to_string(run.outcome));
     }
     return expect_trace(game, {
         "look", "look again", "look again", "look again", "look again",
-        "clear " + handler, "told " + kind + " ", "run walk",
+        std::format("clear {}", handler), std::format("told {} ", kind), "run walk",
     });
 }
 UnitTestResult test_wild_opening_before_a_walk(){
@@ -378,7 +378,7 @@ UnitTestResult test_opening_is_bounded(){
     interrupts.max_opening_looks = 5;
     const FakeRun run = run_step(game, interrupts, make(StoryStepKind::ROUTE, "walk"));
     if (run.outcome.failure != "interrupt_unsettled"){
-        return "Expected interrupt_unsettled, got " + to_string(run.outcome);
+        return std::format("Expected interrupt_unsettled, got {}", to_string(run.outcome));
     }
     return expect_trace(game, {
         "look", "look again", "look again", "look again", "look again",
@@ -393,7 +393,7 @@ UnitTestResult test_failure_explained(bool throws){
     StoryInterrupts interrupts = fake_interrupts(game);
     const FakeRun run = run_step(game, interrupts, make(StoryStepKind::ROUTE, "walk"), {.failures = 1, .throws = throws});
     if (!run.outcome.succeeded()){
-        return "Expected the step run again and succeed, got " + to_string(run.outcome);
+        return std::format("Expected the step run again and succeed, got {}", to_string(run.outcome));
     }
     return expect_trace(game, {"look", "run walk", "look", "clear dialog", "told dialog ", "look", "run walk"});
 }
@@ -409,7 +409,7 @@ UnitTestResult test_failure_not_explained(){
     StoryInterrupts interrupts = fake_interrupts(game);
     const FakeRun run = run_step(game, interrupts, make(StoryStepKind::ROUTE, "walk"), {.failures = 1});
     if (run.outcome.failure != "dialog"){
-        return "Expected the step's own failure, got " + to_string(run.outcome);
+        return std::format("Expected the step's own failure, got {}", to_string(run.outcome));
     }
     return expect_trace(game, {"look", "run walk", "look"});
 }
@@ -426,7 +426,7 @@ UnitTestResult test_too_many_interrupts(){
             interrupts.max_per_step + 1, to_string(run.outcome), game.looks);
     }
     if (game.trace.back() != "told dialog too_many_interrupts: walk"){
-        return "Expected the guard told of too many interrupts, got " + game.trace.back();
+        return std::format("Expected the guard told of too many interrupts, got {}", game.trace.back());
     }
     return true;
 }
@@ -437,7 +437,7 @@ UnitTestResult test_table_rejects(){
     for (InterruptKind kind : {InterruptKind::NONE, InterruptKind::UNSETTLED, InterruptKind::DIALOG}){
         try{
             table.add(kind, {});
-            return std::string("Expected a handler for ") + interrupt_kind_name(kind) + " rejected.";
+            return std::format("Expected a handler for {} rejected.", interrupt_kind_name(kind));
         }catch (InternalProgramError&){}
     }
     if (table.find(InterruptKind::DIALOG) == nullptr || table.find(InterruptKind::WARP) != nullptr){
@@ -453,7 +453,7 @@ public:
         : m_game(game)
     {}
     virtual void on_screen(const StoryStep& step, const ScreenSettle& screen) override{
-        m_game.trace.push_back("before " + step.name + ": " + describe(screen));
+        m_game.trace.push_back(std::format("before {}: {}", step.name, describe(screen)));
     }
 
 private:
@@ -469,22 +469,22 @@ UnitTestResult test_screen_before_each_step(){
     game.screens = {look_of({{0, WALK}, {100, BLACK}}, 300)};
     StoryInterrupts interrupts = fake_interrupts(game);
     interrupts.max_opening_looks = 2;
-    const StoryActionTable table = table_of(game, {});
+    const StoryActionTable table = table_of({}, game);
     ScreenGuard guard(game);
     TableExecutor executor(table, guard);
     executor.set_interrupts(&interrupts);
     RunState state;
     StoryStep step = make(StoryStepKind::ROUTE, "by_the_counter");
-    step.variant = "act";
-    const Outcome faded = executor.run(state, step);
+    step.action = "act";
+    const Outcome faded = executor.run(step, state);
     if (faded.succeeded()){
-        return "Expected a step in a fade to fail unsettled, got " + to_string(faded);
+        return std::format("Expected a step in a fade to fail unsettled, got {}", to_string(faded));
     }
     game.screens = {quiet()};
     game.looks = 0;
-    const Outcome settled = executor.run(state, step);
+    const Outcome settled = executor.run(step, state);
     if (!settled.succeeded()){
-        return "Expected the step on a quiet screen to run, got " + to_string(settled);
+        return std::format("Expected the step on a quiet screen to run, got {}", to_string(settled));
     }
     return expect_trace(game, {
         "look", "look again", "before by_the_counter: black fade showing (quiet 0.2 s)",
@@ -502,16 +502,16 @@ UnitTestResult test_home_menu_before_a_step(){
         game.screens = {home_menu()};
         StoryInterrupts interrupts = fake_interrupts(game);
         interrupts.handlers.starts_on(StoryStepKind::BATTLE, InterruptKind::TRAINER_SIGHT);
-        const StoryActionTable table = table_of(game, {});
+        const StoryActionTable table = table_of({}, game);
         ScreenGuard guard(game);
         TableExecutor executor(table, guard);
         executor.set_interrupts(&interrupts);
         RunState state;
         StoryStep step = make(kind, "save");
-        step.variant = "act";
-        const Outcome outcome = executor.run(state, step);
+        step.action = "act";
+        const Outcome outcome = executor.run(step, state);
         if (to_string(outcome) != "game_not_running: the game is not running: the Switch HOME menu is showing"){
-            return "Expected the step on HOME to fail as game_not_running, got " + to_string(outcome);
+            return std::format("Expected the step on HOME to fail as game_not_running, got {}", to_string(outcome));
         }
         if (UnitTestResult trace = expect_trace(game, {"look", "before save: Switch HOME menu (quiet 0.3 s)"}); trace.result != UnitTestResult::PASSED){
             return trace;
@@ -553,30 +553,26 @@ UnitTestResult test_home_menu_stops_the_segment(){
         trace.push_back("reload");
         return outcome_ok();
     };
-    hooks.recover = [&trace](RunState&, const std::string&){
-        trace.push_back("recover in place");
-        return outcome_ok();
-    };
     RunState state;
-    const SegmentReport report = run_segment(state, segment, SegmentRange{}, SegmentPolicy{.recoveries_per_event = 2}, hooks);
+    const SegmentReport report = run_segment(SegmentRange{}, SegmentPolicy{}, segment, hooks, state);
     if (report.completed || report.failure.failure != "game_not_running" || report.reloads != 0){
-        return "Expected the segment to stop on game_not_running with no reload, got " + to_string(report.failure);
+        return std::format("Expected the segment to stop on game_not_running with no reload, got {}", to_string(report.failure));
     }
     if (trace != std::vector<std::string>{"save"}){
         std::string got;
         for (const std::string& line : trace){
-            got += " " + line;
+            got += std::format(" {}", line);
         }
-        return "Expected the save tried once and nothing else, got:" + got;
+        return std::format("Expected the save tried once and nothing else, got:{}", got);
     }
     return true;
 }
 
 UnitTestResult test_settle_of_a_look(){
     struct Row{
-        const char* name;
+        std::string name;
         ScreenLook look;
-        const char* expected;
+        std::string expected;
     };
     const std::vector<Row> rows = {
         {"no frame", ScreenLook{}, "no frame seen"},
@@ -613,7 +609,7 @@ struct StoryInterruptsCase{
 class Test_StoryInterrupts : public UnitTest{
 public:
     explicit Test_StoryInterrupts(StoryInterruptsCase scenario)
-        : UnitTest("Pokemon::StoryInterrupts - " + std::string(scenario.input.name))
+        : UnitTest(std::format("Pokemon::StoryInterrupts - {}", scenario.input.name))
         , m_scenario(scenario)
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{

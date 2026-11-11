@@ -4,98 +4,93 @@
   "checkpoint": {
     "id": "02.03",
     "title": "Viridian shopping, then into Viridian Forest",
-    "start": {"certainty": "tile", "map": "PalletTown_ProfessorOaksLab", "where": {"facing": "south", "kind": "tiles", "tiles": [[6, 4]]}},
-    "sections": [
+    "start": {"map": "PalletTown_ProfessorOaksLab", "tiles": [[6, 4]], "facing": "south"},
+    "events": [
       {
-        "id": "viridian_mart",
-        "title": "Viridian Mart",
-        "events": [
-          {
-            "id": "mart_clerk",
-            "kind": "route",
-            "target": {"certainty": "tile", "map": "ViridianCity_Mart", "where": {"facing": "west", "kind": "tiles", "tiles": [[4, 3]]}},
-            "why": "Route 1 again"
-          },
-          {
-            "id": "potions_and_antidotes",
-            "kind": "shop",
-            "items": [{"item": "potion", "quantity": 5}, {"item": "antidote", "quantity": 3}, {"item": "parlyz_heal", "quantity": 1}],
-            "why": "5 Potions, 3 Antidotes, 1 Parlyz Heal",
-            "notes": [
-              "2000 of the 3000 a new game starts with, plus the rival's prize."
-            ]
-          }
-        ]
+        "id": "mart_clerk",
+        "kind": "route",
+        "args": {
+          "target": {"map": "ViridianCity_Mart", "tiles": [[4, 3]], "facing": "west"}
+        },
+        "why": "Route 1 again"
       },
       {
-        "id": "viridian_center",
-        "title": "Viridian's Pokemon Center",
-        "events": [
-          {
-            "id": "viridian_nurse",
-            "kind": "route",
-            "target": {"certainty": "tile", "map": "ViridianCity_PokemonCenter_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 4]]}},
-            "why": "heal before the forest"
-          },
-          {
-            "id": "heal_viridian",
-            "kind": "heal",
-            "why": "full HP"
-          }
-        ]
+        "id": "potions_and_antidotes",
+        "kind": "shop",
+        "args": {
+          "items": [{"item": "potion", "quantity": 5}, {"item": "antidote", "quantity": 3}, {"item": "parlyz_heal", "quantity": 1}]
+        },
+        "why": "5 Potions, 3 Antidotes, 1 Parlyz Heal"
       },
       {
-        "id": "old_man",
-        "title": "The old man's catching tutorial",
-        "events": [
-          {
-            "id": "below_old_man_trigger",
-            "kind": "route",
-            "target": {"certainty": "tile", "map": "ViridianCity", "where": {"facing": "north", "kind": "tiles", "tiles": [[20, 9]]}},
-            "why": "short of the tutorial trigger (20, 8)"
-          },
-          {
-            "id": "old_man_trigger",
-            "kind": "step",
-            "direction": "north",
-            "why": "the old man's catching tutorial can't be walked around"
-          },
-          {
-            "id": "old_man_tutorial",
-            "kind": "scene",
-            "declared_after": {"certainty": "tile", "map": "ViridianCity", "where": {"facing": "east", "kind": "tiles", "tiles": [[20, 8]]}},
-            "why": "about 60 lines and his demo battle; TEACHY TV",
-            "notes": [
-              "TutorialTriggerLeft turns the player right, to the old man."
-            ]
-          },
-          {
-            "id": "past_old_man",
-            "kind": "route",
-            "target": {"certainty": "tile", "map": "ViridianCity", "where": {"facing": "north", "kind": "tiles", "tiles": [[20, 5]]}},
-            "why": "north along column 20, clear of the old man",
-            "notes": [
-              "After his demo the old man stands east of the player, beside (20, 8), where the map doesn't have him: \"east 2\" from there didn't move, and the walk north ended under Route 2's ledge in column 8 (console B, 2026-11-01). Go north first."
-            ]
-          }
-        ]
+        "id": "viridian_nurse",
+        "kind": "route",
+        "args": {
+          "target": {"map": "ViridianCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
+        },
+        "why": "heal before the forest"
       },
       {
-        "id": "route2",
-        "title": "Route 2 to Viridian Forest",
-        "events": [
-          {
-            "id": "forest_entrance",
-            "kind": "route",
-            "target": {"certainty": "tile", "map": "ViridianForest", "where": {"facing": "north", "kind": "tiles", "tiles": [[29, 62]]}},
-            "why": "Route 2 and the south gate, running from wild battles",
-            "notes": [
-              "The gate's north warp lands on the forest's exit mat (29, 62), facing north. The save there keeps a forest failure from going back to Pallet."
-            ]
-          }
-        ]
+        "id": "heal_viridian",
+        "kind": "heal",
+        "why": "full HP"
+      },
+      {
+        "id": "below_old_man_trigger",
+        "kind": "route",
+        "args": {
+          "target": {"map": "ViridianCity", "tiles": [[20, 9]], "facing": "north"}
+        },
+        "why": "short of the tutorial trigger (20, 8)"
+      },
+      {
+        "id": "old_man_trigger",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "why": "the old man's catching tutorial can't be walked around"
+      },
+      {
+        "id": "old_man_tutorial",
+        "kind": "scene",
+        "declared_after": {"map": "ViridianCity", "tiles": [[20, 8]], "facing": "east"},
+        "why": "about 60 lines and his demo battle; TEACHY TV"
+      },
+      {
+        "id": "past_old_man",
+        "kind": "route",
+        "args": {
+          "target": {"map": "ViridianCity", "tiles": [[20, 5]], "facing": "north"}
+        },
+        "why": "north along column 20, clear of the old man"
+      },
+      {
+        "id": "forest_entrance",
+        "kind": "route",
+        "args": {
+          "target": {"map": "ViridianForest", "tiles": [[29, 62]], "facing": "north"}
+        },
+        "why": "Route 2 and the south gate, running from wild battles"
       }
     ]
   },
-  "execution": {"menu": "full"}
+  "execution": {
+    "menu": "full",
+    "notes": {
+      "potions_and_antidotes": [
+        "2000 of the 3000 a new game starts with, plus the rival's prize."
+      ],
+      "old_man_tutorial": [
+        "TutorialTriggerLeft turns the player right, to the old man."
+      ],
+      "past_old_man": [
+        "After his demo the old man stands east of the player, beside (20, 8), where the map doesn't have him: \"east 2\" from there didn't move, and the walk north ended under Route 2's ledge in column 8 (console B, 2026-11-01). Go north first."
+      ],
+      "forest_entrance": [
+        "The gate's north warp lands on the forest's exit mat (29, 62), facing north. The save there keeps a forest failure from going back to Pallet."
+      ]
+    }
+  },
+  "metadata": {"phase": "testing"}
 }

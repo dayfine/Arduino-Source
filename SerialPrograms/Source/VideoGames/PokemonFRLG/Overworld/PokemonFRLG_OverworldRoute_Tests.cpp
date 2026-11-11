@@ -237,7 +237,7 @@ UnitTestResult test_story_maps(){
         "Route22", "Route2", "ViridianForest", "PewterCity", "PewterCity_Museum_1F", "PewterCity_Gym",
     }){
         if (map_named(maps, name) == nullptr){
-            return std::string("Missing map ") + name + ".";
+            return std::format("Missing map {}.", name);
         }
     }
     return true;

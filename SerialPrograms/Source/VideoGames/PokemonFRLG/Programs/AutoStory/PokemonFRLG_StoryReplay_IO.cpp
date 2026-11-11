@@ -9,8 +9,11 @@
 #include "Common/Cpp/Cryptography/SHA256.h"
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonArray.h"
+#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
+#include "Pokemon/AutoStory/Data/Pokemon_StoryStepJson.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
+#include "PokemonFRLG_AutoStoryStepTable.h"
 #include "PokemonFRLG_StoryReplay_IO.h"
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -121,7 +124,7 @@ void check_capability(const StoryStep& event, const JsonValue& value){
         && (event.kind != StoryStepKind::STEP || capability != "frlg-runtime-step/1")){
         throw ParseException("story replay: unsupported kind/capability");
     }
-    if (event.kind == StoryStepKind::ROUTE && !event.target){
+    if (event.kind == StoryStepKind::ROUTE && !event.args.contains("target")){
         throw ParseException("story replay: route target missing");
     }
 }
@@ -179,6 +182,65 @@ void check_route_options(const JsonObject& config){
         }
     }
 }
+//  An export pose ({"certainty": "tile", "map", "where": {"kind":
+//  "tiles", "tiles", "facing"}}) as a grid pose.
+JsonValue export_grid_pose(const JsonValue& value){
+    const JsonObject& pose = value.to_object_throw("story replay");
+    const JsonObject& where = pose.get_object_throw("where");
+    JsonObject result;
+    result["map"] = pose.get_string_throw("map");
+    result["tiles"] = where.get_array_throw("tiles").clone();
+    if (where.get_value("facing") != nullptr){
+        result["facing"] = where.get_string_throw("facing");
+    }
+    return result;
+}
+//  One captured event in the #312 step format: its poses as grid poses, a
+//  route's target and a step's direction as args. The export left out a
+//  step's direction when it was the default, north.
+JsonValue capture_step(const JsonObject& event){
+    JsonObject step;
+    JsonObject args;
+    for (const auto& [key, value] : event){
+        if (key == "target"){
+            args["target"] = export_grid_pose(value);
+        }else if (key == "direction"){
+            args["direction"] = value.clone();
+        }else if (key == "declared_after"){
+            step["declared_after"] = export_grid_pose(value);
+        }else{
+            step[key] = value.clone();
+        }
+    }
+    if (event.get_string_throw("kind") == "step" && args.get_value("direction") == nullptr){
+        args["direction"] = "north";
+    }
+    if (args.size() != 0){
+        step["args"] = std::move(args);
+    }
+    return step;
+}
+//  The capture's checkpoint, exported before the #312 step format, read
+//  with FRLG's actions. Its native fields aren't read: the replay runs the
+//  common checkpoint only.
+StoryCheckpoint read_capture(const JsonValue& document){
+    const JsonObject& root = document.to_object_throw("story replay");
+    expect(root, "format", "pokesim-native-checkpoint-export/1");
+    expect(root, "game", "frlg");
+    const JsonObject& checkpoint = root.get_object_throw("checkpoint");
+    JsonObject converted;
+    converted["id"] = checkpoint.get_string_throw("id");
+    converted["title"] = checkpoint.get_string_throw("title");
+    converted["start"] = export_grid_pose(checkpoint.get_value_throw("start"));
+    JsonArray events;
+    for (const JsonValue& event : checkpoint.get_array_throw("events")){
+        events.push_back(capture_step(event.to_object_throw("story replay")));
+    }
+    converted["events"] = std::move(events);
+    StoryCheckpoint result;
+    static_cast<Pokemon::StoryCheckpoint&>(result) = Pokemon::read_story_checkpoint(JsonValue(std::move(converted)), "replay capture", story_action_specs());
+    return result;
+}
 void check_row(const ReplayData& data){
     if (!data.row.start || data.row.steps.empty()){
         throw ParseException("story replay: nonempty checkpoint and start pose required");
@@ -187,17 +249,17 @@ void check_row(const ReplayData& data){
     if (specs.size() != data.row.steps.size()){
         throw ParseException("story replay: missing/extra event bindings");
     }
-    authored_pose(*data.row.start, data.maps);
+    authored_pose(Pokemon::pose_of(*data.row.start), data.maps);
     for (const StoryStep& event : data.row.steps){
         check_capability(event, specs.get_value_throw(event.name));
-        if (!event.skip_if.empty() || !event.variant.empty() || event.once_per_save){
+        if (!event.skip_if.empty() || !event.action.empty() || event.once_per_save){
             throw ParseException("story replay: unsupported event options");
         }
-        if (event.target){
-            authored_pose(*event.target, data.maps);
+        if (event.args.contains("target")){
+            authored_pose(Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(event.args, "target")), data.maps);
         }
         if (event.pose_after){
-            authored_pose(*event.pose_after, data.maps);
+            authored_pose(Pokemon::pose_of(*event.pose_after), data.maps);
         }
     }
 }
@@ -256,7 +318,7 @@ ReplayData read_data(std::string_view capture, std::string_view binding, std::st
     const JsonObject& route = fields(plan, {"format", "binding_sha256", "checkpoint", "routes"});
     expect(route, "format", "pokesim-route-candidate/1");
     expect(route, "binding_sha256", digest(binding));
-    ReplayData result{.row = read_story_checkpoint_export(document, "replay capture"),
+    ReplayData result{.row = read_capture(document),
         .maps = read_maps(root.get_object_throw("maps")), .binding = std::move(config),
         .candidate = std::move(plan), .native_unbound = document.to_object_throw().get_value_throw("unbound").clone(), .binding_hash = digest(binding), .source_revision = source_revision};
     expect(result.candidate.to_object_throw(), "checkpoint", result.row.id);

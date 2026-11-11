@@ -18,9 +18,7 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryPcStorage.h"
-#include "PokemonFRLG_AutoStoryVariantWords.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -73,7 +71,7 @@ public:
         return view;
     }
     virtual void press(PcPress press) override{
-        presses.push_back(pc_press_name(press));
+        presses.emplace_back(pc_press_name(press));
         switch (m_screen){
         case PcScreen::OVERWORLD:
             if (press == PcPress::A){
@@ -518,34 +516,37 @@ UnitTestResult test_pc_dialog_screens(){
 }
 
 
-//  The table's variant, both ways, and the variants it refuses.
-UnitTestResult test_pc_variant(){
+//  The step's args, both ways, and the args it refuses.
+UnitTestResult test_pc_args(){
     const std::vector<PcTransfer> transfers = {
         {.action = PcAction::DEPOSIT, .party_slot = 1, .box = 0},
         {.action = PcAction::WITHDRAW, .box = 13, .box_slot = 29},
         {.action = PcAction::DEPOSIT, .party_slot = 1, .box = 0, .if_missing = PcMissing::SKIP},
     };
-    for (const PcTransfer& transfer : transfers){
-        const Pokemon::StoryStep step = pc_step("pc", "", transfer);
-        const std::optional<PcTransfer> back = parse_pc_step(step);
-        if (step.variant != PC_VARIANT || !back || back->action != transfer.action || back->box != transfer.box
+    for (size_t c = 0; c < transfers.size(); c++){
+        const PcTransfer& transfer = transfers[c];
+        const std::optional<PcTransfer> back = pc_transfer_of(pc_args(transfer));
+        if (!back || back->action != transfer.action || back->box != transfer.box
             || back->party_slot != transfer.party_slot || back->box_slot != transfer.box_slot
             || back->if_missing != transfer.if_missing
         ){
-            return "\"" + pc_transfer_text(transfer) + "\" didn't read back as the transfer it was made from.";
+            return std::format("Transfer {} didn't read back from its args.", c + 1);
         }
     }
-    const Pokemon::StoryArgs expected{{"op", "deposit"}, {"slot", int64_t(2)}, {"box", int64_t(1)}};
-    if (pc_args(transfers[0]) != expected || pc_transfer_text(transfers[0]) != "pc deposit slot=2 box=1"){
-        return "Expected \"pc deposit slot=2 box=1\", got \"" + pc_transfer_text(transfers[0]) + "\".";
-    }
-    const std::string_view positional[] = {"op"};
-    for (std::string_view bad : {
-        "pc", "pc deposit", "pc deposit slot=7 box=1", "pc deposit slot=0 box=1", "pc deposit slot=2 box=15",
-        "pc withdraw box=1 slot=31", "pc release slot=1 box=1", "pc withdraw box=1 slot=2 if_present", "capture rattata",
-    }){
-        if (parse_pc_step(legacy_game_step(bad, positional))){
-            return "Expected \"" + std::string(bad) + "\" refused.";
+    const auto args = [](std::string action, int64_t slot, int64_t box){
+        return Pokemon::StoryActionArgs{{"do", std::move(action)}, {"slot", slot}, {"box", box}};
+    };
+    const std::vector<Pokemon::StoryActionArgs> bad_args{
+        {},
+        args("deposit", 7, 1),
+        args("deposit", 0, 1),
+        args("deposit", 2, 15),
+        args("withdraw", 31, 1),
+        args("release", 1, 1),
+    };
+    for (const Pokemon::StoryActionArgs& bad : bad_args){
+        if (pc_transfer_of(bad)){
+            return "Expected a missing or out-of-range arg refused.";
         }
     }
     return true;
@@ -564,7 +565,7 @@ const AutoStoryPcStorageCase AUTO_STORY_PC_STORAGE_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"the table's variant", test_pc_variant},
+        .input = {"the step's args", test_pc_args},
         .expectation = {},
     },
 };

@@ -18,8 +18,9 @@
 #include <string>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_StoryActions.h"
-#include "Pokemon/AutoStory/Pokemon_StorySteps.h"
+#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -57,23 +58,34 @@ enum class StoryActionId{
     GAME,
 };
 //  "route", "game": the action's name in logs and test traces.
-const char* story_action_name(StoryActionId id);
+std::string_view story_action_name(StoryActionId id);
 
 //  A row of FRLG's table: the action for steps of `kind` whose variant is
-//  named `variant`, or for every other step of `kind` if it is empty, and
-//  the args its steps carry.
+//  named `variant`, or for every other step of `kind` if it is empty.
 struct StoryActionRow{
     Pokemon::StoryStepKind kind;
     std::string variant;
     StoryActionId id;
-    std::span<const Pokemon::StoryArgSpec> args = {};
 };
 //  Every row. TRAIN and SAVE have none: FRLG's story doesn't use them.
 const std::vector<StoryActionRow>& story_action_rows();
 
+//  The actions FRLG's steps name, with the args each takes: the built-in
+//  ones (Pokemon_BuiltinStoryActions.h), then a ROUTE and a LEGS named
+//  "run" (RUN_VARIANT), which take the same args and run with B held,
+//  STEPs named "trainer_line" (TRAINER_LINE_VARIANT) and "trainer_wait"
+//  (TRAINER_WAIT_VARIANT), then FRLG's GAME actions: closing the Trainer
+//  Card or the Gift RNG summary, cutting a tree, the trash cans, a PC
+//  transfer, a capture, the fossil, a LEVEL check, a Mart, a TEACH and a
+//  GRIND, each with the args it declares.
+//  A story file is read against these.
+std::span<const Pokemon::StoryActionSpec> story_action_specs();
+
 //  How one binding (the console, a test) does each action.
 using StoryActionBinding = std::function<Pokemon::StoryAction(StoryActionId id)>;
-//  The rows as a table, each with `bind`'s action for its id.
+//  The rows as a table, each with `bind`'s action for its id and its
+//  spec's args, and each of FRLG's GAME actions with the GAME row's action
+//  and its own args.
 Pokemon::StoryActionTable make_story_action_table(const StoryActionBinding& bind);
 
 

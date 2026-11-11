@@ -17,11 +17,12 @@
 #define PokemonAutomation_Pokemon_StorySegments_H
 
 #include <cstddef>
-#include <optional>
 #include <string>
 #include <vector>
 #include "Common/Cpp/MoveOnlyFunction.h"
 #include "Pokemon_StoryEvents.h"
+#include "Pokemon_StoryLog.h"
+#include "Types/Pokemon_StorySegmentTypes.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -47,74 +48,24 @@ struct Segment{
 //  What the game lends the runner: how to save, how to reload the last save
 //  (the run state is emptied first; the reload's Outcome says where the
 //  player stands), and where to log.
-//  `recover`, if set, is the game's way of recovering in place from a failed
-//  event (re-anchor on a landmark, close a stray dialogue) before the event
-//  is tried again; see SegmentPolicy::recoveries_per_event.
 struct SegmentHooks{
     Act save;
     Act reload;
     EventLogger log;
-    MoveOnlyFunction<Outcome(RunState& state, const std::string& event)> recover;
     //  Optional: each [Segment], [Checkpoint] and [Event] line again,
     //  without its tag ("00.03/2 below_oaks_trigger: start"), for the video
     //  overlay, so whoever watches the stream sees the step under way; and,
     //  once run records land (#132), for the run's events.
     EventLogger status;
+    //  Optional: the game's postcondition check of a checkpoint, by id
+    //  (check_postconditions(), Pokemon_StoryPostconditionCheck.h), run
+    //  before a save in AFTER_VERIFICATION mode: one that failed stops the
+    //  save and fails the run. The game logs its lines.
+    MoveOnlyFunction<Outcome(const std::string& checkpoint, RunState& state)> check_postconditions;
 };
 
-// Retry and timeout configuration for story segment execution.
-struct SegmentPolicy{
-    //  Runs of one checkpoint, reloading its save between them, before the
-    //  segment stops.
-    size_t attempts_per_checkpoint = 3;
-    //  Lab: stop at the first failed attempt without reloading, leaving the
-    //  game where it failed for a look.
-    bool stop_at_first_failure = false;
-    //  Times each event may recover in place (SegmentHooks::recover, then
-    //  the event again) once its own recoveries are used up, before its
-    //  checkpoint fails and is reloaded. 0 keeps a failure a reload.
-    size_t recoveries_per_event = 0;
-};
-
-//  The checkpoints to run, by id, both inclusive. An unset end is the
-//  segment's first or last checkpoint.
-struct SegmentRange{
-    std::optional<std::string> from;
-    std::optional<std::string> to;
-};
-
-
-// Summary of checkpoint attempts, recoveries, and pass status.
-struct CheckpointRun{
-    std::string id;
-    bool passed = false;
-    size_t attempts = 0;
-    //  In-place recoveries (SegmentPolicy::recoveries_per_event) used, in all attempts.
-    size_t recoveries = 0;
-
-    bool one_shot() const;
-};
-
-// Execution results and failure diagnostics for a story segment run.
-struct SegmentReport{
-    bool completed = false;
-    //  The run stopped at its first failure (SegmentPolicy::stop_at_first_failure).
-    bool stopped_at_first_failure = false;
-    //  Both empty when nothing failed; the event is empty when a start
-    //  check, an end check, a save or a reload failed.
-    std::string failed_checkpoint;
-    std::string failed_event;
-    Outcome failure;
-    size_t checkpoints_run = 0;
-    //  Reloads after failed attempts.
-    size_t reloads = 0;
-    //  Each checkpoint run, in order, the failed one last.
-    std::vector<CheckpointRun> runs;
-
-    size_t one_shot_passes() const;
-};
-
-//  Runs the checkpoints in `range`, in order. Logs through `hooks.log`,
+//  Runs the checkpoints in `range`, in order, saving as `policy.save_mode`
+//  allows (story_save_allowed()). Logs through `hooks.log`,
 //  around the checkpoint lines:
 //      [Segment] 00: start, 3 checkpoints
 //      [Segment] 00: 00.02 failed, reloading for attempt 2/3
@@ -122,11 +73,10 @@ struct SegmentReport{
 //      [Checkpoint] 00.03: passed on attempt 1 (one-shot)
 //      [Segment] 00: 2 of 3 checkpoints one-shot
 //      [Segment] 00: done, 3 checkpoints
-//      [Segment] 00: 00.02 failed; stopping at the first failure, the game stays where it failed
 //      [Segment] 00: failed at 00.02 talk_mom: expect_failed: dialogue opened
 SegmentReport run_segment(
-    RunState& state, Segment& segment, const SegmentRange& range,
-    const SegmentPolicy& policy, SegmentHooks& hooks
+    const SegmentRange& range, const SegmentPolicy& policy,
+    Segment& segment, SegmentHooks& hooks, RunState& state
 );
 
 
@@ -139,6 +89,9 @@ struct VerifyPolicy{
     size_t runs = 3;
     //  Passing runs the checkpoint needs to be verified.
     size_t passes_needed = 2;
+    //  AFTER_VERIFICATION saves once, at the end of the last run, when
+    //  every run passed; any other mode never saves.
+    StorySaveMode save_mode = StorySaveMode::NONE;
 };
 
 // Verification results for multiple runs of a checkpoint.
@@ -148,21 +101,25 @@ struct VerifyReport{
     size_t passes = 0;
     //  At least VerifyPolicy::passes_needed runs passed.
     bool verified = false;
+    //  AFTER_VERIFICATION: every run passed and the last saved at its end.
+    bool saved = false;
     //  What stopped the runs early: an unknown checkpoint, a bad policy or
     //  a failed reload. Runs that fail are counted, not stopped at.
     Outcome failure;
 };
 
 //  Runs checkpoint `id` of `segment` as `policy` says, from the save the
-//  game is on. No retries, no in-place recoveries and no save at its end.
+//  game is on. No retries, no in-place recoveries and no save at its end,
+//  but for `policy.save_mode` AFTER_VERIFICATION's one save at the end of
+//  the last run, when every run passed (after the postcondition check).
 //  Logs through `hooks.log`, after each run's checkpoint lines:
 //      [Verify] 00.15b: start, 3 runs from one save, 2 must pass
 //      [Verify] 00.15b: run 1/3 passed
 //      [Verify] 00.15b: run 2/3 failed at rival_battle: battle_lost
 //      [Verify] 00.15b: 2/3 passed, 2 needed: verified
 VerifyReport verify_checkpoint(
-    RunState& state, Segment& segment, const std::string& id,
-    const VerifyPolicy& policy, SegmentHooks& hooks
+    const std::string& id, const VerifyPolicy& policy,
+    Segment& segment, SegmentHooks& hooks, RunState& state
 );
 
 //  A readable dump for review: the rows, then each checkpoint built once

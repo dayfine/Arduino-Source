@@ -28,42 +28,14 @@
 #include "CommonFramework/Language.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
-#include "Pokemon/AutoStory/Pokemon_StorySteps.h"
-#include "PokemonFRLG_AutoStoryDamage.h"
+#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
+#include "PokemonFRLG_AutoStoryStats.h"
+#include "PokemonFRLG_AutoStoryMemberInfo.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
-
-
-//  Total number of party slots.
-constexpr size_t PARTY_SLOTS = 6;
-//  Total number of move slots per Pokemon.
-constexpr size_t MOVE_SLOTS = 4;
-
-//  A party member as its summary shows it.
-struct MemberInfo{
-    //  The species' slug, e.g. "squirtle"; empty if not read.
-    std::string species = {};
-    //  1-100; nothing if not read.
-    std::optional<unsigned> level = std::nullopt;
-    //  Its moves' slugs in the summary's order (e.g. "water-gun"), one to
-    //  four; empty if not read.
-    std::vector<std::string> moves = {};
-    //  POKEMON SKILLS (HP as its maximum); none if not read.
-    std::optional<Stats> stats = std::nullopt;
-};
-
-//  Reads party slot `slot` (0-5), from the overworld back to the
-//  overworld: its summary, read; nothing if the slot is empty or the
-//  summary couldn't be read.
-using MemberReader = std::function<std::optional<MemberInfo>(size_t slot)>;
-
-//  The console's reader: the member's summary, opened from the START
-//  menu's POKEMON, in a game in `language`. The steps that read members
-//  come after the Pokedex, so the START menu is the full one. A member
-//  whose species, level or moves aren't all read is nothing.
-MemberReader console_member_reader(ConsoleHandle& console, ProControllerContext& context, Language language);
 
 
 //  What a LEVEL step checks: party slot `slot` (0-5) is at least `level`.
@@ -72,16 +44,13 @@ struct LevelCheck{
     unsigned level = 1;
 };
 
-//  The variant of a GAME step that is a LEVEL step.
-inline constexpr std::string_view LEVEL_VARIANT = "level";
-//  Its args: the party slot, counted from 1, and the least level.
-inline constexpr Pokemon::StoryArgSpec LEVEL_ARGS[] = {
-    {"slot", Pokemon::StoryArgType::NUMBER, true},
-    {"min", Pokemon::StoryArgType::NUMBER, true},
-};
-
-//  The check a LEVEL step (level_step()) makes; nothing if it isn't one.
-std::optional<LevelCheck> parse_level_step(const Pokemon::StoryStep& step);
+//  The GAME action of a LEVEL step: slot INTEGER (required, from 1), min
+//  INTEGER (required, 1-100).
+inline const std::string LEVEL_ACTION = "level";
+//  `check` as its action's args.
+Pokemon::StoryActionArgs level_args(const LevelCheck& check);
+//  The check a LEVEL_ACTION step's args give; nothing if one is out of range.
+std::optional<LevelCheck> level_check_of(const Pokemon::StoryActionArgs& args);
 
 //  The table's LEVEL step.
 Pokemon::StoryStep level_step(std::string name, std::string why, const LevelCheck& check);

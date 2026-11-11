@@ -28,51 +28,13 @@
 #include "PokemonFRLG_RngDisplays.h"
 #include "PokemonFRLG_SeedsDatabase.h"
 #include "PokemonFRLG_StarterRngAttempts.h"
+#include "PokemonFRLG_GiftRngOutcome.h"
+#include "PokemonFRLG_GiftRngTarget.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
 
-
-//  What the search needs to know about a gift: its base stats, its gender
-//  threshold (-1 if genderless) and the level it is received at (0 to keep
-//  the level read from its summary).
-struct GiftRngSpecies{
-    BaseStats base_stats{};
-    int16_t gender_threshold = -1;
-    uint8_t level = 0;
-};
-
-//  The gift that "target" gives. Targets that aren't gifts get the defaults.
-GiftRngSpecies gift_rng_species(PokemonFRLG_RngTarget target);
-
-
-//  Statistics tracker for Gift RNG attempts.
-struct GiftRngStats : public StatsTracker{
-    GiftRngStats();
-
-    std::atomic<uint64_t>& resets;
-    std::atomic<uint64_t>& shinies;
-    std::atomic<uint64_t>& nonshiny;
-    std::atomic<uint64_t>& errors;
-};
-
-
-//  Target seed and advances for Gift RNG manipulation.
-struct GiftRngTarget{
-    PokemonFRLG_RngTarget target = PokemonFRLG_RngTarget::magikarp;
-    uint16_t seed = 0;
-    uint64_t advances = 0;
-    //  The seed's entry in the seeds database (found).
-    SeedMatch seed_match;
-};
-
-//  Where an attempt is after a reset: the resets so far, and the
-//  calibration that reset was timed with.
-struct GiftRngProgress{
-    uint64_t resets = 0;
-    RngCalibrations calibrations{};
-};
 
 //  Settings controlling Gift RNG reset loops.
 struct GiftRngSettings{
@@ -116,21 +78,6 @@ struct GiftRngNotifications{
     EventNotificationOption& error_recoverable;
 };
 
-
-//  The outcome of an individual Gift RNG reset attempt.
-enum class GiftRngOutcome{
-    shiny,              //  The gift was shiny after a reset; not known if on the target.
-    shiny_on_target,    //  Shiny, and the target is among the states its stats match.
-    shiny_off_target,   //  Shiny, and the states its stats match aren't the target.
-    target_hit,         //  The calibration shows the target was hit; not shiny.
-    out_of_resets,      //  More resets than max_resets.
-    no_matches,         //  5 searches in a row matched no state near the target.
-};
-
-//  A shiny gift's outcome from the states its stats match near the target
-//  ("hits"): on the target if it is among them, off it if not, and just
-//  shiny if none match.
-GiftRngOutcome gift_shiny_outcome(uint16_t seed, uint64_t advances, const std::vector<AdvRngState>& hits);
 
 //  The result of a Gift RNG attempt sequence.
 struct GiftRngResult{

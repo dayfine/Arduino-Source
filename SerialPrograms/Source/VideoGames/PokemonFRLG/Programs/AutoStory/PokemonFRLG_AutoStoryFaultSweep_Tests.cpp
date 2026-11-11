@@ -50,6 +50,8 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
+#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMap.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
@@ -75,7 +77,7 @@ enum class FaultClass{
     DARK_CAVE,
     LOST_TAP,
 };
-const char* fault_class_name(FaultClass fault){
+std::string_view fault_class_name(FaultClass fault){
     switch (fault){
     case FaultClass::SCENE_END_POSE:
         return "scene end pose";
@@ -145,7 +147,7 @@ bool sim_plays(const StoryStep& step){
     case StoryStepKind::BATTLE:
         return true;
     case StoryStepKind::GAME:
-        return step.variant == CUT_TREE_VARIANT;
+        return step.action == CUT_TREE_VARIANT;
     default:
         return false;
     }
@@ -222,7 +224,7 @@ RowRun run_row(
 ){
     RowRun out;
     std::optional<MapPosition> off_maps;
-    StoryPose at = *story_pose(*row.start);
+    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
     std::vector<MapData> maps = sweep_maps();
     auto sim = std::make_unique<OverworldSim>(maps, MapPosition{at.map, at.tile}, at.facing.value_or(Direction::SOUTH), script);
     const auto add = [&out](const SimState& state){
@@ -244,7 +246,7 @@ RowRun run_row(
         if (!out.failure.empty() || (sim_plays(step) && !let_pass) || !step.pose_after){
             continue;
         }
-        at = *story_pose(*step.pose_after);
+        at = *story_pose(Pokemon::pose_of(*step.pose_after));
         const bool hidden = let_pass && hide_talk_battle_trainer(maps, step);
         const auto landing = landings.find(c);
         const MapPosition land{at.map, landing == landings.end() ? at.tile : landing->second};
@@ -327,7 +329,7 @@ UnitTestResult sweep_scene_end_pose(Logger& logger, const StoryCheckpoint& row, 
     size_t variants = 0;
     for (size_t c = 0; c < row.steps.size(); c++){
         const StoryStep& step = row.steps[c];
-        const std::optional<StoryPose> after = step.pose_after ? story_pose(*step.pose_after) : std::nullopt;
+        const std::optional<StoryPose> after = step.pose_after ? story_pose(Pokemon::pose_of(*step.pose_after)) : std::nullopt;
         //  A scene that only turns the player (the S.S. Ticket's, the aide's)
         //  ends where our walk did: not the game's end pose.
         const auto from = clean.before.find(c);
@@ -450,10 +452,11 @@ int line_tiles_before_last(const StoryCheckpoint& row, const RowRun& clean, size
         return 0;
     }
     const MapPosition last = next == clean.before.end() ? clean.end : next->second;
-    TilePos tile = from->second.point.next(row.steps[c].direction);
+    const Direction direction = Pokemon::story_arg<Direction>(row.steps[c].args, "direction");
+    TilePos tile = from->second.point.next(direction);
     int out = 0;
     for (; out + 1 < TRAINER_LINE_TILES && last.map == from->second.map && !(tile == last.point); out++){
-        tile = tile.next(row.steps[c].direction);
+        tile = tile.next(direction);
     }
     return out;
 }
@@ -487,7 +490,7 @@ UnitTestResult sweep_lost_tap(Logger& logger, const StoryCheckpoint& row, const 
     size_t variants = 0;
     for (size_t c = 0; c < row.steps.size(); c++){
         const StoryStep& step = row.steps[c];
-        if (step.kind != StoryStepKind::STEP || step.variant != TRAINER_LINE_VARIANT || clean.scripted.contains(c)){
+        if (step.kind != StoryStepKind::STEP || step.action != TRAINER_LINE_VARIANT || clean.scripted.contains(c)){
             continue;
         }
         const int tiles = line_tiles_before_last(row, clean, c);
@@ -594,7 +597,7 @@ std::optional<std::string> talk_battle_hide_flag(const StoryStep& step){
     if (step.kind != StoryStepKind::BATTLE || !step.pose_after){
         return std::nullopt;
     }
-    const auto found = TALK_BATTLE_HIDE_FLAGS.find({step.pose_after->map, step.name});
+    const auto found = TALK_BATTLE_HIDE_FLAGS.find({Pokemon::grid_pose_of(*step.pose_after).map, step.name});
     if (found == TALK_BATTLE_HIDE_FLAGS.end()){
         return std::nullopt;
     }
@@ -604,7 +607,7 @@ std::optional<std::string> talk_battle_hide_flag(const StoryStep& step){
 void add_tests_AutoStoryFaultSweep(UnitTestDatabase& database){
     for (const FaultSweepCase& item : FAULT_SWEEP_CASES){
         for (const StoryCheckpoint& row : story_checkpoints()){
-            if (!row.start || !story_pose(*row.start)){
+            if (!row.start || !story_pose(Pokemon::pose_of(*row.start))){
                 continue;
             }
             database.add<Test_AutoStoryFaultSweep>(FaultSweepCase{.input = {.fault = item.input.fault, .row = row.id}, .expectation = item.expectation});

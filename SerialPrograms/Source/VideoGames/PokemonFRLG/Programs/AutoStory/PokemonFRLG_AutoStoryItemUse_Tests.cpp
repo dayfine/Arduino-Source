@@ -20,7 +20,7 @@
 #include "PokemonFRLG_AutoStoryItemUse.h"
 #include "PokemonFRLG_AutoStoryBagUse.h"
 #include "PokemonFRLG_AutoStoryBag.h"
-#include "PokemonFRLG_AutoStoryVariantWords.h"
+#include "PokemonFRLG_AutoStoryFieldSteps.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -29,7 +29,7 @@ namespace PokemonFRLG{
 
 namespace{
 
-//  A use_item step's positional key, for legacy_game_step().
+//  A use_item step's positional key, for game_step_of().
 const std::string_view ITEM[] = {"item"};
 
 //  A bag on the sim: its pockets, each item used takes one, a bag that may
@@ -98,7 +98,7 @@ public:
         bag.pockets[BagPocket::KEY_ITEMS] = m_case.input.key_items;
         bag.opens = m_case.input.opens;
         const std::string variant = m_case.input.variant;
-        const std::string item = variant == RIDE_BIKE_VARIANT ? "bicycle" : parse_use_item_step(legacy_game_step(variant, ITEM)).value_or(variant);
+        const std::string item = variant == RIDE_BIKE_VARIANT ? "bicycle" : parse_use_item_step(game_step_of(variant, ITEM)).value_or(variant);
         const ItemUseEnd end = m_case.input.renew ? renew_repel(logger, bag, item) : use_item_from_bag(logger, bag, item);
         if (end != m_case.expectation.end || bag.used != m_case.expectation.used || bag.open){
             return std::format(
@@ -187,18 +187,18 @@ const ItemUseCase ITEM_USE_CASES[] = {
 };
 
 UnitTestResult test_variants_and_bike(){
-    if (parse_use_item_step(legacy_game_step("use_item potion", ITEM)) || parse_use_item_step(legacy_game_step("use_item", ITEM))
-        || parse_use_item_step(legacy_game_step("use_item repel slot=1", ITEM))
-        || !parse_use_item_step(legacy_game_step("use_item super-repel", ITEM))
+    if (parse_use_item_step(game_step_of("use_item potion", ITEM)) || parse_use_item_step(game_step_of("use_item", ITEM))
+        || parse_use_item_step(game_step_of("use_item repel slot=1", ITEM))
+        || !parse_use_item_step(game_step_of("use_item super-repel", ITEM))
     ){
         return "Expected only the story's bag items as use_item steps.";
     }
-    if (!is_item_use_step(legacy_game_step(RIDE_BIKE_VARIANT)) || is_item_use_step(legacy_game_step("poster_switch"))){
+    if (!is_item_use_step(game_step_of(RIDE_BIKE_VARIANT)) || is_item_use_step(game_step_of("poster_switch"))){
         return "Expected ride_bike, not poster_switch, as an item use.";
     }
     StoryStep ride;
     ride.kind = Pokemon::StoryStepKind::ROUTE;
-    ride.variant = BIKE_VARIANT;
+    ride.action = BIKE_VARIANT;
     if (move_speed(ride) != MoveSpeed::BIKE){
         return "A bike ROUTE isn't ridden.";
     }

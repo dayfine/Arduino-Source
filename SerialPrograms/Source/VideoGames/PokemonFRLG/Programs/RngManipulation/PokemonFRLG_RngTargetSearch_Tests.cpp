@@ -50,7 +50,7 @@ struct TenLinesGroup{
 };
 
 //  Ten Lines results, one per line, sorted by advances.
-const char MODEST_ROWS[] =
+const std::string MODEST_ROWS =
     "9435B76A,68F03EBD,Square,1,31/14/7/29/1/27,Dragon 39,2EF6,29364,52641,A/None\n"
     "2E37261A,DB7C8D33,Star,1,28/16/6/30/11/29,Water 63,6E9A,50048,54054,A/Blackout R\n"
     "C408B1DF,192D4F60,Square,0,25/8/10/29/0/28,Rock 32,02A8,53397,55259,Start/Blackout R\n"
@@ -72,7 +72,7 @@ const char MODEST_ROWS[] =
     "BE31CFCC,FA05AC4E,Star,0,30/22/21/30/3/29,Grass 62,D17C,158288,38405,Start/Blackout R\n"
     "3F487560,7B922DDD,Star,1,30/21/5/31/21/27,Dragon 45,FF1C,171172,58240,A/None\n";
 
-const char ADAMANT_ROWS[] =
+const std::string ADAMANT_ROWS =
     "537A2752,A823FE6A,Star,0,25/29/15/17/31/27,Dark 57,B897,4437,35972,A/Blackout R\n"
     "D9FDB041,B9B4EFFE,Star,0,27/31/19/11/5/31,Dark 49,D356,22897,60771,A/None\n"
     "E9F88FDD,EAD6BC98,Star,0,30/29/1/29/23/31,Dragon 56,CE81,26060,33587,Start/None\n"
@@ -90,7 +90,7 @@ const char ADAMANT_ROWS[] =
     "6109BF46,A9DAFF92,Star,0,26/31/30/6/2/30,Fighting 70,3136,103312,63359,A/None\n"
     "3F5603C4,8C11DA5D,Star,1,25/29/6/6/24/29,Poison 42,D22E,111518,54657,Start/None\n";
 
-const char NEUTRAL_ROWS[] =
+const std::string NEUTRAL_ROWS =
     "130195A8,AD7BFB36,Square,0,31/27/31/31/27/26,Ice 70,4381,17225,61908,Start/None\n"
     "BE0D7E8F,6FA739E8,Star,0,31/21/25/29/26/25,Steel 50,C845,21690,41371,Start/None\n"
     "1798BCE3,066A5027,Square,1,28/23/25/30/31/28,Water 61,3DDC,26549,44721,A/None\n"

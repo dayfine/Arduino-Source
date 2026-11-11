@@ -11,7 +11,7 @@
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryChoice.h"
-#include "PokemonFRLG_AutoStoryVariantWords.h"
+#include "PokemonFRLG_AutoStoryGameArgs.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -20,7 +20,7 @@ namespace PokemonFRLG{
 using namespace std::chrono_literals;
 
 
-const char* fossil_name(Fossil fossil){
+std::string_view fossil_name(Fossil fossil){
     switch (fossil){
     case Fossil::DOME:  return "dome";
     case Fossil::HELIX: return "helix";
@@ -41,7 +41,7 @@ Pokemon::TilePos fossil_tile(Fossil fossil){
     return fossil == Fossil::DOME ? Pokemon::TilePos{13, 7} : Pokemon::TilePos{14, 7};
 }
 
-const char* choice_end_name(ChoiceEnd end){
+std::string_view choice_end_name(ChoiceEnd end){
     switch (end){
     case ChoiceEnd::TAKEN:      return "taken";
     case ChoiceEnd::WRONG_ONE:  return "wrong_one";
@@ -51,12 +51,12 @@ const char* choice_end_name(ChoiceEnd end){
 }
 
 
-std::optional<Fossil> parse_fossil_step(const Pokemon::StoryStep& step){
-    const Pokemon::StoryArgs* args = game_step_args(step, FOSSIL_VARIANT, FOSSIL_ARGS);
-    if (args == nullptr){
+std::optional<Fossil> fossil_of(const Pokemon::StoryActionArgs& args){
+    const std::string* name = game_arg<std::string>(args, "fossil");
+    if (name == nullptr){
         return std::nullopt;
     }
-    return fossil_from_name(*Pokemon::story_arg_text(*args, "fossil"));
+    return fossil_from_name(*name);
 }
 
 Pokemon::StoryStep fossil_step(std::string name, std::string why, Fossil fossil){
@@ -64,7 +64,7 @@ Pokemon::StoryStep fossil_step(std::string name, std::string why, Fossil fossil)
     step.kind = Pokemon::StoryStepKind::GAME;
     step.name = std::move(name);
     step.why = std::move(why);
-    step.variant = FOSSIL_VARIANT;
+    step.action = FOSSIL_ACTION;
     step.args = {{"fossil", std::string(fossil_name(fossil))}};
     return step;
 }

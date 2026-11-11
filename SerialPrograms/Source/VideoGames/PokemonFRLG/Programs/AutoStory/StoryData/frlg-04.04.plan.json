@@ -4,32 +4,39 @@
   "checkpoint": {
     "id": "04.04",
     "title": "Route 4 Center: the Magikarp into BOX 1",
-    "notes": [
-      "The Magikarp goes to BOX 1 at the Center's PC (11, 1), so Mt. Moon is fought with the starter alone (console B, 2026-11-02: done by hand and saved at (11, 2), facing the PC, where this row ends). The wandering boy (4..6, 3..5) is walked around. The Magikarp comes from Gift RNG: with Gift RNG off the party is the starter alone, and the deposit is skipped."
-    ],
-    "start": {"certainty": "tile", "map": "Route4_PokemonCenter_1F", "where": {"facing": "west", "kind": "tiles", "tiles": [[2, 3]]}},
-    "sections": [
+    "start": {"map": "Route4_PokemonCenter_1F", "tiles": [[2, 3]], "facing": "west"},
+    "events": [
       {
-        "id": "route4_center_pc",
-        "title": "Route 4's Pokemon Center PC",
-        "events": [
-          {
-            "id": "pc_front",
-            "kind": "route",
-            "variant": "run",
-            "target": {"certainty": "tile", "map": "Route4_PokemonCenter_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[11, 2]]}},
-            "why": "below the PC (11, 1), facing it"
-          },
-          {
-            "id": "magikarp_to_box",
-            "kind": "game_action",
-            "variant": "pc",
-            "args": {"op": "deposit", "slot": 2, "box": 1, "if_present": true},
-            "why": "DEPOSIT the party's second slot into BOX 1, if it has one"
-          }
-        ]
+        "id": "pc_front",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "Route4_PokemonCenter_1F", "tiles": [[11, 2]], "facing": "north"}
+        },
+        "why": "below the PC (11, 1), facing it"
+      },
+      {
+        "id": "magikarp_to_box",
+        "kind": "game_action",
+        "action": "pc",
+        "args": {
+          "do": "deposit",
+          "slot": 2,
+          "box": 1,
+          "if_present": true
+        },
+        "why": "DEPOSIT the party's second slot into BOX 1, if it has one"
       }
     ]
   },
-  "execution": {"menu": "full", "supplies": {"lead": "after_brock"}}
+  "execution": {
+    "menu": "full",
+    "lead": "after_brock",
+    "notes": {
+      "checkpoint": [
+        "The Magikarp goes to BOX 1 at the Center's PC (11, 1), so Mt. Moon is fought with the starter alone (console B, 2026-11-02: done by hand and saved at (11, 2), facing the PC, where this row ends). The wandering boy (4..6, 3..5) is walked around. The Magikarp comes from Gift RNG: with Gift RNG off the party is the starter alone, and the deposit is skipped."
+      ]
+    }
+  },
+  "metadata": {"phase": "testing"}
 }

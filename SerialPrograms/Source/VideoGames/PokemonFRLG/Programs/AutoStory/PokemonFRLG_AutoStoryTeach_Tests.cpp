@@ -22,7 +22,6 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "PokemonFRLG_AutoStoryTeach.h"
 #include "PokemonFRLG_AutoStoryTeachScreens.h"
-#include "PokemonFRLG_AutoStoryVariantWords.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -376,33 +375,35 @@ UnitTestResult test_tm_used_up(){
 }
 
 
-UnitTestResult test_teach_variant(){
+UnitTestResult test_teach_args(){
     const TeachPlan plan{.item = "hm03", .move = "surf", .member = 0, .forget_move = "tail-whip"};
-    const Pokemon::StoryStep step = teach_step("teach_surf", "", plan);
-    const Pokemon::StoryArgs expected{{"item", "hm03"}, {"move", "surf"}, {"slot", int64_t(1)}, {"forget", "tail-whip"}};
-    if (step.variant != TEACH_VARIANT || step.args != expected){
-        return "Unexpected TEACH step \"" + step.variant + "\".";
-    }
-    const std::optional<TeachPlan> back = parse_teach_step(step);
+    const Pokemon::StoryActionArgs args = teach_args(plan);
+    const std::optional<TeachPlan> back = teach_plan_of(args);
     if (!back || back->item != "hm03" || back->move != "surf" || back->member != 0 || back->forget_move != "tail-whip"){
-        return "The TEACH step didn't read back as its plan.";
+        return "The Surf plan didn't read back from its args.";
     }
-    const std::string_view positional[] = {"item", "move"};
-    const std::optional<TeachPlan> by_slot = parse_teach_step(legacy_game_step("teach tm28 dig slot=2 forget_slot=4", positional));
+    const std::optional<TeachPlan> by_slot = teach_plan_of({
+        {"item", std::string("tm28")}, {"move", std::string("dig")}, {"slot", int64_t(2)}, {"forget_slot", int64_t(4)},
+    });
     if (!by_slot || by_slot->member != 1 || by_slot->forget_slot != 3u){
-        return "\"teach tm28 dig slot=2 forget_slot=4\" didn't read back.";
+        return "Dig into slot 2, forgetting move 4, didn't read back.";
     }
-    const std::optional<TeachPlan> tutor = parse_teach_step(legacy_game_step("teach tutor mega-kick slot=1 forget=withdraw", positional));
+    const std::optional<TeachPlan> tutor = teach_plan_of(teach_args({.item = std::string(TEACH_TUTOR), .move = "mega-kick", .member = 0, .forget_move = "withdraw"}));
     if (!tutor || tutor->item != TEACH_TUTOR || tutor->move != "mega-kick" || tutor->forget_move != "withdraw"){
-        return "\"teach tutor mega-kick slot=1 forget=withdraw\" didn't read back.";
+        return "The tutor's Mega Kick didn't read back from its args.";
     }
-    for (std::string_view bad : {
-        "teach", "teach hm03 surf", "teach potion surf slot=1", "teach hm03 surf slot=7", "teach tutors mega-kick slot=1",
-        "teach hm03 surf slot=1 forget_slot=5", "teach hm03 slot=1", "teach hm03 surf slot=1 forget=",
-        "mart PewterCity_Mart potion=1",
-    }){
-        if (parse_teach_step(legacy_game_step(bad, positional))){
-            return "Expected \"" + std::string(bad) + "\" refused.";
+    const std::vector<std::pair<std::string, Pokemon::StoryArgValue>> bad_args{
+        {"item", std::string("potion")},
+        {"item", std::string("tutors")},
+        {"slot", int64_t(7)},
+        {"forget_slot", int64_t(5)},
+        {"move", std::string("")},
+    };
+    for (const auto& [key, value] : bad_args){
+        Pokemon::StoryActionArgs bad = args;
+        bad[key] = value;
+        if (teach_plan_of(bad)){
+            return "Expected a bad " + key + " refused.";
         }
     }
     return true;
@@ -421,7 +422,7 @@ const AutoStoryTeachCase AUTO_STORY_TEACH_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"the table's variant", test_teach_variant},
+        .input = {"the step's args", test_teach_args},
         .expectation = {},
     },
 };

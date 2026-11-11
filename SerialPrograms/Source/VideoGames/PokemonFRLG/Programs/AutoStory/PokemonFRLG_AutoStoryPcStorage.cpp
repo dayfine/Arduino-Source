@@ -9,8 +9,8 @@
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "PokemonFRLG_AutoStoryActions.h"
+#include "PokemonFRLG_AutoStoryGameArgs.h"
 #include "PokemonFRLG_AutoStoryPcStorage.h"
-#include "PokemonFRLG_AutoStoryVariantWords.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -31,58 +31,62 @@ constexpr size_t STORAGE_MENU_ROWS = 5;
 //  A second look at a frame that reads as the overworld.
 constexpr Milliseconds OVERWORLD_CONFIRM = 800ms;
 
-} // namespace
-
-
+//  "deposit slot=2 box=1" or "withdraw box=1 slot=7", for the log.
 std::string pc_transfer_text(const PcTransfer& transfer){
     if (transfer.action == PcAction::DEPOSIT){
         return std::format(
-            "pc deposit slot={} box={}{}", transfer.party_slot + 1, transfer.box + 1,
+            "deposit slot={} box={}{}", transfer.party_slot + 1, transfer.box + 1,
             transfer.if_missing == PcMissing::SKIP ? " if_present" : ""
         );
     }
-    return std::format("pc withdraw box={} slot={}", transfer.box + 1, transfer.box_slot + 1);
+    return std::format("withdraw box={} slot={}", transfer.box + 1, transfer.box_slot + 1);
 }
 
-Pokemon::StoryArgs pc_args(const PcTransfer& transfer){
-    const bool deposit = transfer.action == PcAction::DEPOSIT;
-    Pokemon::StoryArgs args{
-        {"op", std::string(deposit ? "deposit" : "withdraw")},
-        {"slot", static_cast<int64_t>((deposit ? transfer.party_slot : transfer.box_slot) + 1)},
-        {"box", static_cast<int64_t>(transfer.box + 1)},
+} // namespace
+
+
+Pokemon::StoryActionArgs pc_args(const PcTransfer& transfer){
+    if (transfer.action == PcAction::DEPOSIT){
+        return {
+            {"do", std::string("deposit")},
+            {"slot", int64_t(transfer.party_slot + 1)},
+            {"box", int64_t(transfer.box + 1)},
+            {"if_present", transfer.if_missing == PcMissing::SKIP},
+        };
+    }
+    return {
+        {"do", std::string("withdraw")},
+        {"slot", int64_t(transfer.box_slot + 1)},
+        {"box", int64_t(transfer.box + 1)},
+        {"if_present", false},
     };
-    if (deposit && transfer.if_missing == PcMissing::SKIP){
-        args["if_present"] = true;
-    }
-    return args;
 }
 
-std::optional<PcTransfer> parse_pc_step(const Pokemon::StoryStep& step){
-    const Pokemon::StoryArgs* args = game_step_args(step, PC_VARIANT, PC_ARGS);
-    if (args == nullptr){
+std::optional<PcTransfer> pc_transfer_of(const Pokemon::StoryActionArgs& args){
+    const std::string* action = game_arg<std::string>(args, "do");
+    const std::optional<size_t> box = counted_arg(args, "box", BOX_COUNT);
+    if (action == nullptr || !box){
         return std::nullopt;
     }
-    const std::string_view op = *Pokemon::story_arg_text(*args, "op");
-    const bool deposit = op == "deposit";
-    const bool if_present = Pokemon::story_arg_flag(*args, "if_present");
-    if ((!deposit && op != "withdraw") || (!deposit && if_present)
-        || !arg_number_within(*args, "slot", 1, static_cast<int64_t>(deposit ? PARTY_SIZE : BOX_SLOTS))
-        || !arg_number_within(*args, "box", 1, static_cast<int64_t>(BOX_COUNT))
-    ){
+    PcTransfer transfer{.box = *box};
+    if (*action == "deposit"){
+        const std::optional<size_t> slot = counted_arg(args, "slot", PARTY_SIZE);
+        const bool* if_present = game_arg<bool>(args, "if_present");
+        if (!slot){
+            return std::nullopt;
+        }
+        transfer.party_slot = *slot;
+        if (if_present != nullptr && *if_present){
+            transfer.if_missing = PcMissing::SKIP;
+        }
+        return transfer;
+    }
+    const std::optional<size_t> slot = counted_arg(args, "slot", BOX_SLOTS);
+    if (*action != "withdraw" || !slot){
         return std::nullopt;
     }
-    PcTransfer transfer;
-    transfer.action = deposit ? PcAction::DEPOSIT : PcAction::WITHDRAW;
-    transfer.box = static_cast<size_t>(*Pokemon::story_arg_number(*args, "box")) - 1;
-    const size_t slot = static_cast<size_t>(*Pokemon::story_arg_number(*args, "slot")) - 1;
-    if (deposit){
-        transfer.party_slot = slot;
-    }else{
-        transfer.box_slot = slot;
-    }
-    if (if_present){
-        transfer.if_missing = PcMissing::SKIP;
-    }
+    transfer.action = PcAction::WITHDRAW;
+    transfer.box_slot = *slot;
     return transfer;
 }
 
@@ -106,7 +110,7 @@ std::string pc_transfer_error(const PcTransfer& transfer, const std::vector<PcPa
 }
 
 
-const char* pc_press_name(PcPress press){
+std::string_view pc_press_name(PcPress press){
     switch (press){
     case PcPress::A:        return "A";
     case PcPress::B:        return "B";
@@ -310,7 +314,7 @@ PcResult run_pc_transfer(Logger& logger, PcStorageActions& actions, const PcTran
             return {PcEnd::DONE, ""};
         }
         if (decision.press == PcPress::FAIL){
-            logger.log("PC: \"" + name + "\" failed on the " + pc_screen_name(view.screen) + ": " + decision.reason + ".", COLOR_RED);
+            logger.log(std::format("PC: \"{}\" failed on the {}: {}.", name, pc_screen_name(view.screen), decision.reason), COLOR_RED);
             return {PcEnd::FAILED, decision.reason};
         }
         logger.log(std::format(

@@ -23,7 +23,7 @@ namespace PokemonFRLG{
 using namespace std::chrono_literals;
 
 
-const char* sim_screen_name(SimScreen screen){
+std::string_view sim_screen_name(SimScreen screen){
     switch (screen){
     case SimScreen::OVERWORLD:
         return "the overworld";
@@ -360,7 +360,6 @@ bool OverworldSim::after_step(const Step& step, Milliseconds pressed){
     if (step.warped && black_without_warp(pressed)){
         return true;
     }
-    const bool dims = step.warped && m_script.lift_exit_dims && m_script.lift_floors.contains(map().name);
     m_map = step.map;
     m_player = step.player;
     m_state.steps++;
@@ -377,9 +376,7 @@ bool OverworldSim::after_step(const Step& step, Milliseconds pressed){
             note("the warp takes the player off the Bicycle.");
         }
         m_frozen = true;
-        if (!dims){
-            schedule(pressed + timing.tile, SimScreen::FADE, false);
-        }
+        schedule(pressed + timing.tile, SimScreen::FADE, false);
         schedule(pressed + timing.tile + timing.fade, SimScreen::OVERWORLD, timing.fade_in == 0ms);
         if (timing.fade_in > 0ms){
             schedule(pressed + timing.tile + timing.fade + timing.fade_in, SimScreen::OVERWORLD, true);
@@ -529,7 +526,7 @@ void OverworldSim::stuck_hold(Direction direction){
     }else if (m_battle_pending){
         violation(std::string("the D-pad held ") + direction_name(direction) + " into a battle.");
     }else{
-        note(std::string("the D-pad held ") + direction_name(direction) + " under " + sim_screen_name(m_state.screen) + (m_frozen ? "." : ", in the lockout after a battle."));
+        note(std::format("the D-pad held {} under {}{}", direction_name(direction), sim_screen_name(m_state.screen), m_frozen ? "." : ", in the lockout after a battle."));
     }
 }
 
@@ -775,7 +772,7 @@ void OverworldSimWalker::wait_out_slide(const RouteStep& step){
 void OverworldSimWalker::check_overworld(const RouteStep& step){
     const SimScreen screen = m_sim.state().screen;
     if (m_rules.check_overworld && (screen == SimScreen::START_MENU || screen == SimScreen::MESSAGE)){
-        fail(std::string("walk_overworld_route(): ") + sim_screen_name(screen) + " is open, before: " + to_string(step));
+        fail(std::string("walk_overworld_route(): ") + std::string(sim_screen_name(screen)) + " is open, before: " + to_string(step));
     }
 }
 

@@ -4,21 +4,20 @@
   "checkpoint": {
     "id": "01.03",
     "title": "bedroom to Pallet Town",
-    "start": {"certainty": "tile", "map": "PalletTown_PlayersHouse_2F", "where": {"facing": "north", "kind": "tiles", "tiles": [[6, 6]]}},
-    "sections": [
+    "start": {"map": "PalletTown_PlayersHouse_2F", "tiles": [[6, 6]], "facing": "north"},
+    "events": [
       {
-        "id": "players_house",
-        "title": "Down the stairs and out",
-        "events": [
-          {
-            "id": "front_door",
-            "kind": "route",
-            "target": {"certainty": "tile", "map": "PalletTown", "where": {"kind": "tiles", "tiles": [[6, 8]]}},
-            "why": "down the stairs and out of the house"
-          }
-        ]
+        "id": "front_door",
+        "kind": "route",
+        "args": {
+          "target": {"map": "PalletTown", "tiles": [[6, 8]]}
+        },
+        "why": "down the stairs and out of the house"
       }
     ]
   },
-  "execution": {"menu": "before_pokemon"}
+  "execution": {
+    "menu": "before_pokemon"
+  },
+  "metadata": {"phase": "testing"}
 }

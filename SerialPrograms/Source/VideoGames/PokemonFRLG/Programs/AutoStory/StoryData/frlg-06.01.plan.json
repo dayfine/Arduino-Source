@@ -4,157 +4,161 @@
   "checkpoint": {
     "id": "06.01",
     "title": "The S.S. Anne: the rival, HM01 Cut from the Captain, back to Vermilion's Pokemon Center",
-    "notes": [
-      "The S.S. Anne (VermilionCity, SSAnne_* scripts.inc). The step onto (23, 33) (VermilionCity_EventScript_CheckTicket) has the sailor (24, 33) ask for a ticket; the S.S. TICKET (05.07) is shown and the player turns east to him. Then onto the pier (23, 34), along the gangway, through 1F, by legs off its cabins' doormats on row 10, which planned routes cross, and up its stairs (3, 8) to 2F. The step onto (30, 6), below the Captain's door (30, 2) (SSAnne_2F_Corridor_EventScript_RivalTriggerLeft), brings the rival out and down to (30, 5); the player keeps facing north, and after the battle he walks round the player and off. For a player who took Squirtle: Pidgeotto Lv19, Raticate Lv16, Kadabra Lv18, Ivysaur Lv20. The ship's trainers are in its cabins and on its deck, off the way. The Captain (5, 4) faces up; talked to from (5, 5) he is rubbed on the back and gives HM01 (VAR_MAP_SCENE_VERMILION_CITY 1). Back out through 1F's door (19, 1): on the gangway the ship sails (SSAnne_Exterior_ExitSSAnne), the player is put on (23, 34) and walked up to (23, 32) (VermilionCity_EventScript_ExitSSAnne). Cut is taught later, to the Oddish."
-    ],
-    "start": {"certainty": "tile", "map": "VermilionCity_PokemonCenter_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 4]]}},
-    "sections": [
+    "start": {"map": "VermilionCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
+    "events": [
       {
-        "id": "boarding",
-        "title": "The ticket check and S.S. Anne 1F",
-        "events": [
-          {
-            "id": "above_ticket_check",
-            "kind": "route",
-            "variant": "run",
-            "target": {"certainty": "tile", "map": "VermilionCity", "where": {"facing": "south", "kind": "tiles", "tiles": [[23, 32]]}},
-            "why": "out of the Center down to the harbor, above the ticket check (23, 33)"
-          },
-          {
-            "id": "ticket_check",
-            "kind": "step",
-            "direction": "south",
-            "why": "onto (23, 33): \"Do you have a ticket?\""
-          },
-          {
-            "id": "show_ss_ticket",
-            "kind": "scene",
-            "declared_after": {"certainty": "tile", "map": "VermilionCity", "where": {"facing": "east", "kind": "tiles", "tiles": [[23, 33]]}},
-            "why": "the S.S. TICKET; the player turns to the sailor"
-          },
-          {
-            "id": "aboard",
-            "kind": "route",
-            "variant": "run",
-            "target": {"certainty": "tile", "map": "SSAnne_1F_Corridor", "where": {"facing": "south", "kind": "tiles", "tiles": [[19, 2]]}},
-            "why": "onto the pier, along the gangway and in by 1F's door, a step below it"
-          },
-          {
-            "id": "past_the_cabins",
-            "kind": "legs",
-            "variant": "run",
-            "legs": [{"direction": "south", "tiles": 8}, {"direction": "north", "tiles": 1}, {"direction": "west", "tiles": 6}, {"direction": "north", "tiles": 1}],
-            "why": "to the wall (19, 10), up a step, west to the worker (12, 9), up a step to (13, 8): off the cabins' mats on row 10"
-          }
-        ]
+        "id": "above_ticket_check",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "VermilionCity", "tiles": [[23, 32]], "facing": "south"}
+        },
+        "why": "out of the Center down to the harbor, above the ticket check (23, 33)"
+      },
+      {
+        "id": "ticket_check",
+        "kind": "step",
+        "args": {
+          "direction": "south"
+        },
+        "why": "onto (23, 33): \"Do you have a ticket?\""
+      },
+      {
+        "id": "show_ss_ticket",
+        "kind": "scene",
+        "declared_after": {"map": "VermilionCity", "tiles": [[23, 33]], "facing": "east"},
+        "why": "the S.S. TICKET; the player turns to the sailor"
+      },
+      {
+        "id": "aboard",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "SSAnne_1F_Corridor", "tiles": [[19, 2]], "facing": "south"}
+        },
+        "why": "onto the pier, along the gangway and in by 1F's door, a step below it"
+      },
+      {
+        "id": "past_the_cabins",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [{"direction": "south", "tiles": 8}, {"direction": "north", "tiles": 1}, {"direction": "west", "tiles": 6}, {"direction": "north", "tiles": 1}]
+        },
+        "why": "to the wall (19, 10), up a step, west to the worker (12, 9), up a step to (13, 8): off the cabins' mats on row 10"
+      },
+      {
+        "id": "below_rival_trigger",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "SSAnne_2F_Corridor", "tiles": [[30, 7]], "facing": "north"}
+        },
+        "why": "west along 1F, up the stairs (3, 8) and along 2F below the Captain's door"
+      },
+      {
+        "id": "rival_trigger",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "why": "onto (30, 6): the rival comes out of the Captain's door"
       },
       {
         "id": "rival_ss_anne",
-        "title": "2F: the rival",
-        "events": [
-          {
-            "id": "below_rival_trigger",
-            "kind": "route",
-            "variant": "run",
-            "target": {"certainty": "tile", "map": "SSAnne_2F_Corridor", "where": {"facing": "north", "kind": "tiles", "tiles": [[30, 7]]}},
-            "why": "west along 1F, up the stairs (3, 8) and along 2F below the Captain's door"
-          },
-          {
-            "id": "rival_trigger",
-            "kind": "step",
-            "direction": "north",
-            "why": "onto (30, 6): the rival comes out of the Captain's door"
-          },
-          {
-            "id": "rival_ss_anne",
-            "kind": "battle",
-            "declared_after": {"certainty": "tile", "map": "SSAnne_2F_Corridor", "where": {"facing": "north", "kind": "tiles", "tiles": [[30, 6]]}},
-            "why": "Pidgeotto, Raticate, Kadabra and Ivysaur"
-          }
-        ]
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_RIVAL_SS_ANNE_BULBASAUR",
+          "foes": ["pidgeotto", "raticate", "kadabra", "ivysaur"]
+        },
+        "declared_after": {"map": "SSAnne_2F_Corridor", "tiles": [[30, 6]], "facing": "north"},
+        "why": "Pidgeotto, Raticate, Kadabra and Ivysaur"
+      },
+      {
+        "id": "behind_captain",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "SSAnne_CaptainsOffice", "tiles": [[5, 5]], "facing": "north"}
+        },
+        "why": "into the Captain's office, behind the Captain (5, 4)"
       },
       {
         "id": "captain",
-        "title": "The Captain and HM01",
-        "events": [
-          {
-            "id": "behind_captain",
-            "kind": "route",
-            "variant": "run",
-            "target": {"certainty": "tile", "map": "SSAnne_CaptainsOffice", "where": {"facing": "north", "kind": "tiles", "tiles": [[5, 5]]}},
-            "why": "into the Captain's office, behind the Captain (5, 4)"
-          },
-          {
-            "id": "captain",
-            "kind": "talk",
-            "why": "\"Ooargh... I feel hideous... Urrp! Seasick...\""
-          },
-          {
-            "id": "hm01_cut",
-            "kind": "scene",
-            "declared_after": {"certainty": "tile", "map": "SSAnne_CaptainsOffice", "where": {"facing": "north", "kind": "tiles", "tiles": [[5, 5]]}},
-            "why": "the player rubs his back; HM01, and what Cut does"
-          }
-        ]
+        "kind": "talk",
+        "why": "\"Ooargh... I feel hideous... Urrp! Seasick...\""
+      },
+      {
+        "id": "hm01_cut",
+        "kind": "scene",
+        "declared_after": {"map": "SSAnne_CaptainsOffice", "tiles": [[5, 5]], "facing": "north"},
+        "why": "the player rubs his back; HM01, and what Cut does"
+      },
+      {
+        "id": "off_2f",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "SSAnne_1F_Corridor", "tiles": [[13, 8]]}
+        },
+        "why": "back along 2F, down the stairs and east along 1F's row 8"
+      },
+      {
+        "id": "round_the_sailor",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [{"direction": "east", "tiles": 4}, {"direction": "south", "tiles": 1}, {"direction": "east", "tiles": 2}]
+        },
+        "why": "to the sailor (18, 8), down a step, east to (19, 9): off the cabins' mats on row 10"
+      },
+      {
+        "id": "below_ship_door",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "SSAnne_1F_Corridor", "tiles": [[19, 2]], "facing": "north"}
+        },
+        "why": "up below the door to the gangway"
       },
       {
         "id": "off_the_ship",
-        "title": "Back out and off the ship",
-        "events": [
-          {
-            "id": "off_2f",
-            "kind": "route",
-            "variant": "run",
-            "target": {"certainty": "tile", "map": "SSAnne_1F_Corridor", "where": {"kind": "tiles", "tiles": [[13, 8]]}},
-            "why": "back along 2F, down the stairs and east along 1F's row 8"
-          },
-          {
-            "id": "round_the_sailor",
-            "kind": "legs",
-            "variant": "run",
-            "legs": [{"direction": "east", "tiles": 4}, {"direction": "south", "tiles": 1}, {"direction": "east", "tiles": 2}],
-            "why": "to the sailor (18, 8), down a step, east to (19, 9): off the cabins' mats on row 10"
-          },
-          {
-            "id": "below_ship_door",
-            "kind": "route",
-            "variant": "run",
-            "target": {"certainty": "tile", "map": "SSAnne_1F_Corridor", "where": {"facing": "north", "kind": "tiles", "tiles": [[19, 2]]}},
-            "why": "up below the door to the gangway"
-          },
-          {
-            "id": "off_the_ship",
-            "kind": "step",
-            "direction": "north",
-            "why": "out onto the gangway"
-          },
-          {
-            "id": "ss_anne_sails",
-            "kind": "scene",
-            "declared_after": {"certainty": "tile", "map": "VermilionCity", "where": {"facing": "north", "kind": "tiles", "tiles": [[23, 32]]}},
-            "why": "the ship sails; the player is walked off the pier to (23, 32)"
-          }
-        ]
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "why": "out onto the gangway"
       },
       {
-        "id": "vermilion_center",
-        "title": "Vermilion's Pokemon Center",
-        "events": [
-          {
-            "id": "vermilion_nurse",
-            "kind": "route",
-            "variant": "run",
-            "target": {"certainty": "tile", "map": "VermilionCity_PokemonCenter_1F", "where": {"facing": "north", "kind": "tiles", "tiles": [[7, 4]]}},
-            "why": "back to the Pokemon Center"
-          },
-          {
-            "id": "heal_vermilion",
-            "kind": "heal",
-            "why": "full HP"
-          }
-        ]
+        "id": "ss_anne_sails",
+        "kind": "scene",
+        "declared_after": {"map": "VermilionCity", "tiles": [[23, 32]], "facing": "north"},
+        "why": "the ship sails; the player is walked off the pier to (23, 32)"
+      },
+      {
+        "id": "vermilion_nurse",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "VermilionCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
+        },
+        "why": "back to the Pokemon Center"
+      },
+      {
+        "id": "heal_vermilion",
+        "kind": "heal",
+        "why": "full HP"
       }
     ]
   },
-  "execution": {"menu": "full", "supplies": {"lead": "after_brock"}}
+  "execution": {
+    "menu": "full",
+    "lead": "after_brock",
+    "notes": {
+      "checkpoint": [
+        "The S.S. Anne (VermilionCity, SSAnne_* scripts.inc). The step onto (23, 33) (VermilionCity_EventScript_CheckTicket) has the sailor (24, 33) ask for a ticket; the S.S. TICKET (05.07) is shown and the player turns east to him. Then onto the pier (23, 34), along the gangway, through 1F, by legs off its cabins' doormats on row 10, which planned routes cross, and up its stairs (3, 8) to 2F. The step onto (30, 6), below the Captain's door (30, 2) (SSAnne_2F_Corridor_EventScript_RivalTriggerLeft), brings the rival out and down to (30, 5); the player keeps facing north, and after the battle he walks round the player and off. For a player who took Squirtle: Pidgeotto Lv19, Raticate Lv16, Kadabra Lv18, Ivysaur Lv20. The ship's trainers are in its cabins and on its deck, off the way. The Captain (5, 4) faces up; talked to from (5, 5) he is rubbed on the back and gives HM01 (VAR_MAP_SCENE_VERMILION_CITY 1). Back out through 1F's door (19, 1): on the gangway the ship sails (SSAnne_Exterior_ExitSSAnne), the player is put on (23, 34) and walked up to (23, 32) (VermilionCity_EventScript_ExitSSAnne). Cut is taught later, to the Oddish."
+      ]
+    }
+  },
+  "metadata": {"phase": "testing"}
 }

@@ -19,7 +19,8 @@
 #include "Common/Cpp/Json/JsonValue.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon_MapData.h"
-#include "Pokemon_Navigation_Tests.h"
+#include "Pokemon_MapData_Tests.h"
+#include "Pokemon_NavigationTestMaps.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -27,7 +28,7 @@ namespace Pokemon{
 
 namespace{
 
-const char* const VALID_MAP = R"({
+const std::string VALID_MAP = R"({
     "name": "TestTown",
     "source": {"decomp_file": "data/maps/TestTown/map.json", "revision": "abc123", "date": "2026-10-31"},
     "tiles": ["####", "#..~", "#D.S", "w^v#"],
@@ -44,7 +45,7 @@ const char* const VALID_MAP = R"({
 //  A map shaped like BDSP's: on a world grid, with tiles off the game's
 //  map, a region, a warp tile stood on, trainers, a person the story hides
 //  and scene triggers.
-const char* const BDSP_MAP = R"({
+const std::string BDSP_MAP = R"({
     "name": "Route 201",
     "source": {"decomp_file": "pret/pokediamond: land_data narc_0000.bin", "revision": "default branch", "date": "2026-11-01"},
     "world": {"name": "Sinnoh", "x": 96, "y": 839},
@@ -66,7 +67,7 @@ const char* const BDSP_MAP = R"({
 //  A map shaped like FRLG's: elevations, one-sided walls, warps of every
 //  entry to per-warp points (one to a map not loaded), a person hidden by
 //  an event flag, and a flag set.
-const char* const FRLG_MAP = R"({
+const std::string FRLG_MAP = R"({
     "name": "CeruleanCave_1F",
     "source": {"decomp_file": "data/maps/CeruleanCave_1F/map.json", "revision": "ce6406d8c2ea", "date": "2026-11-01"},
     "allow_running": false,
@@ -91,7 +92,7 @@ const char* const FRLG_MAP = R"({
 
 //  `base` with `find` replaced by `replacement`; empty when `find` is not
 //  in it.
-std::string edited(const char* base, const std::string& find, const std::string& replacement){
+std::string edited(const std::string& base, const std::string& find, const std::string& replacement){
     std::string json = base;
     const size_t at = json.find(find);
     if (at == std::string::npos){
@@ -114,8 +115,8 @@ std::string parse_error(const std::string& json){
 }
 
 //  Whether `text` contains every one of `parts`.
-bool mentions(const std::string& text, const std::vector<const char*>& parts){
-    for (const char* part : parts){
+bool mentions(const std::string& text, const std::vector<std::string>& parts){
+    for (const std::string& part : parts){
         if (text.find(part) == std::string::npos){
             return false;
         }
@@ -184,7 +185,7 @@ UnitTestResult test_glyphs_round_trip(){
     for (char glyph : std::string("#.~wv^<>DS 8246udlroHB")){
         const std::optional<TileKind> tile = tile_from_glyph(glyph);
         if (!tile || glyph_of(*tile) != glyph){
-            return std::string("Glyph '") + glyph + "' does not round-trip.";
+            return std::format("Glyph '{}' does not round-trip.", glyph);
         }
     }
     if (tile_from_glyph('?')){
@@ -215,20 +216,20 @@ UnitTestResult test_spin_hole_and_button_glyphs_parse(){
 }
 
 struct BadMap{
-    const char* name;
+    std::string name;
     std::string json;
-    std::vector<const char*> mentions;
+    std::vector<std::string> mentions;
 };
 
 //  The first row whose map doesn't fail as it says, or true.
 UnitTestResult first_wrong_error(const std::vector<BadMap>& rows){
     for (const BadMap& row : rows){
         if (row.json.empty()){
-            return std::string(row.name) + ": the text to edit is not in its map.";
+            return std::format("{}: the text to edit is not in its map.", row.name);
         }
         const std::string error = parse_error(row.json);
         if (!mentions(error, row.mentions)){
-            return std::string(row.name) + ": expected an error naming " + row.mentions.back() + ", got: \"" + error + "\"";
+            return std::format("{}: expected an error naming {}, got: \"{}\"", row.name, row.mentions.back(), error);
         }
     }
     return true;
@@ -262,7 +263,7 @@ UnitTestResult test_each_error_class(){
 
 //  One value read from a parsed map, and what it should be, both as text.
 struct Expected{
-    const char* what;
+    std::string what;
     std::string expected;
     std::string read;
 };
@@ -293,7 +294,7 @@ std::string text(const std::optional<MapTrainer>& trainer){
     }
     std::string out = std::format("sight {}, looks", trainer->sight);
     for (Direction direction : trainer->looks){
-        out += std::string(" ") + direction_name(direction);
+        out += std::format(" {}", direction_name(direction));
     }
     return out;
 }
@@ -304,20 +305,20 @@ std::string text(const MapWarp* warp){
     if (warp == nullptr){
         return "(none)";
     }
-    const std::string to = warp->to ? warp->to->map + "." + warp->to->point : "(not loaded)";
+    const std::string to = warp->to ? std::format("{}.{}", warp->to->map, warp->to->point) : "(not loaded)";
     return std::format("{} {} -> {}", to_string(TilePos{warp->x, warp->y}), (int)warp->enter, to);
 }
 std::string text(const std::set<std::string>& flags){
     std::string out;
     for (const std::string& flag : flags){
-        out += flag + " ";
+        out += std::format("{} ", flag);
     }
     return out;
 }
 
 UnitTestResult test_bdsp_shaped_map(){
     const MapData map = parse_map(parse_json(BDSP_MAP), "Route201.json");
-    const std::string world = map.world ? map.world->name + " " + to_string(map.world->offset) : "(none)";
+    const std::string world = map.world ? std::format("{} {}", map.world->name, to_string(map.world->offset)) : "(none)";
     return first_wrong({
         {.what = "world", .expected = "Sinnoh (96, 839)", .read = world},
         {.what = "tile (0, 0)", .expected = "' '", .read = std::format("'{}'", glyph_of(map.tiles.at({0, 0})))},
@@ -333,7 +334,7 @@ UnitTestResult test_bdsp_shaped_map(){
         {.what = "trigger 0", .expected = "barry_warning (2, 1)..(3, 1) 00.02", .read = std::format(
             "{} {} {}", map.triggers[0].name, text(map.triggers[0].box), text(map.triggers[0].when)
         )},
-        {.what = "trigger 1, any time", .expected = "border_sign (none)", .read = map.triggers[1].name + " " + text(map.triggers[1].when)},
+        {.what = "trigger 1, any time", .expected = "border_sign (none)", .read = std::format("{} {}", map.triggers[1].name, text(map.triggers[1].when))},
     });
 }
 
@@ -348,7 +349,7 @@ UnitTestResult test_frlg_shaped_map(){
     const auto elevation = [&](const TilePos& pos){
         return std::to_string(map.elevation->at(pos));
     };
-    const auto warp = [&](WarpEntry enter, const TilePos& pos, const char* to){
+    const auto warp = [&](WarpEntry enter, const TilePos& pos, std::string_view to){
         return std::format("{} {} -> {}", to_string(pos), (int)enter, to);
     };
     return first_wrong({
@@ -410,7 +411,7 @@ UnitTestResult test_built_in_maps(){
         for (int x = 0; x < 130; x++){
             const bool border = x == 0 || y == 0 || x == 129 || y == 129;
             if (big.tiles.at(TilePos{x, y}) != (border ? TileKind::WALL : TileKind::OPEN)){
-                return "BigField's tile (" + std::to_string(x) + ", " + std::to_string(y) + ") is wrong.";
+                return std::format("BigField's tile ({}, {}) is wrong.", x, y);
             }
         }
     }
@@ -427,7 +428,7 @@ struct MapDataTestInput{
 };
 
 struct MapDataTestExpectation{
-    const char* description;
+    std::string_view description;
 };
 
 struct MapDataTestCase{
@@ -438,14 +439,14 @@ struct MapDataTestCase{
 class Test_MapData : public UnitTest{
 public:
     explicit Test_MapData(MapDataTestCase scenario)
-        : UnitTest("Pokemon::MapData - " + scenario.input.name)
+        : UnitTest(std::format("Pokemon::MapData - {}", scenario.input.name))
         , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         try{
             return m_scenario.input.test();
         }catch (Exception& e){
-            return std::string(e.name()) + ": " + e.message();
+            return std::format("{}: {}", e.name(), e.message());
         }
     }
 
@@ -460,9 +461,9 @@ UnitTestResult test_tiles_to_door(){
         .height = 22,
         .cells = std::vector<TileKind>(3 * 22, TileKind::WALL)
     };
-    cell_at(corridor, {1, 0}) = TileKind::DOOR;
+    cell_at({1, 0}, corridor) = TileKind::DOOR;
     for (int y = 1; y <= 20; y++){
-        cell_at(corridor, {1, y}) = TileKind::OPEN;
+        cell_at({1, y}, corridor) = TileKind::OPEN;
     }
 
     // From (1, 20) north to door at (1, 0): exactly 20 tiles

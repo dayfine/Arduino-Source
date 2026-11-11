@@ -4,7 +4,6 @@
  *
  */
 
-#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_HideoutLiftRoom.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryRooms.h"
@@ -21,31 +20,32 @@ bool is_center_variant(std::string_view variant){
 
 const std::vector<RoomLeg>& center_enter_legs(){
     static const std::vector<RoomLeg> LEGS{
-        {.direction = Pokemon::Direction::NORTH, .tiles = 1, .warps = true, .to = "the Center"},
-        {.direction = Pokemon::Direction::NORTH, .tiles = 4},
+        {Pokemon::Direction::NORTH, 1, true},
+        {Pokemon::Direction::NORTH, 4, false},
     };
     return LEGS;
 }
 const std::vector<RoomLeg>& center_exit_legs(){
     static const std::vector<RoomLeg> LEGS{
-        {.direction = Pokemon::Direction::SOUTH, .tiles = 4},
-        {.direction = Pokemon::Direction::SOUTH, .tiles = 1, .warps = true, .to = "outside the Center"},
+        {Pokemon::Direction::SOUTH, 4, false},
+        {Pokemon::Direction::SOUTH, 1, true},
     };
     return LEGS;
 }
 const std::vector<RoomLeg>& lift_in_legs(){
     static const std::vector<RoomLeg> LEGS{
-        {.direction = Pokemon::Direction::NORTH, .tiles = 1, .warps = true, .to = LIFT_MAP},
-        {.direction = Pokemon::Direction::NORTH, .tiles = 2},
-        {.direction = Pokemon::Direction::WEST, .tiles = 2},
-        {.direction = Pokemon::Direction::NORTH, .tiles = 0},
+        {Pokemon::Direction::NORTH, 1, true},
+        {Pokemon::Direction::NORTH, 2, false},
+        {Pokemon::Direction::WEST, 2, false},
+        {Pokemon::Direction::NORTH, 0, false},
     };
     return LEGS;
 }
 const std::vector<RoomLeg>& lift_out_legs(){
     static const std::vector<RoomLeg> LEGS{
-        {.direction = Pokemon::Direction::EAST, .tiles = 2},
-        {.direction = Pokemon::Direction::SOUTH, .tiles = 3, .warps = true, .dims = true, .to = "the lift's floor picked"},
+        {Pokemon::Direction::EAST, 2, false},
+        {Pokemon::Direction::SOUTH, 2, false},
+        {Pokemon::Direction::SOUTH, 1, true},
     };
     return LEGS;
 }
@@ -73,7 +73,7 @@ void walk_room_legs(
         }
         VideoSnapshot before;
         for (int tile = 0; tile < leg.tiles; tile++){
-            if (leg.warps && tile + 1 == (leg.dims ? 1 : leg.tiles)){
+            if (leg.warps && tile + 1 == leg.tiles){
                 context.wait_for_all_requests();
                 before = console.video().snapshot();
             }
@@ -85,8 +85,6 @@ void walk_room_legs(
             step.direction = leg.direction;
             step.tiles = 1;
             step.warps = true;
-            step.fade_dims = leg.dims;
-            step.end.map = std::string(leg.to);
             OverworldWalkSteps::wait_out_warp(console, context, step, before);
         }
     }

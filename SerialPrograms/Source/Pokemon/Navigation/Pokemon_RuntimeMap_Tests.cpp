@@ -2,6 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  */
+#include <format>
 #include <iostream>
 #include <string>
 #include "Common/Cpp/Exceptions.h"
@@ -32,7 +33,7 @@ struct RuntimeMapCase{
     RuntimeMapExpectation expectation;
 };
 
-const char* const GOLDEN_V2 = R"(
+const std::string GOLDEN_V2 = R"(
     "format":"pokesim-runtime-map/2",
     "world":{"name":"Sinnoh","x":0,"y":0},
     "extension":{"zero":0,"false":false},
@@ -48,7 +49,7 @@ const char* const GOLDEN_V2 = R"(
     "coord_events":[{"coord":[0,0],"width":1,"length":2,"var":0}]
 )";
 
-const char* const GOLDEN_V1 = R"(
+const std::string GOLDEN_V1 = R"(
     "world":{"name":"Sinnoh","x":0,"y":0},
     "extension":{"zero":0,"false":false},
     "objects":[
@@ -107,7 +108,8 @@ const RuntimeMapCase RUNTIME_MAP_CASES[] = {
 };
 
 std::string map_document(std::string_view fields){
-    return R"({"name":"ContractMap","source":{"decomp_file":"synthetic","revision":"fixture","date":"2026-11-06"},"tiles":["..",".."],)" + std::string(fields) + "}";
+    const std::string_view head = R"({"name":"ContractMap","source":{"decomp_file":"synthetic","revision":"fixture","date":"2026-11-06"},"tiles":["..",".."],)";
+    return std::format("{}{}}}", head, fields);
 }
 
 // This is also used by the standalone pin-based 75-map parity check.
@@ -136,16 +138,16 @@ std::string check_runtime_case(const RuntimeMapCase& test){
         if (!test.expectation.error.empty() && message.find(test.expectation.error) != std::string::npos && message.find("Maps/contract.json") != std::string::npos){
             return {};
         }
-        return "Unexpected parse error: " + message;
+        return std::format("Unexpected parse error: {}", message);
     }
-    return test.expectation.error.empty() ? "" : "Expected rejection containing " + std::string(test.expectation.error);
+    return test.expectation.error.empty() ? "" : std::format("Expected rejection containing {}", test.expectation.error);
 }
 
 #ifndef PA_RUNTIME_MAP_STANDALONE
 class RuntimeMapTest : public UnitTest{
 public:
     explicit RuntimeMapTest(const RuntimeMapCase& test)
-        : UnitTest("Navigation/RuntimeMap/" + std::string(test.input.name)), m_test(test){}
+        : UnitTest(std::format("Navigation/RuntimeMap/{}", test.input.name)), m_test(test){}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         const std::string error = check_runtime_case(m_test);
         return error.empty() ? UnitTestResult(true) : UnitTestResult(error);

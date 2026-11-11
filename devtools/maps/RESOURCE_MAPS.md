@@ -33,10 +33,11 @@ modified, extra or unapproved resource data fails before compilation. The pack
 includes pinned license/provenance. Generated resources and external caches are
 ignored; the resource lock is checked in.
 
-The duplicate FRLG builder and Python tests are removed. `frlg_battle_data.py`
-is a thin CLI forwarder to `pokesim.games.frlg.battle_data_export`; set
-`PYTHONPATH=<pinned-tools>/src` when running it. All five existing battle-data
-outputs reproduced byte-for-byte after the move. Map-builder tests already live
+The duplicate FRLG builder and Python tests are removed. The battle data in
+`Programs/AutoStory/BattleData` is cut to what the program reads (each species'
+types, each move's type, whether it does damage and its PP, and the type
+chart) and has no generator here; a battle's foes come from its step in the
+checkpoint's plan. Map-builder tests already live
 beside their source in PokemonSimulation. Native game tests remain here.
 The shared Sinnoh decomp CLI remains a separate consumer migration.
 

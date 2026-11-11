@@ -12,7 +12,7 @@ namespace Pokemon{
 
 
 std::string to_string(const RouteTile& tile){
-    return tile.map + " " + to_string(tile.pos);
+    return std::format("{} {}", tile.map, to_string(tile.pos));
 }
 
 std::string describe(const std::vector<RouteTile>& tiles){
@@ -30,17 +30,17 @@ std::string to_string(const RouteLogLeg& leg){
     const std::string direction = direction_name(leg.direction);
     switch (leg.action){
     case RouteLegAction::SURF:
-        return "surf " + direction;
+        return std::format("surf {}", direction);
     case RouteLegAction::FACE:
-        return "face " + direction;
+        return std::format("face {}", direction);
     case RouteLegAction::WALK:
         break;
     }
-    const char* end = leg.end == RouteLegEnd::WALL ? " (to wall)" : leg.end == RouteLegEnd::WARP ? " (warp)" : " (open)";
-    return direction + " " + std::to_string(leg.tiles) + end;
+    const std::string_view end = leg.end == RouteLegEnd::WALL ? " (to wall)" : leg.end == RouteLegEnd::WARP ? " (warp)" : " (open)";
+    return std::format("{} {}{}", direction, leg.tiles, end);
 }
 
-const char* basis_name(EndBasis basis){
+std::string basis_name(EndBasis basis){
     switch (basis){
     case EndBasis::WALKED:
         return "walked";
@@ -53,23 +53,28 @@ const char* basis_name(EndBasis basis){
 }
 
 
+//  "<leg> to <tiles>", as the plan and the leg lines both write a leg.
+static std::string planned_leg_text(const PlannedRouteLeg& leg){
+    return std::format("{} to {}", to_string(leg.leg), describe(leg.after));
+}
+
 std::string route_plan_line(const std::string& label, const std::vector<RouteTile>& from, const std::vector<PlannedRouteLeg>& legs){
-    std::string text = label + ": plan from " + describe(from) + ":";
-    for (const PlannedRouteLeg& leg : legs){
-        text += "\n    " + to_string(leg.leg) + " to " + describe(leg.after);
+    std::string text = std::format("{}: plan from {}:", label, describe(from));
+    for (size_t i = 0; i < legs.size(); i++){
+        text += (i == 0 ? " " : "; ") + planned_leg_text(legs[i]);
     }
     return text;
 }
 
 std::string route_leg_line(size_t number, size_t count, const PlannedRouteLeg& leg){
-    return std::format("Leg {}/{}: {} to {}", number, count, to_string(leg.leg), describe(leg.after));
+    return std::format("Leg {}/{}: {}", number, count, planned_leg_text(leg));
 }
 
 std::string route_leg_end_line(
     const std::string& label, const RouteLogLeg& leg,
     const std::vector<RouteTile>& at, EndBasis basis, const std::string& why
 ){
-    const std::string how = why.empty() ? basis_name(basis) : std::string(basis_name(basis)) + ": " + why;
+    const std::string how = why.empty() ? basis_name(basis) : std::format("{}: {}", basis_name(basis), why);
     return std::format("{}: {}: ended at {} ({}).", label, to_string(leg), describe(at), how);
 }
 
@@ -85,11 +90,11 @@ std::string route_found_line(const std::string& label, const std::vector<RouteTi
 }
 
 std::string route_trainer_line(const std::string& label, const std::string& who, const std::vector<RouteTile>& at){
-    return label + ": " + who + " stopped us about " + describe(at) + ".";
+    return std::format("{}: {} stopped us about {}.", label, who, describe(at));
 }
 
 std::string route_arrived_line(const std::string& label, const std::vector<RouteTile>& at){
-    return label + ": arrived at " + describe(at) + ".";
+    return std::format("{}: arrived at {}.", label, describe(at));
 }
 
 

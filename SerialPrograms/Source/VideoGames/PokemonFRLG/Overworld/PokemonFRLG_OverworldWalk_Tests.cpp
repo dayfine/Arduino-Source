@@ -26,7 +26,7 @@ using namespace OverworldWalkSteps;
 namespace{
 
 struct OverworldWalkInput{
-    const char* name;
+    std::string_view name;
     MoveSpeed speed;
     int tiles;
     bool to_wall;
@@ -36,7 +36,7 @@ struct OverworldWalkInput{
 
 struct OverworldWalkExpectation{
     Milliseconds hold;
-    const char* note;
+    std::string_view note;
     bool runs = false;
 };
 

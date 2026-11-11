@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <format>
+#include <string_view>
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
@@ -65,7 +66,7 @@ private:
     static JsonObject dictionary(){
         JsonObject english;
         for (const auto& [slug, name] : {
-            std::pair<const char*, const char*>{"potion", "Potion"},
+            std::pair<std::string_view, std::string_view>{"potion", "Potion"},
             {"antidote", "Antidote"},
             {"parlyz-heal", "Parlyz Heal"},
             {"awakening", "Awakening"},
@@ -78,8 +79,8 @@ private:
             {"cancel", "Cancel"},
         }){
             JsonArray names;
-            names.push_back(name);
-            english[slug] = std::move(names);
+            names.push_back(std::string(name));
+            english[std::string(slug)] = std::move(names);
         }
         JsonObject json;
         json["eng"] = std::move(english);
@@ -147,7 +148,7 @@ Language language_of_test_image(const std::string& image){
 class Test_BagPocket : public ImageUnitTest{
 public:
     Test_BagPocket(const std::string& image)
-        : ImageUnitTest("PokemonFRLG::ItemListReader - " + image, {image})
+        : ImageUnitTest(std::format("PokemonFRLG::ItemListReader - {}", image), {image})
     {}
 
     virtual UnitTestResult run_on_images(
@@ -176,7 +177,7 @@ public:
 class Test_MartList : public ImageUnitTest{
 public:
     Test_MartList(const std::string& image)
-        : ImageUnitTest("PokemonFRLG::ItemListReader - " + image, {image})
+        : ImageUnitTest(std::format("PokemonFRLG::ItemListReader - {}", image), {image})
     {}
 
     virtual UnitTestResult run_on_images(

@@ -22,8 +22,8 @@
 #include "VideoGames/PokemonFRLG/Programs/PokemonFRLG_BattleMenuNavigation.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryCapture.h"
+#include "PokemonFRLG_AutoStoryGameArgs.h"
 #include "PokemonFRLG_AutoStoryPacing.h"
-#include "PokemonFRLG_AutoStoryVariantWords.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -38,18 +38,6 @@ namespace{
 constexpr size_t PARTY_SIZE = 6;
 constexpr size_t MOVE_COUNT = 4;
 
-//  The most a count names: four digits.
-constexpr int64_t MAX_COUNT = 9999;
-
-std::optional<Direction> direction_of(std::string_view text){
-    for (Direction direction : Pokemon::ALL_DIRECTIONS){
-        if (text == direction_name(direction)){
-            return direction;
-        }
-    }
-    return std::nullopt;
-}
-
 Direction opposite(Direction direction){
     switch (direction){
     case Direction::NORTH:  return Direction::SOUTH;
@@ -63,7 +51,7 @@ Direction opposite(Direction direction){
 } // namespace
 
 
-const char* destination_name(CatchDestination destination){
+std::string_view destination_name(CatchDestination destination){
     switch (destination){
     case CatchDestination::PARTY:   return "party";
     case CatchDestination::PC:      return "PC";
@@ -71,7 +59,7 @@ const char* destination_name(CatchDestination destination){
     return "?";
 }
 
-const char* capture_end_name(CaptureEnd end){
+std::string_view capture_end_name(CaptureEnd end){
     switch (end){
     case CaptureEnd::CAUGHT:            return "caught";
     case CaptureEnd::OUT_OF_ENCOUNTERS: return "out_of_encounters";
@@ -85,50 +73,40 @@ const char* capture_end_name(CaptureEnd end){
 }
 
 
-Pokemon::StoryArgs capture_args(const CapturePlan& plan){
-    Pokemon::StoryArgs args{
+Pokemon::StoryActionArgs capture_args(const CapturePlan& plan){
+    Pokemon::StoryActionArgs args{
         {"species", plan.species},
-        {"catches", static_cast<int64_t>(plan.catches)},
-        {"encounters", static_cast<int64_t>(plan.max_encounters)},
-        {"balls", static_cast<int64_t>(plan.max_balls)},
-        {"pace", std::string(direction_name(plan.pace))},
+        {"catches", int64_t(plan.catches)},
+        {"encounters", int64_t(plan.max_encounters)},
+        {"balls", int64_t(plan.max_balls)},
+        {"pace", plan.pace},
+        {"turns", int64_t(plan.max_weaken_turns)},
     };
     if (plan.weaken_move){
-        args["move"] = static_cast<int64_t>(*plan.weaken_move + 1);
-        args["turns"] = static_cast<int64_t>(plan.max_weaken_turns);
+        args.emplace("move", int64_t(*plan.weaken_move + 1));
     }
     return args;
 }
 
-std::optional<CapturePlan> parse_capture_step(const Pokemon::StoryStep& step){
-    const Pokemon::StoryArgs* args = game_step_args(step, CAPTURE_VARIANT, CAPTURE_ARGS);
-    if (args == nullptr
-        || !arg_number_within(*args, "catches", 1, MAX_COUNT) || !arg_number_within(*args, "encounters", 1, MAX_COUNT)
-        || !arg_number_within(*args, "balls", 1, MAX_COUNT) || !arg_number_within(*args, "move", 1, static_cast<int64_t>(MOVE_COUNT))
-        || !arg_number_within(*args, "turns", 0, MAX_COUNT)
-    ){
+std::optional<CapturePlan> capture_plan_of(const Pokemon::StoryActionArgs& args){
+    const std::string* species = game_arg<std::string>(args, "species");
+    const std::optional<size_t> catches = number_arg(args, "catches", 1, 999);
+    const std::optional<size_t> encounters = number_arg(args, "encounters", 1, 9999);
+    const std::optional<size_t> balls = number_arg(args, "balls", 1, 999);
+    const std::optional<size_t> turns = number_arg(args, "turns", 0, 99);
+    const Direction* pace = game_arg<Direction>(args, "pace");
+    if (species == nullptr || species->empty() || !catches || !encounters || !balls || !turns || pace == nullptr){
         return std::nullopt;
     }
-    CapturePlan plan;
-    plan.species = std::string(*Pokemon::story_arg_text(*args, "species"));
-    if (plan.species.empty()){
-        return std::nullopt;
-    }
-    plan.catches = static_cast<size_t>(*Pokemon::story_arg_number(*args, "catches"));
-    plan.max_encounters = static_cast<size_t>(*Pokemon::story_arg_number(*args, "encounters"));
-    plan.max_balls = static_cast<size_t>(*Pokemon::story_arg_number(*args, "balls"));
-    if (const std::optional<std::string_view> pace = Pokemon::story_arg_text(*args, "pace")){
-        const std::optional<Direction> direction = direction_of(*pace);
-        if (!direction){
+    CapturePlan plan{
+        .species = *species, .catches = *catches, .max_encounters = *encounters, .max_balls = *balls,
+        .pace = *pace, .max_weaken_turns = *turns,
+    };
+    if (args.contains("move")){
+        plan.weaken_move = counted_arg(args, "move", MOVE_COUNT);
+        if (!plan.weaken_move){
             return std::nullopt;
         }
-        plan.pace = *direction;
-    }
-    if (const std::optional<int64_t> move = Pokemon::story_arg_number(*args, "move")){
-        plan.weaken_move = static_cast<size_t>(*move) - 1;
-    }
-    if (const std::optional<int64_t> turns = Pokemon::story_arg_number(*args, "turns")){
-        plan.max_weaken_turns = static_cast<size_t>(*turns);
     }
     return plan;
 }
@@ -138,7 +116,7 @@ Pokemon::StoryStep capture_step(std::string name, std::string why, const Capture
     step.kind = Pokemon::StoryStepKind::GAME;
     step.name = std::move(name);
     step.why = std::move(why);
-    step.variant = CAPTURE_VARIANT;
+    step.action = CAPTURE_ACTION;
     step.args = capture_args(plan);
     return step;
 }
@@ -148,7 +126,7 @@ Pokemon::StoryStep pc_step(std::string name, std::string why, const PcTransfer& 
     step.kind = Pokemon::StoryStepKind::GAME;
     step.name = std::move(name);
     step.why = std::move(why);
-    step.variant = PC_VARIANT;
+    step.action = PC_ACTION;
     step.args = pc_args(transfer);
     return step;
 }
@@ -364,10 +342,10 @@ std::optional<Pokemon::Outcome> run_storage_game_step(
     Logger& logger, VideoStream* stream, const Pokemon::StoryStep& step,
     CaptureActions& capture, PcStorageActions& pc
 ){
-    if (step.variant == CAPTURE_VARIANT){
-        const std::optional<CapturePlan> plan = parse_capture_step(step);
+    if (step.action == CAPTURE_ACTION){
+        const std::optional<CapturePlan> plan = capture_plan_of(step.args);
         if (!plan){
-            return Pokemon::outcome_failed("bad_variant", step.variant);
+            return Pokemon::outcome_failed("bad_args", step.action);
         }
         const CaptureResult result = run_capture(logger, capture, *plan, pc.read_party().size());
         const std::string message = capture_message(*plan, result);
@@ -382,12 +360,12 @@ std::optional<Pokemon::Outcome> run_storage_game_step(
         if (result.end == CaptureEnd::CAUGHT){
             return Pokemon::outcome_ok();
         }
-        return Pokemon::outcome_failed(std::string("capture_") + capture_end_name(result.end), message);
+        return Pokemon::outcome_failed(std::string("capture_") + std::string(capture_end_name(result.end)), message);
     }
-    if (step.variant == PC_VARIANT){
-        const std::optional<PcTransfer> transfer = parse_pc_step(step);
+    if (step.action == PC_ACTION){
+        const std::optional<PcTransfer> transfer = pc_transfer_of(step.args);
         if (!transfer){
-            return Pokemon::outcome_failed("bad_variant", step.variant);
+            return Pokemon::outcome_failed("bad_args", step.action);
         }
         const PcResult result = run_pc_transfer(logger, pc, *transfer);
         switch (result.end){
@@ -622,7 +600,7 @@ ThrowEnd ConsoleCaptureActions::wait_for_throw(){
 }
 
 bool ConsoleCaptureActions::finish_catch(CatchDestination destination){
-    m_console.log(std::string("Capture: no nickname; it goes to the ") + destination_name(destination) + ".");
+    m_console.log(std::string("Capture: no nickname; it goes to the ") + std::string(destination_name(destination)) + ".");
     try{
         //  B answers the nickname NO and moves the messages on.
         mash_until_overworld(m_console, m_context, 30000ms);

@@ -33,40 +33,14 @@
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
-#include "Pokemon/AutoStory/Pokemon_StorySteps.h"
+#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
 #include "Pokemon/Navigation/Pokemon_Grid.h"
+#include "PokemonFRLG_AutoStoryFossil.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
-
-
-//  The `fossil` option: HELIX by default (the world record's).
-enum class Fossil{
-    DOME,
-    HELIX,
-};
-//  The human-readable name of a fossil choice.
-const char* fossil_name(Fossil fossil);
-//  Parses a fossil choice from its name.
-std::optional<Fossil> fossil_from_name(std::string_view name);
-
-//  Where `fossil` lies on MtMoon_B2F (map.json object_events).
-Pokemon::TilePos fossil_tile(Fossil fossil);
-
-//  The variant of a GAME step that is the fossil CHOICE.
-inline constexpr std::string_view FOSSIL_VARIANT = "fossil";
-//  Its args: the fossil, "helix" or "dome".
-inline constexpr Pokemon::StoryArgSpec FOSSIL_ARGS[] = {
-    {"fossil", Pokemon::StoryArgType::TEXT, true},
-};
-
-//  The fossil a fossil CHOICE step (fossil_step()) takes; nothing if it
-//  isn't one.
-std::optional<Fossil> parse_fossil_step(const Pokemon::StoryStep& step);
-
-//  The table's CHOICE(fossil) step, the player facing the fossil.
-Pokemon::StoryStep fossil_step(std::string name, std::string why, Fossil fossil);
 
 
 //  The game steps the fossil CHOICE takes, injected so its decisions run
@@ -96,7 +70,7 @@ enum class ChoiceEnd{
     FAILED,
 };
 //  The human-readable name of a choice outcome.
-const char* choice_end_name(ChoiceEnd end);
+std::string_view choice_end_name(ChoiceEnd end);
 
 //  The result of a fossil choice attempt.
 struct ChoiceResult{

@@ -28,7 +28,7 @@ struct RngPlanInputsInput{
 };
 
 struct RngPlanInputsExpectation{
-    const char* description;
+    std::string_view description;
 };
 
 struct RngPlanInputsTestCase{
