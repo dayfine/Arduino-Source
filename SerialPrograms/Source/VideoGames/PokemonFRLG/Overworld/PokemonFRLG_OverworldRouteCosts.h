@@ -54,7 +54,10 @@ enum class RouteCost{
 using RouteCosts = std::map<RouteCost, int>;
 
 //  TILE 1, TURN 2, WARP 30, SURF 40, GRASS_TILE 20, OPEN_STOP 8,
-//  OPEN_WILD_STOP 300, SIGHT_TILE 100, SIGHT_OVERSHOOT 10.
+//  OPEN_WILD_STOP 300, SIGHT_TILE 0, SIGHT_OVERSHOOT 0. The sight costs are
+//  off by default until beaten trainers and battles a story step wants are
+//  told apart: at 100 and 10 they moved Pewter City's and Pewter Gym's
+//  plans (the Gym's Camper is fought on the way to Brock).
 const RouteCosts& default_route_costs();
 
 //  `costs`'s cost for `kind`, or the default if it has none.
