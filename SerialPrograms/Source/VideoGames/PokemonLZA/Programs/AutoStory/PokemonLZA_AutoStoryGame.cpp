@@ -339,7 +339,8 @@ public:
     //  A banner that stays past the 10 s gets A up to 3 times (01.03's
     //  "MAIN MISSION 02"), so the step ends with control. "press_a_first"
     //  presses A once at a prompt (02.03's Hotel Z door, "A Enter"), which
-    //  would otherwise end the step at once as control.
+    //  would otherwise end the step at once as control. "quiet_is_control"
+    //  ends it on the quiet time instead of failing, inside Hotel Z.
     static Handler move_hints(){
         return [](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
             if (Pokemon::story_arg<bool>(call.args, "press_a_first")){
@@ -348,6 +349,7 @@ public:
             SceneMachineConfig config;
             config.quiet = Milliseconds(Pokemon::story_arg<int64_t>(call.args, "quiet_ms"));
             config.min_length = Milliseconds(Pokemon::story_arg<int64_t>(call.args, "min_length_ms"));
+            config.quiet_is_control = Pokemon::story_arg<bool>(call.args, "quiet_is_control");
             config.blind_press_after = 5s;
             return run_scene_machine(backend, "mash_to_move_hints", config, 360s);
         };
@@ -553,7 +555,7 @@ Handler plza_handler(const PlzaActions& make, const StoryActionSpec& spec){
             choose_dialog_option(env.env.console, env.context, Pokemon::story_arg<bool>(args, "yes") ? 0 : 1);
         });
     case StoryStepKind::MASH:
-        //  120 s: 02.04's last scene holds a ~25 s black screen.
+        //  120 s: a scene can hold a ~25 s black screen (02.04's first evening).
         return make.console(name, mash(SceneMashGoal::OVERWORLD, name == "a" ? BUTTON_A : BUTTON_B, 120s));
     case StoryStepKind::HEAL:
         return make.console(name, [](StoryEnv& env, const StoryActionArgs&){
@@ -623,6 +625,10 @@ std::vector<StoryActionSpec> plza_story_action_specs(){
             StoryArgSpec{
                 .key = "press_a_first", .type = StoryArgType::BOOLEAN, .required = false, .fallback = false,
                 .why = "press A once first, at the prompt that starts the scene (a door's \"A Enter\")",
+            },
+            StoryArgSpec{
+                .key = "quiet_is_control", .type = StoryArgType::BOOLEAN, .required = false, .fallback = false,
+                .why = "the quiet time ends the step with control, where no party bar or prompt shows (Hotel Z)",
             },
         }),
         game_spec("text_to_choice", {

@@ -505,6 +505,10 @@ Pokemon::Outcome run_scene_machine(
     if (!result.succeeded()){
         return scene_failure(label, result.failure);
     }
+    if (result.terminal == scene_screen_name(SceneScreen::QUIET_END) && config.quiet_is_control){
+        backend.log(std::format("[PLZA {}] done: quiet, taken as control.", label));
+        return Pokemon::outcome_ok();
+    }
     if (result.terminal == scene_screen_name(SceneScreen::QUIET_END)){
         //  Nothing busy for the quiet time, and no party bar or controls
         //  hint: a cutscene with no text, or control the detectors miss.
