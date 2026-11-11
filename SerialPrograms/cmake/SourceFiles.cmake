@@ -1543,8 +1543,6 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect.h
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.h
-    Source/Pokemon/AutoStory/Pokemon_StoryConsolePreflight.cpp
-    Source/Pokemon/AutoStory/Pokemon_StoryConsolePreflight.h
     Source/Pokemon/AutoStory/Pokemon_StoryRun.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryRun.h
     Source/Pokemon/AutoStory/Pokemon_StoryRun_Tests.cpp
@@ -1604,7 +1602,6 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_StorySegments.h
     Source/Pokemon/AutoStory/Pokemon_StorySegments_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_StorySegments_Tests.h
-    Source/Pokemon/AutoStory/Pokemon_StoryStart.h
     Source/Pokemon/AutoStory/Pokemon_StoryStepExecutor.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryStepExecutor.h
     Source/Pokemon/AutoStory/Pokemon_StoryStepExecutor_Tests.cpp
@@ -1634,6 +1631,7 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Types/Pokemon_StorySaveMode.h
     Source/Pokemon/AutoStory/Types/Pokemon_StorySegmentTypes.cpp
     Source/Pokemon/AutoStory/Types/Pokemon_StorySegmentTypes.h
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryStart.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryStep.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryStepKind.cpp
     Source/Pokemon/AutoStory/Types/Pokemon_StoryStepKind.h
