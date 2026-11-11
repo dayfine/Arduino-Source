@@ -24,7 +24,7 @@ std::optional<Direction> facing_before(const BikeTapCalls& calls){
     return calls.facing();
 }
 
-}
+} // namespace
 
 StepOutcome count_bike_taps(const RouteStep& step, const BikeTapCalls& calls){
     int moved = 0;
