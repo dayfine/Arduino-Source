@@ -666,7 +666,7 @@ UnitTestResult check_trigger(const TriggerCase& c){
         return "No checkpoint " + c.checkpoint + ".";
     }
     const MapPosition onto{c.map, {c.onto_x, c.y}};
-    StoryPose pose = one_tile(*checkpoint->start);
+    StoryPose pose = one_tile(Pokemon::grid_pose_of(*checkpoint->start));
     for (const StoryStep& step : checkpoint->steps){
         const std::string where = c.checkpoint + "/" + step.name + ": ";
         if (step.name == c.step && step.kind == StoryStepKind::STEP && onto == MapPosition{pose.map, pose.tile.next(Pokemon::story_arg<Direction>(step.args, "direction"))}){
@@ -715,7 +715,7 @@ UnitTestResult test_nugget_bridge_order(){
     }
     const std::vector<StoryStep>& steps = checkpoint->steps;
     std::string met;
-    StoryPose pose = one_tile(*checkpoint->start);
+    StoryPose pose = one_tile(Pokemon::grid_pose_of(*checkpoint->start));
     for (size_t c = 0; c < steps.size(); c++){
         const MapData* map = find_map_named(pose.map);
         const MapObject* trainer = steps[c].kind == StoryStepKind::STEP && map ? trainer_seeing(*map, step_end(pose, steps[c], {}), {}) : nullptr;
