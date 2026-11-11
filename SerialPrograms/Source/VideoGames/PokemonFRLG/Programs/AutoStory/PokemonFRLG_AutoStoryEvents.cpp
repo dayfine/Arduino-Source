@@ -200,6 +200,18 @@ Outcome walk_legs(StoryEnv& env, RunState& state, const StoryStep& step){
     return Pokemon::outcome_ok(to_pose(StoryPose{route->back().end.map, route->back().end.point, route->back().facing_after}));
 }
 
+//  A step onto a warp (a door, a mat, stairs): done only once its fade
+//  shows and the screen after it leaves the scene, else it fails
+//  (wait_out_warp()). The pose after it is the table's.
+Outcome take_warp_step(StoryEnv& env, const RunState& state, const RouteStep& warp){
+    env.context.wait_for_all_requests();
+    const VideoSnapshot before = env.console.video().snapshot();
+    step_once(env.console, env.context, warp.direction, facing_of(state.pose));
+    OverworldWalkSteps::wait_out_warp(env.console, env.context, warp, before);
+    env.console.log(std::format("Story: the step took the warp to {}.", warp.end.map));
+    return Pokemon::outcome_ok();
+}
+
 Outcome take_step(StoryEnv& env, RunState& state, const StoryStep& step){
     const Direction direction = arg<Direction>(step, "direction");
     int tiles_stepped = 1;
@@ -214,6 +226,11 @@ Outcome take_step(StoryEnv& env, RunState& state, const StoryStep& step){
         if (!step_into_line(env.console, env.context, direction, facing_of(state.pose), 1, TRAINER_WAIT_WATCH)){
             return Pokemon::outcome_failed("no_trainer", std::format("{} s on the tile {}", TRAINER_WAIT_WATCH.count() / 1000, direction_name(direction)));
         }
+    }else if (const std::optional<StoryPose> from = story_pose(state.pose)){
+        if (const std::optional<RouteStep> warp = warp_press(story_maps(), MapPosition{from->map, from->tile}, direction)){
+            return take_warp_step(env, state, *warp);
+        }
+        step_once(env.console, env.context, direction, facing_of(state.pose));
     }else{
         step_once(env.console, env.context, direction, facing_of(state.pose));
     }

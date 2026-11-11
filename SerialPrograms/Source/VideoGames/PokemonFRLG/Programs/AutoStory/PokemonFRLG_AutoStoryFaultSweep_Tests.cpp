@@ -25,6 +25,10 @@
  *    back, inside the lockout after a battle (08.01 winston_line, console
  *    B, 2026-11-09 15:50). The step alone, from where the clean run took
  *    it, on its map made a wild floor.
+ *  - WARP_NO_OP: the warps of each map the row warps from do nothing,
+ *    no fade and no move, so the step that walks onto the first of them
+ *    must stop there, not go on as if warped (09.01's B4F stairs, console
+ *    B, 2026-11-10, reported as walked to B3F).
  *
  *  Not swept here: a missed fade, which needs a knob in OverworldSim; a
  *  battle's opening at a step's start, which needs one in OverworldStepSim;
@@ -76,6 +80,7 @@ enum class FaultClass{
     SLOW_FADE_IN,
     DARK_CAVE,
     LOST_TAP,
+    WARP_NO_OP,
 };
 std::string_view fault_class_name(FaultClass fault){
     switch (fault){
@@ -91,6 +96,8 @@ std::string_view fault_class_name(FaultClass fault){
         return "dark cave without Flash";
     case FaultClass::LOST_TAP:
         return "lost tap after a battle in a trainer's line";
+    case FaultClass::WARP_NO_OP:
+        return "warp no-op";
     }
     return "?";
 }
@@ -162,6 +169,10 @@ struct RowRun{
     //  Where the player stood before each step, by index.
     std::map<size_t, MapPosition> before;
     std::map<size_t, Direction> facing_before;
+    //  The maps each step warped from, by index.
+    std::map<size_t, std::vector<std::string>> warped_from;
+    //  The step `failure` is from; none for a violation or a row's end.
+    std::optional<size_t> failed_at;
     MapPosition end;
     Milliseconds time{0};
     int steps = 0;
@@ -212,6 +223,29 @@ bool hide_talk_battle_trainer(std::vector<MapData>& maps, const StoryStep& step)
     return true;
 }
 
+//  Row `row`'s step `c` on `sim` from `at`, recorded in `out`. Returns
+//  whether it failed as unscripted() and was let pass (run_row()).
+bool run_row_step(
+    RowRun& out, OverworldSim& sim, StoryPose& at, const StoryCheckpoint& row, size_t c,
+    const std::optional<std::set<size_t>>& scripted
+){
+    out.before.emplace(c, sim.state().position);
+    out.facing_before.emplace(c, sim.state().facing);
+    const size_t warps_before = sim.state().warped_from.size();
+    out.failure = row_step_on_sim(sim, at, row.steps[c], row.id);
+    const std::vector<std::string>& warped = sim.state().warped_from;
+    out.warped_from[c].assign(warped.begin() + warps_before, warped.end());
+    const bool let_pass = unscripted(out.failure) && (!scripted || scripted->contains(c));
+    if (let_pass){
+        out.failure.clear();
+        out.scripted.insert(c);
+    }
+    if (!out.failure.empty()){
+        out.failed_at = c;
+    }
+    return let_pass;
+}
+
 //  Row `row` on the sim with `script`, from its start. After a step the sim
 //  does not play, the player is put on its pose_after, or on `landings`'
 //  tile for it, the program going on from the pose_after either way. A
@@ -235,14 +269,7 @@ RowRun run_row(
     };
     for (size_t c = 0; c < row.steps.size() && out.failure.empty(); c++){
         const StoryStep& step = row.steps[c];
-        out.before.emplace(c, sim->state().position);
-        out.facing_before.emplace(c, sim->state().facing);
-        out.failure = row_step_on_sim(*sim, at, step, row.id);
-        const bool let_pass = unscripted(out.failure) && (!scripted || scripted->contains(c));
-        if (let_pass){
-            out.failure.clear();
-            out.scripted.insert(c);
-        }
+        const bool let_pass = run_row_step(out, *sim, at, row, c, scripted);
         if (!out.failure.empty() || (sim_plays(step) && !let_pass) || !step.pose_after){
             continue;
         }
@@ -504,6 +531,47 @@ UnitTestResult sweep_lost_tap(Logger& logger, const StoryCheckpoint& row, const 
     return sweep_result(logger, FaultClass::LOST_TAP, row.id, variants, failures);
 }
 
+//  The steps of the clean run `clean` of `row` that warp, by index: the
+//  first from each map, with that map.
+std::vector<std::pair<size_t, std::string>> first_warps_by_map(const StoryCheckpoint& row, const RowRun& clean){
+    std::vector<std::pair<size_t, std::string>> out;
+    std::set<std::string> maps;
+    for (size_t c = 0; c < row.steps.size(); c++){
+        const auto warped = clean.warped_from.find(c);
+        if (warped == clean.warped_from.end()){
+            continue;
+        }
+        for (const std::string& map : warped->second){
+            if (maps.insert(map).second){
+                out.emplace_back(c, map);
+            }
+        }
+    }
+    return out;
+}
+
+//  Row `row` with the warps of each map it warps from doing nothing, one
+//  map at a time: the step onto the first of them must stop the row.
+UnitTestResult sweep_warp_no_op(Logger& logger, const StoryCheckpoint& row, const RowRun& clean){
+    std::vector<SweepFailure> failures;
+    const std::vector<std::pair<size_t, std::string>> warps = first_warps_by_map(row, clean);
+    for (const auto& [c, map] : warps){
+        SimScript script;
+        script.dead_warp_maps = {map};
+        const RowRun run = run_row(row, script, {}, clean.scripted);
+        if (run.failed_at == c){
+            continue;
+        }
+        const std::string variant = "every warp on " + map + " does nothing";
+        if (run.failure.empty()){
+            failures.push_back({row.steps[c].name, variant, std::format("not stopped: the row went on and ended on {}.", to_string(run.end))});
+        }else{
+            failures.push_back({row.steps[c].name, variant, std::format("stopped at {}, not here: {}", run.failed_at ? row.steps[*run.failed_at].name : "the row's end", run.failure)});
+        }
+    }
+    return sweep_result(logger, FaultClass::WARP_NO_OP, row.id, warps.size(), failures);
+}
+
 //  A fault class swept over row `row` (empty in FAULT_SWEEP_CASES: each
 //  row with a start).
 struct FaultSweepInput{
@@ -573,6 +641,8 @@ private:
             return sweep_dark_cave(logger, m_row, clean);
         case FaultClass::LOST_TAP:
             return sweep_lost_tap(logger, m_row, clean);
+        case FaultClass::WARP_NO_OP:
+            return sweep_warp_no_op(logger, m_row, clean);
         }
         return true;
     }
@@ -591,6 +661,7 @@ const FaultSweepCase FAULT_SWEEP_CASES[] = {
     {.input = {.fault = FaultClass::SLOW_FADE_IN}, .expectation = {}},
     {.input = {.fault = FaultClass::DARK_CAVE}, .expectation = {}},
     {.input = {.fault = FaultClass::LOST_TAP}, .expectation = {}},
+    {.input = {.fault = FaultClass::WARP_NO_OP}, .expectation = {}},
 };
 
 std::optional<std::string> talk_battle_hide_flag(const StoryStep& step){

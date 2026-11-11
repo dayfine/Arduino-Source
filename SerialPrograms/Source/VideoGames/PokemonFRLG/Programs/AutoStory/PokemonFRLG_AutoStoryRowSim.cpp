@@ -14,6 +14,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "PokemonFRLG_AutoStoryLegs.h"
+#include "PokemonFRLG_AutoStoryPacedRoute.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
@@ -489,6 +490,11 @@ std::string OverworldStepSim::step_ahead(const StoryStep& step){
         return step_onto(step);
     }
     const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
+    if (step.action.empty()){
+        if (const std::optional<RouteStep> warp = warp_press(story_maps(), MapPosition{m_at.map, m_at.tile}, direction)){
+            return step_onto_warp(*warp);
+        }
+    }
     const auto tap = [this, direction]{
         sim_step_once(m_sim, direction);
     };
@@ -507,6 +513,21 @@ std::string OverworldStepSim::step_ahead(const StoryStep& step){
     };
     const int tiles = step.action == TRAINER_LINE_VARIANT ? TRAINER_LINE_TILES : 1;
     return step_until_seen(tiles, tap, seen) ? "" : "no trainer saw the player.";
+}
+
+//  take_warp_step() on the sim: the step, then its fade, with a step more
+//  twice while none shows (wait_out_warp()).
+std::string OverworldStepSim::step_onto_warp(const RouteStep& warp){
+    const int warps_before = m_sim.state().warps;
+    sim_step_once(m_sim, warp.direction);
+    for (int tap = 0; tap < 2 && m_sim.state().warps == warps_before; tap++){
+        sim_step_once(m_sim, warp.direction);
+    }
+    if (m_sim.state().warps == warps_before){
+        return std::format("no fade in and out after stepping onto the warp to {}.", warp.end.map);
+    }
+    m_sim.watch({}, OverworldWalkSteps::AFTER_WARP);
+    return "";
 }
 
 //  A hop() or step_onto(): one step, ending where the table says.

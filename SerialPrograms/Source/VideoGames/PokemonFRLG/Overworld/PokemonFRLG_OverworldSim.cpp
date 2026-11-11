@@ -244,7 +244,7 @@ std::optional<SimSeen> OverworldSim::watch_until(const std::vector<SimWatcher>& 
 
 std::optional<OverworldSim::Step> OverworldSim::take_warp(int map_index, const TilePos& tile) const{
     const MapWarp* warp = warp_at(m_maps[map_index], tile);
-    if (warp == nullptr){
+    if (warp == nullptr || m_script.dead_warp_maps.contains(m_maps[map_index].name)){
         return std::nullopt;
     }
     if (m_lift_floor && m_script.lift_floors.contains(m_maps[map_index].name)){
@@ -359,6 +359,9 @@ bool OverworldSim::after_step(const Step& step, Milliseconds pressed){
     const SimTiming& timing = m_script.timing;
     if (step.warped && black_without_warp(pressed)){
         return true;
+    }
+    if (step.warped){
+        m_state.warped_from.push_back(map().name);
     }
     m_map = step.map;
     m_player = step.player;
