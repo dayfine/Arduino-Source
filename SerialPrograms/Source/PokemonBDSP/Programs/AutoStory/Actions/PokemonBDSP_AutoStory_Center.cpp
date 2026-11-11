@@ -23,6 +23,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkScreen.h"
 #include "PokemonBDSP_AutoStory_WildBattle.h"
 #include "PokemonBDSP_AutoStory_Center.h"
+#include "PokemonBDSP_AutoStory_TalkOver.h"
 #include "PokemonBDSP_AutoStory_LitDoorway.h"
 #include "PokemonBDSP_AutoStory_TalkOver.h"
 
@@ -452,8 +453,10 @@ void heal_inside_pokemon_center(
     VideoStream& stream, ProControllerContext& context,
     const std::string& label
 ){
+    talk_over(stream, context, label + ": inside the Center", {.rule = {.door = true}});
     talk_to_nurse(stream, context, label);
     route_status(stream, label + ": healed; walking out.");
+
     leave_door_south(stream, context, run_from_wild_battle, label + ": out the door");
 }
 
@@ -461,20 +464,23 @@ void talk_to_nurse(
     VideoStream& stream, ProControllerContext& context,
     const std::string& label
 ){
-    //  The nurse's counter is straight ahead of the door.
-    route_status(stream, label + ": talking to the nurse.");
-    WalkResult walk = walk_to_talk(stream, context, run_from_wild_battle, {0, 1}, 6000ms, label + ": to the nurse");
-    //  A "transition" before the first step is the inside still fading in,
-    //  not a door (lab-B 2026-11-10, 00.04b): settle, then walk once more.
-    if (walk.stop == WalkStop::TRANSITION && walk.moved_chunks == 0){
-        stream.log("[Route] " + label + ": to the nurse: a fade before the first step; settling, then once more.");
-        talk_over(stream, context, label + ": inside the Center");
-        walk = walk_to_talk(stream, context, run_from_wild_battle, {0, 1}, 6000ms, label + ": to the nurse");
+    //  The nurse's counter is straight ahead of the door: one held run north
+    //  until the counter stops us, then A. The caller settled the door's
+    //  fade-in (TalkOverRule::door), so the run is not lost in it.
+    route_status(stream, label + ": running to the nurse.");
+    pbf_controller_state(context, BUTTON_B, DPAD_UP, {0, 0}, {0, 0}, NURSE_RUN_HOLD);
+    pbf_press_button(context, BUTTON_A, 80ms, 0ms);
+    ShortDialogWatcher first_line(COLOR_YELLOW);
+    if (wait_until(stream, context, 1500ms, {{first_line}}) != 0){
+        //  No line: someone in the way, or not lined up. Walk with checks.
+        stream.log("[Route] " + label + ": no line after the run to the nurse; walking up with checks.");
+        const WalkResult walk = walk_to_talk(stream, context, run_from_wild_battle, {0, 1}, 6000ms, label + ": to the nurse");
+        if (walk.stop != WalkStop::DIALOG){
+            OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+                label + ": nurse not reached.", stream);
+        }
     }
-    if (walk.stop != WalkStop::DIALOG){
-        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-            label + ": nurse not reached.", stream);
-    }
+
     //  A through her lines; the cursor starts on "Yes". Stop once no dialogue
     //  has shown for a while, so A does not start the talk over.
     size_t quiet = 0;
