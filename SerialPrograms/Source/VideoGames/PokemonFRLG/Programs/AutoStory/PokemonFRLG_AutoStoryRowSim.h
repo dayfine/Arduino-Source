@@ -60,7 +60,7 @@ public:
 
     virtual void begin_attempt(const Pokemon::StoryCheckpoint& data) override;
     //  The step, after a dialog pops up before it if the knobs say so.
-    virtual Pokemon::Outcome run(Pokemon::RunState& state, const StoryStep& step) override;
+    virtual Pokemon::Outcome run(const StoryStep& step, Pokemon::RunState& state) override;
     //  The story's actions as this simulation binds them.
     const Pokemon::StoryActionTable& actions() const{
         return m_table;
@@ -80,7 +80,7 @@ public:
 protected:
     //  A dialog that popped up and is still up stops a step that walks or
     //  talks; a step that presses through text closes it.
-    virtual Pokemon::Outcome run_action(Pokemon::RunState& state, const StoryStep& step) override;
+    virtual Pokemon::Outcome run_action(const StoryStep& step, Pokemon::RunState& state) override;
 
 private:
     Pokemon::StoryAction action(StoryActionId id);

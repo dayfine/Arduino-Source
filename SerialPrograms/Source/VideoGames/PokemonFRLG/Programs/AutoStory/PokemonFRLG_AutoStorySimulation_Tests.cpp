@@ -95,7 +95,7 @@ public:
         m_row = data.id;
         trace.push_back("begin " + data.id);
     }
-    virtual Outcome run(RunState& state, const StoryStep& step) override{
+    virtual Outcome run(const StoryStep& step, RunState& state) override{
         const std::string key = m_row + "/" + step.name;
         trace.push_back(key);
         auto failure = failures.find(key);
@@ -103,7 +103,7 @@ public:
             failure->second.times--;
             return Pokemon::outcome_failed(failure->second.failure, key);
         }
-        return StoryMapsSim::run(state, step);
+        return StoryMapsSim::run(step, state);
     }
 
 private:
@@ -151,7 +151,7 @@ struct Simulation{
         };
         hooks.log = [this](const std::string& line){ lines.push_back(line); };
         RunState state;
-        return Pokemon::run_segment(state, segment, range, policy, hooks);
+        return Pokemon::run_segment(range, policy, segment, hooks, state);
     }
     std::string last_begun() const{
         for (auto it = game.trace.rbegin(); it != game.trace.rend(); ++it){
