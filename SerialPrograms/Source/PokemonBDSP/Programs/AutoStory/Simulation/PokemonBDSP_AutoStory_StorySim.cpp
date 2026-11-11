@@ -182,6 +182,7 @@ WarpSeen SimStoryStepIO::door_fade(const std::string& banner){
 //  walk's watchers take uniform frames only, so a fade whose hold they
 //  did not see is missed too.
 void SimStoryStepIO::walk_until_stopped(Direction direction, size_t tiles, const std::string& label){
+    m_route.check_fade_in(label);
     m_sim.tap(direction, ROUTE_TURN_TAP, false);
     Milliseconds limit = ROUTE_START_DELAY + 800ms + route_ms_per_tile(direction) * (int64_t)(2 * tiles);
     SimMove move = m_sim.hold(direction, limit, SimPace::WALK);
@@ -196,7 +197,8 @@ void SimStoryStepIO::walk_until_stopped(Direction direction, size_t tiles, const
 
 //  The D-pad, a tile at a time, until `map`'s banner reads; through a door
 //  the walk goes on beyond it (the fade eats no tiles of a hold).
-bool SimStoryStepIO::run_until_map(Direction direction, Milliseconds limit, const std::string& map, const std::string&){
+bool SimStoryStepIO::run_until_map(Direction direction, Milliseconds limit, const std::string& map, const std::string& label){
+    m_route.check_fade_in(label);
     const bool miss = banner_missed();
     size_t on = 0;
     for (Milliseconds ran = 0ms; ran < limit; ran += ROUTE_RUN_MS_PER_TILE_ACROSS){
@@ -230,6 +232,12 @@ double SimStoryStepIO::floor_here() const{
 //  its hold seen or not; with the fade missed whole the look still sees the
 //  banner.
 std::optional<size_t> SimStoryStepIO::tap_to_banner(Direction direction, const std::string& map, size_t max_taps){
+    const std::optional<size_t> taps = taps_to_banner(direction, map, max_taps);
+    //  Through: the far side fades in as the step ends.
+    m_misses.fading_in = taps.has_value();
+    return taps;
+}
+std::optional<size_t> SimStoryStepIO::taps_to_banner(Direction direction, const std::string& map, size_t max_taps){
     if (m_misses.through == m_misses.tap_steps++){
         m_misses.missed = true;
         if (m_far_side() && m_misses.through_banner){
@@ -239,6 +247,7 @@ std::optional<size_t> SimStoryStepIO::tap_to_banner(Direction direction, const s
     if (std::exchange(m_misses.banner_up, "") == map){
         return 0;
     }
+    m_route.check_fade_in(m_step + ": taps toward " + map);
     bool crossed = false;
     for (size_t tap = 1; tap <= max_taps; tap++){
         const SimMove move = m_sim.tap(direction, 160ms, false);
@@ -259,7 +268,19 @@ std::optional<size_t> SimStoryStepIO::tap_to_banner(Direction direction, const s
     return std::nullopt;
 }
 
+void SimKnobRouteIO::check_fade_in(const std::string& label){
+    if (m_knobs.slow_fade_in && std::exchange(m_misses.fading_in, false)){
+        note(label + ": moved while the last warp still faded in (no settle after it).", RouteNote::FAILURE);
+    }
+}
+
+WalkResult SimKnobRouteIO::walk_to_wall(const RouteWallWalk& walk){
+    check_fade_in(walk.label);
+    return GridSimRouteIO::walk_to_wall(walk);
+}
+
 WalkResult SimKnobRouteIO::walk_taps(Direction direction, size_t tiles, const std::string& label){
+    check_fade_in(label);
     const WalkResult result = GridSimRouteIO::walk_taps(direction, tiles, label);
     if (result.stop != WalkStop::LIMIT || m_slid_steps.contains(m_step)){
         return result;
