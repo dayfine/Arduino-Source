@@ -33,6 +33,7 @@
 #include "VideoGames/PokemonFRLG/Programs/PokemonFRLG_NamingScreen.h"
 #include "VideoGames/PokemonFRLG/Programs/PokemonFRLG_StartMenuNavigation.h"
 #include "PokemonFRLG_AutoStoryActions.h"
+#include "PokemonFRLG_AutoStoryGenderMenu.h"
 #include "PokemonFRLG_AutoStoryStepInterrupts.h"
 #include "PokemonFRLG_AutoStoryTrainerMessage.h"
 
@@ -165,7 +166,8 @@ void open_start_menu_row(ConsoleHandle& console, ProControllerContext& context, 
 
 
 //  The new game's intro, from the title screen. Everything but the names
-//  is advanced with A, which never hurts there (BOY is the default, YES to
+//  is advanced with A, which never hurts there (BOY is the default, the
+//  girl is picked on the BOY/GIRL menu (gender_menu_cursor()), YES to
 //  "So your name is ...?" and "Er, was it GREEN?"); B is never pressed
 //  outside the keyboard, since in the intro it goes back to the controls
 //  pages (console B, 2026-11-01). The controls pages read as a message box
@@ -189,10 +191,11 @@ public:
         PLAYER_NAME_TYPED,
     };
 
-    NewGameIntro(ConsoleHandle& console, ProControllerContext& context, std::string player_name, End end)
+    NewGameIntro(ConsoleHandle& console, ProControllerContext& context, std::string player_name, PlayerGender gender, End end)
         : m_console(console)
         , m_context(context)
         , m_player_name(std::move(player_name))
+        , m_gender(gender)
         , m_end(end)
     {}
 
@@ -248,7 +251,7 @@ private:
             type_player_name(false);
             return true;
         }
-        if (names(screen)){
+        if (gender_menu(screen) || names(screen)){
             m_last_dialog = current_time();
             m_last_press = m_last_dialog;
             return false;
@@ -265,6 +268,33 @@ private:
             return false;
         }
         return quiet(screen, now);
+    }
+
+    //  True if the BOY/GIRL menu showed and was handled. It comes before the
+    //  player's keyboard and is answered once.
+    bool gender_menu(const ImageViewRGB32& screen){
+        if (m_gender_picked || m_keyboards_seen > 0 || m_gender == PlayerGender::BOY){
+            return false;
+        }
+        const std::optional<int> row = gender_menu_cursor(screen);
+        switch (gender_menu_step(row, m_gender)){
+        case GenderMenuStep::DOWN:
+            m_console.log("New game: the BOY/GIRL menu, moving to GIRL.");
+            tap(m_context, DPAD_DOWN, 300ms);
+            break;
+        case GenderMenuStep::UP:
+            tap(m_context, DPAD_UP, 300ms);
+            break;
+        case GenderMenuStep::CONFIRM:
+            m_console.log("New game: the BOY/GIRL menu, picking GIRL.");
+            press(m_context, BUTTON_A, 2000ms);
+            m_gender_picked = true;
+            break;
+        case GenderMenuStep::NONE:
+            return false;
+        }
+        m_context.wait_for_all_requests();
+        return true;
     }
 
     //  True if a keyboard or the rival's name list showed and was handled.
@@ -376,10 +406,12 @@ private:
     ConsoleHandle& m_console;
     ProControllerContext& m_context;
     const std::string m_player_name;
+    const PlayerGender m_gender;
     const End m_end;
     WallClock m_last_dialog;
     WallClock m_last_press;
     bool m_dialog_seen = false;
+    bool m_gender_picked = false;
     size_t m_keyboards_seen = 0;
     size_t m_presets_picked = 0;
 };
@@ -952,14 +984,14 @@ void buy_items(
     mash_until_overworld(console, context, 20000ms);
 }
 
-void play_new_game_intro(ConsoleHandle& console, ProControllerContext& context, const std::string& player_name){
-    console.log("New game: from the title screen.");
-    NewGameIntro(console, context, player_name, NewGameIntro::End::BEDROOM).run();
+void play_new_game_intro(ConsoleHandle& console, ProControllerContext& context, const std::string& player_name, PlayerGender gender){
+    console.log(gender == PlayerGender::GIRL ? "New game: from the title screen, as the girl." : "New game: from the title screen, as the boy.");
+    NewGameIntro(console, context, player_name, gender, NewGameIntro::End::BEDROOM).run();
 }
 
-void play_new_game_to_player_name(ConsoleHandle& console, ProControllerContext& context, const std::string& player_name){
+void play_new_game_to_player_name(ConsoleHandle& console, ProControllerContext& context, const std::string& player_name, PlayerGender gender){
     console.log("New game: from the title screen to the player's keyboard, for SID Helper.");
-    NewGameIntro(console, context, player_name, NewGameIntro::End::PLAYER_NAME_TYPED).run();
+    NewGameIntro(console, context, player_name, gender, NewGameIntro::End::PLAYER_NAME_TYPED).run();
 }
 
 namespace{

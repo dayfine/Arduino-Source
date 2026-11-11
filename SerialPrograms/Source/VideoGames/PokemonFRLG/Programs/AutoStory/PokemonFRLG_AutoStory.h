@@ -84,6 +84,7 @@ private:
     //  every game's AutoStory.
     Pokemon::StoryRunOptions RUN;
     BooleanCheckBoxOption NEW_GAME_FROM_TITLE;
+    EnumDropdownOption<PlayerGender> PLAYER_GENDER;
     StringOption PLAYER_NAME;
     //  The RNG programs the run stops for (StoryHandoff).
     BooleanCheckBoxOption STOP_FOR_SID_HELPER;

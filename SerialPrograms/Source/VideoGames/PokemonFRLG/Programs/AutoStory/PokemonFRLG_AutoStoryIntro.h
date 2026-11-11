@@ -22,6 +22,7 @@
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.h"
 #include "Pokemon/Navigation/Pokemon_Grid.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PlayerFacingReader.h"
 #include "PokemonFRLG_AutoStoryTrainerLine.h"
 #include "PokemonFRLG_AutoStoryRngReturns.h"
 
@@ -59,16 +60,17 @@ constexpr size_t RIVAL_PRESET_TRIES = 3;
 //  Determines the next input step in character/rival naming sequence.
 IntroNameStep intro_name_step(IntroNameScreen screen, size_t keyboards_seen, size_t presets_picked);
 //  From the title screen of a game with no save, to the bedroom: the
-//  controls pages, Oak's speech, BOY, `player_name` typed on the player's
+//  controls pages, Oak's speech, `gender` on the BOY/GIRL menu,
+//  `player_name` typed on the player's
 //  keyboard, and the rival's first preset name. An empty `player_name`
 //  keeps the player's default name (an empty name confirmed). Returns on
 //  the overworld. Throws UserSetupError if the game can't take the name
 //  (naming_text_error()).
-void play_new_game_intro(ConsoleHandle& console, ProControllerContext& context, const std::string& player_name);
+void play_new_game_intro(ConsoleHandle& console, ProControllerContext& context, const std::string& player_name, PlayerGender gender);
 
 //  play_new_game_intro() up to the player's keyboard: `player_name` typed,
 //  OK not pressed, which is where SID Helper starts. Empty types nothing.
-void play_new_game_to_player_name(ConsoleHandle& console, ProControllerContext& context, const std::string& player_name);
+void play_new_game_to_player_name(ConsoleHandle& console, ProControllerContext& context, const std::string& player_name, PlayerGender gender);
 
 
 
