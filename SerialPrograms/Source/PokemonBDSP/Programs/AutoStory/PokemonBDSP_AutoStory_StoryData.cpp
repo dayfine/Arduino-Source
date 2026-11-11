@@ -173,13 +173,6 @@ std::vector<StoryCheckpoint> load_authored_story(){
     return result;
 }
 
-JsonValue authored_checkpoint_json(const StoryCheckpoint& checkpoint){
-    JsonObject execution;
-    execution["on_failure"] = checkpoint.on_failure == StoryFailure::RELOAD_AND_RETRY ? "reload_and_retry" : "stop";
-    execution["saves_in"] = checkpoint.saves_in;
-    return Pokemon::authored_checkpoint_json(checkpoint, "bdsp", std::move(execution));
-}
-
 
 } // namespace PokemonBDSP
 } // namespace NintendoSwitch
