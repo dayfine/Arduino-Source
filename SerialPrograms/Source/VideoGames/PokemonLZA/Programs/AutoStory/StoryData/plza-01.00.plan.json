@@ -1,0 +1,44 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "plza",
+  "checkpoint": {
+    "id": "01.00",
+    "title": "New game to the station platform",
+    "events": [
+      {
+        "id": "language",
+        "kind": "game_action",
+        "why": "step 1: start a new game in English",
+        "action": "new_game_language"
+      },
+      {
+        "id": "look",
+        "kind": "game_action",
+        "why": "step 2: pick the first look",
+        "action": "pick_look"
+      },
+      {
+        "id": "name",
+        "kind": "game_action",
+        "why": "steps 3-4: name the player and confirm",
+        "action": "type_player_name"
+      },
+      {
+        "id": "opening",
+        "kind": "game_action",
+        "why": "step 5: the opening cutscene, no presses (A does not advance it), until the autosave badge has shown and the station platform holds",
+        "action": "opening_to_platform",
+        "args": {
+          "timeout_ms": 240000
+        }
+      }
+    ],
+    "metadata": {
+      "phase": "testing",
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game"
+    }
+  },
+  "execution": {
+    "save": "autosave"
+  }
+}
