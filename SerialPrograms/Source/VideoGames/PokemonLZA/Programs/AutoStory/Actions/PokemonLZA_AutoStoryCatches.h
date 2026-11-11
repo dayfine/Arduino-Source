@@ -57,8 +57,8 @@ std::optional<ObjectiveMarker> read_objective_marker(Logger& logger, const Image
 
 //  Walks toward the objective marker: turns the camera to keep it in the
 //  middle (to find it when it is behind) and walks on, until its distance
-//  reads `stop_at` or less, or (with `stop_at` 0) an A prompt shows, or
-//  `limit`. Returns the last distance read.
+//  reads `stop_at` or less, or (with `stop_at` 0) an A prompt or a dialog
+//  shows, or `limit`. Returns the last distance read.
 std::optional<int> walk_to_objective(ConsoleHandle& console, ProControllerContext& context, int stop_at, Milliseconds limit);
 
 //  03.07's catch for the "register five species" quest (4/5 after the
@@ -73,9 +73,13 @@ std::optional<int> walk_to_objective(ConsoleHandle& console, ProControllerContex
 //  species after the steps or `max_throws`.
 void catch_in_zone(ConsoleHandle& console, ProControllerContext& context, int new_species_wanted, int max_throws);
 
-//  On to the objective until the gate's A prompt shows (03.07, Wild Zone
-//  1's far gate). Throws OperationFailedException when no prompt shows.
-void walk_to_zone_gate(ConsoleHandle& console, ProControllerContext& context);
+//  On to the objective marker until an A prompt (a gate's "Leave", a door's
+//  "Enter") or a dialog (a scene that starts on arriving) shows. Where a
+//  walk starts facing whichever way the last scene left the player (out of
+//  a wild zone's gate), the marker sets the way, not timed legs (03.07,
+//  console B 2026-11-10). Throws OperationFailedException when neither
+//  shows within 90 s.
+void walk_to_marker(ConsoleHandle& console, ProControllerContext& context);
 
 
 
