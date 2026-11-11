@@ -22,6 +22,13 @@
 #include "Data/PokemonBDSP_AutoStory_StoryTrainers.h"
 #include "Data/PokemonBDSP_AutoStory_TrainerSight.h"
 #include "Data/PokemonBDSP_AutoStory_WalkRules.h"
+#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
+#include "Pokemon/AutoStory/Pokemon_TilePose.h"
+#include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
+#include "PokemonBDSP_AutoStory_StoryExecutor.h"
+#include "PokemonBDSP_AutoStory_StoryPlaces.h"
+#include "PokemonBDSP_AutoStory_StoryTable.h"
+#include "Utils/PokemonBDSP_AutoStory_StoryLanguage.h"
 #include "Utils/PokemonBDSP_AutoStory_PlannedRoute.h"
 #include "Utils/PokemonBDSP_AutoStory_RouteIO.h"
 #include "Utils/PokemonBDSP_AutoStory_RouteTiming.h"
@@ -37,6 +44,10 @@ namespace{
 
 using namespace std::chrono_literals;
 using Pokemon::Direction;
+using Pokemon::GridPose;
+using Pokemon::Pose;
+using Pokemon::StoryStep;
+using Pokemon::StoryStepKind;
 using Pokemon::TilePos;
 
 
@@ -392,10 +403,17 @@ public:
         m_safe_taps = safe;
         m_lost_taps = lost;
     }
+    //  Fault class "open leg comes up short": an open leg of n tiles stops
+    //  up to min(4, n / 4) tiles early, unseen (lab-B 2026-11-11: "north 20
+    //  (open)" ended about 4 short). Each open leg loses min(`lost`, that).
+    void stop_open_legs_short(size_t lost){
+        m_short_open = lost;
+    }
 
     virtual WalkResult walk_taps(Direction direction, size_t tiles, const std::string&) override{
         count_call();
-        const size_t lost = tiles > m_safe_taps ? std::min(m_lost_taps, tiles) : 0;
+        const size_t long_lost = tiles > m_safe_taps ? std::min(m_lost_taps, tiles) : 0;
+        const size_t lost = std::max(long_lost, std::min({m_short_open, (size_t)4, tiles / 4}));
         const size_t moved = move(direction, tiles - lost);
         if (moved < tiles - lost){
             return {.stop = WalkStop::BLOCKED, .walked = 250ms * tiles, .wild_battles = 0, .moved_chunks = moved};
@@ -403,7 +421,11 @@ public:
         return {.stop = WalkStop::LIMIT, .walked = 250ms * tiles, .wild_battles = 0, .moved_chunks = tiles};
     }
     virtual void press(const RouteInput& input) override{
-        count_call();
+        //  arrive() pauses for up to 3 s for a location banner the sim never
+        //  shows: those pauses are not a walker that loops.
+        if (input.kind != RouteInputKind::PAUSE){
+            count_call();
+        }
         //  A tap under 100 ms only turns (route_turn_tap()).
         if (input.kind == RouteInputKind::DPAD && input.hold >= 100ms){
             move(input.direction, input.count);
@@ -454,6 +476,7 @@ private:
     size_t m_walked = 0;
     size_t m_safe_taps = SIZE_MAX;
     size_t m_lost_taps = 0;
+    size_t m_short_open = 0;
 };
 
 StoryWorld jubilife_world(){
@@ -581,6 +604,121 @@ UnitTestResult test_jubilife_center_kids(Logger&){
     return true;
 }
 
+//  One ROUTE step of the story table, from where the steps before it end.
+struct StoryRoute{
+    std::string name;
+    Pose from;
+    Pose goal;
+    std::string costs;
+};
+
+//  Every ROUTE step whose start the table knows: a row's start, a ROUTE's
+//  target or a step's pose_after. Steps after any other step start
+//  unknown and are left out.
+void add_story_route(const std::string& row, const StoryStep& step, std::optional<Pose>& at, std::vector<StoryRoute>& routes){
+    if (step.kind == StoryStepKind::ROUTE){
+        const Pose goal = Pokemon::pose_of(Pokemon::story_arg<GridPose>(step.args, "target"));
+        if (at){
+            routes.push_back({std::format("{} {}", row, step.name), *at, goal, step.action});
+        }
+        at = goal;
+    }else{
+        at.reset();
+    }
+    if (step.pose_after){
+        at = Pokemon::pose_of(*step.pose_after);
+    }
+}
+std::vector<StoryRoute> story_routes(){
+    std::vector<StoryRoute> routes;
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        std::optional<Pose> at;
+        if (row.start){
+            at = Pokemon::pose_of(*row.start);
+        }
+        for (const StoryStep& step : row.steps){
+            add_story_route(row.id, step, at, routes);
+        }
+    }
+    return routes;
+}
+
+//  Walks `route` from each of its start tiles on the simulated console,
+//  every open leg `lost` tiles short (capped per leg). Returns the tiles
+//  walked from each start, or why it failed.
+std::string sweep_story_route(const StoryRoute& route, size_t lost, std::vector<size_t>& walked){
+    const StoryWorld* world = story_plan_world(route.from.map, route.goal.map);
+    const std::optional<RobustPlanCosts> costs = story_route_costs(route.costs);
+    if (world == nullptr || !costs){
+        return route.name + ": no world or costs.";
+    }
+    std::vector<TilePos> targets;
+    for (const TilePos& pos : Pokemon::tiles_of(route.goal)){
+        targets.push_back(story_to_world(*world, route.goal.map, pos));
+    }
+    std::vector<TilePos> start;
+    for (const TilePos& pos : Pokemon::tiles_of(route.from)){
+        start.push_back(story_to_world(*world, route.from.map, pos));
+    }
+    for (const TilePos& from : start){
+        std::vector<std::string> notes;
+        SimulatedRouteIO io(*world, from, {}, notes);
+        io.stop_open_legs_short(lost);
+        RouteTrainers trainers{.sights = story_trainers(*world), .fight = [](const std::string&){}};
+        try{
+            walk_route(io, *world, start, trainers, {
+                .goal = [&](const TilePos& pos){ return std::find(targets.begin(), targets.end(), pos) != targets.end(); },
+                .label = route.name,
+                .avoid = {},
+                .costs = *costs,
+                .speed = MoveSpeed::WALK,
+            });
+        }catch (const RouteFailed& e){
+            std::string last;
+            for (size_t i = notes.size() > 4 ? notes.size() - 4 : 0; i < notes.size(); i++){
+                last += "\n        " + notes[i];
+            }
+            return std::format("{} from {}, open legs {} short: {}{}", route.name, Pokemon::to_string(from), lost, e.message, last);
+        }
+        if (std::find(targets.begin(), targets.end(), io.at()) == targets.end()){
+            return std::format("{} from {}, open legs {} short: ended at {}.", route.name, Pokemon::to_string(from), lost, Pokemon::to_string(io.at()));
+        }
+        walked.push_back(io.tiles_walked());
+    }
+    return "";
+}
+
+//  Fault sweep: every story route, walked with every open leg coming up
+//  short by 4 tiles (at most a quarter of the leg), still ends on its
+//  target. The log line per route gives the most tiles walked from any of
+//  its start tiles, without the fault and with it.
+UnitTestResult test_story_routes_open_legs_short(Logger& logger){
+    std::string failures;
+    const std::vector<StoryRoute> routes = story_routes();
+    for (const StoryRoute& route : routes){
+        std::string line = route.name + ":";
+        for (size_t lost : {(size_t)0, (size_t)4}){
+            std::vector<size_t> walked;
+            const std::string error = sweep_story_route(route, lost, walked);
+            if (!error.empty()){
+                failures += "\n    " + error;
+                line += " FAIL";
+                continue;
+            }
+            size_t most = 0;
+            for (size_t tiles : walked){
+                most = std::max(most, tiles);
+            }
+            line += " " + std::to_string(most);
+        }
+        logger.log("[open legs short: 0, 4] " + line);
+    }
+    if (!failures.empty()){
+        return std::format("{} routes swept:{}", routes.size(), failures);
+    }
+    return true;
+}
+
 
 struct PlannedRouteInput{
     std::string name;
@@ -639,6 +777,10 @@ const PlannedRouteCase PLANNED_ROUTE_CASES[] = {
     },
     {
         .input = {"Jubilife to the Center past the kids", test_jubilife_center_kids},
+        .expectation = {},
+    },
+    {
+        .input = {"fault sweep: every story route with open legs coming up short", test_story_routes_open_legs_short},
         .expectation = {},
     },
 };
