@@ -293,13 +293,13 @@ std::vector<StoryStep> old_steps_to_roark(){
         {.direction = Direction::EAST, .tiles = 14}, {.direction = Direction::SOUTH, .tiles = 10},
         {.direction = Direction::WEST, .tiles = 2}, {.direction = Direction::SOUTH, .tiles = 2},
     };
-    taps.pose_after = Pokemon::GridPose{"OreburghMine", {TilePos{27, 28}}, Direction::SOUTH};
+    taps.pose_after = Pokemon::TileDeclared{.map = "OreburghMine", .tiles = {TilePos{27, 28}}, .facing = Direction::SOUTH};
     StoryStep walls;
     walls.kind = Pokemon::StoryStepKind::LEGS;
     walls.name = "beside_roarks_rock";
     walls.action = "to_wall";
     walls.args["legs"] = std::vector<Pokemon::StoryLeg>{{.direction = Direction::WEST, .tiles = 7}, {.direction = Direction::SOUTH, .tiles = 1}};
-    walls.pose_after = Pokemon::GridPose{"OreburghMine", {TilePos{20, 29}}, Direction::SOUTH};
+    walls.pose_after = Pokemon::TileDeclared{.map = "OreburghMine", .tiles = {TilePos{20, 29}}, .facing = Direction::SOUTH};
     return {taps, walls};
 }
 
@@ -333,7 +333,7 @@ std::vector<StoryCheckpoint> from_the_mines_sign(std::vector<StoryCheckpoint> ro
         const auto sign = std::find_if(row.steps.begin(), row.steps.end(), [](const StoryStep& step){
             return step.name == "up_to_the_mines_sign";
         });
-        row.start = Pokemon::GridPose{"OreburghCity", {TilePos{45, 59}, TilePos{45, 58}}, Direction::NORTH};
+        row.start = Pokemon::TileDeclared{.map = "OreburghCity", .tiles = {TilePos{45, 59}, TilePos{45, 58}}, .facing = Direction::NORTH};
         row.saves_in.clear();
         row.steps.erase(row.steps.begin(), sign);
     }
