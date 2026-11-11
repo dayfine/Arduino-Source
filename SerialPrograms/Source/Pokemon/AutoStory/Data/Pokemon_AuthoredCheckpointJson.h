@@ -2,10 +2,10 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Reading and writing an authored checkpoint file: the shared
+ *  Reading an authored checkpoint file: the shared
  *  StoryCheckpoint (Pokemon_StoryStepJson.h) in an envelope that names the
  *  game, plus the game's own execution object, which the game parses into
- *  its own type through a reader it passes in. Only parsing and encoding:
+ *  its own type through a reader it passes in. Only parsing:
  *  nothing here binds or runs a step, and nothing read keeps JSON.
  *
  */
@@ -46,10 +46,6 @@ StoryCheckpoint read_authored_checkpoint(
     const ExecutionReader& read_execution,
     std::span<const StoryActionSpec> actions = builtin_story_actions()
 );
-
-//  Encode the authored envelope; execution is supplied by the game adapter.
-//  This does not encode game bookkeeping or the legacy native-export envelope.
-JsonValue authored_checkpoint_json(const StoryCheckpoint& checkpoint, std::string_view game, JsonObject execution);
 
 //  A JSON file built into the program: its name without ".json", and its
 //  text.
