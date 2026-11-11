@@ -15,6 +15,7 @@
 #include <vector>
 #include "Pokemon_StoryActionArg.h"
 #include "Pokemon_StoryStepKind.h"
+#include "Pokemon/AutoStory/Pokemon_StoryPose.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -31,6 +32,21 @@ struct StoryArgSpec{
     std::string why;
 };
 
+//  What an action leaves the pose as.
+enum class PoseEnd{
+    KEEPS,      //  as sure as before (a talk; taps counted from where we were)
+    WALKED,     //  walked onto its target and checked there: one tile
+    DECLARED,   //  its declared end, reached on walls or through a door
+    GAME_SET,   //  where a scene or battle leaves us: declared, not seen
+};
+
+//  How sure of the player's tile an action must be at its start, and what
+//  it leaves (Pokemon_StoryCertainty.h).
+struct StoryCertainty{
+    PoseCertainty needs = PoseCertainty::UNKNOWN;
+    PoseEnd leaves = PoseEnd::KEEPS;
+};
+
 //  An action: the kind of step it does, its name and the args it takes.
 struct StoryActionSpec{
     StoryStepKind kind = StoryStepKind::GAME;
@@ -40,6 +56,8 @@ struct StoryActionSpec{
     //  keyboard, a battle AI): the engine refuses it on any other backend
     //  (StoryBackendKind) with the failure "console_only".
     bool console_only = false;
+    //  None: its kind's default (story_step_certainty()).
+    std::optional<StoryCertainty> certainty = std::nullopt;
 };
 
 //  Each way `args` don't fit `spec`: a key it doesn't name, a value of

@@ -602,6 +602,14 @@ bool SimExecutor::sync(const Pose& pose, const StoryWorld* on){
     if (local && on_grid(player.pos) && std::find(tiles.begin(), tiles.end(), *local) != tiles.end()){
         return true;
     }
+    const std::optional<Pose>& start_at = m_knobs.start_at;
+    if (!m_placed && start_at && start_at->map == pose.map && !Pokemon::tiles_of(*start_at).empty()){
+        m_sim.place(setup(world), story_to_world(*world, pose.map, Pokemon::tiles_of(*start_at).front()), Pokemon::facing_of(pose));
+        m_placed = true;
+        m_misplaced = true;
+        m_logger.log(std::format("[{}] the save leaves the player on {}, off the declared {}.", m_row, to_string(*start_at), to_string(pose)));
+        return true;
+    }
     m_sim.place(setup(world), story_to_world(*world, pose.map, tiles.front()), Pokemon::facing_of(pose));
     m_placed = true;
     return true;

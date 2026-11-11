@@ -1581,6 +1581,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_StoryActions_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryActions_Tests.h
     Source/Pokemon/AutoStory/Pokemon_StoryCheckpointTypes.h
+    Source/Pokemon/AutoStory/Pokemon_StoryCertainty.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryCertainty.h
     Source/Pokemon/AutoStory/Pokemon_StoryEvent.h
     Source/Pokemon/AutoStory/Pokemon_StoryEvents.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryEvents.h

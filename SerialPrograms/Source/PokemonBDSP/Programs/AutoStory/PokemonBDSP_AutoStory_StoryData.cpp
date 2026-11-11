@@ -70,10 +70,20 @@ std::vector<Pokemon::StoryActionSpec> make_bdsp_actions(){
         actions.push_back({.kind = Pokemon::StoryStepKind::ROUTE, .name = std::string(cost), .args = {route_target, fight_wild, opt_legs}});
     }
     actions.push_back({.kind = Pokemon::StoryStepKind::ROUTE, .name = "into_scene", .args = {route_target, fight_wild, legs_arg}});
-    for (std::string_view act : {"to_wall", "to_dialogue", "to_map", "one_short_ok", "counted_wall"}){
-        actions.push_back({.kind = Pokemon::StoryStepKind::LEGS, .name = std::string(act), .args = {legs_arg, fight_wild}});
+    //  A hold to a wall or onto a map ends on its declared end from any
+    //  start on the map: it is how a step pins an unsure pose.
+    using Pokemon::PoseCertainty;
+    using Pokemon::PoseEnd;
+    const Pokemon::StoryCertainty pins{.needs = PoseCertainty::UNKNOWN, .leaves = PoseEnd::DECLARED};
+    for (std::string_view act : {"to_wall", "to_map"}){
+        actions.push_back({.kind = Pokemon::StoryStepKind::LEGS, .name = std::string(act), .args = {legs_arg, fight_wild}, .console_only = false, .certainty = pins});
     }
-    actions.push_back({.kind = Pokemon::StoryStepKind::STEP, .name = "to_banner", .args = {direction_arg}});
+    actions.push_back({.kind = Pokemon::StoryStepKind::LEGS, .name = "to_dialogue", .args = {legs_arg, fight_wild},
+        .console_only = false, .certainty = Pokemon::StoryCertainty{.needs = PoseCertainty::UNKNOWN, .leaves = PoseEnd::GAME_SET}});
+    actions.push_back({.kind = Pokemon::StoryStepKind::LEGS, .name = "one_short_ok", .args = {legs_arg, fight_wild}});
+    actions.push_back({.kind = Pokemon::StoryStepKind::LEGS, .name = "counted_wall", .args = {legs_arg, fight_wild},
+        .console_only = false, .certainty = Pokemon::StoryCertainty{.needs = PoseCertainty::SET, .leaves = PoseEnd::DECLARED}});
+    actions.push_back({.kind = Pokemon::StoryStepKind::STEP, .name = "to_banner", .args = {direction_arg}, .console_only = false, .certainty = pins});
     actions.push_back({.kind = Pokemon::StoryStepKind::STEP, .name = "or_legs", .args = {direction_arg, legs_arg}});
     actions.push_back({.kind = Pokemon::StoryStepKind::TALK, .name = "talk_to_wanderer", .args = {}});
     actions.push_back({.kind = Pokemon::StoryStepKind::MASH, .name = "a", .args = {}});

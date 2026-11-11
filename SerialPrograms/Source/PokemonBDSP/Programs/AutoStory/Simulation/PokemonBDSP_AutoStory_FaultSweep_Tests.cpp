@@ -27,6 +27,11 @@
  *    with no settle() between goes nowhere (lab-B 2026-11-10, 00.04b
  *    heal_sandgem: a fixed 1500 ms wait, then the walk to the nurse
  *    stopped on "transition"). SimWorldKnobs::slow_fade_in.
+ *  - START_OFFSET: the row's save leaves the player 1 to 3 tiles off its
+ *    declared start, each way the player can walk there (00.05, lab-B
+ *    2026-11-11 15:22: the route planned open legs from Jubilife's declared
+ *    (48, 62), and its third leg walked into a building).
+ *    SimWorldKnobs::start_at.
  *
  *  Missed and short fades are swept by SimFailureCases_Tests (every single
  *  missed fade, banner and fade hold).
@@ -53,6 +58,8 @@
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
+#include "Pokemon/AutoStory/Pokemon_StoryCertainty.h"
+#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryData.h"
 #include "Pokemon/Navigation/Pokemon_MapData.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_WalkRules.h"
@@ -78,6 +85,7 @@ enum class FaultClass{
     GRASS_BATTLES,
     SCENE_EARLY,
     SLOW_FADE_IN,
+    START_OFFSET,
     //  Not swept yet: the measured movement table's lost taps (#293).
     LOST_TAP,
 };
@@ -93,6 +101,8 @@ std::string_view fault_class_name(FaultClass fault){
         return "scene starts during the walk before it";
     case FaultClass::SLOW_FADE_IN:
         return "slow fade-in after every warp";
+    case FaultClass::START_OFFSET:
+        return "start off its declared tile";
     case FaultClass::LOST_TAP:
         return "lost tap";
     }
@@ -105,6 +115,77 @@ constexpr std::string_view LAST_ROW = "01.11";
 
 //  Sweeps the program fails today, by test name, with the likely fix.
 const std::map<std::string, std::string> KNOWN_FAILING{
+    {"PokemonBDSP::AutoStory - Fault sweep: 00.01, start off its declared tile", "a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center)"},
+    {"PokemonBDSP::AutoStory - Fault sweep: 00.02, start off its declared tile", "a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center)"},
+    {"PokemonBDSP::AutoStory - Fault sweep: 00.03, start off its declared tile", "a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center)"},
+    {"PokemonBDSP::AutoStory - Fault sweep: 00.04, start off its declared tile", "a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center)"},
+    {"PokemonBDSP::AutoStory - Fault sweep: 00.04b, start off its declared tile", "a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center)"},
+    {"PokemonBDSP::AutoStory - Fault sweep: 00.05, start off its declared tile", "a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center)"},
+    {"PokemonBDSP::AutoStory - Fault sweep: 00.05b, start off its declared tile", "a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center)"},
+    {"PokemonBDSP::AutoStory - Fault sweep: 00.05c, start off its declared tile", "a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center)"},
+    {"PokemonBDSP::AutoStory - Fault sweep: 01.01, start off its declared tile", "a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center)"},
+    {"PokemonBDSP::AutoStory - Fault sweep: 01.02, start off its declared tile", "a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center)"},
+    {"PokemonBDSP::AutoStory - Fault sweep: 01.02b, start off its declared tile", "a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center)"},
+    {"PokemonBDSP::AutoStory - Fault sweep: 01.03, start off its declared tile", "a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center)"},
+    {"PokemonBDSP::AutoStory - Fault sweep: 01.05, start off its declared tile", "a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center)"},
+    {"PokemonBDSP::AutoStory - Fault sweep: 01.06, start off its declared tile", "a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center)"},
+    {"PokemonBDSP::AutoStory - Fault sweep: 01.07, start off its declared tile", "a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center)"},
+    {"PokemonBDSP::AutoStory - Fault sweep: 01.08, start off its declared tile", "a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center)"},
+    {"PokemonBDSP::AutoStory - Fault sweep: 01.09, start off its declared tile", "a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center)"},
+    {"PokemonBDSP::AutoStory - Fault sweep: 01.10, start off its declared tile", "a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center)"},
+    {"PokemonBDSP::AutoStory - Fault sweep: 01.11, start off its declared tile", "a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center)"},
+};
+
+//  Steps that need a surer pose than the steps before them leave, from
+//  the table before certainty_gaps(): each is to start on a wall leg or
+//  a landmark, as 00.05's walk to the Center does.
+const std::set<std::string> KNOWN_CERTAINTY_GAPS{
+    "00.01 step 1 below_the_flute: needs tile, has set",
+    "00.01 step 12 into_barrys_house: needs tile, has set",
+    "00.01 step 19 down_barrys_stairs: needs tile, has set",
+    "00.01 step 23 barrys_warning: needs tile, has set",
+    "00.01 step 26 below_the_lake_entrance: needs tile, has set",
+    "00.01 step 4 down_the_stairs: needs tile, has set",
+    "00.01 step 6 above_the_door: needs tile, has set",
+    "00.02 step 1 to_the_lake_entrance: needs tile, has set",
+    "00.03 step 1 into_rowans_scene: needs tile, has set",
+    "00.03 step 3 out_of_the_house_again: needs tile, has set",
+    "00.04 step 1 out_of_the_lab: needs tile, has set",
+    "00.04 step 18 short_of_the_catch_tutorial: needs tile, has set",
+    "00.04 step 2 onto_the_path: needs tile, has set",
+    "00.04 step 5 to_ledge_column: needs tile, has set",
+    "00.04 step 7 along_route_201_road: needs tile, has set",
+    "00.04b step 1 to_catch_grass: needs tile, has set",
+    "00.04b step 3 into_sandgem: needs tile, has set",
+    "00.04d step 1 north_to_jubilife: needs tile, has set",
+    "00.05 step 10 barry: needs tile, has unknown",
+    "00.05 step 12 out_of_the_school: needs tile, has set",
+    "00.05b step 1 below_the_presidents_trigger: needs tile, has set",
+    "00.05b step 10 below_the_company_clown: needs tile, has set",
+    "00.05b step 4 past_the_president: needs tile, has set",
+    "00.05b step 7 below_the_tv_clown: needs tile, has set",
+    "00.05c step 1 to_main_boulevard: needs tile, has set",
+    "00.05c step 6 to_the_route_203_street: needs tile, has set",
+    "01.01 step 1 west_of_barrys_trigger: needs tile, has set",
+    "01.02 step 1 south_to_the_cliff: needs tile, has set",
+    "01.02 step 10 west_of_the_welcome: needs tile, has set",
+    "01.02 step 4 west_of_the_hikers_trigger: needs tile, has set",
+    "01.02 step 7 past_curtis: needs tile, has set",
+    "01.02b step 2 barry: needs tile, has set",
+    "01.02b step 4 below_the_centers_door: needs tile, has set",
+    "01.03 step 1 above_the_mine: needs tile, has set",
+    "01.03 step 11 up_to_the_hall: needs tile, has set",
+    "01.03 step 15 heal_oreburgh: needs tile, has set",
+    "01.03 step 8 roark: needs tile, has set",
+    "01.05 step 2 east_of_barrys_trigger: needs tile, has set",
+    "01.05 step 8 through_the_gate: needs tile, has set",
+    "01.06 step 1 up_jubilifes_road: needs tile, has set",
+    "01.07 step 1 rowans_trigger: needs tile, has set",
+    "01.08 step 1 west_to_the_wall: needs tile, has set",
+    "01.09 step 1 west_of_the_rock: needs tile, has set",
+    "01.09 step 3 above_the_way_out: needs tile, has set",
+    "01.10 step 1 line_1: needs tile, has set",
+    "01.11 step 7 old_man: needs tile, has set",
 };
 
 //  Scenes whose end the console has proven, by step name: the sweep leaves
@@ -183,6 +264,20 @@ bool wild_or_trainers(const StoryStep& step){
 //  reach from it in one or two steps, and not in `seen`: where a scene can
 //  leave them instead. A tile behind a wall is not one, nor a door's: a
 //  step onto it goes through (00.04's moms_hat by the house's door).
+//  The tile next to `tile` toward `direction`.
+TilePos step_from(const TilePos& tile, Direction direction){
+    switch (direction){
+    case Direction::NORTH:
+        return TilePos{tile.x, tile.y - 1};
+    case Direction::SOUTH:
+        return TilePos{tile.x, tile.y + 1};
+    case Direction::WEST:
+        return TilePos{tile.x - 1, tile.y};
+    default:
+        return TilePos{tile.x + 1, tile.y};
+    }
+}
+
 void walkable_neighbors(const StoryWorld* world, const Pose& pose, const TilePos& center, std::set<std::pair<int, int>>& seen, std::vector<TilePos>& out){
     const auto step = [](const TilePos& tile, Direction direction){
         switch (direction){
@@ -336,6 +431,40 @@ UnitTestResult sweep_slow_fade_in(Logger& logger, const StoryCheckpoint& row){
     return sweep_result(logger, FaultClass::SLOW_FADE_IN, row.id, 1, failures);
 }
 
+//  Row `row` from 1 to 3 tiles off its declared start, each way the
+//  player can walk from it, one at a time.
+UnitTestResult sweep_start_offset(Logger& logger, const StoryCheckpoint& row){
+    std::vector<SweepFailure> failures;
+    size_t variants = 0;
+    if (!row.start){
+        return sweep_result(logger, FaultClass::START_OFFSET, row.id, variants, failures);
+    }
+    const Pose start = Pokemon::pose_of(*row.start);
+    const std::vector<TilePos> tiles = Pokemon::tiles_of(start);
+    const StoryWorld* world = start.map.empty() ? nullptr : story_plan_world(start.map, start.map);
+    if (world == nullptr || tiles.empty()){
+        return sweep_result(logger, FaultClass::START_OFFSET, row.id, variants, failures);
+    }
+    for (Direction direction : {Direction::NORTH, Direction::SOUTH, Direction::WEST, Direction::EAST}){
+        TilePos at = tiles.front();
+        for (int off = 1; off <= 3; off++){
+            GridSim sim(SimWorld{.world = world}, story_to_world(*world, start.map, at), direction, false);
+            if (!detail::sim_can_step(sim, direction)){
+                break;
+            }
+            at = step_from(at, direction);
+            SimWorldKnobs knobs;
+            knobs.start_at = Pokemon::tile_pose(start.map, {at}, Pokemon::facing_of(start));
+            variants++;
+            const std::string stopped = run_row(logger, row.id, std::move(knobs));
+            if (!stopped.empty()){
+                failures.push_back({"", std::format("starts on ({}, {})", at.x, at.y), stopped});
+            }
+        }
+    }
+    return sweep_result(logger, FaultClass::START_OFFSET, row.id, variants, failures);
+}
+
 //  The route before scene step `c` of `steps`, right before it or before
 //  the plain step onto its trigger; none if there is none.
 std::optional<size_t> route_before_scene(const std::vector<StoryStep>& steps, size_t c){
@@ -452,6 +581,8 @@ private:
             return sweep_scene_early(logger, m_row);
         case FaultClass::SLOW_FADE_IN:
             return sweep_slow_fade_in(logger, m_row);
+        case FaultClass::START_OFFSET:
+            return sweep_start_offset(logger, m_row);
         case FaultClass::LOST_TAP:
             break;
         }
@@ -462,6 +593,33 @@ private:
     const StoryCheckpoint& m_row;
 };
 
+//  No step of the table needs a surer pose than the steps before it leave
+//  (Pokemon_StoryCertainty.h), but those on KNOWN_CERTAINTY_GAPS.
+class Test_AutoStoryCertainty : public UnitTest{
+public:
+    Test_AutoStoryCertainty()
+        : UnitTest("PokemonBDSP::AutoStory - Certainty: no step walks from a pose surer than the steps before leave")
+    {}
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        std::string out;
+        size_t known = 0;
+        for (const StoryCheckpoint& row : story_checkpoints()){
+            for (const std::string& gap : Pokemon::certainty_gaps(row, bdsp_story_actions())){
+                logger.log("Certainty gap: " + gap);
+                if (KNOWN_CERTAINTY_GAPS.contains(gap)){
+                    known++;
+                    continue;
+                }
+                out += "\n  " + gap;
+            }
+        }
+        if (known != KNOWN_CERTAINTY_GAPS.size()){
+            out += std::format("\n  {} of the {} known gaps are gone: take them off KNOWN_CERTAINTY_GAPS.", KNOWN_CERTAINTY_GAPS.size() - known, KNOWN_CERTAINTY_GAPS.size());
+        }
+        return out.empty() ? UnitTestResult(true) : UnitTestResult("Certainty gaps:" + out);
+    }
+};
+
 } // namespace
 
 const FaultSweepCase FAULT_SWEEP_CASES[] = {
@@ -470,9 +628,11 @@ const FaultSweepCase FAULT_SWEEP_CASES[] = {
     {.input = {.fault = FaultClass::GRASS_BATTLES}, .expectation = {}},
     {.input = {.fault = FaultClass::SCENE_EARLY}, .expectation = {}},
     {.input = {.fault = FaultClass::SLOW_FADE_IN}, .expectation = {}},
+    {.input = {.fault = FaultClass::START_OFFSET}, .expectation = {}},
 };
 
 void add_tests_AutoStory_FaultSweep(UnitTestDatabase& database){
+    database.add<Test_AutoStoryCertainty>();
     for (const FaultSweepCase& item : FAULT_SWEEP_CASES){
         for (const StoryCheckpoint& row : story_checkpoints()){
             if (row.id < FIRST_ROW || row.id > LAST_ROW){

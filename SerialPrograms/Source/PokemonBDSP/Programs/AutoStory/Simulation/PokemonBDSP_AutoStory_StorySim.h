@@ -188,6 +188,10 @@ struct SimWorldKnobs{
     //  goes nowhere (lab-B 2026-11-10, 00.04b heal_sandgem walked to the
     //  nurse 1500 ms after the Center's fade and stopped on "transition").
     bool slow_fade_in = false;
+    //  Where the first row's save really leaves the player, when that is not
+    //  its declared start: the program starts from the declared start, the
+    //  player from here (00.05, lab-B 2026-11-11: two tiles off).
+    std::optional<Pokemon::Pose> start_at = std::nullopt;
 };
 
 namespace detail{
