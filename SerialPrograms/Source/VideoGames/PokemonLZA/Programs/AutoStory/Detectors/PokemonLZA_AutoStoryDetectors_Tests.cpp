@@ -1,4 +1,4 @@
-/*  PokemonLZA AutoStory - Opening detectors tests
+/*  PokemonLZA AutoStory - Detectors Tests
  *
  *  From: https://github.com/PokemonAutomation/
  *
@@ -41,8 +41,14 @@
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
-#include "PokemonLZA_AutoStoryBadgeDetectors.h"
-#include "PokemonLZA_AutoStoryOpeningDetectors.h"
+#include "PokemonLZA_AutoStoryAdvanceArrowDetector.h"
+#include "PokemonLZA_AutoStoryAutosaveDetector.h"
+#include "PokemonLZA_AutoStoryControlsHintDetector.h"
+#include "PokemonLZA_AutoStoryDetectors_Tests.h"
+#include "PokemonLZA_AutoStoryMainMissionBannerDetector.h"
+#include "PokemonLZA_AutoStoryMissionCompleteDetector.h"
+#include "PokemonLZA_AutoStoryPlatformArrivalDetector.h"
+#include "PokemonLZA_AutoStorySkipPromptDetector.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -493,7 +499,7 @@ struct OpeningTestCase{
 class Test_AutoStoryOpeningDetectors : public UnitTest{
 public:
     explicit Test_AutoStoryOpeningDetectors(OpeningTestCase test_case)
-        : UnitTest(std::format("PokemonLZA::AutoStoryOpeningDetectors - {}", test_case.input.name))
+        : UnitTest(std::format("PokemonLZA::AutoStoryDetectors - {}", test_case.input.name))
         , m_case(std::move(test_case))
     {}
 
@@ -523,7 +529,7 @@ const OpeningTestCase OPENING_TEST_CASES[] = {
     {.input = {"01.03 run 2's frames: the mission complete card and the MM02 banner (PLZA_0103_RUN2_FRAMES)", test_0103_run2_frames}, .expectation = {}},
 };
 
-void add_tests_AutoStoryOpeningDetectors(UnitTestDatabase& database){
+void add_tests_AutoStoryDetectors(UnitTestDatabase& database){
     for (const OpeningTestCase& item : OPENING_TEST_CASES){
         database.add<Test_AutoStoryOpeningDetectors>(item);
     }

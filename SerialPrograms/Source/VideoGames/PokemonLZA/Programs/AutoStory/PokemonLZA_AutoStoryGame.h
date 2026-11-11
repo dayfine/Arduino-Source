@@ -26,7 +26,7 @@
 #include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
 #include "PokemonLZA_AutoStoryBackend.h"
-#include "PokemonLZA_AutoStoryMoves.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMoves.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -47,8 +47,6 @@ const std::map<std::string, std::string, std::less<>>& story_actions_not_impleme
 //      ANSWER  "answer"    the first choice for yes, the second for no
 //      MASH    "mash"      B through the text until the overworld is back
 //      MASH    "a"         A through it
-//      HEAL    "heal"      the nurse (not implemented)
-//      SHOP    "shop"      the counter (not implemented)
 //      GAME    "walk" (args "legs", [[turn, ms], ...] as story_walk_move()
 //              reads them; "end", "fade_white" or "fade_black"; "heading"),
 //              walked once the screen shows free control
@@ -56,21 +54,23 @@ const std::map<std::string, std::string, std::less<>>& story_actions_not_impleme
 //              (walk_until()); "approach_starter" (args "chikorita",
 //              "tepig", "totodile", each a walk's legs: the run's starter's
 //              is walked as "walk" would, a starter with none is not
-//              implemented); "choose_0" /
-//              "choose_1" (that row of the choices on screen);
-//              "story_battle" (attack in a battle already on screen until a
-//              dialog shows); the new game's "new_game_language",
-//              "pick_look", "type_player_name"; the scene machines
+//              implemented); the platform waits "wait_for_platform" and
+//              "opening_to_platform"; the scene machines
 //              "mash_to_move_hints" (args min_length_ms, quiet_ms) and
-//              "text_to_choice" (run_scene_machine()); the scene mashes
-//              "story_battle_start", "talk_through_map_screen",
-//              "talk_to_pokedex_screen" (mash_scene()); "climb_ladder"; or
+//              "text_to_choice" (run_scene_machine()); a console step, one
+//              call through the game's own screens with no args: the new
+//              game's "new_game_language", "pick_look", "type_player_name";
+//              "choose_0" / "choose_1" (that row of the choices on screen);
+//              "story_battle_start" (A to the battle), "story_battle"
+//              (attack until a dialog shows); "talk_through_map_screen",
+//              "talk_to_pokedex_screen", "climb_ladder"; the catches
+//              "catch_tutorial", "battle_then_catch", "catch_in_zone"; or
 //              an action of story_actions_not_implemented()
 //
 //  Every action that works through the game's own screens is console_only.
 //  BATTLE is the built-in "fight" (the backend's battle), SAVE the
-//  engine's, and the built-in "route" fails by name. Lumiose has no tiles:
-//  a step naming "legs" or "face" fails the lint.
+//  engine's, and the built-in "route" and "shop" fail by name. Lumiose has
+//  no tiles: a step naming "legs" or "face" fails the lint.
 std::vector<Pokemon::StoryActionSpec> plza_story_action_specs();
 
 //  Every action a PLZA checkpoint may name: the built-ins with
@@ -79,10 +79,8 @@ std::vector<Pokemon::StoryActionSpec> plza_story_action_specs();
 const std::vector<Pokemon::StoryActionSpec>& plza_story_specs();
 
 //  What is wrong with `checkpoint` for PLZA's engine
-//  (StoryActionRegistry::lint), then with its walks' args: each leg a
-//  [turn, ms] pair, turning -180 to 180 degrees and walking 0 ms or more,
-//  some leg walking; an end a fade, after a leg that walks; a heading 0 to
-//  359.
+//  (StoryActionRegistry::lint), then with its steps' args
+//  (plza_step_arg_errors(), PokemonLZA_AutoStoryStepValidator.h).
 std::vector<std::string> plza_story_lint(const Pokemon::StoryCheckpoint& checkpoint);
 
 //  The walk of `args`: the legs of its arg `legs` ("legs" for a walk, the

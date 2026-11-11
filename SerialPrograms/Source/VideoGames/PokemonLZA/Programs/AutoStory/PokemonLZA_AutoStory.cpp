@@ -22,7 +22,7 @@
 #include "Pokemon/Options/Pokemon_GameLanguages.h"
 #include "Pokemon/Pokemon_Strings.h"
 #include "PokemonLZA_AutoStoryGame.h"
-#include "PokemonLZA_AutoStoryTable.h"
+#include "PokemonLZA_AutoStoryStoryFiles.h"
 #include "PokemonLZA_AutoStory.h"
 
 namespace PokemonAutomation{

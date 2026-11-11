@@ -16,7 +16,7 @@
 #include "CommonFramework/ImageTools/ImageStats.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
-#include "PokemonLZA_AutoStoryOpeningDetectors.h"
+#include "PokemonLZA_AutoStoryPlatformArrivalDetector.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

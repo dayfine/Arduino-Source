@@ -21,9 +21,9 @@
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryEngine.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.h"
 #include "PokemonLZA_AutoStoryGame.h"
-#include "PokemonLZA_AutoStoryMoves.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMoves.h"
 #include "PokemonLZA_AutoStoryObservation.h"
-#include "PokemonLZA_AutoStoryTable.h"
+#include "PokemonLZA_AutoStoryStoryFiles.h"
 #include "PokemonLZA_AutoStoryEngine_Tests.h"
 
 namespace PokemonAutomation{
@@ -201,9 +201,9 @@ UnitTestResult test_held_walk_inputs(CancellableScope& scope){
         return std::format("Expected the held walk to pass: {}", to_string(report.run.failure));
     }
     return expect_inputs(backend, {
-        "wait 3000ms", "wait 250ms", "stick 10deg 4250ms walk, release 0ms",
-        "press L", "stick 90deg 6000ms walk, release 0ms",
-        "press L", "stick 90deg 6500ms walk, release 0ms",
+        "wait 3000ms", "wait 250ms", "stick 10deg 4250ms walk",
+        "press L", "stick 90deg 6000ms walk",
+        "press L", "stick 90deg 6500ms walk",
     });
 }
 
