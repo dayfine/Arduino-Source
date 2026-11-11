@@ -32,7 +32,7 @@ bool process_header_read(
 ){
     if (mon.size() == 1){
         state.opponent = std::move(mon);
-        return true;
+        return state.opponent_fits_stage();
     }
     if (mon.size() > 1){
         logger.log("Ambiguous Read Result: " + set_to_str(mon), COLOR_PURPLE);
@@ -41,7 +41,7 @@ bool process_header_read(
                 "Using previous known value to disambiguate: " + set_to_str(mon),
                 COLOR_PURPLE
             );
-            return true;
+            return state.opponent_fits_stage();
         }
     }
     if (state.opponent.size() == 1){
@@ -49,7 +49,7 @@ bool process_header_read(
             "Failed to read opponent from battle. Using previously known value: " + set_to_str(state.opponent),
             COLOR_ORANGE
         );
-        return true;
+        return state.opponent_fits_stage();
     }
 
     return false;
@@ -75,9 +75,6 @@ bool read_battle_menu(
     std::set<std::string> mon = reader.read_opponent(stream.logger(), context, stream.video());
 
     bool retry = !process_header_read(stream.logger(), state, std::move(mon));
-    if (state.opponent_needs_summary_read()){
-        retry = true;
-    }
 
     VideoSnapshot snapshot;
     if (retry){
@@ -340,6 +337,20 @@ StateMachineAction run_move_select(
 
 
 
+std::string choose_ball(
+    Logger& logger, const GlobalState& inferred,
+    size_t console_index, const EndBattleDecider& decider
+){
+    if (inferred.wins != 4){
+        return decider.normal_ball(console_index);
+    }
+    if (inferred.boss.empty()){
+        logger.log("Boss is unknown at the fourth win. Using the normal ball.", COLOR_RED);
+        return decider.normal_ball(console_index);
+    }
+    return decider.boss_ball(console_index, inferred.boss);
+}
+
 StateMachineAction throw_balls(
     AdventureRuntime& runtime,
     ProgramEnvironment& env, size_t console_index,
@@ -360,16 +371,8 @@ StateMachineAction throw_balls(
 
     GlobalState inferred = state_tracker.synchronize(stream.logger(), console_index);
 
-    std::string ball;
     bool boss = inferred.wins == 4;
-    if (boss){
-        if (inferred.boss.empty()){
-            stream.log("Boss is unknown at the fourth win.", COLOR_RED);
-        }
-        ball = decider.boss_ball(console_index, inferred.boss);
-    }else{
-        ball = decider.normal_ball(console_index);
-    }
+    const std::string ball = choose_ball(stream.logger(), inferred, console_index, decider);
 
     BattleBallReader reader(stream, language);
     pbf_press_button(context, BUTTON_A, 400ms, 600ms);

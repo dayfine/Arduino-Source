@@ -133,23 +133,17 @@ public:
     virtual const std::string& boss_ball(
         size_t console_index, const std::string& boss_slug
     ) const override{
-        //  An unknown boss (unread or misread) falls back to the normal ball.
-        const BossActionRow* filter = find_filter(boss_slug);
-        if (filter == nullptr){
-            return normal_ball(console_index);
-        }
-        return filter->ball.slug();
+        return get_filter(boss_slug).ball.slug();
     }
     virtual CaughtScreenAction end_adventure_action(
         size_t console_index, const std::string& boss_slug,
         const PathStats& path_stats,
         bool any_shiny, bool boss_is_shiny
     ) const override{
-        const BossActionRow* filter = find_filter(boss_slug);
-        if (filter == nullptr){
+        if (boss_slug.empty()){
             return CaughtScreenAction::TAKE_NON_BOSS_SHINY_AND_CONTINUE;
         }
-        switch (filter->action){
+        switch (get_filter(boss_slug).action){
         case BossAction::CATCH_AND_STOP_PROGRAM:
             return CaughtScreenAction::STOP_PROGRAM;
         case BossAction::CATCH_AND_STOP_IF_SHINY:
@@ -160,21 +154,19 @@ public:
         throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Invalid enum.");
     }
     virtual bool is_in_save_list(const std::string& boss_slug) const override{
-        const BossActionRow* filter = find_filter(boss_slug);
-        return filter != nullptr && filter->save_on_the_go;
+        return get_filter(boss_slug).save_on_the_go;
     }
 
 
 private:
-    //  Returns nullptr for an empty or unrecognized boss slug.
-    const BossActionRow* find_filter(const std::string& boss_slug) const{
+    const BossActionRow& get_filter(const std::string& boss_slug) const{
         for (const StaticTableRow* row : m_boss_list.table()){
             const BossActionRow& filter = static_cast<const BossActionRow&>(*row);
             if (boss_slug == filter.slug()){
-                return &filter;
+                return filter;
             }
         }
-        return nullptr;
+        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Unrecognized boss slug: " + boss_slug);
     }
 
 private:
