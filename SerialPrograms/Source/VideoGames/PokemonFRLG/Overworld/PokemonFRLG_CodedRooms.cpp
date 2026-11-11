@@ -197,13 +197,13 @@ MapData rocket_hideout_lift_room(){
     return parse_map(std::string(LIFT_ROOM_JSON), std::string(LIFT_MAP));
 }
 
-const std::vector<MapPosition>& rocket_hideout_lift_doors(){
-    static const std::vector<MapPosition> DOORS{
-        {"RocketHideout_B1F", {24, 25}},
-        {"RocketHideout_B2F", {28, 16}},
-        {"RocketHideout_B4F", {20, 23}},
+const std::vector<MapPosition>& rocket_hideout_lift_exits(){
+    static const std::vector<MapPosition> EXITS{
+        {"RocketHideout_B1F", {24, 26}},
+        {"RocketHideout_B2F", {28, 17}},
+        {"RocketHideout_B4F", {20, 24}},
     };
-    return DOORS;
+    return EXITS;
 }
 
 

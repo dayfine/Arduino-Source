@@ -79,9 +79,18 @@
         "kind": "legs",
         "action": "taps",
         "args": {
-          "legs": [{"direction": "east", "tiles": 12}, {"direction": "south", "tiles": 1}, {"direction": "east", "tiles": 1}, {"direction": "north", "tiles": 1}]
+          "legs": [{"direction": "east", "tiles": 15}, {"direction": "west", "tiles": 2}]
         },
-        "why": "a tap a tile along row 17 to (27, 17), down to row 18 and east to (28, 18), and up to below the lift door (28, 16), facing it"
+        "why": "a tap a tile along row 17 to its wall at (30, 17), then back west to below the lift door (28, 16), at (28, 17); an overshoot east only meets the wall"
+      },
+      {
+        "id": "face_lift",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "RocketHideout_B2F", "tiles": [[28, 17]], "facing": "north"}
+        },
+        "why": "turn to face the lift door (28, 16): no tile to walk"
       },
       {
         "id": "lift_to_b4f",
@@ -91,17 +100,17 @@
           "from": "B2F",
           "to": "B4F"
         },
-        "declared_after": {"map": "RocketHideout_B4F", "tiles": [[20, 23]], "facing": "south"},
-        "why": "the lift script: in through the door (28, 16), to the panel, B4F with the LIFT KEY, out onto B4F's lift door; no map of the lift"
+        "declared_after": {"map": "RocketHideout_B4F", "tiles": [[20, 24]], "facing": "south"},
+        "why": "the lift script: in through the door (28, 16), to the panel, B4F with the LIFT KEY, out a tile south of B4F's lift door (20, 23), on (20, 24) (console B, 2026-11-11); no map of the lift"
       },
       {
         "id": "below_left_guard",
         "kind": "legs",
-        "action": "taps",
+        "action": "run",
         "args": {
-          "legs": [{"direction": "south", "tiles": 1}, {"direction": "west", "tiles": 4}, {"direction": "north", "tiles": 9}]
+          "legs": [{"direction": "south", "tiles": 1}, {"direction": "west", "tiles": 4}, {"direction": "north", "tiles": 10}]
         },
-        "why": "a tap a tile off the lift door (20, 23): down to (20, 24), west to (16, 24) and up column 16 to below the left door Grunt (16, 14)"
+        "why": "from the lift's exit (20, 24) (console B, 2026-11-11), and B4F has no arrows: run, south to the bottom row 25, west to (16, 25) and up column 16 to below the left door Grunt (16, 14); row 24 west of x 14 has potted plants (12, 24) and (13, 24)"
       },
       {
         "id": "talk_left_guard",

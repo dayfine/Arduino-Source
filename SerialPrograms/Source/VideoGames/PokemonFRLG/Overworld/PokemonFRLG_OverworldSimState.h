@@ -81,7 +81,7 @@ struct SimScript{
     //  on its panel's menu, top first (pokefirered setdynamicwarp in
     //  RocketHideout_Elevator's scripts): the door's own warp is the
     //  game's placeholder. The hideout's: rocket_hideout_lift_room() under
-    //  LIFT_MAP, with rocket_hideout_lift_doors().
+    //  LIFT_MAP, with rocket_hideout_lift_exits().
     std::map<std::string, std::vector<MapPosition>> lift_floors = {};
     SimTiming timing;
 };
