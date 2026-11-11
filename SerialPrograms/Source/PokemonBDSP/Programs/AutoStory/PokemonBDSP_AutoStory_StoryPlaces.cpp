@@ -272,6 +272,24 @@ std::optional<TilePos> story_to_local(const StoryWorld& world, const std::string
     return tile->pos;
 }
 
+std::optional<MapTile> story_to_local(const StoryWorld& world, const TilePos& pos){
+    const std::optional<MapTile> tile = world.to_local(pos);
+    if (!tile){
+        return std::nullopt;
+    }
+    for (const PlanWorld& plan : plan_worlds()){
+        if (plan.world != &world){
+            continue;
+        }
+        for (const std::string& map : plan.maps){
+            if (banner_name(map) == tile->map){
+                return MapTile{map, tile->pos};
+            }
+        }
+    }
+    return std::nullopt;
+}
+
 std::vector<TrainerSight> story_trainers(const StoryWorld& world){
     std::vector<TrainerSight> sights;
     for (const PlanWorld& plan : plan_worlds()){
