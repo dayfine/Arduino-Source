@@ -426,9 +426,9 @@ std::string blind_legs_on_sim(const MapPosition& start, Direction facing, const 
     const std::vector<MapData>& maps = story_maps();
     std::optional<std::vector<RouteStep>> route = fixed_route(maps, start, legs);
     if (!route || route->empty()){
-        return "No legs from " + to_string(start) + ".";
+        return std::format("No legs from {}.", to_string(start));
     }
-    blind_tap_legs(*route, facing);
+    blind_tap_legs(facing, *route);
     OverworldSim sim(maps, start, facing, SimScript{});
     OverworldSimWalker walker(sim);
     const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = start, .label = "Sim"};

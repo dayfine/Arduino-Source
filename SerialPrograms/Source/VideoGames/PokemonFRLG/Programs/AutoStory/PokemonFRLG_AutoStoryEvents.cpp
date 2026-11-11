@@ -176,7 +176,7 @@ Outcome walk_legs(StoryEnv& env, RunState& state, const StoryStep& step){
     if (step.variant == TAPS_VARIANT){
         tap_legs(*route);
     }else if (step.variant == BLIND_TAPS_VARIANT){
-        blind_tap_legs(*route, *facing);
+        blind_tap_legs(*facing, *route);
     }
     const OverworldInterruptSet interrupts = walk_interrupts(env, step);
     //  Planning lets the walker recover a stopped open leg: it plans back to

@@ -38,7 +38,7 @@ std::optional<std::vector<RouteStep>> fixed_route(
 void tap_legs(std::vector<RouteStep>& route);
 //  Marks each of `route`'s steps tapped blind (BLIND_TAPS_VARIANT), from
 //  `facing`: a turn tap first where the player faces another way.
-void blind_tap_legs(std::vector<RouteStep>& route, Direction facing);
+void blind_tap_legs(Direction facing, std::vector<RouteStep>& route);
 
 
 
