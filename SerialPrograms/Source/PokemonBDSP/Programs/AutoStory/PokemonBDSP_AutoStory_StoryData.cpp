@@ -58,9 +58,9 @@ std::vector<Pokemon::StoryActionSpec> make_bdsp_actions(){
         "items", Pokemon::StoryArgType::ITEMS, "the items and how many of each"
     );
 
-    const Pokemon::StoryArgSpec opt_legs = optional(
-        "legs", Pokemon::StoryArgType::LEGS, std::vector<Pokemon::StoryLeg>{}, "the straight legs to walk"
-    );
+    //  No fallback: a ROUTE step without legs then fits the built-in "route".
+    const Pokemon::StoryArgSpec opt_legs{.key = "legs", .type = Pokemon::StoryArgType::LEGS, .required = false,
+        .fallback = std::nullopt, .why = "after the route, run its one leg until a dialogue starts"};
     for (auto& action : actions){
         if (action.kind == Pokemon::StoryStepKind::ROUTE){
             action.args.push_back(opt_legs);
@@ -146,13 +146,17 @@ StoryCheckpoint read_authored_checkpoint(const JsonValue& value, std::string_vie
     return result;
 }
 
-StoryCheckpoint load_authored_checkpoint(std::string_view file){
+JsonValue authored_checkpoint_document(std::string_view file){
     for (const auto& [name, text] : bdsp_checkpoint_json()){
         if (name == file){
-            return read_authored_checkpoint(parse_json(text), file);
+            return parse_json(text);
         }
     }
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Authored checkpoint is not embedded: " + std::string(file));
+}
+
+StoryCheckpoint load_authored_checkpoint(std::string_view file){
+    return read_authored_checkpoint(authored_checkpoint_document(file), file);
 }
 
 std::vector<StoryCheckpoint> load_authored_story(){
@@ -173,12 +177,6 @@ std::vector<StoryCheckpoint> load_authored_story(){
     return result;
 }
 
-JsonValue authored_checkpoint_json(const StoryCheckpoint& checkpoint){
-    JsonObject execution;
-    execution["on_failure"] = checkpoint.on_failure == StoryFailure::RELOAD_AND_RETRY ? "reload_and_retry" : "stop";
-    execution["saves_in"] = checkpoint.saves_in;
-    return Pokemon::authored_checkpoint_json(checkpoint, "bdsp", std::move(execution));
-}
 
 
 } // namespace PokemonBDSP

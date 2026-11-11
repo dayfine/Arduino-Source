@@ -158,7 +158,7 @@ bool already_there(Logger& logger, const StoryCheckpoint& row, size_t c, const P
 bool wild_or_trainers(const StoryStep& step){
     std::string map;
     if (step.pose_after){
-        map = step.pose_after->map;
+        map = Pokemon::grid_pose_of(*step.pose_after).map;
     }else if (step.args.contains("target")){
         map = Pokemon::story_arg<Pokemon::GridPose>(step.args, "target").map;
     }else{
@@ -269,7 +269,7 @@ UnitTestResult sweep_scene_end_pose(Logger& logger, const StoryCheckpoint& row){
         }
         for (const TilePos& tile : walkable_neighbors(Pokemon::pose_of(*step.pose_after))){
             SimWorldKnobs knobs;
-            knobs.lands[step.name] = Pokemon::tile_pose(step.pose_after->map, {tile}, Pokemon::facing_of(Pokemon::pose_of(*step.pose_after)));
+            knobs.lands[step.name] = Pokemon::tile_pose(Pokemon::grid_pose_of(*step.pose_after).map, {tile}, Pokemon::facing_of(Pokemon::pose_of(*step.pose_after)));
             variants++;
             const std::string stopped = run_row(logger, row.id, std::move(knobs));
             if (!stopped.empty()){
