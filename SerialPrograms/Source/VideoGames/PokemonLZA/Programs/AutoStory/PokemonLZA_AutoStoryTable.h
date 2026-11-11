@@ -7,14 +7,17 @@
  *  FRLG's tables are, so unit tests can check it without a console.
  *
  *  Lumiose has no tile grid, so a row's poses name a place and nothing more,
- *  and a walk in the overworld is a GAME step whose action names one of
- *  story_moves(): legs of a relative turn and a walk time.
+ *  and a walk in the overworld is a GAME "walk" step whose args hold its
+ *  legs: a relative turn and a walk time each (PokemonLZA_AutoStoryGame.h).
  *
  *  Recorded 2026-11-08/09 on console B, played step by step from a new
  *  game to the quest "Return to Hotel Z to meet up with Taunie" in Main
- *  Mission 03. Every walk was measured walking, not dashing, and none has
- *  run as a story step yet. Steps the game has no code for yet are GAME
- *  steps of story_actions_not_implemented().
+ *  Mission 03. Every walk was measured walking, not dashing. Steps the game
+ *  has no code for yet are GAME steps of story_actions_not_implemented().
+ *
+ *  For lab tuning, a run reads the checkpoint files of story_dev_folder()
+ *  in place of the built-in ones of the same name at each start, so a walk
+ *  can be retimed without a rebuild.
  *
  */
 
@@ -22,15 +25,13 @@
 #define PokemonAutomation_PokemonLZA_AutoStoryTable_H
 
 #include <functional>
-#include <map>
 #include <set>
+#include <span>
 #include <string>
 #include <utility>
 #include <vector>
-#include "Pokemon/AutoStory/Pokemon_ScreenEventTypes.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
-#include "PokemonLZA_AutoStoryMoves.h"
-#include "PokemonLZA_AutoStoryBackend.h"
+#include "PokemonLZA_AutoStoryDevFiles.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -41,16 +42,33 @@ namespace PokemonLZA{
 //  into the program (cmake/EmbedTextFiles.cmake): (name, text), by name.
 const std::vector<std::pair<std::string, std::string>>& autostory_checkpoint_json();
 
-//  The story's checkpoints in order, read from autostory_checkpoint_json()
-//  against plza_story_specs(): 01.xx Main Mission 01 (new game, Pancham,
-//  the starter), 02.01 Main Mission 02 (out of the Battle Zone to Hotel Z,
-//  the first night), 03.xx Main Mission 03 (Taunie's battle, the Pokemon
-//  Center, Wild Zone 1, Mable's Rock Smash TM). Only 01.00, a new game,
-//  starts without a save; it starts on the title screen.
+//  The story a run plays: its checkpoints in order, and the ids of those
+//  that end on one of the game's autosaves and do not save themselves
+//  (their JSON "execution": {"save": "autosave"}).
+struct StoryData{
+    std::vector<Pokemon::StoryCheckpoint> checkpoints;
+    std::set<std::string, std::less<>> autosaves;
+    //  The dev files that replaced a built-in checkpoint, as (file name,
+    //  path).
+    std::vector<std::pair<std::string, std::string>> dev_files;
+};
+
+//  The built-in checkpoints, each of `dev_files` in place of the one of the
+//  same file name. Throws ParseException naming the file when a dev file
+//  does not parse, fails plza_story_lint(), matches no built-in file or
+//  changes its checkpoint's id.
+StoryData load_story_data(std::span<const StoryDevFile> dev_files);
+
+//  The built-in story (load_story_data() with no dev files), read once:
+//  what the tests, the lint and the program's dropdowns use. 01.xx Main
+//  Mission 01 (new game, Pancham, the starter), 02.01 Main Mission 02 (out
+//  of the Battle Zone to Hotel Z, the first night), 03.xx Main Mission 03
+//  (Taunie's battle, the Pokemon Center, Wild Zone 1, Mable's Rock Smash
+//  TM). Only 01.00, a new game, starts without a save; it starts on the
+//  title screen.
 const std::vector<Pokemon::StoryCheckpoint>& story_checkpoints();
 
-//  The rows that end on one of the game's autosaves and do not save
-//  themselves (their JSON "execution": {"save": "autosave"}). Each ends
+//  The built-in rows that end on one of the game's autosaves. Each ends
 //  where the game autosaved in the recording, so the next row reloads
 //  there. The menu (X, then R) can save from the start of the story too:
 //  01.03 saves through it after Andi (console B, 2026-11-10).
@@ -63,18 +81,6 @@ bool story_row_saves(const Pokemon::StoryCheckpoint& row);
 //  How many rows from the first need no action of
 //  story_actions_not_implemented(): the part of the story a run can play.
 size_t story_rows_ready();
-
-//  The overworld walks the table's GAME steps name, by name.
-const std::map<std::string, StoryMove, std::less<>>& story_moves();
-
-//  The moves of story_moves() that end on a screen event: the walk holds its
-//  last leg until the event shows, the leg's time as the upper bound
-//  (walk_until()). Every other move walks its times.
-const std::map<std::string, Pokemon::ScreenEvent, std::less<>>& story_move_ends();
-
-//  The walk to each starter, for the "approach_starter" step; a starter
-//  without one was not recorded.
-const std::map<StarterChoice, StoryMove>& starter_moves();
 
 
 

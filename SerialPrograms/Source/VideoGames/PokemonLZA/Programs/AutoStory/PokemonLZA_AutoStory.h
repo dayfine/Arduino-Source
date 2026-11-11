@@ -6,6 +6,12 @@
  *  (PokemonLZA_AutoStoryTable.h) run by the shared story engine
  *  (Pokemon/AutoStory), from the start checkpoint to the end one.
  *
+ *  For lab tuning: at each start, a checkpoint file in
+ *  <user files>/AutoStoryDev/plza/ (story_dev_folder()), e.g.
+ *  plza-02.01.plan.json, replaces the built-in one of the same name, so a
+ *  walk's legs can be retimed without a rebuild. The log names each file
+ *  used; a bad one fails the run.
+ *
  */
 
 #ifndef PokemonAutomation_PokemonLZA_AutoStory_H

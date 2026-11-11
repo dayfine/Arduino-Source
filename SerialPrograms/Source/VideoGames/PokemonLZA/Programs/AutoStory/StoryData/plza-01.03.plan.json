@@ -11,8 +11,11 @@
       {
         "id": "approach_starter",
         "kind": "game_action",
-        "why": "step 13: walk up to the starter (only Chikorita's walk was recorded)",
-        "action": "approach_starter"
+        "why": "step 13: walk up to the starter (only Chikorita's walk was recorded). Ends at the \"A Talk Chikorita\" prompt. Measured 2026-11-08 on console B and checked by hand from the autosave, walk not run as a story step. Only Chikorita's walk is recorded.",
+        "action": "approach_starter",
+        "args": {
+          "chikorita": [[-70, 750]]
+        }
       },
       {
         "id": "talk_to_starter",

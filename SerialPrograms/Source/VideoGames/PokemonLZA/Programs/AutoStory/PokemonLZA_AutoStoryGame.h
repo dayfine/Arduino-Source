@@ -18,12 +18,15 @@
 
 #include <functional>
 #include <map>
+#include <set>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryGame.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
 #include "PokemonLZA_AutoStoryBackend.h"
+#include "PokemonLZA_AutoStoryMoves.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -46,10 +49,14 @@ const std::map<std::string, std::string, std::less<>>& story_actions_not_impleme
 //      MASH    "a"         A through it
 //      HEAL    "heal"      the nurse (not implemented)
 //      SHOP    "shop"      the counter (not implemented)
-//      GAME    a move of story_moves(), walked once the screen shows free
-//              control (check_can_walk()), until its end event if it has
-//              one (story_move_ends()); "approach_starter" (the walk of
-//              starter_moves() to the chosen starter); "choose_0" /
+//      GAME    "walk" (args "legs", [[turn, ms], ...] as story_walk_move()
+//              reads them; "end", "fade_white" or "fade_black"; "heading"),
+//              walked once the screen shows free control
+//              (check_can_walk()), until its end fade if it has one
+//              (walk_until()); "approach_starter" (args "chikorita",
+//              "tepig", "totodile", each a walk's legs: the run's starter's
+//              is walked as "walk" would, a starter with none is not
+//              implemented); "choose_0" /
 //              "choose_1" (that row of the choices on screen);
 //              "story_battle" (attack in a battle already on screen until a
 //              dialog shows); the new game's "new_game_language",
@@ -71,16 +78,28 @@ std::vector<Pokemon::StoryActionSpec> plza_story_action_specs();
 //  is read against these.
 const std::vector<Pokemon::StoryActionSpec>& plza_story_specs();
 
-//  What is wrong with `checkpoint` for PLZA's engine (StoryActionRegistry::lint).
+//  What is wrong with `checkpoint` for PLZA's engine
+//  (StoryActionRegistry::lint), then with its walks' args: each leg a
+//  [turn, ms] pair, turning -180 to 180 degrees and walking 0 ms or more,
+//  some leg walking; an end a fade, after a leg that walks; a heading 0 to
+//  359.
 std::vector<std::string> plza_story_lint(const Pokemon::StoryCheckpoint& checkpoint);
+
+//  The walk of `args`: the legs of its arg `legs` ("legs" for a walk, the
+//  starter's key for approach_starter), each [turn in degrees clockwise
+//  (negative: left), walk ms], and its "heading", if any. The args must
+//  have passed plza_story_lint().
+StoryMove story_walk_move(const Pokemon::StoryActionArgs& args, std::string_view legs);
 
 //  PLZA as a StoryGame on the console `env`, which must outlive it.
 //  `starter` is the one approach_starter walks to; the walks read the
 //  compass with heading_reader(). The save waits out the game's autosave at
-//  the end of the checkpoints that rely on one (story_autosave_rows()) and
-//  saves through the menu after the others; the reload resets the game
-//  from HOME.
-Pokemon::StoryGame<Pokemon::ZonePose> make_plza_story_game(StoryEnv& env, StarterChoice starter);
+//  the end of the checkpoints of `autosave_rows` (the run's
+//  StoryData::autosaves) and saves through the menu after the others; the
+//  reload resets the game from HOME.
+Pokemon::StoryGame<Pokemon::ZonePose> make_plza_story_game(
+    StoryEnv& env, StarterChoice starter, std::set<std::string, std::less<>> autosave_rows
+);
 
 //  The same with no console, for tests and simulations: the console_only
 //  actions fail as "console_only", the walks read the heading the looks

@@ -11,14 +11,20 @@
       {
         "id": "center_to_zone_1",
         "kind": "game_action",
-        "why": "step 56: from the Pokemon Center to Wild Zone 1's gate",
-        "action": "center_to_zone_1"
+        "why": "step 56: from the Pokemon Center to Wild Zone 1's gate. ~5 units/s; the first 2 s replace a dash test of the same distance. Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[0, 2000], [0, 3000], [0, 6000]]
+        }
       },
       {
         "id": "toward_zone_1_gate",
         "kind": "game_action",
-        "why": "step 57: toward the gate, into Taunie's scene",
-        "action": "toward_zone_1_gate"
+        "why": "step 57: toward the gate, into Taunie's scene. Left 45, right 15. Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[-45, 0], [15, 2500]]
+        }
       },
       {
         "id": "wild_zones_tutorial",
@@ -29,8 +35,11 @@
       {
         "id": "into_zone_1",
         "kind": "game_action",
-        "why": "step 58: to the gate's \"A Enter\"",
-        "action": "into_zone_1"
+        "why": "step 58: to the gate's \"A Enter\". 22 units at ~5.1 units/s. Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[0, 4300]]
+        }
       },
       {
         "id": "enter_zone_1",

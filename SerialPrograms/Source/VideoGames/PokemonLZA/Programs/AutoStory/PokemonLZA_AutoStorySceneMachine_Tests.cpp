@@ -13,6 +13,7 @@
 #include <utility>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "PokemonLZA_AutoStoryGame.h"
 #include "PokemonLZA_AutoStoryObservation.h"
 #include "PokemonLZA_AutoStorySceneMachine.h"
 #include "PokemonLZA_AutoStoryTable.h"
@@ -320,22 +321,29 @@ UnitTestResult test_to_battle(Logger&){
     });
 }
 
-//  Every move that ends on an event is a move, and its last leg walks.
+//  platform_to_plaza is the walk that ends on an event (the white fade),
+//  and every walk that ends on one holds a last leg that walks.
 UnitTestResult test_move_ends(Logger&){
-    if (!story_move_ends().contains("platform_to_plaza")){
-        return "Expected platform_to_plaza to end on the white fade.";
+    std::vector<std::string> ending;
+    for (const Pokemon::StoryCheckpoint& row : story_checkpoints()){
+        for (const Pokemon::StoryStep& step : row.steps){
+            const auto end = step.args.find("end");
+            if (step.action != "walk" || end == step.args.end()){
+                continue;
+            }
+            ending.push_back(step.name);
+            const StoryMove move = story_walk_move(step.args, "legs");
+            if (move.legs.empty() || move.legs.back().walk <= 0ms){
+                return std::format("{}: its last leg has no walk to hold until the event.", step.name);
+            }
+            const std::string& fade = std::get<std::string>(end->second);
+            if (fade != "fade_white" && fade != "fade_black"){
+                return std::format("{}: ends on {}, not a fade.", step.name, fade);
+            }
+        }
     }
-    for (const auto& [name, end] : story_move_ends()){
-        const auto move = story_moves().find(name);
-        if (move == story_moves().end()){
-            return std::format("{}: ends on an event but is not a move.", name);
-        }
-        if (move->second.legs.empty() || move->second.legs.back().walk <= 0ms){
-            return std::format("{}: its last leg has no walk to hold until the event.", name);
-        }
-        if (end != ScreenEvent::FADE_WHITE && end != ScreenEvent::FADE_BLACK){
-            return std::format("{}: ends on {}, not a fade.", name, Pokemon::screen_event_name(end));
-        }
+    if (ending != std::vector<std::string>{"platform_to_plaza"}){
+        return std::format("Expected only platform_to_plaza to end on an event, {} do.", ending.size());
     }
     return true;
 }

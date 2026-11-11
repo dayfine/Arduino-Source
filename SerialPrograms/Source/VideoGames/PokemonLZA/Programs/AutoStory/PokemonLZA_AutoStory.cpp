@@ -9,6 +9,7 @@
 #include <span>
 #include <string>
 #include <vector>
+#include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
@@ -114,10 +115,28 @@ void load_start_save(
     console.log(std::format("AutoStory: loaded the save for {}.", rows[first].id));
 }
 
+//  The story for this run: the built-in checkpoints, with those of
+//  story_dev_folder() in their place, read now so a run after an edit
+//  plays the edited walks. Logs each dev file it uses; a bad one fails the
+//  run.
+StoryData load_run_story(ConsoleHandle& console){
+    const std::string folder = story_dev_folder();
+    try{
+        StoryData data = load_story_data(read_story_dev_files(folder));
+        for (const auto& [name, path] : data.dev_files){
+            console.log(std::format("AutoStory: using dev checkpoint {} from {}", name, path));
+        }
+        return data;
+    }catch (ParseException& e){
+        throw UserSetupError(console, std::format("AutoStory: bad dev checkpoint in {}: {}", folder, e.message()));
+    }
+}
+
 } // namespace
 
 void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
-    const std::vector<StoryCheckpoint>& rows = story_checkpoints();
+    const StoryData story_data = load_run_story(env.console);
+    const std::vector<StoryCheckpoint>& rows = story_data.checkpoints;
     const size_t first = RUN.start_index();
     const size_t last = RUN.end_index();
     if (first > last || last >= rows.size()){
@@ -127,7 +146,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
 
     StoryEnv story{.env = env, .context = context, .language = RUN.language(), .battle_ai = BATTLE_AI};
     PlzaConsoleBackend backend(story);
-    const StoryGame<ZonePose> game = make_plza_story_game(story, STARTER);
+    const StoryGame<ZonePose> game = make_plza_story_game(story, STARTER, story_data.autosaves);
     StoryEngine<ZonePose> engine(game, backend);
     RunState state;
     load_start_save(env.console, game, backend, rows, first);
