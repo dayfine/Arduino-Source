@@ -53,7 +53,7 @@ std::vector<std::string> starter_walk_errors(const Pokemon::StoryStep& step){
         const auto legs = step.args.find(starter_key(starter));
         if (legs != step.args.end()){
             any = true;
-            add_legs_errors(step.name, legs->first, std::get<IntegerRows>(legs->second), errors);
+            add_legs_errors(step.name, legs->first, std::get<TimedLegs>(legs->second), errors);
         }
     }
     if (!any){

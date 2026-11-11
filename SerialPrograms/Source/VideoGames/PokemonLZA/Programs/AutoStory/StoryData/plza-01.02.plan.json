@@ -5,7 +5,7 @@
     "id": "01.02",
     "title": "Main Mission 01: chase Pancham to the battle area",
     "start": {
-      "map": "LumioseCity"
+      "place": "LumioseCity"
     },
     "events": [
       {
