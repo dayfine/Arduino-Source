@@ -36,7 +36,8 @@
 #include "Pokemon_StoryCheckpointTypes.h"
 #include "Pokemon_StoryOutcome.h"
 #include "Pokemon_StorySegments.h"
-#include "Pokemon_StoryStartGate.h"
+#include "Pokemon_StoryPreflight.h"
+#include "Pokemon_StoryStart.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -69,7 +70,7 @@ inline constexpr std::string_view STORY_LEFT_WHERE_FAILED = "AutoStory failed: t
 //  Gets the game to where checkpoint `checkpoint` starts, as `start` says.
 //  First logs the checkpoint starting ("[Story] start: checkpoint 00.04b,
 //  from its save") and runs the game's preflight; one that fails returns
-//  STORY_PRECONDITION_FAILED with nothing pressed. FROM_SAVE then always
+//  StoryPreflight::FAILURE with nothing pressed. FROM_SAVE then always
 //  loads the save (logging "[Story] 00.04b: loading the save"), checks its
 //  place and rereads it, and sets the "save_loaded" flag.
 Outcome prepare_story_start(std::string_view checkpoint, StoryStart start, StoryGameHooks& game, RunState& state);
