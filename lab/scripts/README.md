@@ -52,10 +52,33 @@ game still suspended, `press A` first to return to the game.
 
 ## Claude triage and watchdog
 
-`triage_failure.py` and `watchdog_shot.py` call Claude through the official `anthropic` SDK
-(`pip install anthropic`; Pillow optional, else `sips` downscales frames to 640 px). Credentials:
-`ant auth login` or `ANTHROPIC_API_KEY`. Shared setup is in `lab_claude.py`. `--dry-run` prints the
-request (images shortened) without network or SDK.
+`triage_failure.py` and `watchdog_shot.py` call Claude through the official `anthropic` SDK.
+Shared setup is in `lab_claude.py`. `--dry-run` prints the request (images shortened) without
+network or SDK.
+
+### One-time setup (macOS lab Mac)
+
+The SDK needs Python 3.9+; the default `python3`/`pip3` on the lab Mac is 3.8, so a plain
+`pip3 install anthropic` does nothing useful. Use a venv on Homebrew Python:
+
+```sh
+/opt/homebrew/bin/python3.12 -m venv ~/.venvs/lab-claude
+~/.venvs/lab-claude/bin/pip install anthropic pillow   # pillow downscales frames; sips is the fallback
+brew install anthropics/tap/ant
+ant auth login        # browser login; stores ~/.config/anthropic/credentials/default.json
+ant auth status       # should show "Active profile: default"
+```
+
+No API key is needed: `Anthropic()` reads the `ant` profile. `ANTHROPIC_API_KEY`, if set, wins
+over the profile (unset it if requests go to the wrong account). Check the setup:
+
+```sh
+~/.venvs/lab-claude/bin/python -c "import anthropic; print(anthropic.Anthropic().models.retrieve('claude-haiku-5-5').id)"
+```
+
+Run every script below with `~/.venvs/lab-claude/bin/python` (written `python3` below for short).
+Costs: watchdog (Haiku 5.5) is a fraction of a cent per shot; triage (Opus 5.5, thinking) a few
+cents per failure; batch labelling is half price.
 
 - `python3 lab/scripts/triage_failure.py --frame fail.png --checkpoint 00.04 --step step.json --notes ~/BDSPLab/notes/<date>-checklist.md [--map-slice slice.txt]`
   sends the frames, the last 200 lines of the lab-B log, the step and map slice to `claude-opus-5-5`
