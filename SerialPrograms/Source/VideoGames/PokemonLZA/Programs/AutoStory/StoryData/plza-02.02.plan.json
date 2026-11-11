@@ -24,15 +24,6 @@
         "action": "a"
       },
       {
-        "id": "to_battle_zone_gate",
-        "kind": "game_action",
-        "why": "step 22: on to the gate's \"A Leave\". Measured 2026-11-08 on console B, walk not run.",
-        "action": "walk",
-        "args": {
-          "legs": [[0, 5000]]
-        }
-      },
-      {
         "id": "leave_battle_zone",
         "kind": "scene",
         "why": "steps 22-23: A Leave, Taunie: Hotel Z's just through here",
