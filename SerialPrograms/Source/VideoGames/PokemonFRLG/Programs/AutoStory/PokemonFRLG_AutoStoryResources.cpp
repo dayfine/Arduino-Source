@@ -17,6 +17,7 @@ namespace{
 const std::string_view PATHS[] = {
     //  Overworld/PokemonFRLG_PlayerFacingReader.cpp
     "PokemonFRLG/PlayerSprites/red_normal.png",
+    "PokemonFRLG/PlayerSprites/green_normal.png",
 
     //  Inference/PokemonFRLG_SelectionArrowDetector.cpp
     "PokemonFRLG/SelectionArrow.png",
