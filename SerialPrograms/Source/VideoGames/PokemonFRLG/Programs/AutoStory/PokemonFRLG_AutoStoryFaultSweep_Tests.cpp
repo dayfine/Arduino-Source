@@ -573,7 +573,7 @@ std::optional<std::string> talk_battle_hide_flag(const StoryStep& step){
     if (step.kind != StoryStepKind::BATTLE || !step.pose_after){
         return std::nullopt;
     }
-    const auto found = TALK_BATTLE_HIDE_FLAGS.find({step.pose_after->map, step.name});
+    const auto found = TALK_BATTLE_HIDE_FLAGS.find({Pokemon::grid_pose_of(*step.pose_after).map, step.name});
     if (found == TALK_BATTLE_HIDE_FLAGS.end()){
         return std::nullopt;
     }

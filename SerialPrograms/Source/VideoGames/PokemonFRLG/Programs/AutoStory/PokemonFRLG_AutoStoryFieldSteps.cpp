@@ -42,27 +42,29 @@ StoryStep lift_floor_step(std::string name, std::string_view from, std::string_v
     step.args = {{"from", std::string(from)}, {"to", std::string(to)}};
     if (const std::optional<LiftRide> ride = parse_lift_floor_step(step)){
         const MapPosition& door = rocket_hideout_lift_doors()[ride->to];
-        step.pose_after = Pokemon::GridPose{door.map, {door.point}, Direction::SOUTH};
+        step.pose_after = Pokemon::TileDeclared{door.map, {door.point}, Direction::SOUTH};
     }
     return step;
 }
 
 StoryStep center_enter_step(std::string name, std::string_view center){
     StoryStep step = game_step(std::move(name), CENTER_ENTER_VARIANT);
-    step.pose_after = Pokemon::GridPose{std::string(center), {CENTER_NURSE_FRONT}, Direction::NORTH};
+    step.pose_after = Pokemon::TileDeclared{std::string(center), {CENTER_NURSE_FRONT}, Direction::NORTH};
     return step;
 }
 
 StoryStep center_exit_step(std::string name, Pokemon::GridPose below_door){
     StoryStep step = game_step(std::move(name), CENTER_EXIT_VARIANT);
-    step.pose_after = std::move(below_door);
+    step.pose_after = Pokemon::TileDeclared{std::move(below_door.map), std::move(below_door.tiles), below_door.facing};
     return step;
 }
 
 StoryStep use_item_step(std::string name, std::string_view item, std::optional<Pokemon::GridPose> pose_after){
     StoryStep step = game_step(std::move(name), USE_ITEM_VARIANT);
     step.args = {{"item", std::string(item)}};
-    step.pose_after = std::move(pose_after);
+    if (pose_after){
+        step.pose_after = Pokemon::TileDeclared{std::move(pose_after->map), std::move(pose_after->tiles), pose_after->facing};
+    }
     return step;
 }
 

@@ -577,14 +577,14 @@ bool center_walkable(const StoryStep& step){
 //  is stubbed.
 Pokemon::StoryAction OverworldStepSim::hideout_or_stub(){
     Pokemon::StoryAction stub = m_stubs.stub();
-    Pokemon::StoryAction sim = played([this](RunState&, const StoryStep& step){
+    Pokemon::StoryAction sim = played([this](const StoryStep& step, RunState&){
         const std::string failure = hideout(step);
         return failure.empty() ? Pokemon::outcome_ok() : Pokemon::outcome_failed("sim_failure", failure);
     });
-    sim.act = [stub, played_act = sim.act](RunState& state, const StoryStep& step){
+    sim.act = [stub, played_act = sim.act](const StoryStep& step, RunState& state){
         return is_hideout_step(step) || center_walkable(step)
-            ? played_act(state, step)
-            : stub.act(state, step);
+            ? played_act(step, state)
+            : stub.act(step, state);
     };
     sim.needs_console = stub.needs_console;
     return sim;
