@@ -36,6 +36,10 @@ without being restated.
   output in bounded loops until it finishes.
 - **Bounded loops.** Every wait loop has an iteration cap and checks that the producing process is
   still alive.
+- **Unit tests only through SerialProgramsTests.** Run unit tests only with the headless runner
+  `SerialProgramsTests` (e.g. `--filter <text>`). Never launch the SerialPrograms app binary from an
+  agent, not even `--help`. If a tree has no runner, merge `lab/main` or `upstream/headless-tests` into
+  a scratch copy first; else stop and report.
 - **Your own checkout.** Work only in your own worktree:
   `git -C /Users/difan/Projects/Arduino-Source worktree add /Users/difan/Projects/wt/<branch> <branch>`.
   Run builds against that tree, never the dispatcher's. A fresh configure, when no build directory
