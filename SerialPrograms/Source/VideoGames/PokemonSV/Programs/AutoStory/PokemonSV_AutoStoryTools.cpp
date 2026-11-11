@@ -1188,9 +1188,9 @@ void record_sv_checkpoint_saved(
     SingleSwitchProgramEnvironment& env, EventNotificationOption& notif_status_update, AutoStoryStats& stats
 ){
     Pokemon::record_checkpoint_saved(
-        stats,
         [&env](){ env.update_stats(); },
-        [&](std::string_view message){ send_program_status_notification(env, notif_status_update, std::string(message)); }
+        [&](std::string_view message){ send_program_status_notification(env, notif_status_update, std::string(message)); },
+        stats
     );
 }
 

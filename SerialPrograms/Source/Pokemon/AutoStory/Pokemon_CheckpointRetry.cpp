@@ -42,9 +42,9 @@ size_t run_checkpoint_with_retries(
 
 
 void record_checkpoint_saved(
-    AutoStoryStats& stats,
-    const std::function<void()>& update_stats,
-    const std::function<void(std::string_view message)>& notify
+    const CheckpointStep& update_stats,
+    const std::function<void(std::string_view message)>& notify,
+    AutoStoryStats& stats
 ){
     stats.m_checkpoint++;
     update_stats();

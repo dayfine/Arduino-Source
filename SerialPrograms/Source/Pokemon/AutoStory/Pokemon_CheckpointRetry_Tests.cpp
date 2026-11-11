@@ -4,6 +4,7 @@
  *
  */
 
+#include <cstdint>
 #include <format>
 #include <string>
 #include <string_view>
@@ -181,31 +182,68 @@ const CheckpointRetryCase CHECKPOINT_RETRY_CASES[] = {
 };
 
 
+//  `saves` checkpoint saves in a row.
+struct CheckpointSavedInput{
+    std::string name;
+    size_t saves;
+};
+
+struct CheckpointSavedExpectation{
+    uint64_t checkpoints;
+    size_t updates;
+    std::vector<std::string> messages;
+};
+
+// Checkpoint saves and what they must count and send.
+struct CheckpointSavedCase{
+    CheckpointSavedInput input;
+    CheckpointSavedExpectation expectation;
+};
+
 class Test_CheckpointSaved : public UnitTest{
 public:
-    Test_CheckpointSaved()
-        : UnitTest("Pokemon::CheckpointRetry - a save counts, publishes and notifies")
+    Test_CheckpointSaved(CheckpointSavedCase test_case)
+        : UnitTest(std::format("Pokemon::CheckpointRetry - {}", test_case.input.name))
+        , m_case(std::move(test_case))
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         AutoStoryStats stats;
         size_t updates = 0;
         std::vector<std::string> messages;
-        for (size_t i = 0; i < 2; i++){
+        for (size_t i = 0; i < m_case.input.saves; i++){
             record_checkpoint_saved(
-                stats,
                 [&](){ updates++; },
-                [&](std::string_view message){ messages.emplace_back(message); }
+                [&](std::string_view message){ messages.emplace_back(message); },
+                stats
             );
         }
-        if (stats.m_checkpoint.load() != 2 || updates != 2){
-            return std::format("Expected 2 checkpoints and updates, got {} and {}", stats.m_checkpoint.load(), updates);
+        const CheckpointSavedExpectation& expected = m_case.expectation;
+        if (stats.m_checkpoint.load() != expected.checkpoints || updates != expected.updates){
+            return std::format(
+                "Expected {} checkpoints and {} updates, got {} and {}",
+                expected.checkpoints, expected.updates, stats.m_checkpoint.load(), updates
+            );
         }
-        if (messages != std::vector<std::string>{"Saved at checkpoint.", "Saved at checkpoint."}){
-            return std::string("Expected \"Saved at checkpoint.\" per save");
+        if (messages != expected.messages){
+            return std::format("Expected {} messages, got {}", expected.messages.size(), messages.size());
         }
         return true;
     }
+
+private:
+    const CheckpointSavedCase m_case;
+};
+
+const CheckpointSavedCase CHECKPOINT_SAVED_CASES[] = {
+    {
+        .input = {.name = "each save counts, publishes and notifies", .saves = 2},
+        .expectation = {
+            .checkpoints = 2,
+            .updates = 2,
+            .messages = {"Saved at checkpoint.", "Saved at checkpoint."},
+        },
+    },
 };
 
 
@@ -216,7 +254,9 @@ void add_tests_CheckpointRetry(UnitTestDatabase& database){
     for (const CheckpointRetryCase& test_case : CHECKPOINT_RETRY_CASES){
         database.add<Test_CheckpointRetry>(test_case);
     }
-    database.add<Test_CheckpointSaved>();
+    for (const CheckpointSavedCase& test_case : CHECKPOINT_SAVED_CASES){
+        database.add<Test_CheckpointSaved>(test_case);
+    }
 }
 
 
