@@ -89,7 +89,6 @@ JsonValue story_checkpoint_export(const StoryCheckpoint& checkpoint){
     result["format"] = "pokesim-native-checkpoint-export/1";
     result["game"] = "frlg";
     result["status"] = "native-table-export";
-    result["checkpoint"] = Pokemon::story_checkpoint_json(checkpoint);
     JsonObject native;
     native["menu"] = std::string(menu_name(checkpoint.menu));
     native["supplies"] = supplies_json(checkpoint.supplies);
