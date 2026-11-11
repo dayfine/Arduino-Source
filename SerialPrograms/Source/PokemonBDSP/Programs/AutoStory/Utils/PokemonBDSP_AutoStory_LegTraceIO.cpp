@@ -7,6 +7,7 @@
 #include <optional>
 #include <string_view>
 #include "PokemonBDSP_AutoStory_LegTraceIO.h"
+#include "PokemonBDSP_AutoStory_WalkResult.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

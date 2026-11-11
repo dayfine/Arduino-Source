@@ -19,6 +19,7 @@
 #include "PokemonBDSP/Inference/PokemonBDSP_MenuDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
 #include "PokemonBDSP_AutoStory_Bag.h"
+#include "PokemonBDSP_AutoStory_BagScreen.h"
 #include "PokemonBDSP_AutoStory_Settings.h"
 
 namespace PokemonAutomation{
@@ -166,8 +167,8 @@ bool autosave_off_highlight(const ImageViewRGB32& screen, double y){
 //  The options the story needs, as each reference image names them: the
 //  row's label and the value to select.
 struct Setting{
-    const char* label;
-    const char* value;
+    std::string label;
+    std::string value;
 };
 const Setting SETTINGS[] = {
     {"textspeed", "fast"}, {"changewindow", "type1"},

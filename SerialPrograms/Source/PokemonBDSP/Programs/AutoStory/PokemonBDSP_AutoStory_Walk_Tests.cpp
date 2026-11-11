@@ -13,6 +13,7 @@
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_TrainerSight.h"
 #include "Utils/PokemonBDSP_AutoStory_Indoors.h"
 #include "Utils/PokemonBDSP_AutoStory_LegBattle.h"
 #include "Utils/PokemonBDSP_AutoStory_Location.h"
@@ -23,6 +24,8 @@
 #include "PokemonBDSP_AutoStory_StoryStepIO.h"
 #include "PokemonBDSP_AutoStory_StoryWalkSteps.h"
 #include "PokemonBDSP_AutoStory_Walk_Tests.h"
+#include "Utils/PokemonBDSP_AutoStory_WalkResult.h"
+#include "Utils/PokemonBDSP_AutoStory_WalkScreen.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -218,8 +221,8 @@ UnitTestResult test_fade_of(Logger&){
 
 UnitTestResult test_location_banner(Logger&){
         struct Case{
-            const char* read;
-            const char* expected;
+            std::string read;
+            std::string expected;
             bool match;
         };
         const Case cases[] = {
@@ -243,7 +246,7 @@ UnitTestResult test_location_banner(Logger&){
 
 
 UnitTestResult test_indoors(Logger& logger){
-        struct Case{ const char* file; bool inside; };
+        struct Case{ std::string file; bool inside; };
         const Case cases[] = {
             {"PokemonBDSP/AutoStory/JubilifeCenterInside-20261030-c6.png", true},
             {"PokemonBDSP/AutoStory/JubilifeCenterInside-20261030-c4.png", true},
@@ -273,7 +276,7 @@ UnitTestResult test_indoors(Logger& logger){
 
 
 UnitTestResult test_location_banner_showing(Logger& logger){
-        struct Case{ const char* file; bool banner; };
+        struct Case{ std::string file; bool banner; };
         const Case cases[] = {
             {"PokemonBDSP/AutoStory/JubilifeCenterDoorstep-20261030-c5.png", true},
             {"PokemonBDSP/AutoStory/JubilifeSchoolDoorstep-20261030.png", true},

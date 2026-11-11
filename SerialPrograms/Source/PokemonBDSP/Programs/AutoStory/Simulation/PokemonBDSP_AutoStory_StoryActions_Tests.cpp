@@ -82,7 +82,7 @@ std::string old_dispatch(const StoryStep& step){
 //  The table's binding that names what it would run, as a failure.
 StoryBoundActions naming_actions(){
     const auto named = [](StoryStepKind kind){
-        return [kind](RunState&, const StoryStep&){
+        return [kind](const StoryStep&, RunState&){
             return Pokemon::outcome_failed("console", Pokemon::story_step_kind_name(kind));
         };
     };
@@ -95,7 +95,7 @@ StoryBoundActions naming_actions(){
         .heal = named(StoryStepKind::HEAL),
         .save = named(StoryStepKind::SAVE),
         .event = [](const std::string& name) -> Pokemon::StoryActionFunction{
-            return [name](RunState&, const StoryStep&){
+            return [name](const StoryStep&, RunState&){
                 return Pokemon::outcome_failed("event", name);
             };
         },
@@ -113,7 +113,7 @@ std::string table_dispatch(const Pokemon::StoryActionTable& table, const StorySt
         return std::string("walk ") + Pokemon::story_step_kind_name(step.kind);
     }
     RunState state;
-    const Pokemon::Outcome outcome = action->act(state, step);
+    const Pokemon::Outcome outcome = action->act(step, state);
     return outcome.failure + " " + outcome.detail;
 }
 

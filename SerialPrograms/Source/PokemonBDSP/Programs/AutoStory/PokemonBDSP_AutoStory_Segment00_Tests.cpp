@@ -7,6 +7,8 @@
 #include <algorithm>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Data/PokemonBDSP_AutoStory_Maps.h"
+#include "Data/PokemonBDSP_AutoStory_RobustRoute.h"
+#include "Data/PokemonBDSP_AutoStory_RoutePlanner.h"
 #include "Data/PokemonBDSP_AutoStory_Segment00Lines.h"
 #include "Data/PokemonBDSP_AutoStory_StoryMaps.h"
 #include "Data/PokemonBDSP_AutoStory_PlanCosts.h"
@@ -131,13 +133,13 @@ std::string check_triggers(Logger& logger, const WalkedLine& line, const std::ve
 //  The points the route records start and end on, each of which must lie
 //  on one of the lines.
 struct NamedTile{
-    const char* map;            //  in segment00_maps()
-    const char* json_map;
-    const char* point;
+    std::string map;            //  in segment00_maps()
+    std::string json_map;
+    std::string point;
 };
 std::vector<NamedTile> named_tiles(){
-    const char* twinleaf = Segment00Lines::MAP_TWINLEAF_TOWN;
-    const char* lakefront = Segment00Lines::MAP_VERITY_LAKEFRONT;
+    const std::string& twinleaf = Segment00Lines::MAP_TWINLEAF_TOWN;
+    const std::string& lakefront = Segment00Lines::MAP_VERITY_LAKEFRONT;
     return {
         {.map = twinleaf, .json_map = "TwinleafTown", .point = "house_doorstep"},
         {.map = twinleaf, .json_map = "TwinleafTown", .point = "barry_doorstep"},

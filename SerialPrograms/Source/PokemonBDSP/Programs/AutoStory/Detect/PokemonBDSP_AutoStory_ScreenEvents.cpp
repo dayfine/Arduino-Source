@@ -6,6 +6,7 @@
 
 #include <utility>
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Walk.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkScreen.h"
 #include "PokemonBDSP_AutoStory_ScreenEvents.h"
 
 namespace PokemonAutomation{

@@ -13,6 +13,7 @@
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
+#include "Pokemon/AutoStory/Pokemon_AutoStorySelect.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
 #include "Pokemon/AutoStory/Pokemon_StoryLog.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
@@ -20,6 +21,7 @@
 #include "Pokemon/Options/Pokemon_StoryRunOptions.h"
 #include "PokemonBDSP/Programs/PokemonBDSP_GameEntry.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_StoryLanguage.h"
 #include "PokemonBDSP_AutoStory_StoryTable.h"
 #include "PokemonBDSP_AutoStory.h"
 
@@ -148,7 +150,7 @@ void verify_story_checkpoint(
     const Pokemon::VerifyPolicy& policy = request.policy;
     Pokemon::VerifyReport report;
     try{
-        report = Pokemon::verify_checkpoint(state, segment, id, policy, hooks);
+        report = Pokemon::verify_checkpoint(id, policy, segment, hooks, state);
     }catch (OperationFailedException&){
         close_game_after_failure(env, context);
         throw;
@@ -248,13 +250,13 @@ void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     }
     Pokemon::SegmentReport report;
     try{
-        report = run_segment(state, segment, Pokemon::SegmentRange{checkpoints[first].id, checkpoints[last].id}, RUN.policy(), hooks);
+        report = run_segment(Pokemon::SegmentRange{checkpoints[first].id, checkpoints[last].id}, RUN.policy(), segment, hooks, state);
     }catch (OperationFailedException&){
         close_game_after_failure(env, context);
         throw;
     }
     Pokemon::AutoStoryStats& stats = env.current_stats<Pokemon::AutoStoryStats>();
-    Pokemon::record_story_counts(stats, report.story_counts());
+    Pokemon::record_story_counts(report.story_counts(), stats);
     env.update_stats();
     throw_if_stopped(env, context, report);
     env.console.log("AutoStory: done through " + checkpoints[last].id + ".");

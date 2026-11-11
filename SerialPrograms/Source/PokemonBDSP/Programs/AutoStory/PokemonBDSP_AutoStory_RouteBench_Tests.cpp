@@ -24,6 +24,8 @@
 #include "Common/Cpp/Filesystem/FileIO.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/Navigation/Pokemon_RouteScorer.h"
+#include "Data/PokemonBDSP_AutoStory_RobustRoute.h"
+#include "Data/PokemonBDSP_AutoStory_RoutePlanner.h"
 #include "Data/PokemonBDSP_AutoStory_WallRecovery.h"
 #include "Utils/PokemonBDSP_AutoStory_RouteChoice.h"
 #include "Utils/PokemonBDSP_AutoStory_RouteWalk.h"

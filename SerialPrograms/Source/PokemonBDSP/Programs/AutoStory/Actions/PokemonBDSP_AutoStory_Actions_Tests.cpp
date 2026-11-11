@@ -23,8 +23,12 @@
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryMaps.h"
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_BattleMenuReader.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_StoryLanguage.h"
 #include "PokemonBDSP_AutoStory_BattleMoves.h"
 #include "PokemonBDSP_AutoStory_Center.h"
+#include "PokemonBDSP_AutoStory_IntroProbe.h"
+#include "PokemonBDSP_AutoStory_IntroSteps.h"
+#include "PokemonBDSP_AutoStory_LitDoorway.h"
 #include "PokemonBDSP_AutoStory_NewGame.h"
 #include "PokemonBDSP_AutoStory_Actions_Tests.h"
 
@@ -48,7 +52,7 @@ IntroProgress intro_progress(size_t names_given){
 
 UnitTestResult test_intro_decisions(Logger&){
     struct Case{
-        const char* screen;
+        std::string screen;
         IntroProgress progress;
         IntroStep expected;
     };
@@ -171,7 +175,7 @@ UnitTestResult test_intro_in_control(Logger&){
     struct Case{
         XProbe probe;
         bool expected;
-        const char* what;
+        std::string what;
     };
     const Case cases[] = {
         {{1, 60, 2}, true, "still, X opened, B closed"},
@@ -204,12 +208,12 @@ std::string check_boot(IntroProgress& progress){
 }
 
 UnitTestResult check_confirming_screens(){
-    for (const char* screen : {"dialog", "rival-list-tell", "rival-list-preset", "menu"}){
+    for (const std::string screen : {"dialog", "rival-list-tell", "rival-list-preset", "menu"}){
         if (!intro_screen_confirms_bdsp(screen)){
             return std::string("Expected \"") + screen + "\" to confirm BDSP.";
         }
     }
-    for (const char* screen : {"user-select", "home", "keyboard", "black", "other"}){
+    for (const std::string screen : {"user-select", "home", "keyboard", "black", "other"}){
         if (intro_screen_confirms_bdsp(screen)){
             return std::string("Expected \"") + screen + "\" not to confirm BDSP.";
         }
@@ -403,7 +407,7 @@ UnitTestResult test_pokemon_center_counter(Logger& logger){
 //  tile either side, more.
 UnitTestResult test_school_lamp(Logger& logger){
     const ImageFloatBox box(0.55, 0.20, 0.30, 0.10);
-    struct Case{ const char* file; double min; double max; };
+    struct Case{ std::string file; double min; double max; };
     const Case cases[] = {
         {"PokemonBDSP/AutoStory/JubilifeSchoolRightOfDoor-20261030.png", -1.5, -0.5},
         {"PokemonBDSP/AutoStory/JubilifeSchoolOneTileShort-20261030.png", -1.5, -0.5},
