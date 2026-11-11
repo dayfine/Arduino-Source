@@ -127,7 +127,7 @@ jobs:
           assert pin['status'] == 'preview-unmerged-PR-73' and revision == pin['revision']
           for name, entry in pin['files'].items():
               published = (source / entry['path']).read_bytes()
-              copied = (native / 'StoryData/frlg-parcel-00.05.json' if name == 'capture' else folder / (name + '.json')).read_bytes()
+              copied = (folder / (name + '.json')).read_bytes()
               assert hashlib.sha256(published).hexdigest() == entry['sha256'], name
               assert copied == published, name
           binding = load_binding(source / pin['files']['binding']['path'], source)
