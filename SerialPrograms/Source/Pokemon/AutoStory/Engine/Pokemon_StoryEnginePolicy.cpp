@@ -7,9 +7,6 @@
 #include <format>
 #include <utility>
 #include "Common/Cpp/Cryptography/SHA256.h"
-#include "Common/Cpp/Json/JsonArray.h"
-#include "Pokemon/AutoStory/Data/Pokemon_StoryStepJson.h"
-#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon_StoryEnginePolicy.h"
 
 namespace PokemonAutomation{
@@ -18,17 +15,6 @@ namespace Pokemon{
 
 namespace{
 
-
-//  `step` as it runs: its action named, its args' fallbacks filled in, no why.
-StoryStep as_run(const StoryStep& step, std::span<const StoryActionSpec> specs){
-    StoryStep result = step;
-    result.why.clear();
-    if (const StoryActionSpec* spec = find_story_action(specs, step.kind, step.action)){
-        result.action = spec->name;
-        result.args = with_fallbacks(*spec, std::move(result.args));
-    }
-    return result;
-}
 
 StorySaveMode mode_of(StoryPhase phase){
     switch (phase){
@@ -46,12 +32,8 @@ StorySaveMode mode_of(StoryPhase phase){
 } // namespace
 
 
-std::string story_steps_hash(const StoryCheckpoint& checkpoint, std::span<const StoryActionSpec> specs){
-    JsonArray steps;
-    for (const StoryStep& step : checkpoint.steps){
-        steps.push_back(story_step_json(as_run(step, specs)));
-    }
-    const std::string text = JsonValue(std::move(steps)).dump(0);
+std::string story_steps_hash(const StoryCheckpoint& checkpoint){
+    const std::string& text = checkpoint.steps_json;
     SHA256 hash;
     hash.push(text.data(), text.size());
     hash.finish();
