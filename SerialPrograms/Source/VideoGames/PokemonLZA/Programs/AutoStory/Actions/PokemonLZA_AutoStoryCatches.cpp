@@ -26,6 +26,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 using namespace std::chrono_literals;
+using namespace Kernels::Waterfill;
 
 
 namespace{
