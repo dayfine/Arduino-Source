@@ -197,7 +197,7 @@ Walked walk_legs(const Pose& from, const StoryStep& step){
     std::string map;
     std::vector<TilePos> local;
     for (const TilePos& pos : at){
-        const std::optional<MapTile> tile = world->to_local(pos);
+        const std::optional<MapTile> tile = story_to_local(*world, pos);
         if (!tile){
             return {std::nullopt, step.name + ": the legs end off every map, at " + Pokemon::to_string(pos) + ".", ""};
         }
@@ -206,9 +206,6 @@ Walked walk_legs(const Pose& from, const StoryStep& step){
         }
         map = tile->map;
         local.push_back(tile->pos);
-    }
-    if (map == story_banner_name(from.map)){
-        map = from.map;
     }
     return {Pokemon::tile_pose(map, local, legs.back().direction), "", ""};
 }
@@ -492,15 +489,15 @@ UnitTestResult test_poses_chain(Logger&){
 //  Legs that run off the end of their map land on the next one of the same
 //  world: east along Route 201's top row ends in Sandgem, not off the map.
 UnitTestResult test_legs_cross_maps(Logger&){
-    const Pose from = Pokemon::tile_pose("Route 201", {{42, 5}}, Direction::EAST);
+    const Pose from = Pokemon::tile_pose("Route201", {{42, 5}}, Direction::EAST);
     StoryStep step{.kind = StoryStepKind::LEGS, .name = "east into Sandgem"};
     step.args["legs"] = std::vector<StoryLeg>{{Direction::EAST, 22}};
     const Walked walked = walk_legs(from, step);
     if (!walked.error.empty()){
         return walked.error;
     }
-    if (!walked.at || walked.at->map != "Sandgem Town"){
-        return "The legs end on " + (walked.at ? walked.at->map : std::string("no pose")) + ", not Sandgem Town.";
+    if (!walked.at || walked.at->map != "SandgemTown"){
+        return "The legs end on " + (walked.at ? walked.at->map : std::string("no pose")) + ", not SandgemTown.";
     }
     return true;
 }
