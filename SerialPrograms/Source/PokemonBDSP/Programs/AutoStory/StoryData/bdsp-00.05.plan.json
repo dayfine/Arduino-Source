@@ -2,23 +2,314 @@
   "checkpoint": {
     "events": [
       {
-        "action": "town",
         "args": {
           "fight_wild": false,
-          "target": {
-            "facing": "north",
-            "map": "JubilifeCity",
-            "tiles": [
-              [
-                52,
-                41
-              ]
-            ]
-          }
+          "legs": [
+            {
+              "direction": "north",
+              "tiles": 6
+            }
+          ]
         },
-        "id": "to_the_center",
-        "kind": "route",
-        "why": "below the Center's door (52, 40)"
+        "declared_after": {
+          "facing": "north",
+          "map": "JubilifeCity",
+          "tiles": [
+            [
+              43,
+              51
+            ],
+            [
+              44,
+              51
+            ],
+            [
+              45,
+              51
+            ],
+            [
+              46,
+              51
+            ],
+            [
+              47,
+              51
+            ],
+            [
+              48,
+              51
+            ],
+            [
+              49,
+              51
+            ],
+            [
+              43,
+              52
+            ],
+            [
+              44,
+              52
+            ],
+            [
+              45,
+              52
+            ],
+            [
+              46,
+              52
+            ],
+            [
+              47,
+              52
+            ],
+            [
+              48,
+              52
+            ],
+            [
+              49,
+              52
+            ],
+            [
+              44,
+              53
+            ],
+            [
+              45,
+              53
+            ],
+            [
+              46,
+              53
+            ],
+            [
+              47,
+              53
+            ],
+            [
+              48,
+              53
+            ],
+            [
+              43,
+              54
+            ],
+            [
+              44,
+              54
+            ],
+            [
+              45,
+              54
+            ],
+            [
+              46,
+              54
+            ],
+            [
+              47,
+              54
+            ],
+            [
+              48,
+              54
+            ],
+            [
+              49,
+              54
+            ],
+            [
+              43,
+              55
+            ],
+            [
+              44,
+              55
+            ],
+            [
+              45,
+              55
+            ],
+            [
+              46,
+              55
+            ],
+            [
+              47,
+              55
+            ],
+            [
+              48,
+              55
+            ],
+            [
+              49,
+              55
+            ],
+            [
+              43,
+              56
+            ],
+            [
+              44,
+              56
+            ],
+            [
+              45,
+              56
+            ],
+            [
+              46,
+              56
+            ],
+            [
+              47,
+              56
+            ],
+            [
+              48,
+              56
+            ],
+            [
+              49,
+              56
+            ],
+            [
+              43,
+              57
+            ],
+            [
+              44,
+              57
+            ],
+            [
+              45,
+              57
+            ],
+            [
+              46,
+              57
+            ],
+            [
+              47,
+              57
+            ],
+            [
+              48,
+              57
+            ],
+            [
+              49,
+              57
+            ]
+          ]
+        },
+        "id": "north_onto_the_plaza",
+        "kind": "legs",
+        "why": "up the steps onto the plaza's row 54, below the lamps on row 53; from 3 tiles off any way the start may be, it ends on rows 51 to 57"
+      },
+      {
+        "action": "to_wall",
+        "args": {
+          "fight_wild": false,
+          "legs": [
+            {
+              "direction": "east",
+              "tiles": 10
+            }
+          ]
+        },
+        "declared_after": {
+          "facing": "east",
+          "map": "JubilifeCity",
+          "tiles": [
+            [
+              52,
+              51
+            ],
+            [
+              52,
+              52
+            ],
+            [
+              52,
+              53
+            ],
+            [
+              52,
+              54
+            ],
+            [
+              52,
+              55
+            ],
+            [
+              52,
+              56
+            ],
+            [
+              52,
+              57
+            ]
+          ]
+        },
+        "id": "east_to_the_wall",
+        "kind": "legs",
+        "why": "the buildings' west wall (x 53) on rows 51 to 57 pins the column"
+      },
+      {
+        "args": {
+          "fight_wild": false,
+          "legs": [
+            {
+              "direction": "west",
+              "tiles": 1
+            }
+          ]
+        },
+        "id": "off_the_wall",
+        "kind": "legs",
+        "why": "a column west, out of the way of the child north of column 52"
+      },
+      {
+        "action": "to_wall",
+        "args": {
+          "fight_wild": false,
+          "legs": [
+            {
+              "direction": "north",
+              "tiles": 20
+            }
+          ]
+        },
+        "declared_after": {
+          "facing": "north",
+          "map": "JubilifeCity",
+          "tiles": [
+            [
+              51,
+              41
+            ]
+          ]
+        },
+        "id": "north_to_the_center",
+        "kind": "legs",
+        "why": "up column 51 to the Center's front wall: a tile west of its door (52, 40)"
+      },
+      {
+        "args": {
+          "fight_wild": false,
+          "legs": [
+            {
+              "direction": "east",
+              "tiles": 1
+            }
+          ]
+        },
+        "id": "below_the_centers_door",
+        "kind": "legs",
+        "why": "east under the door (52, 40)"
       },
       {
         "id": "heal_jubilife",
@@ -115,8 +406,8 @@
       "map": "JubilifeCity",
       "tiles": [
         [
-          48,
-          62
+          46,
+          60
         ]
       ]
     },
