@@ -253,7 +253,6 @@ private:
 
     //  Open legs, tapped.
     LegNext open_leg(LegWalk& walk);
-    LegNext held_leg(LegWalk& walk);
     LegNext interrupted_open_leg(LegWalk& walk);
     void turn_tap(LegWalk& walk);
     LegNext blocked_open_leg(LegWalk& walk, size_t moved);
@@ -343,7 +342,7 @@ LegNext RouteWalker::walk_leg(const PlannedLeg& planned, size_t number, size_t c
         .map_before = map_of(m_maps, m_from),
         .map_after = map_of(m_maps, planned.after),
     };
-    const LegNext next = planned.leg.ends_at_wall ? wall_leg(walk) : planned.leg.held ? held_leg(walk) : open_leg(walk);
+    const LegNext next = planned.leg.ends_at_wall ? wall_leg(walk) : open_leg(walk);
     if (next == LegNext::REPLAN){
         return next;
     }
@@ -610,18 +609,6 @@ LegNext RouteWalker::open_leg(LegWalk& walk){
         return blocked_open_leg(walk, moved);
     }
     return LegNext::NEXT_LEG;
-}
-
-//  An open leg held for its time at the plan's speed (TileLeg::held).
-LegNext RouteWalker::held_leg(LegWalk& walk){
-    const TileLeg& leg = walk.planned.leg;
-    const Milliseconds per_tile = route_ms_per_tile(leg.direction, m_plan.speed);
-    walk.result = m_io.walk_to_wall({.direction = leg.direction, .limit = ROUTE_START_DELAY + per_tile * leg.tiles - per_tile / 2,
-        .label = walk.label, .options = run_watching(walk)});
-    if (walk.result.wild_battles > 0 || walk.result.stop != WalkStop::BLOCKED){
-        return walk.result.wild_battles > 0 ? interrupted_open_leg(walk) : LegNext::NEXT_LEG;
-    }
-    return blocked_open_leg(walk, std::min(leg.tiles, tiles_moved(walk.result, per_tile)));
 }
 
 //  Where an open leg's battle left us: where its screen events place it

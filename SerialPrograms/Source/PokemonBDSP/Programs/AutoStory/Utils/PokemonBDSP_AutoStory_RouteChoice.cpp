@@ -49,9 +49,6 @@ constexpr long long REPLAN_MS = 2000;
 constexpr int REPLAN_OPEN_GRASS_COST = 60;
 //  Longest run into a trigger tried (trigger_runs()).
 constexpr size_t TRIGGER_RUN_TILES = 32;
-//  How much shorter or longer than the plan's open leg a hold into a
-//  funnel is tried (add_funnel_holds()).
-constexpr size_t FUNNEL_SLIDE = 2;
 //  Shortest open leg run_variants() runs on or holds: shorter taps cost
 //  little, and each variant is a plan to score on every step's first plan
 //  (the BDSP sims plan thousands).
@@ -160,63 +157,11 @@ std::optional<std::vector<PlannedLeg>> overshoot_to_wall(
     return out;
 }
 
-//  `legs` up to its open leg `index`, that leg held for its time from the
-//  one tile `from` (it may end a tile short or long), then a run to the
-//  wall across it that stops every end, and a plan on from there (walls
-//  that bring the ends to one tile first): 00.04 along_route_201_road, run
-//  west along the road into the funnel whose walls stop a run north.
-std::optional<std::vector<PlannedLeg>> hold_into_funnel(
-    const ScoredRoute& route, const TilePos& from, const std::vector<PlannedLeg>& legs, size_t index, size_t tiles, Direction across
-){
-    const TileLeg& open = legs[index].leg;
-    const size_t error = open_hold_error(tiles);
-    std::vector<TilePos> ends;
-    TilePos at = from;
-    for (size_t n = 1; n <= tiles + error; n++){
-        const std::optional<TilePos> next = step(route.world, at, open.direction);
-        if (!next || std::abs(next->x - at.x) + std::abs(next->y - at.y) != 1){
-            return std::nullopt;
-        }
-        at = *next;
-        if (n + error >= tiles){
-            ends.push_back(at);
-        }
-    }
-    const std::optional<PlannedLeg> wall = wall_leg_from(route.world, ends, across);
-    if (!wall){
-        return std::nullopt;
-    }
-    const std::optional<std::vector<PlannedLeg>> rest = plan_recovered_route(route.world, wall->after, route.goal, route.costs);
-    if (!rest){
-        return std::nullopt;
-    }
-    std::vector<PlannedLeg> out(legs.begin(), legs.begin() + index);
-    out.push_back({.leg = {.direction = open.direction, .tiles = tiles, .ends_at_wall = false, .held = true}, .after = ends});
-    out.push_back(*wall);
-    out.insert(out.end(), rest->begin(), rest->end());
-    return out;
-}
-
-//  hold_into_funnel() for open leg `index` held a little shorter or longer
-//  than the plan has it, to end where a funnel catches every end: 00.04's
-//  road plan taps 16 west, the funnel is 17.
-void add_funnel_holds(std::vector<std::vector<PlannedLeg>>& out,
-    const ScoredRoute& route, const TilePos& from, const std::vector<PlannedLeg>& legs, size_t index
-){
-    const TileLeg& leg = legs[index].leg;
-    for (size_t tiles = leg.tiles > FUNNEL_SLIDE + 2 ? leg.tiles - FUNNEL_SLIDE : 2; tiles <= leg.tiles + FUNNEL_SLIDE; tiles++){
-        for (Direction across : {Direction((int(leg.direction) + 1) % 4), Direction((int(leg.direction) + 3) % 4)}){
-            if (std::optional<std::vector<PlannedLeg>> legs_out = hold_into_funnel(route, from, legs, index, tiles, across)){
-                out.push_back(std::move(*legs_out));
-            }
-        }
-    }
-}
-
 //  Plans made from `legs` the way a player runs: each open leg from a
-//  known tile run on to a wall and tapped back, or held into a wall that
-//  re-localizes it. The search over sets of tiles (RobustSearch) seldom
-//  finds these within its budget once holds are allowed.
+//  known tile run on to a wall and tapped back. An open leg is never held
+//  for its time: a timed run overshoots by up to a third (lab-B
+//  2026-11-11, Jubilife: runs timed for 10 tiles went about 13), so open
+//  legs are tapped and only legs to a wall are held.
 std::vector<std::vector<PlannedLeg>> run_variants(const ScoredRoute& route, const std::vector<PlannedLeg>& legs){
     std::vector<std::vector<PlannedLeg>> out;
     std::vector<TilePos> at = route.from;
@@ -226,7 +171,6 @@ std::vector<std::vector<PlannedLeg>> run_variants(const ScoredRoute& route, cons
             if (std::optional<std::vector<PlannedLeg>> legs_out = overshoot_to_wall(route.world, at.front(), legs, i)){
                 out.push_back(std::move(*legs_out));
             }
-            add_funnel_holds(out, route, at.front(), legs, i);
         }
         at = legs[i].after;
     }
