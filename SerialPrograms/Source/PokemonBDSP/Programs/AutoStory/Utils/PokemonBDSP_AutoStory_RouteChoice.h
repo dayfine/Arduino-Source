@@ -18,6 +18,7 @@
 #include <optional>
 #include <vector>
 #include "Pokemon/Navigation/Pokemon_RouteScorer.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RobustRoute.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RoutePlanner.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryWorld.h"
 #include "PokemonBDSP_AutoStory_RouteWalk.h"

@@ -64,10 +64,10 @@ struct Grid{
 //  The cell at `pos` of `grid`, to change it; `pos` must be inside the grid.
 //  A free function, so that Grid stays a plain value whose methods only read.
 template <typename Cell>
-Cell& cell_at(Grid<Cell>& grid, const TilePos& pos);
+Cell& cell_at(const TilePos& pos, Grid<Cell>& grid);
 
 template <typename Cell>
-Cell& cell_at(Grid<Cell>& grid, const TilePos& pos){
+Cell& cell_at(const TilePos& pos, Grid<Cell>& grid){
     return grid.cells[(size_t)pos.y * grid.width + pos.x];
 }
 

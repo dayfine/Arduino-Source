@@ -22,29 +22,6 @@ namespace NintendoSwitch{
 namespace PokemonBDSP{
 
 
-//  Pocket positions 1-8: Medicine, Balls, Battle Items, Berries, Other Items,
-//  TMs, Treasures, Key Items. Zero means the selected tab is uncertain.
-int bag_pocket_position(const ImageViewRGB32& frame);
-//  Whether the open pocket shows no item.
-bool bag_list_is_empty(const ImageViewRGB32& frame);
-//  The cursor's row, 1-7, or 0 if unknown.
-int bag_cursor_position(const ImageViewRGB32& frame);
-
-//  Navigation action between bag pocket tabs.
-enum class BagPocketAction{
-    UNKNOWN,
-    CONFIRM,
-    LEFT,
-    RIGHT,
-};
-//  Plan to navigate from one bag pocket tab to another.
-struct BagPocketMovePlan{
-    BagPocketAction action = BagPocketAction::UNKNOWN;
-    size_t presses = 0;
-};
-//  Circular eight-pocket route; ties prefer Right. Invalid positions send no input.
-BagPocketMovePlan plan_bag_pocket_move(int current, int target);
-
 //  Starts in the overworld, opens the Bag on `target_pocket`, and moves the cursor
 //  onto the item whose name reads `name` (letters only, lower case, e.g. "potion").
 //  Reads the cursor row's name with OCR, so it does not depend on the capture

@@ -51,6 +51,7 @@
 #include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon/Navigation/Pokemon_MapData.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_WalkRules.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP_AutoStory_StorySim.h"
 #include "PokemonBDSP_AutoStory_FaultSweep_Tests.h"

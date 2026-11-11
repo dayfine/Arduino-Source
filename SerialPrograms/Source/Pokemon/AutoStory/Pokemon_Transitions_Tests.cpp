@@ -18,9 +18,9 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
-#include "Pokemon_AutoStory_Tests.h"
 #include "Pokemon_Interrupts.h"
 #include "Pokemon_Transitions.h"
+#include "Pokemon_Transitions_Tests.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -64,7 +64,7 @@ struct Span{
 
 //  The transitions completed, as describe() puts them, joined by "; ";
 //  "none" if none.
-std::string run_tracker(TransitionTracker& tracker, const std::vector<Span>& spans){
+std::string run_tracker(const std::vector<Span>& spans, TransitionTracker& tracker){
     std::string out;
     for (const Span& span : spans){
         for (int ms = span.from_ms; ms <= span.to_ms; ms += 100){
@@ -102,13 +102,13 @@ struct TrackCase{
 class Test_TransitionTracker : public UnitTest{
 public:
     explicit Test_TransitionTracker(TrackCase test_case)
-        : UnitTest("Pokemon::Transitions - " + test_case.input.name)
+        : UnitTest(std::format("Pokemon::Transitions - {}", test_case.input.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         const TrackInput& input = m_case.input;
         TransitionTracker tracker(*input.profile, input.compare ? compare_means : TransitionTracker::CompareScenes());
-        const std::string got = run_tracker(tracker, input.spans);
+        const std::string got = run_tracker(input.spans, tracker);
         if (got != m_case.expectation.transitions){
             return std::format("transitions: expected \"{}\", got \"{}\"", m_case.expectation.transitions, got);
         }
@@ -128,7 +128,7 @@ private:
 
 UnitTestResult test_timeout(){
     TransitionTracker tracker(BDSP_FADE_PROFILE, compare_means);
-    const std::string got = run_tracker(tracker, {{0, 100, ROUTE}, {200, 8200, DARK}});
+    const std::string got = run_tracker({{0, 100, ROUTE}, {200, 8200, DARK}}, tracker);
     if (got != "none" || tracker.phase() != TransitionPhase::HOLD){
         return "a screen that stays dark completes no transition and stays in its hold";
     }
@@ -137,7 +137,7 @@ UnitTestResult test_timeout(){
     }
     const std::string current = describe(*tracker.current(), T0);
     if (current != "black fade +200 ms, peak +200 ms, rise unseen, in progress"){
-        return "current(): " + current;
+        return std::format("current(): {}", current);
     }
     tracker.reset();
     if (tracker.phase() != TransitionPhase::SCENE || tracker.current() || tracker.timed_out(T0 + 9000ms)){
@@ -203,13 +203,13 @@ std::string track_captured_case(const Filesystem::Path& folder, const FadeProfil
 class Test_CapturedTransitions : public UnitTest{
 public:
     explicit Test_CapturedTransitions(CapturedCase test_case)
-        : UnitTest("Pokemon::Transitions - captured frames: " + test_case.input.game)
+        : UnitTest(std::format("Pokemon::Transitions - captured frames: {}", test_case.input.game))
         , m_input(std::move(test_case.input))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const Filesystem::Path root(UNIT_TEST_RESOURCE_PATH() + m_input.game + "/Transitions/");
+        const Filesystem::Path root(std::format("{}{}/Transitions/", UNIT_TEST_RESOURCE_PATH(), m_input.game));
         if (!Filesystem::is_directory(root)){
-            return UnitTestResult(UnitTestResult::SKIPPED, "no captured transitions at " + root.string());
+            return UnitTestResult(UnitTestResult::SKIPPED, std::format("no captured transitions at {}", root.string()));
         }
         for (const Filesystem::Path& folder : Filesystem::list_directory(root)){
             if (!Filesystem::is_directory(folder)){
@@ -247,7 +247,7 @@ struct TransitionsCase{
 class Test_Transitions : public UnitTest{
 public:
     explicit Test_Transitions(TransitionsCase test_case)
-        : UnitTest("Pokemon::Transitions - " + test_case.input.name)
+        : UnitTest(std::format("Pokemon::Transitions - {}", test_case.input.name))
         , m_input(std::move(test_case.input))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{

@@ -21,6 +21,8 @@
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_MenuDetector.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_NameListDetector.h"
+#include "PokemonBDSP_AutoStory_IntroProbe.h"
+#include "PokemonBDSP_AutoStory_IntroSteps.h"
 #include "PokemonBDSP_AutoStory_NewGame.h"
 
 namespace PokemonAutomation{
@@ -278,7 +280,7 @@ void probe_for_menu(IntroRun& run){
 }
 
 //  Carries out what decide_intro_step() chose for `screen`.
-void act(IntroRun& run, const char* screen){
+void act(IntroRun& run, const std::string& screen){
     note_intro_screen(run.progress, screen,
         std::chrono::duration_cast<std::chrono::milliseconds>(current_time() - run.start));
     const IntroStep step = decide_intro_step(screen, run.progress);
@@ -347,7 +349,7 @@ void wait_out_boot(VideoStream& stream, ProControllerContext& context, StepTrace
 //  The machine's states: the screens classify_intro_screen() tells apart, with
 //  the keyboard split by whose name it asks for. Each state's step is act().
 std::vector<ScreenState> intro_states(IntroRun& run){
-    auto screen_is = [&run](const ImageViewRGB32& screen, const char* name){
+    auto screen_is = [&run](const ImageViewRGB32& screen, const std::string& name){
         return classify_intro_screen(&run.env.console, screen) == name;
     };
     return {
@@ -425,7 +427,7 @@ void play_new_game_intro(
     wait_out_boot(stream, context, trace);
     IntroRun run{env, context, trace, player_name, current_time(), {}, 0};
     const std::vector<ScreenState> states = intro_states(run);
-    run_screen_machine(stream, context, trace, states, std::chrono::minutes(15));
+    run_screen_machine(stream, context, states, std::chrono::minutes(15), trace);
     trace.action("Intro done.");
 }
 

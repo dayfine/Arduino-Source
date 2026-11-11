@@ -17,6 +17,7 @@
 #include "PokemonBDSP/Inference/Battles/PokemonBDSP_BattleMenuDetector.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_LocationBannerWatcher.h"
 #include "PokemonBDSP_AutoStory_OverworldDetector.h"
 
 namespace PokemonAutomation{

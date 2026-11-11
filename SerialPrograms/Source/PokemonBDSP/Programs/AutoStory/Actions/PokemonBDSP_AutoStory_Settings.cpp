@@ -19,6 +19,7 @@
 #include "PokemonBDSP/Inference/PokemonBDSP_MenuDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
 #include "PokemonBDSP_AutoStory_Bag.h"
+#include "PokemonBDSP_AutoStory_BagScreen.h"
 #include "PokemonBDSP_AutoStory_Settings.h"
 
 namespace PokemonAutomation{

@@ -11,15 +11,6 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-StringSelectDatabase story_checkpoint_database(std::span<const std::string> labels){
-    StringSelectDatabase database;
-    for (size_t c = 0; c < labels.size(); c++){
-        database.add_entry(StringSelectEntry(std::to_string(c), labels[c]));
-    }
-    return database;
-}
-
-
 StoryRangeOptions::StoryRangeOptions(std::string label, const StringSelectDatabase& checkpoints, LockMode end_lock)
     : GroupOption(std::move(label), LockMode::LOCK_WHILE_RUNNING)
     , START_CHECKPOINT(

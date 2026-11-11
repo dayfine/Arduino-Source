@@ -16,12 +16,17 @@
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Data/PokemonBDSP_AutoStory_Maps.h"
+#include "Data/PokemonBDSP_AutoStory_RoutePlanner.h"
 #include "Data/PokemonBDSP_AutoStory_StoryMaps.h"
+#include "Data/PokemonBDSP_AutoStory_StoryTrainers.h"
+#include "Data/PokemonBDSP_AutoStory_TrainerSight.h"
+#include "Data/PokemonBDSP_AutoStory_WalkRules.h"
 #include "Data/PokemonBDSP_AutoStory_WallRecovery.h"
 #include "Utils/PokemonBDSP_AutoStory_PlannedRoute.h"
 #include "Utils/PokemonBDSP_AutoStory_RouteIO.h"
 #include "PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP_AutoStory_PlannedRoute_Tests.h"
+#include "Utils/PokemonBDSP_AutoStory_WalkResult.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -72,7 +77,7 @@ struct RouteFailed{
 };
 
 std::string describe(const RouteInput& input){
-    const char* kind =
+    const std::string_view kind =
         input.kind == RouteInputKind::DPAD ? "D-pad" :
         input.kind == RouteInputKind::STICK ? "stick" :
         input.kind == RouteInputKind::BUTTON_A ? "A" :

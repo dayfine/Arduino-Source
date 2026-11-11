@@ -73,7 +73,7 @@ LegResult walk_leg_with(const LegSpec& leg, const LegCalls& calls, size_t max_in
             result.exact = false;
             result.stopped = true;
             if (leg.to_wall){
-                calls.log(seen + ", stopping the leg.");
+                calls.log(std::format("{}, stopping the leg.", seen));
                 return result;
             }
             //  The caller finds the player again, near where the timing says.
@@ -85,7 +85,7 @@ LegResult walk_leg_with(const LegSpec& leg, const LegCalls& calls, size_t max_in
         if (leg.to_wall){
             //  The wall stops the player on the leg's last tile however far
             //  they got, so the leg is simply held again.
-            calls.log(seen + ", walking to the wall again.");
+            calls.log(std::format("{}, walking to the wall again.", seen));
             continue;
         }
         const int walked = tiles_before_interrupt(leg, outcome->elapsed, calls.detection_delay(outcome->interrupt), remaining);

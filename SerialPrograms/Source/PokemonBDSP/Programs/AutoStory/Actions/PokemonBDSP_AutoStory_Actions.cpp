@@ -167,7 +167,7 @@ SaveAttempt save_once(
 //  The X menu's icons as hovered, where packaged: the cursor detector's
 //  template match. Without them the dark-pixel detector still works.
 void load_menu_icon_references(MenuCursorDetector& detector){
-    static const char* ICON_NAMES[MENU_CURSOR_NUM_ICONS] = {
+    static const std::string ICON_NAMES[MENU_CURSOR_NUM_ICONS] = {
         "POKEDEX",
         "POKEMON",
         "BAG",

@@ -22,7 +22,7 @@ using namespace std::chrono_literals;
 
 
 //  Key grid of the QWERTY layout and where each key sits: rows "1".."z", columns "1".."-".
-static const char* const KEY_ROWS[] = {"1234567890-", "qwertyuiop/", "asdfghjkl:'", "zxcvbnm,.?!"};
+static const std::string KEY_ROWS[] = {"1234567890-", "qwertyuiop/", "asdfghjkl:'", "zxcvbnm,.?!"};
 static constexpr double KEY_ROW_Y[] = {0.500, 0.593, 0.681, 0.770};
 static constexpr double KEY_COL_X0 = 0.077;
 static constexpr double KEY_COL_STEP = 0.075;
@@ -137,10 +137,10 @@ void type_on_system_keyboard(VideoStream& stream, ProControllerContext& context,
         int target_row = -1;
         int target_col = -1;
         for (int r = 0; r < 4 && target_row < 0; r++){
-            const char* p = std::strchr(KEY_ROWS[r], key);
-            if (p != nullptr && key != '\0'){
+            const size_t p = KEY_ROWS[r].find(key);
+            if (p != std::string::npos && key != '\0'){
                 target_row = r;
-                target_col = (int)(p - KEY_ROWS[r]);
+                target_col = (int)p;
             }
         }
         if (target_row < 0){

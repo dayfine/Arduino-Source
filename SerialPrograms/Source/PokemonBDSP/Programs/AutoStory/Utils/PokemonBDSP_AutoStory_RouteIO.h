@@ -22,6 +22,8 @@
 #include "Pokemon/Navigation/Pokemon_Grid.h"
 #include "PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP_AutoStory_Walk.h"
+#include "PokemonBDSP_AutoStory_WalkDpad.h"
+#include "PokemonBDSP_AutoStory_WalkResult.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
