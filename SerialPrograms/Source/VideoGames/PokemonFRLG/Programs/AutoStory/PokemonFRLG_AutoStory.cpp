@@ -12,6 +12,7 @@
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
+#include "Pokemon/AutoStory/Pokemon_StoryConsolePreflight.h"
 #include "Pokemon/AutoStory/Pokemon_StoryRun.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStorySelect.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
@@ -174,12 +175,28 @@ StoryEnv story_env(
     return story;
 }
 
-//  What FRLG lends the shared shell: a load is a soft reset, checked
+//  The start gate's preflight failed: the console's setup, nothing pressed.
+void throw_if_not_started(ConsoleHandle& console, const Pokemon::Outcome& outcome){
+    if (outcome.failure == Pokemon::STORY_PRECONDITION_FAILED){
+        throw UserSetupError(console, "AutoStory did not start, nothing was pressed: " + outcome.detail);
+    }
+}
+
+//  The start gate's preflight on its own, for the steps that press before
+//  the start checkpoint is reached (SID Helper's name, the RNG plan's TID).
+void require_preflight(ConsoleHandle& console, ProControllerContext& context){
+    throw_if_not_started(console, Pokemon::check_story_preflight(Pokemon::read_story_preflight(console, context)));
+}
+
+//  What FRLG lends the shared shell: the console's preflight; a load is a soft reset, checked
 //  against the save card for the map the checkpoint under way starts on,
 //  then the supplies the save had, read from its bag again; the engine's
 //  lines go to the console's log.
 Pokemon::StoryGameHooks story_game(SingleSwitchProgramEnvironment& env, StoryEnv& story){
     Pokemon::StoryGameHooks game;
+    game.preflight = [&story]{
+        return Pokemon::read_story_preflight(story.console, story.context);
+    };
     game.load_save = [&story](Pokemon::RunState&){
         if (!story.has_save){
             return Pokemon::outcome_failed("no_save", "nothing saved yet");
@@ -233,6 +250,7 @@ void load_start_save(
     story.start_map = Pokemon::grid_pose_of(*checkpoint.start).map;
     story.start_menu = checkpoint.menu;
     const Pokemon::Outcome loaded = Pokemon::prepare_story_start(checkpoint.id, Pokemon::StoryStart::FROM_SAVE, game, state);
+    throw_if_not_started(env.console, loaded);
     if (loaded.failure == "wrong_save"){
         throw UserSetupError(env.console, loaded.detail + " Start at the checkpoint " + checkpoint.id + " the save is for.");
     }
@@ -321,15 +339,13 @@ static void prepare_start(
     const std::vector<StoryCheckpoint>& checkpoints, size_t first, StoryEnv& story, bool at_handoff
 ){
     const StoryCheckpoint& checkpoint = checkpoints[first];
-    if (!checkpoint.start){
-        return;
-    }
-    if (checkpoint.live_start && !at_handoff){
-        env.console.log(checkpoint.id + " starts from the game as it is: no save to load.");
-        return;
-    }
     Pokemon::StoryGameHooks game = story_game(env, story);
     Pokemon::RunState state;
+    if (!checkpoint.start || (checkpoint.live_start && !at_handoff)){
+        const Pokemon::StoryStart start = checkpoint.start ? Pokemon::StoryStart::LIVE : Pokemon::StoryStart::NEW_GAME;
+        throw_if_not_started(env.console, Pokemon::prepare_story_start(checkpoint.id, start, game, state));
+        return;
+    }
     load_start_save(env, story, game, state, checkpoint);
 }
 
@@ -663,6 +679,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     const size_t last = RUN.end_index();
     const std::string player_name = PLAYER_NAME;
     check_setup(env.console, checkpoints, first, last, NEW_GAME_FROM_TITLE, player_name);
+    require_preflight(env.console, context);
     const StoryHandoffs handoffs = story_handoffs();
     const std::string sid_before = RNG_PLAN.SID;
     StoryRunPlan plan = plan_story_run(checkpoints, first, last, handoffs);
