@@ -106,6 +106,10 @@ struct SimTiming{
     std::optional<Milliseconds> battle_wipe;
     Milliseconds message{400};
     Milliseconds fade{1000};            //  from the step's end to the new map
+    //  From the fade's end, the new map fades in this long, and the game
+    //  takes no input yet (fault-class sweep; BDSP's Center, lab-B
+    //  2026-11-10). Not measured on FRLG: 0, none.
+    Milliseconds fade_in{0};
     Milliseconds trainer_notice{1000};  //  "!" over the trainer, before they walk up
     Milliseconds trainer_battle{2000};  //  after the trainer's message closes
     //  From a battle's end on, the game ignores taps this long.

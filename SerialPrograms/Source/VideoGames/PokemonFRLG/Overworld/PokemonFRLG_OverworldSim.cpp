@@ -380,7 +380,10 @@ bool OverworldSim::after_step(const Step& step, Milliseconds pressed){
         if (!dims){
             schedule(pressed + timing.tile, SimScreen::FADE, false);
         }
-        schedule(pressed + timing.tile + timing.fade, SimScreen::OVERWORLD, true);
+        schedule(pressed + timing.tile + timing.fade, SimScreen::OVERWORLD, timing.fade_in == 0ms);
+        if (timing.fade_in > 0ms){
+            schedule(pressed + timing.tile + timing.fade + timing.fade_in, SimScreen::OVERWORLD, true);
+        }
         note("warped to " + to_string(m_state.position) + ".");
         return true;
     }
