@@ -122,6 +122,14 @@ StoryActionSpec walk_spec(){
             .key = "heading", .type = StoryArgType::INTEGER, .required = false, .fallback = std::nullopt,
             .why = "the compass heading to face first, clockwise from north",
         },
+        StoryArgSpec{
+            .key = "held", .type = StoryArgType::BOOLEAN, .required = false, .fallback = false,
+            .why = "hold the stick at each leg's angle (L only before a later turning leg), not tap-and-forward",
+        },
+        StoryArgSpec{
+            .key = "wait_ms", .type = StoryArgType::INTEGER, .required = false, .fallback = std::nullopt,
+            .why = "wait this long before looking for free control: NPCs moving off, a ride's fade starting",
+        },
     });
 }
 
@@ -219,23 +227,32 @@ public:
     //  quiet time fails the step. After 5 s with nothing busy and no sign
     //  of control, A every 2 s, for text the detectors miss (01.01's ad).
     //  A banner that stays past the 10 s gets A up to 3 times (01.03's
-    //  "MAIN MISSION 02"), so the step ends with control.
+    //  "MAIN MISSION 02"), so the step ends with control. "press_a_first"
+    //  presses A once at a prompt (02.03's Hotel Z door, "A Enter"), which
+    //  would otherwise end the step at once as control. "quiet_is_control"
+    //  ends it on the quiet time instead of failing, inside Hotel Z.
     static Handler move_hints(){
         return [](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
+            if (Pokemon::story_arg<bool>(call.args, "press_a_first")){
+                backend.press(BUTTON_A, 160ms, 400ms);
+            }
             SceneMachineConfig config;
             config.quiet = Milliseconds(Pokemon::story_arg<int64_t>(call.args, "quiet_ms"));
             config.min_length = Milliseconds(Pokemon::story_arg<int64_t>(call.args, "min_length_ms"));
+            config.quiet_is_control = Pokemon::story_arg<bool>(call.args, "quiet_is_control");
             config.blind_press_after = 5s;
             return run_scene_machine(backend, "mash_to_move_hints", config, 360s);
         };
     }
 
-    //  B through the text until the choices show.
+    //  B advances text by default. "advance_with_a" is for a talk that B
+    //  cancels: Hotel Z's elevator closes on B before "Which floor?"
+    //  (02.04, console B 2026-11-10).
     static Handler text_to_choice(){
-        return [](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+        return [](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
             SceneMachineConfig config;
             config.goal = SceneMashGoal::CHOICE;
-            config.text_button = BUTTON_B;
+            config.text_button = Pokemon::story_arg<bool>(call.args, "advance_with_a") ? BUTTON_A : BUTTON_B;
             return run_scene_machine(backend, "text_to_choice", config, 60s);
         };
     }
@@ -247,6 +264,9 @@ private:
         Pokemon::StoryBackend<ZonePose>& backend, std::string_view name, const StoryMove& move,
         const StoryActionArgs& args, const PlzaReader& heading
     ){
+        if (move.wait_first > Milliseconds(0)){
+            backend.wait(move.wait_first);
+        }
         const Outcome free = check_can_walk(backend, name);
         if (!free.succeeded()){
             return free;
@@ -399,7 +419,7 @@ Handler plza_handler(const PlzaHandlers& handlers, const StoryActionSpec& spec){
             choose_dialog_option(env.env.console, env.context, Pokemon::story_arg<bool>(args, "yes") ? 0 : 1);
         });
     case StoryStepKind::MASH:{
-        //  120 s: a scene can hold a long black screen.
+        //  120 s: a scene can hold a ~25 s black screen (02.06's first evening).
         const Button button = name == "a" ? BUTTON_A : BUTTON_B;
         return handlers.console(name, [button](StoryEnv& env, const StoryActionArgs&){
             mash_scene(env.env.console, env.context, SceneMashGoal::OVERWORLD, button, 120s);
@@ -453,8 +473,21 @@ std::vector<StoryActionSpec> plza_story_action_specs(){
         game_spec("mash_to_move_hints", {
             optional_ms("min_length_ms", 0, "the scene's rough length: no quiet failure before it"),
             optional_ms("quiet_ms", 60000, "nothing busy and no control this long fails the step"),
+            StoryArgSpec{
+                .key = "press_a_first", .type = StoryArgType::BOOLEAN, .required = false, .fallback = false,
+                .why = "press A once first, at the prompt that starts the scene (a door's \"A Enter\")",
+            },
+            StoryArgSpec{
+                .key = "quiet_is_control", .type = StoryArgType::BOOLEAN, .required = false, .fallback = false,
+                .why = "the quiet time ends the step with control, where no party bar or prompt shows (Hotel Z)",
+            },
         }),
-        game_spec("text_to_choice"),
+        game_spec("text_to_choice", {
+            StoryArgSpec{
+                .key = "advance_with_a", .type = StoryArgType::BOOLEAN, .required = false, .fallback = false,
+                .why = "advance the text with A, for a talk that B cancels",
+            },
+        }),
         game_spec("wait_for_platform", {
             optional_ms("timeout_ms", 180000, "no platform this long fails the step"),
         }),
@@ -495,6 +528,12 @@ StoryMove story_walk_move(const StoryActionArgs& args, std::string_view legs){
     const auto heading = args.find("heading");
     if (heading != args.end()){
         move.heading = (double)std::get<int64_t>(heading->second);
+    }
+    const auto held = args.find("held");
+    move.held = held != args.end() && std::get<bool>(held->second);
+    const auto wait = args.find("wait_ms");
+    if (wait != args.end()){
+        move.wait_first = Milliseconds(std::get<int64_t>(wait->second));
     }
     for (const std::vector<int64_t>& row : Pokemon::story_arg<IntegerRows>(args, legs)){
         if (row.size() != 2){

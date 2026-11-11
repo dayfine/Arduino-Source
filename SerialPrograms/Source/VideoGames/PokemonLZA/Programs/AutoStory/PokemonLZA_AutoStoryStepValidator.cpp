@@ -121,6 +121,14 @@ std::vector<std::string> plza_step_arg_errors(const Pokemon::StoryStep& step){
         if (rows.empty() || rows.back().size() != 2 || rows.back()[1] <= 0){
             errors.push_back(std::format("{}: the last leg has no walk to hold until the end", step.name));
         }
+        const auto held = step.args.find("held");
+        if (held != step.args.end() && std::get<bool>(held->second)){
+            errors.push_back(std::format("{}: a held walk cannot end on a fade yet", step.name));
+        }
+    }
+    const auto wait = step.args.find("wait_ms");
+    if (wait != step.args.end() && std::get<int64_t>(wait->second) < 0){
+        errors.push_back(std::format("{}: wait_ms {} is negative", step.name, std::get<int64_t>(wait->second)));
     }
     const auto heading = step.args.find("heading");
     if (heading != step.args.end()){

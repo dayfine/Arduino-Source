@@ -36,8 +36,9 @@ std::optional<Pokemon::ScreenEvent> walk_end_event(std::string_view end);
 
 //  What is wrong with the args of a "walk" or "approach_starter" step:
 //  each leg a [turn, ms] pair, turning -180 to 180 degrees and walking 0 ms
-//  or more, some leg walking; an end a fade, after a leg that walks; a
-//  heading 0 to 359. Nothing for any other step.
+//  or more, some leg walking; an end a fade, after a leg that walks and not
+//  on a held walk; no negative wait; a heading 0 to 359. Nothing for any
+//  other step.
 std::vector<std::string> plza_step_arg_errors(const Pokemon::StoryStep& step);
 
 

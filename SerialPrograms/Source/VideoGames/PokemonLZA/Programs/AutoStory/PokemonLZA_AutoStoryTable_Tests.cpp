@@ -89,8 +89,8 @@ UnitTestResult test_story_walks_read(Logger&){
             }
         }
     }
-    if (walks != 2){
-        return std::format("Expected the 2 recorded walks, found {}.", walks);
+    if (walks != 12){
+        return std::format("Expected the 12 recorded walks, found {}.", walks);
     }
     const StoryStep* plaza = find_step(story_checkpoints(), "01.01", "platform_to_plaza");
     if (plaza == nullptr){

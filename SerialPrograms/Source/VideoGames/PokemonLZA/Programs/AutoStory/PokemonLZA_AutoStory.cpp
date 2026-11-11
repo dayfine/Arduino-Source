@@ -37,7 +37,7 @@ AutoStory_Descriptor::AutoStory_Descriptor()
         "PokemonLZA:AutoStory",
         std::format("{} LZA", STRING_POKEMON), "Auto Story",
         "Programs/PokemonLZA/AutoStory.html",
-        "Play the main story of Pokemon Legends: Z-A. Prototype: Main Mission 01 as recorded on a console; plays from a new game to the starter and Andi.",
+        "Play the main story of Pokemon Legends: Z-A. Prototype: Main Missions 01-02 as recorded on a console; plays from a new game through the first night at Hotel Z.",
         PanelQualityStanding::DEVELOPER,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,

@@ -51,6 +51,9 @@ struct SceneMachineConfig{
     //  ...and this long has passed since the start: a cutscene can hold a
     //  still frame longer than `quiet`.
     Milliseconds min_length = Milliseconds(0);
+    //  The quiet end is control, not a failure: Hotel Z's halls and rooms
+    //  show no party bar or prompt (02.04, console B 2026-11-10).
+    bool quiet_is_control = false;
     //  OVERWORLD with A: presses A every 2 s once nothing
     //  busy and no sign of control has shown for this long, for text the
     //  detectors miss (A does not skip a cutscene).
