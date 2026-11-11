@@ -67,8 +67,10 @@ std::optional<int> walk_to_objective(ConsoleHandle& console, ProControllerContex
 //  the grass right of the road, then steps right 1 s at a time (3 at most)
 //  and throws at what locks on in front, or after small camera turns right,
 //  counting the Pokedex's "Registered!" banners; then steps back onto the
-//  road. Throws OperationFailedException with fewer than
-//  `new_species_wanted` new species after the steps or `max_throws`.
+//  road. When only species already caught lock on there (a rerun from a
+//  save after the catch), the quest is taken as done. Otherwise throws
+//  OperationFailedException with fewer than `new_species_wanted` new
+//  species after the steps or `max_throws`.
 void catch_in_zone(ConsoleHandle& console, ProControllerContext& context, int new_species_wanted, int max_throws);
 
 //  On to the objective until the gate's A prompt shows (03.07, Wild Zone

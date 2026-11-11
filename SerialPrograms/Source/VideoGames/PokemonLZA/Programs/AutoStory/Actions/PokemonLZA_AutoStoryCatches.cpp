@@ -136,6 +136,44 @@ void face_objective(ConsoleHandle& console, ProControllerContext& context){
     }
 }
 
+//  What catch_in_grass() did: new species registered, throws, targets
+//  skipped as already caught, and steps right taken off the road.
+struct GrassCatches{
+    int found = 0;
+    int throws = 0;
+    int caught_seen = 0;
+    int steps = 0;
+};
+
+//  Steps right into the grass 1 s at a time (3 at most) and throws at what
+//  locks on, skipping species already caught, until `new_species_wanted`
+//  new species registered or `max_throws`.
+GrassCatches catch_in_grass(ConsoleHandle& console, ProControllerContext& context, int new_species_wanted, int max_throws){
+    GrassCatches out;
+    for (; out.steps < 3 && out.found < new_species_wanted && out.throws < max_throws; out.steps++){
+        pbf_move_left_joystick(context, {1, 0}, 1000ms, 300ms);
+        int skips = 0;
+        while (out.found < new_species_wanted && out.throws < max_throws && skips < 4 && lock_on_near(console, context)){
+            //  A species already caught: its plate shows a Poke Ball. Look
+            //  further right instead of throwing.
+            if (aim_and_read_caught(console, context) == true){
+                console.log("catch_in_zone(): locked on to a species already caught: skipping it.");
+                skips++;
+                out.caught_seen++;
+                pbf_move_right_joystick(context, {0.5, 0}, 400ms, 300ms);
+                continue;
+            }
+            out.throws++;
+            const bool registered = throw_ball(console, context);
+            out.found += registered ? 1 : 0;
+            console.log(std::format("catch_in_zone(): throw {}: {}.", out.throws, registered ? "a new species registered" : "no new species"));
+            advance_text_and_cards(console, context);
+        }
+        face_objective(console, context);
+    }
+    return out;
+}
+
 } // namespace
 
 
@@ -246,36 +284,20 @@ void catch_in_zone(ConsoleHandle& console, ProControllerContext& context, int ne
     //  repeats (Fletchling, Scatterbug).
     walk_to_objective(console, context, 60, 90s);
     face_objective(console, context);
-    int found = 0;
-    int throws = 0;
-    int steps = 0;
-    for (; steps < 3 && found < new_species_wanted && throws < max_throws; steps++){
-        pbf_move_left_joystick(context, {1, 0}, 1000ms, 300ms);
-        int skips = 0;
-        while (found < new_species_wanted && throws < max_throws && skips < 4 && lock_on_near(console, context)){
-            //  A species already caught: its plate shows a Poke Ball. Look
-            //  further right instead of throwing.
-            if (aim_and_read_caught(console, context) == true){
-                console.log("catch_in_zone(): locked on to a species already caught: skipping it.");
-                skips++;
-                pbf_move_right_joystick(context, {0.5, 0}, 400ms, 300ms);
-                continue;
-            }
-            throws++;
-            const bool registered = throw_ball(console, context);
-            found += registered ? 1 : 0;
-            console.log(std::format("catch_in_zone(): throw {}: {}.", throws, registered ? "a new species registered" : "no new species"));
-            advance_text_and_cards(console, context);
-        }
-        face_objective(console, context);
-    }
+    const GrassCatches result = catch_in_grass(console, context, new_species_wanted, max_throws);
     //  Back onto the road.
-    pbf_move_left_joystick(context, {-1, 0}, Milliseconds(1000 * steps), 300ms);
-    console.log(std::format("catch_in_zone(): {} new species in {} throws.", found, throws));
-    if (found < new_species_wanted){
+    pbf_move_left_joystick(context, {-1, 0}, Milliseconds(1000 * result.steps), 300ms);
+    console.log(std::format("catch_in_zone(): {} new species in {} throws.", result.found, result.throws));
+    //  A rerun from a save after the catch: only species already caught
+    //  lock on here (Mareep, the one this spot has), so the quest is done.
+    if (result.found == 0 && result.throws == 0 && result.caught_seen > 0){
+        console.log("catch_in_zone(): only species already caught here: taking the quest as done.");
+        return;
+    }
+    if (result.found < new_species_wanted){
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::SEND_ERROR_REPORT,
-            std::format("catch_in_zone(): {} new species of {} in {} throws.", found, new_species_wanted, throws),
+            std::format("catch_in_zone(): {} new species of {} in {} throws.", result.found, new_species_wanted, result.throws),
             console
         );
     }
