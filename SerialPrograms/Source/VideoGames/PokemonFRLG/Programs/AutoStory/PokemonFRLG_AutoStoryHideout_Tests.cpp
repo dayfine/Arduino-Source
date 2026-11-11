@@ -387,27 +387,35 @@ UnitTestResult test_b2f_maze_taps(){
 //  on (20, 24). Every leg ran a row low: "west 4" ended on (16, 25), the
 //  hold west on along row 25 and "east 2" left the player below the
 //  potted plants (12, 24) and (13, 24), and "north 9" was blocked at once.
-//  B4F has no arrows, so the legs are held: south to the bottom wall finds
-//  the player on row 25 from either tile, and column 16 runs up from there
-//  to the Grunt (16, 14).
+//  The legs now start from the lift's exit (20, 24) (lift_to_b4f declares
+//  it): south to the bottom row 25, and column 16 runs up from there to the
+//  Grunt (16, 14).
 UnitTestResult test_b4f_left_guard_from_below_lift_door(){
     const std::vector<MapData>& maps = story_maps();
-    const MapPosition planned{"RocketHideout_B4F", {20, 23}};
+    const MapPosition lift_exit{"RocketHideout_B4F", {20, 24}};
     const MapPosition left_guard{"RocketHideout_B4F", {16, 15}};
-    const std::optional<std::vector<RouteStep>> route = fixed_route(maps, planned, {
-        {Direction::SOUTH, 2}, {Direction::WEST, 4}, {Direction::NORTH, 10},
-    });
-    if (!route || !(route->back().end == left_guard)){
-        return "Expected the legs from the lift door (20, 23) to end below the left Grunt (16, 15).";
-    }
-    for (const MapPosition& start : {planned, MapPosition{"RocketHideout_B4F", {20, 24}}}){
-        OverworldSim sim(maps, start, Direction::SOUTH, SimScript{});
-        OverworldSimWalker walker(sim);
-        const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = planned, .label = "Sim"};
-        const std::string failure = walker.run(*route, planning);
-        if (!failure.empty() || !(sim.state().position == left_guard)){
-            return std::format("From {}, walked to {}, failure \"{}\".", to_string(start), to_string(sim.state().position), failure);
+    const StoryStep* below_left_guard = nullptr;
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        for (const StoryStep& step : row.steps){
+            if (row.id == "00.32" && step.name == "below_left_guard"){
+                below_left_guard = &step;
+            }
         }
+    }
+    if (below_left_guard == nullptr){
+        return "Expected 00.32's step below_left_guard.";
+    }
+    const std::vector<Pokemon::StoryLeg> legs = Pokemon::story_arg<std::vector<Pokemon::StoryLeg>>(below_left_guard->args, "legs");
+    const std::optional<std::vector<RouteStep>> route = fixed_route(maps, lift_exit, legs);
+    if (!route || !(route->back().end == left_guard)){
+        return "Expected the legs from the lift's exit (20, 24) to end below the left Grunt (16, 15).";
+    }
+    OverworldSim sim(maps, lift_exit, Direction::SOUTH, SimScript{});
+    OverworldSimWalker walker(sim);
+    const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = lift_exit, .label = "Sim"};
+    const std::string failure = walker.run(*route, planning);
+    if (!failure.empty() || !(sim.state().position == left_guard)){
+        return std::format("Walked to {}, failure \"{}\".", to_string(sim.state().position), failure);
     }
     return true;
 }
@@ -502,8 +510,8 @@ const AutoStoryHideoutBodyCase HIDEOUT_BODY_CASES[] = {
         .expectation = {.description = "00.32's taps and the routes between them, any turn dropped or hold short"},
     },
     {
-        .input = {.name = "B4F's left Grunt from a tile below the lift door", .body = test_b4f_left_guard_from_below_lift_door},
-        .expectation = {.description = "south to the bottom wall finds the player from either tile below the lift"},
+        .input = {.name = "B4F's left Grunt from the lift's exit", .body = test_b4f_left_guard_from_below_lift_door},
+        .expectation = {.description = "00.32's legs from (20, 24) end below the left Grunt"},
     },
     {
         .input = {.name = "below B2F's lift: the wall, then one leg back", .body = test_below_lift_one_backtrack},
