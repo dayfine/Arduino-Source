@@ -1,0 +1,46 @@
+﻿{
+  "checkpoint": {
+    "events": [
+      {
+        "action": "town",
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "north",
+            "map": "JubilifeCity",
+            "tiles": [
+              [
+                47,
+                8
+              ]
+            ]
+          }
+        },
+        "id": "below_rowans_trigger",
+        "kind": "route",
+        "why": "down Route 203 (its ledges only south), west along it into Jubilife's street, north up the road"
+      }
+    ],
+    "id": "01.06",
+    "start": {
+      "facing": "west",
+      "map": "Route203",
+      "tiles": [
+        [
+          55,
+          9
+        ]
+      ]
+    },
+    "title": "Route 203 to Jubilife"
+  },
+  "execution": {
+    "on_failure": "reload_and_retry",
+    "saves_in": "Route 203"
+  },
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "bdsp",
+  "metadata": {
+    "phase": "testing"
+  }
+}

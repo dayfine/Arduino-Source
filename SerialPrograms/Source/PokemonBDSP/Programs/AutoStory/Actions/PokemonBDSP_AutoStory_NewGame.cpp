@@ -23,6 +23,8 @@
 #include "PokemonBDSP/Inference/PokemonBDSP_MenuDetector.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_NameListDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_IntroMenuDetector.h"
+#include "PokemonBDSP_AutoStory_IntroProbe.h"
+#include "PokemonBDSP_AutoStory_IntroSteps.h"
 #include "PokemonBDSP_AutoStory_NewGame.h"
 
 namespace PokemonAutomation{
@@ -30,6 +32,7 @@ namespace NintendoSwitch{
 namespace PokemonBDSP{
 
 using namespace std::chrono_literals;
+using namespace detail;
 
 
 const std::vector<Language>& bdsp_language_menu(){
@@ -67,12 +70,14 @@ std::optional<std::vector<DpadPosition>> look_pick_moves(size_t cursor, const In
     return menu_cursor_moves(BDSP_LOOK_GRID, cursor, picks.look);
 }
 
+namespace detail{
 IntroProgress intro_start(const IntroPicks& picks){
     IntroProgress progress;
     progress.language_pending = true;
     progress.look_pending = picks.look != 0;
     return progress;
 }
+} // namespace detail
 
 
 std::string classify_intro_screen(ConsoleHandle* console, const ImageViewRGB32& screen){
@@ -116,7 +121,7 @@ std::string classify_intro_screen(ConsoleHandle* console, const ImageViewRGB32& 
     return "other";
 }
 
-IntroStep decide_intro_step(const std::string& screen, const IntroProgress& progress){
+IntroStep decide_intro_step(std::string_view screen, const IntroProgress& progress){
     if (screen == "user-select"){
         return IntroStep::SELECT_USER;
     }
@@ -163,11 +168,12 @@ IntroStep decide_intro_step(const std::string& screen, const IntroProgress& prog
     }
     return IntroStep::ADVANCE;
 }
-bool intro_screen_confirms_bdsp(const std::string& screen){
+bool intro_screen_confirms_bdsp(std::string_view screen){
     return screen == "dialog" || screen == "language-select" || screen == "look-select" || screen == "rival-list-tell" || screen == "rival-list-preset" || screen == "menu";
 }
 
-void note_intro_screen(IntroProgress& progress, const std::string& screen, std::chrono::milliseconds since_start){
+namespace detail{
+void note_intro_screen(IntroProgress& progress, std::string_view screen, std::chrono::milliseconds since_start){
     if (intro_screen_confirms_bdsp(screen)){
         progress.game_confirmed = true;
     }
@@ -215,6 +221,7 @@ void record_intro_step(IntroProgress& progress, IntroStep step){
         return;
     }
 }
+} // namespace detail
 
 namespace{
 
@@ -346,7 +353,7 @@ void advance(IntroRun& run){
 
 //  One of the intro's two menus: its shape and its cursor reader.
 struct IntroMenu{
-    const char* what;
+    std::string_view what;
     MenuGrid grid;
     std::optional<size_t> (*read)(const ImageViewRGB32& screen);
 };
@@ -376,17 +383,17 @@ bool pick_on_grid(IntroRun& run, const IntroMenu& menu, size_t target){
         if (!cursor){
             return false;
         }
-        run.trace.action(std::string("Picking the ") + menu.what + ": cursor on item " + std::to_string(*cursor) +
+        run.trace.action(std::string("Picking the ") + std::string(menu.what) + ": cursor on item " + std::to_string(*cursor) +
             ", the pick is item " + std::to_string(target) + ".");
         if (*cursor == target){
-            run.trace.screen(std::string("pick-") + menu.what);
+            run.trace.screen(std::string("pick-") + std::string(menu.what));
             press(run, BUTTON_A);
             pbf_wait(run.context, 500ms);
             return true;
         }
         press_cursor_moves(run.context, *menu_cursor_moves(menu.grid, *cursor, target));
     }
-    run.trace.fail(std::string("The ") + menu.what + " menu's cursor did not reach its pick in " +
+    run.trace.fail(std::string("The ") + std::string(menu.what) + " menu's cursor did not reach its pick in " +
         std::to_string(INTRO_PICK_TRIES) + " tries.");
 }
 
@@ -402,7 +409,7 @@ void pick_on_intro_menu(IntroRun& run, IntroStep step){
 }
 
 //  Notes `screen` in the run's progress, decides the step for it and counts it.
-IntroStep next_intro_step(IntroRun& run, const char* screen){
+IntroStep next_intro_step(IntroRun& run, std::string_view screen){
     note_intro_screen(run.progress, screen,
         std::chrono::duration_cast<std::chrono::milliseconds>(current_time() - run.start));
     const IntroStep step = decide_intro_step(screen, run.progress);
@@ -425,7 +432,7 @@ IntroStep next_intro_step(IntroRun& run, const char* screen){
 }
 
 //  Carries out what decide_intro_step() chose for `screen`.
-void act(IntroRun& run, const char* screen){
+void act(IntroRun& run, std::string_view screen){
     const IntroStep step = next_intro_step(run, screen);
     switch (step){
     case IntroStep::SELECT_USER:
@@ -494,7 +501,7 @@ void wait_out_boot(VideoStream& stream, ProControllerContext& context, StepTrace
 //  The machine's states: the screens classify_intro_screen() tells apart, with
 //  the keyboard split by whose name it asks for. Each state's step is act().
 std::vector<ScreenState> intro_states(IntroRun& run){
-    auto screen_is = [&run](const ImageViewRGB32& screen, const char* name){
+    auto screen_is = [&run](const ImageViewRGB32& screen, const std::string& name){
         return classify_intro_screen(&run.env.console, screen) == name;
     };
     return {
@@ -588,7 +595,7 @@ void play_new_game_intro(
     trace.action(std::string("Picks: language ") + language_data(picks.game_language).name +
         ", look " + std::to_string(picks.look + 1) + ".");
     const std::vector<ScreenState> states = intro_states(run);
-    run_screen_machine(stream, context, trace, states, std::chrono::minutes(15));
+    run_screen_machine(stream, context, states, std::chrono::minutes(15), trace);
     trace.action("Intro done.");
 }
 

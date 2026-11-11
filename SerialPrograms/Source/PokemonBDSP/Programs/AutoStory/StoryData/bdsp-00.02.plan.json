@@ -1,0 +1,88 @@
+﻿{
+  "checkpoint": {
+    "events": [
+      {
+        "args": {
+          "fight_wild": false,
+          "legs": [
+            {
+              "direction": "north",
+              "tiles": 1
+            }
+          ]
+        },
+        "id": "to_the_lake_entrance",
+        "kind": "legs",
+        "why": "a tile short of the trigger"
+      },
+      {
+        "args": {
+          "direction": "north"
+        },
+        "id": "lake_entrance",
+        "kind": "step",
+        "why": "the trigger (16..17, 12): Barry hears Rowan and the two walk in"
+      },
+      {
+        "action": "starter_briefcase",
+        "id": "starter_briefcase",
+        "kind": "game_action",
+        "why": "the lake's scene, to the open briefcase"
+      },
+      {
+        "action": "choose_starter",
+        "id": "choose_starter",
+        "kind": "game_action",
+        "why": "the starter from the program's option"
+      },
+      {
+        "action": "starter",
+        "args": {
+          "may_lose": true
+        },
+        "id": "starly",
+        "kind": "battle",
+        "why": "the Starly battle, with the starter alone"
+      },
+      {
+        "declared_after": {
+          "map": "VerityLakefront",
+          "tiles": [
+            [
+              17,
+              14
+            ],
+            [
+              17,
+              15
+            ]
+          ]
+        },
+        "id": "after_starly",
+        "kind": "scene",
+        "why": "Rowan's lines and the walk out of the lake"
+      }
+    ],
+    "id": "00.02",
+    "start": {
+      "facing": "north",
+      "map": "VerityLakefront",
+      "tiles": [
+        [
+          17,
+          14
+        ]
+      ]
+    },
+    "title": "Lake Verity: the starter and the Starly battle"
+  },
+  "execution": {
+    "on_failure": "reload_and_retry",
+    "saves_in": "Verity Lakefront"
+  },
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "bdsp",
+  "metadata": {
+    "phase": "reproduction"
+  }
+}

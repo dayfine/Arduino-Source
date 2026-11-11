@@ -10,18 +10,26 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
+#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
+#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
+#include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_CoordEvents.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkResult.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkScreen.h"
 #include "PokemonBDSP_AutoStory_StorySim.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
+using namespace detail;
 
 using namespace std::chrono_literals;
 using Pokemon::Direction;
+using Pokemon::GridPose;
+using Pokemon::story_arg;
 using Pokemon::Outcome;
 using Pokemon::Pose;
 using Pokemon::RunState;
@@ -30,6 +38,7 @@ using Pokemon::StoryStepKind;
 using Pokemon::TilePos;
 
 
+namespace detail{
 ImageStats sim_screen(double brightness, double stddev){
     return ImageStats(FloatPixel(brightness, brightness, brightness), FloatPixel(stddev, stddev, stddev), 1);
 }
@@ -118,6 +127,7 @@ std::string play_scene(const SimScene& scene, const TalkOverRule& rule){
     }
     return "never judged over: " + at() + ", " + judge.describe();
 }
+} // namespace detail
 
 //  Plays the step's scene knob through TalkOver if it has one. Without, a
 //  scene may take us to another map (Mom walks us out, 00.04): with a
@@ -180,7 +190,7 @@ void SimStoryStepIO::walk_until_stopped(Direction direction, size_t tiles, const
         move = m_sim.hold(direction, limit, SimPace::WALK);
     }
     if (move.stop == SimStop::DIALOG || move.stop == SimStop::WARP){
-        m_route.note(label + ": " + sim_stop_name(move.stop) + " instead of a stop.", RouteNote::FAILURE);
+        m_route.note(label + ": " + std::string(sim_stop_name(move.stop)) + " instead of a stop.", RouteNote::FAILURE);
     }
 }
 
@@ -311,6 +321,7 @@ bool SimKnobRouteIO::dialog_within(Milliseconds wait, Color color){
 //  Left out: the Twinleaf guitarist (spent upstairs), Platinum's rival
 //  steps around our bedroom's start, Dawn at Jubilife's steps (BDSP starts
 //  her below them: an event), and Floaroma's (10..12, 29) (Diamond only).
+namespace detail{
 std::vector<VarState> story_vars(){
     return {
         {.var = "VAR_TWINLEAF_TOWN_RIVAL_TRIGGER_STATE", .value = 0, .row = "00.01", .after = ""},
@@ -389,6 +400,7 @@ std::vector<RowTrigger> story_triggers(){
     }
     return triggers;
 }
+} // namespace detail
 
 namespace{
 
@@ -569,7 +581,12 @@ bool SimExecutor::sync(const Pose& pose, const StoryWorld* on){
 }
 
 void SimExecutor::start_scene_at_end(const StoryStep& step){
-    const std::optional<Pose>& end = step.kind == StoryStepKind::ROUTE ? step.target : step.pose_after;
+    std::optional<Pose> end;
+    if (step.kind == StoryStepKind::ROUTE && step.args.contains("target")){
+        end = Pokemon::pose_of(story_arg<GridPose>(step.args, "target"));
+    }else if (step.pose_after){
+        end = Pokemon::pose_of(*step.pose_after);
+    }
     if (!end){
         return;
     }
@@ -681,7 +698,7 @@ Outcome SimExecutor::battle(RunState&, const StoryStep& step){
 //  maps have no warps' destinations.
 std::string SimExecutor::check(const StoryStep& step, const Outcome& outcome){
     const bool walks = step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS || step.kind == StoryStepKind::STEP;
-    const std::optional<Pose> expected = step.pose_after ? step.pose_after : outcome.pose;
+    const std::optional<Pose> expected = step.pose_after ? std::optional<Pose>(Pokemon::pose_of(*step.pose_after)) : outcome.pose;
     if (!walks || !m_placed){
         return "";
     }
@@ -711,18 +728,18 @@ Outcome SimExecutor::stub(){
 //  The steps that need the console: stubbed, but for the Center's door and
 //  the speeches after a battle.
 StoryBoundActions SimExecutor::sim_actions(){
-    const auto stubbed = [this](RunState&, const StoryStep&){
+    const auto stubbed = [this](const StoryStep&, RunState&){
         return stub();
     };
     return StoryBoundActions{
         .new_game = stubbed,
         .options = stubbed,
         .answer = stubbed,
-        .battle = [this](RunState& state, const StoryStep& step){
+        .battle = [this](const StoryStep& step, RunState& state){
             return battle(state, step);
         },
         .train = stubbed,
-        .heal = [this](RunState& state, const StoryStep& step){
+        .heal = [this](const StoryStep& step, RunState& state){
             return heal(state, step);
         },
         .save = stubbed,
@@ -758,16 +775,16 @@ Pokemon::ScreenLook SimExecutor::look(bool fresh){
 //  only the dialogs it pops up. A battle ends its opening only: a scene the
 //  walk before ran into goes on after it.
 StoryInterruptActions SimExecutor::sim_interrupt_actions(){
-    const auto cleared = [this](const char* what){
-        return [this, what](RunState&, const Pokemon::InterruptVerdict&){
+    const auto cleared = [this](std::string_view what){
+        return [this, what](const Pokemon::InterruptVerdict&, RunState&){
             m_logger.log(std::format("[{}] {}: {} cleared before it.", m_row, m_step, what));
             m_dialog_up = false;
             m_sim.end_dialogue();
             return Pokemon::outcome_ok();
         };
     };
-    const auto battled = [this](const char* what){
-        return [this, what](RunState&, const Pokemon::InterruptVerdict&){
+    const auto battled = [this](std::string_view what){
+        return [this, what](const Pokemon::InterruptVerdict&, RunState&){
             m_logger.log(std::format("[{}] {}: {} cleared before it.", m_row, m_step, what));
             m_battle_opening = false;
             return Pokemon::outcome_ok();
@@ -781,21 +798,21 @@ StoryInterruptActions SimExecutor::sim_interrupt_actions(){
     };
 }
 
-Outcome SimExecutor::run_action(RunState& state, const StoryStep& step){
+Outcome SimExecutor::run_action(const StoryStep& step, RunState& state){
     if (m_dialog_up){
         if (!presses_through_text(step.kind)){
             return Pokemon::outcome_failed("dialog", step.name + ": a dialog that popped up before it is still up");
         }
         m_dialog_up = false;
     }
-    return Pokemon::TableExecutor::run_action(state, step);
+    return Pokemon::TableExecutor::run_action(step, state);
 }
 
-Outcome SimExecutor::run_step(RunState& state, const StoryStep& step){
+Outcome SimExecutor::run_step(const StoryStep& step, RunState& state){
     if (!m_start_mismatch.empty()){
         return Pokemon::outcome_failed("sim_mismatch", "the row before " + std::exchange(m_start_mismatch, ""));
     }
-    m_far = step.pose_after;
+    m_far = step.pose_after ? std::optional<Pose>(Pokemon::pose_of(*step.pose_after)) : std::nullopt;
     //  A scene goes on from where the step before left us. A route walks
     //  on the world it plans on (Jubilife alone has no Route 204 north of it).
     //  An event of a walking kind (talk_to_wanderer) is the console's.
@@ -803,8 +820,9 @@ Outcome SimExecutor::run_step(RunState& state, const StoryStep& step){
     const bool walks = (step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS ||
         step.kind == StoryStepKind::STEP || step.kind == StoryStepKind::TALK) &&
         action != nullptr && !action->needs_console;
-    const StoryWorld* on = step.kind == StoryStepKind::ROUTE && step.target && !state.pose.map.empty()
-        ? story_plan_world(state.pose.map, step.target->map) : nullptr;
+    const GridPose* target_ptr = step.args.contains("target") ? &story_arg<GridPose>(step.args, "target") : nullptr;
+    const StoryWorld* on = step.kind == StoryStepKind::ROUTE && target_ptr && !state.pose.map.empty()
+        ? story_plan_world(state.pose.map, target_ptr->map) : nullptr;
     //  A world of one map is sim_world()'s, with its people.
     if (on != nullptr && on == story_plan_world(state.pose.map, state.pose.map)){
         on = nullptr;
@@ -817,7 +835,7 @@ Outcome SimExecutor::run_step(RunState& state, const StoryStep& step){
     if (walks && m_knobs.scene_at_walk_end && m_knobs.scene_at_walk_end(m_row, step.name)){
         start_scene_at_end(step);
     }
-    return Pokemon::TableExecutor::run(state, step);
+    return Pokemon::TableExecutor::run(step, state);
 }
 
 void SimExecutor::show_before(const StoryStep& step){
@@ -831,14 +849,14 @@ void SimExecutor::show_before(const StoryStep& step){
     }
 }
 
-Outcome SimExecutor::run(RunState& state, const StoryStep& step){
+Outcome SimExecutor::run(const StoryStep& step, RunState& state){
     Outcome outcome;
     m_passed_over = false;
     m_step = step.name;
     sim_forget_warp(m_sim);
     show_before(step);
     try{
-        outcome = run_step(state, step);
+        outcome = run_step(step, state);
     }catch (const GridSimFailure& e){
         outcome = Pokemon::outcome_failed("sim_failure", e.message);
     }
@@ -853,7 +871,7 @@ Outcome SimExecutor::run(RunState& state, const StoryStep& step){
     if (outcome.succeeded() && step.pose_after){
         m_astray = false;
         m_misplaced = false;
-        sync(*step.pose_after);
+        sync(Pokemon::pose_of(*step.pose_after));
     }
     if (outcome.succeeded()){
         land(step.name);
@@ -891,12 +909,12 @@ Pokemon::SegmentReport run_rows_on(
     std::set<std::string> saved;
     Pokemon::Segment segment = make_story_segment(rows, executor, saved);
     Pokemon::SegmentPolicy policy;
-    policy.stop_at_first_failure = true;
+    policy.attempts_per_checkpoint = 1;
     Pokemon::SegmentHooks hooks;
     hooks.reload = [](RunState&){ return Pokemon::outcome_ok(); };
     hooks.log = [&logger](const std::string& line){ logger.log(line); };
     RunState state;
-    return Pokemon::run_segment(state, segment, range, policy, hooks);
+    return Pokemon::run_segment(range, policy, segment, hooks, state);
 }
 
 //  Runs `range` of the table on the simulation, stopping at the first failure.
@@ -912,6 +930,7 @@ UnitTestResult run_rows(Logger& logger, const Pokemon::SegmentRange& range){
     return true;
 }
 
+namespace detail{
 //  The table with row `row`'s step of `step`'s name replaced by `step`.
 std::vector<StoryCheckpoint> table_with(const std::string& row, const StoryStep& step){
     std::vector<StoryCheckpoint> rows = story_checkpoints();
@@ -945,7 +964,7 @@ std::string stub_report(const SimRun& run){
     }
     return out;
 }
-
+} // namespace detail
 
 
 } // namespace PokemonBDSP

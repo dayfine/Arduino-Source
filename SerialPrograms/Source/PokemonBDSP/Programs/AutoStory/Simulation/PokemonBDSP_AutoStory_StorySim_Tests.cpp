@@ -40,6 +40,7 @@
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_CoordEvents.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_WalkRules.h"
 #include "PokemonBDSP_AutoStory_GridSim.h"
 #include "PokemonBDSP_AutoStory_LegTrace_Tests.h"
 #include "PokemonBDSP_AutoStory_OldStorySteps.h"
@@ -57,6 +58,7 @@
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
+using namespace detail;
 
 namespace{
 
@@ -258,7 +260,7 @@ UnitTestResult test_heal_fade_unseen(Logger& logger){
 //  still missed: no frame shows the scene before it.
 UnitTestResult test_sim_fade_frames(Logger&){
     struct FadeCase{
-        const char* name;
+        std::string_view name;
         bool door;
         double floor;
         double fade;

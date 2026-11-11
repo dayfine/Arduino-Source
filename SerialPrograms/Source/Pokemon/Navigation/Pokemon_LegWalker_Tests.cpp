@@ -16,7 +16,7 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "Pokemon_LegWalker.h"
-#include "Pokemon_Navigation_Tests.h"
+#include "Pokemon_LegWalker_Tests.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -230,7 +230,7 @@ struct LegWalkerInput{
 };
 
 struct LegWalkerExpectation{
-    const char* description;
+    std::string_view description;
 };
 
 struct LegWalkerTestCase{
@@ -241,7 +241,7 @@ struct LegWalkerTestCase{
 class Test_LegWalker : public UnitTest{
 public:
     explicit Test_LegWalker(LegWalkerTestCase scenario)
-        : UnitTest("Pokemon::LegWalker - " + scenario.input.name)
+        : UnitTest(std::format("Pokemon::LegWalker - {}", scenario.input.name))
         , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{

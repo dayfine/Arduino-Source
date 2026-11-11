@@ -1,5 +1,7 @@
 /*  BDSP AutoStory - Story executor
  *
+// code-health: allow header_symbols -- BDSP story executor and checkpoint execution primitives
+ *
  *  From: https://github.com/PokemonAutomation/
  *
  *  BDSP's way of doing the shared story steps
@@ -35,10 +37,14 @@
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 #include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_NewGame.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RobustRoute.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryWorld.h"
 #include "Pokemon/AutoStory/Pokemon_StoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
-#include "Pokemon/AutoStory/Pokemon_StorySteps.h"
+#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
+#include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RoutePlanner.h"
 #include "PokemonBDSP_AutoStory_StoryActions.h"
 #include "PokemonBDSP_AutoStory_StoryInterrupts.h"
@@ -157,23 +163,23 @@ protected:
         return m_checkpoint;
     }
     //  The intro of a new game, from the title screen to the bedroom.
-    virtual Pokemon::Outcome new_game(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
+    Pokemon::Outcome new_game(Pokemon::RunState& state, const Pokemon::StoryStep& step);
     //  verify_tutorial_settings(): fast text, Autosave off.
-    virtual Pokemon::Outcome options(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
+    Pokemon::Outcome options(Pokemon::RunState& state, const Pokemon::StoryStep& step);
     //  A for YES, B for NO, once the question's box shows.
-    virtual Pokemon::Outcome answer(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
+    Pokemon::Outcome answer(Pokemon::RunState& state, const Pokemon::StoryStep& step);
     //  A trainer's text opens (or has) and ends in a battle, fought with the
     //  best move; one lost fails the step unless `may_lose`. Variant
     //  "doubles" for a tag battle.
-    virtual Pokemon::Outcome battle(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
+    Pokemon::Outcome battle(Pokemon::RunState& state, const Pokemon::StoryStep& step);
     //  `battles` wild battles in the grass we stand in, with the best move.
-    virtual Pokemon::Outcome train(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
+    Pokemon::Outcome train(Pokemon::RunState& state, const Pokemon::StoryStep& step);
     //  In front of a Pokemon Center, its lit doorway on screen: in, the
     //  nurse, and out (heal_at_pokemon_center()).
-    virtual Pokemon::Outcome heal(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
-    virtual Pokemon::Outcome save(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
+    Pokemon::Outcome heal(Pokemon::RunState& state, const Pokemon::StoryStep& step);
+    Pokemon::Outcome save(Pokemon::RunState& state, const Pokemon::StoryStep& step);
     //  The event its variant names (story_events()).
-    virtual Pokemon::Outcome game(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
+    Pokemon::Outcome game(Pokemon::RunState& state, const Pokemon::StoryStep& step);
 
 private:
     StoryBoundActions console_actions();

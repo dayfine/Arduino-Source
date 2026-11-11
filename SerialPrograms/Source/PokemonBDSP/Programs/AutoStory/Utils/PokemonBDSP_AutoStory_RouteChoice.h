@@ -8,6 +8,7 @@
  *  legs are held where a long or short hold is safe. Also the scorer's view
  *  of the story maps and of RouteWalker's walking, for the route bench.
  *
+// code-health: allow header_symbols -- route choice selection and candidate evaluation types
  */
 
 #ifndef PokemonAutomation_PokemonBDSP_AutoStory_RouteChoice_H
@@ -17,6 +18,7 @@
 #include <optional>
 #include <vector>
 #include "Pokemon/Navigation/Pokemon_RouteScorer.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RobustRoute.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RoutePlanner.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryWorld.h"
 #include "PokemonBDSP_AutoStory_RouteWalk.h"

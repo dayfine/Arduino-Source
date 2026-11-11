@@ -19,6 +19,8 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
+#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
+#include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_PlanCosts.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RoutePlanner.h"
@@ -35,11 +37,14 @@
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
+using namespace detail;
 
 
 namespace{
 
 using Pokemon::Direction;
+using Pokemon::GridPose;
+using Pokemon::story_arg;
 using Pokemon::StoryStep;
 using Pokemon::TilePos;
 
@@ -208,7 +213,10 @@ std::vector<SimTrigger> dawns_triggers(const StoryWorld& world){
 const StoryStep& into_dawns_scene(){
     for (const StoryCheckpoint& checkpoint : story_checkpoints()){
         for (const StoryStep& step : checkpoint.steps){
-            if (checkpoint.id == "00.03" && step.name == "into_dawns_scene" && step.target && step.legs.size() == 1){
+            if (checkpoint.id == "00.03" && step.name == "into_dawns_scene" &&
+                step.args.contains("target") &&
+                step.args.contains("legs") &&
+                story_arg<std::vector<Pokemon::StoryLeg>>(step.args, "legs").size() == 1){
                 return step;
             }
         }
@@ -250,7 +258,8 @@ struct SceneRun{
 SceneRun run_into_dawns_scene(const SceneRunInput& input){
     const StoryStep& step = into_dawns_scene();
     const Pokemon::Pose start = Pokemon::tile_pose("TwinleafTown", {map_point("TwinleafTown", "house_doorstep")}, Direction::SOUTH);
-    const StoryWorld& world = *story_plan_world(start.map, step.target->map);
+    const GridPose& target = story_arg<GridPose>(step.args, "target");
+    const StoryWorld& world = *story_plan_world(start.map, target.map);
     SimWorld sim_world{.world = &world, .trainers = story_trainers(world), .can_run = true};
     if (input.dawn){
         sim_world.triggers = dawns_triggers(world);
@@ -274,7 +283,7 @@ SceneRun run_into_dawns_scene(const SceneRunInput& input){
         out.program_failure = e.message;
     }
     out.end = nearest_tile(sim.player().pos);
-    out.run_tiles = out.end.x - story_to_world(world, step.target->map, Pokemon::tiles_of(*step.target).front()).x;
+    out.run_tiles = out.end.x - story_to_world(world, target.map, target.tiles.front()).x;
     out.dialog = sim.player().dialog;
     out.ran_from_battle = std::find(notes.begin(), notes.end(), "[Sim] into dawns scene: wild battle run from.") != notes.end();
     return out;
@@ -284,7 +293,7 @@ SceneRun run_into_dawns_scene(const SceneRunInput& input){
 std::string scene_run_error(const SceneRunCase& test_case, const SceneRun& run){
     const StoryWorld& world = *story_plan_world("Route201", "SandgemTown");
     const std::optional<TilePos> sandgem = story_to_local(world, "SandgemTown", run.end);
-    const int cap = into_dawns_scene().legs.front().tiles;
+    const int cap = story_arg<std::vector<Pokemon::StoryLeg>>(into_dawns_scene().args, "legs").front().tiles;
     //  The cap is timed at the slowest run; the sim runs faster, this far.
     const int most = (int)((route_limit_for_tiles(MoveSpeed::RUN, cap) - ROUTE_START_DELAY) / route_ms_per_tile(Direction::EAST, MoveSpeed::RUN));
     if (!run.program_failure.empty()){

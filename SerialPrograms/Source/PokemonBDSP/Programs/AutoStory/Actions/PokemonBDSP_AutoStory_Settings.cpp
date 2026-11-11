@@ -19,6 +19,7 @@
 #include "PokemonBDSP/Inference/PokemonBDSP_MenuDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
 #include "PokemonBDSP_AutoStory_Bag.h"
+#include "PokemonBDSP_AutoStory_BagScreen.h"
 #include "PokemonBDSP_AutoStory_Settings.h"
 
 namespace PokemonAutomation{
@@ -98,7 +99,7 @@ constexpr double ROW_PITCH = 0.086;
 //  `target` is the column to select, counted from the left. The two volume
 //  sliders below Show Nicknames are left as they are.
 struct OptionRow{
-    const char* name;
+    std::string_view name;
     size_t columns;
     size_t target;
 };
@@ -316,7 +317,7 @@ std::optional<size_t> read_column(VideoStream& stream, ProControllerContext& con
     context.wait_for_all_requests();
     const auto frame = stream.video().snapshot();
     const std::optional<size_t> column = frame ? options_highlighted_column(frame, y, OPTION_ROWS[row].columns) : std::nullopt;
-    stream.log("[Tutorial settings] Row " + std::to_string(row) + " (" + OPTION_ROWS[row].name + ") y=" +
+    stream.log("[Tutorial settings] Row " + std::to_string(row) + " (" + std::string(OPTION_ROWS[row].name) + ") y=" +
         std::to_string(y) + " column=" + (column ? std::to_string(*column) : "none") +
         " target=" + std::to_string(OPTION_ROWS[row].target));
     return column;
@@ -327,7 +328,7 @@ std::optional<size_t> read_column(VideoStream& stream, ProControllerContext& con
 void set_option(VideoStream& stream, ProControllerContext& context, size_t row, double y){
     const OptionRow& option = OPTION_ROWS[row];
     if (option.columns == 0){
-        stream.log("[Tutorial settings] Row " + std::to_string(row) + " (" + option.name + ") left as it is.");
+        stream.log("[Tutorial settings] Row " + std::to_string(row) + " (" + std::string(option.name) + ") left as it is.");
         return;
     }
     OverlayBoxScope row_overlay(stream.overlay(), COLOR_RED, {0.07, y - 0.04, 0.84, 0.08}, "");

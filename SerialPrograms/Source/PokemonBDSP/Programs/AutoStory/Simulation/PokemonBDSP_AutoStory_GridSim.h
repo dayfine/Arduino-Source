@@ -1,3 +1,4 @@
+// code-health: allow header_symbols -- grid simulation primitives and types for BDSP overworld movement simulation
 /*  BDSP AutoStory - Grid simulation
  *
  *  From: https://github.com/PokemonAutomation/
@@ -26,18 +27,23 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 #include "Common/Cpp/Time.h"
 #include "Pokemon/Navigation/Pokemon_Grid.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RoutePlanner.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryWorld.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_TrainerSight.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteIO.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkResult.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
 
+
+namespace detail{
 
 //  A tile, in the simulation's units.
 inline constexpr int SIM_TILE = 1000;
@@ -67,6 +73,23 @@ struct SimTrigger{
     std::vector<std::string> spends = {};
 };
 
+} // namespace detail
+
+//  A tile, in the simulation's units.
+using detail::SIM_TILE;
+//  Position in simulation units.
+using detail::SimPos;
+//  Simulation position at the origin of a tile.
+using detail::sim_pos;
+//  Checks if a position is exactly on grid.
+using detail::on_grid;
+//  Returns the nearest tile to a position.
+using detail::nearest_tile;
+//  Formats position as string.
+using detail::to_string;
+//  Trigger region in simulation units.
+using detail::SimTrigger;
+
 //  Where the simulated player walks: the world (which must outlive the
 //  simulation), its trainers and its scene triggers, in world tiles; and
 //  the tiles that warp like doors though the maps draw them as walls (a
@@ -83,6 +106,22 @@ struct SimWanderer{
     Milliseconds time_offset = Milliseconds(0);        //  initial start time offset
 };
 
+//  Simulated grid environment.
+class GridSim;
+namespace detail{
+//  Advance simulation time.
+void sim_advance_time(GridSim& sim, Milliseconds time);
+//  Get simulated wanderers.
+const std::vector<SimWanderer>& sim_wanderers(const GridSim& sim);
+//  Add a simulated trigger.
+void sim_add_trigger(GridSim& sim, SimTrigger trigger);
+//  Get simulated triggers.
+const std::vector<SimTrigger>& sim_triggers(const GridSim& sim);
+//  Forget warp state.
+void sim_forget_warp(GridSim& sim);
+//  Set simulated fight.
+void sim_fight(GridSim& sim);
+} // namespace detail
 struct SimWorld{
     const StoryWorld* world = nullptr;
     std::vector<TrainerSight> trainers = {};
@@ -100,8 +139,10 @@ enum class SimStop{
     WARP,       //  stepped onto a door
     LIMIT,      //  a held walk ran out of time
 };
+namespace detail{
 //  Returns the debug string for a SimStop reason.
-const char* sim_stop_name(SimStop stop);
+std::string_view sim_stop_name(SimStop stop);
+} // namespace detail
 
 //  What one input did.
 struct SimMove{
@@ -162,12 +203,12 @@ public:
     }
 
 private:
-    friend void sim_advance_time(GridSim& sim, Milliseconds time);
-    friend const std::vector<SimWanderer>& sim_wanderers(const GridSim& sim);
-    friend void sim_add_trigger(GridSim& sim, SimTrigger trigger);
-    friend const std::vector<SimTrigger>& sim_triggers(const GridSim& sim);
-    friend void sim_forget_warp(GridSim& sim);
-    friend void sim_fight(GridSim& sim);
+    friend void detail::sim_advance_time(GridSim& sim, Milliseconds time);
+    friend const std::vector<SimWanderer>& detail::sim_wanderers(const GridSim& sim);
+    friend void detail::sim_add_trigger(GridSim& sim, SimTrigger trigger);
+    friend const std::vector<SimTrigger>& detail::sim_triggers(const GridSim& sim);
+    friend void detail::sim_forget_warp(GridSim& sim);
+    friend void detail::sim_fight(GridSim& sim);
 
     SimMove advance(Pokemon::Direction direction, int distance);
     std::optional<SimStop> enter_next(Pokemon::Direction direction, int part, int& moved);
@@ -182,6 +223,7 @@ private:
     std::vector<SimWanderer> m_wanderers;
 };
 
+namespace detail{
 //  Advances simulated time for world events and wandering NPCs.
 void sim_advance_time(GridSim& sim, Milliseconds time);
 //  The wandering NPCs on the simulation's world.
@@ -195,9 +237,9 @@ void sim_forget_warp(GridSim& sim);
 //  The open dialogue is fought as a trainer's: a scene's is noted in
 //  SimPlayer::scenes_fought, as it is pressed through under a walk.
 void sim_fight(GridSim& sim);
-
 //  Whether the player could take a step toward `direction` from where they stand.
 bool sim_can_step(const GridSim& sim, Pokemon::Direction direction);
+} // namespace detail
 
 
 //  A deterministic, already-cleared encounter at a tap boundary. This is

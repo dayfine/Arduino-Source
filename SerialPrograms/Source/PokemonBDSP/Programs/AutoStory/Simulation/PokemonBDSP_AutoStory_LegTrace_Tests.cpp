@@ -31,7 +31,7 @@ namespace PokemonBDSP{
 namespace{
 
 //  The rows with a golden trace.
-constexpr const char* TRACED_ROW = "00.04";
+const std::string TRACED_ROW = "00.04";
 
 //  The leg records' JSON of row `row` run alone on the simulation, or the
 //  run's failure.
@@ -46,7 +46,7 @@ SimTrace sim_leg_trace(Logger& logger, const std::string& row){
     if (!report.completed){
         out.error = "the row failed on the simulation: " + executor.result().error;
     }
-    const std::string tag = Pokemon::LEG_TRACE_TAG;
+    const std::string tag = std::string(Pokemon::LEG_TRACE_TAG);
     for (const std::string& note : executor.notes()){
         if (note.starts_with(tag)){
             out.legs.push_back(note.substr(tag.size()));
@@ -103,6 +103,7 @@ UnitTestResult test_golden_trace(Logger& logger){
     }
     const std::string text = trace_text(TRACED_ROW, trace.legs);
     const std::string path = golden_path(TRACED_ROW);
+    // code-health: allow char_pointer -- std::getenv returns a const char pointer
     const char* update = std::getenv("PA_UPDATE_LEG_TRACE");
     if (update != nullptr && update[0] != '\0' && update[0] != '0'){
         std::string crlf;

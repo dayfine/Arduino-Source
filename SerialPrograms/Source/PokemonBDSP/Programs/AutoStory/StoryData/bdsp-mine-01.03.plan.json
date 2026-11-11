@@ -5,98 +5,203 @@
     "id": "01.03",
     "title": "Oreburgh Mine to Roark",
     "start": {
+      "facing": "south",
       "map": "OreburghCity",
-      "certainty": "set",
-      "where": {"kind": "tiles", "tiles": [[47, 21], [46, 21]], "facing": "south"}
+      "tiles": [
+        [
+          47,
+          21
+        ],
+        [
+          46,
+          21
+        ]
+      ]
     },
     "events": [
       {
+        "action": "town",
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "south",
+            "map": "OreburghCity",
+            "tiles": [
+              [
+                46,
+                57
+              ]
+            ]
+          }
+        },
         "id": "above_the_mine",
         "kind": "route",
-        "target": {
-          "map": "OreburghCity",
-          "certainty": "tile",
-          "where": {"kind": "tiles", "tiles": [[46, 57]], "facing": "south"}
-        },
-        "variant": "town",
         "why": "down the door's column to two above the mine's warp tiles (44..48, 59)"
       },
       {
+        "args": {
+          "direction": "south"
+        },
+        "declared_after": {
+          "facing": "south",
+          "map": "OreburghMineB1F",
+          "tiles": [
+            [
+              12,
+              1
+            ]
+          ]
+        },
         "id": "into_the_mine",
         "kind": "step",
-        "direction": "south",
-        "declared_after": {
-          "map": "OreburghMineB1F",
-          "certainty": "tile",
-          "where": {"kind": "tiles", "tiles": [[12, 1]], "facing": "south"}
-        },
         "why": "the warp tile (46, 59)"
       },
       {
+        "args": {
+          "direction": "south"
+        },
+        "declared_after": {
+          "facing": "south",
+          "map": "OreburghMine",
+          "tiles": [
+            [
+              15,
+              2
+            ]
+          ]
+        },
         "id": "into_the_coal_room",
         "kind": "step",
-        "direction": "south",
-        "declared_after": {
-          "map": "OreburghMine",
-          "certainty": "tile",
-          "where": {"kind": "tiles", "tiles": [[15, 2]], "facing": "south"}
-        },
         "why": "down the entrance hall through the cave mouth"
       },
       {
+        "action": "to_wall",
+        "args": {
+          "fight_wild": false,
+          "legs": [
+            {
+              "direction": "south",
+              "tiles": 8
+            }
+          ]
+        },
+        "declared_after": {
+          "facing": "south",
+          "map": "OreburghMine",
+          "tiles": [
+            [
+              15,
+              9
+            ]
+          ]
+        },
         "id": "south_to_the_rock",
         "kind": "legs",
-        "legs": [{"direction": "south", "tiles": 8}],
-        "declared_after": {
-          "map": "OreburghMine",
-          "certainty": "tile",
-          "where": {"kind": "tiles", "tiles": [[15, 9]], "facing": "south"}
-        },
-        "why": "south against the corridor rock (15, 11)",
-        "variant": "to_wall"
+        "why": "south against the corridor rock (15, 11)"
       },
       {
+        "args": {
+          "fight_wild": false,
+          "legs": [
+            {
+              "direction": "east",
+              "tiles": 1
+            },
+            {
+              "direction": "south",
+              "tiles": 2
+            },
+            {
+              "direction": "west",
+              "tiles": 1
+            },
+            {
+              "direction": "south",
+              "tiles": 5
+            },
+            {
+              "direction": "east",
+              "tiles": 14
+            },
+            {
+              "direction": "south",
+              "tiles": 10
+            },
+            {
+              "direction": "west",
+              "tiles": 2
+            },
+            {
+              "direction": "south",
+              "tiles": 2
+            },
+            {
+              "direction": "west",
+              "tiles": 7
+            }
+          ]
+        },
+        "declared_after": {
+          "facing": "west",
+          "map": "OreburghMine",
+          "tiles": [
+            [
+              20,
+              28
+            ]
+          ]
+        },
         "id": "to_roarks_corner",
         "kind": "legs",
-        "legs": [
-          {"direction": "east", "tiles": 1},
-          {"direction": "south", "tiles": 2},
-          {"direction": "west", "tiles": 1},
-          {"direction": "south", "tiles": 5},
-          {"direction": "east", "tiles": 14},
-          {"direction": "south", "tiles": 10},
-          {"direction": "west", "tiles": 2},
-          {"direction": "south", "tiles": 2},
-          {"direction": "west", "tiles": 7}
-        ],
-        "declared_after": {
-          "map": "OreburghMine",
-          "certainty": "tile",
-          "where": {"kind": "tiles", "tiles": [[20, 28]], "facing": "west"}
-        },
         "why": "east around the rock, across the room, down column 29, west to Roark's rock"
       },
       {
+        "action": "to_wall",
+        "args": {
+          "fight_wild": false,
+          "legs": [
+            {
+              "direction": "south",
+              "tiles": 1
+            }
+          ]
+        },
+        "declared_after": {
+          "facing": "south",
+          "map": "OreburghMine",
+          "tiles": [
+            [
+              20,
+              29
+            ]
+          ]
+        },
         "id": "beside_roarks_rock",
         "kind": "legs",
-        "legs": [{"direction": "south", "tiles": 1}],
-        "declared_after": {
-          "map": "OreburghMine",
-          "certainty": "tile",
-          "where": {"kind": "tiles", "tiles": [[20, 29]], "facing": "south"}
-        },
-        "why": "south against the room's wall",
-        "variant": "to_wall"
+        "why": "south against the room's wall"
       },
       {
+        "args": {
+          "fight_wild": false,
+          "legs": [
+            {
+              "direction": "west",
+              "tiles": 2
+            }
+          ]
+        },
+        "declared_after": {
+          "facing": "north",
+          "map": "OreburghMine",
+          "tiles": [
+            [
+              18,
+              29
+            ]
+          ]
+        },
         "id": "below_roark",
         "kind": "legs",
-        "legs": [{"direction": "west", "tiles": 2}],
-        "declared_after": {
-          "map": "OreburghMine",
-          "certainty": "tile",
-          "where": {"kind": "tiles", "tiles": [[18, 29]], "facing": "north"}
-        },
         "why": "west 2 to below Roark"
       },
       {
@@ -105,93 +210,195 @@
         "why": "Roark, north of us between his rocks"
       },
       {
+        "declared_after": {
+          "facing": "north",
+          "map": "OreburghMine",
+          "tiles": [
+            [
+              18,
+              29
+            ]
+          ]
+        },
         "id": "roark_smashes_the_rock",
         "kind": "scene",
-        "declared_after": {
-          "map": "OreburghMine",
-          "certainty": "tile",
-          "where": {"kind": "tiles", "tiles": [[18, 29]], "facing": "north"}
-        },
         "why": "his lines, Rock Smash on the rock east of him, and he walks off"
       },
       {
+        "args": {
+          "fight_wild": false,
+          "legs": [
+            {
+              "direction": "east",
+              "tiles": 9
+            },
+            {
+              "direction": "north",
+              "tiles": 3
+            },
+            {
+              "direction": "east",
+              "tiles": 2
+            },
+            {
+              "direction": "north",
+              "tiles": 10
+            },
+            {
+              "direction": "west",
+              "tiles": 14
+            },
+            {
+              "direction": "north",
+              "tiles": 5
+            },
+            {
+              "direction": "east",
+              "tiles": 1
+            },
+            {
+              "direction": "north",
+              "tiles": 2
+            },
+            {
+              "direction": "west",
+              "tiles": 1
+            },
+            {
+              "direction": "north",
+              "tiles": 7
+            }
+          ]
+        },
+        "declared_after": {
+          "facing": "north",
+          "map": "OreburghMine",
+          "tiles": [
+            [
+              15,
+              2
+            ]
+          ]
+        },
         "id": "below_the_coal_rooms_warp",
         "kind": "legs",
-        "legs": [
-          {"direction": "east", "tiles": 9},
-          {"direction": "north", "tiles": 3},
-          {"direction": "east", "tiles": 2},
-          {"direction": "north", "tiles": 10},
-          {"direction": "west", "tiles": 14},
-          {"direction": "north", "tiles": 5},
-          {"direction": "east", "tiles": 1},
-          {"direction": "north", "tiles": 2},
-          {"direction": "west", "tiles": 1},
-          {"direction": "north", "tiles": 7}
-        ],
-        "declared_after": {
-          "map": "OreburghMine",
-          "certainty": "tile",
-          "where": {"kind": "tiles", "tiles": [[15, 2]], "facing": "north"}
-        },
         "why": "east around crate, up column 29, west across row 17, and up corridor to warp doorstep"
       },
       {
+        "args": {
+          "direction": "north"
+        },
+        "declared_after": {
+          "facing": "north",
+          "map": "OreburghMineB1F",
+          "tiles": [
+            [
+              12,
+              21
+            ]
+          ]
+        },
         "id": "up_to_the_hall",
         "kind": "step",
-        "direction": "north",
-        "declared_after": {
-          "map": "OreburghMineB1F",
-          "certainty": "tile",
-          "where": {"kind": "tiles", "tiles": [[12, 21]], "facing": "north"}
-        },
         "why": "the warp tile (15, 1)"
       },
       {
+        "args": {
+          "direction": "north"
+        },
+        "declared_after": {
+          "facing": "north",
+          "map": "OreburghCity",
+          "tiles": [
+            [
+              46,
+              59
+            ],
+            [
+              46,
+              58
+            ]
+          ]
+        },
         "id": "out_of_the_mine",
         "kind": "step",
-        "direction": "north",
-        "declared_after": {
-          "map": "OreburghCity",
-          "certainty": "set",
-          "where": {"kind": "tiles", "tiles": [[46, 59], [46, 58]], "facing": "north"}
-        },
         "why": "up the entrance hall and out to the city"
       },
       {
+        "action": "counted_wall",
+        "args": {
+          "fight_wild": false,
+          "legs": [
+            {
+              "direction": "north",
+              "tiles": 37
+            }
+          ]
+        },
+        "declared_after": {
+          "facing": "north",
+          "map": "OreburghCity",
+          "tiles": [
+            [
+              46,
+              21
+            ]
+          ]
+        },
         "id": "north_to_the_centers_wall",
         "kind": "legs",
-        "legs": [{"direction": "north", "tiles": 37}],
-        "declared_after": {
-          "map": "OreburghCity",
-          "certainty": "tile",
-          "where": {"kind": "tiles", "tiles": [[46, 21]], "facing": "north"}
-        },
-        "why": "north up column 46 to the wall west of the Center's door",
-        "variant": "counted_wall"
+        "why": "north up column 46 to the wall west of the Center's door"
       },
       {
+        "args": {
+          "fight_wild": false,
+          "legs": [
+            {
+              "direction": "east",
+              "tiles": 1
+            }
+          ]
+        },
+        "declared_after": {
+          "facing": "north",
+          "map": "OreburghCity",
+          "tiles": [
+            [
+              47,
+              21
+            ]
+          ]
+        },
         "id": "east_below_the_centers_door",
         "kind": "legs",
-        "legs": [{"direction": "east", "tiles": 1}],
-        "declared_after": {
-          "map": "OreburghCity",
-          "certainty": "tile",
-          "where": {"kind": "tiles", "tiles": [[47, 21]], "facing": "north"}
-        },
         "why": "a tap east below the door"
       },
       {
+        "declared_after": {
+          "facing": "south",
+          "map": "OreburghCity",
+          "tiles": [
+            [
+              47,
+              21
+            ],
+            [
+              46,
+              21
+            ]
+          ]
+        },
         "id": "heal_oreburgh",
         "kind": "heal",
-        "declared_after": {
-          "map": "OreburghCity",
-          "certainty": "set",
-          "where": {"kind": "tiles", "tiles": [[47, 21], [46, 21]], "facing": "south"}
-        },
         "why": "the nurse; out onto the doorstep, where 01.04 starts"
       }
     ]
   },
-  "execution": {"on_failure": "reload_and_retry", "saves_in": "Oreburgh City"}
+  "execution": {
+    "on_failure": "reload_and_retry",
+    "saves_in": "Oreburgh City"
+  },
+  "metadata": {
+    "phase": "reproduction"
+  }
 }

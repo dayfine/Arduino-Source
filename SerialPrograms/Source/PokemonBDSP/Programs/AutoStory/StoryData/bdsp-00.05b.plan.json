@@ -1,0 +1,193 @@
+﻿{
+  "checkpoint": {
+    "events": [
+      {
+        "action": "town",
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "north",
+            "map": "JubilifeCity",
+            "tiles": [
+              [
+                46,
+                41
+              ]
+            ]
+          }
+        },
+        "id": "below_the_presidents_trigger",
+        "kind": "route",
+        "why": "east along the School's row"
+      },
+      {
+        "args": {
+          "direction": "north"
+        },
+        "id": "presidents_trigger",
+        "kind": "step",
+        "why": "the trigger (44..48, 40)"
+      },
+      {
+        "declared_after": {
+          "facing": "north",
+          "map": "JubilifeCity",
+          "tiles": [
+            [
+              46,
+              40
+            ]
+          ]
+        },
+        "id": "president_walks_up",
+        "kind": "scene",
+        "why": "he walks down to (46, 39) and sends us for the coupons"
+      },
+      {
+        "args": {
+          "fight_wild": false,
+          "legs": [
+            {
+              "direction": "east",
+              "tiles": 2
+            }
+          ]
+        },
+        "id": "past_the_president",
+        "kind": "legs",
+        "why": "east of his column"
+      },
+      {
+        "action": "town",
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "north",
+            "map": "JubilifeCity",
+            "tiles": [
+              [
+                55,
+                34
+              ]
+            ]
+          }
+        },
+        "id": "below_the_mart_clown",
+        "kind": "route",
+        "why": "up the road east of the Center"
+      },
+      {
+        "action": "talk_to_wanderer",
+        "declared_after": {
+          "facing": "north",
+          "map": "JubilifeCity",
+          "tiles": [
+            [
+              55,
+              34
+            ]
+          ]
+        },
+        "id": "mart_clown",
+        "kind": "talk",
+        "why": "the clown by the Mart: 'Do Pokemon grow by defeating others?' Yes; Coupon 1"
+      },
+      {
+        "action": "town",
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "north",
+            "map": "JubilifeCity",
+            "tiles": [
+              [
+                36,
+                17
+              ]
+            ]
+          }
+        },
+        "id": "below_the_tv_clown",
+        "kind": "route",
+        "why": "west and north to the TV station"
+      },
+      {
+        "id": "tv_clown",
+        "kind": "talk",
+        "why": "the clown below the TV station's door"
+      },
+      {
+        "action": "a",
+        "declared_after": {
+          "facing": "north",
+          "map": "JubilifeCity",
+          "tiles": [
+            [
+              36,
+              17
+            ]
+          ]
+        },
+        "id": "tv_clowns_coupon",
+        "kind": "scene",
+        "why": "\"Can a Pokemon hold an item?\" Yes; Coupon 3"
+      },
+      {
+        "action": "town",
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "north",
+            "map": "JubilifeCity",
+            "tiles": [
+              [
+                15,
+                19
+              ]
+            ]
+          }
+        },
+        "id": "below_the_company_clown",
+        "kind": "route",
+        "why": "west along the long road, north beside the sign"
+      },
+      {
+        "action": "talk_to_wanderer",
+        "declared_after": {
+          "facing": "north",
+          "map": "JubilifeCity",
+          "tiles": [
+            [
+              15,
+              19
+            ]
+          ]
+        },
+        "id": "company_clown",
+        "kind": "talk",
+        "why": "the clown by the Poketch Company: 'Do moves have types?' Yes; Coupon 2"
+      }
+    ],
+    "id": "00.05b",
+    "start": {
+      "facing": "south",
+      "map": "JubilifeCity",
+      "tiles": [
+        [
+          40,
+          41
+        ]
+      ]
+    },
+    "title": "Jubilife: the president and the clowns' coupons"
+  },
+  "execution": {
+    "on_failure": "reload_and_retry",
+    "saves_in": "Jubilife City"
+  },
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "bdsp",
+  "metadata": {
+    "phase": "reproduction"
+  }
+}

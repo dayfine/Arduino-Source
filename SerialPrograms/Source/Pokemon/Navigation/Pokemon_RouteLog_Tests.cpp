@@ -7,13 +7,15 @@
  *
  */
 
+#include <format>
 #include <string>
 #include <utility>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon_Navigation_Tests.h"
+#include "Pokemon_LegTrace_Tests.h"
 #include "Pokemon_RouteLog.h"
+#include "Pokemon_RouteLog_Tests.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -36,13 +38,15 @@ struct RouteLogTestCase{
 class Test_RouteLog : public UnitTest{
 public:
     explicit Test_RouteLog(RouteLogTestCase scenario)
-        : UnitTest("Pokemon::RouteLog - " + scenario.input.name)
+        : UnitTest(std::format("Pokemon::RouteLog - {}", scenario.input.name))
         , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         if (m_scenario.input.line != m_scenario.expectation.expected){
-            return m_scenario.input.name + ": expected \"" + m_scenario.expectation.expected +
-                "\", got \"" + m_scenario.input.line + "\".";
+            return std::format(
+                "{}: expected \"{}\", got \"{}\".",
+                m_scenario.input.name, m_scenario.expectation.expected, m_scenario.input.line
+            );
         }
         return true;
     }
@@ -101,9 +105,9 @@ const RouteLogTestCase CASES[] = {
             .line = route_plan_line("To the grass", BDSP_FROM, BDSP_LEGS),
         },
         .expectation = {
-            .expected = "To the grass: plan from Route 202 (15, 25), Route 202 (16, 25):\n"
-                "    east 15 (to wall) to Route 202 (23, 25), Route 202 (30, 26)\n"
-                "    north 8 (open) to Route 202 (23, 17)",
+            .expected = "To the grass: plan from Route 202 (15, 25), Route 202 (16, 25):"
+                " east 15 (to wall) to Route 202 (23, 25), Route 202 (30, 26);"
+                " north 8 (open) to Route 202 (23, 17)",
         },
     },
     {
@@ -112,7 +116,7 @@ const RouteLogTestCase CASES[] = {
             .line = route_plan_line("00.05/2 below_mart_door", FRLG_TILE, FRLG_LEGS),
         },
         .expectation = {
-            .expected = "00.05/2 below_mart_door: plan from Route1 (12, 21):\n    north 8 (open) to Route1 (12, 13)",
+            .expected = "00.05/2 below_mart_door: plan from Route1 (12, 21): north 8 (open) to Route1 (12, 13)",
         },
     },
     {

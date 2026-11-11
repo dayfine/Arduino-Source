@@ -22,6 +22,7 @@
 #include "CommonTools/OCR/OCR_RawTesseractOCR.h"
 #include "CommonTools/OCR/OCR_SmallDictionaryMatcher.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_StoryLanguage.h"
 #include "PokemonBDSP_AutoStory_BattleMoves.h"
 
 namespace PokemonAutomation{
@@ -38,8 +39,8 @@ constexpr double MOVE_NAME_LOG10P_SPREAD = 0.50;
 //  Early moves the starters and their foes have, by the slug of the move
 //  name dictionary, as type, power and most PP. A status move has power 0.
 struct KnownMove{
-    const char* slug;
-    const char* type;
+    std::string slug;
+    std::string type;
     int power;
     int pp;
 };

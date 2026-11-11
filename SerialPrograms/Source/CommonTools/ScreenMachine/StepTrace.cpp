@@ -5,6 +5,7 @@
  */
 
 #include <cstdio>
+#include <format>
 #include "Common/Cpp/PrettyPrint.h"
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "CommonFramework/GlobalAutoPaths.h"
@@ -18,11 +19,11 @@ namespace PokemonAutomation{
 StepTrace::StepTrace(VideoStream& stream, std::string label)
     : m_stream(stream)
     , m_label(std::move(label))
-    , m_folder(SCREENSHOTS_PATH() + "StepTrace/" + now_to_filestring() + "-" + m_label + "/")
+    , m_folder(std::format("{}StepTrace/{}-{}/", SCREENSHOTS_PATH(), now_to_filestring(), m_label))
     , m_start(current_time())
 {
     Filesystem::create_directories(Filesystem::Path(m_folder));
-    m_stream.log("[" + m_label + "] Trace screenshots: " + m_folder);
+    m_stream.log(std::format("[{}] Trace screenshots: {}", m_label, m_folder));
 }
 
 void StepTrace::screen(const std::string& name){
@@ -36,27 +37,29 @@ void StepTrace::screen(const std::string& name){
     }
     m_count++;
     const double seconds = std::chrono::duration<double>(current_time() - m_start).count();
-    char prefix[16];
-    std::snprintf(prefix, sizeof(prefix), "%03zu-", m_count);
-    std::string path = m_folder + prefix + name + ".png";
+    std::string path = std::format("{}{:03}-{}.png", m_folder, m_count, name);
     VideoSnapshot screen = m_stream.video().snapshot();
     if (screen){
         screen.frame->save(path);
     }else{
         path = "(no video frame)";
     }
-    m_stream.log("[" + m_label + "] screen " + std::to_string(m_count) + ": " + name +
-        " at " + tostr_fixed(seconds, 1) + "s, " + path);
+    m_stream.log(std::format(
+        "[{}] screen {}: {} at {}s, {}", m_label, m_count, name, tostr_fixed(seconds, 1), path
+    ));
 }
 
 void StepTrace::action(const std::string& what){
-    m_stream.log("[" + m_label + "] " + what);
+    m_stream.log(std::format("[{}] {}", m_label, what));
 }
 
 std::string StepTrace::recent_screens() const{
     std::string text;
     for (const std::string& name : m_recent){
-        text += (text.empty() ? "" : " -> ") + name;
+        if (!text.empty()){
+            text += " -> ";
+        }
+        text += name;
     }
     return text.empty() ? "(none)" : text;
 }
@@ -64,7 +67,7 @@ std::string StepTrace::recent_screens() const{
 void StepTrace::fail(const std::string& message) const{
     OperationFailedExceptionWithScreenshot::fire(
         ErrorReportMode::SEND_ERROR_REPORT,
-        m_label + ": " + message + " Recent screens: " + recent_screens() + ". Trace: " + m_folder,
+        std::format("{}: {} Recent screens: {}. Trace: {}", m_label, message, recent_screens(), m_folder),
         m_stream
     );
 }

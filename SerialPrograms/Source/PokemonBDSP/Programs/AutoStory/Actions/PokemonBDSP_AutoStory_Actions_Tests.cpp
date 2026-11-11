@@ -23,11 +23,14 @@
 #include "NintendoSwitch/Programs/MenuCursor/NintendoSwitch_MenuCursor_Tests.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryMaps.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
-#include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_IntroMenuDetector.h"
 #include "PokemonBDSP/Options/PokemonBDSP_PlayerModelOption.h"
-#include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_BattleMenuReader.h"
+#include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_IntroMenuDetector.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_StoryLanguage.h"
 #include "PokemonBDSP_AutoStory_BattleMoves.h"
 #include "PokemonBDSP_AutoStory_Center.h"
+#include "PokemonBDSP_AutoStory_IntroProbe.h"
+#include "PokemonBDSP_AutoStory_IntroSteps.h"
+#include "PokemonBDSP_AutoStory_LitDoorway.h"
 #include "PokemonBDSP_AutoStory_NewGame.h"
 #include "PokemonBDSP_AutoStory_Settings.h"
 #include "PokemonBDSP_AutoStory_Actions_Tests.h"
@@ -36,6 +39,7 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
 
+using namespace detail;
 
 namespace{
 
@@ -52,7 +56,7 @@ IntroProgress intro_progress(size_t names_given){
 
 UnitTestResult test_intro_decisions(Logger&){
     struct Case{
-        const char* screen;
+        std::string screen;
         IntroProgress progress;
         IntroStep expected;
     };
@@ -175,7 +179,7 @@ UnitTestResult test_intro_in_control(Logger&){
     struct Case{
         XProbe probe;
         bool expected;
-        const char* what;
+        std::string what;
     };
     const Case cases[] = {
         {{1, 60, 2}, true, "still, X opened, B closed"},
@@ -208,12 +212,12 @@ std::string check_boot(IntroProgress& progress){
 }
 
 UnitTestResult check_confirming_screens(){
-    for (const char* screen : {"dialog", "language-select", "rival-list-tell", "rival-list-preset", "menu"}){
+    for (const std::string screen : {"dialog", "language-select", "rival-list-tell", "rival-list-preset", "menu"}){
         if (!intro_screen_confirms_bdsp(screen)){
             return std::string("Expected \"") + screen + "\" to confirm BDSP.";
         }
     }
-    for (const char* screen : {"user-select", "home", "keyboard", "black", "other"}){
+    for (const std::string screen : {"user-select", "home", "keyboard", "black", "other"}){
         if (intro_screen_confirms_bdsp(screen)){
             return std::string("Expected \"") + screen + "\" not to confirm BDSP.";
         }
@@ -274,7 +278,7 @@ UnitTestResult test_intro_pick_moves(Logger&){
     using Moves = std::optional<std::vector<DpadPosition>>;
     const IntroPicks french{Language::French, 2};
     struct Case{
-        const char* what;
+        std::string_view what;
         Moves actual;
         Moves expected;
     };
@@ -311,7 +315,7 @@ UnitTestResult test_intro_pick_moves(Logger&){
     };
     for (const Case& c : cases){
         if (c.actual != c.expected){
-            return std::string("Wrong presses for ") + c.what + ".";
+            return std::string("Wrong presses for ") + std::string(c.what) + ".";
         }
     }
     return check_intro_menu_sizes();
@@ -321,8 +325,8 @@ UnitTestResult test_intro_pick_moves(Logger&){
 //  A. The player's keyboard with a pick still to make fails.
 UnitTestResult test_intro_pick_steps(Logger&){
     struct Case{
-        const char* what;
-        const char* screen;
+        std::string_view what;
+        std::string_view screen;
         bool language_pending;
         bool look_pending;
         IntroStep expected;
@@ -348,7 +352,7 @@ UnitTestResult test_intro_pick_steps(Logger&){
         progress.language_pending = c.language_pending;
         progress.look_pending = c.look_pending;
         if (decide_intro_step(c.screen, progress) != c.expected){
-            return std::string("Wrong step for ") + c.what + ".";
+            return std::string("Wrong step for ") + std::string(c.what) + ".";
         }
     }
     const IntroProgress first_look = intro_start(IntroPicks{Language::English, 0});
@@ -373,7 +377,7 @@ UnitTestResult test_intro_menu_screenshots(Logger& logger){
         return "A black screen read as an intro menu.";
     }
     struct Case{
-        const char* file;
+        std::string_view file;
         std::optional<size_t> language;
         std::optional<size_t> look;
     };
@@ -387,7 +391,7 @@ UnitTestResult test_intro_menu_screenshots(Logger& logger){
     };
     size_t read = 0;
     for (const Case& c : cases){
-        const std::string path = UNIT_TEST_RESOURCE_PATH() + c.file;
+        const std::string path = UNIT_TEST_RESOURCE_PATH() + std::string(c.file);
         if (!Filesystem::is_regular_file(path)){
             logger.log("Screenshot not found: " + path);
             continue;
@@ -414,7 +418,7 @@ UnitTestResult test_intro_menu_screenshots(Logger& logger){
 //  relative to the player, who is in the middle of the screen.
 UnitTestResult test_lit_doorway_screenshots(Logger& logger){
     struct Case{
-        const char* file;
+        std::string file;
         double tiles_across_min;
         double tiles_across_max;
         double rows_up_min;
@@ -427,7 +431,7 @@ UnitTestResult test_lit_doorway_screenshots(Logger& logger){
         {"PokemonBDSP/AutoStory/SandgemMartDoorFarLeft-20261030-024648.png", -1.3, -0.5, 2.5, 4.5},
     };
     for (const Case& c : cases){
-        const std::string path = UNIT_TEST_RESOURCE_PATH() + c.file;
+        const std::string path = UNIT_TEST_RESOURCE_PATH() + std::string(c.file);
         if (!Filesystem::is_regular_file(path)){
             return UnitTestResult(UnitTestResult::SKIPPED, "Screenshot not found: " + path);
         }
@@ -479,7 +483,7 @@ UnitTestResult test_save_screen_location(Logger& logger){
 //  the walk kept lining up with it (runs 2 and 3).
 UnitTestResult test_pokemon_center_inside(Logger& logger){
     struct Case{
-        const char* file;
+        std::string file;
         bool inside;
         bool doorway;
     };
@@ -498,7 +502,7 @@ UnitTestResult test_pokemon_center_inside(Logger& logger){
         {.file = "PokemonBDSP/AutoStory/JubilifeCenterDoorstep-20261030-c5.png", .inside = false, .doorway = true},
     };
     for (const Case& c : cases){
-        const std::string path = UNIT_TEST_RESOURCE_PATH() + c.file;
+        const std::string path = UNIT_TEST_RESOURCE_PATH() + std::string(c.file);
         if (!Filesystem::is_regular_file(path)){
             return UnitTestResult(UnitTestResult::SKIPPED, "Screenshot not found: " + path);
         }
@@ -527,7 +531,7 @@ UnitTestResult test_pokemon_center_inside(Logger& logger){
 //  at sunset, the ground as orange as the Center's back wall.
 UnitTestResult test_pokemon_center_counter(Logger& logger){
     struct Case{
-        const char* file;
+        std::string file;
         bool inside;
     };
     const Case cases[] = {
@@ -536,7 +540,7 @@ UnitTestResult test_pokemon_center_counter(Logger& logger){
         {.file = "PokemonBDSP/AutoStory/OreburghCenterDoorstep-20261108.png", .inside = false},
     };
     for (const Case& c : cases){
-        const std::string path = UNIT_TEST_RESOURCE_PATH() + c.file;
+        const std::string path = UNIT_TEST_RESOURCE_PATH() + std::string(c.file);
         if (!Filesystem::is_regular_file(path)){
             return UnitTestResult(UnitTestResult::SKIPPED, "Screenshot not found: " + path);
         }
@@ -560,7 +564,7 @@ UnitTestResult test_pokemon_center_counter(Logger& logger){
 //  tile either side, more.
 UnitTestResult test_school_lamp(Logger& logger){
     const ImageFloatBox box(0.55, 0.20, 0.30, 0.10);
-    struct Case{ const char* file; double min; double max; };
+    struct Case{ std::string file; double min; double max; };
     const Case cases[] = {
         {"PokemonBDSP/AutoStory/JubilifeSchoolRightOfDoor-20261030.png", -1.5, -0.5},
         {"PokemonBDSP/AutoStory/JubilifeSchoolOneTileShort-20261030.png", -1.5, -0.5},
@@ -570,7 +574,7 @@ UnitTestResult test_school_lamp(Logger& logger){
         {"PokemonBDSP/AutoStory/JubilifeSchoolOneTilePast-20261030.png", 0.5, 1.5},
     };
     for (const Case& c : cases){
-        const std::string path = UNIT_TEST_RESOURCE_PATH() + c.file;
+        const std::string path = UNIT_TEST_RESOURCE_PATH() + std::string(c.file);
         if (!Filesystem::is_regular_file(path)){
             return UnitTestResult(UnitTestResult::SKIPPED, "Screenshot not found: " + path);
         }
@@ -632,7 +636,7 @@ UnitTestResult test_options_french(Logger& logger){
 //  "newest move that is not a status move" fallback used Growl until the
 //  training gave up after 25 turns.
 UnitTestResult test_choose_move(Logger&){
-    struct Case{ const char* name; std::vector<MoveSlot> slots; size_t best; };
+    struct Case{ std::string_view name; std::vector<MoveSlot> slots; size_t best; };
     const Case cases[] = {
         {"no name read, PP 35 and 22", {{"", 35}, {"", 22}}, 1},
         {"no name read, PP 35 and 30", {{"", 35}, {"", 30}}, 1},
@@ -657,7 +661,7 @@ UnitTestResult test_choose_move(Logger&){
 //  from the move name dictionary.
 UnitTestResult test_move_menu_screenshots(Logger& logger){
     struct Case{
-        const char* file;
+        std::string file;
         Language language;
         std::vector<MoveSlot> slots;
         size_t best;
@@ -672,7 +676,7 @@ UnitTestResult test_move_menu_screenshots(Logger& logger){
     };
     const Language story = story_language();
     for (const Case& c : cases){
-        const std::string path = UNIT_TEST_RESOURCE_PATH() + c.file;
+        const std::string path = UNIT_TEST_RESOURCE_PATH() + std::string(c.file);
         if (!Filesystem::is_regular_file(path)){
             return UnitTestResult(UnitTestResult::SKIPPED, "Screenshot not found: " + path);
         }

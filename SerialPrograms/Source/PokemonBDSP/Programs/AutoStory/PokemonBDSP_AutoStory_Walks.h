@@ -9,6 +9,7 @@
  *
  */
 
+// code-health: allow header_symbols -- movement primitives measured on console that are used across story executor and event scripts
 #ifndef PokemonAutomation_PokemonBDSP_AutoStory_Walks_H
 #define PokemonAutomation_PokemonBDSP_AutoStory_Walks_H
 
@@ -20,6 +21,7 @@
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "Pokemon/Navigation/Pokemon_Grid.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Walk.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkResult.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

@@ -16,11 +16,15 @@
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RoutePlanner.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryMaps.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryTrainers.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_PlannedRoute.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Walk.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkDpad.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkResult.h"
 #include "PokemonBDSP_AutoStory_Bag.h"
 #include "PokemonBDSP_AutoStory_Center.h"
 #include "PokemonBDSP_AutoStory_Talks.h"
@@ -50,13 +54,13 @@ std::function<bool(const ImageViewRGB32&)> banner_keeper(std::vector<std::string
     };
 }
 
-bool any_banner_names(const std::vector<std::string>& banners, const char* map){
+bool any_banner_names(const std::vector<std::string>& banners, const std::string& map){
     return std::any_of(banners.begin(), banners.end(),
         [&](const std::string& read){ return location_banner_matches(read, map); });
 }
 
 // Whether all of `tiles` are on `map`.
-bool all_on_map(const StoryWorld& maps, const std::vector<TilePos>& tiles, const char* map){
+bool all_on_map(const StoryWorld& maps, const std::vector<TilePos>& tiles, const std::string& map){
     return !tiles.empty() && std::all_of(tiles.begin(), tiles.end(), [&](const TilePos& pos){
         const std::optional<MapTile> tile = maps.to_local(pos);
         return tile && tile->map == map;

@@ -10,6 +10,8 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Data/PokemonBDSP_AutoStory_Maps.h"
 #include "Data/PokemonBDSP_AutoStory_StoryMaps.h"
+#include "Data/PokemonBDSP_AutoStory_StoryTrainers.h"
+#include "Data/PokemonBDSP_AutoStory_TrainerSight.h"
 #include "PokemonBDSP_AutoStory_StoryPlaces.h"
 
 namespace PokemonAutomation{
@@ -52,10 +54,10 @@ const std::string& banner_name(const std::string& map){
 //  `maps` (JSON names) in one world, each with its tile (0,0) at the corner
 //  of its decomp rectangle (devtools/maps/bdsp_maps.py), so maps that meet
 //  in the game meet here.
-StoryWorld joined(const std::vector<std::pair<const char*, TilePos>>& maps){
+StoryWorld joined(const std::vector<std::pair<std::string_view, TilePos>>& maps){
     StoryWorld world;
     for (const auto& [map, corner] : maps){
-        world.add(banner_name(map), story_map(map), corner);
+        world.add(banner_name(std::string(map)), story_map(std::string(map)), corner);
     }
     return world;
 }
@@ -126,7 +128,7 @@ const StoryWorld& route_204_north_world(){
 //  shut everything else off.
 Pokemon::MapData ravaged_path_smashed(){
     Pokemon::MapData map = story_map("RavagedPath");
-    Pokemon::cell_at(map.tiles, map_point("RavagedPath", "rocks.13")) = Pokemon::TileKind::OPEN;
+    Pokemon::cell_at(map_point("RavagedPath", "rocks.13"), map.tiles) = Pokemon::TileKind::OPEN;
     return map;
 }
 
@@ -135,8 +137,8 @@ Pokemon::MapData ravaged_path_smashed(){
 const std::map<std::string, StoryWorld>& room_worlds(){
     static const std::map<std::string, StoryWorld> rooms = []{
         std::map<std::string, StoryWorld> ret;
-        for (const char* room : {"PlayerHouse2F", "PlayerHouse1F", "RivalHouse1F", "RivalHouse2F", "RowansLab", "OreburghGym", "OreburghGate", "OreburghMineB1F", "OreburghMine"}){
-            ret[room].add(room, story_map(room), {0, 0});
+        for (std::string_view room : {"PlayerHouse2F", "PlayerHouse1F", "RivalHouse1F", "RivalHouse2F", "RowansLab", "OreburghGym", "OreburghGate", "OreburghMineB1F", "OreburghMine"}){
+            ret[std::string(room)].add(std::string(room), story_map(std::string(room)), {0, 0});
         }
         ret["RavagedPath"].add("RavagedPath", ravaged_path_smashed(), {0, 0});
         return ret;
@@ -175,13 +177,13 @@ const std::vector<PlanWorld>& plan_worlds(){
 //  narc_0329): where each stands on the JSON map, the way they look and
 //  how far. The one by the Gate wanders in BDSP and is off the map.
 std::vector<TrainerSight> route_203_trainer_sights(){
-    const auto at = [](const char* name){
+    const auto at = [](std::string_view name){
         for (const Pokemon::MapObject& object : story_map("Route203").objects){
             if (object.name == name){
                 return TilePos{object.x, object.y};
             }
         }
-        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::string("Route 203 has no ") + name + ".");
+        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::string("Route 203 has no ") + std::string(name) + ".");
     };
     return {
         {.name = "Youngster (west)", .pos = at("youngster_1"), .facing = Direction::WEST, .range = 2},
@@ -192,13 +194,13 @@ std::vector<TrainerSight> route_203_trainer_sights(){
 }
 
 std::vector<TrainerSight> oreburgh_gate_trainer_sights(){
-    const auto at = [](const char* name){
+    const auto at = [](std::string_view name){
         for (const Pokemon::MapObject& object : story_map("OreburghGate").objects){
             if (object.name == name){
                 return TilePos{object.x, object.y};
             }
         }
-        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::string("Oreburgh Gate has no ") + name + ".");
+        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::string("Oreburgh Gate has no ") + std::string(name) + ".");
     };
     return {
         {.name = "Camper Curtis", .pos = at("camper_1"), .facing = Direction::NORTH, .range = 4},

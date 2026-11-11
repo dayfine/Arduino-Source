@@ -22,8 +22,12 @@
 #include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_Superscalar.h"
+#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
+#include "Actions/PokemonBDSP_AutoStory_LitDoorway.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RobustRoute.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_TrainerSight.h"
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_PlanCosts.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Indoors.h"
@@ -36,6 +40,9 @@
 #include "Actions/PokemonBDSP_AutoStory_Events.h"
 #include "Actions/PokemonBDSP_AutoStory_NewGame.h"
 #include "Actions/PokemonBDSP_AutoStory_Settings.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkDpad.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkResult.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkScreen.h"
 #include "PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP_AutoStory_StoryTable.h"
 #include "Actions/PokemonBDSP_AutoStory_Talks.h"
@@ -49,24 +56,26 @@ namespace PokemonBDSP{
 
 using namespace std::chrono_literals;
 using Pokemon::Direction;
+using Pokemon::GridPose;
 using Pokemon::Outcome;
 using Pokemon::Pose;
 using Pokemon::RunState;
 using Pokemon::StoryStep;
 using Pokemon::TilePos;
+using Pokemon::story_arg;
 
 
-std::optional<RobustPlanCosts> story_route_costs(const std::string& variant){
-    if (variant.empty() || variant == ROUTE_ONTO_TRIGGER){
+std::optional<RobustPlanCosts> story_route_costs(const std::string& action){
+    if (action.empty() || action == ROUTE_ONTO_TRIGGER || action == "route"){
         return route_plan_costs();
     }
-    if (variant == "town"){
+    if (action == "town"){
         return town_plan_costs();
     }
-    if (variant == "robust"){
+    if (action == "robust"){
         return RobustPlanCosts();
     }
-    if (variant == "line"){
+    if (action == "line"){
         return waypoint_plan_costs();
     }
     return std::nullopt;
@@ -144,7 +153,7 @@ StoryExecutor::StoryExecutor(StoryEnv& env)
 
 StoryBoundActions StoryExecutor::console_actions(){
     const auto method = [this](Outcome (StoryExecutor::*action)(RunState&, const StoryStep&)){
-        return [this, action](RunState& state, const StoryStep& step){
+        return [this, action](const StoryStep& step, RunState& state){
             return (this->*action)(state, step);
         };
     };
@@ -157,7 +166,7 @@ StoryBoundActions StoryExecutor::console_actions(){
         .heal = method(&StoryExecutor::heal),
         .save = method(&StoryExecutor::save),
         .event = [this](const std::string& name) -> Pokemon::StoryActionFunction{
-            return [this, event = story_events().at(name)](RunState& state, const StoryStep& step){
+            return [this, event = story_events().at(name)](const StoryStep& step, RunState& state){
                 return event(*this, state, step);
             };
         },
@@ -167,18 +176,18 @@ StoryBoundActions StoryExecutor::console_actions(){
 //  A wild battle is run from, a trainer who saw us fought, a dialog or a
 //  warp's scene pressed through to the quiet overworld.
 StoryInterruptActions StoryExecutor::console_interrupt_actions(){
-    const auto settle = [this](const char* label){
-        return [this, label](RunState&, const Pokemon::InterruptVerdict&){
+    const auto settle = [this](std::string label){
+        return [this, label](const Pokemon::InterruptVerdict&, RunState&){
             m_io.settle(BUTTON_B, label, false, "");
             return Pokemon::outcome_ok();
         };
     };
     return StoryInterruptActions{
-        .wild = [this](RunState&, const Pokemon::InterruptVerdict&){
+        .wild = [this](const Pokemon::InterruptVerdict&, RunState&){
             run_from_wild_battle(stream(), context());
             return Pokemon::outcome_ok();
         },
-        .trainer = [this](RunState&, const Pokemon::InterruptVerdict&){
+        .trainer = [this](const Pokemon::InterruptVerdict&, RunState&){
             m_io.fight("");
             return Pokemon::outcome_ok();
         },
@@ -191,6 +200,7 @@ void StoryExecutor::begin_attempt(const Pokemon::StoryCheckpoint& data){
     m_checkpoint = data.id;
     m_walks.begin_attempt(data.id, data.steps);
 }
+
 
 Outcome StoryExecutor::new_game(RunState&, const StoryStep&){
     play_new_game_intro(m_env.env, context(), m_env.intro_picks, m_env.player_name);
@@ -205,7 +215,8 @@ Outcome StoryExecutor::options(RunState&, const StoryStep&){
 
 Outcome StoryExecutor::answer(RunState&, const StoryStep& step){
     wait_for_dialogue(stream(), context(), label_of(step));
-    pbf_press_button(context(), step.yes ? BUTTON_A : BUTTON_B, 80ms, 1000ms);
+    const bool yes = story_arg<bool>(step.args, "yes");
+    pbf_press_button(context(), yes ? BUTTON_A : BUTTON_B, 80ms, 1000ms);
     context().wait_for_all_requests();
     return Pokemon::outcome_ok();
 }
@@ -214,7 +225,7 @@ Outcome StoryExecutor::battle(RunState&, const StoryStep& step){
     //  "starter": the Starly battle at the lake (00.02). It opens on its own,
     //  with no talk, and the starter has no Poke Balls to throw; the scene
     //  goes on whoever wins.
-    if (step.variant == "starter"){
+    if (step.action == "starter"){
         fight_starly(stream(), context());
         return Pokemon::outcome_ok();
     }
@@ -222,21 +233,23 @@ Outcome StoryExecutor::battle(RunState&, const StoryStep& step){
     //  loss - unless the floor check already passed where the battle began:
     //  Jubilife's yellow plaza reads as Center floor (63 %, r79 won Rowan's
     //  tag battle there and was called lost).
-    const bool center_before = !step.may_lose && in_pokemon_center(stream());
-    if (!talk_or_fight(stream(), context(), label_of(step), TalkExpect::BATTLE, step.variant == "doubles" ? BattleFormat::DOUBLES : BattleFormat::SINGLES)){
+    const bool may_lose = story_arg<bool>(step.args, "may_lose");
+    const bool center_before = !may_lose && in_pokemon_center(stream());
+    if (!talk_or_fight(stream(), context(), label_of(step), TalkExpect::BATTLE, step.action == "doubles" ? BattleFormat::DOUBLES : BattleFormat::SINGLES)){
         fail_step(stream(), label_of(step) + ": talked but did not battle.");
     }
     if (center_before){
         stream().log(label_of(step) + ": the floor read as a Center's before the battle too; no loss check here.", COLOR_ORANGE);
-    }else if (!step.may_lose && in_pokemon_center(stream())){
+    }else if (!may_lose && in_pokemon_center(stream())){
         fail_step(stream(), label_of(step) + ": lost the battle.");
     }
     return Pokemon::outcome_ok();
 }
 
 Outcome StoryExecutor::train(RunState&, const StoryStep& step){
-    for (size_t battle = 0; battle < step.battles; battle++){
-        const std::string label = std::format("Training battle {}/{}", battle + 1, step.battles);
+    const int64_t battles = story_arg<int64_t>(step.args, "battles");
+    for (int64_t battle = 0; battle < battles; battle++){
+        const std::string label = std::format("Training battle {}/{}", battle + 1, battles);
         route_status(stream(), label);
         battle_1_pokemon(stream(), context());
         fail_if_blacked_out(stream(), context(), label);
@@ -289,16 +302,16 @@ Outcome StoryExecutor::heal(RunState&, const StoryStep& step){
 }
 
 Outcome StoryExecutor::save(RunState&, const StoryStep& step){
-    if (step.variant.empty()){
+    if (step.action.empty()){
         save_game(m_env.env, context());
         return Pokemon::outcome_ok();
     }
-    //  A row's start save, its variant the map the card must name. With a
+    //  A row's start save, its action the map the card must name. With a
     //  map, save_game() throws only when the card names another one, having
     //  backed out unsaved. That stops the program: a reset would load an
     //  older save and run this row from wherever that is.
     try{
-        save_game(m_env.env, context(), step.variant);
+        save_game(m_env.env, context(), step.action);
     }catch (OperationFailedException& e){
         throw FatalProgramException(
             ErrorReportMode::NO_ERROR_REPORT,
@@ -310,7 +323,7 @@ Outcome StoryExecutor::save(RunState&, const StoryStep& step){
 }
 
 Outcome StoryExecutor::game(RunState&, const StoryStep& step){
-    return Pokemon::outcome_failed("unknown_event", step.variant);
+    return Pokemon::outcome_failed("unknown_event", step.action);
 }
 
 
@@ -336,7 +349,7 @@ Pokemon::Segment make_story_segment(
                     return steps;
                 }
                 StoryStep save_at_start = SAVE_AT_START;
-                save_at_start.variant = row.saves_in;
+                save_at_start.action = row.saves_in;
                 Pokemon::Event save = Pokemon::story_event(save_at_start, executor);
                 save.skip_if.push_back(Pokemon::condition("saved at the start", [&saved, id = row.id](RunState&){
                     return saved.contains(id);
@@ -345,7 +358,7 @@ Pokemon::Segment make_story_segment(
                 //  resets and does not save again.
                 save.act = [&executor, &saved, id = row.id, save_at_start](RunState& state){
                     saved.insert(id);
-                    return executor.run(state, save_at_start);
+                    return executor.run(save_at_start, state);
                 };
                 Pokemon::Checkpoint checkpoint;
                 checkpoint.id = row.id;

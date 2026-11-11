@@ -14,6 +14,7 @@ namespace NintendoSwitch{
 namespace PokemonBDSP{
 
 using Pokemon::Direction;
+using Pokemon::GridPose;
 using Pokemon::Pose;
 using Pokemon::StoryStep;
 using Pokemon::StoryStepKind;
@@ -24,9 +25,10 @@ StoryStep r75_old_gate_exit(){
     StoryStep step;
     step.kind = StoryStepKind::LEGS;
     step.name = "out_of_oreburgh_gate";
-    step.legs = {{.direction = Direction::WEST, .tiles = 8}};
-    step.variant = "to_map";
-    step.pose_after = Pokemon::tile_pose("Route203", {TilePos{55, 9}}, Direction::WEST);
+    step.action = "to_map";
+    step.args["legs"] = std::vector<Pokemon::StoryLeg>{{.direction = Direction::WEST, .tiles = 8}};
+    step.args["fight_wild"] = false;
+    step.pose_after = GridPose{.map = "Route203", .tiles = {TilePos{55, 9}}, .facing = Direction::WEST};
     return step;
 }
 Pose r75_pond_pocket(){
@@ -43,9 +45,10 @@ StoryStep r81_old_cave_exit(){
     StoryStep step;
     step.kind = StoryStepKind::LEGS;
     step.name = "out_of_the_ravaged_path";
-    step.legs = {{.direction = Direction::SOUTH, .tiles = 4}};
-    step.variant = "to_wall";
-    step.pose_after = Pokemon::tile_pose("Route204North", {TilePos{20, 26}}, Direction::SOUTH);
+    step.action = "to_wall";
+    step.args["legs"] = std::vector<Pokemon::StoryLeg>{{.direction = Direction::SOUTH, .tiles = 4}};
+    step.args["fight_wild"] = false;
+    step.pose_after = GridPose{.map = "Route204North", .tiles = {TilePos{20, 26}}, .facing = Direction::SOUTH};
     return step;
 }
 Pose r81_below_the_mouth(){
@@ -56,7 +59,9 @@ StoryStep old_mine_hall_19(std::string name, Direction direction){
     StoryStep step;
     step.kind = StoryStepKind::LEGS;
     step.name = std::move(name);
-    step.legs = {{.direction = direction, .tiles = 19}};
+    step.action = "legs";
+    step.args["legs"] = std::vector<Pokemon::StoryLeg>{{.direction = direction, .tiles = 19}};
+    step.args["fight_wild"] = false;
     return step;
 }
 
@@ -64,12 +69,14 @@ StoryStep old_coal_room_crate_cut(){
     StoryStep step;
     step.kind = StoryStepKind::LEGS;
     step.name = "to_roarks_corner";
-    step.legs = {
+    step.action = "legs";
+    step.args["legs"] = std::vector<Pokemon::StoryLeg>{
         {.direction = Direction::EAST, .tiles = 1}, {.direction = Direction::SOUTH, .tiles = 2},
         {.direction = Direction::WEST, .tiles = 1}, {.direction = Direction::SOUTH, .tiles = 5},
         {.direction = Direction::EAST, .tiles = 14}, {.direction = Direction::SOUTH, .tiles = 10},
         {.direction = Direction::SOUTH, .tiles = 2}, {.direction = Direction::WEST, .tiles = 11},
     };
+    step.args["fight_wild"] = false;
     return step;
 }
 
@@ -77,11 +84,14 @@ std::vector<StoryStep> old_round_mom_to_the_mat(){
     StoryStep around;
     around.kind = StoryStepKind::ROUTE;
     around.name = "around_mom";
-    around.target = Pokemon::tile_pose("PlayerHouse1F", {TilePos{6, 9}}, Direction::SOUTH);
+    around.action = "route";
+    around.args["target"] = GridPose{.map = "PlayerHouse1F", .tiles = {TilePos{6, 9}}, .facing = Direction::SOUTH};
+    around.args["fight_wild"] = false;
     StoryStep step;
     step.kind = StoryStepKind::STEP;
     step.name = "to_moms_call";
-    step.direction = Direction::SOUTH;
+    step.action = "step";
+    step.args["direction"] = Direction::SOUTH;
     return {around, step};
 }
 
@@ -89,9 +99,9 @@ StoryStep old_tap_into_the_gate(){
     StoryStep step;
     step.kind = StoryStepKind::STEP;
     step.name = "into_oreburgh_gate";
-    step.direction = Direction::WEST;
-    step.variant = "to_banner";
-    step.pose_after = Pokemon::tile_pose("OreburghGate", {TilePos{27, 22}, TilePos{26, 22}}, Direction::WEST);
+    step.action = "to_banner";
+    step.args["direction"] = Direction::WEST;
+    step.pose_after = GridPose{.map = "OreburghGate", .tiles = {TilePos{27, 22}, TilePos{26, 22}}, .facing = Direction::WEST};
     return step;
 }
 
@@ -99,7 +109,9 @@ StoryStep old_west_along_the_field(){
     StoryStep step;
     step.kind = StoryStepKind::LEGS;
     step.name = "west_along_the_field";
-    step.legs = {{.direction = Direction::WEST, .tiles = 8}};
+    step.action = "legs";
+    step.args["legs"] = std::vector<Pokemon::StoryLeg>{{.direction = Direction::WEST, .tiles = 8}};
+    step.args["fight_wild"] = false;
     return step;
 }
 
