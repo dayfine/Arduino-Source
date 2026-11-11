@@ -396,13 +396,6 @@ public:
         return {.stop = WalkStop::BLOCKED, .walked = ROUTE_START_DELAY + 800ms + per_tile * moved + per_tile / 2,
             .wild_battles = 0, .moved_chunks = moved};
     }
-    //  Taps of more than `safe` tiles in one walk move `lost` tiles fewer,
-    //  and the count does not see it (lab-B 2026-11-11 11:16: "north 20
-    //  (open)" ended about 4 tiles short).
-    void lose_on_long_taps(size_t safe, size_t lost){
-        m_safe_taps = safe;
-        m_lost_taps = lost;
-    }
     //  Fault class "a timed hold overshoots": a stick hold timed for n
     //  tiles goes 0..ceil(0.35 n) tiles further, unseen, until a wall stops
     //  it (lab-B 2026-11-11, Jubilife: runs timed for 10 tiles went about 13,
@@ -411,15 +404,11 @@ public:
     void overshoot_timed_holds(bool overshoot){
         m_overshoot = overshoot;
     }
-
     virtual WalkResult walk_taps(Direction direction, size_t tiles, const std::string&) override{
         count_call();
-        const size_t lost = tiles > m_safe_taps ? std::min(m_lost_taps, tiles) : 0;
-        const size_t moved = move(direction, tiles - lost);
-        if (moved < tiles - lost){
-            return {.stop = WalkStop::BLOCKED, .walked = 250ms * tiles, .wild_battles = 0, .moved_chunks = moved};
-        }
-        return {.stop = WalkStop::LIMIT, .walked = 250ms * tiles, .wild_battles = 0, .moved_chunks = tiles};
+        const size_t moved = move(direction, tiles);
+        return {.stop = moved < tiles ? WalkStop::BLOCKED : WalkStop::LIMIT, .walked = 250ms * tiles,
+            .wild_battles = 0, .moved_chunks = moved};
     }
     virtual void press(const RouteInput& input) override{
         //  arrive() pauses for up to 3 s for a location banner the sim never
@@ -484,8 +473,6 @@ private:
     std::vector<std::string>& m_notes;
     size_t m_calls = 0;
     size_t m_walked = 0;
-    size_t m_safe_taps = SIZE_MAX;
-    size_t m_lost_taps = 0;
     bool m_overshoot = false;
 };
 
@@ -576,18 +563,15 @@ UnitTestResult test_jubilife_center_open_legs(Logger& logger){
     return true;
 }
 
-//  The same walk on the console: "north 20 (open)" ended on row 46, about
-//  4 tiles short, unseen, and the kids stand at (52, 46) and (54, 46).
-//  Taps longer than one open leg (max_open_tiles) lose 4 tiles here. The
-//  walker must still reach the Center without a long way round (the
-//  console replanned "west 33 (to wall)", "east 42 (to wall)").
+//  The same walk on the console: the kids at (52, 46) and (54, 46) stop a
+//  walk north up their columns. The walker replans from where it stopped
+//  and reaches the Center without a long way round.
 UnitTestResult test_jubilife_center_kids(Logger&){
     const StoryWorld world = jubilife_world();
     const TilePos from{48, 62};
     const TilePos goal{52, 41};
     std::vector<std::string> notes;
     SimulatedRouteIO io(world, from, {{52, 46}, {54, 46}}, notes);
-    io.lose_on_long_taps((size_t)town_plan_costs().max_open_tiles, 4);
     RouteTrainers trainers{.sights = {}, .fight = [](const std::string&){}};
     try{
         walk_route(io, world, {from}, trainers, {
@@ -605,11 +589,7 @@ UnitTestResult test_jubilife_center_kids(Logger&){
     }
     const size_t least = jubilife_shortest(world, from, goal);
     if (io.tiles_walked() * 10 > least * 13 + 40){
-        std::string text;
-        for (const std::string& note : notes){
-            text += "\n    " + note;
-        }
-        return std::format("walked {} tiles where {} would do:{}", io.tiles_walked(), least, text);
+        return std::format("walked {} tiles where {} would do.", io.tiles_walked(), least);
     }
     return true;
 }
