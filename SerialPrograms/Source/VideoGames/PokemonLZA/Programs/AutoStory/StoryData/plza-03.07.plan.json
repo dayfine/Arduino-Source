@@ -11,17 +11,14 @@
       {
         "id": "catch_more_species",
         "kind": "game_action",
-        "why": "step 64: the lab gate asks for five registered species (3/5 after the tutorial). Catch more here in Wild Zone 1 before leaving, so the gate's scene finds 5/5: lock-on throws from spokes out and back (catch_in_zone).",
+        "why": "step 64: the lab gate asks for five registered species (3/5 after the tutorial). Catch more here in Wild Zone 1 before leaving, so the gate's scene finds 5/5: toward the objective, throwing at 100 and 60 (catch_in_zone).",
         "action": "catch_in_zone"
       },
       {
         "id": "zone_1_to_far_gate",
         "kind": "game_action",
-        "why": "step 62: back across Wild Zone 1 to its gate's \"A Leave\". Measured 2026-11-08 on console B, walk not run.",
-        "action": "walk",
-        "args": {
-          "legs": [[90, 1000], [-90, 15000], [0, 2000]]
-        }
+        "why": "step 62: on across Wild Zone 1 to its far gate's \"A Leave\", by the objective marker (the timed legs started at the rocks; the catches leave us elsewhere).",
+        "action": "walk_to_zone_gate"
       },
       {
         "id": "leave_zone_1",
