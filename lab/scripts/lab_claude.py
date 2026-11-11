@@ -81,9 +81,18 @@ def record_spend(model, usage, script, batch=False, ledger=None, today=None):
     return entry["usd"]
 
 
+# The lab's own API key, from a key made in the Console's `pa-lab` workspace, so lab spend is
+# tracked and capped apart from other usage. Read from a file (not ANTHROPIC_API_KEY) so the key
+# never shadows the user's `ant` login elsewhere. No fallback to other credentials.
+KEY_FILE = Path(os.environ.get("LAB_CLAUDE_KEY_FILE",
+                               str(Path.home() / ".config" / "pokemonautomation" / "claude-lab.key")))
+
+
 def make_client():
     import anthropic  # lazy: not needed for --dry-run
-    return anthropic.Anthropic()
+    if not KEY_FILE.exists():
+        raise RuntimeError(f"no lab API key at {KEY_FILE}; see lab/scripts/README.md (One-time setup)")
+    return anthropic.Anthropic(api_key=KEY_FILE.read_text().strip())
 
 
 def downscale_png(path, max_side=MAX_SIDE):
