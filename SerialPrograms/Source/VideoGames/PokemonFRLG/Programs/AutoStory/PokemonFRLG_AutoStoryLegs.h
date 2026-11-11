@@ -23,6 +23,9 @@ namespace PokemonFRLG{
 //  have moved the player a tile (RouteStep::tapped): the Rocket Hideout's
 //  arrow floors, where a hold a tile off slides the player elsewhere.
 inline const std::string TAPS_VARIANT = "taps";
+//  The variant of LEGS tapped blind (RouteStep::blind_taps): the spinner
+//  mazes, whose slides the tap check misread as no move.
+inline const std::string BLIND_TAPS_VARIANT = "blind_taps";
 
 //  `legs` from `start` as route steps for the walker, each checked against
 //  the map: nothing if a step is blocked or leaves the map. A leg ends "to
@@ -30,6 +33,12 @@ inline const std::string TAPS_VARIANT = "taps";
 std::optional<std::vector<RouteStep>> fixed_route(
     const std::vector<MapData>& maps, const MapPosition& start, const std::vector<Pokemon::StoryLeg>& legs
 );
+
+//  Marks each of `route`'s steps tapped (TAPS_VARIANT).
+void tap_legs(std::vector<RouteStep>& route);
+//  Marks each of `route`'s steps tapped blind (BLIND_TAPS_VARIANT), from
+//  `facing`: a turn tap first where the player faces another way.
+void blind_tap_legs(std::vector<RouteStep>& route, Direction facing);
 
 
 

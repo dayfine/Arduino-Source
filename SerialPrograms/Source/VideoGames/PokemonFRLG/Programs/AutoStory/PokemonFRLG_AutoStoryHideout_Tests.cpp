@@ -420,6 +420,54 @@ UnitTestResult test_b2f_blocked_tap_beside_arrow(){
     return true;
 }
 
+//  `legs` from `start`, facing `facing`, tapped blind on the sim
+//  (BLIND_TAPS_VARIANT). Empty if the taps end where the legs do.
+std::string blind_legs_on_sim(const MapPosition& start, Direction facing, const std::vector<Pokemon::StoryLeg>& legs){
+    const std::vector<MapData>& maps = story_maps();
+    std::optional<std::vector<RouteStep>> route = fixed_route(maps, start, legs);
+    if (!route || route->empty()){
+        return "No legs from " + to_string(start) + ".";
+    }
+    blind_tap_legs(*route, facing);
+    OverworldSim sim(maps, start, facing, SimScript{});
+    OverworldSimWalker walker(sim);
+    const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = start, .label = "Sim"};
+    const std::string failure = walker.run(*route, planning);
+    if (!failure.empty() || !(sim.state().position == route->back().end)){
+        return std::format("Blind taps from {} walked to {}, not {}, failure \"{}\".", to_string(start), to_string(sim.state().position), to_string(route->back().end), failure);
+    }
+    return "";
+}
+
+//  The spinner mazes' blind legs: 00.31's B3F maze and way back, 00.32's
+//  B2F legs to the MOON STONE and to the lift room.
+UnitTestResult test_blind_maze_taps(){
+    using Pokemon::StoryLeg;
+    const std::vector<std::string> failures{
+        blind_legs_on_sim({"RocketHideout_B3F", {18, 2}}, Direction::EAST, {
+            {Direction::WEST, 6}, {Direction::SOUTH, 5}, {Direction::WEST, 7}, {Direction::SOUTH, 2}, {Direction::WEST, 1},
+            {Direction::SOUTH, 2}, {Direction::WEST, 2}, {Direction::SOUTH, 3}, {Direction::WEST, 3}, {Direction::SOUTH, 2},
+            {Direction::EAST, 2}, {Direction::WEST, 2}, {Direction::SOUTH, 5}, {Direction::EAST, 10}, {Direction::NORTH, 6},
+        }),
+        blind_legs_on_sim({"RocketHideout_B3F", {15, 18}}, Direction::WEST, {
+            {Direction::SOUTH, 2}, {Direction::WEST, 5}, {Direction::NORTH, 6},
+        }),
+        blind_legs_on_sim({"RocketHideout_B2F", {21, 2}}, Direction::EAST, {
+            {Direction::SOUTH, 1}, {Direction::WEST, 2}, {Direction::SOUTH, 2}, {Direction::WEST, 2}, {Direction::SOUTH, 1}, {Direction::WEST, 1},
+        }),
+        blind_legs_on_sim({"RocketHideout_B2F", {2, 4}}, Direction::SOUTH, {
+            {Direction::SOUTH, 4}, {Direction::EAST, 1}, {Direction::SOUTH, 1}, {Direction::EAST, 1}, {Direction::EAST, 2}, {Direction::WEST, 2},
+            {Direction::EAST, 3}, {Direction::SOUTH, 2}, {Direction::WEST, 1}, {Direction::EAST, 1}, {Direction::SOUTH, 1},
+        }),
+    };
+    for (const std::string& failure : failures){
+        if (!failure.empty()){
+            return failure;
+        }
+    }
+    return true;
+}
+
 struct AutoStoryHideoutBodyInput{
     std::string name;
     UnitTestResult (*body)();
@@ -470,6 +518,10 @@ const AutoStoryHideoutBodyCase HIDEOUT_BODY_CASES[] = {
     {
         .input = {.name = "a blocked tap beside B2F's arrow", .body = test_b2f_blocked_tap_beside_arrow},
         .expectation = {.description = "an arrow ahead is no wall: the player isn't placed beside it"},
+    },
+    {
+        .input = {.name = "the spinner mazes tapped blind", .body = test_blind_maze_taps},
+        .expectation = {.description = "00.31's and 00.32's blind legs end where the legs do"},
     },
 };
 
