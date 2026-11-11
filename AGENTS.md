@@ -20,7 +20,7 @@ code branches keep only a stub workflow that checks this branch out to run it. O
 
 | What | Where | Use |
 |---|---|---|
-| PRs: never upstream; fork drafts only; at most three open upstream PRs (the user's) | [pokemon_sv/PR_WORKFLOW.md](pokemon_sv/PR_WORKFLOW.md), [Where PRs live](#where-prs-live) | Re-read before any `gh pr` change. `gh` is `~/.local/bin/gh`; always `-R dayfine/Arduino-Source --draft`. |
+| PRs: never upstream; open fork PRs as drafts, may mark ready on the fork (not upstream); at most three open upstream PRs (the user's) | [pokemon_sv/PR_WORKFLOW.md](pokemon_sv/PR_WORKFLOW.md), [Where PRs live](#where-prs-live) | Re-read before any `gh pr` change. `gh` is `~/.local/bin/gh`; always `-R dayfine/Arduino-Source --draft`. |
 | Merge, never rebase or force-push; review fixes as new commits; a PR owns its files | [Where PRs live](#where-prs-live) | Merge the parent in; change a file only in the PR that added it. |
 | Agents: dispatch, no waiting, let agents finish | [Dispatching subagents](#dispatching-subagents), [.agents/rules/](.agents/rules/) | Subagents push, report PR + SHA, stop; the main session waits on CI. |
 | Builds: CI first, one local build at a time (`-j4`) | [Let CI build and test](#let-ci-build-and-test-build-locally-only-when-you-must) | Dispatch CI on the fork; build locally only for a console run. |
@@ -54,7 +54,7 @@ There are two different checks, and neither replaces the other:
 |---|---|---|
 | Code health linter | [devtools/code_health/](devtools/code_health/README.md) (here only; self-tests in `devtools/code_health/tests`, run by Agents Check) | By hand: `cd ~/Projects/Arduino-Source-agents && ~/.venvs/code-health/bin/python -m devtools.code_health --root <code checkout> --base-ref origin/<PR base>`. Full gate: [devtools/verify.py](devtools/verify.py) ([details](#c-harness-and-verification-fork-issue-40)). |
 | Pre-push hook | [tools/hooks/pre-push](tools/hooks/pre-push), [tools/install_hooks.sh](tools/install_hooks.sh) | Once per clone: `sh <(git show origin/agents:tools/install_hooks.sh)`. Creates the venv `~/.venvs/code-health`. Never `--no-verify` without the user's OK. |
-| CI workflows (code) | `.github/workflows/` on `main`: `cpp-ci-serial-programs-{mac,mac-intel,ubuntu-clang,ubuntu-default,windows-clang,windows-default}.yml`, `code-health.yml` (stub: checks out `agents` into `.agents-tools` and runs the linter from there), `tabs.yml` | Drafts skip the C++ jobs: `gh workflow run cpp-ci-serial-programs-<os>.yml -R dayfine/Arduino-Source --ref <branch>`. |
+| CI workflows (code) | `.github/workflows/` on `main`: `cpp-ci-serial-programs-{mac,mac-intel,ubuntu-clang,ubuntu-default,windows-clang,windows-default}.yml`, `code-health.yml` (stub: checks out `agents` into `.agents-tools` and runs the linter from there), `tabs.yml` | Drafts skip the C++ jobs and run only `fork-draft-ci.yml` (Ubuntu GCC build + unit tests); marking a fork PR ready runs all six. Or dispatch: `gh workflow run cpp-ci-serial-programs-<os>.yml -R dayfine/Arduino-Source --ref <branch>`. |
 | CI workflow (this branch) | `.github/workflows/harness-check.yml`, `.github/workflows/agents-check.yml` | Run on PRs into `agents`; Agents Check also runs the linter self-tests. |
 | Waiting on CI | [lab/scripts/ciwait.sh](lab/scripts/ciwait.sh), `dev/lib/wait-pr-checks.sh` | Main session only, in the background. Expected failures: `FileException` for fork-only test images (FRLG SaveCardReader, OptionMenuReader, ItemListReader; BDSP MenuDetector, ShortDialogDetector). |
 
@@ -177,8 +177,9 @@ restate the standing rules in a brief. `sh bin/agent-standing-rules-check.sh` an
 See [pokemon_sv/PR_WORKFLOW.md](pokemon_sv/PR_WORKFLOW.md). In short:
 
 - **No agent opens, reopens or marks ready a PR on upstream**
-  (`PokemonAutomation/Arduino-Source`). All agent-created PRs are **drafts on
-  `dayfine/Arduino-Source`**, including changes ready for review. Hand anything
+  (`PokemonAutomation/Arduino-Source`). All agent-created PRs open as **drafts on
+  `dayfine/Arduino-Source`**; a fork PR may be marked ready on the fork
+  (2026-11-11) to run the six C++ CI jobs. Ready on the fork is not ready for upstream. Hand anything
   intended for upstream to the user. This replaces the former Claude-publishes
   workflow, per the user's global instructions on 2026-10-23.
 - **Every upstream PR must be created personally by the user, with a description
@@ -537,9 +538,9 @@ gameplay changes additionally need appropriate live validation.
 
 Upstream's C++ CI (six jobs: Mac, Mac Intel, Ubuntu clang/gcc, Windows
 clang/MSVC) builds the app and runs the native unit tests against
-`PokemonAutomation/CommandLineTests`. Every job is skipped on draft PRs, and all
-fork PRs are drafts, so a push alone runs nothing but the tab check. Dispatch
-the jobs on the fork branch instead:
+`PokemonAutomation/CommandLineTests`. Every job is skipped on draft PRs; a fork draft
+runs only `fork-draft-ci.yml` (Ubuntu GCC build + unit tests) and the tab check.
+Mark the fork PR ready to run all six, or dispatch them on the fork branch:
 
 ```sh
 for w in mac windows-clang ubuntu-default; do
