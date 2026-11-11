@@ -19,9 +19,10 @@
       },
       {
         "id": "leave_room_202",
-        "kind": "scene",
-        "why": "step 36: A Leave, the loading screen",
-        "action": "a"
+        "kind": "game_action",
+        "why": "step 36: A Leave, the loading screen, until control in the 2F hall; the hall shows no party bar or prompt, so the quiet time is control (02.04, console B 2026-11-10)",
+        "action": "mash_to_move_hints",
+        "args": {"press_a_first": true, "quiet_ms": 3000, "min_length_ms": 5000, "quiet_is_control": true}
       },
       {
         "id": "to_2f_elevator",
@@ -38,6 +39,13 @@
         "why": "step 37: A Take Elevator, \"Which floor?\""
       },
       {
+        "id": "floor_question",
+        "kind": "game_action",
+        "why": "step 37: the elevator line, then \"Which floor?\", before the choice shows; B would close the talk (02.04, console B 2026-11-10)",
+        "action": "text_to_choice",
+        "args": {"advance_with_a": true}
+      },
+      {
         "id": "ride_to_lobby",
         "kind": "game_action",
         "why": "step 38: \"1F (Lobby)\", the first floor listed",
@@ -45,9 +53,10 @@
       },
       {
         "id": "lobby_scene",
-        "kind": "scene",
-        "why": "step 39: Z-A Royale, the app, the new outfit, AZ, Lida; autosave",
-        "action": "a"
+        "kind": "game_action",
+        "why": "step 39: the ride, Z-A Royale, the app, the new outfit, AZ, Lida; autosave. The lobby may show no party bar, so a long quiet is control",
+        "action": "mash_to_move_hints",
+        "args": {"quiet_ms": 8000, "min_length_ms": 10000, "quiet_is_control": true}
       }
     ],
     "metadata": {
