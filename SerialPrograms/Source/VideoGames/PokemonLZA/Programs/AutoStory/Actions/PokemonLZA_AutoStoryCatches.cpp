@@ -174,6 +174,17 @@ GrassCatches catch_in_grass(ConsoleHandle& console, ProControllerContext& contex
     return out;
 }
 
+//  Off screen, the game pins the marker to the edge with no digits
+//  (anything read there is noise): turns the camera to it. Returns whether
+//  the marker at `x` (0 to 1) was pinned.
+bool turn_to_pinned_marker(ProControllerContext& context, double x){
+    if (x >= 0.10 && x <= 0.90){
+        return false;
+    }
+    pbf_move_right_joystick(context, {x < 0.5 ? -0.5 : 0.5, 0}, 400ms, 200ms);
+    return true;
+}
+
 //  Turns the camera toward the marker at `x` (0 to 1) and walks 0.6 s on.
 void steer_and_step(ProControllerContext& context, double x){
     const double off = x - 0.5;
@@ -290,10 +301,7 @@ std::optional<int> walk_to_objective(ConsoleHandle& console, ProControllerContex
         }
         unseen = 0;
         last_x = marker->x;
-        //  Off screen, the game pins the marker to the edge with no digits
-        //  (anything read there is noise): turn to it before walking.
-        if (marker->x < 0.10 || marker->x > 0.90){
-            pbf_move_right_joystick(context, {marker->x < 0.5 ? -0.5 : 0.5, 0}, 400ms, 200ms);
+        if (turn_to_pinned_marker(context, marker->x)){
             continue;
         }
         //  A read far below the last one is a misread (36, "3", 29 on
