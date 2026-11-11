@@ -58,6 +58,13 @@ void pick_first_look(ConsoleHandle& console, ProControllerContext& context);
 //  DOWN x2 and A on "Ready!".
 void type_player_name(ConsoleHandle& console, ProControllerContext& context, const std::string& name);
 
+//  Taunie's talk after her battle (03.02): A through it and the "Map &
+//  Missions" card (A turns its pages, B turns back) until the map shows,
+//  B to close the map (A would place a pin), then B through the rest of the
+//  talk to the overworld (console B, 2026-11-10). Throws
+//  OperationFailedException if the map does not show within 60 s.
+void talk_through_map_screen(ConsoleHandle& console, ProControllerContext& context);
+
 //  Facing the side street's wall (03.03): sidestep right to the ladder
 //  (0.6 s), face it (150 ms), A at "A Climb Up", hold up 5 s to the top.
 void climb_ladder(ConsoleHandle& console, ProControllerContext& context);

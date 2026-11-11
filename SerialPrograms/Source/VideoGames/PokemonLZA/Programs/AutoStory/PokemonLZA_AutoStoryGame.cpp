@@ -505,9 +505,9 @@ Handler game_handler(const PlzaActions& make, const std::string& name){
     if (name == "story_battle_start"){
         return make.console(name, mash(SceneMashGoal::BATTLE, BUTTON_A, 90s));
     }
-    if (name == "talk_through_map_screen" || name == "talk_to_pokedex_screen"){
-        //  B through the talk closes the map (A would place a pin) and the
-        //  Pokedex entry (A only plays its motions).
+    if (name == "talk_to_pokedex_screen"){
+        //  B through the talk closes the Pokedex entry (A only plays its
+        //  motions).
         return make.console(name, mash(SceneMashGoal::OVERWORLD, BUTTON_B, 90s));
     }
     if (name == "story_battle"){
@@ -522,6 +522,8 @@ Handler game_handler(const PlzaActions& make, const std::string& name){
             pick_first_look(env.env.console, env.context);
         }else if (name == "type_player_name"){
             type_player_name(env.env.console, env.context, env.player_name);
+        }else if (name == "talk_through_map_screen"){
+            talk_through_map_screen(env.env.console, env.context);
         }else{
             climb_ladder(env.env.console, env.context);
         }

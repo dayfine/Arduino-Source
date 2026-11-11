@@ -19,9 +19,9 @@
       },
       {
         "id": "rock_pile_scene",
-        "kind": "scene",
+        "kind": "game_action",
         "why": "step 46: Taunie at the rocks blocking the street",
-        "action": "a"
+        "action": "mash_to_move_hints"
       },
       {
         "id": "side_street_to_wall",
@@ -40,9 +40,9 @@
       },
       {
         "id": "rooftop_scene",
-        "kind": "scene",
+        "kind": "game_action",
         "why": "step 50: Taunie on the roof",
-        "action": "a"
+        "action": "mash_to_move_hints"
       },
       {
         "id": "off_the_roof",
@@ -55,9 +55,9 @@
       },
       {
         "id": "south_boulevard",
-        "kind": "scene",
+        "kind": "game_action",
         "why": "step 52: Taunie walks to the Pokemon Center, until Station Front",
-        "action": "a"
+        "action": "mash_to_move_hints"
       }
     ],
     "metadata": {
