@@ -1,7 +1,7 @@
 name: Fork Draft CI
 # Fork only. Upstream's C++ jobs skip draft PRs, and every fork PR is a draft.
 # This runs the fastest build (Ubuntu, GCC) with the unit tests on each push to a
-# fork draft PR. The full platform set runs in "Fork Upstream-Ready CI".
+# fork draft PR. Marking a fork PR ready runs the full upstream platform set.
 on:
   pull_request:
     types: [opened, synchronize, reopened]
