@@ -169,6 +169,30 @@ std::vector<StoryItem> read_items(const JsonValue& value, std::string_view sourc
     return result;
 }
 
+JsonArray integer_rows_json(std::span<const std::vector<int64_t>> rows){
+    JsonArray result;
+    for (const std::vector<int64_t>& row : rows){
+        JsonArray numbers;
+        for (int64_t number : row){
+            numbers.push_back(number);
+        }
+        result.push_back(std::move(numbers));
+    }
+    return result;
+}
+
+std::vector<std::vector<int64_t>> read_integer_rows(const JsonValue& value, std::string_view source){
+    std::vector<std::vector<int64_t>> result;
+    for (const JsonValue& item : value.to_array_throw(std::string(source))){
+        std::vector<int64_t> row;
+        for (const JsonValue& number : item.to_array_throw(std::string(source))){
+            row.push_back(number.to_integer_throw(std::string(source)));
+        }
+        result.push_back(std::move(row));
+    }
+    return result;
+}
+
 JsonArray tiles_json(std::span<const TilePos> tiles){
     JsonArray result;
     for (const TilePos& tile : tiles){
@@ -211,6 +235,8 @@ JsonValue arg_json(const StoryArgValue& value){
         return strings_json(std::get<std::vector<std::string>>(value));
     case StoryArgType::ITEMS:
         return items_json(std::get<std::vector<StoryItem>>(value));
+    case StoryArgType::INTEGER_ROWS:
+        return integer_rows_json(std::get<std::vector<std::vector<int64_t>>>(value));
     }
     throw ParseException("Unsupported story arg type.");
 }
@@ -234,6 +260,8 @@ StoryArgValue read_arg(const JsonValue& value, StoryArgType type, std::string_vi
         return read_strings(value, source);
     case StoryArgType::ITEMS:
         return read_items(value, source);
+    case StoryArgType::INTEGER_ROWS:
+        return read_integer_rows(value, source);
     }
     throw ParseException(std::format("{}: unsupported story arg type", source));
 }
