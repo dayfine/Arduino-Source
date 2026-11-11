@@ -40,10 +40,11 @@ void battle_then_catch(
 );
 
 //  03.07's catches for the "register five species" quest (3/5 after the
-//  tutorial), from where the player stands in Wild Zone 1: throws at what
-//  locks on there, then walks 3 s spokes out and back (ahead, then left and
-//  right in turn, by the minimap's heading) and throws at what locks on at
-//  each end, then faces the start heading again. A throw followed by text
+//  tutorial), in Wild Zone 1: walks 5 s ahead (nothing spawns at the
+//  start), throws at what locks on there, then walks 3 s spokes out and
+//  back (ahead, then left and right in turn, by the minimap's heading) and
+//  throws at what locks on at each end, then walks back to the start and
+//  faces its heading again. A throw followed by text
 //  or a card counts as a catch; a repeat species counts too, so ask for
 //  more than are needed. Throws OperationFailedException with fewer than
 //  `catches_wanted` after the spokes or `max_throws`.

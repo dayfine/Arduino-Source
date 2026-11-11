@@ -481,7 +481,7 @@ void run_console_action(StoryEnv& env, std::string_view name){
     }else if (name == "battle_then_catch"){
         battle_then_catch(env.env, console, env.context, env.battle_ai, 6);
     }else if (name == "catch_in_zone"){
-        catch_in_zone(console, env.context, 4, 15);
+        catch_in_zone(console, env.context, 2, 15);
     }else if (name == "new_game_language"){
         new_game_language(console, env.context);
     }else if (name == "pick_look"){
