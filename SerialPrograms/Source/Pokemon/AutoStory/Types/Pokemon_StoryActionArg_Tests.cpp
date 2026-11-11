@@ -14,7 +14,7 @@
 #include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon_StoryActionArg.h"
 #ifndef PA_STORY_DATA_STANDALONE
-#include "Pokemon/AutoStory/Pokemon_AutoStory_Tests.h"
+#include "Pokemon/AutoStory/Pokemon_StoryStep_Tests.h"
 #endif
 
 namespace PokemonAutomation{

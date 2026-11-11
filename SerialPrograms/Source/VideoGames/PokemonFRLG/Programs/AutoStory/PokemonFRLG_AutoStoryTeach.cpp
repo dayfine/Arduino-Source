@@ -24,7 +24,7 @@ bool is_hm_move(std::string_view move){
     return false;
 }
 
-const char* teach_end_name(TeachEnd end){
+std::string_view teach_end_name(TeachEnd end){
     switch (end){
     case TeachEnd::LEARNED:         return "learned";
     case TeachEnd::ALREADY_KNOWN:   return "already_known";
@@ -181,7 +181,7 @@ private:
     }
     //  Sets the result, saves the screen and gives up teaching. False.
     bool give_up(TeachEnd end, std::string detail){
-        m_actions.dump_screen(std::string("gave-up-") + teach_end_name(end));
+        m_actions.dump_screen(std::string("gave-up-") + std::string(teach_end_name(end)));
         m_actions.stop_teaching();
         m_result.end = end;
         m_result.detail = std::move(detail);

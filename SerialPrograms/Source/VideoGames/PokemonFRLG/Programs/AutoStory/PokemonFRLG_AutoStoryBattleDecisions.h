@@ -29,78 +29,12 @@
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
 #include "PokemonFRLG_AutoStoryParty.h"
+#include "PokemonFRLG_AutoStoryBattleTurns.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
 
-
-//  High-level action chosen for a battle turn.
-enum class TurnChoice{
-    RUN,
-    POTION,
-    ANTIDOTE,
-    AWAKENING,
-    MOVE,
-};
-
-//  Decided battle action including slot or item index.
-struct TurnAction{
-    TurnChoice choice = TurnChoice::MOVE;
-    //  For MOVE, the move list's slot.
-    size_t slot = BOTTOM_LEFT_MOVE;
-    //  Why a Potion was or wasn't used, for the log; empty when none was
-    //  weighed (green HP, awake).
-    std::string heal_reason = {};
-};
-
-//  What came of a TurnAction.
-enum class TurnResult{
-    DONE,
-    //  An item not used (another item in its row), or a move the game said
-    //  has no PP left. The first time for a move it is taken as turned
-    //  down (REFUSED): Kadabra's Disable, or a misread (console B,
-    //  2026-11-03, m68: "no PP left" read after the battle's last turn); the
-    //  second time its PP is 0.
-    NOT_DONE,
-    //  The game turned the move down although it has PP left: a foe's
-    //  Disable (console B, 2026-11-03, Mt. Moon: Miguel's Grimer disabled
-    //  Water Gun, and the loop chose it 17 more times while no turn passed).
-    //  Its PP comes back, and it isn't chosen for as long as Disable can
-    //  last (pret: 2 to 5 turns).
-    REFUSED,
-};
-
-//  Binary prompt decision.
-enum class YesNo{
-    YES,
-    NO,
-};
-
-//  A battle screen as the loop reads it, for the evolution check.
-struct BattleTextScreen{
-    //  The battle's text box.
-    bool text_box = false;
-    //  The battle menu or an HP box.
-    bool hp_box = false;
-    //  The text waits for a button.
-    bool arrow = false;
-    //  A YES/NO box.
-    bool yes_no = false;
-};
-
-//  Answer to an in-battle prompt dialogue.
-struct PromptAnswer{
-    YesNo answer = YesNo::NO;
-    //  After YES to "Delete a move?": the slot to forget on the move list
-    //  that opens, its cursor on the top move.
-    std::optional<size_t> forget_slot = {};
-    //  With forget_slot: the lead once the move is learned, to keep only if
-    //  the move list opened (console B, 2026-11-03: a YES/NO read where no
-    //  move list followed was taken as Bite over Tail Whip, and the loop
-    //  later chose Tail Whip for Bite).
-    std::optional<PartyMember> learned = {};
-};
 
 
 //  State machine deciding turn choices and prompt answers in battles.
@@ -143,8 +77,6 @@ private:
     void see_hit(const PartyStatus& status);
     void count_down_refused();
     void move_refused();
-    //  The chance the foe's last turn seeded the lead taken in.
-    void see_seed_chance();
 
     Supplies& m_supplies;
     const BattleKind m_kind;
@@ -170,7 +102,7 @@ private:
     //  The HP the last hit seen took, from the foe out `m_hit_by`; 0 if none
     //  was seen.
     double m_seen_hit = 0;
-    std::optional<size_t> m_hit_by;
+    std::string m_hit_by;
     //  The slots the game turned down, and the turns until they are tried again.
     std::map<size_t, int> m_refused;
     //  The slots "no PP left" was read for once.
@@ -178,11 +110,6 @@ private:
     //  The highest level a move offered can be for, from the lead's level
     //  read before the battle; none if it wasn't read.
     std::optional<uint8_t> m_level_cap;
-    //  The chance the lead isn't seeded, from the foes' Leech Seed chances
-    //  at each turn (the game doesn't show it), and the chance at the turn
-    //  just chosen, taken in at the next one.
-    double m_unseeded = 1.0;
-    double m_seed_pending = 0;
     //  The members sent in after the lead fainted.
     std::set<size_t> m_sent;
 };

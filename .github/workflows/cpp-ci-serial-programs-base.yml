@@ -101,36 +101,6 @@ jobs:
           operation: prepare
           consumer-directory: Arduino-Source
 
-      - name: Checkout authored checkpoint simulator
-        if: startsWith(inputs.os, 'ubuntu') && inputs.run-tests
-        uses: actions/checkout@v7
-        with:
-          repository: dayfine/PokemonSimulation
-          ref: 8cb831caf8bfe1f06b1aec9a4a7e55e6e09b0604
-          path: AuthoredStorySource
-
-      - name: Check identical authored Parcel JSON and replay its scenarios
-        if: startsWith(inputs.os, 'ubuntu') && inputs.run-tests
-        env:
-          PYTHONPATH: AuthoredStorySource/src
-        run: |
-          python3 - <<'PYTHON'
-          from pathlib import Path
-          from pokesim.story.replay_binding import load_binding
-          from pokesim.story.replay_cases import read_cases, check_case
-          from pokesim.story.checkpoint_replay import run
-          source = Path('AuthoredStorySource')
-          folder = source / 'data/story/parcel-pilot'
-          native = Path('Arduino-Source/SerialPrograms/Source/VideoGames/PokemonFRLG/Programs/AutoStory/StoryData')
-          assert (native / 'frlg-parcel-00.05.plan.json').read_bytes() == (folder / 'frlg-parcel-00.05.plan.json').read_bytes()
-          binding = load_binding(folder / 'authored-binding.json', source)
-          cases = read_cases(folder / 'cases.json')
-          for case in cases:
-              check_case(case, run(binding, case['input']))
-              print(case['id'] + ': authored JSON replay passed')
-          assert len(cases) == 7
-          PYTHON
-
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:

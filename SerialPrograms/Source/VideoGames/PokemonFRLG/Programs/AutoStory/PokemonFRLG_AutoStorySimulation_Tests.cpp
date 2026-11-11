@@ -184,7 +184,7 @@ struct AutoStorySimulationInput{
 };
 
 struct AutoStorySimulationExpectation{
-    std::string description;
+    std::string_view description;
 };
 
 struct AutoStorySimulationTestCase{

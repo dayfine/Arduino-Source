@@ -86,7 +86,7 @@ enum class TeachPress{
     RIGHT,
 };
 //  The human-readable name of a teaching navigation action.
-const char* teach_press_name(TeachPress press);
+std::string_view teach_press_name(TeachPress press);
 
 //  The console's screens and buttons, as the TEACH step uses them.
 class TeachScreens{

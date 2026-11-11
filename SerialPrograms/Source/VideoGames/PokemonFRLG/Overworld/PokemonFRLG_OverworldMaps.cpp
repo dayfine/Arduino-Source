@@ -16,7 +16,7 @@ namespace PokemonFRLG{
 
 namespace{
 
-const char* const MAP_NAMES[] = {
+constexpr std::string_view MAP_NAMES[] = {
     //  From a new game to Brock.
     "PalletTown",
     "PalletTown_PlayersHouse_1F",
@@ -87,8 +87,8 @@ const char* const MAP_NAMES[] = {
 const std::vector<MapData>& all_maps(){
     static const std::vector<MapData> MAPS = []{
         std::vector<MapData> maps;
-        for (const char* name : MAP_NAMES){
-            maps.push_back(load_map(name));
+        for (std::string_view name : MAP_NAMES){
+            maps.push_back(load_map(std::string(name)));
         }
         return maps;
     }();

@@ -37,14 +37,6 @@ namespace PokemonFRLG{
 //  The rows of the page: four moves, then CANCEL or the move offered.
 constexpr size_t SUMMARY_MOVE_ROWS = 5;
 
-//  Where row `row` (from 0) shows its move's name, its current PP and its
-//  full PP, as fractions of the game screen.
-ImageFloatBox summary_move_name_box(size_t row);
-//  Where row `row` of summary moves shows its current PP.
-ImageFloatBox summary_move_pp_box(size_t row);
-//  Where row `row` of summary moves shows its max PP.
-ImageFloatBox summary_move_max_pp_box(size_t row);
-
 //  The move named in row `row`: a slug such as "water-gun", in a game in
 //  `language`; empty for an empty slot, a move the reader has no name
 //  for, or a language it has no names for.

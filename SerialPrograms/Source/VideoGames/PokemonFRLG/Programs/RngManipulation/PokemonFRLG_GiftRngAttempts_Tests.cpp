@@ -185,7 +185,7 @@ const GiftShinyCase GIFT_SHINY_CASES[] = {
     },
 };
 
-const char* outcome_name(GiftRngOutcome outcome){
+std::string outcome_name(GiftRngOutcome outcome){
     switch (outcome){
     case GiftRngOutcome::shiny:             return "shiny";
     case GiftRngOutcome::shiny_on_target:   return "shiny_on_target";

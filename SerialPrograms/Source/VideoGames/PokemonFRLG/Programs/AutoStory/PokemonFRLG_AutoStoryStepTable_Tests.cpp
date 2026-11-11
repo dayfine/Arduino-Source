@@ -124,7 +124,7 @@ std::string parity_error(FakeGame& game, const StoryStep& step){
         }
         return "";
     }
-    if (trace != std::vector<std::string>{story_action_name(*expected)} || !outcome.succeeded()){
+    if (trace != std::vector<std::string>{std::string(story_action_name(*expected))} || !outcome.succeeded()){
         return std::format("{}: expected {}, ran {} action(s){}", label, story_action_name(*expected),
             trace.size(), trace.empty() ? "" : ", first " + trace[0]);
     }
@@ -200,7 +200,7 @@ struct StepTableInput{
 };
 
 struct StepTableExpectation{
-    const char* description;
+    std::string_view description;
 };
 
 struct StepTableTestCase{
