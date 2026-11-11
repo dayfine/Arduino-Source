@@ -31,6 +31,12 @@ std::optional<std::vector<RouteStep>> fixed_route(
     const std::vector<MapData>& maps, const MapPosition& start, const std::vector<Pokemon::StoryLeg>& legs
 );
 
+//  The one-tile walk a press of `direction` from `from` makes, if it takes
+//  a warp: an exit mat stood on, a door ahead going north, or a warp tile
+//  stepped onto. Its fade and the scene after it must then be confirmed
+//  (OverworldWalkSteps::wait_out_warp()), not taken as walked.
+std::optional<RouteStep> warp_press(const std::vector<MapData>& maps, const MapPosition& from, Direction direction);
+
 
 
 } // namespace PokemonFRLG

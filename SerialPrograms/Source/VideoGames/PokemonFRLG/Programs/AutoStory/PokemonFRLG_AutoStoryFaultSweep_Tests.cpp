@@ -223,6 +223,29 @@ bool hide_talk_battle_trainer(std::vector<MapData>& maps, const StoryStep& step)
     return true;
 }
 
+//  Row `row`'s step `c` on `sim` from `at`, recorded in `out`. Returns
+//  whether it failed as unscripted() and was let pass (run_row()).
+bool run_row_step(
+    RowRun& out, OverworldSim& sim, StoryPose& at, const StoryCheckpoint& row, size_t c,
+    const std::optional<std::set<size_t>>& scripted
+){
+    out.before.emplace(c, sim.state().position);
+    out.facing_before.emplace(c, sim.state().facing);
+    const size_t warps_before = sim.state().warped_from.size();
+    out.failure = row_step_on_sim(sim, at, row.steps[c], row.id);
+    const std::vector<std::string>& warped = sim.state().warped_from;
+    out.warped_from[c].assign(warped.begin() + warps_before, warped.end());
+    const bool let_pass = unscripted(out.failure) && (!scripted || scripted->contains(c));
+    if (let_pass){
+        out.failure.clear();
+        out.scripted.insert(c);
+    }
+    if (!out.failure.empty()){
+        out.failed_at = c;
+    }
+    return let_pass;
+}
+
 //  Row `row` on the sim with `script`, from its start. After a step the sim
 //  does not play, the player is put on its pose_after, or on `landings`'
 //  tile for it, the program going on from the pose_after either way. A
@@ -246,23 +269,7 @@ RowRun run_row(
     };
     for (size_t c = 0; c < row.steps.size() && out.failure.empty(); c++){
         const StoryStep& step = row.steps[c];
-        out.before.emplace(c, sim->state().position);
-        out.facing_before.emplace(c, sim->state().facing);
-        const size_t warps_before = sim->state().warped_from.size();
-        out.failure = row_step_on_sim(*sim, at, step, row.id);
-        const std::vector<std::string>& warped = sim->state().warped_from;
-        out.warped_from[c].assign(warped.begin() + warps_before, warped.end());
-        if (!out.failure.empty()){
-            out.failed_at = c;
-        }
-        const bool let_pass = unscripted(out.failure) && (!scripted || scripted->contains(c));
-        if (let_pass){
-            out.failure.clear();
-            out.scripted.insert(c);
-        }
-        if (let_pass){
-            out.failed_at.reset();
-        }
+        const bool let_pass = run_row_step(out, *sim, at, row, c, scripted);
         if (!out.failure.empty() || (sim_plays(step) && !let_pass) || !step.pose_after){
             continue;
         }
