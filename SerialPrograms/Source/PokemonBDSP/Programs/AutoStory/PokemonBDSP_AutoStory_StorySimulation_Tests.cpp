@@ -496,16 +496,16 @@ UnitTestResult test_no_hand_written_legs(Logger&){
             if (step.kind != StoryStepKind::LEGS){
                 continue;
             }
-            const std::string key = row.id + "/" + step.name;
+            const std::string key = std::format("{}/{}", row.id, step.name);
             if (!exceptions.contains(key)){
-                return key + ": hand-written legs; plan a route to where they end.";
+                return std::format("{}: hand-written legs; plan a route to where they end.", key);
             }
             seen.insert(key);
         }
     }
     for (const auto& item : exceptions){
         if (!seen.contains(item.first)){
-            return item.first + ": listed as an exception, but no such LEGS step.";
+            return std::format("{}: listed as an exception, but no such LEGS step.", item.first);
         }
     }
     return true;
