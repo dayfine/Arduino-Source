@@ -846,6 +846,9 @@ static int Supplies::* count_member(const std::string& item){
     if (item == "awakening"){
         return &Supplies::awakenings;
     }
+    if (item == "full-heal"){
+        return &Supplies::full_heals;
+    }
     return nullptr;
 }
 
@@ -884,6 +887,7 @@ std::vector<std::string> set_from_bag(Supplies& supplies, const std::vector<BagR
     supplies.antidotes = 0;
     supplies.parlyz_heals = 0;
     supplies.awakenings = 0;
+    supplies.full_heals = 0;
     supplies.pocket.clear();
     std::vector<std::string> unread;
     for (const BagRow& row : rows){
@@ -913,6 +917,7 @@ std::vector<std::string> set_from_loaded_bag(Supplies& supplies, Supplies& saved
     saved.antidotes = supplies.antidotes;
     saved.parlyz_heals = supplies.parlyz_heals;
     saved.awakenings = supplies.awakenings;
+    saved.full_heals = supplies.full_heals;
     saved.pocket = supplies.pocket;
     return unread;
 }
@@ -936,26 +941,28 @@ void recover_after_battle(
     ConsoleHandle& console, ProControllerContext& context,
     Supplies& supplies, Pokemon::StoryCheckLevel checks, Language language
 ){
-    if (supplies.status == StatusCondition::POISON && supplies.antidotes > 0){
-        if (use_item_on_overworld(console, context, item_row(supplies, "antidote"), "antidote", checks, language)){
-            supplies.antidotes--;
-            supplies.status = StatusCondition::NONE;
+    for (const std::string& item : recovery_items(supplies)){
+        //  The row before the count drops: a counted item with none left
+        //  takes no row.
+        const int row = item_row(supplies, item);
+        if (!use_item_on_overworld(console, context, row, item, checks, language)){
+            continue;
         }
-    }else if (supplies.status == StatusCondition::PARALYSIS && supplies.parlyz_heals > 0){
-        if (use_item_on_overworld(console, context, item_row(supplies, "parlyz-heal"), "parlyz-heal", checks, language)){
-            supplies.parlyz_heals--;
-            supplies.status = StatusCondition::NONE;
-        }
-    }
-    //  One Potion (20 HP) takes a starter of these levels (about 30 HP)
-    //  from red to green; the bar can't be read again on the overworld.
-    if (supplies.hurt && supplies.potions > 0){
-        if (use_item_on_overworld(console, context, item_row(supplies, "potion"), "potion", checks, language)){
-            supplies.potions--;
+        (*count_slot(supplies, item))--;
+        if (item == "potion"){
+            //  One Potion (20 HP) takes a starter of these levels from red
+            //  to green; the bar can't be read again on the overworld.
             supplies.hurt = false;
             supplies.hp_red = false;
             supplies.hp_fill = 1.0;
+        }else{
+            supplies.status = StatusCondition::NONE;
         }
+    }
+    if (supplies.status != StatusCondition::NONE){
+        console.log(std::format(
+            "Story: the starter is left with {}: the nurse at the next battle's ready step.", status_name(supplies.status)
+        ), COLOR_ORANGE);
     }
 }
 

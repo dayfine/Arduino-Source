@@ -48,6 +48,9 @@ struct Supplies{
     int antidotes = 0;
     int parlyz_heals = 0;
     int awakenings = 0;
+    //  Not bought by the story: counted when the bag read at a checkpoint's
+    //  start shows some.
+    int full_heals = 0;
     //  The Items pocket's order, by slug (see read_item_list_name()): the
     //  order bought, or as read from the bag, with "" for a row whose name
     //  couldn't be read. A counted item with none left takes no row; the
@@ -100,6 +103,13 @@ bool attacks_low_on_pp(const Supplies& supplies);
 //  attacks low on PP. Yellow HP counts (console B, 2026-11-03: 17/55 HP
 //  and no Potion into Miguel's battle, which only red would have stopped).
 bool nurse_before_battle(const Supplies& supplies);
+
+//  After a battle, or at a checkpoint's start, the items to use on the
+//  starter in order, as slugs: for PSN an Antidote, for PAR a Parlyz Heal,
+//  else a Full Heal; then a Potion for HP not green, or for a status still
+//  uncured once the bar is under 3/4 (poison drains it as the story walks).
+//  Only items left; the nurse takes the rest (nurse_before_battle()).
+std::vector<std::string> recovery_items(const Supplies& supplies);
 
 
 

@@ -130,6 +130,28 @@ bool nurse_before_battle(const Supplies& supplies){
     return supplies.hurt || supplies.status != StatusCondition::NONE || attacks_low_on_pp(supplies);
 }
 
+std::vector<std::string> recovery_items(const Supplies& supplies){
+    //  A poisoned bar under this share gets a Potion although it's green.
+    constexpr double POISONED_POTION_FILL = 0.75;
+    std::vector<std::string> items;
+    bool cured = supplies.status == StatusCondition::NONE;
+    if (supplies.status == StatusCondition::POISON && supplies.antidotes > 0){
+        items.emplace_back("antidote");
+        cured = true;
+    }else if (supplies.status == StatusCondition::PARALYSIS && supplies.parlyz_heals > 0){
+        items.emplace_back("parlyz-heal");
+        cured = true;
+    }else if (!cured && supplies.full_heals > 0){
+        items.emplace_back("full-heal");
+        cured = true;
+    }
+    const bool drained = !cured && supplies.hp_fill < POISONED_POTION_FILL;
+    if ((supplies.hurt || drained) && supplies.potions > 0){
+        items.emplace_back("potion");
+    }
+    return items;
+}
+
 
 BattleDecisions::BattleDecisions(Supplies& supplies, BattleKind kind)
     : m_supplies(supplies)
