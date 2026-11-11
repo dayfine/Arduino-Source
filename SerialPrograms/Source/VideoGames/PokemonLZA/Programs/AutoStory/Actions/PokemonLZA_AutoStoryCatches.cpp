@@ -7,13 +7,16 @@
 #include <cmath>
 #include <format>
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
+#include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
+#include "CommonTools/Images/BinaryImage_FilterRgb32.h"
+#include "CommonTools/OCR/OCR_NumberReader.h"
+#include "Kernels/Waterfill/Kernels_Waterfill_Session.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_Superscalar.h"
 #include "VideoGames/PokemonLZA/Inference/Battles/PokemonLZA_MoveEffectivenessSymbol.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_DialogDetector.h"
-#include "VideoGames/PokemonLZA/Programs/PokemonLZA_BasicNavigation.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_TrainerBattle.h"
 #include "PokemonLZA_AutoStoryCatches.h"
 #include "PokemonLZA_AutoStoryScenes.h"
@@ -84,24 +87,6 @@ bool scan_for_lock_on(ConsoleHandle& console, ProControllerContext& context){
     return ret == 0;
 }
 
-//  Turns the player to `heading` (minimap, clockwise from north): L
-//  recenters the camera behind the player, a 150 ms stick tap turns, L
-//  again; up to 4 times, within 20 degrees.
-void face_compass(ConsoleHandle& console, ProControllerContext& context, double heading){
-    for (int attempt = 0; attempt < 4; attempt++){
-        const double now = get_facing_direction(console, context);
-        if (get_angle_between_facing_directions(now, heading) <= 20){
-            return;
-        }
-        const double turn = (heading - now) * 3.14159265358979 / 180;
-        pbf_press_button(context, BUTTON_L, 160ms, 400ms);
-        pbf_move_left_joystick(context, {std::sin(turn), std::cos(turn)}, 150ms, 400ms);
-        pbf_press_button(context, BUTTON_L, 160ms, 400ms);
-        context.wait_for_all_requests();
-    }
-    console.log(std::format("catch_in_zone(): heading {:.0f} not reached.", heading));
-}
-
 //  Lock-ons and throws so far, and how many brought text or a card after
 //  the throw (a catch).
 struct ThrowCount{
@@ -109,21 +94,34 @@ struct ThrowCount{
     int caught = 0;
 };
 
-//  Up to 3 lock-ons and throws from where the player stands, while the
-//  total stays under `max_throws`.
-ThrowCount throw_at_what_locks(ConsoleHandle& console, ProControllerContext& context, ThrowCount count, int max_throws){
+//  ZL held a moment at what is in front: whether it locks on.
+bool lock_on_ahead(ConsoleHandle& console, ProControllerContext& context){
+    MoveEffectivenessSymbolWatcher lock_on(COLOR_RED, &console.overlay(), 100ms);
+    const int ret = run_until<ProControllerContext>(
+        console, context,
+        [](ProControllerContext& context){
+            pbf_mash_button(context, BUTTON_ZL, 2000ms);
+        },
+        {lock_on}
+    );
+    return ret == 0;
+}
+
+//  Up to 3 throws at what locks on in front, else at what a full camera
+//  turn finds, while the total stays under `max_throws`.
+ThrowCount throw_here(ConsoleHandle& console, ProControllerContext& context, ThrowCount count, int max_throws){
     for (int i = 0; i < 3 && count.throws < max_throws; i++){
-        if (!scan_for_lock_on(console, context)){
+        if (!lock_on_ahead(console, context) && !scan_for_lock_on(console, context)){
             break;
         }
         throw_ball(context);
         count.throws++;
         const ScreensPassed passed = advance_text_and_cards(console, context);
+        pbf_press_button(context, BUTTON_L, 160ms, 400ms);
         if (passed.card || passed.text){
             count.caught++;
             console.log(std::format("catch_in_zone(): throw {}: text after it, a catch.", count.throws));
         }
-        pbf_press_button(context, BUTTON_L, 160ms, 400ms);
     }
     return count;
 }
@@ -131,36 +129,116 @@ ThrowCount throw_at_what_locks(ConsoleHandle& console, ProControllerContext& con
 } // namespace
 
 
+std::optional<ObjectiveMarker> read_objective_marker(Logger& logger, const ImageViewRGB32& screen){
+    //  The hexagon's orange, about (245, 175, 40) on console B: the largest
+    //  hexagon-sized blob outside the minimap (its marker is there too).
+    const double scale = screen.height() / 1080.0;
+    PackedBinaryMatrix matrix = compress_rgb32_to_binary_range(screen, 220, 255, 140, 215, 0, 90);
+    std::unique_ptr<WaterfillSession> session = make_WaterfillSession(matrix);
+    std::unique_ptr<WaterfillIterator> iter = session->make_iterator((size_t)(500 * scale * scale));
+    std::optional<WaterfillObject> best;
+    WaterfillObject object;
+    while (iter->find_next(object, false)){
+        const double x = object.center_of_gravity_x() / screen.width();
+        const double y = object.center_of_gravity_y() / screen.height();
+        const bool in_minimap = x < 0.20 && y < 0.45;
+        const bool in_party_bar = y > 0.70;
+        const double aspect = object.aspect_ratio();
+        if (in_minimap || in_party_bar || object.area > 4000 * scale * scale || aspect < 0.6 || aspect > 1.4){
+            continue;
+        }
+        if (!best || object.area > best->area){
+            best = object;
+        }
+    }
+    if (!best){
+        return std::nullopt;
+    }
+    //  The distance: white digits just above the hexagon, up to its width
+    //  out each side, about half its height tall.
+    const double w = (double)best->width();
+    const double h = (double)best->height();
+    const ImagePixelBox digits(
+        (size_t)std::max(0.0, best->min_x - w), (size_t)std::max(0.0, best->min_y - 0.95 * h),
+        (size_t)std::min((double)screen.width(), best->max_x + w), (size_t)std::max(1.0, best->min_y - 0.10 * h)
+    );
+    ObjectiveMarker marker;
+    marker.x = (best->min_x + best->max_x) / 2.0 / screen.width();
+    marker.distance = OCR::read_number_waterfill(logger, extract_box_reference(screen, digits), 0xffd0d0d0, 0xffffffff);
+    return marker;
+}
+
+std::optional<int> walk_to_objective(ConsoleHandle& console, ProControllerContext& context, int stop_at, Milliseconds limit){
+    PlzaScreenObserver observer;
+    const WallClock deadline = current_time() + limit;
+    int unseen = 0;
+    std::optional<int> last;
+    while (current_time() < deadline){
+        context.wait_for_all_requests();
+        const VideoSnapshot frame = console.video().snapshot();
+        if (observer.observe(frame, current_time()).has(Pokemon::ScreenEvent::INTERACT_PROMPT) && stop_at <= 0){
+            return last;
+        }
+        const std::optional<ObjectiveMarker> marker = read_objective_marker(console, frame);
+        if (!marker){
+            //  Behind us: turn the camera until it shows.
+            if (++unseen > 12){
+                return std::nullopt;
+            }
+            pbf_move_right_joystick(context, {0.5, 0}, 500ms, 200ms);
+            continue;
+        }
+        unseen = 0;
+        if (marker->distance > 0){
+            if (last != marker->distance){
+                console.log(std::format("walk_to_objective(): {} to go, marker at x = {:.2f}.", marker->distance, marker->x));
+            }
+            last = marker->distance;
+            if (marker->distance <= stop_at){
+                console.log(std::format("walk_to_objective(): {} to the objective.", marker->distance));
+                return last;
+            }
+        }
+        const double off = marker->x - 0.5;
+        if (off > 0.06 || off < -0.06){
+            pbf_move_right_joystick(context, {off > 0 ? 0.4 : -0.4, 0}, Milliseconds((int)(std::min(1.0, std::abs(off) * 4) * 400)) + 80ms, 150ms);
+        }
+        pbf_move_left_joystick(context, {0, 1}, 600ms, 0ms);
+    }
+    console.log(std::format("walk_to_objective(): not within {} in time (last read {}).", stop_at, last.value_or(-1)));
+    return last;
+}
+
 void catch_in_zone(ConsoleHandle& console, ProControllerContext& context, int catches_wanted, int max_throws){
-    //  Spokes out from the start and back, relative to its heading: ahead,
-    //  then alternating left and right (the zig-zag).
-    static const double SPOKES[] = {0, -60, 60, -120, 120, 180};
-    pbf_press_button(context, BUTTON_L, 160ms, 400ms);
-    context.wait_for_all_requests();
-    const double start_heading = get_facing_direction(console, context);
-    //  Nothing spawns at 03.07's start (console B, 2026-11-10): out into
-    //  the zone first.
-    pbf_move_left_joystick(context, {0, 1}, 5000ms, 300ms);
-    ThrowCount count = throw_at_what_locks(console, context, ThrowCount(), max_throws);
-    for (double spoke : SPOKES){
-        if (count.caught >= catches_wanted || count.throws >= max_throws){
+    //  Toward the objective (the zone's far gate), stopping at 100 and 60
+    //  to throw at what is in front: 03.07 starts at 127 (console B,
+    //  2026-11-10), with nothing to catch at the start.
+    ThrowCount count;
+    for (int stop_at : {100, 60}){
+        if (count.caught >= catches_wanted){
             break;
         }
-        face_compass(console, context, std::fmod(start_heading + spoke + 360, 360));
-        pbf_move_left_joystick(context, {0, 1}, 3000ms, 300ms);
-        count = throw_at_what_locks(console, context, count, max_throws);
-        //  Back to the start: face the way out, then walk toward the camera.
-        face_compass(console, context, std::fmod(start_heading + spoke + 360, 360));
-        pbf_move_left_joystick(context, {0, -1}, 3000ms, 300ms);
+        walk_to_objective(console, context, stop_at, 30s);
+        count = throw_here(console, context, count, max_throws);
     }
-    face_compass(console, context, start_heading);
-    pbf_move_left_joystick(context, {0, -1}, 5000ms, 300ms);
-    face_compass(console, context, start_heading);
     console.log(std::format("catch_in_zone(): {} catches in {} throws.", count.caught, count.throws));
     if (count.caught < catches_wanted){
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::SEND_ERROR_REPORT,
             std::format("catch_in_zone(): {} catches of {} in {} throws.", count.caught, catches_wanted, count.throws),
+            console
+        );
+    }
+}
+
+void walk_to_zone_gate(ConsoleHandle& console, ProControllerContext& context){
+    walk_to_objective(console, context, 0, 60s);
+    PlzaScreenObserver observer;
+    context.wait_for_all_requests();
+    if (!observer.observe(console.video().snapshot(), current_time()).has(Pokemon::ScreenEvent::INTERACT_PROMPT)){
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::SEND_ERROR_REPORT,
+            "walk_to_zone_gate(): no A prompt at the objective.",
             console
         );
     }
