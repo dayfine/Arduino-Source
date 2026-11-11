@@ -27,8 +27,10 @@ namespace PokemonLZA{
 //  OperationFailedException after `max_throws` throws with no card.
 void catch_tutorial(ConsoleHandle& console, ProControllerContext& context, int max_throws);
 
-//  03.06's second catch (Bunnelby), after the cards: D-pad up sends the
-//  partner out, then rounds of TrainerBattleState attacks (3 that land),
+//  03.06's second catch (Bunnelby), after the cards: A past its "weaken
+//  it" banner (D-pad up is ignored while it shows), D-pad up sends the
+//  partner out (again, twice at most per round, after two lock-ons with no
+//  move symbols), then rounds of TrainerBattleState attacks (3 that land),
 //  a throw and A through any lines, until no target locks on for a round:
 //  caught. Throws OperationFailedException after `max_rounds`.
 void battle_then_catch(
