@@ -80,6 +80,12 @@ Run every script below with `~/.venvs/lab-claude/bin/python` (written `python3` 
 Costs: watchdog (Haiku 5.5) is a fraction of a cent per shot; triage (Opus 5.5, thinking) a few
 cents per failure; batch labelling is half price.
 
+**Budget.** The lab spends Console API credit: $120/month, paced at $4/day. `lab_claude.send()`
+prices every call from its token usage into `~/BDSPLab/claude-spend.jsonl` and refuses new calls
+(`BudgetExceeded`) once today's or this month's total reaches the cap. Override with
+`LAB_CLAUDE_DAILY_USD` / `LAB_CLAUDE_MONTHLY_USD`. This is a local guard; the hard cap is the
+workspace spend limit in the Console.
+
 - `python3 lab/scripts/triage_failure.py --frame fail.png --checkpoint 00.04 --step step.json --notes ~/BDSPLab/notes/<date>-checklist.md [--map-slice slice.txt]`
   sends the frames, the last 200 lines of the lab-B log, the step and map slice to `claude-opus-5-5`
   (adaptive thinking, effort high, server-side fallback) and appends a fault-class verdict with cited
