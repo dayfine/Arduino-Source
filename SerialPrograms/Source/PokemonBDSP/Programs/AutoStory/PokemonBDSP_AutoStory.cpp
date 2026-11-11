@@ -13,7 +13,7 @@
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
-#include "Pokemon/AutoStory/Pokemon_StoryConsolePreflight.h"
+#include "Pokemon/AutoStory/Pokemon_StoryPreflight.h"
 #include "Pokemon/AutoStory/Pokemon_StoryRun.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStorySelect.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
@@ -85,7 +85,7 @@ std::set<std::string> rows_that_stop(const std::vector<StoryCheckpoint>& rows){
 Pokemon::StoryGameHooks story_game(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
     Pokemon::StoryGameHooks game;
     game.preflight = [&env, &context]{
-        return Pokemon::read_story_preflight(env.console, context);
+        return Pokemon::StoryPreflight::read(env.console, context);
     };
     game.load_save = [&env, &context](Pokemon::RunState&){
         if (!reset_game_from_home(env, env.console, context, true, 1000ms)){
