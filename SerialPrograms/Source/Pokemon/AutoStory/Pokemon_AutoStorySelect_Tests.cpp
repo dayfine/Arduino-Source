@@ -4,6 +4,7 @@
  *
  */
 
+#include <format>
 #include <memory>
 #include <string>
 #include <utility>
@@ -107,9 +108,9 @@ private:
 std::string describe_entries(const std::vector<std::pair<std::string, std::string>>& entries){
     std::string text;
     for (const auto& [slug, label] : entries){
-        text += (text.empty() ? "" : ", ") + slug + " \"" + label + "\"";
+        text += std::format("{}{} \"{}\"", text.empty() ? "" : ", ", slug, label);
     }
-    return "[" + text + "]";
+    return std::format("[{}]", text);
 }
 
 //  A game's checkpoint labels, in story order.
@@ -132,7 +133,7 @@ struct StoryCheckpointDatabaseCase{
 class Test_StoryCheckpointDatabase : public UnitTest{
 public:
     Test_StoryCheckpointDatabase(StoryCheckpointDatabaseCase test_case)
-        : UnitTest("Pokemon::AutoStorySelectDatabase - " + test_case.input.name)
+        : UnitTest(std::format("Pokemon::AutoStorySelectDatabase - {}", test_case.input.name))
         , m_case(std::move(test_case))
     {}
 
@@ -143,7 +144,7 @@ public:
             got.emplace_back(entry.slug, entry.display_name);
         }
         if (got != m_case.expectation.entries){
-            return "Expected " + describe_entries(m_case.expectation.entries) + ", got " + describe_entries(got);
+            return std::format("Expected {}, got {}", describe_entries(m_case.expectation.entries), describe_entries(got));
         }
         return true;
     }
