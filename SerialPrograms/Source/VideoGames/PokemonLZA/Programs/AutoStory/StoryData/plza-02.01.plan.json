@@ -11,10 +11,12 @@
       {
         "id": "battle_zone_to_brigitte",
         "kind": "game_action",
-        "why": "step 18: through the Battle Zone until the black fade into Brigitte's scene. NEEDS TUNING. Measured 2026-11-08 on console B, walk not run.",
+        "why": "step 18: through the Battle Zone until Taunie's \"Almost there!\" and Brigitte's scene. Held legs, played on console B over CFR 2026-11-10: wait 3 s, +10 deg 4.25 s, L then right 6 s, L then right 6.5 s.",
         "action": "walk",
         "args": {
-          "legs": [[0, 3500], [90, 0], [-90, 500], [90, 4000], [5, 2500], [90, 4000]]
+          "legs": [[10, 4250], [90, 6000], [90, 6500]],
+          "held": true,
+          "wait_ms": 3000
         }
       },
       {

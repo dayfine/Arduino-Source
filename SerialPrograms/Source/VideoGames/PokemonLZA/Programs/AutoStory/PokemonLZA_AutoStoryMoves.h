@@ -46,6 +46,15 @@ struct StoryMove{
     //  (get_facing_direction()). None: no compass turn first.
     std::optional<double> heading = std::nullopt;
     std::vector<StoryWalkLeg> legs = {};
+    //  How the legs are played. False: each turn is L, a 150 ms tap that
+    //  way, L, then the stick held forward (the 2026-11-08 recording).
+    //  True: the stick is held at the leg's angle for its whole time, from
+    //  the camera as it is; L recenters the camera only before a later leg
+    //  that turns (02.01, console B 2026-11-10). L near an NPC turns to it,
+    //  so a held walk starts without one.
+    bool held = false;
+    //  A wait before the first leg, for the NPCs to move off.
+    Milliseconds wait_first = Milliseconds(0);
 };
 
 //  Turns the player toward `heading`, within `tolerance` degrees: turns by

@@ -169,6 +169,14 @@ std::vector<std::string> walk_errors(const Pokemon::StoryStep& step){
         if (rows.empty() || rows.back().size() != 2 || rows.back()[1] <= 0){
             errors.push_back(std::format("{}: the last leg has no walk to hold until the end", step.name));
         }
+        const auto held = step.args.find("held");
+        if (held != step.args.end() && std::get<bool>(held->second)){
+            errors.push_back(std::format("{}: a held walk cannot end on a fade yet", step.name));
+        }
+    }
+    const auto wait = step.args.find("wait_ms");
+    if (wait != step.args.end() && std::get<int64_t>(wait->second) < 0){
+        errors.push_back(std::format("{}: wait_ms {} is negative", step.name, std::get<int64_t>(wait->second)));
     }
     const auto heading = step.args.find("heading");
     if (heading != step.args.end()){
@@ -230,6 +238,14 @@ StoryActionSpec walk_spec(){
         StoryArgSpec{
             .key = "heading", .type = StoryArgType::INTEGER, .required = false, .fallback = std::nullopt,
             .why = "the compass heading to face first, clockwise from north",
+        },
+        StoryArgSpec{
+            .key = "held", .type = StoryArgType::BOOLEAN, .required = false, .fallback = false,
+            .why = "hold the stick at each leg's angle (L only before a later turning leg), not tap-and-forward",
+        },
+        StoryArgSpec{
+            .key = "wait_ms", .type = StoryArgType::INTEGER, .required = false, .fallback = std::nullopt,
+            .why = "wait this long before the first leg, for the NPCs to move off",
         },
     });
 }
@@ -646,6 +662,12 @@ StoryMove story_walk_move(const StoryActionArgs& args, std::string_view legs){
     const auto heading = args.find("heading");
     if (heading != args.end()){
         move.heading = (double)std::get<int64_t>(heading->second);
+    }
+    const auto held = args.find("held");
+    move.held = held != args.end() && std::get<bool>(held->second);
+    const auto wait = args.find("wait_ms");
+    if (wait != args.end()){
+        move.wait_first = Milliseconds(std::get<int64_t>(wait->second));
     }
     for (const std::vector<int64_t>& row : Pokemon::story_arg<IntegerRows>(args, legs)){
         if (row.size() != 2){

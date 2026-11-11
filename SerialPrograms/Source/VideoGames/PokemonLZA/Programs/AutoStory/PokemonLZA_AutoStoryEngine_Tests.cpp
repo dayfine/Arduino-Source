@@ -191,6 +191,22 @@ UnitTestResult test_walk_ends_on_white_fade(CancellableScope& scope){
     });
 }
 
+//  02.01's battle_zone_to_brigitte, a held walk (console B, 2026-11-10):
+//  3 s for the NPCs to move off, the first leg held at its angle with no L,
+//  then L and the stick held at each later turning leg's angle.
+UnitTestResult test_held_walk_inputs(CancellableScope& scope){
+    FakeBackend backend = fake_plza({look_at(0ms), look_at(250ms)}, scope);
+    const Pokemon::StoryEngineReport report = run_plza(backend, step_of("02.01", "battle_zone_to_brigitte"));
+    if (report.verdict != Pokemon::CheckpointVerdict::PASSED){
+        return std::format("Expected the held walk to pass: {}", to_string(report.run.failure));
+    }
+    return expect_inputs(backend, {
+        "wait 250ms", "wait 3000ms", "stick 10deg 4250ms walk, release 0ms",
+        "press L", "stick 90deg 6000ms walk, release 0ms",
+        "press L", "stick 90deg 6500ms walk, release 0ms",
+    });
+}
+
 //  platform_to_plaza with no white fade fails once the last leg's 10 s are
 //  held: 40 slices.
 UnitTestResult test_walk_fails_at_bound(CancellableScope& scope){
@@ -535,6 +551,7 @@ const EngineTestCase ENGINE_TEST_CASES[] = {
     {.input = {"01.03 after_andi: A at the mission complete card, then the banner, A if it stays", test_after_andi_presses_complete_card}, .expectation = {}},
     {.input = {"01.01 arrival_scenes: a quiet minute without the hint fails", test_arrival_quiet_fails}, .expectation = {}},
     {.input = {"01.02 battle_area: done on the \"A: Talk\" prompt", test_battle_area_ends_on_interact_prompt}, .expectation = {}},
+    {.input = {"02.01 battle_zone_to_brigitte: a held walk waits, then holds each leg's angle", test_held_walk_inputs}, .expectation = {}},
     {.input = {"face_heading: turns by the minimap's heading", test_face_heading}, .expectation = {}},
     {.input = {"01.01 platform_to_plaza: no walk without free control", test_walk_needs_free_control}, .expectation = {}},
     {.input = {"01.01 platform_to_plaza: ends on the white fade", test_walk_ends_on_white_fade}, .expectation = {}},
