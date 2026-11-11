@@ -104,21 +104,21 @@ private:
 //  Walks `leg`. Throws OperationFailedException if it is interrupted more
 //  than `max_interruptions` times. `hold_watchers` see every hold's frames
 //  too, after the interrupts' watchers, but stop nothing: a WatchAlong.
-template <typename Console, typename Context>
+template <typename ConsoleHandle, typename Context>
 LegResult walk_leg(
-    Console& console, Context& context,
+    ConsoleHandle& console, Context& context,
     const std::type_identity_t<LegMover<Context>>& mover,
-    const LegInterrupts<Console, Context>& interrupts,
+    const LegInterrupts<ConsoleHandle, Context>& interrupts,
     const LegSpec& leg,
     size_t max_interruptions = 5,
     const std::vector<WatchAlong*>& hold_watchers = std::vector<WatchAlong*>()
 );
 
-template <typename Console, typename Context>
+template <typename ConsoleHandle, typename Context>
 LegResult walk_leg(
-    Console& console, Context& context,
+    ConsoleHandle& console, Context& context,
     const std::type_identity_t<LegMover<Context>>& mover,
-    const LegInterrupts<Console, Context>& interrupts,
+    const LegInterrupts<ConsoleHandle, Context>& interrupts,
     const LegSpec& leg,
     size_t max_interruptions,
     const std::vector<WatchAlong*>& hold_watchers
@@ -153,7 +153,7 @@ LegResult walk_leg(
     calls.clear = [&](size_t index){ interrupts[index]->clear(console, context); };
     calls.detection_delay = [&](size_t index){ return interrupts[index]->detection_delay(); };
     calls.name = [&](size_t index){ return interrupts[index]->name(); };
-    calls.log = [&](const std::string& message){ console.log("Leg: " + message, COLOR_ORANGE); };
+    calls.log = [&](const std::string& message){ console.log(std::format("Leg: {}", message), COLOR_ORANGE); };
     calls.fail = [&](const std::string& message){
         OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT, message, console);
     };
@@ -165,18 +165,18 @@ LegResult walk_leg(
 //  shows after the hold has ended, and clears it. Returns how many it
 //  cleared. Throws OperationFailedException after `max_interruptions` in a
 //  row.
-template <typename Console, typename Context>
+template <typename ConsoleHandle, typename Context>
 size_t clear_late_interrupts(
-    Console& console, Context& context,
-    const LegInterrupts<Console, Context>& interrupts,
+    ConsoleHandle& console, Context& context,
+    const LegInterrupts<ConsoleHandle, Context>& interrupts,
     Milliseconds watch,
     size_t max_interruptions = 5
 );
 
-template <typename Console, typename Context>
+template <typename ConsoleHandle, typename Context>
 size_t clear_late_interrupts(
-    Console& console, Context& context,
-    const LegInterrupts<Console, Context>& interrupts,
+    ConsoleHandle& console, Context& context,
+    const LegInterrupts<ConsoleHandle, Context>& interrupts,
     Milliseconds watch,
     size_t max_interruptions
 ){
@@ -199,7 +199,7 @@ size_t clear_late_interrupts(
                 console
             );
         }
-        console.log("Leg: " + interrupts[ret]->name() + " at the end of the leg.", COLOR_ORANGE);
+        console.log(std::format("Leg: {} at the end of the leg.", interrupts[ret]->name()), COLOR_ORANGE);
         interrupts[ret]->clear(console, context);
     }
 }

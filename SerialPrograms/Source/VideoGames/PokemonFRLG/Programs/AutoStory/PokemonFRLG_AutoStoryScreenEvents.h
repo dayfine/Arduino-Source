@@ -10,7 +10,6 @@
 #ifndef PokemonAutomation_PokemonFRLG_AutoStoryScreenEvents_H
 #define PokemonAutomation_PokemonFRLG_AutoStoryScreenEvents_H
 
-#include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Pokemon/AutoStory/Pokemon_ScreenEvents.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_BattleDialogs.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
@@ -43,9 +42,6 @@ private:
     BattleMenuDetector m_battle_menu;
     BattleDialogDetector m_battle_dialog;
 };
-
-//  Registers the adapter's unit tests (synthetic frames).
-void add_tests_AutoStoryScreenEvents(UnitTestDatabase& database);
 
 
 
