@@ -414,7 +414,7 @@ UnitTestResult test_b2f_blocked_tap_beside_arrow(){
     }catch (std::runtime_error&){}
     for (const std::string& line : logs){
         if (line.find("the player is on one of: RocketHideout_B2F (17, 5).") != std::string::npos){
-            return "The arrow ahead of (17, 5) was taken for a wall: " + line;
+            return std::format("The arrow ahead of (17, 5) was taken for a wall: {}", line);
         }
     }
     return true;
