@@ -355,9 +355,10 @@ public:
                 failure = walks.legs(state, step).failure;
                 const auto end = story_to_local(world, "OreburghMine", nearest_tile(sim.player().pos));
                 logger.log(std::format("{} ended at {}.", name, to_string(sim.player().pos)));
-                const std::vector<TilePos>& tiles = step.pose_after->tiles;
+                const Pokemon::TileDeclared& declared = std::get<Pokemon::TileDeclared>(*step.pose_after);
+                const std::vector<TilePos>& tiles = declared.tiles;
                 const bool on_tile = end && std::find(tiles.begin(), tiles.end(), *end) != tiles.end();
-                if (failure.empty() && (!on_tile || step.pose_after->facing != sim.player().facing)){
+                if (failure.empty() && (!on_tile || declared.facing != sim.player().facing)){
                     failure = std::format("{} ended at {} facing {}, not on {}.", name, to_string(sim.player().pos),
                         direction_name(sim.player().facing), Pokemon::to_string(Pokemon::pose_of(*step.pose_after)));
                 }
@@ -462,7 +463,7 @@ Pokemon::StoryStep city_legs(std::string_view name, std::vector<Pokemon::StoryLe
     out.args["legs"] = std::move(legs);
     out.args["fight_wild"] = false;
     if (!end.empty()){
-        out.pose_after = GridPose{.map = "OreburghCity", .tiles = std::move(end), .facing = facing};
+        out.pose_after = Pokemon::TileDeclared{.map = "OreburghCity", .tiles = std::move(end), .facing = facing};
     }
     return out;
 }
@@ -475,7 +476,7 @@ Pokemon::StoryStep city_route(std::string_view name, TilePos target, Direction f
     const GridPose gp{.map = "OreburghCity", .tiles = {target}, .facing = facing};
     out.args["target"] = gp;
     out.args["fight_wild"] = false;
-    out.pose_after = gp;
+    out.pose_after = Pokemon::TileDeclared{.map = gp.map, .tiles = gp.tiles, .facing = gp.facing};
     return out;
 }
 

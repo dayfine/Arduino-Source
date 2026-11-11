@@ -28,7 +28,7 @@ StoryStep r75_old_gate_exit(){
     step.action = "to_map";
     step.args["legs"] = std::vector<Pokemon::StoryLeg>{{.direction = Direction::WEST, .tiles = 8}};
     step.args["fight_wild"] = false;
-    step.pose_after = GridPose{.map = "Route203", .tiles = {TilePos{55, 9}}, .facing = Direction::WEST};
+    step.pose_after = Pokemon::TileDeclared{.map = "Route203", .tiles = {TilePos{55, 9}}, .facing = Direction::WEST};
     return step;
 }
 Pose r75_pond_pocket(){
@@ -48,7 +48,7 @@ StoryStep r81_old_cave_exit(){
     step.action = "to_wall";
     step.args["legs"] = std::vector<Pokemon::StoryLeg>{{.direction = Direction::SOUTH, .tiles = 4}};
     step.args["fight_wild"] = false;
-    step.pose_after = GridPose{.map = "Route204North", .tiles = {TilePos{20, 26}}, .facing = Direction::SOUTH};
+    step.pose_after = Pokemon::TileDeclared{.map = "Route204North", .tiles = {TilePos{20, 26}}, .facing = Direction::SOUTH};
     return step;
 }
 Pose r81_below_the_mouth(){
@@ -101,7 +101,7 @@ StoryStep old_tap_into_the_gate(){
     step.name = "into_oreburgh_gate";
     step.action = "to_banner";
     step.args["direction"] = Direction::WEST;
-    step.pose_after = GridPose{.map = "OreburghGate", .tiles = {TilePos{27, 22}, TilePos{26, 22}}, .facing = Direction::WEST};
+    step.pose_after = Pokemon::TileDeclared{.map = "OreburghGate", .tiles = {TilePos{27, 22}, TilePos{26, 22}}, .facing = Direction::WEST};
     return step;
 }
 
