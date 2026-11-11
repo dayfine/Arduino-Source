@@ -14,7 +14,7 @@ code-health gate, and keep descriptions and "Depends on" banners right.
    them. Re-read the PR rule before any GitHub PR mutation. If the fetch fails, say the cached rules
    may be stale.
 2. `~/.local/bin/gh` is first on PATH. Never bypass its upstream guard.
-3. Never open, reopen or mark ready a PR on PokemonAutomation/Arduino-Source; fork PRs stay drafts.
+3. Never open, reopen or mark ready a PR on PokemonAutomation/Arduino-Source; fork PRs open as drafts and may be marked ready on the fork only.
 4. **Merge, never rebase or force-push.** `git merge origin/<base>`; a conflict is resolved in the
    merge commit. Keep CRLF in CRLF files.
 5. PR descriptions: 2–5 sentences of plain prose, banner line first for stacked PRs.
