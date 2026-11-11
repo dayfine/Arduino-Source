@@ -169,7 +169,7 @@ MapData hideout_floor(const std::string& name, const TilePos& door){
 
 //  The ride from B2F to B4F with the lift's room coded, not mapped: from
 //  below B2F's lift door, in, the panel, out a tile south of B4F's lift
-//  door (20, 23), on (20, 24): console B, 2026-11-11, 00.32's lift_to_b4f.
+//  door (20, 23), on (20, 24): console B, 2026-11-11, 09.02's lift_to_b4f.
 std::string lift_on_sim(){
     const MapPosition b4f_exit{"RocketHideout_B4F", {20, 24}};
     const std::vector<MapPosition>& exits = rocket_hideout_lift_exits();
@@ -196,8 +196,8 @@ std::string lift_on_sim(){
     const Pokemon::DeclaredPose declared = Pokemon::TileDeclared{b4f_exit.map, {b4f_exit.point}, Direction::SOUTH};
     for (const StoryCheckpoint& row : story_checkpoints()){
         for (const StoryStep& step : row.steps){
-            if (row.id == "00.32" && step.name == "lift_to_b4f" && !(step.pose_after == declared)){
-                return "Expected 00.32's lift_to_b4f to declare B4F's lift exit (20, 24).";
+            if (row.id == "09.02" && step.name == "lift_to_b4f" && !(step.pose_after == declared)){
+                return "Expected 09.02's lift_to_b4f to declare B4F's lift exit (20, 24).";
             }
         }
     }
@@ -382,7 +382,7 @@ UnitTestResult test_b2f_maze_taps(){
     return true;
 }
 
-//  Console B, 2026-11-11 01:05: 00.32's below_left_guard was planned from
+//  Console B, 2026-11-11 01:05: 09.02's below_left_guard was planned from
 //  the lift door (20, 23), but the door lets the player out a tile south,
 //  on (20, 24). Every leg ran a row low: "west 4" ended on (16, 25), the
 //  hold west on along row 25 and "east 2" left the player below the
@@ -397,13 +397,13 @@ UnitTestResult test_b4f_left_guard_from_below_lift_door(){
     const StoryStep* below_left_guard = nullptr;
     for (const StoryCheckpoint& row : story_checkpoints()){
         for (const StoryStep& step : row.steps){
-            if (row.id == "00.32" && step.name == "below_left_guard"){
+            if (row.id == "09.02" && step.name == "below_left_guard"){
                 below_left_guard = &step;
             }
         }
     }
     if (below_left_guard == nullptr){
-        return "Expected 00.32's step below_left_guard.";
+        return "Expected 09.02's step below_left_guard.";
     }
     const std::vector<Pokemon::StoryLeg> legs = Pokemon::story_arg<std::vector<Pokemon::StoryLeg>>(below_left_guard->args, "legs");
     const std::optional<std::vector<RouteStep>> route = fixed_route(maps, lift_exit, legs);
@@ -420,7 +420,7 @@ UnitTestResult test_b4f_left_guard_from_below_lift_door(){
     return true;
 }
 
-//  Console B, 2026-11-11 01:04: 00.32's below_lift tapped east past
+//  Console B, 2026-11-11 01:04: 09.02's below_lift tapped east past
 //  (27, 17) to the wall at (30, 17), was found there, and walked the rest
 //  of its legs back from (27, 17): west 3, south, east and north round a
 //  square to the lift door's (28, 17). The legs are east to the wall and
@@ -433,13 +433,13 @@ UnitTestResult test_below_lift_one_backtrack(){
     const StoryStep* below_lift = nullptr;
     for (const StoryCheckpoint& row : story_checkpoints()){
         for (const StoryStep& step : row.steps){
-            if (row.id == "00.32" && step.name == "below_lift"){
+            if (row.id == "09.02" && step.name == "below_lift"){
                 below_lift = &step;
             }
         }
     }
     if (below_lift == nullptr){
-        return "Expected 00.32's step below_lift.";
+        return "Expected 09.02's step below_lift.";
     }
     const std::vector<Pokemon::StoryLeg> legs = Pokemon::story_arg<std::vector<Pokemon::StoryLeg>>(below_lift->args, "legs");
     const std::optional<std::vector<RouteStep>> route = fixed_route(maps, row_17, legs);
@@ -511,7 +511,7 @@ const AutoStoryHideoutBodyCase HIDEOUT_BODY_CASES[] = {
     },
     {
         .input = {.name = "B4F's left Grunt from the lift's exit", .body = test_b4f_left_guard_from_below_lift_door},
-        .expectation = {.description = "00.32's legs from (20, 24) end below the left Grunt"},
+        .expectation = {.description = "09.02's legs from (20, 24) end below the left Grunt"},
     },
     {
         .input = {.name = "below B2F's lift: the wall, then one leg back", .body = test_below_lift_one_backtrack},
