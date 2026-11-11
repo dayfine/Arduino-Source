@@ -232,7 +232,8 @@ StepWalk walk_step(
         start_surf(console, context, step.direction, facing == step.direction);
         break;
     case RouteAction::FACE:
-        pbf_press_dpad(context, dpad(step.direction), FACE_HOLD, STEP_RELEASE);
+        //  Checked by the facing on screen, as walk_overworld_route() does.
+        turn_to(console, context, step.direction);
         break;
     }
     return out;
