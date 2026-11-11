@@ -28,10 +28,10 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-//  "sha256:<hex>" of `checkpoint`'s steps as their JSON, each with its
-//  action named and its args' fallbacks filled in from `specs`, and
-//  without its why: two files that run the same steps hash the same.
-std::string story_steps_hash(const StoryCheckpoint& checkpoint, std::span<const StoryActionSpec> specs);
+//  "sha256:<hex>" of `checkpoint`'s steps JSON as read from its file
+//  (StoryCheckpoint::steps_json): any edit to the steps, including a why
+//  or a default written out, changes it.
+std::string story_steps_hash(const StoryCheckpoint& checkpoint);
 
 //  A run's save mode and the log line that says why.
 struct StorySaveDecision{

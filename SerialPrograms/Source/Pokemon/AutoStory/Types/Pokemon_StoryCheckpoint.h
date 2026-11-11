@@ -30,6 +30,9 @@ struct StoryCheckpoint{
     //  Where its starting save leaves the player; none for a new game.
     std::optional<DeclaredPose> start;
     std::vector<StoryStep> steps;
+    //  The steps' JSON ("events") as read, dumped compactly; what
+    //  story_steps_hash() hashes. Empty for a checkpoint built in code.
+    std::string steps_json = {};
     //  What must hold when it is done; checked on its own after a run.
     //  JSON: "metadata": {"postconditions": ...}.
     StoryPostconditions postconditions;
