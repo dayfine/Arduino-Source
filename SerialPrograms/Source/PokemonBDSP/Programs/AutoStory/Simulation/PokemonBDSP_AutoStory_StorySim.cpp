@@ -133,6 +133,7 @@ std::string play_scene(const SimScene& scene, const TalkOverRule& rule){
 //  scene may take us to another map (Mom walks us out, 00.04): with a
 //  dialogue open the stub scene plays it. Otherwise only a door fades.
 void SimStoryStepIO::settle(Button, const std::string& label, bool fade, const std::string&){
+    m_misses.fading_in = false;
     const auto scene = m_knobs.scenes.find(m_step);
     if (scene != m_knobs.scenes.end()){
         m_misses.fade_unseen = false;
@@ -671,7 +672,10 @@ Outcome SimExecutor::heal(RunState& state, const StoryStep& step){
         return m_sim.player().warped.has_value();
     }, [&]{
         throw GridSimFailure{step.name + ": no door north of " + to_string(m_sim.player().pos)};
-    });
+    }, step.name);
+    if (m_misses.fading_in){
+        return Pokemon::outcome_failed("heal", step.name + ": walked to the nurse while the Center was still fading in.");
+    }
     return Pokemon::outcome_ok();
 }
 
