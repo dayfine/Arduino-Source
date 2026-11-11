@@ -184,7 +184,7 @@ const std::vector<std::string>& console_game_actions(){
         "new_game_language", "pick_look", "type_player_name",
         "story_battle_start",
         "talk_through_map_screen", "talk_to_pokedex_screen", "climb_ladder",
-        "catch_tutorial", "battle_then_catch", "catch_in_zone",
+        "catch_tutorial", "battle_then_catch", "catch_in_zone", "walk_to_zone_gate",
         "choose_0", "choose_1",
     };
     return actions;
@@ -482,6 +482,8 @@ void run_console_action(StoryEnv& env, std::string_view name){
         battle_then_catch(env.env, console, env.context, env.battle_ai, 6);
     }else if (name == "catch_in_zone"){
         catch_in_zone(console, env.context, 2, 15);
+    }else if (name == "walk_to_zone_gate"){
+        walk_to_zone_gate(console, env.context);
     }else if (name == "new_game_language"){
         new_game_language(console, env.context);
     }else if (name == "pick_look"){

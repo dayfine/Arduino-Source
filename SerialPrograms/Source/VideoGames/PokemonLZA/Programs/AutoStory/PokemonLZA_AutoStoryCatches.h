@@ -10,6 +10,10 @@
 #ifndef PokemonAutomation_PokemonLZA_AutoStoryCatches_H
 #define PokemonAutomation_PokemonLZA_AutoStoryCatches_H
 
+#include <optional>
+#include "Common/Cpp/Time.h"
+#include "CommonFramework/ImageTypes/ImageViewRGB32.h"
+#include "CommonFramework/Logging/Logger.h"
 #include "CommonFramework/Tools/ProgramEnvironment.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
@@ -39,16 +43,36 @@ void battle_then_catch(
     BattleAIOption& battle_ai, int max_rounds
 );
 
+//  The main mission's objective marker in the overworld: an orange hexagon
+//  "!" with the distance above it in white digits.
+struct ObjectiveMarker{
+    //  The hexagon's middle, 0 (left edge) to 1 (right edge).
+    double x = 0;
+    //  The digits read; -1 when they did not read.
+    int distance = -1;
+};
+
+//  The marker on `screen`, if it shows (the minimap's own marker aside).
+std::optional<ObjectiveMarker> read_objective_marker(Logger& logger, const ImageViewRGB32& screen);
+
+//  Walks toward the objective marker: turns the camera to keep it in the
+//  middle (to find it when it is behind) and walks on, until its distance
+//  reads `stop_at` or less, or (with `stop_at` 0) an A prompt shows, or
+//  `limit`. Returns the last distance read.
+std::optional<int> walk_to_objective(ConsoleHandle& console, ProControllerContext& context, int stop_at, Milliseconds limit);
+
 //  03.07's catches for the "register five species" quest (3/5 after the
-//  tutorial), in Wild Zone 1: walks 5 s ahead (nothing spawns at the
-//  start), throws at what locks on there, then walks 3 s spokes out and
-//  back (ahead, then left and right in turn, by the minimap's heading) and
-//  throws at what locks on at each end, then walks back to the start and
-//  faces its heading again. A throw followed by text
-//  or a card counts as a catch; a repeat species counts too, so ask for
-//  more than are needed. Throws OperationFailedException with fewer than
-//  `catches_wanted` after the spokes or `max_throws`.
+//  tutorial), in Wild Zone 1: walks toward the objective (the zone's far
+//  gate, 127 away at the start, where nothing spawns) and stops at 100 and
+//  at 60 to throw at what locks on in front, or else what a camera turn
+//  finds, up to 3 throws a stop. A throw followed by text or a card counts
+//  as a catch. Throws OperationFailedException with fewer than
+//  `catches_wanted` after both stops or `max_throws`.
 void catch_in_zone(ConsoleHandle& console, ProControllerContext& context, int catches_wanted, int max_throws);
+
+//  On to the objective until the gate's A prompt shows (03.07, Wild Zone
+//  1's far gate). Throws OperationFailedException when no prompt shows.
+void walk_to_zone_gate(ConsoleHandle& console, ProControllerContext& context);
 
 
 
