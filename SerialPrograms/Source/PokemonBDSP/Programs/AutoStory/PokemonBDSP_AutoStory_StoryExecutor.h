@@ -99,8 +99,12 @@ struct StoryEnv{
 //  Mom's call on (6, 9)). It plans with the route costs.
 inline constexpr std::string_view ROUTE_ONTO_TRIGGER = "trigger";
 
-//  The plan costs a ROUTE step's variant names: "" and ROUTE_ONTO_TRIGGER
-//  the route costs, "town" town_plan_costs(), "robust" the planner's
+//  The variant of a ROUTE step that, once at its target, runs its one leg
+//  ("legs") until a scene's dialogue starts. It plans with the route costs.
+inline constexpr std::string_view ROUTE_INTO_SCENE = "into_scene";
+
+//  The plan costs a ROUTE step's variant names: "", ROUTE_ONTO_TRIGGER and
+//  ROUTE_INTO_SCENE the route costs, "town" town_plan_costs(), "robust" the planner's
 //  defaults, "line" waypoint_plan_costs() (a stretch of a line a human
 //  walked). Nothing for another name.
 std::optional<RobustPlanCosts> story_route_costs(const std::string& variant);

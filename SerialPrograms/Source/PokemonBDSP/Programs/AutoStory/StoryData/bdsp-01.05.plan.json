@@ -67,25 +67,49 @@
         "why": "Barry runs into us, talks of Eterna, and leaves (assumed: the push)"
       },
       {
+        "action": "to_wall",
         "args": {
           "fight_wild": false,
-          "target": {
-            "facing": "west",
-            "map": "OreburghCity",
-            "tiles": [
-              [
-                2,
-                13
-              ]
-            ]
-          }
+          "legs": [
+            {
+              "direction": "south",
+              "tiles": 6
+            },
+            {
+              "direction": "west",
+              "tiles": 6
+            }
+          ]
         },
-        "id": "by_the_gate",
-        "kind": "route",
-        "why": "west to the Gate's warp tile (2, 13)"
+        "declared_after": {
+          "facing": "west",
+          "map": "OreburghCity",
+          "tiles": [
+            [
+              2,
+              17
+            ]
+          ]
+        },
+        "id": "below_the_gates_mouth",
+        "kind": "legs",
+        "why": "south to row 17's wall, then west to column 2's"
       },
       {
-        "action": "to_banner",
+        "args": {
+          "fight_wild": false,
+          "legs": [
+            {
+              "direction": "north",
+              "tiles": 4
+            }
+          ]
+        },
+        "id": "to_the_gates_row",
+        "kind": "legs",
+        "why": "taps up column 2 to the mouth's row 13"
+      },
+      {
         "args": {
           "direction": "west"
         },
@@ -115,7 +139,7 @@
             "map": "OreburghGate",
             "tiles": [
               [
-                4,
+                5,
                 22
               ]
             ]
@@ -123,7 +147,7 @@
         },
         "id": "through_the_gate",
         "kind": "route",
-        "why": "west along row 22 to the warp tile by the west mouth (3, 22)"
+        "why": "west along row 22 to two tiles short of the west mouth's warp (3, 22)"
       },
       {
         "action": "to_banner",

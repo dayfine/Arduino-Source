@@ -110,41 +110,37 @@
         "why": "a corner of the human's line"
       },
       {
-        "action": "line",
+        "action": "to_map",
         "args": {
           "fight_wild": false,
-          "target": {
-            "map": "Route204North",
-            "tiles": [
-              [
-                11,
-                5
-              ]
-            ]
-          }
+          "legs": [
+            {
+              "direction": "north",
+              "tiles": 17
+            }
+          ]
         },
-        "id": "line_7",
-        "kind": "route",
-        "why": "a corner of the human's line"
-      },
-      {
-        "action": "line",
-        "args": {
-          "fight_wild": false,
-          "target": {
-            "facing": "north",
-            "map": "FloaromaTown",
-            "tiles": [
-              [
-                11,
-                29
-              ]
+        "declared_after": {
+          "facing": "north",
+          "map": "FloaromaTown",
+          "tiles": [
+            [
+              11,
+              27
+            ],
+            [
+              11,
+              28
+            ],
+            [
+              11,
+              29
             ]
-          }
+          ]
         },
         "id": "into_floaroma",
-        "kind": "route",
-        "why": "north up column 11 into Floaroma"
+        "kind": "legs",
+        "why": "run north until Floaroma's banner; on after a wild battle"
       },
       {
         "id": "save_here",
