@@ -11,7 +11,7 @@
       {
         "id": "catch_more_species",
         "kind": "game_action",
-        "why": "step 64: the lab gate asks for five registered species (3/5 after the tutorial). Catch more here in Wild Zone 1 before leaving, so the gate's scene finds 5/5: toward the objective, throwing at 100 and 60 (catch_in_zone).",
+        "why": "step 64: the lab gate asks for five registered species (3/5 after the tutorial, 4/5 with Scatterbug). Catch more here in Wild Zone 1 before leaving, so the gate's scene finds 5/5: Mareep, in the grass right of the road at 60 from the far gate; only the Pokedex's \"Registered!\" banner counts, since repeats (Fletchling, Scatterbug) do not register (catch_in_zone).",
         "action": "catch_in_zone"
       },
       {

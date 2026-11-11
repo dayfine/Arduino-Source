@@ -61,14 +61,15 @@ std::optional<ObjectiveMarker> read_objective_marker(Logger& logger, const Image
 //  `limit`. Returns the last distance read.
 std::optional<int> walk_to_objective(ConsoleHandle& console, ProControllerContext& context, int stop_at, Milliseconds limit);
 
-//  03.07's catches for the "register five species" quest (3/5 after the
-//  tutorial), in Wild Zone 1: walks toward the objective (the zone's far
-//  gate, 127 away at the start, where nothing spawns) and stops at 100 and
-//  at 60 to throw at what locks on in front, or else what a camera turn
-//  finds, up to 3 throws a stop. A throw followed by text or a card counts
-//  as a catch. Throws OperationFailedException with fewer than
-//  `catches_wanted` after both stops or `max_throws`.
-void catch_in_zone(ConsoleHandle& console, ProControllerContext& context, int catches_wanted, int max_throws);
+//  03.07's catch for the "register five species" quest (4/5 after the
+//  tutorial and its repeats): walks toward the objective (Wild Zone 1's far
+//  gate, around Taunie's rocks from the start) to 60, where Mareep graze in
+//  the grass right of the road, then steps right 1 s at a time (3 at most)
+//  and throws at what locks on in front, or after small camera turns right,
+//  counting the Pokedex's "Registered!" banners; then steps back onto the
+//  road. Throws OperationFailedException with fewer than
+//  `new_species_wanted` new species after the steps or `max_throws`.
+void catch_in_zone(ConsoleHandle& console, ProControllerContext& context, int new_species_wanted, int max_throws);
 
 //  On to the objective until the gate's A prompt shows (03.07, Wild Zone
 //  1's far gate). Throws OperationFailedException when no prompt shows.
