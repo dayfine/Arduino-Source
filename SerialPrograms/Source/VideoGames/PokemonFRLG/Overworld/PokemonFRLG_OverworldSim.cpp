@@ -518,6 +518,9 @@ void OverworldSim::take_steps(Direction direction, Milliseconds pressed, Millise
         if (after_step(*step, pressed)){
             return;
         }
+        if (step->spin && m_script.holds_end_at_slide_stop){
+            return;
+        }
         pressed += step->ledge ? tile * 2 : tile;
     }
 }

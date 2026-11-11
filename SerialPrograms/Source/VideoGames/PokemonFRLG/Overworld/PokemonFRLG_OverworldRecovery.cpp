@@ -438,10 +438,14 @@ private:
     //  only that far, to keep the check cheap: in Viridian Forest (r16) it
     //  walks 10 tiles after "west 6", while after Route 1's "west 4" the
     //  only holds walk 30. An open leg after a short one walks on off the
-    //  route, which isn't checked.
+    //  route, which isn't checked. A leg onto a spinner isn't checked: its
+    //  taps wait out the slide and its settle, and it ends on the stop. The
+    //  tiles short of its arrow left out that stop, and the hold west "to
+    //  the wall (7, 11)" after Rocket Hideout B2F's "east 2" to the stop
+    //  (14, 13) slid from there to (10, 15) (09.02, console B, 2026-11-11).
     void check_open_leg(const RouteStep& step, const std::optional<MapPosition>& start){
         if (maps() == nullptr || m_planning->open_leg_check != OpenLegCheck::REANCHOR || !start
-            || step.action != RouteAction::WALK || step.to_wall || step.warps
+            || step.action != RouteAction::WALK || step.to_wall || step.warps || step.spin_tiles
             || m_next >= m_plan.size() || !(is_wall_hold(m_plan[m_next]) || is_slide(m_plan[m_next]))
         ){
             return;
