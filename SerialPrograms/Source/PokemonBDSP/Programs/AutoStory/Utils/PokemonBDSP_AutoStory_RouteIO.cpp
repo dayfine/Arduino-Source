@@ -11,6 +11,9 @@
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP_AutoStory_RouteIO.h"
+#include "PokemonBDSP_AutoStory_WalkDpad.h"
+#include "PokemonBDSP_AutoStory_WalkResult.h"
+#include "PokemonBDSP_AutoStory_WalkScreen.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

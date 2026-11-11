@@ -9,6 +9,7 @@
 #define PokemonAutomation_PokemonBDSP_AutoStory_WallRecovery_H
 
 #include "Pokemon/Navigation/Pokemon_WallRecovery.h"
+#include "PokemonBDSP_AutoStory_RobustRoute.h"
 #include "PokemonBDSP_AutoStory_RoutePlanner.h"
 
 namespace PokemonAutomation{

@@ -10,6 +10,8 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Data/PokemonBDSP_AutoStory_Maps.h"
 #include "Data/PokemonBDSP_AutoStory_StoryMaps.h"
+#include "Data/PokemonBDSP_AutoStory_StoryTrainers.h"
+#include "Data/PokemonBDSP_AutoStory_TrainerSight.h"
 #include "PokemonBDSP_AutoStory_StoryPlaces.h"
 
 namespace PokemonAutomation{
@@ -126,7 +128,7 @@ const StoryWorld& route_204_north_world(){
 //  shut everything else off.
 Pokemon::MapData ravaged_path_smashed(){
     Pokemon::MapData map = story_map("RavagedPath");
-    Pokemon::cell_at(map.tiles, map_point("RavagedPath", "rocks.13")) = Pokemon::TileKind::OPEN;
+    Pokemon::cell_at(map_point("RavagedPath", "rocks.13"), map.tiles) = Pokemon::TileKind::OPEN;
     return map;
 }
 

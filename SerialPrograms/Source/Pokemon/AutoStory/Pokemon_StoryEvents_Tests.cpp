@@ -16,8 +16,8 @@
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon_StoryEvents.h"
+#include "Pokemon_StoryEvents_Tests.h"
 #include "Pokemon_TilePose.h"
-#include "Pokemon_AutoStory_Tests.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -53,7 +53,7 @@ struct Lines{
     std::string all() const{
         std::string text;
         for (const std::string& line : lines){
-            text += "\n" + line;
+            text += std::format("\n{}", line);
         }
         return text;
     }
@@ -73,7 +73,7 @@ Pose anchored(const Pose& pose){
     return anchored;
 }
 
-Act record(World& world, std::string what){
+Act record(std::string what, World& world){
     return [&world, what = std::move(what)](RunState&){
         world.trace.push_back(what);
         return outcome_ok();
@@ -124,9 +124,9 @@ Checkpoint make_checkpoint(){
 UnitTestResult test_runs_events_in_order(){
     World world;
     Checkpoint checkpoint = make_checkpoint();
-    checkpoint.events.push_back(make_event("walk_to_corner", record(world, "walk")));
-    checkpoint.events.push_back(make_event("talk_lady", record(world, "talk")));
-    checkpoint.events.push_back(make_event("save", record(world, "save")));
+    checkpoint.events.push_back(make_event("walk_to_corner", record("walk", world)));
+    checkpoint.events.push_back(make_event("talk_lady", record("talk", world)));
+    checkpoint.events.push_back(make_event("save", record("save", world)));
     RunState state;
     Lines lines;
     EventLogger log = lines.logger();
@@ -142,7 +142,7 @@ UnitTestResult test_runs_events_in_order(){
         "[Checkpoint] 00.04: done, 3 run, 0 skipped",
     };
     if (!report.completed || lines.lines != expected){
-        return "Unexpected log:" + lines.all();
+        return std::format("Unexpected log:{}", lines.all());
     }
     if (world.trace != std::vector<std::string>{"walk", "talk", "save"}){
         return "Events ran out of order.";
@@ -163,7 +163,7 @@ UnitTestResult test_skips_done_event(){
         return "Expected the event skipped.";
     }
     if (!world.trace.empty() || !lines.has("[Event] 00.04/1 talk_poke_mart_lady: skipped")){
-        return "The skipped event should not act:" + lines.all();
+        return std::format("The skipped event should not act:{}", lines.all());
     }
     return true;
 }
@@ -179,10 +179,10 @@ UnitTestResult test_expect_failure_waited_out(){
     EventLogger log = lines.logger();
     const CheckpointReport report = run_checkpoint(state, checkpoint, log);
     if (!report.completed || world.trace.size() != 3 || world.potions != 10){
-        return "Expected three talks, the last answered:" + lines.all();
+        return std::format("Expected three talks, the last answered:{}", lines.all());
     }
     if (!lines.has("[Event] 00.04/1 talk_poke_mart_lady: recover: wait (expect_failed)")){
-        return "Expected the wait logged:" + lines.all();
+        return std::format("Expected the wait logged:{}", lines.all());
     }
     return true;
 }
@@ -196,7 +196,7 @@ Event talk_to_mom(World& world){
         return outcome_ok();
     });
     event.expect.push_back(dialogue_opened(world));
-    event.recoveries.push_back(recovery("expect_failed", RecoveryKind::WAIT, 1, record(world, "wait")));
+    event.recoveries.push_back(recovery("expect_failed", RecoveryKind::WAIT, 1, record("wait", world)));
     event.recoveries.push_back(recovery("expect_failed", RecoveryKind::REANCHOR, 1, [&world](RunState& state){
         world.trace.push_back("anchor");
         world.rows_off = 0;
@@ -218,7 +218,7 @@ UnitTestResult test_escalates_to_reanchor(){
     const CheckpointReport report = run_checkpoint(state, checkpoint, log);
     const std::vector<std::string> expected = {"talk", "wait", "talk", "anchor", "talk"};
     if (!report.completed || world.trace != expected){
-        return "Expected wait, then re-anchor:" + lines.all();
+        return std::format("Expected wait, then re-anchor:{}", lines.all());
     }
     if (state.pose.certainty != PoseCertainty::TILE){
         return "The re-anchor should have fixed the pose.";
@@ -230,16 +230,16 @@ UnitTestResult test_stop_names_failed_event(){
     World world;
     world.rows_off = 1;
     Checkpoint checkpoint = make_checkpoint();
-    checkpoint.events.push_back(make_event("enter_home", record(world, "enter")));
+    checkpoint.events.push_back(make_event("enter_home", record("enter", world)));
     checkpoint.events.push_back(talk_to_mom(world));
-    checkpoint.events.back().recoveries[1].prepare = record(world, "anchor");     //  An anchor that does not help.
-    checkpoint.events.push_back(make_event("mom_dialogue", record(world, "dialogue")));
+    checkpoint.events.back().recoveries[1].prepare = record("anchor", world);     //  An anchor that does not help.
+    checkpoint.events.push_back(make_event("mom_dialogue", record("dialogue", world)));
     RunState state;
     Lines lines;
     EventLogger log = lines.logger();
     const CheckpointReport report = run_checkpoint(state, checkpoint, log);
     if (report.completed || report.failed_event != 2 || report.failed_name != "talk_mom"){
-        return "Expected event 2 reported:" + lines.all();
+        return std::format("Expected event 2 reported:{}", lines.all());
     }
     if (report.failure.failure != "expect_failed" || report.failure.detail != "dialogue opened"){
         return "Expected the failing expect reported.";
@@ -250,7 +250,7 @@ UnitTestResult test_stop_names_failed_event(){
     if (!lines.has("[Event] 00.04/2 talk_mom: recover: stop (expect_failed): four rows cover the mat to the TV")
         || lines.lines.back() != "[Checkpoint] 00.04: failed at 2 talk_mom: expect_failed: dialogue opened"
     ){
-        return "Unexpected log:" + lines.all();
+        return std::format("Unexpected log:{}", lines.all());
     }
     return true;
 }
@@ -268,15 +268,15 @@ UnitTestResult test_unmatched_failure_stops(){
     EventLogger log = lines.logger();
     const CheckpointReport report = run_checkpoint(state, checkpoint, log);
     if (report.completed || report.failure.failure != "probe_exhausted" || world.trace.size() != 1){
-        return "A failure no recovery names should stop at once:" + lines.all();
+        return std::format("A failure no recovery names should stop at once:{}", lines.all());
     }
     if (!lines.has("[Event] 00.04/1 probe_for_mom: failed: probe_exhausted: 4 rows")){
-        return "Unexpected log:" + lines.all();
+        return std::format("Unexpected log:{}", lines.all());
     }
     return true;
 }
 
-Interrupt wild_battle(World& world, ResumePolicy resume){
+Interrupt wild_battle(ResumePolicy resume, World& world){
     Interrupt interrupt;
     interrupt.name = "wild_battle";
     interrupt.detect = [&world](RunState&){ return world.battle_showing; };
@@ -328,7 +328,7 @@ UnitTestResult test_interrupt_mid_event(){
     World world;
     world.walk_failures = 1;
     Checkpoint checkpoint = make_checkpoint();
-    checkpoint.interrupts.push_back(wild_battle(world, ResumePolicy::RETRY_EVENT));
+    checkpoint.interrupts.push_back(wild_battle(ResumePolicy::RETRY_EVENT, world));
     checkpoint.events.push_back(walk_through_grass(world));
     RunState state = at_catch_spot();
     Lines lines;
@@ -337,13 +337,13 @@ UnitTestResult test_interrupt_mid_event(){
     //  The battle leaves the pose inexact, so the retry first re-anchors.
     const std::vector<std::string> expected = {"walk", "flee", "anchor", "walk"};
     if (!report.completed || world.trace != expected){
-        return "Expected flee, re-anchor, walk again:" + lines.all();
+        return std::format("Expected flee, re-anchor, walk again:{}", lines.all());
     }
     if (!lines.has("[Event] 00.04/1 walk_to_corner: interrupt: wild_battle")){
-        return "Expected the interrupt logged:" + lines.all();
+        return std::format("Expected the interrupt logged:{}", lines.all());
     }
     if (state.pose.map != "Route 201" || tiles_of(state.pose) != std::vector<TilePos>{TilePos{42, 3}}){
-        return "Expected the learned pose: " + to_string(state.pose);
+        return std::format("Expected the learned pose: {}", to_string(state.pose));
     }
     return true;
 }
@@ -351,7 +351,7 @@ UnitTestResult test_interrupt_mid_event(){
 UnitTestResult test_interrupt_recheck_expect(){
     World world;
     Checkpoint checkpoint = make_checkpoint();
-    Interrupt interrupt = wild_battle(world, ResumePolicy::RECHECK_EXPECT);
+    Interrupt interrupt = wild_battle(ResumePolicy::RECHECK_EXPECT, world);
     interrupt.pose = InterruptPose::UNCHANGED;
     checkpoint.interrupts.push_back(std::move(interrupt));
     //  A talk-only trainer stops us on the last step: we arrived anyway.
@@ -367,7 +367,7 @@ UnitTestResult test_interrupt_recheck_expect(){
     EventLogger log = lines.logger();
     const CheckpointReport report = run_checkpoint(state, checkpoint, log);
     if (!report.completed || world.trace != std::vector<std::string>{"walk", "flee"}){
-        return "Expected done without walking again:" + lines.all();
+        return std::format("Expected done without walking again:{}", lines.all());
     }
     return true;
 }
@@ -376,7 +376,7 @@ UnitTestResult test_too_many_interrupts(){
     World world;
     Checkpoint checkpoint = make_checkpoint();
     checkpoint.max_interrupts_per_event = 2;
-    checkpoint.interrupts.push_back(wild_battle(world, ResumePolicy::RETRY_EVENT));
+    checkpoint.interrupts.push_back(wild_battle(ResumePolicy::RETRY_EVENT, world));
     checkpoint.events.push_back(make_event("walk", [&world](RunState&){
         world.battle_showing = true;
         return outcome_failed("walk_stopped");
@@ -386,7 +386,7 @@ UnitTestResult test_too_many_interrupts(){
     EventLogger log = lines.logger();
     const CheckpointReport report = run_checkpoint(state, checkpoint, log);
     if (report.completed || report.failure.failure != "too_many_interrupts"){
-        return "Expected to give up after 2 interrupts:" + lines.all();
+        return std::format("Expected to give up after 2 interrupts:{}", lines.all());
     }
     return true;
 }
@@ -406,7 +406,7 @@ Checkpoint post_catch(World& world, World& saved){
     save.skip_if.push_back(has_potions(world));
     save.skip_if.push_back(condition("on Route 202", [&world](RunState&){ return world.map == "Route 202"; }));
     checkpoint.events.push_back(std::move(save));
-    checkpoint.events.push_back(make_event("train", record(world, "train")));
+    checkpoint.events.push_back(make_event("train", record("train", world)));
     checkpoint.events.push_back(make_event("walk_north", [&world](RunState&){
         world.trace.push_back("walk");
         if (world.walk_failures > 0){
@@ -431,7 +431,7 @@ UnitTestResult test_resume_after_reload(){
     EventLogger log = lines.logger();
     const CheckpointReport first = run_checkpoint(state, checkpoint, log);
     if (first.completed || first.failed_event != 4){
-        return "Expected the first run to fail at the walk:" + lines.all();
+        return std::format("Expected the first run to fail at the walk:{}", lines.all());
     }
     world = saved;      //  Reload: the save has the Potions and stands on Route 202.
     world.walk_failures = 0;    //  Whatever blocked the walk has moved on.
@@ -439,7 +439,7 @@ UnitTestResult test_resume_after_reload(){
     RunState reloaded;
     const CheckpointReport second = run_checkpoint(reloaded, checkpoint, log);
     if (!second.completed || second.events_skipped != 2 || second.events_run != 2){
-        return "Expected the Potions and the save skipped:" + lines.all();
+        return std::format("Expected the Potions and the save skipped:{}", lines.all());
     }
     if (world.trace != std::vector<std::string>{"train", "walk"} || world.potions != 10){
         return "Expected only the training and the walk again.";
@@ -451,9 +451,9 @@ UnitTestResult test_start_end_and_save(){
     World world;
     Checkpoint checkpoint = make_checkpoint();
     checkpoint.start.push_back(has_potions(world));
-    checkpoint.events.push_back(make_event("walk", record(world, "walk")));
+    checkpoint.events.push_back(make_event("walk", record("walk", world)));
     checkpoint.end.push_back(condition("parcel in the Bag", [&world](RunState&){ return world.parcel; }));
-    checkpoint.save = record(world, "save");
+    checkpoint.save = record("save", world);
     RunState state;
     Lines lines;
     EventLogger log = lines.logger();
@@ -486,7 +486,7 @@ UnitTestResult test_pose_certainty(){
     }
     RunState state = at_catch_spot(Direction::NORTH);
     if (to_string(state.pose) != "Route 202 (10, 20) facing north (tile)"){
-        return "Unexpected pose text: " + to_string(state.pose);
+        return std::format("Unexpected pose text: {}", to_string(state.pose));
     }
     Condition known = pose_known("Route 201", PoseCertainty::SET);
     if (known.check(state)){
@@ -520,7 +520,7 @@ UnitTestResult test_position_is_the_games(){
     World world;
     world.walk_failures = 1;
     Checkpoint checkpoint = make_checkpoint();
-    checkpoint.interrupts.push_back(wild_battle(world, ResumePolicy::RETRY_EVENT));
+    checkpoint.interrupts.push_back(wild_battle(ResumePolicy::RETRY_EVENT, world));
     Event ride = make_event("ride_to_mesagoza", [&world](RunState&){
         world.trace.push_back("ride");
         if (world.walk_failures > 0){
@@ -539,12 +539,12 @@ UnitTestResult test_position_is_the_games(){
     EventLogger log = lines.logger();
     const CheckpointReport report = run_checkpoint(state, checkpoint, log);
     if (!report.completed || world.trace != std::vector<std::string>{"ride", "flee", "ride"}){
-        return "Expected the ride retried after the battle:" + lines.all();
+        return std::format("Expected the ride retried after the battle:{}", lines.all());
     }
     if (to_string(state.pose) != "Mesagoza (7, 8) (tile)"){
-        return "Expected the learned point: " + to_string(state.pose);
+        return std::format("Expected the learned point: {}", to_string(state.pose));
     }
-    Interrupt lost = wild_battle(world, ResumePolicy::RETRY_EVENT);
+    Interrupt lost = wild_battle(ResumePolicy::RETRY_EVENT, world);
     lost.pose = InterruptPose::LOST;
     checkpoint.interrupts[0] = std::move(lost);
     world.walk_failures = 1;
@@ -552,7 +552,7 @@ UnitTestResult test_position_is_the_games(){
     checkpoint.events[0].require.clear();
     run_checkpoint(state, checkpoint, log);
     if (state.pose.where || to_string(state.pose) != "Mesagoza (unknown)"){
-        return "Expected the lost pose to drop its position: " + to_string(state.pose);
+        return std::format("Expected the lost pose to drop its position: {}", to_string(state.pose));
     }
     return true;
 }
@@ -577,13 +577,13 @@ UnitTestResult test_outcome_pose(){
     EventLogger log = lines.logger();
     CheckpointReport report = run_checkpoint(state, checkpoint, log);
     if (!report.completed || to_string(state.pose) != "Player's House (4, 6) (5, 6) (row)"){
-        return "Expected the found pose written before the expect: " + to_string(state.pose) + lines.all();
+        return std::format("Expected the found pose written before the expect: {}{}", to_string(state.pose), lines.all());
     }
     world.rows_off = 1;
     state = at_catch_spot();
     report = run_checkpoint(state, checkpoint, log);
     if (report.completed || state.pose.map != "Route 202"){
-        return "A failed action should leave the pose alone: " + to_string(state.pose);
+        return std::format("A failed action should leave the pose alone: {}", to_string(state.pose));
     }
     return true;
 }
@@ -603,9 +603,9 @@ UnitTestResult test_lint(){
     if (problems.size() != 4){
         std::string text;
         for (const std::string& problem : problems){
-            text += "\n" + problem;
+            text += std::format("\n{}", problem);
         }
-        return "Expected 4 problems:" + text;
+        return std::format("Expected 4 problems:{}", text);
     }
     return true;
 }
@@ -628,7 +628,7 @@ struct StoryEventTestCase{
 class Test_StoryEvents : public UnitTest{
 public:
     explicit Test_StoryEvents(StoryEventTestCase scenario)
-        : UnitTest("Pokemon::StoryEvents - " + scenario.input.name)
+        : UnitTest(std::format("Pokemon::StoryEvents - {}", scenario.input.name))
         , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{

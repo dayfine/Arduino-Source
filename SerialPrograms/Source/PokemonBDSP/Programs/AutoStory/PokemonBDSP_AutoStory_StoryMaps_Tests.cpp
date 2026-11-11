@@ -18,8 +18,14 @@
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Data/PokemonBDSP_AutoStory_Maps.h"
 #include "Data/PokemonBDSP_AutoStory_PlanCosts.h"
+#include "Data/PokemonBDSP_AutoStory_RobustRoute.h"
+#include "Data/PokemonBDSP_AutoStory_RoutePlanner.h"
 #include "Data/PokemonBDSP_AutoStory_RouteRecords.h"
 #include "Data/PokemonBDSP_AutoStory_StoryMaps.h"
+#include "Data/PokemonBDSP_AutoStory_StorySpots.h"
+#include "Data/PokemonBDSP_AutoStory_StoryTrainers.h"
+#include "Data/PokemonBDSP_AutoStory_TrainerSight.h"
+#include "Data/PokemonBDSP_AutoStory_WalkRules.h"
 #include "PokemonBDSP_AutoStory_StoryMaps_Tests.h"
 
 namespace PokemonAutomation{

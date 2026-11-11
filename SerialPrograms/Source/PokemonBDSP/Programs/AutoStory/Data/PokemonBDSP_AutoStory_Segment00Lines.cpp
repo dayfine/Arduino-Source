@@ -17,8 +17,6 @@ namespace Segment00Lines{
 using Pokemon::TilePos;
 
 
-const char* const MAP_TWINLEAF_TOWN = "Twinleaf Town";
-const char* const MAP_VERITY_LAKEFRONT = "Verity Lakefront";
 
 
 //  Offsets are the decomp's world coordinates of each map's tile (0, 0):
@@ -103,10 +101,10 @@ MapTile route201(const TilePos& pos){ return {MAP_ROUTE_201, pos}; }
 MapTile lakefront(const TilePos& pos){ return {MAP_VERITY_LAKEFRONT, pos}; }
 MapTile sandgem(const TilePos& pos){ return {MAP_SANDGEM_TOWN, pos}; }
 //  The same, at a named point of the map.
-MapTile twinleaf_point(const char* point){ return twinleaf(map_point("TwinleafTown", point)); }
-MapTile route201_point(const char* point){ return route201(map_point("Route201", point)); }
-MapTile lakefront_point(const char* point){ return lakefront(map_point("VerityLakefront", point)); }
-MapTile sandgem_point(const char* point){ return sandgem(map_point("SandgemTown", point)); }
+MapTile twinleaf_point(std::string_view point){ return twinleaf(map_point("TwinleafTown", point)); }
+MapTile route201_point(std::string_view point){ return route201(map_point("Route201", point)); }
+MapTile lakefront_point(std::string_view point){ return lakefront(map_point("VerityLakefront", point)); }
+MapTile sandgem_point(std::string_view point){ return sandgem(map_point("SandgemTown", point)); }
 WalkedLine walked(
     std::string checkpoint, std::string name, std::vector<MapTile> corners,
     std::string ends_in, std::vector<std::string> live_triggers
