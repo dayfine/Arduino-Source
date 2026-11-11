@@ -15,6 +15,19 @@ namespace Pokemon{
 
 namespace{
 
+//  "its save", "a new game", "the game as it is": for the start line.
+std::string_view story_start_name(StoryStart start){
+    switch (start){
+    case StoryStart::NEW_GAME:
+        return "a new game";
+    case StoryStart::LIVE:
+        return "the game as it is";
+    case StoryStart::FROM_SAVE:
+        return "its save";
+    }
+    return "?";
+}
+
 void log_line(const std::string& line, StoryGameHooks& game){
     if (game.log){
         game.log(line);
@@ -42,7 +55,7 @@ Outcome run_story_preflight(StoryGameHooks& game){
         log_line("[Story] preflight: not checked: the game has no preflight", game);
         return outcome_ok();
     }
-    const Outcome outcome = check_story_preflight(game.preflight());
+    const Outcome outcome = game.preflight().check();
     if (!outcome.succeeded()){
         log_line(std::format("[Story] preflight failed, nothing pressed: {}", outcome.detail), game);
     }
@@ -68,6 +81,10 @@ Outcome load_story_save(std::string_view reason, StoryGameHooks& game, RunState&
 }
 
 } // namespace
+
+bool story_first_save_allowed(StoryStart start){
+    return start == StoryStart::NEW_GAME;
+}
 
 Outcome prepare_story_start(std::string_view checkpoint, StoryStart start, StoryGameHooks& game, RunState& state){
     log_line(std::format("[Story] start: checkpoint {}, from {}", checkpoint, story_start_name(start)), game);
