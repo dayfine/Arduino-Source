@@ -178,6 +178,11 @@ struct GlobalState{
     //  and the read is a single boss species.
     bool accept_opponent();
 
+    //  Whether the battle-screen opponent read should be replaced by a read
+    //  from the summary: a boss before the fourth battle, or, at the fourth
+    //  battle with no boss known yet, a read that is not a single boss species.
+    bool opponent_needs_summary_read() const;
+
     //  The same boss, but only if the adventure caught it, else empty: for the
     //  end-of-adventure decision (end_adventure_action()), which must not apply
     //  the boss-caught rules after a loss. Decided from the battles won (the

@@ -39,6 +39,17 @@ bool GlobalState::accept_opponent(){
     return true;
 }
 
+bool GlobalState::opponent_needs_summary_read() const{
+    const std::string opponent_slug = opponent.empty() ? "" : *opponent.begin();
+    if (!is_boss_battle(*this)){
+        //  A boss before the end means the read is wrong.
+        return is_boss(opponent_slug);
+    }
+    //  At the boss battle, read the summary until a single boss species is
+    //  known, so a rental misread does not leave the boss empty.
+    return boss.empty() && !(opponent.size() == 1 && is_boss(opponent_slug));
+}
+
 std::string GlobalState::boss_if_caught() const{
     //  The identified boss is reported whether or not it was caught.
     return boss;

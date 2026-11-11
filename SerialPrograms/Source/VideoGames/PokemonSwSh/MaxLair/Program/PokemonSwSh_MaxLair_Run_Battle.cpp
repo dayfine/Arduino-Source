@@ -75,12 +75,7 @@ bool read_battle_menu(
     std::set<std::string> mon = reader.read_opponent(stream.logger(), context, stream.video());
 
     bool retry = !process_header_read(stream.logger(), state, std::move(mon));
-    std::string opponent = state.opponent.empty()
-        ? ""
-        : *state.opponent.begin();
-
-    //  If we see a boss before the end. Something is wrong. Retry.
-    if (state.wins != 3 && is_boss(opponent)){
+    if (state.opponent_needs_summary_read()){
         retry = true;
     }
 
@@ -371,6 +366,9 @@ StateMachineAction throw_balls(
 
     bool boss = inferred.wins == 4;
     if (boss){
+        if (inferred.boss.empty()){
+            stream.log("Boss is unknown at the fourth win.", COLOR_RED);
+        }
         ball = decider.boss_ball(console_index, inferred.boss);
     }else{
         ball = decider.normal_ball(console_index);

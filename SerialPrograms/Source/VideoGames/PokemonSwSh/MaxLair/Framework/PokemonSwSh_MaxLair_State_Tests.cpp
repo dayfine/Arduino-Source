@@ -122,11 +122,55 @@ const BossStateTestCase CASES[] = {
     },
 };
 
+struct SummaryReadTestCase{
+    std::string name;
+    uint8_t wins;
+    std::set<std::string> opponent;
+    std::string boss;
+    bool needs_summary_read;
+};
+
+class Test_MaxLairSummaryRead : public UnitTest{
+public:
+    explicit Test_MaxLairSummaryRead(SummaryReadTestCase scenario)
+        : UnitTest("PokemonSwSh::MaxLairSummaryRead - " + scenario.name)
+        , m_scenario(std::move(scenario))
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        GlobalState state;
+        state.wins = m_scenario.wins;
+        state.opponent = m_scenario.opponent;
+        state.boss = m_scenario.boss;
+        const bool needs_read = state.opponent_needs_summary_read();
+        if (needs_read != m_scenario.needs_summary_read){
+            return std::format("Expected needs_summary_read={}, got {}", m_scenario.needs_summary_read, needs_read);
+        }
+        return true;
+    }
+
+private:
+    SummaryReadTestCase m_scenario;
+};
+
+const SummaryReadTestCase SUMMARY_READ_CASES[] = {
+    {.name = "rental before three wins", .wins = 2, .opponent = {"mimikyu-disguised"}, .boss = "", .needs_summary_read = false},
+    {.name = "boss before three wins", .wins = 2, .opponent = {"kyurem"}, .boss = "", .needs_summary_read = true},
+    {.name = "rental at boss stage with unknown boss", .wins = 3, .opponent = {"mimikyu-disguised"}, .boss = "", .needs_summary_read = true},
+    {.name = "empty read at boss stage with unknown boss", .wins = 3, .opponent = {}, .boss = "", .needs_summary_read = true},
+    {.name = "ambiguous read at boss stage with unknown boss", .wins = 3, .opponent = {"kyurem", "mimikyu-disguised"}, .boss = "", .needs_summary_read = true},
+    {.name = "boss at boss stage", .wins = 3, .opponent = {"kyurem"}, .boss = "", .needs_summary_read = false},
+    {.name = "rental at boss stage with known boss", .wins = 3, .opponent = {"mimikyu-disguised"}, .boss = "kyurem", .needs_summary_read = false},
+};
+
 }
 
 void add_tests_MaxLairBossState(UnitTestDatabase& database){
     for (const BossStateTestCase& scenario : CASES){
         database.add<Test_MaxLairBossState>(scenario);
+    }
+    for (const SummaryReadTestCase& scenario : SUMMARY_READ_CASES){
+        database.add<Test_MaxLairSummaryRead>(scenario);
     }
 }
 
