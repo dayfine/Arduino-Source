@@ -134,7 +134,7 @@
             "map": "OreburghGate",
             "tiles": [
               [
-                27,
+                26,
                 22
               ]
             ]
@@ -142,7 +142,7 @@
         },
         "id": "by_the_east_mouth",
         "kind": "route",
-        "why": "east past Picnicker Diana's column (24), fighting her"
+        "why": "east past Picnicker Diana's column (24), fighting her, to two short of the mouth"
       },
       {
         "action": "to_banner",
@@ -195,37 +195,18 @@
       },
       {
         "declared_after": {
+          "facing": "east",
           "map": "OreburghCity",
           "tiles": [
             [
-              43,
-              21
-            ],
-            [
-              44,
-              21
-            ],
-            [
-              45,
-              21
-            ],
-            [
-              43,
-              22
-            ],
-            [
-              44,
-              22
-            ],
-            [
-              45,
-              22
+              23,
+              23
             ]
           ]
         },
         "id": "oreburgh_welcome",
         "kind": "scene",
-        "why": "the man's lines, the walk to the Center, and Barry's"
+        "why": "the man's lines, the walk to the Gym, and Barry's"
       }
     ],
     "id": "01.02",

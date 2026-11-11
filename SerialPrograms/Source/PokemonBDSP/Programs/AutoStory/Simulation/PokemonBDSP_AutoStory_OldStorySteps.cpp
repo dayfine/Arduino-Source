@@ -90,7 +90,6 @@ std::vector<StoryStep> old_round_mom_to_the_mat(){
     StoryStep step;
     step.kind = StoryStepKind::STEP;
     step.name = "to_moms_call";
-    step.action = "step";
     step.args["direction"] = Direction::SOUTH;
     return {around, step};
 }

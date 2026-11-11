@@ -110,6 +110,136 @@
       {
         "args": {
           "fight_wild": false,
+          "legs": [
+            {
+              "direction": "north",
+              "tiles": 1
+            }
+          ]
+        },
+        "declared_after": {
+          "facing": "north",
+          "map": "Route201",
+          "tiles": [
+            [
+              57,
+              4
+            ],
+            [
+              58,
+              4
+            ],
+            [
+              59,
+              4
+            ],
+            [
+              60,
+              4
+            ],
+            [
+              61,
+              4
+            ],
+            [
+              62,
+              4
+            ],
+            [
+              63,
+              4
+            ]
+          ]
+        },
+        "id": "to_the_signs_row",
+        "kind": "legs",
+        "why": "a tap north onto the border sign's row"
+      },
+      {
+        "action": "line",
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "west",
+            "map": "Route201",
+            "tiles": [
+              [
+                55,
+                5
+              ]
+            ]
+          }
+        },
+        "id": "to_ledge_column",
+        "kind": "route",
+        "why": "west to the border sign, a row south, west to ledge column 55"
+      },
+      {
+        "args": {
+          "fight_wild": false,
+          "legs": [
+            {
+              "direction": "south",
+              "tiles": 8
+            }
+          ]
+        },
+        "declared_after": {
+          "facing": "south",
+          "map": "Route201",
+          "tiles": [
+            [
+              55,
+              14
+            ]
+          ]
+        },
+        "id": "over_the_ledge",
+        "kind": "legs",
+        "why": "south over the ledge to the lower road"
+      },
+      {
+        "action": "line",
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "west",
+            "map": "Route201",
+            "tiles": [
+              [
+                15,
+                14
+              ]
+            ]
+          }
+        },
+        "id": "along_route_201_road",
+        "kind": "route",
+        "why": "west along Route 201's road to the Twinleaf path"
+      },
+      {
+        "action": "line",
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "south",
+            "map": "TwinleafTown",
+            "tiles": [
+              [
+                15,
+                22
+              ]
+            ]
+          }
+        },
+        "id": "into_twinleaf",
+        "kind": "route",
+        "why": "south down column 15 into Twinleaf Town"
+      },
+      {
+        "action": "line",
+        "args": {
+          "fight_wild": false,
           "target": {
             "facing": "north",
             "map": "TwinleafTown",
@@ -117,29 +247,13 @@
               [
                 20,
                 22
-              ],
-              [
-                20,
-                23
-              ],
-              [
-                20,
-                24
-              ],
-              [
-                20,
-                25
-              ],
-              [
-                20,
-                26
               ]
             ]
           }
         },
-        "id": "home",
+        "id": "to_moms_doorstep",
         "kind": "route",
-        "why": "west along Route 201 to Twinleaf, running from wild battles"
+        "why": "east to Mom's house doorstep"
       },
       {
         "args": {
@@ -168,14 +282,14 @@
             "tiles": [
               [
                 6,
-                7
+                8
               ]
             ]
           }
         },
         "id": "beside_mom",
         "kind": "route",
-        "why": "west of Mom at (7, 7)"
+        "why": "west of Mom at (7, 8)"
       },
       {
         "id": "mom",
@@ -184,11 +298,11 @@
       },
       {
         "declared_after": {
-          "facing": "east",
+          "facing": "south",
           "map": "PlayerHouse1F",
           "tiles": [
             [
-              6,
+              7,
               7
             ]
           ]
@@ -198,37 +312,56 @@
         "why": "Mom heals us; Barry's mom gives us his parcel"
       },
       {
+        "action": "to_wall",
         "args": {
           "fight_wild": false,
           "legs": [
             {
-              "direction": "west",
-              "tiles": 1
+              "direction": "north",
+              "tiles": 4
+            },
+            {
+              "direction": "east",
+              "tiles": 6
             },
             {
               "direction": "south",
-              "tiles": 2
+              "tiles": 4
             }
           ]
         },
-        "id": "around_mom",
+        "declared_after": {
+          "facing": "south",
+          "map": "PlayerHouse1F",
+          "tiles": [
+            [
+              11,
+              8
+            ]
+          ]
+        },
+        "id": "into_the_east_corner",
         "kind": "legs",
-        "why": "around Mom at (6, 8), to beside the door's column"
+        "why": "north, east and south to the walls, into the room's east corner"
       },
       {
-        "action": "to_dialogue",
+        "action": "trigger",
         "args": {
           "fight_wild": false,
-          "legs": [
-            {
-              "direction": "east",
-              "tiles": 1
-            }
-          ]
+          "target": {
+            "facing": "west",
+            "map": "PlayerHouse1F",
+            "tiles": [
+              [
+                6,
+                9
+              ]
+            ]
+          }
         },
-        "id": "to_moms_call",
-        "kind": "legs",
-        "why": "east above the door until Mom calls"
+        "id": "into_moms_call",
+        "kind": "route",
+        "why": "round Mom and west along row 9 until her call stops us on (6, 9)"
       },
       {
         "declared_after": {
@@ -244,6 +377,35 @@
         "id": "moms_hat",
         "kind": "scene",
         "why": "Mom's hat; she walks out with us"
+      },
+      {
+        "action": "to_wall",
+        "args": {
+          "fight_wild": false,
+          "legs": [
+            {
+              "direction": "west",
+              "tiles": 16
+            }
+          ]
+        },
+        "declared_after": {
+          "facing": "west",
+          "map": "TwinleafTown",
+          "tiles": [
+            [
+              6,
+              22
+            ],
+            [
+              6,
+              23
+            ]
+          ]
+        },
+        "id": "to_twinleafs_west_wall",
+        "kind": "legs",
+        "why": "west along the row to the town's west wall"
       },
       {
         "args": {
