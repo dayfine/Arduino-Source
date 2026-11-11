@@ -13,6 +13,7 @@
 #include <set>
 #include <span>
 #include <utility>
+#include <variant>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
@@ -193,6 +194,29 @@ std::vector<std::vector<int64_t>> read_integer_rows(const JsonValue& value, std:
     return result;
 }
 
+JsonArray timed_legs_json(std::span<const StoryTimedLeg> legs){
+    JsonArray result;
+    for (const StoryTimedLeg& leg : legs){
+        JsonArray pair;
+        pair.push_back(leg.turn);
+        pair.push_back(leg.ms);
+        result.push_back(std::move(pair));
+    }
+    return result;
+}
+
+std::vector<StoryTimedLeg> read_timed_legs(const JsonValue& value, std::string_view source){
+    std::vector<StoryTimedLeg> result;
+    for (const JsonValue& item : value.to_array_throw(std::string(source))){
+        const JsonArray& pair = item.to_array_throw(std::string(source));
+        if (pair.size() != 2){
+            throw ParseException(std::format("{}: a timed leg is [turn degrees, ms]", source));
+        }
+        result.push_back({.turn = integer(pair[0], source), .ms = integer(pair[1], source)});
+    }
+    return result;
+}
+
 JsonArray tiles_json(std::span<const TilePos> tiles){
     JsonArray result;
     for (const TilePos& tile : tiles){
@@ -237,6 +261,8 @@ JsonValue arg_json(const StoryArgValue& value){
         return items_json(std::get<std::vector<StoryItem>>(value));
     case StoryArgType::INTEGER_ROWS:
         return integer_rows_json(std::get<std::vector<std::vector<int64_t>>>(value));
+    case StoryArgType::TIMED_LEGS:
+        return timed_legs_json(std::get<std::vector<StoryTimedLeg>>(value));
     }
     throw ParseException("Unsupported story arg type.");
 }
@@ -262,6 +288,8 @@ StoryArgValue read_arg(const JsonValue& value, StoryArgType type, std::string_vi
         return read_items(value, source);
     case StoryArgType::INTEGER_ROWS:
         return read_integer_rows(value, source);
+    case StoryArgType::TIMED_LEGS:
+        return read_timed_legs(value, source);
     }
     throw ParseException(std::format("{}: unsupported story arg type", source));
 }
@@ -430,6 +458,45 @@ GridPose read_grid_pose(const JsonValue& value, std::string_view source){
     return result;
 }
 
+JsonValue declared_pose_json(const DeclaredPose& pose){
+    if (const TileDeclared* tile = std::get_if<TileDeclared>(&pose)){
+        return grid_pose_json(GridPose{.map = tile->map, .tiles = tile->tiles, .facing = tile->facing});
+    }
+    const ZoneDeclared& zone = std::get<ZoneDeclared>(pose);
+    JsonObject result;
+    result["place"] = zone.place;
+    if (zone.spot){
+        result["spot"] = *zone.spot;
+    }
+    if (zone.heading){
+        result["heading"] = *zone.heading;
+    }
+    return result;
+}
+
+DeclaredPose read_declared_pose(const JsonValue& value, std::string_view source){
+    const JsonObject& root = value.to_object_throw(std::string(source));
+    const bool tile = root.get_value("map") != nullptr;
+    const bool zone = root.get_value("place") != nullptr;
+    if (tile == zone){
+        throw ParseException(std::format("{}: a declared pose has a \"map\" (tiles) or a \"place\" (a zone), not {}", source, tile ? "both" : "neither"));
+    }
+    if (tile){
+        GridPose grid = read_grid_pose(value, source);
+        return TileDeclared{.map = std::move(grid.map), .tiles = std::move(grid.tiles), .facing = grid.facing};
+    }
+    fields(value, {"place", "spot", "heading"}, source);
+    ZoneDeclared result;
+    result.place = root.get_string_throw("place");
+    if (const JsonValue* field = root.get_value("spot")){
+        result.spot = field->to_string_throw(std::string(source));
+    }
+    if (const JsonValue* field = root.get_value("heading")){
+        result.heading = integer(*field, source);
+    }
+    return result;
+}
+
 JsonValue story_step_json(const StoryStep& step){
     JsonObject result;
     result["id"] = step.name;
@@ -451,7 +518,7 @@ JsonValue story_step_json(const StoryStep& step){
         result["skip_if"] = strings_json(step.skip_if);
     }
     if (step.pose_after){
-        result["declared_after"] = grid_pose_json(*step.pose_after);
+        result["declared_after"] = declared_pose_json(*step.pose_after);
     }
     return result;
 }
@@ -475,7 +542,7 @@ StoryStep read_story_step(const JsonValue& value, std::string_view source, std::
         result.skip_if = read_strings(*field, source);
     }
     if (const JsonValue* field = root.get_value("declared_after")){
-        result.pose_after = read_grid_pose(*field, source);
+        result.pose_after = read_declared_pose(*field, source);
     }
     return result;
 }
@@ -485,7 +552,7 @@ JsonValue story_checkpoint_json(const StoryCheckpoint& checkpoint){
     result["id"] = checkpoint.id;
     result["title"] = checkpoint.title;
     if (checkpoint.start){
-        result["start"] = grid_pose_json(*checkpoint.start);
+        result["start"] = declared_pose_json(*checkpoint.start);
     }
     JsonArray events;
     for (const StoryStep& step : checkpoint.steps){
@@ -507,7 +574,7 @@ StoryCheckpoint read_story_checkpoint(const JsonValue& value, std::string_view s
     }
     result.title = root.get_string_throw("title");
     if (const JsonValue* start = root.get_value("start")){
-        result.start = read_grid_pose(*start, source);
+        result.start = read_declared_pose(*start, source);
     }
     std::set<std::string> names;
     for (const JsonValue& event : root.get_array_throw("events")){
