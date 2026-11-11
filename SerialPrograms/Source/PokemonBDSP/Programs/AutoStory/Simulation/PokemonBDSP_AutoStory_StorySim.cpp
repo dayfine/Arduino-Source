@@ -191,10 +191,10 @@ void SimStoryStepIO::walk_until_stopped(Direction direction, size_t tiles, const
     m_route.check_fade_in(label);
     m_sim.tap(direction, ROUTE_TURN_TAP, false);
     Milliseconds limit = ROUTE_START_DELAY + 800ms + route_ms_per_tile(direction) * (int64_t)(2 * tiles);
-    SimMove move = m_sim.hold(direction, limit, SimPace::WALK);
+    SimMove move = disturbed_hold(m_sim, m_noise, direction, limit, SimPace::WALK).move;
     if (move.stop == SimStop::WARP && next_fade() != FadeShown::SEEN && m_far_side()){
         limit -= std::min(limit, move.time);
-        move = m_sim.hold(direction, limit, SimPace::WALK);
+        move = disturbed_hold(m_sim, m_noise, direction, limit, SimPace::WALK).move;
     }
     if (move.stop == SimStop::DIALOG || move.stop == SimStop::WARP){
         m_route.note(label + ": " + std::string(sim_stop_name(move.stop)) + " instead of a stop.", RouteNote::FAILURE);
@@ -282,12 +282,12 @@ void SimKnobRouteIO::check_fade_in(const std::string& label){
 
 WalkResult SimKnobRouteIO::walk_to_wall(const RouteWallWalk& walk){
     check_fade_in(walk.label);
-    return GridSimRouteIO::walk_to_wall(walk);
+    return DisturbedRouteIO::walk_to_wall(walk);
 }
 
 WalkResult SimKnobRouteIO::walk_taps(Direction direction, size_t tiles, const std::string& label){
     check_fade_in(label);
-    const WalkResult result = GridSimRouteIO::walk_taps(direction, tiles, label);
+    const WalkResult result = DisturbedRouteIO::walk_taps(direction, tiles, label);
     if (result.stop != WalkStop::LIMIT || m_slid_steps.contains(m_step)){
         return result;
     }
@@ -512,7 +512,7 @@ SimWorld SimExecutor::setup(const StoryWorld* world) const{
         }
         out.triggers.push_back(std::move(trigger));
     }
-    out.wanderers = wanderers(*world);
+    out.wanderers = m_noise != nullptr ? m_noise->wanderers(*world) : wanderers(*world);
     return out;
 }
 
@@ -578,8 +578,8 @@ void SimExecutor::arm(const std::string& after){
     m_armed.insert(m_armed.end(), now.begin(), now.end());
     const size_t armed = now.size();
     const SimPlayer& player = m_sim.player();
-    if (armed > 0 && m_placed && on_grid(player.pos) && !player.dialog){
-        m_sim.place(setup(&m_sim.world()), nearest_tile(player.pos), player.facing);
+    if (armed > 0 && m_placed && settled() && !player.dialog){
+        place(&m_sim.world(), nearest_tile(player.pos), player.facing);
     }
 }
 
@@ -599,10 +599,10 @@ bool SimExecutor::sync(const Pose& pose, const StoryWorld* on){
     const SimPlayer& player = m_sim.player();
     const std::optional<TilePos> local = !m_placed || &m_sim.world() != world
         ? std::nullopt : story_to_local(*world, pose.map, nearest_tile(player.pos));
-    if (local && on_grid(player.pos) && std::find(tiles.begin(), tiles.end(), *local) != tiles.end()){
+    if (local && settled() && std::find(tiles.begin(), tiles.end(), *local) != tiles.end()){
         return true;
     }
-    m_sim.place(setup(world), story_to_world(*world, pose.map, tiles.front()), Pokemon::facing_of(pose));
+    place(world, story_to_world(*world, pose.map, tiles.front()), Pokemon::facing_of(pose));
     m_placed = true;
     return true;
 }
@@ -664,7 +664,7 @@ bool SimExecutor::cross_to(const Pose& far){
     if (world == nullptr || tiles.empty()){
         return false;
     }
-    m_sim.place(setup(world), story_to_world(*world, far.map, tiles.front()), std::nullopt);
+    place(world, story_to_world(*world, far.map, tiles.front()), std::nullopt);
     return true;
 }
 
@@ -682,7 +682,7 @@ std::string SimExecutor::off_pose(const Pose& pose) const{
     //  story_to_world() throws for a map not on the player's world.
     try{
         const auto there = [&](const TilePos& tile){ return story_to_world(m_sim.world(), pose.map, tile) == at; };
-        if (on_grid(player.pos) && std::ranges::any_of(tiles, there)){
+        if (settled() && std::ranges::any_of(tiles, there)){
             return "";
         }
     }catch (const InternalProgramError&){}
@@ -865,6 +865,32 @@ Outcome SimExecutor::run_step(const StoryStep& step, RunState& state){
     return Pokemon::TableExecutor::run(step, state);
 }
 
+//  Puts the player on `start` of `world`: on the grid, no drift.
+void SimExecutor::place(const StoryWorld* world, const TilePos& start, std::optional<Direction> facing){
+    m_sim.place(setup(world), start, facing);
+    if (m_noise != nullptr){
+        m_noise->reset();
+    }
+}
+
+//  Whether the player stands on their tile: on the grid, or, disturbed,
+//  anywhere nearer it than another (how far off is the run's to find out).
+bool SimExecutor::settled() const{
+    return m_noise != nullptr || on_grid(m_sim.player().pos);
+}
+
+void SimExecutor::record_failure(const Outcome& outcome, const StoryStep& step, size_t battles_before){
+    //  The walker's last notes, to see why.
+    for (size_t i = m_notes.size() - std::min<size_t>(m_notes.size(), 40); i < m_notes.size(); i++){
+        m_logger.log(std::format("[{}] note: {}", m_row, m_notes[i]));
+    }
+    m_result.error = m_row + " " + Pokemon::to_string(outcome);
+    m_result.failed_step = m_row + " " + step.name;
+    m_result.failure = outcome.failure;
+    m_result.failure_detail = outcome.detail;
+    m_result.failed_step_battles = m_noise == nullptr ? 0 : m_noise->battles() - battles_before;
+}
+
 void SimExecutor::show_before(const StoryStep& step){
     if (m_knobs.dialog_before && m_knobs.dialog_before(m_row, step.name)){
         m_dialog_up = m_dialog_rose = true;
@@ -880,8 +906,9 @@ Outcome SimExecutor::run(const StoryStep& step, RunState& state){
     Outcome outcome;
     m_passed_over = false;
     m_step = step.name;
-    sim_forget_warp(m_sim);
+    detail::sim_forget_warp(m_sim);
     show_before(step);
+    const size_t battles_before = m_noise == nullptr ? 0 : m_noise->battles();
     try{
         outcome = run_step(step, state);
     }catch (const GridSimFailure& e){
@@ -908,13 +935,9 @@ Outcome SimExecutor::run(const StoryStep& step, RunState& state){
         m_result.missed_step = m_row + " " + step.name;
     }
     if (!outcome.succeeded() && m_result.error.empty()){
-        //  The walker's last notes, to see why.
-        for (size_t i = m_notes.size() - std::min<size_t>(m_notes.size(), 40); i < m_notes.size(); i++){
-            m_logger.log(std::format("[{}] note: {}", m_row, m_notes[i]));
-        }
-        m_result.error = m_row + " " + Pokemon::to_string(outcome);
-        m_result.failed_step = m_row + " " + step.name;
+        record_failure(outcome, step, battles_before);
     }
+    m_result.battles = m_noise == nullptr ? 0 : m_noise->battles();
     const std::vector<std::string>& fought = m_sim.player().scenes_fought;
     for (; m_scenes_fought < fought.size(); m_scenes_fought++){
         m_logger.log(std::format("[{}] {}: the walk fought {}'s dialogue as a trainer's.", m_row, step.name, fought[m_scenes_fought]));
