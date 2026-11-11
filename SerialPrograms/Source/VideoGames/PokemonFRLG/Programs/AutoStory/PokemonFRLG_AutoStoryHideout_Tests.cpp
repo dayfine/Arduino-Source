@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_CodedRooms.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_HideoutLiftRoom.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_MovementMechanics.h"
@@ -18,6 +19,7 @@
 #include "PokemonFRLG_AutoStoryHideoutLift.h"
 #include "PokemonFRLG_AutoStoryLegs.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
+#include "PokemonFRLG_AutoStoryTable.h"
 #include "PokemonFRLG_AutoStoryFieldSteps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSpin.h"
 
@@ -166,28 +168,38 @@ MapData hideout_floor(const std::string& name, const TilePos& door){
 }
 
 //  The ride from B2F to B4F with the lift's room coded, not mapped: from
-//  below B2F's lift door, in, the panel, out onto B4F's lift door.
+//  below B2F's lift door, in, the panel, out a tile south of B4F's lift
+//  door (20, 23), on (20, 24): console B, 2026-11-11, 00.32's lift_to_b4f.
 std::string lift_on_sim(){
-    const std::vector<MapPosition>& doors = rocket_hideout_lift_doors();
+    const MapPosition b4f_exit{"RocketHideout_B4F", {20, 24}};
+    const std::vector<MapPosition>& exits = rocket_hideout_lift_exits();
     std::vector<MapData> maps{
-        hideout_floor("RocketHideout_B2F", doors[1].point),
-        hideout_floor("RocketHideout_B4F", doors[2].point),
+        hideout_floor("RocketHideout_B2F", exits[1].point.next(Direction::NORTH)),
+        hideout_floor("RocketHideout_B4F", exits[2].point.next(Direction::NORTH)),
         rocket_hideout_lift_room(),
     };
     SimScript script;
-    script.lift_floors[std::string(LIFT_MAP)] = doors;
-    const MapPosition below_door{"RocketHideout_B2F", doors[1].point.next(Direction::SOUTH)};
+    script.lift_floors[std::string(LIFT_MAP)] = exits;
+    const MapPosition below_door = exits[1];
     OverworldSim sim(maps, below_door, Direction::NORTH, script);
     StoryPose at{below_door.map, below_door.point, Direction::NORTH};
     const std::string failure = row_step_on_sim(sim, at, lift_floor_step("lift_to_b4f", "B2F", "B4F"), "09.02");
     if (!failure.empty()){
         return failure;
     }
-    if (!(sim.state().position == doors[2])){
+    if (!(sim.state().position == b4f_exit)){
         return "After the lift step, the door let out on " + to_string(sim.state().position) + ".";
     }
     if (!sim.state().violations.empty()){
         return "The lift step broke the game's rules: " + sim.state().violations.front();
+    }
+    const Pokemon::DeclaredPose declared = Pokemon::TileDeclared{b4f_exit.map, {b4f_exit.point}, Direction::SOUTH};
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        for (const StoryStep& step : row.steps){
+            if (row.id == "00.32" && step.name == "lift_to_b4f" && !(step.pose_after == declared)){
+                return "Expected 00.32's lift_to_b4f to declare B4F's lift exit (20, 24).";
+            }
+        }
     }
     return "";
 }
@@ -321,7 +333,7 @@ UnitTestResult test_b3f_maze_taps(){
 //  09.02's taps (frlg-09.02.plan.json): B3F from below its Rare Candy up
 //  to the top corridor, and B2F's arrows to the MOON STONE's stop and on
 //  to the lift room's stop (13, 20), up to row 17 and on to below the
-//  lift, and B4F from the lift door to the guards, Giovanni and the
+//  lift, and B4F from the left Grunt to the right one, Giovanni and the
 //  SILPH SCOPE, with any one turn dropped; the stairs up from B3F, which
 //  end on their warp, with any hold short.
 UnitTestResult test_b2f_maze_taps(){
@@ -350,11 +362,8 @@ UnitTestResult test_b2f_maze_taps(){
             {Direction::EAST, 1},
         }, {"RocketHideout_B2F", {2, 4}}),
         tap_legs_on_sim({"RocketHideout_B2F", {15, 17}}, Direction::NORTH, {
-            {Direction::EAST, 12}, {Direction::SOUTH, 1}, {Direction::EAST, 1}, {Direction::NORTH, 1},
+            {Direction::EAST, 15}, {Direction::WEST, 2},
         }, {"RocketHideout_B2F", {28, 17}}),
-        tap_legs_on_sim({"RocketHideout_B4F", {20, 23}}, Direction::SOUTH, {
-            {Direction::SOUTH, 1}, {Direction::WEST, 4}, {Direction::NORTH, 9},
-        }, left_guard),
         tap_legs_on_sim(left_guard, Direction::NORTH, {
             {Direction::SOUTH, 1}, {Direction::EAST, 3}, {Direction::NORTH, 1},
         }, right_guard),
@@ -364,6 +373,86 @@ UnitTestResult test_b2f_maze_taps(){
         tap_legs_on_sim(below_giovanni, Direction::NORTH, {
             {Direction::WEST, 2}, {Direction::SOUTH, 2}, {Direction::EAST, 4}, {Direction::NORTH, 2},
         }, {"RocketHideout_B4F", {21, 5}}),
+    };
+    for (const std::string& failure : failures){
+        if (!failure.empty()){
+            return failure;
+        }
+    }
+    return true;
+}
+
+//  Console B, 2026-11-11 01:05: 00.32's below_left_guard was planned from
+//  the lift door (20, 23), but the door lets the player out a tile south,
+//  on (20, 24). Every leg ran a row low: "west 4" ended on (16, 25), the
+//  hold west on along row 25 and "east 2" left the player below the
+//  potted plants (12, 24) and (13, 24), and "north 9" was blocked at once.
+//  The legs now start from the lift's exit (20, 24) (lift_to_b4f declares
+//  it): south to the bottom row 25, and column 16 runs up from there to the
+//  Grunt (16, 14).
+UnitTestResult test_b4f_left_guard_from_below_lift_door(){
+    const std::vector<MapData>& maps = story_maps();
+    const MapPosition lift_exit{"RocketHideout_B4F", {20, 24}};
+    const MapPosition left_guard{"RocketHideout_B4F", {16, 15}};
+    const StoryStep* below_left_guard = nullptr;
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        for (const StoryStep& step : row.steps){
+            if (row.id == "00.32" && step.name == "below_left_guard"){
+                below_left_guard = &step;
+            }
+        }
+    }
+    if (below_left_guard == nullptr){
+        return "Expected 00.32's step below_left_guard.";
+    }
+    const std::vector<Pokemon::StoryLeg> legs = Pokemon::story_arg<std::vector<Pokemon::StoryLeg>>(below_left_guard->args, "legs");
+    const std::optional<std::vector<RouteStep>> route = fixed_route(maps, lift_exit, legs);
+    if (!route || !(route->back().end == left_guard)){
+        return "Expected the legs from the lift's exit (20, 24) to end below the left Grunt (16, 15).";
+    }
+    OverworldSim sim(maps, lift_exit, Direction::SOUTH, SimScript{});
+    OverworldSimWalker walker(sim);
+    const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = lift_exit, .label = "Sim"};
+    const std::string failure = walker.run(*route, planning);
+    if (!failure.empty() || !(sim.state().position == left_guard)){
+        return std::format("Walked to {}, failure \"{}\".", to_string(sim.state().position), failure);
+    }
+    return true;
+}
+
+//  Console B, 2026-11-11 01:04: 00.32's below_lift tapped east past
+//  (27, 17) to the wall at (30, 17), was found there, and walked the rest
+//  of its legs back from (27, 17): west 3, south, east and north round a
+//  square to the lift door's (28, 17). The legs are east to the wall and
+//  one leg back to below the door, so an overshoot has nothing to undo.
+UnitTestResult test_below_lift_one_backtrack(){
+    const std::vector<MapData>& maps = story_maps();
+    const MapPosition row_17{"RocketHideout_B2F", {15, 17}};
+    const MapPosition wall{"RocketHideout_B2F", {30, 17}};
+    const MapPosition below_door{"RocketHideout_B2F", {28, 17}};
+    const StoryStep* below_lift = nullptr;
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        for (const StoryStep& step : row.steps){
+            if (row.id == "00.32" && step.name == "below_lift"){
+                below_lift = &step;
+            }
+        }
+    }
+    if (below_lift == nullptr){
+        return "Expected 00.32's step below_lift.";
+    }
+    const std::vector<Pokemon::StoryLeg> legs = Pokemon::story_arg<std::vector<Pokemon::StoryLeg>>(below_lift->args, "legs");
+    const std::optional<std::vector<RouteStep>> route = fixed_route(maps, row_17, legs);
+    if (!route || route->size() != 2
+        || (*route)[0].direction != Direction::EAST || !(*route)[0].to_wall || !((*route)[0].end == wall)
+        || (*route)[1].direction != Direction::WEST || !((*route)[1].end == below_door)
+    ){
+        return "Expected below_lift to be east to the wall (30, 17), then one leg west to (28, 17).";
+    }
+    const std::vector<Pokemon::StoryLeg> after_wall(legs.begin() + 1, legs.end());
+    const std::vector<std::string> failures{
+        tap_legs_on_sim(row_17, Direction::NORTH, legs, below_door),
+        tap_legs_on_sim(wall, Direction::EAST, after_wall, below_door),
     };
     for (const std::string& failure : failures){
         if (!failure.empty()){
@@ -419,6 +508,14 @@ const AutoStoryHideoutBodyCase HIDEOUT_BODY_CASES[] = {
     {
         .input = {.name = "B2F's arrow floor to the lift a tap at a time", .body = test_b2f_maze_taps},
         .expectation = {.description = "09.02's taps and the routes between them, any turn dropped or hold short"},
+    },
+    {
+        .input = {.name = "B4F's left Grunt from the lift's exit", .body = test_b4f_left_guard_from_below_lift_door},
+        .expectation = {.description = "00.32's legs from (20, 24) end below the left Grunt"},
+    },
+    {
+        .input = {.name = "below B2F's lift: the wall, then one leg back", .body = test_below_lift_one_backtrack},
+        .expectation = {.description = "east to the wall (30, 17) and west to below the door (28, 17), no loop"},
     },
 };
 

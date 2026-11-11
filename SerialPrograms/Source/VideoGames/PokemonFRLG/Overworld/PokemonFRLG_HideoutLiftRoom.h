@@ -29,12 +29,14 @@ inline constexpr TilePos LIFT_ARRIVAL{2, 5};
 //  EventScript_FloorSelect), facing north.
 inline constexpr TilePos LIFT_PANEL_FRONT{0, 3};
 //  The lift's room. Its door is a dynamic warp: the sim takes it to the
-//  floor picked (SimScript::lift_floors with rocket_hideout_lift_doors()).
+//  floor picked (SimScript::lift_floors with rocket_hideout_lift_exits()).
 MapData rocket_hideout_lift_room();
 //  Where the lift lets out for each floor on its panel, top first
-//  (setdynamicwarp in RocketHideout_Elevator's scripts): B1F (24, 25),
-//  B2F (28, 16), B4F (20, 23), each its floor's lift door.
-const std::vector<MapPosition>& rocket_hideout_lift_doors();
+//  (setdynamicwarp in RocketHideout_Elevator's scripts): the warp lands on
+//  the floor's lift door, B1F (24, 25), B2F (28, 16), B4F (20, 23), and
+//  the game walks the player a tile south off it, onto (24, 26), (28, 17)
+//  and (20, 24) (console B, 2026-11-11, B4F).
+const std::vector<MapPosition>& rocket_hideout_lift_exits();
 
 
 } // namespace PokemonFRLG

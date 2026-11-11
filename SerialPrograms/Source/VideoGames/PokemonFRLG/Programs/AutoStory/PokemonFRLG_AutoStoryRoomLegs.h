@@ -31,7 +31,8 @@ const std::vector<RoomLeg>& center_exit_legs();
 const std::vector<RoomLeg>& lift_in_legs();
 
 //  Out of the lift, from below the panel: east 2, south 2 onto the arrow
-//  warp, south through it, onto the floor picked's lift door.
+//  warp, south through it, out a tile south of the floor picked's lift
+//  door.
 const std::vector<RoomLeg>& lift_out_legs();
 
 //  The legs of the Center's step `variant`; empty if it isn't one.

@@ -42,7 +42,7 @@ inline const std::string POSTER_SWITCH_VARIANT = "poster_switch";
 //  its args `from` and `to`, floors as the panel names them (B1F, B2F,
 //  B4F). `from` is the floor the lift stands at, where the panel's cursor
 //  starts. The player starts below `from`'s lift door, facing north, and
-//  ends on `to`'s lift door (rocket_hideout_lift_doors()): the lift is
+//  ends a tile below `to`'s (rocket_hideout_lift_exits()): the lift is
 //  walked by a script (lift_in_legs(), lift_out_legs()), not a map.
 inline const std::string LIFT_FLOOR_VARIANT = "lift_floor";
 

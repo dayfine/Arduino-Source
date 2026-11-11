@@ -29,7 +29,8 @@ Pokemon::StoryStep poster_switch_step(std::string name);
 
 //  Rides the Rocket Hideout's lift from the floor it stands at to `to`
 //  (LIFT_FLOOR_VARIANT): "B1F", "B2F", "B4F". The player starts below
-//  `from`'s lift door, facing north, and ends on `to`'s, facing south.
+//  `from`'s lift door, facing north, and ends a tile below `to`'s,
+//  facing south (rocket_hideout_lift_exits()).
 Pokemon::StoryStep lift_floor_step(std::string name, std::string_view from, std::string_view to);
 
 //  Into the Pokemon Center `center` (a map name) from below its door,
