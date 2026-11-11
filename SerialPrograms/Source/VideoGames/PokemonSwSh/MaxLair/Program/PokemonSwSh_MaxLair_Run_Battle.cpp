@@ -337,20 +337,6 @@ StateMachineAction run_move_select(
 
 
 
-std::string choose_ball(
-    Logger& logger, const GlobalState& inferred,
-    size_t console_index, const EndBattleDecider& decider
-){
-    if (inferred.wins != 4){
-        return decider.normal_ball(console_index);
-    }
-    if (inferred.boss.empty()){
-        logger.log("Boss is unknown at the fourth win. Using the normal ball.", COLOR_RED);
-        return decider.normal_ball(console_index);
-    }
-    return decider.boss_ball(console_index, inferred.boss);
-}
-
 StateMachineAction throw_balls(
     AdventureRuntime& runtime,
     ProgramEnvironment& env, size_t console_index,
@@ -371,8 +357,16 @@ StateMachineAction throw_balls(
 
     GlobalState inferred = state_tracker.synchronize(stream.logger(), console_index);
 
+    std::string ball;
+
     bool boss = inferred.wins == 4;
-    const std::string ball = choose_ball(stream.logger(), inferred, console_index, decider);
+    if (boss){
+        //  Still crashes (BossFinder throws on an empty boss) if no battle-screen
+        //  or summary read in the boss battle gave a boss species (OCR misses).
+        ball = decider.boss_ball(console_index, inferred.boss);
+    }else{
+        ball = decider.normal_ball(console_index);
+    }
 
     BattleBallReader reader(stream, language);
     pbf_press_button(context, BUTTON_A, 400ms, 600ms);
