@@ -777,7 +777,7 @@ UnitTestResult test_hideout_giovanni_row(Logger&){
         maps.push_back(rocket_hideout_lift_room());
     }
     SimScript script;
-    script.lift_floors[std::string(LIFT_MAP)] = rocket_hideout_lift_doors();
+    script.lift_floors[std::string(LIFT_MAP)] = rocket_hideout_lift_exits();
     auto sim = std::make_unique<OverworldSim>(maps, MapPosition{at.map, at.tile}, *at.facing, script);
     for (const StoryStep& step : row.steps){
         if (step.name == "escape_rope_hideout"){

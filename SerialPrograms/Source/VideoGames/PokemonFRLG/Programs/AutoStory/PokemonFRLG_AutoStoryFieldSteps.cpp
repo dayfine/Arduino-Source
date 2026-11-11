@@ -41,8 +41,8 @@ StoryStep lift_floor_step(std::string name, std::string_view from, std::string_v
     StoryStep step = game_step(std::move(name), LIFT_FLOOR_VARIANT);
     step.args = {{"from", std::string(from)}, {"to", std::string(to)}};
     if (const std::optional<LiftRide> ride = parse_lift_floor_step(step)){
-        const MapPosition& door = rocket_hideout_lift_doors()[ride->to];
-        step.pose_after = Pokemon::TileDeclared{door.map, {door.point}, Direction::SOUTH};
+        const MapPosition& exit = rocket_hideout_lift_exits()[ride->to];
+        step.pose_after = Pokemon::TileDeclared{exit.map, {exit.point}, Direction::SOUTH};
     }
     return step;
 }

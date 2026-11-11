@@ -168,28 +168,38 @@ MapData hideout_floor(const std::string& name, const TilePos& door){
 }
 
 //  The ride from B2F to B4F with the lift's room coded, not mapped: from
-//  below B2F's lift door, in, the panel, out onto B4F's lift door.
+//  below B2F's lift door, in, the panel, out a tile south of B4F's lift
+//  door (20, 23), on (20, 24): console B, 2026-11-11, 00.32's lift_to_b4f.
 std::string lift_on_sim(){
-    const std::vector<MapPosition>& doors = rocket_hideout_lift_doors();
+    const MapPosition b4f_exit{"RocketHideout_B4F", {20, 24}};
+    const std::vector<MapPosition>& exits = rocket_hideout_lift_exits();
     std::vector<MapData> maps{
-        hideout_floor("RocketHideout_B2F", doors[1].point),
-        hideout_floor("RocketHideout_B4F", doors[2].point),
+        hideout_floor("RocketHideout_B2F", exits[1].point.next(Direction::NORTH)),
+        hideout_floor("RocketHideout_B4F", exits[2].point.next(Direction::NORTH)),
         rocket_hideout_lift_room(),
     };
     SimScript script;
-    script.lift_floors[std::string(LIFT_MAP)] = doors;
-    const MapPosition below_door{"RocketHideout_B2F", doors[1].point.next(Direction::SOUTH)};
+    script.lift_floors[std::string(LIFT_MAP)] = exits;
+    const MapPosition below_door = exits[1];
     OverworldSim sim(maps, below_door, Direction::NORTH, script);
     StoryPose at{below_door.map, below_door.point, Direction::NORTH};
     const std::string failure = row_step_on_sim(sim, at, lift_floor_step("lift_to_b4f", "B2F", "B4F"), "00.32");
     if (!failure.empty()){
         return failure;
     }
-    if (!(sim.state().position == doors[2])){
+    if (!(sim.state().position == b4f_exit)){
         return "After the lift step, the door let out on " + to_string(sim.state().position) + ".";
     }
     if (!sim.state().violations.empty()){
         return "The lift step broke the game's rules: " + sim.state().violations.front();
+    }
+    const Pokemon::DeclaredPose declared = Pokemon::TileDeclared{b4f_exit.map, {b4f_exit.point}, Direction::SOUTH};
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        for (const StoryStep& step : row.steps){
+            if (row.id == "00.32" && step.name == "lift_to_b4f" && !(step.pose_after == declared)){
+                return "Expected 00.32's lift_to_b4f to declare B4F's lift exit (20, 24).";
+            }
+        }
     }
     return "";
 }

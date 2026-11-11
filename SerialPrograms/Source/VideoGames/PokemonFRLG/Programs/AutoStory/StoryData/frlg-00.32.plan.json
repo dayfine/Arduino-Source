@@ -100,8 +100,8 @@
           "from": "B2F",
           "to": "B4F"
         },
-        "declared_after": {"map": "RocketHideout_B4F", "tiles": [[20, 23]], "facing": "south"},
-        "why": "the lift script: in through the door (28, 16), to the panel, B4F with the LIFT KEY, out onto B4F's lift door; no map of the lift"
+        "declared_after": {"map": "RocketHideout_B4F", "tiles": [[20, 24]], "facing": "south"},
+        "why": "the lift script: in through the door (28, 16), to the panel, B4F with the LIFT KEY, out a tile south of B4F's lift door (20, 23), on (20, 24) (console B, 2026-11-11); no map of the lift"
       },
       {
         "id": "below_left_guard",
