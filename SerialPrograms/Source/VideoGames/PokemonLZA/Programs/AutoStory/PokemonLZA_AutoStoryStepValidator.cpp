@@ -19,30 +19,26 @@ using Pokemon::StoryStepKind;
 
 namespace{
 
-using IntegerRows = std::vector<std::vector<int64_t>>;
+using TimedLegs = std::vector<Pokemon::StoryTimedLeg>;
 
-//  What is wrong with the legs `rows` of step `step`: each a [turn, ms]
-//  pair turning at most half a turn either way and walking no negative
-//  time, and at least one that walks.
-void add_legs_errors(std::string_view step, std::string_view key, const IntegerRows& rows, std::vector<std::string>& errors){
+//  What is wrong with the legs `rows` of step `step`: each turning at most
+//  half a turn either way and walking no negative time, and at least one
+//  that walks.
+void add_legs_errors(std::string_view step, std::string_view key, const TimedLegs& rows, std::vector<std::string>& errors){
     if (rows.empty()){
         errors.push_back(std::format("{}: {} has no legs", step, key));
         return;
     }
     bool goes = false;
     for (size_t i = 0; i < rows.size(); i++){
-        const std::vector<int64_t>& row = rows[i];
-        if (row.size() != 2){
-            errors.push_back(std::format("{}: {} leg {} needs 2 numbers [turn, ms], has {}", step, key, i, row.size()));
-            continue;
+        const Pokemon::StoryTimedLeg& row = rows[i];
+        if (row.turn < -180 || row.turn > 180){
+            errors.push_back(std::format("{}: {} leg {} turns {} deg, expected -180 to 180", step, key, i, row.turn));
         }
-        if (row[0] < -180 || row[0] > 180){
-            errors.push_back(std::format("{}: {} leg {} turns {} deg, expected -180 to 180", step, key, i, row[0]));
+        if (row.ms < 0){
+            errors.push_back(std::format("{}: {} leg {} walks {} ms, expected 0 or more", step, key, i, row.ms));
         }
-        if (row[1] < 0){
-            errors.push_back(std::format("{}: {} leg {} walks {} ms, expected 0 or more", step, key, i, row[1]));
-        }
-        goes = goes || row[1] > 0;
+        goes = goes || row.ms > 0;
     }
     if (!goes){
         errors.push_back(std::format("{}: {} walks nowhere", step, key));
@@ -110,7 +106,7 @@ std::vector<std::string> plza_step_arg_errors(const Pokemon::StoryStep& step){
     if (legs == step.args.end()){
         return errors;
     }
-    const IntegerRows& rows = std::get<IntegerRows>(legs->second);
+    const TimedLegs& rows = std::get<TimedLegs>(legs->second);
     add_legs_errors(step.name, "legs", rows, errors);
     const auto end = step.args.find("end");
     if (end != step.args.end()){
@@ -118,7 +114,7 @@ std::vector<std::string> plza_step_arg_errors(const Pokemon::StoryStep& step){
         if (!walk_end_event(name)){
             errors.push_back(std::format("{}: end {} is not \"fade_white\" or \"fade_black\"", step.name, name));
         }
-        if (rows.empty() || rows.back().size() != 2 || rows.back()[1] <= 0){
+        if (rows.empty() || rows.back().ms <= 0){
             errors.push_back(std::format("{}: the last leg has no walk to hold until the end", step.name));
         }
     }
