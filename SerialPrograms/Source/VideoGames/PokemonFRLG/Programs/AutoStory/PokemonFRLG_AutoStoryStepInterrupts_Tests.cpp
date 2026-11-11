@@ -66,7 +66,7 @@ public:
         Pokemon::StoryStep step;
         step.kind = kind;
         step.name = "synthetic";
-        return m_executor.run(state, step);
+        return m_executor.run(step, state);
     }
 
     Pokemon::RunState state{.pose = to_pose(StoryPose{"Route1", TilePos{1, 2}, std::nullopt})};
@@ -87,7 +87,7 @@ private:
     }
     StepInterruptActions noting(){
         const auto note = [this](std::string_view kind){
-            return [this, kind](Pokemon::RunState&, const Pokemon::InterruptVerdict&){
+            return [this, kind](const Pokemon::InterruptVerdict&, Pokemon::RunState&){
                 trace.push_back(std::format("clear {}", kind));
                 return Pokemon::outcome_ok();
             };
@@ -95,7 +95,7 @@ private:
         return {.wild = note("wild"), .trainer = note("trainer"), .dialog = note("dialog"), .warp = note("warp")};
     }
     Pokemon::StoryAction recorder(StoryActionId id){
-        return {.act = [this, id](Pokemon::RunState&, const Pokemon::StoryStep&){
+        return {.act = [this, id](const Pokemon::StoryStep&, Pokemon::RunState&){
             trace.emplace_back(story_action_name(id));
             return Pokemon::outcome_ok();
         }};

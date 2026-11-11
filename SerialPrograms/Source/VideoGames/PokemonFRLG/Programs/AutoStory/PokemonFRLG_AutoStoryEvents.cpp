@@ -724,19 +724,19 @@ StoryExecutor::StoryExecutor(StoryEnv& env)
     m_executor.set_interrupts(&m_interrupts);
 }
 
-Outcome StoryExecutor::run(RunState& state, const StoryStep& step){
-    return m_executor.run(state, step);
+Outcome StoryExecutor::run(const StoryStep& step, RunState& state){
+    return m_executor.run(step, state);
 }
 
 Pokemon::StoryAction StoryExecutor::console_action(StoryActionId id){
     if (id == StoryActionId::OPTIONS){
-        return {.act = [this](RunState&, const StoryStep&){
+        return {.act = [this](const StoryStep&, RunState&){
             set_options(m_env.console, m_env.context, m_menu, m_env.language);
             return Pokemon::outcome_ok();
         }, .needs_console = true};
     }
     const ConsoleAction action = console_action_of(id);
-    return {.act = [this, action](RunState& state, const StoryStep& step){ return action(m_env, state, step); }, .needs_console = true};
+    return {.act = [this, action](const StoryStep& step, RunState& state){ return action(m_env, state, step); }, .needs_console = true};
 }
 
 
@@ -887,7 +887,7 @@ Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor&
         [&env, id = data.id]{ return read_console_start(env, id); },
         [&env](const std::string& line){ env.console.log(line, COLOR_ORANGE); }
     );
-    env.start_map = data.start ? data.start->map : "";
+    env.start_map = data.start ? Pokemon::grid_pose_of(*data.start).map : "";
     env.start_menu = data.menu;
     const StartMenu menu = data.menu;
     checkpoint.save = [&env, menu, id = data.id](RunState&){
