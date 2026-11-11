@@ -14,6 +14,9 @@
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Data/Pokemon_AuthoredCheckpointJson_Tests.h"
 #include "Data/Pokemon_StoryStepJson_Tests.h"
+#include "Engine/Pokemon_StoryEnginePolicy_Tests.h"
+#include "Engine/Pokemon_StoryEngineRuns_Tests.h"
+#include "Engine/Pokemon_StoryEngine_Tests.h"
 #include "Pokemon/Options/Pokemon_StoryRangeOptions_Tests.h"
 #include "Pokemon_AutoStorySelect_Tests.h"
 #include "Pokemon_AutoStoryStats_Tests.h"
@@ -23,6 +26,7 @@
 #include "Pokemon_StoryEvents_Tests.h"
 #include "Pokemon_StoryInterrupts_Tests.h"
 #include "Pokemon_StoryLog_Tests.h"
+#include "Pokemon_StorySavePolicy_Tests.h"
 #include "Pokemon_StorySegments_Tests.h"
 #include "Pokemon_StoryStepExecutor_Tests.h"
 #include "Pokemon_Transitions_Tests.h"
@@ -44,6 +48,10 @@ inline void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_StoryStepJson(database);
     add_tests_StoryActionArg(database);
     add_tests_AuthoredCheckpointJson(database);
+    add_tests_StorySavePolicy(database);
+    add_tests_StoryEngine(database);
+    add_tests_StoryEnginePolicy(database);
+    add_tests_StoryEngineRuns(database);
     add_tests_ScreenEvents(database);
     add_tests_Interrupts(database);
     add_tests_Transitions(database);
