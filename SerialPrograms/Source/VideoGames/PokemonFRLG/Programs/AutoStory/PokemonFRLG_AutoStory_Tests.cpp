@@ -21,6 +21,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_AutoStoryActions.h"
+#include "PokemonFRLG_AutoStoryGenderMenu.h"
 #include "PokemonFRLG_AutoStoryMoveData.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
 #include "PokemonFRLG_AutoStoryTable.h"
