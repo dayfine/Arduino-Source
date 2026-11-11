@@ -145,6 +145,10 @@ std::vector<std::string> map_trainers(std::string_view map);
 //  it leaves the player on). None for a battle the table doesn't name.
 std::optional<std::string_view> story_trainer(std::string_view map, std::string_view battle);
 
+//  The species of the story's scripted wild battle step `battle` on `map`
+//  (the Pokemon Tower's Marowak). None for a trainer's battle.
+std::optional<std::string_view> story_wild_battle(std::string_view map, std::string_view battle);
+
 //  How carefully a battle step is fought.
 enum class BattleRisk{
     //  The move with the best expected damage against the foe out.

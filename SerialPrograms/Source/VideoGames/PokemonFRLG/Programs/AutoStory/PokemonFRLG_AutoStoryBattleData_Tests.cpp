@@ -119,6 +119,12 @@ UnitTestResult test_story_trainers(){
             battles++;
             const std::string map = step.pose_after ? step.pose_after->map : "";
             const std::optional<std::string_view> trainer = story_trainer(map, step.name);
+            if (!trainer && story_wild_battle(map, step.name)){
+                if (!species_data(*story_wild_battle(map, step.name))){
+                    return std::format("{}, {} on {}: no such species.", checkpoint.id, step.name, map);
+                }
+                continue;
+            }
             if (!trainer){
                 return std::format("{}, {} on {}: no trainer.", checkpoint.id, step.name, map);
             }
@@ -136,6 +142,9 @@ UnitTestResult test_story_trainers(){
     }
     if (trainer_party(*story_trainer("CeruleanCity_Gym", "misty")) != std::vector<std::string>{"staryu", "starmie"}){
         return "Expected Misty's Staryu and Starmie.";
+    }
+    if (story_wild_battle("PokemonTower_6F", "marowak_ghost") != "marowak" || story_trainer("PokemonTower_6F", "marowak_ghost")){
+        return "Expected the Tower's Marowak as a wild battle, no trainer's.";
     }
     return true;
 }

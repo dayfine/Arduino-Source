@@ -97,6 +97,29 @@ constexpr StoryTrainer STORY_TRAINERS[] = {
     {.map = "RocketHideout_B4F", .battle = "left_guard", .trainer = "TRAINER_TEAM_ROCKET_GRUNT_16"},
     {.map = "RocketHideout_B4F", .battle = "right_guard", .trainer = "TRAINER_TEAM_ROCKET_GRUNT_17"},
     {.map = "RocketHideout_B4F", .battle = "giovanni", .trainer = "TRAINER_BOSS_GIOVANNI"},
+    //  The Pokemon Tower (10.02, 10.03; pret PokemonTower_*F scripts.inc):
+    //  the rival on 2F, the Channelers in the only ways up on 5F and 6F,
+    //  and 7F's three Grunts.
+    {.map = "PokemonTower_2F", .battle = "rival_pokemon_tower", .trainer = "TRAINER_RIVAL_POKEMON_TOWER_BULBASAUR"},
+    {.map = "PokemonTower_5F", .battle = "channeler_ruth", .trainer = "TRAINER_CHANNELER_RUTH"},
+    {.map = "PokemonTower_5F", .battle = "channeler_tammy", .trainer = "TRAINER_CHANNELER_TAMMY"},
+    {.map = "PokemonTower_6F", .battle = "channeler_jennifer", .trainer = "TRAINER_CHANNELER_JENNIFER"},
+    {.map = "PokemonTower_6F", .battle = "channeler_emilia", .trainer = "TRAINER_CHANNELER_EMILIA"},
+    {.map = "PokemonTower_7F", .battle = "tower_grunt1", .trainer = "TRAINER_TEAM_ROCKET_GRUNT_19"},
+    {.map = "PokemonTower_7F", .battle = "tower_grunt2", .trainer = "TRAINER_TEAM_ROCKET_GRUNT_20"},
+    {.map = "PokemonTower_7F", .battle = "tower_grunt3", .trainer = "TRAINER_TEAM_ROCKET_GRUNT_21"},
+};
+
+//  The story's scripted wild battles, which no trainer fights: the battle
+//  step's map and name, and the species (pret setwildbattle).
+struct StoryWildBattle{
+    std::string_view map;
+    std::string_view battle;
+    std::string_view species;
+};
+constexpr StoryWildBattle STORY_WILD_BATTLES[] = {
+    //  PokemonTower_6F_EventScript_MarowakGhost: the Silph Scope shows it.
+    {.map = "PokemonTower_6F", .battle = "marowak_ghost", .species = "marowak"},
 };
 
 using JsonTable = std::map<std::string, JsonValue, std::less<>>;
@@ -333,6 +356,15 @@ std::optional<std::string_view> story_trainer(std::string_view map, std::string_
     for (const StoryTrainer& entry : STORY_TRAINERS){
         if (entry.map == map && entry.battle == battle){
             return entry.trainer;
+        }
+    }
+    return std::nullopt;
+}
+
+std::optional<std::string_view> story_wild_battle(std::string_view map, std::string_view battle){
+    for (const StoryWildBattle& entry : STORY_WILD_BATTLES){
+        if (entry.map == map && entry.battle == battle){
+            return entry.species;
         }
     }
     return std::nullopt;

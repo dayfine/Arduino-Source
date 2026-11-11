@@ -1,0 +1,408 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "10.02",
+    "title": "Pokemon Tower to 6F: the rival on 2F, a Super Repel, Ruth and Tammy on 5F, Jennifer and Emilia on 6F, the Rare Candy and the Marowak ghost",
+    "notes": [
+      "Pokemon Tower: pret data/maps/PokemonTower_*/map.json and scripts.inc. The way up avoids every Channeler a route can go round; 5F's Ruth and Tammy and 6F's Jennifer and Emilia stand in the only ways on (pokeguy fights Tammy, Jennifer and Emilia)."
+    ],
+    "start": {
+      "certainty": "tile",
+      "map": "LavenderTown_PokemonCenter_1F",
+      "where": {
+        "facing": "north",
+        "kind": "tiles",
+        "tiles": [
+          [
+            7,
+            4
+          ]
+        ]
+      }
+    },
+    "events": [
+      {
+        "id": "tower_rival_corner",
+        "kind": "route",
+        "variant": "run",
+        "target": {
+          "certainty": "tile",
+          "map": "PokemonTower_2F",
+          "where": {
+            "facing": "north",
+            "kind": "tiles",
+            "tiles": [
+              [
+                18,
+                6
+              ]
+            ]
+          }
+        },
+        "why": "out of the Center, east over Lavender to the Tower's door (18, 6), up 1F to its stairs (18, 9) and up 2F's column 18 to (18, 6), below the rival's trigger (17, 5)"
+      },
+      {
+        "id": "tower_rival_trigger",
+        "kind": "legs",
+        "variant": "run",
+        "legs": [
+          {
+            "direction": "north",
+            "tiles": 1
+          },
+          {
+            "direction": "west",
+            "tiles": 1
+          }
+        ],
+        "why": "up to (18, 5) and west onto the trigger (17, 5) (PokemonTower_2F_EventScript_RivalTriggerRight): the rival (16, 5) turns to the player"
+      },
+      {
+        "id": "rival_pokemon_tower",
+        "kind": "battle",
+        "declared_after": {
+          "certainty": "tile",
+          "map": "PokemonTower_2F",
+          "where": {
+            "facing": "west",
+            "kind": "tiles",
+            "tiles": [
+              [
+                17,
+                5
+              ]
+            ]
+          }
+        },
+        "why": "the rival (TRAINER_RIVAL_POKEMON_TOWER_BULBASAUR): Pidgeotto, Gyarados, Growlithe, Kadabra and Ivysaur; he leaves by the stairs"
+      },
+      {
+        "id": "tower_3f",
+        "kind": "route",
+        "variant": "run",
+        "target": {
+          "certainty": "tile",
+          "map": "PokemonTower_3F",
+          "where": {
+            "facing": "south",
+            "kind": "tiles",
+            "tiles": [
+              [
+                4,
+                11
+              ]
+            ]
+          }
+        },
+        "why": "round the graves to 2F's stairs (4, 10), onto 3F, a step down"
+      },
+      {
+        "id": "super_repel_tower",
+        "kind": "game_action",
+        "variant": "use_item",
+        "args": {
+          "item": "super-repel"
+        },
+        "why": "3F up are full of ghosts (pokeguy uses a Super Repel at 1:03:50)"
+      },
+      {
+        "id": "tower_3f_stairs",
+        "kind": "route",
+        "variant": "run",
+        "target": {
+          "certainty": "tile",
+          "map": "PokemonTower_4F",
+          "where": {
+            "facing": "south",
+            "kind": "tiles",
+            "tiles": [
+              [
+                18,
+                11
+              ]
+            ]
+          }
+        },
+        "why": "down column 4, east along row 14 to column 7, up it to row 7 and east along row 7 above Carly's line (9, 10..12), down column 18 to the stairs (18, 10), onto 4F a step down"
+      },
+      {
+        "id": "tower_4f_stairs",
+        "kind": "route",
+        "variant": "run",
+        "target": {
+          "certainty": "tile",
+          "map": "PokemonTower_5F",
+          "where": {
+            "facing": "south",
+            "kind": "tiles",
+            "tiles": [
+              [
+                4,
+                11
+              ]
+            ]
+          }
+        },
+        "why": "west of Laurel's line (17, 8..10) up column 16, along row 6 to column 11, round by row 3 and down column 9 to row 9, west to 4F's stairs (4, 10), onto 5F a step down"
+      },
+      {
+        "id": "west_of_ruth_line",
+        "kind": "route",
+        "variant": "run",
+        "target": {
+          "certainty": "tile",
+          "map": "PokemonTower_5F",
+          "where": {
+            "facing": "east",
+            "kind": "tiles",
+            "tiles": [
+              [
+                10,
+                6
+              ]
+            ]
+          }
+        },
+        "why": "up column 4 to row 6 and east along it to (10, 6), a tile west of Ruth's south line (11, 5..6)"
+      },
+      {
+        "id": "ruth_sight",
+        "kind": "step",
+        "variant": "trainer_wait",
+        "direction": "east",
+        "why": "onto (11, 6), two below Ruth (11, 4), who looks around: when she looks south she walks down to (11, 5)"
+      },
+      {
+        "id": "channeler_ruth",
+        "kind": "battle",
+        "declared_after": {
+          "certainty": "tile",
+          "map": "PokemonTower_5F",
+          "where": {
+            "facing": "north",
+            "kind": "tiles",
+            "tiles": [
+              [
+                11,
+                6
+              ]
+            ]
+          }
+        },
+        "why": "Channeler Ruth (TRAINER_CHANNELER_RUTH): Gastly"
+      },
+      {
+        "id": "above_tammy_line",
+        "kind": "route",
+        "variant": "run",
+        "target": {
+          "certainty": "tile",
+          "map": "PokemonTower_5F",
+          "where": {
+            "facing": "south",
+            "kind": "tiles",
+            "tiles": [
+              [
+                18,
+                6
+              ]
+            ]
+          }
+        },
+        "why": "east along row 6 to (18, 6), above Tammy's line (16..18, 7)"
+      },
+      {
+        "id": "tammy_line",
+        "kind": "step",
+        "variant": "trainer_line",
+        "direction": "south",
+        "why": "onto (18, 7), beside Tammy (19, 7): she sees the player there"
+      },
+      {
+        "id": "channeler_tammy",
+        "kind": "battle",
+        "declared_after": {
+          "certainty": "tile",
+          "map": "PokemonTower_5F",
+          "where": {
+            "facing": "east",
+            "kind": "tiles",
+            "tiles": [
+              [
+                18,
+                7
+              ]
+            ]
+          }
+        },
+        "why": "Channeler Tammy (TRAINER_CHANNELER_TAMMY): Haunter (pokeguy 1:06:36)"
+      },
+      {
+        "id": "below_jennifer_line",
+        "kind": "route",
+        "variant": "run",
+        "target": {
+          "certainty": "tile",
+          "map": "PokemonTower_6F",
+          "where": {
+            "facing": "north",
+            "kind": "tiles",
+            "tiles": [
+              [
+                16,
+                8
+              ]
+            ]
+          }
+        },
+        "why": "down column 18 to the stairs (18, 10), onto 6F, and up to (16, 8), two below Jennifer's line (15..17, 6)"
+      },
+      {
+        "id": "jennifer_line",
+        "kind": "step",
+        "variant": "trainer_line",
+        "direction": "north",
+        "why": "a tile at a time onto (16, 6): Jennifer (18, 6) walks to (17, 6)"
+      },
+      {
+        "id": "channeler_jennifer",
+        "kind": "battle",
+        "declared_after": {
+          "certainty": "tile",
+          "map": "PokemonTower_6F",
+          "where": {
+            "facing": "east",
+            "kind": "tiles",
+            "tiles": [
+              [
+                16,
+                6
+              ]
+            ]
+          }
+        },
+        "why": "Channeler Jennifer (TRAINER_CHANNELER_JENNIFER): Gastly (pokeguy 1:07:00)"
+      },
+      {
+        "id": "east_of_emilia_line",
+        "kind": "route",
+        "variant": "run",
+        "target": {
+          "certainty": "tile",
+          "map": "PokemonTower_6F",
+          "where": {
+            "facing": "west",
+            "kind": "tiles",
+            "tiles": [
+              [
+                11,
+                8
+              ]
+            ]
+          }
+        },
+        "why": "up column 16 to row 4, west along it to column 12, down to (12, 8) and west to (11, 8), two east of Emilia's line (9, 7..9)"
+      },
+      {
+        "id": "emilia_line",
+        "kind": "step",
+        "variant": "trainer_line",
+        "direction": "west",
+        "why": "a tile at a time onto (9, 8): Emilia (9, 6) walks down to (9, 7)"
+      },
+      {
+        "id": "channeler_emilia",
+        "kind": "battle",
+        "declared_after": {
+          "certainty": "tile",
+          "map": "PokemonTower_6F",
+          "where": {
+            "facing": "north",
+            "kind": "tiles",
+            "tiles": [
+              [
+                9,
+                8
+              ]
+            ]
+          }
+        },
+        "why": "Channeler Emilia (TRAINER_CHANNELER_EMILIA): Gastly (pokeguy 1:07:28)"
+      },
+      {
+        "id": "above_rare_candy",
+        "kind": "route",
+        "variant": "run",
+        "target": {
+          "certainty": "tile",
+          "map": "PokemonTower_6F",
+          "where": {
+            "facing": "south",
+            "kind": "tiles",
+            "tiles": [
+              [
+                5,
+                14
+              ]
+            ]
+          }
+        },
+        "why": "west along row 8 to column 6, down it to row 12, round to (5, 14), above the Rare Candy (5, 15)"
+      },
+      {
+        "id": "rare_candy",
+        "kind": "talk",
+        "why": "pick up the RARE CANDY (pokeguy 1:07:53)"
+      },
+      {
+        "id": "above_marowak_trigger",
+        "kind": "route",
+        "variant": "run",
+        "target": {
+          "certainty": "tile",
+          "map": "PokemonTower_6F",
+          "where": {
+            "facing": "south",
+            "kind": "tiles",
+            "tiles": [
+              [
+                11,
+                14
+              ]
+            ]
+          }
+        },
+        "why": "east along row 12 to column 11 and down to (11, 14), above the Marowak trigger (11, 15)"
+      },
+      {
+        "id": "marowak_trigger",
+        "kind": "step",
+        "direction": "south",
+        "why": "onto (11, 15) (PokemonTower_6F_EventScript_MarowakGhost): \"Be gone... Intruders...\""
+      },
+      {
+        "id": "marowak_ghost",
+        "kind": "battle",
+        "declared_after": {
+          "certainty": "tile",
+          "map": "PokemonTower_6F",
+          "where": {
+            "facing": "south",
+            "kind": "tiles",
+            "tiles": [
+              [
+                11,
+                15
+              ]
+            ]
+          }
+        },
+        "why": "the Silph Scope shows the ghost: MAROWAK Lv30 (setwildbattle SPECIES_MAROWAK, 30), which has to be beaten (fleeing walks the player back up); then Cubone's mother's spirit is calmed"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full"
+  }
+}

@@ -1,0 +1,131 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "10.01",
+    "title": "Back east from Celadon: Route 7, the Underground Path and Route 8 to Lavender Town's Pokemon Center",
+    "notes": [
+      "Bulbapedia's FireRed/LeafGreen walkthrough part 10 (Pokemon Tower). PokeGuy flies to Lavender with HM02 (1:03:59); the story has no Fly yet, so it walks back the way 08.03 came. Route 8's tiles and trainers: pret data/maps/Route8/map.json."
+    ],
+    "start": {
+      "certainty": "tile",
+      "map": "CeladonCity",
+      "where": {
+        "facing": "south",
+        "kind": "tiles",
+        "tiles": [
+          [
+            34,
+            22
+          ]
+        ]
+      }
+    },
+    "events": [
+      {
+        "id": "underground_route8_exit",
+        "kind": "route",
+        "variant": "run",
+        "target": {
+          "certainty": "tile",
+          "map": "Route8",
+          "where": {
+            "facing": "south",
+            "kind": "tiles",
+            "tiles": [
+              [
+                13,
+                5
+              ]
+            ]
+          }
+        },
+        "why": "east over Celadon onto Route 7, in at the Underground Path's west door, through the east-west tunnel and out of the east entrance onto Route 8, a step below its door (13, 4)"
+      },
+      {
+        "id": "route8_row14",
+        "kind": "legs",
+        "variant": "run",
+        "legs": [
+          {
+            "direction": "east",
+            "tiles": 1
+          },
+          {
+            "direction": "south",
+            "tiles": 9
+          },
+          {
+            "direction": "east",
+            "tiles": 12
+          }
+        ],
+        "why": "east to (14, 5), down column 14 east of Aidan's line (10..13, 6) to (14, 14), a tile above Ricardo's sight (14, 15), and east along row 14 above Jaren (24, 17) to (26, 14)"
+      },
+      {
+        "id": "route8_row7",
+        "kind": "legs",
+        "variant": "run",
+        "legs": [
+          {
+            "direction": "north",
+            "tiles": 7
+          },
+          {
+            "direction": "east",
+            "tiles": 22
+          }
+        ],
+        "why": "up column 26 to (26, 7), a row below Andrea's line (26..28, 5), and east along row 7 below Megan's (30..35, 6) to (48, 7), west of Glenn's south line (51, 7..10)"
+      },
+      {
+        "id": "route8_row18",
+        "kind": "legs",
+        "variant": "run",
+        "legs": [
+          {
+            "direction": "south",
+            "tiles": 11
+          },
+          {
+            "direction": "east",
+            "tiles": 19
+          },
+          {
+            "direction": "north",
+            "tiles": 8
+          }
+        ],
+        "why": "down column 48 to the wall (48, 19), east along row 18 past Rich (beaten in 08.03) to the wall (68, 18), and up column 67 to row 10, the way onto Lavender Town (rows 9..11)"
+      },
+      {
+        "id": "lavender_nurse",
+        "kind": "route",
+        "variant": "run",
+        "target": {
+          "certainty": "tile",
+          "map": "LavenderTown_PokemonCenter_1F",
+          "where": {
+            "facing": "north",
+            "kind": "tiles",
+            "tiles": [
+              [
+                7,
+                4
+              ]
+            ]
+          }
+        },
+        "why": "east over the connection into Lavender Town and in at the Center's door (6, 5), to the nurse"
+      },
+      {
+        "id": "heal_lavender",
+        "kind": "heal",
+        "why": "full HP before the Pokemon Tower"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full"
+  }
+}
