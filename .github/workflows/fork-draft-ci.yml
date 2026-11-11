@@ -1,0 +1,21 @@
+name: Fork Draft CI
+# Fork only. Upstream's C++ jobs skip draft PRs, and every fork PR is a draft.
+# This runs the fastest build (Ubuntu, GCC) with the unit tests on each push to a
+# fork draft PR. The full platform set runs in "Fork Upstream-Ready CI".
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ubuntu:
+    if: github.repository == 'dayfine/Arduino-Source' && github.event.pull_request.draft == true
+    uses: ./.github/workflows/cpp-ci-serial-programs-base.yml
+    with:
+      os: ubuntu-26.04
+      compiler: default
+      run-clang-query: true
+      run-tests: true
