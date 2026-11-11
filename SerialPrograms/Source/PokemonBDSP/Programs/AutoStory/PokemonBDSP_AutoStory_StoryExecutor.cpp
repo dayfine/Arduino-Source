@@ -274,9 +274,6 @@ Outcome StoryExecutor::heal(RunState&, const StoryStep& step){
     }, label_of(step));
     stream().log(std::format("[{}] {}: north into the Center: {}.", m_checkpoint, step.name,
         in == CenterEntry::FADED ? "faded" : in == CenterEntry::INSIDE ? "no fade, but inside" : "no fade; lined up by sight"));
-    if (in == CenterEntry::FADED){
-        pbf_wait(context(), 1500ms);
-    }
     talk_to_nurse(stream(), context(), label_of(step));
     //  Her last line ("We hope to see you again!") can still be up, and a
     //  line stops the run out at once (r62): B until none shows.
