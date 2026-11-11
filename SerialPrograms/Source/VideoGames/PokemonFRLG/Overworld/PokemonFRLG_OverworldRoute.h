@@ -92,6 +92,9 @@ struct RouteStep{
     //  again and re-planned off the route (console B, 2026-11-10 22:35).
     //  0: not blind.
     int blind_taps = 0;
+    //  WALK, warps: the warp's fade only dims the screen, never black (the
+    //  hideout lift's way out; console B, 2026-11-10, 00.32 lift_to_b4f).
+    bool fade_dims = false;
     //  WALK, SURF: a wild Pokemon can appear on the way: the step crosses
     //  tall grass or water. Elsewhere (indoors, streets) no wild battle can
     //  start, so the walker doesn't watch for one.

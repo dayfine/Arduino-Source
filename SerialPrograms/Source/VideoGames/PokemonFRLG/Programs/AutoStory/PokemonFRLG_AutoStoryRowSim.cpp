@@ -532,20 +532,34 @@ std::string OverworldStepSim::cut(const StoryStep& step){
 namespace{
 
 //  walk_room_legs() on the sim: a step tap a tile, each warp's fade and
-//  the walk out of a door waited out.
-void sim_walk_room_legs(OverworldSim& sim, const std::vector<RoomLeg>& legs){
+//  the walk out of a door waited out. A warp taken with no black fade
+//  fails, as on the console, unless the leg `dims`. A leg with no warp
+//  isn't failed: the 00.32 story sim is already in the lift when
+//  lift_in_legs() starts (B2F's lift door a tile off the plan's).
+std::string sim_walk_room_legs(OverworldSim& sim, const std::vector<RoomLeg>& legs){
     for (const RoomLeg& leg : legs){
         if (leg.tiles == 0){
             sim_turn_to(sim, leg.direction);
             continue;
         }
+        const int warps_before = sim.state().warps;
+        const Milliseconds started = sim.state().time;
         for (int tile = 0; tile < leg.tiles; tile++){
             sim_step_once(sim, leg.direction);
         }
-        if (leg.warps){
-            sim.watch({}, OverworldWalkSteps::AFTER_WARP);
+        if (!leg.warps){
+            continue;
         }
+        const std::vector<SimShown>& shown = sim.state().shown;
+        const bool faded = std::any_of(shown.begin(), shown.end(), [&](const SimShown& s){
+            return s.screen == SimScreen::FADE && s.at >= started;
+        }) || sim.watch({SimWatcher::FADE}, OverworldWalkSteps::AFTER_WARP).has_value();
+        if (sim.state().warps != warps_before && !leg.dims && !faded){
+            return std::format("walk_overworld_route(): no fade in and out after walking onto the warp to {}.", leg.to);
+        }
+        sim.watch({}, OverworldWalkSteps::AFTER_WARP);
     }
+    return "";
 }
 
 } // namespace
@@ -590,19 +604,22 @@ std::string OverworldStepSim::hideout(const StoryStep& step){
         return m_sim.use_field(SimField::POSTER_SWITCH) ? "" : "no poster ahead.";
     }
     if (is_center_variant(step.variant)){
-        sim_walk_room_legs(m_sim, center_legs(step.variant));
-        return ended_on(step);
+        const std::string failure = sim_walk_room_legs(m_sim, center_legs(step.variant));
+        return failure.empty() ? ended_on(step) : failure;
     }
     const std::optional<LiftRide> ride = parse_lift_floor_step(step);
     if (!ride){
         return "no lift ride \"" + step.variant + "\".";
     }
-    sim_walk_room_legs(m_sim, lift_in_legs());
+    const std::string in = sim_walk_room_legs(m_sim, lift_in_legs());
+    if (!in.empty()){
+        return in;
+    }
     if (!m_sim.use_field(SimField::LIFT_FLOOR, ride->to)){
         return "no lift panel for \"" + step.variant + "\".";
     }
-    sim_walk_room_legs(m_sim, lift_out_legs());
-    return ended_on(step);
+    const std::string out = sim_walk_room_legs(m_sim, lift_out_legs());
+    return out.empty() ? ended_on(step) : out;
 }
 
 //  After a scripted step: the player's pose, and whether it is the step's

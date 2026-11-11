@@ -186,6 +186,8 @@ void wait_out_warp(
     Pokemon::WatchAlong& fade, const VideoSnapshot& before
 );
 //  The same, watching only from now: for a caller that saw the black itself.
+//  A step whose fade only dims (RouteStep::fade_dims) is confirmed by the
+//  scene from `before` gone and the screen settled instead.
 void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step, const VideoSnapshot& before);
 
 //  Before `step`: fails unless the overworld is up.

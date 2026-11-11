@@ -304,6 +304,8 @@ constexpr int SCREEN_TILES_X = 15;
 constexpr int SCREEN_TILES_Y = 10;
 //  From the fade's end until the new map is in full light.
 constexpr Milliseconds WARP_FADE_IN(300);
+//  Between screens compared for a dim warp's fade (wait_out_dim_warp()).
+constexpr Milliseconds DIM_WARP_POLL(150);
 
 //  The RMSD of `before` and `after` where they overlap, with the scene
 //  scrolled `dx`, `dy` pixels: `after` at (x, y) shows `before` at
@@ -384,6 +386,48 @@ void wait_out_fade(ConsoleHandle& console, ProControllerContext& context, const 
 
 } // namespace
 
+namespace{
+
+//  After the steps onto a warp whose fade only dims the screen
+//  (RouteStep::fade_dims): waits, up to the warp timeout, for the scene
+//  from `before`, taken before the first of those steps, to be gone and
+//  the screen settled; fails if it never is.
+void wait_out_dim_warp(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step, const VideoSnapshot& before){
+    context.wait_for_all_requests();
+    if (!before){
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::SEND_ERROR_REPORT,
+            std::format("walk_overworld_route(): no screen before the steps onto the warp to {}.", step.end.map),
+            console
+        );
+    }
+    const ImageFloatBox& game = GameSettings::instance().GAME_BOX;
+    VideoSnapshot last;
+    const WallClock deadline = current_time() + WARP_TIMEOUT;
+    while (current_time() < deadline){
+        context.wait_for(DIM_WARP_POLL);
+        VideoSnapshot now = console.video().snapshot();
+        if (!now){
+            continue;
+        }
+        const bool left = warp_left_scene(*before.frame, *now.frame, game, step.direction, step.tiles + 2);
+        if (left && last && scrolled_rmsd(
+            extract_box_reference(*last.frame, game), extract_box_reference(*now.frame, game), 0, 0
+        ) < SAME_SCENE_RMSD){
+            console.log(std::format("Route: the dim fade to {} is over.", step.end.map));
+            return;
+        }
+        last = left ? std::move(now) : VideoSnapshot();
+    }
+    OperationFailedExceptionWithScreenshot::fire(
+        ErrorReportMode::SEND_ERROR_REPORT,
+        std::format("walk_overworld_route(): the scene from before the steps onto the warp to {} is still up.", step.end.map),
+        console
+    );
+}
+
+} // namespace
+
 //  A black screen that clears with the player where they were is no warp
 //  (console B, 2026-11-10 01:44, 00.31 run 4: "east 1 (warp)" was taken as
 //  walked while the player stayed on B4F).
@@ -413,6 +457,10 @@ void wait_out_warp(
 void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step, const VideoSnapshot& before){
     BlackScreenOverWatcher arrival(COLOR_RED);
     Pokemon::WatchAlong fade(arrival);
+    if (step.fade_dims){
+        wait_out_dim_warp(console, context, step, before);
+        return;
+    }
     wait_out_warp(console, context, step, fade, before);
 }
 
