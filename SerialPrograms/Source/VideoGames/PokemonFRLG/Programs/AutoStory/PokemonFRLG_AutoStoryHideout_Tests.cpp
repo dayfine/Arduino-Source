@@ -61,7 +61,7 @@ public:
             }
             return true;
         }
-        const MenuPresses got = lift_menu_presses(*ride, rocket_hideout_lift_menu().size());
+        const MenuPresses got = lift_menu_presses(*ride, lift_menu(ride->lift).size());
         if (got.direction != expected->direction || got.presses != expected->presses){
             return std::format(
                 "\"{}\": {} press(es) {}, expected {} {}.", m_case.input.variant,
@@ -757,6 +757,24 @@ const LiftCase LIFT_CASES[] = {
     },
     {
         .input = {.name = "one floor only", .variant = "lift_floor B2F"},
+        .expectation = {.presses = std::nullopt},
+    },
+    {
+        //  The Department Store's: 5F, 4F, 3F, 2F, 1F, EXIT. From 1F, down
+        //  past EXIT wraps to 5F (10.01's lift_to_5f).
+        .input = {.name = "store 1F to 5F: two down past EXIT", .variant = "lift_floor 1F 5F"},
+        .expectation = {.presses = MenuPresses{Pokemon::Direction::SOUTH, 2}},
+    },
+    {
+        .input = {.name = "store 5F to 1F: two up past EXIT", .variant = "lift_floor 5F 1F"},
+        .expectation = {.presses = MenuPresses{Pokemon::Direction::NORTH, 2}},
+    },
+    {
+        .input = {.name = "store 1F to 3F: two up", .variant = "lift_floor 1F 3F"},
+        .expectation = {.presses = MenuPresses{Pokemon::Direction::NORTH, 2}},
+    },
+    {
+        .input = {.name = "no lift has both B2F and 5F", .variant = "lift_floor B2F 5F"},
         .expectation = {.presses = std::nullopt},
     },
 };

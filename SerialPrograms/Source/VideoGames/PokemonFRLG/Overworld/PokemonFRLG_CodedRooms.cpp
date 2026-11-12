@@ -118,6 +118,18 @@ constexpr std::string_view LIFT_ROOM_JSON = R"({
     "warps": [{"x": 2, "y": 5, "enter": "walk_south"}]
 })";
 
+//  LAYOUT_CELADON_CITY_DEPARTMENT_STORE_ELEVATOR: the hideout lift's
+//  map.bin, the panel's bg events at (0, 2) and (4, 1), warp 0 at (2, 5)
+//  (the MB_SOUTH_ARROW_WARP tile, where the floors' doors land) and warp 1
+//  at (2, 6), in the wall row, never reached.
+constexpr std::string_view DEPT_STORE_LIFT_ROOM_JSON = R"({
+    "name": "CeladonCity_DepartmentStore_Elevator",
+    "source": {"decomp_file": "data/layouts/CeladonCity_DepartmentStore_Elevator/map.bin", "revision": "ce6406d8c2eaf46d543c8a2606de0c3cb1951982", "date": "2026-11-11"},
+    "tiles": ["#####", "####S", "S####", ".....", ".....", ".....", "#####"],
+    "points": {"warp_0": [2, 5], "warp_1": [2, 6]},
+    "warps": [{"x": 2, "y": 5, "enter": "walk_south"}]
+})";
+
 } // namespace
 
 
@@ -202,6 +214,21 @@ const std::vector<MapPosition>& rocket_hideout_lift_exits(){
         {"RocketHideout_B1F", {24, 26}},
         {"RocketHideout_B2F", {28, 17}},
         {"RocketHideout_B4F", {20, 24}},
+    };
+    return EXITS;
+}
+
+MapData department_store_lift_room(){
+    return parse_map(std::string(DEPT_STORE_LIFT_ROOM_JSON), std::string(DEPT_STORE_LIFT_MAP));
+}
+
+const std::vector<MapPosition>& department_store_lift_exits(){
+    static const std::vector<MapPosition> EXITS{
+        {"CeladonCity_DepartmentStore_5F", {6, 2}},
+        {"CeladonCity_DepartmentStore_4F", {6, 2}},
+        {"CeladonCity_DepartmentStore_3F", {6, 2}},
+        {"CeladonCity_DepartmentStore_2F", {6, 2}},
+        {"CeladonCity_DepartmentStore_1F", {6, 2}},
     };
     return EXITS;
 }

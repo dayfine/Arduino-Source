@@ -127,7 +127,8 @@ Pokemon::StoryActionSpec teach_action_spec(){
     return {.kind = StoryStepKind::GAME, .name = TEACH_ACTION, .args = {
         required_arg("item", StoryArgType::WORD, "the TM or HM, e.g. \"hm03\""),
         required_arg("move", StoryArgType::WORD, "the move it holds, e.g. \"surf\""),
-        required_arg("slot", StoryArgType::INTEGER, "the party slot, from 1"),
+        absent_arg("slot", StoryArgType::INTEGER, "the party slot, from 1, when no species is named"),
+        absent_arg("species", StoryArgType::WORD, "the member by its species, e.g. \"pidgey\": the first slot whose summary reads it"),
         absent_arg("forget", StoryArgType::WORD, "the move to forget when it knows four"),
         absent_arg("forget_slot", StoryArgType::INTEGER, "the move slot to forget, from 1, when no move is named"),
     }};

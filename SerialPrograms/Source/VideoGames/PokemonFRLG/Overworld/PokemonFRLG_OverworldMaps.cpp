@@ -114,6 +114,10 @@ constexpr std::string_view MAP_NAMES[] = {
     "CeladonCity_Condominiums_3F",
     "CeladonCity_Condominiums_Roof",
     "CeladonCity_Condominiums_RoofRoom",
+    //  The Department Store's 1F and its 5F's X items, by the lift (coded:
+    //  department_store_lift_room()).
+    "CeladonCity_DepartmentStore_1F",
+    "CeladonCity_DepartmentStore_5F",
     //  Route 16's house with HM02 Fly, past the Cut tree and the north gate.
     "Route16",
     "Route16_NorthEntrance_1F",

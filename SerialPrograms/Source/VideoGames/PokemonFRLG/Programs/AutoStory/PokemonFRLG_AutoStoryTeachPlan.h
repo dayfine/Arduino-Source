@@ -35,6 +35,10 @@ struct TeachPlan{
     std::string move = {};
     //  The party slot (0-5).
     size_t member = 0;
+    //  The member by its species' slug (e.g. "pidgey"), as its summary
+    //  reads: the first slot that holds one is taught, and `member` is
+    //  not used. Empty: `member`.
+    std::string species = {};
     //  The move to forget when it knows four: by name, or else by its
     //  slot (0-3). Neither: it must have a free slot.
     std::string forget_move = {};
@@ -45,9 +49,9 @@ struct TeachPlan{
 bool is_hm_move(std::string_view move);
 
 //  The GAME action of a TEACH step: item WORD (required), the TM or HM,
-//  e.g. "hm03"; move WORD (required), e.g. "surf"; slot INTEGER
-//  (required, from 1); forget WORD or forget_slot INTEGER (from 1)
-//  (optional): the move to forget when it knows four.
+//  e.g. "hm03"; move WORD (required), e.g. "surf"; slot INTEGER (from 1)
+//  or species WORD (one of them required); forget WORD or forget_slot
+//  INTEGER (from 1) (optional): the move to forget when it knows four.
 inline const std::string TEACH_ACTION = "teach";
 //  `plan` as its action's args.
 Pokemon::StoryActionArgs teach_args(const TeachPlan& plan);
@@ -71,6 +75,11 @@ struct TeachDecision{
 };
 //  Determines which move slot to overwrite given current moves.
 TeachDecision decide_teach(const TeachPlan& plan, const std::vector<std::string>& moves);
+
+//  The first party slot whose member `reader` reads as `species`; nothing
+//  if none does. Stops at the first slot not read (an empty slot ends the
+//  party).
+std::optional<size_t> find_party_species(const MemberReader& reader, std::string_view species);
 
 
 

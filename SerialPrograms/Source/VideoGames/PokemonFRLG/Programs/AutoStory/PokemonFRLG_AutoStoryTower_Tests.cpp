@@ -2,9 +2,9 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Rows 10.01 to 10.06 on the overworld sim: from where 09.02's Escape
- *  Rope leaves the player in Celadon City to Route 16's house for HM02
- *  and a Fly to Lavender Town, up
+ *  Rows 10.01 to 10.06 on the overworld sim: from the Eevee's room in
+ *  Celadon Mansion (09.04) by the Department Store's lift to its 5F's X
+ *  items, to Route 16's house for HM02 and a Fly to Lavender Town, up
  *  the Pokemon Tower past the rival, its Channelers, the Marowak ghost and
  *  the three Grunts to Mr. Fuji, and the POKE FLUTE in his house. Each row
  *  fights only the trainers it plans to (the chain from row to row is
@@ -24,6 +24,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_HideoutLiftRoom.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldObjects.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
@@ -96,6 +97,7 @@ std::vector<MapData> maps_with_beaten(const std::vector<Beaten>& beaten){
     flags.merge(map_flag_set(all, "new_game"));
     flags.erase("FLAG_HIDE_VERMILION_CITY_OAKS_AIDE");
     std::vector<MapData> maps = overworld_maps(flags);
+    maps.push_back(department_store_lift_room());
     for (MapData& map : maps){
         for (MapObject& object : map.objects){
             const bool hit = std::any_of(beaten.begin(), beaten.end(), [&](const Beaten& trainer){
@@ -134,7 +136,10 @@ struct RowRun{
 RowRun run_row(std::string_view id, std::vector<MapData> maps){
     const StoryCheckpoint& row = checkpoint(id);
     StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
-    auto sim = std::make_unique<OverworldSim>(maps, MapPosition{at.map, at.tile}, *at.facing);
+    //  The Department Store's lift (10.01): its room and its floors.
+    SimScript script;
+    script.lift_floors[std::string(DEPT_STORE_LIFT_MAP)] = department_store_lift_exits();
+    auto sim = std::make_unique<OverworldSim>(maps, MapPosition{at.map, at.tile}, *at.facing, script);
     RowRun run;
     for (const StoryStep& step : row.steps){
         if (scripted(step)){
@@ -144,7 +149,7 @@ RowRun run_row(std::string_view id, std::vector<MapData> maps){
                 run.failure = std::format("{}: a violation before {}: {}", id, step.name, sim->state().violations.back());
                 return run;
             }
-            sim = std::make_unique<OverworldSim>(maps, MapPosition{at.map, at.tile}, *at.facing);
+            sim = std::make_unique<OverworldSim>(maps, MapPosition{at.map, at.tile}, *at.facing, script);
             continue;
         }
         if (const std::string failure = row_step_on_sim(*sim, at, step, row.id); !failure.empty()){
@@ -182,8 +187,9 @@ UnitTestResult row_checked(
     return true;
 }
 
-//  10.01: Celadon City past Route 16's Cut tree to the house with HM02,
-//  out of Lea's and Jed's lines, then a Fly to Lavender's Center.
+//  10.01: the Department Store's lift up to the X items clerk on 5F and
+//  back down, Celadon City past Route 16's Cut tree to the house with
+//  HM02, out of Lea's and Jed's lines, then a Fly to Lavender's Center.
 UnitTestResult test_back_to_lavender(Logger&){
     return row_checked("10.01", {}, {}, MapPosition{"LavenderTown_PokemonCenter_1F", {7, 4}});
 }

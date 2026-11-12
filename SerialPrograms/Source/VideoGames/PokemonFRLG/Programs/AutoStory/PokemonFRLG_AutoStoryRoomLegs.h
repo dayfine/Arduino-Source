@@ -25,7 +25,7 @@ const std::vector<RoomLeg>& center_enter_legs();
 //  Out of a Center: south 4 to the mat, south through the door.
 const std::vector<RoomLeg>& center_exit_legs();
 
-//  Into the hideout's lift, from below a floor's lift door facing north:
+//  Into a lift (the hideout's or the store's), from below a floor's lift door facing north:
 //  north through the door onto LIFT_ARRIVAL, north 2, west 2 to below the
 //  panel (LIFT_PANEL_FRONT), facing it.
 const std::vector<RoomLeg>& lift_in_legs();

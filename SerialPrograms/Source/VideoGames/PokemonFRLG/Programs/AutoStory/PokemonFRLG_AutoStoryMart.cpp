@@ -49,6 +49,13 @@ constexpr MartStockItem ESCAPE_ROPE{"escape-rope", 550};
 constexpr MartStockItem REPEL{"repel", 350};
 constexpr MartStockItem SUPER_REPEL{"super-repel", 500};
 constexpr MartStockItem MAX_REPEL{"max-repel", 700};
+constexpr MartStockItem X_ATTACK{"x-attack", 500};
+constexpr MartStockItem X_DEFEND{"x-defend", 550};
+constexpr MartStockItem X_SPEED{"x-speed", 350};
+constexpr MartStockItem X_SPECIAL{"x-special", 350};
+constexpr MartStockItem X_ACCURACY{"x-accuracy", 950};
+constexpr MartStockItem GUARD_SPEC{"guard-spec", 700};
+constexpr MartStockItem DIRE_HIT{"dire-hit", 650};
 
 //  Each Mart's `<map>_Items` list in pokefirered data/maps/<map>/scripts.inc.
 const std::map<std::string, std::vector<MartStockItem>, std::less<>>& mart_stocks(){
@@ -65,6 +72,8 @@ const std::map<std::string, std::vector<MartStockItem>, std::less<>>& mart_stock
         {"FuchsiaCity_Mart", {ULTRA_BALL, GREAT_BALL, SUPER_POTION, REVIVE, FULL_HEAL, MAX_REPEL}},
         {"SaffronCity_Mart", {GREAT_BALL, HYPER_POTION, REVIVE, FULL_HEAL, ESCAPE_ROPE, MAX_REPEL}},
         {"CinnabarIsland_Mart", {ULTRA_BALL, GREAT_BALL, HYPER_POTION, REVIVE, FULL_HEAL, ESCAPE_ROPE, MAX_REPEL}},
+        //  The X items clerk (CeladonCity_DepartmentStore_5F_XItems).
+        {"CeladonCity_DepartmentStore_5F", {X_ATTACK, X_DEFEND, X_SPEED, X_SPECIAL, X_ACCURACY, GUARD_SPEC, DIRE_HIT}},
         {"IndigoPlateau_PokemonCenter_1F", {
             ULTRA_BALL, GREAT_BALL, FULL_RESTORE, MAX_POTION, REVIVE, FULL_HEAL, MAX_REPEL,
         }},

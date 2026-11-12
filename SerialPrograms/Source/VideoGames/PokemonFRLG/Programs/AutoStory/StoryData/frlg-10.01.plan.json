@@ -3,23 +3,87 @@
   "game": "frlg",
   "checkpoint": {
     "id": "10.01",
-    "title": "HM02 Fly from Route 16's house, taught to the Pidgey, and Fly to Lavender Town's Pokemon Center",
+    "title": "X items on the Department Store's 5F, HM02 Fly from Route 16's house, taught to the Pidgey, and Fly to Lavender Town's Pokemon Center",
     "start": {"map": "CeladonCity_Condominiums_RoofRoom", "tiles": [[7, 4]], "facing": "north"},
     "events": [
       {
-        "id": "out_of_mansion",
+        "id": "below_store_lift",
         "kind": "route",
         "action": "run",
         "args": {
-          "target": {"map": "CeladonCity", "tiles": [[30, 3]], "facing": "north"}
+          "target": {"map": "CeladonCity_DepartmentStore_1F", "tiles": [[6, 2]], "facing": "north"}
         },
-        "why": "from the Eevee's ball (09.04) out of the roof room, down Celadon Mansion's stairs and out of its back door (30, 4) onto Celadon's north edge"
+        "why": "from the Eevee's ball (09.04) out of the roof room, down Celadon Mansion's stairs and out of its door, west to the Department Store's door (11, 14) and up 1F to below its lift door (6, 1)"
+      },
+      {
+        "id": "lift_to_5f",
+        "kind": "game_action",
+        "action": "lift_floor",
+        "args": {
+          "from": "1F",
+          "to": "5F"
+        },
+        "declared_after": {"map": "CeladonCity_DepartmentStore_5F", "tiles": [[6, 2]], "facing": "south"},
+        "why": "the lift as the Rocket Hideout's (09.02, one layout): in through the door, to the panel (cursor on 1F, the floor came from), 5F, out a tile south of 5F's lift door (6, 1); PokeGuy rides it at 1:02:41"
+      },
+      {
+        "id": "x_items_clerk",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeladonCity_DepartmentStore_5F", "tiles": [[3, 7]], "facing": "west"}
+        },
+        "why": "down and west to face the X items clerk (1, 7) over the counter (2, 7), out of the Sailor's zone (5..7, 7..9)"
+      },
+      {
+        "id": "buy_x_items",
+        "kind": "game_action",
+        "action": "mart",
+        "args": {
+          "map": "CeladonCity_DepartmentStore_5F",
+          "budget": 15600,
+          "floor": 10712,
+          "items": [
+            {"item": "x-special", "quantity": 21}, {"item": "x-speed", "quantity": 6}, {"item": "x-accuracy", "quantity": 5},
+            {"item": "guard-spec", "quantity": 2}
+          ]
+        },
+        "why": "pokeguy 1:02:42: 6 X Speeds, 21 X Specials, 5 X Accuracies and 2 Guard Specs (15,600 of his 15,694), X Special first; the floor, 08.03's 9000 less its 5700, with Rich (1728), the hideout's four Grunts (2784) and Giovanni (2900), buys 21 X Specials, 6 X Speeds and an X Accuracy"
+      },
+      {
+        "id": "below_5f_lift",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeladonCity_DepartmentStore_5F", "tiles": [[6, 2]], "facing": "north"}
+        },
+        "why": "back up to below the lift door (6, 1)"
+      },
+      {
+        "id": "lift_to_1f",
+        "kind": "game_action",
+        "action": "lift_floor",
+        "args": {
+          "from": "5F",
+          "to": "1F"
+        },
+        "declared_after": {"map": "CeladonCity_DepartmentStore_1F", "tiles": [[6, 2]], "facing": "south"},
+        "why": "the lift down, the cursor on 5F, to 1F, out a tile south of 1F's lift door"
+      },
+      {
+        "id": "out_of_store",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeladonCity", "tiles": [[11, 15]], "facing": "south"}
+        },
+        "why": "down 1F and out of the door (2, 14) onto Celadon below the store's door (11, 14)"
       },
       {
         "id": "ride_bike",
         "kind": "game_action",
         "action": "ride_bike",
-        "why": "on the BICYCLE with SELECT (registered in 08.03) behind the mansion"
+        "why": "on the BICYCLE with SELECT (registered in 08.03) outside the store"
       },
       {
         "id": "route16_below_cut_tree",
@@ -28,7 +92,7 @@
         "args": {
           "target": {"map": "Route16", "tiles": [[41, 12]], "facing": "north"}
         },
-        "why": "west out of Celadon onto Route 16's east end, below the Cut tree (41, 11); the Snorlax (31, 13) closes row 13 west of it"
+        "why": "west along Celadon and out onto Route 16's east end, below the Cut tree (41, 11); the Snorlax (31, 13) closes row 13 west of it"
       },
       {
         "id": "cut_route16_tree",
@@ -71,10 +135,10 @@
         "args": {
           "item": "hm02",
           "move": "fly",
-          "slot": 3,
+          "species": "pidgey",
           "forget": "whirlwind"
         },
-        "why": "HM02 Fly to the Pidgey (08.03), third in the party, in place of Whirlwind: a Route 7 Pidgey (Lv19..22) knows Sand-Attack, Gust, Quick Attack and Whirlwind"
+        "why": "HM02 Fly to the Pidgey (08.03), found by its summary's species (the Eevee, 09.04, stays in the party), in place of Whirlwind, which the step reads among its moves first: a Route 7 Pidgey (Lv19..22) knows Sand-Attack, Gust, Quick Attack and Whirlwind"
       },
       {
         "id": "outside_fly_house",
@@ -117,7 +181,7 @@
     "lead": "after_brock",
     "notes": {
       "checkpoint": [
-        "From the Eevee's ball in Celadon Mansion's roof room (09.04), PokeGuy's way (1:02:18 to 1:04:11) to Lavender Town's Pokemon Center: HM02 FLY from the woman in Route 16's house, taught to the Pidgey (08.03's catch), and Fly to Lavender. PokeGuy first shops X items on the Department Store's 5F; that waits for the store's 2F..4F or lift maps, which the map pack doesn't have yet.",
+        "From the Eevee's ball in Celadon Mansion's roof room (09.04), PokeGuy's way (1:02:18 to 1:04:11) to Lavender Town's Pokemon Center: X items on the Department Store's 5F, by its lift both ways (scripted as the Rocket Hideout's: the lift has no map, its doors' warps are dynamic), HM02 FLY from the woman in Route 16's house, taught to the Pidgey (08.03's catch), and Fly to Lavender.",
         "Route 16 (Route16 map.json): from Celadon the east end (33..47, 12..14) is closed west by the Snorlax (31, 13), so the way north is the Cut tree (41, 11), then the north gate (Route16_NorthEntrance_1F) to the house (10, 5). Lea (30, 5) and Jed (31, 5) face south with sight 1; the grass (33..41, 5..7) is walked round. The bikers (6..16, 12..14) are south of the house's part of the route, behind the gate.",
         "The woman wanders (MOVEMENT_TYPE_WANDER_AROUND, 3..5 by 2..3): the wanderer TALK presses A at (4, 3) until she is on it."
       ]

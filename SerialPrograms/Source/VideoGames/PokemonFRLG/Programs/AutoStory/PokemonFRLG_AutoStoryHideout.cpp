@@ -36,11 +36,37 @@ const std::vector<std::string>& rocket_hideout_lift_menu(){
     return MENU;
 }
 
+const std::vector<std::string>& department_store_lift_menu(){
+    static const std::vector<std::string> MENU{"5F", "4F", "3F", "2F", "1F", "EXIT"};
+    return MENU;
+}
+
+const std::vector<std::string>& lift_menu(std::string_view lift){
+    static const std::vector<std::string> NONE;
+    if (lift == LIFT_MAP){
+        return rocket_hideout_lift_menu();
+    }
+    if (lift == DEPT_STORE_LIFT_MAP){
+        return department_store_lift_menu();
+    }
+    return NONE;
+}
+
+const std::vector<MapPosition>& lift_exits(std::string_view lift){
+    static const std::vector<MapPosition> NONE;
+    if (lift == LIFT_MAP){
+        return rocket_hideout_lift_exits();
+    }
+    if (lift == DEPT_STORE_LIFT_MAP){
+        return department_store_lift_exits();
+    }
+    return NONE;
+}
+
 namespace{
 
-//  The row of `floor` on the panel's menu, if it is a floor (not EXIT).
-std::optional<size_t> floor_row(std::string_view floor){
-    const std::vector<std::string>& menu = rocket_hideout_lift_menu();
+//  The row of `floor` on `menu`, if it is a floor (not EXIT).
+std::optional<size_t> floor_row(const std::vector<std::string>& menu, std::string_view floor){
     for (size_t row = 0; row + 1 < menu.size(); row++){
         if (menu[row] == floor){
             return row;
@@ -60,12 +86,14 @@ std::optional<LiftRide> parse_lift_floor_step(const Pokemon::StoryStep& step){
     if (from_name == nullptr || to_name == nullptr){
         return std::nullopt;
     }
-    const std::optional<size_t> from = floor_row(*from_name);
-    const std::optional<size_t> to = floor_row(*to_name);
-    if (!from || !to){
-        return std::nullopt;
+    for (std::string_view lift : {LIFT_MAP, DEPT_STORE_LIFT_MAP}){
+        const std::optional<size_t> from = floor_row(lift_menu(lift), *from_name);
+        const std::optional<size_t> to = floor_row(lift_menu(lift), *to_name);
+        if (from && to){
+            return LiftRide{*from, *to, lift};
+        }
     }
-    return LiftRide{*from, *to};
+    return std::nullopt;
 }
 
 MenuPresses lift_menu_presses(const LiftRide& ride, size_t entries){
@@ -90,7 +118,7 @@ std::vector<Pokemon::StoryActionSpec> field_action_specs(){
     std::vector<Pokemon::StoryActionSpec> specs{
         {.kind = StoryStepKind::GAME, .name = POSTER_SWITCH_VARIANT, .args = {}},
         {.kind = StoryStepKind::GAME, .name = LIFT_FLOOR_VARIANT, .args = {
-            required_arg("from", StoryArgType::WORD, "the floor the lift stands at, as the panel names it (B1F, B2F, B4F)"),
+            required_arg("from", StoryArgType::WORD, "the floor the lift stands at, as the panel names it (B1F, B2F, B4F; 1F to 5F)"),
             required_arg("to", StoryArgType::WORD, "the floor it rides to"),
         }},
         {.kind = StoryStepKind::GAME, .name = USE_ITEM_VARIANT, .args = {
@@ -122,9 +150,10 @@ constexpr Milliseconds HIDEOUT_SCENE_TIMEOUT = 30000ms;
 } // namespace
 
 void pick_lift_floor(ConsoleHandle& console, ProControllerContext& context, const LiftRide& ride){
-    const MenuPresses presses = lift_menu_presses(ride, rocket_hideout_lift_menu().size());
+    const std::vector<std::string>& menu = lift_menu(ride.lift);
+    const MenuPresses presses = lift_menu_presses(ride, menu.size());
     console.log(
-        "Story: lift from " + rocket_hideout_lift_menu()[ride.from] + " to " + rocket_hideout_lift_menu()[ride.to]
+        "Story: lift from " + menu[ride.from] + " to " + menu[ride.to]
         + ": " + std::to_string(presses.presses) + " press(es) " + Pokemon::direction_name(presses.direction) + "."
     );
     pbf_press_button(context, BUTTON_A, 160ms, LIFT_MENU_WAIT);
