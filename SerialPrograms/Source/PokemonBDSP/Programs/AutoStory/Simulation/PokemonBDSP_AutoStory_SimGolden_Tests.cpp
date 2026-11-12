@@ -99,7 +99,8 @@ void golden_row(const StoryCheckpoint& row, std::vector<std::string>& lines){
     const SimMisses& misses = executor.misses();
     lines.push_back(std::format(
         "  looked for {} fades, {} banners, {} doors, {} tap steps",
-        misses.fades, misses.banners, misses.doors, misses.tap_steps
+        looked_for(misses.fade_chances), looked_for(misses.banner_chances),
+        looked_for(misses.door_chances), looked_for(misses.tap_step_chances)
     ));
     for (const std::string& note : executor.notes()){
         add_indented(note, "  | ", lines);
