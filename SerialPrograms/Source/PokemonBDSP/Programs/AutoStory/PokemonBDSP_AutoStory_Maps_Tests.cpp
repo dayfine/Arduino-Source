@@ -44,6 +44,13 @@ const MapObject* standing_object(const MapData& map, const TilePos& pos){
     return nullptr;
 }
 
+//  Whether someone starts on `pos` and wanders a box round it.
+bool wanders_from(const MapData& map, const TilePos& pos){
+    return std::ranges::any_of(map.objects, [&](const MapObject& object){
+        return object.wander && object.x == pos.x && object.y == pos.y;
+    });
+}
+
 //  "rocks" for "rocks.3", the point's own name otherwise.
 std::string region_of(const std::string& point){
     const size_t dot = point.rfind('.');
@@ -84,6 +91,7 @@ enum class PointOn{
     DOOR,
     SIGN,
     PERSON,     //  someone stands still there
+    WANDERER,   //  someone starts there and wanders a box round it
     WALL,       //  a rock until smashed
 };
 struct PointCase{
@@ -113,9 +121,9 @@ const std::vector<PointCase>& point_cases(){
         {.map = "JubilifeCity", .point = "pokemon_center_door", .on = PointOn::DOOR},
         {.map = "JubilifeCity", .point = "tv_station_door", .on = PointOn::DOOR},
         {.map = "JubilifeCity", .point = "poketch_president", .on = PointOn::PERSON},
-        {.map = "JubilifeCity", .point = "clown_mart", .on = PointOn::PERSON},
+        {.map = "JubilifeCity", .point = "clown_mart", .on = PointOn::WANDERER},
         {.map = "JubilifeCity", .point = "clown_tv_station", .on = PointOn::PERSON},
-        {.map = "JubilifeCity", .point = "clown_poketch_company", .on = PointOn::PERSON},
+        {.map = "JubilifeCity", .point = "clown_poketch_company", .on = PointOn::WANDERER},
         {.map = "OreburghCity", .point = "pokemon_center_door", .on = PointOn::DOOR},
         {.map = "OreburghCity", .point = "gym_door", .on = PointOn::DOOR},
         {.map = "OreburghCity", .point = "gate_mouth", .on = PointOn::DOOR},
@@ -148,6 +156,8 @@ std::string check_point_on(const MapData& map, const TilePos& pos, PointOn on){
         return tile == TileKind::SIGN ? "" : "not a sign";
     case PointOn::PERSON:
         return is_ground(tile) && object != nullptr && object->kind == Pokemon::ObjectKind::NPC ? "" : "nobody stands still there";
+    case PointOn::WANDERER:
+        return is_ground(tile) && wanders_from(map, pos) ? "" : "nobody wanders from there";
     case PointOn::WALL:
         return tile == TileKind::WALL ? "" : "not a wall";
     }

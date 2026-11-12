@@ -40,10 +40,12 @@ bool SimWanderWait::ask(){
     for (const SimWanderer& wanderer : detail::sim_wanderers(m_sim)){
         someone |= wanderer.pos == faced;
     }
-    const bool talked = m_sim.press_a() && someone;
+    //  Whoever is faced answers: the world leaves a wanderer's box empty,
+    //  so the press alone misses one standing on his spawn.
+    m_sim.press_a();
     m_sim.end_dialogue();
     detail::sim_advance_time(m_sim, 1500ms);
-    return talked;
+    return someone;
 }
 void SimWanderWait::wait(Milliseconds time){
     detail::sim_advance_time(m_sim, time);
