@@ -585,22 +585,22 @@ std::string segment_no_reload_for_console_only(CancellableScope& scope){
 
 //  Gap 7: the first checkpoint is retried after a reload; one after it
 //  only when the one before saved at its end (#329).
-struct SegmentInput{
-    std::string_view name;
-    StoryPhase phase;
-    //  Which checkpoint fails once: 0 or 1.
-    size_t flaky = 0;
-};
-
-struct SegmentExpectation{
-    bool completed = false;
-    size_t reloads = 0;
-    size_t saves = 0;
-};
-
 struct SegmentCase{
-    SegmentInput input;
-    SegmentExpectation expectation;
+    struct Input{
+        std::string_view name;
+        StoryPhase phase;
+        //  Which checkpoint fails once: 0 or 1.
+        size_t flaky = 0;
+    };
+
+    struct Expectation{
+        bool completed = false;
+        size_t reloads = 0;
+        size_t saves = 0;
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 const SegmentCase SEGMENT_CASES[] = {
@@ -675,20 +675,20 @@ std::string verify_saves_after_all_passed(CancellableScope& scope){
 }
 
 
-//  One check above, by name.
-struct RunsInput{
-    std::string_view name;
-    std::string (*check)(CancellableScope& scope);
-};
-
-//  The check's error: none.
-struct RunsExpectation{
-    std::string_view error = {};
-};
-
 struct RunsCase{
-    RunsInput input;
-    RunsExpectation expectation;
+    //  One check above, by name.
+    struct Input{
+        std::string_view name;
+        std::string (*check)(CancellableScope& scope);
+    };
+
+    //  The check's error: none.
+    struct Expectation{
+        std::string_view error = {};
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 const RunsCase RUNS_CASES[] = {

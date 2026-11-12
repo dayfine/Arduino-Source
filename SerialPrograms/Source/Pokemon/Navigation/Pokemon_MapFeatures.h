@@ -2,7 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Split out of Pokemon_MapData.h, unchanged; it includes this header.
+ *  The features a map's tiles can carry. Pokemon_MapData.h builds on it.
  *
  */
 
@@ -31,6 +31,9 @@ struct MapWarp{
     int y = 0;
     WarpEntry enter = WarpEntry::WALK_INTO;
     std::optional<WarpDestination> to;
+    //  A drop (a hole the player falls through): the landing has no way back
+    //  up, so a route takes it forward only.
+    bool one_way = false;
 };
 
 // Type classification for interactive map objects.

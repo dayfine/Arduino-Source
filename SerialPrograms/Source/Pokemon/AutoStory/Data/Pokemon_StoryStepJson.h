@@ -36,6 +36,20 @@ GridPose read_grid_pose(const JsonValue& value, std::string_view source);
 DeclaredPose read_declared_pose(const JsonValue& value, std::string_view source);
 
 
+//  Read a gate change, {"opened": ["SilphCo_5F/door_1"], "switches": {"mansion": true}}
+//  (the gates a step opens, the switches it sets; both optional, unknown
+//  fields fail) and write it back.
+GateChange read_gate_change(const JsonValue& value, std::string_view source);
+//  The change as JSON, as read_gate_change() reads it.
+JsonValue write_gate_change(const GateChange& change);
+
+//  The same as a state: what a checkpoint's "start_gates" says is open and
+//  on. "switches" that are off need not be listed, and are not written.
+GateState read_gate_state(const JsonValue& value, std::string_view source);
+//  The state as JSON, as read_gate_state() reads it.
+JsonValue write_gate_state(const GateState& state);
+
+
 //  Read a step, its args parsed against its action among `actions` (by
 //  default the built-in ones; a game passes them with its own) and their
 //  fallbacks filled in. Unknown fields, kinds, actions and args, mistyped
