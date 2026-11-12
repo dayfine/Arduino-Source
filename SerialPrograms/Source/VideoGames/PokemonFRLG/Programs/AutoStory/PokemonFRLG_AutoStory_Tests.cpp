@@ -25,6 +25,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecovery.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldTileRules.h"
 #include "PokemonFRLG_AutoStoryLegs.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryCapture.h"
@@ -704,6 +705,46 @@ UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<const Map
 //  in front of to fight; where they cross a wandering trainer's sight, the walk can place
 //  the player if the trainer stops them; and where they cross the sight of
 //  one who looks around, on a leg to a wall.
+//  LEGS that end on stairs at the side of a room, or on an exit mat, step
+//  onto them the way their warp is taken (exit_mat()), so legs a tile short
+//  leave the press that way on the way onto them, or end at a wall, which
+//  finds the player (09.01's B2F stairs (21, 2)).
+//  Down onto 10.04's Pokemon Tower 3F stairs (18, 10), taken east, legs a
+//  tile short left the press east facing a wall (console B, 2026-11-12).
+//  From the Running Shoes (03.03) on, as test_trainer_lines() walks them.
+//  But for 09.01's legs down onto B4F's stairs (11, 15), taken east, which
+//  passed on the console: legs east onto them fail the 09.01 simulation,
+//  with no fade into B3F (a follow-up).
+UnitTestResult test_legs_onto_stairs_their_way(){
+    const std::set<std::string> PASSED_ON_CONSOLE{"09.01/b4f_to_stairs"};
+    bool has_shoes = false;
+    for (const StoryCheckpoint& checkpoint : story_checkpoints()){
+        const bool walked = has_shoes;
+        has_shoes = has_shoes || checkpoint.id == "03.03";
+        if (!walked){
+            continue;
+        }
+        StoryPose pose = one_tile(Pokemon::grid_pose_of(*checkpoint.start));
+        for (const StoryStep& step : checkpoint.steps){
+            const std::vector<RouteStep> legs = step.kind == StoryStepKind::LEGS ? legs_walked(pose, step) : std::vector<RouteStep>{};
+            if (!legs.empty() && !legs.back().warps){
+                const MapData* map = find_map_named(legs.back().end.map);
+                const std::optional<Direction> taken = map ? exit_mat(*map, legs.back().end.point) : std::nullopt;
+                if (taken && legs.back().direction != *taken && !legs.back().to_wall && !PASSED_ON_CONSOLE.contains(checkpoint.id + "/" + step.name)){
+                    return std::format(
+                        "{}/{}: ends on {}, whose warp is taken going {}, going {} and not to a wall.",
+                        checkpoint.id, step.name, to_string(legs.back().end), direction_name(*taken), direction_name(legs.back().direction)
+                    );
+                }
+            }
+            if (UnitTestResult result = advance(pose, step); result.result != UnitTestResult::PASSED){
+                return checkpoint.id + " " + result.message;
+            }
+        }
+    }
+    return true;
+}
+
 UnitTestResult test_trainer_lines(){
     std::set<const MapObject*> beaten;
     bool has_shoes = false;
@@ -1179,6 +1220,10 @@ const AutoStoryTestCase AUTO_STORY_CASES[] = {
     {
         .input = {.name = "options: RIGHT presses from the shown value", .body = test_option_presses},
         .expectation = {.description = "calculates Dpad RIGHT inputs for setting game options"},
+    },
+    {
+        .input = {.name = "legs onto stairs step onto them the way their warp is taken", .body = test_legs_onto_stairs_their_way},
+        .expectation = {.description = "legs that end on side stairs or an exit mat end going the warp's way"},
     },
     {
         .input = {.name = "Route 3: only the planned trainers' lines", .body = test_trainer_lines},

@@ -621,18 +621,20 @@ void OverworldSim::hold_on(Direction direction, Milliseconds end){
     press.end = end;
 }
 
-bool OverworldSim::hides_moved_step_tap(){
-    m_state.moved_step_taps++;
-    if (!m_script.unseen_step_taps.contains(m_state.moved_step_taps)){
-        return false;
+bool OverworldSim::reads_step_tap_as_step(const MapPosition& before, int turn_taps_before){
+    const bool moved = !(m_state.position == before);
+    m_state.moved_step_taps += moved ? 1 : 0;
+    const bool misread = moved ? m_script.unseen_step_taps.contains(m_state.moved_step_taps)
+        : m_state.turn_taps > turn_taps_before && m_script.seen_turn_taps.contains(m_state.turn_taps);
+    if (misread){
+        note(moved ? std::format("step tap {} moves the player, read as not moved.", m_state.moved_step_taps) : std::format("turn tap {} only turns the player, read as a step.", m_state.turn_taps));
     }
-    note(std::format("step tap {} moves the player, read as not moved.", m_state.moved_step_taps));
-    return true;
+    return moved != misread;
 }
 
 bool OverworldSim::drops_turn_tap(){
-    m_turn_taps++;
-    return m_script.dropped_turn_taps.contains(m_turn_taps);
+    m_state.turn_taps++;
+    return m_script.dropped_turn_taps.contains(m_state.turn_taps);
 }
 
 std::optional<SimSeen> OverworldSim::watch(const std::vector<SimWatcher>& watchers, Milliseconds duration){
