@@ -6,6 +6,8 @@
 
 #include <format>
 #include <set>
+#include <string_view>
+#include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
@@ -218,13 +220,48 @@ StoryCheckpoint read_story_checkpoint_file(const JsonValue& value, std::string_v
     return checkpoint;
 }
 
+namespace{
+
+//  The checkpoints' ids in the order the story plays them. Ids are labels,
+//  not positions: a gym's rows may be numbered before rows that come first
+//  in the story (the table is not sorted by id). Every file in StoryData/
+//  is listed once; a new checkpoint is added at its place in the story.
+constexpr std::string_view STORY_ORDER[] = {
+    "01.01", "01.02", "01.03", "01.04", "01.05", "01.06", "02.01", "02.02", "02.03", "03.01",
+    "03.02", "03.03", "04.01", "04.02", "04.03", "04.04", "04.05", "04.06", "05.01", "05.02",
+    "05.03", "05.04", "05.05", "05.06", "05.07", "05.08", "05.09", "05.10", "06.01", "06.02",
+    "06.03", "06.04", "07.01", "07.02", "08.01", "08.02", "08.03", "09.01", "09.02", "09.03",
+    "09.04", "10.01", "10.02", "10.03", "10.04", "10.05", "10.06", "11.01", "11.02", "11.03",
+    "12.01", "12.02", "12.03", "14.03", "14.04",
+};
+
+//  `checkpoints` in STORY_ORDER's order. Throws ParseException for a
+//  checkpoint that is not listed there, or listed twice.
+std::vector<StoryCheckpoint> in_story_order(std::vector<StoryCheckpoint> checkpoints){
+    std::vector<StoryCheckpoint> ordered;
+    for (std::string_view id : STORY_ORDER){
+        for (StoryCheckpoint& checkpoint : checkpoints){
+            if (checkpoint.id == id){
+                ordered.push_back(std::move(checkpoint));
+                checkpoint.id = "";
+            }
+        }
+    }
+    if (ordered.size() != checkpoints.size()){
+        throw ParseException("Every checkpoint file needs its id once in STORY_ORDER (PokemonFRLG_AutoStoryTable.cpp).");
+    }
+    return ordered;
+}
+
+} // namespace
+
 const std::vector<StoryCheckpoint>& story_checkpoints(){
     static const std::vector<StoryCheckpoint> checkpoints = []{
         std::vector<StoryCheckpoint> result;
         for (const auto& [name, text] : autostory_checkpoint_json()){
             result.push_back(read_story_checkpoint_file(parse_json(text), name));
         }
-        return result;
+        return in_story_order(std::move(result));
     }();
     return checkpoints;
 }
