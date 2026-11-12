@@ -91,7 +91,7 @@ std::span<const ClownCoupon> jubilife_clown_coupons();
 //  Mart clown's box.
 Pokemon::TileBox jubilife_company_clown_box();
 //  The tiles 00.05c may start on: against the Poketch Company's sign
-//  (00.05b's end), and on the street east (its own end, 01.01's start).
+//  (00.05b's end), and below the east-exit sign (its own end, 01.01's start).
 std::pair<Pokemon::TilePos, Pokemon::TilePos> jubilife_start_tiles();
 
 

@@ -454,6 +454,23 @@ UnitTestResult missing_coupon_fails_00_05b(Logger& logger){
     }
     return true;
 }
+//  00.05c's walk up the main road on lab-B 2026-11-12 13:32: its open leg
+//  north ended a row off, the leg east to the wall stopped at the Mart's
+//  hedges, and the walk took it for (59, 26) and "arrived" below the
+//  east-exit sign beside them. The end on (59, 21) must hold from a row
+//  off either way, into 01.01 from there.
+UnitTestResult main_road_a_row_off_00_05c(Logger& logger){
+    std::string failures;
+    for (const Direction direction : {Direction::NORTH, Direction::SOUTH}){
+        SimWorldKnobs knobs;
+        knobs.slides = {{.step = "up_the_main_road", .direction = direction, .tiles = 1}};
+        const std::string stopped = run_case(logger, "00.05c", "01.01", {.fade = {}, .banner = {}}, std::move(knobs));
+        if (!stopped.empty()){
+            failures += std::format("\n  a row {}: {}", Pokemon::direction_name(direction), stopped);
+        }
+    }
+    return failures.empty() ? UnitTestResult(true) : UnitTestResult("00.05c up the main road:" + failures);
+}
 //  01.01 from a save with no Poketch: Jubilife's east-exit guard would
 //  ask about the Poketch campaign and turn us back (lab-B 2026-11-11, the
 //  walk took him for a trainer); the row stops at its first step instead.
@@ -743,6 +760,7 @@ const FailureCase AUTO_STORY_FAILURE_CASES[] = {
     }}, .expectation = {}},
     {.input = {"00.05c a coupon missing (the sign read for the Poketch Company clown): no Poketch, 00.05c fails (lab-B 2026-11-11)", no_poketch_fails_00_05c}, .expectation = {}},
     {.input = {"00.05b a coupon missing at its end: the row fails at its coupon check, before the save", missing_coupon_fails_00_05b}, .expectation = {}},
+    {.input = {"00.05c the walk up the main road ends a row off: still on (59, 21) below the east-exit sign, into 01.01 (lab-B 2026-11-12 13:32)", main_road_a_row_off_00_05c}, .expectation = {}},
     {.input = {"01.01 with no Poketch: the east-exit guard's gate stops the row at its check, not a trainer fight (lab-B 2026-11-11)", gate_guard_stops_01_01}, .expectation = {}},
     {.input = {"00.04 to the ledge column with a wild battle on each pass through Route 201's grass (lab-B 2026-11-09 16:14)", [](Logger& logger){
         return passes(ledge_walk_in_grass(logger, {}));

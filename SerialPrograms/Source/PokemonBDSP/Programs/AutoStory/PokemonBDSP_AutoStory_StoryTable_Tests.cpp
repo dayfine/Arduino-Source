@@ -456,14 +456,14 @@ constexpr Pokemon::TileBox WONDER_STATION_PLAZA[] = {
 };
 
 std::string company_clown_plaza_tiles(Logger& logger, TableRoute route, int x){
-    route.from = Pokemon::tile_pose("JubilifeCity", {{x, 22}}, Direction::WEST);
+    route.from = Pokemon::tile_pose("JubilifeCity", {{x, 21}}, Direction::WEST);
     const RouteStepPlan plan = plan_table_route(route);
     if (!plan.legs){
-        return std::format("no plan from ({}, 22).", x);
+        return std::format("no plan from ({}, 21).", x);
     }
     const StoryWorld& world = *route.world;
     for (const PlannedLeg& planned : *plan.legs){
-        logger.log(std::format("00.05c beside_the_president from ({}, 22): {}", x, to_string(planned)));
+        logger.log(std::format("00.05c beside_the_president from ({}, 21): {}", x, to_string(planned)));
     }
     const auto plaza = [&](const TilePos& pos){
         const std::optional<TilePos> local = story_to_local(world, "JubilifeCity", pos);
@@ -477,7 +477,7 @@ std::string company_clown_plaza_tiles(Logger& logger, TableRoute route, int x){
 
 //  00.05c's first walk (to the president since its clown re-talks went;
 //  to the Poketch Company's clown before) from the street
-//  (57..58, 22), where the checkpoint starts on a rerun from 01.01's start,
+//  (57..58, 21), where the checkpoint starts on a rerun from 01.01's start,
 //  keeps off the plaza (WONDER_STATION_PLAZA). BDSP put the Global Wonder Station
 //  there, a round wall with people round it that pret's Diamond map lacks:
 //  on lab-B (2026-11-12 01:22 and 01:55) the walk west from (57, 22) was
@@ -801,7 +801,7 @@ const AutoStoryStoryTableCase AUTO_STORY_STORY_TABLE_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"00.05c: from the street (57..58, 22), the walk keeps off the Wonder Station's plaza (lab-B, 2026-11-12)", test_company_clown_from_the_street_keeps_off_the_plaza},
+        .input = {"00.05c: from the street (57..58, 21), the walk keeps off the Wonder Station's plaza (lab-B, 2026-11-12)", test_company_clown_from_the_street_keeps_off_the_plaza},
         .expectation = {},
     },
     {

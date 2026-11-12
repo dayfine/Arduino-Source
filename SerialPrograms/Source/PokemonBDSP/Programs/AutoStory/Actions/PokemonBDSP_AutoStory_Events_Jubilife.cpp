@@ -295,7 +295,7 @@ void check_coupons(VideoStream& stream, ProControllerContext& context){
 }
 
 //  00.05c starts against the Poketch Company's sign (14, 19) facing west
-//  (00.05b's end) or on the street east, (58, 22) facing east (its own end
+//  (00.05b's end) or below the east-exit sign, (59, 21) facing north (its own end
 //  and 01.01's start, when a run gave no Poketch). A step west tells them
 //  apart: the sign blocks it, the street does not.
 Pokemon::Outcome jubilife_start_probe(StoryExecutor& executor, Pokemon::RunState&, const Pokemon::StoryStep&){
@@ -359,7 +359,7 @@ Pokemon::TileBox jubilife_company_clown_box(){
 }
 
 std::pair<TilePos, TilePos> jubilife_start_tiles(){
-    return {{14, 19}, {58, 22}};
+    return {{14, 19}, {59, 21}};
 }
 
 void add_jubilife_events(StoryEvents& events){
