@@ -39,6 +39,7 @@
 #include "PokemonFRLG_AutoStoryPlanGolden11.h"
 #include "PokemonFRLG_AutoStoryPlanGolden12.h"
 #include "PokemonFRLG_AutoStoryPlanGolden15.h"
+#include "PokemonFRLG_AutoStoryPlanGolden16.h"
 #include "PokemonFRLG_AutoStoryRows_Tests.h"
 #include "PokemonFRLG_AutoStoryMoveData.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
@@ -286,8 +287,8 @@ UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& po
 //  before leaves the player, and adds the plans to `golden`.
 UnitTestResult chain_story_routes(std::vector<std::string>& golden){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
-    if (checkpoints.size() != 56 || checkpoints[0].start){
-        return "Expected 56 checkpoints, the first from a new game.";
+    if (checkpoints.size() != 57 || checkpoints[0].start){
+        return "Expected 57 checkpoints, the first from a new game.";
     }
     StoryPose pose;
     for (size_t c = 0; c < checkpoints.size(); c++){
@@ -330,6 +331,7 @@ UnitTestResult test_golden_plans(){
     golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_11), std::end(FRLG_PLAN_GOLDEN_11));
     golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_12), std::end(FRLG_PLAN_GOLDEN_12));
     golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_15), std::end(FRLG_PLAN_GOLDEN_15));
+    golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_16), std::end(FRLG_PLAN_GOLDEN_16));
     const size_t stored = golden.size();
     size_t first_diff = 0;
     while (first_diff < actual.size() && first_diff < stored && actual[first_diff] == golden[first_diff]){
