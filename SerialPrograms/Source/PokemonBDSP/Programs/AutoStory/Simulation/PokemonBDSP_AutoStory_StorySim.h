@@ -506,8 +506,6 @@ private:
 
     //  A step the simulation does not play: its dialogue opened and closed.
     Pokemon::Outcome stub();
-    //  The Poketch on the screen, or the check's failure.
-    Pokemon::Outcome check_poketch();
     //  A clown's coupon or the president's Poketch, after step `step` passed.
     void count_coupons(const std::string& step);
     StoryBoundActions sim_actions();
@@ -525,7 +523,8 @@ private:
     bool sync(const Pokemon::Pose& pose, const StoryWorld* on = nullptr);
     //  Puts a trigger on walk `step`'s last tiles (SimWorldKnobs::scene_at_walk_end).
     void start_scene_at_end(const Pokemon::StoryStep& step);
-    //  Puts the player where SimWorldKnobs::lands says `step` leaves them, if it says.
+    //  Puts the player where SimWorldKnobs::lands says `step` leaves them, if
+    //  it says, and counts its coupon or Poketch (count_coupons()).
     void land(const std::string& step);
     bool cross();
     bool cross_to(const Pokemon::Pose& far);

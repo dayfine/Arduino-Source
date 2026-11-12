@@ -648,6 +648,7 @@ void SimExecutor::start_scene_at_end(const StoryStep& step){
 }
 
 void SimExecutor::land(const std::string& step){
+    count_coupons(step);
     const auto lands = m_knobs.lands.find(step);
     if (lands == m_knobs.lands.end()){
         return;
@@ -760,13 +761,6 @@ Outcome SimExecutor::stub(){
     return Pokemon::outcome_ok();
 }
 
-Outcome SimExecutor::check_poketch(){
-    if (!m_poketch){
-        return Pokemon::outcome_failed("no_poketch", m_step + ": no Poketch on the screen.");
-    }
-    return Pokemon::outcome_ok();
-}
-
 void SimExecutor::count_coupons(const std::string& step){
     static const std::set<std::string> CLOWNS{"mart_clown", "tv_clown", "company_clown"};
     if (CLOWNS.contains(step) && !m_knobs.talks_without_coupon.contains(step)){
@@ -798,8 +792,8 @@ StoryBoundActions SimExecutor::sim_actions(){
         .save = stubbed,
         .event = [this, stubbed](const std::string& name) -> Pokemon::StoryActionFunction{
             if (name == "check_poketch"){
-                return [this](const StoryStep&, RunState&){
-                    return check_poketch();
+                return [this](const StoryStep& step, RunState&){
+                    return m_poketch ? Pokemon::outcome_ok() : Pokemon::outcome_failed("no_poketch", step.name + ": no Poketch on the screen.");
                 };
             }
             return stubbed;
@@ -933,7 +927,6 @@ Outcome SimExecutor::run(const StoryStep& step, RunState& state){
     }
     if (outcome.succeeded()){
         land(step.name);
-        count_coupons(step.name);
     }
     m_logger.log(std::format("[{}] {}: {}, the player at {}.", m_row, step.name, Pokemon::to_string(outcome), to_string(m_sim.player().pos)));
     if (std::exchange(m_misses.missed, false) && m_result.missed_step.empty()){
