@@ -8,14 +8,10 @@
  *
  */
 
-// code-health: allow header_symbols -- one reading name per detector; the readings are one concern that every consumer shares
 #ifndef PokemonAutomation_PokemonLZA_AutoStoryObservation_H
 #define PokemonAutomation_PokemonLZA_AutoStoryObservation_H
 
-#include <optional>
 #include <string_view>
-#include "CommonTools/ScreenMachine/ScreenObservation.h"
-#include "Pokemon/AutoStory/Pokemon_ScreenEventTypes.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -46,17 +42,6 @@ constexpr std::string_view MISSION_BANNER_READING = "scene.mission_banner";
 //  over the mission's yellow bar) shows; it waits for A
 //  (MissionCompleteDetector). A look with it has no MISSION_BANNER_READING.
 constexpr std::string_view MISSION_COMPLETE_READING = "scene.mission_complete";
-
-//  PlzaScreenObserver's events as one look for the story engine:
-//  DIALOG_BOX is TEXT_BOX; CHOICE_BOX adds TEXT_BOX;
-//  BATTLE_STARTED is BATTLE; PLAYER_CAN_MOVE (the party bar) is CAN_MOVE;
-//  SCREEN_STILL is STILL; the fades and INTERACT_PROMPT keep their names.
-//  No time and no frame: the backend adds them.
-ScreenObservation plza_observation(const Pokemon::ScreenEvents& events);
-
-//  The engine's event for a fade of the shared events; none for another
-//  event.
-std::optional<PokemonAutomation::ScreenEvent> engine_fade_event(Pokemon::ScreenEvent event);
 
 
 

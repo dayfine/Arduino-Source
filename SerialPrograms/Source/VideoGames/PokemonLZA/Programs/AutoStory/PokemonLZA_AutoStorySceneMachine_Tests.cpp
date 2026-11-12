@@ -50,7 +50,7 @@ UnitTestResult check_reads(const SceneMachineConfig& config, const std::vector<R
     const WallClock start = current_time();
     SceneTimeline timeline(config, start);
     for (const Read& read : reads){
-        ScreenObservation look = plza_observation(read.events);
+        ScreenObservation look = Pokemon::screen_observation(read.events);
         look.when = start + read.at;
         if (read.still){
             look.events.add(PokemonAutomation::ScreenEvent::STILL);
