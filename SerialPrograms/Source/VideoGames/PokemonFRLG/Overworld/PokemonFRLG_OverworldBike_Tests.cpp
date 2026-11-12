@@ -278,6 +278,34 @@ UnitTestResult test_scroll_over_periodic_floor(){
     return true;
 }
 
+//  An open leg of 11 tiles west on the Bicycle from (20, 2), the player
+//  facing south, found off the Bicycle as it starts (11.01, console B,
+//  2026-11-12 05:42: on foot, every bike tap only turned the player,
+//  "blocked after 0 tiles", and the route replanned 9 times). The tap
+//  that didn't move finds them on foot, SELECT gets them on, and the leg
+//  is tapped out from there.
+UnitTestResult test_leg_starts_off_bike(){
+    SimScript script;
+    script.on_bike = true;
+    script.bike_registered = true;
+    script.off_bike_at_legs = {1};
+    OverworldSim sim(field(), at(20, 2), Direction::SOUTH, script);
+    SimWalkerRules rules;
+    rules.speed = MoveSpeed::BIKE;
+    OverworldSimWalker walker(sim, rules);
+    const RoutePlanning planning{.maps = &field(), .costs = default_route_costs(), .start = at(20, 2), .label = "Sim"};
+    const std::string failure = walker.run({open_leg(Direction::WEST, 11, at(9, 2))}, planning);
+    std::vector<std::string> log = walker.log();
+    log.insert(log.end(), sim.state().log.begin(), sim.state().log.end());
+    if (!failure.empty()){
+        return failure + log_text(log);
+    }
+    if (!(sim.state().position == at(9, 2)) || !sim.state().on_bike){
+        return std::format("Ended on {}, riding {}; expected {}, riding.", to_string(sim.state().position), sim.state().on_bike, to_string(at(9, 2))) + log_text(log);
+    }
+    return true;
+}
+
 const BikeCase OVERWORLD_BIKE_CASES[] = {
     {.input = {"a tap over a floor that repeats every tile", test_scroll_over_periodic_floor}, .expectation = {"scroll seen at the bottom edge; a turn is not"}},
     {.input = {"taps a tile each, one in 12 dropped 60ms apart", test_tap_chains}, .expectation = {"23 of 25 tiles at 60ms; 25 at 100 and 120ms"}},
@@ -285,6 +313,7 @@ const BikeCase OVERWORLD_BIKE_CASES[] = {
     {.input = {"SELECT onto the registered Bicycle", test_select_onto_bike}, .expectation = {"one press registered; two and off unregistered"}},
     {.input = {"SELECT onto the Bicycle shown a read late", test_select_onto_bike_shown_late}, .expectation = {"read again, not pressed off"}},
     {.input = {"on foot after a door, on again outdoors", test_speed_after_door}, .expectation = {"gets_on_bike(), on_foot()"}},
+    {.input = {"a leg on the Bicycle that starts off it", test_leg_starts_off_bike}, .expectation = {"SELECT on at the tap that didn't move, the leg walked"}},
 };
 
 } // namespace
