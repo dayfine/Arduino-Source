@@ -2,43 +2,19 @@
   "checkpoint": {
     "events": [
       {
-        "action": "to_wall",
+        "action": "town",
         "args": {
           "fight_wild": false,
-          "legs": [
-            {
-              "direction": "east",
-              "tiles": 6
-            },
-            {
-              "direction": "north",
-              "tiles": 2
-            }
-          ]
-        },
-        "declared_after": {
-          "facing": "north",
-          "map": "OreburghCity",
-          "tiles": [
-            [
-              48,
-              21
+          "target": {
+            "facing": "north",
+            "map": "OreburghCity",
+            "tiles": [
+              [
+                47,
+                21
+              ]
             ]
-          ]
-        },
-        "id": "to_the_centers_fence",
-        "kind": "legs",
-        "why": "east to the fence below the Center's east corner, north to the Center's front"
-      },
-      {
-        "args": {
-          "fight_wild": false,
-          "legs": [
-            {
-              "direction": "west",
-              "tiles": 1
-            }
-          ]
+          }
         },
         "declared_after": {
           "facing": "north",
@@ -51,8 +27,8 @@
           ]
         },
         "id": "below_the_centers_door",
-        "kind": "legs",
-        "why": "a tap west below the door"
+        "kind": "route",
+        "why": "below the Center's door"
       },
       {
         "id": "barry",
