@@ -294,7 +294,7 @@ std::optional<size_t> ConsoleStoryStepIO::tap_to_banner(Direction direction, con
             m_stream.log("[Banner] a fade, no \"" + banner + "\" banner after it: counting the fade.", COLOR_ORANGE);
         }
         if (look != TapLook::NOTHING){
-            m_context.wait_for(1000ms);
+            //  No fixed wait: the step settles after it (talk_over()).
             return tap;
         }
     }
@@ -303,14 +303,18 @@ std::optional<size_t> ConsoleStoryStepIO::tap_to_banner(Direction direction, con
 
 //  One rule for scenes and map changes (talk_over()): press through the
 //  text, and keep pressing B while the screen is quiet, until the overworld
-//  is quiet. A step or scene that ends on another map (`fade`) must fade on
+//  is quiet. A step or scene that ends on another map (AFTER_WARP) must fade on
+
 //  the way, and only the quiet after the fade counts: r28 "went out" a tile
 //  beside the door and walked a whole route in the house. The far map's
 //  banner `banner`, if it has one, counts as the fade: a fade the run
 //  missed is over, but its banner comes after it (#268 slice 1).
-void ConsoleStoryStepIO::settle(Button button, const std::string& label, bool fade, const std::string& banner){
-    talk_over(m_stream, m_context, label, {.next = button, .rule = {.warp = fade}, .banner = banner});
+void ConsoleStoryStepIO::settle(Button button, const std::string& label, SettleKind kind, const std::string& banner){
+    const TalkOverRule rule{.warp = kind == SettleKind::AFTER_WARP, .door = kind == SettleKind::DOOR};
+    talk_over(m_stream, m_context, label, {.next = button, .rule = rule, .banner = banner});
 }
+
+
 
 
 
