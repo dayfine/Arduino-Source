@@ -33,6 +33,7 @@ const RouteCosts& default_route_costs(){
         {RouteCost::OPEN_WILD_STOP, 300},
         {RouteCost::SIGHT_TILE, 0},
         {RouteCost::SIGHT_OVERSHOOT, 0},
+        {RouteCost::SIGN_OVERSHOOT, 3},
     };
     return COSTS;
 }
@@ -322,6 +323,9 @@ public:
         return stops_at(m_maps, state, direction);
     }
     int open_stop_risk(const State& state, Direction direction) const{
+        if (reads_sign_ahead(m_maps[state.map], state.state.position, direction)){
+            return route_cost(m_costs, RouteCost::SIGN_OVERSHOOT);
+        }
         const std::optional<Transition> past = PokemonFRLG::press(m_maps, state, direction);
         if (!past || !seen_by_trainer(past->next)){
             return 0;

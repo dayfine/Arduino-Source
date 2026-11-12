@@ -493,13 +493,15 @@ UnitTestResult test_safari_west_sign_read(){
     if (route.size() != 1 || !route[0].sign_ahead){
         return "Expected one open leg north, ending below the sign:" + describe(route);
     }
-    c.script.long_holds = {{1, 1}};
+    //  On the console every hold ran on.
+    for (int hold = 1; hold <= 30; hold++){
+        c.script.long_holds[hold] = 1;
+    }
     const SimRun now = run_case(c);
     if (!arrived(now, c.goal) || now.state.signs_read != 1){
         return "Expected the sign read once and the player placed below it:" + describe(now);
     }
     SimCase unplaced = c;
-    unplaced.script.long_holds = {{1, 1}, {3, 1}, {5, 1}, {7, 1}, {9, 1}, {11, 1}};
     unplaced.rules.place_by_sign = false;
     const SimRun old = run_case(unplaced);
     if (old.failure.empty() || old.state.signs_read < 2){
