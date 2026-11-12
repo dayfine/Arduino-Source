@@ -770,6 +770,43 @@ UnitTestResult test_legs_onto_stairs_their_way(){
     return true;
 }
 
+//  A trainer's battle leaves the player facing the way they stepped into
+//  its line or waited in it: the game doesn't turn the player to the
+//  trainer (pokefirered src/trainer_see.c, TrainerSeeFunc_PrepareToEngage,
+//  the turn commented out). 10.05's facing declared after Emilia was the
+//  way to her, and the walk's turn tap took a step (console B, 2026-11-12
+//  04:39). Lists every battle after a trainer_line or trainer_wait step
+//  whose declared facing is another.
+UnitTestResult test_facing_after_trainer_battles(){
+    std::string wrong;
+    size_t count = 0;
+    for (const StoryCheckpoint& checkpoint : story_checkpoints()){
+        const std::optional<StoryPose> start = checkpoint.start ? story_pose(Pokemon::pose_of(Pokemon::grid_pose_of(*checkpoint.start))) : std::nullopt;
+        if (!start){
+            continue;
+        }
+        StoryPose pose = *start;
+        for (size_t c = 0; c < checkpoint.steps.size(); c++){
+            const StoryStep& step = checkpoint.steps[c];
+            const bool after_line = c > 0 && (checkpoint.steps[c - 1].action == TRAINER_LINE_VARIANT || checkpoint.steps[c - 1].action == TRAINER_WAIT_VARIANT);
+            if (step.kind == StoryStepKind::BATTLE && after_line && step.pose_after){
+                const std::optional<Direction> declared = one_tile(Pokemon::grid_pose_of(*step.pose_after)).facing;
+                if (declared != pose.facing){
+                    count++;
+                    wrong += std::format("\n    {}/{}: declared {}, faces {}", checkpoint.id, step.name, describe(one_tile(Pokemon::grid_pose_of(*step.pose_after))), describe(pose));
+                }
+            }
+            if (UnitTestResult result = advance(pose, step); result.result != UnitTestResult::PASSED){
+                return checkpoint.id + " " + result.message;
+            }
+        }
+    }
+    if (count > 0){
+        return std::format("{} battles declare a facing the trainer didn't leave:{}", count, wrong);
+    }
+    return true;
+}
+
 UnitTestResult test_trainer_lines(){
     std::set<const MapObject*> beaten;
     bool has_shoes = false;
@@ -1249,6 +1286,10 @@ const AutoStoryTestCase AUTO_STORY_CASES[] = {
     {
         .input = {.name = "legs and routes onto stairs step onto them the way their warp is taken, or tap", .body = test_legs_onto_stairs_their_way},
         .expectation = {.description = "legs that end on side stairs or an exit mat end going the warp's way"},
+    },
+    {
+        .input = {.name = "a trainer's battle leaves the player facing the way they stepped into its line", .body = test_facing_after_trainer_battles},
+        .expectation = {.description = "declared facings after trainer battles match pokefirered trainer_see.c"},
     },
     {
         .input = {.name = "Route 3: only the planned trainers' lines", .body = test_trainer_lines},

@@ -4,7 +4,7 @@
   "checkpoint": {
     "id": "10.05",
     "title": "Pokemon Tower 6F: Jennifer, Emilia, the Rare Candy and the Marowak ghost",
-    "start": {"map": "PokemonTower_5F", "tiles": [[18, 7]], "facing": "east"},
+    "start": {"map": "PokemonTower_5F", "tiles": [[18, 7]], "facing": "south"},
     "events": [
       {
         "id": "tower_6f_stairs",
@@ -40,7 +40,7 @@
           "trainer": "TRAINER_CHANNELER_JENNIFER",
           "foes": ["gastly"]
         },
-        "declared_after": {"map": "PokemonTower_6F", "tiles": [[16, 6]], "facing": "east"},
+        "declared_after": {"map": "PokemonTower_6F", "tiles": [[16, 6]], "facing": "north"},
         "why": "Channeler Jennifer: Gastly Lv24 (pokeguy 1:07:00)"
       },
       {
@@ -68,7 +68,7 @@
           "trainer": "TRAINER_CHANNELER_EMILIA",
           "foes": ["gastly"]
         },
-        "declared_after": {"map": "PokemonTower_6F", "tiles": [[9, 8]], "facing": "north"},
+        "declared_after": {"map": "PokemonTower_6F", "tiles": [[9, 8]], "facing": "west"},
         "why": "Channeler Emilia: Gastly Lv24 (pokeguy 1:07:28)"
       },
       {
