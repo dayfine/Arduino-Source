@@ -146,7 +146,7 @@ bool gym_wall(const TilePos& tile){
             return map.tiles.at(tile) == TileKind::WALL;
         }
     }
-    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No map " + GYM + ".");
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("No map {}.", GYM));
 }
 
 Direction behind(Direction direction){
