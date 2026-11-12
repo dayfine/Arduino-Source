@@ -767,8 +767,8 @@ UnitTestResult test_hideout_row(Logger&){
 
 //  09.02 on the sim: from below B3F's Rare Candy back up to B2F, through
 //  its arrows (the MOON STONE ball stands in the way and is picked up),
-//  the lift to B4F, the two door guards, Giovanni, and beside the SILPH
-//  SCOPE. The talk-started battles are the sim's to skip; the MOON
+//  the lift to B4F, the two door guards and Giovanni, ending below where
+//  he stood. The talk-started battles are the sim's to skip; the MOON
 //  STONE's pickup hides its ball, as the game does.
 UnitTestResult test_hideout_giovanni_row(Logger&){
     const StoryCheckpoint& row = checkpoint("09.02");
@@ -781,9 +781,6 @@ UnitTestResult test_hideout_giovanni_row(Logger&){
     script.lift_floors[std::string(LIFT_MAP)] = rocket_hideout_lift_exits();
     auto sim = std::make_unique<OverworldSim>(maps, MapPosition{at.map, at.tile}, *at.facing, script);
     for (const StoryStep& step : row.steps){
-        if (step.name == "escape_rope_hideout"){
-            break;
-        }
         if (step.kind == StoryStepKind::BATTLE){
             at = *story_pose(Pokemon::pose_of(*step.pose_after));
             continue;
@@ -804,7 +801,7 @@ UnitTestResult test_hideout_giovanni_row(Logger&){
     if (!sim->state().violations.empty()){
         return "09.02: a violation on the way: " + sim->state().violations.back();
     }
-    const MapPosition end{"RocketHideout_B4F", {21, 5}};
+    const MapPosition end{"RocketHideout_B4F", {19, 5}};
     if (!(sim->state().position == end)){
         return "09.02: ended on " + to_string(sim->state().position) + ", not " + to_string(end) + ".";
     }
@@ -1011,9 +1008,6 @@ UnitTestResult test_hideout_giovanni_row_no_tile_twice(Logger&){
     auto sim = std::make_unique<OverworldSim>(maps, MapPosition{at.map, at.tile}, *at.facing, script);
     std::vector<MapPosition> walked{{at.map, at.tile}};
     for (const StoryStep& step : row.steps){
-        if (step.name == "escape_rope_hideout"){
-            break;
-        }
         if (step.kind == StoryStepKind::BATTLE){
             at = *story_pose(Pokemon::pose_of(*step.pose_after));
             continue;
@@ -1070,7 +1064,7 @@ const AutoStoryLavenderCase AUTO_STORY_LAVENDER_CASES[] = {
     {.input = {"08.03 Route 8 west from a start up to 3 tiles off", test_route8_west_off_start}, .expectation = {}},
     {.input = {"08.03 saves in Celadon City's Pokemon Center", test_celadon_save_place}, .expectation = {}},
     {.input = {"09.01 the Game Corner's poster, the Rocket Hideout to B4F's LIFT KEY and B3F's Rare Candy", test_hideout_row}, .expectation = {}},
-    {.input = {"09.02 B2F's arrows, the lift, the door guards, Giovanni and the SILPH SCOPE", test_hideout_giovanni_row}, .expectation = {}},
+    {.input = {"09.02 B2F's arrows, the lift, the door guards and Giovanni", test_hideout_giovanni_row}, .expectation = {}},
     {.input = {"09.02 no tile of B3F or B2F walked twice: no way out and back", test_hideout_giovanni_row_no_tile_twice}, .expectation = {}},
 };
 

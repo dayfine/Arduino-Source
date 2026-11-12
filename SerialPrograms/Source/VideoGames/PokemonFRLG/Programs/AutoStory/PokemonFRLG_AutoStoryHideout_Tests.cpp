@@ -385,10 +385,11 @@ UnitTestResult test_b2f_maze_taps(){
 //  Console B, 2026-11-11 17:51, 09.02 run 7: Giovanni's battle ended,
 //  his script went on (a message, then black while he is taken away) and
 //  east_of_silph_scope's first tap, 0.4 s after the battle's text, was
-//  lost: "facing an unknown way", then failed. On the sim with his scene:
-//  Giovanni sees the player onto (19, 5) (the sim has no talk), then
-//  09.02's giovanni and east_of_silph_scope steps end east of the SILPH
-//  SCOPE (21, 5).
+//  lost: "facing an unknown way", then failed. Run 9 failed the same way,
+//  with the SILPH SCOPE right east of the player on (20, 5). On the sim
+//  with his scene: Giovanni sees the player onto (19, 5) (the sim has no
+//  talk), then 09.02's giovanni and 09.03's steps up to the pickup turn
+//  the player east on (19, 5), facing the SILPH SCOPE: no walk round it.
 UnitTestResult test_giovanni_scene_then_taps(){
     const MapPosition below_giovanni{"RocketHideout_B4F", {19, 5}};
     std::vector<MapData> maps = story_maps();
@@ -408,11 +409,17 @@ UnitTestResult test_giovanni_scene_then_taps(){
     }
     StoryPose at{below_giovanni.map, below_giovanni.point, Direction::NORTH};
     for (const StoryCheckpoint& row : story_checkpoints()){
-        if (row.id != "09.02"){
+        if (row.id != "09.02" && row.id != "09.03"){
             continue;
         }
+        if (row.id == "09.03"){
+            at = *story_pose(Pokemon::pose_of(*row.start));
+        }
         for (const StoryStep& step : row.steps){
-            if (step.name != "giovanni" && step.name != "east_of_silph_scope"){
+            if (step.name == "escape_rope_hideout"){
+                break;
+            }
+            if (row.id == "09.02" && step.name != "giovanni"){
                 continue;
             }
             if (const std::string failure = row_step_on_sim(sim, at, step, row.id); !failure.empty()){
@@ -420,9 +427,8 @@ UnitTestResult test_giovanni_scene_then_taps(){
             }
         }
     }
-    const MapPosition east_of_scope{below_giovanni.map, {21, 5}};
-    if (!(sim.state().position == east_of_scope)){
-        return "After Giovanni, walked to " + to_string(sim.state().position) + ", not " + to_string(east_of_scope) + ".";
+    if (!(sim.state().position == below_giovanni) || sim.state().facing != Direction::EAST){
+        return "After Giovanni, ended on " + to_string(sim.state().position) + ", not on " + to_string(below_giovanni) + " facing east.";
     }
     return true;
 }
@@ -638,7 +644,7 @@ const AutoStoryHideoutBodyCase HIDEOUT_BODY_CASES[] = {
     },
     {
         .input = {.name = "Giovanni's scene after his battle, then the taps", .body = test_giovanni_scene_then_taps},
-        .expectation = {.description = "09.02's first tap after Giovanni waits out his script; ends on (21, 5)"},
+        .expectation = {.description = "09.03's turn after Giovanni waits out his script; faces the SILPH SCOPE from (19, 5)"},
     },
     {
         .input = {.name = "below B2F's lift: the wall, then one leg back", .body = test_below_lift_one_backtrack},
