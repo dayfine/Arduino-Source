@@ -113,6 +113,10 @@ std::optional<int> start_cursor_row(ConsoleHandle& console, ProControllerContext
 
 //  The START menu's cursor onto `row`, read from the arrow. As
 //  move_cursor_to_position(), for a menu of any length.
+//  Overlaps move_cursor_to_position() in PokemonFRLG_StartMenuNavigation.h.
+//  Upstream only has fixed-menu overloads (Start, Safari, NoDex); ours takes a row count,
+//  so it also fits the 5-row menu before the starter.
+//  Could be unified with upstream if needed.
 bool move_start_cursor(ConsoleHandle& console, ProControllerContext& context, int rows, int row){
     const std::optional<int> current = start_cursor_row(console, context, rows);
     if (!current){
@@ -131,6 +135,9 @@ bool move_start_cursor(ConsoleHandle& console, ProControllerContext& context, in
 //  The START menu's cursor onto SAVE, in a menu of any length: up past the
 //  top wraps to EXIT, the last row, whose place gives the length; SAVE is
 //  two above it.
+//  Overlaps move_cursor_to_position(SelectionArrowPositionStartMenu::SAVE) in PokemonFRLG_StartMenuNavigation.h.
+//  Upstream's SAVE position only fits the full menu; ours finds the menu length first, so it fits any menu.
+//  Could be unified with upstream if needed.
 bool move_start_cursor_to_save(ConsoleHandle& console, ProControllerContext& context){
     const int most = start_menu_rows(StartMenu::FULL);
     const std::optional<int> current = start_cursor_row(console, context, most);
@@ -151,6 +158,9 @@ bool move_start_cursor_to_save(ConsoleHandle& console, ProControllerContext& con
     return true;
 }
 
+//  Overlaps open_start_menu() and move_cursor_to_position() in PokemonFRLG_StartMenuNavigation.h.
+//  Ours wraps open_start_menu() and then moves the cursor by row for any START menu variant.
+//  Could be unified with upstream if needed.
 void open_start_menu_row(ConsoleHandle& console, ProControllerContext& context, StartMenu menu, int row){
     open_start_menu(console, context);
     if (!move_start_cursor(console, context, start_menu_rows(menu), row)){

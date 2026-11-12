@@ -131,6 +131,10 @@ void tap_dpad(ProControllerContext& context, DpadPosition dpad, size_t count, Mi
 
 //  From the overworld to the fly map: the party, the Fly user, FLY.
 //  Returns the failure, or empty.
+//  Overlaps open_fly_map_from_overworld() in PokemonFRLG_Navigation.h.
+//  Ours picks the Fly user by slot or species and FLY's menu row, and returns a failure code instead of
+//  throwing; upstream assumes the last party slot and the second menu row.
+//  Could be unified with upstream if needed.
 std::string open_fly_map(ConsoleHandle& console, ProControllerContext& context, const FlyPlan& plan){
     open_party_menu_from_overworld(console, context, start_menu_context(plan.start_menu));
     tap_dpad(context, DPAD_DOWN, plan.slot, MENU_TAP, MENU_TAP_RELEASE);
@@ -154,6 +158,10 @@ std::string open_fly_map(ConsoleHandle& console, ProControllerContext& context, 
 //  On the fly map: the cursor to the corner, then to the town, and A.
 //  Returns the failure, or empty once the overworld is at rest after the
 //  landing.
+//  Overlaps fly_from_kanto_map() in PokemonFRLG_Navigation.h.
+//  Ours moves the cursor by map cell from a town table and waits for a quiet overworld after landing;
+//  upstream uses timed stick holds per KantoFlyLocation and a blind wait.
+//  Could be unified with upstream if needed.
 std::string fly_to_town(ConsoleHandle& console, ProControllerContext& context, const FlyTown& town){
     pbf_press_dpad(context, DPAD_UP_LEFT, CURSOR_TO_CORNER, CURSOR_TAP_RELEASE);
     tap_dpad(context, DPAD_RIGHT, (size_t)town.cell.x, CURSOR_TAP, CURSOR_TAP_RELEASE);

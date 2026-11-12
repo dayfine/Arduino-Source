@@ -211,6 +211,10 @@ bool use_item(
 }
 
 //  RUN, bottom right of the battle menu.
+//  Overlaps flee_battle() in PokemonFRLG_Navigation.h.
+//  Ours is one blind turn that resets the cursor first, since the battle loop reads the result itself;
+//  upstream needs the cursor on FIGHT and assumes the run always works.
+//  Could be unified with upstream if needed.
 void run_away(ProControllerContext& context){
     tap(context, DPAD_LEFT);
     tap(context, DPAD_UP);
@@ -676,6 +680,9 @@ private:
 
 
 //  From the overworld: the bag open on the Items pocket, cursor on its top.
+//  Overlaps open_bag_from_overworld() in PokemonFRLG_Navigation.h.
+//  Ours wraps it, then waits for the bag to slide in and moves the cursor to the top of the Items pocket.
+//  Could be unified with upstream if needed.
 void open_items_pocket(ConsoleHandle& console, ProControllerContext& context){
     open_bag_from_overworld(console, context);
     //  The bag ignores presses while it slides in.
