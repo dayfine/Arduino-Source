@@ -29,6 +29,8 @@
 #include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
+#include "PokemonFRLG_AutoStoryHealing.h"
+#include "PokemonFRLG_AutoStoryHealingSteps.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -567,6 +569,7 @@ private:
             m_supplies.hurt = status.hp_red || status.hp_yellow;
             m_supplies.hp_red = status.hp_red;
             m_supplies.hp_fill = status.hp_fill;
+            measured_hp(m_supplies, status.hp_fill);
         }
         m_supplies.status = status.status;
     }
@@ -895,26 +898,25 @@ std::vector<BagRow> read_items_pocket(ConsoleHandle& console, ProControllerConte
     return rows;
 }
 
+bool use_recovery_item(
+    ConsoleHandle& console, ProControllerContext& context,
+    const std::string& item, Pokemon::StoryCheckLevel checks, Language language, Supplies& supplies
+){
+    //  The row before the count drops: a counted item with none left takes
+    //  no row.
+    if (!use_item_on_overworld(console, context, supplies, item, checks, language)){
+        return false;
+    }
+    took_recovery_item(supplies, item);
+    return true;
+}
+
 void recover_after_battle(
     ConsoleHandle& console, ProControllerContext& context,
     Supplies& supplies, Pokemon::StoryCheckLevel checks, Language language
 ){
     for (const std::string& item : recovery_items(supplies)){
-        //  The row before the count drops: a counted item with none left
-        //  takes no row.
-        if (!use_item_on_overworld(console, context, supplies, item, checks, language)){
-            continue;
-        }
-        spend_item(supplies, item);
-        if (item == "potion"){
-            //  One Potion (20 HP) takes a starter of these levels from red
-            //  to green; the bar can't be read again on the overworld.
-            supplies.hurt = false;
-            supplies.hp_red = false;
-            supplies.hp_fill = 1.0;
-        }else{
-            supplies.status = StatusCondition::NONE;
-        }
+        use_recovery_item(console, context, item, checks, language, supplies);
     }
     if (supplies.status != StatusCondition::NONE){
         console.log(std::format(

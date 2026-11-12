@@ -144,6 +144,11 @@ Pokemon::Outcome count_items(SlopeEnv& env, const StoryStep& step){
         return Pokemon::unsupported_step(step);
     }
     const std::vector<BagRow> rows = read_items_pocket(env.console, env.context, env.language);
+    //  The counts the story keeps (Potions, Super Potions, ...) from the bag
+    //  too: a Mart step's cover_hp buys against them.
+    if (!rows.empty()){
+        set_from_bag(env.supplies, rows);
+    }
     for (const std::string& item : *items){
         const int count = read_count(rows, item);
         env.console.log(std::format("Bag: {} x{}.", item, count));

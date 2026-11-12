@@ -41,7 +41,6 @@
 #include "PokemonFRLG_AutoStoryMoveData.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
 #include "PokemonFRLG_AutoStoryTable.h"
-#include "PokemonFRLG_AutoStoryTrainerPass.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -493,18 +492,10 @@ const MapObject* trainer_seeing(const MapData& map, const TilePos& tile, const s
 //  The tile a STEP from `pose` ends on: the next one; for a step into a
 //  trainer's line, the first within TRAINER_LINE_TILES that a trainer
 //  other than the `beaten` sees, where step_until_seen() stops, else the
-//  last; for a pass across a trainer's line (TRAINER_PASS_VARIANT), its
-//  last tile.
+//  last.
 TilePos step_end(const StoryPose& pose, const StoryStep& step, const std::set<const MapObject*>& beaten){
     const MapData* map = find_map_named(pose.map);
     const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
-    if (step.action == TRAINER_PASS_VARIANT){
-        TilePos tile = pose.tile;
-        for (int64_t c = 0; c < Pokemon::story_arg<int64_t>(step.args, "tiles"); c++){
-            tile = tile.next(direction);
-        }
-        return tile;
-    }
     if (step.action != TRAINER_LINE_VARIANT || map == nullptr){
         return pose.tile.next(direction);
     }
@@ -712,9 +703,8 @@ UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<const Map
 //  From the Running Shoes on, routes and legs keep out of the grass (but
 //  in caves, which are all grass, onto a GRIND's or a capture's patch, on legs held to walls round Route 6's trainers, and under a Repel the table used), off warps to maps not loaded and out of
 //  trainers' lines, but for the three Route 3 trainers, Mt. Moon's Grunt
-//  at (12, 20), Nugget Bridge's five, Route 25's four, Route 6's Jeff, Vermilion Gym's three, Route 9's three, Rock Tunnel's eight, Route 8's Rich, the Rocket Hideout's Lift Key Grunt, the Pokemon Tower's four Channelers and three Grunts, and Fuchsia Gym's Kirk the table steps
-//  in front of to fight (Fuchsia Gym's Kayden is passed on his turn away,
-//  TRAINER_PASS_VARIANT); where they cross a wandering trainer's sight, the walk can place
+//  at (12, 20), Nugget Bridge's five, Route 25's four, Route 6's Jeff, Vermilion Gym's three, Route 9's three, Rock Tunnel's eight, Route 8's Rich, the Rocket Hideout's Lift Key Grunt, the Pokemon Tower's four Channelers and three Grunts, and Fuchsia Gym's Kayden and Kirk the table steps
+//  in front of to fight; where they cross a wandering trainer's sight, the walk can place
 //  the player if the trainer stops them; and where they cross the sight of
 //  one who looks around, on a leg to a wall.
 //  LEGS that end on stairs at the side of a room, or on an exit mat, step
@@ -914,10 +904,10 @@ UnitTestResult test_trainer_lines(){
         }
         has_shoes = has_shoes || checkpoint.id == "03.03";
     }
-    if (beaten.size() != 38){
+    if (beaten.size() != 39){
         return "Expected to fight Colton, Greg and James on Route 3, the Grunt at (12, 20) in Mt. Moon, Nugget Bridge's five"
             ", Franklin, Kelsey, Nob and Haley on Route 25, Jeff on Route 6, Dwayne, Baily and Tucker in Vermilion Gym, Alicia, Jeremy and Conner on Route 9"
-            ", Ashton, Winston, Martha, Allen, Lenny, Sofia, Dudley and Dana in Rock Tunnel, Rich on Route 8, the Lift Key Grunt on B4F, Ruth, Tammy, Jennifer and Emilia and the three Grunts in the Pokemon Tower, and Kirk in Fuchsia Gym (Kayden passed); the table fights "
+            ", Ashton, Winston, Martha, Allen, Lenny, Sofia, Dudley and Dana in Rock Tunnel, Rich on Route 8, the Lift Key Grunt on B4F, Ruth, Tammy, Jennifer and Emilia and the three Grunts in the Pokemon Tower, and Kayden and Kirk in Fuchsia Gym; the table fights "
             + std::to_string(beaten.size()) + " trainers.";
     }
     return true;

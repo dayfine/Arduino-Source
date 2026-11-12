@@ -189,11 +189,7 @@ private:
         }
         return m_state.on_bike ? m_script.timing.bike_tile : m_script.timing.tile;
     }
-    //  (PokemonFRLG_OverworldSimTrainers.cpp)
     bool trainer_sees(Milliseconds pressed);
-    //  The way the trainer standing on `home` faces now, if they turn on a
-    //  timer (SimScript::trainer_turns). (PokemonFRLG_OverworldSimTrainers.cpp)
-    friend std::optional<Direction> trainer_facing(const OverworldSim& sim, const MapPosition& home);
     void update_view();
     void note(const std::string& line);
     void violation(const std::string& line);

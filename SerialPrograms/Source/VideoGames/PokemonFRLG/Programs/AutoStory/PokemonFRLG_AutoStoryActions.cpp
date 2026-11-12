@@ -58,9 +58,6 @@ constexpr Milliseconds INTRO_A_EVERY = 1500ms;
 constexpr Milliseconds INTRO_QUIET = 3000ms;
 constexpr Milliseconds INTRO_STUCK = 15000ms;
 constexpr Milliseconds INTRO_TIMEOUT = 600000ms;
-//  "Wait about 8 s" after YES at the nurse (console B, 2026-11-01): 1.5 s
-//  between presses did not heal.
-constexpr Milliseconds HEAL_TIME = 8000ms;
 
 DpadPosition dpad(Direction direction){
     switch (direction){
@@ -878,19 +875,6 @@ void set_options(ConsoleHandle& console, ProControllerContext& context, StartMen
     options_shot(console, context, "after");
     press(context, BUTTON_B, 1500ms);
     mash_until_overworld(console, context, 20000ms);
-}
-
-void heal_at_center(ConsoleHandle& console, ProControllerContext& context){
-    console.log("Healing at the Pokemon Center.");
-    //  The nurse's YES/NO isn't seen by the selection detector (console B,
-    //  2026-11-01); YES is the default, so A after her lines is YES.
-    //  "Welcome ... We heal your POKEMON ... Shall we heal?" is 3 lines.
-    press(context, BUTTON_A, 1500ms);
-    press(context, BUTTON_A, 1500ms);
-    press(context, BUTTON_A, 2500ms);
-    press(context, BUTTON_A, 1000ms);
-    pbf_wait(context, HEAL_TIME);
-    mash_until_overworld(console, context, 30000ms);
 }
 
 //  A picture of the Mart screen for the run's record: the list with the

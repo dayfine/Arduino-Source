@@ -47,6 +47,7 @@ std::string_view status_name(StatusCondition status);
 //  Potions, Antidotes, then Parlyz Heals; Awakenings from Cerulean's Mart.
 struct Supplies{
     int potions = 0;
+    int super_potions = 0;
     int antidotes = 0;
     int parlyz_heals = 0;
     int awakenings = 0;
@@ -71,6 +72,12 @@ struct Supplies{
     //  The starter's HP bar's filled share at the last battle screen that
     //  showed it, 1 after the nurse or a Potion on the overworld.
     double hp_fill = 1.0;
+    //  The bar's filled share as last measured on a battle screen (1 after
+    //  the nurse), unlike hp_fill not raised by a Potion's guess; nothing
+    //  while none was (a checkpoint loaded from a save). And the HP the
+    //  items used on the lead since then heal.
+    std::optional<double> measured_fill = std::nullopt;
+    int healed_since_measured = 0;
     //  The starter's moves and their PP, as far as the story knows them:
     //  a new game's Squirtle unless a checkpoint's row says otherwise.
     PartyMember lead = new_member("squirtle", 5);

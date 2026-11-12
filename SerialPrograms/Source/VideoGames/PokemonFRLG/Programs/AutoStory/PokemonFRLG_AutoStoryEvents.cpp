@@ -19,19 +19,20 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecoveryWalk.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "PokemonFRLG_AutoStoryAbilities.h"
 #include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
 #include "PokemonFRLG_AutoStoryGameArgs.h"
+#include "PokemonFRLG_AutoStoryHealingSteps.h"
 #include "PokemonFRLG_AutoStoryHideout.h"
 #include "PokemonFRLG_AutoStoryLegs.h"
 #include "PokemonFRLG_AutoStoryScreenEvents.h"
 #include "PokemonFRLG_AutoStorySlopeRun.h"
 #include "PokemonFRLG_AutoStorySummary.h"
 #include "PokemonFRLG_AutoStoryTable.h"
-#include "PokemonFRLG_AutoStoryTrainerPass.h"
 #include "PokemonFRLG_AutoStoryTeachScreens.h"
 #include "PokemonFRLG_AutoStoryTrashCans.h"
 #include "PokemonFRLG_AutoStoryViridianMart.h"
@@ -214,8 +215,6 @@ Outcome take_warp_step(StoryEnv& env, const RunState& state, const RouteStep& wa
     return Pokemon::outcome_ok();
 }
 
-Outcome battle(StoryEnv& env, const StoryStep& step);
-
 Outcome take_step(StoryEnv& env, RunState& state, const StoryStep& step){
     const Direction direction = arg<Direction>(step, "direction");
     int tiles_stepped = 1;
@@ -226,10 +225,6 @@ Outcome take_step(StoryEnv& env, RunState& state, const StoryStep& step){
         }
         env.console.log(std::format("Story: {}: a trainer saw the player after {} tile(s).", step.name, *stepped));
         tiles_stepped = *stepped;
-    }else if (step.action == TRAINER_PASS_VARIANT){
-        return pass_trainer(env, state, step, [&env](const StoryStep& fight){
-            return battle(env, fight);
-        });
     }else if (step.action == TRAINER_WAIT_VARIANT){
         if (!step_into_line(env.console, env.context, direction, facing_of(state.pose), 1, TRAINER_WAIT_WATCH)){
             return Pokemon::outcome_failed("no_trainer", std::format("{} s on the tile {}", TRAINER_WAIT_WATCH.count() / 1000, direction_name(direction)));
@@ -308,7 +303,7 @@ Outcome get_ready(StoryEnv& env, RunState& state, const StoryStep& step){
     if (!walked.succeeded()){
         return walked;
     }
-    heal_at_center(env.console, env.context);
+    heal_at_pokecenter(env.console, env.context);
     healed_by_nurse(supplies);
     return walked;
 }
@@ -534,7 +529,7 @@ bool grind_heal_trip(StoryEnv& env, RunState& state, const StoryStep& step, cons
     if (!walked(env, state, walk)){
         return false;
     }
-    heal_at_center(env.console, env.context);
+    heal_at_pokecenter(env.console, env.context);
     //  PP too: a grind's battles spend more than its attacks have.
     healed_by_nurse(env.supplies);
     walk.name = step.name + "_back_to_patch";
@@ -585,7 +580,11 @@ std::optional<Outcome> run_abilities(StoryEnv& env, RunState& state, const Story
         }
         return Pokemon::outcome_unchanged();
     }
-    return run_ability_game_step(env.console.logger(), &env.console, step, abilities);
+    StoryStep covered = step;
+    if (const std::optional<Outcome> nothing_to_buy = cover_hp_in_mart(env.console.logger(), env.supplies, covered)){
+        return nothing_to_buy;
+    }
+    return run_ability_game_step(env.console.logger(), &env.console, covered, abilities);
 }
 
 //  CUT_TREE_VARIANT: the tree in the step's direction, cut, and a step
@@ -674,6 +673,9 @@ Outcome other_game_step(StoryEnv& env, RunState& state, const StoryStep& step){
         done = run_storage_game_step(env.console.logger(), &env.console, step, capture, pc);
     }
     if (!done){
+        done = run_healing_step(env, step);
+    }
+    if (!done){
         done = run_abilities(env, state, step);
     }
     if (!done){
@@ -754,7 +756,7 @@ ConsoleAction console_action_of(StoryActionId id){
         return [](StoryEnv& env, RunState&, const StoryStep& step){ return battle(env, step); };
     case StoryActionId::HEAL:
         return [](StoryEnv& env, RunState&, const StoryStep&){
-            heal_at_center(env.console, env.context);
+            heal_at_pokecenter(env.console, env.context);
             healed_by_nurse(env.supplies);
             return Pokemon::outcome_ok();
         };
