@@ -286,7 +286,7 @@ public:
         SegmentHooks hooks = story_segment_hooks(game);
         RunState state;
         const Outcome outcome = hooks.reload(state);
-        const ReloadExpectation& expected = m_case.expectation;
+        const ReloadCase::Expectation& expected = m_case.expectation;
         if (!outcome.succeeded() || fake.loads != expected.loads || fake.rereads != expected.rereads || !fake.logged(expected.log_line)){
             return std::format("Expected {} load and {} reread, got {} and {} ({})", expected.loads, expected.rereads, fake.loads, fake.rereads, to_string(outcome));
         }
