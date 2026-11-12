@@ -196,6 +196,28 @@ UnitTestResult test_select_onto_bike(){
     return true;
 }
 
+//  A SELECT that shows on the screen a read late: the read right after it
+//  still has the player on foot. Pressed again then, SELECT got them off
+//  (11.01 ride_bike, console B, 2026-11-12 05:42: "not riding after
+//  SELECT", then "riding" on foot, and every bike tap after only turned).
+UnitTestResult test_select_onto_bike_shown_late(){
+    bool on_bike = false;
+    bool shown = false;
+    int presses = 0;
+    BikeSelectCalls calls;
+    calls.press_select = [&]{ presses++; on_bike = !on_bike; };
+    calls.riding = [&]{
+        const bool read = shown;
+        shown = on_bike;
+        return read;
+    };
+    const bool riding = OverworldWalkSteps::select_onto_bike(calls);
+    if (!riding || !on_bike || presses != 1){
+        return std::format("Read riding {}, on the Bicycle {}, after {} press(es).", riding, on_bike, presses);
+    }
+    return true;
+}
+
 //  A door takes the player off the Bicycle: legs after it go on foot,
 //  until one where the Bicycle may be ridden gets on again.
 UnitTestResult test_speed_after_door(){
@@ -261,6 +283,7 @@ const BikeCase OVERWORLD_BIKE_CASES[] = {
     {.input = {"taps a tile each, one in 12 dropped 60ms apart", test_tap_chains}, .expectation = {"23 of 25 tiles at 60ms; 25 at 100 and 120ms"}},
     {.input = {"an open leg of 11 from a start 2 off, counted in taps", test_counted_leg_off_start}, .expectation = {"found against the rock and walked back"}},
     {.input = {"SELECT onto the registered Bicycle", test_select_onto_bike}, .expectation = {"one press registered; two and off unregistered"}},
+    {.input = {"SELECT onto the Bicycle shown a read late", test_select_onto_bike_shown_late}, .expectation = {"read again, not pressed off"}},
     {.input = {"on foot after a door, on again outdoors", test_speed_after_door}, .expectation = {"gets_on_bike(), on_foot()"}},
 };
 
