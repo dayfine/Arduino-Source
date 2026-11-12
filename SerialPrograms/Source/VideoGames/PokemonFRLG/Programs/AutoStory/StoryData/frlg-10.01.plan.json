@@ -116,11 +116,11 @@
       {
         "id": "below_fly_woman",
         "kind": "route",
-        "action": "run",
+        "action": "bike",
         "args": {
           "target": {"map": "Route16_House", "tiles": [[4, 4]], "facing": "north"}
         },
-        "why": "through the gate (the game takes the player off the Bicycle indoors), out at (20, 6), west to the house's door (10, 5) and up to below the woman's zone (3..5, 2..3)"
+        "why": "on the Bicycle through the gate, which allows cycling and keeps the rider on (warp_keeps_bike()), out at (20, 6), west to the house's door (10, 5) at the Bicycle's pace, and on foot up to below the woman's zone (3..5, 2..3); pokeguy cycles here (1:03:20). A run-paced leg on the Bicycle overshot the door (console B, 2026-11-12 01:05)"
       },
       {
         "id": "hm02_fly",

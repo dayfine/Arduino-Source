@@ -292,6 +292,39 @@ UnitTestResult test_fly_finds_pidgey(Logger&){
     return true;
 }
 
+//  10.01 below_fly_woman from east of Route 16's north gate on the
+//  Bicycle, which the gate's warps leave the rider on (allow_cycling): the
+//  open leg west to the Fly house's door must be walked at the Bicycle's
+//  pace, or it overshoots the door (console B, 2026-11-12 01:05: a
+//  run-paced west 10 ended four tiles past the door, and north bumped the
+//  fence).
+UnitTestResult test_fly_house_door_on_bike(Logger& logger){
+    const StoryCheckpoint& row = checkpoint("10.01");
+    const auto step = std::find_if(row.steps.begin(), row.steps.end(), [](const StoryStep& data){
+        return data.name == "below_fly_woman";
+    });
+    if (step == row.steps.end()){
+        return std::string("10.01: no below_fly_woman.");
+    }
+    SimScript script;
+    script.on_bike = true;
+    script.bike_registered = true;
+    OverworldSim sim(maps_with_beaten({}), MapPosition{"Route16", {28, 6}}, Direction::WEST, script);
+    StoryPose at{"Route16", {28, 6}, Direction::WEST};
+    const std::string failure = row_step_on_sim(sim, at, *step, "10.01");
+    for (const std::string& line : sim.state().log){
+        logger.log(line);
+    }
+    if (!failure.empty()){
+        return failure;
+    }
+    const MapPosition end{"Route16_House", {4, 4}};
+    if (!(sim.state().position == end)){
+        return std::format("10.01 below_fly_woman: ended on {}, not {}.", to_string(sim.state().position), to_string(end));
+    }
+    return true;
+}
+
 //  The step a press makes off a warp, ending where the game leaves the
 //  player and facing the way it turns them (arrival_facing()), not the way
 //  the press went. 10.01 below_store_lift comes down from the roof room on
@@ -328,6 +361,7 @@ UnitTestResult test_warp_press_arrivals(Logger&){
 const AutoStoryTowerCase AUTO_STORY_TOWER_CASES[] = {
     {.input = {"10.01 Route 16's house for HM02, out of every line, and Fly to Lavender's Pokemon Center", test_back_to_lavender}, .expectation = {}},
     {.input = {"10.01 flies with the Pidgey found by species", test_fly_finds_pidgey}, .expectation = {}},
+    {.input = {"10.01 on the Bicycle through Route 16's north gate to the Fly house's door", test_fly_house_door_on_bike}, .expectation = {}},
     {.input = {"10.01 a press off Celadon Mansion's 2F stairs arrives on 1F facing west", test_warp_press_arrivals}, .expectation = {}},
     {.input = {"10.02 the Pokemon Tower's 1F and 2F to east of the rival's trigger", test_tower_to_rival}, .expectation = {}},
     {.input = {"10.03 onto the rival's trigger", test_tower_rival}, .expectation = {}},
