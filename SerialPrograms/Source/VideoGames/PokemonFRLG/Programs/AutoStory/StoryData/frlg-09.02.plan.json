@@ -3,7 +3,7 @@
   "game": "frlg",
   "checkpoint": {
     "id": "09.02",
-    "title": "Rocket Hideout: B2F's arrows and the MOON STONE, the lift to B4F, the two door guards, Giovanni, the SILPH SCOPE and an Escape Rope out",
+    "title": "Rocket Hideout: B2F's arrows and the MOON STONE, the lift to B4F, the two door guards, and Giovanni",
     "start": {"map": "RocketHideout_B3F", "tiles": [[12, 13]], "facing": "north"},
     "events": [
       {
@@ -181,41 +181,8 @@
           "trainer": "TRAINER_BOSS_GIOVANNI",
           "foes": ["onix", "rhyhorn", "kangaskhan"]
         },
-        "declared_after": {"map": "RocketHideout_B4F", "tiles": [[19, 5]], "facing": "north"},
-        "why": "Giovanni (TRAINER_BOSS_GIOVANNI): Onix, Rhyhorn, Kangaskhan"
-      },
-      {
-        "id": "east_of_silph_scope",
-        "kind": "legs",
-        "action": "taps",
-        "args": {
-          "legs": [{"direction": "west", "tiles": 2}, {"direction": "south", "tiles": 2}, {"direction": "east", "tiles": 4}, {"direction": "north", "tiles": 2}]
-        },
-        "why": "a tap a tile round by row 7: west to (17, 5), down to (17, 7), east to the wall at (21, 7) and up to the wall at (21, 5), east of the SILPH SCOPE (20, 5)"
-      },
-      {
-        "id": "beside_silph_scope",
-        "kind": "route",
-        "action": "run",
-        "args": {
-          "target": {"map": "RocketHideout_B4F", "tiles": [[21, 5]], "facing": "west"}
-        },
-        "why": "turn to face the SILPH SCOPE (20, 5): no tile to walk"
-      },
-      {
-        "id": "silph_scope",
-        "kind": "talk",
-        "why": "pick up the SILPH SCOPE (pokeguy 1:02:10)"
-      },
-      {
-        "id": "escape_rope_hideout",
-        "kind": "game_action",
-        "action": "use_item",
-        "args": {
-          "item": "escape-rope"
-        },
-        "declared_after": {"map": "CeladonCity", "tiles": [[34, 22]], "facing": "south"},
-        "why": "out to the Game Corner's door (pokeguy 1:02:17)"
+        "declared_after": {"map": "RocketHideout_B4F", "tiles": [[19, 5]], "facing": "south"},
+        "why": "Giovanni (TRAINER_BOSS_GIOVANNI): Onix, Rhyhorn, Kangaskhan. His scene after the battle takes him away and leaves the player on (19, 5) facing south (console B runs 7 and 9, 2026-11-11)"
       }
     ]
   },
