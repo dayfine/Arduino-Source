@@ -32,6 +32,7 @@
 #include "NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter_Tests.h"
 #include "NintendoSwitch/Controllers/SysbotBase/SysbotBase_Connection.h"
 
+#include "Pokemon/Navigation/Pokemon_ConnectedMaps_Tests.h"
 #include "Pokemon/Navigation/Pokemon_LegPlanner_Tests.h"
 #include "Pokemon/Navigation/Pokemon_LegWalker_Tests.h"
 #include "Pokemon/Navigation/Pokemon_MapData_Tests.h"
@@ -79,6 +80,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     Pokemon::add_tests_LegWalker(ret);
     Pokemon::add_tests_WallRecovery(ret);
     Pokemon::add_tests_MapData(ret);
+    Pokemon::add_tests_ConnectedMaps(ret);
     Pokemon::add_tests_RuntimeMap(ret);
     Pokemon::add_tests_RouteLog(ret);
     Pokemon::add_tests_AutoStory(ret);
