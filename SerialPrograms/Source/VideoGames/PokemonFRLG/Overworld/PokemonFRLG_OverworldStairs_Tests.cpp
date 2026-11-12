@@ -192,6 +192,38 @@ UnitTestResult test_tower_turn_read_as_step(){
     return true;
 }
 
+//  10.05 tower_6f_stairs (console B, 2026-11-12 03:41): the planned route
+//  from Pokemon Tower 5F (18, 7), facing east, went "south 3 (open)" down
+//  column 18 onto the stairs (18, 10), then "east 1 (warp)". The hold
+//  ended a tile short, on (18, 9), and the presses east met the wall. The
+//  stairs have walls east and west, so the route can only step onto them
+//  going south: the leg onto them is tapped, a tap a tile checked to have
+//  moved, and a tap that only turned is not counted.
+UnitTestResult test_tower_planned_onto_side_stairs(){
+    const MapPosition start{"PokemonTower_5F", {18, 7}};
+    const MapPosition goal{"PokemonTower_6F", {18, 10}};
+    const std::optional<std::vector<RouteStep>> route = plan_overworld_route(
+        maps(), start, RouteGoal{goal, Direction::NORTH}, default_route_costs(), Direction::EAST
+    );
+    if (!route){
+        return std::string("No route from 5F (18, 7) to 6F's stairs.");
+    }
+    SimScript script;
+    script.short_holds = {{1, 1}};
+    script.seen_turn_taps = {1};
+    OverworldSim sim(maps(), start, Direction::EAST, script);
+    OverworldSimWalker walker(sim, SimWalkerRules{});
+    const RoutePlanning planning{.maps = &maps(), .costs = default_route_costs(), .start = start, .label = "Sim"};
+    const std::string failure = walker.run(*route, planning);
+    std::vector<std::string> log = walker.log();
+    log.insert(log.end(), sim.state().log.begin(), sim.state().log.end());
+    if (!failure.empty() || !(sim.state().position == goal)){
+        return std::format("Expected 6F's stairs reached, ended at {}: \"{}\"", to_string(sim.state().position), failure)
+            + describe(*route, log);
+    }
+    return true;
+}
+
 } // namespace
 
 
@@ -206,6 +238,10 @@ const StairsCase STAIRS_CASES[] = {
     },
     {
         .input = {.name = "Pokemon Tower 3F: a turn tap read as a step is not counted", .body = test_tower_turn_read_as_step},
+        .expectation = {},
+    },
+    {
+        .input = {.name = "Pokemon Tower 5F: planned onto side stairs from the side, a tap a tile", .body = test_tower_planned_onto_side_stairs},
         .expectation = {},
     },
 };

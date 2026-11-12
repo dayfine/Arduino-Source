@@ -362,6 +362,40 @@ std::optional<int> last_spin_tiles(const std::vector<MapData>& maps, const Pokem
     return transition->spin->tiles;
 }
 
+//  Whether WALK `step` ends on stairs at the side of a room, or an exit
+//  mat, going another way than its warp is taken, and not at a wall. The
+//  press the warp's way finds the warp only if the leg ended on its tile:
+//  a tile off, it meets the wall beside the stairs. So the leg is tapped, a
+//  tap a tile checked to have moved (10.05 tower_6f_stairs: "south 3
+//  (open)" onto Pokemon Tower 5F's stairs (18, 10) ended a tile short;
+//  console B, 2026-11-12 03:41).
+bool onto_warp_sideways(const MapData& map, const RouteStep& step){
+    const std::optional<Direction> taken = exit_mat(map, step.end.point);
+    return taken && *taken != step.direction && !step.warps && !step.to_wall && !step.spin_tiles;
+}
+
+//  Taps the open legs before each tapped leg in `route`, back to the start
+//  or a leg that ends where the walk knows the player is (a wall, a warp),
+//  so a leg onto stairs from the side starts from a known tile (Pokemon
+//  Tower 2F's "west 12" before "south 4" onto the stairs (4, 10)).
+void tap_from_known_tile(std::vector<RouteStep>& route){
+    for (size_t c = route.size(); c-- > 1;){
+        if (!route[c].tapped){
+            continue;
+        }
+        for (size_t before = c; before-- > 0;){
+            RouteStep& step = route[before];
+            if (step.action == RouteAction::FACE){
+                continue;
+            }
+            if (step.action != RouteAction::WALK || step.surfing || step.warps || step.to_wall || step.spin_tiles || step.tapped){
+                break;
+            }
+            step.tapped = true;
+        }
+    }
+}
+
 RouteStep to_route_step(const std::vector<MapData>& maps, const Pokemon::Leg<Located>& leg){
     RouteStep step;
     switch (leg.kind){
@@ -392,6 +426,7 @@ RouteStep to_route_step(const std::vector<MapData>& maps, const Pokemon::Leg<Loc
     if (leg.kind == Pokemon::LegKind::WALK){
         step.spin_tiles = last_spin_tiles(maps, leg);
         step.to_wall = step.to_wall && !step.spin_tiles;
+        step.tapped = !step.surfing && onto_warp_sideways(maps[leg.end.map], step);
     }
     const std::vector<MapPosition> tiles = leg_tiles(maps, MapPosition{maps[leg.start.map].name, leg.start.state.position}, step);
     for (int c : std::views::iota(1, (int)tiles.size()) | std::views::filter([&](int n){ return tiles[n].map != tiles[n - 1].map; })){
@@ -461,6 +496,7 @@ std::optional<std::vector<RouteStep>> plan_overworld_route(
     for (const Pokemon::Leg<Located>& leg : *legs){
         route.push_back(to_route_step(maps, leg));
     }
+    tap_from_known_tile(route);
     return route;
 }
 
