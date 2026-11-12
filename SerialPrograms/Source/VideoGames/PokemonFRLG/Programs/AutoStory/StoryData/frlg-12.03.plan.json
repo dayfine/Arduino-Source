@@ -1,0 +1,55 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "12.03",
+    "title": "Fuchsia's Center out to the street and Fly to Celadon City, for Erika",
+    "start": {"map": "FuchsiaCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
+    "events": [
+      {
+        "id": "center_northwest_corner",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [{"direction": "west", "tiles": 7}, {"direction": "north", "tiles": 2}]
+        },
+        "why": "from the nurse to the Center's wall west (0, 4) and up to the wall (0, 2), as 12.01 does: legs to walls, so the walk out starts from a known tile even if the Center script left the player a tile off the nurse"
+      },
+      {
+        "id": "outside_fuchsia_center",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "FuchsiaCity", "tiles": [[25, 32]], "facing": "south"}
+        },
+        "why": "out of the Center's door onto Fuchsia City, where Fly works"
+      },
+      {
+        "id": "fly_celadon",
+        "kind": "game_action",
+        "action": "fly",
+        "args": {
+          "town": "CeladonCity",
+          "species": "pidgey"
+        },
+        "declared_after": {"map": "CeladonCity", "tiles": [[48, 12]], "facing": "south"},
+        "why": "the Pidgey (Fly, 10.01), found in the party by its summary's species, flies to Celadon City (pokeguy flies there after Koga, 1:23:45), landing below the Pokemon Center's door (48, 11) on its heal spot, where 14.03 starts"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "notes": {
+      "checkpoint": [
+        "From Fuchsia's nurse, where 12.02 ends healed, to Celadon for Erika (14.03): out of the Center on foot (Fly works outdoors only) and Fly. Celadon's landing, its heal spot (48, 12) facing south, is where 14.03 starts, so no walk follows.",
+        "Fuchsia and Celadon are both Fly towns the Pidgey already knows (11.01, 11.03); no new step or measurement."
+      ]
+    }
+  },
+  "metadata": {
+    "phase": "testing",
+    "postconditions": {
+      "position": {"map": "CeladonCity", "tiles": [[48, 12]], "facing": "south"}
+    }
+  }
+}

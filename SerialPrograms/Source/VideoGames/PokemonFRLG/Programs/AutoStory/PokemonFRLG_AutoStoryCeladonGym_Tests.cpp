@@ -2,8 +2,9 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Rows 14.03 and 14.04 (StoryData/frlg-14.03.plan.json, 14.04) on the
- *  overworld sim: from Fly's landing in Celadon past the yard's tree, up
+ *  Rows 12.03, 14.03 and 14.04 (StoryData/frlg-12.03.plan.json, 14.03, 14.04)
+ *  on the overworld sim: from Fuchsia's nurse out of the Center and Fly to
+ *  Celadon; from Fly's landing in Celadon past the yard's tree, up
  *  the gym's west aisle into Beauty Tamia's line, round her by column 1,
  *  the inner tree, Beauty Lori, to below Erika; and from Erika back out
  *  the same way, past the tree, to the nurse. And the lead's attacks against the
@@ -113,6 +114,29 @@ std::string fought(const OverworldSim& sim){
         names += std::format(" {}", name);
     }
     return names.empty() ? " no one" : names;
+}
+
+//  12.03 on a sim from Fuchsia's nurse: out of the Center, the Fly, and
+//  the landing on Celadon's heal spot (48, 12) facing south, where 14.03
+//  starts. No one is fought on the way.
+UnitTestResult test_fly_to_celadon(){
+    StoryPose at = *story_pose(Pokemon::pose_of(*checkpoint("12.03").start));
+    OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
+    if (const std::string failure = row_on_sim("12.03", at, sim); !failure.empty()){
+        return failure;
+    }
+    const MapPosition landing{CELADON, {48, 12}};
+    if (!(sim.state().position == landing) || sim.state().facing != Direction::SOUTH){
+        return std::format("12.03: ended on {}, not Celadon's heal spot {} facing south.", to_string(sim.state().position), to_string(landing));
+    }
+    if (!sim.state().trainers_beaten.empty()){
+        return std::format("12.03: fought{}.", fought(sim));
+    }
+    const StoryPose next = *story_pose(Pokemon::pose_of(*checkpoint("14.03").start));
+    if (next.map != CELADON || !(next.tile == landing.point) || next.facing != Direction::SOUTH){
+        return "14.03 doesn't start where 12.03 ends.";
+    }
+    return true;
 }
 
 //  14.03 on `sim` from its start, Fly's landing (48, 12): the yard's tree
@@ -229,6 +253,10 @@ UnitTestResult check_lead_level_precondition(Logger& logger, std::string_view id
 }
 
 const AutoStoryCeladonGymCase AUTO_STORY_CELADON_GYM_CASES[] = {
+    {
+        .input = {.name = "12.03 out of Fuchsia's Center and Fly to Celadon", .body = test_fly_to_celadon},
+        .expectation = {.description = "lands on Celadon's heal spot facing south, where 14.03 starts"},
+    },
     {
         .input = {.name = "14.03 to below Erika and 14.04 back to the nurse", .body = test_gym_rows},
         .expectation = {.description = "Tamia and Lori fought where the table steps into their lines, no one else"},
