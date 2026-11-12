@@ -46,15 +46,19 @@
       {
         "args": {
           "fight_wild": false,
-          "legs": [
-            {
-              "direction": "east",
-              "tiles": 2
-            }
-          ]
+          "target": {
+            "facing": "east",
+            "map": "JubilifeCity",
+            "tiles": [
+              [
+                48,
+                40
+              ]
+            ]
+          }
         },
         "id": "past_the_president",
-        "kind": "legs",
+        "kind": "route",
         "why": "east of his column"
       },
       {
