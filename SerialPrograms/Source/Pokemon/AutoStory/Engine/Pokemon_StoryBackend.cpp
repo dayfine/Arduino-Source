@@ -5,6 +5,7 @@
  */
 
 #include <utility>
+#include "Pokemon/AutoStory/Pokemon_ScreenEventTypes.h"
 #include "Pokemon_StoryBackend.h"
 
 namespace PokemonAutomation{
