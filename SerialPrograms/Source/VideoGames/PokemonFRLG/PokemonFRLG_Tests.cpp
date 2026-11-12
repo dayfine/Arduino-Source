@@ -44,6 +44,7 @@
 #include "Overworld/PokemonFRLG_OverworldSim.h"
 #include "Overworld/PokemonFRLG_OverworldWalk.h"
 #include "Overworld/PokemonFRLG_PlayerFacingReader.h"
+#include "Overworld/PokemonFRLG_TrainerFacingReader.h"
 #include "Programs/PokemonFRLG_NamingScreenKeyboard_Tests.h"
 #include "PokemonFRLG_Navigation.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryAbilities.h"
@@ -334,6 +335,12 @@ static void add_tests_AutoStoryRows(UnitTestDatabase& database){
     add_tests_AutoStoryFuchsiaGym(database);
 }
 
+//  Which way the player, and a trainer near them, faces on the overworld.
+static void add_tests_FacingReaders(UnitTestDatabase& database){
+    add_tests_PlayerFacingReader(database);
+    add_tests_TrainerFacingReader(database);
+}
+
 void add_tests(UnitTestDatabase& database){
     add_tests_AdvanceWhiteDialogDetector(database);
     add_tests_AdvanceBattleDialogDetector(database);
@@ -369,7 +376,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_OverworldReanchor(database);
     add_tests_OverworldRecovery(database);
     add_tests_OverworldSim(database);
-    add_tests_PlayerFacingReader(database);
+    add_tests_FacingReaders(database);
     add_tests_AutoStory(database);
     add_tests_AutoStoryJson(database);
     add_tests_AutoStorySimulation(database);

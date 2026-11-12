@@ -76,6 +76,7 @@
           "away": "south",
           "trainer_dx": -2,
           "trainer_dy": -1,
+          "sprite": "rocker",
           "trainer": "TRAINER_JUGGLER_KAYDEN",
           "foes": ["hypno"]
         },

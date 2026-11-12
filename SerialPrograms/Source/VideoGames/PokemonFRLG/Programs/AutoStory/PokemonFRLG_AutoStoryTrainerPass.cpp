@@ -8,6 +8,9 @@
 #include <format>
 #include <vector>
 #include "Common/Cpp/Color.h"
+#include "CommonFramework/VideoPipeline/VideoFeed.h"
+#include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_TrainerFacingReader.h"
 #include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "PokemonFRLG_AutoStoryPoses.h"
@@ -62,6 +65,34 @@ StoryStep pass_fallback_battle(const StoryStep& step){
     return fight;
 }
 
+//  Waits for the trainer's turn away (wait_for_turn_away()), reading their
+//  facing on screen, if the reader has the step's "sprite"; else, or with
+//  no turn seen in TRAINER_PASS_WATCH, logs that the crossing is blind.
+void wait_for_trainer(StoryEnv& env, const StoryStep& step){
+    const PlayerSprites* sprites = trainer_sprites(arg<std::string>(step, "sprite"));
+    if (sprites == nullptr){
+        env.console.log(std::format("Story: {}: no frames of the trainer's sprite to read their facing; crossing blind.", step.name), COLOR_ORANGE);
+        return;
+    }
+    const int dx = (int)arg<int64_t>(step, "trainer_dx");
+    const int dy = (int)arg<int64_t>(step, "trainer_dy");
+    const Direction away = arg<Direction>(step, "away");
+    const bool turned = wait_for_turn_away(
+        (int)(TRAINER_PASS_WATCH / TRAINER_PASS_POLL), away,
+        [&]() -> std::optional<Direction>{
+            env.context.wait_for_all_requests();
+            const VideoSnapshot screen = env.console.video().snapshot();
+            return screen ? read_trainer_facing(screen, *sprites, dx, dy) : std::nullopt;
+        },
+        [&]{ pbf_wait(env.context, TRAINER_PASS_POLL); }
+    );
+    if (turned){
+        env.console.log(std::format("Story: {}: the trainer turned {}; crossing.", step.name, direction_name(away)));
+    }else{
+        env.console.log(std::format("Story: {}: no turn {} seen in {} s; crossing blind.", step.name, direction_name(away), TRAINER_PASS_WATCH.count() / 1000), COLOR_ORANGE);
+    }
+}
+
 //  The tiles crossed without a stop on the line, the last step watched for
 //  the trainer's message. Returns whether the trainer saw the player.
 bool cross_line(StoryEnv& env, std::optional<Direction> facing, Direction direction, int tiles){
@@ -80,7 +111,7 @@ Outcome pass_trainer(
 ){
     const Direction direction = arg<Direction>(step, "direction");
     const int tiles = (int)arg<int64_t>(step, "tiles");
-    env.console.log(std::format("Story: {}: the trainer's facing can't be read on the console yet; crossing unwatched.", step.name), COLOR_ORANGE);
+    wait_for_trainer(env, step);
     if (cross_line(env, Pokemon::facing_of(state.pose), direction, tiles)){
         //  Seen on the line's tile, the crossing's first: the steps after
         //  it were lost to the trainer's "!".

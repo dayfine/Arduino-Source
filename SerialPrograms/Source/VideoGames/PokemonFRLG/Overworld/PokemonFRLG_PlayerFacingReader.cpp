@@ -39,10 +39,14 @@ constexpr int SHEET_FIRST_ROW = 12;
 
 constexpr int SPRITE_WIDTH = 16;
 constexpr int SPRITE_ROWS = 19;
-//  Where the sprite's first drawn row sits on the GBA's 240x160 screen while
-//  the camera follows the player. Measured on the console.
-constexpr int SPRITE_X = 112;
-constexpr int SPRITE_Y = 56 + 12;
+//  Where the player's 16x32 frame sits on the GBA's 240x160 screen while
+//  the camera follows the player (its first drawn row 12 lower). Measured
+//  on the console. An object a tile away sits a tile (16 pixels) away.
+constexpr int FRAME_X = 112;
+constexpr int FRAME_Y = 56;
+constexpr int TILE_PIXELS = 16;
+constexpr int SPRITE_X = FRAME_X;
+constexpr int SPRITE_Y = FRAME_Y + SHEET_FIRST_ROW;
 constexpr int GBA_WIDTH = 240;
 constexpr int GBA_HEIGHT = 160;
 
@@ -56,20 +60,22 @@ ImageRGB32 sheet_frame(const ImageViewRGB32& sheet, int frame){
     return sheet.sub_image(frame * SHEET_FRAME_WIDTH, SHEET_FIRST_ROW, SPRITE_WIDTH, SPRITE_ROWS).copy();
 }
 
-//  How far the screen differs from `sprite`, drawn `dy` GBA pixels lower.
-double difference(const ImageViewRGB32& game, const ImageViewRGB32& sprite, bool mirror, int dy){
+//  How far the screen differs from `sprite`, its first row drawn at GBA
+//  pixel (`x0`, `y0`).
+double difference(const ImageViewRGB32& game, const ImageViewRGB32& sprite, bool mirror, int x0, int y0){
     const double scale_x = (double)game.width() / GBA_WIDTH;
     const double scale_y = (double)game.height() / GBA_HEIGHT;
+    const int width = (int)sprite.width();
     long total = 0;
     int pixels = 0;
-    for (int row = 0; row < SPRITE_ROWS; row++){
-        for (int col = 0; col < SPRITE_WIDTH; col++){
-            const Color expected(sprite.pixel(mirror ? SPRITE_WIDTH - 1 - col : col, row));
+    for (int row = 0; row < (int)sprite.height(); row++){
+        for (int col = 0; col < width; col++){
+            const Color expected(sprite.pixel(mirror ? width - 1 - col : col, row));
             if (expected.alpha() == 0){
                 continue;
             }
-            const size_t x = (size_t)((SPRITE_X + col + 0.5) * scale_x);
-            const size_t y = (size_t)((SPRITE_Y + dy + row + 0.5) * scale_y);
+            const size_t x = (size_t)((x0 + col + 0.5) * scale_x);
+            const size_t y = (size_t)((y0 + row + 0.5) * scale_y);
             if (x >= game.width() || y >= game.height()){
                 return std::numeric_limits<double>::max();
             }
@@ -129,6 +135,12 @@ std::optional<Direction> read_player_facing(const ImageViewRGB32& screen){
 }
 
 std::optional<Direction> match_player_facing(const ImageViewRGB32& game, const PlayerSprites& sprites){
+    return match_facing_at(game, sprites, SHEET_FIRST_ROW, 0, 0);
+}
+
+std::optional<Direction> match_facing_at(const ImageViewRGB32& game, const PlayerSprites& sprites, int first_row, int dx_tiles, int dy_tiles){
+    const int x0 = FRAME_X + TILE_PIXELS * dx_tiles;
+    const int y0 = FRAME_Y + TILE_PIXELS * dy_tiles + first_row;
     struct Candidate{
         Direction direction;
         const ImageViewRGB32& sprite;
@@ -148,7 +160,7 @@ std::optional<Direction> match_player_facing(const ImageViewRGB32& game, const P
         //  A pixel either way, for a box that is slightly off.
         double score = std::numeric_limits<double>::max();
         for (int dy = -1; dy <= 1; dy++){
-            score = std::min(score, difference(game, candidate.sprite, candidate.mirror, dy));
+            score = std::min(score, difference(game, candidate.sprite, candidate.mirror, x0, y0 + dy));
         }
         if (score < best){
             second = best;

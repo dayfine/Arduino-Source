@@ -25,7 +25,8 @@ namespace PokemonFRLG{
 //  The variant of a STEP across the line of a trainer who turns on a timer
 //  (MOVEMENT_TYPE_FACE_DOWN_AND_RIGHT and its kin), as pokeguy passes
 //  Juggler Kayden in Fuchsia Gym (1:15:14): from outside their sight, the
-//  trainer (at "trainer_dx", "trainer_dy" tiles from the player) is watched,
+//  trainer (at "trainer_dx", "trainer_dy" tiles from the player, drawn with
+//  "sprite") is watched,
 //  up to TRAINER_PASS_WATCH, until they turn "away", and then the player
 //  steps "tiles" tiles `direction` across the line. They hold a way at least
 //  32 frames (pokefirered gMovementDelaysShort), longer than the step onto
@@ -50,8 +51,9 @@ bool wait_for_turn_away(
 //  A TRAINER_PASS_VARIANT `step` on the console, from `state`'s pose;
 //  `fight` fights the trainer's battle (a BATTLE step) if they see the
 //  player. The line is one tile deep where the crossing meets it, its
-//  first tile. No sprite of the trainer is in Resources yet to read their
-//  facing on screen, so the crossing starts at once, logged.
+//  first tile. The trainer's facing is read on screen with the frames of
+//  the step's "sprite" (read_trainer_facing()); without them the crossing
+//  is blind, logged.
 Pokemon::Outcome pass_trainer(
     StoryEnv& env, const Pokemon::RunState& state, const StoryStep& step,
     const std::function<Pokemon::Outcome(const StoryStep&)>& fight
