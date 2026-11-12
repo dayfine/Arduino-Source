@@ -18,6 +18,7 @@
 #ifndef PokemonAutomation_Pokemon_SimGolden_H
 #define PokemonAutomation_Pokemon_SimGolden_H
 
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -41,9 +42,14 @@ std::string sim_golden_path(std::string_view source_file, std::string_view name)
 //  ended by "\n".
 std::string sim_golden_text(std::string_view about, const std::vector<std::string>& lines);
 
+//  `text` with every "\n" made "\r\n" and no "\r" of its own: the line
+//  endings the goldens are written with.
+std::string with_crlf(std::string_view text);
+
 //  The first line where `golden` and `actual` differ, carriage returns
-//  ignored: "line N:\n--- golden: ...\n+++ actual: ...". "" if none.
-std::string first_golden_difference(std::string_view golden, std::string_view actual);
+//  ignored: "line N:\n--- golden: ...\n+++ actual: ...". None if they are
+//  the same.
+std::optional<std::string> first_golden_difference(std::string_view golden, std::string_view actual);
 
 //  Checks `text` against the golden file at `path`, or rewrites the file
 //  with it when SIM_GOLDEN_UPDATE_VARIABLE is set. Fails with the first

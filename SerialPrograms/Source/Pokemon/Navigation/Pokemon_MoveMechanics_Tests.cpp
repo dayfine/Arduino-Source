@@ -24,8 +24,8 @@ struct MoveMechanicsCase{
         MoveMechanics mechanics;
     };
     struct Expectation{
-        //  How the walker presses an open leg on foot (the user's pick,
-        //  2026-11-11: BDSP taps, FRLG timed holds).
+        //  How the walker presses an open leg on foot (BDSP taps, FRLG
+        //  timed holds).
         OpenLegPress open_legs_on_foot;
     };
     Input input;

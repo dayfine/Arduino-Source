@@ -134,8 +134,8 @@ private:
 };
 
 const StartCase START_CASES[] = {
-    //  Console B, 2026-11-11: a BDSP run started at 00.04b with the game
-    //  left at 00.04d walked from 00.04d's position.
+    //  A game left at a later checkpoint must not be walked from: a
+    //  checkpoint with a save loads that save first.
     {
         .input = {.name = "a checkpoint with a save loads it first", .start = StoryStart::FROM_SAVE, .place_error = "", .preflight = READY},
         .expectation = {.succeeds = true, .loads = 1, .rereads = 1, .save_loaded = true},
@@ -152,9 +152,8 @@ const StartCase START_CASES[] = {
         .input = {.name = "a live start loads nothing", .start = StoryStart::LIVE, .place_error = "", .preflight = READY},
         .expectation = {.succeeds = true, .loads = 0, .rereads = 0, .save_loaded = false},
     },
-    //  Console B, 2026-11-11 13:32: the game was on HOME; the run saved,
-    //  pressed X/R/ZL on HOME, then "loaded" nothing. The preflight stops it
-    //  before any press.
+    //  The game is on the HOME menu: every press would go to the console's
+    //  menus, so the preflight stops the run before any press.
     {
         .input = {.name = "the HOME menu stops the run before the load", .start = StoryStart::FROM_SAVE, .place_error = "", .preflight = ON_HOME},
         .expectation = {.succeeds = false, .loads = 0, .rereads = 0, .save_loaded = false},
@@ -222,7 +221,7 @@ const PreflightCase PREFLIGHT_CASES[] = {
 
 //  Whether the first checkpoint saves at its start: only a new game's. After
 //  a load the save is already there; from the game as it is the place is
-//  unconfirmed (console B, 2026-11-11: "save" ran first on HOME).
+//  unconfirmed (the game may be on the HOME menu).
 struct FirstSaveCase{
     struct Input{
         StoryStart start;

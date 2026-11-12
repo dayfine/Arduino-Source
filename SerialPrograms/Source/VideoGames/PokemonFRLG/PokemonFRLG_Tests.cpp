@@ -8,7 +8,6 @@
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonFramework/StaticGlobals.h"
-#include "Programs/AutoStory/PokemonFRLG_AutoStoryScreenEvents_Tests.h"
 #include "Inference/Box/PokemonFRLG_BoxCellOccupiedDetector.h"
 #include "Inference/Box/PokemonFRLG_BoxCellReader.h"
 #include "Inference/Box/PokemonFRLG_BoxGenderReader.h"
@@ -28,6 +27,7 @@
 #include "Inference/PokemonFRLG_StatsReader.h"
 #include "Inference/PokemonFRLG_TrainerIdReader.h"
 #include "Inference/PokemonFRLG_WildEncounterReader.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryScreenEvents_Tests.h"
 #include "Programs/BoxOrganization/PokemonFRLG_BoxSorter_Tests.h"
 #include "Tests/TestUtils.h"
 
