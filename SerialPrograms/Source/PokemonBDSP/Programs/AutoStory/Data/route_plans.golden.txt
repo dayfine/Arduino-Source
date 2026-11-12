@@ -248,41 +248,16 @@ anchor); 0 from one start tile.
   start candidates: Jubilife City (14, 19)
   totals: 0 legs, 0 turns, 0 open, 0 localization
 
-== 00.05c below_the_company_clown (costs: town)
+== 00.05c beside_the_president (costs: town)
   from: JubilifeCity (14, 19) facing west (tile)
-  target: JubilifeCity (14, 19) facing west (tile)
-  start candidates: Jubilife City (14, 19)
-  totals: 0 legs, 0 turns, 0 open, 0 localization
-
-== 00.05c below_the_tv_clown (costs: town)
-  from: JubilifeCity (14, 19) facing west (tile)
-  target: JubilifeCity (36, 17) facing north (tile)
+  target: JubilifeCity (45, 35) facing east (tile)
   start candidates: Jubilife City (14, 19)
   1. south 2 (open) -> Jubilife City (14, 21)
-  2. east 22 (open) -> Jubilife City (36, 21)
-  3. north 4 (open) -> Jubilife City (36, 17)
-  totals: 3 legs, 2 turns, 3 open, 0 localization
-
-== 00.05c below_the_mart_clown (costs: town)
-  from: JubilifeCity (36, 17) facing north (tile)
-  target: JubilifeCity (56, 31) facing south (tile)
-  start candidates: Jubilife City (36, 17)
-  1. west 1 (open) -> Jubilife City (35, 17)
-  2. south 10 (to wall) -> Jubilife City (35, 27)
-  3. east 1 (to wall) -> Jubilife City (36, 27)
-  4. south 5 (open) -> Jubilife City (36, 32)
-  5. east 7 (open) -> Jubilife City (43, 32)
-  6. north 1 (open) -> Jubilife City (43, 31)
-  7. east 13 (to wall) -> Jubilife City (56, 31)
-  totals: 7 legs, 6 turns, 4 open, 0 localization
-
-== 00.05c beside_the_president (costs: town)
-  from: JubilifeCity (56, 31) facing north (tile)
-  target: JubilifeCity (45, 35) facing east (tile)
-  start candidates: Jubilife City (56, 31)
-  1. west 11 (open) -> Jubilife City (45, 31)
-  2. south 4 (open) -> Jubilife City (45, 35)
-  totals: 2 legs, 1 turns, 2 open, 0 localization
+  2. east 19 (open) -> Jubilife City (33, 21)
+  3. south 15 (to wall) -> Jubilife City (33, 36)
+  4. north 1 (open) -> Jubilife City (33, 35)
+  5. east 12 (open) -> Jubilife City (45, 35)
+  totals: 5 legs, 4 turns, 4 open, 0 localization
 
 == 00.05c to_the_route_203_street (costs: line)
   from: JubilifeCity (45, 35) facing east (tile)

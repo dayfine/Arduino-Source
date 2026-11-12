@@ -39,10 +39,7 @@ walk run with no stops) | verdict (why). A ratio above 1.5 is flagged "!".
 00.05b below_the_tv_clown | 27350 | 27350 | 27350 | 1 | 0 | 0 | 6.29! | 1.00 | 1.00 | 4350 ms (stand-in) | PASS
 00.05b below_the_company_clown | 21900 | 21900 | 21900 | 0 | 0 | 0 | 6.74! | 1.00 | 3.00! | 3250 ms (stand-in) | PASS
 00.05b beside_the_company_sign | 0 | 0 | 0 | 0 | 0 | 0 | 0.00 | 1.00 | 1.00 | 250 ms (stand-in) | PASS
-00.05c below_the_company_clown | 0 | 0 | 0 | 0 | 0 | 0 | 0.00 | 1.00 | 1.00 | 250 ms (stand-in) | PASS
-00.05c below_the_tv_clown | 22700 | 22700 | 22700 | 0 | 0 | 0 | 6.78! | 1.00 | 5.00! | 3350 ms (stand-in) | PASS
-00.05c below_the_mart_clown | 18550 | 18550 | 18550 | 3 | 0 | 0 | 4.26! | 1.00 | 23.00! | 4350 ms (stand-in) | PASS
-00.05c beside_the_president | 12200 | 12200 | 12200 | 0 | 0 | 0 | 6.26! | 1.00 | 1.00 | 1950 ms (stand-in) | PASS
+00.05c beside_the_president | 31200 | 31200 | 31200 | 1 | 0 | 0 | 5.43! | 1.00 | 1.00 | 5750 ms (stand-in) | PASS
 00.05c to_the_route_203_street | 14250 | 14250 | 14250 | 1 | 0 | 0 | 4.07! | 1.00 | 1.00 | 3500 ms (stand-in) | PASS
 01.01 west_of_barrys_trigger | 7300 | 7300 | 7300 | 0 | 0 | 0 | 6.35! | 1.00 | 1.00 | 1150 ms (stand-in) | PASS
 01.02 south_to_the_cliff | 1800 | 1800 | 1800 | 1 | 0 | 0 | 2.57! | 1.00 | 1.00 | 700 ms (stand-in) | PASS
