@@ -81,15 +81,8 @@ public:
         count_call();
         const MoveSpeed speed = walk.options.pace == DpadPace::RUN && m_can_run ? MoveSpeed::RUN : MoveSpeed::WALK;
         const Milliseconds per_tile = route_ms_per_tile(walk.direction, speed);
-        if (m_overshoot && walk.limit > ROUTE_START_DELAY){
-            //  A hold timed for n tiles (ROUTE_START_DELAY, then half a
-            //  tile under n) goes on past them until a wall stops it.
-            const size_t tiles = (size_t)((walk.limit - ROUTE_START_DELAY + per_tile / 2) / per_tile);
-            const size_t want = tiles + (tiles * 35 + 99) / 100;
-            const size_t moved = move(walk.direction, want);
-            return {.stop = moved < want ? WalkStop::BLOCKED : WalkStop::LIMIT, .walked = walk.limit,
-                .wild_battles = 0, .moved_chunks = moved};
-        }
+        //  walk_route() walks only legs to a wall here, and a walk to a wall
+        //  ends at the wall: no overshoot (overshoot_timed_holds()).
         const size_t moved = move(walk.direction, SIZE_MAX);
         return {.stop = WalkStop::BLOCKED, .walked = ROUTE_START_DELAY + 800ms + per_tile * moved + per_tile / 2,
             .wild_battles = 0, .moved_chunks = moved};
