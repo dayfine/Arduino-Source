@@ -93,19 +93,19 @@
           ],
           "fight_wild": false,
           "target": {
-            "facing": "east",
+            "facing": "north",
             "map": "JubilifeCity",
             "tiles": [
               [
-                58,
-                22
+                59,
+                21
               ]
             ]
           }
         },
         "id": "to_the_route_203_street",
         "kind": "route",
-        "why": "up the main road and east along the street"
+        "why": "up the main road and east along the street, ending below the east-exit sign (59, 20): the bump north into the sign pins the tile (user 2026-11-12), west of the guard's trigger column 60"
       }
     ],
     "id": "00.05c",

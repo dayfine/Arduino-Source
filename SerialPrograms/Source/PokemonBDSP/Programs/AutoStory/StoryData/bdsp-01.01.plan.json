@@ -67,12 +67,12 @@
     ],
     "id": "01.01",
     "start": {
-      "facing": "east",
+      "facing": "north",
       "map": "JubilifeCity",
       "tiles": [
         [
-          58,
-          22
+          59,
+          21
         ]
       ]
     },
