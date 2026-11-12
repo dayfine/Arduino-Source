@@ -78,25 +78,25 @@ std::string run_tracker(const std::vector<Span>& spans, TransitionTracker& track
 }
 
 
-//  A synthetic stream of frames, through one game's profile.
-struct TrackInput{
-    std::string name;
-    std::vector<Span> spans;
-    const FadeProfile* profile = &BDSP_FADE_PROFILE;
-    bool compare = true;
-};
-
-struct TrackExpectation{
-    //  The transitions completed, as run_tracker() puts them.
-    std::string transitions;
-    //  What judge_warp() makes of the tracker's current() at the end; empty
-    //  for none.
-    std::string warp = "";
-};
-
 struct TrackCase{
-    TrackInput input;
-    TrackExpectation expectation;
+    //  A synthetic stream of frames, through one game's profile.
+    struct Input{
+        std::string name;
+        std::vector<Span> spans;
+        const FadeProfile* profile = &BDSP_FADE_PROFILE;
+        bool compare = true;
+    };
+
+    struct Expectation{
+        //  The transitions completed, as run_tracker() puts them.
+        std::string transitions;
+        //  What judge_warp() makes of the tracker's current() at the end; empty
+        //  for none.
+        std::string warp = "";
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 class Test_TransitionTracker : public UnitTest{
@@ -106,7 +106,7 @@ public:
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const TrackInput& input = m_case.input;
+        const TrackCase::Input& input = m_case.input;
         TransitionTracker tracker(*input.profile, input.compare ? compare_means : TransitionTracker::CompareScenes());
         const std::string got = run_tracker(input.spans, tracker);
         if (got != m_case.expectation.transitions){
@@ -161,21 +161,21 @@ UnitTestResult test_sample_of_frame(){
 }
 
 
-//  Captured frames: CommandLineTests/<game>/Transitions/<case>/ holds
-//  frames named by their time in ms ("0.png", "250.png"), and expected.txt
-//  with the transitions run_tracker() should report (no scene comparison).
-struct CapturedInput{
-    std::string game;
-    const FadeProfile* profile;
-};
-
-//  Each case folder's expected.txt holds its expectation.
-struct CapturedExpectation{
-};
-
 struct CapturedCase{
-    CapturedInput input;
-    CapturedExpectation expectation;
+    //  Captured frames: CommandLineTests/<game>/Transitions/<case>/ holds
+    //  frames named by their time in ms ("0.png", "250.png"), and expected.txt
+    //  with the transitions run_tracker() should report (no scene comparison).
+    struct Input{
+        std::string game;
+        const FadeProfile* profile;
+    };
+
+    //  Each case folder's expected.txt holds its expectation.
+    struct Expectation{
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 std::string track_captured_case(const Filesystem::Path& folder, const FadeProfile& profile){
@@ -226,22 +226,22 @@ public:
     }
 
 private:
-    CapturedInput m_input;
+    CapturedCase::Input m_input;
 };
 
-
-struct TransitionsInput{
-    std::string name;
-    UnitTestResult (*body)();
-};
-
-//  The body checks its own expectations.
-struct TransitionsExpectation{
-};
 
 struct TransitionsCase{
-    TransitionsInput input;
-    TransitionsExpectation expectation;
+    struct Input{
+        std::string name;
+        UnitTestResult (*body)();
+    };
+
+    //  The body checks its own expectations.
+    struct Expectation{
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 class Test_Transitions : public UnitTest{
@@ -255,7 +255,7 @@ public:
     }
 
 private:
-    TransitionsInput m_input;
+    TransitionsCase::Input m_input;
 };
 
 } // namespace

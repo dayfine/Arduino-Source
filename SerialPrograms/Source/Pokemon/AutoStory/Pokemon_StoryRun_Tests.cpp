@@ -62,21 +62,21 @@ struct FakeGame{
 };
 
 //  A start as the program asks for it, and what the game must have done.
-struct StartInput{
-    std::string name;
-    StoryStart start;
-    std::string place_error;
-    StoryPreflight preflight;
-};
-struct StartExpectation{
-    bool succeeds;
-    size_t loads;
-    size_t rereads;
-    bool save_loaded;
-};
 struct StartCase{
-    StartInput input;
-    StartExpectation expectation;
+    struct Input{
+        std::string name;
+        StoryStart start;
+        std::string place_error;
+        StoryPreflight preflight;
+    };
+    struct Expectation{
+        bool succeeds;
+        size_t loads;
+        size_t rereads;
+        bool save_loaded;
+    };
+    Input input;
+    Expectation expectation;
 };
 
 constexpr StoryPreflight READY{.video_alive = true, .controller_ready = true, .game_running = true};
@@ -176,16 +176,16 @@ const StartCase START_CASES[] = {
 
 //  A preflight's checks, and the failure it reads as: the setup's, not
 //  the story's, naming every check that failed.
-struct PreflightInput{
-    std::string name;
-    StoryPreflight preflight;
-};
-struct PreflightExpectation{
-    std::string outcome;
-};
 struct PreflightCase{
-    PreflightInput input;
-    PreflightExpectation expectation;
+    struct Input{
+        std::string name;
+        StoryPreflight preflight;
+    };
+    struct Expectation{
+        std::string outcome;
+    };
+    Input input;
+    Expectation expectation;
 };
 
 class Test_StoryPreflight : public UnitTest{
@@ -223,15 +223,15 @@ const PreflightCase PREFLIGHT_CASES[] = {
 //  Whether the first checkpoint saves at its start: only a new game's. After
 //  a load the save is already there; from the game as it is the place is
 //  unconfirmed (console B, 2026-11-11: "save" ran first on HOME).
-struct FirstSaveInput{
-    StoryStart start;
-};
-struct FirstSaveExpectation{
-    bool saves;
-};
 struct FirstSaveCase{
-    FirstSaveInput input;
-    FirstSaveExpectation expectation;
+    struct Input{
+        StoryStart start;
+    };
+    struct Expectation{
+        bool saves;
+    };
+    Input input;
+    Expectation expectation;
 };
 
 class Test_StoryFirstSave : public UnitTest{
@@ -260,17 +260,17 @@ const FirstSaveCase FIRST_SAVE_CASES[] = {
 
 
 //  A failed attempt's reload loads the save through the game.
-struct ReloadInput{
-    std::string name;
-};
-struct ReloadExpectation{
-    size_t loads;
-    size_t rereads;
-    std::string log_line;
-};
 struct ReloadCase{
-    ReloadInput input;
-    ReloadExpectation expectation;
+    struct Input{
+        std::string name;
+    };
+    struct Expectation{
+        size_t loads;
+        size_t rereads;
+        std::string log_line;
+    };
+    Input input;
+    Expectation expectation;
 };
 
 class Test_StoryReload : public UnitTest{
@@ -307,18 +307,18 @@ const ReloadCase RELOAD_CASES[] = {
 
 //  A run that stopped short throws, logs the failure line and touches
 //  nothing in the game: no reload, no save, no reset to HOME.
-struct FailureInput{
-    std::string name;
-    std::string checkpoint;
-    std::string event;
-    std::string stopped_after;
-};
-struct FailureExpectation{
-    std::string message;
-};
 struct FailureCase{
-    FailureInput input;
-    FailureExpectation expectation;
+    struct Input{
+        std::string name;
+        std::string checkpoint;
+        std::string event;
+        std::string stopped_after;
+    };
+    struct Expectation{
+        std::string message;
+    };
+    Input input;
+    Expectation expectation;
 };
 
 class Test_StoryFailureLeavesGame : public UnitTest{
@@ -369,16 +369,16 @@ const FailureCase FAILURE_CASES[] = {
 
 
 //  A completed run logs and returns the line the finish notification sends.
-struct FinishedInput{
-    std::string name;
-    std::string last_checkpoint;
-};
-struct FinishedExpectation{
-    std::string line;
-};
 struct FinishedCase{
-    FinishedInput input;
-    FinishedExpectation expectation;
+    struct Input{
+        std::string name;
+        std::string last_checkpoint;
+    };
+    struct Expectation{
+        std::string line;
+    };
+    Input input;
+    Expectation expectation;
 };
 
 class Test_StoryFinished : public UnitTest{
@@ -414,17 +414,17 @@ const FinishedCase FINISHED_CASES[] = {
 
 
 //  A verify run short of its passes throws with the summary.
-struct VerifyInput{
-    std::string name;
-    std::string checkpoint;
-    size_t passes;
-};
-struct VerifyExpectation{
-    std::string message;
-};
 struct VerifyCase{
-    VerifyInput input;
-    VerifyExpectation expectation;
+    struct Input{
+        std::string name;
+        std::string checkpoint;
+        size_t passes;
+    };
+    struct Expectation{
+        std::string message;
+    };
+    Input input;
+    Expectation expectation;
 };
 
 class Test_StoryVerifyFailed : public UnitTest{

@@ -224,18 +224,18 @@ UnitTestResult test_watch_along(){
 }
 
 
-struct LegWalkerInput{
-    std::string name;
-    UnitTestResult (*test)();
-};
-
-struct LegWalkerExpectation{
-    std::string_view description;
-};
-
 struct LegWalkerTestCase{
-    LegWalkerInput input;
-    LegWalkerExpectation expectation;
+    struct Input{
+        std::string name;
+        UnitTestResult (*test)();
+    };
+
+    struct Expectation{
+        std::string_view description;
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 class Test_LegWalker : public UnitTest{
