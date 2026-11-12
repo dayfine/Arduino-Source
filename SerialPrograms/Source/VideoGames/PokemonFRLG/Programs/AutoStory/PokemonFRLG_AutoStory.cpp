@@ -609,12 +609,11 @@ static bool run_starter_rng_in_program(
 
 //  Gift RNG's attempts in the program for the language and gift of
 //  `settings`, from the save where the gift is taken; the sound and
-//  calibration come from `options`. Returns true for a shiny, the game on
-//  its summary; otherwise the run has stopped with what to do next.
-static bool run_gift_rng_in_program(
+//  calibration come from `options`. A shiny leaves the game on its summary.
+static StarterRngLoopResult run_gift_rng_in_program(
     SingleSwitchProgramEnvironment& env, ProControllerContext& context,
     const StarterRngPlanned& planned, StarterRngPlanOptions& options, GiftRngConsoleSettings settings,
-    const GiftRngNotifications& notifications, EventNotificationOption& finished
+    const GiftRngNotifications& notifications
 ){
     //  The console's seed and CSF offsets, from Starter RNG too, and Gift
     //  RNG's own in-game offset, saved as Starter RNG's are.
@@ -623,8 +622,7 @@ static bool run_gift_rng_in_program(
     settings.calibration = calibration.calibration(calibration.GIFT_INGAME);
     ConsoleGiftRngSteps console_steps(env, context, settings, notifications);
     CalibrationSavingSteps steps(console_steps, calibration, calibration.GIFT_INGAME);
-    const StarterRngLoopResult result = run_rng_plan_in_program(env, steps, planned, options);
-    return shiny_or_stop(env, finished, result, gift_rng_loop_message(result));
+    return run_rng_plan_in_program(env, steps, planned, options);
 }
 
 //  After a shiny Squirtle: off its summary, and the rows to run next: the
@@ -803,7 +801,10 @@ std::optional<StoryRunPlan> AutoStory::after_gift_row(
     const GiftRngNotifications notifications{
         .shiny = NOTIFICATION_SHINY, .status_update = NOTIFICATION_STATUS_UPDATE, .error_recoverable = NOTIFICATION_ERROR_RECOVERABLE,
     };
-    if (!run_gift_rng_in_program(env, context, planned, RNG_PLAN, settings, notifications, NOTIFICATION_PROGRAM_FINISH)){
+    const StarterRngLoopResult result = run_gift_rng_in_program(env, context, planned, RNG_PLAN, settings, notifications);
+    //  The live-start row after the gift's, which saves it (04.03, 09.04).
+    const std::string& saving_row = story_checkpoints().at(gift_row + 1).id;
+    if (!shiny_or_stop(env, NOTIFICATION_PROGRAM_FINISH, result, gift_rng_loop_message(result, settings.target, saving_row))){
         return std::nullopt;
     }
     return after_shiny_gift(env, story, gift_row, RUN.end_index(), story_handoffs());
