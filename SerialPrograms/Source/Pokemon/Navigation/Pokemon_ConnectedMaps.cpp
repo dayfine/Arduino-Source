@@ -9,6 +9,30 @@
 
 namespace PokemonAutomation{
 namespace Pokemon{
+namespace{
+
+//  The tile of `to` that `connection` on `side` leads onto from `here`:
+//  the edge row or column, shifted by the connection's offset.
+TilePos edge_entry(const TilePos& here, Direction side, const MapConnection& connection, const Grid<TileKind>& to){
+    TilePos point{here.x - connection.offset, here.y - connection.offset};
+    switch (side){
+    case Direction::NORTH:
+        point.y = to.height - 1;
+        break;
+    case Direction::SOUTH:
+        point.y = 0;
+        break;
+    case Direction::WEST:
+        point.x = to.width - 1;
+        break;
+    case Direction::EAST:
+        point.x = 0;
+        break;
+    }
+    return point;
+}
+
+} // namespace
 
 
 std::optional<size_t> ConnectedMaps::find(std::string_view name) const{
@@ -37,7 +61,6 @@ std::optional<MapPlace> ConnectedMaps::warp_arrival(const MapWarp& warp) const{
 }
 
 std::optional<MapPlace> ConnectedMaps::across_edge(const MapPlace& from, Direction side) const{
-    const TilePos here = from.tile;
     for (const MapConnection& connection : map(from.map).connections){
         if (connection.side != side){
             continue;
@@ -47,21 +70,7 @@ std::optional<MapPlace> ConnectedMaps::across_edge(const MapPlace& from, Directi
             continue;
         }
         const Grid<TileKind>& to = map(*destination).tiles;
-        TilePos point{here.x - connection.offset, here.y - connection.offset};
-        switch (side){
-        case Direction::NORTH:
-            point.y = to.height - 1;
-            break;
-        case Direction::SOUTH:
-            point.y = 0;
-            break;
-        case Direction::WEST:
-            point.x = to.width - 1;
-            break;
-        case Direction::EAST:
-            point.x = 0;
-            break;
-        }
+        const TilePos point = edge_entry(from.tile, side, connection, to);
         if (to.contains(point)){
             return MapPlace{*destination, point};
         }
