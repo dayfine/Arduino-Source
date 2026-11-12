@@ -485,6 +485,32 @@ UnitTestResult test_company_clown_from_the_street_keeps_off_the_plaza(Logger& lo
     return "00.05c below_the_company_clown: not in the table, or from nowhere known.";
 }
 
+//  00.05c's replan on lab-B (2026-11-12 02:52): the walk west on row 24
+//  talked to the woman it took for (34, 24), marked her tile off the map,
+//  and from (35, 24) and (36, 24), with (43, 26) marked as a wall, found no
+//  plan at all, with the route costs or the default ones.
+UnitTestResult test_company_clown_after_the_woman_on_row_24(Logger& logger){
+    for (TableRoute route : table_routes()){
+        if (route.row != "00.05c" || route.step->name != "below_the_company_clown" || route.world == nullptr){
+            continue;
+        }
+        StoryWorld world = *route.world;
+        world.block(story_to_world(world, "JubilifeCity", {43, 26}));
+        world.uncover(story_to_world(world, "JubilifeCity", {34, 24}));
+        route.world = &world;
+        route.from = Pokemon::tile_pose("JubilifeCity", {{35, 24}, {36, 24}}, Direction::WEST);
+        const RouteStepPlan plan = plan_table_route(route);
+        if (!plan.legs){
+            return "00.05c below_the_company_clown: no plan from (35, 24), (36, 24).";
+        }
+        for (const PlannedLeg& planned : *plan.legs){
+            logger.log("00.05c below_the_company_clown from (35, 24), (36, 24): " + to_string(planned));
+        }
+        return UnitTestResult(true);
+    }
+    return "00.05c below_the_company_clown: not in the table, or from nowhere known.";
+}
+
 //  01.08's walk below the Ravaged Path keeps off the row Route 204 South's
 //  youngster_3 wanders, (12, 2) to (14, 2): on lab-B (2026-11-08) the plan
 //  "north 35 (to wall) to (13, 2), west 2 (to wall) to (11, 2)" walked along
@@ -763,6 +789,10 @@ const AutoStoryStoryTableCase AUTO_STORY_STORY_TABLE_CASES[] = {
     },
     {
         .input = {"00.05c: from the street (57..58, 22), the walk keeps off the Wonder Station's plaza (lab-B, 2026-11-12)", test_company_clown_from_the_street_keeps_off_the_plaza},
+        .expectation = {},
+    },
+    {
+        .input = {"00.05c: a plan from (35, 24), (36, 24) past the woman on row 24 (lab-B, 2026-11-12 02:52)", test_company_clown_after_the_woman_on_row_24},
         .expectation = {},
     },
 };
