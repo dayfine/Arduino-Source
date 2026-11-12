@@ -40,6 +40,7 @@ struct Gait{
     OpenLegPress open_legs;
 };
 
+//  How one game moves the player: its taps, and a tile time per gait.
 struct MoveMechanics{
     //  A tap that turns a player facing another way, without a step.
     Milliseconds turn_tap;
