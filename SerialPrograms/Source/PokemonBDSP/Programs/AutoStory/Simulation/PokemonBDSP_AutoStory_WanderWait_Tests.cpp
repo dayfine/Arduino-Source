@@ -83,9 +83,12 @@ std::vector<TilePos> clown_starts(const TilePos& player){
 }
 
 //  The wait from `start` with the clown starting on `clown`, his walk
-//  seeded by `seed`.
-WanderWaitResult run_wait(const StoryWorld& world, const TilePos& start, const TilePos& clown, uint64_t seed, const WanderWaitPlan& plan){
-    const SimWanderer wanderer{.name = "clown_mart", .box = jubilife_mart_clown_box(), .pos = clown, .seed = seed};
+//  seeded by `seed`; with `stays`, he never steps.
+WanderWaitResult run_wait(const StoryWorld& world, const TilePos& start, const TilePos& clown, uint64_t seed, const WanderWaitPlan& plan, bool stays = false){
+    SimWanderer wanderer{.name = "clown_mart", .box = jubilife_mart_clown_box(), .pos = clown, .seed = seed};
+    if (stays){
+        wanderer.step_interval = Milliseconds(0);
+    }
     GridSim sim({.world = &world, .wanderers = {wanderer}}, start, Direction::NORTH, false);
     SimWanderWait body(sim);
     const WanderWaitResult result = wait_beside_wanderer(body, start, plan);
@@ -115,6 +118,28 @@ UnitTestResult test_mart_clown_reached_from_column_56(Logger& logger){
                     out += std::format("\n  {} with the clown on {}, seed {}: ended {} on {}.", row,
                         Pokemon::to_string(clown), seed, (int)result.end, Pokemon::to_string(result.at));
                 }
+            }
+        }
+    }
+    logger.log(std::format("{} waits run.", runs));
+    return out.empty() ? UnitTestResult(true) : UnitTestResult(std::format("The wait missed the clown:{}", out));
+}
+
+//  On lab-B (2026-11-12 11:00) the clown stayed out of reach of column 56
+//  for the whole wait, on his box's west column. From either start, the
+//  wait talks to him on whichever tile of his box he stays.
+UnitTestResult test_mart_clown_reached_when_he_stays(Logger& logger){
+    const StoryWorld world = clown_world();
+    std::string out;
+    size_t runs = 0;
+    for (const auto& [row, start] : {std::pair<std::string, TilePos>{"00.05b", {56, 36}}, {"00.05c", {56, 31}}}){
+        const WanderWaitPlan plan = wander_wait_plan(story_step(row, "mart_clown"));
+        for (const TilePos& clown : clown_starts(start)){
+            runs++;
+            const WanderWaitResult result = run_wait(world, start, clown, 1, plan, true);
+            if (result.end != WanderWaitEnd::TALKED || result.at != plan.exit){
+                out += std::format("\n  {} with the clown staying on {}: ended {} on {}.", row,
+                    Pokemon::to_string(clown), (int)result.end, Pokemon::to_string(result.at));
             }
         }
     }
@@ -192,6 +217,8 @@ private:
 const WanderWaitCase WANDER_WAIT_CASES[] = {
     {.input = {"Wander wait: the Mart clown is reached from column 56 wherever he starts (00.05b, 00.05c)",
         test_mart_clown_reached_from_column_56}, .expectation = {}},
+    {.input = {"Wander wait: the Mart clown is reached on whichever tile he stays (lab-B 2026-11-12, column 54)",
+        test_mart_clown_reached_when_he_stays}, .expectation = {}},
     {.input = {"Wander wait: the Mart clown's first stand tile is where the simulation meets him most",
         test_mart_clown_first_stand}, .expectation = {}},
 };
