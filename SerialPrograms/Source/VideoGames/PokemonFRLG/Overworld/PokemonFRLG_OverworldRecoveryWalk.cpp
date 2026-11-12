@@ -133,7 +133,7 @@ BikeTap console_bike_tap(
 //  An open leg on the Bicycle, a tap at a time (count_bike_taps()).
 StepWalk walk_bike_taps(
     ConsoleHandle& console, ProControllerContext& context,
-    const RouteStep& step, const OverworldInterruptSet& interrupts
+    const RouteStep& step, const OverworldInterruptSet& interrupts, PlayerGender player
 ){
     StepWalk out{std::nullopt, current_time(), false, false};
     const OverworldInterrupts& watched = step.wild ? interrupts.wild : interrupts.other;
