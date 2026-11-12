@@ -46,19 +46,20 @@ inline const std::string SURF_VARIANT = "surf";
 struct FlyPlan{
     size_t slot = 0;
     //  The Fly user's species ("pidgey"), when the step names it instead
-    //  of a slot: fly_slot() finds its slot in the party.
+    //  of a slot: party_slot() finds its slot in the party.
     std::string species = {};
     size_t menu_row = 1;
     //  In kanto_fly_towns().
     size_t town = 0;
+
+    //  The party slot to fly with: `slot`, or the first member `reader`
+    //  reads as `species`; nothing if none does.
+    std::optional<size_t> party_slot(const MemberReader& reader) const;
 };
 
 //  The fly step's choices, or nothing if `step` isn't one or names no town
 //  Fly goes to.
 std::optional<FlyPlan> parse_fly_step(const Pokemon::StoryStep& step);
-//  The party slot `plan` flies with: its slot, or the first member
-//  `reader` reads as its species; nothing if none does.
-std::optional<size_t> fly_slot(const FlyPlan& plan, const MemberReader& reader);
 //  The way a surf step faces the water, or nothing if it isn't one.
 std::optional<Pokemon::Direction> parse_surf_step(const Pokemon::StoryStep& step);
 //  Whether `step` is one of this file's steps.

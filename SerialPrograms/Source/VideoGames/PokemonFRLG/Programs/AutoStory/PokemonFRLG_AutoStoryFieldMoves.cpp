@@ -60,11 +60,11 @@ std::optional<FlyPlan> parse_fly_step(const StoryStep& step){
     return FlyPlan{.slot = *slot, .species = species == nullptr ? "" : *species, .menu_row = *menu_row, .town = *index};
 }
 
-std::optional<size_t> fly_slot(const FlyPlan& plan, const MemberReader& reader){
-    if (plan.species.empty()){
-        return plan.slot;
+std::optional<size_t> FlyPlan::party_slot(const MemberReader& reader) const{
+    if (species.empty()){
+        return slot;
     }
-    return find_party_species(reader, plan.species);
+    return find_party_species(reader, species);
 }
 
 std::optional<Direction> parse_surf_step(const StoryStep& step){
@@ -188,7 +188,7 @@ std::optional<Pokemon::Outcome> run_field_move_step(
         return std::nullopt;
     }
     const FlyTown& town = kanto_fly_towns()[plan->town];
-    const std::optional<size_t> slot = fly_slot(*plan, console_member_reader(console, context, language));
+    const std::optional<size_t> slot = plan->party_slot(console_member_reader(console, context, language));
     if (!slot){
         console.log(std::format("Story: no {} read in the party to Fly with.", plan->species), COLOR_RED);
         return Pokemon::outcome_failed("fly_no_member", plan->species);

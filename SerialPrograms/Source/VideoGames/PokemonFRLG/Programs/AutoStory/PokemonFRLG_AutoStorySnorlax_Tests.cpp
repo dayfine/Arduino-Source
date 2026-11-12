@@ -178,9 +178,9 @@ UnitTestResult test_fly_finds_pidgey(){
             return MemberInfo{.species = species[slot], .level = 30};
         });
     };
-    if (fly_slot(plan, party({"blastoise", "oddish", "pidgey", "eevee"})) != size_t(2)
-        || fly_slot(plan, party({"blastoise", "pidgey"})) != size_t(1)
-        || fly_slot(plan, party({"blastoise", "oddish"})).has_value()
+    if (plan.party_slot(party({"blastoise", "oddish", "pidgey", "eevee"})) != size_t(2)
+        || plan.party_slot(party({"blastoise", "pidgey"})) != size_t(1)
+        || plan.party_slot(party({"blastoise", "oddish"})).has_value()
     ){
         return "11.01: the Fly doesn't find the Pidgey's slot as the party reads it.";
     }
