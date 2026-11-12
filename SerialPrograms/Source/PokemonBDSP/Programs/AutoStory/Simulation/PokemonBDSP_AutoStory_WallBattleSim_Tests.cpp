@@ -580,6 +580,8 @@ private:
 };
 
 //  Where the walk from (46, 27) past the greeter's talks went wrong, or "".
+//  It walks to the Poketch Company's clown, as on lab-B, on the plaza
+//  ground of 00.05c's walk to the president (the old walk's, unchanged).
 std::string walk_open_leg_talks(Logger& logger, const OpenLegTalkInput& input){
     const StoryStep* step = nullptr;
     for (const StoryCheckpoint& row : story_checkpoints()){
@@ -592,8 +594,6 @@ std::string walk_open_leg_talks(Logger& logger, const OpenLegTalkInput& input){
         return "00.05c beside_the_president: not in the table, or no JubilifeCity world.";
     }
     const TilePos start = story_to_world(*world, "JubilifeCity", {46, 27});
-    //  The walk south then west to the Poketch Company's clown it was on
-    //  lab-B, on 00.05c's plaza ground (the president's walk has the same).
     const TilePos target = story_to_world(*world, "JubilifeCity", {15, 19});
     GridSim sim({.world = world, .trainers = {}, .triggers = {}}, start, Direction::SOUTH, true);
     size_t talks = 0;
