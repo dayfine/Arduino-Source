@@ -227,7 +227,7 @@ SimWalk walk_on_sim(const SimRoute& route, bool stick_turns){
     GridSimRouteIO sim_io(sim, out.notes);
     StickTurnIO stick_io(sim_io);
     RouteIO& io = stick_turns ? static_cast<RouteIO&>(stick_io) : sim_io;
-    RouteTrainers trainers{story_trainers(*route.world), [&sim](const std::string&){ sim.end_dialogue(); }};
+    RouteTrainers trainers{story_trainers(*route.world), [&sim](const std::string&){ sim.end_dialogue(); return true; }};
     const std::vector<TilePos>& targets = route.targets;
     std::vector<TilePos> avoid = wandering_hazards(*route.world);
     std::erase_if(avoid, [&](const TilePos& pos){
@@ -425,8 +425,8 @@ public:
     virtual RouteIO& route() override{
         return m_route;
     }
-    virtual void fight(const std::string& trainer) override{
-        unsupported("a fight with " + trainer);
+    virtual bool fight(const std::string& trainer) override{
+        return unsupported("a fight with " + trainer);
     }
     virtual void walk_until_stopped(Direction direction, size_t tiles, const std::string& label) override{
         m_sim.tap(direction, ROUTE_TURN_TAP, false);
@@ -437,8 +437,7 @@ public:
         }
     }
     virtual bool run_until_map(Direction, Milliseconds, const std::string& map, const std::string&) override{
-        unsupported("a run onto " + map);
-        return false;
+        return unsupported("a run onto " + map);
     }
     virtual WarpSeen run_into_door(Direction, bool, Milliseconds, Milliseconds, const std::string&) override{
         unsupported("a run into a door");
@@ -453,8 +452,9 @@ public:
     }
 
 private:
-    void unsupported(const std::string& what){
+    bool unsupported(const std::string& what){
         m_route.note(what + " is not simulated here.", RouteNote::FAILURE);
+        return false;
     }
 
     GridSim& m_sim;
@@ -717,7 +717,7 @@ UnitTestResult test_wandering_npc_routes_multi_seed(Logger& logger){
             GridSim sim({.world = world, .trainers = story_trainers(*world), .wanderers = {hiker}}, start, Direction::NORTH, true);
             std::vector<std::string> notes;
             GridSimRouteIO sim_io(sim, notes);
-            RouteTrainers trainers{story_trainers(*world), [&sim](const std::string&){ sim.end_dialogue(); }};
+            RouteTrainers trainers{story_trainers(*world), [&sim](const std::string&){ sim.end_dialogue(); return true; }};
             const auto result = walk_route(sim_io, *world, {start}, trainers, {
                 .goal = [&](const TilePos& pos){ return pos == target; },
                 .label = "01.03 above_the_mine",
@@ -751,7 +751,7 @@ UnitTestResult test_wandering_npc_wait_clearance(Logger& logger){
     GridSim sim({.world = world, .trainers = {}, .wanderers = {hiker}}, start, Direction::NORTH, true);
     std::vector<std::string> notes;
     GridSimRouteIO sim_io(sim, notes);
-    RouteTrainers trainers{{}, [&sim](const std::string&){ sim.end_dialogue(); }};
+    RouteTrainers trainers{{}, [&sim](const std::string&){ sim.end_dialogue(); return true; }};
     const auto result = walk_route(sim_io, *world, {start}, trainers, {
         .goal = [&](const TilePos& pos){ return pos == target; },
         .label = "walk_through_hiker",
@@ -804,7 +804,7 @@ UnitTestResult test_wandering_npc_oreburgh_north_multi_seed(Logger& logger){
             GridSim sim({.world = world, .trainers = story_trainers(*world), .wanderers = {hiker}}, start, Direction::NORTH, true);
             std::vector<std::string> notes;
             GridSimRouteIO sim_io(sim, notes);
-            RouteTrainers trainers{story_trainers(*world), [&sim](const std::string&){ sim.end_dialogue(); }};
+            RouteTrainers trainers{story_trainers(*world), [&sim](const std::string&){ sim.end_dialogue(); return true; }};
             const auto result = walk_route(sim_io, *world, {start}, trainers, {
                 .goal = [&](const TilePos& pos){ return pos == target; },
                 .label = "01.03 oreburgh_north",
@@ -854,7 +854,7 @@ UnitTestResult test_wall_leg_check_at_wall_short_distance_safeguard(Logger& logg
     GridSim sim({.world = &world}, start, Direction::EAST, true);
     std::vector<std::string> notes;
     StalledWallLegRouteIO sim_io(sim, notes);
-    RouteTrainers trainers{{}, [](const std::string&){}};
+    RouteTrainers trainers{{}, [](const std::string&){ return true; }};
     try{
         walk_route(sim_io, world, {start}, trainers, {
             .goal = [&](const TilePos& pos){ return pos == target; },
@@ -917,7 +917,7 @@ UnitTestResult test_stranger_stops_a_wall_leg_early(Logger& logger){
     GridSim sim({.world = world, .trainers = {}, .wanderers = {person}}, start, Direction::WEST, true);
     std::vector<std::string> notes;
     PushingRouteIO sim_io(sim, notes, 1000ms);
-    RouteTrainers trainers{{}, [&sim](const std::string&){ sim.end_dialogue(); }};
+    RouteTrainers trainers{{}, [&sim](const std::string&){ sim.end_dialogue(); return true; }};
     std::vector<TilePos> believed;
     try{
         believed = walk_route(sim_io, *world, {start}, trainers, {

@@ -149,7 +149,7 @@ uint64_t mean_brightness(const ImageViewRGB32& screen){
 
 // Fights a trainer whose dialogue has opened, with whatever starter we
 // have. Someone who only talks leaves no battle to fight.
-void fight_route_trainer(VideoStream& stream, ProControllerContext& context, const std::string& name){
+bool fight_route_trainer(VideoStream& stream, ProControllerContext& context, const std::string& name){
     pbf_mash_button(context, BUTTON_B, 5000ms);
     context.wait_for_all_requests();
     BattleMenuWatcher battle_menu(BattleType::TRAINER, COLOR_YELLOW);
@@ -158,13 +158,14 @@ void fight_route_trainer(VideoStream& stream, ProControllerContext& context, con
         stream.log("[Route] " + name + ": no battle followed the talk.");
         pbf_mash_button(context, BUTTON_B, 2000ms);
         context.wait_for_all_requests();
-        return;
+        return false;
     }
     fight_trainer(stream, context, name);
     context.wait_for_all_requests();
     // The next trainer may be a few tiles on: check HP now. With no
     // Potion in the Bag this only looks.
     use_potion_first_pokemon(stream, context, 0.8);
+    return true;
 }
 
 bool sign_text_matches(const std::string& text, const std::string& key){

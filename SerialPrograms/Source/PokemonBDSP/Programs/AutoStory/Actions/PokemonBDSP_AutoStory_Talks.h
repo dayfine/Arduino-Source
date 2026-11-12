@@ -52,8 +52,9 @@ bool talk_or_fight(
 
 //  Fights a trainer whose dialogue has opened, with whatever starter we
 //  have, then a Potion if HP is under half. Someone who only talks leaves
-//  no battle to fight. How the story's planned walks fight (RouteTrainerFight).
-void fight_route_trainer(VideoStream& stream, ProControllerContext& context, const std::string& name);
+//  no battle to fight; returns whether a battle followed. How the story's
+//  planned walks fight (RouteTrainerFight).
+bool fight_route_trainer(VideoStream& stream, ProControllerContext& context, const std::string& name);
 
 //  A rough check that we stand in a Pokemon Center: its floor fills the lower
 //  half of the screen with warm yellow, where the gym is grey and routes are

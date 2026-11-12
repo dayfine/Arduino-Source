@@ -96,7 +96,7 @@ WallBattleWalk walk_wall_battle(const std::string& leg, const SimWildBattle& bat
     GridSim sim({.world = &world}, start, Direction::EAST, true);
     WallBattleWalk walk;
     GridSimRouteIO sim_io(sim, walk.notes, {}, {{.label = leg, .direction = Direction::EAST, .battle = battle}});
-    RouteTrainers trainers{{}, [](const std::string&){}};
+    RouteTrainers trainers{{}, [](const std::string&){ return true; }};
     try{
         walk_route(sim_io, world, {start}, trainers, {
             .goal = [&](const TilePos& pos){ return pos == target; },
@@ -162,8 +162,9 @@ public:
     virtual RouteIO& route() override{
         return m_route;
     }
-    virtual void fight(const std::string& trainer) override{
+    virtual bool fight(const std::string& trainer) override{
         unsupported("a fight with " + trainer);
+        return false;
     }
     virtual void walk_until_stopped(Direction, size_t, const std::string& label) override{
         unsupported(label + ": a walk until stopped");
@@ -388,6 +389,7 @@ std::string walk_past_the_greeter(Logger& logger, size_t most_talks){
         if (talks < most_talks){
             arm();
         }
+        return false;
     }};
     std::vector<TilePos> believed;
     try{
@@ -479,6 +481,7 @@ std::string walk_past_the_talker(Logger& logger, const TalkerInput& input){
     size_t presses = 0;
     RouteTrainers trainers{{}, [&](const std::string&){
         press_through(sim, presses, input.presses);
+        return false;
     }};
     std::vector<TilePos> believed;
     try{
@@ -517,6 +520,7 @@ private:
 const TalkerCase TALKER_SIM_CASES[] = {
     {.input = {.name = "outlasts a press-through, then she walks off", .presses = 3, .stands = false}, .expectation = {.arrives = true}},
     {.input = {.name = "outlasts a press-through, and she stands on the leg (lab-B, 2026-11-12 04:58)", .presses = 3, .stands = true}, .expectation = {.arrives = true}},
+    {.input = {.name = "ends in the fight, and she stands on the leg (lab-B, 2026-11-12 06:12)", .presses = 1, .stands = true}, .expectation = {.arrives = true}},
 };
 
 } // namespace

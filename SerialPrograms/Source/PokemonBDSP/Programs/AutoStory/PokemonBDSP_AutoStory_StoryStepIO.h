@@ -63,7 +63,8 @@ public:
     virtual RouteIO& route() = 0;
     //  Fights a trainer whose dialogue has opened (fight_route_trainer()):
     //  Route 204's Twins as a pair (01.10), everyone else alone.
-    virtual void fight(const std::string& trainer) = 0;
+    //  Returns whether a battle followed.
+    virtual bool fight(const std::string& trainer) = 0;
     //  walk_until_stopped(): `direction` until something stops us, for at
     //  most `tiles` tiles' time. Fails on a door or a dialogue.
     virtual void walk_until_stopped(Pokemon::Direction direction, size_t tiles, const std::string& label) = 0;
@@ -100,7 +101,7 @@ public:
     virtual RouteIO& route() override{
         return m_route;
     }
-    virtual void fight(const std::string& trainer) override;
+    virtual bool fight(const std::string& trainer) override;
     virtual void walk_until_stopped(Pokemon::Direction direction, size_t tiles, const std::string& label) override;
     virtual bool run_until_map(Pokemon::Direction direction, Milliseconds limit, const std::string& map, const std::string& label) override;
     virtual WarpSeen run_into_door(Pokemon::Direction direction, bool run, Milliseconds timeout = Milliseconds(12000),

@@ -685,11 +685,11 @@ LegNext RouteWalker::check_at_wall(LegWalk& walk, size_t walked_tiles, size_t ex
         //  tiles from Platinum's, r242a), and a leg to a wall ends at its
         //  wall however far it got.
         m_io.note(walk.label + ": a trainer stopped us on the way; battling.", RouteNote::STATUS);
-        m_trainers.fight("a trainer on the way");
-        if (heard_out_a_talk(walk.label)){
-            //  No battle: someone who only talks, and may stand in the way
-            //  (00.05c's Wonder Station woman, lab-B 2026-11-12 04:58: the
-            //  walk on ran into her).
+        const bool battled = m_trainers.fight("a trainer on the way");
+        if (heard_out_a_talk(walk.label) || !battled){
+            //  No battle, seen in the fight or after: someone who only talks and may stand in
+            //  the way (00.05c's Wonder Station woman, lab-B 2026-11-12: at 04:58 the walk on
+            //  ran into her; at 06:12 her talk had ended in the fight and the walk on restarted it).
             std::vector<TilePos> stopped = talk_stop_tiles(walk, walked_tiles == SIZE_MAX ? SIZE_MAX : walked_tiles + check.moved_chunks);
             count_unexplained_talk(walk.label, stopped);
             return replan_after_talk(walk, std::move(stopped));
@@ -944,8 +944,8 @@ LegNext RouteWalker::unknown_trainer(LegWalk& walk, const std::vector<std::vecto
     }
     count_unexplained_talk(walk.label, anywhere);
     m_io.note(m_plan.label + ": a trainer the map lacks stopped us; fighting.", RouteNote::STATUS);
-    m_trainers.fight("unknown trainer");
-    if (heard_out_a_talk(walk.label)){
+    const bool battled = m_trainers.fight("unknown trainer");
+    if (heard_out_a_talk(walk.label) || !battled){
         return replan_after_talk(walk, std::move(anywhere));
     }
     if (walk.planned.leg.ends_at_wall){
