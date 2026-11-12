@@ -57,7 +57,7 @@ int step_along(VideoStream& stream, ProControllerContext& context, int east, con
     const WalkResult result = walk_tiles_dpad(stream, context, run_from_wild_battle, {east > 0 ? 1.0 : -1.0, 0}, 1, label);
     const std::optional<int> moved = wander_row_step(result, east);
     if (!moved){
-        fail_step(stream, label + ": " + walk_stop_name(result.stop) + " instead of a step along the row.");
+        fail_step(stream, std::format("{}: {} instead of a step along the row.", label, walk_stop_name(result.stop)));
     }
     return *moved;
 }
@@ -93,6 +93,16 @@ Pokemon::Outcome talk_to_wanderer(StoryExecutor& executor, Pokemon::RunState&, c
 
 } // namespace
 
+
+std::optional<int> wander_row_step(const WalkResult& result, int east){
+    switch (result.stop){
+    case WalkStop::TRANSITION:
+    case WalkStop::DIALOG:
+        return std::nullopt;
+    default:
+        return result.moved_chunks > 0 ? east : 0;
+    }
+}
 
 void add_jubilife_events(StoryEvents& events){
     events.emplace("talk_to_wanderer", talk_to_wanderer);

@@ -13,13 +13,11 @@
 #define PokemonAutomation_PokemonBDSP_AutoStory_Talks_H
 
 #include <cstdint>
-#include <optional>
 #include <string>
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/Tools/VideoStream.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "Pokemon/Navigation/Pokemon_Grid.h"
-#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkResult.h"
 #include "PokemonBDSP_AutoStory_Battle.h"
 
 namespace PokemonAutomation{
@@ -98,12 +96,6 @@ DialogueRead talk_walking(VideoStream& stream, ProControllerContext& context, Po
 //  the screen (a sign's may be green, not a dialogue's), what OCR reads
 //  in it, and whether B closed it.
 DialogueRead read_sign(VideoStream& stream, ProControllerContext& context, Pokemon::Direction facing, const std::string& label);
-//  A one-tile step along the row below a wanderer, `east` +1 or -1, from
-//  its walk: the tiles it moved east (0 when he or a wall blocked it), or
-//  none when it left the row: through a door, into a dialogue. 00.05c
-//  (2026-11-11): a step's fade went unread and the search went on indoors,
-//  so the next checkpoint saved in the Poketch Company's lobby.
-std::optional<int> wander_row_step(const WalkResult& result, int east);
 
 
 

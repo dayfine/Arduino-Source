@@ -10,6 +10,7 @@
  */
 
 #include <chrono>
+#include <format>
 #include <functional>
 #include <optional>
 #include <string>
@@ -26,11 +27,11 @@
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_StoryLanguage.h"
 #include "PokemonBDSP_AutoStory_BattleMoves.h"
 #include "PokemonBDSP_AutoStory_Center.h"
+#include "PokemonBDSP_AutoStory_Events.h"
 #include "PokemonBDSP_AutoStory_IntroProbe.h"
 #include "PokemonBDSP_AutoStory_IntroSteps.h"
 #include "PokemonBDSP_AutoStory_LitDoorway.h"
 #include "PokemonBDSP_AutoStory_NewGame.h"
-#include "PokemonBDSP_AutoStory_Talks.h"
 #include "PokemonBDSP_AutoStory_Actions_Tests.h"
 
 namespace PokemonAutomation{
@@ -461,7 +462,7 @@ UnitTestResult test_wander_row_step(Logger&){
         result.stop = c.stop;
         result.moved_chunks = c.moved;
         if (wander_row_step(result, c.east) != c.expected){
-            return std::string(c.name) + ": wrong step.";
+            return std::format("{}: wrong step.", c.name);
         }
     }
     return true;
