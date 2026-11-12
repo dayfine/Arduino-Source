@@ -112,6 +112,23 @@ std::string detour_error(const StoryWorld& world, const std::vector<TilePos>& st
 }
 
 
+//  The golden test's lines for one planned ROUTE: a header, then each leg
+//  with the tiles it may end on.
+void add_golden_lines(
+    const StoryWorld& world, const Pose& from, const Pose& goal, const StoryStep& step,
+    const std::vector<PlannedLeg>& plan, std::vector<std::string>& golden
+){
+    golden.push_back(std::format("{} costs={} from{} to{}", step.name, step.action.empty() ? "default" : step.action,
+        describe(from.map, Pokemon::tiles_of(from)), describe(goal.map, Pokemon::tiles_of(goal))));
+    for (const PlannedLeg& leg : plan){
+        std::string line = std::format("  {} ->", to_string(leg.leg));
+        for (const TilePos& pos : leg.after){
+            line += std::format(" {}", describe(world, pos));
+        }
+        golden.push_back(line);
+    }
+}
+
 //  A ROUTE step from `from`, planned as StoryExecutor::walk_to() walks it.
 Walked plan_route(const Pose& from, const StoryStep& step){
     const GridPose& target = story_arg<GridPose>(step.args, "target");
@@ -146,15 +163,7 @@ Walked plan_route(const Pose& from, const StoryStep& step){
     for (const PlannedLeg& leg : *plan){
         walked.plan += " " + to_string(leg.leg);
     }
-    walked.golden.push_back(std::format("{} costs={} from{} to{}", step.name, step.action.empty() ? "default" : step.action,
-        describe(from.map, Pokemon::tiles_of(from)), describe(goal.map, Pokemon::tiles_of(goal))));
-    for (const PlannedLeg& leg : *plan){
-        std::string line = std::format("  {} ->", to_string(leg.leg));
-        for (const TilePos& pos : leg.after){
-            line += std::format(" {}", describe(*world, pos));
-        }
-        walked.golden.push_back(line);
-    }
+    add_golden_lines(*world, from, goal, step, *plan, walked.golden);
     const std::string detour = detour_error(*world, start, at_goal, *plan);
     if (!detour.empty()){
         return {std::nullopt, step.name + ": " + detour, walked.plan};
