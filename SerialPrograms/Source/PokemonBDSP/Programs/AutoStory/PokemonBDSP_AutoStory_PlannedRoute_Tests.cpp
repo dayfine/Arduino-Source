@@ -497,6 +497,78 @@ UnitTestResult test_never_moved_plans_from_the_start(Logger& logger){
     return replan.empty() ? UnitTestResult(true) : UnitTestResult(replan);
 }
 
+//  lab-B 2026-11-12 01:22 (00.05c below_the_company_clown): an open leg
+//  west was blocked by someone the map lacks, and the taps after the wait
+//  opened their talk (the Global Wonder Station's woman). Taken for a
+//  trainer, the talk was "fought", no battle followed, and the replans
+//  walked into her again until the third talk failed the step. Whoever
+//  talks as we tap on after a block is the one in the way: their tile is
+//  marked, and the walk plans again from where it stopped.
+UnitTestResult test_open_leg_blocker_talks(Logger& logger){
+    Script script{.steps = {
+        press_step("D-pad west 50 ms x1"),
+        walk_step("6 taps: T: west 6 (open)", WalkStop::BLOCKED, 2000ms, 2),
+        press_step("wait 2500 ms x1"),
+        walk_step("4 taps: T: west 6 (open): the rest", WalkStop::DIALOG, 800ms, 0),
+    }};
+    //  West along Route 202's row 5, as test_open_leg_known_trainer() walks
+    //  it, with no trainer: the one in the way stands on (27, 5).
+    ScriptedWalk walk;
+    try{
+        walk = walk_script(route202_world(), {30, 5}, {24, 5}, {}, script);
+    }catch (const ScriptMismatch&){
+        //  The walk after the replan is not scripted.
+    }
+    for (const std::string& note : script.notes){
+        logger.log(note);
+    }
+    if (!walk.failure.empty()){
+        return "failed: " + walk.failure;
+    }
+    if (script.next != script.steps.size()){
+        return script_left(script);
+    }
+    const auto marked = std::find_if(script.notes.begin(), script.notes.end(), [](const std::string& note){
+        return note.find("marked it") != std::string::npos && note.find("(27, 5)") != std::string::npos;
+    });
+    if (marked == script.notes.end()){
+        return "the tile of whoever talked, (27, 5), was not marked.";
+    }
+    const std::string replan = check_replan_from(script, {"Route 202 (28, 5)"});
+    return replan.empty() ? UnitTestResult(true) : UnitTestResult(replan);
+}
+
+//  lab-B 2026-11-12 01:55 (00.05c below_the_company_clown, again): with
+//  the woman who talked marked at (45, 24), the plan from (46, 24) and the
+//  tile behind it began "west 1 (to wall)" against her. Walking into her
+//  opened her talk again, which was fought as a trainer, and the walk on
+//  ran out of time short of the "wall". A person is no wall: the walk after
+//  the replan must not walk to a wall into the tile it marked.
+UnitTestResult test_marked_talker_is_no_wall(Logger& logger){
+    Script script{.steps = {
+        press_step("D-pad west 50 ms x1"),
+        walk_step("6 taps: T: west 6 (open)", WalkStop::BLOCKED, 2000ms, 2),
+        press_step("wait 2500 ms x1"),
+        walk_step("4 taps: T: west 6 (open): the rest", WalkStop::DIALOG, 800ms, 0),
+    }};
+    std::string after_replan;
+    try{
+        walk_script(route202_world(), {30, 5}, {24, 5}, {}, script);
+    }catch (const ScriptMismatch& mismatch){
+        after_replan = mismatch.message;
+    }
+    for (const std::string& note : script.notes){
+        logger.log(note);
+    }
+    if (script.next != script.steps.size()){
+        return script_left(script);
+    }
+    if (after_replan.find("\"wall: ") != std::string::npos && after_replan.find("west") != std::string::npos){
+        return "after the replan the walk went to a wall west, into the one who talked: " + after_replan;
+    }
+    return UnitTestResult(true);
+}
+
 //  A leg to the wall two tiles away that runs out of time after one tile
 //  (one chunk moved): someone stands in it, as Route 204's youngster did on
 //  01.08's "west 2 (to wall)" (lab-B 2026-11-08). The check at the wall
@@ -530,6 +602,35 @@ UnitTestResult test_short_leg_a_tile_short_is_not_arrived(Logger&){
     return replanned ? UnitTestResult(true) : UnitTestResult("no replan after the stop a tile short.");
 }
 
+
+//  A leg to a wall 8 tiles away that stops far later than 8 tiles take: the
+//  player pushed against someone on the way, and the time counts 18 tiles
+//  (lab-B 2026-11-11 21:00, 00.05b: "east 8 (to wall)" stopped after
+//  2800 ms against the boy below the Mart, about 5 tiles in, and the route
+//  went on from the wall). Not the wall: plan again from every tile of the
+//  leg, and a second leg to the wall pins it.
+UnitTestResult test_wall_leg_held_up_is_not_at_its_wall(Logger&){
+    const StoryWorld corridor = make_world({"###########", "#.........#", "###########"});
+    Script script{.steps = {
+        walk_step("wall: T: east 8 (to wall)", WalkStop::BLOCKED, 3930ms, 5),
+        walk_step("wall: T: east 7 (to wall)", WalkStop::BLOCKED, 1450ms, 1),
+        answer_step("dialog within 500 ms", false),
+    }};
+    ScriptedWalk walk;
+    try{
+        walk = walk_script(corridor, {1, 1}, {9, 1}, {}, script);
+    }catch (const ScriptMismatch& e){
+        return e.message;
+    }
+    if (!walk.failure.empty()){
+        return "failed: " + walk.failure;
+    }
+    if (walk.at != std::vector<TilePos>{{9, 1}}){
+        return "did not arrive at (9, 1).";
+    }
+    const std::string left = script_left(script);
+    return left.empty() ? UnitTestResult(true) : UnitTestResult(left);
+}
 
 struct PlannedRouteInput{
     std::string name;
@@ -579,6 +680,14 @@ const PlannedRouteCase PLANNED_ROUTE_CASES[] = {
         .expectation = {},
     },
     {
+        .input = {"someone in the way who talks is marked, not fought (lab-B 2026-11-12, 00.05c)", test_open_leg_blocker_talks},
+        .expectation = {},
+    },
+    {
+        .input = {"a marked talker is no wall for the replan (lab-B 2026-11-12, 00.05c)", test_marked_talker_is_no_wall},
+        .expectation = {},
+    },
+    {
         .input = {"a person a tile ahead on a short leg is waited out", test_short_leg_waits_for_the_way},
         .expectation = {},
     },
@@ -588,6 +697,10 @@ const PlannedRouteCase PLANNED_ROUTE_CASES[] = {
     },
     {
         .input = {"a wall leg that never moved plans from its start", test_never_moved_plans_from_the_start},
+        .expectation = {},
+    },
+    {
+        .input = {"a wall leg held up on the way is not at its wall (lab-B 2026-11-11 21:00)", test_wall_leg_held_up_is_not_at_its_wall},
         .expectation = {},
     },
 };

@@ -9,7 +9,8 @@
  *  Dawn's catching tutorial and the catch); the rest do what the shared
  *  steps cannot, as they ran on the console: the Poke Mart lady's Potions
  *  and the stairs into Jubilife (00.04c, 00.04d), a clown who wanders
- *  (00.05b), the Gym's tries from the Pokemon Center (01.04) and Rock Smash
+ *  (00.05b and 00.05c), the Poketch check (00.05c, 01.01), the Gym's
+ *  tries from the Pokemon Center (01.04) and Rock Smash
  *  (01.09). Each fails by throwing, with a screenshot; the executor turns
  *  that into a failed step.
  *
@@ -24,8 +25,12 @@
 
 #include <functional>
 #include <map>
+#include <optional>
 #include <string>
+#include <utility>
+#include "Pokemon/Navigation/Pokemon_MapData.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryExecutor.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkResult.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -56,6 +61,25 @@ void add_jubilife_events(StoryEvents& events);
 void add_oreburgh_events(StoryEvents& events);
 //  Populates Route 204-area story event handlers.
 void add_route204_events(StoryEvents& events);
+
+//  A one-tile step along the row below a wanderer (00.05b's clowns), `east`
+//  +1 or -1, from its walk: the tiles it moved east (0 when he or a wall
+//  blocked it), or none when it left the row: through a door, into a
+//  dialogue. 00.05c (2026-11-11): a step's fade went unread and the search
+//  went on indoors, so the next checkpoint saved in the Poketch Company.
+std::optional<int> wander_row_step(const WalkResult& result, int east);
+//  Whether asking north from `stand` on `map` would talk to a sign or to
+//  someone who stands still, not the wanderer whose home is
+//  `wanderer_home` (00.05b, lab-B 2026-11-11: the Poketch Company clown's
+//  talk was "answered" in round 5 by another line).
+bool asks_someone_else(const Pokemon::MapData& map, Pokemon::TilePos stand, Pokemon::TilePos wanderer_home);
+//  The box the Mart clown wanders, round (55, 33): PokemonSimulation's
+//  data/games/bdsp/maps/jubilife_city.json (decomp range 1). The story map
+//  leaves him out of its wanderers (the decomp hides him behind a flag).
+Pokemon::TileBox jubilife_mart_clown_box();
+//  The tiles 00.05c may start on: against the Poketch Company's sign
+//  (00.05b's end), and on the street east (its own end, 01.01's start).
+std::pair<Pokemon::TilePos, Pokemon::TilePos> jubilife_start_tiles();
 
 
 

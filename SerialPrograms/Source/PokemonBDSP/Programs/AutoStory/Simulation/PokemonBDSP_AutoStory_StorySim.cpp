@@ -18,6 +18,7 @@
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkResult.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkScreen.h"
+#include "PokemonBDSP_AutoStory_SimWanderWait.h"
 #include "PokemonBDSP_AutoStory_StorySim.h"
 
 namespace PokemonAutomation{
@@ -281,7 +282,16 @@ void SimKnobRouteIO::check_fade_in(const std::string& label){
 
 WalkResult SimKnobRouteIO::walk_to_wall(const RouteWallWalk& walk){
     check_fade_in(walk.label);
-    return GridSimRouteIO::walk_to_wall(walk);
+    WalkResult result = GridSimRouteIO::walk_to_wall(walk);
+    const TilePos ahead = nearest_tile(m_grid.player().pos).next(walk.direction);
+    const std::vector<SimWanderer>& people = sim_wanderers(m_grid);
+    const bool pushing = std::any_of(people.begin(), people.end(), [&](const SimWanderer& person){
+        return person.pos == ahead;
+    });
+    if (result.stop == WalkStop::BLOCKED && pushing){
+        result.walked += m_knobs.pushing_someone;
+    }
+    return result;
 }
 
 WalkResult SimKnobRouteIO::walk_taps(Direction direction, size_t tiles, const std::string& label){
@@ -436,7 +446,7 @@ bool on_world(const StoryWorld& world, const std::string& map){
 //  (SimWorldKnobs::wander_seed), each with their own seed and start time.
 std::vector<SimWanderer> SimExecutor::wanderers(const StoryWorld& world) const{
     std::vector<SimWanderer> out;
-    if (!m_knobs.wander_seed){
+    if (!m_knobs.wander_seed && m_knobs.standing.empty()){
         return out;
     }
     for (const auto& [map, json] : bdsp_map_json()){
@@ -444,20 +454,22 @@ std::vector<SimWanderer> SimExecutor::wanderers(const StoryWorld& world) const{
             continue;
         }
         for (const auto& object : story_map(map).objects){
-            if (!object.wander){
+            const auto stands = m_knobs.standing.find(object.name);
+            if (!object.wander || (!m_knobs.wander_seed && stands == m_knobs.standing.end())){
                 continue;
             }
-            const uint64_t seed = *m_knobs.wander_seed * 1000003 + out.size() * 7919 + (uint64_t)(object.x * 31 + object.y);
+            const uint64_t seed = m_knobs.wander_seed.value_or(0) * 1000003 + out.size() * 7919 + (uint64_t)(object.x * 31 + object.y);
             const TilePos low = story_to_world(world, map, {object.wander->x0, object.wander->y0});
             const TilePos high = story_to_world(world, map, {object.wander->x1, object.wander->y1});
+            const bool still = stands != m_knobs.standing.end();
             out.push_back({
                 .name = object.name,
                 .box = {.x0 = low.x, .y0 = low.y, .x1 = high.x, .y1 = high.y},
-                .pos = story_to_world(world, map, {object.x, object.y}),
+                .pos = story_to_world(world, map, still ? stands->second : TilePos{object.x, object.y}),
                 .seed = seed,
-                .step_interval = Milliseconds(2000),
+                .step_interval = still ? Milliseconds(0) : Milliseconds(2000),
                 .elapsed = Milliseconds(0),
-                .time_offset = Milliseconds((int64_t)(seed % 2000)),
+                .time_offset = still ? Milliseconds(0) : Milliseconds((int64_t)(seed % 2000)),
             });
         }
     }
@@ -507,6 +519,14 @@ bool SimExecutor::sync(const Pose& pose, const StoryWorld* on){
     if (local && on_grid(player.pos) && std::find(tiles.begin(), tiles.end(), *local) != tiles.end()){
         return true;
     }
+    const std::optional<Pose>& start_at = m_knobs.start_at;
+    if (!m_placed && start_at && start_at->map == pose.map && !Pokemon::tiles_of(*start_at).empty()){
+        m_sim.place(setup(world), story_to_world(*world, pose.map, Pokemon::tiles_of(*start_at).front()), Pokemon::facing_of(pose));
+        m_placed = true;
+        m_misplaced = true;
+        m_logger.log(std::format("[{}] the save leaves the player on {}, off the declared {}.", m_row, to_string(*start_at), to_string(pose)));
+        return true;
+    }
     m_sim.place(setup(world), story_to_world(*world, pose.map, tiles.front()), Pokemon::facing_of(pose));
     m_placed = true;
     return true;
@@ -545,6 +565,7 @@ void SimExecutor::start_scene_at_end(const StoryStep& step){
 }
 
 void SimExecutor::land(const std::string& step){
+    count_coupons(step);
     const auto lands = m_knobs.lands.find(step);
     if (lands == m_knobs.lands.end()){
         return;
@@ -657,11 +678,29 @@ Outcome SimExecutor::stub(){
     return Pokemon::outcome_ok();
 }
 
+void SimExecutor::count_coupons(const std::string& step){
+    static const std::set<std::string> CLOWNS{"mart_clown", "tv_clown", "company_clown"};
+    if (CLOWNS.contains(step) && !m_knobs.talks_without_coupon.contains(step)){
+        m_coupons.insert(step);
+    }
+    if (step == "president"){
+        m_poketch = m_coupons.size() == CLOWNS.size();
+        m_logger.log(std::format("[{}] president: {} coupons, {}.", m_row, m_coupons.size(), m_poketch ? "the Poketch" : "no Poketch"));
+    }
+}
+
 //  The steps that need the console: stubbed, but for the Center's door and
 //  the speeches after a battle.
 StoryBoundActions SimExecutor::sim_actions(){
     const auto stubbed = [this](const StoryStep&, RunState&){
         return stub();
+    };
+    //  Played from where the step before left us, on its map.
+    const auto wait_for_wanderer = [this, stubbed](const StoryStep& step, RunState& state){
+        if (!sync(state.pose)){
+            return stubbed(step, state);
+        }
+        return sim_wait_for_wanderer(m_sim, m_sim.world(), state.pose, step);
     };
     return StoryBoundActions{
         .new_game = stubbed,
@@ -675,7 +714,15 @@ StoryBoundActions SimExecutor::sim_actions(){
             return heal(state, step);
         },
         .save = stubbed,
-        .event = [stubbed](const std::string&) -> Pokemon::StoryActionFunction{
+        .event = [this, stubbed, wait_for_wanderer](const std::string& name) -> Pokemon::StoryActionFunction{
+            if (name == "check_poketch"){
+                return [this](const StoryStep& step, RunState&){
+                    return m_poketch ? Pokemon::outcome_ok() : Pokemon::outcome_failed("no_poketch", step.name + ": no Poketch on the screen.");
+                };
+            }
+            if (name == "wait_for_wanderer"){
+                return wait_for_wanderer;
+            }
             return stubbed;
         },
     };

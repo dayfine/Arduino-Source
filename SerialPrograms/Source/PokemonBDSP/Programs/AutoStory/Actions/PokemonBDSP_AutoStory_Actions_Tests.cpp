@@ -10,6 +10,7 @@
  */
 
 #include <chrono>
+#include <format>
 #include <functional>
 #include <optional>
 #include <string>
@@ -20,12 +21,14 @@
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/Logging/Logger.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryMaps.h"
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_BattleMenuReader.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_StoryLanguage.h"
 #include "PokemonBDSP_AutoStory_BattleMoves.h"
 #include "PokemonBDSP_AutoStory_Center.h"
+#include "PokemonBDSP_AutoStory_Events.h"
 #include "PokemonBDSP_AutoStory_IntroProbe.h"
 #include "PokemonBDSP_AutoStory_IntroSteps.h"
 #include "PokemonBDSP_AutoStory_LitDoorway.h"
@@ -441,6 +444,54 @@ UnitTestResult test_school_lamp(Logger& logger){
 //  no name read, Piplup's Pound at 35 PP and Growl at 22 PP, and the old
 //  "newest move that is not a status move" fallback used Growl until the
 //  training gave up after 25 turns.
+//  A step along the row below the clown: a fade or a dialogue left the row
+//  and fails the talk (00.05c, 2026-11-11: the step's fade was ignored and
+//  the search went on in the Poketch Company's lobby); a step that moved
+//  nothing counts no tile.
+UnitTestResult test_wander_row_step(Logger&){
+    struct Case{ std::string_view name; WalkStop stop; size_t moved; int east; std::optional<int> expected; };
+    const Case cases[] = {
+        {"east step moved", WalkStop::LIMIT, 1, 1, 1},
+        {"west step moved", WalkStop::LIMIT, 1, -1, -1},
+        {"west step blocked by him", WalkStop::LIMIT, 0, -1, 0},
+        {"east step into a wall", WalkStop::BLOCKED, 0, 1, 0},
+        {"east step through a door", WalkStop::TRANSITION, 0, 1, std::nullopt},
+        {"west step into a dialogue", WalkStop::DIALOG, 0, -1, std::nullopt},
+    };
+    for (const Case& c : cases){
+        WalkResult result{};
+        result.stop = c.stop;
+        result.moved_chunks = c.moved;
+        if (wander_row_step(result, c.east) != c.expected){
+            return std::format("{}: wrong step.", c.name);
+        }
+    }
+    return true;
+}
+
+//  00.05b's Poketch Company clown (home (15, 18)): the row below him asks
+//  north from (14..16, 19); from a row low, (13, 20) faces the Company's
+//  sign (13, 19), whose text came first on the console (lab-B 2026-11-11:
+//  "answered" in round 5, and the president gave no Poketch). Such a tile
+//  is skipped; his own home and open tiles are not.
+UnitTestResult test_asks_someone_else(Logger&){
+    const Pokemon::MapData& city = story_map("JubilifeCity");
+    const Pokemon::TilePos home{15, 18};
+    struct Case{ std::string_view name; Pokemon::TilePos stand; bool expected; };
+    const Case cases[] = {
+        {"below his home", {15, 19}, false},
+        {"a tile west, open north", {14, 19}, false},
+        {"a tile east, open north", {16, 19}, false},
+        {"a row low, facing the sign", {13, 20}, true},
+    };
+    for (const Case& c : cases){
+        if (asks_someone_else(city, c.stand, home) != c.expected){
+            return std::format("{}: wrong answer.", c.name);
+        }
+    }
+    return true;
+}
+
 UnitTestResult test_choose_move(Logger&){
     struct Case{ std::string_view name; std::vector<MoveSlot> slots; size_t best; };
     const Case cases[] = {
@@ -588,6 +639,14 @@ const AutoStoryActionsCase AUTO_STORY_ACTIONS_CASES[] = {
     },
     {
         .input = {"battle moves: the pick from names and PP", test_choose_move},
+        .expectation = {},
+    },
+    {
+        .input = {"wanderer talk: a step along the row leaves it only by a fade or a dialogue", test_wander_row_step},
+        .expectation = {},
+    },
+    {
+        .input = {"wanderer talk: no ask from a tile that faces a sign (00.05b, the Poketch Company's sign first)", test_asks_someone_else},
         .expectation = {},
     },
     {

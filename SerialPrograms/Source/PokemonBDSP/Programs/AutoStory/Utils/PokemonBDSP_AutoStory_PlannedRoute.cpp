@@ -18,7 +18,7 @@
 #include "PokemonBDSP_AutoStory_RouteChoice.h"
 #include "PokemonBDSP_AutoStory_CountedWallLeg.h"
 #include "PokemonBDSP_AutoStory_PlannedRoute.h"
-#include "PokemonBDSP_AutoStory_PlannedTalk.h"
+#include "PokemonBDSP_AutoStory_RouteSteps.h"
 #include "PokemonBDSP_AutoStory_WalkDpad.h"
 
 namespace PokemonAutomation{
@@ -88,6 +88,21 @@ std::string map_of(const StoryWorld& maps, const std::vector<TilePos>& tiles){
 } // namespace
 
 
+[[noreturn]] void fail(RouteIO& io, const std::string& message){
+    io.note(message, RouteNote::FAILURE);
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "RouteIO::note() returned from a failure: " + message);
+}
+
+void turn(RouteIO& io, Direction direction){
+    io.note(std::string("[Route] Turning ") + direction_name(direction) + ".", RouteNote::LOG);
+    io.press(route_turn_tap(direction));
+}
+
+RouteInput press_a(RouteInputEnd end){
+    return {.kind = RouteInputKind::BUTTON_A, .direction = Direction::NORTH, .hold = 80ms, .release = 200ms,
+        .count = 1, .end = end};
+}
+
 namespace{
 
 //  Sorted by row, then column, without repeats.
@@ -114,24 +129,6 @@ std::string quoted_list(const std::vector<std::string>& reads){
 Milliseconds wall_limit(const TileLeg& leg){
     const Milliseconds per_tile = route_ms_per_tile(leg.direction, MoveSpeed::WALK);
     return ROUTE_START_DELAY + per_tile * leg.tiles * 5 / 4 + 1000ms;
-}
-
-//  Fails the program with `message` (RouteNote::FAILURE).
-[[noreturn]] void fail(RouteIO& io, const std::string& message){
-    io.note(message, RouteNote::FAILURE);
-    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "RouteIO::note() returned from a failure: " + message);
-}
-
-//  route_turn() through `io`.
-void turn(RouteIO& io, Direction direction){
-    io.note(std::string("[Route] Turning ") + direction_name(direction) + ".", RouteNote::LOG);
-    io.press(route_turn_tap(direction));
-}
-
-//  A press of A, to talk to someone in front of us.
-RouteInput press_a(RouteInputEnd end){
-    return {.kind = RouteInputKind::BUTTON_A, .direction = Direction::NORTH, .hold = 80ms, .release = 200ms,
-        .count = 1, .end = end};
 }
 
 //  A wait for someone walking about to get out of the way.
@@ -164,6 +161,24 @@ bool never_moved(const WalkResult& walk, size_t walked_tiles){
     return walk.stop == WalkStop::BLOCKED && walk.moved_chunks == 0 && walked_tiles == 0;
 }
 
+//  Whether a walk to the wall that stopped took far longer than the tiles
+//  to its nearest wall `nearest` allow, past the walker's slack: two of its
+//  400 ms chunks, or 30% of the tiles' time on a long leg. Something held
+//  it up on the way, and its time no longer counts tiles. On lab-B
+//  (2026-11-11 21:00, 00.05b) "east 8 (to wall)" stopped after 2800 ms
+//  against a boy below the Mart, about 5 tiles in, with 5 moved chunks
+//  where an 8-tile run moves about 3; the time counted 17 tiles, and the
+//  route went on from (56, 34) as if at the wall.
+bool held_up(const WalkResult& walk, size_t nearest, Milliseconds per_tile){
+    if (walk.stop != WalkStop::BLOCKED || walk.wild_battles > 0){
+        return false;
+    }
+    const Milliseconds tiles_time = per_tile * nearest;
+    const Milliseconds slack = std::max<Milliseconds>(800ms, tiles_time * 3 / 10);
+    //  800 ms: the two still chunks that read as stopped (tiles_moved()).
+    return walk.walked > ROUTE_START_DELAY + tiles_time + 800ms + slack;
+}
+
 //  Legs to a wall this many tiles or shorter must walk every tile: a tile
 //  short is someone in the way, not the time count's slack. On lab-B
 //  (2026-11-08, 01.08) Route 204's youngster stopped "west 2 (to wall)"
@@ -184,6 +199,8 @@ enum class LegNext{
     ARRIVED_EARLY,  //  through a warp at the leg's end (walk_route_to_warp())
     SCENE,          //  the next step's scene started (RouteWalkPlan::scene_next)
 };
+//  What stopped a walk where the map has nothing (see mark_blocker()).
+enum class Blocker{ THING, PERSON };
 //  How far past a leg's end a walk that ran on may have gone.
 constexpr size_t WARP_SLIDE_TILES = 2;
 
@@ -248,6 +265,7 @@ private:
     bool finish_interrupted_wall(LegWalk& walk, Milliseconds limit);
     size_t unstick_wall_leg(LegWalk& walk, size_t walked_tiles, size_t nearest);
     LegNext stopped_short_of_wall(LegWalk& walk, size_t walked_tiles);
+    LegNext held_up_on_the_way(const LegWalk& walk, size_t nearest);
     void check_at_wall(LegWalk& walk, size_t walked_tiles = SIZE_MAX, size_t expected_tiles = SIZE_MAX);
     void on_to_wall(LegWalk& walk);
 
@@ -256,6 +274,8 @@ private:
     LegNext interrupted_open_leg(LegWalk& walk);
     void turn_tap(LegWalk& walk);
     LegNext blocked_open_leg(LegWalk& walk, size_t moved);
+    LegNext talking_blocker(LegWalk& walk, size_t moved);
+    LegNext mark_and_replan(LegWalk& walk, size_t moved, Blocker blocker);
 
     //  After each leg.
     void check_banners(LegWalk& walk);
@@ -264,9 +284,9 @@ private:
     LegNext unknown_trainer(LegWalk& walk, const std::vector<std::vector<TilePos>>& paths);
     LegNext known_trainer(LegWalk& walk, const std::vector<std::vector<TilePos>>& paths, const std::vector<size_t>& watching);
 
-    void talk_to_blocker(const std::string& leg_label);
+    Blocker talk_to_blocker(const std::string& leg_label);
     LegNext replan_from(const LegWalk& walk, std::vector<TilePos> stopped, const std::string& why);
-    void mark_blocker(const LegWalk& walk, const std::vector<TilePos>& stopped);
+    void mark_blocker(const LegWalk& walk, const std::vector<TilePos>& stopped, Blocker blocker);
     void mark_tiles_past(const LegWalk& walk, const std::vector<TilePos>& stopped);
 
     RouteIO& m_io;
@@ -416,6 +436,10 @@ LegNext RouteWalker::wall_leg(LegWalk& walk){
             direction_name(leg.direction) + ": " + std::to_string(nearest) + " tiles in " +
             std::to_string(walk.result.walked.count()) + " ms to the wall.", RouteNote::LOG);
     }
+    //  Checked on the first walk only: one after a wait starts part way.
+    if (nearest != SIZE_MAX && walked_tiles >= nearest && held_up(walk.result, nearest, route_ms_per_tile(leg.direction, m_plan.speed))){
+        return held_up_on_the_way(walk, nearest);
+    }
     walked_tiles = unstick_wall_leg(walk, walked_tiles, nearest);
     //  Any stop short of the wall's distance: someone who stays put is
     //  talked to, and the leg is planned again from where we are. Within the
@@ -500,7 +524,7 @@ size_t RouteWalker::unstick_wall_leg(LegWalk& walk, size_t walked_tiles, size_t 
 LegNext RouteWalker::stopped_short_of_wall(LegWalk& walk, size_t walked_tiles){
     //  Someone who stays put: talk to them. A trainer we walked up to from
     //  the side starts the battle this way.
-    talk_to_blocker(walk.label);
+    const Blocker blocker = talk_to_blocker(walk.label);
     //  A walk that never moved is where it began (never_moved()); any other
     //  stop may be a tile either side of the tiles its time counts.
     const size_t last = never_moved(walk.result, walked_tiles) ? 0 : walked_tiles + 1;
@@ -515,7 +539,7 @@ LegNext RouteWalker::stopped_short_of_wall(LegWalk& walk, size_t walked_tiles){
     if (stopped.empty()){
         fail(m_io, walk.label + ": stopped early, and no tile fits.");
     }
-    mark_blocker(walk, stopped);
+    mark_blocker(walk, stopped, blocker);
     if (never_moved(walk.result, walked_tiles)){
         mark_tiles_past(walk, stopped);
     }
@@ -598,6 +622,9 @@ LegNext RouteWalker::open_leg(LegWalk& walk){
             std::to_string(leg.tiles) + " tiles; waiting for the way to clear.", RouteNote::WARNING);
         m_io.press(WAIT_FOR_THE_WAY);
         const WalkResult rest = m_io.walk_taps(leg.direction, leg.tiles - moved, walk.label + ": the rest");
+        if (rest.stop == WalkStop::DIALOG && rest.moved_chunks == 0 && rest.wild_battles == 0){
+            return talking_blocker(walk, moved);
+        }
         moved = std::min(leg.tiles, moved + rest.moved_chunks);
         walk.result.stop = rest.stop;
         walk.result.walked += rest.walked;
@@ -649,14 +676,27 @@ void RouteWalker::turn_tap(LegWalk& walk){
 }
 
 LegNext RouteWalker::blocked_open_leg(LegWalk& walk, size_t moved){
-    talk_to_blocker(walk.label);
+    return mark_and_replan(walk, moved, talk_to_blocker(walk.label));
+}
+
+//  Someone in the way who talks as we tap on after the wait is the one who
+//  blocked us, not a trainer the map lacks (lab-B 2026-11-12, 00.05c).
+LegNext RouteWalker::talking_blocker(LegWalk& walk, size_t moved){
+    m_io.note(walk.label + ": someone in the way talked to us; going round them.", RouteNote::STATUS);
+    m_trainers.fight("someone in the way");
+    return mark_and_replan(walk, moved, Blocker::PERSON);
+}
+
+//  The tiles a blocked open leg may have stopped on after `moved` tiles:
+//  what stopped it goes on the map, and the walk plans again from them.
+LegNext RouteWalker::mark_and_replan(LegWalk& walk, size_t moved, Blocker blocker){
     std::vector<TilePos> stopped;
     for (const TilePos& pos : m_from){
         const std::vector<TilePos> path = leg_path(m_grid, pos, walk.planned.leg.direction, moved);
         stopped.push_back(moved == 0 || path.empty() ? pos : path[std::min(moved, path.size()) - 1]);
     }
     stopped = sorted_unique(std::move(stopped));
-    mark_blocker(walk, stopped);
+    mark_blocker(walk, stopped, blocker);
     if (moved == 0){
         mark_tiles_past(walk, stopped);
     }
@@ -831,25 +871,27 @@ LegNext RouteWalker::known_trainer(LegWalk& walk, const std::vector<std::vector<
 
 
 //  Presses A at whoever stopped the walk; a trainer we walked up to from
-//  the side starts the battle this way.
-void RouteWalker::talk_to_blocker(const std::string& leg_label){
+//  the side starts the battle this way. Whoever talks is a person.
+Blocker RouteWalker::talk_to_blocker(const std::string& leg_label){
     m_io.press(press_a(RouteInputEnd::QUEUED));
     if (m_io.dialog_within(2000ms, COLOR_YELLOW)){
         m_io.note(leg_label + ": someone is in the way; talking to them.", RouteNote::STATUS);
         m_trainers.fight("someone in the way");
+        return Blocker::PERSON;
     }
+    return Blocker::THING;
 }
 
-//  One tile we may stand on: what stopped us is on the next tile, and goes
-//  on our map.
-void RouteWalker::mark_blocker(const LegWalk& walk, const std::vector<TilePos>& stopped){
+//  What stopped us on one tile is on the next; a person's comes off our map: no wall (00.05c).
+void RouteWalker::mark_blocker(const LegWalk& walk, const std::vector<TilePos>& stopped, Blocker blocker){
     if (stopped.size() != 1){
         return;
     }
-    const TilePos blocker = stopped[0].next(walk.planned.leg.direction);
-    m_grid.block(blocker);
-    m_io.note("[Route] " + walk.label + ": something the map lacks is at " +
-        describe(m_maps, blocker) + "; marked it.", RouteNote::WARNING);
+    const TilePos pos = stopped[0].next(walk.planned.leg.direction);
+    const bool person = blocker == Blocker::PERSON;
+    person ? m_grid.uncover(pos) : m_grid.block(pos);
+    m_io.note(std::format("[Route] {}: {} the map lacks is at {}; marked it{}", walk.label, person ? "someone" : "something",
+        describe(m_maps, pos), person ? " (no wall to stop against)." : "."), RouteNote::WARNING);
 }
 
 //  A walk that never moved from several possible tiles: whatever stopped it
@@ -875,6 +917,26 @@ void RouteWalker::mark_tiles_past(const LegWalk& walk, const std::vector<TilePos
         m_io.note("[Route] " + walk.label + ": nothing moved from " + std::to_string(stopped.size()) +
             " possible tiles; marked the tiles past them: " + describe(m_maps, sorted_unique(std::move(marked))) + ".", RouteNote::WARNING);
     }
+}
+
+//  A walk to the wall held up on the way (held_up()): it may have stopped on
+//  any tile of the leg, its first too if no chunk moved. Not the wall: plan
+//  again from all of them, which a leg to a wall brings back to one tile.
+LegNext RouteWalker::held_up_on_the_way(const LegWalk& walk, size_t nearest){
+    std::vector<TilePos> stopped;
+    for (const TilePos& pos : m_from){
+        if (walk.result.moved_chunks == 0){
+            stopped.push_back(pos);
+        }
+        const std::vector<TilePos> path = leg_path(m_grid, pos, walk.planned.leg.direction, nearest);
+        stopped.insert(stopped.end(), path.begin(), path.end());
+    }
+    stopped = sorted_unique(std::move(stopped));
+    if (stopped.empty()){
+        fail(m_io, walk.label + ": held up on the way, and no tile fits.");
+    }
+    return replan_from(walk, std::move(stopped), std::format("held up on the way ({} ms for {} tiles to the wall)",
+        walk.result.walked.count(), nearest));
 }
 
 LegNext RouteWalker::replan_from(const LegWalk& walk, std::vector<TilePos> stopped, const std::string& why){
@@ -915,45 +977,6 @@ RouteEnd walk_route_to_warp(
 }
 
 
-void talk_to_npc(
-    VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
-    const StoryWorld& maps, std::vector<TilePos>& at,
-    RouteTrainers& trainers, const NpcTalk& talk
-){
-    ConsoleRouteIO io(stream, context, escape);
-    talk_to_npc(io, maps, at, trainers, talk);
-}
-
-void talk_to_npc(
-    RouteIO& io, const StoryWorld& maps, std::vector<TilePos>& at,
-    RouteTrainers& trainers, const NpcTalk& talk
-){
-    for (Direction side : talk.sides){
-        const TilePos stand = talk.npc.next(side);
-        if (!standable(maps, stand)){
-            continue;
-        }
-        at = walk_route(io, maps, at, trainers, {
-            .goal = [stand](const TilePos& pos){ return pos == stand; },
-            .label = talk.label,
-            .avoid = {},
-            .costs = route_plan_costs(),
-        });
-        //  Face the NPC: the opposite of the side we stand on.
-        const Direction face =
-            side == Direction::NORTH ? Direction::SOUTH :
-            side == Direction::SOUTH ? Direction::NORTH :
-            side == Direction::EAST ? Direction::WEST : Direction::EAST;
-        turn(io, face);
-        io.press(press_a(RouteInputEnd::DONE));
-        if (io.dialog_within(2000ms, COLOR_CYAN)){
-            io.note(talk.label + ": talking from " + describe(maps, stand) + ".", RouteNote::STATUS);
-            return;
-        }
-        io.note(talk.label + ": nobody answered from " + describe(maps, stand) + "; trying another side.", RouteNote::STATUS);
-    }
-    fail(io, talk.label + ": no side of " + describe(maps, talk.npc) + " started a dialogue.");
-}
 
 namespace{
 

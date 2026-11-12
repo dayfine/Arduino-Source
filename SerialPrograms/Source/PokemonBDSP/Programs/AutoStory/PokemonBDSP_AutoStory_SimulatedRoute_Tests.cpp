@@ -60,7 +60,7 @@ struct RouteFailed{
 //  The console as a small simulator: the player stands on one tile of
 //  `world`, walls and `obstacles` stop them, and every walk and tap moves
 //  them. Fails the case after `max_calls` calls (a walker that loops).
-// code-health: allow public_methods -- a RouteIO fake: the interface's seven overrides plus three test knobs
+// code-health: allow public_methods -- a RouteIO fake: the interface's seven overrides plus four test knobs
 class SimulatedRouteIO : public RouteIO{
 public:
     SimulatedRouteIO(const StoryWorld& world, TilePos at, std::vector<TilePos> obstacles, std::vector<std::string>& notes)
@@ -79,17 +79,10 @@ public:
 
     virtual WalkResult walk_to_wall(const RouteWallWalk& walk) override{
         count_call();
-        const MoveSpeed speed = walk.options.pace == DpadPace::RUN ? MoveSpeed::RUN : MoveSpeed::WALK;
+        const MoveSpeed speed = walk.options.pace == DpadPace::RUN && m_can_run ? MoveSpeed::RUN : MoveSpeed::WALK;
         const Milliseconds per_tile = route_ms_per_tile(walk.direction, speed);
-        if (m_overshoot && walk.limit > ROUTE_START_DELAY){
-            //  A hold timed for n tiles (ROUTE_START_DELAY, then half a
-            //  tile under n) goes on past them until a wall stops it.
-            const size_t tiles = (size_t)((walk.limit - ROUTE_START_DELAY + per_tile / 2) / per_tile);
-            const size_t want = tiles + (tiles * 35 + 99) / 100;
-            const size_t moved = move(walk.direction, want);
-            return {.stop = moved < want ? WalkStop::BLOCKED : WalkStop::LIMIT, .walked = walk.limit,
-                .wild_battles = 0, .moved_chunks = moved};
-        }
+        //  walk_route() walks only legs to a wall here, and a walk to a wall
+        //  ends at the wall: no overshoot (overshoot_timed_holds()).
         const size_t moved = move(walk.direction, SIZE_MAX);
         return {.stop = WalkStop::BLOCKED, .walked = ROUTE_START_DELAY + 800ms + per_tile * moved + per_tile / 2,
             .wild_battles = 0, .moved_chunks = moved};
@@ -101,6 +94,11 @@ public:
     //  moved) and walks to a wall end at the wall, so neither has a fault.
     void overshoot_timed_holds(bool overshoot){
         m_overshoot = overshoot;
+    }
+    //  Before the running shoes, a walk held with B is still a walk: its
+    //  time counts walking tiles, as the walker's plan speed does.
+    void set_can_run(bool can_run){
+        m_can_run = can_run;
     }
     virtual WalkResult walk_taps(Direction direction, size_t tiles, const std::string&) override{
         count_call();
@@ -172,6 +170,7 @@ private:
     size_t m_calls = 0;
     size_t m_walked = 0;
     bool m_overshoot = false;
+    bool m_can_run = true;
 };
 
 StoryWorld jubilife_world(){
@@ -299,6 +298,7 @@ UnitTestResult test_jubilife_center_kids(Logger&){
 //  One ROUTE step of the story table, from where the steps before it end.
 struct StoryRoute{
     std::string name;
+    MoveSpeed speed;
     Pose from;
     Pose goal;
     std::string costs;
@@ -311,7 +311,8 @@ void add_story_route(const std::string& row, const StoryStep& step, std::optiona
     if (step.kind == StoryStepKind::ROUTE){
         const Pose goal = Pokemon::pose_of(Pokemon::story_arg<GridPose>(step.args, "target"));
         if (at){
-            routes.push_back({std::format("{} {}", row, step.name), *at, goal, step.action});
+            const MoveSpeed speed = row > std::string(RUNNING_SHOES_ROW) ? MoveSpeed::RUN : MoveSpeed::WALK;
+            routes.push_back({std::format("{} {}", row, step.name), speed, *at, goal, step.action});
         }
         at = goal;
     }else{
@@ -356,6 +357,7 @@ std::string sweep_story_route(const StoryRoute& route, bool overshoot, std::vect
         std::vector<std::string> notes;
         SimulatedRouteIO io(*world, from, {}, notes);
         io.overshoot_timed_holds(overshoot);
+        io.set_can_run(route.speed == MoveSpeed::RUN);
         RouteTrainers trainers{.sights = story_trainers(*world), .fight = [](const std::string&){}};
         try{
             walk_route(io, *world, start, trainers, {
@@ -363,7 +365,7 @@ std::string sweep_story_route(const StoryRoute& route, bool overshoot, std::vect
                 .label = route.name,
                 .avoid = {},
                 .costs = *costs,
-                .speed = MoveSpeed::WALK,
+                .speed = route.speed,
             });
         }catch (const RouteFailed& e){
             std::string last;
