@@ -22,6 +22,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteInput.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteTalk.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteTiming.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Walk.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkDpad.h"
@@ -29,6 +30,7 @@
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Walks.h"
 #include "PokemonBDSP_AutoStory_WildBattle.h"
 #include "PokemonBDSP_AutoStory_Events.h"
+#include "PokemonBDSP_AutoStory_WanderWait.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -153,6 +155,85 @@ Pokemon::Outcome talk_to_wanderer(StoryExecutor& executor, Pokemon::RunState&, c
     fail_step(stream, step.name + ": no coupon question from any tile below his range.");
 }
 
+//  The console's side of a wait beside a wanderer: a D-pad tap a step,
+//  counted, and A; the talk counts when his Yes/No box opens (or, with
+//  "again", when any talk opens).
+class ConsoleWanderWait : public WanderWaitBody{
+public:
+    ConsoleWanderWait(VideoStream& stream, ProControllerContext& context, std::string name, bool again)
+        : m_stream(stream)
+        , m_context(context)
+        , m_name(std::move(name))
+        , m_again(again)
+    {}
+    virtual bool step(Direction direction) override{
+        const std::string label = "Waiting for " + m_name;
+        route_turn(m_stream, m_context, direction);
+        const WalkResult result = walk_tiles_dpad(m_stream, m_context, run_from_wild_battle, route_stick(direction), 1, label);
+        const std::optional<int> moved = wander_row_step(result, 1);
+        if (!moved){
+            fail_step(m_stream, std::format("{}: {} instead of a step along the column.", label, walk_stop_name(result.stop)));
+        }
+        return *moved != 0;
+    }
+    virtual void face(Direction direction) override{
+        route_turn(m_stream, m_context, direction);
+    }
+    virtual bool ask() override{
+        pbf_press_button(m_context, BUTTON_A, 80ms, 0ms);
+        m_context.wait_for_all_requests();
+        ShortDialogWatcher dialog(COLOR_YELLOW);
+        if (wait_until(m_stream, m_context, 1500ms, {{dialog}}) != 0){
+            return false;
+        }
+        return answer_coupon_question(m_stream, m_context, m_name) || m_again;
+    }
+    virtual void wait(Milliseconds time) override{
+        m_context.wait_for(time);
+    }
+
+private:
+    VideoStream& m_stream;
+    ProControllerContext& m_context;
+    std::string m_name;
+    bool m_again;
+};
+//  The talk to a wanderer by waiting for him on the step's "stand" tiles,
+//  from the tile the step before left us on (in their column). It ends on
+//  its declared tile, against a wall the declared way and one at the
+//  column's back (away from his box): both taps must not move.
+Pokemon::Outcome wait_for_wanderer(StoryExecutor& executor, Pokemon::RunState& state, const Pokemon::StoryStep& step){
+    VideoStream& stream = executor.stream();
+    const Pokemon::GridPose& stand = Pokemon::story_arg<Pokemon::GridPose>(step.args, "stand");
+    const std::vector<TilePos> start = Pokemon::tiles_of(state.pose);
+    if (!step.pose_after || start.size() != 1 || stand.tiles.empty() || !stand.facing){
+        fail_step(stream, step.name + ": needs one start tile, stand tiles and their facing, and a declared end.");
+    }
+    const Pokemon::Pose exit = Pokemon::pose_of(*step.pose_after);
+    const std::vector<TilePos> exit_tiles = Pokemon::tiles_of(exit);
+    const std::optional<Direction> exit_wall = Pokemon::facing_of(exit);
+    if (exit_tiles.size() != 1 || !exit_wall){
+        fail_step(stream, step.name + ": its declared end needs one tile and a facing.");
+    }
+    //  The column's back: the way away from his box.
+    const Direction back = Pokemon::ALL_DIRECTIONS[((size_t)*stand.facing + 2) % 4];
+    const WanderWaitPlan plan{.stands = stand.tiles, .facing = *stand.facing, .exit = exit_tiles[0], .exit_walls = {*exit_wall, back}};
+    ConsoleWanderWait body(stream, executor.context(), step.name, Pokemon::story_arg<bool>(step.args, "again"));
+    const WanderWaitResult result = wait_beside_wanderer(body, start[0], plan);
+    switch (result.end){
+    case WanderWaitEnd::TALKED:
+        stream.log(std::format("[Talk] {}: talked from {}; now on {}.", step.name, Pokemon::to_string(result.talked), Pokemon::to_string(result.at)));
+        return Pokemon::outcome_ok();
+    case WanderWaitEnd::NO_TALK:
+        fail_step(stream, std::format("{}: no talk from any stand tile; on {}.", step.name, Pokemon::to_string(result.at)));
+    case WanderWaitEnd::STUCK:
+        fail_step(stream, std::format("{}: a step along the column stayed blocked at {}.", step.name, Pokemon::to_string(result.at)));
+    case WanderWaitEnd::LOST:
+        fail_step(stream, std::format("{}: a step from {} moved to {}: not on the column.", step.name, Pokemon::to_string(exit_tiles[0]), Pokemon::to_string(result.at)));
+    }
+    fail_step(stream, step.name + ": unknown wait end.");
+}
+
 //  00.05c's end and 01.01's start: the Poketch shows on the screen's right
 //  (R toggles it). Without it, Jubilife's east-exit guard (the coord event
 //  on (60, 21..24)) asks about the Poketch campaign and turns us back.
@@ -212,12 +293,17 @@ bool asks_someone_else(const Pokemon::MapData& map, TilePos stand, TilePos wande
     return false;
 }
 
+Pokemon::TileBox jubilife_mart_clown_box(){
+    return {.x0 = 54, .y0 = 32, .x1 = 56, .y1 = 34};
+}
+
 std::pair<TilePos, TilePos> jubilife_start_tiles(){
     return {{14, 19}, {58, 22}};
 }
 
 void add_jubilife_events(StoryEvents& events){
     events.emplace("talk_to_wanderer", talk_to_wanderer);
+    events.emplace("wait_for_wanderer", wait_for_wanderer);
     events.emplace("check_poketch", console_event(check_poketch));
     events.emplace("jubilife_start_probe", jubilife_start_probe);
 }

@@ -195,6 +195,11 @@ const std::map<std::string, std::string> PROVEN_SCENE_ENDS{
     {"rowan_and_dawn", "lab-B 2026-11-09, 7 of 7 runs on (6, 8)"},
 };
 
+//  A talk that walks to its end itself: wait_for_wanderer counts its taps
+//  along one column and ends with taps into two walls that must not move,
+//  so a tile beside its end fails the step on the console.
+constexpr std::string_view WALKS_TO_ITS_END = "wait_for_wanderer";
+
 //  Runs row `row` with `knobs`: "" if it passes, else where and why it stopped.
 std::string run_row(Logger& logger, const std::string& row, SimWorldKnobs knobs){
     SimExecutor executor(logger, {.fade = {}, .banner = {}}, std::move(knobs));
@@ -363,7 +368,7 @@ UnitTestResult sweep_scene_end_pose(Logger& logger, const StoryCheckpoint& row){
     size_t variants = 0;
     for (size_t c = 0; c < row.steps.size(); c++){
         const StoryStep& step = row.steps[c];
-        if (!game_sets_end(step.kind) || !step.pose_after || PROVEN_SCENE_ENDS.contains(step.name) ||
+        if (!game_sets_end(step.kind) || step.action == WALKS_TO_ITS_END || !step.pose_after || PROVEN_SCENE_ENDS.contains(step.name) ||
             already_there(logger, row, c, Pokemon::pose_of(*step.pose_after))){
             continue;
         }

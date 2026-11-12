@@ -42,6 +42,44 @@ void add_event_actions(std::vector<Pokemon::StoryActionSpec>& actions){
     }
 }
 
+//  A hold to a wall or onto a map ends on its declared end from any start
+//  on the map: it is how a step pins an unsure pose.
+constexpr Pokemon::StoryCertainty PINS{.needs = Pokemon::PoseCertainty::UNKNOWN, .leaves = Pokemon::PoseEnd::DECLARED};
+
+//  The LEGS actions, each walking `legs`.
+void add_legs_actions(
+    std::vector<Pokemon::StoryActionSpec>& actions,
+    const Pokemon::StoryArgSpec& legs_arg, const Pokemon::StoryArgSpec& fight_wild
+){
+    using Pokemon::PoseCertainty;
+    using Pokemon::PoseEnd;
+    for (std::string_view act : {"to_wall", "to_map"}){
+        actions.push_back({.kind = Pokemon::StoryStepKind::LEGS, .name = std::string(act), .args = {legs_arg, fight_wild}, .console_only = false, .certainty = PINS});
+    }
+    actions.push_back({.kind = Pokemon::StoryStepKind::LEGS, .name = "to_dialogue", .args = {legs_arg, fight_wild},
+        .console_only = false, .certainty = Pokemon::StoryCertainty{.needs = PoseCertainty::UNKNOWN, .leaves = PoseEnd::GAME_SET}});
+    actions.push_back({.kind = Pokemon::StoryStepKind::LEGS, .name = "one_short_ok", .args = {legs_arg, fight_wild}});
+    actions.push_back({.kind = Pokemon::StoryStepKind::LEGS, .name = "counted_wall", .args = {legs_arg, fight_wild},
+        .console_only = false, .certainty = Pokemon::StoryCertainty{.needs = PoseCertainty::SET, .leaves = PoseEnd::DECLARED}});
+}
+
+//  The talks to someone who wanders: each walks in D-pad taps, a whole tile
+//  it counts, and ends on its declared tile.
+void add_wanderer_talks(std::vector<Pokemon::StoryActionSpec>& actions){
+    const Pokemon::StoryArgSpec again = optional("again", Pokemon::StoryArgType::BOOLEAN, false, "a talk with no coupon question counts");
+    const Pokemon::StoryCertainty certainty{.needs = Pokemon::PoseCertainty::TILE, .leaves = Pokemon::PoseEnd::DECLARED};
+    //  Walks the row below his home, asking north.
+    actions.push_back({.kind = Pokemon::StoryStepKind::TALK, .name = "talk_to_wanderer", .args = {again},
+        .console_only = false, .certainty = certainty});
+    //  Waits for him on a column beside his box (WanderWaitPlan); ends
+    //  against a wall the declared way and one at the column's back.
+    const Pokemon::StoryArgSpec stand = required(
+        "stand", Pokemon::StoryArgType::GRID_POSE, "the tiles to wait on, in order, on the start's column; facing his box"
+    );
+    actions.push_back({.kind = Pokemon::StoryStepKind::TALK, .name = "wait_for_wanderer", .args = {stand, again},
+        .console_only = false, .certainty = certainty});
+}
+
 std::vector<Pokemon::StoryActionSpec> make_bdsp_actions(){
     std::vector<Pokemon::StoryActionSpec> actions(
         Pokemon::builtin_story_actions().begin(), Pokemon::builtin_story_actions().end()
@@ -77,26 +115,10 @@ std::vector<Pokemon::StoryActionSpec> make_bdsp_actions(){
         actions.push_back({.kind = Pokemon::StoryStepKind::ROUTE, .name = std::string(cost), .args = {route_target, fight_wild, opt_legs}});
     }
     actions.push_back({.kind = Pokemon::StoryStepKind::ROUTE, .name = "into_scene", .args = {route_target, fight_wild, legs_arg}});
-    //  A hold to a wall or onto a map ends on its declared end from any
-    //  start on the map: it is how a step pins an unsure pose.
-    using Pokemon::PoseCertainty;
-    using Pokemon::PoseEnd;
-    const Pokemon::StoryCertainty pins{.needs = PoseCertainty::UNKNOWN, .leaves = PoseEnd::DECLARED};
-    for (std::string_view act : {"to_wall", "to_map"}){
-        actions.push_back({.kind = Pokemon::StoryStepKind::LEGS, .name = std::string(act), .args = {legs_arg, fight_wild}, .console_only = false, .certainty = pins});
-    }
-    actions.push_back({.kind = Pokemon::StoryStepKind::LEGS, .name = "to_dialogue", .args = {legs_arg, fight_wild},
-        .console_only = false, .certainty = Pokemon::StoryCertainty{.needs = PoseCertainty::UNKNOWN, .leaves = PoseEnd::GAME_SET}});
-    actions.push_back({.kind = Pokemon::StoryStepKind::LEGS, .name = "one_short_ok", .args = {legs_arg, fight_wild}});
-    actions.push_back({.kind = Pokemon::StoryStepKind::LEGS, .name = "counted_wall", .args = {legs_arg, fight_wild},
-        .console_only = false, .certainty = Pokemon::StoryCertainty{.needs = PoseCertainty::SET, .leaves = PoseEnd::DECLARED}});
-    actions.push_back({.kind = Pokemon::StoryStepKind::STEP, .name = "to_banner", .args = {direction_arg}, .console_only = false, .certainty = pins});
+    add_legs_actions(actions, legs_arg, fight_wild);
+    actions.push_back({.kind = Pokemon::StoryStepKind::STEP, .name = "to_banner", .args = {direction_arg}, .console_only = false, .certainty = PINS});
     actions.push_back({.kind = Pokemon::StoryStepKind::STEP, .name = "or_legs", .args = {direction_arg, legs_arg}});
-    //  The talk walks the row in D-pad taps, each a whole tile it counts,
-    //  and back onto its declared tile.
-    actions.push_back({.kind = Pokemon::StoryStepKind::TALK, .name = "talk_to_wanderer",
-        .args = {optional("again", Pokemon::StoryArgType::BOOLEAN, false, "a talk with no coupon question counts")},
-        .console_only = false, .certainty = Pokemon::StoryCertainty{.needs = PoseCertainty::TILE, .leaves = PoseEnd::DECLARED}});
+    add_wanderer_talks(actions);
     actions.push_back({.kind = Pokemon::StoryStepKind::MASH, .name = "a", .args = {}});
     actions.push_back({.kind = Pokemon::StoryStepKind::BATTLE, .name = "starter", .args = {may_lose}});
     actions.push_back({.kind = Pokemon::StoryStepKind::BATTLE, .name = "doubles", .args = {may_lose}});

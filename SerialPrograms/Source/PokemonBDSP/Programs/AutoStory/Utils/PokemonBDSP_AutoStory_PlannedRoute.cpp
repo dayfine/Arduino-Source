@@ -18,7 +18,7 @@
 #include "PokemonBDSP_AutoStory_RouteChoice.h"
 #include "PokemonBDSP_AutoStory_CountedWallLeg.h"
 #include "PokemonBDSP_AutoStory_PlannedRoute.h"
-#include "PokemonBDSP_AutoStory_PlannedTalk.h"
+#include "PokemonBDSP_AutoStory_RouteSteps.h"
 #include "PokemonBDSP_AutoStory_WalkDpad.h"
 
 namespace PokemonAutomation{
@@ -88,6 +88,21 @@ std::string map_of(const StoryWorld& maps, const std::vector<TilePos>& tiles){
 } // namespace
 
 
+[[noreturn]] void fail(RouteIO& io, const std::string& message){
+    io.note(message, RouteNote::FAILURE);
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "RouteIO::note() returned from a failure: " + message);
+}
+
+void turn(RouteIO& io, Direction direction){
+    io.note(std::string("[Route] Turning ") + direction_name(direction) + ".", RouteNote::LOG);
+    io.press(route_turn_tap(direction));
+}
+
+RouteInput press_a(RouteInputEnd end){
+    return {.kind = RouteInputKind::BUTTON_A, .direction = Direction::NORTH, .hold = 80ms, .release = 200ms,
+        .count = 1, .end = end};
+}
+
 namespace{
 
 //  Sorted by row, then column, without repeats.
@@ -114,24 +129,6 @@ std::string quoted_list(const std::vector<std::string>& reads){
 Milliseconds wall_limit(const TileLeg& leg){
     const Milliseconds per_tile = route_ms_per_tile(leg.direction, MoveSpeed::WALK);
     return ROUTE_START_DELAY + per_tile * leg.tiles * 5 / 4 + 1000ms;
-}
-
-//  Fails the program with `message` (RouteNote::FAILURE).
-[[noreturn]] void fail(RouteIO& io, const std::string& message){
-    io.note(message, RouteNote::FAILURE);
-    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "RouteIO::note() returned from a failure: " + message);
-}
-
-//  route_turn() through `io`.
-void turn(RouteIO& io, Direction direction){
-    io.note(std::string("[Route] Turning ") + direction_name(direction) + ".", RouteNote::LOG);
-    io.press(route_turn_tap(direction));
-}
-
-//  A press of A, to talk to someone in front of us.
-RouteInput press_a(RouteInputEnd end){
-    return {.kind = RouteInputKind::BUTTON_A, .direction = Direction::NORTH, .hold = 80ms, .release = 200ms,
-        .count = 1, .end = end};
 }
 
 //  A wait for someone walking about to get out of the way.
@@ -958,45 +955,6 @@ RouteEnd walk_route_to_warp(
 }
 
 
-void talk_to_npc(
-    VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
-    const StoryWorld& maps, std::vector<TilePos>& at,
-    RouteTrainers& trainers, const NpcTalk& talk
-){
-    ConsoleRouteIO io(stream, context, escape);
-    talk_to_npc(io, maps, at, trainers, talk);
-}
-
-void talk_to_npc(
-    RouteIO& io, const StoryWorld& maps, std::vector<TilePos>& at,
-    RouteTrainers& trainers, const NpcTalk& talk
-){
-    for (Direction side : talk.sides){
-        const TilePos stand = talk.npc.next(side);
-        if (!standable(maps, stand)){
-            continue;
-        }
-        at = walk_route(io, maps, at, trainers, {
-            .goal = [stand](const TilePos& pos){ return pos == stand; },
-            .label = talk.label,
-            .avoid = {},
-            .costs = route_plan_costs(),
-        });
-        //  Face the NPC: the opposite of the side we stand on.
-        const Direction face =
-            side == Direction::NORTH ? Direction::SOUTH :
-            side == Direction::SOUTH ? Direction::NORTH :
-            side == Direction::EAST ? Direction::WEST : Direction::EAST;
-        turn(io, face);
-        io.press(press_a(RouteInputEnd::DONE));
-        if (io.dialog_within(2000ms, COLOR_CYAN)){
-            io.note(talk.label + ": talking from " + describe(maps, stand) + ".", RouteNote::STATUS);
-            return;
-        }
-        io.note(talk.label + ": nobody answered from " + describe(maps, stand) + "; trying another side.", RouteNote::STATUS);
-    }
-    fail(io, talk.label + ": no side of " + describe(maps, talk.npc) + " started a dialogue.");
-}
 
 namespace{
 

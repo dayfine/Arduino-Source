@@ -217,25 +217,21 @@ anchor); 0 from one start tile.
 
 == 00.05b below_the_mart_clown (costs: town)
   from: JubilifeCity (48, 40) facing east (tile)
-  target: JubilifeCity (55, 34) facing north (tile)
+  target: JubilifeCity (56, 36) facing north (tile)
   start candidates: Jubilife City (48, 40)
   1. north 4 (open) -> Jubilife City (48, 36)
   2. east 8 (to wall) -> Jubilife City (56, 36)
-  3. west 1 (open) -> Jubilife City (55, 36)
-  4. north 2 (open) -> Jubilife City (55, 34)
-  totals: 4 legs, 3 turns, 3 open, 0 localization
+  totals: 2 legs, 1 turns, 1 open, 0 localization
 
 == 00.05b below_the_tv_clown (costs: town)
-  from: JubilifeCity (55, 34) facing north (tile)
+  from: JubilifeCity (56, 31) facing north (tile)
   target: JubilifeCity (36, 17) facing north (tile)
-  start candidates: Jubilife City (55, 34)
-  1. south 2 (to wall) -> Jubilife City (55, 36)
-  2. west 12 (to wall) -> Jubilife City (43, 36)
-  3. north 7 (to wall) -> Jubilife City (43, 29)
-  4. east 1 (open) -> Jubilife City (44, 29)
-  5. north 12 (open) -> Jubilife City (44, 17)
-  6. west 8 (open) -> Jubilife City (36, 17)
-  totals: 6 legs, 5 turns, 3 open, 0 localization
+  start candidates: Jubilife City (56, 31)
+  1. west 8 (open) -> Jubilife City (48, 31)
+  2. north 22 (to wall) -> Jubilife City (48, 9)
+  3. south 8 (open) -> Jubilife City (48, 17)
+  4. west 12 (open) -> Jubilife City (36, 17)
+  totals: 4 legs, 3 turns, 3 open, 0 localization
 
 == 00.05b below_the_company_clown (costs: town)
   from: JubilifeCity (36, 17) facing north (tile)
@@ -271,26 +267,20 @@ anchor); 0 from one start tile.
 
 == 00.05c below_the_mart_clown (costs: town)
   from: JubilifeCity (36, 17) facing north (tile)
-  target: JubilifeCity (55, 34) facing north (tile)
+  target: JubilifeCity (56, 31) facing south (tile)
   start candidates: Jubilife City (36, 17)
-  1. west 1 (open) -> Jubilife City (35, 17)
-  2. south 10 (to wall) -> Jubilife City (35, 27)
-  3. east 1 (to wall) -> Jubilife City (36, 27)
-  4. south 5 (open) -> Jubilife City (36, 32)
-  5. east 20 (to wall) -> Jubilife City (56, 32)
-  6. south 2 (open) -> Jubilife City (56, 34)
-  7. west 1 (open) -> Jubilife City (55, 34)
-  totals: 7 legs, 6 turns, 4 open, 0 localization
+  1. east 8 (open) -> Jubilife City (44, 17)
+  2. south 14 (open) -> Jubilife City (44, 31)
+  3. east 12 (to wall) -> Jubilife City (56, 31)
+  totals: 3 legs, 2 turns, 2 open, 0 localization
 
 == 00.05c beside_the_president (costs: town)
-  from: JubilifeCity (55, 34) facing north (tile)
+  from: JubilifeCity (56, 31) facing north (tile)
   target: JubilifeCity (45, 35) facing east (tile)
-  start candidates: Jubilife City (55, 34)
-  1. south 2 (to wall) -> Jubilife City (55, 36)
-  2. west 12 (to wall) -> Jubilife City (43, 36)
-  3. east 2 (open) -> Jubilife City (45, 36)
-  4. north 1 (open) -> Jubilife City (45, 35)
-  totals: 4 legs, 3 turns, 2 open, 0 localization
+  start candidates: Jubilife City (56, 31)
+  1. west 11 (open) -> Jubilife City (45, 31)
+  2. south 4 (open) -> Jubilife City (45, 35)
+  totals: 2 legs, 1 turns, 2 open, 0 localization
 
 == 00.05c to_the_route_203_street (costs: line)
   from: JubilifeCity (45, 35) facing east (tile)
@@ -429,15 +419,14 @@ anchor); 0 from one start tile.
 
 == 01.08 below_the_ravaged_path (costs: town)
   from: JubilifeCity (44, 5) facing west (tile)
-  target: Route204South (11, 2) facing north (tile)
+  target: Route204South (11, 3) facing north (tile)
   start candidates: Jubilife City (44, 5)
   1. east 2 (open) -> Jubilife City (46, 5)
   2. north 19 (to wall) -> Route 204 (14, 18)
   3. west 4 (open) -> Route 204 (10, 18)
   4. north 15 (to wall) -> Route 204 (10, 3)
   5. east 1 (open) -> Route 204 (11, 3)
-  6. north 1 (open) -> Route 204 (11, 2)
-  totals: 6 legs, 5 turns, 4 open, 0 localization
+  totals: 5 legs, 4 turns, 3 open, 0 localization
 
 == 01.09 west_of_the_rock (costs: route)
   from: RavagedPath (19, 50) facing north (tile)

@@ -70,31 +70,51 @@
             "map": "JubilifeCity",
             "tiles": [
               [
-                55,
-                34
+                56,
+                36
               ]
             ]
           }
         },
         "id": "below_the_mart_clown",
         "kind": "route",
-        "why": "up the road east of the Center"
+        "why": "along row 36, below the boy by the Mart, to the wall east of the Center"
       },
       {
-        "action": "talk_to_wanderer",
+        "action": "wait_for_wanderer",
+        "args": {
+          "stand": {
+            "facing": "west",
+            "map": "JubilifeCity",
+            "tiles": [
+              [
+                56,
+                33
+              ],
+              [
+                56,
+                34
+              ],
+              [
+                56,
+                32
+              ]
+            ]
+          }
+        },
         "declared_after": {
           "facing": "north",
           "map": "JubilifeCity",
           "tiles": [
             [
-              55,
-              34
+              56,
+              31
             ]
           ]
         },
         "id": "mart_clown",
         "kind": "talk",
-        "why": "the clown by the Mart: 'Do Pokemon grow by defeating others?' Yes; Coupon 1"
+        "why": "the clown by the Mart (wanders 54..56, 32..34): wait on column 56 facing west until he comes level, A about every 2 s; 'Do Pokemon grow by defeating others?' Yes; Coupon 1. Ends north against the wall at (56, 30)"
       },
       {
         "action": "town",
@@ -113,7 +133,7 @@
         },
         "id": "below_the_tv_clown",
         "kind": "route",
-        "why": "west and north to the TV station"
+        "why": "west along row 31, above the boy below the Mart, and north to the TV station"
       },
       {
         "id": "tv_clown",
