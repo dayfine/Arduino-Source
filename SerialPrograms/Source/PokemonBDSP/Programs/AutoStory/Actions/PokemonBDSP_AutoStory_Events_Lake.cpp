@@ -62,11 +62,11 @@ void starter_briefcase(VideoStream& stream, ProControllerContext& context){
 //  00.02: the starter from the program's option, in the briefcase: Turtwig
 //  is first, Chimchar a press right, Piplup two; ZL picks, then Up and ZL
 //  answer "this one?" with Yes.
-Pokemon::Outcome choose_starter(StoryExecutor& executor, Pokemon::RunState&, const Pokemon::StoryStep&){
-    VideoStream& stream = executor.stream();
-    ProControllerContext& context = executor.context();
+Pokemon::Outcome choose_starter(StoryEnv& console, Pokemon::RunState&, const Pokemon::StoryStep&){
+    VideoStream& stream = console.env.console;
+    ProControllerContext& context = console.context;
     size_t rights = 0;
-    switch (executor.env().starter){
+    switch (console.starter){
     case StarterChoice::TURTWIG:
         rights = 0;
         break;

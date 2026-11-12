@@ -13,6 +13,7 @@
 #include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
+#include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Events.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h"
@@ -675,7 +676,7 @@ StoryBoundActions SimExecutor::sim_actions(){
             return heal(state, step);
         },
         .save = stubbed,
-        .event = [stubbed](const std::string&) -> Pokemon::StoryActionFunction{
+        .event = [stubbed](const std::string&) -> StoryBoundAction{
             return stubbed;
         },
     };
@@ -737,7 +738,7 @@ Outcome SimExecutor::run_action(const StoryStep& step, RunState& state){
         }
         m_dialog_up = false;
     }
-    return Pokemon::TableExecutor::run_action(step, state);
+    return m_steps.act(step, state);
 }
 
 Outcome SimExecutor::run_step(const StoryStep& step, RunState& state){
@@ -748,10 +749,9 @@ Outcome SimExecutor::run_step(const StoryStep& step, RunState& state){
     //  A scene goes on from where the step before left us. A route walks
     //  on the world it plans on (Jubilife alone has no Route 204 north of it).
     //  An event of a walking kind (talk_to_wanderer) is the console's.
-    const Pokemon::StoryAction* action = m_table.find(step);
     const bool walks = (step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS ||
         step.kind == StoryStepKind::STEP || step.kind == StoryStepKind::TALK) &&
-        action != nullptr && !action->needs_console;
+        !story_events().contains(step.action);
     const GridPose* target_ptr = step.args.contains("target") ? &story_arg<GridPose>(step.args, "target") : nullptr;
     const StoryWorld* on = step.kind == StoryStepKind::ROUTE && target_ptr && !state.pose.map.empty()
         ? story_plan_world(state.pose.map, target_ptr->map) : nullptr;

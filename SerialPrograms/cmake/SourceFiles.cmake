@@ -1774,6 +1774,8 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_ScreenEvents.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory.h
+    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_ConsoleStory.cpp
+    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_ConsoleStory.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Maps_Tests.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Maps_Tests.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_PlannedRoute_Tests.cpp
@@ -1794,12 +1796,12 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_SimulatedRoute_Tests.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryActions.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryActions.h
+    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryCheckpoint.cpp
+    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryCheckpoint.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryData.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryData.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryData_Tests.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryData_Tests.h
-    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryExecutor.cpp
-    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryExecutor.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryInterrupts.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryInterrupts.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryMaps_Tests.cpp

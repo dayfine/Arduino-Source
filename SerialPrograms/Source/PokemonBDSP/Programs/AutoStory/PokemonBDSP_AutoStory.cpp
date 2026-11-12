@@ -25,6 +25,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Actions.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_StoryLanguage.h"
+#include "PokemonBDSP_AutoStory_ConsoleStory.h"
 #include "PokemonBDSP_AutoStory_StoryTable.h"
 #include "PokemonBDSP_AutoStory.h"
 
@@ -247,7 +248,7 @@ void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     set_story_language(RUN.language());
 
     StoryEnv story{env, context, STARTER, PLAYER_NAME};
-    StoryExecutor executor(story);
+    ConsoleStory executor(story);
     executor.set_stop_rows(rows_that_stop(checkpoints));
     //  A start with a save always loads it first, so the run never walks
     //  from wherever the game was left (console B, 2026-11-11: a run from

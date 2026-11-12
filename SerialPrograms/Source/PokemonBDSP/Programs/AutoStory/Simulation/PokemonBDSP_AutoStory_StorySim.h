@@ -21,8 +21,10 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
+#include "Common/Cpp/CancellableScope.h"
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/ImageTools/ImageStats.h"
@@ -31,7 +33,7 @@
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_TalkOver.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryActions.h"
-#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryExecutor.h"
+#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryCheckpoint.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryInterrupts.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryStepIO.h"
@@ -418,21 +420,22 @@ std::vector<RowTrigger> story_triggers();
 } // namespace detail
 
 //  The program's walking steps on the simulation, the rest stubbed: the
-//  story's action table (story_action_table()), its rows that need the
+//  story's actions on the engine (StoryEngineSteps), those that need the
 //  console bound to the stand-ins below.
 class SimExecutor : public Pokemon::TableExecutor{
 public:
     //  The table and the guard are members, built after the base: it only
     //  keeps references to them until a step runs.
     explicit SimExecutor(Logger& logger, SimMisses misses = {}, SimWorldKnobs knobs = {})
-        : Pokemon::TableExecutor(m_table, m_guard)
+        : Pokemon::TableExecutor(m_no_table, m_guard)
         , m_logger(logger)
         , m_misses(misses)
         , m_knobs(std::move(knobs))
         , m_sim({}, {0, 0}, Pokemon::Direction::NORTH, false)
         , m_io(m_sim, m_notes, m_misses, m_knobs, m_step, [this]{ return cross(); }, [this](const Pokemon::Pose& far){ cross_to(far); })
         , m_walks(m_io)
-        , m_table(story_action_table(m_walks, sim_actions()))
+        , m_backend(Pokemon::StoryBackendKind::SIMULATION, [&logger](std::string_view line){ logger.log(std::string(line)); }, m_scope)
+        , m_steps(m_walks, sim_actions(), m_backend)
         , m_interrupts(story_interrupts([this](bool fresh){ return look(fresh); }, sim_interrupt_actions()))
     {
         if (m_knobs.clear_interrupts){
@@ -452,8 +455,8 @@ public:
         return m_notes;
     }
     //  The story's actions as the simulation binds them.
-    const Pokemon::StoryActionTable& actions() const{
-        return m_table;
+    const StoryEngineSteps& steps() const{
+        return m_steps;
     }
     virtual void begin_attempt(const Pokemon::StoryCheckpoint& data) override{
         m_row = data.id;
@@ -526,7 +529,11 @@ private:
     SimStoryStepIO m_io;
     StoryWalkSteps m_walks;
     SimStepGuard m_guard;
-    Pokemon::StoryActionTable m_table;
+    //  TableExecutor's table: empty, as run_action() runs the engine's actions.
+    Pokemon::StoryActionTable m_no_table;
+    CancellableHolder<CancellableScope> m_scope;
+    StoryLogBackend m_backend;
+    StoryEngineSteps m_steps;
     Pokemon::StoryInterrupts m_interrupts;
     //  The scenes fought so far that SimRun::scenes_fought has.
     size_t m_scenes_fought = 0;

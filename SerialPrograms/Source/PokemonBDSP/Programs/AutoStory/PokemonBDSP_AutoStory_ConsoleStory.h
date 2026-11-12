@@ -1,19 +1,17 @@
-/*  BDSP AutoStory - Story executor
- *
-// code-health: allow header_symbols -- BDSP story executor and checkpoint execution primitives
+/*  BDSP AutoStory - Console story
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  BDSP's way of doing the shared story steps
- *  (Pokemon/AutoStory/Pokemon_StorySteps.h) on the console. A route is
- *  planned on the joined maps that hold its start and its target
- *  (story_plan_world()), from the tiles the run's pose holds, and walked by
- *  the walker, which fights the trainers who see us and runs from wild
- *  battles. A step whose variant names one of the story's events
- *  (story_events(), PokemonBDSP_AutoStory_Events.h) runs that event,
- *  whatever its kind: the scripted scenes and the console-measured walks
- *  of segment 01. It is the console's binding of the story's action table
- *  (story_action_table()); the simulation binds the same table.
+ *  BDSP's story steps on the console: the story's actions (story_game(),
+ *  PokemonBDSP_AutoStory_StoryActions.h) bound to the console and run by the
+ *  shared story engine's step runner. A route is planned on the joined maps
+ *  that hold its start and its target (story_plan_world()), from the tiles
+ *  the run's pose holds, and walked by the walker, which fights the
+ *  trainers who see us and runs from wild battles. A step whose variant
+ *  names one of the story's events (story_events(),
+ *  PokemonBDSP_AutoStory_Events.h) runs that event, whatever its kind: the
+ *  scripted scenes and the console-measured walks of segment 01. The
+ *  simulation binds the same actions.
  *
  *  Every step runs inside a guard (ConsoleStepGuard) that turns a failed
  *  console step into a failed Outcome, with a screenshot and the
@@ -24,28 +22,20 @@
  *
  */
 
-#ifndef PokemonAutomation_PokemonBDSP_AutoStory_StoryExecutor_H
-#define PokemonAutomation_PokemonBDSP_AutoStory_StoryExecutor_H
+#ifndef PokemonAutomation_PokemonBDSP_AutoStory_ConsoleStory_H
+#define PokemonAutomation_PokemonBDSP_AutoStory_ConsoleStory_H
 
 #include <map>
-#include <optional>
 #include <set>
 #include <string>
-#include <string_view>
 #include <utility>
-#include <vector>
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
-#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RobustRoute.h"
-#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryWorld.h"
 #include "Pokemon/AutoStory/Pokemon_StoryActions.h"
-#include "Pokemon/AutoStory/Pokemon_StorySegments.h"
-#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
-#include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
-#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RoutePlanner.h"
 #include "PokemonBDSP_AutoStory_StoryActions.h"
+#include "PokemonBDSP_AutoStory_StoryCheckpoint.h"
 #include "PokemonBDSP_AutoStory_StoryInterrupts.h"
 #include "PokemonBDSP_AutoStory_StoryStepIO.h"
 #include "PokemonBDSP_AutoStory_StoryWalkSteps.h"
@@ -53,58 +43,6 @@
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
-
-
-//  Starter Pokemon options for BDSP story automation.
-enum class StarterChoice{
-    TURTWIG,
-    CHIMCHAR,
-    PIPLUP,
-};
-
-//  What a row does when one of its steps fails.
-enum class StoryFailure{
-    //  Save before the first step; on a failure reset to that save and run
-    //  the row again from its first step.
-    RELOAD_AND_RETRY,
-    //  No save and no retry: the failure ends the program (00.00, before
-    //  the game has anything worth saving).
-    STOP,
-};
-
-//  A row of the story table: the shared checkpoint, and what a failure does.
-struct StoryCheckpoint : public Pokemon::StoryCheckpoint{
-    StoryFailure on_failure = StoryFailure::RELOAD_AND_RETRY;
-    //  The map the save screen's card names where the row starts ("Route
-    //  203"). The save at its start is refused anywhere else and the program
-    //  stops: r76/r77 started 01.06 a walk away from its start and saved over
-    //  the good save there. Empty for a row that does not save first.
-    std::string saves_in;
-};
-
-//  What the story's steps act on.
-struct StoryEnv{
-    SingleSwitchProgramEnvironment& env;
-    ProControllerContext& context;
-    StarterChoice starter = StarterChoice::CHIMCHAR;
-    std::string player_name;
-};
-
-
-//  The variant of a ROUTE step whose target is the next scene's trigger:
-//  the scene starts there and stops the walk, as a wall would (00.04's
-//  Mom's call on (6, 9)). It plans with the route costs.
-inline constexpr std::string_view ROUTE_ONTO_TRIGGER = "trigger";
-
-//  The variant of a ROUTE step that, once at its target, runs its one leg
-//  ("legs") until a scene's dialogue starts. It plans with the route costs.
-inline constexpr std::string_view ROUTE_INTO_SCENE = "into_scene";
-
-//  The plan costs a ROUTE step's variant names: "", ROUTE_ONTO_TRIGGER and
-//  ROUTE_INTO_SCENE the route costs, "town" town_plan_costs(), "robust" the planner's
-//  defaults, "line" waypoint_plan_costs() (a stretch of a line a human
-//  walked). Nothing for another name.
-std::optional<RobustPlanCosts> story_route_costs(const std::string& variant);
 
 
 //  What the console does around each story step: the step's log line, and
@@ -135,11 +73,12 @@ private:
 };
 
 
-//  Does BDSP's kinds of story step on the console: the story's action
-//  table, its rows that need the console bound to the methods below.
-class StoryExecutor : public Pokemon::TableExecutor{
+//  Does BDSP's kinds of story step on the console: the story's actions on
+//  the engine (StoryEngineSteps), those that need the console bound to the
+//  methods below.
+class ConsoleStory : public Pokemon::TableExecutor{
 public:
-    explicit StoryExecutor(StoryEnv& env);
+    explicit ConsoleStory(StoryEnv& env);
 
     StoryEnv& env(){
         return m_env;
@@ -178,9 +117,10 @@ protected:
     //  In front of a Pokemon Center, its lit doorway on screen: in, the
     //  nurse, and out (heal_at_pokemon_center()).
     Pokemon::Outcome heal(Pokemon::RunState& state, const Pokemon::StoryStep& step);
+    //  The game; a row's start save (SAVES_IN_ARG) only where the card names its map.
     Pokemon::Outcome save(Pokemon::RunState& state, const Pokemon::StoryStep& step);
-    //  The event its variant names (story_events()).
-    Pokemon::Outcome game(Pokemon::RunState& state, const Pokemon::StoryStep& step);
+    //  The engine's action for the step.
+    virtual Pokemon::Outcome run_action(const Pokemon::StoryStep& step, Pokemon::RunState& state) override;
 
 private:
     StoryBoundActions console_actions();
@@ -209,23 +149,16 @@ private:
     //    variant "a": A through it, for lines that give an item.
     StoryWalkSteps m_walks;
     std::string m_checkpoint;
-    std::map<std::string, size_t> m_run_counts;
     ConsoleStepGuard m_guard;
-    //  The story's actions, its console rows bound to this executor.
-    Pokemon::StoryActionTable m_table;
+    //  TableExecutor's table: empty, as run_action() runs the engine's actions.
+    Pokemon::StoryActionTable m_no_table;
+    StoryLogBackend m_backend;
+    //  The story's actions, those that need the console bound to this.
+    StoryEngineSteps m_steps;
     //  What is cleared between steps, looked for on the screen.
     ConsoleScreenLook m_look;
     Pokemon::StoryInterrupts m_interrupts;
 };
-
-
-//  `rows` (kept alive by the caller) as one segment. A row that reloads on
-//  failure saves first, unless `saved` says it has in this run: a retry
-//  starts from that save. `executor` and `saved` must outlive the segment.
-Pokemon::Segment make_story_segment(
-    const std::vector<StoryCheckpoint>& rows, Pokemon::StoryStepExecutor& executor,
-    std::set<std::string>& saved
-);
 
 
 

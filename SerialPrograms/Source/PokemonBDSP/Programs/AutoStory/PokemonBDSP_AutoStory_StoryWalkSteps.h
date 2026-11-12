@@ -3,7 +3,7 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  The story steps that walk and talk (ROUTE, LEGS, STEP, TALK, MASH), on a
- *  StoryStepIO: StoryExecutor runs them on the console, the story's
+ *  StoryStepIO: ConsoleStory runs them on the console, the story's
  *  simulation tests on a simulated player.
  *
  */
@@ -93,7 +93,7 @@ public:
     //  With a leg, then runs on toward its direction until a dialogue starts,
     //  for its tiles at most (run_to_dialogue()).
     Pokemon::Outcome route(Pokemon::RunState& state, const Pokemon::StoryStep& step);
-    //  See StoryExecutor::legs().
+    //  See ConsoleStory's LEGS.
     Pokemon::Outcome legs(Pokemon::RunState& state, const Pokemon::StoryStep& step);
     //  One D-pad step, or a run through a door when the step changes map.
     Pokemon::Outcome step(Pokemon::RunState& state, const Pokemon::StoryStep& step);

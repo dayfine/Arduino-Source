@@ -29,7 +29,7 @@
 #include "Data/PokemonBDSP_AutoStory_WallRecovery.h"
 #include "Actions/PokemonBDSP_AutoStory_Events.h"
 #include "Data/PokemonBDSP_AutoStory_WalkRules.h"
-#include "PokemonBDSP_AutoStory_StoryExecutor.h"
+#include "PokemonBDSP_AutoStory_StoryCheckpoint.h"
 #include "PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP_AutoStory_TableRoutes.h"
 #include "PokemonBDSP_AutoStory_StoryTable.h"

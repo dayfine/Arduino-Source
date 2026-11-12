@@ -14,7 +14,7 @@
 #include <vector>
 #include "Common/Cpp/Json/JsonValue.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
-#include "PokemonBDSP_AutoStory_StoryExecutor.h"
+#include "PokemonBDSP_AutoStory_StoryCheckpoint.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

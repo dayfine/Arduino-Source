@@ -19,6 +19,7 @@
 #include <set>
 #include <string>
 #include <utility>
+#include <variant>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -129,7 +130,7 @@ void add_golden_lines(
     }
 }
 
-//  A ROUTE step from `from`, planned as StoryExecutor::walk_to() walks it.
+//  A ROUTE step from `from`, planned as the ROUTE action walks it.
 Walked plan_route(const Pose& from, const StoryStep& step){
     const GridPose& target = story_arg<GridPose>(step.args, "target");
     const Pose goal = Pokemon::pose_of(target);
@@ -343,8 +344,9 @@ protected:
     }
     Outcome save(RunState&, const StoryStep& step){
         trace.push_back("save in " + m_row);
-        if (!step.action.empty()){
-            trace.push_back("card for " + m_row + ": " + step.action);
+        const auto saves_in = step.args.find(SAVES_IN_ARG);
+        if (saves_in != step.args.end()){
+            trace.push_back("card for " + m_row + ": " + std::get<std::string>(saves_in->second));
         }
         return Pokemon::outcome_ok();
     }

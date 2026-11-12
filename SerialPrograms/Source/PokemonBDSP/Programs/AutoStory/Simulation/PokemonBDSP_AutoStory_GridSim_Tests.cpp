@@ -30,7 +30,7 @@
 #include "Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_PlannedRoute.h"
 #include "PokemonBDSP_AutoStory_OldStorySteps.h"
-#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryExecutor.h"
+#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryCheckpoint.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryStepIO.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryTable.h"
@@ -311,7 +311,7 @@ std::optional<Pose> pose_after_step(const std::optional<Pose>& at, const StorySt
 }
 
 //  Every ROUTE step of the table that starts from a known pose, from its
-//  first and its last tile, at the pace StoryExecutor walks it.
+//  first and its last tile, at the pace ConsoleStory walks it.
 std::vector<SimRoute> table_routes(){
     std::vector<SimRoute> routes;
     for (const StoryCheckpoint& row : story_checkpoints()){

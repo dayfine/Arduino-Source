@@ -30,7 +30,7 @@
 #include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
-#include "PokemonBDSP_AutoStory_StoryExecutor.h"
+#include "PokemonBDSP_AutoStory_StoryCheckpoint.h"
 #include "PokemonBDSP_AutoStory_StoryTable.h"
 #include "Utils/PokemonBDSP_AutoStory_StoryLanguage.h"
 #include "Utils/PokemonBDSP_AutoStory_RouteTiming.h"

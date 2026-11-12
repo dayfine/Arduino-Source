@@ -15,7 +15,7 @@ namespace PokemonBDSP{
 
 
 
-//  The story's action table (story_action_table()): every step of the
+//  The story's actions on the engine (StoryEngineSteps): every step of the
 //  story has an action, each runs what the executors' own dispatch ran
 //  before the table, and the steps the simulation stubs need the console.
 void add_tests_AutoStory_StoryActions(UnitTestDatabase& database);
