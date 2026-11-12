@@ -38,7 +38,6 @@ namespace PokemonFRLG{
 namespace{
 
 const std::string GYM = "CinnabarIsland_Gym";
-const std::string CINNABAR = "CinnabarIsland";
 
 struct AutoStoryCinnabarGymInput{
     std::string name;
