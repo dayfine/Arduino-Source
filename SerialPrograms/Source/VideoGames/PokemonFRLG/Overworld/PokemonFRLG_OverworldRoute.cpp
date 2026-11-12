@@ -83,7 +83,9 @@ struct Transition{
     Located next;
     RouteAction action = RouteAction::WALK;
     bool warped = false;
-    bool walked_out = false;     //  the warp ended with the game walking the player out
+    //  The way the warp left the player facing (arrival_facing()), if not
+    //  the way they moved.
+    std::optional<Direction> facing;
     bool dismounted = false;     //  stepped off the water onto land
     //  The step landed on a spinner, which slid the player on: how far,
     //  and the way they last moved.
@@ -106,9 +108,9 @@ std::optional<Transition> take_warp(const std::vector<MapData>& maps, const MapW
     }
     TilePos position = arrival->second;
     Transition transition;
+    transition.facing = arrival_facing(map, position);
     if (walks_out_on_arrival(map, position)){
         position = position.next(Direction::SOUTH);
-        transition.walked_out = true;
     }
     transition.next.map = destination;
     transition.next.state = PlayerState{position, elevation_at(map, position), false};
@@ -285,7 +287,7 @@ public:
         //  A slide ends the leg: the hold must let go on the spinner.
         step.ends_leg = transition->warped || transition->dismounted || transition->spin;
         step.warped = transition->warped;
-        step.facing = transition->walked_out ? Direction::SOUTH : direction;
+        step.facing = transition->facing.value_or(direction);
         if (transition->spin){
             step.facing = transition->spin->facing;
             step.extra_cost += transition->spin->tiles * route_cost(m_costs, RouteCost::TILE);
@@ -419,7 +421,7 @@ std::optional<OverworldPress> predict_overworld_press(
             .position = {maps[next->next.map].name, next->next.state.position},
             .elevation = next->next.state.elevation,
             .surfing = next->next.state.surfing,
-            .facing = next->spin ? next->spin->facing : next->walked_out ? Direction::SOUTH : direction,
+            .facing = next->spin ? next->spin->facing : next->facing.value_or(direction),
         },
         .warped = next->warped,
     };

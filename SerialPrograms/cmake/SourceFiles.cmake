@@ -2005,6 +2005,7 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim_Tests.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSpin.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSpin_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldStairs_Tests.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSimScreens.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSimState.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRouteCosts.h
