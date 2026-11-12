@@ -138,7 +138,10 @@ std::string row_on_sim(std::string_view id, GymWalk& walk){
 
 //  12.01 from the nurse: the gym, Kayden fought from (14, 16) and Kirk from
 //  (14, 11), round the top edge to west of Koga, where 12.02 starts; then
-//  12.02 from there to the Warden and the nurse, meeting no one else.
+//  12.02 from there to the Warden and the nurse, meeting no one else. The
+//  sim's lookers see every way at once, so Edgar, whose lines the legs to
+//  the walls cross, always stops the walk there: the worst case, which
+//  the console meets only when he looks that way.
 UnitTestResult test_gym_rows(){
     GymWalk walk(*story_pose(Pokemon::pose_of(*checkpoint("12.01").start)));
     if (const std::string failure = row_on_sim("12.01", walk); !failure.empty()){
@@ -148,8 +151,8 @@ UnitTestResult test_gym_rows(){
     if (!(walk.sim->state().position == west_of_koga) || walk.sim->state().facing != Direction::EAST){
         return std::format("12.01: ended on {}, not west of Koga {} facing east.", to_string(walk.sim->state().position), to_string(west_of_koga));
     }
-    if (walk.all_fought() != std::vector<std::string>{"rocker", "rocker"}){
-        return std::format("12.01: fought {} trainers, not Kayden and Kirk.", walk.all_fought().size());
+    if (walk.all_fought() != std::vector<std::string>{"rocker", "rocker", "man"}){
+        return std::format("12.01: fought {} trainers, not Kayden, Kirk and Edgar.", walk.all_fought().size());
     }
     const StoryPose next = *story_pose(Pokemon::pose_of(*checkpoint("12.02").start));
     if (next.map != GYM || !(next.tile == west_of_koga.point)){
@@ -158,7 +161,7 @@ UnitTestResult test_gym_rows(){
     if (const std::string failure = row_on_sim("12.02", walk); !failure.empty()){
         return failure;
     }
-    if (walk.all_fought().size() != 2){
+    if (walk.all_fought().size() != 3){
         return "12.02: fought a trainer after Koga.";
     }
     if (walk.at.map != "FuchsiaCity_PokemonCenter_1F"){

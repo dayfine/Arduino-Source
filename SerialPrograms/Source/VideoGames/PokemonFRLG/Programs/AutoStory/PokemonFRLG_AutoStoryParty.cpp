@@ -116,6 +116,9 @@ struct Attack{
     std::string_view move;
 };
 constexpr Attack ATTACKS[] = {
+    //  From HM03 (12.01) on, as pokeguy: Surf on everything it is not
+    //  resisted by (1:15:14 on).
+    {.line = "squirtle", .move = "surf"},
     {.line = "squirtle", .move = "water-gun"},
     {.line = "squirtle", .move = "bite"},
     {.line = "squirtle", .move = "bubble"},
