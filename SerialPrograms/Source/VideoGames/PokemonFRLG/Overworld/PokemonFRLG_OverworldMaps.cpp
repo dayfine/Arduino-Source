@@ -99,6 +99,9 @@ constexpr std::string_view MAP_NAMES[] = {
     "RocketHideout_B2F",
     "RocketHideout_B3F",
     "RocketHideout_B4F",
+    //  Route 7's east gate, where the guard takes the TEA, and Saffron City.
+    "Route7_EastEntrance",
+    "SaffronCity",
     "CeruleanCave_1F",
     "CeruleanCave_2F",
     "CeruleanCave_B1F",
