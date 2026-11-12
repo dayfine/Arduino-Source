@@ -16,8 +16,8 @@
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
-#include "Pokemon/Navigation/Pokemon_RouteLog.h"
 #include "Pokemon/Navigation/Pokemon_MoveMechanics.h"
+#include "Pokemon/Navigation/Pokemon_RouteLog.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
 #include "PokemonBDSP_AutoStory_Location.h"
@@ -36,7 +36,7 @@ using namespace Pokemon;
 
 
 Milliseconds route_ms_per_tile(Direction direction, MoveSpeed speed){
-    const Pokemon::MoveMechanics& game = Pokemon::BDSP_MOVE_MECHANICS;
+    const MoveMechanics& game = BDSP_MOVE_MECHANICS;
     return (speed == MoveSpeed::RUN ? game.run : game.walk).tile.along(direction);
 }
 

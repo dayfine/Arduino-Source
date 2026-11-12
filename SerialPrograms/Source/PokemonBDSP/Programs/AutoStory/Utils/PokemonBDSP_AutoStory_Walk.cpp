@@ -325,8 +325,8 @@ public:
 
     WalkResult run(){
         //  A tile a tap: the step tap held, the rest released, so each chunk is one tile.
-        const Pokemon::MoveMechanics& game = Pokemon::BDSP_MOVE_MECHANICS;
-        const Milliseconds CHUNK = m_spec.input == WalkInput::TAPS ? game.step_tap + game.step_tap_release : 400ms;
+        const Pokemon::StepTap& tap = Pokemon::BDSP_MOVE_MECHANICS.walk.tap;
+        const Milliseconds CHUNK = m_spec.input == WalkInput::TAPS ? tap.hold + tap.release : 400ms;
         m_context.wait_for_all_requests();
         m_result.started = current_time();
         m_result.events.record({}, m_result.started);
@@ -375,9 +375,11 @@ private:
 
     void press(ProControllerContext& context, Milliseconds chunk) const{
         switch (m_spec.input){
-        case WalkInput::TAPS:
-            pbf_press_dpad(context, m_dpad, Pokemon::BDSP_MOVE_MECHANICS.step_tap, chunk - Pokemon::BDSP_MOVE_MECHANICS.step_tap);
+        case WalkInput::TAPS:{
+            const Pokemon::StepTap& tap = Pokemon::BDSP_MOVE_MECHANICS.walk.tap;
+            pbf_press_dpad(context, m_dpad, tap.hold, chunk - tap.hold);
             return;
+        }
         case WalkInput::DPAD_RUN:
             ssf_press_button(context, BUTTON_B, 0ms, chunk, 0ms);
             ssf_press_dpad(context, m_dpad, chunk, chunk, 0ms);
