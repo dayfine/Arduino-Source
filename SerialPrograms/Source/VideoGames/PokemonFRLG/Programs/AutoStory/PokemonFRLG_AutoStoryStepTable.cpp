@@ -196,6 +196,10 @@ std::span<const Pokemon::StoryActionSpec> story_action_specs(){
                 .key = "use_items", .type = Pokemon::StoryArgType::ITEMS, .required = false, .fallback = std::vector<Pokemon::StoryItem>(),
                 .why = "items used on the lead from the first turn, in order, before any attack (X Specials)",
             });
+            spec.args.push_back(Pokemon::StoryArgSpec{
+                .key = "run", .type = Pokemon::StoryArgType::BOOLEAN, .required = false, .fallback = false,
+                .why = "run from a scripted wild battle (Route 16's Snorlax) instead of fighting it",
+            });
         }
         for (Pokemon::StoryActionSpec spec : movement_variant_specs(builtin)){
             specs.push_back(std::move(spec));

@@ -260,7 +260,8 @@ Outcome battle(StoryEnv& env, const StoryStep& step){
             step.name, env.supplies.trainer, battle_risk_name(env.supplies.risk)
         ));
     }
-    const BattleEnd end = fight_battle(env.console, env.context, env.supplies, BattleKind::TRAINER, env.checks, env.language);
+    const BattleKind kind = arg<bool>(step, "run") ? BattleKind::WILD_RUN : BattleKind::TRAINER;
+    const BattleEnd end = fight_battle(env.console, env.context, env.supplies, kind, env.checks, env.language);
     env.supplies.foes.clear();
     env.supplies.trainer.clear();
     env.supplies.foe_out.clear();
@@ -324,6 +325,11 @@ const std::vector<MapData>& story_maps(){
         //  The one ball the story picks up in its way: B2F's MOON STONE
         //  blocks column 2 of the arrow floor (09.02's moon_stone).
         flags.insert("FLAG_HIDE_ROCKET_HIDEOUT_B2F_MOON_STONE");
+        //  Route 16's Snorlax (31, 13), gone once 11.01 has played the POKE
+        //  FLUTE and run: the routes after it go over its tile. None before
+        //  it does (10.01 goes north by the Cut tree), and 11.01 walks up to
+        //  it from the east.
+        flags.insert("FLAG_HIDE_ROUTE_16_SNORLAX");
         return overworld_maps(flags);
     }();
     return maps;
@@ -360,6 +366,7 @@ std::string save_card_place(const std::string& map){
         {"CeladonCity", "celadon-city"},
         {"RocketHideout", "rocket-hideout"},
         {"PokemonTower", "pokemon-tower"},
+        {"Route16", "route-16"},
     };
     for (const auto& [prefix, place] : PLACES){
         if (map == prefix || map.rfind(prefix + "_", 0) == 0){

@@ -117,6 +117,8 @@ const std::map<std::string, std::string> KNOWN_FAILING{
         "below_oak on Route 1 gives up after 9 stops part-way (seeds 16, 30): count stops that make no progress, not every battle"},
     {"PokemonFRLG::AutoStory - Fault sweep: 10.06, scene end pose",
         "below_fuji_house plans from (4, 7), where Mr. Fuji's script warps the player (warp 4, 7, exact); from a tile off, no wall in his house funnels the walk onto (3, 4): legs that re-anchor, if the console shows the warp can land elsewhere"},
+    {"PokemonFRLG::AutoStory - Fault sweep: 11.01, warp no-op",
+        "fly_celadon: a Fly that doesn't leave Lavender Town goes unseen, and east_of_snorlax walks from Lavender to Route 16 by Routes 8 and 7 instead: check the fly lands on its town's tile (FlyTown::landing) before the step ends"},
 };
 
 //  The land encounter rates of the maps the story walks (pokefirered
@@ -152,6 +154,8 @@ const std::vector<MapData>& sweep_maps(){
         const std::vector<MapData> all = overworld_maps();
         std::set<std::string> flags = map_flag_set(all, "after_hall_of_fame");
         flags.merge(map_flag_set(all, "new_game"));
+        //  As story_maps(): Route 16's Snorlax gone (11.01's flute).
+        flags.insert("FLAG_HIDE_ROUTE_16_SNORLAX");
         std::vector<MapData> flagged = overworld_maps(flags);
         flagged.push_back(rocket_hideout_lift_room());
         flagged.push_back(department_store_lift_room());
