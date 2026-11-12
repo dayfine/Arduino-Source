@@ -42,7 +42,6 @@
 #include "Common/Cpp/Time.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Pokemon/AutoStory/Pokemon_ScreenEvents.h"
-#include "Pokemon/Navigation/Simulation/Pokemon_SimFaults.h"
 #include "PokemonFRLG_MovementMechanics.h"
 #include "PokemonFRLG_BikeSpinPresses.h"
 #include "PokemonFRLG_BikeSpinMechanics.h"
@@ -208,10 +207,7 @@ private:
     std::mt19937 m_encounter_rng;
     int m_steps_since_encounter = 0;
     int m_encounter_rate_buff = 0;
-    //  The chances of SimScript's injected faults so far: turn taps
-    //  (dropped_turn_taps, LOST_TAP), step taps that moved
-    //  (unseen_step_taps, UNSEEN_STEP) and steps onto a warp
-    //  (black_without_warp, WARP_NO_OP).
+    //  The chances of SimScript's injected faults so far (SimScript::faults()).
     Pokemon::SimFaults m_faults;
     //  The fault on a step onto a warp (SimScript::black_without_warp):
     //  its black without the warp.

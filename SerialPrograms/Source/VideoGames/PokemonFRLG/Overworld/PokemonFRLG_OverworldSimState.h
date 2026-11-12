@@ -18,6 +18,7 @@
 #include <vector>
 #include "Common/Cpp/Time.h"
 #include "Pokemon/AutoStory/Pokemon_ScreenEvents.h"
+#include "Pokemon/Navigation/Simulation/Pokemon_SimFaults.h"
 #include "PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_OverworldSimScreens.h"
 
@@ -110,6 +111,11 @@ struct SimScript{
     //  B, 2026-11-11 17:51, 09.02 east_of_silph_scope). Not set: none.
     std::optional<Milliseconds> scene_after_trainer_battle;
     SimTiming timing;
+
+    //  The counters for the fault sets above: a turn tap is a chance of
+    //  LOST_TAP, a step tap that moved one of UNSEEN_STEP, a step onto a
+    //  warp one of WARP_NO_OP.
+    Pokemon::SimFaults faults() const;
 };
 
 //  The player and the screen, and what went wrong that the game would show.

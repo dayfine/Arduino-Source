@@ -142,11 +142,7 @@ OverworldSim::OverworldSim(std::vector<MapData> maps, MapPosition start, Directi
     , m_script(std::move(script))
     , m_map(find_map(m_maps, start.map))
     , m_encounter_rng(m_script.encounter_seed)
-    , m_faults({
-        {Pokemon::FaultClass::LOST_TAP, m_script.dropped_turn_taps},
-        {Pokemon::FaultClass::UNSEEN_STEP, m_script.unseen_step_taps},
-        {Pokemon::FaultClass::WARP_NO_OP, m_script.black_without_warp},
-    })
+    , m_faults(m_script.faults())
 {
     if (m_map < 0){
         throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Sim: start on a map that isn't loaded: " + start.map);
