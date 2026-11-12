@@ -70,6 +70,11 @@ void StoryWorld::add(std::string name, const Pokemon::MapData& map, const TilePo
         placed.warps.push_back({warp.x, warp.y});
     }
     check_overlap(placed);
+    Pokemon::MapData connected = map;
+    connected.name = placed.name;
+    connected.world = Pokemon::MapWorld{"story", offset};
+    m_connected.push_back(std::move(connected));
+    Pokemon::connect_by_world(m_connected);
     m_maps.push_back(std::move(placed));
     rebuild();
 }
@@ -270,6 +275,10 @@ std::optional<MapTile> StoryWorld::to_local(const TilePos& world) const{
 }
 
 
+
+Pokemon::ConnectedMaps connected_maps(const StoryWorld& world){
+    return Pokemon::ConnectedMaps(world.m_connected);
+}
 
 bool covered(const StoryWorld& world, const TilePos& pos){
     return world.tile(pos).has_value();
