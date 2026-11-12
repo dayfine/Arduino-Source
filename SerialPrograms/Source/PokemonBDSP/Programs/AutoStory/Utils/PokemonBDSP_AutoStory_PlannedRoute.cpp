@@ -21,6 +21,7 @@
 #include "PokemonBDSP_AutoStory_PlannedRoute.h"
 #include "PokemonBDSP_AutoStory_RouteSteps.h"
 #include "PokemonBDSP_AutoStory_WalkDpad.h"
+#include "PokemonBDSP_AutoStory_WallWalk.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -482,13 +483,12 @@ std::vector<TilePos> RouteWalker::arrive() const{
     return m_from;
 }
 
-
 //  Run (B held) on the D-pad: a leg to a wall ends at the wall however fast
 //  we get there, and the D-pad keeps to the row.
 LegNext RouteWalker::wall_leg(LegWalk& walk){
     const TileLeg& leg = walk.planned.leg;
     const Milliseconds limit = wall_limit(leg);
-    walk.result = m_io.walk_to_wall({.direction = walk.planned.leg.direction, .limit = limit, .label = walk.label, .options = run_watching(walk)});
+    walk.result = walk_to_wall_turning(m_io, m_facing, {.direction = leg.direction, .limit = limit, .label = walk.label, .options = run_watching(walk)});
     if (const std::optional<LegNext> next = finish_interrupted_wall(walk, limit)){
         return *next;
     }

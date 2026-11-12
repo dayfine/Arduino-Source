@@ -34,6 +34,9 @@ public:
     virtual void fight() override{
         m_fights++;
     }
+    virtual void fight_trainer() override{
+        m_trainer_fights++;
+    }
     virtual void note(const std::string&) override{}
 
     size_t runs() const{
@@ -42,11 +45,15 @@ public:
     size_t fights() const{
         return m_fights;
     }
+    size_t trainer_fights() const{
+        return m_trainer_fights;
+    }
 
 private:
     std::vector<WildRunOutcome> m_outcomes;
     size_t m_runs = 0;
     size_t m_fights = 0;
+    size_t m_trainer_fights = 0;
 };
 
 std::string_view result_name(WildEscapeResult result){
@@ -55,6 +62,8 @@ std::string_view result_name(WildEscapeResult result){
         return "ESCAPED";
     case WildEscapeResult::FOUGHT:
         return "FOUGHT";
+    case WildEscapeResult::TRAINER_FOUGHT:
+        return "TRAINER_FOUGHT";
     case WildEscapeResult::UNCONFIRMED:
         return "UNCONFIRMED";
     }
@@ -70,6 +79,7 @@ struct EscapePolicyExpectation{
     WildEscapeResult result = WildEscapeResult::ESCAPED;
     size_t runs = 0;
     size_t fights = 0;
+    size_t trainer_fights = 0;
 };
 struct EscapePolicyCase{
     EscapePolicyInput input;
@@ -86,10 +96,12 @@ public:
         ScriptedEscapeActions actions(m_case.input.outcomes);
         const WildEscapeResult result = escape_wild_battle(actions, m_case.input.policy);
         const EscapePolicyExpectation& expected = m_case.expectation;
-        if (result != expected.result || actions.runs() != expected.runs || actions.fights() != expected.fights){
-            return std::format("expected {} after {} Run presses and {} fights, got {} after {} and {}.",
-                result_name(expected.result), expected.runs, expected.fights,
-                result_name(result), actions.runs(), actions.fights());
+        if (result != expected.result || actions.runs() != expected.runs || actions.fights() != expected.fights ||
+            actions.trainer_fights() != expected.trainer_fights
+        ){
+            return std::format("expected {} after {} Run presses, {} fights and {} trainer fights, got {} after {}, {} and {}.",
+                result_name(expected.result), expected.runs, expected.fights, expected.trainer_fights,
+                result_name(result), actions.runs(), actions.fights(), actions.trainer_fights());
         }
         return true;
     }
@@ -101,6 +113,7 @@ private:
 constexpr WildRunOutcome ESCAPED = WildRunOutcome::ESCAPED;
 constexpr WildRunOutcome TRAPPED = WildRunOutcome::TRAPPED;
 constexpr WildRunOutcome UNCERTAIN = WildRunOutcome::UNCERTAIN;
+constexpr WildRunOutcome NO_RUNNING = WildRunOutcome::NO_RUNNING;
 
 const EscapePolicyCase WILD_BATTLE_POLICY_CASES[] = {
     {
@@ -127,6 +140,15 @@ const EscapePolicyCase WILD_BATTLE_POLICY_CASES[] = {
     {
         .input = {.name = "refusals between scrolling text count up to the fight", .outcomes = {TRAPPED, UNCERTAIN, TRAPPED, UNCERTAIN, TRAPPED}},
         .expectation = {.result = WildEscapeResult::FOUGHT, .runs = 5, .fights = 1},
+    },
+    //  lab-B 2026-11-12 14:55, Route 203: a trainer's battle taken for a wild one.
+    {
+        .input = {.name = "no running from a Trainer battle: one Run, then fought as a trainer's", .outcomes = {NO_RUNNING}},
+        .expectation = {.result = WildEscapeResult::TRAINER_FOUGHT, .runs = 1, .trainer_fights = 1},
+    },
+    {
+        .input = {.name = "no running after a refusal that was not sure: still one trainer fight", .outcomes = {UNCERTAIN, NO_RUNNING}},
+        .expectation = {.result = WildEscapeResult::TRAINER_FOUGHT, .runs = 2, .trainer_fights = 1},
     },
     {
         .input = {.name = "bound with the fight turned off: the attempts run out", .outcomes = {TRAPPED}, .policy = {.attempts = 6, .fallback = TrappedFallback::GIVE_UP}},

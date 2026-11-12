@@ -476,11 +476,14 @@ private:
         if (spread != m_start){
             const Node& arrived = m_nodes.at(spread);
             const RobustLeg<State>& prev = arrived.leg;
-            //  A leg to a wall from one place the player is known to be on
-            //  localizes nothing: walking straight back from it is a longer
-            //  way to the tiles a leg open on the first would reach.
-            if (prev.to_wall && arrived.parent.size() == 1 && expansion.leg.direction == opposite(prev.direction)){
-                return;
+            //  A run to a wall and back after a tapped leg: the taps left the
+            //  player on a known tile, so the run past it and back adds a
+            //  turn for nothing. From the start or after a leg to a wall it
+            //  is how a long leg is made fast and exact.
+            if (prev.to_wall && arrived.parent != m_start && expansion.leg.direction == opposite(prev.direction)){
+                if (!m_nodes.at(arrived.parent).leg.to_wall){
+                    return;
+                }
             }
             if (joins(prev, expansion.leg)){
                 expansion.cost -= m_costs.per_leg;

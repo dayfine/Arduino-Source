@@ -1937,6 +1937,8 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkProbe.h
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkResult.h
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkScreen.h
+    Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WallWalk.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WallWalk.h
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WildBattlePolicy.cpp
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WildBattlePolicy.h
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WildBattlePolicy_Tests.cpp

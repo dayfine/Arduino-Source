@@ -191,6 +191,14 @@ ScriptedWalk walk_script(const StoryWorld& maps, const TilePos& from, const Tile
     return walk_script_from(maps, {from}, goal, std::move(sights), script, after_talk);
 }
 
+std::string joined_notes(const Script& script){
+    std::string out;
+    for (const std::string& note : script.notes){
+        out += "\n  " + note;
+    }
+    return out;
+}
+
 //  The script's calls all made, or which are left.
 std::string script_left(const Script& script){
     if (script.next == script.steps.size()){
@@ -380,6 +388,7 @@ UnitTestResult test_open_leg_known_trainer(Logger&){
         Script script{.steps = {
             press_step("D-pad west 50 ms x1"),
             walk_step("6 taps: T: west 6 (open)", WalkStop::DIALOG, 1500ms, 3),
+            press_step("D-pad east 50 ms x1"),
             walk_step("wall: T: east 4 (to wall)", WalkStop::BLOCKED, 2000ms, 0),
             answer_step("dialog within 500 ms", false),
             press_step("D-pad west 50 ms x1"),
@@ -700,6 +709,51 @@ UnitTestResult test_wall_leg_at_its_wall_among_the_start_tiles(Logger&){
     return true;
 }
 
+//  A leg to a wall in another direction than the player faces turns first,
+//  with a tap that only turns; the held walk then counts from its first
+//  step, not a turn (lab-B 2026-11-12 14:55, 01.02 south_to_the_cliff).
+UnitTestResult test_wall_leg_turns_before_the_walk(Logger&){
+    const StoryWorld bend = make_world({"#####", "#...#", "###.#", "###.#", "#####"});
+    Script script{.steps = {
+        walk_step("wall: T: east 2 (to wall)", WalkStop::BLOCKED, 1900ms, 2),
+        answer_step("dialog within 500 ms", false),
+        press_step("D-pad south 50 ms x1"),
+        walk_step("wall: T: south 2 (to wall)", WalkStop::BLOCKED, 1900ms, 2),
+        answer_step("dialog within 500 ms", false),
+    }};
+    ScriptedWalk walk;
+    try{
+        walk = walk_script(bend, {1, 1}, {3, 3}, {}, script);
+    }catch (const ScriptMismatch& e){
+        return e.message;
+    }
+    if (!walk.failure.empty()){
+        return "failed: " + walk.failure;
+    }
+    const std::string left = script_left(script);
+    return left.empty() ? UnitTestResult(true) : UnitTestResult(left);
+}
+
+//  Facing unknown (after a battle), the first walk's chunk that changed the
+//  screen may be the turn: a leg to a wall that stopped with that one chunk
+//  has not moved, and whoever stopped it stands on the next tile.
+UnitTestResult test_wall_leg_one_chunk_is_a_turn_when_facing_is_unknown(Logger&){
+    const StoryWorld corridor = make_world({"###########", "#.........#", "###########"});
+    Script script{.steps = {
+        walk_step("wall: T: east 8 (to wall)", WalkStop::BLOCKED, 800ms, 1),
+    }};
+    ScriptedWalk walk;
+    try{
+        walk = walk_script(corridor, {1, 1}, {9, 1}, {}, script);
+    }catch (const ScriptMismatch& e){
+        script.notes.push_back(e.message);
+    }
+    const bool never_moved = std::any_of(script.notes.begin(), script.notes.end(), [](const std::string& note){
+        return note.find("the first moved chunk may be the turn") != std::string::npos;
+    });
+    return never_moved ? UnitTestResult(true) : UnitTestResult(std::format("the turn counted as a moved chunk (step {}, {} notes): {}{}", script.next, script.notes.size(), walk.failure, joined_notes(script)));
+}
+
 struct PlannedRouteInput{
     std::string name;
     std::function<UnitTestResult(Logger&)> body;
@@ -773,6 +827,14 @@ const PlannedRouteCase PLANNED_ROUTE_CASES[] = {
     },
     {
         .input = {"a wall leg held up on the way is not at its wall (lab-B 2026-11-11 21:00)", test_wall_leg_held_up_is_not_at_its_wall},
+        .expectation = {},
+    },
+    {
+        .input = {"a leg to a wall turns first when its way differs from the facing (lab-B 2026-11-12 14:55)", test_wall_leg_turns_before_the_walk},
+        .expectation = {},
+    },
+    {
+        .input = {"one chunk of a walk with unknown facing is a turn, not a move (lab-B 2026-11-12 14:55)", test_wall_leg_one_chunk_is_a_turn_when_facing_is_unknown},
         .expectation = {},
     },
     {

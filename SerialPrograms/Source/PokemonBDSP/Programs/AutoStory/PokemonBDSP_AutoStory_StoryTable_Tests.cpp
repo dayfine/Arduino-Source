@@ -583,22 +583,22 @@ UnitTestResult test_legs_ending_at_a_wall_are_wall_legs(Logger& logger){
     return found.empty() ? UnitTestResult(true) : UnitTestResult("open legs that end at a wall:" + out);
 }
 
-//  A leg to a wall from a place the walk knows exactly localizes nothing:
-//  it is not followed by a leg straight back (00.05c's "south 15 (to wall)"
-//  then "north 1"). A walk is held to a wall to bring several possible
-//  places to one, or after a blocked leg, not from one known tile.
-UnitTestResult test_known_place_has_no_wall_and_back(Logger& logger){
+//  After a tapped leg the walk knows its place exactly: a leg to a wall
+//  from it is not followed by a leg straight back (00.05c's "east 19
+//  (open)", "south 15 (to wall)", then "north 1"). Run to a wall and back is
+//  fine from the start or after a wall (00.04 into_twinleaf, south 37).
+UnitTestResult test_no_wall_and_back_after_taps(Logger& logger){
     std::vector<std::string> found;
     for (const PlannedStoryRoute& route : plan_story_routes(logger)){
         if (!route.legs){
             continue;
         }
         const std::vector<PlannedLeg>& legs = *route.legs;
-        for (size_t i = 1; i < legs.size(); i++){
-            const size_t known_before = i == 1 ? route.from.size() : legs[i - 2].after.size();
+        for (size_t i = 2; i < legs.size(); i++){
             const bool back = (int)legs[i].leg.direction == ((int)legs[i - 1].leg.direction + 2) % 4;
-            if (known_before == 1 && legs[i - 1].leg.ends_at_wall && back){
-                found.push_back(std::format("{}: {} then {}.", route.name, to_string(legs[i - 1]), to_string(legs[i])));
+            const TileLeg& taps = legs[i - 2].leg;
+            if (!taps.ends_at_wall && !taps.held && legs[i - 1].leg.ends_at_wall && back){
+                found.push_back(std::format("{}: {}, {} then {}.", route.name, to_string(legs[i - 2]), to_string(legs[i - 1]), to_string(legs[i])));
             }
         }
     }
@@ -606,7 +606,7 @@ UnitTestResult test_known_place_has_no_wall_and_back(Logger& logger){
     for (const std::string& line : found){
         out += "\n  " + line;
     }
-    return found.empty() ? UnitTestResult(true) : UnitTestResult("a wall and back from a known place:" + out);
+    return found.empty() ? UnitTestResult(true) : UnitTestResult("a wall and back after a tapped leg:" + out);
 }
 
 //  01.08's walk below the Ravaged Path keeps off the row Route 204 South's
@@ -886,7 +886,7 @@ const AutoStoryStoryTableCase AUTO_STORY_STORY_TABLE_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"a known place is not run to a wall and walked back from (00.05c south 15, north 1, lab-B 2026-11-12 14:24)", test_known_place_has_no_wall_and_back},
+        .input = {"no run to a wall and back after a tapped leg (00.05c east 19, south 15, north 1, lab-B 2026-11-12 14:24)", test_no_wall_and_back_after_taps},
         .expectation = {},
     },
     {
