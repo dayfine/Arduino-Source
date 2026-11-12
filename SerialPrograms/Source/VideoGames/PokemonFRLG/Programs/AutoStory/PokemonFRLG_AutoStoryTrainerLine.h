@@ -76,7 +76,7 @@ inline const std::string TRAINER_WAIT_VARIANT = "trainer_wait";
 //  battle, which is run from.
 std::optional<int> step_into_line(
     ConsoleHandle& console, ProControllerContext& context,
-    Pokemon::Direction direction, std::optional<Pokemon::Direction> facing, int max_tiles,
+    Pokemon::Direction direction, std::optional<Pokemon::Direction> facing, PlayerGender player, int max_tiles,
     Milliseconds watch = TRAINER_LINE_WATCH
 );
 
