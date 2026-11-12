@@ -14,6 +14,7 @@
 #include "PokemonFRLG_BikeSpinMechanics.h"
 #include "PokemonFRLG_BikeSpinPresses.h"
 #include "PokemonFRLG_OverworldBike.h"
+#include "PokemonFRLG_OverworldMaps.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -121,7 +122,7 @@ StepOutcome OverworldSimWalker::walk(const RouteStep& step, std::optional<Direct
     }
     m_speed = m_riding || !m_rules.get_back_on_bike ? m_rules.speed : on_foot(m_rules.speed);
     const StepOutcome outcome = walk_ridden(step, facing);
-    if (m_riding && step.warps){
+    if (m_riding && step.warps && !warp_keeps_bike(step.end.map)){
         m_log.push_back("Bike: through the warp to " + step.end.map + ", off the Bicycle.");
         m_riding = false;
     }
