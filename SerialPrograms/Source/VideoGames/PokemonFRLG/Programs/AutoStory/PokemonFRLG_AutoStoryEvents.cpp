@@ -31,6 +31,7 @@
 #include "PokemonFRLG_AutoStorySlopeRun.h"
 #include "PokemonFRLG_AutoStorySummary.h"
 #include "PokemonFRLG_AutoStoryTable.h"
+#include "PokemonFRLG_AutoStoryTrainerPass.h"
 #include "PokemonFRLG_AutoStoryTeachScreens.h"
 #include "PokemonFRLG_AutoStoryTrashCans.h"
 #include "PokemonFRLG_AutoStoryViridianMart.h"
@@ -215,60 +216,6 @@ Outcome take_warp_step(StoryEnv& env, const RunState& state, const RouteStep& wa
 
 Outcome battle(StoryEnv& env, const StoryStep& step);
 
-//  The battle of a TRAINER_PASS_VARIANT step's trainer, as a BATTLE step.
-StoryStep pass_fallback_battle(const StoryStep& step){
-    StoryStep fight;
-    fight.kind = StoryStepKind::BATTLE;
-    fight.name = step.name + " (fallback battle)";
-    fight.args = {
-        {"trainer", arg<std::string>(step, "trainer")},
-        {"foes", arg<std::vector<std::string>>(step, "foes")},
-        {"use_items", std::vector<Pokemon::StoryItem>()},
-        {"may_lose", false},
-        {"run", false},
-    };
-    return fight;
-}
-
-//  TRAINER_PASS_VARIANT on the console. No sprite of the trainer is in
-//  Resources yet to read their facing on screen, so wait_for_turn_away()
-//  has nothing to read: the crossing starts at once, logged, and the
-//  battle is the fallback when the trainer sees the player. The line is
-//  one tile deep where the crossing meets it, its first tile.
-Outcome pass_trainer(StoryEnv& env, const RunState& state, const StoryStep& step){
-    const Direction direction = arg<Direction>(step, "direction");
-    const int tiles = (int)arg<int64_t>(step, "tiles");
-    env.console.log(std::format("Story: {}: the trainer's facing can't be read on the console yet; crossing unwatched.", step.name), COLOR_ORANGE);
-    //  The tiles crossed without a stop on the line, the last step watched
-    //  for the trainer's message.
-    std::optional<Direction> facing = facing_of(state.pose);
-    for (int c = 1; c < tiles; c++){
-        step_once(env.console, env.context, direction, facing);
-        facing = direction;
-    }
-    if (step_into_line(env.console, env.context, direction, facing, 1)){
-        //  Seen on the line's tile, the crossing's first: the steps after
-        //  it were lost to the trainer's "!".
-        env.console.log(std::format("Story: {}: the trainer saw the player; fighting them (fallback).", step.name), COLOR_ORANGE);
-        const Outcome fought = battle(env, pass_fallback_battle(step));
-        if (!fought.succeeded()){
-            return fought;
-        }
-        for (int c = 1; c < tiles; c++){
-            step_once(env.console, env.context, direction, direction);
-        }
-    }
-    const std::vector<TilePos> at = Pokemon::tiles_of(state.pose);
-    if (at.size() != 1){
-        return Pokemon::outcome_ok();
-    }
-    TilePos onto = at[0];
-    for (int c = 0; c < tiles; c++){
-        onto = onto.next(direction);
-    }
-    return Pokemon::outcome_ok(to_pose(StoryPose{state.pose.map, onto, direction}));
-}
-
 Outcome take_step(StoryEnv& env, RunState& state, const StoryStep& step){
     const Direction direction = arg<Direction>(step, "direction");
     int tiles_stepped = 1;
@@ -280,7 +227,9 @@ Outcome take_step(StoryEnv& env, RunState& state, const StoryStep& step){
         env.console.log(std::format("Story: {}: a trainer saw the player after {} tile(s).", step.name, *stepped));
         tiles_stepped = *stepped;
     }else if (step.action == TRAINER_PASS_VARIANT){
-        return pass_trainer(env, state, step);
+        return pass_trainer(env, state, step, [&env](const StoryStep& fight){
+            return battle(env, fight);
+        });
     }else if (step.action == TRAINER_WAIT_VARIANT){
         if (!step_into_line(env.console, env.context, direction, facing_of(state.pose), 1, TRAINER_WAIT_WATCH)){
             return Pokemon::outcome_failed("no_trainer", std::format("{} s on the tile {}", TRAINER_WAIT_WATCH.count() / 1000, direction_name(direction)));

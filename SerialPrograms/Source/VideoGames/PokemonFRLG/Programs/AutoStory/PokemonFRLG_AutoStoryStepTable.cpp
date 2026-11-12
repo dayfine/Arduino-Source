@@ -21,6 +21,7 @@
 #include "PokemonFRLG_AutoStorySlopeRun.h"
 #include "PokemonFRLG_AutoStoryTeach.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
+#include "PokemonFRLG_AutoStoryTrainerPass.h"
 #include "PokemonFRLG_AutoStoryTrashCans.h"
 
 namespace PokemonAutomation{
@@ -60,6 +61,7 @@ const std::vector<StoryActionRow>& story_action_rows(){
         {StoryStepKind::ROUTE,      "", StoryActionId::ROUTE},
         {StoryStepKind::LEGS,       "", StoryActionId::LEGS},
         {StoryStepKind::STEP,       "", StoryActionId::STEP},
+        {StoryStepKind::STEP,       TRAINER_PASS_VARIANT, StoryActionId::STEP},
         {StoryStepKind::TALK,       "", StoryActionId::TALK},
         {StoryStepKind::ANSWER,     "", StoryActionId::ANSWER},
         {StoryStepKind::MASH,       "", StoryActionId::MASH},

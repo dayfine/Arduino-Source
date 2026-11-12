@@ -20,22 +20,12 @@
 #include "Pokemon/AutoStory/Pokemon_ScreenEvents.h"
 #include "PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_OverworldSimScreens.h"
+#include "PokemonFRLG_OverworldSimTrainerTurns.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
 
-
-//  A trainer who turns on a timer (pokefirered MovementType_FaceDownAndRight
-//  and its kin): `ways[0]` at first, then after 32, 48, 64 or 80 frames
-//  (gMovementDelaysShort) one of `ways` at random, from `seed`, and again.
-//  They turn to the player only when the player runs
-//  (TryGetTrainerEncounterDirection()), which the sim's player doesn't, and
-//  see only the way they face.
-struct SimTrainerTurns{
-    std::vector<Direction> ways;
-    uint32_t seed = 0;
-};
 
 //  What a test sets up beyond the maps.
 struct SimScript{

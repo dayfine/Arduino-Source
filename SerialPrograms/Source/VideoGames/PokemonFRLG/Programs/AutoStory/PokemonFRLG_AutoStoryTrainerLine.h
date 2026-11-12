@@ -70,30 +70,6 @@ inline constexpr int TRAINER_LINE_TILES = 3;
 //  one tile.
 inline const std::string TRAINER_WAIT_VARIANT = "trainer_wait";
 
-//  The variant of a STEP across the line of a trainer who turns on a timer
-//  (MOVEMENT_TYPE_FACE_DOWN_AND_RIGHT and its kin), as pokeguy passes
-//  Juggler Kayden in Fuchsia Gym (1:15:14): from outside their sight, the
-//  trainer (at "trainer_dx", "trainer_dy" tiles from the player) is watched,
-//  up to TRAINER_PASS_WATCH, until they turn "away", and then the player
-//  steps "tiles" tiles `direction` across the line. They hold a way at least
-//  32 frames (pokefirered gMovementDelaysShort), longer than the step onto
-//  the line takes, so the crossing starts on a turn seen
-//  (wait_for_turn_away()), not on a facing that has lasted. If they see the
-//  player anyway (no turn seen in time, or the facing misread), their
-//  battle ("trainer", "foes") is fought there and the crossing goes on.
-inline const std::string TRAINER_PASS_VARIANT = "trainer_pass";
-inline constexpr Milliseconds TRAINER_PASS_WATCH(20000);
-//  How often the trainer's facing is read while waiting.
-inline constexpr Milliseconds TRAINER_PASS_POLL(50);
-
-//  Reads `read` (the trainer's facing, or nothing if it can't be read),
-//  then `wait` and again, at most `polls` times, until it reads `away`
-//  after reading another way. Returns whether it did.
-bool wait_for_turn_away(
-    int polls, Pokemon::Direction away,
-    const std::function<std::optional<Pokemon::Direction>()>& read, const std::function<void()>& wait
-);
-
 //  From the overworld: step_until_seen() `direction`, turning first
 //  unless `facing` is `direction`, each step watched `watch` for a
 //  trainer's message, and at least WILD_BATTLE_IN_LINE_WATCH for a wild

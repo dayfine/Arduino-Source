@@ -88,6 +88,9 @@ struct GymWalk{
     SimScript script;
     std::optional<OverworldSim> sim;
     std::vector<std::string> fought;
+    //  Koga is beaten: so is every trainer of the gym
+    //  (FuchsiaCity_Gym_EventScript_DefeatedKoga, set_gym_trainers 5).
+    bool gym_beaten = false;
 
     GymWalk(StoryPose start, SimScript sim_script)
         : at(std::move(start))
@@ -101,7 +104,16 @@ struct GymWalk{
             const std::vector<std::string>& beaten = sim->state().trainers_beaten;
             fought.insert(fought.end(), beaten.begin(), beaten.end());
         }
-        sim.emplace(story_maps(), MapPosition{at.map, at.tile}, *at.facing, script);
+        std::vector<MapData> maps = story_maps();
+        for (MapData& map : maps){
+            if (!gym_beaten || map.name != GYM){
+                continue;
+            }
+            for (MapObject& object : map.objects){
+                object.trainer.reset();
+            }
+        }
+        sim.emplace(std::move(maps), MapPosition{at.map, at.tile}, *at.facing, script);
     }
     std::vector<std::string> all_fought() const{
         std::vector<std::string> all = fought;
@@ -113,14 +125,14 @@ struct GymWalk{
 
 //  A step of a row on the sim: row_step_on_sim(), but the way into a
 //  Center, which has no map, and Koga's battle, which a talk starts, leave
-//  the player where the table says.
+//  the player where the table says; and Koga's leaves the gym's trainers
+//  beaten.
 std::string gym_step_on_sim(const StoryStep& step, const std::string& id, GymWalk& walk){
     const bool center = step.action == CENTER_ENTER_VARIANT;
     if (center || (step.kind == StoryStepKind::BATTLE && step.name == "koga")){
         walk.at = *story_pose(Pokemon::pose_of(*step.pose_after));
-        if (center){
-            walk.place();
-        }
+        walk.gym_beaten = walk.gym_beaten || !center;
+        walk.place();
         return "";
     }
     return row_step_on_sim(*walk.sim, walk.at, step, id);

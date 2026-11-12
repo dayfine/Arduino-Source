@@ -25,6 +25,7 @@
 #include "PokemonFRLG_AutoStoryRooms.h"
 #include "PokemonFRLG_AutoStoryRoomLegs.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
+#include "PokemonFRLG_AutoStoryTrainerPass.h"
 #include "PokemonFRLG_AutoStoryViridianMart.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSimField.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_FlyMap.h"
@@ -490,7 +491,7 @@ std::string sim_pass_trainer(OverworldSim& sim, StoryPose& at, const StoryStep& 
     }};
     wait_for_turn_away(
         (int)(TRAINER_PASS_WATCH / TRAINER_PASS_POLL), away,
-        [&]{ return sim.trainer_facing(trainer); },
+        [&]{ return trainer_facing(sim, trainer); },
         [&]{ sim.watch({}, TRAINER_PASS_POLL); }
     );
     for (int c = 1; c < tiles; c++){

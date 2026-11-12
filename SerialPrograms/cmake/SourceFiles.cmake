@@ -2008,6 +2008,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldStairs_Tests.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSimScreens.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSimState.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSimTrainerTurns.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSimTrainers.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRouteCosts.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRouteSteps.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldStepChecks.h
@@ -2216,6 +2218,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryViridianMart.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryStatusBadge.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryTrainerLine.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryTrainerPass.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryTrainerPass.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryTrainerMessage.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStory_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/BoxOrganization/PokemonFRLG_BoxOrganization.cpp
