@@ -29,7 +29,11 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldObjects.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryFieldMoves.h"
+#include "PokemonFRLG_AutoStoryLegs.h"
 #include "PokemonFRLG_AutoStoryMember.h"
+#include "PokemonFRLG_AutoStoryMemberInfo.h"
+#include "PokemonFRLG_AutoStoryPacedRoute.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryRows_Tests.h"
 #include "PokemonFRLG_AutoStoryTable.h"
@@ -259,8 +263,72 @@ UnitTestResult check_lead_level_precondition(Logger& logger, std::string_view id
     return true;
 }
 
+//  10.01's Fly names the Pidgey, not a slot, and flies with the slot the
+//  party reads it in: the third with the Oddish and the Eevee, the second
+//  without the Oddish, none without a Pidgey.
+UnitTestResult test_fly_finds_pidgey(Logger&){
+    const StoryCheckpoint& row = checkpoint("10.01");
+    const auto fly = std::find_if(row.steps.begin(), row.steps.end(), [](const StoryStep& step){
+        return parse_fly_step(step).has_value();
+    });
+    if (fly == row.steps.end() || parse_fly_step(*fly)->species != "pidgey" || fly->args.contains("slot")){
+        return std::string("10.01: expected a Fly by the Pidgey's species, with no slot.");
+    }
+    const FlyPlan plan = *parse_fly_step(*fly);
+    const auto party = [](std::vector<std::string> species){
+        return MemberReader([species](size_t slot) -> std::optional<MemberInfo>{
+            if (slot >= species.size()){
+                return std::nullopt;
+            }
+            return MemberInfo{.species = species[slot], .level = 30};
+        });
+    };
+    if (plan.party_slot(party({"blastoise", "oddish", "pidgey", "eevee"})) != size_t(2)
+        || plan.party_slot(party({"blastoise", "pidgey"})) != size_t(1)
+        || plan.party_slot(party({"blastoise", "oddish"})).has_value()
+    ){
+        return std::string("10.01: the Fly doesn't find the Pidgey's slot as the party reads it.");
+    }
+    return true;
+}
+
+//  The step a press makes off a warp, ending where the game leaves the
+//  player and facing the way it turns them (arrival_facing()), not the way
+//  the press went. 10.01 below_store_lift comes down from the roof room on
+//  Celadon Mansion's 2F stairs (4, 2), taken east, to 1F's (4, 2), where
+//  the player faces west (console B, 2026-11-11 23:40). Out of Mt. Moon
+//  B1F's north exit, the game walks the player south out of Route 4's cave
+//  entrance (32, 5).
+UnitTestResult test_warp_press_arrivals(Logger&){
+    const struct{
+        MapPosition from;
+        Direction press;
+        MapPosition end;
+        Direction facing;
+    } CASES[] = {
+        {{"CeladonCity_Condominiums_2F", {4, 2}}, Direction::EAST, {"CeladonCity_Condominiums_1F", {4, 2}}, Direction::WEST},
+        {{"MtMoon_B1F", {45, 5}}, Direction::NORTH, {"Route4", {32, 6}}, Direction::SOUTH},
+    };
+    for (const auto& c : CASES){
+        const std::optional<RouteStep> step = warp_press(story_maps(), c.from, c.press);
+        if (!step){
+            return std::format("A press {} from {}: no warp taken.", direction_name(c.press), to_string(c.from));
+        }
+        if (!(step->end == c.end) || step->facing_after != c.facing){
+            return std::format(
+                "A press {} from {}: ends on {} facing {}, expected {} facing {}.",
+                direction_name(c.press), to_string(c.from), to_string(step->end), direction_name(step->facing_after),
+                to_string(c.end), direction_name(c.facing)
+            );
+        }
+    }
+    return true;
+}
+
 const AutoStoryTowerCase AUTO_STORY_TOWER_CASES[] = {
     {.input = {"10.01 Route 16's house for HM02, out of every line, and Fly to Lavender's Pokemon Center", test_back_to_lavender}, .expectation = {}},
+    {.input = {"10.01 flies with the Pidgey found by species", test_fly_finds_pidgey}, .expectation = {}},
+    {.input = {"10.01 a press off Celadon Mansion's 2F stairs arrives on 1F facing west", test_warp_press_arrivals}, .expectation = {}},
     {.input = {"10.02 the Pokemon Tower's 1F and 2F to east of the rival's trigger", test_tower_to_rival}, .expectation = {}},
     {.input = {"10.03 onto the rival's trigger", test_tower_rival}, .expectation = {}},
     {.input = {"10.04 the Tower's 3F to 5F, Ruth and Tammy alone fought", test_tower_3f_to_5f}, .expectation = {}},

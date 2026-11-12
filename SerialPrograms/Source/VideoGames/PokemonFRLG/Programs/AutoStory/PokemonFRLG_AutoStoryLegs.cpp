@@ -7,6 +7,7 @@
 #include <algorithm>
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMap.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSpin.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldTileRules.h"
 #include "PokemonFRLG_AutoStoryLegs.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 
@@ -99,6 +100,19 @@ std::optional<RouteStep> warp_press(const std::vector<MapData>& maps, const MapP
     step.warps = true;
     step.facing_after = direction;
     step.end = MapPosition{warp->to ? warp->to->map : map->name, warp_tile};
+    //  Where the game leaves the player and the way it turns them, as the
+    //  planner takes a warp (arrival_facing()).
+    const auto destination = std::find_if(maps.begin(), maps.end(), [&](const MapData& data){
+        return warp->to && data.name == warp->to->map;
+    });
+    if (destination != maps.end() && destination->points.contains(warp->to->point)){
+        TilePos arrival = destination->points.at(warp->to->point);
+        step.facing_after = arrival_facing(*destination, arrival).value_or(direction);
+        if (walks_out_on_arrival(*destination, arrival)){
+            arrival = arrival.next(Direction::SOUTH);
+        }
+        step.end.point = arrival;
+    }
     return step;
 }
 

@@ -155,10 +155,10 @@
         "action": "fly",
         "args": {
           "town": "LavenderTown",
-          "slot": 3
+          "species": "pidgey"
         },
         "declared_after": {"map": "LavenderTown", "tiles": [[6, 6]], "facing": "south"},
-        "why": "the Pidgey flies to Lavender Town, landing below the Pokemon Center's door (6, 5)"
+        "why": "the Pidgey, found in the party by its summary's species, flies to Lavender Town, landing below the Pokemon Center's door (6, 5)"
       },
       {
         "id": "lavender_nurse",
