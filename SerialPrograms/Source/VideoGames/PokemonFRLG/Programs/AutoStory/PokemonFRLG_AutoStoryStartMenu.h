@@ -69,6 +69,10 @@ StartMenu step_start_menu(const Pokemon::StoryActionArgs& args);
 
 //  Whether the overworld is up: START opens the menu only there, with no
 //  scene running. If it opened, it is closed again.
+//  Overlaps in_overworld() in PokemonFRLG_Navigation.h.
+//  Ours presses START once and takes one snapshot, with no B presses before the menu shows;
+//  upstream mashes B and retries START up to 3 times, which is unsafe in the intro and move prompts.
+//  Could be unified with upstream if needed.
 bool overworld_shows(ConsoleHandle& console, ProControllerContext& context);
 
 

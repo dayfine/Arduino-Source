@@ -43,6 +43,10 @@ enum class TextEnd{
 TextEnd advance_text(ConsoleHandle& console, ProControllerContext& context, Milliseconds timeout, bool stop_at_battle);
 
 //  advance_text() to the overworld.
+//  Overlaps in_overworld() in PokemonFRLG_Navigation.h.
+//  Ours watches the screen while pressing B; upstream opens START to check,
+//  which ours avoids during text and prompts.
+//  Could be unified with upstream if needed.
 void mash_until_overworld(ConsoleHandle& console, ProControllerContext& context, Milliseconds timeout);
 
 //  From the overworld, facing something that answers A with a message (a
