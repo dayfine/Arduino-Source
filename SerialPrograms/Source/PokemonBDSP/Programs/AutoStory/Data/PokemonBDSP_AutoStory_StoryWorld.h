@@ -120,6 +120,8 @@ private:
 //  meet. Tiles blocked or taken off the maps are not in them. The view
 //  lasts until the world's next add().
 Pokemon::ConnectedMaps connected_maps(const StoryWorld& world);
+//  A temporary world would be gone before the view is used.
+Pokemon::ConnectedMaps connected_maps(StoryWorld&& world) = delete;
 
 //  The rules of walking on a story world, from its tiles.
 
