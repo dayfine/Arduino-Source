@@ -13,7 +13,7 @@
  *    (00.02's Starly, lab-B 2026-11-09), at each battle step and at each
  *    step after a walk, which can end in a trainer's sight or in grass.
  *    SimWorldKnobs::battle_opening_before.
- *  - GRASS_BATTLES: a wild battle on every pass through tall grass, one
+ *  - WILD_BATTLES: a wild battle on every pass through tall grass, one
  *    each 8 grass tiles (00.04, lab-B 2026-11-09 16:14: four in a row on
  *    Route 201, each replan back through the grass, "too many plans").
  *    SimWorldKnobs::grass. One variant a row: the whole row so.
@@ -54,6 +54,7 @@
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon/Navigation/Pokemon_MapData.h"
+#include "Pokemon/Navigation/Simulation/Pokemon_SimFaults.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_WalkRules.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h"
@@ -72,29 +73,29 @@ using Pokemon::StoryStep;
 using Pokemon::StoryStepKind;
 using Pokemon::TilePos;
 
-enum class FaultClass{
-    SCENE_END_POSE,
-    BATTLE_OPENING,
-    GRASS_BATTLES,
-    SCENE_EARLY,
-    SLOW_FADE_IN,
-    //  Not swept yet: the measured movement table's lost taps (#293).
-    LOST_TAP,
-};
-std::string_view fault_class_name(FaultClass fault){
+using Pokemon::FaultClass;
+
+//  The sweep's name for `fault`: the class and how BDSP's sim injects it.
+//  Not swept yet: LOST_TAP, the measured movement table's lost taps
+//  (#293), and the classes only FRLG's sim injects.
+std::string_view sweep_name(FaultClass fault){
     switch (fault){
     case FaultClass::SCENE_END_POSE:
         return "scene end pose";
     case FaultClass::BATTLE_OPENING:
         return "battle opening at step start";
-    case FaultClass::GRASS_BATTLES:
+    case FaultClass::WILD_BATTLES:
         return "wild battles on every grass pass";
     case FaultClass::SCENE_EARLY:
         return "scene starts during the walk before it";
     case FaultClass::SLOW_FADE_IN:
         return "slow fade-in after every warp";
     case FaultClass::LOST_TAP:
-        return "lost tap";
+    case FaultClass::LATE_FADE:
+    case FaultClass::WARP_NO_OP:
+    case FaultClass::DARK_CAVE:
+    case FaultClass::UNSEEN_STEP:
+        return Pokemon::fault_class_name(fault);
     }
     return "?";
 }
@@ -251,13 +252,13 @@ struct SweepFailure{
 };
 
 UnitTestResult sweep_result(Logger& logger, FaultClass fault, const std::string& row, size_t variants, const std::vector<SweepFailure>& failures){
-    logger.log(std::format("Fault sweep {} {}: {} variants, {} fail.", row, fault_class_name(fault), variants, failures.size()));
+    logger.log(std::format("Fault sweep {} {}: {} variants, {} fail.", row, sweep_name(fault), variants, failures.size()));
     if (failures.empty()){
         return true;
     }
     std::string out = std::format("{} of {} variants fail {}:", failures.size(), variants, row);
     for (const SweepFailure& failure : failures){
-        logger.log(std::format("| {} | {} | {} | {} | {} |", row, failure.step, fault_class_name(fault), failure.variant, failure.stopped));
+        logger.log(std::format("| {} | {} | {} | {} | {} |", row, failure.step, sweep_name(fault), failure.variant, failure.stopped));
         out += std::format("\n  {} {}: {}", failure.step, failure.variant, failure.stopped);
     }
     return out;
@@ -321,7 +322,7 @@ UnitTestResult sweep_grass_battles(Logger& logger, const StoryCheckpoint& row){
     if (!stopped.empty()){
         failures.push_back({"", "a battle each 8 grass tiles", stopped});
     }
-    return sweep_result(logger, FaultClass::GRASS_BATTLES, row.id, 1, failures);
+    return sweep_result(logger, FaultClass::WILD_BATTLES, row.id, 1, failures);
 }
 
 //  Row `row` with every warp's fade-in slow, all through the row.
@@ -412,7 +413,7 @@ const StoryCheckpoint& table_row(const std::string& id){
 class Test_AutoStoryFaultSweep : public UnitTest{
 public:
     explicit Test_AutoStoryFaultSweep(FaultSweepCase test_case)
-        : UnitTest(std::format("PokemonBDSP::AutoStory - Fault sweep: {}, {}", test_case.input.row, fault_class_name(test_case.input.fault)))
+        : UnitTest(std::format("PokemonBDSP::AutoStory - Fault sweep: {}, {}", test_case.input.row, sweep_name(test_case.input.fault)))
         , m_fault(test_case.input.fault)
         , m_row(table_row(test_case.input.row))
     {}
@@ -446,13 +447,17 @@ private:
             return sweep_scene_end_pose(logger, m_row);
         case FaultClass::BATTLE_OPENING:
             return sweep_battle_opening(logger, m_row);
-        case FaultClass::GRASS_BATTLES:
+        case FaultClass::WILD_BATTLES:
             return sweep_grass_battles(logger, m_row);
         case FaultClass::SCENE_EARLY:
             return sweep_scene_early(logger, m_row);
         case FaultClass::SLOW_FADE_IN:
             return sweep_slow_fade_in(logger, m_row);
         case FaultClass::LOST_TAP:
+        case FaultClass::LATE_FADE:
+        case FaultClass::WARP_NO_OP:
+        case FaultClass::DARK_CAVE:
+        case FaultClass::UNSEEN_STEP:
             break;
         }
         return true;
@@ -467,7 +472,7 @@ private:
 const FaultSweepCase FAULT_SWEEP_CASES[] = {
     {.input = {.fault = FaultClass::SCENE_END_POSE}, .expectation = {}},
     {.input = {.fault = FaultClass::BATTLE_OPENING}, .expectation = {}},
-    {.input = {.fault = FaultClass::GRASS_BATTLES}, .expectation = {}},
+    {.input = {.fault = FaultClass::WILD_BATTLES}, .expectation = {}},
     {.input = {.fault = FaultClass::SCENE_EARLY}, .expectation = {}},
     {.input = {.fault = FaultClass::SLOW_FADE_IN}, .expectation = {}},
 };
