@@ -79,7 +79,7 @@ public:
 
     virtual WalkResult walk_to_wall(const RouteWallWalk& walk) override{
         count_call();
-        const MoveSpeed speed = walk.options.pace == DpadPace::RUN ? MoveSpeed::RUN : MoveSpeed::WALK;
+        const MoveSpeed speed = walk.options.pace == DpadPace::RUN && m_can_run ? MoveSpeed::RUN : MoveSpeed::WALK;
         const Milliseconds per_tile = route_ms_per_tile(walk.direction, speed);
         if (m_overshoot && walk.limit > ROUTE_START_DELAY){
             //  A hold timed for n tiles (ROUTE_START_DELAY, then half a
@@ -101,6 +101,11 @@ public:
     //  moved) and walks to a wall end at the wall, so neither has a fault.
     void overshoot_timed_holds(bool overshoot){
         m_overshoot = overshoot;
+    }
+    //  Before the running shoes, a walk held with B is still a walk: its
+    //  time counts walking tiles, as the walker's plan speed does.
+    void set_can_run(bool can_run){
+        m_can_run = can_run;
     }
     virtual WalkResult walk_taps(Direction direction, size_t tiles, const std::string&) override{
         count_call();
@@ -172,6 +177,7 @@ private:
     size_t m_calls = 0;
     size_t m_walked = 0;
     bool m_overshoot = false;
+    bool m_can_run = true;
 };
 
 StoryWorld jubilife_world(){
@@ -299,6 +305,7 @@ UnitTestResult test_jubilife_center_kids(Logger&){
 //  One ROUTE step of the story table, from where the steps before it end.
 struct StoryRoute{
     std::string name;
+    MoveSpeed speed;
     Pose from;
     Pose goal;
     std::string costs;
@@ -311,7 +318,8 @@ void add_story_route(const std::string& row, const StoryStep& step, std::optiona
     if (step.kind == StoryStepKind::ROUTE){
         const Pose goal = Pokemon::pose_of(Pokemon::story_arg<GridPose>(step.args, "target"));
         if (at){
-            routes.push_back({std::format("{} {}", row, step.name), *at, goal, step.action});
+            const MoveSpeed speed = row > std::string(RUNNING_SHOES_ROW) ? MoveSpeed::RUN : MoveSpeed::WALK;
+            routes.push_back({std::format("{} {}", row, step.name), speed, *at, goal, step.action});
         }
         at = goal;
     }else{
@@ -356,6 +364,7 @@ std::string sweep_story_route(const StoryRoute& route, bool overshoot, std::vect
         std::vector<std::string> notes;
         SimulatedRouteIO io(*world, from, {}, notes);
         io.overshoot_timed_holds(overshoot);
+        io.set_can_run(route.speed == MoveSpeed::RUN);
         RouteTrainers trainers{.sights = story_trainers(*world), .fight = [](const std::string&){}};
         try{
             walk_route(io, *world, start, trainers, {
@@ -363,7 +372,7 @@ std::string sweep_story_route(const StoryRoute& route, bool overshoot, std::vect
                 .label = route.name,
                 .avoid = {},
                 .costs = *costs,
-                .speed = MoveSpeed::WALK,
+                .speed = route.speed,
             });
         }catch (const RouteFailed& e){
             std::string last;
