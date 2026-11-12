@@ -250,10 +250,9 @@ anchor); 0 from one start tile.
 
 == 00.05c below_the_company_clown (costs: town)
   from: JubilifeCity (14, 19) facing west (tile)
-  target: JubilifeCity (15, 19) facing north (tile)
+  target: JubilifeCity (14, 19) facing west (tile)
   start candidates: Jubilife City (14, 19)
-  1. east 1 (open) -> Jubilife City (15, 19)
-  totals: 1 legs, 0 turns, 1 open, 0 localization
+  totals: 0 legs, 0 turns, 0 open, 0 localization
 
 == 00.05c below_the_tv_clown (costs: town)
   from: JubilifeCity (14, 19) facing west (tile)
