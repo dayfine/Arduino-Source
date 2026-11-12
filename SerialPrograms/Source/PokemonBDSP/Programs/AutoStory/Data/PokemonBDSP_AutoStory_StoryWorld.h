@@ -11,6 +11,10 @@
  *  plan may not end there, but walking into one is not a wall, since it may
  *  be an exit.
  *
+ *  The same maps are also kept as connected maps (Pokemon::ConnectedMaps),
+ *  joined where they meet on the world grid, for planning on a map and a
+ *  tile instead of the grid.
+ *
  */
 
 #ifndef PokemonAutomation_PokemonBDSP_AutoStory_StoryWorld_H
@@ -19,6 +23,7 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include "Pokemon/Navigation/Pokemon_ConnectedMaps.h"
 #include "Pokemon/Navigation/Pokemon_Grid.h"
 #include "Pokemon/Navigation/Pokemon_MapData.h"
 
@@ -71,6 +76,7 @@ public:
     //  The map that holds a world tile, or nothing between maps.
     std::optional<MapTile> to_local(const Pokemon::TilePos& world) const;
 
+    friend Pokemon::ConnectedMaps connected_maps(const StoryWorld& world);
     friend std::vector<Pokemon::TilePos> wandering_hazards(const StoryWorld& world);
     friend bool wandering_hazard(const StoryWorld& world, const Pokemon::TilePos& pos);
     friend bool recovery_hazard(const StoryWorld& world, const Pokemon::TilePos& pos);
@@ -102,12 +108,20 @@ private:
     Cell* cell(const Pokemon::TilePos& pos);
 
     std::vector<Placed> m_maps;
+    std::vector<Pokemon::MapData> m_connected;
     Pokemon::TilePos m_origin;      //  offset of world tile (0,0)
     Pokemon::Grid<Cell> m_cells;
     std::vector<Pokemon::TilePos> m_blocked;    //  world tiles, kept across add()
     std::vector<Pokemon::TilePos> m_uncovered;
 };
 
+
+//  The world's maps as added, under their names in it, joined where they
+//  meet. Tiles blocked or taken off the maps are not in them. The view
+//  lasts until the world's next add().
+Pokemon::ConnectedMaps connected_maps(const StoryWorld& world);
+//  A temporary world would be gone before the view is used.
+Pokemon::ConnectedMaps connected_maps(StoryWorld&& world) = delete;
 
 //  The rules of walking on a story world, from its tiles.
 

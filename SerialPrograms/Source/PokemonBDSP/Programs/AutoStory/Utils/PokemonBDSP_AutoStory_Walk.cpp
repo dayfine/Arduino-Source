@@ -19,6 +19,7 @@
 #include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_Superscalar.h"
+#include "Pokemon/Navigation/Pokemon_MoveMechanics.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_TransitionWatchers.h"
 #include "PokemonBDSP/Inference/Battles/PokemonBDSP_BattleMenuDetector.h"
@@ -388,8 +389,9 @@ public:
     {}
 
     WalkResult run(){
-        //  A tile a tap: 160 ms held, the rest released, so each chunk is one tile.
-        const Milliseconds CHUNK = m_spec.input == WalkInput::TAPS ? 800ms : 400ms;
+        //  A tile a tap: the step tap held, the rest released, so each chunk is one tile.
+        const Pokemon::StepTap& tap = Pokemon::BDSP_MOVE_MECHANICS.walk.tap;
+        const Milliseconds CHUNK = m_spec.input == WalkInput::TAPS ? tap.hold + tap.release : 400ms;
         m_context.wait_for_all_requests();
         m_result.started = current_time();
         m_result.events.record({}, m_result.started);
@@ -438,9 +440,11 @@ private:
 
     void press(ProControllerContext& context, Milliseconds chunk) const{
         switch (m_spec.input){
-        case WalkInput::TAPS:
-            pbf_press_dpad(context, m_dpad, 160ms, chunk - 160ms);
+        case WalkInput::TAPS:{
+            const Pokemon::StepTap& tap = Pokemon::BDSP_MOVE_MECHANICS.walk.tap;
+            pbf_press_dpad(context, m_dpad, tap.hold, chunk - tap.hold);
             return;
+        }
         case WalkInput::DPAD_RUN:
             ssf_press_button(context, BUTTON_B, 0ms, chunk, 0ms);
             ssf_press_dpad(context, m_dpad, chunk, chunk, 0ms);

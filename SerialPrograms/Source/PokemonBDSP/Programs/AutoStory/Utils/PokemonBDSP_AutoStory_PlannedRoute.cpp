@@ -476,7 +476,7 @@ size_t RouteWalker::unstick_wall_leg(LegWalk& walk, size_t walked_tiles, size_t 
     if (walk.result.stop == WalkStop::BLOCKED && walked_tiles + 2 < nearest){
         m_io.note("[Route] " + walk.label + ": stopped after about " + std::to_string(walked_tiles) +
             " tiles, short of the wall; two D-pad taps, then on to the wall.", RouteNote::WARNING);
-        m_io.press({.kind = RouteInputKind::DPAD, .direction = walk.planned.leg.direction, .hold = 160ms, .release = 640ms,
+        m_io.press({.kind = RouteInputKind::DPAD, .direction = walk.planned.leg.direction, .hold = BDSP_MOVE_MECHANICS.walk.tap.hold, .release = BDSP_MOVE_MECHANICS.walk.tap.release,
             .count = 2, .end = RouteInputEnd::DONE});
         walk.result = m_io.walk_to_wall({.direction = walk.planned.leg.direction, .limit = limit, .label = walk.label, .options = run_watching(walk)});
         walked_tiles += tiles_moved(walk.result, per_tile);
