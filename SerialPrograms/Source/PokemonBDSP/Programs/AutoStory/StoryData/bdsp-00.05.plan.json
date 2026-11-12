@@ -7,7 +7,7 @@
           "legs": [
             {
               "direction": "north",
-              "tiles": 6
+              "tiles": 4
             }
           ]
         },
@@ -207,7 +207,7 @@
         },
         "id": "north_onto_the_plaza",
         "kind": "legs",
-        "why": "up the steps onto the plaza's row 54, below the lamps on row 53; from 3 tiles off any way the start may be, it ends on rows 51 to 57"
+        "why": "4 taps up from (46, 58) onto row 54, just below the lamps on row 53 (console, lab-B 2026-11-11); from 3 tiles off any way the start may be, it ends on rows 51 to 57"
       },
       {
         "action": "to_wall",
@@ -256,7 +256,7 @@
         },
         "id": "east_to_the_wall",
         "kind": "legs",
-        "why": "the buildings' west wall (x 53) on rows 51 to 57 pins the column"
+        "why": "the small brick building's west wall (x 53, rows 51 to 57; on console against it from row 54) pins the column"
       },
       {
         "args": {
@@ -407,7 +407,7 @@
       "tiles": [
         [
           46,
-          60
+          58
         ]
       ]
     },
