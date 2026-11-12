@@ -317,7 +317,7 @@ StepOutcome walk_and_watch(
     if (counts_step_taps(step)){
         walked = walk_step_taps(console, context, step, interrupts, player);
     }else if (counts_bike_taps(step, speed)){
-        walked = walk_bike_taps(console, context, step, interrupts);
+        walked = walk_bike_taps(console, context, step, interrupts, player);
     }else{
         walked = walk_step(console, context, step, facing, interrupts, speed, player);
     }
