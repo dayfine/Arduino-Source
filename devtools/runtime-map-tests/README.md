@@ -42,7 +42,9 @@ that `.github/workflows/runtime-map-reader.yml` pins (CI passes it as
 
 ```sh
 python3 devtools/runtime-map-tests/prepare_parity.py \
-  --publisher /path/to/PokemonSimulation --out /tmp/runtime-map-pairs.json
+  --publisher /path/to/PokemonSimulation \
+  --publisher-revision <the ref pinned in runtime-map-reader.yml> \
+  --out /tmp/runtime-map-pairs.json
 /path/to/build/RuntimeMapTests /tmp/runtime-map-pairs.json
 ```
 
