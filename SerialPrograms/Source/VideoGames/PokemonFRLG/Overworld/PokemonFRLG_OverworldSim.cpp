@@ -360,7 +360,6 @@ bool OverworldSim::after_step(const Step& step, Milliseconds pressed){
     if (step.warped && black_without_warp(pressed)){
         return true;
     }
-    const bool dims = step.warped && m_script.lift_exit_dims && m_script.lift_floors.contains(map().name);
     if (step.warped){
         m_state.warped_from.push_back(map().name);
     }
@@ -380,9 +379,7 @@ bool OverworldSim::after_step(const Step& step, Milliseconds pressed){
             note("the warp takes the player off the Bicycle.");
         }
         m_frozen = true;
-        if (!dims){
-            schedule(pressed + timing.tile, SimScreen::FADE, false);
-        }
+        schedule(pressed + timing.tile, m_script.lift_exit_dims && m_script.lift_floors.contains(m_state.warped_from.back()) ? SimScreen::OVERWORLD : SimScreen::FADE, false);
         schedule(pressed + timing.tile + timing.fade, SimScreen::OVERWORLD, timing.fade_in == 0ms);
         if (timing.fade_in > 0ms){
             schedule(pressed + timing.tile + timing.fade + timing.fade_in, SimScreen::OVERWORLD, true);
