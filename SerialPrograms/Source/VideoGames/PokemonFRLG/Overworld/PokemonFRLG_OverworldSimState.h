@@ -136,6 +136,8 @@ struct SimState{
     Milliseconds in_wild_battles{0};
     int signs_read = 0;
     int turn_taps_dropped = 0;
+    //  Taps that only turned the player, or were dropped turning them.
+    int turn_taps = 0;
     //  On the Bicycle (SimScript::on_bike).
     bool on_bike = false;
     //  On the water (SimField::SURF).

@@ -81,11 +81,10 @@ StepOutcome OverworldSimWalker::walk_bike_taps(const RouteStep& step){
 
 BikeTap OverworldSimWalker::step_tap(const RouteStep& step, int tap){
     const MapPosition before = m_sim.state().position;
-    const int turn_taps = m_sim.turn_taps();
+    const int turn_taps = m_sim.state().turn_taps;
     m_sim.tap(step.direction, STEP_TAP, STEP_TAP_RELEASE);
     m_sim.watch({}, step_tap_settle(step, tap));
-    const bool moved = !(m_sim.state().position == before);
-    if ((moved && !m_sim.hides_moved_step_tap()) || (!moved && m_sim.shows_turn_tap_as_step(turn_taps))){
+    if (m_sim.reads_step_tap_as_step(before, turn_taps)){
         return BikeTap{.moved = true};
     }
     return BikeTap{.moved = false, .interrupt = std::nullopt, .cleared_late = clear_late(interrupts(step), AFTER_LEG_WATCH, MAX_INTERRUPTIONS_PER_LEG) > 0};

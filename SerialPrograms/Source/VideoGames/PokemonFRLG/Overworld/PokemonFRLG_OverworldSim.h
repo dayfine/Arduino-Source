@@ -67,15 +67,11 @@ public:
 
     const SimState& state() const{ return m_state; }
 
-    //  Counts a walker step tap that moved the player; whether the
-    //  walker's screen check misses it (SimScript::unseen_step_taps).
-    bool hides_moved_step_tap();
-    //  The number of turn taps so far (SimScript::dropped_turn_taps).
-    int turn_taps() const{ return m_turn_taps; }
-    //  Whether the walker's screen check reads a tap that only turned the
-    //  player as a step: a turn tap since `turn_taps_before` that
-    //  SimScript::seen_turn_taps names.
-    bool shows_turn_tap_as_step(int turn_taps_before);
+    //  Whether the walker's screen check reads its last step tap as a
+    //  step: one that moved the player from `before`, but for
+    //  SimScript::unseen_step_taps, or a turn tap since `turn_taps_before`
+    //  (SimState::turn_taps) that SimScript::seen_turn_taps names.
+    bool reads_step_tap_as_step(const MapPosition& before, int turn_taps_before);
 
     //  Holds `direction` for `duration` then lets go for `release`, while
     //  `watchers` watch until `watch` (at least the hold and release) from
@@ -224,7 +220,6 @@ private:
     int m_steps_since_encounter = 0;
     int m_encounter_rate_buff = 0;
     //  The turn taps so far, for SimScript::dropped_turn_taps.
-    int m_turn_taps = 0;
     //  Steps onto a warp so far, and the fault on one
     //  (SimScript::black_without_warp): its black without the warp.
     int m_warp_steps = 0;
