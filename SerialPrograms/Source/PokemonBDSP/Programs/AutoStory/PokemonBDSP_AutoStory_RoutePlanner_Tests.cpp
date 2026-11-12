@@ -128,8 +128,9 @@ UnitTestResult test_plan_robust_route(Logger&){
         const std::vector<RobustCase> cases{
             {.name = "two starts meet at the wall", .from = {{1, 1}, {2, 1}}, .goal = {4, 1}, .legs = "east 3 (to wall) to (4, 1)"},
             {.name = "an open stop is never sure", .from = {{1, 1}}, .goal = {3, 1}, .legs = ""},
+            //  Known exactly, the player is not run to the wall and walked back: two exact steps.
             {.name = "unless a one-tile step is exact", .from = {{1, 1}}, .goal = {3, 1}, .costs = exact_step,
-                .legs = "east 3 (to wall) to (4, 1); west 1 (open) to (3, 1)"},
+                .legs = "east 2 (open) to (3, 1)"},
         };
         for (const RobustCase& item : cases){
             const auto legs = plan_robust_route(world, item.from, [&](const TilePos& pos){ return pos == item.goal; }, item.costs);

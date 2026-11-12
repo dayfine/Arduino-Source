@@ -559,6 +559,56 @@ UnitTestResult test_main_road_ends_below_the_east_exit_sign(Logger& logger){
     return "00.05c below_the_east_exit_sign is not a ROUTE step from a known place.";
 }
 
+//  A leg whose end has a wall (or the maps' edge) right after it in the
+//  leg's direction is a leg to the wall: held until the wall stops the
+//  player, which localizes, not tapped to a tile and left open (lab-B,
+//  2026-11-12 14:24: 00.05c's "east 14 (open)" to (59, 26) was a run into
+//  the wall past it).
+UnitTestResult test_legs_ending_at_a_wall_are_wall_legs(Logger& logger){
+    std::vector<std::string> found;
+    for (const PlannedStoryRoute& route : plan_story_routes(logger)){
+        for (const PlannedLeg& planned : route.legs ? *route.legs : std::vector<PlannedLeg>{}){
+            const bool at_wall_end = !planned.after.empty() && std::all_of(planned.after.begin(), planned.after.end(), [&](const TilePos& pos){
+                return at_wall(*route.world, pos, planned.leg.direction);
+            });
+            if (!planned.leg.ends_at_wall && at_wall_end){
+                found.push_back(std::format("{}: {}.", route.name, to_string(planned)));
+            }
+        }
+    }
+    std::string out;
+    for (const std::string& line : found){
+        out += "\n  " + line;
+    }
+    return found.empty() ? UnitTestResult(true) : UnitTestResult("open legs that end at a wall:" + out);
+}
+
+//  A leg to a wall from a place the walk knows exactly localizes nothing:
+//  it is not followed by a leg straight back (00.05c's "south 15 (to wall)"
+//  then "north 1"). A walk is held to a wall to bring several possible
+//  places to one, or after a blocked leg, not from one known tile.
+UnitTestResult test_known_place_has_no_wall_and_back(Logger& logger){
+    std::vector<std::string> found;
+    for (const PlannedStoryRoute& route : plan_story_routes(logger)){
+        if (!route.legs){
+            continue;
+        }
+        const std::vector<PlannedLeg>& legs = *route.legs;
+        for (size_t i = 1; i < legs.size(); i++){
+            const size_t known_before = i == 1 ? route.from.size() : legs[i - 2].after.size();
+            const bool back = (int)legs[i].leg.direction == ((int)legs[i - 1].leg.direction + 2) % 4;
+            if (known_before == 1 && legs[i - 1].leg.ends_at_wall && back){
+                found.push_back(std::format("{}: {} then {}.", route.name, to_string(legs[i - 1]), to_string(legs[i])));
+            }
+        }
+    }
+    std::string out;
+    for (const std::string& line : found){
+        out += "\n  " + line;
+    }
+    return found.empty() ? UnitTestResult(true) : UnitTestResult("a wall and back from a known place:" + out);
+}
+
 //  01.08's walk below the Ravaged Path keeps off the row Route 204 South's
 //  youngster_3 wanders, (12, 2) to (14, 2): on lab-B (2026-11-08) the plan
 //  "north 35 (to wall) to (13, 2), west 2 (to wall) to (11, 2)" walked along
@@ -829,6 +879,14 @@ const AutoStoryStoryTableCase AUTO_STORY_STORY_TABLE_CASES[] = {
     },
     {
         .input = {"00.05c: the plan to below the east-exit sign is taps and a wall's end, off the guard's column (lab-B, 2026-11-12 13:55)", test_main_road_ends_below_the_east_exit_sign},
+        .expectation = {},
+    },
+    {
+        .input = {"a leg that ends at a wall is planned as a leg to the wall (00.05c east 14 to (59, 26), lab-B 2026-11-12 14:24)", test_legs_ending_at_a_wall_are_wall_legs},
+        .expectation = {},
+    },
+    {
+        .input = {"a known place is not run to a wall and walked back from (00.05c south 15, north 1, lab-B 2026-11-12 14:24)", test_known_place_has_no_wall_and_back},
         .expectation = {},
     },
     {

@@ -85,11 +85,12 @@ std::vector<TilePos> world_tiles(const StoryWorld& world, const Pokemon::Pose& p
 
 RouteStepPlan plan_table_route(const TableRoute& route){
     //  As walk_route() plans: the step's avoided tiles off the map, but
-    //  where it starts.
+    //  where it starts, and a wall in a zone stays a wall (a leg that ends
+    //  against it is a leg to the wall).
     StoryWorld world = *route.world;
     const std::vector<TilePos> from = world_tiles(world, *route.from);
     for (const TilePos& pos : story_route_tiles(world, *route.step, "avoid")){
-        if (std::find(from.begin(), from.end(), pos) == from.end()){
+        if (world.tile(pos) != Pokemon::TileKind::WALL && std::find(from.begin(), from.end(), pos) == from.end()){
             world.uncover(pos);
         }
     }

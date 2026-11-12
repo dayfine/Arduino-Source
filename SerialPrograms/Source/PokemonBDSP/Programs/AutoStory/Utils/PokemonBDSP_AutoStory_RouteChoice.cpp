@@ -49,11 +49,6 @@ constexpr long long REPLAN_MS = 2000;
 constexpr int REPLAN_OPEN_GRASS_COST = 60;
 //  Longest run into a trigger tried (trigger_runs()).
 constexpr size_t TRIGGER_RUN_TILES = 32;
-//  Shortest open leg run_variants() runs on or holds: shorter taps cost
-//  little, and each variant is a plan to score on every step's first plan
-//  (the BDSP sims plan thousands).
-constexpr size_t RUN_VARIANT_TILES = 6;
-
 
 //  Expected time a plan must save for each tile it walks back beyond the
 //  route's own plan: the user's road route on Route 201 walks back 3
@@ -111,71 +106,6 @@ private:
     const ScoredRoute& m_route;
     std::map<std::vector<TilePos>, std::optional<std::vector<ScoredLeg>>, TileLess> m_plans;
 };
-
-Direction opposite(Direction direction){
-    return Direction(((int)direction + 2) % 4);
-}
-
-//  Where every tile of `from` stops walking `direction` to a wall, or
-//  nothing unless each is held at one (WallHit::anchored).
-std::optional<PlannedLeg> wall_leg_from(const StoryWorld& world, const std::vector<TilePos>& from, Direction direction){
-    PlannedLeg out{.leg = {.direction = direction, .tiles = 0, .ends_at_wall = true, .held = false}, .after = {}};
-    for (const TilePos& pos : from){
-        const WallHit hit = slide_to_wall(world, pos, direction);
-        if (!hit.anchored || hit.tiles == 0){
-            return std::nullopt;
-        }
-        out.leg.tiles = std::max(out.leg.tiles, hit.tiles);
-        if (std::find(out.after.begin(), out.after.end(), hit.stop) == out.after.end()){
-            out.after.push_back(hit.stop);
-        }
-    }
-    return out;
-}
-
-//  `legs` with its open leg `index`, from the one tile `from`, run on to
-//  the wall past its end and tapped back: 00.04 into_twinleaf, "south 33"
-//  tapped (26.5 s) or run south 37 to the wall and 4 taps north (10.2 s).
-std::optional<std::vector<PlannedLeg>> overshoot_to_wall(
-    const StoryWorld& world, const TilePos& from, const std::vector<PlannedLeg>& legs, size_t index
-){
-    const PlannedLeg& open = legs[index];
-    const std::optional<PlannedLeg> wall = wall_leg_from(world, {from}, open.leg.direction);
-    if (!wall || open.after.size() != 1 || wall->leg.tiles <= open.leg.tiles){
-        return std::nullopt;
-    }
-    const TilePos end = open.after.front();
-    const TilePos stop = wall->after.front();
-    const size_t back = (size_t)(std::abs(stop.x - end.x) + std::abs(stop.y - end.y));
-    if (stop.x != end.x && stop.y != end.y){
-        return std::nullopt;
-    }
-    std::vector<PlannedLeg> out(legs.begin(), legs.begin() + index);
-    out.push_back(*wall);
-    out.push_back({.leg = {.direction = opposite(open.leg.direction), .tiles = back, .ends_at_wall = false, .held = false}, .after = {end}});
-    out.insert(out.end(), legs.begin() + index + 1, legs.end());
-    return out;
-}
-
-//  Plans made from `legs` the way a player runs: each open leg from a
-//  known tile run on to a wall and tapped back. An open leg is never held
-//  for its time: a timed run overshoots by up to a third (lab-B
-//  2026-11-11, Jubilife: runs timed for 10 tiles went about 13), so open
-//  legs are tapped and only legs to a wall are held.
-std::vector<std::vector<PlannedLeg>> run_variants(const ScoredRoute& route, const std::vector<PlannedLeg>& legs){
-    std::vector<std::vector<PlannedLeg>> out;
-    std::vector<TilePos> at = route.from;
-    for (size_t i = 0; i < legs.size(); i++){
-        const TileLeg& leg = legs[i].leg;
-        if (!leg.ends_at_wall && !leg.held && leg.tiles >= RUN_VARIANT_TILES && at.size() == 1){
-            if (std::optional<std::vector<PlannedLeg>> legs_out = overshoot_to_wall(route.world, at.front(), legs, i)){
-                out.push_back(std::move(*legs_out));
-            }
-        }
-        at = legs[i].after;
-    }
-    return out;
-}
 
 //  The tiles where someone wanders that `legs` enter, from every tile of
 //  `from`: a run on to a wall or a trigger may enter a zone the route's own
@@ -268,7 +198,7 @@ Pokemon::RouteScore score_with(const ScoredRoute& route, const std::vector<Plann
 //  The other plans plan_fastest_route() scores besides `own`, the plan
 //  with the route's costs.
 std::vector<std::vector<PlannedLeg>> candidate_plans(const ScoredRoute& route, const std::vector<PlannedLeg>& own){
-    std::vector<std::vector<PlannedLeg>> out = run_variants(route, own);
+    std::vector<std::vector<PlannedLeg>> out;
     for (std::vector<PlannedLeg>& legs : trigger_runs(route, own)){
         out.push_back(std::move(legs));
     }

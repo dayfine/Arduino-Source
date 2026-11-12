@@ -332,9 +332,9 @@ private:
 RouteEnd RouteWalker::run(std::vector<TilePos> from){
     //  Tiles to avoid are ground the game lets us walk on (a trainer's line
     //  of sight), so they are off the map, not walls: a leg must not end
-    //  "at" one, or the walk would run on through it.
+    //  "at" one, or the walk would run on through it. Walls stay walls.
     for (const TilePos& pos : m_plan.avoid){
-        if (std::find(from.begin(), from.end(), pos) == from.end()){
+        if (m_grid.tile(pos) != Pokemon::TileKind::WALL && std::find(from.begin(), from.end(), pos) == from.end()){
             m_grid.uncover(pos);
         }
     }
