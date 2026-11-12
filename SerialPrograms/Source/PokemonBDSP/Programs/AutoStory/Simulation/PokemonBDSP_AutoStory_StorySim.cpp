@@ -13,6 +13,7 @@
 #include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
+#include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Events.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h"
@@ -700,6 +701,9 @@ StoryBoundActions SimExecutor::sim_actions(){
         if (!sync(state.pose)){
             return stubbed(step, state);
         }
+        if (m_knobs.out_of_reach.contains(step.name)){
+            return Pokemon::outcome_failed("operation_failed", step.name + ": no talk from any stand tile.");
+        }
         return sim_wait_for_wanderer(m_sim, m_sim.world(), state.pose, step);
     };
     return StoryBoundActions{
@@ -722,6 +726,22 @@ StoryBoundActions SimExecutor::sim_actions(){
             }
             if (name == "wait_for_wanderer"){
                 return wait_for_wanderer;
+            }
+            if (name == "read_coupons"){
+                return [this](const StoryStep&, RunState& state){
+                    for (const ClownCoupon& coupon : jubilife_clown_coupons()){
+                        if (m_coupons.contains(std::string(coupon.step))){
+                            state.flags.emplace(coupon.flag);
+                        }
+                    }
+                    return Pokemon::outcome_ok();
+                };
+            }
+            if (name == "check_coupons"){
+                return [this](const StoryStep& step, RunState&){
+                    return m_coupons.size() == jubilife_clown_coupons().size() ? Pokemon::outcome_ok()
+                        : Pokemon::outcome_failed("operation_failed", std::format("{}: {} of the coupons in the Key Items.", step.name, m_coupons.size()));
+                };
             }
             return stubbed;
         },

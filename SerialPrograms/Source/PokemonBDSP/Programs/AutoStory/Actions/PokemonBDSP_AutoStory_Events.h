@@ -26,7 +26,9 @@
 #include <functional>
 #include <map>
 #include <optional>
+#include <span>
 #include <string>
+#include <string_view>
 #include <utility>
 #include "Pokemon/Navigation/Pokemon_MapData.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryExecutor.h"
@@ -77,6 +79,15 @@ bool asks_someone_else(const Pokemon::MapData& map, Pokemon::TilePos stand, Poke
 //  data/games/bdsp/maps/jubilife_city.json (decomp range 1). The story map
 //  leaves him out of its wanderers (the decomp hides him behind a flag).
 Pokemon::TileBox jubilife_mart_clown_box();
+//  A Jubilife clown's coupon (00.05b, 00.05c): his talk step, the Key
+//  Item's Bag slug, and the run flag read_coupons sets when it is held.
+struct ClownCoupon{
+    std::string_view step;
+    std::string_view slug;
+    std::string_view flag;
+};
+//  The three clowns' coupons: the Mart's 1, the company's 2, the TV's 3.
+std::span<const ClownCoupon> jubilife_clown_coupons();
 //  The row the Poketch Company's clown wanders, round (15, 18), as the
 //  Mart clown's box.
 Pokemon::TileBox jubilife_company_clown_box();

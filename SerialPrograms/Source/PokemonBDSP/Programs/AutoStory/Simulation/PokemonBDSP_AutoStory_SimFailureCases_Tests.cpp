@@ -451,6 +451,28 @@ UnitTestResult no_poketch_fails_00_05c(Logger& logger){
 UnitTestResult missing_coupon_collected_in_00_05c(Logger& logger){
     return passes(poketch_run(logger, false));
 }
+//  00.05c on lab-B 2026-11-12 12:48: the save held all three coupons, and
+//  the re-talk to the Poketch Company's clown failed the row ("no talk from
+//  any stand tile") while he stayed out of reach. The Bag's coupons skip
+//  the talks to clowns who gave theirs.
+UnitTestResult held_coupons_skip_00_05c_clowns(Logger& logger){
+    SimWorldKnobs knobs;
+    knobs.out_of_reach = {"company_clown", "mart_clown"};
+    return passes(run_case(logger, "00.05c", "00.05c", {.fade = {}, .banner = {}}, std::move(knobs)));
+}
+//  00.05b with the Poketch Company's clown answered by the sign's text
+//  (lab-B 2026-11-11): two coupons. The row fails at its coupon check
+//  instead of saving them.
+UnitTestResult missing_coupon_fails_00_05b(Logger& logger){
+    SimWorldKnobs knobs;
+    knobs.coupons_at_start = {};
+    knobs.talks_without_coupon = {"company_clown"};
+    const std::string stopped = run_case(logger, "00.05b", "00.05b", {.fade = {}, .banner = {}}, std::move(knobs));
+    if (stopped.find("00.05b all_three_coupons") == std::string::npos){
+        return UnitTestResult("expected a stop at 00.05b's coupon check; got " + (stopped.empty() ? std::string("a pass") : stopped));
+    }
+    return true;
+}
 //  01.01 from a save with no Poketch: Jubilife's east-exit guard would
 //  ask about the Poketch campaign and turn us back (lab-B 2026-11-11, the
 //  walk took him for a trainer); the row stops at its first step instead.
@@ -740,6 +762,8 @@ const FailureCase AUTO_STORY_FAILURE_CASES[] = {
     }}, .expectation = {}},
     {.input = {"00.05c a coupon missing (the sign read for the Poketch Company clown): no Poketch, 00.05c fails (lab-B 2026-11-11)", no_poketch_fails_00_05c}, .expectation = {}},
     {.input = {"00.05c a coupon missing from 00.05b: its clown talks collect it, the president gives the Poketch", missing_coupon_collected_in_00_05c}, .expectation = {}},
+    {.input = {"00.05c all three coupons held: no clown is talked to, so one out of reach does not fail the row (lab-B 2026-11-12 12:48)", held_coupons_skip_00_05c_clowns}, .expectation = {}},
+    {.input = {"00.05b a coupon missing at its end: the row fails at its coupon check, before the save", missing_coupon_fails_00_05b}, .expectation = {}},
     {.input = {"01.01 with no Poketch: the east-exit guard's gate stops the row at its check, not a trainer fight (lab-B 2026-11-11)", gate_guard_stops_01_01}, .expectation = {}},
     {.input = {"00.04 to the ledge column with a wild battle on each pass through Route 201's grass (lab-B 2026-11-09 16:14)", [](Logger& logger){
         return passes(ledge_walk_in_grass(logger, {}));

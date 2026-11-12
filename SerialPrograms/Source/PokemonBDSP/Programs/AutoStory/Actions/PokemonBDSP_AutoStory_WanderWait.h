@@ -7,9 +7,11 @@
  *  each time he may have come level, then try the next tile. Our tile is
  *  one he can no longer step on, so he comes level more often. A box wider
  *  than two columns has a far column he can stay on out of reach: the wait
- *  then takes turns between the two ends. The Mart clown (00.05b, 00.05c)
- *  wanders columns 54 to 56: he is waited for on 56 facing west, then on
- *  54 facing east.
+ *  then takes turns between the two ends, and a side may hold tiles a step
+ *  in from its end, toward him. The Mart clown (00.05b, 00.05c) wanders
+ *  columns 54 to 56: he is waited for on 56 facing west, then on 54 facing
+ *  east. The Poketch Company's clown wanders the row (14..16, 18): from
+ *  14 and 15 facing east, then 16 and 15 facing west.
  *
  */
 
@@ -34,7 +36,8 @@ struct WanderWaitSide{
     Pokemon::Direction facing = Pokemon::Direction::WEST;
 };
 
-//  Where and how long to wait. Between columns the wait walks round the
+//  Where and how long to wait. Between stands on one row or column the
+//  wait walks straight; between columns otherwise it walks round the
 //  stands' rows: along the row above them or the one below, whichever is
 //  shorter. Those rows must be open.
 struct WanderWaitPlan{

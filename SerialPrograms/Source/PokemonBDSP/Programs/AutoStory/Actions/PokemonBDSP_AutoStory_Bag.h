@@ -13,6 +13,7 @@
 
 #include <cstddef>
 #include <string>
+#include <vector>
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/Tools/VideoStream.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
@@ -49,6 +50,15 @@ bool bag_has_item(
     VideoStream& stream,
     ProControllerContext& context,
     const std::string& name,
+    int target_pocket
+);
+
+//  Open the Bag from the overworld once, look for each of `names` in the
+//  pocket, and close it again. Whether each is there, in `names`' order.
+std::vector<bool> bag_has_items(
+    VideoStream& stream,
+    ProControllerContext& context,
+    const std::vector<std::string>& names,
     int target_pocket
 );
 

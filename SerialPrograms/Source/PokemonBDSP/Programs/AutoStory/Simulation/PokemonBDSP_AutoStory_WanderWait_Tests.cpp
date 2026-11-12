@@ -248,6 +248,32 @@ UnitTestResult test_mart_clown_diagonal_reached(Logger& logger){
     return out.empty() ? UnitTestResult(true) : UnitTestResult(std::format("The wait stayed off his row:{}", out));
 }
 
+//  On lab-B (2026-11-12 12:48) 00.05c's wait for the Poketch Company's
+//  clown ended on (16, 18) with him idling on our row out of reach. From
+//  either end of his row alone, the wait steps toward him a tile at a time
+//  inside his row and talks to him idling at the other end.
+UnitTestResult test_company_clown_idling_two_tiles_away(Logger& logger){
+    const StoryWorld world = clown_world();
+    std::string out;
+    for (const std::string row : {"00.05b", "00.05c"}){
+        const WanderWaitPlan table_plan = wander_wait_plan(story_step(row, "company_clown"));
+        for (const WanderWaitSide& side : table_plan.sides){
+            WanderWaitPlan plan = table_plan;
+            plan.sides = {side};
+            plan.rounds = 1;
+            const TilePos end = side.stands.at(0);
+            const TilePos clown{end.x == 14 ? 16 : 14, end.y};
+            const TilePos start = end.next(Direction::SOUTH);
+            const WanderWaitResult result = run_clown_wait(world, company_clown(), start, clown, 1, plan, ClownMoves::STAYS);
+            logger.log(std::format("{} from {}: ended {} on {}.", row, Pokemon::to_string(end), (int)result.end, Pokemon::to_string(result.at)));
+            if (result.end == WanderWaitEnd::NO_TALK){
+                out += std::format("\n  {}: from {} with him on {}, no talk.", row, Pokemon::to_string(end), Pokemon::to_string(clown));
+            }
+        }
+    }
+    return out.empty() ? UnitTestResult(true) : UnitTestResult(std::format("The wait stayed at the end:{}", out));
+}
+
 //  How many of the clown's starts and seeds one stand tile alone talks
 //  to him from, facing west, within the plan's asks.
 size_t talks_from(const StoryWorld& world, const TilePos& stand, const WanderWaitPlan& table_plan){
@@ -326,6 +352,8 @@ const WanderWaitCase WANDER_WAIT_CASES[] = {
         test_mart_clown_diagonal_reached}, .expectation = {}},
     {.input = {"Wander wait: the Poketch Company's clown is reached in his row, wandering or not (lab-B 2026-11-12 11:47)",
         test_company_clown_reached_in_his_row}, .expectation = {}},
+    {.input = {"Wander wait: the Poketch Company's clown idling at his row's other end is reached (lab-B 2026-11-12 12:48)",
+        test_company_clown_idling_two_tiles_away}, .expectation = {}},
     {.input = {"Wander wait: the Mart clown's first stand tile is where the simulation meets him most",
         test_mart_clown_first_stand}, .expectation = {}},
 };

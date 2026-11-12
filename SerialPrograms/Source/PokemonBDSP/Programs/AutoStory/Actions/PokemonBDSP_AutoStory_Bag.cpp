@@ -381,6 +381,19 @@ bool bag_has_item(VideoStream& stream, ProControllerContext& context, const std:
     return found;
 }
 
+std::vector<bool> bag_has_items(
+    VideoStream& stream, ProControllerContext& context, const std::vector<std::string>& names, int target_pocket
+){
+    std::vector<bool> found;
+    open_menu(stream, context, MenuCursorPosition::BAG, 5);
+    pbf_wait(context, 1000ms);
+    for (const std::string& name : names){
+        found.push_back(find_bag_item_in_open_bag(stream, context, name, target_pocket));
+    }
+    bag_back_to_overworld(stream, context, "Bag: Did not return to the overworld after looking for the Key Items.");
+    return found;
+}
+
 void use_potion_first_pokemon(VideoStream& stream, ProControllerContext& context, double heal_below){
     OverlayBoxScope hp_overlay(stream.overlay(), COLOR_GREEN, {0.137, 0.160, 0.202, 0.016}, "");
     bool healed = false;

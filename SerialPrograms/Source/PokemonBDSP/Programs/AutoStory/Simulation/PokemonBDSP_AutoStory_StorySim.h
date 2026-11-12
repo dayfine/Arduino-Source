@@ -209,6 +209,9 @@ struct SimWorldKnobs{
     //  president's talk gives it with all three coupons only.
     std::set<std::string> coupons_at_start = {"mart_clown", "tv_clown", "company_clown"};
     std::set<std::string> talks_without_coupon = {};
+    //  The wanderer waits, by step name, that never meet him (lab-B
+    //  2026-11-12 12:48: the company's clown stayed out of reach).
+    std::set<std::string> out_of_reach = {};
     bool poketch_at_start = true;
 };
 
