@@ -3,9 +3,9 @@
   "repository": "dayfine/PokemonSimulation",
   "games": {
     "frlg": {
-      "revision": "bdca47c5045797be1d2a1f0931ad6a8f15ab3225",
+      "revision": "0c46df1e5e9abe79016f2c8610aeb784835768fe",
       "manifest_path": "data/maps/runtime-manifest.json",
-      "manifest_sha256": "1ccdf3c4e5b8abc90f13e80b6dc8fa429c20f641a018e0e11368930f16165d10"
+      "manifest_sha256": "70f1947e4b2474319e87959480abad04f130834d235ef7b8a2f24a0256314c14"
     }
   }
 }
