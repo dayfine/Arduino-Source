@@ -917,7 +917,7 @@ StartRead read_console_start(StoryEnv& env, const std::string& checkpoint){
 void keep_next_start_frame(StoryEnv& env, const std::string& ended){
     const std::vector<StoryCheckpoint>& table = story_checkpoints();
     for (size_t c = 0; c + 1 < table.size(); c++){
-        if (table[c].id == ended && table[c + 1].start){
+        if (table[c].id == ended && checked_start_pose(table[c + 1])){
             keep_console_frame(env.console, env.context, env.start_frames, table[c + 1].id, "saved at the end of " + ended);
             return;
         }
@@ -925,6 +925,10 @@ void keep_next_start_frame(StoryEnv& env, const std::string& ended){
 }
 
 } // namespace
+
+std::optional<Pokemon::Pose> checked_start_pose(const StoryCheckpoint& data){
+    return data.live_start ? std::nullopt : start_pose(data);
+}
 
 Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor& executor){
     executor.set_menu(data.menu);
@@ -935,7 +939,7 @@ Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor&
     //  program last saved there. With none kept, it passes.
     Pokemon::Checkpoint checkpoint = Pokemon::build_story_checkpoint(data, executor, &env.prepared);
     add_start_check(
-        checkpoint, start_pose(data),
+        checkpoint, checked_start_pose(data),
         [&env, id = data.id]{ return read_console_start(env, id); },
         [&env](const std::string& line){ env.console.log(line, COLOR_ORANGE); }
     );

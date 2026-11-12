@@ -25,6 +25,18 @@ std::string join_sids(const std::vector<uint16_t>& sids){
     return text.empty() ? "-" : text;
 }
 
+//  The gifts AutoStory takes Gift RNG for, as the log names them.
+std::string_view gift_name(PokemonFRLG_RngTarget gift){
+    switch (gift){
+    case PokemonFRLG_RngTarget::magikarp:
+        return "Magikarp";
+    case PokemonFRLG_RngTarget::eevee:
+        return "Eevee";
+    default:
+        return "gift";
+    }
+}
+
 } // namespace
 
 std::string starter_rng_loop_message(const StarterRngLoopResult& result){
@@ -64,18 +76,23 @@ std::string starter_rng_loop_message(const StarterRngLoopResult& result){
 }
 
 
-std::string gift_rng_loop_message(const StarterRngLoopResult& result){
-    const std::string save = "The save is still beside the salesman, facing him: start AutoStory at 04.03 with Run Gift "
-        "RNG in AutoStory on to try again, or run Gift RNG (Magikarp) from it by hand with an attempt from the log, then "
-        "start AutoStory at 04.03 with that option off.";
+std::string gift_rng_loop_message(const StarterRngLoopResult& result, PokemonFRLG_RngTarget gift, std::string_view row){
+    const std::string_view name = gift_name(gift);
+    const std::string save = std::format(
+        "The save is still where Gift RNG starts for the {0}: start AutoStory at {1} with Run Gift RNG in AutoStory on "
+        "to try again, or run Gift RNG ({0}) from it by hand with an attempt from the log, then start AutoStory at {1} "
+        "with that option off.", name, row
+    );
     switch (result.end){
     case StarterRngLoopEnd::SHINY:
-        return "Gift RNG: shiny Magikarp, on the planned target. 04.03 saves it.";
+        return std::format("Gift RNG: shiny {}, on the planned target. {} saves it.", name, row);
     case StarterRngLoopEnd::SHINY_OFF_TARGET:
-        return "Gift RNG: shiny Magikarp, but not the planned target. 04.03 saves it.";
+        return std::format("Gift RNG: shiny {}, but not the planned target. {} saves it.", name, row);
     case StarterRngLoopEnd::TARGET:
-        return "Gift RNG hit the target (shiny not required). Nothing was saved after it: start AutoStory at 04.03 "
-            "to save the Magikarp where it stands.";
+        return std::format(
+            "Gift RNG hit the target (shiny not required). Nothing was saved after it: start AutoStory at {} "
+            "to save the {} where it stands.", row, name
+        );
     case StarterRngLoopEnd::OUT_OF_ATTEMPTS:
         return std::format(
             "Gift RNG: every planned attempt hit its target and none was shiny, so the RNG plan's SID doesn't fit. "
@@ -147,6 +164,8 @@ StoryRunPlan rows_after_starter_rng(
     }
     row.steps.erase(row.steps.begin(), taken + 1);
     row.title = "after Starter RNG in AutoStory: the rival's battle";
+    //  It starts where Starter RNG left the game, not from a save.
+    row.live_start = true;
 
     StoryRunPlan plan;
     plan.rows.emplace_back(std::move(row));
