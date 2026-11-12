@@ -20,10 +20,11 @@
         "kind": "battle",
         "args": {
           "trainer": "TRAINER_RIVAL_POKEMON_TOWER_BULBASAUR",
-          "foes": ["pidgeotto", "gyarados", "growlithe", "kadabra", "ivysaur"]
+          "foes": ["pidgeotto", "gyarados", "growlithe", "kadabra", "ivysaur"],
+          "use_items": [{"item": "x-special", "quantity": 2}]
         },
         "declared_after": {"map": "PokemonTower_2F", "tiles": [[16, 6]], "facing": "north"},
-        "why": "the rival (TRAINER_RIVAL_POKEMON_TOWER_BULBASAUR, sParty_RivalPokemonTowerBulbasaur): Pidgeotto Lv25, Gyarados Lv23, Growlithe Lv22, Kadabra Lv20, Ivysaur Lv25; then he walks off and the player stays facing north"
+        "why": "the rival (TRAINER_RIVAL_POKEMON_TOWER_BULBASAUR, sParty_RivalPokemonTowerBulbasaur): Pidgeotto Lv25, Gyarados Lv23, Growlithe Lv22, Kadabra Lv20, Ivysaur Lv25; then he walks off and the player stays facing north. Two X Specials (10.01's Department Store) on the first turns, against Pidgeotto, as PokeGuy did"
       }
     ]
   },

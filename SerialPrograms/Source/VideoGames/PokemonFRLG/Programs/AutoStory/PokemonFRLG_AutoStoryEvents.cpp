@@ -253,6 +253,7 @@ Outcome battle(StoryEnv& env, const StoryStep& step){
         return Pokemon::outcome_failed("no_battle");
     }
     env.supplies.foes = arg<std::vector<std::string>>(step, "foes");
+    env.supplies.battle_items = arg<std::vector<Pokemon::StoryItem>>(step, "use_items");
     if (!env.supplies.foes.empty()){
         env.console.log(std::format(
             "Story: {} is {}, risk {}; attacks are chosen against the foe out.",
@@ -263,6 +264,7 @@ Outcome battle(StoryEnv& env, const StoryStep& step){
     env.supplies.foes.clear();
     env.supplies.trainer.clear();
     env.supplies.foe_out.clear();
+    env.supplies.battle_items.clear();
     if (end == BattleEnd::LOST && !arg<bool>(step, "may_lose")){
         return Pokemon::outcome_failed("blackout");
     }

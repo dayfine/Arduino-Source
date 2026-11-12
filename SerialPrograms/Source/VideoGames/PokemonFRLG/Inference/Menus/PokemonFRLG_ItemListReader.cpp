@@ -75,6 +75,10 @@ private:
             {"super-repel", "Super Repel"},
             {"max-repel", "Max Repel"},
             {"escape-rope", "Escape Rope"},
+            {"x-special", "X Special"},
+            {"x-speed", "X Speed"},
+            {"x-accuracy", "X Accuracy"},
+            {"guard-spec", "Guard Spec."},
             {"bicycle", "Bicycle"},
             {"cancel", "Cancel"},
         }){

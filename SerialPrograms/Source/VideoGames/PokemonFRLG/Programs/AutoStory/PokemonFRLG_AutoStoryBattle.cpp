@@ -164,12 +164,20 @@ bool bag_row_is(
     return false;
 }
 
+//  What an item in battle is used on.
+enum class ItemTarget{
+    //  A Potion or a cure: the party list opens, its cursor on the starter.
+    PARTY_MEMBER,
+    //  An X item: the Pokemon out, with no party list.
+    POKEMON_OUT,
+};
+
 //  From the battle menu: `item`, in `row` (from 0) of the Items pocket, on
-//  the starter. The bag opens on the pocket used last; Items is the first.
+//  `target`. The bag opens on the pocket used last; Items is the first.
 //  Returns whether it was used; else (THOROUGH) backs out to the menu.
 bool use_item(
     ConsoleHandle& console, ProControllerContext& context,
-    int row, const std::string& item, Pokemon::StoryCheckLevel checks, Language language
+    int row, const std::string& item, ItemTarget target, Pokemon::StoryCheckLevel checks, Language language
 ){
     console.log(std::format("Battle: using the {} in row {} of the Items pocket.", item, row + 1));
     tap(context, DPAD_LEFT);
@@ -189,10 +197,13 @@ bool use_item(
         pbf_press_button(context, BUTTON_B, 160ms, 1500ms);
         return false;
     }
-    //  The item, USE, then the starter in the party list.
+    //  The item, USE, then the starter in the party list. An X item's USE
+    //  goes straight to the battle's text, which the loop reads.
     pbf_press_button(context, BUTTON_A, 160ms, 800ms);
     pbf_press_button(context, BUTTON_A, 160ms, 1500ms);
-    pbf_press_button(context, BUTTON_A, 160ms, 1000ms);
+    if (target == ItemTarget::PARTY_MEMBER){
+        pbf_press_button(context, BUTTON_A, 160ms, 1000ms);
+    }
     return true;
 }
 
@@ -604,13 +615,16 @@ private:
             run_away(m_context);
             return;
         case TurnChoice::POTION:
-            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, item_row(m_supplies, "potion"), "potion", m_checks, m_language)));
+            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, item_row(m_supplies, "potion"), "potion", ItemTarget::PARTY_MEMBER, m_checks, m_language)));
             return;
         case TurnChoice::ANTIDOTE:
-            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, item_row(m_supplies, "antidote"), "antidote", m_checks, m_language)));
+            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, item_row(m_supplies, "antidote"), "antidote", ItemTarget::PARTY_MEMBER, m_checks, m_language)));
             return;
         case TurnChoice::AWAKENING:
-            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, item_row(m_supplies, "awakening"), "awakening", m_checks, m_language)));
+            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, item_row(m_supplies, "awakening"), "awakening", ItemTarget::PARTY_MEMBER, m_checks, m_language)));
+            return;
+        case TurnChoice::BATTLE_ITEM:
+            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, item_row(m_supplies, action.item), action.item, ItemTarget::POKEMON_OUT, m_checks, m_language)));
             return;
         case TurnChoice::MOVE:
             m_console.log(std::format("Battle: move {}.", action.slot + 1));
@@ -889,11 +903,15 @@ std::vector<std::string> set_from_bag(Supplies& supplies, const std::vector<BagR
     supplies.awakenings = 0;
     supplies.full_heals = 0;
     supplies.pocket.clear();
+    supplies.other_counts.clear();
     std::vector<std::string> unread;
     for (const BagRow& row : rows){
         supplies.pocket.push_back(row.item);
         int* slot = count_slot(supplies, row.item);
         if (slot == nullptr){
+            if (!row.item.empty() && row.count > 0){
+                supplies.other_counts[row.item] = row.count;
+            }
             continue;
         }
         if (row.count > 0){
@@ -919,6 +937,7 @@ std::vector<std::string> set_from_loaded_bag(Supplies& supplies, Supplies& saved
     saved.awakenings = supplies.awakenings;
     saved.full_heals = supplies.full_heals;
     saved.pocket = supplies.pocket;
+    saved.other_counts = supplies.other_counts;
     return unread;
 }
 
