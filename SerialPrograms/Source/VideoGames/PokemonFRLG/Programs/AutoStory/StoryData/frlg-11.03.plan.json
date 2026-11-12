@@ -174,19 +174,19 @@
             },
             {
               "direction": "east",
-              "tiles": 4
+              "tiles": 6
             },
             {
               "direction": "south",
               "tiles": 2
             },
             {
-              "direction": "east",
+              "direction": "west",
               "tiles": 1
             }
           ]
         },
-        "why": "the shortest way round the east area's ledges and levels (pokefirered SafariZone_East map.json elevations) to below the FULL RESTORE's ball (37, 15), each leg a tile at a time on the Bicycle"
+        "why": "the shortest way round the east area's ledges and levels (pokefirered SafariZone_East map.json elevations) to below the FULL RESTORE's ball (37, 15), on the Bicycle. An approach to an A press ends on its tile: held east along row 14 to the wall (39, 14) at (38, 14), south to (38, 16) above the level 4 ground (38, 17), and a tile west; held, \"east 4\" was open at (37, 14)"
       },
       {
         "id": "below_full_restore",
@@ -368,40 +368,30 @@
         "why": "through the exit into the west area (Area 3), arriving at (31, 5)"
       },
       {
-        "id": "to_gold_teeth",
+        "id": "below_gold_teeth",
         "kind": "legs",
         "action": "bike",
         "args": {
           "legs": [
             {
               "direction": "south",
-              "tiles": 10
+              "tiles": 11
             },
             {
               "direction": "west",
-              "tiles": 3
+              "tiles": 4
+            },
+            {
+              "direction": "east",
+              "tiles": 1
+            },
+            {
+              "direction": "north",
+              "tiles": 1
             }
           ]
         },
-        "why": "down to below the GOLD TEETH's ball (28, 14) (pokeguy 1:14:07..09); the TM32, MAX POTION and MAX REVIVE are left"
-      },
-      {
-        "id": "below_gold_teeth",
-        "kind": "route",
-        "action": "bike",
-        "args": {
-          "target": {
-            "map": "SafariZone_West",
-            "tiles": [
-              [
-                28,
-                15
-              ]
-            ],
-            "facing": "north"
-          }
-        },
-        "why": "turned to the ball"
+        "why": "down to below the GOLD TEETH's ball (28, 14) (pokeguy 1:14:07..09), the TM32, MAX POTION and MAX REVIVE left: west along row 16 to the wall (26, 16), a tile east, and up into the ball. An approach to an A press ends on its tile: held, \"south 10\" and \"west 3\" were open at (31, 16) and (27, 15)"
       },
       {
         "id": "gold_teeth",
@@ -409,7 +399,7 @@
         "why": "pick up the GOLD TEETH (SafariZone_West_EventScript_ItemGoldTeeth), a key item for the Warden (14.01): its message confirms it, as the Items pocket has no row for it"
       },
       {
-        "id": "below_secret_house_attendant",
+        "id": "into_secret_house",
         "kind": "route",
         "action": "bike",
         "args": {
@@ -417,14 +407,36 @@
             "map": "SafariZone_SecretHouse",
             "tiles": [
               [
-                6,
-                6
+                4,
+                9
               ]
             ],
             "facing": "north"
           }
         },
-        "why": "west to the Secret House's door (12, 7), off the Bicycle indoors, and up to below the attendant (6, 5)"
+        "why": "west to the Secret House's door (12, 7), off the Bicycle indoors, arriving at (4, 9)"
+      },
+      {
+        "id": "below_secret_house_attendant",
+        "kind": "legs",
+        "action": "taps",
+        "args": {
+          "legs": [
+            {
+              "direction": "north",
+              "tiles": 1
+            },
+            {
+              "direction": "east",
+              "tiles": 2
+            },
+            {
+              "direction": "north",
+              "tiles": 2
+            }
+          ]
+        },
+        "why": "a tap a tile from the door (4, 9) up to below the attendant (6, 5): (6, 6), facing him. An approach to an A press ends on its tile: held, \"east 2\" along row 6 is open at (7, 6)"
       },
       {
         "id": "hm03_surf",
