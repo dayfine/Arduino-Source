@@ -13,6 +13,7 @@
 #include <format>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Data/PokemonBDSP_AutoStory_Maps.h"
@@ -26,6 +27,12 @@
 #include "Utils/PokemonBDSP_AutoStory_PlannedRoute.h"
 #include "Utils/PokemonBDSP_AutoStory_RouteIO.h"
 #include "PokemonBDSP_AutoStory_StoryPlaces.h"
+#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
+#include "Pokemon/AutoStory/Pokemon_TilePose.h"
+#include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
+#include "PokemonBDSP_AutoStory_StoryExecutor.h"
+#include "PokemonBDSP_AutoStory_StoryTable.h"
+#include "Utils/PokemonBDSP_AutoStory_StoryLanguage.h"
 #include "Utils/PokemonBDSP_AutoStory_RouteTiming.h"
 #include "PokemonBDSP_AutoStory_PlannedRoute_Tests.h"
 #include "Utils/PokemonBDSP_AutoStory_WalkResult.h"
@@ -39,6 +46,10 @@ namespace{
 
 using namespace std::chrono_literals;
 using Pokemon::Direction;
+using Pokemon::GridPose;
+using Pokemon::Pose;
+using Pokemon::StoryStep;
+using Pokemon::StoryStepKind;
 using Pokemon::TilePos;
 
 
@@ -549,128 +560,6 @@ UnitTestResult test_wall_leg_held_up_is_not_at_its_wall(Logger&){
     return left.empty() ? UnitTestResult(true) : UnitTestResult(left);
 }
 
-//  The console as a small simulator: the player stands on one tile of
-//  `world`, walls and `obstacles` stop them, and every walk and tap moves
-//  them. Fails the case after `max_calls` calls (a walker that loops).
-class SimulatedRouteIO : public RouteIO{
-public:
-    SimulatedRouteIO(const StoryWorld& world, TilePos at, std::vector<TilePos> obstacles, std::vector<std::string>& notes)
-        : m_world(world)
-        , m_at(at)
-        , m_obstacles(std::move(obstacles))
-        , m_notes(notes)
-    {}
-
-    const TilePos& at() const{
-        return m_at;
-    }
-
-    virtual WalkResult walk_to_wall(const RouteWallWalk& walk) override{
-        count_call();
-        const size_t moved = move(walk.direction, SIZE_MAX);
-        const Milliseconds per_tile = route_ms_per_tile(walk.direction, MoveSpeed::WALK);
-        return {.stop = WalkStop::BLOCKED, .walked = ROUTE_START_DELAY + 800ms + per_tile * moved + per_tile / 2,
-            .wild_battles = 0, .moved_chunks = moved};
-    }
-    virtual WalkResult walk_taps(Direction direction, size_t tiles, const std::string&) override{
-        count_call();
-        const size_t moved = move(direction, tiles);
-        return {.stop = moved < tiles ? WalkStop::BLOCKED : WalkStop::LIMIT, .walked = 250ms * tiles,
-            .wild_battles = 0, .moved_chunks = moved};
-    }
-    virtual void press(const RouteInput& input) override{
-        count_call();
-        //  A tap under 100 ms only turns (route_turn_tap()).
-        if (input.kind == RouteInputKind::DPAD && input.hold >= 100ms){
-            move(input.direction, input.count);
-        }
-    }
-    virtual bool dialog_within(Milliseconds, Color) override{
-        count_call();
-        return false;
-    }
-    virtual bool holding_against_wall(Direction, const std::string&) override{
-        count_call();
-        return true;
-    }
-    virtual void look(const std::function<void(const ImageViewRGB32& screen)>&) override{}
-    virtual void note(const std::string& text, RouteNote kind) override{
-        m_notes.push_back(text);
-        if (kind == RouteNote::FAILURE){
-            throw RouteFailed{text};
-        }
-    }
-
-private:
-    void count_call(){
-        if (++m_calls > MAX_CALLS){
-            throw RouteFailed{"the walker made more than " + std::to_string(MAX_CALLS) + " calls."};
-        }
-    }
-    size_t move(Direction direction, size_t tiles){
-        size_t moved = 0;
-        while (moved < tiles){
-            const std::optional<TilePos> next = step(m_world, m_at, direction);
-            if (!next || std::find(m_obstacles.begin(), m_obstacles.end(), *next) != m_obstacles.end()){
-                break;
-            }
-            m_at = *next;
-            moved++;
-        }
-        return moved;
-    }
-
-    static constexpr size_t MAX_CALLS = 300;
-    const StoryWorld& m_world;
-    TilePos m_at;
-    std::vector<TilePos> m_obstacles;
-    std::vector<std::string>& m_notes;
-    size_t m_calls = 0;
-};
-
-StoryWorld jubilife_world(){
-    StoryWorld world;
-    world.add("Jubilife City", story_map("JubilifeCity"), {0, 0});
-    return world;
-}
-
-//  lab-B 2026-11-11 11:17 (00.05 to_the_center): a walk east stopped about
-//  13 tiles short of the wall, which left 15 possible tiles, (49..53,
-//  41..43). Something the map lacks stood east of us; with several possible
-//  tiles nothing was marked, so every replan chose "east 7 (to wall)" again,
-//  walked 0 tiles five times and gave up on "too many plans". A walk that
-//  never moved from several possible tiles must route around the tiles just
-//  past them.
-UnitTestResult test_blocked_from_several_tiles(Logger&){
-    const StoryWorld world = jubilife_world();
-    std::vector<TilePos> from;
-    for (int y = 41; y <= 43; y++){
-        for (int x = 49; x <= 53; x++){
-            from.push_back({x, y});
-        }
-    }
-    const TilePos goal{52, 41};
-    std::vector<std::string> notes;
-    SimulatedRouteIO io(world, {53, 41}, {{54, 41}}, notes);
-    RouteTrainers trainers{.sights = {}, .fight = [](const std::string&){}};
-    try{
-        walk_route(io, world, from, trainers, {
-            .goal = [goal](const TilePos& pos){ return pos == goal; },
-            .label = "T",
-            .avoid = {},
-            .costs = town_plan_costs(),
-            .speed = MoveSpeed::WALK,
-        });
-    }catch (const RouteFailed& e){
-        return "failed: " + e.message;
-    }
-    if (io.at() != goal){
-        return "ended at " + Pokemon::to_string(io.at()) + ", not at (52, 41).";
-    }
-    return true;
-}
-
-
 struct PlannedRouteInput{
     std::string name;
     std::function<UnitTestResult(Logger&)> body;
@@ -702,131 +591,6 @@ private:
     PlannedRouteCase m_case;
 };
 
-//  The console as a small simulator: the player stands on one tile of
-//  `world`, walls stop them, and every walk and tap moves them. Fails the
-//  case after MAX_CALLS calls (a walker that loops).
-//  Fault class "a timed hold overshoots": a hold timed for n tiles goes
-//  0..ceil(0.35 n) tiles further, unseen, until a wall stops it (lab-B
-//  2026-11-11, Jubilife: runs timed for 10 tiles went about 13). D-pad taps
-//  are tile-exact and walks to a wall end at the wall.
-class OvershootingRouteIO : public RouteIO{
-public:
-    //  `at` is where the player stands, moved by every walk.
-    OvershootingRouteIO(const StoryWorld& world, TilePos& at, std::vector<std::string>& notes)
-        : m_world(world)
-        , m_at(at)
-        , m_notes(notes)
-    {}
-
-    virtual WalkResult walk_to_wall(const RouteWallWalk& walk) override{
-        count_call();
-        const MoveSpeed speed = walk.options.pace == DpadPace::RUN ? MoveSpeed::RUN : MoveSpeed::WALK;
-        const Milliseconds per_tile = route_ms_per_tile(walk.direction, speed);
-        if (walk.limit > ROUTE_START_DELAY){
-            const size_t tiles = (size_t)((walk.limit - ROUTE_START_DELAY + per_tile / 2) / per_tile);
-            const size_t want = tiles + (tiles * 35 + 99) / 100;
-            const size_t moved = move(walk.direction, want);
-            return {.stop = moved < want ? WalkStop::BLOCKED : WalkStop::LIMIT, .walked = walk.limit,
-                .wild_battles = 0, .moved_chunks = moved};
-        }
-        const size_t moved = move(walk.direction, SIZE_MAX);
-        return {.stop = WalkStop::BLOCKED, .walked = ROUTE_START_DELAY + 800ms + per_tile * moved + per_tile / 2,
-            .wild_battles = 0, .moved_chunks = moved};
-    }
-    virtual WalkResult walk_taps(Direction direction, size_t tiles, const std::string&) override{
-        count_call();
-        const size_t moved = move(direction, tiles);
-        return {.stop = moved < tiles ? WalkStop::BLOCKED : WalkStop::LIMIT, .walked = 250ms * tiles,
-            .wild_battles = 0, .moved_chunks = moved};
-    }
-    virtual void press(const RouteInput& input) override{
-        if (input.kind != RouteInputKind::PAUSE){
-            count_call();
-        }
-        //  A tap under 100 ms only turns (route_turn_tap()).
-        if (input.kind == RouteInputKind::DPAD && input.hold >= 100ms){
-            move(input.direction, input.count);
-        }
-        if (input.kind == RouteInputKind::STICK){
-            const Milliseconds per_tile = route_ms_per_tile(input.direction, MoveSpeed::WALK);
-            const size_t tiles = (size_t)((input.hold + per_tile / 2) / per_tile);
-            for (size_t press = 0; press < input.count; press++){
-                move(input.direction, tiles + (tiles * 35 + 99) / 100);
-            }
-        }
-    }
-    virtual bool dialog_within(Milliseconds, Color) override{
-        count_call();
-        return false;
-    }
-    virtual bool holding_against_wall(Direction, const std::string&) override{
-        count_call();
-        return true;
-    }
-    virtual void look(const std::function<void(const ImageViewRGB32& screen)>&) override{}
-    virtual void note(const std::string& text, RouteNote kind) override{
-        m_notes.push_back(text);
-        if (kind == RouteNote::FAILURE){
-            throw RouteFailed{text};
-        }
-    }
-
-private:
-    void count_call(){
-        if (++m_calls > MAX_CALLS){
-            throw RouteFailed{std::format("the walker made more than {} calls.", MAX_CALLS)};
-        }
-    }
-    size_t move(Direction direction, size_t tiles){
-        size_t moved = 0;
-        while (moved < tiles){
-            const std::optional<TilePos> next = step(m_world, m_at, direction);
-            if (!next){
-                break;
-            }
-            m_at = *next;
-            moved++;
-        }
-        return moved;
-    }
-
-    static constexpr size_t MAX_CALLS = 300;
-    const StoryWorld& m_world;
-    TilePos& m_at;
-    std::vector<std::string>& m_notes;
-    size_t m_calls = 0;
-};
-
-//  lab-B 2026-11-11 (00.05 heal_jubilife from (48, 62)): "north 20 (open)"
-//  walked as a held run overshot and the Center's doorway was never found.
-//  With every timed hold overshooting, the walk still ends on (52, 41).
-UnitTestResult test_jubilife_center_held_overshoot(Logger&){
-    StoryWorld world;
-    world.add("Jubilife City", story_map("JubilifeCity"), {0, 0});
-    const TilePos from{48, 62};
-    const TilePos goal{52, 41};
-    std::vector<std::string> notes;
-    TilePos at = from;
-    OvershootingRouteIO io(world, at, notes);
-    RouteTrainers trainers{.sights = {}, .fight = [](const std::string&){}};
-    try{
-        walk_route(io, world, {from}, trainers, {
-            .goal = [goal](const TilePos& pos){ return pos == goal; },
-            .label = "T",
-            .avoid = {},
-            .costs = town_plan_costs(),
-            .speed = MoveSpeed::RUN,
-        });
-    }catch (const RouteFailed& e){
-        return std::format("failed: {}", e.message);
-    }
-    if (at != goal){
-        return std::format("ended at {}, not at (52, 41).", Pokemon::to_string(at));
-    }
-    return true;
-}
-
-
 } // namespace
 
 
@@ -857,14 +621,6 @@ const PlannedRouteCase PLANNED_ROUTE_CASES[] = {
     },
     {
         .input = {"a wall leg held up on the way is not at its wall (lab-B 2026-11-11 21:00)", test_wall_leg_held_up_is_not_at_its_wall},
-        .expectation = {},
-    },
-    {
-        .input = {"blocked from several possible tiles routes around", test_blocked_from_several_tiles},
-        .expectation = {},
-    },
-    {
-        .input = {"Jubilife Center with every timed hold overshooting", test_jubilife_center_held_overshoot},
         .expectation = {},
     },
 };

@@ -122,6 +122,8 @@ void sim_forget_warp(GridSim& sim);
 //  Set simulated fight.
 void sim_fight(GridSim& sim);
 } // namespace detail
+//  What a GridSim walks on: the joined maps, the trainers, triggers, doors
+//  and wanderers on them, and whether the player can run yet.
 struct SimWorld{
     const StoryWorld* world = nullptr;
     std::vector<TrainerSight> trainers = {};
