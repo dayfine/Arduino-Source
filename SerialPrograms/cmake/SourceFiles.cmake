@@ -1955,6 +1955,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_BikeSpinPresses.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_CodedRooms.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_CodedRooms.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_FlyMap.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_FlyMap.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_HideoutLiftRoom.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_MovementMechanics.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_MovementStepPresses.h
@@ -2058,6 +2060,11 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryEvents.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryLegs.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryLegs.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFieldMoveSteps.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFieldMoveSteps.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFieldMoves.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFieldMoves.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFieldMoves_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFieldSteps.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFieldSteps.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFossil.h

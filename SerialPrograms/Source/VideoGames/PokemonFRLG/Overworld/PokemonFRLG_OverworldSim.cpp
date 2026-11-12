@@ -168,6 +168,7 @@ void OverworldSim::update_view(){
     m_state.black_below = map().connections.empty() && map().tiles.height <= SMALL_ROOM_ROWS
         && m_player.position.y >= map().tiles.height - BLACK_BELOW_ROWS;
     m_state.dark = m_script.dark_maps.contains(map().name);
+    m_state.surfing = m_player.surfing;
 }
 
 void OverworldSim::schedule(Milliseconds at, SimScreen screen, bool unfreeze){
@@ -286,7 +287,7 @@ std::optional<OverworldSim::Step> OverworldSim::cross_edge(Direction direction) 
         case Direction::EAST: point.x = 0; break;
         }
         const StepKind kind = classify_step_onto(map(), m_player, direction, to, point);
-        if (kind != StepKind::WALK){
+        if (kind != StepKind::WALK && kind != StepKind::STOP_SURFING){
             return std::nullopt;
         }
         return Step{destination, after_step_onto(map(), m_player, to, point, kind), false, false, false};
@@ -313,7 +314,7 @@ std::optional<OverworldSim::Step> OverworldSim::press(Direction direction) const
         return Step{m_map, PlayerState{landed, elevation_at(map(), landed), false}, false, false, true};
     }
     const StepKind kind = classify_step(map(), m_player, direction);
-    if (kind != StepKind::WALK){
+    if (kind != StepKind::WALK && kind != StepKind::STOP_SURFING){
         return std::nullopt;
     }
     Step step{m_map, after_step_onto(map(), m_player, map(), ahead, kind), false, false, false};
@@ -369,10 +370,7 @@ bool OverworldSim::after_step(const Step& step, Milliseconds pressed){
     update_view();
     if (step.warped){
         m_state.warps++;
-        for (auto& [index, tree] : m_cut_trees){
-            m_maps[index].objects.push_back(tree);
-        }
-        m_cut_trees.clear();
+        regrow_cut_trees();
         if (m_state.on_bike){
             //  A door takes the player off (the user's; not measured).
             m_state.on_bike = false;
@@ -841,8 +839,8 @@ std::optional<WalkedTiles> OverworldSimWalker::walk_step(const RouteStep& step, 
         sim_turn_to(m_sim, step.direction, m_rules.confirm_turn);
         return std::nullopt;
     }
-    if (step.action != RouteAction::WALK){
-        fail("Sim: Surf isn't modelled.");
+    if (step.action == RouteAction::SURF){
+        return surf(step);
     }
     if (turns_first(step, m_speed, facing)){
         sim_turn_to(m_sim, step.direction, m_rules.confirm_turn);

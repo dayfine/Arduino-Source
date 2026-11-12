@@ -46,20 +46,25 @@ std::optional<std::vector<RouteStep>> fixed_route(
         return std::nullopt;
     }
     std::vector<RouteStep> route;
-    PlayerState player{start.point, elevation_at(*map, start.point), false};
+    //  On the water, after a Surf: surfing until a step onto land.
+    PlayerState player{start.point, elevation_at(*map, start.point), is_water(*map, start.point)};
     for (const StoryLeg& leg : legs){
         RouteStep step;
         step.direction = leg.direction;
         step.tiles = leg.tiles;
         step.facing_after = leg.direction;
         step.walk_only = !map->allow_running;
+        step.surfing = player.surfing;
         for (int c = 0; c < leg.tiles; c++){
             const StepKind kind = classify_step(*map, player, leg.direction);
             const TilePos next = player.position.next(leg.direction);
-            if (kind != StepKind::WALK || !in_bounds(*map, next) || warps_on_step(*map, next)){
+            //  The step off the water is a leg of its own, as the planner
+            //  makes it: the player walks at half the speed from there.
+            const bool lands = kind == StepKind::STOP_SURFING && leg.tiles == 1;
+            if ((kind != StepKind::WALK && !lands) || !in_bounds(*map, next) || warps_on_step(*map, next)){
                 return std::nullopt;
             }
-            step.wild |= is_tall_grass(*map, next);
+            step.wild |= is_tall_grass(*map, next) || player.surfing;
             player = after_step(*map, player, leg.direction, kind);
             if (spin_direction(*map, player.position) && !land_on_spinner(*map, player, c + 1 == leg.tiles, step)){
                 return std::nullopt;

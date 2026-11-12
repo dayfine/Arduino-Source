@@ -20,7 +20,8 @@
  *  A step onto a connected map waits a tile first, as the console does
  *  while the game loads the map.
  *
- *  Not modelled: Surf, running, HP and status. Wandering people stand on
+ *  Not modelled: running, HP and status, and wild battles on the water.
+ *  Surf and Fly are (SimField::SURF, SimField::FLY). Wandering people stand on
  *  their tile. The Bicycle is: its pace, its taps (each a tile, some
  *  dropped when they come too fast), SELECT and doors taking the player
  *  off it.
@@ -164,6 +165,10 @@ private:
     bool cut_tree();
     bool choose_lift_floor(size_t floor);
     bool push_poster_switch();
+    bool start_surf();
+    bool fly_to_town(size_t town);
+    //  The trees cut come back, as after a warp.
+    void regrow_cut_trees();
     bool after_step(const Step& step, Milliseconds pressed);
     bool wild_battle(Milliseconds pressed);
     std::optional<SimEncounter> next_encounter();
@@ -173,8 +178,11 @@ private:
     //  Whether the Bicycle tap starting at `start` is dropped, too soon
     //  after the last one.
     bool drops_bike_tap(Milliseconds start);
-    //  How long a tile takes: on the Bicycle or on foot.
+    //  How long a tile takes: on the water, on the Bicycle or on foot.
     Milliseconds tile_time() const{
+        if (m_player.surfing){
+            return m_script.timing.surf_tile;
+        }
         return m_state.on_bike ? m_script.timing.bike_tile : m_script.timing.tile;
     }
     bool trainer_sees(Milliseconds pressed);
@@ -397,6 +405,10 @@ private:
         return stop_tiles(step, timed, m_leg_dark);
     }
     std::optional<WalkedTiles> walk_step(const RouteStep& step, std::optional<Direction> facing);
+    //  start_surf(): turned to the water, A, YES, and the jump onto it.
+    //  Nothing: a Surf is never stopped part-way.
+    //  (PokemonFRLG_OverworldSimField.cpp)
+    std::optional<WalkedTiles> surf(const RouteStep& step);
     bool after_warp(const RouteStep& step, int warps_before, Milliseconds watched_from);
     bool fade_over_since(Milliseconds from) const;
     //  after_warp() on a fade seen with no warp: fails, or with
