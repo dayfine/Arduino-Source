@@ -104,7 +104,7 @@ inline constexpr std::string_view FRLG_PLAN_GOLDEN_14[] = {
     "14.02   walk south 6 (to wall) -> CinnabarIsland_Gym (26, 8) [walk only]",
     "14.02 below_gym_door from CinnabarIsland_Gym (26, 10) facing south to CinnabarIsland (20, 5) facing south",
     "14.02   walk south 13 (to wall) -> CinnabarIsland_Gym (26, 23) [walk only]",
-    "14.02   walk west 1 -> CinnabarIsland_Gym (25, 23) [walk only]",
+    "14.02   walk west 1 -> CinnabarIsland_Gym (25, 23) [walk only] [tapped]",
     "14.02   walk south 1 (warp) -> CinnabarIsland (20, 5) [walk only]",
     "14.02 below_center_door from CinnabarIsland (20, 5) facing south to CinnabarIsland (14, 12) facing north",
     "14.02   walk east 1 (to wall) -> CinnabarIsland (21, 5)",
