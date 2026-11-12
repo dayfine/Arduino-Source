@@ -33,7 +33,8 @@
     ]
   },
   "execution": {
-    "menu": "full"
+    "menu": "full",
+    "live_start": true
   },
   "metadata": {"phase": "testing"}
 }
