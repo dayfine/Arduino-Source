@@ -60,7 +60,7 @@ struct RouteFailed{
 //  The console as a small simulator: the player stands on one tile of
 //  `world`, walls and `obstacles` stop them, and every walk and tap moves
 //  them. Fails the case after `max_calls` calls (a walker that loops).
-// code-health: allow public_methods -- a RouteIO fake: the interface's seven overrides plus three test knobs
+// code-health: allow public_methods -- a RouteIO fake: the interface's seven overrides plus four test knobs
 class SimulatedRouteIO : public RouteIO{
 public:
     SimulatedRouteIO(const StoryWorld& world, TilePos at, std::vector<TilePos> obstacles, std::vector<std::string>& notes)
