@@ -20,18 +20,18 @@ namespace Pokemon{
 
 namespace{
 
-struct SimGoldenInput{
-    std::string name;
-    UnitTestResult (*body)(Logger& logger);
-};
-
-struct SimGoldenExpectation{
-    std::string_view description;
-};
-
 struct SimGoldenTestCase{
-    SimGoldenInput input;
-    SimGoldenExpectation expectation;
+    struct Input{
+        std::string name;
+        UnitTestResult (*body)(Logger& logger);
+    };
+
+    struct Expectation{
+        std::string_view description;
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 class Test_SimGolden : public UnitTest{
