@@ -1891,6 +1891,8 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Options/PokemonBDSP_LearnMove.h
     Source/PokemonBDSP/Options/PokemonBDSP_PlayerModelOption.cpp
     Source/PokemonBDSP/Options/PokemonBDSP_PlayerModelOption.h
+    Source/PokemonBDSP/Options/PokemonBDSP_RngFilter.cpp
+    Source/PokemonBDSP/Options/PokemonBDSP_RngFilter.h
     Source/PokemonBDSP/Options/PokemonBDSP_ShortcutDirection.cpp
     Source/PokemonBDSP/Options/PokemonBDSP_ShortcutDirection.h
     Source/PokemonBDSP/PokemonBDSP_Panels.cpp
@@ -1961,12 +1963,34 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_BlinkRecovery.h
     Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_IntroSeedFinder.cpp
     Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_IntroSeedFinder.h
+    Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_RngAim.cpp
+    Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_RngAim.h
+    Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_RngCalibration.cpp
+    Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_RngCalibration.h
     Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_RngDisplays.cpp
     Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_RngDisplays.h
+    Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_RngExecution.cpp
+    Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_RngExecution.h
+    Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_RngTargets.cpp
+    Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_RngTargets.h
+    Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_RngTimeline.cpp
+    Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_RngTimeline.h
+    Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_StarterNavigation.cpp
+    Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_StarterNavigation.h
+    Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_StarterRng.cpp
+    Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_StarterRng.h
+    Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_StarterRng_Tests.cpp
+    Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_StarterRng_Tests.h
+    Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_StarterRngAttempts.cpp
+    Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_StarterRngAttempts.h
     Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_StateReidentifier.cpp
     Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_StateReidentifier.h
     Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_StateSolver.cpp
     Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_StateSolver.h
+    Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_SummaryNavigation.cpp
+    Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_SummaryNavigation.h
+    Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_TargetSelection.cpp
+    Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_TargetSelection.h
     Source/PokemonBDSP/Programs/ShinyHunting/PokemonBDSP_LegendaryReset.cpp
     Source/PokemonBDSP/Programs/ShinyHunting/PokemonBDSP_LegendaryReset.h
     Source/PokemonBDSP/Programs/ShinyHunting/PokemonBDSP_ShinyHunt-Fishing.cpp
