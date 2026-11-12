@@ -106,8 +106,8 @@
           "trainer": "TRAINER_BEAUTY_LORI",
           "foes": ["exeggcute"]
         },
-        "declared_after": {"map": "CeladonCity_Gym", "tiles": [[5, 5]], "facing": "north"},
-        "why": "Beauty Lori (TRAINER_BEAUTY_LORI): Exeggcute Lv24 (pokeguy: one Bite)"
+        "declared_after": {"map": "CeladonCity_Gym", "tiles": [[5, 5]], "facing": "east"},
+        "why": "Beauty Lori (TRAINER_BEAUTY_LORI): Exeggcute Lv24 (pokeguy: one Bite); the player stepped east into her line, so faces east afterwards"
       },
       {
         "id": "beside_erika",
