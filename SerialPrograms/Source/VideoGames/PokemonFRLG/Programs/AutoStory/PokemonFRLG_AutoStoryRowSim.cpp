@@ -672,6 +672,8 @@ std::string OverworldStepSim::battle(const StoryStep& step){
     if (const std::string failure = battle_end_on_sim(m_sim); !failure.empty()){
         return failure;
     }
+    //  battle()'s wait_out_battle_exit().
+    sim_wait_out_battle_exit(m_sim);
     m_at = *story_pose(Pokemon::pose_of(*step.pose_after));
     if (!(m_sim.state().position == MapPosition{m_at.map, m_at.tile})){
         return "expected " + to_string(MapPosition{m_at.map, m_at.tile}) + ".";

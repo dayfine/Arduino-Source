@@ -267,6 +267,11 @@ Outcome battle(StoryEnv& env, const StoryStep& step){
         return Pokemon::outcome_failed("blackout");
     }
     mash_until_overworld(env.console, env.context, SCENE_TIMEOUT);
+    //  A trainer's script can go on after the battle, its black while the
+    //  game takes the trainer away taking no input: east_of_silph_scope's
+    //  first tap, 0.4 s after Giovanni's battle, was lost (console B,
+    //  2026-11-11 17:51, 09.02).
+    wait_out_battle_exit(env.console, env.context);
     //  Console B 2026-11-11, 09.02: a Grunt's battle left the starter
     //  poisoned and the story walked on with it uncured.
     if (end != BattleEnd::LOST){
