@@ -683,6 +683,17 @@ constexpr size_t TURN_FACING_READS = 3;
 constexpr Milliseconds TURN_FACING_REREAD(100);
 
 void turn_to(ConsoleHandle& console, ProControllerContext& context, Direction direction){
+    //  A tap while the player faces `direction` already takes a step, so the
+    //  screen is read first. A trainer's battle leaves the player facing the
+    //  way they stepped into the line, not the trainer (pokefirered
+    //  trainer_see.c, TrainerSeeFunc_PrepareToEngage): 10.05's turn tap west
+    //  after Emilia stepped, and "west 4 (open)" ended on Pokemon Tower 6F
+    //  (4, 8), a tile long (console B, 2026-11-12 04:39).
+    context.wait_for_all_requests();
+    if (const VideoSnapshot screen = console.video().snapshot(); screen && read_player_facing(screen) == direction){
+        console.log(std::format("Route: the player faces {} already: no turn tap.", Pokemon::direction_name(direction)));
+        return;
+    }
     for (size_t tap = 1; tap <= MAX_TURN_TAPS; tap++){
         pbf_press_dpad(context, dpad(direction), TURN_TAP, TURN_SETTLE);
         std::optional<Direction> facing;
