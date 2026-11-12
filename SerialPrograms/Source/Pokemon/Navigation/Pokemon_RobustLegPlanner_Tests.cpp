@@ -10,6 +10,7 @@
 #include <format>
 #include <functional>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon_RobustLegPlanner.h"
@@ -79,7 +80,7 @@ std::string describe(const std::optional<Legs>& legs){
     for (const RobustLeg<TilePos>& leg : *legs){
         text += std::format("\n  {} {}{} to", direction_name(leg.direction), leg.tiles, leg.to_wall ? " (to wall)" : " (open)");
         for (const TilePos& pos : leg.after){
-            text += " " + to_string(pos);
+            text += std::format(" {}", to_string(pos));
         }
     }
     return text;
@@ -104,7 +105,7 @@ UnitTestResult test_wall_gathers_spread(){
     });
     const auto legs = plan(game, {{0, 0}, {1, 0}}, {2, 0}, RobustLegCosts());
     if (!legs || legs->size() != 1 || !(*legs)[0].to_wall || (*legs)[0].tiles != 2 || (*legs)[0].after != std::vector<TilePos>{{2, 0}}){
-        return "Expected one leg east 2 to the wall:" + describe(legs);
+        return std::format("Expected one leg east 2 to the wall:{}", describe(legs));
     }
     return true;
 }
@@ -118,11 +119,11 @@ UnitTestResult test_open_leg_spreads(){
     });
     const auto uncertain = plan(game, {{0, 0}}, {3, 0}, RobustLegCosts());
     if (uncertain){
-        return "Expected no plan with uncertain open legs:" + describe(uncertain);
+        return std::format("Expected no plan with uncertain open legs:{}", describe(uncertain));
     }
     const auto exact = plan(game, {{0, 0}}, {3, 0}, exact_costs());
     if (!exact || exact->size() != 1 || (*exact)[0].to_wall || (*exact)[0].tiles != 3){
-        return "Expected one open leg east 3:" + describe(exact);
+        return std::format("Expected one open leg east 3:{}", describe(exact));
     }
     return true;
 }
@@ -135,7 +136,7 @@ UnitTestResult test_door_is_not_a_wall(){
     });
     const auto legs = plan(game, {{1, 0}}, {2, 0}, exact_costs());
     if (!legs || legs->size() != 1 || (*legs)[0].to_wall || (*legs)[0].tiles != 1){
-        return "Expected one open leg east 1:" + describe(legs);
+        return std::format("Expected one open leg east 1:{}", describe(legs));
     }
     return true;
 }
@@ -153,7 +154,7 @@ UnitTestResult test_avoids_wander_run(){
     }
     for (const RobustLeg<TilePos>& leg : *legs){
         if (leg.direction == Direction::EAST && leg.after[0].y == 0){
-            return "Walked east along the wander zone:" + describe(legs);
+            return std::format("Walked east along the wander zone:{}", describe(legs));
         }
     }
     return true;
@@ -178,19 +179,28 @@ UnitTestResult test_cost_of_plan(){
 }
 
 
-struct RobustLegPlannerTestCase{
+struct RobustLegPlannerInput{
     std::string name;
     UnitTestResult (*test)();
+};
+
+struct RobustLegPlannerExpectation{
+    std::string_view description;
+};
+
+struct RobustLegPlannerTestCase{
+    RobustLegPlannerInput input;
+    RobustLegPlannerExpectation expectation;
 };
 
 class Test_RobustLegPlanner : public UnitTest{
 public:
     explicit Test_RobustLegPlanner(RobustLegPlannerTestCase scenario)
-        : UnitTest(std::format("Pokemon::RobustLegPlanner - {}", scenario.name))
+        : UnitTest(std::format("Pokemon::RobustLegPlanner - {}", scenario.input.name))
         , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        return m_scenario.test();
+        return m_scenario.input.test();
     }
 
 private:
@@ -198,11 +208,26 @@ private:
 };
 
 const RobustLegPlannerTestCase ROBUST_LEG_PLANNER_CASES[] = {
-    {.name = "a wall gathers the possible tiles", .test = test_wall_gathers_spread},
-    {.name = "an open leg may end a tile off", .test = test_open_leg_spreads},
-    {.name = "a door is not a wall", .test = test_door_is_not_a_wall},
-    {.name = "no leg along a wander zone", .test = test_avoids_wander_run},
-    {.name = "cost of given legs", .test = test_cost_of_plan},
+    {
+        .input = {.name = "a wall gathers the possible tiles", .test = test_wall_gathers_spread},
+        .expectation = {.description = "a leg to a wall ends every possible start on one tile"},
+    },
+    {
+        .input = {.name = "an open leg may end a tile off", .test = test_open_leg_spreads},
+        .expectation = {.description = "no plan ends on an open tile unless open legs are exact"},
+    },
+    {
+        .input = {.name = "a door is not a wall", .test = test_door_is_not_a_wall},
+        .expectation = {.description = "a stop that does not hold the player is not a wall leg"},
+    },
+    {
+        .input = {.name = "no leg along a wander zone", .test = test_avoids_wander_run},
+        .expectation = {.description = "goes round a row where someone wanders"},
+    },
+    {
+        .input = {.name = "cost of given legs", .test = test_cost_of_plan},
+        .expectation = {.description = "charges a wall leg its tiles and an open leg its stop on top"},
+    },
 };
 
 } // namespace
