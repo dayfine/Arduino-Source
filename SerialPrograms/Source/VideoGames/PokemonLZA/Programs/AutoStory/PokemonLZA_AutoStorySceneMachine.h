@@ -31,7 +31,7 @@
 #include "CommonTools/ScreenMachine/ScreenObservation.h"
 #include "NintendoSwitch/Controllers/NintendoSwitch_ControllerButtons.h"
 #include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
-#include "PokemonLZA_AutoStoryObservation.h"
+#include "PokemonLZA_AutoStoryReadings.h"
 #include "PokemonLZA_AutoStoryBackend.h"
 #include "PokemonLZA_AutoStoryScreenEvents.h"
 
