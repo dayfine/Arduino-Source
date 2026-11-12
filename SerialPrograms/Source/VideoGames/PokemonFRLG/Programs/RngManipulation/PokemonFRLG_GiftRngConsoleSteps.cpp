@@ -91,7 +91,7 @@ StarterRngResult ConsoleGiftRngSteps::run_attempt(const RngAttempt& attempt, con
     GiftRngStats stats;
     GiftRngAttempts attempts(
         GiftRngTarget{
-            .target = PokemonFRLG_RngTarget::magikarp,
+            .target = m_settings.target,
             .seed = attempt.target.seed.seed,
             .advances = attempt.target.advances,
             .seed_match = seed_match,

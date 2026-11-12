@@ -7,13 +7,22 @@
     "start": {"map": "RocketHideout_B3F", "tiles": [[12, 13]], "facing": "north"},
     "events": [
       {
-        "id": "b3f_to_top_corridor",
+        "id": "b3f_to_column_12",
         "kind": "legs",
         "action": "taps",
         "args": {
-          "legs": [{"direction": "west", "tiles": 4}, {"direction": "north", "tiles": 2}, {"direction": "east", "tiles": 4}, {"direction": "north", "tiles": 7}]
+          "legs": [{"direction": "west", "tiles": 4}, {"direction": "north", "tiles": 2}, {"direction": "east", "tiles": 4}]
         },
-        "why": "a tap a tile from below the Rare Candy (12, 12): west along row 13 to (8, 13), north onto the arrow (8, 11), which slides to the stop (8, 9), east to (12, 9) and up column 12 to the wall at (12, 2)"
+        "why": "a tap a tile from below the Rare Candy (12, 12): west along row 13 to (8, 13), north onto the arrow (8, 11), which slides to the stop (8, 9), and east to the foot of column 12, (12, 9)"
+      },
+      {
+        "id": "b3f_to_top_corridor",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [{"direction": "north", "tiles": 7}]
+        },
+        "why": "run up column 12 to the wall at (12, 2): no arrow on it, the Grunt (19, 9) looks up column 19, and the wall stops any overshoot"
       },
       {
         "id": "b2f_from_b3f",
@@ -75,13 +84,22 @@
         "why": "a tap a tile from the stop (13, 20): east to the wall at (15, 20) and up column 15 to row 17; a hold up the open column that ended short sent the run east along row 18 into its wall at (17, 18)"
       },
       {
+        "id": "row_17_to_wall",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [{"direction": "east", "tiles": 15}]
+        },
+        "why": "run along row 17 from (15, 17) to its wall at (30, 17): no arrow or trainer on it, and an overshoot only meets the wall"
+      },
+      {
         "id": "below_lift",
         "kind": "legs",
         "action": "taps",
         "args": {
-          "legs": [{"direction": "east", "tiles": 15}, {"direction": "west", "tiles": 2}]
+          "legs": [{"direction": "west", "tiles": 2}]
         },
-        "why": "a tap a tile along row 17 to its wall at (30, 17), then back west to below the lift door (28, 16), at (28, 17); an overshoot east only meets the wall"
+        "why": "a tap a tile back west from the wall (30, 17) to below the lift door (28, 16), at (28, 17)"
       },
       {
         "id": "face_lift",
@@ -152,13 +170,31 @@
         "why": "Rocket Grunt (TRAINER_TEAM_ROCKET_GRUNT_17): Ekans, Sandshrew, Arbok Lv23 (Arbok's Glare paralysed pokeguy's Wartortle, 59:44)"
       },
       {
+        "id": "west_of_right_guard",
+        "kind": "legs",
+        "action": "taps",
+        "args": {
+          "legs": [{"direction": "west", "tiles": 2}]
+        },
+        "why": "a tap a tile: west from below the right door Grunt (19, 15) to the foot of column 17 (17, 15)"
+      },
+      {
+        "id": "up_column_17",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [{"direction": "north", "tiles": 10}]
+        },
+        "why": "run up column 17 between the doors (17..18, 12..13) to the wall at (17, 5): both door Grunts are beaten, and the wall stops any overshoot"
+      },
+      {
         "id": "beside_giovanni",
         "kind": "legs",
         "action": "taps",
         "args": {
-          "legs": [{"direction": "west", "tiles": 2}, {"direction": "north", "tiles": 10}, {"direction": "east", "tiles": 2}]
+          "legs": [{"direction": "east", "tiles": 2}]
         },
-        "why": "a tap a tile: west to (17, 15), up column 17 between the guards (17..18, 12..13) to the wall at (17, 5), and east to below Giovanni (19, 4)"
+        "why": "a tap a tile: east from (17, 5) to below Giovanni (19, 4), on (19, 5); his sight starts here, so no run"
       },
       {
         "id": "below_giovanni",

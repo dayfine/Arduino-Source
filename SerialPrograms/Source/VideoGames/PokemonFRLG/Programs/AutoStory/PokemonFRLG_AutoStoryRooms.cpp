@@ -35,7 +35,7 @@ const std::vector<RoomLeg>& center_exit_legs(){
 }
 const std::vector<RoomLeg>& lift_in_legs(){
     static const std::vector<RoomLeg> LEGS{
-        {Pokemon::Direction::NORTH, 1, true, false, LIFT_MAP},
+        {Pokemon::Direction::NORTH, 1, true, false, "the lift"},
         {Pokemon::Direction::NORTH, 2, false},
         {Pokemon::Direction::WEST, 2, false},
         {Pokemon::Direction::NORTH, 0, false},

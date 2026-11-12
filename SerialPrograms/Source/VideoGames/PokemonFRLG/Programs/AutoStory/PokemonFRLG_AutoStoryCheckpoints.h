@@ -18,6 +18,7 @@
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "Pokemon/AutoStory/Pokemon_StoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
+#include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_BlindNavigation.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMap.h"
@@ -46,8 +47,8 @@ enum class StoryHandoff{
     //  which is where Starter RNG starts. With the handoff off, it runs on
     //  into the next checkpoint as one, as the story did before the split.
     STARTER_RNG,
-    //  The checkpoint saves beside the Magikarp salesman, facing him, which
-    //  is where Gift RNG starts.
+    //  The checkpoint saves where Gift RNG starts for its gift: beside the
+    //  Magikarp salesman, facing him, or facing the Eevee's ball.
     GIFT_RNG,
 };
 
@@ -63,6 +64,8 @@ struct StoryCheckpoint : public Pokemon::StoryCheckpoint{
     bool live_start = false;
     //  The RNG program the user may run at this checkpoint.
     StoryHandoff handoff = StoryHandoff::NONE;
+    //  With GIFT_RNG: the gift Gift RNG takes there.
+    PokemonFRLG_RngTarget gift = PokemonFRLG_RngTarget::magikarp;
 };
 
 //  The handoffs a run stops for (AutoStory's options).
@@ -79,9 +82,9 @@ struct StoryRunPlan{
     //  NONE: the run ends after `rows`. SID_HELPER: `rows` is empty; the run
     //  plays the new game to the player's keyboard and stops there.
     //  STARTER_RNG: the run stops after `rows`, the last of which saves at
-    //  the starter's ball. GIFT_RNG: likewise, beside the Magikarp salesman;
-    //  with `rows` empty, the run started at 04.03 and takes Gift RNG from
-    //  the save beside the salesman, where the row before `first` ends.
+    //  the starter's ball. GIFT_RNG: likewise, where a gift is taken; with
+    //  `rows` empty, the run started at the live-start row after it (04.03)
+    //  and takes Gift RNG from the save where the row before `first` ends.
     StoryHandoff stop = StoryHandoff::NONE;
 };
 

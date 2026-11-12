@@ -29,6 +29,9 @@
 #include "CommonTools/OCR/OCR_Routines.h"
 #include "Tests/CommandLineTests.h"
 #include "ControllerInput/ControllerInput.h"
+#ifdef PA_SDL
+#include "ControllerInput/Gamepad/GlobalGamepadTracker.h"
+#endif
 #include "Controllers/SerialPort/SerialPortPollerQt.h"
 #include "Integrations/DiscordSettingsOption.h"
 #include "Integrations/DiscordSocial/DiscordSocial.h"
@@ -202,6 +205,9 @@ int run_program(int argc, char *argv[]){
     }
 
     ScopeExit cleanup([]{
+#ifdef PA_SDL
+        global_gamepad_tracker().stop();
+#endif
         SerialPortPoller::instance().stop();
         GlobalMediaServices::instance().stop();
     });
@@ -239,6 +245,9 @@ int run_program(int argc, char *argv[]){
 #endif
 
 
+#ifdef PA_SDL
+    global_gamepad_tracker().start();
+#endif
     MainWindow w;
     w.show();
     w.raise(); // bring the window to front on macOS

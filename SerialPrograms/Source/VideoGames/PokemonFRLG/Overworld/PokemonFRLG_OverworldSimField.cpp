@@ -3,13 +3,15 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  What A does on the sim's overworld, facing something: a tree to cut,
- *  the Game Corner's poster, the lift's panel (OverworldSim::use_field()).
+ *  the Game Corner's poster, the lift's panel, the water to Surf onto; and
+ *  Fly (OverworldSim::use_field()).
  *
  */
 
 #include <algorithm>
 #include <format>
 #include "PokemonFRLG_CodedRooms.h"
+#include "PokemonFRLG_FlyMap.h"
 #include "PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_OverworldSimField.h"
 #include "PokemonFRLG_BikeSpinMechanics.h"
@@ -38,6 +40,10 @@ bool OverworldSim::use_field(SimField field, size_t floor){
         return choose_lift_floor(floor);
     case SimField::BIKE_SELECT:
         return press_select();
+    case SimField::SURF:
+        return start_surf();
+    case SimField::FLY:
+        return fly_to_town(floor);
     }
     return false;
 }
@@ -115,6 +121,62 @@ bool OverworldSim::choose_lift_floor(size_t floor){
     schedule(m_now + m_script.timing.lift_ride, SimScreen::OVERWORLD, true);
     note("the lift goes to " + to_string(lift->second[floor]) + ".");
     return true;
+}
+
+bool OverworldSim::start_surf(){
+    const bool water = classify_step(map(), m_player, m_state.facing) == StepKind::START_SURF;
+    if (!water || m_state.screen != SimScreen::OVERWORLD || m_frozen){
+        violation("no water to Surf onto " + std::string(direction_name(m_state.facing)) + " of " + to_string(m_state.position) + ".");
+        return false;
+    }
+    advance_to(m_now + m_script.timing.surf_start);
+    m_player = PokemonFRLG::after_step(map(), m_player, m_state.facing, StepKind::START_SURF);
+    m_state.on_bike = false;
+    update_view();
+    note("surfed onto " + to_string(m_state.position) + ".");
+    return true;
+}
+
+bool OverworldSim::fly_to_town(size_t town){
+    const std::vector<FlyTown>& towns = kanto_fly_towns();
+    const MapPosition* landing = town < towns.size() ? &towns[town].landing : nullptr;
+    const auto to = std::find_if(m_maps.begin(), m_maps.end(), [&](const MapData& map){
+        return landing != nullptr && map.name == landing->map;
+    });
+    if (to == m_maps.end() || m_state.screen != SimScreen::OVERWORLD || m_frozen){
+        violation(std::format("no Fly to town {} from {}.", town, to_string(m_state.position)));
+        return false;
+    }
+    m_state.warped_from.push_back(map().name);
+    m_state.warps++;
+    regrow_cut_trees();
+    m_map = (int)(to - m_maps.begin());
+    m_player = PlayerState{landing->point, elevation_at(*to, landing->point), false};
+    m_state.facing = Direction::SOUTH;
+    m_state.on_bike = false;
+    update_view();
+    m_frozen = true;
+    schedule(m_now + m_script.timing.message, SimScreen::FADE, false);
+    schedule(m_now + m_script.timing.fly, SimScreen::OVERWORLD, true);
+    note("flew to " + to_string(m_state.position) + ".");
+    return true;
+}
+
+std::optional<WalkedTiles> OverworldSimWalker::surf(const RouteStep& step){
+    if (m_sim.state().facing != step.direction){
+        sim_turn_to(m_sim, step.direction, m_rules.confirm_turn);
+    }
+    if (!m_sim.use_field(SimField::SURF)){
+        fail("walk_overworld_route(): no Surf prompt facing the water.");
+    }
+    return std::nullopt;
+}
+
+void OverworldSim::regrow_cut_trees(){
+    for (auto& [index, tree] : m_cut_trees){
+        m_maps[index].objects.push_back(tree);
+    }
+    m_cut_trees.clear();
 }
 
 bool OverworldSim::push_poster_switch(){

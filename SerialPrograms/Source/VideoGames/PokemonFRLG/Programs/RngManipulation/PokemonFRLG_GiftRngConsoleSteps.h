@@ -3,8 +3,9 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  The RNG plan loop's steps (PokemonFRLG_StarterRngLoop.h) on the console
- *  for Gift RNG's Magikarp: each try runs Gift RNG's attempts
- *  (PokemonFRLG_GiftRngAttempts.h) from the save beside Route 4's salesman.
+ *  for a Gift RNG target (Route 4's Magikarp, Celadon's Eevee): each try
+ *  runs Gift RNG's attempts (PokemonFRLG_GiftRngAttempts.h) from the save
+ *  where the gift is taken.
  *  The loop counts tries in Starter RNG's outcomes; Gift RNG's map onto
  *  them one to one.
  *
@@ -39,12 +40,16 @@ struct GiftRngConsoleSettings{
     SoundSetting sound = SoundSetting::Mono;
     //  The calibration the first try starts from.
     RngCalibrations calibration = {};
+    //  The gift: Gift RNG's target, its save beside the salesman or
+    //  facing the ball.
+    PokemonFRLG_RngTarget target = PokemonFRLG_RngTarget::magikarp;
 };
 
 //  The loop's steps on the console, with Gift RNG's displays, stats and
 //  calibration kept here (AutoStory doesn't show them). Each try after the
-//  first starts from the calibration the last one ended with. Magikarp, FireRed,
-//  the Switch's default profile, no Teachy TV and no Rare Candies.
+//  first starts from the calibration the last one ended with. The settings'
+//  target, FireRed, the Switch's default profile, no Teachy TV and no Rare
+//  Candies.
 class ConsoleGiftRngSteps : public StarterRngLoopSteps{
 public:
     ConsoleGiftRngSteps(

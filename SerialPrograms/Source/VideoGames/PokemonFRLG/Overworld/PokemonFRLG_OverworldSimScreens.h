@@ -62,6 +62,15 @@ struct SimTiming{
     Milliseconds tile = MovementMechanics::TILE_TIME;
     //  A tile on the Bicycle.
     Milliseconds bike_tile = MovementMechanics::BIKE_TILE_TIME;
+    //  A tile on the water.
+    Milliseconds surf_tile = MovementMechanics::SURF_TILE_TIME;
+    //  From the A facing the water to the player on it, able to move
+    //  (OverworldWalkSteps::start_surf()'s presses and wait). Not measured
+    //  on the console.
+    Milliseconds surf_start{4000};
+    //  From Fly's town picked to the player standing in it, able to move:
+    //  the fade, the flight and the landing. Not measured on the console.
+    Milliseconds fly{5000};
     Milliseconds flash{300};
     Milliseconds battle_screen{3700};
     //  A wild battle's text box, before the HP boxes (battle_screen). Not

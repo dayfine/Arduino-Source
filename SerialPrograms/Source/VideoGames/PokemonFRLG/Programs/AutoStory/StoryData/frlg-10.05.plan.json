@@ -1,0 +1,128 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "10.05",
+    "title": "Pokemon Tower 6F: Jennifer, Emilia, the Rare Candy and the Marowak ghost",
+    "start": {"map": "PokemonTower_5F", "tiles": [[18, 7]], "facing": "east"},
+    "events": [
+      {
+        "id": "tower_6f_stairs",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "PokemonTower_6F", "tiles": [[18, 10]], "facing": "north"}
+        },
+        "why": "down 5F's column 18 onto its stairs (18, 10) to 6F's (18, 10), turned north: the way on keeps out of Angelica's line (14..16, 10)"
+      },
+      {
+        "id": "tower_6f_below_jennifer_line",
+        "kind": "legs",
+        "action": "taps",
+        "args": {
+          "legs": [{"direction": "north", "tiles": 2}, {"direction": "west", "tiles": 2}, {"direction": "north", "tiles": 1}]
+        },
+        "why": "a tap a tile: up to the wall (18, 7), on (18, 8), west to (16, 8) and up to (16, 7), below Jennifer's line (15..17, 6)"
+      },
+      {
+        "id": "jennifer_line",
+        "kind": "step",
+        "action": "trainer_line",
+        "args": {
+          "direction": "north"
+        },
+        "why": "onto (16, 6) in Jennifer's line: she faces west from (18, 6) and walks to (17, 6)"
+      },
+      {
+        "id": "channeler_jennifer",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_CHANNELER_JENNIFER",
+          "foes": ["gastly"]
+        },
+        "declared_after": {"map": "PokemonTower_6F", "tiles": [[16, 6]], "facing": "east"},
+        "why": "Channeler Jennifer: Gastly Lv24 (pokeguy 1:07:00)"
+      },
+      {
+        "id": "tower_6f_east_of_emilia_line",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "PokemonTower_6F", "tiles": [[10, 8]], "facing": "west"}
+        },
+        "why": "up column 16 to row 4, west along it and down column 12 to row 8, west to (10, 8), east of Emilia's line (9, 7..9)"
+      },
+      {
+        "id": "emilia_line",
+        "kind": "step",
+        "action": "trainer_line",
+        "args": {
+          "direction": "west"
+        },
+        "why": "onto (9, 8) in Emilia's line: she faces south from (9, 6) and walks to (9, 7)"
+      },
+      {
+        "id": "channeler_emilia",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_CHANNELER_EMILIA",
+          "foes": ["gastly"]
+        },
+        "declared_after": {"map": "PokemonTower_6F", "tiles": [[9, 8]], "facing": "north"},
+        "why": "Channeler Emilia: Gastly Lv24 (pokeguy 1:07:28)"
+      },
+      {
+        "id": "above_tower_rare_candy",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "PokemonTower_6F", "tiles": [[5, 14]], "facing": "south"}
+        },
+        "why": "west along row 8 and down column 6 to row 14, a tile west to above the Rare Candy (5, 15) (pokeguy 1:07:53)"
+      },
+      {
+        "id": "tower_rare_candy",
+        "kind": "talk",
+        "why": "pick up the Rare Candy"
+      },
+      {
+        "id": "above_marowak_trigger",
+        "kind": "legs",
+        "action": "taps",
+        "args": {
+          "legs": [{"direction": "north", "tiles": 2}, {"direction": "east", "tiles": 6}, {"direction": "south", "tiles": 2}]
+        },
+        "why": "a tap a tile back up column 5 to row 12, east along it to (11, 12) and down column 11 to (11, 14), above the trigger (11, 15) before the stairs (11, 16): the planner, kept off open stops on wild floor, would go west to the wall (2, 11) and back"
+      },
+      {
+        "id": "marowak_trigger",
+        "kind": "step",
+        "args": {
+          "direction": "south"
+        },
+        "declared_after": {"map": "PokemonTower_6F", "tiles": [[11, 15]], "facing": "south"},
+        "why": "onto (11, 15): PokemonTower_6F_EventScript_MarowakGhost, \"Be gone... Intruders...\"; with the SILPH SCOPE the ghost is a Marowak"
+      },
+      {
+        "id": "marowak_ghost",
+        "kind": "battle",
+        "args": {
+          "foes": ["marowak"]
+        },
+        "declared_after": {"map": "PokemonTower_6F", "tiles": [[11, 15]], "facing": "south"},
+        "why": "Marowak Lv30, a wild battle that can't be run from (StartMarowakBattle); pokeguy KOs it with one Water Pulse (1:08:04). Then the spirit's text"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "lead": "after_brock",
+    "notes": {
+      "checkpoint": [
+        "6F (PokemonTower_6F map.json, scripts.inc), from 10.04's save beside Tammy: Angelica (13, 10) looks east 3, Jennifer (18, 6) west 3, Emilia (9, 6) south 3. Every way from the east stairs to the west part crosses Jennifer's and Emilia's lines (pokeguy fights both); Angelica's is walked round. The Rare Candy in the south-west pocket, then the Marowak ghost: a step onto (11, 15) or (12, 16), both beside the stairs up (11, 16), with VAR_MAP_SCENE_POKEMON_TOWER_6F 0. The save after it is the retry point before 7F's three Grunts.",
+        "The runtime map has no ball at the Rare Candy (5, 15) or the X ACCURACY (15, 15) (see 10.04's notes); the pickup faces (5, 15) from above."
+      ]
+    }
+  },
+  "metadata": {"phase": "testing"}
+}

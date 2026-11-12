@@ -142,13 +142,22 @@
         "why": "pick up the LIFT KEY (pokeguy 57:33)"
       },
       {
+        "id": "b4f_east_to_wall",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [{"direction": "east", "tiles": 3}]
+        },
+        "why": "run from below the LIFT KEY (3, 3) east to the wall (6, 3): the Grunt (4, 2) is beaten, so his line (4, 3) is open floor, and the wall stops any overshoot"
+      },
+      {
         "id": "b4f_to_stairs",
         "kind": "legs",
         "action": "taps",
         "args": {
-          "legs": [{"direction": "east", "tiles": 3}, {"direction": "south", "tiles": 4}, {"direction": "east", "tiles": 5}, {"direction": "south", "tiles": 8}]
+          "legs": [{"direction": "south", "tiles": 4}, {"direction": "east", "tiles": 5}, {"direction": "south", "tiles": 8}]
         },
-        "why": "a tap a tile from below the LIFT KEY (3, 3): east to the wall (6, 3), down to (6, 7), east to (11, 7) and down onto the stairs (11, 15)"
+        "why": "a tap a tile from the wall (6, 3): down to (6, 7), east to (11, 7) and down onto the stairs (11, 15); neither (6, 7) nor (11, 7) has a wall to stop a run"
       },
       {
         "id": "b3f_from_b4f",
@@ -160,13 +169,31 @@
         "why": "east up B4F's stairs (11, 15) to B3F's (15, 18)"
       },
       {
+        "id": "b3f_down_to_row_20",
+        "kind": "legs",
+        "action": "taps",
+        "args": {
+          "legs": [{"direction": "south", "tiles": 2}]
+        },
+        "why": "pokeguy's way back (video 57:39-57:42), a tap a tile: down from B4F's stairs (15, 18) to row 20, (15, 20); row 21 below is open, so no run"
+      },
+      {
+        "id": "b3f_row_20_to_wall",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [{"direction": "west", "tiles": 5}]
+        },
+        "why": "run west along row 20 to the wall at (10, 20): no arrow on it, and the Grunt (2, 20) is behind that wall"
+      },
+      {
         "id": "b3f_back_to_candy_row",
         "kind": "legs",
         "action": "taps",
         "args": {
-          "legs": [{"direction": "south", "tiles": 2}, {"direction": "west", "tiles": 5}, {"direction": "north", "tiles": 6}]
+          "legs": [{"direction": "north", "tiles": 6}]
         },
-        "why": "pokeguy's way back (video 57:39-57:42), a tap a tile: down to row 20, west to column 10, up it onto the arrow (10, 14), which slides a tile north to the stop (10, 13)"
+        "why": "a tap a tile up column 10 onto the arrow (10, 14), which slides a tile north to the stop (10, 13)"
       },
       {
         "id": "beside_b3f_rare_candy",

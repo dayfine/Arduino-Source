@@ -47,9 +47,12 @@ bool is_tm_or_hm(std::string_view item){
 } // namespace
 
 Pokemon::StoryActionArgs teach_args(const TeachPlan& plan){
-    Pokemon::StoryActionArgs args{
-        {"item", plan.item}, {"move", plan.move}, {"slot", int64_t(plan.member + 1)},
-    };
+    Pokemon::StoryActionArgs args{{"item", plan.item}, {"move", plan.move}};
+    if (plan.species.empty()){
+        args.emplace("slot", int64_t(plan.member + 1));
+    }else{
+        args.emplace("species", plan.species);
+    }
     if (!plan.forget_move.empty()){
         args.emplace("forget", plan.forget_move);
     }else if (plan.forget_slot){
@@ -61,11 +64,16 @@ Pokemon::StoryActionArgs teach_args(const TeachPlan& plan){
 std::optional<TeachPlan> teach_plan_of(const Pokemon::StoryActionArgs& args){
     const std::string* item = game_arg<std::string>(args, "item");
     const std::string* move = game_arg<std::string>(args, "move");
-    const std::optional<size_t> member = counted_arg(args, "slot", PARTY_SLOTS);
-    if (item == nullptr || !(is_tm_or_hm(*item) || *item == TEACH_TUTOR) || move == nullptr || move->empty() || !member){
+    const std::string* species = game_arg<std::string>(args, "species");
+    const std::optional<size_t> member = args.contains("slot") ? counted_arg(args, "slot", PARTY_SLOTS) : std::nullopt;
+    const bool one_member = species == nullptr ? member.has_value() : !species->empty() && !args.contains("slot");
+    if (item == nullptr || !(is_tm_or_hm(*item) || *item == TEACH_TUTOR) || move == nullptr || move->empty() || !one_member){
         return std::nullopt;
     }
-    TeachPlan plan{.item = *item, .move = *move, .member = *member};
+    TeachPlan plan{.item = *item, .move = *move, .member = member.value_or(0)};
+    if (species != nullptr){
+        plan.species = *species;
+    }
     if (const std::string* forget = game_arg<std::string>(args, "forget")){
         if (forget->empty()){
             return std::nullopt;
@@ -247,15 +255,48 @@ private:
 
 } // namespace
 
+namespace{
+
+//  The first party slot whose member `reader` reads as `species`; nothing
+//  if none does. Stops at the first slot not read (an empty slot ends the
+//  party).
+std::optional<size_t> find_party_species(const MemberReader& reader, std::string_view species){
+    for (size_t slot = 0; slot < PARTY_SLOTS; slot++){
+        const std::optional<MemberInfo> member = reader(slot);
+        if (!member){
+            return std::nullopt;
+        }
+        if (member->species == species){
+            return slot;
+        }
+    }
+    return std::nullopt;
+}
+
+} // namespace
+
 TeachResult run_teach(Logger& logger, TeachActions& actions, const MemberReader& reader, const TeachPlan& plan){
-    TeachResult result = TeachRun(actions, reader, plan).run();
+    TeachPlan found = plan;
+    if (!plan.species.empty()){
+        const std::optional<size_t> slot = find_party_species(reader, plan.species);
+        if (!slot){
+            const TeachResult result{.end = TeachEnd::UNREAD, .detail = std::format("no {} read in the party", plan.species)};
+            logger.log(std::format("Teach {} ({}) to the {}: {}.", plan.move, plan.item, plan.species, result.detail), COLOR_RED);
+            return result;
+        }
+        found.member = *slot;
+    }
+    TeachResult result = TeachRun(actions, reader, found).run();
     const Color color = result.end == TeachEnd::LEARNED ? COLOR_BLACK : result.end == TeachEnd::NO_ITEM ? COLOR_ORANGE : COLOR_RED;
-    logger.log(teach_message(plan, result), color);
+    logger.log(teach_message(found, result), color);
     return result;
 }
 
 std::string teach_message(const TeachPlan& plan, const TeachResult& result){
-    const std::string what = std::format("Teach {} ({}) to slot {}", plan.move, plan.item, plan.member + 1);
+    const std::string to = plan.species.empty()
+        ? std::format("slot {}", plan.member + 1)
+        : std::format("the {} (slot {})", plan.species, plan.member + 1);
+    const std::string what = std::format("Teach {} ({}) to {}", plan.move, plan.item, to);
     switch (result.end){
     case TeachEnd::LEARNED:
         return result.forgot.empty()
