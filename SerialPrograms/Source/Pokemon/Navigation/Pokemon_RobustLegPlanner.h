@@ -385,6 +385,11 @@ std::vector<RobustLeg<State>> consolidate(const std::vector<RobustLeg<State>>& l
     return consolidated;
 }
 
+//  The way back: the direction opposite `direction`.
+inline Direction opposite(Direction direction){
+    return Direction(((int)direction + 2) % 4);
+}
+
 //  Dijkstra over sets of places the player may stand on.
 template <typename Model>
 class Search{
@@ -438,14 +443,20 @@ private:
 
     void expand(const Spread& spread, long long cost){
         for (Direction direction : ALL_DIRECTIONS){
-            if (auto wall = to_wall_leg(m_model, spread, direction, m_costs)){
-                relax(spread, cost, std::move(*wall));
+            const auto wall = to_wall_leg(m_model, spread, direction, m_costs);
+            if (wall){
+                relax(spread, cost, Expansion<State>(*wall));
             }
             //  A held leg unsafe at one length may be safe at a longer one.
             for (int tiles = 1; tiles <= m_costs.max_open_tiles; tiles++){
                 auto open = open_leg(m_model, spread, direction, tiles, m_costs);
                 if (!open){
                     break;
+                }
+                //  An open leg that ends where the leg to the wall does is
+                //  that leg: it is held until the wall stops the player.
+                if (wall && wall->leg.tiles == open->leg.tiles && wall->leg.after == open->leg.after){
+                    continue;
                 }
                 if (!open->unsafe){
                     relax(spread, cost, std::move(*open));
@@ -463,7 +474,14 @@ private:
             return;
         }
         if (spread != m_start){
-            const RobustLeg<State>& prev = m_nodes.at(spread).leg;
+            const Node& arrived = m_nodes.at(spread);
+            const RobustLeg<State>& prev = arrived.leg;
+            //  A leg to a wall from one place the player is known to be on
+            //  localizes nothing: walking straight back from it is a longer
+            //  way to the tiles a leg open on the first would reach.
+            if (prev.to_wall && arrived.parent.size() == 1 && expansion.leg.direction == opposite(prev.direction)){
+                return;
+            }
             if (joins(prev, expansion.leg)){
                 expansion.cost -= m_costs.per_leg;
             }
