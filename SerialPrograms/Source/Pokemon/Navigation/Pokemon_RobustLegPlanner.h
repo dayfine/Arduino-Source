@@ -12,7 +12,8 @@
  *  A step model is a class with:
  *
  *      using State = ...;      //  where the player is: comparable with ==
- *      using StateLess = ...;  //  a strict order of State, for sets of them
+ *      using StateLess = ...;  //  a strict order of State, for sets of them:
+ *                              //  std::less<State> for TilePos and MapPlace
  *      std::optional<State> step(const State& state, Direction direction) const;
  *      size_t step_tiles(const State& from, const State& to) const;
  *      bool held_at(const State& state, Direction direction) const;
@@ -26,6 +27,12 @@
  *  off the maps) makes a leg the planner can't tell the end of, and it is
  *  not used. wild() is a place where a wild battle may stop the walk (tall
  *  grass); wander() one where someone wanders.
+ *
+ *  Warps and game actions (doors, Surf, spin tiles) are not legs: a stop
+ *  that isn't held is never used, so a plan never crosses a warp. Callers
+ *  plan each stretch between warps on its own. The step model here and the
+ *  one of Pokemon_LegPlanner.h (press(), Step<State>) describe the same
+ *  world rules for two planners; a game writes one adapter for each.
  *
  */
 
@@ -66,7 +73,8 @@ struct RobustLegCosts{
     int per_leg = 8;
     int leg_not_at_wall = 50;   //  extra for a leg that stops in the open
     //  An open leg of n tiles may end open_error + n / open_error_per tiles
-    //  short or long.
+    //  short or long. open_error_per 0 adds no growth: every open leg is
+    //  off by open_error at most, and by nothing if open_error is 0 too.
     int open_error = 1;
     int open_error_per = 5;
     //  Open legs this many tiles or shorter land exactly. 0 keeps every
@@ -110,6 +118,11 @@ long long robust_legs_cost(
 
 namespace RobustLegPlannerInternal{
 
+//  Most steps a leg to a wall may take. No map is this long; a model whose
+//  steps loop (edge connections that come back round, or a model bug)
+//  would otherwise slide forever.
+inline constexpr size_t MAX_STEPS_TO_WALL = 1024;
+
 //  Where the player stops walking `direction` until stopped.
 template <typename State>
 struct WallHit{
@@ -117,11 +130,12 @@ struct WallHit{
     size_t tiles = 0;
     bool held = false;
 };
-//  Walks `direction` from `from` until the player is stopped.
+//  Walks `direction` from `from` until the player is stopped. A walk that
+//  is not stopped within MAX_STEPS_TO_WALL steps is not held.
 template <typename Model>
 WallHit<typename Model::State> slide_to_wall(const Model& model, const typename Model::State& from, Direction direction){
     WallHit<typename Model::State> hit{from};
-    while (true){
+    for (size_t steps = 0; steps < MAX_STEPS_TO_WALL; steps++){
         const auto next = model.step(hit.stop, direction);
         if (!next){
             hit.held = model.held_at(hit.stop, direction);
@@ -130,6 +144,18 @@ WallHit<typename Model::State> slide_to_wall(const Model& model, const typename 
         hit.tiles += model.step_tiles(hit.stop, *next);
         hit.stop = *next;
     }
+    return hit;
+}
+
+//  How many tiles an open leg of `tiles` tiles may end short or long.
+inline int open_leg_error(int tiles, const RobustLegCosts& costs){
+    if (tiles <= costs.exact_open_tiles){
+        return 0;
+    }
+    if (costs.open_error_per <= 0){
+        return costs.open_error;
+    }
+    return costs.open_error + tiles / costs.open_error_per;
 }
 
 //  Where `from` ends up after `tiles` tiles `direction`, stopping early
@@ -237,7 +263,7 @@ std::optional<Expansion<typename Model::State>> open_leg(
     Expansion<typename Model::State> expansion;
     int wild = 0;
     int wander = 0;
-    const int error = tiles <= costs.exact_open_tiles ? 0 : costs.open_error + tiles / costs.open_error_per;
+    const int error = open_leg_error(tiles, costs);
     for (const auto& place : spread){
         for (int n = std::max(1, tiles - error); n <= tiles + error; n++){
             const auto stepped = step_tiles(model, place, direction, n);

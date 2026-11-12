@@ -3,14 +3,17 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  The robust planner on a small made-up game: walls hold the player, a
- *  door stops them without holding them, and open legs may end a tile off.
+ *  door stops them without holding them, a ledge hops them south, and open
+ *  legs may end a tile off.
  *
  */
 
 #include <format>
 #include <functional>
+#include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon_RobustLegPlanner.h"
@@ -24,33 +27,37 @@ namespace{
 
 //  '#' wall (and everything outside the rows), '.' floor, '"' tall grass,
 //  'w' where someone wanders, 'D' a door: the player is stopped there but
-//  not held, since walking on enters the building.
+//  not held, since walking on enters the building. 'v' a ledge: a step south
+//  onto it hops to the tile past it and counts 2; it holds the player any
+//  other way. Rows that wrap join their east end to their west end, so a
+//  walk along them is never stopped.
 class ToyGame{
 public:
     using State = TilePos;
-    struct StateLess{
-        bool operator()(const TilePos& a, const TilePos& b) const{
-            return a.y != b.y ? a.y < b.y : a.x < b.x;
-        }
-    };
+    using StateLess = std::less<TilePos>;
 
-    explicit ToyGame(std::vector<std::string> rows)
-        : m_rows(std::move(rows))
+    ToyGame(const std::vector<std::string_view>& rows, bool wraps)
+        : m_rows(rows.begin(), rows.end())
+        , m_wraps(wraps)
     {}
 
     std::optional<State> step(const State& state, Direction direction) const{
-        const TilePos next = state.next(direction);
+        TilePos next = wrapped(state.next(direction));
         const char tile = at(next);
-        if (tile == '#' || tile == 'D'){
+        if (tile == 'v' && direction == Direction::SOUTH){
+            next = next.next(Direction::SOUTH);
+            return at(next) == '#' ? std::nullopt : std::optional<State>(next);
+        }
+        if (tile == '#' || tile == 'D' || tile == 'v'){
             return std::nullopt;
         }
         return next;
     }
-    size_t step_tiles(const State&, const State&) const{
-        return 1;
+    size_t step_tiles(const State& from, const State& to) const{
+        return to.y - from.y == 2 ? 2 : 1;
     }
     bool held_at(const State& state, Direction direction) const{
-        return at(state.next(direction)) == '#';
+        return at(wrapped(state.next(direction))) != 'D';
     }
     bool wild(const State& state) const{
         return at(state) == '"';
@@ -60,6 +67,13 @@ public:
     }
 
 private:
+    TilePos wrapped(TilePos pos) const{
+        if (m_wraps && pos.y >= 0 && pos.y < (int)m_rows.size()){
+            const int width = (int)m_rows[pos.y].size();
+            pos.x = (pos.x % width + width) % width;
+        }
+        return pos;
+    }
     char at(const TilePos& pos) const{
         if (pos.y < 0 || pos.y >= (int)m_rows.size() || pos.x < 0 || pos.x >= (int)m_rows[pos.y].size()){
             return '#';
@@ -68,165 +82,213 @@ private:
     }
 
     std::vector<std::string> m_rows;
+    bool m_wraps = false;
 };
 
 using Legs = std::vector<RobustLeg<TilePos>>;
 
+//  Legs as "east 2 to wall: (2, 0); south 1 open: (2, 1) (2, 2)", or "none".
 std::string describe(const std::optional<Legs>& legs){
     if (!legs){
-        return " none";
+        return "none";
     }
     std::string text;
     for (const RobustLeg<TilePos>& leg : *legs){
-        text += std::format("\n  {} {}{} to", direction_name(leg.direction), leg.tiles, leg.to_wall ? " (to wall)" : " (open)");
+        text += std::format("{}{} {} {}:", text.empty() ? "" : "; ", direction_name(leg.direction), leg.tiles, leg.to_wall ? "to wall" : "open");
         for (const TilePos& pos : leg.after){
-            text += std::format(" {}", to_string(pos));
+            text += " " + to_string(pos);
         }
     }
     return text;
 }
 
-std::optional<Legs> plan(const ToyGame& game, std::vector<TilePos> from, TilePos to, const RobustLegCosts& costs){
-    return plan_robust_legs(game, std::move(from), std::function<bool(const TilePos&)>([to](const TilePos& pos){ return pos == to; }), costs);
-}
+constexpr RobustLegCosts EXACT{.exact_open_tiles = 12};
 
-RobustLegCosts exact_costs(){
+
+struct PlanInput{
+    std::string_view name;
+    std::vector<std::string_view> rows;
+    bool wraps = false;
+    std::vector<TilePos> from;
+    TilePos goal;
     RobustLegCosts costs;
-    costs.exact_open_tiles = costs.max_open_tiles;
-    return costs;
-}
-
-
-UnitTestResult test_wall_gathers_spread(){
-    //  The player is on one of two tiles; walking east to the wall puts them
-    //  on the goal either way.
-    const ToyGame game({
-        "...#",
-    });
-    const auto legs = plan(game, {{0, 0}, {1, 0}}, {2, 0}, RobustLegCosts());
-    if (!legs || legs->size() != 1 || !(*legs)[0].to_wall || (*legs)[0].tiles != 2 || (*legs)[0].after != std::vector<TilePos>{{2, 0}}){
-        return std::format("Expected one leg east 2 to the wall:{}", describe(legs));
-    }
-    return true;
-}
-
-UnitTestResult test_open_leg_spreads(){
-    //  The goal is in the middle of a row with no wall near it: an open leg
-    //  may end a tile either side, so there is no robust plan. With exact
-    //  open legs, one open leg reaches it.
-    const ToyGame game({
-        "........",
-    });
-    const auto uncertain = plan(game, {{0, 0}}, {3, 0}, RobustLegCosts());
-    if (uncertain){
-        return std::format("Expected no plan with uncertain open legs:{}", describe(uncertain));
-    }
-    const auto exact = plan(game, {{0, 0}}, {3, 0}, exact_costs());
-    if (!exact || exact->size() != 1 || (*exact)[0].to_wall || (*exact)[0].tiles != 3){
-        return std::format("Expected one open leg east 3:{}", describe(exact));
-    }
-    return true;
-}
-
-UnitTestResult test_door_is_not_a_wall(){
-    //  Walking east would stop at the door, but holding on enters it: the
-    //  leg to the goal next to it must be an open one.
-    const ToyGame game({
-        "#..D",
-    });
-    const auto legs = plan(game, {{1, 0}}, {2, 0}, exact_costs());
-    if (!legs || legs->size() != 1 || (*legs)[0].to_wall || (*legs)[0].tiles != 1){
-        return std::format("Expected one open leg east 1:{}", describe(legs));
-    }
-    return true;
-}
-
-UnitTestResult test_avoids_wander_run(){
-    //  The top row runs along where someone wanders; the bottom row is one
-    //  longer but clear.
-    const ToyGame game({
-        ".www.",
-        ".....",
-    });
-    const auto legs = plan(game, {{1, 0}}, {4, 0}, exact_costs());
-    if (!legs){
-        return "No plan.";
-    }
-    for (const RobustLeg<TilePos>& leg : *legs){
-        if (leg.direction == Direction::EAST && leg.after[0].y == 0){
-            return std::format("Walked east along the wander zone:{}", describe(legs));
-        }
-    }
-    return true;
-}
-
-UnitTestResult test_cost_of_plan(){
-    //  A wall leg costs a leg and its tiles; an open one its stop and open
-    //  tiles on top.
-    const ToyGame game({
-        "...#",
-    });
-    RobustLegCosts costs = exact_costs();
-    costs.per_open_tile = 2;
-    const Legs wall{{Direction::EAST, 2, true, {{2, 0}}}};
-    const Legs open{{Direction::EAST, 1, false, {{1, 0}}}};
-    const long long wall_cost = robust_legs_cost(game, {{0, 0}}, wall, costs);
-    const long long open_cost = robust_legs_cost(game, {{0, 0}}, open, costs);
-    if (wall_cost != 8 + 2 || open_cost != 8 + 50 + 3){
-        return std::format("Expected costs 10 and 61, got {} and {}.", wall_cost, open_cost);
-    }
-    return true;
-}
-
-
-struct RobustLegPlannerInput{
-    std::string name;
-    UnitTestResult (*test)();
+};
+struct PlanExpectation{
+    std::string_view legs;  //  as describe() writes them
+};
+struct PlanCase{
+    PlanInput input;
+    PlanExpectation expectation;
 };
 
-struct RobustLegPlannerExpectation{
-    std::string_view description;
-};
-
-struct RobustLegPlannerTestCase{
-    RobustLegPlannerInput input;
-    RobustLegPlannerExpectation expectation;
-};
-
-class Test_RobustLegPlanner : public UnitTest{
+class Test_RobustLegPlanner_Plan : public UnitTest{
 public:
-    explicit Test_RobustLegPlanner(RobustLegPlannerTestCase scenario)
+    explicit Test_RobustLegPlanner_Plan(PlanCase scenario)
         : UnitTest(std::format("Pokemon::RobustLegPlanner - {}", scenario.input.name))
         , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        return m_scenario.input.test();
+        const PlanInput& input = m_scenario.input;
+        const ToyGame game(input.rows, input.wraps);
+        const TilePos goal = input.goal;
+        const std::optional<Legs> legs = plan_robust_legs(game, input.from,
+            std::function<bool(const TilePos&)>([goal](const TilePos& pos){ return pos == goal; }), input.costs);
+        const std::string actual = describe(legs);
+        if (actual != m_scenario.expectation.legs){
+            return std::format("Planned \"{}\", expected \"{}\".", actual, m_scenario.expectation.legs);
+        }
+        return true;
     }
-
 private:
-    RobustLegPlannerTestCase m_scenario;
+    PlanCase m_scenario;
 };
 
-const RobustLegPlannerTestCase ROBUST_LEG_PLANNER_CASES[] = {
+//  Open legs on default costs may end a tile either way (two up to 5 tiles).
+const PlanCase PLAN_CASES[] = {
     {
-        .input = {.name = "a wall gathers the possible tiles", .test = test_wall_gathers_spread},
-        .expectation = {.description = "a leg to a wall ends every possible start on one tile"},
+        .input = {.name = "a wall gathers the possible tiles", .rows = {"...#"}, .from = {{0, 0}, {1, 0}}, .goal = {2, 0}},
+        .expectation = {.legs = "east 2 to wall: (2, 0)"},
     },
     {
-        .input = {.name = "an open leg may end a tile off", .test = test_open_leg_spreads},
-        .expectation = {.description = "no plan ends on an open tile unless open legs are exact"},
+        .input = {.name = "no plan ends in the open while open legs may be off", .rows = {"........"}, .from = {{0, 0}}, .goal = {3, 0}},
+        .expectation = {.legs = "none"},
     },
     {
-        .input = {.name = "a door is not a wall", .test = test_door_is_not_a_wall},
-        .expectation = {.description = "a stop that does not hold the player is not a wall leg"},
+        .input = {.name = "an exact open leg ends in the open", .rows = {"........"}, .from = {{0, 0}}, .goal = {3, 0}, .costs = EXACT},
+        .expectation = {.legs = "east 3 open: (3, 0)"},
     },
     {
-        .input = {.name = "no leg along a wander zone", .test = test_avoids_wander_run},
-        .expectation = {.description = "goes round a row where someone wanders"},
+        .input = {
+            .name = "open_error_per 0 with no open_error is exact", .rows = {"........"}, .from = {{0, 0}}, .goal = {3, 0},
+            .costs = {.open_error = 0, .open_error_per = 0},
+        },
+        .expectation = {.legs = "east 3 open: (3, 0)"},
     },
     {
-        .input = {.name = "cost of given legs", .test = test_cost_of_plan},
-        .expectation = {.description = "charges a wall leg its tiles and an open leg its stop on top"},
+        .input = {
+            .name = "open_error_per 0 keeps open_error", .rows = {"........"}, .from = {{0, 0}}, .goal = {3, 0},
+            .costs = {.open_error = 1, .open_error_per = 0},
+        },
+        .expectation = {.legs = "none"},
+    },
+    {
+        .input = {.name = "a door is not a wall", .rows = {"#..D"}, .from = {{1, 0}}, .goal = {2, 0}, .costs = EXACT},
+        .expectation = {.legs = "east 1 open: (2, 0)"},
+    },
+    {
+        .input = {.name = "no leg along a wander zone", .rows = {".www.", "....."}, .from = {{1, 0}}, .goal = {4, 0}, .costs = EXACT},
+        .expectation = {.legs = "south 1 to wall: (1, 1); east 3 to wall: (4, 1); north 1 to wall: (4, 0)"},
+    },
+    {
+        .input = {.name = "a ledge hop counts 2 tiles", .rows = {".", "v", "."}, .from = {{0, 0}}, .goal = {0, 2}},
+        .expectation = {.legs = "south 2 to wall: (0, 2)"},
+    },
+    {
+        .input = {.name = "a ledge cannot be climbed", .rows = {".", "v", "."}, .from = {{0, 2}}, .goal = {0, 0}},
+        .expectation = {.legs = "none"},
+    },
+    {
+        .input = {.name = "tall grass costs less than a detour", .rows = {".\"\"..", "....."}, .from = {{0, 0}}, .goal = {4, 0}},
+        .expectation = {.legs = "east 4 to wall: (4, 0)"},
+    },
+    {
+        .input = {
+            .name = "costly tall grass is walked round", .rows = {".\"\"..", "....."}, .from = {{0, 0}}, .goal = {4, 0},
+            .costs = {.per_wild_tile = 20},
+        },
+        .expectation = {.legs = "south 1 to wall: (0, 1); east 4 to wall: (4, 1); north 1 to wall: (4, 0)"},
+    },
+    {
+        //  Only an open leg reaches the second row; a wall then gathers.
+        .input = {.name = "an open leg spreads, a wall gathers", .rows = {".....", "#...#"}, .from = {{0, 0}}, .goal = {3, 1}},
+        .expectation = {.legs = "east 1 open: (1, 0) (2, 0); south 1 to wall: (1, 1) (2, 1); east 2 to wall: (3, 1)"},
+    },
+    {
+        .input = {
+            .name = "a spread wider than max_spread is not planned", .rows = {".....", "#...#"}, .from = {{0, 0}}, .goal = {3, 1},
+            .costs = {.max_spread = 1},
+        },
+        .expectation = {.legs = "none"},
+    },
+    {
+        .input = {
+            .name = "the search gives up past max_searched", .rows = {".....", "#...#"}, .from = {{0, 0}}, .goal = {3, 1},
+            .costs = {.max_searched = 1},
+        },
+        .expectation = {.legs = "none"},
+    },
+    {
+        .input = {
+            .name = "two open legs the same way are one", .rows = {"........"}, .from = {{0, 0}}, .goal = {3, 0},
+            .costs = {.exact_open_tiles = 12, .max_open_tiles = 2},
+        },
+        .expectation = {.legs = "east 3 open: (3, 0)"},
+    },
+    {
+        .input = {.name = "a walk that is never stopped is not a wall", .rows = {"...."}, .wraps = true, .from = {{0, 0}}, .goal = {2, 0}, .costs = EXACT},
+        .expectation = {.legs = "east 2 open: (2, 0)"},
+    },
+};
+
+
+struct CostInput{
+    std::string_view name;
+    std::vector<std::string_view> rows;
+    TilePos from;
+    Legs legs;
+    RobustLegCosts costs;
+};
+struct CostExpectation{
+    long long cost = 0;
+};
+struct CostCase{
+    CostInput input;
+    CostExpectation expectation;
+};
+
+class Test_RobustLegPlanner_Cost : public UnitTest{
+public:
+    explicit Test_RobustLegPlanner_Cost(CostCase scenario)
+        : UnitTest(std::format("Pokemon::RobustLegPlanner - {}", scenario.input.name))
+        , m_scenario(std::move(scenario))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const CostInput& input = m_scenario.input;
+        const ToyGame game(input.rows, false);
+        const long long actual = robust_legs_cost(game, {input.from}, input.legs, input.costs);
+        if (actual != m_scenario.expectation.cost){
+            return std::format("Cost {} for \"{}\", expected {}.", actual, describe(input.legs), m_scenario.expectation.cost);
+        }
+        return true;
+    }
+private:
+    CostCase m_scenario;
+};
+
+//  Default costs: 8 a leg, 1 a tile, 4 more a grass tile, 50 more for a
+//  leg that stops in the open.
+const CostCase COST_CASES[] = {
+    {
+        .input = {.name = "a wall leg costs a leg and its tiles", .rows = {"...#"}, .from = {0, 0}, .legs = {{Direction::EAST, 2, true, {{2, 0}}}}},
+        .expectation = {.cost = 8 + 2},
+    },
+    {
+        .input = {
+            .name = "an open leg costs its stop and open tiles on top", .rows = {"...#"}, .from = {0, 0},
+            .legs = {{Direction::EAST, 1, false, {{1, 0}}}}, .costs = {.exact_open_tiles = 12, .per_open_tile = 2},
+        },
+        .expectation = {.cost = 8 + 50 + 3},
+    },
+    {
+        .input = {.name = "each grass tile entered costs extra", .rows = {".\"\"#"}, .from = {0, 0}, .legs = {{Direction::EAST, 2, true, {{2, 0}}}}},
+        .expectation = {.cost = 8 + 2 + 2 * 4},
+    },
+    {
+        .input = {
+            .name = "a cost with open_error_per 0", .rows = {"........"}, .from = {0, 0},
+            .legs = {{Direction::EAST, 3, false, {{3, 0}}}}, .costs = {.open_error_per = 0},
+        },
+        .expectation = {.cost = 8 + 50 + 3},
     },
 };
 
@@ -234,8 +296,11 @@ const RobustLegPlannerTestCase ROBUST_LEG_PLANNER_CASES[] = {
 
 
 void add_tests_RobustLegPlanner(UnitTestDatabase& database){
-    for (const auto& scenario : ROBUST_LEG_PLANNER_CASES){
-        database.add<Test_RobustLegPlanner>(scenario);
+    for (const PlanCase& scenario : PLAN_CASES){
+        database.add<Test_RobustLegPlanner_Plan>(scenario);
+    }
+    for (const CostCase& scenario : COST_CASES){
+        database.add<Test_RobustLegPlanner_Cost>(scenario);
     }
 }
 
