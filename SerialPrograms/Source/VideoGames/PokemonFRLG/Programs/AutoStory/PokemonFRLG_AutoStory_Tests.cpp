@@ -29,7 +29,9 @@
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryGenderMenu.h"
+#include "PokemonFRLG_AutoStoryBag.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
+#include "PokemonFRLG_AutoStoryItemUse.h"
 #include "PokemonFRLG_AutoStoryPcStorage.h"
 #include "PokemonFRLG_AutoStoryPlanGolden.h"
 #include "PokemonFRLG_AutoStoryMoveData.h"
@@ -278,8 +280,8 @@ UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& po
 //  before leaves the player, and adds the plans to `golden`.
 UnitTestResult chain_story_routes(std::vector<std::string>& golden){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
-    if (checkpoints.size() != 39 || checkpoints[0].start){
-        return "Expected 39 checkpoints, the first from a new game.";
+    if (checkpoints.size() != 45 || checkpoints[0].start){
+        return "Expected 45 checkpoints, the first from a new game.";
     }
     StoryPose pose;
     for (size_t c = 0; c < checkpoints.size(); c++){
@@ -646,11 +648,16 @@ UnitTestResult advance(StoryPose& pose, const StoryStep& step){
 
 //  `checkpoint`'s routes and legs keep to tiles with no tile_problem(); a
 //  step into a trainer's line is followed by the battle, which beats them.
-UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<const MapObject*>& beaten){
+//  `repelled`: a Repel the table used is on (it lasts past the
+//  checkpoint's save): grass is walked as any floor.
+UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<const MapObject*>& beaten, bool& repelled){
     StoryPose pose = one_tile(Pokemon::grid_pose_of(*checkpoint.start));
     for (size_t c = 0; c < checkpoint.steps.size(); c++){
         const StoryStep& step = checkpoint.steps[c];
         const std::string where = checkpoint.id + "/" + step.name + ": ";
+        if (step.action == USE_ITEM_VARIANT && is_repel(Pokemon::story_arg<std::string>(step.args, "item"))){
+            repelled = true;
+        }
         const bool walks = step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS;
         //  A GRIND's or a capture's patch is grass: the route there may end on it.
         const bool to_patch = step.args.contains("target") && c + 1 < checkpoint.steps.size()
@@ -658,7 +665,7 @@ UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<const Map
         for (const MapPosition& tile : walks ? tiles_walked(pose, step) : std::vector<MapPosition>{}){
             const StoryPose end = to_patch ? one_tile(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target")) : StoryPose{};
             const bool patch = to_patch && tile.map == end.map && tile.point == end.tile;
-            if (const std::string problem = tile_problem(tile, beaten); !problem.empty() && !((patch || grass_held(pose, step)) && problem.starts_with("in the grass"))){
+            if (const std::string problem = tile_problem(tile, beaten); !problem.empty() && !((patch || repelled || grass_held(pose, step)) && problem.starts_with("in the grass"))){
                 return where + problem;
             }
         }
@@ -685,27 +692,28 @@ UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<const Map
 }
 
 //  From the Running Shoes on, routes and legs keep out of the grass (but
-//  in caves, which are all grass, onto a GRIND's or a capture's patch, and on legs held to walls round Route 6's trainers), off warps to maps not loaded and out of
+//  in caves, which are all grass, onto a GRIND's or a capture's patch, on legs held to walls round Route 6's trainers, and under a Repel the table used), off warps to maps not loaded and out of
 //  trainers' lines, but for the three Route 3 trainers, Mt. Moon's Grunt
-//  at (12, 20), Nugget Bridge's five, Route 25's four, Route 6's Jeff, Vermilion Gym's three, Route 9's three, Rock Tunnel's eight, Route 8's Rich and the Rocket Hideout's Lift Key Grunt the table steps
+//  at (12, 20), Nugget Bridge's five, Route 25's four, Route 6's Jeff, Vermilion Gym's three, Route 9's three, Rock Tunnel's eight, Route 8's Rich, the Rocket Hideout's Lift Key Grunt, the Pokemon Tower's four Channelers and three Grunts the table steps
 //  in front of to fight; where they cross a wandering trainer's sight, the walk can place
 //  the player if the trainer stops them; and where they cross the sight of
 //  one who looks around, on a leg to a wall.
 UnitTestResult test_trainer_lines(){
     std::set<const MapObject*> beaten;
     bool has_shoes = false;
+    bool repelled = false;
     for (const StoryCheckpoint& checkpoint : story_checkpoints()){
         if (has_shoes){
-            if (UnitTestResult result = check_lines(checkpoint, beaten); result.result != UnitTestResult::PASSED){
+            if (UnitTestResult result = check_lines(checkpoint, beaten, repelled); result.result != UnitTestResult::PASSED){
                 return result;
             }
         }
         has_shoes = has_shoes || checkpoint.id == "03.03";
     }
-    if (beaten.size() != 30){
+    if (beaten.size() != 37){
         return "Expected to fight Colton, Greg and James on Route 3, the Grunt at (12, 20) in Mt. Moon, Nugget Bridge's five"
             ", Franklin, Kelsey, Nob and Haley on Route 25, Jeff on Route 6, Dwayne, Baily and Tucker in Vermilion Gym, Alicia, Jeremy and Conner on Route 9"
-            ", Ashton, Winston, Martha, Allen, Lenny, Sofia, Dudley and Dana in Rock Tunnel, Rich on Route 8 and the Lift Key Grunt on B4F; the table fights "
+            ", Ashton, Winston, Martha, Allen, Lenny, Sofia, Dudley and Dana in Rock Tunnel, Rich on Route 8, the Lift Key Grunt on B4F, Ruth, Tammy, Jennifer and Emilia and the three Grunts in the Pokemon Tower; the table fights "
             + std::to_string(beaten.size()) + " trainers.";
     }
     return true;
@@ -948,7 +956,8 @@ UnitTestResult test_lint(){
 }
 
 //  Every battle step in the table names its trainer and that trainer's
-//  party, each species one the battle data has.
+//  party, each species one the battle data has. A scripted wild battle
+//  (the Pokemon Tower's Marowak) names no trainer and its one foe.
 UnitTestResult test_story_trainers(){
     size_t battles = 0;
     for (const StoryCheckpoint& checkpoint : story_checkpoints()){
@@ -959,7 +968,7 @@ UnitTestResult test_story_trainers(){
             battles++;
             const std::string& trainer = Pokemon::story_arg<std::string>(step.args, "trainer");
             const std::vector<std::string>& foes = Pokemon::story_arg<std::vector<std::string>>(step.args, "foes");
-            if (trainer.empty() || foes.empty()){
+            if (foes.empty() || (trainer.empty() && foes.size() != 1)){
                 return std::format("{}, {}: no trainer or no foes.", checkpoint.id, step.name);
             }
             for (const std::string& foe : foes){
