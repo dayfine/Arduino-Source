@@ -32,6 +32,8 @@ struct MapPlace{
     TilePos tile;
 
     bool operator==(const MapPlace& other) const = default;
+    //  Map, then tile: an order for sets and maps of places.
+    auto operator<=>(const MapPlace& other) const = default;
 };
 
 
@@ -42,14 +44,16 @@ public:
     explicit ConnectedMaps(const std::vector<MapData>& maps)
         : m_maps(&maps)
     {}
+    //  A temporary list would be gone by the first call.
+    explicit ConnectedMaps(std::vector<MapData>&& maps) = delete;
 
     //  How many maps are loaded: MapPlace::map runs from 0 to size() - 1.
     size_t size() const{
         return m_maps->size();
     }
-    const MapData& map(size_t index) const{
-        return (*m_maps)[index];
-    }
+    //  The map at `index`; throws InternalProgramError past the last map,
+    //  as from a MapPlace of another world.
+    const MapData& map(size_t index) const;
     //  The loaded map named `name`, or nothing.
     std::optional<size_t> find(std::string_view name) const;
 
