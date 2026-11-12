@@ -53,6 +53,9 @@ struct RouteStep{
     //  WALK: on a map where the game doesn't let the player run (indoors,
     //  MapData::allow_running): B held there still walks.
     bool walk_only = false;
+    //  WALK, warps: the warp's fade only dims the screen, never black (the
+    //  hideout lift's way out; console B, 2026-11-10, 00.32 lift_to_b4f).
+    bool fade_dims = false;
     //  WALK: a wall stops the player at the end, so the leg can be held for
     //  longer than it takes and still ends on its tile.
     bool to_wall = false;
