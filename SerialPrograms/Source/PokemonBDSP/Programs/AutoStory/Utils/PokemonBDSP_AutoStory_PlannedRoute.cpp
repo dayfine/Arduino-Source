@@ -488,7 +488,19 @@ std::vector<TilePos> RouteWalker::arrive() const{
 LegNext RouteWalker::wall_leg(LegWalk& walk){
     const TileLeg& leg = walk.planned.leg;
     const Milliseconds limit = wall_limit(leg);
+    //  Already turned the way when the leg goes on from the last: nothing to
+    //  turn to. Facing another way (known), a tap that only turns comes first,
+    //  so the walk counts from its first step. Facing unknown (after a battle),
+    //  the walk's first chunk that changed the screen may be the turn.
+    if (m_facing && *m_facing != leg.direction){
+        turn_tap(walk);
+    }
+    const bool facing_unknown = !m_facing;
     walk.result = m_io.walk_to_wall({.direction = walk.planned.leg.direction, .limit = limit, .label = walk.label, .options = run_watching(walk)});
+    if (facing_unknown && walk.result.stop == WalkStop::BLOCKED && walk.result.moved_chunks > 0){
+        m_io.note(std::format("[Route] {}: facing unknown; the first moved chunk may be the turn, not counted.", walk.label), RouteNote::LOG);
+        walk.result.moved_chunks--;
+    }
     if (const std::optional<LegNext> next = finish_interrupted_wall(walk, limit)){
         return *next;
     }
