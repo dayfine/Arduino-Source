@@ -696,16 +696,6 @@ StoryBoundActions SimExecutor::sim_actions(){
     const auto stubbed = [this](const StoryStep&, RunState&){
         return stub();
     };
-    //  Played from where the step before left us, on its map.
-    const auto wait_for_wanderer = [this, stubbed](const StoryStep& step, RunState& state){
-        if (!sync(state.pose)){
-            return stubbed(step, state);
-        }
-        if (m_knobs.out_of_reach.contains(step.name)){
-            return Pokemon::outcome_failed("operation_failed", step.name + ": no talk from any stand tile.");
-        }
-        return sim_wait_for_wanderer(m_sim, m_sim.world(), state.pose, step);
-    };
     return StoryBoundActions{
         .new_game = stubbed,
         .options = stubbed,
@@ -718,34 +708,56 @@ StoryBoundActions SimExecutor::sim_actions(){
             return heal(state, step);
         },
         .save = stubbed,
-        .event = [this, stubbed, wait_for_wanderer](const std::string& name) -> Pokemon::StoryActionFunction{
-            if (name == "check_poketch"){
-                return [this](const StoryStep& step, RunState&){
-                    return m_poketch ? Pokemon::outcome_ok() : Pokemon::outcome_failed("no_poketch", step.name + ": no Poketch on the screen.");
-                };
-            }
-            if (name == "wait_for_wanderer"){
-                return wait_for_wanderer;
-            }
-            if (name == "read_coupons"){
-                return [this](const StoryStep&, RunState& state){
-                    for (const ClownCoupon& coupon : jubilife_clown_coupons()){
-                        if (m_coupons.contains(std::string(coupon.step))){
-                            state.flags.emplace(coupon.flag);
-                        }
-                    }
-                    return Pokemon::outcome_ok();
-                };
-            }
-            if (name == "check_coupons"){
-                return [this](const StoryStep& step, RunState&){
-                    return m_coupons.size() == jubilife_clown_coupons().size() ? Pokemon::outcome_ok()
-                        : Pokemon::outcome_failed("operation_failed", std::format("{}: {} of the coupons in the Key Items.", step.name, m_coupons.size()));
-                };
-            }
-            return stubbed;
+        .event = [this](const std::string& name){
+            return sim_event(name);
         },
     };
+}
+
+Pokemon::StoryActionFunction SimExecutor::sim_event(const std::string& name){
+    if (name == "check_poketch"){
+        return [this](const StoryStep& step, RunState&){
+            return m_poketch ? Pokemon::outcome_ok() : Pokemon::outcome_failed("no_poketch", step.name + ": no Poketch on the screen.");
+        };
+    }
+    if (name == "wait_for_wanderer"){
+        return [this](const StoryStep& step, RunState& state){
+            return wait_for_wanderer(step, state);
+        };
+    }
+    if (name == "read_coupons"){
+        return [this](const StoryStep&, RunState& state){
+            return read_coupons(state);
+        };
+    }
+    if (name == "check_coupons"){
+        return [this](const StoryStep& step, RunState&){
+            return m_coupons.size() == jubilife_clown_coupons().size() ? Pokemon::outcome_ok()
+                : Pokemon::outcome_failed("operation_failed", std::format("{}: {} of the coupons in the Key Items.", step.name, m_coupons.size()));
+        };
+    }
+    return [this](const StoryStep&, RunState&){
+        return stub();
+    };
+}
+
+Outcome SimExecutor::wait_for_wanderer(const StoryStep& step, RunState& state){
+    if (!sync(state.pose)){
+        return stub();
+    }
+    if (m_knobs.out_of_reach.contains(step.name)){
+        return Pokemon::outcome_failed("operation_failed", step.name + ": no talk from any stand tile.");
+    }
+    return sim_wait_for_wanderer(m_sim, m_sim.world(), state.pose, step);
+}
+
+Outcome SimExecutor::read_coupons(RunState& state){
+    for (const ClownCoupon& coupon : jubilife_clown_coupons()){
+        if (m_coupons.contains(std::string(coupon.step))){
+            state.flags.emplace(coupon.flag);
+        }
+    }
+    return Pokemon::outcome_ok();
 }
 
 //  The look at a battle's opening that shows its battle: past the three
