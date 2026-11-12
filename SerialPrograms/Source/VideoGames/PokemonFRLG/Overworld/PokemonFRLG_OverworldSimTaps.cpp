@@ -174,7 +174,7 @@ bool OverworldSimWalker::black_without_warp(const RouteStep& step, int warps_bef
 }
 
 bool OverworldSim::black_without_warp(Milliseconds pressed){
-    if (!m_script.black_without_warp.contains(++m_warp_steps)){
+    if (!m_faults.next(Pokemon::FaultClass::WARP_NO_OP)){
         return false;
     }
     m_frozen = true;

@@ -142,6 +142,11 @@ OverworldSim::OverworldSim(std::vector<MapData> maps, MapPosition start, Directi
     , m_script(std::move(script))
     , m_map(find_map(m_maps, start.map))
     , m_encounter_rng(m_script.encounter_seed)
+    , m_faults({
+        {Pokemon::FaultClass::LOST_TAP, m_script.dropped_turn_taps},
+        {Pokemon::FaultClass::UNSEEN_STEP, m_script.unseen_step_taps},
+        {Pokemon::FaultClass::WARP_NO_OP, m_script.black_without_warp},
+    })
 {
     if (m_map < 0){
         throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Sim: start on a map that isn't loaded: " + start.map);
@@ -625,7 +630,7 @@ void OverworldSim::hold_on(Direction direction, Milliseconds end){
 
 bool OverworldSim::hides_moved_step_tap(){
     m_state.moved_step_taps++;
-    if (!m_script.unseen_step_taps.contains(m_state.moved_step_taps)){
+    if (!m_faults.next(Pokemon::FaultClass::UNSEEN_STEP)){
         return false;
     }
     note(std::format("step tap {} moves the player, read as not moved.", m_state.moved_step_taps));
@@ -633,8 +638,7 @@ bool OverworldSim::hides_moved_step_tap(){
 }
 
 bool OverworldSim::drops_turn_tap(){
-    m_turn_taps++;
-    return m_script.dropped_turn_taps.contains(m_turn_taps);
+    return m_faults.next(Pokemon::FaultClass::LOST_TAP);
 }
 
 std::optional<SimSeen> OverworldSim::watch(const std::vector<SimWatcher>& watchers, Milliseconds duration){
