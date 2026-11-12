@@ -99,6 +99,10 @@ constexpr std::string_view MAP_NAMES[] = {
     "RocketHideout_B2F",
     "RocketHideout_B3F",
     "RocketHideout_B4F",
+    //  Fuchsia City's Center, Koga's gym and the Warden's house.
+    "FuchsiaCity",
+    "FuchsiaCity_Gym",
+    "FuchsiaCity_WardensHouse",
     "CeruleanCave_1F",
     "CeruleanCave_2F",
     "CeruleanCave_B1F",
