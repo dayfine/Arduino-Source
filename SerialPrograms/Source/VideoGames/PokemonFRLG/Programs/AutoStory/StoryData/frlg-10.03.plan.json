@@ -1,0 +1,40 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "10.03",
+    "title": "Pokemon Tower 2F: the rival",
+    "start": {"map": "PokemonTower_2F", "tiles": [[17, 6]], "facing": "west"},
+    "events": [
+      {
+        "id": "rival_trigger",
+        "kind": "step",
+        "args": {
+          "direction": "west"
+        },
+        "declared_after": {"map": "PokemonTower_2F", "tiles": [[16, 6]], "facing": "west"},
+        "why": "onto (16, 6), below the rival (16, 5): PokemonTower_2F_EventScript_RivalTriggerDown turns the player north to him"
+      },
+      {
+        "id": "rival_tower",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_RIVAL_POKEMON_TOWER_BULBASAUR",
+          "foes": ["pidgeotto", "gyarados", "growlithe", "kadabra", "ivysaur"]
+        },
+        "declared_after": {"map": "PokemonTower_2F", "tiles": [[16, 6]], "facing": "north"},
+        "why": "the rival (TRAINER_RIVAL_POKEMON_TOWER_BULBASAUR, sParty_RivalPokemonTowerBulbasaur): Pidgeotto Lv25, Gyarados Lv23, Growlithe Lv22, Kadabra Lv20, Ivysaur Lv25; then he walks off and the player stays facing north"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "lead": "after_brock",
+    "notes": {
+      "checkpoint": [
+        "The rival on the Tower's 2F (PokemonTower_2F scripts.inc): a step onto (16, 6) or (17, 5) with VAR_MAP_SCENE_POKEMON_TOWER_2F 0 starts him, with no walk; for a player who took Squirtle he has sParty_RivalPokemonTowerBulbasaur. PokeGuy (1:04:12 to 1:06:01) used two X Specials against Pidgeotto at 38/114 HP; his notes give the order Pidgeotto, Ivysaur, Gyarados, Growlithe, Kadabra, pret's party lists Ivysaur last. The battle saves after it."
+      ]
+    }
+  },
+  "metadata": {"phase": "testing"}
+}

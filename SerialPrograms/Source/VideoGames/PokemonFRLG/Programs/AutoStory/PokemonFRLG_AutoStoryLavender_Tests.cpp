@@ -1074,6 +1074,7 @@ void add_tests_AutoStoryLavender(UnitTestDatabase& database){
     }
     add_tests_AutoStoryResources(database);
     add_tests_AutoStoryFaultSweep(database);
+    add_tests_AutoStoryTower(database);
 }
 
 

@@ -1,0 +1,124 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "10.04",
+    "title": "Pokemon Tower 3F to 5F: a Super Repel, Ruth and Tammy",
+    "start": {"map": "PokemonTower_2F", "tiles": [[16, 6]], "facing": "north"},
+    "events": [
+      {
+        "id": "super_repel",
+        "kind": "game_action",
+        "action": "use_item",
+        "args": {
+          "item": "super-repel"
+        },
+        "why": "the floors from 3F up have wild Pokemon on every floor tile; one of 08.03's Super Repels (pokeguy 1:03:50, before his Fly)"
+      },
+      {
+        "id": "tower_3f_column_7",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "PokemonTower_3F", "tiles": [[7, 7]], "facing": "east"}
+        },
+        "why": "west along 2F's row 6 and down column 4 onto its stairs (4, 10), to 3F's (4, 10); down to the wall (4, 14), east and up column 7 to the wall (7, 6): the only way to row 7 from the west, south of Hope's line (12, 5) and north of Carly's (9, 10..12) and Patricia's (10, 15..16)"
+      },
+      {
+        "id": "tower_4f_stairs",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "PokemonTower_4F", "tiles": [[18, 10]], "facing": "south"}
+        },
+        "why": "east along 3F's row 7 to (18, 7), down onto its stairs (18, 10) to 4F's (18, 10), turned south: the way on keeps out of Laurel's line (17, 8..10)"
+      },
+      {
+        "id": "tower_4f_column_16",
+        "kind": "legs",
+        "action": "taps",
+        "args": {
+          "legs": [{"direction": "south", "tiles": 1}, {"direction": "west", "tiles": 2}, {"direction": "north", "tiles": 4}]
+        },
+        "why": "a tap a tile: down to (18, 11), west to (16, 11) and up column 16 to the wall (16, 6), on (16, 7), west of Laurel's line"
+      },
+      {
+        "id": "tower_4f_top",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "PokemonTower_4F", "tiles": [[11, 3]], "facing": "west"}
+        },
+        "why": "west and up to (11, 3), north of Jody's line (10..14, 13)"
+      },
+      {
+        "id": "tower_5f_west_of_ruth",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "PokemonTower_5F", "tiles": [[10, 6]], "facing": "east"}
+        },
+        "why": "down column 9 to row 9, west to 4F's stairs (4, 10) above Paula's line (5..6, 12), to 5F's (4, 10); up column 4 to row 6 and east to (10, 6), west of Ruth's south line (11, 5..6)"
+      },
+      {
+        "id": "ruth_line",
+        "kind": "step",
+        "action": "trainer_wait",
+        "args": {
+          "direction": "east"
+        },
+        "why": "onto (11, 6), two below Ruth (11, 4), who looks around (MOVEMENT_TYPE_LOOK_AROUND): when she looks south she walks down to (11, 5). Row 6 is the only way east past the middle"
+      },
+      {
+        "id": "channeler_ruth",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_CHANNELER_RUTH",
+          "foes": ["gastly"]
+        },
+        "declared_after": {"map": "PokemonTower_5F", "tiles": [[11, 6]], "facing": "north"},
+        "why": "Channeler Ruth: Gastly Lv22"
+      },
+      {
+        "id": "tower_5f_row6_east",
+        "kind": "legs",
+        "action": "taps",
+        "args": {
+          "legs": [{"direction": "east", "tiles": 7}]
+        },
+        "why": "a tap a tile along row 6 to (18, 6), above Tammy's line (16..18, 7)"
+      },
+      {
+        "id": "tammy_line",
+        "kind": "step",
+        "action": "trainer_line",
+        "args": {
+          "direction": "south"
+        },
+        "why": "onto (18, 7), the first tile of Tammy's line: she faces west from (19, 7), beside it"
+      },
+      {
+        "id": "channeler_tammy",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_CHANNELER_TAMMY",
+          "foes": ["haunter"]
+        },
+        "declared_after": {"map": "PokemonTower_5F", "tiles": [[18, 7]], "facing": "east"},
+        "why": "Channeler Tammy: Haunter Lv23 (pokeguy 1:06:36)"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "lead": "after_brock",
+    "notes": {
+      "checkpoint": [
+        "From the rival's battle up the Tower to 5F (PokemonTower_3F.._5F map.json, scripts.inc): every floor tile from 3F up has wild Pokemon, so first a Super Repel. The Channelers' lines (pret sight): 3F Patricia (10, 14) and Carly (9, 9) south 3, Hope (12, 4) north and south 2; 4F Laurel (17, 7) south 3, Jody (15, 13) west 5, Paula (4, 12) east 2; 5F Ruth (11, 4) looks around 2, Tammy (19, 7) west 3, Karina (7, 12) east 2, Janae (11, 16) looks around 2.",
+        "3F and 4F are walked round every line. On 5F every way from the west stairs to the east stairs crosses Ruth's or Tammy's lines and row 6 crosses both: PokeGuy fought only Tammy, Ruth looking away. Here Ruth is waited for (trainer_wait) and fought, then Tammy. 5F's purified zone (10..12, 8..10) heals the party (PokemonTower_5F_EventScript_PurifiedZone); PokeGuy walks round it, and so does this.",
+        "The runtime maps (PokemonSimulation bdca47c) have no item balls on 5F and 6F, where pret has a NUGGET (6, 16) and the CLEANSE TAG (11, 9) on 5F, and the Rare Candy (5, 15) and an X ACCURACY (15, 15) on 6F: no way here steps on them."
+      ]
+    }
+  },
+  "metadata": {"phase": "testing"}
+}
