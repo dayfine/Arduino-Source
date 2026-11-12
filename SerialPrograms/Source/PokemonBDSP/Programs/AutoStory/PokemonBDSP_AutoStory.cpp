@@ -13,6 +13,8 @@
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
+#include "Pokemon/AutoStory/Pokemon_StoryPreflight.h"
+#include "Pokemon/AutoStory/Pokemon_StoryRun.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStorySelect.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
 #include "Pokemon/AutoStory/Pokemon_StoryLog.h"
@@ -20,6 +22,7 @@
 #include "Pokemon/Options/Pokemon_GameLanguages.h"
 #include "Pokemon/Options/Pokemon_StoryRunOptions.h"
 #include "PokemonBDSP/Programs/PokemonBDSP_GameEntry.h"
+#include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Actions.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_StoryLanguage.h"
 #include "PokemonBDSP_AutoStory_StoryTable.h"
@@ -76,93 +79,45 @@ std::set<std::string> rows_that_stop(const std::vector<StoryCheckpoint>& rows){
     return ids;
 }
 
-//  A failed attempt resets the game from HOME, which loads the save the
-//  row made at its start; the engine's lines go to the console's log.
-Pokemon::SegmentHooks story_hooks(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
-    Pokemon::SegmentHooks hooks;
-    hooks.save = [](Pokemon::RunState&){
-        return Pokemon::outcome_failed("no_save_hook", "story rows save at their start");
+//  What BDSP lends the shared shell: the console's preflight; a load is a
+//  reset from HOME, which loads the save the row made at its start; the
+//  engine's lines go to the console's log.
+Pokemon::StoryGameHooks story_game(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
+    Pokemon::StoryGameHooks game;
+    game.preflight = [&env, &context]{
+        return Pokemon::StoryPreflight::read(env.console, context);
     };
-    hooks.reload = [&env, &context](Pokemon::RunState&){
-        env.console.log("Resetting game from HOME before retry...", COLOR_ORANGE);
+    game.load_save = [&env, &context](Pokemon::RunState&){
         if (!reset_game_from_home(env, env.console, context, true, 1000ms)){
             return Pokemon::outcome_failed("reload_failed", "Failed to reset the game from HOME.");
         }
         return Pokemon::outcome_ok();
     };
-    hooks.log = [&env](const std::string& line){
+    game.log = [&env](const std::string& line){
         env.log(line, COLOR_BLUE);
     };
-    hooks.status = [&env](const std::string& line){
+    game.status = [&env](const std::string& line){
         env.console.overlay().add_log(line);
     };
-    return hooks;
+    return game;
 }
 
-//  Leave the Switch in a known state after a failure: on HOME with the
-//  game closed, so the next run (or the user) starts from there.
-void close_game_after_failure(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
-    env.log("AutoStory failed: going to HOME and closing the game.", COLOR_RED);
-    try{
-        go_home(env.console, context);
-        close_game_from_home(env.console, context);
-    }catch (OperationFailedException& e){
-        env.log("Could not close the game: " + e.message(), COLOR_RED);
-    }
-}
-
-//  A run that stopped short throws, closing the game first unless it
-//  stopped at the first failure as asked.
-void throw_if_stopped(SingleSwitchProgramEnvironment& env, ProControllerContext& context, const Pokemon::SegmentReport& report){
-    if (report.completed){
-        return;
-    }
-    close_game_after_failure(env, context);
-    throw OperationFailedException(
-        ErrorReportMode::NO_ERROR_REPORT,
-        std::format(
-            "AutoStory stopped at {} {}: {}",
-            report.failed_checkpoint, report.failed_event, Pokemon::to_string(report.failure)
-        )
-    );
-}
-
-//  Verify mode's checkpoint and runs, and whether the game starts as a new
-//  game (refused: no save to reload) or stays open after a failure.
-struct VerifyRequest{
-    std::string id;
-    Pokemon::VerifyPolicy policy;
-    bool new_game = false;
-};
-
-//  Verify mode: the checkpoint run as the request's policy says. Rows save
-//  at their start, never at their end, so the reset from HOME between runs
-//  loads the save the first run started from. Throws unless enough runs
-//  pass, closing the game first as after any failure unless `keep_game`.
-void verify_story_checkpoint(
-    SingleSwitchProgramEnvironment& env, ProControllerContext& context, Pokemon::RunState& state,
-    Pokemon::Segment& segment, Pokemon::SegmentHooks& hooks, const VerifyRequest& request
+//  Verify mode: the checkpoint run as `policy` says, from the save the
+//  start loaded. Rows save at their start, never at their end, so each
+//  reload between runs loads that same save. Throws unless enough runs pass.
+std::string verify_story_checkpoint(
+    const std::string& id, const Pokemon::VerifyPolicy& policy,
+    Pokemon::Segment& segment, Pokemon::StoryGameHooks& game, Pokemon::RunState& state
 ){
-    if (request.new_game){
-        throw UserSetupError(env.console, "Verify mode reloads the start's save between runs: turn off \"Start a new game first\".");
-    }
-    const std::string& id = request.id;
-    const Pokemon::VerifyPolicy& policy = request.policy;
+    Pokemon::SegmentHooks hooks = Pokemon::story_segment_hooks(game);
     Pokemon::VerifyReport report;
     try{
         report = Pokemon::verify_checkpoint(id, policy, segment, hooks, state);
     }catch (OperationFailedException&){
-        close_game_after_failure(env, context);
+        Pokemon::log_story_failure(game);
         throw;
     }
-    const std::string summary = std::format(
-        "AutoStory verify: {} {}/{} passed, {} needed.", id, report.passes, policy.runs, policy.passes_needed
-    );
-    if (!report.verified){
-        close_game_after_failure(env, context);
-        throw OperationFailedException(ErrorReportMode::NO_ERROR_REPORT, summary);
-    }
-    env.console.log(summary);
+    return Pokemon::finish_story_verify(id, policy, report, game);
 }
 
 } // namespace
@@ -174,12 +129,6 @@ BDSPAutoStory::BDSPAutoStory()
         "<b>Start a new game first:</b><br>"
         "For a game with no save: restart it and play the intro (language, appearance, names) "
         "until the player is in control in the bedroom. Only when starting at 00.00.",
-        LockMode::LOCK_WHILE_RUNNING, false
-    )
-    , JUST_LOADED(
-        "<b>Just loaded the start's save:</b><br>"
-        "The game was just loaded from the start checkpoint's save, so its save at the start is skipped (about 10 s). "
-        "Leave off when the game has moved since its last save.",
         LockMode::LOCK_WHILE_RUNNING, false
     )
     , PLAYER_NAME(false, "<b>Player name:</b><br>For a new game. Letters and digits.", LockMode::LOCK_WHILE_RUNNING, "Kosmos", "Kosmos")
@@ -201,7 +150,6 @@ BDSPAutoStory::BDSPAutoStory()
 {
     PA_ADD_OPTION(RUN);
     PA_ADD_OPTION(NEW_GAME_INTRO);
-    PA_ADD_OPTION(JUST_LOADED);
     PA_ADD_OPTION(PLAYER_NAME);
     PA_ADD_OPTION(STARTER);
     PA_ADD_OPTION(NOTIFICATIONS);
@@ -209,14 +157,81 @@ BDSPAutoStory::BDSPAutoStory()
 
 namespace{
 
-//  The checkpoints whose start is already saved: the first one when the game
-//  was just loaded from its save (saving again cost ~10 s). After play, the
-//  save is older and the first checkpoint must save its start.
-std::set<std::string> saved_before_the_run(const std::vector<StoryCheckpoint>& checkpoints, size_t first, bool just_loaded){
-    if (!just_loaded){
+//  The checkpoints whose start save is skipped: the first one, unless the
+//  run starts a new game. After a load its save is already there (saving
+//  again cost ~10 s), and nothing saves before the start is confirmed.
+std::set<std::string> saved_before_the_run(const std::vector<StoryCheckpoint>& checkpoints, size_t first, Pokemon::StoryStart start){
+    if (Pokemon::story_first_save_allowed(start)){
         return {};
     }
     return {checkpoints[first].id};
+}
+
+//  "" when the save screen's card names `place`, the map the start row
+//  saved in, else why not. Opens the save screen and backs out unsaved.
+std::string check_start_place(SingleSwitchProgramEnvironment& env, ProControllerContext& context, const std::string& place){
+    if (place.empty()){
+        return "";
+    }
+    const std::string read = read_location_from_save_screen(env.console, context);
+    if (location_banner_matches(read, place)){
+        return "";
+    }
+    return std::format("The save is in \"{}\", not {}.", read, place);
+}
+
+//  Gets the game to where `row` starts through the shared start gate:
+//  preflight, then (for a save) the load and the save card's place. Throws a
+//  setup error when the preflight failed, nothing pressed, and an
+//  OperationFailedException when the load or place check failed, unsaved.
+void start_story(
+    SingleSwitchProgramEnvironment& env, ProControllerContext& context, const StoryCheckpoint& row,
+    Pokemon::StoryStart start, Pokemon::StoryGameHooks& game, Pokemon::RunState& state
+){
+    //  The loaded save must be where the start row saved; a retry's reload
+    //  in a later row is checked by that row's own start save.
+    game.check_save_place = [&env, &context, place = row.saves_in]{
+        return check_start_place(env, context, place);
+    };
+    const Pokemon::Outcome loaded = Pokemon::prepare_story_start(row.id, start, game, state);
+    game.check_save_place = nullptr;
+    if (loaded.failure == Pokemon::StoryPreflight::FAILURE){
+        throw UserSetupError(env.console, std::format("AutoStory did not start, nothing was pressed: {}", loaded.detail));
+    }
+    if (!loaded.succeeded()){
+        Pokemon::log_story_failure(game);
+        throw OperationFailedException(
+            ErrorReportMode::NO_ERROR_REPORT,
+            std::format("AutoStory could not load the save for {}: {}", row.id, Pokemon::to_string(loaded))
+        );
+    }
+}
+
+//  The run from `range`'s first checkpoint to its last, its counts in the
+//  stats. Returns the finish line; throws if it stopped short.
+std::string run_story(
+    const Pokemon::SegmentRange& range, const Pokemon::SegmentPolicy& policy,
+    Pokemon::Segment& segment, Pokemon::StoryGameHooks& game, Pokemon::RunState& state,
+    SingleSwitchProgramEnvironment& env
+){
+    Pokemon::SegmentHooks hooks = Pokemon::story_segment_hooks(game);
+    Pokemon::SegmentReport report;
+    try{
+        report = run_segment(range, policy, segment, hooks, state);
+    }catch (OperationFailedException&){
+        Pokemon::log_story_failure(game);
+        throw;
+    }
+    Pokemon::AutoStoryStats& stats = env.current_stats<Pokemon::AutoStoryStats>();
+    std::string done;
+    try{
+        done = Pokemon::finish_story_run(report, range.to.value_or(""), stats, game);
+    }catch (OperationFailedException&){
+        env.update_stats();
+        throw;
+    }
+    env.update_stats();
+    return done;
 }
 
 } // namespace
@@ -234,33 +249,28 @@ void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     StoryEnv story{env, context, STARTER, PLAYER_NAME};
     StoryExecutor executor(story);
     executor.set_stop_rows(rows_that_stop(checkpoints));
-    std::set<std::string> saved = saved_before_the_run(checkpoints, first, JUST_LOADED && !(first == 0 && NEW_GAME_INTRO));
-    Pokemon::Segment segment = make_story_segment(checkpoints, executor, saved);
-    Pokemon::SegmentHooks hooks = story_hooks(env, context);
-
-    Pokemon::RunState state;
-    if (!(first == 0 && NEW_GAME_INTRO)){
-        state.flags.insert("save_loaded");
+    //  A start with a save always loads it first, so the run never walks
+    //  from wherever the game was left (console B, 2026-11-11: a run from
+    //  00.04b walked from 00.04d's position).
+    const bool new_game = first == 0 && NEW_GAME_INTRO;
+    const Pokemon::StoryStart start = new_game ? Pokemon::StoryStart::NEW_GAME : Pokemon::StoryStart::FROM_SAVE;
+    if (new_game && RUN.VERIFY.policy()){
+        throw UserSetupError(env.console, "Verify mode reloads the start's save between runs: turn off \"Start a new game first\".");
     }
+    std::set<std::string> saved = saved_before_the_run(checkpoints, first, start);
+    Pokemon::Segment segment = make_story_segment(checkpoints, executor, saved);
+    Pokemon::StoryGameHooks game = story_game(env, context);
+    Pokemon::RunState state;
+    start_story(env, context, checkpoints[first], start, game, state);
     if (const std::optional<Pokemon::VerifyPolicy> verify = RUN.VERIFY.policy()){
-        const VerifyRequest request{checkpoints[first].id, *verify, first == 0 && NEW_GAME_INTRO};
-        verify_story_checkpoint(env, context, state, segment, hooks, request);
-        send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH);
+        const std::string summary = verify_story_checkpoint(checkpoints[first].id, *verify, segment, game, state);
+        send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH, summary);
         return;
     }
-    Pokemon::SegmentReport report;
-    try{
-        report = run_segment(Pokemon::SegmentRange{checkpoints[first].id, checkpoints[last].id}, RUN.policy(), segment, hooks, state);
-    }catch (OperationFailedException&){
-        close_game_after_failure(env, context);
-        throw;
-    }
-    Pokemon::AutoStoryStats& stats = env.current_stats<Pokemon::AutoStoryStats>();
-    Pokemon::record_story_counts(report.story_counts(), stats);
-    env.update_stats();
-    throw_if_stopped(env, context, report);
-    env.console.log("AutoStory: done through " + checkpoints[last].id + ".");
-    send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH);
+    const std::string done = run_story(
+        Pokemon::SegmentRange{checkpoints[first].id, checkpoints[last].id}, RUN.policy(), segment, game, state, env
+    );
+    send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH, done);
 }
 
 

@@ -2,24 +2,6 @@
   "checkpoint": {
     "events": [
       {
-        "args": {
-          "fight_wild": false,
-          "legs": [
-            {
-              "direction": "west",
-              "tiles": 1
-            },
-            {
-              "direction": "north",
-              "tiles": 2
-            }
-          ]
-        },
-        "id": "up_the_steps",
-        "kind": "legs",
-        "why": "a tile west of the save, then up the steps to (47, 60)"
-      },
-      {
         "action": "town",
         "args": {
           "fight_wild": false,
