@@ -34,6 +34,8 @@ void add_tests_AutoStorySnorlax(UnitTestDatabase& database);
 void add_tests_AutoStorySlope(UnitTestDatabase& database);
 //  Row 11.03 on the sims (PokemonFRLG_AutoStorySafari_Tests.cpp).
 void add_tests_AutoStorySafari(UnitTestDatabase& database);
+//  Rows 12.01 and 12.02, Fuchsia Gym, on the overworld sim (PokemonFRLG_AutoStoryFuchsiaGym_Tests.cpp).
+void add_tests_AutoStoryFuchsiaGym(UnitTestDatabase& database);
 
 
 } // namespace PokemonFRLG
