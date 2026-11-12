@@ -6,10 +6,12 @@
 
 #include <algorithm>
 #include <format>
+#include <string>
 #include <string_view>
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
+#include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/Language.h"
@@ -46,6 +48,15 @@ public:
         return matcher;
     }
 
+    std::string match(Language language, const std::string& text) const{
+        if (!languages()[language]){
+            return "";
+        }
+        OCR::StringMatchResult result = match_substring(language, text, MAX_LOG10P_SPREAD);
+        result.clear_beyond_log10p(MAX_LOG10P);
+        return result.results.empty() ? "" : result.results.begin()->second.token;
+    }
+
     std::string read(Logger& logger, Language language, const ImageViewRGB32& image) const{
         if (!languages()[language]){
             return "";
@@ -80,6 +91,12 @@ private:
             {"x-accuracy", "X Accuracy"},
             {"guard-spec", "Guard Spec."},
             {"bicycle", "Bicycle"},
+            //  Route 17's hidden items. Without them a RARE CANDY read
+            //  "FARE CANCY" and matched CANCEL: the pocket's read ended
+            //  above it, and 11.02 counted no RARE CANDY in a bag with 2
+            //  (console B, 2026-11-12).
+            {"rare-candy", "Rare Candy"},
+            {"max-elixir", "Max Elixir"},
             {"cancel", "Cancel"},
         }){
             JsonArray names;
@@ -94,6 +111,16 @@ private:
 
 ImageViewRGB32 game_box(const ImageViewRGB32& screen){
     return extract_box_reference(screen, GameSettings::instance().GAME_BOX);
+}
+
+//  A row from its name's and its count's reads: a row with a count that
+//  matched CANCEL is an item whose name can't be read, as the list's
+//  CANCEL shows no count.
+BagRow bag_row(std::string item, int count){
+    if (item == "cancel"){
+        return count > 0 ? BagRow{"", count} : BagRow{std::move(item), 0};
+    }
+    return BagRow{std::move(item), count};
 }
 
 //  Where row `row` of the bag shows its item count.
@@ -113,16 +140,13 @@ std::string read_item_list_name(Logger& logger, Language language, const ImageVi
 }
 
 BagRow read_bag_row(Logger& logger, Language language, const ImageViewRGB32& screen, int shown){
-    const std::string item = read_item_list_name(logger, language, screen, shown);
-    if (item == "cancel"){
-        return BagRow{item, 0};
-    }
+    std::string item = read_item_list_name(logger, language, screen, shown);
     const ImageViewRGB32 count = extract_box_reference(game_box(screen), bag_item_count_box(shown));
     //  Not Tesseract on each waterfilled digit: the font joins some strokes
     //  only at a corner, so the 5 and the 3 fell apart into pieces and read
     //  as nothing (console B, 2026-11-02). The stat boxes' templates are
     //  the same digits on the same cream.
-    return BagRow{item, read_digits_waterfill_template(logger, count, DigitTemplateType::StatBox)};
+    return bag_row(std::move(item), read_digits_waterfill_template(logger, count, DigitTemplateType::StatBox));
 }
 
 std::vector<BagRow> read_bag_pocket(Logger& logger, Language language, const ImageViewRGB32& screen){
@@ -186,6 +210,38 @@ public:
     }
 };
 
+//  11.02's counts (console B, 2026-11-12): OCR read the RARE CANDY's row
+//  "FARE CANCY", which matched CANCEL with no Rare Candy in the dictionary,
+//  and the pocket's read ended above it. A row with a count is never the
+//  CANCEL, whatever its name matched.
+class Test_Route17ItemNames : public UnitTest{
+public:
+    Test_Route17ItemNames()
+        : UnitTest("PokemonFRLG::ItemListReader - 11.02 the RARE CANDY's row is not the CANCEL")
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const ItemNameMatcher& matcher = ItemNameMatcher::instance();
+        for (const std::string& text : {"FARE CANCY", "RARE CANOY", "RARE CANDY"}){
+            const std::string item = matcher.match(Language::English, text);
+            if (item != "rare-candy"){
+                return std::format("Expected \"{}\" read as rare-candy, got \"{}\".", text, item);
+            }
+        }
+        if (matcher.match(Language::English, "MAX ELIXIR") != "max-elixir" || matcher.match(Language::English, "CANCEL") != "cancel"){
+            return "Expected MAX ELIXIR and CANCEL read as themselves.";
+        }
+        const BagRow counted = bag_row("cancel", 2);
+        if (!counted.item.empty() || counted.count != 2){
+            return std::format("Expected a CANCEL with 2 read as an unread item x2, got \"{}\" x{}.", counted.item, counted.count);
+        }
+        if (bag_row("cancel", -1).item != "cancel"){
+            return "Expected a CANCEL with no count kept as the CANCEL.";
+        }
+        return true;
+    }
+};
+
 //  A capture of a Mart's BUY list, read from the top to its CANCEL. Its
 //  golden file holds each row's item, one per line.
 class Test_MartList : public ImageUnitTest{
@@ -228,6 +284,7 @@ void add_tests_ItemListReader(UnitTestDatabase& database){
     database.add<Test_BagPocket>("PokemonFRLG/ItemListReader/ItemsPocketMoonStone_eng.png");
     //  The Viridian Mart's BUY list, the same day, the cursor on POTION.
     database.add<Test_MartList>("PokemonFRLG/ItemListReader/MartBuyList_eng.png");
+    database.add<Test_Route17ItemNames>();
 }
 
 
