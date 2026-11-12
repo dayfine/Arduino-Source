@@ -186,17 +186,16 @@ UnitTestResult test_watcher_log(){
 }
 
 
-struct InterruptsInput{
-    std::string name;
-    std::function<UnitTestResult()> body;
-};
-
-struct InterruptsExpectation{
-};
-
 struct InterruptsCase{
-    InterruptsInput input;
-    InterruptsExpectation expectation;
+    struct Input{
+        std::string name;
+        std::function<UnitTestResult()> body;
+    };
+    struct Expectation{
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 class Test_Interrupts : public UnitTest{
@@ -214,23 +213,22 @@ private:
 };
 
 
-//  A synthetic scene, and the window of it to judge.
-struct ClassifyInput{
-    std::string name;
-    std::vector<Frame> frames;
-    int until_ms = 0;
-    InterruptKnobs knobs = {};
-    int window_from_ms = 0;
-};
-
-struct ClassifyExpectation{
-    //  describe(verdict, T0).
-    std::string verdict;
-};
-
 struct ClassifyCase{
-    ClassifyInput input;
-    ClassifyExpectation expectation;
+    //  A synthetic scene, and the window of it to judge.
+    struct Input{
+        std::string name;
+        std::vector<Frame> frames;
+        int until_ms = 0;
+        InterruptKnobs knobs = {};
+        int window_from_ms = 0;
+    };
+    struct Expectation{
+        //  describe(verdict, T0).
+        std::string verdict;
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 class Test_InterruptClassify : public UnitTest{
@@ -240,7 +238,7 @@ public:
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const ClassifyInput& input = m_case.input;
+        const ClassifyCase::Input& input = m_case.input;
         const ScreenEventLog log = log_of(input.frames, input.until_ms);
         const InterruptWindow window{T0 + Milliseconds(input.window_from_ms), T0 + Milliseconds(input.until_ms)};
         const InterruptVerdict verdict = classify_interrupt(log, window, input.knobs);
@@ -252,22 +250,21 @@ private:
 };
 
 
-//  A synthetic scene, classified over all of it, and the lags to time it.
-struct StepTimeInput{
-    std::string name;
-    std::vector<Frame> frames;
-    int until_ms = 0;
-    std::vector<EventLag> lags;
-};
-
-struct StepTimeExpectation{
-    //  "+700 ms" from T0, or "none".
-    std::string step;
-};
-
 struct StepTimeCase{
-    StepTimeInput input;
-    StepTimeExpectation expectation;
+    //  A synthetic scene, classified over all of it, and the lags to time it.
+    struct Input{
+        std::string name;
+        std::vector<Frame> frames;
+        int until_ms = 0;
+        std::vector<EventLag> lags;
+    };
+    struct Expectation{
+        //  "+700 ms" from T0, or "none".
+        std::string step;
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 class Test_InterruptStepTime : public UnitTest{
@@ -277,7 +274,7 @@ public:
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const StepTimeInput& input = m_case.input;
+        const StepTimeCase::Input& input = m_case.input;
         const InterruptVerdict verdict = classify_interrupt(log_of(input.frames, input.until_ms), whole(input.until_ms), {});
         const std::optional<WallClock> step = interrupt_step_time(verdict, input.lags);
         const std::string got = step

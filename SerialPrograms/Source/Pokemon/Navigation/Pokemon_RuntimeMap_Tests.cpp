@@ -18,19 +18,19 @@ namespace PokemonAutomation{
 namespace Pokemon{
 namespace{
 
-struct RuntimeMapInput{
-    std::string_view name;
-    std::string_view fields;
-};
-
-struct RuntimeMapExpectation{
-    std::string_view error = {};
-    std::string_view normalized_fields = {};
-};
-
 struct RuntimeMapCase{
-    RuntimeMapInput input;
-    RuntimeMapExpectation expectation;
+    struct Input{
+        std::string_view name;
+        std::string_view fields;
+    };
+
+    struct Expectation{
+        std::string_view error = {};
+        std::string_view normalized_fields = {};
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 const std::string GOLDEN_V2 = R"(
