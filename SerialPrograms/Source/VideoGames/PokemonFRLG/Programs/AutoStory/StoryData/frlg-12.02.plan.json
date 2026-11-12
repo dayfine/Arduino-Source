@@ -7,6 +7,13 @@
     "start": {"map": "FuchsiaCity_Gym", "tiles": [[6, 13]], "facing": "east"},
     "events": [
       {
+        "id": "lead_lv39_for_koga",
+        "kind": "game_action",
+        "action": "level",
+        "args": {"slot": 1, "min": 39},
+        "why": "the precondition for Koga: the lead at least Lv39, pokeguy's Blastoise here (PokemonSimulation docs/battles/pokeguy-conditions.md, koga: C2 setup to Sp. Atk +1 and outspeed with X items, from 34/122 HP: 1191/1700 wins, 70.1%, 64.5% to 75.2%); at his level or above, those sims stand for this fight and no new one is needed; below it, the run stops here, before the fight"
+      },
+      {
         "id": "challenge_koga",
         "kind": "talk",
         "why": "Koga (7, 13)"

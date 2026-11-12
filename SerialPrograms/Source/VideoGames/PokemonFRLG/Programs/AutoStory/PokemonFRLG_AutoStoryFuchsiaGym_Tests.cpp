@@ -25,6 +25,7 @@
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryParty.h"
 #include "PokemonFRLG_AutoStoryRooms.h"
+#include "PokemonFRLG_AutoStoryMember.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryRows_Tests.h"
 #include "PokemonFRLG_AutoStoryTable.h"
@@ -196,6 +197,45 @@ UnitTestResult test_lead_moves_in_gym(){
     return true;
 }
 
+class QuietLogger : public Logger{
+public:
+    using Logger::log;
+    virtual void log(const std::string&, Color) override{}
+};
+
+//  Battle checkpoint `id`'s precondition: a LEVEL step on the lead before
+//  its battle `battle`, at least `pokeguy`, pokeguy's level there (whose
+//  sims stand for the fight at that level or above). A lead at that level
+//  passes it; one a level below stops the checkpoint before the fight.
+UnitTestResult check_lead_level_precondition(Logger& logger, std::string_view id, std::string_view battle, unsigned pokeguy){
+    std::optional<LevelCheck> check;
+    for (const StoryStep& step : checkpoint(id).steps){
+        if (step.kind == StoryStepKind::BATTLE && step.name == battle){
+            break;
+        }
+        if (step.action == LEVEL_ACTION){
+            check = level_check_of(step.args);
+        }
+    }
+    if (!check || check->slot != 0 || check->level != pokeguy){
+        return std::format("{}: expected a LEVEL step on the lead, at least Lv{}, before {}.", id, pokeguy, battle);
+    }
+    for (const unsigned level : {pokeguy, pokeguy - 1}){
+        const MemberReader lead = [level](size_t slot) -> std::optional<MemberInfo>{
+            if (slot != 0){
+                return std::nullopt;
+            }
+            return MemberInfo{.species = "blastoise", .level = level};
+        };
+        const LevelResult result = run_level_check(logger, lead, *check);
+        const LevelEnd expected = level >= pokeguy ? LevelEnd::REACHED : LevelEnd::BELOW;
+        if (result.end != expected || result.level != level){
+            return std::format("{}: a Lv{} lead {} the Lv{} check.", id, level, level >= pokeguy ? "fails" : "passes", pokeguy);
+        }
+    }
+    return true;
+}
+
 const AutoStoryFuchsiaGymCase AUTO_STORY_FUCHSIA_GYM_CASES[] = {
     {
         .input = {.name = "12.01 past Kayden and Kirk to west of Koga and 12.02 to the Warden and the nurse", .body = test_gym_rows},
@@ -204,6 +244,13 @@ const AutoStoryFuchsiaGymCase AUTO_STORY_FUCHSIA_GYM_CASES[] = {
     {
         .input = {.name = "the lead's attacks in Fuchsia Gym", .body = test_lead_moves_in_gym},
         .expectation = {.description = "Surf against Koga's Pokemon, Surf or Bite against the Jugglers'"},
+    },
+    {
+        .input = {.name = "12.02 stops before Koga unless the lead is at least pokeguy's Lv39", .body = []{
+            QuietLogger logger;
+            return check_lead_level_precondition(logger, "12.02", "koga", 39);
+        }},
+        .expectation = {.description = "a Lv39 lead passes the LEVEL step, a Lv38 one stops there"},
     },
 };
 
