@@ -284,12 +284,12 @@ void check_warp_was_no_battle(ConsoleHandle& console, ProControllerContext& cont
 //  Each leg starts with a turn tap unless it goes the way the player faces.
 //  A tap while already facing that way takes a step, so a facing not given
 //  is read from the screen. If that fails too it taps anyway.
-std::optional<Direction> read_facing(ConsoleHandle& console, ProControllerContext& context){
+std::optional<Direction> read_facing(ConsoleHandle& console, ProControllerContext& context, PlayerGender player){
     context.wait_for_all_requests();
     VideoSnapshot screen = console.video().snapshot();
     std::optional<Direction> facing;
     if (screen){
-        facing = read_player_facing(screen);
+        facing = read_player_facing(screen, player);
     }
     console.log(std::string("Route: the player faces ") + (facing ? Pokemon::direction_name(*facing) : "an unknown way") + ".");
     return facing;
@@ -393,10 +393,11 @@ void walk_overworld_route(
     const std::vector<RouteStep>& route,
     std::optional<Direction> facing,
     const OverworldInterruptSet& interrupts,
-    MoveSpeed speed
+    MoveSpeed speed,
+    PlayerGender player
 ){
     if (!facing){
-        facing = read_facing(console, context);
+        facing = read_facing(console, context, player);
     }
     for (const RouteStep& step : route){
         console.log("Route: " + to_string(step));
