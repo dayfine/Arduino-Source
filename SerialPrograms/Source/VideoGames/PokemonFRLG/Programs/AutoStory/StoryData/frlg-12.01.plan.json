@@ -58,13 +58,50 @@
         "why": "from the nurse to the Center's wall west (0, 4) and up to the wall (0, 2): legs to walls, so the walk out starts from a known tile even if the Center script left the player a tile off the nurse"
       },
       {
+        "id": "west_of_east_ledge",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "FuchsiaCity", "tiles": [[27, 32]], "facing": "east"}
+        },
+        "why": "out of the Center and east along row 32 to the ledge column (28, 30..34)"
+      },
+      {
+        "id": "east_ledge_hop",
+        "kind": "step",
+        "args": {
+          "direction": "east"
+        },
+        "declared_after": {"map": "FuchsiaCity", "tiles": [[29, 32]], "facing": "east"},
+        "why": "over the ledge (28, 32): planned routes never hop a ledge, and without it the way north goes round the city's west edge"
+      },
+      {
+        "id": "below_mart_tree",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "FuchsiaCity", "tiles": [[24, 23]], "facing": "north"}
+        },
+        "why": "up columns 29..30 to row 23 and west to below the Cut tree (24, 22), the one gap between row 23 and the Mart's road"
+      },
+      {
+        "id": "cut_mart_tree",
+        "kind": "game_action",
+        "action": "cut_tree",
+        "args": {
+          "direction": "north"
+        },
+        "declared_after": {"map": "FuchsiaCity", "tiles": [[24, 22]], "facing": "north"},
+        "why": "the tree (FuchsiaCity map.json object 13, EventScript_CutTree); a step onto its tile. Without it the way to the Mart goes round the city's east side, about 150 tiles"
+      },
+      {
         "id": "fuchsia_mart_wall",
         "kind": "route",
         "action": "run",
         "args": {
           "target": {"map": "FuchsiaCity_Mart", "tiles": [[4, 2]], "facing": "north"}
         },
-        "why": "out of the Center, in at the Mart's door (11, 15) and up column 4 to the wall (4, 1)"
+        "why": "up column 24 to row 17, west to the Mart's door (11, 15) and in, up column 4 to the wall (4, 1)"
       },
       {
         "id": "fuchsia_mart_clerk",
@@ -88,13 +125,23 @@
         "why": "Super Potions for what the bag's Potions and Super Potions lack to heal 122 HP, the lead's whole bar at Lv39 (3 with none): Kayden's and Kirk's damage is healed to full before Koga. Skipped when the bag covers it"
       },
       {
-        "id": "out_of_fuchsia_mart",
+        "id": "above_mart_tree",
         "kind": "route",
         "action": "run",
         "args": {
-          "target": {"map": "FuchsiaCity", "tiles": [[11, 16]], "facing": "south"}
+          "target": {"map": "FuchsiaCity", "tiles": [[24, 21]], "facing": "south"}
         },
-        "why": "down to the mat and out of the door (11, 15)"
+        "why": "out of the Mart's door (11, 15), east along row 17 and down column 24 to above the Cut tree (24, 22), grown back when the city loaded"
+      },
+      {
+        "id": "cut_mart_tree_back",
+        "kind": "game_action",
+        "action": "cut_tree",
+        "args": {
+          "direction": "south"
+        },
+        "declared_after": {"map": "FuchsiaCity", "tiles": [[24, 22]], "facing": "south"},
+        "why": "the tree again; a step onto its tile"
       },
       {
         "id": "gym_east_wall",

@@ -19,6 +19,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecoveryWalk.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "PokemonFRLG_AutoStoryAbilities.h"
 #include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryCapture.h"
@@ -302,7 +303,7 @@ Outcome get_ready(StoryEnv& env, RunState& state, const StoryStep& step){
     if (!walked.succeeded()){
         return walked;
     }
-    heal_at_center(env.console, env.context);
+    heal_at_pokecenter(env.console, env.context);
     healed_by_nurse(supplies);
     return walked;
 }
@@ -528,7 +529,7 @@ bool grind_heal_trip(StoryEnv& env, RunState& state, const StoryStep& step, cons
     if (!walked(env, state, walk)){
         return false;
     }
-    heal_at_center(env.console, env.context);
+    heal_at_pokecenter(env.console, env.context);
     //  PP too: a grind's battles spend more than its attacks have.
     healed_by_nurse(env.supplies);
     walk.name = step.name + "_back_to_patch";
@@ -755,7 +756,7 @@ ConsoleAction console_action_of(StoryActionId id){
         return [](StoryEnv& env, RunState&, const StoryStep& step){ return battle(env, step); };
     case StoryActionId::HEAL:
         return [](StoryEnv& env, RunState&, const StoryStep&){
-            heal_at_center(env.console, env.context);
+            heal_at_pokecenter(env.console, env.context);
             healed_by_nurse(env.supplies);
             return Pokemon::outcome_ok();
         };

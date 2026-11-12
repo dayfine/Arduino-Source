@@ -52,8 +52,6 @@ std::optional<size_t> option_right_presses(
 //  presses, fails with a screenshot and leaves the menu open.
 void set_options(ConsoleHandle& console, ProControllerContext& context, StartMenu menu, Language language);
 
-//  Facing the nurse: A, YES, the heal, and the text to its end.
-void heal_at_center(ConsoleHandle& console, ProControllerContext& context);
 
 //  One line of a Mart's BUY list: the row (from 0) and how many.
 struct MartOrder{
