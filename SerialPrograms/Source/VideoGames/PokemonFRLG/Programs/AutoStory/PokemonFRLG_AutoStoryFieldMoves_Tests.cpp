@@ -166,42 +166,48 @@ StoryStep legs_step(std::string name, std::vector<StoryLeg> legs){
     return step;
 }
 
+//  Viridian City's pond, x 11 to 16 and y 26 to 30, ground west and east
+//  of it. (Pallet Town's is in its Fat Man's wander box, so no leg crosses
+//  it.)
+const MapPosition POND_WEST_SHORE{"ViridianCity", {10, 27}};
+const MapPosition POND_EAST_SHORE{"ViridianCity", {17, 27}};
+
 //  Legs from the water: surfing, until a one-tile leg onto land. Legs
 //  onto the water from land, or off it with more tiles after, aren't
 //  legs.
 UnitTestResult test_legs_from_water(){
     const std::vector<MapData>& maps = story_maps();
-    const MapPosition pond{"PalletTown", {7, 17}};
-    const std::optional<std::vector<RouteStep>> route = fixed_route(maps, pond, {{Direction::EAST, 3}, {Direction::NORTH, 1}});
+    const MapPosition pond{"ViridianCity", {11, 27}};
+    const std::optional<std::vector<RouteStep>> route = fixed_route(maps, pond, {{Direction::EAST, 5}, {Direction::EAST, 1}});
     if (!route || route->size() != 2 || !(*route)[0].surfing || !(*route)[0].wild || !(*route)[1].surfing
-        || !((*route)[1].end == MapPosition{"PalletTown", {10, 16}})
+        || !((*route)[1].end == POND_EAST_SHORE)
     ){
-        return "Expected east 3 surfing, then north 1 onto Pallet Town's (10, 16).";
+        return "Expected east 5 surfing, then east 1 onto Viridian City's (17, 27).";
     }
-    if (fixed_route(maps, MapPosition{"PalletTown", {10, 17}}, {{Direction::NORTH, 2}})
-        || fixed_route(maps, MapPosition{"PalletTown", {7, 16}}, {{Direction::SOUTH, 1}})
+    if (fixed_route(maps, MapPosition{"ViridianCity", {16, 27}}, {{Direction::EAST, 2}})
+        || fixed_route(maps, POND_WEST_SHORE, {{Direction::EAST, 1}})
     ){
         return "Expected no legs off the water with a tile after, or onto it without Surf.";
     }
     return true;
 }
 
-//  Pallet Town's pond on the sim, as a row runs it: Surf south from its
-//  shore, the legs across it surfing, and north off it onto land.
+//  Viridian City's pond on the sim, as a row runs it: Surf east from its
+//  west shore, the legs across it surfing, and off it onto the east shore.
 UnitTestResult test_surf_legs_on_sim(){
-    const MapPosition shore{"PalletTown", {7, 16}};
-    OverworldSim sim(story_maps(), shore, Direction::EAST);
-    StoryPose at{shore.map, shore.point, Direction::EAST};
-    std::string failure = row_step_on_sim(sim, at, surf_step("surf", Pokemon::GridPose{"PalletTown", {{7, 17}}, Direction::SOUTH}), "13.01");
+    const MapPosition shore = POND_WEST_SHORE;
+    OverworldSim sim(story_maps(), shore, Direction::NORTH);
+    StoryPose at{shore.map, shore.point, Direction::NORTH};
+    std::string failure = row_step_on_sim(sim, at, surf_step("surf", Pokemon::GridPose{"ViridianCity", {{11, 27}}, Direction::EAST}), "13.01");
     if (!failure.empty() || !sim.state().surfing){
         return "Surf: " + (failure.empty() ? std::string("not on the water.") : failure);
     }
-    failure = row_step_on_sim(sim, at, legs_step("across", {{Direction::EAST, 3}, {Direction::NORTH, 1}}), "13.01");
+    failure = row_step_on_sim(sim, at, legs_step("across", {{Direction::EAST, 5}, {Direction::EAST, 1}}), "13.01");
     if (!failure.empty()){
         return failure;
     }
-    if (!(sim.state().position == MapPosition{"PalletTown", {10, 16}}) || sim.state().surfing){
-        return "After the legs, on " + to_string(sim.state().position) + ", not on land at (10, 16).";
+    if (!(sim.state().position == POND_EAST_SHORE) || sim.state().surfing){
+        return "After the legs, on " + to_string(sim.state().position) + ", not on land at (17, 27).";
     }
     if (!sim.state().violations.empty()){
         return "Surf broke the game's rules: " + sim.state().violations.front();
@@ -214,22 +220,21 @@ UnitTestResult test_surf_legs_on_sim(){
 //  them: RouteCost::SURF); with Surf on, a route surfs onto the pond.
 UnitTestResult test_routes_on_water(){
     const std::vector<MapData>& maps = story_maps();
-    const MapPosition shore{"PalletTown", {7, 16}};
-    OverworldSim sim(maps, shore, Direction::SOUTH);
+    OverworldSim sim(maps, POND_WEST_SHORE, Direction::EAST);
     if (!sim.use_field(SimField::SURF)){
-        return "No Surf south of Pallet Town's (7, 16).";
+        return "No Surf east of Viridian City's (10, 27).";
     }
     const MapPosition water = sim.state().position;
-    const MapPosition land{"PalletTown", {12, 15}};
+    const MapPosition land{"ViridianCity", {20, 28}};
     const std::optional<std::vector<RouteStep>> off = plan_overworld_route(maps, water, RouteGoal{land, std::nullopt}, story_route_costs());
     if (!off){
-        return "No story route off the pond to (12, 15).";
+        return "No story route off the pond to (20, 28).";
     }
     std::string failure = OverworldSimWalker(sim).run(*off, RoutePlanning{.maps = &maps, .costs = story_route_costs(), .start = water, .label = "Sim"});
     if (!failure.empty() || !(sim.state().position == land) || sim.state().surfing){
         return "Off the pond, on " + to_string(sim.state().position) + ": " + failure;
     }
-    const MapPosition pond{"PalletTown", {9, 18}};
+    const MapPosition pond{"ViridianCity", {13, 28}};
     const std::optional<std::vector<RouteStep>> onto = plan_overworld_route(maps, land, RouteGoal{pond, std::nullopt});
     const bool surfs = onto && std::any_of(onto->begin(), onto->end(), [](const RouteStep& step){ return step.action == RouteAction::SURF; });
     if (!surfs){
@@ -261,7 +266,7 @@ const FieldMovesCase CASES[] = {
     },
     {
         .input = {.name = "surf and legs on the sim", .body = test_surf_legs_on_sim},
-        .expectation = {.description = "Pallet Town's pond: Surf, across, and off"},
+        .expectation = {.description = "Viridian City's pond: Surf, across, and off"},
     },
     {
         .input = {.name = "routes on the water on the sim", .body = test_routes_on_water},
