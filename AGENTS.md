@@ -20,7 +20,7 @@ code branches keep only a stub workflow that checks this branch out to run it. O
 
 | What | Where | Use |
 |---|---|---|
-| PRs: never upstream; fork drafts only; at most three open upstream PRs (the user's) | [pokemon_sv/PR_WORKFLOW.md](pokemon_sv/PR_WORKFLOW.md), [Where PRs live](#where-prs-live) | Re-read before any `gh pr` change. `gh` is `~/.local/bin/gh`; always `-R dayfine/Arduino-Source --draft`. |
+| PRs: never upstream; open fork PRs as drafts, may mark ready on the fork (not upstream); at most three open upstream PRs (the user's) | [pokemon_sv/PR_WORKFLOW.md](pokemon_sv/PR_WORKFLOW.md), [Where PRs live](#where-prs-live) | Re-read before any `gh pr` change. `gh` is `~/.local/bin/gh`; always `-R dayfine/Arduino-Source --draft`. |
 | Merge, never rebase or force-push; review fixes as new commits; a PR owns its files | [Where PRs live](#where-prs-live) | Merge the parent in; change a file only in the PR that added it. |
 | Agents: dispatch, no waiting, let agents finish | [Dispatching subagents](#dispatching-subagents), [.agents/rules/](.agents/rules/) | Subagents push, report PR + SHA, stop; the main session waits on CI. |
 | Builds: CI first, one local build at a time (`-j4`) | [Let CI build and test](#let-ci-build-and-test-build-locally-only-when-you-must) | Dispatch CI on the fork; build locally only for a console run. |
@@ -44,7 +44,8 @@ There are two different checks, and neither replaces the other:
 1. **Code Health** checks C++ code changes on code branches (function length, public methods per
    class, layering, style findings). The linter is [devtools/code_health/](devtools/code_health/README.md)
    on this branch; run it from a checkout of `agents` with `--root <code checkout>`.
-   It runs in CI's "C++ Code Health" job and in the pre-push hook, and counts toward CI green.
+   It runs in CI's "C++ Code Health" job and in the pre-push hook. It blocks only upstream-bound
+   branches; on fork PRs and lab branches the CI job is advisory and the hook reports the count.
 2. **Harness checks** check this `agents` branch only: `bin/agent-harness-check.sh` (every
    `.agents/agents`, `.agents/rules` file, workflow and `dev/lib` script carries a `harness:`
    field) and `bin/agent-standing-rules-check.sh` (agent definitions still carry the
@@ -54,10 +55,10 @@ There are two different checks, and neither replaces the other:
 | What | Where | Use |
 |---|---|---|
 | Code health linter | [devtools/code_health/](devtools/code_health/README.md) (here only; self-tests in `devtools/code_health/tests`, run by Agents Check) | By hand: `cd ~/Projects/Arduino-Source-agents && ~/.venvs/code-health/bin/python -m devtools.code_health --root <code checkout> --base-ref origin/<PR base>`. Full gate: [devtools/verify.py](devtools/verify.py) ([details](#c-harness-and-verification-fork-issue-40)). |
-| Pre-push hook | [tools/hooks/pre-push](tools/hooks/pre-push), [tools/install_hooks.sh](tools/install_hooks.sh) | Once per clone: `sh <(git show origin/agents:tools/install_hooks.sh)`. Creates the venv `~/.venvs/code-health`. Never `--no-verify` without the user's OK. |
-| CI workflows (code) | `.github/workflows/` on `main`: `cpp-ci-serial-programs-{mac,mac-intel,ubuntu-clang,ubuntu-default,windows-clang,windows-default}.yml`, `code-health.yml` (stub: checks out `agents` into `.agents-tools` and runs the linter from there), `tabs.yml` | Drafts skip the C++ jobs: `gh workflow run cpp-ci-serial-programs-<os>.yml -R dayfine/Arduino-Source --ref <branch>`. |
+| Pre-push hook | [tools/hooks/pre-push](tools/hooks/pre-push), [tools/install_hooks.sh](tools/install_hooks.sh) | Once per clone: `sh <(git show origin/agents:tools/install_hooks.sh)`. Creates the venv `~/.venvs/code-health`. Blocks only upstream-bound branches (`git config branch.<name>.upstream-bound true`); there, never `--no-verify` without the user's OK. Other pushes report the count only. |
+| CI workflows (code) | `.github/workflows/` on `main`: `cpp-ci-serial-programs-{mac,mac-intel,ubuntu-clang,ubuntu-default,windows-clang,windows-default}.yml`, `code-health.yml` (stub: checks out `agents` into `.agents-tools` and runs the linter from there), `tabs.yml` | Drafts skip the C++ jobs and run only `fork-draft-ci.yml` (Ubuntu GCC build + unit tests); marking a fork PR ready runs all six. Or dispatch: `gh workflow run cpp-ci-serial-programs-<os>.yml -R dayfine/Arduino-Source --ref <branch>`. |
 | CI workflow (this branch) | `.github/workflows/harness-check.yml`, `.github/workflows/agents-check.yml` | Run on PRs into `agents`; Agents Check also runs the linter self-tests. |
-| Waiting on CI | [lab/scripts/ciwait.sh](lab/scripts/ciwait.sh), `dev/lib/wait-pr-checks.sh` | Main session only, in the background. Expected failures: `FileException` for fork-only test images (FRLG SaveCardReader, OptionMenuReader, ItemListReader; BDSP MenuDetector, ShortDialogDetector). |
+| Waiting on CI | [lab/scripts/wait_for.sh](lab/scripts/wait_for.sh) (`checks <PR>`, `log <file> 'Tests Finished'`, `proc <ERE>`); `lab/scripts/ciwait.sh` is superseded | Main session only, in the background; read `fail=` when it fires. Expected failures: `FileException` for fork-only test images (FRLG SaveCardReader, OptionMenuReader, ItemListReader; BDSP MenuDetector, ShortDialogDetector). |
 
 **Lab and console B**
 
@@ -97,10 +98,13 @@ Once per clone, install the pre-push code-health gate (it covers every worktree)
 sh <(git show origin/agents:tools/install_hooks.sh)
 ```
 
-A push of a branch that fails code health against its fork PR base is refused, the same check as
-CI's "C++ Code Health" job. The hook runs the linter from `origin/agents` (`git fetch origin agents`
-keeps it current); `PA_AGENTS_DIR=<agents checkout>` runs a local copy instead. Fix the failures in that PR's own commits; `--no-verify` only
-with the user's OK. A PR is not "CI green" while Code Health is red.
+The hook runs the same check as CI's "C++ Code Health" job against the branch's fork PR base and
+prints the failure count. It refuses the push only for an upstream-bound branch: one opted in with
+`git config branch.<name>.upstream-bound true` when it is prepared for upstream handoff (user decision
+2026-11-11). For those, fix the failures in that PR's own commits; `--no-verify` only with the user's
+OK. Fork PRs and lab branches push regardless; report the count, and CI's Code Health job is advisory
+on fork PRs. The hook runs the linter from `origin/agents` (`git fetch origin agents` keeps it
+current); `PA_AGENTS_DIR=<agents checkout>` runs a local copy instead.
 
 All linked worktrees share these remote refs. Re-read the PR rule before any
 GitHub PR mutation. If fetching fails, report that the cached rules may be
@@ -174,10 +178,14 @@ Dispatched agents follow [agent-harness](https://github.com/dayfine/agent-harnes
 long-chain rules: [.agents/rules/agent-liveness.md](.agents/rules/agent-liveness.md) and
 [.agents/rules/long-chain-ownership.md](.agents/rules/long-chain-ownership.md). In short, a subagent
 never waits on anything outside its own turn: it pushes, opens or updates the draft fork PR, reports
-the PR number and tip SHA, and stops. The main session waits on CI with
-`sh dev/lib/wait-pr-checks.sh <PR> -R dayfine/Arduino-Source` as a tracked background task (0
-green, 10 a check failed, 1 still pending at the cap), and `dev/lib/chain-runner.sh` runs longer
-chains.
+the PR number and tip SHA, and stops; it never waits for CI (foreground Bash caps at 10 minutes, and
+a background wait in an agent may never wake it). The main session waits with
+`sh lab/scripts/wait_for.sh --max-minutes 60 checks <PR>` as one background task: no model calls
+while it sleeps, one wake when it exits (0 all checks completed, 2 timed out, 3 no GitHub backend).
+Exit 0 is not green: read `fail=` in its line. Use `wait_for.sh log <file> 'Tests Finished'` for a
+`--command-line-test-mode` run and `wait_for.sh proc <ERE>` for stray local test processes.
+Dispatch a reviewer or QC agent only against green CI on the PR head. `dev/lib/chain-runner.sh`
+runs longer chains.
 
 Each role has a definition under `.agents/agents/`, carrying its standing rules (build, test,
 checkout and finish commands): `autostory-code`, `pr-maintenance`, `run-records` and `reviewer`.
@@ -192,8 +200,9 @@ restate the standing rules in a brief. `sh bin/agent-standing-rules-check.sh` an
 See [pokemon_sv/PR_WORKFLOW.md](pokemon_sv/PR_WORKFLOW.md). In short:
 
 - **No agent opens, reopens or marks ready a PR on upstream**
-  (`PokemonAutomation/Arduino-Source`). All agent-created PRs are **drafts on
-  `dayfine/Arduino-Source`**, including changes ready for review. Hand anything
+  (`PokemonAutomation/Arduino-Source`). All agent-created PRs open as **drafts on
+  `dayfine/Arduino-Source`**; a fork PR may be marked ready on the fork
+  (2026-11-11) to run the six C++ CI jobs. Ready on the fork is not ready for upstream. Hand anything
   intended for upstream to the user. This replaces the former Claude-publishes
   workflow, per the user's global instructions on 2026-10-23.
 - **Every upstream PR must be created personally by the user, with a description
@@ -552,9 +561,9 @@ gameplay changes additionally need appropriate live validation.
 
 Upstream's C++ CI (six jobs: Mac, Mac Intel, Ubuntu clang/gcc, Windows
 clang/MSVC) builds the app and runs the native unit tests against
-`PokemonAutomation/CommandLineTests`. Every job is skipped on draft PRs, and all
-fork PRs are drafts, so a push alone runs nothing but the tab check. Dispatch
-the jobs on the fork branch instead:
+`PokemonAutomation/CommandLineTests`. Every job is skipped on draft PRs; a fork draft
+runs only `fork-draft-ci.yml` (Ubuntu GCC build + unit tests) and the tab check.
+Mark the fork PR ready to run all six, or dispatch them on the fork branch:
 
 ```sh
 for w in mac windows-clang ubuntu-default; do

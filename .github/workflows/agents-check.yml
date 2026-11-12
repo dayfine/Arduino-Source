@@ -38,6 +38,12 @@ jobs:
           cache-dependency-path: devtools/code_health/requirements.txt
       - name: Offline development launcher tests
         run: python3 -m unittest discover -s lab/scripts -p test_start_dev.py -v
+      - name: Lab Claude script tests
+        run: python3 -m unittest discover -s lab/scripts -p test_lab_claude.py -v
+      - name: Label shots script tests
+        run: python3 -m unittest discover -s lab/scripts -p test_label_shots.py -v
+      - name: Route review script tests
+        run: python3 -m unittest discover -s lab/scripts -p test_review_route.py -v
       - name: Code health linter self-tests
         run: |
           python -m pip install -r devtools/code_health/requirements.txt

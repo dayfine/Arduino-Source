@@ -18,14 +18,25 @@ authorize an agent to publish upstream.
 - **Fix every code-health finding before a PR goes upstream**, advisory ones
   included. `out_param_order` and `string_concat` are advisory on the fork
   only until the open stacks are cleaned (user, 2026-11-10); an upstream
-  handoff has none of them.
+  handoff has none of them. The pre-push hook blocks only upstream-bound
+  branches (`git config branch.<name>.upstream-bound true`; `--no-verify` there
+  only with the user's OK); fork PR and lab pushes report the count, and CI's
+  Code Health job is advisory on fork PRs (user, 2026-11-11).
 - **At most three open upstream PRs from us, drafts included** (the user's
   call on 2026-11-03; upstream CONTRIBUTING.md asks new contributors for two). This is a limit for the user's upstream handoff, not
   permission for an agent to create a PR.
 - **Use `gh` through `~/.local/bin/gh`, first on PATH.** Do not bypass its
   upstream guard. Always specify `--repo dayfine/Arduino-Source --draft` when
   creating a PR; do not rely on GitHub CLI's inferred repository.
-- **Open every new PR as a draft on the fork.** On the fork, a PR's base
+- **Open every new PR as a draft on the fork; a fork PR may later be marked
+  ready for review on `dayfine/Arduino-Source`** (user, 2026-11-11). Marking
+  ready runs upstream's six C++ CI workflows (they trigger on
+  `ready_for_review` with draft == false); drafts get only the fork-only
+  "Fork Draft CI" (`.github/workflows/fork-draft-ci.yml`, fork PR #367: Ubuntu
+  GCC build + unit tests on every push). `gh workflow run` dispatch still
+  works. Ready on the fork is not ready for upstream; the upstream rule above
+  is unchanged.
+- On the fork, a PR's base
   can be another fork branch, so stacked PRs show only their own change.
   Upstream they cannot: they must target `main` and show all their parents'
   commits.
@@ -35,7 +46,7 @@ authorize an agent to publish upstream.
 - **When an upstream parent merges:**
   1. Merge `main` into each child (never rebase or force-push).
   2. Rebuild and run its tests.
-  3. Keep its fork PR as a draft and prepare an upstream handoff for the user,
+  3. Keep its fork PR on the fork (draft or ready) and prepare an upstream handoff for the user,
      including the branch, tested revision, results and dependencies.
   4. Let the user publish upstream. After the user supplies an upstream PR,
      link it from the fork PR and hand any requested follow-up to its owner.

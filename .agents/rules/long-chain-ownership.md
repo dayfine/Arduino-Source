@@ -56,11 +56,14 @@ ends, so "I'll wait for the checks" ends the agent with the work in limbo
 1. **The agent finishes its stage and stops:** commit, push, open or update
    the PR, and report the PR number and tip SHA. That is its whole job.
 2. **The dispatcher waits, cheaply:** it runs
-   `sh dev/lib/wait-pr-checks.sh <PR>` as a harness-tracked background task.
-   That is bash polling `gh` once a minute, at zero tokens; the harness
-   re-invokes the dispatcher when the script exits. Exit 0 means green, 10 a
-   failed check, 1 still pending at the cap.
-3. **The next stage is a new agent:** green → dispatch the reviewer; red →
+   `sh lab/scripts/wait_for.sh --max-minutes 60 checks <PR>` as a
+   harness-tracked background task: bash polling, zero tokens while it
+   sleeps, one wake when it exits. Exit 0 means every check completed (read
+   `fail=` for the verdict), 2 timed out, 3 no GitHub backend. Inside a
+   chain, `dev/lib/wait-pr-checks.sh` (0 green, 10 failed, 1 pending) still
+   serves as the step.
+3. **The next stage is a new agent:** green on the PR head → dispatch the
+   reviewer or QC agent (never against pending or red CI); red →
    dispatch a fixer with the failing check's name and log excerpt. Neither
    inherits the previous agent's context.
 

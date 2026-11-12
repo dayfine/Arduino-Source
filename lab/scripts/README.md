@@ -49,3 +49,77 @@ The console may sit at the HOME menu between CFR batches (after a failed run, a 
 when the app reconnects the controller). Then the next stick or D-pad moves the HOME cursor and
 can launch another game. Start each batch with `shot` (or `detect home`); if it shows HOME with the
 game still suspended, `press A` first to return to the game.
+
+## Claude triage and watchdog
+
+`triage_failure.py` and `watchdog_shot.py` call Claude through the official `anthropic` SDK.
+Shared setup is in `lab_claude.py`. `--dry-run` prints the request (images shortened) without
+network or SDK.
+
+### One-time setup (macOS lab Mac)
+
+The SDK needs Python 3.9+; the default `python3`/`pip3` on the lab Mac is 3.8, so a plain
+`pip3 install anthropic` does nothing useful. Use a venv on Homebrew Python:
+
+```sh
+/opt/homebrew/bin/python3.12 -m venv ~/.venvs/lab-claude
+~/.venvs/lab-claude/bin/pip install anthropic pillow   # pillow downscales frames; sips is the fallback
+```
+
+The scripts use the lab's own API key, never your login or `ANTHROPIC_API_KEY`, so lab spend is
+tracked apart from other usage:
+
+1. In the Claude Console, create a workspace `pa-lab` and set its monthly spend limit ($120).
+2. Create an API key in that workspace.
+3. Copy it, then:
+   `mkdir -p ~/.config/pokemonautomation && pbpaste > ~/.config/pokemonautomation/claude-lab.key && chmod 600 ~/.config/pokemonautomation/claude-lab.key`
+   (`LAB_CLAUDE_KEY_FILE` overrides the path.) Without the file the scripts stop with an error.
+
+Check the setup:
+
+```sh
+cd lab/scripts && ~/.venvs/lab-claude/bin/python -c "import lab_claude; print(lab_claude.make_client().models.retrieve('claude-haiku-5-5').id)"
+```
+
+Run every script below with `~/.venvs/lab-claude/bin/python` (written `python3` below for short).
+Costs: watchdog (Haiku 5.5) is a fraction of a cent per shot; triage (Opus 5.5, thinking) a few
+cents per failure; batch labelling is half price.
+
+**Budget.** The lab spends Console API credit: $120/month, paced at $4/day. `lab_claude.send()`
+prices every call from its token usage into `~/BDSPLab/claude-spend.jsonl` and refuses new calls
+(`BudgetExceeded`) once today's or this month's total reaches the cap. Override with
+`LAB_CLAUDE_DAILY_USD` / `LAB_CLAUDE_MONTHLY_USD`. This is a local guard; the hard cap is the
+workspace spend limit in the Console.
+
+- `python3 lab/scripts/triage_failure.py --frame fail.png --checkpoint 00.04 --step step.json --notes ~/BDSPLab/notes/<date>-checklist.md [--map-slice slice.txt]`
+  sends the frames, the last 200 lines of the lab-B log, the step and map slice to `claude-opus-5-5`
+  (adaptive thinking, effort high, server-side fallback) and appends a fault-class verdict with cited
+  evidence to the notes file.
+- `python3 lab/scripts/watchdog_shot.py shot.png` classifies one frame with `claude-haiku-5-5`
+  (effort low), prints the JSON verdict and exits 2 on a dead feed, color bars or HOME, 1 on error.
+
+Tests (mocked client): `python3 -m unittest discover -s lab/scripts -p test_lab_claude.py -v`.
+
+## Labeling shots for detector sets
+
+`label_shots.py` labels a directory of lab screenshots through the Message Batches API (half price)
+with `claude-haiku-5-5` (`--model` to override). Each label is `screen` (overworld, battle, dialog,
+menu, home, fade_black, color_bars, other), `player_visible`, `text_box_visible` and a short `note`.
+
+- `python3 lab/scripts/label_shots.py ~/BDSPLab/shots/<run> --game bdsp --out labels.jsonl --dry-run`
+  prints the shot count and the first request, without network or SDK.
+- Without `--dry-run` it submits one batch, polls up to `--max-minutes` (default 60) and appends
+  `{path, label, model}` lines keyed by custom_id. If the batch is still running it prints the batch
+  id and exits 2; collect later with `--resume <batch_id>`. Shots already in the output are skipped.
+
+Tests (mocked client): `python3 -m unittest discover -s lab/scripts -p test_label_shots.py -v`.
+
+## Claude route review
+
+`python3 lab/scripts/review_route.py --plan <code worktree>/.../StoryData/bdsp-00.04.plan.json --notes ~/BDSPLab/notes/<date>-routes.md [--map-slice slice.txt] [--sim sim.txt]`
+reviews one checkpoint plan before coding it, with `claude-opus-5-5` (adaptive thinking, effort high,
+server-side fallback). It scores the route by the user's preferences (few unprotected moves with wide
+margin, one localization, few turns, walls and funnels over step counts, long open legs flagged) and
+appends a per-leg table (kind, risk, reason), totals and suggestions to the notes file. It reports
+only what the plan, map slice and sim output show. `--dry-run` prints the request without network.
+Tests: `python3 -m unittest discover -s lab/scripts -p test_review_route.py -v`.
