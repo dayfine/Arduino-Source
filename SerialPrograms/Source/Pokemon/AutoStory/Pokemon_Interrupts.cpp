@@ -5,7 +5,9 @@
  */
 
 #include <algorithm>
+#include <chrono>
 #include <format>
+#include <string_view>
 #include "Pokemon_Interrupts.h"
 
 namespace PokemonAutomation{

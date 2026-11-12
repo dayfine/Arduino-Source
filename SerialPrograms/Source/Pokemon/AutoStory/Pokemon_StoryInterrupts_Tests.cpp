@@ -347,8 +347,8 @@ UnitTestResult test_unsettled_before_a_battle(){
 }
 
 //  A battle's opening still playing when a walk step begins: the walk
-//  before it ended in grass or in a trainer's sight (BDSP fault sweep, 51
-//  steps of 00.01-01.11). The looks wait for the battle, past max_looks,
+//  before it ended in grass or in a trainer's sight. The looks wait for the
+//  battle, past max_looks,
 //  and its handler clears it before the step.
 UnitTestResult test_opening_before_a_walk(ScreenLook opening, ScreenLook battle, const std::string& kind, const std::string& handler){
     FakeGame game;
@@ -492,8 +492,7 @@ UnitTestResult test_screen_before_each_step(){
     });
 }
 
-//  The program started on the HOME menu (lab-B 2026-11-09 15:31: "before
-//  save: settled overworld", then X on HOME and a 22-tile walk on it). The
+//  The program started with the game closed and the HOME menu showing. The
 //  screen is told as HOME and the step fails at once, before any input,
 //  and before a step that starts on a battle's opening too.
 UnitTestResult test_home_menu_before_a_step(){
@@ -564,6 +563,78 @@ UnitTestResult test_home_menu_stops_the_segment(){
             got += std::format(" {}", line);
         }
         return std::format("Expected the save tried once and nothing else, got:{}", got);
+    }
+    return true;
+}
+
+//  A handler that drives the console can lose it. That fails the step as
+//  interrupt_failed, like a handler that returns a failure: it must not
+//  escape the executor, and the step is not run.
+UnitTestResult test_handler_throws(){
+    FakeGame game;
+    game.screens = {dialog()};
+    StoryInterrupts interrupts = fake_interrupts(game);
+    interrupts.handlers = InterruptHandlerTable();
+    interrupts.handlers.add(InterruptKind::DIALOG, InterruptHandler{
+        .handle = [&game](const InterruptVerdict&, RunState&) -> Outcome{
+            game.trace.push_back("clear dialog");
+            throw OperationFailedException(ErrorReportMode::NO_ERROR_REPORT, "the console is gone");
+        },
+        .pose = InterruptPose::UNCHANGED,
+    });
+    try{
+        const FakeRun run = run_step(game, interrupts, make(StoryStepKind::ROUTE, "walk"));
+        if (run.outcome.failure != "interrupt_failed"){
+            return std::format("Expected interrupt_failed, got {}", to_string(run.outcome));
+        }
+    }catch (OperationFailedException& e){
+        return std::format("The handler's failure escaped the executor: {}", e.message());
+    }
+    return expect_trace(game, {"look", "clear dialog", "told dialog interrupt_failed: dialog: operation_failed: the console is gone"});
+}
+
+//  The same loss after a step failed, while the executor looks for what
+//  explains the failure: the step's own failure is kept.
+UnitTestResult test_handler_throws_after_a_failure(){
+    FakeGame game;
+    game.screens = {quiet(), dialog()};
+    StoryInterrupts interrupts = fake_interrupts(game);
+    interrupts.handlers = InterruptHandlerTable();
+    interrupts.handlers.add(InterruptKind::DIALOG, InterruptHandler{
+        .handle = [&game](const InterruptVerdict&, RunState&) -> Outcome{
+            game.trace.push_back("clear dialog");
+            throw OperationFailedException(ErrorReportMode::NO_ERROR_REPORT, "the console is gone");
+        },
+        .pose = InterruptPose::UNCHANGED,
+    });
+    try{
+        const FakeRun run = run_step(game, interrupts, make(StoryStepKind::ROUTE, "walk"), FakeAction{.failures = 1});
+        if (run.outcome.failure != "dialog"){
+            return std::format("Expected the step's own failure, got {}", to_string(run.outcome));
+        }
+    }catch (OperationFailedException& e){
+        return std::format("The handler's failure escaped the executor: {}", e.message());
+    }
+    return true;
+}
+
+//  A step that fails and then shows the HOME menu did not fail on its own:
+//  the game is not running, so the segment must stop instead of recovering
+//  or reloading with the game closed.
+UnitTestResult test_home_menu_after_a_failed_step(){
+    for (bool throws : {false, true}){
+        FakeGame game;
+        game.screens = {quiet(), home_menu()};
+        StoryInterrupts interrupts = fake_interrupts(game);
+        const FakeRun run = run_step(game, interrupts, make(StoryStepKind::ROUTE, "walk"), FakeAction{.failures = 1, .throws = throws});
+        if (run.outcome.failure != "game_not_running"){
+            return std::format("Expected game_not_running after a step that {} and then showed HOME, got {}",
+                throws ? "threw" : "failed", to_string(run.outcome));
+        }
+        const size_t runs = static_cast<size_t>(std::count(game.trace.begin(), game.trace.end(), "run walk"));
+        if (runs != 1){
+            return std::format("Expected the step run once, got {} runs", runs);
+        }
     }
     return true;
 }
@@ -716,6 +787,18 @@ const StoryInterruptsCase STORY_INTERRUPTS_CASES[] = {
     {
         .input = {.name = "the HOME menu stops the segment", .test = test_home_menu_stops_the_segment},
         .expectation = {.description = "no recovery in place, no reload"},
+    },
+    {
+        .input = {.name = "a handler that throws fails the step", .test = test_handler_throws},
+        .expectation = {.description = "interrupt_failed, the step not run, nothing escapes"},
+    },
+    {
+        .input = {.name = "a handler that throws after a failed step", .test = test_handler_throws_after_a_failure},
+        .expectation = {.description = "the step's own failure, nothing escapes"},
+    },
+    {
+        .input = {.name = "the HOME menu after a failed step", .test = test_home_menu_after_a_failed_step},
+        .expectation = {.description = "game_not_running instead of the step's failure, run once"},
     },
 };
 
