@@ -251,6 +251,22 @@ private:
     const StoryWorld& m_world;
 };
 
+//  Names every field of Pokemon::RobustLegCosts, in order, so it stops
+//  compiling when the shared costs gain or lose one: add the new field to
+//  robust_leg_costs() below (and to RobustPlanCosts if BDSP sets it), so it
+//  can't silently keep the shared default.
+constexpr bool robust_leg_costs_fields_copied(){
+    [[maybe_unused]] const auto& [
+        per_tile, per_wild_tile, per_wander_tile, per_leg, leg_not_at_wall,
+        open_error, open_error_per, exact_open_tiles, per_open_tile,
+        max_open_tiles, max_spread, max_searched
+    ] = Pokemon::RobustLegCosts{};
+    return true;
+}
+static_assert(robust_leg_costs_fields_copied());
+
+//  BDSP's costs as the shared planner's, field by field. per_wander_tile is
+//  BDSP's own (town_plan_costs() may raise it), never the shared default.
 Pokemon::RobustLegCosts robust_leg_costs(const RobustPlanCosts& costs){
     Pokemon::RobustLegCosts ret;
     ret.per_tile = costs.per_tile;
