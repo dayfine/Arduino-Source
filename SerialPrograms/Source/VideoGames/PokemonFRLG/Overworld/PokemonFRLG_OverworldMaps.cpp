@@ -122,6 +122,12 @@ constexpr std::string_view MAP_NAMES[] = {
     "Route16",
     "Route16_NorthEntrance_1F",
     "Route16_House",
+    //  Route 18 from the Cycling Road's foot (Route 17 has no map: its
+    //  slope is ridden by presses, PokemonFRLG_AutoStorySlope.h), its gate,
+    //  and Fuchsia City to the Safari Zone's door.
+    "Route18",
+    "Route18_EastEntrance_1F",
+    "FuchsiaCity",
     "CeruleanCave_1F",
     "CeruleanCave_2F",
     "CeruleanCave_B1F",

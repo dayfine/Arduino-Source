@@ -30,6 +30,8 @@ void add_tests_AutoStoryLavender(UnitTestDatabase& database);
 void add_tests_AutoStoryTower(UnitTestDatabase& database);
 //  Row 11.01 on the overworld sim (PokemonFRLG_AutoStorySnorlax_Tests.cpp).
 void add_tests_AutoStorySnorlax(UnitTestDatabase& database);
+//  Row 11.02 on the sims (PokemonFRLG_AutoStorySlope_Tests.cpp).
+void add_tests_AutoStorySlope(UnitTestDatabase& database);
 
 
 } // namespace PokemonFRLG
