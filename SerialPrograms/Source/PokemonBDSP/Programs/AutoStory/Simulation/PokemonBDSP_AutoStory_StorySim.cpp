@@ -282,7 +282,16 @@ void SimKnobRouteIO::check_fade_in(const std::string& label){
 
 WalkResult SimKnobRouteIO::walk_to_wall(const RouteWallWalk& walk){
     check_fade_in(walk.label);
-    return GridSimRouteIO::walk_to_wall(walk);
+    WalkResult result = GridSimRouteIO::walk_to_wall(walk);
+    const TilePos ahead = nearest_tile(m_grid.player().pos).next(walk.direction);
+    const std::vector<SimWanderer>& people = sim_wanderers(m_grid);
+    const bool pushing = std::any_of(people.begin(), people.end(), [&](const SimWanderer& person){
+        return person.pos == ahead;
+    });
+    if (result.stop == WalkStop::BLOCKED && pushing){
+        result.walked += m_knobs.pushing_someone;
+    }
+    return result;
 }
 
 WalkResult SimKnobRouteIO::walk_taps(Direction direction, size_t tiles, const std::string& label){
@@ -531,7 +540,7 @@ bool on_world(const StoryWorld& world, const std::string& map){
 //  (SimWorldKnobs::wander_seed), each with their own seed and start time.
 std::vector<SimWanderer> SimExecutor::wanderers(const StoryWorld& world) const{
     std::vector<SimWanderer> out;
-    if (!m_knobs.wander_seed){
+    if (!m_knobs.wander_seed && m_knobs.standing.empty()){
         return out;
     }
     for (const auto& [map, json] : bdsp_map_json()){
@@ -539,20 +548,22 @@ std::vector<SimWanderer> SimExecutor::wanderers(const StoryWorld& world) const{
             continue;
         }
         for (const auto& object : story_map(map).objects){
-            if (!object.wander){
+            const auto stands = m_knobs.standing.find(object.name);
+            if (!object.wander || (!m_knobs.wander_seed && stands == m_knobs.standing.end())){
                 continue;
             }
-            const uint64_t seed = *m_knobs.wander_seed * 1000003 + out.size() * 7919 + (uint64_t)(object.x * 31 + object.y);
+            const uint64_t seed = m_knobs.wander_seed.value_or(0) * 1000003 + out.size() * 7919 + (uint64_t)(object.x * 31 + object.y);
             const TilePos low = story_to_world(world, map, {object.wander->x0, object.wander->y0});
             const TilePos high = story_to_world(world, map, {object.wander->x1, object.wander->y1});
+            const bool still = stands != m_knobs.standing.end();
             out.push_back({
                 .name = object.name,
                 .box = {.x0 = low.x, .y0 = low.y, .x1 = high.x, .y1 = high.y},
-                .pos = story_to_world(world, map, {object.x, object.y}),
+                .pos = story_to_world(world, map, still ? stands->second : TilePos{object.x, object.y}),
                 .seed = seed,
-                .step_interval = Milliseconds(2000),
+                .step_interval = still ? Milliseconds(0) : Milliseconds(2000),
                 .elapsed = Milliseconds(0),
-                .time_offset = Milliseconds((int64_t)(seed % 2000)),
+                .time_offset = still ? Milliseconds(0) : Milliseconds((int64_t)(seed % 2000)),
             });
         }
     }

@@ -31,7 +31,14 @@ Pokemon::StoryArgSpec optional(std::string key, Pokemon::StoryArgType type, Poke
 
 void add_event_actions(std::vector<Pokemon::StoryActionSpec>& actions){
     for (const auto& [name, unused] : story_events()){
-        actions.push_back({.kind = Pokemon::StoryStepKind::GAME, .name = name, .args = {}});
+        Pokemon::StoryActionSpec spec{.kind = Pokemon::StoryStepKind::GAME, .name = name, .args = {}};
+        //  00.05c's start probe steps west from either save it may start on:
+        //  the Poketch Company's sign stops it, the street does not, so it
+        //  ends on one tile it knows.
+        if (name == "jubilife_start_probe"){
+            spec.certainty = Pokemon::StoryCertainty{.needs = Pokemon::PoseCertainty::SET, .leaves = Pokemon::PoseEnd::WALKED};
+        }
+        actions.push_back(std::move(spec));
     }
 }
 
@@ -85,7 +92,11 @@ std::vector<Pokemon::StoryActionSpec> make_bdsp_actions(){
         .console_only = false, .certainty = Pokemon::StoryCertainty{.needs = PoseCertainty::SET, .leaves = PoseEnd::DECLARED}});
     actions.push_back({.kind = Pokemon::StoryStepKind::STEP, .name = "to_banner", .args = {direction_arg}, .console_only = false, .certainty = pins});
     actions.push_back({.kind = Pokemon::StoryStepKind::STEP, .name = "or_legs", .args = {direction_arg, legs_arg}});
-    actions.push_back({.kind = Pokemon::StoryStepKind::TALK, .name = "talk_to_wanderer", .args = {optional("again", Pokemon::StoryArgType::BOOLEAN, false, "a talk with no coupon question counts")}});
+    //  The talk walks the row in D-pad taps, each a whole tile it counts,
+    //  and back onto its declared tile.
+    actions.push_back({.kind = Pokemon::StoryStepKind::TALK, .name = "talk_to_wanderer",
+        .args = {optional("again", Pokemon::StoryArgType::BOOLEAN, false, "a talk with no coupon question counts")},
+        .console_only = false, .certainty = Pokemon::StoryCertainty{.needs = PoseCertainty::TILE, .leaves = PoseEnd::DECLARED}});
     actions.push_back({.kind = Pokemon::StoryStepKind::MASH, .name = "a", .args = {}});
     actions.push_back({.kind = Pokemon::StoryStepKind::BATTLE, .name = "starter", .args = {may_lose}});
     actions.push_back({.kind = Pokemon::StoryStepKind::BATTLE, .name = "doubles", .args = {may_lose}});

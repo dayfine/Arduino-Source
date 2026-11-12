@@ -519,6 +519,35 @@ UnitTestResult test_short_leg_a_tile_short_is_not_arrived(Logger&){
 }
 
 
+//  A leg to a wall 8 tiles away that stops far later than 8 tiles take: the
+//  player pushed against someone on the way, and the time counts 18 tiles
+//  (lab-B 2026-11-11 21:00, 00.05b: "east 8 (to wall)" stopped after
+//  2800 ms against the boy below the Mart, about 5 tiles in, and the route
+//  went on from the wall). Not the wall: plan again from every tile of the
+//  leg, and a second leg to the wall pins it.
+UnitTestResult test_wall_leg_held_up_is_not_at_its_wall(Logger&){
+    const StoryWorld corridor = make_world({"###########", "#.........#", "###########"});
+    Script script{.steps = {
+        walk_step("wall: T: east 8 (to wall)", WalkStop::BLOCKED, 3930ms, 5),
+        walk_step("wall: T: east 7 (to wall)", WalkStop::BLOCKED, 1450ms, 1),
+        answer_step("dialog within 500 ms", false),
+    }};
+    ScriptedWalk walk;
+    try{
+        walk = walk_script(corridor, {1, 1}, {9, 1}, {}, script);
+    }catch (const ScriptMismatch& e){
+        return e.message;
+    }
+    if (!walk.failure.empty()){
+        return "failed: " + walk.failure;
+    }
+    if (walk.at != std::vector<TilePos>{{9, 1}}){
+        return "did not arrive at (9, 1).";
+    }
+    const std::string left = script_left(script);
+    return left.empty() ? UnitTestResult(true) : UnitTestResult(left);
+}
+
 struct PlannedRouteInput{
     std::string name;
     std::function<UnitTestResult(Logger&)> body;
@@ -701,6 +730,10 @@ const PlannedRouteCase PLANNED_ROUTE_CASES[] = {
     },
     {
         .input = {"a wall leg that never moved plans from its start", test_never_moved_plans_from_the_start},
+        .expectation = {},
+    },
+    {
+        .input = {"a wall leg held up on the way is not at its wall (lab-B 2026-11-11 21:00)", test_wall_leg_held_up_is_not_at_its_wall},
         .expectation = {},
     },
     {

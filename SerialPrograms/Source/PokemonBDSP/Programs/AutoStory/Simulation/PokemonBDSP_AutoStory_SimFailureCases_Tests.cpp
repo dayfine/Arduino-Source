@@ -61,7 +61,6 @@ const std::map<std::string, std::string> KNOWN_FAILING{
     {"01.05 through_the_gate is one run west", "planner: goal kinds and ms costs (PLANNER_DESIGN.md)"},
     {"any one missed fade or banner from 00.00 to 01.11: every row still passes",
         "a third signal where a warp gives one (ONE_SIGNAL_STEPS): position (PLANNER_DESIGN.md 2, 4)"},
-    {"01.08 with Route 204's youngster wandering (12..14, 2)", "planner: one recovery rule, a sidestep round a wanderer (PLANNER_DESIGN.md 4, 7)"},
 };
 
 //  Warps that give one signal only (#268 slice 1: door = fade or banner), so
@@ -328,6 +327,18 @@ UnitTestResult nurse_in_one_run(Logger&){
             NURSE_RUN_HOLD.count(), needed.count(), CENTER_MAT_TO_COUNTER_TILES);
     }
     return true;
+}
+
+//  00.05b with the boy below the Mart (school_kid_m_5, who wanders x 51,
+//  y 33..35) standing on (51, `row`), and a push against him reading as
+//  stopped only 1600 ms late, as on lab-B 2026-11-11 21:00 ("east 8 (to
+//  wall)" along row 34 stopped after 2800 ms about 5 tiles in, and the
+//  route went on from the wall).
+std::string boy_below_the_mart(Logger& logger, int row){
+    SimWorldKnobs knobs;
+    knobs.standing = {{"school_kid_m_5", TilePos{51, row}}};
+    knobs.pushing_someone = 1600ms;
+    return run_case(logger, "00.05b", "00.05b", {.fade = {}, .banner = {}}, std::move(knobs));
 }
 
 //  01.07: after the tag battle the screen fades back from the battle and
@@ -713,6 +724,14 @@ const FailureCase AUTO_STORY_FAILURE_CASES[] = {
     {.input = {"00.04 Mom's call fires above the mat, on (6, 9): the walk ends in it, her hat scene plays it (lab-B 2026-11-09 17:29)", moms_call_above_the_mat}, .expectation = {}},
     {.input = {"00.04 the old walk round Mom to (6, 9) runs into her call: it hands it to her hat scene, not fights it (lab-B 2026-11-09 17:29)", old_walk_hands_moms_call_over}, .expectation = {}},
     {.input = {"00.04b the run into Sandgem stops two columns west: the walk still ends below the Center's door (lab-B 2026-11-09 20:09)", sandgem_entry_two_columns_west}, .expectation = {}},
+    {.input = {"00.05b the boy below the Mart stands on row 34: the walk to the Mart clown goes round his zone (lab-B 2026-11-11 21:00)", [](Logger& logger){
+        return passes(boy_below_the_mart(logger, 34));
+    }}, .expectation = {}},
+    {.input = {"00.05b someone stands in the walk's way on row 36: a wall leg held up is not at its wall (lab-B 2026-11-11 21:00)", [](Logger& logger){
+        const std::string stopped = boy_below_the_mart(logger, 36);
+        return stopped.find("sim_mismatch") == std::string::npos ? UnitTestResult(true)
+            : UnitTestResult("the program went on from a tile the player is not on: " + stopped);
+    }}, .expectation = {}},
     {.input = {"00.05c a coupon missing (the sign read for the Poketch Company clown): no Poketch, 00.05c fails (lab-B 2026-11-11)", no_poketch_fails_00_05c}, .expectation = {}},
     {.input = {"00.05c a coupon missing from 00.05b: its clown talks collect it, the president gives the Poketch", missing_coupon_collected_in_00_05c}, .expectation = {}},
     {.input = {"01.01 with no Poketch: the east-exit guard's gate stops the row at its check, not a trainer fight (lab-B 2026-11-11)", gate_guard_stops_01_01}, .expectation = {}},
