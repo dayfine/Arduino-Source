@@ -29,6 +29,7 @@
 #include "PokemonFRLG_AutoStoryMember.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryRows_Tests.h"
+#include "PokemonFRLG_AutoStoryRows14_Tests.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 
 namespace PokemonAutomation{

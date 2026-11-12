@@ -35,8 +35,6 @@ void add_tests_AutoStorySnorlax(UnitTestDatabase& database);
 void add_tests_AutoStorySlope(UnitTestDatabase& database);
 //  Row 11.03 on the sims (PokemonFRLG_AutoStorySafari_Tests.cpp).
 void add_tests_AutoStorySafari(UnitTestDatabase& database);
-//  Rows 14.01 and 14.02, Cinnabar Gym, on the overworld sim (PokemonFRLG_AutoStoryCinnabarGym_Tests.cpp).
-void add_tests_AutoStoryCinnabarGym(UnitTestDatabase& database);
 //  Row 15.01, Route 7's gate to Saffron, on the overworld sim (PokemonFRLG_AutoStorySaffron_Tests.cpp).
 void add_tests_AutoStorySaffron(UnitTestDatabase& database);
 
