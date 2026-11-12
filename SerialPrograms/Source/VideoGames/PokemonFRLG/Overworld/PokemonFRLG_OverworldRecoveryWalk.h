@@ -74,6 +74,7 @@ void walk_overworld_route_with_recovery(
     ConsoleHandle& console, ProControllerContext& context,
     const std::vector<RouteStep>& route,
     const RoutePlanning& planning,
+    PlayerGender player,
     std::optional<Direction> facing = std::nullopt,
     const OverworldInterruptSet& interrupts = default_overworld_interrupts(),
     MoveSpeed speed = MoveSpeed::WALK

@@ -60,12 +60,12 @@ bool select_onto_bike(const BikeSelectCalls& calls);
 //  Whether the player rides the Bicycle, from the screen: the overworld
 //  is up, and no standing player's sprite shows where the player stands
 //  (read_player_facing()). False under a message or a menu.
-bool screen_shows_riding(const ImageViewRGB32& screen);
+bool screen_shows_riding(const ImageViewRGB32& screen, PlayerGender player);
 
 //  select_onto_bike() on the console: SELECT is the Switch's MINUS.
 //  Throws OperationFailedException if the player doesn't ride after two
 //  presses.
-void get_on_bike(ConsoleHandle& console, ProControllerContext& context);
+void get_on_bike(ConsoleHandle& console, ProControllerContext& context, PlayerGender player);
 
 } // namespace OverworldWalkSteps
 
