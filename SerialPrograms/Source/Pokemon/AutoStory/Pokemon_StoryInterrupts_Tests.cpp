@@ -592,18 +592,18 @@ UnitTestResult test_settle_of_a_look(){
 }
 
 
-struct StoryInterruptsInput{
-    std::string_view name;
-    UnitTestResult (*test)();
-};
-
-struct StoryInterruptsExpectation{
-    std::string_view description;
-};
-
 struct StoryInterruptsCase{
-    StoryInterruptsInput input;
-    StoryInterruptsExpectation expectation;
+    struct Input{
+        std::string_view name;
+        UnitTestResult (*test)();
+    };
+
+    struct Expectation{
+        std::string_view description;
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 class Test_StoryInterrupts : public UnitTest{

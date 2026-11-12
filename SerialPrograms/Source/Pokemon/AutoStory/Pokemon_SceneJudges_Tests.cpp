@@ -113,17 +113,17 @@ UnitTestResult test_talk_over(){
 }
 
 
-struct SceneJudgesInput{
-    std::string name;
-    std::function<UnitTestResult()> body;
-};
-
-struct SceneJudgesExpectation{
-};
-
 struct SceneJudgesCase{
-    SceneJudgesInput input;
-    SceneJudgesExpectation expectation;
+    struct Input{
+        std::string name;
+        std::function<UnitTestResult()> body;
+    };
+
+    struct Expectation{
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 class Test_SceneJudges : public UnitTest{
