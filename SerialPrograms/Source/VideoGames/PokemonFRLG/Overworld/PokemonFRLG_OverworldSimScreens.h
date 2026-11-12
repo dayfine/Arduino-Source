@@ -15,6 +15,7 @@
 #include <string_view>
 #include "Common/Cpp/Time.h"
 #include "PokemonFRLG_MovementMechanics.h"
+#include "Pokemon/Navigation/Pokemon_MoveMechanics.h"
 #include "PokemonFRLG_OverworldRoute.h"
 
 namespace PokemonAutomation{
@@ -59,9 +60,9 @@ struct SimEncounter{
 //  detection delays (OverworldInterrupt::detection_delay()) are its guesses
 //  at these.
 struct SimTiming{
-    Milliseconds tile = MovementMechanics::TILE_TIME;
+    Milliseconds tile = Pokemon::FRLG_MOVE_MECHANICS.walk.tile.across;
     //  A tile on the Bicycle.
-    Milliseconds bike_tile = MovementMechanics::BIKE_TILE_TIME;
+    Milliseconds bike_tile = Pokemon::FRLG_MOVE_MECHANICS.bike->tile.across;
     Milliseconds flash{300};
     Milliseconds battle_screen{3700};
     //  A wild battle's text box, before the HP boxes (battle_screen). Not
