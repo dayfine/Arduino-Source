@@ -44,9 +44,9 @@
           "item": "hm03",
           "move": "surf",
           "slot": 1,
-          "forget": "water-gun"
+          "keep": ["bite", "water-pulse", "dig", "mega-kick"]
         },
-        "why": "HM03 Surf in place of Water Gun, as pokeguy (1:14:55 to 1:15:13: Surf, Water Pulse, Bite, Mega Kick after it), unless the lead knows it; an HM, so not a one-shot TM"
+        "why": "HM03 Surf in place of Water Gun, as pokeguy (1:14:55 to 1:15:13: Surf, Water Pulse, Bite, Mega Kick after it), unless the lead knows it; an HM, so not a one-shot TM; keep list: Bite, Water Pulse, Dig and Mega Kick stay and the one other move (Bubble or Water Gun) goes; fails if none or several are outside the list"
       },
       {
         "id": "center_northwest_corner",

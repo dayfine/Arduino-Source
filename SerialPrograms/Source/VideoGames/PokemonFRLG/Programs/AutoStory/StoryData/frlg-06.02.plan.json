@@ -25,9 +25,9 @@
           "item": "tm28",
           "move": "dig",
           "slot": 1,
-          "forget": "withdraw"
+          "keep": ["tackle", "water-gun", "bubble", "bite", "water-pulse", "mega-kick", "surf"]
         },
-        "why": "TM28 Dig in place of Withdraw, for Lt. Surge, unless the lead knows it or there is no TM28"
+        "why": "TM28 Dig in place of Withdraw, for Lt. Surge, unless the lead knows it or there is no TM28; keep list: the damaging moves, Bite, Mega Kick and Surf, so the one other move (Withdraw) goes; fails if none or several are outside the list"
       },
       {
         "id": "above_gym_tree",
