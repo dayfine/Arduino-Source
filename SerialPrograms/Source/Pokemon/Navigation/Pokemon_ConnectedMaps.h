@@ -43,6 +43,10 @@ public:
         : m_maps(&maps)
     {}
 
+    //  How many maps are loaded: MapPlace::map runs from 0 to size() - 1.
+    size_t size() const{
+        return m_maps->size();
+    }
     const MapData& map(size_t index) const{
         return (*m_maps)[index];
     }
