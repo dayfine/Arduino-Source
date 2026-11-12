@@ -715,6 +715,28 @@ UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<const Map
 //  But for 09.01's legs down onto B4F's stairs (11, 15), taken east, which
 //  passed on the console: legs east onto them fail the 09.01 simulation,
 //  with no fade into B3F (a follow-up).
+//  ROUTES' legs onto them another way are tapped, from a tile the walk
+//  knows: the route's start, or the end of a leg to a wall, a warp or
+//  another tapped leg (10.05's Pokemon Tower 5F stairs (18, 10), console B,
+//  2026-11-12 03:41).
+std::string planned_onto_stairs_sideways(const std::vector<RouteStep>& legs){
+    bool known = true;
+    for (const RouteStep& leg : legs){
+        if (leg.action == RouteAction::FACE){
+            continue;
+        }
+        const MapData* map = find_map_named(leg.end.map);
+        const std::optional<Direction> taken = map ? exit_mat(*map, leg.end.point) : std::nullopt;
+        if (taken && leg.direction != *taken && !leg.warps && !leg.to_wall && !(leg.tapped && known)){
+            return std::format(
+                "ends on {}, whose warp is taken going {}, going {}, not to a wall and not tapped from a known tile.",
+                to_string(leg.end), direction_name(*taken), direction_name(leg.direction)
+            );
+        }
+        known = leg.to_wall || leg.warps || leg.tapped;
+    }
+    return "";
+}
 UnitTestResult test_legs_onto_stairs_their_way(){
     const std::set<std::string> PASSED_ON_CONSOLE{"09.01/b4f_to_stairs"};
     bool has_shoes = false;
@@ -726,6 +748,11 @@ UnitTestResult test_legs_onto_stairs_their_way(){
         }
         StoryPose pose = one_tile(Pokemon::grid_pose_of(*checkpoint.start));
         for (const StoryStep& step : checkpoint.steps){
+            if (step.kind == StoryStepKind::ROUTE){
+                if (const std::string problem = planned_onto_stairs_sideways(legs_walked(pose, step)); !problem.empty()){
+                    return std::format("{}/{}: {}", checkpoint.id, step.name, problem);
+                }
+            }
             const std::vector<RouteStep> legs = step.kind == StoryStepKind::LEGS ? legs_walked(pose, step) : std::vector<RouteStep>{};
             if (!legs.empty() && !legs.back().warps){
                 const MapData* map = find_map_named(legs.back().end.map);
@@ -1222,7 +1249,7 @@ const AutoStoryTestCase AUTO_STORY_CASES[] = {
         .expectation = {.description = "calculates Dpad RIGHT inputs for setting game options"},
     },
     {
-        .input = {.name = "legs onto stairs step onto them the way their warp is taken", .body = test_legs_onto_stairs_their_way},
+        .input = {.name = "legs and routes onto stairs step onto them the way their warp is taken, or tap", .body = test_legs_onto_stairs_their_way},
         .expectation = {.description = "legs that end on side stairs or an exit mat end going the warp's way"},
     },
     {
