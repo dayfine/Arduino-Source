@@ -102,6 +102,13 @@ struct SimScript{
     //  The fade out of a lift only dims the screen, never black (console B,
     //  2026-11-10, 00.32 lift_to_b4f): no FADE shows for it.
     bool lift_exit_dims = true;
+    //  A trainer's script after their battle, this long: a message, then
+    //  black while the game takes the trainer away, and no input until it
+    //  ends. Giovanni's on Rocket Hideout B4F (pokefirered
+    //  RocketHideout_B4F_EventScript_Giovanni: msgbox, fadescreen,
+    //  removeobject): a tap 0.4 s after his battle's text was lost (console
+    //  B, 2026-11-11 17:51, 09.02 east_of_silph_scope). Not set: none.
+    std::optional<Milliseconds> scene_after_trainer_battle;
     SimTiming timing;
 };
 
