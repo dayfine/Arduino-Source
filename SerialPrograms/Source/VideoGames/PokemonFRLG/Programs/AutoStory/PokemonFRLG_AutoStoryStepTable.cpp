@@ -130,6 +130,7 @@ Pokemon::StoryActionSpec teach_action_spec(){
         absent_arg("slot", StoryArgType::INTEGER, "the party slot, from 1, when no species is named"),
         absent_arg("species", StoryArgType::WORD, "the member by its species, e.g. \"pidgey\": the first slot whose summary reads it"),
         absent_arg("forget", StoryArgType::WORD, "the move to forget when it knows four"),
+        absent_arg("or_forget", StoryArgType::WORDS, "the moves to forget, in order, when it doesn't know `forget`"),
         absent_arg("forget_slot", StoryArgType::INTEGER, "the move slot to forget, from 1, when no move is named"),
     }};
 }

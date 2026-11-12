@@ -120,7 +120,12 @@ std::optional<SummaryRead> read_party_summary(
         console, context, menu == StartMenu::BEFORE_POKEDEX ? StartMenuContext::NO_DEX : StartMenuContext::STANDARD
     );
     context.wait_for_all_requests();
-    //  The party menu opens on the lead; DOWN steps through the slots.
+    //  LEFT puts the cursor on the lead from any other slot (pokefirered
+    //  party_menu.c, MENU_DIR_LEFT); on the lead it does nothing. The menu
+    //  doesn't always open on the lead: 10.01's teach_fly read slot 1 as the
+    //  Pidgey, the party's third (console B, 2026-11-12 01:38). DOWN steps
+    //  through the slots from there.
+    tap(context, DPAD_LEFT);
     for (size_t c = 0; c < slot; c++){
         tap(context, DPAD_DOWN);
     }
