@@ -19,7 +19,6 @@
 #include "Common/Cpp/Time.h"
 #include "CommonTools/ScreenMachine/ScreenObservation.h"
 #include "NintendoSwitch/Controllers/NintendoSwitch_ControllerButtons.h"
-#include "Pokemon/AutoStory/Pokemon_ScreenEventTypes.h"
 #include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h"
 #include "Pokemon/Navigation/Pokemon_Grid.h"
@@ -28,6 +27,8 @@
 
 namespace PokemonAutomation{
 namespace Pokemon{
+
+class ScreenEvents;
 
 
 //  How fast a held direction moves the player.
