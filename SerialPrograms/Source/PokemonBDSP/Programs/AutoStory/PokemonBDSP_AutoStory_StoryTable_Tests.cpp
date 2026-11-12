@@ -445,6 +445,16 @@ UnitTestResult test_jubilife_routes_cross_no_wander_zone(Logger& logger){
 }
 
 //  Where the walk from `x` on row 22 walks the plaza, or "".
+//  The Wonder Station's plaza on JubilifeCity, as measured on lab-B
+//  (2026-11-12): its round wall and the woman by it stop walks west on
+//  rows 21 to 24 from x 52 and on row 26 from x 43 (taps from (58, 26)
+//  moved 14 tiles clean to (44, 26), then stopped by her). Row 26 east of
+//  her is open: the way west goes south round her.
+constexpr Pokemon::TileBox WONDER_STATION_PLAZA[] = {
+    {.x0 = 40, .y0 = 20, .x1 = 52, .y1 = 25},
+    {.x0 = 40, .y0 = 26, .x1 = 43, .y1 = 27},
+};
+
 std::string company_clown_plaza_tiles(Logger& logger, TableRoute route, int x){
     route.from = Pokemon::tile_pose("JubilifeCity", {{x, 22}}, Direction::WEST);
     const RouteStepPlan plan = plan_table_route(route);
@@ -457,15 +467,17 @@ std::string company_clown_plaza_tiles(Logger& logger, TableRoute route, int x){
     }
     const auto plaza = [&](const TilePos& pos){
         const std::optional<TilePos> local = story_to_local(world, "JubilifeCity", pos);
-        return local && local->x >= 44 && local->x <= 52 && local->y >= 20 && local->y <= 24;
+        return local && std::any_of(std::begin(WONDER_STATION_PLAZA), std::end(WONDER_STATION_PLAZA), [&](const Pokemon::TileBox& box){
+            return local->x >= box.x0 && local->x <= box.x1 && local->y >= box.y0 && local->y <= box.y1;
+        });
     };
     const auto [most, leg] = most_zone_tiles(world, plan.start, *plan.legs, plaza);
-    return most == 0 ? "" : std::format("the leg {} walks {} tile(s) of the plaza (44..52, 20..24).", leg, most);
+    return most == 0 ? "" : std::format("the leg {} walks {} tile(s) of the plaza.", leg, most);
 }
 
 //  00.05c's walk to the Poketch Company's clown from the street
 //  (57..58, 22), where the checkpoint starts on a rerun from 01.01's start,
-//  keeps off the plaza (44..52, 20..24). BDSP put the Global Wonder Station
+//  keeps off the plaza (WONDER_STATION_PLAZA). BDSP put the Global Wonder Station
 //  there, a round wall with people round it that pret's Diamond map lacks:
 //  on lab-B (2026-11-12 01:22 and 01:55) the walk west from (57, 22) was
 //  stopped at (50, 22), (51, 21) and (49, 23), and talked to the woman at

@@ -871,6 +871,75 @@ UnitTestResult test_wall_leg_check_at_wall_short_distance_safeguard(Logger& logg
         return "caught unexpected failure: " + f.message;
     }
 }
+//  A hold into someone standing still reads as stopped `late` after a stop
+//  at a wall would: the screen moves on while we push against them.
+class PushingRouteIO : public GridSimRouteIO{
+public:
+    PushingRouteIO(GridSim& sim, std::vector<std::string>& notes, Milliseconds late)
+        : GridSimRouteIO(sim, notes)
+        , m_sim(sim)
+        , m_late(late)
+    {}
+
+    virtual WalkResult walk_to_wall(const RouteWallWalk& walk) override{
+        WalkResult result = GridSimRouteIO::walk_to_wall(walk);
+        const TilePos ahead = nearest_tile(m_sim.player().pos).next(walk.direction);
+        const std::vector<SimWanderer>& people = sim_wanderers(m_sim);
+        if (result.stop == WalkStop::BLOCKED && std::any_of(people.begin(), people.end(), [&](const SimWanderer& person){
+            return person.pos == ahead;
+        })){
+            result.walked += m_late;
+        }
+        return result;
+    }
+
+private:
+    GridSim& m_sim;
+    Milliseconds m_late;
+};
+
+//  Someone the map lacks stands on Jubilife's row 26 at (54, 26), and the
+//  walk west to the wall from (58, 26) pushes against them, which reads as
+//  stopped 1000 ms late: on lab-B (2026-11-12 02:52) "west 17 (to wall)"
+//  stopped after 2400 ms, its time read as "about 13 tiles", and the stop's
+//  tiles round the count, (44..46, 26), went on as where we stood. Any tile
+//  of the leg fits; taps back to the wall behind find which.
+UnitTestResult test_stranger_stops_a_wall_leg_early(Logger& logger){
+    const StoryWorld* world = story_plan_world("JubilifeCity", "JubilifeCity");
+    if (world == nullptr){
+        return "JubilifeCity world not found.";
+    }
+    const TilePos start = story_to_world(*world, "JubilifeCity", {58, 26});
+    const TilePos target = story_to_world(*world, "JubilifeCity", {41, 26});
+    const TilePos stranger = story_to_world(*world, "JubilifeCity", {54, 26});
+    const SimWanderer person{.name = "a stranger", .box = {.x0 = stranger.x, .y0 = stranger.y, .x1 = stranger.x, .y1 = stranger.y},
+        .pos = stranger, .seed = 0, .step_interval = 0ms};
+    GridSim sim({.world = world, .trainers = {}, .wanderers = {person}}, start, Direction::WEST, true);
+    std::vector<std::string> notes;
+    PushingRouteIO sim_io(sim, notes, 1000ms);
+    RouteTrainers trainers{{}, [&sim](const std::string&){ sim.end_dialogue(); }};
+    std::vector<TilePos> believed;
+    try{
+        believed = walk_route(sim_io, *world, {start}, trainers, {
+            .goal = [&](const TilePos& pos){ return pos == target; },
+            .label = "west on row 26",
+            .avoid = {},
+            .costs = *story_route_costs("town"),
+            .speed = MoveSpeed::RUN,
+        });
+    }catch (const GridSimFailure& e){
+        return "failed: " + e.message;
+    }
+    for (const std::string& note : notes){
+        logger.log(note);
+    }
+    const TilePos at = nearest_tile(sim.player().pos);
+    if (believed != std::vector<TilePos>{target} || at != target){
+        return std::format("ended on {}, believed {} tile(s), not on {}.", describe(*world, at), believed.size(), describe(*world, target));
+    }
+    return true;
+}
+
 //  Oreburgh Mine B1F: the entrance hall corridor is traversed to and back by
 //  running south from (12, 1) to (12, 21), and north from (12, 21), where the
 //  coal room's warp lands us, to (12, 1).
@@ -971,6 +1040,10 @@ const AutoStoryGridSimCase AUTO_STORY_GRID_SIM_CASES[] = {
     },
     {
         .input = {"check_at_wall safeguard rejects legs stalled well short of expected distance", test_wall_leg_check_at_wall_short_distance_safeguard},
+        .expectation = {},
+    },
+    {
+        .input = {"00.05c, someone the map lacks stops a wall leg early, the push read as many tiles (lab-B, 2026-11-12 02:52)", test_stranger_stops_a_wall_leg_early},
         .expectation = {},
     },
     {
