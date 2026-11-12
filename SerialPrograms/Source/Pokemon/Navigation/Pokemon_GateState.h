@@ -27,6 +27,7 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
+//  Which gates are open and which switches are on.
 struct GateState{
     //  The card-key gates opened, each as gate_key(map, gate id).
     std::set<std::string> opened;
@@ -39,6 +40,7 @@ struct GateState{
 };
 
 //  What a story step does to the state: gates it opens and switches it sets.
+//  What a step does to a GateState: gates it opens, switches it sets.
 struct GateChange{
     std::set<std::string> opened;
     //  The switch's new state, on or off.

@@ -57,6 +57,7 @@
 #include "Common/Cpp/Json/JsonValue.h"
 #include "Pokemon_Grid.h"
 #include "Pokemon_MapFeatures.h"
+#include "Pokemon_MapGates.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{

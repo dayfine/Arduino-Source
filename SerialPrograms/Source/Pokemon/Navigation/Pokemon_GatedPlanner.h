@@ -38,37 +38,14 @@
 #include <vector>
 #include "Pokemon_ConnectedMaps.h"
 #include "Pokemon_GateTiles.h"
+#include "Pokemon_GatedTypes.h"
 #include "Pokemon_LegPlanner.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
 
 
-//  The Step::action of the legs the wrapper adds. A game's own actions must
-//  differ from these.
-constexpr int ACTION_OPEN_GATE = 1000;
-constexpr int ACTION_PRESS_SWITCH = 1001;
-
-struct GateRules{
-    //  The story state says the player holds the Card Key: a plan may open card-key gates.
-    bool card_key_held = false;
-    //  Cost of opening a gate or pressing a statue, on top of LegCosts::per_tile:
-    //  the dialog, and for a statue its yes/no.
-    int open_gate_cost = 10;
-    int press_switch_cost = 20;
-};
-
-
-//  The game's state and the gate state.
-template <typename InnerState>
-struct GatedState{
-    InnerState inner;
-    GateState gates;
-
-    bool operator==(const GatedState& other) const = default;
-};
-
-
+//  The game's step model, wrapped: see the top of this file.
 template <typename Inner>
 class GatedModel{
 public:
@@ -157,35 +134,64 @@ private:
 };
 
 
-//  The cheapest legs from `start` with the gates as `gates` to a state of the
-//  game where `at_goal` holds (as plan_legs()), or nothing. Each leg's start and end
-//  carry the gate state; gate_change_of() says what an ACTION leg did to it.
+//  Where a plan starts: the game's state, the gates, and the way the player faces if known.
+template <typename InnerState>
+struct GatedStart{
+    InnerState state;
+    GateState gates;
+    std::optional<Direction> facing = std::nullopt;
+};
+
+//  Where a plan ends: a state of the game where `at_goal` holds, facing `facing` if given.
+template <typename InnerState>
+struct GatedGoal{
+    std::function<bool(const InnerState&)> at_goal;
+    std::optional<Direction> facing = std::nullopt;
+};
+
+//  The cheapest legs from `start` to `goal` (as plan_legs()), or nothing.
+//  Each leg's start and end carry the gate state; gate_change_of() says what
+//  an ACTION leg did to it.
 template <typename Inner>
 std::optional<std::vector<Leg<GatedState<typename Inner::State>>>> plan_gated_legs(
     const Inner& inner, const ConnectedMaps& world, const GateRules& rules,
-    const typename Inner::State& start, const GateState& gates, std::optional<Direction> start_facing,
-    const std::function<bool(const typename Inner::State&)>& at_goal,
-    std::optional<Direction> goal_facing,
+    const GatedStart<typename Inner::State>& start,
+    const GatedGoal<typename Inner::State>& goal,
     const LegCosts& costs = LegCosts()
+);
+
+//  What a leg did to the gates: the gate it opened, the switch it flipped.
+template <typename InnerState>
+GateChange gate_change_of(const Leg<GatedState<InnerState>>& leg);
+
+//  The gate state after the last of `legs`, or `before` if there are none.
+template <typename InnerState>
+GateState gates_after(const GateState& before, const std::vector<Leg<GatedState<InnerState>>>& legs);
+
+
+template <typename Inner>
+std::optional<std::vector<Leg<GatedState<typename Inner::State>>>> plan_gated_legs(
+    const Inner& inner, const ConnectedMaps& world, const GateRules& rules,
+    const GatedStart<typename Inner::State>& start,
+    const GatedGoal<typename Inner::State>& goal,
+    const LegCosts& costs
 ){
     using State = GatedState<typename Inner::State>;
     const GatedModel<Inner> model(inner, world, rules);
     return plan_legs(
-        model, State{start, gates}, start_facing,
+        model, State{start.state, start.gates}, start.facing,
         std::function<bool(const State&)>([&](const State& state){
-            return at_goal(state.inner);
+            return goal.at_goal(state.inner);
         }),
-        goal_facing, costs
+        goal.facing, costs
     );
 }
 
-//  What a leg did to the gates: the gate it opened, the switch it flipped.
 template <typename InnerState>
 GateChange gate_change_of(const Leg<GatedState<InnerState>>& leg){
     return gate_change_between(leg.start.gates, leg.end.gates);
 }
 
-//  The gate state after the last of `legs`, or `before` if there are none.
 template <typename InnerState>
 GateState gates_after(const GateState& before, const std::vector<Leg<GatedState<InnerState>>>& legs){
     return legs.empty() ? before : legs.back().end.gates;

@@ -1473,6 +1473,7 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Navigation/Pokemon_ConnectedMaps_Tests.cpp
     Source/Pokemon/Navigation/Pokemon_ConnectedMaps_Tests.h
     Source/Pokemon/Navigation/Pokemon_GatedPlanner.h
+    Source/Pokemon/Navigation/Pokemon_GatedTypes.h
     Source/Pokemon/Navigation/Pokemon_GateState.cpp
     Source/Pokemon/Navigation/Pokemon_GateState.h
     Source/Pokemon/Navigation/Pokemon_GateTiles.cpp
@@ -1485,6 +1486,7 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Navigation/Pokemon_Grid.h
     Source/Pokemon/Navigation/Pokemon_LegTypes.h
     Source/Pokemon/Navigation/Pokemon_MapFeatures.h
+    Source/Pokemon/Navigation/Pokemon_MapGates.h
     Source/Pokemon/Navigation/Pokemon_MapTiles.h
     Source/Pokemon/Navigation/Pokemon_RouteLogLegs.h
     Source/Pokemon/Navigation/Pokemon_RouteLogTypes.h

@@ -40,11 +40,13 @@ DeclaredPose read_declared_pose(const JsonValue& value, std::string_view source)
 //  (the gates a step opens, the switches it sets; both optional, unknown
 //  fields fail) and write it back.
 GateChange read_gate_change(const JsonValue& value, std::string_view source);
+//  The change as JSON, as read_gate_change() reads it.
 JsonValue write_gate_change(const GateChange& change);
 
 //  The same as a state: what a checkpoint's "start_gates" says is open and
 //  on. "switches" that are off need not be listed, and are not written.
 GateState read_gate_state(const JsonValue& value, std::string_view source);
+//  The state as JSON, as read_gate_state() reads it.
 JsonValue write_gate_state(const GateState& state);
 
 

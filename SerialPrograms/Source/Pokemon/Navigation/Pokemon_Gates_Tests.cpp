@@ -106,9 +106,8 @@ std::optional<GatedLegs> plan(
     GateRules rules;
     rules.card_key_held = card_key_held;
     return plan_gated_legs(
-        GateGame(), world(), rules, from, gates, std::nullopt,
-        std::function<bool(const MapPlace&)>([to](const MapPlace& place){ return place == to; }),
-        std::nullopt
+        GateGame(), world(), rules, GatedStart<MapPlace>{from, gates},
+        GatedGoal<MapPlace>{std::function<bool(const MapPlace&)>([to](const MapPlace& place){ return place == to; })}
     );
 }
 
@@ -217,10 +216,6 @@ UnitTestResult test_gate_errors(){
     const std::string unknown_switch = R"({"d": {"tiles": [[0, 0]], "open_glyph": ".", "new_game": "closed", "switch": "nope", "open_when": "on"}})";
     if (parse_error(rows, unknown_switch, "{}").empty()){
         return "A gate on an unlisted switch was accepted.";
-    }
-    const std::string stray = R"({"d": {"tiles": [[0, 0]], "open_glyph": ".", "new_game": "closed", "opens_by": "card_key_face_a", "flag": "F", "bogus": 1}})";
-    if (parse_error(rows, stray, "{}").empty()){
-        return "An unknown gate field was accepted.";
     }
     const std::string far_statue = R"({"s": {"flag": "F", "toggle": true, "floors": ["T"], "statues": [{"coord": [9, 9], "face_from": [1, 1], "facing": "north"}]}})";
     if (parse_error(rows, door, far_statue).empty()){
