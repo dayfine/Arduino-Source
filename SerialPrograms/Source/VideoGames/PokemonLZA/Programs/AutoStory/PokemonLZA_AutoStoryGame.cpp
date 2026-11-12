@@ -222,8 +222,7 @@ private:
         const auto end = args.find("end");
         std::optional<PokemonAutomation::ScreenEvent> fade;
         if (end != args.end()){
-            const std::optional<Pokemon::ScreenEvent> event = walk_end_event(std::get<std::string>(end->second));
-            fade = event ? engine_fade_event(*event) : std::nullopt;
+            fade = walk_end_event(std::get<std::string>(end->second));
         }
         return fade ? walk_until(backend, name, move, heading, *fade) : run_story_move(backend, move, heading);
     }
