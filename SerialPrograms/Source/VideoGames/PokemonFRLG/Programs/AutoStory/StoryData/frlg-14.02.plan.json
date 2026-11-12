@@ -7,6 +7,13 @@
     "start": {"map": "CinnabarIsland_Gym", "tiles": [[5, 5]], "facing": "north"},
     "events": [
       {
+        "id": "lead_lv40_for_blaine",
+        "kind": "game_action",
+        "action": "level",
+        "args": {"slot": 1, "min": 40},
+        "why": "the precondition for Blaine: the lead at least Lv40, pokeguy's Blastoise here (PokemonSimulation docs/battles/pokeguy-conditions.md, blaine: B recovery, no X items, from 24/126 HP: 100/100 wins, 90.0% to 100.0%); at his level or above, those sims stand for this fight and no new one is needed; below it, the run stops here, before the fight"
+      },
+      {
         "id": "challenge_blaine",
         "kind": "talk",
         "why": "Blaine (5, 4)"

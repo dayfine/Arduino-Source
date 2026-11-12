@@ -26,6 +26,7 @@
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryParty.h"
 #include "PokemonFRLG_AutoStoryRooms.h"
+#include "PokemonFRLG_AutoStoryMember.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryRows_Tests.h"
 #include "PokemonFRLG_AutoStoryTable.h"
@@ -230,6 +231,45 @@ UnitTestResult test_lead_moves_against_blaine(){
     return true;
 }
 
+class QuietLogger : public Logger{
+public:
+    using Logger::log;
+    virtual void log(const std::string&, Color) override{}
+};
+
+//  Battle checkpoint `id`'s precondition: a LEVEL step on the lead before
+//  its battle `battle`, at least `pokeguy`, pokeguy's level there (whose
+//  sims stand for the fight at that level or above). A lead at that level
+//  passes it; one a level below stops the checkpoint before the fight.
+UnitTestResult check_lead_level_precondition(Logger& logger, std::string_view id, std::string_view battle, unsigned pokeguy){
+    std::optional<LevelCheck> check;
+    for (const StoryStep& step : checkpoint(id).steps){
+        if (step.kind == StoryStepKind::BATTLE && step.name == battle){
+            break;
+        }
+        if (step.action == LEVEL_ACTION){
+            check = level_check_of(step.args);
+        }
+    }
+    if (!check || check->slot != 0 || check->level != pokeguy){
+        return std::format("{}: expected a LEVEL step on the lead, at least Lv{}, before {}.", id, pokeguy, battle);
+    }
+    for (const unsigned level : {pokeguy, pokeguy - 1}){
+        const MemberReader lead = [level](size_t slot) -> std::optional<MemberInfo>{
+            if (slot != 0){
+                return std::nullopt;
+            }
+            return MemberInfo{.species = "blastoise", .level = level};
+        };
+        const LevelResult result = run_level_check(logger, lead, *check);
+        const LevelEnd expected = level >= pokeguy ? LevelEnd::REACHED : LevelEnd::BELOW;
+        if (result.end != expected || result.level != level){
+            return std::format("{}: a Lv{} lead {} the Lv{} check.", id, level, level >= pokeguy ? "fails" : "passes", pokeguy);
+        }
+    }
+    return true;
+}
+
 const AutoStoryCinnabarGymCase AUTO_STORY_CINNABAR_GYM_CASES[] = {
     {
         .input = {.name = "Cinnabar Gym's quiz doors are shut on the map", .body = test_quiz_doors_on_map},
@@ -242,6 +282,13 @@ const AutoStoryCinnabarGymCase AUTO_STORY_CINNABAR_GYM_CASES[] = {
     {
         .input = {.name = "the lead's attacks against Blaine", .body = test_lead_moves_against_blaine},
         .expectation = {.description = "Surf against each Fire type"},
+    },
+    {
+        .input = {.name = "14.02 stops before Blaine unless the lead is at least pokeguy's Lv40", .body = []{
+            QuietLogger logger;
+            return check_lead_level_precondition(logger, "14.02", "blaine", 40);
+        }},
+        .expectation = {.description = "a Lv40 lead passes the LEVEL step, a Lv39 one stops there"},
     },
 };
 
