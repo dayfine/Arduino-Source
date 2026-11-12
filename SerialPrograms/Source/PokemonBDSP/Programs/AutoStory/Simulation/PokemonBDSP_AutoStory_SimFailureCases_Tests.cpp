@@ -415,6 +415,44 @@ UnitTestResult sandgem_entry_two_columns_west(Logger& logger){
     return passes(run_case(logger, "00.04b", "00.04b", {.fade = {}, .banner = {}}, std::move(knobs)));
 }
 
+//  00.05c on lab-B 2026-11-11: 00.05b's Poketch Company clown was
+//  "answered" by the sign's text, so the save held two coupons; the
+//  president gave no Poketch and 00.05c went on to the street as passed.
+//  `misread` re-runs that read in 00.05c's own talk too. "" when the run
+//  stopped at 00.05c's Poketch check, as it must when a coupon is still
+//  missing.
+std::string poketch_run(Logger& logger, bool misread){
+    SimWorldKnobs knobs;
+    knobs.coupons_at_start = {"mart_clown", "tv_clown"};
+    knobs.poketch_at_start = false;
+    if (misread){
+        knobs.talks_without_coupon = {"company_clown"};
+    }
+    return run_case(logger, "00.05c", "00.05c", {.fade = {}, .banner = {}}, std::move(knobs));
+}
+UnitTestResult no_poketch_fails_00_05c(Logger& logger){
+    const std::string stopped = poketch_run(logger, true);
+    if (stopped.find("00.05c poketch") == std::string::npos){
+        return UnitTestResult("expected a stop at 00.05c's Poketch check; got " + (stopped.empty() ? std::string("a pass") : stopped));
+    }
+    return true;
+}
+UnitTestResult missing_coupon_collected_in_00_05c(Logger& logger){
+    return passes(poketch_run(logger, false));
+}
+//  01.01 from a save with no Poketch: Jubilife's east-exit guard would
+//  ask about the Poketch campaign and turn us back (lab-B 2026-11-11, the
+//  walk took him for a trainer); the row stops at its first step instead.
+UnitTestResult gate_guard_stops_01_01(Logger& logger){
+    SimWorldKnobs knobs;
+    knobs.poketch_at_start = false;
+    const std::string stopped = run_case(logger, "01.01", "01.01", {.fade = {}, .banner = {}}, std::move(knobs));
+    if (stopped.find("01.01 poketch_before_the_gate") == std::string::npos){
+        return UnitTestResult("expected a stop at 01.01's Poketch check; got " + (stopped.empty() ? std::string("a pass") : stopped));
+    }
+    return true;
+}
+
 //  00.03: Rowan's scene ends at home on (6, 8) beside Mom (lab-B
 //  2026-11-09, 7 of 7 runs). The way out holds south onto the door's tile
 //  (6, 10); from a column west, (5, 8), the hold stops on (5, 10) with no
@@ -675,6 +713,9 @@ const FailureCase AUTO_STORY_FAILURE_CASES[] = {
     {.input = {"00.04 Mom's call fires above the mat, on (6, 9): the walk ends in it, her hat scene plays it (lab-B 2026-11-09 17:29)", moms_call_above_the_mat}, .expectation = {}},
     {.input = {"00.04 the old walk round Mom to (6, 9) runs into her call: it hands it to her hat scene, not fights it (lab-B 2026-11-09 17:29)", old_walk_hands_moms_call_over}, .expectation = {}},
     {.input = {"00.04b the run into Sandgem stops two columns west: the walk still ends below the Center's door (lab-B 2026-11-09 20:09)", sandgem_entry_two_columns_west}, .expectation = {}},
+    {.input = {"00.05c a coupon missing (the sign read for the Poketch Company clown): no Poketch, 00.05c fails (lab-B 2026-11-11)", no_poketch_fails_00_05c}, .expectation = {}},
+    {.input = {"00.05c a coupon missing from 00.05b: its clown talks collect it, the president gives the Poketch", missing_coupon_collected_in_00_05c}, .expectation = {}},
+    {.input = {"01.01 with no Poketch: the east-exit guard's gate stops the row at its check, not a trainer fight (lab-B 2026-11-11)", gate_guard_stops_01_01}, .expectation = {}},
     {.input = {"00.04 to the ledge column with a wild battle on each pass through Route 201's grass (lab-B 2026-11-09 16:14)", [](Logger& logger){
         return passes(ledge_walk_in_grass(logger, {}));
     }}, .expectation = {}},

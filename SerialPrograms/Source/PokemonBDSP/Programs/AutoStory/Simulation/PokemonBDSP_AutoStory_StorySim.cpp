@@ -648,6 +648,7 @@ void SimExecutor::start_scene_at_end(const StoryStep& step){
 }
 
 void SimExecutor::land(const std::string& step){
+    count_coupons(step);
     const auto lands = m_knobs.lands.find(step);
     if (lands == m_knobs.lands.end()){
         return;
@@ -760,6 +761,17 @@ Outcome SimExecutor::stub(){
     return Pokemon::outcome_ok();
 }
 
+void SimExecutor::count_coupons(const std::string& step){
+    static const std::set<std::string> CLOWNS{"mart_clown", "tv_clown", "company_clown"};
+    if (CLOWNS.contains(step) && !m_knobs.talks_without_coupon.contains(step)){
+        m_coupons.insert(step);
+    }
+    if (step == "president"){
+        m_poketch = m_coupons.size() == CLOWNS.size();
+        m_logger.log(std::format("[{}] president: {} coupons, {}.", m_row, m_coupons.size(), m_poketch ? "the Poketch" : "no Poketch"));
+    }
+}
+
 //  The steps that need the console: stubbed, but for the Center's door and
 //  the speeches after a battle.
 StoryBoundActions SimExecutor::sim_actions(){
@@ -778,7 +790,12 @@ StoryBoundActions SimExecutor::sim_actions(){
             return heal(state, step);
         },
         .save = stubbed,
-        .event = [stubbed](const std::string&) -> Pokemon::StoryActionFunction{
+        .event = [this, stubbed](const std::string& name) -> Pokemon::StoryActionFunction{
+            if (name == "check_poketch"){
+                return [this](const StoryStep& step, RunState&){
+                    return m_poketch ? Pokemon::outcome_ok() : Pokemon::outcome_failed("no_poketch", step.name + ": no Poketch on the screen.");
+                };
+            }
             return stubbed;
         },
     };

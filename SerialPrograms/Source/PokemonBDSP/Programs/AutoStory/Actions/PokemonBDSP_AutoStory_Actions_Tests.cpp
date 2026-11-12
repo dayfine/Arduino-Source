@@ -22,6 +22,7 @@
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/Logging/Logger.h"
 #include "NintendoSwitch/Programs/MenuCursor/NintendoSwitch_MenuCursor_Tests.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryMaps.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP/Options/PokemonBDSP_PlayerModelOption.h"
@@ -662,6 +663,29 @@ UnitTestResult test_wander_row_step(Logger&){
     return true;
 }
 
+//  00.05b's Poketch Company clown (home (15, 18)): the row below him asks
+//  north from (14..16, 19); from a row low, (13, 20) faces the Company's
+//  sign (13, 19), whose text came first on the console (lab-B 2026-11-11:
+//  "answered" in round 5, and the president gave no Poketch). Such a tile
+//  is skipped; his own home and open tiles are not.
+UnitTestResult test_asks_someone_else(Logger&){
+    const Pokemon::MapData& city = story_map("JubilifeCity");
+    const Pokemon::TilePos home{15, 18};
+    struct Case{ std::string_view name; Pokemon::TilePos stand; bool expected; };
+    const Case cases[] = {
+        {"below his home", {15, 19}, false},
+        {"a tile west, open north", {14, 19}, false},
+        {"a tile east, open north", {16, 19}, false},
+        {"a row low, facing the sign", {13, 20}, true},
+    };
+    for (const Case& c : cases){
+        if (asks_someone_else(city, c.stand, home) != c.expected){
+            return std::format("{}: wrong answer.", c.name);
+        }
+    }
+    return true;
+}
+
 UnitTestResult test_choose_move(Logger&){
     struct Case{ std::string_view name; std::vector<MoveSlot> slots; size_t best; };
     const Case cases[] = {
@@ -829,6 +853,10 @@ const AutoStoryActionsCase AUTO_STORY_ACTIONS_CASES[] = {
     },
     {
         .input = {"wanderer talk: a step along the row leaves it only by a fade or a dialogue", test_wander_row_step},
+        .expectation = {},
+    },
+    {
+        .input = {"wanderer talk: no ask from a tile that faces a sign (00.05b, the Poketch Company's sign first)", test_asks_someone_else},
         .expectation = {},
     },
     {
