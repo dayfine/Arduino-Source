@@ -20,6 +20,7 @@
 #include "PokemonFRLG_AutoStoryGameArgs.h"
 #include "PokemonFRLG_AutoStoryQuietOverworld.h"
 #include "PokemonFRLG_AutoStoryStepInterrupts.h"
+#include "PokemonFRLG_AutoStoryTeach.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -33,9 +34,8 @@ using Pokemon::StoryStep;
 
 namespace{
 
-//  The party has six slots; a Pokemon's menu at most SUMMARY, four field
-//  moves, SWITCH, ITEM and CANCEL.
-constexpr size_t PARTY_SLOTS = 6;
+//  A Pokemon's menu has at most SUMMARY, four field moves, SWITCH, ITEM
+//  and CANCEL (the party's six slots are PARTY_SLOTS).
 constexpr size_t MON_MENU_ROWS = 8;
 
 } // namespace
@@ -46,14 +46,25 @@ std::optional<FlyPlan> parse_fly_step(const StoryStep& step){
     }
     const std::string* town = game_arg<std::string>(step.args, "town");
     const std::optional<size_t> index = town == nullptr ? std::nullopt : fly_town_index(*town);
-    const std::optional<size_t> slot = counted_arg(step.args, "slot", PARTY_SLOTS);
+    const std::string* species = game_arg<std::string>(step.args, "species");
+    //  A slot or a species, not both.
+    const std::optional<size_t> slot = species != nullptr
+        ? (step.args.contains("slot") || species->empty() ? std::nullopt : std::optional<size_t>(0))
+        : counted_arg(step.args, "slot", PARTY_SLOTS);
     const std::optional<size_t> menu_row = step.args.contains("menu_row")
         ? counted_arg(step.args, "menu_row", MON_MENU_ROWS)
         : std::optional<size_t>(FlyPlan{}.menu_row);
     if (!index || !slot || !menu_row){
         return std::nullopt;
     }
-    return FlyPlan{*slot, *menu_row, *index};
+    return FlyPlan{.slot = *slot, .species = species == nullptr ? "" : *species, .menu_row = *menu_row, .town = *index};
+}
+
+std::optional<size_t> fly_slot(const FlyPlan& plan, const MemberReader& reader){
+    if (plan.species.empty()){
+        return plan.slot;
+    }
+    return find_party_species(reader, plan.species);
 }
 
 std::optional<Direction> parse_surf_step(const StoryStep& step){
@@ -74,7 +85,8 @@ std::vector<Pokemon::StoryActionSpec> field_move_specs(){
     return {
         {.kind = StoryStepKind::GAME, .name = FLY_VARIANT, .args = {
             required_arg("town", StoryArgType::WORD, "the town's map, as kanto_fly_towns() names it (CeladonCity, Route4)"),
-            required_arg("slot", StoryArgType::INTEGER, "the Fly user's party slot, from 1"),
+            absent_arg("slot", StoryArgType::INTEGER, "the Fly user's party slot, from 1, when no species is named"),
+            absent_arg("species", StoryArgType::WORD, "the Fly user by its species, e.g. \"pidgey\": the first slot whose summary reads it"),
             optional_arg("menu_row", StoryArgType::INTEGER, int64_t(2), "FLY's row on its menu, from 1: SUMMARY, then field moves in move order"),
         }},
         {.kind = StoryStepKind::GAME, .name = SURF_VARIANT, .args = {
@@ -161,7 +173,7 @@ std::string fly_to_town(ConsoleHandle& console, ProControllerContext& context, c
 } // namespace
 
 std::optional<Pokemon::Outcome> run_field_move_step(
-    ConsoleHandle& console, ProControllerContext& context, const StoryStep& step
+    ConsoleHandle& console, ProControllerContext& context, Language language, const StoryStep& step
 ){
     const auto done = [&step]{
         return step.pose_after ? Pokemon::outcome_ok(Pokemon::pose_of(*step.pose_after)) : Pokemon::outcome_ok();
@@ -171,11 +183,17 @@ std::optional<Pokemon::Outcome> run_field_move_step(
         OverworldWalkSteps::start_surf(console, context, *water, false);
         return done();
     }
-    const std::optional<FlyPlan> plan = parse_fly_step(step);
+    std::optional<FlyPlan> plan = parse_fly_step(step);
     if (!plan){
         return std::nullopt;
     }
     const FlyTown& town = kanto_fly_towns()[plan->town];
+    const std::optional<size_t> slot = fly_slot(*plan, console_member_reader(console, context, language));
+    if (!slot){
+        console.log(std::format("Story: no {} read in the party to Fly with.", plan->species), COLOR_RED);
+        return Pokemon::outcome_failed("fly_no_member", plan->species);
+    }
+    plan->slot = *slot;
     console.log(std::format(
         "Story: Fly with slot {}, menu row {}, to {} (cell {}, {}).",
         plan->slot + 1, plan->menu_row + 1, town.name, town.cell.x, town.cell.y

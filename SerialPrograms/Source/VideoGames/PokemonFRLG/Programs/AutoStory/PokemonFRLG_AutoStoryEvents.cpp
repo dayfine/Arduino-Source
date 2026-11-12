@@ -325,6 +325,11 @@ const std::vector<MapData>& story_maps(){
         //  The one ball the story picks up in its way: B2F's MOON STONE
         //  blocks column 2 of the arrow floor (09.02's moon_stone).
         flags.insert("FLAG_HIDE_ROCKET_HIDEOUT_B2F_MOON_STONE");
+        //  Route 16's Snorlax (31, 13), gone once 11.01 has played the POKE
+        //  FLUTE and run: the routes after it go over its tile. None before
+        //  it does (10.01 goes north by the Cut tree), and 11.01 walks up to
+        //  it from the east.
+        flags.insert("FLAG_HIDE_ROUTE_16_SNORLAX");
         return overworld_maps(flags);
     }();
     return maps;

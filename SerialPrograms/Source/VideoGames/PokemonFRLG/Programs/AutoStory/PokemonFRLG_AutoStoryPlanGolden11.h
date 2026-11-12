@@ -28,6 +28,8 @@ inline constexpr std::string_view FRLG_PLAN_GOLDEN_11[] = {
     "11.01   walk west 19 (to wall) -> CeladonCity (4, 16)",
     "11.01   walk south 7 -> CeladonCity (4, 23)",
     "11.01   walk west 20 -> Route16 (32, 13) [connection 5]",
+    "11.01 east_of_cycling_road_gate from Route16 (32, 13) facing west to Route16 (28, 13) facing west",
+    "11.01   walk west 4 -> Route16 (28, 13)",
 };
 
 } // namespace PokemonFRLG

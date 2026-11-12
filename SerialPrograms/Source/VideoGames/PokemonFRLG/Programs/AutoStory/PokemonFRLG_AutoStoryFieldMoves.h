@@ -18,11 +18,13 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include "CommonFramework/Language.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
+#include "PokemonFRLG_AutoStoryMemberInfo.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -30,7 +32,7 @@ namespace PokemonFRLG{
 
 
 //  The GAME step that flies to a town, outdoors: START, POKEMON, the Fly
-//  user (`slot`, from 1), FLY on its menu (`menu_row`, from 1: SUMMARY,
+//  user (`slot`, from 1, or the first member read as `species`), FLY on its menu (`menu_row`, from 1: SUMMARY,
 //  then its field moves in move order, so 2 when Fly is its only one;
 //  pokefirered SetPartyMonFieldSelectionActions()), and `town` on the fly
 //  map (kanto_fly_towns()). It ends on the town's landing tile.
@@ -43,6 +45,9 @@ inline const std::string SURF_VARIANT = "surf";
 //  A fly step's choices, counted from 0.
 struct FlyPlan{
     size_t slot = 0;
+    //  The Fly user's species ("pidgey"), when the step names it instead
+    //  of a slot: fly_slot() finds its slot in the party.
+    std::string species = {};
     size_t menu_row = 1;
     //  In kanto_fly_towns().
     size_t town = 0;
@@ -51,6 +56,9 @@ struct FlyPlan{
 //  The fly step's choices, or nothing if `step` isn't one or names no town
 //  Fly goes to.
 std::optional<FlyPlan> parse_fly_step(const Pokemon::StoryStep& step);
+//  The party slot `plan` flies with: its slot, or the first member
+//  `reader` reads as its species; nothing if none does.
+std::optional<size_t> fly_slot(const FlyPlan& plan, const MemberReader& reader);
 //  The way a surf step faces the water, or nothing if it isn't one.
 std::optional<Pokemon::Direction> parse_surf_step(const Pokemon::StoryStep& step);
 //  Whether `step` is one of this file's steps.
@@ -61,7 +69,7 @@ std::vector<Pokemon::StoryActionSpec> field_move_specs();
 //  On the console, a step of this file's; nothing for another step. The
 //  step ends on its pose_after, if it has one.
 std::optional<Pokemon::Outcome> run_field_move_step(
-    ConsoleHandle& console, ProControllerContext& context, const Pokemon::StoryStep& step
+    ConsoleHandle& console, ProControllerContext& context, Language language, const Pokemon::StoryStep& step
 );
 
 

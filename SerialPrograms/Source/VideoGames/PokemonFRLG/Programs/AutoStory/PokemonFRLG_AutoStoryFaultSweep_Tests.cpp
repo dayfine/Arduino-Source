@@ -154,6 +154,8 @@ const std::vector<MapData>& sweep_maps(){
         const std::vector<MapData> all = overworld_maps();
         std::set<std::string> flags = map_flag_set(all, "after_hall_of_fame");
         flags.merge(map_flag_set(all, "new_game"));
+        //  As story_maps(): Route 16's Snorlax gone (11.01's flute).
+        flags.insert("FLAG_HIDE_ROUTE_16_SNORLAX");
         std::vector<MapData> flagged = overworld_maps(flags);
         flagged.push_back(rocket_hideout_lift_room());
         flagged.push_back(department_store_lift_room());
