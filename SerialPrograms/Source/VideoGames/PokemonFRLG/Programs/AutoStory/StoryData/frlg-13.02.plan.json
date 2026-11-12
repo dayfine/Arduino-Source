@@ -1,0 +1,214 @@
+{
+    "format": "pokesim-authored-checkpoint/1",
+    "game": "frlg",
+    "checkpoint": {
+        "id": "13.02",
+        "title": "Pokemon Mansion 3F through the switch's opening, the hole to 1F, 1F's stairs to B1F",
+        "start": {
+            "map": "PokemonMansion_3F",
+            "tiles": [
+                [
+                    12,
+                    6
+                ]
+            ],
+            "facing": "north"
+        },
+        "events": [
+            {
+                "id": "to_barrier",
+                "kind": "legs",
+                "action": "taps",
+                "args": {
+                    "legs": [
+                        {
+                            "direction": "east",
+                            "tiles": 7
+                        },
+                        {
+                            "direction": "south",
+                            "tiles": 4
+                        }
+                    ]
+                },
+                "why": "a tap a tile: east along row 6 to (19, 6), south to (19, 10), above 3F's opening (17-19, 11-12), set open by the press (the map has it closed)"
+            },
+            {
+                "id": "into_opening_1",
+                "kind": "step",
+                "args": {
+                    "direction": "south"
+                },
+                "declared_after": {
+                    "map": "PokemonMansion_3F",
+                    "tiles": [
+                        [
+                            19,
+                            11
+                        ]
+                    ],
+                    "facing": "south"
+                },
+                "why": "a step onto (19, 11): the opening is open only in the set state, closed on the map"
+            },
+            {
+                "id": "into_opening_2",
+                "kind": "step",
+                "args": {
+                    "direction": "south"
+                },
+                "declared_after": {
+                    "map": "PokemonMansion_3F",
+                    "tiles": [
+                        [
+                            19,
+                            12
+                        ]
+                    ],
+                    "facing": "south"
+                },
+                "why": "a step onto (19, 12), the opening's second row"
+            },
+            {
+                "id": "through_opening",
+                "kind": "step",
+                "args": {
+                    "direction": "south"
+                },
+                "declared_after": {
+                    "map": "PokemonMansion_3F",
+                    "tiles": [
+                        [
+                            19,
+                            13
+                        ]
+                    ],
+                    "facing": "south"
+                },
+                "why": "a step through onto (19, 13), the room of holes"
+            },
+            {
+                "id": "to_hole_edge",
+                "kind": "legs",
+                "action": "taps",
+                "args": {
+                    "legs": [
+                        {
+                            "direction": "south",
+                            "tiles": 4
+                        }
+                    ]
+                },
+                "why": "a tap a tile down column 19 to (19, 17), above the hole row (18..20, 18); Braydon (22, 13) looks south along column 22, so x 19 is clear"
+            },
+            {
+                "id": "down_the_hole",
+                "kind": "step",
+                "args": {
+                    "direction": "south"
+                },
+                "declared_after": {
+                    "map": "PokemonMansion_1F",
+                    "tiles": [
+                        [
+                            20,
+                            22
+                        ]
+                    ],
+                    "facing": "south"
+                },
+                "why": "a step onto the hole (19, 18), which drops to 1F (20, 22) (3F map.json warp to 1F warp 8)"
+            },
+            {
+                "id": "to_stairs",
+                "kind": "legs",
+                "action": "taps",
+                "args": {
+                    "legs": [
+                        {
+                            "direction": "south",
+                            "tiles": 1
+                        },
+                        {
+                            "direction": "west",
+                            "tiles": 3
+                        },
+                        {
+                            "direction": "south",
+                            "tiles": 2
+                        },
+                        {
+                            "direction": "east",
+                            "tiles": 1
+                        },
+                        {
+                            "direction": "south",
+                            "tiles": 2
+                        },
+                        {
+                            "direction": "east",
+                            "tiles": 4
+                        },
+                        {
+                            "direction": "south",
+                            "tiles": 2
+                        },
+                        {
+                            "direction": "east",
+                            "tiles": 4
+                        },
+                        {
+                            "direction": "north",
+                            "tiles": 2
+                        }
+                    ]
+                },
+                "why": "a tap a tile along 1F's southern rooms to (26, 27): west to column 17 (Ted (22, 24) looks west along row 24 and sees x 18-21 only), down to row 27, east on to (22, 27), (22, 29), (26, 29) and up to (26, 27)"
+            },
+            {
+                "id": "down_to_b1f",
+                "kind": "step",
+                "args": {
+                    "direction": "west"
+                },
+                "declared_after": {
+                    "map": "PokemonMansion_B1F",
+                    "tiles": [
+                        [
+                            34,
+                            29
+                        ]
+                    ],
+                    "facing": "west"
+                },
+                "why": "a step west onto the stairs (25, 27), to B1F (34, 29)"
+            }
+        ]
+    },
+    "execution": {
+        "menu": "full",
+        "notes": {
+            "checkpoint": [
+                "Starts where 13.01 ends, 3F (12, 6) facing the pressed statue. Ends on B1F (34, 29), the foot of 1F's stairs, in the set state.",
+                "Barriers: Switch model (pokefirered data/scripts/pokemon_mansion.inc, PokemonMansion_*F scripts.inc; one global flag, set on a press and applied on each floor's load; the pack's maps are the flag-clear state only). Assumed per floor, to check against the overlay data: 1F set: (22-24,10-11), (27-29,25-26), (32-34,25-26) open, (31-33,18-19) closed. 2F set: (24-26,14-15), (10,30-32) open, (12,4-8) closed, (10,28-29) wall. 3F set: (17-19,11-12) open, (21,4-8) closed. B1F set: (12,10-12), (20-22,22-23) open, (33-35,20-21) and (16,28-30) closed. Clear = the map as it is.",
+                "This row walks 3F and 1F in the set state: 3F (19, 11-12) are open, so the three single steps are declared (the map has the barrier there); the holes (18..20, 18) drop to 1F (19, 22) and (20, 22), and 1F's east rooms (x 17-37, y 20-33) are reachable only by them (a wall at x 16 splits them from the west).",
+                "The hole is the way pokeguy goes (1:19:2x: floor drop, staircase to the basement, 1:19:56)."
+            ]
+        }
+    },
+    "metadata": {
+        "phase": "testing",
+        "postconditions": {
+            "position": {
+                "map": "PokemonMansion_B1F",
+                "tiles": [
+                    [
+                        34,
+                        29
+                    ]
+                ],
+                "facing": "west"
+            }
+        }
+    }
+}

@@ -40,10 +40,12 @@
 #include "PokemonFRLG_AutoStoryPlanGolden12.h"
 #include "PokemonFRLG_AutoStoryPlanGolden15.h"
 #include "PokemonFRLG_AutoStoryPlanGolden16.h"
+#include "PokemonFRLG_AutoStoryPlanGolden13.h"
 #include "PokemonFRLG_AutoStoryRows_Tests.h"
 #include "PokemonFRLG_AutoStoryMoveData.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
 #include "PokemonFRLG_AutoStoryTable.h"
+#include "PokemonFRLG_AutoStoryUnauthoredStarts_Tests.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -284,16 +286,19 @@ UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& po
 }
 
 //  Plans every route of the story, each checkpoint from where the one
-//  before leaves the player, and adds the plans to `golden`.
+//  before leaves the player (or, past rows not authored yet, from its own
+//  start: starts_after_unauthored_rows()), and adds the plans to `golden`.
 UnitTestResult chain_story_routes(std::vector<std::string>& golden){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
-    if (checkpoints.size() != 57 || checkpoints[0].start){
-        return "Expected 57 checkpoints, the first from a new game.";
+    if (checkpoints.size() != 61 || checkpoints[0].start){
+        return "Expected 61 checkpoints, the first from a new game.";
     }
     StoryPose pose;
     for (size_t c = 0; c < checkpoints.size(); c++){
         const StoryCheckpoint& checkpoint = checkpoints[c];
-        if (c > 0){
+        if (c > 0 && starts_after_unauthored_rows(checkpoint.id)){
+            pose = one_tile(Pokemon::grid_pose_of(*checkpoint.start));
+        }else if (c > 0){
             const StoryPose start = one_tile(Pokemon::grid_pose_of(*checkpoint.start));
             const bool same_facing = !start.facing || start.facing == pose.facing;
             if (start.map != pose.map || !(start.tile == pose.tile) || !same_facing){
@@ -332,6 +337,7 @@ UnitTestResult test_golden_plans(){
     golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_12), std::end(FRLG_PLAN_GOLDEN_12));
     golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_15), std::end(FRLG_PLAN_GOLDEN_15));
     golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_16), std::end(FRLG_PLAN_GOLDEN_16));
+    golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_13), std::end(FRLG_PLAN_GOLDEN_13));
     const size_t stored = golden.size();
     size_t first_diff = 0;
     while (first_diff < actual.size() && first_diff < stored && actual[first_diff] == golden[first_diff]){
