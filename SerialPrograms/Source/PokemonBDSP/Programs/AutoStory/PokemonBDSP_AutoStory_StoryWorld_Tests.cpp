@@ -12,6 +12,7 @@
 #include <format>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
@@ -259,12 +260,16 @@ std::optional<std::string> edge_mismatch(const StoryWorld& world){
 }
 
 struct ConnectedWorldInput{
-    std::string name;
-    const StoryWorld& (*world)();
+    std::string_view name;
+    //  The story's plan world between two places (story_plan_world()), or,
+    //  if `world` is set, that world.
+    std::string_view plan_from = {};
+    std::string_view plan_to = {};
+    const StoryWorld& (*world)() = nullptr;
 };
 struct ConnectedWorldExpectation{
     //  Connections over all the maps: two for each pair that meets.
-    size_t connections;
+    size_t connections = 0;
 };
 struct ConnectedWorldCase{
     ConnectedWorldInput input;
@@ -278,7 +283,14 @@ public:
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const StoryWorld& world = m_case.input.world();
+        const ConnectedWorldInput& input = m_case.input;
+        const StoryWorld* found = input.world != nullptr
+            ? &input.world()
+            : story_plan_world(std::string(input.plan_from), std::string(input.plan_to));
+        if (found == nullptr){
+            return std::format("No story plan world from {} to {}.", input.plan_from, input.plan_to);
+        }
+        const StoryWorld& world = *found;
         if (std::optional<std::string> error = edge_mismatch(world)){
             return *error;
         }
@@ -297,42 +309,29 @@ private:
     ConnectedWorldCase m_case;
 };
 
-const StoryWorld& south_plan_world(){
-    return *story_plan_world("TwinleafTown", "Route202");
-}
-const StoryWorld& route_203_plan_world(){
-    return *story_plan_world("Route203", "JubilifeCity");
-}
-const StoryWorld& route_204_south_plan_world(){
-    return *story_plan_world("JubilifeCity", "Route204South");
-}
-const StoryWorld& route_204_north_plan_world(){
-    return *story_plan_world("Route204North", "FloaromaTown");
-}
-
 const ConnectedWorldCase CONNECTED_WORLD_CASES[] = {
     {
-        .input = {"Route 201, Sandgem and Route 202", story_maps},
+        .input = {.name = "Route 201, Sandgem and Route 202", .world = story_maps},
         .expectation = {.connections = 4},
     },
     {
-        .input = {"Twinleaf to Route 202", south_plan_world},
+        .input = {.name = "Twinleaf to Route 202", .plan_from = "TwinleafTown", .plan_to = "Route202"},
         .expectation = {.connections = 8},
     },
     {
-        .input = {"Route 203 into Jubilife", route_203_plan_world},
+        .input = {.name = "Route 203 into Jubilife", .plan_from = "Route203", .plan_to = "JubilifeCity"},
         .expectation = {.connections = 2},
     },
     {
-        .input = {"Jubilife up Route 204's south half", route_204_south_plan_world},
+        .input = {.name = "Jubilife up Route 204's south half", .plan_from = "JubilifeCity", .plan_to = "Route204South"},
         .expectation = {.connections = 2},
     },
     {
-        .input = {"Route 204's north half into Floaroma", route_204_north_plan_world},
+        .input = {.name = "Route 204's north half into Floaroma", .plan_from = "Route204North", .plan_to = "FloaromaTown"},
         .expectation = {.connections = 2},
     },
     {
-        .input = {"Jubilife alone", jubilife_maps},
+        .input = {.name = "Jubilife alone", .world = jubilife_maps},
         .expectation = {.connections = 0},
     },
 };
