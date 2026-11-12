@@ -388,7 +388,7 @@ UnitTestResult test_b2f_maze_taps(){
 //  lost: "facing an unknown way", then failed. Run 9 failed the same way,
 //  with the SILPH SCOPE right east of the player on (20, 5). On the sim
 //  with his scene: Giovanni sees the player onto (19, 5) (the sim has no
-//  talk), then 09.02's giovanni and 09.03's steps up to the pickup turn
+//  talk), then 09.02's steps from giovanni up to the pickup turn
 //  the player east on (19, 5), facing the SILPH SCOPE: no walk round it.
 UnitTestResult test_giovanni_scene_then_taps(){
     const MapPosition below_giovanni{"RocketHideout_B4F", {19, 5}};
@@ -409,17 +409,18 @@ UnitTestResult test_giovanni_scene_then_taps(){
     }
     StoryPose at{below_giovanni.map, below_giovanni.point, Direction::NORTH};
     for (const StoryCheckpoint& row : story_checkpoints()){
-        if (row.id != "09.02" && row.id != "09.03"){
+        if (row.id != "09.02"){
             continue;
         }
-        if (row.id == "09.03"){
-            at = *story_pose(Pokemon::pose_of(*row.start));
-        }
+        bool after_giovanni = false;
         for (const StoryStep& step : row.steps){
             if (step.name == "escape_rope_hideout"){
                 break;
             }
-            if (row.id == "09.02" && step.name != "giovanni"){
+            if (step.name == "giovanni"){
+                after_giovanni = true;
+            }
+            if (!after_giovanni){
                 continue;
             }
             if (const std::string failure = row_step_on_sim(sim, at, step, row.id); !failure.empty()){
@@ -644,7 +645,7 @@ const AutoStoryHideoutBodyCase HIDEOUT_BODY_CASES[] = {
     },
     {
         .input = {.name = "Giovanni's scene after his battle, then the taps", .body = test_giovanni_scene_then_taps},
-        .expectation = {.description = "09.03's turn after Giovanni waits out his script; faces the SILPH SCOPE from (19, 5)"},
+        .expectation = {.description = "09.02's turn after Giovanni waits out his script; faces the SILPH SCOPE from (19, 5)"},
     },
     {
         .input = {.name = "below B2F's lift: the wall, then one leg back", .body = test_below_lift_one_backtrack},

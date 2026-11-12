@@ -847,8 +847,8 @@ inline constexpr std::string_view FRLG_PLAN_GOLDEN[] = {
     "09.02   face north -> RocketHideout_B2F (28, 17)",
     "09.02 below_giovanni from RocketHideout_B4F (19, 5) facing east to RocketHideout_B4F (19, 5) facing north",
     "09.02   face north -> RocketHideout_B4F (19, 5)",
-    "09.03 face_silph_scope from RocketHideout_B4F (19, 5) facing south to RocketHideout_B4F (19, 5) facing east",
-    "09.03   face east -> RocketHideout_B4F (19, 5)",
+    "09.02 face_silph_scope from RocketHideout_B4F (19, 5) facing south to RocketHideout_B4F (19, 5) facing east",
+    "09.02   face east -> RocketHideout_B4F (19, 5)",
 };
 
 } // namespace PokemonFRLG
