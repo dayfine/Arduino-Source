@@ -151,7 +151,7 @@ StepWalk walk_bike_taps(
 //  slide off a spinner waited out (step_tap_settle()).
 StepWalk walk_step_taps(
     ConsoleHandle& console, ProControllerContext& context,
-    const RouteStep& step, const OverworldInterruptSet& interrupts
+    const RouteStep& step, const OverworldInterruptSet& interrupts, PlayerGender player
 ){
     StepWalk out{std::nullopt, current_time(), false, false};
     const OverworldInterrupts& watched = step.wild ? interrupts.wild : interrupts.other;
@@ -162,7 +162,7 @@ StepWalk walk_step_taps(
     };
     calls.clear = [&](size_t index){ watched[index]->clear(console, context); };
     calls.log = [&](const std::string& message){ console.log(message, COLOR_ORANGE); };
-    calls.facing = [&]{ return read_facing(console, context); };
+    calls.facing = [&]{ return read_facing(console, context, player); };
     calls.tries = STEP_TAP_TRIES;
     const StepOutcome outcome = count_bike_taps(step, calls);
     out.stopped = outcome.walked;
@@ -191,7 +191,7 @@ bool on_dark_cave(ConsoleHandle& console){
 StepWalk walk_step(
     ConsoleHandle& console, ProControllerContext& context,
     const RouteStep& step, std::optional<Direction> facing,
-    const OverworldInterruptSet& interrupts, MoveSpeed speed
+    const OverworldInterruptSet& interrupts, MoveSpeed speed, PlayerGender player
 ){
     StepWalk out{std::nullopt, current_time(), false, false};
     switch (step.action){
@@ -199,7 +199,7 @@ StepWalk walk_step(
         //  Turning first, with a tap, starts the hold from a standstill facing
         //  the right way: exact over 15 tiles, where a turn lost one.
         if (turns_first(step, speed, facing)){
-            turn_to(console, context, step.direction);
+            turn_to(console, context, step.direction, player);
         }
         if (const std::string note = speed_note(step, speed); !note.empty()){
             console.log(note);
@@ -233,7 +233,7 @@ StepWalk walk_step(
         start_surf(console, context, step.direction, facing == step.direction);
         break;
     case RouteAction::FACE:
-        turn_to(console, context, step.direction);
+        turn_to(console, context, step.direction, player);
         break;
     }
     return out;
@@ -295,7 +295,7 @@ private:
 StepOutcome walk_and_watch(
     ConsoleHandle& console, ProControllerContext& context,
     const RouteStep& step, std::optional<Direction> facing,
-    const OverworldInterruptSet& interrupts, MoveSpeed speed
+    const OverworldInterruptSet& interrupts, MoveSpeed speed, PlayerGender player
 ){
     if (clear_battle_before(console, context, interrupts.wild, step) > 0){
         return StepOutcome{.end = StepEnd::BATTLE_BEFORE, .walked = std::nullopt};
@@ -305,11 +305,11 @@ StepOutcome walk_and_watch(
     const LegRecorder recorder(console, context, interrupts, step);
     StepWalk walked;
     if (counts_step_taps(step)){
-        walked = walk_step_taps(console, context, step, interrupts);
+        walked = walk_step_taps(console, context, step, interrupts, player);
     }else if (counts_bike_taps(step, speed)){
         walked = walk_bike_taps(console, context, step, interrupts);
     }else{
-        walked = walk_step(console, context, step, facing, interrupts, speed);
+        walked = walk_step(console, context, step, facing, interrupts, speed, player);
     }
     if (walked.stopped){
         return StepOutcome{.end = StepEnd::STOPPED, .walked = walked.stopped, .blocked = walked.blocked};
@@ -431,6 +431,7 @@ void walk_overworld_route_with_recovery(
     ConsoleHandle& console, ProControllerContext& context,
     const std::vector<RouteStep>& route,
     const RoutePlanning& planning,
+    PlayerGender player,
     std::optional<Direction> facing,
     const OverworldInterruptSet& interrupts,
     MoveSpeed speed
@@ -439,7 +440,7 @@ void walk_overworld_route_with_recovery(
         return;
     }
     if (!facing){
-        facing = read_facing(console, context);
+        facing = read_facing(console, context, player);
     }
     //  A door takes the player off the Bicycle; the next leg where it may
     //  be ridden gets on again with SELECT. A battle leaves them on.
@@ -447,11 +448,11 @@ void walk_overworld_route_with_recovery(
     RouteCalls calls;
     calls.walk = [&](const RouteStep& step, std::optional<Direction> from_facing){
         if (gets_on_bike(step, speed, riding)){
-            get_on_bike(console, context);
+            get_on_bike(console, context, player);
             riding = true;
             from_facing = std::nullopt;
         }
-        const StepOutcome outcome = walk_and_watch(console, context, step, from_facing, interrupts, riding ? speed : on_foot(speed));
+        const StepOutcome outcome = walk_and_watch(console, context, step, from_facing, interrupts, riding ? speed : on_foot(speed), player);
         if (riding && step.warps){
             console.log("Bike: through the warp to " + step.end.map + ", off the Bicycle.");
             riding = false;
