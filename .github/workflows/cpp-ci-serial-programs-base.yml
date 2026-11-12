@@ -88,6 +88,20 @@ jobs:
           ref: 'master'
           path: 'Arduino-Source/Packages'
 
+      # Fork only, until upstream Packages has them: the FRLG player sprite sheets
+      # AutoStory reads (PokemonFRLG_PlayerFacingReader.cpp; red is the boy, green
+      # the girl) are on dayfine/Packages branch lab/autostory-resources. Without
+      # them the AutoStoryResources test fails.
+      - name: Fetch fork-only AutoStory resources
+        if: github.repository == 'dayfine/Arduino-Source'
+        shell: bash
+        run: |
+          for FILE in Resources/PokemonFRLG/PlayerSprites/red_normal.png Resources/PokemonFRLG/PlayerSprites/green_normal.png; do
+            mkdir -p "Arduino-Source/Packages/$(dirname "$FILE")"
+            curl -fsSL --retry 3 -o "Arduino-Source/Packages/$FILE" \
+              "https://raw.githubusercontent.com/dayfine/Packages/lab/autostory-resources/$FILE"
+          done
+
       - name: Install Python for pinned map preparation
         uses: actions/setup-python@v5
         with:
