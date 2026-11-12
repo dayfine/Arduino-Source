@@ -33,7 +33,7 @@
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMissionCompleteDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryPlatformArrivalDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStorySkipPromptDetector.h"
-#include "PokemonLZA_AutoStoryObservation.h"
+#include "PokemonLZA_AutoStoryReadings.h"
 #include "PokemonLZA_AutoStoryScreenEvents.h"
 
 namespace PokemonAutomation{
@@ -88,7 +88,7 @@ public:
     virtual void stick(double degrees, Milliseconds duration, Milliseconds release, Pokemon::StoryPace pace) override;
     virtual void wait(Milliseconds duration) override;
     //  Once the inputs are done: PlzaScreenObserver's events on a frame
-    //  (plza_observation()), STILL when it barely differs from the frame
+    //  (Pokemon::screen_observation()), STILL when it barely differs from the frame
     //  of the look before, and the readings PLATFORM_READING,
     //  SKIP_PROMPT_READING, AUTOSAVE_READING, CONTROLS_HINT_READING,
     //  ADVANCE_ARROW_READING, MISSION_BANNER_READING and

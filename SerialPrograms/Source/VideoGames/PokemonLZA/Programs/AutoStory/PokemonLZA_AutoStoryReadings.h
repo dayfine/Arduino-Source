@@ -1,15 +1,15 @@
-/*  PokemonLZA AutoStory - Observations
+/*  PokemonLZA AutoStory - Readings
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  PLZA's screen events (PokemonLZA_AutoStoryScreenEvents.h) as the story
- *  engine's observations, which its backend returns and its scene states
- *  match on.
+ *  The names of the readings (ScreenObservation::readings) PLZA's backend
+ *  sets from its AutoStory detectors, which its scene states and step
+ *  checks match on.
  *
  */
 
-#ifndef PokemonAutomation_PokemonLZA_AutoStoryObservation_H
-#define PokemonAutomation_PokemonLZA_AutoStoryObservation_H
+#ifndef PokemonAutomation_PokemonLZA_AutoStoryReadings_H
+#define PokemonAutomation_PokemonLZA_AutoStoryReadings_H
 
 #include <string_view>
 

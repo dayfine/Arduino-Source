@@ -13,6 +13,7 @@
 #include "Common/Cpp/PrettyPrint.h"
 #include "Common/Cpp/Color.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_BasicNavigation.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryActions.h"
 #include "PokemonLZA_AutoStoryBackend.h"
