@@ -368,7 +368,10 @@ UnitTestResult test_b2f_maze_taps(){
             {Direction::SOUTH, 1}, {Direction::EAST, 3}, {Direction::NORTH, 1},
         }, right_guard),
         tap_legs_on_sim(right_guard, Direction::NORTH, {
-            {Direction::WEST, 2}, {Direction::NORTH, 10}, {Direction::EAST, 2},
+            {Direction::WEST, 2},
+        }, {"RocketHideout_B4F", {17, 15}}),
+        tap_legs_on_sim({"RocketHideout_B4F", {17, 5}}, Direction::NORTH, {
+            {Direction::EAST, 2},
         }, below_giovanni),
         tap_legs_on_sim(below_giovanni, Direction::NORTH, {
             {Direction::WEST, 2}, {Direction::SOUTH, 2}, {Direction::EAST, 4}, {Direction::NORTH, 2},
@@ -468,6 +471,46 @@ UnitTestResult test_b4f_left_guard_from_below_lift_door(){
     const std::string failure = walker.run(*route, planning);
     if (!failure.empty() || !(sim.state().position == left_guard)){
         return std::format("Walked to {}, failure \"{}\".", to_string(sim.state().position), failure);
+    }
+    return true;
+}
+
+//  09.02's up_column_17 runs (holds B) up column 17 from west of the
+//  right Grunt (17, 15): both Grunts are beaten by then, and the wall at
+//  (17, 5) stops any overshoot. It ends on (17, 5) facing north, where
+//  beside_giovanni taps east 2 to below Giovanni.
+UnitTestResult test_b4f_run_up_column_17(){
+    const std::vector<MapData>& maps = story_maps();
+    const MapPosition west_of_right_guard{"RocketHideout_B4F", {17, 15}};
+    const MapPosition wall{"RocketHideout_B4F", {17, 5}};
+    const StoryStep* up_column_17 = nullptr;
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        for (const StoryStep& step : row.steps){
+            if (row.id == "09.02" && step.name == "up_column_17"){
+                up_column_17 = &step;
+            }
+        }
+    }
+    if (up_column_17 == nullptr){
+        return "Expected 09.02's step up_column_17.";
+    }
+    if (up_column_17->action != "run"){
+        return std::format("Expected up_column_17 to run, got \"{}\".", up_column_17->action);
+    }
+    const std::vector<Pokemon::StoryLeg> legs = Pokemon::story_arg<std::vector<Pokemon::StoryLeg>>(up_column_17->args, "legs");
+    const std::optional<std::vector<RouteStep>> route = fixed_route(maps, west_of_right_guard, legs);
+    if (!route || route->size() != 1 || route->back().direction != Direction::NORTH || !(route->back().end == wall)){
+        return "Expected up_column_17 to be one leg north from (17, 15) to the wall (17, 5).";
+    }
+    OverworldSim sim(maps, west_of_right_guard, Direction::WEST, SimScript{});
+    OverworldSimWalker walker(sim);
+    const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = west_of_right_guard, .label = "Sim"};
+    const std::string failure = walker.run(*route, planning);
+    if (!failure.empty() || !(sim.state().position == wall) || sim.state().facing != Direction::NORTH){
+        return std::format(
+            "Ran to {} facing {}, failure \"{}\".",
+            to_string(sim.state().position), Pokemon::direction_name(sim.state().facing), failure
+        );
     }
     return true;
 }
@@ -642,6 +685,10 @@ const AutoStoryHideoutBodyCase HIDEOUT_BODY_CASES[] = {
     {
         .input = {.name = "B4F's left Grunt from the lift's exit", .body = test_b4f_left_guard_from_below_lift_door},
         .expectation = {.description = "09.02's legs from (20, 24) end below the left Grunt"},
+    },
+    {
+        .input = {.name = "B4F: run up column 17 to the wall", .body = test_b4f_run_up_column_17},
+        .expectation = {.description = "09.02's up_column_17 from (17, 15) ends on (17, 5) facing north"},
     },
     {
         .input = {.name = "Giovanni's scene after his battle, then the taps", .body = test_giovanni_scene_then_taps},

@@ -152,13 +152,31 @@
         "why": "Rocket Grunt (TRAINER_TEAM_ROCKET_GRUNT_17): Ekans, Sandshrew, Arbok Lv23 (Arbok's Glare paralysed pokeguy's Wartortle, 59:44)"
       },
       {
+        "id": "west_of_right_guard",
+        "kind": "legs",
+        "action": "taps",
+        "args": {
+          "legs": [{"direction": "west", "tiles": 2}]
+        },
+        "why": "a tap a tile: west from below the right door Grunt (19, 15) to the foot of column 17 (17, 15)"
+      },
+      {
+        "id": "up_column_17",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [{"direction": "north", "tiles": 10}]
+        },
+        "why": "run up column 17 between the doors (17..18, 12..13) to the wall at (17, 5): both door Grunts are beaten, and the wall stops any overshoot"
+      },
+      {
         "id": "beside_giovanni",
         "kind": "legs",
         "action": "taps",
         "args": {
-          "legs": [{"direction": "west", "tiles": 2}, {"direction": "north", "tiles": 10}, {"direction": "east", "tiles": 2}]
+          "legs": [{"direction": "east", "tiles": 2}]
         },
-        "why": "a tap a tile: west to (17, 15), up column 17 between the guards (17..18, 12..13) to the wall at (17, 5), and east to below Giovanni (19, 4)"
+        "why": "a tap a tile: east from (17, 5) to below Giovanni (19, 4), on (19, 5); his sight starts here, so no run"
       },
       {
         "id": "below_giovanni",
