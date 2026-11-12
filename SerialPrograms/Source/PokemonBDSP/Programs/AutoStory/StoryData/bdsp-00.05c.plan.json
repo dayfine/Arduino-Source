@@ -90,6 +90,20 @@
       {
         "action": "town",
         "args": {
+          "avoid": [
+            [
+              40,
+              20,
+              52,
+              25
+            ],
+            [
+              40,
+              26,
+              43,
+              27
+            ]
+          ],
           "fight_wild": false,
           "greeter": [
             [
@@ -136,6 +150,20 @@
       {
         "action": "town",
         "args": {
+          "avoid": [
+            [
+              40,
+              20,
+              52,
+              25
+            ],
+            [
+              40,
+              26,
+              43,
+              27
+            ]
+          ],
           "fight_wild": false,
           "greeter": [
             [
@@ -226,6 +254,20 @@
       {
         "action": "town",
         "args": {
+          "avoid": [
+            [
+              40,
+              20,
+              52,
+              25
+            ],
+            [
+              40,
+              26,
+              43,
+              27
+            ]
+          ],
           "fight_wild": false,
           "greeter": [
             [
@@ -253,7 +295,7 @@
       {
         "id": "president",
         "kind": "talk",
-        "why": "the Poketch Company's president at (46, 36)"
+        "why": "the Poketch Company's president at (46, 35), level with (45, 35)"
       },
       {
         "declared_after": {
@@ -279,6 +321,20 @@
       {
         "action": "line",
         "args": {
+          "avoid": [
+            [
+              40,
+              20,
+              52,
+              25
+            ],
+            [
+              40,
+              26,
+              43,
+              27
+            ]
+          ],
           "fight_wild": false,
           "target": {
             "facing": "east",
