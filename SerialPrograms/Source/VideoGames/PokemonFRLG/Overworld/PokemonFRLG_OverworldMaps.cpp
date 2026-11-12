@@ -99,6 +99,9 @@ constexpr std::string_view MAP_NAMES[] = {
     "RocketHideout_B2F",
     "RocketHideout_B3F",
     "RocketHideout_B4F",
+    //  Cinnabar Island's Center and Blaine's gym, through its quiz doors.
+    "CinnabarIsland",
+    "CinnabarIsland_Gym",
     "CeruleanCave_1F",
     "CeruleanCave_2F",
     "CeruleanCave_B1F",
