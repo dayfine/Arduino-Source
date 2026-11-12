@@ -108,6 +108,10 @@ constexpr std::string_view MAP_NAMES[] = {
     "PokemonTower_6F",
     "PokemonTower_7F",
     "LavenderTown_VolunteerPokemonHouse",
+    //  Route 16's house with HM02 Fly, past the Cut tree and the north gate.
+    "Route16",
+    "Route16_NorthEntrance_1F",
+    "Route16_House",
     "CeruleanCave_1F",
     "CeruleanCave_2F",
     "CeruleanCave_B1F",

@@ -198,6 +198,7 @@ std::span<const Pokemon::StoryActionSpec> story_action_specs(){
         for (Pokemon::StoryActionSpec spec : movement_variant_specs(builtin)){
             specs.push_back(std::move(spec));
         }
+        specs.push_back({.kind = StoryStepKind::TALK, .name = TALK_WANDERER_VARIANT, .args = {}});
         specs.push_back({.kind = StoryStepKind::GAME, .name = CLOSE_TRAINER_CARD, .args = {}});
         specs.push_back({.kind = StoryStepKind::GAME, .name = LEAVE_GIFT_SUMMARY, .args = {}});
         specs.push_back({.kind = StoryStepKind::GAME, .name = CUT_TREE_VARIANT, .args = {

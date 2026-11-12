@@ -469,6 +469,23 @@ bool talk_opens_message(ConsoleHandle& console, ProControllerContext& context){
     return shown >= 0;
 }
 
+//  A talk to someone who wanders (MOVEMENT_TYPE_WANDER_AROUND, as the
+//  Route 16 house's woman with HM02): A at the tile the player faces, each
+//  watched 2 s, until they step onto it and a message opens. They take a
+//  step every 0.5 to 2 s (pokefirered event_object_movement.c,
+//  MovementType_WanderAround), so a few tiles' zone has them in front of
+//  the player many times in WANDERER_TALK_TRIES.
+constexpr int WANDERER_TALK_TRIES = 45;
+bool talk_until_message(ConsoleHandle& console, ProControllerContext& context, const StoryStep& step){
+    const int tries = step.action == TALK_WANDERER_VARIANT ? WANDERER_TALK_TRIES : 1;
+    for (int c = 0; c < tries; c++){
+        if (talk_opens_message(console, context)){
+            return true;
+        }
+    }
+    return false;
+}
+
 
 bool walked(StoryEnv& env, RunState& state, const StoryStep& step){
     const Outcome outcome = walk_route(env, state, step);
@@ -697,8 +714,8 @@ ConsoleAction console_action_of(StoryActionId id){
     case StoryActionId::STEP:
         return take_step;
     case StoryActionId::TALK:
-        return [](StoryEnv& env, RunState&, const StoryStep&){
-            if (!talk_opens_message(env.console, env.context)){
+        return [](StoryEnv& env, RunState&, const StoryStep& step){
+            if (!talk_until_message(env.console, env.context, step)){
                 return Pokemon::outcome_failed("no_message", "talk: A opened no message; nothing to talk to or pick up here.");
             }
             return Pokemon::outcome_ok();

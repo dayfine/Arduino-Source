@@ -63,6 +63,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryFieldMoves.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 #include "PokemonFRLG_AutoStoryFaultSweep_Tests.h"
@@ -162,7 +163,8 @@ bool sim_plays(const StoryStep& step){
     case StoryStepKind::BATTLE:
         return true;
     case StoryStepKind::GAME:
-        return step.action == CUT_TREE_VARIANT;
+        //  A Fly lands on its town's landing tile, as the sim plays it.
+        return step.action == CUT_TREE_VARIANT || is_field_move_step(step);
     default:
         return false;
     }

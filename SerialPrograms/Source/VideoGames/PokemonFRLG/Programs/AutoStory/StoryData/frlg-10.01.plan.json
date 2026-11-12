@@ -3,7 +3,7 @@
   "game": "frlg",
   "checkpoint": {
     "id": "10.01",
-    "title": "Back east to Lavender Town on the Bicycle: Route 7, the Underground Path, Route 8 and Lavender's Pokemon Center",
+    "title": "HM02 Fly from Route 16's house, taught to the Pidgey, and Fly to Lavender Town's Pokemon Center",
     "start": {"map": "CeladonCity", "tiles": [[34, 22]], "facing": "south"},
     "events": [
       {
@@ -13,55 +13,79 @@
         "why": "on the BICYCLE with SELECT (registered in 08.03) where the Escape Rope left the player, outside the Game Corner"
       },
       {
-        "id": "route7_below_underground_door",
+        "id": "route16_below_cut_tree",
         "kind": "route",
         "action": "bike",
         "args": {
-          "target": {"map": "Route7", "tiles": [[7, 15]], "facing": "north"}
+          "target": {"map": "Route16", "tiles": [[41, 12]], "facing": "north"}
         },
-        "why": "east through Celadon onto Route 7 (Celadon's rows 12..15 are its rows 2..5), down past the ledges to below the Underground Path's door (7, 14), off the grass (11..18, 2..6)"
+        "why": "west out of Celadon onto Route 16's east end, below the Cut tree (41, 11); the Snorlax (31, 13) closes row 13 west of it"
       },
       {
-        "id": "route8_out_of_underground",
+        "id": "cut_route16_tree",
+        "kind": "game_action",
+        "action": "cut_tree",
+        "args": {
+          "direction": "north"
+        },
+        "declared_after": {"map": "Route16", "tiles": [[41, 11]], "facing": "north"},
+        "why": "the Oddish (HM01, 06.02) cuts the tree; a step onto its tile"
+      },
+      {
+        "id": "east_of_north_gate",
+        "kind": "route",
+        "action": "bike",
+        "args": {
+          "target": {"map": "Route16", "tiles": [[28, 6]], "facing": "west"}
+        },
+        "why": "up to row 10 and west to a tile east of the north gate's door (27, 6), off the grass (33..41, 5..7) and out of Lea's and Jed's lines (30, 6), (31, 6)"
+      },
+      {
+        "id": "below_fly_woman",
         "kind": "route",
         "action": "run",
         "args": {
-          "target": {"map": "Route8", "tiles": [[13, 5]], "facing": "south"}
+          "target": {"map": "Route16_House", "tiles": [[4, 4]], "facing": "north"}
         },
-        "why": "in at the door (the game takes the player off the Bicycle indoors), the west entrance, the east-west tunnel and the east entrance, out of Route 8's door (13, 4): 08.03's way, the other way round"
+        "why": "through the gate (the game takes the player off the Bicycle indoors), out at (20, 6), west to the house's door (10, 5) and up to below the woman's zone (3..5, 2..3)"
       },
       {
-        "id": "ride_bike_route8",
+        "id": "hm02_fly",
+        "kind": "talk",
+        "action": "wanderer",
+        "why": "the woman wanders (3..5, 2..3); once she steps onto (4, 3) she gives HM02 FLY (Route16_House_EventScript_Woman, FLAG_GOT_HM02)"
+      },
+      {
+        "id": "teach_fly",
         "kind": "game_action",
-        "action": "ride_bike",
-        "why": "on the BICYCLE again for Route 8"
+        "action": "teach",
+        "args": {
+          "item": "hm02",
+          "move": "fly",
+          "slot": 3,
+          "forget": "whirlwind"
+        },
+        "why": "HM02 Fly to the Pidgey (08.03), third in the party, in place of Whirlwind: a Route 7 Pidgey (Lv19..22) knows Sand-Attack, Gust, Quick Attack and Whirlwind"
       },
       {
-        "id": "route8_to_row7",
-        "kind": "legs",
-        "action": "taps",
+        "id": "outside_fly_house",
+        "kind": "route",
+        "action": "run",
         "args": {
-          "legs": [{"direction": "east", "tiles": 1}, {"direction": "south", "tiles": 9}, {"direction": "east", "tiles": 12}, {"direction": "north", "tiles": 7}, {"direction": "east", "tiles": 22}]
+          "target": {"map": "Route16", "tiles": [[10, 6]], "facing": "south"}
         },
-        "why": "a tap a tile from the door's mat (13, 5): east onto column 14, east of Aidan's line (10..13, 6), down it to row 14, above Ricardo's (14, 15); east along row 14 above Jaren's (24, 16) to column 26, up it to row 7, below Andrea's line (26..28, 5), and east along row 7, below Megan's (30..35, 6), to (48, 7), west of Glenn's south line (51, 7..10) and below his west line (47..50, 6). No wall ends these legs where a held leg running on would stay out of a line"
+        "why": "out of the house's door onto Route 16, where Fly works"
       },
       {
-        "id": "route8_down_column_48",
-        "kind": "legs",
-        "action": "bike",
+        "id": "fly_lavender",
+        "kind": "game_action",
+        "action": "fly",
         "args": {
-          "legs": [{"direction": "south", "tiles": 11}]
+          "town": "LavenderTown",
+          "slot": 3
         },
-        "why": "down column 48 to the wall (48, 19): 08.03's leg the other way"
-      },
-      {
-        "id": "route8_row18_east",
-        "kind": "legs",
-        "action": "bike",
-        "args": {
-          "legs": [{"direction": "east", "tiles": 19}]
-        },
-        "why": "east along row 18 to the wall (68, 18), past Rich (55, 15), beaten in 08.03, and below Julia's line (56..61, 14)"
+        "declared_after": {"map": "LavenderTown", "tiles": [[6, 6]], "facing": "south"},
+        "why": "the Pidgey flies to Lavender Town, landing below the Pokemon Center's door (6, 5)"
       },
       {
         "id": "lavender_nurse",
@@ -70,7 +94,7 @@
         "args": {
           "target": {"map": "LavenderTown_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
         },
-        "why": "up column 67 and east over the connection into Lavender Town (Route 8's rows 9..11), to the Center's door (6, 5) and the nurse"
+        "why": "in at the Center's door and up to the nurse"
       },
       {
         "id": "heal_lavender",
@@ -84,9 +108,9 @@
     "lead": "after_brock",
     "notes": {
       "checkpoint": [
-        "From where 09.02's Escape Rope left the player, outside Celadon's Game Corner, back east to Lavender Town's Pokemon Center: 08.03's way the other way round, on the BICYCLE. PokeGuy (1:02:18 to 1:04:11) instead shops X items on the Department Store's 5F, fetches HM02 Fly from Route 16's house, teaches it to the Pidgey (08.03's catch) and flies to Lavender; that detour is left to the user (the store's lift and Fly have no story action yet).",
-        "Route 8's trainers (Route8 map.json) as in 08.03: Rich (55, 15) is beaten; Julia (62, 14) looks west 6, Glenn (51, 6) all ways 4, Paige (29, 3) and Andrea (29, 5) west 3, Leslie (29, 4) and Megan (29, 6) east 6, Stan (21, 3) all ways 1, Eli and Anne (40, 3), (41, 3) south 1, Ricardo (14, 16) and Jaren (24, 17) all ways 1, Aidan (9, 6) east 4. The way keeps to rows 14, 7 and 18 and columns 13, 26, 48, out of every line.",
-        "No grass on the way: Route 7's (11..18, 2..6) and Route 8's (34..46, 9..18) are walked round; the Underground Path has no wild Pokemon."
+        "From where 09.02's Escape Rope left the player, outside Celadon's Game Corner, PokeGuy's way (1:02:18 to 1:04:11) to Lavender Town's Pokemon Center: HM02 FLY from the woman in Route 16's house, taught to the Pidgey (08.03's catch), and Fly to Lavender. PokeGuy first shops X items on the Department Store's 5F; that waits for the store's 2F..4F or lift maps, which the map pack doesn't have yet.",
+        "Route 16 (Route16 map.json): from Celadon the east end (33..47, 12..14) is closed west by the Snorlax (31, 13), so the way north is the Cut tree (41, 11), then the north gate (Route16_NorthEntrance_1F) to the house (10, 5). Lea (30, 5) and Jed (31, 5) face south with sight 1; the grass (33..41, 5..7) is walked round. The bikers (6..16, 12..14) are south of the house's part of the route, behind the gate.",
+        "The woman wanders (MOVEMENT_TYPE_WANDER_AROUND, 3..5 by 2..3): the wanderer TALK presses A at (4, 3) until she is on it."
       ]
     }
   },

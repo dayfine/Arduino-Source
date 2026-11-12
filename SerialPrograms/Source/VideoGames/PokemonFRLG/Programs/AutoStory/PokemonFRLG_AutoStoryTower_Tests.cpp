@@ -3,7 +3,8 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  Rows 10.01 to 10.06 on the overworld sim: from where 09.02's Escape
- *  Rope leaves the player in Celadon City back east to Lavender Town, up
+ *  Rope leaves the player in Celadon City to Route 16's house for HM02
+ *  and a Fly to Lavender Town, up
  *  the Pokemon Tower past the rival, its Channelers, the Marowak ghost and
  *  the three Grunts to Mr. Fuji, and the POKE FLUTE in his house. Each row
  *  fights only the trainers it plans to (the chain from row to row is
@@ -179,13 +180,10 @@ UnitTestResult row_checked(
     return true;
 }
 
-//  Gamer Rich, fought in 08.03: back on his own tile after the reload.
-const Beaten ROUTE8_RICH{"Route8", 55, 15};
-
-//  10.01: Celadon City to Lavender's Center on the Bicycle, past Route
-//  8's trainers' lines, Rich beaten.
+//  10.01: Celadon City past Route 16's Cut tree to the house with HM02,
+//  out of Lea's and Jed's lines, then a Fly to Lavender's Center.
 UnitTestResult test_back_to_lavender(Logger&){
-    return row_checked("10.01", {ROUTE8_RICH}, {}, MapPosition{"LavenderTown_PokemonCenter_1F", {7, 4}});
+    return row_checked("10.01", {}, {}, MapPosition{"LavenderTown_PokemonCenter_1F", {7, 4}});
 }
 
 //  10.02: the Tower's door, 1F, and 2F to east of the rival's trigger.
@@ -221,7 +219,7 @@ UnitTestResult test_tower_7f_and_fuji(Logger&){
 }
 
 const AutoStoryTowerCase AUTO_STORY_TOWER_CASES[] = {
-    {.input = {"10.01 Celadon City back east to Lavender's Pokemon Center, out of Route 8's lines", test_back_to_lavender}, .expectation = {}},
+    {.input = {"10.01 Route 16's house for HM02, out of every line, and Fly to Lavender's Pokemon Center", test_back_to_lavender}, .expectation = {}},
     {.input = {"10.02 the Pokemon Tower's 1F and 2F to east of the rival's trigger", test_tower_to_rival}, .expectation = {}},
     {.input = {"10.03 onto the rival's trigger", test_tower_rival}, .expectation = {}},
     {.input = {"10.04 the Tower's 3F to 5F, Ruth and Tammy alone fought", test_tower_3f_to_5f}, .expectation = {}},
