@@ -23,8 +23,11 @@
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_StartGameUserSelectDetector.h"
+#include "NintendoSwitch/Inference/NintendoSwitch_SystemKeyboardDetector.h"
+#include "NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_SystemKeyboardTyping.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "NintendoSwitch_CommandFileParsing.h"
+#include "NintendoSwitch_CommandFileRecorder.h"
 #include "NintendoSwitch_CommandFileRunner.h"
 
 namespace PokemonAutomation{
@@ -64,28 +67,59 @@ constexpr int TAPS_STILL_LIMIT = 2;
 //  How often "wait_for" and "expect" check a new frame.
 constexpr Milliseconds DETECTOR_POLL_INTERVAL = 100ms;
 
+//  "type": how long the system keyboard may take to open and to close, and
+//  how many characters of earlier text it deletes at most.
+constexpr Milliseconds KEYBOARD_TIMEOUT = 5000ms;
+constexpr size_t KEYBOARD_MAX_DELETES = 40;
+
 //  How often an empty inbox is checked for a new file.
 constexpr Milliseconds INBOX_POLL_INTERVAL = 500ms;
 
 
 
+//  Where a detector comes from: a game's are recorded in every step.
+enum class DetectorOrigin{
+    BUILTIN,
+    GAME,
+};
+
+struct RegisteredDetector{
+    CommandFileDetectorFactory factory;
+    DetectorOrigin origin = DetectorOrigin::GAME;
+};
+
+struct RegisteredCommand{
+    std::string usage;
+    CommandFileCommandKind kind = CommandFileCommandKind::DRIVES_CONSOLE;
+    CommandFileCommand command;
+};
+
 struct Registry{
     Mutex lock;
-    std::map<std::string, CommandFileDetectorFactory> detectors;
-    std::map<std::string, std::pair<std::string, CommandFileCommand>> commands;     //  name -> usage, command
+    std::map<std::string, RegisteredDetector> detectors;
+    std::map<std::string, CommandFileReading> readings;
+    std::map<std::string, RegisteredCommand> commands;
 };
 Registry& registry(){
     static Registry registry;
     return registry;
 }
 
+void add_detector(std::string name, CommandFileDetectorFactory factory, DetectorOrigin origin){
+    Registry& r = registry();
+    LockGuard<Mutex> lg(r.lock);
+    r.detectors[std::move(name)] = RegisteredDetector{.factory = std::move(factory), .origin = origin};
+}
+
 //  Detectors every game can use.
 void register_builtin_detectors(){
     static const bool registered = []{
-        register_command_file_detector("black", [](ConsoleHandle&){ return std::make_unique<BlackScreenDetector>(); });
-        register_command_file_detector("white", [](ConsoleHandle&){ return std::make_unique<WhiteScreenDetector>(); });
-        register_command_file_detector("home", [](ConsoleHandle& console){ return std::make_unique<HomeMenuDetector>(console, COLOR_RED); });
-        register_command_file_detector("user_select", [](ConsoleHandle& console){ return std::make_unique<StartGameUserSelectDetector>(console); });
+        using enum DetectorOrigin;
+        add_detector("black", [](ConsoleHandle&){ return std::make_unique<BlackScreenDetector>(); }, BUILTIN);
+        add_detector("white", [](ConsoleHandle&){ return std::make_unique<WhiteScreenDetector>(); }, BUILTIN);
+        add_detector("home", [](ConsoleHandle& console){ return std::make_unique<HomeMenuDetector>(console, COLOR_RED); }, BUILTIN);
+        add_detector("user_select", [](ConsoleHandle& console){ return std::make_unique<StartGameUserSelectDetector>(console); }, BUILTIN);
+        add_detector("keyboard", [](ConsoleHandle&){ return std::make_unique<SystemKeyboardDetector>(); }, BUILTIN);
         return true;
     }();
     (void)registered;
@@ -98,17 +132,27 @@ std::unique_ptr<StaticScreenDetector> make_detector(const std::string& name, Con
     if (iter == r.detectors.end()){
         throw ParseException("Unknown detector: " + name + " (try \"help\")");
     }
-    return iter->second(console);
+    return iter->second.factory(console);
 }
 
-std::optional<CommandFileCommand> find_registered_command(const std::string& name){
+std::optional<CommandFileReading> find_reading(const std::string& name){
+    Registry& r = registry();
+    LockGuard<Mutex> lg(r.lock);
+    auto iter = r.readings.find(name);
+    if (iter == r.readings.end()){
+        return std::nullopt;
+    }
+    return iter->second;
+}
+
+std::optional<RegisteredCommand> find_registered_command(const std::string& name){
     Registry& r = registry();
     LockGuard<Mutex> lg(r.lock);
     auto iter = r.commands.find(name);
     if (iter == r.commands.end()){
         return std::nullopt;
     }
-    return iter->second.second;
+    return iter->second;
 }
 
 double screen_change(const VideoSnapshot& before, const VideoSnapshot& after){
@@ -121,15 +165,20 @@ double screen_change(const VideoSnapshot& before, const VideoSnapshot& after){
 
 
 
-void register_command_file_command(const std::string& name, const std::string& usage, CommandFileCommand command){
+void register_command_file_command(
+    std::string name, std::string usage, CommandFileCommandKind kind, CommandFileCommand command
+){
     Registry& r = registry();
     LockGuard<Mutex> lg(r.lock);
-    r.commands[name] = {usage, std::move(command)};
+    r.commands[std::move(name)] = RegisteredCommand{.usage = std::move(usage), .kind = kind, .command = std::move(command)};
 }
-void register_command_file_detector(const std::string& name, CommandFileDetectorFactory factory){
+void register_command_file_detector(std::string name, CommandFileDetectorFactory factory){
+    add_detector(std::move(name), std::move(factory), DetectorOrigin::GAME);
+}
+void register_command_file_reading(std::string name, CommandFileReading reading){
     Registry& r = registry();
     LockGuard<Mutex> lg(r.lock);
-    r.detectors[name] = std::move(factory);
+    r.readings[std::move(name)] = std::move(reading);
 }
 
 
@@ -153,23 +202,55 @@ public:
             (this->*iter->second.handler)(words);
             return true;
         }
-        std::optional<CommandFileCommand> command = find_registered_command(words[0]);
+        std::optional<RegisteredCommand> command = find_registered_command(words[0]);
         if (!command){
             throw ParseException("Unknown command: " + words[0] + " (try \"help\")");
         }
-        (*command)(m_session, words);
+        command->command(m_session, words);
         return true;
     }
 
     //  Saves the current frame as <outbox>/<file name>_<label>.png and returns its path.
     std::string save_screenshot(const std::string& label){
+        return save_frame(label + ".png");
+    }
+
+    //  What the games' detectors and readings see on the current frame;
+    //  empty if no game registered any, or there is no frame.
+    JsonObject step_state(){
+        std::map<std::string, CommandFileDetectorFactory> detectors;
+        std::map<std::string, CommandFileReading> readings;
+        {
+            Registry& r = registry();
+            LockGuard<Mutex> lg(r.lock);
+            for (const auto& [name, detector] : r.detectors){
+                if (detector.origin == DetectorOrigin::GAME){
+                    detectors.emplace(name, detector.factory);
+                }
+            }
+            readings = r.readings;
+        }
+        JsonObject state;
+        if (detectors.empty() && readings.empty()){
+            return state;
+        }
         VideoSnapshot screen = current_frame();
         if (!screen){
-            return "(no video frame)";
+            return state;
         }
-        const std::string path = m_session.outbox + m_session.name + "_" + label + ".png";
-        screen.frame->save(path);
-        return path;
+        for (const auto& [name, factory] : detectors){
+            state[name] = factory(console())->detect(screen);
+        }
+        for (const auto& [name, reading] : readings){
+            state[name] = reading(console(), screen);
+        }
+        return state;
+    }
+
+    //  Saves the frame a step ended on, as <outbox>/<file name>_step_L<line>.jpg
+    //  (smaller than PNG: there is one per command).
+    std::string save_step_screenshot(size_t line){
+        return save_frame(std::format("step_L{}.jpg", line));
     }
 
     static CommandFileCommandKind kind(const std::string& name){
@@ -177,10 +258,8 @@ public:
         if (iter != builtins().end()){
             return iter->second.kind;
         }
-        if (find_registered_command(name)){
-            return CommandFileCommandKind::DRIVES_CONSOLE;
-        }
-        return CommandFileCommandKind::UNKNOWN;
+        std::optional<RegisteredCommand> command = find_registered_command(name);
+        return command ? command->kind : CommandFileCommandKind::UNKNOWN;
     }
 
     static void print_help(std::ostream& out){
@@ -191,10 +270,14 @@ public:
         Registry& r = registry();
         LockGuard<Mutex> lg(r.lock);
         for (const auto& item : r.commands){
-            out << "  " << item.second.first << "\n";
+            out << "  " << item.second.usage << "\n";
         }
         out << "detectors:";
         for (const auto& item : r.detectors){
+            out << " " << item.first;
+        }
+        out << "\nreadings (\"detect\" prints them):";
+        for (const auto& item : r.readings){
             out << " " << item.first;
         }
         out << "\n";
@@ -224,6 +307,7 @@ private:
             {"expect",      {"expect detector [timeout_ms]   (fails on a timeout)", READS_STREAM, &LineRunner::wait_for}},
             {"state",       {"state [image]   (every detector that fires)", READS_STREAM, &LineRunner::state}},
             {"close_game",  {"close_game   (from anywhere to Home with the game closed)", DRIVES_CONSOLE, &LineRunner::close_game}},
+            {"type",        {"type TEXT   (on the open system keyboard, replacing its text, then + to close it)", DRIVES_CONSOLE, &LineRunner::type}},
             {"help",        {"help", READS_STREAM, &LineRunner::help}},
         };
         return BUILTINS;
@@ -238,6 +322,36 @@ private:
             context().wait_for_all_requests();
         }
         return console().video().snapshot();
+    }
+
+    //  Saves the current frame as <outbox>/<file name>_<suffix> and returns its path.
+    std::string save_frame(const std::string& suffix){
+        VideoSnapshot screen = current_frame();
+        if (!screen){
+            return "(no video frame)";
+        }
+        const std::string path = m_session.outbox + m_session.name + "_" + suffix;
+        screen.frame->save(path);
+        return path;
+    }
+
+    //  Checks a new frame every DETECTOR_POLL_INTERVAL until `done` holds.
+    //  Returns how long that took, or none after `timeout`.
+    std::optional<Milliseconds> poll_frames(
+        const std::function<bool(const ImageViewRGB32& screen)>& done, Milliseconds timeout
+    ){
+        if (m_session.sync_controller){
+            context().wait_for_all_requests();
+        }
+        const WallClock start = current_time();
+        while (current_time() - start < timeout){
+            VideoSnapshot screen = console().video().snapshot();
+            if (screen && done(screen)){
+                return std::chrono::duration_cast<Milliseconds>(current_time() - start);
+            }
+            context().wait_for(DETECTOR_POLL_INTERVAL);
+        }
+        return std::nullopt;
     }
 
     ImageRGB32 load_image(const std::string& file) const{
@@ -374,6 +488,10 @@ private:
     }
     void detect(const std::vector<std::string>& words){
         const std::string& name = required_arg(words, 1);
+        if (std::optional<CommandFileReading> reading = find_reading(name)){
+            read(name, *reading, words);
+            return;
+        }
         std::unique_ptr<StaticScreenDetector> detector = make_detector(name, console());
         bool found;
         if (words.size() > 2){
@@ -384,23 +502,27 @@ private:
         }
         out() << "detect " << name << " " << (found ? "yes" : "no") << "\n";
     }
+    //  "detect" of a reading: prints its value, or "none".
+    void read(const std::string& name, const CommandFileReading& reading, const std::vector<std::string>& words){
+        JsonValue value;
+        if (words.size() > 2){
+            value = reading(console(), load_image(words[2]));
+        }else if (VideoSnapshot screen = current_frame()){
+            value = reading(console(), screen);
+        }
+        out() << "detect " << name << " " << (value.is_null() ? "none" : value.dump(-1)) << "\n";
+    }
     //  "wait_for" and "expect": wait for a detector to fire.
     void wait_for(const std::vector<std::string>& words){
         const std::string& name = required_arg(words, 1);
         const Milliseconds timeout = optional_duration(words, 2, WAIT_FOR_TIMEOUT);
         std::unique_ptr<StaticScreenDetector> detector = make_detector(name, console());
-        if (m_session.sync_controller){
-            context().wait_for_all_requests();
-        }
-        const WallClock start = current_time();
-        while (current_time() - start < timeout){
-            VideoSnapshot screen = console().video().snapshot();
-            if (screen && detector->detect(screen)){
-                const auto elapsed = std::chrono::duration_cast<Milliseconds>(current_time() - start);
-                out() << words[0] << " " << name << " after " << elapsed.count() << "ms\n";
-                return;
-            }
-            context().wait_for(DETECTOR_POLL_INTERVAL);
+        const std::optional<Milliseconds> elapsed = poll_frames(
+            [&](const ImageViewRGB32& screen){ return detector->detect(screen); }, timeout
+        );
+        if (elapsed){
+            out() << words[0] << " " << name << " after " << elapsed->count() << "ms\n";
+            return;
         }
         if (words[0] == "expect"){
             throw OperationFailedException(
@@ -422,6 +544,29 @@ private:
         go_home(console(), context());
         close_game_from_home(console(), context());
     }
+    //  Types a name on the system keyboard a game opened: deletes what the
+    //  field holds, types, presses + and checks that the keyboard closed.
+    void type(const std::vector<std::string>& words){
+        const std::string text = parse_type_text(words);
+        SystemKeyboardDetector keyboard;
+        if (!poll_frames([&](const ImageViewRGB32& screen){ return keyboard.detect(screen); }, KEYBOARD_TIMEOUT)){
+            throw OperationFailedException(ErrorReportMode::NO_ERROR_REPORT, "type: no system keyboard on screen.");
+        }
+        //  B on an empty field closes the keyboard: delete only while there is text.
+        for (size_t deleted = 0; deleted < KEYBOARD_MAX_DELETES; deleted++){
+            VideoSnapshot screen = current_frame();
+            if (!screen || !system_keyboard_field_has_text(screen)){
+                break;
+            }
+            pbf_press_button(context(), BUTTON_B, 80ms, 250ms);
+        }
+        FastCodeEntry::type_on_system_keyboard(console(), context(), text);
+        pbf_press_button(context(), BUTTON_PLUS, BUTTON_HOLD, BUTTON_RELEASE);
+        if (!poll_frames([&](const ImageViewRGB32& screen){ return !keyboard.detect(screen); }, KEYBOARD_TIMEOUT)){
+            throw OperationFailedException(ErrorReportMode::NO_ERROR_REPORT, "type: the keyboard is still open after +.");
+        }
+        out() << "typed " << text << "\n";
+    }
     void help(const std::vector<std::string>&){
         print_help(out());
     }
@@ -431,7 +576,7 @@ private:
         Registry& r = registry();
         LockGuard<Mutex> lg(r.lock);
         for (const auto& item : r.detectors){
-            if (item.second(console())->detect(screen)){
+            if (item.second.factory(console())->detect(screen)){
                 found += (found.empty() ? "" : " ") + item.first;
             }
         }
@@ -445,13 +590,47 @@ private:
 
 
 
+namespace{
+
+//  Ends `step` as the command left the console and appends it to the steps file.
+void record_step(LineRunner& runner, CommandFileSession& session, CommandFileStep& step, std::optional<std::string> error){
+    step.end = current_time();
+    step.error = std::move(error);
+    step.after = runner.step_state();
+    step.screenshot = runner.save_step_screenshot(step.line);
+    append_command_file_step(session.outbox + session.name + ".steps.jsonl", step);
+}
+
+} // namespace
+
 CommandFileCommandKind command_file_command_kind(const std::string& name){
     return LineRunner::kind(name);
 }
-bool run_command_file_line(CommandFileSession& session, const std::vector<std::string>& words){
+bool run_command_file_line(CommandFileSession& session, const std::vector<std::string>& words, size_t line){
     register_builtin_detectors();
     LineRunner runner(session);
-    return runner.run(words);
+    CommandFileStep step{.line = line, .words = words};
+    step.before = runner.step_state();
+    step.start = current_time();
+    bool keep_going = true;
+    try{
+        keep_going = runner.run(words);
+        if (session.sync_controller){
+            session.context.wait_for_all_requests();
+        }
+    }catch (ProgramCancelledException&){
+        throw;
+    }catch (OperationCancelledException&){
+        throw;
+    }catch (Exception& e){
+        record_step(runner, session, step, e.message());
+        throw;
+    }catch (std::exception& e){
+        record_step(runner, session, step, std::string(e.what()));
+        throw;
+    }
+    record_step(runner, session, step, std::nullopt);
+    return keep_going;
 }
 std::string save_command_file_screenshot(CommandFileSession& session, const std::string& label){
     LineRunner runner(session);
@@ -489,8 +668,7 @@ LineResult run_line(CommandFileSession& session, const std::string& text, size_t
     bool keep_going = true;
     std::string error;
     try{
-        keep_going = run_command_file_line(session, words);
-        session.context.wait_for_all_requests();
+        keep_going = run_command_file_line(session, words, number);
     }catch (ProgramCancelledException&){
         throw;
     }catch (OperationCancelledException&){
@@ -527,7 +705,7 @@ bool run_command_file(
     env.log("Command File Runner: running " + name);
 
     std::ostringstream out;
-    CommandFileSession session{env.console, context, out, folder + "outbox/", name, true};
+    CommandFileSession session{env, env.console, context, out, folder + "outbox/", name, true};
     const std::string out_path = session.outbox + name;
 
     std::istringstream lines(script);

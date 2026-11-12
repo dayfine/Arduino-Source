@@ -52,6 +52,10 @@ struct TapsArguments{
 };
 TapsArguments parse_taps(const std::vector<std::string>& words);
 
+//  The text of "type TEXT": one word, as a name is. Throws ParseException
+//  for none or more than one.
+std::string parse_type_text(const std::vector<std::string>& words);
+
 
 
 }

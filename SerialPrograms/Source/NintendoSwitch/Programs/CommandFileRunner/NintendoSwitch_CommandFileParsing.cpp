@@ -103,6 +103,13 @@ TapsArguments parse_taps(const std::vector<std::string>& words){
     return taps;
 }
 
+std::string parse_type_text(const std::vector<std::string>& words){
+    if (words.size() != 2){
+        throw ParseException(std::format("{}: expected one word to type, got {}", words[0], words.size() - 1));
+    }
+    return words[1];
+}
+
 
 
 }

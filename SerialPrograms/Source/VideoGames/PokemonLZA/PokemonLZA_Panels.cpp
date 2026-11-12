@@ -55,6 +55,7 @@
 #include "Programs/TestPrograms/PokemonLZA_TestBoxCellInfo.h"
 #include "InferenceTraining/PokemonLZA_GenerateLocationNameOCR.h"
 #include "Programs/AutoStory/PokemonLZA_AutoStory.h"
+#include "Programs/AutoStory/PokemonLZA_AutoStoryCommands.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -67,7 +68,10 @@ PanelListFactory::PanelListFactory()
         Pokemon::STRING_POKEMON + " Legends: Z-A",
         RESOURCE_PATH() + "CategoryIcons/PokemonLZA.png"
     )
-{}
+{
+    //  The Command File Runner's LZA commands, for the lab channel.
+    register_lza_command_file_commands();
+}
 
 // code-health: allow function_lines -- the list reads top to bottom as the program menu does; splitting it by section hides that order
 std::vector<PanelEntry> PanelListFactory::make_panels() const{

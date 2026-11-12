@@ -27,6 +27,7 @@ takes effect at the next launch.
 | `Lab/done/<name>.txt` | app moves | The request, moved here when it starts. |
 | `Lab/outbox/<name>.out` | app writes | The request's journal (below). It appears only once the request has finished; `<name>.tmp` shows the progress so far. |
 | `Lab/outbox/<name>_<label>.png`, `.mp4` | app writes | Files that `shot`, `shots` and `history` save. |
+| `Lab/outbox/<name>.steps.jsonl` | app appends | One JSON line per console command, as it ends: the command and its arguments, start and end time, duration, `ok` or `error`, what the games' detectors and readings saw `before` and `after` it, and the path of `<name>_step_L<line>.jpg`, the frame it ended on. See `NintendoSwitch_CommandFileRecorder.h`; `devtools/lab/cfr_steps_to_story.py` turns it into story table rows. |
 | `Lab/state` | app writes | The channel's state, rewritten after every request and whenever the program state changes. |
 
 Write a request somewhere else and then move it into `inbox`, so the app
@@ -121,6 +122,7 @@ program runs (`STOPPED`); the commands that only read the screen (`shot`,
 | Command | What it does |
 |---|---|
 | `close_game` | Goes to the Home menu from anywhere and closes the game. |
+| `type TEXT` | On the system keyboard a game opened (e.g. for the player's name): deletes the field's text, types TEXT (one word), presses + and fails unless the keyboard closes. |
 
 #### Detectors
 
@@ -132,10 +134,21 @@ These work on any game:
 | `user_select` | The "Who is using the software?" screen. |
 | `black` | A black screen. |
 | `white` | A white screen. |
+| `keyboard` | The Switch's system keyboard. |
 
-Games add their own commands and detectors with
-`register_command_file_command()` and `register_command_file_detector()` (see
-`NintendoSwitch_CommandFileRunner.h`); `help` lists them.
+Games add their own commands, detectors and readings with
+`register_command_file_command()`, `register_command_file_detector()` and
+`register_command_file_reading()` (see `NintendoSwitch_CommandFileRunner.h`),
+from their panel list's constructor; `help` lists them. A reading is a value
+rather than yes or no, such as a heading; `detect NAME` prints it. A game's
+detectors and readings are recorded before and after every command in the
+steps file.
+
+Pokemon Legends: Z-A adds its story actions (`PokemonLZA_AutoStoryCommands.h`):
+`lza_talk [A|B]`, `lza_talk_to`, `lza_pick N`, `lza_move ANGLE|ahead MS`,
+`lza_face ANGLE [TOL]`, `lza_fly PLACE [LANG]`, `lza_battle [now [S]]` and
+`lza_save`; the detectors `lza_dialog`, `lza_overworld`
+and `lza_arrow`; and the reading `lza_facing`.
 
 ## Owner
 
@@ -275,5 +288,5 @@ two-line `state`) is gone. `start` and `stop` are lines in a request, and
 `add_tests_LabChannel()` covers the request format, the journal lines, the
 state text, the owner lock, the keep-awake schedule and the controller wait before `start` (`LabChannel - ...`
 unit tests); `add_tests_CommandFileRunner()` covers the console commands'
-arguments. Run them with the app's `--command-line-test-mode`. Selecting,
+arguments and `add_tests_CommandFileRecorder()` the steps file's lines. Run them with the app's `--command-line-test-mode`. Selecting,
 setting, starting and the presses need a live app and console.

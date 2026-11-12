@@ -19,3 +19,4 @@ jobs:
         with:
           python-version: '3.12'
       - run: python3 -m unittest discover -s devtools/lab -p 'test_lab_instance.py' -v
+      - run: python3 -m unittest discover -s devtools/lab -p 'test_cfr_steps_to_story.py' -v
