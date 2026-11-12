@@ -20,6 +20,7 @@
 #include <map>
 #include <optional>
 #include <string>
+#include <string_view>
 #include "Common/Cpp/Time.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 
@@ -76,6 +77,17 @@ struct ScreenObservation{
     //  can only run on a console.
     std::optional<VideoSnapshot> frame = std::nullopt;
 };
+
+//  "fade_black", "fade_white", "text_box", "battle", "can_move", "still",
+//  "choice_box", "interact_prompt".
+std::string_view screen_event_name(ScreenEvent event);
+
+//  The events in `events` joined by `separator`, or "nothing" when empty.
+std::string describe(const ScreenEvents& events, std::string_view separator = ", ");
+
+//  Whether `a` and `b` both have a frame of the same size within the
+//  still-screen RMSD threshold (2.0).
+bool same_screen(const VideoSnapshot& a, const VideoSnapshot& b);
 
 
 
