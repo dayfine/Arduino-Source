@@ -372,7 +372,7 @@ UnitTestResult test_plan_items_readable(Logger&){
         }
     }
     if (!missing.empty()){
-        return "The item list reader has no name for:" + missing;
+        return std::format("The item list reader has no name for:{}", missing);
     }
     return true;
 }

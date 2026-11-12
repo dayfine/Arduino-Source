@@ -9,6 +9,7 @@
  *  so far: in another language a name is never read.
  *
  */
+// code-health: allow header_symbols -- the plans' item check needs which names the reader has; a header for one query splits the reader's single concern
 
 #ifndef PokemonAutomation_PokemonFRLG_ItemListReader_H
 #define PokemonAutomation_PokemonFRLG_ItemListReader_H
