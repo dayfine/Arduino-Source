@@ -272,6 +272,8 @@ private:
     LegNext interrupted_open_leg(LegWalk& walk);
     void turn_tap(LegWalk& walk);
     LegNext blocked_open_leg(LegWalk& walk, size_t moved);
+    LegNext talking_blocker(LegWalk& walk, size_t moved);
+    LegNext mark_and_replan(LegWalk& walk, size_t moved);
 
     //  After each leg.
     void check_banners(LegWalk& walk);
@@ -618,6 +620,9 @@ LegNext RouteWalker::open_leg(LegWalk& walk){
             std::to_string(leg.tiles) + " tiles; waiting for the way to clear.", RouteNote::WARNING);
         m_io.press(WAIT_FOR_THE_WAY);
         const WalkResult rest = m_io.walk_taps(leg.direction, leg.tiles - moved, walk.label + ": the rest");
+        if (rest.stop == WalkStop::DIALOG && rest.moved_chunks == 0 && rest.wild_battles == 0){
+            return talking_blocker(walk, moved);
+        }
         moved = std::min(leg.tiles, moved + rest.moved_chunks);
         walk.result.stop = rest.stop;
         walk.result.walked += rest.walked;
@@ -670,6 +675,23 @@ void RouteWalker::turn_tap(LegWalk& walk){
 
 LegNext RouteWalker::blocked_open_leg(LegWalk& walk, size_t moved){
     talk_to_blocker(walk.label);
+    return mark_and_replan(walk, moved);
+}
+
+//  Someone in the way who talks as we tap on after the wait: the one who
+//  blocked us, not a trainer the map lacks. Fought as a trainer, they were
+//  walked into again on every replan (lab-B 2026-11-12, 00.05c: the Global
+//  Wonder Station's woman, three talks, then the step failed). Close the
+//  talk, mark their tile and plan again from where we stopped.
+LegNext RouteWalker::talking_blocker(LegWalk& walk, size_t moved){
+    m_io.note(walk.label + ": someone in the way talked to us; going round them.", RouteNote::STATUS);
+    m_trainers.fight("someone in the way");
+    return mark_and_replan(walk, moved);
+}
+
+//  The tiles a blocked open leg may have stopped on after `moved` tiles:
+//  what stopped it goes on the map, and the walk plans again from them.
+LegNext RouteWalker::mark_and_replan(LegWalk& walk, size_t moved){
     std::vector<TilePos> stopped;
     for (const TilePos& pos : m_from){
         const std::vector<TilePos> path = leg_path(m_grid, pos, walk.planned.leg.direction, moved);
