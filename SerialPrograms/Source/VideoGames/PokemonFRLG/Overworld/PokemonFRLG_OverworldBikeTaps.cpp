@@ -51,6 +51,15 @@ StepOutcome count_bike_taps(const RouteStep& step, const BikeTapCalls& calls){
             const int most = std::min(moved + 1, step.tiles);
             return StepOutcome{.end = StepEnd::STOPPED, .walked = WalkedTiles{moved, most}};
         }
+        if (!result.moved && calls.facing && !step.to_wall){
+            //  On foot, an open leg's tap that showed no step may have
+            //  stepped unseen: not a wall ahead, which would keep only the
+            //  tiles with one (09.02 run 8, console B, 2026-11-11 18:02:
+            //  "west 2" on Rocket Hideout B2F taken as at (17, 5), a tile
+            //  east of the player, so the arrow was missed).
+            calls.log(std::format("Taps: tap {} of {} showed no step: stopped after {} or {} tile(s).", tap, step.tiles, moved, moved + 1));
+            return StepOutcome{.end = StepEnd::STOPPED, .walked = WalkedTiles{moved, moved + 1}};
+        }
         if (!result.moved){
             calls.log(std::format("Bike: tap {} of {} didn't move: blocked after {} tile(s).", tap, step.tiles, moved));
             return StepOutcome{.end = StepEnd::STOPPED, .walked = WalkedTiles{moved, moved + BLOCKED_TAP_SLACK}, .blocked = true};

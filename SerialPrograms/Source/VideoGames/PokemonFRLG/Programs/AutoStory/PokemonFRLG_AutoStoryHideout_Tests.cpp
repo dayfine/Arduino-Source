@@ -568,6 +568,41 @@ UnitTestResult test_b2f_spin_leg_check_from_its_stop(){
     return true;
 }
 
+//  Console B, 2026-11-11 18:02, 09.02 run 8: b2f_arrows_to_moon_stone's
+//  "west 2" to (17, 5) turned on its first tap, and its second showed no
+//  step. The taps took that as a wall ahead and kept only the tile with
+//  one, (17, 5), so the legs after it ran a tile east of the plan: they
+//  missed the arrow (16, 6), and the MOON STONE's talk found nothing. A
+//  tap that shows no step may have stepped unseen; every one, read so,
+//  ends the legs on the stop (1, 4) or fails, never elsewhere.
+UnitTestResult test_b2f_arrows_with_unseen_step(){
+    const std::vector<MapData>& maps = story_maps();
+    const MapPosition stairs{"RocketHideout_B2F", {21, 2}};
+    const MapPosition stop{"RocketHideout_B2F", {1, 4}};
+    const std::vector<Pokemon::StoryLeg> legs{
+        {Direction::WEST, 2}, {Direction::SOUTH, 3}, {Direction::WEST, 2}, {Direction::SOUTH, 1}, {Direction::WEST, 1},
+    };
+    std::optional<std::vector<RouteStep>> route = fixed_route(maps, stairs, legs);
+    if (!route){
+        return "Expected 09.02's B2F legs to the MOON STONE to plan.";
+    }
+    for (RouteStep& step : *route){
+        step.tapped = true;
+    }
+    for (int tap = 1; tap <= 9; tap++){
+        SimScript script;
+        script.unseen_step_taps = {tap};
+        OverworldSim sim(maps, stairs, Direction::EAST, script);
+        OverworldSimWalker walker(sim);
+        const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = stairs, .label = "Sim"};
+        const std::string failure = walker.run(*route, planning);
+        if (failure.empty() && !(sim.state().position == stop)){
+            return std::format("Step tap {} read as not moved: ended on {} as if on {}.", tap, to_string(sim.state().position), to_string(stop));
+        }
+    }
+    return true;
+}
+
 const AutoStoryHideoutBodyCase HIDEOUT_BODY_CASES[] = {
     {
         .input = {.name = "the poster and lift variants", .body = test_variants},
@@ -592,6 +627,10 @@ const AutoStoryHideoutBodyCase HIDEOUT_BODY_CASES[] = {
     {
         .input = {.name = "B2F's spin leg checked from its stop", .body = test_b2f_spin_leg_check_from_its_stop},
         .expectation = {.description = "09.02's B2F legs to the lift stop when a hold ends at a slide's stop"},
+    },
+    {
+        .input = {.name = "B2F's arrows to the MOON STONE with a step unseen", .body = test_b2f_arrows_with_unseen_step},
+        .expectation = {.description = "09.02's legs end on the stop (1, 4) or fail when a step tap reads as not moved"},
     },
     {
         .input = {.name = "B4F's left Grunt from the lift's exit", .body = test_b4f_left_guard_from_below_lift_door},
