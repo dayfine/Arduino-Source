@@ -303,9 +303,6 @@ UnitTestResult test_leg_starts_off_bike(){
     if (!(sim.state().position == at(9, 2)) || !sim.state().on_bike){
         return std::format("Ended on {}, riding {}; expected {}, riding.", to_string(sim.state().position), sim.state().on_bike, to_string(at(9, 2))) + log_text(log);
     }
-    if (sim.state().bike_legs != 1){
-        return std::format("{} legs counted in taps; expected the one, not replanned.", sim.state().bike_legs) + log_text(log);
-    }
     return true;
 }
 

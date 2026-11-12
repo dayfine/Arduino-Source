@@ -87,6 +87,21 @@ StepOutcome count_bike_taps(const RouteStep& step, const BikeTapCalls& calls){
     return StepOutcome{};
 }
 
+StepOutcome count_bike_taps_remounting(const RouteStep& step, const BikeTapCalls& calls, const std::function<bool()>& remount){
+    BikeTapCalls remounting = calls;
+    bool remounted = false;
+    remounting.tap = [&](int tap){
+        const BikeTap result = calls.tap(tap);
+        if (result.moved || result.interrupt || result.cleared_late || remounted || !remount()){
+            return result;
+        }
+        remounted = true;
+        calls.log(std::format("Bike: tap {} of {} didn't move, the player on foot: back on with SELECT, tapping again.", tap, step.tiles));
+        return calls.tap(tap);
+    };
+    return count_bike_taps(step, remounting);
+}
+
 bool counts_step_taps(const RouteStep& step){
     return step.tapped && step.action == RouteAction::WALK && step.tiles > 0
         && !step.surfing && !step.warps && step.connection_steps.empty();

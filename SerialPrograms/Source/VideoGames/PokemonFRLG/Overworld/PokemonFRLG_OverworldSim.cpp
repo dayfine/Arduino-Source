@@ -541,6 +541,7 @@ std::optional<SimSeen> OverworldSim::hold(
     const Milliseconds start = m_now;
     m_holds++;
     m_last_tap.reset();
+    count_bike_leg(direction, duration);
     if (m_state.screen != SimScreen::OVERWORLD || m_frozen){
         stuck_hold(direction);
     }else if (m_state.on_bike && duration <= MovementMechanics::LONGEST_TAP && drops_bike_tap(start)){
@@ -558,6 +559,7 @@ std::optional<SimSeen> OverworldSim::hold(
 
 void OverworldSim::tap(Direction direction, Milliseconds duration, Milliseconds release){
     const Milliseconds start = m_now;
+    m_bike_leg_direction.reset();
     if (m_state.screen != SimScreen::OVERWORLD || m_frozen || start < m_battle_lockout_end){
         stuck_hold(direction);
         m_last_tap.reset();
@@ -619,17 +621,6 @@ void OverworldSim::hold_on(Direction direction, Milliseconds end){
         press.steps += m_state.steps - before;
     }
     press.end = end;
-}
-
-bool OverworldSim::reads_step_tap_as_step(const MapPosition& before, int turn_taps_before){
-    const bool moved = !(m_state.position == before);
-    m_state.moved_step_taps += moved ? 1 : 0;
-    const bool misread = moved ? m_script.unseen_step_taps.contains(m_state.moved_step_taps)
-        : m_state.turn_taps > turn_taps_before && m_script.seen_turn_taps.contains(m_state.turn_taps);
-    if (misread){
-        note(moved ? std::format("step tap {} moves the player, read as not moved.", m_state.moved_step_taps) : std::format("turn tap {} only turns the player, read as a step.", m_state.turn_taps));
-    }
-    return moved != misread;
 }
 
 bool OverworldSim::drops_turn_tap(){

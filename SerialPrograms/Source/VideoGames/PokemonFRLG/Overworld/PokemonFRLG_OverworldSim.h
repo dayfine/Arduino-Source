@@ -112,11 +112,6 @@ public:
     //  Returns whether it was there. (PokemonFRLG_OverworldSimField.cpp)
     bool use_field(SimField field, size_t floor = 0);
 
-    //  A leg on the Bicycle counted out a tap at a time starts: the player
-    //  is off the Bicycle if SimScript::off_bike_at_legs names it.
-    //  (PokemonFRLG_OverworldSimTaps.cpp)
-    void start_bike_leg();
-
 private:
     //  A screen that shows at `at`; `unfreeze`: the player can move again.
     struct Pending{
@@ -234,6 +229,12 @@ private:
     //  When the last Bicycle tap started, and how many came too soon.
     std::optional<Milliseconds> m_last_bike_tap;
     int m_fast_bike_taps = 0;
+    //  A hold of `direction` for `duration`: counts the leg a tap on the
+    //  Bicycle starts (SimState::bike_legs), and takes the player off the
+    //  Bicycle if SimScript::off_bike_at_legs names it.
+    void count_bike_leg(Direction direction, Milliseconds duration);
+    //  The way of the last Bicycle tap, unless another press came since.
+    std::optional<Direction> m_bike_leg_direction;
     //  When the last tap that stepped started.
     std::optional<Milliseconds> m_last_step_tap;
     //  The end of the lockout after the last battle.
