@@ -28,6 +28,7 @@
 #include "PokemonFRLG_AutoStoryHideout.h"
 #include "PokemonFRLG_AutoStoryLegs.h"
 #include "PokemonFRLG_AutoStoryScreenEvents.h"
+#include "PokemonFRLG_AutoStorySlopeRun.h"
 #include "PokemonFRLG_AutoStorySummary.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 #include "PokemonFRLG_AutoStoryTeachScreens.h"
@@ -666,6 +667,10 @@ Outcome other_game_step(StoryEnv& env, RunState& state, const StoryStep& step){
     }
     if (!done){
         done = run_abilities(env, state, step);
+    }
+    if (!done){
+        SlopeEnv slope{env.console, env.context, env.supplies, env.checks, env.language, env.counted_items};
+        done = run_slope_step(slope, step);
     }
     if (done && done->succeeded() && !done->pose){
         //  Pacing leaves the player on either of its tiles.

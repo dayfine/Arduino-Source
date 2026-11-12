@@ -21,6 +21,7 @@
 #define PokemonAutomation_PokemonFRLG_AutoStoryEvents_H
 
 #include <functional>
+#include <map>
 #include <optional>
 #include <string>
 #include <vector>
@@ -89,6 +90,9 @@ struct StoryEnv{
     //  The player a new game picks. The readers tell the boy from the girl
     //  on their own, so a save of either needs no setting.
     PlayerGender player_gender = PlayerGender::BOY;
+    //  The Items pocket's counts a count_items step kept
+    //  (PokemonFRLG_AutoStorySlopeRun.h), for the next to compare.
+    std::map<std::string, int> counted_items = {};
 };
 
 //  After a save is loaded for a checkpoint that starts on `start_map`: the
