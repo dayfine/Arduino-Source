@@ -347,8 +347,8 @@ UnitTestResult test_unsettled_before_a_battle(){
 }
 
 //  A battle's opening still playing when a walk step begins: the walk
-//  before it ended in grass or in a trainer's sight (BDSP fault sweep, 51
-//  steps of 00.01-01.11). The looks wait for the battle, past max_looks,
+//  before it ended in grass or in a trainer's sight. The looks wait for the
+//  battle, past max_looks,
 //  and its handler clears it before the step.
 UnitTestResult test_opening_before_a_walk(ScreenLook opening, ScreenLook battle, const std::string& kind, const std::string& handler){
     FakeGame game;
@@ -492,8 +492,7 @@ UnitTestResult test_screen_before_each_step(){
     });
 }
 
-//  The program started on the HOME menu (lab-B 2026-11-09 15:31: "before
-//  save: settled overworld", then X on HOME and a 22-tile walk on it). The
+//  The program started with the game closed and the HOME menu showing. The
 //  screen is told as HOME and the step fails at once, before any input,
 //  and before a step that starts on a battle's opening too.
 UnitTestResult test_home_menu_before_a_step(){
