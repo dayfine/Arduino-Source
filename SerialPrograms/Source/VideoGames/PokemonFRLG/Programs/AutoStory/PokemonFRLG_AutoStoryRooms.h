@@ -21,6 +21,7 @@
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "Pokemon/Navigation/Pokemon_Grid.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PlayerFacingReader.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -59,7 +60,7 @@ struct RoomLeg{
 //  known.
 void walk_room_legs(
     ConsoleHandle& console, ProControllerContext& context,
-    const std::vector<RoomLeg>& legs, std::optional<Pokemon::Direction> facing
+    const std::vector<RoomLeg>& legs, std::optional<Pokemon::Direction> facing, PlayerGender player
 );
 
 
