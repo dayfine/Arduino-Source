@@ -30,6 +30,7 @@
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryRows_Tests.h"
 #include "PokemonFRLG_AutoStorySlope.h"
+#include "PokemonFRLG_AutoStorySlopeMessage.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 
 namespace PokemonAutomation{
@@ -138,7 +139,11 @@ public:
         }
     }
 
+    //  A found item's message holds the player until its pages are closed
+    //  with A, and the watcher sees it as the console's does
+    //  (SlopeMessageGate), from the next batch's first presses on too.
     SlopeSendResult send(const std::vector<SlopePress>& presses, bool message){
+        SlopeMessageGate gate;
         for (size_t c = 0; c < presses.size(); c++){
             const SlopePress& press = presses[c];
             const double end = m_clock + std::chrono::duration<double, std::milli>(press.hold).count();
@@ -146,6 +151,13 @@ public:
             for (; m_clock < end; m_clock += FRAME_MS){
                 const bool a = press.a && first;
                 first = false;
+                if (message && gate.opened(m_pages > 0, now())){
+                    return SlopeSendResult{.sent = SlopeSent::MESSAGE};
+                }
+                if (m_pages > 0){
+                    m_pages -= a ? 1 : 0;
+                    continue;
+                }
                 if (m_busy > 0){
                     m_busy--;
                     continue;
@@ -155,8 +167,8 @@ public:
                     m_caught = false;
                     return SlopeSendResult{.sent = SlopeSent::BATTLE, .press = c};
                 }
-                if (a && message && face_item()){
-                    return SlopeSendResult{.sent = SlopeSent::MESSAGE};
+                if (a && face_item()){
+                    m_pages = MESSAGE_PAGES;
                 }
             }
         }
@@ -172,6 +184,7 @@ public:
     int x() const{ return m_x; }
     int y() const{ return m_y; }
     const std::vector<std::string>& seen() const{ return m_seen; }
+    const std::vector<std::string>& picked() const{ return m_picked; }
 
 private:
     static constexpr double FRAME_MS = 1000.0 / 59.7275;
@@ -179,6 +192,12 @@ private:
     static constexpr int ROLL_FRAMES = 4;
     static constexpr int FLAT_FRAMES = 6;
     static constexpr int JUMP_FRAMES = 32;
+    //  "found a ..." and "put the ... in the ITEMS POCKET".
+    static constexpr int MESSAGE_PAGES = 2;
+
+    WallClock now() const{
+        return WallClock() + std::chrono::duration_cast<WallClock::duration>(std::chrono::duration<double, std::milli>(m_clock));
+    }
 
     enum class State{
         NORMAL,
@@ -253,6 +272,7 @@ private:
         if (item == m_items.end()){
             return false;
         }
+        m_picked.push_back(item->second);
         m_items.erase(item);
         return true;
     }
@@ -279,6 +299,8 @@ private:
     std::vector<Biker> m_bikers;
     std::set<std::pair<int, int>> m_biker_tiles;
     std::vector<std::string> m_seen;
+    std::vector<std::string> m_picked;
+    int m_pages = 0;
     std::optional<std::pair<int, int>> m_catch;
     bool m_caught = false;
 };
@@ -319,6 +341,12 @@ UnitTestResult test_slope_moves(){
     const SlopeResult result = ride_on_model(model, *parse_slope_step(*step));
     if (result.end != SlopeEnd::DONE || result.found != std::vector<std::string>{"rare-candy", "max-elixir"}){
         return std::format("11.02: the slope ended at move {}, at ({}, {}), {} item(s) found.", result.move + 1, model.x(), model.y(), result.found.size());
+    }
+    //  11.02's second run (console B, 2026-11-12): the RARE CANDY's message,
+    //  still closing, was taken for the MAX ELIXIR's, which was never
+    //  picked up, and the ride went on from the RARE CANDY's tile.
+    if (model.picked() != std::vector<std::string>{"rare-candy", "max-elixir"}){
+        return std::format("11.02: {} item(s) picked up, not both.", model.picked().size());
     }
     if (model.x() != 12 || model.y() != ROUTE18_ROW + 10){
         return std::format("11.02: the slope ended at ({}, {}), not Route 18's (12, 10).", model.x(), model.y());

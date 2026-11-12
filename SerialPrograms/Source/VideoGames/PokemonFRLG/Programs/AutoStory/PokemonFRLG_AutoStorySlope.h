@@ -135,9 +135,9 @@ struct SlopeSendResult{
     size_t press = 0;
 };
 //  The console side of ride_slope(): `send` sends `presses` back to back,
-//  watching for a message only when `message` is set, and for a battle;
-//  `fight` fights a battle that cut a batch short, back to the overworld,
-//  and tells whether it was won.
+//  watching for a message (SlopeMessageGate) only when `message` is set,
+//  and for a battle; `fight` fights a battle that cut a batch short, back
+//  to the overworld, and tells whether it was won.
 struct SlopeCalls{
     std::function<SlopeSendResult(const std::vector<SlopePress>& presses, bool message)> send;
     std::function<bool()> fight;
