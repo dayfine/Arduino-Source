@@ -1,0 +1,39 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "09.03",
+    "title": "Rocket Hideout: the SILPH SCOPE and an Escape Rope out",
+    "start": {"map": "RocketHideout_B4F", "tiles": [[19, 5]], "facing": "south"},
+    "events": [
+      {
+        "id": "face_silph_scope",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "RocketHideout_B4F", "tiles": [[19, 5]], "facing": "east"}
+        },
+        "why": "turn to face the SILPH SCOPE (20, 5), right east of where Giovanni's scene leaves the player: no tile to walk (console B runs 7 and 9 failed walking round it to (21, 5))"
+      },
+      {
+        "id": "silph_scope",
+        "kind": "talk",
+        "why": "pick up the SILPH SCOPE (pokeguy 1:02:10)"
+      },
+      {
+        "id": "escape_rope_hideout",
+        "kind": "game_action",
+        "action": "use_item",
+        "args": {
+          "item": "escape-rope"
+        },
+        "declared_after": {"map": "CeladonCity", "tiles": [[34, 22]], "facing": "south"},
+        "why": "out to the Game Corner's door (pokeguy 1:02:17)"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full"
+  },
+  "metadata": {"phase": "testing"}
+}
