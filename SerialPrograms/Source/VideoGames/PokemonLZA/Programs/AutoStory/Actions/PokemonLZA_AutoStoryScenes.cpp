@@ -89,15 +89,7 @@ void log_event_change(ConsoleHandle& console, const Pokemon::ScreenEvents& event
         return;
     }
     last = shown;
-    std::string names;
-    for (size_t i = 0; i < Pokemon::SCREEN_EVENT_COUNT; i++){
-        const Pokemon::ScreenEvent event = (Pokemon::ScreenEvent)i;
-        if (shown.has(event)){
-            names += names.empty() ? "" : ", ";
-            names += Pokemon::screen_event_name(event);
-        }
-    }
-    console.log(std::format("mash_scene(): screen now: {}", names.empty() ? std::string("nothing") : names));
+    console.log(std::format("mash_scene(): screen now: {}", Pokemon::describe(shown)));
 }
 
 } // namespace
