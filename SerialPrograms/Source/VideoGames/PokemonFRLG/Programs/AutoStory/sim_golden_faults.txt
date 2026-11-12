@@ -1,0 +1,649 @@
+# FRLG AutoStory fault sweep outcomes (PokemonFRLG_AutoStorySimGolden_Tests.cpp)
+PokemonFRLG::AutoStory - Fault sweep: 01.02, dark cave without Flash: passed
+  Fault sweep 01.02: not swept, the row walks no dark cave.
+PokemonFRLG::AutoStory - Fault sweep: 01.02, late warp fade: passed
+  Fault sweep 01.02 late warp fade: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 01.02, lost tap after a battle in a trainer's line: passed
+  Fault sweep 01.02 lost tap after a battle in a trainer's line: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 01.02, scene end pose: passed
+  Fault sweep 01.02 scene end pose: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 01.02, slow fade-in after every warp: passed
+  Fault sweep 01.02 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 01.02, step tap read as not moved: passed
+  Fault sweep 01.02 step tap read as not moved: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 01.02, warp no-op: passed
+  Fault sweep 01.02 warp no-op: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 01.02, wild battles at the game's odds: passed
+  Fault sweep 01.02 wild battles: passed 30/30, 0 battles; of those passed: time (s) mean 0.0, clean 0.0; tiles walked again mean 0.0; s lost per battle mean -
+  Fault sweep 01.02 wild battles at the game's odds: 30 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 01.03, dark cave without Flash: passed
+  Fault sweep 01.03: not swept, the row walks no dark cave.
+PokemonFRLG::AutoStory - Fault sweep: 01.03, late warp fade: passed
+  Fault sweep 01.03 late warp fade: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 01.03, lost tap after a battle in a trainer's line: passed
+  Fault sweep 01.03 lost tap after a battle in a trainer's line: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 01.03, scene end pose: passed
+  Fault sweep 01.03 scene end pose: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 01.03, slow fade-in after every warp: passed
+  Fault sweep 01.03 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 01.03, step tap read as not moved: passed
+  Fault sweep 01.03 step tap read as not moved: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 01.03, warp no-op: passed
+  Fault sweep 01.03 warp no-op: 2 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 01.03, wild battles at the game's odds: passed
+  Fault sweep 01.03 wild battles: passed 30/30, 0 battles; of those passed: time (s) mean 24.5, clean 24.5; tiles walked again mean 0.0; s lost per battle mean -
+  Fault sweep 01.03 wild battles at the game's odds: 30 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 01.04, dark cave without Flash: passed
+  Fault sweep 01.04: not swept, the row walks no dark cave.
+PokemonFRLG::AutoStory - Fault sweep: 01.04, late warp fade: passed
+  Fault sweep 01.04 late warp fade: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 01.04, lost tap after a battle in a trainer's line: passed
+  Fault sweep 01.04 lost tap after a battle in a trainer's line: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 01.04, scene end pose: passed
+  Fault sweep 01.04 scene end pose: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 01.04, slow fade-in after every warp: passed
+  Fault sweep 01.04 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 01.04, step tap read as not moved: passed
+  Fault sweep 01.04 step tap read as not moved: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 01.04, warp no-op: passed
+  Fault sweep 01.04 warp no-op: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 01.04, wild battles at the game's odds: passed
+  Fault sweep 01.04 wild battles: passed 30/30, 0 battles; of those passed: time (s) mean 14.7, clean 14.7; tiles walked again mean 0.0; s lost per battle mean -
+  Fault sweep 01.04 wild battles at the game's odds: 30 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 01.05, dark cave without Flash: passed
+  Fault sweep 01.05: not swept, the row walks no dark cave.
+PokemonFRLG::AutoStory - Fault sweep: 01.05, late warp fade: passed
+  Fault sweep 01.05 late warp fade: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 01.05, lost tap after a battle in a trainer's line: passed
+  Fault sweep 01.05 lost tap after a battle in a trainer's line: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 01.05, scene end pose: passed
+  Fault sweep 01.05 scene end pose: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 01.05, slow fade-in after every warp: passed
+  Fault sweep 01.05 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 01.05, step tap read as not moved: passed
+  Fault sweep 01.05 step tap read as not moved: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 01.05, warp no-op: passed
+  Fault sweep 01.05 warp no-op: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 01.05, wild battles at the game's odds: passed
+  Fault sweep 01.05 wild battles: passed 30/30, 0 battles; of those passed: time (s) mean 3.0, clean 3.0; tiles walked again mean 0.0; s lost per battle mean -
+  Fault sweep 01.05 wild battles at the game's odds: 30 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 01.06, dark cave without Flash: passed
+  Fault sweep 01.06: not swept, the row walks no dark cave.
+PokemonFRLG::AutoStory - Fault sweep: 01.06, late warp fade: passed
+  Fault sweep 01.06 late warp fade: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 01.06, lost tap after a battle in a trainer's line: passed
+  Fault sweep 01.06 lost tap after a battle in a trainer's line: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 01.06, scene end pose: passed
+  Fault sweep 01.06 scene end pose: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 01.06, slow fade-in after every warp: passed
+  Fault sweep 01.06 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 01.06, step tap read as not moved: passed
+  Fault sweep 01.06 step tap read as not moved: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 01.06, warp no-op: passed
+  Fault sweep 01.06 warp no-op: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 01.06, wild battles at the game's odds: passed
+  Fault sweep 01.06 wild battles: passed 30/30, 0 battles; of those passed: time (s) mean 10.1, clean 10.1; tiles walked again mean 0.0; s lost per battle mean -
+  Fault sweep 01.06 wild battles at the game's odds: 30 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 02.01, dark cave without Flash: passed
+  Fault sweep 02.01: not swept, the row walks no dark cave.
+PokemonFRLG::AutoStory - Fault sweep: 02.01, late warp fade: passed
+  Fault sweep 02.01 late warp fade: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 02.01, lost tap after a battle in a trainer's line: passed
+  Fault sweep 02.01 lost tap after a battle in a trainer's line: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 02.01, scene end pose: passed
+  Fault sweep 02.01 scene end pose: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 02.01, slow fade-in after every warp: passed
+  Fault sweep 02.01 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 02.01, step tap read as not moved: passed
+  Fault sweep 02.01 step tap read as not moved: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 02.01, warp no-op: passed
+  Fault sweep 02.01 warp no-op: 2 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 02.01, wild battles at the game's odds: passed
+  Fault sweep 02.01 wild battles: passed 30/30, 72 battles; of those passed: time (s) mean 113.4, clean 73.1; tiles walked again mean 5.0; s lost per battle mean 2.0
+  Fault sweep 02.01 wild battles at the game's odds: 30 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 02.02, dark cave without Flash: passed
+  Fault sweep 02.02: not swept, the row walks no dark cave.
+PokemonFRLG::AutoStory - Fault sweep: 02.02, late warp fade: passed
+  Fault sweep 02.02 late warp fade: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 02.02, lost tap after a battle in a trainer's line: passed
+  Fault sweep 02.02 lost tap after a battle in a trainer's line: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 02.02, scene end pose: passed
+  Fault sweep 02.02 scene end pose: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 02.02, slow fade-in after every warp: passed
+  Fault sweep 02.02 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 02.02, step tap read as not moved: passed
+  Fault sweep 02.02 step tap read as not moved: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 02.02, warp no-op: passed
+  Fault sweep 02.02 warp no-op: 2 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 02.02, wild battles at the game's odds: passed
+  Fault sweep 02.02 wild battles: passed 28/30, 116 battles; of those passed: time (s) mean 146.6, clean 73.0; tiles walked again mean 38.2; s lost per battle mean 6.7
+  Fault sweep 02.02 wild battles at the game's odds: 30 variants, 2 fail.
+  | 02.02 |  | wild battles at the game's odds | seed 16 | 02.02/below_oak: walk_overworld_route(): stopped part-way 9 times. On Route1 (16, 7). |
+  | 02.02 |  | wild battles at the game's odds | seed 30 | 02.02/below_oak: walk_overworld_route(): stopped part-way 9 times. On Route1 (16, 13). |
+  Known failing until below_oak on Route 1 gives up after 9 stops part-way (seeds 16, 30): count stops that make no progress, not every battle: 2 of 30 variants fail 02.02:
+     seed 16: 02.02/below_oak: walk_overworld_route(): stopped part-way 9 times. On Route1 (16, 7).
+     seed 30: 02.02/below_oak: walk_overworld_route(): stopped part-way 9 times. On Route1 (16, 13).
+PokemonFRLG::AutoStory - Fault sweep: 02.03, dark cave without Flash: passed
+  Fault sweep 02.03: not swept, the row walks no dark cave.
+PokemonFRLG::AutoStory - Fault sweep: 02.03, late warp fade: passed
+  Fault sweep 02.03 late warp fade: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 02.03, lost tap after a battle in a trainer's line: passed
+  Fault sweep 02.03 lost tap after a battle in a trainer's line: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 02.03, scene end pose: passed
+  Fault sweep 02.03 scene end pose: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 02.03, slow fade-in after every warp: passed
+  Fault sweep 02.03 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 02.03, step tap read as not moved: passed
+  Fault sweep 02.03 step tap read as not moved: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 02.03, warp no-op: passed
+  Fault sweep 02.03 warp no-op: 6 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 02.03, wild battles at the game's odds: passed
+  Fault sweep 02.03 wild battles: passed 30/30, 72 battles; of those passed: time (s) mean 227.6, clean 187.3; tiles walked again mean 5.0; s lost per battle mean 2.0
+  Fault sweep 02.03 wild battles at the game's odds: 30 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 03.01, dark cave without Flash: passed
+  Fault sweep 03.01: not swept, the row walks no dark cave.
+PokemonFRLG::AutoStory - Fault sweep: 03.01, late warp fade: passed
+  Fault sweep 03.01 late warp fade: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 03.01, lost tap after a battle in a trainer's line: passed
+  Fault sweep 03.01 lost tap after a battle in a trainer's line: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 03.01, scene end pose: passed
+  Fault sweep 03.01 scene end pose: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 03.01, slow fade-in after every warp: passed
+  Fault sweep 03.01 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 03.01, step tap read as not moved: passed
+  Fault sweep 03.01 step tap read as not moved: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 03.01, warp no-op: passed
+  Fault sweep 03.01 warp no-op: 3 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 03.01, wild battles at the game's odds: passed
+  Fault sweep 03.01 wild battles: passed 30/30, 133 battles; of those passed: time (s) mean 275.5, clean 207.0; tiles walked again mean 0.1; s lost per battle mean 1.7
+  Fault sweep 03.01 wild battles at the game's odds: 30 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 03.02, dark cave without Flash: passed
+  Fault sweep 03.02: not swept, the row walks no dark cave.
+PokemonFRLG::AutoStory - Fault sweep: 03.02, late warp fade: passed
+  Fault sweep 03.02 late warp fade: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 03.02, lost tap after a battle in a trainer's line: passed
+  Fault sweep 03.02 lost tap after a battle in a trainer's line: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 03.02, scene end pose: passed
+  Fault sweep 03.02 scene end pose: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 03.02, slow fade-in after every warp: passed
+  Fault sweep 03.02 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 03.02, step tap read as not moved: passed
+  Fault sweep 03.02 step tap read as not moved: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 03.02, warp no-op: passed
+  Fault sweep 03.02 warp no-op: 2 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 03.02, wild battles at the game's odds: passed
+  Fault sweep 03.02 wild battles: passed 30/30, 0 battles; of those passed: time (s) mean 57.8, clean 57.8; tiles walked again mean 0.0; s lost per battle mean -
+  Fault sweep 03.02 wild battles at the game's odds: 30 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 03.03, dark cave without Flash: passed
+  Fault sweep 03.03: not swept, the row walks no dark cave.
+PokemonFRLG::AutoStory - Fault sweep: 03.03, late warp fade: passed
+  Fault sweep 03.03 late warp fade: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 03.03, lost tap after a battle in a trainer's line: passed
+  Fault sweep 03.03 lost tap after a battle in a trainer's line: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 03.03, scene end pose: passed
+  Fault sweep 03.03 scene end pose: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 03.03, slow fade-in after every warp: passed
+  Fault sweep 03.03 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 03.03, step tap read as not moved: passed
+  Fault sweep 03.03 step tap read as not moved: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 03.03, warp no-op: passed
+  Fault sweep 03.03 warp no-op: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 03.03, wild battles at the game's odds: passed
+  Fault sweep 03.03 wild battles: passed 30/30, 0 battles; of those passed: time (s) mean 60.0, clean 60.0; tiles walked again mean 0.0; s lost per battle mean -
+  Fault sweep 03.03 wild battles at the game's odds: 30 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 04.01, dark cave without Flash: passed
+  Fault sweep 04.01: not swept, the row walks no dark cave.
+PokemonFRLG::AutoStory - Fault sweep: 04.01, late warp fade: passed
+  Fault sweep 04.01 late warp fade: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 04.01, lost tap after a battle in a trainer's line: passed
+  Fault sweep 04.01 lost tap after a battle in a trainer's line: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 04.01, scene end pose: passed
+  Fault sweep 04.01 scene end pose: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 04.01, slow fade-in after every warp: passed
+  Fault sweep 04.01 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 04.01, step tap read as not moved: passed
+  Fault sweep 04.01 step tap read as not moved: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 04.01, warp no-op: passed
+  Fault sweep 04.01 warp no-op: 2 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 04.01, wild battles at the game's odds: passed
+  Fault sweep 04.01 wild battles: passed 30/30, 0 battles; of those passed: time (s) mean 102.6, clean 102.6; tiles walked again mean 0.0; s lost per battle mean -
+  Fault sweep 04.01 wild battles at the game's odds: 30 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 04.02, dark cave without Flash: passed
+  Fault sweep 04.02: not swept, the row walks no dark cave.
+PokemonFRLG::AutoStory - Fault sweep: 04.02, late warp fade: passed
+  Fault sweep 04.02 late warp fade: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 04.02, lost tap after a battle in a trainer's line: passed
+  Fault sweep 04.02 lost tap after a battle in a trainer's line: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 04.02, scene end pose: passed
+  Fault sweep 04.02 scene end pose: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 04.02, slow fade-in after every warp: passed
+  Fault sweep 04.02 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 04.02, step tap read as not moved: passed
+  Fault sweep 04.02 step tap read as not moved: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 04.02, warp no-op: passed
+  Fault sweep 04.02 warp no-op: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 04.02, wild battles at the game's odds: passed
+  Fault sweep 04.02 wild battles: passed 30/30, 0 battles; of those passed: time (s) mean 69.0, clean 69.0; tiles walked again mean 0.0; s lost per battle mean -
+  Fault sweep 04.02 wild battles at the game's odds: 30 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 04.03, dark cave without Flash: passed
+  Fault sweep 04.03: not swept, the row walks no dark cave.
+PokemonFRLG::AutoStory - Fault sweep: 04.03, late warp fade: passed
+  Fault sweep 04.03 late warp fade: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 04.03, lost tap after a battle in a trainer's line: passed
+  Fault sweep 04.03 lost tap after a battle in a trainer's line: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 04.03, scene end pose: passed
+  Fault sweep 04.03 scene end pose: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 04.03, slow fade-in after every warp: passed
+  Fault sweep 04.03 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 04.03, step tap read as not moved: passed
+  Fault sweep 04.03 step tap read as not moved: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 04.03, warp no-op: passed
+  Fault sweep 04.03 warp no-op: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 04.03, wild battles at the game's odds: passed
+  Fault sweep 04.03 wild battles: passed 30/30, 0 battles; of those passed: time (s) mean 0.0, clean 0.0; tiles walked again mean 0.0; s lost per battle mean -
+  Fault sweep 04.03 wild battles at the game's odds: 30 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 04.04, dark cave without Flash: passed
+  Fault sweep 04.04: not swept, the row walks no dark cave.
+PokemonFRLG::AutoStory - Fault sweep: 04.04, late warp fade: passed
+  Fault sweep 04.04 late warp fade: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 04.04, lost tap after a battle in a trainer's line: passed
+  Fault sweep 04.04 lost tap after a battle in a trainer's line: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 04.04, scene end pose: passed
+  Fault sweep 04.04 scene end pose: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 04.04, slow fade-in after every warp: passed
+  Fault sweep 04.04 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 04.04, step tap read as not moved: passed
+  Fault sweep 04.04 step tap read as not moved: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 04.04, warp no-op: passed
+  Fault sweep 04.04 warp no-op: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 04.04, wild battles at the game's odds: passed
+  Fault sweep 04.04 wild battles: passed 30/30, 0 battles; of those passed: time (s) mean 17.4, clean 17.4; tiles walked again mean 0.0; s lost per battle mean -
+  Fault sweep 04.04 wild battles at the game's odds: 30 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 04.05, dark cave without Flash: passed
+  Fault sweep 04.05: not swept, the row fails clean: 04.05/route4_east: no legs. On MtMoon_B2F (14, 8).
+PokemonFRLG::AutoStory - Fault sweep: 04.05, late warp fade: passed
+  Fault sweep 04.05: not swept, the row fails clean: 04.05/route4_east: no legs. On MtMoon_B2F (14, 8).
+PokemonFRLG::AutoStory - Fault sweep: 04.05, lost tap after a battle in a trainer's line: passed
+  Fault sweep 04.05: not swept, the row fails clean: 04.05/route4_east: no legs. On MtMoon_B2F (14, 8).
+PokemonFRLG::AutoStory - Fault sweep: 04.05, scene end pose: passed
+  Fault sweep 04.05: not swept, the row fails clean: 04.05/route4_east: no legs. On MtMoon_B2F (14, 8).
+PokemonFRLG::AutoStory - Fault sweep: 04.05, slow fade-in after every warp: passed
+  Fault sweep 04.05: not swept, the row fails clean: 04.05/route4_east: no legs. On MtMoon_B2F (14, 8).
+PokemonFRLG::AutoStory - Fault sweep: 04.05, step tap read as not moved: passed
+  Fault sweep 04.05: not swept, the row fails clean: 04.05/route4_east: no legs. On MtMoon_B2F (14, 8).
+PokemonFRLG::AutoStory - Fault sweep: 04.05, warp no-op: passed
+  Fault sweep 04.05: not swept, the row fails clean: 04.05/route4_east: no legs. On MtMoon_B2F (14, 8).
+PokemonFRLG::AutoStory - Fault sweep: 04.05, wild battles at the game's odds: passed
+  Fault sweep 04.05: not swept, the row fails clean: 04.05/route4_east: no legs. On MtMoon_B2F (14, 8).
+PokemonFRLG::AutoStory - Fault sweep: 04.06, dark cave without Flash: passed
+  Fault sweep 04.06: not swept, the row walks no dark cave.
+PokemonFRLG::AutoStory - Fault sweep: 04.06, late warp fade: passed
+  Fault sweep 04.06 late warp fade: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 04.06, lost tap after a battle in a trainer's line: passed
+  Fault sweep 04.06 lost tap after a battle in a trainer's line: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 04.06, scene end pose: passed
+  Fault sweep 04.06 scene end pose: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 04.06, slow fade-in after every warp: passed
+  Fault sweep 04.06 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 04.06, step tap read as not moved: passed
+  Fault sweep 04.06 step tap read as not moved: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 04.06, warp no-op: passed
+  Fault sweep 04.06 warp no-op: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 04.06, wild battles at the game's odds: passed
+  Fault sweep 04.06 wild battles: passed 30/30, 0 battles; of those passed: time (s) mean 77.0, clean 77.0; tiles walked again mean 0.0; s lost per battle mean -
+  Fault sweep 04.06 wild battles at the game's odds: 30 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.01, dark cave without Flash: passed
+  Fault sweep 05.01: not swept, the row walks no dark cave.
+PokemonFRLG::AutoStory - Fault sweep: 05.01, late warp fade: passed
+  Fault sweep 05.01 late warp fade: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.01, lost tap after a battle in a trainer's line: passed
+  Fault sweep 05.01 lost tap after a battle in a trainer's line: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.01, scene end pose: passed
+  Fault sweep 05.01 scene end pose: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.01, slow fade-in after every warp: passed
+  Fault sweep 05.01 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.01, step tap read as not moved: passed
+  Fault sweep 05.01 step tap read as not moved: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.01, warp no-op: passed
+  Fault sweep 05.01 warp no-op: 3 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.01, wild battles at the game's odds: passed
+  Fault sweep 05.01 wild battles: passed 30/30, 0 battles; of those passed: time (s) mean 165.4, clean 165.4; tiles walked again mean 0.0; s lost per battle mean -
+  Fault sweep 05.01 wild battles at the game's odds: 30 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.02, dark cave without Flash: passed
+  Fault sweep 05.02: not swept, the row walks no dark cave.
+PokemonFRLG::AutoStory - Fault sweep: 05.02, late warp fade: passed
+  Fault sweep 05.02 late warp fade: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.02, lost tap after a battle in a trainer's line: passed
+  Fault sweep 05.02 lost tap after a battle in a trainer's line: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.02, scene end pose: passed
+  Fault sweep 05.02 scene end pose: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.02, slow fade-in after every warp: passed
+  Fault sweep 05.02 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.02, step tap read as not moved: passed
+  Fault sweep 05.02 step tap read as not moved: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.02, warp no-op: passed
+  Fault sweep 05.02 warp no-op: 2 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.02, wild battles at the game's odds: passed
+  Fault sweep 05.02 wild battles: passed 30/30, 0 battles; of those passed: time (s) mean 36.9, clean 36.9; tiles walked again mean 0.0; s lost per battle mean -
+  Fault sweep 05.02 wild battles at the game's odds: 30 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.03, dark cave without Flash: passed
+  Fault sweep 05.03: not swept, the row walks no dark cave.
+PokemonFRLG::AutoStory - Fault sweep: 05.03, late warp fade: passed
+  Fault sweep 05.03 late warp fade: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.03, lost tap after a battle in a trainer's line: passed
+  Fault sweep 05.03 lost tap after a battle in a trainer's line: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.03, scene end pose: passed
+  Fault sweep 05.03 scene end pose: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.03, slow fade-in after every warp: passed
+  Fault sweep 05.03 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.03, step tap read as not moved: passed
+  Fault sweep 05.03 step tap read as not moved: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.03, warp no-op: passed
+  Fault sweep 05.03 warp no-op: 3 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.03, wild battles at the game's odds: passed
+  Fault sweep 05.03 wild battles: passed 30/30, 0 battles; of those passed: time (s) mean 174.5, clean 174.5; tiles walked again mean 0.0; s lost per battle mean -
+  Fault sweep 05.03 wild battles at the game's odds: 30 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.04, dark cave without Flash: passed
+  Fault sweep 05.04: not swept, the row walks no dark cave.
+PokemonFRLG::AutoStory - Fault sweep: 05.04, late warp fade: passed
+  Fault sweep 05.04 late warp fade: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.04, lost tap after a battle in a trainer's line: passed
+  Fault sweep 05.04 lost tap after a battle in a trainer's line: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.04, scene end pose: passed
+  Fault sweep 05.04 scene end pose: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.04, slow fade-in after every warp: passed
+  Fault sweep 05.04 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.04, step tap read as not moved: passed
+  Fault sweep 05.04 step tap read as not moved: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.04, warp no-op: passed
+  Fault sweep 05.04 warp no-op: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.04, wild battles at the game's odds: passed
+  Fault sweep 05.04 wild battles: passed 30/30, 0 battles; of those passed: time (s) mean 5.8, clean 5.8; tiles walked again mean 0.0; s lost per battle mean -
+  Fault sweep 05.04 wild battles at the game's odds: 30 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.05, dark cave without Flash: passed
+  Fault sweep 05.05: not swept, the row walks no dark cave.
+PokemonFRLG::AutoStory - Fault sweep: 05.05, late warp fade: passed
+  Fault sweep 05.05 late warp fade: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.05, lost tap after a battle in a trainer's line: passed
+  Fault sweep 05.05 lost tap after a battle in a trainer's line: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.05, scene end pose: passed
+  Fault sweep 05.05 scene end pose: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.05, slow fade-in after every warp: passed
+  Fault sweep 05.05 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.05, step tap read as not moved: passed
+  Fault sweep 05.05 step tap read as not moved: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.05, warp no-op: passed
+  Fault sweep 05.05 warp no-op: 2 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.05, wild battles at the game's odds: passed
+  Fault sweep 05.05 wild battles: passed 30/30, 0 battles; of those passed: time (s) mean 177.7, clean 177.7; tiles walked again mean 0.0; s lost per battle mean -
+  Fault sweep 05.05 wild battles at the game's odds: 30 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.06, dark cave without Flash: passed
+  Fault sweep 05.06: not swept, the row walks no dark cave.
+PokemonFRLG::AutoStory - Fault sweep: 05.06, late warp fade: passed
+  Fault sweep 05.06 late warp fade: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.06, lost tap after a battle in a trainer's line: passed
+  Fault sweep 05.06 lost tap after a battle in a trainer's line: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.06, scene end pose: passed
+  Fault sweep 05.06 scene end pose: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.06, slow fade-in after every warp: passed
+  Fault sweep 05.06 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.06, step tap read as not moved: passed
+  Fault sweep 05.06 step tap read as not moved: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.06, warp no-op: passed
+  Fault sweep 05.06 warp no-op: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.06, wild battles at the game's odds: passed
+  Fault sweep 05.06 wild battles: passed 30/30, 0 battles; of those passed: time (s) mean 167.8, clean 167.8; tiles walked again mean 0.0; s lost per battle mean -
+  Fault sweep 05.06 wild battles at the game's odds: 30 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.07, dark cave without Flash: passed
+  Fault sweep 05.07: not swept, the row walks no dark cave.
+PokemonFRLG::AutoStory - Fault sweep: 05.07, late warp fade: passed
+  Fault sweep 05.07 late warp fade: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.07, lost tap after a battle in a trainer's line: passed
+  Fault sweep 05.07 lost tap after a battle in a trainer's line: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.07, scene end pose: passed
+  Fault sweep 05.07 scene end pose: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.07, slow fade-in after every warp: passed
+  Fault sweep 05.07 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.07, step tap read as not moved: passed
+  Fault sweep 05.07 step tap read as not moved: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.07, warp no-op: passed
+  Fault sweep 05.07 warp no-op: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.07, wild battles at the game's odds: passed
+  Fault sweep 05.07 wild battles: passed 30/30, 0 battles; of those passed: time (s) mean 22.2, clean 22.2; tiles walked again mean 0.0; s lost per battle mean -
+  Fault sweep 05.07 wild battles at the game's odds: 30 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.08, dark cave without Flash: passed
+  Fault sweep 05.08: not swept, the row walks no dark cave.
+PokemonFRLG::AutoStory - Fault sweep: 05.08, late warp fade: passed
+  Fault sweep 05.08 late warp fade: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.08, lost tap after a battle in a trainer's line: passed
+  Fault sweep 05.08 lost tap after a battle in a trainer's line: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.08, scene end pose: passed
+  Fault sweep 05.08 scene end pose: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.08, slow fade-in after every warp: passed
+  Fault sweep 05.08 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.08, step tap read as not moved: passed
+  Fault sweep 05.08 step tap read as not moved: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.08, warp no-op: passed
+  Fault sweep 05.08 warp no-op: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.08, wild battles at the game's odds: passed
+  Fault sweep 05.08 wild battles: passed 30/30, 0 battles; of those passed: time (s) mean 81.6, clean 81.6; tiles walked again mean 0.0; s lost per battle mean -
+  Fault sweep 05.08 wild battles at the game's odds: 30 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.09, dark cave without Flash: passed
+  Fault sweep 05.09: not swept, the row walks no dark cave.
+PokemonFRLG::AutoStory - Fault sweep: 05.09, late warp fade: passed
+  Fault sweep 05.09 late warp fade: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.09, lost tap after a battle in a trainer's line: passed
+  Fault sweep 05.09 lost tap after a battle in a trainer's line: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.09, scene end pose: passed
+  Fault sweep 05.09 scene end pose: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.09, slow fade-in after every warp: passed
+  Fault sweep 05.09 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.09, step tap read as not moved: passed
+  Fault sweep 05.09 step tap read as not moved: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.09, warp no-op: passed
+  Fault sweep 05.09 warp no-op: 3 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.09, wild battles at the game's odds: passed
+  Fault sweep 05.09 wild battles: passed 30/30, 0 battles; of those passed: time (s) mean 218.4, clean 218.4; tiles walked again mean 0.0; s lost per battle mean -
+  Fault sweep 05.09 wild battles at the game's odds: 30 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.10, dark cave without Flash: passed
+  Fault sweep 05.10: not swept, the row walks no dark cave.
+PokemonFRLG::AutoStory - Fault sweep: 05.10, late warp fade: passed
+  Fault sweep 05.10 late warp fade: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.10, lost tap after a battle in a trainer's line: passed
+  Fault sweep 05.10 lost tap after a battle in a trainer's line: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.10, scene end pose: passed
+  Fault sweep 05.10 scene end pose: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.10, slow fade-in after every warp: passed
+  Fault sweep 05.10 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.10, step tap read as not moved: passed
+  Fault sweep 05.10 step tap read as not moved: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.10, warp no-op: passed
+  Fault sweep 05.10 warp no-op: 8 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 05.10, wild battles at the game's odds: passed
+  Fault sweep 05.10 wild battles: passed 30/30, 32 battles; of those passed: time (s) mean 252.9, clean 234.9; tiles walked again mean 0.4; s lost per battle mean 3.2
+  Fault sweep 05.10 wild battles at the game's odds: 30 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 06.01, dark cave without Flash: passed
+  Fault sweep 06.01: not swept, the row walks no dark cave.
+PokemonFRLG::AutoStory - Fault sweep: 06.01, late warp fade: passed
+  Fault sweep 06.01 late warp fade: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 06.01, lost tap after a battle in a trainer's line: passed
+  Fault sweep 06.01 lost tap after a battle in a trainer's line: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 06.01, scene end pose: passed
+  Fault sweep 06.01 scene end pose: 7 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 06.01, slow fade-in after every warp: passed
+  Fault sweep 06.01 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 06.01, step tap read as not moved: passed
+  Fault sweep 06.01 step tap read as not moved: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 06.01, warp no-op: passed
+  Fault sweep 06.01 warp no-op: 6 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 06.01, wild battles at the game's odds: passed
+  Fault sweep 06.01 wild battles: passed 30/30, 0 battles; of those passed: time (s) mean 215.2, clean 215.2; tiles walked again mean 0.0; s lost per battle mean -
+  Fault sweep 06.01 wild battles at the game's odds: 30 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 06.02, dark cave without Flash: passed
+  Fault sweep 06.02: not swept, the row fails clean: 06.02/below_gym_tree: walk_overworld_route(): no fade in and out after walking onto the warp to VermilionCity. On VermilionCity_Gym (4, 12).
+PokemonFRLG::AutoStory - Fault sweep: 06.02, late warp fade: passed
+  Fault sweep 06.02: not swept, the row fails clean: 06.02/below_gym_tree: walk_overworld_route(): no fade in and out after walking onto the warp to VermilionCity. On VermilionCity_Gym (4, 12).
+PokemonFRLG::AutoStory - Fault sweep: 06.02, lost tap after a battle in a trainer's line: passed
+  Fault sweep 06.02: not swept, the row fails clean: 06.02/below_gym_tree: walk_overworld_route(): no fade in and out after walking onto the warp to VermilionCity. On VermilionCity_Gym (4, 12).
+PokemonFRLG::AutoStory - Fault sweep: 06.02, scene end pose: passed
+  Fault sweep 06.02: not swept, the row fails clean: 06.02/below_gym_tree: walk_overworld_route(): no fade in and out after walking onto the warp to VermilionCity. On VermilionCity_Gym (4, 12).
+PokemonFRLG::AutoStory - Fault sweep: 06.02, slow fade-in after every warp: passed
+  Fault sweep 06.02: not swept, the row fails clean: 06.02/below_gym_tree: walk_overworld_route(): no fade in and out after walking onto the warp to VermilionCity. On VermilionCity_Gym (4, 12).
+PokemonFRLG::AutoStory - Fault sweep: 06.02, step tap read as not moved: passed
+  Fault sweep 06.02: not swept, the row fails clean: 06.02/below_gym_tree: walk_overworld_route(): no fade in and out after walking onto the warp to VermilionCity. On VermilionCity_Gym (4, 12).
+PokemonFRLG::AutoStory - Fault sweep: 06.02, warp no-op: passed
+  Fault sweep 06.02: not swept, the row fails clean: 06.02/below_gym_tree: walk_overworld_route(): no fade in and out after walking onto the warp to VermilionCity. On VermilionCity_Gym (4, 12).
+PokemonFRLG::AutoStory - Fault sweep: 06.02, wild battles at the game's odds: passed
+  Fault sweep 06.02: not swept, the row fails clean: 06.02/below_gym_tree: walk_overworld_route(): no fade in and out after walking onto the warp to VermilionCity. On VermilionCity_Gym (4, 12).
+PokemonFRLG::AutoStory - Fault sweep: 06.03, dark cave without Flash: passed
+  Fault sweep 06.03: not swept, the row walks no dark cave.
+PokemonFRLG::AutoStory - Fault sweep: 06.03, late warp fade: passed
+  Fault sweep 06.03 late warp fade: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 06.03, lost tap after a battle in a trainer's line: passed
+  Fault sweep 06.03 lost tap after a battle in a trainer's line: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 06.03, scene end pose: passed
+  Fault sweep 06.03 scene end pose: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 06.03, slow fade-in after every warp: passed
+  Fault sweep 06.03 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 06.03, step tap read as not moved: passed
+  Fault sweep 06.03 step tap read as not moved: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 06.03, warp no-op: passed
+  Fault sweep 06.03 warp no-op: 2 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 06.03, wild battles at the game's odds: passed
+  Fault sweep 06.03 wild battles: passed 30/30, 0 battles; of those passed: time (s) mean 172.6, clean 172.6; tiles walked again mean 0.0; s lost per battle mean -
+  Fault sweep 06.03 wild battles at the game's odds: 30 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 06.04, dark cave without Flash: passed
+  Fault sweep 06.04: not swept, the row walks no dark cave.
+PokemonFRLG::AutoStory - Fault sweep: 06.04, late warp fade: passed
+  Fault sweep 06.04 late warp fade: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 06.04, lost tap after a battle in a trainer's line: passed
+  Fault sweep 06.04 lost tap after a battle in a trainer's line: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 06.04, scene end pose: passed
+  Fault sweep 06.04 scene end pose: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 06.04, slow fade-in after every warp: passed
+  Fault sweep 06.04 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 06.04, step tap read as not moved: passed
+  Fault sweep 06.04 step tap read as not moved: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 06.04, warp no-op: passed
+  Fault sweep 06.04 warp no-op: 2 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 06.04, wild battles at the game's odds: passed
+  Fault sweep 06.04 wild battles: passed 30/30, 0 battles; of those passed: time (s) mean 85.5, clean 85.5; tiles walked again mean 0.0; s lost per battle mean -
+  Fault sweep 06.04 wild battles at the game's odds: 30 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 07.01, dark cave without Flash: passed
+  Fault sweep 07.01: not swept, the row walks no dark cave.
+PokemonFRLG::AutoStory - Fault sweep: 07.01, late warp fade: passed
+  Fault sweep 07.01 late warp fade: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 07.01, lost tap after a battle in a trainer's line: passed
+  Fault sweep 07.01 lost tap after a battle in a trainer's line: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 07.01, scene end pose: passed
+  Fault sweep 07.01 scene end pose: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 07.01, slow fade-in after every warp: passed
+  Fault sweep 07.01 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 07.01, step tap read as not moved: passed
+  Fault sweep 07.01 step tap read as not moved: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 07.01, warp no-op: passed
+  Fault sweep 07.01 warp no-op: 10 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 07.01, wild battles at the game's odds: passed
+  Fault sweep 07.01 wild battles: passed 30/30, 21 battles; of those passed: time (s) mean 288.4, clean 277.5; tiles walked again mean 0.0; s lost per battle mean 2.0
+  Fault sweep 07.01 wild battles at the game's odds: 30 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 07.02, dark cave without Flash: passed
+  Fault sweep 07.02: not swept, the row walks no dark cave.
+PokemonFRLG::AutoStory - Fault sweep: 07.02, late warp fade: passed
+  Fault sweep 07.02 late warp fade: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 07.02, lost tap after a battle in a trainer's line: passed
+  Fault sweep 07.02 lost tap after a battle in a trainer's line: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 07.02, scene end pose: passed
+  Fault sweep 07.02 scene end pose: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 07.02, slow fade-in after every warp: passed
+  Fault sweep 07.02 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 07.02, step tap read as not moved: passed
+  Fault sweep 07.02 step tap read as not moved: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 07.02, warp no-op: passed
+  Fault sweep 07.02 warp no-op: 2 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 07.02, wild battles at the game's odds: passed
+  Fault sweep 07.02 wild battles: passed 30/30, 0 battles; of those passed: time (s) mean 179.2, clean 179.2; tiles walked again mean 0.0; s lost per battle mean -
+  Fault sweep 07.02 wild battles at the game's odds: 30 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 08.01, dark cave without Flash: passed
+  Fault sweep 08.01 dark cave without Flash: 11 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 08.01, late warp fade: passed
+  Fault sweep 08.01 late warp fade: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 08.01, lost tap after a battle in a trainer's line: passed
+  Fault sweep 08.01 lost tap after a battle in a trainer's line: 8 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 08.01, scene end pose: passed
+  Fault sweep 08.01 scene end pose: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 08.01, slow fade-in after every warp: passed
+  Fault sweep 08.01 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 08.01, step tap read as not moved: passed
+  Fault sweep 08.01 step tap read as not moved: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 08.01, warp no-op: passed
+  Fault sweep 08.01 warp no-op: 4 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 08.01, wild battles at the game's odds: passed
+  Fault sweep 08.01 wild battles: passed 30/30, 547 battles; of those passed: time (s) mean 964.7, clean 702.8; tiles walked again mean 11.4; s lost per battle mean 0.5
+  Fault sweep 08.01 wild battles at the game's odds: 30 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 08.02, dark cave without Flash: passed
+  Fault sweep 08.02: not swept, the row walks no dark cave.
+PokemonFRLG::AutoStory - Fault sweep: 08.02, late warp fade: passed
+  Fault sweep 08.02 late warp fade: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 08.02, lost tap after a battle in a trainer's line: passed
+  Fault sweep 08.02 lost tap after a battle in a trainer's line: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 08.02, scene end pose: passed
+  Fault sweep 08.02 scene end pose: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 08.02, slow fade-in after every warp: passed
+  Fault sweep 08.02 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 08.02, step tap read as not moved: passed
+  Fault sweep 08.02 step tap read as not moved: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 08.02, warp no-op: passed
+  Fault sweep 08.02 warp no-op: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 08.02, wild battles at the game's odds: passed
+  Fault sweep 08.02 wild battles: passed 30/30, 0 battles; of those passed: time (s) mean 59.9, clean 59.9; tiles walked again mean 0.0; s lost per battle mean -
+  Fault sweep 08.02 wild battles at the game's odds: 30 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 08.03, dark cave without Flash: passed
+  Fault sweep 08.03: not swept, the row walks no dark cave.
+PokemonFRLG::AutoStory - Fault sweep: 08.03, late warp fade: passed
+  Fault sweep 08.03 late warp fade: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 08.03, lost tap after a battle in a trainer's line: passed
+  Fault sweep 08.03 lost tap after a battle in a trainer's line: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 08.03, scene end pose: passed
+  Fault sweep 08.03 scene end pose: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 08.03, slow fade-in after every warp: passed
+  Fault sweep 08.03 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 08.03, step tap read as not moved: passed
+  Fault sweep 08.03 step tap read as not moved: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 08.03, warp no-op: passed
+  Fault sweep 08.03 warp no-op: 7 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 08.03, wild battles at the game's odds: passed
+  Fault sweep 08.03 wild battles: passed 30/30, 0 battles; of those passed: time (s) mean 236.6, clean 236.6; tiles walked again mean 0.0; s lost per battle mean -
+  Fault sweep 08.03 wild battles at the game's odds: 30 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 09.01, dark cave without Flash: passed
+  Fault sweep 09.01: not swept, the row walks no dark cave.
+PokemonFRLG::AutoStory - Fault sweep: 09.01, late warp fade: passed
+  Fault sweep 09.01 late warp fade: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 09.01, lost tap after a battle in a trainer's line: passed
+  Fault sweep 09.01 lost tap after a battle in a trainer's line: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 09.01, scene end pose: passed
+  Fault sweep 09.01 scene end pose: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 09.01, slow fade-in after every warp: passed
+  Fault sweep 09.01 slow fade-in after every warp: 1 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 09.01, step tap read as not moved: passed
+  Fault sweep 09.01 step tap read as not moved: 0 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 09.01, warp no-op: passed
+  Fault sweep 09.01 warp no-op: 7 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 09.01, wild battles at the game's odds: passed
+  Fault sweep 09.01 wild battles: passed 30/30, 0 battles; of those passed: time (s) mean 180.4, clean 180.4; tiles walked again mean 0.0; s lost per battle mean -
+  Fault sweep 09.01 wild battles at the game's odds: 30 variants, 0 fail.
+PokemonFRLG::AutoStory - Fault sweep: 09.02, dark cave without Flash: passed
+  Fault sweep 09.02: not swept, the row fails clean: 09.02/lift_to_b4f: no lift panel for "lift_floor". On RocketHideout_B2F (0, 2).
+PokemonFRLG::AutoStory - Fault sweep: 09.02, late warp fade: passed
+  Fault sweep 09.02: not swept, the row fails clean: 09.02/lift_to_b4f: no lift panel for "lift_floor". On RocketHideout_B2F (0, 2).
+PokemonFRLG::AutoStory - Fault sweep: 09.02, lost tap after a battle in a trainer's line: passed
+  Fault sweep 09.02: not swept, the row fails clean: 09.02/lift_to_b4f: no lift panel for "lift_floor". On RocketHideout_B2F (0, 2).
+PokemonFRLG::AutoStory - Fault sweep: 09.02, scene end pose: passed
+  Fault sweep 09.02: not swept, the row fails clean: 09.02/lift_to_b4f: no lift panel for "lift_floor". On RocketHideout_B2F (0, 2).
+PokemonFRLG::AutoStory - Fault sweep: 09.02, slow fade-in after every warp: passed
+  Fault sweep 09.02: not swept, the row fails clean: 09.02/lift_to_b4f: no lift panel for "lift_floor". On RocketHideout_B2F (0, 2).
+PokemonFRLG::AutoStory - Fault sweep: 09.02, step tap read as not moved: passed
+  Fault sweep 09.02: not swept, the row fails clean: 09.02/lift_to_b4f: no lift panel for "lift_floor". On RocketHideout_B2F (0, 2).
+PokemonFRLG::AutoStory - Fault sweep: 09.02, warp no-op: passed
+  Fault sweep 09.02: not swept, the row fails clean: 09.02/lift_to_b4f: no lift panel for "lift_floor". On RocketHideout_B2F (0, 2).
+PokemonFRLG::AutoStory - Fault sweep: 09.02, wild battles at the game's odds: passed
+  Fault sweep 09.02: not swept, the row fails clean: 09.02/lift_to_b4f: no lift panel for "lift_floor". On RocketHideout_B2F (0, 2).

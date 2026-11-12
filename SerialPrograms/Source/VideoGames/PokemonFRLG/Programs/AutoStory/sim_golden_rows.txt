@@ -1,0 +1,463 @@
+# FRLG AutoStory rows on the overworld sim, clean (PokemonFRLG_AutoStorySimGolden_Tests.cpp)
+01.02 from PalletTown_PlayersHouse_2F (6, 6) facing north
+  close_trainer_card GAME: PalletTown_PlayersHouse_2F (6, 6) facing north [stubbed]
+  options OPTIONS: PalletTown_PlayersHouse_2F (6, 6) facing north [stubbed]
+  sim: 0 ms, 0 steps, 0 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; screens the overworld@0
+01.03 from PalletTown_PlayersHouse_2F (6, 6) facing north
+  front_door ROUTE: PalletTown (6, 8) facing south (warped from PalletTown_PlayersHouse_2F) (warped from PalletTown_PlayersHouse_1F)
+  sim: 24522 ms, 24 steps, 2 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; screens the overworld@0 a warp's fade@9245 the overworld@10245 a warp's fade@19022 the overworld@20022
+01.04 from PalletTown (6, 8) facing south
+  below_oaks_trigger ROUTE: PalletTown (12, 2) facing north
+  oaks_trigger STEP: PalletTown (12, 1) facing north [unscripted, let pass]
+  to_the_lab MASH: PalletTown (12, 1) facing north [stubbed]
+  sim: 14666 ms, 17 steps, 0 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; screens the overworld@0
+  sim: 0 ms, 0 steps, 0 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; screens the overworld@0
+01.05 from PalletTown_ProfessorOaksLab (6, 4) facing north
+  below_squirtle ROUTE: PalletTown_ProfessorOaksLab (9, 5) facing north
+  sim: 3020 ms, 4 steps, 0 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; screens the overworld@0
+01.06 from PalletTown_ProfessorOaksLab (9, 5) facing north
+  squirtle_ball TALK: PalletTown_ProfessorOaksLab (9, 5) facing north [stubbed]
+  choose_squirtle ANSWER: PalletTown_ProfessorOaksLab (9, 5) facing north [stubbed]
+  no_nickname ANSWER: PalletTown_ProfessorOaksLab (9, 5) facing north [stubbed]
+  rival_takes_bulbasaur MASH: PalletTown_ProfessorOaksLab (9, 5) facing north [stubbed]
+  above_rival_trigger ROUTE: PalletTown_ProfessorOaksLab (7, 7) facing south
+  rival_trigger STEP: PalletTown_ProfessorOaksLab (7, 8) facing south [unscripted, let pass]
+  rival_battle BATTLE: PalletTown_ProfessorOaksLab (7, 8) facing south [unscripted, let pass]
+  sim: 10061 ms, 5 steps, 0 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; screens the overworld@0
+02.01 from PalletTown_ProfessorOaksLab (7, 8) facing south
+  below_mart_door ROUTE: ViridianCity (36, 20) facing north (warped from PalletTown_ProfessorOaksLab)
+  mart_door STEP: ViridianCity_Mart (4, 7) facing north (warped from ViridianCity)
+  parcel_from_clerk MASH: ViridianCity_Mart (4, 7) facing north [stubbed]
+  sim: 73071 ms, 131 steps, 2 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; screens the overworld@0 a warp's fade@4489 the overworld@5489 a warp's fade@71072 the overworld@72072
+  sim: 0 ms, 0 steps, 0 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; screens the overworld@0
+02.02 from ViridianCity_Mart (4, 3) facing west
+  below_oak ROUTE: PalletTown_ProfessorOaksLab (6, 4) facing north (warped from ViridianCity_Mart) (warped from PalletTown)
+  give_parcel TALK: PalletTown_ProfessorOaksLab (6, 4) facing north [stubbed]
+  pokedex_scene MASH: PalletTown_ProfessorOaksLab (6, 4) facing north [stubbed]
+  sim: 72988 ms, 130 steps, 2 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; screens the overworld@0 a warp's fade@1675 the overworld@2675 a warp's fade@64653 the overworld@65653
+02.03 from PalletTown_ProfessorOaksLab (6, 4) facing south
+  mart_clerk ROUTE: ViridianCity_Mart (4, 3) facing west (warped from PalletTown_ProfessorOaksLab) (warped from ViridianCity)
+  potions_and_antidotes SHOP: ViridianCity_Mart (4, 3) facing west [stubbed]
+  viridian_nurse ROUTE: ViridianCity_PokemonCenter_1F (7, 4) facing north (warped from ViridianCity_Mart) (warped from ViridianCity)
+  heal_viridian HEAL: ViridianCity_PokemonCenter_1F (7, 4) facing north [stubbed]
+  below_old_man_trigger ROUTE: ViridianCity (20, 9) facing north (warped from ViridianCity_PokemonCenter_1F)
+  old_man_trigger STEP: ViridianCity (20, 8) facing north [unscripted, let pass]
+  old_man_tutorial MASH: ViridianCity (20, 8) facing north [stubbed]
+  past_old_man ROUTE: ViridianCity (20, 5) facing north
+  forest_entrance ROUTE: ViridianForest (29, 62) facing north (warped from Route2) (warped from Route2_ViridianForest_SouthEntrance)
+  sim: 187273 ms, 333 steps, 7 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; screens the overworld@0 a warp's fade@2403 the overworld@3403 a warp's fade@68986 the overworld@69986 a warp's fade@78035 the overworld@79035 a warp's fade@91021 the overworld@92021 a warp's fade@101005 the overworld@102005 a warp's fade@173870 the overworld@174870 a warp's fade@181773 the overworld@182773
+03.01 from ViridianForest (29, 62) facing north
+  forest_east LEGS: ViridianForest (44, 43) facing north
+  forest_north ROUTE: ViridianForest (39, 25) facing west
+  forest_exit LEGS: ViridianForest (4, 13) facing east
+  forest_gate ROUTE: Route2_ViridianForest_NorthEntrance (7, 10) facing north (warped from ViridianForest)
+  pewter_nurse ROUTE: PewterCity_PokemonCenter_1F (7, 4) facing north (warped from Route2_ViridianForest_NorthEntrance) (warped from PewterCity)
+  heal_pewter HEAL: PewterCity_PokemonCenter_1F (7, 4) facing north [stubbed]
+  sim: 207042 ms, 265 steps, 3 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; beat bug_catcher; beat bug_catcher; screens the overworld@0 a message@18386 the overworld@19386 a battle@21386 the overworld@31386 a message@129116 the overworld@130116 a battle@132116 the overworld@142116 a warp's fade@161246 the overworld@162246 a warp's fade@169149 the overworld@170149 a warp's fade@198733 the overworld@199733
+03.02 from PewterCity_PokemonCenter_1F (7, 4) facing north
+  below_liam_line ROUTE: PewterCity_Gym (6, 9) facing north (warped from PewterCity_PokemonCenter_1F) (warped from PewterCity)
+  liam_line STEP: PewterCity_Gym (6, 8) facing west
+  camper_liam BATTLE: PewterCity_Gym (6, 8) facing west
+  ready_for_brock READY: PewterCity_Gym (6, 8) facing west [stubbed]
+  before_brock ROUTE: PewterCity_Gym (6, 6) facing north
+  challenge_brock TALK: PewterCity_Gym (6, 6) facing north [stubbed]
+  brock BATTLE: PewterCity_Gym (6, 6) facing north [unscripted, let pass]
+  sim: 57838 ms, 73 steps, 2 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; beat camper; screens the overworld@0 a warp's fade@1675 the overworld@2675 a warp's fade@33196 the overworld@34196 a message@42298 the overworld@43298 a battle@45298 the overworld@55298
+03.03 from PewterCity_Gym (6, 6) facing north
+  before_aide_trigger ROUTE: PewterCity (45, 21) facing east (warped from PewterCity_Gym)
+  aide_trigger STEP: PewterCity (46, 21) facing east [unscripted, let pass]
+  shoes_from_aide MASH: PewterCity (46, 21) facing east [stubbed]
+  below_pewter_center ROUTE: PewterCity (17, 26) facing south
+  sim: 60002 ms, 102 steps, 1 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; beat camper; screens the overworld@0 a message@2408 the overworld@3408 a battle@5408 the overworld@15408 a warp's fade@17884 the overworld@18884
+04.01 from PewterCity (17, 26) facing south
+  pewter_nurse ROUTE: PewterCity_PokemonCenter_1F (7, 4) facing north (warped from PewterCity)
+  heal_pewter HEAL: PewterCity_PokemonCenter_1F (7, 4) facing north [stubbed]
+  west_of_janice_line ROUTE: Route3 (13, 8) facing east (warped from PewterCity_PokemonCenter_1F)
+  below_colton_line LEGS: Route3 (14, 7) facing north
+  colton_line STEP: Route3 (14, 6) facing west
+  bug_catcher_colton BATTLE: Route3 (14, 6) facing west
+  past_ben LEGS: Route3 (24, 5) facing east
+  greg_line STEP: Route3 (25, 5) facing north
+  bug_catcher_greg BATTLE: Route3 (25, 5) facing north
+  above_james_line LEGS: Route3 (36, 5) facing east
+  james_line STEP: Route3 (36, 6) facing west
+  bug_catcher_james BATTLE: Route3 (36, 6) facing west
+  save_spot LEGS: Route3 (36, 8) facing south
+  sim: 102574 ms, 95 steps, 2 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; beat bug_catcher; beat bug_catcher; beat bug_catcher; screens the overworld@0 a warp's fade@607 the overworld@1607 a warp's fade@10591 the overworld@11591 a message@41437 the overworld@42437 a battle@44437 the overworld@54437 a message@65408 the overworld@66408 a battle@68408 the overworld@78408 a message@87034 the overworld@88034 a battle@90034 the overworld@100034
+04.02 from Route3 (36, 8) facing south
+  route4_nurse ROUTE: Route4_PokemonCenter_1F (7, 4) facing north (warped from Route4)
+  heal_route4 HEAL: Route4_PokemonCenter_1F (7, 4) facing north [stubbed]
+  before_salesman ROUTE: Route4_PokemonCenter_1F (2, 3) facing west
+  sim: 69035 ms, 87 steps, 1 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; beat lass; screens the overworld@0 a message@3408 the overworld@4408 a battle@6408 the overworld@16408 a warp's fade@55298 the overworld@56298
+04.03 from Route4_PokemonCenter_1F (2, 3) facing west
+  leave_gift_summary GAME: Route4_PokemonCenter_1F (2, 3) facing west [stubbed]
+  sim: 0 ms, 0 steps, 0 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; screens the overworld@0
+04.04 from Route4_PokemonCenter_1F (2, 3) facing west
+  pc_front ROUTE: Route4_PokemonCenter_1F (11, 2) facing north
+  magikarp_to_box GAME: Route4_PokemonCenter_1F (11, 2) facing north [stubbed]
+  sim: 17412 ms, 26 steps, 0 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; screens the overworld@0
+04.05 from Route4_PokemonCenter_1F (11, 2) facing north
+  route4_nurse ROUTE: Route4_PokemonCenter_1F (7, 4) facing north
+  heal_route4 HEAL: Route4_PokemonCenter_1F (7, 4) facing north [stubbed]
+  mt_moon_entrance ROUTE: MtMoon_1F (18, 37) facing north (warped from Route4_PokemonCenter_1F) (warped from Route4)
+  mt_moon_1f LEGS: MtMoon_1F (3, 3) facing east
+  below_moon_stone ROUTE: MtMoon_1F (3, 3) facing north
+  moon_stone_ball TALK: MtMoon_1F (3, 3) facing north [stubbed]
+  found_moon_stone MASH: MtMoon_1F (3, 3) facing north [stubbed]
+  b2f_ladder_foot ROUTE: MtMoon_B2F (26, 21) facing east (warped from MtMoon_1F) (warped from MtMoon_B1F)
+  b2f_south LEGS: MtMoon_B2F (11, 21) facing north
+  grunt_line STEP: MtMoon_B2F (12, 21) facing north
+  rocket_grunt BATTLE: MtMoon_B2F (12, 21) facing north
+  ready_for_miguel READY: MtMoon_B2F (12, 21) facing north [stubbed]
+  below_miguel_trigger LEGS: MtMoon_B2F (14, 12) facing east
+  miguel_trigger STEP: MtMoon_B2F (14, 11) facing north [unscripted, let pass]
+  super_nerd_miguel BATTLE: MtMoon_B2F (14, 11) facing north [unscripted, let pass]
+  below_helix_fossil LEGS: MtMoon_B2F (14, 8) facing north
+  helix_fossil GAME: MtMoon_B2F (14, 8) facing north [stubbed]
+  helix_gap STEP: MtMoon_B2F (14, 8) facing north [unscripted, let pass]
+  route4_east ROUTE: MtMoon_B2F (14, 8) facing north FAILED: 04.05/route4_east: no legs. On MtMoon_B2F (14, 8).
+  sim: 409822 ms, 353 steps, 4 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; beat rocket_m; beat rocket_m; screens the overworld@0 a warp's fade@8779 the overworld@9779 a warp's fade@17561 the overworld@18561 a warp's fade@156214 the overworld@157214 a warp's fade@178873 the overworld@179873 a message@238881 the overworld@239881 a battle@241881 the overworld@251881 a message@361303 the overworld@362303 a battle@364303 the overworld@374303
+04.06 from Route4 (32, 6) facing south
+  mega_kick_tutor ROUTE: Route4 (50, 4) facing north
+  teach_mega_kick GAME: Route4 (50, 4) facing north [stubbed]
+  above_ledge ROUTE: Route4 (93, 8) facing south
+  ledge_hop STEP: Route4 (93, 10) facing south
+  cerulean_entry ROUTE: CeruleanCity (9, 20) facing east
+  above_city_ledge LEGS: CeruleanCity (25, 17) facing west
+  city_ledge_hop STEP: CeruleanCity (25, 19) facing south
+  cerulean_nurse ROUTE: CeruleanCity_PokemonCenter_1F (7, 4) facing north (warped from CeruleanCity)
+  heal_cerulean HEAL: CeruleanCity_PokemonCenter_1F (7, 4) facing north [stubbed]
+  sim: 77014 ms, 165 steps, 1 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; screens the overworld@0 a warp's fade@68705 the overworld@69705
+05.01 from CeruleanCity_PokemonCenter_1F (7, 4) facing north
+  mart_clerk ROUTE: CeruleanCity_Mart (4, 3) facing west (warped from CeruleanCity_PokemonCenter_1F) (warped from CeruleanCity)
+  buy_potions GAME: CeruleanCity_Mart (4, 3) facing west [stubbed]
+  grind_patch ROUTE: Route4 (86, 16) facing west (warped from CeruleanCity_Mart)
+  grind_to_lv23 GAME: Route4 (86, 16) facing west [stubbed]
+  cerulean_nurse ROUTE: CeruleanCity_PokemonCenter_1F (7, 4) facing north (warped from CeruleanCity)
+  heal_cerulean HEAL: CeruleanCity_PokemonCenter_1F (7, 4) facing north [stubbed]
+  gym_below_luis ROUTE: CeruleanCity_Gym (9, 13) facing north (warped from CeruleanCity_PokemonCenter_1F) (warped from CeruleanCity)
+  gym_west_walkway LEGS: CeruleanCity_Gym (4, 13) facing west
+  below_misty_platform LEGS: CeruleanCity_Gym (9, 7) facing west
+  sim: 165445 ms, 303 steps, 6 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; screens the overworld@0 a warp's fade@1675 the overworld@2675 a warp's fade@24103 the overworld@25103 a warp's fade@33152 the overworld@34152 a warp's fade@121909 the overworld@122909 a warp's fade@131893 the overworld@132893 a warp's fade@145086 the overworld@146086
+05.02 from CeruleanCity_Gym (9, 7) facing west
+  beside_misty ROUTE: CeruleanCity_Gym (9, 6) facing west
+  challenge_misty TALK: CeruleanCity_Gym (9, 6) facing west [stubbed]
+  misty BATTLE: CeruleanCity_Gym (9, 6) facing west [unscripted, let pass]
+  gym_way_out LEGS: CeruleanCity_Gym (9, 13) facing east
+  cerulean_nurse ROUTE: CeruleanCity_PokemonCenter_1F (7, 4) facing north (warped from CeruleanCity_Gym) (warped from CeruleanCity)
+  heal_cerulean HEAL: CeruleanCity_PokemonCenter_1F (7, 4) facing north [stubbed]
+  teach_water_pulse GAME: CeruleanCity_PokemonCenter_1F (7, 4) facing north [stubbed]
+  sim: 36920 ms, 47 steps, 2 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; screens the overworld@0 a warp's fade@18761 the overworld@19761 a warp's fade@28611 the overworld@29611
+05.03 from CeruleanCity_PokemonCenter_1F (7, 4) facing north
+  teach_water_pulse GAME: CeruleanCity_PokemonCenter_1F (7, 4) facing north [stubbed]
+  mart_clerk ROUTE: CeruleanCity_Mart (4, 3) facing west (warped from CeruleanCity_PokemonCenter_1F) (warped from CeruleanCity)
+  buy_potions GAME: CeruleanCity_Mart (4, 3) facing west [stubbed]
+  grind_patch ROUTE: Route4 (86, 16) facing west (warped from CeruleanCity_Mart)
+  grind_for_rival GAME: Route4 (86, 16) facing west [stubbed]
+  cerulean_nurse ROUTE: CeruleanCity_PokemonCenter_1F (7, 4) facing north (warped from CeruleanCity)
+  heal_cerulean HEAL: CeruleanCity_PokemonCenter_1F (7, 4) facing north [stubbed]
+  below_rival_trigger ROUTE: CeruleanCity (23, 7) facing north (warped from CeruleanCity_PokemonCenter_1F)
+  sim: 174473 ms, 331 steps, 5 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; screens the overworld@0 a warp's fade@1675 the overworld@2675 a warp's fade@24103 the overworld@25103 a warp's fade@33152 the overworld@34152 a warp's fade@121909 the overworld@122909 a warp's fade@131893 the overworld@132893
+05.04 from CeruleanCity (23, 7) facing north
+  teach_water_pulse GAME: CeruleanCity (23, 7) facing north [stubbed]
+  rival_trigger STEP: CeruleanCity (23, 6) facing north [unscripted, let pass]
+  rival_cerulean BATTLE: CeruleanCity (23, 6) facing north [unscripted, let pass]
+  sim: 5766 ms, 1 steps, 0 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; screens the overworld@0
+05.05 from CeruleanCity (23, 6) facing south
+  cerulean_nurse ROUTE: CeruleanCity_PokemonCenter_1F (7, 4) facing north (warped from CeruleanCity)
+  heal_cerulean HEAL: CeruleanCity_PokemonCenter_1F (7, 4) facing north [stubbed]
+  below_cale_line ROUTE: Route24 (11, 32) facing north (warped from CeruleanCity_PokemonCenter_1F)
+  cale_line STEP: Route24 (11, 31) facing east
+  bug_catcher_cale BATTLE: Route24 (11, 31) facing east
+  below_ali_line LEGS: Route24 (11, 29) facing north
+  ali_line STEP: Route24 (11, 28) facing west
+  lass_ali BATTLE: Route24 (11, 28) facing west
+  below_timmy_line LEGS: Route24 (11, 26) facing north
+  timmy_line STEP: Route24 (11, 25) facing east
+  youngster_timmy BATTLE: Route24 (11, 25) facing east
+  below_reli_line LEGS: Route24 (11, 23) facing north
+  reli_line STEP: Route24 (11, 22) facing west
+  lass_reli BATTLE: Route24 (11, 22) facing west
+  below_ethan_line LEGS: Route24 (11, 20) facing north
+  ethan_line STEP: Route24 (11, 19) facing east
+  camper_ethan BATTLE: Route24 (11, 19) facing east
+  ready_for_rocket READY: Route24 (11, 19) facing east [stubbed]
+  below_rocket_trigger ROUTE: Route24 (11, 16) facing north
+  rocket_trigger STEP: Route24 (11, 15) facing north [unscripted, let pass]
+  rocket_grunt BATTLE: Route24 (11, 15) facing north [unscripted, let pass]
+  sim: 177673 ms, 185 steps, 2 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; beat bug_catcher; beat lass; beat youngster; beat lass; beat camper; screens the overworld@0 a warp's fade@30769 the overworld@31769 a warp's fade@40753 the overworld@41753 a message@88872 the overworld@89872 a battle@91872 the overworld@101872 a message@105679 the overworld@106679 a battle@108679 the overworld@118679 a message@122486 the overworld@123486 a battle@125486 the overworld@135486 a message@139293 the overworld@140293 a battle@142293 the overworld@152293 a message@156100 the overworld@157100 a battle@159100 the overworld@169100
+05.06 from Route24 (11, 15) facing east
+  below_franklin_line ROUTE: Route25 (15, 5) facing north
+  franklin_line STEP: Route25 (15, 4) facing west
+  hiker_franklin BATTLE: Route25 (15, 4) facing west
+  west_of_dan LEGS: Route25 (19, 4) facing north
+  round_dan LEGS: Route25 (24, 7) facing south
+  kelsey_line STEP: Route25 (24, 8) facing west
+  picnicker_kelsey BATTLE: Route25 (24, 8) facing west
+  west_of_nob_line LEGS: Route25 (26, 8) facing east
+  nob_line STEP: Route25 (27, 8) facing south
+  hiker_nob BATTLE: Route25 (27, 8) facing south
+  below_haley_line LEGS: Route25 (42, 9) facing east
+  haley_line STEP: Route25 (42, 8) facing north
+  lass_haley BATTLE: Route25 (42, 8) facing north
+  sea_cottage ROUTE: Route25_SeaCottage (7, 8) facing north (warped from Route25)
+  sim: 167770 ms, 114 steps, 1 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; beat hiker; beat youngster; beat picnicker; beat hiker; beat lass; screens the overworld@0 a message@27233 the overworld@28233 a battle@30233 the overworld@40233 a message@52492 the overworld@53492 a battle@55492 the overworld@65492 a message@92956 the overworld@93956 a battle@95956 the overworld@105956 a message@109763 the overworld@110763 a battle@112763 the overworld@122763 a message@142720 the overworld@143720 a battle@145720 the overworld@155720 a warp's fade@161537 the overworld@162537
+05.07 from Route25_SeaCottage (7, 8) facing north
+  below_bill_clefairy ROUTE: Route25_SeaCottage (10, 7) facing north
+  bill_clefairy TALK: Route25_SeaCottage (10, 7) facing north [stubbed]
+  help_bill ANSWER: Route25_SeaCottage (10, 7) facing north [stubbed]
+  bill_into_teleporter MASH: Route25_SeaCottage (10, 7) facing north [stubbed]
+  pc_front ROUTE: Route25_SeaCottage (4, 6) facing north
+  cell_separator TALK: Route25_SeaCottage (4, 6) facing north [stubbed]
+  bill_comes_out MASH: Route25_SeaCottage (4, 6) facing north [stubbed]
+  beside_bill LEGS: Route25_SeaCottage (6, 6) facing east
+  thank_bill TALK: Route25_SeaCottage (6, 6) facing east [stubbed]
+  ss_ticket MASH: Route25_SeaCottage (6, 6) facing east [stubbed]
+  around_bill LEGS: Route25_SeaCottage (7, 8) facing east
+  out_of_cottage ROUTE: Route25 (51, 5) facing south (warped from Route25_SeaCottage)
+  sim: 22246 ms, 24 steps, 1 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; screens the overworld@0 a warp's fade@16746 the overworld@17746
+05.08 from Route25 (51, 5) facing south
+  above_cerulean_ledge ROUTE: CeruleanCity (27, 0) facing south
+  cerulean_ledge_hop STEP: CeruleanCity (27, 2) facing south
+  cerulean_nurse ROUTE: CeruleanCity_PokemonCenter_1F (7, 4) facing north (warped from CeruleanCity)
+  heal_cerulean HEAL: CeruleanCity_PokemonCenter_1F (7, 4) facing north [stubbed]
+  sim: 81608 ms, 202 steps, 1 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; screens the overworld@0 a warp's fade@73299 the overworld@74299
+05.09 from CeruleanCity_PokemonCenter_1F (7, 4) facing north
+  mart_clerk ROUTE: CeruleanCity_Mart (4, 3) facing west (warped from CeruleanCity_PokemonCenter_1F) (warped from CeruleanCity)
+  buy_poke_balls GAME: CeruleanCity_Mart (4, 3) facing west [stubbed]
+  oddish_patch ROUTE: Route24 (3, 19) facing south (warped from CeruleanCity_Mart)
+  catch_oddish GAME: Route24 (3, 19) facing south [stubbed]
+  cerulean_nurse ROUTE: CeruleanCity_PokemonCenter_1F (7, 4) facing north (warped from CeruleanCity)
+  heal_cerulean HEAL: CeruleanCity_PokemonCenter_1F (7, 4) facing north [stubbed]
+  sim: 218425 ms, 288 steps, 4 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; beat bug_catcher; beat lass; beat youngster; beat lass; beat camper; screens the overworld@0 a warp's fade@1675 the overworld@2675 a warp's fade@24103 the overworld@25103 a warp's fade@33152 the overworld@34152 a message@68406 the overworld@69406 a battle@71406 the overworld@81406 a message@84227 the overworld@85227 a battle@87227 the overworld@97227 a message@99295 the overworld@100295 a battle@102295 the overworld@112295 a message@114363 the overworld@115363 a battle@117363 the overworld@127363 a message@129431 the overworld@130431 a battle@132431 the overworld@142431 a warp's fade@210116 the overworld@211116
+05.10 from CeruleanCity_PokemonCenter_1F (7, 4) facing north
+  west_of_rocket ROUTE: CeruleanCity (32, 7) facing east (warped from CeruleanCity_PokemonCenter_1F) (warped from CeruleanCity) (warped from CeruleanCity_House2)
+  rocket_trigger STEP: CeruleanCity (33, 7) facing east [unscripted, let pass]
+  rocket_grunt BATTLE: CeruleanCity (33, 7) facing east [unscripted, let pass]
+  route6_column15 ROUTE: Route6 (15, 14) facing west (warped from Route5) (warped from UndergroundPath_NorthEntrance) (warped from UndergroundPath_NorthSouthTunnel) (warped from UndergroundPath_SouthEntrance)
+  round_keigo_and_elijah LEGS: Route6 (9, 33) facing east
+  jeff_line STEP: Route6 (10, 33) facing east
+  camper_jeff BATTLE: Route6 (10, 33) facing east
+  vermilion_nurse ROUTE: VermilionCity_PokemonCenter_1F (7, 4) facing north (warped from VermilionCity)
+  heal_vermilion HEAL: VermilionCity_PokemonCenter_1F (7, 4) facing north [stubbed]
+  sim: 234892 ms, 337 steps, 8 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; beat camper; screens the overworld@0 a warp's fade@1675 the overworld@2675 a warp's fade@44590 the overworld@45590 a warp's fade@58267 the overworld@59267 a warp's fade@120185 the overworld@121185 a warp's fade@133022 the overworld@134022 a warp's fade@155421 the overworld@156421 a warp's fade@165750 the overworld@166750 a message@204057 the overworld@205057 a battle@207057 the overworld@217057 a warp's fade@226350 the overworld@227350
+06.01 from VermilionCity_PokemonCenter_1F (7, 4) facing north
+  above_ticket_check ROUTE: VermilionCity (23, 32) facing south (warped from VermilionCity_PokemonCenter_1F)
+  ticket_check STEP: VermilionCity (23, 33) facing south [unscripted, let pass]
+  show_ss_ticket MASH: VermilionCity (23, 33) facing south [stubbed]
+  aboard ROUTE: SSAnne_1F_Corridor (19, 2) facing south (warped from VermilionCity) (warped from SSAnne_Exterior)
+  past_the_cabins LEGS: SSAnne_1F_Corridor (13, 8) facing north
+  below_rival_trigger ROUTE: SSAnne_2F_Corridor (30, 7) facing north (warped from SSAnne_1F_Corridor)
+  rival_trigger STEP: SSAnne_2F_Corridor (30, 6) facing north [unscripted, let pass]
+  rival_ss_anne BATTLE: SSAnne_2F_Corridor (30, 6) facing north [unscripted, let pass]
+  behind_captain ROUTE: SSAnne_CaptainsOffice (5, 5) facing north (warped from SSAnne_2F_Corridor)
+  captain TALK: SSAnne_CaptainsOffice (5, 5) facing north [stubbed]
+  hm01_cut MASH: SSAnne_CaptainsOffice (5, 5) facing north [stubbed]
+  off_2f ROUTE: SSAnne_1F_Corridor (13, 8) facing east (warped from SSAnne_CaptainsOffice) (warped from SSAnne_2F_Corridor)
+  round_the_sailor LEGS: SSAnne_1F_Corridor (19, 9) facing east
+  below_ship_door ROUTE: SSAnne_1F_Corridor (19, 2) facing north
+  off_the_ship STEP: SSAnne_Exterior (32, 14) facing north (warped from SSAnne_1F_Corridor)
+  ss_anne_sails MASH: SSAnne_Exterior (32, 14) facing north [stubbed]
+  sim: 179495 ms, 276 steps, 8 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; screens the overworld@0 a warp's fade@1675 the overworld@2675 a warp's fade@46974 the overworld@47974 a warp's fade@55144 the overworld@56144 a warp's fade@78323 the overworld@79323 a warp's fade@115684 the overworld@116684 a warp's fade@127960 the overworld@128960 a warp's fade@160696 the overworld@161696 a warp's fade@177496 the overworld@178496
+  vermilion_nurse ROUTE: VermilionCity_PokemonCenter_1F (7, 4) facing north (warped from VermilionCity)
+  heal_vermilion HEAL: VermilionCity_PokemonCenter_1F (7, 4) facing north [stubbed]
+  sim: 35670 ms, 68 steps, 1 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; screens the overworld@0 a warp's fade@27361 the overworld@28361
+06.02 from VermilionCity_PokemonCenter_1F (7, 4) facing north
+  teach_cut GAME: VermilionCity_PokemonCenter_1F (7, 4) facing north [stubbed]
+  teach_dig GAME: VermilionCity_PokemonCenter_1F (7, 4) facing north [stubbed]
+  above_gym_tree ROUTE: VermilionCity (19, 23) facing south (warped from VermilionCity_PokemonCenter_1F)
+  cut_gym_tree GAME: VermilionCity (19, 24) facing south
+  gym_door ROUTE: VermilionCity_Gym (5, 19) facing north (warped from VermilionCity)
+  west_of_dwayne_line LEGS: VermilionCity_Gym (7, 15) facing east
+  dwayne_sight STEP: VermilionCity_Gym (8, 15) facing north
+  sailor_dwayne BATTLE: VermilionCity_Gym (8, 15) facing north
+  east_of_baily_line LEGS: VermilionCity_Gym (3, 13) facing west
+  baily_sight STEP: VermilionCity_Gym (2, 13) facing north
+  engineer_baily BATTLE: VermilionCity_Gym (2, 13) facing north
+  below_tucker_line LEGS: VermilionCity_Gym (5, 9) facing east
+  tucker_line STEP: VermilionCity_Gym (5, 8) facing east
+  gentleman_tucker BATTLE: VermilionCity_Gym (5, 8) facing east
+  trash_cans GAME: VermilionCity_Gym (5, 8) facing east [stubbed]
+  below_gym_tree ROUTE: VermilionCity_Gym (4, 12) facing south FAILED: 06.02/below_gym_tree: walk_overworld_route(): no fade in and out after walking onto the warp to VermilionCity. On VermilionCity_Gym (4, 12).
+  sim: 147304 ms, 114 steps, 2 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; beat sailor; beat balding_man; beat gentleman; screens the overworld@0 a warp's fade@1675 the overworld@2675 a warp's fade@54707 the overworld@55707 a message@65890 the overworld@66890 a battle@68890 the overworld@78890 a message@85911 the overworld@86911 a battle@88911 the overworld@98911 a message@109573 the overworld@110573 a battle@112573 the overworld@122573
+06.03 from VermilionCity_PokemonCenter_1F (7, 4) facing north
+  ready_for_surge GAME: VermilionCity_PokemonCenter_1F (7, 4) facing north [stubbed]
+  route6_south_path ROUTE: Route6 (11, 34) facing north (warped from VermilionCity_PokemonCenter_1F)
+  round_isabelle_line LEGS: Route6 (13, 31) facing east
+  grind_for_surge GAME: Route6 (13, 31) facing east [stubbed]
+  west_on_row_31 ROUTE: Route6 (7, 31) facing west
+  down_to_jeff_row LEGS: Route6 (11, 33) facing east
+  vermilion_nurse ROUTE: VermilionCity_PokemonCenter_1F (7, 4) facing north (warped from VermilionCity)
+  heal_vermilion HEAL: VermilionCity_PokemonCenter_1F (7, 4) facing north [stubbed]
+  above_gym_tree ROUTE: VermilionCity (19, 23) facing south (warped from VermilionCity_PokemonCenter_1F)
+  cut_gym_tree GAME: VermilionCity (19, 24) facing south
+  below_lt_surge ROUTE: VermilionCity_Gym (5, 4) facing north (warped from VermilionCity)
+  sim: 172581 ms, 181 steps, 4 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; beat camper; beat sailor; beat gentleman; screens the overworld@0 a warp's fade@1675 the overworld@2675 a message@16195 the overworld@17195 a battle@19195 the overworld@29195 a warp's fade@65993 the overworld@66993 a warp's fade@76210 the overworld@77210 a warp's fade@129242 the overworld@130242 a message@140765 the overworld@141765 a battle@143765 the overworld@153765 a message@156367 the overworld@157367 a battle@159367 the overworld@169367
+06.04 from VermilionCity_Gym (5, 3) facing north
+  challenge_lt_surge TALK: VermilionCity_Gym (5, 3) facing north [stubbed]
+  lt_surge BATTLE: VermilionCity_Gym (5, 3) facing north [unscripted, let pass]
+  below_gym_tree ROUTE: VermilionCity (19, 25) facing north (warped from VermilionCity_Gym)
+  cut_tree_out GAME: VermilionCity (19, 24) facing north
+  below_oaks_aide ROUTE: VermilionCity (14, 10) facing west
+  vermilion_nurse ROUTE: VermilionCity_PokemonCenter_1F (7, 4) facing north (warped from VermilionCity)
+  heal_vermilion HEAL: VermilionCity_PokemonCenter_1F (7, 4) facing north [stubbed]
+  sim: 85547 ms, 70 steps, 2 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; beat gentleman; beat sailor; screens the overworld@0 a message@3748 the overworld@4748 a battle@6748 the overworld@16748 a message@19617 the overworld@20617 a battle@22617 the overworld@32617 a warp's fade@43611 the overworld@44611 a warp's fade@77238 the overworld@78238
+07.01 from VermilionCity_PokemonCenter_1F (7, 4) facing north
+  below_center ROUTE: VermilionCity (14, 10) facing west (warped from VermilionCity_PokemonCenter_1F)
+  beside_chairman ROUTE: VermilionCity_PokemonFanClub (4, 4) facing east (warped from VermilionCity)
+  chairman TALK: VermilionCity_PokemonFanClub (4, 4) facing east [stubbed]
+  hear_story ANSWER: VermilionCity_PokemonFanClub (4, 4) facing east [stubbed]
+  bike_voucher MASH: VermilionCity_PokemonFanClub (4, 4) facing east [stubbed]
+  west_of_oaks_aide ROUTE: VermilionCity (22, 10) facing west (warped from VermilionCity_PokemonFanClub)
+  route6_south_path ROUTE: Route6 (11, 34) facing north
+  round_isabelle_and_elijah LEGS: Route6 (16, 12) facing north
+  below_cerulean_tree ROUTE: CeruleanCity (26, 33) facing north (warped from Route6) (warped from UndergroundPath_SouthEntrance) (warped from UndergroundPath_NorthSouthTunnel) (warped from UndergroundPath_NorthEntrance)
+  cut_cerulean_tree GAME: CeruleanCity (26, 32) facing north
+  bike_clerk ROUTE: CeruleanCity_BikeShop (7, 3) facing east (warped from CeruleanCity)
+  talk_bike_clerk TALK: CeruleanCity_BikeShop (7, 3) facing east [stubbed]
+  bicycle MASH: CeruleanCity_BikeShop (7, 3) facing east [stubbed]
+  mart_clerk ROUTE: CeruleanCity_Mart (4, 3) facing west (warped from CeruleanCity_BikeShop) (warped from CeruleanCity)
+  buy_repels GAME: CeruleanCity_Mart (4, 3) facing west [stubbed]
+  cerulean_nurse ROUTE: CeruleanCity_PokemonCenter_1F (7, 4) facing north (warped from CeruleanCity_Mart) (warped from CeruleanCity)
+  heal_cerulean HEAL: CeruleanCity_PokemonCenter_1F (7, 4) facing north [stubbed]
+  sim: 277451 ms, 395 steps, 12 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; beat camper; screens the overworld@0 a warp's fade@1675 the overworld@2675 a warp's fade@39758 the overworld@40758 a warp's fade@63209 the overworld@64209 a message@88167 the overworld@89167 a battle@91167 the overworld@101167 a warp's fade@137405 the overworld@138405 a warp's fade@150009 the overworld@151009 a warp's fade@172408 the overworld@173408 a warp's fade@182737 the overworld@183737 a warp's fade@219825 the overworld@220825 a warp's fade@234509 the overworld@235509 a warp's fade@245694 the overworld@246694 a warp's fade@254743 the overworld@255743 a warp's fade@269142 the overworld@270142
+07.02 from CeruleanCity_PokemonCenter_1F (7, 4) facing north
+  above_cerulean_tree ROUTE: CeruleanCity (26, 31) facing south (warped from CeruleanCity_PokemonCenter_1F)
+  cut_cerulean_tree GAME: CeruleanCity (26, 32) facing south
+  west_of_route9_tree ROUTE: Route9 (1, 8) facing east
+  cut_route9_tree GAME: Route9 (2, 8) facing east
+  above_alicia_line ROUTE: Route9 (11, 9) facing south
+  alicia_line STEP: Route9 (11, 10) facing east
+  picnicker_alicia BATTLE: Route9 (11, 10) facing east
+  alicia_ledge_hop STEP: Route9 (11, 12) facing south
+  west_of_jeremy_sight ROUTE: Route9 (19, 13) facing east
+  jeremy_sight STEP: Route9 (20, 13) facing south
+  hiker_jeremy BATTLE: Route9 (20, 13) facing south
+  below_conner_line ROUTE: Route9 (52, 8) facing north
+  conner_line STEP: Route9 (52, 7) facing west
+  bug_catcher_conner BATTLE: Route9 (52, 7) facing west
+  round_brice LEGS: Route9 (64, 2) facing south
+  above_east_ledge STEP: Route9 (64, 3) facing south
+  east_ledge_hop STEP: Route9 (64, 5) facing south
+  above_caitlin_line LEGS: Route9 (70, 8) facing east
+  route10_ledge_end ROUTE: Route10 (17, 11) facing east
+  below_center_door LEGS: Route10 (13, 21) facing east
+  route10_nurse ROUTE: Route10_PokemonCenter_1F (7, 4) facing north (warped from Route10)
+  heal_route10 HEAL: Route10_PokemonCenter_1F (7, 4) facing north [stubbed]
+  sim: 179165 ms, 234 steps, 2 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; beat picnicker; beat hiker; beat bug_catcher; screens the overworld@0 a warp's fade@1675 the overworld@2675 a message@58512 the overworld@59512 a battle@61512 the overworld@71512 a message@79561 the overworld@80561 a battle@82561 the overworld@92561 a message@108328 the overworld@109328 a battle@111328 the overworld@121328 a warp's fade@170856 the overworld@171856
+08.01 from Route10_PokemonCenter_1F (7, 4) facing north
+  below_route10_tree ROUTE: Route10 (10, 21) facing north (warped from Route10_PokemonCenter_1F)
+  cut_route10_tree GAME: Route10 (10, 20) facing north
+  west_of_tree STEP: Route10 (9, 20) facing west
+  below_rock_tunnel STEP: Route10 (8, 20) facing west
+  rock_tunnel_1f ROUTE: RockTunnel_1F (17, 2) facing north (warped from Route10)
+  above_ashton_line LEGS: RockTunnel_1F (24, 9) facing west
+  ashton_line STEP: RockTunnel_1F (24, 10) facing east
+  pokemaniac_ashton BATTLE: RockTunnel_1F (24, 10) facing east
+  b1f_south_ladder ROUTE: RockTunnel_B1F (38, 28) facing north (warped from RockTunnel_1F)
+  winston_line_end LEGS: RockTunnel_B1F (32, 37) facing west
+  winston_line STEP: RockTunnel_B1F (29, 37) facing north
+  pokemaniac_winston BATTLE: RockTunnel_B1F (29, 37) facing north
+  below_martha_line LEGS: RockTunnel_B1F (16, 35) facing east
+  martha_line STEP: RockTunnel_B1F (16, 33) facing west
+  picnicker_martha BATTLE: RockTunnel_B1F (16, 33) facing west
+  below_allen_line LEGS: RockTunnel_B1F (38, 12) facing north
+  allen_line STEP: RockTunnel_B1F (36, 12) facing north
+  hiker_allen BATTLE: RockTunnel_B1F (36, 12) facing north
+  west_of_b1f_ladder LEGS: RockTunnel_B1F (32, 2) facing north
+  1f_west_ladder ROUTE: RockTunnel_1F (4, 2) facing north (warped from RockTunnel_B1F)
+  above_lenny_line LEGS: RockTunnel_1F (6, 9) facing south
+  lenny_line STEP: RockTunnel_1F (7, 9) facing north
+  hiker_lenny BATTLE: RockTunnel_1F (7, 9) facing north
+  west_of_lucas_line LEGS: RockTunnel_1F (20, 16) facing east
+  b1f_middle_ladder ROUTE: RockTunnel_B1F (27, 12) facing north (warped from RockTunnel_1F)
+  east_of_sofia_line LEGS: RockTunnel_B1F (13, 16) facing west
+  sofia_line STEP: RockTunnel_B1F (11, 16) facing north
+  picnicker_sofia BATTLE: RockTunnel_B1F (11, 16) facing north
+  east_of_dudley_line LEGS: RockTunnel_B1F (8, 15) facing north
+  dudley_line STEP: RockTunnel_B1F (5, 15) facing north
+  hiker_dudley BATTLE: RockTunnel_B1F (5, 15) facing north
+  past_cooper LEGS: RockTunnel_B1F (1, 3) facing south
+  1f_east_ladder ROUTE: RockTunnel_1F (45, 21) facing north (warped from RockTunnel_B1F)
+  above_dana_line LEGS: RockTunnel_1F (28, 31) facing south
+  dana_line STEP: RockTunnel_1F (26, 31) facing north
+  picnicker_dana BATTLE: RockTunnel_1F (26, 31) facing north
+  above_south_mouth LEGS: RockTunnel_1F (18, 36) facing west
+  route10_south ROUTE: Route10 (8, 58) facing south (warped from RockTunnel_1F)
+  sim: 702756 ms, 405 steps, 7 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; beat poke_maniac; beat poke_maniac; beat picnicker; beat hiker; beat hiker; beat picnicker; beat hiker; beat poke_maniac; beat picnicker; screens the overworld@0 a warp's fade@1675 the overworld@2675 a warp's fade@17642 the overworld@18642 a message@47329 the overworld@48329 a battle@50329 the overworld@60329 a warp's fade@81376 the overworld@82376 a message@125255 the overworld@126255 a battle@128255 the overworld@138255 a message@196187 the overworld@197187 a battle@199187 the overworld@209187 a message@271441 the overworld@272441 a battle@274441 the overworld@284441 a warp's fade@304221 the overworld@305221 a message@325034 the overworld@326034 a battle@328034 the overworld@338034 a warp's fade@392357 the overworld@393357 a message@430470 the overworld@431470 a battle@433470 the overworld@443470 a message@468565 the overworld@469565 a battle@471565 the overworld@481565 a message@492657 the overworld@493657 a battle@495657 the overworld@505657 a warp's fade@521583 the overworld@522583 a message@629470 the overworld@630470 a battle@632470 the overworld@642470 a warp's fade@697256 the overworld@698256
+08.02 from Route10 (8, 58) facing south
+  route10_east_side LEGS: Route10 (11, 73) facing west
+  route10_ledge_hop STEP: Route10 (11, 75) facing south
+  lavender_north_wall ROUTE: LavenderTown (11, 8) facing south
+  below_center_door LEGS: LavenderTown (6, 9) facing west
+  lavender_nurse ROUTE: LavenderTown_PokemonCenter_1F (7, 4) facing north (warped from LavenderTown)
+  heal_lavender HEAL: LavenderTown_PokemonCenter_1F (7, 4) facing north [stubbed]
+  sim: 59884 ms, 98 steps, 1 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; screens the overworld@0 a warp's fade@51575 the overworld@52575
+08.03 from LavenderTown_PokemonCenter_1F (7, 4) facing north
+  register_bike GAME: LavenderTown_PokemonCenter_1F (7, 4) facing north [stubbed]
+  east_of_mart_door ROUTE: LavenderTown (21, 16) facing east (warped from LavenderTown_PokemonCenter_1F)
+  into_lavender_mart ROUTE: LavenderTown_Mart (4, 2) facing north (warped from LavenderTown)
+  lavender_mart_clerk ROUTE: LavenderTown_Mart (4, 3) facing west
+  buy_ropes_and_super_repels GAME: LavenderTown_Mart (4, 3) facing west [stubbed]
+  out_of_lavender_mart ROUTE: LavenderTown (20, 16) facing south (warped from LavenderTown_Mart)
+  ride_bike GAME: LavenderTown (20, 16) facing south [stubbed]
+  lavender_west_edge LEGS: LavenderTown (1, 10) facing south
+  route8_east_wall ROUTE: Route8 (62, 10) facing west
+  east_of_rich_line LEGS: Route8 (57, 18) facing west
+  rich_line STEP: Route8 (55, 18) facing north
+  gamer_rich BATTLE: Route8 (55, 18) facing north
+  west_of_glenn_column LEGS: Route8 (48, 7) facing north
+  route8_row7_west_wall LEGS: Route8 (26, 7) facing west
+  route8_row14_west_wall LEGS: Route8 (12, 14) facing west
+  east_of_underground_door LEGS: Route8 (14, 5) facing north
+  below_underground_door ROUTE: Route8 (13, 5) facing north
+  route7_underground_exit ROUTE: Route7 (7, 15) facing south (warped from Route8) (warped from UndergroundPath_EastEntrance) (warped from UndergroundPath_EastWestTunnel) (warped from UndergroundPath_WestEntrance)
+  pidgey_grass ROUTE: Route7 (14, 6) facing east
+  catch_pidgey GAME: Route7 (14, 6) facing east [stubbed]
+  celadon_below_center ROUTE: CeladonCity (48, 12) facing north
+  celadon_nurse GAME: CeladonCity (48, 12) facing north [stubbed]
+  sim: 236636 ms, 349 steps, 7 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; beat old_man_1; screens the overworld@0 a warp's fade@1675 the overworld@2675 a warp's fade@27003 the overworld@28003 a warp's fade@38667 the overworld@39667 a message@89772 the overworld@90772 a battle@92772 the overworld@102772 a warp's fade@148813 the overworld@149813 a warp's fade@161417 the overworld@162417 a warp's fade@189829 the overworld@190829 a warp's fade@200158 the overworld@201158
+  heal_celadon HEAL: CeladonCity_PokemonCenter_1F (7, 4) facing north [stubbed]
+  sim: 0 ms, 0 steps, 0 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; screens the overworld@0
+09.01 from CeladonCity_PokemonCenter_1F (7, 4) facing north
+  celadon_below_game_corner ROUTE: CeladonCity (34, 22) facing north (warped from CeladonCity_PokemonCenter_1F)
+  below_poster_guard ROUTE: CeladonCity_GameCorner (11, 3) facing north (warped from CeladonCity)
+  talk_poster_guard TALK: CeladonCity_GameCorner (11, 3) facing north [stubbed]
+  rocket_grunt BATTLE: CeladonCity_GameCorner (11, 3) facing north [unscripted, let pass]
+  sim: 28665 ms, 42 steps, 2 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; screens the overworld@0 a warp's fade@1675 the overworld@2675 a warp's fade@16608 the overworld@17608
+  below_poster STEP: CeladonCity_GameCorner (11, 2) facing north
+  poster_switch GAME: CeladonCity_GameCorner (11, 2) facing north [stubbed]
+  b2f_east_of_grunt ROUTE: RocketHideout_B2F (23, 4) facing west (warped from CeladonCity_GameCorner) (warped from RocketHideout_B1F)
+  b2f_to_stairs LEGS: RocketHideout_B2F (21, 2) facing north
+  b3f_off_stairs ROUTE: RocketHideout_B3F (18, 2) facing east (warped from RocketHideout_B2F)
+  b3f_arrow_maze LEGS: RocketHideout_B3F (15, 19) facing north
+  hideout_b4f_west ROUTE: RocketHideout_B4F (5, 3) facing west (warped from RocketHideout_B3F)
+  key_grunt_line STEP: RocketHideout_B4F (4, 3) facing north
+  lift_key_grunt BATTLE: RocketHideout_B4F (4, 3) facing north
+  beside_lift_key LEGS: RocketHideout_B4F (3, 3) facing west
+  below_lift_key ROUTE: RocketHideout_B4F (3, 3) facing north
+  lift_key TALK: RocketHideout_B4F (3, 3) facing north [stubbed]
+  b4f_east_to_wall LEGS: RocketHideout_B4F (6, 3) facing east
+  b4f_to_stairs LEGS: RocketHideout_B4F (11, 15) facing south
+  b3f_from_b4f ROUTE: RocketHideout_B3F (15, 18) facing west (warped from RocketHideout_B4F)
+  b3f_down_to_row_20 LEGS: RocketHideout_B3F (15, 20) facing south
+  b3f_row_20_to_wall LEGS: RocketHideout_B3F (10, 20) facing west
+  b3f_back_to_candy_row LEGS: RocketHideout_B3F (10, 13) facing north
+  beside_b3f_rare_candy ROUTE: RocketHideout_B3F (12, 13) facing north
+  b3f_rare_candy TALK: RocketHideout_B3F (12, 13) facing north [stubbed]
+  sim: 151686 ms, 176 steps, 5 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; beat rocket_m; screens the overworld@0 a warp's fade@2841 the overworld@3841 a warp's fade@9943 the overworld@10943 a warp's fade@39752 the overworld@40752 a warp's fade@89587 the overworld@90587 a message@106468 the overworld@107468 a battle@109468 the overworld@119468 a warp's fade@135294 the overworld@136294
+09.02 from RocketHideout_B3F (12, 13) facing north
+  b3f_to_column_12 LEGS: RocketHideout_B3F (12, 9) facing east
+  b3f_to_top_corridor LEGS: RocketHideout_B3F (12, 2) facing north
+  b2f_from_b3f ROUTE: RocketHideout_B2F (21, 2) facing east (warped from RocketHideout_B3F)
+  b2f_arrows_to_moon_stone LEGS: RocketHideout_B2F (1, 4) facing west
+  beside_moon_stone LEGS: RocketHideout_B2F (2, 4) facing east
+  above_moon_stone ROUTE: RocketHideout_B2F (2, 4) facing south
+  moon_stone TALK: RocketHideout_B2F (2, 4) facing south [stubbed]
+  b2f_arrows_to_lift_room LEGS: RocketHideout_B2F (1, 4) facing south
+  lift_room_to_row_17 LEGS: RocketHideout_B2F (1, 4) facing north
+  row_17_to_wall LEGS: RocketHideout_B2F (1, 4) facing east
+  below_lift LEGS: RocketHideout_B2F (0, 4) facing west
+  face_lift ROUTE: RocketHideout_B2F (0, 4) facing north
+  lift_to_b4f GAME: RocketHideout_B2F (0, 2) facing north [stubbed] FAILED: 09.02/lift_to_b4f: no lift panel for "lift_floor". On RocketHideout_B2F (0, 2).
+  sim: 89245 ms, 80 steps, 1 warps, 0 wild, 0 signs, 0 turn taps dropped, 0 step taps ignored, 0 moved step taps; violation: no lift panel on RocketHideout_B2F (0, 2) with a floor 2.; screens the overworld@0 a warp's fade@18111 the overworld@19111
