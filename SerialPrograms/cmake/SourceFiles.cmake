@@ -1472,6 +1472,13 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Navigation/Pokemon_ConnectedMaps.h
     Source/Pokemon/Navigation/Pokemon_ConnectedMaps_Tests.cpp
     Source/Pokemon/Navigation/Pokemon_ConnectedMaps_Tests.h
+    Source/Pokemon/Navigation/Pokemon_GatedPlanner.h
+    Source/Pokemon/Navigation/Pokemon_GateState.cpp
+    Source/Pokemon/Navigation/Pokemon_GateState.h
+    Source/Pokemon/Navigation/Pokemon_GateTiles.cpp
+    Source/Pokemon/Navigation/Pokemon_GateTiles.h
+    Source/Pokemon/Navigation/Pokemon_Gates_Tests.cpp
+    Source/Pokemon/Navigation/Pokemon_Gates_Tests.h
     Source/Pokemon/Navigation/Pokemon_Direction.cpp
     Source/Pokemon/Navigation/Pokemon_Direction.h
     Source/Pokemon/Navigation/Pokemon_Grid.cpp
@@ -1503,6 +1510,7 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Navigation/Pokemon_RuntimeMap_Tests.cpp
     Source/Pokemon/Navigation/Pokemon_RuntimeMap_Tests.h
     Source/Pokemon/Navigation/Pokemon_NavigationTestMaps.h
+    Source/Pokemon/Navigation/Pokemon_NavigationGateTestMaps.h
     Source/Pokemon/Navigation/Pokemon_RouteLog.cpp
     Source/Pokemon/Navigation/Pokemon_RouteLog.h
     Source/Pokemon/Navigation/Pokemon_RouteLog_Tests.cpp
@@ -1656,6 +1664,7 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.cpp
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckpointGates.cpp
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckpointMetadata.cpp
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckpointMetadata.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryPostconditions.h

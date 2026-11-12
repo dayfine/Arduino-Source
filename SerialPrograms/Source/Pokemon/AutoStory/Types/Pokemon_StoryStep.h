@@ -15,6 +15,7 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include "Pokemon/Navigation/Pokemon_GateState.h"
 #include "Pokemon_DeclaredPose.h"
 #include "Pokemon_StoryActionArg.h"
 #include "Pokemon_StoryStepKind.h"
@@ -51,6 +52,10 @@ struct StoryStep{
     //  Where the step leaves the player, when its action does not say: the
     //  end of a scene that moves the player.
     std::optional<DeclaredPose> pose_after;
+    //  The gates the step opens and the switches it sets
+    //  (Pokemon/Navigation/Pokemon_GateState.h), applied to the run's gate
+    //  state when the step is done.
+    std::optional<GateChange> gates_after = {};
 };
 
 

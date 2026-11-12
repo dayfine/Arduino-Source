@@ -40,6 +40,10 @@ enum class TileKind : uint8_t{
     CLOSED_SOUTH,   //  '2'  not entered from it, nor left through it (the
     CLOSED_WEST,    //  '4'  number pad's arrows)
     CLOSED_EAST,    //  '6'
+    GATE,           //  'G'  a wall until the story opens it: the map's `gates`
+                    //       table names the gate, and Pokemon_GateState.h says
+                    //       whether it is open (a reader that ignores gates
+                    //       treats it as a wall)
 };
 //  The tile a glyph stands for, or nothing if it isn't one.
 std::optional<TileKind> tile_from_glyph(char glyph);
