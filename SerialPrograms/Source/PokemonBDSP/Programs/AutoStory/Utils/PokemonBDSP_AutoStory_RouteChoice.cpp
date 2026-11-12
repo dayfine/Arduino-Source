@@ -177,6 +177,30 @@ std::vector<std::vector<PlannedLeg>> run_variants(const ScoredRoute& route, cons
     return out;
 }
 
+//  The tiles where someone wanders that `legs` enter, from every tile of
+//  `from`: a run on to a wall or a trigger may enter a zone the route's own
+//  plan keeps off (RobustPlanCosts::per_wander_tile).
+size_t wander_tiles_entered(const StoryWorld& world, std::vector<TilePos> from, const std::vector<PlannedLeg>& legs){
+    size_t out = 0;
+    for (const PlannedLeg& planned : legs){
+        for (const TilePos& start : from){
+            TilePos at = start;
+            size_t walked = 0;
+            while (planned.leg.ends_at_wall || walked < planned.leg.tiles){
+                const std::optional<TilePos> next = step(world, at, planned.leg.direction);
+                if (!next){
+                    break;
+                }
+                walked += (size_t)(std::abs(next->x - at.x) + std::abs(next->y - at.y));
+                at = *next;
+                out += wandering_hazard(world, at) ? 1 : 0;
+            }
+        }
+        from = planned.after;
+    }
+    return out;
+}
+
 bool same_legs(const std::vector<PlannedLeg>& a, const std::vector<PlannedLeg>& b){
     return std::equal(a.begin(), a.end(), b.begin(), b.end(), [](const PlannedLeg& x, const PlannedLeg& y){
         return x.leg.direction == y.leg.direction && x.leg.tiles == y.leg.tiles &&
@@ -364,7 +388,14 @@ std::optional<std::vector<PlannedLeg>> plan_fastest_route(const ScoredRoute& rou
     const bool own_passes = own.verdict == Pokemon::RouteVerdict::PASS;
     const size_t own_back = Pokemon::tiles_walked_back(route_scored_legs(*best, route.speed));
     double best_ms = own_passes ? own.expected_ms : -1;
+    //  With costs that keep out of wander zones (town_plan_costs()), a plan
+    //  that enters none is not swapped for a faster one that does.
+    const bool own_clear = route.costs.per_wander_tile > TilePlanCosts().per_wander_tile &&
+        wander_tiles_entered(route.world, route.from, *best) == 0;
     for (std::vector<PlannedLeg>& legs : candidates){
+        if (own_clear && wander_tiles_entered(route.world, route.from, legs) > 0){
+            continue;
+        }
         const Pokemon::RouteScore score = score_with(route, legs, replan);
         if (score.verdict != Pokemon::RouteVerdict::PASS || (best_ms >= 0 && score.expected_ms >= best_ms)){
             continue;

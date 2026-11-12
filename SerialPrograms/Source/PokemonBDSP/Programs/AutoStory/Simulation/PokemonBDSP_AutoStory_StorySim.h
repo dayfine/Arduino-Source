@@ -159,6 +159,16 @@ struct SimWorldKnobs{
     std::map<std::string, double> fade_into = {};
     //  People with a wander box on their map walk it, a step tried every 2 s.
     std::optional<uint64_t> wander_seed = std::nullopt;
+    //  People with a wander box who stand still on a tile of their map
+    //  instead, by name, with or without wander_seed: 00.05b's boy below
+    //  the Mart (school_kid_m_5, x 51, y 33..35) on row 34.
+    std::map<std::string, Pokemon::TilePos> standing = {};
+    //  How much longer a hold into someone standing still takes to read as
+    //  stopped: the screen moves on while we push against them. On lab-B
+    //  (2026-11-11 21:00, 00.05b) "east 8 (to wall)" stopped against the boy
+    //  below the Mart after 2800 ms, about 5 tiles in, where a free run
+    //  stops at its wall after about 2000.
+    Milliseconds pushing_someone = Milliseconds(0);
     //  How long after the A press a talk's first line shows, by step name.
     std::map<std::string, Milliseconds> first_line = {};
     //  The scene a step's talk-over plays, by step name: a scene's or a

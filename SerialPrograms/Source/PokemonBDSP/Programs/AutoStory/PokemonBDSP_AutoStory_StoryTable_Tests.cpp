@@ -407,6 +407,37 @@ UnitTestResult test_story_routes_keep_off_wander_zones(Logger& logger){
     return out.empty() ? UnitTestResult(true) : UnitTestResult("ROUTE steps:" + out);
 }
 
+//  No leg of 00.05b's or 00.05c's routes enters a tile where someone
+//  wanders, from any tile the player may be on: on lab-B (2026-11-11 21:00)
+//  the boy below the Mart (51, 33..35) stopped 00.05b's "east 8 (to wall)"
+//  along row 34 three tiles short; row 36 below him is open.
+UnitTestResult test_jubilife_routes_cross_no_wander_zone(Logger& logger){
+    std::string out;
+    size_t checked = 0;
+    for (const PlannedStoryRoute& route : plan_story_routes(logger)){
+        if (!route.name.starts_with("00.05b ") && !route.name.starts_with("00.05c ")){
+            continue;
+        }
+        if (!route.legs){
+            out += "\n  " + route.name + ": no plan.";
+            continue;
+        }
+        checked++;
+        const StoryWorld& world = *route.world;
+        const auto [most, leg] = most_zone_tiles(world, route.from, *route.legs, [&](const TilePos& pos){
+            return wandering_hazard(world, pos);
+        });
+        if (most > 0){
+            out += std::format("\n  {}: {} enters {} tile(s) where someone wanders.", route.name, leg, most);
+        }
+    }
+    logger.log(std::format("{} Jubilife routes checked.", checked));
+    if (checked == 0){
+        return "No 00.05b or 00.05c route planned from a known place.";
+    }
+    return out.empty() ? UnitTestResult(true) : UnitTestResult("ROUTE steps:" + out);
+}
+
 //  01.08's walk below the Ravaged Path keeps off the row Route 204 South's
 //  youngster_3 wanders, (12, 2) to (14, 2): on lab-B (2026-11-08) the plan
 //  "north 35 (to wall) to (13, 2), west 2 (to wall) to (11, 2)" walked along
@@ -679,6 +710,10 @@ const AutoStoryStoryTableCase AUTO_STORY_STORY_TABLE_CASES[] = {
     },
     {
         .input = {"01.08: the walk below the Ravaged Path keeps off the youngster's row (lab-B, 2026-11-08)", test_ravaged_path_keeps_off_the_youngster},
+        .expectation = {},
+    },
+    {
+        .input = {"00.05b, 00.05c: no leg enters a wander zone (lab-B, 2026-11-11)", test_jubilife_routes_cross_no_wander_zone},
         .expectation = {},
     },
 };
