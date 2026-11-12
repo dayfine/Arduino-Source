@@ -43,6 +43,9 @@ const std::vector<MapPosition>& rocket_hideout_lift_exits();
 //  byte LAYOUT_ROCKET_HIDEOUT_ELEVATOR's), so the same LIFT_ARRIVAL and
 //  LIFT_PANEL_FRONT. Its floors' lift doors lead to its warp 0, (2, 5).
 inline constexpr std::string_view DEPT_STORE_LIFT_MAP = "CeladonCity_DepartmentStore_Elevator";
+//  The store lift's room, under DEPT_STORE_LIFT_MAP. Its door is a dynamic
+//  warp, as the hideout's (SimScript::lift_floors with
+//  department_store_lift_exits()).
 MapData department_store_lift_room();
 //  Where it lets out for each floor on its panel, top first: every floor's
 //  lift door is (6, 1) (setdynamicwarp ..., 255, 6, 1 in its scripts), and

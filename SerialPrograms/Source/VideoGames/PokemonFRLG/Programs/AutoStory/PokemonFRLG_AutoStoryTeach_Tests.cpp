@@ -395,9 +395,6 @@ UnitTestResult test_teach_by_species(){
     if (missing.end != TeachEnd::UNREAD || game.items_opened != opened){
         return std::format("No Spearow in the party: ended {}, expected unread with the bag shut.", teach_end_name(missing.end));
     }
-    if (find_party_species(reader_of(game), "eevee") != 4u || find_party_species(reader_of(game), "squirtle") != 0u){
-        return "Expected the Eevee in slot 5 and the Squirtle in slot 1.";
-    }
     return true;
 }
 

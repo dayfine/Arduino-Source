@@ -34,6 +34,7 @@
 #include "PokemonFRLG_AutoStoryItemUse.h"
 #include "PokemonFRLG_AutoStoryPcStorage.h"
 #include "PokemonFRLG_AutoStoryPlanGolden.h"
+#include "PokemonFRLG_AutoStoryPlanGolden10.h"
 #include "PokemonFRLG_AutoStoryMoveData.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
 #include "PokemonFRLG_AutoStoryTable.h"
@@ -310,17 +311,20 @@ UnitTestResult test_routes_and_chain(){
 //  Every story route's plan against the stored copy in
 //  PokemonFRLG_AutoStoryPlanGolden.h. A change that should not alter any
 //  plan must leave this byte-identical. To regenerate after an intended plan
-//  change: run this suite, and replace the lines of FRLG_PLAN_GOLDEN with
-//  the lines the failure lists after "GOLDEN|".
+//  change: run this suite, and replace the lines of FRLG_PLAN_GOLDEN and
+//  FRLG_PLAN_GOLDEN_10 (segment 10 on) with the lines the failure lists
+//  after "GOLDEN|".
 UnitTestResult test_golden_plans(){
     std::vector<std::string> actual;
     UnitTestResult result = chain_story_routes(actual);
     if (result.result != UnitTestResult::PASSED){
         return result;
     }
-    const size_t stored = sizeof(FRLG_PLAN_GOLDEN) / sizeof(FRLG_PLAN_GOLDEN[0]);
+    std::vector<std::string_view> golden(std::begin(FRLG_PLAN_GOLDEN), std::end(FRLG_PLAN_GOLDEN));
+    golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_10), std::end(FRLG_PLAN_GOLDEN_10));
+    const size_t stored = golden.size();
     size_t first_diff = 0;
-    while (first_diff < actual.size() && first_diff < stored && actual[first_diff] == FRLG_PLAN_GOLDEN[first_diff]){
+    while (first_diff < actual.size() && first_diff < stored && actual[first_diff] == golden[first_diff]){
         first_diff++;
     }
     if (first_diff == actual.size() && first_diff == stored){
@@ -329,7 +333,7 @@ UnitTestResult test_golden_plans(){
     std::string message = std::format("plans differ from the golden at line {} ({} lines now, {} stored): now \"{}\", stored \"{}\". Now:",
         first_diff + 1, actual.size(), stored,
         first_diff < actual.size() ? std::string_view(actual[first_diff]) : std::string_view(),
-        first_diff < stored ? FRLG_PLAN_GOLDEN[first_diff] : std::string_view());
+        first_diff < stored ? golden[first_diff] : std::string_view());
     for (const std::string& line : actual){
         message += std::format("\nGOLDEN|{}", line);
     }

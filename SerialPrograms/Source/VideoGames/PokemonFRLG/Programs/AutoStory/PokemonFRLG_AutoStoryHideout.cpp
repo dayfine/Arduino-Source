@@ -31,23 +31,15 @@ namespace PokemonFRLG{
 using namespace std::chrono_literals;
 
 
-const std::vector<std::string>& rocket_hideout_lift_menu(){
-    static const std::vector<std::string> MENU{"B1F", "B2F", "B4F", "EXIT"};
-    return MENU;
-}
-
-const std::vector<std::string>& department_store_lift_menu(){
-    static const std::vector<std::string> MENU{"5F", "4F", "3F", "2F", "1F", "EXIT"};
-    return MENU;
-}
-
 const std::vector<std::string>& lift_menu(std::string_view lift){
     static const std::vector<std::string> NONE;
+    static const std::vector<std::string> HIDEOUT{"B1F", "B2F", "B4F", "EXIT"};
+    static const std::vector<std::string> STORE{"5F", "4F", "3F", "2F", "1F", "EXIT"};
     if (lift == LIFT_MAP){
-        return rocket_hideout_lift_menu();
+        return HIDEOUT;
     }
     if (lift == DEPT_STORE_LIFT_MAP){
-        return department_store_lift_menu();
+        return STORE;
     }
     return NONE;
 }
@@ -152,10 +144,10 @@ constexpr Milliseconds HIDEOUT_SCENE_TIMEOUT = 30000ms;
 void pick_lift_floor(ConsoleHandle& console, ProControllerContext& context, const LiftRide& ride){
     const std::vector<std::string>& menu = lift_menu(ride.lift);
     const MenuPresses presses = lift_menu_presses(ride, menu.size());
-    console.log(
-        "Story: lift from " + menu[ride.from] + " to " + menu[ride.to]
-        + ": " + std::to_string(presses.presses) + " press(es) " + Pokemon::direction_name(presses.direction) + "."
-    );
+    console.log(std::format(
+        "Story: lift from {} to {}: {} press(es) {}.",
+        menu[ride.from], menu[ride.to], presses.presses, Pokemon::direction_name(presses.direction)
+    ));
     pbf_press_button(context, BUTTON_A, 160ms, LIFT_MENU_WAIT);
     const DpadPosition dpad = presses.direction == Pokemon::Direction::SOUTH ? DPAD_DOWN : DPAD_UP;
     for (size_t c = 0; c < presses.presses; c++){

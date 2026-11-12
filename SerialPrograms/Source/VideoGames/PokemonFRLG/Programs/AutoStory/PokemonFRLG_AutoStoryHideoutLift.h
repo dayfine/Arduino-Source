@@ -26,15 +26,10 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-//  The lift panel's menu, top first (pokefirered
-//  sMultichoiceList_RocketHideoutElevator): B1F, B2F, B4F, EXIT.
-const std::vector<std::string>& rocket_hideout_lift_menu();
-//  The Department Store lift's (sMultichoiceList_DeptStoreElevator): 5F,
-//  4F, 3F, 2F, 1F, EXIT.
-const std::vector<std::string>& department_store_lift_menu();
-
-//  The panel's menu of the lift whose room is `lift` (LIFT_MAP or
-//  DEPT_STORE_LIFT_MAP); empty for another map.
+//  The panel's menu of the lift whose room is `lift`, top first; empty for
+//  another map. LIFT_MAP: B1F, B2F, B4F, EXIT (pokefirered
+//  sMultichoiceList_RocketHideoutElevator); DEPT_STORE_LIFT_MAP: 5F, 4F,
+//  3F, 2F, 1F, EXIT (sMultichoiceList_DeptStoreElevator).
 const std::vector<std::string>& lift_menu(std::string_view lift);
 //  Where the lift `lift` lets out for each floor on its panel, top first;
 //  empty for another map.

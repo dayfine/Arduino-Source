@@ -76,11 +76,6 @@ struct TeachDecision{
 //  Determines which move slot to overwrite given current moves.
 TeachDecision decide_teach(const TeachPlan& plan, const std::vector<std::string>& moves);
 
-//  The first party slot whose member `reader` reads as `species`; nothing
-//  if none does. Stops at the first slot not read (an empty slot ends the
-//  party).
-std::optional<size_t> find_party_species(const MemberReader& reader, std::string_view species);
-
 
 
 } // namespace PokemonFRLG
