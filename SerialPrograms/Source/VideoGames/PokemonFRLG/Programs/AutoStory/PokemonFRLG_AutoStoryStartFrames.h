@@ -40,8 +40,8 @@ namespace PokemonFRLG{
 ImageRGB32 console_start_frame(ConsoleHandle& console, ProControllerContext& context);
 
 //  The console's start check for `checkpoint`: the screen against the
-//  frame `store` keeps for it, up to 3 frames a second apart
-//  (read_start_frames()).
+//  frame `store` keeps for it, up to CONSOLE_START_FRAME_TRIES frames
+//  CONSOLE_START_FRAME_WAIT apart (read_start_frames()).
 StartRead check_console_start(
     ConsoleHandle& console, ProControllerContext& context, const StartFrameStore& store, const std::string& checkpoint
 );

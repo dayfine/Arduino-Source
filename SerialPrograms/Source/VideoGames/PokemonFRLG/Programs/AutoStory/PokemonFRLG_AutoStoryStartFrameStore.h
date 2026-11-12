@@ -10,6 +10,7 @@
 #define PokemonAutomation_PokemonFRLG_AutoStoryStartFrameStore_H
 
 #include <cstddef>
+#include <chrono>
 #include <functional>
 #include <optional>
 #include <string>
@@ -50,6 +51,16 @@ using StartFrameSource = std::function<ImageRGB32()>;
 //  camera on one frame doesn't fail the check. No reference, or no video,
 //  is NOT_READ.
 StartRead read_start_frames(const std::optional<ImageRGB32>& reference, const StartFrameSource& next_frame, size_t tries);
+
+//  The console's start check: how many frames it tries. With
+//  CONSOLE_START_FRAME_WAIT between them, they span one period of the fog
+//  on Pokemon Tower's upper floors (WEATHER_FOG_HORIZONTAL: 64 pixels, one
+//  every 4 GBA frames, 4.3 seconds), so one of them shows the fog within 3
+//  pixels of where the kept frame did. Three frames a second apart each
+//  differed from it in 52 to 76 of 150 tiles (10.05, 2026-11-12).
+constexpr size_t CONSOLE_START_FRAME_TRIES = 12;
+//  The wait between two frames of the console's start check.
+constexpr std::chrono::milliseconds CONSOLE_START_FRAME_WAIT{400};
 
 
 //  Where the start frames are kept: for each checkpoint, <id>.png, the
