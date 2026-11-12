@@ -18,6 +18,7 @@
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkResult.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkScreen.h"
+#include "PokemonBDSP_AutoStory_SimWanderWait.h"
 #include "PokemonBDSP_AutoStory_StorySim.h"
 
 namespace PokemonAutomation{
@@ -694,6 +695,13 @@ StoryBoundActions SimExecutor::sim_actions(){
     const auto stubbed = [this](const StoryStep&, RunState&){
         return stub();
     };
+    //  Played from where the step before left us, on its map.
+    const auto wait_for_wanderer = [this, stubbed](const StoryStep& step, RunState& state){
+        if (!sync(state.pose)){
+            return stubbed(step, state);
+        }
+        return sim_wait_for_wanderer(m_sim, m_sim.world(), state.pose, step);
+    };
     return StoryBoundActions{
         .new_game = stubbed,
         .options = stubbed,
@@ -706,11 +714,14 @@ StoryBoundActions SimExecutor::sim_actions(){
             return heal(state, step);
         },
         .save = stubbed,
-        .event = [this, stubbed](const std::string& name) -> Pokemon::StoryActionFunction{
+        .event = [this, stubbed, wait_for_wanderer](const std::string& name) -> Pokemon::StoryActionFunction{
             if (name == "check_poketch"){
                 return [this](const StoryStep& step, RunState&){
                     return m_poketch ? Pokemon::outcome_ok() : Pokemon::outcome_failed("no_poketch", step.name + ": no Poketch on the screen.");
                 };
+            }
+            if (name == "wait_for_wanderer"){
+                return wait_for_wanderer;
             }
             return stubbed;
         },
