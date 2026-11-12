@@ -122,7 +122,9 @@ private:
         int map = 0;
         PlayerState player;
         bool warped = false;
-        bool walked_out = false;    //  the warp ended with the game walking the player a tile south
+        //  The way the warp left the player facing (arrival_facing()), if
+        //  not the way they moved.
+        std::optional<Direction> facing = std::nullopt;
         bool ledge = false;
         //  The step landed on a spinner, which slid the player to `player`.
         std::optional<SpinSlide> spin = {};
@@ -450,6 +452,8 @@ private:
 void add_tests_OverworldSim(UnitTestDatabase& database);
 //  Register the tests of a warp's fade over before the hold onto it ends.
 void add_tests_OverworldWarpFade(UnitTestDatabase& database);
+//  Register the tests of the way a warp leaves the player facing.
+void add_tests_OverworldStairs(UnitTestDatabase& database);
 
 
 } // namespace PokemonFRLG

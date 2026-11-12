@@ -68,6 +68,13 @@ struct StoryCheckpoint : public Pokemon::StoryCheckpoint{
     PokemonFRLG_RngTarget gift = PokemonFRLG_RngTarget::magikarp;
 };
 
+//  The pose the start check of `data` compares the loaded save with:
+//  nothing for a new game, or for a live-start row, which loads no save
+//  but starts where an RNG program left the game (console B, 2026-11-11:
+//  09.04 stopped on the shiny Eevee's summary, which its start frame
+//  could never match).
+std::optional<Pokemon::Pose> checked_start_pose(const StoryCheckpoint& data);
+
 //  The handoffs a run stops for (AutoStory's options).
 struct StoryHandoffs{
     bool sid_helper = false;

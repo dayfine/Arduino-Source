@@ -133,6 +133,15 @@ std::optional<Direction> exit_mat(const MapData& map, const TilePos& point){
 bool walks_out_on_arrival(const MapData& map, const TilePos& point){
     return is_door(map, point) || warp_entry(map, point) == WarpEntry::CAVE_ENTRANCE;
 }
+std::optional<Direction> arrival_facing(const MapData& map, const TilePos& point){
+    if (walks_out_on_arrival(map, point)){
+        return Direction::SOUTH;
+    }
+    if (const std::optional<Direction> taken = exit_mat(map, point)){
+        return opposite(*taken);
+    }
+    return std::nullopt;
+}
 
 void hide_objects(MapData& map, const std::set<std::string>& flags){
     std::vector<MapObject> shown;

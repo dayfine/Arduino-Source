@@ -61,6 +61,9 @@ public:
     virtual StarterRngResult run_attempt(const RngAttempt& attempt, const StarterRngAttemptCall& call) override;
 
 private:
+    //  Logs Gift RNG's counts so far in this run.
+    void log_stats();
+
     SingleSwitchProgramEnvironment& m_env;
     ProControllerContext& m_context;
     GiftRngConsoleSettings m_settings;
@@ -69,6 +72,8 @@ private:
     RngTargetDisplay m_target_display;
     RngFilterDisplay m_filter_display;
     RngCalibrationDisplay m_calibration_display;
+    //  Gift RNG's counts over all tries of this run.
+    GiftRngStats m_stats;
 };
 
 

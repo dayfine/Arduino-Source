@@ -4,6 +4,8 @@
  *
  */
 
+#include <format>
+#include "Common/Cpp/ScopeExit.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
 #include "PokemonFRLG_StarterRngConsoleSteps.h"
@@ -70,7 +72,6 @@ StarterRngResult ConsoleStarterRngSteps::run_attempt(const RngAttempt& attempt, 
         throw InternalProgramError(&m_env.logger(), PA_CURRENT_FUNCTION, "The plan's seed isn't in the seed list it came from.");
     }
 
-    StarterRngStats stats;
     StarterRngAttempts attempts(
         StarterRngTarget{
             .starter = StarterSpecies::squirtle,
@@ -96,8 +97,10 @@ StarterRngResult ConsoleStarterRngSteps::run_attempt(const RngAttempt& attempt, 
             .calibration = m_calibration_display,
         },
         m_notifications,
-        stats
+        m_stats
     );
+    //  The run's counts after each try, however it ends.
+    const ScopeExit log_stats_after([this]{ log_stats(); });
     try{
         return attempts.run(m_env, m_context);
     }catch (OperationFailedException& e){
@@ -108,6 +111,10 @@ StarterRngResult ConsoleStarterRngSteps::run_attempt(const RngAttempt& attempt, 
         }
         throw StarterRngTimingsRefused(e.message());
     }
+}
+
+void ConsoleStarterRngSteps::log_stats(){
+    m_env.log(std::format("Starter RNG stats: {}", m_stats.to_str(StatsTracker::DISPLAY_ON_SCREEN)));
 }
 
 

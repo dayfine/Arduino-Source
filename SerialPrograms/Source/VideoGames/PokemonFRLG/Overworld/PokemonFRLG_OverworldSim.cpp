@@ -264,11 +264,11 @@ std::optional<OverworldSim::Step> OverworldSim::take_warp(int map_index, const T
         return std::nullopt;
     }
     TilePos position = arrival->second;
-    const bool walked_out = walks_out_on_arrival(to, position);
-    if (walked_out){
+    const std::optional<Direction> facing = arrival_facing(to, position);
+    if (walks_out_on_arrival(to, position)){
         position = position.next(Direction::SOUTH);
     }
-    return Step{destination, PlayerState{position, elevation_at(to, position), false}, true, walked_out, false};
+    return Step{destination, PlayerState{position, elevation_at(to, position), false}, true, facing, false};
 }
 
 std::optional<OverworldSim::Step> OverworldSim::cross_edge(Direction direction) const{
@@ -290,7 +290,7 @@ std::optional<OverworldSim::Step> OverworldSim::cross_edge(Direction direction) 
         if (kind != StepKind::WALK && kind != StepKind::STOP_SURFING){
             return std::nullopt;
         }
-        return Step{destination, after_step_onto(map(), m_player, to, point, kind), false, false, false};
+        return Step{destination, after_step_onto(map(), m_player, to, point, kind), false, std::nullopt, false};
     }
     return std::nullopt;
 }
@@ -311,13 +311,13 @@ std::optional<OverworldSim::Step> OverworldSim::press(Direction direction) const
     }
     if (ledge_direction(tile_at(map(), ahead)) == direction){
         const TilePos landed = ahead.next(direction);
-        return Step{m_map, PlayerState{landed, elevation_at(map(), landed), false}, false, false, true};
+        return Step{m_map, PlayerState{landed, elevation_at(map(), landed), false}, false, std::nullopt, true};
     }
     const StepKind kind = classify_step(map(), m_player, direction);
     if (kind != StepKind::WALK && kind != StepKind::STOP_SURFING){
         return std::nullopt;
     }
-    Step step{m_map, after_step_onto(map(), m_player, map(), ahead, kind), false, false, false};
+    Step step{m_map, after_step_onto(map(), m_player, map(), ahead, kind), false, std::nullopt, false};
     if (warps_on_step(map(), ahead)){
         return take_warp(m_map, ahead);
     }
@@ -509,8 +509,8 @@ void OverworldSim::take_steps(Direction direction, Milliseconds pressed, Millise
                 return;
             }
         }
-        if (step->walked_out){
-            m_state.facing = Direction::SOUTH;
+        if (step->facing){
+            m_state.facing = *step->facing;
         }
         pressed += after_slide(*step);
         if (after_step(*step, pressed)){
