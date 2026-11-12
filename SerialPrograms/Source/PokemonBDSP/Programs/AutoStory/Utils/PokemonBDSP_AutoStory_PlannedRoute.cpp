@@ -918,9 +918,10 @@ LegNext RouteWalker::unknown_trainer(LegWalk& walk, const std::vector<std::vecto
         return LegNext::SCENE;
     }
     //  A scene the map lacks (r14: Barry's Route 201 warning, then the row that
-    //  pulls us back) would replan into it forever: give up after the second.
-    if (++m_unexplained_talks > 2){
-        fail(m_io, walk.label + ": dialogue the map does not explain stopped us 3 times.");
+    //  pulls us back) would replan into it forever: give up after the second,
+    //  or the sixth by the greeter (RouteWalkPlan::greeter), who talks each time.
+    if (++m_unexplained_talks > (m_plan.greeter_near(anywhere) ? 6u : 2u)){
+        fail(m_io, std::format("{}: dialogue the map does not explain stopped us {} times.", walk.label, m_unexplained_talks));
     }
     m_io.note(m_plan.label + ": a trainer the map lacks stopped us; fighting.", RouteNote::STATUS);
     m_trainers.fight("unknown trainer");
@@ -1086,7 +1087,6 @@ RouteEnd walk_route_to_warp(
 ){
     return RouteWalker(io, maps, trainers, plan).run(std::move(from));
 }
-
 
 
 namespace{

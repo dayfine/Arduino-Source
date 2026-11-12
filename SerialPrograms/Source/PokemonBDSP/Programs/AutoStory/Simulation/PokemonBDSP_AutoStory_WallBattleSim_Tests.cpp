@@ -7,6 +7,8 @@
  *  the wall with the battle counted. And a run into a scene (00.03's into
  *  Sandgem), a wild battle on it or not: the scene stops the run wherever it
  *  starts, and with no scene the run stops at its cap and the step fails.
+ *  And 00.05c's greeter by the Wonder Station, who talks each time we come
+ *  near: heard out each time, the walk still arrives.
  *
  */
 
@@ -338,10 +340,100 @@ const SceneRunCase SCENE_RUN_SIM_CASES[] = {
     {.input = {.name = "a wild battle and no scene: the step fails at the cap", .dawn = false, .battle = true}, .expectation = {.in_scene = false}},
 };
 
+//  The Wonder Station's greeter in Jubilife's plaza walks up and talks
+//  whenever we come near, then walks off: on lab-B (2026-11-12 03:57, 00.05c
+//  below_the_company_clown) she stopped one walk three times, at about
+//  (44, 28), (43, 30) and (39, 32), and the third failed it as "dialogue the
+//  map does not explain". Here a step onto the step's greeter ground starts
+//  her dialogue, and so does the next one after each talk, `talks` in all.
+struct GreeterInput{
+    std::string name;
+    size_t talks;
+};
+struct GreeterExpectation{
+    bool arrives;
+};
+struct GreeterCase{
+    GreeterInput input;
+    GreeterExpectation expectation;
+};
+
+//  Where the walk past `talks` of the greeter's went wrong, or "".
+std::string walk_past_the_greeter(Logger& logger, size_t most_talks){
+    const StoryStep* step = nullptr;
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        for (const StoryStep& s : row.steps){
+            step = row.id == "00.05c" && s.name == "below_the_company_clown" ? &s : step;
+        }
+    }
+    const StoryWorld* world = story_plan_world("JubilifeCity", "JubilifeCity");
+    if (step == nullptr || world == nullptr){
+        return "00.05c below_the_company_clown: not in the table, or no JubilifeCity world.";
+    }
+    const std::vector<TilePos> greeter = story_route_tiles(*world, *step, "greeter");
+    const TilePos start = story_to_world(*world, "JubilifeCity", {57, 22});
+    const TilePos target = story_to_world(*world, "JubilifeCity", {15, 19});
+    GridSim sim({.world = world, .trainers = {}, .triggers = {}}, start, Direction::WEST, true);
+    size_t talks = 0;
+    const auto arm = [&](){
+        sim_add_trigger(sim, {.name = std::format("the greeter {}", talks), .tiles = greeter, .spends = {}});
+    };
+    arm();
+    std::vector<std::string> notes;
+    GridSimRouteIO sim_io(sim, notes);
+    RouteTrainers trainers{{}, [&](const std::string&){
+        sim.end_dialogue();
+        talks++;
+        if (talks < most_talks){
+            arm();
+        }
+    }};
+    std::vector<TilePos> believed;
+    try{
+        believed = walk_route(sim_io, *world, {start}, trainers, {.goal = [&](const TilePos& pos){ return pos == target; },
+            .label = "below the company clown", .avoid = story_route_tiles(*world, *step, "avoid"), .costs = *story_route_costs("town"),
+            .speed = MoveSpeed::RUN, .scene_next = false, .goal_is_trigger = false, .greeter = greeter});
+    }catch (const GridSimFailure& e){
+        return std::format("failed after {} talk(s): {}", talks, e.message);
+    }
+    for (const std::string& note : notes){
+        logger.log(note);
+    }
+    const TilePos at = nearest_tile(sim.player().pos);
+    const bool arrived = believed == std::vector<TilePos>{target} && at == target && talks == most_talks;
+    return arrived ? "" : std::format("ended on {} after {} talk(s), not on {}.", describe(*world, at), talks, describe(*world, target));
+}
+
+class Test_GreeterSim : public UnitTest{
+public:
+    explicit Test_GreeterSim(GreeterCase test_case)
+        : UnitTest("PokemonBDSP::AutoStory - Grid sim: 00.05c, the Wonder Station's greeter " + test_case.input.name)
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        const std::string error = walk_past_the_greeter(logger, m_case.input.talks);
+        if (error.empty() != m_case.expectation.arrives){
+            return error.empty() ? "arrived" : error;
+        }
+        return true;
+    }
+
+private:
+    GreeterCase m_case;
+};
+
+const GreeterCase GREETER_SIM_CASES[] = {
+    {.input = {.name = "talks once", .talks = 1}, .expectation = {.arrives = true}},
+    {.input = {.name = "talks again on each leg near her (lab-B, 2026-11-12 03:57)", .talks = 3}, .expectation = {.arrives = true}},
+};
+
 } // namespace
 
 
 void add_tests_AutoStory_WallBattleSim(UnitTestDatabase& database){
+    for (const GreeterCase& item : GREETER_SIM_CASES){
+        database.add<Test_GreeterSim>(item);
+    }
     for (const WallBattleCase& item : WALL_BATTLE_SIM_CASES){
         database.add<Test_WallBattleSim>(item);
     }

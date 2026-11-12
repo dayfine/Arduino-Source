@@ -88,7 +88,7 @@ RouteStepPlan plan_table_route(const TableRoute& route){
     //  where it starts.
     StoryWorld world = *route.world;
     const std::vector<TilePos> from = world_tiles(world, *route.from);
-    for (const TilePos& pos : story_route_avoid(world, *route.step)){
+    for (const TilePos& pos : story_route_tiles(world, *route.step, "avoid")){
         if (std::find(from.begin(), from.end(), pos) == from.end()){
             world.uncover(pos);
         }

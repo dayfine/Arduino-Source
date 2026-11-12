@@ -11,6 +11,7 @@
 #ifndef PokemonAutomation_PokemonBDSP_AutoStory_PlannedRoute_H
 #define PokemonAutomation_PokemonBDSP_AutoStory_PlannedRoute_H
 
+#include <algorithm>
 #include <functional>
 #include <string>
 #include <vector>
@@ -61,6 +62,19 @@ struct RouteWalkPlan{
     //  `goal` is that scene's trigger (ROUTE_ONTO_TRIGGER): a walk stops on
     //  it when the scene starts, as at a wall.
     bool goal_is_trigger = false;
+    //  Ground where someone walks up and talks whenever we come near, then
+    //  walks off (00.05c: the Wonder Station's greeter in Jubilife's plaza,
+    //  lab-B 2026-11-12, again on every unsaved run). A dialogue no trainer
+    //  explains while we may stand here is theirs: played out and walked on
+    //  from, not counted against the walk as a scene the map lacks.
+    std::vector<Pokemon::TilePos> greeter = {};
+
+    //  Whether any of `tiles` is the greeter's ground.
+    bool greeter_near(const std::vector<Pokemon::TilePos>& tiles) const{
+        return std::ranges::any_of(tiles, [this](const Pokemon::TilePos& pos){
+            return std::ranges::find(greeter, pos) != greeter.end();
+        });
+    }
 };
 
 //  Walks from any of the world tiles `from` of `maps` until every tile the
