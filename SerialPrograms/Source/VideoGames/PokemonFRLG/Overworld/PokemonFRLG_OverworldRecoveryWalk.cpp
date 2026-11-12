@@ -143,11 +143,11 @@ StepWalk walk_bike_taps(
     calls.log = [&](const std::string& message){ console.log(message, COLOR_ORANGE); };
     //  On foot if the player's standing sprite reads.
     const auto remount = [&]{
-        if (!read_facing(console, context)){
+        if (!read_facing(console, context, player)){
             return false;
         }
         console.log("Bike: a tap didn't move and the player is on foot.", COLOR_ORANGE);
-        get_on_bike(console, context);
+        get_on_bike(console, context, player);
         return true;
     };
     const StepOutcome outcome = count_bike_taps_remounting(step, calls, remount);
