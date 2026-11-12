@@ -57,14 +57,14 @@ struct AutoStoryCeladonGymCase{
 class Test_AutoStoryCeladonGym : public UnitTest{
 public:
     explicit Test_AutoStoryCeladonGym(AutoStoryCeladonGymCase test_case)
-        : UnitTest("PokemonFRLG::AutoStory - Simulation: " + test_case.input.name)
+        : UnitTest(std::format("PokemonFRLG::AutoStory - Simulation: {}", test_case.input.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         try{
             return m_case.input.body();
         }catch (Exception& e){
-            return std::string(e.name()) + ": " + e.message();
+            return std::format("{}: {}", e.name(), e.message());
         }
     }
 
@@ -84,7 +84,7 @@ const StoryCheckpoint& checkpoint(std::string_view id){
 //  A step of a row on the sim: row_step_on_sim(), but Erika's battle,
 //  which a talk starts, leaves the player where the table says. The
 //  Center's way in and the nurse, which the sim hasn't got, pass.
-std::string gym_step_on_sim(OverworldSim& sim, StoryPose& at, const StoryStep& step, const std::string& id){
+std::string gym_step_on_sim(const StoryStep& step, const std::string& id, StoryPose& at, OverworldSim& sim){
     if (step.kind == StoryStepKind::BATTLE && step.name == "erika"){
         at = *story_pose(Pokemon::pose_of(*step.pose_after));
         return "";
@@ -92,22 +92,13 @@ std::string gym_step_on_sim(OverworldSim& sim, StoryPose& at, const StoryStep& s
     return row_step_on_sim(sim, at, step, id);
 }
 
-//  Row `id`'s steps from the one named `first` on, on `sim` from `at`:
-//  the failure, or empty.
-std::string row_from(OverworldSim& sim, StoryPose& at, std::string_view id, std::string_view first){
+//  Row `id`'s steps on `sim` from `at`: the failure, or empty.
+std::string row_on_sim(std::string_view id, StoryPose& at, OverworldSim& sim){
     const StoryCheckpoint& row = checkpoint(id);
-    bool started = false;
     for (const StoryStep& step : row.steps){
-        started = started || step.name == first;
-        if (!started){
-            continue;
+        if (const std::string failure = gym_step_on_sim(step, row.id, at, sim); !failure.empty()){
+            return std::format("{}: ended on {}; {}", id, to_string(sim.state().position), failure);
         }
-        if (const std::string failure = gym_step_on_sim(sim, at, step, row.id); !failure.empty()){
-            return std::format("ended on {}; {}", to_string(sim.state().position), failure);
-        }
-    }
-    if (!started){
-        return std::format("{} has no step {}.", id, first);
     }
     if (!sim.state().violations.empty()){
         return std::format("{}: a violation on the way: {}", id, sim.state().violations.back());
@@ -118,42 +109,51 @@ std::string row_from(OverworldSim& sim, StoryPose& at, std::string_view id, std:
 std::string fought(const OverworldSim& sim){
     std::string names;
     for (const std::string& name : sim.state().trainers_beaten){
-        names += " " + name;
+        names += std::format(" {}", name);
     }
     return names.empty() ? " no one" : names;
 }
 
-//  14.03 on the sim, from Fly's landing (48, 12): the yard's tree cut,
-//  into the gym and up the west aisle; Tamia walks down to (2, 9) and is fought, the walk goes
-//  round her by column 1, the inner tree (3, 5) is cut, and Lori is
-//  fought from (5, 5). Then 14.04 on the same sim, the gym as 14.03
-//  leaves it (Tamia on (2, 9), the inner tree cut): out along row 5, a
-//  step onto the cut tree's tile, down column 1 past Tamia and column 2
-//  to the wall, out of the gym, the tree again and back below the
-//  Center's door (the Center's way in and the nurse need the console),
-//  meeting no one else.
-UnitTestResult test_gym_rows(){
-    StoryPose at = *story_pose(Pokemon::pose_of(*checkpoint("14.03").start));
-    OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
-    if (const std::string failure = row_from(sim, at, "14.03", "above_gym_tree"); !failure.empty()){
-        return "14.03: " + failure;
+//  14.03 on `sim` from its start, Fly's landing (48, 12): the yard's tree
+//  cut, into the gym and up the west aisle; Tamia walks down to (2, 9)
+//  and is fought, the walk goes round her by column 1, the inner tree
+//  (3, 5) is cut, and Lori is fought from (5, 5). Ends below Erika, where
+//  14.04 starts. The failure, or empty.
+std::string to_erika(StoryPose& at, OverworldSim& sim){
+    if (const std::string failure = row_on_sim("14.03", at, sim); !failure.empty()){
+        return failure;
     }
     const MapPosition below_erika{GYM, {6, 5}};
     if (!(sim.state().position == below_erika) || sim.state().facing != Direction::NORTH){
         return std::format("14.03: ended on {}, not below Erika {} facing north.", to_string(sim.state().position), to_string(below_erika));
     }
     if (sim.state().trainers_beaten != std::vector<std::string>{"beauty", "beauty"}){
-        return "14.03: fought" + fought(sim) + ", not Tamia and Lori.";
+        return std::format("14.03: fought{}, not Tamia and Lori.", fought(sim));
     }
     const StoryPose next = *story_pose(Pokemon::pose_of(*checkpoint("14.04").start));
     if (next.map != GYM || !(next.tile == below_erika.point)){
         return "14.04 doesn't start where 14.03 ends.";
     }
-    if (const std::string failure = row_from(sim, at, "14.04", "challenge_erika"); !failure.empty()){
-        return "14.04: " + failure;
+    return "";
+}
+
+//  14.03 on the sim (to_erika()), then 14.04 on the same sim, the gym as
+//  14.03 leaves it (Tamia on (2, 9), the inner tree cut): out along row
+//  5, a step onto the cut tree's tile, down column 1 past Tamia and
+//  column 2 to the wall, out of the gym, the tree again and back below
+//  the Center's door (the Center's way in and the nurse need the
+//  console), meeting no one else.
+UnitTestResult test_gym_rows(){
+    StoryPose at = *story_pose(Pokemon::pose_of(*checkpoint("14.03").start));
+    OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
+    if (const std::string failure = to_erika(at, sim); !failure.empty()){
+        return failure;
+    }
+    if (const std::string failure = row_on_sim("14.04", at, sim); !failure.empty()){
+        return failure;
     }
     if (sim.state().trainers_beaten.size() != 2){
-        return "14.04: fought" + fought(sim) + " after Tamia and Lori.";
+        return std::format("14.04: fought{} after Tamia and Lori.", fought(sim));
     }
     const MapPosition below_center{CELADON, {48, 12}};
     if (!(sim.state().position == below_center)){
