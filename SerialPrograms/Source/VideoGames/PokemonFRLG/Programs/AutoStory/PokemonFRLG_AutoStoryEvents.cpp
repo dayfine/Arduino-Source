@@ -31,7 +31,6 @@
 #include "PokemonFRLG_AutoStorySlopeRun.h"
 #include "PokemonFRLG_AutoStorySummary.h"
 #include "PokemonFRLG_AutoStoryTable.h"
-#include "PokemonFRLG_AutoStoryTrainerPass.h"
 #include "PokemonFRLG_AutoStoryTeachScreens.h"
 #include "PokemonFRLG_AutoStoryTrashCans.h"
 #include "PokemonFRLG_AutoStoryViridianMart.h"
@@ -214,8 +213,6 @@ Outcome take_warp_step(StoryEnv& env, const RunState& state, const RouteStep& wa
     return Pokemon::outcome_ok();
 }
 
-Outcome battle(StoryEnv& env, const StoryStep& step);
-
 Outcome take_step(StoryEnv& env, RunState& state, const StoryStep& step){
     const Direction direction = arg<Direction>(step, "direction");
     int tiles_stepped = 1;
@@ -226,10 +223,6 @@ Outcome take_step(StoryEnv& env, RunState& state, const StoryStep& step){
         }
         env.console.log(std::format("Story: {}: a trainer saw the player after {} tile(s).", step.name, *stepped));
         tiles_stepped = *stepped;
-    }else if (step.action == TRAINER_PASS_VARIANT){
-        return pass_trainer(env, state, step, [&env](const StoryStep& fight){
-            return battle(env, fight);
-        });
     }else if (step.action == TRAINER_WAIT_VARIANT){
         if (!step_into_line(env.console, env.context, direction, facing_of(state.pose), 1, TRAINER_WAIT_WATCH)){
             return Pokemon::outcome_failed("no_trainer", std::format("{} s on the tile {}", TRAINER_WAIT_WATCH.count() / 1000, direction_name(direction)));

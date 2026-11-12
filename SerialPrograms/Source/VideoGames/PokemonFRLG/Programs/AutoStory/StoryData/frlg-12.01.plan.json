@@ -3,7 +3,7 @@
   "game": "frlg",
   "checkpoint": {
     "id": "12.01",
-    "title": "Fuchsia: heal, HM03 Surf over Water Gun, the gym past Juggler Kayden, Juggler Kirk fought, and round the top edge to west of Koga",
+    "title": "Fuchsia: heal, HM03 Surf over Water Gun, the gym past Jugglers Kayden and Kirk and round the top edge to west of Koga",
     "start": {"map": "FuchsiaCity", "tiles": [[25, 32]], "facing": "south"},
     "events": [
       {
@@ -67,29 +67,32 @@
         "why": "up column 14 from (14, 21) to (14, 17), a tile below Kayden's east line (13..14, 16): a planned route here goes up column 12 or 13 and meets his south line"
       },
       {
-        "id": "pass_kayden",
+        "id": "kayden_sight",
         "kind": "step",
-        "action": "trainer_pass",
+        "action": "trainer_wait",
         "args": {
-          "direction": "north",
-          "tiles": 2,
-          "away": "south",
-          "trainer_dx": -2,
-          "trainer_dy": -1,
-          "sprite": "rocker",
+          "direction": "north"
+        },
+        "why": "onto (14, 16), the second tile of Kayden's east line: he faces south or east (MOVEMENT_TYPE_FACE_DOWN_AND_RIGHT), and once he faces east he walks to (13, 16). Every way north crosses his line and none ends on a wall there, so he is fought, not passed (pokeguy passed him while he faced south, 1:15:14)"
+      },
+      {
+        "id": "kayden",
+        "kind": "battle",
+        "args": {
           "trainer": "TRAINER_JUGGLER_KAYDEN",
           "foes": ["hypno"]
         },
-        "why": "from (14, 17) across Kayden's east line (13..14, 16) to (14, 15) while he faces south, as pokeguy slips past him (1:15:14): he turns south or east every 32 to 80 frames (MOVEMENT_TYPE_FACE_DOWN_AND_RIGHT), so the step waits for a turn south and crosses on it; if he sees the player anyway, his battle (Hypno Lv38) is fought there (fallback, logged)"
+        "declared_after": {"map": "FuchsiaCity_Gym", "tiles": [[14, 16]], "facing": "north"},
+        "why": "Juggler Kayden (TRAINER_JUGGLER_KAYDEN): Hypno Lv38"
       },
       {
         "id": "east_column_to_kirk",
         "kind": "legs",
         "action": "run",
         "args": {
-          "legs": [{"direction": "north", "tiles": 3}]
+          "legs": [{"direction": "north", "tiles": 4}]
         },
-        "why": "up column 14 from (14, 15) to (14, 12), a tile below Juggler Kirk's line (12..14, 11)"
+        "why": "up column 14 from (14, 16) to (14, 12), a tile below Juggler Kirk's line (12..14, 11)"
       },
       {
         "id": "kirk_line",
@@ -153,9 +156,9 @@
     "notes": {
       "checkpoint": [
         "Starts where 11.03's Fly lands, below Fuchsia's Center facing south, and goes in to the nurse (pokeguy bikes straight into the gym from there, 1:14:38; the Center heal is ours).",
-        "PokeGuy's way (1:14:38 to 1:16:33): into the gym, Surf taught over Water Gun, Juggler Kirk fought (forced), round the top edge, Koga from the west; Juggler Kayden passed while he faces south (1:15:14). He fights nobody else, nor does this row: Kayden's battle is only its fallback.",
+        "PokeGuy's way (1:14:38 to 1:16:33): into the gym, Surf taught over Water Gun, Juggler Kirk fought (forced), round the top edge, Koga from the west. He fights nobody else; this row also fights Juggler Kayden (Hypno Lv38), whose east line every way north crosses with no wall to end a leg on: the user's call (2026-11-12) is to fight him with the normal battle code rather than wait for him to face away. The battle's own recovery uses a Potion if his fight leaves the HP bar yellow or red.",
         "The gym (FuchsiaCity_Gym map.json), 15 x 23, no running, its invisible walls in the map: Koga (7, 13) in the middle box, entered only from row 12 on the west. Its trainers and lines: Kayden (12, 16) south and east 4, Shawn (2, 9) west 1, Kirk (11, 11) east 3, Edgar (13, 4) every way 2, Phil (4, 6) every way 2, Nate (2, 16) south 4. Every way north crosses Kirk's line and one of Kayden's and Edgar's; the legs across a looker's line end on walls.",
-        "Ends west of Koga and saves there: his own pre-battle checkpoint (battle-checkpoint-retry), 12.02. Koga is a D7 fight: pokeguy entered at 34/122 HP and the PokemonSimulation benchmark wins 70.1% (64.5%-75.2%, 1700 trials) from that; this row enters at full HP and PP after the Center, which wins 88.0% (82.4%-92.3%, 840 trials; same C2 policy df4fece, seed 4)."
+        "Ends west of Koga and saves there: his own pre-battle checkpoint (battle-checkpoint-retry), 12.02. Koga is a D7 fight: pokeguy entered at 34/122 HP and the PokemonSimulation benchmark wins 70.1% (64.5%-75.2%, 1700 trials) from that. Entered at full HP and PP it wins 88.0% (82.4%-92.3%, 840 trials; same C2 policy df4fece, seed 4), which holds for this row only if Kayden's damage is healed to full before Koga."
       ]
     }
   },

@@ -126,6 +126,14 @@ std::optional<Direction> ledge_direction(TileKind tile){
     }
 }
 
+//  The tile next to `player` a trainer standing on `box` walks up to.
+TilePos trainer_stop(const Pokemon::TileBox& box, const TilePos& player){
+    if (box.x0 <= player.x && player.x <= box.x1){
+        return TilePos{player.x, box.y0 > player.y ? player.y + 1 : player.y - 1};
+    }
+    return TilePos{box.x0 > player.x ? player.x + 1 : player.x - 1, player.y};
+}
+
 } // namespace
 
 
@@ -317,6 +325,33 @@ std::optional<OverworldSim::Step> OverworldSim::press(Direction direction) const
         return std::nullopt;
     }
     return step;
+}
+
+//  A trainer on the player's map who sees them now walks up and speaks.
+bool OverworldSim::trainer_sees(Milliseconds pressed){
+    std::vector<MapObject>& objects = m_maps[m_map].objects;
+    for (size_t c = 0; c < objects.size(); c++){
+        MapObject& trainer = objects[c];
+        if (!trainer.trainer || !trainer_may_see(map(), trainer, m_player.position)){
+            continue;
+        }
+        const Pokemon::TileBox box = trainer.wander.value_or(Pokemon::TileBox{trainer.x, trainer.y, trainer.x, trainer.y});
+        const TilePos stop = trainer_stop(box, m_player.position);
+        const int approach = std::abs(stop.x - trainer.x) + std::abs(stop.y - trainer.y);
+        trainer.x = stop.x;
+        trainer.y = stop.y;
+        trainer.wander.reset();
+        //  The player turns to face the trainer.
+        for (Direction direction : {Direction::NORTH, Direction::EAST, Direction::SOUTH, Direction::WEST}){
+            m_state.facing = m_player.position.next(direction) == stop ? direction : m_state.facing;
+        }
+        m_trainer_speaking = c;
+        m_frozen = true;
+        schedule(pressed + m_script.timing.tile * (1 + approach) + m_script.timing.trainer_notice, SimScreen::MESSAGE, false);
+        note(std::format("{} on {} sees the player, walks up {} tile(s) to {}.", trainer.name, map().name, approach, to_string(stop)));
+        return true;
+    }
+    return false;
 }
 
 //  The player has taken `step`, pressed at `pressed`. Returns whether the

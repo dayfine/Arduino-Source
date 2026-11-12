@@ -21,7 +21,6 @@
 #include "PokemonFRLG_AutoStorySlopeRun.h"
 #include "PokemonFRLG_AutoStoryTeach.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
-#include "PokemonFRLG_AutoStoryTrainerPass.h"
 #include "PokemonFRLG_AutoStoryTrashCans.h"
 
 namespace PokemonAutomation{
@@ -61,7 +60,6 @@ const std::vector<StoryActionRow>& story_action_rows(){
         {StoryStepKind::ROUTE,      "", StoryActionId::ROUTE},
         {StoryStepKind::LEGS,       "", StoryActionId::LEGS},
         {StoryStepKind::STEP,       "", StoryActionId::STEP},
-        {StoryStepKind::STEP,       TRAINER_PASS_VARIANT, StoryActionId::STEP},
         {StoryStepKind::TALK,       "", StoryActionId::TALK},
         {StoryStepKind::ANSWER,     "", StoryActionId::ANSWER},
         {StoryStepKind::MASH,       "", StoryActionId::MASH},
@@ -174,18 +172,6 @@ std::vector<Pokemon::StoryActionSpec> movement_variant_specs(std::span<const Pok
     variant(StoryStepKind::LEGS, TAPS_VARIANT);
     variant(StoryStepKind::STEP, TRAINER_LINE_VARIANT);
     variant(StoryStepKind::STEP, TRAINER_WAIT_VARIANT);
-    {
-        Pokemon::StoryActionSpec spec = *Pokemon::find_story_action(builtin, StoryStepKind::STEP, "");
-        spec.name = TRAINER_PASS_VARIANT;
-        spec.args.push_back(required_arg("tiles", StoryArgType::INTEGER, "the tiles to step across the line"));
-        spec.args.push_back(required_arg("away", StoryArgType::DIRECTION, "the way the trainer faces when the line is safe to cross"));
-        spec.args.push_back(required_arg("trainer_dx", StoryArgType::INTEGER, "the trainer's tile east of the player's, before the step"));
-        spec.args.push_back(required_arg("trainer_dy", StoryArgType::INTEGER, "the trainer's tile south of the player's, before the step"));
-        spec.args.push_back(optional_arg("sprite", StoryArgType::WORD, std::string(), "the trainer's sprite (\"rocker\"), to read their facing; none: cross blind"));
-        spec.args.push_back(required_arg("trainer", StoryArgType::WORD, "pret's constant for the trainer, for the battle if they see the player"));
-        spec.args.push_back(required_arg("foes", StoryArgType::WORDS, "the trainer's party in order, for that battle"));
-        specs.push_back(std::move(spec));
-    }
     return specs;
 }
 

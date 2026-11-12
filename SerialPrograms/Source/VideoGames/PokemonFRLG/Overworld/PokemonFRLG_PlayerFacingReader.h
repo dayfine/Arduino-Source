@@ -34,9 +34,8 @@ enum class PlayerGender{
     GIRL,
 };
 
-//  The standing player's frames (or another person's, match_facing_at()),
-//  as the game draws them, with transparent pixels at alpha 0. Facing east
-//  is facing west mirrored.
+//  The standing player's frames, as the game draws them, with transparent
+//  pixels at alpha 0. Facing east is facing west mirrored.
 struct PlayerSprites{
     ImageRGB32 south;
     ImageRGB32 north;
@@ -58,12 +57,6 @@ std::optional<Direction> read_player_facing(const ImageViewRGB32& screen);
 //  out of the console's.
 std::optional<Direction> match_player_facing(const ImageViewRGB32& game, const PlayerSprites& sprites);
 
-
-//  The way a standing person faces whose `sprites` are drawn from row
-//  `first_row` of their 16x32 frames, `dx_tiles` east and `dy_tiles` south
-//  of the player, on `game` (as match_player_facing(), which is this at the
-//  player's own tile). Nothing if no frame matches clearly.
-std::optional<Direction> match_facing_at(const ImageViewRGB32& game, const PlayerSprites& sprites, int first_row, int dx_tiles, int dy_tiles);
 
 //  Registers player facing reader unit tests.
 void add_tests_PlayerFacingReader(UnitTestDatabase& database);
