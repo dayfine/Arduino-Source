@@ -592,7 +592,9 @@ std::string walk_open_leg_talks(Logger& logger, const OpenLegTalkInput& input){
         return "00.05c beside_the_president: not in the table, or no JubilifeCity world.";
     }
     const TilePos start = story_to_world(*world, "JubilifeCity", {46, 27});
-    const TilePos target = story_to_world(*world, "JubilifeCity", {45, 35});
+    //  The walk south then west to the Poketch Company's clown it was on
+    //  lab-B, on 00.05c's plaza ground (the president's walk has the same).
+    const TilePos target = story_to_world(*world, "JubilifeCity", {15, 19});
     GridSim sim({.world = world, .trainers = {}, .triggers = {}}, start, Direction::SOUTH, true);
     size_t talks = 0;
     const auto arm = [&](){
