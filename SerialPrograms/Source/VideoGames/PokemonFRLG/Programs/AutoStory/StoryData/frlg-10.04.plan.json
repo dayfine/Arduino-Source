@@ -29,9 +29,9 @@
         "kind": "legs",
         "action": "taps",
         "args": {
-          "legs": [{"direction": "east", "tiles": 11}, {"direction": "south", "tiles": 3}]
+          "legs": [{"direction": "east", "tiles": 11}, {"direction": "south", "tiles": 2}, {"direction": "west", "tiles": 1}, {"direction": "south", "tiles": 1}]
         },
-        "why": "a tap a tile east along row 7 to (18, 7) and down column 18 onto the stairs (18, 10), whose warp is a step east: the planner, kept off open stops on wild floor, would go down to (18, 12) and round"
+        "why": "a tap a tile east along row 7 to (18, 7), down to (18, 9), west to the wall (17, 9) and down to (17, 10): the stairs (18, 10) warp on a press east, so they are stepped onto going east, and a walk a tile short still ends with the press east onto them. Down column 18 instead, a turn read as a step left the player on (18, 9), facing a wall (console B, 2026-11-12). The planner, kept off open stops on wild floor, would go down to (18, 12) and round"
       },
       {
         "id": "tower_4f_stairs",
@@ -40,7 +40,7 @@
         "args": {
           "target": {"map": "PokemonTower_4F", "tiles": [[18, 10]], "facing": "south"}
         },
-        "why": "a step east off 3F's stairs (18, 10) to 4F's (18, 10), turned south: the way on keeps out of Laurel's line (17, 8..10)"
+        "why": "east onto 3F's stairs (18, 10) and on, to 4F's (18, 10), turned south: the way on keeps out of Laurel's line (17, 8..10)"
       },
       {
         "id": "tower_4f_column_16",
@@ -85,7 +85,7 @@
           "trainer": "TRAINER_CHANNELER_RUTH",
           "foes": ["gastly"]
         },
-        "declared_after": {"map": "PokemonTower_5F", "tiles": [[11, 6]], "facing": "north"},
+        "declared_after": {"map": "PokemonTower_5F", "tiles": [[11, 6]], "facing": "east"},
         "why": "Channeler Ruth: Gastly Lv22"
       },
       {
@@ -113,7 +113,7 @@
           "trainer": "TRAINER_CHANNELER_TAMMY",
           "foes": ["haunter"]
         },
-        "declared_after": {"map": "PokemonTower_5F", "tiles": [[18, 7]], "facing": "east"},
+        "declared_after": {"map": "PokemonTower_5F", "tiles": [[18, 7]], "facing": "south"},
         "why": "Channeler Tammy: Haunter Lv23 (pokeguy 1:06:36)"
       }
     ]

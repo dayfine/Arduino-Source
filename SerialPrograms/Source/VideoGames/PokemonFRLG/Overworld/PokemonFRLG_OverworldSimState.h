@@ -61,6 +61,11 @@ struct SimScript{
     //  the tap again took a second tile (console B, 2026-11-11 15:03 and
     //  15:36, 09.02).
     std::set<int> unseen_step_taps;
+    //  Fault injection: turn taps, by number from 1 as for
+    //  dropped_turn_taps, that the walker's screen check reads as a step.
+    //  The turn south before 10.04's "south 3" read so (console B,
+    //  2026-11-12 03:08), and the leg ended a tile short of the stairs.
+    std::set<int> seen_turn_taps;
     //  Fault injection: steps onto a warp, by number from 1, that show the
     //  fade's black and clear with the player where they were, not warped
     //  (console B, 2026-11-10 01:44, 09.01 run 4, "east 1 (warp)" on B4F).
@@ -75,6 +80,12 @@ struct SimScript{
     //  one leaves the player where they were, with no fade, as a wall would
     //  (the warp no-op fault class, PokemonFRLG_AutoStoryFaultSweep_Tests.cpp).
     std::set<std::string> dead_warp_maps;
+    //  Fault injection: legs on the Bicycle counted out a tap at a time
+    //  (SimState::bike_legs), by number from 1, that start with
+    //  the player off the Bicycle: the mount state lost. On 11.01 a second
+    //  SELECT took the player off, and every bike tap after only turned
+    //  them (console B, 2026-11-12 05:42).
+    std::set<int> off_bike_at_legs;
     //  The player rides the Bicycle: a tap facing another way takes a step
     //  too, a hold through a turn loses no tile
     //  (MovementMechanics::BIKE_TAP_ONLY_TURNS), and no step tap is
@@ -131,6 +142,8 @@ struct SimState{
     Milliseconds in_wild_battles{0};
     int signs_read = 0;
     int turn_taps_dropped = 0;
+    //  Taps that only turned the player, or were dropped turning them.
+    int turn_taps = 0;
     //  On the Bicycle (SimScript::on_bike).
     bool on_bike = false;
     //  On the water (SimField::SURF).
@@ -142,6 +155,10 @@ struct SimState{
     int step_taps_ignored = 0;
     //  Walker step taps that moved the player (SimScript::unseen_step_taps).
     int moved_step_taps = 0;
+    //  Legs on the Bicycle counted out a tap at a time: taps on it, each
+    //  a way other than the last's, or after another press
+    //  (SimScript::off_bike_at_legs).
+    int bike_legs = 0;
     std::vector<std::string> trainers_beaten;
     //  Things the walker did that the game wouldn't let pass: D-pad holds
     //  under a battle, a trainer's battle fled, a battle fought that wasn't

@@ -25,6 +25,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecovery.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldTileRules.h"
 #include "PokemonFRLG_AutoStoryLegs.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryCapture.h"
@@ -704,6 +705,191 @@ UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<const Map
 //  in front of to fight; where they cross a wandering trainer's sight, the walk can place
 //  the player if the trainer stops them; and where they cross the sight of
 //  one who looks around, on a leg to a wall.
+//  LEGS that end on stairs at the side of a room, or on an exit mat, step
+//  onto them the way their warp is taken (exit_mat()), so legs a tile short
+//  leave the press that way on the way onto them, or end at a wall, which
+//  finds the player (09.01's B2F stairs (21, 2)).
+//  Down onto 10.04's Pokemon Tower 3F stairs (18, 10), taken east, legs a
+//  tile short left the press east facing a wall (console B, 2026-11-12).
+//  From the Running Shoes (03.03) on, as test_trainer_lines() walks them.
+//  But for 09.01's legs down onto B4F's stairs (11, 15), taken east, which
+//  passed on the console: legs east onto them fail the 09.01 simulation,
+//  with no fade into B3F (a follow-up).
+//  ROUTES' legs onto them another way are tapped, from a tile the walk
+//  knows: the route's start, or the end of a leg to a wall, a warp or
+//  another tapped leg (10.05's Pokemon Tower 5F stairs (18, 10), console B,
+//  2026-11-12 03:41).
+std::string planned_onto_stairs_sideways(const std::vector<RouteStep>& legs){
+    bool known = true;
+    for (const RouteStep& leg : legs){
+        if (leg.action == RouteAction::FACE){
+            continue;
+        }
+        const MapData* map = find_map_named(leg.end.map);
+        const std::optional<Direction> taken = map ? exit_mat(*map, leg.end.point) : std::nullopt;
+        if (taken && leg.direction != *taken && !leg.warps && !leg.to_wall && !(leg.tapped && known)){
+            return std::format(
+                "ends on {}, whose warp is taken going {}, going {}, not to a wall and not tapped from a known tile.",
+                to_string(leg.end), direction_name(*taken), direction_name(leg.direction)
+            );
+        }
+        known = leg.to_wall || leg.warps || leg.tapped;
+    }
+    return "";
+}
+UnitTestResult test_legs_onto_stairs_their_way(){
+    const std::set<std::string> PASSED_ON_CONSOLE{"09.01/b4f_to_stairs"};
+    bool has_shoes = false;
+    for (const StoryCheckpoint& checkpoint : story_checkpoints()){
+        const bool walked = has_shoes;
+        has_shoes = has_shoes || checkpoint.id == "03.03";
+        if (!walked){
+            continue;
+        }
+        StoryPose pose = one_tile(Pokemon::grid_pose_of(*checkpoint.start));
+        for (const StoryStep& step : checkpoint.steps){
+            if (step.kind == StoryStepKind::ROUTE){
+                if (const std::string problem = planned_onto_stairs_sideways(legs_walked(pose, step)); !problem.empty()){
+                    return std::format("{}/{}: {}", checkpoint.id, step.name, problem);
+                }
+            }
+            const std::vector<RouteStep> legs = step.kind == StoryStepKind::LEGS ? legs_walked(pose, step) : std::vector<RouteStep>{};
+            if (!legs.empty() && !legs.back().warps){
+                const MapData* map = find_map_named(legs.back().end.map);
+                const std::optional<Direction> taken = map ? exit_mat(*map, legs.back().end.point) : std::nullopt;
+                if (taken && legs.back().direction != *taken && !legs.back().to_wall && !PASSED_ON_CONSOLE.contains(checkpoint.id + "/" + step.name)){
+                    return std::format(
+                        "{}/{}: ends on {}, whose warp is taken going {}, going {} and not to a wall.",
+                        checkpoint.id, step.name, to_string(legs.back().end), direction_name(*taken), direction_name(legs.back().direction)
+                    );
+                }
+            }
+            if (UnitTestResult result = advance(pose, step); result.result != UnitTestResult::PASSED){
+                return checkpoint.id + " " + result.message;
+            }
+        }
+    }
+    return true;
+}
+
+//  Whether `legs`, walked from a tile the walk knows, end on their planned
+//  tile, or why not. A leg to a wall or a spinner's stop finds the player
+//  along its way, a warp finds them on both, a tapped or one-tile leg
+//  keeps what was found, and a held open leg loses its way: it can end a
+//  tile short or long.
+std::string approach_off_tile(const std::vector<RouteStep>& legs){
+    bool x_known = true;
+    bool y_known = true;
+    for (const RouteStep& leg : legs){
+        if (leg.action == RouteAction::FACE){
+            continue;
+        }
+        bool& along = leg.direction == Direction::EAST || leg.direction == Direction::WEST ? x_known : y_known;
+        if (leg.warps){
+            x_known = true;
+            y_known = true;
+        }else if (leg.to_wall || leg.spin_tiles){
+            along = true;
+        }else if (!leg.tapped && leg.tiles != 1){
+            along = false;
+        }
+    }
+    if (x_known && y_known){
+        return "";
+    }
+    return std::format(
+        "ends on {} after {}, a held open leg not found again by a wall, a warp or a tap.",
+        legs.empty() ? std::string("?") : to_string(legs.back().end), legs.empty() ? std::string("?") : to_string(legs.back())
+    );
+}
+
+//  The walk before an A press (a TALK: a person, an item, a sign) ends on
+//  its tile: tapped from a tile the walk knows, or against a wall. 10.05's
+//  approach to the Rare Candy, "west 4" and "south 6" held open, ended a
+//  tile west and met a gravestone (console B, 2026-11-12 04:39).
+//  PASSED_ON_CONSOLE: approaches before 10.05 that passed their console
+//  runs as held legs (a follow-up to tap them).
+UnitTestResult test_approaches_end_on_their_tile(){
+    const std::set<std::string> PASSED_ON_CONSOLE{
+        "02.02/below_oak", "03.02/before_brock", "05.07/below_bill_clefairy", "05.07/pc_front",
+        "05.07/beside_bill", "06.01/behind_captain", "07.01/beside_chairman", "07.01/bike_clerk",
+        "09.01/below_poster_guard", "09.02/below_left_guard", "09.03/above_tea_woman", "10.01/below_fly_woman",
+    };
+    std::string wrong;
+    size_t count = 0;
+    for (const StoryCheckpoint& checkpoint : story_checkpoints()){
+        const std::optional<StoryPose> start = checkpoint.start ? story_pose(Pokemon::pose_of(Pokemon::grid_pose_of(*checkpoint.start))) : std::nullopt;
+        if (!start){
+            continue;
+        }
+        StoryPose pose = *start;
+        //  The legs of the ROUTE and LEGS steps since the last other step.
+        std::vector<RouteStep> approach;
+        for (size_t c = 0; c < checkpoint.steps.size(); c++){
+            const StoryStep& step = checkpoint.steps[c];
+            const std::string where = c > 0 ? checkpoint.id + "/" + checkpoint.steps[c - 1].name : "";
+            if (step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS){
+                for (RouteStep leg : legs_walked(pose, step)){
+                    leg.tapped |= step.action == TAPS_VARIANT;
+                    approach.push_back(leg);
+                }
+            }else if (step.kind == StoryStepKind::TALK && !approach.empty() && !PASSED_ON_CONSOLE.contains(where)){
+                if (const std::string problem = approach_off_tile(approach); !problem.empty()){
+                    count++;
+                    wrong += "\n    " + where + ": " + problem;
+                }
+                approach.clear();
+            }else{
+                approach.clear();
+            }
+            if (UnitTestResult result = advance(pose, step); result.result != UnitTestResult::PASSED){
+                return checkpoint.id + " " + result.message;
+            }
+        }
+    }
+    if (count > 0){
+        return std::format("{} approaches to an A press may end off their tile:{}", count, wrong);
+    }
+    return true;
+}
+
+//  A trainer's battle leaves the player facing the way they stepped into
+//  its line or waited in it: the game doesn't turn the player to the
+//  trainer (pokefirered src/trainer_see.c, TrainerSeeFunc_PrepareToEngage,
+//  the turn commented out). 10.05's facing declared after Emilia was the
+//  way to her, and the walk's turn tap took a step (console B, 2026-11-12
+//  04:39). Lists every battle after a trainer_line or trainer_wait step
+//  whose declared facing is another.
+UnitTestResult test_facing_after_trainer_battles(){
+    std::string wrong;
+    size_t count = 0;
+    for (const StoryCheckpoint& checkpoint : story_checkpoints()){
+        const std::optional<StoryPose> start = checkpoint.start ? story_pose(Pokemon::pose_of(Pokemon::grid_pose_of(*checkpoint.start))) : std::nullopt;
+        if (!start){
+            continue;
+        }
+        StoryPose pose = *start;
+        for (size_t c = 0; c < checkpoint.steps.size(); c++){
+            const StoryStep& step = checkpoint.steps[c];
+            const bool after_line = c > 0 && (checkpoint.steps[c - 1].action == TRAINER_LINE_VARIANT || checkpoint.steps[c - 1].action == TRAINER_WAIT_VARIANT);
+            if (step.kind == StoryStepKind::BATTLE && after_line && step.pose_after){
+                const std::optional<Direction> declared = one_tile(Pokemon::grid_pose_of(*step.pose_after)).facing;
+                if (declared != pose.facing){
+                    count++;
+                    wrong += std::format("\n    {}/{}: declared {}, faces {}", checkpoint.id, step.name, describe(one_tile(Pokemon::grid_pose_of(*step.pose_after))), describe(pose));
+                }
+            }
+            if (UnitTestResult result = advance(pose, step); result.result != UnitTestResult::PASSED){
+                return checkpoint.id + " " + result.message;
+            }
+        }
+    }
+    if (count > 0){
+        return std::format("{} battles declare a facing the trainer didn't leave:{}", count, wrong);
+    }
+    return true;
+}
+
 UnitTestResult test_trainer_lines(){
     std::set<const MapObject*> beaten;
     bool has_shoes = false;
@@ -1179,6 +1365,18 @@ const AutoStoryTestCase AUTO_STORY_CASES[] = {
     {
         .input = {.name = "options: RIGHT presses from the shown value", .body = test_option_presses},
         .expectation = {.description = "calculates Dpad RIGHT inputs for setting game options"},
+    },
+    {
+        .input = {.name = "legs and routes onto stairs step onto them the way their warp is taken, or tap", .body = test_legs_onto_stairs_their_way},
+        .expectation = {.description = "legs that end on side stairs or an exit mat end going the warp's way"},
+    },
+    {
+        .input = {.name = "the walk before an A press ends on its tile", .body = test_approaches_end_on_their_tile},
+        .expectation = {.description = "approaches to talks, items and signs end at a wall, a warp or taps from a known tile"},
+    },
+    {
+        .input = {.name = "a trainer's battle leaves the player facing the way they stepped into its line", .body = test_facing_after_trainer_battles},
+        .expectation = {.description = "declared facings after trainer battles match pokefirered trainer_see.c"},
     },
     {
         .input = {.name = "Route 3: only the planned trainers' lines", .body = test_trainer_lines},

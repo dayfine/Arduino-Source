@@ -33,13 +33,22 @@
         "why": "on the BICYCLE with SELECT (registered in 08.03)"
       },
       {
+        "id": "east_of_snorlax_wall",
+        "kind": "route",
+        "action": "bike",
+        "args": {
+          "target": {"map": "Route16", "tiles": [[33, 14]], "facing": "west"}
+        },
+        "why": "west across Celadon and out onto Route 16's east end (Celadon's row 24 is the route's row 14), to the wall (32, 14) below the Snorlax's row: an approach to an A press ends on its tile, and held along row 13 the bike can end a row off, against the walls at (30..32, 12) or (30..32, 14)"
+      },
+      {
         "id": "east_of_snorlax",
         "kind": "route",
         "action": "bike",
         "args": {
           "target": {"map": "Route16", "tiles": [[32, 13]], "facing": "west"}
         },
-        "why": "west across Celadon and out onto Route 16's east end (Celadon's row 23 is the route's row 13), along row 13 to face the Snorlax (31, 13), which with the walls at (29..31, 12) and (29..31, 14) closes the way west"
+        "why": "a tile north and a tile west from the wall, to face the Snorlax (31, 13), which with those walls closes the way west"
       },
       {
         "id": "wake_snorlax",

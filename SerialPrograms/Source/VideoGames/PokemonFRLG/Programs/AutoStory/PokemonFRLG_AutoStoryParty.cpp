@@ -116,6 +116,10 @@ struct Attack{
     std::string_view move;
 };
 constexpr Attack ATTACKS[] = {
+    //  Blastoise's strongest STAB move: a tie with Bite against Pidgeotto
+    //  went to Bite, and one with Bubble against Growlithe to Bubble, and
+    //  the Tower rival won (console B, 2026-11-12).
+    {.line = "squirtle", .move = "water-pulse"},
     {.line = "squirtle", .move = "water-gun"},
     {.line = "squirtle", .move = "bite"},
     {.line = "squirtle", .move = "bubble"},

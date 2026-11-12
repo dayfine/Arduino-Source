@@ -24,6 +24,15 @@ std::optional<Direction> facing_before(const BikeTapCalls& calls){
     return calls.facing();
 }
 
+//  On foot, a tap by a player read facing another way before it only
+//  turns them (MovementMechanics: 70 of 70 turned), whatever the screen
+//  showed: the screen check read the turn south before 10.04's "south 3"
+//  as a step, and the leg ended a tile short of the Pokemon Tower 3F
+//  stairs (console B, 2026-11-12 03:08).
+bool only_turns(const std::optional<Direction>& before, const RouteStep& step){
+    return before && *before != step.direction;
+}
+
 } // namespace
 
 StepOutcome count_bike_taps(const RouteStep& step, const BikeTapCalls& calls){
@@ -31,17 +40,26 @@ StepOutcome count_bike_taps(const RouteStep& step, const BikeTapCalls& calls){
     for (int tap = 1; tap <= step.tiles; tap++){
         std::optional<Direction> before = facing_before(calls);
         BikeTap result = calls.tap(tap);
-        for (int retry = 1; retry < calls.tries && !result.moved && !result.interrupt && !result.cleared_late; retry++){
-            if (!before || *before == step.direction){
+        for (int retry = 1; retry < calls.tries && !result.interrupt && !result.cleared_late; retry++){
+            if (result.moved && !only_turns(before, step)){
+                break;
+            }
+            if (!result.moved && !only_turns(before, step)){
                 calls.log(std::format(
                     "Taps: tap {} of {} showed no step, facing {} before it: not tapping again, it may have stepped unseen.",
                     tap, step.tiles, before ? Pokemon::direction_name(*before) : "an unknown way"
                 ));
                 break;
             }
-            calls.log(std::format("Taps: tap {} of {} didn't move: tapping again, it only turned the player.", tap, step.tiles));
+            calls.log(std::format(
+                "Taps: tap {} of {} from facing {} only turned the player{}: tapping again.",
+                tap, step.tiles, Pokemon::direction_name(*before), result.moved ? ", though the screen changed" : ""
+            ));
             before = facing_before(calls);
             result = calls.tap(tap);
+        }
+        if (result.moved && only_turns(before, step)){
+            result.moved = false;
         }
         if (result.interrupt || result.cleared_late){
             calls.log(std::format("Bike: tap {} of {}: interrupted after {} tile(s).", tap, step.tiles, moved));
@@ -67,6 +85,21 @@ StepOutcome count_bike_taps(const RouteStep& step, const BikeTapCalls& calls){
         moved++;
     }
     return StepOutcome{};
+}
+
+StepOutcome count_bike_taps_remounting(const RouteStep& step, const BikeTapCalls& calls, const std::function<bool()>& remount){
+    BikeTapCalls remounting = calls;
+    bool remounted = false;
+    remounting.tap = [&](int tap){
+        const BikeTap result = calls.tap(tap);
+        if (result.moved || result.interrupt || result.cleared_late || remounted || !remount()){
+            return result;
+        }
+        remounted = true;
+        calls.log(std::format("Bike: tap {} of {} didn't move, the player on foot: back on with SELECT, tapping again.", tap, step.tiles));
+        return calls.tap(tap);
+    };
+    return count_bike_taps(step, remounting);
 }
 
 bool counts_step_taps(const RouteStep& step){

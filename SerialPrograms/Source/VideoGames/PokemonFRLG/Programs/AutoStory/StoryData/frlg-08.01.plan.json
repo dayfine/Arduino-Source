@@ -77,7 +77,7 @@
           "trainer": "TRAINER_POKEMANIAC_ASHTON",
           "foes": ["cubone", "slowpoke"]
         },
-        "declared_after": {"map": "RockTunnel_1F", "tiles": [[24, 10]], "facing": "east"},
+        "declared_after": {"map": "RockTunnel_1F", "tiles": [[24, 10]], "facing": "south"},
         "why": "Slowpoke, Slowpoke and Slowpoke"
       },
       {
@@ -114,7 +114,7 @@
           "trainer": "TRAINER_POKEMANIAC_WINSTON",
           "foes": ["slowpoke"]
         },
-        "declared_after": {"map": "RockTunnel_B1F", "tiles": [[29, 37]], "facing": "north"},
+        "declared_after": {"map": "RockTunnel_B1F", "tiles": [[29, 37]], "facing": "west"},
         "why": "Slowpoke and Slowpoke"
       },
       {
@@ -142,7 +142,7 @@
           "trainer": "TRAINER_PICNICKER_MARTHA",
           "foes": ["oddish", "bulbasaur"]
         },
-        "declared_after": {"map": "RockTunnel_B1F", "tiles": [[16, 33]], "facing": "west"},
+        "declared_after": {"map": "RockTunnel_B1F", "tiles": [[16, 33]], "facing": "north"},
         "why": "Oddish and Bulbasaur"
       },
       {
@@ -170,7 +170,7 @@
           "trainer": "TRAINER_HIKER_ALLEN",
           "foes": ["geodude"]
         },
-        "declared_after": {"map": "RockTunnel_B1F", "tiles": [[36, 12]], "facing": "north"},
+        "declared_after": {"map": "RockTunnel_B1F", "tiles": [[36, 12]], "facing": "west"},
         "why": "Geodude, Geodude and Graveler"
       },
       {
@@ -216,7 +216,7 @@
           "trainer": "TRAINER_HIKER_LENNY",
           "foes": ["geodude", "machop", "geodude", "geodude"]
         },
-        "declared_after": {"map": "RockTunnel_1F", "tiles": [[7, 9]], "facing": "north"},
+        "declared_after": {"map": "RockTunnel_1F", "tiles": [[7, 9]], "facing": "east"},
         "why": "Machop and Onix"
       },
       {
@@ -262,7 +262,7 @@
           "trainer": "TRAINER_PICNICKER_SOFIA",
           "foes": ["jigglypuff", "pidgey", "meowth"]
         },
-        "declared_after": {"map": "RockTunnel_B1F", "tiles": [[11, 16]], "facing": "north"},
+        "declared_after": {"map": "RockTunnel_B1F", "tiles": [[11, 16]], "facing": "west"},
         "why": "Pidgey, Pidgey and Pidgeotto"
       },
       {
@@ -290,7 +290,7 @@
           "trainer": "TRAINER_HIKER_DUDLEY",
           "foes": ["geodude", "geodude", "graveler"]
         },
-        "declared_after": {"map": "RockTunnel_B1F", "tiles": [[5, 15]], "facing": "north"},
+        "declared_after": {"map": "RockTunnel_B1F", "tiles": [[5, 15]], "facing": "west"},
         "why": "Geodude, Geodude and Graveler"
       },
       {
@@ -336,7 +336,7 @@
           "trainer": "TRAINER_PICNICKER_DANA",
           "foes": ["meowth", "oddish", "pidgey"]
         },
-        "declared_after": {"map": "RockTunnel_1F", "tiles": [[26, 31]], "facing": "north"},
+        "declared_after": {"map": "RockTunnel_1F", "tiles": [[26, 31]], "facing": "west"},
         "why": "Meowth, Oddish and Pidgey"
       },
       {

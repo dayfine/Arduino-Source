@@ -29,11 +29,9 @@ namespace PokemonFRLG{
 //  Rows a list shows at once.
 constexpr int ITEM_LIST_ROWS = 6;
 
-//  Where row `row` (from 0) of a list shows its item's name, and in the bag
-//  its count, as fractions of the game screen.
+//  Where row `row` (from 0) of a list shows its item's name, as fractions
+//  of the game screen.
 ImageFloatBox item_list_name_box(int row);
-//  Where row `row` of the bag shows its item count.
-ImageFloatBox bag_item_count_box(int row);
 
 //  The item named in row `row`: a slug such as "potion", "antidote",
 //  "parlyz-heal", "awakening", "poke-ball", "repel",
@@ -50,6 +48,10 @@ struct BagRow{
     //  -1 if the count couldn't be read: the row still holds at least one.
     int count = 0;
 };
+
+//  The item and count shown in row `shown` (from 0) of the bag's open
+//  pocket; an empty item if its name can't be read.
+BagRow read_bag_row(Logger& logger, Language language, const ImageViewRGB32& screen, int shown);
 
 //  The rows of the bag's open pocket from the top, as pocket_rows() keeps
 //  them. The pocket must be scrolled to its top.
