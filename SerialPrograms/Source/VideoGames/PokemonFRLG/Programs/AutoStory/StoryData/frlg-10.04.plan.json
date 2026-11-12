@@ -85,7 +85,7 @@
           "trainer": "TRAINER_CHANNELER_RUTH",
           "foes": ["gastly"]
         },
-        "declared_after": {"map": "PokemonTower_5F", "tiles": [[11, 6]], "facing": "north"},
+        "declared_after": {"map": "PokemonTower_5F", "tiles": [[11, 6]], "facing": "east"},
         "why": "Channeler Ruth: Gastly Lv22"
       },
       {
@@ -113,7 +113,7 @@
           "trainer": "TRAINER_CHANNELER_TAMMY",
           "foes": ["haunter"]
         },
-        "declared_after": {"map": "PokemonTower_5F", "tiles": [[18, 7]], "facing": "east"},
+        "declared_after": {"map": "PokemonTower_5F", "tiles": [[18, 7]], "facing": "south"},
         "why": "Channeler Tammy: Haunter Lv23 (pokeguy 1:06:36)"
       }
     ]
