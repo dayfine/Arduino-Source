@@ -112,6 +112,11 @@ public:
     //  Returns whether it was there. (PokemonFRLG_OverworldSimField.cpp)
     bool use_field(SimField field, size_t floor = 0);
 
+    //  A leg on the Bicycle counted out a tap at a time starts: the player
+    //  is off the Bicycle if SimScript::off_bike_at_legs names it.
+    //  (PokemonFRLG_OverworldSimTaps.cpp)
+    void start_bike_leg();
+
 private:
     //  A screen that shows at `at`; `unfreeze`: the player can move again.
     struct Pending{

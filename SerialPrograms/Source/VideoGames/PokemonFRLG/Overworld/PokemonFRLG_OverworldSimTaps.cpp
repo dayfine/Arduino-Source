@@ -53,6 +53,14 @@ bool OverworldSim::press_select(){
     return true;
 }
 
+void OverworldSim::start_bike_leg(){
+    m_state.bike_legs++;
+    if (m_state.on_bike && m_script.off_bike_at_legs.contains(m_state.bike_legs)){
+        m_state.on_bike = false;
+        note(std::format("bike leg {} starts off the Bicycle.", m_state.bike_legs));
+    }
+}
+
 BikeTap OverworldSimWalker::bike_tap(const RouteStep& step){
     const MapPosition before = m_sim.state().position;
     const std::vector<Interrupt>& ints = interrupts(step);
@@ -74,6 +82,7 @@ StepOutcome OverworldSimWalker::walk_bike_taps(const RouteStep& step){
     calls.tap = [&](int){ return bike_tap(step); };
     calls.clear = [&](size_t index){ clear(ints[index]); };
     calls.log = [&](const std::string& message){ m_log.push_back(message); };
+    m_sim.start_bike_leg();
     m_leg_start = m_sim.state().time;
     m_leg_dark = m_sim.state().dark;
     return count_bike_taps(step, calls);
