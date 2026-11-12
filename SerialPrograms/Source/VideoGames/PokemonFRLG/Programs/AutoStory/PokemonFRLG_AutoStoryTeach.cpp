@@ -255,11 +255,6 @@ private:
 
 } // namespace
 
-namespace{
-
-//  The first party slot whose member `reader` reads as `species`; nothing
-//  if none does. Stops at the first slot not read (an empty slot ends the
-//  party).
 std::optional<size_t> find_party_species(const MemberReader& reader, std::string_view species){
     for (size_t slot = 0; slot < PARTY_SLOTS; slot++){
         const std::optional<MemberInfo> member = reader(slot);
@@ -272,8 +267,6 @@ std::optional<size_t> find_party_species(const MemberReader& reader, std::string
     }
     return std::nullopt;
 }
-
-} // namespace
 
 TeachResult run_teach(Logger& logger, TeachActions& actions, const MemberReader& reader, const TeachPlan& plan){
     TeachPlan found = plan;

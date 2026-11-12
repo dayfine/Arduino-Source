@@ -89,6 +89,11 @@ struct TeachResult{
     std::string detail = {};
 };
 
+//  The first party slot whose member `reader` reads as `species`; nothing
+//  if none does. Stops at the first slot not read (an empty slot ends the
+//  party).
+std::optional<size_t> find_party_species(const MemberReader& reader, std::string_view species);
+
 //  From the overworld: reads the member, teaches as `plan` says, back to
 //  the overworld, and reads the member again to confirm.
 TeachResult run_teach(Logger& logger, TeachActions& actions, const MemberReader& reader, const TeachPlan& plan);
