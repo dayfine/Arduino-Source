@@ -260,7 +260,8 @@ Outcome battle(StoryEnv& env, const StoryStep& step){
             step.name, env.supplies.trainer, battle_risk_name(env.supplies.risk)
         ));
     }
-    const BattleEnd end = fight_battle(env.console, env.context, env.supplies, BattleKind::TRAINER, env.checks, env.language);
+    const BattleKind kind = arg<bool>(step, "run") ? BattleKind::WILD_RUN : BattleKind::TRAINER;
+    const BattleEnd end = fight_battle(env.console, env.context, env.supplies, kind, env.checks, env.language);
     env.supplies.foes.clear();
     env.supplies.trainer.clear();
     env.supplies.foe_out.clear();
@@ -360,6 +361,7 @@ std::string save_card_place(const std::string& map){
         {"CeladonCity", "celadon-city"},
         {"RocketHideout", "rocket-hideout"},
         {"PokemonTower", "pokemon-tower"},
+        {"Route16", "route-16"},
     };
     for (const auto& [prefix, place] : PLACES){
         if (map == prefix || map.rfind(prefix + "_", 0) == 0){

@@ -28,6 +28,8 @@ void add_tests_AutoStoryCeladon(UnitTestDatabase& database);
 void add_tests_AutoStoryLavender(UnitTestDatabase& database);
 //  Rows 10.01 to 10.06 on the overworld sim (PokemonFRLG_AutoStoryTower_Tests.cpp).
 void add_tests_AutoStoryTower(UnitTestDatabase& database);
+//  Row 11.01 on the overworld sim (PokemonFRLG_AutoStorySnorlax_Tests.cpp).
+void add_tests_AutoStorySnorlax(UnitTestDatabase& database);
 
 
 } // namespace PokemonFRLG
