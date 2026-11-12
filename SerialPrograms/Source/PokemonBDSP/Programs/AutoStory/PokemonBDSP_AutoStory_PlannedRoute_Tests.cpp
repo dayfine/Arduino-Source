@@ -538,6 +538,37 @@ UnitTestResult test_open_leg_blocker_talks(Logger& logger){
     return replan.empty() ? UnitTestResult(true) : UnitTestResult(replan);
 }
 
+//  lab-B 2026-11-12 01:55 (00.05c below_the_company_clown, again): with
+//  the woman who talked marked at (45, 24), the plan from (46, 24) and the
+//  tile behind it began "west 1 (to wall)" against her. Walking into her
+//  opened her talk again, which was fought as a trainer, and the walk on
+//  ran out of time short of the "wall". A person is no wall: the walk after
+//  the replan must not walk to a wall into the tile it marked.
+UnitTestResult test_marked_talker_is_no_wall(Logger& logger){
+    Script script{.steps = {
+        press_step("D-pad west 50 ms x1"),
+        walk_step("6 taps: T: west 6 (open)", WalkStop::BLOCKED, 2000ms, 2),
+        press_step("wait 2500 ms x1"),
+        walk_step("4 taps: T: west 6 (open): the rest", WalkStop::DIALOG, 800ms, 0),
+    }};
+    std::string after_replan;
+    try{
+        walk_script(route202_world(), {30, 5}, {24, 5}, {}, script);
+    }catch (const ScriptMismatch& mismatch){
+        after_replan = mismatch.message;
+    }
+    for (const std::string& note : script.notes){
+        logger.log(note);
+    }
+    if (script.next != script.steps.size()){
+        return script_left(script);
+    }
+    if (after_replan.find("\"wall: ") != std::string::npos && after_replan.find("west") != std::string::npos){
+        return "after the replan the walk went to a wall west, into the one who talked: " + after_replan;
+    }
+    return UnitTestResult(true);
+}
+
 //  A leg to the wall two tiles away that runs out of time after one tile
 //  (one chunk moved): someone stands in it, as Route 204's youngster did on
 //  01.08's "west 2 (to wall)" (lab-B 2026-11-08). The check at the wall
@@ -650,6 +681,10 @@ const PlannedRouteCase PLANNED_ROUTE_CASES[] = {
     },
     {
         .input = {"someone in the way who talks is marked, not fought (lab-B 2026-11-12, 00.05c)", test_open_leg_blocker_talks},
+        .expectation = {},
+    },
+    {
+        .input = {"a marked talker is no wall for the replan (lab-B 2026-11-12, 00.05c)", test_marked_talker_is_no_wall},
         .expectation = {},
     },
     {
