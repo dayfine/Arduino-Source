@@ -53,14 +53,14 @@ struct AutoStoryTowerCase{
 class Test_AutoStoryTower : public UnitTest{
 public:
     explicit Test_AutoStoryTower(AutoStoryTowerCase test_case)
-        : UnitTest("PokemonFRLG::AutoStory - Simulation: " + test_case.input.name)
+        : UnitTest(std::format("PokemonFRLG::AutoStory - Simulation: {}", test_case.input.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
         try{
             return m_case.input.body(logger);
         }catch (Exception& e){
-            return std::string(e.name()) + ": " + e.message();
+            return std::format("{}: {}", e.name(), e.message());
         }
     }
 
@@ -169,7 +169,7 @@ UnitTestResult row_checked(
     if (run.fought != fought){
         std::string names;
         for (const std::string& name : run.fought){
-            names += " " + name;
+            names += std::format(" {}", name);
         }
         return std::format("{}: fought{} on the sim, not the {} planned.", id, names.empty() ? " no one" : names, fought.size());
     }
