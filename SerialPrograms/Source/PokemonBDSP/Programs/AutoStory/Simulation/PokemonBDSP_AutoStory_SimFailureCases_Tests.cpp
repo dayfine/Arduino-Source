@@ -711,6 +711,12 @@ const FailureCase AUTO_STORY_FAILURE_CASES[] = {
     {.input = {"01.08 with Route 204's youngster wandering (12..14, 2)", [](Logger& logger){
         return wanderers_move(logger, "01.08");
     }}, .expectation = {}},
+    {.input = {"00.05b with Jubilife's people wandering (the clowns, the boy below the Mart on 51, 33..35)", [](Logger& logger){
+        return wanderers_move(logger, "00.05b");
+    }}, .expectation = {}},
+    {.input = {"00.05c with Jubilife's people wandering (the clowns, the boy below the Mart on 51, 33..35)", [](Logger& logger){
+        return wanderers_move(logger, "00.05c");
+    }}, .expectation = {}},
     {.input = {"01.04 Roark's badge speech: the fanfare's pause, then a scene", roark_badge_speech}, .expectation = {}},
     {.input = {"inside a Pokemon Center, the door's settle ends within 3 s of the fade-up with visitors walking, never during the fade", center_inside_settles}, .expectation = {}},
     {.input = {"inside a Pokemon Center, one held run north from the door mat reaches the nurse", nurse_in_one_run}, .expectation = {}},
