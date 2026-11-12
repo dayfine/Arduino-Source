@@ -2,7 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Split out of Pokemon_Interrupts.h, unchanged; it includes this header.
+ *  The warp judge: whether a fade was a warp, from a game's timing. Its
+ *  definitions are in Pokemon_Interrupts.cpp.
  *
  */
 

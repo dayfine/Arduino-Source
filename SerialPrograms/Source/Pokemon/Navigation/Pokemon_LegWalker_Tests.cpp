@@ -57,13 +57,13 @@ struct ScriptedLeg{
 
 //  An interrupt set off by step `step`, seen DELAY after it ends.
 HoldOutcome after_step(int step){
-    return HoldOutcome{0, TILE * step + DELAY};
+    return HoldOutcome{.interrupt = 0, .elapsed = TILE * step + DELAY};
 }
 
 
 UnitTestResult test_hold_times(){
-    const LegSpec open{Direction::EAST, 4, false, TILE};
-    const LegSpec wall{Direction::EAST, 4, true, TILE};
+    const LegSpec open{.direction = Direction::EAST, .tiles = 4, .to_wall = false, .tile_time = TILE};
+    const LegSpec wall{.direction = Direction::EAST, .tiles = 4, .to_wall = true, .tile_time = TILE};
     if (leg_hold(open, 4) != TILE * 3 + TILE / 2){
         return std::format("Open leg: {}ms", leg_hold(open, 4).count());
     }
@@ -83,7 +83,7 @@ UnitTestResult test_hold_times(){
 }
 
 UnitTestResult test_tiles_before_interrupt(){
-    const LegSpec leg{Direction::EAST, 8, false, TILE};
+    const LegSpec leg{.direction = Direction::EAST, .tiles = 8, .to_wall = false, .tile_time = TILE};
     for (int step = 0; step <= 8; step++){
         for (Milliseconds jitter : {-100ms, 0ms, 100ms}){
             const int walked = tiles_before_interrupt(leg, TILE * step + DELAY + jitter, DELAY, 8);
@@ -104,7 +104,7 @@ UnitTestResult test_tiles_before_interrupt(){
 UnitTestResult test_wall_leg_walked_again(){
     ScriptedLeg script;
     script.outcomes = {after_step(2)};
-    const LegSpec leg{Direction::NORTH, 6, true, TILE};
+    const LegSpec leg{.direction = Direction::NORTH, .tiles = 6, .to_wall = true, .tile_time = TILE};
     const LegResult result = walk_leg_with(leg, script.calls(), 5);
     if (script.holds.size() != 2 || script.holds[1] != leg_hold(leg, 6)){
         return "Expected the whole leg held again.";
@@ -118,7 +118,7 @@ UnitTestResult test_wall_leg_walked_again(){
 UnitTestResult test_open_leg_rest_walked(){
     ScriptedLeg script;
     script.outcomes = {after_step(2)};
-    const LegSpec leg{Direction::NORTH, 6, false, TILE};
+    const LegSpec leg{.direction = Direction::NORTH, .tiles = 6, .to_wall = false, .tile_time = TILE};
     const LegResult result = walk_leg_with(leg, script.calls(), 5);
     if (script.holds.size() != 2 || script.holds[1] != leg_hold(leg, 4)){
         return "Expected the remaining 4 tiles held.";
@@ -132,7 +132,7 @@ UnitTestResult test_open_leg_rest_walked(){
 UnitTestResult test_open_leg_interrupted_at_end(){
     ScriptedLeg script;
     script.outcomes = {after_step(6)};
-    const LegSpec leg{Direction::NORTH, 6, false, TILE};
+    const LegSpec leg{.direction = Direction::NORTH, .tiles = 6, .to_wall = false, .tile_time = TILE};
     walk_leg_with(leg, script.calls(), 5);
     if (script.holds.size() != 1){
         return "Nothing was left to walk after the last step.";
@@ -145,7 +145,7 @@ UnitTestResult test_open_leg_interrupted_at_end(){
 UnitTestResult test_open_leg_stops(){
     ScriptedLeg script;
     script.outcomes = {after_step(2)};
-    LegSpec leg{Direction::NORTH, 6, false, TILE};
+    LegSpec leg{.direction = Direction::NORTH, .tiles = 6, .to_wall = false, .tile_time = TILE};
     leg.stop_on_interrupt = true;
     const LegResult result = walk_leg_with(leg, script.calls(), 5);
     if (script.holds.size() != 1 || !result.stopped || result.exact || script.cleared.size() != 1){
@@ -157,12 +157,12 @@ UnitTestResult test_open_leg_stops(){
     return true;
 }
 
-//  Console B, 2026-11-01, run 16: held south into a sign, the leg to a wall
-//  was interrupted by its message 600ms into every hold, six times.
+//  Held south into a sign: the leg to a wall is interrupted by the sign's
+//  message 600ms into every hold, again and again.
 UnitTestResult test_wall_leg_blocked(){
     ScriptedLeg script;
-    script.outcomes = {HoldOutcome{0, 2200ms}, HoldOutcome{0, 600ms}, HoldOutcome{0, 600ms}};
-    LegSpec leg{Direction::SOUTH, 23, true, TILE};
+    script.outcomes = {HoldOutcome{.interrupt = 0, .elapsed = 2200ms}, HoldOutcome{.interrupt = 0, .elapsed = 600ms}, HoldOutcome{.interrupt = 0, .elapsed = 600ms}};
+    LegSpec leg{.direction = Direction::SOUTH, .tiles = 23, .to_wall = true, .tile_time = TILE};
     leg.stop_if_blocked = true;
     const LegResult result = walk_leg_with(leg, script.calls(), 5);
     if (script.holds.size() != 2 || !result.stopped){
@@ -176,7 +176,7 @@ UnitTestResult test_too_many_interruptions(){
     for (int c = 0; c < 4; c++){
         script.outcomes.push_back(after_step(0));
     }
-    const LegSpec leg{Direction::NORTH, 6, true, TILE};
+    const LegSpec leg{.direction = Direction::NORTH, .tiles = 6, .to_wall = true, .tile_time = TILE};
     try{
         walk_leg_with(leg, script.calls(), 3);
     }catch (std::runtime_error&){

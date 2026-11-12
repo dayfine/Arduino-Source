@@ -8,7 +8,6 @@
  */
 
 #include <format>
-#include <functional>
 #include <optional>
 #include <string>
 #include <utility>
@@ -18,6 +17,7 @@
 #include "Pokemon_Interrupts.h"
 #include "Pokemon_Interrupts_Tests.h"
 #include "Pokemon_ScreenEvents.h"
+#include "Pokemon_TestExpect.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -27,13 +27,6 @@ namespace{
 using namespace std::chrono_literals;
 
 const WallClock T0 = WallClock() + std::chrono::hours(1);
-
-UnitTestResult expect_equal(const std::string& what, const std::string& got, const std::string& expected){
-    if (got == expected){
-        return true;
-    }
-    return std::format("{}: expected \"{}\", got \"{}\"", what, expected, got);
-}
 
 //  One frame of a synthetic scene: its events, at `ms` after T0.
 struct Frame{
@@ -189,7 +182,7 @@ UnitTestResult test_watcher_log(){
 struct InterruptsCase{
     struct Input{
         std::string name;
-        std::function<UnitTestResult()> body;
+        UnitTestResult (*body)();
     };
     struct Expectation{
     };

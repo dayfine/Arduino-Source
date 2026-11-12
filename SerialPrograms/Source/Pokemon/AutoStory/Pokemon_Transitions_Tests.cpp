@@ -9,6 +9,8 @@
  */
 
 #include <algorithm>
+#include <cctype>
+#include <charconv>
 #include <format>
 #include <string>
 #include <utility>
@@ -181,9 +183,20 @@ struct CapturedCase{
 std::string track_captured_case(const Filesystem::Path& folder, const FadeProfile& profile){
     std::vector<std::pair<int, Filesystem::Path>> frames;
     for (const Filesystem::Path& file : Filesystem::list_directory(folder)){
-        if (file.extension().string() == ".png"){
-            frames.emplace_back(std::stoi(file.stem().string()), file);
+        std::string extension = file.extension().string();
+        std::transform(extension.begin(), extension.end(), extension.begin(), [](unsigned char c){
+            return static_cast<char>(std::tolower(c));
+        });
+        if (extension != ".png"){
+            continue;
         }
+        const std::string stem = file.stem().string();
+        int ms = 0;
+        const auto parsed = std::from_chars(stem.data(), stem.data() + stem.size(), ms);
+        if (parsed.ec != std::errc() || parsed.ptr != stem.data() + stem.size()){
+            return std::format("frame {} is not named by its time in ms", file.filename().string());
+        }
+        frames.emplace_back(ms, file);
     }
     std::sort(frames.begin(), frames.end(), [](const auto& a, const auto& b){
         return a.first < b.first;
