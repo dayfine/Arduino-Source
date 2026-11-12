@@ -567,7 +567,6 @@ std::string route_plans_text(){
 
 //  The golden file, in the Data folder beside this file's.
 std::string route_plans_golden_path(){
-    // code-health: allow char_pointer -- std::getenv returns a const char pointer
     const char* path = std::getenv("PA_ROUTE_PLANS_GOLDEN");
     if (path != nullptr && path[0] != '\0'){
         return path;
@@ -620,7 +619,6 @@ std::string plan_differences(const std::string& golden, const std::string& plann
 UnitTestResult test_route_plans_golden(Logger& logger){
     const std::string path = route_plans_golden_path();
     const std::string planned = route_plans_text();
-    // code-health: allow char_pointer -- std::getenv returns a const char pointer
     const char* update = std::getenv("PA_UPDATE_ROUTE_PLANS");
     if (update != nullptr && update[0] != '\0' && update[0] != '0'){
         std::string crlf;
