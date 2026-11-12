@@ -68,7 +68,11 @@ std::unique_ptr<AudioSource> AudioSourceDescriptor_Device::make_AudioSource(
         return nullptr;
     }
 //    cout << "format = " << (int)format << endl;
-    return std::make_unique<AudioSource_Device>(logger, m_info, format);
+    try{
+        return std::make_unique<AudioSource_Device>(logger, m_info, format);
+    }catch (UserSetupError&){
+        return nullptr;  // Refusal is logged; never throw across the Qt audio callback.
+    }
 }
 
 
