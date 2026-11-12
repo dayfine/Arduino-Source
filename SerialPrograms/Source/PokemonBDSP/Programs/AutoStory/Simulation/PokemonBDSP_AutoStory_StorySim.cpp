@@ -725,11 +725,6 @@ Pokemon::StoryActionFunction SimExecutor::sim_event(const std::string& name){
             return wait_for_wanderer(step, state);
         };
     }
-    if (name == "read_coupons"){
-        return [this](const StoryStep&, RunState& state){
-            return read_coupons(state);
-        };
-    }
     if (name == "check_coupons"){
         return [this](const StoryStep& step, RunState&){
             return m_coupons.size() == jubilife_clown_coupons().size() ? Pokemon::outcome_ok()
@@ -745,19 +740,7 @@ Outcome SimExecutor::wait_for_wanderer(const StoryStep& step, RunState& state){
     if (!sync(state.pose)){
         return stub();
     }
-    if (m_knobs.out_of_reach.contains(step.name)){
-        return Pokemon::outcome_failed("operation_failed", step.name + ": no talk from any stand tile.");
-    }
     return sim_wait_for_wanderer(m_sim, m_sim.world(), state.pose, step);
-}
-
-Outcome SimExecutor::read_coupons(RunState& state){
-    for (const ClownCoupon& coupon : jubilife_clown_coupons()){
-        if (m_coupons.contains(std::string(coupon.step))){
-            state.flags.emplace(coupon.flag);
-        }
-    }
-    return Pokemon::outcome_ok();
 }
 
 //  The look at a battle's opening that shows its battle: past the three

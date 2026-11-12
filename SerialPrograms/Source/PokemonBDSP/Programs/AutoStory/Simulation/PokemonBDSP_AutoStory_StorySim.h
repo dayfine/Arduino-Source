@@ -209,9 +209,6 @@ struct SimWorldKnobs{
     //  president's talk gives it with all three coupons only.
     std::set<std::string> coupons_at_start = {"mart_clown", "tv_clown", "company_clown"};
     std::set<std::string> talks_without_coupon = {};
-    //  The wanderer waits, by step name, that never meet him (lab-B
-    //  2026-11-12 12:48: the company's clown stayed out of reach).
-    std::set<std::string> out_of_reach = {};
     bool poketch_at_start = true;
 };
 
@@ -527,8 +524,6 @@ private:
     Pokemon::StoryActionFunction sim_event(const std::string& name);
     //  A wander wait, played from where the step before left us, on its map.
     Pokemon::Outcome wait_for_wanderer(const Pokemon::StoryStep& step, Pokemon::RunState& state);
-    //  00.05c's look in the Bag: a flag for each coupon held.
-    Pokemon::Outcome read_coupons(Pokemon::RunState& state);
     //  The screen between steps: the dialog that popped up, if one did; a
     //  battle's opening, its battle on the OPENING_LOOKS-th look. `fresh`
     //  starts a new look.

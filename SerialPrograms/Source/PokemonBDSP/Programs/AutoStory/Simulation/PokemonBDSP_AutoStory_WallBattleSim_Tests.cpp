@@ -344,7 +344,8 @@ const SceneRunCase SCENE_RUN_SIM_CASES[] = {
 
 //  The Wonder Station's greeter in Jubilife's plaza walks up and talks
 //  whenever we come near, then walks off: on lab-B (2026-11-12 03:57, 00.05c
-//  below_the_company_clown) she stopped one walk three times, at about
+//  below_the_company_clown; 00.05c's first walk is now beside_the_president)
+//  she stopped one walk three times, at about
 //  (44, 28), (43, 30) and (39, 32), and the third failed it as "dialogue the
 //  map does not explain". Here a step onto the step's greeter ground starts
 //  her dialogue, and so does the next one after each talk, `talks` in all.
@@ -365,16 +366,16 @@ std::string walk_past_the_greeter(Logger& logger, size_t most_talks){
     const StoryStep* step = nullptr;
     for (const StoryCheckpoint& row : story_checkpoints()){
         for (const StoryStep& s : row.steps){
-            step = row.id == "00.05c" && s.name == "below_the_company_clown" ? &s : step;
+            step = row.id == "00.05c" && s.name == "beside_the_president" ? &s : step;
         }
     }
     const StoryWorld* world = story_plan_world("JubilifeCity", "JubilifeCity");
     if (step == nullptr || world == nullptr){
-        return "00.05c below_the_company_clown: not in the table, or no JubilifeCity world.";
+        return "00.05c beside_the_president: not in the table, or no JubilifeCity world.";
     }
     const std::vector<TilePos> greeter = story_route_tiles(*world, *step, "greeter");
     const TilePos start = story_to_world(*world, "JubilifeCity", {57, 22});
-    const TilePos target = story_to_world(*world, "JubilifeCity", {15, 19});
+    const TilePos target = story_to_world(*world, "JubilifeCity", {45, 35});
     GridSim sim({.world = world, .trainers = {}, .triggers = {}}, start, Direction::WEST, true);
     size_t talks = 0;
     const auto arm = [&](){
@@ -394,7 +395,7 @@ std::string walk_past_the_greeter(Logger& logger, size_t most_talks){
     std::vector<TilePos> believed;
     try{
         believed = walk_route(sim_io, *world, {start}, trainers, {.goal = [&](const TilePos& pos){ return pos == target; },
-            .label = "below the company clown", .avoid = story_route_tiles(*world, *step, "avoid"), .costs = *story_route_costs("town"),
+            .label = "beside the president", .avoid = story_route_tiles(*world, *step, "avoid"), .costs = *story_route_costs("town"),
             .speed = MoveSpeed::RUN, .scene_next = false, .goal_is_trigger = false, .greeter = greeter});
     }catch (const GridSimFailure& e){
         return std::format("failed after {} talk(s): {}", talks, e.message);
@@ -583,15 +584,15 @@ std::string walk_open_leg_talks(Logger& logger, const OpenLegTalkInput& input){
     const StoryStep* step = nullptr;
     for (const StoryCheckpoint& row : story_checkpoints()){
         for (const StoryStep& s : row.steps){
-            step = row.id == "00.05c" && s.name == "below_the_company_clown" ? &s : step;
+            step = row.id == "00.05c" && s.name == "beside_the_president" ? &s : step;
         }
     }
     const StoryWorld* world = story_plan_world("JubilifeCity", "JubilifeCity");
     if (step == nullptr || world == nullptr){
-        return "00.05c below_the_company_clown: not in the table, or no JubilifeCity world.";
+        return "00.05c beside_the_president: not in the table, or no JubilifeCity world.";
     }
     const TilePos start = story_to_world(*world, "JubilifeCity", {46, 27});
-    const TilePos target = story_to_world(*world, "JubilifeCity", {15, 19});
+    const TilePos target = story_to_world(*world, "JubilifeCity", {45, 35});
     GridSim sim({.world = world, .trainers = {}, .triggers = {}}, start, Direction::SOUTH, true);
     size_t talks = 0;
     const auto arm = [&](){
@@ -614,7 +615,7 @@ std::string walk_open_leg_talks(Logger& logger, const OpenLegTalkInput& input){
     std::string error;
     try{
         believed = walk_route(io, *world, {start}, trainers, {.goal = [&](const TilePos& pos){ return pos == target; },
-            .label = "below the company clown", .avoid = story_route_tiles(*world, *step, "avoid"), .costs = *story_route_costs("town"),
+            .label = "beside the president", .avoid = story_route_tiles(*world, *step, "avoid"), .costs = *story_route_costs("town"),
             .speed = MoveSpeed::RUN, .scene_next = false, .goal_is_trigger = false, .greeter = story_route_tiles(*world, *step, "greeter")});
     }catch (const GridSimFailure& e){
         error = std::format("failed after {} talk(s): {}", talks, e.message);

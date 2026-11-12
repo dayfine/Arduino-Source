@@ -463,7 +463,7 @@ std::string company_clown_plaza_tiles(Logger& logger, TableRoute route, int x){
     }
     const StoryWorld& world = *route.world;
     for (const PlannedLeg& planned : *plan.legs){
-        logger.log(std::format("00.05c below_the_company_clown from ({}, 22): {}", x, to_string(planned)));
+        logger.log(std::format("00.05c beside_the_president from ({}, 22): {}", x, to_string(planned)));
     }
     const auto plaza = [&](const TilePos& pos){
         const std::optional<TilePos> local = story_to_local(world, "JubilifeCity", pos);
@@ -475,7 +475,8 @@ std::string company_clown_plaza_tiles(Logger& logger, TableRoute route, int x){
     return most == 0 ? "" : std::format("the leg {} walks {} tile(s) of the plaza.", leg, most);
 }
 
-//  00.05c's walk to the Poketch Company's clown from the street
+//  00.05c's first walk (to the president since its clown re-talks went;
+//  to the Poketch Company's clown before) from the street
 //  (57..58, 22), where the checkpoint starts on a rerun from 01.01's start,
 //  keeps off the plaza (WONDER_STATION_PLAZA). BDSP put the Global Wonder Station
 //  there, a round wall with people round it that pret's Diamond map lacks:
@@ -484,7 +485,7 @@ std::string company_clown_plaza_tiles(Logger& logger, TableRoute route, int x){
 //  (45, 24) until the step failed.
 UnitTestResult test_company_clown_from_the_street_keeps_off_the_plaza(Logger& logger){
     for (const TableRoute& route : table_routes()){
-        if (route.row != "00.05c" || route.step->name != "below_the_company_clown" || route.world == nullptr){
+        if (route.row != "00.05c" || route.step->name != "beside_the_president" || route.world == nullptr){
             continue;
         }
         std::string out;
@@ -492,9 +493,9 @@ UnitTestResult test_company_clown_from_the_street_keeps_off_the_plaza(Logger& lo
             const std::string found = company_clown_plaza_tiles(logger, route, x);
             out += found.empty() ? "" : "\n  " + found;
         }
-        return out.empty() ? UnitTestResult(true) : UnitTestResult("00.05c below_the_company_clown:" + out);
+        return out.empty() ? UnitTestResult(true) : UnitTestResult("00.05c beside_the_president:" + out);
     }
-    return "00.05c below_the_company_clown: not in the table, or from nowhere known.";
+    return "00.05c beside_the_president: not in the table, or from nowhere known.";
 }
 
 //  00.05c's replan on lab-B (2026-11-12 02:52): the walk west on row 24
@@ -503,7 +504,7 @@ UnitTestResult test_company_clown_from_the_street_keeps_off_the_plaza(Logger& lo
 //  plan at all, with the route costs or the default ones.
 UnitTestResult test_company_clown_after_the_woman_on_row_24(Logger& logger){
     for (TableRoute route : table_routes()){
-        if (route.row != "00.05c" || route.step->name != "below_the_company_clown" || route.world == nullptr){
+        if (route.row != "00.05c" || route.step->name != "beside_the_president" || route.world == nullptr){
             continue;
         }
         StoryWorld world = *route.world;
@@ -513,14 +514,14 @@ UnitTestResult test_company_clown_after_the_woman_on_row_24(Logger& logger){
         route.from = Pokemon::tile_pose("JubilifeCity", {{35, 24}, {36, 24}}, Direction::WEST);
         const RouteStepPlan plan = plan_table_route(route);
         if (!plan.legs){
-            return "00.05c below_the_company_clown: no plan from (35, 24), (36, 24).";
+            return "00.05c beside_the_president: no plan from (35, 24), (36, 24).";
         }
         for (const PlannedLeg& planned : *plan.legs){
-            logger.log("00.05c below_the_company_clown from (35, 24), (36, 24): " + to_string(planned));
+            logger.log("00.05c beside_the_president from (35, 24), (36, 24): " + to_string(planned));
         }
         return UnitTestResult(true);
     }
-    return "00.05c below_the_company_clown: not in the table, or from nowhere known.";
+    return "00.05c beside_the_president: not in the table, or from nowhere known.";
 }
 
 //  01.08's walk below the Ravaged Path keeps off the row Route 204 South's

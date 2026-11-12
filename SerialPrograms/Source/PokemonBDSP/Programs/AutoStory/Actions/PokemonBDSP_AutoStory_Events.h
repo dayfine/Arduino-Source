@@ -79,12 +79,11 @@ bool asks_someone_else(const Pokemon::MapData& map, Pokemon::TilePos stand, Poke
 //  data/games/bdsp/maps/jubilife_city.json (decomp range 1). The story map
 //  leaves him out of its wanderers (the decomp hides him behind a flag).
 Pokemon::TileBox jubilife_mart_clown_box();
-//  A Jubilife clown's coupon (00.05b, 00.05c): his talk step, the Key
-//  Item's Bag slug, and the run flag read_coupons sets when it is held.
+//  A Jubilife clown's coupon (00.05b): his talk step and the Key Item's
+//  Bag slug.
 struct ClownCoupon{
     std::string_view step;
     std::string_view slug;
-    std::string_view flag;
 };
 //  The three clowns' coupons: the Mart's 1, the company's 2, the TV's 3.
 std::span<const ClownCoupon> jubilife_clown_coupons();

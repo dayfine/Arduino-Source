@@ -278,25 +278,6 @@ std::optional<std::vector<bool>> held_coupons(VideoStream& stream, ProController
     return bag_has_items(stream, context, slugs, KEY_ITEMS_POCKET);
 }
 
-//  00.05c's look in the Bag: a flag for each coupon held, so the talk to
-//  a clown whose coupon is there is skipped (its step's skip_if). Unread,
-//  every clown is talked to.
-Pokemon::Outcome read_coupons(StoryExecutor& executor, Pokemon::RunState& state, const Pokemon::StoryStep&){
-    VideoStream& stream = executor.stream();
-    const std::optional<std::vector<bool>> held = held_coupons(stream, executor.context());
-    if (!held){
-        return Pokemon::outcome_ok();
-    }
-    const std::span<const ClownCoupon> coupons = jubilife_clown_coupons();
-    for (size_t i = 0; i < coupons.size(); i++){
-        stream.log(std::format("[Coupons] {}: {}.", coupons[i].slug, (*held)[i] ? "held" : "missing"));
-        if ((*held)[i]){
-            state.flags.emplace(coupons[i].flag);
-        }
-    }
-    return Pokemon::outcome_ok();
-}
-
 //  00.05b's end: all three coupons in the Bag, or the row fails here
 //  rather than saving a run the president will give no Poketch.
 void check_coupons(VideoStream& stream, ProControllerContext& context){
@@ -366,9 +347,9 @@ Pokemon::TileBox jubilife_mart_clown_box(){
 
 std::span<const ClownCoupon> jubilife_clown_coupons(){
     static constexpr ClownCoupon COUPONS[] = {
-        {.step = "mart_clown", .slug = "coupon-1", .flag = "has_coupon_1"},
-        {.step = "company_clown", .slug = "coupon-2", .flag = "has_coupon_2"},
-        {.step = "tv_clown", .slug = "coupon-3", .flag = "has_coupon_3"},
+        {.step = "mart_clown", .slug = "coupon-1"},
+        {.step = "company_clown", .slug = "coupon-2"},
+        {.step = "tv_clown", .slug = "coupon-3"},
     };
     return COUPONS;
 }
@@ -385,7 +366,6 @@ void add_jubilife_events(StoryEvents& events){
     events.emplace("talk_to_wanderer", talk_to_wanderer);
     events.emplace("wait_for_wanderer", wait_for_wanderer);
     events.emplace("check_poketch", console_event(check_poketch));
-    events.emplace("read_coupons", read_coupons);
     events.emplace("check_coupons", console_event(check_coupons));
     events.emplace("jubilife_start_probe", jubilife_start_probe);
 }
