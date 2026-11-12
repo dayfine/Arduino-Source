@@ -11,6 +11,7 @@
  */
 
 #include <format>
+#include <cstdint>
 #include <functional>
 #include <optional>
 #include <string>
@@ -84,11 +85,13 @@ const StoryCheckpoint& checkpoint(std::string_view id){
 //  across sims: the trainers fought.
 struct GymWalk{
     StoryPose at;
+    SimScript script;
     std::optional<OverworldSim> sim;
     std::vector<std::string> fought;
 
-    explicit GymWalk(StoryPose start)
+    GymWalk(StoryPose start, SimScript sim_script)
         : at(std::move(start))
+        , script(std::move(sim_script))
     {
         place();
     }
@@ -98,7 +101,7 @@ struct GymWalk{
             const std::vector<std::string>& beaten = sim->state().trainers_beaten;
             fought.insert(fought.end(), beaten.begin(), beaten.end());
         }
-        sim.emplace(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
+        sim.emplace(story_maps(), MapPosition{at.map, at.tile}, *at.facing, script);
     }
     std::vector<std::string> all_fought() const{
         std::vector<std::string> all = fought;
@@ -137,14 +140,33 @@ std::string row_on_sim(std::string_view id, GymWalk& walk){
     return "";
 }
 
-//  12.01 from the nurse: the gym, Kayden fought from (14, 16) and Kirk from
-//  (14, 11), round the top edge to west of Koga, where 12.02 starts; then
+//  Juggler Kayden (12, 16) turns south or east on a timer
+//  (MOVEMENT_TYPE_FACE_DOWN_AND_RIGHT), from `seed`; or, for the fallback,
+//  never turns from east.
+SimScript kayden_turns(uint32_t seed, bool only_east){
+    SimScript script;
+    std::vector<Direction> ways{Direction::SOUTH, Direction::EAST};
+    if (only_east){
+        ways = {Direction::EAST};
+    }
+    script.trainer_turns[to_string(MapPosition{GYM, {12, 16}})] = SimTrainerTurns{.ways = ways, .seed = seed};
+    return script;
+}
+
+//  The gym's trainers by sprite: Kayden and Kirk are both rockers, Edgar
+//  a man.
+const std::vector<std::string> KIRK_AND_EDGAR{"rocker", "man"};
+const std::vector<std::string> KAYDEN_KIRK_AND_EDGAR{"rocker", "rocker", "man"};
+
+//  12.01 from the nurse with `script`: the gym, past Kayden's east line
+//  (13..14, 16) on his turn south, Kirk fought from (14, 11), round the top
+//  edge to west of Koga, where 12.02 starts, fighting `expected`; then
 //  12.02 from there to the Warden and the nurse, meeting no one else. The
-//  sim's lookers see every way at once, so Edgar, whose lines the legs to
-//  the walls cross, always stops the walk there: the worst case, which
-//  the console meets only when he looks that way.
-UnitTestResult test_gym_rows(){
-    GymWalk walk(*story_pose(Pokemon::pose_of(*checkpoint("12.01").start)));
+//  sim's other lookers see every way at once, so Edgar, whose lines the
+//  legs to the walls cross, always stops the walk there: the worst case,
+//  which the console meets only when he looks that way.
+UnitTestResult test_gym_rows(const SimScript& script, const std::vector<std::string>& expected){
+    GymWalk walk(*story_pose(Pokemon::pose_of(*checkpoint("12.01").start)), script);
     if (const std::string failure = row_on_sim("12.01", walk); !failure.empty()){
         return failure;
     }
@@ -152,8 +174,8 @@ UnitTestResult test_gym_rows(){
     if (!(walk.sim->state().position == west_of_koga) || walk.sim->state().facing != Direction::EAST){
         return std::format("12.01: ended on {}, not west of Koga {} facing east.", to_string(walk.sim->state().position), to_string(west_of_koga));
     }
-    if (walk.all_fought() != std::vector<std::string>{"rocker", "rocker", "man"}){
-        return std::format("12.01: fought {} trainers, not Kayden, Kirk and Edgar.", walk.all_fought().size());
+    if (walk.all_fought() != expected){
+        return std::format("12.01: fought {} trainers, expected {}.", walk.all_fought().size(), expected.size());
     }
     const StoryPose next = *story_pose(Pokemon::pose_of(*checkpoint("12.02").start));
     if (next.map != GYM || !(next.tile == west_of_koga.point)){
@@ -162,11 +184,22 @@ UnitTestResult test_gym_rows(){
     if (const std::string failure = row_on_sim("12.02", walk); !failure.empty()){
         return failure;
     }
-    if (walk.all_fought().size() != 3){
+    if (walk.all_fought().size() != expected.size()){
         return "12.02: fought a trainer after Koga.";
     }
     if (walk.at.map != "FuchsiaCity_PokemonCenter_1F"){
         return std::format("12.02: ended on {}, not at Fuchsia's nurse.", walk.at.map);
+    }
+    return true;
+}
+
+//  Pokeguy's pass on twenty of Kayden's turn timings: no battle with him.
+UnitTestResult test_gym_rows_pass_kayden(){
+    for (uint32_t seed = 1; seed <= 20; seed++){
+        const UnitTestResult result = test_gym_rows(kayden_turns(seed, false), KIRK_AND_EDGAR);
+        if (result.result != UnitTestResult::PASSED){
+            return std::format("seed {}: {}", seed, result.message);
+        }
     }
     return true;
 }
@@ -238,8 +271,14 @@ UnitTestResult check_lead_level_precondition(Logger& logger, std::string_view id
 
 const AutoStoryFuchsiaGymCase AUTO_STORY_FUCHSIA_GYM_CASES[] = {
     {
-        .input = {.name = "12.01 past Kayden and Kirk to west of Koga and 12.02 to the Warden and the nurse", .body = test_gym_rows},
-        .expectation = {.description = "Kayden and Kirk fought where the table steps into their lines, no one else; ends at Fuchsia's nurse"},
+        .input = {.name = "12.01 past Kayden on his turn south, Kirk fought, to west of Koga and 12.02 to the Warden and the nurse", .body = test_gym_rows_pass_kayden},
+        .expectation = {.description = "on 20 timings of Kayden's turns, only Kirk (and the sim's always-looking Edgar) fought; ends at Fuchsia's nurse"},
+    },
+    {
+        .input = {.name = "12.01 fights Kayden when he never turns south (fallback)", .body = []{
+            return test_gym_rows(kayden_turns(1, true), KAYDEN_KIRK_AND_EDGAR);
+        }},
+        .expectation = {.description = "the pass waits, crosses, is seen, fights Kayden, and the row still ends west of Koga and at the nurse"},
     },
     {
         .input = {.name = "the lead's attacks in Fuchsia Gym", .body = test_lead_moves_in_gym},

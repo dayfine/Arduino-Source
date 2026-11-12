@@ -264,6 +264,13 @@ Outcome StoryMapsSim::step_ahead(const Pokemon::Pose& pose, const StoryStep& ste
     }
     const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
     const MapData* map = map_named(at->map);
+    if (step.action == TRAINER_PASS_VARIANT){
+        TilePos onto = at->tile;
+        for (int64_t c = 0; c < Pokemon::story_arg<int64_t>(step.args, "tiles"); c++){
+            onto = onto.next(direction);
+        }
+        return Pokemon::outcome_ok(to_pose(StoryPose{at->map, onto, direction}));
+    }
     if (step.action != TRAINER_LINE_VARIANT || map == nullptr){
         return Pokemon::outcome_ok(to_pose(StoryPose{at->map, at->tile.next(direction), direction}));
     }
@@ -468,6 +475,50 @@ void sim_wait_out_battle_exit(OverworldSim& sim){
 
 } // namespace
 
+namespace{
+
+//  pass_trainer() on the sim, with the trainer's facing read from the sim:
+//  wait_for_turn_away(), the crossing, and the trainer's battle if they
+//  see the player.
+std::string sim_pass_trainer(OverworldSim& sim, StoryPose& at, const StoryStep& step){
+    const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
+    const int tiles = (int)Pokemon::story_arg<int64_t>(step.args, "tiles");
+    const Direction away = Pokemon::story_arg<Direction>(step.args, "away");
+    const MapPosition trainer{at.map, {
+        at.tile.x + (int)Pokemon::story_arg<int64_t>(step.args, "trainer_dx"),
+        at.tile.y + (int)Pokemon::story_arg<int64_t>(step.args, "trainer_dy"),
+    }};
+    wait_for_turn_away(
+        (int)(TRAINER_PASS_WATCH / TRAINER_PASS_POLL), away,
+        [&]{ return sim.trainer_facing(trainer); },
+        [&]{ sim.watch({}, TRAINER_PASS_POLL); }
+    );
+    for (int c = 1; c < tiles; c++){
+        sim_step_once(sim, direction);
+    }
+    sim_step_once(sim, direction);
+    if (sim.watch({SimWatcher::MESSAGE}, TRAINER_LINE_WATCH)){
+        if (!sim.close_message() || sim.handle_battle(SimBattleChoice::FIGHT) != SimBattleEnd::ENDED){
+            return "no battle after the trainer's message.";
+        }
+        if (const std::string failure = battle_end_on_sim(sim); !failure.empty()){
+            return failure;
+        }
+        sim_wait_out_battle_exit(sim);
+        for (int c = 1; c < tiles; c++){
+            sim_step_once(sim, direction);
+        }
+    }
+    TilePos onto = at.tile;
+    for (int c = 0; c < tiles; c++){
+        onto = onto.next(direction);
+    }
+    at = StoryPose{at.map, onto, direction};
+    return sim.state().position == MapPosition{at.map, at.tile} ? "" : "expected to end on " + to_string(MapPosition{at.map, at.tile}) + ".";
+}
+
+} // namespace
+
 //  A ROUTE or LEGS by the sim's walker, fighting a trainer who sees the
 //  player on the way.
 std::string OverworldStepSim::walk(const StoryStep& step){
@@ -503,6 +554,9 @@ std::string OverworldStepSim::step_ahead(const StoryStep& step){
         if (const std::optional<RouteStep> warp = warp_press(story_maps(), MapPosition{m_at.map, m_at.tile}, direction)){
             return step_onto_warp(*warp);
         }
+    }
+    if (step.action == TRAINER_PASS_VARIANT){
+        return sim_pass_trainer(m_sim, m_at, step);
     }
     const auto tap = [this, direction]{
         sim_step_once(m_sim, direction);

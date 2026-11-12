@@ -613,6 +613,24 @@ std::optional<int> step_until_seen(int max_tiles, const std::function<void()>& s
     return std::nullopt;
 }
 
+bool wait_for_turn_away(
+    int polls, Direction away,
+    const std::function<std::optional<Direction>()>& read, const std::function<void()>& wait
+){
+    bool other_way = false;
+    for (int poll = 0; poll < polls; poll++){
+        if (poll > 0){
+            wait();
+        }
+        const std::optional<Direction> facing = read();
+        if (facing && *facing == away && other_way){
+            return true;
+        }
+        other_way = other_way || (facing && *facing != away);
+    }
+    return false;
+}
+
 void wait_out_battle_exit(ConsoleHandle& console, ProControllerContext& context){
     context.wait_for_all_requests();
     ConsoleScreenLook eyes(console, context);

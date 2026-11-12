@@ -327,12 +327,46 @@ std::optional<OverworldSim::Step> OverworldSim::press(Direction direction) const
     return step;
 }
 
+std::optional<Direction> OverworldSim::trainer_facing(const MapPosition& home) const{
+    return trainer_facing_at(home, m_now);
+}
+
+std::optional<Direction> OverworldSim::trainer_facing_at(const MapPosition& home, Milliseconds when) const{
+    const auto found = m_script.trainer_turns.find(to_string(home));
+    if (found == m_script.trainer_turns.end() || found->second.ways.empty()){
+        return std::nullopt;
+    }
+    const SimTrainerTurns& turns = found->second;
+    static constexpr int64_t DELAY_FRAMES[] = {32, 48, 64, 80};
+    std::mt19937 rng(turns.seed);
+    Direction facing = turns.ways[0];
+    //  Each turn: the delay, then a frame for the turn itself; 60 frames a
+    //  second.
+    int64_t frame = 0;
+    while (true){
+        frame += DELAY_FRAMES[rng() & 3] + 1;
+        if (frame * 1000 / 60 > when.count()){
+            return facing;
+        }
+        facing = turns.ways[rng() % turns.ways.size()];
+    }
+}
+
 //  A trainer on the player's map who sees them now walks up and speaks.
 bool OverworldSim::trainer_sees(Milliseconds pressed){
     std::vector<MapObject>& objects = m_maps[m_map].objects;
     for (size_t c = 0; c < objects.size(); c++){
         MapObject& trainer = objects[c];
-        if (!trainer.trainer || !trainer_may_see(map(), trainer, m_player.position)){
+        if (!trainer.trainer){
+            continue;
+        }
+        //  One who turns on a timer sees only the way they face as the step
+        //  ends.
+        MapObject looking = trainer;
+        if (const std::optional<Direction> facing = trainer_facing_at(MapPosition{map().name, {trainer.x, trainer.y}}, pressed + tile_time())){
+            looking.trainer->looks = {*facing};
+        }
+        if (!trainer_may_see(map(), looking, m_player.position)){
             continue;
         }
         const Pokemon::TileBox box = trainer.wander.value_or(Pokemon::TileBox{trainer.x, trainer.y, trainer.x, trainer.y});

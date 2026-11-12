@@ -112,6 +112,10 @@ public:
     //  Returns whether it was there. (PokemonFRLG_OverworldSimField.cpp)
     bool use_field(SimField field, size_t floor = 0);
 
+    //  The way the trainer standing on `home` faces now, if they turn on a
+    //  timer (SimScript::trainer_turns).
+    std::optional<Direction> trainer_facing(const MapPosition& home) const;
+
 private:
     //  A screen that shows at `at`; `unfreeze`: the player can move again.
     struct Pending{
@@ -190,6 +194,7 @@ private:
         return m_state.on_bike ? m_script.timing.bike_tile : m_script.timing.tile;
     }
     bool trainer_sees(Milliseconds pressed);
+    std::optional<Direction> trainer_facing_at(const MapPosition& home, Milliseconds when) const;
     void update_view();
     void note(const std::string& line);
     void violation(const std::string& line);

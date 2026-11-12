@@ -172,6 +172,17 @@ std::vector<Pokemon::StoryActionSpec> movement_variant_specs(std::span<const Pok
     variant(StoryStepKind::LEGS, TAPS_VARIANT);
     variant(StoryStepKind::STEP, TRAINER_LINE_VARIANT);
     variant(StoryStepKind::STEP, TRAINER_WAIT_VARIANT);
+    {
+        Pokemon::StoryActionSpec spec = *Pokemon::find_story_action(builtin, StoryStepKind::STEP, "");
+        spec.name = TRAINER_PASS_VARIANT;
+        spec.args.push_back(required_arg("tiles", StoryArgType::INTEGER, "the tiles to step across the line"));
+        spec.args.push_back(required_arg("away", StoryArgType::DIRECTION, "the way the trainer faces when the line is safe to cross"));
+        spec.args.push_back(required_arg("trainer_dx", StoryArgType::INTEGER, "the trainer's tile east of the player's, before the step"));
+        spec.args.push_back(required_arg("trainer_dy", StoryArgType::INTEGER, "the trainer's tile south of the player's, before the step"));
+        spec.args.push_back(required_arg("trainer", StoryArgType::WORD, "pret's constant for the trainer, for the battle if they see the player"));
+        spec.args.push_back(required_arg("foes", StoryArgType::WORDS, "the trainer's party in order, for that battle"));
+        specs.push_back(std::move(spec));
+    }
     return specs;
 }
 
