@@ -17,6 +17,8 @@
 #include "PokemonFRLG_AutoStoryMart.h"
 #include "PokemonFRLG_AutoStoryMember.h"
 #include "PokemonFRLG_AutoStoryPcStorage.h"
+#include "PokemonFRLG_AutoStorySlope.h"
+#include "PokemonFRLG_AutoStorySlopeRun.h"
 #include "PokemonFRLG_AutoStoryTeach.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
 #include "PokemonFRLG_AutoStoryTrashCans.h"
@@ -214,6 +216,7 @@ std::span<const Pokemon::StoryActionSpec> story_action_specs(){
         for (Pokemon::StoryActionSpec spec : {
             pc_action_spec(), capture_action_spec(), fossil_action_spec(), level_action_spec(),
             mart_action_spec(), teach_action_spec(), grind_action_spec(), grind_check_action_spec(),
+            slope_action_spec(), count_items_action_spec(),
         }){
             specs.push_back(std::move(spec));
         }

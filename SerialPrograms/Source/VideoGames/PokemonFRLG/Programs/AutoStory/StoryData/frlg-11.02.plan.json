@@ -1,0 +1,81 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "11.02",
+    "title": "Down the Cycling Road (Route 17) with its RARE CANDY and MAX ELIXIR, to the Safari Zone's door in Fuchsia City",
+    "start": {"map": "Route16", "tiles": [[28, 13]], "facing": "west"},
+    "events": [
+      {
+        "id": "count_items_before",
+        "kind": "game_action",
+        "action": "count_items",
+        "args": {"items": ["rare-candy", "max-elixir"]},
+        "why": "the Items pocket's counts before the slope, on flat ground: the items found on it are confirmed against them on Route 18"
+      },
+      {
+        "id": "top_of_cycling_road",
+        "kind": "route",
+        "action": "bike",
+        "args": {
+          "target": {"map": "Route16", "tiles": [[14, 19]], "facing": "south"}
+        },
+        "why": "west through the Cycling Road gate (27, 13) to (20, 13), on the Bicycle (both gates keep a rider on it), past the six Bikers (LOOK_AROUND, sight 1: no way past out of every one's sight; one that sees the player is fought) and down to the slope's top, above Route 17's column 14"
+      },
+      {
+        "id": "down_the_slope",
+        "kind": "game_action",
+        "action": "slope",
+        "args": {
+          "moves": [
+            "step south 1",
+            "roll 30",
+            "step east 3",
+            "brake 42",
+            "step east 1",
+            "search south 21 rare-candy",
+            "step east 1",
+            "roll 55",
+            "step west 3",
+            "step south 2",
+            "step west 2",
+            "search south 19 max-elixir",
+            "step west 2",
+            "roll 4",
+            "step south 12"
+          ]
+        },
+        "declared_after": {"map": "Route18", "tiles": [[12, 10]], "facing": "south"},
+        "why": "Route 17 has no map (mapless): onto the slope at (14, 0), rolled to the water (14, 29); 3 east to (17, 29), rolled and braked in rows 62..81 (past Zeek's row 61, above Corey), 1 east to column 18, south a tap and an A at a time until the hidden RARE CANDY (18, 83) answers at (18, 82); 1 east, rolled to the wall (19, 136); 3 west to (16, 136), 2 south through the gap (14..16, 137), 2 west to (14, 138), south a tap and an A at a time until the hidden MAX ELIXIR (14, 157) answers at (14, 156); 2 west to (12, 156), rolled through the ledges' gap (12, 158) to the slope's foot (12, 159), and south onto Route 18 to the water (12, 10)"
+      },
+      {
+        "id": "count_items_after",
+        "kind": "game_action",
+        "action": "count_items",
+        "args": {"items": ["rare-candy", "max-elixir"], "found": true},
+        "why": "each one more than before the slope: both items were found"
+      },
+      {
+        "id": "safari_zone_door",
+        "kind": "route",
+        "action": "bike",
+        "args": {
+          "target": {"map": "FuchsiaCity", "tiles": [[24, 6]], "facing": "north"}
+        },
+        "why": "east along Route 18 through its gate (Route18_EastEntrance_1F) into Fuchsia City and up to below the Safari Zone's door (24, 5); pokeguy goes straight there, no Center"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "lead": "after_brock",
+    "notes": {
+      "checkpoint": [
+        "From east of the Cycling Road gate (11.01), pokeguy's way down Route 17: the hidden RARE CANDY (18, 83) and MAX ELIXIR (14, 157) only; the FULL RESTORE, PP UP and MAX REVIVE are left, and no Biker is fought by choice (pokefirered Route17 map.json). His brief START menu near the Bikers is left out: it changes nothing.",
+        "The slope's speeds and B's brake are not measured on the console yet (SlopeMechanics in PokemonFRLG_AutoStorySlope.h): measure them on Route 17 before a counted run.",
+        "The save is in front of the Safari Zone's door, FUCHSIA CITY on the save card."
+      ]
+    }
+  },
+  "metadata": {"phase": "testing"}
+}
