@@ -7,23 +7,12 @@
  *  detectors those actions wait on. Someone playing the story by hand
  *  through the lab channel then records action-level steps rather than
  *  presses, and devtools/lab/cfr_steps_to_story.py turns the recording into
- *  a draft of story steps.
- *
- *      lza_talk [A|B]          mash A or B (default) until the overworld is back
- *      lza_talk_to             A at what the player faces, until a dialogue shows
- *      lza_pick N              choice N of a dialogue (0 is the top)
- *      lza_move ANGLE|ahead MS face ANGLE (clockwise from north), then walk MS
- *      lza_face ANGLE [TOL]    face ANGLE within TOL degrees (default 10)
- *      lza_fly PLACE [LANG]    fast travel to a location slug; LANG an OCR code (default eng)
- *      lza_battle [now [S]]    fight the battle that is starting; "now": one
- *                              already on screen, for up to S seconds (default 180)
- *      lza_save                save the game
- *
- *  Detectors: lza_dialog, lza_overworld, lza_arrow (a dialogue's choice
- *  arrow). Reading: lza_facing, the minimap's heading.
+ *  a draft of story steps. The commands are listed at
+ *  register_lza_command_file_commands().
  *
  */
 
+// code-health: allow header_symbols -- one parser per command and its arguments, public for the parse tests
 #ifndef PokemonAutomation_PokemonLZA_AutoStoryCommands_H
 #define PokemonAutomation_PokemonLZA_AutoStoryCommands_H
 
@@ -88,8 +77,21 @@ BattleArguments parse_lza_battle(const std::vector<std::string>& words);
 void parse_no_arguments(const std::vector<std::string>& words);
 
 
-//  Adds the commands, detectors and reading above to the Command File
-//  Runner. Called once, from the game's panel list.
+//  Adds these commands, detectors and reading to the Command File Runner.
+//  Called once, from the game's panel list.
+//
+//      lza_talk [A|B]          mash A or B (default) until the overworld is back
+//      lza_talk_to             A at what the player faces, until a dialogue shows
+//      lza_pick N              choice N of a dialogue (0 is the top)
+//      lza_move ANGLE|ahead MS face ANGLE (clockwise from north), then walk MS
+//      lza_face ANGLE [TOL]    face ANGLE within TOL degrees (default 10)
+//      lza_fly PLACE [LANG]    fast travel to a location slug; LANG an OCR code (default eng)
+//      lza_battle [now [S]]    fight the battle that is starting; "now": one
+//                              already on screen, for up to S seconds (default 180)
+//      lza_save                save the game
+//
+//  Detectors: lza_dialog, lza_overworld, lza_arrow (a dialogue's choice
+//  arrow). Reading: lza_facing, the minimap's heading.
 void register_lza_command_file_commands();
 
 
