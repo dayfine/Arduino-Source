@@ -199,15 +199,8 @@ enum class LegNext{
     ARRIVED_EARLY,  //  through a warp at the leg's end (walk_route_to_warp())
     SCENE,          //  the next step's scene started (RouteWalkPlan::scene_next)
 };
-//  What stopped a walk on a tile the map has free. A person (someone who
-//  talked) may turn, talk again or walk off: no wall to stop against, so
-//  their tile is taken off our map rather than blocked (StoryWorld::uncover()),
-//  and no leg to a wall ends against them (lab-B 2026-11-12, 00.05c).
-enum class Blocker{
-    THING,
-    PERSON,
-};
-
+//  What stopped a walk where the map has nothing (see mark_blocker()).
+enum class Blocker{ THING, PERSON };
 //  How far past a leg's end a walk that ran on may have gone.
 constexpr size_t WARP_SLIDE_TILES = 2;
 
@@ -683,15 +676,11 @@ void RouteWalker::turn_tap(LegWalk& walk){
 }
 
 LegNext RouteWalker::blocked_open_leg(LegWalk& walk, size_t moved){
-    const Blocker blocker = talk_to_blocker(walk.label);
-    return mark_and_replan(walk, moved, blocker);
+    return mark_and_replan(walk, moved, talk_to_blocker(walk.label));
 }
 
-//  Someone in the way who talks as we tap on after the wait: the one who
-//  blocked us, not a trainer the map lacks. Fought as a trainer, they were
-//  walked into again on every replan (lab-B 2026-11-12, 00.05c: the Global
-//  Wonder Station's woman, three talks, then the step failed). Close the
-//  talk, mark their tile and plan again from where we stopped.
+//  Someone in the way who talks as we tap on after the wait is the one who
+//  blocked us, not a trainer the map lacks (lab-B 2026-11-12, 00.05c).
 LegNext RouteWalker::talking_blocker(LegWalk& walk, size_t moved){
     m_io.note(walk.label + ": someone in the way talked to us; going round them.", RouteNote::STATUS);
     m_trainers.fight("someone in the way");
@@ -885,29 +874,24 @@ LegNext RouteWalker::known_trainer(LegWalk& walk, const std::vector<std::vector<
 //  the side starts the battle this way. Whoever talks is a person.
 Blocker RouteWalker::talk_to_blocker(const std::string& leg_label){
     m_io.press(press_a(RouteInputEnd::QUEUED));
-    if (!m_io.dialog_within(2000ms, COLOR_YELLOW)){
-        return Blocker::THING;
+    if (m_io.dialog_within(2000ms, COLOR_YELLOW)){
+        m_io.note(leg_label + ": someone is in the way; talking to them.", RouteNote::STATUS);
+        m_trainers.fight("someone in the way");
+        return Blocker::PERSON;
     }
-    m_io.note(leg_label + ": someone is in the way; talking to them.", RouteNote::STATUS);
-    m_trainers.fight("someone in the way");
-    return Blocker::PERSON;
+    return Blocker::THING;
 }
 
-//  One tile we may stand on: what stopped us is on the next tile, and goes
-//  on our map.
+//  What stopped us on one tile is on the next; a person's comes off our map: no wall (00.05c).
 void RouteWalker::mark_blocker(const LegWalk& walk, const std::vector<TilePos>& stopped, Blocker blocker){
     if (stopped.size() != 1){
         return;
     }
     const TilePos pos = stopped[0].next(walk.planned.leg.direction);
-    if (blocker == Blocker::PERSON){
-        m_grid.uncover(pos);
-    }else{
-        m_grid.block(pos);
-    }
-    m_io.note("[Route] " + walk.label + ": " + (blocker == Blocker::PERSON ? "someone" : "something") +
-        " the map lacks is at " + describe(m_maps, pos) + "; marked it" +
-        (blocker == Blocker::PERSON ? " (no wall to stop against)." : "."), RouteNote::WARNING);
+    const bool person = blocker == Blocker::PERSON;
+    person ? m_grid.uncover(pos) : m_grid.block(pos);
+    m_io.note(std::format("[Route] {}: {} the map lacks is at {}; marked it{}", walk.label, person ? "someone" : "something",
+        describe(m_maps, pos), person ? " (no wall to stop against)." : "."), RouteNote::WARNING);
 }
 
 //  A walk that never moved from several possible tiles: whatever stopped it
