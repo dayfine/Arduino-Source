@@ -228,6 +228,8 @@ add_library(SerialProgramsLib STATIC ${CORE_LIBRARY_SOURCES} ${LIBRARY_SOURCES})
 
 # Data files built into the program (see cmake/EmbedTextFiles.cmake).
 include(cmake/EmbedTextFiles.cmake)
+pa_embed_text_files(SerialProgramsLib Source/VideoGames/PokemonLZA/Programs/AutoStory/ReferenceData
+    VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryPlatformArrivalDetector.h PokemonAutomation::NintendoSwitch::PokemonLZA autostory_reference_json)
 
 
 # Create binary target
