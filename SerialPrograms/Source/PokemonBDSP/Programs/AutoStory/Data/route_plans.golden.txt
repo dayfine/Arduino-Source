@@ -259,22 +259,22 @@ anchor); 0 from one start tile.
   5. east 12 (open) -> Jubilife City (45, 35)
   totals: 5 legs, 4 turns, 4 open, 0 localization
 
-== 00.05c to_the_route_203_street (costs: line)
+== 00.05c up_the_main_road (costs: line)
   from: JubilifeCity (45, 35) facing east (tile)
-  target: JubilifeCity (58, 22) facing east (tile)
+  target: JubilifeCity (53, 27) facing east (tile)
   start candidates: Jubilife City (45, 35)
-  1. north 9 (open) -> Jubilife City (45, 26)
-  2. east 14 (to wall) -> Jubilife City (59, 26)
-  3. west 1 (open) -> Jubilife City (58, 26)
-  4. north 4 (open) -> Jubilife City (58, 22)
-  totals: 4 legs, 3 turns, 3 open, 0 localization
+  1. north 8 (open) -> Jubilife City (45, 27)
+  2. east 11 (to wall) -> Jubilife City (56, 27)
+  3. west 3 (open) -> Jubilife City (53, 27)
+  totals: 3 legs, 2 turns, 2 open, 0 localization
 
 == 01.01 west_of_barrys_trigger (costs: town)
-  from: JubilifeCity (58, 22) facing east (tile)
+  from: JubilifeCity (59, 21) facing north (tile)
   target: Route203 (4, 18) facing east (tile)
-  start candidates: Jubilife City (58, 22)
-  1. east 9 (open) -> Route 203 (4, 18)
-  totals: 1 legs, 0 turns, 1 open, 0 localization
+  start candidates: Jubilife City (59, 21)
+  1. south 1 (open) -> Jubilife City (59, 22)
+  2. east 8 (open) -> Route 203 (4, 18)
+  totals: 2 legs, 1 turns, 2 open, 0 localization
 
 == 01.02 south_to_the_cliff (costs: route)
   from: Route203 (5, 17) (5, 18) (5, 19) (5, 20) facing east (set)

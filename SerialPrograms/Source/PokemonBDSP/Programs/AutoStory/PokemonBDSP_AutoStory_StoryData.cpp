@@ -61,6 +61,10 @@ void add_legs_actions(
     actions.push_back({.kind = Pokemon::StoryStepKind::LEGS, .name = "one_short_ok", .args = {legs_arg, fight_wild}});
     actions.push_back({.kind = Pokemon::StoryStepKind::LEGS, .name = "counted_wall", .args = {legs_arg, fight_wild},
         .console_only = false, .certainty = Pokemon::StoryCertainty{.needs = PoseCertainty::SET, .leaves = PoseEnd::DECLARED}});
+    //  Taps counted against the map from each tile we may be on: legs each
+    //  ended by a wall take every one of them to the declared end.
+    actions.push_back({.kind = Pokemon::StoryStepKind::LEGS, .name = "measured", .args = {legs_arg, fight_wild},
+        .console_only = false, .certainty = Pokemon::StoryCertainty{.needs = PoseCertainty::SET, .leaves = PoseEnd::DECLARED}});
 }
 
 //  The talks to someone who wanders: each walks in D-pad taps, a whole tile
