@@ -208,8 +208,13 @@ struct StalePlaceInput{
     std::string_view name;
     size_t map;
 };
+struct StalePlaceExpectation{
+    //  Whether reading the place throws InternalProgramError.
+    bool rejected = false;
+};
 struct StalePlaceCase{
     StalePlaceInput input;
+    StalePlaceExpectation expectation;
 };
 
 //  A place whose map index is past the loaded maps (from another world, or
@@ -223,21 +228,26 @@ public:
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         const ConnectedMaps world(test_maps());
         const MapPlace stale{m_scenario.input.map, {0, 0}};
+        bool rejected = false;
         try{
-            const std::optional<MapPlace> place = world.neighbour(stale, Direction::NORTH);
-            return std::format("Map {} of {} was read: got {}, expected an InternalProgramError.",
-                stale.map, world.size(), place ? to_string(place->tile) : "nowhere");
+            world.neighbour(stale, Direction::NORTH);
         }catch (const InternalProgramError&){
-            return true;
+            rejected = true;
         }
+        if (rejected != m_scenario.expectation.rejected){
+            return std::format("Map {} of {} was {}, expected it {}.", stale.map, world.size(),
+                rejected ? "rejected" : "read", m_scenario.expectation.rejected ? "rejected" : "read");
+        }
+        return true;
     }
 private:
     StalePlaceCase m_scenario;
 };
 
 const StalePlaceCase STALE_PLACE_CASES[] = {
-    {.input = {.name = "a map index one past the last is rejected", .map = 4}},
-    {.input = {.name = "a map index far past the last is rejected", .map = 1000}},
+    {.input = {.name = "the last map index is read", .map = 3}, .expectation = {.rejected = false}},
+    {.input = {.name = "a map index one past the last is rejected", .map = 4}, .expectation = {.rejected = true}},
+    {.input = {.name = "a map index far past the last is rejected", .map = 1000}, .expectation = {.rejected = true}},
 };
 
 
