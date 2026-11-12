@@ -7,6 +7,15 @@
     "start": {"map": "FuchsiaCity", "tiles": [[25, 32]], "facing": "south"},
     "events": [
       {
+        "id": "count_healing_items",
+        "kind": "game_action",
+        "action": "count_items",
+        "args": {
+          "items": ["potion", "super-potion"]
+        },
+        "why": "the Items pocket's Potions and Super Potions: the Fuchsia Mart buys only what they lack to heal a full HP bar before Koga"
+      },
+      {
         "id": "face_center_door",
         "kind": "route",
         "action": "run",
@@ -49,6 +58,45 @@
         "why": "from the nurse to the Center's wall west (0, 4) and up to the wall (0, 2): legs to walls, so the walk out starts from a known tile even if the Center script left the player a tile off the nurse"
       },
       {
+        "id": "fuchsia_mart_wall",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "FuchsiaCity_Mart", "tiles": [[4, 2]], "facing": "north"}
+        },
+        "why": "out of the Center, in at the Mart's door (11, 15) and up column 4 to the wall (4, 1)"
+      },
+      {
+        "id": "fuchsia_mart_clerk",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "FuchsiaCity_Mart", "tiles": [[4, 3]], "facing": "west"}
+        },
+        "why": "a tile back down, facing the clerk (2, 3) over the counter (3, 3)"
+      },
+      {
+        "id": "buy_super_potions",
+        "kind": "game_action",
+        "action": "mart",
+        "args": {
+          "map": "FuchsiaCity_Mart",
+          "budget": 2100,
+          "items": [{"item": "super-potion", "quantity": 3}],
+          "cover_hp": 122
+        },
+        "why": "Super Potions for what the bag's Potions and Super Potions lack to heal 122 HP, the lead's whole bar at Lv39 (3 with none): Kayden's and Kirk's damage is healed to full before Koga. Skipped when the bag covers it"
+      },
+      {
+        "id": "out_of_fuchsia_mart",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "FuchsiaCity", "tiles": [[11, 16]], "facing": "south"}
+        },
+        "why": "down to the mat and out of the door (11, 15)"
+      },
+      {
         "id": "gym_east_wall",
         "kind": "route",
         "action": "run",
@@ -86,6 +134,15 @@
         "why": "Juggler Kayden (TRAINER_JUGGLER_KAYDEN): Hypno Lv38"
       },
       {
+        "id": "heal_after_kayden",
+        "kind": "game_action",
+        "action": "heal_to_full",
+        "args": {
+          "max_hp": 122
+        },
+        "why": "Super Potions and Potions until the HP Kayden's fight left missing (from the battle's last HP bar) is healed: full HP into Koga"
+      },
+      {
         "id": "east_column_to_kirk",
         "kind": "legs",
         "action": "run",
@@ -112,6 +169,15 @@
         },
         "declared_after": {"map": "FuchsiaCity_Gym", "tiles": [[14, 11]], "facing": "north"},
         "why": "Juggler Kirk (TRAINER_JUGGLER_KIRK): Drowzee, Drowzee, Kadabra, Drowzee, all Lv31 (pokeguy: one Surf each, 1:15:14 to 1:16:17)"
+      },
+      {
+        "id": "heal_after_kirk",
+        "kind": "game_action",
+        "action": "heal_to_full",
+        "args": {
+          "max_hp": 122
+        },
+        "why": "Super Potions and Potions until the HP Kirk's fight left missing (from the battle's last HP bar) is healed: full HP into Koga"
       },
       {
         "id": "east_column_to_wall",
@@ -148,6 +214,15 @@
           "target": {"map": "FuchsiaCity_Gym", "tiles": [[6, 13]], "facing": "east"}
         },
         "why": "turn to Koga (7, 13): pokeguy approaches him from the west (1:16:33)"
+      },
+      {
+        "id": "check_full_hp",
+        "kind": "game_action",
+        "action": "check_full_hp",
+        "args": {
+          "max_hp": 122
+        },
+        "why": "Koga wants full HP (88.0% from full, 70.1% from pokeguy's 34/122): stop here, before 12.02's save, if any HP is missing or no battle measured the bar since the checkpoint loaded"
       }
     ]
   },
@@ -156,7 +231,8 @@
     "notes": {
       "checkpoint": [
         "Starts where 11.03's Fly lands, below Fuchsia's Center facing south, and goes in to the nurse (pokeguy bikes straight into the gym from there, 1:14:38; the Center heal is ours).",
-        "PokeGuy's way (1:14:38 to 1:16:33): into the gym, Surf taught over Water Gun, Juggler Kirk fought (forced), round the top edge, Koga from the west. He fights nobody else; this row also fights Juggler Kayden (Hypno Lv38), whose east line every way north crosses with no wall to end a leg on: the user's call (2026-11-12) is to fight him with the normal battle code rather than wait for him to face away. The battle's own recovery uses a Potion if his fight leaves the HP bar yellow or red.",
+        "PokeGuy's way (1:14:38 to 1:16:33): into the gym, Surf taught over Water Gun, Juggler Kirk fought (forced), round the top edge, Koga from the west. He fights nobody else; this row also fights Juggler Kayden (Hypno Lv38), whose east line every way north crosses with no wall to end a leg on: the user's call (2026-11-12) is to fight him with the normal battle code rather than wait for him to face away. After each of Kayden's and Kirk's fights, heal_to_full uses Super Potions and Potions until the HP missing from the battle's last HP bar (of 122 at Lv39, or the summary's maximum) is healed; check_full_hp stops the row west of Koga if any is missing.",
+        "The Fuchsia Mart (not in pokeguy's run: our healing for Kayden) buys Super Potions for what the bag's Potions and Super Potions, counted at the start, lack to heal 122 HP; it is skipped when they cover it.",
         "The gym (FuchsiaCity_Gym map.json), 15 x 23, no running, its invisible walls in the map: Koga (7, 13) in the middle box, entered only from row 12 on the west. Its trainers and lines: Kayden (12, 16) south and east 4, Shawn (2, 9) west 1, Kirk (11, 11) east 3, Edgar (13, 4) every way 2, Phil (4, 6) every way 2, Nate (2, 16) south 4. Every way north crosses Kirk's line and one of Kayden's and Edgar's; the legs across a looker's line end on walls.",
         "Ends west of Koga and saves there: his own pre-battle checkpoint (battle-checkpoint-retry), 12.02. Koga is a D7 fight: pokeguy entered at 34/122 HP and the PokemonSimulation benchmark wins 70.1% (64.5%-75.2%, 1700 trials) from that. Entered at full HP and PP it wins 88.0% (82.4%-92.3%, 840 trials; same C2 policy df4fece, seed 4), which holds for this row only if Kayden's damage is healed to full before Koga."
       ]

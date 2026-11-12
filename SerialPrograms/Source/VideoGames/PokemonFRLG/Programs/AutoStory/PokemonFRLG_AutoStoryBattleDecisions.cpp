@@ -10,6 +10,7 @@
 #include <iterator>
 #include <string>
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
+#include "PokemonFRLG_AutoStoryHealing.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -118,6 +119,7 @@ void healed_by_nurse(Supplies& supplies){
     supplies.hurt = false;
     supplies.hp_red = false;
     supplies.hp_fill = 1.0;
+    measured_hp(supplies, 1.0);
     supplies.status = StatusCondition::NONE;
     restore_pp(supplies.lead);
 }
@@ -185,6 +187,7 @@ TurnAction BattleDecisions::lead_turn(const PartyStatus& status){
     m_supplies.hurt = hurt;
     if (status.hp_seen){
         m_supplies.hp_fill = status.hp_fill;
+        measured_hp(m_supplies, status.hp_fill);
     }
     m_supplies.status = status.status;
     m_psn_reads = status.status == StatusCondition::POISON ? m_psn_reads + 1 : 0;

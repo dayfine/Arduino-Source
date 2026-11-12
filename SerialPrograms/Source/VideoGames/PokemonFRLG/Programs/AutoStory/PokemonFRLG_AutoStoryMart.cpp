@@ -496,6 +496,8 @@ void count_supplies(Supplies& supplies, std::string_view item, size_t quantity){
     int Supplies::* count = nullptr;
     if (item == "potion"){
         count = &Supplies::potions;
+    }else if (item == "super-potion"){
+        count = &Supplies::super_potions;
     }else if (item == "antidote"){
         count = &Supplies::antidotes;
     }else if (item == "parlyz-heal"){

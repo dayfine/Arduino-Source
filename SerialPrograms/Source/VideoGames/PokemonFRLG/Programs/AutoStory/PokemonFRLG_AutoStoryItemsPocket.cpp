@@ -19,6 +19,9 @@ static int Supplies::* count_member(const std::string& item){
     if (item == "potion"){
         return &Supplies::potions;
     }
+    if (item == "super-potion"){
+        return &Supplies::super_potions;
+    }
     if (item == "antidote"){
         return &Supplies::antidotes;
     }
@@ -86,6 +89,7 @@ int item_shown_row(const Supplies& supplies, int row){
 std::vector<std::string> set_from_bag(Supplies& supplies, const std::vector<BagRow>& rows){
     const Supplies before = supplies;
     supplies.potions = 0;
+    supplies.super_potions = 0;
     supplies.antidotes = 0;
     supplies.parlyz_heals = 0;
     supplies.awakenings = 0;
@@ -120,6 +124,7 @@ std::vector<std::string> set_from_loaded_bag(Supplies& supplies, Supplies& saved
     }
     std::vector<std::string> unread = set_from_bag(supplies, rows);
     saved.potions = supplies.potions;
+    saved.super_potions = supplies.super_potions;
     saved.antidotes = supplies.antidotes;
     saved.parlyz_heals = supplies.parlyz_heals;
     saved.awakenings = supplies.awakenings;

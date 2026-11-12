@@ -128,6 +128,8 @@ constexpr std::string_view MAP_NAMES[] = {
     "Route18",
     "Route18_EastEntrance_1F",
     "FuchsiaCity",
+    //  Fuchsia's Mart: Super Potions before Koga's gym (12.01).
+    "FuchsiaCity_Mart",
     //  The Safari Zone, pokeguy's way through it: its entrance, the
     //  center, east, north and west areas, and the Secret House (HM03).
     "FuchsiaCity_SafariZone_Entrance",

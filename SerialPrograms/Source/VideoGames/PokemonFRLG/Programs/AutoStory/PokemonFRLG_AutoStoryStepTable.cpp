@@ -11,6 +11,7 @@
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryGameArgs.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
+#include "PokemonFRLG_AutoStoryHealingSteps.h"
 #include "PokemonFRLG_AutoStoryHideout.h"
 #include "PokemonFRLG_AutoStoryItemUse.h"
 #include "PokemonFRLG_AutoStoryLegs.h"
@@ -122,6 +123,7 @@ Pokemon::StoryActionSpec mart_action_spec(){
         required_arg("budget", StoryArgType::INTEGER, "the most the step spends"),
         absent_arg("floor", StoryArgType::INTEGER, "the least money the player has here, when the money box can't be read"),
         required_arg("items", StoryArgType::ITEMS, "what to buy, in priority order"),
+        absent_arg("cover_hp", StoryArgType::INTEGER, "buy only the first line's shortfall for the bag's Potions and Super Potions to heal this much HP"),
     }};
 }
 
@@ -220,8 +222,8 @@ std::span<const Pokemon::StoryActionSpec> story_action_specs(){
         }){
             specs.push_back(std::move(spec));
         }
-        for (Pokemon::StoryActionSpec spec : field_action_specs()){
-            specs.push_back(std::move(spec));
+        for (const std::vector<Pokemon::StoryActionSpec>& more : {field_action_specs(), healing_action_specs()}){
+            specs.insert(specs.end(), more.begin(), more.end());
         }
         return specs;
     }();

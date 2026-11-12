@@ -25,6 +25,7 @@
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
 #include "PokemonFRLG_AutoStoryGameArgs.h"
+#include "PokemonFRLG_AutoStoryHealingSteps.h"
 #include "PokemonFRLG_AutoStoryHideout.h"
 #include "PokemonFRLG_AutoStoryLegs.h"
 #include "PokemonFRLG_AutoStoryScreenEvents.h"
@@ -578,7 +579,11 @@ std::optional<Outcome> run_abilities(StoryEnv& env, RunState& state, const Story
         }
         return Pokemon::outcome_unchanged();
     }
-    return run_ability_game_step(env.console.logger(), &env.console, step, abilities);
+    StoryStep covered = step;
+    if (const std::optional<Outcome> nothing_to_buy = cover_hp_in_mart(env.console.logger(), env.supplies, covered)){
+        return nothing_to_buy;
+    }
+    return run_ability_game_step(env.console.logger(), &env.console, covered, abilities);
 }
 
 //  CUT_TREE_VARIANT: the tree in the step's direction, cut, and a step
@@ -665,6 +670,9 @@ Outcome other_game_step(StoryEnv& env, RunState& state, const StoryStep& step){
     std::optional<Outcome> done = run_field_game_step(env.console, env.context, env.language, step);
     if (!done){
         done = run_storage_game_step(env.console.logger(), &env.console, step, capture, pc);
+    }
+    if (!done){
+        done = run_healing_step(env, step);
     }
     if (!done){
         done = run_abilities(env, state, step);
