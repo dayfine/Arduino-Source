@@ -33,7 +33,9 @@ std::optional<std::vector<RouteStep>> fixed_route(
 
 //  The one-tile walk a press of `direction` from `from` makes, if it takes
 //  a warp: an exit mat stood on, a door ahead going north, or a warp tile
-//  stepped onto. Its fade and the scene after it must then be confirmed
+//  stepped onto. It ends where the warp leaves the player, facing the way
+//  the game turns them (arrival_facing(), as the planner takes a warp). Its
+//  fade and the scene after it must then be confirmed
 //  (OverworldWalkSteps::wait_out_warp()), not taken as walked.
 std::optional<RouteStep> warp_press(const std::vector<MapData>& maps, const MapPosition& from, Direction direction);
 
