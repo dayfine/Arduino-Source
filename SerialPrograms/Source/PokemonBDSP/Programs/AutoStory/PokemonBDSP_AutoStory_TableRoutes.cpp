@@ -84,11 +84,19 @@ std::vector<TilePos> world_tiles(const StoryWorld& world, const Pokemon::Pose& p
 }
 
 RouteStepPlan plan_table_route(const TableRoute& route){
-    const StoryWorld& world = *route.world;
+    //  As walk_route() plans: the step's avoided tiles off the map, but
+    //  where it starts.
+    StoryWorld world = *route.world;
+    const std::vector<TilePos> from = world_tiles(world, *route.from);
+    for (const TilePos& pos : story_route_avoid(world, *route.step)){
+        if (std::find(from.begin(), from.end(), pos) == from.end()){
+            world.uncover(pos);
+        }
+    }
     const Pokemon::Pose target = Pokemon::pose_of(story_arg<Pokemon::GridPose>(route.step->args, "target"));
     const std::vector<TilePos> targets = world_tiles(world, target);
     const auto goal = [&](const TilePos& pos){ return std::find(targets.begin(), targets.end(), pos) != targets.end(); };
-    RouteStepPlan plan{.start = world_tiles(world, *route.from)};
+    RouteStepPlan plan{.start = from};
     const MoveSpeed speed = route.row > std::string(RUNNING_SHOES_ROW) ? MoveSpeed::RUN : MoveSpeed::WALK;
     plan.legs = plan_fastest_route({
         .world = world, .from = plan.start, .goal = goal, .costs = *story_route_costs(route.step->action), .speed = speed,

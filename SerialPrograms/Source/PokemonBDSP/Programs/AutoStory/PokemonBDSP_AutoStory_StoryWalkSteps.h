@@ -67,6 +67,12 @@ std::optional<Pokemon::Pose> measured_ends(const Pokemon::Pose& from, const Poke
 //  less those an earlier row fights, whom its save and every later one's
 //  keep beaten.
 std::vector<TrainerSight> row_trainers(const StoryWorld& world, const std::string& row);
+//  The world tiles a ROUTE step's "avoid" rows name on its target's map,
+//  [x, y] a tile and [x0, y0, x1, y1] a box: ground the maps leave open that
+//  the walk keeps off (BDSP's Global Wonder Station in Jubilife's plaza,
+//  which pret's Diamond map lacks). None without the arg. Throws
+//  InternalProgramError for a row of another length.
+std::vector<Pokemon::TilePos> story_route_avoid(const StoryWorld& world, const Pokemon::StoryStep& step);
 
 
 //  Executes walking and movement-related story steps via StoryStepIO.

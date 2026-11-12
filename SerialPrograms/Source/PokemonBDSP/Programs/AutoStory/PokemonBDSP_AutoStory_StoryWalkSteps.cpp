@@ -152,6 +152,26 @@ TappedEnd tapped_end(const StoryWorld& world, const std::string& map, const Tile
     return tapped;
 }
 
+std::vector<TilePos> story_route_avoid(const StoryWorld& world, const StoryStep& step){
+    if (!step.args.contains("avoid")){
+        return {};
+    }
+    const std::string& map = story_arg<GridPose>(step.args, "target").map;
+    std::vector<TilePos> tiles;
+    for (const std::vector<int64_t>& row : story_arg<std::vector<std::vector<int64_t>>>(step.args, "avoid")){
+        if (row.size() != 2 && row.size() != 4){
+            throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("{}: an avoid row is [x, y] or [x0, y0, x1, y1].", step.name));
+        }
+        const size_t last = row.size() - 2;
+        for (int64_t y = row[1]; y <= row[last + 1]; y++){
+            for (int64_t x = row[0]; x <= row[last]; x++){
+                tiles.push_back(story_to_world(world, map, {(int)x, (int)y}));
+            }
+        }
+    }
+    return tiles;
+}
+
 std::optional<Pose> measured_ends(const Pose& from, const StoryStep& step){
     const StoryWorld* world = story_plan_world(from.map, from.map);
     const auto& legs_list = story_arg<std::vector<Pokemon::StoryLeg>>(step.args, "legs");
@@ -235,7 +255,7 @@ Pose StoryWalkSteps::walk_to(const Pose& from, const Pose& goal, const StoryStep
     };
     const RouteWalkPlan plan{
         [&](const TilePos& pos){ return std::find(targets.begin(), targets.end(), pos) != targets.end(); },
-        label_of(step), {}, *costs, m_can_run ? MoveSpeed::RUN : MoveSpeed::WALK, m_scene_next.contains(step.name),
+        label_of(step), story_route_avoid(*maps, step), *costs, m_can_run ? MoveSpeed::RUN : MoveSpeed::WALK, m_scene_next.contains(step.name),
         step.action == ROUTE_ONTO_TRIGGER,
     };
     RouteEnd end = walk_route_to_warp(m_route, *maps, start, trainers, plan);
