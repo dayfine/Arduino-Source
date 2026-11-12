@@ -127,24 +127,24 @@ StoryStep make_step(StoryStepKind kind, std::string action, StoryActionArgs args
 
 
 
-//  A step checked and, when it lints clean, dispatched on a backend that
-//  shows talk text once, then the overworld.
-struct RegistryInput{
-    std::string_view name;
-    StoryStep step;
-};
-
-//  The lint errors joined by "; ", then (for a clean step) the failure and
-//  the inputs sent.
-struct RegistryExpectation{
-    std::string_view lint = {};
-    std::string_view failure = {};
-    std::string_view inputs = {};
-};
-
 struct RegistryCase{
-    RegistryInput input;
-    RegistryExpectation expectation;
+    //  A step checked and, when it lints clean, dispatched on a backend that
+    //  shows talk text once, then the overworld.
+    struct Input{
+        std::string_view name;
+        StoryStep step;
+    };
+
+    //  The lint errors joined by "; ", then (for a clean step) the failure and
+    //  the inputs sent.
+    struct Expectation{
+        std::string_view lint = {};
+        std::string_view failure = {};
+        std::string_view inputs = {};
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 const RegistryCase REGISTRY_CASES[] = {
@@ -208,26 +208,26 @@ private:
 
 
 
-//  One step, read from JSON, run by the step runner on a backend that
-//  shows the overworld, with `flags` set and the "door_open" reader
-//  reading `door_open`.
-struct RunnerInput{
-    std::string_view name;
-    std::string_view step;
-    std::vector<std::string> flags = {};
-    std::optional<int> door_open = std::nullopt;
-};
-
-//  The failure, a line the run logged and the map of the outcome's pose.
-struct RunnerExpectation{
-    std::string_view failure = {};
-    std::string_view line = {};
-    std::string_view pose_map = {};
-};
-
 struct RunnerCase{
-    RunnerInput input;
-    RunnerExpectation expectation;
+    //  One step, read from JSON, run by the step runner on a backend that
+    //  shows the overworld, with `flags` set and the "door_open" reader
+    //  reading `door_open`.
+    struct Input{
+        std::string_view name;
+        std::string_view step;
+        std::vector<std::string> flags = {};
+        std::optional<int> door_open = std::nullopt;
+    };
+
+    //  The failure, a line the run logged and the map of the outcome's pose.
+    struct Expectation{
+        std::string_view failure = {};
+        std::string_view line = {};
+        std::string_view pose_map = {};
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 const RunnerCase RUNNER_CASES[] = {
@@ -283,20 +283,20 @@ private:
 
 
 
-//  take_warp north to B3F, from B4F, on a scripted game.
-struct WarpInput{
-    std::string_view name;
-    std::vector<Observation<GridPose>> looks;
-};
-
-//  How take_warp ended: "" for arrived.
-struct WarpExpectation{
-    std::string_view failure = {};
-};
-
 struct WarpCase{
-    WarpInput input;
-    WarpExpectation expectation;
+    //  take_warp north to B3F, from B4F, on a scripted game.
+    struct Input{
+        std::string_view name;
+        std::vector<Observation<GridPose>> looks;
+    };
+
+    //  How take_warp ended: "" for arrived.
+    struct Expectation{
+        std::string_view failure = {};
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 const WarpCase WARP_CASES[] = {
