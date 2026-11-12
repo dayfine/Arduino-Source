@@ -77,13 +77,6 @@ bool is_door(const StoryWorld& world, const TilePos& pos){
 //  there. North and south keep their measured 240 ms.
 constexpr Milliseconds SIM_WALK_MS_PER_TILE_ACROSS = Milliseconds(200);
 
-Milliseconds per_tile(Direction direction, SimPace pace, bool can_run){
-    if (pace == SimPace::RUN && can_run){
-        return route_ms_per_tile(direction, MoveSpeed::RUN);
-    }
-    return std::max(route_ms_per_tile(direction, MoveSpeed::WALK), SIM_WALK_MS_PER_TILE_ACROSS);
-}
-
 uint32_t step_rng(uint64_t& state){
     state = state * 6364136223846793005ULL + 1442695040888963407ULL;
     return static_cast<uint32_t>(state >> 32);
@@ -342,8 +335,15 @@ SimMove GridSim::tap(Direction direction, Milliseconds hold, bool stick){
     return move;
 }
 
+Milliseconds sim_ms_per_tile(Direction direction, SimPace pace, bool can_run){
+    if (pace == SimPace::RUN && can_run){
+        return route_ms_per_tile(direction, MoveSpeed::RUN);
+    }
+    return std::max(route_ms_per_tile(direction, MoveSpeed::WALK), SIM_WALK_MS_PER_TILE_ACROSS);
+}
+
 SimMove GridSim::hold(Direction direction, Milliseconds limit, SimPace pace){
-    const Milliseconds tile_time = per_tile(direction, pace, m_player.can_run);
+    const Milliseconds tile_time = sim_ms_per_tile(direction, pace, m_player.can_run);
     const int64_t tiles = limit < ROUTE_START_DELAY ? 0 : (limit - ROUTE_START_DELAY) / tile_time;
     int moved = 0;
     SimStop stop = SimStop::LIMIT;
