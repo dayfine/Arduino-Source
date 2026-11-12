@@ -29,7 +29,7 @@ constexpr std::string_view STORY_ITEM_OCR = R"JSON({
 "fra": {
     "potion": ["Potion"], "antidote": ["Antidote"], "paralyze-heal": ["Anti-Para"],
     "awakening": ["Réveil"], "poke-ball": ["Poké Ball"], "repel": ["Repousse"],
-    "super-repel": ["Superepousse"], "max-repel": ["Max Repousse"], "escape-rope": ["Corde Sortie"]
+    "super-repel": ["Super Repousse"], "max-repel": ["Repousse Max"], "escape-rope": ["Corde Sortie"]
 },
 "deu": {
     "potion": ["Trank"], "antidote": ["Gegengift"], "paralyze-heal": ["Para-Heiler"],
@@ -39,12 +39,12 @@ constexpr std::string_view STORY_ITEM_OCR = R"JSON({
 "spa": {
     "potion": ["Poción"], "antidote": ["Antídoto"], "paralyze-heal": ["Antiparalizador"],
     "awakening": ["Despertar"], "poke-ball": ["Poké Ball", "Poke Ball"], "repel": ["Repelente"],
-    "super-repel": ["Superrepelente"], "max-repel": ["Máximo Repelente"], "escape-rope": ["Cuerda Huida"]
+    "super-repel": ["Superrepelente"], "max-repel": ["Repelente Máximo"], "escape-rope": ["Cuerda Huida"]
 },
 "ita": {
     "potion": ["Pozione"], "antidote": ["Antidoto"], "paralyze-heal": ["Antiparalisi"],
     "awakening": ["Sveglia"], "poke-ball": ["Poké Ball"], "repel": ["Repellente"],
-    "super-repel": ["Superrepellente"], "max-repel": ["Repellente Max"], "escape-rope": ["Fune di Fuga"]
+    "super-repel": ["Superrepellente"], "max-repel": ["Repellente Max"], "escape-rope": ["Fune di fuga"]
 },
 "jpn": {
     "potion": ["キズぐすり"], "antidote": ["どくけし"], "paralyze-heal": ["まひなおし"],
