@@ -42,6 +42,39 @@ std::optional<std::string> not_faster(std::string_view faster_name, const Gait& 
     return std::nullopt;
 }
 
+//  Why the turn tap would step on foot in `gait`, if it would: a turn tap
+//  must be shorter than the gait's step tap.
+std::optional<std::string> turn_steps(std::string_view gait_name, const Gait& gait, Milliseconds turn_tap){
+    if (turn_tap >= gait.tap.hold){
+        return std::format("The turn tap ({} ms) is not shorter than the {} step tap ({} ms).",
+            turn_tap.count(), gait_name, gait.tap.hold.count());
+    }
+    return std::nullopt;
+}
+
+//  Why a gait's step tap is unusable, if it is: both its press and its
+//  release must take time.
+std::optional<std::string> empty_tap(std::string_view gait_name, const Gait& gait){
+    if (gait.tap.hold <= Milliseconds(0) || gait.tap.release <= Milliseconds(0)){
+        return std::format("The {} step tap is {} ms pressed, {} ms released; both must be over 0.",
+            gait_name, gait.tap.hold.count(), gait.tap.release.count());
+    }
+    return std::nullopt;
+}
+
+std::string_view open_leg_press_name(OpenLegPress press){
+    return press == OpenLegPress::STEP_TAPS ? "step taps" : "a timed hold";
+}
+
+//  Why `gait` presses its open legs other than `expected`, if it does.
+std::optional<std::string> wrong_open_legs(std::string_view gait_name, const Gait& gait, OpenLegPress expected){
+    if (gait.open_legs != expected){
+        return std::format("Open legs {} are pressed as {}, expected {}.",
+            gait_name, open_leg_press_name(gait.open_legs), open_leg_press_name(expected));
+    }
+    return std::nullopt;
+}
+
 class Test_MoveMechanics : public UnitTest{
 public:
     explicit Test_MoveMechanics(MoveMechanicsCase scenario)
@@ -49,21 +82,22 @@ public:
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         const MoveMechanics& game = m_scenario.input.mechanics;
-        if (game.turn_tap >= game.step_tap){
-            return std::format("The turn tap ({} ms) is not shorter than the step tap ({} ms).",
-                game.turn_tap.count(), game.step_tap.count());
-        }
-        if (std::optional<std::string> slower = not_faster("running", game.run, "walking", game.walk)){
-            return *slower;
-        }
-        if (game.bike){
-            if (std::optional<std::string> slower = not_faster("the bike", *game.bike, "running", game.run)){
-                return *slower;
-            }
-        }
         const OpenLegPress expected = m_scenario.expectation.open_legs_on_foot;
-        if (game.walk.open_legs != expected || game.run.open_legs != expected){
-            return "Open legs on foot are not pressed the way the game's walker presses them.";
+        const std::optional<std::string> failures[] = {
+            empty_tap("walking", game.walk),
+            empty_tap("running", game.run),
+            game.bike ? empty_tap("bike", *game.bike) : std::nullopt,
+            turn_steps("walking", game.walk, game.turn_tap),
+            turn_steps("running", game.run, game.turn_tap),
+            not_faster("running", game.run, "walking", game.walk),
+            game.bike ? not_faster("the bike", *game.bike, "running", game.run) : std::nullopt,
+            wrong_open_legs("walking", game.walk, expected),
+            wrong_open_legs("running", game.run, expected),
+        };
+        for (const std::optional<std::string>& failure : failures){
+            if (failure){
+                return *failure;
+            }
         }
         return true;
     }
