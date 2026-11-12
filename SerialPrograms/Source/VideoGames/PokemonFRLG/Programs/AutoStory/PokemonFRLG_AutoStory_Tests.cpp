@@ -41,6 +41,7 @@
 #include "PokemonFRLG_AutoStoryPlanGolden14.h"
 #include "PokemonFRLG_AutoStoryPlanGolden15.h"
 #include "PokemonFRLG_AutoStoryRows_Tests.h"
+#include "PokemonFRLG_AutoStoryUnauthoredStarts_Tests.h"
 #include "PokemonFRLG_AutoStoryMoveData.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
 #include "PokemonFRLG_AutoStoryTable.h"
