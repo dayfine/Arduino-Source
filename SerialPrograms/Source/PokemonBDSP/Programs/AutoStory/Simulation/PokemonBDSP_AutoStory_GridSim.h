@@ -178,6 +178,9 @@ enum class SimPace{
     WALK,
     RUN,    //  B held: a run once the player has the Running Shoes
 };
+//  A held walk's time per tile `direction` at `pace`, for a player who
+//  can run or not: GridSim::hold()'s pace.
+Milliseconds sim_ms_per_tile(Pokemon::Direction direction, SimPace pace, bool can_run);
 
 //  Simulates grid-based player movement and collisions in BDSP.
 class GridSim{
