@@ -84,11 +84,17 @@ std::vector<TilePos> clown_starts(const TilePos& player){
     return starts;
 }
 
+//  Whether the clown walks his box or stays where he starts.
+enum class ClownMoves{
+    WANDERS,
+    STAYS,
+};
+
 //  The wait from `start` with the clown starting on `clown`, his walk
-//  seeded by `seed`; with `stays`, he never steps.
-WanderWaitResult run_wait(const StoryWorld& world, const TilePos& start, const TilePos& clown, uint64_t seed, const WanderWaitPlan& plan, bool stays = false){
+//  seeded by `seed`.
+WanderWaitResult run_wait(const StoryWorld& world, const TilePos& start, const TilePos& clown, uint64_t seed, const WanderWaitPlan& plan, ClownMoves moves){
     SimWanderer wanderer{.name = "clown_mart", .box = jubilife_mart_clown_box(), .pos = clown, .seed = seed};
-    if (stays){
+    if (moves == ClownMoves::STAYS){
         wanderer.step_interval = Milliseconds(0);
     }
     GridSim sim({.world = &world, .wanderers = {wanderer}}, start, Direction::NORTH, false);
@@ -115,7 +121,7 @@ UnitTestResult test_mart_clown_reached_from_column_56(Logger& logger){
         for (const TilePos& clown : clown_starts(start)){
             for (uint64_t seed = 1; seed <= SEEDS; seed++){
                 runs++;
-                const WanderWaitResult result = run_wait(world, start, clown, seed, plan);
+                const WanderWaitResult result = run_wait(world, start, clown, seed, plan, ClownMoves::WANDERS);
                 if (result.end != WanderWaitEnd::TALKED || result.at != plan.exit){
                     out += std::format("\n  {} with the clown on {}, seed {}: ended {} on {}.", row,
                         Pokemon::to_string(clown), seed, (int)result.end, Pokemon::to_string(result.at));
@@ -138,7 +144,7 @@ UnitTestResult test_mart_clown_reached_when_he_stays(Logger& logger){
         const WanderWaitPlan plan = wander_wait_plan(story_step(row, "mart_clown"));
         for (const TilePos& clown : clown_starts(start)){
             runs++;
-            const WanderWaitResult result = run_wait(world, start, clown, 1, plan, true);
+            const WanderWaitResult result = run_wait(world, start, clown, 1, plan, ClownMoves::STAYS);
             if (result.end != WanderWaitEnd::TALKED || result.at != plan.exit){
                 out += std::format("\n  {} with the clown staying on {}: ended {} on {}.", row,
                     Pokemon::to_string(clown), (int)result.end, Pokemon::to_string(result.at));
@@ -202,7 +208,7 @@ size_t talks_from(const StoryWorld& world, const TilePos& stand, const WanderWai
     size_t talks = 0;
     for (const TilePos& clown : clown_starts(stand)){
         for (uint64_t seed = 1; seed <= SEEDS; seed++){
-            talks += run_wait(world, stand, clown, seed, plan).end == WanderWaitEnd::TALKED ? 1 : 0;
+            talks += run_wait(world, stand, clown, seed, plan, ClownMoves::WANDERS).end == WanderWaitEnd::TALKED ? 1 : 0;
         }
     }
     return talks;

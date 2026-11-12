@@ -121,6 +121,25 @@ bool walk_out(WanderWaitBody& body, TilePos& at, const WanderWaitPlan& plan){
     return walk_to(body, at, plan.exit, plan, plan.blocked_tries, nullptr);
 }
 
+//  Walks `side`'s stands the plan's passes, asking from each, until the
+//  talk counts (`talked`, on `at`). False if a step stayed blocked.
+bool wait_at_side(WanderWaitBody& body, TilePos& at, const WanderWaitPlan& plan, const WanderWaitSide& side, bool& talked){
+    for (size_t pass = 0; pass < plan.passes; pass++){
+        for (const TilePos& stand : side.stands){
+            if (!walk_to(body, at, stand, plan, plan.blocked_tries, &talked)){
+                return false;
+            }
+            if (!talked){
+                talked = ask_from_stand(body, plan, side.facing);
+            }
+            if (talked){
+                return true;
+            }
+        }
+    }
+    return true;
+}
+
 } // namespace
 
 
@@ -129,18 +148,10 @@ WanderWaitResult wait_beside_wanderer(WanderWaitBody& body, TilePos at, const Wa
     TilePos talked_at = at;
     for (size_t round = 0; round < plan.rounds && !talked; round++){
         for (size_t s = 0; s < plan.sides.size() && !talked; s++){
-            const WanderWaitSide& side = plan.sides[s];
-            for (size_t pass = 0; pass < plan.passes && !talked; pass++){
-                for (size_t i = 0; i < side.stands.size() && !talked; i++){
-                    if (!walk_to(body, at, side.stands[i], plan, plan.blocked_tries, &talked)){
-                        return {.end = WanderWaitEnd::STUCK, .at = at, .talked = at};
-                    }
-                    if (!talked){
-                        talked = ask_from_stand(body, plan, side.facing);
-                    }
-                    talked_at = at;
-                }
+            if (!wait_at_side(body, at, plan, plan.sides[s], talked)){
+                return {.end = WanderWaitEnd::STUCK, .at = at, .talked = at};
             }
+            talked_at = at;
         }
     }
     if (!talked){
