@@ -382,6 +382,51 @@ UnitTestResult test_b2f_maze_taps(){
     return true;
 }
 
+//  Console B, 2026-11-11 17:51, 09.02 run 7: Giovanni's battle ended,
+//  his script went on (a message, then black while he is taken away) and
+//  east_of_silph_scope's first tap, 0.4 s after the battle's text, was
+//  lost: "facing an unknown way", then failed. On the sim with his scene:
+//  Giovanni sees the player onto (19, 5) (the sim has no talk), then
+//  09.02's giovanni and east_of_silph_scope steps end east of the SILPH
+//  SCOPE (21, 5).
+UnitTestResult test_giovanni_scene_then_taps(){
+    const MapPosition below_giovanni{"RocketHideout_B4F", {19, 5}};
+    std::vector<MapData> maps = story_maps();
+    for (MapData& map : maps){
+        for (MapObject& object : map.objects){
+            if (map.name == below_giovanni.map && object.x == 19 && object.y == 4){
+                object.trainer = Pokemon::MapTrainer{.sight = 1, .looks = {Direction::SOUTH}};
+            }
+        }
+    }
+    SimScript script;
+    script.scene_after_trainer_battle = Milliseconds(2000);
+    OverworldSim sim(maps, {below_giovanni.map, {18, 5}}, Direction::EAST, script);
+    sim.tap(Direction::EAST, MovementMechanics::STEP_TAP, MovementMechanics::STEP_TAP_RELEASE);
+    if (!sim.watch({SimWatcher::MESSAGE}, Milliseconds(5000))){
+        return "Giovanni didn't see the player onto " + to_string(below_giovanni) + ".";
+    }
+    StoryPose at{below_giovanni.map, below_giovanni.point, Direction::NORTH};
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        if (row.id != "09.02"){
+            continue;
+        }
+        for (const StoryStep& step : row.steps){
+            if (step.name != "giovanni" && step.name != "east_of_silph_scope"){
+                continue;
+            }
+            if (const std::string failure = row_step_on_sim(sim, at, step, row.id); !failure.empty()){
+                return step.name + ": " + failure;
+            }
+        }
+    }
+    const MapPosition east_of_scope{below_giovanni.map, {21, 5}};
+    if (!(sim.state().position == east_of_scope)){
+        return "After Giovanni, walked to " + to_string(sim.state().position) + ", not " + to_string(east_of_scope) + ".";
+    }
+    return true;
+}
+
 //  Console B, 2026-11-11 01:05: 09.02's below_left_guard was planned from
 //  the lift door (20, 23), but the door lets the player out a tile south,
 //  on (20, 24). Every leg ran a row low: "west 4" ended on (16, 25), the
@@ -551,6 +596,10 @@ const AutoStoryHideoutBodyCase HIDEOUT_BODY_CASES[] = {
     {
         .input = {.name = "B4F's left Grunt from the lift's exit", .body = test_b4f_left_guard_from_below_lift_door},
         .expectation = {.description = "09.02's legs from (20, 24) end below the left Grunt"},
+    },
+    {
+        .input = {.name = "Giovanni's scene after his battle, then the taps", .body = test_giovanni_scene_then_taps},
+        .expectation = {.description = "09.02's first tap after Giovanni waits out his script; ends on (21, 5)"},
     },
     {
         .input = {.name = "below B2F's lift: the wall, then one leg back", .body = test_below_lift_one_backtrack},

@@ -660,6 +660,12 @@ SimBattleEnd OverworldSim::handle_battle(SimBattleChoice choice){
     m_frozen = false;
     m_battle_pending = false;
     m_battle_lockout_end = m_now + m_script.timing.battle_exit_lockout;
+    if (m_trainer && m_script.scene_after_trainer_battle){
+        show(SimScreen::FADE, m_now);
+        m_frozen = true;
+        schedule(m_now + *m_script.scene_after_trainer_battle, SimScreen::OVERWORLD, true);
+        m_battle_lockout_end += *m_script.scene_after_trainer_battle;
+    }
     if (m_trainer){
         MapObject& trainer = m_maps[m_map].objects[*m_trainer];
         trainer.trainer.reset();
