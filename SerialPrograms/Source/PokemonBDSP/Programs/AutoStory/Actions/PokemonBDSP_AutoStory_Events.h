@@ -24,8 +24,10 @@
 
 #include <functional>
 #include <map>
+#include <optional>
 #include <string>
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryExecutor.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkResult.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -56,6 +58,13 @@ void add_jubilife_events(StoryEvents& events);
 void add_oreburgh_events(StoryEvents& events);
 //  Populates Route 204-area story event handlers.
 void add_route204_events(StoryEvents& events);
+
+//  A one-tile step along the row below a wanderer (00.05b's clowns), `east`
+//  +1 or -1, from its walk: the tiles it moved east (0 when he or a wall
+//  blocked it), or none when it left the row: through a door, into a
+//  dialogue. 00.05c (2026-11-11): a step's fade went unread and the search
+//  went on indoors, so the next checkpoint saved in the Poketch Company.
+std::optional<int> wander_row_step(const WalkResult& result, int east);
 
 
 

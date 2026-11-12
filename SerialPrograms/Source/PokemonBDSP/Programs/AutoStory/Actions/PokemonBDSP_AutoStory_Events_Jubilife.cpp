@@ -50,10 +50,16 @@ bool ask_north(VideoStream& stream, ProControllerContext& context){
     }
     return false;
 }
-//  One tile along the row, east (+1) or west (-1).
-void step_along(VideoStream& stream, ProControllerContext& context, int east, const std::string& label){
+//  One tile along the row, east (+1) or west (-1). Returns the tiles moved
+//  east; fails the step when the walk left the row (wander_row_step()).
+int step_along(VideoStream& stream, ProControllerContext& context, int east, const std::string& label){
     route_turn(stream, context, east > 0 ? Direction::EAST : Direction::WEST);
-    walk_tiles_dpad(stream, context, run_from_wild_battle, {east > 0 ? 1.0 : -1.0, 0}, 1, label);
+    const WalkResult result = walk_tiles_dpad(stream, context, run_from_wild_battle, {east > 0 ? 1.0 : -1.0, 0}, 1, label);
+    const std::optional<int> moved = wander_row_step(result, east);
+    if (!moved){
+        fail_step(stream, std::format("{}: {} instead of a step along the row.", label, walk_stop_name(result.stop)));
+    }
+    return *moved;
 }
 Pokemon::Outcome talk_to_wanderer(StoryExecutor& executor, Pokemon::RunState&, const Pokemon::StoryStep& step){
     VideoStream& stream = executor.stream();
@@ -65,16 +71,18 @@ Pokemon::Outcome talk_to_wanderer(StoryExecutor& executor, Pokemon::RunState&, c
     for (size_t round = 0; round < 6; round++){
         for (int move : moves){
             if (move != 0){
-                step_along(stream, context, move, label);
-                at += move;
+                at += step_along(stream, context, move, label);
             }
             if (!ask_north(stream, context)){
                 continue;
             }
             stream.log(std::format("[Talk] {}: answered in round {}, {} tiles east of home.", step.name, round + 1, at));
             finish_dialogue(stream, context, BUTTON_A, step.name);
-            for (; at != 0; at += at > 0 ? -1 : 1){
-                step_along(stream, context, at > 0 ? -1 : 1, "Back below " + step.name + "'s home");
+            for (size_t tries = 0; at != 0 && tries < 4; tries++){
+                at += step_along(stream, context, at > 0 ? -1 : 1, "Back below " + step.name + "'s home");
+            }
+            if (at != 0){
+                fail_step(stream, std::format("{}: still {} tiles east of his home after 4 steps back.", step.name, at));
             }
             route_turn(stream, context, Direction::NORTH);
             return Pokemon::outcome_ok();
@@ -85,6 +93,16 @@ Pokemon::Outcome talk_to_wanderer(StoryExecutor& executor, Pokemon::RunState&, c
 
 } // namespace
 
+
+std::optional<int> wander_row_step(const WalkResult& result, int east){
+    switch (result.stop){
+    case WalkStop::TRANSITION:
+    case WalkStop::DIALOG:
+        return std::nullopt;
+    default:
+        return result.moved_chunks > 0 ? east : 0;
+    }
+}
 
 void add_jubilife_events(StoryEvents& events){
     events.emplace("talk_to_wanderer", talk_to_wanderer);

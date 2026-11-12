@@ -10,6 +10,7 @@
  */
 
 #include <chrono>
+#include <format>
 #include <functional>
 #include <optional>
 #include <string>
@@ -28,6 +29,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_StoryLanguage.h"
 #include "PokemonBDSP_AutoStory_BattleMoves.h"
 #include "PokemonBDSP_AutoStory_Center.h"
+#include "PokemonBDSP_AutoStory_Events.h"
 #include "PokemonBDSP_AutoStory_IntroProbe.h"
 #include "PokemonBDSP_AutoStory_IntroSteps.h"
 #include "PokemonBDSP_AutoStory_LitDoorway.h"
@@ -635,6 +637,31 @@ UnitTestResult test_options_french(Logger& logger){
 //  no name read, Piplup's Pound at 35 PP and Growl at 22 PP, and the old
 //  "newest move that is not a status move" fallback used Growl until the
 //  training gave up after 25 turns.
+//  A step along the row below the clown: a fade or a dialogue left the row
+//  and fails the talk (00.05c, 2026-11-11: the step's fade was ignored and
+//  the search went on in the Poketch Company's lobby); a step that moved
+//  nothing counts no tile.
+UnitTestResult test_wander_row_step(Logger&){
+    struct Case{ std::string_view name; WalkStop stop; size_t moved; int east; std::optional<int> expected; };
+    const Case cases[] = {
+        {"east step moved", WalkStop::LIMIT, 1, 1, 1},
+        {"west step moved", WalkStop::LIMIT, 1, -1, -1},
+        {"west step blocked by him", WalkStop::LIMIT, 0, -1, 0},
+        {"east step into a wall", WalkStop::BLOCKED, 0, 1, 0},
+        {"east step through a door", WalkStop::TRANSITION, 0, 1, std::nullopt},
+        {"west step into a dialogue", WalkStop::DIALOG, 0, -1, std::nullopt},
+    };
+    for (const Case& c : cases){
+        WalkResult result{};
+        result.stop = c.stop;
+        result.moved_chunks = c.moved;
+        if (wander_row_step(result, c.east) != c.expected){
+            return std::format("{}: wrong step.", c.name);
+        }
+    }
+    return true;
+}
+
 UnitTestResult test_choose_move(Logger&){
     struct Case{ std::string_view name; std::vector<MoveSlot> slots; size_t best; };
     const Case cases[] = {
@@ -798,6 +825,10 @@ const AutoStoryActionsCase AUTO_STORY_ACTIONS_CASES[] = {
     },
     {
         .input = {"battle moves: the pick from names and PP", test_choose_move},
+        .expectation = {},
+    },
+    {
+        .input = {"wanderer talk: a step along the row leaves it only by a fade or a dialogue", test_wander_row_step},
         .expectation = {},
     },
     {
