@@ -270,7 +270,8 @@ public:
     RouteEnd run(std::vector<TilePos> from);
 
 private:
-    std::vector<PlannedLeg> plan_legs(bool first) const;
+    std::optional<std::vector<PlannedLeg>> plan_legs(bool first) const;
+    bool find_again();
     LegNext walk_leg(const PlannedLeg& planned, size_t number, size_t count);
     std::vector<TilePos> arrive() const;
 
@@ -306,6 +307,7 @@ private:
     bool heard_out_a_talk(const std::string& leg_label);
     LegNext replan_after_talk(const LegWalk& walk, std::vector<TilePos> stopped);
     std::vector<TilePos> talk_stop_tiles(const LegWalk& walk, size_t walked_tiles) const;
+    std::vector<TilePos> open_leg_talk_tiles(const LegWalk& walk) const;
     LegNext replan_from(const LegWalk& walk, std::vector<TilePos> stopped, const std::string& why);
     void mark_blocker(const LegWalk& walk, const std::vector<TilePos>& stopped, Blocker blocker);
     void mark_tiles_past(const LegWalk& walk, const std::vector<TilePos>& stopped);
@@ -339,7 +341,14 @@ RouteEnd RouteWalker::run(std::vector<TilePos> from){
     m_from = std::move(from);
     m_map_start = map_of(m_maps, m_from);
     for (size_t plans = 0; plans < 8; plans++){
-        const std::vector<PlannedLeg> legs = plan_legs(plans == 0);
+        const std::optional<std::vector<PlannedLeg>> planned = plan_legs(plans == 0);
+        if (!planned){
+            if (!find_again()){
+                fail(m_io, m_plan.label + ": no plan from " + describe(m_maps, m_from) + ".");
+            }
+            continue;
+        }
+        const std::vector<PlannedLeg>& legs = *planned;
         m_io.note(m_plan.label + ": " + std::to_string(legs.size()) + " legs planned", RouteNote::STATUS);
         log_plan(m_io, m_maps, m_plan.label, m_from, legs);
         LegNext next = LegNext::NEXT_LEG;
@@ -353,7 +362,7 @@ RouteEnd RouteWalker::run(std::vector<TilePos> from){
     fail(m_io, m_plan.label + ": too many plans.");
 }
 
-std::vector<PlannedLeg> RouteWalker::plan_legs(bool first) const{
+std::optional<std::vector<PlannedLeg>> RouteWalker::plan_legs(bool first) const{
     std::optional<std::vector<PlannedLeg>> legs = plan_walk({m_grid, m_from, m_plan.goal, m_plan.costs, m_plan.speed, {}, m_plan.goal_is_trigger}, first);
     if (!legs){
         //  From a few possible tiles the exact-open-leg costs found no
@@ -370,10 +379,56 @@ std::vector<PlannedLeg> RouteWalker::plan_legs(bool first) const{
             legs = plan_recovered_route(m_maps, m_from, m_plan.goal, RobustPlanCosts());
         }
     }
-    if (!legs){
-        fail(m_io, m_plan.label + ": no plan from " + describe(m_maps, m_from) + ".");
+    return legs;
+}
+
+//  From tiles no plan brings to one wall (a talk on the plaza's open legs
+//  spread us over two columns, lab-B 2026-11-12 07:44, 00.05c run 8): hold
+//  toward a wall each of them stops at, the way whose walls tiles the time
+//  cannot tell apart share, and keep the walls whose distance the time
+//  walked fits. Returns whether there was such a way.
+bool RouteWalker::find_again(){
+    constexpr size_t SLACK = 2;
+    for (const Direction direction : {Direction::SOUTH, Direction::NORTH, Direction::EAST, Direction::WEST}){
+        std::vector<WallHit> hits;
+        size_t farthest = 0;
+        for (const TilePos& pos : m_from){
+            hits.push_back(slide_to_wall(m_grid, pos, direction));
+            farthest = std::max(farthest, hits.back().tiles);
+        }
+        const bool apart = std::all_of(hits.begin(), hits.end(), [&](const WallHit& a){
+            return std::all_of(hits.begin(), hits.end(), [&](const WallHit& b){
+                return a.stop == b.stop || a.tiles > b.tiles + SLACK || b.tiles > a.tiles + SLACK;
+            });
+        });
+        if (!apart || farthest == 0){
+            continue;
+        }
+        const TileLeg leg{.direction = direction, .tiles = farthest, .ends_at_wall = true, .held = false};
+        const std::string label = m_plan.label + ": " + to_string(leg) + " to find us again";
+        const WalkResult walk = m_io.walk_to_wall({.direction = direction, .limit = wall_limit(leg), .label = label,
+            .options = {.arrived = nullptr, .pace = DpadPace::RUN}});
+        if (walk.stop != WalkStop::BLOCKED && walk.stop != WalkStop::LIMIT){
+            fail(m_io, label + ": " + walk_stop_name(walk.stop) + " instead of a wall.");
+        }
+        const size_t walked = tiles_moved(walk, route_ms_per_tile(direction, m_plan.speed));
+        std::vector<TilePos> found;
+        for (const WallHit& hit : hits){
+            if (hit.tiles + SLACK >= walked && walked + SLACK >= hit.tiles){
+                found.push_back(hit.stop);
+            }
+        }
+        if (found.empty()){
+            for (const WallHit& hit : hits){
+                found.push_back(hit.stop);
+            }
+        }
+        m_from = sorted_unique(std::move(found));
+        m_facing = direction;
+        m_io.note(std::format("{}{}", ROUTE_LOG_TAG, route_found_line(m_plan.label, route_tiles(m_maps, m_from), 1)), RouteNote::WARNING);
+        return true;
     }
-    return std::move(*legs);
+    return false;
 }
 
 LegNext RouteWalker::walk_leg(const PlannedLeg& planned, size_t number, size_t count){
@@ -946,6 +1001,9 @@ LegNext RouteWalker::unknown_trainer(LegWalk& walk, const std::vector<std::vecto
     m_io.note(m_plan.label + ": a trainer the map lacks stopped us; fighting.", RouteNote::STATUS);
     const bool battled = m_trainers.fight("unknown trainer");
     if (heard_out_a_talk(walk.label) || !battled){
+        if (!walk.planned.leg.ends_at_wall && anywhere.size() > 1){
+            anywhere = open_leg_talk_tiles(walk);
+        }
         return replan_after_talk(walk, std::move(anywhere));
     }
     if (walk.planned.leg.ends_at_wall){
@@ -1054,6 +1112,19 @@ std::vector<TilePos> RouteWalker::talk_stop_tiles(const LegWalk& walk, size_t wa
         stopped.insert(stopped.end(), path.begin() + (first == 0 ? 0 : first - 1), path.end());
     }
     return stopped;
+}
+
+//  Where a talk no battle followed stopped a tapped leg whose taps were not
+//  counted: any tile from where it began to where it ends, none past it. A
+//  talk freezes us where we stand and the taps after it move nobody; unlike
+//  a trainer's, it has no walk over to wait out (after_leg()'s extra tile).
+std::vector<TilePos> RouteWalker::open_leg_talk_tiles(const LegWalk& walk) const{
+    std::vector<TilePos> stopped = m_from;
+    for (const TilePos& pos : m_from){
+        const std::vector<TilePos> path = leg_path(m_grid, pos, walk.planned.leg.direction, walk.planned.leg.tiles);
+        stopped.insert(stopped.end(), path.begin(), path.end());
+    }
+    return sorted_unique(std::move(stopped));
 }
 
 //  After a talk no battle followed, from the tiles it may have stopped us

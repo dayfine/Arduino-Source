@@ -523,10 +523,143 @@ const TalkerCase TALKER_SIM_CASES[] = {
     {.input = {.name = "ends in the fight, and she stands on the leg (lab-B, 2026-11-12 06:12)", .presses = 1, .stands = true}, .expectation = {.arrives = true}},
 };
 
+//  The plaza's greeter on an open leg, as lab-B saw her (2026-11-12 07:44,
+//  00.05c below_the_company_clown, run 8): her talk stopped "south 5 (open)"
+//  from (46, 27) with no tap counted, so the stop could be any tile of the
+//  leg, (46, 27) to (46, 33); the walk planned from all seven, and her next
+//  talk, a tap later, spread it over two columns, from which no plan was
+//  found. Here her talk starts on each of `talks` tiles in turn (map tiles),
+//  and the console's count of taps before a talk is lost (UncountedTalkIO).
+struct OpenLegTalkInput{
+    std::string name;
+    std::vector<TilePos> talks;
+};
+struct OpenLegTalkExpectation{
+    bool arrives;
+};
+struct OpenLegTalkCase{
+    OpenLegTalkInput input;
+    OpenLegTalkExpectation expectation;
+};
+
+//  Taps a talk stopped count none moved, as on lab-B (run 8).
+class UncountedTalkIO : public RouteIO{
+public:
+    explicit UncountedTalkIO(RouteIO& io)
+        : m_io(io)
+    {}
+    virtual WalkResult walk_to_wall(const RouteWallWalk& walk) override{
+        return m_io.walk_to_wall(walk);
+    }
+    virtual WalkResult walk_taps(Direction direction, size_t tiles, const std::string& label) override{
+        WalkResult result = m_io.walk_taps(direction, tiles, label);
+        if (result.stop == WalkStop::DIALOG){
+            result.moved_chunks = 0;
+        }
+        return result;
+    }
+    virtual void press(const RouteInput& input) override{
+        m_io.press(input);
+    }
+    virtual bool dialog_within(Milliseconds wait, Color color) override{
+        return m_io.dialog_within(wait, color);
+    }
+    virtual bool holding_against_wall(Direction direction, const std::string& label) override{
+        return m_io.holding_against_wall(direction, label);
+    }
+    virtual void look(const std::function<void(const ImageViewRGB32& screen)>& at) override{
+        m_io.look(at);
+    }
+    virtual void note(const std::string& text, RouteNote kind) override{
+        m_io.note(text, kind);
+    }
+
+private:
+    RouteIO& m_io;
+};
+
+//  Where the walk from (46, 27) past the greeter's talks went wrong, or "".
+std::string walk_open_leg_talks(Logger& logger, const OpenLegTalkInput& input){
+    const StoryStep* step = nullptr;
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        for (const StoryStep& s : row.steps){
+            step = row.id == "00.05c" && s.name == "below_the_company_clown" ? &s : step;
+        }
+    }
+    const StoryWorld* world = story_plan_world("JubilifeCity", "JubilifeCity");
+    if (step == nullptr || world == nullptr){
+        return "00.05c below_the_company_clown: not in the table, or no JubilifeCity world.";
+    }
+    const TilePos start = story_to_world(*world, "JubilifeCity", {46, 27});
+    const TilePos target = story_to_world(*world, "JubilifeCity", {15, 19});
+    GridSim sim({.world = world, .trainers = {}, .triggers = {}}, start, Direction::SOUTH, true);
+    size_t talks = 0;
+    const auto arm = [&](){
+        if (talks < input.talks.size()){
+            sim_add_trigger(sim, {.name = std::format("the greeter {}", talks),
+                .tiles = {story_to_world(*world, "JubilifeCity", input.talks[talks])}, .spends = {}});
+        }
+    };
+    arm();
+    std::vector<std::string> notes;
+    GridSimRouteIO sim_io(sim, notes);
+    UncountedTalkIO io(sim_io);
+    RouteTrainers trainers{{}, [&](const std::string&){
+        sim.end_dialogue();
+        talks++;
+        arm();
+        return false;
+    }};
+    std::vector<TilePos> believed;
+    std::string error;
+    try{
+        believed = walk_route(io, *world, {start}, trainers, {.goal = [&](const TilePos& pos){ return pos == target; },
+            .label = "below the company clown", .avoid = story_route_tiles(*world, *step, "avoid"), .costs = *story_route_costs("town"),
+            .speed = MoveSpeed::RUN, .scene_next = false, .goal_is_trigger = false, .greeter = story_route_tiles(*world, *step, "greeter")});
+    }catch (const GridSimFailure& e){
+        error = std::format("failed after {} talk(s): {}", talks, e.message);
+    }
+    for (const std::string& note : notes){
+        logger.log(note);
+    }
+    if (!error.empty()){
+        return error;
+    }
+    const TilePos at = nearest_tile(sim.player().pos);
+    const bool arrived = believed == std::vector<TilePos>{target} && at == target && talks == input.talks.size();
+    return arrived ? "" : std::format("ended on {} after {} talk(s), not on {}.", describe(*world, at), talks, describe(*world, target));
+}
+
+class Test_OpenLegTalkSim : public UnitTest{
+public:
+    explicit Test_OpenLegTalkSim(OpenLegTalkCase test_case)
+        : UnitTest("PokemonBDSP::AutoStory - Grid sim: 00.05c, the greeter's talk on an open leg " + test_case.input.name)
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        const std::string error = walk_open_leg_talks(logger, m_case.input);
+        if (error.empty() != m_case.expectation.arrives){
+            return error.empty() ? "arrived" : error;
+        }
+        return true;
+    }
+
+private:
+    OpenLegTalkCase m_case;
+};
+
+const OpenLegTalkCase OPEN_LEG_TALK_SIM_CASES[] = {
+    {.input = {.name = "with no tap counted", .talks = {{46, 29}}}, .expectation = {.arrives = true}},
+    {.input = {.name = "with no tap counted, then again a tap on (lab-B, 2026-11-12 07:44)", .talks = {{46, 29}, {47, 29}}}, .expectation = {.arrives = true}},
+};
+
 } // namespace
 
 
 void add_tests_AutoStory_WallBattleSim(UnitTestDatabase& database){
+    for (const OpenLegTalkCase& item : OPEN_LEG_TALK_SIM_CASES){
+        database.add<Test_OpenLegTalkSim>(item);
+    }
     for (const TalkerCase& item : TALKER_SIM_CASES){
         database.add<Test_TalkerSim>(item);
     }
