@@ -117,6 +117,7 @@ struct WallHit{
     size_t tiles = 0;
     bool held = false;
 };
+//  Walks `direction` from `from` until the player is stopped.
 template <typename Model>
 WallHit<typename Model::State> slide_to_wall(const Model& model, const typename Model::State& from, Direction direction){
     WallHit<typename Model::State> hit{from};
@@ -141,6 +142,7 @@ struct Stepped{
     int wander = 0;
     bool along_wander = false;
 };
+//  Steps `from` up to `tiles` tiles `direction` (see Stepped).
 template <typename Model>
 std::optional<Stepped<typename Model::State>> step_tiles(const Model& model, typename Model::State from, Direction direction, int tiles){
     Stepped<typename Model::State> stepped{from};
@@ -168,12 +170,14 @@ std::optional<Stepped<typename Model::State>> step_tiles(const Model& model, typ
     return stepped;
 }
 
+//  Sorts a spread and drops repeated places, so equal sets compare equal.
 template <typename Model>
 void normalize(std::vector<typename Model::State>& spread){
     using State = typename Model::State;
     std::sort(spread.begin(), spread.end(), typename Model::StateLess());
     spread.erase(std::unique(spread.begin(), spread.end(), [](const State& a, const State& b){ return a == b; }), spread.end());
 }
+//  Orders spreads, for keeping them in a map.
 template <typename Model>
 struct SpreadLess{
     bool operator()(const std::vector<typename Model::State>& a, const std::vector<typename Model::State>& b) const{
