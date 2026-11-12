@@ -45,8 +45,9 @@ struct SlopeEnv{
 };
 
 //  On the console, a SLOPE_VARIANT or COUNT_ITEMS_VARIANT step; nothing for
-//  another step. A Biker who catches the player on the slope is fought;
-//  the step then fails, as where the battle left the player is unknown.
+//  another step. A Biker who catches the player on the slope is fought,
+//  and the ride goes on from the stop the slope then pulls them to, where
+//  slope_resume_move() knows it; elsewhere the step fails.
 std::optional<Pokemon::Outcome> run_slope_step(SlopeEnv& env, const Pokemon::StoryStep& step);
 
 

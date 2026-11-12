@@ -131,18 +131,29 @@ public:
         }
     }
 
-    SlopeSent send(const std::vector<SlopePress>& presses, bool message){
-        for (const SlopePress& press : presses){
+    SlopeSendResult send(const std::vector<SlopePress>& presses, bool message){
+        for (size_t c = 0; c < presses.size(); c++){
+            const SlopePress& press = presses[c];
             if (press.dpad){
                 move(*press.dpad);
             }else if (!press.b){
                 roll(press.hold);
             }
+            if (m_caught){
+                m_caught = false;
+                return SlopeSendResult{.sent = SlopeSent::BATTLE, .press = c};
+            }
             if (press.a && message && face_item()){
-                return SlopeSent::MESSAGE;
+                return SlopeSendResult{.sent = SlopeSent::MESSAGE};
             }
         }
-        return SlopeSent::ALL;
+        return SlopeSendResult{};
+    }
+
+    //  A Biker catches the player the first time they come onto (x, y):
+    //  the presses stop there, as the battle's start cuts the batch short.
+    void catch_on(int x, int y){
+        m_catch = std::pair<int, int>{x, y};
     }
 
     int x() const{ return m_x; }
@@ -172,11 +183,15 @@ private:
         m_x = x;
         m_y = y;
         check_sight();
+        if (m_catch == std::pair<int, int>{m_x, m_y}){
+            m_catch.reset();
+            m_caught = true;
+        }
         return true;
     }
     //  B released on the slope: a tile south each ROLL_TILE.
     void roll(Milliseconds hold){
-        for (Milliseconds t(0); t + SlopeMechanics::ROLL_TILE <= hold && slope(m_x, m_y); t += SlopeMechanics::ROLL_TILE){
+        for (Milliseconds t(0); t + SlopeMechanics::ROLL_TILE <= hold && slope(m_x, m_y) && !m_caught; t += SlopeMechanics::ROLL_TILE){
             if (!move(Direction::SOUTH)){
                 break;
             }
@@ -209,6 +224,8 @@ private:
     std::vector<Biker> m_bikers;
     std::set<std::pair<int, int>> m_biker_tiles;
     std::vector<std::string> m_seen;
+    std::optional<std::pair<int, int>> m_catch;
+    bool m_caught = false;
 };
 
 const StoryCheckpoint& checkpoint(std::string_view id){
@@ -230,6 +247,7 @@ const StoryStep* slope_step(const StoryCheckpoint& row){
 SlopeResult ride_on_model(SlopeModel& model, const std::vector<SlopeMove>& moves){
     const SlopeCalls calls{
         .send = [&model](const std::vector<SlopePress>& presses, bool message){ return model.send(presses, message); },
+        .fight = []{ return true; },
         .log = [](const std::string&){},
     };
     return ride_slope(moves, calls);
@@ -299,6 +317,43 @@ UnitTestResult test_search_misses(){
     return true;
 }
 
+//  A Biker who catches the player on (x, y) is fought, and the ride goes
+//  on from the stop the slope pulls them to (user, 2026-11-12: "if a
+//  Biker catches us, fight"): caught rolling down column 14 or on Route
+//  18's last steps south, it still finds both items and ends on Route
+//  18's (12, 10).
+UnitTestResult check_caught_and_done(int x, int y){
+    SlopeModel model(14, -1);
+    model.catch_on(x, y);
+    const SlopeResult result = ride_on_model(model, *parse_slope_step(*slope_step(checkpoint("11.02"))));
+    if (result.end != SlopeEnd::DONE || result.found != std::vector<std::string>{"rare-candy", "max-elixir"}){
+        return std::format("Caught on ({}, {}): ended {} at move {}, at ({}, {}), {} item(s) found.", x, y, int(result.end), result.move + 1, model.x(), model.y(), result.found.size());
+    }
+    if (model.x() != 12 || model.y() != ROUTE18_ROW + 10){
+        return std::format("Caught on ({}, {}): ended at ({}, {}), not Route 18's (12, 10).", x, y, model.x(), model.y());
+    }
+    return true;
+}
+UnitTestResult test_caught_rolling(){
+    return check_caught_and_done(14, 10);
+}
+UnitTestResult test_caught_on_route18(){
+    return check_caught_and_done(12, ROUTE18_ROW + 5);
+}
+
+//  Caught part-way along a step east, the column the slope then pulls the
+//  player down is not known: the ride stops at that move (move 3, "step
+//  east 3"), never guessing.
+UnitTestResult test_caught_stepping_east(){
+    SlopeModel model(14, -1);
+    model.catch_on(16, 29);
+    const SlopeResult result = ride_on_model(model, *parse_slope_step(*slope_step(checkpoint("11.02"))));
+    if (result.end != SlopeEnd::BATTLE || result.move != 2){
+        return std::format("Caught on (16, 29): ended {} at move {}, expected a battle at move 3.", int(result.end), result.move + 1);
+    }
+    return true;
+}
+
 UnitTestResult test_parse(){
     if (parse_slope_move("step east") || parse_slope_move("roll 0") || parse_slope_move("search south 3")
         || parse_slope_move("jump 2") || !parse_slope_move("search south 3 rare-candy")
@@ -359,6 +414,9 @@ void add_tests_AutoStorySlope(UnitTestDatabase& database){
     database.add<Test_AutoStorySlope>("11.02 down the Cycling Road's slope with both items", test_slope_moves);
     database.add<Test_AutoStorySlope>("11.02 a queue gap while braking rolls the player", test_gap_rolls);
     database.add<Test_AutoStorySlope>("11.02 a brake past the RARE CANDY fails the search", test_search_misses);
+    database.add<Test_AutoStorySlope>("11.02 caught rolling down column 14, fought, on to both items", test_caught_rolling);
+    database.add<Test_AutoStorySlope>("11.02 caught on Route 18's last steps, fought, on to the water", test_caught_on_route18);
+    database.add<Test_AutoStorySlope>("11.02 caught part-way along a step east, the ride stops", test_caught_stepping_east);
     database.add<Test_AutoStorySlope>("11.02 slope moves parse", test_parse);
     database.add<Test_AutoStorySlope>("11.02 Route 16 to the slope, Route 18 to the Safari Zone", test_routes);
 }

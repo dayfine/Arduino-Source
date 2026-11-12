@@ -121,19 +121,42 @@ enum class SlopeSent{
     MESSAGE,
     BATTLE,
 };
+//  What `send` of SlopeCalls reports.
+struct SlopeSendResult{
+    SlopeSent sent = SlopeSent::ALL;
+    //  BATTLE: the press under way when it started, from 0.
+    size_t press = 0;
+};
 //  The console side of ride_slope(): `send` sends `presses` back to back,
-//  watching for a message only when `message` is set, and for a battle.
+//  watching for a message only when `message` is set, and for a battle;
+//  `fight` fights a battle that cut a batch short, back to the overworld,
+//  and tells whether it was won.
 struct SlopeCalls{
-    std::function<SlopeSent(const std::vector<SlopePress>& presses, bool message)> send;
+    std::function<SlopeSendResult(const std::vector<SlopePress>& presses, bool message)> send;
+    std::function<bool()> fight;
     std::function<void(const std::string& message)> log;
 };
+
+//  The most battles one ride goes on from.
+inline constexpr size_t SLOPE_MAX_BATTLES = 3;
+//  After a battle that cut `moves[move]` short ("if a Biker catches us,
+//  fight", user 2026-11-12): the ROLL to go on from, which pulls the player
+//  down the column they were caught in to a stop the moves know. Only
+//  STEP south moves may come between the two, which keep the column: on
+//  to the next ROLL, or, with only those left, back to the last one
+//  (rolled again past its stop, the player stays where they are, and the
+//  steps south after it end at the same water). Nothing if a step east or
+//  west, a brake or a search comes first: the column or the row is not
+//  known, and the ride stops.
+std::optional<size_t> slope_resume_move(const std::vector<SlopeMove>& moves, size_t move);
 
 enum class SlopeEnd{
     DONE,
     //  A search's taps all went with no message: the item isn't where the
     //  moves before it left the player.
     NOT_FOUND,
-    //  A battle cut the presses short; where it left the player is unknown.
+    //  A battle cut the presses short where slope_resume_move() can't
+    //  find the player again, was lost, or came after SLOPE_MAX_BATTLES.
     BATTLE,
 };
 struct SlopeResult{
@@ -144,7 +167,8 @@ struct SlopeResult{
     size_t move = 0;
 };
 //  Rides `moves`: the presses up to and including each search in one
-//  batch, and from its message on with the next.
+//  batch, and from its message on with the next. After a battle, fights it
+//  and goes on from slope_resume_move().
 SlopeResult ride_slope(const std::vector<SlopeMove>& moves, const SlopeCalls& calls);
 
 

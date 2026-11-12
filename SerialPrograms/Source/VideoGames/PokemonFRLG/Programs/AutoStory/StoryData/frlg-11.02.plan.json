@@ -14,13 +14,25 @@
         "why": "the Items pocket's counts before the slope, on flat ground: the items found on it are confirmed against them on Route 18"
       },
       {
-        "id": "top_of_cycling_road",
+        "id": "east_of_bikers",
         "kind": "route",
         "action": "bike",
         "args": {
-          "target": {"map": "Route16", "tiles": [[14, 19]], "facing": "south"}
+          "target": {"map": "Route16", "tiles": [[17, 13]], "facing": "west"}
         },
-        "why": "west through the Cycling Road gate (27, 13) to (20, 13), on the Bicycle (both gates keep a rider on it), past the six Bikers (LOOK_AROUND, sight 1: no way past out of every one's sight; one that sees the player is fought) and down to the slope's top, above Route 17's column 14"
+        "why": "west through the Cycling Road gate (27, 13) to (20, 13), on the Bicycle (both gates keep a rider on it), and on to (17, 13), east of the six Bikers' sight"
+      },
+      {
+        "id": "top_of_cycling_road",
+        "kind": "legs",
+        "action": "bike",
+        "args": {
+          "legs": [
+            {"direction": "west", "tiles": 1}, {"direction": "west", "tiles": 1}, {"direction": "west", "tiles": 1}, {"direction": "west", "tiles": 1},
+            {"direction": "south", "tiles": 1}, {"direction": "south", "tiles": 1}, {"direction": "south", "tiles": 4}, {"direction": "east", "tiles": 1}
+          ]
+        },
+        "why": "the six Bikers (LOOK_AROUND, sight 1) leave no way past out of every one's sight, so each leg that may be seen is one tile, the trainer seeing the player on its end, where the walk goes on from after the battle: along row 13 through Lao's (16, 13) and Hideki's (14, 13) to (13, 13), down column 13 through Hideki's (13, 14) to (13, 15), down to (13, 19) and east to the wall (14, 19), above Route 17's column 14 (pokeguy's way down: no Biker fought by choice)"
       },
       {
         "id": "down_the_slope",
@@ -56,13 +68,22 @@
         "why": "each one more than before the slope: both items were found"
       },
       {
+        "id": "route18_west_wall",
+        "kind": "legs",
+        "action": "bike",
+        "args": {
+          "legs": [{"direction": "north", "tiles": 1}, {"direction": "west", "tiles": 4}, {"direction": "south", "tiles": 1}]
+        },
+        "why": "the slope's count of taps leaves the player on (12, 10) only if every tap moved a tile: up a tile, west to the wall (8, 9) and down to the water (8, 10) find them from a tile either way, before the gate's door (41, 9) needs the row"
+      },
+      {
         "id": "safari_zone_door",
         "kind": "route",
         "action": "bike",
         "args": {
           "target": {"map": "FuchsiaCity", "tiles": [[24, 6]], "facing": "north"}
         },
-        "why": "east along Route 18 through its gate (Route18_EastEntrance_1F) into Fuchsia City and up to below the Safari Zone's door (24, 5); pokeguy goes straight there, no Center"
+        "why": "east along Route 18 through its gate (Route18_EastEntrance_1F) into Fuchsia City and up to below the Safari Zone's door (24, 5); pokeguy goes straight there, no Center. Without Cut, Fuchsia's east side is the only way from Route 18 to the door: the Cut trees (24, 22) and (21, 13) close the middle (pokefirered FuchsiaCity map.json), and pokeguy's 31 s from the MAX ELIXIR to the Safari Zone's menu (1:12:53 to 1:13:24) fit a ride round the east side better than two Cuts"
       }
     ]
   },

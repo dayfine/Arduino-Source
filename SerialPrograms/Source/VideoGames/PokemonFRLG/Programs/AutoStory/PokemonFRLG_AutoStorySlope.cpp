@@ -170,25 +170,77 @@ std::vector<SlopePress> close_message_presses(){
     return presses;
 }
 
+namespace{
+
+//  A move that keeps the player's column: a step south.
+bool keeps_column(const SlopeMove& move){
+    return move.kind == SlopeMoveKind::STEP && move.direction == Pokemon::Direction::SOUTH;
+}
+
+//  The move a batch's `press` falls in: `ends` holds, for each move of the
+//  batch from `first`, the press after its last.
+size_t move_at_press(const std::vector<size_t>& ends, size_t first, size_t press){
+    for (size_t c = 0; c < ends.size(); c++){
+        if (press < ends[c]){
+            return first + c;
+        }
+    }
+    return first + ends.size() - 1;
+}
+
+} // namespace
+
+std::optional<size_t> slope_resume_move(const std::vector<SlopeMove>& moves, size_t move){
+    size_t next = move;
+    while (next < moves.size() && keeps_column(moves[next])){
+        next++;
+    }
+    if (next < moves.size()){
+        return moves[next].kind == SlopeMoveKind::ROLL ? std::optional<size_t>(next) : std::nullopt;
+    }
+    for (size_t back = move; back-- > 0;){
+        if (moves[back].kind == SlopeMoveKind::ROLL){
+            return back;
+        }
+        if (!keeps_column(moves[back])){
+            return std::nullopt;
+        }
+    }
+    return std::nullopt;
+}
+
 SlopeResult ride_slope(const std::vector<SlopeMove>& moves, const SlopeCalls& calls){
     SlopeResult result;
     std::vector<SlopePress> batch;
+    std::vector<size_t> ends;
     size_t first = 0;
-    for (size_t m = 0; m < moves.size(); m++){
+    size_t battles = 0;
+    for (size_t m = first; m < moves.size(); m++){
         const std::vector<SlopePress> presses = slope_move_presses(moves[m]);
         batch.insert(batch.end(), presses.begin(), presses.end());
+        ends.push_back(batch.size());
         const bool search = moves[m].kind == SlopeMoveKind::SEARCH;
         if (!search && m + 1 < moves.size()){
             continue;
         }
         calls.log(std::format("Slope: moves {} to {}, {} presses.", first + 1, m + 1, batch.size()));
-        const SlopeSent sent = calls.send(batch, search);
+        const SlopeSendResult sent = calls.send(batch, search);
+        const size_t under_way = move_at_press(ends, first, sent.press);
         batch.clear();
+        ends.clear();
         first = m + 1;
-        if (sent == SlopeSent::BATTLE){
-            return SlopeResult{.end = SlopeEnd::BATTLE, .found = result.found, .move = m};
+        if (sent.sent == SlopeSent::BATTLE){
+            const bool won = calls.fight();
+            const std::optional<size_t> resume = slope_resume_move(moves, under_way);
+            if (!won || !resume || ++battles > SLOPE_MAX_BATTLES){
+                return SlopeResult{.end = SlopeEnd::BATTLE, .found = result.found, .move = under_way};
+            }
+            calls.log(std::format("Slope: a battle in move {}; on from move {}, rolled to its stop.", under_way + 1, *resume + 1));
+            first = *resume;
+            m = first - 1;
+            continue;
         }
-        if (search && sent != SlopeSent::MESSAGE){
+        if (search && sent.sent != SlopeSent::MESSAGE){
             return SlopeResult{.end = SlopeEnd::NOT_FOUND, .found = result.found, .move = m};
         }
         if (search){

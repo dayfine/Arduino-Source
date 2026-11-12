@@ -42,15 +42,29 @@ Button slope_buttons(const SlopePress& press){
     return buttons;
 }
 
+//  The press under way `elapsed` after the first of `presses` began.
+size_t press_at(const std::vector<SlopePress>& presses, Milliseconds elapsed){
+    Milliseconds end(0);
+    for (size_t c = 0; c < presses.size(); c++){
+        end += presses[c].hold;
+        if (elapsed < end){
+            return c;
+        }
+    }
+    return presses.empty() ? 0 : presses.size() - 1;
+}
+
 //  Sends `presses` back to back, one batch with no wait between, watching
-//  for a battle and, if `message`, for a message.
-SlopeSent send_slope_presses(SlopeEnv& env, const std::vector<SlopePress>& presses, bool message){
+//  for a battle and, if `message`, for a message. A battle's press is the
+//  one under way by the time since the batch began.
+SlopeSendResult send_slope_presses(SlopeEnv& env, const std::vector<SlopePress>& presses, bool message){
     WhiteDialogWatcher opened(COLOR_RED);
     BattleScreenWatcher battle(COLOR_RED);
     std::vector<PeriodicInferenceCallback> watchers{battle};
     if (message){
         watchers.push_back(opened);
     }
+    const WallClock start = current_time();
     const int seen = run_until<ProControllerContext>(
         env.console, env.context,
         [&presses](ProControllerContext& context){
@@ -62,9 +76,10 @@ SlopeSent send_slope_presses(SlopeEnv& env, const std::vector<SlopePress>& press
         watchers
     );
     if (seen == 0){
-        return SlopeSent::BATTLE;
+        const Milliseconds elapsed = std::chrono::duration_cast<Milliseconds>(current_time() - start);
+        return SlopeSendResult{.sent = SlopeSent::BATTLE, .press = press_at(presses, elapsed)};
     }
-    return seen == 1 ? SlopeSent::MESSAGE : SlopeSent::ALL;
+    return SlopeSendResult{.sent = seen == 1 ? SlopeSent::MESSAGE : SlopeSent::ALL};
 }
 
 std::string slope_end_name(SlopeEnd end){
@@ -81,14 +96,15 @@ Pokemon::Outcome ride(SlopeEnv& env, const StoryStep& step, const std::vector<Sl
         .send = [&env](const std::vector<SlopePress>& presses, bool message){
             return send_slope_presses(env, presses, message);
         },
+        .fight = [&env]{
+            env.console.log("Slope: a Biker's battle; fighting it.", COLOR_ORANGE);
+            const BattleEnd end = fight_battle(env.console, env.context, env.supplies, BattleKind::TRAINER, env.checks, env.language);
+            mash_until_overworld(env.console, env.context, SLOPE_BATTLE_EXIT);
+            return end == BattleEnd::WON;
+        },
         .log = [&env](const std::string& text){ env.console.log(text); },
     };
     const SlopeResult result = ride_slope(moves, calls);
-    if (result.end == SlopeEnd::BATTLE){
-        env.console.log("Slope: a Biker's battle; fighting it.", COLOR_ORANGE);
-        fight_battle(env.console, env.context, env.supplies, BattleKind::TRAINER, env.checks, env.language);
-        mash_until_overworld(env.console, env.context, SLOPE_BATTLE_EXIT);
-    }
     if (result.end != SlopeEnd::DONE){
         return Pokemon::outcome_failed("slope_" + slope_end_name(result.end), std::format("move {}", result.move + 1));
     }
