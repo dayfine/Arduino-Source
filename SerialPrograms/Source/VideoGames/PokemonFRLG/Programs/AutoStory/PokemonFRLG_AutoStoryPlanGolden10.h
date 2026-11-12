@@ -136,9 +136,7 @@ inline constexpr std::string_view FRLG_PLAN_GOLDEN_10[] = {
     "10.06   walk north 5 -> PokemonTower_7F (11, 11) [walk only] [wild]",
     "10.06 below_fuji from PokemonTower_7F (11, 6) facing north to PokemonTower_7F (11, 5) facing north",
     "10.06   walk north 1 -> PokemonTower_7F (11, 5) [walk only] [wild]",
-    "10.06 below_fuji_house from LavenderTown_VolunteerPokemonHouse (4, 7) facing north to LavenderTown_VolunteerPokemonHouse (3, 4) facing north",
-    "10.06   walk north 3 -> LavenderTown_VolunteerPokemonHouse (4, 4) [walk only]",
-    "10.06   walk west 1 -> LavenderTown_VolunteerPokemonHouse (3, 4) [walk only]",
+    "10.06 facing_fuji from LavenderTown_VolunteerPokemonHouse (3, 4) facing west to LavenderTown_VolunteerPokemonHouse (3, 4) facing north",
     "10.06   face north -> LavenderTown_VolunteerPokemonHouse (3, 4) [walk only]",
 };
 
