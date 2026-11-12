@@ -142,6 +142,13 @@ BDSPAutoStory::BDSPAutoStory()
         LockMode::LOCK_WHILE_RUNNING,
         StarterChoice::CHIMCHAR
     )
+    , STOP_FOR_STARTER_RNG(
+        "<b>Stop for Starter RNG:</b><br>Off by default. At the end of 00.01, save at the Verity Lakefront (17, 14) "
+        "facing Lake Verity's entrance and stop, where the Starter RNG program starts (Start point: Verity Lakefront). "
+        "After Starter RNG, let Rowan's scene finish out of the lake, save at the Verity Lakefront, and start AutoStory at 00.03.",
+        LockMode::LOCK_WHILE_RUNNING,
+        false
+    )
     , NOTIFICATIONS({
         &NOTIFICATION_PROGRAM_FINISH,
         &NOTIFICATION_ERROR_RECOVERABLE,
@@ -152,6 +159,7 @@ BDSPAutoStory::BDSPAutoStory()
     PA_ADD_OPTION(NEW_GAME_INTRO);
     PA_ADD_OPTION(PLAYER_NAME);
     PA_ADD_OPTION(STARTER);
+    PA_ADD_OPTION(STOP_FOR_STARTER_RNG);
     PA_ADD_OPTION(NOTIFICATIONS);
 }
 
@@ -248,7 +256,10 @@ void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerCo
 
     StoryEnv story{env, context, STARTER, PLAYER_NAME};
     StoryExecutor executor(story);
-    executor.set_stop_rows(rows_that_stop(checkpoints));
+    const StoryRunPlan plan = plan_story_run(
+        checkpoints, first, last, StoryHandoffs{.starter_rng = STOP_FOR_STARTER_RNG}
+    );
+    executor.set_stop_rows(rows_that_stop(plan.rows));
     //  A start with a save always loads it first, so the run never walks
     //  from wherever the game was left (console B, 2026-11-11: a run from
     //  00.04b walked from 00.04d's position).
@@ -257,19 +268,28 @@ void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     if (new_game && RUN.VERIFY.policy()){
         throw UserSetupError(env.console, "Verify mode reloads the start's save between runs: turn off \"Start a new game first\".");
     }
-    std::set<std::string> saved = saved_before_the_run(checkpoints, first, start);
-    Pokemon::Segment segment = make_story_segment(checkpoints, executor, saved);
+    std::set<std::string> saved = saved_before_the_run(plan.rows, 0, start);
+    Pokemon::Segment segment = make_story_segment(plan.rows, executor, saved);
     Pokemon::StoryGameHooks game = story_game(env, context);
     Pokemon::RunState state;
-    start_story(env, context, checkpoints[first], start, game, state);
+    start_story(env, context, plan.rows.front(), start, game, state);
     if (const std::optional<Pokemon::VerifyPolicy> verify = RUN.VERIFY.policy()){
-        const std::string summary = verify_story_checkpoint(checkpoints[first].id, *verify, segment, game, state);
+        const std::string summary = verify_story_checkpoint(plan.rows.front().id, *verify, segment, game, state);
         send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH, summary);
         return;
     }
     const std::string done = run_story(
-        Pokemon::SegmentRange{checkpoints[first].id, checkpoints[last].id}, RUN.policy(), segment, game, state, env
+        Pokemon::SegmentRange{plan.rows.front().id, plan.rows.back().id}, RUN.policy(), segment, game, state, env
     );
+    if (plan.stop == StoryHandoff::STARTER_RNG){
+        const std::string handoff =
+            "Stopped for Starter RNG: saved at the Verity Lakefront (17, 14), facing Lake Verity's entrance. "
+            "Run Starter RNG now (Start point: Verity Lakefront). "
+            "After Starter RNG, let Rowan's scene finish out of the lake, save at the Verity Lakefront, and start AutoStory at 00.03.";
+        env.log(handoff, COLOR_BLUE);
+        send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH, handoff);
+        return;
+    }
     send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH, done);
 }
 

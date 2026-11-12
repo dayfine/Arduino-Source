@@ -49,6 +49,8 @@ private:
     BooleanCheckBoxOption NEW_GAME_INTRO;
     StringOption PLAYER_NAME;
     EnumDropdownOption<StarterChoice> STARTER;
+    //  The RNG program the run stops for (StoryHandoff).
+    BooleanCheckBoxOption STOP_FOR_STARTER_RNG;
 
     EventNotificationsOption NOTIFICATIONS;
 };
