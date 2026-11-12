@@ -395,6 +395,20 @@ UnitTestResult test_teach_by_species(){
     if (missing.end != TeachEnd::UNREAD || game.items_opened != opened){
         return std::format("No Spearow in the party: ended {}, expected unread with the bag shut.", teach_end_name(missing.end));
     }
+    //  No Whirlwind (a Pidgey that declined it at 19): Sand-Attack, the
+    //  plan's next choice, goes, which leaves pokeguy's moveset.
+    game.party[3].moves = {"sand-attack", "gust", "quick-attack", "steel-wing"};
+    TeachPlan or_else = fly;
+    or_else.forget_else = {"sand-attack"};
+    const TeachResult fallback = run_teach(logger, game, reader_of(game), or_else);
+    const std::vector<std::string> pokeguys{"fly", "gust", "quick-attack", "steel-wing"};
+    if (fallback.end != TeachEnd::LEARNED || fallback.forgot != "sand-attack" || game.party[3].moves != pokeguys){
+        return std::format("Fly, no Whirlwind: ended {} ({}), forgot \"{}\".", teach_end_name(fallback.end), fallback.detail, fallback.forgot);
+    }
+    const std::optional<TeachPlan> back = teach_plan_of(teach_args(or_else));
+    if (!back || back->forget_else != or_else.forget_else){
+        return "or_forget didn't read back from its args.";
+    }
     return true;
 }
 

@@ -42,6 +42,8 @@ struct TeachPlan{
     //  The move to forget when it knows four: by name, or else by its
     //  slot (0-3). Neither: it must have a free slot.
     std::string forget_move = {};
+    //  The moves to forget, in order, when it doesn't know `forget_move`.
+    std::vector<std::string> forget_else = {};
     std::optional<size_t> forget_slot = std::nullopt;
 };
 
@@ -52,6 +54,8 @@ bool is_hm_move(std::string_view move);
 //  e.g. "hm03"; move WORD (required), e.g. "surf"; slot INTEGER (from 1)
 //  or species WORD (one of them required); forget WORD or forget_slot
 //  INTEGER (from 1) (optional): the move to forget when it knows four.
+//  or_forget WORDS (optional): the moves to forget, in order, when it
+//  doesn't know `forget`'s.
 inline const std::string TEACH_ACTION = "teach";
 //  `plan` as its action's args.
 Pokemon::StoryActionArgs teach_args(const TeachPlan& plan);
