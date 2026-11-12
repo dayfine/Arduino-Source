@@ -235,6 +235,26 @@ const PlanCase PLAN_CASES[] = {
         .input = {.name = "an open leg that may end off is held", .rows = {".....", "#...#"}, .from = {{0, 0}}, .goal = {3, 1}, .costs = HELD},
         .expectation = {.legs = "east 1 held: (1, 0) (2, 0); south 1 to wall: (1, 1) (2, 1); east 2 to wall: (3, 1)"},
     },
+    {
+        .input = {.name = "a held leg is refused when its long end lands in tall grass", .rows = {"..\"..", "#...#"}, .from = {{0, 0}}, .goal = {3, 1}, .costs = HELD},
+        .expectation = {.legs = "none"},
+    },
+    {
+        .input = {.name = "a held leg is refused when its long end lands where someone wanders", .rows = {"..w..", "#...#"}, .from = {{0, 0}}, .goal = {3, 1}, .costs = HELD},
+        .expectation = {.legs = "none"},
+    },
+    {
+        .input = {.name = "a held leg south lines up a wall leg", .rows = {".##", "...", "...", ".##", ".##"}, .from = {{0, 0}}, .goal = {2, 2}, .costs = HELD},
+        .expectation = {.legs = "south 1 held: (0, 1) (0, 2); east 2 to wall: (2, 1) (2, 2); south 1 to wall: (2, 2)"},
+    },
+    {
+        .input = {.name = "a held leg is refused when its long end hops a ledge", .rows = {".##", "...", "v..", ".##", ".##"}, .from = {{0, 0}}, .goal = {2, 2}, .costs = HELD},
+        .expectation = {.legs = "none"},
+    },
+    {
+        .input = {.name = "open legs are tapped while hold_open_legs is off", .rows = {".....", "#...#"}, .from = {{0, 0}}, .goal = {3, 1}, .costs = {.open_error = 1, .open_error_per = 0}},
+        .expectation = {.legs = "east 1 open: (1, 0) (2, 0); south 1 to wall: (1, 1) (2, 1); east 2 to wall: (3, 1)"},
+    },
 };
 
 
@@ -296,6 +316,39 @@ const CostCase COST_CASES[] = {
             .legs = {{Direction::EAST, 3, false, {{3, 0}}}}, .costs = {.open_error_per = 0},
         },
         .expectation = {.cost = 8 + 50 + 3},
+    },
+    {
+        .input = {
+            .name = "a held leg pays no per_open_tile", .rows = {"........"}, .from = {0, 0},
+            .legs = {{Direction::EAST, 3, false, {{2, 0}, {3, 0}, {4, 0}}, true}},
+            .costs = {.open_error = 1, .open_error_per = 0, .per_open_tile = 2, .hold_open_legs = true},
+        },
+        .expectation = {.cost = 8 + 50 + 3},
+    },
+    {
+        .input = {
+            .name = "held legs the same way are not joined", .rows = {"........"}, .from = {0, 0},
+            .legs = {
+                {Direction::EAST, 2, false, {{1, 0}, {2, 0}, {3, 0}}, true},
+                {Direction::EAST, 2, false, {{2, 0}, {3, 0}, {4, 0}, {5, 0}}, true},
+            },
+            .costs = HELD,
+        },
+        .expectation = {.cost = 2 * (8 + 50 + 2)},
+    },
+    {
+        .input = {
+            .name = "each grass tile of an open leg costs per_open_wild_tile more", .rows = {".\"\"...."}, .from = {0, 0},
+            .legs = {{Direction::EAST, 3, false, {{3, 0}}}}, .costs = {.exact_open_tiles = 12, .per_open_wild_tile = 10},
+        },
+        .expectation = {.cost = 8 + 50 + 3 + 2 * (4 + 10)},
+    },
+    {
+        .input = {
+            .name = "per_open_wild_tile leaves a wall leg's grass alone", .rows = {".\"\"#"}, .from = {0, 0},
+            .legs = {{Direction::EAST, 2, true, {{2, 0}}}}, .costs = {.per_open_wild_tile = 10},
+        },
+        .expectation = {.cost = 8 + 2 + 2 * 4},
     },
 };
 
