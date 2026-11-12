@@ -14,6 +14,7 @@
 #include "Common/Cpp/Time.h"
 #include "Controllers/Joystick.h"
 #include "Pokemon/Navigation/Pokemon_Grid.h"
+#include "Pokemon/Navigation/Pokemon_MoveMechanics.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -22,11 +23,11 @@ namespace PokemonBDSP{
 
 //  Walking time per tile, measured on the console from the post-catch save:
 //  a row is deeper than a column is wide under the tilted camera.
-constexpr Milliseconds ROUTE_MS_PER_TILE_ACROSS = Milliseconds(160);    //  east or west
+constexpr Milliseconds ROUTE_MS_PER_TILE_ACROSS = Pokemon::BDSP_MOVE_MECHANICS.walk.tile.across;
 //  Walking time per vertical tile (north or south).
-constexpr Milliseconds ROUTE_MS_PER_TILE_UP_DOWN = Milliseconds(240);   //  north or south
+constexpr Milliseconds ROUTE_MS_PER_TILE_UP_DOWN = Pokemon::BDSP_MOVE_MECHANICS.walk.tile.up_down;
 //  From pressing the stick to the first step, when standing still.
-constexpr Milliseconds ROUTE_START_DELAY = Milliseconds(250);
+constexpr Milliseconds ROUTE_START_DELAY = Pokemon::BDSP_MOVE_MECHANICS.start_delay;
 //  How fast the player moves on a leg to a wall (B held with the D-pad).
 //  B only runs once Mom has given the Running Shoes (00.03); before that
 //  it walks. The bike comes later, with its own measured times.
@@ -40,9 +41,9 @@ enum class MoveSpeed{
 //  tile) where walking took 240. Across is scaled the same until measured.
 //  Rounded down: a count from too fast a pace runs over, which a wall leg
 //  forgives, where one from too slow a pace stops short of the wall.
-constexpr Milliseconds ROUTE_RUN_MS_PER_TILE_ACROSS = Milliseconds(100);
+constexpr Milliseconds ROUTE_RUN_MS_PER_TILE_ACROSS = Pokemon::BDSP_MOVE_MECHANICS.run.tile.across;
 //  Running time per vertical tile (north or south).
-constexpr Milliseconds ROUTE_RUN_MS_PER_TILE_UP_DOWN = Milliseconds(150);
+constexpr Milliseconds ROUTE_RUN_MS_PER_TILE_UP_DOWN = Pokemon::BDSP_MOVE_MECHANICS.run.tile.up_down;
 
 //  Time per tile in `direction` at `speed`.
 Milliseconds route_ms_per_tile(Pokemon::Direction direction, MoveSpeed speed = MoveSpeed::WALK);
