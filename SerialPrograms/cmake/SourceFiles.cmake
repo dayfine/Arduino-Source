@@ -1487,6 +1487,9 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Navigation/Pokemon_LegPlanner.h
     Source/Pokemon/Navigation/Pokemon_LegPlanner_Tests.cpp
     Source/Pokemon/Navigation/Pokemon_LegPlanner_Tests.h
+    Source/Pokemon/Navigation/Pokemon_RobustLegPlanner.h
+    Source/Pokemon/Navigation/Pokemon_RobustLegPlanner_Tests.cpp
+    Source/Pokemon/Navigation/Pokemon_RobustLegPlanner_Tests.h
     Source/Pokemon/Navigation/Pokemon_LegWalker.cpp
     Source/Pokemon/Navigation/Pokemon_LegWalker.h
     Source/Pokemon/Navigation/Pokemon_LegWalker_Tests.cpp

@@ -37,6 +37,7 @@
 
 #include "Pokemon/Navigation/Pokemon_ConnectedMaps_Tests.h"
 #include "Pokemon/Navigation/Pokemon_LegPlanner_Tests.h"
+#include "Pokemon/Navigation/Pokemon_RobustLegPlanner_Tests.h"
 #include "Pokemon/Navigation/Pokemon_LegWalker_Tests.h"
 #include "Pokemon/Navigation/Pokemon_MapData_Tests.h"
 #include "Pokemon/Navigation/Pokemon_MoveMechanics_Tests.h"
@@ -82,6 +83,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     OCR::add_tests(ret);
     Kernels::add_tests(ret);
     Pokemon::add_tests_LegPlanner(ret);
+    Pokemon::add_tests_RobustLegPlanner(ret);
     Pokemon::add_tests_LegWalker(ret);
     Pokemon::add_tests_WallRecovery(ret);
     Pokemon::add_tests_MapData(ret);
