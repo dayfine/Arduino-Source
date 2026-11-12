@@ -218,8 +218,8 @@ DisturbedHold disturbed_hold(GridSim& sim, SimDisturbance* noise, Direction dire
     if (noise == nullptr){
         return {.move = sim.hold(direction, limit, pace)};
     }
-    const bool runs = pace == SimPace::RUN && sim.player().can_run;
-    const Milliseconds tile_time = route_ms_per_tile(direction, runs ? MoveSpeed::RUN : MoveSpeed::WALK);
+    //  A tile at a time, at the hold's own pace.
+    const Milliseconds tile_time = sim_ms_per_tile(direction, pace, sim.player().can_run);
     const int64_t tiles = limit < ROUTE_START_DELAY ? 0 : (limit - ROUTE_START_DELAY) / tile_time;
     DisturbedHold out{.move = {.stop = SimStop::LIMIT}};
     for (int64_t i = 0; i < tiles && out.move.stop == SimStop::LIMIT; i++){

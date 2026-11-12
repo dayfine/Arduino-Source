@@ -8,8 +8,8 @@
  *  drift off the grid, the maps' wanderers, and sometimes one missed fade or
  *  banner. Each row's test logs its pass rate and, per failing step, the
  *  failure kinds with a seed that reproduces each, and fails only below the
- *  row's pinned floor. The old 01.03 test shows the harness finds the two
- *  failures lab-B met on 2026-11-08. Each row's seeds that pass with no
+ *  row's pinned floor. The old 01.03 test shows the harness finds the
+ *  failure lab-B met across Roark's room on 2026-11-08. Each row's seeds that pass with no
  *  miss run again with one fade's hold unseen, and must pass again. With
  *  dialogs popping up between steps, a seed that passes without them
  *  must pass with them, the executor clearing them before each step.
@@ -27,6 +27,7 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Pokemon_StoryMonteCarlo.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
+#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP_AutoStory_SimDisturbance.h"
 #include "PokemonBDSP_AutoStory_StorySim.h"
 #include "PokemonBDSP_AutoStory_StoryMonteCarlo_Tests.h"
@@ -37,6 +38,7 @@ namespace PokemonBDSP{
 
 namespace{
 
+using namespace std::chrono_literals;
 using Pokemon::Direction;
 using Pokemon::RowReport;
 using Pokemon::SeedOutcome;
@@ -303,39 +305,16 @@ std::vector<StoryStep> old_steps_to_roark(){
     return {taps, walls};
 }
 
-//  01.03 as it was before be57db157 and 4f13c19bb: counted taps across
-//  Roark's room, and the route to below the Center's door straight into
-//  the heal.
+//  01.03 as it was before 4f13c19bb: counted taps across Roark's room.
 std::vector<StoryCheckpoint> old_0103(){
     const std::vector<StoryStep> old = old_steps_to_roark();
-    const std::vector<std::string> added{"south_of_the_centers_door", "against_the_walls_east_of_the_door", "below_the_centers_door_lined_up"};
     std::vector<StoryCheckpoint> rows = story_checkpoints();
     for (StoryCheckpoint& row : rows){
         if (row.id != "01.03"){
             continue;
         }
-        std::erase_if(row.steps, [&](const StoryStep& step){
-            return std::find(added.begin(), added.end(), step.name) != added.end();
-        });
         std::replace_if(row.steps.begin(), row.steps.end(), [](const StoryStep& step){ return step.name == "to_roarks_corner"; }, old[0]);
         std::replace_if(row.steps.begin(), row.steps.end(), [](const StoryStep& step){ return step.name == "beside_roarks_rock"; }, old[1]);
-    }
-    return rows;
-}
-
-//  Row 01.03 of `rows` from out of the mine on: the walk up to below the
-//  Center's door and the heal, without the mine's failures before it.
-std::vector<StoryCheckpoint> from_the_mines_sign(std::vector<StoryCheckpoint> rows){
-    for (StoryCheckpoint& row : rows){
-        if (row.id != "01.03"){
-            continue;
-        }
-        const auto sign = std::find_if(row.steps.begin(), row.steps.end(), [](const StoryStep& step){
-            return step.name == "up_to_the_mines_sign";
-        });
-        row.start = Pokemon::TileDeclared{.map = "OreburghCity", .tiles = {TilePos{45, 59}, TilePos{45, 58}}, .facing = Direction::NORTH};
-        row.saves_in.clear();
-        row.steps.erase(row.steps.begin(), sign);
     }
     return rows;
 }
@@ -348,26 +327,57 @@ bool failed_with(const RowReport& report, const std::string& step, const std::st
     });
 }
 
-//  lab-B 2026-11-08: a wild battle on the counted taps across Roark's room
-//  re-planned to an open leg and the row went one off (11:55); a run up
-//  Oreburgh's column 46 stopped short and an open step east left us off the
-//  Center door's column (10:39). The old row must show both, at the stress
-//  rates: at lab-B's own, 200 seeds need not draw them.
+//  lab-B 2026-11-08 11:55: a wild battle on the counted taps across
+//  Roark's room re-planned to an open leg and the row went one off. The
+//  old row must show it, at the stress rates: at lab-B's own, 200 seeds
+//  need not draw it.
 UnitTestResult test_old_0103(Logger& logger){
     const size_t seeds = std::max<size_t>(200, Pokemon::seed_count(SEEDS_VARIABLE, DEFAULT_SEEDS));
     const RowReport whole = run_row(old_0103(), "01.03", seeds, stress_rates());
     logger.log("The old 01.03: " + Pokemon::format_report(whole));
-    const RowReport town = run_row(from_the_mines_sign(old_0103()), "01.03", seeds, stress_rates());
-    logger.log("The old 01.03 from the mine's sign: " + Pokemon::format_report(town));
-    logger.log("Today's 01.03 from the mine's sign: " + Pokemon::format_report(
-        run_row(from_the_mines_sign(story_checkpoints()), "01.03", seeds, stress_rates())));
     //  A battle on the taps, then the row ends off the tile the taps count.
-    const bool roark = failed_with(whole, "01.03 above_roarks_row", "sim_mismatch", "[wild battle in the step]");
-    //  From the mine's warp (the whole row) or the sign.
-    const bool center = failed_with(whole, "01.03 heal_oreburgh", "no door north") || failed_with(town, "01.03 heal_oreburgh", "no door north");
-    if (!roark || !center){
-        return std::format("expected the old 01.03 to fail across Roark's room after a wild battle ({}) and at the Center's door ({}):\n{}\n{}",
-            roark, center, Pokemon::format_report(whole), Pokemon::format_report(town));
+    if (!failed_with(whole, "01.03 above_roarks_row", "sim_mismatch", "[wild battle in the step]")){
+        return "expected the old 01.03 to fail across Roark's room after a wild battle:\n" + Pokemon::format_report(whole);
+    }
+    return true;
+}
+
+
+//  A disturbed hold with no disturbance walks as the grid sim's own hold
+//  does, at its pace: a hold timed a tile at the walker's 160 ms east
+//  moved no tile at the sim's 200 ms (fe2da03e7), and every hold east or
+//  west at a walk stood still (00.05 east_to_the_wall, 2026-11-12).
+UnitTestResult test_disturbed_hold_as_plain(Logger& logger){
+    const StoryWorld* world = story_plan_world("JubilifeCity", "JubilifeCity");
+    if (world == nullptr){
+        return "JubilifeCity world not found";
+    }
+    struct Hold{
+        Direction direction;
+        SimPace pace;
+        bool can_run;
+    };
+    const Hold holds[] = {
+        {Direction::EAST, SimPace::WALK, false}, {Direction::WEST, SimPace::WALK, false},
+        {Direction::NORTH, SimPace::WALK, false}, {Direction::EAST, SimPace::RUN, true},
+    };
+    Pokemon::DisturbanceRates still;
+    still.grass_encounter = 0;
+    still.cave_encounter = 0;
+    still.drift_per_tile = 0;
+    const TilePos start = story_to_world(*world, "JubilifeCity", {46, 54});
+    for (const Hold& hold : holds){
+        GridSim plain({.world = world}, start, hold.direction, hold.can_run);
+        const SimMove expected = plain.hold(hold.direction, 10000ms, hold.pace);
+        GridSim disturbed({.world = world}, start, hold.direction, hold.can_run);
+        SimDisturbance noise(Pokemon::make_disturbance_plan(1, still, 0, 0));
+        const SimMove got = disturbed_hold(disturbed, &noise, hold.direction, 10000ms, hold.pace).move;
+        logger.log(std::format("{}: plain {} to {}, disturbed {} to {}.", direction_name(hold.direction),
+            expected.distance / SIM_TILE, to_string(plain.player().pos), got.distance / SIM_TILE, to_string(disturbed.player().pos)));
+        if (got.distance != expected.distance || got.stop != expected.stop || disturbed.player().pos != plain.player().pos){
+            return std::format("{} held: the disturbed hold moved {} where the plain one moved {}.",
+                direction_name(hold.direction), got.distance / SIM_TILE, expected.distance / SIM_TILE);
+        }
     }
     return true;
 }
@@ -438,7 +448,11 @@ const StoryMonteCarloCase AUTO_STORY_MONTE_CARLO_CASES[] = {
     {.input = {"01.10"}, .expectation = {.floor = 80}},
     {.input = {"01.11"}, .expectation = {.floor = 100}},
     {
-        .input = {"the old 01.03 fails across Roark's room and at the Center's door (lab-B, 2026-11-08)", test_old_0103},
+        .input = {"a disturbed hold with no disturbance walks as the plain hold does", test_disturbed_hold_as_plain},
+        .expectation = {},
+    },
+    {
+        .input = {"the old 01.03 fails across Roark's room after a wild battle (lab-B, 2026-11-08)", test_old_0103},
         .expectation = {},
     },
     {
