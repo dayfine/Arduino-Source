@@ -31,7 +31,7 @@
           "trainer": "TRAINER_TEAM_ROCKET_GRUNT_19",
           "foes": ["zubat", "zubat", "golbat"]
         },
-        "declared_after": {"map": "PokemonTower_7F", "tiles": [[11, 10]], "facing": "west"},
+        "declared_after": {"map": "PokemonTower_7F", "tiles": [[11, 10]], "facing": "north"},
         "why": "Rocket Grunt (TRAINER_TEAM_ROCKET_GRUNT_19): Zubat, Zubat, Golbat Lv25; he walks off (PokemonTower_7F_EventScript_Grunt1ExitRight) and is removed"
       },
       {
@@ -59,7 +59,7 @@
           "trainer": "TRAINER_TEAM_ROCKET_GRUNT_20",
           "foes": ["koffing", "drowzee"]
         },
-        "declared_after": {"map": "PokemonTower_7F", "tiles": [[11, 8]], "facing": "east"},
+        "declared_after": {"map": "PokemonTower_7F", "tiles": [[11, 8]], "facing": "north"},
         "why": "Rocket Grunt (TRAINER_TEAM_ROCKET_GRUNT_20): Koffing, Drowzee Lv26; he walks off and is removed"
       },
       {
@@ -87,7 +87,7 @@
           "trainer": "TRAINER_TEAM_ROCKET_GRUNT_21",
           "foes": ["zubat", "rattata", "raticate", "zubat"]
         },
-        "declared_after": {"map": "PokemonTower_7F", "tiles": [[11, 6]], "facing": "west"},
+        "declared_after": {"map": "PokemonTower_7F", "tiles": [[11, 6]], "facing": "north"},
         "why": "Rocket Grunt (TRAINER_TEAM_ROCKET_GRUNT_21): Zubat, Rattata, Raticate, Zubat Lv23 (Rattata's Quick Attack, pokeguy 1:10:12); he walks off and is removed"
       },
       {
@@ -107,12 +107,21 @@
       },
       {
         "id": "below_fuji_house",
+        "kind": "legs",
+        "action": "taps",
+        "args": {
+          "legs": [{"direction": "north", "tiles": 3}, {"direction": "west", "tiles": 1}]
+        },
+        "why": "a tap a tile from the door (4, 7) up to (4, 4) and west to below Mr. Fuji (3, 3), now shown (FLAG_HIDE_POKEHOUSE_FUJI cleared): (3, 4), between the table (5..6, 4..5) and the youngster (3, 5). An approach to an A press ends on its tile: held, \"north 3\" is open at (4, 3)"
+      },
+      {
+        "id": "facing_fuji",
         "kind": "route",
         "action": "run",
         "args": {
           "target": {"map": "LavenderTown_VolunteerPokemonHouse", "tiles": [[3, 4]], "facing": "north"}
         },
-        "why": "up to below Mr. Fuji (3, 3), now shown (FLAG_HIDE_POKEHOUSE_FUJI cleared): (3, 4), between the table (5..6, 4..5) and the youngster (3, 5)"
+        "why": "turned north to Mr. Fuji (3, 3)"
       },
       {
         "id": "poke_flute",

@@ -145,6 +145,85 @@ UnitTestResult test_mansion_stairs_to_back_door(){
     return true;
 }
 
+//  A leg on foot of `tiles` taps `direction`, to `end`.
+RouteStep tapped_leg(Direction direction, int tiles, const MapPosition& end){
+    RouteStep step;
+    step.direction = direction;
+    step.tiles = tiles;
+    step.tapped = true;
+    step.facing_after = direction;
+    step.end = end;
+    return step;
+}
+
+//  10.04 tower_3f_to_stairs (console B, 2026-11-12 03:08): taps east 11
+//  along Pokemon Tower 3F's row 7 and south 3 down column 18 onto the
+//  stairs (18, 10). The first south tap only turned the player, but the
+//  screen check read it as a step: the leg ended on (18, 9), and the press
+//  east into the stairs' warp met the wall. A tap from facing another way
+//  is a turn, whatever the screen shows.
+UnitTestResult test_tower_turn_read_as_step(){
+    const MapPosition start{"PokemonTower_3F", {7, 7}};
+    const MapPosition stairs{"PokemonTower_3F", {18, 10}};
+    const MapPosition goal{"PokemonTower_4F", {18, 10}};
+    std::vector<RouteStep> route{
+        tapped_leg(Direction::EAST, 11, MapPosition{"PokemonTower_3F", {18, 7}}),
+        tapped_leg(Direction::SOUTH, 3, stairs),
+    };
+    const std::optional<std::vector<RouteStep>> warp = plan_overworld_route(
+        maps(), stairs, RouteGoal{goal, std::nullopt}, default_route_costs(), Direction::SOUTH
+    );
+    if (!warp){
+        return std::string("No route from 3F's stairs to 4F.");
+    }
+    route.insert(route.end(), warp->begin(), warp->end());
+    SimScript script;
+    script.seen_turn_taps = {1};
+    OverworldSim sim(maps(), start, Direction::EAST, script);
+    OverworldSimWalker walker(sim, SimWalkerRules{});
+    const RoutePlanning planning{.maps = &maps(), .costs = default_route_costs(), .start = start, .label = "Sim"};
+    const std::string failure = walker.run(route, planning);
+    std::vector<std::string> log = walker.log();
+    log.insert(log.end(), sim.state().log.begin(), sim.state().log.end());
+    if (!failure.empty() || !(sim.state().position == goal)){
+        return std::format("Expected 4F's stairs reached, ended at {}: \"{}\"", to_string(sim.state().position), failure)
+            + describe(route, log);
+    }
+    return true;
+}
+
+//  10.05 tower_6f_stairs (console B, 2026-11-12 03:41): the planned route
+//  from Pokemon Tower 5F (18, 7), facing east, went "south 3 (open)" down
+//  column 18 onto the stairs (18, 10), then "east 1 (warp)". The hold
+//  ended a tile short, on (18, 9), and the presses east met the wall. The
+//  stairs have walls east and west, so the route can only step onto them
+//  going south: the leg onto them is tapped, a tap a tile checked to have
+//  moved, and a tap that only turned is not counted.
+UnitTestResult test_tower_planned_onto_side_stairs(){
+    const MapPosition start{"PokemonTower_5F", {18, 7}};
+    const MapPosition goal{"PokemonTower_6F", {18, 10}};
+    const std::optional<std::vector<RouteStep>> route = plan_overworld_route(
+        maps(), start, RouteGoal{goal, Direction::NORTH}, default_route_costs(), Direction::EAST
+    );
+    if (!route){
+        return std::string("No route from 5F (18, 7) to 6F's stairs.");
+    }
+    SimScript script;
+    script.short_holds = {{1, 1}};
+    script.seen_turn_taps = {1};
+    OverworldSim sim(maps(), start, Direction::EAST, script);
+    OverworldSimWalker walker(sim, SimWalkerRules{});
+    const RoutePlanning planning{.maps = &maps(), .costs = default_route_costs(), .start = start, .label = "Sim"};
+    const std::string failure = walker.run(*route, planning);
+    std::vector<std::string> log = walker.log();
+    log.insert(log.end(), sim.state().log.begin(), sim.state().log.end());
+    if (!failure.empty() || !(sim.state().position == goal)){
+        return std::format("Expected 6F's stairs reached, ended at {}: \"{}\"", to_string(sim.state().position), failure)
+            + describe(*route, log);
+    }
+    return true;
+}
+
 } // namespace
 
 
@@ -155,6 +234,14 @@ const StairsCase STAIRS_CASES[] = {
     },
     {
         .input = {.name = "Celadon Mansion: down the stairs and out of the back door", .body = test_mansion_stairs_to_back_door},
+        .expectation = {},
+    },
+    {
+        .input = {.name = "Pokemon Tower 3F: a turn tap read as a step is not counted", .body = test_tower_turn_read_as_step},
+        .expectation = {},
+    },
+    {
+        .input = {.name = "Pokemon Tower 5F: planned onto side stairs from the side, a tap a tile", .body = test_tower_planned_onto_side_stairs},
         .expectation = {},
     },
 };

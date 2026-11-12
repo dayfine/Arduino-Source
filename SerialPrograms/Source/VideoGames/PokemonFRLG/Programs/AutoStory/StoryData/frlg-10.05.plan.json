@@ -4,7 +4,7 @@
   "checkpoint": {
     "id": "10.05",
     "title": "Pokemon Tower 6F: Jennifer, Emilia, the Rare Candy and the Marowak ghost",
-    "start": {"map": "PokemonTower_5F", "tiles": [[18, 7]], "facing": "east"},
+    "start": {"map": "PokemonTower_5F", "tiles": [[18, 7]], "facing": "south"},
     "events": [
       {
         "id": "tower_6f_stairs",
@@ -40,7 +40,7 @@
           "trainer": "TRAINER_CHANNELER_JENNIFER",
           "foes": ["gastly"]
         },
-        "declared_after": {"map": "PokemonTower_6F", "tiles": [[16, 6]], "facing": "east"},
+        "declared_after": {"map": "PokemonTower_6F", "tiles": [[16, 6]], "facing": "north"},
         "why": "Channeler Jennifer: Gastly Lv24 (pokeguy 1:07:00)"
       },
       {
@@ -68,17 +68,17 @@
           "trainer": "TRAINER_CHANNELER_EMILIA",
           "foes": ["gastly"]
         },
-        "declared_after": {"map": "PokemonTower_6F", "tiles": [[9, 8]], "facing": "north"},
+        "declared_after": {"map": "PokemonTower_6F", "tiles": [[9, 8]], "facing": "west"},
         "why": "Channeler Emilia: Gastly Lv24 (pokeguy 1:07:28)"
       },
       {
         "id": "above_tower_rare_candy",
-        "kind": "route",
-        "action": "run",
+        "kind": "legs",
+        "action": "taps",
         "args": {
-          "target": {"map": "PokemonTower_6F", "tiles": [[5, 14]], "facing": "south"}
+          "legs": [{"direction": "west", "tiles": 4}, {"direction": "south", "tiles": 6}]
         },
-        "why": "west along row 8 and down column 6 to row 14, a tile west to above the Rare Candy (5, 15) (pokeguy 1:07:53)"
+        "why": "a tap a tile from (9, 8), where Emilia's battle leaves the player, west along row 8 to (5, 8) and down column 5 to (5, 14), above the Rare Candy (5, 15) (pokeguy 1:07:53): an approach to an A press ends on its tile. As holds, west ended on (4, 8) and south met the gravestone (4, 9) (console B, 2026-11-12 04:39)"
       },
       {
         "id": "tower_rare_candy",

@@ -67,9 +67,11 @@ public:
 
     const SimState& state() const{ return m_state; }
 
-    //  Counts a walker step tap that moved the player; whether the
-    //  walker's screen check misses it (SimScript::unseen_step_taps).
-    bool hides_moved_step_tap();
+    //  Whether the walker's screen check reads its last step tap as a
+    //  step: one that moved the player from `before`, but for
+    //  SimScript::unseen_step_taps, or a turn tap since `turn_taps_before`
+    //  (SimState::turn_taps) that SimScript::seen_turn_taps names.
+    bool reads_step_tap_as_step(const MapPosition& before, int turn_taps_before);
 
     //  Holds `direction` for `duration` then lets go for `release`, while
     //  `watchers` watch until `watch` (at least the hold and release) from
@@ -218,7 +220,6 @@ private:
     int m_steps_since_encounter = 0;
     int m_encounter_rate_buff = 0;
     //  The turn taps so far, for SimScript::dropped_turn_taps.
-    int m_turn_taps = 0;
     //  Steps onto a warp so far, and the fault on one
     //  (SimScript::black_without_warp): its black without the warp.
     int m_warp_steps = 0;
@@ -228,6 +229,12 @@ private:
     //  When the last Bicycle tap started, and how many came too soon.
     std::optional<Milliseconds> m_last_bike_tap;
     int m_fast_bike_taps = 0;
+    //  A hold of `direction` for `duration`: counts the leg a tap on the
+    //  Bicycle starts (SimState::bike_legs), and takes the player off the
+    //  Bicycle if SimScript::off_bike_at_legs names it.
+    void count_bike_leg(Direction direction, Milliseconds duration);
+    //  The way of the last Bicycle tap, unless another press came since.
+    std::optional<Direction> m_bike_leg_direction;
     //  When the last tap that stepped started.
     std::optional<Milliseconds> m_last_step_tap;
     //  The end of the lockout after the last battle.

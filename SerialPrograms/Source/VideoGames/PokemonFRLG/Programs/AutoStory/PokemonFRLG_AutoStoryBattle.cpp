@@ -144,14 +144,14 @@ void tap(ProControllerContext& context, DpadPosition position){
 //  no names for) is taken by its position; only another item's name stops it.
 bool bag_row_is(
     ConsoleHandle& console, ProControllerContext& context,
-    int row, const std::string& item, Pokemon::StoryCheckLevel checks, Language language
+    int row, int shown, const std::string& item, Pokemon::StoryCheckLevel checks, Language language
 ){
     if (!checks_screen(checks)){
         return true;
     }
     context.wait_for_all_requests();
     VideoSnapshot screen = console.video().snapshot();
-    const std::string read = screen ? read_item_list_name(console, language, screen, row) : "";
+    const std::string read = screen ? read_item_list_name(console, language, screen, shown) : "";
     if (read == item){
         return true;
     }
@@ -177,8 +177,9 @@ enum class ItemTarget{
 //  Returns whether it was used; else (THOROUGH) backs out to the menu.
 bool use_item(
     ConsoleHandle& console, ProControllerContext& context,
-    int row, const std::string& item, ItemTarget target, Pokemon::StoryCheckLevel checks, Language language
+    const Supplies& supplies, const std::string& item, ItemTarget target, Pokemon::StoryCheckLevel checks, Language language
 ){
+    const int row = item_row(supplies, item);
     console.log(std::format("Battle: using the {} in row {} of the Items pocket.", item, row + 1));
     tap(context, DPAD_LEFT);
     tap(context, DPAD_UP);
@@ -193,7 +194,7 @@ bool use_item(
     for (int c = 0; c < row; c++){
         tap(context, DPAD_DOWN);
     }
-    if (!bag_row_is(console, context, row, item, checks, language)){
+    if (!bag_row_is(console, context, row, item_shown_row(supplies, row), item, checks, language)){
         pbf_press_button(context, BUTTON_B, 160ms, 1500ms);
         return false;
     }
@@ -615,16 +616,16 @@ private:
             run_away(m_context);
             return;
         case TurnChoice::POTION:
-            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, item_row(m_supplies, "potion"), "potion", ItemTarget::PARTY_MEMBER, m_checks, m_language)));
+            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, m_supplies, "potion", ItemTarget::PARTY_MEMBER, m_checks, m_language)));
             return;
         case TurnChoice::ANTIDOTE:
-            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, item_row(m_supplies, "antidote"), "antidote", ItemTarget::PARTY_MEMBER, m_checks, m_language)));
+            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, m_supplies, "antidote", ItemTarget::PARTY_MEMBER, m_checks, m_language)));
             return;
         case TurnChoice::AWAKENING:
-            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, item_row(m_supplies, "awakening"), "awakening", ItemTarget::PARTY_MEMBER, m_checks, m_language)));
+            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, m_supplies, "awakening", ItemTarget::PARTY_MEMBER, m_checks, m_language)));
             return;
         case TurnChoice::BATTLE_ITEM:
-            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, item_row(m_supplies, action.item), action.item, ItemTarget::POKEMON_OUT, m_checks, m_language)));
+            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, m_supplies, action.item, ItemTarget::POKEMON_OUT, m_checks, m_language)));
             return;
         case TurnChoice::MOVE:
             m_console.log(std::format("Battle: move {}.", action.slot + 1));
@@ -689,14 +690,15 @@ void open_items_pocket(ConsoleHandle& console, ProControllerContext& context){
 //  Not run on the console yet.
 bool use_item_on_overworld(
     ConsoleHandle& console, ProControllerContext& context,
-    int row, const std::string& item, Pokemon::StoryCheckLevel checks, Language language
+    const Supplies& supplies, const std::string& item, Pokemon::StoryCheckLevel checks, Language language
 ){
+    const int row = item_row(supplies, item);
     console.log(std::format("Story: using a {} from the bag (Items pocket, row {}).", item, row + 1));
     open_items_pocket(console, context);
     for (int c = 0; c < row; c++){
         pbf_press_dpad(context, DPAD_DOWN, 100ms, 300ms);
     }
-    if (!bag_row_is(console, context, row, item, checks, language)){
+    if (!bag_row_is(console, context, row, item_shown_row(supplies, row), item, checks, language)){
         mash_until_overworld(console, context, AFTER_BATTLE_TEXT);
         return false;
     }
@@ -846,12 +848,44 @@ bool battle_shows(const ImageViewRGB32& screen){
     return text.hp_box || text.yes_no;
 }
 
+//  The Items pocket's capacity (pokefirered BAG_ITEMS_COUNT).
+constexpr size_t MAX_ITEMS_POCKET_ROWS = 42;
+
 std::vector<BagRow> read_items_pocket(ConsoleHandle& console, ProControllerContext& context, Language language){
     open_items_pocket(console, context);
     context.wait_for_all_requests();
     VideoSnapshot screen = console.video().snapshot();
     dump_debug_image(console, "AutoStory/bag", "items-pocket", screen);
-    std::vector<BagRow> rows = screen ? read_bag_pocket(console, language, screen) : std::vector<BagRow>{};
+    std::vector<BagRow> reads;
+    bool cancel = !screen;
+    for (int shown = 0; !cancel && shown < ITEM_LIST_ROWS; shown++){
+        BagRow read = read_bag_row(console, language, screen, shown);
+        cancel = read.item == "cancel";
+        if (!cancel){
+            reads.push_back(std::move(read));
+        }
+    }
+    //  The rows below the first six: DOWN to the fourth row shown, then each
+    //  DOWN scrolls the next row into the last (item_shown_row()). Reading
+    //  one page only missed the X Specials under a MOON STONE, a NUGGET and
+    //  four more, and the Tower rival was fought with none (console B,
+    //  2026-11-12).
+    if (!cancel){
+        for (int c = 0; c < ITEM_LIST_ROWS / 2; c++){
+            pbf_press_dpad(context, DPAD_DOWN, 100ms, 300ms);
+        }
+    }
+    while (!cancel && reads.size() < MAX_ITEMS_POCKET_ROWS){
+        pbf_press_dpad(context, DPAD_DOWN, 100ms, 400ms);
+        context.wait_for_all_requests();
+        screen = console.video().snapshot();
+        BagRow read = screen ? read_bag_row(console, language, screen, ITEM_LIST_ROWS - 1) : BagRow{};
+        cancel = !screen || read.item == "cancel";
+        if (!cancel){
+            reads.push_back(std::move(read));
+        }
+    }
+    std::vector<BagRow> rows = pocket_rows(std::move(reads));
     std::string text;
     for (const BagRow& row : rows){
         text += std::format(" {} x{};", row.item, row.count);
@@ -868,8 +902,7 @@ void recover_after_battle(
     for (const std::string& item : recovery_items(supplies)){
         //  The row before the count drops: a counted item with none left
         //  takes no row.
-        const int row = item_row(supplies, item);
-        if (!use_item_on_overworld(console, context, row, item, checks, language)){
+        if (!use_item_on_overworld(console, context, supplies, item, checks, language)){
             continue;
         }
         spend_item(supplies, item);
