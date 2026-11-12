@@ -6,7 +6,6 @@
 
 #include <algorithm>
 #include <format>
-#include <set>
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include <cstdlib>
 #include "CommonFramework/ImageTools/ImageBoxes.h"
@@ -224,13 +223,6 @@ bool counts_bike_taps(const RouteStep& step, MoveSpeed speed){
 bool gets_on_bike(const RouteStep& step, MoveSpeed speed, bool riding){
     return speed == MoveSpeed::BIKE && !riding && step.action == RouteAction::WALK
         && !step.walk_only && !step.surfing;
-}
-
-bool warp_keeps_bike(const std::string& map){
-    static const std::set<std::string, std::less<>> MAPS{
-        "Route16_NorthEntrance_1F", "Route18_EastEntrance_1F", "Route16", "Route18",
-    };
-    return MAPS.contains(map);
 }
 
 bool select_onto_bike(const BikeSelectCalls& calls){

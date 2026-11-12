@@ -371,9 +371,8 @@ bool OverworldSim::after_step(const Step& step, Milliseconds pressed){
     if (step.warped){
         m_state.warps++;
         regrow_cut_trees();
-        if (m_state.on_bike && !OverworldWalkSteps::warp_keeps_bike(map().name)){
-            //  A door takes the player off (the user's; not measured), but
-            //  for the Cycling Road's gates (console B, 2026-11-12).
+        if (m_state.on_bike && !warp_keeps_bike(map().name)){
+            //  A door takes the player off (the user's; not measured).
             m_state.on_bike = false;
             note("the warp takes the player off the Bicycle.");
         }
@@ -955,9 +954,8 @@ size_t OverworldSimWalker::clear_unseen_battle(const RouteStep& step){
 }
 
 void OverworldSimWalker::hold_to_warp(const RouteStep& step){
-    //  The warp it holds on to takes the player off the Bicycle, but for
-    //  the Cycling Road's gates (warp_keeps_bike()).
-    m_riding = m_riding && OverworldWalkSteps::warp_keeps_bike(step.end.map);
+    //  The warp it holds on to takes the player off the Bicycle.
+    m_riding = m_riding && warp_keeps_bike(step.end.map);
     const std::vector<Interrupt>& ints = interrupts(step);
     std::vector<SimWatcher> fade_first{SimWatcher::FADE};
     for (const SimWatcher watcher : watchers(ints)){
