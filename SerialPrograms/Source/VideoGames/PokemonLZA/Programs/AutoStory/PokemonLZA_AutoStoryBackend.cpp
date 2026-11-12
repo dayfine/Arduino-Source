@@ -12,7 +12,6 @@
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/PrettyPrint.h"
 #include "Common/Cpp/Color.h"
-#include "CommonFramework/ImageTools/ImageDiff.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_BasicNavigation.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryActions.h"
@@ -26,36 +25,6 @@ using namespace std::chrono_literals;
 using Pokemon::Direction;
 
 
-namespace{
-
-//  Below this pixel RMSD two looks are the same screen.
-constexpr double STILL_RMSD = 2.0;
-
-//  `direction` as degrees clockwise of straight on.
-double direction_degrees(Direction direction){
-    switch (direction){
-    case Direction::NORTH:
-        return 0;
-    case Direction::EAST:
-        return 90;
-    case Direction::SOUTH:
-        return 180;
-    case Direction::WEST:
-        return -90;
-    }
-    return 0;
-}
-
-bool same_screen(const VideoSnapshot& a, const VideoSnapshot& b){
-    if (!a || !b || a.frame->width() != b.frame->width() || a.frame->height() != b.frame->height()){
-        return false;
-    }
-    return ImageMatch::pixel_RMSD(*a.frame, *b.frame) < STILL_RMSD;
-}
-
-} // namespace
-
-
 PlzaConsoleBackend::PlzaConsoleBackend(StoryEnv& env)
     : m_env(env)
 {}
@@ -65,11 +34,11 @@ void PlzaConsoleBackend::press(Button button, Milliseconds hold, Milliseconds re
 }
 
 void PlzaConsoleBackend::tap(Direction direction){
-    story_turn(*this, direction_degrees(direction));
+    story_turn(*this, Pokemon::direction_degrees(direction));
 }
 
 void PlzaConsoleBackend::hold(Direction direction, Milliseconds duration, Pokemon::StoryPace pace){
-    stick(direction_degrees(direction), duration, 0ms, pace);
+    stick(Pokemon::direction_degrees(direction), duration, 0ms, pace);
 }
 
 void PlzaConsoleBackend::stick(double degrees, Milliseconds duration, Milliseconds release, Pokemon::StoryPace){
@@ -86,7 +55,7 @@ Pokemon::Observation<Pokemon::ZonePose> PlzaConsoleBackend::observe(){
     VideoSnapshot frame = m_env.env.console.video().snapshot();
     Pokemon::Observation<Pokemon::ZonePose> look;
     if (frame){
-        static_cast<ScreenObservation&>(look) = plza_observation(m_observer.read(*frame.frame));
+        static_cast<ScreenObservation&>(look) = Pokemon::screen_observation(m_observer.read(*frame.frame));
         if (m_platform.detect(*frame.frame)){
             look.readings[std::string(PLATFORM_READING)] = 1;
         }
@@ -120,32 +89,10 @@ Pokemon::Observation<Pokemon::ZonePose> PlzaConsoleBackend::observe(){
 
 namespace{
 
-std::string events_text(const PokemonAutomation::ScreenEvents& events){
-    using EngineEvent = PokemonAutomation::ScreenEvent;
-    const std::pair<EngineEvent, std::string_view> names[] = {
-        {EngineEvent::FADE_BLACK, "fade_black"},
-        {EngineEvent::FADE_WHITE, "fade_white"},
-        {EngineEvent::TEXT_BOX, "text_box"},
-        {EngineEvent::BATTLE, "battle"},
-        {EngineEvent::CAN_MOVE, "can_move"},
-        {EngineEvent::STILL, "still"},
-        {EngineEvent::CHOICE_BOX, "choice_box"},
-        {EngineEvent::INTERACT_PROMPT, "interact_prompt"},
-    };
-    std::string text;
-    for (const auto& [event, name] : names){
-        if (events.has(event)){
-            text += text.empty() ? "" : "+";
-            text += name;
-        }
-    }
-    return text.empty() ? std::string("nothing") : text;
-}
-
 //  The look's events and readings: "fade_black+still",
 //  "nothing+skip_prompt", "can_move+platform+autosave+controls_hint".
 std::string look_text(const ScreenObservation& look){
-    std::string text = events_text(look.events);
+    std::string text = describe(look.events, "+");
     if (look.readings.contains(PLATFORM_READING)){
         text += "+platform";
     }

@@ -79,12 +79,12 @@ std::string_view starter_key(StarterChoice starter){
 }
 
 //  A walk's "end" arg as the event it ends on: a fade.
-std::optional<Pokemon::ScreenEvent> walk_end_event(std::string_view end){
+std::optional<PokemonAutomation::ScreenEvent> walk_end_event(std::string_view end){
     if (end == "fade_white"){
-        return Pokemon::ScreenEvent::FADE_WHITE;
+        return PokemonAutomation::ScreenEvent::FADE_WHITE;
     }
     if (end == "fade_black"){
-        return Pokemon::ScreenEvent::FADE_BLACK;
+        return PokemonAutomation::ScreenEvent::FADE_BLACK;
     }
     return std::nullopt;
 }
