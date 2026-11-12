@@ -71,7 +71,9 @@ public:
     //  in "language", logged as "RngPlan:" lines. Throws UserSetupError
     //  when no target passes.
     std::vector<RngAttempt> plan(Logger& logger, Language language, uint16_t tid) const;
-    //  As plan(), for Gift RNG's Magikarp from Route 4's salesman. Throws
+    //  As plan(), for Gift RNG's gifts: Route 4's Magikarp, timed as
+    //  Starter RNG's Squirtle, and Celadon's Eevee, whose shorter in-game
+    //  sequence (4,000 ms, no gap) fits any of those timings. Throws
     //  UserSetupError in a language other than English.
     std::vector<RngAttempt> gift_plan(Logger& logger, Language language, uint16_t tid) const;
     //  SID Helper's candidates for "tid", from the two SID Helper options.

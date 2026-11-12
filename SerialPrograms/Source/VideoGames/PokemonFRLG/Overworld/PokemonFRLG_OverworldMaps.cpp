@@ -108,6 +108,12 @@ constexpr std::string_view MAP_NAMES[] = {
     "PokemonTower_6F",
     "PokemonTower_7F",
     "LavenderTown_VolunteerPokemonHouse",
+    //  Celadon Mansion's floors to the roof room's Eevee.
+    "CeladonCity_Condominiums_1F",
+    "CeladonCity_Condominiums_2F",
+    "CeladonCity_Condominiums_3F",
+    "CeladonCity_Condominiums_Roof",
+    "CeladonCity_Condominiums_RoofRoom",
     //  Route 16's house with HM02 Fly, past the Cut tree and the north gate.
     "Route16",
     "Route16_NorthEntrance_1F",

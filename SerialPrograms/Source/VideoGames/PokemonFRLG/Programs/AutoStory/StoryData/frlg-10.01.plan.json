@@ -4,13 +4,22 @@
   "checkpoint": {
     "id": "10.01",
     "title": "HM02 Fly from Route 16's house, taught to the Pidgey, and Fly to Lavender Town's Pokemon Center",
-    "start": {"map": "CeladonCity", "tiles": [[34, 22]], "facing": "south"},
+    "start": {"map": "CeladonCity_Condominiums_RoofRoom", "tiles": [[7, 4]], "facing": "north"},
     "events": [
+      {
+        "id": "out_of_mansion",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeladonCity", "tiles": [[30, 3]], "facing": "north"}
+        },
+        "why": "from the Eevee's ball (09.04) out of the roof room, down Celadon Mansion's stairs and out of its back door (30, 4) onto Celadon's north edge"
+      },
       {
         "id": "ride_bike",
         "kind": "game_action",
         "action": "ride_bike",
-        "why": "on the BICYCLE with SELECT (registered in 08.03) where the Escape Rope left the player, outside the Game Corner"
+        "why": "on the BICYCLE with SELECT (registered in 08.03) behind the mansion"
       },
       {
         "id": "route16_below_cut_tree",
@@ -108,7 +117,7 @@
     "lead": "after_brock",
     "notes": {
       "checkpoint": [
-        "From where 09.02's Escape Rope left the player, outside Celadon's Game Corner, PokeGuy's way (1:02:18 to 1:04:11) to Lavender Town's Pokemon Center: HM02 FLY from the woman in Route 16's house, taught to the Pidgey (08.03's catch), and Fly to Lavender. PokeGuy first shops X items on the Department Store's 5F; that waits for the store's 2F..4F or lift maps, which the map pack doesn't have yet.",
+        "From the Eevee's ball in Celadon Mansion's roof room (09.04), PokeGuy's way (1:02:18 to 1:04:11) to Lavender Town's Pokemon Center: HM02 FLY from the woman in Route 16's house, taught to the Pidgey (08.03's catch), and Fly to Lavender. PokeGuy first shops X items on the Department Store's 5F; that waits for the store's 2F..4F or lift maps, which the map pack doesn't have yet.",
         "Route 16 (Route16 map.json): from Celadon the east end (33..47, 12..14) is closed west by the Snorlax (31, 13), so the way north is the Cut tree (41, 11), then the north gate (Route16_NorthEntrance_1F) to the house (10, 5). Lea (30, 5) and Jed (31, 5) face south with sight 1; the grass (33..41, 5..7) is walked round. The bikers (6..16, 12..14) are south of the house's part of the route, behind the gate.",
         "The woman wanders (MOVEMENT_TYPE_WANDER_AROUND, 3..5 by 2..3): the wanderer TALK presses A at (4, 3) until she is on it."
       ]

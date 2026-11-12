@@ -139,7 +139,7 @@ private:
     const RunPlanScenario m_scenario;
 };
 
-const std::string TODAY = "01.01 01.03 01.04 01.05 02.01 02.02 02.03 03.01 03.02 03.03 04.01 04.02 04.04 04.05 04.06 05.01 05.02 05.03 05.04 05.05 05.06 05.07 05.08 05.09 05.10 06.01 06.02 06.03 06.04 07.01 07.02 08.01 08.02 08.03 09.01 09.02 10.01 10.02 10.03 10.04 10.05 10.06";
+const std::string TODAY = "01.01 01.03 01.04 01.05 02.01 02.02 02.03 03.01 03.02 03.03 04.01 04.02 04.04 04.05 04.06 05.01 05.02 05.03 05.04 05.05 05.06 05.07 05.08 05.09 05.10 06.01 06.02 06.03 06.04 07.01 07.02 08.01 08.02 08.03 09.01 09.02 09.03 10.01 10.02 10.03 10.04 10.05 10.06";
 
 const RunPlanScenario RUN_PLAN_CASES[] = {
     {
@@ -230,11 +230,11 @@ const RunPlanScenario RUN_PLAN_CASES[] = {
     },
     {
         .input = {.name = "Gift RNG off: 04.03 is passed over", .first = "04.01"},
-        .expectation = {.expected_ids = "04.01 04.02 04.04 04.05 04.06 05.01 05.02 05.03 05.04 05.05 05.06 05.07 05.08 05.09 05.10 06.01 06.02 06.03 06.04 07.01 07.02 08.01 08.02 08.03 09.01 09.02 10.01 10.02 10.03 10.04 10.05 10.06"},
+        .expectation = {.expected_ids = "04.01 04.02 04.04 04.05 04.06 05.01 05.02 05.03 05.04 05.05 05.06 05.07 05.08 05.09 05.10 06.01 06.02 06.03 06.04 07.01 07.02 08.01 08.02 08.03 09.01 09.02 09.03 10.01 10.02 10.03 10.04 10.05 10.06"},
     },
     {
         .input = {.name = "Gift RNG off: 04.03 runs when started at", .first = "04.03"},
-        .expectation = {.expected_ids = "04.03 04.04 04.05 04.06 05.01 05.02 05.03 05.04 05.05 05.06 05.07 05.08 05.09 05.10 06.01 06.02 06.03 06.04 07.01 07.02 08.01 08.02 08.03 09.01 09.02 10.01 10.02 10.03 10.04 10.05 10.06"},
+        .expectation = {.expected_ids = "04.03 04.04 04.05 04.06 05.01 05.02 05.03 05.04 05.05 05.06 05.07 05.08 05.09 05.10 06.01 06.02 06.03 06.04 07.01 07.02 08.01 08.02 08.03 09.01 09.02 09.03 10.01 10.02 10.03 10.04 10.05 10.06"},
     },
     {
         .input = {            .name = "Gift RNG: started at 04.03, from the save beside the salesman",
@@ -258,8 +258,22 @@ const RunPlanScenario RUN_PLAN_CASES[] = {
         },
     },
     {
+        .input = {.name = "Gift RNG: the Eevee's stop at 09.03", .first = "09.01", .handoffs = {.gift_rng = true}},
+        .expectation = {
+            .expected_ids = "09.01 09.02 09.03",
+            .expected_stop = StoryHandoff::GIFT_RNG,
+        },
+    },
+    {
+        .input = {.name = "Gift RNG: started at 09.04, from the save facing the Eevee's ball", .first = "09.04", .handoffs = {.gift_rng = true}},
+        .expectation = {
+            .expected_ids = "",
+            .expected_stop = StoryHandoff::GIFT_RNG,
+        },
+    },
+    {
         .input = {.name = "Starter RNG alone: 04.03 runs when started at", .first = "04.03", .handoffs = {.starter_rng = true}},
-        .expectation = {.expected_ids = "04.03 04.04 04.05 04.06 05.01 05.02 05.03 05.04 05.05 05.06 05.07 05.08 05.09 05.10 06.01 06.02 06.03 06.04 07.01 07.02 08.01 08.02 08.03 09.01 09.02 10.01 10.02 10.03 10.04 10.05 10.06"},
+        .expectation = {.expected_ids = "04.03 04.04 04.05 04.06 05.01 05.02 05.03 05.04 05.05 05.06 05.07 05.08 05.09 05.10 06.01 06.02 06.03 06.04 07.01 07.02 08.01 08.02 08.03 09.01 09.02 09.03 10.01 10.02 10.03 10.04 10.05 10.06"},
     },
     {
         .input = {            .name = "Starter RNG first, with both on",
@@ -319,7 +333,7 @@ UnitTestResult test_starter_rows_joined(){
 }
 
 //  The ways back in after SID Helper and Gift RNG load no save and start
-//  where 01.01 and 04.02 leave the player, so the rows after them follow
+//  where 01.01, 04.02 and 09.03 leave the player, so the rows after them follow
 //  unchanged.
 UnitTestResult test_after_sid_helper_row(){
     const StoryCheckpoint& sid = story_checkpoints()[row_index("01.02")];
@@ -327,8 +341,9 @@ UnitTestResult test_after_sid_helper_row(){
         return "Expected 01.01 to be SID Helper's handoff and 01.02 to start from the live game.";
     }
     for (const StoryCheckpoint& checkpoint : story_checkpoints()){
-        if (checkpoint.live_start != (checkpoint.id == "01.02" || checkpoint.id == "04.03")){
-            return checkpoint.id + ": only 01.02 and 04.03 start from the live game.";
+        const bool live = checkpoint.id == "01.02" || checkpoint.id == "04.03" || checkpoint.id == "09.04";
+        if (checkpoint.live_start != live){
+            return checkpoint.id + ": only 01.02, 04.03 and 09.04 start from the live game.";
         }
     }
     return true;
@@ -608,7 +623,7 @@ UnitTestResult test_misty_grind_order(){
 
 const AutoStoryCase AUTO_STORY_CASES[] = {
     {
-        .input = {"01.02 and 04.03: back in after SID Helper and Gift RNG", test_after_sid_helper_row},
+        .input = {"01.02, 04.03 and 09.04: back in after SID Helper and Gift RNG", test_after_sid_helper_row},
         .expectation = {},
     },
     {
