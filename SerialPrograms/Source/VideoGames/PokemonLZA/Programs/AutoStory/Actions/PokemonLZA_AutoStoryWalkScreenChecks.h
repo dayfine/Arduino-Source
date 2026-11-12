@@ -15,7 +15,7 @@
 #include <string_view>
 #include "CommonTools/ScreenMachine/ScreenObservation.h"
 #include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryObservation.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryReadings.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBackend.h"
 #include "PokemonLZA_AutoStoryMoves.h"
 

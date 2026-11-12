@@ -28,8 +28,6 @@
 namespace PokemonAutomation{
 namespace Pokemon{
 
-class ScreenEvents;
-
 
 //  How fast a held direction moves the player.
 enum class StoryPace{
@@ -57,12 +55,6 @@ inline constexpr std::string_view STORY_HEADING = "heading";
 
 //  `observation`'s STORY_HEADING reading; none when nothing read it.
 std::optional<int> story_heading(const ScreenObservation& observation);
-
-//  A ScreenEventObserver's events as one look for the story engine:
-//  DIALOG_BOX is TEXT_BOX; CHOICE_BOX adds TEXT_BOX; BATTLE_STARTED is
-//  BATTLE; PLAYER_CAN_MOVE is CAN_MOVE; SCREEN_STILL is STILL; the fades
-//  and INTERACT_PROMPT keep their names. No time and no frame.
-ScreenObservation screen_observation(const ScreenEvents& events);
 
 //  One look at the game, with where the player is when a reader knows it
 //  (StoryGame::readers fill `pose` and the readings).
