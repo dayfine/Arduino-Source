@@ -73,6 +73,10 @@ std::optional<int> wander_row_step(const WalkResult& result, int east);
 //  `wanderer_home` (00.05b, lab-B 2026-11-11: the Poketch Company clown's
 //  talk was "answered" in round 5 by another line).
 bool asks_someone_else(const Pokemon::MapData& map, Pokemon::TilePos stand, Pokemon::TilePos wanderer_home);
+//  The box the Mart clown wanders, round (55, 33): PokemonSimulation's
+//  data/games/bdsp/maps/jubilife_city.json (decomp range 1). The story map
+//  leaves him out of its wanderers (the decomp hides him behind a flag).
+Pokemon::TileBox jubilife_mart_clown_box();
 //  The tiles 00.05c may start on: against the Poketch Company's sign
 //  (00.05b's end), and on the street east (its own end, 01.01's start).
 std::pair<Pokemon::TilePos, Pokemon::TilePos> jubilife_start_tiles();

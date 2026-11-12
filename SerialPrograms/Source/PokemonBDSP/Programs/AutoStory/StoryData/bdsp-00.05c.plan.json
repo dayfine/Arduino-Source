@@ -88,38 +88,56 @@
         "args": {
           "fight_wild": false,
           "target": {
-            "facing": "north",
+            "facing": "south",
             "map": "JubilifeCity",
             "tiles": [
               [
-                55,
-                34
+                56,
+                31
               ]
             ]
           }
         },
         "id": "below_the_mart_clown",
         "kind": "route",
-        "why": "east and south to the Mart's clown"
+        "why": "east along row 31, above the Mart clown's box, to the wall (57, 31)"
       },
       {
-        "action": "talk_to_wanderer",
+        "action": "wait_for_wanderer",
         "args": {
-          "again": true
+          "again": true,
+          "stand": {
+            "facing": "west",
+            "map": "JubilifeCity",
+            "tiles": [
+              [
+                56,
+                33
+              ],
+              [
+                56,
+                34
+              ],
+              [
+                56,
+                32
+              ]
+            ]
+          }
         },
         "declared_after": {
           "facing": "north",
           "map": "JubilifeCity",
           "tiles": [
             [
-              55,
-              34
+              56,
+              31
             ]
           ]
         },
         "id": "mart_clown",
         "kind": "talk",
-        "why": "his coupon again, or his talk if he gave it"
+        "why": "his coupon again, or his talk if he gave it: wait on column 56 facing west, as in 00.05b"
       },
       {
         "action": "town",
@@ -138,7 +156,7 @@
         },
         "id": "beside_the_president",
         "kind": "route",
-        "why": "west along row 34 to the Poketch president"
+        "why": "from the wall north of column 56 round the boy below the Mart to the Poketch president"
       },
       {
         "id": "president",

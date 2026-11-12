@@ -35,14 +35,14 @@ walk run with no stops) | verdict (why). A ratio above 1.5 is flagged "!".
 00.04d north_to_jubilife | 73575 | 42700 | 30350 | 8 | 35 | 0 | 7.21! | 1.24 | 80.00! | 10200 ms (stand-in) | PASS
 00.05b below_the_presidents_trigger | 4900 | 4900 | 4900 | 0 | 0 | 0 | 5.76! | 1.00 | 1.00 | 850 ms (stand-in) | PASS
 00.05b past_the_president | 1700 | 1700 | 1700 | 0 | 0 | 0 | 3.78! | 1.00 | 1.00 | 450 ms (stand-in) | PASS
-00.05b below_the_mart_clown | 8050 | 8050 | 8050 | 1 | 0 | 0 | 4.35! | 1.00 | 1.00 | 1850 ms (stand-in) | PASS
-00.05b below_the_tv_clown | 23700 | 23700 | 23700 | 3 | 0 | 0 | 5.04! | 1.00 | 29.00! | 4700 ms (stand-in) | PASS
+00.05b below_the_mart_clown | 5450 | 5450 | 5450 | 1 | 0 | 0 | 3.30! | 1.00 | 1.00 | 1650 ms (stand-in) | PASS
+00.05b below_the_tv_clown | 27350 | 27350 | 27350 | 1 | 0 | 0 | 6.29! | 1.00 | 1.00 | 4350 ms (stand-in) | PASS
 00.05b below_the_company_clown | 21900 | 21900 | 21900 | 0 | 0 | 0 | 6.74! | 1.00 | 3.00! | 3250 ms (stand-in) | PASS
 00.05b beside_the_company_sign | 1450 | 1450 | 1450 | 1 | 0 | 0 | 4.14! | 1.00 | 1.00 | 350 ms (stand-in) | PASS
 00.05c below_the_company_clown | 900 | 900 | 900 | 0 | 0 | 0 | 2.57! | 1.00 | 1.00 | 350 ms (stand-in) | PASS
 00.05c below_the_tv_clown | 21900 | 21900 | 21900 | 0 | 0 | 0 | 6.74! | 1.00 | 5.00! | 3250 ms (stand-in) | PASS
-00.05c below_the_mart_clown | 15250 | 15250 | 15250 | 3 | 0 | 0 | 3.24! | 1.00 | 23.00! | 4700 ms (stand-in) | PASS
-00.05c beside_the_president | 6800 | 6800 | 6800 | 2 | 0 | 0 | 4.00! | 1.00 | 2.00! | 1700 ms (stand-in) | PASS
+00.05c below_the_mart_clown | 20350 | 20350 | 20350 | 1 | 0 | 0 | 4.68! | 1.00 | 1.00 | 4350 ms (stand-in) | PASS
+00.05c beside_the_president | 12200 | 12200 | 12200 | 0 | 0 | 0 | 6.26! | 1.00 | 1.00 | 1950 ms (stand-in) | PASS
 00.05c to_the_route_203_street | 21000 | 21000 | 21000 | 0 | 0 | 0 | 6.00! | 1.00 | 1.00 | 3500 ms (stand-in) | PASS
 01.01 west_of_barrys_trigger | 7300 | 7300 | 7300 | 0 | 0 | 0 | 6.35! | 1.00 | 1.00 | 1150 ms (stand-in) | PASS
 01.02 south_to_the_cliff | 1800 | 1800 | 1800 | 1 | 0 | 0 | 2.57! | 1.00 | 1.00 | 700 ms (stand-in) | PASS
@@ -58,7 +58,7 @@ walk run with no stops) | verdict (why). A ratio above 1.5 is flagged "!".
 01.06 up_jubilifes_road | 87286 | 119950 | 58350 | 3 | 10 | 4 | 7.66! | 2.20! | 20.00! | 11400 ms (stand-in) | PASS
 01.06 below_rowans_trigger | 1950 | 1950 | 1950 | 1 | 0 | 0 | 2.29! | 1.00 | 1.00 | 850 ms (stand-in) | PASS
 01.08 west_to_the_wall | 1650 | 1650 | 1650 | 1 | 0 | 0 | 3.00! | 1.00 | 1.00 | 550 ms (stand-in) | PASS
-01.08 below_the_ravaged_path | 25715 | 26950 | 14600 | 2 | 9 | 0 | 4.29! | 1.00 | 6.00! | 6000 ms (stand-in) | PASS
+01.08 below_the_ravaged_path | 24815 | 26050 | 13700 | 2 | 9 | 0 | 4.24! | 1.00 | 6.00! | 5850 ms (stand-in) | PASS
 01.09 west_of_the_rock | 7050 | 7050 | 7050 | 1 | 0 | 0 | 4.70! | 1.00 | 1.00 | 1500 ms (stand-in) | PASS
 01.09 above_the_way_out | 4550 | 4550 | 4550 | 2 | 0 | 0 | 4.14! | 1.00 | 2.00! | 1100 ms (stand-in) | PASS
 01.10 line_1 | 900 | 900 | 900 | 0 | 0 | 0 | 2.25! | 1.00 | 1.00 | 400 ms (stand-in) | PASS

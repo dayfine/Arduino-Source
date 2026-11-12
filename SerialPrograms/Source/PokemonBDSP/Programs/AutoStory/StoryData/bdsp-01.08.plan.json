@@ -36,14 +36,14 @@
             "tiles": [
               [
                 11,
-                2
+                3
               ]
             ]
           }
         },
         "id": "below_the_ravaged_path",
         "kind": "route",
-        "why": "north out of Jubilife, up Route 204's street and grass to below the door (11, 1)"
+        "why": "north out of Jubilife, up Route 204's street and grass to (11, 3), two tiles below the door (11, 1), clear of the youngster on row 2"
       },
       {
         "action": "to_banner",
@@ -62,7 +62,7 @@
         },
         "id": "into_the_ravaged_path",
         "kind": "step",
-        "why": "the door (11, 1)"
+        "why": "north up column 11 through the door (11, 1): the walk's last leg goes into the door, not to a tile before it"
       }
     ],
     "id": "01.08",

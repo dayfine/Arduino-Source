@@ -55,7 +55,7 @@ const std::map<StoryStepKind, std::set<std::string>>& built_in_actions(){
         {StoryStepKind::LEGS, {"", "legs", "one_short_ok", "to_wall", "to_dialogue", "to_map", "counted_wall", "measured"}},
         {StoryStepKind::STEP, {"", "face", "to_banner", "tap", "or_legs"}},        {StoryStepKind::MASH, {"", "a"}},
         {StoryStepKind::BATTLE, {"", "fight", "doubles", "starter"}},
-        {StoryStepKind::TALK, {"", "talk_to_wanderer"}},
+        {StoryStepKind::TALK, {"", "talk_to_wanderer", "wait_for_wanderer"}},
         {StoryStepKind::SHOP, {"", "sandgem_potions"}},
     };
     return actions;
@@ -410,7 +410,10 @@ UnitTestResult test_story_routes_keep_off_wander_zones(Logger& logger){
 //  No leg of 00.05b's or 00.05c's routes enters a tile where someone
 //  wanders, from any tile the player may be on: on lab-B (2026-11-11 21:00)
 //  the boy below the Mart (51, 33..35) stopped 00.05b's "east 8 (to wall)"
-//  along row 34 three tiles short; row 36 below him is open.
+//  along row 34 three tiles short; row 36 below him is open. The Mart
+//  clown's box counts too: the routes reach column 56 and leave it at
+//  (56, 36) and (56, 31), outside it, and wait_for_wanderer walks the
+//  column between.
 UnitTestResult test_jubilife_routes_cross_no_wander_zone(Logger& logger){
     std::string out;
     size_t checked = 0;
@@ -424,8 +427,11 @@ UnitTestResult test_jubilife_routes_cross_no_wander_zone(Logger& logger){
         }
         checked++;
         const StoryWorld& world = *route.world;
+        const Pokemon::TileBox clown = jubilife_mart_clown_box();
         const auto [most, leg] = most_zone_tiles(world, route.from, *route.legs, [&](const TilePos& pos){
-            return wandering_hazard(world, pos);
+            const std::optional<TilePos> local = story_to_local(world, "JubilifeCity", pos);
+            const bool clowns = local && local->x >= clown.x0 && local->x <= clown.x1 && local->y >= clown.y0 && local->y <= clown.y1;
+            return clowns || wandering_hazard(world, pos);
         });
         if (most > 0){
             out += std::format("\n  {}: {} enters {} tile(s) where someone wanders.", route.name, leg, most);
