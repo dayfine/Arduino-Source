@@ -79,10 +79,11 @@ bool starter_wanted(
 //      returns immediately while still inside the Starly battle at Lake Verity.
 //    * When `finish_battle_on_shiny == true` (for AutoStory):
 //      calls `clear_starter_battle(env, context)`, which mashes A until
-//      `EndBattleWatcher` detects the black-screen battle exit transition.
-//      The player ends up right at the start of the post-battle Lake Verity
-//      cutscene (Rowan's lines and walking out of the lake to VerityLakefront
-//      `(17, 14..15)`), ready for AutoStory's `after_starly` step.
+//      `EndBattleWatcher` detects the black-screen battle exit transition, and
+//      when `close_summary_after_read == true` also advances through Rowan's
+//      post-battle scene (`open_menu`) to `VerityLakefront (17, 14..15)` and
+//      closes the X menu so both `SHINY` and `HIT` end on the `VerityLakefront`
+//      overworld ready for checkpoint `00.03`.
 //  - Non-shiny starter (`clear_starter_battle` + `read_observed_pokemon`):
 //    1. `clear_starter_battle(env, context)` mashes A until `EndBattleWatcher`
 //       detects the end of the Starly battle.

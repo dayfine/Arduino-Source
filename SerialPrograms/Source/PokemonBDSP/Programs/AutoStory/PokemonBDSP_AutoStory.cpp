@@ -22,6 +22,7 @@
 #include "Pokemon/Options/Pokemon_GameLanguages.h"
 #include "Pokemon/Options/Pokemon_StoryRunOptions.h"
 #include "PokemonBDSP/Programs/PokemonBDSP_GameEntry.h"
+#include "PokemonBDSP/Programs/RngManipulation/PokemonBDSP_StarterRngAttempts.h"
 #include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Actions.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_StoryLanguage.h"
@@ -51,6 +52,18 @@ BDSPAutoStory_Descriptor::BDSPAutoStory_Descriptor()
 
 std::unique_ptr<StatsTracker> BDSPAutoStory_Descriptor::make_stats() const{
     return std::make_unique<Pokemon::AutoStoryStats>();
+}
+
+BdspStarter bdsp_starter_for_choice(StarterChoice choice){
+    switch (choice){
+    case StarterChoice::TURTWIG:
+        return BdspStarter::Turtwig;
+    case StarterChoice::CHIMCHAR:
+        return BdspStarter::Chimchar;
+    case StarterChoice::PIPLUP:
+        return BdspStarter::Piplup;
+    }
+    return BdspStarter::Chimchar;
 }
 
 
@@ -123,6 +136,10 @@ std::string verify_story_checkpoint(
 } // namespace
 
 
+BDSPAutoStory::~BDSPAutoStory(){
+    RUN_STARTER_RNG.remove_listener(*this);
+}
+
 BDSPAutoStory::BDSPAutoStory()
     : RUN(checkpoint_database(), Pokemon::Gen8ToGen9Languages_Database())
     , NEW_GAME_INTRO(
@@ -149,7 +166,30 @@ BDSPAutoStory::BDSPAutoStory()
         LockMode::LOCK_WHILE_RUNNING,
         false
     )
+    , RUN_STARTER_RNG(
+        "<b>Run Starter RNG in AutoStory:</b><br>Off by default. In 00.02, run Starter RNG from the Verity Lakefront save "
+        "using the Starter RNG filter table below, then continue the story at 00.03.",
+        LockMode::LOCK_WHILE_RUNNING,
+        false
+    )
+    , STARTER_RNG_MAX_RESETS(
+        "<b>Starter RNG Maximum Resets:</b><br>0 means no limit.",
+        LockMode::LOCK_WHILE_RUNNING,
+        0, 0, 9999
+    )
+    , STARTER_RNG_FILTERS(
+        "<b>Starter RNG Stop Conditions:</b><br>Stop Starter RNG when the starter matches any row in this table.",
+        Pokemon::StatsHuntMiscFeatureFlags{
+            /*action*/ false, /*shiny*/ true, /*gender*/ true, /*nature*/ true
+        }
+    )
+    , NOTIFICATION_SHINY(
+        "Shiny Starter",
+        true, true, ImageAttachmentMode::JPG,
+        {"Notifs", "Showcase"}
+    )
     , NOTIFICATIONS({
+        &NOTIFICATION_SHINY,
         &NOTIFICATION_PROGRAM_FINISH,
         &NOTIFICATION_ERROR_RECOVERABLE,
         &NOTIFICATION_ERROR_FATAL,
@@ -160,7 +200,21 @@ BDSPAutoStory::BDSPAutoStory()
     PA_ADD_OPTION(PLAYER_NAME);
     PA_ADD_OPTION(STARTER);
     PA_ADD_OPTION(STOP_FOR_STARTER_RNG);
+    PA_ADD_OPTION(RUN_STARTER_RNG);
+    PA_ADD_OPTION(STARTER_RNG_MAX_RESETS);
+    PA_ADD_OPTION(STARTER_RNG_FILTERS);
     PA_ADD_OPTION(NOTIFICATIONS);
+
+    BDSPAutoStory::on_config_value_changed(this);
+    RUN_STARTER_RNG.add_listener(*this);
+}
+
+void BDSPAutoStory::on_config_value_changed(void*){
+    const ConfigOptionState visibility = RUN_STARTER_RNG
+        ? ConfigOptionState::ENABLED
+        : ConfigOptionState::HIDDEN;
+    STARTER_RNG_MAX_RESETS.set_visibility(visibility);
+    STARTER_RNG_FILTERS.set_visibility(visibility);
 }
 
 namespace{
@@ -254,10 +308,52 @@ void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     //  The reads that use text (Location.h) take the game's language from here.
     set_story_language(RUN.language());
 
-    StoryEnv story{env, context, STARTER, PLAYER_NAME};
+    StoryEnv story{env, context, STARTER, PLAYER_NAME, {}};
+    RngAim starter_rng_aim;
+    const BdspRngFilterSnapshot starter_rng_filters = STARTER_RNG_FILTERS.make_snapshot();
+    if (RUN_STARTER_RNG){
+        story.run_starter_rng = [&]() -> Pokemon::Outcome{
+            StarterRngSettings settings;
+            settings.language = RUN.language();
+            settings.player_model = 1;
+            settings.start_point = BdspStartPoint::Lakefront;
+            settings.starter = bdsp_starter_for_choice(STARTER);
+            settings.filters = &starter_rng_filters;
+            settings.max_resets = STARTER_RNG_MAX_RESETS;
+            settings.reset_first = false;
+            settings.finish_battle_on_shiny = true;
+            settings.close_summary_after_read = true;
+
+            uint64_t resets_logged = 0;
+            StarterRngAttemptIO io;
+            io.notification_shiny = &NOTIFICATION_SHINY;
+            io.notification_error = &NOTIFICATION_ERROR_RECOVERABLE;
+            io.on_reset = [&](){
+                resets_logged++;
+                env.console.overlay().add_log(std::format("Starter RNG: try {}", resets_logged));
+            };
+
+            const StarterRngRunResult result = run_starter_rng_attempts(env, context, settings, io, starter_rng_aim);
+            if (result.outcome == StarterRngOutcome::HIT || result.outcome == StarterRngOutcome::SHINY){
+                env.log(
+                    std::format(
+                        "Starter RNG succeeded after {} reset(s) on advance {}: {}.",
+                        result.resets_used, result.target_advance, result.target.to_string()
+                    ),
+                    COLOR_BLUE
+                );
+                return Pokemon::outcome_ok();
+            }
+            const std::string detail = result.last_failure_reason.empty()
+                ? std::format("Starter RNG stopped after {} reset(s) without hitting a target.", result.resets_used)
+                : result.last_failure_reason;
+            return Pokemon::outcome_failed("starter_rng_failed", detail);
+        };
+    }
     StoryExecutor executor(story);
     const StoryRunPlan plan = plan_story_run(
-        checkpoints, first, last, StoryHandoffs{.starter_rng = STOP_FOR_STARTER_RNG}
+        checkpoints, first, last,
+        StoryHandoffs{.starter_rng = STOP_FOR_STARTER_RNG, .run_starter_rng = RUN_STARTER_RNG}
     );
     executor.set_stop_rows(rows_that_stop(plan.rows));
     //  A start with a save always loads it first, so the run never walks

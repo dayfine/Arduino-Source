@@ -24,6 +24,7 @@
 #include "Data/PokemonBDSP_AutoStory_StoryMaps.h"
 #include "Actions/PokemonBDSP_AutoStory_Events.h"
 #include "Data/PokemonBDSP_AutoStory_WalkRules.h"
+#include "PokemonBDSP_AutoStory.h"
 #include "PokemonBDSP_AutoStory_StoryTable.h"
 #include "PokemonBDSP_AutoStory_StoryTable_Tests.h"
 
@@ -268,6 +269,36 @@ UnitTestResult test_plan_story_run_starter_rng(Logger&){
     const StoryRunPlan from_0002 = plan_story_run(table, 2, 4, StoryHandoffs{.starter_rng = true});
     if (from_0002.stop != StoryHandoff::NONE || from_0002.rows.size() != 3 || from_0002.rows.front().id != "00.02"){
         return "Expected a run starting at 00.02 to pass through without stopping for 00.01's handoff.";
+    }
+    const StoryRunPlan in_program = plan_story_run(
+        table, 0, table.size() - 1, StoryHandoffs{.starter_rng = true, .run_starter_rng = true}
+    );
+    if (in_program.stop != StoryHandoff::NONE || in_program.rows.size() != table.size()){
+        return "With Run Starter RNG in AutoStory on, expected the full table with no handoff stop.";
+    }
+    const StoryCheckpoint& rng_row = in_program.rows[2];
+    const std::vector<std::string> rng_problems = Pokemon::lint_story_checkpoint(rng_row);
+    if (!rng_problems.empty()){
+        return "00.02 with Run Starter RNG in AutoStory: " + rng_problems[0];
+    }
+    if (rng_row.id != "00.02" || rng_row.saves_in != "Verity Lakefront" || rng_row.steps.size() != 1 ||
+        rng_row.steps[0].kind != StoryStepKind::GAME || rng_row.steps[0].action != STARTER_RNG_ACTION ||
+        !story_events().contains(rng_row.steps[0].action)
+    ){
+        return "Expected 00.02 with Run Starter RNG in AutoStory to run the starter_rng game event after its Verity Lakefront start save.";
+    }
+    const std::optional<Pokemon::Pose> rng_end = end_pose(rng_row);
+    const std::optional<Pokemon::Pose> row0003_start = table[3].start
+        ? std::make_optional(Pokemon::pose_of(*table[3].start))
+        : std::nullopt;
+    if (!rng_end || !row0003_start || Pokemon::to_string(*rng_end) != Pokemon::to_string(*row0003_start)){
+        return "Expected 00.02's starter_rng step to end at 00.03's VerityLakefront (17, 14..15) start pose.";
+    }
+    if (bdsp_starter_for_choice(StarterChoice::TURTWIG) != BdspStarter::Turtwig ||
+        bdsp_starter_for_choice(StarterChoice::CHIMCHAR) != BdspStarter::Chimchar ||
+        bdsp_starter_for_choice(StarterChoice::PIPLUP) != BdspStarter::Piplup
+    ){
+        return "Expected StarterChoice to map 1-to-1 to BdspStarter.";
     }
     return true;
 }

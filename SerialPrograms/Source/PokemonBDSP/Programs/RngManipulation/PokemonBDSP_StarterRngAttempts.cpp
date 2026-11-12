@@ -569,6 +569,14 @@ BdspStarterAttemptResult run_starter_rng_attempt(
         if (settings.finish_battle_on_shiny){
             if (!clear_starter_battle(env, context)){
                 record_error();
+            }else if (settings.close_summary_after_read){
+                if (!open_menu(env, context)){
+                    record_error();
+                }else{
+                    pbf_press_button(context, BUTTON_X, 160ms, 1000ms);
+                    context.wait_for_all_requests();
+                    env.log("Closed the menu.");
+                }
             }
         }
         return BdspStarterAttemptResult{

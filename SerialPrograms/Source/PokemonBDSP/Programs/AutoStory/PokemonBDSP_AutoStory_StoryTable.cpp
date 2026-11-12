@@ -42,6 +42,22 @@ StoryCheckpoint with_handoff_save(StoryCheckpoint row){
     return row;
 }
 
+//  `row` (00.02) with its Lake Verity steps replaced by the in-program
+//  Starter RNG action, keeping 00.02's start save at VerityLakefront (17, 14)
+//  and its end pose at VerityLakefront (17, 14..15).
+StoryCheckpoint with_starter_rng_step(StoryCheckpoint row){
+    Pokemon::StoryStep step;
+    step.kind = Pokemon::StoryStepKind::GAME;
+    step.name = std::string(STARTER_RNG_ACTION);
+    step.action = std::string(STARTER_RNG_ACTION);
+    step.why = "Starter RNG at Lake Verity through the Starly battle and Rowan's scene";
+    if (!row.steps.empty()){
+        step.pose_after = row.steps.back().pose_after;
+    }
+    row.steps = {std::move(step)};
+    return row;
+}
+
 } // namespace
 
 
@@ -56,10 +72,14 @@ StoryRunPlan plan_story_run(
     StoryRunPlan plan;
     for (size_t c = first; c <= last && c < checkpoints.size(); c++){
         const StoryCheckpoint& row = checkpoints[c];
-        if (row.id == STARTER_RNG_HANDOFF_ROW && handoffs.starter_rng){
+        if (row.id == STARTER_RNG_HANDOFF_ROW && handoffs.starter_rng && !handoffs.run_starter_rng){
             plan.rows.push_back(with_handoff_save(row));
             plan.stop = StoryHandoff::STARTER_RNG;
             return plan;
+        }
+        if (row.id == STARTER_RNG_CHECKPOINT_ROW && handoffs.run_starter_rng){
+            plan.rows.push_back(with_starter_rng_step(row));
+            continue;
         }
         plan.rows.push_back(row);
     }
