@@ -363,6 +363,12 @@ std::vector<StopCandidate> stop_candidates(
     for (int c = std::max(0, walked.min); c <= last; c++){
         add_unique(candidates, StopCandidate{.player = tiles[c], .trainer = std::nullopt});
     }
+    //  A leg onto a spinner that took all its tiles slid on to its stop
+    //  (09.02 run 8, console B, 2026-11-11: a tap onto B2F's arrow (16, 6)
+    //  read as not moved).
+    if (step.spin_tiles && walked.max >= step.tiles){
+        add_unique(candidates, StopCandidate{.player = step.end, .trainer = std::nullopt});
+    }
     return candidates;
 }
 
