@@ -80,6 +80,7 @@ void connect_by_world(std::vector<MapData>& maps);
 } // namespace PokemonAutomation
 
 
+//  A hash of MapPlace, for planners that keep places in unordered sets.
 template <>
 struct std::hash<PokemonAutomation::Pokemon::MapPlace>{
     size_t operator()(const PokemonAutomation::Pokemon::MapPlace& place) const{

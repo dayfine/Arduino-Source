@@ -64,11 +64,17 @@ std::string describe(const ConnectedMaps& world, const std::optional<MapPlace>& 
     if (!place){
         return "nowhere";
     }
-    return world.map(place->map).name + " " + to_string(place->tile);
+    return std::format("{} {}", world.map(place->map).name, to_string(place->tile));
 }
 
 //  Why `actual` is not `expected`, if it is not.
-std::optional<std::string> mismatch(const ConnectedMaps& world, const std::optional<MapPlace>& actual, const std::optional<NamedPlace>& expected){
+//  Where a step or a warp should put the player, or nothing for nowhere.
+struct PlaceExpectation{
+    std::optional<NamedPlace> place;
+};
+
+std::optional<std::string> mismatch(const ConnectedMaps& world, const std::optional<MapPlace>& actual, const PlaceExpectation& expectation){
+    const std::optional<NamedPlace>& expected = expectation.place;
     std::optional<MapPlace> wanted;
     if (expected){
         wanted = MapPlace{*world.find(expected->map), expected->tile};
@@ -87,7 +93,7 @@ struct StepInput{
 };
 struct StepCase{
     StepInput input;
-    std::optional<NamedPlace> expectation;
+    PlaceExpectation expectation;
 };
 
 class Test_ConnectedMaps_Step : public UnitTest{
@@ -111,35 +117,35 @@ private:
 const StepCase STEP_CASES[] = {
     {
         .input = {.name = "a step on the same map", .from = {"Town", {1, 1}}, .direction = Direction::EAST},
-        .expectation = NamedPlace{"Town", {2, 1}},
+        .expectation = {.place = NamedPlace{"Town", {2, 1}}},
     },
     {
         .input = {.name = "north onto the route, shifted by its offset", .from = {"Town", {0, 0}}, .direction = Direction::NORTH},
-        .expectation = NamedPlace{"Route", {1, 2}},
+        .expectation = {.place = NamedPlace{"Route", {1, 2}}},
     },
     {
         .input = {.name = "south off the route into the town", .from = {"Route", {1, 2}}, .direction = Direction::SOUTH},
-        .expectation = NamedPlace{"Town", {0, 0}},
+        .expectation = {.place = NamedPlace{"Town", {0, 0}}},
     },
     {
         .input = {.name = "east into the lake", .from = {"Town", {3, 2}}, .direction = Direction::EAST},
-        .expectation = NamedPlace{"Lake", {0, 2}},
+        .expectation = {.place = NamedPlace{"Lake", {0, 2}}},
     },
     {
         .input = {.name = "west into the town", .from = {"Lake", {0, 1}}, .direction = Direction::WEST},
-        .expectation = NamedPlace{"Town", {3, 1}},
+        .expectation = {.place = NamedPlace{"Town", {3, 1}}},
     },
     {
         .input = {.name = "an edge no map joins", .from = {"Town", {0, 1}}, .direction = Direction::WEST},
-        .expectation = std::nullopt,
+        .expectation = {.place = std::nullopt},
     },
     {
         .input = {.name = "past the joined map's span", .from = {"Route", {0, 2}}, .direction = Direction::SOUTH},
-        .expectation = std::nullopt,
+        .expectation = {.place = std::nullopt},
     },
     {
         .input = {.name = "a map off the world grid joins nothing", .from = {"House", {1, 0}}, .direction = Direction::NORTH},
-        .expectation = std::nullopt,
+        .expectation = {.place = std::nullopt},
     },
 };
 
@@ -150,7 +156,7 @@ struct WarpInput{
 };
 struct WarpCase{
     WarpInput input;
-    std::optional<NamedPlace> expectation;
+    PlaceExpectation expectation;
 };
 
 class Test_ConnectedMaps_Warp : public UnitTest{
@@ -172,19 +178,19 @@ private:
 const WarpCase WARP_CASES[] = {
     {
         .input = {.name = "a warp to a loaded map's point", .warp = {.to = WarpDestination{"House", "door"}}},
-        .expectation = NamedPlace{"House", {0, 1}},
+        .expectation = {.place = NamedPlace{"House", {0, 1}}},
     },
     {
         .input = {.name = "a warp to a map that isn't loaded", .warp = {.to = WarpDestination{"Cave", "door"}}},
-        .expectation = std::nullopt,
+        .expectation = {.place = std::nullopt},
     },
     {
         .input = {.name = "a warp to a point the map lacks", .warp = {.to = WarpDestination{"House", "stairs"}}},
-        .expectation = std::nullopt,
+        .expectation = {.place = std::nullopt},
     },
     {
         .input = {.name = "a warp that leads nowhere", .warp = {}},
-        .expectation = std::nullopt,
+        .expectation = {.place = std::nullopt},
     },
 };
 
