@@ -107,7 +107,7 @@ inline constexpr std::string_view FRLG_PLAN_GOLDEN_12[] = {
     "14.03 below_erika from CeladonCity_Gym (6, 5) facing east to CeladonCity_Gym (6, 5) facing north",
     "14.03   face north -> CeladonCity_Gym (6, 5) [walk only]",
     "14.04 below_gym_tree_out from CeladonCity_Gym (2, 18) facing south to CeladonCity (40, 36) facing north",
-    "14.04   walk east 4 -> CeladonCity_Gym (6, 18) [walk only]",
+    "14.04   walk east 4 -> CeladonCity_Gym (6, 18) [walk only] [tapped]",
     "14.04   walk south 1 (warp) -> CeladonCity (11, 31) [walk only]",
     "14.04   walk south 6 (to wall) -> CeladonCity (11, 37)",
     "14.04   walk east 30 (to wall) -> CeladonCity (41, 37)",
