@@ -479,6 +479,13 @@ std::string OverworldStepSim::walk(const StoryStep& step){
     const RoutePlanning planning{.maps = &story_maps(), .costs = story_route_costs(), .start = MapPosition{m_at.map, m_at.tile}, .label = step.name};
     SimWalkerRules rules;
     rules.trainer_battle_end = battle_end_on_sim;
+    //  A BIKE_VARIANT rides, as on the console, when the sim has the
+    //  player on the Bicycle (the rows' sims stub ride_bike): its open
+    //  legs are tapped out a tile at a time (counts_bike_taps()). Other
+    //  steps keep the sim's walking pace.
+    if (move_speed(step) == MoveSpeed::BIKE && m_sim.state().on_bike){
+        rules.speed = MoveSpeed::BIKE;
+    }
     const std::string failure = route ? OverworldSimWalker(m_sim, rules).run(*route, planning) : "no legs.";
     m_at = route ? StoryPose{route->back().end.map, route->back().end.point, route->back().facing_after} : m_at;
     return failure;
