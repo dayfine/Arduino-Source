@@ -38,6 +38,11 @@ void spend_item(Supplies& supplies, const std::string& item);
 //  The row (from 0) of `item` in the Items pocket, or -1 if none is left.
 //  Items the story doesn't count, such as a MOON STONE, take rows too.
 int item_row(const Supplies& supplies, const std::string& item);
+//  Where row `row` (from 0) of the Items pocket shows once DOWN has moved
+//  the cursor there from the top: the cursor goes down to the fourth row
+//  shown, then the list scrolls under it until its CANCEL shows (pokefirered
+//  ListMenuUpdateSelectedRowIndexAndScrollOffset(), 6 rows shown).
+int item_shown_row(const Supplies& supplies, int row);
 
 //  Sets the counts and the pocket's order from the Items pocket as read.
 //  A row whose count couldn't be read still holds at least one: it keeps
