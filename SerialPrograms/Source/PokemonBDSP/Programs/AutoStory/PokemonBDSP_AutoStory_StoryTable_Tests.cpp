@@ -524,6 +524,41 @@ UnitTestResult test_company_clown_after_the_woman_on_row_24(Logger& logger){
     return "00.05c beside_the_president: not in the table, or from nowhere known.";
 }
 
+//  00.05c's end below the east-exit sign (59, 21) facing north, on the
+//  planned route from the Mart's street (lab-B 2026-11-12 13:55: a "measured"
+//  walk inferred its start and tapped against the hedges). Each leg is taps
+//  (a whole tile each, a turn tap first) or a wall's end, and none steps on
+//  the guard's trigger column 60.
+UnitTestResult test_main_road_ends_below_the_east_exit_sign(Logger& logger){
+    for (const PlannedStoryRoute& route : plan_story_routes(logger)){
+        if (route.name != "00.05c below_the_east_exit_sign"){
+            continue;
+        }
+        if (!route.legs || route.legs->empty()){
+            return "00.05c below_the_east_exit_sign: no plan.";
+        }
+        const StoryWorld& world = *route.world;
+        const auto guard_column = [&](const TilePos& pos){
+            const std::optional<TilePos> local = story_to_local(world, "JubilifeCity", pos);
+            return local && local->x >= 60;
+        };
+        const auto [most, leg] = most_zone_tiles(world, route.from, *route.legs, guard_column);
+        if (most > 0){
+            return std::format("the leg {} steps on {} tiles of column 60 or east.", leg, most);
+        }
+        const PlannedLeg& last = route.legs->back();
+        const auto on_the_tile = [&](const TilePos& pos){
+            const std::optional<TilePos> local = story_to_local(world, "JubilifeCity", pos);
+            return local && *local == TilePos{59, 21};
+        };
+        if (last.after.size() != 1 || !on_the_tile(last.after.front()) || last.leg.direction != Direction::NORTH || to_string(last).find("to wall") == std::string::npos){
+            return "00.05c below_the_east_exit_sign does not end on (59, 21) facing north against the sign.";
+        }
+        return true;
+    }
+    return "00.05c below_the_east_exit_sign is not a ROUTE step from a known place.";
+}
+
 //  01.08's walk below the Ravaged Path keeps off the row Route 204 South's
 //  youngster_3 wanders, (12, 2) to (14, 2): on lab-B (2026-11-08) the plan
 //  "north 35 (to wall) to (13, 2), west 2 (to wall) to (11, 2)" walked along
@@ -790,6 +825,10 @@ const AutoStoryStoryTableCase AUTO_STORY_STORY_TABLE_CASES[] = {
     },
     {
         .input = {"Story table: every route plans, and none runs along a wander zone", test_story_routes_keep_off_wander_zones},
+        .expectation = {},
+    },
+    {
+        .input = {"00.05c: the plan to below the east-exit sign is taps and a wall's end, off the guard's column (lab-B, 2026-11-12 13:55)", test_main_road_ends_below_the_east_exit_sign},
         .expectation = {},
     },
     {

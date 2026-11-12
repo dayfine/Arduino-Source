@@ -463,13 +463,22 @@ UnitTestResult main_road_a_row_off_00_05c(Logger& logger){
     std::string failures;
     for (const Direction direction : {Direction::NORTH, Direction::SOUTH}){
         SimWorldKnobs knobs;
-        knobs.slides = {{.step = "up_the_main_road", .direction = direction, .tiles = 1}};
+        knobs.slides = {{.step = "below_the_east_exit_sign", .direction = direction, .tiles = 1}};
         const std::string stopped = run_case(logger, "00.05c", "01.01", {.fade = {}, .banner = {}}, std::move(knobs));
         if (!stopped.empty()){
             failures += std::format("\n  a row {}: {}", Pokemon::direction_name(direction), stopped);
         }
     }
     return failures.empty() ? UnitTestResult(true) : UnitTestResult("00.05c up the main road:" + failures);
+}
+//  00.05c on lab-B 2026-11-12 13:55: a short D-pad tap in a new direction
+//  after the east leg only turned the player, and the walk, counting its
+//  taps against an inferred start, tapped east against the hedges. Every
+//  tap leg now turns first and then steps a whole tile, so the walk from
+//  the street ends on (59, 21) and the row goes on into 01.01.
+UnitTestResult turn_tap_after_the_east_leg_00_05c(Logger& logger){
+    const std::string stopped = run_case(logger, "00.05c", "01.01", {.fade = {}, .banner = {}}, SimWorldKnobs{});
+    return stopped.empty() ? UnitTestResult(true) : UnitTestResult("00.05c to the east-exit sign: " + stopped);
 }
 //  01.01 from a save with no Poketch: Jubilife's east-exit guard would
 //  ask about the Poketch campaign and turn us back (lab-B 2026-11-11, the
@@ -761,6 +770,7 @@ const FailureCase AUTO_STORY_FAILURE_CASES[] = {
     {.input = {"00.05c a coupon missing (the sign read for the Poketch Company clown): no Poketch, 00.05c fails (lab-B 2026-11-11)", no_poketch_fails_00_05c}, .expectation = {}},
     {.input = {"00.05b a coupon missing at its end: the row fails at its coupon check, before the save", missing_coupon_fails_00_05b}, .expectation = {}},
     {.input = {"00.05c the walk up the main road ends a row off: still on (59, 21) below the east-exit sign, into 01.01 (lab-B 2026-11-12 13:32)", main_road_a_row_off_00_05c}, .expectation = {}},
+    {.input = {"00.05c the turn tap after the east leg only turns: the walk ends on (59, 21), into 01.01 (lab-B 2026-11-12 13:55)", turn_tap_after_the_east_leg_00_05c}, .expectation = {}},
     {.input = {"01.01 with no Poketch: the east-exit guard's gate stops the row at its check, not a trainer fight (lab-B 2026-11-11)", gate_guard_stops_01_01}, .expectation = {}},
     {.input = {"00.04 to the ledge column with a wild battle on each pass through Route 201's grass (lab-B 2026-11-09 16:14)", [](Logger& logger){
         return passes(ledge_walk_in_grass(logger, {}));
