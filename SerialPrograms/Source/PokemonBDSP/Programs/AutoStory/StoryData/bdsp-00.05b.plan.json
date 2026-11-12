@@ -166,6 +166,35 @@
         "id": "company_clown",
         "kind": "talk",
         "why": "the clown by the Poketch Company: 'Do moves have types?' Yes; Coupon 2"
+      },
+      {
+        "action": "line",
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "west",
+            "map": "JubilifeCity",
+            "tiles": [
+              [
+                14,
+                19
+              ]
+            ]
+          }
+        },
+        "declared_after": {
+          "facing": "west",
+          "map": "JubilifeCity",
+          "tiles": [
+            [
+              14,
+              19
+            ]
+          ]
+        },
+        "id": "beside_the_company_sign",
+        "kind": "route",
+        "why": "west 1 against the Poketch Company's signboard (13, 19): the bump pins the tile the save is made on (console 2026-11-11: a save believed at (15, 19) was in the Poketch lobby)"
       }
     ],
     "id": "00.05b",
