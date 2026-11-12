@@ -1,0 +1,110 @@
+{
+    "format": "pokesim-authored-checkpoint/1",
+    "game": "frlg",
+    "checkpoint": {
+        "id": "13.01",
+        "title": "Cinnabar to the Pokemon Mansion: 1F and 2F up to 3F's statue, press it",
+        "start": {
+            "map": "CinnabarIsland_PokemonCenter_1F",
+            "tiles": [
+                [
+                    7,
+                    4
+                ]
+            ],
+            "facing": "north"
+        },
+        "events": [
+            {
+                "id": "mansion_3f",
+                "kind": "route",
+                "action": "run",
+                "args": {
+                    "target": {
+                        "map": "PokemonMansion_3F",
+                        "tiles": [
+                            [
+                                8,
+                                3
+                            ]
+                        ],
+                        "facing": "east"
+                    }
+                },
+                "why": "out of Cinnabar's Center, up to the Mansion door (8, 3), 1F (8, 33) up its stairs (10, 13) to 2F (6, 14), through 2F's rooms to the stairs (9, 3), onto 3F's (8, 3); all in the switch's clear state, which is the map's"
+            },
+            {
+                "id": "to_statue",
+                "kind": "legs",
+                "action": "taps",
+                "args": {
+                    "legs": [
+                        {
+                            "direction": "south",
+                            "tiles": 3
+                        },
+                        {
+                            "direction": "east",
+                            "tiles": 4
+                        }
+                    ]
+                },
+                "why": "a tap a tile on 3F in the clear state: down to (8, 6) and east along row 6 to (12, 6), below the statue (12, 5)"
+            },
+            {
+                "id": "face_statue",
+                "kind": "step",
+                "args": {
+                    "direction": "north"
+                },
+                "declared_after": {
+                    "map": "PokemonMansion_3F",
+                    "tiles": [
+                        [
+                            12,
+                            6
+                        ]
+                    ],
+                    "facing": "north"
+                },
+                "why": "turn north to the statue (12, 5)"
+            },
+            {
+                "id": "press_3f_statue",
+                "kind": "talk",
+                "why": "face the statue (12, 5) and press A: \"Press the secret switch?\""
+            },
+            {
+                "id": "press_3f",
+                "kind": "answer",
+                "why": "YES: \"Who wouldn't?\"; the switch flag is set, 3F's (17-19,11-12) open, its (21,4-8) close"
+            }
+        ]
+    },
+    "execution": {
+        "menu": "full",
+        "notes": {
+            "checkpoint": [
+                "Starts at Cinnabar's nurse, facing her, where no earlier row ends (on the unauthored-start list). Ends on 3F (12, 6) facing the statue it just pressed.",
+                "The Mansion's statue switches: one flag for all four floors. Switch model (pokefirered data/scripts/pokemon_mansion.inc, PokemonMansion_*F scripts.inc; one global flag, set on a press and applied on each floor's load; the pack's maps are the flag-clear state only). Assumed per floor (read from pokefirered; the overlay data on PokemonSimulation's maps/frlg-mansion-switches branch, seen 2026-11-12, has the same tiles open or closed per state): 1F set: (22-24,10-11), (27-29,25-26), (32-34,25-26) open, (31-33,18-19) closed. 2F set: (24-26,14-15), (10,30-32) open, (12,4-8) closed, (10,28-29) wall. 3F set: (17-19,11-12) open, (21,4-8) closed. B1F set: (12,10-12), (20-22,22-23) open, (33-35,20-21) and (16,28-30) closed. Clear = the map as it is.",
+                "13.01 walks only in the clear state; the press at its end sets the flag, and every row after walks the set state until a statue is pressed again (13.03 presses B1F's two).",
+                "Mansion trainers met on this walk: 1F Johnson wanders row 8, 2F Arnie (5, 23) and 3F Simon (6-8, 12-14) are off the route (the route takes 2F's northern rooms and 3F's (8, 3) arrival)."
+            ]
+        }
+    },
+    "metadata": {
+        "phase": "testing",
+        "postconditions": {
+            "position": {
+                "map": "PokemonMansion_3F",
+                "tiles": [
+                    [
+                        12,
+                        6
+                    ]
+                ],
+                "facing": "north"
+            }
+        }
+    }
+}

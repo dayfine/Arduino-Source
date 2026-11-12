@@ -41,6 +41,7 @@
 #include "PokemonFRLG_AutoStoryPlanGolden14.h"
 #include "PokemonFRLG_AutoStoryPlanGolden15.h"
 #include "PokemonFRLG_AutoStoryPlanGolden16.h"
+#include "PokemonFRLG_AutoStoryPlanGolden13.h"
 #include "PokemonFRLG_AutoStoryRows_Tests.h"
 #include "PokemonFRLG_AutoStoryMoveData.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
@@ -290,8 +291,8 @@ UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& po
 //  start: starts_after_unauthored_rows()), and adds the plans to `golden`.
 UnitTestResult chain_story_routes(std::vector<std::string>& golden){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
-    if (checkpoints.size() != 59 || checkpoints[0].start){
-        return "Expected 59 checkpoints, the first from a new game.";
+    if (checkpoints.size() != 63 || checkpoints[0].start){
+        return "Expected 63 checkpoints, the first from a new game.";
     }
     StoryPose pose;
     for (size_t c = 0; c < checkpoints.size(); c++){
@@ -337,6 +338,7 @@ UnitTestResult test_golden_plans(){
     golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_12), std::end(FRLG_PLAN_GOLDEN_12));
     golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_15), std::end(FRLG_PLAN_GOLDEN_15));
     golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_16), std::end(FRLG_PLAN_GOLDEN_16));
+    golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_13), std::end(FRLG_PLAN_GOLDEN_13));
     golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_14), std::end(FRLG_PLAN_GOLDEN_14));
     const size_t stored = golden.size();
     size_t first_diff = 0;
@@ -690,7 +692,10 @@ UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<const Map
             }
         }
         const std::vector<std::optional<MapPosition>> stops = walks ? wanderer_stops(pose, step) : std::vector<std::optional<MapPosition>>{};
-        if (std::count(stops.begin(), stops.end(), std::nullopt) > 0){
+        //  13.03's walk into Lewis's room, B1F of the Pokemon Mansion: its one way in,
+        //  (22, 24), is beside his wander range (19..21, 24..26), on a cave's wild floor.
+        const bool lewis = checkpoint.id == "13.03" && step.name == "to_statue";
+        if (!lewis && std::count(stops.begin(), stops.end(), std::nullopt) > 0){
             return where + "crosses a wandering trainer's sight where the walk can't tell where they'd stop the player.";
         }
         if (const std::string problem = walks ? held_past_lookers(pose, step, beaten) : ""; !problem.empty()){
