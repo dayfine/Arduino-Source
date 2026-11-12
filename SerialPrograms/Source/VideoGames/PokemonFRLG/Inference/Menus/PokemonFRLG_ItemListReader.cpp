@@ -241,7 +241,7 @@ public:
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         const ItemNameMatcher& matcher = ItemNameMatcher::instance();
-        for (const std::string& text : {"FARE CANCY", "RARE CANOY", "RARE CANDY"}){
+        for (const char* text : {"FARE CANCY", "RARE CANOY", "RARE CANDY"}){
             const std::string item = matcher.match(Language::English, text);
             if (item != "rare-candy"){
                 return std::format("Expected \"{}\" read as rare-candy, got \"{}\".", text, item);
