@@ -144,6 +144,28 @@
         "action": "wait_for_wanderer",
         "args": {
           "again": true,
+          "far_stand": {
+            "facing": "east",
+            "map": "JubilifeCity",
+            "tiles": [
+              [
+                54,
+                32
+              ],
+              [
+                54,
+                33
+              ],
+              [
+                54,
+                34
+              ],
+              [
+                54,
+                33
+              ]
+            ]
+          },
           "stand": {
             "facing": "west",
             "map": "JubilifeCity",
@@ -155,6 +177,10 @@
               [
                 56,
                 34
+              ],
+              [
+                56,
+                33
               ],
               [
                 56,
@@ -175,7 +201,7 @@
         },
         "id": "mart_clown",
         "kind": "talk",
-        "why": "his coupon again, or his talk if he gave it: wait on column 56 facing west, as in 00.05b"
+        "why": "his coupon again, or his talk if he gave it: wait in his box's end columns, as in 00.05b"
       },
       {
         "action": "town",

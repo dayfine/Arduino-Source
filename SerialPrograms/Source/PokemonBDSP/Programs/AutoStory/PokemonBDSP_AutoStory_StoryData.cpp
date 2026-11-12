@@ -71,12 +71,17 @@ void add_wanderer_talks(std::vector<Pokemon::StoryActionSpec>& actions){
     //  Walks the row below his home, asking north.
     actions.push_back({.kind = Pokemon::StoryStepKind::TALK, .name = "talk_to_wanderer", .args = {again},
         .console_only = false, .certainty = certainty});
-    //  Waits for him on a column beside his box (WanderWaitPlan); ends
-    //  against a wall the declared way and one at the column's back.
+    //  Waits for him at an end column of his box, then at the other end
+    //  (WanderWaitPlan); ends against a wall the declared way and one at
+    //  the stand column's back.
     const Pokemon::StoryArgSpec stand = required(
-        "stand", Pokemon::StoryArgType::GRID_POSE, "the tiles to wait on, in order, on the start's column; facing his box"
+        "stand", Pokemon::StoryArgType::GRID_POSE, "the tiles to wait on first, in order, on one column; facing into his box"
     );
-    actions.push_back({.kind = Pokemon::StoryStepKind::TALK, .name = "wait_for_wanderer", .args = {stand, again},
+    const Pokemon::StoryArgSpec far_stand = optional(
+        "far_stand", Pokemon::StoryArgType::GRID_POSE, Pokemon::GridPose{},
+        "the tiles to wait on next, on his box's other end column; facing into it"
+    );
+    actions.push_back({.kind = Pokemon::StoryStepKind::TALK, .name = "wait_for_wanderer", .args = {stand, far_stand, again},
         .console_only = false, .certainty = certainty});
 }
 
