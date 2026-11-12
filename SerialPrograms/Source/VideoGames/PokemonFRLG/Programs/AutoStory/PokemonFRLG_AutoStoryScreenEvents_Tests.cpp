@@ -26,19 +26,19 @@ using Pokemon::ScreenEvents;
 
 namespace{
 
-struct ScreenEventsInput{
-    std::string name;
-    //  The frame's colour; 0 for no frame.
-    uint32_t color;
-};
-
-struct ScreenEventsExpectation{
-    ScreenEvents events;
-};
-
 struct ScreenEventsCase{
-    ScreenEventsInput input;
-    ScreenEventsExpectation expectation;
+    struct Input{
+        std::string name;
+        //  The frame's colour; 0 for no frame.
+        uint32_t color;
+    };
+
+    struct Expectation{
+        ScreenEvents events;
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 class Test_AutoStoryScreenEvents : public UnitTest{
