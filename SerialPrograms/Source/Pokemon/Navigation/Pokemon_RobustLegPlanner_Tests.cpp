@@ -237,19 +237,23 @@ const PlanCase PLAN_CASES[] = {
     },
     {
         .input = {.name = "a held leg is refused when its long end lands in tall grass", .rows = {"..\"..", "#...#"}, .from = {{0, 0}}, .goal = {3, 1}, .costs = HELD},
-        .expectation = {.legs = "TBD"},
+        .expectation = {.legs = "none"},
     },
     {
         .input = {.name = "a held leg is refused when its long end lands where someone wanders", .rows = {"..w..", "#...#"}, .from = {{0, 0}}, .goal = {3, 1}, .costs = HELD},
-        .expectation = {.legs = "TBD"},
+        .expectation = {.legs = "none"},
     },
     {
-        .input = {.name = "a held leg is refused when its long end hops a ledge", .rows = {"..", "..", "v.", "..", "#."}, .from = {{0, 0}}, .goal = {0, 3}, .costs = HELD},
-        .expectation = {.legs = "TBD"},
+        .input = {.name = "a held leg south lines up a wall leg", .rows = {".##", "...", "...", ".##", ".##"}, .from = {{0, 0}}, .goal = {2, 2}, .costs = HELD},
+        .expectation = {.legs = "south 1 held: (0, 1) (0, 2); east 2 to wall: (2, 1) (2, 2); south 1 to wall: (2, 2)"},
+    },
+    {
+        .input = {.name = "a held leg is refused when its long end hops a ledge", .rows = {".##", "...", "v..", ".##", ".##"}, .from = {{0, 0}}, .goal = {2, 2}, .costs = HELD},
+        .expectation = {.legs = "none"},
     },
     {
         .input = {.name = "open legs are tapped while hold_open_legs is off", .rows = {".....", "#...#"}, .from = {{0, 0}}, .goal = {3, 1}, .costs = {.open_error = 1, .open_error_per = 0}},
-        .expectation = {.legs = "TBD"},
+        .expectation = {.legs = "east 1 open: (1, 0) (2, 0); south 1 to wall: (1, 1) (2, 1); east 2 to wall: (3, 1)"},
     },
 };
 
