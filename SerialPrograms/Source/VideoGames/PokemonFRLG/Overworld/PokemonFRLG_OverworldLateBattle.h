@@ -45,7 +45,8 @@ int tile_reached(Milliseconds since_hold, Milliseconds tile_time, int tiles);
 struct LateStop{
     Pokemon::InterruptVerdict verdict;
     //  The tiles of the leg the player may be on. Set for a wild battle
-    //  whose step the log times.
+    //  whose step the log times, and for a message after a leg that ends
+    //  below a sign (RouteStep::sign_ahead): its end.
     std::optional<WalkedTiles> walked;
 };
 

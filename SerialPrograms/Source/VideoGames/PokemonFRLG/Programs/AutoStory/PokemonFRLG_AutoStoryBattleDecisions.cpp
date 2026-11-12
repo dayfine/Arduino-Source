@@ -10,6 +10,7 @@
 #include <iterator>
 #include <string>
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
+#include "PokemonFRLG_AutoStoryHealing.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -118,6 +119,7 @@ void healed_by_nurse(Supplies& supplies){
     supplies.hurt = false;
     supplies.hp_red = false;
     supplies.hp_fill = 1.0;
+    measured_hp(supplies, 1.0);
     supplies.status = StatusCondition::NONE;
     restore_pp(supplies.lead);
 }
@@ -185,6 +187,7 @@ TurnAction BattleDecisions::lead_turn(const PartyStatus& status){
     m_supplies.hurt = hurt;
     if (status.hp_seen){
         m_supplies.hp_fill = status.hp_fill;
+        measured_hp(m_supplies, status.hp_fill);
     }
     m_supplies.status = status.status;
     m_psn_reads = status.status == StatusCondition::POISON ? m_psn_reads + 1 : 0;
@@ -207,6 +210,10 @@ TurnAction BattleDecisions::lead_turn(const PartyStatus& status){
     if (!m_items_off && m_psn_reads >= PSN_READS && !m_antidote_used && m_supplies.antidotes > 0){
         m_antidote_used = true;
         return TurnAction{.choice = TurnChoice::ANTIDOTE, .heal_reason = items.reason};
+    }
+    if (std::optional<std::string> item = planned_item(status)){
+        m_planned_item = *item;
+        return TurnAction{.choice = TurnChoice::BATTLE_ITEM, .heal_reason = items.reason, .item = std::move(*item)};
     }
     TurnAction action = move_turn();
     action.heal_reason = items.reason;
@@ -250,6 +257,36 @@ TurnAction BattleDecisions::move_turn(){
     spend_pp(m_supplies.lead, *slot);
     m_last_move_slot = slot;
     return TurnAction{.choice = TurnChoice::MOVE, .slot = *slot};
+}
+
+std::optional<std::string> BattleDecisions::planned_item(const PartyStatus& status) const{
+    if (m_kind != BattleKind::TRAINER || m_items_off || status.hp_red){
+        return std::nullopt;
+    }
+    for (const Pokemon::StoryItem& use : m_supplies.battle_items){
+        if (use.quantity > 0 && item_row(m_supplies, use.item) >= 0){
+            return use.item;
+        }
+    }
+    return std::nullopt;
+}
+
+void BattleDecisions::planned_item_used(){
+    for (Pokemon::StoryItem& use : m_supplies.battle_items){
+        if (use.item == m_planned_item && use.quantity > 0){
+            use.quantity--;
+            break;
+        }
+    }
+    const auto count = m_supplies.other_counts.find(m_planned_item);
+    if (count == m_supplies.other_counts.end() || --count->second > 0){
+        return;
+    }
+    m_supplies.other_counts.erase(count);
+    const auto row = std::find(m_supplies.pocket.begin(), m_supplies.pocket.end(), m_planned_item);
+    if (row != m_supplies.pocket.end()){
+        m_supplies.pocket.erase(row);
+    }
 }
 
 void BattleDecisions::count_down_refused(){
@@ -302,6 +339,9 @@ void BattleDecisions::turn_done(TurnChoice choice, TurnResult result){
     case TurnChoice::AWAKENING:
         m_supplies.awakenings--;
         m_supplies.status = StatusCondition::NONE;
+        return;
+    case TurnChoice::BATTLE_ITEM:
+        planned_item_used();
         return;
     case TurnChoice::RUN:
     case TurnChoice::MOVE:

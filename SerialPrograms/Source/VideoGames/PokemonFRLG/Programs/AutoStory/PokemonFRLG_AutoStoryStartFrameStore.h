@@ -10,6 +10,7 @@
 #define PokemonAutomation_PokemonFRLG_AutoStoryStartFrameStore_H
 
 #include <cstddef>
+#include <chrono>
 #include <functional>
 #include <optional>
 #include <string>
@@ -50,6 +51,14 @@ using StartFrameSource = std::function<ImageRGB32()>;
 //  camera on one frame doesn't fail the check. No reference, or no video,
 //  is NOT_READ.
 StartRead read_start_frames(const std::optional<ImageRGB32>& reference, const StartFrameSource& next_frame, size_t tries);
+
+//  The console's start check: how many frames it tries, so a fade or a
+//  passer-by in front of the camera on one frame doesn't fail it. Waiting
+//  doesn't help with Pokemon Tower's fog, which a reload shows elsewhere
+//  (see compare_start_frames()).
+constexpr size_t CONSOLE_START_FRAME_TRIES = 3;
+//  The wait between two frames of the console's start check.
+constexpr std::chrono::milliseconds CONSOLE_START_FRAME_WAIT{1000};
 
 
 //  Where the start frames are kept: for each checkpoint, <id>.png, the

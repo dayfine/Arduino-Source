@@ -35,6 +35,7 @@
 #include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryPaceSim.h"
+#include "PokemonFRLG_AutoStoryRngLoop.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryRows_Tests.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
@@ -135,7 +136,7 @@ struct Simulation{
                 .id = data.id, .title = data.title, .saves = true,
                 .build = [this, &data]{
                     Pokemon::Checkpoint checkpoint = Pokemon::build_story_checkpoint(data, game);
-                    add_start_pose_check(checkpoint, start_pose(data), [this]{ return game.save_stands; }, [this](const std::string& line){ lines.push_back(line); });
+                    add_start_pose_check(checkpoint, checked_start_pose(data), [this]{ return game.save_stands; }, [this](const std::string& line){ lines.push_back(line); });
                     return checkpoint;
                 },
             });
@@ -327,6 +328,39 @@ UnitTestResult test_save_off_start_pose(){
             || std::ranges::any_of(sim.game.trace, stepped) || std::ranges::none_of(sim.lines, told)
         ){
             return "Expected " + id + " stopped at its start check, the mismatch logged:" + joined(sim.game.trace) + joined(sim.lines);
+        }
+    }
+    return true;
+}
+
+//  console B, FRLG 09.04, 2026-11-11: after a shiny Eevee from Gift RNG in
+//  AutoStory, 09.04 stopped at its start check on the Eevee's summary,
+//  which no save's start frame matches. The row after each RNG handoff
+//  starts where the RNG program left the game, so it runs whatever the
+//  screen shows.
+UnitTestResult test_rows_after_rng_skip_start_check(){
+    const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
+    const auto index = [&checkpoints](std::string_view id){
+        return (size_t)(&checkpoint_row(id) - checkpoints.data());
+    };
+    const StoryHandoffs handoffs{.starter_rng = true, .gift_rng = true};
+    const std::vector<StoryCheckpoint> CASES[] = {
+        rows_after_starter_rng(checkpoints, index("01.05"), index("01.06"), handoffs).rows,
+        rows_after_gift_rng(checkpoints, index("04.02"), index("04.03"), handoffs).rows,
+        rows_after_gift_rng(checkpoints, index("09.03"), index("09.04"), handoffs).rows,
+    };
+    for (const std::vector<StoryCheckpoint>& rows : CASES){
+        Simulation sim;
+        sim.rows = rows;
+        sim.game.save_stands = StoryPose{"PewterCity", TilePos{17, 26}, Direction::SOUTH};
+        const std::string& id = rows.front().id;
+        const Pokemon::SegmentReport report = sim.run({.from = id, .to = id});
+        const auto told = [](const std::string& line){ return line.starts_with("start pose mismatch: "); };
+        if (!report.completed || std::ranges::any_of(sim.lines, told)){
+            return std::format(
+                "{} after its RNG handoff: expected it run with no start check; got {}{}{}",
+                id, Pokemon::to_string(report.failure), joined(sim.game.trace), joined(sim.lines)
+            );
         }
     }
     return true;
@@ -835,6 +869,7 @@ const AutoStorySimulationTestCase AUTO_STORY_SIMULATION_CASES[] = {
     {.input = {.name = "05.09 onto the grass out of Shane's sight, the leg west a tile short", .body = test_oddish_patch_west_short}, .expectation = {.description = "recovers when approaching grass patch with short western leg"}},
     {.input = {.name = "the routes after pacing, from either of its tiles", .body = test_routes_after_pacing}, .expectation = {.description = "plans valid routes regardless of which pacing tile character ends on"}},
     {.input = {.name = "a save off the start pose stops before any step", .body = test_save_off_start_pose}, .expectation = {.description = "fails the start check without walking or saving"}},
+    {.input = {.name = "the row after an RNG handoff runs off any start pose", .body = test_rows_after_rng_skip_start_check}, .expectation = {.description = "01.06, 04.03 and 09.04 start where the RNG program left the game"}},
     {.input = {.name = "a dialog pops up before every step", .body = test_dialog_before_every_step}, .expectation = {.description = "cleared between steps, the story passes; left up, a walk fails on it"}},
     {.input = {.name = "dialogs pop up before one step in five, over 5 seeds", .body = nullptr, .logged = test_dialogs_at_random}, .expectation = {.description = "every run passes with them cleared"}},
 };

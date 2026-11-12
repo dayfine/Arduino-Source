@@ -19,15 +19,18 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecoveryWalk.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "PokemonFRLG_AutoStoryAbilities.h"
 #include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
 #include "PokemonFRLG_AutoStoryGameArgs.h"
+#include "PokemonFRLG_AutoStoryHealingSteps.h"
 #include "PokemonFRLG_AutoStoryHideout.h"
 #include "PokemonFRLG_AutoStoryLegs.h"
 #include "PokemonFRLG_AutoStoryScreenEvents.h"
+#include "PokemonFRLG_AutoStorySlopeRun.h"
 #include "PokemonFRLG_AutoStorySummary.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 #include "PokemonFRLG_AutoStoryTeachScreens.h"
@@ -253,16 +256,19 @@ Outcome battle(StoryEnv& env, const StoryStep& step){
         return Pokemon::outcome_failed("no_battle");
     }
     env.supplies.foes = arg<std::vector<std::string>>(step, "foes");
+    env.supplies.battle_items = arg<std::vector<Pokemon::StoryItem>>(step, "use_items");
     if (!env.supplies.foes.empty()){
         env.console.log(std::format(
             "Story: {} is {}, risk {}; attacks are chosen against the foe out.",
             step.name, env.supplies.trainer, battle_risk_name(env.supplies.risk)
         ));
     }
-    const BattleEnd end = fight_battle(env.console, env.context, env.supplies, BattleKind::TRAINER, env.checks, env.language);
+    const BattleKind kind = arg<bool>(step, "run") ? BattleKind::WILD_RUN : BattleKind::TRAINER;
+    const BattleEnd end = fight_battle(env.console, env.context, env.supplies, kind, env.checks, env.language);
     env.supplies.foes.clear();
     env.supplies.trainer.clear();
     env.supplies.foe_out.clear();
+    env.supplies.battle_items.clear();
     if (end == BattleEnd::LOST && !arg<bool>(step, "may_lose")){
         return Pokemon::outcome_failed("blackout");
     }
@@ -297,7 +303,7 @@ Outcome get_ready(StoryEnv& env, RunState& state, const StoryStep& step){
     if (!walked.succeeded()){
         return walked;
     }
-    heal_at_center(env.console, env.context);
+    heal_at_pokecenter(env.console, env.context);
     healed_by_nurse(supplies);
     return walked;
 }
@@ -322,6 +328,11 @@ const std::vector<MapData>& story_maps(){
         //  The one ball the story picks up in its way: B2F's MOON STONE
         //  blocks column 2 of the arrow floor (09.02's moon_stone).
         flags.insert("FLAG_HIDE_ROCKET_HIDEOUT_B2F_MOON_STONE");
+        //  Route 16's Snorlax (31, 13), gone once 11.01 has played the POKE
+        //  FLUTE and run: the routes after it go over its tile. None before
+        //  it does (10.01 goes north by the Cut tree), and 11.01 walks up to
+        //  it from the east.
+        flags.insert("FLAG_HIDE_ROUTE_16_SNORLAX");
         return overworld_maps(flags);
     }();
     return maps;
@@ -357,6 +368,10 @@ std::string save_card_place(const std::string& map){
         {"LavenderTown", "lavender-town"},
         {"CeladonCity", "celadon-city"},
         {"RocketHideout", "rocket-hideout"},
+        {"PokemonTower", "pokemon-tower"},
+        {"Route16", "route-16"},
+        {"FuchsiaCity", "fuchsia-city"},
+        {"SaffronCity", "saffron-city"},
         {"CinnabarIsland", "cinnabar-island"},
     };
     for (const auto& [prefix, place] : PLACES){
@@ -467,6 +482,23 @@ bool talk_opens_message(ConsoleHandle& console, ProControllerContext& context){
     return shown >= 0;
 }
 
+//  A talk to someone who wanders (MOVEMENT_TYPE_WANDER_AROUND, as the
+//  Route 16 house's woman with HM02): A at the tile the player faces, each
+//  watched 2 s, until they step onto it and a message opens. They take a
+//  step every 0.5 to 2 s (pokefirered event_object_movement.c,
+//  MovementType_WanderAround), so a few tiles' zone has them in front of
+//  the player many times in WANDERER_TALK_TRIES.
+constexpr int WANDERER_TALK_TRIES = 45;
+bool talk_until_message(ConsoleHandle& console, ProControllerContext& context, const StoryStep& step){
+    const int tries = step.action == TALK_WANDERER_VARIANT ? WANDERER_TALK_TRIES : 1;
+    for (int c = 0; c < tries; c++){
+        if (talk_opens_message(console, context)){
+            return true;
+        }
+    }
+    return false;
+}
+
 
 bool walked(StoryEnv& env, RunState& state, const StoryStep& step){
     const Outcome outcome = walk_route(env, state, step);
@@ -499,7 +531,7 @@ bool grind_heal_trip(StoryEnv& env, RunState& state, const StoryStep& step, cons
     if (!walked(env, state, walk)){
         return false;
     }
-    heal_at_center(env.console, env.context);
+    heal_at_pokecenter(env.console, env.context);
     //  PP too: a grind's battles spend more than its attacks have.
     healed_by_nurse(env.supplies);
     walk.name = step.name + "_back_to_patch";
@@ -543,14 +575,18 @@ std::optional<Outcome> run_abilities(StoryEnv& env, RunState& state, const Story
         }
     );
     ConsoleChoiceActions choice(env.console, env.context);
-    StoryAbilities abilities{console_member_reader(env.console, env.context, env.language), mart, teach, grind, choice};
+    StoryAbilities abilities{console_member_reader(env.console, env.context, env.language, StartMenu::FULL), mart, teach, grind, choice};
     if (const std::optional<GrindPlan> plan = step.action == GRIND_CHECK_ACTION ? grind_plan_of(step.args) : std::nullopt){
         if (grind_reached_already(env.console.logger(), grind, abilities.members, *plan)){
             state.flags.insert(step.name);
         }
         return Pokemon::outcome_unchanged();
     }
-    return run_ability_game_step(env.console.logger(), &env.console, step, abilities);
+    StoryStep covered = step;
+    if (const std::optional<Outcome> nothing_to_buy = cover_hp_in_mart(env.console.logger(), env.supplies, covered)){
+        return nothing_to_buy;
+    }
+    return run_ability_game_step(env.console.logger(), &env.console, covered, abilities);
 }
 
 //  CUT_TREE_VARIANT: the tree in the step's direction, cut, and a step
@@ -639,7 +675,14 @@ Outcome other_game_step(StoryEnv& env, RunState& state, const StoryStep& step){
         done = run_storage_game_step(env.console.logger(), &env.console, step, capture, pc);
     }
     if (!done){
+        done = run_healing_step(env, step);
+    }
+    if (!done){
         done = run_abilities(env, state, step);
+    }
+    if (!done){
+        SlopeEnv slope{env.console, env.context, env.supplies, env.checks, env.language, env.counted_items};
+        done = run_slope_step(slope, step);
     }
     if (done && done->succeeded() && !done->pose){
         //  Pacing leaves the player on either of its tiles.
@@ -695,8 +738,8 @@ ConsoleAction console_action_of(StoryActionId id){
     case StoryActionId::STEP:
         return take_step;
     case StoryActionId::TALK:
-        return [](StoryEnv& env, RunState&, const StoryStep&){
-            if (!talk_opens_message(env.console, env.context)){
+        return [](StoryEnv& env, RunState&, const StoryStep& step){
+            if (!talk_until_message(env.console, env.context, step)){
                 return Pokemon::outcome_failed("no_message", "talk: A opened no message; nothing to talk to or pick up here.");
             }
             return Pokemon::outcome_ok();
@@ -715,7 +758,7 @@ ConsoleAction console_action_of(StoryActionId id){
         return [](StoryEnv& env, RunState&, const StoryStep& step){ return battle(env, step); };
     case StoryActionId::HEAL:
         return [](StoryEnv& env, RunState&, const StoryStep&){
-            heal_at_center(env.console, env.context);
+            heal_at_pokecenter(env.console, env.context);
             healed_by_nurse(env.supplies);
             return Pokemon::outcome_ok();
         };
@@ -891,7 +934,7 @@ StartRead read_console_start(StoryEnv& env, const std::string& checkpoint){
 void keep_next_start_frame(StoryEnv& env, const std::string& ended){
     const std::vector<StoryCheckpoint>& table = story_checkpoints();
     for (size_t c = 0; c + 1 < table.size(); c++){
-        if (table[c].id == ended && table[c + 1].start){
+        if (table[c].id == ended && checked_start_pose(table[c + 1])){
             keep_console_frame(env.console, env.context, env.start_frames, table[c + 1].id, "saved at the end of " + ended);
             return;
         }
@@ -899,6 +942,10 @@ void keep_next_start_frame(StoryEnv& env, const std::string& ended){
 }
 
 } // namespace
+
+std::optional<Pokemon::Pose> checked_start_pose(const StoryCheckpoint& data){
+    return data.live_start ? std::nullopt : start_pose(data);
+}
 
 Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor& executor){
     executor.set_menu(data.menu);
@@ -909,7 +956,7 @@ Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor&
     //  program last saved there. With none kept, it passes.
     Pokemon::Checkpoint checkpoint = Pokemon::build_story_checkpoint(data, executor, &env.prepared);
     add_start_check(
-        checkpoint, start_pose(data),
+        checkpoint, checked_start_pose(data),
         [&env, id = data.id]{ return read_console_start(env, id); },
         [&env](const std::string& line){ env.console.log(line, COLOR_ORANGE); }
     );

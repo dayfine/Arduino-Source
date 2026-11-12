@@ -2,8 +2,9 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Riding the Rocket Hideout's lift: its panel's menu, the presses that
- *  pick a floor, and the ride on the console.
+ *  Riding a lift, the Rocket Hideout's or the Celadon Department Store's
+ *  (one layout): its panel's menu, the presses that pick a floor, and the
+ *  ride on the console.
  *
  */
 
@@ -18,24 +19,34 @@
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
 #include "Pokemon/Navigation/Pokemon_Grid.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_HideoutLiftRoom.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-//  The lift panel's menu, top first (pokefirered
-//  sMultichoiceList_RocketHideoutElevator): B1F, B2F, B4F, EXIT.
-const std::vector<std::string>& rocket_hideout_lift_menu();
+//  The panel's menu of the lift whose room is `lift`, top first; empty for
+//  another map. LIFT_MAP: B1F, B2F, B4F, EXIT (pokefirered
+//  sMultichoiceList_RocketHideoutElevator); DEPT_STORE_LIFT_MAP: 5F, 4F,
+//  3F, 2F, 1F, EXIT (sMultichoiceList_DeptStoreElevator).
+const std::vector<std::string>& lift_menu(std::string_view lift);
+//  Where the lift `lift` lets out for each floor on its panel, top first;
+//  empty for another map.
+const std::vector<MapPosition>& lift_exits(std::string_view lift);
 
-//  A ride: the menu rows the cursor starts on and is moved to.
+//  A ride: the lift's room, and the menu rows the cursor starts on (the
+//  floor the player came from: pokefirered GetElevatorFloor()) and is
+//  moved to.
 struct LiftRide{
     size_t from = 0;
     size_t to = 0;
+    std::string_view lift = LIFT_MAP;
 };
 
 //  The ride a lift_floor step names, or nothing if it is not one, or names
-//  a floor the panel hasn't.
+//  floors no one panel has. The floors' names pick the lift: B1F..B4F the
+//  hideout's, 1F..5F the store's.
 std::optional<LiftRide> parse_lift_floor_step(const Pokemon::StoryStep& step);
 
 //  Presses of the D-pad on a menu: which way, how many.

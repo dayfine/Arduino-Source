@@ -1,0 +1,73 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "15.01",
+    "title": "Celadon to Saffron: the TEA to Route 7's gate guard, heal at Saffron's Center",
+    "start": {"map": "CeladonCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
+    "events": [
+      {
+        "id": "west_of_tea_guard",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "Route7_EastEntrance", "tiles": [[5, 4]], "facing": "east"}
+        },
+        "why": "out of Celadon's Center (its ground floor coded), east through the city and along Route 7 into its east gate (pokeguy bikes, 1:27:07 to 1:27:30), to (5, 4), a tile west of the guard's top trigger (6, 4)"
+      },
+      {
+        "id": "tea_trigger",
+        "kind": "step",
+        "args": {
+          "direction": "east"
+        },
+        "declared_after": {"map": "Route7_EastEntrance", "tiles": [[6, 4]], "facing": "east"},
+        "why": "onto the guard's top trigger (6, 4) (Route7_EastEntrance_EventScript_GuardTriggerTop): the player turns to the guard (6, 2) and stays on the tile (Route7_EastEntrance_Movement_WalkToGuardTop is a walk in place)"
+      },
+      {
+        "id": "guard_takes_tea",
+        "kind": "scene",
+        "declared_after": {"map": "Route7_EastEntrance", "tiles": [[6, 4]], "facing": "north"},
+        "why": "the guard takes the TEA (FLAG_GOT_TEA, Route7_EastEntrance_EventScript_GiveTea), shares it and lets the player through: VAR_MAP_SCENE_ROUTE5_ROUTE6_ROUTE7_ROUTE8_GATES 1 shuts every gate's triggers (pokeguy 1:27:30 to 1:27:43)"
+      },
+      {
+        "id": "below_center_door",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "SaffronCity", "tiles": [[24, 39]], "facing": "north"}
+        },
+        "why": "east out of the gate into Saffron City (8, 27), and through the city, round the Rocket Grunts who stand and walk there until Silph Co. (FLAG_HIDE_SAFFRON_ROCKETS), to below the Center's door (24, 38)"
+      },
+      {
+        "id": "saffron_nurse",
+        "kind": "game_action",
+        "action": "center_enter",
+        "declared_after": {"map": "SaffronCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
+        "why": "the Center script in: through the door and up to the nurse; no map of the Center. It also makes Saffron a Fly point"
+      },
+      {
+        "id": "heal_saffron",
+        "kind": "heal",
+        "why": "full HP and PP before the Fighting Dojo's five Black Belts"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "notes": {
+      "checkpoint": [
+        "Starts at Celadon's nurse, facing her, where 14.04 (#407) ends; until 14.04 is in this table, this row's start is its own (starts_after_unauthored_rows()).",
+        "The TEA comes from Celadon Mansion 1F's tea woman, which segment 10 or 11.01 is to cover (outline: pokeguy has it from 1:11). Without it the guard says he's thirsty and walks the player back west (Route7_EastEntrance_Movement_BlockPlayerEntry), and the route after this fails.",
+        "PokeGuy goes straight to Silph Co. (1:27:44); the Fighting Dojo's Hitmonchan is a user-approved deviation for a Gift RNG. This row ends at Saffron's nurse, where the Dojo checkpoints start.",
+        "Not authored yet, blocked: the Dojo itself (15.02: the Black Belts and KOICHI to the Poke Balls, saved facing HITMONCHAN's; 15.03: after Gift RNG, leave_gift_summary, deposit, save). SaffronCity_Dojo isn't in the pinned map pack (PokemonSimulation bdca47c), and Gift RNG knows only the Magikarp salesman."
+      ]
+    }
+  },
+  "metadata": {
+    "phase": "testing",
+    "postconditions": {
+      "position": {"map": "SaffronCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
+    }
+  }
+}

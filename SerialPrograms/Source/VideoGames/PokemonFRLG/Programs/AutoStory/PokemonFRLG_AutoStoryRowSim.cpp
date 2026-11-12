@@ -19,6 +19,7 @@
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
+#include "PokemonFRLG_AutoStoryFieldMoves.h"
 #include "PokemonFRLG_AutoStoryHideout.h"
 #include "PokemonFRLG_AutoStoryHideoutLift.h"
 #include "PokemonFRLG_AutoStoryRooms.h"
@@ -26,6 +27,7 @@
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryViridianMart.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSimField.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_FlyMap.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -477,6 +479,13 @@ std::string OverworldStepSim::walk(const StoryStep& step){
     const RoutePlanning planning{.maps = &story_maps(), .costs = story_route_costs(), .start = MapPosition{m_at.map, m_at.tile}, .label = step.name};
     SimWalkerRules rules;
     rules.trainer_battle_end = battle_end_on_sim;
+    //  A BIKE_VARIANT rides, as on the console, when the sim has the
+    //  player on the Bicycle (the rows' sims stub ride_bike): its open
+    //  legs are tapped out a tile at a time (counts_bike_taps()). Other
+    //  steps keep the sim's walking pace.
+    if (move_speed(step) == MoveSpeed::BIKE && m_sim.state().on_bike){
+        rules.speed = MoveSpeed::BIKE;
+    }
     const std::string failure = route ? OverworldSimWalker(m_sim, rules).run(*route, planning) : "no legs.";
     m_at = route ? StoryPose{route->back().end.map, route->back().end.point, route->back().facing_after} : m_at;
     return failure;
@@ -602,11 +611,42 @@ bool center_walkable(const StoryStep& step){
     return after && std::any_of(maps.begin(), maps.end(), [&](const auto& map){ return map.first == after->map; });
 }
 
+//  Whether the sim can play a field move: Surf, or Fly to a town whose
+//  map is built into the program.
+bool field_move_simulated(const StoryStep& step){
+    if (parse_surf_step(step)){
+        return true;
+    }
+    const std::optional<FlyPlan> fly = parse_fly_step(step);
+    const std::vector<std::pair<std::string, std::string>>& maps = overworld_map_json();
+    return fly && std::any_of(maps.begin(), maps.end(), [&](const auto& map){
+        return map.first == kanto_fly_towns()[fly->town].landing.map;
+    });
+}
+
+//  A field move on the sim: turned to the water and Surf, or Fly and its
+//  landing waited out, as on the console. The failure, or empty.
+std::string sim_field_move(const StoryStep& step, OverworldSim& sim){
+    if (const std::optional<Direction> water = parse_surf_step(step)){
+        if (sim.state().facing != *water){
+            sim_turn_to(sim, *water);
+        }
+        return sim.use_field(SimField::SURF) ? "" : "no water to Surf onto.";
+    }
+    const std::optional<FlyPlan> fly = parse_fly_step(step);
+    if (!fly || !sim.use_field(SimField::FLY, fly->town)){
+        return "no Fly from " + to_string(sim.state().position) + ".";
+    }
+    sim_wait_out_battle_exit(sim);
+    return "";
+}
+
 } // namespace
 
 //  A scripted GAME step on the sim: the poster's switch, the lift's ride
-//  (its room coded, SimScript::lift_floors, rows as on the panel), or a
-//  Pokemon Center's way in or out (center_walkable()); any other GAME step
+//  (its room coded, SimScript::lift_floors, rows as on the panel), a
+//  Pokemon Center's way in or out (center_walkable()), or a field move
+//  (field_move_simulated()); any other GAME step
 //  is stubbed.
 Pokemon::StoryAction OverworldStepSim::hideout_or_stub(){
     Pokemon::StoryAction stub = m_stubs.stub();
@@ -615,7 +655,7 @@ Pokemon::StoryAction OverworldStepSim::hideout_or_stub(){
         return failure.empty() ? Pokemon::outcome_ok() : Pokemon::outcome_failed("sim_failure", failure);
     });
     sim.act = [stub, played_act = sim.act](const StoryStep& step, RunState& state){
-        return is_hideout_step(step) || center_walkable(step)
+        return is_hideout_step(step) || center_walkable(step) || field_move_simulated(step)
             ? played_act(step, state)
             : stub.act(step, state);
     };
@@ -629,6 +669,10 @@ std::string OverworldStepSim::hideout(const StoryStep& step){
     }
     if (is_center_variant(step.action)){
         const std::string failure = sim_walk_room_legs(m_sim, center_legs(step.action));
+        return failure.empty() ? ended_on(step) : failure;
+    }
+    if (is_field_move_step(step)){
+        const std::string failure = sim_field_move(step, m_sim);
         return failure.empty() ? ended_on(step) : failure;
     }
     const std::optional<LiftRide> ride = parse_lift_floor_step(step);

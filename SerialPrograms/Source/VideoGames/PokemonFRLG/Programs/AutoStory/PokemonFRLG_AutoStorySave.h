@@ -75,6 +75,10 @@ private:
 //  (see SaveDialog). The menu's cursor is read, since the game remembers it
 //  and the menu grows. Returns to the overworld; throws
 //  OperationFailedException if the save wasn't made.
+//  Overlaps save_game_to_overworld() in PokemonFRLG_Navigation.h.
+//  Ours reads the cursor for any START menu length (the menu grows during the
+//  story) and checks the overworld is back; upstream assumes the full menu.
+//  Could be unified with upstream if needed.
 void save_game(ConsoleHandle& console, ProControllerContext& context, StartMenu menu);
 
 //  From the overworld: the place the START menu's SAVE card names (see

@@ -99,6 +99,51 @@ constexpr std::string_view MAP_NAMES[] = {
     "RocketHideout_B2F",
     "RocketHideout_B3F",
     "RocketHideout_B4F",
+    //  The Pokemon Tower to Mr. Fuji, and his house in Lavender Town.
+    "PokemonTower_1F",
+    "PokemonTower_2F",
+    "PokemonTower_3F",
+    "PokemonTower_4F",
+    "PokemonTower_5F",
+    "PokemonTower_6F",
+    "PokemonTower_7F",
+    "LavenderTown_VolunteerPokemonHouse",
+    //  Celadon Mansion's floors to the roof room's Eevee.
+    "CeladonCity_Condominiums_1F",
+    "CeladonCity_Condominiums_2F",
+    "CeladonCity_Condominiums_3F",
+    "CeladonCity_Condominiums_Roof",
+    "CeladonCity_Condominiums_RoofRoom",
+    //  The Department Store's 1F and its 5F's X items, by the lift (coded:
+    //  department_store_lift_room()).
+    "CeladonCity_DepartmentStore_1F",
+    "CeladonCity_DepartmentStore_5F",
+    //  Route 16's house with HM02 Fly, past the Cut tree and the north gate.
+    "Route16",
+    "Route16_NorthEntrance_1F",
+    "Route16_House",
+    //  Route 18 from the Cycling Road's foot (Route 17 has no map: its
+    //  slope is ridden by presses, PokemonFRLG_AutoStorySlope.h), its gate,
+    //  and Fuchsia City to the Safari Zone's door.
+    "Route18",
+    "Route18_EastEntrance_1F",
+    "FuchsiaCity",
+    //  Fuchsia's Mart: Super Potions before Koga's gym (12.01).
+    "FuchsiaCity_Mart",
+    //  The Safari Zone, pokeguy's way through it: its entrance, the
+    //  center, east, north and west areas, and the Secret House (HM03).
+    "FuchsiaCity_SafariZone_Entrance",
+    "SafariZone_Center",
+    "SafariZone_East",
+    "SafariZone_North",
+    "SafariZone_West",
+    "SafariZone_SecretHouse",
+    //  Koga's gym, and the Warden's house (GOLD TEETH for HM04).
+    "FuchsiaCity_Gym",
+    "FuchsiaCity_WardensHouse",
+    //  Route 7's east gate, where the guard takes the TEA, and Saffron City.
+    "Route7_EastEntrance",
+    "SaffronCity",
     //  Cinnabar Island's Center and Blaine's gym, through its quiz doors.
     "CinnabarIsland",
     "CinnabarIsland_Gym",
@@ -180,6 +225,16 @@ TilePos map_point(const std::vector<MapData>& maps, const std::string& map, cons
         }
     }
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No point \"" + point + "\" on map " + map + ".");
+}
+
+bool warp_keeps_bike(const std::string& map){
+    static const std::set<std::string, std::less<>> MAPS{
+        "Route16_NorthEntrance_1F", "Route18_EastEntrance_1F", "Route16", "Route18",
+        //  The Safari Zone's areas allow cycling, and their edge warps lead
+        //  from one to the next (pokefirered SafariZone_* map.json).
+        "SafariZone_Center", "SafariZone_East", "SafariZone_North", "SafariZone_West",
+    };
+    return MAPS.contains(map);
 }
 
 std::set<std::string> map_flag_set(const std::vector<MapData>& maps, const std::string& name){

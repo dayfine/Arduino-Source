@@ -21,6 +21,7 @@
 #define PokemonAutomation_PokemonFRLG_AutoStoryEvents_H
 
 #include <functional>
+#include <map>
 #include <optional>
 #include <string>
 #include <vector>
@@ -47,6 +48,11 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
+
+//  The variant of a TALK to someone who wanders (MOVEMENT_TYPE_WANDER_AROUND):
+//  the player faces a tile of their zone, and A is pressed until they step
+//  onto it and a message opens.
+inline const std::string TALK_WANDERER_VARIANT = "wanderer";
 
 //  What the story's events act on. `supplies` are what the bag holds now,
 //  `saved_supplies` what the last save holds.
@@ -84,6 +90,9 @@ struct StoryEnv{
     //  The player: the one a new game picks, and whose sprites the facing
     //  reader matches. A save must be of this player.
     PlayerGender player_gender = PlayerGender::BOY;
+    //  The Items pocket's counts a count_items step kept
+    //  (PokemonFRLG_AutoStorySlopeRun.h), for the next to compare.
+    std::map<std::string, int> counted_items = {};
 };
 
 //  After a save is loaded for a checkpoint that starts on `start_map`: the

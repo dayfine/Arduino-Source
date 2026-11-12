@@ -24,6 +24,7 @@
 #include "PokemonFRLG_OverworldRecoveryWalk.h"
 #include "PokemonFRLG_BikeSpinPresses.h"
 #include "PokemonFRLG_OverworldBike.h"
+#include "PokemonFRLG_OverworldMaps.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -132,7 +133,7 @@ BikeTap console_bike_tap(
 //  An open leg on the Bicycle, a tap at a time (count_bike_taps()).
 StepWalk walk_bike_taps(
     ConsoleHandle& console, ProControllerContext& context,
-    const RouteStep& step, const OverworldInterruptSet& interrupts
+    const RouteStep& step, const OverworldInterruptSet& interrupts, PlayerGender player
 ){
     StepWalk out{std::nullopt, current_time(), false, false};
     const OverworldInterrupts& watched = step.wild ? interrupts.wild : interrupts.other;
@@ -140,7 +141,16 @@ StepWalk walk_bike_taps(
     calls.tap = [&](int){ return console_bike_tap(console, context, step, watched, BIKE_TAP_TIMING); };
     calls.clear = [&](size_t index){ watched[index]->clear(console, context); };
     calls.log = [&](const std::string& message){ console.log(message, COLOR_ORANGE); };
-    const StepOutcome outcome = count_bike_taps(step, calls);
+    //  On foot if the player's standing sprite reads.
+    const auto remount = [&]{
+        if (!read_facing(console, context, player)){
+            return false;
+        }
+        console.log("Bike: a tap didn't move and the player is on foot.", COLOR_ORANGE);
+        get_on_bike(console, context, player);
+        return true;
+    };
+    const StepOutcome outcome = count_bike_taps_remounting(step, calls, remount);
     out.stopped = outcome.walked;
     out.blocked = outcome.blocked;
     return out;
@@ -307,7 +317,7 @@ StepOutcome walk_and_watch(
     if (counts_step_taps(step)){
         walked = walk_step_taps(console, context, step, interrupts, player);
     }else if (counts_bike_taps(step, speed)){
-        walked = walk_bike_taps(console, context, step, interrupts);
+        walked = walk_bike_taps(console, context, step, interrupts, player);
     }else{
         walked = walk_step(console, context, step, facing, interrupts, speed, player);
     }
@@ -453,7 +463,7 @@ void walk_overworld_route_with_recovery(
             from_facing = std::nullopt;
         }
         const StepOutcome outcome = walk_and_watch(console, context, step, from_facing, interrupts, riding ? speed : on_foot(speed), player);
-        if (riding && step.warps){
+        if (riding && step.warps && !warp_keeps_bike(step.end.map)){
             console.log("Bike: through the warp to " + step.end.map + ", off the Bicycle.");
             riding = false;
         }
@@ -461,7 +471,7 @@ void walk_overworld_route_with_recovery(
     };
     calls.hold_to_warp = [&](const RouteStep& step){
         hold_to_warp(console, context, step, step.wild ? interrupts.wild : interrupts.other, riding ? speed : on_foot(speed));
-        riding = false;
+        riding = riding && warp_keeps_bike(step.end.map);
     };
     calls.log = [&](const std::string& message){ console.log(message, COLOR_ORANGE); };
     calls.fail = [&](const std::string& message){
