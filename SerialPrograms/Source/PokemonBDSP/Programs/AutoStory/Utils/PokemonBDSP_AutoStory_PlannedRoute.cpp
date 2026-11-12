@@ -12,7 +12,6 @@
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "Pokemon/Navigation/Pokemon_RouteLog.h"
-#include "Pokemon/Navigation/Pokemon_MoveMechanics.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_WalkRules.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_WallRecovery.h"
 #include "PokemonBDSP_AutoStory_LegBattle.h"
@@ -477,8 +476,7 @@ size_t RouteWalker::unstick_wall_leg(LegWalk& walk, size_t walked_tiles, size_t 
     if (walk.result.stop == WalkStop::BLOCKED && walked_tiles + 2 < nearest){
         m_io.note("[Route] " + walk.label + ": stopped after about " + std::to_string(walked_tiles) +
             " tiles, short of the wall; two D-pad taps, then on to the wall.", RouteNote::WARNING);
-        const Pokemon::MoveMechanics& game = Pokemon::BDSP_MOVE_MECHANICS;
-        m_io.press({.kind = RouteInputKind::DPAD, .direction = walk.planned.leg.direction, .hold = game.step_tap, .release = game.step_tap_release,
+        m_io.press({.kind = RouteInputKind::DPAD, .direction = walk.planned.leg.direction, .hold = BDSP_MOVE_MECHANICS.step_tap, .release = BDSP_MOVE_MECHANICS.step_tap_release,
             .count = 2, .end = RouteInputEnd::DONE});
         walk.result = m_io.walk_to_wall({.direction = walk.planned.leg.direction, .limit = limit, .label = walk.label, .options = run_watching(walk)});
         walked_tiles += tiles_moved(walk.result, per_tile);
