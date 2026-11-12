@@ -44,8 +44,8 @@ namespace PokemonFRLG{
 
 inline const std::string SLOPE_VARIANT = "slope";
 
-//  Not measured on the console (11.02 has not run yet): each is a guess,
-//  to be measured on Route 17 before the first run counts.
+//  Not measured on the console: the steps' timings are from pokefirered's
+//  bike.c, the rest are guesses, to be measured on Route 17.
 namespace SlopeMechanics{
 //  A tile of the slope's pull with B released. pokefirered's downhill
 //  ride is the bike's top speed; on flat ground the Bicycle took 100ms a
@@ -58,11 +58,18 @@ inline constexpr Milliseconds ROLL_TILE_SLOWEST(150);
 //  After B is pressed mid-roll, until the player stands: the tile under
 //  way finishes. Whether B stops the player at once is not known.
 inline constexpr Milliseconds BRAKE_SETTLE(300);
-//  A D-pad tap with B held: whether it moves exactly a tile on the slope
-//  is not known (on flat ground a 40ms tap does, BIKE_TAP).
+//  A D-pad tap with B held: a walking step, a tile in 16 frames (bike.c
+//  BikeTransition_Uphill, PlayerWalkNormal), not the Bicycle's pace.
 inline constexpr Milliseconds STEP_TAP(40);
-//  B alone after each tap, start to start BIKE_TAP_PERIOD and more.
-inline constexpr Milliseconds STEP_HOLD(160);
+//  B alone after each tap, until the next tap or a search's A: the step's
+//  16 frames (268ms), a frame of turning and two of B alone, with a
+//  margin. The game reads no press while the player moves: at 200ms
+//  apart (11.02's first run, 2026-11-12) every other tap and every
+//  search's A were lost. Also held before a step's or a search's first
+//  tap: after a roll the bike is in its slope state, where a press the
+//  other way than the player moved only turns them (bike.c,
+//  BikeInputHandler_Slope), and B alone leaves that state.
+inline constexpr Milliseconds STEP_HOLD(320);
 //  A with B held: whether the game takes the A with B down is not known.
 inline constexpr Milliseconds SEARCH_A(160);
 //  B alone after the A, for the item's message to open.

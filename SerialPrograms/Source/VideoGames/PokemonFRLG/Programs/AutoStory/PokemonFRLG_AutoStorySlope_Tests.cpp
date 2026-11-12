@@ -12,6 +12,7 @@
  */
 
 #include <algorithm>
+#include <chrono>
 #include <format>
 #include <functional>
 #include <map>
@@ -118,7 +119,13 @@ int dy_of(Direction direction){
     return direction == Direction::SOUTH ? 1 : direction == Direction::NORTH ? -1 : 0;
 }
 
-//  Route 17 with the player on the Bicycle.
+//  Route 17 with the player on the Bicycle, a frame at a time as
+//  pokefirered's bike.c reads the controller: only between movements.
+//  On a pull-down tile, with B released the player rolls south
+//  (PlayerWalkFaster, 4 frames), turning to face south between tiles; with
+//  B held a D-pad press is a walking step (PlayerWalkNormal, 16 frames), and
+//  B alone stops the player. A press that comes while a movement is under
+//  way is lost, and so is an A pressed then.
 class SlopeModel{
 public:
     SlopeModel(int x, int y)
@@ -134,17 +141,23 @@ public:
     SlopeSendResult send(const std::vector<SlopePress>& presses, bool message){
         for (size_t c = 0; c < presses.size(); c++){
             const SlopePress& press = presses[c];
-            if (press.dpad){
-                move(*press.dpad);
-            }else if (!press.b){
-                roll(press.hold);
-            }
-            if (m_caught){
-                m_caught = false;
-                return SlopeSendResult{.sent = SlopeSent::BATTLE, .press = c};
-            }
-            if (press.a && message && face_item()){
-                return SlopeSendResult{.sent = SlopeSent::MESSAGE};
+            const double end = m_clock + std::chrono::duration<double, std::milli>(press.hold).count();
+            bool first = true;
+            for (; m_clock < end; m_clock += FRAME_MS){
+                const bool a = press.a && first;
+                first = false;
+                if (m_busy > 0){
+                    m_busy--;
+                    continue;
+                }
+                frame(press);
+                if (m_caught){
+                    m_caught = false;
+                    return SlopeSendResult{.sent = SlopeSent::BATTLE, .press = c};
+                }
+                if (a && message && face_item()){
+                    return SlopeSendResult{.sent = SlopeSent::MESSAGE};
+                }
             }
         }
         return SlopeSendResult{};
@@ -161,40 +174,78 @@ public:
     const std::vector<std::string>& seen() const{ return m_seen; }
 
 private:
+    static constexpr double FRAME_MS = 1000.0 / 59.7275;
+    static constexpr int WALK_FRAMES = 16;
+    static constexpr int ROLL_FRAMES = 4;
+    static constexpr int FLAT_FRAMES = 6;
+    static constexpr int JUMP_FRAMES = 32;
+
+    enum class State{
+        NORMAL,
+        SLOPE,
+    };
+
+    //  bike.c's input handlers, for a frame with no movement under way.
+    void frame(const SlopePress& press){
+        if (!slope(m_x, m_y)){
+            m_state = State::NORMAL;
+            if (press.dpad){
+                step(*press.dpad, FLAT_FRAMES);
+            }
+            return;
+        }
+        if (m_state == State::SLOPE && press.dpad != std::optional<Direction>(m_moving)){
+            //  BikeInputHandler_Slope to _Turning: faces the D-pad's way,
+            //  south with none, for this frame. A roll's tiles take 6
+            //  frames with it.
+            m_state = State::NORMAL;
+            m_moving = press.dpad.value_or(Direction::SOUTH);
+            m_facing = m_moving;
+            return;
+        }
+        if (m_state == State::SLOPE || !press.b){
+            m_state = State::SLOPE;
+            if (!press.dpad || *press.dpad == Direction::SOUTH){
+                step(Direction::SOUTH, ROLL_FRAMES);
+            }else{
+                step(*press.dpad, WALK_FRAMES);
+            }
+            return;
+        }
+        if (press.dpad){
+            m_state = State::SLOPE;
+            step(*press.dpad, WALK_FRAMES);
+        }
+    }
     bool open(int x, int y) const{
         return !blocked(x, y) && !m_biker_tiles.contains({x, y});
     }
-    //  One tile `direction`; south onto a ledge jumps it.
-    bool move(Direction direction){
-        m_facing = direction;
+    //  One tile `direction`, taking `frames`; south onto a ledge jumps it.
+    //  Nothing against a wall.
+    void step(Direction direction, int frames){
         const int x = m_x + dx_of(direction);
         const int y = m_y + dy_of(direction);
         if (ledge(x, y)){
             if (direction != Direction::SOUTH){
-                return false;
+                return;
             }
+            m_facing = m_moving = direction;
             m_y = y + 1;
+            m_busy = JUMP_FRAMES;
             check_sight();
-            return true;
+            return;
         }
         if (!open(x, y)){
-            return false;
+            return;
         }
+        m_facing = m_moving = direction;
         m_x = x;
         m_y = y;
+        m_busy = frames;
         check_sight();
         if (m_catch == std::pair<int, int>{m_x, m_y}){
             m_catch.reset();
             m_caught = true;
-        }
-        return true;
-    }
-    //  B released on the slope: a tile south each ROLL_TILE.
-    void roll(Milliseconds hold){
-        for (Milliseconds t(0); t + SlopeMechanics::ROLL_TILE <= hold && slope(m_x, m_y) && !m_caught; t += SlopeMechanics::ROLL_TILE){
-            if (!move(Direction::SOUTH)){
-                break;
-            }
         }
     }
     bool face_item(){
@@ -220,6 +271,10 @@ private:
     int m_x;
     int m_y;
     Direction m_facing = Direction::SOUTH;
+    Direction m_moving = Direction::SOUTH;
+    State m_state = State::NORMAL;
+    double m_clock = 0;
+    int m_busy = 0;
     std::map<std::pair<int, int>, std::string> m_items;
     std::vector<Biker> m_bikers;
     std::set<std::pair<int, int>> m_biker_tiles;
