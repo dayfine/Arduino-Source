@@ -12,6 +12,7 @@
 #include <set>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
@@ -85,7 +86,10 @@ Counted count(const std::set<int>& faulted, int chances){
 std::string numbers_text(const std::vector<int>& numbers){
     std::string out;
     for (int number : numbers){
-        out += out.empty() ? std::format("{}", number) : std::format(", {}", number);
+        if (!out.empty()){
+            out += ", ";
+        }
+        out += std::format("{}", number);
     }
     return std::format("[{}]", out);
 }
@@ -95,7 +99,7 @@ UnitTestResult expect_counted(const std::set<int>& faulted, int chances, const s
     if (counted.faulted_at != faulted_at){
         return std::format("Faulted chances {}, expected {}.", numbers_text(counted.faulted_at), numbers_text(faulted_at));
     }
-    if (counted.chances != chances || counted.faulted != (int)faulted_at.size()){
+    if (counted.chances != chances || counted.faulted != static_cast<int>(faulted_at.size())){
         return std::format("Counted {} chances, {} faulted; expected {}, {}.", counted.chances, counted.faulted, chances, faulted_at.size());
     }
     if (counted.other_chances != chances || counted.other_faulted != 0){
@@ -134,12 +138,33 @@ UnitTestResult test_class_names(){
     return true;
 }
 
+//  fault_classes() restates the enum, so it must list every value: the
+//  names stop at the first value past the enum's last (fault_class_name()
+//  is a switch, so a value with no name fails to build).
+UnitTestResult test_classes_match_enum(){
+    const std::vector<FaultClass>& classes = fault_classes();
+    size_t named = 0;
+    while (fault_class_name(static_cast<FaultClass>(named)) != "?"){
+        named++;
+    }
+    if (named != classes.size()){
+        return std::format("The enum has {} classes, fault_classes() lists {}.", named, classes.size());
+    }
+    for (size_t c = 0; c < classes.size(); c++){
+        if (classes[c] != static_cast<FaultClass>(c)){
+            return std::format("fault_classes() lists {} at position {}, not in the enum's order.", static_cast<int>(classes[c]), c);
+        }
+    }
+    return true;
+}
+
 const SimFaultsTestCase SIM_FAULTS_CASES[] = {
     {.input = {.name = "none named faults none", .body = test_none_named}, .expectation = {.description = "3 chances, none faulted"}},
     {.input = {.name = "the named chances are faulted, from 1", .body = test_named_from_one}, .expectation = {.description = "1 and 3 of 4 faulted"}},
     {.input = {.name = "a chance never reached is not faulted", .body = test_never_reached}, .expectation = {.description = "2 of 3 faulted, 9 never reached"}},
     {.input = {.name = "no chances, nothing counted", .body = test_no_chances}, .expectation = {.description = "0 chances, none faulted"}},
     {.input = {.name = "each class has its own name", .body = test_class_names}, .expectation = {.description = "no two classes share a name"}},
+    {.input = {.name = "fault_classes() lists every class in order", .body = test_classes_match_enum}, .expectation = {.description = "the list is the enum's values, in order"}},
 };
 
 } // namespace
