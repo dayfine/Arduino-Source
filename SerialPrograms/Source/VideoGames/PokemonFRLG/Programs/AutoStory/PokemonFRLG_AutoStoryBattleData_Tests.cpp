@@ -169,6 +169,31 @@ UnitTestResult test_risks(){
     return true;
 }
 
+//  The Tower rival (console B, 2026-11-12, blacked out): Blastoise with
+//  Bite, Water Pulse, Bubble and Dig used Bite on everything. Water Pulse
+//  where it ties: with Bite against Pidgeotto, with Bubble and Dig against
+//  Growlithe; Bite against Kadabra, Gyarados and Ivysaur.
+UnitTestResult test_water_pulse_ties(){
+    PartyMember blastoise = grown_to(new_member("squirtle", 5), 36);
+    blastoise.moves = {{"bite", 25}, {"water-pulse", 20}, {"bubble", 30}, {"dig", 10}};
+    constexpr size_t BITE_SLOT = 0;
+    constexpr size_t WATER_PULSE_SLOT = 1;
+    const std::vector<std::pair<std::string, size_t>> cases = {
+        {"pidgeotto", WATER_PULSE_SLOT},
+        {"growlithe", WATER_PULSE_SLOT},
+        {"kadabra", BITE_SLOT},
+        {"gyarados", BITE_SLOT},
+        {"ivysaur", BITE_SLOT},
+    };
+    for (const auto& [foe, expected] : cases){
+        const std::optional<size_t> slot = attack_slot_against(blastoise, {foe});
+        if (slot != expected){
+            return std::format("{}: expected slot {}, got slot {}.", foe, expected, slot ? std::to_string(*slot) : "none");
+        }
+    }
+    return true;
+}
+
 //  A wild Pokemon that wasn't read, or a name the data doesn't have, gets
 //  the plan's order: Water Gun first.
 UnitTestResult test_wild_fallback(){
@@ -193,6 +218,10 @@ const AutoStoryBattleDataTestCase AUTO_STORY_BATTLE_DATA_CASES[] = {
     {
         .input = {.name = "Miguel's Grimer: Water Gun", .body = test_miguel_grimer},
         .expectation = {.description = "verifies move matchup choice against Miguel Grimer"},
+    },
+    {
+        .input = {.name = "Water Pulse on ties at the Tower rival", .body = test_water_pulse_ties},
+        .expectation = {.description = "prefers the strongest STAB move when matchups tie"},
     },
     {
         .input = {.name = "Bite on Psychic, Ghost and Water-resistant foes", .body = test_bite_wins},
