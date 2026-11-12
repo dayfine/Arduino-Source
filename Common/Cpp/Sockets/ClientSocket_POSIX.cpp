@@ -28,7 +28,7 @@ ClientSocket_POSIX::ClientSocket_POSIX(ThreadPool& thread_pool)
     // Ignore SIGPIPE. Handle errors via errno instead
     signal(SIGPIPE, SIG_IGN);
 }
-void ClientSocket_POSIX::close() noexcept{
+void ClientSocket_POSIX::close_and_wait() noexcept{
     AsyncTask thread;
     {
         std::lock_guard<Mutex> lg(m_lock);
@@ -50,8 +50,33 @@ void ClientSocket_POSIX::close() noexcept{
         m_cv.notify_all();
     }
 }
+void ClientSocket_POSIX::close() noexcept{
+    //  Non-blocking teardown, safe to call from the receive thread. The
+    //  blocking "close_and_wait()" waits for the receive thread to exit and so
+    //  must not run from a listener callback; this instead just flips the
+    //  state and releases the socket. The receive thread's next iteration sees
+    //  DESTRUCTING (or the missing socket) and exits on its own. The socket is
+    //  left DESTRUCTING; the destructor's close_and_wait() returns it to
+    //  NOT_RUNNING.
+    {
+        std::lock_guard<Mutex> lg(m_lock);
+        if (m_state.load(std::memory_order_relaxed) == State::NOT_RUNNING && !m_thread){
+            return;
+        }
+        m_state.store(State::DESTRUCTING, std::memory_order_release);
+        close_socket_locked();
+    }
+    m_cv.notify_all();
+}
 
 void ClientSocket_POSIX::connect(const std::string& address, uint16_t port){
+    //  Complete any in-progress connection or a requested-but-unfinished
+    //  close() before starting a new one. close() is non-blocking (it leaves
+    //  the socket DESTRUCTING), so reconnecting on the same socket joins the
+    //  old receive thread here to get back to NOT_RUNNING. No-op if the socket
+    //  is already NOT_RUNNING.
+    close_and_wait();
+
     std::string error;
     {
         std::lock_guard<Mutex> lg(m_lock);
@@ -91,7 +116,7 @@ void ClientSocket_POSIX::connect(const std::string& address, uint16_t port){
     //  connect() may be called from a thread that is itself running on
     //  this pool, and blocking here until a pool thread is free could
     //  deadlock a capped pool. The returned AsyncTask still lets
-    //  close() join the receive thread.
+    //  close_and_wait() join the receive thread.
     try{
         m_thread = m_thread_pool.dispatch([=, this]{
             thread_loop(address, port);
@@ -211,11 +236,7 @@ void ClientSocket_POSIX::thread_loop(std::string address, uint16_t port){
     }
 }
 void ClientSocket_POSIX::thread_loop_internal(std::string address, uint16_t port){
-    m_listeners.run_method(&Listener::on_thread_start);
-
     {
-        std::unique_lock<Mutex> lg(m_lock);
-
         sockaddr_in server;
         std::memset(&server, 0, sizeof(server));
         server.sin_family = AF_INET;
@@ -223,16 +244,27 @@ void ClientSocket_POSIX::thread_loop_internal(std::string address, uint16_t port
         server.sin_addr.s_addr = inet_addr(address.c_str());
 
         //  Connect
-        int socket = m_socket.load(std::memory_order_acquire);
+        int socket;
+        {
+            std::lock_guard<Mutex> lg(m_lock);
+            socket = m_socket.load(std::memory_order_acquire);
+        }
         if (socket == -1){
             return;
         }
 
         bool in_progress = false;
         while (true){
-            State state = m_state.load(std::memory_order_relaxed);
-            if (state == State::DESTRUCTING){
-                return;
+            //  The lock must not be held across the connect wait: a
+            //  connect to a host that drops SYNs can take the kernel
+            //  over two minutes to fail, and "close()" needs the lock to
+            //  set DESTRUCTING. Hold it only for the state check (the
+            //  same way the server's accept loop does it).
+            {
+                std::lock_guard<Mutex> lg(m_lock);
+                if (m_state.load(std::memory_order_relaxed) == State::DESTRUCTING){
+                    return;
+                }
             }
 
             if (!in_progress){
@@ -244,6 +276,7 @@ void ClientSocket_POSIX::thread_loop_internal(std::string address, uint16_t port
                 int error = errno;
 //                    cout << "error = " << error << endl;
                 if (error != EAGAIN && error != EALREADY && error != EINPROGRESS){
+                    std::unique_lock<Mutex> lg(m_lock);
                     if (error == ETIMEDOUT){
                         connection_lost_locked(lg, "Connection timed out.", false);
                     }else{
@@ -264,6 +297,7 @@ void ClientSocket_POSIX::thread_loop_internal(std::string address, uint16_t port
             int pret = poll(&pf, 1, 10);
             if (pret == -1){
                 if (errno != EINTR){
+                    std::unique_lock<Mutex> lg(m_lock);
                     connection_lost_locked(lg, "poll() error: " + std::string(strerror(errno)), false);
                     return;
                 }
@@ -281,6 +315,7 @@ void ClientSocket_POSIX::thread_loop_internal(std::string address, uint16_t port
             if (so_error == 0){
                 break;
             }
+            std::unique_lock<Mutex> lg(m_lock);
             if (so_error == ETIMEDOUT){
                 connection_lost_locked(lg, "Connection timed out.", false);
             }else if (so_error == ECONNREFUSED){
@@ -291,7 +326,15 @@ void ClientSocket_POSIX::thread_loop_internal(std::string address, uint16_t port
             return;
         }
 
-        m_state.store(State::CONNECTED, std::memory_order_relaxed);
+        {
+            std::lock_guard<Mutex> lg(m_lock);
+            //  "close()" may have set DESTRUCTING while the connect was
+            //  in progress. Keep that state so the receive loop exits
+            //  immediately instead of marking the socket CONNECTED.
+            if (m_state.load(std::memory_order_relaxed) != State::DESTRUCTING){
+                m_state.store(State::CONNECTED, std::memory_order_relaxed);
+            }
+        }
     }
 
     m_listeners.run_method(&Listener::on_connect_finished, "");

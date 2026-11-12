@@ -4,6 +4,7 @@
  *
  */
 
+#include "Common/Cpp/Json/JsonTools_Tests.h"
 #include "Common/Cpp/ListenerSet.h"
 #include "Common/Cpp/MoveOnlyFunction_Tests.h"
 #include "Common/Cpp/ScopeExit.h"
@@ -13,6 +14,7 @@
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Common/Qt/QtThreadPool_Tests.h"
 #include "Kernels/Kernels_Tests.h"
+#include "Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.h"
 #include "CommonFramework/AudioPipeline/AudioInfo_Tests.h"
 #include "CommonFramework/AudioPipeline/Tools/ChannelMixer.h"
 #include "CommonFramework/AudioPipeline/SinkPipeline_Tests.h"
@@ -29,6 +31,9 @@
 #include "NintendoSwitch/Inference/NintendoSwitch_FailedToConnectDetector.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_UpdatePopupDetector.h"
 #include "NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter_Tests.h"
+#include "NintendoSwitch/Controllers/SysbotBase/SysbotBase_Connection.h"
+#include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
+#include "PokemonBDSP/Inference/PokemonBDSP_MenuDetector.h"
 
 #include "VideoGames/PokemonHome/PokemonHome_Tests.h"
 #include "VideoGames/PokemonSwSh/PokemonSwSh_Tests.h"
@@ -55,7 +60,11 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     add_tests_Sockets(ret, GlobalThreadPools::unlimited_normal());
     add_tests_BlackBorderDetector(ret);
     add_tests_ListenerSet(ret);
+    add_tests_JsonTools(ret);
     add_tests_MoveOnlyFunction(ret);
+    SysbotBase::add_tests_SysbotBasePing(ret);
+    SysbotBase::add_tests_SysbotBaseReceiveLine(ret);
+    SysbotBase::add_tests_SysbotBaseShutdown(ret);
     add_tests_AudioInfo(ret);
     add_tests_ChannelMixerMatrix(ret);
     add_tests_FFTStreamer(ret);
@@ -64,10 +73,13 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     add_tests_LabControl(ret);
     OCR::add_tests(ret);
     Kernels::add_tests(ret);
+    Pokemon::add_tests_AutoStorySelect(ret);
     NintendoSwitch::add_tests_CheckOnlineDetector(ret);
     NintendoSwitch::add_tests_FailedToConnectDetector(ret);
     NintendoSwitch::add_tests_UpdatePopupDetector(ret);
     NintendoSwitch::Typewriter::add_tests_TypewriterTextMapping(ret);
+    NintendoSwitch::PokemonBDSP::add_tests_DialogDetector(ret);
+    NintendoSwitch::PokemonBDSP::add_tests_MenuDetector(ret);
     NintendoSwitch::PokemonFRLG::add_tests(ret);
     NintendoSwitch::PokemonRSE::add_tests(ret);
     NintendoSwitch::PokemonHome::add_tests(ret);
@@ -256,10 +268,12 @@ void UnitTestRunner::program(ProgramEnvironment& env, CancellableScope& scope){
         m_env = nullptr;
     });
 
+    //  Uncapped pool: the runner caps the # of concurrently running tests itself, and
+    //  dispatch_now_blocking() would stall the dispatcher once a capped pool saturates.
     PokemonAutomation::UnitTestRunner runner(
         &scope,
         env.logger(),
-        GlobalThreadPools::computation_normal()
+        GlobalThreadPools::unlimited_normal()
     );
     runner.add_listener(*this);
 
@@ -374,9 +388,11 @@ bool CommandLineUnitTestRunner::run(bool augment_color_distortions){
         m_logger.log("Color distortion augmentation enabled. Image tests with labeled images also run with: " + labels);
     }
 
+    //  Uncapped pool: the runner caps the # of concurrently running tests itself, and
+    //  dispatch_now_blocking() would stall the dispatcher once a capped pool saturates.
     PokemonAutomation::UnitTestRunner runner(
         m_logger,
-        GlobalThreadPools::computation_normal()
+        GlobalThreadPools::unlimited_normal()
     );
     runner.add_listener(*this);
     for (const auto& test : UNIT_TESTS_ALL()){

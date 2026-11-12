@@ -35,7 +35,6 @@
 #include "Common/Cpp/StreamConnections/MockDevice.h"
 #include "Common/Cpp/TestRunners/ParallelUnitTestRunner.h"
 #include "Common/Qt/TimeQt.h"
-#include "Common/SerialPABotBase/SerialPABotBase_Protocol.h"
 #include "Kernels/Waterfill/Kernels_Waterfill.h"
 #include "Kernels/BinaryImageFilters/Kernels_BinaryImage_BasicFilters.h"
 #include "Kernels/ImageStats/Kernels_ImagePixelSumSqr.h"
@@ -693,7 +692,7 @@ void TestProgramComputer::program(ProgramEnvironment& env, CancellableScope& sco
 #if 0
     PybindSwitchProController controller("COM3");
     controller.wait_for_ready(5000);
-    controller.push_button(1000, 200, 800, BUTTON_X);
+    controller.push_button(BUTTON_X, 1000, 200, 800);
     controller.wait_for_all_requests();
 #endif
 
