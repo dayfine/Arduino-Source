@@ -78,7 +78,7 @@ std::string expect_inputs(const FakeStoryBackend<PoseType>& backend, std::string
 template <StoryPose PoseType>
 Observation<PoseType> look(std::initializer_list<ScreenEvent> events){
     Observation<PoseType> observation;
-    observation.events = PokemonAutomation::ScreenEvents(events);
+    observation.events = ScreenEvents(events);
     return observation;
 }
 
