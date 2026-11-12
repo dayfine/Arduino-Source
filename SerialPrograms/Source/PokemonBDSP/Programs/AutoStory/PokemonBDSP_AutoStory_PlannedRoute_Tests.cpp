@@ -207,6 +207,7 @@ UnitTestResult test_wall_leg_trainer_on_the_way(Logger&){
         Script script{.steps = {
             walk_step("wall: T: east 4 (to wall)", WalkStop::LIMIT, 2050ms, 0),
             walk_step("wall: T: east 4 (to wall): at the wall?", WalkStop::DIALOG, 400ms, 0),
+            answer_step("dialog within 5000 ms", false),
             walk_step("wall: T: east 4 (to wall): on to the wall", WalkStop::BLOCKED, 1200ms, 0),
             answer_step("dialog within 500 ms", false),
         }};
