@@ -2096,6 +2096,7 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryPacing.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryPacing.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryIntro.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryItemsPocket.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryItemsPocket.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryLevelUps.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryMemberInfo.h

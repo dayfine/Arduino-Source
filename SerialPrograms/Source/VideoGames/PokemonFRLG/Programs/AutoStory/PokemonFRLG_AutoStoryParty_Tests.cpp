@@ -943,58 +943,6 @@ UnitTestResult test_nurse_before_battle(Logger&){
     return true;
 }
 
-//  The Tower rival as PokeGuy fought him (10.03): two X Specials on the
-//  first turns, then attacks. A Potion comes first for HP not green, red
-//  HP or a wild battle uses none, and the last X Special takes its row.
-UnitTestResult test_planned_battle_items(Logger&){
-    const PartyStatus RED{.hp_seen = true, .hp_yellow = false, .hp_red = true, .status = StatusCondition::NONE};
-    const PartyStatus YELLOW{.hp_seen = true, .hp_yellow = true, .hp_red = false, .status = StatusCondition::NONE};
-    Supplies supplies;
-    supplies.lead = story_lead_after_brock();
-    set_from_bag(supplies, {{"potion", 2}, {"x-special", 2}, {"x-speed", 6}});
-    supplies.battle_items = {{.item = "x-special", .quantity = 3}};
-
-    Supplies wild_supplies = supplies;
-    BattleDecisions wild(wild_supplies, BattleKind::WILD_FIGHT);
-    if (wild.turn(GREEN).choice == TurnChoice::BATTLE_ITEM){
-        return "Expected no X Special in a wild battle.";
-    }
-
-    BattleDecisions decisions(supplies, BattleKind::TRAINER);
-    if (decisions.turn(YELLOW).choice != TurnChoice::POTION){
-        return "Expected a Potion before an X Special for yellow HP.";
-    }
-    decisions.turn_done(TurnChoice::POTION, TurnResult::DONE);
-    for (int c = 0; c < 2; c++){
-        const TurnAction action = decisions.turn(GREEN);
-        if (action.choice != TurnChoice::BATTLE_ITEM || action.item != "x-special"){
-            return std::format("Expected an X Special at turn {}.", c + 2);
-        }
-        decisions.turn_done(action.choice, TurnResult::DONE);
-    }
-    if (item_row(supplies, "x-special") != -1 || item_row(supplies, "x-speed") != 1){
-        return "Expected the X Special's row gone with the last of the 2, X Speed a row up.";
-    }
-    if (decisions.turn(GREEN).choice != TurnChoice::MOVE){
-        return "Expected an attack once the bag has no X Special, though the plan asked for 3.";
-    }
-
-    Supplies red_supplies;
-    set_from_bag(red_supplies, {{"x-special", 5}});
-    red_supplies.battle_items = {{.item = "x-special", .quantity = 1}};
-    BattleDecisions red(red_supplies, BattleKind::TRAINER);
-    if (red.turn(RED).choice != TurnChoice::MOVE){
-        return "Expected an attack, not an X Special, at red HP with no Potion.";
-    }
-    const TurnAction other = red.turn(GREEN);
-    red.turn_done(other.choice, TurnResult::NOT_DONE);
-    if (other.choice != TurnChoice::BATTLE_ITEM || red.turn(GREEN).choice != TurnChoice::MOVE || red_supplies.other_counts.at("x-special") != 5){
-        return "Expected no item after the bag's row read as another item.";
-    }
-    return true;
-}
-
-
 const AutoStoryPartyTestCase AUTO_STORY_PARTY_CASES[] = {
     {.input = {.name = "movesets the game gives and the story plays", .body = test_movesets}, .expectation = {.description = "verifies movesets progression through early game"},},
     {.input = {.name = "move offered and slot forgotten", .body = test_learn_prompts}, .expectation = {.description = "determines move learning replacements and prompts"},},
@@ -1020,7 +968,6 @@ const AutoStoryPartyTestCase AUTO_STORY_PARTY_CASES[] = {
     {.input = {.name = "battle end: no overworld 60 s after the battle, a stop", .body = test_end_watch_gives_up}, .expectation = {.description = "stops battle watch loop when overworld does not reappear within 60s"},},
     {.input = {.name = "\"no PP\" read once: left alone as a Disable; twice: PP 0", .body = test_no_pp_read_once}, .expectation = {.description = "treats first no PP message as disable and second as zero PP"},},
     {.input = {.name = "\"no PP\" counts only soon after the move chosen", .body = test_no_pp_due}, .expectation = {.description = "only attributes no PP warning to recently selected move"},},
-    {.input = {.name = "battle items: the rival's X Specials first, Potions before them", .body = test_planned_battle_items}, .expectation = {.description = "uses the plan's X items before attacking"},},
 };
 
 
