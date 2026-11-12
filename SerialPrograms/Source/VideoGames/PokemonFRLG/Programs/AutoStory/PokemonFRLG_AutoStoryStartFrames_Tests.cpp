@@ -17,12 +17,14 @@
 #include <functional>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
+#include "Tests/ImageUnitTest.h"
 #include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryStartFrames.h"
@@ -131,8 +133,7 @@ ImageRGB32 screen(const Map& map, size_t cx, size_t cy, const std::vector<Person
 }
 
 //  Pokemon Tower's upper floors (3F to 6F) have WEATHER_FOG_HORIZONTAL:
-//  a cloud texture that repeats every 64 pixels scrolls one pixel every 4
-//  frames (15 a second). It shows gray over the black void beside the
+//  a cloud texture scrolls one pixel every 4 frames (15 a second). It shows gray over the black void beside the
 //  floor and over the floor alike. `screen` with the void in its 5 right
 //  columns of tiles and the fog scrolled by `scroll` pixels; on console B's
 //  frame its 8x8 averages over the void ran from 126 to 186.
@@ -273,18 +274,16 @@ ImageRGB32 outside_door(){
     return screen(CITY, 12, 6, {PLAYER}, 9);
 }
 
-//  console B, FRLG 10.05, 2026-11-12: Pokemon Tower 5F, the player beside
-//  a Channeler. The frame was kept right after the save; reloaded half an
-//  hour later, the fog had scrolled on and 76, 68 and 52 of 150 tiles
-//  differed on the console's frames, a second apart. The fog repeats
-//  every 64 pixels, 4.3 seconds.
+//  Pokemon Tower 5F, the player beside a Channeler, as in a run: the frame
+//  kept right after the save, the check's frames the fog scrolled on.
 const Map TOWER = make_map(INDOOR, 51);
 constexpr size_t FOG_PIXELS_PER_SECOND = 15;
 ImageRGB32 tower_kept(){
     return fogged(TOWER, 6, 9, {PLAYER, {8, 5}, {0, 2}}, 0, 21);
 }
 //  The console's start check's frames from the camera at row `cy`, the
-//  first one with the fog scrolled 20 pixels on from the kept frame.
+//  first one with the fog scrolled 20 pixels on from the kept frame, the
+//  others CONSOLE_START_FRAME_WAIT apart.
 std::vector<std::function<ImageRGB32()>> tower_frames(size_t cy, const std::vector<Person>& people){
     std::vector<std::function<ImageRGB32()>> frames;
     for (size_t c = 0; c < CONSOLE_START_FRAME_TRIES; c++){
@@ -359,7 +358,7 @@ const ReadCase READ_CASES[] = {
     {
         .input = {"Tower fog scrolled since the save: at the start", true,
             tower_frames(9, {PLAYER, {8, 5}, {0, 2}}), tower_kept, CONSOLE_START_FRAME_TRIES},
-        .expectation = {StartFound::AT_START, 7},
+        .expectation = {StartFound::AT_START, 1},
     },
     {
         .input = {"Tower fog, one step off: elsewhere", true,
@@ -526,6 +525,97 @@ const StoreCase STORE_CASES[] = {
     },
 };
 
+
+//  console B, FRLG 10.05, 2026-11-12, Pokemon Tower 5F beside a Channeler:
+//  the start frame kept at the 10.04 save, and the same pose after that
+//  save was reloaded, the fog 16 pixels lower. The colour alone changed 71
+//  of 150 tiles, on each of 12 frames over 4.8 seconds. The reloaded frame
+//  is also moved by a tile, the strip a step would bring into view taken
+//  from the kept frame, as the view one step off.
+struct TowerFogInput{
+    std::string name;
+    //  The reloaded frame moved by this many tiles.
+    int tiles_x;
+    int tiles_y;
+};
+struct TowerFogExpectation{
+    bool same_place;
+};
+struct TowerFogCase{
+    TowerFogInput input;
+    TowerFogExpectation expectation;
+};
+
+constexpr std::string_view TOWER_KEPT = "PokemonFRLG/AutoStoryStartFrames/PokemonTower5F_KeptAtSave.png";
+constexpr std::string_view TOWER_RELOADED = "PokemonFRLG/AutoStoryStartFrames/PokemonTower5F_Reloaded.png";
+
+//  `frame` moved by (`tiles_x`, `tiles_y`) tiles, what it doesn't cover
+//  from `fill`.
+ImageRGB32 moved(const ImageViewRGB32& frame, const ImageViewRGB32& fill, int tiles_x, int tiles_y){
+    ImageRGB32 out = fill.copy();
+    for (size_t y = 0; y < out.height(); y++){
+        for (size_t x = 0; x < out.width(); x++){
+            const int from_x = (int)x - tiles_x * (int)TILE;
+            const int from_y = (int)y - tiles_y * (int)TILE;
+            if (from_x >= 0 && from_y >= 0 && from_x < (int)frame.width() && from_y < (int)frame.height()){
+                out.pixel(x, y) = frame.pixel(from_x, from_y);
+            }
+        }
+    }
+    return out;
+}
+
+class Test_StartFrameTowerFog : public ImageUnitTest{
+public:
+    explicit Test_StartFrameTowerFog(TowerFogCase test_case)
+        : ImageUnitTest(
+            std::format("PokemonFRLG::AutoStoryStartFrames - {}", test_case.input.name),
+            {std::string(TOWER_KEPT), std::string(TOWER_RELOADED)}
+        )
+        , m_case(std::move(test_case))
+    {}
+
+protected:
+    virtual UnitTestResult run_on_images(Logger&, CancellableScope&, const std::vector<ImageRGB32>& images) const override{
+        const ImageRGB32 kept = start_frame(images[0]);
+        const ImageRGB32 reloaded = moved(start_frame(images[1]), kept, m_case.input.tiles_x, m_case.input.tiles_y);
+        const StartFrameDifference difference = compare_start_frames(kept, reloaded);
+        if (same_start_place(difference) != m_case.expectation.same_place){
+            return std::format(
+                "expected {}, got {}",
+                m_case.expectation.same_place ? "the same place" : "another place", to_string(difference)
+            );
+        }
+        return true;
+    }
+
+private:
+    TowerFogCase m_case;
+};
+
+const TowerFogCase TOWER_FOG_CASES[] = {
+    {
+        .input = {"Tower 5F reloaded, the fog elsewhere: the same place", 0, 0},
+        .expectation = {true},
+    },
+    {
+        .input = {"Tower 5F reloaded, a step east: another place", 1, 0},
+        .expectation = {false},
+    },
+    {
+        .input = {"Tower 5F reloaded, a step west: another place", -1, 0},
+        .expectation = {false},
+    },
+    {
+        .input = {"Tower 5F reloaded, a step south: another place", 0, 1},
+        .expectation = {false},
+    },
+    {
+        .input = {"Tower 5F reloaded, a step north: another place", 0, -1},
+        .expectation = {false},
+    },
+};
+
 } // namespace
 
 
@@ -541,6 +631,9 @@ void add_tests_AutoStoryStartFrames(UnitTestDatabase& database){
     }
     for (const auto& item : STORE_CASES){
         database.add<Test_StartFrameStore>(item);
+    }
+    for (const auto& item : TOWER_FOG_CASES){
+        database.add<Test_StartFrameTowerFog>(item);
     }
 }
 
