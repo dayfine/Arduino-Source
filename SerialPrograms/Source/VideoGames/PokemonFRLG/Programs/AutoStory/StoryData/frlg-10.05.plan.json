@@ -73,12 +73,12 @@
       },
       {
         "id": "above_tower_rare_candy",
-        "kind": "route",
-        "action": "run",
+        "kind": "legs",
+        "action": "taps",
         "args": {
-          "target": {"map": "PokemonTower_6F", "tiles": [[5, 14]], "facing": "south"}
+          "legs": [{"direction": "west", "tiles": 4}, {"direction": "south", "tiles": 6}]
         },
-        "why": "west along row 8 and down column 6 to row 14, a tile west to above the Rare Candy (5, 15) (pokeguy 1:07:53)"
+        "why": "a tap a tile from (9, 8), where Emilia's battle leaves the player, west along row 8 to (5, 8) and down column 5 to (5, 14), above the Rare Candy (5, 15) (pokeguy 1:07:53): an approach to an A press ends on its tile. As holds, west ended on (4, 8) and south met the gravestone (4, 9) (console B, 2026-11-12 04:39)"
       },
       {
         "id": "tower_rare_candy",

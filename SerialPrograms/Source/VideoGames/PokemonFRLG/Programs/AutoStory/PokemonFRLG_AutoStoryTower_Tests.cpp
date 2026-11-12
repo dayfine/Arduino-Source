@@ -223,6 +223,34 @@ UnitTestResult test_tower_6f(Logger&){
     );
 }
 
+//  10.05 above_tower_rare_candy (console B, 2026-11-12 04:39): from
+//  Pokemon Tower 6F (9, 8), after Emilia, "west 4 (open)" and "south 6
+//  (open)" to (5, 14), above the Rare Candy (5, 15), walked as holds. The
+//  west one ended on (4, 8), the south one met the gravestone (4, 9), and
+//  the A faced nothing. An approach to an A press is walked a tap a tile
+//  from the tile Emilia's battle leaves the player on, so a hold that ends
+//  a tile short or long (here: short, both legs) can't leave it off.
+UnitTestResult test_rare_candy_approach_exact(Logger&){
+    const StoryCheckpoint& row = checkpoint("10.05");
+    const auto step = std::find_if(row.steps.begin(), row.steps.end(), [](const StoryStep& data){ return data.name == "above_tower_rare_candy"; });
+    if (step == row.steps.end()){
+        return std::string("10.05 has no above_tower_rare_candy.");
+    }
+    const MapPosition start{"PokemonTower_6F", {9, 8}};
+    const MapPosition above{"PokemonTower_6F", {5, 14}};
+    SimScript script;
+    script.short_holds = {{1, 1}, {2, 1}};
+    OverworldSim sim(maps_with_beaten({{"PokemonTower_6F", 9, 6}}), start, Direction::WEST, script);
+    StoryPose at{start.map, start.point, Direction::WEST};
+    if (const std::string failure = row_step_on_sim(sim, at, *step, row.id); !failure.empty()){
+        return std::format("10.05 above_tower_rare_candy: {}", failure);
+    }
+    if (!(sim.state().position == above)){
+        return std::format("10.05 above_tower_rare_candy: ended on {}, not {}.", to_string(sim.state().position), to_string(above));
+    }
+    return true;
+}
+
 //  10.06: the three Grunts up column 11, Mr. Fuji, and his house.
 UnitTestResult test_tower_7f_and_fuji(Logger&){
     return row_checked(
@@ -359,6 +387,10 @@ UnitTestResult test_warp_press_arrivals(Logger&){
 }
 
 const AutoStoryTowerCase AUTO_STORY_TOWER_CASES[] = {
+    {
+        .input = {.name = "10.05: the Rare Candy's approach ends above it after short holds", .body = test_rare_candy_approach_exact},
+        .expectation = {},
+    },
     {.input = {"10.01 Route 16's house for HM02, out of every line, and Fly to Lavender's Pokemon Center", test_back_to_lavender}, .expectation = {}},
     {.input = {"10.01 flies with the Pidgey found by species", test_fly_finds_pidgey}, .expectation = {}},
     {.input = {"10.01 on the Bicycle through Route 16's north gate to the Fly house's door", test_fly_house_door_on_bike}, .expectation = {}},
