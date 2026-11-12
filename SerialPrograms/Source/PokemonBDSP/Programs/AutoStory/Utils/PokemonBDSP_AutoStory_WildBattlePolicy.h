@@ -24,6 +24,7 @@ enum class WildRunOutcome{
     ESCAPED,    //  the battle's exit transition showed
     TRAPPED,    //  the battle menu came back: the game refused the escape
     UNCERTAIN,  //  neither showed within the wait: text still scrolling, cursor unread
+    NO_RUNNING, //  "There's no running from a Trainer battle!": not a wild battle
 };
 
 //  The game steps escape_wild_battle() takes, injected so its decisions run
@@ -39,6 +40,11 @@ public:
     //  On the battle menu after a refused Run: fight with the best move until
     //  the battle ends, on the overworld when it returns.
     virtual void fight() = 0;
+
+    //  After NO_RUNNING, on the battle menu: the trainer battle as the story's
+    //  trainer battles are fought (best move to the end, then a potion if the
+    //  lead is low), on the overworld when it returns.
+    virtual void fight_trainer() = 0;
 
     //  A line of the escape's log.
     virtual void note(const std::string& text) = 0;
@@ -65,12 +71,17 @@ struct WildBattleEscapePolicy{
 enum class WildEscapeResult{
     ESCAPED,
     FOUGHT,         //  the game kept refusing the escape; the battle was fought to its end
+    TRAINER_FOUGHT, //  a Trainer battle, which cannot be run from: fought as the story's are
     UNCONFIRMED,    //  the attempts ran out without the exit
 };
 
 //  The decisions of escape_wild_battle(): Run on the battle menu until the
 //  exit shows, within `policy.attempts` tries; after `policy.run_refusals`
-//  refused Runs, `policy.fallback`.
+//  refused Runs, `policy.fallback`. A Run the game answers with "no running
+//  from a Trainer battle" ends the attempts at once: it is fought as a
+//  trainer battle (a wild battle's refusals are worth repeating, a trainer's
+//  never change: lab-B 2026-11-12 14:55, Route 203, five Runs and a faint
+//  misread before it was fought).
 WildEscapeResult escape_wild_battle(WildBattleEscapeActions& actions, const WildBattleEscapePolicy& policy);
 
 
