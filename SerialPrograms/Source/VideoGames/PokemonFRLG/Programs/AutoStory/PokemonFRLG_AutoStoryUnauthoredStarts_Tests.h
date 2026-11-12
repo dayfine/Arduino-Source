@@ -19,11 +19,11 @@ namespace PokemonFRLG{
 //  Whether checkpoint `id` was authored before the rows that lead up to it:
 //  it starts from its own declared pose, not where the row before it in
 //  the table ends. 14.01 starts outside the Pokemon Mansion, after its Escape
-//  Rope (13.04); 15.01 starts at Celadon's nurse, after Erika (14.04); 12.02
-//  ends at Fuchsia, and the rows between are authored separately. An id leaves
-//  this list once the rows before it are in.
+//  Rope (13.04); 14.03 starts on Celadon's heal spot, where 14.02's Fly from
+//  Cinnabar would leave the player (14.02 ends at Cinnabar's nurse). An id
+//  leaves this list once the rows before it are in.
 inline bool starts_after_unauthored_rows(std::string_view id){
-    return id == "14.01" || id == "15.01";
+    return id == "14.01" || id == "14.03";
 }
 
 

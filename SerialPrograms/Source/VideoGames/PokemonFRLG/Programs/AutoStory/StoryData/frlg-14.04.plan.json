@@ -1,0 +1,152 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "14.04",
+    "title": "Celadon Gym: Erika, the RAINBOWBADGE and TM19, then out past the tree to the nurse",
+    "start": {"map": "CeladonCity_Gym", "tiles": [[6, 5]], "facing": "north"},
+    "events": [
+      {
+        "id": "lead_lv44_for_erika",
+        "kind": "game_action",
+        "action": "level",
+        "args": {"slot": 1, "min": 44},
+        "why": "the precondition for Erika: the lead at least Lv44, pokeguy's Blastoise here (PokemonSimulation docs/battles/pokeguy-conditions.md, erika: C2 setup to Sp. Atk +1, accuracy +2 and outspeed, Guard Spec first, from 35/137 HP: 567/620 wins, 91.5%, 85.2% to 95.8%); at his level or above, those sims stand for this fight and no new one is needed; below it, the run stops here, before the fight"
+      },
+      {
+        "id": "challenge_erika",
+        "kind": "talk",
+        "why": "Erika (6, 4)"
+      },
+      {
+        "id": "erika",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_LEADER_ERIKA",
+          "foes": ["victreebel", "tangela", "vileplume"]
+        },
+        "declared_after": {"map": "CeladonCity_Gym", "tiles": [[6, 5]], "facing": "north"},
+        "why": "Erika (TRAINER_LEADER_ERIKA): Victreebel Lv29, Tangela Lv24, Vileplume Lv29; then the RAINBOWBADGE and TM19, read to the overworld with the battle's text (pokeguy 1:26:04 to 1:27:06)"
+      },
+      {
+        "id": "below_lori",
+        "kind": "legs",
+        "action": "taps",
+        "args": {
+          "legs": [{"direction": "west", "tiles": 1}]
+        },
+        "why": "a tap west from below Erika (6, 5) to below Lori (5, 4), on (5, 5)"
+      },
+      {
+        "id": "beside_inner_tree_tile",
+        "kind": "step",
+        "args": {
+          "direction": "west"
+        },
+        "declared_after": {"map": "CeladonCity_Gym", "tiles": [[4, 5]], "facing": "west"},
+        "why": "a step west to (4, 5), beside the inner tree's tile (3, 5): legs that end here would take the tree, which the map still has, for a wall and hold on over its cut tile to (1, 5)"
+      },
+      {
+        "id": "onto_inner_tree_tile",
+        "kind": "step",
+        "args": {
+          "direction": "west"
+        },
+        "declared_after": {"map": "CeladonCity_Gym", "tiles": [[3, 5]], "facing": "west"},
+        "why": "a step onto the inner tree's tile (3, 5), cut in 14.03 and still cut (a save keeps it; only a warp grows it back): the map still has the tree there, so no planned legs over it"
+      },
+      {
+        "id": "row_5_to_wall",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [{"direction": "west", "tiles": 2}]
+        },
+        "why": "run west from (3, 5) to the wall at (1, 5): Erika's win beats every trainer in the gym (set_gym_trainers 4), and the wall stops any overshoot"
+      },
+      {
+        "id": "column_1_down_to_wall",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [{"direction": "south", "tiles": 5}]
+        },
+        "why": "run down column 1 to the wall at (1, 10), (1, 11) being wall: past Tamia, who stands on (2, 9) since her battle"
+      },
+      {
+        "id": "onto_column_2",
+        "kind": "legs",
+        "action": "taps",
+        "args": {
+          "legs": [{"direction": "east", "tiles": 1}]
+        },
+        "why": "a tap east from the wall (1, 10) onto column 2, (2, 10), right below Tamia (2, 9)"
+      },
+      {
+        "id": "column_2_to_wall",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [{"direction": "south", "tiles": 8}]
+        },
+        "why": "run down the west aisle from (2, 10) to the wall at (2, 18): behind Lass Kay (3, 11), who looks east, and clear of Beauty Bridget's line (6..8, 10) that a planned way out through the middle crosses; all are beaten since Erika's win, and the wall stops any overshoot"
+      },
+      {
+        "id": "below_gym_tree_out",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeladonCity", "tiles": [[40, 36]], "facing": "north"}
+        },
+        "why": "east along row 18 and out of the gym's door (6, 18), down through the gap in the ledges to row 36 and east along it to below the tree (40, 35), grown back"
+      },
+      {
+        "id": "cut_tree_out",
+        "kind": "game_action",
+        "action": "cut_tree",
+        "args": {
+          "direction": "north"
+        },
+        "declared_after": {"map": "CeladonCity", "tiles": [[40, 35]], "facing": "north"},
+        "why": "the tree again; a step onto its tile"
+      },
+      {
+        "id": "celadon_below_center",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeladonCity", "tiles": [[48, 12]], "facing": "north"}
+        },
+        "why": "north through the city to below the Center's door (48, 11)"
+      },
+      {
+        "id": "celadon_nurse",
+        "kind": "game_action",
+        "action": "center_enter",
+        "declared_after": {"map": "CeladonCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
+        "why": "the Center script in: through the door and up to the nurse; no map of the Center"
+      },
+      {
+        "id": "heal_celadon",
+        "kind": "heal",
+        "why": "full HP and PP"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "notes": {
+      "checkpoint": [
+        "Erika (6, 4), talked to from below, from the save in front of her (14.03): Victreebel Lv29, Tangela Lv24 and Vileplume Lv29 (sParty_LeaderErika); then the RAINBOWBADGE and TM19 Giga Drain. Her win sets every gym trainer beaten (CeladonCity_Gym_EventScript_DefeatedErika, set_gym_trainers 4).",
+        "Out the way in: row 5, a step at a time over the inner tree's tile, and column 1 to their walls, Tamia standing on (2, 9) where her battle left her, the inner tree (3, 5) still cut (a save keeps the map's objects and temp flags; only a warp clears them). Leaving the gym grows the yard's tree (40, 35) back, so it is cut again from below.",
+        "PokeGuy flies to Celadon from the gym instead (1:27:07, same-city Fly); the walk back stands in until a Fly step is in. Either way the row ends at the nurse, where 15.01 starts."
+      ]
+    }
+  },
+  "metadata": {
+    "phase": "testing",
+    "postconditions": {
+      "position": {"map": "CeladonCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
+    }
+  }
+}

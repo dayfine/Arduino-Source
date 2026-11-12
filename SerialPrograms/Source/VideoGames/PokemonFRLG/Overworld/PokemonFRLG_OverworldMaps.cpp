@@ -93,6 +93,8 @@ constexpr std::string_view MAP_NAMES[] = {
     "UndergroundPath_WestEntrance",
     "Route7",
     "CeladonCity",
+    //  Celadon Gym, past the tree Cut fells.
+    "CeladonCity_Gym",
     //  The Game Corner's poster and the Rocket Hideout down to B4F.
     "CeladonCity_GameCorner",
     "RocketHideout_B1F",
