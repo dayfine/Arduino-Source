@@ -10,6 +10,7 @@
 #ifndef PokemonAutomation_Pokemon_Grid_H
 #define PokemonAutomation_Pokemon_Grid_H
 
+#include <compare>
 #include <cstddef>
 #include <functional>
 #include <string>
@@ -27,6 +28,8 @@ struct TilePos{
 
     TilePos next(Direction direction) const;
     bool operator==(const TilePos& other) const = default;
+    //  x, then y: an order for sets and maps of tiles, not a walking order.
+    auto operator<=>(const TilePos& other) const = default;
 };
 // Formats a TilePos as "(x, y)".
 std::string to_string(const TilePos& pos);
