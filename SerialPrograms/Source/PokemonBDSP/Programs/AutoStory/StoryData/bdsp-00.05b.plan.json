@@ -211,6 +211,10 @@
               [
                 16,
                 18
+              ],
+              [
+                15,
+                18
               ]
             ]
           },
@@ -220,6 +224,10 @@
             "tiles": [
               [
                 14,
+                18
+              ],
+              [
+                15,
                 18
               ]
             ]
@@ -237,7 +245,7 @@
         },
         "id": "company_clown",
         "kind": "talk",
-        "why": "the clown by the Poketch Company (wanders 14..16, 18): wait in his row, on (14, 18) facing east, then (16, 18) facing west; 'Do moves have types?' Yes; Coupon 2. Ends west against the company's sign (13, 19)"
+        "why": "the clown by the Poketch Company (wanders 14..16, 18): wait in his row, from (14, 18) and (15, 18) facing east, then (16, 18) and (15, 18) facing west, a tile toward him at a time; 'Do moves have types?' Yes; Coupon 2. Ends west against the company's sign (13, 19)"
       },
       {
         "action": "line",
@@ -267,6 +275,12 @@
         "id": "beside_the_company_sign",
         "kind": "route",
         "why": "west 1 against the Poketch Company's signboard (13, 19): the bump pins the tile the save is made on (console 2026-11-11: a save believed at (15, 19) was in the Poketch lobby)"
+      },
+      {
+        "action": "check_coupons",
+        "id": "all_three_coupons",
+        "kind": "game_action",
+        "why": "Key Items hold Coupons 1, 2 and 3, or the row fails before its save: the president gives the Poketch for all three only"
       }
     ],
     "id": "00.05b",

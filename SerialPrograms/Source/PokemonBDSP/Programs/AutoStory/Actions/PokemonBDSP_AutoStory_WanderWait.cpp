@@ -68,10 +68,11 @@ int crossing_row(const WanderWaitPlan& plan, const TilePos& at, const TilePos& t
     return up <= down ? above : below;
 }
 
-//  Walks from `at` to `to`: down the column, or between columns along a
-//  crossing row. Asks a blocked step in a column as walk_line() does.
+//  Walks from `at` to `to`: along the row or the column they share, or
+//  between columns along a crossing row. Asks a blocked step in the row or
+//  column as walk_line() does: in his zone, it is him.
 bool walk_to(WanderWaitBody& body, TilePos& at, TilePos to, const WanderWaitPlan& plan, size_t tries, bool* talked){
-    if (at.x == to.x){
+    if (at.x == to.x || at.y == to.y){
         return walk_line(body, at, to, plan, tries, talked);
     }
     const int row = crossing_row(plan, at, to);

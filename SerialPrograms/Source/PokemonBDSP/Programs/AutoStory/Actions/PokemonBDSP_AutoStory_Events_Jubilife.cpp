@@ -9,6 +9,9 @@
 
 #include <format>
 #include <optional>
+#include <span>
+#include <string>
+#include <vector>
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
@@ -28,6 +31,9 @@
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkDpad.h"
 #include "PokemonBDSP_AutoStory_Talks.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Walks.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_StoryLanguage.h"
+#include "PokemonBDSP_AutoStory_Bag.h"
+#include "PokemonBDSP_AutoStory_BagItemReader.h"
 #include "PokemonBDSP_AutoStory_WildBattle.h"
 #include "PokemonBDSP_AutoStory_Events.h"
 #include "PokemonBDSP_AutoStory_WanderWait.h"
@@ -254,8 +260,42 @@ void check_poketch(VideoStream& stream, ProControllerContext& context){
     stream.log("[Talk] The Poketch is on the screen.");
 }
 
+//  The Bag's Key Items pocket.
+constexpr int KEY_ITEMS_POCKET = 8;
+
+//  The coupons in the Key Items pocket, when the reader has their names in
+//  the game's language: whether each clown's is held, in
+//  jubilife_clown_coupons()' order.
+std::optional<std::vector<bool>> held_coupons(VideoStream& stream, ProControllerContext& context){
+    std::vector<std::string> slugs;
+    for (const ClownCoupon& coupon : jubilife_clown_coupons()){
+        if (!bag_item_named(story_language(), coupon.slug)){
+            stream.log(std::format("[Coupons] No name for {} in the game's language: not read.", coupon.slug), COLOR_ORANGE);
+            return std::nullopt;
+        }
+        slugs.emplace_back(coupon.slug);
+    }
+    return bag_has_items(stream, context, slugs, KEY_ITEMS_POCKET);
+}
+
+//  00.05b's end: all three coupons in the Bag, or the row fails here
+//  rather than saving a run the president will give no Poketch.
+void check_coupons(VideoStream& stream, ProControllerContext& context){
+    const std::optional<std::vector<bool>> held = held_coupons(stream, context);
+    if (!held){
+        return;
+    }
+    const std::span<const ClownCoupon> coupons = jubilife_clown_coupons();
+    for (size_t i = 0; i < coupons.size(); i++){
+        if (!(*held)[i]){
+            fail_step(stream, std::format("No {} in the Key Items: {} gave none.", coupons[i].slug, coupons[i].step));
+        }
+    }
+    stream.log("[Coupons] All three coupons are in the Key Items.");
+}
+
 //  00.05c starts against the Poketch Company's sign (14, 19) facing west
-//  (00.05b's end) or on the street east, (58, 22) facing east (its own end
+//  (00.05b's end) or below the east-exit sign, (59, 21) facing north (its own end
 //  and 01.01's start, when a run gave no Poketch). A step west tells them
 //  apart: the sign blocks it, the street does not.
 Pokemon::Outcome jubilife_start_probe(StoryExecutor& executor, Pokemon::RunState&, const Pokemon::StoryStep&){
@@ -305,18 +345,28 @@ Pokemon::TileBox jubilife_mart_clown_box(){
     return {.x0 = 54, .y0 = 32, .x1 = 56, .y1 = 34};
 }
 
+std::span<const ClownCoupon> jubilife_clown_coupons(){
+    static constexpr ClownCoupon COUPONS[] = {
+        {.step = "mart_clown", .slug = "coupon-1"},
+        {.step = "company_clown", .slug = "coupon-2"},
+        {.step = "tv_clown", .slug = "coupon-3"},
+    };
+    return COUPONS;
+}
+
 Pokemon::TileBox jubilife_company_clown_box(){
     return {.x0 = 14, .y0 = 18, .x1 = 16, .y1 = 18};
 }
 
 std::pair<TilePos, TilePos> jubilife_start_tiles(){
-    return {{14, 19}, {58, 22}};
+    return {{14, 19}, {59, 21}};
 }
 
 void add_jubilife_events(StoryEvents& events){
     events.emplace("talk_to_wanderer", talk_to_wanderer);
     events.emplace("wait_for_wanderer", wait_for_wanderer);
     events.emplace("check_poketch", console_event(check_poketch));
+    events.emplace("check_coupons", console_event(check_coupons));
     events.emplace("jubilife_start_probe", jubilife_start_probe);
 }
 

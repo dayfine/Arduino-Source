@@ -5,7 +5,7 @@
         "action": "jubilife_start_probe",
         "id": "where_we_start",
         "kind": "game_action",
-        "why": "a step west: the Poketch Company's sign (14, 19) blocks it (00.05b's end); on the street (58, 22) it goes (a rerun from 01.01's start when no Poketch came)"
+        "why": "a step west: the Poketch Company's sign (14, 19) blocks it (00.05b's end); below the east-exit sign (59, 21) it goes (a rerun from 01.01's start when no Poketch came)"
       },
       {
         "action": "town",
@@ -46,7 +46,7 @@
         },
         "id": "beside_the_president",
         "kind": "route",
-        "why": "from the wall north of column 56 round the boy below the Mart to the Poketch president"
+        "why": "from the Poketch Company's sign (00.05b's end; 00.05b checks all three coupons are in the Bag) or the street east, round the plaza to the Poketch president"
       },
       {
         "id": "president",
@@ -93,19 +93,138 @@
           ],
           "fight_wild": false,
           "target": {
-            "facing": "north",
+            "facing": "east",
             "map": "JubilifeCity",
             "tiles": [
               [
-                59,
-                21
+                53,
+                27
               ]
             ]
           }
         },
-        "id": "to_the_route_203_street",
+        "id": "up_the_main_road",
         "kind": "route",
-        "why": "up the main road and east along the street, ending below the east-exit sign (59, 20): the bump north into the sign pins the tile (user 2026-11-12), west of the guard's trigger column 60"
+        "why": "up the main road to row 27 west of the Mart's hedges; an open leg can end a row or a few columns off (lab-B 2026-11-12 13:32: a row off, the east leg to the wall stopped at the hedges)",
+        "declared_after": {
+          "facing": "east",
+          "map": "JubilifeCity",
+          "tiles": [
+            [
+              49,
+              25
+            ],
+            [
+              50,
+              25
+            ],
+            [
+              51,
+              25
+            ],
+            [
+              52,
+              25
+            ],
+            [
+              53,
+              25
+            ],
+            [
+              54,
+              25
+            ],
+            [
+              49,
+              26
+            ],
+            [
+              50,
+              26
+            ],
+            [
+              51,
+              26
+            ],
+            [
+              52,
+              26
+            ],
+            [
+              53,
+              26
+            ],
+            [
+              54,
+              26
+            ],
+            [
+              49,
+              27
+            ],
+            [
+              50,
+              27
+            ],
+            [
+              51,
+              27
+            ],
+            [
+              52,
+              27
+            ],
+            [
+              53,
+              27
+            ],
+            [
+              54,
+              27
+            ]
+          ]
+        }
+      },
+      {
+        "action": "measured",
+        "args": {
+          "fight_wild": false,
+          "legs": [
+            {
+              "direction": "south",
+              "tiles": 3
+            },
+            {
+              "direction": "east",
+              "tiles": 8
+            },
+            {
+              "direction": "north",
+              "tiles": 1
+            },
+            {
+              "direction": "east",
+              "tiles": 4
+            },
+            {
+              "direction": "north",
+              "tiles": 6
+            }
+          ]
+        },
+        "declared_after": {
+          "facing": "north",
+          "map": "JubilifeCity",
+          "tiles": [
+            [
+              59,
+              21
+            ]
+          ]
+        },
+        "id": "below_the_east_exit_sign",
+        "kind": "legs",
+        "why": "taps, each leg ended by a wall: south onto row 27 (row 28's wall, columns 49..54), east to the hedges (57, 27), north 1, east along row 26 to (60, 26)'s wall, north up column 59 to the east-exit sign (59, 20); every tile we may be on ends on (59, 21) facing north, west of the guard's trigger column 60 (user 2026-11-12)"
       }
     ],
     "id": "00.05c",

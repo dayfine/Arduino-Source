@@ -537,6 +537,10 @@ private:
     //  A clown's coupon or the president's Poketch, after step `step` passed.
     void count_coupons(const std::string& step);
     StoryBoundActions sim_actions();
+    //  The BDSP event `name` on the simulation: the ones it plays, or a stub.
+    Pokemon::StoryActionFunction sim_event(const std::string& name);
+    //  A wander wait, played from where the step before left us, on its map.
+    Pokemon::Outcome wait_for_wanderer(const Pokemon::StoryStep& step, Pokemon::RunState& state);
     //  The screen between steps: the dialog that popped up, if one did; a
     //  battle's opening, its battle on the OPENING_LOOKS-th look. `fresh`
     //  starts a new look.

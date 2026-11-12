@@ -429,27 +429,47 @@ UnitTestResult sandgem_entry_two_columns_west(Logger& logger){
 //  00.05c on lab-B 2026-11-11: 00.05b's Poketch Company clown was
 //  "answered" by the sign's text, so the save held two coupons; the
 //  president gave no Poketch and 00.05c went on to the street as passed.
-//  `misread` re-runs that read in 00.05c's own talk too. "" when the run
-//  stopped at 00.05c's Poketch check, as it must when a coupon is still
-//  missing.
-std::string poketch_run(Logger& logger, bool misread){
+//  00.05c talks to no clown (00.05b checks its coupons before its save):
+//  from such a save it stops at its Poketch check.
+UnitTestResult no_poketch_fails_00_05c(Logger& logger){
     SimWorldKnobs knobs;
     knobs.coupons_at_start = {"mart_clown", "tv_clown"};
     knobs.poketch_at_start = false;
-    if (misread){
-        knobs.talks_without_coupon = {"company_clown"};
-    }
-    return run_case(logger, "00.05c", "00.05c", {.fade = {}, .banner = {}}, std::move(knobs));
-}
-UnitTestResult no_poketch_fails_00_05c(Logger& logger){
-    const std::string stopped = poketch_run(logger, true);
+    const std::string stopped = run_case(logger, "00.05c", "00.05c", {.fade = {}, .banner = {}}, std::move(knobs));
     if (stopped.find("00.05c poketch") == std::string::npos){
         return UnitTestResult("expected a stop at 00.05c's Poketch check; got " + (stopped.empty() ? std::string("a pass") : stopped));
     }
     return true;
 }
-UnitTestResult missing_coupon_collected_in_00_05c(Logger& logger){
-    return passes(poketch_run(logger, false));
+//  00.05b with the Poketch Company's clown answered by the sign's text
+//  (lab-B 2026-11-11): two coupons. The row fails at its coupon check
+//  instead of saving them.
+UnitTestResult missing_coupon_fails_00_05b(Logger& logger){
+    SimWorldKnobs knobs;
+    knobs.coupons_at_start = {};
+    knobs.talks_without_coupon = {"company_clown"};
+    const std::string stopped = run_case(logger, "00.05b", "00.05b", {.fade = {}, .banner = {}}, std::move(knobs));
+    if (stopped.find("00.05b all_three_coupons") == std::string::npos){
+        return UnitTestResult("expected a stop at 00.05b's coupon check; got " + (stopped.empty() ? std::string("a pass") : stopped));
+    }
+    return true;
+}
+//  00.05c's walk up the main road on lab-B 2026-11-12 13:32: its open leg
+//  north ended a row off, the leg east to the wall stopped at the Mart's
+//  hedges, and the walk took it for (59, 26) and "arrived" below the
+//  east-exit sign beside them. The end on (59, 21) must hold from a row
+//  off either way, into 01.01 from there.
+UnitTestResult main_road_a_row_off_00_05c(Logger& logger){
+    std::string failures;
+    for (const Direction direction : {Direction::NORTH, Direction::SOUTH}){
+        SimWorldKnobs knobs;
+        knobs.slides = {{.step = "up_the_main_road", .direction = direction, .tiles = 1}};
+        const std::string stopped = run_case(logger, "00.05c", "01.01", {.fade = {}, .banner = {}}, std::move(knobs));
+        if (!stopped.empty()){
+            failures += std::format("\n  a row {}: {}", Pokemon::direction_name(direction), stopped);
+        }
+    }
+    return failures.empty() ? UnitTestResult(true) : UnitTestResult("00.05c up the main road:" + failures);
 }
 //  01.01 from a save with no Poketch: Jubilife's east-exit guard would
 //  ask about the Poketch campaign and turn us back (lab-B 2026-11-11, the
@@ -739,7 +759,8 @@ const FailureCase AUTO_STORY_FAILURE_CASES[] = {
             : UnitTestResult("the program went on from a tile the player is not on: " + stopped);
     }}, .expectation = {}},
     {.input = {"00.05c a coupon missing (the sign read for the Poketch Company clown): no Poketch, 00.05c fails (lab-B 2026-11-11)", no_poketch_fails_00_05c}, .expectation = {}},
-    {.input = {"00.05c a coupon missing from 00.05b: its clown talks collect it, the president gives the Poketch", missing_coupon_collected_in_00_05c}, .expectation = {}},
+    {.input = {"00.05b a coupon missing at its end: the row fails at its coupon check, before the save", missing_coupon_fails_00_05b}, .expectation = {}},
+    {.input = {"00.05c the walk up the main road ends a row off: still on (59, 21) below the east-exit sign, into 01.01 (lab-B 2026-11-12 13:32)", main_road_a_row_off_00_05c}, .expectation = {}},
     {.input = {"01.01 with no Poketch: the east-exit guard's gate stops the row at its check, not a trainer fight (lab-B 2026-11-11)", gate_guard_stops_01_01}, .expectation = {}},
     {.input = {"00.04 to the ledge column with a wild battle on each pass through Route 201's grass (lab-B 2026-11-09 16:14)", [](Logger& logger){
         return passes(ledge_walk_in_grass(logger, {}));

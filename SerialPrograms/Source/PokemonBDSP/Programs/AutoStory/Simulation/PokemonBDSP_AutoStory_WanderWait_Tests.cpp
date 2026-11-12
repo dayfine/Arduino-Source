@@ -2,8 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The Mart clown wanders (54..56, 32..34) round (55, 33). 00.05b and
- *  00.05c wait for him in his box's end columns, 56 facing west, then 54
+ *  The Mart clown wanders (54..56, 32..34) round (55, 33). 00.05b waits
+ *  for him in his box's end columns, 56 facing west, then 54
  *  facing east (wait_for_wanderer): these run that wait on the simulation
  *  with him starting, or staying, on each tile of his box, and pick the
  *  tile to wait on first. He never steps onto the player's tile.
@@ -133,8 +133,8 @@ constexpr uint64_t SEEDS = 8;
 
 //  On lab-B (2026-11-12 11:47) 00.05b's company_clown swept row 19 below
 //  the Poketch Company's clown, asking north, while he walked off it: "no
-//  coupon question from any tile below his range". 00.05b and 00.05c now
-//  wait for him in his row (14..16, 18): from where their routes leave us,
+//  coupon question from any tile below his range". 00.05b now waits for
+//  him in his row (14..16, 18): from where their routes leave us,
 //  (15, 19), the wait talks to him wherever he starts or stays, and ends
 //  against the company's sign on (14, 19).
 UnitTestResult test_company_clown_reached_in_his_row(Logger& logger){
@@ -142,7 +142,7 @@ UnitTestResult test_company_clown_reached_in_his_row(Logger& logger){
     const TilePos start{15, 19};
     std::string out;
     size_t runs = 0;
-    for (const std::string row : {"00.05b", "00.05c"}){
+    for (const std::string row : {"00.05b"}){
         const WanderWaitPlan plan = wander_wait_plan(story_step(row, "company_clown"));
         for (const TilePos& clown : clown_starts(start, jubilife_company_clown_box())){
             for (uint64_t seed = 0; seed <= SEEDS; seed++){
@@ -160,14 +160,14 @@ UnitTestResult test_company_clown_reached_in_his_row(Logger& logger){
     return out.empty() ? UnitTestResult(true) : UnitTestResult(std::format("The wait missed the company's clown:{}", out));
 }
 
-//  00.05b comes up column 56 from the wall (56, 36), 00.05c down it from
-//  (56, 31): from each, the wait talks to the clown wherever in his box he
-//  starts, over seeds 1 to 8, and ends on (56, 31).
+//  00.05b comes up column 56 from the wall (56, 36): the wait talks to the
+//  clown wherever in his box he starts, over seeds 1 to 8, and ends on
+//  (56, 31).
 UnitTestResult test_mart_clown_reached_from_column_56(Logger& logger){
     const StoryWorld world = clown_world();
     std::string out;
     size_t runs = 0;
-    for (const auto& [row, start] : {std::pair<std::string, TilePos>{"00.05b", {56, 36}}, {"00.05c", {56, 31}}}){
+    for (const auto& [row, start] : {std::pair<std::string, TilePos>{"00.05b", {56, 36}}}){
         const WanderWaitPlan plan = wander_wait_plan(story_step(row, "mart_clown"));
         for (const TilePos& clown : clown_starts(start)){
             for (uint64_t seed = 1; seed <= SEEDS; seed++){
@@ -191,7 +191,7 @@ UnitTestResult test_mart_clown_reached_when_he_stays(Logger& logger){
     const StoryWorld world = clown_world();
     std::string out;
     size_t runs = 0;
-    for (const auto& [row, start] : {std::pair<std::string, TilePos>{"00.05b", {56, 36}}, {"00.05c", {56, 31}}}){
+    for (const auto& [row, start] : {std::pair<std::string, TilePos>{"00.05b", {56, 36}}}){
         const WanderWaitPlan plan = wander_wait_plan(story_step(row, "mart_clown"));
         for (const TilePos& clown : clown_starts(start)){
             runs++;
@@ -224,7 +224,7 @@ public:
 UnitTestResult test_mart_clown_diagonal_reached(Logger& logger){
     const StoryWorld world = clown_world();
     std::string out;
-    for (const std::string row : {"00.05b", "00.05c"}){
+    for (const std::string row : {"00.05b"}){
         const WanderWaitPlan table_plan = wander_wait_plan(story_step(row, "mart_clown"));
         WanderWaitPlan plan = table_plan;
         //  Its east side's walk, from (56, 32) on.
@@ -246,6 +246,32 @@ UnitTestResult test_mart_clown_diagonal_reached(Logger& logger){
         }
     }
     return out.empty() ? UnitTestResult(true) : UnitTestResult(std::format("The wait stayed off his row:{}", out));
+}
+
+//  On lab-B (2026-11-12 12:48) 00.05c's wait (since dropped) for the
+//  Poketch Company's clown ended on (16, 18) with him idling on our row out of reach. From
+//  either end of his row alone, the wait steps toward him a tile at a time
+//  inside his row and talks to him idling at the other end.
+UnitTestResult test_company_clown_idling_two_tiles_away(Logger& logger){
+    const StoryWorld world = clown_world();
+    std::string out;
+    for (const std::string row : {"00.05b"}){
+        const WanderWaitPlan table_plan = wander_wait_plan(story_step(row, "company_clown"));
+        for (const WanderWaitSide& side : table_plan.sides){
+            WanderWaitPlan plan = table_plan;
+            plan.sides = {side};
+            plan.rounds = 1;
+            const TilePos end = side.stands.at(0);
+            const TilePos clown{end.x == 14 ? 16 : 14, end.y};
+            const TilePos start = end.next(Direction::SOUTH);
+            const WanderWaitResult result = run_clown_wait(world, company_clown(), start, clown, 1, plan, ClownMoves::STAYS);
+            logger.log(std::format("{} from {}: ended {} on {}.", row, Pokemon::to_string(end), (int)result.end, Pokemon::to_string(result.at)));
+            if (result.end == WanderWaitEnd::NO_TALK){
+                out += std::format("\n  {}: from {} with him on {}, no talk.", row, Pokemon::to_string(end), Pokemon::to_string(clown));
+            }
+        }
+    }
+    return out.empty() ? UnitTestResult(true) : UnitTestResult(std::format("The wait stayed at the end:{}", out));
 }
 
 //  How many of the clown's starts and seeds one stand tile alone talks
@@ -280,7 +306,7 @@ UnitTestResult test_mart_clown_first_stand(Logger& logger){
             best_y = y;
         }
     }
-    for (const std::string row : {"00.05b", "00.05c"}){
+    for (const std::string row : {"00.05b"}){
         const TilePos first = wander_wait_plan(story_step(row, "mart_clown")).sides.at(0).stands.at(0);
         if (first != TilePos{56, best_y}){
             return std::format("{} waits first on {}; the simulation talks most from (56, {}).", row, Pokemon::to_string(first), best_y);
@@ -318,7 +344,7 @@ private:
 };
 
 const WanderWaitCase WANDER_WAIT_CASES[] = {
-    {.input = {"Wander wait: the Mart clown is reached from column 56 wherever he starts (00.05b, 00.05c)",
+    {.input = {"Wander wait: the Mart clown is reached from column 56 wherever he starts (00.05b)",
         test_mart_clown_reached_from_column_56}, .expectation = {}},
     {.input = {"Wander wait: the Mart clown is reached on whichever tile he stays (lab-B 2026-11-12, column 54)",
         test_mart_clown_reached_when_he_stays}, .expectation = {}},
@@ -326,6 +352,8 @@ const WanderWaitCase WANDER_WAIT_CASES[] = {
         test_mart_clown_diagonal_reached}, .expectation = {}},
     {.input = {"Wander wait: the Poketch Company's clown is reached in his row, wandering or not (lab-B 2026-11-12 11:47)",
         test_company_clown_reached_in_his_row}, .expectation = {}},
+    {.input = {"Wander wait: the Poketch Company's clown idling at his row's other end is reached (lab-B 2026-11-12 12:48)",
+        test_company_clown_idling_two_tiles_away}, .expectation = {}},
     {.input = {"Wander wait: the Mart clown's first stand tile is where the simulation meets him most",
         test_mart_clown_first_stand}, .expectation = {}},
 };
