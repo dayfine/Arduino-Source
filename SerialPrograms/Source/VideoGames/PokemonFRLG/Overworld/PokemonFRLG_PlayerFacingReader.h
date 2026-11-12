@@ -48,10 +48,9 @@ const PlayerSprites& player_sprites(PlayerGender gender);
 
 
 //  The way the standing player faces, or nothing if no standing sprite
-//  matches clearly (surfing, on the bike, in a menu, mid-step). The boy's
-//  sprites are tried, then the girl's, so a save of either player works
-//  without being told which.
-std::optional<Direction> read_player_facing(const ImageViewRGB32& screen);
+//  matches clearly (surfing, on the bike, in a menu, mid-step). Only
+//  `gender`'s sheet is loaded and matched.
+std::optional<Direction> read_player_facing(const ImageViewRGB32& screen, PlayerGender gender);
 
 //  The same on `game`, the GBA's 240x160 screen at any scale, already cut
 //  out of the console's.

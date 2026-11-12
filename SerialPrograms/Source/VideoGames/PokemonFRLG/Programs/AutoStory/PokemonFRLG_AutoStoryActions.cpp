@@ -612,9 +612,9 @@ std::optional<size_t> talk_and_count_pages(ConsoleHandle& console, ProController
     return pages;
 }
 
-void step_once(ConsoleHandle& console, ProControllerContext& context, Direction direction, std::optional<Direction> facing){
+void step_once(ConsoleHandle& console, ProControllerContext& context, Direction direction, std::optional<Direction> facing, PlayerGender player){
     if (facing != direction){
-        OverworldWalkSteps::turn_to(console, context, direction);
+        OverworldWalkSteps::turn_to(console, context, direction, player);
     }
     //  A step, once started, finishes on its own. The release waits out the
     //  lockout before a next step tap (MovementMechanics::STEP_TAP_LOCKOUT).
@@ -645,12 +645,12 @@ void wait_out_battle_exit(ConsoleHandle& console, ProControllerContext& context)
 
 std::optional<int> step_into_line(
     ConsoleHandle& console, ProControllerContext& context,
-    Direction direction, std::optional<Direction> facing, int max_tiles, Milliseconds watch
+    Direction direction, std::optional<Direction> facing, PlayerGender player, int max_tiles, Milliseconds watch
 ){
     return step_until_seen(
         max_tiles,
         [&]{
-            step_once(console, context, direction, facing);
+            step_once(console, context, direction, facing, player);
             facing = direction;
         },
         [&]{
@@ -668,8 +668,8 @@ std::optional<int> step_into_line(
     );
 }
 
-void face_wall(ConsoleHandle& console, ProControllerContext& context, Direction direction){
-    OverworldWalkSteps::turn_to(console, context, direction);
+void face_wall(ConsoleHandle& console, ProControllerContext& context, Direction direction, PlayerGender player){
+    OverworldWalkSteps::turn_to(console, context, direction, player);
 }
 
 SaveAction SaveDialog::next(SaveScreen screen){
