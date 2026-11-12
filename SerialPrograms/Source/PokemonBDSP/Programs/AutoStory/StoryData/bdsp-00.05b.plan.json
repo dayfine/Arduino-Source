@@ -83,6 +83,28 @@
       {
         "action": "wait_for_wanderer",
         "args": {
+          "far_stand": {
+            "facing": "east",
+            "map": "JubilifeCity",
+            "tiles": [
+              [
+                54,
+                32
+              ],
+              [
+                54,
+                33
+              ],
+              [
+                54,
+                34
+              ],
+              [
+                54,
+                33
+              ]
+            ]
+          },
           "stand": {
             "facing": "west",
             "map": "JubilifeCity",
@@ -94,6 +116,10 @@
               [
                 56,
                 34
+              ],
+              [
+                56,
+                33
               ],
               [
                 56,
@@ -114,7 +140,7 @@
         },
         "id": "mart_clown",
         "kind": "talk",
-        "why": "the clown by the Mart (wanders 54..56, 32..34): wait on column 56 facing west until he comes level, A about every 2 s; 'Do Pokemon grow by defeating others?' Yes; Coupon 1. Ends north against the wall at (56, 30)"
+        "why": "the clown by the Mart (wanders 54..56, 32..34): wait in his box's east column facing west, then its west column facing east, a D-pad tap a tile along it and two A presses a tile; 'Do Pokemon grow by defeating others?' Yes; Coupon 1. Ends north against the wall at (56, 30)"
       },
       {
         "action": "town",

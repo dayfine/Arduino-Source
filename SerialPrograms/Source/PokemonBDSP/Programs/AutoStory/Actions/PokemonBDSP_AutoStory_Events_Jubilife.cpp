@@ -172,7 +172,7 @@ public:
         const WalkResult result = walk_tiles_dpad(m_stream, m_context, run_from_wild_battle, route_stick(direction), 1, label);
         const std::optional<int> moved = wander_row_step(result, 1);
         if (!moved){
-            fail_step(m_stream, std::format("{}: {} instead of a step along the column.", label, walk_stop_name(result.stop)));
+            fail_step(m_stream, std::format("{}: {} instead of a one-tile step.", label, walk_stop_name(result.stop)));
         }
         return *moved != 0;
     }
@@ -199,15 +199,20 @@ private:
     bool m_again;
 };
 //  The talk to a wanderer by waiting for him on the step's "stand" tiles,
-//  from the tile the step before left us on (in their column). It ends on
-//  its declared tile, against a wall the declared way and one at the
-//  column's back (away from his box): both taps must not move.
+//  then on its "far_stand" tiles (his box's other end), in turn, from the
+//  tile the step before left us on. It ends on its declared tile, against
+//  a wall the declared way and one at the stand column's back (away from
+//  his box): both taps must not move.
 Pokemon::Outcome wait_for_wanderer(StoryExecutor& executor, Pokemon::RunState& state, const Pokemon::StoryStep& step){
     VideoStream& stream = executor.stream();
     const Pokemon::GridPose& stand = Pokemon::story_arg<Pokemon::GridPose>(step.args, "stand");
+    const Pokemon::GridPose& far_stand = Pokemon::story_arg<Pokemon::GridPose>(step.args, "far_stand");
     const std::vector<TilePos> start = Pokemon::tiles_of(state.pose);
     if (!step.pose_after || start.size() != 1 || stand.tiles.empty() || !stand.facing){
         fail_step(stream, step.name + ": needs one start tile, stand tiles and their facing, and a declared end.");
+    }
+    if (!far_stand.tiles.empty() && !far_stand.facing){
+        fail_step(stream, step.name + ": its far stand tiles need a facing.");
     }
     const Pokemon::Pose exit = Pokemon::pose_of(*step.pose_after);
     const std::vector<TilePos> exit_tiles = Pokemon::tiles_of(exit);
@@ -217,7 +222,10 @@ Pokemon::Outcome wait_for_wanderer(StoryExecutor& executor, Pokemon::RunState& s
     }
     //  The column's back: the way away from his box.
     const Direction back = Pokemon::ALL_DIRECTIONS[((size_t)*stand.facing + 2) % 4];
-    const WanderWaitPlan plan{.stands = stand.tiles, .facing = *stand.facing, .exit = exit_tiles[0], .exit_walls = {*exit_wall, back}};
+    WanderWaitPlan plan{.sides = {{.stands = stand.tiles, .facing = *stand.facing}}, .exit = exit_tiles[0], .exit_walls = {*exit_wall, back}};
+    if (!far_stand.tiles.empty()){
+        plan.sides.push_back({.stands = far_stand.tiles, .facing = *far_stand.facing});
+    }
     ConsoleWanderWait body(stream, executor.context(), step.name, Pokemon::story_arg<bool>(step.args, "again"));
     const WanderWaitResult result = wait_beside_wanderer(body, start[0], plan);
     switch (result.end){
@@ -227,9 +235,9 @@ Pokemon::Outcome wait_for_wanderer(StoryExecutor& executor, Pokemon::RunState& s
     case WanderWaitEnd::NO_TALK:
         fail_step(stream, std::format("{}: no talk from any stand tile; on {}.", step.name, Pokemon::to_string(result.at)));
     case WanderWaitEnd::STUCK:
-        fail_step(stream, std::format("{}: a step along the column stayed blocked at {}.", step.name, Pokemon::to_string(result.at)));
+        fail_step(stream, std::format("{}: a step on the way stayed blocked at {}.", step.name, Pokemon::to_string(result.at)));
     case WanderWaitEnd::LOST:
-        fail_step(stream, std::format("{}: a step from {} moved to {}: not on the column.", step.name, Pokemon::to_string(exit_tiles[0]), Pokemon::to_string(result.at)));
+        fail_step(stream, std::format("{}: a step from {} moved to {}: not on the exit.", step.name, Pokemon::to_string(exit_tiles[0]), Pokemon::to_string(result.at)));
     }
     fail_step(stream, step.name + ": unknown wait end.");
 }

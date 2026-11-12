@@ -55,9 +55,14 @@ void SimWanderWait::wait(Milliseconds time){
 WanderWaitPlan wander_wait_plan(const Pokemon::StoryStep& step){
     const Pokemon::GridPose& stand = Pokemon::story_arg<Pokemon::GridPose>(step.args, "stand");
     const Pokemon::Pose exit = Pokemon::pose_of(*step.pose_after);
+    const Pokemon::GridPose& far_stand = Pokemon::story_arg<Pokemon::GridPose>(step.args, "far_stand");
     const Direction back = Pokemon::ALL_DIRECTIONS[((size_t)*stand.facing + 2) % 4];
-    return WanderWaitPlan{.stands = stand.tiles, .facing = *stand.facing,
+    WanderWaitPlan plan{.sides = {{.stands = stand.tiles, .facing = *stand.facing}},
         .exit = Pokemon::tiles_of(exit).at(0), .exit_walls = {*Pokemon::facing_of(exit), back}};
+    if (!far_stand.tiles.empty()){
+        plan.sides.push_back({.stands = far_stand.tiles, .facing = *far_stand.facing});
+    }
+    return plan;
 }
 
 
@@ -65,8 +70,10 @@ namespace{
 
 //  The plan's tiles on `world`.
 WanderWaitPlan on_world(WanderWaitPlan plan, const StoryWorld& world, const std::string& map){
-    for (TilePos& stand : plan.stands){
-        stand = story_to_world(world, map, stand);
+    for (WanderWaitSide& side : plan.sides){
+        for (TilePos& stand : side.stands){
+            stand = story_to_world(world, map, stand);
+        }
     }
     plan.exit = story_to_world(world, map, plan.exit);
     return plan;
@@ -100,9 +107,9 @@ Pokemon::Outcome sim_wait_for_wanderer(GridSim& sim, const StoryWorld& world, co
     case WanderWaitEnd::NO_TALK:
         return Pokemon::outcome_failed("operation_failed", std::format("{}: no talk from any stand tile; on {}.", step.name, at));
     case WanderWaitEnd::STUCK:
-        return Pokemon::outcome_failed("operation_failed", std::format("{}: a step along the column stayed blocked at {}.", step.name, at));
+        return Pokemon::outcome_failed("operation_failed", std::format("{}: a step on the way stayed blocked at {}.", step.name, at));
     case WanderWaitEnd::LOST:
-        return Pokemon::outcome_failed("operation_failed", std::format("{}: a step from the exit moved to {}: not on the column.", step.name, at));
+        return Pokemon::outcome_failed("operation_failed", std::format("{}: a step from the exit moved to {}: not on the exit.", step.name, at));
     }
     return Pokemon::outcome_failed("operation_failed", step.name + ": unknown wait end.");
 }
