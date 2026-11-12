@@ -14,6 +14,8 @@ file(GLOB CORE_LIBRARY_SOURCES
     ../3rdParty-Core/miniz-3.1.1/miniz.c
     ../3rdParty-Core/miniz-3.1.1/miniz.h
     ../Common/Compiler.h
+    ../Common/ControllerStates/NintendoSwitch2_OemController_State.cpp
+    ../Common/ControllerStates/NintendoSwitch2_OemController_State.h
     ../Common/ControllerStates/NintendoSwitch_OemController_State.cpp
     ../Common/ControllerStates/NintendoSwitch_OemController_State.h
     ../Common/ControllerStates/NintendoSwitch_WiredController_State.h
@@ -94,6 +96,7 @@ file(GLOB CORE_LIBRARY_SOURCES
     ../Common/Cpp/Hardware/Hardware_x86.tpp
     ../Common/Cpp/Hardware/Hardware_x86_Linux.tpp
     ../Common/Cpp/Hardware/Hardware_x86_Windows.tpp
+    ../Common/Cpp/HttpServer/AbstractHttpServer.h
     ../Common/Cpp/ImageResolution.cpp
     ../Common/Cpp/ImageResolution.h
     ../Common/Cpp/Json/JsonArray.cpp
@@ -102,6 +105,8 @@ file(GLOB CORE_LIBRARY_SOURCES
     ../Common/Cpp/Json/JsonObject.h
     ../Common/Cpp/Json/JsonTools.cpp
     ../Common/Cpp/Json/JsonTools.h
+    ../Common/Cpp/Json/JsonTools_Tests.cpp
+    ../Common/Cpp/Json/JsonTools_Tests.h
     ../Common/Cpp/Json/JsonValue.cpp
     ../Common/Cpp/Json/JsonValue.h
     ../Common/Cpp/LifetimeSanitizer.cpp
@@ -185,6 +190,7 @@ file(GLOB CORE_LIBRARY_SOURCES
     ../Common/CRC32/pabb_CRC32.h
     ../Common/PABotBase2/Controllers/PABotBase2_Controller_HID_Keyboard.h
     ../Common/PABotBase2/Controllers/PABotBase2_Controller_NS1_OemController.h
+    ../Common/PABotBase2/Controllers/PABotBase2_Controller_NS2_OemController.h
     ../Common/PABotBase2/Controllers/PABotBase2_Controller_NS_WiredController.h
     ../Common/PABotBase2/PABotBase2_MessageProtocol.h
     ../Common/PABotBase2/PABotBase2CC_MessageDumper.cpp
@@ -254,6 +260,8 @@ file(GLOB CORE_LIBRARY_SOURCES
     Source/CompileTimeBackends.h
     Source/ControllerInput/ControllerInput.cpp
     Source/ControllerInput/ControllerInput.h
+    Source/ControllerInput/Gamepad/GamepadInput_State.cpp
+    Source/ControllerInput/Gamepad/GamepadInput_State.h
     Source/ControllerInput/Keyboard/KeyBindingOption.cpp
     Source/ControllerInput/Keyboard/KeyBindingOption.h
     Source/ControllerInput/Keyboard/KeyboardHidButtons.h
@@ -416,6 +424,7 @@ file(GLOB LIBRARY_SOURCES
     ../Common/Cpp/Sockets/ServerSocket_POSIX.h
     ../Common/Cpp/Sockets/ServerSocket_WinSocket.h
     ../Common/Cpp/Sockets/ServerSocket_Qt.h
+    ../Common/Cpp/Sockets/ServerSocket.h
     ../Common/Cpp/Sockets/Sockets_Tests.cpp
     ../Common/Cpp/Sockets/Sockets_Tests.h
     ../Common/Cpp/StreamConnections/MockDevice.cpp
@@ -504,10 +513,6 @@ file(GLOB LIBRARY_SOURCES
     ../Common/Qt/UiStateQtWidget.h
     ../Common/Qt/WidgetStackFixedAspectRatio.cpp
     ../Common/Qt/WidgetStackFixedAspectRatio.h
-    ../Common/SerialPABotBase/SerialPABotBase_Messages_HID_Keyboard.h
-    ../Common/SerialPABotBase/SerialPABotBase_Messages_NS1_OemControllers.h
-    ../Common/SerialPABotBase/SerialPABotBase_Messages_NS_WiredController.h
-    ../Common/SerialPABotBase/SerialPABotBase_Protocol.h
     Source/CommonFramework/AudioPipeline/AudioConstants.h
     Source/CommonFramework/AudioPipeline/AudioFeed.h
     Source/CommonFramework/AudioPipeline/AudioFormat.cpp
@@ -932,6 +937,10 @@ file(GLOB LIBRARY_SOURCES
     Source/ComputerPrograms/Framework/ComputerProgramSession.h
     Source/ComputerPrograms/Framework/ComputerProgramWidget.cpp
     Source/ComputerPrograms/Framework/ComputerProgramWidget.h
+    Source/ControllerInput/Gamepad/GlobalGamepadTracker.cpp
+    Source/ControllerInput/Gamepad/GlobalGamepadTracker.h
+    Source/ControllerInput/Gamepad/GamepadInput_SDL.cpp
+    Source/ControllerInput/Gamepad/GamepadInput_SDL.h
     Source/ControllerInput/Keyboard/GlobalKeyboardHidTracker.cpp
     Source/ControllerInput/Keyboard/GlobalKeyboardHidTracker.h
     Source/ControllerInput/Keyboard/GlobalQtKeyMap.cpp
@@ -1456,6 +1465,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Inference/Pokemon_TrainPokemonOCR.h
     Source/Pokemon/Inference/Pokemon_TypeReader.cpp
     Source/Pokemon/Inference/Pokemon_TypeReader.h
+    Source/Pokemon/Navigation/Pokemon_Direction.cpp
+    Source/Pokemon/Navigation/Pokemon_Direction.h
     Source/Pokemon/Navigation/Pokemon_Grid.cpp
     Source/Pokemon/Navigation/Pokemon_Grid.h
     Source/Pokemon/Navigation/Pokemon_LegTypes.h
@@ -1551,6 +1562,12 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect.h
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_StoryRun.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryRun.h
+    Source/Pokemon/AutoStory/Pokemon_StoryRun_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryRun_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_StoryPreflight.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryPreflight.h
     Source/Pokemon/AutoStory/Pokemon_AutoStoryStats.cpp
     Source/Pokemon/AutoStory/Pokemon_AutoStoryStats.h
     Source/Pokemon/AutoStory/Pokemon_AutoStoryStats_Tests.cpp
@@ -1633,6 +1650,7 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Types/Pokemon_StorySaveMode.h
     Source/Pokemon/AutoStory/Types/Pokemon_StorySegmentTypes.cpp
     Source/Pokemon/AutoStory/Types/Pokemon_StorySegmentTypes.h
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryStart.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryStep.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryStepKind.cpp
     Source/Pokemon/AutoStory/Types/Pokemon_StoryStepKind.h
@@ -1693,6 +1711,8 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Actions_Tests.h
     Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Bag.cpp
     Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Bag.h
+    Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_BagItemReader.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_BagItemReader.h
     Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_BagScreen.h
     Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Battle.cpp
     Source/PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Battle.h
@@ -1757,6 +1777,7 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Maps_Tests.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Maps_Tests.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_PlannedRoute_Tests.cpp
+    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_PlanGolden.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_PlannedRoute_Tests.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_RecoveryWalk_Tests.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_RecoveryWalk_Tests.h
@@ -2110,6 +2131,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/BoxOrganization/PokemonFRLG_BoxSorter.h
     Source/VideoGames/PokemonFRLG/Programs/BoxOrganization/PokemonFRLG_BoxSorterLivingDex.cpp
     Source/VideoGames/PokemonFRLG/Programs/BoxOrganization/PokemonFRLG_BoxSorterLivingDex.h
+    Source/VideoGames/PokemonFRLG/Programs/BoxOrganization/PokemonFRLG_BoxSorter_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/BoxOrganization/PokemonFRLG_BoxSorter_Tests.h
     Source/VideoGames/PokemonFRLG/Programs/Farming/PokemonFRLG_EliteFourFarmer.cpp
     Source/VideoGames/PokemonFRLG/Programs/Farming/PokemonFRLG_EliteFourFarmer.h
     Source/VideoGames/PokemonFRLG/Programs/Farming/PokemonFRLG_EvTrainer.cpp
