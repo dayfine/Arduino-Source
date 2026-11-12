@@ -7,6 +7,13 @@
     "start": {"map": "CeladonCity_Gym", "tiles": [[6, 5]], "facing": "north"},
     "events": [
       {
+        "id": "lead_lv44_for_erika",
+        "kind": "game_action",
+        "action": "level",
+        "args": {"slot": 1, "min": 44},
+        "why": "the precondition for Erika: the lead at least Lv44, pokeguy's Blastoise here (PokemonSimulation docs/battles/pokeguy-conditions.md, erika: C2 setup to Sp. Atk +1, accuracy +2 and outspeed, Guard Spec first, from 35/137 HP: 567/620 wins, 91.5%, 85.2% to 95.8%); at his level or above, those sims stand for this fight and no new one is needed; below it, the run stops here, before the fight"
+      },
+      {
         "id": "challenge_erika",
         "kind": "talk",
         "why": "Erika (6, 4)"
