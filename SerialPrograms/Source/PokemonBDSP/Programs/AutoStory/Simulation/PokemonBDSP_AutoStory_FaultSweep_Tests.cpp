@@ -23,6 +23,10 @@
  *    (6, 9), lab-B 2026-11-09 17:29: the walk took it for a trainer and
  *    pressed through it). A variant also fails when the walk fights it.
  *    SimWorldKnobs::scene_at_walk_end.
+ *  - SLOW_FADE_IN: every warp's fade-in runs long, so a move after a fade
+ *    with no settle() between goes nowhere (lab-B 2026-11-10, 00.04b
+ *    heal_sandgem: a fixed 1500 ms wait, then the walk to the nurse
+ *    stopped on "transition"). SimWorldKnobs::slow_fade_in.
  *
  *  Missed and short fades are swept by SimFailureCases_Tests (every single
  *  missed fade, banner and fade hold).
@@ -73,6 +77,7 @@ enum class FaultClass{
     BATTLE_OPENING,
     GRASS_BATTLES,
     SCENE_EARLY,
+    SLOW_FADE_IN,
     //  Not swept yet: the measured movement table's lost taps (#293).
     LOST_TAP,
 };
@@ -86,6 +91,8 @@ std::string_view fault_class_name(FaultClass fault){
         return "wild battles on every grass pass";
     case FaultClass::SCENE_EARLY:
         return "scene starts during the walk before it";
+    case FaultClass::SLOW_FADE_IN:
+        return "slow fade-in after every warp";
     case FaultClass::LOST_TAP:
         return "lost tap";
     }
@@ -317,6 +324,18 @@ UnitTestResult sweep_grass_battles(Logger& logger, const StoryCheckpoint& row){
     return sweep_result(logger, FaultClass::GRASS_BATTLES, row.id, 1, failures);
 }
 
+//  Row `row` with every warp's fade-in slow, all through the row.
+UnitTestResult sweep_slow_fade_in(Logger& logger, const StoryCheckpoint& row){
+    SimWorldKnobs knobs;
+    knobs.slow_fade_in = true;
+    const std::string stopped = run_row(logger, row.id, std::move(knobs));
+    std::vector<SweepFailure> failures;
+    if (!stopped.empty()){
+        failures.push_back({"", "a slow fade-in after every warp", stopped});
+    }
+    return sweep_result(logger, FaultClass::SLOW_FADE_IN, row.id, 1, failures);
+}
+
 //  The route before scene step `c` of `steps`, right before it or before
 //  the plain step onto its trigger; none if there is none.
 std::optional<size_t> route_before_scene(const std::vector<StoryStep>& steps, size_t c){
@@ -431,6 +450,8 @@ private:
             return sweep_grass_battles(logger, m_row);
         case FaultClass::SCENE_EARLY:
             return sweep_scene_early(logger, m_row);
+        case FaultClass::SLOW_FADE_IN:
+            return sweep_slow_fade_in(logger, m_row);
         case FaultClass::LOST_TAP:
             break;
         }
@@ -448,6 +469,7 @@ const FaultSweepCase FAULT_SWEEP_CASES[] = {
     {.input = {.fault = FaultClass::BATTLE_OPENING}, .expectation = {}},
     {.input = {.fault = FaultClass::GRASS_BATTLES}, .expectation = {}},
     {.input = {.fault = FaultClass::SCENE_EARLY}, .expectation = {}},
+    {.input = {.fault = FaultClass::SLOW_FADE_IN}, .expectation = {}},
 };
 
 void add_tests_AutoStory_FaultSweep(UnitTestDatabase& database){

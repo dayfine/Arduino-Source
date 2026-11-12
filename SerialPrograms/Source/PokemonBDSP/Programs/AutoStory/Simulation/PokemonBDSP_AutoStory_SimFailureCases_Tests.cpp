@@ -15,12 +15,14 @@
  *
  */
 
+#include <cstdio>
 #include <format>
 #include <functional>
 #include <map>
 #include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
@@ -32,6 +34,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RobustRoute.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RoutePlanner.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_WallRecovery.h"
+#include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Center.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP_AutoStory_OldStorySteps.h"
 #include "PokemonBDSP_AutoStory_StorySim.h"
@@ -279,6 +282,52 @@ UnitTestResult roark_badge_speech(Logger& logger){
     const std::string early = play_scene(scene, {});
     logger.log("Roark's badge speech: " + (early.empty() ? std::string("over after the last line") : early));
     return passes(early);
+}
+
+//  The door's settle inside a Pokemon Center (TalkOverRule::door; the
+//  heal's, lab-B 2026-11-10 00.04b and 2026-11-11 01:28, where the talk's
+//  5 s quiet took 18 s with visitors about). Visitors walking about, even
+//  right past the player, must not hold it up: over within 3 s of the fade
+//  back up. And it is never over while the fade still shows, however long
+//  the fade-in runs: a walk then goes nowhere.
+UnitTestResult center_inside_settles(Logger& logger){
+    struct Inside{
+        std::string_view what;
+        Milliseconds fade;
+        SimBeat after;
+    };
+    const Milliseconds most_after_fade = 3000ms;
+    const Inside cases[] = {
+        {"visitors walking about", 1500ms, sim_pause("visitors walking about", 60000ms, true)},
+        {"a visitor walking past the player", 1500ms, sim_walk_past("a visitor walking past the player", 60000ms)},
+        {"a slow fade-in", 4000ms, sim_pause("visitors walking about", 60000ms, true)},
+    };
+    for (const Inside& inside : cases){
+        const SimScene scene{
+            sim_fade("the Center's door fade", inside.fade),
+            inside.after,
+        };
+        const std::string over = play_scene(scene, {.door = true});
+        logger.log(std::format("Center inside, {}: {}", inside.what, over));
+        const long long least = inside.fade.count();
+        const long long most = (inside.fade + most_after_fade).count();
+        long long ms = -1;
+        if (std::sscanf(over.c_str(), "judged over %lld ms in", &ms) != 1 || ms < least || ms > most){
+            return std::format("Center inside, {}: not settled between {} and {} ms: {}", inside.what, least, most, over);
+        }
+    }
+    return true;
+}
+
+//  From the door mat, one held run north reaches the nurse's counter, even
+//  at walking pace: the counter is the wall that stops it, and A talks.
+UnitTestResult nurse_in_one_run(Logger&){
+    const Milliseconds needed = ROUTE_START_DELAY + route_ms_per_tile(Direction::NORTH) * (int64_t)CENTER_MAT_TO_COUNTER_TILES;
+    if (NURSE_RUN_HOLD < needed){
+        return std::format("the run to the nurse holds {} ms, under the {} ms of {} tiles at walking pace.",
+            NURSE_RUN_HOLD.count(), needed.count(), CENTER_MAT_TO_COUNTER_TILES);
+    }
+    return true;
 }
 
 //  01.07: after the tag battle the screen fades back from the battle and
@@ -614,6 +663,8 @@ const FailureCase AUTO_STORY_FAILURE_CASES[] = {
         return wanderers_move(logger, "01.08");
     }}, .expectation = {}},
     {.input = {"01.04 Roark's badge speech: the fanfare's pause, then a scene", roark_badge_speech}, .expectation = {}},
+    {.input = {"inside a Pokemon Center, the door's settle ends within 3 s of the fade-up with visitors walking, never during the fade", center_inside_settles}, .expectation = {}},
+    {.input = {"inside a Pokemon Center, one held run north from the door mat reaches the nurse", nurse_in_one_run}, .expectation = {}},
     {.input = {"01.07 after the tag battle the grunts run off before anyone speaks", grunts_run_off_before_rowan}, .expectation = {}},
     {.input = {"00.03 Rowan's scene opens with no box and fades home", rowans_scene_opens_with_no_box}, .expectation = {}},
     {.input = {"00.03 Mom's scene ends with a closing fade: over once it is back up (lab-B 2026-11-09)", moms_scene_ends_with_a_fade}, .expectation = {}},

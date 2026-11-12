@@ -178,7 +178,7 @@ StoryBoundActions StoryExecutor::console_actions(){
 StoryInterruptActions StoryExecutor::console_interrupt_actions(){
     const auto settle = [this](std::string label){
         return [this, label](const Pokemon::InterruptVerdict&, RunState&){
-            m_io.settle(BUTTON_B, label, false, "");
+            m_io.settle(BUTTON_B, label, SettleKind::TALK, "");
             return Pokemon::outcome_ok();
         };
     };
@@ -291,7 +291,12 @@ Outcome StoryExecutor::heal(RunState&, const StoryStep& step){
     route_turn(stream(), context(), Direction::SOUTH);
     const bool out = m_io.run_into_door(Direction::SOUTH, m_walks.can_run()).any();
     stream().log(std::format("[{}] {}: south out of the Center: {}.", m_checkpoint, step.name, out ? "faded" : "no fade yet"));
-    m_io.settle(BUTTON_B, label_of(step), !out, "");
+    if (out){
+        m_io.settle(BUTTON_B, label_of(step), SettleKind::DOOR, "");
+    }else{
+        m_io.settle(BUTTON_B, label_of(step), SettleKind::AFTER_WARP, "");
+    }
+
     //  r143a's heal said it had walked out while still inside.
     context().wait_for_all_requests();
     VideoSnapshot screen = stream().video().snapshot();

@@ -37,10 +37,11 @@ TalkOverEnd talk_over(VideoStream& stream, ProControllerContext& context, const 
             run_from_wild_battle(stream, context);
             continue;
         case SceneMove::NEXT:
-            pbf_press_button(context, spec.next, TALK_OVER_HOLD, TALK_OVER_RELEASE);
+            pbf_press_button(context, spec.next, TALK_OVER_HOLD, talk_over_release(spec.rule));
             continue;
         case SceneMove::B:
-            pbf_press_button(context, BUTTON_B, TALK_OVER_HOLD, TALK_OVER_RELEASE);
+            pbf_press_button(context, BUTTON_B, TALK_OVER_HOLD, talk_over_release(spec.rule));
+
             continue;
         }
     }
