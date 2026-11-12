@@ -1,9 +1,9 @@
-/*  BDSP AutoStory - Events: Jubilife City (00.05b)
+/*  BDSP AutoStory - Events: Jubilife City (00.05b, 00.05c, 01.01)
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The Jubilife beat of 00.05b the story table cannot plan: the talk to a
- *  wandering clown.
+ *  The Jubilife beats the story table cannot plan: the talk to a wandering
+ *  clown, the check that the Poketch came, and where 00.05c starts.
  *
  */
 
@@ -12,8 +12,16 @@
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
+#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
+#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
+#include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
+#include "PokemonBDSP/Inference/PokemonBDSP_SelectionArrow.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
+#include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteInput.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteTalk.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Walk.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkDpad.h"
@@ -28,6 +36,7 @@ namespace PokemonBDSP{
 
 using namespace std::chrono_literals;
 using Pokemon::Direction;
+using Pokemon::TilePos;
 
 
 namespace{
@@ -36,8 +45,7 @@ namespace{
 //  row (the clowns by the Mart and the Poketch Company, WANDER_AROUND with
 //  x range 1). Waiting under home alone missed him for a minute (r66: he
 //  stood a tile east), so walk the row below his range, a whole D-pad tile
-//  at a time, asking north from each tile. His question's answer is Yes, so
-//  A answers and takes the coupon; then back under his home tile.
+//  at a time, asking north from each tile.
 bool ask_north(VideoStream& stream, ProControllerContext& context){
     route_turn(stream, context, Direction::NORTH);
     for (size_t ask = 0; ask < 2; ask++){
@@ -48,6 +56,35 @@ bool ask_north(VideoStream& stream, ProControllerContext& context){
             return true;
         }
     }
+    return false;
+}
+//  A clown's talk is his question, then its Yes/No box: any dialog is not
+//  (00.05b, lab-B 2026-11-11: the Poketch Company clown was "answered" in
+//  round 5 by another line, and the president gave no Poketch). Press A
+//  until the box's cursor shows, then A for Yes and through the coupon.
+//  False when the talk ends with no box: someone or something else, or a
+//  clown who has given his coupon already.
+bool answer_coupon_question(VideoStream& stream, ProControllerContext& context, const std::string& label){
+    static const ImageFloatBox YES_NO_ARROW_BOX{0.700, 0.620, 0.070, 0.120};
+    SelectionArrowFinder yes_no(stream.overlay(), YES_NO_ARROW_BOX, COLOR_GREEN);
+    for (size_t press = 0; press < 6; press++){
+        context.wait_for(1200ms);
+        context.wait_for_all_requests();
+        const VideoSnapshot screen = stream.video().snapshot();
+        if (screen && yes_no.detect(*screen.frame)){
+            stream.log("[Talk] " + label + ": the coupon question; Yes.");
+            pbf_press_button(context, BUTTON_A, 80ms, 0ms);
+            finish_dialogue(stream, context, BUTTON_A, label);
+            return true;
+        }
+        if (!dialogue_opens(stream, context, 500ms)){
+            stream.log("[Talk] " + label + ": the talk ended with no Yes/No box.", COLOR_ORANGE);
+            return false;
+        }
+        pbf_press_button(context, BUTTON_A, 80ms, 0ms);
+    }
+    finish_dialogue(stream, context, BUTTON_B, label);
+    stream.log("[Talk] " + label + ": no Yes/No box in 6 presses.", COLOR_ORANGE);
     return false;
 }
 //  One tile along the row, east (+1) or west (-1). Returns the tiles moved
@@ -61,9 +98,32 @@ int step_along(VideoStream& stream, ProControllerContext& context, int east, con
     }
     return *moved;
 }
+//  Walks back below his home and faces north.
+void back_below_home(VideoStream& stream, ProControllerContext& context, int at, const std::string& name){
+    for (size_t tries = 0; at != 0 && tries < 4; tries++){
+        at += step_along(stream, context, at > 0 ? -1 : 1, "Back below " + name + "'s home");
+    }
+    if (at != 0){
+        fail_step(stream, std::format("{}: still {} tiles east of his home after 4 steps back.", name, at));
+    }
+    route_turn(stream, context, Direction::NORTH);
+}
+//  The talk to a wanderer from the step's declared pose, below his home.
+//  With "again" (00.05c), a talk with no question counts too: he may have
+//  given his coupon before, and the Poketch check after the president
+//  catches a coupon that is still missing.
 Pokemon::Outcome talk_to_wanderer(StoryExecutor& executor, Pokemon::RunState&, const Pokemon::StoryStep& step){
     VideoStream& stream = executor.stream();
     ProControllerContext& context = executor.context();
+    const bool again = Pokemon::story_arg<bool>(step.args, "again");
+    std::optional<std::pair<std::string, TilePos>> home;
+    if (step.pose_after){
+        const Pokemon::Pose below = Pokemon::pose_of(*step.pose_after);
+        const std::vector<TilePos> tiles = Pokemon::tiles_of(below);
+        if (!tiles.empty()){
+            home.emplace(below.map, tiles[0]);
+        }
+    }
     const std::string label = "Along the row below " + step.name;
     //  Home, east, west, west, east: each move one tile on the D-pad.
     const int moves[] = {0, 1, -1, -1, 1};
@@ -73,22 +133,54 @@ Pokemon::Outcome talk_to_wanderer(StoryExecutor& executor, Pokemon::RunState&, c
             if (move != 0){
                 at += step_along(stream, context, move, label);
             }
+            if (home && asks_someone_else(story_map(home->first), {home->second.x + at, home->second.y}, home->second.next(Direction::NORTH))){
+                stream.log(std::format("[Talk] {}: not asking from {} tiles east of home: a sign or someone else is north.", step.name, at));
+                continue;
+            }
             if (!ask_north(stream, context)){
                 continue;
             }
-            stream.log(std::format("[Talk] {}: answered in round {}, {} tiles east of home.", step.name, round + 1, at));
-            finish_dialogue(stream, context, BUTTON_A, step.name);
-            for (size_t tries = 0; at != 0 && tries < 4; tries++){
-                at += step_along(stream, context, at > 0 ? -1 : 1, "Back below " + step.name + "'s home");
+            const bool coupon = answer_coupon_question(stream, context, step.name);
+            if (!coupon && !again){
+                continue;
             }
-            if (at != 0){
-                fail_step(stream, std::format("{}: still {} tiles east of his home after 4 steps back.", step.name, at));
-            }
-            route_turn(stream, context, Direction::NORTH);
+            stream.log(std::format("[Talk] {}: {} in round {}, {} tiles east of home.",
+                step.name, coupon ? "the coupon" : "talked, no question (his coupon given before)", round + 1, at));
+            back_below_home(stream, context, at, step.name);
             return Pokemon::outcome_ok();
         }
     }
-    fail_step(stream, step.name + ": no answer from any tile below his range.");
+    fail_step(stream, step.name + ": no coupon question from any tile below his range.");
+}
+
+//  00.05c's end and 01.01's start: the Poketch shows on the screen's right
+//  (R toggles it). Without it, Jubilife's east-exit guard (the coord event
+//  on (60, 21..24)) asks about the Poketch campaign and turns us back.
+void check_poketch(VideoStream& stream, ProControllerContext& context){
+    context.wait_for_all_requests();
+    if (!ensure_poketch_visible(stream, context)){
+        fail_step(stream, "No Poketch: the president gave none (a clown's coupon is missing?). "
+            "Jubilife's east-exit guard stops anyone without one: rerun 00.05c.");
+    }
+    stream.log("[Talk] The Poketch is on the screen.");
+}
+
+//  00.05c starts against the Poketch Company's sign (14, 19) facing west
+//  (00.05b's end) or on the street east, (58, 22) facing east (its own end
+//  and 01.01's start, when a run gave no Poketch). A step west tells them
+//  apart: the sign blocks it, the street does not.
+Pokemon::Outcome jubilife_start_probe(StoryExecutor& executor, Pokemon::RunState&, const Pokemon::StoryStep&){
+    VideoStream& stream = executor.stream();
+    ProControllerContext& context = executor.context();
+    route_turn(stream, context, Direction::WEST);
+    const WalkResult result = walk_tiles_dpad(stream, context, run_from_wild_battle, {-1.0, 0}, 1, "00.05c start probe");
+    const std::optional<int> moved = wander_row_step(result, -1);
+    if (!moved){
+        fail_step(stream, std::format("00.05c start probe: {} instead of a step west.", walk_stop_name(result.stop)));
+    }
+    const TilePos at = *moved == 0 ? jubilife_start_tiles().first : jubilife_start_tiles().second.next(Direction::WEST);
+    stream.log(std::format("[Talk] 00.05c starts {}: on {}.", *moved == 0 ? "at the Poketch Company's sign" : "on the street east", Pokemon::to_string(at)));
+    return Pokemon::outcome_ok(Pokemon::tile_pose("JubilifeCity", {at}, Direction::WEST));
 }
 
 } // namespace
@@ -104,8 +196,30 @@ std::optional<int> wander_row_step(const WalkResult& result, int east){
     }
 }
 
+bool asks_someone_else(const Pokemon::MapData& map, TilePos stand, TilePos wanderer_home){
+    const TilePos north = stand.next(Direction::NORTH);
+    if (north == wanderer_home || !map.tiles.contains(north)){
+        return false;
+    }
+    if (map.tiles.at(north) == Pokemon::TileKind::SIGN){
+        return true;
+    }
+    for (const Pokemon::MapObject& object : map.objects){
+        if (!object.wander && object.x == north.x && object.y == north.y){
+            return true;
+        }
+    }
+    return false;
+}
+
+std::pair<TilePos, TilePos> jubilife_start_tiles(){
+    return {{14, 19}, {58, 22}};
+}
+
 void add_jubilife_events(StoryEvents& events){
     events.emplace("talk_to_wanderer", talk_to_wanderer);
+    events.emplace("check_poketch", console_event(check_poketch));
+    events.emplace("jubilife_start_probe", jubilife_start_probe);
 }
 
 

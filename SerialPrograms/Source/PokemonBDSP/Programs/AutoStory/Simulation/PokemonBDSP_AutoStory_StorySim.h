@@ -192,6 +192,14 @@ struct SimWorldKnobs{
     //  its declared start: the program starts from the declared start, the
     //  player from here (00.05, lab-B 2026-11-11: two tiles off).
     std::optional<Pokemon::Pose> start_at = std::nullopt;
+    //  Jubilife's coupons (00.05b, 00.05c): the clown talks, by step name,
+    //  whose coupon the save holds at the run's start; the clown talks that
+    //  read another line first and give none (lab-B 2026-11-11: the
+    //  Poketch Company's sign); and whether the save has the Poketch. The
+    //  president's talk gives it with all three coupons only.
+    std::set<std::string> coupons_at_start = {"mart_clown", "tv_clown", "company_clown"};
+    std::set<std::string> talks_without_coupon = {};
+    bool poketch_at_start = true;
 };
 
 namespace detail{
@@ -438,6 +446,8 @@ public:
         , m_walks(m_io)
         , m_table(story_action_table(m_walks, sim_actions()))
         , m_interrupts(story_interrupts([this](bool fresh){ return look(fresh); }, sim_interrupt_actions()))
+        , m_coupons(m_knobs.coupons_at_start)
+        , m_poketch(m_knobs.poketch_at_start)
     {
         if (m_knobs.clear_interrupts){
             set_interrupts(&m_interrupts);
@@ -496,6 +506,10 @@ private:
 
     //  A step the simulation does not play: its dialogue opened and closed.
     Pokemon::Outcome stub();
+    //  The Poketch on the screen, or the check's failure.
+    Pokemon::Outcome check_poketch();
+    //  A clown's coupon or the president's Poketch, after step `step` passed.
+    void count_coupons(const std::string& step);
     StoryBoundActions sim_actions();
     //  The screen between steps: the dialog that popped up, if one did; a
     //  battle's opening, its battle on the OPENING_LOOKS-th look. `fresh`
@@ -547,6 +561,9 @@ private:
     mutable std::map<std::pair<const StoryWorld*, std::string>, std::unique_ptr<StoryWorld>> m_peopled;
     //  The steps of this row that have run.
     std::set<std::string> m_ran;
+    //  The clowns' coupons held and the Poketch (SimWorldKnobs::coupons_at_start).
+    std::set<std::string> m_coupons;
+    bool m_poketch = true;
     std::string m_row;
     std::vector<detail::RowTrigger> m_armed;
     //  Where the step running now ends, if it says: a door's far side.

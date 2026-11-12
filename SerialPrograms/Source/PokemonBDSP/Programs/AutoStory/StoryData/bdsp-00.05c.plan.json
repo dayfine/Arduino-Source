@@ -2,45 +2,127 @@
   "checkpoint": {
     "events": [
       {
-        "action": "line",
+        "action": "jubilife_start_probe",
+        "id": "where_we_start",
+        "kind": "game_action",
+        "why": "a step west: the Poketch Company's sign (14, 19) blocks it (00.05b's end); on the street (58, 22) it goes (a rerun from 01.01's start when no Poketch came)"
+      },
+      {
+        "action": "town",
         "args": {
           "fight_wild": false,
           "target": {
-            "facing": "south",
+            "facing": "north",
             "map": "JubilifeCity",
             "tiles": [
               [
                 15,
-                22
+                19
               ]
             ]
           }
         },
-        "id": "to_main_boulevard",
+        "id": "below_the_company_clown",
         "kind": "route",
-        "why": "south to the main boulevard"
+        "why": "below the Poketch Company's clown"
       },
       {
-        "action": "line",
+        "action": "talk_to_wanderer",
+        "args": {
+          "again": true
+        },
+        "declared_after": {
+          "facing": "north",
+          "map": "JubilifeCity",
+          "tiles": [
+            [
+              15,
+              19
+            ]
+          ]
+        },
+        "id": "company_clown",
+        "kind": "talk",
+        "why": "his coupon again, or his talk if he gave it (00.05b's, lab-B 2026-11-11: a coupon went missing)"
+      },
+      {
+        "action": "town",
         "args": {
           "fight_wild": false,
           "target": {
-            "facing": "south",
+            "facing": "north",
             "map": "JubilifeCity",
             "tiles": [
               [
-                45,
-                22
+                36,
+                17
               ]
             ]
           }
         },
-        "id": "along_main_boulevard",
+        "id": "below_the_tv_clown",
         "kind": "route",
-        "why": "east along the main boulevard"
+        "why": "east to the TV station"
       },
       {
-        "action": "line",
+        "action": "talk_to_wanderer",
+        "args": {
+          "again": true
+        },
+        "declared_after": {
+          "facing": "north",
+          "map": "JubilifeCity",
+          "tiles": [
+            [
+              36,
+              17
+            ]
+          ]
+        },
+        "id": "tv_clown",
+        "kind": "talk",
+        "why": "his coupon again, or his talk if he gave it"
+      },
+      {
+        "action": "town",
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "north",
+            "map": "JubilifeCity",
+            "tiles": [
+              [
+                55,
+                34
+              ]
+            ]
+          }
+        },
+        "id": "below_the_mart_clown",
+        "kind": "route",
+        "why": "east and south to the Mart's clown"
+      },
+      {
+        "action": "talk_to_wanderer",
+        "args": {
+          "again": true
+        },
+        "declared_after": {
+          "facing": "north",
+          "map": "JubilifeCity",
+          "tiles": [
+            [
+              55,
+              34
+            ]
+          ]
+        },
+        "id": "mart_clown",
+        "kind": "talk",
+        "why": "his coupon again, or his talk if he gave it"
+      },
+      {
+        "action": "town",
         "args": {
           "fight_wild": false,
           "target": {
@@ -56,7 +138,7 @@
         },
         "id": "beside_the_president",
         "kind": "route",
-        "why": "south down column 45 to the Poketch president"
+        "why": "west along row 34 to the Poketch president"
       },
       {
         "id": "president",
@@ -77,6 +159,12 @@
         "id": "the_poketch",
         "kind": "scene",
         "why": "the coupons for the Poketch; he walks off north"
+      },
+      {
+        "action": "check_poketch",
+        "id": "poketch",
+        "kind": "game_action",
+        "why": "the Poketch on the screen (R): without it the president had too few coupons, and Jubilife's east-exit guard (60, 21..24) turns us back in 01.01"
       },
       {
         "action": "line",
@@ -109,7 +197,7 @@
         ]
       ]
     },
-    "title": "Jubilife: the Poketch, up to the street east to Route 203"
+    "title": "Jubilife: the clowns' coupons again, the Poketch, up to the street east to Route 203"
   },
   "execution": {
     "on_failure": "reload_and_retry",

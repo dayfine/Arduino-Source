@@ -9,7 +9,8 @@
  *  Dawn's catching tutorial and the catch); the rest do what the shared
  *  steps cannot, as they ran on the console: the Poke Mart lady's Potions
  *  and the stairs into Jubilife (00.04c, 00.04d), a clown who wanders
- *  (00.05b), the Gym's tries from the Pokemon Center (01.04) and Rock Smash
+ *  (00.05b and 00.05c), the Poketch check (00.05c, 01.01), the Gym's
+ *  tries from the Pokemon Center (01.04) and Rock Smash
  *  (01.09). Each fails by throwing, with a screenshot; the executor turns
  *  that into a failed step.
  *
@@ -26,6 +27,8 @@
 #include <map>
 #include <optional>
 #include <string>
+#include <utility>
+#include "Pokemon/Navigation/Pokemon_MapData.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryExecutor.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkResult.h"
 
@@ -65,6 +68,14 @@ void add_route204_events(StoryEvents& events);
 //  dialogue. 00.05c (2026-11-11): a step's fade went unread and the search
 //  went on indoors, so the next checkpoint saved in the Poketch Company.
 std::optional<int> wander_row_step(const WalkResult& result, int east);
+//  Whether asking north from `stand` on `map` would talk to a sign or to
+//  someone who stands still, not the wanderer whose home is
+//  `wanderer_home` (00.05b, lab-B 2026-11-11: the Poketch Company clown's
+//  talk was "answered" in round 5 by another line).
+bool asks_someone_else(const Pokemon::MapData& map, Pokemon::TilePos stand, Pokemon::TilePos wanderer_home);
+//  The tiles 00.05c may start on: against the Poketch Company's sign
+//  (00.05b's end), and on the street east (its own end, 01.01's start).
+std::pair<Pokemon::TilePos, Pokemon::TilePos> jubilife_start_tiles();
 
 
 

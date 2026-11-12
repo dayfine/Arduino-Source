@@ -2,6 +2,12 @@
   "checkpoint": {
     "events": [
       {
+        "action": "check_poketch",
+        "id": "poketch_before_the_gate",
+        "kind": "game_action",
+        "why": "Jubilife's east-exit guard (the coord event on (60, 21..24)) asks about the Poketch campaign and turns back anyone without one (lab-B 2026-11-11): fail here, not in a walk that takes him for a trainer"
+      },
+      {
         "action": "town",
         "args": {
           "fight_wild": false,
