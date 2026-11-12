@@ -29,6 +29,7 @@
 #include "Inference/PokemonFRLG_WildEncounterReader.h"
 #include "Programs/BoxOrganization/PokemonFRLG_BoxSorter_Tests.h"
 #include "PokemonFRLG_Navigation.h"
+#include "Programs/RngManipulation/PokemonFRLG_RngPlanTracker_Tests.h"
 #include "Programs/RngManipulation/PokemonFRLG_RngTargetSearch_Tests.h"
 #include "Tests/TestUtils.h"
 
@@ -292,6 +293,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_TrainerIdReader(database);
     add_tests_WildEncounterReader(database);
     add_tests_RngTargetSearch(database);
+    add_tests_RngPlanTracker(database);
 }
 
 
