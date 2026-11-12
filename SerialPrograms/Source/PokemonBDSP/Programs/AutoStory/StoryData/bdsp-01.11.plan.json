@@ -4,16 +4,20 @@
       {
         "args": {
           "fight_wild": false,
-          "legs": [
-            {
-              "direction": "west",
-              "tiles": 8
-            }
-          ]
+          "target": {
+            "facing": "west",
+            "map": "FloaromaTown",
+            "tiles": [
+              [
+                3,
+                29
+              ]
+            ]
+          }
         },
         "id": "west_along_the_field",
-        "kind": "legs",
-        "why": "8 taps west along row 29"
+        "kind": "route",
+        "why": "west along row 29"
       },
       {
         "action": "to_wall",
@@ -63,12 +67,16 @@
       {
         "args": {
           "fight_wild": false,
-          "legs": [
-            {
-              "direction": "west",
-              "tiles": 1
-            }
-          ]
+          "target": {
+            "facing": "west",
+            "map": "FloaromaTown",
+            "tiles": [
+              [
+                3,
+                26
+              ]
+            ]
+          }
         },
         "declared_after": {
           "facing": "north",
@@ -81,7 +89,7 @@
           ]
         },
         "id": "below_the_old_man",
-        "kind": "legs",
+        "kind": "route",
         "why": "a tile west"
       },
       {

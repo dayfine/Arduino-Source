@@ -200,19 +200,19 @@
       {
         "args": {
           "fight_wild": false,
-          "legs": [
-            {
-              "direction": "west",
-              "tiles": 1
-            },
-            {
-              "direction": "south",
-              "tiles": 2
-            }
-          ]
+          "target": {
+            "facing": "south",
+            "map": "PlayerHouse1F",
+            "tiles": [
+              [
+                5,
+                9
+              ]
+            ]
+          }
         },
         "id": "around_mom",
-        "kind": "legs",
+        "kind": "route",
         "why": "around Mom at (6, 8), to beside the door's column"
       },
       {
