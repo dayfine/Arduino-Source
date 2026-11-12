@@ -4,6 +4,7 @@
  *
  */
 
+#include <string_view>
 #include "Common/Cpp/Json/JsonObject.h"
 #include "Common/Cpp/Json/JsonValue.h"
 #include "CommonTools/OCR/OCR_Routines.h"
@@ -19,7 +20,7 @@ namespace{
 //  The story's items in the same form as Packages' *OCR.json dictionaries
 //  (language -> slug -> names), so it can move to a resource file unchanged.
 //  Names are the games' official ones; Poke Ball's match PokeballNameOCR.json.
-constexpr const char* STORY_ITEM_OCR = R"JSON({
+constexpr std::string_view STORY_ITEM_OCR = R"JSON({
 "eng": {
     "potion": ["Potion"], "antidote": ["Antidote"], "paralyze-heal": ["Paralyze Heal"],
     "awakening": ["Awakening"], "poke-ball": ["Poké Ball", "Poke Ball"], "repel": ["Repel"],
@@ -97,7 +98,7 @@ public:
 
 private:
     StoryItemMatcher()
-        : SmallDictionaryMatcher(parse_json(STORY_ITEM_OCR).to_object_throw())
+        : SmallDictionaryMatcher(parse_json(std::string(STORY_ITEM_OCR)).to_object_throw())
     {}
 };
 
