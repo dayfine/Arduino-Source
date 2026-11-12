@@ -264,6 +264,29 @@ UnitTestResult test_pocket_rows_unread(Logger&){
     return true;
 }
 
+//  Rows past the first six show where the list has scrolled to: the
+//  cursor stops at the fourth row shown, until the CANCEL shows. The
+//  Tower's bag (console B, 2026-11-12): its X Specials 7th of 8 rows and
+//  the CANCEL; then the Potions run out and take no row.
+UnitTestResult test_item_shown_row(Logger&){
+    Supplies supplies;
+    set_from_bag(supplies, {
+        {"moon-stone", 2}, {"potion", 1}, {"nugget", 1}, {"repel", 5},
+        {"escape-rope", 5}, {"super-repel", 7}, {"x-special", 2}, {"x-speed", 1},
+    });
+    const std::vector<std::pair<int, int>> full = {{2, 2}, {3, 3}, {4, 3}, {6, 3}, {7, 4}, {8, 5}};
+    for (const auto& [row, shown] : full){
+        if (item_shown_row(supplies, row) != shown){
+            return std::format("Row {} of 9: expected shown in row {}, got {}.", row, shown, item_shown_row(supplies, row));
+        }
+    }
+    spend_item(supplies, "potion");
+    if (item_row(supplies, "x-special") != 5 || item_shown_row(supplies, 5) != 3 || item_shown_row(supplies, 7) != 5){
+        return "Expected the X Specials in row 6 of 8 shown 4th, the CANCEL last, with no Potions left.";
+    }
+    return true;
+}
+
 //  In a language the reader has no names for, nothing is read, so the
 //  checks fall back to positions instead of failing.
 UnitTestResult test_unread_language(Logger& logger){
@@ -577,6 +600,10 @@ const AutoStoryItemsTestCase AUTO_STORY_ITEMS_CASES[] = {
     {
         .input = {.name = "an item the story doesn't count keeps its row", .body = test_loaded_bag_other_items},
         .expectation = {.description = "preserves row indexing for uncounted items"},
+    },
+    {
+        .input = {.name = "Items pocket rows past the first page", .body = test_item_shown_row},
+        .expectation = {.description = "places rows below the first six where the scrolled list shows them"},
     },
     {
         .input = {.name = "an unread item name keeps its row", .body = test_pocket_rows_unread},

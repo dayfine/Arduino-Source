@@ -69,6 +69,20 @@ int item_row(const Supplies& supplies, const std::string& item){
     return -1;
 }
 
+int item_shown_row(const Supplies& supplies, int row){
+    //  The CANCEL, and each row item_row() counts.
+    int rows = 1;
+    for (const std::string& slot : supplies.pocket){
+        if (!counted(slot) || item_count(supplies, slot) > 0){
+            rows++;
+        }
+    }
+    //  The row the cursor stops at before the list scrolls.
+    constexpr int CURSOR_STOP = ITEM_LIST_ROWS / 2;
+    const int scroll = std::clamp(row - CURSOR_STOP, 0, std::max(rows - ITEM_LIST_ROWS, 0));
+    return row - scroll;
+}
+
 std::vector<std::string> set_from_bag(Supplies& supplies, const std::vector<BagRow>& rows){
     const Supplies before = supplies;
     supplies.potions = 0;
