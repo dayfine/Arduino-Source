@@ -32,6 +32,8 @@ void add_tests_AutoStoryTower(UnitTestDatabase& database);
 void add_tests_AutoStorySnorlax(UnitTestDatabase& database);
 //  Row 11.02 on the sims (PokemonFRLG_AutoStorySlope_Tests.cpp).
 void add_tests_AutoStorySlope(UnitTestDatabase& database);
+//  Row 11.03 on the sims (PokemonFRLG_AutoStorySafari_Tests.cpp).
+void add_tests_AutoStorySafari(UnitTestDatabase& database);
 
 
 } // namespace PokemonFRLG

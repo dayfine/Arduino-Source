@@ -25,6 +25,7 @@
 #include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
 #include "PokemonFRLG_AutoStoryMemberInfo.h"
+#include "PokemonFRLG_AutoStoryStartMenu.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -35,7 +36,8 @@ namespace PokemonFRLG{
 //  user (`slot`, from 1, or the first member read as `species`), FLY on its menu (`menu_row`, from 1: SUMMARY,
 //  then its field moves in move order, so 2 when Fly is its only one;
 //  pokefirered SetPartyMonFieldSelectionActions()), and `town` on the fly
-//  map (kanto_fly_towns()). It ends on the town's landing tile.
+//  map (kanto_fly_towns()). It ends on the town's landing tile. With
+//  `safari`, START opens the Safari Zone's menu (StartMenu::SAFARI).
 inline const std::string FLY_VARIANT = "fly";
 //  The GAME step that surfs onto the water `direction` of the player, on
 //  ground beside it: A facing it, YES to "Would you like to SURF?", and
@@ -51,6 +53,9 @@ struct FlyPlan{
     size_t menu_row = 1;
     //  In kanto_fly_towns().
     size_t town = 0;
+    //  The START menu the party opens from: the Safari Zone's when the
+    //  step's "safari" arg says so (step_start_menu()).
+    StartMenu start_menu = StartMenu::FULL;
 
     //  The party slot to fly with: `slot`, or the first member `reader`
     //  reads as `species`; nothing if none does.

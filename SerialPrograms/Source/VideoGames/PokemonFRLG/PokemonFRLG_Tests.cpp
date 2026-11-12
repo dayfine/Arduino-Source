@@ -329,6 +329,7 @@ static void add_tests_AutoStoryRows(UnitTestDatabase& database){
     add_tests_AutoStoryCeladon(database);
     add_tests_AutoStorySnorlax(database);
     add_tests_AutoStorySlope(database);
+    add_tests_AutoStorySafari(database);
 }
 
 void add_tests(UnitTestDatabase& database){
