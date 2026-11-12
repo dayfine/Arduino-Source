@@ -4,15 +4,19 @@
       {
         "args": {
           "fight_wild": false,
-          "legs": [
-            {
-              "direction": "north",
-              "tiles": 1
-            }
-          ]
+          "target": {
+            "facing": "north",
+            "map": "VerityLakefront",
+            "tiles": [
+              [
+                17,
+                13
+              ]
+            ]
+          }
         },
         "id": "to_the_lake_entrance",
-        "kind": "legs",
+        "kind": "route",
         "why": "a tile short of the trigger"
       },
       {

@@ -7,6 +7,7 @@
  */
 
 #include <cmath>
+#include <format>
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/PrettyPrint.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
@@ -273,7 +274,7 @@ std::string read_location_from_save_screen(VideoStream& stream, ProControllerCon
     return location;
 }
 
-bool save_game(
+void save_game(
     SingleSwitchProgramEnvironment& env,
     ProControllerContext& context,
     const std::string& expected_location
@@ -283,7 +284,7 @@ bool save_game(
     for (size_t attempt = 0; attempt < MAX_RETRIES; attempt++){
         const SaveAttempt result = save_once(env, context, expected_location, attempt);
         if (result.outcome == SaveOutcome::SAVED){
-            return true;
+            return;
         }
         //  No blind fallback for the wrong place: it would save there.
         if (result.outcome == SaveOutcome::WRONG_PLACE){
@@ -291,15 +292,13 @@ bool save_game(
         }
     }
 
-    // Blind fallback: reuse the non-feedback save_game(context) from GameNavigation
-    // rather than duplicating the button sequence manually.
-    env.console.log("All save retries failed. Using blind fallback.", COLOR_ORANGE);
-    pbf_mash_button(context, BUTTON_B, 1000ms);
-    save_game(context); // PokemonBDSP_GameNavigation.h - non-feedback overload
-    pbf_mash_button(context, BUTTON_B, 2000ms);
-    context.wait_for_all_requests();
-
-    return false;
+    //  No blind save: presses the screen never confirmed could land anywhere,
+    //  even on the HOME menu (console B, 2026-11-11). Stop instead.
+    OperationFailedExceptionWithScreenshot::fire(
+        ErrorReportMode::SEND_ERROR_REPORT,
+        std::format("Couldn't confirm the save screen in {} attempts; not saving.", MAX_RETRIES),
+        env.console
+    );
 }
 
 void wait_for_dialogue(VideoStream& stream,
