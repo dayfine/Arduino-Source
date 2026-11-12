@@ -294,6 +294,18 @@ DialogueRead read_sign(VideoStream& stream, ProControllerContext& context, Direc
 
 
 
+std::optional<int> wander_row_step(const WalkResult& result, int east){
+    switch (result.stop){
+    case WalkStop::TRANSITION:
+    case WalkStop::DIALOG:
+        return std::nullopt;
+    default:
+        return result.moved_chunks > 0 ? east : 0;
+    }
+}
+
+
+
 } // namespace PokemonBDSP
 } // namespace NintendoSwitch
 } // namespace PokemonAutomation
