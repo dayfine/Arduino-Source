@@ -23,6 +23,9 @@ bool open_starter_summary(SingleSwitchProgramEnvironment& env, ProControllerCont
 
 bool navigate_to_summary(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
 
+//  Backs out of the Pokemon summary screen (3rd page -> party -> X menu -> overworld).
+bool close_starter_summary(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
+
 bool read_observed_pokemon(
     SingleSwitchProgramEnvironment& env,
     ProControllerContext& context,

@@ -8,57 +8,30 @@
 #define PokemonAutomation_PokemonBDSP_StarterRng_H
 
 #include <stdint.h>
-#include <vector>
 #include "Common/Cpp/Options/BooleanCheckBoxOption.h"
 #include "Common/Cpp/Options/EnumDropdownOption.h"
 #include "Common/Cpp/Options/SimpleIntegerOption.h"
-#include "CommonTools/Options/LanguageOCROption.h"
 #include "CommonFramework/Notifications/EventNotificationsTable.h"
-#include "NintendoSwitch/Options/NintendoSwitch_GoHomeWhenDoneOption.h"
+#include "CommonTools/Options/LanguageOCROption.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
-#include "Pokemon/Pokemon_BdspRng.h"
-#include "Pokemon/Pokemon_NatureChecker.h"
-#include "Pokemon/Options/Pokemon_StatsHuntFilter.h"
+#include "NintendoSwitch/Options/NintendoSwitch_GoHomeWhenDoneOption.h"
 #include "PokemonBDSP/Options/PokemonBDSP_PlayerModelOption.h"
 #include "PokemonBDSP/Options/PokemonBDSP_RngFilter.h"
-#include "PokemonBDSP_BlinkRecovery.h"
 #include "PokemonBDSP_RngAim.h"
 #include "PokemonBDSP_RngDisplays.h"
 #include "PokemonBDSP_StarterNavigation.h"
+#include "PokemonBDSP_StarterRngAttempts.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
 
 
-enum class BdspStartPoint{
-    Lakefront,
-    Bedroom,
-};
-
-
-struct BdspSkipResult{
-    bool success = false;
-    Pokemon::Xorshift128State state;
-    uint64_t target_advance = 0;
-    uint64_t buffer = 0;
-    std::string failure_reason;
-};
-
-
-enum class BdspAttemptOutcome{
-    Abandoned,
-    Missed,
-    Hit,
-    Unverifiable,
-};
-
-
 class StarterRng_Descriptor : public SingleSwitchProgramDescriptor{
 public:
     StarterRng_Descriptor();
 
-    struct Stats;
+    using Stats = StarterRngStats;
     virtual std::unique_ptr<StatsTracker> make_stats() const override;
 };
 
@@ -72,24 +45,6 @@ public:
 
 private:
     virtual void on_config_value_changed(void* object) override;
-
-    BdspAttemptOutcome run_attempt(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
-
-    //  Takes a snapshot rather than the table: the table clones itself on every query,
-    //  which a scan over millions of advances cannot afford.
-    static bool wanted(
-        const BdspRngFilterSnapshot& filters, const Pokemon::BdspPokemonResult& pokemon
-    );
-
-    BdspSkipResult skip_advances_from_bedroom(
-        SingleSwitchProgramEnvironment& env, ProControllerContext& context
-    );
-
-    void report_skip_arrival(
-        SingleSwitchProgramEnvironment& env,
-        const BdspSkipResult& skip,
-        const BlinkRecovery& arrival
-    ) const;
 
 private:
     RngAim m_aim;

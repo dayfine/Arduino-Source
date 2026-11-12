@@ -1979,6 +1979,10 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_StarterNavigation.h
     Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_StarterRng.cpp
     Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_StarterRng.h
+    Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_StarterRng_Tests.cpp
+    Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_StarterRng_Tests.h
+    Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_StarterRngAttempts.cpp
+    Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_StarterRngAttempts.h
     Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_StateReidentifier.cpp
     Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_StateReidentifier.h
     Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_StateSolver.cpp

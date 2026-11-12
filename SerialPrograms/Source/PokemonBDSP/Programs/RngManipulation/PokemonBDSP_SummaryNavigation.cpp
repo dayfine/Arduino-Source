@@ -98,6 +98,26 @@ bool navigate_to_summary(SingleSwitchProgramEnvironment& env, ProControllerConte
 }
 
 
+bool close_starter_summary(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
+    env.log("Backing out of the summary screen to the overworld.");
+    bool back_at_menu = false;
+    for (size_t c = 0; c < 6 && !back_at_menu; c++){
+        pbf_press_button(context, BUTTON_B, 160ms, 1000ms);
+        context.wait_for_all_requests();
+        MenuWatcher menu(COLOR_RED, true);
+        back_at_menu = wait_until(env.console, context, 2s, {{menu}}) >= 0;
+    }
+    if (!back_at_menu){
+        env.log("Never returned to the X menu from the summary.", COLOR_ORANGE);
+        return false;
+    }
+    pbf_press_button(context, BUTTON_X, 160ms, 1000ms);
+    context.wait_for_all_requests();
+    env.log("Closed the menu.");
+    return true;
+}
+
+
 bool read_observed_pokemon(
     SingleSwitchProgramEnvironment& env,
     ProControllerContext& context,

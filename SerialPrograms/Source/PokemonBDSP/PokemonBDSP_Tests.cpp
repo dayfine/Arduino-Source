@@ -18,6 +18,7 @@
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_StoryTable_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_StoryData_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_Walk_Tests.h"
+#include "Programs/RngManipulation/PokemonBDSP_StarterRng_Tests.h"
 #include "PokemonBDSP_Tests.h"
 
 namespace PokemonAutomation{
@@ -40,6 +41,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_AutoStory_StoryData(database);
     add_tests_AutoStory_Walk(database);
     add_tests_AutoStory_PlannedRoute(database);
+    add_tests_StarterRng(database);
 }
 
 
