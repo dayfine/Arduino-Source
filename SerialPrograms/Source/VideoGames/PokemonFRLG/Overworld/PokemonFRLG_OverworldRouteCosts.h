@@ -49,12 +49,18 @@ enum class RouteCost{
     //  to (19, 6), in the Grunt's line). Below SIGHT_TILE: it takes a
     //  missed stop to cost the battle.
     SIGHT_OVERSHOOT,
+    //  Extra for an open leg north or south that ends below or above a
+    //  sign: a hold that runs on reads it, and the walk is interrupted
+    //  (console B, 2026-11-12, 11.03: "north 5" to Safari Zone West's
+    //  (27, 10) on the Bicycle). A tie-break more than a detour.
+    SIGN_OVERSHOOT,
 };
 //  Cost mapping table for path planning.
 using RouteCosts = std::map<RouteCost, int>;
 
 //  TILE 1, TURN 2, WARP 30, SURF 40, GRASS_TILE 20, OPEN_STOP 8,
-//  OPEN_WILD_STOP 300, SIGHT_TILE 0, SIGHT_OVERSHOOT 0. The sight costs are
+//  OPEN_WILD_STOP 300, SIGHT_TILE 0, SIGHT_OVERSHOOT 0, SIGN_OVERSHOOT 3.
+//  The sight costs are
 //  off by default until beaten trainers and battles a story step wants are
 //  told apart: at 100 and 10 they moved Pewter City's and Pewter Gym's
 //  plans (the Gym's Camper is fought on the way to Brock).

@@ -72,6 +72,11 @@ struct RouteStep{
     //  tall grass or water. Elsewhere (indoors, streets) no wild battle can
     //  start, so the walker doesn't watch for one.
     bool wild = false;
+    //  WALK, open, north or south: the tile past the end is a sign. A hold
+    //  that runs on reads it, so a message after the hold, not a battle,
+    //  leaves the player on the end (console B, 2026-11-12, 11.03: "north 5"
+    //  to Safari Zone West's (27, 10), below the sign on (27, 9)).
+    bool sign_ahead = false;
     //  WALK: the steps (from 1) onto a connected map. The game holds the
     //  player up a tile before each while it loads the map: a hold timed
     //  by the tiles alone ended a tile short (console B, 2026-11-03, rows

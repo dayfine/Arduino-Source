@@ -34,6 +34,10 @@ struct SimScript{
     //  The hold numbered by the key (from 1) stops this many tiles short,
     //  with nothing on screen (the forest drift, console B, 2026-11-01).
     std::map<int, int> short_holds;
+    //  The hold numbered by the key (from 1) runs on this many tiles past
+    //  its time: on the Bicycle, "north 5" to Safari Zone West's (27, 10)
+    //  read the sign above it (console B, 2026-11-12, 11.03).
+    std::map<int, int> long_holds;
     //  Maps where every step can start a wild battle, also on tiles the maps
     //  don't mark as grass: Mt. Moon B2F's tiles closed on one side ('8')
     //  are cave floor too (console B, 2026-11-03).
