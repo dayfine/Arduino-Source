@@ -278,8 +278,8 @@ UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& po
 //  before leaves the player, and adds the plans to `golden`.
 UnitTestResult chain_story_routes(std::vector<std::string>& golden){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
-    if (checkpoints.size() != 40 || checkpoints[0].start){
-        return "Expected 40 checkpoints, the first from a new game.";
+    if (checkpoints.size() != 39 || checkpoints[0].start){
+        return "Expected 39 checkpoints, the first from a new game.";
     }
     StoryPose pose;
     for (size_t c = 0; c < checkpoints.size(); c++){
