@@ -28,6 +28,7 @@
 #include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RobustRoute.h"
+#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_PlanGolden.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_WalkRules.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_PlanCosts.h"
@@ -83,6 +84,7 @@ struct Walked{
     std::string error;
     std::string plan;
     bool measured = false;
+    std::vector<std::string> golden = {};
 };
 
 //  The tiles a plan walks.
@@ -109,6 +111,23 @@ std::string detour_error(const StoryWorld& world, const std::vector<TilePos>& st
     return std::format("the plan walks {} tiles where {} would do.", walked, least);
 }
 
+
+//  The golden test's lines for one planned ROUTE: a header, then each leg
+//  with the tiles it may end on.
+void add_golden_lines(
+    const StoryWorld& world, const Pose& from, const Pose& goal, const StoryStep& step,
+    const std::vector<PlannedLeg>& plan, std::vector<std::string>& golden
+){
+    golden.push_back(std::format("{} costs={} from{} to{}", step.name, step.action.empty() ? "default" : step.action,
+        describe(from.map, Pokemon::tiles_of(from)), describe(goal.map, Pokemon::tiles_of(goal))));
+    for (const PlannedLeg& leg : plan){
+        std::string line = std::format("  {} ->", to_string(leg.leg));
+        for (const TilePos& pos : leg.after){
+            line += std::format(" {}", describe(world, pos));
+        }
+        golden.push_back(line);
+    }
+}
 
 //  A ROUTE step from `from`, planned as StoryExecutor::walk_to() walks it.
 Walked plan_route(const Pose& from, const StoryStep& step){
@@ -144,6 +163,7 @@ Walked plan_route(const Pose& from, const StoryStep& step){
     for (const PlannedLeg& leg : *plan){
         walked.plan += " " + to_string(leg.leg);
     }
+    add_golden_lines(*world, from, goal, step, *plan, walked.golden);
     const std::string detour = detour_error(*world, start, at_goal, *plan);
     if (!detour.empty()){
         return {std::nullopt, step.name + ": " + detour, walked.plan};
@@ -275,6 +295,8 @@ public:
     std::vector<std::string>& trace;
     std::map<std::string, Failure> failures;
     std::vector<std::string> plans;
+    //  Every ROUTE's legs, one header line per route, for the golden test.
+    std::vector<std::string> golden;
 
     explicit FakeGame(std::vector<std::string>& trace)
         : trace(trace)
@@ -336,6 +358,9 @@ private:
         }
         if (!walked.plan.empty()){
             plans.push_back(walked.plan);
+        }
+        for (const std::string& line : walked.golden){
+            golden.push_back(std::format("{} {}", m_row, line));
         }
         return walked.at ? Pokemon::outcome_ok(*walked.at) : Pokemon::outcome_ok(Pose{});
     }
@@ -425,6 +450,35 @@ UnitTestResult test_whole_table(Logger& logger){
         }
     }
     return true;
+}
+
+//  The legs planned for every ROUTE of the whole story, against the stored
+//  copy in PokemonBDSP_AutoStory_PlanGolden.h. A change that should not
+//  alter any plan must leave this byte-identical. To regenerate after an
+//  intended plan change: run this suite, and replace the lines of
+//  BDSP_PLAN_GOLDEN with the lines the failure logs after "GOLDEN|".
+UnitTestResult test_golden_plans(Logger& logger){
+    Simulation sim;
+    const Pokemon::SegmentReport report = sim.run({}, Language::English);
+    if (!report.completed){
+        return "expected the whole story through:" + joined(sim.lines);
+    }
+    const std::vector<std::string>& actual = sim.game.golden;
+    const size_t stored = sizeof(BDSP_PLAN_GOLDEN) / sizeof(BDSP_PLAN_GOLDEN[0]);
+    size_t first_diff = 0;
+    while (first_diff < actual.size() && first_diff < stored && actual[first_diff] == BDSP_PLAN_GOLDEN[first_diff]){
+        first_diff++;
+    }
+    if (first_diff == actual.size() && first_diff == stored){
+        return true;
+    }
+    for (const std::string& line : actual){
+        logger.log(std::format("GOLDEN|{}", line));
+    }
+    return std::format("plans differ from the golden at line {} ({} lines now, {} stored): now \"{}\", stored \"{}\".",
+        first_diff + 1, actual.size(), stored,
+        first_diff < actual.size() ? std::string_view(actual[first_diff]) : std::string_view(),
+        first_diff < stored ? BDSP_PLAN_GOLDEN[first_diff] : std::string_view());
 }
 
 UnitTestResult test_start_and_end(Logger&){
@@ -539,6 +593,42 @@ UnitTestResult test_poses_chain(Logger&){
             }
         }
         last = row.id;
+    }
+    return true;
+}
+
+//  Walks are planned on the maps: a LEGS step ("east 6, north 18") is
+//  left only where no route can do its job, each with its reason.
+UnitTestResult test_no_hand_written_legs(Logger&){
+    const std::map<std::string, std::string> exceptions = {
+        {"00.01/off_barrys_mat", "steps off a door's mat, where no route starts"},
+        {"00.03/into_sandgem", "walks until Dawn's scene starts, wherever it starts"},
+        {"00.04/to_route_201", "runs until Route 201's banner, wherever it shows"},
+        {"00.04/to_moms_call", "walks until Mom calls, wherever she calls"},
+        {"00.05/up_to_barry", "starts inside the School's door, from no known tile"},
+        {"01.03/down_the_hall", "steps off the hall's warp tile, where no route starts"},
+        {"01.03/down_to_the_boulder", "steps off the coal room's warp tile, where no route starts"},
+        {"01.03/up_the_hall", "steps off the hall's warp tile, where no route starts"},
+        {"01.03/up_to_the_mines_sign", "steps off the mine's exit, where no route starts"},
+        {"01.11/up_to_the_old_woman", "walks until the old woman stops us"},
+    };
+    std::set<std::string> seen;
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        for (const StoryStep& step : row.steps){
+            if (step.kind != StoryStepKind::LEGS){
+                continue;
+            }
+            const std::string key = std::format("{}/{}", row.id, step.name);
+            if (!exceptions.contains(key)){
+                return std::format("{}: hand-written legs; plan a route to where they end.", key);
+            }
+            seen.insert(key);
+        }
+    }
+    for (const auto& item : exceptions){
+        if (!seen.contains(item.first)){
+            return std::format("{}: listed as an exception, but no such LEGS step.", item.first);
+        }
     }
     return true;
 }
@@ -663,6 +753,14 @@ const AutoStoryStorySimulationCase AUTO_STORY_STORY_SIMULATION_CASES[] = {
     },
     {
         .input = {"no text reader for the game's language", test_no_text_reader},
+        .expectation = {},
+    },
+    {
+        .input = {"no hand-written legs but the listed ones", test_no_hand_written_legs},
+        .expectation = {},
+    },
+    {
+        .input = {"plans match the golden", test_golden_plans},
         .expectation = {},
     },
 };

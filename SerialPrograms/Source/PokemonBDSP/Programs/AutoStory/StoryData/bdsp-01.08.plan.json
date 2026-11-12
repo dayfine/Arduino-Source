@@ -2,15 +2,18 @@
   "checkpoint": {
     "events": [
       {
-        "action": "to_wall",
         "args": {
           "fight_wild": false,
-          "legs": [
-            {
-              "direction": "west",
-              "tiles": 4
-            }
-          ]
+          "target": {
+            "facing": "west",
+            "map": "JubilifeCity",
+            "tiles": [
+              [
+                44,
+                5
+              ]
+            ]
+          }
         },
         "declared_after": {
           "facing": "west",
@@ -23,7 +26,7 @@
           ]
         },
         "id": "west_to_the_wall",
-        "kind": "legs",
+        "kind": "route",
         "why": "west along row 5 to the wall"
       },
       {

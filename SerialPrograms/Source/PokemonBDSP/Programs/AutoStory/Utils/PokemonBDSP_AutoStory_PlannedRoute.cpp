@@ -283,6 +283,7 @@ private:
     void talk_to_blocker(const std::string& leg_label);
     LegNext replan_from(const LegWalk& walk, std::vector<TilePos> stopped, const std::string& why);
     void mark_blocker(const LegWalk& walk, const std::vector<TilePos>& stopped);
+    void mark_tiles_past(const LegWalk& walk, const std::vector<TilePos>& stopped);
 
     RouteIO& m_io;
     const StoryWorld& m_maps;
@@ -535,6 +536,9 @@ LegNext RouteWalker::stopped_short_of_wall(LegWalk& walk, size_t walked_tiles){
         fail(m_io, walk.label + ": stopped early, and no tile fits.");
     }
     mark_blocker(walk, stopped);
+    if (never_moved(walk.result, walked_tiles)){
+        mark_tiles_past(walk, stopped);
+    }
     return replan_from(walk, std::move(stopped), "stopped early after about " + std::to_string(walked_tiles) + " tiles");
 }
 
@@ -673,6 +677,9 @@ LegNext RouteWalker::blocked_open_leg(LegWalk& walk, size_t moved){
     }
     stopped = sorted_unique(std::move(stopped));
     mark_blocker(walk, stopped);
+    if (moved == 0){
+        mark_tiles_past(walk, stopped);
+    }
     stopped = blocked_stop_tiles(m_grid, stopped, walk.planned.leg.direction);
     return replan_from(walk, std::move(stopped),
         "blocked after " + std::to_string(moved) + " of " + std::to_string(walk.planned.leg.tiles) + " tiles");
@@ -863,6 +870,31 @@ void RouteWalker::mark_blocker(const LegWalk& walk, const std::vector<TilePos>& 
     m_grid.block(blocker);
     m_io.note("[Route] " + walk.label + ": something the map lacks is at " +
         describe(m_maps, blocker) + "; marked it.", RouteNote::WARNING);
+}
+
+//  A walk that never moved from several possible tiles: whatever stopped it
+//  stands just past one of them, so mark the tiles just past them all
+//  (but the goal and the tiles we may stand on), or the next plan takes the
+//  same leg into it again. On lab-B (2026-11-11, 00.05) "east 7 (to wall)"
+//  from 15 possible tiles below Jubilife's Center walked 0 tiles in five
+//  plans in a row, and the route gave up on "too many plans".
+void RouteWalker::mark_tiles_past(const LegWalk& walk, const std::vector<TilePos>& stopped){
+    if (stopped.size() < 2){
+        return;
+    }
+    std::vector<TilePos> marked;
+    for (const TilePos& pos : stopped){
+        const std::optional<TilePos> next = step(m_grid, pos, walk.planned.leg.direction);
+        if (!next || m_plan.goal(*next) || std::find(stopped.begin(), stopped.end(), *next) != stopped.end()){
+            continue;
+        }
+        m_grid.block(*next);
+        marked.push_back(*next);
+    }
+    if (!marked.empty()){
+        m_io.note("[Route] " + walk.label + ": nothing moved from " + std::to_string(stopped.size()) +
+            " possible tiles; marked the tiles past them: " + describe(m_maps, sorted_unique(std::move(marked))) + ".", RouteNote::WARNING);
+    }
 }
 
 //  A walk to the wall held up on the way (held_up()): it may have stopped on
