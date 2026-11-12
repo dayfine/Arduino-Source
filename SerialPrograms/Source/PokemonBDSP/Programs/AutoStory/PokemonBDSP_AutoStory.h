@@ -48,7 +48,6 @@ private:
     //  The start and end checkpoints, attempts, checks and language.
     Pokemon::StoryRunOptions RUN;
     BooleanCheckBoxOption NEW_GAME_INTRO;
-    BooleanCheckBoxOption JUST_LOADED;
     StringOption PLAYER_NAME;
     PlayerModelOption PLAYER_LOOK;
     EnumDropdownOption<StarterChoice> STARTER;

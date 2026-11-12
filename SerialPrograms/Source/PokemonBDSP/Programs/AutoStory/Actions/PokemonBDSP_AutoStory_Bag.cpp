@@ -7,20 +7,19 @@
  */
 
 #include <cmath>
-#include <cctype>
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTools/ImageStats.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
 #include "CommonTools/Async/InferenceRoutines.h"
-#include "CommonTools/OCR/OCR_RawTesseractOCR.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_StoryLanguage.h"
 #include "PokemonBDSP_AutoStory_Actions.h"
 #include "PokemonBDSP_AutoStory_Bag.h"
+#include "PokemonBDSP_AutoStory_BagItemReader.h"
 #include "PokemonBDSP_AutoStory_BagScreen.h"
 
 namespace PokemonAutomation{
@@ -138,17 +137,10 @@ struct BagScan{
 };
 enum class BagLook{ GO_ON, FOUND, NOT_FOUND };
 
-//  The name on the cursor's row `cursor`, as lower-case letters.
-std::string read_bag_row(const ImageViewRGB32& frame, int cursor){
-    const std::string text = OCR::tesseract_ocr_read(Language::English,
-        extract_box_reference(frame, bag_list_name_box(cursor)));
-    std::string normalized;
-    for (unsigned char ch : text){
-        if (std::isalpha(ch)){
-            normalized.push_back((char)std::tolower(ch));
-        }
-    }
-    return normalized;
+//  The story item's slug on the cursor's row `cursor`, in the game's
+//  language, or "" when the row is none of them.
+std::string read_bag_row(Logger& logger, const ImageViewRGB32& frame, int cursor){
+    return read_bag_item_slug(logger, story_language(), extract_box_reference(frame, bag_list_name_box(cursor)));
 }
 
 //  One look at the list: the row under the cursor is `name` (twice in a
@@ -170,7 +162,7 @@ BagLook bag_scan_step(VideoStream& stream, ProControllerContext& context, BagSca
         return BagLook::GO_ON;
     }
     scan.unknown_cursor = 0;
-    const std::string normalized = read_bag_row(*frame.frame, cursor);
+    const std::string normalized = read_bag_row(stream.logger(), *frame.frame, cursor);
     stream.log("[Bag search] Row " + std::to_string(cursor) + " reads \"" + normalized + "\".");
     if (normalized == name){
         if (++scan.confirmed >= 2){
@@ -368,17 +360,6 @@ bool find_bag_item_in_open_bag(
     context.wait_for_all_requests();
     if (!bag_navigate_to_pocket(stream, context, target_pocket)){
         return false;
-    }
-
-    //  No reader for the game's language: the cursor's row, the pocket's
-    //  first, if the pocket has one. Early in the story the pocket holds only
-    //  what was bought or given (Potions in Medicine).
-    if (!story_reads_text()){
-        const VideoSnapshot frame = stream.video().snapshot();
-        const bool any = frame && !bag_list_is_empty(*frame.frame) && bag_cursor_position(*frame.frame) != 0;
-        stream.log("[Bag search] " + name + ": no text reader for the game's language; " +
-            (any ? "taking the pocket's cursor row." : "the pocket is empty."), COLOR_ORANGE);
-        return any;
     }
 
     //  Walk down the list reading the cursor row. The list does not wrap, so
