@@ -128,6 +128,14 @@ constexpr std::string_view MAP_NAMES[] = {
     "Route18",
     "Route18_EastEntrance_1F",
     "FuchsiaCity",
+    //  The Safari Zone, pokeguy's way through it: its entrance, the
+    //  center, east, north and west areas, and the Secret House (HM03).
+    "FuchsiaCity_SafariZone_Entrance",
+    "SafariZone_Center",
+    "SafariZone_East",
+    "SafariZone_North",
+    "SafariZone_West",
+    "SafariZone_SecretHouse",
     "CeruleanCave_1F",
     "CeruleanCave_2F",
     "CeruleanCave_B1F",
@@ -211,6 +219,9 @@ TilePos map_point(const std::vector<MapData>& maps, const std::string& map, cons
 bool warp_keeps_bike(const std::string& map){
     static const std::set<std::string, std::less<>> MAPS{
         "Route16_NorthEntrance_1F", "Route18_EastEntrance_1F", "Route16", "Route18",
+        //  The Safari Zone's areas allow cycling, and their edge warps lead
+        //  from one to the next (pokefirered SafariZone_* map.json).
+        "SafariZone_Center", "SafariZone_East", "SafariZone_North", "SafariZone_West",
     };
     return MAPS.contains(map);
 }

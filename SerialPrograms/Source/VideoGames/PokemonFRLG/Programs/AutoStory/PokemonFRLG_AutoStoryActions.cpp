@@ -433,25 +433,6 @@ IntroNameStep intro_name_step(IntroNameScreen screen, size_t keyboards_seen, siz
 }
 
 
-int start_menu_rows(StartMenu menu){
-    switch (menu){
-    case StartMenu::BEFORE_POKEMON:
-        return 5;
-    case StartMenu::BEFORE_POKEDEX:
-        return 6;
-    case StartMenu::FULL:
-        return 7;
-    }
-    return 7;
-}
-int start_menu_save_row(StartMenu menu){
-    return start_menu_rows(menu) - 3;
-}
-int start_menu_option_row(StartMenu menu){
-    return start_menu_rows(menu) - 2;
-}
-
-
 std::optional<bool> yes_no_cursor(const ImageViewRGB32& screen){
     //  The box's white right of NO (x 196-212, y 92-102 on the 240x160
     //  screen). Without it the arrow alone matches the dark edge of a rock

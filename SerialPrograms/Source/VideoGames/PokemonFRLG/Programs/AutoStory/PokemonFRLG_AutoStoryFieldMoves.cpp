@@ -57,7 +57,10 @@ std::optional<FlyPlan> parse_fly_step(const StoryStep& step){
     if (!index || !slot || !menu_row){
         return std::nullopt;
     }
-    return FlyPlan{.slot = *slot, .species = species == nullptr ? "" : *species, .menu_row = *menu_row, .town = *index};
+    return FlyPlan{
+        .slot = *slot, .species = species == nullptr ? "" : *species, .menu_row = *menu_row, .town = *index,
+        .start_menu = step_start_menu(step.args),
+    };
 }
 
 std::optional<size_t> FlyPlan::party_slot(const MemberReader& reader) const{
@@ -88,6 +91,7 @@ std::vector<Pokemon::StoryActionSpec> field_move_specs(){
             absent_arg("slot", StoryArgType::INTEGER, "the Fly user's party slot, from 1, when no species is named"),
             absent_arg("species", StoryArgType::WORD, "the Fly user by its species, e.g. \"pidgey\": the first slot whose summary reads it"),
             optional_arg("menu_row", StoryArgType::INTEGER, int64_t(2), "FLY's row on its menu, from 1: SUMMARY, then field moves in move order"),
+            optional_arg("safari", StoryArgType::BOOLEAN, false, "in the Safari Zone, whose START menu has RETIRE on top"),
         }},
         {.kind = StoryStepKind::GAME, .name = SURF_VARIANT, .args = {
             required_arg("direction", StoryArgType::DIRECTION, "the way to the water, from ground beside it"),
@@ -128,7 +132,7 @@ void tap_dpad(ProControllerContext& context, DpadPosition dpad, size_t count, Mi
 //  From the overworld to the fly map: the party, the Fly user, FLY.
 //  Returns the failure, or empty.
 std::string open_fly_map(ConsoleHandle& console, ProControllerContext& context, const FlyPlan& plan){
-    open_party_menu_from_overworld(console, context);
+    open_party_menu_from_overworld(console, context, start_menu_context(plan.start_menu));
     tap_dpad(context, DPAD_DOWN, plan.slot, MENU_TAP, MENU_TAP_RELEASE);
     PartySelectionWatcher mon_menu(COLOR_RED);
     context.wait_for_all_requests();
@@ -188,7 +192,7 @@ std::optional<Pokemon::Outcome> run_field_move_step(
         return std::nullopt;
     }
     const FlyTown& town = kanto_fly_towns()[plan->town];
-    const std::optional<size_t> slot = plan->party_slot(console_member_reader(console, context, language));
+    const std::optional<size_t> slot = plan->party_slot(console_member_reader(console, context, language, plan->start_menu));
     if (!slot){
         console.log(std::format("Story: no {} read in the party to Fly with.", plan->species), COLOR_RED);
         return Pokemon::outcome_failed("fly_no_member", plan->species);

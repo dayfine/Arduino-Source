@@ -18,6 +18,7 @@
 #include "CommonFramework/Language.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
+#include "PokemonFRLG_AutoStoryStartMenu.h"
 #include "PokemonFRLG_AutoStoryStats.h"
 
 namespace PokemonAutomation{
@@ -48,11 +49,11 @@ struct MemberInfo{
 //  summary couldn't be read.
 using MemberReader = std::function<std::optional<MemberInfo>(size_t slot)>;
 
-//  The console's reader: the member's summary, opened from the START
-//  menu's POKEMON, in a game in `language`. The steps that read members
-//  come after the Pokedex, so the START menu is the full one. A member
-//  whose species, level or moves aren't all read is nothing.
-MemberReader console_member_reader(ConsoleHandle& console, ProControllerContext& context, Language language);
+//  The console's reader: the member's summary, opened from `menu`'s
+//  POKEMON, in a game in `language`. The steps that read members come
+//  after the Pokedex, so `menu` is the full one or the Safari Zone's. A
+//  member whose species, level or moves aren't all read is nothing.
+MemberReader console_member_reader(ConsoleHandle& console, ProControllerContext& context, Language language, StartMenu menu);
 
 
 

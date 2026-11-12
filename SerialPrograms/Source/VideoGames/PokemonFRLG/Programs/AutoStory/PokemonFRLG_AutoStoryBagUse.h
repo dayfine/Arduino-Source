@@ -17,6 +17,7 @@
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "PokemonFRLG_AutoStoryBag.h"
+#include "PokemonFRLG_AutoStoryStartMenu.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -35,10 +36,10 @@ ItemUseEnd register_item_in_bag(Logger& logger, ItemUseActions& actions, std::st
 //  failure: the walk goes on without.
 ItemUseEnd renew_repel(Logger& logger, ItemUseActions& actions, std::string_view item);
 
-//  The console's bag.
+//  The console's bag, opened from `menu`'s BAG.
 class ConsoleItemUseActions : public ItemUseActions{
 public:
-    ConsoleItemUseActions(ConsoleHandle& console, ProControllerContext& context, Language language);
+    ConsoleItemUseActions(ConsoleHandle& console, ProControllerContext& context, Language language, StartMenu menu);
 
     virtual bool open_pocket(BagPocket pocket) override;
     virtual std::vector<BagRow> read_pocket() override;
@@ -50,6 +51,7 @@ private:
     ConsoleHandle& m_console;
     ProControllerContext& m_context;
     Language m_language;
+    StartMenu m_menu;
 };
 
 
