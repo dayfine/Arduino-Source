@@ -41,13 +41,17 @@ using Pokemon::TilePos;
 
 namespace{
 
-//  Jubilife alone, with the Mart clown wandering his box instead of
-//  standing on (55, 33). One map at (0, 0): world tiles are its own.
+//  Jubilife alone, with the Mart clown and the Poketch Company's clown
+//  wandering their boxes instead of standing on their spawns. One map at
+//  (0, 0): world tiles are its own.
 StoryWorld clown_world(){
     Pokemon::MapData map = story_map("JubilifeCity");
     for (Pokemon::MapObject& object : map.objects){
         if (object.name == "clown_mart"){
             object.wander = jubilife_mart_clown_box();
+        }
+        if (object.name == "clown_poketch_company"){
+            object.wander = jubilife_company_clown_box();
         }
     }
     StoryWorld world;
@@ -70,10 +74,9 @@ const Pokemon::StoryStep& story_step(const std::string& row, const std::string& 
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("No step {} in row {}.", name, row));
 }
 
-//  Where the clown may start: each tile of his box but `player`'s.
-std::vector<TilePos> clown_starts(const TilePos& player){
+//  Where a clown wandering `box` may start: each tile of it but `player`'s.
+std::vector<TilePos> clown_starts(const TilePos& player, const TileBox& box = jubilife_mart_clown_box()){
     std::vector<TilePos> starts;
-    const TileBox box = jubilife_mart_clown_box();
     for (int y = box.y0; y <= box.y1; y++){
         for (int x = box.x0; x <= box.x1; x++){
             if (TilePos{x, y} != player){
@@ -90,10 +93,25 @@ enum class ClownMoves{
     STAYS,
 };
 
-//  The wait from `start` with the clown starting on `clown`, his walk
-//  seeded by `seed`.
-WanderWaitResult run_wait(const StoryWorld& world, const TilePos& start, const TilePos& clown, uint64_t seed, const WanderWaitPlan& plan, ClownMoves moves){
-    SimWanderer wanderer{.name = "clown_mart", .box = jubilife_mart_clown_box(), .pos = clown, .seed = seed};
+//  Which clown a wait is for.
+struct Clown{
+    std::string name;
+    TileBox box;
+};
+Clown mart_clown(){
+    return {"clown_mart", jubilife_mart_clown_box()};
+}
+Clown company_clown(){
+    return {"clown_poketch_company", jubilife_company_clown_box()};
+}
+
+//  The wait from `start` with `who` starting on `clown`, his walk seeded
+//  by `seed`.
+WanderWaitResult run_clown_wait(
+    const StoryWorld& world, const Clown& who, const TilePos& start, const TilePos& clown, uint64_t seed,
+    const WanderWaitPlan& plan, ClownMoves moves
+){
+    SimWanderer wanderer{.name = who.name, .box = who.box, .pos = clown, .seed = seed};
     if (moves == ClownMoves::STAYS){
         wanderer.step_interval = Milliseconds(0);
     }
@@ -106,8 +124,41 @@ WanderWaitResult run_wait(const StoryWorld& world, const TilePos& start, const T
     }
     return result;
 }
+//  The wait for the Mart clown.
+WanderWaitResult run_wait(const StoryWorld& world, const TilePos& start, const TilePos& clown, uint64_t seed, const WanderWaitPlan& plan, ClownMoves moves){
+    return run_clown_wait(world, mart_clown(), start, clown, seed, plan, moves);
+}
 
 constexpr uint64_t SEEDS = 8;
+
+//  On lab-B (2026-11-12 11:47) 00.05b's company_clown swept row 19 below
+//  the Poketch Company's clown, asking north, while he walked off it: "no
+//  coupon question from any tile below his range". 00.05b and 00.05c now
+//  wait for him in his row (14..16, 18): from where their routes leave us,
+//  (15, 19), the wait talks to him wherever he starts or stays, and ends
+//  against the company's sign on (14, 19).
+UnitTestResult test_company_clown_reached_in_his_row(Logger& logger){
+    const StoryWorld world = clown_world();
+    const TilePos start{15, 19};
+    std::string out;
+    size_t runs = 0;
+    for (const std::string row : {"00.05b", "00.05c"}){
+        const WanderWaitPlan plan = wander_wait_plan(story_step(row, "company_clown"));
+        for (const TilePos& clown : clown_starts(start, jubilife_company_clown_box())){
+            for (uint64_t seed = 0; seed <= SEEDS; seed++){
+                runs++;
+                const ClownMoves moves = seed == 0 ? ClownMoves::STAYS : ClownMoves::WANDERS;
+                const WanderWaitResult result = run_clown_wait(world, company_clown(), start, clown, seed, plan, moves);
+                if (result.end != WanderWaitEnd::TALKED || result.at != plan.exit){
+                    out += std::format("\n  {} with the clown on {}, seed {}: ended {} on {}.", row,
+                        Pokemon::to_string(clown), seed, (int)result.end, Pokemon::to_string(result.at));
+                }
+            }
+        }
+    }
+    logger.log(std::format("{} waits run.", runs));
+    return out.empty() ? UnitTestResult(true) : UnitTestResult(std::format("The wait missed the company's clown:{}", out));
+}
 
 //  00.05b comes up column 56 from the wall (56, 36), 00.05c down it from
 //  (56, 31): from each, the wait talks to the clown wherever in his box he
@@ -273,6 +324,8 @@ const WanderWaitCase WANDER_WAIT_CASES[] = {
         test_mart_clown_reached_when_he_stays}, .expectation = {}},
     {.input = {"Wander wait: the Mart clown diagonal to (56, 32) is reached on his row within 3 asks (lab-B 2026-11-12 11:03)",
         test_mart_clown_diagonal_reached}, .expectation = {}},
+    {.input = {"Wander wait: the Poketch Company's clown is reached in his row, wandering or not (lab-B 2026-11-12 11:47)",
+        test_company_clown_reached_in_his_row}, .expectation = {}},
     {.input = {"Wander wait: the Mart clown's first stand tile is where the simulation meets him most",
         test_mart_clown_first_stand}, .expectation = {}},
 };

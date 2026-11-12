@@ -305,6 +305,10 @@ Pokemon::TileBox jubilife_mart_clown_box(){
     return {.x0 = 54, .y0 = 32, .x1 = 56, .y1 = 34};
 }
 
+Pokemon::TileBox jubilife_company_clown_box(){
+    return {.x0 = 14, .y0 = 18, .x1 = 16, .y1 = 18};
+}
+
 std::pair<TilePos, TilePos> jubilife_start_tiles(){
     return {{14, 19}, {58, 22}};
 }
