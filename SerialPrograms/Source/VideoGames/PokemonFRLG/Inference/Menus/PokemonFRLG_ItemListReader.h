@@ -14,6 +14,7 @@
 #define PokemonAutomation_PokemonFRLG_ItemListReader_H
 
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
@@ -39,6 +40,10 @@ ImageFloatBox item_list_name_box(int row);
 //  game in `language`; empty if it can't be read, as in a language the
 //  reader has no names for.
 std::string read_item_list_name(Logger& logger, Language language, const ImageViewRGB32& screen, int row);
+
+//  Whether read_item_list_name() has a name for `item`, a slug as it gives
+//  them, in English.
+bool item_list_reader_knows(std::string_view item);
 
 //  A single item entry in the bag pocket.
 struct BagRow{

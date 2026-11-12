@@ -16,6 +16,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <variant>
 #include <vector>
 #include "Common/Cpp/Color.h"
 #include "Common/Cpp/Exceptions.h"
@@ -28,13 +29,19 @@
 #include "Tests/TestUtils.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleHpBarReader.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.h"
+#include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_ItemListReader.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_SaveCardReader.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
+#include "PokemonFRLG_AutoStoryItemUse.h"
+#include "PokemonFRLG_AutoStoryMartPlan.h"
 #include "PokemonFRLG_AutoStoryNewMembers.h"
+#include "PokemonFRLG_AutoStorySlopeRun.h"
+#include "PokemonFRLG_AutoStoryTable.h"
+#include "PokemonFRLG_AutoStoryViridianMart.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -299,6 +306,73 @@ UnitTestResult test_unread_language(Logger& logger){
     }
     if (!read_save_card_location(logger, Language::Japanese, screen).empty()){
         return "Read a save card's place in Japanese.";
+    }
+    return true;
+}
+
+//  The step's arg `key`, if it has one of type `Type`.
+template <typename Type>
+const Type* step_arg(const StoryStep& step, std::string_view key){
+    const auto found = step.args.find(key);
+    return found == step.args.end() ? nullptr : std::get_if<Type>(&found->second);
+}
+
+//  The items a step finds in the bag or in a Mart's list by name: those it
+//  buys, uses or counts. Nothing for a step that reads no item's name.
+std::vector<std::string> items_read_by(const StoryStep& step){
+    std::vector<std::string> items;
+    if (step.kind == StoryStepKind::SHOP){
+        if (const auto* lines = step_arg<std::vector<Pokemon::StoryItem>>(step, "items")){
+            for (const MartOrder& order : viridian_mart_orders(*lines).value_or(std::vector<MartOrder>())){
+                items.emplace_back(order.item);
+            }
+        }
+    }else if (step.action == MART_ACTION){
+        if (const std::optional<MartPlan> plan = mart_plan_of(step.args)){
+            for (const MartLine& line : plan->lines){
+                items.push_back(line.item);
+            }
+        }
+    }else if (step.action == USE_ITEM_VARIANT){
+        if (const auto* item = step_arg<std::string>(step, "item")){
+            items.push_back(*item);
+        }
+    }else if (step.action == COUNT_ITEMS_VARIANT){
+        if (const auto* counted = step_arg<std::vector<std::string>>(step, "items")){
+            items.insert(items.end(), counted->begin(), counted->end());
+        }
+    }
+    if (const auto* used = step_arg<std::vector<Pokemon::StoryItem>>(step, "use_items")){
+        for (const Pokemon::StoryItem& item : *used){
+            items.push_back(item.item);
+        }
+    }
+    return items;
+}
+
+//  11.03 counted its FULL RESTOREs with a reader that had no name for
+//  them: the row read as nothing, and the count was 0 after the Safari
+//  Zone's ball was picked up (console B, 2026-11-12). Every item a plan
+//  buys, uses or counts has a name in the reader, and so do the MOON STONE
+//  and the NUGGET, which sit above the story's items in the pocket.
+UnitTestResult test_plan_items_readable(Logger&){
+    std::string missing;
+    for (const std::string_view item : {"moon-stone", "nugget"}){
+        if (!item_list_reader_knows(item)){
+            missing += std::format("\n    the bag: {}", item);
+        }
+    }
+    for (const StoryCheckpoint& checkpoint : story_checkpoints()){
+        for (const StoryStep& step : checkpoint.steps){
+            for (const std::string& item : items_read_by(step)){
+                if (!item_list_reader_knows(item)){
+                    missing += std::format("\n    {}/{}: {}", checkpoint.id, step.name, item);
+                }
+            }
+        }
+    }
+    if (!missing.empty()){
+        return "The item list reader has no name for:" + missing;
     }
     return true;
 }
@@ -612,6 +686,10 @@ const AutoStoryItemsTestCase AUTO_STORY_ITEMS_CASES[] = {
     {
         .input = {.name = "unread bag counts count as some", .body = test_unread_counts},
         .expectation = {.description = "treats unread quantities as holding at least one"},
+    },
+    {
+        .input = {.name = "every item a plan reads has a name in the reader", .body = test_plan_items_readable},
+        .expectation = {.description = "the item list reader names each item a plan buys, uses or counts"},
     },
     {
         .input = {.name = "no item names read in a language without them", .body = test_unread_language},
