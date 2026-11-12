@@ -7,6 +7,13 @@
     "start": {"map": "PokemonTower_2F", "tiles": [[17, 6]], "facing": "west"},
     "events": [
       {
+        "id": "lead_lv36_for_rival_tower",
+        "kind": "game_action",
+        "action": "level",
+        "args": {"slot": 1, "min": 36},
+        "why": "the precondition for the Tower rival: the lead at least Lv36, pokeguy's Blastoise here (PokemonSimulation docs/battles/pokeguy-conditions.md, tower-rival: C2 setup to Sp. Atk +2 and outspeed, Guard Spec first, from 38/114 HP: 630/700 wins, 90.0%, 83.8% to 94.5%); at his level or above, those sims stand for this fight and no new one is needed; below it, the run stops here, before the fight"
+      },
+      {
         "id": "rival_trigger",
         "kind": "step",
         "args": {

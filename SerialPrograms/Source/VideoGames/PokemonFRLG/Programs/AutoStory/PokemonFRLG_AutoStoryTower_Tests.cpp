@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <format>
 #include <functional>
+#include <optional>
 #include <set>
 #include <string>
 #include <string_view>
@@ -27,6 +28,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldObjects.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryMember.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryRows_Tests.h"
 #include "PokemonFRLG_AutoStoryTable.h"
@@ -218,6 +220,39 @@ UnitTestResult test_tower_7f_and_fuji(Logger&){
     );
 }
 
+//  Battle checkpoint `id`'s precondition: a LEVEL step on the lead before
+//  its battle `battle`, at least `pokeguy`, pokeguy's level there (whose
+//  sims stand for the fight at that level or above). A lead at that level
+//  passes it; one a level below stops the checkpoint before the fight.
+UnitTestResult check_lead_level_precondition(Logger& logger, std::string_view id, std::string_view battle, unsigned pokeguy){
+    std::optional<LevelCheck> check;
+    for (const StoryStep& step : checkpoint(id).steps){
+        if (step.kind == StoryStepKind::BATTLE && step.name == battle){
+            break;
+        }
+        if (step.action == LEVEL_ACTION){
+            check = level_check_of(step.args);
+        }
+    }
+    if (!check || check->slot != 0 || check->level != pokeguy){
+        return std::format("{}: expected a LEVEL step on the lead, at least Lv{}, before {}.", id, pokeguy, battle);
+    }
+    for (const unsigned level : {pokeguy, pokeguy - 1}){
+        const MemberReader lead = [level](size_t slot) -> std::optional<MemberInfo>{
+            if (slot != 0){
+                return std::nullopt;
+            }
+            return MemberInfo{.species = "blastoise", .level = level};
+        };
+        const LevelResult result = run_level_check(logger, lead, *check);
+        const LevelEnd expected = level >= pokeguy ? LevelEnd::REACHED : LevelEnd::BELOW;
+        if (result.end != expected || result.level != level){
+            return std::format("{}: a Lv{} lead {} the Lv{} check.", id, level, level >= pokeguy ? "fails" : "passes", pokeguy);
+        }
+    }
+    return true;
+}
+
 const AutoStoryTowerCase AUTO_STORY_TOWER_CASES[] = {
     {.input = {"10.01 Route 16's house for HM02, out of every line, and Fly to Lavender's Pokemon Center", test_back_to_lavender}, .expectation = {}},
     {.input = {"10.02 the Pokemon Tower's 1F and 2F to east of the rival's trigger", test_tower_to_rival}, .expectation = {}},
@@ -225,6 +260,7 @@ const AutoStoryTowerCase AUTO_STORY_TOWER_CASES[] = {
     {.input = {"10.04 the Tower's 3F to 5F, Ruth and Tammy alone fought", test_tower_3f_to_5f}, .expectation = {}},
     {.input = {"10.05 the Tower's 6F, Jennifer and Emilia alone fought, to the Marowak's trigger", test_tower_6f}, .expectation = {}},
     {.input = {"10.06 the Tower's 7F Grunts, Mr. Fuji and his house", test_tower_7f_and_fuji}, .expectation = {}},
+    {.input = {"10.03 stops before the Tower rival unless the lead is at least pokeguy's Lv36", [](Logger& logger){ return check_lead_level_precondition(logger, "10.03", "rival_tower", 36); }}, .expectation = {}},
 };
 
 } // namespace
