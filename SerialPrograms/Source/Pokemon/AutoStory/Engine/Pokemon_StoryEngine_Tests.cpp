@@ -38,7 +38,7 @@ using namespace std::chrono_literals;
 //  One look: `events`, standing on `pose` if given.
 Observation<GridPose> look(std::initializer_list<ScreenEvent> events, std::optional<GridPose> pose = std::nullopt){
     Observation<GridPose> observation;
-    observation.events = ScreenEvents(events);
+    observation.events = PokemonAutomation::ScreenEvents(events);
     observation.pose = std::move(pose);
     return observation;
 }
