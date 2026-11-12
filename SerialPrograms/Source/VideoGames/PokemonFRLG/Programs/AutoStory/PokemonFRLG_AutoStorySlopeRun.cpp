@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <format>
 #include "CommonTools/Async/InferenceRoutines.h"
+#include "CommonTools/InferenceCallbacks/VisualInferenceCallback.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
@@ -17,6 +18,7 @@
 #include "PokemonFRLG_AutoStoryItemsPocket.h"
 #include "PokemonFRLG_AutoStoryPresses.h"
 #include "PokemonFRLG_AutoStorySlope.h"
+#include "PokemonFRLG_AutoStorySlopeMessage.h"
 #include "PokemonFRLG_AutoStorySlopeRun.h"
 
 namespace PokemonAutomation{
@@ -54,11 +56,30 @@ size_t press_at(const std::vector<SlopePress>& presses, Milliseconds elapsed){
     return presses.empty() ? 0 : presses.size() - 1;
 }
 
+//  A white dialog that opens during a batch (SlopeMessageGate).
+class SlopeMessageWatcher : public VisualInferenceCallback{
+public:
+    SlopeMessageWatcher()
+        : VisualInferenceCallback("SlopeMessageWatcher")
+        , m_detector(COLOR_RED)
+    {}
+    virtual void make_overlays(VideoOverlaySet& items) const override{
+        m_detector.make_overlays(items);
+    }
+    virtual bool process_frame(const ImageViewRGB32& frame, WallClock timestamp) override{
+        return m_gate.opened(m_detector.detect(frame), timestamp);
+    }
+
+private:
+    WhiteDialogDetector m_detector;
+    SlopeMessageGate m_gate;
+};
+
 //  Sends `presses` back to back, one batch with no wait between, watching
 //  for a battle and, if `message`, for a message. A battle's press is the
 //  one under way by the time since the batch began.
 SlopeSendResult send_slope_presses(SlopeEnv& env, const std::vector<SlopePress>& presses, bool message){
-    WhiteDialogWatcher opened(COLOR_RED);
+    SlopeMessageWatcher opened;
     BattleScreenWatcher battle(COLOR_RED);
     std::vector<PeriodicInferenceCallback> watchers{battle};
     if (message){
