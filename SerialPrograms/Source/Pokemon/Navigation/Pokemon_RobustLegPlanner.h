@@ -62,6 +62,10 @@ struct RobustLeg{
     size_t tiles = 0;           //  tiles travelled; a ledge hop counts 2
     bool to_wall = false;
     std::vector<State> after;
+    //  An open leg held for its tiles' time instead of tapped a tile at a
+    //  time (RobustLegCosts::hold_open_legs). A held leg is never joined
+    //  with the next one the same way: each is its own hold.
+    bool held = false;
 };
 
 
@@ -82,6 +86,16 @@ struct RobustLegCosts{
     int exact_open_tiles = 0;
     //  Extra per tile of an open leg: its timing error grows with its length.
     int per_open_tile = 0;
+    //  Open legs that may end off (longer than exact_open_tiles) are held
+    //  for their time (RobustLeg::held), not tapped, and pay no
+    //  per_open_tile: no such leg is planned whose possible ends past its
+    //  shortest enter a wild or wander place or hop a ledge, so a long or
+    //  short hold meets nothing a tap would not have.
+    bool hold_open_legs = false;
+    //  Extra per wild place an open leg enters, on top of per_wild_tile: a
+    //  wild battle loses an open leg's count, while a leg to a wall just
+    //  walks to the wall again.
+    int per_open_wild_tile = 0;
     int max_open_tiles = 12;    //  longest open leg to consider
     size_t max_spread = 5;      //  most places the player may be on after a leg
     //  Most sets of places to search before giving up. The search is over
@@ -196,6 +210,57 @@ std::optional<Stepped<typename Model::State>> step_tiles(const Model& model, typ
     return stepped;
 }
 
+//  step_tiles() for each count from 1 to `most`, in one walk: [n - 1] is
+//  step_tiles(model, from, direction, n).
+template <typename Model>
+std::vector<std::optional<Stepped<typename Model::State>>> step_prefixes(
+    const Model& model, typename Model::State from, Direction direction, int most
+){
+    std::vector<std::optional<Stepped<typename Model::State>>> out;
+    Stepped<typename Model::State> stepped{from};
+    int travelled = 0;
+    bool in_wander = model.wander(from);
+    while ((int)out.size() < most){
+        const auto next = model.step(from, direction);
+        if (!next){
+            stepped.end = from;
+            std::optional<Stepped<typename Model::State>> last;
+            if (model.held_at(from, direction)){
+                last = stepped;
+            }
+            out.resize((size_t)most, last);
+            break;
+        }
+        travelled += (int)model.step_tiles(from, *next);
+        stepped.wild += model.wild(*next) ? 1 : 0;
+        const bool next_wander = model.wander(*next);
+        if (next_wander){
+            stepped.wander++;
+            stepped.along_wander |= in_wander;
+        }
+        in_wander = next_wander;
+        from = *next;
+        stepped.end = from;
+        while ((int)out.size() < std::min(travelled, most)){
+            out.push_back(stepped);
+        }
+    }
+    return out;
+}
+
+//  Whether a held leg's possible ends, `ends` in order from the shortest,
+//  meet nothing past the shortest that a tap would not: no wild or wander
+//  place, no ledge hop.
+template <typename Model>
+bool held_ends_safe(const Model& model, const std::vector<typename Model::State>& ends){
+    for (size_t i = 1; i < ends.size(); i++){
+        if (model.step_tiles(ends[i - 1], ends[i]) > 1 || model.wild(ends[i]) || model.wander(ends[i])){
+            return false;
+        }
+    }
+    return true;
+}
+
 //  Sorts a spread and drops repeated places, so equal sets compare equal.
 template <typename Model>
 void normalize(std::vector<typename Model::State>& spread){
@@ -216,6 +281,9 @@ template <typename State>
 struct Expansion{
     long long cost = 0;
     RobustLeg<State> leg;
+    //  A held leg that may end somewhere unsafe (held_ends_safe()): not to
+    //  be used, though a longer one may be.
+    bool unsafe = false;
 };
 
 //  To the wall: every place walks until stopped. Nothing unless each is
@@ -255,32 +323,50 @@ std::optional<Expansion<typename Model::State>> to_wall_leg(
 }
 
 //  Open: about `tiles` tiles, give or take the error. Nothing if any
-//  possible end is stopped where the player is not held.
+//  possible end is stopped where the player is not held. A held leg whose
+//  ends may be unsafe is marked so (Expansion::unsafe).
 template <typename Model>
 std::optional<Expansion<typename Model::State>> open_leg(
     const Model& model, const std::vector<typename Model::State>& spread, Direction direction, int tiles, const RobustLegCosts& costs
 ){
-    Expansion<typename Model::State> expansion;
+    using State = typename Model::State;
+    Expansion<State> expansion;
     int wild = 0;
     int wander = 0;
     const int error = open_leg_error(tiles, costs);
+    const bool held = costs.hold_open_legs && error > 0;
     for (const auto& place : spread){
+        std::vector<State> ends;
+        const auto prefixes = step_prefixes(model, place, direction, tiles + error);
         for (int n = std::max(1, tiles - error); n <= tiles + error; n++){
-            const auto stepped = step_tiles(model, place, direction, n);
+            const auto& stepped = prefixes[(size_t)n - 1];
             if (!stepped || stepped->along_wander){
                 return std::nullopt;
             }
             wild = std::max(wild, stepped->wild);
             wander = std::max(wander, stepped->wander);
-            expansion.leg.after.push_back(stepped->end);
+            ends.push_back(stepped->end);
         }
+        if (held && !held_ends_safe(model, ends)){
+            expansion.unsafe = true;
+        }
+        expansion.leg.after.insert(expansion.leg.after.end(), ends.begin(), ends.end());
     }
+    const int per_open_tile = held ? 0 : costs.per_open_tile;
     expansion.cost = (long long)costs.per_leg + costs.leg_not_at_wall
-        + (long long)(costs.per_tile + costs.per_open_tile) * tiles
-        + (long long)costs.per_wild_tile * wild + (long long)costs.per_wander_tile * wander;
+        + (long long)(costs.per_tile + per_open_tile) * tiles
+        + (long long)(costs.per_wild_tile + costs.per_open_wild_tile) * wild + (long long)costs.per_wander_tile * wander;
     expansion.leg.direction = direction;
     expansion.leg.tiles = (size_t)tiles;
+    expansion.leg.held = held;
     return expansion;
+}
+
+//  Whether `next` walks on as one hold with `prev`: both open and tapped,
+//  the same way.
+template <typename State>
+bool joins(const RobustLeg<State>& prev, const RobustLeg<State>& next){
+    return prev.direction == next.direction && !prev.to_wall && !prev.held && !next.held;
 }
 
 //  Joins an open leg with the next one the same way: they are one hold.
@@ -288,7 +374,7 @@ template <typename State>
 std::vector<RobustLeg<State>> consolidate(const std::vector<RobustLeg<State>>& legs){
     std::vector<RobustLeg<State>> consolidated;
     for (const RobustLeg<State>& leg : legs){
-        if (!consolidated.empty() && consolidated.back().direction == leg.direction && !consolidated.back().to_wall){
+        if (!consolidated.empty() && joins(consolidated.back(), leg)){
             consolidated.back().tiles += leg.tiles;
             consolidated.back().to_wall = leg.to_wall;
             consolidated.back().after = leg.after;
@@ -355,12 +441,15 @@ private:
             if (auto wall = to_wall_leg(m_model, spread, direction, m_costs)){
                 relax(spread, cost, std::move(*wall));
             }
+            //  A held leg unsafe at one length may be safe at a longer one.
             for (int tiles = 1; tiles <= m_costs.max_open_tiles; tiles++){
                 auto open = open_leg(m_model, spread, direction, tiles, m_costs);
                 if (!open){
                     break;
                 }
-                relax(spread, cost, std::move(*open));
+                if (!open->unsafe){
+                    relax(spread, cost, std::move(*open));
+                }
             }
         }
     }
@@ -375,7 +464,7 @@ private:
         }
         if (spread != m_start){
             const RobustLeg<State>& prev = m_nodes.at(spread).leg;
-            if (expansion.leg.direction == prev.direction && !prev.to_wall){
+            if (joins(prev, expansion.leg)){
                 expansion.cost -= m_costs.per_leg;
             }
         }
@@ -443,7 +532,7 @@ long long robust_legs_cost(
         if (expansion){
             cost = expansion->cost;
         }
-        if (previous != nullptr && previous->direction == leg.direction && !previous->to_wall){
+        if (previous != nullptr && RobustLegPlannerInternal::joins(*previous, leg)){
             cost -= costs.per_leg;
         }
         total += cost;
