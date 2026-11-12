@@ -55,7 +55,7 @@ enum class HashRecord{
 //  A look at B3F (12, 13) or wherever `map` is.
 Observation<GridPose> end_look(std::string map){
     Observation<GridPose> observation;
-    observation.events = ScreenEvents{ScreenEvent::CAN_MOVE};
+    observation.events = PokemonAutomation::ScreenEvents{ScreenEvent::CAN_MOVE};
     observation.pose = GridPose{.map = std::move(map), .tiles = {{12, 13}}, .facing = Direction::NORTH};
     return observation;
 }
@@ -144,7 +144,7 @@ std::vector<Observation<GridPose>> engine_looks(std::string_view end_map){
         return {end_look("RocketHideout_B3F")};
     }
     Observation<GridPose> text;
-    text.events = ScreenEvents{ScreenEvent::TEXT_BOX};
+    text.events = PokemonAutomation::ScreenEvents{ScreenEvent::TEXT_BOX};
     return {std::move(text), end_look(std::string(end_map))};
 }
 
