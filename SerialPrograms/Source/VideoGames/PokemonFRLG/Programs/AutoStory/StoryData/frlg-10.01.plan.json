@@ -136,9 +136,10 @@
           "item": "hm02",
           "move": "fly",
           "species": "pidgey",
-          "forget": "whirlwind"
+          "forget": "whirlwind",
+          "or_forget": ["sand-attack"]
         },
-        "why": "HM02 Fly to the Pidgey (08.03), found by its summary's species (the Eevee, 09.04, stays in the party), in place of Whirlwind, which the step reads among its moves first: a Route 7 Pidgey (Lv19..22) knows Sand-Attack, Gust, Quick Attack and Whirlwind"
+        "why": "HM02 Fly to the Pidgey (08.03), found by its summary's species (the Eevee, 09.04, stays in the party), in place of Whirlwind, which the step reads among its moves first: a Route 7 Pidgey (Lv19..22) knows Sand-Attack, Gust, Quick Attack and Whirlwind; without Whirlwind, Sand-Attack goes, leaving pokeguy's Fly, Gust, Quick Attack and Steel Wing"
       },
       {
         "id": "outside_fly_house",
