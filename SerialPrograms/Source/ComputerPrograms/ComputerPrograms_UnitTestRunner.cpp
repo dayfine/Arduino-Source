@@ -4,6 +4,7 @@
  *
  */
 
+#include "Common/Cpp/Json/JsonTools_Tests.h"
 #include "Common/Cpp/ListenerSet.h"
 #include "Common/Cpp/MoveOnlyFunction_Tests.h"
 #include "Common/Cpp/ScopeExit.h"
@@ -31,6 +32,8 @@
 #include "NintendoSwitch/Inference/NintendoSwitch_UpdatePopupDetector.h"
 #include "NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter_Tests.h"
 #include "NintendoSwitch/Controllers/SysbotBase/SysbotBase_Connection.h"
+#include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
+#include "PokemonBDSP/Inference/PokemonBDSP_MenuDetector.h"
 
 #include "Pokemon/Navigation/Pokemon_LegPlanner_Tests.h"
 #include "Pokemon/Navigation/Pokemon_LegWalker_Tests.h"
@@ -63,9 +66,11 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     add_tests_Sockets(ret, GlobalThreadPools::unlimited_normal());
     add_tests_BlackBorderDetector(ret);
     add_tests_ListenerSet(ret);
+    add_tests_JsonTools(ret);
     add_tests_MoveOnlyFunction(ret);
     SysbotBase::add_tests_SysbotBasePing(ret);
     SysbotBase::add_tests_SysbotBaseReceiveLine(ret);
+    SysbotBase::add_tests_SysbotBaseShutdown(ret);
     add_tests_AudioInfo(ret);
     add_tests_ChannelMixerMatrix(ret);
     add_tests_FFTStreamer(ret);
@@ -85,6 +90,8 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     NintendoSwitch::add_tests_FailedToConnectDetector(ret);
     NintendoSwitch::add_tests_UpdatePopupDetector(ret);
     NintendoSwitch::Typewriter::add_tests_TypewriterTextMapping(ret);
+    NintendoSwitch::PokemonBDSP::add_tests_DialogDetector(ret);
+    NintendoSwitch::PokemonBDSP::add_tests_MenuDetector(ret);
     NintendoSwitch::PokemonFRLG::add_tests(ret);
     NintendoSwitch::PokemonRSE::add_tests(ret);
     NintendoSwitch::PokemonHome::add_tests(ret);
