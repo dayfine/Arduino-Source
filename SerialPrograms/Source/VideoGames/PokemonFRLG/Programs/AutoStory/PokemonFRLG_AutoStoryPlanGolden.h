@@ -849,6 +849,21 @@ inline constexpr std::string_view FRLG_PLAN_GOLDEN[] = {
     "09.02   face north -> RocketHideout_B4F (19, 5)",
     "09.02 face_silph_scope from RocketHideout_B4F (19, 5) facing south to RocketHideout_B4F (19, 5) facing east",
     "09.02   face east -> RocketHideout_B4F (19, 5)",
+    "15.01 west_of_tea_guard from CeladonCity_PokemonCenter_1F (7, 4) facing north to Route7_EastEntrance (5, 4) facing east",
+    "15.01   walk south 5 (warp) -> CeladonCity (48, 12) [walk only]",
+    "15.01   walk east 19 -> Route7 (7, 2) [connection 12]",
+    "15.01   walk south 8 -> Route7 (7, 10)",
+    "15.01   walk east 9 (warp) -> Route7_EastEntrance (1, 5)",
+    "15.01   walk east 4 -> Route7_EastEntrance (5, 5)",
+    "15.01   walk north 1 (to wall) -> Route7_EastEntrance (5, 4)",
+    "15.01   face east -> Route7_EastEntrance (5, 4)",
+    "15.01 below_center_door from Route7_EastEntrance (6, 4) facing north to SaffronCity (24, 39) facing north",
+    "15.01   walk south 1 -> Route7_EastEntrance (6, 5)",
+    "15.01   walk east 6 (warp) -> SaffronCity (8, 27)",
+    "15.01   walk east 9 -> SaffronCity (17, 27)",
+    "15.01   walk south 12 -> SaffronCity (17, 39)",
+    "15.01   walk east 7 -> SaffronCity (24, 39)",
+    "15.01   face north -> SaffronCity (24, 39)",
 };
 
 } // namespace PokemonFRLG
