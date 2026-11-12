@@ -225,29 +225,33 @@ const StoryWorldCase STORY_WORLD_CASES[] = {
 
 namespace{
 
-//  The first step off a map's edge, from any of its edge tiles, that lands
+//  Whether stepping `direction` from `from` lands on the same map and tile
+//  on the world grid as on the connected maps (or nowhere on both).
+bool steps_agree(const StoryWorld& world, const Pokemon::MapPlace& from, Direction direction){
+    const Pokemon::ConnectedMaps connected = connected_maps(world);
+    const std::string& name = connected.map(from.map).name;
+    const std::optional<MapTile> grid = world.to_local(world.to_world(name, from.tile).next(direction));
+    const std::optional<Pokemon::MapPlace> place = connected.neighbour(from, direction);
+    if (grid && place){
+        return grid->map == connected.map(place->map).name && grid->pos == place->tile;
+    }
+    return !grid && !place;
+}
+
+//  The first step off a map's edge, from any of its tiles, that lands
 //  somewhere else on the connected maps than on the world grid, or nothing.
 std::optional<std::string> edge_mismatch(const StoryWorld& world){
-    const Pokemon::ConnectedMaps connected = world.connected();
+    const Pokemon::ConnectedMaps connected = connected_maps(world);
     for (size_t index = 0; index < connected.size(); index++){
-        const MapData& map = connected.map(index);
-        for (int y = 0; y < map.tiles.height; y++){
-            for (int x = 0; x < map.tiles.width; x++){
-                for (Direction direction : Pokemon::ALL_DIRECTIONS){
-                    const TilePos from{x, y};
-                    if (map.tiles.contains(from.next(direction))){
-                        continue;
-                    }
-                    const std::optional<MapTile> grid = world.to_local(world.to_world(map.name, from).next(direction));
-                    const std::optional<Pokemon::MapPlace> place = connected.neighbour({index, from}, direction);
-                    const bool same = grid && place
-                        ? grid->map == connected.map(place->map).name && grid->pos == place->tile
-                        : !grid && !place;
-                    if (!same){
-                        return std::format("{} {} {}: the grid and the connected maps disagree.",
-                            map.name, Pokemon::to_string(from), Pokemon::direction_name(direction));
-                    }
+        const Pokemon::Grid<Pokemon::TileKind>& tiles = connected.map(index).tiles;
+        for (int cell = 0; cell < tiles.width * tiles.height; cell++){
+            const TilePos from{cell % tiles.width, cell / tiles.width};
+            for (Direction direction : Pokemon::ALL_DIRECTIONS){
+                if (tiles.contains(from.next(direction)) || steps_agree(world, {index, from}, direction)){
+                    continue;
                 }
+                return std::format("{} {} {}: the grid and the connected maps disagree.",
+                    connected.map(index).name, Pokemon::to_string(from), Pokemon::direction_name(direction));
             }
         }
     }
@@ -278,7 +282,7 @@ public:
         if (std::optional<std::string> error = edge_mismatch(world)){
             return *error;
         }
-        const Pokemon::ConnectedMaps connected = world.connected();
+        const Pokemon::ConnectedMaps connected = connected_maps(world);
         size_t connections = 0;
         for (size_t index = 0; index < connected.size(); index++){
             connections += connected.map(index).connections.size();

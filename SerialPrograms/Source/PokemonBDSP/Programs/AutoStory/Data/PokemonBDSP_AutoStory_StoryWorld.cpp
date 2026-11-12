@@ -276,6 +276,10 @@ std::optional<MapTile> StoryWorld::to_local(const TilePos& world) const{
 
 
 
+Pokemon::ConnectedMaps connected_maps(const StoryWorld& world){
+    return Pokemon::ConnectedMaps(world.m_connected);
+}
+
 bool covered(const StoryWorld& world, const TilePos& pos){
     return world.tile(pos).has_value();
 }

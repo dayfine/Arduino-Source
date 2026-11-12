@@ -76,13 +76,7 @@ public:
     //  The map that holds a world tile, or nothing between maps.
     std::optional<MapTile> to_local(const Pokemon::TilePos& world) const;
 
-    //  The maps as added, under their names here, joined where they meet.
-    //  Tiles blocked or taken off the maps here are not in them. The view
-    //  lasts until the next add().
-    Pokemon::ConnectedMaps connected() const{
-        return Pokemon::ConnectedMaps(m_connected);
-    }
-
+    friend Pokemon::ConnectedMaps connected_maps(const StoryWorld& world);
     friend std::vector<Pokemon::TilePos> wandering_hazards(const StoryWorld& world);
     friend bool wandering_hazard(const StoryWorld& world, const Pokemon::TilePos& pos);
     friend bool recovery_hazard(const StoryWorld& world, const Pokemon::TilePos& pos);
@@ -121,6 +115,11 @@ private:
     std::vector<Pokemon::TilePos> m_uncovered;
 };
 
+
+//  The world's maps as added, under their names in it, joined where they
+//  meet. Tiles blocked or taken off the maps are not in them. The view
+//  lasts until the world's next add().
+Pokemon::ConnectedMaps connected_maps(const StoryWorld& world);
 
 //  The rules of walking on a story world, from its tiles.
 
