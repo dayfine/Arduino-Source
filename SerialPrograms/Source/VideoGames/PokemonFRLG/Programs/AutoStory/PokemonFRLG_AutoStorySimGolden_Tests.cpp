@@ -25,6 +25,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Logging/AbstractLogger.h"
@@ -111,7 +112,7 @@ std::string sim_line(const SimState& state){
 }
 
 //  Row `row` run clean from its start, a line per step and per sim.
-void golden_row(std::vector<std::string>& lines, const StoryCheckpoint& row){
+void golden_row(const StoryCheckpoint& row, std::vector<std::string>& lines){
     StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
     std::vector<MapData> maps = golden_maps();
     const Direction facing = at.facing.value_or(Direction::SOUTH);
@@ -160,7 +161,7 @@ UnitTestResult test_rows_golden(Logger& logger, CancellableScope&){
     std::vector<std::string> lines;
     for (const StoryCheckpoint& row : story_checkpoints()){
         if (row.start && story_pose(Pokemon::pose_of(*row.start)) && map_loaded(story_pose(Pokemon::pose_of(*row.start))->map)){
-            golden_row(lines, row);
+            golden_row(row, lines);
         }
     }
     const std::string text = Pokemon::sim_golden_text(
@@ -194,7 +195,7 @@ std::string result_name(UnitTestResult::Result result){
 }
 
 //  `text`'s lines, each indented by `indent`.
-void add_indented(std::vector<std::string>& lines, const std::string& text, const std::string& indent){
+void add_indented(const std::string& text, const std::string& indent, std::vector<std::string>& lines){
     size_t begin = 0;
     while (begin <= text.size()){
         const size_t end = std::min(text.find('\n', begin), text.size());
@@ -217,10 +218,10 @@ UnitTestResult test_faults_golden(Logger& logger, CancellableScope& scope){
         }
         lines.push_back(item.first + ": " + result_name(result.result));
         if (!result.message.empty()){
-            add_indented(lines, result.message, "  | ");
+            add_indented(result.message, "  | ", lines);
         }
         for (const std::string& line : captured.lines){
-            add_indented(lines, line, "  ");
+            add_indented(line, "  ", lines);
         }
     }
     const std::string text = Pokemon::sim_golden_text(
@@ -230,20 +231,29 @@ UnitTestResult test_faults_golden(Logger& logger, CancellableScope& scope){
 }
 
 
-struct SimGoldenTestCase{
+struct SimGoldenInput{
     std::string name;
     UnitTestResult (*body)(Logger& logger, CancellableScope& scope);
+};
+
+struct SimGoldenExpectation{
+    std::string_view description;
+};
+
+struct SimGoldenTestCase{
+    SimGoldenInput input;
+    SimGoldenExpectation expectation;
 };
 
 class Test_AutoStorySimGolden : public UnitTest{
 public:
     explicit Test_AutoStorySimGolden(SimGoldenTestCase scenario)
-        : UnitTest("PokemonFRLG::AutoStory - Sim golden: " + scenario.name)
+        : UnitTest("PokemonFRLG::AutoStory - Sim golden: " + scenario.input.name)
         , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope& scope) const override{
         try{
-            return m_scenario.body(logger, scope);
+            return m_scenario.input.body(logger, scope);
         }catch (Exception& e){
             return std::string(e.name()) + ": " + e.message();
         }
@@ -254,8 +264,8 @@ private:
 };
 
 const SimGoldenTestCase SIM_GOLDEN_CASES[] = {
-    {.name = "rows on the overworld sim, clean", .body = test_rows_golden},
-    {.name = "fault sweep outcomes", .body = test_faults_golden},
+    {.input = {.name = "rows on the overworld sim, clean", .body = test_rows_golden}, .expectation = {.description = "each row run clean matches sim_golden_rows.txt"}},
+    {.input = {.name = "fault sweep outcomes", .body = test_faults_golden}, .expectation = {.description = "each fault sweep's outcome matches sim_golden_faults.txt"}},
 };
 
 } // namespace
