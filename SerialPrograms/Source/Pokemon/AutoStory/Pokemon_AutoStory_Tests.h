@@ -22,6 +22,7 @@
 #include "Pokemon_FrameReplay_Tests.h"
 #include "Pokemon_StoryRun_Tests.h"
 #include "Pokemon_AutoStoryStats_Tests.h"
+#include "Pokemon_FrameReplay_Tests.h"
 #include "Pokemon_Interrupts_Tests.h"
 #include "Pokemon_SceneJudges_Tests.h"
 #include "Pokemon_ScreenEvents_Tests.h"
