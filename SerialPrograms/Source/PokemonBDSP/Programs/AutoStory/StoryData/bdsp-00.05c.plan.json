@@ -49,27 +49,61 @@
         "why": "below the Poketch Company's clown"
       },
       {
-        "action": "talk_to_wanderer",
+        "action": "wait_for_wanderer",
         "args": {
-          "again": true
+          "again": true,
+          "far_stand": {
+            "facing": "west",
+            "map": "JubilifeCity",
+            "tiles": [
+              [
+                16,
+                18
+              ]
+            ]
+          },
+          "stand": {
+            "facing": "east",
+            "map": "JubilifeCity",
+            "tiles": [
+              [
+                14,
+                18
+              ]
+            ]
+          }
         },
         "declared_after": {
-          "facing": "north",
+          "facing": "west",
           "map": "JubilifeCity",
           "tiles": [
             [
-              15,
+              14,
               19
             ]
           ]
         },
         "id": "company_clown",
         "kind": "talk",
-        "why": "his coupon again, or his talk if he gave it (00.05b's, lab-B 2026-11-11: a coupon went missing)"
+        "why": "his coupon again, or his talk if he gave it (00.05b's, lab-B 2026-11-11: a coupon went missing): wait in his row as in 00.05b; ends west against the company's sign"
       },
       {
         "action": "town",
         "args": {
+          "avoid": [
+            [
+              40,
+              20,
+              52,
+              25
+            ],
+            [
+              40,
+              26,
+              43,
+              27
+            ]
+          ],
           "fight_wild": false,
           "greeter": [
             [
@@ -116,6 +150,20 @@
       {
         "action": "town",
         "args": {
+          "avoid": [
+            [
+              40,
+              20,
+              52,
+              25
+            ],
+            [
+              40,
+              26,
+              43,
+              27
+            ]
+          ],
           "fight_wild": false,
           "greeter": [
             [
@@ -206,6 +254,20 @@
       {
         "action": "town",
         "args": {
+          "avoid": [
+            [
+              40,
+              20,
+              52,
+              25
+            ],
+            [
+              40,
+              26,
+              43,
+              27
+            ]
+          ],
           "fight_wild": false,
           "greeter": [
             [
@@ -233,7 +295,7 @@
       {
         "id": "president",
         "kind": "talk",
-        "why": "the Poketch Company's president at (46, 36)"
+        "why": "the Poketch Company's president at (46, 35), level with (45, 35)"
       },
       {
         "declared_after": {
@@ -259,6 +321,20 @@
       {
         "action": "line",
         "args": {
+          "avoid": [
+            [
+              40,
+              20,
+              52,
+              25
+            ],
+            [
+              40,
+              26,
+              43,
+              27
+            ]
+          ],
           "fight_wild": false,
           "target": {
             "facing": "east",

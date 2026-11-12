@@ -77,6 +77,9 @@ bool asks_someone_else(const Pokemon::MapData& map, Pokemon::TilePos stand, Poke
 //  data/games/bdsp/maps/jubilife_city.json (decomp range 1). The story map
 //  leaves him out of its wanderers (the decomp hides him behind a flag).
 Pokemon::TileBox jubilife_mart_clown_box();
+//  The row the Poketch Company's clown wanders, round (15, 18), as the
+//  Mart clown's box.
+Pokemon::TileBox jubilife_company_clown_box();
 //  The tiles 00.05c may start on: against the Poketch Company's sign
 //  (00.05b's end), and on the street east (its own end, 01.01's start).
 std::pair<Pokemon::TilePos, Pokemon::TilePos> jubilife_start_tiles();
