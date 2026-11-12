@@ -99,6 +99,9 @@ struct SimScript{
     //  game's placeholder. The hideout's: rocket_hideout_lift_room() under
     //  LIFT_MAP, with rocket_hideout_lift_exits().
     std::map<std::string, std::vector<MapPosition>> lift_floors = {};
+    //  The fade out of a lift only dims the screen, never black (console B,
+    //  2026-11-10, 00.32 lift_to_b4f): no FADE shows for it.
+    bool lift_exit_dims = true;
     SimTiming timing;
 };
 
