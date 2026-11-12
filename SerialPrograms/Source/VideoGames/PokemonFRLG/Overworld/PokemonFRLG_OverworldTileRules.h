@@ -42,6 +42,14 @@ std::optional<Direction> exit_mat(const MapData& map, const TilePos& point);
 //  Arriving on a door or cave entrance, the game walks the player one
 //  tile south, out of it.
 bool walks_out_on_arrival(const MapData& map, const TilePos& point);
+//  The way the game turns a player who arrives by a warp on this tile, the
+//  warp's destination (pokefirered GetAdjustedInitialDirection()): south
+//  out of a door or cave entrance, and away from the way an exit mat or the
+//  stairs at the side of a room are taken (the map files write both as
+//  walk_<direction>). Nothing elsewhere: the player keeps facing the way
+//  they moved. Arriving on side stairs, the game only slides the sprite in
+//  (ExitStairsMovement(), a walk in place): the player stays on the stairs.
+std::optional<Direction> arrival_facing(const MapData& map, const TilePos& point);
 
 
 

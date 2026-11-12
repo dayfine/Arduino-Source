@@ -77,9 +77,9 @@
         "kind": "route",
         "action": "run",
         "args": {
-          "target": {"map": "RocketHideout_B3F", "tiles": [[18, 2]], "facing": "east"}
+          "target": {"map": "RocketHideout_B3F", "tiles": [[18, 2]], "facing": "west"}
         },
-        "why": "east off the stairs (21, 2) to B3F, onto its stairs (18, 2)"
+        "why": "east off the stairs (21, 2) to B3F, onto its stairs (18, 2), which leave the player facing west"
       },
       {
         "id": "b3f_arrow_maze",

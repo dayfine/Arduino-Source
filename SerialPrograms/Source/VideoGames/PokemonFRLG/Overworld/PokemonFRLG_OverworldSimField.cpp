@@ -87,7 +87,7 @@ std::optional<OverworldSim::Step> OverworldSim::lift_warp(int map_index) const{
     if (to == m_maps.end()){
         return std::nullopt;
     }
-    return Step{(int)(to - m_maps.begin()), PlayerState{out.point, elevation_at(*to, out.point), false}, true, false, false};
+    return Step{(int)(to - m_maps.begin()), PlayerState{out.point, elevation_at(*to, out.point), false}, true, std::nullopt, false};
 }
 
 bool OverworldSim::cut_tree(){
