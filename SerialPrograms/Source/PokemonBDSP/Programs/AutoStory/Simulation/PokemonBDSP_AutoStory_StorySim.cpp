@@ -81,12 +81,15 @@ SimBeat sim_line(std::string what){
 SimBeat sim_pause(std::string what, Milliseconds length, bool moving){
     return {.what = std::move(what), .length = length, .moving = moving};
 }
+SimBeat sim_walk_past(std::string what, Milliseconds length){
+    return {.what = std::move(what), .length = length, .moving = true, .at_player = true};
+}
 SimBeat sim_fade(std::string what, Milliseconds length, WarpFade fade){
     return {.what = std::move(what), .length = length, .overworld = true, .moving = false, .fade = fade};
 }
 
 std::string play_scene(const SimScene& scene, const TalkOverRule& rule){
-    const Milliseconds press = TALK_OVER_HOLD + TALK_OVER_RELEASE;
+    const Milliseconds press = TALK_OVER_HOLD + talk_over_release(rule);
     TalkOver judge(rule);
     const WallClock start = WallClock();
     WallClock now = start;
@@ -100,13 +103,15 @@ std::string play_scene(const SimScene& scene, const TalkOverRule& rule){
             beat_start += scene[beat].length;
             beat++;
         }
-        Pokemon::ScreenEvents look{Pokemon::ScreenEvent::PLAYER_CAN_MOVE, Pokemon::ScreenEvent::SCREEN_STILL};
+        Pokemon::ScreenEvents look{Pokemon::ScreenEvent::PLAYER_CAN_MOVE, Pokemon::ScreenEvent::SCREEN_STILL, Pokemon::ScreenEvent::PLAYER_STILL};
         if (beat < scene.size()){
             const SimBeat& shown = scene[beat];
             look = {};
             look.set(Pokemon::ScreenEvent::DIALOG_BOX, shown.line);
             look.set(Pokemon::ScreenEvent::PLAYER_CAN_MOVE, shown.overworld);
             look.set(Pokemon::ScreenEvent::SCREEN_STILL, !shown.moving);
+            look.set(Pokemon::ScreenEvent::PLAYER_STILL, !shown.at_player);
+
             look.merge(Pokemon::fade_events(shown.fade));
         }
         switch (judge.look(look, now)){
@@ -132,13 +137,14 @@ std::string play_scene(const SimScene& scene, const TalkOverRule& rule){
 //  Plays the step's scene knob through TalkOver if it has one. Without, a
 //  scene may take us to another map (Mom walks us out, 00.04): with a
 //  dialogue open the stub scene plays it. Otherwise only a door fades.
-void SimStoryStepIO::settle(Button, const std::string& label, bool fade, const std::string&){
+void SimStoryStepIO::settle(Button, const std::string& label, SettleKind kind, const std::string&){
+    const bool fade = kind == SettleKind::AFTER_WARP;
     m_misses.fading_in = false;
     const auto scene = m_knobs.scenes.find(m_step);
     if (scene != m_knobs.scenes.end()){
         m_misses.fade_unseen = false;
         m_sim.end_dialogue();
-        const std::string early = play_scene(scene->second, {.warp = fade});
+        const std::string early = play_scene(scene->second, {.warp = fade, .door = kind == SettleKind::DOOR});
         if (!early.empty()){
             m_route.note(label + ": talk-over " + early + ".", RouteNote::FAILURE);
         }
@@ -182,6 +188,7 @@ WarpSeen SimStoryStepIO::door_fade(const std::string& banner){
 //  walk's watchers take uniform frames only, so a fade whose hold they
 //  did not see is missed too.
 void SimStoryStepIO::walk_until_stopped(Direction direction, size_t tiles, const std::string& label){
+    m_route.check_fade_in(label);
     m_sim.tap(direction, ROUTE_TURN_TAP, false);
     Milliseconds limit = ROUTE_START_DELAY + 800ms + route_ms_per_tile(direction) * (int64_t)(2 * tiles);
     SimMove move = disturbed_hold(m_sim, m_noise, direction, limit, SimPace::WALK).move;
@@ -196,7 +203,8 @@ void SimStoryStepIO::walk_until_stopped(Direction direction, size_t tiles, const
 
 //  The D-pad, a tile at a time, until `map`'s banner reads; through a door
 //  the walk goes on beyond it (the fade eats no tiles of a hold).
-bool SimStoryStepIO::run_until_map(Direction direction, Milliseconds limit, const std::string& map, const std::string&){
+bool SimStoryStepIO::run_until_map(Direction direction, Milliseconds limit, const std::string& map, const std::string& label){
+    m_route.check_fade_in(label);
     const bool miss = banner_missed();
     size_t on = 0;
     for (Milliseconds ran = 0ms; ran < limit; ran += ROUTE_RUN_MS_PER_TILE_ACROSS){
@@ -230,6 +238,12 @@ double SimStoryStepIO::floor_here() const{
 //  its hold seen or not; with the fade missed whole the look still sees the
 //  banner.
 std::optional<size_t> SimStoryStepIO::tap_to_banner(Direction direction, const std::string& map, size_t max_taps){
+    const std::optional<size_t> taps = taps_to_banner(direction, map, max_taps);
+    //  Through: the far side fades in as the step ends.
+    m_misses.fading_in = taps.has_value();
+    return taps;
+}
+std::optional<size_t> SimStoryStepIO::taps_to_banner(Direction direction, const std::string& map, size_t max_taps){
     if (m_misses.through == m_misses.tap_steps++){
         m_misses.missed = true;
         if (m_far_side() && m_misses.through_banner){
@@ -239,6 +253,7 @@ std::optional<size_t> SimStoryStepIO::tap_to_banner(Direction direction, const s
     if (std::exchange(m_misses.banner_up, "") == map){
         return 0;
     }
+    m_route.check_fade_in(std::format("{}: taps toward {}", m_step, map));
     bool crossed = false;
     for (size_t tap = 1; tap <= max_taps; tap++){
         const SimMove move = m_sim.tap(direction, 160ms, false);
@@ -259,7 +274,19 @@ std::optional<size_t> SimStoryStepIO::tap_to_banner(Direction direction, const s
     return std::nullopt;
 }
 
+void SimKnobRouteIO::check_fade_in(const std::string& label){
+    if (m_knobs.slow_fade_in && std::exchange(m_misses.fading_in, false)){
+        note(std::format("{}: moved while the last warp still faded in (no settle after it).", label), RouteNote::FAILURE);
+    }
+}
+
+WalkResult SimKnobRouteIO::walk_to_wall(const RouteWallWalk& walk){
+    check_fade_in(walk.label);
+    return DisturbedRouteIO::walk_to_wall(walk);
+}
+
 WalkResult SimKnobRouteIO::walk_taps(Direction direction, size_t tiles, const std::string& label){
+    check_fade_in(label);
     const WalkResult result = DisturbedRouteIO::walk_taps(direction, tiles, label);
     if (result.stop != WalkStop::LIMIT || m_slid_steps.contains(m_step)){
         return result;

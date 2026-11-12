@@ -17,6 +17,7 @@
 #ifndef PokemonAutomation_PokemonBDSP_AutoStory_StorySim_H
 #define PokemonAutomation_PokemonBDSP_AutoStory_StorySim_H
 
+#include <format>
 #include <functional>
 #include <map>
 #include <memory>
@@ -116,18 +117,23 @@ namespace detail{
 //  One beat of a scripted scene: a line, up until a press, or `length` of
 //  screen with no box, `overworld` or not (a battle's end, a fade),
 //  `moving` (someone walking, the camera panning) or still, faded as `fade`.
+//  `at_player`: the moving reaches the box around the player.
 struct SimBeat{
     std::string what;
     bool line = false;
     Milliseconds length = Milliseconds(0);
     bool overworld = true;
     bool moving = false;
+    bool at_player = false;
     WarpFade fade = WarpFade::NONE;
 };
 //  A line, up until a press.
 SimBeat sim_line(std::string what);
 //  `length` of overworld with no box, someone moving or not.
 SimBeat sim_pause(std::string what, Milliseconds length, bool moving);
+//  `length` of overworld with someone walking right past the player.
+SimBeat sim_walk_past(std::string what, Milliseconds length);
+
 //  `length` of a fade, as BDSP's eyes see it: no box, so the overworld,
 //  and still (a black frame matches the one before).
 SimBeat sim_fade(std::string what, Milliseconds length, WarpFade fade = WarpFade::BLACK);
@@ -185,6 +191,11 @@ struct SimWorldKnobs{
     //  walk's last tiles (its target): its trigger lies on the way, so the
     //  walk runs into it (00.04's Mom's call on (6, 9), lab-B 2026-11-09 17:29).
     std::function<bool(const std::string& row, const std::string& step)> scene_at_walk_end = nullptr;
+    //  Every warp's fade-in runs long: a walk, a tap or a door run after a
+    //  door's fade or a tap step's way through, with no settle() between,
+    //  goes nowhere (lab-B 2026-11-10, 00.04b heal_sandgem walked to the
+    //  nurse 1500 ms after the Center's fade and stopped on "transition").
+    bool slow_fade_in = false;
 };
 
 namespace detail{
@@ -206,8 +217,12 @@ public:
         , m_cross(std::move(cross))
     {}
 
+    virtual WalkResult walk_to_wall(const RouteWallWalk& walk) override;
     virtual WalkResult walk_taps(Pokemon::Direction direction, size_t tiles, const std::string& label) override;
     virtual bool dialog_within(Milliseconds wait, Color color) override;
+    //  With SimWorldKnobs::slow_fade_in, fails the move `label` if the last
+    //  warp is still fading in (SimMisses::fading_in).
+    void check_fade_in(const std::string& label);
 
 private:
     WalkResult slide_on(const SimSlide& slide, WalkResult result);
@@ -325,6 +340,7 @@ public:
     //  (story_arrival_banner(): the sim's maps have no banners of their own).
     virtual WarpSeen run_into_door(Pokemon::Direction direction, bool run, Milliseconds timeout = Milliseconds(12000),
         Milliseconds dark_from = Milliseconds(0), const std::string& banner = "") override{
+        m_route.check_fade_in(std::format("{}: run into the door", m_step));
         const SimPace pace = run ? SimPace::RUN : SimPace::WALK;
         if (false_dark() && dark_from <= detail::SIM_FALSE_DARK && detail::SIM_FALSE_DARK < timeout){
             disturbed_hold(m_sim, m_noise, direction, detail::SIM_FALSE_DARK, pace);
@@ -342,10 +358,12 @@ public:
     //  run before looked for the banner (run_into_door()), so settle() sees
     //  none here. With a scene in SimWorldKnobs::scenes, the program's
     //  TalkOver plays it instead.
-    virtual void settle(Button, const std::string& label, bool fade, const std::string&) override;
+    virtual void settle(Button, const std::string& label, SettleKind kind, const std::string&) override;
     virtual std::optional<size_t> tap_to_banner(Pokemon::Direction direction, const std::string& map, size_t max_taps) override;
 
 private:
+    //  tap_to_banner()'s taps, before it marks the far side fading in.
+    std::optional<size_t> taps_to_banner(Pokemon::Direction direction, const std::string& map, size_t max_taps);
     //  How the run shows its next fade (SimMisses): whole, its hold unseen,
     //  or not at all.
     enum class FadeShown{
