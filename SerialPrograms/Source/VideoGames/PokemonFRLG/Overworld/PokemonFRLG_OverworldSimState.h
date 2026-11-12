@@ -61,6 +61,11 @@ struct SimScript{
     //  the tap again took a second tile (console B, 2026-11-11 15:03 and
     //  15:36, 09.02).
     std::set<int> unseen_step_taps;
+    //  Fault injection: turn taps, by number from 1 as for
+    //  dropped_turn_taps, that the walker's screen check reads as a step.
+    //  The turn south before 10.04's "south 3" read so (console B,
+    //  2026-11-12 03:08), and the leg ended a tile short of the stairs.
+    std::set<int> seen_turn_taps;
     //  Fault injection: steps onto a warp, by number from 1, that show the
     //  fade's black and clear with the player where they were, not warped
     //  (console B, 2026-11-10 01:44, 09.01 run 4, "east 1 (warp)" on B4F).

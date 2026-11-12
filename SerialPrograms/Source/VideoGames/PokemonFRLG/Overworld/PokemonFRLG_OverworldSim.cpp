@@ -630,6 +630,14 @@ bool OverworldSim::hides_moved_step_tap(){
     return true;
 }
 
+bool OverworldSim::shows_turn_tap_as_step(int turn_taps_before){
+    if (m_turn_taps == turn_taps_before || !m_script.seen_turn_taps.contains(m_turn_taps)){
+        return false;
+    }
+    note(std::format("turn tap {} only turns the player, read as a step.", m_turn_taps));
+    return true;
+}
+
 bool OverworldSim::drops_turn_tap(){
     m_turn_taps++;
     return m_script.dropped_turn_taps.contains(m_turn_taps);

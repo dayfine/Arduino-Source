@@ -70,6 +70,12 @@ public:
     //  Counts a walker step tap that moved the player; whether the
     //  walker's screen check misses it (SimScript::unseen_step_taps).
     bool hides_moved_step_tap();
+    //  The number of turn taps so far (SimScript::dropped_turn_taps).
+    int turn_taps() const{ return m_turn_taps; }
+    //  Whether the walker's screen check reads a tap that only turned the
+    //  player as a step: a turn tap since `turn_taps_before` that
+    //  SimScript::seen_turn_taps names.
+    bool shows_turn_tap_as_step(int turn_taps_before);
 
     //  Holds `direction` for `duration` then lets go for `release`, while
     //  `watchers` watch until `watch` (at least the hold and release) from
