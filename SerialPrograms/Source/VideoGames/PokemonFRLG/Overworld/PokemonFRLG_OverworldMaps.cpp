@@ -149,6 +149,19 @@ constexpr std::string_view MAP_NAMES[] = {
     //  Cinnabar Island's Center and Blaine's gym, through its quiz doors.
     "CinnabarIsland",
     "CinnabarIsland_Gym",
+    //  Silph Co.'s floors, 1F to 11F (the lift's map, SilphCo_Elevator, is
+    //  not built in).
+    "SilphCo_1F",
+    "SilphCo_2F",
+    "SilphCo_3F",
+    "SilphCo_4F",
+    "SilphCo_5F",
+    "SilphCo_6F",
+    "SilphCo_7F",
+    "SilphCo_8F",
+    "SilphCo_9F",
+    "SilphCo_10F",
+    "SilphCo_11F",
     "CeruleanCave_1F",
     "CeruleanCave_2F",
     "CeruleanCave_B1F",
