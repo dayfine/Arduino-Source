@@ -52,11 +52,6 @@ constexpr unsigned TILE_CHANGE = 24;
 //  The same place when at most a quarter of the tiles changed.
 constexpr size_t MOST_CHANGED_PERCENT = 25;
 
-//  Frames the console's start check tries, a second apart: a fade or a
-//  passer-by in front of the camera on one frame doesn't fail it.
-constexpr size_t START_FRAME_TRIES = 3;
-constexpr Milliseconds START_FRAME_WAIT = std::chrono::milliseconds(1000);
-
 //  The block at (`bx`, `by`): its channels' totals in `a` less those in
 //  `b`, summed as absolute values.
 uint64_t block_difference(const ImageViewRGB32& a, const ImageViewRGB32& b, size_t bx, size_t by){
@@ -187,10 +182,10 @@ StartRead check_console_start(
     size_t frames = 0;
     return read_start_frames(store.load(checkpoint), [&]{
         if (frames++ > 0){
-            context.wait_for(START_FRAME_WAIT);
+            context.wait_for(CONSOLE_START_FRAME_WAIT);
         }
         return console_start_frame(console, context);
-    }, START_FRAME_TRIES);
+    }, CONSOLE_START_FRAME_TRIES);
 }
 
 bool keep_console_frame(

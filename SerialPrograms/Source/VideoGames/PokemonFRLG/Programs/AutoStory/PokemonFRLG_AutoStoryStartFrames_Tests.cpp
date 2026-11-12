@@ -12,7 +12,9 @@
  */
 
 #include <algorithm>
+#include <cmath>
 #include <format>
+#include <functional>
 #include <optional>
 #include <string>
 #include <utility>
@@ -87,9 +89,9 @@ struct Person{
     size_t ty;
 };
 
-//  What the camera at map tile (`cx`, `cy`) shows, with `people` on it, as
-//  the capture shows the game: scaled up, with noise.
-ImageRGB32 screen(const Map& map, size_t cx, size_t cy, const std::vector<Person>& people, uint32_t noise_seed){
+//  What the camera at map tile (`cx`, `cy`) shows, with `people` on it, in
+//  the GBA's own pixels.
+ImageRGB32 view_of(const Map& map, size_t cx, size_t cy, const std::vector<Person>& people){
     ImageRGB32 view(VIEW_TILES_X * TILE, VIEW_TILES_Y * TILE);
     for (size_t y = 0; y < view.height(); y++){
         for (size_t x = 0; x < view.width(); x++){
@@ -105,6 +107,11 @@ ImageRGB32 screen(const Map& map, size_t cx, size_t cy, const std::vector<Person
             }
         }
     }
+    return view;
+}
+
+//  `view` as the capture shows the game: scaled up, with noise.
+ImageRGB32 capture_of(const ImageViewRGB32& view, uint32_t noise_seed){
     ImageRGB32 capture = view.scale_to(CAPTURE_WIDTH, CAPTURE_HEIGHT);
     for (size_t y = 0; y < capture.height(); y++){
         for (size_t x = 0; x < capture.width(); x++){
@@ -117,6 +124,36 @@ ImageRGB32 screen(const Map& map, size_t cx, size_t cy, const std::vector<Person
         }
     }
     return capture;
+}
+
+ImageRGB32 screen(const Map& map, size_t cx, size_t cy, const std::vector<Person>& people, uint32_t noise_seed){
+    return capture_of(view_of(map, cx, cy, people), noise_seed);
+}
+
+//  Pokemon Tower's upper floors (3F to 6F) have WEATHER_FOG_HORIZONTAL:
+//  a cloud texture that repeats every 64 pixels scrolls one pixel every 4
+//  frames (15 a second). It shows gray over the black void beside the
+//  floor and over the floor alike. `screen` with the void in its 5 right
+//  columns of tiles and the fog scrolled by `scroll` pixels; on console B's
+//  frame its 8x8 averages over the void ran from 126 to 186.
+ImageRGB32 fogged(const Map& map, size_t cx, size_t cy, const std::vector<Person>& people, size_t scroll, uint32_t noise_seed){
+    constexpr double TAU = 6.283185307179586;
+    ImageRGB32 view = view_of(map, cx, cy, people);
+    for (size_t y = 0; y < view.height(); y++){
+        for (size_t x = 0; x < view.width(); x++){
+            const double u = (double)(x + scroll);
+            const double v = (double)y;
+            const int cloud = (int)(32 * std::sin(TAU * u / 64 + 1.2 * std::sin(TAU * v / 64))
+                + 12 * std::sin(TAU * u / 32 + TAU * v / 64));
+            const uint32_t pixel = view.pixel(x, y);
+            const auto channel = [&](int shift){
+                const int base = x >= 10 * TILE ? 155 : (int)((pixel >> shift) & 0xff);
+                return (uint32_t)std::clamp(base + cloud, 0, 255);
+            };
+            view.pixel(x, y) = rgb(channel(16), channel(8), channel(0));
+        }
+    }
+    return capture_of(view, noise_seed);
 }
 
 const Map CENTER = make_map(INDOOR, 27);
@@ -207,7 +244,10 @@ struct ReadInput{
     std::string name;
     bool has_reference;
     //  The screens, one per frame read; an empty one is no video.
-    std::vector<ImageRGB32 (*)()> frames;
+    std::vector<std::function<ImageRGB32()>> frames;
+    //  The screen kept as the start frame.
+    ImageRGB32 (*reference)() = counter_reference;
+    size_t tries = 3;
 };
 struct ReadExpectation{
     StartFound found;
@@ -233,6 +273,27 @@ ImageRGB32 outside_door(){
     return screen(CITY, 12, 6, {PLAYER}, 9);
 }
 
+//  console B, FRLG 10.05, 2026-11-12: Pokemon Tower 5F, the player beside
+//  a Channeler. The frame was kept right after the save; reloaded half an
+//  hour later, the fog had scrolled on and 76, 68 and 52 of 150 tiles
+//  differed on the console's frames, a second apart. The fog repeats
+//  every 64 pixels, 4.3 seconds.
+const Map TOWER = make_map(INDOOR, 51);
+constexpr size_t FOG_PIXELS_PER_SECOND = 15;
+ImageRGB32 tower_kept(){
+    return fogged(TOWER, 6, 9, {PLAYER, {8, 5}, {0, 2}}, 0, 21);
+}
+//  The console's start check's frames from the camera at row `cy`, the
+//  first one with the fog scrolled 20 pixels on from the kept frame.
+std::vector<std::function<ImageRGB32()>> tower_frames(size_t cy, const std::vector<Person>& people){
+    std::vector<std::function<ImageRGB32()>> frames;
+    for (size_t c = 0; c < CONSOLE_START_FRAME_TRIES; c++){
+        const size_t scroll = 20 + c * FOG_PIXELS_PER_SECOND * (size_t)CONSOLE_START_FRAME_WAIT.count() / 1000;
+        frames.push_back([=]{ return fogged(TOWER, 6, cy, people, scroll, 22 + (uint32_t)c); });
+    }
+    return frames;
+}
+
 std::string to_string(StartFound found){
     switch (found){
     case StartFound::NOT_READ:
@@ -255,12 +316,12 @@ public:
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         std::optional<ImageRGB32> reference;
         if (m_case.input.has_reference){
-            reference = start_frame(counter_reference());
+            reference = start_frame(m_case.input.reference());
         }
         size_t read = 0;
         const StartRead got = read_start_frames(reference, [&]{
             return m_case.input.frames[std::min(read++, m_case.input.frames.size() - 1)]();
-        }, 3);
+        }, m_case.input.tries);
         if (got.found != m_case.expectation.found || read != m_case.expectation.frames_read){
             return std::format(
                 "expected {} after {} frames, got {} after {}: {}",
@@ -294,6 +355,16 @@ const ReadCase READ_CASES[] = {
     {
         .input = {"outside the door three times: elsewhere", true, {outside_door}},
         .expectation = {StartFound::ELSEWHERE, 3},
+    },
+    {
+        .input = {"Tower fog scrolled since the save: at the start", true,
+            tower_frames(9, {PLAYER, {8, 5}, {0, 2}}), tower_kept, CONSOLE_START_FRAME_TRIES},
+        .expectation = {StartFound::AT_START, 7},
+    },
+    {
+        .input = {"Tower fog, one step off: elsewhere", true,
+            tower_frames(10, {PLAYER, {8, 4}, {0, 1}}), tower_kept, CONSOLE_START_FRAME_TRIES},
+        .expectation = {StartFound::ELSEWHERE, CONSOLE_START_FRAME_TRIES},
     },
 };
 
