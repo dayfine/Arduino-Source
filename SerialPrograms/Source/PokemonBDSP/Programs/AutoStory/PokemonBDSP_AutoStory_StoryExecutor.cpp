@@ -334,7 +334,7 @@ Outcome StoryExecutor::game(RunState&, const StoryStep& step){
 
 Pokemon::Segment make_story_segment(
     const std::vector<StoryCheckpoint>& rows, Pokemon::StoryStepExecutor& executor,
-    std::set<std::string>& saved
+    std::set<std::string>& saved, Pokemon::StorySaveMode save_mode
 ){
     static const StoryStep SAVE_AT_START = []{
         StoryStep step;
@@ -348,9 +348,11 @@ Pokemon::Segment make_story_segment(
     for (const StoryCheckpoint& row : rows){
         segment.checkpoints.push_back(Pokemon::CheckpointSpec{
             .id = row.id, .title = row.title, .saves = false,
-            .build = [&row, &executor, &saved]{
+            .build = [&row, &executor, &saved, save_mode]{
                 Pokemon::Checkpoint steps = Pokemon::build_story_checkpoint(row, executor);
-                if (row.on_failure != StoryFailure::RELOAD_AND_RETRY){
+                //  Only PER_CHECKPOINT saves part-way through a run (console
+                //  B, 2026-11-11: save mode none saved at 00.05b's start).
+                if (row.on_failure != StoryFailure::RELOAD_AND_RETRY || save_mode != Pokemon::StorySaveMode::PER_CHECKPOINT){
                     return steps;
                 }
                 StoryStep save_at_start = SAVE_AT_START;

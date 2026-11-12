@@ -965,8 +965,8 @@ Pokemon::SegmentReport run_rows_on(
     const std::vector<StoryCheckpoint>& rows
 ){
     std::set<std::string> saved;
-    Pokemon::Segment segment = make_story_segment(rows, executor, saved);
     Pokemon::SegmentPolicy policy;
+    Pokemon::Segment segment = make_story_segment(rows, executor, saved, policy.save_mode);
     policy.attempts_per_checkpoint = 1;
     Pokemon::SegmentHooks hooks;
     hooks.reload = [](RunState&){ return Pokemon::outcome_ok(); };

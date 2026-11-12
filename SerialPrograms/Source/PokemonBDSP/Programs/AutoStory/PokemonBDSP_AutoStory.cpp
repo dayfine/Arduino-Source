@@ -265,7 +265,7 @@ void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerCo
         throw UserSetupError(env.console, "Verify mode reloads the start's save between runs: turn off \"Start a new game first\".");
     }
     std::set<std::string> saved = saved_before_the_run(checkpoints, first, start);
-    Pokemon::Segment segment = make_story_segment(checkpoints, executor, saved);
+    Pokemon::Segment segment = make_story_segment(checkpoints, executor, saved, RUN.policy().save_mode);
     Pokemon::StoryGameHooks game = story_game(env, context);
     Pokemon::RunState state;
     start_story(env, context, checkpoints[first], start, game, state);

@@ -222,12 +222,13 @@ private:
 };
 
 
-//  `rows` (kept alive by the caller) as one segment. A row that reloads on
-//  failure saves first, unless `saved` says it has in this run: a retry
-//  starts from that save. `executor` and `saved` must outlive the segment.
+//  `rows` (kept alive by the caller) as one segment run in `save_mode`. In
+//  PER_CHECKPOINT a row that reloads on failure saves first, unless `saved`
+//  says it has in this run: a retry starts from that save. Other modes never
+//  save at a row's start. `executor` and `saved` must outlive the segment.
 Pokemon::Segment make_story_segment(
     const std::vector<StoryCheckpoint>& rows, Pokemon::StoryStepExecutor& executor,
-    std::set<std::string>& saved
+    std::set<std::string>& saved, Pokemon::StorySaveMode save_mode
 );
 
 

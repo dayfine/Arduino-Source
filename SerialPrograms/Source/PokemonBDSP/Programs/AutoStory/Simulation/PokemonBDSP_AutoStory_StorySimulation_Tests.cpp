@@ -26,6 +26,7 @@
 #include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StorySaveMode.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RobustRoute.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_WalkRules.h"
@@ -356,7 +357,7 @@ struct Simulation{
 
     Pokemon::SegmentReport run(const Pokemon::SegmentRange& range, Language language = Language::Japanese){
         game.set_language(language);
-        Pokemon::Segment segment = make_story_segment(story_checkpoints(), game, saved);
+        Pokemon::Segment segment = make_story_segment(story_checkpoints(), game, saved, policy.save_mode);
         Pokemon::SegmentHooks hooks;
         hooks.reload = [this](RunState&){
             trace.push_back("reload");
@@ -442,6 +443,23 @@ UnitTestResult test_start_and_end(Logger&){
     report = one.run({.from = "00.02", .to = "00.02"});
     if (!report.completed || one.begun() != std::vector<std::string>{"00.02"}){
         return "Expected 00.02 alone:" + joined(one.begun());
+    }
+    return true;
+}
+
+//  Console B, 2026-11-11: with save mode none, 00.05b and 00.05c saved at
+//  their starts, overwriting 00.05's save. Save mode none saves nowhere.
+UnitTestResult test_save_mode_none_saves_nowhere(Logger&){
+    Simulation sim;
+    sim.policy.save_mode = Pokemon::StorySaveMode::NONE;
+    const Pokemon::SegmentReport report = sim.run({.from = "00.04b", .to = "00.05c"});
+    if (!report.completed){
+        return "Expected 00.04b to 00.05c through:" + joined(sim.lines);
+    }
+    for (const std::string& item : sim.trace){
+        if (item.starts_with("save in ")){
+            return "Expected no save with save mode none:" + joined(sim.trace);
+        }
     }
     return true;
 }
@@ -672,6 +690,10 @@ const AutoStoryStorySimulationCase AUTO_STORY_STORY_SIMULATION_CASES[] = {
     },
     {
         .input = {"start and end checkpoints", test_start_and_end},
+        .expectation = {},
+    },
+    {
+        .input = {"save mode none saves at no row's start, 00.04b to 00.05c (lab-B, 2026-11-11)", test_save_mode_none_saves_nowhere},
         .expectation = {},
     },
     {
