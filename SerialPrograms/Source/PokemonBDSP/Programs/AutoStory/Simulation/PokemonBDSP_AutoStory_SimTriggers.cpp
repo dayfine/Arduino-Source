@@ -113,6 +113,6 @@ std::vector<RowTrigger> story_triggers(){
 } // namespace detail
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
