@@ -819,7 +819,7 @@ bool OverworldSimWalker::after_warp(const RouteStep& step, int warps_before, Mil
             m_sim.tap(step.direction, STEP_TAP, STEP_TAP_RELEASE);
         }
     }
-    if (!battle && (m_sim.state().warps == warps_before || (!fade_over_since(watched_from) && !m_sim.watch({SimWatcher::FADE}, WARP_TIMEOUT)))){
+    if (!battle && (m_sim.state().warps == warps_before || (!fade_over_since(watched_from) && !m_rules.scene_confirms_missed_fade && !m_sim.watch({SimWatcher::FADE}, WARP_TIMEOUT)))){
         fail("walk_overworld_route(): no fade in and out after walking onto the warp to " + step.end.map + ".");
     }
     m_sim.watch({}, AFTER_WARP);

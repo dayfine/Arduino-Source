@@ -306,6 +306,15 @@ struct SimWalkerRules{
     //  Without it a black that cleared with the player where they were was
     //  taken as the warp (console B, 2026-11-10 01:44, 09.01 run 4).
     bool confirm_warp_destination = true;
+    //  A warp whose fade was over before the watch for it began is taken by
+    //  the screen after it: another scene than before the hold, held still
+    //  (OverworldWalkSteps::arrived_without_fade()). Without it the walker
+    //  tapped twice into the Department Store lift's back wall and failed
+    //  on "no fade in and out after walking onto the warp" with the player
+    //  inside the lift (console B, 2026-11-12 00:39, 10.01 lift_to_1f): the
+    //  lift room is mostly black, so a watch started after the fade never
+    //  sees black end.
+    bool scene_confirms_missed_fade = true;
     //  A turn tap is checked by the facing on screen, and tapped again
     //  while the player faces another way (OverworldWalkSteps::turn_to()).
     //  Without it a dropped tap left a one-tile leg turning the player
