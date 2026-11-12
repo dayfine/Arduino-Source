@@ -444,6 +444,40 @@ UnitTestResult test_jubilife_routes_cross_no_wander_zone(Logger& logger){
     return out.empty() ? UnitTestResult(true) : UnitTestResult("ROUTE steps:" + out);
 }
 
+//  00.05c's walk to the Poketch Company's clown from the street (58, 22),
+//  where the checkpoint starts on a rerun from 01.01's start, keeps off the
+//  plaza (44..52, 20..24). BDSP put the Global Wonder Station there, a round
+//  wall with people round it that pret's Diamond map lacks: on lab-B
+//  (2026-11-12 01:22 and 01:55) the walk west was stopped at (50, 22),
+//  (51, 21) and (49, 23), and talked to the woman at (45, 24) until the
+//  step failed.
+UnitTestResult test_company_clown_from_the_street_keeps_off_the_plaza(Logger& logger){
+    for (TableRoute route : table_routes()){
+        if (route.row != "00.05c" || route.step->name != "below_the_company_clown" || route.world == nullptr){
+            continue;
+        }
+        route.from = Pokemon::tile_pose("JubilifeCity", {{58, 22}}, Direction::EAST);
+        const RouteStepPlan plan = plan_table_route(route);
+        if (!plan.legs){
+            return "00.05c below_the_company_clown: no plan from (58, 22).";
+        }
+        const StoryWorld& world = *route.world;
+        for (const PlannedLeg& planned : *plan.legs){
+            logger.log("00.05c below_the_company_clown from (58, 22): " + to_string(planned));
+        }
+        const auto plaza = [&](const TilePos& pos){
+            const std::optional<TilePos> local = story_to_local(world, "JubilifeCity", pos);
+            return local && local->x >= 44 && local->x <= 52 && local->y >= 20 && local->y <= 24;
+        };
+        const auto [most, leg] = most_zone_tiles(world, plan.start, *plan.legs, plaza);
+        if (most > 0){
+            return std::format("the leg {} walks {} tile(s) of the plaza (44..52, 20..24).", leg, most);
+        }
+        return UnitTestResult(true);
+    }
+    return "00.05c below_the_company_clown: not in the table, or from nowhere known.";
+}
+
 //  01.08's walk below the Ravaged Path keeps off the row Route 204 South's
 //  youngster_3 wanders, (12, 2) to (14, 2): on lab-B (2026-11-08) the plan
 //  "north 35 (to wall) to (13, 2), west 2 (to wall) to (11, 2)" walked along
@@ -718,6 +752,10 @@ const AutoStoryStoryTableCase AUTO_STORY_STORY_TABLE_CASES[] = {
     },
     {
         .input = {"00.05b, 00.05c: no leg enters a wander zone (lab-B, 2026-11-11)", test_jubilife_routes_cross_no_wander_zone},
+        .expectation = {},
+    },
+    {
+        .input = {"00.05c: from the street (58, 22), the walk keeps off the Wonder Station's plaza (lab-B, 2026-11-12)", test_company_clown_from_the_street_keeps_off_the_plaza},
         .expectation = {},
     },
 };
