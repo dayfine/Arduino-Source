@@ -5,8 +5,8 @@
  *  Reads the item lists of the bag's pockets and of a Mart's BUY menu,
  *  which the game draws alike: rows 16 pixels apart from y 13, names from
  *  x 97 (pokefirered: the list window at tile (11, 1), item_X 9). It knows
- *  the names of the items a new game meets before the Boulder Badge, in
- *  English only so far: in another language a name is never read.
+ *  the names of the items the story buys, uses or counts, in English only
+ *  so far: in another language a name is never read.
  *
  */
 
@@ -66,7 +66,7 @@ std::vector<BagRow> read_bag_pocket(Logger& logger, Language language, const Ima
 //  the CANCEL (not included). A row whose name can't be read stays, with an
 //  empty item, so the rows below keep their places: stopping there read
 //  nothing below a MOON STONE, and the rival was fought with 0 of the bag's
-//  15 Potions (console B, 2026-11-03). Unread rows after the last name read
+//  15 Potions (console B, 2026-11-03), before it had a name. Unread rows after the last name read
 //  are dropped. Empty if no name is read, as in a language the reader has
 //  no names for.
 std::vector<BagRow> pocket_rows(std::vector<BagRow> reads);

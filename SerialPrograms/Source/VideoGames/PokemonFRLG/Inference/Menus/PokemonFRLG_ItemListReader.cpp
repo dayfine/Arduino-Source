@@ -43,6 +43,7 @@ constexpr double ROW_HEIGHT = 12;
 //  Each item's slug and its English name.
 constexpr std::pair<std::string_view, std::string_view> ENGLISH_ITEM_NAMES[] = {
     {"potion", "Potion"},
+    {"super-potion", "Super Potion"},
     {"antidote", "Antidote"},
     {"parlyz-heal", "Parlyz Heal"},
     {"awakening", "Awakening"},
@@ -62,6 +63,13 @@ constexpr std::pair<std::string_view, std::string_view> ENGLISH_ITEM_NAMES[] = {
     //  (console B, 2026-11-12).
     {"rare-candy", "Rare Candy"},
     {"max-elixir", "Max Elixir"},
+    //  The Safari Zone's FULL RESTORE, which 11.03 counts. Without it its
+    //  row matched several names and read as nothing (console B,
+    //  2026-11-12).
+    {"full-restore", "Full Restore"},
+    //  Mt. Moon's, which top the pocket above the story's items.
+    {"moon-stone", "Moon Stone"},
+    {"nugget", "Nugget"},
     {"cancel", "Cancel"},
 };
 
@@ -323,8 +331,9 @@ void add_tests_ItemListReader(UnitTestDatabase& database){
     //  the 3 read as nothing before the digit templates.
     database.add<Test_BagPocket>("PokemonFRLG/ItemListReader/ItemsPocket_eng.png");
     //  Console B, 2026-11-03, the save before Cerulean's rival: a MOON STONE,
-    //  which the reader has no name for, above the PARLYZ HEAL and 15 POTIONs.
-    //  Stopping at it read nothing, and the rival was fought with 0 Potions.
+    //  which the reader had no name for then, above the PARLYZ HEAL and 15
+    //  POTIONs. Stopping at it read nothing, and the rival was fought with 0
+    //  Potions.
     database.add<Test_BagPocket>("PokemonFRLG/ItemListReader/ItemsPocketMoonStone_eng.png");
     //  The Viridian Mart's BUY list, the same day, the cursor on POTION.
     database.add<Test_MartList>("PokemonFRLG/ItemListReader/MartBuyList_eng.png");
