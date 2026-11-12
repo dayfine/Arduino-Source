@@ -58,11 +58,6 @@ inline constexpr Milliseconds ROLL_TILE_SLOWEST(150);
 //  After B is pressed mid-roll, until the player stands: the tile under
 //  way finishes. Whether B stops the player at once is not known.
 inline constexpr Milliseconds BRAKE_SETTLE(300);
-//  B alone before a step's or a search's first tap. After a roll the bike
-//  is in its slope state, where a D-pad press the other way than the
-//  player moved only turns them (pokefirered bike.c,
-//  BikeInputHandler_Slope); B alone for a few frames leaves that state.
-inline constexpr Milliseconds STEP_SETTLE(100);
 //  A D-pad tap with B held: a walking step, a tile in 16 frames (bike.c
 //  BikeTransition_Uphill, PlayerWalkNormal), not the Bicycle's pace.
 inline constexpr Milliseconds STEP_TAP(40);
@@ -70,7 +65,10 @@ inline constexpr Milliseconds STEP_TAP(40);
 //  16 frames (268ms), a frame of turning and two of B alone, with a
 //  margin. The game reads no press while the player moves: at 200ms
 //  apart (11.02's first run, 2026-11-12) every other tap and every
-//  search's A were lost.
+//  search's A were lost. Also held before a step's or a search's first
+//  tap: after a roll the bike is in its slope state, where a press the
+//  other way than the player moved only turns them (bike.c,
+//  BikeInputHandler_Slope), and B alone leaves that state.
 inline constexpr Milliseconds STEP_HOLD(320);
 //  A with B held: whether the game takes the A with B down is not known.
 inline constexpr Milliseconds SEARCH_A(160);

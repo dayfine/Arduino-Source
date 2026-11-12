@@ -137,7 +137,7 @@ std::vector<SlopePress> slope_move_presses(const SlopeMove& move){
     std::vector<SlopePress> presses;
     switch (move.kind){
     case SlopeMoveKind::STEP:
-        presses.push_back(held_b(STEP_SETTLE));
+        presses.push_back(held_b(STEP_HOLD));
         for (size_t c = 0; c < move.tiles; c++){
             presses.push_back(SlopePress{.b = true, .dpad = move.direction, .hold = STEP_TAP});
             presses.push_back(held_b(STEP_HOLD));
@@ -151,7 +151,7 @@ std::vector<SlopePress> slope_move_presses(const SlopeMove& move){
         presses.push_back(held_b(BRAKE_SETTLE));
         break;
     case SlopeMoveKind::SEARCH:
-        presses.push_back(held_b(STEP_SETTLE));
+        presses.push_back(held_b(STEP_HOLD));
         for (size_t c = 0; c < move.tiles; c++){
             presses.push_back(SlopePress{.b = true, .dpad = move.direction, .hold = STEP_TAP});
             presses.push_back(held_b(STEP_HOLD));
