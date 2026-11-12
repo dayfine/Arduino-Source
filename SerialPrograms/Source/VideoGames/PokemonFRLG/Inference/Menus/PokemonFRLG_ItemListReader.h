@@ -5,15 +5,17 @@
  *  Reads the item lists of the bag's pockets and of a Mart's BUY menu,
  *  which the game draws alike: rows 16 pixels apart from y 13, names from
  *  x 97 (pokefirered: the list window at tile (11, 1), item_X 9). It knows
- *  the names of the items a new game meets before the Boulder Badge, in
- *  English only so far: in another language a name is never read.
+ *  the names of the items the story buys, uses or counts, in English only
+ *  so far: in another language a name is never read.
  *
  */
+// code-health: allow header_symbols -- the plans' item check needs which names the reader has; a header for one query splits the reader's single concern
 
 #ifndef PokemonAutomation_PokemonFRLG_ItemListReader_H
 #define PokemonAutomation_PokemonFRLG_ItemListReader_H
 
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
@@ -40,6 +42,10 @@ ImageFloatBox item_list_name_box(int row);
 //  reader has no names for.
 std::string read_item_list_name(Logger& logger, Language language, const ImageViewRGB32& screen, int row);
 
+//  Whether read_item_list_name() has a name for `item`, a slug as it gives
+//  them, in English.
+bool item_list_reader_knows(std::string_view item);
+
 //  A single item entry in the bag pocket.
 struct BagRow{
     //  The item's slug, as read_item_list_name() gives it; empty if its name
@@ -61,7 +67,7 @@ std::vector<BagRow> read_bag_pocket(Logger& logger, Language language, const Ima
 //  the CANCEL (not included). A row whose name can't be read stays, with an
 //  empty item, so the rows below keep their places: stopping there read
 //  nothing below a MOON STONE, and the rival was fought with 0 of the bag's
-//  15 Potions (console B, 2026-11-03). Unread rows after the last name read
+//  15 Potions (console B, 2026-11-03), before it had a name. Unread rows after the last name read
 //  are dropped. Empty if no name is read, as in a language the reader has
 //  no names for.
 std::vector<BagRow> pocket_rows(std::vector<BagRow> reads);
