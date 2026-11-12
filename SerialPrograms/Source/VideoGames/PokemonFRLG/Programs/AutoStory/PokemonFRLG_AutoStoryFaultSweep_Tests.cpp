@@ -128,6 +128,8 @@ const std::map<std::string, std::string> KNOWN_FAILING{
         "below_fuji_house plans from (4, 7), where Mr. Fuji's script warps the player (warp 4, 7, exact); from a tile off, no wall in his house funnels the walk onto (3, 4): legs that re-anchor, if the console shows the warp can land elsewhere"},
     {"PokemonFRLG::AutoStory - Fault sweep: 11.01, warp no-op",
         "fly_celadon: a Fly that doesn't leave Lavender Town goes unseen, and east_of_snorlax walks from Lavender to Route 16 by Routes 8 and 7 instead: check the fly lands on its town's tile (FlyTown::landing) before the step ends"},
+    {"PokemonFRLG::AutoStory - Fault sweep: 12.03, warp no-op",
+        "fly_celadon: a Fly that doesn't leave Fuchsia City goes unseen, and the row, which walks no further, ends on Celadon's declared tile: the same fix as 11.01's, the fly landing on its town's tile (FlyTown::landing) checked before the step ends"},
     {"PokemonFRLG::AutoStory - Fault sweep: 08.03, off the Bicycle at a bike leg",
         "riding with no fault, route7_underground_exit's warp to UndergroundPath_EastEntrance is not confirmed on the sim (the screen after the fade reads as before the hold): the sim's warp off the Bicycle, before this class can sweep 08.03"},
 };
