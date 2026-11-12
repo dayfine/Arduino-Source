@@ -14,6 +14,7 @@
 #include "CommonFramework/Tools/VideoStream.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "Pokemon/Navigation/Pokemon_Grid.h"
+#include "Pokemon/Navigation/Pokemon_MoveMechanics.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -25,7 +26,7 @@ namespace PokemonBDSP{
 //  stick tap stepped about 0.6 tile, off the tile grid, and a 160 ms D-pad
 //  tap steps a whole tile (r49: a stick "turn" put us a tile west of
 //  Sandgem's Center door; r248a).
-constexpr Milliseconds ROUTE_TURN_TAP = Milliseconds(50);
+constexpr Milliseconds ROUTE_TURN_TAP = Pokemon::BDSP_MOVE_MECHANICS.turn_tap;
 
 //  What a RouteInput presses.
 enum class RouteInputKind{
