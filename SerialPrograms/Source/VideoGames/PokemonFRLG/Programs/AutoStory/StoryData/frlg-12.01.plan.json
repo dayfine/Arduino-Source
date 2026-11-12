@@ -40,6 +40,15 @@
         "why": "HM03 Surf in place of Water Gun, as pokeguy (1:14:55 to 1:15:13: Surf, Water Pulse, Bite, Mega Kick after it), unless the lead knows it; an HM, so not a one-shot TM"
       },
       {
+        "id": "center_northwest_corner",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [{"direction": "west", "tiles": 7}, {"direction": "north", "tiles": 2}]
+        },
+        "why": "from the nurse to the Center's wall west (0, 4) and up to the wall (0, 2): legs to walls, so the walk out starts from a known tile even if the Center script left the player a tile off the nurse"
+      },
+      {
         "id": "gym_east_wall",
         "kind": "route",
         "action": "run",
