@@ -235,16 +235,16 @@ bool select_onto_bike(const BikeSelectCalls& calls){
     return false;
 }
 
-bool screen_shows_riding(const ImageViewRGB32& screen){
+bool screen_shows_riding(const ImageViewRGB32& screen, PlayerGender player){
     if (StartMenuDetector(COLOR_RED).detect(screen) || SelectionDialogDetector(COLOR_RED).detect(screen)
         || WhiteDialogDetector(COLOR_RED).detect(screen)
     ){
         return false;
     }
-    return !read_player_facing(screen).has_value();
+    return !read_player_facing(screen, player).has_value();
 }
 
-void get_on_bike(ConsoleHandle& console, ProControllerContext& context){
+void get_on_bike(ConsoleHandle& console, ProControllerContext& context, PlayerGender player){
     BikeSelectCalls calls;
     calls.press_select = [&]{
         pbf_press_button(context, BUTTON_MINUS, BIKE_SELECT_PRESS, BIKE_SELECT_SETTLE);
@@ -252,7 +252,7 @@ void get_on_bike(ConsoleHandle& console, ProControllerContext& context){
     calls.riding = [&]{
         context.wait_for_all_requests();
         VideoSnapshot screen = console.video().snapshot();
-        const bool riding = screen && screen_shows_riding(*screen.frame);
+        const bool riding = screen && screen_shows_riding(*screen.frame, player);
         console.log(riding ? "Bike: riding." : "Bike: not riding after SELECT.", riding ? COLOR_BLACK : COLOR_ORANGE);
         return riding;
     };
@@ -616,12 +616,12 @@ void check_warp_was_no_battle(ConsoleHandle& console, ProControllerContext& cont
 //  Each leg starts with a turn tap unless it goes the way the player faces.
 //  A tap while already facing that way takes a step, so a facing not given
 //  is read from the screen. If that fails too it taps anyway.
-std::optional<Direction> read_facing(ConsoleHandle& console, ProControllerContext& context){
+std::optional<Direction> read_facing(ConsoleHandle& console, ProControllerContext& context, PlayerGender player){
     context.wait_for_all_requests();
     VideoSnapshot screen = console.video().snapshot();
     std::optional<Direction> facing;
     if (screen){
-        facing = read_player_facing(screen);
+        facing = read_player_facing(screen, player);
     }
     console.log(std::string("Route: the player faces ") + (facing ? Pokemon::direction_name(*facing) : "an unknown way") + ".");
     return facing;
@@ -633,7 +633,7 @@ std::optional<Direction> read_facing(ConsoleHandle& console, ProControllerContex
 constexpr size_t TURN_FACING_READS = 3;
 constexpr Milliseconds TURN_FACING_REREAD(100);
 
-void turn_to(ConsoleHandle& console, ProControllerContext& context, Direction direction){
+void turn_to(ConsoleHandle& console, ProControllerContext& context, Direction direction, PlayerGender player){
     for (size_t tap = 1; tap <= MAX_TURN_TAPS; tap++){
         pbf_press_dpad(context, dpad(direction), TURN_TAP, TURN_SETTLE);
         std::optional<Direction> facing;
@@ -643,7 +643,7 @@ void turn_to(ConsoleHandle& console, ProControllerContext& context, Direction di
             }
             context.wait_for_all_requests();
             VideoSnapshot screen = console.video().snapshot();
-            facing = screen ? read_player_facing(screen) : std::nullopt;
+            facing = screen ? read_player_facing(screen, player) : std::nullopt;
         }
         if (!facing){
             console.log(std::format(
@@ -797,10 +797,11 @@ void walk_overworld_route(
     const std::vector<RouteStep>& route,
     std::optional<Direction> facing,
     const OverworldInterruptSet& interrupts,
-    MoveSpeed speed
+    MoveSpeed speed,
+    PlayerGender player
 ){
     if (!facing){
-        facing = read_facing(console, context);
+        facing = read_facing(console, context, player);
     }
     for (const RouteStep& step : route){
         console.log("Route: " + to_string(step));
@@ -813,7 +814,7 @@ void walk_overworld_route(
             //  console, while holds from a standstill were exact over 15 tiles.
             //  Not on the Bicycle, where the tap is a step.
             if (turns_first(step, speed, facing)){
-                turn_to(console, context, step.direction);
+                turn_to(console, context, step.direction, player);
             }
             if (const std::string note = speed_note(step, speed); !note.empty()){
                 console.log(note);
@@ -827,7 +828,7 @@ void walk_overworld_route(
             //  Checked by the facing on screen, like a leg's turn: the game
             //  missed a single tap of "face south" and A found nothing
             //  (console B, 2026-11-11, 09.02 moon_stone).
-            turn_to(console, context, step.direction);
+            turn_to(console, context, step.direction, player);
             break;
         }
         if (step.action != RouteAction::FACE){

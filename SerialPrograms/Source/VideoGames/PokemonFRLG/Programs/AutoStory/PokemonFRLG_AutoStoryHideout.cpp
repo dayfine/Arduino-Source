@@ -146,10 +146,10 @@ void pick_lift_floor(ConsoleHandle& console, ProControllerContext& context, cons
     console.log(std::format("Story: after the lift's ride, {}", Pokemon::describe(settle)));
 }
 
-void ride_lift(ConsoleHandle& console, ProControllerContext& context, const LiftRide& ride){
-    walk_room_legs(console, context, lift_in_legs(), Pokemon::Direction::NORTH);
+void ride_lift(ConsoleHandle& console, ProControllerContext& context, const LiftRide& ride, PlayerGender player){
+    walk_room_legs(console, context, lift_in_legs(), Pokemon::Direction::NORTH, player);
     pick_lift_floor(console, context, ride);
-    walk_room_legs(console, context, lift_out_legs(), Pokemon::Direction::NORTH);
+    walk_room_legs(console, context, lift_out_legs(), Pokemon::Direction::NORTH, player);
 }
 
 void push_poster_switch(ConsoleHandle& console, ProControllerContext& context){
@@ -159,13 +159,14 @@ void push_poster_switch(ConsoleHandle& console, ProControllerContext& context){
 }
 
 std::optional<Pokemon::Outcome> run_field_game_step(
-    ConsoleHandle& console, ProControllerContext& context, Language language, const Pokemon::StoryStep& step
+    ConsoleHandle& console, ProControllerContext& context, Language language, PlayerGender player,
+    const Pokemon::StoryStep& step
 ){
     const auto done = [&step]{
         return step.pose_after ? Pokemon::outcome_ok(Pokemon::pose_of(*step.pose_after)) : Pokemon::outcome_ok();
     };
     if (const std::optional<LiftRide> ride = parse_lift_floor_step(step)){
-        ride_lift(console, context, *ride);
+        ride_lift(console, context, *ride, player);
         return done();
     }
     if (std::optional<Pokemon::Outcome> moved = run_field_move_step(console, context, step)){
@@ -173,7 +174,7 @@ std::optional<Pokemon::Outcome> run_field_game_step(
     }
     if (is_center_variant(step.action)){
         //  Both start facing north: at the door, or at the nurse.
-        walk_room_legs(console, context, center_legs(step.action), Pokemon::Direction::NORTH);
+        walk_room_legs(console, context, center_legs(step.action), Pokemon::Direction::NORTH, player);
         return done();
     }
     if (step.action == POSTER_SWITCH_VARIANT){
@@ -184,7 +185,7 @@ std::optional<Pokemon::Outcome> run_field_game_step(
         return std::nullopt;
     }
     if (step.action == RIDE_BIKE_VARIANT){
-        OverworldWalkSteps::get_on_bike(console, context);
+        OverworldWalkSteps::get_on_bike(console, context, player);
         return done();
     }
     ConsoleItemUseActions bag(console, context, language);
