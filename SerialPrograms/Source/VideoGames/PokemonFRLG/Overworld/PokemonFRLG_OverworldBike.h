@@ -12,6 +12,7 @@
 
 #include <functional>
 #include <optional>
+#include <string>
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
@@ -45,6 +46,13 @@ bool counts_bike_taps(const RouteStep& step, MoveSpeed speed);
 //  (`riding`), the player gets on with SELECT before `step`: a WALK where
 //  the Bicycle may be ridden, after a door took them off.
 bool gets_on_bike(const RouteStep& step, MoveSpeed speed, bool riding);
+
+//  Whether a warp onto `map` leaves a rider on the Bicycle: the Cycling
+//  Road's gates (allow_cycling in pokefirered's map.json) and the routes
+//  their doors open onto. Every other door takes the player off (console
+//  B, 2026-11-12 01:05: through Route 16's north gate the player still
+//  rode, and a run-paced open leg after it overshot the Fly house's door).
+bool warp_keeps_bike(const std::string& map);
 
 //  The console side of select_onto_bike(): presses SELECT and waits it
 //  out; reads whether the player rides.

@@ -452,7 +452,7 @@ void walk_overworld_route_with_recovery(
             from_facing = std::nullopt;
         }
         const StepOutcome outcome = walk_and_watch(console, context, step, from_facing, interrupts, riding ? speed : on_foot(speed));
-        if (riding && step.warps){
+        if (riding && step.warps && !warp_keeps_bike(step.end.map)){
             console.log("Bike: through the warp to " + step.end.map + ", off the Bicycle.");
             riding = false;
         }
@@ -460,7 +460,7 @@ void walk_overworld_route_with_recovery(
     };
     calls.hold_to_warp = [&](const RouteStep& step){
         hold_to_warp(console, context, step, step.wild ? interrupts.wild : interrupts.other, riding ? speed : on_foot(speed));
-        riding = false;
+        riding = riding && warp_keeps_bike(step.end.map);
     };
     calls.log = [&](const std::string& message){ console.log(message, COLOR_ORANGE); };
     calls.fail = [&](const std::string& message){
