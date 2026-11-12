@@ -38,20 +38,20 @@
       {
         "args": {
           "fight_wild": false,
-          "legs": [
-            {
-              "direction": "north",
-              "tiles": 1
-            },
-            {
-              "direction": "east",
-              "tiles": 1
-            }
-          ]
+          "target": {
+            "facing": "east",
+            "map": "PlayerHouse2F",
+            "tiles": [
+              [
+                8,
+                4
+              ]
+            ]
+          }
         },
         "id": "onto_the_flute_tile",
-        "kind": "legs",
-        "why": "up onto (7, 4), then east onto the top of the stairs' mat (8, 4)"
+        "kind": "route",
+        "why": "onto the top of the stairs' mat (8, 4), past the flute's tile"
       },
       {
         "args": {
@@ -212,16 +212,20 @@
       {
         "args": {
           "fight_wild": false,
-          "legs": [
-            {
-              "direction": "north",
-              "tiles": 1
-            }
-          ]
+          "target": {
+            "facing": "north",
+            "map": "TwinleafTown",
+            "tiles": [
+              [
+                9,
+                12
+              ]
+            ]
+          }
         },
         "id": "back_onto_barrys_doorstep",
-        "kind": "legs",
-        "why": "back to (9, 12); its trigger is spent"
+        "kind": "route",
+        "why": "back to his doorstep (9, 12); its trigger is spent"
       },
       {
         "args": {
@@ -380,20 +384,20 @@
       {
         "args": {
           "fight_wild": false,
-          "legs": [
-            {
-              "direction": "east",
-              "tiles": 6
-            },
-            {
-              "direction": "north",
-              "tiles": 18
-            }
-          ]
+          "target": {
+            "facing": "north",
+            "map": "Route201",
+            "tiles": [
+              [
+                15,
+                19
+              ]
+            ]
+          }
         },
         "id": "below_barrys_warning",
-        "kind": "legs",
-        "why": "along row 12, then up Twinleaf's exit to Route 201 (15, 19)"
+        "kind": "route",
+        "why": "below the trigger, up Twinleaf's exit to Route 201 (15, 19)"
       },
       {
         "args": {
@@ -420,24 +424,20 @@
       {
         "args": {
           "fight_wild": false,
-          "legs": [
-            {
-              "direction": "west",
-              "tiles": 1
-            },
-            {
-              "direction": "north",
-              "tiles": 1
-            },
-            {
-              "direction": "west",
-              "tiles": 2
-            }
-          ]
+          "target": {
+            "facing": "west",
+            "map": "Route201",
+            "tiles": [
+              [
+                12,
+                17
+              ]
+            ]
+          }
         },
         "id": "away_from_barry",
-        "kind": "legs",
-        "why": "to (12, 17): row 18 west of the path is trees (r16), the dirt goes on along row 17"
+        "kind": "route",
+        "why": "to (12, 17): row 18 west of the path is trees, the dirt goes on along row 17"
       },
       {
         "args": {

@@ -122,33 +122,19 @@
         "args": {
           "fight_wild": false,
           "target": {
+            "facing": "north",
             "map": "SandgemTown",
             "tiles": [
               [
-                20,
+                17,
                 11
               ]
             ]
           }
         },
-        "id": "to_center_sign",
-        "kind": "route",
-        "why": "below the Center's sign, its doorway in sight"
-      },
-      {
-        "action": "one_short_ok",
-        "args": {
-          "fight_wild": false,
-          "legs": [
-            {
-              "direction": "west",
-              "tiles": 3
-            }
-          ]
-        },
         "id": "below_center_door",
-        "kind": "legs",
-        "why": "taps west below the Center's door"
+        "kind": "route",
+        "why": "below the Center's door"
       },
       {
         "declared_after": {

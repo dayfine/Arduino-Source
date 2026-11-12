@@ -2,15 +2,18 @@
   "checkpoint": {
     "events": [
       {
-        "action": "to_wall",
         "args": {
           "fight_wild": false,
-          "legs": [
-            {
-              "direction": "south",
-              "tiles": 4
-            }
-          ]
+          "target": {
+            "facing": "south",
+            "map": "Route203",
+            "tiles": [
+              [
+                5,
+                20
+              ]
+            ]
+          }
         },
         "declared_after": {
           "facing": "south",
@@ -23,7 +26,7 @@
           ]
         },
         "id": "south_to_the_cliff",
-        "kind": "legs",
+        "kind": "route",
         "why": "down the trigger's column to the cliff"
       },
       {

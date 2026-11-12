@@ -273,7 +273,7 @@ Outcome leg_to_dialogue(VideoStream& stream, ProControllerContext& context, cons
 Outcome leg_to_map(VideoStream& stream, ProControllerContext& context, const StoryStep& step, const std::string& checkpoint){
     const auto& legs_list = story_arg<std::vector<Pokemon::StoryLeg>>(step.args, "legs");
     const Pokemon::StoryLeg& leg = legs_list.front();
-    const std::string map = step.pose_after ? step.pose_after->map : "";
+    const std::string map = step.pose_after ? Pokemon::grid_pose_of(*step.pose_after).map : "";
     route_turn(stream, context, leg.direction);
     const auto [x, y] = dpad_of(leg.direction);
     const WalkResult walk = walk_until_dpad(stream, context, run_from_wild_battle, {x, y},
@@ -459,7 +459,7 @@ TapLook look_after_tap(VideoStream& stream, ProControllerContext& context, const
 //  203's pond (r75). Taps during the fade are eaten. No banner fails the
 //  step right there.
 Outcome tap_to_banner(VideoStream& stream, ProControllerContext& context, const StoryStep& step, const std::string& checkpoint){
-    const std::string map = step.pose_after ? story_banner_name(step.pose_after->map) : "";
+    const std::string map = step.pose_after ? story_banner_name(Pokemon::grid_pose_of(*step.pose_after).map) : "";
     const Direction direction = story_arg<Direction>(step.args, "direction");
     for (size_t tap = 1; tap <= 30; tap++){
         pbf_press_dpad(context, dpad_toward(direction), 160ms, 0ms);
@@ -493,7 +493,7 @@ Outcome StoryExecutor::step(RunState& state, const StoryStep& step){
     //  down the lab took 7 s), then settle for any scene on arrival (Mom's,
     //  00.01; Dawn's tour, 00.04). Without the fade, settle must see it itself
     //  (r33 was outside, "no fade").
-    if (step.pose_after && step.pose_after->map != state.pose.map){
+    if (step.pose_after && Pokemon::grid_pose_of(*step.pose_after).map != state.pose.map){
         const bool faded = run_into_door(stream(), context(), direction, m_can_run);
         stream().log(std::format("[{}] {}: {} through the door: {}.", m_checkpoint, step.name, direction_name(direction), faded ? "faded" : "no fade yet"));
         settle(stream(), context(), BUTTON_B, label_of(step), !faded);
@@ -542,7 +542,7 @@ Outcome StoryExecutor::mash(RunState& state, const StoryStep& step){
         stream().log(label_of(step) + ": no line within 15 s; the step before played it.", COLOR_ORANGE);
     }
     settle(stream(), context(), step.action == "a" ? BUTTON_A : BUTTON_B, label_of(step),
-        step.pose_after && step.pose_after->map != state.pose.map);
+        step.pose_after && Pokemon::grid_pose_of(*step.pose_after).map != state.pose.map);
     return Pokemon::outcome_ok();
 }
 

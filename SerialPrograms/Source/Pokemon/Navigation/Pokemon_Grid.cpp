@@ -11,21 +11,6 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-std::string direction_name(Direction direction){
-    switch (direction){
-    case Direction::NORTH:
-        return "north";
-    case Direction::EAST:
-        return "east";
-    case Direction::SOUTH:
-        return "south";
-    case Direction::WEST:
-        return "west";
-    }
-    return "?";
-}
-
-
 TilePos TilePos::next(Direction direction) const{
     switch (direction){
     case Direction::NORTH:

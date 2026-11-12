@@ -27,6 +27,7 @@
 #include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "Data/PokemonBDSP_AutoStory_RobustRoute.h"
+#include "PokemonBDSP_AutoStory_PlanGolden.h"
 #include "Data/PokemonBDSP_AutoStory_WalkRules.h"
 #include "Utils/PokemonBDSP_AutoStory_Location.h"
 #include "Data/PokemonBDSP_AutoStory_PlanCosts.h"
@@ -78,6 +79,7 @@ struct Walked{
     std::optional<Pose> at;
     std::string error;
     std::string plan;
+    std::vector<std::string> golden = {};
 };
 
 //  The tiles a plan walks.
@@ -131,6 +133,15 @@ Walked plan_route(const Pose& from, const StoryStep& step){
     std::vector<TilePos> local;
     for (const PlannedLeg& leg : *plan){
         walked.plan += " " + to_string(leg.leg);
+    }
+    walked.golden.push_back(std::format("{} costs={} from{} to{}", step.name, step.action.empty() ? "default" : step.action,
+        describe(from.map, Pokemon::tiles_of(from)), describe(goal.map, Pokemon::tiles_of(goal))));
+    for (const PlannedLeg& leg : *plan){
+        std::string line = std::format("  {} ->", to_string(leg.leg));
+        for (const TilePos& pos : leg.after){
+            line += std::format(" {}", describe(*world, pos));
+        }
+        walked.golden.push_back(line);
     }
     const std::string detour = detour_error(*world, start, at_goal, *plan);
     if (!detour.empty()){
@@ -192,11 +203,22 @@ Walked walk_legs(const Pose& from, const StoryStep& step){
         }
         at = std::move(next);
     }
+    //  Legs may cross onto a neighbouring map of the same world (Route 201's
+    //  east end into Sandgem): the pose lands on the map the tiles are on.
+    std::string map;
     std::vector<TilePos> local;
     for (const TilePos& pos : at){
-        local.push_back(*story_to_local(*world, from.map, pos));
+        const std::optional<MapTile> tile = story_to_local(*world, pos);
+        if (!tile){
+            return {std::nullopt, step.name + ": the legs end off every map, at " + Pokemon::to_string(pos) + ".", ""};
+        }
+        if (!map.empty() && tile->map != map){
+            return {std::nullopt, step.name + ": the legs end across " + map + " and " + tile->map + ".", ""};
+        }
+        map = tile->map;
+        local.push_back(tile->pos);
     }
-    return {Pokemon::tile_pose(from.map, local, legs.back().direction), "", ""};
+    return {Pokemon::tile_pose(map, local, legs.back().direction), "", ""};
 }
 
 //  A STEP onto the next tile of the same map.
@@ -222,6 +244,8 @@ public:
     std::vector<std::string>& trace;
     std::map<std::string, Failure> failures;
     std::vector<std::string> plans;
+    //  Every ROUTE's legs, one header line per route, for the golden test.
+    std::vector<std::string> golden;
 
     explicit FakeGame(std::vector<std::string>& trace)
         : trace(trace)
@@ -279,6 +303,9 @@ private:
         }
         if (!walked.plan.empty()){
             plans.push_back(walked.plan);
+        }
+        for (const std::string& line : walked.golden){
+            golden.push_back(std::format("{} {}", m_row, line));
         }
         return walked.at ? Pokemon::outcome_ok(*walked.at) : Pokemon::outcome_ok(Pose{});
     }
@@ -370,6 +397,35 @@ UnitTestResult test_whole_table(Logger& logger){
     return true;
 }
 
+//  The legs planned for every ROUTE of the whole story, against the stored
+//  copy in PokemonBDSP_AutoStory_PlanGolden.h. A change that should not
+//  alter any plan must leave this byte-identical. To regenerate after an
+//  intended plan change: run this suite, and replace the lines of
+//  BDSP_PLAN_GOLDEN with the lines the failure logs after "GOLDEN|".
+UnitTestResult test_golden_plans(Logger& logger){
+    Simulation sim;
+    const Pokemon::SegmentReport report = sim.run({}, Language::English);
+    if (!report.completed){
+        return "expected the whole story through:" + joined(sim.lines);
+    }
+    const std::vector<std::string>& actual = sim.game.golden;
+    const size_t stored = sizeof(BDSP_PLAN_GOLDEN) / sizeof(BDSP_PLAN_GOLDEN[0]);
+    size_t first_diff = 0;
+    while (first_diff < actual.size() && first_diff < stored && actual[first_diff] == BDSP_PLAN_GOLDEN[first_diff]){
+        first_diff++;
+    }
+    if (first_diff == actual.size() && first_diff == stored){
+        return true;
+    }
+    for (const std::string& line : actual){
+        logger.log(std::format("GOLDEN|{}", line));
+    }
+    return std::format("plans differ from the golden at line {} ({} lines now, {} stored): now \"{}\", stored \"{}\".",
+        first_diff + 1, actual.size(), stored,
+        first_diff < actual.size() ? std::string_view(actual[first_diff]) : std::string_view(),
+        first_diff < stored ? BDSP_PLAN_GOLDEN[first_diff] : std::string_view());
+}
+
 UnitTestResult test_start_and_end(Logger&){
     Simulation sim;
     Pokemon::SegmentReport report = sim.run({.from = "00.04b", .to = "00.04d"});
@@ -441,10 +497,10 @@ UnitTestResult test_poses_chain(Logger&){
         if (row.start){
             const Pose start_pose = Pokemon::pose_of(*row.start);
             const std::vector<TilePos> start = Pokemon::tiles_of(start_pose);
-            if (at && (at->map != row.start->map ||
+            if (at && (at->map != Pokemon::grid_pose_of(*row.start).map ||
                 !std::ranges::all_of(Pokemon::tiles_of(*at), [&](const TilePos& pos){ return contains(start, pos); }))
             ){
-                return std::format("{} starts at{}, but {} may end at{}.", row.id, describe(row.start->map, start),
+                return std::format("{} starts at{}, but {} may end at{}.", row.id, describe(Pokemon::grid_pose_of(*row.start).map, start),
                     last, describe(at->map, Pokemon::tiles_of(*at)));
             }
             at = start_pose;
@@ -471,6 +527,58 @@ UnitTestResult test_poses_chain(Logger&){
             }
         }
         last = row.id;
+    }
+    return true;
+}
+
+//  Walks are planned on the maps: a LEGS step ("east 6, north 18") is
+//  left only where no route can do its job, each with its reason.
+UnitTestResult test_no_hand_written_legs(Logger&){
+    const std::map<std::string, std::string> exceptions = {
+        {"00.01/off_barrys_mat", "steps off a door's mat, where no route starts"},
+        {"00.03/into_sandgem", "walks until Dawn's scene starts, wherever it starts"},
+        {"00.04/to_route_201", "runs until Route 201's banner, wherever it shows"},
+        {"00.04/to_moms_call", "walks until Mom calls, wherever she calls"},
+        {"00.05/up_to_barry", "starts inside the School's door, from no known tile"},
+        {"01.03/down_the_hall", "steps off the hall's warp tile, where no route starts"},
+        {"01.03/down_to_the_boulder", "steps off the coal room's warp tile, where no route starts"},
+        {"01.03/up_the_hall", "steps off the hall's warp tile, where no route starts"},
+        {"01.03/up_to_the_mines_sign", "steps off the mine's exit, where no route starts"},
+        {"01.11/up_to_the_old_woman", "walks until the old woman stops us"},
+    };
+    std::set<std::string> seen;
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        for (const StoryStep& step : row.steps){
+            if (step.kind != StoryStepKind::LEGS){
+                continue;
+            }
+            const std::string key = std::format("{}/{}", row.id, step.name);
+            if (!exceptions.contains(key)){
+                return std::format("{}: hand-written legs; plan a route to where they end.", key);
+            }
+            seen.insert(key);
+        }
+    }
+    for (const auto& item : exceptions){
+        if (!seen.contains(item.first)){
+            return std::format("{}: listed as an exception, but no such LEGS step.", item.first);
+        }
+    }
+    return true;
+}
+
+//  Legs that run off the end of their map land on the next one of the same
+//  world: east along Route 201's top row ends in Sandgem, not off the map.
+UnitTestResult test_legs_cross_maps(Logger&){
+    const Pose from = Pokemon::tile_pose("Route201", {{42, 5}}, Direction::EAST);
+    StoryStep step{.kind = StoryStepKind::LEGS, .name = "east into Sandgem"};
+    step.args["legs"] = std::vector<StoryLeg>{{Direction::EAST, 22}};
+    const Walked walked = walk_legs(from, step);
+    if (!walked.error.empty()){
+        return walked.error;
+    }
+    if (!walked.at || walked.at->map != "SandgemTown"){
+        return "The legs end on " + (walked.at ? walked.at->map : std::string("no pose")) + ", not SandgemTown.";
     }
     return true;
 }
@@ -549,7 +657,19 @@ const AutoStoryStorySimulationCase AUTO_STORY_STORY_SIMULATION_CASES[] = {
         .expectation = {},
     },
     {
+        .input = {"legs that run off their map land on the next", test_legs_cross_maps},
+        .expectation = {},
+    },
+    {
         .input = {"no text reader for the game's language", test_no_text_reader},
+        .expectation = {},
+    },
+    {
+        .input = {"no hand-written legs but the listed ones", test_no_hand_written_legs},
+        .expectation = {},
+    },
+    {
+        .input = {"plans match the golden", test_golden_plans},
         .expectation = {},
     },
 };
