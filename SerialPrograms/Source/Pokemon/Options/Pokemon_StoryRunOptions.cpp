@@ -4,39 +4,39 @@
  *
  */
 
+#include <format>
 #include "Pokemon_StoryRunOptions.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
 
 
-const EnumDropdownDatabase<StoryChecks>& StoryChecks_Database(){
-    static const EnumDropdownDatabase<StoryChecks> database({
-        {StoryChecks::THOROUGH, "thorough", "Thorough: confirm purchases, the Bag, status and position on screen"},
-        {StoryChecks::FAST,     "fast",     "Fast: trust counts and timings"},
+const EnumDropdownDatabase<StoryCheckLevel>& StoryCheckLevel_Database(){
+    static const EnumDropdownDatabase<StoryCheckLevel> database({
+        {StoryCheckLevel::TESTING,  "testing",  "Testing: run each checkpoint 3 times to be sure it really passes"},
+        {StoryCheckLevel::THOROUGH, "thorough", "Thorough: check everything for the user (Bag items, Pok\u00e9mon stats, preconditions)"},
+        {StoryCheckLevel::DEFAULT,  "default",  "Default: check the most important things, assume the rest is fine"},
+        {StoryCheckLevel::FAST,     "fast",     "Fast: minimal checks"},
+        {StoryCheckLevel::SPEEDRUN, "speedrun", "Speedrun: almost no checks, as fast as possible"},
     });
     return database;
 }
 
-const EnumDropdownDatabase<Language>& StoryLanguage_Database(){
-    static const EnumDropdownDatabase<Language> database({
-        {Language::English,            "en",      "English"},
-        {Language::Japanese,           "ja",      "Japanese"},
-        {Language::Spanish,            "es",      "Spanish"},
-        {Language::French,             "fr",      "French"},
-        {Language::German,             "de",      "German"},
-        {Language::Italian,            "it",      "Italian"},
-        {Language::Korean,             "ko",      "Korean"},
-        {Language::ChineseSimplified,  "zh-Hans", "Chinese (Simplified)"},
-        {Language::ChineseTraditional, "zh-Hant", "Chinese (Traditional)"},
+
+const EnumDropdownDatabase<StorySaveMode>& StorySaveMode_Database(){
+    static const EnumDropdownDatabase<StorySaveMode> database({
+        {StorySaveMode::NONE,               "none",               "None: never save (testing a checkpoint; the start save stays)"},
+        {StorySaveMode::AFTER_VERIFICATION, "after_verification", "After verification: save once, at the end of a run that passed"},
+        {StorySaveMode::PER_CHECKPOINT,     "per_checkpoint",     "Each checkpoint: save after each checkpoint that passed (a playthrough)"},
     });
     return database;
 }
 
 
 std::string story_checkpoint_label(const StoryCheckpoint& checkpoint){
-    return checkpoint.title.empty() ? checkpoint.id : checkpoint.id + " " + checkpoint.title;
+    return checkpoint.title.empty() ? checkpoint.id : std::format("{} {}", checkpoint.id, checkpoint.title);
 }
+
 
 
 StoryVerifyOptions::StoryVerifyOptions()
@@ -75,79 +75,80 @@ std::string StoryVerifyOptions::check_validity() const{
 }
 
 
-StoryRunOptions::StoryRunOptions(const StringSelectDatabase& checkpoints)
-    : GroupOption("Story Run", LockMode::LOCK_WHILE_RUNNING)
-    , START_CHECKPOINT(
-        "<b>Start checkpoint:</b><br>The program starts from this checkpoint's save.",
-        checkpoints,
-        LockMode::LOCK_WHILE_RUNNING,
-        0
-    )
-    , END_CHECKPOINT(
-        "<b>End checkpoint:</b><br>The program stops after this checkpoint.",
-        checkpoints,
-        LockMode::LOCK_WHILE_RUNNING,
-        checkpoints.size() == 0 ? 0 : checkpoints.size() - 1
-    )
+StoryRunOptions::StoryRunOptions(const StringSelectDatabase& checkpoints, const EnumDropdownDatabase<Language>& languages)
+    : StoryRangeOptions("Story Run", checkpoints)
     , ATTEMPTS_PER_CHECKPOINT(
-        "<b>Attempts per checkpoint:</b><br>A failed checkpoint reloads its save and runs again, up to this many times in all.",
+        "<b>Attempts per checkpoint:</b><br>A failed checkpoint reloads its save and runs again, up to this many times in all. "
+        "1 stops at the first failure, leaving the game where it failed.",
         LockMode::LOCK_WHILE_RUNNING,
         3, 1, 20
     )
-    , STOP_AT_FIRST_FAILURE(
-        "<b>Stop at the first failure:</b><br>Stop without reloading, leaving the game where it failed for a look.",
-        LockMode::LOCK_WHILE_RUNNING,
-        false
-    )
     , CHECKS(
-        "<b>Checks:</b><br>Thorough reads the screen to confirm what each step did; Fast trusts counts and timings, for a run in a rush.",
-        StoryChecks_Database(),
+        "<b>Checks:</b><br>How much each step reads the screen to confirm what it did, from Testing (the most) to Speedrun (almost none).",
+        StoryCheckLevel_Database(),
         LockMode::LOCK_WHILE_RUNNING,
-        StoryChecks::THOROUGH
+        StoryCheckLevel::DEFAULT
     )
     , LANGUAGE(
         "<b>Game language:</b><br>For the few reads that need text (item names in a shop or the Bag). "
         "Story steps never match dialogue text; with no reader for this language they check positions, digits and the screen instead.",
-        StoryLanguage_Database(),
+        languages,
         LockMode::LOCK_WHILE_RUNNING,
         Language::English
     )
+    , SAVE_MODE(
+        "<b>Save:</b><br>When the run saves the game. A failed run never saves. "
+        "None keeps the save the run started from; After verification saves once at the end, after the checkpoint "
+        "passed 2-3 times; Each checkpoint is for a playthrough of verified checkpoints.",
+        StorySaveMode_Database(),
+        LockMode::LOCK_WHILE_RUNNING,
+        StorySaveMode::NONE
+    )
+    , POSTCONDITIONS_ONLY(
+        "<b>Check postconditions only:</b><br>Run nothing: read where the game stands and check the end checkpoint's "
+        "position, items and flags. What the game can't read yet is reported as not checked.",
+        LockMode::LOCK_WHILE_RUNNING,
+        false
+    )
 {
-    PA_ADD_OPTION(START_CHECKPOINT);
-    PA_ADD_OPTION(END_CHECKPOINT);
     PA_ADD_OPTION(ATTEMPTS_PER_CHECKPOINT);
-    PA_ADD_OPTION(STOP_AT_FIRST_FAILURE);
     PA_ADD_OPTION(CHECKS);
     PA_ADD_OPTION(LANGUAGE);
     PA_ADD_OPTION(VERIFY);
-}
-
-size_t StoryRunOptions::start_index() const{
-    return START_CHECKPOINT.index();
-}
-
-size_t StoryRunOptions::end_index() const{
-    return END_CHECKPOINT.index();
+    PA_ADD_OPTION(SAVE_MODE);
+    PA_ADD_OPTION(POSTCONDITIONS_ONLY);
 }
 
 std::string StoryRunOptions::check_validity() const{
-    if (start_index() > end_index()){
-        return "The start checkpoint comes after the end checkpoint.";
+    std::string error = StoryRangeOptions::check_validity();
+    if (!error.empty()){
+        return error;
     }
     if (VERIFY.enabled() && start_index() != end_index()){
         return "Verify mode runs one checkpoint: set the end checkpoint to the start checkpoint.";
     }
-    return GroupOption::check_validity();
+    if (VERIFY.enabled() && POSTCONDITIONS_ONLY){
+        return "Check postconditions only runs nothing: turn off Verify Mode.";
+    }
+    return error;
 }
 
 SegmentPolicy StoryRunOptions::policy() const{
     SegmentPolicy policy;
     policy.attempts_per_checkpoint = ATTEMPTS_PER_CHECKPOINT;
-    policy.stop_at_first_failure = STOP_AT_FIRST_FAILURE;
+    policy.save_mode = SAVE_MODE;
     return policy;
 }
 
-StoryChecks StoryRunOptions::checks() const{
+std::optional<VerifyPolicy> StoryRunOptions::verify_policy() const{
+    std::optional<VerifyPolicy> policy = VERIFY.policy();
+    if (policy){
+        policy->save_mode = SAVE_MODE;
+    }
+    return policy;
+}
+
+StoryCheckLevel StoryRunOptions::check_level() const{
     return CHECKS;
 }
 

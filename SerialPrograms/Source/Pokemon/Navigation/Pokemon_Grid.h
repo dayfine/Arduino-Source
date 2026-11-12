@@ -2,7 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Tiles and directions on an overworld grid, shared by the games that
+ *  Tiles on an overworld grid, shared by the games that
  *  move the player a tile at a time.
  *
  */
@@ -14,24 +14,10 @@
 #include <functional>
 #include <string>
 #include <vector>
+#include "Pokemon_Direction.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
-
-
-//  Row 0 is the top of a map, so SOUTH increases y.
-enum class Direction{
-    NORTH,
-    EAST,
-    SOUTH,
-    WEST,
-};
-// Array containing all four cardinal directions.
-constexpr Direction ALL_DIRECTIONS[] = {
-    Direction::NORTH, Direction::EAST, Direction::SOUTH, Direction::WEST,
-};
-// Returns the lowercase name string of a cardinal direction.
-const char* direction_name(Direction direction);
 
 
 // Grid coordinate with integer x and y components.
@@ -64,10 +50,10 @@ struct Grid{
 //  The cell at `pos` of `grid`, to change it; `pos` must be inside the grid.
 //  A free function, so that Grid stays a plain value whose methods only read.
 template <typename Cell>
-Cell& cell_at(Grid<Cell>& grid, const TilePos& pos);
+Cell& cell_at(const TilePos& pos, Grid<Cell>& grid);
 
 template <typename Cell>
-Cell& cell_at(Grid<Cell>& grid, const TilePos& pos){
+Cell& cell_at(const TilePos& pos, Grid<Cell>& grid){
     return grid.cells[(size_t)pos.y * grid.width + pos.x];
 }
 

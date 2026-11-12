@@ -2,7 +2,9 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The unit tests of the shared story engine (Pokemon/AutoStory).
+ *  The unit tests of the pieces every AutoStory program shares, story
+ *  engine or not. add_tests_AutoStory() is the one entry point the unit
+ *  test runner calls; a new shared AutoStory suite registers there.
  *
  */
 
@@ -10,37 +12,60 @@
 #define PokemonAutomation_Pokemon_AutoStory_Tests_H
 
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "Data/Pokemon_AuthoredCheckpointJson_Tests.h"
+#include "Data/Pokemon_StoryStepJson_Tests.h"
+#include "Engine/Pokemon_StoryEnginePolicy_Tests.h"
+#include "Engine/Pokemon_StoryEngineRuns_Tests.h"
+#include "Engine/Pokemon_StoryEngine_Tests.h"
+#include "Pokemon/Options/Pokemon_StoryRangeOptions_Tests.h"
+#include "Pokemon_AutoStorySelect_Tests.h"
+#include "Pokemon_StoryRun_Tests.h"
+#include "Pokemon_AutoStoryStats_Tests.h"
+#include "Pokemon_FrameReplay_Tests.h"
+#include "Pokemon_Interrupts_Tests.h"
+#include "Pokemon_SceneJudges_Tests.h"
+#include "Pokemon_ScreenEvents_Tests.h"
+#include "Pokemon_StoryActions_Tests.h"
+#include "Pokemon_StoryEvents_Tests.h"
+#include "Pokemon_StoryInterrupts_Tests.h"
+#include "Pokemon_StoryLog_Tests.h"
+#include "Pokemon_StorySavePolicy_Tests.h"
+#include "Pokemon_StorySegments_Tests.h"
+#include "Pokemon_StoryStepExecutor_Tests.h"
+#include "Pokemon_Transitions_Tests.h"
+#include "Types/Pokemon_StoryActionArg_Tests.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
 
 
-// Registers unit tests for the shared screen events and the judgements over them.
-void add_tests_ScreenEvents(UnitTestDatabase& database);
-//  The timed screen-event log, the warp judge and the interrupt classifier.
-void add_tests_Interrupts(UnitTestDatabase& database);
-//  The transition tracker and the games' fade profiles.
-void add_tests_Transitions(UnitTestDatabase& database);
-//  Recorded frames replayed through the detectors on a virtual clock.
-void add_tests_FrameReplay(UnitTestDatabase& database);
-//  Story action tables, the variant parser and the table executor.
-void add_tests_StoryActions(UnitTestDatabase& database);
-//  The table executor's looks for interrupts between steps.
-void add_tests_StoryInterrupts(UnitTestDatabase& database);
-// Registers unit tests for story event sequencing and execution.
-void add_tests_StoryEvents(UnitTestDatabase& database);
-// Registers unit tests for story segment running, verification, and branching.
-void add_tests_StorySegments(UnitTestDatabase& database);
-// Registers unit tests for high-level story step dispatching and table conversion.
-void add_tests_StorySteps(UnitTestDatabase& database);
+// Registers every shared AutoStory suite, for the unit test runner.
+inline void add_tests_AutoStory(UnitTestDatabase& database){
+    add_tests_AutoStorySelect(database);
+    add_tests_StoryRun(database);
+    add_tests_AutoStoryStats(database);
+    add_tests_StoryLog(database);
+    add_tests_StoryRangeOptions(database);
+    add_tests_StoryEvents(database);
+    add_tests_StorySegments(database);
+    add_tests_StoryStepExecutor(database);
+    add_tests_StoryStepJson(database);
+    add_tests_StoryActionArg(database);
+    add_tests_AuthoredCheckpointJson(database);
+    add_tests_StorySavePolicy(database);
+    add_tests_StoryEngine(database);
+    add_tests_StoryEnginePolicy(database);
+    add_tests_StoryEngineRuns(database);
+    add_tests_ScreenEvents(database);
+    add_tests_SceneJudges(database);
+    add_tests_Interrupts(database);
+    add_tests_Transitions(database);
+    add_tests_FrameReplay(database);
+    add_tests_StoryActions(database);
+    add_tests_StoryInterrupts(database);
+}
 
 
-
-//  Lossless shared story-data wire contract.
-void add_tests_StoryStepJson(UnitTestDatabase& database);
-
-//  Shared authored envelope, game identity and embedded-resource loading.
-void add_tests_AuthoredCheckpointJson(UnitTestDatabase& database);
 
 } // namespace Pokemon
 } // namespace PokemonAutomation

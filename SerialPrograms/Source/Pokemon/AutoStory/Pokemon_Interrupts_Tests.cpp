@@ -15,8 +15,8 @@
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
-#include "Pokemon_AutoStory_Tests.h"
 #include "Pokemon_Interrupts.h"
+#include "Pokemon_Interrupts_Tests.h"
 #include "Pokemon_ScreenEvents.h"
 
 namespace PokemonAutomation{
@@ -124,7 +124,7 @@ UnitTestResult test_empty_log(){
 
 UnitTestResult test_judge_warp(){
     struct Row{
-        const char* name;
+        std::string name;
         std::vector<Frame> frames;
         SceneChange change;
         WarpJudgement expected;
@@ -202,7 +202,7 @@ struct InterruptsCase{
 class Test_Interrupts : public UnitTest{
 public:
     explicit Test_Interrupts(InterruptsCase test_case)
-        : UnitTest("Pokemon::Interrupts - " + test_case.input.name)
+        : UnitTest(std::format("Pokemon::Interrupts - {}", test_case.input.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -236,7 +236,7 @@ struct ClassifyCase{
 class Test_InterruptClassify : public UnitTest{
 public:
     explicit Test_InterruptClassify(ClassifyCase test_case)
-        : UnitTest("Pokemon::Interrupts - classify: " + test_case.input.name)
+        : UnitTest(std::format("Pokemon::Interrupts - classify: {}", test_case.input.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -273,7 +273,7 @@ struct StepTimeCase{
 class Test_InterruptStepTime : public UnitTest{
 public:
     explicit Test_InterruptStepTime(StepTimeCase test_case)
-        : UnitTest("Pokemon::Interrupts - step time: " + test_case.input.name)
+        : UnitTest(std::format("Pokemon::Interrupts - step time: {}", test_case.input.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -283,7 +283,7 @@ public:
         const std::string got = step
             ? std::format("{:+} ms", std::chrono::duration_cast<Milliseconds>(*step - T0).count())
             : "none";
-        return expect_equal("step time of " + describe(verdict, T0), got, m_case.expectation.step);
+        return expect_equal(std::format("step time of {}", describe(verdict, T0)), got, m_case.expectation.step);
     }
 
 private:

@@ -14,7 +14,7 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-const char* certainty_name(PoseCertainty certainty){
+std::string certainty_name(PoseCertainty certainty){
     switch (certainty){
     case PoseCertainty::TILE:
         return "tile";
@@ -50,29 +50,28 @@ std::string to_string(const Pose& pose){
     if (pose.where){
         const std::string where = pose.where->describe();
         if (!where.empty()){
-            text += " " + where;
+            text += std::format(" {}", where);
         }
     }
-    return text + " (" + certainty_name(pose.certainty) + ")";
+    return std::format("{} ({})", text, certainty_name(pose.certainty));
 }
 
 
 bool Outcome::succeeded() const{
     return failure.empty();
 }
-Outcome outcome_ok(){
-    return Outcome{};
-}
-Outcome outcome_ok(Pose pose){
+Outcome outcome_ok(std::optional<Pose> pose){
     Outcome outcome;
     outcome.pose = std::move(pose);
     return outcome;
 }
+
 Outcome outcome_unchanged(){
     Outcome outcome;
     outcome.changed_nothing = true;
     return outcome;
 }
+
 Outcome outcome_failed(std::string failure, std::string detail){
     Outcome outcome;
     outcome.failure = std::move(failure);
@@ -80,7 +79,11 @@ Outcome outcome_failed(std::string failure, std::string detail){
     return outcome;
 }
 std::string to_string(const Outcome& outcome){
-    return outcome.detail.empty() ? outcome.failure : outcome.failure + ": " + outcome.detail;
+    return outcome.detail.empty() ? outcome.failure : std::format("{}: {}", outcome.failure, outcome.detail);
+}
+
+Outcome outcome_game_not_running(){
+    return outcome_failed(std::string(GAME_NOT_RUNNING), "the game is not running: the Switch HOME menu is showing");
 }
 
 Condition condition(std::string name, Check check){
@@ -88,13 +91,13 @@ Condition condition(std::string name, Check check){
 }
 
 Condition pose_known(std::string map, PoseCertainty need){
-    std::string name = std::string("pose ") + certainty_name(need) + (map.empty() ? "" : " on " + map);
+    std::string name = std::format("pose {}{}", certainty_name(need), map.empty() ? "" : std::format(" on {}", map));
     return condition(std::move(name), [map = std::move(map), need](RunState& state){
         return (map.empty() || state.pose.map == map) && certainty_covers(state.pose.certainty, need);
     });
 }
 
-const char* recovery_name(RecoveryKind kind){
+std::string recovery_name(RecoveryKind kind){
     switch (kind){
     case RecoveryKind::WAIT:
         return "wait";
@@ -104,11 +107,6 @@ const char* recovery_name(RecoveryKind kind){
         return "stop";
     }
     return "?";
-}
-
-
-std::string event_log_line(const std::string& checkpoint, size_t number, const std::string& event, const std::string& status){
-    return std::format("[Event] {}/{} {}: {}", checkpoint, number, event, status);
 }
 
 
@@ -163,7 +161,7 @@ Outcome attempt_event(Event& event, RunState& state){
 
 } // namespace
 
-void apply_interrupt_pose(Pose& pose, InterruptPose effect){
+void apply_interrupt_pose(InterruptPose effect, Pose& pose){
     switch (effect){
     case InterruptPose::UNCHANGED:
         return;
@@ -193,7 +191,7 @@ struct EventRun{
     size_t interrupts = 0;
 };
 
-void log_status(EventRun& run, const std::string& status){
+void log_status(const std::string& status, EventRun& run){
     run.log(event_log_line(run.checkpoint.id, run.number, run.event.name, status));
 }
 
@@ -224,7 +222,7 @@ InterruptResult clear_interrupts(EventRun& run){
             continue;
         }
         run.interrupts++;
-        log_status(run, "interrupt: " + interrupt.name);
+        log_status(std::format("interrupt: {}", interrupt.name), run);
         if (run.interrupts > run.checkpoint.max_interrupts_per_event){
             result.outcome = outcome_failed("too_many_interrupts", interrupt.name);
             return result;
@@ -232,11 +230,11 @@ InterruptResult clear_interrupts(EventRun& run){
         if (interrupt.handle){
             Outcome handled = run_act(interrupt.handle, run.state);
             if (!handled.succeeded()){
-                result.outcome = outcome_failed("interrupt_failed", interrupt.name + ": " + to_string(handled));
+                result.outcome = outcome_failed("interrupt_failed", std::format("{}: {}", interrupt.name, to_string(handled)));
                 return result;
             }
         }
-        apply_interrupt_pose(run.state.pose, interrupt.pose);
+        apply_interrupt_pose(interrupt.pose, run.state.pose);
         result.resume = result.fired ? stronger(result.resume, interrupt.resume) : interrupt.resume;
         result.fired = true;
     }
@@ -245,7 +243,7 @@ InterruptResult clear_interrupts(EventRun& run){
 
 
 //  The next recovery for `failure`, using up one of its attempts.
-Recovery* next_recovery(EventRun& run, const std::string& failure){
+Recovery* next_recovery(const std::string& failure, EventRun& run){
     std::vector<Recovery>& recoveries = run.event.recoveries;
     for (size_t c = 0; c < recoveries.size(); c++){
         Recovery& recovery = recoveries[c];
@@ -264,14 +262,17 @@ Recovery* next_recovery(EventRun& run, const std::string& failure){
 //  Answers `failure` with the event's recoveries. Returns nothing to try the
 //  event again, or the failure that stops it. A recovery that fails itself
 //  is answered in turn, so escalation goes on from there.
-std::optional<Outcome> recover(EventRun& run, Outcome failure){
+std::optional<Outcome> recover(Outcome failure, EventRun& run){
     while (true){
-        Recovery* recovery = next_recovery(run, failure.failure);
+        if (failure.failure == GAME_NOT_RUNNING){
+            return failure;
+        }
+        Recovery* recovery = next_recovery(failure.failure, run);
         if (recovery == nullptr){
             return failure;
         }
-        std::string line = std::string("recover: ") + recovery_name(recovery->kind) + " (" + failure.failure + ")";
-        log_status(run, recovery->why.empty() ? line : line + ": " + recovery->why);
+        std::string line = std::format("recover: {} ({})", recovery_name(recovery->kind), failure.failure);
+        log_status(recovery->why.empty() ? line : std::format("{}: {}", line, recovery->why), run);
         if (recovery->kind == RecoveryKind::STOP){
             return failure;
         }
@@ -319,29 +320,29 @@ Next after_attempt(EventRun& run, Outcome& outcome){
 
 //  Runs one event to success or to the failure that stops it.
 Outcome run_event(EventRun& run){
-    log_status(run, "start");
+    log_status("start", run);
     for (bool first = true; ; first = false){
         if (!first && already_done(run.event, run.state)){
-            log_status(run, "done: already showing");
+            log_status("done: already showing", run);
             return outcome_ok();
         }
         Outcome outcome = attempt_event(run.event, run.state);
         Next next = after_attempt(run, outcome);
         if (next == Next::DONE){
-            log_status(run, "done");
+            log_status("done", run);
             return outcome_ok();
         }
         if (next == Next::RETRY){
             continue;
         }
         if (next == Next::RECOVER){
-            std::optional<Outcome> stop = recover(run, std::move(outcome));
+            std::optional<Outcome> stop = recover(std::move(outcome), run);
             if (!stop){
                 continue;
             }
             outcome = std::move(*stop);
         }
-        log_status(run, "failed: " + to_string(outcome));
+        log_status(std::format("failed: {}", to_string(outcome)), run);
         return outcome;
     }
 }
@@ -352,7 +353,7 @@ std::string current_exception_text(){
     try{
         throw;
     }catch (Exception& e){
-        return std::string(e.name()) + ": " + e.message();
+        return std::format("{}: {}", e.name(), e.message());
     }catch (std::exception& e){
         return e.what();
     }catch (...){
@@ -368,13 +369,13 @@ Outcome run_event_logging_throws(EventRun& run){
         return run_event(run);
     }catch (...){
         const std::string what = current_exception_text();
-        log_status(run, "failed: " + what);
+        log_status(std::format("failed: {}", what), run);
         run.log(std::format("[Checkpoint] {}: failed at {} {}: {}", run.checkpoint.id, run.number, run.event.name, what));
         throw;
     }
 }
 
-CheckpointReport stop_checkpoint(CheckpointReport& report, EventLogger& log, const std::string& id, Outcome failure){
+CheckpointReport stop_checkpoint(EventLogger& log, const std::string& id, Outcome failure, CheckpointReport& report){
     std::string where = report.failed_event == 0
         ? ""
         : std::format(" at {} {}", report.failed_event, report.failed_name);
@@ -401,16 +402,16 @@ Outcome finish_checkpoint(RunState& state, Checkpoint& checkpoint){
 CheckpointReport run_checkpoint(RunState& state, Checkpoint& checkpoint, EventLogger& log){
     CheckpointReport report;
     const std::string& id = checkpoint.id;
-    log(std::format("[Checkpoint] {}: start, {} events", id, checkpoint.events.size()));
+    log(checkpoint_start_line(id, checkpoint.events.size()));
     std::optional<std::string> failing = first_failing(checkpoint.start, state);
     if (failing){
-        return stop_checkpoint(report, log, id, outcome_failed("start_failed", *failing));
+        return stop_checkpoint(log, id, outcome_failed("start_failed", *failing), report);
     }
     for (size_t c = 0; c < checkpoint.events.size(); c++){
         Event& event = checkpoint.events[c];
         EventRun run{checkpoint, c + 1, event, state, log, std::vector<size_t>(event.recoveries.size(), 0), 0};
         if (already_done(event, state)){
-            log_status(run, "skipped");
+            log_status("skipped", run);
             report.events_skipped++;
             continue;
         }
@@ -419,12 +420,12 @@ CheckpointReport run_checkpoint(RunState& state, Checkpoint& checkpoint, EventLo
         if (!outcome.succeeded()){
             report.failed_event = c + 1;
             report.failed_name = event.name;
-            return stop_checkpoint(report, log, id, std::move(outcome));
+            return stop_checkpoint(log, id, std::move(outcome), report);
         }
     }
     Outcome finished = finish_checkpoint(state, checkpoint);
     if (!finished.succeeded()){
-        return stop_checkpoint(report, log, id, std::move(finished));
+        return stop_checkpoint(log, id, std::move(finished), report);
     }
     report.completed = true;
     log(std::format("[Checkpoint] {}: done, {} run, {} skipped", id, report.events_run, report.events_skipped));
@@ -434,40 +435,42 @@ CheckpointReport run_checkpoint(RunState& state, Checkpoint& checkpoint, EventLo
 
 namespace{
 
-void lint_conditions(std::vector<std::string>& problems, const std::string& where, const std::vector<Condition>& conditions){
+void lint_conditions(const std::string& where, const std::vector<Condition>& conditions, std::vector<std::string>& problems){
     for (const Condition& item : conditions){
         if (item.name.empty() || !item.check){
-            problems.emplace_back(where + ": a condition without a name or a check");
+            problems.emplace_back(std::format("{}: a condition without a name or a check", where));
         }
     }
 }
 
-void lint_recoveries(std::vector<std::string>& problems, const Event& event){
+void lint_recoveries(const Event& event, std::vector<std::string>& problems){
     RecoveryKind last = RecoveryKind::WAIT;
     for (const Recovery& recovery : event.recoveries){
         if ((int)recovery.kind < (int)last){
-            problems.emplace_back(event.name + ": recovery " + recovery_name(recovery.kind) + " after " + recovery_name(last));
+            problems.emplace_back(std::format(
+                "{}: recovery {} after {}", event.name, recovery_name(recovery.kind), recovery_name(last)
+            ));
         }
         if (recovery.kind != RecoveryKind::STOP && recovery.attempts == 0){
-            problems.emplace_back(event.name + ": recovery " + recovery_name(recovery.kind) + " with no attempts");
+            problems.emplace_back(std::format("{}: recovery {} with no attempts", event.name, recovery_name(recovery.kind)));
         }
         last = recovery.kind;
     }
 }
 
-void lint_event(std::vector<std::string>& problems, std::set<std::string>& names, const Event& event){
+void lint_event(const Event& event, std::set<std::string>& names, std::vector<std::string>& problems){
     if (event.name.empty()){
         problems.emplace_back("an event without a name");
     }else if (!names.insert(event.name).second){
-        problems.emplace_back(event.name + ": two events with this name");
+        problems.emplace_back(std::format("{}: two events with this name", event.name));
     }
     if (!event.act){
-        problems.emplace_back(event.name + ": no action");
+        problems.emplace_back(std::format("{}: no action", event.name));
     }
-    lint_conditions(problems, event.name + " skip_if", event.skip_if);
-    lint_conditions(problems, event.name + " require", event.require);
-    lint_conditions(problems, event.name + " expect", event.expect);
-    lint_recoveries(problems, event);
+    lint_conditions(std::format("{} skip_if", event.name), event.skip_if, problems);
+    lint_conditions(std::format("{} require", event.name), event.require, problems);
+    lint_conditions(std::format("{} expect", event.name), event.expect, problems);
+    lint_recoveries(event, problems);
 }
 
 } // namespace
@@ -479,19 +482,19 @@ std::vector<std::string> lint_checkpoint(const Checkpoint& checkpoint){
         problems.emplace_back("a checkpoint without an id");
     }
     if (checkpoint.events.empty()){
-        problems.emplace_back(checkpoint.id + ": no events");
+        problems.emplace_back(std::format("{}: no events", checkpoint.id));
     }
     std::set<std::string> names;
     for (const Event& event : checkpoint.events){
-        lint_event(problems, names, event);
+        lint_event(event, names, problems);
     }
     for (const Interrupt& interrupt : checkpoint.interrupts){
         if (interrupt.name.empty() || !interrupt.detect){
             problems.emplace_back("an interrupt without a name or a detector");
         }
     }
-    lint_conditions(problems, checkpoint.id + " start", checkpoint.start);
-    lint_conditions(problems, checkpoint.id + " end", checkpoint.end);
+    lint_conditions(std::format("{} start", checkpoint.id), checkpoint.start, problems);
+    lint_conditions(std::format("{} end", checkpoint.id), checkpoint.end, problems);
     return problems;
 }
 
@@ -506,19 +509,19 @@ std::string names_of(const std::vector<Condition>& conditions){
     return text;
 }
 
-void describe_line(std::string& text, const std::string& indent, const std::string& label, const std::string& value){
+void describe_line(const std::string& indent, const std::string& label, const std::string& value, std::string& text){
     if (!value.empty()){
         text += std::format("{}{}: {}\n", indent, label, value);
     }
 }
 
-void describe_event(std::string& text, size_t number, const Event& event){
-    text += std::format("  event {} {}{}\n", number, event.name, event.why.empty() ? "" : ": " + event.why);
-    describe_line(text, "    ", "skip_if", names_of(event.skip_if));
-    describe_line(text, "    ", "require", names_of(event.require));
-    describe_line(text, "    ", "expect", names_of(event.expect));
+void describe_event(size_t number, const Event& event, std::string& text){
+    text += std::format("  event {} {}{}\n", number, event.name, event.why.empty() ? "" : std::format(": {}", event.why));
+    describe_line("    ", "skip_if", names_of(event.skip_if), text);
+    describe_line("    ", "require", names_of(event.require), text);
+    describe_line("    ", "expect", names_of(event.expect), text);
     if (event.pose_learned){
-        describe_line(text, "    ", "pose_learned", to_string(*event.pose_learned));
+        describe_line("    ", "pose_learned", to_string(*event.pose_learned), text);
     }
     for (const Recovery& recovery : event.recoveries){
         text += std::format(
@@ -526,7 +529,7 @@ void describe_event(std::string& text, size_t number, const Event& event){
             recovery_name(recovery.kind),
             recovery.on.empty() ? "any failure" : recovery.on,
             recovery.kind == RecoveryKind::STOP ? "" : std::format(" x{}", recovery.attempts),
-            recovery.why.empty() ? "" : ": " + recovery.why
+            recovery.why.empty() ? "" : std::format(": {}", recovery.why)
         );
     }
 }
@@ -536,16 +539,16 @@ void describe_event(std::string& text, size_t number, const Event& event){
 
 std::string describe(const Checkpoint& checkpoint){
     std::string text = std::format("checkpoint {}: {} events\n", checkpoint.id, checkpoint.events.size());
-    describe_line(text, "  ", "start", names_of(checkpoint.start));
+    describe_line("  ", "start", names_of(checkpoint.start), text);
     std::string interrupts;
     for (const Interrupt& interrupt : checkpoint.interrupts){
         interrupts += (interrupts.empty() ? "" : ", ") + interrupt.name;
     }
-    describe_line(text, "  ", "interrupts", interrupts);
+    describe_line("  ", "interrupts", interrupts, text);
     for (size_t c = 0; c < checkpoint.events.size(); c++){
-        describe_event(text, c + 1, checkpoint.events[c]);
+        describe_event(c + 1, checkpoint.events[c], text);
     }
-    describe_line(text, "  ", "end", names_of(checkpoint.end));
+    describe_line("  ", "end", names_of(checkpoint.end), text);
     if (checkpoint.save){
         text += "  saves\n";
     }

@@ -2,8 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The shared event vocabulary, the watcher form of an observer, and the
- *  judgements over events (warp seen, talk-over).
+ *  The shared event vocabulary and the watcher form of an observer.
  *
  */
 
@@ -14,9 +13,8 @@
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
-#include "Pokemon_AutoStory_Tests.h"
-#include "Pokemon_SceneJudges.h"
 #include "Pokemon_ScreenEvents.h"
+#include "Pokemon_ScreenEvents_Tests.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -66,7 +64,7 @@ ImageRGB32 screen_of(uint32_t a, uint32_t b){
 
 UnitTestResult test_fade_of_screen(){
     struct Row{
-        const char* name;
+        std::string name;
         uint32_t a;
         uint32_t b;
         WarpFade fade;
@@ -86,77 +84,6 @@ UnitTestResult test_fade_of_screen(){
     }
     return true;
 }
-
-UnitTestResult test_warp_seen(){
-    WarpSeen seen = note_warp({}, {ScreenEvent::DIALOG_BOX}, "Route 203");
-    if (seen.any()){
-        return "a dialog box with no banner event counted as a warp";
-    }
-    seen = note_warp(seen, {ScreenEvent::FADE_BLACK}, "");
-    seen = note_warp(seen, {ScreenEvent::FADE_WHITE, ScreenEvent::LOCATION_BANNER}, "Route 203");
-    seen = note_warp(seen, {ScreenEvent::LOCATION_BANNER}, "Oreburgh Gate");
-    return expect_equal("describe(WarpSeen)", describe(seen), "black fade, banner \"Route 203\"");
-}
-
-
-//  A scripted scene: a look per beat, each `every` apart. Returns the beat
-//  TalkOver first says `want` at, or -1.
-int first_beat(TalkOver& judge, const std::vector<ScreenEvents>& beats, SceneMove want, Milliseconds every = 1000ms){
-    WallClock now = WallClock();
-    for (size_t c = 0; c < beats.size(); c++){
-        if (judge.look(beats[c], now) == want){
-            return (int)c;
-        }
-        now += every;
-    }
-    return -1;
-}
-
-const ScreenEvents QUIET{ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::SCREEN_STILL};
-const ScreenEvents CALM{ScreenEvent::PLAYER_CAN_MOVE};
-const ScreenEvents BOX{ScreenEvent::DIALOG_BOX, ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::SCREEN_STILL};
-
-std::vector<ScreenEvents> repeat(const ScreenEvents& look, size_t count){
-    return std::vector<ScreenEvents>(count, look);
-}
-std::vector<ScreenEvents> concat(std::vector<ScreenEvents> a, const std::vector<ScreenEvents>& b){
-    a.insert(a.end(), b.begin(), b.end());
-    return a;
-}
-
-UnitTestResult test_talk_over(){
-    struct Row{
-        const char* name;
-        TalkOverRule rule;
-        std::vector<ScreenEvents> beats;
-        SceneMove want;
-        int beat;
-    };
-    const std::vector<Row> rows = {
-        {"5 s of quiet ends it", {}, repeat(QUIET, 8), SceneMove::DONE, 5},
-        {"a box restarts the quiet", {}, concat(concat(repeat(QUIET, 3), {BOX}), repeat(QUIET, 8)), SceneMove::DONE, 9},
-        {"a box is answered", {}, {BOX}, SceneMove::NEXT, 0},
-        {"no box is a B press", {}, {QUIET}, SceneMove::B, 0},
-        {"15 s calm but moving ends it", {}, repeat(CALM, 20), SceneMove::DONE, 15},
-        {"a warp rule waits for the fade", {.warp = true},
-            concat(concat(repeat(QUIET, 8), {ScreenEvents{ScreenEvent::FADE_BLACK}}), repeat(QUIET, 8)),
-            SceneMove::DONE, 14},
-        {"a banner is the warp too", {.warp = true},
-            concat({ScreenEvents{ScreenEvent::LOCATION_BANNER, ScreenEvent::PLAYER_CAN_MOVE}}, repeat(QUIET, 8)),
-            SceneMove::DONE, 6},
-        {"no quiet ends a talk before a battle", {.end_on_quiet = false}, repeat(QUIET, 30), SceneMove::DONE, -1},
-        {"a battle", {.end_on_quiet = false}, concat(repeat(QUIET, 6), {ScreenEvents{ScreenEvent::BATTLE_STARTED}}), SceneMove::BATTLE, 6},
-    };
-    for (const Row& row : rows){
-        TalkOver judge(row.rule);
-        const int got = first_beat(judge, row.beats, row.want);
-        if (got != row.beat){
-            return std::format("{}: expected beat {}, got {} ({})", row.name, row.beat, got, judge.describe());
-        }
-    }
-    return true;
-}
-
 
 //  Replays a fixed list of event sets, one per frame.
 class ScriptedObserver : public ScreenEventObserver{
@@ -220,7 +147,7 @@ struct ScreenEventsCase{
 class Test_ScreenEvents : public UnitTest{
 public:
     explicit Test_ScreenEvents(ScreenEventsCase test_case)
-        : UnitTest("Pokemon::ScreenEvents - " + test_case.input.name)
+        : UnitTest(std::format("Pokemon::ScreenEvents - {}", test_case.input.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -241,14 +168,6 @@ const ScreenEventsCase SCREEN_EVENTS_CASES[] = {
     },
     {
         .input = {"a fade is uniform, dark or white; a textured floor is none", test_fade_of_screen},
-        .expectation = {},
-    },
-    {
-        .input = {"a warp is the first fade and the first banner seen", test_warp_seen},
-        .expectation = {},
-    },
-    {
-        .input = {"talk-over from scripted events", test_talk_over},
         .expectation = {},
     },
     {

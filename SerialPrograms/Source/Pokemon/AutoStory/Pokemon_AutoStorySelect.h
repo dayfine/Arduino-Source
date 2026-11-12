@@ -8,6 +8,7 @@
 #define PokemonAutomation_Pokemon_AutoStorySelect_H
 
 #include <memory>
+#include <span>
 #include <string>
 #include <vector>
 #include "CommonTools/Options/StringSelectOption.h"
@@ -16,19 +17,43 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-//  A dropdown database of the story segments or checkpoints [begin, end) of
+//  A dropdown database of the story segments or checkpoints [first, last) of
 //  `list`, labeled by their name() and slugged by their index in the whole
 //  list, so a slug picks the same entry whichever section it was chosen from.
+//  Bounds are whole-list indices. `last` is exclusive and clamped to list.size();
+//  first >= last or first >= list.size() yields an empty database.
 template <typename Entry>
 StringSelectDatabase make_story_select_database(
     const std::vector<std::unique_ptr<Entry>>& list,
-    size_t begin, size_t end
+    size_t first, size_t last
+);
+
+template <typename Entry>
+StringSelectDatabase make_story_select_database(
+    const std::vector<std::unique_ptr<Entry>>& list,
+    size_t first, size_t last
 ){
     StringSelectDatabase ret;
-    for (size_t i = begin; i < end && i < list.size(); i++){
+    for (size_t i = first; i < last && i < list.size(); i++){
         ret.add_entry(StringSelectEntry(std::to_string(i), list[i]->name()));
     }
     return ret;
+}
+
+
+//  The start/end dropdown database of a story's checkpoints, given by their
+//  labels in order ("00.09 Pewter Gym: Camper Liam, then Brock"), slugged
+//  by their index, as make_story_select_database() slugs SV's. A game whose
+//  story is in sections (BDSP's segments 00 and 01) passes them joined: a
+//  section's entry i is then story_index(true, i, first of the section).
+//  The program keeps it in a function-local static: the options hold a
+//  reference.
+inline StringSelectDatabase story_checkpoint_database(std::span<const std::string> labels){
+    StringSelectDatabase database;
+    for (size_t c = 0; c < labels.size(); c++){
+        database.add_entry(StringSelectEntry(std::to_string(c), labels[c]));
+    }
+    return database;
 }
 
 
@@ -44,6 +69,6 @@ inline size_t story_index(bool main_story, size_t index_in_section, size_t first
 }
 
 
-}
-}
+} // namespace Pokemon
+} // namespace PokemonAutomation
 #endif
