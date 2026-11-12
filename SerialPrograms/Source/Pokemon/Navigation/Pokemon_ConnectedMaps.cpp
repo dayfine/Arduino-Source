@@ -5,6 +5,8 @@
  */
 
 #include <algorithm>
+#include <format>
+#include "Common/Cpp/Exceptions.h"
 #include "Pokemon_ConnectedMaps.h"
 
 namespace PokemonAutomation{
@@ -34,6 +36,14 @@ TilePos edge_entry(const TilePos& here, Direction side, const MapConnection& con
 
 } // namespace
 
+
+const MapData& ConnectedMaps::map(size_t index) const{
+    if (index >= m_maps->size()){
+        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION,
+            std::format("Map index {} is past the {} connected maps.", index, m_maps->size()));
+    }
+    return (*m_maps)[index];
+}
 
 std::optional<size_t> ConnectedMaps::find(std::string_view name) const{
     for (size_t index = 0; index < m_maps->size(); index++){
