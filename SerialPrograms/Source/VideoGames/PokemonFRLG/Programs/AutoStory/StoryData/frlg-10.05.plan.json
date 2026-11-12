@@ -87,12 +87,12 @@
       },
       {
         "id": "above_marowak_trigger",
-        "kind": "route",
-        "action": "run",
+        "kind": "legs",
+        "action": "taps",
         "args": {
-          "target": {"map": "PokemonTower_6F", "tiles": [[11, 14]], "facing": "south"}
+          "legs": [{"direction": "north", "tiles": 2}, {"direction": "east", "tiles": 6}, {"direction": "south", "tiles": 2}]
         },
-        "why": "back up to row 12, east along it and down column 11 to (11, 14), above the trigger (11, 15) before the stairs (11, 16)"
+        "why": "a tap a tile back up column 5 to row 12, east along it to (11, 12) and down column 11 to (11, 14), above the trigger (11, 15) before the stairs (11, 16): the planner, kept off open stops on wild floor, would go west to the wall (2, 11) and back"
       },
       {
         "id": "marowak_trigger",

@@ -25,13 +25,22 @@
         "why": "west along 2F's row 6 and down column 4 onto its stairs (4, 10), to 3F's (4, 10); down to the wall (4, 14), east and up column 7 to the wall (7, 6): the only way to row 7 from the west, south of Hope's line (12, 5) and north of Carly's (9, 10..12) and Patricia's (10, 15..16)"
       },
       {
+        "id": "tower_3f_to_stairs",
+        "kind": "legs",
+        "action": "taps",
+        "args": {
+          "legs": [{"direction": "east", "tiles": 11}, {"direction": "south", "tiles": 3}]
+        },
+        "why": "a tap a tile east along row 7 to (18, 7) and down column 18 onto the stairs (18, 10), whose warp is a step east: the planner, kept off open stops on wild floor, would go down to (18, 12) and round"
+      },
+      {
         "id": "tower_4f_stairs",
         "kind": "route",
         "action": "run",
         "args": {
           "target": {"map": "PokemonTower_4F", "tiles": [[18, 10]], "facing": "south"}
         },
-        "why": "east along 3F's row 7 to (18, 7), down onto its stairs (18, 10) to 4F's (18, 10), turned south: the way on keeps out of Laurel's line (17, 8..10)"
+        "why": "a step east off 3F's stairs (18, 10) to 4F's (18, 10), turned south: the way on keeps out of Laurel's line (17, 8..10)"
       },
       {
         "id": "tower_4f_column_16",
