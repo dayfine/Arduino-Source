@@ -11,12 +11,15 @@
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryGameArgs.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
+#include "PokemonFRLG_AutoStoryHealingSteps.h"
 #include "PokemonFRLG_AutoStoryHideout.h"
 #include "PokemonFRLG_AutoStoryItemUse.h"
 #include "PokemonFRLG_AutoStoryLegs.h"
 #include "PokemonFRLG_AutoStoryMart.h"
 #include "PokemonFRLG_AutoStoryMember.h"
 #include "PokemonFRLG_AutoStoryPcStorage.h"
+#include "PokemonFRLG_AutoStorySlope.h"
+#include "PokemonFRLG_AutoStorySlopeRun.h"
 #include "PokemonFRLG_AutoStoryTeach.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
 #include "PokemonFRLG_AutoStoryTrashCans.h"
@@ -120,6 +123,7 @@ Pokemon::StoryActionSpec mart_action_spec(){
         required_arg("budget", StoryArgType::INTEGER, "the most the step spends"),
         absent_arg("floor", StoryArgType::INTEGER, "the least money the player has here, when the money box can't be read"),
         required_arg("items", StoryArgType::ITEMS, "what to buy, in priority order"),
+        absent_arg("cover_hp", StoryArgType::INTEGER, "buy only the first line's shortfall for the bag's Potions and Super Potions to heal this much HP"),
     }};
 }
 
@@ -127,8 +131,10 @@ Pokemon::StoryActionSpec teach_action_spec(){
     return {.kind = StoryStepKind::GAME, .name = TEACH_ACTION, .args = {
         required_arg("item", StoryArgType::WORD, "the TM or HM, e.g. \"hm03\""),
         required_arg("move", StoryArgType::WORD, "the move it holds, e.g. \"surf\""),
-        required_arg("slot", StoryArgType::INTEGER, "the party slot, from 1"),
+        absent_arg("slot", StoryArgType::INTEGER, "the party slot, from 1, when no species is named"),
+        absent_arg("species", StoryArgType::WORD, "the member by its species, e.g. \"pidgey\": the first slot whose summary reads it"),
         absent_arg("forget", StoryArgType::WORD, "the move to forget when it knows four"),
+        absent_arg("or_forget", StoryArgType::WORDS, "the moves to forget, in order, when it doesn't know `forget`"),
         absent_arg("forget_slot", StoryArgType::INTEGER, "the move slot to forget, from 1, when no move is named"),
     }};
 }
@@ -190,10 +196,19 @@ std::span<const Pokemon::StoryActionSpec> story_action_specs(){
                 .key = "foes", .type = Pokemon::StoryArgType::WORDS, .required = false, .fallback = std::vector<std::string>(),
                 .why = "the trainer's party in order; attacks are chosen against the one out",
             });
+            spec.args.push_back(Pokemon::StoryArgSpec{
+                .key = "use_items", .type = Pokemon::StoryArgType::ITEMS, .required = false, .fallback = std::vector<Pokemon::StoryItem>(),
+                .why = "items used on the lead from the first turn, in order, before any attack (X Specials)",
+            });
+            spec.args.push_back(Pokemon::StoryArgSpec{
+                .key = "run", .type = Pokemon::StoryArgType::BOOLEAN, .required = false, .fallback = false,
+                .why = "run from a scripted wild battle (Route 16's Snorlax) instead of fighting it",
+            });
         }
         for (Pokemon::StoryActionSpec spec : movement_variant_specs(builtin)){
             specs.push_back(std::move(spec));
         }
+        specs.push_back({.kind = StoryStepKind::TALK, .name = TALK_WANDERER_VARIANT, .args = {}});
         specs.push_back({.kind = StoryStepKind::GAME, .name = CLOSE_TRAINER_CARD, .args = {}});
         specs.push_back({.kind = StoryStepKind::GAME, .name = LEAVE_GIFT_SUMMARY, .args = {}});
         specs.push_back({.kind = StoryStepKind::GAME, .name = CUT_TREE_VARIANT, .args = {
@@ -203,11 +218,12 @@ std::span<const Pokemon::StoryActionSpec> story_action_specs(){
         for (Pokemon::StoryActionSpec spec : {
             pc_action_spec(), capture_action_spec(), fossil_action_spec(), level_action_spec(),
             mart_action_spec(), teach_action_spec(), grind_action_spec(), grind_check_action_spec(),
+            slope_action_spec(), count_items_action_spec(),
         }){
             specs.push_back(std::move(spec));
         }
-        for (Pokemon::StoryActionSpec spec : field_action_specs()){
-            specs.push_back(std::move(spec));
+        for (const std::vector<Pokemon::StoryActionSpec>& more : {field_action_specs(), healing_action_specs()}){
+            specs.insert(specs.end(), more.begin(), more.end());
         }
         return specs;
     }();

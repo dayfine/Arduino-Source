@@ -73,6 +73,12 @@ public:
 private:
     TurnAction lead_turn(const PartyStatus& status);
     TurnAction move_turn();
+    //  The next of the plan's battle items whose pocket row is known, for
+    //  a trainer's battle with the lead's HP not red; none otherwise.
+    std::optional<std::string> planned_item(const PartyStatus& status) const;
+    //  The plan's battle item chosen last was used: its quantity and count
+    //  go down, and its pocket row goes with the last one the bag had.
+    void planned_item_used();
     //  The HP the lead lost since the last turn, from the bar.
     void see_hit(const PartyStatus& status);
     void count_down_refused();
@@ -86,6 +92,8 @@ private:
     bool m_antidote_used = false;
     //  An item read as another in the bag: none is used again this battle.
     bool m_items_off = false;
+    //  The plan's battle item chosen last.
+    std::string m_planned_item;
     bool m_lost = false;
     //  NO was answered to "Delete a move?": "Stop learning?" comes next.
     bool m_declined_delete = false;

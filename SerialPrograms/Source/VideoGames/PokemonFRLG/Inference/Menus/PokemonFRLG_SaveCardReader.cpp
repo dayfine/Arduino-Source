@@ -80,6 +80,9 @@ private:
             {"vermilion-city", "Vermilion City"},
             {"celadon-city", "Celadon City"},
             {"rocket-hideout", "Rocket Hideout"},
+            {"pokemon-tower", "Pokemon Tower"},
+            {"route-16", "Route 16"},
+            {"fuchsia-city", "Fuchsia City"},
             {"saffron-city", "Saffron City"},
         }){
             JsonArray names;

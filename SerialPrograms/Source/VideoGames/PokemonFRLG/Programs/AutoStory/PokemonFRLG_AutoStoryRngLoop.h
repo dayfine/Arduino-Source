@@ -15,8 +15,10 @@
 
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_BlindNavigation.h"
 #include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngPlan.h"
 #include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_StarterRngLoop.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
@@ -35,8 +37,9 @@ struct StarterRngPlanned{
 
 //  What the run says when the loop ends with `result`.
 std::string starter_rng_loop_message(const StarterRngLoopResult& result);
-//  As starter_rng_loop_message(), for Gift RNG's Magikarp.
-std::string gift_rng_loop_message(const StarterRngLoopResult& result);
+//  As starter_rng_loop_message(), for Gift RNG's `gift`, which the
+//  live-start row `row` (04.03, 09.04) saves after a shiny.
+std::string gift_rng_loop_message(const StarterRngLoopResult& result, PokemonFRLG_RngTarget gift, std::string_view row);
 
 
 //  `steps`, with the calibration of each reset also kept in the RNG plan's
@@ -58,7 +61,8 @@ private:
 
 //  The rows a run takes after a shiny from the loop, which leaves the player
 //  under Squirtle's ball with the rival's ball taken: the row after
-//  `ball_row` (01.06) from its step after "rival_takes_bulbasaur", then
+//  `ball_row` (01.06) from its step after "rival_takes_bulbasaur", as a
+//  live-start row (no start check: no save was loaded), then
 //  the rows after it to `last` as plan_story_run() takes them with
 //  `handoffs`, with the handoff they stop at. Throws InternalProgramError
 //  for a table without that row or step.

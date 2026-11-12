@@ -68,6 +68,10 @@ PcResult run_pc_transfer(Logger& logger, PcStorageActions& actions, const PcTran
 
 //  From the overworld: the party's size, read from the party menu, which is
 //  closed again.
+//  Overlaps detect_last_occupied_party_slot() in PokemonFRLG_Navigation.h.
+//  Ours wraps it with open_party_menu_from_overworld() before and mash_until_overworld() after,
+//  and returns a count; upstream only reads the party menu that is already open.
+//  Could be unified with upstream if needed.
 size_t read_party_size(ConsoleHandle& console, ProControllerContext& context);
 
 //  The console's PC steps. Party members are read by count only: none is

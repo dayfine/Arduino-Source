@@ -17,6 +17,12 @@
  *  - A on the quantity: "... And you wanted N? That will be $X." YES/NO on
  *    YES; YES: "Here you are! Thank you!", the money taken, back to the
  *    list with the cursor on the row bought.
+ *  - The list shows six rows (shop.c BuyMenuInitListMenu) and scrolls
+ *    under the cursor as list_menu.c ListMenuUpdateSelectedRowIndexAndScrollOffset
+ *    moves it: going down, the cursor stops on the window's fourth row and
+ *    the list scrolls until its end shows; going up, it stops on the third
+ *    until its top shows. A row on the screen is not the list's row once
+ *    it has scrolled.
  *
  *  The step never opens SELL. Each line buys as many as its quantity,
  *  the budget left and the money left allow, in the order listed; a line
@@ -102,8 +108,9 @@ public:
 
     virtual bool open_buy_list() override;
     virtual std::optional<size_t> read_money() override;
-    virtual void move_cursor(size_t from, size_t to) override;
+    virtual void press_cursor(bool down) override;
     virtual std::string read_row(size_t row) override;
+    virtual void dump_screen(std::string_view name) override;
     virtual PurchaseEnd buy(const MartBuy& buy) override;
     virtual bool leave() override;
 
@@ -112,10 +119,6 @@ private:
     ProControllerContext& m_context;
     Language m_language;
     Supplies& m_supplies;
-    size_t m_row = 0;
-    //  The lowest row the cursor has reached: past the window's rows the
-    //  list scrolls, and a screen row is no longer the list's.
-    size_t m_lowest_row = 0;
 };
 
 

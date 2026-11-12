@@ -11,6 +11,7 @@
 #define PokemonAutomation_PokemonFRLG_AutoStorySupplies_H
 
 #include <cstddef>
+#include <map>
 #include <optional>
 #include <string>
 #include <vector>
@@ -18,6 +19,7 @@
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_ItemListReader.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
 #include "PokemonFRLG_AutoStoryActions.h"
@@ -45,6 +47,7 @@ std::string_view status_name(StatusCondition status);
 //  Potions, Antidotes, then Parlyz Heals; Awakenings from Cerulean's Mart.
 struct Supplies{
     int potions = 0;
+    int super_potions = 0;
     int antidotes = 0;
     int parlyz_heals = 0;
     int awakenings = 0;
@@ -54,8 +57,11 @@ struct Supplies{
     //  The Items pocket's order, by slug (see read_item_list_name()): the
     //  order bought, or as read from the bag, with "" for a row whose name
     //  couldn't be read. A counted item with none left takes no row; the
-    //  others always take theirs.
+    //  others always take theirs, until other_counts says the last is used.
     std::vector<std::string> pocket = {"potion", "antidote", "parlyz-heal"};
+    //  The counts the bag read for the items the story doesn't count (an
+    //  X Special), by slug; an item missing here has an unknown count.
+    std::map<std::string, int> other_counts = {};
     //  The starter's status at the last battle screen that showed it, and
     //  not cured since.
     StatusCondition status = StatusCondition::NONE;
@@ -66,6 +72,12 @@ struct Supplies{
     //  The starter's HP bar's filled share at the last battle screen that
     //  showed it, 1 after the nurse or a Potion on the overworld.
     double hp_fill = 1.0;
+    //  The bar's filled share as last measured on a battle screen (1 after
+    //  the nurse), unlike hp_fill not raised by a Potion's guess; nothing
+    //  while none was (a checkpoint loaded from a save). And the HP the
+    //  items used on the lead since then heal.
+    std::optional<double> measured_fill = std::nullopt;
+    int healed_since_measured = 0;
     //  The starter's moves and their PP, as far as the story knows them:
     //  a new game's Squirtle unless a checkpoint's row says otherwise.
     PartyMember lead = new_member("squirtle", 5);
@@ -80,6 +92,11 @@ struct Supplies{
     std::vector<std::string> foes = {};
     //  That trainer, as its plan names it (the step's "trainer"), "" otherwise.
     std::string trainer = {};
+    //  The items that battle uses on the lead from its first turn, in the
+    //  plan's order and before any attack (the step's "use_items": PokeGuy's
+    //  X Specials against the Tower rival), each once its pocket row is
+    //  known; a quantity counts down as they are used. Empty otherwise.
+    std::vector<Pokemon::StoryItem> battle_items = {};
     //  How carefully that battle is fought (default_battle_risk()).
     BattleRisk risk = BattleRisk::LOW;
     //  The species of the trainer's Pokemon out, as read at the last battle

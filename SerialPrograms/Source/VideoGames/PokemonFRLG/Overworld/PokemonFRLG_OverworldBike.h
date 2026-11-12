@@ -47,14 +47,17 @@ bool counts_bike_taps(const RouteStep& step, MoveSpeed speed);
 bool gets_on_bike(const RouteStep& step, MoveSpeed speed, bool riding);
 
 //  The console side of select_onto_bike(): presses SELECT and waits it
-//  out; reads whether the player rides.
+//  out; reads whether the player rides; waits before reading again.
 struct BikeSelectCalls{
     std::function<void()> press_select;
     std::function<bool()> riding;
+    std::function<void()> wait_to_read_again;
 };
 
 //  Gets on the registered Bicycle with SELECT, checks the player rides,
-//  and presses again once if not. Returns whether they ride.
+//  and presses again once if not. A read on foot is read again first: a
+//  SELECT can show late, and pressed again then it gets the player off
+//  (11.01, console B, 2026-11-12). Returns whether they ride.
 bool select_onto_bike(const BikeSelectCalls& calls);
 
 //  Whether the player rides the Bicycle, from the screen: the overworld

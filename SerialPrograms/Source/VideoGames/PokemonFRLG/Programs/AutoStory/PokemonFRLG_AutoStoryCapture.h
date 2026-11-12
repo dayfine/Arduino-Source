@@ -145,6 +145,9 @@ public:
 
     virtual bool find_encounter(Pokemon::Direction pace) override;
     virtual EncounterSeen read_encounter() override;
+    //  Overlaps flee_battle() in PokemonFRLG_Navigation.h.
+    //  Ours wraps it, then waits out the battle exit and turns a thrown failure into false.
+    //  Could be unified with upstream if needed.
     virtual bool flee() override;
     virtual FoeHp read_foe_hp() override;
     virtual TurnEnd attack(size_t move) override;

@@ -36,6 +36,15 @@ enum class SimField{
     //  running is allowed, or off it, in about
     //  MovementMechanics::BIKE_SELECT_TIME. (PokemonFRLG_OverworldSimTaps.cpp)
     BIKE_SELECT,
+    //  Surf onto the water the player faces, from ground beside it: the
+    //  question, "<MON> used SURF!" and the jump (SimTiming::surf_start).
+    //  Each step on the water then takes SimTiming::surf_tile, and a step
+    //  onto land gets the player off.
+    SURF,
+    //  Not A: Fly from the party menu to the town numbered `floor` in
+    //  kanto_fly_towns(), outdoors: the fade, then the player on its landing
+    //  tile facing south, still for SimTiming::fly.
+    FLY,
 };
 
 //  Register the tests of the Bicycle's taps and SELECT on a made-up map.

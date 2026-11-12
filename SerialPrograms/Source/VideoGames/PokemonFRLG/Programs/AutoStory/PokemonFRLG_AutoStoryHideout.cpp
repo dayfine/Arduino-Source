@@ -11,6 +11,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldBike.h"
 #include "PokemonFRLG_AutoStoryActions.h"
+#include "PokemonFRLG_AutoStoryFieldMoves.h"
 #include "PokemonFRLG_AutoStoryHideout.h"
 #include "PokemonFRLG_AutoStoryHideoutLift.h"
 #include "PokemonFRLG_AutoStoryItemUse.h"
@@ -30,16 +31,34 @@ namespace PokemonFRLG{
 using namespace std::chrono_literals;
 
 
-const std::vector<std::string>& rocket_hideout_lift_menu(){
-    static const std::vector<std::string> MENU{"B1F", "B2F", "B4F", "EXIT"};
-    return MENU;
+const std::vector<std::string>& lift_menu(std::string_view lift){
+    static const std::vector<std::string> NONE;
+    static const std::vector<std::string> HIDEOUT{"B1F", "B2F", "B4F", "EXIT"};
+    static const std::vector<std::string> STORE{"5F", "4F", "3F", "2F", "1F", "EXIT"};
+    if (lift == LIFT_MAP){
+        return HIDEOUT;
+    }
+    if (lift == DEPT_STORE_LIFT_MAP){
+        return STORE;
+    }
+    return NONE;
+}
+
+const std::vector<MapPosition>& lift_exits(std::string_view lift){
+    static const std::vector<MapPosition> NONE;
+    if (lift == LIFT_MAP){
+        return rocket_hideout_lift_exits();
+    }
+    if (lift == DEPT_STORE_LIFT_MAP){
+        return department_store_lift_exits();
+    }
+    return NONE;
 }
 
 namespace{
 
-//  The row of `floor` on the panel's menu, if it is a floor (not EXIT).
-std::optional<size_t> floor_row(std::string_view floor){
-    const std::vector<std::string>& menu = rocket_hideout_lift_menu();
+//  The row of `floor` on `menu`, if it is a floor (not EXIT).
+std::optional<size_t> floor_row(const std::vector<std::string>& menu, std::string_view floor){
     for (size_t row = 0; row + 1 < menu.size(); row++){
         if (menu[row] == floor){
             return row;
@@ -59,12 +78,14 @@ std::optional<LiftRide> parse_lift_floor_step(const Pokemon::StoryStep& step){
     if (from_name == nullptr || to_name == nullptr){
         return std::nullopt;
     }
-    const std::optional<size_t> from = floor_row(*from_name);
-    const std::optional<size_t> to = floor_row(*to_name);
-    if (!from || !to){
-        return std::nullopt;
+    for (std::string_view lift : {LIFT_MAP, DEPT_STORE_LIFT_MAP}){
+        const std::optional<size_t> from = floor_row(lift_menu(lift), *from_name);
+        const std::optional<size_t> to = floor_row(lift_menu(lift), *to_name);
+        if (from && to){
+            return LiftRide{*from, *to, lift};
+        }
     }
-    return LiftRide{*from, *to};
+    return std::nullopt;
 }
 
 MenuPresses lift_menu_presses(const LiftRide& ride, size_t entries){
@@ -89,17 +110,21 @@ std::vector<Pokemon::StoryActionSpec> field_action_specs(){
     std::vector<Pokemon::StoryActionSpec> specs{
         {.kind = StoryStepKind::GAME, .name = POSTER_SWITCH_VARIANT, .args = {}},
         {.kind = StoryStepKind::GAME, .name = LIFT_FLOOR_VARIANT, .args = {
-            required_arg("from", StoryArgType::WORD, "the floor the lift stands at, as the panel names it (B1F, B2F, B4F)"),
+            required_arg("from", StoryArgType::WORD, "the floor the lift stands at, as the panel names it (B1F, B2F, B4F; 1F to 5F)"),
             required_arg("to", StoryArgType::WORD, "the floor it rides to"),
         }},
         {.kind = StoryStepKind::GAME, .name = USE_ITEM_VARIANT, .args = {
             required_arg("item", StoryArgType::WORD, "the item's slug, as read_item_list_name() names it"),
+            optional_arg("safari", StoryArgType::BOOLEAN, false, "in the Safari Zone, whose START menu has RETIRE on top"),
         }},
         {.kind = StoryStepKind::GAME, .name = RIDE_BIKE_VARIANT, .args = {}},
         {.kind = StoryStepKind::GAME, .name = REGISTER_BIKE_VARIANT, .args = {}},
     };
     for (const std::string& center : {CENTER_ENTER_VARIANT, CENTER_EXIT_VARIANT}){
         specs.push_back({.kind = StoryStepKind::GAME, .name = center, .args = {}});
+    }
+    for (Pokemon::StoryActionSpec& move : field_move_specs()){
+        specs.push_back(std::move(move));
     }
     return specs;
 }
@@ -118,11 +143,12 @@ constexpr Milliseconds HIDEOUT_SCENE_TIMEOUT = 30000ms;
 } // namespace
 
 void pick_lift_floor(ConsoleHandle& console, ProControllerContext& context, const LiftRide& ride){
-    const MenuPresses presses = lift_menu_presses(ride, rocket_hideout_lift_menu().size());
-    console.log(
-        "Story: lift from " + rocket_hideout_lift_menu()[ride.from] + " to " + rocket_hideout_lift_menu()[ride.to]
-        + ": " + std::to_string(presses.presses) + " press(es) " + Pokemon::direction_name(presses.direction) + "."
-    );
+    const std::vector<std::string>& menu = lift_menu(ride.lift);
+    const MenuPresses presses = lift_menu_presses(ride, menu.size());
+    console.log(std::format(
+        "Story: lift from {} to {}: {} press(es) {}.",
+        menu[ride.from], menu[ride.to], presses.presses, Pokemon::direction_name(presses.direction)
+    ));
     pbf_press_button(context, BUTTON_A, 160ms, LIFT_MENU_WAIT);
     const DpadPosition dpad = presses.direction == Pokemon::Direction::SOUTH ? DPAD_DOWN : DPAD_UP;
     for (size_t c = 0; c < presses.presses; c++){
@@ -165,6 +191,9 @@ std::optional<Pokemon::Outcome> run_field_game_step(
         ride_lift(console, context, *ride, player);
         return done();
     }
+    if (std::optional<Pokemon::Outcome> moved = run_field_move_step(console, context, language, step)){
+        return moved;
+    }
     if (is_center_variant(step.action)){
         //  Both start facing north: at the door, or at the nurse.
         walk_room_legs(console, context, center_legs(step.action), Pokemon::Direction::NORTH, player);
@@ -181,7 +210,7 @@ std::optional<Pokemon::Outcome> run_field_game_step(
         OverworldWalkSteps::get_on_bike(console, context, player);
         return done();
     }
-    ConsoleItemUseActions bag(console, context, language);
+    ConsoleItemUseActions bag(console, context, language, step_start_menu(step.args));
     const ItemUseEnd end = step.action == REGISTER_BIKE_VARIANT
         ? register_item_in_bag(console.logger(), bag, "bicycle")
         : use_item_from_bag(console.logger(), bag, *parse_use_item_step(step));

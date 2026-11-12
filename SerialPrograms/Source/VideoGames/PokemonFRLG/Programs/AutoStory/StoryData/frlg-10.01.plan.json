@@ -1,0 +1,192 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "10.01",
+    "title": "X items on the Department Store's 5F, HM02 Fly from Route 16's house, taught to the Pidgey, and Fly to Lavender Town's Pokemon Center",
+    "start": {"map": "CeladonCity_Condominiums_RoofRoom", "tiles": [[7, 4]], "facing": "north"},
+    "events": [
+      {
+        "id": "below_store_lift",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeladonCity_DepartmentStore_1F", "tiles": [[6, 2]], "facing": "north"}
+        },
+        "why": "from the Eevee's ball (09.04) out of the roof room, down Celadon Mansion's stairs and out of its door, west to the Department Store's door (11, 14) and up 1F to below its lift door (6, 1)"
+      },
+      {
+        "id": "lift_to_5f",
+        "kind": "game_action",
+        "action": "lift_floor",
+        "args": {
+          "from": "1F",
+          "to": "5F"
+        },
+        "declared_after": {"map": "CeladonCity_DepartmentStore_5F", "tiles": [[6, 2]], "facing": "south"},
+        "why": "the lift as the Rocket Hideout's (09.02, one layout): in through the door, to the panel (cursor on 1F, the floor came from), 5F, out a tile south of 5F's lift door (6, 1); PokeGuy rides it at 1:02:41"
+      },
+      {
+        "id": "x_items_clerk",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeladonCity_DepartmentStore_5F", "tiles": [[3, 7]], "facing": "west"}
+        },
+        "why": "down and west to face the X items clerk (1, 7) over the counter (2, 7), out of the Sailor's zone (5..7, 7..9)"
+      },
+      {
+        "id": "buy_x_items",
+        "kind": "game_action",
+        "action": "mart",
+        "args": {
+          "map": "CeladonCity_DepartmentStore_5F",
+          "budget": 15600,
+          "floor": 19862,
+          "items": [
+            {"item": "x-special", "quantity": 21}, {"item": "x-speed", "quantity": 6}, {"item": "x-accuracy", "quantity": 5},
+            {"item": "guard-spec", "quantity": 2}
+          ]
+        },
+        "why": "pokeguy 1:02:42: 6 X Speeds, 21 X Specials, 5 X Accuracies and 2 Guard Specs (15,600 of his 15,694), X Special first; the floor is the money measured at the Celadon save on console B (19,862 on the trainer card, 2026-11-11), which buys the whole list"
+      },
+      {
+        "id": "below_5f_lift",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeladonCity_DepartmentStore_5F", "tiles": [[6, 2]], "facing": "north"}
+        },
+        "why": "back up to below the lift door (6, 1)"
+      },
+      {
+        "id": "lift_to_1f",
+        "kind": "game_action",
+        "action": "lift_floor",
+        "args": {
+          "from": "5F",
+          "to": "1F"
+        },
+        "declared_after": {"map": "CeladonCity_DepartmentStore_1F", "tiles": [[6, 2]], "facing": "south"},
+        "why": "the lift down, the cursor on 5F, to 1F, out a tile south of 1F's lift door"
+      },
+      {
+        "id": "out_of_store",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeladonCity", "tiles": [[11, 15]], "facing": "south"}
+        },
+        "why": "down 1F and out of the door (2, 14) onto Celadon below the store's door (11, 14)"
+      },
+      {
+        "id": "ride_bike",
+        "kind": "game_action",
+        "action": "ride_bike",
+        "why": "on the BICYCLE with SELECT (registered in 08.03) outside the store"
+      },
+      {
+        "id": "route16_below_cut_tree",
+        "kind": "route",
+        "action": "bike",
+        "args": {
+          "target": {"map": "Route16", "tiles": [[41, 12]], "facing": "north"}
+        },
+        "why": "west along Celadon and out onto Route 16's east end, below the Cut tree (41, 11); the Snorlax (31, 13) closes row 13 west of it"
+      },
+      {
+        "id": "cut_route16_tree",
+        "kind": "game_action",
+        "action": "cut_tree",
+        "args": {
+          "direction": "north"
+        },
+        "declared_after": {"map": "Route16", "tiles": [[41, 11]], "facing": "north"},
+        "why": "the Oddish (HM01, 06.02) cuts the tree; a step onto its tile"
+      },
+      {
+        "id": "east_of_north_gate",
+        "kind": "route",
+        "action": "bike",
+        "args": {
+          "target": {"map": "Route16", "tiles": [[28, 6]], "facing": "west"}
+        },
+        "why": "up to row 10 and west to a tile east of the north gate's door (27, 6), off the grass (33..41, 5..7) and out of Lea's and Jed's lines (30, 6), (31, 6)"
+      },
+      {
+        "id": "below_fly_woman",
+        "kind": "route",
+        "action": "bike",
+        "args": {
+          "target": {"map": "Route16_House", "tiles": [[4, 4]], "facing": "north"}
+        },
+        "why": "on the Bicycle through the gate, which allows cycling and keeps the rider on (warp_keeps_bike()), out at (20, 6), west to the house's door (10, 5) at the Bicycle's pace, and on foot up to below the woman's zone (3..5, 2..3); pokeguy cycles here (1:03:20). A run-paced leg on the Bicycle overshot the door (console B, 2026-11-12 01:05)"
+      },
+      {
+        "id": "hm02_fly",
+        "kind": "talk",
+        "action": "wanderer",
+        "why": "the woman wanders (3..5, 2..3); once she steps onto (4, 3) she gives HM02 FLY (Route16_House_EventScript_Woman, FLAG_GOT_HM02)"
+      },
+      {
+        "id": "teach_fly",
+        "kind": "game_action",
+        "action": "teach",
+        "args": {
+          "item": "hm02",
+          "move": "fly",
+          "species": "pidgey",
+          "forget": "whirlwind",
+          "or_forget": ["sand-attack"]
+        },
+        "why": "HM02 Fly to the Pidgey (08.03), found by its summary's species (the Eevee, 09.04, stays in the party), in place of Whirlwind, which the step reads among its moves first: a Route 7 Pidgey (Lv19..22) knows Sand-Attack, Gust, Quick Attack and Whirlwind; without Whirlwind, Sand-Attack goes, leaving pokeguy's Fly, Gust, Quick Attack and Steel Wing"
+      },
+      {
+        "id": "outside_fly_house",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "Route16", "tiles": [[10, 6]], "facing": "south"}
+        },
+        "why": "out of the house's door onto Route 16, where Fly works"
+      },
+      {
+        "id": "fly_lavender",
+        "kind": "game_action",
+        "action": "fly",
+        "args": {
+          "town": "LavenderTown",
+          "species": "pidgey"
+        },
+        "declared_after": {"map": "LavenderTown", "tiles": [[6, 6]], "facing": "south"},
+        "why": "the Pidgey, found in the party by its summary's species, flies to Lavender Town, landing below the Pokemon Center's door (6, 5)"
+      },
+      {
+        "id": "lavender_nurse",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "LavenderTown_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
+        },
+        "why": "in at the Center's door and up to the nurse"
+      },
+      {
+        "id": "heal_lavender",
+        "kind": "heal",
+        "why": "full HP before the Tower"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "lead": "after_brock",
+    "notes": {
+      "checkpoint": [
+        "From the Eevee's ball in Celadon Mansion's roof room (09.04), PokeGuy's way (1:02:18 to 1:04:11) to Lavender Town's Pokemon Center: X items on the Department Store's 5F, by its lift both ways (scripted as the Rocket Hideout's: the lift has no map, its doors' warps are dynamic), HM02 FLY from the woman in Route 16's house, taught to the Pidgey (08.03's catch), and Fly to Lavender.",
+        "Route 16 (Route16 map.json): from Celadon the east end (33..47, 12..14) is closed west by the Snorlax (31, 13), so the way north is the Cut tree (41, 11), then the north gate (Route16_NorthEntrance_1F) to the house (10, 5). Lea (30, 5) and Jed (31, 5) face south with sight 1; the grass (33..41, 5..7) is walked round. The bikers (6..16, 12..14) are south of the house's part of the route, behind the gate.",
+        "The woman wanders (MOVEMENT_TYPE_WANDER_AROUND, 3..5 by 2..3): the wanderer TALK presses A at (4, 3) until she is on it."
+      ]
+    }
+  },
+  "metadata": {"phase": "testing"}
+}

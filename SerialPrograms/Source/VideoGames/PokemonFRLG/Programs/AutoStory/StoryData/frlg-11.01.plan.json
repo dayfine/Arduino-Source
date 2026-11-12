@@ -1,0 +1,96 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "11.01",
+    "title": "Fly to Celadon City, wake Route 16's Snorlax with the POKE FLUTE and run from it",
+    "start": {"map": "LavenderTown_VolunteerPokemonHouse", "tiles": [[3, 4]], "facing": "north"},
+    "events": [
+      {
+        "id": "out_of_fuji_house",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "LavenderTown", "tiles": [[10, 12]], "facing": "south"}
+        },
+        "why": "from below Mr. Fuji (10.06) down and out of his house's door (4, 7) onto Lavender Town below its door (10, 11), where Fly works"
+      },
+      {
+        "id": "fly_celadon",
+        "kind": "game_action",
+        "action": "fly",
+        "args": {
+          "town": "CeladonCity",
+          "species": "pidgey"
+        },
+        "declared_after": {"map": "CeladonCity", "tiles": [[48, 12]], "facing": "south"},
+        "why": "the Pidgey (Fly, 10.01), found in the party by its summary's species, flies to Celadon City, landing below the Pokemon Center's door (48, 11); pokeguy flies there from Mr. Fuji's at 1:11:30"
+      },
+      {
+        "id": "ride_bike",
+        "kind": "game_action",
+        "action": "ride_bike",
+        "why": "on the BICYCLE with SELECT (registered in 08.03)"
+      },
+      {
+        "id": "east_of_snorlax_wall",
+        "kind": "route",
+        "action": "bike",
+        "args": {
+          "target": {"map": "Route16", "tiles": [[33, 14]], "facing": "west"}
+        },
+        "why": "west across Celadon and out onto Route 16's east end (Celadon's row 24 is the route's row 14), to the wall (32, 14) below the Snorlax's row: an approach to an A press ends on its tile, and held along row 13 the bike can end a row off, against the walls at (30..32, 12) or (30..32, 14)"
+      },
+      {
+        "id": "east_of_snorlax",
+        "kind": "route",
+        "action": "bike",
+        "args": {
+          "target": {"map": "Route16", "tiles": [[32, 13]], "facing": "west"}
+        },
+        "why": "a tile north and a tile west from the wall, to face the Snorlax (31, 13), which with those walls closes the way west"
+      },
+      {
+        "id": "wake_snorlax",
+        "kind": "talk",
+        "why": "Route16_EventScript_Snorlax: with FLAG_GOT_POKE_FLUTE, \"Want to use the POKE FLUTE?\""
+      },
+      {
+        "id": "use_poke_flute",
+        "kind": "answer",
+        "why": "YES: the flute plays, the Snorlax wakes and attacks (setwildbattle SPECIES_SNORLAX, 30; dowildbattle)"
+      },
+      {
+        "id": "run_from_snorlax",
+        "kind": "battle",
+        "args": {
+          "foes": ["snorlax"],
+          "run": true
+        },
+        "declared_after": {"map": "Route16", "tiles": [[32, 13]], "facing": "west"},
+        "why": "Snorlax Lv30, a wild battle; RUN as pokeguy does (1:11:57; user's call: no RNG, no catch). B_OUTCOME_RAN goes on to \"SNORLAX calmed down... returned to the mountains\" (Route16_EventScript_FoughtSnorlax), and FLAG_HIDE_ROUTE_16_SNORLAX keeps it away"
+      },
+      {
+        "id": "east_of_cycling_road_gate",
+        "kind": "route",
+        "action": "bike",
+        "args": {
+          "target": {"map": "Route16", "tiles": [[28, 13]], "facing": "west"}
+        },
+        "why": "west along row 13 over the Snorlax's tile (story_maps() has it gone) to a tile east of the Cycling Road gate's door (27, 13); pokeguy leaves the LEFTOVERS hidden there"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "lead": "after_brock",
+    "notes": {
+      "checkpoint": [
+        "From Mr. Fuji's house (10.06), PokeGuy's way (1:11:24 to 1:12:00): Fly to Celadon, bike out onto Route 16 and wake the Snorlax (31, 13) with the POKE FLUTE (Route16 map.json, scripts.inc). He runs from it (Lv30, base Speed 30: the lead outspeeds it, so RUN gets away on the first try). The Snorlax stands on a hidden LEFTOVERS (FLAG_HIDDEN_ITEM_ROUTE16_LEFTOVERS), which pokeguy leaves.",
+        "The checkpoint stops east of the Cycling Road gate (Route16_NorthEntrance_1F), saved there: Route 16's west part has six Bikers (sight 1, LOOK_AROUND) on both sides of rows 11..15 with no way past out of every one's sight, and Cycling Road (Route 17) has no map yet. With the BICYCLE (FLAG_GOT_BICYCLE) the gate's no-pedestrians triggers are off (VAR_TEMP_1 1).",
+        "The save is on Route 16, ROUTE 16 on the save card."
+      ]
+    }
+  },
+  "metadata": {"phase": "testing"}
+}

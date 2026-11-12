@@ -14,9 +14,9 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-MemberReader console_member_reader(ConsoleHandle& console, ProControllerContext& context, Language language){
-    return [&console, &context, language](size_t slot) -> std::optional<MemberInfo>{
-        const std::optional<SummaryRead> read = read_party_summary(console, context, StartMenu::FULL, language, slot);
+MemberReader console_member_reader(ConsoleHandle& console, ProControllerContext& context, Language language, StartMenu menu){
+    return [&console, &context, language, menu](size_t slot) -> std::optional<MemberInfo>{
+        const std::optional<SummaryRead> read = read_party_summary(console, context, menu, language, slot);
         if (!read || read->species.empty() || !read->level || read->moves.empty()){
             console.log(std::format("Party: couldn't read the member in slot {}.", slot + 1), COLOR_RED);
             return std::nullopt;
