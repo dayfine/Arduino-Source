@@ -24,13 +24,22 @@
         "why": "HM03 Surf in place of Water Gun, as pokeguy (1:14:55 to 1:15:13: Surf, Water Pulse, Bite, Mega Kick after it), unless the lead knows it; an HM, so not a one-shot TM"
       },
       {
-        "id": "below_kayden_line",
+        "id": "gym_east_wall",
         "kind": "route",
         "action": "run",
         "args": {
-          "target": {"map": "FuchsiaCity_Gym", "tiles": [[14, 17]], "facing": "north"}
+          "target": {"map": "FuchsiaCity_Gym", "tiles": [[14, 21]], "facing": "north"}
         },
-        "why": "out of the Center (its ground floor coded), west along row 32 to the gym's door (9, 32), and in the gym (no running) from the mat (7, 21) east along row 21 and up column 14 to (14, 17), a tile below Juggler Kayden's east line (13..14, 16): out of his south line (12, 17..20) and Nate's (2, 17..20)"
+        "why": "out of the Center (its ground floor coded), west along row 32 to the gym's door (9, 32), and in the gym (no running) from the mat (7, 21) east along row 21 to the east wall: below Juggler Kayden's south line (12, 17..20) and Nate's (2, 17..20)"
+      },
+      {
+        "id": "below_kayden_line",
+        "kind": "legs",
+        "action": "taps",
+        "args": {
+          "legs": [{"direction": "north", "tiles": 4}]
+        },
+        "why": "up column 14 from (14, 21) to (14, 17), a tile below Kayden's east line (13..14, 16): a planned route here goes up column 12 or 13 and meets his south line"
       },
       {
         "id": "kayden_sight",
@@ -102,9 +111,9 @@
         "kind": "legs",
         "action": "run",
         "args": {
-          "legs": [{"direction": "east", "tiles": 8}, {"direction": "south", "tiles": 8}, {"direction": "west", "tiles": 6}, {"direction": "south", "tiles": 2}, {"direction": "east", "tiles": 4}, {"direction": "south", "tiles": 1}]
+          "legs": [{"direction": "east", "tiles": 9}, {"direction": "south", "tiles": 8}, {"direction": "west", "tiles": 7}, {"direction": "south", "tiles": 2}, {"direction": "east", "tiles": 4}, {"direction": "south", "tiles": 1}]
         },
-        "why": "east along row 2 to (8, 2), down column 8 to the wall at (8, 10), west along row 10 to (2, 10), below Rocker Shawn (2, 9), who looks west at (1, 9) only, down to (2, 12) and into the middle box along row 12 to (6, 12) and (6, 13): out of Tamer Phil's lines round (4, 6), which a planned route crosses"
+        "why": "east along row 2 to (9, 2), down column 9 to the wall at (9, 10), west along row 10 to (2, 10), below Rocker Shawn (2, 9), who looks west at (1, 9) only, down to (2, 12) and into the middle box along row 12 to (6, 12) and (6, 13): out of Tamer Phil's lines round (4, 6), which a planned route crosses"
       },
       {
         "id": "west_of_koga",
