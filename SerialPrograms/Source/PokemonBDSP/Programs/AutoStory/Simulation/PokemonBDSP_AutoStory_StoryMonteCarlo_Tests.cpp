@@ -27,6 +27,7 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Pokemon_StoryMonteCarlo.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
+#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP_AutoStory_SimDisturbance.h"
 #include "PokemonBDSP_AutoStory_StorySim.h"
 #include "PokemonBDSP_AutoStory_StoryMonteCarlo_Tests.h"
@@ -37,6 +38,7 @@ namespace PokemonBDSP{
 
 namespace{
 
+using namespace std::chrono_literals;
 using Pokemon::Direction;
 using Pokemon::RowReport;
 using Pokemon::SeedOutcome;
@@ -373,6 +375,46 @@ UnitTestResult test_old_0103(Logger& logger){
 }
 
 
+//  A disturbed hold with no disturbance walks as the grid sim's own hold
+//  does, at its pace: a hold timed a tile at the walker's 160 ms east
+//  moved no tile at the sim's 200 ms (fe2da03e7), and every hold east or
+//  west at a walk stood still (00.05 east_to_the_wall, 2026-11-12).
+UnitTestResult test_disturbed_hold_as_plain(Logger& logger){
+    const StoryWorld* world = story_plan_world("JubilifeCity", "JubilifeCity");
+    if (world == nullptr){
+        return "JubilifeCity world not found";
+    }
+    struct Hold{
+        Direction direction;
+        SimPace pace;
+        bool can_run;
+    };
+    const Hold holds[] = {
+        {Direction::EAST, SimPace::WALK, false}, {Direction::WEST, SimPace::WALK, false},
+        {Direction::NORTH, SimPace::WALK, false}, {Direction::EAST, SimPace::RUN, true},
+    };
+    Pokemon::DisturbanceRates still;
+    still.grass_encounter = 0;
+    still.cave_encounter = 0;
+    still.drift_per_tile = 0;
+    const TilePos start = story_to_world(*world, "JubilifeCity", {46, 54});
+    for (const Hold& hold : holds){
+        GridSim plain({.world = world}, start, hold.direction, hold.can_run);
+        const SimMove expected = plain.hold(hold.direction, 10000ms, hold.pace);
+        GridSim disturbed({.world = world}, start, hold.direction, hold.can_run);
+        SimDisturbance noise(Pokemon::make_disturbance_plan(1, still, 0, 0));
+        const SimMove got = disturbed_hold(disturbed, &noise, hold.direction, 10000ms, hold.pace).move;
+        logger.log(std::format("{}: plain {} to {}, disturbed {} to {}.", direction_name(hold.direction),
+            expected.distance / SIM_TILE, to_string(plain.player().pos), got.distance / SIM_TILE, to_string(disturbed.player().pos)));
+        if (got.distance != expected.distance || got.stop != expected.stop || disturbed.player().pos != plain.player().pos){
+            return std::format("{} held: the disturbed hold moved {} where the plain one moved {}.",
+                direction_name(hold.direction), got.distance / SIM_TILE, expected.distance / SIM_TILE);
+        }
+    }
+    return true;
+}
+
+
 //  A row of the table, disturbed; or, with a body, another test.
 struct StoryMonteCarloInput{
     std::string row;
@@ -437,6 +479,10 @@ const StoryMonteCarloCase AUTO_STORY_MONTE_CARLO_CASES[] = {
     {.input = {"01.09"}, .expectation = {.floor = 100}},
     {.input = {"01.10"}, .expectation = {.floor = 80}},
     {.input = {"01.11"}, .expectation = {.floor = 100}},
+    {
+        .input = {"a disturbed hold with no disturbance walks as the plain hold does", test_disturbed_hold_as_plain},
+        .expectation = {},
+    },
     {
         .input = {"the old 01.03 fails across Roark's room and at the Center's door (lab-B, 2026-11-08)", test_old_0103},
         .expectation = {},
