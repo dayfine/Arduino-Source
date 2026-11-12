@@ -26,6 +26,6 @@ inline UnitTestResult expect_equal(const std::string& what, const std::string& g
 }
 
 
-}
-}
+} // namespace Pokemon
+} // namespace PokemonAutomation
 #endif
