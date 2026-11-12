@@ -44,6 +44,28 @@ bool is_tm_or_hm(std::string_view item){
         && item[2] >= '0' && item[2] <= '9' && item[3] >= '0' && item[3] <= '9';
 }
 
+//  The slot of `plan`'s move to forget, its first choice the member knows.
+std::optional<size_t> first_known(const std::vector<std::string>& moves, const TeachPlan& plan){
+    std::vector<std::string> choices{plan.forget_move};
+    choices.insert(choices.end(), plan.forget_else.begin(), plan.forget_else.end());
+    for (const std::string& move : choices){
+        const auto found = std::find(moves.begin(), moves.end(), move);
+        if (found != moves.end()){
+            return size_t(found - moves.begin());
+        }
+    }
+    return std::nullopt;
+}
+
+//  "whirlwind", or "whirlwind or sand-attack".
+std::string forget_names(const TeachPlan& plan){
+    std::string names = plan.forget_move;
+    for (const std::string& move : plan.forget_else){
+        names += std::format(" or {}", move);
+    }
+    return names;
+}
+
 } // namespace
 
 Pokemon::StoryActionArgs teach_args(const TeachPlan& plan){
@@ -55,6 +77,9 @@ Pokemon::StoryActionArgs teach_args(const TeachPlan& plan){
     }
     if (!plan.forget_move.empty()){
         args.emplace("forget", plan.forget_move);
+        if (!plan.forget_else.empty()){
+            args.emplace("or_forget", plan.forget_else);
+        }
     }else if (plan.forget_slot){
         args.emplace("forget_slot", int64_t(*plan.forget_slot + 1));
     }
@@ -79,6 +104,12 @@ std::optional<TeachPlan> teach_plan_of(const Pokemon::StoryActionArgs& args){
             return std::nullopt;
         }
         plan.forget_move = *forget;
+    }
+    if (const std::vector<std::string>* forget_else = game_arg<std::vector<std::string>>(args, "or_forget")){
+        if (plan.forget_move.empty()){
+            return std::nullopt;
+        }
+        plan.forget_else = *forget_else;
     }
     if (args.contains("forget_slot")){
         plan.forget_slot = counted_arg(args, "forget_slot", MOVE_SLOTS);
@@ -110,11 +141,11 @@ TeachDecision decide_teach(const TeachPlan& plan, const std::vector<std::string>
     }
     std::optional<size_t> slot = plan.forget_slot;
     if (!plan.forget_move.empty()){
-        const auto found = std::find(moves.begin(), moves.end(), plan.forget_move);
-        if (found == moves.end()){
-            return {.error = std::format("it doesn't know {}, the move to forget", plan.forget_move)};
+        const std::optional<size_t> known = first_known(moves, plan);
+        if (!known){
+            return {.error = std::format("it doesn't know {}, the move to forget", forget_names(plan))};
         }
-        slot = size_t(found - moves.begin());
+        slot = known;
     }
     if (!slot){
         return {.error = "it knows four moves and the table names none to forget"};
