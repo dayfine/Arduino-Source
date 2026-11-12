@@ -111,8 +111,10 @@ std::vector<Pokemon::StoryActionSpec> make_bdsp_actions(){
             action.args.push_back(opt_legs);
         }
     }
+    const Pokemon::StoryArgSpec opt_avoid{.key = "avoid", .type = Pokemon::StoryArgType::INTEGER_ROWS, .required = false,
+        .fallback = std::nullopt, .why = "ground on the target's map to keep off: [x, y] tiles, [x0, y0, x1, y1] boxes"};
     for (std::string_view cost : {"town", "overworld", "indoors", "caves", "robust", "line", "trigger"}){
-        actions.push_back({.kind = Pokemon::StoryStepKind::ROUTE, .name = std::string(cost), .args = {route_target, fight_wild, opt_legs}});
+        actions.push_back({.kind = Pokemon::StoryStepKind::ROUTE, .name = std::string(cost), .args = {route_target, fight_wild, opt_legs, opt_avoid}});
     }
     actions.push_back({.kind = Pokemon::StoryStepKind::ROUTE, .name = "into_scene", .args = {route_target, fight_wild, legs_arg}});
     add_legs_actions(actions, legs_arg, fight_wild);
