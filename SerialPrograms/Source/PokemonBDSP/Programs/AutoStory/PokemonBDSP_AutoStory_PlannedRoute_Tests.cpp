@@ -162,7 +162,7 @@ enum class AfterTalk{
     NO_BATTLE,
 };
 
-ScriptedWalk walk_script(const StoryWorld& maps, const TilePos& from, const TilePos& goal, std::vector<TrainerSight> sights, Script& script,
+ScriptedWalk walk_script_from(const StoryWorld& maps, std::vector<TilePos> from, const TilePos& goal, std::vector<TrainerSight> sights, Script& script,
     AfterTalk after_talk = AfterTalk::BATTLE
 ){
     ScriptedWalk out;
@@ -172,7 +172,7 @@ ScriptedWalk walk_script(const StoryWorld& maps, const TilePos& from, const Tile
     };
     ScriptedRouteIO io(script);
     try{
-        out.at = walk_route(io, maps, {from}, trainers, {
+        out.at = walk_route(io, maps, std::move(from), trainers, {
             .goal = [goal](const TilePos& pos){ return pos == goal; },
             .label = "T",
             .avoid = {},
@@ -183,6 +183,12 @@ ScriptedWalk walk_script(const StoryWorld& maps, const TilePos& from, const Tile
         out.failure = e.message;
     }
     return out;
+}
+
+ScriptedWalk walk_script(const StoryWorld& maps, const TilePos& from, const TilePos& goal, std::vector<TrainerSight> sights, Script& script,
+    AfterTalk after_talk = AfterTalk::BATTLE
+){
+    return walk_script_from(maps, {from}, goal, std::move(sights), script, after_talk);
 }
 
 //  The script's calls all made, or which are left.
@@ -669,6 +675,31 @@ UnitTestResult test_wall_leg_held_up_is_not_at_its_wall(Logger&){
     return left.empty() ? UnitTestResult(true) : UnitTestResult(left);
 }
 
+//  lab-B 2026-11-12 14:50, 01.02 "south 3 (to wall)" on Route 203, straight
+//  after a battle: the start is one of four tiles, the player already stands
+//  at the wall, and the walk's three moved chunks (a turn counted as one)
+//  and 2000 ms read as held up. No tile of the leg past the wall fits, but
+//  the tile at the wall does: the leg ends there, it must not fail.
+UnitTestResult test_wall_leg_at_its_wall_among_the_start_tiles(Logger&){
+    const StoryWorld corridor = make_world({"###", "#.#", "#.#", "#.#", "#.#", "###"});
+    Script script{.steps = {
+        walk_step("wall: T: south 3 (to wall)", WalkStop::BLOCKED, 2000ms, 3),
+    }};
+    ScriptedWalk walk;
+    try{
+        walk = walk_script_from(corridor, {{1, 1}, {1, 2}, {1, 3}, {1, 4}}, {1, 4}, {}, script);
+    }catch (const ScriptMismatch& e){
+        return e.message;
+    }
+    if (!walk.failure.empty()){
+        return "failed: " + walk.failure;
+    }
+    if (walk.at != std::vector<TilePos>{{1, 4}}){
+        return "did not end at the wall (1, 4).";
+    }
+    return true;
+}
+
 struct PlannedRouteInput{
     std::string name;
     std::function<UnitTestResult(Logger&)> body;
@@ -742,6 +773,10 @@ const PlannedRouteCase PLANNED_ROUTE_CASES[] = {
     },
     {
         .input = {"a wall leg held up on the way is not at its wall (lab-B 2026-11-11 21:00)", test_wall_leg_held_up_is_not_at_its_wall},
+        .expectation = {},
+    },
+    {
+        .input = {"a wall leg that stood at its wall among the start tiles does not fail (lab-B 2026-11-12 14:50)", test_wall_leg_at_its_wall_among_the_start_tiles},
         .expectation = {},
     },
 };

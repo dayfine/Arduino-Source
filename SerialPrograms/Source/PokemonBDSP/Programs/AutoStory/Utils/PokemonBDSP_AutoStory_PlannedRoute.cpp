@@ -165,12 +165,9 @@ size_t moved_on(const WalkResult& walk, Milliseconds per_tile){
 //  Whether a walk to the wall never moved: no chunk changed and its time
 //  counts no tile. It stopped where it began, so whoever stopped it stands
 //  on the next tile, however short the leg. On lab-B (2026-11-08 16:50,
-//  01.08) Route 204's youngster, who wanders (12, 2) to (14, 2), stood a
-//  tile ahead of the leg "west 2 (to wall)" from (13, 2). The wait for the
-//  way needed a stop three tiles short of the wall, so he was talked to at
-//  once, and the replan from both (12, 2) and (13, 2) found no plan: an
-//  uncertain start needs a wall both tiles reach, and no wall is anchored
-//  from a tile someone wanders on.
+//  01.08) Route 204's wandering youngster stood a tile ahead of "west 2 (to
+//  wall)" from (13, 2), and a replan from (12, 2) and (13, 2) found no plan:
+//  no wall is anchored from a tile someone wanders on.
 bool never_moved(const WalkResult& walk, size_t walked_tiles){
     return walk.stop == WalkStop::BLOCKED && walk.moved_chunks == 0 && walked_tiles == 0;
 }
@@ -178,11 +175,8 @@ bool never_moved(const WalkResult& walk, size_t walked_tiles){
 //  Whether a walk to the wall that stopped took far longer than the tiles
 //  to its nearest wall `nearest` allow, past the walker's slack: two of its
 //  400 ms chunks, or 30% of the tiles' time on a long leg. Something held
-//  it up on the way, and its time no longer counts tiles. On lab-B
-//  (2026-11-11 21:00, 00.05b) "east 8 (to wall)" stopped after 2800 ms
-//  against a boy below the Mart, about 5 tiles in, with 5 moved chunks
-//  where an 8-tile run moves about 3; the time counted 17 tiles, and the
-//  route went on from (56, 34) as if at the wall.
+//  it up on the way, and its time no longer counts tiles. On lab-B (2026-11-11 21:00, 00.05b) "east 8 (to wall)" stopped after 2800 ms
+//  against a boy below the Mart, about 5 tiles in, but the time counted 17.
 bool held_up(const WalkResult& walk, size_t nearest, Milliseconds per_tile){
     if (walk.stop != WalkStop::BLOCKED || walk.wild_battles > 0){
         return false;
@@ -1177,13 +1171,19 @@ void RouteWalker::mark_tiles_past(const LegWalk& walk, const std::vector<TilePos
 }
 
 //  A walk to the wall held up on the way (held_up()): it may have stopped on
-//  any tile of the leg, its first too if no chunk moved. Not the wall: plan
-//  again from all of them, which a leg to a wall brings back to one tile.
+//  any tile of the leg, its first too if no chunk moved or it is at the wall,
+//  and plans again from all of them (a leg to a wall brings back one tile).
 LegNext RouteWalker::held_up_on_the_way(const LegWalk& walk, size_t nearest){
     std::vector<TilePos> stopped;
     for (const TilePos& pos : m_from){
-        if (walk.result.moved_chunks == 0){
+        //  At its wall, a start tile stands there whatever moved (lab-B 2026-11-12 14:50).
+        const bool at_wall = slide_to_wall(m_grid, pos, walk.planned.leg.direction).tiles == 0;
+        if (walk.result.moved_chunks == 0 || at_wall){
             stopped.push_back(pos);
+        }
+        if (at_wall && walk.result.moved_chunks > 0){
+            m_io.note(std::format("[Route] {}: {} is at its wall; {} moved chunks include a turn.", walk.label,
+                describe(m_maps, pos), walk.result.moved_chunks), RouteNote::WARNING);
         }
         const std::vector<TilePos> path = leg_path(m_grid, pos, walk.planned.leg.direction, nearest);
         stopped.insert(stopped.end(), path.begin(), path.end());
