@@ -251,7 +251,7 @@ Pose StoryWalkSteps::walk_to(const Pose& from, const Pose& goal, const StoryStep
     std::vector<TrainerSight>& sights = m_trainers.try_emplace(maps, row_trainers(*maps, m_row)).first->second;
     RouteTrainers trainers{
         sights,
-        [this](const std::string& trainer){ m_io.fight(trainer); }
+        [this](const std::string& trainer){ return m_io.fight(trainer); }
     };
     const RouteWalkPlan plan{
         [&](const TilePos& pos){ return std::find(targets.begin(), targets.end(), pos) != targets.end(); },

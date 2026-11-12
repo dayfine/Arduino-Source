@@ -337,8 +337,9 @@ public:
     }
     //  A scene's dialogue fought as a trainer's is pressed through under the
     //  walk, not its own step: noted (sim_fight()).
-    virtual void fight(const std::string&) override{
+    virtual bool fight(const std::string&) override{
         detail::sim_fight(m_sim);
+        return true;
     }
     virtual void walk_until_stopped(Pokemon::Direction direction, size_t tiles, const std::string& label) override;
     virtual bool run_until_map(Pokemon::Direction direction, Milliseconds limit, const std::string& map, const std::string&) override;

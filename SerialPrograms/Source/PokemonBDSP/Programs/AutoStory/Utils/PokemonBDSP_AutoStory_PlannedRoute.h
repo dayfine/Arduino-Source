@@ -34,8 +34,9 @@ namespace PokemonBDSP{
 
 //  Called when a trainer's dialogue has opened, or when someone standing in
 //  the way was talked to. Fights the battle if one starts, and returns to the
-//  overworld either way.
-using RouteTrainerFight = std::function<void(const std::string& trainer)>;
+//  overworld either way. Returns whether a battle followed: a talk with
+//  none is someone who only talks, and may stand in the way.
+using RouteTrainerFight = std::function<bool(const std::string& trainer)>;
 
 //  The trainers a route walk may meet, and how to fight them. A trainer who
 //  is fought is taken off `sights`.
