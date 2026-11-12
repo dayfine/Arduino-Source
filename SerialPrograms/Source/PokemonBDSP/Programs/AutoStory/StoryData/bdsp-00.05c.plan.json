@@ -89,129 +89,29 @@
               26,
               43,
               27
+            ],
+            [
+              60,
+              18,
+              70,
+              30
             ]
           ],
           "fight_wild": false,
           "target": {
-            "facing": "east",
+            "facing": "north",
             "map": "JubilifeCity",
             "tiles": [
               [
-                53,
-                27
+                59,
+                21
               ]
             ]
           }
         },
-        "id": "up_the_main_road",
+        "id": "below_the_east_exit_sign",
         "kind": "route",
-        "why": "up the main road to row 27 west of the Mart's hedges; an open leg can end a row or a few columns off (lab-B 2026-11-12 13:32: a row off, the east leg to the wall stopped at the hedges)",
-        "declared_after": {
-          "facing": "east",
-          "map": "JubilifeCity",
-          "tiles": [
-            [
-              49,
-              25
-            ],
-            [
-              50,
-              25
-            ],
-            [
-              51,
-              25
-            ],
-            [
-              52,
-              25
-            ],
-            [
-              53,
-              25
-            ],
-            [
-              54,
-              25
-            ],
-            [
-              49,
-              26
-            ],
-            [
-              50,
-              26
-            ],
-            [
-              51,
-              26
-            ],
-            [
-              52,
-              26
-            ],
-            [
-              53,
-              26
-            ],
-            [
-              54,
-              26
-            ],
-            [
-              49,
-              27
-            ],
-            [
-              50,
-              27
-            ],
-            [
-              51,
-              27
-            ],
-            [
-              52,
-              27
-            ],
-            [
-              53,
-              27
-            ],
-            [
-              54,
-              27
-            ]
-          ]
-        }
-      },
-      {
-        "action": "measured",
-        "args": {
-          "fight_wild": false,
-          "legs": [
-            {
-              "direction": "south",
-              "tiles": 3
-            },
-            {
-              "direction": "east",
-              "tiles": 8
-            },
-            {
-              "direction": "north",
-              "tiles": 1
-            },
-            {
-              "direction": "east",
-              "tiles": 4
-            },
-            {
-              "direction": "north",
-              "tiles": 6
-            }
-          ]
-        },
+        "why": "up the main road and along the street to below the east-exit sign (59, 21) facing north, west of the guard's trigger column 60: tapped legs (each a whole tile, a turn tap first) and legs to a wall, none a held leg ended in the open (lab-B 2026-11-12 13:55)",
         "declared_after": {
           "facing": "north",
           "map": "JubilifeCity",
@@ -221,10 +121,7 @@
               21
             ]
           ]
-        },
-        "id": "below_the_east_exit_sign",
-        "kind": "legs",
-        "why": "taps, each leg ended by a wall: south onto row 27 (row 28's wall, columns 49..54), east to the hedges (57, 27), north 1, east along row 26 to (60, 26)'s wall, north up column 59 to the east-exit sign (59, 20); every tile we may be on ends on (59, 21) facing north, west of the guard's trigger column 60 (user 2026-11-12)"
+        }
       }
     ],
     "id": "00.05c",

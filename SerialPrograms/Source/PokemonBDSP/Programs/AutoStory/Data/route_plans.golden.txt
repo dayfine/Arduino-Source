@@ -259,13 +259,13 @@ anchor); 0 from one start tile.
   5. east 12 (open) -> Jubilife City (45, 35)
   totals: 5 legs, 4 turns, 4 open, 0 localization
 
-== 00.05c up_the_main_road (costs: line)
+== 00.05c below_the_east_exit_sign (costs: line)
   from: JubilifeCity (45, 35) facing east (tile)
-  target: JubilifeCity (53, 27) facing east (tile)
+  target: JubilifeCity (59, 21) facing north (tile)
   start candidates: Jubilife City (45, 35)
-  1. north 8 (open) -> Jubilife City (45, 27)
-  2. east 11 (to wall) -> Jubilife City (56, 27)
-  3. west 3 (open) -> Jubilife City (53, 27)
+  1. north 9 (open) -> Jubilife City (45, 26)
+  2. east 14 (open) -> Jubilife City (59, 26)
+  3. north 5 (to wall) -> Jubilife City (59, 21)
   totals: 3 legs, 2 turns, 2 open, 0 localization
 
 == 01.01 west_of_barrys_trigger (costs: town)
