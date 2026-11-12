@@ -14,6 +14,7 @@
 #include "PokemonFRLG_OverworldReanchor.h"
 #include "PokemonFRLG_OverworldWalk.h"
 #include "PokemonFRLG_OverworldBike.h"
+#include "PokemonFRLG_OverworldMaps.h"
 #include "PokemonFRLG_OverworldSim.h"
 
 namespace PokemonAutomation{
@@ -21,7 +22,6 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 using namespace std::chrono_literals;
-
 
 std::string_view sim_screen_name(SimScreen screen){
     switch (screen){
