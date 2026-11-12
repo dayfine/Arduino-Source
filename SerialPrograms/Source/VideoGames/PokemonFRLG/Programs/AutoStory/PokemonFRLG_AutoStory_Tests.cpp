@@ -44,6 +44,7 @@
 #include "PokemonFRLG_AutoStoryMoveData.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
 #include "PokemonFRLG_AutoStoryTable.h"
+#include "PokemonFRLG_AutoStoryUnauthoredStarts_Tests.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -284,7 +285,8 @@ UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& po
 }
 
 //  Plans every route of the story, each checkpoint from where the one
-//  before leaves the player, and adds the plans to `golden`.
+//  before leaves the player (or, past rows not authored yet, from its own
+//  start: starts_after_unauthored_rows()), and adds the plans to `golden`.
 UnitTestResult chain_story_routes(std::vector<std::string>& golden){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
     if (checkpoints.size() != 58 || checkpoints[0].start){
@@ -293,7 +295,9 @@ UnitTestResult chain_story_routes(std::vector<std::string>& golden){
     StoryPose pose;
     for (size_t c = 0; c < checkpoints.size(); c++){
         const StoryCheckpoint& checkpoint = checkpoints[c];
-        if (c > 0){
+        if (c > 0 && starts_after_unauthored_rows(checkpoint.id)){
+            pose = one_tile(Pokemon::grid_pose_of(*checkpoint.start));
+        }else if (c > 0){
             const StoryPose start = one_tile(Pokemon::grid_pose_of(*checkpoint.start));
             const bool same_facing = !start.facing || start.facing == pose.facing;
             if (start.map != pose.map || !(start.tile == pose.tile) || !same_facing){
