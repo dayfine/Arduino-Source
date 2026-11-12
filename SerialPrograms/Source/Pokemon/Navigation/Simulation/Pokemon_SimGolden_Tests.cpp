@@ -20,19 +20,28 @@ namespace Pokemon{
 
 namespace{
 
-struct SimGoldenTestCase{
+struct SimGoldenInput{
     std::string name;
     UnitTestResult (*body)(Logger& logger);
+};
+
+struct SimGoldenExpectation{
+    std::string_view description;
+};
+
+struct SimGoldenTestCase{
+    SimGoldenInput input;
+    SimGoldenExpectation expectation;
 };
 
 class Test_SimGolden : public UnitTest{
 public:
     explicit Test_SimGolden(SimGoldenTestCase scenario)
-        : UnitTest("Pokemon::Navigation - Sim golden: " + scenario.name)
+        : UnitTest("Pokemon::Navigation - Sim golden: " + scenario.input.name)
         , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
-        return m_scenario.body(logger);
+        return m_scenario.input.body(logger);
     }
 
 private:
@@ -99,12 +108,12 @@ UnitTestResult test_missing_golden_fails(Logger& logger){
 }
 
 const SimGoldenTestCase SIM_GOLDEN_CASES[] = {
-    {.name = "the golden's path is beside the test's source", .body = test_path_beside_source},
-    {.name = "the text is a comment line, then a line each", .body = test_text},
-    {.name = "CRLF and LF text compare the same", .body = test_same_text_ignoring_crlf},
-    {.name = "the first differing line is reported", .body = test_first_differing_line},
-    {.name = "a line more or less is reported", .body = test_extra_line},
-    {.name = "a missing golden fails", .body = test_missing_golden_fails},
+    {.input = {.name = "the golden's path is beside the test's source", .body = test_path_beside_source}, .expectation = {}},
+    {.input = {.name = "the text is a comment line, then a line each", .body = test_text}, .expectation = {}},
+    {.input = {.name = "CRLF and LF text compare the same", .body = test_same_text_ignoring_crlf}, .expectation = {}},
+    {.input = {.name = "the first differing line is reported", .body = test_first_differing_line}, .expectation = {}},
+    {.input = {.name = "a line more or less is reported", .body = test_extra_line}, .expectation = {}},
+    {.input = {.name = "a missing golden fails", .body = test_missing_golden_fails}, .expectation = {}},
 };
 
 } // namespace
