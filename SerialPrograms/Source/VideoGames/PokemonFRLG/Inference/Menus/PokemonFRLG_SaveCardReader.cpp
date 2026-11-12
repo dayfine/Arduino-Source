@@ -80,6 +80,7 @@ private:
             {"vermilion-city", "Vermilion City"},
             {"celadon-city", "Celadon City"},
             {"rocket-hideout", "Rocket Hideout"},
+            {"cinnabar-island", "Cinnabar Island"},
         }){
             JsonArray names;
             names.push_back(std::string(name));
