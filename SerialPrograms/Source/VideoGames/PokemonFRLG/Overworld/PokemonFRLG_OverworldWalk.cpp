@@ -354,15 +354,64 @@ bool warp_left_scene(
     return true;
 }
 
+} // namespace
+
+bool arrived_without_fade(
+    const ImageViewRGB32& before, const ImageViewRGB32& now, const ImageViewRGB32& later,
+    const ImageFloatBox& game, const RouteStep& step
+){
+    if (BlackScreenDetector(COLOR_RED).detect(later)){
+        return false;
+    }
+    const ImageViewRGB32 now_box = extract_box_reference(now, game);
+    const ImageViewRGB32 later_box = extract_box_reference(later, game);
+    if (now_box.width() != later_box.width() || now_box.height() != later_box.height()){
+        return false;
+    }
+    if (scrolled_rmsd(now_box, later_box, 0, 0) >= SAME_SCENE_RMSD){
+        return false;
+    }
+    return warp_left_scene(before, later, game, step.direction, step.tiles + step.warp_slack + 2);
+}
+
+namespace{
+
+//  arrived_without_fade() on the screen now and DIM_WARP_POLL later.
+bool arrived_unseen(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step, const VideoSnapshot& before){
+    if (!before){
+        return false;
+    }
+    context.wait_for_all_requests();
+    const VideoSnapshot now = console.video().snapshot();
+    context.wait_for(DIM_WARP_POLL);
+    const VideoSnapshot later = console.video().snapshot();
+    if (!now || !later){
+        return false;
+    }
+    if (!arrived_without_fade(*before.frame, *now.frame, *later.frame, GameSettings::instance().GAME_BOX, step)){
+        return false;
+    }
+    console.log(std::format("Route: no fade seen, but another scene is up and still: the warp to {} was taken.", step.end.map), COLOR_ORANGE);
+    return true;
+}
+
 //  One watcher for the whole fade: a ladder's black is short enough to be
-//  over before a second watcher, started once the fade is seen, looks.
-void wait_out_fade(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step, Pokemon::WatchAlong& fade){
+//  over before a second watcher, started once the fade is seen, looks. A
+//  fade missed altogether is taken by the scene after it (arrived_unseen()),
+//  before any step more.
+void wait_out_fade(
+    ConsoleHandle& console, ProControllerContext& context, const RouteStep& step,
+    Pokemon::WatchAlong& fade, const VideoSnapshot& before
+){
     if (fade.fired()){
         console.log("Route: the fade to " + step.end.map + " was over before the hold ended.");
         return;
     }
     context.wait_for_all_requests();
     if (wait_until(console, context, WARP_TIMEOUT, {fade.watcher()}) >= 0){
+        return;
+    }
+    if (arrived_unseen(console, context, step, before)){
         return;
     }
     //  A hold that ended short of a stairs or door warp, or on an arrow
@@ -431,7 +480,7 @@ void wait_out_warp(
     ConsoleHandle& console, ProControllerContext& context, const RouteStep& step,
     Pokemon::WatchAlong& fade, const VideoSnapshot& before
 ){
-    wait_out_fade(console, context, step, fade);
+    wait_out_fade(console, context, step, fade, before);
     if (!before){
         return;
     }
