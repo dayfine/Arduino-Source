@@ -25,6 +25,14 @@
  *  is whether holding `direction` keeps the player on this tile: a wall, but
  *  not a person who may walk off or an edge to a map that isn't loaded.
  *
+ *  A model may also have
+ *
+ *      int open_stop_risk(const State& state, Direction direction) const;
+ *
+ *  the extra cost of a leg that ends on `state` walking `direction` where
+ *  the player could keep going: what a tile past the stop would cost, e.g.
+ *  a tile a trainer may see.
+ *
  */
 
 #ifndef PokemonAutomation_Pokemon_LegPlanner_H
@@ -162,7 +170,11 @@ int stop_cost(const Model& model, const Node<State>& node, const LegCosts& costs
     if (!node.moving || model.held_at(node.state, (Direction)node.facing)){
         return 0;
     }
-    return costs.per_open_stop + (node.wild ? costs.per_open_wild_stop : 0);
+    int cost = costs.per_open_stop + (node.wild ? costs.per_open_wild_stop : 0);
+    if constexpr (requires { model.open_stop_risk(node.state, Direction::NORTH); }){
+        cost += model.open_stop_risk(node.state, (Direction)node.facing);
+    }
+    return cost;
 }
 
 // Combines atomic movement steps into contiguous legs.
@@ -222,7 +234,7 @@ int distance_of(const Search<Model>& search, const Node<State>& node){
 
 //  Records `cost` as the way to `node` if it is cheaper than any so far.
 template <typename Model, typename State>
-void relax(Search<Model>& search, const Node<State>& node, int cost, const Move<State>& move){
+void relax(const Node<State>& node, int cost, const Move<State>& move, Search<Model>& search){
     if (cost >= distance_of(search, node)){
         return;
     }
@@ -235,8 +247,8 @@ void relax(Search<Model>& search, const Node<State>& node, int cost, const Move<
 //  Queues every press from `current`, reached at `cost`.
 template <typename Model, typename State>
 void expand(
-    const Model& model, Search<Model>& search,
-    const Node<State>& current, int cost, const LegCosts& costs
+    const Model& model, const Node<State>& current, int cost,
+    const LegCosts& costs, Search<Model>& search
 ){
     for (Direction direction : ALL_DIRECTIONS){
         std::optional<Step<State>> step = model.press(current.state, direction);
@@ -251,7 +263,7 @@ void expand(
         if (current.facing != (int)direction){
             step_cost += costs.per_turn + stop_cost(model, current, costs);
         }
-        relax(search, next, cost + step_cost, Move<State>{current, direction, *step});
+        relax(next, cost + step_cost, Move<State>{current, direction, *step}, search);
     }
 }
 
@@ -273,9 +285,9 @@ int arrival_cost(
 //  at, or nothing if no goal can be reached.
 template <typename Model, typename State>
 std::optional<Node<State>> search_goal(
-    const Model& model, Search<Model>& search, const Node<State>& first,
+    const Model& model, const Node<State>& first,
     const std::function<bool(const State&)>& at_goal,
-    std::optional<Direction> goal_facing, const LegCosts& costs
+    std::optional<Direction> goal_facing, const LegCosts& costs, Search<Model>& search
 ){
     search.distance[first] = 0;
     search.nodes.push_back(first);
@@ -294,7 +306,7 @@ std::optional<Node<State>> search_goal(
             break;
         }
         if (!at_goal(current.state)){
-            expand(model, search, current, cost, costs);
+            expand(model, current, cost, costs, search);
             continue;
         }
         const int total = cost + arrival_cost(model, current, goal_facing, costs);
@@ -346,7 +358,7 @@ std::optional<std::vector<Leg<typename Model::State>>> plan_legs(
 
     const Node first{start, start_facing ? (int)*start_facing : 4, false, false};
     LegPlannerInternal::Search<Model> search;
-    const std::optional<Node> end = LegPlannerInternal::search_goal(model, search, first, at_goal, goal_facing, costs);
+    const std::optional<Node> end = LegPlannerInternal::search_goal(model, first, at_goal, goal_facing, costs, search);
     if (!end){
         return std::nullopt;
     }

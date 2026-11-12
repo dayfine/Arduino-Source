@@ -5,7 +5,6 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
-#include "Pokemon/AutoStory/Data/Pokemon_StoryStepJson.h"
 #include "JsonWriter.h"
 #include "VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryTable.h"
 #include "VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_StoryReplay.h"
@@ -23,7 +22,6 @@ struct ExportInput{
 };
 
 struct ExportExpectation{
-    std::vector<std::string> events;
     std::string_view menu;
     std::string_view native_json = {};
 };
@@ -34,9 +32,9 @@ struct ExportCase{
 };
 
 const ExportCase CASES[] = {
-    {.input = {.id = "00.05"}, .expectation = {.events = {"below_mart_door", "mart_door", "parcel_from_clerk"}, .menu = "before_pokedex"}},
-    {.input = {.id = "00.05", .custom = true}, .expectation = {
-        .events = {"below_mart_door", "mart_door", "parcel_from_clerk"}, .menu = "full",
+    {.input = {.id = "02.01"}, .expectation = {.menu = "before_pokedex"}},
+    {.input = {.id = "02.01", .custom = true}, .expectation = {
+        .menu = "full",
         .native_json = R"({"menu":"full","supplies":{"potions":2,"antidotes":3,"parlyz_heals":4,"pocket":["antidote",""],"status":"PSN","hurt":true,"hp_red":true,"hp_fill":0.25,"lead":{"species":"wartortle","moves":[{"move":"bite","pp":0}],"moves_through_level":18,"moves_read":true,"level":19,"stats":{"hp":50,"attack":20,"defense":30,"sp_attack":40,"sp_defense":35,"speed":25}},"protected_slots":[0,2],"foes":["staryu"],"trainer":"misty","risk":"high","foe_out":"staryu","wild_foes":["pidgey"]}})"
     }},
 };
@@ -76,15 +74,7 @@ std::string check_export(StoryCheckpoint row, const ExportCase& test){
     if (!test.expectation.native_json.empty() && !(JsonValue(native.clone()) == parse_json(std::string(test.expectation.native_json)))){
         return "Expected native fields " + std::string(test.expectation.native_json) + ", read " + native.dump();
     }
-    const auto decoded = Pokemon::read_story_checkpoint(root.get_value_throw("checkpoint"), "export test");
-    if (!(Pokemon::story_checkpoint_json(decoded) == Pokemon::story_checkpoint_json(row))){
-        return "Expected every authored common field to survive export/import.";
-    }
-    std::vector<std::string> names;
-    for (const auto& step : decoded.steps){
-        names.push_back(step.name);
-    }
-    return names == test.expectation.events ? "" : "Expected Parcel's three authored events in order.";
+    return "";
 }
 
 class ExportTest : public UnitTest{

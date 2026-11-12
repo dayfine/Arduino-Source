@@ -82,7 +82,7 @@ BikeTap OverworldSimWalker::step_tap(const RouteStep& step, int tap){
     const MapPosition before = m_sim.state().position;
     m_sim.tap(step.direction, STEP_TAP, STEP_TAP_RELEASE);
     m_sim.watch({}, step_tap_settle(step, tap));
-    if (!(m_sim.state().position == before)){
+    if (!(m_sim.state().position == before) && !m_sim.hides_moved_step_tap()){
         return BikeTap{.moved = true};
     }
     return BikeTap{.moved = false, .interrupt = std::nullopt, .cleared_late = clear_late(interrupts(step), AFTER_LEG_WATCH, MAX_INTERRUPTIONS_PER_LEG) > 0};
@@ -94,6 +94,12 @@ StepOutcome OverworldSimWalker::walk_step_taps(const RouteStep& step){
     calls.tap = [&](int tap){ return step_tap(step, tap); };
     calls.clear = [&](size_t index){ clear(ints[index]); };
     calls.log = [&](const std::string& message){ m_log.push_back(message); };
+    calls.facing = [&]() -> std::optional<Direction>{
+        if (m_sim.state().screen != SimScreen::OVERWORLD){
+            return std::nullopt;
+        }
+        return m_sim.state().facing;
+    };
     calls.tries = STEP_TAP_TRIES;
     m_leg_start = m_sim.state().time;
     m_leg_dark = m_sim.state().dark;

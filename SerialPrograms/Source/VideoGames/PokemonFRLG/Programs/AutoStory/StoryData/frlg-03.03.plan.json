@@ -1,0 +1,60 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "03.03",
+    "title": "Pewter: the Running Shoes from Oak's aide",
+    "start": {"map": "PewterCity_Gym", "tiles": [[6, 6]], "facing": "north"},
+    "events": [
+      {
+        "id": "before_aide_trigger",
+        "kind": "route",
+        "args": {
+          "target": {"map": "PewterCity", "tiles": [[45, 21]], "facing": "east"}
+        },
+        "why": "out of the Gym, east along row 21, short of the top trigger"
+      },
+      {
+        "id": "aide_trigger",
+        "kind": "step",
+        "args": {
+          "direction": "east"
+        },
+        "why": "onto (46, 21), below the aide"
+      },
+      {
+        "id": "shoes_from_aide",
+        "kind": "scene",
+        "declared_after": {"map": "PewterCity", "tiles": [[46, 21]], "facing": "north"},
+        "why": "\"Oh, PLAYER!\" ... the Running Shoes; ends facing north"
+      },
+      {
+        "id": "below_pewter_center",
+        "kind": "route",
+        "args": {
+          "target": {"map": "PewterCity", "tiles": [[17, 26]], "facing": "south"}
+        },
+        "why": "west along row 21 and down to below the Pokemon Center's door (17, 25)"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "lead": "after_brock",
+    "notes": {
+      "checkpoint": [
+        "At the rows after Brock: no items counted, the starter with the moves the story gave it by Lv13. A run that loads a save reads the moves off the lead's summary instead (read_lead_moves()), so a save whose moves differ from these (console B, 2026-11-02: Water Gun where Tackle was) is fought with the moves it has."
+      ],
+      "before_aide_trigger": [
+        "Brock's win sets VAR_MAP_SCENE_PEWTER_CITY to 1 and shows the aide at (46, 20); his triggers are (46, 21..23) (PewterCity map.json). The Gym guide's triggers at (42..43, 21..23) need the scene at 0."
+      ],
+      "shoes_from_aide": [
+        "RunningShoesAideTriggerTop: the aide talks from (46, 20), no YES/NO; the player only turns up. He walks off and is removed; FLAG_SYS_B_DASH is set (console B, 2026-11-02: about 20 B presses to the overworld)."
+      ],
+      "below_pewter_center": [
+        "Where the by-hand walk stopped to start 04.01 (console B, 2026-11-02)."
+      ]
+    }
+  },
+  "metadata": {"phase": "testing"}
+}

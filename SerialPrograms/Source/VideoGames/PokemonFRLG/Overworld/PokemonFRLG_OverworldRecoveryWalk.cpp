@@ -162,6 +162,7 @@ StepWalk walk_step_taps(
     };
     calls.clear = [&](size_t index){ watched[index]->clear(console, context); };
     calls.log = [&](const std::string& message){ console.log(message, COLOR_ORANGE); };
+    calls.facing = [&]{ return read_facing(console, context); };
     calls.tries = STEP_TAP_TRIES;
     const StepOutcome outcome = count_bike_taps(step, calls);
     out.stopped = outcome.walked;
@@ -232,7 +233,7 @@ StepWalk walk_step(
         start_surf(console, context, step.direction, facing == step.direction);
         break;
     case RouteAction::FACE:
-        pbf_press_dpad(context, dpad(step.direction), FACE_HOLD, STEP_RELEASE);
+        turn_to(console, context, step.direction);
         break;
     }
     return out;

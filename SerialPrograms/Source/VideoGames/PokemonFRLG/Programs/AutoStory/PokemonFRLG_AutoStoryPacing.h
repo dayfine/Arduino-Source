@@ -24,7 +24,7 @@ namespace PokemonFRLG{
 //  Before pacing: gets the player off the Bicycle with SELECT, checked,
 //  and once more if they still ride. On the Bicycle a tap facing another
 //  way steps as well as turns, so pacing's turns walk it off the patch
-//  (console B, 2026-11-09, 00.30 run 5: Route 7's grass). Returns whether
+//  (console B, 2026-11-09, 08.03 run 5: Route 7's grass). Returns whether
 //  the player is on foot.
 bool select_off_bike(const OverworldWalkSteps::BikeSelectCalls& calls);
 

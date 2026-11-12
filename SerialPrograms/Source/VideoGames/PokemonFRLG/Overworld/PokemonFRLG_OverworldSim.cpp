@@ -244,7 +244,7 @@ std::optional<SimSeen> OverworldSim::watch_until(const std::vector<SimWatcher>& 
 
 std::optional<OverworldSim::Step> OverworldSim::take_warp(int map_index, const TilePos& tile) const{
     const MapWarp* warp = warp_at(m_maps[map_index], tile);
-    if (warp == nullptr){
+    if (warp == nullptr || m_script.dead_warp_maps.contains(m_maps[map_index].name)){
         return std::nullopt;
     }
     if (m_lift_floor && m_script.lift_floors.contains(m_maps[map_index].name)){
@@ -360,6 +360,9 @@ bool OverworldSim::after_step(const Step& step, Milliseconds pressed){
     if (step.warped && black_without_warp(pressed)){
         return true;
     }
+    if (step.warped){
+        m_state.warped_from.push_back(map().name);
+    }
     m_map = step.map;
     m_player = step.player;
     m_state.steps++;
@@ -376,8 +379,11 @@ bool OverworldSim::after_step(const Step& step, Milliseconds pressed){
             note("the warp takes the player off the Bicycle.");
         }
         m_frozen = true;
-        schedule(pressed + timing.tile, SimScreen::FADE, false);
-        schedule(pressed + timing.tile + timing.fade, SimScreen::OVERWORLD, true);
+        schedule(pressed + timing.tile, m_script.lift_exit_dims && m_script.lift_floors.contains(m_state.warped_from.back()) ? SimScreen::OVERWORLD : SimScreen::FADE, false);
+        schedule(pressed + timing.tile + timing.fade, SimScreen::OVERWORLD, timing.fade_in == 0ms);
+        if (timing.fade_in > 0ms){
+            schedule(pressed + timing.tile + timing.fade + timing.fade_in, SimScreen::OVERWORLD, true);
+        }
         note("warped to " + to_string(m_state.position) + ".");
         return true;
     }
@@ -499,7 +505,7 @@ void OverworldSim::take_steps(Direction direction, Milliseconds pressed, Millise
         if (m_script.connections_stall && step->map != m_map && !step->warped){
             //  The step onto a connected map waits a tile while the game
             //  loads it: a hold timed by its tiles alone ended a tile short
-            //  (console B, 2026-11-03, rows 00.14, 00.16 and 00.20).
+            //  (console B, 2026-11-03, rows 04.06, 05.05 and 05.09).
             pressed += tile;
             if (pressed >= end){
                 return;
@@ -510,6 +516,9 @@ void OverworldSim::take_steps(Direction direction, Milliseconds pressed, Millise
         }
         pressed += after_slide(*step);
         if (after_step(*step, pressed)){
+            return;
+        }
+        if (step->spin && m_script.holds_end_at_slide_stop){
             return;
         }
         pressed += step->ledge ? tile * 2 : tile;
@@ -614,6 +623,15 @@ void OverworldSim::hold_on(Direction direction, Milliseconds end){
     press.end = end;
 }
 
+bool OverworldSim::hides_moved_step_tap(){
+    m_state.moved_step_taps++;
+    if (!m_script.unseen_step_taps.contains(m_state.moved_step_taps)){
+        return false;
+    }
+    note(std::format("step tap {} moves the player, read as not moved.", m_state.moved_step_taps));
+    return true;
+}
+
 bool OverworldSim::drops_turn_tap(){
     m_turn_taps++;
     return m_script.dropped_turn_taps.contains(m_turn_taps);
@@ -642,6 +660,12 @@ SimBattleEnd OverworldSim::handle_battle(SimBattleChoice choice){
     m_frozen = false;
     m_battle_pending = false;
     m_battle_lockout_end = m_now + m_script.timing.battle_exit_lockout;
+    if (m_trainer && m_script.scene_after_trainer_battle){
+        show(SimScreen::FADE, m_now);
+        m_frozen = true;
+        schedule(m_now + *m_script.scene_after_trainer_battle, SimScreen::OVERWORLD, true);
+        m_battle_lockout_end += *m_script.scene_after_trainer_battle;
+    }
     if (m_trainer){
         MapObject& trainer = m_maps[m_map].objects[*m_trainer];
         trainer.trainer.reset();
@@ -814,7 +838,7 @@ void OverworldSimWalker::fail_off_route(const RouteStep& step){
 
 std::optional<WalkedTiles> OverworldSimWalker::walk_step(const RouteStep& step, std::optional<Direction> facing){
     if (step.action == RouteAction::FACE){
-        m_sim.tap(step.direction);
+        sim_turn_to(m_sim, step.direction, m_rules.confirm_turn);
         return std::nullopt;
     }
     if (step.action != RouteAction::WALK){

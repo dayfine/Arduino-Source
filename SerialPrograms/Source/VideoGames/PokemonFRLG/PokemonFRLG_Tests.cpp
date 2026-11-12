@@ -9,7 +9,7 @@
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonFramework/StaticGlobals.h"
-#include "Programs/AutoStory/PokemonFRLG_AutoStoryScreenEvents.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryScreenEvents_Tests.h"
 #include "Inference/Box/PokemonFRLG_BoxCellOccupiedDetector.h"
 #include "Inference/Box/PokemonFRLG_BoxCellReader.h"
 #include "Inference/Box/PokemonFRLG_BoxGenderReader.h"
@@ -36,6 +36,7 @@
 #include "Inference/PokemonFRLG_StatsReader.h"
 #include "Inference/PokemonFRLG_TrainerIdReader.h"
 #include "Inference/PokemonFRLG_WildEncounterReader.h"
+#include "Programs/BoxOrganization/PokemonFRLG_BoxSorter_Tests.h"
 #include "Overworld/PokemonFRLG_OverworldMaps.h"
 #include "Overworld/PokemonFRLG_OverworldReanchor.h"
 #include "Overworld/PokemonFRLG_OverworldRecovery.h"
@@ -330,32 +331,33 @@ static void add_tests_AutoStoryRows(UnitTestDatabase& database){
 
 void add_tests(UnitTestDatabase& database){
     add_tests_AdvanceWhiteDialogDetector(database);
+    add_tests_AdvanceBattleDialogDetector(database);
+    add_tests_BagDetector(database);
+    add_tests_BattleLevelUpReader(database);
+    add_tests_BattleMenuDetector(database);
+    add_tests_BattleMoveSelectionArrow(database);
     add_tests_BoxCellOccupiedDetector(database);
     add_tests_BoxCellReader(database);
     add_tests_BoxGenderReader(database);
     add_tests_BoxSelectionModeDetector(database);
+    add_tests_BoxSorter(database);
+    add_tests_EliteFourRoomDetector(database);
+    add_tests_ExitWildBattle(database);
+    add_tests_HallOfFameSavingDetector(database);
     add_tests_PcScreenReader(database);
     add_tests_SelectionDialogDetector(database);
     add_tests_ShinySymbolDetector(database);
-    add_tests_PrizeSelectDetector(database);
-    add_tests_AdvanceBattleDialogDetector(database);
-    add_tests_BattleMenuDetector(database);
     add_tests_StatsReader(database);
     add_tests_WildEncounterReader(database);
     add_tests_TrainerIdReader(database);
-    add_tests_PartyLevelUpReader(database);
-    add_tests_BattleLevelUpReader(database);
     add_tests_PartyEmptySlotDetector(database);
     add_tests_PartyHeldItemDetector(database);
+    add_tests_PartyLevelUpReader(database);
     add_tests_PartyMenuDetector(database);
+    add_tests_PrizeSelectDetector(database);
     add_tests_PartySlotDetector(database);
-    add_tests_EliteFourRoomDetector(database);
-    add_tests_HallOfFameSavingDetector(database);
-    add_tests_BattleMoveSelectionArrow(database);
     add_tests_BattleTextBoxDetector(database);
-    add_tests_BagDetector(database);
     add_tests_AutoStoryReaders(database);
-    add_tests_ExitWildBattle(database);
     add_tests_OverworldMaps(database);
     add_tests_OverworldRoute(database);
     add_tests_OverworldWalk(database);

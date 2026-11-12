@@ -5,7 +5,9 @@
  */
 
 #include <algorithm>
+#include <format>
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "Pokemon/AutoStory/Pokemon_StoryInterrupts.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldBike.h"
 #include "PokemonFRLG_AutoStoryActions.h"
@@ -17,6 +19,8 @@
 #include "PokemonFRLG_AutoStoryRooms.h"
 #include "PokemonFRLG_AutoStoryRoomLegs.h"
 #include "PokemonFRLG_AutoStoryGameArgs.h"
+#include "PokemonFRLG_AutoStoryQuietOverworld.h"
+#include "PokemonFRLG_AutoStoryStepInterrupts.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -127,6 +131,15 @@ void pick_lift_floor(ConsoleHandle& console, ProControllerContext& context, cons
     pbf_press_button(context, BUTTON_A, 160ms, 800ms);
     //  B during the ride does nothing; the menu took the A.
     mash_until_overworld(console, context, HIDEOUT_SCENE_TIMEOUT);
+    //  The ride shakes the lift with the overworld showing, and the game
+    //  drops taps until it stops (console B, 2026-11-11).
+    context.wait_for_all_requests();
+    ConsoleScreenLook eyes(console, context);
+    const Pokemon::ScreenSettle settle = wait_for_quiet_overworld(
+        [&eyes](bool fresh){ return eyes.look(fresh); },
+        MovementMechanics::AFTER_BATTLE_QUIET, HIDEOUT_SCENE_TIMEOUT
+    );
+    console.log(std::format("Story: after the lift's ride, {}", Pokemon::describe(settle)));
 }
 
 void ride_lift(ConsoleHandle& console, ProControllerContext& context, const LiftRide& ride){

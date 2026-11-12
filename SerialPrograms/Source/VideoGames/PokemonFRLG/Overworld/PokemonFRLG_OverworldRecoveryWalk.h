@@ -38,7 +38,7 @@ constexpr double WALL_TAP_MOVED_RMSD = 20.0;
 //  How much a counted tap scrolled the map: the largest RMSD between `before`
 //  and `after` over the four edge quarters (top, bottom, left, right) of
 //  `game`, all clear of the player in the middle. One band alone misses a
-//  step over a floor that repeats every tile (Rocket Hideout B3F, 00.32): a
+//  step over a floor that repeats every tile (Rocket Hideout B3F, 09.02): a
 //  one-tile scroll leaves the band nearly the same.
 double tap_scroll_change(const ImageViewRGB32& before, const ImageViewRGB32& after, const ImageFloatBox& game);
 

@@ -44,7 +44,7 @@ struct TrashCanStand{
 //  Position and facing to inspect a trash can.
 TrashCanStand trash_can_stand(int can);
 
-//  `maps` with Vermilion Gym's trainers where their battles in 00.23 leave
+//  `maps` with Vermilion Gym's trainers where their battles in 06.02 leave
 //  them, beaten (PokemonFRLG_AutoStoryTableVermilionGym.cpp): Sailor
 //  Dwayne on (8, 14), Engineer Baily on (2, 12), Gentleman Tucker on
 //  (6, 8). The search plans its walks between the cans on these, not on

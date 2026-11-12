@@ -14,6 +14,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "PokemonFRLG_AutoStoryLegs.h"
+#include "PokemonFRLG_AutoStoryPacedRoute.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
@@ -45,9 +46,9 @@ void SimStubs::record(const StoryStep& step){
 }
 Pokemon::StoryAction SimStubs::stub(Pokemon::StoryActionFunction then){
     return {
-        .act = [this, then = std::move(then)](RunState& state, const StoryStep& step){
+        .act = [this, then = std::move(then)](const StoryStep& step, RunState& state){
             record(step);
-            return then ? then(state, step) : Pokemon::outcome_ok();
+            return then ? then(step, state) : Pokemon::outcome_ok();
         },
         .needs_console = true,
     };
@@ -156,22 +157,22 @@ void StoryMapsSim::begin_attempt(const Pokemon::StoryCheckpoint& data){
     m_dialog_up = m_dialog_rose = false;
 }
 
-Outcome StoryMapsSim::run(RunState& state, const StoryStep& step){
+Outcome StoryMapsSim::run(const StoryStep& step, RunState& state){
     if (m_knobs.dialog_before && m_knobs.dialog_before(m_row, step.name)){
         m_dialog_up = m_dialog_rose = true;
         m_dialog_notes.push_back(m_row + "/" + step.name + ": a dialog pops up before it.");
     }
-    return Pokemon::TableExecutor::run(state, step);
+    return Pokemon::TableExecutor::run(step, state);
 }
 
-Outcome StoryMapsSim::run_action(RunState& state, const StoryStep& step){
+Outcome StoryMapsSim::run_action(const StoryStep& step, RunState& state){
     if (m_dialog_up){
         if (!presses_through_text(step.kind)){
             return Pokemon::outcome_failed("dialog", step.name + ": a dialog that popped up before it is still up");
         }
         m_dialog_up = false;
     }
-    return Pokemon::TableExecutor::run_action(state, step);
+    return Pokemon::TableExecutor::run_action(step, state);
 }
 
 Pokemon::ScreenLook StoryMapsSim::look(){
@@ -189,7 +190,7 @@ Pokemon::ScreenLook StoryMapsSim::look(){
 //  the dialogs it pops up.
 StepInterruptActions StoryMapsSim::sim_interrupt_actions(){
     const auto cleared = [this](std::string_view what){
-        return [this, what](RunState&, const Pokemon::InterruptVerdict&){
+        return [this, what](const Pokemon::InterruptVerdict&, RunState&){
             m_dialog_notes.push_back(std::format("{} cleared before the next step.", what));
             m_dialog_up = false;
             return Pokemon::outcome_ok();
@@ -206,26 +207,26 @@ StepInterruptActions StoryMapsSim::sim_interrupt_actions(){
 Pokemon::StoryAction StoryMapsSim::action(StoryActionId id){
     switch (id){
     case StoryActionId::ROUTE:
-        return played([this](RunState& state, const StoryStep& step){ return walk_to(state.pose, step); });
+        return played([this](const StoryStep& step, RunState& state){ return walk_to(state.pose, step); });
     case StoryActionId::LEGS:
-        return played([this](RunState& state, const StoryStep& step){ return legs(state.pose, step); });
+        return played([this](const StoryStep& step, RunState& state){ return legs(state.pose, step); });
     case StoryActionId::STEP:
-        return played([this](RunState& state, const StoryStep& step){ return step_ahead(state.pose, step); });
+        return played([this](const StoryStep& step, RunState& state){ return step_ahead(state.pose, step); });
     //  The nurse's way must plan too, but the run goes on from where it stands.
     case StoryActionId::READY:
-        return played([this](RunState& state, const StoryStep& step){
+        return played([this](const StoryStep& step, RunState& state){
             const Outcome to_nurse = walk_to(state.pose, step);
             return to_nurse.succeeded() ? Pokemon::outcome_ok() : to_nurse;
         });
     case StoryActionId::SHOP:
-        return played([this](RunState&, const StoryStep& step){ return shop(step); });
+        return played([this](const StoryStep& step, RunState&){ return shop(step); });
     //  Pacing leaves the player on either of its tiles, as on the console.
     case StoryActionId::CLOSE_TRAINER_CARD:
     case StoryActionId::LEAVE_GIFT_SUMMARY:
     case StoryActionId::CUT_TREE:
     case StoryActionId::TRASH_CANS:
     case StoryActionId::GAME:
-        return m_stubs.stub([](RunState& state, const StoryStep& step){
+        return m_stubs.stub([](const StoryStep& step, RunState& state){
             return Pokemon::outcome_ok(paced_pose(state.pose, step));
         });
     case StoryActionId::NEW_GAME:
@@ -386,7 +387,7 @@ Pokemon::StoryAction OverworldStepSim::action(StoryActionId id){
     default:
         return m_stubs.stub();
     }
-    return played([this, body](RunState&, const StoryStep& step){
+    return played([this, body](const StoryStep& step, RunState&){
         const std::string failure = (this->*body)(step);
         return failure.empty() ? Pokemon::outcome_ok() : Pokemon::outcome_failed("sim_failure", failure);
     });
@@ -398,7 +399,7 @@ namespace{
 //  with a move: the battle loop's polls replayed through its EvolutionHold
 //  and BattleEndWatch, as BattleLoop::step() takes them. The overworld of a
 //  dark cave reads as the battle's text box with no HP box (console B,
-//  2026-11-09, 00.28 hiker_lenny: three 20 s holds for an evolution, then
+//  2026-11-09, 08.01 hiker_lenny: three 20 s holds for an evolution, then
 //  "no battle screen and no START menu for 60 s after the battle"). Empty
 //  once START would look for the overworld, else the loop's failure.
 std::string battle_end_on_sim(const OverworldSim& sim){
@@ -489,6 +490,11 @@ std::string OverworldStepSim::step_ahead(const StoryStep& step){
         return step_onto(step);
     }
     const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
+    if (step.action.empty()){
+        if (const std::optional<RouteStep> warp = warp_press(story_maps(), MapPosition{m_at.map, m_at.tile}, direction)){
+            return step_onto_warp(*warp);
+        }
+    }
     const auto tap = [this, direction]{
         sim_step_once(m_sim, direction);
     };
@@ -507,6 +513,21 @@ std::string OverworldStepSim::step_ahead(const StoryStep& step){
     };
     const int tiles = step.action == TRAINER_LINE_VARIANT ? TRAINER_LINE_TILES : 1;
     return step_until_seen(tiles, tap, seen) ? "" : "no trainer saw the player.";
+}
+
+//  take_warp_step() on the sim: the step, then its fade, with a step more
+//  twice while none shows (wait_out_warp()).
+std::string OverworldStepSim::step_onto_warp(const RouteStep& warp){
+    const int warps_before = m_sim.state().warps;
+    sim_step_once(m_sim, warp.direction);
+    for (int tap = 0; tap < 2 && m_sim.state().warps == warps_before; tap++){
+        sim_step_once(m_sim, warp.direction);
+    }
+    if (m_sim.state().warps == warps_before){
+        return std::format("no fade in and out after stepping onto the warp to {}.", warp.end.map);
+    }
+    m_sim.watch({}, OverworldWalkSteps::AFTER_WARP);
+    return "";
 }
 
 //  A hop() or step_onto(): one step, ending where the table says.
@@ -537,20 +558,32 @@ std::string OverworldStepSim::cut(const StoryStep& step){
 namespace{
 
 //  walk_room_legs() on the sim: a step tap a tile, each warp's fade and
-//  the walk out of a door waited out.
-void sim_walk_room_legs(OverworldSim& sim, const std::vector<RoomLeg>& legs){
+//  the walk out of a door waited out. A warp taken with no black fade
+//  fails, as on the console, unless the leg `dims`.
+std::string sim_walk_room_legs(OverworldSim& sim, const std::vector<RoomLeg>& legs){
     for (const RoomLeg& leg : legs){
         if (leg.tiles == 0){
             sim_turn_to(sim, leg.direction);
             continue;
         }
+        const int warps_before = sim.state().warps;
+        const Milliseconds started = sim.state().time;
         for (int tile = 0; tile < leg.tiles; tile++){
             sim_step_once(sim, leg.direction);
         }
-        if (leg.warps){
-            sim.watch({}, OverworldWalkSteps::AFTER_WARP);
+        if (!leg.warps){
+            continue;
         }
+        const std::vector<SimShown>& shown = sim.state().shown;
+        const bool faded = std::any_of(shown.begin(), shown.end(), [&](const SimShown& s){
+            return s.screen == SimScreen::FADE && s.at >= started;
+        }) || sim.watch({SimWatcher::FADE}, OverworldWalkSteps::AFTER_WARP).has_value();
+        if (sim.state().warps != warps_before && !leg.dims && !faded){
+            return std::format("walk_overworld_route(): no fade in and out after walking onto the warp to {}.", leg.to);
+        }
+        sim.watch({}, OverworldWalkSteps::AFTER_WARP);
     }
+    return "";
 }
 
 } // namespace
@@ -559,7 +592,7 @@ namespace{
 
 //  Whether the sim can walk a Pokemon Center's way in or out of `step`:
 //  the map it ends on is built into the program. Celadon's Center has no
-//  map yet (00.30), so its way in is stubbed.
+//  map yet (08.03), so its way in is stubbed.
 bool center_walkable(const StoryStep& step){
     if (!is_center_variant(step.action)){
         return false;
@@ -577,14 +610,14 @@ bool center_walkable(const StoryStep& step){
 //  is stubbed.
 Pokemon::StoryAction OverworldStepSim::hideout_or_stub(){
     Pokemon::StoryAction stub = m_stubs.stub();
-    Pokemon::StoryAction sim = played([this](RunState&, const StoryStep& step){
+    Pokemon::StoryAction sim = played([this](const StoryStep& step, RunState&){
         const std::string failure = hideout(step);
         return failure.empty() ? Pokemon::outcome_ok() : Pokemon::outcome_failed("sim_failure", failure);
     });
-    sim.act = [stub, played_act = sim.act](RunState& state, const StoryStep& step){
+    sim.act = [stub, played_act = sim.act](const StoryStep& step, RunState& state){
         return is_hideout_step(step) || center_walkable(step)
-            ? played_act(state, step)
-            : stub.act(state, step);
+            ? played_act(step, state)
+            : stub.act(step, state);
     };
     sim.needs_console = stub.needs_console;
     return sim;
@@ -595,19 +628,24 @@ std::string OverworldStepSim::hideout(const StoryStep& step){
         return m_sim.use_field(SimField::POSTER_SWITCH) ? "" : "no poster ahead.";
     }
     if (is_center_variant(step.action)){
-        sim_walk_room_legs(m_sim, center_legs(step.action));
-        return ended_on(step);
+        const std::string failure = sim_walk_room_legs(m_sim, center_legs(step.action));
+        return failure.empty() ? ended_on(step) : failure;
     }
     const std::optional<LiftRide> ride = parse_lift_floor_step(step);
     if (!ride){
         return "no lift ride \"" + step.action + "\".";
     }
-    sim_walk_room_legs(m_sim, lift_in_legs());
+    const std::string in = sim_walk_room_legs(m_sim, lift_in_legs());
+    if (!in.empty()){
+        return in;
+    }
     if (!m_sim.use_field(SimField::LIFT_FLOOR, ride->to)){
         return "no lift panel for \"" + step.action + "\".";
     }
-    sim_walk_room_legs(m_sim, lift_out_legs());
-    return ended_on(step);
+    //  pick_lift_floor()'s wait for the ride.
+    sim_wait_out_battle_exit(m_sim);
+    const std::string out = sim_walk_room_legs(m_sim, lift_out_legs());
+    return out.empty() ? ended_on(step) : out;
 }
 
 //  After a scripted step: the player's pose, and whether it is the step's
@@ -634,6 +672,8 @@ std::string OverworldStepSim::battle(const StoryStep& step){
     if (const std::string failure = battle_end_on_sim(m_sim); !failure.empty()){
         return failure;
     }
+    //  battle()'s wait_out_battle_exit().
+    sim_wait_out_battle_exit(m_sim);
     m_at = *story_pose(Pokemon::pose_of(*step.pose_after));
     if (!(m_sim.state().position == MapPosition{m_at.map, m_at.tile})){
         return "expected " + to_string(MapPosition{m_at.map, m_at.tile}) + ".";
@@ -645,7 +685,7 @@ std::string OverworldStepSim::battle(const StoryStep& step){
 std::string row_step_on_sim(OverworldSim& sim, StoryPose& at, const StoryStep& step, const std::string& id){
     OverworldStepSim executor(sim, id, at);
     RunState state;
-    const Outcome outcome = executor.run(state, step);
+    const Outcome outcome = executor.run(step, state);
     at = executor.at();
     if (outcome.succeeded()){
         return "";

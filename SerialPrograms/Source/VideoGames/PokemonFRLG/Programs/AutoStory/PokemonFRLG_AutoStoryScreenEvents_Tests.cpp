@@ -16,6 +16,7 @@
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "PokemonFRLG_AutoStoryFrameReplay_Tests.h"
 #include "PokemonFRLG_AutoStoryScreenEvents.h"
+#include "PokemonFRLG_AutoStoryScreenEvents_Tests.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -47,7 +48,7 @@ struct ScreenEventsCase{
 class Test_AutoStoryScreenEvents : public UnitTest{
 public:
     explicit Test_AutoStoryScreenEvents(ScreenEventsCase test_case)
-        : UnitTest("PokemonFRLG::AutoStoryScreenEvents - " + test_case.input.name)
+        : UnitTest(std::format("PokemonFRLG::AutoStoryScreenEvents - {}", test_case.input.name))
         , m_case(std::move(test_case))
     {}
 
@@ -94,7 +95,7 @@ const ScreenEventsCase SCREEN_EVENTS_CASES[] = {
         .expectation = {{ScreenEvent::FADE_WHITE}},
     },
     {
-        //  Rock Tunnel without Flash (console B, 2026-11-09, 00.28): its
+        //  Rock Tunnel without Flash (console B, 2026-11-09, 08.01): its
         //  black read as a battle's text box before each step.
         .input = {"a dark cave, black but for a lit middle, shows nothing", 0xff000000, 0xff8c7c64},
         .expectation = {{}},

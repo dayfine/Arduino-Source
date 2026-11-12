@@ -133,7 +133,7 @@ std::vector<ChoiceCase> choice_cases(){
         },
         //  The console has no reader for the prompt's text: the table has
         //  walked the player to face the wanted fossil, so YES takes it
-        //  (console B: answering NO and stopping left 00.13 stuck there).
+        //  (console B: answering NO and stopping left 04.05 stuck there).
         {
             .name = "an unread prompt: YES, facing the wanted fossil",
             .setup = [](FakeFossilRoom& room){ room.offer_readable = false; },
@@ -185,7 +185,7 @@ UnitTestResult test_fossil_args(){
     ){
         return "Expected the HELIX step and \"dome\" to read back.";
     }
-    for (const std::string& bad : {"", "old_amber", "helix dome"}){
+    for (const std::string bad : {"", "old_amber", "helix dome"}){
         if (fossil_of({{"fossil", bad}})){
             return "Expected \"" + bad + "\" refused.";
         }

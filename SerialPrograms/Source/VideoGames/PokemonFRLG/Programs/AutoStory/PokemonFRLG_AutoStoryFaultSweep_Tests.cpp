@@ -8,20 +8,30 @@
  *  - SCENE_END_POSE: a step the sim does not play (a scene, a talk, an
  *    event) that moved the player leaves them on another walkable tile
  *    within one of the table's pose, while the program goes on from the
- *    table's (BDSP 00.03, lab-B 2026-11-09).
+ *    table's (BDSP 01.04, lab-B 2026-11-09).
  *  - WILD_BATTLES: wild battles at the game's own odds on every map with
- *    land encounters, over GAME_ODDS_SEEDS seeds (00.28's Rock Tunnel).
+ *    land encounters, over GAME_ODDS_SEEDS seeds (08.01's Rock Tunnel).
  *  - LATE_FADE: every warp's fade ends LATE_FADE later than the sim's
- *    usual (00.27's warp to Cerulean City).
+ *    usual (07.02's warp to Cerulean City).
+ *  - SLOW_FADE_IN: after every warp's fade the new map fades in for
+ *    SLOW_FADE_IN, the game taking no input yet: a fixed wait after a
+ *    fade, then a move (BDSP 00.04b heal_sandgem, lab-B 2026-11-10).
  *  - DARK_CAVE: the caves without Flash dark (DARK_MAPS), so each
  *    battle there ends on the dark cave's overworld, with no wild
- *    battles and with them at the game's odds (00.28 hiker_lenny, lab-B
+ *    battles and with them at the game's odds (08.01 hiker_lenny, lab-B
  *    2026-11-09).
  *  - LOST_TAP: a wild battle on each tile of each step into a trainer's
  *    line before its last, so the next tap comes as the overworld comes
- *    back, inside the lockout after a battle (00.28 winston_line, console
+ *    back, inside the lockout after a battle (08.01 winston_line, console
  *    B, 2026-11-09 15:50). The step alone, from where the clean run took
  *    it, on its map made a wild floor.
+ *  - WARP_NO_OP: the warps of each map the row warps from do nothing,
+ *    no fade and no move, so the step that walks onto the first of them
+ *    must stop there, not go on as if warped (09.01's B4F stairs, console
+ *    B, 2026-11-10, reported as walked to B3F).
+ *  - UNSEEN_STEP: each step tap that moved the player, one at a time, read
+ *    by the walker as not moved: it must not tap again into a second
+ *    tile (09.02 Rocket Hideout B2F, console B, 2026-11-11 15:03 and 15:36).
  *
  *  Not swept here: a missed fade, which needs a knob in OverworldSim; a
  *  battle's opening at a step's start, which needs one in OverworldStepSim;
@@ -70,8 +80,11 @@ enum class FaultClass{
     SCENE_END_POSE,
     WILD_BATTLES,
     LATE_FADE,
+    SLOW_FADE_IN,
     DARK_CAVE,
     LOST_TAP,
+    WARP_NO_OP,
+    UNSEEN_STEP,
 };
 std::string_view fault_class_name(FaultClass fault){
     switch (fault){
@@ -81,17 +94,23 @@ std::string_view fault_class_name(FaultClass fault){
         return "wild battles at the game's odds";
     case FaultClass::LATE_FADE:
         return "late warp fade";
+    case FaultClass::SLOW_FADE_IN:
+        return "slow fade-in after every warp";
     case FaultClass::DARK_CAVE:
         return "dark cave without Flash";
     case FaultClass::LOST_TAP:
         return "lost tap after a battle in a trainer's line";
+    case FaultClass::WARP_NO_OP:
+        return "warp no-op";
+    case FaultClass::UNSEEN_STEP:
+        return "step tap read as not moved";
     }
     return "?";
 }
 
 //  Sweeps the program fails today, by test name, with the likely fix.
 const std::map<std::string, std::string> KNOWN_FAILING{
-    {"PokemonFRLG::AutoStory - Fault sweep: 00.06, wild battles at the game's odds",
+    {"PokemonFRLG::AutoStory - Fault sweep: 02.02, wild battles at the game's odds",
         "below_oak on Route 1 gives up after 9 stops part-way (seeds 16, 30): count stops that make no progress, not every battle"},
 };
 
@@ -116,6 +135,9 @@ constexpr unsigned DARK_CAVE_SEEDS = 10;
 //  How much later than SimTiming's a late fade ends: the new map shows
 //  this long after the usual.
 constexpr Milliseconds LATE_FADE = 1500ms;
+//  How long the new map fades in after a warp's fade, taking no input: a
+//  model, longer than the GBA's fade-in, to find moves made in it.
+constexpr Milliseconds SLOW_FADE_IN = 1000ms;
 
 //  The maps as the story after the Hall of Fame and a new game flag them:
 //  the same set for every row, as each stage's tests use.
@@ -153,11 +175,16 @@ struct RowRun{
     //  Where the player stood before each step, by index.
     std::map<size_t, MapPosition> before;
     std::map<size_t, Direction> facing_before;
+    //  The maps each step warped from, by index.
+    std::map<size_t, std::vector<std::string>> warped_from;
+    //  The step `failure` is from; none for a violation or a row's end.
+    std::optional<size_t> failed_at;
     MapPosition end;
     Milliseconds time{0};
     int steps = 0;
     int wild_battles = 0;
     Milliseconds in_wild_battles{0};
+    int moved_step_taps = 0;
 };
 
 //  Where a stubbed step leaves the player instead of its pose_after: by step index.
@@ -203,6 +230,29 @@ bool hide_talk_battle_trainer(std::vector<MapData>& maps, const StoryStep& step)
     return true;
 }
 
+//  Row `row`'s step `c` on `sim` from `at`, recorded in `out`. Returns
+//  whether it failed as unscripted() and was let pass (run_row()).
+bool run_row_step(
+    RowRun& out, OverworldSim& sim, StoryPose& at, const StoryCheckpoint& row, size_t c,
+    const std::optional<std::set<size_t>>& scripted
+){
+    out.before.emplace(c, sim.state().position);
+    out.facing_before.emplace(c, sim.state().facing);
+    const size_t warps_before = sim.state().warped_from.size();
+    out.failure = row_step_on_sim(sim, at, row.steps[c], row.id);
+    const std::vector<std::string>& warped = sim.state().warped_from;
+    out.warped_from[c].assign(warped.begin() + warps_before, warped.end());
+    const bool let_pass = unscripted(out.failure) && (!scripted || scripted->contains(c));
+    if (let_pass){
+        out.failure.clear();
+        out.scripted.insert(c);
+    }
+    if (!out.failure.empty()){
+        out.failed_at = c;
+    }
+    return let_pass;
+}
+
 //  Row `row` on the sim with `script`, from its start. After a step the sim
 //  does not play, the player is put on its pose_after, or on `landings`'
 //  tile for it, the program going on from the pose_after either way. A
@@ -223,17 +273,11 @@ RowRun run_row(
         out.steps += state.steps;
         out.wild_battles += state.wild_battles;
         out.in_wild_battles += state.in_wild_battles;
+        out.moved_step_taps += state.moved_step_taps;
     };
     for (size_t c = 0; c < row.steps.size() && out.failure.empty(); c++){
         const StoryStep& step = row.steps[c];
-        out.before.emplace(c, sim->state().position);
-        out.facing_before.emplace(c, sim->state().facing);
-        out.failure = row_step_on_sim(*sim, at, step, row.id);
-        const bool let_pass = unscripted(out.failure) && (!scripted || scripted->contains(c));
-        if (let_pass){
-            out.failure.clear();
-            out.scripted.insert(c);
-        }
+        const bool let_pass = run_row_step(out, *sim, at, row, c, scripted);
         if (!out.failure.empty() || (sim_plays(step) && !let_pass) || !step.pose_after){
             continue;
         }
@@ -391,6 +435,18 @@ UnitTestResult sweep_late_fade(Logger& logger, const StoryCheckpoint& row, const
     return sweep_result(logger, FaultClass::LATE_FADE, row.id, 1, failures);
 }
 
+//  Row `row` with every warp's new map fading in for SLOW_FADE_IN.
+UnitTestResult sweep_slow_fade_in(Logger& logger, const StoryCheckpoint& row, const RowRun& clean){
+    SimScript script;
+    script.timing.fade_in = SLOW_FADE_IN;
+    const std::string stopped = differs(run_row(row, script, {}, clean.scripted), clean);
+    std::vector<SweepFailure> failures;
+    if (!stopped.empty()){
+        failures.push_back({"", std::format("every warp fading in {} ms", SLOW_FADE_IN.count()), stopped});
+    }
+    return sweep_result(logger, FaultClass::SLOW_FADE_IN, row.id, 1, failures);
+}
+
 //  Row `row` with DARK_MAPS dark: once with no wild battles, then with
 //  them at the game's odds from DARK_CAVE_SEEDS seeds. Each trainer's
 //  battle there ends on the dark overworld (battle_end_on_sim() in
@@ -483,6 +539,62 @@ UnitTestResult sweep_lost_tap(Logger& logger, const StoryCheckpoint& row, const 
     return sweep_result(logger, FaultClass::LOST_TAP, row.id, variants, failures);
 }
 
+//  The steps of the clean run `clean` of `row` that warp, by index: the
+//  first from each map, with that map.
+std::vector<std::pair<size_t, std::string>> first_warps_by_map(const StoryCheckpoint& row, const RowRun& clean){
+    std::vector<std::pair<size_t, std::string>> out;
+    std::set<std::string> maps;
+    for (size_t c = 0; c < row.steps.size(); c++){
+        const auto warped = clean.warped_from.find(c);
+        if (warped == clean.warped_from.end()){
+            continue;
+        }
+        for (const std::string& map : warped->second){
+            if (maps.insert(map).second){
+                out.emplace_back(c, map);
+            }
+        }
+    }
+    return out;
+}
+
+//  Row `row` with the warps of each map it warps from doing nothing, one
+//  map at a time: the step onto the first of them must stop the row.
+UnitTestResult sweep_warp_no_op(Logger& logger, const StoryCheckpoint& row, const RowRun& clean){
+    std::vector<SweepFailure> failures;
+    const std::vector<std::pair<size_t, std::string>> warps = first_warps_by_map(row, clean);
+    for (const auto& [c, map] : warps){
+        SimScript script;
+        script.dead_warp_maps = {map};
+        const RowRun run = run_row(row, script, {}, clean.scripted);
+        if (run.failed_at == c){
+            continue;
+        }
+        const std::string variant = "every warp on " + map + " does nothing";
+        if (run.failure.empty()){
+            failures.push_back({row.steps[c].name, variant, std::format("not stopped: the row went on and ended on {}.", to_string(run.end))});
+        }else{
+            failures.push_back({row.steps[c].name, variant, std::format("stopped at {}, not here: {}", run.failed_at ? row.steps[*run.failed_at].name : "the row's end", run.failure)});
+        }
+    }
+    return sweep_result(logger, FaultClass::WARP_NO_OP, row.id, warps.size(), failures);
+}
+
+//  Row `row` with each step tap that moved the player read as not moved,
+//  one at a time, counted across the row's sims.
+UnitTestResult sweep_unseen_step(Logger& logger, const StoryCheckpoint& row, const RowRun& clean){
+    std::vector<SweepFailure> failures;
+    for (int tap = 1; tap <= clean.moved_step_taps; tap++){
+        SimScript script;
+        script.unseen_step_taps = {tap};
+        const std::string stopped = differs(run_row(row, script, {}, clean.scripted), clean);
+        if (!stopped.empty()){
+            failures.push_back({"", std::format("step tap {} read as not moved", tap), stopped});
+        }
+    }
+    return sweep_result(logger, FaultClass::UNSEEN_STEP, row.id, (size_t)clean.moved_step_taps, failures);
+}
+
 //  A fault class swept over row `row` (empty in FAULT_SWEEP_CASES: each
 //  row with a start).
 struct FaultSweepInput{
@@ -546,10 +658,16 @@ private:
             return sweep_wild_battles(logger, m_row, clean);
         case FaultClass::LATE_FADE:
             return sweep_late_fade(logger, m_row, clean);
+        case FaultClass::SLOW_FADE_IN:
+            return sweep_slow_fade_in(logger, m_row, clean);
         case FaultClass::DARK_CAVE:
             return sweep_dark_cave(logger, m_row, clean);
         case FaultClass::LOST_TAP:
             return sweep_lost_tap(logger, m_row, clean);
+        case FaultClass::WARP_NO_OP:
+            return sweep_warp_no_op(logger, m_row, clean);
+        case FaultClass::UNSEEN_STEP:
+            return sweep_unseen_step(logger, m_row, clean);
         }
         return true;
     }
@@ -565,15 +683,18 @@ const FaultSweepCase FAULT_SWEEP_CASES[] = {
     {.input = {.fault = FaultClass::SCENE_END_POSE}, .expectation = {}},
     {.input = {.fault = FaultClass::WILD_BATTLES}, .expectation = {}},
     {.input = {.fault = FaultClass::LATE_FADE}, .expectation = {}},
+    {.input = {.fault = FaultClass::SLOW_FADE_IN}, .expectation = {}},
     {.input = {.fault = FaultClass::DARK_CAVE}, .expectation = {}},
     {.input = {.fault = FaultClass::LOST_TAP}, .expectation = {}},
+    {.input = {.fault = FaultClass::WARP_NO_OP}, .expectation = {}},
+    {.input = {.fault = FaultClass::UNSEEN_STEP}, .expectation = {}},
 };
 
 std::optional<std::string> talk_battle_hide_flag(const StoryStep& step){
     if (step.kind != StoryStepKind::BATTLE || !step.pose_after){
         return std::nullopt;
     }
-    const auto found = TALK_BATTLE_HIDE_FLAGS.find({step.pose_after->map, step.name});
+    const auto found = TALK_BATTLE_HIDE_FLAGS.find({Pokemon::grid_pose_of(*step.pose_after).map, step.name});
     if (found == TALK_BATTLE_HIDE_FLAGS.end()){
         return std::nullopt;
     }

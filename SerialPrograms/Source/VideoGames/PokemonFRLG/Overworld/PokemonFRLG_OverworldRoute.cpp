@@ -13,6 +13,7 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/Navigation/Pokemon_LegPlanner.h"
 #include "PokemonFRLG_OverworldMaps.h"
+#include "PokemonFRLG_OverworldObjects.h"
 #include "PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_OverworldSpin.h"
 
@@ -30,6 +31,8 @@ const RouteCosts& default_route_costs(){
         {RouteCost::GRASS_TILE, 20},
         {RouteCost::OPEN_STOP, 8},
         {RouteCost::OPEN_WILD_STOP, 300},
+        {RouteCost::SIGHT_TILE, 0},
+        {RouteCost::SIGHT_OVERSHOOT, 0},
     };
     return COSTS;
 }
@@ -300,15 +303,32 @@ public:
         if (step.next.state.surfing){
             step.wild = true;
         }
+        if (seen_by_trainer(step.next)){
+            step.extra_cost += route_cost(m_costs, RouteCost::SIGHT_TILE);
+        }
         return step;
     }
     bool held_at(const State& state, Direction direction) const{
         return stops_at(m_maps, state, direction);
     }
+    int open_stop_risk(const State& state, Direction direction) const{
+        const std::optional<Transition> past = PokemonFRLG::press(m_maps, state, direction);
+        if (!past || !seen_by_trainer(past->next)){
+            return 0;
+        }
+        return route_cost(m_costs, RouteCost::SIGHT_OVERSHOOT);
+    }
 
     static constexpr int ACTION_SURF = 1;
 
 private:
+    bool seen_by_trainer(const State& state) const{
+        const MapData& map = m_maps[state.map];
+        return std::ranges::any_of(map.objects, [&](const MapObject& object){
+            return trainer_may_see(map, object, state.state.position);
+        });
+    }
+
     const std::vector<MapData>& m_maps;
     const RouteCosts& m_costs;
 };

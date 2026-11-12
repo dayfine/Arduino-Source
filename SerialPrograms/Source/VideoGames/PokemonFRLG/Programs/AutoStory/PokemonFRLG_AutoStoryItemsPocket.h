@@ -52,8 +52,8 @@ std::vector<std::string> set_from_loaded_bag(Supplies& supplies, Supplies& saved
 //  From the overworld: opens the Items pocket, reads it, and closes the
 //  bag again. Empty if nothing could be read.
 std::vector<BagRow> read_items_pocket(ConsoleHandle& console, ProControllerContext& context, Language language);
-//  From the overworld, after a battle: an Antidote for PSN, a Parlyz Heal
-//  for PAR, then a Potion if the HP bar wasn't green, each if one is left.
+//  From the overworld, after a battle or at a checkpoint's start: the items
+//  recovery_items() lists, each if one is left.
 //  The bag's inputs are not checked on the console yet.
 void recover_after_battle(
     ConsoleHandle& console, ProControllerContext& context,

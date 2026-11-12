@@ -2,7 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Rows 00.23 to 00.25 (StoryData/frlg-00.23..25.plan.json) on the
+ *  Rows 06.02 to 06.04 (StoryData/frlg-06.02..25.plan.json) on the
  *  overworld sim: the tree cut on the way in and out, the gym's three
  *  trainers fought where the table says, the trash can search walking
  *  between the cans clear of where the trainers stand after their battles
@@ -117,8 +117,8 @@ MapData& map_named(std::vector<MapData>& maps, const std::string& name){
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No map " + name + ".");
 }
 
-//  `maps` with the trainers beaten that rows before 00.24 fought: Route
-//  6's Jeff (00.21) and Vermilion Gym's three (00.23).
+//  `maps` with the trainers beaten that rows before 06.03 fought: Route
+//  6's Jeff (05.10) and Vermilion Gym's three (06.02).
 std::vector<MapData> maps_after_gym(std::vector<MapData> maps = story_maps()){
     for (MapObject& object : map_named(maps, GYM).objects){
         object.trainer.reset();
@@ -231,10 +231,10 @@ private:
     bool m_first_found = false;
 };
 
-//  Row 00.23 from steps `first` to `last` (exclusive) on `sim`, the trash
+//  Row 06.02 from steps `first` to `last` (exclusive) on `sim`, the trash
 //  cans drawn as `draws` say.
 std::string run_gym_steps(OverworldSim& sim, StoryPose& at, size_t first, size_t last, const std::vector<Switches>& draws){
-    const StoryCheckpoint& row = checkpoint("00.23");
+    const StoryCheckpoint& row = checkpoint("06.02");
     for (size_t c = first; c < last; c++){
         const StoryStep& step = row.steps[c];
         if (step.action == TRASH_CANS_VARIANT){
@@ -242,7 +242,7 @@ std::string run_gym_steps(OverworldSim& sim, StoryPose& at, size_t first, size_t
             SimGym gym(sim, at, draws);
             const TrashCanResult result = run_trash_cans(logger, [&](int can){ return gym.check(can); });
             if (result.end != TrashCanEnd::OPENED || !gym.open){
-                return "00.23/trash_cans: " + std::string(trash_can_end_name(result.end)) + " " + gym.error;
+                return "06.02/trash_cans: " + std::string(trash_can_end_name(result.end)) + " " + gym.error;
             }
             continue;
         }
@@ -253,13 +253,13 @@ std::string run_gym_steps(OverworldSim& sim, StoryPose& at, size_t first, size_t
     return "";
 }
 
-//  00.23 on the sim from the nurse to the nurse: the tree cut, Dwayne,
+//  06.02 on the sim from the nurse to the nurse: the tree cut, Dwayne,
 //  Baily and Tucker fought in that order where the table says and no one
 //  else, the cans searched, out past the tree grown back. The switches
 //  found at once (under 3 and 4), and after a wrong guess's reset (under
 //  3 and 8, then 13 and 14).
 UnitTestResult test_gym_row(){
-    const StoryCheckpoint& row = checkpoint("00.23");
+    const StoryCheckpoint& row = checkpoint("06.02");
     for (const std::vector<Switches>& draws : {std::vector<Switches>{{3, 4}}, std::vector<Switches>{{3, 8}, {13, 14}}}){
         StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
         OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
@@ -268,10 +268,10 @@ UnitTestResult test_gym_row(){
         }
         const std::vector<std::string> expected{"sailor", "balding_man", "gentleman"};
         if (sim.state().trainers_beaten != expected || !sim.state().violations.empty()){
-            return "00.23: expected Dwayne, Baily and Tucker beaten and no violation; beat" + beaten_list(sim) + ".";
+            return "06.02: expected Dwayne, Baily and Tucker beaten and no violation; beat" + beaten_list(sim) + ".";
         }
         if (!(sim.state().position == MapPosition{VERMILION_CENTER, {7, 4}})){
-            return "00.23: expected to end at Vermilion's nurse, not " + to_string(sim.state().position) + ".";
+            return "06.02: expected to end at Vermilion's nurse, not " + to_string(sim.state().position) + ".";
         }
     }
     return true;
@@ -281,7 +281,7 @@ UnitTestResult test_gym_row(){
 //  their battles leave them: every can's stand reached from (5, 8) and from
 //  every other stand, and the way out to the nurse from every stand.
 UnitTestResult test_cans_from_everywhere(){
-    const StoryCheckpoint& row = checkpoint("00.23");
+    const StoryCheckpoint& row = checkpoint("06.02");
     StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
     OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
     const size_t cans = step_index(row, "trash_cans");
@@ -337,11 +337,11 @@ UnitTestResult test_tree_shuts_the_yard(){
     return true;
 }
 
-//  00.24 and 00.25 on the sim, the gym as 00.23 leaves it: to Route 6's
+//  06.03 and 06.04 on the sim, the gym as 06.02 leaves it: to Route 6's
 //  grass round Isabelle's line and back, to below Surge through the beams,
 //  and from him back out past the tree to the nurse, meeting no one.
 UnitTestResult test_to_surge_and_out(){
-    for (std::string_view id : {"00.24", "00.25"}){
+    for (std::string_view id : {"06.03", "06.04"}){
         const StoryCheckpoint& row = checkpoint(id);
         StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
         OverworldSim sim(maps_after_gym(), MapPosition{at.map, at.tile}, *at.facing);
@@ -353,25 +353,25 @@ UnitTestResult test_to_surge_and_out(){
         if (!sim.state().trainers_beaten.empty() || !sim.state().violations.empty()){
             return std::format("{}: a battle or a violation on the way.", id);
         }
-        const MapPosition end = id == "00.24" ? MapPosition{GYM, {5, 3}} : MapPosition{VERMILION_CENTER, {7, 4}};
+        const MapPosition end = id == "06.03" ? MapPosition{GYM, {5, 3}} : MapPosition{VERMILION_CENTER, {7, 4}};
         if (!(sim.state().position == end)){
             return std::format("{}: ended on {}, not {}.", id, to_string(sim.state().position), to_string(end));
         }
     }
-    const StoryPose next = *story_pose(Pokemon::pose_of(*checkpoint("00.25").start));
+    const StoryPose next = *story_pose(Pokemon::pose_of(*checkpoint("06.04").start));
     if (!(next.tile == TilePos{5, 3}) || next.map != GYM){
-        return "00.25 doesn't start where 00.24 ends.";
+        return "06.04 doesn't start where 06.03 ends.";
     }
     return true;
 }
 
-//  Console B, 00.25 (2026-11-03 18:17): the walk to the nurse went up
+//  Console B, 06.04 (2026-11-03 18:17): the walk to the nurse went up
 //  column 27 to row 7 and west along it, into Oak's aide on (25, 7), there
 //  since Surge's win; the leg was taken as walked and the step into the
-//  Center's door went into a house's wall. 00.25 from Surge to the nurse
+//  Center's door went into a house's wall. 06.04 from Surge to the nurse
 //  with the aide there, meeting no one.
 UnitTestResult test_out_past_oaks_aide(){
-    const StoryCheckpoint& row = checkpoint("00.25");
+    const StoryCheckpoint& row = checkpoint("06.04");
     const std::vector<MapData> maps = maps_after_surge();
     const MapData& city = *std::find_if(maps.begin(), maps.end(), [](const MapData& map){ return map.name == VERMILION; });
     if (object_at(city, {25, 7}) == nullptr){
@@ -391,16 +391,16 @@ UnitTestResult test_out_past_oaks_aide(){
     return true;
 }
 
-//  00.24 with a lead at the grind's level already: the check in the Center
+//  06.03 with a lead at the grind's level already: the check in the Center
 //  comes first, and with its flag set the walk to Route 6's grass, the
 //  grind and the way back are skipped; the rest goes from the nurse to
 //  below Surge on the sim. Console B walked out and back at Lv29
 //  (2026-11-03).
 UnitTestResult test_lead_ready_skips_grind(){
-    const StoryCheckpoint& row = checkpoint("00.24");
+    const StoryCheckpoint& row = checkpoint("06.03");
     const StoryStep& check = row.steps.front();
     if (check.action != GRIND_CHECK_ACTION || !grind_plan_of(check.args)){
-        return "Expected 00.24 to start with the grind's check, not " + check.name + ".";
+        return "Expected 06.03 to start with the grind's check, not " + check.name + ".";
     }
     StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
     OverworldSim sim(maps_after_gym(), MapPosition{at.map, at.tile}, *at.facing);
@@ -427,27 +427,27 @@ UnitTestResult test_lead_ready_skips_grind(){
 
 const AutoStoryVermilionGymCase AUTO_STORY_VERMILION_GYM_CASES[] = {
     {
-        .input = {"00.23 the tree shuts the gym's yard until cut", test_tree_shuts_the_yard},
+        .input = {"06.02 the tree shuts the gym's yard until cut", test_tree_shuts_the_yard},
         .expectation = {},
     },
     {
-        .input = {"00.23 Vermilion Gym: Dwayne, Baily and Tucker, the cans at once or after a reset", test_gym_row},
+        .input = {"06.02 Vermilion Gym: Dwayne, Baily and Tucker, the cans at once or after a reset", test_gym_row},
         .expectation = {},
     },
     {
-        .input = {"00.23 every can's stand from Tucker's tile and from every other, and out", test_cans_from_everywhere},
+        .input = {"06.02 every can's stand from Tucker's tile and from every other, and out", test_cans_from_everywhere},
         .expectation = {},
     },
     {
-        .input = {"00.24 and 00.25 through the beams to Lt. Surge and out", test_to_surge_and_out},
+        .input = {"06.03 and 06.04 through the beams to Lt. Surge and out", test_to_surge_and_out},
         .expectation = {},
     },
     {
-        .input = {"00.25 out to the nurse past Oak's aide on (25, 7)", test_out_past_oaks_aide},
+        .input = {"06.04 out to the nurse past Oak's aide on (25, 7)", test_out_past_oaks_aide},
         .expectation = {},
     },
     {
-        .input = {"00.24 with the lead at its level already: no trip to Route 6", test_lead_ready_skips_grind},
+        .input = {"06.03 with the lead at its level already: no trip to Route 6", test_lead_ready_skips_grind},
         .expectation = {},
     },
 };

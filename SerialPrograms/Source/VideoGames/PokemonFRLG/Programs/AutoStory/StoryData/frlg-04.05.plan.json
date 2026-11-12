@@ -1,0 +1,195 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "04.05",
+    "title": "Mt. Moon: a Moon Stone, a Rocket, Miguel and the Helix Fossil",
+    "start": {"map": "Route4_PokemonCenter_1F", "tiles": [[11, 2]], "facing": "north"},
+    "events": [
+      {
+        "id": "route4_nurse",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "Route4_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
+        },
+        "why": "the nurse, below the counter"
+      },
+      {
+        "id": "heal_route4",
+        "kind": "heal",
+        "why": "full HP"
+      },
+      {
+        "id": "mt_moon_entrance",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "MtMoon_1F", "tiles": [[18, 37]], "facing": "north"}
+        },
+        "why": "out of the Center, west into Mt. Moon"
+      },
+      {
+        "id": "mt_moon_1f",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [{"direction": "north", "tiles": 12}, {"direction": "east", "tiles": 8}, {"direction": "north", "tiles": 12}, {"direction": "east", "tiles": 3}, {"direction": "south", "tiles": 1}, {"direction": "east", "tiles": 9}, {"direction": "north", "tiles": 1}, {"direction": "east", "tiles": 2}, {"direction": "north", "tiles": 4}, {"direction": "west", "tiles": 24}, {"direction": "east", "tiles": 2}, {"direction": "south", "tiles": 12}, {"direction": "west", "tiles": 7}, {"direction": "north", "tiles": 18}, {"direction": "west", "tiles": 9}, {"direction": "east", "tiles": 1}]
+        },
+        "why": "up the middle, east of Miriam, west along row 9, down column 18 past Josh, up column 11 past Marcos, to (3, 3)"
+      },
+      {
+        "id": "below_moon_stone",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "MtMoon_1F", "tiles": [[3, 3]], "facing": "north"}
+        },
+        "why": "facing the Moon Stone (3, 2)"
+      },
+      {
+        "id": "moon_stone_ball",
+        "kind": "talk",
+        "why": "A on the item ball"
+      },
+      {
+        "id": "found_moon_stone",
+        "kind": "scene",
+        "declared_after": {"map": "MtMoon_1F", "tiles": [[3, 3]], "facing": "north"},
+        "why": "\"<player> found a MOON STONE!\", then the pocket line; the ball is gone"
+      },
+      {
+        "id": "b2f_ladder_foot",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "MtMoon_B2F", "tiles": [[26, 21]], "facing": "east"}
+        },
+        "why": "1F's ladder (5, 6), down B1F's west side to its ladder (22, 18), onto B2F"
+      },
+      {
+        "id": "b2f_south",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [{"direction": "north", "tiles": 4}, {"direction": "east", "tiles": 8}, {"direction": "west", "tiles": 2}, {"direction": "south", "tiles": 5}, {"direction": "east", "tiles": 8}, {"direction": "north", "tiles": 3}, {"direction": "west", "tiles": 1}, {"direction": "north", "tiles": 5}, {"direction": "east", "tiles": 7}, {"direction": "south", "tiles": 14}, {"direction": "west", "tiles": 9}, {"direction": "south", "tiles": 10}, {"direction": "west", "tiles": 29}, {"direction": "east", "tiles": 3}, {"direction": "north", "tiles": 17}]
+        },
+        "why": "through the Grunt's room at (37, 21), round the south edge, up column 11 to (11, 21)"
+      },
+      {
+        "id": "grunt_line",
+        "kind": "step",
+        "args": {
+          "direction": "east"
+        },
+        "why": "onto (12, 21), below the Grunt at (12, 20)"
+      },
+      {
+        "id": "rocket_grunt",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_TEAM_ROCKET_GRUNT",
+          "foes": ["rattata", "zubat"]
+        },
+        "declared_after": {"map": "MtMoon_B2F", "tiles": [[12, 21]], "facing": "east"},
+        "why": "Rattata and Zubat, Lv13"
+      },
+      {
+        "id": "ready_for_miguel",
+        "kind": "ready",
+        "args": {
+          "target": {"map": "Route4_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
+        },
+        "why": "items for a status or low HP; the nurse, back through the cave, only if they can't"
+      },
+      {
+        "id": "below_miguel_trigger",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [{"direction": "east", "tiles": 1}, {"direction": "north", "tiles": 9}, {"direction": "east", "tiles": 1}]
+        },
+        "why": "to (14, 12), below Miguel's trigger (14, 11)"
+      },
+      {
+        "id": "miguel_trigger",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "why": "onto (14, 11), beside Miguel"
+      },
+      {
+        "id": "super_nerd_miguel",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_SUPER_NERD_MIGUEL",
+          "foes": ["grimer", "voltorb", "koffing"]
+        },
+        "declared_after": {"map": "MtMoon_B2F", "tiles": [[14, 11]], "facing": "north"},
+        "why": "Grimer, Voltorb and Koffing, Lv12; \"We'll each take one!\""
+      },
+      {
+        "id": "below_helix_fossil",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [{"direction": "north", "tiles": 3}]
+        },
+        "why": "up column 14 to the HELIX FOSSIL (14, 7)"
+      },
+      {
+        "id": "helix_fossil",
+        "kind": "game_action",
+        "action": "fossil",
+        "args": {
+          "fossil": "helix"
+        },
+        "why": "the HELIX FOSSIL; Miguel takes the DOME FOSSIL"
+      },
+      {
+        "id": "helix_gap",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "why": "onto (14, 7), where the HELIX FOSSIL lay"
+      },
+      {
+        "id": "route4_east",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "Route4", "tiles": [[32, 6]], "facing": "south"}
+        },
+        "why": "west to B2F's ladder (5, 10), up to B1F, east to its exit onto Route 4"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "lead": "after_brock",
+    "notes": {
+      "checkpoint": [
+        "Mt. Moon (pokefirered data/maps/MtMoon_1F, _B1F, _B2F). Every floor tile of the cave has wild encounters, which are run from, so its legs end on walls, ladders or someone standing still, which the walker holds again after a battle; the few open ones are short. The way through: up 1F's middle and west side, its north-west ladder, B1F's west ladder down to B2F's south-east, round B2F's south edge to its west, north past Miguel and the fossils, and the ladder up to B1F's east end, which leads out to Route 4 east of the mountain.",
+        "1F's trainers are walked around: Youngster Josh (13, 17) sees east along row 17 to x 17, so the way west into the west room is down column 18 and up column 11; Lass Miriam walks round (32..33, 4..5), sight 2, so the way east keeps to row 9 and columns 38 and 40; Hiker Marcos wanders (5..9, 8..12) and sees one tile, so the way north is column 11 and row 3.",
+        "The Moon Stone ball (3, 2) on 1F (FLAG_HIDE_MT_MOON_1F_MOON_STONE) is a few tiles off the way to the ladder (5, 6).",
+        "The Grunt at (37, 21) on B2F looks around (sight 3) over the only way east round B2F. His room is crossed on legs to walls, at one tile of his sight each, (37, 22) and (40, 21); if he looks the player's way, he walks up beside the leg, story_interrupts() fights him, and the leg is held on to its wall.",
+        "The Grunt at (12, 20) faces south (sight 2) over (12, 21..22), across rows 21..22, the only way north to Miguel: stepped into from the west, he is next to the player and doesn't walk.",
+        "Super Nerd Miguel (13, 11) battles on the step onto (14, 11) (MtMoon_B2F_EventScript_MiguelTrigger, VAR_MAP_SCENE_MT_MOON_B2F 0), then \"We'll each take one!\"",
+        "The fossils: DOME (13, 7), HELIX (14, 7). After the HELIX, Miguel walks up to (13, 8) and takes the DOME, which opens the gap north.",
+        "The save is on Route 4: the save card's places don't include Mt. Moon."
+      ],
+      "found_moon_stone": [
+        "No reader for the text yet: the scene's end is the overworld."
+      ],
+      "below_miguel_trigger": [
+        "Up column 13 to Miguel, who stops the leg on (13, 12), then east to the wall: the tile below his trigger."
+      ],
+      "helix_gap": [
+        "The maps keep the fossils, which the game removes after the choice: the step onto the HELIX's tile is taken on its own."
+      ]
+    }
+  },
+  "metadata": {"phase": "testing"}
+}

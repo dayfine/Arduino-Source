@@ -14,12 +14,33 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
+namespace{
+
+//  The facing before a tap, if `calls` reads it.
+std::optional<Direction> facing_before(const BikeTapCalls& calls){
+    if (!calls.facing){
+        return std::nullopt;
+    }
+    return calls.facing();
+}
+
+} // namespace
+
 StepOutcome count_bike_taps(const RouteStep& step, const BikeTapCalls& calls){
     int moved = 0;
     for (int tap = 1; tap <= step.tiles; tap++){
+        std::optional<Direction> before = facing_before(calls);
         BikeTap result = calls.tap(tap);
         for (int retry = 1; retry < calls.tries && !result.moved && !result.interrupt && !result.cleared_late; retry++){
-            calls.log(std::format("Taps: tap {} of {} didn't move: tapping again, it may only have turned the player.", tap, step.tiles));
+            if (!before || *before == step.direction){
+                calls.log(std::format(
+                    "Taps: tap {} of {} showed no step, facing {} before it: not tapping again, it may have stepped unseen.",
+                    tap, step.tiles, before ? Pokemon::direction_name(*before) : "an unknown way"
+                ));
+                break;
+            }
+            calls.log(std::format("Taps: tap {} of {} didn't move: tapping again, it only turned the player.", tap, step.tiles));
+            before = facing_before(calls);
             result = calls.tap(tap);
         }
         if (result.interrupt || result.cleared_late){
@@ -29,6 +50,15 @@ StepOutcome count_bike_taps(const RouteStep& step, const BikeTapCalls& calls){
             }
             const int most = std::min(moved + 1, step.tiles);
             return StepOutcome{.end = StepEnd::STOPPED, .walked = WalkedTiles{moved, most}};
+        }
+        if (!result.moved && calls.facing && !step.to_wall){
+            //  On foot, an open leg's tap that showed no step may have
+            //  stepped unseen: not a wall ahead, which would keep only the
+            //  tiles with one (09.02 run 8, console B, 2026-11-11 18:02:
+            //  "west 2" on Rocket Hideout B2F taken as at (17, 5), a tile
+            //  east of the player, so the arrow was missed).
+            calls.log(std::format("Taps: tap {} of {} showed no step: stopped after {} or {} tile(s).", tap, step.tiles, moved, moved + 1));
+            return StepOutcome{.end = StepEnd::STOPPED, .walked = WalkedTiles{moved, moved + 1}};
         }
         if (!result.moved){
             calls.log(std::format("Bike: tap {} of {} didn't move: blocked after {} tile(s).", tap, step.tiles, moved));

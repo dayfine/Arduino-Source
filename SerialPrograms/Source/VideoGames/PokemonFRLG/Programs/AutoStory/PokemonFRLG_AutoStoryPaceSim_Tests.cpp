@@ -71,7 +71,7 @@ private:
     SimPatch& m_patch;
 };
 
-//  Console B, 2026-11-03 (m63, 00.20 run 2): the capture paced on Route
+//  Console B, 2026-11-03 (m63, 05.09 run 2): the capture paced on Route
 //  24's (5, 19), in Camper Shane's sight; after the first wild battle he
 //  walked up ("I saw your feat from the grass!"), and pacing ended
 //  "no-battle-not-overworld" under his message. On the sim, a capture
@@ -156,7 +156,7 @@ private:
     size_t m_read = 0;
 };
 
-//  Console B, 2026-11-09 (00.30 run 5): catch_pidgey started on Route 7's
+//  Console B, 2026-11-09 (08.03 run 5): catch_pidgey started on Route 7's
 //  (14, 6) on the Bicycle, ran from 4 wild battles and then paced 4 minutes
 //  on the flowers east of the grass (11..18, 2..6). On the Bicycle a tap
 //  facing another way steps too, so each turn of the pace took a tile, and

@@ -140,11 +140,15 @@ struct TurnTapInput{
     bool confirm_turn = true;
     //  On the Bicycle (SimScript::on_bike, SimWalkerRules::speed).
     bool on_bike = false;
+    //  The leg: WALK west 1, or FACE west.
+    RouteAction action = RouteAction::WALK;
 };
 
 struct TurnTapExpectation{
     //  Where the leg ends.
     MapPosition end;
+    //  The way the player faces after it.
+    Direction facing = Direction::WEST;
 };
 
 struct TurnTapCase{
@@ -155,7 +159,7 @@ struct TurnTapCase{
 const MapPosition TURN_START{"ViridianForest", {13, 28}};
 const MapPosition TURN_END{"ViridianForest", {12, 28}};
 
-//  Console B, 2026-11-09 (00.28 run 2): the game missed the turn tap before
+//  Console B, 2026-11-09 (08.01 run 2): the game missed the turn tap before
 //  a one-tile open leg, the leg's hold only turned the player, and the leg
 //  was taken as walked. On the sim, a leg west 1 for a player facing north.
 class Test_OverworldTurnTap : public UnitTest{
@@ -167,10 +171,11 @@ public:
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         static const std::vector<MapData> MAPS = overworld_maps();
         RouteStep west;
+        west.action = m_case.input.action;
         west.direction = Direction::WEST;
-        west.tiles = 1;
+        west.tiles = m_case.input.action == RouteAction::FACE ? 0 : 1;
         west.facing_after = Direction::WEST;
-        west.end = TURN_END;
+        west.end = m_case.input.action == RouteAction::FACE ? TURN_START : TURN_END;
         SimScript script;
         script.dropped_turn_taps = m_case.input.dropped_turn_taps;
         SimWalkerRules rules;
@@ -184,12 +189,14 @@ public:
         OverworldSimWalker walker(sim, rules);
         const RoutePlanning planning{.maps = &MAPS, .costs = default_route_costs(), .start = TURN_START, .label = "Sim"};
         const std::string failure = walker.run({west}, planning);
-        if (failure.empty() && sim.state().position == m_case.expectation.end){
+        const SimState& state = sim.state();
+        if (failure.empty() && state.position == m_case.expectation.end && state.facing == m_case.expectation.facing){
             return true;
         }
         return std::format(
-            "Expected the leg to end on {}; ended on {}, failure \"{}\".",
-            to_string(m_case.expectation.end), to_string(sim.state().position), failure
+            "Expected the leg to end on {} facing {}; ended on {} facing {}, failure \"{}\".",
+            to_string(m_case.expectation.end), Pokemon::direction_name(m_case.expectation.facing),
+            to_string(state.position), Pokemon::direction_name(state.facing), failure
         );
     }
 
@@ -202,10 +209,15 @@ const TurnTapCase TURN_TAP_CASES[] = {
     {.input = {.name = "dropped, tapped again", .dropped_turn_taps = {1}}, .expectation = {.end = TURN_END}},
     {.input = {.name = "dropped twice, tapped again", .dropped_turn_taps = {1, 2}}, .expectation = {.end = TURN_END}},
     {.input = {.name = "dropped, not checked: the leg only turns", .dropped_turn_taps = {1}, .confirm_turn = false}, .expectation = {.end = TURN_START}},
-    //  Console B, 2026-11-09 (00.30): on the Bicycle the turn tap took a
+    //  Console B, 2026-11-09 (08.03): on the Bicycle the turn tap took a
     //  step, each one-tile leg went two, and the walk to Route 8 ended on
     //  Route 12.
     {.input = {.name = "on the bike, no turn tap", .on_bike = true}, .expectation = {.end = TURN_END}},
+    //  Console B, 2026-11-11 (09.02 moon_stone): the game missed the tap of
+    //  "face south" on Rocket Hideout B2F, the player still faced north, and
+    //  A found nothing to pick up.
+    {.input = {.name = "face, taken", .action = RouteAction::FACE}, .expectation = {.end = TURN_START}},
+    {.input = {.name = "face, dropped, tapped again", .dropped_turn_taps = {1}, .action = RouteAction::FACE}, .expectation = {.end = TURN_START}},
 };
 
 
@@ -301,6 +313,39 @@ const TapMechanicsCase TAP_MECHANICS_CASES[] = {
 } // namespace
 
 
+//  Console B, 2026-11-11 15:36 (09.02 beside_moon_stone): the step tap of
+//  "east 1 (open)" from Rocket Hideout B2F (1, 4), facing east already,
+//  moved the player but the screen check read no move; the walker tapped
+//  again and ended on (3, 4), not (2, 4).
+class Test_OverworldUnseenStepTap : public UnitTest{
+public:
+    Test_OverworldUnseenStepTap()
+        : UnitTest("PokemonFRLG::OverworldWalk - step tap read as not moved")
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        static const std::vector<MapData> MAPS = overworld_maps();
+        const MapPosition start{"RocketHideout_B2F", {1, 4}};
+        const MapPosition end{"RocketHideout_B2F", {2, 4}};
+        RouteStep east;
+        east.action = RouteAction::WALK;
+        east.direction = Direction::EAST;
+        east.tiles = 1;
+        east.tapped = true;
+        east.facing_after = Direction::EAST;
+        east.end = end;
+        SimScript script;
+        script.unseen_step_taps = {1};
+        OverworldSim sim(MAPS, start, Direction::EAST, script);
+        OverworldSimWalker walker(sim);
+        const RoutePlanning planning{.maps = &MAPS, .costs = default_route_costs(), .start = start, .label = "Sim"};
+        const std::string failure = walker.run({east}, planning);
+        if (sim.state().position == end){
+            return true;
+        }
+        return std::format("Expected the leg to end on {}; ended on {}, failure \"{}\".", to_string(end), to_string(sim.state().position), failure);
+    }
+};
+
 void add_tests_OverworldWalk(UnitTestDatabase& database){
     for (const auto& scenario : OVERWORLD_WALK_CASES){
         database.add<Test_OverworldWalk>(scenario);
@@ -311,6 +356,7 @@ void add_tests_OverworldWalk(UnitTestDatabase& database){
     for (const TapMechanicsCase& item : TAP_MECHANICS_CASES){
         database.add<Test_OverworldTapMechanics>(item);
     }
+    database.add<Test_OverworldUnseenStepTap>();
 }
 
 

@@ -85,7 +85,7 @@ namespace{
 const JsonObject& as_object(const JsonValue& value, const std::string& where){
     const JsonObject* object = value.to_object();
     if (object == nullptr){
-        throw ParseException(where + " is not a JSON object.");
+        throw ParseException(std::format("{} is not a JSON object.", where));
     }
     return *object;
 }
@@ -93,7 +93,7 @@ const JsonObject& as_object(const JsonValue& value, const std::string& where){
 const JsonValue& read_field(const JsonObject& object, const std::string& key, const std::string& where){
     const JsonValue* value = object.get_value(key);
     if (value == nullptr){
-        throw ParseException(where + key + " is missing.");
+        throw ParseException(std::format("{}{} is missing.", where, key));
     }
     return *value;
 }
@@ -101,7 +101,7 @@ const JsonValue& read_field(const JsonObject& object, const std::string& key, co
 int read_int(const JsonObject& object, const std::string& key, const std::string& where){
     const JsonValue& value = read_field(object, key, where);
     if (!value.is_integer()){
-        throw ParseException(where + key + " is not an integer.");
+        throw ParseException(std::format("{}{} is not an integer.", where, key));
     }
     return (int)value.to_integer_default();
 }
@@ -109,7 +109,7 @@ int read_int(const JsonObject& object, const std::string& key, const std::string
 std::string read_string(const JsonObject& object, const std::string& key, const std::string& where){
     const std::string* text = read_field(object, key, where).to_string();
     if (text == nullptr){
-        throw ParseException(where + key + " is not a string.");
+        throw ParseException(std::format("{}{} is not a string.", where, key));
     }
     return *text;
 }
@@ -121,7 +121,7 @@ bool optional_bool(const JsonObject& object, const std::string& key, bool fallba
         return fallback;
     }
     if (!value->is_boolean()){
-        throw ParseException(where + key + " is not true or false.");
+        throw ParseException(std::format("{}{} is not true or false.", where, key));
     }
     return value->to_boolean_default(fallback);
 }
@@ -148,7 +148,7 @@ Direction parse_direction(const std::string& name, const std::string& where){
 }
 
 Direction read_direction(const JsonObject& object, const std::string& key, const std::string& where){
-    return parse_direction(read_string(object, key, where), where + key);
+    return parse_direction(read_string(object, key, where), std::format("{}{}", where, key));
 }
 
 //  The list `key`, or nothing when the map leaves it out.
@@ -159,7 +159,7 @@ const JsonArray* optional_array(const JsonObject& object, const std::string& key
     }
     const JsonArray* array = value->to_array();
     if (array == nullptr){
-        throw ParseException(where + key + " is not an array.");
+        throw ParseException(std::format("{}{} is not an array.", where, key));
     }
     return array;
 }
@@ -169,7 +169,7 @@ const JsonObject* optional_object(const JsonObject& object, const std::string& k
     if (value == nullptr){
         return nullptr;
     }
-    return &as_object(*value, where + key);
+    return &as_object(*value, std::format("{}{}", where, key));
 }
 
 template <typename Item>
@@ -184,7 +184,7 @@ std::vector<Item> read_list(
     }
     for (size_t c = 0; c < array->size(); c++){
         const std::string item_where = std::format("{}{}[{}]", where, key, c);
-        items.push_back(read_item(as_object((*array)[c], item_where), item_where + "."));
+        items.push_back(read_item(as_object((*array)[c], item_where), std::format("{}.", item_where)));
     }
     return items;
 }
@@ -193,9 +193,9 @@ std::vector<Item> read_list(
 MapSource read_source(const JsonObject& root, const std::string& where){
     //  Named, since GCC warns of a reference returned for a temporary path.
     const std::string key = "source";
-    const std::string path = where + key;
+    const std::string path = std::format("{}{}", where, key);
     const JsonObject& object = as_object(read_field(root, key, where), path);
-    const std::string source_where = path + ".";
+    const std::string source_where = std::format("{}.", path);
     MapSource source;
     source.decomp_file = read_string(object, "decomp_file", source_where);
     source.revision = read_string(object, "revision", source_where);
@@ -208,7 +208,7 @@ std::optional<MapWorld> read_world(const JsonObject& root, const std::string& wh
     if (object == nullptr){
         return std::nullopt;
     }
-    const std::string world_where = where + "world.";
+    const std::string world_where = std::format("{}world.", where);
     return MapWorld{
         .name = read_string(*object, "name", world_where),
         .offset = read_pos(*object, world_where),
@@ -221,15 +221,15 @@ Grid<TileKind> read_tiles(const JsonObject& root, const std::string& where){
     const JsonValue& value = read_field(root, key, where);
     const JsonArray* rows = value.to_array();
     if (rows == nullptr){
-        throw ParseException(where + key + " is not an array.");
+        throw ParseException(std::format("{}{} is not an array.", where, key));
     }
     if (rows->empty()){
-        throw ParseException(where + key + " has no rows.");
+        throw ParseException(std::format("{}{} has no rows.", where, key));
     }
     const std::string* first = (*rows)[0].to_string();
     const size_t width = first == nullptr ? 0 : first->size();
     if (width == 0){
-        throw ParseException(where + key + "[0] is not a string of glyphs.");
+        throw ParseException(std::format("{}{}[0] is not a string of glyphs.", where, key));
     }
     Grid<TileKind> grid{(int)width, (int)rows->size(), {}};
     for (size_t y = 0; y < rows->size(); y++){
@@ -254,7 +254,7 @@ Grid<TileKind> read_tiles(const JsonObject& root, const std::string& where){
 TilePos read_pair(const JsonValue& value, const std::string& where){
     const JsonArray* pair = value.to_array();
     if (pair == nullptr || pair->size() != 2 || !(*pair)[0].is_integer() || !(*pair)[1].is_integer()){
-        throw ParseException(where + " is not [x, y].");
+        throw ParseException(std::format("{} is not [x, y].", where));
     }
     return TilePos{(int)(*pair)[0].to_integer_default(), (int)(*pair)[1].to_integer_default()};
 }
@@ -299,7 +299,7 @@ std::map<std::string, std::set<std::string>> read_flag_sets(const JsonObject& ro
         const std::string set_where = std::format("{}flag_sets.{}", where, name);
         const JsonArray* flags = value.to_array();
         if (flags == nullptr){
-            throw ParseException(set_where + " is not a list of flags.");
+            throw ParseException(std::format("{} is not a list of flags.", set_where));
         }
         std::set<std::string>& set = sets[name];
         for (size_t c = 0; c < flags->size(); c++){
@@ -336,7 +336,7 @@ std::map<std::string, std::vector<TilePos>> read_regions(const JsonObject& root,
         const std::string region_where = std::format("{}regions.{}", where, name);
         const JsonArray* tiles = value.to_array();
         if (tiles == nullptr || tiles->empty()){
-            throw ParseException(region_where + " is not a non-empty list of [x, y].");
+            throw ParseException(std::format("{} is not a non-empty list of [x, y].", region_where));
         }
         std::vector<TilePos>& region = regions[name];
         for (size_t c = 0; c < tiles->size(); c++){
@@ -371,7 +371,7 @@ MapWarp read_warp(const JsonObject& object, const std::string& where){
     const bool has_map = object.get_value("to_map") != nullptr;
     const bool has_point = object.get_value("to_point") != nullptr;
     if (has_map != has_point){
-        throw ParseException(where + (has_map ? "to_point" : "to_map") + " is missing.");
+        throw ParseException(std::format("{}{} is missing.", where, has_map ? "to_point" : "to_map"));
     }
     if (has_map){
         warp.to = WarpDestination{
@@ -403,7 +403,7 @@ TileBox read_box(const JsonObject& object, const std::string& where){
     box.x1 = read_int(object, "x1", where);
     box.y1 = read_int(object, "y1", where);
     if (box.x0 > box.x1 || box.y0 > box.y1){
-        throw ParseException(where.substr(0, where.size() - 1) + " is not a box (x0 <= x1, y0 <= y1).");
+        throw ParseException(std::format("{} is not a box (x0 <= x1, y0 <= y1).", where.substr(0, where.size() - 1)));
     }
     return box;
 }
@@ -418,7 +418,7 @@ MapTrainer read_trainer(const JsonObject& object, const std::optional<Direction>
     const JsonArray* looks = optional_array(object, "looks", where);
     if (looks == nullptr){
         if (!facing){
-            throw ParseException(where + "looks is missing, and the object has no facing.");
+            throw ParseException(std::format("{}looks is missing, and the object has no facing.", where));
         }
         trainer.looks.push_back(*facing);
         return trainer;
@@ -427,7 +427,7 @@ MapTrainer read_trainer(const JsonObject& object, const std::optional<Direction>
         const std::string item_where = std::format("{}looks[{}]", where, c);
         const std::string* name = (*looks)[c].to_string();
         if (name == nullptr){
-            throw ParseException(item_where + " is not a string.");
+            throw ParseException(std::format("{} is not a string.", item_where));
         }
         trainer.looks.push_back(parse_direction(*name, item_where));
     }
@@ -445,10 +445,10 @@ MapObject read_object(const JsonObject& object, const std::string& where){
         map_object.facing = read_direction(object, "facing", where);
     }
     if (const JsonObject* wander = optional_object(object, "wander", where)){
-        map_object.wander = read_box(*wander, where + "wander.");
+        map_object.wander = read_box(*wander, std::format("{}wander.", where));
     }
     if (const JsonObject* trainer = optional_object(object, "trainer", where)){
-        map_object.trainer = read_trainer(*trainer, map_object.facing, where + "trainer.");
+        map_object.trainer = read_trainer(*trainer, map_object.facing, std::format("{}trainer.", where));
     }
     map_object.hide_flag = optional_string(object, "hide_flag", where);
     return map_object;
@@ -459,7 +459,7 @@ MapTrigger read_trigger(const JsonObject& object, const std::string& where){
     trigger.name = read_string(object, "name", where);
     //  Named, since GCC warns of a reference returned for a temporary path.
     const std::string key = "box";
-    trigger.box = read_box(as_object(read_field(object, key, where), where + key), where + key + ".");
+    trigger.box = read_box(as_object(read_field(object, key, where), std::format("{}{}", where, key)), std::format("{}{}.", where, key));
     trigger.when = optional_string(object, "when", where);
     return trigger;
 }
@@ -502,7 +502,7 @@ void check_box_inside(const Grid<TileKind>& tiles, const TileBox& box, const std
 //  Everything with a place on the map has it inside the tiles.
 void check_places(const MapData& map, const std::string& where){
     for (const auto& [name, pos] : map.points){
-        check_inside(map.tiles, pos, where + "points." + name);
+        check_inside(map.tiles, pos, std::format("{}points.{}", where, name));
     }
     for (const auto& [name, region] : map.regions){
         for (size_t c = 0; c < region.size(); c++){
@@ -533,7 +533,7 @@ void check_places(const MapData& map, const std::string& where){
 MapData parse_map(const JsonValue& json, const std::string& source_name){
     const JsonValue normalized = normalize_runtime_map(json, source_name);
     const JsonObject& root = as_object(normalized, source_name);
-    const std::string where = source_name + ": ";
+    const std::string where = std::format("{}: ", source_name);
     MapData map;
     map.name = read_string(root, "name", where);
     map.source = read_source(root, where);
@@ -551,7 +551,7 @@ MapData parse_map(const JsonValue& json, const std::string& source_name){
     map.patches = read_list<MapPatch>(root, "patches", where, read_patch);
     check_places(map, where);
     for (const MapPatch& patch : map.patches){
-        cell_at(map.tiles, TilePos{patch.x, patch.y}) = patch.glyph;
+        cell_at(TilePos{patch.x, patch.y}, map.tiles) = patch.glyph;
     }
     return map;
 }

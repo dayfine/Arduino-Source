@@ -304,6 +304,8 @@ constexpr int SCREEN_TILES_X = 15;
 constexpr int SCREEN_TILES_Y = 10;
 //  From the fade's end until the new map is in full light.
 constexpr Milliseconds WARP_FADE_IN(300);
+//  Between screens compared for a dim warp's fade (wait_out_dim_warp()).
+constexpr Milliseconds DIM_WARP_POLL(150);
 
 //  The RMSD of `before` and `after` where they overlap, with the scene
 //  scrolled `dx`, `dy` pixels: `after` at (x, y) shows `before` at
@@ -382,10 +384,48 @@ void wait_out_fade(ConsoleHandle& console, ProControllerContext& context, const 
     );
 }
 
+//  After the steps onto a warp whose fade only dims the screen
+//  (RouteStep::fade_dims): waits, up to the warp timeout, for the scene
+//  from `before`, taken before the first of those steps, to be gone and
+//  the screen settled; fails if it never is.
+void wait_out_dim_warp(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step, const VideoSnapshot& before){
+    context.wait_for_all_requests();
+    if (!before){
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::SEND_ERROR_REPORT,
+            std::format("walk_overworld_route(): no screen before the steps onto the warp to {}.", step.end.map),
+            console
+        );
+    }
+    const ImageFloatBox& game = GameSettings::instance().GAME_BOX;
+    VideoSnapshot last;
+    const WallClock deadline = current_time() + WARP_TIMEOUT;
+    while (current_time() < deadline){
+        context.wait_for(DIM_WARP_POLL);
+        VideoSnapshot now = console.video().snapshot();
+        if (!now){
+            continue;
+        }
+        const bool left = warp_left_scene(*before.frame, *now.frame, game, step.direction, step.tiles + 2);
+        if (left && last && scrolled_rmsd(
+            extract_box_reference(*last.frame, game), extract_box_reference(*now.frame, game), 0, 0
+        ) < SAME_SCENE_RMSD){
+            console.log(std::format("Route: the dim fade to {} is over.", step.end.map));
+            return;
+        }
+        last = left ? std::move(now) : VideoSnapshot();
+    }
+    OperationFailedExceptionWithScreenshot::fire(
+        ErrorReportMode::SEND_ERROR_REPORT,
+        std::format("walk_overworld_route(): the scene from before the steps onto the warp to {} is still up.", step.end.map),
+        console
+    );
+}
+
 } // namespace
 
 //  A black screen that clears with the player where they were is no warp
-//  (console B, 2026-11-10 01:44, 00.31 run 4: "east 1 (warp)" was taken as
+//  (console B, 2026-11-10 01:44, 09.01 run 4: "east 1 (warp)" was taken as
 //  walked while the player stayed on B4F).
 void wait_out_warp(
     ConsoleHandle& console, ProControllerContext& context, const RouteStep& step,
@@ -413,6 +453,10 @@ void wait_out_warp(
 void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step, const VideoSnapshot& before){
     BlackScreenOverWatcher arrival(COLOR_RED);
     Pokemon::WatchAlong fade(arrival);
+    if (step.fade_dims){
+        wait_out_dim_warp(console, context, step, before);
+        return;
+    }
     wait_out_warp(console, context, step, fade, before);
 }
 
@@ -461,7 +505,7 @@ void clear_open_message(
 //  the watch after "south 15 (to wall)" ended on the box still empty, the
 //  leg was taken as walked to its wall, and the next leg was walked into
 //  the battle, 5 tiles short of where it was planned from (console B,
-//  2026-11-03, row 00.13).
+//  2026-11-03, row 04.05).
 namespace{
 
 //  What on screen shows a wild battle on its way: its text box, or the
@@ -583,13 +627,32 @@ std::optional<Direction> read_facing(ConsoleHandle& console, ProControllerContex
     return facing;
 }
 
+//  Reads of the facing after a turn tap before one that can't be read is
+//  taken as turned, TURN_FACING_REREAD apart: a tap again while facing
+//  that way already would take a step.
+constexpr size_t TURN_FACING_READS = 3;
+constexpr Milliseconds TURN_FACING_REREAD(100);
+
 void turn_to(ConsoleHandle& console, ProControllerContext& context, Direction direction){
     for (size_t tap = 1; tap <= MAX_TURN_TAPS; tap++){
         pbf_press_dpad(context, dpad(direction), TURN_TAP, TURN_SETTLE);
-        context.wait_for_all_requests();
-        VideoSnapshot screen = console.video().snapshot();
-        const std::optional<Direction> facing = screen ? read_player_facing(screen) : std::nullopt;
-        if (!facing || *facing == direction){
+        std::optional<Direction> facing;
+        for (size_t read = 1; read <= TURN_FACING_READS && !facing; read++){
+            if (read > 1){
+                pbf_wait(context, TURN_FACING_REREAD);
+            }
+            context.wait_for_all_requests();
+            VideoSnapshot screen = console.video().snapshot();
+            facing = screen ? read_player_facing(screen) : std::nullopt;
+        }
+        if (!facing){
+            console.log(std::format(
+                "Route: after turn tap {} {}, the facing can't be read: taken as turned.",
+                tap, Pokemon::direction_name(direction)
+            ), COLOR_ORANGE);
+            return;
+        }
+        if (*facing == direction){
             return;
         }
         console.log(std::format(
@@ -761,7 +824,10 @@ void walk_overworld_route(
             start_surf(console, context, step.direction, facing == step.direction);
             break;
         case RouteAction::FACE:
-            pbf_press_dpad(context, dpad(step.direction), FACE_HOLD, STEP_RELEASE);
+            //  Checked by the facing on screen, like a leg's turn: the game
+            //  missed a single tap of "face south" and A found nothing
+            //  (console B, 2026-11-11, 09.02 moon_stone).
+            turn_to(console, context, step.direction);
             break;
         }
         if (step.action != RouteAction::FACE){

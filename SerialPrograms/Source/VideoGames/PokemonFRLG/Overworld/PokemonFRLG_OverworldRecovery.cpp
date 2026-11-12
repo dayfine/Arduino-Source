@@ -63,7 +63,7 @@ int sight_onto(const std::vector<MapData>& maps, const MapPosition& tile){
 //  How far the holds that find the player after an open leg, and the way
 //  back, may walk, per tile of the leg. 2 left Rocket Hideout B3F's "west
 //  7" off the stairs unchecked: the hold to its west wall and back walk up
-//  to 18, and the leg ended short (00.31 r1, console B, 2026-11-10). Route
+//  to 18, and the leg ended short (09.01 r1, console B, 2026-11-10). Route
 //  1's "west 4", whose holds walk 30, stays unchecked.
 constexpr int OPEN_LEG_CHECK_TILES_PER_TILE = 3;
 
@@ -87,7 +87,7 @@ bool is_wall_hold(const RouteStep& next){
 //  misses the arrow, or walks onto another, and ends elsewhere in the maze:
 //  "south 2" before Rocket Hideout B3F's "east 2" onto the arrow (3, 16)
 //  ended a tile short, the east leg walked into a wall, and the walk after
-//  it slid up to (10, 13) (00.31 r1 run 3, console B, 2026-11-10).
+//  it slid up to (10, 13) (09.01 r1 run 3, console B, 2026-11-10).
 bool is_slide(const RouteStep& next){
     return next.action == RouteAction::WALK && next.spin_tiles && !next.warps;
 }
@@ -438,10 +438,20 @@ private:
     //  only that far, to keep the check cheap: in Viridian Forest (r16) it
     //  walks 10 tiles after "west 6", while after Route 1's "west 4" the
     //  only holds walk 30. An open leg after a short one walks on off the
-    //  route, which isn't checked.
+    //  route, which isn't checked. A leg onto a spinner isn't checked: its
+    //  taps wait out the slide and its settle, and it ends on the stop. The
+    //  tiles short of its arrow left out that stop, and the hold west "to
+    //  the wall (7, 11)" after Rocket Hideout B2F's "east 2" to the stop
+    //  (14, 13) slid from there to (10, 15) (09.02, console B, 2026-11-11).
+    //  A leg tapped a tile at a time (counts_step_taps()) that ended DONE
+    //  had every tap seen to move: it ended on its tile, and a check walks
+    //  back over tiles already walked (09.02's B2F, console B, 2026-11-11
+    //  15:34: a hold back north to (21, 2) after "south 2" and to the wall
+    //  (17, 5) after "north 3").
     void check_open_leg(const RouteStep& step, const std::optional<MapPosition>& start){
         if (maps() == nullptr || m_planning->open_leg_check != OpenLegCheck::REANCHOR || !start
-            || step.action != RouteAction::WALK || step.to_wall || step.warps
+            || counts_step_taps(step)
+            || step.action != RouteAction::WALK || step.to_wall || step.warps || step.spin_tiles
             || m_next >= m_plan.size() || !(is_wall_hold(m_plan[m_next]) || is_slide(m_plan[m_next]))
         ){
             return;

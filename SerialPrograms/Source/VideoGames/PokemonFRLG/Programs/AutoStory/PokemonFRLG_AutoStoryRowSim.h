@@ -60,7 +60,7 @@ public:
 
     virtual void begin_attempt(const Pokemon::StoryCheckpoint& data) override;
     //  The step, after a dialog pops up before it if the knobs say so.
-    virtual Pokemon::Outcome run(Pokemon::RunState& state, const StoryStep& step) override;
+    virtual Pokemon::Outcome run(const StoryStep& step, Pokemon::RunState& state) override;
     //  The story's actions as this simulation binds them.
     const Pokemon::StoryActionTable& actions() const{
         return m_table;
@@ -72,7 +72,7 @@ public:
     const std::map<std::string, int>& bag() const{
         return m_bag;
     }
-    //  "00.03/oak: a dialog pops up before it.", and how it was cleared.
+    //  "01.04/oak: a dialog pops up before it.", and how it was cleared.
     const std::vector<std::string>& dialog_notes() const{
         return m_dialog_notes;
     }
@@ -80,7 +80,7 @@ public:
 protected:
     //  A dialog that popped up and is still up stops a step that walks or
     //  talks; a step that presses through text closes it.
-    virtual Pokemon::Outcome run_action(Pokemon::RunState& state, const StoryStep& step) override;
+    virtual Pokemon::Outcome run_action(const StoryStep& step, Pokemon::RunState& state) override;
 
 private:
     Pokemon::StoryAction action(StoryActionId id);
@@ -143,6 +143,7 @@ private:
     std::string walk(const StoryStep& step);
     std::string step_ahead(const StoryStep& step);
     std::string step_onto(const StoryStep& step);
+    std::string step_onto_warp(const RouteStep& warp);
     std::string cut(const StoryStep& step);
     std::string battle(const StoryStep& step);
     Pokemon::StoryAction hideout_or_stub();

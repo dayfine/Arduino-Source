@@ -200,6 +200,18 @@ Outcome walk_legs(StoryEnv& env, RunState& state, const StoryStep& step){
     return Pokemon::outcome_ok(to_pose(StoryPose{route->back().end.map, route->back().end.point, route->back().facing_after}));
 }
 
+//  A step onto a warp (a door, a mat, stairs): done only once its fade
+//  shows and the screen after it leaves the scene, else it fails
+//  (wait_out_warp()). The pose after it is the table's.
+Outcome take_warp_step(StoryEnv& env, const RunState& state, const RouteStep& warp){
+    env.context.wait_for_all_requests();
+    const VideoSnapshot before = env.console.video().snapshot();
+    step_once(env.console, env.context, warp.direction, facing_of(state.pose));
+    OverworldWalkSteps::wait_out_warp(env.console, env.context, warp, before);
+    env.console.log(std::format("Story: the step took the warp to {}.", warp.end.map));
+    return Pokemon::outcome_ok();
+}
+
 Outcome take_step(StoryEnv& env, RunState& state, const StoryStep& step){
     const Direction direction = arg<Direction>(step, "direction");
     int tiles_stepped = 1;
@@ -214,6 +226,11 @@ Outcome take_step(StoryEnv& env, RunState& state, const StoryStep& step){
         if (!step_into_line(env.console, env.context, direction, facing_of(state.pose), 1, TRAINER_WAIT_WATCH)){
             return Pokemon::outcome_failed("no_trainer", std::format("{} s on the tile {}", TRAINER_WAIT_WATCH.count() / 1000, direction_name(direction)));
         }
+    }else if (const std::optional<StoryPose> from = story_pose(state.pose)){
+        if (const std::optional<RouteStep> warp = warp_press(story_maps(), MapPosition{from->map, from->tile}, direction)){
+            return take_warp_step(env, state, *warp);
+        }
+        step_once(env.console, env.context, direction, facing_of(state.pose));
     }else{
         step_once(env.console, env.context, direction, facing_of(state.pose));
     }
@@ -250,6 +267,16 @@ Outcome battle(StoryEnv& env, const StoryStep& step){
         return Pokemon::outcome_failed("blackout");
     }
     mash_until_overworld(env.console, env.context, SCENE_TIMEOUT);
+    //  A trainer's script can go on after the battle, its black while the
+    //  game takes the trainer away taking no input: east_of_silph_scope's
+    //  first tap, 0.4 s after Giovanni's battle, was lost (console B,
+    //  2026-11-11 17:51, 09.02).
+    wait_out_battle_exit(env.console, env.context);
+    //  Console B 2026-11-11, 09.02: a Grunt's battle left the starter
+    //  poisoned and the story walked on with it uncured.
+    if (end != BattleEnd::LOST){
+        recover_after_battle(env.console, env.context, env.supplies, env.checks, env.language);
+    }
     return Pokemon::outcome_ok();
 }
 
@@ -293,7 +320,7 @@ const std::vector<MapData>& story_maps(){
         std::set<std::string> flags = map_flag_set(all, "after_hall_of_fame");
         flags.merge(map_flag_set(all, "new_game"));
         //  The one ball the story picks up in its way: B2F's MOON STONE
-        //  blocks column 2 of the arrow floor (00.32's moon_stone).
+        //  blocks column 2 of the arrow floor (09.02's moon_stone).
         flags.insert("FLAG_HIDE_ROCKET_HIDEOUT_B2F_MOON_STONE");
         return overworld_maps(flags);
     }();
@@ -425,7 +452,7 @@ std::optional<Direction> wall_beside(const MapData& map, const TilePos& tile){
 namespace{
 
 //  A talk to a person or an item ball opens a message; an A that opens
-//  none faced nothing (00.31 b3f_rare_candy, console B, 2026-11-10: one A,
+//  none faced nothing (09.01 b3f_rare_candy, console B, 2026-11-10: one A,
 //  "done", on the wrong floor). The message is left open for the next step.
 bool talk_opens_message(ConsoleHandle& console, ProControllerContext& context){
     WhiteDialogWatcher opened(COLOR_RED);
@@ -657,7 +684,7 @@ ConsoleAction console_action_of(StoryActionId id){
     switch (id){
     case StoryActionId::NEW_GAME:
         return [](StoryEnv& env, RunState&, const StoryStep&){
-            play_new_game_intro(env.console, env.context, env.player_name);
+            play_new_game_intro(env.console, env.context, env.player_name, env.player_gender);
             return Pokemon::outcome_ok();
         };
     case StoryActionId::ROUTE:
@@ -720,19 +747,19 @@ StoryExecutor::StoryExecutor(StoryEnv& env)
     m_executor.set_interrupts(&m_interrupts);
 }
 
-Outcome StoryExecutor::run(RunState& state, const StoryStep& step){
-    return m_executor.run(state, step);
+Outcome StoryExecutor::run(const StoryStep& step, RunState& state){
+    return m_executor.run(step, state);
 }
 
 Pokemon::StoryAction StoryExecutor::console_action(StoryActionId id){
     if (id == StoryActionId::OPTIONS){
-        return {.act = [this](RunState&, const StoryStep&){
+        return {.act = [this](const StoryStep&, RunState&){
             set_options(m_env.console, m_env.context, m_menu, m_env.language);
             return Pokemon::outcome_ok();
         }, .needs_console = true};
     }
     const ConsoleAction action = console_action_of(id);
-    return {.act = [this, action](RunState& state, const StoryStep& step){ return action(m_env, state, step); }, .needs_console = true};
+    return {.act = [this, action](const StoryStep& step, RunState& state){ return action(m_env, state, step); }, .needs_console = true};
 }
 
 
@@ -842,6 +869,8 @@ void read_bag_supplies(StoryEnv& env, StartMenu menu){
         ), COLOR_ORANGE);
     }
     env.bag_read = unread.empty();
+    //  A status or HP the checkpoint was saved with.
+    recover_after_battle(env.console, env.context, env.supplies, env.checks, env.language);
 }
 
 namespace{
@@ -883,7 +912,7 @@ Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor&
         [&env, id = data.id]{ return read_console_start(env, id); },
         [&env](const std::string& line){ env.console.log(line, COLOR_ORANGE); }
     );
-    env.start_map = data.start ? data.start->map : "";
+    env.start_map = data.start ? Pokemon::grid_pose_of(*data.start).map : "";
     env.start_menu = data.menu;
     const StartMenu menu = data.menu;
     checkpoint.save = [&env, menu, id = data.id](RunState&){

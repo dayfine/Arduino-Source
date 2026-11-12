@@ -51,7 +51,7 @@ struct StoryPose{
 };
 
 //  The variant of a ROUTE or LEGS step that runs, with B held: the player
-//  has the Running Shoes (00.10 on).
+//  has the Running Shoes (03.03 on).
 inline const std::string RUN_VARIANT = "run";
 
 //  The GAME step that closes the Trainer Card SID Helper leaves open.

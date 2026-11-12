@@ -53,6 +53,9 @@ struct RouteStep{
     //  WALK: on a map where the game doesn't let the player run (indoors,
     //  MapData::allow_running): B held there still walks.
     bool walk_only = false;
+    //  WALK, warps: the warp's fade only dims the screen, never black (the
+    //  hideout lift's way out; console B, 2026-11-10, 00.32 lift_to_b4f).
+    bool fade_dims = false;
     //  WALK: a wall stops the player at the end, so the leg can be held for
     //  longer than it takes and still ends on its tile.
     bool to_wall = false;
@@ -63,7 +66,7 @@ struct RouteStep{
     //  WALK on foot: walked a tap at a time, each a tile, and each checked
     //  to have moved (count_step_taps()), as through the hideout's arrow
     //  floors, where a hold that ends a tile off slides the player
-    //  elsewhere (console B, 2026-11-10, 00.31 r1).
+    //  elsewhere (console B, 2026-11-10, 09.01 r1).
     bool tapped = false;
     //  WALK, SURF: a wild Pokemon can appear on the way: the step crosses
     //  tall grass or water. Elsewhere (indoors, streets) no wild battle can
@@ -72,13 +75,13 @@ struct RouteStep{
     //  WALK: the steps (from 1) onto a connected map. The game holds the
     //  player up a tile before each while it loads the map: a hold timed
     //  by the tiles alone ended a tile short (console B, 2026-11-03, rows
-    //  00.14, 00.16 and 00.20).
+    //  04.06, 05.05 and 05.09).
     std::vector<int> connection_steps = {};
     //  WALK onto a warp: how many tiles further the player may stand from
     //  it than planned, which the hold goes on for, stopping at the fade.
     //  An open leg over a map connection before it may end a tile further
     //  on, when the game doesn't hold the player up there (console B,
-    //  2026-11-03, row 00.24). Set by with_warp_slack() when a route runs.
+    //  2026-11-03, row 06.03). Set by with_warp_slack() when a route runs.
     int warp_slack = 0;
     //  Which way the player faces after the step. Arriving at a door or a
     //  cave mouth, the game walks the player a tile out, facing south.

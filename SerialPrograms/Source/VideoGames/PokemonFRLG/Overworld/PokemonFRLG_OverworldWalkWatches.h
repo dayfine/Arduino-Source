@@ -47,7 +47,7 @@ inline constexpr Milliseconds AFTER_WILD_LEG_WATCH(3500);
 //  After a leg's watch saw nothing, but the screen shows a battle on its
 //  way: how long to watch on for its HP boxes. In Mt. Moon they came over
 //  5s after the step that set the battle off, after the watch had ended on
-//  the battle's empty text box (console B, 2026-11-03, row 00.13).
+//  the battle's empty text box (console B, 2026-11-03, row 04.05).
 inline constexpr Milliseconds UNSEEN_BATTLE_WATCH(5000);
 //  How long clear_open_message() watches for the message it saw.
 inline constexpr Milliseconds OPEN_MESSAGE_WATCH(1000);

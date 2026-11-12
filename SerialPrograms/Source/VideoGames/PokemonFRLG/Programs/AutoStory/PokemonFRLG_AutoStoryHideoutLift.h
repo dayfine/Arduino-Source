@@ -54,7 +54,7 @@ MenuPresses lift_menu_presses(const LiftRide& ride, size_t entries);
 void pick_lift_floor(ConsoleHandle& console, ProControllerContext& context, const LiftRide& ride);
 
 //  On the console, the whole ride: into the lift from below the door,
-//  the floor picked, out onto the floor's lift door.
+//  the floor picked, out a tile south of the floor's lift door.
 void ride_lift(ConsoleHandle& console, ProControllerContext& context, const LiftRide& ride);
 
 
