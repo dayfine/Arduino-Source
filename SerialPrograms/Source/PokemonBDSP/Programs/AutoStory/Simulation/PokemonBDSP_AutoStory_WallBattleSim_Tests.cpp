@@ -8,7 +8,8 @@
  *  Sandgem), a wild battle on it or not: the scene stops the run wherever it
  *  starts, and with no scene the run stops at its cap and the step fails.
  *  And 00.05c's greeter by the Wonder Station, who talks each time we come
- *  near: heard out each time, the walk still arrives.
+ *  near: heard out each time, the walk still arrives. And a talk no battle
+ *  follows that outlasts a press-through: heard out, the walk goes round.
  *
  */
 
@@ -427,10 +428,104 @@ const GreeterCase GREETER_SIM_CASES[] = {
     {.input = {.name = "talks again on each leg near her (lab-B, 2026-11-12 03:57)", .talks = 3}, .expectation = {.arrives = true}},
 };
 
+//  A talk no battle followed, long enough to outlast a press-through, from
+//  someone who stands on the leg: on lab-B (2026-11-12 04:58, 00.05c
+//  below_the_company_clown, the 5th failure there) the Wonder Station's
+//  woman stopped "west 1 (to wall)" as "a trainer on the way", 2 s of B left
+//  her explanation on screen, and the walk on into her ran out of time.
+//  Here a corridor two rows high: her talk starts on (11, 1) and takes
+//  `presses` press-throughs to end; with `stands` she stays on (12, 1),
+//  which our map has open.
+struct TalkerInput{
+    std::string name;
+    size_t presses;
+    bool stands;
+};
+struct TalkerExpectation{
+    bool arrives;
+};
+struct TalkerCase{
+    TalkerInput input;
+    TalkerExpectation expectation;
+};
+
+//  One press-through of the talk: the `needed`th ends it.
+void press_through(GridSim& sim, size_t& presses, size_t needed){
+    if (sim.player().dialog && ++presses >= needed){
+        sim.end_dialogue();
+    }
+}
+
+//  Where the walk past the talker went wrong, or "".
+std::string walk_past_the_talker(Logger& logger, const TalkerInput& input){
+    const std::vector<std::string> open{
+        "########################",
+        "#......................#",
+        "#......................#",
+        "########################",
+    };
+    std::vector<std::string> real = open;
+    if (input.stands){
+        real[1][12] = '#';
+    }
+    const StoryWorld map = make_world(open);
+    const StoryWorld world = make_world(real);
+    const TilePos start{1, 1};
+    const TilePos target{22, 1};
+    const SimTrigger talk{.name = "the woman", .tiles = {TilePos{11, 1}}};
+    GridSim sim({.world = &world, .trainers = {}, .triggers = {talk}}, start, Direction::EAST, true);
+    std::vector<std::string> notes;
+    GridSimRouteIO sim_io(sim, notes);
+    size_t presses = 0;
+    RouteTrainers trainers{{}, [&](const std::string&){
+        press_through(sim, presses, input.presses);
+    }};
+    std::vector<TilePos> believed;
+    try{
+        believed = walk_route(sim_io, map, {start}, trainers, {.goal = [&](const TilePos& pos){ return pos == target; },
+            .label = "past the talker", .avoid = {}, .costs = *story_route_costs("town"), .speed = MoveSpeed::RUN});
+    }catch (const GridSimFailure& e){
+        return std::format("failed after {} press-through(s): {}", presses, e.message);
+    }
+    for (const std::string& note : notes){
+        logger.log(note);
+    }
+    const TilePos at = nearest_tile(sim.player().pos);
+    const bool arrived = believed == std::vector<TilePos>{target} && at == target;
+    return arrived ? "" : std::format("ended on {} believing {}, not on {}.", to_string(sim.player().pos),
+        believed.empty() ? std::string("nothing") : describe(map, believed[0]), describe(map, target));
+}
+
+class Test_TalkerSim : public UnitTest{
+public:
+    explicit Test_TalkerSim(TalkerCase test_case)
+        : UnitTest("PokemonBDSP::AutoStory - Grid sim: a talk no battle follows " + test_case.input.name)
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        const std::string error = walk_past_the_talker(logger, m_case.input);
+        if (error.empty() != m_case.expectation.arrives){
+            return error.empty() ? "arrived" : error;
+        }
+        return true;
+    }
+
+private:
+    TalkerCase m_case;
+};
+
+const TalkerCase TALKER_SIM_CASES[] = {
+    {.input = {.name = "outlasts a press-through, then she walks off", .presses = 3, .stands = false}, .expectation = {.arrives = true}},
+    {.input = {.name = "outlasts a press-through, and she stands on the leg (lab-B, 2026-11-12 04:58)", .presses = 3, .stands = true}, .expectation = {.arrives = true}},
+};
+
 } // namespace
 
 
 void add_tests_AutoStory_WallBattleSim(UnitTestDatabase& database){
+    for (const TalkerCase& item : TALKER_SIM_CASES){
+        database.add<Test_TalkerSim>(item);
+    }
     for (const GreeterCase& item : GREETER_SIM_CASES){
         database.add<Test_GreeterSim>(item);
     }
