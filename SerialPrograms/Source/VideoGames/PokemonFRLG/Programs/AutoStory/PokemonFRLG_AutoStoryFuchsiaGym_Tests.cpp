@@ -3,10 +3,10 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  Rows 12.01 and 12.02 (StoryData/frlg-12.01.plan.json, 12.02) on the
- *  overworld sim: from Fly's landing in Fuchsia to the nurse, into the
- *  gym past Juggler Kirk and round its top edge to west of Koga; and from
- *  Koga out to the Warden and back to the nurse. And the lead's attacks
- *  against Kirk's and Koga's parties.
+ *  overworld sim: from Fuchsia's nurse into the gym past Jugglers Kayden
+ *  and Kirk and round its top edge to west of Koga; and from Koga out to
+ *  the Warden and back to the nurse. And the lead's attacks against the
+ *  gym's parties.
  *
  */
 
@@ -136,9 +136,9 @@ std::string row_on_sim(std::string_view id, GymWalk& walk){
     return "";
 }
 
-//  12.01 from Fly's landing: the nurse, the gym, Kirk fought from (14, 11),
-//  round the top edge to west of Koga, where 12.02 starts; then 12.02 from
-//  there to the Warden and the nurse, meeting no one else.
+//  12.01 from the nurse: the gym, Kayden fought from (14, 16) and Kirk from
+//  (14, 11), round the top edge to west of Koga, where 12.02 starts; then
+//  12.02 from there to the Warden and the nurse, meeting no one else.
 UnitTestResult test_gym_rows(){
     GymWalk walk(*story_pose(Pokemon::pose_of(*checkpoint("12.01").start)));
     if (const std::string failure = row_on_sim("12.01", walk); !failure.empty()){
@@ -148,8 +148,8 @@ UnitTestResult test_gym_rows(){
     if (!(walk.sim->state().position == west_of_koga) || walk.sim->state().facing != Direction::EAST){
         return std::format("12.01: ended on {}, not west of Koga {} facing east.", to_string(walk.sim->state().position), to_string(west_of_koga));
     }
-    if (walk.all_fought() != std::vector<std::string>{"rocker"}){
-        return std::format("12.01: fought {} trainers, not Kirk alone.", walk.all_fought().size());
+    if (walk.all_fought() != std::vector<std::string>{"rocker", "rocker"}){
+        return std::format("12.01: fought {} trainers, not Kayden and Kirk.", walk.all_fought().size());
     }
     const StoryPose next = *story_pose(Pokemon::pose_of(*checkpoint("12.02").start));
     if (next.map != GYM || !(next.tile == west_of_koga.point)){
@@ -158,7 +158,7 @@ UnitTestResult test_gym_rows(){
     if (const std::string failure = row_on_sim("12.02", walk); !failure.empty()){
         return failure;
     }
-    if (walk.all_fought().size() != 1){
+    if (walk.all_fought().size() != 2){
         return "12.02: fought a trainer after Koga.";
     }
     if (walk.at.map != "FuchsiaCity_PokemonCenter_1F"){
@@ -168,17 +168,26 @@ UnitTestResult test_gym_rows(){
 }
 
 //  The lead as pokeguy brings it to the gym after HM03 (12.01): Surf over
-//  Water Gun, Water Pulse, Bite, Mega Kick. It picks Surf against Kirk's
-//  Psychic types and Koga's Poison types (pokeguy: Surf throughout).
+//  Water Gun, Water Pulse, Bite, Mega Kick. It picks Surf against Koga's
+//  Poison types (pokeguy: Surf throughout) and Surf or Bite, never Mega
+//  Kick (5 PP) or Water Pulse, against the Jugglers' Psychic types.
 UnitTestResult test_lead_moves_in_gym(){
     PartyMember lead;
     lead.species = "blastoise";
     lead.moves_read = true;
     lead.level = 39;
     lead.moves = {{"surf", 15}, {"water-pulse", 20}, {"bite", 25}, {"mega-kick", 5}};
-    for (std::string_view foe : {"drowzee", "kadabra", "koffing", "muk", "weezing"}){
-        if (attack_slot_against(lead, {std::string(foe)}) != 0){
+    constexpr size_t SURF = 0;
+    constexpr size_t BITE = 2;
+    for (std::string_view foe : {"koffing", "muk", "weezing"}){
+        if (attack_slot_against(lead, {std::string(foe)}) != SURF){
             return std::format("Against {}: expected Surf.", foe);
+        }
+    }
+    for (std::string_view foe : {"drowzee", "kadabra", "hypno"}){
+        const std::optional<size_t> slot = attack_slot_against(lead, {std::string(foe)});
+        if (slot != SURF && slot != BITE){
+            return std::format("Against {}: expected Surf or Bite.", foe);
         }
     }
     return true;
@@ -186,12 +195,12 @@ UnitTestResult test_lead_moves_in_gym(){
 
 const AutoStoryFuchsiaGymCase AUTO_STORY_FUCHSIA_GYM_CASES[] = {
     {
-        .input = {.name = "12.01 past Kirk to west of Koga and 12.02 to the Warden and the nurse", .body = test_gym_rows},
-        .expectation = {.description = "Kirk fought where the table steps into his line, no one else; ends at Fuchsia's nurse"},
+        .input = {.name = "12.01 past Kayden and Kirk to west of Koga and 12.02 to the Warden and the nurse", .body = test_gym_rows},
+        .expectation = {.description = "Kayden and Kirk fought where the table steps into their lines, no one else; ends at Fuchsia's nurse"},
     },
     {
         .input = {.name = "the lead's attacks in Fuchsia Gym", .body = test_lead_moves_in_gym},
-        .expectation = {.description = "Surf against Kirk's and Koga's Pokemon"},
+        .expectation = {.description = "Surf against Koga's Pokemon, Surf or Bite against the Jugglers'"},
     },
 };
 
