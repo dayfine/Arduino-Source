@@ -10,6 +10,7 @@
 #ifndef PokemonAutomation_PokemonFRLG_AutoStoryRows_Tests_H
 #define PokemonAutomation_PokemonFRLG_AutoStoryRows_Tests_H
 
+#include <string_view>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 
 namespace PokemonAutomation{
@@ -26,6 +27,17 @@ void add_tests_AutoStoryVermilionGym(UnitTestDatabase& database);
 void add_tests_AutoStoryCeladon(UnitTestDatabase& database);
 //  Rows from 08.01 on on the overworld sim (PokemonFRLG_AutoStoryLavender_Tests.cpp).
 void add_tests_AutoStoryLavender(UnitTestDatabase& database);
+//  Rows 14.03 and 14.04, Celadon Gym, on the overworld sim (PokemonFRLG_AutoStoryCeladonGym_Tests.cpp).
+void add_tests_AutoStoryCeladonGym(UnitTestDatabase& database);
+
+//  Whether checkpoint `id` was authored before the rows that lead up to it:
+//  it starts from its own declared pose, not where the row before it in
+//  the table ends. 14.03 starts from Fly's landing in Celadon, after Blaine
+//  (14.02); segments 10 to 14.02 are authored separately. An id leaves
+//  this list once the rows before it are in.
+inline bool starts_after_unauthored_rows(std::string_view id){
+    return id == "14.03";
+}
 
 
 } // namespace PokemonFRLG
