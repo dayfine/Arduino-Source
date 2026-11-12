@@ -136,6 +136,9 @@ constexpr std::string_view MAP_NAMES[] = {
     "SafariZone_North",
     "SafariZone_West",
     "SafariZone_SecretHouse",
+    //  Koga's gym, and the Warden's house (GOLD TEETH for HM04).
+    "FuchsiaCity_Gym",
+    "FuchsiaCity_WardensHouse",
     "CeruleanCave_1F",
     "CeruleanCave_2F",
     "CeruleanCave_B1F",

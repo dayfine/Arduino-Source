@@ -20,6 +20,7 @@
 #include "Pokemon/AutoStory/Pokemon_ScreenEvents.h"
 #include "PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_OverworldSimScreens.h"
+#include "PokemonFRLG_OverworldSimTrainerTurns.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -42,6 +43,9 @@ struct SimScript{
     //  don't mark as grass: Mt. Moon B2F's tiles closed on one side ('8')
     //  are cave floor too (console B, 2026-11-03).
     std::set<std::string> wild_floor_maps;
+    //  Trainers who turn on a timer, by the tile they stand on
+    //  (to_string(MapPosition)); the others see every way they look.
+    std::map<std::string, SimTrainerTurns> trainer_turns;
     //  Whether the game holds the player up a tile on a step onto a
     //  connected map. It did north onto Nugget Bridge (console B,
     //  2026-11-03, rows 05.05 and 05.09), not south from Route 6 into

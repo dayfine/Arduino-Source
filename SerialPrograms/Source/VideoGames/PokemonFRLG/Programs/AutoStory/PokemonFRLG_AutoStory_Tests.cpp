@@ -37,9 +37,11 @@
 #include "PokemonFRLG_AutoStoryPlanGolden.h"
 #include "PokemonFRLG_AutoStoryPlanGolden10.h"
 #include "PokemonFRLG_AutoStoryPlanGolden11.h"
+#include "PokemonFRLG_AutoStoryPlanGolden12.h"
 #include "PokemonFRLG_AutoStoryMoveData.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
 #include "PokemonFRLG_AutoStoryTable.h"
+#include "PokemonFRLG_AutoStoryTrainerPass.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -283,8 +285,8 @@ UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& po
 //  before leaves the player, and adds the plans to `golden`.
 UnitTestResult chain_story_routes(std::vector<std::string>& golden){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
-    if (checkpoints.size() != 50 || checkpoints[0].start){
-        return "Expected 50 checkpoints, the first from a new game.";
+    if (checkpoints.size() != 52 || checkpoints[0].start){
+        return "Expected 52 checkpoints, the first from a new game.";
     }
     StoryPose pose;
     for (size_t c = 0; c < checkpoints.size(); c++){
@@ -314,7 +316,7 @@ UnitTestResult test_routes_and_chain(){
 //  PokemonFRLG_AutoStoryPlanGolden.h. A change that should not alter any
 //  plan must leave this byte-identical. To regenerate after an intended plan
 //  change: run this suite, and replace the lines of FRLG_PLAN_GOLDEN,
-//  FRLG_PLAN_GOLDEN_10 (segment 10) and FRLG_PLAN_GOLDEN_11 (segment 11 on)
+//  FRLG_PLAN_GOLDEN_10 (segment 10), FRLG_PLAN_GOLDEN_11 (segment 11) and FRLG_PLAN_GOLDEN_12 (segment 12 on)
 //  with the lines the failure lists after "GOLDEN|".
 UnitTestResult test_golden_plans(){
     std::vector<std::string> actual;
@@ -325,6 +327,7 @@ UnitTestResult test_golden_plans(){
     std::vector<std::string_view> golden(std::begin(FRLG_PLAN_GOLDEN), std::end(FRLG_PLAN_GOLDEN));
     golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_10), std::end(FRLG_PLAN_GOLDEN_10));
     golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_11), std::end(FRLG_PLAN_GOLDEN_11));
+    golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_12), std::end(FRLG_PLAN_GOLDEN_12));
     const size_t stored = golden.size();
     size_t first_diff = 0;
     while (first_diff < actual.size() && first_diff < stored && actual[first_diff] == golden[first_diff]){
@@ -490,10 +493,18 @@ const MapObject* trainer_seeing(const MapData& map, const TilePos& tile, const s
 //  The tile a STEP from `pose` ends on: the next one; for a step into a
 //  trainer's line, the first within TRAINER_LINE_TILES that a trainer
 //  other than the `beaten` sees, where step_until_seen() stops, else the
-//  last.
+//  last; for a pass across a trainer's line (TRAINER_PASS_VARIANT), its
+//  last tile.
 TilePos step_end(const StoryPose& pose, const StoryStep& step, const std::set<const MapObject*>& beaten){
     const MapData* map = find_map_named(pose.map);
     const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
+    if (step.action == TRAINER_PASS_VARIANT){
+        TilePos tile = pose.tile;
+        for (int64_t c = 0; c < Pokemon::story_arg<int64_t>(step.args, "tiles"); c++){
+            tile = tile.next(direction);
+        }
+        return tile;
+    }
     if (step.action != TRAINER_LINE_VARIANT || map == nullptr){
         return pose.tile.next(direction);
     }
@@ -701,8 +712,9 @@ UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<const Map
 //  From the Running Shoes on, routes and legs keep out of the grass (but
 //  in caves, which are all grass, onto a GRIND's or a capture's patch, on legs held to walls round Route 6's trainers, and under a Repel the table used), off warps to maps not loaded and out of
 //  trainers' lines, but for the three Route 3 trainers, Mt. Moon's Grunt
-//  at (12, 20), Nugget Bridge's five, Route 25's four, Route 6's Jeff, Vermilion Gym's three, Route 9's three, Rock Tunnel's eight, Route 8's Rich, the Rocket Hideout's Lift Key Grunt, the Pokemon Tower's four Channelers and three Grunts the table steps
-//  in front of to fight; where they cross a wandering trainer's sight, the walk can place
+//  at (12, 20), Nugget Bridge's five, Route 25's four, Route 6's Jeff, Vermilion Gym's three, Route 9's three, Rock Tunnel's eight, Route 8's Rich, the Rocket Hideout's Lift Key Grunt, the Pokemon Tower's four Channelers and three Grunts, and Fuchsia Gym's Kirk the table steps
+//  in front of to fight (Fuchsia Gym's Kayden is passed on his turn away,
+//  TRAINER_PASS_VARIANT); where they cross a wandering trainer's sight, the walk can place
 //  the player if the trainer stops them; and where they cross the sight of
 //  one who looks around, on a leg to a wall.
 //  LEGS that end on stairs at the side of a room, or on an exit mat, step
@@ -902,10 +914,10 @@ UnitTestResult test_trainer_lines(){
         }
         has_shoes = has_shoes || checkpoint.id == "03.03";
     }
-    if (beaten.size() != 37){
+    if (beaten.size() != 38){
         return "Expected to fight Colton, Greg and James on Route 3, the Grunt at (12, 20) in Mt. Moon, Nugget Bridge's five"
             ", Franklin, Kelsey, Nob and Haley on Route 25, Jeff on Route 6, Dwayne, Baily and Tucker in Vermilion Gym, Alicia, Jeremy and Conner on Route 9"
-            ", Ashton, Winston, Martha, Allen, Lenny, Sofia, Dudley and Dana in Rock Tunnel, Rich on Route 8, the Lift Key Grunt on B4F, Ruth, Tammy, Jennifer and Emilia and the three Grunts in the Pokemon Tower; the table fights "
+            ", Ashton, Winston, Martha, Allen, Lenny, Sofia, Dudley and Dana in Rock Tunnel, Rich on Route 8, the Lift Key Grunt on B4F, Ruth, Tammy, Jennifer and Emilia and the three Grunts in the Pokemon Tower, and Kirk in Fuchsia Gym (Kayden passed); the table fights "
             + std::to_string(beaten.size()) + " trainers.";
     }
     return true;
