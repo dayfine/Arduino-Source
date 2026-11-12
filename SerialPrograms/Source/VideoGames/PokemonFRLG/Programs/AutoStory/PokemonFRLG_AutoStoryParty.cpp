@@ -116,6 +116,13 @@ struct Attack{
     std::string_view move;
 };
 constexpr Attack ATTACKS[] = {
+    //  From HM03 (12.01) on, as pokeguy: Surf on everything it is not
+    //  resisted by (1:15:14 on).
+    {.line = "squirtle", .move = "surf"},
+    //  Blastoise's strongest STAB move: a tie with Bite against Pidgeotto
+    //  went to Bite, and one with Bubble against Growlithe to Bubble, and
+    //  the Tower rival won (console B, 2026-11-12).
+    {.line = "squirtle", .move = "water-pulse"},
     {.line = "squirtle", .move = "water-gun"},
     {.line = "squirtle", .move = "bite"},
     {.line = "squirtle", .move = "bubble"},

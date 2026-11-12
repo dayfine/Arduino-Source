@@ -92,10 +92,11 @@ const std::string RUN_GIFT_RNG_TEXT =
     "<b>Run Gift RNG in AutoStory:</b><br>Off by default. After 04.02 saves beside the Magikarp salesman in Route 4's "
     "Pokemon Center, run Gift RNG's attempts for the Magikarp from that save, as the RNG plan lists them for its TID and "
     "SID (set by Run Starter RNG in AutoStory, or typed in). A shiny Magikarp is saved there (04.03) and the run goes "
-    "on; otherwise the run stops with the save beside the salesman.<br>"
-    "To try again from that save, start at 04.03 with this on: it loads the save and runs the attempts first. "
-    "After Gift RNG run by hand, start at 04.03 with this off.<br>"
-    "English only. The Magikarp costs 500 and needs a free party slot; AutoStory's options leave the text fast.";
+    "on; otherwise the run stops with the save beside the salesman. Likewise for the Eevee: 09.03 saves facing its ball "
+    "in Celadon Mansion's roof room, and 09.04 saves the shiny.<br>"
+    "To try again from that save, start at 04.03 (09.04) with this on: it loads the save and runs the attempts first. "
+    "After Gift RNG run by hand, start at 04.03 (09.04) with this off.<br>"
+    "English only. The Magikarp costs 500; each gift needs a free party slot; AutoStory's options leave the text fast.";
 
 AutoStory::AutoStory()
     : RUN(checkpoint_database(), Pokemon::FireRedLeafGreenLanguages_Database())
@@ -606,23 +607,22 @@ static bool run_starter_rng_in_program(
     return shiny_or_stop(env, finished, result, starter_rng_loop_message(result));
 }
 
-//  Gift RNG's attempts in the program, from the save beside the Magikarp
-//  salesman. Returns true for a shiny Magikarp, the game on its summary;
-//  otherwise the run has stopped with what to do next.
-static bool run_gift_rng_in_program(
+//  Gift RNG's attempts in the program for the language and gift of
+//  `settings`, from the save where the gift is taken; the sound and
+//  calibration come from `options`. A shiny leaves the game on its summary.
+static StarterRngLoopResult run_gift_rng_in_program(
     SingleSwitchProgramEnvironment& env, ProControllerContext& context,
-    const StarterRngPlanned& planned, StarterRngPlanOptions& options, Language language,
-    const GiftRngNotifications& notifications, EventNotificationOption& finished
+    const StarterRngPlanned& planned, StarterRngPlanOptions& options, GiftRngConsoleSettings settings,
+    const GiftRngNotifications& notifications
 ){
     //  The console's seed and CSF offsets, from Starter RNG too, and Gift
     //  RNG's own in-game offset, saved as Starter RNG's are.
     RngStopCalibrationOptions& calibration = options.CALIBRATION;
-    ConsoleGiftRngSteps console_steps(env, context, GiftRngConsoleSettings{
-        .language = language, .sound = options.SOUND, .calibration = calibration.calibration(calibration.GIFT_INGAME),
-    }, notifications);
+    settings.sound = options.SOUND;
+    settings.calibration = calibration.calibration(calibration.GIFT_INGAME);
+    ConsoleGiftRngSteps console_steps(env, context, settings, notifications);
     CalibrationSavingSteps steps(console_steps, calibration, calibration.GIFT_INGAME);
-    const StarterRngLoopResult result = run_rng_plan_in_program(env, steps, planned, options);
-    return shiny_or_stop(env, finished, result, gift_rng_loop_message(result));
+    return run_rng_plan_in_program(env, steps, planned, options);
 }
 
 //  After a shiny Squirtle: off its summary, and the rows to run next: the
@@ -643,14 +643,15 @@ static StoryRunPlan after_shiny_starter(
     return plan;
 }
 
-//  After a shiny Magikarp: the rows to run next, from 04.03, which leaves
-//  its summary and saves, to `last`. Until that save, a failure stops the
-//  run, as after a shiny Squirtle.
-static StoryRunPlan after_shiny_magikarp(
-    SingleSwitchProgramEnvironment& env, StoryEnv& story, size_t salesman_row, size_t last, const StoryHandoffs& handoffs
+//  After a shiny gift: the rows to run next, from the row after
+//  `gift_row` (04.03, 09.04), which leaves its summary and saves, to
+//  `last`. Until that save, a failure stops the run, as after a shiny
+//  Squirtle.
+static StoryRunPlan after_shiny_gift(
+    SingleSwitchProgramEnvironment& env, StoryEnv& story, size_t gift_row, size_t last, const StoryHandoffs& handoffs
 ){
-    StoryRunPlan plan = rows_after_gift_rng(story_checkpoints(), salesman_row, last, handoffs);
-    env.console.log("The shiny Magikarp isn't saved until " + plan.rows.front().id + " saves. "
+    StoryRunPlan plan = rows_after_gift_rng(story_checkpoints(), gift_row, last, handoffs);
+    env.console.log("The shiny gift isn't saved until " + plan.rows.front().id + " saves. "
         "If it fails before then, the run stops without reloading: save by hand.", COLOR_BLUE);
     story.has_save = false;
     return plan;
@@ -749,7 +750,7 @@ std::optional<std::string> AutoStory::run_story_plan(
             next = after_starter_ball(env, context, story, planned, row);
             break;
         case StoryHandoff::GIFT_RNG:
-            next = after_magikarp_salesman(env, context, story, planned, row);
+            next = after_gift_row(env, context, story, planned, row);
             break;
         }
         if (!next){
@@ -766,7 +767,7 @@ std::optional<std::string> AutoStory::run_from_gift_rng_save(
     const StarterRngPlanned planned = plan_handoff_attempts(
         env, context, RNG_PLAN, RUN.language(), StoryHandoff::GIFT_RNG, story_checkpoints()[first].id
     );
-    std::optional<StoryRunPlan> next = after_magikarp_salesman(env, context, story, planned, first - 1);
+    std::optional<StoryRunPlan> next = after_gift_row(env, context, story, planned, first - 1);
     if (!next){
         return std::nullopt;
     }
@@ -790,17 +791,23 @@ std::optional<StoryRunPlan> AutoStory::after_starter_ball(
     return after_shiny_starter(env, context, story, ball_row, RUN.end_index(), story_handoffs());
 }
 
-std::optional<StoryRunPlan> AutoStory::after_magikarp_salesman(
+std::optional<StoryRunPlan> AutoStory::after_gift_row(
     SingleSwitchProgramEnvironment& env, ProControllerContext& context,
-    StoryEnv& story, const StarterRngPlanned& planned, size_t salesman_row
+    StoryEnv& story, const StarterRngPlanned& planned, size_t gift_row
 ){
+    const GiftRngConsoleSettings settings{
+        .language = RUN.language(), .sound = {}, .calibration = {}, .target = story_checkpoints()[gift_row].gift,
+    };
     const GiftRngNotifications notifications{
         .shiny = NOTIFICATION_SHINY, .status_update = NOTIFICATION_STATUS_UPDATE, .error_recoverable = NOTIFICATION_ERROR_RECOVERABLE,
     };
-    if (!run_gift_rng_in_program(env, context, planned, RNG_PLAN, RUN.language(), notifications, NOTIFICATION_PROGRAM_FINISH)){
+    const StarterRngLoopResult result = run_gift_rng_in_program(env, context, planned, RNG_PLAN, settings, notifications);
+    //  The live-start row after the gift's, which saves it (04.03, 09.04).
+    const std::string& saving_row = story_checkpoints().at(gift_row + 1).id;
+    if (!shiny_or_stop(env, NOTIFICATION_PROGRAM_FINISH, result, gift_rng_loop_message(result, settings.target, saving_row))){
         return std::nullopt;
     }
-    return after_shiny_magikarp(env, story, salesman_row, RUN.end_index(), story_handoffs());
+    return after_shiny_gift(env, story, gift_row, RUN.end_index(), story_handoffs());
 }
 
 

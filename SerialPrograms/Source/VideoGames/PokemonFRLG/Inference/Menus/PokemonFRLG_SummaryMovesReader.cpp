@@ -48,7 +48,7 @@ constexpr double CURSOR_EDGE_LEFT = 120;
 constexpr double CURSOR_EDGE_TOP = 24;
 constexpr double CURSOR_EDGE_HEIGHT = 16;
 
-//  The level-up moves of Squirtle's, Magikarp's and Oddish's lines (pret
+//  The level-up moves of Squirtle's, Magikarp's, Oddish's and Pidgey's lines (pret
 //  pokefirered src/data/pokemon/level_up_learnsets.h), then the TMs'
 //  and HMs' moves not among them (src/data/items.h; Hyper Beam, Protect
 //  and Rain Dance are above), as the game writes them
@@ -83,6 +83,14 @@ constexpr std::pair<std::string_view, std::string_view> MOVE_NAMES[] = {
     {"aromatherapy", "Aromatherapy"},
     {"mega-drain", "Mega Drain"},
     {"magical-leaf", "Magical Leaf"},
+    {"sand-attack", "Sand-Attack"},
+    {"gust", "Gust"},
+    {"quick-attack", "Quick Attack"},
+    {"whirlwind", "Whirlwind"},
+    {"wing-attack", "Wing Attack"},
+    {"feather-dance", "FeatherDance"},
+    {"agility", "Agility"},
+    {"mirror-move", "Mirror Move"},
     {"hyper-beam", "Hyper Beam"},
     {"focus-punch", "Focus Punch"},
     {"dragon-claw", "Dragon Claw"},
@@ -354,6 +362,11 @@ void add_tests_SummaryMovesReader(UnitTestDatabase& database){
     //  FireRed on console B, 2026-11-03: the Oddish caught for Cut, Lv12, with
     //  ABSORB, SWEET SCENT and two empty slots.
     database.add<Test_SummaryScreen>("PokemonFRLG/SummaryMovesReader/Oddish_KnownMoves_eng.png");
+    //  FireRed on console B, 2026-11-12 (10.01 teach_fly): the Route 7
+    //  Pidgey, Lv22, with SAND-ATTACK, GUST, QUICK ATTACK and WHIRLWIND,
+    //  read as attract, ?, attract and steel-wing before its line's moves
+    //  were in MOVE_NAMES.
+    database.add<Test_SummaryScreen>("PokemonFRLG/SummaryMovesReader/Pidgey_KnownMoves_eng.png");
 }
 
 

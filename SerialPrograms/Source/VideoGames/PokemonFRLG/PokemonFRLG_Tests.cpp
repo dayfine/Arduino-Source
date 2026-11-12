@@ -53,6 +53,8 @@
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryPcStorage.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRngLoop.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows_Tests.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryHealing.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryRows12_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryTable.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryTrashCans.h"
 #include "Programs/AutoStory/Data/Json_Tests.h"
@@ -327,6 +329,11 @@ static void add_tests_AutoStoryRows(UnitTestDatabase& database){
     add_tests_AutoStoryVermilion(database);
     add_tests_AutoStoryVermilionGym(database);
     add_tests_AutoStoryCeladon(database);
+    add_tests_AutoStorySnorlax(database);
+    add_tests_AutoStorySlope(database);
+    add_tests_AutoStorySafari(database);
+    add_tests_AutoStoryFuchsiaGym(database);
+    add_tests_AutoStoryHealing(database);
     add_tests_AutoStoryCeladonGym(database);
 }
 

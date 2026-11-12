@@ -65,19 +65,21 @@ private:
         SingleSwitchProgramEnvironment& env, ProControllerContext& context,
         StoryEnv& story, const StarterRngPlanned& planned, size_t ball_row
     );
-    //  Started at 04.03 (row `first`) with Run Gift RNG in AutoStory on,
-    //  the save beside the salesman loaded: Gift RNG's attempts, then for a
-    //  shiny the rows after them. As run_story_plan() returns.
+    //  Started at a gift's live-start row (04.03, 09.04; row `first`) with
+    //  Run Gift RNG in AutoStory on, the save where the gift is taken
+    //  loaded: Gift RNG's attempts, then for a shiny the rows after them.
+    //  As run_story_plan() returns.
     std::optional<std::string> run_from_gift_rng_save(
         SingleSwitchProgramEnvironment& env, ProControllerContext& context,
         StoryEnv& story, StoryExecutor& executor, size_t first
     );
-    //  After 04.02 saved beside the Magikarp salesman (row `salesman_row`):
-    //  Gift RNG's attempts run here. Returns the rows to run after a shiny,
-    //  or nothing once the run has stopped.
-    std::optional<StoryRunPlan> after_magikarp_salesman(
+    //  After a GIFT_RNG row (04.02 beside the Magikarp salesman, 09.03
+    //  facing the Eevee's ball; row `gift_row`) saved: Gift RNG's attempts
+    //  for its gift run here. Returns the rows to run after a shiny, or
+    //  nothing once the run has stopped.
+    std::optional<StoryRunPlan> after_gift_row(
         SingleSwitchProgramEnvironment& env, ProControllerContext& context,
-        StoryEnv& story, const StarterRngPlanned& planned, size_t salesman_row
+        StoryEnv& story, const StarterRngPlanned& planned, size_t gift_row
     );
 
     //  The start and end checkpoints, attempts, checks and language, as in
@@ -92,7 +94,8 @@ private:
     //  Runs SID Helper's steps and Starter RNG's attempts in the program
     //  instead of stopping for them.
     BooleanCheckBoxOption RUN_STARTER_RNG;
-    //  Runs Gift RNG's attempts for the Magikarp in the program after 04.02.
+    //  Runs Gift RNG's attempts in the program after 04.02 (the Magikarp)
+    //  and 09.03 (the Eevee).
     BooleanCheckBoxOption RUN_GIFT_RNG;
     StarterRngPlanOptions RNG_PLAN;
     EventNotificationOption NOTIFICATION_SHINY;

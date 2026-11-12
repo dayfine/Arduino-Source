@@ -154,17 +154,33 @@ UnitTestResult test_rows_after_shiny(){
 }
 
 
-//  What the run says when Gift RNG's loop ends: a shiny goes on to 04.03;
-//  otherwise the save beside the salesman is where to go on from.
+//  What the run says when Gift RNG's loop ends: a shiny goes on to the row
+//  that saves it, named with the gift (console B, 2026-11-11: a shiny
+//  Eevee was logged as a Magikarp that 04.03 saves); otherwise the save
+//  where Gift RNG starts is where to go on from.
 UnitTestResult test_gift_messages(){
     struct Case{
         StarterRngLoopResult result;
         std::string expected;
+        PokemonFRLG_RngTarget gift = PokemonFRLG_RngTarget::magikarp;
+        std::string row = "04.03";
     };
-    const std::string save = "The save is still beside the salesman, facing him: start AutoStory at 04.03 with Run Gift "
-        "RNG in AutoStory on to try again, or run Gift RNG (Magikarp) from it by hand with an attempt from the log, then "
-        "start AutoStory at 04.03 with that option off.";
+    const std::string save = "The save is still where Gift RNG starts for the Magikarp: start AutoStory at 04.03 with Run "
+        "Gift RNG in AutoStory on to try again, or run Gift RNG (Magikarp) from it by hand with an attempt from the log, "
+        "then start AutoStory at 04.03 with that option off.";
     const std::vector<Case> cases = {
+        {
+            .result = {.end = StarterRngLoopEnd::SHINY, .attempts_run = 7, .remaining_sids = {300}, .sid = uint16_t(300)},
+            .expected = "Gift RNG: shiny Eevee, on the planned target. 09.04 saves it.",
+            .gift = PokemonFRLG_RngTarget::eevee, .row = "09.04",
+        },
+        {
+            .result = {.end = StarterRngLoopEnd::OUT_OF_TIME, .attempts_run = 4, .remaining_sids = {300}, .sid = std::nullopt},
+            .expected = "Gift RNG: out of time after 4 attempts. The save is still where Gift RNG starts for the Eevee: start "
+                "AutoStory at 09.04 with Run Gift RNG in AutoStory on to try again, or run Gift RNG (Eevee) from it by hand "
+                "with an attempt from the log, then start AutoStory at 09.04 with that option off.",
+            .gift = PokemonFRLG_RngTarget::eevee, .row = "09.04",
+        },
         {
             .result = {.end = StarterRngLoopEnd::SHINY, .attempts_run = 1, .remaining_sids = {300}, .sid = uint16_t(300)},
             .expected = "Gift RNG: shiny Magikarp, on the planned target. 04.03 saves it.",
@@ -184,7 +200,7 @@ UnitTestResult test_gift_messages(){
         },
     };
     for (const Case& item : cases){
-        const std::string got = gift_rng_loop_message(item.result);
+        const std::string got = gift_rng_loop_message(item.result, item.gift, item.row);
         if (got != item.expected){
             return "Expected \"" + item.expected + "\", got \"" + got + "\".";
         }

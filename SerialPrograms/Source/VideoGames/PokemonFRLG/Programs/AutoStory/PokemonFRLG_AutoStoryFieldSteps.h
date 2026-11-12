@@ -27,18 +27,26 @@ namespace PokemonFRLG{
 //  (POSTER_SWITCH_VARIANT).
 Pokemon::StoryStep poster_switch_step(std::string name);
 
-//  Rides the Rocket Hideout's lift from the floor it stands at to `to`
-//  (LIFT_FLOOR_VARIANT): "B1F", "B2F", "B4F". The player starts below
-//  `from`'s lift door, facing north, and ends a tile below `to`'s,
-//  facing south (rocket_hideout_lift_exits()).
+//  Rides a lift from the floor it stands at to `to` (LIFT_FLOOR_VARIANT):
+//  "B1F", "B2F", "B4F" (the Rocket Hideout's) or "1F" to "5F" (the
+//  Department Store's). The player starts below `from`'s lift door,
+//  facing north, and ends a tile below `to`'s, facing south (lift_exits()).
 Pokemon::StoryStep lift_floor_step(std::string name, std::string_view from, std::string_view to);
 
 //  Into the Pokemon Center `center` (a map name) from below its door,
 //  facing north, to below the nurse's counter (CENTER_ENTER_VARIANT).
+//  Overlaps enter_pokecenter() in PokemonFRLG_Navigation.h.
+//  Ours walks one tap per tile and ends on the nurse's front tile with a declared pose;
+//  upstream holds the stick until the screen goes black and leaves the position unknown.
+//  Could be unified with upstream if needed.
 Pokemon::StoryStep center_enter_step(std::string name, std::string_view center);
 
 //  Out of the Center from below the nurse's counter (CENTER_EXIT_VARIANT)
 //  to `below_door`, the tile below its door outside, facing south.
+//  Overlaps leave_pokecenter() in PokemonFRLG_Navigation.h.
+//  Ours starts below the nurse's counter and ends on the tile below the door with a declared pose;
+//  upstream starts north of the exit and holds the stick until the screen goes black.
+//  Could be unified with upstream if needed.
 Pokemon::StoryStep center_exit_step(std::string name, Pokemon::GridPose below_door);
 
 //  Uses `item` from the bag on the overworld (USE_ITEM_VARIANT): a

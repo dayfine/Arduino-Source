@@ -31,6 +31,8 @@ enum class TurnChoice{
     POTION,
     ANTIDOTE,
     AWAKENING,
+    //  One of the plan's battle items (an X Special), on the lead.
+    BATTLE_ITEM,
     MOVE,
 };
 
@@ -42,6 +44,8 @@ struct TurnAction{
     //  Why a Potion was or wasn't used, for the log; empty when none was
     //  weighed (green HP, awake).
     std::string heal_reason = {};
+    //  For BATTLE_ITEM, the item's slug.
+    std::string item = {};
 };
 
 //  What came of a TurnAction.

@@ -29,6 +29,8 @@
 #include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
+#include "PokemonFRLG_AutoStoryHealing.h"
+#include "PokemonFRLG_AutoStoryHealingSteps.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -144,14 +146,14 @@ void tap(ProControllerContext& context, DpadPosition position){
 //  no names for) is taken by its position; only another item's name stops it.
 bool bag_row_is(
     ConsoleHandle& console, ProControllerContext& context,
-    int row, const std::string& item, Pokemon::StoryCheckLevel checks, Language language
+    int row, int shown, const std::string& item, Pokemon::StoryCheckLevel checks, Language language
 ){
     if (!checks_screen(checks)){
         return true;
     }
     context.wait_for_all_requests();
     VideoSnapshot screen = console.video().snapshot();
-    const std::string read = screen ? read_item_list_name(console, language, screen, row) : "";
+    const std::string read = screen ? read_item_list_name(console, language, screen, shown) : "";
     if (read == item){
         return true;
     }
@@ -164,13 +166,22 @@ bool bag_row_is(
     return false;
 }
 
+//  What an item in battle is used on.
+enum class ItemTarget{
+    //  A Potion or a cure: the party list opens, its cursor on the starter.
+    PARTY_MEMBER,
+    //  An X item: the Pokemon out, with no party list.
+    POKEMON_OUT,
+};
+
 //  From the battle menu: `item`, in `row` (from 0) of the Items pocket, on
-//  the starter. The bag opens on the pocket used last; Items is the first.
+//  `target`. The bag opens on the pocket used last; Items is the first.
 //  Returns whether it was used; else (THOROUGH) backs out to the menu.
 bool use_item(
     ConsoleHandle& console, ProControllerContext& context,
-    int row, const std::string& item, Pokemon::StoryCheckLevel checks, Language language
+    const Supplies& supplies, const std::string& item, ItemTarget target, Pokemon::StoryCheckLevel checks, Language language
 ){
+    const int row = item_row(supplies, item);
     console.log(std::format("Battle: using the {} in row {} of the Items pocket.", item, row + 1));
     tap(context, DPAD_LEFT);
     tap(context, DPAD_UP);
@@ -185,18 +196,25 @@ bool use_item(
     for (int c = 0; c < row; c++){
         tap(context, DPAD_DOWN);
     }
-    if (!bag_row_is(console, context, row, item, checks, language)){
+    if (!bag_row_is(console, context, row, item_shown_row(supplies, row), item, checks, language)){
         pbf_press_button(context, BUTTON_B, 160ms, 1500ms);
         return false;
     }
-    //  The item, USE, then the starter in the party list.
+    //  The item, USE, then the starter in the party list. An X item's USE
+    //  goes straight to the battle's text, which the loop reads.
     pbf_press_button(context, BUTTON_A, 160ms, 800ms);
     pbf_press_button(context, BUTTON_A, 160ms, 1500ms);
-    pbf_press_button(context, BUTTON_A, 160ms, 1000ms);
+    if (target == ItemTarget::PARTY_MEMBER){
+        pbf_press_button(context, BUTTON_A, 160ms, 1000ms);
+    }
     return true;
 }
 
 //  RUN, bottom right of the battle menu.
+//  Overlaps flee_battle() in PokemonFRLG_Navigation.h.
+//  Ours is one blind turn that resets the cursor first, since the battle loop reads the result itself;
+//  upstream needs the cursor on FIGHT and assumes the run always works.
+//  Could be unified with upstream if needed.
 void run_away(ProControllerContext& context){
     tap(context, DPAD_LEFT);
     tap(context, DPAD_UP);
@@ -555,6 +573,7 @@ private:
             m_supplies.hurt = status.hp_red || status.hp_yellow;
             m_supplies.hp_red = status.hp_red;
             m_supplies.hp_fill = status.hp_fill;
+            measured_hp(m_supplies, status.hp_fill);
         }
         m_supplies.status = status.status;
     }
@@ -604,13 +623,16 @@ private:
             run_away(m_context);
             return;
         case TurnChoice::POTION:
-            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, item_row(m_supplies, "potion"), "potion", m_checks, m_language)));
+            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, m_supplies, "potion", ItemTarget::PARTY_MEMBER, m_checks, m_language)));
             return;
         case TurnChoice::ANTIDOTE:
-            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, item_row(m_supplies, "antidote"), "antidote", m_checks, m_language)));
+            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, m_supplies, "antidote", ItemTarget::PARTY_MEMBER, m_checks, m_language)));
             return;
         case TurnChoice::AWAKENING:
-            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, item_row(m_supplies, "awakening"), "awakening", m_checks, m_language)));
+            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, m_supplies, "awakening", ItemTarget::PARTY_MEMBER, m_checks, m_language)));
+            return;
+        case TurnChoice::BATTLE_ITEM:
+            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, m_supplies, action.item, ItemTarget::POKEMON_OUT, m_checks, m_language)));
             return;
         case TurnChoice::MOVE:
             m_console.log(std::format("Battle: move {}.", action.slot + 1));
@@ -658,6 +680,9 @@ private:
 
 
 //  From the overworld: the bag open on the Items pocket, cursor on its top.
+//  Overlaps open_bag_from_overworld() in PokemonFRLG_Navigation.h.
+//  Ours wraps it, then waits for the bag to slide in and moves the cursor to the top of the Items pocket.
+//  Could be unified with upstream if needed.
 void open_items_pocket(ConsoleHandle& console, ProControllerContext& context){
     open_bag_from_overworld(console, context);
     //  The bag ignores presses while it slides in.
@@ -675,14 +700,15 @@ void open_items_pocket(ConsoleHandle& console, ProControllerContext& context){
 //  Not run on the console yet.
 bool use_item_on_overworld(
     ConsoleHandle& console, ProControllerContext& context,
-    int row, const std::string& item, Pokemon::StoryCheckLevel checks, Language language
+    const Supplies& supplies, const std::string& item, Pokemon::StoryCheckLevel checks, Language language
 ){
+    const int row = item_row(supplies, item);
     console.log(std::format("Story: using a {} from the bag (Items pocket, row {}).", item, row + 1));
     open_items_pocket(console, context);
     for (int c = 0; c < row; c++){
         pbf_press_dpad(context, DPAD_DOWN, 100ms, 300ms);
     }
-    if (!bag_row_is(console, context, row, item, checks, language)){
+    if (!bag_row_is(console, context, row, item_shown_row(supplies, row), item, checks, language)){
         mash_until_overworld(console, context, AFTER_BATTLE_TEXT);
         return false;
     }
@@ -832,102 +858,44 @@ bool battle_shows(const ImageViewRGB32& screen){
     return text.hp_box || text.yes_no;
 }
 
-//  The count the story keeps for `item`, or null for an item it doesn't count.
-static int Supplies::* count_member(const std::string& item){
-    if (item == "potion"){
-        return &Supplies::potions;
-    }
-    if (item == "antidote"){
-        return &Supplies::antidotes;
-    }
-    if (item == "parlyz-heal"){
-        return &Supplies::parlyz_heals;
-    }
-    if (item == "awakening"){
-        return &Supplies::awakenings;
-    }
-    if (item == "full-heal"){
-        return &Supplies::full_heals;
-    }
-    return nullptr;
-}
-
-static int* count_slot(Supplies& supplies, const std::string& item){
-    int Supplies::* const member = count_member(item);
-    return member == nullptr ? nullptr : &(supplies.*member);
-}
-
-int item_count(const Supplies& supplies, const std::string& item){
-    int Supplies::* const member = count_member(item);
-    return member == nullptr ? 0 : supplies.*member;
-}
-
-//  Whether the story keeps a count for `item`.
-static bool counted(const std::string& item){
-    return count_member(item) != nullptr;
-}
-
-int item_row(const Supplies& supplies, const std::string& item){
-    int row = 0;
-    for (const std::string& slot : supplies.pocket){
-        if (counted(slot) && item_count(supplies, slot) <= 0){
-            continue;
-        }
-        if (slot == item){
-            return row;
-        }
-        row++;
-    }
-    return -1;
-}
-
-std::vector<std::string> set_from_bag(Supplies& supplies, const std::vector<BagRow>& rows){
-    const Supplies before = supplies;
-    supplies.potions = 0;
-    supplies.antidotes = 0;
-    supplies.parlyz_heals = 0;
-    supplies.awakenings = 0;
-    supplies.full_heals = 0;
-    supplies.pocket.clear();
-    std::vector<std::string> unread;
-    for (const BagRow& row : rows){
-        supplies.pocket.push_back(row.item);
-        int* slot = count_slot(supplies, row.item);
-        if (slot == nullptr){
-            continue;
-        }
-        if (row.count > 0){
-            *slot = row.count;
-            continue;
-        }
-        //  Taking an unread count for none left the starter unhealed at
-        //  9 HP until it fainted (console B, 2026-11-02).
-        *slot = std::max(item_count(before, row.item), 1);
-        unread.push_back(row.item);
-    }
-    return unread;
-}
-
-std::vector<std::string> set_from_loaded_bag(Supplies& supplies, Supplies& saved, const std::vector<BagRow>& rows){
-    if (rows.empty()){
-        return {};
-    }
-    std::vector<std::string> unread = set_from_bag(supplies, rows);
-    saved.potions = supplies.potions;
-    saved.antidotes = supplies.antidotes;
-    saved.parlyz_heals = supplies.parlyz_heals;
-    saved.awakenings = supplies.awakenings;
-    saved.full_heals = supplies.full_heals;
-    saved.pocket = supplies.pocket;
-    return unread;
-}
+//  The Items pocket's capacity (pokefirered BAG_ITEMS_COUNT).
+constexpr size_t MAX_ITEMS_POCKET_ROWS = 42;
 
 std::vector<BagRow> read_items_pocket(ConsoleHandle& console, ProControllerContext& context, Language language){
     open_items_pocket(console, context);
     context.wait_for_all_requests();
     VideoSnapshot screen = console.video().snapshot();
     dump_debug_image(console, "AutoStory/bag", "items-pocket", screen);
-    std::vector<BagRow> rows = screen ? read_bag_pocket(console, language, screen) : std::vector<BagRow>{};
+    std::vector<BagRow> reads;
+    bool cancel = !screen;
+    for (int shown = 0; !cancel && shown < ITEM_LIST_ROWS; shown++){
+        BagRow read = read_bag_row(console, language, screen, shown);
+        cancel = read.item == "cancel";
+        if (!cancel){
+            reads.push_back(std::move(read));
+        }
+    }
+    //  The rows below the first six: DOWN to the fourth row shown, then each
+    //  DOWN scrolls the next row into the last (item_shown_row()). Reading
+    //  one page only missed the X Specials under a MOON STONE, a NUGGET and
+    //  four more, and the Tower rival was fought with none (console B,
+    //  2026-11-12).
+    if (!cancel){
+        for (int c = 0; c < ITEM_LIST_ROWS / 2; c++){
+            pbf_press_dpad(context, DPAD_DOWN, 100ms, 300ms);
+        }
+    }
+    while (!cancel && reads.size() < MAX_ITEMS_POCKET_ROWS){
+        pbf_press_dpad(context, DPAD_DOWN, 100ms, 400ms);
+        context.wait_for_all_requests();
+        screen = console.video().snapshot();
+        BagRow read = screen ? read_bag_row(console, language, screen, ITEM_LIST_ROWS - 1) : BagRow{};
+        cancel = !screen || read.item == "cancel";
+        if (!cancel){
+            reads.push_back(std::move(read));
+        }
+    }
+    std::vector<BagRow> rows = pocket_rows(std::move(reads));
     std::string text;
     for (const BagRow& row : rows){
         text += std::format(" {} x{};", row.item, row.count);
@@ -937,27 +905,25 @@ std::vector<BagRow> read_items_pocket(ConsoleHandle& console, ProControllerConte
     return rows;
 }
 
+bool use_recovery_item(
+    ConsoleHandle& console, ProControllerContext& context,
+    const std::string& item, Pokemon::StoryCheckLevel checks, Language language, Supplies& supplies
+){
+    //  The row before the count drops: a counted item with none left takes
+    //  no row.
+    if (!use_item_on_overworld(console, context, supplies, item, checks, language)){
+        return false;
+    }
+    took_recovery_item(supplies, item);
+    return true;
+}
+
 void recover_after_battle(
     ConsoleHandle& console, ProControllerContext& context,
     Supplies& supplies, Pokemon::StoryCheckLevel checks, Language language
 ){
     for (const std::string& item : recovery_items(supplies)){
-        //  The row before the count drops: a counted item with none left
-        //  takes no row.
-        const int row = item_row(supplies, item);
-        if (!use_item_on_overworld(console, context, row, item, checks, language)){
-            continue;
-        }
-        (*count_slot(supplies, item))--;
-        if (item == "potion"){
-            //  One Potion (20 HP) takes a starter of these levels from red
-            //  to green; the bar can't be read again on the overworld.
-            supplies.hurt = false;
-            supplies.hp_red = false;
-            supplies.hp_fill = 1.0;
-        }else{
-            supplies.status = StatusCondition::NONE;
-        }
+        use_recovery_item(console, context, item, checks, language, supplies);
     }
     if (supplies.status != StatusCondition::NONE){
         console.log(std::format(

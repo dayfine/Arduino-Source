@@ -69,7 +69,7 @@
           "trainer": "TRAINER_PICNICKER_ALICIA",
           "foes": ["oddish", "bellsprout", "oddish", "bellsprout"]
         },
-        "declared_after": {"map": "Route9", "tiles": [[11, 10]], "facing": "east"},
+        "declared_after": {"map": "Route9", "tiles": [[11, 10]], "facing": "south"},
         "why": "Oddish, Bellsprout, Oddish and Bellsprout, Lv18"
       },
       {
@@ -106,7 +106,7 @@
           "trainer": "TRAINER_HIKER_JEREMY",
           "foes": ["machop", "onix"]
         },
-        "declared_after": {"map": "Route9", "tiles": [[20, 13]], "facing": "south"},
+        "declared_after": {"map": "Route9", "tiles": [[20, 13]], "facing": "east"},
         "why": "Machop and Onix, Lv20"
       },
       {
@@ -134,7 +134,7 @@
           "trainer": "TRAINER_BUG_CATCHER_CONNER",
           "foes": ["caterpie", "weedle", "venonat"]
         },
-        "declared_after": {"map": "Route9", "tiles": [[52, 7]], "facing": "west"},
+        "declared_after": {"map": "Route9", "tiles": [[52, 7]], "facing": "north"},
         "why": "Caterpie, Weedle and Venonat, Lv20"
       },
       {

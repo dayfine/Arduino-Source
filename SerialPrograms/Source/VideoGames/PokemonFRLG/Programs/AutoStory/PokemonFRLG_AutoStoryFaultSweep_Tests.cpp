@@ -32,6 +32,10 @@
  *  - UNSEEN_STEP: each step tap that moved the player, one at a time, read
  *    by the walker as not moved: it must not tap again into a second
  *    tile (09.02 Rocket Hideout B2F, console B, 2026-11-11 15:03 and 15:36).
+ *  - MOUNT_LOST: rows that ride, with ride_bike played on the sim, each
+ *    leg counted out on the Bicycle, one at a time, starting with the
+ *    player off it: the walker must get back on, not replan its legs on
+ *    foot at the Bicycle's taps (11.01, console B, 2026-11-12 05:42).
  *
  *  Not swept here: a missed fade, which needs a knob in OverworldSim; a
  *  battle's opening at a step's start, which needs one in OverworldStepSim;
@@ -59,10 +63,15 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_HideoutLiftRoom.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMap.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSimField.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryFieldMoves.h"
+#include "PokemonFRLG_AutoStoryHideoutLift.h"
+#include "PokemonFRLG_AutoStoryItemUse.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 #include "PokemonFRLG_AutoStoryFaultSweep_Tests.h"
@@ -85,6 +94,7 @@ enum class FaultClass{
     LOST_TAP,
     WARP_NO_OP,
     UNSEEN_STEP,
+    MOUNT_LOST,
 };
 std::string_view fault_class_name(FaultClass fault){
     switch (fault){
@@ -104,6 +114,8 @@ std::string_view fault_class_name(FaultClass fault){
         return "warp no-op";
     case FaultClass::UNSEEN_STEP:
         return "step tap read as not moved";
+    case FaultClass::MOUNT_LOST:
+        return "off the Bicycle at a bike leg";
     }
     return "?";
 }
@@ -112,6 +124,12 @@ std::string_view fault_class_name(FaultClass fault){
 const std::map<std::string, std::string> KNOWN_FAILING{
     {"PokemonFRLG::AutoStory - Fault sweep: 02.02, wild battles at the game's odds",
         "below_oak on Route 1 gives up after 9 stops part-way (seeds 16, 30): count stops that make no progress, not every battle"},
+    {"PokemonFRLG::AutoStory - Fault sweep: 10.06, scene end pose",
+        "below_fuji_house plans from (4, 7), where Mr. Fuji's script warps the player (warp 4, 7, exact); from a tile off, no wall in his house funnels the walk onto (3, 4): legs that re-anchor, if the console shows the warp can land elsewhere"},
+    {"PokemonFRLG::AutoStory - Fault sweep: 11.01, warp no-op",
+        "fly_celadon: a Fly that doesn't leave Lavender Town goes unseen, and east_of_snorlax walks from Lavender to Route 16 by Routes 8 and 7 instead: check the fly lands on its town's tile (FlyTown::landing) before the step ends"},
+    {"PokemonFRLG::AutoStory - Fault sweep: 08.03, off the Bicycle at a bike leg",
+        "riding with no fault, route7_underground_exit's warp to UndergroundPath_EastEntrance is not confirmed on the sim (the screen after the fade reads as before the hold): the sim's warp off the Bicycle, before this class can sweep 08.03"},
 };
 
 //  The land encounter rates of the maps the story walks (pokefirered
@@ -140,15 +158,28 @@ constexpr Milliseconds LATE_FADE = 1500ms;
 constexpr Milliseconds SLOW_FADE_IN = 1000ms;
 
 //  The maps as the story after the Hall of Fame and a new game flag them:
-//  the same set for every row, as each stage's tests use.
+//  the same set for every row, as each stage's tests use, with the two
+//  lifts' coded rooms (09.02, 10.01).
 const std::vector<MapData>& sweep_maps(){
     static const std::vector<MapData> maps = []{
         const std::vector<MapData> all = overworld_maps();
         std::set<std::string> flags = map_flag_set(all, "after_hall_of_fame");
         flags.merge(map_flag_set(all, "new_game"));
-        return overworld_maps(flags);
+        //  As story_maps(): Route 16's Snorlax gone (11.01's flute).
+        flags.insert("FLAG_HIDE_ROUTE_16_SNORLAX");
+        std::vector<MapData> flagged = overworld_maps(flags);
+        flagged.push_back(rocket_hideout_lift_room());
+        flagged.push_back(department_store_lift_room());
+        return flagged;
     }();
     return maps;
+}
+
+//  `script` with the lifts' floors, for sweep_maps()' lift rooms.
+SimScript with_lifts(SimScript script){
+    script.lift_floors[std::string(LIFT_MAP)] = rocket_hideout_lift_exits();
+    script.lift_floors[std::string(DEPT_STORE_LIFT_MAP)] = department_store_lift_exits();
+    return script;
 }
 
 //  Whether the overworld sim plays `step` (OverworldStepSim): the rest is stubbed.
@@ -160,7 +191,10 @@ bool sim_plays(const StoryStep& step){
     case StoryStepKind::BATTLE:
         return true;
     case StoryStepKind::GAME:
-        return step.action == CUT_TREE_VARIANT;
+        //  A Fly lands on its town's landing tile, as the sim plays it; a
+        //  lift's warp lets out on its floor's tile (sweep_maps()' lift
+        //  rooms, with_lifts()).
+        return step.action == CUT_TREE_VARIANT || is_field_move_step(step) || parse_lift_floor_step(step).has_value();
     default:
         return false;
     }
@@ -185,6 +219,7 @@ struct RowRun{
     int wild_battles = 0;
     Milliseconds in_wild_battles{0};
     int moved_step_taps = 0;
+    int bike_legs = 0;
 };
 
 //  Where a stubbed step leaves the player instead of its pose_after: by step index.
@@ -253,6 +288,20 @@ bool run_row_step(
     return let_pass;
 }
 
+//  ride_bike, which the row's sim stubs, played on `sim` when `script` has
+//  the Bicycle registered (MOUNT_LOST).
+void play_ride_bike(OverworldSim& sim, const SimScript& script, const StoryStep& step){
+    if (script.bike_registered && step.kind == StoryStepKind::GAME && step.action == RIDE_BIKE_VARIANT){
+        sim.use_field(SimField::BIKE_SELECT);
+    }
+}
+
+//  `script` for a new sim after `state`'s, riding if that one was.
+SimScript still_riding(SimScript script, const SimState& state){
+    script.on_bike = state.on_bike;
+    return script;
+}
+
 //  Row `row` on the sim with `script`, from its start. After a step the sim
 //  does not play, the player is put on its pose_after, or on `landings`'
 //  tile for it, the program going on from the pose_after either way. A
@@ -260,9 +309,10 @@ bool run_row_step(
 //  play: in a clean run (`scripted` unset) at any step, else only at the
 //  steps in `scripted`, where the clean run let it pass.
 RowRun run_row(
-    const StoryCheckpoint& row, const SimScript& script, const Landings& landings = {},
+    const StoryCheckpoint& row, const SimScript& row_script, const Landings& landings = {},
     const std::optional<std::set<size_t>>& scripted = std::nullopt
 ){
+    const SimScript script = with_lifts(row_script);
     RowRun out;
     std::optional<MapPosition> off_maps;
     StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
@@ -274,10 +324,12 @@ RowRun run_row(
         out.wild_battles += state.wild_battles;
         out.in_wild_battles += state.in_wild_battles;
         out.moved_step_taps += state.moved_step_taps;
+        out.bike_legs += state.bike_legs;
     };
     for (size_t c = 0; c < row.steps.size() && out.failure.empty(); c++){
         const StoryStep& step = row.steps[c];
         const bool let_pass = run_row_step(out, *sim, at, row, c, scripted);
+        play_ride_bike(*sim, script, step);
         if (!out.failure.empty() || (sim_plays(step) && !let_pass) || !step.pose_after){
             continue;
         }
@@ -293,7 +345,7 @@ RowRun run_row(
         }
         if (!(sim->state().position == land) || hidden){
             add(sim->state());
-            sim = std::make_unique<OverworldSim>(maps, land, at.facing.value_or(sim->state().facing), script);
+            sim = std::make_unique<OverworldSim>(maps, land, at.facing.value_or(sim->state().facing), still_riding(script, sim->state()));
         }
     }
     if (out.failure.empty() && !sim->state().violations.empty()){
@@ -595,6 +647,34 @@ UnitTestResult sweep_unseen_step(Logger& logger, const StoryCheckpoint& row, con
     return sweep_result(logger, FaultClass::UNSEEN_STEP, row.id, (size_t)clean.moved_step_taps, failures);
 }
 
+//  Row `row` riding: the Bicycle registered and ride_bike played on the
+//  sim (run_row()). Each leg counted out on the Bicycle, one at a time,
+//  starts with the player off it, counted across the row's sims. A row
+//  that rides no such leg is not swept.
+UnitTestResult sweep_mount_lost(Logger& logger, const StoryCheckpoint& row){
+    SimScript riding;
+    riding.bike_registered = true;
+    const RowRun clean = run_row(row, riding);
+    if (clean.bike_legs == 0){
+        logger.log(std::format("Fault sweep {}: not swept, the row rides no leg counted out on the Bicycle.", row.id));
+        return true;
+    }
+    std::vector<SweepFailure> failures;
+    if (!clean.failure.empty()){
+        failures.push_back({"", "riding, no fault", clean.failure});
+        return sweep_result(logger, FaultClass::MOUNT_LOST, row.id, 0, failures);
+    }
+    for (int leg = 1; leg <= clean.bike_legs; leg++){
+        SimScript script = riding;
+        script.off_bike_at_legs = {leg};
+        const std::string stopped = differs(run_row(row, script, {}, clean.scripted), clean);
+        if (!stopped.empty()){
+            failures.push_back({"", std::format("bike leg {} starts off the Bicycle", leg), stopped});
+        }
+    }
+    return sweep_result(logger, FaultClass::MOUNT_LOST, row.id, (size_t)clean.bike_legs, failures);
+}
+
 //  A fault class swept over row `row` (empty in FAULT_SWEEP_CASES: each
 //  row with a start).
 struct FaultSweepInput{
@@ -668,6 +748,8 @@ private:
             return sweep_warp_no_op(logger, m_row, clean);
         case FaultClass::UNSEEN_STEP:
             return sweep_unseen_step(logger, m_row, clean);
+        case FaultClass::MOUNT_LOST:
+            return sweep_mount_lost(logger, m_row);
         }
         return true;
     }
@@ -688,6 +770,7 @@ const FaultSweepCase FAULT_SWEEP_CASES[] = {
     {.input = {.fault = FaultClass::LOST_TAP}, .expectation = {}},
     {.input = {.fault = FaultClass::WARP_NO_OP}, .expectation = {}},
     {.input = {.fault = FaultClass::UNSEEN_STEP}, .expectation = {}},
+    {.input = {.fault = FaultClass::MOUNT_LOST}, .expectation = {}},
 };
 
 std::optional<std::string> talk_battle_hide_flag(const StoryStep& step){

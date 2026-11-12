@@ -82,7 +82,7 @@
           "trainer": "TRAINER_SAILOR_DWAYNE",
           "foes": ["pikachu", "pikachu"]
         },
-        "declared_after": {"map": "VermilionCity_Gym", "tiles": [[8, 15]], "facing": "north"},
+        "declared_after": {"map": "VermilionCity_Gym", "tiles": [[8, 15]], "facing": "east"},
         "why": "two Pikachu, Lv21"
       },
       {
@@ -110,7 +110,7 @@
           "trainer": "TRAINER_ENGINEER_BAILY",
           "foes": ["voltorb", "magnemite"]
         },
-        "declared_after": {"map": "VermilionCity_Gym", "tiles": [[2, 13]], "facing": "north"},
+        "declared_after": {"map": "VermilionCity_Gym", "tiles": [[2, 13]], "facing": "west"},
         "why": "Voltorb and Magnemite, Lv21"
       },
       {
@@ -138,7 +138,7 @@
           "trainer": "TRAINER_GENTLEMAN_TUCKER",
           "foes": ["pikachu"]
         },
-        "declared_after": {"map": "VermilionCity_Gym", "tiles": [[5, 8]], "facing": "east"},
+        "declared_after": {"map": "VermilionCity_Gym", "tiles": [[5, 8]], "facing": "north"},
         "why": "Pikachu, Lv23"
       },
       {

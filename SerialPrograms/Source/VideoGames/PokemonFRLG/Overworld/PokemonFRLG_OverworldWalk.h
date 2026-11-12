@@ -82,6 +82,19 @@ void wait_out_warp(
 //  scene from `before` gone and the screen settled instead.
 void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step, const VideoSnapshot& before);
 
+//  Whether a warp onto `step` whose fade went unseen was taken anyway: the
+//  game box of `later` shows another scene than `before` (taken before the
+//  steps onto the warp; warp_left_scene()), is not black, and matches
+//  `now`, taken a little before it, so no fade is still on. The Department
+//  Store's lift room is mostly black around its lit floor: a watch for the
+//  fade started once it was over never sees black end (console B,
+//  2026-11-12 00:39, 10.01 lift_to_1f: two steps more into the lift's back
+//  wall, then "no fade in and out").
+bool arrived_without_fade(
+    const ImageViewRGB32& before, const ImageViewRGB32& now, const ImageViewRGB32& later,
+    const ImageFloatBox& game, const RouteStep& step
+);
+
 //  Before `step`: fails unless the overworld is up.
 void check_overworld(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step);
 
