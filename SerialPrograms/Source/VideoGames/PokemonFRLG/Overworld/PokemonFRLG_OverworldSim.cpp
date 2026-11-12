@@ -9,6 +9,7 @@
 #include <format>
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
+#include "Pokemon/Navigation/Pokemon_ConnectedMaps.h"
 #include "Pokemon/Navigation/Pokemon_LegWalker.h"
 #include "PokemonFRLG_OverworldLateBattle.h"
 #include "PokemonFRLG_OverworldReanchor.h"
@@ -102,12 +103,8 @@ constexpr int BLACK_BELOW_ROWS = 5;
 constexpr int SMALL_ROOM_ROWS = 20;
 
 int find_map(const std::vector<MapData>& maps, const std::string& name){
-    for (size_t c = 0; c < maps.size(); c++){
-        if (maps[c].name == name){
-            return (int)c;
-        }
-    }
-    return -1;
+    const std::optional<size_t> index = Pokemon::ConnectedMaps(maps).find(name);
+    return index ? (int)*index : -1;
 }
 
 //  The way a ledge on `tile` hops the player, if it is one.
@@ -250,19 +247,13 @@ std::optional<OverworldSim::Step> OverworldSim::take_warp(int map_index, const T
     if (m_lift_floor && m_script.lift_floors.contains(m_maps[map_index].name)){
         return lift_warp(map_index);
     }
-    if (!warp->to){
+    const std::optional<Pokemon::MapPlace> arrival = Pokemon::ConnectedMaps(m_maps).warp_arrival(*warp);
+    if (!arrival){
         return std::nullopt;
     }
-    const int destination = find_map(m_maps, warp->to->map);
-    if (destination < 0){
-        return std::nullopt;
-    }
+    const int destination = (int)arrival->map;
     const MapData& to = m_maps[destination];
-    const auto arrival = to.points.find(warp->to->point);
-    if (arrival == to.points.end()){
-        return std::nullopt;
-    }
-    TilePos position = arrival->second;
+    TilePos position = arrival->tile;
     const bool walked_out = walks_out_on_arrival(to, position);
     if (walked_out){
         position = position.next(Direction::SOUTH);
@@ -271,27 +262,16 @@ std::optional<OverworldSim::Step> OverworldSim::take_warp(int map_index, const T
 }
 
 std::optional<OverworldSim::Step> OverworldSim::cross_edge(Direction direction) const{
-    for (const MapConnection& connection : map().connections){
-        const int destination = connection.side == direction ? find_map(m_maps, connection.to_map) : -1;
-        if (destination < 0){
-            continue;
-        }
-        const MapData& to = m_maps[destination];
-        const TilePos here = m_player.position;
-        TilePos point{here.x - connection.offset, here.y - connection.offset};
-        switch (direction){
-        case Direction::NORTH: point.y = to.tiles.height - 1; break;
-        case Direction::SOUTH: point.y = 0; break;
-        case Direction::WEST: point.x = to.tiles.width - 1; break;
-        case Direction::EAST: point.x = 0; break;
-        }
-        const StepKind kind = classify_step_onto(map(), m_player, direction, to, point);
-        if (kind != StepKind::WALK){
-            return std::nullopt;
-        }
-        return Step{destination, after_step_onto(map(), m_player, to, point, kind), false, false, false};
+    const std::optional<Pokemon::MapPlace> across = Pokemon::ConnectedMaps(m_maps).across_edge({(size_t)m_map, m_player.position}, direction);
+    if (!across){
+        return std::nullopt;
     }
-    return std::nullopt;
+    const MapData& to = m_maps[across->map];
+    const StepKind kind = classify_step_onto(map(), m_player, direction, to, across->tile);
+    if (kind != StepKind::WALK){
+        return std::nullopt;
+    }
+    return Step{(int)across->map, after_step_onto(map(), m_player, to, across->tile, kind), false, false, false};
 }
 
 //  Pressing `direction` once, as the planner's press() reads the game, and
