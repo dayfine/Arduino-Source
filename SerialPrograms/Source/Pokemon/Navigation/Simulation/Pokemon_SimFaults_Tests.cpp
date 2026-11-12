@@ -24,18 +24,18 @@ namespace Pokemon{
 
 namespace{
 
-struct SimFaultsInput{
-    std::string name;
-    UnitTestResult (*body)();
-};
-
-struct SimFaultsExpectation{
-    std::string_view description;
-};
-
 struct SimFaultsTestCase{
-    SimFaultsInput input;
-    SimFaultsExpectation expectation;
+    struct Input{
+        std::string name;
+        UnitTestResult (*body)();
+    };
+
+    struct Expectation{
+        std::string_view description;
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 class Test_SimFaults : public UnitTest{
