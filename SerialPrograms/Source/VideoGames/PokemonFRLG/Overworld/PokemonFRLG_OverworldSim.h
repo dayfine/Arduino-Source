@@ -207,11 +207,10 @@ private:
     std::mt19937 m_encounter_rng;
     int m_steps_since_encounter = 0;
     int m_encounter_rate_buff = 0;
-    //  The turn taps so far, for SimScript::dropped_turn_taps.
-    int m_turn_taps = 0;
-    //  Steps onto a warp so far, and the fault on one
-    //  (SimScript::black_without_warp): its black without the warp.
-    int m_warp_steps = 0;
+    //  The chances of SimScript's injected faults so far (SimScript::faults()).
+    Pokemon::SimFaults m_faults;
+    //  The fault on a step onto a warp (SimScript::black_without_warp):
+    //  its black without the warp.
     bool black_without_warp(Milliseconds pressed);
     //  The last tap, until a hold.
     std::optional<TapPress> m_last_tap;

@@ -173,8 +173,16 @@ bool OverworldSimWalker::black_without_warp(const RouteStep& step, int warps_bef
     return true;
 }
 
+Pokemon::SimFaults SimScript::faults() const{
+    return Pokemon::SimFaults({
+        {Pokemon::FaultClass::LOST_TAP, dropped_turn_taps},
+        {Pokemon::FaultClass::UNSEEN_STEP, unseen_step_taps},
+        {Pokemon::FaultClass::WARP_NO_OP, black_without_warp},
+    });
+}
+
 bool OverworldSim::black_without_warp(Milliseconds pressed){
-    if (!m_script.black_without_warp.contains(++m_warp_steps)){
+    if (!m_faults.next(Pokemon::FaultClass::WARP_NO_OP)){
         return false;
     }
     m_frozen = true;
