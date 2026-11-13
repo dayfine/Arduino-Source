@@ -39,7 +39,7 @@ using Pokemon::ReplayFault;
 using Pokemon::ReplayFaultKind;
 
 Direction direction_of(const std::string& text){
-    for (const Direction direction : ALL_DIRECTIONS){
+    for (const Direction direction : Pokemon::ALL_DIRECTIONS){
         if (direction_name(direction) == text){
             return direction;
         }
