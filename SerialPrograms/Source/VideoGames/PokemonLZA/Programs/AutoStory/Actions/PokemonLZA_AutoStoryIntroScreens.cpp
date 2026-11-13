@@ -157,7 +157,70 @@ bool read_look_picker(const ImageViewRGB32& frame, std::optional<size_t>& highli
     return true;
 }
 
+//  The right ends of the "Confirm Choices" rows, right of their text: the
+//  boxes span x 144 to 742 at 1920 x 1080, the two choices from y 578 and
+//  662 (68 high), "Ready!" from y 790 (112 high). Each strip is 100 wide
+//  from x 620.
+ImageFloatBox confirm_row_strip(size_t row){
+    switch (row){
+    case 0:
+        return ImageFloatBox(620.0 / 1920, 592.0 / 1080, 100.0 / 1920, 40.0 / 1080);
+    case 1:
+        return ImageFloatBox(620.0 / 1920, 676.0 / 1080, 100.0 / 1920, 40.0 / 1080);
+    default:
+        return ImageFloatBox(620.0 / 1920, 820.0 / 1080, 100.0 / 1920, 60.0 / 1080);
+    }
+}
+
+//  A "Confirm Choices" row's strip: the highlighted row white, flat, as the
+//  language list's; the others a darker slate than its boxes.
+ListBox classify_confirm_row(const ImageStats& stats){
+    if (stats.count == 0){
+        return ListBox::OTHER;
+    }
+    const FloatPixel& average = stats.average;
+    const double spread = stats.stddev.sum();
+    if (average.r >= 200 && average.g >= 200 && average.b >= 200 && spread <= 30){
+        return ListBox::HIGHLIGHTED;
+    }
+    const bool slate =
+        average.r >= 20 && average.r <= 55 &&
+        average.g >= 40 && average.g <= 80 &&
+        average.b >= 65 && average.b <= 115 &&
+        average.b >= average.r + 25;
+    if (slate && spread <= 20){
+        return ListBox::PLAIN;
+    }
+    return ListBox::OTHER;
+}
+
+//  The dark blue, dotted background round the rows: between the choices and
+//  "Ready!", and right of all three.
+bool confirm_background_dark(const ImageViewRGB32& frame){
+    const ImageFloatBox boxes[] = {
+        ImageFloatBox(620.0 / 1920, 742.0 / 1080, 100.0 / 1920, 40.0 / 1080),
+        ImageFloatBox(770.0 / 1920, 580.0 / 1080, 30.0 / 1920, 320.0 / 1080),
+    };
+    for (const ImageFloatBox& box : boxes){
+        const ImageStats stats = image_stats(extract_box_reference(frame, box));
+        if (stats.count == 0 || brightness(stats) >= 50 || stats.stddev.sum() > 35){
+            return false;
+        }
+    }
+    return true;
+}
+
 } // namespace
+
+
+std::optional<std::vector<IntroKey>> confirm_choices_moves(size_t cursor){
+    if (cursor > CONFIRM_CHOICES_READY_ROW){
+        return std::nullopt;
+    }
+    std::vector<IntroKey> moves(CONFIRM_CHOICES_READY_ROW - cursor, IntroKey::DOWN);
+    moves.push_back(IntroKey::A);
+    return moves;
+}
 
 
 std::optional<size_t> read_language_list_cursor(const ImageViewRGB32& frame){
@@ -201,6 +264,41 @@ std::optional<size_t> read_look_picker_cursor(const ImageViewRGB32& frame){
 bool is_look_picker(const ImageViewRGB32& frame){
     std::optional<size_t> highlighted;
     return read_look_picker(frame, highlighted);
+}
+
+//  Measured on console B (2026-11-13), "Confirm Choices" as it opens: the
+//  highlighted row 255 white, flat; the others slate, (35-36, 52-61,
+//  82-95), spread under 10; the background (10, 29-31, 64-66), spread under
+//  25. The language list's boxes and the look picker's tiles fall on the
+//  background's strips, so neither reads as this screen.
+std::optional<size_t> read_confirm_choices_cursor(const ImageViewRGB32& frame){
+    if (!frame || frame.width() < 160 || frame.height() < 90){
+        return std::nullopt;
+    }
+    if (!confirm_background_dark(frame)){
+        return std::nullopt;
+    }
+    std::optional<size_t> highlighted;
+    for (size_t row = 0; row <= CONFIRM_CHOICES_READY_ROW; row++){
+        const ImageStats stats = image_stats(extract_box_reference(frame, confirm_row_strip(row)));
+        switch (classify_confirm_row(stats)){
+        case ListBox::HIGHLIGHTED:
+            if (highlighted){
+                return std::nullopt;
+            }
+            highlighted = row;
+            break;
+        case ListBox::PLAIN:
+            break;
+        case ListBox::OTHER:
+            return std::nullopt;
+        }
+    }
+    return highlighted;
+}
+
+bool is_confirm_choices(const ImageViewRGB32& frame){
+    return read_confirm_choices_cursor(frame).has_value();
 }
 
 

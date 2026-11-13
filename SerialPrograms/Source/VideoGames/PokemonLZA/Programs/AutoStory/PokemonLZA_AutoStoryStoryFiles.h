@@ -46,8 +46,9 @@ const StoryData& builtin_story_data();
 //  Mission 01 (new game, Pancham, the starter), 02.xx Main Mission 02 (out
 //  of the Battle Zone to Hotel Z, the first night), 03.xx Main Mission 03
 //  (Taunie's battle, the Pokemon Center, Wild Zone 1, Mable's Rock Smash
-//  TM). Only 01.00, a new game, starts without a save; it starts on the
-//  HOME screen with PLZA's tile selected.
+//  TM). Only 00.00 and 01.00, a new game, start without
+//  a save: 00.00 on the HOME screen with PLZA's tile selected, 01.00 on
+//  the new game's "Confirm Choices", its choices made by hand.
 const std::vector<Pokemon::StoryCheckpoint>& story_checkpoints();
 
 //  The built-in rows that end on one of the game's autosaves. Each ends

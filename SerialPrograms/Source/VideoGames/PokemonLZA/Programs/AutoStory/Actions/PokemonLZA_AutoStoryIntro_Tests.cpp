@@ -173,7 +173,7 @@ UnitTestResult test_language_list_capture(Logger&){
     return true;
 }
 
-//  01.00's start on frames whose HOME reading is given: HOME, the
+//  00.00's start on frames whose HOME reading is given: HOME, the
 //  language list, anything else, and no video.
 UnitTestResult test_launch_start_synthetic(Logger&){
     const ImageRGB32 list = language_list_frame(0);
@@ -205,7 +205,7 @@ UnitTestResult test_launch_start_synthetic(Logger&){
     return true;
 }
 
-//  01.00's start on console B's frames, from the folder in
+//  00.00's start on console B's frames, from the folder in
 //  PLZA_INTRO_SCREENS: language-list.png, and if present home.png (the HOME
 //  menu) and in-game.png (the station). The HOME reading is
 //  HomeMenuDetector's, which needs a console: here it is given.
@@ -240,7 +240,7 @@ UnitTestResult test_launch_start_capture(Logger&){
     return true;
 }
 
-//  01.00's moves: HOME launches; a game in front (mid-scene or on its
+//  00.00's moves: HOME launches; a game in front (mid-scene or on its
 //  first screen) gets one HOME press, then is refused if HOME still does
 //  not show; no video is refused without a press.
 UnitTestResult test_launch_moves(Logger&){
@@ -415,13 +415,121 @@ UnitTestResult test_look_picker_capture(Logger&){
     if (const std::optional<size_t> cursor = read_look_picker_cursor(picker)){
         return std::format("look-picker.png: expected no highlight, read look {}.", *cursor);
     }
-    for (const char* name : {"language-list.png", "keyboard.png", "confirm-choices.png"}){
+    for (const std::string_view name : {"language-list.png", "keyboard.png", "confirm-choices.png"}){
         const std::string path = std::format("{}/{}", folder, name);
         if (!Filesystem::exists(Filesystem::Path(path))){
             continue;
         }
         if (is_look_picker(ImageRGB32(path))){
             return std::format("{}: expected not the look picker.", name);
+        }
+    }
+    return true;
+}
+
+//  "Confirm Choices" drawn as console B shows it (1920 x 1080): dark blue,
+//  three slate rows x 144 to 742, the two choices from y 578 and 662 (68
+//  high) and "Ready!" from y 790 (112 high), row `highlighted` (if any)
+//  white.
+ImageRGB32 confirm_choices_frame(std::optional<size_t> highlighted){
+    ImageRGB32 image(1920, 1080);
+    image.fill(0xff0a1d40);
+    const size_t tops[] = {578, 662, 790};
+    const size_t heights[] = {68, 68, 112};
+    for (size_t row = 0; row <= CONFIRM_CHOICES_READY_ROW; row++){
+        const uint32_t color = highlighted == row ? 0xffffffff : 0xff23344f;
+        for (size_t y = tops[row]; y < tops[row] + heights[row]; y++){
+            for (size_t x = 144; x < 742; x++){
+                image.pixel(x, y) = color;
+            }
+        }
+    }
+    return image;
+}
+
+//  From each row of "Confirm Choices": DOWN to "Ready!", then A.
+UnitTestResult test_confirm_choices_moves(Logger&){
+    struct Row{
+        size_t cursor;
+        Keys expected;
+    };
+    const Row rows[] = {
+        {0, {IntroKey::DOWN, IntroKey::DOWN, IntroKey::A}},
+        {1, {IntroKey::DOWN, IntroKey::A}},
+        {2, {IntroKey::A}},
+    };
+    for (const Row& row : rows){
+        const auto moves = confirm_choices_moves(row.cursor);
+        if (!moves || *moves != row.expected){
+            return std::format("Row {}: expected {} presses.", row.cursor, row.expected.size());
+        }
+    }
+    if (confirm_choices_moves(CONFIRM_CHOICES_READY_ROW + 1)){
+        return "A row past \"Ready!\" has no moves.";
+    }
+    return true;
+}
+
+//  01.00's start check (require_confirm_choices()) on synthetic frames: it
+//  reads the highlight on each row of "Confirm Choices", and refuses the
+//  other intro screens, flat and empty frames, and a screen with no row or
+//  two rows highlighted.
+UnitTestResult test_confirm_choices_synthetic(Logger&){
+    for (size_t row = 0; row <= CONFIRM_CHOICES_READY_ROW; row++){
+        if (read_confirm_choices_cursor(confirm_choices_frame(row)) != row){
+            return std::format("Expected the highlight read on row {}.", row);
+        }
+    }
+    if (is_confirm_choices(confirm_choices_frame(std::nullopt))){
+        return "Expected no Confirm Choices without a highlight.";
+    }
+    ImageRGB32 two = confirm_choices_frame(0);
+    for (size_t y = 662; y < 730; y++){
+        for (size_t x = 144; x < 742; x++){
+            two.pixel(x, y) = 0xffffffff;
+        }
+    }
+    if (is_confirm_choices(two)){
+        return "Expected no Confirm Choices with two highlights.";
+    }
+    for (size_t index = 0; index < LANGUAGE_LIST_SIZE; index++){
+        if (is_confirm_choices(language_list_frame(index))){
+            return std::format("Expected the language list (entry {} highlighted) not to be Confirm Choices.", index);
+        }
+    }
+    for (const uint32_t fill : {0xff000000u, 0xffffffffu, 0xff0a1d40u, 0xff23344fu}){
+        ImageRGB32 flat(1920, 1080);
+        flat.fill(fill);
+        if (is_confirm_choices(flat)){
+            return std::format("Expected a flat {:08x} frame not to be Confirm Choices.", fill);
+        }
+    }
+    if (is_confirm_choices(ImageRGB32()) || is_confirm_choices(ImageRGB32(1, 1)) || is_confirm_choices(ImageRGB32(40, 20))){
+        return "Expected empty and tiny frames not to be Confirm Choices.";
+    }
+    return true;
+}
+
+//  01.00's start check on console B's frames, from the folder in
+//  PLZA_INTRO_SCREENS: it accepts confirm-choices.png, "Change hair
+//  color" highlighted as the screen opens, and refuses every other intro
+//  screen there.
+UnitTestResult test_confirm_choices_capture(Logger&){
+    const auto* folder = std::getenv("PLZA_INTRO_SCREENS");
+    if (folder == nullptr || !Filesystem::is_directory(Filesystem::Path(folder))){
+        return UnitTestResult(UnitTestResult::SKIPPED, "PLZA_INTRO_SCREENS is not a folder.");
+    }
+    const std::optional<size_t> cursor = read_confirm_choices_cursor(ImageRGB32(std::format("{}/confirm-choices.png", folder)));
+    if (cursor != size_t(0)){
+        return "confirm-choices.png: expected Confirm Choices with row 0 highlighted.";
+    }
+    for (const std::string_view name : {"home.png", "in-game.png", "language-list.png", "look-picker.png", "keyboard.png"}){
+        const std::string path = std::format("{}/{}", folder, name);
+        if (!Filesystem::exists(Filesystem::Path(path))){
+            continue;
+        }
+        if (is_confirm_choices(ImageRGB32(path))){
+            return std::format("{}: expected 01.00 to refuse it.", name);
         }
     }
     return true;
@@ -546,6 +654,18 @@ const IntroCase INTRO_CASES[] = {
     },
     {
         .input = {"Intro: the look picker on console B (PLZA_INTRO_SCREENS)", test_look_picker_capture},
+        .expectation = {},
+    },
+    {
+        .input = {"Intro: Confirm Choices' moves to Ready!", test_confirm_choices_moves},
+        .expectation = {},
+    },
+    {
+        .input = {"Intro: 01.00's start check on Confirm Choices, synthetic frames", test_confirm_choices_synthetic},
+        .expectation = {},
+    },
+    {
+        .input = {"Intro: 01.00's start check on console B (PLZA_INTRO_SCREENS)", test_confirm_choices_capture},
         .expectation = {},
     },
     {
