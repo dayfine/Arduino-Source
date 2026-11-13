@@ -11,6 +11,7 @@
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/Tools/DebugDumper.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
+#include "CommonTools/StartupChecks/StartProgramChecks.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"     //  NintendoSwitch_CloseGameDetector.h needs it first.
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_CloseGameDetector.h"
@@ -148,6 +149,10 @@ void launch_selected_game_from_home(
     std::string_view dump_folder
 ){
     reach_home_menu(console, context, game, first_screen);
+    //  The program's start skipped this check (the game in front may have
+    //  been dark): HOME fills the screen.
+    context.wait_for_all_requests();
+    StartProgramChecks::check_border(console);
     console.log(std::format("launch: the HOME menu; launching the selected tile ({} expected), the cursor not moved.", game));
     close_selected_game_if_running(console, context);
     console.log("launch: A on the selected tile, then the user select and the license check.");
