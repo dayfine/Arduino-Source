@@ -55,8 +55,9 @@ std::optional<int> heal_to_full(
 //  them, heal at least `cover_hp`: 0 if they already do.
 int hp_cover_shortfall(const Supplies& supplies, int cover_hp, const std::string& item);
 
-//  How many more of `item` (a Potion or Super Potion) the bag needs to hold
-//  `target` of it: 0 if it already does.
+//  How many more of `item` (one the story counts: a Potion, Super Potion,
+//  Antidote, Full Heal...) the bag needs to hold `target` of it: 0 if it
+//  already does.
 int fill_shortfall(const Supplies& supplies, int target, const std::string& item);
 
 //  Registers the healing tests.

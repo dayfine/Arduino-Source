@@ -211,9 +211,11 @@ StoryCheckpoint read_story_checkpoint_file(const JsonValue& value, std::string_v
         }
     }
     //  A Mart spends money, a TEACH a TM, and the Bicycle's registration is
-    //  saved with the game: once per save.
+    //  saved with the game: once per save. A step with a skip_if is already
+    //  conditional (the two together are refused).
     for (StoryStep& step : checkpoint.steps){
-        step.once_per_save = step.action == MART_ACTION || step.action == TEACH_ACTION || step.action == REGISTER_BIKE_VARIANT;
+        const bool spends = step.action == MART_ACTION || step.action == TEACH_ACTION || step.action == REGISTER_BIKE_VARIANT;
+        step.once_per_save = spends && step.skip_if.empty();
     }
     return checkpoint;
 }
