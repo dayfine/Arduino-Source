@@ -3,9 +3,29 @@
   "game": "frlg",
   "checkpoint": {
     "id": "14.03",
-    "title": "Celadon after the Fly back from Cinnabar: Cut into the gym's yard, Beauty Tamia, the inner tree, Beauty Lori, to below Erika",
-    "start": {"map": "CeladonCity", "tiles": [[48, 12]], "facing": "south"},
+    "title": "Cinnabar's Center out to the street and Fly to Celadon City, Cut into the gym's yard, Beauty Tamia, the inner tree, Beauty Lori, to below Erika",
+    "start": {"map": "CinnabarIsland_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
     "events": [
+      {
+        "id": "cinnabar_outside",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CinnabarIsland", "tiles": [[14, 12]], "facing": "south"}
+        },
+        "why": "out of Cinnabar's Center onto the street below its door (14, 11): Fly works outdoors only"
+      },
+      {
+        "id": "fly_celadon",
+        "kind": "game_action",
+        "action": "fly",
+        "args": {
+          "town": "CeladonCity",
+          "species": "pidgey"
+        },
+        "declared_after": {"map": "CeladonCity", "tiles": [[48, 12]], "facing": "south"},
+        "why": "the Pidgey (Fly, 10.01), found in the party by its summary's species, flies to Celadon City (pokeguy 1:23:45), landing below the Pokemon Center's door (48, 11) on its heal spot, where the walk to the gym starts"
+      },
       {
         "id": "above_gym_tree",
         "kind": "route",
@@ -133,9 +153,9 @@
     "menu": "full",
     "notes": {
       "checkpoint": [
-        "Starts from the pose Fly leaves the player on, Celadon's heal spot (48, 12) facing south: Fly is a step type another agent is adding, and the rows before this one (segments 10 to 14.02, Blaine on Cinnabar) are authored separately. 14.02 is expected to end in Cinnabar's Center and fly here; until then this row's start is its own.",
-        "PokeGuy's way (1:23:45 to 1:26:03): Fly to Celadon, Cut the tree in front of the gym's yard, the west aisle, where Beauty Tamia sees him, the inner tree, Beauty Lori, Erika. No nurse here: 14.02 heals at Cinnabar's Center before the Fly, and the walk out of Celadon's Center, which has no map, from a nurse pose a tile off is a fault the sweep can't recover (no fade on the exit).",
-        "Left out, for the user to decide (do not spend TMs or change the team): pokeguy's two Rare Candies on the lead (1:25:00; no Rare Candy step exists yet) and TM14 Blizzard over Mega Kick (1:25:00, D4: our lead's moves may differ). The battles below go with Surf, Water Pulse, Bite and whatever else the lead knows: Bite is 1x on Erika's three and 2x on Lori's Exeggcute.",
+        "Starts at Cinnabar's nurse, facing her, where 14.02b ends healed (Blaine is beaten): out of the Center on foot (Fly works outdoors only) and Fly to Celadon, landing on its heal spot (48, 12) facing south (pokefirered heal_locations.json, HEAL_LOCATION_CELADON_CITY), where the walk to Erika's gym starts.",
+        "PokeGuy's way (1:23:45 to 1:26:03): Fly to Celadon, Cut the tree in front of the gym's yard, the west aisle, where Beauty Tamia sees him, the inner tree, Beauty Lori, Erika. No nurse here: 14.02b heals at Cinnabar's Center before the Fly, and the walk out of Celadon's Center, which has no map, from a nurse pose a tile off is a fault the sweep can't recover (no fade on the exit).",
+        "Left out, for the user to decide: pokeguy's two Rare Candies on the lead (1:25:00; no Rare Candy step exists yet). TM14 Blizzard is taught in the Mansion row (13.03), over Dig, so the lead arrives with Surf, Water Pulse, Bite and Blizzard. The battles below go with those and whatever else the lead knows: Bite is 1x on Erika's three and 2x on Lori's Exeggcute.",
         "The gym (CeladonCity_Gym map.json), 13 x 20, no running, entered on (6, 18): Erika (6, 4); trees (6, 8), (3, 5), (9, 6); its trainers and lines: Lass Kay (3, 11) east 3, Beauty Bridget (9, 10) west 3, Picnicker Tina (10, 7) south 2, Beauty Tamia (2, 6) south 4, Beauty Lori (5, 4) south 3, Lass Lisa (7, 4) south 2, Cooltrainer Mary (8, 7) west 2. Every way to Erika crosses a line; pokeguy's crosses only Tamia's and Lori's.",
         "Ends in front of Erika and saves there: her own pre-battle checkpoint (battle-checkpoint-retry), 14.04."
       ]
