@@ -45,6 +45,13 @@ void mash_scene(
     Milliseconds min_length = Milliseconds(0)
 );
 
+//  A "scene" step: mash_scene() to the overworld with `text_button`, up to
+//  120 s (a scene can hold a ~25 s black screen: 02.06's first evening),
+//  and the scene must start (SceneStart) within SCENE_START_WINDOW: a run
+//  not at the scene's trigger fails there, before an A mash talks to
+//  whoever stands in front.
+void mash_story_scene(ConsoleHandle& console, ProControllerContext& context, Button text_button);
+
 
 //  A tutorial card on screen (Map & Missions, Main Missions, Pokedex, ...):
 //  a bright panel in the middle over dark, even edges.

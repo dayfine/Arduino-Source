@@ -10,6 +10,7 @@
 #ifndef PokemonAutomation_PokemonLZA_AutoStoryScreenEvents_H
 #define PokemonAutomation_PokemonLZA_AutoStoryScreenEvents_H
 
+#include "Common/Cpp/Time.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Pokemon/AutoStory/Pokemon_ScreenEvents.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_ButtonDetector.h"
@@ -82,6 +83,34 @@ enum class SceneMashAction{
 //    B (it closes the screens a talk opens), an A mash waits (A would talk
 //    to whoever stands in front).
 SceneMashAction scene_mash_action(const Pokemon::ScreenEvents& events, SceneMashGoal goal, bool text_button_is_b);
+
+//  How long a scene step's mash waits for its scene to show. 02.02's street
+//  scene shows its first box ~10 s in from the save (console B, 2026-11-10);
+//  02.06's first evening holds a ~25 s black screen first.
+constexpr Milliseconds SCENE_START_WINDOW(45000);
+
+//  Whether a scene mash's scene has started, from its frames: a box, a
+//  choice or a battle. A fade alone does not count: a walk's way into a new
+//  area fades too. A run that walked past a scene's trigger (02.02 after
+//  the Brigitte battle, console B, 2026-11-13) shows none of them, and its
+//  A mash pressed for 2 minutes before it ended somewhere else.
+class SceneStart{
+public:
+    SceneStart(WallClock start, Milliseconds window)
+        : m_deadline(start + window)
+    {}
+    //  Takes the scene as started (a tutorial card).
+    void see(){
+        m_seen = true;
+    }
+    //  Takes a frame's `events` at `now`; true once the window has passed
+    //  without the scene.
+    bool never_started(const Pokemon::ScreenEvents& events, WallClock now);
+
+private:
+    WallClock m_deadline;
+    bool m_seen = false;
+};
 
 //  Registers the adapter's image tests (lab-B frames, 2026-11-08; they live
 //  in CommandLineTests, PokemonLZA/AutoStoryScreenEvents/).
