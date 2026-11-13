@@ -95,10 +95,14 @@ struct StoryEnv{
     //  (PokemonFRLG_AutoStorySlopeRun.h), for the next to compare.
     std::map<std::string, int> counted_items = {};
     //  The species the party's summaries were read as, for a Fly or a TEACH
-    //  that names one. Emptied when a save is loaded and when a PC deposit
-    //  or withdrawal moves members; a catch or a gift adds one at the end,
-    //  so the slots read stay right.
+    //  that names one, and who uses each field move (`party.users`, set by a
+    //  TEACH of one or a Fly's scan). The species are emptied when a save is
+    //  loaded; both when a PC deposit or withdrawal moves members. A catch
+    //  or a gift adds a member at the end, so the slots stay right.
     PartyCache party = {};
+    //  Who uses the field moves as the last save holds it, which a load
+    //  restores into `party.users`.
+    FieldMoveUsers saved_field_moves = {};
 };
 
 //  After a save is loaded for a checkpoint that starts on `start_map`: the

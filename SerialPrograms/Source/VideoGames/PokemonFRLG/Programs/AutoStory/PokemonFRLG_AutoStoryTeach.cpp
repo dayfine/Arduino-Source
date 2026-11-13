@@ -24,6 +24,15 @@ bool is_hm_move(std::string_view move){
     return false;
 }
 
+bool is_field_move(std::string_view move){
+    for (std::string_view other : {"dig", "teleport", "sweet-scent", "softboiled", "milk-drink"}){
+        if (move == other){
+            return true;
+        }
+    }
+    return is_hm_move(move);
+}
+
 std::string_view teach_end_name(TeachEnd end){
     switch (end){
     case TeachEnd::LEARNED:         return "learned";
@@ -210,6 +219,8 @@ public:
         if (!member || member->moves.empty()){
             return end(TeachEnd::UNREAD, "couldn't read the member's moves");
         }
+        m_result.member = m_plan.member;
+        m_result.species = member->species;
         const TeachDecision decision = decide_teach(m_plan, member->moves);
         if (decision.already_known){
             return end(TeachEnd::ALREADY_KNOWN, "");

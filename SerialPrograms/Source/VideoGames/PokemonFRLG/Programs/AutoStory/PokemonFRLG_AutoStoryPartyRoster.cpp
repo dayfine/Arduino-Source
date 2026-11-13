@@ -15,6 +15,19 @@ namespace PokemonFRLG{
 
 void PartyCache::invalidate(){
     m_species.clear();
+    m_users.clear();
+}
+
+FieldMoveUsers& PartyCache::users(){
+    return m_users;
+}
+
+const FieldMoveUsers& PartyCache::users() const{
+    return m_users;
+}
+
+void PartyCache::invalidate_species(){
+    m_species.clear();
 }
 
 void PartyCache::store(std::vector<std::string> species){
@@ -100,6 +113,54 @@ std::optional<size_t> open_member_menu_of(
         screens.close();
     }
     return slot;
+}
+
+
+namespace{
+
+//  The recorded user's menu from the overworld, and `from_menu` from it:
+//  the failure, or nothing if the record didn't give the move (the screens
+//  are closed then). A party that doesn't open is no fault of the record.
+std::optional<std::string> use_recorded_member(
+    Logger& logger, PartyScreens& screens, const FieldMoveUser& user, std::string_view move,
+    const FieldMoveFromMenu& from_menu
+){
+    size_t members = 0;
+    if (!screens.open_party(members)){
+        logger.log("Party: the menu didn't open.", COLOR_RED);
+        return FIELD_MOVE_NO_MEMBER;
+    }
+    logger.log(std::format("Party: the {} uses {} from slot {} (recorded).", user.species, move, user.slot + 1));
+    if (user.slot < members && screens.open_member_menu(user.slot)){
+        std::string failure = from_menu();
+        if (failure.empty()){
+            return failure;
+        }
+    }
+    logger.log(std::format("Party: slot {} didn't give {}; reading the party.", user.slot + 1, move), COLOR_RED);
+    screens.close();
+    return std::nullopt;
+}
+
+} // namespace
+
+std::string use_field_move(
+    Logger& logger, PartyScreens& screens, PartyCache& cache,
+    std::string_view move, std::string_view species, const FieldMoveFromMenu& from_menu
+){
+    if (const std::optional<FieldMoveUser> user = cache.users().find(move); user && user->species == species){
+        if (const std::optional<std::string> done = use_recorded_member(logger, screens, *user, move, from_menu)){
+            return *done;
+        }
+        cache.users().forget(move);
+        cache.invalidate_species();
+    }
+    const std::optional<size_t> slot = open_member_menu_of(logger, screens, cache, species, true);
+    if (!slot){
+        return FIELD_MOVE_NO_MEMBER;
+    }
+    cache.users().record(std::string(move), *slot, std::string(species));
+    return from_menu();
 }
 
 

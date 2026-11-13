@@ -88,7 +88,15 @@ struct TeachResult{
     //  The move forgotten, if any.
     std::string forgot = {};
     std::string detail = {};
+    //  The party slot taught and the species its summary read as (empty if
+    //  not read), for the field move users record; set once the member is read.
+    size_t member = 0;
+    std::string species = {};
 };
+
+//  Whether `move` is one the overworld uses (an HM's, Dig, Teleport, Sweet
+//  Scent, Softboiled, Milk Drink): its user is worth remembering.
+bool is_field_move(std::string_view move);
 
 //  The first party slot whose member `reader` reads as `species`; nothing
 //  if none does. Stops at the first slot not read (an empty slot ends the

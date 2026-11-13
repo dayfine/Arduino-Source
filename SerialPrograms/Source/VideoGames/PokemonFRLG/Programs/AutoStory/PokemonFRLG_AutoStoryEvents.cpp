@@ -578,7 +578,7 @@ std::optional<Outcome> run_abilities(StoryEnv& env, RunState& state, const Story
         [&]{ pace_trainer_battle(env, state, step, patch); }
     );
     ConsoleChoiceActions choice(env.console, env.context);
-    StoryAbilities abilities{console_member_reader(env.console, env.context, env.language, StartMenu::FULL), mart, teach, grind, choice, console_species_finder(env.console, env.context, env.language, env.party)};
+    StoryAbilities abilities{console_member_reader(env.console, env.context, env.language, StartMenu::FULL), mart, teach, grind, choice, console_species_finder(env.console, env.context, env.language, env.party), &env.party};
     if (const std::optional<GrindPlan> plan = step.action == GRIND_CHECK_ACTION ? grind_plan_of(step.args) : std::nullopt){
         if (grind_reached_already(env.console.logger(), grind, abilities.members, *plan)){
             state.flags.insert(step.name);
@@ -1002,6 +1002,7 @@ Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor&
             keep_next_start_frame(env, id);
             env.has_save = true;
             env.saved_supplies = env.supplies;
+            env.saved_field_moves = env.party.users();
             env.prepared.clear();
             env.bag_read = false;
             return Pokemon::outcome_ok();

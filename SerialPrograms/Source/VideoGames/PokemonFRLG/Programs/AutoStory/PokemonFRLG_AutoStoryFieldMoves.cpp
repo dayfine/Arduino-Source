@@ -39,6 +39,8 @@ namespace{
 //  A Pokemon's menu has at most SUMMARY, four field moves, SWITCH, ITEM
 //  and CANCEL (the party's six slots are PARTY_SLOTS).
 constexpr size_t MON_MENU_ROWS = 8;
+//  The move a Fly step's user is recorded under.
+const std::string FLY_MOVE = "fly";
 
 } // namespace
 
@@ -207,24 +209,29 @@ std::optional<Pokemon::Outcome> run_field_move_step(
         return std::nullopt;
     }
     const FlyTown& town = kanto_fly_towns()[plan->town];
-    //  With a species, the party is opened once: the scan (or the cache)
-    //  leaves the Fly user's menu open.
-    bool menu_open = false;
+    std::string failure;
     if (!plan->species.empty()){
+        //  The party is opened once, at the recorded Fly user's slot if the
+        //  TEACH or an earlier Fly left one, else at the scan's find.
+        console.log(std::format(
+            "Story: Fly with the {}, menu row {}, to {} (cell {}, {}).",
+            plan->species, plan->menu_row + 1, town.name, town.cell.x, town.cell.y
+        ));
         const std::unique_ptr<PartyScreens> screens = console_party_screens(console, context, plan->start_menu, language);
-        const std::optional<size_t> slot = open_member_menu_of(console.logger(), *screens, party, plan->species, true);
-        if (!slot){
+        failure = use_field_move(console.logger(), *screens, party, FLY_MOVE, plan->species, [&]{
+            return fly_from_member_menu(console, context, *plan);
+        });
+        if (failure == FIELD_MOVE_NO_MEMBER){
             console.log(std::format("Story: no {} read in the party to Fly with.", plan->species), COLOR_RED);
             return Pokemon::outcome_failed("fly_no_member", plan->species);
         }
-        plan->slot = *slot;
-        menu_open = true;
+    }else{
+        console.log(std::format(
+            "Story: Fly with slot {}, menu row {}, to {} (cell {}, {}).",
+            plan->slot + 1, plan->menu_row + 1, town.name, town.cell.x, town.cell.y
+        ));
+        failure = open_fly_map(console, context, *plan);
     }
-    console.log(std::format(
-        "Story: Fly with slot {}, menu row {}, to {} (cell {}, {}).",
-        plan->slot + 1, plan->menu_row + 1, town.name, town.cell.x, town.cell.y
-    ));
-    std::string failure = menu_open ? fly_from_member_menu(console, context, *plan) : open_fly_map(console, context, *plan);
     if (failure.empty()){
         failure = fly_to_town(console, context, town);
     }

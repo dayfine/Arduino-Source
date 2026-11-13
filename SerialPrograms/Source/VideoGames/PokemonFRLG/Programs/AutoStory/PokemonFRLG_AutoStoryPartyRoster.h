@@ -24,12 +24,14 @@
 #define PokemonAutomation_PokemonFRLG_AutoStoryPartyRoster_H
 
 #include <cstddef>
+#include <functional>
 #include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "PokemonFRLG_AutoStoryFieldMoveUsers.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -39,16 +41,24 @@ namespace PokemonFRLG{
 //  The species of the first party slots as the last scan read them.
 class PartyCache{
 public:
-    //  Forget the party: it changed (a catch, a gift, a deposit or
-    //  withdrawal) or a new checkpoint starts.
+    //  Forget the party: a deposit or withdrawal changed its order, or a
+    //  save is loaded. Drops the field move users too.
     void invalidate();
+    //  Forget only the species read.
+    void invalidate_species();
     //  Keep `species` as slots 0, 1, ...
     void store(std::vector<std::string> species);
     //  The first slot read as `species`; nothing if none, or no scan yet.
     std::optional<size_t> find(std::string_view species) const;
 
+    //  Who uses which field move. A load restores them from the save's
+    //  copy (StoryEnv::saved_field_moves), not from nothing.
+    FieldMoveUsers& users();
+    const FieldMoveUsers& users() const;
+
 private:
     std::vector<std::string> m_species;
+    FieldMoveUsers m_users;
 };
 
 
@@ -84,6 +94,24 @@ public:
 //  as it was.
 std::optional<size_t> open_member_menu_of(
     Logger& logger, PartyScreens& screens, PartyCache& cache, std::string_view species, bool keep_menu
+);
+
+
+//  What use_field_move() returns when no member reads as the species.
+inline const std::string FIELD_MOVE_NO_MEMBER = "no_member";
+//  Runs the move from the member's menu; its failure, or empty.
+using FieldMoveFromMenu = std::function<std::string()>;
+//  The field move `move` used by the first member read as `species`: the
+//  party is opened, the member's menu is chosen, and `from_menu` (the
+//  console's FLY row and map) runs from it. Returns its failure, empty on
+//  success, or FIELD_MOVE_NO_MEMBER if no member reads as `species`. With a
+//  record in the cache's users for `move` and `species`, the slot is chosen
+//  without reading a summary; if the menu there fails (no such row, a
+//  different member), the party is closed, the record dropped, and the scan
+//  finds the member and records it again. A scan records what it finds.
+std::string use_field_move(
+    Logger& logger, PartyScreens& screens, PartyCache& cache,
+    std::string_view move, std::string_view species, const FieldMoveFromMenu& from_menu
 );
 
 

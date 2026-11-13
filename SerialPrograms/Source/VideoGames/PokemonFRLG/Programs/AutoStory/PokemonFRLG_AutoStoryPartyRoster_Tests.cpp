@@ -188,6 +188,95 @@ UnitTestResult test_cached_slot_opens_nothing(Logger& logger){
     return check_counts("cached slot only", again, 0, 0, 0, 0);
 }
 
+//  A Fly from the member's menu: it works on the slot that holds `holder`.
+FieldMoveFromMenu fly_from(const FakeParty& party, size_t holder, size_t& calls){
+    return [&party, holder, &calls]() -> std::string{
+        calls++;
+        return party.m_menu_slot == holder ? "" : "fly_no_map";
+    };
+}
+
+//  A recorded Fly user: the party opens once and no summary is read.
+UnitTestResult test_recorded_user_reads_no_summary(Logger& logger){
+    FakeParty party({"blastoise", "pidgey", "oddish"});
+    PartyCache cache;
+    cache.users().record("fly", 1, "pidgey");
+    size_t calls = 0;
+    const std::string failure = use_field_move(logger, party, cache, "fly", "pidgey", fly_from(party, 1, calls));
+    if (!failure.empty() || calls != 1){
+        return std::format("a recorded Fly: failure '{}', {} menu uses.", failure, calls);
+    }
+    return check_counts("recorded user", party, 1, 0, 0, 0);
+}
+
+//  The record names a slot another member holds now: the menu fails, the
+//  party is closed, the scan finds the right slot and the record is updated.
+UnitTestResult test_stale_record_scans_and_updates(Logger& logger){
+    FakeParty party({"blastoise", "oddish", "pidgey"});
+    PartyCache cache;
+    cache.users().record("fly", 0, "pidgey");
+    size_t calls = 0;
+    const std::string failure = use_field_move(logger, party, cache, "fly", "pidgey", fly_from(party, 2, calls));
+    if (!failure.empty() || calls != 2){
+        return std::format("a stale Fly record: failure '{}', {} menu uses.", failure, calls);
+    }
+    const std::optional<FieldMoveUser> user = cache.users().find("fly");
+    if (!user || user->slot != 2){
+        return "the stale record isn't replaced by the slot the scan found.";
+    }
+    return check_counts("stale record", party, 2, 1, 3, 1);
+}
+
+//  A record for another species isn't trusted: the scan runs.
+UnitTestResult test_other_species_record_scans(Logger& logger){
+    FakeParty party({"blastoise", "pidgeot"});
+    PartyCache cache;
+    cache.users().record("fly", 0, "pidgey");
+    size_t calls = 0;
+    const std::string failure = use_field_move(logger, party, cache, "fly", "pidgeot", fly_from(party, 1, calls));
+    if (!failure.empty() || calls != 1){
+        return std::format("a record of another species: failure '{}', {} menu uses.", failure, calls);
+    }
+    return check_counts("other species", party, 1, 1, 2, 0);
+}
+
+//  No record: the scan runs once and records, so the next Fly reads nothing.
+UnitTestResult test_scan_records_for_next_fly(Logger& logger){
+    FakeParty party({"blastoise", "pidgey"});
+    PartyCache cache;
+    size_t calls = 0;
+    use_field_move(logger, party, cache, "fly", "pidgey", fly_from(party, 1, calls));
+    FakeParty again({"blastoise", "pidgey"});
+    cache.invalidate_species();
+    const std::string failure = use_field_move(logger, again, cache, "fly", "pidgey", fly_from(again, 1, calls));
+    if (!failure.empty()){
+        return std::format("the second Fly: {}", failure);
+    }
+    return check_counts("second fly", again, 1, 0, 0, 0);
+}
+
+//  A deposit or withdrawal moves members: nothing is recorded after it.
+UnitTestResult test_invalidate_drops_records(Logger&){
+    PartyCache cache;
+    cache.users().record("fly", 1, "pidgey");
+    cache.invalidate();
+    if (cache.users().find("fly")){
+        return "invalidate() kept a field move user.";
+    }
+    return true;
+}
+
+//  No member of the species: its failure, the party closed.
+UnitTestResult test_no_member_failure(Logger& logger){
+    FakeParty party({"blastoise"});
+    PartyCache cache;
+    size_t calls = 0;
+    if (use_field_move(logger, party, cache, "fly", "pidgey", fly_from(party, 0, calls)) != FIELD_MOVE_NO_MEMBER || calls != 0){
+        return "a party without the species should fail with no member and not fly.";
+    }
+    return check_counts("no member", party, 1, 1, 1, 1);
+}
+
 struct AutoStoryPartyRosterInput{
     std::string name;
     std::function<UnitTestResult(Logger&)> body;
@@ -228,6 +317,12 @@ const AutoStoryPartyRosterCase AUTO_STORY_PARTY_ROSTER_CASES[] = {
     {.input = {"the first of two of a species wins", test_first_duplicate_wins}, .expectation = {}},
     {.input = {"a lookup that doesn't keep the menu closes it", test_closes_when_not_kept}, .expectation = {}},
     {.input = {"a cached slot for a TEACH opens nothing", test_cached_slot_opens_nothing}, .expectation = {}},
+    {.input = {"a recorded field move user reads no summary", test_recorded_user_reads_no_summary}, .expectation = {}},
+    {.input = {"a stale record falls back to the scan and is updated", test_stale_record_scans_and_updates}, .expectation = {}},
+    {.input = {"a record of another species is not trusted", test_other_species_record_scans}, .expectation = {}},
+    {.input = {"a scan records the user for the next Fly", test_scan_records_for_next_fly}, .expectation = {}},
+    {.input = {"invalidate() drops the field move users", test_invalidate_drops_records}, .expectation = {}},
+    {.input = {"no member of the species fails without flying", test_no_member_failure}, .expectation = {}},
 };
 
 } // namespace
