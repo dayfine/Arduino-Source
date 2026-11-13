@@ -15,9 +15,11 @@
 #include "VideoGames/PokemonFRLG/Inference/Map/PokemonFRLG_MapDetector.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_FlyMap.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_MovementMechanics.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldFacing.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecoveryWalk.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
 #include "PokemonFRLG_AutoStoryFieldMoves.h"
+#include "PokemonFRLG_AutoStoryFlyLanding.h"
 #include "PokemonFRLG_AutoStoryGameArgs.h"
 #include "PokemonFRLG_AutoStoryQuietOverworld.h"
 #include "PokemonFRLG_AutoStoryStepInterrupts.h"
@@ -119,9 +121,10 @@ constexpr Milliseconds MON_MENU_TIMEOUT = 5000ms;
 //  (open_fly_map_from_overworld()'s wait).
 constexpr Milliseconds FLY_MAP_TIMEOUT = 20000ms;
 constexpr Milliseconds FLY_MAP_SETTLE = 1000ms;
-//  The fade out after the town's A: none, the town wasn't one Fly goes to.
+//  The fade after the town's A: none, the town wasn't one Fly goes to. The
+//  flight's black band is no fade (FlyLanding).
 constexpr Milliseconds TAKEOFF_TIMEOUT = 10000ms;
-//  The flight and the landing, to the overworld at rest.
+//  The flight and the landing, to the player on screen at rest.
 constexpr Milliseconds LANDING_TIMEOUT = 30000ms;
 
 void tap_dpad(ProControllerContext& context, DpadPosition dpad, size_t count, Milliseconds tap, Milliseconds release){
@@ -157,40 +160,51 @@ std::string open_fly_map(ConsoleHandle& console, ProControllerContext& context, 
 }
 
 //  On the fly map: the cursor to the corner, then to the town, and A.
-//  Returns the failure, or empty once the overworld is at rest after the
-//  landing.
+//  Returns the failure, or empty once the player has landed: a fade has
+//  passed, the overworld is at rest and the player's facing reads.
 //  Overlaps fly_from_kanto_map() in PokemonFRLG_Navigation.h.
 //  Ours moves the cursor by map cell from a town table and waits for a quiet overworld after landing;
 //  upstream uses timed stick holds per KantoFlyLocation and a blind wait.
 //  Could be unified with upstream if needed.
-std::string fly_to_town(ConsoleHandle& console, ProControllerContext& context, const FlyTown& town){
+std::string fly_to_town(ConsoleHandle& console, ProControllerContext& context, PlayerGender player, const FlyTown& town){
     pbf_press_dpad(context, DPAD_UP_LEFT, CURSOR_TO_CORNER, CURSOR_TAP_RELEASE);
     tap_dpad(context, DPAD_RIGHT, (size_t)town.cell.x, CURSOR_TAP, CURSOR_TAP_RELEASE);
     tap_dpad(context, DPAD_DOWN, (size_t)town.cell.y, CURSOR_TAP, CURSOR_TAP_RELEASE);
-    BlackScreenWatcher takeoff(COLOR_RED);
     context.wait_for_all_requests();
     pbf_press_button(context, BUTTON_A, 160ms, 0ms);
-    if (wait_until(console, context, TAKEOFF_TIMEOUT, {takeoff}) < 0){
-        return "fly_no_takeoff";
-    }
     context.wait_for_all_requests();
+    //  The look goes on from the A: a fade, then a quiet overworld with the
+    //  player on screen. The band of the flight and the departure town's
+    //  overworld are quiet too (console B, 2026-11-12 23:59, 12.03), so a
+    //  quiet screen alone is no landing.
     ConsoleScreenLook eyes(console, context);
-    const Pokemon::ScreenSettle settle = wait_for_quiet_overworld(
-        [&eyes](bool fresh){ return eyes.look(fresh); },
-        MovementMechanics::AFTER_BATTLE_QUIET, LANDING_TIMEOUT
-    );
-    console.log(std::format("Story: landed in {}, {}", town.name, Pokemon::describe(settle)));
+    const WallClock start = current_time();
+    FlyLanding landing;
+    bool fresh = true;
+    do{
+        const Pokemon::ScreenLook look = eyes.look(fresh);
+        fresh = false;
+        landing = judge_fly_landing(look, MovementMechanics::AFTER_BATTLE_QUIET, [&]{
+            return OverworldWalkSteps::read_facing(console, context, player);
+        });
+    }while (!landing.landed() && current_time() - start < TAKEOFF_TIMEOUT + LANDING_TIMEOUT);
+    console.log(std::format(
+        "Story: {} {}, {}", landing.landed() ? "landed in" : "no landing in", town.name, describe(landing)
+    ), landing.landed() ? COLOR_WHITE : COLOR_RED);
     const std::string shot = save_route_screenshot(console, "fly", std::format("landed in {}", town.name));
     if (!shot.empty()){
         console.log("Story: landing screenshot " + shot);
     }
-    return quiet_overworld(settle, MovementMechanics::AFTER_BATTLE_QUIET) ? "" : "fly_no_landing";
+    if (landing.landed()){
+        return "";
+    }
+    return landing.faded ? "fly_no_landing" : "fly_no_takeoff";
 }
 
 } // namespace
 
 std::optional<Pokemon::Outcome> run_field_move_step(
-    ConsoleHandle& console, ProControllerContext& context, Language language, const StoryStep& step
+    ConsoleHandle& console, ProControllerContext& context, Language language, PlayerGender player, const StoryStep& step
 ){
     const auto done = [&step]{
         return step.pose_after ? Pokemon::outcome_ok(Pokemon::pose_of(*step.pose_after)) : Pokemon::outcome_ok();
@@ -217,7 +231,7 @@ std::optional<Pokemon::Outcome> run_field_move_step(
     ));
     std::string failure = open_fly_map(console, context, *plan);
     if (failure.empty()){
-        failure = fly_to_town(console, context, town);
+        failure = fly_to_town(console, context, player, town);
     }
     return failure.empty() ? done() : Pokemon::outcome_failed(failure, town.name);
 }
