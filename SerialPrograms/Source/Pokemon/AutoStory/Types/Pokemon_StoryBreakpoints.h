@@ -66,6 +66,8 @@ public:
     //  A leg is about to be walked: pauses, as "<the step's label> <leg_label>",
     //  only in LEGS mode.
     void before_leg(const std::string& leg_label);
+    //  The label of the step under way ("12.03/5 pallet_shore"); empty before the first.
+    const std::string& step_label() const{ return m_step_label; }
 
 private:
     void pause(const std::string& label);
