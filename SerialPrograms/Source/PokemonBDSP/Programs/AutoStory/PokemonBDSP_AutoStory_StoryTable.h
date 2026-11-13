@@ -52,7 +52,9 @@ struct StoryHandoffs{
 
 //  What a run from table row `first` to `last` does.
 struct StoryRunPlan{
-    //  The checkpoints to run, in order.
+    //  The checkpoints to run, in order. Copies, not pointers: a row the plan
+    //  changes (the handoff save) must not change the table, and the run's
+    //  steps capture these rows, which outlive the call.
     std::vector<StoryCheckpoint> rows;
     //  NONE: the run ends after `rows`. STARTER_RNG: the run stops after
     //  `rows`, the last of which (00.01) saves at the Verity Lakefront.
