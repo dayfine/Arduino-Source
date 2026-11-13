@@ -27,6 +27,12 @@ double share_of(const ImageViewRGB32& screen, const ImageFloatBox& box, Matches&
 //  over red by 30, blue over 120.
 double cyan_share(const ImageViewRGB32& screen, const ImageFloatBox& box);
 
+//  The share of `box`'s pixels that glow cyan, dim too: blue over red by
+//  40, green over red by 25, blue over 70. The autosave badge's glow over a
+//  dark or warm scene (a lamp-lit wall: about 28, 70, 85) is too dim for
+//  cyan_share().
+double dim_cyan_share(const ImageViewRGB32& screen, const ImageFloatBox& box);
+
 //  The share of `box`'s pixels whose every channel is above 200.
 double white_share(const ImageViewRGB32& screen, const ImageFloatBox& box);
 
