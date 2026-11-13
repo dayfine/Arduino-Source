@@ -91,8 +91,8 @@ UnitTestResult test_story_table_lints(Logger&){
             }
         }
     }
-    if (!ids.contains("00.00") || !ids.contains("00.05c") || story_checkpoints().front().on_failure != StoryFailure::STOP){
-        return "Expected 00.00 (which stops on a failure) to 00.05c.";
+    if (!ids.contains("00.00") || !ids.contains("01.11") || story_checkpoints().front().on_failure != StoryFailure::STOP){
+        return "Expected 00.00 (which stops on a failure) to 01.11.";
     }
     return true;
 }
@@ -135,6 +135,66 @@ UnitTestResult test_story_table_rows_join(Logger&){
         }
     }
     return true;
+}
+
+//  01.02: a scene's trigger on an open row is reached by walking toward it
+//  until the scene starts, not by a localizing detour (south, east to a
+//  rock, north) to a tile beside the trigger and a step onto it (the
+//  user's rule, 2026-11-12). The Gate's hikers (trigger (7, 22)) and the
+//  city's welcome guide (trigger (10, 12..15)) are each one "into_scene"
+//  route that runs east along the row it arrives on.
+UnitTestResult test_oreburgh_scenes_are_walked_into(Logger&){
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        if (row.id != "01.02"){
+            continue;
+        }
+        size_t found = 0;
+        for (size_t i = 0; i < row.steps.size(); i++){
+            const Pokemon::StoryStep& step = row.steps[i];
+            if (step.name.starts_with("west_of_") || step.name.ends_with("_trigger") || step.name == "welcome_trigger"){
+                return std::format("{} {}: a detour to land beside the trigger.", row.id, step.name);
+            }
+            if (step.name != "the_hiker" && step.name != "oreburgh_welcome"){
+                continue;
+            }
+            found++;
+            const Pokemon::StoryStep& walk = row.steps[i - 1];
+            if (walk.kind != StoryStepKind::ROUTE || walk.action != ROUTE_INTO_SCENE){
+                return std::format("{}: the step before is {}, not an into_scene route.", step.name, walk.name);
+            }
+            const auto& legs = story_arg<std::vector<Pokemon::StoryLeg>>(walk.args, "legs");
+            if (legs.size() != 1 || legs.front().direction != Direction::EAST){
+                return std::format("{}: {} does not run one leg east.", step.name, walk.name);
+            }
+        }
+        return found == 2 ? UnitTestResult(true) : UnitTestResult("01.02 has no hikers and welcome scenes.");
+    }
+    return "No 01.02.";
+}
+
+//  01.03's doors into and out of the mine have no text on the far side: they
+//  settle as a door (the fade back up and a short still spell), not by B
+//  through the cave's ambient motion for 15 s (lab-B 2026-11-12 21:57,
+//  into_the_mine 18 s and into_the_coal_room 16.7 s).
+UnitTestResult test_mine_doors_settle_as_doors(Logger&){
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        if (row.id != "01.03"){
+            continue;
+        }
+        size_t found = 0;
+        for (const Pokemon::StoryStep& step : row.steps){
+            if (step.name == "into_the_mine" || step.name == "into_the_coal_room" ||
+                step.name == "up_to_the_hall" || step.name == "out_of_the_mine"
+            ){
+                found++;
+                if (step.action != "door"){
+                    return step.name + ": not a \"door\" step, so it settles as a talk.";
+                }
+            }
+        }
+        return found == 4 ? UnitTestResult(true) : UnitTestResult("01.03 lacks a mine door step.");
+    }
+    return "No 01.03.";
 }
 
 struct LadyLeg{
@@ -610,6 +670,37 @@ UnitTestResult test_no_wall_and_back_after_taps(Logger& logger){
     return found.empty() ? UnitTestResult(true) : UnitTestResult("a wall and back after a tapped leg:" + out);
 }
 
+//  01.08's walk below the Ravaged Path keeps off the row Route 204 South's
+//  youngster_3 wanders, (12, 2) to (14, 2): on lab-B (2026-11-08) the plan
+//  "north 35 (to wall) to (13, 2), west 2 (to wall) to (11, 2)" walked along
+//  it, and he stopped the leg west twice. A leg may cross his row through
+//  one of his tiles, not walk two of them.
+UnitTestResult test_ravaged_path_keeps_off_the_youngster(Logger& logger){
+    for (const PlannedStoryRoute& route : plan_story_routes(logger)){
+        if (route.name != "01.08 below_the_ravaged_path"){
+            continue;
+        }
+        if (!route.legs){
+            return "01.08 below_the_ravaged_path: no plan.";
+        }
+        const StoryWorld& world = *route.world;
+        for (const PlannedLeg& planned : *route.legs){
+            logger.log("01.08 below_the_ravaged_path: " + to_string(planned));
+        }
+        const auto youngster_row = [&](const TilePos& pos){
+            const std::optional<TilePos> local = story_to_local(world, "Route204South", pos);
+            return local && local->y == 2 && local->x >= 12 && local->x <= 14;
+        };
+        const auto [most, leg] = most_zone_tiles(world, route.from, *route.legs, youngster_row);
+        if (most >= 2){
+            return std::format("the leg {} walks {} tiles of the youngster's row (12..14, 2).", leg, most);
+        }
+        return true;
+    }
+    return "01.08 below_the_ravaged_path is not a ROUTE step from a known place.";
+}
+
+
 //  The route plan dump: every table ROUTE step's legs, in a golden file
 //  beside the story data, so a planner or table change shows its plans' diff
 //  in review.
@@ -1026,6 +1117,10 @@ const AutoStoryStoryTableCase AUTO_STORY_STORY_TABLE_CASES[] = {
         .expectation = {},
     },
     {
+        .input = {"01.08: the walk below the Ravaged Path keeps off the youngster's row (lab-B, 2026-11-08)", test_ravaged_path_keeps_off_the_youngster},
+        .expectation = {},
+    },
+    {
         .input = {"00.05b, 00.05c: no leg enters a wander zone (lab-B, 2026-11-11)", test_jubilife_routes_cross_no_wander_zone},
         .expectation = {},
     },
@@ -1035,6 +1130,14 @@ const AutoStoryStoryTableCase AUTO_STORY_STORY_TABLE_CASES[] = {
     },
     {
         .input = {"00.05c: a plan from (35, 24), (36, 24) past the woman on row 24 (lab-B, 2026-11-12 02:52)", test_company_clown_after_the_woman_on_row_24},
+        .expectation = {},
+    },
+    {
+        .input = {"01.02: the hikers' and the welcome scenes are walked into along their rows, no detour to a tile beside the trigger", test_oreburgh_scenes_are_walked_into},
+        .expectation = {},
+    },
+    {
+        .input = {"01.03: the mine's doors are \"door\" steps, settled as doors (lab-B 2026-11-12 21:57)", test_mine_doors_settle_as_doors},
         .expectation = {},
     },
     {

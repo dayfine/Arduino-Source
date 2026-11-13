@@ -1,0 +1,90 @@
+﻿{
+  "checkpoint": {
+    "events": [
+      {
+        "action": "check_poketch",
+        "id": "poketch_before_the_gate",
+        "kind": "game_action",
+        "why": "Jubilife's east-exit guard (the coord event on (60, 21..24)) asks about the Poketch campaign and turns back anyone without one (lab-B 2026-11-11): fail here, not in a walk that takes him for a trainer"
+      },
+      {
+        "action": "town",
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "east",
+            "map": "Route203",
+            "tiles": [
+              [
+                4,
+                18
+              ]
+            ]
+          }
+        },
+        "id": "west_of_barrys_trigger",
+        "kind": "route",
+        "why": "east along the street onto Route 203"
+      },
+      {
+        "args": {
+          "direction": "east"
+        },
+        "id": "barrys_trigger",
+        "kind": "step",
+        "why": "the trigger (5, 17..20): Barry walks over"
+      },
+      {
+        "args": {
+          "may_lose": true
+        },
+        "declared_after": {
+          "facing": "east",
+          "map": "Route203",
+          "tiles": [
+            [
+              5,
+              17
+            ],
+            [
+              5,
+              18
+            ],
+            [
+              5,
+              19
+            ],
+            [
+              5,
+              20
+            ]
+          ]
+        },
+        "id": "barry",
+        "kind": "battle",
+        "why": "Barry's battle; a loss goes on, as it did on the console"
+      }
+    ],
+    "id": "01.01",
+    "start": {
+      "facing": "north",
+      "map": "JubilifeCity",
+      "tiles": [
+        [
+          59,
+          21
+        ]
+      ]
+    },
+    "title": "Jubilife to Barry"
+  },
+  "execution": {
+    "on_failure": "reload_and_retry",
+    "saves_in": "Jubilife City"
+  },
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "bdsp",
+  "metadata": {
+    "phase": "reproduction"
+  }
+}
