@@ -1,0 +1,196 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "19.03",
+    "title": "Route 23: the seven badge guards and the Surf stretch, to Victory Road's mouth",
+    "start": {"map": "Route23", "tiles": [[8, 153]], "facing": "north"},
+    "events": [
+      {
+        "id": "cascade_guard_approach",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "Route23", "tiles": [[13, 150]], "facing": "north"}},
+        "why": "to just south of the Cascade guard's trigger tile (13, 149) (Route23 map.json coord_events; the guard stands at (15, 149)), by the way the planner finds"
+      },
+      {
+        "id": "cascade_guard_trigger",
+        "kind": "step",
+        "args": {"direction": "north"},
+        "declared_after": {"map": "Route23", "tiles": [[13, 149]], "facing": "north"},
+        "why": "onto (13, 149): Route23_EventScript_CascadeBadgeGuardTrigger (VAR_MAP_SCENE_ROUTE23 is 1) turns the guard to the player; every other trigger of this guard is out of the way, and the guards ahead trigger on a later value"
+      },
+      {
+        "id": "cascade_guard_scene",
+        "kind": "scene",
+        "declared_after": {"map": "Route23", "tiles": [[13, 149]], "facing": "north"},
+        "why": "the guard recognizes the CASCADEBADGE (the text, A) and sets VAR_MAP_SCENE_ROUTE23 to 2 (route23.inc Route23_EventScript_RecognizeBadgeTrigger); a player without it is walked back down instead, which the row does not expect: 17.04 has all eight"
+      },
+      {
+        "id": "thunder_guard_approach",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "Route23", "tiles": [[7, 141]], "facing": "north"}},
+        "why": "to just south of the Thunder guard's trigger tile (7, 140) (Route23 map.json coord_events; the guard stands at (8, 140)), by the way the planner finds"
+      },
+      {
+        "id": "thunder_guard_trigger",
+        "kind": "step",
+        "args": {"direction": "north"},
+        "declared_after": {"map": "Route23", "tiles": [[7, 140]], "facing": "north"},
+        "why": "onto (7, 140): Route23_EventScript_ThunderBadgeGuardTrigger (VAR_MAP_SCENE_ROUTE23 is 2) turns the guard to the player; every other trigger of this guard is out of the way, and the guards ahead trigger on a later value"
+      },
+      {
+        "id": "thunder_guard_scene",
+        "kind": "scene",
+        "declared_after": {"map": "Route23", "tiles": [[7, 140]], "facing": "north"},
+        "why": "the guard recognizes the THUNDERBADGE (the text, A) and sets VAR_MAP_SCENE_ROUTE23 to 3 (route23.inc Route23_EventScript_RecognizeBadgeTrigger); a player without it is walked back down instead, which the row does not expect: 17.04 has all eight"
+      },
+      {
+        "id": "rainbow_guard_approach",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "Route23", "tiles": [[12, 124]], "facing": "north"}},
+        "why": "to just south of the Rainbow guard's trigger tile (12, 123) (Route23 map.json coord_events; the guard stands at (14, 123)), by the way the planner finds"
+      },
+      {
+        "id": "rainbow_guard_trigger",
+        "kind": "step",
+        "args": {"direction": "north"},
+        "declared_after": {"map": "Route23", "tiles": [[12, 123]], "facing": "north"},
+        "why": "onto (12, 123): Route23_EventScript_RainbowBadgeGuardTrigger (VAR_MAP_SCENE_ROUTE23 is 3) turns the guard to the player; every other trigger of this guard is out of the way, and the guards ahead trigger on a later value"
+      },
+      {
+        "id": "rainbow_guard_scene",
+        "kind": "scene",
+        "declared_after": {"map": "Route23", "tiles": [[12, 123]], "facing": "north"},
+        "why": "the guard recognizes the RAINBOWBADGE (the text, A) and sets VAR_MAP_SCENE_ROUTE23 to 4 (route23.inc Route23_EventScript_RecognizeBadgeTrigger); a player without it is walked back down instead, which the row does not expect: 17.04 has all eight"
+      },
+      {
+        "id": "soul_shore",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "Route23", "tiles": [[13, 118]], "facing": "north"}},
+        "why": "from the Rainbow guard on to the lake's south shore (12..14, 118), facing the water: Route 23's water runs north from here (112 to 78) to the shore below the Volcano guard"
+      },
+      {
+        "id": "surf_off_shore",
+        "kind": "game_action",
+        "action": "surf",
+        "args": {"direction": "north"},
+        "declared_after": {"map": "Route23", "tiles": [[13, 117]], "facing": "north"},
+        "why": "the lead's Surf (taught in 12.01): A at the water, YES, onto (13, 117); the Soul and Marsh guards' trigger tiles are on the water"
+      },
+      {
+        "id": "soul_guard_approach",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "Route23", "tiles": [[13, 113]], "facing": "north"}},
+        "why": "to just south of the Soul guard's trigger tile (13, 112) (Route23 map.json coord_events; the guard stands at (16, 112)), by the way the planner finds over the water: Surf from the shore (taught in 12.01), the guard stands on the water's edge and the trigger tiles are in the water"
+      },
+      {
+        "id": "soul_guard_trigger",
+        "kind": "step",
+        "args": {"direction": "north"},
+        "declared_after": {"map": "Route23", "tiles": [[13, 112]], "facing": "north"},
+        "why": "onto (13, 112): Route23_EventScript_SoulBadgeGuardTrigger (VAR_MAP_SCENE_ROUTE23 is 4) turns the guard to the player; every other trigger of this guard is out of the way, and the guards ahead trigger on a later value"
+      },
+      {
+        "id": "soul_guard_scene",
+        "kind": "scene",
+        "declared_after": {"map": "Route23", "tiles": [[13, 112]], "facing": "north"},
+        "why": "the guard recognizes the SOULBADGE (the text, A) and sets VAR_MAP_SCENE_ROUTE23 to 5 (route23.inc Route23_EventScript_RecognizeBadgeTrigger); a player without it is walked back down instead, which the row does not expect: 17.04 has all eight"
+      },
+      {
+        "id": "marsh_guard_approach",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "Route23", "tiles": [[9, 95]], "facing": "north"}},
+        "why": "to just south of the Marsh guard's trigger tile (9, 94) (Route23 map.json coord_events; the guard stands at (10, 94)), by the way the planner finds; still on the water, which ends on the island's north shore and goes on to the lake"
+      },
+      {
+        "id": "marsh_guard_trigger",
+        "kind": "step",
+        "args": {"direction": "north"},
+        "declared_after": {"map": "Route23", "tiles": [[9, 94]], "facing": "north"},
+        "why": "onto (9, 94): Route23_EventScript_MarshBadgeGuardTrigger (VAR_MAP_SCENE_ROUTE23 is 5) turns the guard to the player; every other trigger of this guard is out of the way, and the guards ahead trigger on a later value"
+      },
+      {
+        "id": "marsh_guard_scene",
+        "kind": "scene",
+        "declared_after": {"map": "Route23", "tiles": [[9, 94]], "facing": "north"},
+        "why": "the guard recognizes the MARSHBADGE (the text, A) and sets VAR_MAP_SCENE_ROUTE23 to 6 (route23.inc Route23_EventScript_RecognizeBadgeTrigger); a player without it is walked back down instead, which the row does not expect: 17.04 has all eight"
+      },
+      {
+        "id": "land_below_volcano",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "Route23", "tiles": [[17, 77]], "facing": "north"}},
+        "why": "off the water onto the shore (16..21, 77..78) below the Volcano guard"
+      },
+      {
+        "id": "volcano_guard_approach",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "Route23", "tiles": [[12, 62]], "facing": "north"}},
+        "why": "to just south of the Volcano guard's trigger tile (12, 61) (Route23 map.json coord_events; the guard stands at (14, 61)), by the way the planner finds"
+      },
+      {
+        "id": "volcano_guard_trigger",
+        "kind": "step",
+        "args": {"direction": "north"},
+        "declared_after": {"map": "Route23", "tiles": [[12, 61]], "facing": "north"},
+        "why": "onto (12, 61): Route23_EventScript_VolcanoBadgeGuardTrigger (VAR_MAP_SCENE_ROUTE23 is 6) turns the guard to the player; every other trigger of this guard is out of the way, and the guards ahead trigger on a later value"
+      },
+      {
+        "id": "volcano_guard_scene",
+        "kind": "scene",
+        "declared_after": {"map": "Route23", "tiles": [[12, 61]], "facing": "north"},
+        "why": "the guard recognizes the VOLCANOBADGE (the text, A) and sets VAR_MAP_SCENE_ROUTE23 to 7 (route23.inc Route23_EventScript_RecognizeBadgeTrigger); a player without it is walked back down instead, which the row does not expect: 17.04 has all eight"
+      },
+      {
+        "id": "earth_guard_approach",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "Route23", "tiles": [[5, 36]], "facing": "north"}},
+        "why": "to just south of the Earth guard's trigger tile (5, 35) (Route23 map.json coord_events; the guard stands at (6, 35)), by the way the planner finds"
+      },
+      {
+        "id": "earth_guard_trigger",
+        "kind": "step",
+        "args": {"direction": "north"},
+        "declared_after": {"map": "Route23", "tiles": [[5, 35]], "facing": "north"},
+        "why": "onto (5, 35): Route23_EventScript_EarthBadgeGuardTrigger (VAR_MAP_SCENE_ROUTE23 is 7) turns the guard to the player; every other trigger of this guard is out of the way, and the guards ahead trigger on a later value"
+      },
+      {
+        "id": "earth_guard_scene",
+        "kind": "scene",
+        "declared_after": {"map": "Route23", "tiles": [[5, 35]], "facing": "north"},
+        "why": "the guard recognizes the EARTHBADGE (the text, A) and sets VAR_MAP_SCENE_ROUTE23 to 8 (route23.inc Route23_EventScript_RecognizeBadgeTrigger); a player without it is walked back down instead, which the row does not expect: 17.04 has all eight"
+      },
+      {
+        "id": "victory_road_mouth",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "Route23", "tiles": [[5, 29]], "facing": "north"}},
+        "why": "north past the last guard to below the cave mouth (5, 28), the warp into Victory Road 1F"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "notes": {
+      "checkpoint": [
+        "Starts where 19.02 ends: Route 23's south end (8, 153), VAR_MAP_SCENE_ROUTE23 at 1 (the Boulder Badge guard recognized). Each of the seven guards (Cascade to Earth) is a coord-event trigger, not a talk: stepping onto one of the live trigger tiles starts the scene, and with all eight badges it is one message and A; the next guard's triggers go live at the new value, the finished guards' stay quiet.",
+        "The stretch from (13, 118) to (x, 78) is water: the planner Surfs from the shore (HM03 Surf, taught in 12.01) and gets off on the north shore (rows 77 and up). The Soul and Marsh guards stand on its edge, with their triggers in the water, and are triggered while surfing.",
+        "Ends below Victory Road's mouth, Route 23 (5, 29), facing north; 19.04 teaches Strength and walks in."
+      ]
+    }
+  },
+  "metadata": {
+    "phase": "testing",
+    "postconditions": {
+      "position": {"map": "Route23", "tiles": [[5, 29]], "facing": "north"}
+    }
+  }
+}

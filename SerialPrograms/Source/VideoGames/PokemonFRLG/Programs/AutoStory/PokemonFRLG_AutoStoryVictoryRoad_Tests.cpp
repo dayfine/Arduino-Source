@@ -10,6 +10,7 @@
 
 #include <format>
 #include <functional>
+#include <map>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -20,11 +21,13 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryFieldMoves.h"
 #include "PokemonFRLG_AutoStoryRooms.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryRows_Tests.h"
 #include "PokemonFRLG_AutoStoryRows19_Tests.h"
 #include "PokemonFRLG_AutoStoryTable.h"
+#include "PokemonFRLG_AutoStoryTeachPlan.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -177,6 +180,98 @@ UnitTestResult test_rival_foe_threats_are_the_generators(){
     return true;
 }
 
+//  Where the sim stood after each walking step of `row`, by step name.
+std::string walk_row_landings(
+    OverworldSim& sim, StoryPose& at, const StoryCheckpoint& row,
+    std::map<std::string, MapPosition>& landings
+){
+    for (const StoryStep& step : row.steps){
+        if (step.kind != StoryStepKind::ROUTE && step.kind != StoryStepKind::LEGS && step.kind != StoryStepKind::STEP && !is_field_move_step(step)){
+            continue;
+        }
+        if (const std::string failure = row_step_on_sim(sim, at, step, row.id); !failure.empty()){
+            return failure;
+        }
+        landings[step.name] = sim.state().position;
+    }
+    return "";
+}
+
+//  19.03: each badge guard's trigger step lands on the tile of its coord
+//  event (Route23 map.json), and the row ends below Victory Road's mouth.
+UnitTestResult test_route23_guard_triggers(){
+    const StoryCheckpoint& row = checkpoint("19.03");
+    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
+    std::map<std::string, MapPosition> landings;
+    if (const std::string failure = walk_row_landings(sim, at, row, landings); !failure.empty()){
+        return failure;
+    }
+    const std::pair<const char*, MapPosition> guards[] = {
+        {"cascade_guard_trigger", {"Route23", {13, 149}}},
+        {"thunder_guard_trigger", {"Route23", {7, 140}}},
+        {"rainbow_guard_trigger", {"Route23", {12, 123}}},
+        {"soul_guard_trigger", {"Route23", {13, 112}}},
+        {"marsh_guard_trigger", {"Route23", {9, 94}}},
+        {"volcano_guard_trigger", {"Route23", {12, 61}}},
+        {"earth_guard_trigger", {"Route23", {5, 35}}},
+    };
+    for (const auto& guard : guards){
+        const MapPosition& landed = landings[guard.first];
+        if (!(landed == guard.second)){
+            return std::format("19.03 {}: landed on {}, not {}.", guard.first, to_string(landed), to_string(guard.second));
+        }
+    }
+    const MapPosition mouth{"Route23", {5, 29}};
+    if (!(sim.state().position == mouth)){
+        return std::format("19.03: ended on {}, not {}.", to_string(sim.state().position), to_string(mouth));
+    }
+    if (!sim.state().trainers_beaten.empty() || !sim.state().violations.empty()){
+        return "19.03: met a trainer or broke a rule on the way.";
+    }
+    return true;
+}
+
+//  19.04: Strength replaces Water Pulse, as pokeguy keeps Strength, Surf,
+//  Bite and Blizzard; the row ends on Victory Road 1F's south end.
+UnitTestResult test_strength_teach_and_cave_mouth(){
+    const StoryStep& teach = step_of("19.04", "teach_strength");
+    const std::optional<TeachPlan> plan = teach_plan_of(teach.args);
+    if (!plan.has_value() || plan->item != "hm04" || plan->move != "strength"){
+        return "19.04 teach_strength: not HM04 Strength.";
+    }
+    const std::vector<std::string> keep = {"surf", "bite", "blizzard"};
+    if (plan->keep != keep){
+        return "19.04 teach_strength: keep is not surf, bite, blizzard.";
+    }
+    const StoryCheckpoint& row = checkpoint("19.04");
+    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
+    if (const std::string failure = walk_row(sim, at, row, ""); !failure.empty()){
+        return failure;
+    }
+    const MapPosition end{"VictoryRoad_1F", {11, 20}};
+    if (!(sim.state().position == end)){
+        return std::format("19.04: ended on {}, not {}.", to_string(sim.state().position), to_string(end));
+    }
+    return true;
+}
+
+//  19.05: from Victory Road's exit on Route 23 to the nurse's counter.
+UnitTestResult test_indigo_center_walk(){
+    const StoryCheckpoint& row = checkpoint("19.05");
+    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
+    if (const std::string failure = walk_row(sim, at, row, ""); !failure.empty()){
+        return failure;
+    }
+    const MapPosition end{"IndigoPlateau_PokemonCenter_1F", {13, 12}};
+    if (!(sim.state().position == end)){
+        return std::format("19.05: ended on {}, not {}.", to_string(sim.state().position), to_string(end));
+    }
+    return true;
+}
+
 const AutoStoryVictoryRoadCase AUTO_STORY_VICTORY_ROAD_CASES[] = {
     {
         .input = {.name = "19.01 Viridian to the Route 22 rival's trigger", .body = test_route22_rival_trigger},
@@ -189,6 +284,18 @@ const AutoStoryVictoryRoadCase AUTO_STORY_VICTORY_ROAD_CASES[] = {
     {
         .input = {.name = "19.01 the rival's foe rows are the generator's", .body = test_rival_foe_threats_are_the_generators},
         .expectation = {.description = "PokemonSimulation planning_risk() rows"},
+    },
+    {
+        .input = {.name = "19.03 Route 23's guard triggers, to Victory Road's mouth", .body = test_route23_guard_triggers},
+        .expectation = {.description = "each trigger tile landed on, Route 23 (5, 29)"},
+    },
+    {
+        .input = {.name = "19.04 Strength over Water Pulse, into the cave", .body = test_strength_teach_and_cave_mouth},
+        .expectation = {.description = "keep surf, bite, blizzard; Victory Road 1F (11, 20)"},
+    },
+    {
+        .input = {.name = "19.05 Indigo Plateau's Center", .body = test_indigo_center_walk},
+        .expectation = {.description = "Indigo Plateau Center (13, 12)"},
     },
 };
 
