@@ -28,6 +28,7 @@
 #include "Common/Cpp/Time.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
+#include "PokemonFRLG_AutoStoryBattlePolicy.h"
 #include "PokemonFRLG_AutoStoryParty.h"
 #include "PokemonFRLG_AutoStoryBattleTurns.h"
 
@@ -79,6 +80,13 @@ private:
     //  The plan's battle item chosen last was used: its quantity and count
     //  go down, and its pocket row goes with the last one the bag had.
     void planned_item_used();
+    //  The policy's item chosen last was used.
+    void policy_item_used();
+    //  The battle policy's turn, with the lead's HP and speed known: its
+    //  item, or an attack.
+    TurnAction policy_turn(const PartyStatus& status, std::string heal_reason);
+    //  The foe out, as an index into the step's foes.
+    size_t track_foe();
     //  The HP the lead lost since the last turn, from the bar.
     void see_hit(const PartyStatus& status);
     void count_down_refused();
@@ -94,6 +102,9 @@ private:
     bool m_items_off = false;
     //  The plan's battle item chosen last.
     std::string m_planned_item;
+    //  The step's battle policy, if it has one and the lead's stats are read.
+    std::optional<PolicyState> m_policy;
+    size_t m_foe_index = 0;
     bool m_lost = false;
     //  NO was answered to "Delete a move?": "Stop learning?" comes next.
     bool m_declined_delete = false;
@@ -103,10 +114,10 @@ private:
     //  A YES/NO before the next turn means nothing was forgotten.
     std::optional<PartyMember> m_before_forget;
     std::optional<size_t> m_last_move_slot;
-    //  The lead's HP at the last turn, from the bar, and whether a Potion
-    //  was used on it since.
+    //  The lead's HP at the last turn, from the bar, and the HP the
+    //  medicine used on it since heals.
     std::optional<double> m_last_hp;
-    bool m_healed = false;
+    double m_healed_hp = 0;
     //  The HP the last hit seen took, from the foe out `m_hit_by`; 0 if none
     //  was seen.
     double m_seen_hit = 0;

@@ -120,10 +120,8 @@ Pokemon::StoryActionSpec level_action_spec(){
 Pokemon::StoryActionSpec mart_action_spec(){
     return {.kind = StoryStepKind::GAME, .name = MART_ACTION, .args = {
         required_arg("map", StoryArgType::WORD, "the Mart's map, for its stock"),
-        required_arg("budget", StoryArgType::INTEGER, "the most the step spends"),
-        absent_arg("floor", StoryArgType::INTEGER, "the least money the player has here, when the money box can't be read"),
         required_arg("items", StoryArgType::ITEMS, "what to buy, in priority order"),
-        absent_arg("cover_hp", StoryArgType::INTEGER, "buy only the first line's shortfall for the bag's Potions and Super Potions to heal this much HP"),
+        absent_arg("fill_to", StoryArgType::INTEGER, "buy only what the bag lacks of the first line's item to hold this many"),
     }};
 }
 
@@ -178,33 +176,78 @@ std::vector<Pokemon::StoryActionSpec> movement_variant_specs(std::span<const Pok
     return specs;
 }
 
+//  How a battle is fought by PokeGuy's policy (PokemonFRLG_AutoStoryBattlePolicy.h).
+std::vector<Pokemon::StoryArgSpec> policy_arg_specs(){
+    std::vector<Pokemon::StoryArgSpec> args;
+    args.push_back(Pokemon::StoryArgSpec{
+        .key = "policy", .type = Pokemon::StoryArgType::WORD, .required = false, .fallback = std::string(),
+        .why = "PokeGuy's battle policy, \"solo-recovery\" or \"goal-based-setup\" (PokemonSimulation docs/battles/pokeguy-conditions.md); with foe_threats, and for the second the setup_* goals",
+    });
+    args.push_back(Pokemon::StoryArgSpec{
+        .key = "setup_spa", .type = Pokemon::StoryArgType::INTEGER, .required = false, .fallback = int64_t(0),
+        .why = "the doc's setup goal spa: the Sp. Atk stage to reach with X Specials",
+    });
+    args.push_back(Pokemon::StoryArgSpec{
+        .key = "setup_accuracy", .type = Pokemon::StoryArgType::INTEGER, .required = false, .fallback = int64_t(0),
+        .why = "the doc's setup goal accuracy: the accuracy stage to reach with X Accuracy, plus the foe's evasion",
+    });
+    args.push_back(Pokemon::StoryArgSpec{
+        .key = "setup_outspeed", .type = Pokemon::StoryArgType::BOOLEAN, .required = false, .fallback = false,
+        .why = "the doc's setup goal outspeed: X Speed until faster than every foe left",
+    });
+    args.push_back(Pokemon::StoryArgSpec{
+        .key = "setup_guard_accuracy", .type = Pokemon::StoryArgType::BOOLEAN, .required = false, .fallback = false,
+        .why = "the doc's setup goal guard_accuracy: Guard Spec first against a foe with an accuracy-lowering move",
+    });
+    args.push_back(Pokemon::StoryArgSpec{
+        .key = "setup_torrent_power", .type = Pokemon::StoryArgType::BOOLEAN, .required = false, .fallback = false,
+        .why = "the doc's setup goal torrent_power: a higher Sp. Atk goal while Torrent is off",
+    });
+    args.push_back(Pokemon::StoryArgSpec{
+        .key = "foe_threats", .type = Pokemon::StoryArgType::INTEGER_ROWS, .required = false, .fallback = std::vector<std::vector<int64_t>>(),
+        .why = "one row per foe, [speed, likely, mean, max, normal_max, lowers_accuracy, explodes]: what it does to the lead, from the doc's stats",
+    });
+    return args;
+}
+
+//  A trainer battle's plan names the trainer and its party.
+std::vector<Pokemon::StoryArgSpec> battle_arg_specs(){
+    std::vector<Pokemon::StoryArgSpec> args;
+    args.push_back(Pokemon::StoryArgSpec{
+        .key = "trainer", .type = Pokemon::StoryArgType::WORD, .required = false, .fallback = std::string(),
+        .why = "pret's constant for the trainer (\"TRAINER_LEADER_BROCK\"); sets the battle's risk",
+    });
+    args.push_back(Pokemon::StoryArgSpec{
+        .key = "foes", .type = Pokemon::StoryArgType::WORDS, .required = false, .fallback = std::vector<std::string>(),
+        .why = "the trainer's party in order; attacks are chosen against the one out",
+    });
+    args.push_back(Pokemon::StoryArgSpec{
+        .key = "use_items", .type = Pokemon::StoryArgType::ITEMS, .required = false, .fallback = std::vector<Pokemon::StoryItem>(),
+        .why = "items used on the lead from the first turn, in order, before any attack (X Specials)",
+    });
+    args.push_back(Pokemon::StoryArgSpec{
+        .key = "run", .type = Pokemon::StoryArgType::BOOLEAN, .required = false, .fallback = false,
+        .why = "run from a scripted wild battle (Route 16's Snorlax) instead of fighting it",
+    });
+    for (Pokemon::StoryArgSpec& arg : policy_arg_specs()){
+        args.push_back(std::move(arg));
+    }
+    return args;
+}
+
 } // namespace
 
 std::span<const Pokemon::StoryActionSpec> story_action_specs(){
     static const std::vector<Pokemon::StoryActionSpec> SPECS = []{
         const std::span<const Pokemon::StoryActionSpec> builtin = Pokemon::builtin_story_actions();
         std::vector<Pokemon::StoryActionSpec> specs(builtin.begin(), builtin.end());
-        //  A trainer battle's plan names the trainer and its party.
         for (Pokemon::StoryActionSpec& spec : specs){
             if (spec.kind != StoryStepKind::BATTLE){
                 continue;
             }
-            spec.args.push_back(Pokemon::StoryArgSpec{
-                .key = "trainer", .type = Pokemon::StoryArgType::WORD, .required = false, .fallback = std::string(),
-                .why = "pret's constant for the trainer (\"TRAINER_LEADER_BROCK\"); sets the battle's risk",
-            });
-            spec.args.push_back(Pokemon::StoryArgSpec{
-                .key = "foes", .type = Pokemon::StoryArgType::WORDS, .required = false, .fallback = std::vector<std::string>(),
-                .why = "the trainer's party in order; attacks are chosen against the one out",
-            });
-            spec.args.push_back(Pokemon::StoryArgSpec{
-                .key = "use_items", .type = Pokemon::StoryArgType::ITEMS, .required = false, .fallback = std::vector<Pokemon::StoryItem>(),
-                .why = "items used on the lead from the first turn, in order, before any attack (X Specials)",
-            });
-            spec.args.push_back(Pokemon::StoryArgSpec{
-                .key = "run", .type = Pokemon::StoryArgType::BOOLEAN, .required = false, .fallback = false,
-                .why = "run from a scripted wild battle (Route 16's Snorlax) instead of fighting it",
-            });
+            for (Pokemon::StoryArgSpec& arg : battle_arg_specs()){
+                spec.args.push_back(std::move(arg));
+            }
         }
         for (Pokemon::StoryActionSpec spec : movement_variant_specs(builtin)){
             specs.push_back(std::move(spec));

@@ -28,14 +28,10 @@ public:
     virtual void log(const std::string&, Color) override{}
 };
 
-//  A game where nothing happens: a lead whose level is set, a Mart whose
-//  money is set, a patch whose one battle is shiny if set.
+//  A game where nothing happens: a lead whose level is set, a patch whose one battle is shiny if set.
 class StubMart : public MartActions{
 public:
-    size_t money = 3000;
-
     virtual bool open_buy_list() override{ return true; }
-    virtual std::optional<size_t> read_money() override{ return money; }
     virtual void press_cursor(bool) override{}
     virtual std::string read_row(size_t) override{ return ""; }
     virtual void dump_screen(std::string_view) override{}
@@ -152,13 +148,12 @@ struct StepCase{
 
 std::vector<StepCase> step_cases(){
     const auto none = [](StubGame&){};
-    const Pokemon::StoryStep mart = mart_step("mart", "", {.map = "PewterCity_Mart", .lines = {{"potion", 5}}, .budget = 2000});
+    const Pokemon::StoryStep mart = mart_step("mart", "", {.map = "PewterCity_Mart", .lines = {{"potion", 5}}});
     const Pokemon::StoryStep grind = grind_step("grind", "", {.member = 0, .level = 20, .max_encounters = 5, .pace = Pokemon::Direction::EAST, .heal_every = 0}, {});
     return {
         {"level reached", none, level_step("check", "", {.slot = 0, .level = 16}), "unchanged"},
         {"level below", none, level_step("check", "", {.slot = 0, .level = 17}), "level_below"},
         {"level unread", [](StubGame& game){ game.level.reset(); }, level_step("check", "", {.slot = 0, .level = 16}), "level_unread"},
-        {"a Mart with too little money succeeds", [](StubGame& game){ game.mart.money = 100; }, mart, "unchanged"},
         {"a Mart purchase that fails", none, mart, "mart_failed"},
         {"a move it knows already succeeds", none, teach_step("teach", "", {.item = "hm03", .move = "surf", .member = 0}), "unchanged"},
         {"a TM not in the TM Case is skipped", none, teach_step("teach", "", {.item = "tm03", .move = "water-pulse", .member = 0, .forget_move = "water-gun"}), "unchanged"},
@@ -189,7 +184,7 @@ UnitTestResult test_ability_steps(){
 UnitTestResult test_once_per_save_steps(){
     const std::vector<Pokemon::StoryStep> once{
         teach_step("teach", "", {.item = "tm03", .move = "water-pulse", .member = 0, .forget_move = "tail-whip"}),
-        mart_step("mart", "", {.map = "CeruleanCity_Mart", .lines = {{.item = "potion", .quantity = 3}}, .budget = 1500, .money_floor = 1500}),
+        mart_step("mart", "", {.map = "CeruleanCity_Mart", .lines = {{.item = "potion", .quantity = 3}}}),
     };
     for (const Pokemon::StoryStep& step : once){
         if (!step.once_per_save){

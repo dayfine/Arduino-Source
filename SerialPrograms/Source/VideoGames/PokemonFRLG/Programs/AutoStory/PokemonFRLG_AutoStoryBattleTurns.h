@@ -33,6 +33,9 @@ enum class TurnChoice{
     AWAKENING,
     //  One of the plan's battle items (an X Special), on the lead.
     BATTLE_ITEM,
+    //  A medicine of the battle policy (Super Potion, Full Restore, a cure)
+    //  on the lead through the party list.
+    MEDICINE,
     MOVE,
 };
 
