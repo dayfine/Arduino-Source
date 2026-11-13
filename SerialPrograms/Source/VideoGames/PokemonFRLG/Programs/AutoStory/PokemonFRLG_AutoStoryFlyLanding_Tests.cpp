@@ -226,6 +226,25 @@ protected:
 constexpr std::string_view FLY_OFF_FRAME = "PokemonFRLG/AutoStoryFlyLanding/Fuchsia_FlyOff.png";
 constexpr std::string_view PALLET_FADING_FRAME = "PokemonFRLG/AutoStoryFlyLanding/PalletTown_FadingIn.png";
 
+//  The departure town, with the Fly's bird over it, is not left; Pallet
+//  Town is, from its fade-in on, and has no player to read while fading in.
+//  Returns what was misread, or empty.
+std::string misread_frame(
+    const ImageRGB32& departure, const ImageRGB32& bird, const ImageRGB32& fading, const ImageRGB32& pallet,
+    const ImageFloatBox& game
+){
+    if (left_departure(departure, bird, game)){
+        return "Fuchsia with the bird reads as another town";
+    }
+    if (!left_departure(departure, fading, game) || !left_departure(departure, pallet, game)){
+        return "Pallet Town reads as the departure town";
+    }
+    if (read_player_facing(fading, PlayerGender::GIRL) || read_player_facing(fading, PlayerGender::BOY)){
+        return "Pallet fading in reads a facing";
+    }
+    return "";
+}
+
 class Test_AutoStoryFlyLandingFlyOff : public ImageUnitTest{
 public:
     Test_AutoStoryFlyLandingFlyOff()
@@ -250,18 +269,8 @@ protected:
             "departure change: Fuchsia with the bird {:.1f}, Pallet fading in {:.1f}, Pallet standing {:.1f}",
             departure_change(departure, bird, game), departure_change(departure, fading, game), departure_change(departure, pallet, game)
         ));
-
-        //  The departure town, with the Fly's bird over it, is not left;
-        //  Pallet Town is, from its fade-in on.
-        if (left_departure(departure, bird, game)){
-            return "Fuchsia with the bird reads as another town";
-        }
-        if (!left_departure(departure, fading, game) || !left_departure(departure, pallet, game)){
-            return "Pallet Town reads as the departure town";
-        }
-        //  Pallet fading in: no player yet, so no landing.
-        if (facing_of(fading)){
-            return "Pallet fading in reads a facing";
+        if (const std::string wrong = misread_frame(departure, bird, fading, pallet, game); !wrong.empty()){
+            return wrong;
         }
 
         //  The fly map's fade, then Fuchsia quiet for 2.6 s: both runs'
@@ -273,7 +282,7 @@ protected:
             [&]{ return facing_of(departure); }
         );
         if (on_fuchsia.landed()){
-            return "Fuchsia after the fly map's fade counts as landed: " + describe(on_fuchsia);
+            return std::format("Fuchsia after the fly map's fade counts as landed: {}", describe(on_fuchsia));
         }
         //  Then the flight's fade and Pallet with the player standing: landed.
         const std::vector<ScriptedFrame> arrival = joined(joined(fly_off, repeated(BLACK, 6)), repeated(NOTHING, 12));
@@ -283,7 +292,7 @@ protected:
             [&]{ return facing_of(pallet); }
         );
         if (!on_pallet.landed()){
-            return "Pallet Town after the flight's fade is not landed: " + describe(on_pallet);
+            return std::format("Pallet Town after the flight's fade is not landed: {}", describe(on_pallet));
         }
         return true;
     }
