@@ -56,12 +56,13 @@ struct CheckpointRetryActions{
     CheckpointLogger log;
 };
 
-//  Runs `checkpoint` through run_checkpoint_attempts() with the start,
+//  Runs the checkpoint through run_checkpoint_attempts() with the start,
 //  attempt and reset lines, until an attempt passes, and returns that
-//  attempt's number. After the last attempt fails it calls `give_up` and
-//  rethrows. Each reset adds to `stats.m_reset`.
+//  attempt's number. SV's lines name the checkpoint by `checkpoint_text`
+//  ("Checkpoint:: 004 - 02 ..."), its display text. After the last attempt
+//  fails it calls `give_up` and rethrows. Each reset adds to `stats.m_reset`.
 size_t run_checkpoint_with_retries(
-    std::string_view checkpoint,
+    std::string_view checkpoint_text,
     const CheckpointRetryPolicy& policy,
     const CheckpointRetryActions& actions,
     AutoStoryStats& stats

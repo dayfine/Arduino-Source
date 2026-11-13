@@ -77,7 +77,7 @@ CheckpointRetryRecord run_case(const CheckpointRetryInput& input, AutoStoryStats
         },
     };
     try{
-        record.passed_on = run_checkpoint_with_retries("01", input.policy, actions, stats);
+        record.passed_on = run_checkpoint_with_retries("Checkpoint:: 01", input.policy, actions, stats);
     }catch (GaveUp&){
         record.passed_on = 0;
     }
@@ -125,9 +125,9 @@ const CheckpointRetryCase CHECKPOINT_RETRY_CASES[] = {
             .reports = {},
             .resets = 0,
             .log = {
-                "[Checkpoint] 01: start",
-                "[Checkpoint] 01: attempt 1/3",
-                "[Checkpoint] 01: passed on attempt 1 (one-shot)",
+                "Checkpoint:: 01: start",
+                "Checkpoint:: 01: attempt 1/3",
+                "Checkpoint:: 01: passed on attempt 1 (one-shot)",
             },
         },
     },
@@ -138,11 +138,11 @@ const CheckpointRetryCase CHECKPOINT_RETRY_CASES[] = {
             .reports = {},
             .resets = 1,
             .log = {
-                "[Checkpoint] 01: start",
-                "[Checkpoint] 01: attempt 1/3",
-                "[Checkpoint] 01: failed, resetting for attempt 2",
-                "[Checkpoint] 01: attempt 2/3",
-                "[Checkpoint] 01: passed on attempt 2 (1 reset)",
+                "Checkpoint:: 01: start",
+                "Checkpoint:: 01: attempt 1/3",
+                "Checkpoint:: 01: failed, resetting for attempt 2",
+                "Checkpoint:: 01: attempt 2/3",
+                "Checkpoint:: 01: passed on attempt 2 (1 reset)",
             },
         },
     },
@@ -153,15 +153,15 @@ const CheckpointRetryCase CHECKPOINT_RETRY_CASES[] = {
             .reports = {2},
             .resets = 3,
             .log = {
-                "[Checkpoint] 01: start",
-                "[Checkpoint] 01: attempt 1/5",
-                "[Checkpoint] 01: failed, resetting for attempt 2",
-                "[Checkpoint] 01: attempt 2/5",
-                "[Checkpoint] 01: failed, resetting for attempt 3",
-                "[Checkpoint] 01: attempt 3/5",
-                "[Checkpoint] 01: failed, resetting for attempt 4",
-                "[Checkpoint] 01: attempt 4/5",
-                "[Checkpoint] 01: passed on attempt 4 (3 resets)",
+                "Checkpoint:: 01: start",
+                "Checkpoint:: 01: attempt 1/5",
+                "Checkpoint:: 01: failed, resetting for attempt 2",
+                "Checkpoint:: 01: attempt 2/5",
+                "Checkpoint:: 01: failed, resetting for attempt 3",
+                "Checkpoint:: 01: attempt 3/5",
+                "Checkpoint:: 01: failed, resetting for attempt 4",
+                "Checkpoint:: 01: attempt 4/5",
+                "Checkpoint:: 01: passed on attempt 4 (3 resets)",
             },
         },
     },
@@ -172,10 +172,10 @@ const CheckpointRetryCase CHECKPOINT_RETRY_CASES[] = {
             .reports = {2},
             .resets = 1,
             .log = {
-                "[Checkpoint] 01: start",
-                "[Checkpoint] 01: attempt 1/2",
-                "[Checkpoint] 01: failed, resetting for attempt 2",
-                "[Checkpoint] 01: attempt 2/2",
+                "Checkpoint:: 01: start",
+                "Checkpoint:: 01: attempt 1/2",
+                "Checkpoint:: 01: failed, resetting for attempt 2",
+                "Checkpoint:: 01: attempt 2/2",
             },
         },
     },
