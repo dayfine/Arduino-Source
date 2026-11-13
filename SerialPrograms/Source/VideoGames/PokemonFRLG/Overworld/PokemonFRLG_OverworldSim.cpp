@@ -15,6 +15,7 @@
 #include "PokemonFRLG_OverworldWalk.h"
 #include "PokemonFRLG_OverworldBike.h"
 #include "PokemonFRLG_OverworldMaps.h"
+#include "PokemonFRLG_OverworldGatedRoute.h"
 #include "PokemonFRLG_OverworldSim.h"
 
 namespace PokemonAutomation{
@@ -147,6 +148,11 @@ OverworldSim::OverworldSim(std::vector<MapData> maps, MapPosition start, Directi
         throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Sim: start on a map that isn't loaded: " + start.map);
     }
     add_coded_field();
+    if (has_gates(m_maps)){
+        m_source_maps = m_maps;
+    }
+    m_gates = m_script.gates;
+    read_gates();
     m_player = PlayerState{start.point, elevation_at(map(), start.point), false};
     m_state.facing = facing;
     m_state.on_bike = m_script.on_bike;
@@ -837,6 +843,9 @@ std::optional<WalkedTiles> OverworldSimWalker::walk_step(const RouteStep& step, 
     if (step.action == RouteAction::SURF){
         return surf(step);
     }
+    if (step.action == RouteAction::OPEN_GATE || step.action == RouteAction::PRESS_SWITCH){
+        return use_gate(step);
+    }
     if (turns_first(step, m_speed, facing)){
         sim_turn_to(m_sim, step.direction, m_rules.confirm_turn);
     }
@@ -901,7 +910,7 @@ StepOutcome OverworldSimWalker::walk_ridden(const RouteStep& step, std::optional
     }else if (const std::optional<WalkedTiles> walked = walk_step(step, facing)){
         return StepOutcome{.end = StepEnd::STOPPED, .walked = walked};
     }
-    if (step.action == RouteAction::FACE){
+    if (step.action == RouteAction::FACE || step.action == RouteAction::OPEN_GATE || step.action == RouteAction::PRESS_SWITCH){
         return StepOutcome{};
     }
     size_t late = clear_late(interrupts(step), step.wild ? m_rules.after_wild_leg_watch : AFTER_LEG_WATCH, MAX_INTERRUPTIONS_PER_LEG);

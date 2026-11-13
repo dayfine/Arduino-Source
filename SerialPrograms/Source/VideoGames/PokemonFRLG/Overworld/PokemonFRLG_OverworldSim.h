@@ -67,6 +67,10 @@ public:
 
     const SimState& state() const{ return m_state; }
 
+    //  The gates open and the switches on now (SimScript::gates, then what
+    //  the player opened and pressed).
+    const Pokemon::GateState& gates() const{ return m_gates; }
+
     //  Whether the walker's screen check reads its last step tap as a
     //  step: one that moved the player from `before`, but for
     //  SimScript::unseen_step_taps, or a turn tap since `turn_taps_before`
@@ -170,6 +174,12 @@ private:
     bool choose_lift_floor(size_t floor);
     bool push_poster_switch();
     bool start_surf();
+    //  A on the gate or the statue the player faces; false, as a violation,
+    //  if there is none or the Card Key is missing.
+    bool open_gate();
+    bool press_switch();
+    //  Reads each map's gate tiles through m_gates.
+    void read_gates();
     bool fly_to_town(size_t town);
     //  The trees cut come back, as after a warp.
     void regrow_cut_trees();
@@ -196,6 +206,9 @@ private:
     const MapData& map() const{ return m_maps[m_map]; }
 
     std::vector<MapData> m_maps;
+    //  The maps as loaded, with the gates closed or open as the map says.
+    std::vector<MapData> m_source_maps;
+    Pokemon::GateState m_gates;
     SimScript m_script;
     int m_map = 0;
     PlayerState m_player;
@@ -432,6 +445,9 @@ private:
     //  Nothing: a Surf is never stopped part-way.
     //  (PokemonFRLG_OverworldSimField.cpp)
     std::optional<WalkedTiles> surf(const RouteStep& step);
+    //  OPEN_GATE, PRESS_SWITCH: turned to the gate or statue, A (and YES),
+    //  as use_field(). (PokemonFRLG_OverworldSimField.cpp)
+    std::optional<WalkedTiles> use_gate(const RouteStep& step);
     bool after_warp(const RouteStep& step, int warps_before, Milliseconds watched_from);
     bool fade_over_since(Milliseconds from) const;
     //  after_warp() on a fade seen with no warp: fails, or with
@@ -475,6 +491,8 @@ void add_tests_OverworldSim(UnitTestDatabase& database);
 void add_tests_OverworldWarpFade(UnitTestDatabase& database);
 //  Register the tests of the way a warp leaves the player facing.
 void add_tests_OverworldStairs(UnitTestDatabase& database);
+//  Register the tests of gated routes, and of the sim opening gates.
+void add_tests_OverworldGates(UnitTestDatabase& database);
 
 
 } // namespace PokemonFRLG

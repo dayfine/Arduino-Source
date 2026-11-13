@@ -15,6 +15,7 @@
 #include <string>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "Pokemon/Navigation/Pokemon_GateState.h"
 #include "PokemonFRLG_OverworldMap.h"
 
 namespace PokemonAutomation{
@@ -38,6 +39,12 @@ enum class RouteAction{
     WALK,       //  hold `direction` for `tiles` tiles
     SURF,       //  face `direction`, use Surf, and land on the water there
     FACE,       //  turn to `direction` without moving
+    //  Face the closed card-key gate in `direction` and open it with A: the
+    //  Silph Co. door's message follows. The player stays on the tile.
+    OPEN_GATE,
+    //  Face the statue in `direction` and press it with A, YES to the
+    //  switch's question (Pokemon Mansion). The player stays on the tile.
+    PRESS_SWITCH,
 };
 
 //  A single step along an overworld path.
@@ -93,6 +100,9 @@ struct RouteStep{
     Direction facing_after = Direction::NORTH;
     //  Where the player is after the step.
     MapPosition end;
+    //  OPEN_GATE, PRESS_SWITCH: what the step does to the gates, for the
+    //  story to keep (gates_after_route()).
+    Pokemon::GateChange gate_change = {};
 };
 //  Formats a RouteStep as a string.
 std::string to_string(const RouteStep& step);

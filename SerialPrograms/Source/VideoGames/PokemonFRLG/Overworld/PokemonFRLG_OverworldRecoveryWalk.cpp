@@ -245,6 +245,14 @@ StepWalk walk_step(
     case RouteAction::FACE:
         turn_to(console, context, step.direction, player);
         break;
+    case RouteAction::OPEN_GATE:
+        turn_to(console, context, step.direction, player);
+        open_gate(console, context, step.direction, true);
+        break;
+    case RouteAction::PRESS_SWITCH:
+        turn_to(console, context, step.direction, player);
+        press_switch(console, context, step.direction, true);
+        break;
     }
     return out;
 }
@@ -324,7 +332,7 @@ StepOutcome walk_and_watch(
     if (walked.stopped){
         return StepOutcome{.end = StepEnd::STOPPED, .walked = walked.stopped, .blocked = walked.blocked};
     }
-    if (step.action == RouteAction::FACE){
+    if (step.action == RouteAction::FACE || step.action == RouteAction::OPEN_GATE || step.action == RouteAction::PRESS_SWITCH){
         return StepOutcome{};
     }
     const Milliseconds watch = step.wild ? AFTER_WILD_LEG_WATCH : AFTER_LEG_WATCH;

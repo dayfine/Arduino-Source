@@ -44,6 +44,14 @@ namespace{
 constexpr Milliseconds WARP_TIMEOUT = 8000ms;
 constexpr Milliseconds SURF_PROMPT_TIMEOUT = 5000ms;
 constexpr Milliseconds SURF_ANIMATION = 3000ms;
+//  A card-key door's message, and the door opening after it.
+constexpr Milliseconds GATE_MESSAGE_WAIT = 1500ms;
+constexpr Milliseconds GATE_SETTLE = 1500ms;
+//  The Yes/No prompt of a statue, and how long B's through the text before
+//  and after the switch last.
+constexpr Milliseconds SWITCH_PROMPT_TIMEOUT = 5000ms;
+constexpr Milliseconds SWITCH_SETTLE = 2000ms;
+constexpr int MAX_TEXT_BOXES = 5;
 //  After a message closes: a trainer who saw the player speaks first, then
 //  the battle starts, with "<Trainer> would like to battle!" seconds later.
 constexpr Milliseconds TRAINER_BATTLE_WATCH = 6000ms;
@@ -761,6 +769,56 @@ void start_surf(ConsoleHandle& console, ProControllerContext& context, Direction
     pbf_wait(context, SURF_ANIMATION);
 }
 
+namespace{
+
+//  B through the text boxes that are open, at most MAX_TEXT_BOXES of them.
+void clear_text(ConsoleHandle& console, ProControllerContext& context){
+    for (int c = 0; c < MAX_TEXT_BOXES; c++){
+        context.wait_for_all_requests();
+        VideoSnapshot screen = console.video().snapshot();
+        if (!screen || !WhiteDialogDetector(COLOR_RED).detect(screen)){
+            return;
+        }
+        pbf_press_button(context, BUTTON_B, 160ms, 1000ms);
+    }
+}
+
+void face_for_a(ProControllerContext& context, Direction direction, bool facing){
+    //  An A pressed while the player is still turning is lost.
+    if (!facing){
+        pbf_press_dpad(context, dpad(direction), FACE_HOLD, FACE_SETTLE);
+    }
+}
+
+} // namespace
+
+void open_gate(ConsoleHandle& console, ProControllerContext& context, Direction direction, bool facing_gate){
+    face_for_a(context, direction, facing_gate);
+    pbf_press_button(context, BUTTON_A, 160ms, GATE_MESSAGE_WAIT);
+    clear_text(console, context);
+    pbf_wait(context, GATE_SETTLE);
+    context.wait_for_all_requests();
+}
+
+void press_switch(ConsoleHandle& console, ProControllerContext& context, Direction direction, bool facing_statue){
+    face_for_a(context, direction, facing_statue);
+    pbf_press_button(context, BUTTON_A, 160ms, 0ms);
+    SelectionDialogWatcher prompt(COLOR_RED);
+    context.wait_for_all_requests();
+    if (wait_until(console, context, SWITCH_PROMPT_TIMEOUT, {prompt}) < 0){
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::SEND_ERROR_REPORT,
+            "walk_overworld_route(): no prompt facing the statue.",
+            console
+        );
+    }
+    //  Yes is selected.
+    pbf_press_button(context, BUTTON_A, 160ms, 1000ms);
+    clear_text(console, context);
+    pbf_wait(context, SWITCH_SETTLE);
+    context.wait_for_all_requests();
+}
+
 } // namespace OverworldWalkSteps
 
 
@@ -899,8 +957,16 @@ void walk_overworld_route(
             //  (console B, 2026-11-11, 09.02 moon_stone).
             turn_to(console, context, step.direction, player);
             break;
+        case RouteAction::OPEN_GATE:
+            turn_to(console, context, step.direction, player);
+            open_gate(console, context, step.direction, true);
+            break;
+        case RouteAction::PRESS_SWITCH:
+            turn_to(console, context, step.direction, player);
+            press_switch(console, context, step.direction, true);
+            break;
         }
-        if (step.action != RouteAction::FACE){
+        if (step.action != RouteAction::FACE && step.action != RouteAction::OPEN_GATE && step.action != RouteAction::PRESS_SWITCH){
             const OverworldInterrupts& watched = step.wild ? interrupts.wild : interrupts.other;
             if (Pokemon::clear_late_interrupts(console, context, watched, step.wild ? AFTER_WILD_LEG_WATCH : AFTER_LEG_WATCH, MAX_INTERRUPTIONS_PER_LEG) == 0){
                 clear_unseen_battle(console, context, interrupts.wild, step);

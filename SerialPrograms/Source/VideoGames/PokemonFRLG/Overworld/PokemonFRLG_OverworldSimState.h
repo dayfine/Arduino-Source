@@ -29,6 +29,12 @@ namespace PokemonFRLG{
 //  What a test sets up beyond the maps.
 struct SimScript{
     std::vector<SimEncounter> encounters;
+    //  The player holds the Card Key: A on a card-key gate opens it
+    //  (SimField::OPEN_GATE). Without it the door does not open, as in the game.
+    bool card_key_held = false;
+    //  The gates open at the start. The sim reads each map's gate tiles
+    //  through them (Pokemon_GateTiles.h).
+    Pokemon::GateState gates;
     //  The START menu is open at the start: the D-pad moves its cursor.
     bool start_menu_open = false;
     //  The hold numbered by the key (from 1) stops this many tiles short,

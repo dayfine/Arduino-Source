@@ -30,7 +30,7 @@ uint8_t elevation_at(const MapData& map, const TilePos& point){
 
 bool is_wall(const MapData& map, const TilePos& point){
     const TileKind tile = tile_at(map, point);
-    return tile == TileKind::WALL || tile == TileKind::DOOR || tile == TileKind::SIGN || is_ledge(map, point);
+    return tile == TileKind::WALL || tile == TileKind::GATE || tile == TileKind::DOOR || tile == TileKind::SIGN || is_ledge(map, point);
 }
 bool is_ledge(const MapData& map, const TilePos& point){
     switch (tile_at(map, point)){
