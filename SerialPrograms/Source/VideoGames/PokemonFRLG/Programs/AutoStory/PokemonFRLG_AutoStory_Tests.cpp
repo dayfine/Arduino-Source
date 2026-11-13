@@ -1113,6 +1113,42 @@ UnitTestResult test_save_place_error(){
     return true;
 }
 
+//  A checkpoint saves only where it ends. 12.03 ends in Cinnabar's Center,
+//  where 13.01 starts; on console B (2026-11-13 04:16) it stopped surfing
+//  on Route 21 and saved there, its card reading "ROUTE 21": that save is
+//  refused, and so is one whose card can't be read.
+UnitTestResult test_save_end_error(){
+    const std::string end = checkpoint_end_map("12.03");
+    if (end != "CinnabarIsland_PokemonCenter_1F"){
+        return "12.03 ends on \"" + end + "\", not CinnabarIsland_PokemonCenter_1F.";
+    }
+    if (!checkpoint_end_map("no-such-row").empty()){
+        return "A row that isn't in the table has an end map.";
+    }
+    struct Case{
+        std::string end_map;
+        std::string place;
+        bool error;
+    };
+    const Case CASES[] = {
+        {.end_map = end, .place = "route-21", .error = true},
+        {.end_map = end, .place = "cinnabar-island", .error = false},
+        {.end_map = end, .place = "", .error = true},
+        {.end_map = "Route21_North", .place = "route-21", .error = false},
+        //  A map with no known place isn't checked.
+        {.end_map = "Route9", .place = "pewter-city", .error = false},
+        {.end_map = "", .place = "route-21", .error = false},
+    };
+    for (const Case& c : CASES){
+        const std::string error = save_end_error(c.end_map, c.place);
+        if (error.empty() == c.error){
+            return "A save card naming \"" + c.place + "\" for an end on " + c.end_map + ": expected " +
+                (c.error ? "an error" : "no error") + ", got \"" + error + "\".";
+        }
+    }
+    return true;
+}
+
 std::string_view save_action_name(SaveAction action){
     switch (action){
     case SaveAction::WAIT:
@@ -1356,6 +1392,10 @@ const AutoStoryTestCase AUTO_STORY_CASES[] = {
     {
         .input = {.name = "a reload's save is checked against the start", .body = test_save_place_error},
         .expectation = {.description = "detects mismatch between checkpoint initial state and save point"},
+    },
+    {
+        .input = {.name = "a checkpoint saves only where it ends", .body = test_save_end_error},
+        .expectation = {.description = "refuses a save whose card names another place than the checkpoint's end"},
     },
     {
         .input = {.name = "save dialogs: every YES/NO is YES, a cancel fails", .body = test_save_dialog},

@@ -363,6 +363,7 @@ std::string save_card_place(const std::string& map){
         {"CeruleanCity", "cerulean-city"},
         {"Route24", "route-24"},
         {"Route25", "route-25"},
+        {"Route21", "route-21"},
         {"Route22", "route-22"},
         {"Route23", "route-23"},
         {"VermilionCity", "vermilion-city"},
@@ -392,6 +393,27 @@ std::string save_place_error(const std::string& start_map, const std::string& pl
         return "";
     }
     return "The save is in " + place + ", but the checkpoint starts in " + expected + " (" + start_map + ").";
+}
+
+std::string checkpoint_end_map(const std::string& id){
+    const std::vector<StoryCheckpoint>& table = story_checkpoints();
+    for (size_t c = 0; c + 1 < table.size(); c++){
+        if (table[c].id == id && table[c + 1].start){
+            return Pokemon::grid_pose_of(*table[c + 1].start).map;
+        }
+    }
+    return "";
+}
+
+std::string save_end_error(const std::string& end_map, const std::string& place){
+    const std::string expected = save_card_place(end_map);
+    if (expected.empty() || place == expected){
+        return "";
+    }
+    if (place.empty()){
+        return "The save card's place can't be read, so the end in " + expected + " (" + end_map + ") isn't confirmed.";
+    }
+    return "The save card names " + place + ", but the checkpoint ends in " + expected + " (" + end_map + ").";
 }
 
 std::string start_pose_mismatch(const Pokemon::Pose& start, const StoryPose& stands){
@@ -999,7 +1021,10 @@ Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor&
     const StartMenu menu = data.menu;
     checkpoint.save = [&env, menu, id = data.id](RunState&){
         return guarded([&]{
-            save_game(env.console, env.context, menu);
+            const std::string end_map = checkpoint_end_map(id);
+            save_game(env.console, env.context, menu, env.language, [&end_map](const std::string& place){
+                return save_end_error(end_map, place);
+            });
             keep_next_start_frame(env, id);
             env.has_save = true;
             env.saved_supplies = env.supplies;

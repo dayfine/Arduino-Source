@@ -759,7 +759,10 @@ void run_save_dialog(ConsoleHandle& console, ProControllerContext& context){
 
 } // namespace
 
-void save_game(ConsoleHandle& console, ProControllerContext& context, StartMenu menu){
+void save_game(
+    ConsoleHandle& console, ProControllerContext& context, StartMenu menu,
+    Language language, const SavePlaceCheck& check
+){
     console.log("Saving the game.");
     open_start_menu_row(console, context, menu, start_menu_save_row(menu));
     //  The save card and "Would you like to save the game?"
@@ -769,7 +772,20 @@ void save_game(ConsoleHandle& console, ProControllerContext& context, StartMenu 
         );
     }
     context.wait_for_all_requests();
-    dump_debug_image(console, "AutoStory/save", "save-card", console.video().snapshot());
+    VideoSnapshot card = console.video().snapshot();
+    dump_debug_image(console, "AutoStory/save", "save-card", card);
+    const std::string place = card ? read_save_card_location(console, language, card) : "";
+    const std::string error = check(place);
+    if (!error.empty()){
+        console.log("Not saving: " + error, COLOR_RED);
+        //  NO, then out of the menu.
+        press(context, BUTTON_B, 1000ms);
+        mash_until_overworld(console, context, 20000ms);
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::SEND_ERROR_REPORT, "save_game(): not saved: " + error, console
+        );
+    }
+    console.log("Save card: " + (place.empty() ? std::string("(unread)") : place) + ".");
     run_save_dialog(console, context);
 }
 
