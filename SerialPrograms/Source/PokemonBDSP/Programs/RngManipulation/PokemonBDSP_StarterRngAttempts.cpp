@@ -288,6 +288,7 @@ bool resolve_starter_rng_step(
     }
 
     if (attempt.outcome == BdspAttemptOutcome::Hit){
+        result.settled = attempt.settled;
         result.outcome = attempt.shiny
             ? StarterRngOutcome::SHINY
             : StarterRngOutcome::HIT;
@@ -566,12 +567,15 @@ BdspStarterAttemptResult run_starter_rng_attempt(
             pbf_press_button(context, BUTTON_CAPTURE, 2000ms, 5000ms);
             context.wait_for_all_requests();
         }
+        bool settled = true;
         if (settings.finish_battle_on_shiny){
             if (!clear_starter_battle(env, context)){
                 record_error();
+                settled = false;
             }else if (settings.close_summary_after_read){
                 if (!open_menu(env, context)){
                     record_error();
+                    settled = false;
                 }else{
                     pbf_press_button(context, BUTTON_X, 160ms, 1000ms);
                     context.wait_for_all_requests();
@@ -584,6 +588,7 @@ BdspStarterAttemptResult run_starter_rng_attempt(
             .shiny = true,
             .target = target,
             .target_advance = target_advance,
+            .settled = settled,
         };
     }
 

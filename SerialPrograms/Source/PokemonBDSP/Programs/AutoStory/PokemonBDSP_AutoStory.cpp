@@ -55,18 +55,6 @@ std::unique_ptr<StatsTracker> BDSPAutoStory_Descriptor::make_stats() const{
     return std::make_unique<Pokemon::AutoStoryStats>();
 }
 
-BdspStarter bdsp_starter_for_choice(StarterChoice choice){
-    switch (choice){
-    case StarterChoice::TURTWIG:
-        return BdspStarter::Turtwig;
-    case StarterChoice::CHIMCHAR:
-        return BdspStarter::Chimchar;
-    case StarterChoice::PIPLUP:
-        return BdspStarter::Piplup;
-    }
-    return BdspStarter::Chimchar;
-}
-
 
 namespace{
 
@@ -91,9 +79,11 @@ const StringSelectDatabase& checkpoint_database(){
     return database;
 }
 
-std::set<std::string> rows_that_stop(const std::vector<StoryCheckpoint>& rows){
-    std::set<std::string> ids;
-    for (const StoryCheckpoint& row : rows){
+//  The rows whose failure ends the program: the rows that save nothing and
+//  retry nothing, and the plan's own (Starter RNG's, which resets by itself).
+std::set<std::string> rows_that_stop(const StoryRunPlan& plan){
+    std::set<std::string> ids = plan.fatal_rows;
+    for (const StoryCheckpoint& row : plan.rows){
         if (row.on_failure == StoryFailure::STOP){
             ids.insert(row.id);
         }
@@ -146,7 +136,7 @@ std::string verify_story_checkpoint(
 
 
 BDSPAutoStory::~BDSPAutoStory(){
-    RUN_STARTER_RNG.remove_listener(*this);
+    STARTER_RNG.RUN.remove_listener(*this);
 }
 
 BDSPAutoStory::BDSPAutoStory()
@@ -169,34 +159,15 @@ BDSPAutoStory::BDSPAutoStory()
         StarterChoice::CHIMCHAR
     )
     , STOP_FOR_STARTER_RNG(
-        std::format("<b>Stop for Starter RNG:</b><br>Off by default. {}", STARTER_RNG_HANDOFF_TEXT),
+        std::format(
+            "<b>Stop for Starter RNG:</b><br>Off by default. Ignored while Run Starter RNG in AutoStory is on. {}",
+            STARTER_RNG_HANDOFF_TEXT
+        ),
         LockMode::LOCK_WHILE_RUNNING,
         false
-    )
-    , RUN_STARTER_RNG(
-        "<b>Run Starter RNG in AutoStory:</b><br>Off by default. In 00.02, run Starter RNG from the Verity Lakefront save "
-        "using the Starter RNG filter table below, then continue the story at 00.03.",
-        LockMode::LOCK_WHILE_RUNNING,
-        false
-    )
-    , STARTER_RNG_MAX_RESETS(
-        "<b>Starter RNG Maximum Resets:</b><br>0 means no limit.",
-        LockMode::LOCK_WHILE_RUNNING,
-        0, 0, 9999
-    )
-    , STARTER_RNG_FILTERS(
-        "<b>Starter RNG Stop Conditions:</b><br>Stop Starter RNG when the starter matches any row in this table.",
-        Pokemon::StatsHuntMiscFeatureFlags{
-            /*action*/ false, /*shiny*/ true, /*gender*/ true, /*nature*/ true
-        }
-    )
-    , NOTIFICATION_SHINY(
-        "Shiny Starter",
-        true, true, ImageAttachmentMode::JPG,
-        {"Notifs", "Showcase"}
     )
     , NOTIFICATIONS({
-        &NOTIFICATION_SHINY,
+        &STARTER_RNG.NOTIFICATION_SHINY,
         &NOTIFICATION_PROGRAM_FINISH,
         &NOTIFICATION_ERROR_RECOVERABLE,
         &NOTIFICATION_ERROR_FATAL,
@@ -207,21 +178,22 @@ BDSPAutoStory::BDSPAutoStory()
     PA_ADD_OPTION(PLAYER_NAME);
     PA_ADD_OPTION(STARTER);
     PA_ADD_OPTION(STOP_FOR_STARTER_RNG);
-    PA_ADD_OPTION(RUN_STARTER_RNG);
-    PA_ADD_OPTION(STARTER_RNG_MAX_RESETS);
-    PA_ADD_OPTION(STARTER_RNG_FILTERS);
+    PA_ADD_OPTION(STARTER_RNG.RUN);
+    PA_ADD_OPTION(STARTER_RNG.PLAYER_MODEL);
+    PA_ADD_OPTION(STARTER_RNG.MAX_RESETS);
+    PA_ADD_OPTION(STARTER_RNG.FILTERS);
     PA_ADD_OPTION(NOTIFICATIONS);
 
     BDSPAutoStory::on_config_value_changed(this);
-    RUN_STARTER_RNG.add_listener(*this);
+    STARTER_RNG.RUN.add_listener(*this);
 }
 
+//  Run Starter RNG takes precedence over Stop for Starter RNG: the stop
+//  option is greyed out while it is on, and the plan ignores it.
 void BDSPAutoStory::on_config_value_changed(void*){
-    const ConfigOptionState visibility = RUN_STARTER_RNG
-        ? ConfigOptionState::ENABLED
-        : ConfigOptionState::HIDDEN;
-    STARTER_RNG_MAX_RESETS.set_visibility(visibility);
-    STARTER_RNG_FILTERS.set_visibility(visibility);
+    const bool run_in_story = STARTER_RNG.RUN;
+    STARTER_RNG.set_details_visible(run_in_story);
+    STOP_FOR_STARTER_RNG.set_visibility(run_in_story ? ConfigOptionState::DISABLED : ConfigOptionState::ENABLED);
 }
 
 namespace{
@@ -316,57 +288,27 @@ void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     set_story_language(RUN.language());
 
     StoryEnv story{env, context, STARTER, PLAYER_NAME, {}};
-    RngAim starter_rng_aim;
-    const BdspRngFilterSnapshot starter_rng_filters = STARTER_RNG_FILTERS.make_snapshot();
-    if (RUN_STARTER_RNG){
-        story.run_starter_rng = [&]() -> Pokemon::Outcome{
-            StarterRngSettings settings;
-            settings.language = RUN.language();
-            settings.player_model = 1;
-            settings.start_point = BdspStartPoint::Lakefront;
-            settings.starter = bdsp_starter_for_choice(STARTER);
-            settings.filters = &starter_rng_filters;
-            settings.max_resets = STARTER_RNG_MAX_RESETS;
-            settings.reset_first = false;
-            settings.finish_battle_on_shiny = true;
-            settings.close_summary_after_read = true;
-
-            uint64_t resets_logged = 0;
-            StarterRngAttemptIO io;
-            io.notification_shiny = &NOTIFICATION_SHINY;
-            io.notification_error = &NOTIFICATION_ERROR_RECOVERABLE;
-            io.on_reset = [&](){
-                resets_logged++;
-                env.console.overlay().add_log(std::format("Starter RNG: try {}", resets_logged));
-            };
-
-            const StarterRngRunResult result = run_starter_rng_attempts(env, context, settings, io, starter_rng_aim);
-            if (result.outcome == StarterRngOutcome::HIT || result.outcome == StarterRngOutcome::SHINY){
-                env.log(
-                    std::format(
-                        "Starter RNG succeeded after {} reset(s) on advance {}: {}.",
-                        result.resets_used, result.target_advance, result.target.to_string()
-                    ),
-                    COLOR_BLUE
-                );
-                return Pokemon::outcome_ok();
-            }
-            const std::string detail = result.last_failure_reason.empty()
-                ? std::format("Starter RNG stopped after {} reset(s) without hitting a target.", result.resets_used)
-                : result.last_failure_reason;
-            return Pokemon::outcome_failed("starter_rng_failed", detail);
-        };
+    if (STARTER_RNG.RUN){
+        story.run_starter_rng = make_starter_rng_hook(
+            env, context, STARTER_RNG, STARTER_RNG.config(RUN.language(), STARTER), NOTIFICATION_ERROR_RECOVERABLE
+        );
     }
     StoryExecutor executor(story);
     const StoryRunPlan plan = plan_story_run(
         checkpoints, first, last,
-        StoryHandoffs{.starter_rng = STOP_FOR_STARTER_RNG, .run_starter_rng = RUN_STARTER_RNG}
+        StoryHandoffs{.starter_rng = STOP_FOR_STARTER_RNG, .run_starter_rng = STARTER_RNG.RUN}
     );
-    executor.set_stop_rows(rows_that_stop(plan.rows));
+    executor.set_stop_rows(rows_that_stop(plan));
+    run_plan(env, context, executor, plan, first == 0 && NEW_GAME_INTRO);
+}
+
+void BDSPAutoStory::run_plan(
+    SingleSwitchProgramEnvironment& env, ProControllerContext& context,
+    StoryExecutor& executor, const StoryRunPlan& plan, bool new_game
+){
     //  A start with a save always loads it first, so the run never walks
     //  from wherever the game was left (console B, 2026-11-11: a run from
     //  00.04b walked from 00.04d's position).
-    const bool new_game = first == 0 && NEW_GAME_INTRO;
     const Pokemon::StoryStart start = new_game ? Pokemon::StoryStart::NEW_GAME : Pokemon::StoryStart::FROM_SAVE;
     if (new_game && RUN.VERIFY.policy()){
         throw UserSetupError(env.console, "Verify mode reloads the start's save between runs: turn off \"Start a new game first\".");

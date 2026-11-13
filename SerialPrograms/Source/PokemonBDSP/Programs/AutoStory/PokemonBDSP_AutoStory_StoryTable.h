@@ -14,6 +14,8 @@
 #ifndef PokemonAutomation_PokemonBDSP_AutoStory_StoryTable_H
 #define PokemonAutomation_PokemonBDSP_AutoStory_StoryTable_H
 
+#include <set>
+#include <string>
 #include <string_view>
 #include <vector>
 #include "PokemonBDSP_AutoStory_StoryExecutor.h"
@@ -64,6 +66,9 @@ struct StoryRunPlan{
     //  NONE: the run ends after `rows`. STARTER_RNG: the run stops after
     //  `rows`, the last of which (00.01) saves at the Verity Lakefront.
     StoryHandoff stop = StoryHandoff::NONE;
+    //  Rows whose failure ends the program though they save at their start:
+    //  a failed 00.02 with Run Starter RNG, whose reset loop is the retry.
+    std::set<std::string> fatal_rows;
 };
 
 //  The rows of `table` from `first` to `last`, both inclusive, as a

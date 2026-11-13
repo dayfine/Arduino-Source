@@ -83,6 +83,7 @@ StoryRunPlan plan_story_run(
         }
         if (row.id == STARTER_RNG_CHECKPOINT_ROW && handoffs.run_starter_rng){
             plan.rows.push_back(with_starter_rng_step(row));
+            plan.fatal_rows.insert(row.id);
             continue;
         }
         plan.rows.push_back(row);

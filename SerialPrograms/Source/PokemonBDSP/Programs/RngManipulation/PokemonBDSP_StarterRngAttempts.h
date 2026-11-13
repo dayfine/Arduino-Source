@@ -163,6 +163,10 @@ struct StarterRngRunResult{
     uint64_t target_advance = 0;
     uint64_t resets_used = 0;
     std::string last_failure_reason;
+    //  False when a shiny was caught but the game was not left where
+    //  `finish_battle_on_shiny` and `close_summary_after_read` promise: the
+    //  caller must not go on from it.
+    bool settled = true;
 };
 
 
@@ -172,6 +176,8 @@ struct BdspStarterAttemptResult{
     Pokemon::BdspPokemonResult target{};
     uint64_t target_advance = 0;
     std::string failure_reason;
+    //  See StarterRngRunResult::settled.
+    bool settled = true;
 };
 
 

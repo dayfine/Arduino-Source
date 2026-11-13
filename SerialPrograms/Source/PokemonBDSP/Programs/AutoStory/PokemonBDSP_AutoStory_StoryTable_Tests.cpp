@@ -312,6 +312,78 @@ UnitTestResult test_plan_story_run_starter_rng(Logger&){
 }
 
 
+//  The Starter RNG run's settings: the player's model, the starter and the
+//  reset limit come from AutoStory's options, and the run ends where 00.03
+//  starts (Lakefront overworld, menu closed).
+UnitTestResult test_starter_rng_settings(Logger&){
+    BdspRngFilterTable table("Filters", Pokemon::StatsHuntMiscFeatureFlags{false, true, true, true});
+    set_default_shiny_row(table);
+    const BdspRngFilterSnapshot filters = table.make_snapshot();
+    const StoryStarterRngConfig config{
+        .language = Language::French, .player_model = 5, .starter = StarterChoice::PIPLUP, .max_resets = 7
+    };
+    const StarterRngSettings settings = make_starter_rng_settings(config, filters);
+    if (settings.player_model != 5){
+        return std::format("Expected the story's player model 5 to reach Starter RNG, got {}.", settings.player_model);
+    }
+    if (settings.starter != BdspStarter::Piplup || settings.language != Language::French || settings.max_resets != 7){
+        return "Expected the starter, language and reset limit to come from the story's options.";
+    }
+    if (settings.filters != &filters || settings.start_point != BdspStartPoint::Lakefront){
+        return "Expected the filter snapshot and the Verity Lakefront start point.";
+    }
+    if (settings.reset_first || !settings.finish_battle_on_shiny || !settings.close_summary_after_read){
+        return "Expected a run that starts from the loaded save and leaves the Lakefront overworld on a shiny or not.";
+    }
+    return true;
+}
+
+//  What Starter RNG ending means for the story: a starter in hand and the
+//  game on the Lakefront lets it go on; anything else stops it with a reason.
+UnitTestResult test_starter_rng_failure(Logger&){
+    StarterRngRunResult result;
+    result.outcome = StarterRngOutcome::HIT;
+    if (!starter_rng_failure(result).empty()){
+        return "Expected a hit to let the story go on.";
+    }
+    result.outcome = StarterRngOutcome::SHINY;
+    if (!starter_rng_failure(result).empty()){
+        return "Expected a settled shiny to let the story go on.";
+    }
+    result.settled = false;
+    if (starter_rng_failure(result).empty()){
+        return "Expected a shiny that did not settle (the game is mid-scene) to stop the story.";
+    }
+    for (const StarterRngOutcome outcome : {StarterRngOutcome::ABANDONED, StarterRngOutcome::OUT_OF_RESETS}){
+        StarterRngRunResult failed;
+        failed.outcome = outcome;
+        failed.resets_used = 3;
+        if (starter_rng_failure(failed).empty()){
+            return "Expected a run with no starter to stop the story.";
+        }
+    }
+    return true;
+}
+
+//  A failed Run Starter RNG ends the program: 00.02's row retry would rerun
+//  the whole reset loop. Without it no row is fatal on top of the table's.
+UnitTestResult test_starter_rng_row_is_fatal(Logger&){
+    const std::vector<StoryCheckpoint>& table = story_checkpoints();
+    const StoryRunPlan in_program = plan_story_run(
+        table, 0, 3, StoryHandoffs{.starter_rng = true, .run_starter_rng = true}
+    );
+    if (in_program.fatal_rows != std::set<std::string>{"00.02"}){
+        return "Expected 00.02 to be fatal when Run Starter RNG in AutoStory is on.";
+    }
+    const StoryRunPlan plain = plan_story_run(table, 0, 3, StoryHandoffs{.starter_rng = true});
+    const StoryRunPlan off = plan_story_run(table, 0, 3);
+    if (!plain.fatal_rows.empty() || !off.fatal_rows.empty()){
+        return "Expected no fatal rows unless Run Starter RNG in AutoStory is on.";
+    }
+    return true;
+}
+
+
 struct AutoStoryStoryTableInput{
     std::string name;
     std::function<UnitTestResult(Logger&)> body;
@@ -365,6 +437,18 @@ const AutoStoryStoryTableCase AUTO_STORY_STORY_TABLE_CASES[] = {
     },
     {
         .input = {"Starter RNG handoff: stops after 00.01 saved at the Verity Lakefront", test_plan_story_run_starter_rng},
+        .expectation = {},
+    },
+    {
+        .input = {"Run Starter RNG: settings come from the story's options", test_starter_rng_settings},
+        .expectation = {},
+    },
+    {
+        .input = {"Run Starter RNG: what lets the story go on", test_starter_rng_failure},
+        .expectation = {},
+    },
+    {
+        .input = {"Run Starter RNG: a failed 00.02 ends the program", test_starter_rng_row_is_fatal},
         .expectation = {},
     },
 };
