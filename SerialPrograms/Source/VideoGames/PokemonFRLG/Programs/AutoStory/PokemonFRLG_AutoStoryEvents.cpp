@@ -25,6 +25,7 @@
 #include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
+#include "PokemonFRLG_AutoStoryBattlePolicy.h"
 #include "PokemonFRLG_AutoStoryGameArgs.h"
 #include "PokemonFRLG_AutoStoryHealingSteps.h"
 #include "PokemonFRLG_AutoStoryHideout.h"
@@ -257,6 +258,7 @@ Outcome battle(StoryEnv& env, const StoryStep& step){
     }
     env.supplies.foes = arg<std::vector<std::string>>(step, "foes");
     env.supplies.battle_items = arg<std::vector<Pokemon::StoryItem>>(step, "use_items");
+    env.supplies.policy = battle_policy_of(step.args);
     if (!env.supplies.foes.empty()){
         env.console.log(std::format(
             "Story: {} is {}, risk {}; attacks are chosen against the foe out.",
@@ -269,6 +271,7 @@ Outcome battle(StoryEnv& env, const StoryStep& step){
     env.supplies.trainer.clear();
     env.supplies.foe_out.clear();
     env.supplies.battle_items.clear();
+    env.supplies.policy = {};
     if (end == BattleEnd::LOST && !arg<bool>(step, "may_lose")){
         return Pokemon::outcome_failed("blackout");
     }
