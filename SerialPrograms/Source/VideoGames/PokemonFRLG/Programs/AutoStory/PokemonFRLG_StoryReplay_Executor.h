@@ -3,10 +3,13 @@
  */
 #ifndef PokemonAutomation_PokemonFRLG_StoryReplay_Executor_H
 #define PokemonAutomation_PokemonFRLG_StoryReplay_Executor_H
+#include <optional>
 #include <set>
 #include <string>
+#include <utility>
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Pokemon/AutoStory/Pokemon_StoryActions.h"
+#include "Pokemon/Navigation/Pokemon_GatedTypes.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecovery.h"
 #include "PokemonFRLG_AutoStoryStepInterrupts.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
@@ -46,14 +49,21 @@ private:
     //  The replay's action for `id`: a ROUTE, STEP or MASH; every other
     //  action is unsupported.
     Pokemon::StoryAction replay_action(StoryActionId id);
-    Pokemon::Outcome replay_route(const StoryStep& step);
-    Pokemon::Outcome replay_step(const StoryStep& step);
+    //  A ROUTE or STEP reads the maps through the run's gates, and a
+    //  route's open_gate and press_switch commands change them.
+    Pokemon::Outcome replay_route(const StoryStep& step, Pokemon::RunState& state);
+    Pokemon::Outcome replay_step(const StoryStep& step, const Pokemon::RunState& state);
     Pokemon::Outcome replay_scene(const StoryStep& step);
     const JsonObject* signal() const;
     const JsonObject& parameters(const StoryStep& step) const;
-    ReplayLeg prepare_leg(const JsonValue& command, OverworldPose& current) const;
+    //  `gates`: the gates before the command, and after it.
+    ReplayLeg prepare_leg(const JsonValue& command, OverworldPose& current, Pokemon::GateState& gates) const;
+    ReplayLeg prepare_gate_leg(const JsonValue& command, const OverworldPose& current, Pokemon::GateState& gates) const;
+    //  The maps as `gates` make them: a closed gate is a wall.
+    const std::vector<MapData>& maps_through(const Pokemon::GateState& gates) const;
     std::vector<RouteStep> prepare_route(const StoryStep& step);
     StepOutcome walk_leg(const RouteStep& step);
+    StepOutcome gate_leg(const RouteStep& step);
     void default_plan(const StoryStep& step);
     void timed_plan(const StoryStep& step, const std::vector<RouteStep>& route);
     void lose_pose(std::string basis);
@@ -66,6 +76,11 @@ private:
     const ReplayData* m_data;
     const JsonObject* m_scenario;
     OverworldPose m_pose;
+    //  The gates open and switches on, and what the player may open, as
+    //  the run state says at the start of each step.
+    Pokemon::GateState m_gates;
+    Pokemon::GateRules m_rules;
+    mutable std::optional<std::pair<Pokemon::GateState, std::vector<MapData>>> m_resolved;
     bool m_known = true;
     std::string m_basis = "scripted-observation";
     std::string m_active;

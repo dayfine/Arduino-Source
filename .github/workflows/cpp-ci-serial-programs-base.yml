@@ -109,7 +109,7 @@ jobs:
 
       - name: Prepare approved FRLG map resources
         id: map-resources
-        uses: dayfine/PokemonSimulation/integrations/arduino-source/verify-map-packs@d3eea1b5c04180f8b60eb98b0d65f70aca6b1abb
+        uses: dayfine/PokemonSimulation/integrations/arduino-source/verify-map-packs@1cacf81b2377ec1413317d905ad5415f6fe8dad5
         with:
           layout: resources
           operation: prepare

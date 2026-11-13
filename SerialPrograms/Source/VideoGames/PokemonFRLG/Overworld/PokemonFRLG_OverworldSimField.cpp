@@ -175,22 +175,22 @@ bool OverworldSim::start_surf(){
 void OverworldSim::read_gates(){
     //  Only the tiles: the objects the sim has changed stay as they are.
     //  Maps without a gate were not copied.
-    if (m_source_maps.empty() && has_gates(m_maps)){
-        m_source_maps = m_maps;
+    if (m_state.gate_maps.empty() && has_gates(m_maps)){
+        m_state.gate_maps = m_maps;
     }
-    for (size_t c = 0; c < m_source_maps.size(); c++){
-        if (!m_source_maps[c].gates.empty()){
-            m_maps[c].tiles = Pokemon::resolve_tiles(m_source_maps[c], m_state.gates);
+    for (size_t c = 0; c < m_state.gate_maps.size(); c++){
+        if (!m_state.gate_maps[c].gates.empty()){
+            m_maps[c].tiles = Pokemon::resolve_tiles(m_state.gate_maps[c], m_state.gates);
         }
     }
 }
 
 bool OverworldSim::open_gate(){
-    if (m_source_maps.empty()){
+    if (m_state.gate_maps.empty()){
         violation("no gates on the maps.");
         return false;
     }
-    const MapData& source = m_source_maps[m_map];
+    const MapData& source = m_state.gate_maps[m_map];
     const Pokemon::MapGate* gate = Pokemon::closed_card_key_gate_faced(source, m_player.position, m_state.facing, m_state.gates);
     if (gate == nullptr || !m_script.card_key_held || m_state.screen != SimScreen::OVERWORLD || m_frozen){
         violation(std::format(
@@ -208,9 +208,9 @@ bool OverworldSim::open_gate(){
 }
 
 bool OverworldSim::press_switch(){
-    const Pokemon::MapSwitch* pressed = m_source_maps.empty()
+    const Pokemon::MapSwitch* pressed = m_state.gate_maps.empty()
         ? nullptr
-        : Pokemon::switch_pressed(m_source_maps[m_map], m_player.position, m_state.facing);
+        : Pokemon::switch_pressed(m_state.gate_maps[m_map], m_player.position, m_state.facing);
     if (pressed == nullptr || m_state.screen != SimScreen::OVERWORLD || m_frozen){
         violation(std::format("no statue to press {} of {}.", direction_name(m_state.facing), to_string(m_state.position)));
         return false;

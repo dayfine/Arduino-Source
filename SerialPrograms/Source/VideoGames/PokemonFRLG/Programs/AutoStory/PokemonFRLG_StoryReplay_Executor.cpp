@@ -6,6 +6,8 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon/AutoStory/Data/Pokemon_StoryStepJson.h"
+#include "Pokemon/Navigation/Pokemon_GateTiles.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldGatedRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_StoryReplay_Executor.h"
 namespace PokemonAutomation{
@@ -77,9 +79,9 @@ bool ReplayStepGuard::stops_on_failure(const StoryStep&) const{
 Pokemon::StoryAction ReplayExecutor::replay_action(StoryActionId id){
     switch (id){
     case StoryActionId::ROUTE:
-        return {.act = [this](const StoryStep& step, Pokemon::RunState&){ return replay_route(step); }};
+        return {.act = [this](const StoryStep& step, Pokemon::RunState& state){ return replay_route(step, state); }};
     case StoryActionId::STEP:
-        return {.act = [this](const StoryStep& step, Pokemon::RunState&){ return replay_step(step); }};
+        return {.act = [this](const StoryStep& step, Pokemon::RunState& state){ return replay_step(step, state); }};
     case StoryActionId::MASH:
         return {.act = [this](const StoryStep& step, Pokemon::RunState&){ return replay_scene(step); }};
     default:
@@ -153,9 +155,62 @@ void ReplayExecutor::observe_interruption(const OverworldPose& predicted){
     m_interrupted = true;
     lose_pose("unknown-after-interruption");
 }
-ReplayLeg ReplayExecutor::prepare_leg(const JsonValue& value, OverworldPose& current) const{
+const std::vector<MapData>& ReplayExecutor::maps_through(const Pokemon::GateState& gates) const{
+    if (!has_gates(m_data->maps)){
+        return m_data->maps;
+    }
+    if (!m_resolved || !(m_resolved->first == gates)){
+        m_resolved.emplace(gates, resolve_maps(m_data->maps, gates));
+    }
+    return m_resolved->second;
+}
+//  An open_gate or a press_switch: A at the gate or statue the player
+//  faces, which the model has to find there (and, for a gate, the player to
+//  hold the Card Key).
+ReplayLeg ReplayExecutor::prepare_gate_leg(const JsonValue& value, const OverworldPose& current, Pokemon::GateState& gates) const{
+    const JsonObject& command = value.to_object_throw();
+    fields(value, {"event", "kind", "map", "direction"});
+    const bool opens = command.get_string_throw("kind") == "open_gate";
+    const Direction facing = direction(command.get_string_throw("direction"));
+    if (command.get_string_throw("event") != m_active || command.get_string_throw("map") != current.position.map){
+        throw ParseException("story replay: supplied route has wrong event/map");
+    }
+    if (current.facing != facing){
+        throw ParseException("story replay: supplied gate command is not facing its gate");
+    }
+    const MapData& map = map_named(m_data->maps, current.position.map);
+    Pokemon::GateState after = gates;
+    if (opens){
+        const Pokemon::MapGate* gate = m_rules.card_key_held
+            ? Pokemon::closed_card_key_gate_faced(map, current.position.point, facing, gates) : nullptr;
+        if (gate == nullptr){
+            throw ParseException("story replay: no card-key gate to open (or no Card Key)");
+        }
+        after.opened.insert(Pokemon::gate_key(map.name, gate->id));
+    }else{
+        const Pokemon::MapSwitch* pressed = Pokemon::switch_pressed(map, current.position.point, facing);
+        if (pressed == nullptr){
+            throw ParseException("story replay: no statue to press");
+        }
+        if (pressed->toggle && gates.switch_on(pressed->id)){
+            after.switches_on.erase(pressed->id);
+        }else{
+            after.switches_on.insert(pressed->id);
+        }
+    }
+    RouteStep step{.action = opens ? RouteAction::OPEN_GATE : RouteAction::PRESS_SWITCH, .direction = facing, .tiles = 0};
+    step.end = current.position;
+    step.facing_after = facing;
+    step.gate_change = Pokemon::gate_change_between(gates, after);
+    gates = std::move(after);
+    return ReplayLeg{.step = step, .action = value.clone()};
+}
+ReplayLeg ReplayExecutor::prepare_leg(const JsonValue& value, OverworldPose& current, Pokemon::GateState& gates) const{
     const JsonObject& command = value.to_object_throw();
     const std::string kind = command.get_string_throw("kind");
+    if (kind == "open_gate" || kind == "press_switch"){
+        return prepare_gate_leg(value, current, gates);
+    }
     if (kind == "walk"){
         fields(value, {"event", "kind", "map", "direction", "tiles"});
     }else if (kind == "transition"){
@@ -175,7 +230,7 @@ ReplayLeg ReplayExecutor::prepare_leg(const JsonValue& value, OverworldPose& cur
     }
     RouteStep step{.action = kind == "turn" ? RouteAction::FACE : RouteAction::WALK, .direction = facing, .tiles = (int)tiles};
     for (int64_t n = 0; n < tiles; n++){
-        const auto next = predict_overworld_press(m_data->maps, current, facing);
+        const auto next = predict_overworld_press(maps_through(gates), current, facing);
         if (!next){
             throw ParseException("story replay: native model rejects supplied route");
         }
@@ -201,10 +256,11 @@ std::vector<RouteStep> ReplayExecutor::prepare_route(const StoryStep& step){
         throw ParseException("story replay: supplied route exceeds action bound");
     }
     OverworldPose current = m_pose;
+    Pokemon::GateState gates = m_gates;
     std::vector<RouteStep> route;
     m_legs.clear();
     for (const JsonValue& command : commands){
-        m_legs.emplace_back(prepare_leg(command, current));
+        m_legs.emplace_back(prepare_leg(command, current, gates));
         route.push_back(m_legs.back().step);
     }
     const OverworldPose goal = authored_pose(Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target")), m_data->maps);
@@ -215,13 +271,15 @@ std::vector<RouteStep> ReplayExecutor::prepare_route(const StoryStep& step){
 }
 void ReplayExecutor::default_plan(const StoryStep& step){
     const OverworldPose goal = authored_pose(Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target")), m_data->maps);
-    const auto planned = plan_overworld_route(m_data->maps, m_pose.position, {goal.position, goal.facing}, story_route_costs(), m_pose.facing);
+    const auto planned = plan_overworld_route_gated(
+        m_data->maps, m_pose.position, {goal.position, goal.facing}, m_gates, m_rules, story_route_costs(), m_pose.facing
+    );
     JsonObject plan;
     plan["policy"] = "native-story-route-costs";
     plan["exact_python_leg_comparison"] = "not-comparable-different-planner-policies";
     JsonArray legs;
     if (planned){
-        const MapPosition actual = follow_overworld_route(m_data->maps, m_pose.position, *planned);
+        const MapPosition actual = follow_overworld_route(m_data->maps, m_pose.position, *planned, m_gates);
         if (!(actual == goal.position)){
             throw ParseException("story replay: native default plan did not reach target");
         }
@@ -239,8 +297,11 @@ void ReplayExecutor::timed_plan(const StoryStep& step, const std::vector<RouteSt
     if (signal()){
         return;
     }
-    OverworldSim sim(m_data->maps, m_pose.position, m_pose.facing);
-    const RoutePlanning planning{.maps = &m_data->maps, .start = m_pose.position,
+    SimScript script;
+    script.gates = m_gates;
+    script.card_key_held = m_rules.card_key_held;
+    OverworldSim sim(m_data->maps, m_pose.position, m_pose.facing, script);
+    const RoutePlanning planning{.maps = &m_data->maps, .gates = m_gates, .start = m_pose.position,
         .label = step.name, .wall_check = WallCheck::SKIP};
     const std::string failure = OverworldSimWalker(sim).run(route, planning);
     const auto goal = authored_pose(Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target")), m_data->maps);
@@ -259,11 +320,20 @@ void ReplayExecutor::timed_plan(const StoryStep& step, const std::vector<RouteSt
     result["violations"] = std::move(violations);
     m_timed_plans[step.name] = std::move(result);
 }
+StepOutcome ReplayExecutor::gate_leg(const RouteStep& step){
+    m_actions.push_back(m_legs[m_next_leg++].action.clone());
+    Pokemon::apply_gate_change(m_gates, step.gate_change);
+    m_basis = "model-prediction";
+    return StepOutcome{};
+}
 StepOutcome ReplayExecutor::walk_leg(const RouteStep& step){
+    if (step.action == RouteAction::OPEN_GATE || step.action == RouteAction::PRESS_SWITCH){
+        return gate_leg(step);
+    }
     m_actions.push_back(m_legs[m_next_leg++].action.clone());
     const OverworldPose start = m_pose;
     for (int n = 0; n < step.tiles; n++){
-        const auto next = predict_overworld_press(m_data->maps, m_pose, step.direction);
+        const auto next = predict_overworld_press(maps_through(m_gates), m_pose, step.direction);
         if (!next){
             throw ParseException("story replay: supplied walk became blocked");
         }
@@ -277,14 +347,16 @@ StepOutcome ReplayExecutor::walk_leg(const RouteStep& step){
         m_moves++;
     }
     m_pose.facing = step.facing_after;
-    const MapPosition followed = follow_overworld_route(m_data->maps, start.position, {step});
+    const MapPosition followed = follow_overworld_route(m_data->maps, start.position, {step}, m_gates);
     if (!(followed == m_pose.position)){
         throw ParseException("story replay: walker and independent native route replay disagree");
     }
     m_basis = "model-prediction";
     return StepOutcome{};
 }
-Pokemon::Outcome ReplayExecutor::replay_route(const StoryStep& step){
+Pokemon::Outcome ReplayExecutor::replay_route(const StoryStep& step, Pokemon::RunState& state){
+    m_gates = state.gates;
+    m_rules = Pokemon::gate_rules_of(state);
     default_plan(step);
     const std::vector<RouteStep> route = prepare_route(step);
     size_t moves = 0;
@@ -309,10 +381,11 @@ Pokemon::Outcome ReplayExecutor::replay_route(const StoryStep& step){
     if (signal() && !m_interrupted){
         throw ParseException("story replay: physical encounter injection was not reached");
     }
+    state.gates = m_gates;
     return Pokemon::outcome_ok(native_pose(m_pose));
 }
-Pokemon::Outcome ReplayExecutor::replay_step(const StoryStep& step){
-    const auto next = predict_overworld_press(m_data->maps, m_pose, Pokemon::story_arg<Direction>(step.args, "direction"));
+Pokemon::Outcome ReplayExecutor::replay_step(const StoryStep& step, const Pokemon::RunState& state){
+    const auto next = predict_overworld_press(maps_through(state.gates), m_pose, Pokemon::story_arg<Direction>(step.args, "direction"));
     if (!next){
         lose_pose("unknown-after-transition");
         return Pokemon::outcome_failed("step_unresolved");
