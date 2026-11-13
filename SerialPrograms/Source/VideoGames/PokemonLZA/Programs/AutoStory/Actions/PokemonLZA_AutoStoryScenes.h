@@ -46,7 +46,7 @@ void mash_scene(
 );
 
 //  A "scene" step: mash_scene() to the overworld with `text_button`, up to
-//  120 s (a scene can hold a ~25 s black screen: 02.06's first evening),
+//  120 s (a scene can hold a ~25 s black screen: 02.07's first evening),
 //  and the scene must start (SceneStart) within SCENE_START_WINDOW: a run
 //  not at the scene's trigger fails there, before an A mash talks to
 //  whoever stands in front.

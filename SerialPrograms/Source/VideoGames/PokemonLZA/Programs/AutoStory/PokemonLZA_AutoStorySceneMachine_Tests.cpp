@@ -245,6 +245,31 @@ UnitTestResult test_blind_press_keeps_quiet(Logger& logger){
     });
 }
 
+//  02.04's check_in: the party bar without its D-pad hint reads as
+//  nothing, so 5 s quiet past the 30 s minimum is control. The text-free
+//  opening gets blind A; after the scene the quiet end comes before any
+//  blind A, which could talk to Taunie or AZ (console B, 2026-11-13).
+UnitTestResult test_check_in_quiet_is_control(Logger&){
+    SceneMachineConfig config = arrival_config();
+    config.quiet = 5000ms;
+    config.min_length = 30000ms;
+    config.quiet_is_control = true;
+    return check_reads(config, {
+        {0ms, NOTHING, false, SceneScreen::SCENE_MOVING},
+        {5000ms, NOTHING, false, SceneScreen::BLIND_PRESS},
+        {5400ms, NOTHING, false, SceneScreen::SCENE_MOVING},
+        {16700ms, DIALOG, false, SceneScreen::DIALOG},
+        {18000ms, NOTHING, false, SceneScreen::SCENE_MOVING},
+        {20000ms, DIALOG, false, SceneScreen::DIALOG},
+        {22000ms, NOTHING, false, SceneScreen::SCENE_MOVING},
+        {24000ms, DIALOG, false, SceneScreen::DIALOG},
+        {75000ms, DIALOG, false, SceneScreen::DIALOG},
+        {75400ms, NOTHING, false, SceneScreen::SCENE_MOVING},
+        {79900ms, NOTHING, true, SceneScreen::SCENE_STILL},
+        {80000ms, NOTHING, true, SceneScreen::QUIET_END},
+    });
+}
+
 //  Without a quiet time only the party bar ends an overworld scene: a
 //  still screen waits until the machine's timeout.
 UnitTestResult test_no_quiet_never_ends_still(Logger&){
@@ -415,6 +440,10 @@ const SceneMachineCase SCENE_MACHINE_CASES[] = {
     },
     {
         .input = {"blind presses keep the quiet end, and only in an A mash", test_blind_press_keeps_quiet},
+        .expectation = {},
+    },
+    {
+        .input = {"02.04 check_in: quiet after the scene is control, before blind A", test_check_in_quiet_is_control},
         .expectation = {},
     },
     {

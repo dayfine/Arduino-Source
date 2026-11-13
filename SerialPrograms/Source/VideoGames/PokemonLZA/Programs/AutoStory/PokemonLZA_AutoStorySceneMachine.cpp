@@ -29,7 +29,7 @@ namespace{
 constexpr Milliseconds PARTY_BAR_HOLD = 1000ms;
 //  The controls hint showing this long is free control: two looks or more.
 constexpr Milliseconds CONTROLS_HINT_HOLD = 1000ms;
-//  The longest a fade is waited out in one step (02.06 holds a ~25 s black).
+//  The longest a fade is waited out in one step (02.07 holds a ~25 s black).
 constexpr Milliseconds FADE_WAIT = 30000ms;
 //  The longest a still screen is waited on in one step.
 constexpr Milliseconds STILL_WAIT = 10000ms;
