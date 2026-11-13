@@ -357,7 +357,7 @@ JsonValue replay_scene(const Scene& scene, bool card_key, bool recorded_card_key
         flags.push_back("card_key_held");
     }
     scenario["start_flags"] = std::move(flags);
-    return replay_story_checkpoint(capture_text, binding_text, candidate.dump(-1), scenario);
+    return replay_story_checkpoint(capture_text, binding_text, candidate.dump(-1), JsonValue(std::move(scenario)));
 }
 
 //  The replay completed the checkpoint and its actions have `kind` (the gate's command).
