@@ -281,6 +281,9 @@ std::optional<int> walk_to_objective(ConsoleHandle& console, ProControllerContex
     int unseen = 0;
     double last_x = 0.5;
     std::optional<int> last;
+    //  Reads far from `last` in a row that agree with each other.
+    std::optional<int> rejected_read;
+    int rejected = 0;
     StuckWatch stuck;
     while (current_time() < deadline){
         context.wait_for_all_requests();
@@ -304,10 +307,23 @@ std::optional<int> walk_to_objective(ConsoleHandle& console, ProControllerContex
         if (turn_to_pinned_marker(context, marker->x)){
             continue;
         }
-        //  A read far below the last one is a misread (36, "3", 29 on
-        //  console B): a 0.6 s step covers about 3.
-        const bool plausible = !last || marker->distance >= *last - 12;
-        if (marker->distance > 0 && plausible){
+        //  A read far from the last one is a misread: a 0.6 s step covers
+        //  about 3. Below: 36 as "3" or 29 on console B; above: 110 as
+        //  "1110" (2026-11-13), which then rejected every true read after
+        //  it. So three agreeing reads in a row far from the last mean the
+        //  last read was the wrong one, and they are taken.
+        const auto near = [](int a, int b){ return a >= b - 12 && a <= b + 12; };
+        if (marker->distance > 0 && last && !near(marker->distance, *last)){
+            rejected = rejected_read && near(marker->distance, *rejected_read) ? rejected + 1 : 1;
+            rejected_read = marker->distance;
+            if (rejected < 3){
+                steer_and_step(context, marker->x);
+                continue;
+            }
+        }
+        if (marker->distance > 0){
+            rejected_read.reset();
+            rejected = 0;
             if (last != marker->distance){
                 console.log(std::format("walk_to_objective(): {} to go, marker at x = {:.2f}.", marker->distance, marker->x));
             }
