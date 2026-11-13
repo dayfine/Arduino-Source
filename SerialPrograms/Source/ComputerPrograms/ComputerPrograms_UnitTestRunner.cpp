@@ -26,6 +26,7 @@
 #include "CommonFramework/Windows/LabControl.h"
 #include "CommonTools/VisualDetectors/BlackBorderDetector.h"
 #include "CommonTools/OCR/OCR_Tests.h"
+#include "CommonTools/ScreenEvents/ScreenEvents_Tests.h"
 
 #include "NintendoSwitch/Inference/NintendoSwitch_CheckOnlineDetector.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_FailedToConnectDetector.h"
@@ -73,6 +74,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     add_tests_AudioFileLoader(ret);
     add_tests_LabControl(ret);
     OCR::add_tests(ret);
+    add_tests_ScreenEvents(ret);
     Kernels::add_tests(ret);
     Pokemon::add_tests_AutoStory(ret);
     NintendoSwitch::add_tests_CheckOnlineDetector(ret);

@@ -908,6 +908,13 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonTools/Options/TrainOCRModeOption.h
     Source/CommonTools/Resources/SpriteDatabase.cpp
     Source/CommonTools/Resources/SpriteDatabase.h
+    Source/CommonTools/ScreenEvents/ScreenEventLog.h
+    Source/CommonTools/ScreenEvents/ScreenEventTypes.h
+    Source/CommonTools/ScreenEvents/ScreenEvents.cpp
+    Source/CommonTools/ScreenEvents/ScreenEvents.h
+    Source/CommonTools/ScreenEvents/ScreenEvents_Tests.cpp
+    Source/CommonTools/ScreenEvents/ScreenEvents_Tests.h
+    Source/CommonTools/ScreenEvents/ScreenFades.h
     Source/CommonTools/ScreenMachine/ScreenMachine.cpp
     Source/CommonTools/ScreenMachine/ScreenMachine.h
     Source/CommonTools/ScreenMachine/StepTrace.cpp
@@ -1362,6 +1369,8 @@ file(GLOB LIBRARY_SOURCES
     Source/NintendoSwitch/Inference/NintendoSwitch_FailedToConnectDetector.h
     Source/NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.cpp
     Source/NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h
+    Source/NintendoSwitch/Inference/NintendoSwitch_HomeScreenObserver.cpp
+    Source/NintendoSwitch/Inference/NintendoSwitch_HomeScreenObserver.h
     Source/NintendoSwitch/Inference/NintendoSwitch_SelectedSettingDetector.cpp
     Source/NintendoSwitch/Inference/NintendoSwitch_SelectedSettingDetector.h
     Source/NintendoSwitch/Inference/NintendoSwitch_StartGameUserSelectDetector.cpp
@@ -1521,13 +1530,6 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_CheckpointRetry_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_CheckpointRetry_Tests.h
     Source/Pokemon/AutoStory/Pokemon_MapUtil.h
-    Source/Pokemon/AutoStory/Pokemon_ScreenEventLog.h
-    Source/Pokemon/AutoStory/Pokemon_ScreenEventTypes.h
-    Source/Pokemon/AutoStory/Pokemon_ScreenEvents.cpp
-    Source/Pokemon/AutoStory/Pokemon_ScreenEvents.h
-    Source/Pokemon/AutoStory/Pokemon_ScreenEvents_Tests.cpp
-    Source/Pokemon/AutoStory/Pokemon_ScreenEvents_Tests.h
-    Source/Pokemon/AutoStory/Pokemon_ScreenFades.h
     Source/Pokemon/AutoStory/Pokemon_StoryCheckpointTypes.h
     Source/Pokemon/AutoStory/Pokemon_StoryEvent.h
     Source/Pokemon/AutoStory/Pokemon_StoryEvents.cpp
