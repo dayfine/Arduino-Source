@@ -176,10 +176,20 @@
         "kind": "legs",
         "action": "run",
         "args": {
-          "legs": [{"direction": "east", "tiles": 9}, {"direction": "south", "tiles": 8}, {"direction": "west", "tiles": 7}, {"direction": "south", "tiles": 2}, {"direction": "east", "tiles": 4}, {"direction": "south", "tiles": 1}]
+          "legs": [{"direction": "east", "tiles": 9}, {"direction": "south", "tiles": 8}, {"direction": "west", "tiles": 7}, {"direction": "south", "tiles": 2}, {"direction": "east", "tiles": 4}]
         },
         "skip_if": ["bag_super_potions", "bag_status_cure"],
-        "why": "12.01's down_to_koga: east to (9, 2), down column 9, west along row 10 below Rocker Shawn, into the middle box along row 12 to west of Koga"
+        "why": "12.01's down_to_koga but its last tile: east to (9, 2), down column 9, west along row 10 below Rocker Shawn, into the middle box along row 12 to (6, 12)"
+      },
+      {
+        "id": "step_down_to_koga",
+        "kind": "legs",
+        "action": "taps",
+        "args": {
+          "legs": [{"direction": "south", "tiles": 1}]
+        },
+        "skip_if": ["bag_super_potions", "bag_status_cure"],
+        "why": "a tap down onto (6, 13), west of Koga: a held run here would end on no wall, and Koga is talked to from this tile"
       },
       {
         "id": "west_of_koga_again",

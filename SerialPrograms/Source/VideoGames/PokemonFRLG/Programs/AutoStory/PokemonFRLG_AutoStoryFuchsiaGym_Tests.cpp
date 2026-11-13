@@ -385,8 +385,8 @@ UnitTestResult test_koga_bag_detour_steps(){
         }
         skipped++;
     }
-    if (skipped != 14){
-        return std::format("12.02: {} detour steps before Koga, expected 14.", skipped);
+    if (skipped != 15){
+        return std::format("12.02: {} detour steps before Koga, expected 15.", skipped);
     }
     const StoryStep& last = step_named(row, "west_of_koga_again");
     const StoryStep& first = step_named(checkpoint("12.01"), "west_of_koga");
@@ -437,7 +437,7 @@ const AutoStoryFuchsiaGymCase AUTO_STORY_FUCHSIA_GYM_CASES[] = {
     },
     {
         .input = {.name = "12.02's detour steps skip together and end west of Koga", .body = test_koga_bag_detour_steps},
-        .expectation = {.description = "14 steps skipped by the flags, ending where 12.01 does"},
+        .expectation = {.description = "15 steps skipped by the flags, ending where 12.01 does"},
     },
     {
         .input = {.name = "12.02's Mart buys fill to 5 Super Potions and one Full Heal", .body = test_koga_bag_detour_buys},
