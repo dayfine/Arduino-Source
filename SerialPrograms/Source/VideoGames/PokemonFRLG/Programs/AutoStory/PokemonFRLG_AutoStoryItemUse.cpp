@@ -5,7 +5,12 @@
  */
 
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
+#include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_BattleDialogs.h"
+#include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_PartyDialogs.h"
+#include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_BagDetector.h"
+#include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartyMenuDetector.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
@@ -22,6 +27,9 @@ namespace PokemonFRLG{
 using namespace std::chrono_literals;
 
 
+//  The most a use_item step's count may be.
+constexpr size_t MAX_USE_COUNT = 99;
+
 MoveSpeed move_speed(const StoryStep& step){
     if (step.action == BIKE_VARIANT){
         return MoveSpeed::BIKE;
@@ -33,10 +41,16 @@ std::optional<BagPocket> usable_item_pocket(std::string_view item){
     if (is_repel(item) || item == "escape-rope"){
         return BagPocket::ITEMS;
     }
+    if (is_party_item(item)){
+        return BagPocket::ITEMS;
+    }
     if (item == "bicycle"){
         return BagPocket::KEY_ITEMS;
     }
     return std::nullopt;
+}
+bool is_party_item(std::string_view item){
+    return item == "rare-candy";
 }
 bool is_repel(std::string_view item){
     return item == "repel" || item == "super-repel" || item == "max-repel";
@@ -47,7 +61,13 @@ std::optional<std::string> parse_use_item_step(const Pokemon::StoryStep& step){
     if (item == nullptr || step.args.contains("slot") || !usable_item_pocket(*item)){
         return std::nullopt;
     }
+    if (step.args.contains("count") && !number_arg(step.args, "count", 1, MAX_USE_COUNT)){
+        return std::nullopt;
+    }
     return *item;
+}
+size_t use_item_count(const Pokemon::StoryStep& step){
+    return number_arg(step.args, "count", 1, MAX_USE_COUNT).value_or(1);
 }
 bool is_item_use_step(const Pokemon::StoryStep& step){
     const bool bike = step.action == RIDE_BIKE_VARIANT || step.action == REGISTER_BIKE_VARIANT;
@@ -73,6 +93,8 @@ std::string item_use_end_name(ItemUseEnd end){
         return "no_bag";
     case ItemUseEnd::UNKNOWN_ITEM:
         return "unknown_item";
+    case ItemUseEnd::NOT_USED:
+        return "not_used";
     }
     return "?";
 }
@@ -101,6 +123,12 @@ ItemUseEnd with_bag_row(
     logger.log("Bag: " + std::string(registers ? "registering" : "using") + " the " + std::string(item) + " on row " + std::to_string(*row + 1) + ".");
     if (registers){
         actions.register_row(*row);
+    }else if (is_party_item(item)){
+        if (!actions.use_row_on_lead(*row)){
+            logger.log("Bag: the " + std::string(item) + " showed no level-up.");
+            actions.close_bag();
+            return ItemUseEnd::NOT_USED;
+        }
     }else{
         actions.use_row(*row);
     }
@@ -112,6 +140,21 @@ ItemUseEnd with_bag_row(
 
 ItemUseEnd use_item_from_bag(Logger& logger, ItemUseActions& actions, std::string_view item){
     return with_bag_row(logger, actions, item, false);
+}
+ItemUses use_items_from_bag(Logger& logger, ItemUseActions& actions, std::string_view item, size_t count){
+    size_t used = 0;
+    while (used < count){
+        const ItemUseEnd end = use_item_from_bag(logger, actions, item);
+        if (end == ItemUseEnd::NONE_LEFT && used != 0){
+            logger.log("Bag: " + std::to_string(used) + " of " + std::to_string(count) + " " + std::string(item) + " used: no more in the bag.");
+            break;
+        }
+        if (end != ItemUseEnd::USED){
+            return {end, used};
+        }
+        used++;
+    }
+    return {ItemUseEnd::USED, used};
 }
 ItemUseEnd register_item_in_bag(Logger& logger, ItemUseActions& actions, std::string_view item){
     return with_bag_row(logger, actions, item, true);
@@ -139,6 +182,10 @@ constexpr Milliseconds POCKET_SWITCH_WAIT = 600ms;
 //  A cursor step in a pocket, press and wait: 250 ms in all.
 constexpr Milliseconds CURSOR_TAP = 100ms;
 constexpr Milliseconds CURSOR_WAIT = 150ms;
+//  A presses to the stats window, 800 ms each, and the tries (15 B
+//  presses each) to get from it back to the bag.
+constexpr int LEVEL_UP_PRESSES = 30;
+constexpr int BACK_TO_BAG_ATTEMPTS = 8;
 //  Out of the bag and its messages, or the Escape Rope's warp.
 constexpr Milliseconds BAG_CLOSE_TIMEOUT = 30000ms;
 
@@ -183,6 +230,76 @@ void ConsoleItemUseActions::use_row(size_t row){
     //  The item's menu, USE on top.
     pbf_press_button(m_context, BUTTON_A, 160ms, 800ms);
     pbf_press_button(m_context, BUTTON_A, 160ms, 1500ms);
+}
+
+//  Past the party list to the stats window of a Rare Candy.
+bool ConsoleItemUseActions::wait_for_level_up_stats(){
+    //  "<name> grew to Lv. N!", then the stats window (the RNG loop's
+    //  waits, console-proven there).
+    PartyLevelUpWatcher level_up(COLOR_RED, PartyLevelUpDialog::stats, m_language);
+    m_context.wait_for_all_requests();
+    const int stats = run_until<ProControllerContext>(
+        m_console, m_context,
+        [](ProControllerContext& context){
+            for (int c = 0; c < LEVEL_UP_PRESSES; c++){
+                pbf_press_button(context, BUTTON_A, 200ms, 800ms);
+            }
+        },
+        {level_up}
+    );
+    if (stats < 0){
+        m_console.log("Bag: no level-up stats window after the Rare Candy.", COLOR_RED);
+    }
+    return stats >= 0;
+}
+
+//  Out of the stats window and the party list back to the bag. A new move
+//  is declined: B on "Delete a move?" asks "Stop learning?", A answers YES.
+//  An evolution is stopped with B.
+bool ConsoleItemUseActions::back_to_bag_declining_moves(){
+    for (int attempt = 0; attempt < BACK_TO_BAG_ATTEMPTS; attempt++){
+        BagWatcher bag(COLOR_RED);
+        PartyMoveLearnWatcher move_learn(COLOR_RED);
+        BattleDialogWatcher evolution(COLOR_RED);
+        m_context.wait_for_all_requests();
+        const int seen = run_until<ProControllerContext>(
+            m_console, m_context,
+            [](ProControllerContext& context){
+                pbf_wait(context, 1000ms);
+                for (int c = 0; c < 15; c++){
+                    pbf_press_button(context, BUTTON_B, 200ms, 1800ms);
+                }
+            },
+            {bag, move_learn, evolution}
+        );
+        if (seen == 0){
+            return true;
+        }
+        if (seen == 1){
+            m_console.log("Bag: a new move to learn: declined.");
+            pbf_press_button(m_context, BUTTON_B, 200ms, 1800ms);
+            pbf_press_button(m_context, BUTTON_A, 200ms, 2800ms);
+        }else if (seen == 2){
+            m_console.log("Bag: an evolution: stopped.");
+            pbf_press_button(m_context, BUTTON_B, 200ms, 2800ms);
+        }else{
+            break;
+        }
+    }
+    m_console.log("Bag: never back at the bag after the Rare Candy.", COLOR_RED);
+    return false;
+}
+
+bool ConsoleItemUseActions::use_row_on_lead(size_t row){
+    for (size_t c = 0; c < row; c++){
+        pbf_press_dpad(m_context, DPAD_DOWN, CURSOR_TAP, CURSOR_WAIT);
+    }
+    //  The item's menu, USE, then the party list, whose cursor is on the
+    //  lead, as for a Potion in battle.
+    pbf_press_button(m_context, BUTTON_A, 160ms, 800ms);
+    pbf_press_button(m_context, BUTTON_A, 160ms, 1500ms);
+    pbf_press_button(m_context, BUTTON_A, 160ms, 1000ms);
+    return wait_for_level_up_stats() && back_to_bag_declining_moves();
 }
 
 void ConsoleItemUseActions::register_row(size_t row){
