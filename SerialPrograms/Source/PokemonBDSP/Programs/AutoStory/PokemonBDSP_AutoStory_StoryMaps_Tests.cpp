@@ -12,6 +12,7 @@
 #include <format>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
@@ -94,7 +95,7 @@ UnitTestResult test_route202_catch_grass(Logger& logger){
 }
 
 //  The table's step `name` in row `row`.
-const StoryStep& table_step(const std::string& row, const std::string& name){
+const StoryStep& table_step(std::string_view row, std::string_view name){
     for (const StoryCheckpoint& checkpoint : story_checkpoints()){
         for (const StoryStep& step : checkpoint.steps){
             if (checkpoint.id == row && step.name == name){
@@ -102,7 +103,7 @@ const StoryStep& table_step(const std::string& row, const std::string& name){
             }
         }
     }
-    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No step " + name + " in " + row);
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No step " + std::string(name) + " in " + std::string(row));
 }
 
 //  00.04b's way to Sandgem's Pokemon Center from the road's last row,

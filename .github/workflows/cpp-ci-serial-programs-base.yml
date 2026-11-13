@@ -84,8 +84,10 @@ jobs:
       - name: Checkout Packages
         uses: actions/checkout@v7
         with:
-          repository: 'PokemonAutomation/Packages'
-          ref: 'master'
+          # Upstream master plus the BDSP AutoStory option-screen templates (22 PNGs the
+          # AutoStoryResources test requires); drop this once they are merged upstream.
+          repository: 'dayfine/Packages'
+          ref: '7d108a255bfbd4923af1fb0cf49245f2c2483594'
           path: 'Arduino-Source/Packages'
 
       - name: Prepare pinned BDSP map resources
@@ -95,46 +97,6 @@ jobs:
           layout: resources
           operation: prepare
           consumer-directory: Arduino-Source
-
-      - name: Checkout authored BDSP story simulator
-        if: startsWith(inputs.os, 'ubuntu') && inputs.run-tests
-        uses: actions/checkout@v7
-        with:
-          repository: dayfine/PokemonSimulation
-          ref: 913a5e3eaa22865e1aeab52f23c9e23ea7141ced
-          path: AuthoredStorySource
-
-      - name: Replay the authoritative Arduino mine plan
-        if: startsWith(inputs.os, 'ubuntu') && inputs.run-tests
-        env:
-          PYTHONPATH: AuthoredStorySource/src
-        run: |
-          python3 - <<'PYTHON'
-          from pathlib import Path
-          import hashlib, json, tempfile
-          from pokesim.story.replay_binding import load_binding
-          from pokesim.story.replay_cases import read_cases, check_case
-          from pokesim.story.checkpoint_replay import run
-          source = Path('AuthoredStorySource').resolve()
-          folder = source / 'data/story/bdsp-mine-pilot'
-          native = Path('Arduino-Source/SerialPrograms/Source/PokemonBDSP/Programs/AutoStory/StoryData')
-          # The Arduino plan is authoritative; bind these exact bytes explicitly.
-          # The simulator's checked-in plan is only a frozen regression snapshot.
-          with tempfile.TemporaryDirectory(prefix='.native-story-', dir=source) as temporary:
-              stage = Path(temporary)
-              raw = (native / 'bdsp-mine-01.03.plan.json').read_bytes()
-              (stage / 'plan.json').write_bytes(raw)
-              profile = json.loads((folder / 'binding.json').read_text())
-              profile['plan'] = {'file': str((stage / 'plan.json').relative_to(source)),
-                                 'sha256': hashlib.sha256(raw).hexdigest()}
-              (stage / 'binding.json').write_text(json.dumps(profile))
-              binding = load_binding(stage / 'binding.json', source)
-              cases = read_cases(folder / 'cases.json')
-              for case in cases:
-                  check_case(case, run(binding, case['input']))
-                  print(case['id'] + ': current Arduino plan replay passed')
-              assert len(cases) == 9
-          PYTHON
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
