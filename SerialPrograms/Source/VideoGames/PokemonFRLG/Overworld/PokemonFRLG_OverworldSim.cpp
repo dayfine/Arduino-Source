@@ -889,6 +889,7 @@ StepOutcome OverworldSimWalker::walk_ridden(const RouteStep& step, std::optional
         clear_late(interrupts(step), OPEN_MESSAGE_WATCH, 1);
     }
     check_overworld(step);
+    const MapPosition before = m_sim.state().position;
     if (counts_step_taps(step) || (m_rules.count_bike_taps && counts_bike_taps(step, m_speed))){
         const StepOutcome outcome = counts_step_taps(step) ? walk_step_taps(step) : walk_bike_taps(step);
         if (outcome.end != StepEnd::DONE){
@@ -900,13 +901,18 @@ StepOutcome OverworldSimWalker::walk_ridden(const RouteStep& step, std::optional
     if (step.action == RouteAction::FACE || step.action == RouteAction::OPEN_GATE || step.action == RouteAction::PRESS_SWITCH){
         return StepOutcome{};
     }
+    //  What the console reads off the screen: whether the map scrolled.
+    HoldMovement movement = HoldMovement::UNMEASURED;
+    if (step.action == RouteAction::WALK && !step.warps){
+        movement = m_sim.state().position == before ? HoldMovement::NONE : HoldMovement::MOVED;
+    }
     size_t late = clear_late(interrupts(step), step.wild ? m_rules.after_wild_leg_watch : AFTER_LEG_WATCH, MAX_INTERRUPTIONS_PER_LEG);
     if (late == 0){
         late = clear_unseen_battle(step);
     }
     const bool done = late == 0 || step.warps || step.action != RouteAction::WALK;
     if (done){
-        return StepOutcome{};
+        return StepOutcome{.end = StepEnd::DONE, .walked = std::nullopt, .movement = movement};
     }
     return StepOutcome{.end = StepEnd::LATE, .walked = late_stop(step)};
 }
