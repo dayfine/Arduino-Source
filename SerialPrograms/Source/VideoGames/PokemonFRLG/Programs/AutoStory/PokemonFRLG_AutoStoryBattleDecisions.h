@@ -45,7 +45,13 @@ public:
 
     //  At the battle menu, with the player's box as read.
     TurnAction turn(const PartyStatus& status);
-    //  What came of what turn() chose.
+    //  What came of what turn() chose. RUN REFUSED: the game answered "No!
+    //  There's no running from a trainer battle!", and whatever the battle
+    //  was taken for at its start, it is a trainer's from now on, fought as
+    //  one started after a message would be. A wild battle run from can be
+    //  followed by a trainer who sees the player before the battle loop
+    //  has found the overworld (console B, 2026-11-13, 12.03: Swimmer
+    //  Spencer after a wild Tentacool; RUN for 10 minutes).
     void turn_done(TurnChoice choice, TurnResult result);
 
     //  A YES/NO in or after the battle. With the lead's box gone and the
@@ -91,9 +97,12 @@ private:
     void see_hit(const PartyStatus& status);
     void count_down_refused();
     void move_refused();
+    //  The game turned down `choice`: a move (Disable), or RUN in a
+    //  trainer's battle, which makes the battle a trainer's.
+    void refused(TurnChoice choice);
 
     Supplies& m_supplies;
-    const BattleKind m_kind;
+    BattleKind m_kind;
     size_t m_turns = 0;
     int m_run_tries = 0;
     int m_psn_reads = 0;
@@ -224,6 +233,33 @@ public:
 private:
     std::optional<WallClock> m_chosen;
     bool m_list_back = false;
+};
+
+
+//  The HP boxes a poll of a battle screen read.
+struct BattleBoxes{
+    bool lead = false;
+    bool foe = false;
+};
+
+//  Whether the lead fainted, from the boxes the battle loop reads after a
+//  turn: the lead's box gone and the foe's there for FAINT_POLLS polls in a
+//  row, after the lead's box showed in the same battle. A battle that
+//  starts after the overworld showed (no battle screen) opens with the
+//  foe's box alone while the trainer sends out first: on console B,
+//  2026-11-13, 12.03, Swimmer Spencer's Seadra before the lead read as a
+//  faint, and the loop sent RUN for 10 minutes.
+class LeadFaintWatch{
+public:
+    //  No battle screen at this poll.
+    void no_battle_screen();
+    //  A battle screen with `boxes`. True at the poll the lead counts as
+    //  fainted.
+    bool seen(BattleBoxes boxes);
+
+private:
+    bool m_lead_seen = false;
+    int m_polls = 0;
 };
 
 
