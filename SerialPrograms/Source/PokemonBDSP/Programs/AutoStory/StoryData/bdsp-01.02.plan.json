@@ -112,8 +112,10 @@
         "why": "HM Rock Smash, then the Hidden Moves card"
       },
       {
+        "action": "exit",
         "args": {
           "fight_wild": false,
+          "leave": "east",
           "target": {
             "facing": "east",
             "map": "OreburghGate",
@@ -130,8 +132,10 @@
         "why": "east along row 22 past Camper Curtis's column (17), fighting him"
       },
       {
+        "action": "exit",
         "args": {
           "fight_wild": false,
+          "leave": "east",
           "target": {
             "facing": "east",
             "map": "OreburghGate",
