@@ -3,29 +3,47 @@
   "game": "plza",
   "checkpoint": {
     "id": "02.06",
-    "title": "Main Mission 02: the first evening to Main Mission 03",
+    "title": "Main Mission 02: the night in Room 202",
     "start": {
       "place": "LumioseCity"
     },
     "events": [
       {
-        "id": "to_room_door",
+        "id": "to_bed",
         "kind": "game_action",
-        "why": "step 33: to the door's \"A Leave\". Measured 2026-11-08 on console B, walk not run.",
+        "why": "step 31: to the bed's \"A Rest\". 1.5 s explored, 1 s enough. Measured 2026-11-08 on console B, walk not run.",
         "action": "walk",
-        "args": {"legs": [[0, 2000]]}
+        "args": {"legs": [[45, 1000]], "held": true}
       },
       {
-        "id": "first_evening",
+        "id": "rest",
+        "kind": "talk",
+        "why": "step 31: A Rest, \"Rest until tomorrow morning?\""
+      },
+      {
+        "id": "rest_question",
         "kind": "game_action",
-        "why": "steps 33-35: A Leave at the door, Taunie, the rooftop, AZ, the Main Mission 03 banner and its autosave",
+        "why": "step 31: \"Rest until tomorrow morning?\" before the choice shows",
+        "action": "text_to_choice",
+        "args": {"advance_with_a": true}
+      },
+      {
+        "id": "rest_until_morning",
+        "kind": "game_action",
+        "why": "step 31: yes",
+        "action": "choose_0"
+      },
+      {
+        "id": "wake_up",
+        "kind": "game_action",
+        "why": "step 32: sleep and wake up, until control facing the door; the room shows no party bar or prompt, so the quiet time is control",
         "action": "mash_to_move_hints",
-        "args": {"press_a_first": true}
+        "args": {"quiet_ms": 3000, "min_length_ms": 20000, "quiet_is_control": true}
       }
     ],
     "metadata": {
       "phase": "testing",
-      "source": "console B recording, 2026-11-08/09: played step by step from a new game; split from 02.05 at the autosave after waking up (2026-11-10)"
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game; split from 02.04 at the autosave on entering Room 202 (2026-11-10); starts at that autosave, in the room. Renumbered from 02.05 when 02.04 was split at the elevator autosave (2026-11-13)"
     }
   },
   "execution": {
