@@ -90,12 +90,12 @@ public:
     //  the pace is the row's save's (a run after the Running Shoes). With
     //  the row's `steps`, a route followed by a scene, or by a plain step onto
     //  the scene's trigger, hands a dialogue that starts on the way to that
-    //  scene (RouteWalkPlan::scene_next).
-    void begin_attempt(const std::string& row, const std::vector<Pokemon::StoryStep>& steps = {});
-    //  The run's breakpoints: a pause before each leg of a walk (LEGS mode).
-    void set_pause_points(Pokemon::StoryPausePoints* pause){
-        m_pause = pause;
-    }
+    //  scene (RouteWalkPlan::scene_next). With `pause`, the run's breakpoints:
+    //  a pause before each leg of a walk (LEGS mode).
+    void begin_attempt(
+        const std::string& row, const std::vector<Pokemon::StoryStep>& steps = {},
+        Pokemon::StoryPausePoints* pause = nullptr
+    );
     //  Whether the player has the Running Shoes: the pace routes are timed at.
     bool can_run() const{
         return m_can_run;

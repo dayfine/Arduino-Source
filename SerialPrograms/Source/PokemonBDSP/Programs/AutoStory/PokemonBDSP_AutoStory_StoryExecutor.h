@@ -169,7 +169,6 @@ public:
     //  The run's breakpoints: a pause before each step and each leg of a walk.
     void set_breakpoints(Pokemon::StoryPausePoints* pause){
         set_pause_points(pause);
-        m_walks.set_pause_points(pause);
     }
     //  A new attempt of a row: every trainer can see us again.
     virtual void begin_attempt(const Pokemon::StoryCheckpoint& data) override;
