@@ -208,8 +208,6 @@ private:
     const MapData& map() const{ return m_maps[m_map]; }
 
     std::vector<MapData> m_maps;
-    //  The maps as loaded, with the gates closed or open as the map says.
-    std::vector<MapData> m_source_maps;
     SimScript m_script;
     int m_map = 0;
     PlayerState m_player;

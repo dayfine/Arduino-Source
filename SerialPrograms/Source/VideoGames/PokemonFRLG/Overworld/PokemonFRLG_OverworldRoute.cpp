@@ -396,6 +396,9 @@ public:
     bool held_at(const State& state, Direction direction, const Pokemon::GateState& gates) const{
         return StepModel(m_maps.at(gates), m_costs).held_at(state, direction);
     }
+    int open_stop_risk(const State& state, Direction direction, const Pokemon::GateState& gates) const{
+        return StepModel(m_maps.at(gates), m_costs).open_stop_risk(state, direction);
+    }
     Pokemon::MapPlace place_of(const State& state) const{
         return Pokemon::MapPlace{(size_t)state.map, state.state.position};
     }
