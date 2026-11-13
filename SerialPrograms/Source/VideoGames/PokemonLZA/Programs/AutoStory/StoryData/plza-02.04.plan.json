@@ -23,9 +23,9 @@
       {
         "id": "check_in",
         "kind": "game_action",
-        "why": "steps 26-27: from the clerk's talk straight through Taunie, AZ, the check-in scene and the Key to Room 202, until control facing the elevator. There is no free control between the clerk and the elevator: AZ was already talking when the clerk's talk ended (console B, 2026-11-13), so the old turn to AZ is gone",
+        "why": "steps 26-27: from the clerk's talk straight through Taunie, AZ, the check-in scene and the Key to Room 202, until control facing the elevator. There is no free control between the clerk and the elevator: AZ was already talking when the clerk's talk ended (console B, 2026-11-13), so the old turn to AZ is gone. The lobby shows the party bar without its D-pad hint, which the party bar detector keys on, so the step ends on 5 s quiet after the scene, before any blind A (console B, 2026-11-13: the scene ended at ~76 s, then a minute of blind A and scene_quiet). The 30 s minimum covers the text-free ~17 s opening with AZ",
         "action": "mash_to_move_hints",
-        "args": {"press_a_first": true}
+        "args": {"press_a_first": true, "quiet_ms": 5000, "min_length_ms": 30000, "quiet_is_control": true}
       },
       {
         "id": "to_lobby_elevator",
