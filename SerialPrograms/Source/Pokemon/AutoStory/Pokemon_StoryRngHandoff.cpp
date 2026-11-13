@@ -13,11 +13,11 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-RngHandoffMode rng_handoff_mode(bool stop, bool run){
-    if (run){
+RngHandoffMode rng_handoff_mode(const RngHandoffOptions& options){
+    if (options.run){
         return RngHandoffMode::RUN;
     }
-    return stop ? RngHandoffMode::STOP : RngHandoffMode::OFF;
+    return options.stop ? RngHandoffMode::STOP : RngHandoffMode::OFF;
 }
 
 bool RngHandoffResult::succeeded() const{

@@ -34,14 +34,21 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
+//  What a handoff row does with its RNG program.
 enum class RngHandoffMode{
     OFF,
     STOP,
     RUN,
 };
 
+//  A handoff's two options.
+struct RngHandoffOptions{
+    bool stop = false;
+    bool run = false;
+};
+
 //  The mode for a handoff's two options: RUN takes precedence over STOP.
-RngHandoffMode rng_handoff_mode(bool stop, bool run);
+RngHandoffMode rng_handoff_mode(const RngHandoffOptions& options);
 
 
 //  How an RNG program's call ended, as the story needs it.
