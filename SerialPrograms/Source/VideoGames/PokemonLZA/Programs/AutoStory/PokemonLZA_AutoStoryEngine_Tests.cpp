@@ -429,6 +429,36 @@ UnitTestResult test_walk_to_prompt(CancellableScope& scope){
 }
 
 
+//  Breakpoints on legs: the walk pauses before each of its legs, after the
+//  step's own pause, each labelled with the leg's turn and walk.
+UnitTestResult test_walk_pauses_before_each_leg(CancellableScope& scope){
+    std::vector<std::string> pauses;
+    Pokemon::StoryGame<ZonePose> game = make_offline_plza_story_game();
+    game.breakpoints = Pokemon::StoryBreakpoints::LEGS;
+    game.pause_point = [&pauses](std::string_view label){
+        pauses.emplace_back(label);
+    };
+    const std::vector<Pokemon::StoryTimedLeg> legs{{.turn = 0, .ms = 500}, {.turn = 90, .ms = 0}};
+    StoryCheckpoint row;
+    row.id = "01.01";
+    row.steps.push_back(StoryStep{.kind = Pokemon::StoryStepKind::GAME, .name = "chase", .why = "test", .action = "walk"});
+    row.steps.back().args["legs"] = legs;
+    FakeBackend backend = fake_plza({look_at(0ms)}, scope);
+    Pokemon::StoryEngine<ZonePose> engine(game, backend);
+    Pokemon::RunState state;
+    if (engine.run_checkpoint(row, Pokemon::SavePoint::RUN_END, state).verdict != Pokemon::CheckpointVerdict::PASSED){
+        return std::format("Expected the walk to pass: {}", joined(backend.lines()));
+    }
+    const std::vector<std::string> expected{
+        "01.01/1 chase", "01.01/1 chase leg 1/2 turn 0 walk 500 ms", "01.01/1 chase leg 2/2 turn 90",
+    };
+    if (pauses != expected){
+        return std::format("Expected pauses [{}], got [{}].", joined(expected), joined(pauses));
+    }
+    return true;
+}
+
+
 struct EngineTestInput{
     std::string name;
     std::function<UnitTestResult(CancellableScope&)> body;
@@ -473,6 +503,7 @@ const EngineTestCase ENGINE_TEST_CASES[] = {
     {.input = {"reload_when_chained: no reload from the row's save or for other rows", test_no_reload_unless_chained}, .expectation = {}},
     {.input = {"reload_when_chained: a reload onto the platform fails", test_reload_lands_on_older_save}, .expectation = {}},
     {.input = {"walk_to_prompt: walks until the A prompt, none when it shows", test_walk_to_prompt}, .expectation = {}},
+    {.input = {"breakpoints: a walk pauses before each leg", test_walk_pauses_before_each_leg}, .expectation = {}},
 };
 
 void add_tests_AutoStoryEngine(UnitTestDatabase& database){
