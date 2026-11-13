@@ -80,13 +80,13 @@ StoryRunPlan plan_story_run(
     StoryRunPlan plan;
     for (size_t c = first; c <= last && c < checkpoints.size(); c++){
         const StoryCheckpoint& row = checkpoints[c];
-        if (row.id == STARTER_RNG_HANDOFF_ROW && handoffs.starter_rng && !handoffs.run_starter_rng){
+        if (row.id == STARTER_RNG_HANDOFF_ROW && handoffs.starter_rng == Pokemon::RngHandoffMode::STOP){
             const std::string saves_in = c + 1 < checkpoints.size() ? checkpoints[c + 1].saves_in : std::string();
             plan.rows.push_back(with_handoff_save(row, saves_in));
             plan.stop = StoryHandoff::STARTER_RNG;
             return plan;
         }
-        if (row.id == STARTER_RNG_CHECKPOINT_ROW && handoffs.run_starter_rng){
+        if (row.id == STARTER_RNG_CHECKPOINT_ROW && handoffs.starter_rng == Pokemon::RngHandoffMode::RUN){
             plan.rows.push_back(with_starter_rng_step(row));
             plan.fatal_rows.insert(row.id);
             continue;
