@@ -167,6 +167,10 @@ void story_turn(PlzaBackend& backend, double degrees){
     //  150 ms is the tap the story was recorded with (console B, 2026-11-08).
     //  Short releases: the legs run back to back, as when played by hand.
     backend.press(BUTTON_L, 100ms, 150ms);
+    story_turn_from_camera(backend, degrees);
+}
+
+void story_turn_from_camera(PlzaBackend& backend, double degrees){
     backend.stick(degrees, 150ms, 100ms, Pokemon::StoryPace::WALK);
 }
 

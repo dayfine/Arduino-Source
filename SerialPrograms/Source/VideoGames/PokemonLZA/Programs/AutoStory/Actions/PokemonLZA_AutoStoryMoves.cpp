@@ -72,10 +72,15 @@ Pokemon::Outcome run_story_move(PlzaBackend& backend, const StoryMove& move, con
         }
         return Pokemon::outcome_ok();
     }
-    for (const StoryWalkLeg& leg : move.legs){
+    for (size_t i = 0; i < move.legs.size(); i++){
+        const StoryWalkLeg& leg = move.legs[i];
         if (leg.turn != 0){
+            if (i == 0 && move.first_turn_from == FirstTurnFrom::CAMERA){
+                story_turn_from_camera(backend, leg.turn);
+            }else{
+                story_turn(backend, leg.turn);
+            }
             //  The walk goes where the camera looks: recenter it after the turn.
-            story_turn(backend, leg.turn);
             backend.press(BUTTON_L, 100ms, 150ms);
         }
         if (leg.walk > Milliseconds(0)){
