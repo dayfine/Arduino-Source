@@ -2,7 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Wild Zone 1's catches (03.06's tutorial, 03.07's five species), from
+ *  Wild Zone 1's catches (03.07's tutorial, 03.08's five species), from
  *  console B, 2026-11-10.
  *
  */
@@ -24,7 +24,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  03.06's first catch (Fletchling): ZL locks on, ZL+ZR held 1.5 s throws
+//  03.07's first catch (Fletchling): ZL locks on, ZL+ZR held 1.5 s throws
 //  (0.5 s only aims). A break-out brings two or three lines from Taunie and
 //  control back; the catch brings her lines and then the "Battling wild
 //  Pokemon" cards (console B, 2026-11-10). So: lock, throw, A through her
@@ -32,7 +32,7 @@ namespace PokemonLZA{
 //  OperationFailedException after `max_throws` throws with no card.
 void catch_tutorial(ConsoleHandle& console, ProControllerContext& context, int max_throws);
 
-//  03.06's second catch (Bunnelby), after the cards: A past its "weaken
+//  03.07's second catch (Bunnelby), after the cards: A past its "weaken
 //  it" banner (D-pad up is ignored while it shows), D-pad up sends the
 //  partner out (again, twice at most per round, after two lock-ons with no
 //  move symbols), then rounds of TrainerBattleState attacks (3 that land),
@@ -61,7 +61,7 @@ std::optional<ObjectiveMarker> read_objective_marker(Logger& logger, const Image
 //  shows, or `limit`. Returns the last distance read.
 std::optional<int> walk_to_objective(ConsoleHandle& console, ProControllerContext& context, int stop_at, Milliseconds limit);
 
-//  03.07's catch for the "register five species" quest (4/5 after the
+//  03.08's catch for the "register five species" quest (4/5 after the
 //  tutorial and its repeats): walks toward the objective (Wild Zone 1's far
 //  gate, around Taunie's rocks from the start) to 60, where Mareep graze in
 //  the grass right of the road, then steps right 1 s at a time (3 at most)
@@ -76,7 +76,7 @@ void catch_in_zone(ConsoleHandle& console, ProControllerContext& context, int ne
 //  On to the objective marker until an A prompt (a gate's "Leave", a door's
 //  "Enter") or a dialog (a scene that starts on arriving) shows. Where a
 //  walk starts facing whichever way the last scene left the player (out of
-//  a wild zone's gate), the marker sets the way, not timed legs (03.07,
+//  a wild zone's gate), the marker sets the way, not timed legs (03.08,
 //  console B 2026-11-10). Throws OperationFailedException when neither
 //  shows within 90 s.
 void walk_to_marker(ConsoleHandle& console, ProControllerContext& context);

@@ -93,8 +93,8 @@ UnitTestResult test_story_walks_read(Logger&){
             }
         }
     }
-    if (walks != 24){
-        return std::format("Expected the 24 recorded walks, found {}.", walks);
+    if (walks != 26){
+        return std::format("Expected the 26 walks, found {}.", walks);
     }
     const StoryStep* plaza = find_step(story_checkpoints(), "01.01", "platform_to_plaza");
     if (plaza == nullptr){
@@ -150,6 +150,38 @@ UnitTestResult test_autosave_rows(Logger&){
     }
     if (seen != story_autosave_rows().size()){
         return std::format("Expected {} autosave rows in the table, found {}.", story_autosave_rows().size(), seen);
+    }
+    return true;
+}
+
+//  03.05 heals at the Pokemon Center and ends there: talk to the nurse,
+//  her scene, then the checkpoint's save. Healing writes a save, so the
+//  title screen's backup save (Up + B + X) lands on 03.05's end for
+//  Main Mission 03's retries (user, 2026-11-13).
+UnitTestResult test_mm3_heal_row(Logger&){
+    const StoryCheckpoint* heal = nullptr;
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        if (row.id == "03.05"){
+            heal = &row;
+        }
+    }
+    if (heal == nullptr || heal->steps.size() < 2){
+        return "Expected 03.05, the heal, with at least two steps.";
+    }
+    const StoryStep& talk = heal->steps[heal->steps.size() - 2];
+    const StoryStep& scene = heal->steps.back();
+    if (talk.name != "talk_to_nurse" || talk.kind != StoryStepKind::TALK){
+        return "Expected 03.05 to talk to the nurse before its last step.";
+    }
+    if (scene.name != "heal_party" || scene.kind != StoryStepKind::MASH){
+        return "Expected 03.05 to end on the nurse's heal_party scene.";
+    }
+    if (!story_row_saves(builtin_story_data(), *heal)){
+        return "Expected 03.05 to save after the heal.";
+    }
+    const StoryStep* leave = find_step(story_checkpoints(), "03.06", "out_of_pokemon_center");
+    if (leave == nullptr || leave->kind != StoryStepKind::GAME || leave->action != "walk"){
+        return "Expected 03.06 to walk out of the Pokemon Center.";
     }
     return true;
 }
@@ -501,6 +533,10 @@ const AutoStoryTableCase AUTO_STORY_TABLE_CASES[] = {
     },
     {
         .input = {"Story table: the autosave rows, and 01.03 saves through the menu", test_autosave_rows},
+        .expectation = {},
+    },
+    {
+        .input = {"Story table: 03.05 heals at the Pokemon Center and saves there", test_mm3_heal_row},
         .expectation = {},
     },
     {

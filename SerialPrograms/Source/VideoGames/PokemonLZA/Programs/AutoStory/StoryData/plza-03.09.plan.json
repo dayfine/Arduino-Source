@@ -1,0 +1,70 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "plza",
+  "checkpoint": {
+    "id": "03.09",
+    "title": "Mable's research, the Rock Smash TM",
+    "start": {
+      "place": "PokemonResearchLab"
+    },
+    "events": [
+      {
+        "id": "to_lab_elevator",
+        "kind": "game_action",
+        "why": "step 66: to the elevator's \"A Take Elevator\". Measured 2026-11-09 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[0, 1000]]
+        }
+      },
+      {
+        "id": "take_lab_elevator",
+        "kind": "talk",
+        "why": "step 66: A Take Elevator, \"Which floor would you like to go to?\""
+      },
+      {
+        "id": "ride_to_3f",
+        "kind": "game_action",
+        "why": "step 67: \"3F: Director's Office\", the second floor listed",
+        "action": "choose_1"
+      },
+      {
+        "id": "arrive_3f",
+        "kind": "scene",
+        "why": "step 67: the ride, until control on 3F"
+      },
+      {
+        "id": "to_mable",
+        "kind": "game_action",
+        "why": "step 68: from the 3F elevator's door, facing out (the windows), around the left end of the desk and the counter behind it, into her talk: straight 0.7 s, right 1.2 s, right 1.6 s. Measured 2026-11-10 on console B, walking.",
+        "action": "walk",
+        "args": {
+          "legs": [[0, 700], [90, 1200], [90, 1600]]
+        }
+      },
+      {
+        "id": "mable_talk",
+        "kind": "scene",
+        "why": "step 69: Mable's research requests, until control in her office: A takes her first question's top answer (\"Yes\") and closes her \"Press X...\" line."
+      },
+      {
+        "id": "rock_smash_tm",
+        "kind": "game_action",
+        "why": "step 70: Mable's Research, Rewards: TM004 Rock Smash",
+        "action": "claim_mable_research_reward"
+      },
+      {
+        "id": "leave_mable",
+        "kind": "scene",
+        "why": "step 71: out of the menu, through Mable's talk, until control in her office"
+      }
+    ],
+    "metadata": {
+      "phase": "testing",
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game"
+    }
+  },
+  "execution": {
+    "save": "menu"
+  }
+}
