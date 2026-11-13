@@ -74,6 +74,7 @@ const std::map<std::string, ConsoleStep, std::less<>>& console_game_actions(){
         {"type_player_name", [](StoryEnv& env){
             type_player_name(env.env.console, env.context, env.new_game.name, env.new_game.name_first_letter_auto_caps);
         }},
+        {"confirm_new_game", [](StoryEnv& env){ confirm_new_game_choices(env.env.console, env.context); }},
         {"choose_0", [](StoryEnv& env){ choose_dialog_option(env.env.console, env.context, 0); }},
         {"choose_1", [](StoryEnv& env){ choose_dialog_option(env.env.console, env.context, 1); }},
         {"story_battle_start", [](StoryEnv& env){
@@ -132,6 +133,10 @@ StoryActionSpec walk_spec(){
         StoryArgSpec{
             .key = "wait_ms", .type = StoryArgType::INTEGER, .required = false, .fallback = std::nullopt,
             .why = "wait this long before looking for free control: NPCs moving off, a ride's fade starting",
+        },
+        StoryArgSpec{
+            .key = "first_turn", .type = StoryArgType::WORD, .required = false, .fallback = std::nullopt,
+            .why = "\"camera\": the first leg turns from where the camera looks, not the player (no L first)",
         },
     });
 }
@@ -558,6 +563,10 @@ StoryMove story_walk_move(const StoryActionArgs& args, std::string_view legs){
     const auto wait = args.find("wait_ms");
     if (wait != args.end()){
         move.wait_first = Milliseconds(std::get<int64_t>(wait->second));
+    }
+    const auto first_turn = args.find("first_turn");
+    if (first_turn != args.end()){
+        move.first_turn_from = walk_first_turn(std::get<std::string>(first_turn->second)).value_or(FirstTurnFrom::PLAYER);
     }
     for (const Pokemon::StoryTimedLeg& row : Pokemon::story_arg<TimedLegs>(args, legs)){
         move.legs.push_back({.turn = (double)row.turn, .walk = Milliseconds(row.ms)});

@@ -57,7 +57,7 @@ bool tutorial_card_shows(const ImageViewRGB32& frame);
 //  Switch system keyboard) are detected; the look picker is not checked and
 //  waits a fixed time.
 
-//  01.00's first step. It starts on the Switch HOME menu with PLZA's tile
+//  00.00's first step. It starts on the Switch HOME menu with PLZA's tile
 //  selected and no save: launches that tile without moving the cursor,
 //  closing the game first if it is running, through the user select and
 //  the license check to the language list (launch_selected_game_from_home(),
@@ -92,6 +92,19 @@ void type_player_name(
     ConsoleHandle& console, ProControllerContext& context,
     const std::string& name, bool first_letter_auto_caps
 );
+
+//  The highlighted row of "Confirm Choices", read from frames over up to
+//  2 s with no press. Throws UserSetupError if the screen does not show.
+size_t require_confirm_choices(ConsoleHandle& console, ProControllerContext& context);
+
+//  01.00's first step: the new game's language, look and name were chosen
+//  by hand and "Confirm Choices" is on screen. Checks that screen first
+//  (require_confirm_choices()): on any other screen throws UserSetupError
+//  and presses nothing. Then moves the highlight to
+//  "Ready!" one DOWN at a time, reading it after each, and presses A there:
+//  the save's only change is this press, on a screen it has read. Throws
+//  OperationFailedException if the highlight is lost on the way.
+void confirm_new_game_choices(ConsoleHandle& console, ProControllerContext& context);
 
 
 
