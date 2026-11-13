@@ -54,12 +54,6 @@ MapData load_map(const std::string& name);
 //  once, on the first call.
 std::vector<MapData> overworld_maps(const std::set<std::string>& set_flags = {});
 
-//  `maps` with the tiles and gates of each map in GateMaps/: the floors of
-//  Silph Co. with their card-key doors shut, as a new game has them, until the story opens
-//  them. Throws ParseException as parse_map(), or InternalProgramError if a
-//  map of the fixtures has other dimensions than the same map of `maps`.
-std::vector<MapData> with_gate_maps(std::vector<MapData> maps);
-
 //  Point `point` of map `map` among `maps`, e.g. ("CeruleanCave_B1F",
 //  "mewtwo"). Throws InternalProgramError if there is none.
 TilePos map_point(const std::vector<MapData>& maps, const std::string& map, const std::string& point);

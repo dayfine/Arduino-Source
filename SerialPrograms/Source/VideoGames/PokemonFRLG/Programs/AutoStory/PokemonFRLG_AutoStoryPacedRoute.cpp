@@ -36,7 +36,7 @@ std::vector<MapData> make_story_maps(bool silph_cleared){
         flags.insert("FLAG_HIDE_SILPH_ROCKETS");
         flags.insert("FLAG_HIDE_SAFFRON_ROCKETS");
     }
-    return with_gate_maps(overworld_maps(flags));
+    return overworld_maps(flags);
 }
 
 } // namespace

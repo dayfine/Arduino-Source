@@ -733,8 +733,10 @@ UnitTestResult advance(StoryPose& pose, const StoryStep& step){
 //  Silph Co.'s rows: their floors are full of trainers whose lines the walk
 //  can't keep out of (the way on crosses them); the walk's interrupts fight
 //  them as they see the player, each walked leg ending where one does.
+//  16.06 walks out through 11F's rocket column after Giovanni (silph_cleared): the Rockets
+//  have left, but this test's maps don't carry the run's flags.
 bool incidental_fights(const std::string& id){
-    return id == "16.02" || id == "16.03" || id == "16.05";
+    return id == "16.02" || id == "16.03" || id == "16.05" || id == "16.06";
 }
 
 //  `checkpoint`'s routes and legs keep to tiles with no tile_problem(); a
