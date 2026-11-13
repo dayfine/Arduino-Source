@@ -26,6 +26,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_BattleMenuReader.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_StoryLanguage.h"
+#include "PokemonBDSP_AutoStory_BagScreen.h"
 #include "PokemonBDSP_AutoStory_BattleMoves.h"
 #include "PokemonBDSP_AutoStory_Center.h"
 #include "PokemonBDSP_AutoStory_Events.h"
@@ -562,6 +563,27 @@ UnitTestResult test_move_menu_screenshots(Logger& logger){
 }
 
 
+//  The Potion after a fight reads the lead's HP when the Bag opens and goes
+//  on to the pocket and the list only if a dose is needed (lab-B 2026-11-12:
+//  it found the Potion, opened the party, read 80% and "no Potion needed").
+UnitTestResult test_potion_need(Logger&){
+    struct Case{ std::string_view name; double hp; size_t dose; PotionNeed need; };
+    const Case cases[] = {
+        {"full HP", 1.0, 0, PotionNeed::FULL},
+        {"80% on the first dose with the check at 80%", 0.80, 0, PotionNeed::ENOUGH},
+        {"a bit over the check", 0.90, 0, PotionNeed::ENOUGH},
+        {"under the check", 0.55, 0, PotionNeed::NEEDED},
+        {"the second dose heals on until full", 0.85, 1, PotionNeed::NEEDED},
+        {"fainted", 0.0, 0, PotionNeed::FAINTED},
+    };
+    for (const Case& c : cases){
+        if (potion_need(c.hp, c.dose, 0.8) != c.need){
+            return std::string(c.name) + ": wrong verdict.";
+        }
+    }
+    return true;
+}
+
 struct AutoStoryActionsInput{
     std::string name;
     std::function<UnitTestResult(Logger&)> body;
@@ -597,6 +619,10 @@ private:
 
 
 const AutoStoryActionsCase AUTO_STORY_ACTIONS_CASES[] = {
+    {
+        .input = {"Potion after a fight: the lead's HP decides before the Bag is searched", test_potion_need},
+        .expectation = {},
+    },
     {
         .input = {"new-game intro decisions", test_intro_decisions},
         .expectation = {},

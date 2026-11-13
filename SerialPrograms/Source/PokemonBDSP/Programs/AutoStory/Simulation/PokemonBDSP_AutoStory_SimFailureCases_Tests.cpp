@@ -331,6 +331,30 @@ UnitTestResult center_inside_settles(Logger& logger){
     return true;
 }
 
+//  01.03's doors into the mine and the coal room (lab-B 2026-11-12 21:57):
+//  a plain door with no text, and the cave's ambient motion kept the talk's
+//  quiet from ever coming, so B was pressed 14 times over 16 to 18 s. The
+//  door's settle is over within 3 s of the fade back up, banner read or not,
+//  and the talk's is not (it takes the 15 s calm).
+UnitTestResult mine_doors_settle_fast(Logger& logger){
+    const Milliseconds fade = 1500ms;
+    const Milliseconds most = fade + 3000ms;
+    const SimScene scene{sim_fade("the mine's door fade", fade), sim_pause("the cave's ambient motion", 60000ms, true)};
+    for (const bool door : {true, false}){
+        const std::string over = play_scene(scene, {.door = door});
+        logger.log(std::format("mine door, {}: {}", door ? "door settle" : "talk settle", over));
+        long long ms = -1;
+        const bool parsed = std::sscanf(over.c_str(), "judged over %lld ms in", &ms) == 1;
+        if (door && (!parsed || ms < fade.count() || ms > most.count())){
+            return std::format("the door's settle took more than {} ms: {}", most.count(), over);
+        }
+        if (!door && parsed && ms <= most.count()){
+            return "the talk's settle ended with the cave still moving: the test no longer shows the bug.";
+        }
+    }
+    return true;
+}
+
 //  From the door mat, one held run north reaches the nurse's counter, even
 //  at walking pace: the counter is the wall that stops it, and A talks.
 UnitTestResult nurse_in_one_run(Logger&){
@@ -762,6 +786,7 @@ const FailureCase AUTO_STORY_FAILURE_CASES[] = {
     }}, .expectation = {}},
     {.input = {"01.04 Roark's badge speech: the fanfare's pause, then a scene", roark_badge_speech}, .expectation = {}},
     {.input = {"inside a Pokemon Center, the door's settle ends within 3 s of the fade-up with visitors walking, never during the fade", center_inside_settles}, .expectation = {}},
+    {.input = {"01.03: a door into the mine or the coal room settles within 3 s of the fade-up, whatever moves in the cave (lab-B 2026-11-12 21:57)", mine_doors_settle_fast}, .expectation = {}},
     {.input = {"inside a Pokemon Center, one held run north from the door mat reaches the nurse", nurse_in_one_run}, .expectation = {}},
     {.input = {"01.07 after the tag battle the grunts run off before anyone speaks", grunts_run_off_before_rowan}, .expectation = {}},
     {.input = {"00.03 Rowan's scene opens with no box and fades home", rowans_scene_opens_with_no_box}, .expectation = {}},
