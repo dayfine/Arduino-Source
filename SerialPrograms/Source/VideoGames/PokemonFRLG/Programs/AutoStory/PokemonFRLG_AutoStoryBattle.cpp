@@ -610,7 +610,7 @@ private:
         if (!trainer && m_decisions.turns() == 0){
             m_supplies.wild_foes = read_wild_foes(m_console.logger(), m_language, screen);
         }
-        if (trainer && !m_supplies.foes.empty()){
+        if (trainer){
             m_supplies.foe_out = read_trainer_foe(m_console.logger(), m_language, screen, m_supplies.foes);
         }
         if (m_refusal.refused(current_time())){

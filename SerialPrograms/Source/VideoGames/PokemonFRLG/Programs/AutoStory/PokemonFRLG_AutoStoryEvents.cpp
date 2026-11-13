@@ -266,9 +266,13 @@ Outcome battle(StoryEnv& env, const StoryStep& step){
     env.supplies.battle_items = arg<std::vector<Pokemon::StoryItem>>(step, "use_items");
     env.supplies.policy = battle_policy_of(step.args);
     if (!env.supplies.foes.empty()){
+        std::string party;
+        for (const std::string& foe : env.supplies.foes){
+            party += (party.empty() ? "" : ", ") + foe;
+        }
         env.console.log(std::format(
-            "Story: {} is {}, risk {}; attacks are chosen against the foe out.",
-            step.name, env.supplies.trainer, battle_risk_name(env.supplies.risk)
+            "Story: {} is {} ({}), risk {}; attacks are chosen against the foe out.",
+            step.name, env.supplies.trainer, party, battle_risk_name(env.supplies.risk)
         ));
     }
     const BattleKind kind = arg<bool>(step, "run") ? BattleKind::WILD_RUN : BattleKind::TRAINER;
