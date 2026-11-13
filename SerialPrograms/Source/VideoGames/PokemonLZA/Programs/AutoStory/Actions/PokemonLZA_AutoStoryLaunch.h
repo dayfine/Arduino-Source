@@ -2,10 +2,11 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  A new game's first step: from the Switch HOME menu, launch the selected
- *  tile without moving HOME's cursor. Nothing here is PLZA's: the game's
- *  first screen comes in as a detector, so BDSP and FRLG can share it once
- *  it moves to the shared AutoStory core.
+ *  A new game's first step: from the Switch HOME menu, or with the game in
+ *  front (HOME once), launch the selected tile without moving HOME's
+ *  cursor. Nothing here is PLZA's: the game's first screen comes in as a
+ *  detector, so BDSP and FRLG can share it once it moves to the shared
+ *  AutoStory core.
  *
  */
 
@@ -28,33 +29,54 @@ namespace PokemonLZA{
 using ScreenCheck = std::function<bool(const ImageViewRGB32& frame)>;
 
 
-//  What the launch step does with the screen it starts on.
+//  The screen the launch step reads.
 enum class LaunchStart{
-    //  The HOME menu: launch the selected tile.
+    //  The HOME menu.
     HOME_MENU,
-    //  The game's first screen already (a launch left there): refused, as
-    //  any other screen. Told apart only for the message.
+    //  The game's first screen (a launch left there). Told apart from OTHER
+    //  only for the log.
     FIRST_SCREEN,
-    //  Anything else, an empty frame included: refused.
+    //  Anything else: a game in front, mid-scene or not.
     OTHER,
+    //  No frame: no video to check HOME against.
+    NO_VIDEO,
 };
 
-//  Where the launch step starts, from its first frame. `home_menu_shows` is
-//  the HOME menu detector's reading of `frame` (that detector needs the
+//  Where the launch step starts, from a frame. `home_menu_shows` is the
+//  HOME menu detector's reading of `frame` (that detector needs the
 //  console); `first_screen` is the game's first screen's detector.
 LaunchStart read_launch_start(const ImageViewRGB32& frame, bool home_menu_shows, const ScreenCheck& first_screen);
 
+//  What the launch step does next.
+enum class LaunchMove{
+    //  Launch the selected tile.
+    LAUNCH,
+    //  Press HOME once and read the screen again: with a game in front, HOME
+    //  opens with that game's tile selected.
+    PRESS_HOME,
+    //  Refuse: UserSetupError.
+    REFUSE,
+};
 
-//  From the HOME menu with `game`'s tile selected, a new game (no save):
-//  launches the selected tile, never moving HOME's cursor (no DOWN, UP or
-//  HOME presses: from HOME those go to the first tile, the game played
-//  last). If the selected game is running, X on its tile opens the close
+//  The launch step's move on `start`; `home_pressed` is whether it has
+//  pressed HOME already (it presses it once at most).
+LaunchMove next_launch_move(LaunchStart start, bool home_pressed);
+
+
+//  From the HOME menu with `game`'s tile selected, or with `game` in front
+//  (on any screen, mid-scene too), a new game (no save): launches the
+//  selected tile, never moving HOME's cursor. If HOME is not showing, it
+//  presses HOME once: with a game in front, HOME opens with that game's
+//  tile selected. It presses no DOWN or UP, and HOME never on the HOME
+//  menu: from HOME that goes back to the game in front, and from there
+//  DOWN and UP select the first tile, the game played last. If the selected game is running, X on its tile opens the close
 //  dialog, which A confirms; on a game that is not running X does nothing.
 //  Then A on the tile, the user select and the online license check
 //  (start_game_from_home() with slot 0, which does not move the cursor),
 //  5 s, and up to `timeout` for `first_screen` (`first_screen_name` in the
 //  log), whose frame it saves to DebugDumps under `dump_folder`.
-//  Throws UserSetupError if HOME is not showing, OperationFailedException
+//  Throws UserSetupError if there is no video or HOME still does not show
+//  after the HOME press, OperationFailedException
 //  (with a screenshot) if the close dialog does not close or the first
 //  screen does not show: then the selected game may not be `game`, or it
 //  has a save.
