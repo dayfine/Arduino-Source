@@ -17,7 +17,7 @@
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_SystemKeyboardDetector.h"
 #include "NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_SystemKeyboardTyping.h"
-#include "VideoGames/PokemonLZA/Inference/Map/PokemonLZA_MapDetector.h"
+#include "VideoGames/PokemonLZA/Inference/PokemonLZA_OverworldPartySelectionDetector.h"
 #include "PokemonLZA_AutoStoryIntro.h"
 #include "PokemonLZA_AutoStoryIntroScreens.h"
 #include "PokemonLZA_AutoStoryLanguageList.h"
@@ -527,26 +527,40 @@ void type_player_name(
     dump_intro_frame(console, context, "confirm");
 }
 
+//  Taunie's talk, the Map & Missions card, the first map and the rest of her
+//  talk: A and B in turn, until the party bar has shown for a second. A pages
+//  the talk and the card; B closes the map, which takes no A. The map is not
+//  waited for: MapDetector needs the Travel Spots icon, and on console B
+//  (2026-11-13) it never fired on this first map in 60 s of A.
 void talk_through_map_screen(ConsoleHandle& console, ProControllerContext& context){
-    MapDetector map;
-    const WallClock deadline = current_time() + 60s;
-    while (true){
+    OverworldPartySelectionDetector party;
+    const WallClock deadline = current_time() + 120s;
+    std::optional<WallClock> party_since;
+    bool press_a = true;
+    while (current_time() < deadline){
         context.wait_for_all_requests();
-        if (map.detect(console.video().snapshot())){
-            break;
+        const VideoSnapshot frame = console.video().snapshot();
+        const WallClock now = current_time();
+        if (frame && party.detect(frame)){
+            if (!party_since){
+                party_since = now;
+            }
+            if (now - *party_since >= 1000ms){
+                console.log("talk_through_map_screen(): the party bar held a second: back in the overworld.");
+                return;
+            }
+            context.wait_for(250ms);
+            continue;
         }
-        if (current_time() > deadline){
-            OperationFailedExceptionWithScreenshot::fire(
-                ErrorReportMode::SEND_ERROR_REPORT,
-                "talk_through_map_screen(): the map did not show within 60 s.",
-                console
-            );
-        }
-        pbf_press_button(context, BUTTON_A, 160ms, 840ms);
+        party_since.reset();
+        pbf_press_button(context, press_a ? BUTTON_A : BUTTON_B, 160ms, 840ms);
+        press_a = !press_a;
     }
-    pbf_press_button(context, BUTTON_B, 160ms, 1500ms);
-    context.wait_for_all_requests();
-    mash_scene(console, context, SceneMashGoal::OVERWORLD, BUTTON_B, 90s);
+    OperationFailedExceptionWithScreenshot::fire(
+        ErrorReportMode::SEND_ERROR_REPORT,
+        "talk_through_map_screen(): no overworld within 120 s of A and B in turn.",
+        console
+    );
 }
 
 void climb_ladder(ConsoleHandle&, ProControllerContext& context){
