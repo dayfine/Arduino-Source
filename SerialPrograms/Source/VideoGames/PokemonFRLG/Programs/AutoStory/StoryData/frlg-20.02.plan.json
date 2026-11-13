@@ -1,0 +1,196 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "20.02",
+    "title": "The Elite Four: Bruno",
+    "start": {
+      "map": "PokemonLeague_LoreleisRoom",
+      "tiles": [
+        [
+          6,
+          6
+        ]
+      ],
+      "facing": "north"
+    },
+    "events": [
+      {
+        "id": "lead_lv52_for_bruno",
+        "kind": "game_action",
+        "action": "level",
+        "args": {
+          "slot": 1,
+          "min": 52
+        },
+        "why": "the precondition for Bruno: the lead at least Lv52, pokeguy's Blastoise here (docs/battles/pokeguy-conditions.md bruno; Lorelei's fight takes it a level up)"
+      },
+      {
+        "id": "below_loreleis_door",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "PokemonLeague_LoreleisRoom",
+            "tiles": [
+              [
+                6,
+                3
+              ]
+            ],
+            "facing": "north"
+          }
+        },
+        "why": "from in front of Lorelei (6, 5) around her to below her door (6, 2), open since her defeat"
+      },
+      {
+        "id": "loreleis_door",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "why": "into the door (6, 2), the warp into Bruno's room at its south entrance (6, 12)"
+      },
+      {
+        "id": "enter_brunos_room",
+        "kind": "scene",
+        "declared_after": {
+          "map": "PokemonLeague_BrunosRoom",
+          "tiles": [
+            [
+              6,
+              7
+            ]
+          ],
+          "facing": "north"
+        },
+        "why": "the room's OnFrame script (PokemonLeague_EventScript_EnterRoom) walks the player five tiles north from (6, 12) to (6, 7) and closes the entrance behind; no text"
+      },
+      {
+        "id": "before_bruno",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "declared_after": {
+          "map": "PokemonLeague_BrunosRoom",
+          "tiles": [
+            [
+              6,
+              6
+            ]
+          ],
+          "facing": "north"
+        },
+        "why": "a tile north to (6, 6), facing Bruno (6, 5)"
+      },
+      {
+        "id": "challenge_bruno",
+        "kind": "talk",
+        "why": "Bruno (6, 5): the intro, then the battle (trainerbattle_no_intro)"
+      },
+      {
+        "id": "bruno",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_ELITE_FOUR_BRUNO",
+          "foes": [
+            "onix",
+            "hitmonchan",
+            "hitmonlee",
+            "onix",
+            "machamp"
+          ],
+          "policy": "goal-based-setup",
+          "setup_spa": 2,
+          "setup_accuracy": 0,
+          "setup_outspeed": true,
+          "setup_guard_accuracy": true,
+          "foe_threats": [
+            [
+              81,
+              32,
+              19,
+              75,
+              37,
+              0,
+              0
+            ],
+            [
+              101,
+              51,
+              28,
+              132,
+              66,
+              0,
+              0
+            ],
+            [
+              113,
+              65,
+              52,
+              136,
+              68,
+              0,
+              0
+            ],
+            [
+              96,
+              41,
+              41,
+              84,
+              42,
+              0,
+              0
+            ],
+            [
+              83,
+              0,
+              5,
+              183,
+              91,
+              0,
+              0
+            ]
+          ]
+        },
+        "declared_after": {
+          "map": "PokemonLeague_BrunosRoom",
+          "tiles": [
+            [
+              6,
+              6
+            ]
+          ],
+          "facing": "north"
+        },
+        "why": "Bruno (TRAINER_ELITE_FOUR_BRUNO): Onix Lv51, Hitmonchan Lv53, Hitmonlee Lv53, Onix Lv54, Machamp Lv56, two Full Restores; fought by pokeguy's policy C2 (goal-based-setup: Sp. Atk +2 by X Specials, X Speed until faster, Guard Spec first against an accuracy drop; the doc's bruno row, 95.9% at 130/162. The doc's target_torrent (stalling to Torrent in the opening) is not modelled by the C++ policy (PokemonFRLG_AutoStoryBattlePolicy.h)); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against the doc's bruno entry state (130/162), as 19.01's: Machamp's worst case (crit Cross Chop) is 183, Hitmonlee's 136. Then the door north (6, 2) opens"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "notes": {
+      "checkpoint": [
+        "Starts in front of Lorelei at (6, 6) facing north, where 20.01 ends. A boss battle is its own checkpoint: the walk on and Bruno's fight. PokeGuy has this fight at 1:49:15 (docs/battles/pokeguy-conditions.md, bruno).",
+        "No heal before Bruno: PokeGuy enters at 130/162 from Lorelei's fight (the doc keeps that entry: a heal changes the Torrent setup, pokeguy-preparation.md).",
+        "Ends in front of Bruno at (6, 6) facing north, saved there."
+      ]
+    }
+  },
+  "metadata": {
+    "phase": "testing",
+    "postconditions": {
+      "position": {
+        "map": "PokemonLeague_BrunosRoom",
+        "tiles": [
+          [
+            6,
+            6
+          ]
+        ],
+        "facing": "north"
+      }
+    }
+  }
+}

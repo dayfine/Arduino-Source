@@ -63,6 +63,7 @@
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows16_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows17_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows19_Tests.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryRows20_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryTable.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryTrashCans.h"
 #include "Programs/AutoStory/Data/Json_Tests.h"
@@ -350,6 +351,7 @@ static void add_tests_AutoStoryRows(UnitTestDatabase& database){
     add_tests_AutoStoryViridian(database);
     add_tests_AutoStoryVictoryRoad(database);
     add_tests_AutoStoryBoulders(database);
+    add_tests_AutoStoryLeague(database);
     add_tests_AutoStoryGates(database);
     add_tests_OverworldGateMaps(database);
 }

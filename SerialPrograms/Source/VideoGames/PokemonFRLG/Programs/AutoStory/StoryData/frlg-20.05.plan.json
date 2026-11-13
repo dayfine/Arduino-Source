@@ -1,0 +1,97 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "20.05",
+    "title": "The Champion, then the Hall of Fame",
+    "start": {"map": "PokemonLeague_LancesRoom", "tiles": [[6, 9]], "facing": "north"},
+    "events": [
+      {
+        "id": "heal_after_lance",
+        "kind": "game_action",
+        "action": "heal_to_full",
+        "args": {
+          "max_hp": 171
+        },
+        "why": "full HP into the Champion, as PokeGuy enters him (171/171, docs/battles/pokeguy-conditions.md champion) after Lance's fight: Super Potions and Potions until the HP the fight left missing (from the battle's last HP bar) is healed"
+      },
+      {
+        "id": "lead_lv55_for_champion",
+        "kind": "game_action",
+        "action": "level",
+        "args": {
+          "slot": 1,
+          "min": 55
+        },
+        "why": "the precondition for the Champion: the lead at least Lv55, pokeguy's Blastoise here (docs/battles/pokeguy-conditions.md champion)"
+      },
+      {
+        "id": "below_champions_door",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "PokemonLeague_LancesRoom", "tiles": [[6, 6]], "facing": "north"}
+        },
+        "why": "from in front of Lance (6, 8) around him to below the Champion's door (6, 5), open since his defeat"
+      },
+      {
+        "id": "champions_door",
+        "kind": "step",
+        "args": {"direction": "north"},
+        "why": "into the door (6, 5), the warp into the Champion's room at its south end (6, 19). The room's OnFrame script walks the player ten tiles north to (6, 9), in front of the rival (6, 8), and his intro runs straight into the battle: no talk"
+      },
+      {
+        "id": "champion",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_CHAMPION_FIRST_BULBASAUR",
+          "foes": [
+            "pidgeot",
+            "alakazam",
+            "rhydon",
+            "gyarados",
+            "arcanine",
+            "venusaur"
+          ],
+          "policy": "goal-based-setup",
+          "setup_spa": 2,
+          "setup_accuracy": 2,
+          "setup_outspeed": true,
+          "setup_guard_accuracy": true,
+          "foe_threats": [
+            [130, 41, 27, 87, 43, 1, 0],
+            [159, 77, 70, 159, 79, 0, 0],
+            [70, 0, 10, 210, 105, 0, 0],
+            [118, 51, 46, 110, 55, 0, 0],
+            [139, 50, 51, 104, 52, 0, 0],
+            [125, 217, 218, 444, 222, 0, 0]
+          ]
+        },
+        "declared_after": {"map": "PokemonLeague_ChampionsRoom", "tiles": [[6, 9]], "facing": "north"},
+        "why": "the Champion (TRAINER_CHAMPION_FIRST_BULBASAUR for a player who took Squirtle): Pidgeot Lv59, Alakazam Lv57, Rhydon Lv59, Gyarados Lv59, Arcanine Lv61, Venusaur Lv63, four Full Restores; fought by pokeguy's policy C2 (goal-based-setup: Sp. Atk +2 and Accuracy +2 by X Specials and X Accuracies, X Speed until faster, Guard Spec first against Pidgeot's Sand Attack; the doc's champion row, 95.6% at 171/171, its opening a Guard Spec); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against the doc's champion entry state (171/171), as 19.01's, Pidgeot's row marked as lowering accuracy: Venusaur's Solar Beam worst case is 444 (a one-hit KO from full), Rhydon's 210"
+      },
+      {
+        "id": "hall_of_fame",
+        "kind": "scene",
+        "declared_after": {"map": "PokemonLeague_HallOfFame", "tiles": [[5, 4]], "facing": "north"},
+        "why": "the rival's last words, Oak's entrance and his talk, and Oak leading the player out north (PokemonLeague_ChampionsRoom_Movement_PlayerExit) to the Hall of Fame (5, 12); its OnFrame script walks the player eight tiles north to (5, 4), Oak's congratulations, then the record (FLDEFF_HALL_OF_FAME_RECORD) and the Hall of Fame (special EnterHallOfFame), which saves the game itself and rolls the credits"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "notes": {
+      "checkpoint": [
+        "Starts in front of Lance at (6, 9) facing north, where 20.04 ends. A boss battle is its own checkpoint: the heal after Lance, the Champion's fight and what the game plays after it, which the player can not stop or save in. PokeGuy has this fight at 1:55:44 (docs/battles/pokeguy-conditions.md, champion).",
+        "PokeGuy uses one Elixir after Lance (Surf 3 to 13, Blizzard 0 to 5; league-pp-requirements.md); use_item has no Elixir yet (a party item with its own screens, PokemonFRLG_AutoStoryItemUse.h), so this row does not, and the Champion is fought with the PP Lance's fight left.",
+        "Ends in the Hall of Fame (5, 4) facing north. The Hall of Fame saves the game itself (respawn at Pallet Town) and the credits follow: the row's own save at its end is not one the game offers there."
+      ]
+    }
+  },
+  "metadata": {
+    "phase": "testing",
+    "postconditions": {
+      "position": {"map": "PokemonLeague_HallOfFame", "tiles": [[5, 4]], "facing": "north"}
+    }
+  }
+}

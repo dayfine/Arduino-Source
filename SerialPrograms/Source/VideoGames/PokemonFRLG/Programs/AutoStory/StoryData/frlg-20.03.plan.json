@@ -1,0 +1,197 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "20.03",
+    "title": "The Elite Four: Agatha",
+    "start": {
+      "map": "PokemonLeague_BrunosRoom",
+      "tiles": [
+        [
+          6,
+          6
+        ]
+      ],
+      "facing": "north"
+    },
+    "events": [
+      {
+        "id": "lead_lv53_for_agatha",
+        "kind": "game_action",
+        "action": "level",
+        "args": {
+          "slot": 1,
+          "min": 53
+        },
+        "why": "the precondition for Agatha: the lead at least Lv53, pokeguy's Blastoise here (docs/battles/pokeguy-conditions.md agatha; Bruno's fight takes it a level up)"
+      },
+      {
+        "id": "below_brunos_door",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "PokemonLeague_BrunosRoom",
+            "tiles": [
+              [
+                6,
+                3
+              ]
+            ],
+            "facing": "north"
+          }
+        },
+        "why": "from in front of Bruno (6, 5) around him to below his door (6, 2), open since his defeat"
+      },
+      {
+        "id": "brunos_door",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "why": "into the door (6, 2), the warp into Agatha's room at its south entrance (6, 12)"
+      },
+      {
+        "id": "enter_agathas_room",
+        "kind": "scene",
+        "declared_after": {
+          "map": "PokemonLeague_AgathasRoom",
+          "tiles": [
+            [
+              6,
+              7
+            ]
+          ],
+          "facing": "north"
+        },
+        "why": "the room's OnFrame script (PokemonLeague_EventScript_EnterRoom) walks the player five tiles north from (6, 12) to (6, 7) and closes the entrance behind; no text"
+      },
+      {
+        "id": "before_agatha",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "declared_after": {
+          "map": "PokemonLeague_AgathasRoom",
+          "tiles": [
+            [
+              6,
+              6
+            ]
+          ],
+          "facing": "north"
+        },
+        "why": "a tile north to (6, 6), facing Agatha (6, 5)"
+      },
+      {
+        "id": "challenge_agatha",
+        "kind": "talk",
+        "why": "Agatha (6, 5): the intro, then the battle (trainerbattle_no_intro)"
+      },
+      {
+        "id": "agatha",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_ELITE_FOUR_AGATHA",
+          "foes": [
+            "gengar",
+            "golbat",
+            "haunter",
+            "arbok",
+            "gengar"
+          ],
+          "policy": "goal-based-setup",
+          "setup_spa": 1,
+          "setup_accuracy": 0,
+          "setup_outspeed": true,
+          "setup_guard_accuracy": true,
+          "setup_torrent_power": true,
+          "foe_threats": [
+            [
+              126,
+              32,
+              10,
+              72,
+              36,
+              0,
+              0
+            ],
+            [
+              129,
+              33,
+              31,
+              69,
+              34,
+              0,
+              0
+            ],
+            [
+              108,
+              0,
+              0,
+              0,
+              48,
+              0,
+              0
+            ],
+            [
+              111,
+              61,
+              61,
+              126,
+              63,
+              0,
+              0
+            ],
+            [
+              150,
+              47,
+              40,
+              99,
+              49,
+              0,
+              0
+            ]
+          ]
+        },
+        "declared_after": {
+          "map": "PokemonLeague_AgathasRoom",
+          "tiles": [
+            [
+              6,
+              6
+            ]
+          ],
+          "facing": "north"
+        },
+        "why": "Agatha (TRAINER_ELITE_FOUR_AGATHA): Gengar Lv54, Golbat Lv54, Haunter Lv53, Arbok Lv56, Gengar Lv58, two Full Restores; fought by pokeguy's policy C2 (goal-based-setup: Sp. Atk +1 by X Specials, +3 while Torrent is off (torrent_power), X Speed until faster, Guard Spec first against an accuracy drop; the doc's agatha row, 95.3% at 45/165, its opening a heal); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against the doc's agatha entry state (45/165), as 19.01's: Arbok's worst case is 126. Then the door north (6, 2) opens"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "notes": {
+      "checkpoint": [
+        "Starts in front of Bruno at (6, 6) facing north, where 20.02 ends. A boss battle is its own checkpoint: the walk on and Agatha's fight. PokeGuy has this fight at 1:51:12 (docs/battles/pokeguy-conditions.md, agatha).",
+        "No heal before Agatha: PokeGuy enters at 45/165 from Bruno's fight and heals in the battle (its first turn); the C policy's recovery does that from the bag's Full Restores (20.01a).",
+        "Ends in front of Agatha at (6, 6) facing north, saved there."
+      ]
+    }
+  },
+  "metadata": {
+    "phase": "testing",
+    "postconditions": {
+      "position": {
+        "map": "PokemonLeague_AgathasRoom",
+        "tiles": [
+          [
+            6,
+            6
+          ]
+        ],
+        "facing": "north"
+      }
+    }
+  }
+}
