@@ -1,0 +1,234 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "14.02b",
+    "title": "Out through the quiz doors, NO to Bill, heal at Cinnabar's Center",
+    "start": {"map": "CinnabarIsland_Gym", "tiles": [[5, 5]], "facing": "north"},
+    "events": [
+      {
+        "id": "above_door_6",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CinnabarIsland_Gym", "tiles": [[5, 8]], "facing": "south"}
+        },
+        "why": "down to above door 6, open since quiz 6"
+      },
+      {
+        "id": "into_door_6",
+        "kind": "step",
+        "args": {
+          "direction": "south"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[5, 9]], "facing": "south"},
+        "why": "a step onto door 6's floor (5, 9), a barrier on the map"
+      },
+      {
+        "id": "through_door_6",
+        "kind": "step",
+        "args": {
+          "direction": "south"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[5, 10]], "facing": "south"},
+        "why": "a step through door 6 onto (5, 10)"
+      },
+      {
+        "id": "above_door_5",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CinnabarIsland_Gym", "tiles": [[5, 16]], "facing": "south"}
+        },
+        "why": "down to above door 5"
+      },
+      {
+        "id": "into_door_5",
+        "kind": "step",
+        "args": {
+          "direction": "south"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[5, 17]], "facing": "south"},
+        "why": "a step onto door 5's floor (5, 17)"
+      },
+      {
+        "id": "through_door_5",
+        "kind": "step",
+        "args": {
+          "direction": "south"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[5, 18]], "facing": "south"},
+        "why": "a step through door 5 onto (5, 18)"
+      },
+      {
+        "id": "west_of_door_4",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CinnabarIsland_Gym", "tiles": [[10, 22]], "facing": "east"}
+        },
+        "why": "down and east to west of door 4"
+      },
+      {
+        "id": "into_door_4",
+        "kind": "step",
+        "args": {
+          "direction": "east"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[11, 22]], "facing": "east"},
+        "why": "a step onto door 4's floor (11, 22)"
+      },
+      {
+        "id": "through_door_4",
+        "kind": "step",
+        "args": {
+          "direction": "east"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[12, 22]], "facing": "east"},
+        "why": "a step through door 4 onto (12, 22)"
+      },
+      {
+        "id": "below_door_3",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CinnabarIsland_Gym", "tiles": [[17, 17]], "facing": "north"}
+        },
+        "why": "up and east to below door 3"
+      },
+      {
+        "id": "into_door_3",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[17, 16]], "facing": "north"},
+        "why": "a step onto door 3's floor (17, 16)"
+      },
+      {
+        "id": "through_door_3",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[17, 15]], "facing": "north"},
+        "why": "a step through door 3 onto (17, 15)"
+      },
+      {
+        "id": "below_door_2",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CinnabarIsland_Gym", "tiles": [[17, 10]], "facing": "north"}
+        },
+        "why": "up to below door 2"
+      },
+      {
+        "id": "into_door_2",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[17, 9]], "facing": "north"},
+        "why": "a step onto door 2's floor (17, 9)"
+      },
+      {
+        "id": "through_door_2",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[17, 8]], "facing": "north"},
+        "why": "a step through door 2 onto (17, 8)"
+      },
+      {
+        "id": "above_door_1",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CinnabarIsland_Gym", "tiles": [[26, 8]], "facing": "south"}
+        },
+        "why": "east through the top room to above door 1"
+      },
+      {
+        "id": "into_door_1",
+        "kind": "step",
+        "args": {
+          "direction": "south"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[26, 9]], "facing": "south"},
+        "why": "a step onto door 1's floor (26, 9)"
+      },
+      {
+        "id": "through_door_1",
+        "kind": "step",
+        "args": {
+          "direction": "south"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[26, 10]], "facing": "south"},
+        "why": "a step through door 1 onto (26, 10)"
+      },
+      {
+        "id": "below_gym_door",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CinnabarIsland", "tiles": [[20, 5]], "facing": "south"}
+        },
+        "why": "down the east rooms to the mat (25, 23) and out of the gym's door (20, 4)"
+      },
+      {
+        "id": "decline_bill",
+        "kind": "answer",
+        "args": {
+          "yes": false
+        },
+        "why": "Bill walks up from (20, 7) (CinnabarIsland_EventScript_BillScene, VAR_MAP_SCENE_CINNABAR_ISLAND 1 after Blaine): \"come with me to ONE ISLAND?\" NO (pokeguy 1:23:10 to 1:23:44)"
+      },
+      {
+        "id": "bill_leaves",
+        "kind": "scene",
+        "declared_after": {"map": "CinnabarIsland", "tiles": [[20, 5]], "facing": "south"},
+        "why": "\"I'll be waiting in the POKeMON CENTER\"; he walks off to the Center and is removed"
+      },
+      {
+        "id": "below_center_door",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CinnabarIsland", "tiles": [[14, 12]], "facing": "north"}
+        },
+        "why": "west and down to below the Center's door (14, 11)"
+      },
+      {
+        "id": "cinnabar_nurse",
+        "kind": "game_action",
+        "action": "center_enter",
+        "declared_after": {"map": "CinnabarIsland_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
+        "why": "the Center script in: through the door and up to the nurse; no map of the Center. Bill stands in the Center now (FLAG_HIDE_CINNABAR_POKECENTER_BILL cleared), off the way to the nurse"
+      },
+      {
+        "id": "heal_cinnabar",
+        "kind": "heal",
+        "why": "full HP and PP"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "notes": {
+      "checkpoint": [
+        "Starts in front of Blaine, where 14.02 ends after his battle and saves.",
+        "Out the way in: the quiz doors stay open while the player is in the gym (the flags are set and OnLoad reopens them), each crossed by two plain steps as in 14.01.",
+        "Outside, Bill's scene runs on the first frame (VAR_MAP_SCENE_CINNABAR_ISLAND 1, set by Blaine's win): NO to the Sevii trip, as pokeguy. He walks to the Center and waits there; the Center visit here doesn't talk to him.",
+        "Ends at Cinnabar's nurse. PokeGuy flies to Celadon from outside the gym (1:23:45); 14.03 starts from Fly's landing in Celadon, so the Fly (a step type in #406) goes at 14.03's start or here once it is in."
+      ]
+    }
+  },
+  "metadata": {
+    "phase": "testing",
+    "postconditions": {
+      "position": {"map": "CinnabarIsland_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
+    }
+  }
+}
