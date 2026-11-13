@@ -353,11 +353,16 @@ ReplayScreen between_steps_screen(std::string_view kind){
 void validate_scenario(const ReplayData& data, const JsonValue& scenario){
     const JsonObject& root = scenario.to_object_throw();
     for (const auto& [name, value] : root){
-        if (name != "entry" && name != "signals" && name != "between_steps" && name != "check_actions"){
+        if (name != "entry" && name != "signals" && name != "between_steps" && name != "check_actions" && name != "start_flags"){
             throw ParseException("story replay: unknown scenario field");
         }
         if (name == "check_actions"){
             value.to_boolean_throw();
+        }
+        if (name == "start_flags"){
+            for (const JsonValue& flag : value.to_array_throw()){
+                flag.to_string_throw();
+            }
         }
     }
     const JsonObject& entry = fields(root.get_value_throw("entry"), {"basis", "screen", "pose"});

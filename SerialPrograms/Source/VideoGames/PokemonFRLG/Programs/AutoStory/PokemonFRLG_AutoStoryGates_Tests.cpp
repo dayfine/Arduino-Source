@@ -12,17 +12,23 @@
 
 #include <format>
 #include <functional>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
+#include "Common/Cpp/Json/JsonArray.h"
+#include "Common/Cpp/Json/JsonObject.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Pokemon_StoryPose.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldGatedRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryGates_Tests.h"
 #include "PokemonFRLG_AutoStoryPoses.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
+#include "PokemonFRLG_StoryReplay.h"
+#include "PokemonFRLG_StoryReplay_IO.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -185,6 +191,220 @@ UnitTestResult test_step_sim_statue_switch(){
     return true;
 }
 
+//  A recorded route replayed on the real maps: the native planner's route
+//  through the gate as the replay's supplied commands (what a recording of
+//  the walk holds), replayed by the story engine on the pinned maps with the
+//  run's flags (the Card Key) and the gates the route's commands change.
+constexpr std::string_view REVISION = "0123456789abcdef0123456789abcdef01234567";
+
+const MapData& scene_map(const Scene& scene){
+    for (const MapData& map : scene_maps()){
+        if (map.name == scene.map){
+            return map;
+        }
+    }
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Unknown scene map.");
+}
+
+JsonObject tile_json(const Scene& scene, TilePos tile, std::string_view facing){
+    JsonArray pair;
+    pair.push_back(tile.x);
+    pair.push_back(tile.y);
+    JsonArray tiles;
+    tiles.push_back(std::move(pair));
+    JsonObject where;
+    where["kind"] = "tiles";
+    where["tiles"] = std::move(tiles);
+    where["facing"] = std::string(facing);
+    JsonObject pose;
+    pose["certainty"] = "tile";
+    pose["map"] = std::string(scene.map);
+    pose["where"] = std::move(where);
+    return pose;
+}
+
+//  The planned route as supplied commands: walks, turns, and the gate's A press.
+JsonArray recorded_commands(const Scene& scene, const std::vector<RouteStep>& route){
+    JsonArray commands;
+    for (const RouteStep& step : route){
+        JsonObject command;
+        command["event"] = "cross";
+        command["map"] = std::string(scene.map);
+        command["direction"] = std::string(direction_name(step.direction));
+        switch (step.action){
+        case RouteAction::WALK:
+            command["kind"] = "walk";
+            command["tiles"] = step.tiles;
+            break;
+        case RouteAction::FACE:
+            command["kind"] = "turn";
+            break;
+        case RouteAction::OPEN_GATE:
+            command["kind"] = "open_gate";
+            break;
+        case RouteAction::PRESS_SWITCH:
+            command["kind"] = "press_switch";
+            break;
+        default:
+            throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "The scene's route has a step the replay does not take.");
+        }
+        commands.push_back(std::move(command));
+    }
+    return commands;
+}
+
+//  The replay of the scene's checkpoint with the recorded route. The scenario starts with
+//  the Card Key if `card_key`; the recording is made with it either way.
+//  Throws what the replay rejects.
+JsonValue replay_scene(const Scene& scene, bool card_key, bool recorded_card_key = true){
+    const MapData& map = scene_map(scene);
+    const Pokemon::GateRules rules{.card_key_held = recorded_card_key};
+    const std::optional<std::vector<RouteStep>> route = plan_overworld_route_gated(
+        scene_maps(), MapPosition{std::string(scene.map), scene.start}, RouteGoal{MapPosition{std::string(scene.map), scene.goal}, std::nullopt},
+        Pokemon::GateState(), rules, default_route_costs(), Direction::EAST
+    );
+    if (!route){
+        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No route across the scene to record.");
+    }
+    const Direction facing_after = route->back().direction;
+
+    JsonObject start_pose = tile_json(scene, scene.start, "east");
+    JsonObject target = tile_json(scene, scene.goal, direction_name(facing_after));
+    JsonObject event;
+    event["id"] = "cross";
+    event["kind"] = "route";
+    event["target"] = std::move(target);
+    event["why"] = "across the gate";
+    JsonArray events;
+    events.push_back(std::move(event));
+    JsonObject checkpoint;
+    checkpoint["id"] = "99.01";
+    checkpoint["title"] = "Gate replay";
+    checkpoint["start"] = std::move(start_pose);
+    checkpoint["events"] = std::move(events);
+    JsonObject capture;
+    capture["format"] = "pokesim-native-checkpoint-export/1";
+    capture["game"] = "frlg";
+    capture["checkpoint"] = std::move(checkpoint);
+    capture["source_revision"] = std::string(REVISION);
+    capture["unbound"] = JsonArray();
+    const std::string capture_text = capture.dump(-1);
+
+    std::string map_hash;
+    for (const auto& [name, text] : overworld_map_json()){
+        if (name == scene.map){
+            map_hash = StoryReplayInternal::digest(text);
+        }
+    }
+    JsonObject capture_pin;
+    capture_pin["file"] = "gate-replay.json";
+    capture_pin["sha256"] = StoryReplayInternal::digest(capture_text);
+    capture_pin["source_revision"] = std::string(REVISION);
+    JsonObject maps;
+    maps[std::string(scene.map)] = map_hash;
+    JsonObject capability;
+    capability["capability"] = "frlg-runtime-route/1";
+    capability["parameters"] = JsonObject();
+    JsonObject capabilities;
+    capabilities["cross"] = std::move(capability);
+    JsonObject costs;
+    costs["tile"] = 1;
+    costs["turn"] = 2;
+    costs["grass"] = 5;
+    costs["warp"] = 1;
+    JsonObject policy;
+    policy["basis"] = "synthetic-offline-policy";
+    policy["entry"] = "scripted-observation";
+    policy["attempts"] = 1;
+    policy["failure"] = "stop";
+    policy["save"] = "never";
+    JsonObject binding;
+    binding["format"] = "pokesim-story-replay-binding/1";
+    binding["capture"] = std::move(capture_pin);
+    binding["map_revision"] = std::string(REVISION);
+    binding["maps"] = std::move(maps);
+    binding["capabilities"] = std::move(capabilities);
+    binding["costs"] = std::move(costs);
+    binding["max_route_moves"] = 256;
+    binding["policy"] = std::move(policy);
+    const std::string binding_text = binding.dump(-1);
+
+    JsonObject routes;
+    routes["cross"] = recorded_commands(scene, *route);
+    JsonObject candidate;
+    candidate["format"] = "pokesim-route-candidate/1";
+    candidate["binding_sha256"] = StoryReplayInternal::digest(binding_text);
+    candidate["checkpoint"] = "99.01";
+    candidate["routes"] = std::move(routes);
+
+    JsonObject entry_pose;
+    entry_pose["map"] = std::string(scene.map);
+    JsonArray tile;
+    tile.push_back(scene.start.x);
+    tile.push_back(scene.start.y);
+    entry_pose["tile"] = std::move(tile);
+    entry_pose["facing"] = "east";
+    entry_pose["elevation"] = elevation_at(map, scene.start);
+    JsonObject entry;
+    entry["basis"] = "scripted";
+    entry["screen"] = "overworld";
+    entry["pose"] = std::move(entry_pose);
+    JsonObject scenario;
+    scenario["entry"] = std::move(entry);
+    scenario["signals"] = JsonObject();
+    JsonArray flags;
+    if (card_key){
+        flags.push_back("card_key_held");
+    }
+    scenario["start_flags"] = std::move(flags);
+    return replay_story_checkpoint(capture_text, binding_text, candidate.dump(-1), scenario);
+}
+
+//  The replay completed the checkpoint and its actions have `kind` (the gate's command).
+std::string completed_with(const JsonValue& report, std::string_view kind){
+    const JsonObject& root = report.to_object_throw();
+    if (root.get_string_throw("status") != "model_complete"){
+        return "The replay stopped: " + report.dump(-1);
+    }
+    for (const JsonValue& action : root.get_array_throw("actions")){
+        if (action.to_object_throw().get_string_throw("kind") == kind){
+            return "";
+        }
+    }
+    return std::format("The replay's actions have no {}.", kind);
+}
+
+UnitTestResult test_replay_door_with_card_key(){
+    const std::string failure = completed_with(replay_scene(DOOR, true), "open_gate");
+    if (!failure.empty()){
+        return failure;
+    }
+    return true;
+}
+
+//  The recording was made with the Card Key; the run's scenario has none.
+UnitTestResult test_replay_door_without_card_key(){
+    try{
+        const std::string failure = completed_with(replay_scene(DOOR, false), "open_gate");
+        if (failure.empty()){
+            return "The replay opened a card-key door for a run without the Card Key.";
+        }
+    }catch (const ParseException& e){
+        if (e.message().find("card-key") == std::string::npos){
+            return "Unexpected rejection: " + e.message();
+        }
+    }
+    return true;
+}
+
+UnitTestResult test_replay_statue_switch(){
+    const std::string failure = completed_with(replay_scene(STATUE, false), "press_switch");
+    if (!failure.empty()){
+        return failure;
+    }
+    return true;
+}
+
 const std::vector<GatesCase> GATES_CASES{
     {.input = {.name = "story maps: a closed door blocks without the Card Key", .body = test_maps_sim_door_blocks}, .expectation = {}},
     {.input = {.name = "story maps: the door opens with the Card Key and stays open", .body = test_maps_sim_door_opens}, .expectation = {}},
@@ -192,6 +412,9 @@ const std::vector<GatesCase> GATES_CASES{
     {.input = {.name = "overworld sim: a closed door blocks without the Card Key", .body = test_step_sim_door_blocks}, .expectation = {}},
     {.input = {.name = "overworld sim: the door opens with the Card Key", .body = test_step_sim_door_opens}, .expectation = {}},
     {.input = {.name = "overworld sim: the statue's switch opens its barrier", .body = test_step_sim_statue_switch}, .expectation = {}},
+    {.input = {.name = "replay: a recorded route opens Silph Co.'s card-key door", .body = test_replay_door_with_card_key}, .expectation = {}},
+    {.input = {.name = "replay: the recorded door stays shut without the Card Key", .body = test_replay_door_without_card_key}, .expectation = {}},
+    {.input = {.name = "replay: a recorded route presses the Mansion's statue", .body = test_replay_statue_switch}, .expectation = {}},
 };
 
 } // namespace
