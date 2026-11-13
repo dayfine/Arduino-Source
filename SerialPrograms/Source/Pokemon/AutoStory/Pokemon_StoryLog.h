@@ -4,10 +4,10 @@
  *
  *  The log lines an AutoStory program writes around its checkpoints, in
  *  one format for every game: the story engine (Pokemon_StoryEvents.h,
- *  Pokemon_StorySegments.h) writes them, and a game with its own checkpoint
- *  loop (SV's) writes the same lines, so the lab watcher and whoever reads
- *  a log find each checkpoint's start, attempts, resets and pass the same
- *  way. Nothing here runs a story.
+ *  Pokemon_StorySegments.h) writes them, and SV's AutoStory writes the same
+ *  checkpoint start line, so the program developer and user find each
+ *  checkpoint's start, attempts, resets and pass the same way in any game's
+ *  log. Nothing here runs a story.
  *
  */
 
@@ -41,11 +41,11 @@ std::string checkpoint_attempt_line(
     std::string_view checkpoint, size_t attempt, std::optional<size_t> attempts = std::nullopt
 );
 
-//  A checkpoint passed on attempt `attempt`, after `in_place` recoveries in
-//  place:
+//  A checkpoint passed on attempt `attempt`, counting from 1; every attempt
+//  before it ended in a reset:
 //      [Checkpoint] 00.03: passed on attempt 1 (one-shot)
-//      [Checkpoint] 00.04: passed on attempt 3 (2 resets), 1 in place
-std::string checkpoint_pass_line(std::string_view checkpoint, size_t attempt, size_t in_place = 0);
+//      [Checkpoint] 00.04: passed on attempt 3 (2 resets)
+std::string checkpoint_pass_line(std::string_view checkpoint, size_t attempt);
 
 //  An attempt failed and the game resets to the checkpoint's save for
 //  attempt `next_attempt`:
