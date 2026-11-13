@@ -1,0 +1,83 @@
+{
+    "format": "pokesim-authored-checkpoint/1",
+    "game": "frlg",
+    "checkpoint": {
+        "id": "16.02",
+        "title": "Silph Co. 5F: the pad pair to the bottom corridor, the CARD KEY",
+        "start": {
+            "map": "SilphCo_5F",
+            "tiles": [
+                [
+                    15,
+                    7
+                ]
+            ],
+            "facing": "west"
+        },
+        "events": [
+            {
+                "id": "to_corridor",
+                "kind": "route",
+                "action": "run",
+                "args": {
+                    "target": {
+                        "map": "SilphCo_5F",
+                        "tiles": [
+                            [
+                                12,
+                                21
+                            ]
+                        ],
+                        "facing": "south"
+                    }
+                },
+                "why": "5F's pad (10, 20) to 9F's (22, 18) and back is the only way into the bottom corridor: east and down to its wall (12, 21)"
+            },
+            {
+                "id": "to_card_key_ball",
+                "kind": "legs",
+                "action": "taps",
+                "args": {
+                    "legs": [
+                        {
+                            "direction": "east",
+                            "tiles": 9
+                        }
+                    ]
+                },
+                "why": "a tap a tile east along row 21 to (21, 21), west of the CARD KEY's ball (22, 21)"
+            },
+            {
+                "id": "card_key",
+                "kind": "talk",
+                "why": "pick up the CARD KEY (SilphCo_5F_EventScript_ItemCardKey): the doors open to it from now on",
+                "flags_after": [
+                    "card_key_held"
+                ]
+            }
+        ]
+    },
+    "execution": {
+        "menu": "full",
+        "notes": {
+            "checkpoint": [
+                "Starts on 5F's pad (15, 7), where 16.01 ends. The CARD KEY's ball (22, 21) is on the runtime map (SilphCo_5F items); pokeguy has it at 1:28:11. Ends beside it with the key: the doors open to a face-and-A from now on (card_key_held)."
+            ]
+        }
+    },
+    "metadata": {
+        "phase": "testing",
+        "postconditions": {
+            "position": {
+                "map": "SilphCo_5F",
+                "tiles": [
+                    [
+                        21,
+                        21
+                    ]
+                ],
+                "facing": "east"
+            }
+        }
+    }
+}

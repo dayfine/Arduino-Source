@@ -18,6 +18,7 @@
 #include <string_view>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "Pokemon/AutoStory/Pokemon_StoryRngHandoff.h"
 #include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_BlindNavigation.h"
 #include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngPlan.h"
 #include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_StarterRngLoop.h"
@@ -40,6 +41,13 @@ std::string starter_rng_loop_message(const StarterRngLoopResult& result);
 //  As starter_rng_loop_message(), for Gift RNG's `gift`, which the
 //  live-start row `row` (04.03, 09.04) saves after a shiny.
 std::string gift_rng_loop_message(const StarterRngLoopResult& result, PokemonFRLG_RngTarget gift, std::string_view row);
+
+//  The loop's end as the shared RNG handoff takes it (Pokemon_StoryRngHandoff.h).
+//  A shiny, on the target or not, is a success: the game is on its summary and the
+//  run goes on, with the rows rows_after_*_rng() give, which the caller runs. Every other
+//  end is the user's turn, with the message, not a failure: nothing here is an error.
+//  `message` is starter_rng_loop_message() or gift_rng_loop_message() for `result`.
+Pokemon::RngHandoffResult rng_handoff_result(const StarterRngLoopResult& result, std::string message);
 
 
 //  `steps`, with the calibration of each reset also kept in the RNG plan's

@@ -61,11 +61,17 @@ namespace PokemonFRLG{
 
 
 //  Simulates overworld movement, encounters and dialogs.
+// code-health: allow public_methods -- the Card Key pickup is a story event the row sim reports to the one sim, beside its other inputs
 class OverworldSim{
 public:
     OverworldSim(std::vector<MapData> maps, MapPosition start, Direction facing, SimScript script = {});
 
     const SimState& state() const{ return m_state; }
+
+    //  Whether the player holds the Card Key (SimScript::card_key_held).
+    bool card_key_held() const{ return m_script.card_key_held; }
+    //  The player picks up the Card Key: A on a card-key gate opens it from now on.
+    void give_card_key(){ m_script.card_key_held = true; }
 
     //  Whether the walker's screen check reads its last step tap as a
     //  step: one that moved the player from `before`, but for

@@ -498,7 +498,7 @@ std::string OverworldStepSim::walk(const StoryStep& step){
     //  which the walker's steps open.
     const std::vector<MapData>& maps = story_maps();
     const Pokemon::GateState& gates = m_sim.state().gates;
-    const std::optional<std::vector<RouteStep>> route = walked_route(m_at, step, maps, gates, Pokemon::GateRules{.card_key_held = m_sim.state().card_key_held});
+    const std::optional<std::vector<RouteStep>> route = walked_route(m_at, step, maps, gates, Pokemon::GateRules{.card_key_held = m_sim.card_key_held()});
     if (route && route->empty()){
         //  Already there.
         return "";
@@ -780,6 +780,11 @@ std::string row_step_on_sim(OverworldSim& sim, StoryPose& at, const StoryStep& s
     const Outcome outcome = executor.run(step, state);
     at = executor.at();
     if (outcome.succeeded()){
+        //  The step that picks the Card Key up (flags_after) opens the doors the
+        //  next ones walk to.
+        if (std::find(step.flags_after.begin(), step.flags_after.end(), "card_key_held") != step.flags_after.end()){
+            sim.give_card_key();
+        }
         return "";
     }
     return id + "/" + step.name + ": " + outcome.detail + " On " + to_string(sim.state().position) + ".";

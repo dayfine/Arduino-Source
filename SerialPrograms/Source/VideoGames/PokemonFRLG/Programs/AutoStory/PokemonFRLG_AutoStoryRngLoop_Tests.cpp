@@ -208,6 +208,41 @@ UnitTestResult test_gift_messages(){
     return true;
 }
 
+//  The shared handoff takes a shiny as the story going on and every other end
+//  as the user's turn with the loop's message, never as a failure.
+UnitTestResult test_handoff_results(){
+    struct Case{
+        StarterRngLoopEnd end;
+        bool shiny;
+    };
+    const std::vector<Case> cases = {
+        {StarterRngLoopEnd::SHINY, true},
+        {StarterRngLoopEnd::SHINY_OFF_TARGET, true},
+        {StarterRngLoopEnd::TARGET, false},
+        {StarterRngLoopEnd::OUT_OF_ATTEMPTS, false},
+        {StarterRngLoopEnd::MISSED_EVERY_ATTEMPT_LEFT, false},
+        {StarterRngLoopEnd::OUT_OF_TIME, false},
+    };
+    for (const Case& item : cases){
+        const StarterRngLoopResult loop{.end = item.end, .attempts_run = 2, .remaining_sids = {300}, .sid = std::nullopt};
+        const std::string starter_message = starter_rng_loop_message(loop);
+        const std::string gift_message = gift_rng_loop_message(loop, PokemonFRLG_RngTarget::eevee, "09.04");
+        const Pokemon::RngHandoffResult starter = rng_handoff_result(loop, starter_message);
+        const Pokemon::RngHandoffResult gift = rng_handoff_result(loop, gift_message);
+        const std::string& starter_text = item.shiny ? starter.summary : starter.user_turn;
+        const std::string& gift_text = item.shiny ? gift.summary : gift.user_turn;
+        const std::string& starter_other = item.shiny ? starter.user_turn : starter.summary;
+        const std::string& gift_other = item.shiny ? gift.user_turn : gift.summary;
+        if (!starter.succeeded() || !gift.succeeded()){
+            return std::format("End {}: a loop end is never a failure.", int(item.end));
+        }
+        if (starter_text != starter_message || gift_text != gift_message || !starter_other.empty() || !gift_other.empty()){
+            return std::format("End {}: expected the message as the {}.", int(item.end), item.shiny ? "summary" : "user's turn");
+        }
+    }
+    return true;
+}
+
 //  04.02 saves facing the salesman for Gift RNG; after a shiny Magikarp,
 //  04.03 leaves its summary and saves there, then the run goes on.
 UnitTestResult test_rows_after_magikarp(){
@@ -374,6 +409,10 @@ const AutoStoryRngLoopTestCase AUTO_STORY_RNG_LOOP_CASES[] = {
     {
         .input = {.name = "04.02 and 04.03: rows after a shiny Magikarp", .body = test_rows_after_magikarp},
         .expectation = {.description = "plans continuation rows following shiny magikarp"},
+    },
+    {
+        .input = {.name = "Loop ends as RNG handoff results", .body = test_handoff_results},
+        .expectation = {.description = "a shiny continues; every other end is the user's turn"},
     },
     {
         .input = {.name = "Gift RNG outcomes in the RNG plan", .body = test_gift_outcomes},
