@@ -145,6 +145,38 @@ UnitTestResult test_gate_guard_trigger_and_route23(){
     return true;
 }
 
+//  The step of row `id` named `name`.
+const StoryStep& step_of(std::string_view id, std::string_view name){
+    for (const StoryStep& step : checkpoint(id).steps){
+        if (step.name == name){
+            return step;
+        }
+    }
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("No step {} in {}.", name, id));
+}
+
+//  19.01's rival rows are PokemonSimulation's planning_risk() for each foe
+//  leading against the entry state of its route22-rival case
+//  (src/pokesim/games/frlg/battle/player_strategy/planning.py): speed, the
+//  80th percentile loss, the mean, the worst case, and the worst normal hit.
+UnitTestResult test_rival_foe_threats_are_the_generators(){
+    const StoryStep& rival = step_of("19.01", "rival_route22");
+    const auto found = rival.args.find("foe_threats");
+    const auto* rows = found == rival.args.end() ? nullptr : std::get_if<std::vector<std::vector<int64_t>>>(&found->second);
+    const std::vector<std::vector<int64_t>> expected = {
+        {99, 29, 27, 60, 30, 0, 0},     //  Pidgeot
+        {35, 46, 30, 126, 59, 0, 0},    //  Rhyhorn
+        {86, 15, 4, 36, 18, 0, 0},      //  Gyarados
+        {67, 0, 1, 50, 25, 0, 0},       //  Growlithe
+        {126, 55, 20, 120, 60, 0, 0},   //  Alakazam
+        {105, 69, 20, 156, 78, 0, 0},   //  Venusaur
+    };
+    if (rows == nullptr || *rows != expected){
+        return "19.01 rival_route22: foe_threats are not the generator's rows for the route22-rival case.";
+    }
+    return true;
+}
+
 const AutoStoryVictoryRoadCase AUTO_STORY_VICTORY_ROAD_CASES[] = {
     {
         .input = {.name = "19.01 Viridian to the Route 22 rival's trigger", .body = test_route22_rival_trigger},
@@ -153,6 +185,10 @@ const AutoStoryVictoryRoadCase AUTO_STORY_VICTORY_ROAD_CASES[] = {
     {
         .input = {.name = "19.02 Route 22's gate guard trigger, onto Route 23", .body = test_gate_guard_trigger_and_route23},
         .expectation = {.description = "the trigger (7, 2) stepped onto, Route 23 (8, 153), no trainer met"},
+    },
+    {
+        .input = {.name = "19.01 the rival's foe rows are the generator's", .body = test_rival_foe_threats_are_the_generators},
+        .expectation = {.description = "PokemonSimulation planning_risk() rows"},
     },
 };
 

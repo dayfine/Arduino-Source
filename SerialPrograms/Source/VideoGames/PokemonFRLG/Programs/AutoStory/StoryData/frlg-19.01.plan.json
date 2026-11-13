@@ -75,16 +75,16 @@
           "setup_outspeed": true,
           "setup_guard_accuracy": true,
           "foe_threats": [
-            [99, 30, 22, 63, 33, 0, 0],
-            [35, 30, 23, 62, 32, 0, 0],
-            [86, 18, 12, 37, 19, 0, 0],
-            [67, 26, 17, 54, 28, 0, 0],
-            [126, 64, 64, 129, 66, 0, 0],
-            [105, 80, 76, 162, 84, 0, 0]
+            [99, 29, 27, 60, 30, 0, 0],
+            [35, 46, 30, 126, 59, 0, 0],
+            [86, 15, 4, 36, 18, 0, 0],
+            [67, 0, 1, 50, 25, 0, 0],
+            [126, 55, 20, 120, 60, 0, 0],
+            [105, 69, 20, 156, 78, 0, 0]
           ]
         },
         "declared_after": {"map": "Route22", "tiles": [[33, 5]], "facing": "west"},
-        "why": "the rival (TRAINER_RIVAL_ROUTE22_LATE_BULBASAUR for a player who took Squirtle): Pidgeot Lv47, Rhyhorn Lv45, Gyarados Lv45, Growlithe Lv45, Alakazam Lv47, Venusaur Lv53; fought by pokeguy's policy C2 (goal-based-setup: Sp. Atk +2 and Accuracy +2 by X Specials and X Accuracies, X Speed until faster, the doc's route22-rival row); foe_threats are Gen 3 damage on his Blastoise (Lv49, Def 105, Sp. Def 119) from the doc's foe stats, one row per foe: Rhyhorn's Horn Drill fails (Lv45 against Lv49), Venusaur's Razor Leaf and crit can take 153 HP. Then he walks off and the player stays facing west"
+        "why": "the rival (TRAINER_RIVAL_ROUTE22_LATE_BULBASAUR for a player who took Squirtle): Pidgeot Lv47, Rhyhorn Lv45, Gyarados Lv45, Growlithe Lv45, Alakazam Lv47, Venusaur Lv53; fought by pokeguy's policy C2 (goal-based-setup: Sp. Atk +2 and Accuracy +2 by X Specials and X Accuracies, X Speed until faster, the doc's route22-rival row); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against the entry state (153/153, the doc's route22-rival case: the 80th percentile of the foe's move choice, its mean, its worst case, and its worst normal hit), one row per foe: Venusaur's worst case (crit Razor Leaf) is 156 of 153 HP, Rhyhorn's 126. Then he walks off and the player stays facing west"
       }
     ]
   },
