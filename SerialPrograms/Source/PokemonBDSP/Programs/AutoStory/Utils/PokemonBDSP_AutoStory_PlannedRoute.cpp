@@ -337,7 +337,7 @@ std::vector<PlannedLeg> RouteWalker::plan_legs() const{
 }
 
 LegNext RouteWalker::walk_leg(const PlannedLeg& planned, size_t number, size_t count){
-    m_io.leg_started(number, count, planned_route_leg(m_maps, planned), m_plan.pause);
+    leg_started(m_io, number, count, planned_route_leg(m_maps, planned), m_plan.pause);
     LegWalk walk{
         .planned = planned,
         .label = m_plan.label + ": " + to_string(planned.leg),
