@@ -14,7 +14,6 @@
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_Superscalar.h"
-#include "Pokemon/AutoStory/Pokemon_StoryLog.h"
 #include "VideoGames/PokemonSV/Inference/Battles/PokemonSV_NormalBattleMenus.h"
 #include "VideoGames/PokemonSV/Inference/Dialogs/PokemonSV_DialogDetector.h"
 #include "VideoGames/PokemonSV/Inference/Overworld/PokemonSV_OverworldDetector.h"
@@ -39,6 +38,7 @@
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonSV{
+
 
 
 
@@ -1445,7 +1445,7 @@ void checkpoint_reattempt_loop(
             save_game_from_overworld(env.program_info(), env.console, context);
         }
 
-        env.console.log(Pokemon::checkpoint_attempt_line(checkpoint_text, i + 1));
+        env.console.log(checkpoint_text + " Num attempts: " + std::to_string(i));
 
         context.wait_for_all_requests();
         action(i);
@@ -1479,7 +1479,7 @@ void checkpoint_reattempt_loop(
             );
         }
         context.wait_for_all_requests();
-        env.console.log(Pokemon::checkpoint_reset_line(checkpoint_text, i + 2));
+        env.console.log("Resetting from checkpoint.");
         reset_game(env.program_info(), env.console, context);
         stats.m_reset++;
         env.update_stats();
@@ -1507,7 +1507,7 @@ void checkpoint_reattempt_loop_tutorial(
             send_program_status_notification(env, notif_status_update, "Saved at checkpoint.");     
         }
         
-        env.console.log(Pokemon::checkpoint_attempt_line(checkpoint_text, i + 1));
+        env.console.log(checkpoint_text + " Num attempts: " + std::to_string(i));
 
         context.wait_for_all_requests();
         action(i);
@@ -1538,7 +1538,7 @@ void checkpoint_reattempt_loop_tutorial(
             );
         }        
         context.wait_for_all_requests();
-        env.console.log(Pokemon::checkpoint_reset_line(checkpoint_text, i + 2));
+        env.console.log("Resetting from checkpoint.");
         reset_game(env.program_info(), env.console, context);
         stats.m_reset++;
         env.update_stats();
