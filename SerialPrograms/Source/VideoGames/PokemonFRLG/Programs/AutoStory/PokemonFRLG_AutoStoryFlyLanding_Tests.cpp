@@ -198,6 +198,37 @@ protected:
     }
 };
 
+//  The 02:42 and 02:46 runs (console B, 2026-11-13, 12.03): the fly map's
+//  close is a fade too, and Fuchsia after it is quiet for 2.6 s with the
+//  player on screen. Both runs logged "landed in PalletTown" on that frame,
+//  then walked during Pallet's fade-in (the player not shown yet).
+constexpr std::string_view FLY_OFF_FRAME = "PokemonFRLG/AutoStoryFlyLanding/Fuchsia_FlyOff.png";
+constexpr std::string_view PALLET_FADING_FRAME = "PokemonFRLG/AutoStoryFlyLanding/PalletTown_FadingIn.png";
+
+class Test_AutoStoryFlyLandingFlyOff : public ImageUnitTest{
+public:
+    Test_AutoStoryFlyLandingFlyOff()
+        : ImageUnitTest(
+            "PokemonFRLG::AutoStoryFlyLanding - the 02:46 frames",
+            {std::string(FLY_OFF_FRAME), std::string(PALLET_FADING_FRAME), std::string(PALLET_FRAME)}
+        )
+    {}
+
+protected:
+    virtual UnitTestResult run_on_images(Logger&, CancellableScope&, const std::vector<ImageRGB32>& images) const override{
+        const auto facing_of = [&](const ImageRGB32& image){
+            const std::optional<Direction> girl = read_player_facing(image, PlayerGender::GIRL);
+            return girl ? girl : read_player_facing(image, PlayerGender::BOY);
+        };
+        //  The fly map's fade, then Fuchsia quiet for 2.6 s.
+        const std::vector<ScriptedFrame> fly_off = joined(repeated(BLACK, 5), repeated(NOTHING, 26));
+        if (judge_fly_landing(scripted_look(fly_off), QUIET, [&]{ return facing_of(images[0]); }).landed()){
+            return "Fuchsia after the fly map's fade counts as landed";
+        }
+        return true;
+    }
+};
+
 } // namespace
 
 
@@ -206,6 +237,7 @@ void add_tests_AutoStoryFlyLanding(UnitTestDatabase& database){
         database.add<Test_AutoStoryFlyLanding>(test_case);
     }
     database.add<Test_AutoStoryFlyLandingFrames>();
+    database.add<Test_AutoStoryFlyLandingFlyOff>();
 }
 
 
