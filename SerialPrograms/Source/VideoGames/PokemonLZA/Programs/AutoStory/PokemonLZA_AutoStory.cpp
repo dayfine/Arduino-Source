@@ -38,7 +38,7 @@ AutoStory_Descriptor::AutoStory_Descriptor()
         "PokemonLZA:AutoStory",
         std::format("{} LZA", STRING_POKEMON), "Auto Story",
         "Programs/PokemonLZA/AutoStory.html",
-        "Play the main story of Pokemon Legends: Z-A. Prototype: plays a new game to the station platform, as recorded on a console. Checkpoint 01.00 (a new game) starts on the Switch HOME screen with the game's tile highlighted and no save: it closes the game if it is open and launches it fresh. It may also start on the game's language list.",
+        "Play the main story of Pokemon Legends: Z-A. Prototype: plays a new game to the station platform, as recorded on a console. Checkpoint 01.00 (a new game) starts on the Switch HOME screen with PLZA's tile selected and no save: it launches the selected tile without moving the cursor (closing it first if it is running) and waits for the language list. Go Home When Done leaves HOME with PLZA's tile selected, ready for the next new game.",
         PanelQualityStanding::DEVELOPER,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,

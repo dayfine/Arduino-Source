@@ -43,8 +43,8 @@ const StoryData& builtin_story_data();
 
 //  The built-in story (load_story_data() with no dev files), read once:
 //  what the tests, the lint and the program's dropdowns use: 01.00, a new
-//  game to the station platform, which starts on the title screen without
-//  a save.
+//  game to the station platform, which starts without a save on the HOME
+//  screen with PLZA's tile selected.
 const std::vector<Pokemon::StoryCheckpoint>& story_checkpoints();
 
 //  The built-in rows that end on one of the game's autosaves. Each ends

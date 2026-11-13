@@ -56,7 +56,8 @@ const std::map<std::string, std::string, std::less<>>& story_actions_not_impleme
 //              "mash_to_move_hints" (args min_length_ms, quiet_ms) and
 //              "text_to_choice" (run_scene_machine()); a console step, one
 //              call through the game's own screens with no args: the new
-//              game's "new_game_language", "pick_look", "type_player_name";
+//              game's "launch_game_from_home", "new_game_language",
+//              "pick_look", "type_player_name";
 //              "choose_0" / "choose_1" (that row of the choices on screen);
 //              or an action of story_actions_not_implemented()
 //
