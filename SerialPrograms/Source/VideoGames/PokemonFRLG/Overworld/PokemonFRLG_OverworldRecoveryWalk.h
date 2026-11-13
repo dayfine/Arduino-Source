@@ -29,7 +29,9 @@ namespace PokemonFRLG{
 
 //  How far the map in the game screen (`game`) moved between the shots
 //  before and after a hold, as an RMSD: a hold that walked even one tile
-//  scrolls the whole map by it.
+//  scrolls the whole map by it, while a town's name banner sliding in over
+//  the top of the screen (Pallet Town after a Fly, console B, 2026-11-13
+//  02:46) is not a move.
 double hold_scroll_change(const ImageViewRGB32& before, const ImageViewRGB32& after, const ImageFloatBox& game);
 
 //  How much hold_scroll_change() may read for a player who stood still (an

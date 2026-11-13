@@ -319,8 +319,15 @@ bool moved_past_wall(ConsoleHandle& console, ProControllerContext& context, cons
 
 
 double hold_scroll_change(const ImageViewRGB32& before, const ImageViewRGB32& after, const ImageFloatBox& game){
-    const ImageFloatBox top(game.x, game.y, game.width, game.height * 0.25);
-    return ImageMatch::pixel_RMSD(extract_box_reference(before, top), extract_box_reference(after, top));
+    //  The top and bottom quarters, clear of the player in the middle. A
+    //  scroll moves both; a town's banner (top) or water (either) only one.
+    const double h = game.height * 0.25;
+    const ImageFloatBox top(game.x, game.y, game.width, h);
+    const ImageFloatBox bottom(game.x, game.y + game.height - h, game.width, h);
+    return std::min(
+        ImageMatch::pixel_RMSD(extract_box_reference(before, top), extract_box_reference(after, top)),
+        ImageMatch::pixel_RMSD(extract_box_reference(before, bottom), extract_box_reference(after, bottom))
+    );
 }
 
 void walk_overworld_route_with_recovery(
