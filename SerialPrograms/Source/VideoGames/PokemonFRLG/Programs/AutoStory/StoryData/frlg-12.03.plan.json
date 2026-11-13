@@ -25,8 +25,8 @@
         "id": "pallet_shore",
         "kind": "route",
         "action": "run",
-        "args": {"target": {"map": "PalletTown", "tiles": [[8, 16]], "facing": "south"}},
-        "why": "south through the town to the shore (7..10, 17..19), a tile above the water, facing it (pokeguy bikes to Pallet's water edge, 1:19:00)"
+        "args": {"target": {"map": "PalletTown", "tiles": [[10, 16]], "facing": "south"}},
+        "why": "south through the town to the shore (7..10, 17..19), a tile above its east column, facing it: the hold south ends at the water there, and column 10 is the one way down Route21_North clear of its rocks to the sand bar (pokeguy bikes to Pallet's water edge, 1:19:00)"
       },
       {
         "id": "repel_pallet",
@@ -40,45 +40,75 @@
         "kind": "game_action",
         "action": "surf",
         "args": {"direction": "south"},
-        "declared_after": {"map": "PalletTown", "tiles": [[8, 17]], "facing": "south"},
-        "why": "the lead's Surf (taught in 12.01): A at the water, YES, onto (8, 17)"
+        "declared_after": {"map": "PalletTown", "tiles": [[10, 17]], "facing": "south"},
+        "why": "the lead's Surf (taught in 12.01): A at the water, YES, onto (10, 17)"
       },
       {
         "id": "land_north_sand_bar",
         "kind": "route",
         "action": "run",
-        "args": {"target": {"map": "Route21_North", "tiles": [[5, 31]], "facing": "south"}},
-        "why": "south down column 8 until the player lands on Route21_North's sand bar (4..10, 27..32), then over it to its south bank on column 5 (5, 31), where the water stops a player on foot: the leg on the water lands, and the walk on the sand bar ends at walls, so each finds the player again (user's design 2026-11-13: surf until landed, walk to the bank, Surf again; console B 06:55 and 07:02, an open leg on the water stopped by a message couldn't be placed)"
+        "args": {"target": {"map": "Route21_North", "tiles": [[10, 31]], "facing": "south"}},
+        "why": "south down column 10 until the player lands on Route21_North's sand bar (4..10, 27..32) at (10, 28), and on to its south bank (10, 31), where the water stops a player on foot: one hold that lands and ends at a wall, so it finds the player again (user's design 2026-11-13: surf until landed, walk to the bank, Surf again; console B 06:55 and 07:02, an open leg on the water stopped by a message couldn't be placed). Columns 7 to 9 meet rocks: on 08:51 the hold down column 8 stopped at the rock at (8, 16), which the map had as water (PokemonSimulation #96)"
       },
       {
         "id": "surf_off_north_sand_bar",
         "kind": "game_action",
         "action": "surf",
         "args": {"direction": "south"},
-        "declared_after": {"map": "Route21_North", "tiles": [[5, 32]], "facing": "south"},
-        "why": "Surf from the bank onto (5, 32)"
+        "declared_after": {"map": "Route21_North", "tiles": [[10, 32]], "facing": "south"},
+        "why": "Surf from the bank onto (10, 32)"
+      },
+      {
+        "id": "land_small_sand_bar",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "Route21_South", "tiles": [[7, 9]], "facing": "south"}},
+        "why": "on down column 10, over the connection, until the player lands on Route21_South's small sand bar (7..11, 7..10) at (10, 8), then west over it to (7, 9), where the water stops a player on foot. Column 5 (the old way) meets the rock at Route21_North (5, 34); column 10 keeps off the swimmers' lines ((12, 44), (14, 35) and (15, 35) see a tile)"
+      },
+      {
+        "id": "surf_off_small_sand_bar",
+        "kind": "game_action",
+        "action": "surf",
+        "args": {"direction": "south"},
+        "declared_after": {"map": "Route21_South", "tiles": [[7, 10]], "facing": "south"},
+        "why": "Surf from the bank onto (7, 10)"
       },
       {
         "id": "land_middle_sand_bar",
         "kind": "route",
         "action": "run",
-        "args": {"target": {"map": "Route21_South", "tiles": [[5, 23]], "facing": "south"}},
-        "why": "south down column 5 until the player lands on Route21_South's sand bar (5..11, 21..25) at (5, 21), and on to its bank (5, 23): column 5 keeps off the swimmers' lines ((12, 44), (14, 35) and (15, 35) see a tile; (10, 29) sees 4 tiles each way; (15, 24) looks along row 24, which the bank is above)"
+        "args": {"target": {"map": "Route21_South", "tiles": [[7, 25]], "facing": "south"}},
+        "why": "south down column 7 until the player lands on the middle sand bar (5..11, 21..25) at (7, 21), and on to its south bank (7, 25): column 7 and the bank are out of Swimmer Roland's sight (he wanders (8..12, 27..31) and sees 4 tiles each way) and Swimmer Jack's ((15, 24) looks 3 tiles along row 24)"
       },
       {
         "id": "surf_off_middle_sand_bar",
         "kind": "game_action",
         "action": "surf",
         "args": {"direction": "south"},
-        "declared_after": {"map": "Route21_South", "tiles": [[5, 24]], "facing": "south"},
-        "why": "Surf from the bank onto (5, 24)"
+        "declared_after": {"map": "Route21_South", "tiles": [[7, 26]], "facing": "south"},
+        "why": "Surf from the bank onto (7, 26)"
+      },
+      {
+        "id": "land_south_sand_bar",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "Route21_South", "tiles": [[8, 39]], "facing": "south"}},
+        "why": "south down column 7 to the rock at (7, 33), then on to the south sand bar (6..11, 36..39) and its south bank (8, 39). Swimmer Roland wanders (8..12, 27..31) and sees 4 tiles each way, across every way from the middle sand bar south: he is fought on this leg, and the leg is planned again from where the battle leaves the player and ends on the bar, so the hold after it lands"
+      },
+      {
+        "id": "surf_off_south_sand_bar",
+        "kind": "game_action",
+        "action": "surf",
+        "args": {"direction": "south"},
+        "declared_after": {"map": "Route21_South", "tiles": [[8, 40]], "facing": "south"},
+        "why": "Surf from the bank onto (8, 40)"
       },
       {
         "id": "land_beach",
         "kind": "route",
         "action": "run",
-        "args": {"target": {"map": "Route21_South", "tiles": [[5, 49]], "facing": "east"}},
-        "why": "south down column 5 until the player lands on the beach (5..13, 48..49) at (5, 48), and on to (5, 49), where Cinnabar Island's wall below stops the player"
+        "args": {"target": {"map": "Route21_South", "tiles": [[8, 49]], "facing": "east"}},
+        "why": "south down column 8 until the player lands on the beach (5..13, 48..49) at (8, 48), and on to (8, 49), where Cinnabar Island's wall below stops the player; column 8 keeps off Swimmer Jerome's line ((15, 38) looks 3 tiles west)"
       },
       {
         "id": "surf_route_21",
