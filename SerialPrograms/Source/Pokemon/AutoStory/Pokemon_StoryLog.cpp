@@ -41,12 +41,8 @@ std::string checkpoint_attempt_line(std::string_view checkpoint, size_t attempt,
     return std::format("[Checkpoint] {}: attempt {}/{}", checkpoint, attempt, *attempts);
 }
 
-std::string checkpoint_pass_line(std::string_view checkpoint, size_t attempt, size_t in_place){
-    return std::format(
-        "[Checkpoint] {}: passed on attempt {} ({}){}",
-        checkpoint, attempt, resets_text(attempt),
-        in_place == 0 ? "" : std::format(", {} in place", in_place)
-    );
+std::string checkpoint_pass_line(std::string_view checkpoint, size_t attempt){
+    return std::format("[Checkpoint] {}: passed on attempt {} ({})", checkpoint, attempt, resets_text(attempt));
 }
 
 std::string checkpoint_reset_line(std::string_view checkpoint, size_t next_attempt){
