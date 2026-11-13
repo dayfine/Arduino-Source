@@ -211,7 +211,7 @@ StepWalk walk_hold_step(
     //  Turning first, with a tap, starts the hold from a standstill facing
     //  the right way: exact over 15 tiles, where a turn lost one.
     if (turns_first(step, speed, facing)){
-        turn_to(console, context, step.direction, player);
+        turn_to(console, context, step.direction, player, !step.surfing && step_speed(step, speed) != MoveSpeed::BIKE);
     }
     if (const std::string note = speed_note(step, speed); !note.empty()){
         console.log(note);

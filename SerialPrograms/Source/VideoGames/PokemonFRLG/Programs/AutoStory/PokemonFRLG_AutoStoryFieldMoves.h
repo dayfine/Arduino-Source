@@ -21,6 +21,7 @@
 #include "CommonFramework/Language.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PlayerFacingReader.h"
 #include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
@@ -73,9 +74,12 @@ bool is_field_move_step(const Pokemon::StoryStep& step);
 std::vector<Pokemon::StoryActionSpec> field_move_specs();
 
 //  On the console, a step of this file's; nothing for another step. The
-//  step ends on its pose_after, if it has one.
+//  step ends on its pose_after, if it has one. A Fly ends once the player
+//  has landed (judge_fly_landing()), or fails as fly_no_takeoff or
+//  fly_no_landing.
 std::optional<Pokemon::Outcome> run_field_move_step(
-    ConsoleHandle& console, ProControllerContext& context, Language language, const Pokemon::StoryStep& step
+    ConsoleHandle& console, ProControllerContext& context, Language language, PlayerGender player,
+    const Pokemon::StoryStep& step
 );
 
 

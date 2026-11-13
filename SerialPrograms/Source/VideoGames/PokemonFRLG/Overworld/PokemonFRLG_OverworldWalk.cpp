@@ -694,13 +694,17 @@ std::optional<Direction> read_facing(ConsoleHandle& console, ProControllerContex
     return facing;
 }
 
-//  Reads of the facing after a turn tap before one that can't be read is
-//  taken as turned, TURN_FACING_REREAD apart: a tap again while facing
-//  that way already would take a step.
-constexpr size_t TURN_FACING_READS = 3;
+//  Reads of the facing after a turn tap, TURN_FACING_REREAD apart (about
+//  2 s), before the leg fails: a facing that can't be read means the player
+//  isn't on screen at rest (a fade, a box, a scene), and a tap again while
+//  facing that way already would take a step.
+constexpr size_t TURN_FACING_READS = 20;
+//  Surfing and biking draw other sprites, which read_player_facing() doesn't
+//  know: a few reads, then the old way, taken as turned.
+constexpr size_t TURN_FACING_READS_UNKNOWN_SPRITE = 3;
 constexpr Milliseconds TURN_FACING_REREAD(100);
 
-void turn_to(ConsoleHandle& console, ProControllerContext& context, Direction direction, PlayerGender player){
+void turn_to(ConsoleHandle& console, ProControllerContext& context, Direction direction, PlayerGender player, bool walking){
     //  A tap while the player faces `direction` already takes a step, so the
     //  screen is read first. A trainer's battle leaves the player facing the
     //  way they stepped into the line, not the trainer (pokefirered
@@ -715,7 +719,8 @@ void turn_to(ConsoleHandle& console, ProControllerContext& context, Direction di
     for (size_t tap = 1; tap <= MAX_TURN_TAPS; tap++){
         pbf_press_dpad(context, dpad(direction), TURN_TAP, TURN_SETTLE);
         std::optional<Direction> facing;
-        for (size_t read = 1; read <= TURN_FACING_READS && !facing; read++){
+        const size_t reads = walking ? TURN_FACING_READS : TURN_FACING_READS_UNKNOWN_SPRITE;
+        for (size_t read = 1; read <= reads && !facing; read++){
             if (read > 1){
                 pbf_wait(context, TURN_FACING_REREAD);
             }
@@ -723,12 +728,24 @@ void turn_to(ConsoleHandle& console, ProControllerContext& context, Direction di
             VideoSnapshot screen = console.video().snapshot();
             facing = screen ? read_player_facing(screen, player) : std::nullopt;
         }
-        if (!facing){
+        if (!facing && !walking){
             console.log(std::format(
-                "Route: after turn tap {} {}, the facing can't be read: taken as turned.",
+                "Route: after turn tap {} {}, the facing can't be read (surfing or biking): taken as turned.",
                 tap, Pokemon::direction_name(direction)
             ), COLOR_ORANGE);
             return;
+        }
+        if (!facing){
+            //  Not taken as turned: nothing has settled, so the player's
+            //  place is unknown. The leg fails, and the re-anchor finds it.
+            OperationFailedExceptionWithScreenshot::fire(
+                ErrorReportMode::SEND_ERROR_REPORT,
+                std::format(
+                    "walk_overworld_route(): after turn tap {} {}, the facing can't be read for {} reads: the player is not settled on screen.",
+                    tap, Pokemon::direction_name(direction), TURN_FACING_READS
+                ),
+                console
+            );
         }
         if (*facing == direction){
             return;
@@ -928,7 +945,7 @@ void walk_hold(
     //  console, while holds from a standstill were exact over 15 tiles.
     //  Not on the Bicycle, where the tap is a step.
     if (turns_first(step, speed, facing)){
-        turn_to(console, context, step.direction, player);
+        turn_to(console, context, step.direction, player, !step.surfing && step_speed(step, speed) != MoveSpeed::BIKE);
     }
     if (const std::string note = speed_note(step, speed); !note.empty()){
         console.log(note);

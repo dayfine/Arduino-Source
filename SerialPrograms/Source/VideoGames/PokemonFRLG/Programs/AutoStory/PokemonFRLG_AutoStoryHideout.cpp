@@ -192,7 +192,7 @@ std::optional<Pokemon::Outcome> run_field_game_step(
         ride_lift(console, context, *ride, player);
         return done();
     }
-    if (std::optional<Pokemon::Outcome> moved = run_field_move_step(console, context, language, step)){
+    if (std::optional<Pokemon::Outcome> moved = run_field_move_step(console, context, language, player, step)){
         return moved;
     }
     if (is_center_variant(step.action)){
