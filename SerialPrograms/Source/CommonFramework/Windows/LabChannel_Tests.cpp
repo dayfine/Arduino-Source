@@ -10,9 +10,13 @@
 
 #include <functional>
 #include <format>
+#include <optional>
+#include <stdexcept>
 #include <string>
+#include <vector>
 #include "Common/Cpp/Filesystem/FileIO.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "LabPause.h"
 #include "LabRequest.h"
 #include "LabChannel_Tests.h"
 
@@ -141,11 +145,11 @@ UnitTestResult test_journal(){
 
 UnitTestResult test_state_text(){
     LabState state{"r1", "RUNNING", "PokemonBDSP:AutoStory", "ready", "lab-B", ""};
-    if (lab_state_text(state) != "seq=r1\nstate=RUNNING\nprogram=PokemonBDSP:AutoStory\ncontroller=ready\nowner=lab-B\nerror=\n"){
+    if (lab_state_text(state) != "seq=r1\nstate=RUNNING\nprogram=PokemonBDSP:AutoStory\ncontroller=ready\nowner=lab-B\nerror=\npaused=\n"){
         return "Unexpected state text: " + lab_state_text(state);
     }
     state = {"", "NO_PROGRAM", "", "", "", "The selected panel is not a program."};
-    if (lab_state_text(state) != "seq=\nstate=NO_PROGRAM\nprogram=\ncontroller=\nowner=\nerror=The selected panel is not a program.\n"){
+    if (lab_state_text(state) != "seq=\nstate=NO_PROGRAM\nprogram=\ncontroller=\nowner=\nerror=The selected panel is not a program.\npaused=\n"){
         return "Unexpected state text: " + lab_state_text(state);
     }
     return true;
@@ -297,6 +301,78 @@ private:
 }
 
 
+UnitTestResult test_state_paused(){
+    LabState state{.seq = "r1", .state = "RUNNING", .program = "PokemonBDSP:AutoStory", .controller = "ready", .owner = "", .error = "", .paused = "12.03/5 shore"};
+    if (lab_state_text(state) != "seq=r1\nstate=RUNNING\nprogram=PokemonBDSP:AutoStory\ncontroller=ready\nowner=\nerror=\npaused=12.03/5 shore\n"){
+        return "Unexpected state text: " + lab_state_text(state);
+    }
+    return true;
+}
+
+UnitTestResult test_parse_continue(){
+    struct Case{
+        std::string text;
+        size_t skips;
+    };
+    const Case CASES[] = {
+        {"", 0}, {"\n", 0}, {"continue", 0}, {"continue\n", 0}, {"continue 3", 3}, {"continue 3\n", 3},
+        {"7", 7}, {"continue  12  ", 12}, {"go on", 0},
+    };
+    for (const Case& c : CASES){
+        if (parse_lab_continue(c.text) != c.skips){
+            return std::format("<{}>: expected {}, got {}", c.text, c.skips, parse_lab_continue(c.text));
+        }
+    }
+    return true;
+}
+
+//  A scripted pause: the continue file shows up after `looks` looks.
+UnitTestResult test_pause_waits_for_continue(){
+    lab_pause_set_skips(0);
+    size_t looks = 0;
+    std::vector<std::string> labels;
+    LabPauseIO io;
+    io.take_continue = [&]() -> std::optional<std::string>{
+        labels.push_back(lab_paused_label());
+        return ++looks > 3 ? std::optional<std::string>("continue 2") : std::nullopt;
+    };
+    io.sleep = []{};
+    lab_pause("12.03/1 first", io);
+    if (looks != 4 || labels != std::vector<std::string>(4, "12.03/1 first")){
+        return std::format("expected 4 looks at the label, got {}", looks);
+    }
+    if (!lab_paused_label().empty()){
+        return "the label should clear when the pause ends";
+    }
+    //  The next two pause points pass without a look.
+    size_t more = 0;
+    io.take_continue = [&]() -> std::optional<std::string>{ more++; return std::string(); };
+    lab_pause("12.03/2 second", io);
+    lab_pause("12.03/3 third", io);
+    if (more != 0){
+        return "continue 2 should pass the next two pause points";
+    }
+    lab_pause("12.03/4 fourth", io);
+    if (more != 1){
+        return "the third pause point after it should wait again";
+    }
+    return true;
+}
+
+//  A cancelled program ends the wait and leaves no label.
+UnitTestResult test_pause_ends_on_cancel(){
+    lab_pause_set_skips(0);
+    LabPauseIO io;
+    io.take_continue = []() -> std::optional<std::string>{ return std::nullopt; };
+    io.sleep = []{ throw std::runtime_error("cancelled"); };
+    try{
+        lab_pause("12.03/1 first", io);
+    }catch (std::runtime_error&){
+        return lab_paused_label().empty() ? UnitTestResult(true) : UnitTestResult("the label stayed after a cancel");
+    }
+    return "expected the cancel to end the wait";
+}
+
 void add_tests_LabChannel(UnitTestDatabase& database){
     database.add<Test_LabChannel>("split a line", test_split_line);
     database.add<Test_LabChannel>("line after words", test_line_after_words);
@@ -304,6 +380,10 @@ void add_tests_LabChannel(UnitTestDatabase& database){
     database.add<Test_LabChannel>("parse a request", test_parse_request);
     database.add<Test_LabChannel>("journal lines", test_journal);
     database.add<Test_LabChannel>("state text", test_state_text);
+    database.add<Test_LabChannel>("state text with a pause", test_state_paused);
+    database.add<Test_LabChannel>("parse a continue file", test_parse_continue);
+    database.add<Test_LabChannel>("pause waits for continue", test_pause_waits_for_continue);
+    database.add<Test_LabChannel>("pause ends on cancel", test_pause_ends_on_cancel);
     database.add<Test_LabChannel>("owner lock", test_owner);
     database.add<Test_LabChannel>("keep-awake schedule", test_keep_awake);
     database.add<Test_LabChannel>("controller wait", test_controller_wait);
