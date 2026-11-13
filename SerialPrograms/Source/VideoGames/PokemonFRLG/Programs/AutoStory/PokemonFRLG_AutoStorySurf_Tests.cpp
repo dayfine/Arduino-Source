@@ -37,7 +37,8 @@ namespace PokemonFRLG{
 
 namespace{
 
-const MapPosition BELOW_CINNABAR_CENTER{"CinnabarIsland", {14, 12}};
+//  Where 12.03 ends: the wall of Cinnabar's Center, (16, 7).
+const MapPosition CINNABAR_CENTER_WALL{"CinnabarIsland", {16, 7}};
 
 const StoryCheckpoint& row_12_03(){
     const std::vector<StoryCheckpoint>& rows = story_checkpoints();
@@ -83,8 +84,8 @@ std::string joined(const std::vector<std::string>& lines){
     return text;
 }
 
-//  12.03 on a sim with `script`, from Fuchsia's nurse up to the Center's
-//  door on Cinnabar, as test_fuchsia_to_cinnabar() runs it. Each ROUTE
+//  12.03 on a sim with `script`, from Fuchsia's nurse to the Center's
+//  wall on Cinnabar, as test_fuchsia_to_cinnabar() runs it. Each ROUTE
 //  step is also planned from where the sim stands, for its water legs.
 SurfRun run_12_03(SimScript script = {}){
     const StoryCheckpoint& row = row_12_03();
@@ -148,7 +149,7 @@ UnitTestResult test_no_open_water_legs(){
 
 //  A message stops the hold after every step on the water in turn, as
 //  "a message" did 8 tiles into "south 15 (open)" (console B, 2026-11-13
-//  06:55 and 07:02): each run still ends below Cinnabar's Center door, the
+//  06:55 and 07:02): each run still ends at Cinnabar's Center wall, the
 //  leg held on to its bank after the message.
 UnitTestResult test_message_at_every_surf_step(){
     const SurfRun clean = run_12_03();
@@ -160,7 +161,7 @@ UnitTestResult test_message_at_every_surf_step(){
         SimScript script;
         script.messages_at_surf_steps = {step};
         const SurfRun run = run_12_03(std::move(script));
-        if (!run.failure.empty() || !(run.end == BELOW_CINNABAR_CENTER)){
+        if (!run.failure.empty() || !(run.end == CINNABAR_CENTER_WALL)){
             failed.push_back(std::format(
                 "message after surfed step {}: ended on {}{}", step, to_string(run.end),
                 run.failure.empty() ? "" : "; " + run.failure
@@ -175,7 +176,7 @@ UnitTestResult test_message_at_every_surf_step(){
 
 //  A hold on the water that stops short with nothing seen, as "south 86
 //  (open)" did (console B, 2026-11-13 04:15), at each in turn: the run
-//  ends below Cinnabar's Center door, or fails (a leg that lands checks the
+//  ends at Cinnabar's Center wall, or fails (a leg that lands checks the
 //  player is on foot); it never goes on from where it wrongly takes the
 //  player to be and ends elsewhere.
 UnitTestResult test_short_hold_never_goes_on_from_a_guess(){
@@ -191,7 +192,7 @@ UnitTestResult test_short_hold_never_goes_on_from_a_guess(){
         SimScript script;
         script.short_holds = {{hold, 3}};
         const SurfRun run = run_12_03(std::move(script));
-        if (run.failure.empty() && !(run.end == BELOW_CINNABAR_CENTER)){
+        if (run.failure.empty() && !(run.end == CINNABAR_CENTER_WALL)){
             wrong.push_back(std::format("hold {} 3 tiles short: passed, ended on {}", hold, to_string(run.end)));
         }
         if (run.failure.find("trainer") != std::string::npos || run.failure.find("violation") != std::string::npos){
@@ -281,11 +282,11 @@ const SurfCase SURF_CASES[] = {
     },
     {
         .input = {.name = "12.03 with a message after each step on the water", .body = test_message_at_every_surf_step},
-        .expectation = {.description = "every run ends below Cinnabar's Center door"},
+        .expectation = {.description = "every run ends at Cinnabar's Center wall"},
     },
     {
         .input = {.name = "12.03 with a hold stopped short, unseen", .body = test_short_hold_never_goes_on_from_a_guess},
-        .expectation = {.description = "each run ends below the Center door or fails, never elsewhere"},
+        .expectation = {.description = "each run ends at the Center wall or fails, never elsewhere"},
     },
 };
 

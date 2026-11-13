@@ -1239,7 +1239,7 @@ UnitTestResult test_save_place_error(){
     return true;
 }
 
-//  A checkpoint saves only where it ends. 12.03 ends in Cinnabar's Center,
+//  A checkpoint saves only where it ends. 12.03 ends on Cinnabar Island,
 //  where 13.01 starts; on console B (2026-11-13 04:16) it stopped surfing
 //  on Route 21 and saved there, its card reading "ROUTE 21": that save is
 //  refused, and so is one whose card can't be read.
@@ -1287,8 +1287,8 @@ UnitTestResult test_route21_water_legs(){
 
 UnitTestResult test_save_end_error(){
     const std::string end = checkpoint_end_map("12.03");
-    if (end != "CinnabarIsland_PokemonCenter_1F"){
-        return "12.03 ends on \"" + end + "\", not CinnabarIsland_PokemonCenter_1F.";
+    if (end != "CinnabarIsland"){
+        return "12.03 ends on \"" + end + "\", not CinnabarIsland.";
     }
     if (!checkpoint_end_map("no-such-row").empty()){
         return "A row that isn't in the table has an end map.";
