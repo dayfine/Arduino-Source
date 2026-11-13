@@ -16,6 +16,7 @@
 #include "PokemonLZA_AutoStoryIntro.h"
 #include "PokemonLZA_AutoStoryIntroScreens.h"
 #include "PokemonLZA_AutoStoryLanguageList.h"
+#include "PokemonLZA_AutoStoryLaunch.h"
 #include "PokemonLZA_AutoStoryIntro_Tests.h"
 
 namespace PokemonAutomation{
@@ -172,6 +173,74 @@ UnitTestResult test_language_list_capture(Logger&){
     return true;
 }
 
+//  01.00's start on frames whose HOME reading is given: only HOME
+//  launches; the language list and anything else (an empty frame too) are
+//  refused.
+UnitTestResult test_launch_start_synthetic(Logger&){
+    const ImageRGB32 list = language_list_frame(0);
+    ImageRGB32 game(1920, 1080);
+    game.fill(0xff405060);
+    const ImageRGB32 empty;
+    struct Row{
+        std::string_view name;
+        const ImageRGB32* frame;
+        bool home;
+        LaunchStart expected;
+    };
+    const Row rows[] = {
+        {"HOME", &game, true, LaunchStart::HOME_MENU},
+        {"a game frame", &game, false, LaunchStart::OTHER},
+        {"the language list", &list, false, LaunchStart::FIRST_SCREEN},
+        {"the language list, HOME read", &list, true, LaunchStart::FIRST_SCREEN},
+        {"an empty frame", &empty, false, LaunchStart::OTHER},
+        {"an empty frame, HOME read", &empty, true, LaunchStart::OTHER},
+    };
+    for (const Row& row : rows){
+        if (read_launch_start(*row.frame, row.home, is_language_list) != row.expected){
+            return std::format("{}: expected start {}.", row.name, (int)row.expected);
+        }
+    }
+    if (read_launch_start(game, true, ScreenCheck()) != LaunchStart::HOME_MENU){
+        return "HOME with no first-screen detector: expected a launch.";
+    }
+    return true;
+}
+
+//  01.00's start on console B's frames, from the folder in
+//  PLZA_INTRO_SCREENS: language-list.png, and if present home.png (the HOME
+//  menu) and in-game.png (the station). The HOME reading is
+//  HomeMenuDetector's, which needs a console: here it is given.
+UnitTestResult test_launch_start_capture(Logger&){
+    const auto* folder = std::getenv("PLZA_INTRO_SCREENS");
+    if (folder == nullptr || !Filesystem::is_directory(Filesystem::Path(folder))){
+        return UnitTestResult(UnitTestResult::SKIPPED, "PLZA_INTRO_SCREENS is not a folder.");
+    }
+    struct Row{
+        std::string_view file;
+        bool home;
+        LaunchStart expected;
+    };
+    const Row rows[] = {
+        {"language-list.png", false, LaunchStart::FIRST_SCREEN},
+        {"home.png", true, LaunchStart::HOME_MENU},
+        {"in-game.png", false, LaunchStart::OTHER},
+    };
+    for (const Row& row : rows){
+        const std::string path = std::format("{}/{}", folder, row.file);
+        if (!Filesystem::exists(Filesystem::Path(path))){
+            if (row.expected == LaunchStart::FIRST_SCREEN){
+                return std::format("{} is missing.", row.file);
+            }
+            continue;
+        }
+        const ImageRGB32 frame(path);
+        if (read_launch_start(frame, row.home, is_language_list) != row.expected){
+            return std::format("{}: expected start {}.", row.file, (int)row.expected);
+        }
+    }
+    return true;
+}
+
 UnitTestResult test_look_presses(Logger&){
     //  Look 1 is the top-left face: the clamp, then A.
     const Keys clamp = joined({{IntroKey::UP}, repeated(IntroKey::LEFT, 3)});
@@ -289,6 +358,14 @@ const IntroCase INTRO_CASES[] = {
     },
     {
         .input = {"Intro: the language list on console B (PLZA_INTRO_SCREENS)", test_language_list_capture},
+        .expectation = {},
+    },
+    {
+        .input = {"Intro: the start screen, synthetic frames", test_launch_start_synthetic},
+        .expectation = {},
+    },
+    {
+        .input = {"Intro: the start screen on console B (PLZA_INTRO_SCREENS)", test_launch_start_capture},
         .expectation = {},
     },
     {

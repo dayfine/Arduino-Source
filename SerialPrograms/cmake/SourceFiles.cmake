@@ -1385,6 +1385,8 @@ file(GLOB LIBRARY_SOURCES
     Source/NintendoSwitch/Inference/NintendoSwitch_SelectedSettingDetector.h
     Source/NintendoSwitch/Inference/NintendoSwitch_StartGameUserSelectDetector.cpp
     Source/NintendoSwitch/Inference/NintendoSwitch_StartGameUserSelectDetector.h
+    Source/NintendoSwitch/Inference/NintendoSwitch_SystemKeyboardDetector.cpp
+    Source/NintendoSwitch/Inference/NintendoSwitch_SystemKeyboardDetector.h
     Source/NintendoSwitch/Inference/NintendoSwitch_UpdatePopupDetector.cpp
     Source/NintendoSwitch/Inference/NintendoSwitch_UpdatePopupDetector.h
     Source/NintendoSwitch/NintendoSwitch_ConsoleHandle.cpp
@@ -1444,6 +1446,8 @@ file(GLOB LIBRARY_SOURCES
     Source/NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_KeyboardCodeEntry.h
     Source/NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_NumberCodeEntry.cpp
     Source/NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_NumberCodeEntry.h
+    Source/NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_SystemKeyboardTyping.cpp
+    Source/NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_SystemKeyboardTyping.h
     Source/NintendoSwitch/Programs/NintendoSwitch_FriendCodeAdder.cpp
     Source/NintendoSwitch/Programs/NintendoSwitch_FriendCodeAdder.h
     Source/NintendoSwitch/Programs/NintendoSwitch_FriendDelete.cpp
@@ -2375,6 +2379,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryIntro_Tests.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryLanguageList.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryLanguageList.h
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryLaunch.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryLaunch.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryScenes.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryScenes.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryWalkScreenChecks.cpp

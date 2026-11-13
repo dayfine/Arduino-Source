@@ -98,10 +98,6 @@ bool is_look_picker(const ImageViewRGB32&){
     return false;
 }
 
-bool is_keyboard(const ImageViewRGB32&){
-    return false;
-}
-
 
 } // namespace PokemonLZA
 } // namespace NintendoSwitch

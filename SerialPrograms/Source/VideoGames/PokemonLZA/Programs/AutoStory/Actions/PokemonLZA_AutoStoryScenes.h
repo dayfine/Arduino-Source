@@ -54,31 +54,40 @@ bool tutorial_card_shows(const ImageViewRGB32& frame);
 //  The new game's opening, as recorded 2026-11-08 on console B, with the
 //  player's choices (PokemonLZA_AutoStoryIntro.h has each one's presses).
 //  Each logs every press and saves its screen's frame (DebugDumps) for the
-//  detectors to be built from. Only the language list's is built: the look
-//  picker and the keyboard wait a fixed time for their screens.
+//  detectors to be built from. The language list and the name keyboard (the
+//  Switch system keyboard) are detected; the look picker is not checked and
+//  waits a fixed time.
 
-//  01.00's first step. It starts on the Switch HOME screen with the game's
-//  tile highlighted and no save, the game open or closed: closes the game
-//  so the launch is fresh, starts it (start_game_from_home(): the user
-//  select and the online license check), waits 5 s, then up to 90 s for
-//  the language list (a new game has no title screen). Started on the
-//  language list itself, it skips the launch. Then moves the list's
-//  highlight to `language`'s entry, reading it after each press, and
-//  presses A. Throws UserSetupError for a language the list lacks or any
-//  other starting screen, OperationFailedException if the list does not
-//  show or the highlight does not get there.
+//  01.00's first step. It starts on the Switch HOME menu with PLZA's tile
+//  selected and no save: launches that tile without moving the cursor,
+//  closing the game first if it is running, through the user select and
+//  the license check to the language list (launch_selected_game_from_home(),
+//  up to 90 s; a new game has no title screen). Throws UserSetupError on
+//  any other starting screen, OperationFailedException if the list does not
+//  show (the selected game may not be PLZA, or it has a save).
+void launch_game_from_home(ConsoleHandle& console, ProControllerContext& context);
+
+//  On the language list: moves its highlight to `language`'s entry,
+//  reading it after each press, and presses A. Throws UserSetupError for a
+//  language the list lacks, OperationFailedException if the list is not on
+//  screen or the highlight does not get there.
 void new_game_language(ConsoleHandle& console, ProControllerContext& context, Language language);
 
 //  On the look picker, whose highlight starts at random: UP and LEFT x3 to
 //  the top-left look (the edges clamp), RIGHT and DOWN to look `look` (1 to 8,
-//  a 2 x 4 grid, to be confirmed), A.
+//  a 2 x 4 grid), A. The screen is not checked (is_look_picker() is a TODO
+//  stub): the presses are blind.
 void pick_player_look(ConsoleHandle& console, ProControllerContext& context, size_t look);
 
-//  On the name screen: types `name` on the Switch keyboard (letters and
-//  digits, a capital only as the first letter; name_keys()), + to finish,
-//  then DOWN x2 and A on "Ready!". `first_letter_auto_caps`: the keyboard
-//  starts with a capital by itself, so Shift is for a lower case first
-//  letter instead (to be confirmed).
+//  On the name screen, the Switch system keyboard: waits up to 20 s for it,
+//  deletes any text left in its field, types `name` reading the cursor
+//  before each key (type_on_system_keyboard(); letters and digits, a
+//  capital only as the first letter; name_keys()), PLUS to finish and waits
+//  for the keyboard to close, then on "Confirm Choices" DOWN x2 and A on
+//  "Ready!". `first_letter_auto_caps`: the keyboard starts with a capital
+//  by itself, so Shift is for a lower case first letter instead (to be
+//  confirmed). Throws OperationFailedException if the keyboard does not
+//  show or close.
 void type_player_name(
     ConsoleHandle& console, ProControllerContext& context,
     const std::string& name, bool first_letter_auto_caps
