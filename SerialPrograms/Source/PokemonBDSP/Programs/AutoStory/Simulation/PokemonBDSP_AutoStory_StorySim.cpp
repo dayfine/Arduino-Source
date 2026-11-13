@@ -340,17 +340,20 @@ WalkResult SimKnobRouteIO::slide_on(const SimSlide& slide, WalkResult result){
     return result;
 }
 
-std::string SimKnobRouteIO::banner_within(Milliseconds){
-    return std::exchange(m_misses.banner_soon, "");
-}
-
-bool SimKnobRouteIO::dialog_within(Milliseconds wait, Color color){
-    const auto late = m_knobs.first_line.find(m_step);
-    if (late != m_knobs.first_line.end() && late->second > wait){
-        note(std::format("[Sim] {}: the first line comes after {} ms, past the {} ms wait.", m_step, late->second.count(), wait.count()), RouteNote::LOG);
-        return false;
+RouteSight SimKnobRouteIO::sight_within(const RouteWatch& watch){
+    RouteSight sight;
+    if (watch.dialog){
+        const auto late = m_knobs.first_line.find(m_step);
+        if (late != m_knobs.first_line.end() && late->second > watch.wait){
+            note(std::format("[Sim] {}: the first line comes after {} ms, past the {} ms wait.", m_step, late->second.count(), watch.wait.count()), RouteNote::LOG);
+        }else{
+            sight = GridSimRouteIO::sight_within(watch);
+        }
     }
-    return GridSimRouteIO::dialog_within(wait, color);
+    if (watch.banner){
+        sight.banner = std::exchange(m_misses.banner_soon, "");
+    }
+    return sight;
 }
 
 namespace{

@@ -240,8 +240,7 @@ public:
 
     virtual WalkResult walk_to_wall(const RouteWallWalk& walk) override;
     virtual WalkResult walk_taps(Pokemon::Direction direction, size_t tiles, const std::string& label) override;
-    virtual bool dialog_within(Milliseconds wait, Color color) override;
-    virtual std::string banner_within(Milliseconds wait) override;
+    virtual RouteSight sight_within(const RouteWatch& watch) override;
     //  With SimWorldKnobs::slow_fade_in, fails the move `label` if the last
     //  warp is still fading in (SimMisses::fading_in).
     void check_fade_in(const std::string& label);

@@ -65,15 +65,18 @@ void ConsoleRouteIO::press(const RouteInput& input){
     press_route_input(m_context, input);
 }
 
-bool ConsoleRouteIO::dialog_within(Milliseconds wait, Color color){
-    ShortDialogWatcher dialog(color);
-    return wait_until(m_stream, m_context, wait, {{dialog}}) == 0;
-}
-
-std::string ConsoleRouteIO::banner_within(Milliseconds wait){
-    LocationBannerWatcher banner;
-    wait_until(m_stream, m_context, wait, {{banner}});
-    return banner.seen();
+RouteSight ConsoleRouteIO::sight_within(const RouteWatch& watch){
+    RouteSight sight;
+    if (watch.dialog){
+        ShortDialogWatcher dialog(*watch.dialog);
+        sight.dialog = wait_until(m_stream, m_context, watch.wait, {{dialog}}) == 0;
+    }
+    if (watch.banner){
+        LocationBannerWatcher banner;
+        wait_until(m_stream, m_context, watch.wait, {{banner}});
+        sight.banner = banner.seen();
+    }
+    return sight;
 }
 
 bool ConsoleRouteIO::holding_against_wall(Direction direction, const std::string& label){

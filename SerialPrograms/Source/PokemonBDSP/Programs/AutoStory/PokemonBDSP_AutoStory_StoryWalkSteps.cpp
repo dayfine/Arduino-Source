@@ -315,7 +315,7 @@ Outcome StoryWalkSteps::run_to_dialogue(const StoryStep& step){
         return Pokemon::outcome_ok();
     }
     //  A scene can lock us before its first line: Dawn walks over first (r37).
-    if (m_route.dialog_within(10000ms, COLOR_CYAN)){
+    if (dialog_within(m_route, 10000ms, COLOR_CYAN)){
         return Pokemon::outcome_ok();
     }
     return Pokemon::outcome_failed("no_dialogue", std::format("{}: no dialogue in {} tiles {}", step.name, leg.tiles, direction_name(leg.direction)));
@@ -741,7 +741,7 @@ Outcome StoryWalkSteps::talk(RunState& state, const StoryStep& step){
         .count = 1, .end = RouteInputEnd::DONE});
     //  Roark's first line in the mine comes after the camera zooms in on
     //  us, which can take some seconds (r98; the old event waited 8 s).
-    if (!m_route.dialog_within(8000ms, COLOR_YELLOW)){
+    if (!dialog_within(m_route, 8000ms, COLOR_YELLOW)){
         fail(m_route, label_of(step) + ": nobody answered.");
     }
     return Pokemon::outcome_ok();
@@ -752,7 +752,7 @@ Outcome StoryWalkSteps::mash(RunState& state, const StoryStep& step){
     m_scene_open = false;
     //  The step before may have played the scene already (a door step settles
     //  its arrival scene), so its first line is not required.
-    if (!m_route.dialog_within(15000ms, COLOR_CYAN)){
+    if (!dialog_within(m_route, 15000ms, COLOR_CYAN)){
         m_route.note(label_of(step) + ": no line within 15 s; the step before played it.", RouteNote::WARNING);
     }
     m_io.settle(step.action == "a" ? BUTTON_A : BUTTON_B, label_of(step),

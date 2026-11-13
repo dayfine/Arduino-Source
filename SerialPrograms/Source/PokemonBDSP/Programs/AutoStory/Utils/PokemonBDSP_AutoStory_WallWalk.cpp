@@ -24,7 +24,7 @@ constexpr size_t MAX_FROZEN_FIGHTS = 3;
 WalkResult walk_fighting(RouteIO& io, RouteTrainers& trainers, std::optional<Pokemon::Direction> facing, const RouteWallWalk& walk){
     for (size_t fights = 0;; fights++){
         const WalkResult result = walk_to_wall_turning(io, facing, walk);
-        if (fights == MAX_FROZEN_FIGHTS || result.stop != WalkStop::BLOCKED || !io.dialog_within(FROZEN_DIALOG_WAIT, COLOR_YELLOW)){
+        if (fights == MAX_FROZEN_FIGHTS || result.stop != WalkStop::BLOCKED || !dialog_within(io, FROZEN_DIALOG_WAIT, COLOR_YELLOW)){
             return result;
         }
         io.note(std::format("[Route] {}: a trainer froze us short of the wall; battling.", walk.label), RouteNote::WARNING);

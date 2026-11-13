@@ -598,8 +598,8 @@ void GridSimRouteIO::press(const RouteInput& input){
     }
 }
 
-bool GridSimRouteIO::dialog_within(Milliseconds, Color){
-    return m_sim.player().dialog;
+RouteSight GridSimRouteIO::sight_within(const RouteWatch& watch){
+    return {.dialog = watch.dialog && m_sim.player().dialog};
 }
 
 bool GridSimRouteIO::holding_against_wall(Direction direction, const std::string&){

@@ -126,9 +126,9 @@ public:
             }
         }
     }
-    virtual bool dialog_within(Milliseconds, Color) override{
+    virtual RouteSight sight_within(const RouteWatch&) override{
         count_call();
-        return false;
+        return {};
     }
     virtual bool holding_against_wall(Direction, const std::string&) override{
         count_call();

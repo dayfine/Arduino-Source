@@ -562,8 +562,8 @@ public:
     virtual void press(const RouteInput& input) override{
         m_io.press(input);
     }
-    virtual bool dialog_within(Milliseconds wait, Color color) override{
-        return m_io.dialog_within(wait, color);
+    virtual RouteSight sight_within(const RouteWatch& watch) override{
+        return m_io.sight_within(watch);
     }
     virtual bool holding_against_wall(Direction direction, const std::string& label) override{
         return m_io.holding_against_wall(direction, label);
