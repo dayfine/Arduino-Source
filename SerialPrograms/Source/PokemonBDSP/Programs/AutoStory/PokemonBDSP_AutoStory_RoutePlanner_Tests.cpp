@@ -170,6 +170,8 @@ UnitTestResult test_plan_robust_route_wander_zone(Logger&){
                 .legs = "north 1 (to wall) to (1, 1); east 4 (to wall) to (5, 1); south 1 (open) to (5, 2)"},
             {.name = "west along the row from inside it goes round", .world = room, .from = {3, 2}, .goal = {1, 2},
                 .legs = "north 1 (to wall) to (3, 1); west 2 (to wall) to (1, 1); south 1 (open) to (1, 2)"},
+            {.name = "east along the row from inside it goes round, north first", .world = room, .from = {3, 2}, .goal = {5, 2},
+                .legs = "north 1 (to wall) to (3, 1); east 2 (to wall) to (5, 1); south 1 (open) to (5, 2)"},
             {.name = "no plan when the row is the only way", .world = corridor, .from = {1, 1}, .goal = {5, 1}, .legs = ""},
         };
         for (const ZoneCase& item : cases){
