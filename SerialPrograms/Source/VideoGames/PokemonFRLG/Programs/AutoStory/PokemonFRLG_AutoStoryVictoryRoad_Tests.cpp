@@ -2,7 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Rows 19.01 and after (StoryData/frlg-19.0N.plan.json) on the overworld
+ *  Rows 19.01a and after (StoryData/frlg-19.0N.plan.json) on the overworld
  *  sim: Viridian's Center to Route 22's rival, Route 23, Victory Road and
  *  Indigo Plateau's Center.
  *
@@ -103,13 +103,26 @@ std::string walk_row(
     return until.empty() ? "" : std::format("{}: no step {}.", row.id, until);
 }
 
-//  19.01: the street to Route 22 and along it to the rival's trigger column,
-//  then the step onto it. The rival is the battle step's, so the walk ends
-//  on the trigger tile (33, 5), facing west, with no trainer met.
+//  19.01a: the street to the Mart's counter, where 19.01 starts. 19.01: out
+//  of the Mart, along the street to Route 22 and along it to the rival's
+//  trigger column, then the step onto it. The rival is the battle step's, so
+//  the walk ends on the trigger tile (33, 5), facing west, with no trainer met.
 UnitTestResult test_route22_rival_trigger(){
-    const StoryCheckpoint& row = checkpoint("19.01");
-    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    const StoryCheckpoint& shop = checkpoint("19.01a");
+    StoryPose at = *story_pose(Pokemon::pose_of(*shop.start));
     OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
+    if (const std::string failure = walk_row(sim, at, shop, ""); !failure.empty()){
+        return failure;
+    }
+    const MapPosition counter{"ViridianCity_Mart", {4, 3}};
+    if (!(sim.state().position == counter)){
+        return std::format("19.01a: ended on {}, not the Mart's counter {}.", to_string(sim.state().position), to_string(counter));
+    }
+    const StoryCheckpoint& row = checkpoint("19.01");
+    const StoryPose next = *story_pose(Pokemon::pose_of(*row.start));
+    if (next.map != counter.map || !(next.tile == counter.point)){
+        return "19.01 doesn't start where 19.01a ends.";
+    }
     if (const std::string failure = walk_row(sim, at, row, "rival_route22"); !failure.empty()){
         return failure;
     }
@@ -274,7 +287,7 @@ UnitTestResult test_indigo_center_walk(){
 
 const AutoStoryVictoryRoadCase AUTO_STORY_VICTORY_ROAD_CASES[] = {
     {
-        .input = {.name = "19.01 Viridian to the Route 22 rival's trigger", .body = test_route22_rival_trigger},
+        .input = {.name = "19.01a Viridian's Mart and 19.01 to the Route 22 rival's trigger", .body = test_route22_rival_trigger},
         .expectation = {.description = "Route 22 (33, 5), no trainer met"},
     },
     {

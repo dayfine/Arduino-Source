@@ -3,33 +3,9 @@
   "game": "frlg",
   "checkpoint": {
     "id": "19.01",
-    "title": "Viridian to Route 22: potions, and the rival at the road's east end",
-    "start": {
-      "map": "ViridianCity_PokemonCenter_1F",
-      "tiles": [[7, 4]],
-      "facing": "north"
-    },
+    "title": "The rival on Route 22, at the road's east end",
+    "start": {"map": "ViridianCity_Mart", "tiles": [[4, 3]], "facing": "west"},
     "events": [
-      {
-        "id": "viridian_mart_clerk",
-        "kind": "route",
-        "action": "run",
-        "args": {
-          "target": {"map": "ViridianCity_Mart", "tiles": [[4, 3]], "facing": "west"}
-        },
-        "why": "out of the Center and along the street to the Mart's door, in and up to the counter, facing the clerk (as 02.03)"
-      },
-      {
-        "id": "buy_potions",
-        "kind": "game_action",
-        "action": "mart",
-        "args": {
-          "map": "ViridianCity_Mart",
-          "items": [{"item": "potion", "quantity": 4}],
-          "fill_to": 4
-        },
-        "why": "Potions up to 4 in the bag, as in PokeGuy's bag at the Route 22 rival (potion x4, superpotion x4, xaccuracy x4, xspecial x17, xspeed x5, guardspec x2; PokemonSimulation docs/battles/pokeguy-conditions.md); the Super Potions are 12.01's. Early in the row, so a failed purchase stops it before the walk. Buys 4 less what the bag holds, skipped at 4"
-      },
       {
         "id": "lead_lv49_for_rival_route22",
         "kind": "game_action",
@@ -92,7 +68,7 @@
     "menu": "full",
     "notes": {
       "checkpoint": [
-        "Starts where 17.04 ends: Viridian's nurse. The rival's trigger needs VAR_MAP_SCENE_ROUTE22 at 3, which Giovanni's defeat sets (ViridianCity_Gym scripts), so the row can not be reached by hand before the Earth Badge. PokeGuy has this fight at 1:46 (docs/battles/pokeguy-conditions.md, route22-rival) at 153/153 HP; the Center heal in 17.04 is that entry.",
+        "Starts in the Viridian Mart where 19.01a ends, with the potions bought. The rival's trigger needs VAR_MAP_SCENE_ROUTE22 at 3, which Giovanni's defeat sets (ViridianCity_Gym scripts), so the row can not be reached by hand before the Earth Badge. PokeGuy has this fight at 1:46 (docs/battles/pokeguy-conditions.md, route22-rival) at 153/153 HP; the Center heal in 17.04b is that entry.",
         "Ends on Route 22 at (33, 5) facing west, saved there (the battle saves after it): 19.02 walks on to the north gate (8, 5) and Route 23."
       ]
     }

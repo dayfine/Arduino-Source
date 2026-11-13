@@ -2,7 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The golden's lines for 19.01 and after (Route 22's rival, Route 23,
+ *  The golden's lines for 19.01a and after (Route 22's rival, Route 23,
  *  Victory Road and Indigo Plateau), in the story's order, after
  *  PokemonFRLG_AutoStoryPlanGolden17.h's 17.02 to 17.04.
  *
@@ -17,15 +17,15 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
 
-//  The stored plan lines of 19.01 and after.
+//  The stored plan lines of 19.01a and after.
 inline constexpr std::string_view FRLG_PLAN_GOLDEN_19[] = {
-    "19.01 viridian_mart_clerk from ViridianCity_PokemonCenter_1F (7, 4) facing north to ViridianCity_Mart (4, 3) facing west",
-    "19.01   walk south 5 (warp) -> ViridianCity (26, 27) [walk only]",
-    "19.01   walk south 2 -> ViridianCity (26, 29)",
-    "19.01   walk east 10 -> ViridianCity (36, 29)",
-    "19.01   walk north 10 (warp) -> ViridianCity_Mart (4, 7)",
-    "19.01   walk north 4 -> ViridianCity_Mart (4, 3) [walk only]",
-    "19.01   face west -> ViridianCity_Mart (4, 3) [walk only]",
+    "19.01a viridian_mart_clerk from ViridianCity_PokemonCenter_1F (7, 4) facing north to ViridianCity_Mart (4, 3) facing west",
+    "19.01a   walk south 5 (warp) -> ViridianCity (26, 27) [walk only]",
+    "19.01a   walk south 2 -> ViridianCity (26, 29)",
+    "19.01a   walk east 10 -> ViridianCity (36, 29)",
+    "19.01a   walk north 10 (warp) -> ViridianCity_Mart (4, 7)",
+    "19.01a   walk north 4 -> ViridianCity_Mart (4, 3) [walk only]",
+    "19.01a   face west -> ViridianCity_Mart (4, 3) [walk only]",
     "19.01 route22_east_of_trigger from ViridianCity_Mart (4, 3) facing west to Route22 (34, 5) facing west",
     "19.01   walk south 5 (warp) -> ViridianCity (36, 20) [walk only]",
     "19.01   walk west 13 -> ViridianCity (23, 20)",

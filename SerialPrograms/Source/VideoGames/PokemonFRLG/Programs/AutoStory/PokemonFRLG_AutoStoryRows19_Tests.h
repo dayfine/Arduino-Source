@@ -17,7 +17,7 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-//  Rows 19.01 and after on the overworld sim (PokemonFRLG_AutoStoryVictoryRoad_Tests.cpp).
+//  Rows 19.01a and after on the overworld sim (PokemonFRLG_AutoStoryVictoryRoad_Tests.cpp).
 void add_tests_AutoStoryVictoryRoad(UnitTestDatabase& database);
 //  The boulder solver and the sim's boulders (PokemonFRLG_AutoStoryBoulders_Tests.cpp).
 void add_tests_AutoStoryBoulders(UnitTestDatabase& database);
