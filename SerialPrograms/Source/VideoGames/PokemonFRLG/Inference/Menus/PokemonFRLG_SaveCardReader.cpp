@@ -84,6 +84,7 @@ private:
             {"route-16", "Route 16"},
             {"fuchsia-city", "Fuchsia City"},
             {"saffron-city", "Saffron City"},
+            {"cinnabar-island", "Cinnabar Island"},
             {"silph-co", "Silph Co"},
             {"cinnabar-island", "Cinnabar Island"},
             {"pokemon-mansion", "Pokemon Mansion"},
