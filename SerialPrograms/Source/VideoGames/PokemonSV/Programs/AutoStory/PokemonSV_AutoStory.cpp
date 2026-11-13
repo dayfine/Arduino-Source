@@ -5,7 +5,6 @@
  */
 
 
-
 #if 0
 #include "CommonFramework/Exceptions/UnexpectedBattleException.h"
 #include "CommonTools/Async/InferenceRoutines.h"
