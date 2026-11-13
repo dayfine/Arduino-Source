@@ -269,6 +269,11 @@ void add_tests_PartyMemberMenuReader(UnitTestDatabase& database){
     database.add<Test_PartyMemberMenuReader>(
         "PokemonFRLG/PartyMemberMenuReader/PidgeyFly_eng.png", std::vector<std::string>{"fly"}
     );
+    //  FireRed on console B, 2026-11-13: the Oddish's menu, two field
+    //  moves in blue; SWEET SCENT's row is half name and shadow.
+    database.add<Test_PartyMemberMenuReader>(
+        "PokemonFRLG/PartyMemberMenuReader/OddishSweetScentCut_eng.png", std::vector<std::string>{"sweet-scent", "cut"}
+    );
     //  The party menu before A: no member's menu.
     database.add<Test_PartyMemberMenuReader>(
         "PokemonFRLG/PartyMemberMenuReader/PartyList_eng.png", std::nullopt
