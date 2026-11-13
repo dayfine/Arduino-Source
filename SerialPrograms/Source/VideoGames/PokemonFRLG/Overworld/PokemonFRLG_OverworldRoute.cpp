@@ -507,28 +507,28 @@ void tap_from_known_tile(std::vector<RouteStep>& route){
     }
 }
 
-RouteStep to_route_step(const std::vector<MapData>& maps, const Pokemon::Leg<Located>& leg){
-    RouteStep step;
+RouteAction route_action(const Pokemon::Leg<Located>& leg){
     switch (leg.kind){
     case Pokemon::LegKind::WALK:
-        step.action = RouteAction::WALK;
-        break;
+        return RouteAction::WALK;
     case Pokemon::LegKind::ACTION:
         switch (leg.action){
         case Pokemon::ACTION_OPEN_GATE:
-            step.action = RouteAction::OPEN_GATE;
-            break;
+            return RouteAction::OPEN_GATE;
         case Pokemon::ACTION_PRESS_SWITCH:
-            step.action = RouteAction::PRESS_SWITCH;
-            break;
+            return RouteAction::PRESS_SWITCH;
         default:
-            step.action = RouteAction::SURF;
+            return RouteAction::SURF;
         }
-        break;
     case Pokemon::LegKind::FACE:
-        step.action = RouteAction::FACE;
-        break;
+        return RouteAction::FACE;
     }
+    return RouteAction::WALK;
+}
+
+RouteStep to_route_step(const std::vector<MapData>& maps, const Pokemon::Leg<Located>& leg){
+    RouteStep step;
+    step.action = route_action(leg);
     step.direction = leg.direction;
     const bool gate = step.action == RouteAction::OPEN_GATE || step.action == RouteAction::PRESS_SWITCH;
     step.tiles = leg.kind == Pokemon::LegKind::FACE || gate ? 0 : leg.tiles;

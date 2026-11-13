@@ -387,10 +387,7 @@ bool OverworldSim::after_step(const Step& step, Milliseconds pressed){
         note("warped to " + to_string(m_state.position) + ".");
         return true;
     }
-    if (m_player.surfing && m_script.messages_at_surf_steps.contains(++m_state.surf_steps)){
-        m_frozen = true;
-        schedule(pressed + timing.message, SimScreen::MESSAGE, false);
-        note(std::format("a message on the water, surfed step {}.", m_state.surf_steps));
+    if (m_player.surfing && message_on_water(pressed)){
         return true;
     }
     //  The game looks for trainers who see the player before it rolls for a
@@ -496,42 +493,6 @@ void OverworldSim::walk_hold(Direction direction, Milliseconds duration, int sho
         m_state.facing = direction;
     }
     take_steps(direction, pressed, end, (int)((end - pressed + tile - 1ms) / tile) - short_by);
-}
-
-//  Up to `left` steps of a hold of `direction` until `end`, the first
-//  pressed at `pressed`.
-void OverworldSim::take_steps(Direction direction, Milliseconds pressed, Milliseconds end, int left){
-    for (; left > 0 && pressed < end; left--){
-        //  Each step at the pace it starts at: on the water until a step
-        //  lands the player, which takes a tile on foot (the hop).
-        Milliseconds tile = tile_time();
-        const std::optional<Step> step = press(direction);
-        if (!step){
-            bump(direction, pressed);
-            return;
-        }
-        if (m_script.connections_stall && step->map != m_map && !step->warped){
-            //  The step onto a connected map waits a tile while the game
-            //  loads it: a hold timed by its tiles alone ended a tile short
-            //  (console B, 2026-11-03, rows 04.06, 05.05 and 05.09).
-            pressed += tile;
-            if (pressed >= end){
-                return;
-            }
-        }
-        if (step->facing){
-            m_state.facing = *step->facing;
-        }
-        pressed += after_slide(*step);
-        if (after_step(*step, pressed)){
-            return;
-        }
-        if (step->spin && m_script.holds_end_at_slide_stop){
-            return;
-        }
-        tile = tile_time();
-        pressed += step->ledge ? tile * 2 : tile;
-    }
 }
 
 //  A hold the game doesn't move the player for.
@@ -1004,8 +965,8 @@ RouteCalls OverworldSimWalker::calls(){
     calls.fail = [this](const std::string& message){ fail(message); };
     calls.moved_past_wall = [this](const RouteStep& step){ return moved_past_wall(step); };
     calls.watch_for_trainer = [this](const RouteStep& step, int approach_tiles){ return watch_for_trainer(step, approach_tiles); };
-    //  The console reads the walking sprite, which doesn't show while surfing.
-    calls.on_foot = [this](){ return !m_sim.state().surfing; };
+    //  As the console: the walking sprite shows, not where.
+    calls.landed_on = [this](const MapPosition&){ return !m_sim.state().surfing; };
     return calls;
 }
 

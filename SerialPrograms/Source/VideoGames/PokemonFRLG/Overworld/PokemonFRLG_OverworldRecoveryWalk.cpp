@@ -522,9 +522,7 @@ void walk_overworld_route_with_recovery(
     calls.watch_for_trainer = [&](const RouteStep& step, int approach_tiles){
         return watch_for_trainer(console, context, step, approach_tiles, interrupts);
     };
-    calls.on_foot = [&](){
-        return stands_on_foot(console, context, player);
-    };
+    calls.landed_on = [&](const MapPosition&){ return stands_on_foot(console, context, player); };
     run_route(route, facing, &planning, calls);
     context.wait_for_all_requests();
 }

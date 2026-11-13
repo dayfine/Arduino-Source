@@ -2,9 +2,9 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The walker's taps on the sim: turn taps, step taps, and on the Bicycle
- *  taps dropped when they come too fast, SELECT, and legs counted out a
- *  tap at a time.
+ *  The walker's taps on the sim: turn taps, step taps, the steps of a
+ *  hold, and on the Bicycle taps dropped when they come too fast, SELECT,
+ *  and legs counted out a tap at a time.
  *
  */
 
@@ -35,6 +35,54 @@ BikeSelectCalls sim_select_calls(OverworldSim& sim){
 
 } // namespace
 
+
+//  Up to `left` steps of a hold of `direction` until `end`, the first
+//  pressed at `pressed`.
+void OverworldSim::take_steps(Direction direction, Milliseconds pressed, Milliseconds end, int left){
+    for (; left > 0 && pressed < end; left--){
+        //  Each step at the pace it starts at: on the water until a step
+        //  lands the player, which takes a tile on foot (the hop).
+        Milliseconds tile = tile_time();
+        const std::optional<Step> step = press(direction);
+        if (!step){
+            bump(direction, pressed);
+            return;
+        }
+        if (m_script.connections_stall && step->map != m_map && !step->warped){
+            //  The step onto a connected map waits a tile while the game
+            //  loads it: a hold timed by its tiles alone ended a tile short
+            //  (console B, 2026-11-03, rows 04.06, 05.05 and 05.09).
+            pressed += tile;
+            if (pressed >= end){
+                return;
+            }
+        }
+        if (step->facing){
+            m_state.facing = *step->facing;
+        }
+        pressed += after_slide(*step);
+        if (after_step(*step, pressed)){
+            return;
+        }
+        if (step->spin && m_script.holds_end_at_slide_stop){
+            return;
+        }
+        tile = tile_time();
+        pressed += step->ledge ? tile * 2 : tile;
+    }
+}
+
+//  Whether a message shows after this step on the water, as one stopped a
+//  hold on Route 21 (SimScript::messages_at_surf_steps).
+bool OverworldSim::message_on_water(Milliseconds pressed){
+    if (!m_script.messages_at_surf_steps.contains(++m_state.surf_steps)){
+        return false;
+    }
+    m_frozen = true;
+    schedule(pressed + m_script.timing.message, SimScreen::MESSAGE, false);
+    note(std::format("a message on the water, surfed step {}.", m_state.surf_steps));
+    return true;
+}
 
 bool OverworldSim::drops_bike_tap(Milliseconds start){
     const bool fast = m_last_bike_tap && start - *m_last_bike_tap < MovementMechanics::BIKE_TAP_DROP_PERIOD;

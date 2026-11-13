@@ -12,7 +12,6 @@
 
 #include <algorithm>
 #include <format>
-#include <functional>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -27,7 +26,7 @@
 #include "PokemonFRLG_AutoStoryPoses.h"
 #include "PokemonFRLG_AutoStoryRooms.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
-#include "PokemonFRLG_AutoStoryRows_Tests.h"
+#include "PokemonFRLG_AutoStorySurf_Tests.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 
 namespace PokemonAutomation{
@@ -204,20 +203,29 @@ UnitTestResult test_short_hold_never_goes_on_from_a_guess(){
     return true;
 }
 
-struct SurfCase{
+struct SurfInput{
     std::string_view name;
-    std::function<UnitTestResult()> body;
+    UnitTestResult (*body)();
+};
+
+struct SurfExpectation{
+    std::string_view description;
+};
+
+struct SurfCase{
+    SurfInput input;
+    SurfExpectation expectation;
 };
 
 class Test_AutoStorySurf : public UnitTest{
 public:
     explicit Test_AutoStorySurf(SurfCase test_case)
-        : UnitTest(std::format("PokemonFRLG::AutoStory - Surf: {}", test_case.name))
-        , m_case(std::move(test_case))
+        : UnitTest(std::format("PokemonFRLG::AutoStory - Surf: {}", test_case.input.name))
+        , m_case(test_case)
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         try{
-            return m_case.body();
+            return m_case.input.body();
         }catch (Exception& e){
             return std::format("{}: {}", e.name(), e.message());
         }
@@ -228,9 +236,18 @@ private:
 };
 
 const SurfCase SURF_CASES[] = {
-    {"12.03's legs on the water land or end at a wall", test_no_open_water_legs},
-    {"12.03 with a message after each step on the water", test_message_at_every_surf_step},
-    {"12.03 with a hold stopped short, unseen", test_short_hold_never_goes_on_from_a_guess},
+    {
+        .input = {.name = "12.03's legs on the water land or end at a wall", .body = test_no_open_water_legs},
+        .expectation = {.description = "no leg on Route 21's water ends in the open"},
+    },
+    {
+        .input = {.name = "12.03 with a message after each step on the water", .body = test_message_at_every_surf_step},
+        .expectation = {.description = "every run ends below Cinnabar's Center door"},
+    },
+    {
+        .input = {.name = "12.03 with a hold stopped short, unseen", .body = test_short_hold_never_goes_on_from_a_guess},
+        .expectation = {.description = "each run ends below the Center door or fails, never elsewhere"},
+    },
 };
 
 } // namespace
