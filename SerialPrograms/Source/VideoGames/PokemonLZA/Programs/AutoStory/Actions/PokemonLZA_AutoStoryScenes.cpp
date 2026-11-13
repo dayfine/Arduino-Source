@@ -466,7 +466,7 @@ void type_player_name(
     context.wait_for(2500ms);
     dump_intro_frame(console, context, "confirm-choices");
     console.log("AutoStory intro: Confirm Choices: DOWN x2 to \"Ready!\", then A.");
-    press_intro_keys(console, context, {IntroKey::DOWN, IntroKey::DOWN, IntroKey::A}, 2000ms);
+    press_intro_keys(console, context, *confirm_choices_moves(0), 2000ms);
     dump_intro_frame(console, context, "confirm");
 }
 

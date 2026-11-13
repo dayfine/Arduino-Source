@@ -11,10 +11,11 @@
       {
         "id": "chase_pancham",
         "kind": "game_action",
-        "why": "step 11: after Pancham, through the archway, around the starters into the scene. NEEDS TUNING. Measured 2026-11-08 on console B, walk not run. The sidestep around the starters had no time recorded: 1000 ms is a placeholder.",
+        "why": "step 11: after Pancham, through the archway, around the starters into the scene. NEEDS TUNING. Measured 2026-11-08 on console B, walk not run. The sidestep around the starters had no time recorded: 1000 ms is a placeholder. The first turn is from the camera: from the save the camera is behind the player, while 01.01's scenes end with the camera looking the same way (Prism Tower ahead) but the player turned right to the boy, so a turn from the player set off the wrong way (console B, 2026-11-13). Main Mission 01 has no minimap for a heading.",
         "action": "walk",
         "args": {
-          "legs": [[-15, 4000], [-75, 3500], [90, 9000], [-90, 0], [90, 1000], [-90, 4000]]
+          "legs": [[-15, 4000], [-75, 3500], [90, 9000], [-90, 0], [90, 1000], [-90, 4000]],
+          "first_turn": "camera"
         }
       },
       {
