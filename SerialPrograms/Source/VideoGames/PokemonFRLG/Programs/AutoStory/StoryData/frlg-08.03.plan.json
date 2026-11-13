@@ -45,8 +45,6 @@
         "action": "mart",
         "args": {
           "map": "LavenderTown_Mart",
-          "budget": 6000,
-          "floor": 9000,
           "items": [{"item": "escape-rope", "quantity": 4}, {"item": "super-repel", "quantity": 7}, {"item": "antidote", "quantity": 1}, {"item": "parlyz-heal", "quantity": 1}]
         },
         "why": "pokeguy 54:18: 4 Escape Ropes (the Rocket Hideout, 09.01) and 7 Super Repels (Pokemon Tower); and 1 Antidote and 1 Parlyz Heal for the bag PokeGuy brings to Koga (antidote x1, parlyzheal x2; PokemonSimulation docs/battles/pokeguy-conditions.md): the run's 3 Antidotes from Viridian were gone by Fuchsia (console B, 2026-11-12, Blastoise Lv39 with 0 at Koga). $300 more than pokeguy spent"
