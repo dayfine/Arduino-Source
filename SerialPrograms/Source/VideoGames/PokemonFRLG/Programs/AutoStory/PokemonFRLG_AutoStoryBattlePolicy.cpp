@@ -116,6 +116,14 @@ BattlePolicy battle_policy_of(const Pokemon::StoryActionArgs& args){
     return policy;
 }
 
+void end_trainer_battle(Supplies& supplies){
+    supplies.foes.clear();
+    supplies.trainer.clear();
+    supplies.foe_out.clear();
+    supplies.battle_items.clear();
+    supplies.policy = {};
+}
+
 int bag_count(const Supplies& supplies, std::string_view item){
     const std::string name(item);
     const auto other = supplies.other_counts.find(name);
