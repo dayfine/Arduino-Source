@@ -204,8 +204,8 @@ bool on_dark_cave(ConsoleHandle& console){
 }
 
 //  Whether the map scrolled between the shot before a hold and now, once
-//  the hold's first tile has had its time (`since_start`: how long ago the
-//  hold started; a one-tile open leg is let go half-way through its step).
+//  the hold's first tile has had its time (`first_tile` after `hold_start`;
+//  a one-tile open leg is let go half-way through its step).
 HoldMovement measure_movement(
     ConsoleHandle& console, ProControllerContext& context,
     const VideoSnapshot& before, Milliseconds first_tile, WallClock hold_start
@@ -224,7 +224,8 @@ HoldMovement measure_movement(
     return change > HOLD_UNMOVED_RMSD ? HoldMovement::MOVED : HoldMovement::NONE;
 }
 
-//  One WALK step: turned first when it should, then its hold, and the warp it ends on.
+//  One WALK step: turned first when it should, then its hold, and the warp
+//  it ends on; for a hold not onto a warp, whether the screen moved.
 StepWalk walk_hold_step(
     ConsoleHandle& console, ProControllerContext& context,
     const RouteStep& step, const StepStart& from,
@@ -258,14 +259,11 @@ StepWalk walk_hold_step(
         out.movement = measure_movement(console, context, before, tile_time(step, speed), out.hold_start);
         return out;
     }
-    if (step.warps){
-        wait_out_warp(console, context, step, fade, before);
-        static_assert(AFTER_WARP_BATTLE_WATCH >= AFTER_WARP);
-        if (run_from_battle_after_warp(console, context)){
-            console.log("Route: a wild battle, not the warp to " + step.end.map + "; the player is on " + to_string(step) + " before the warp.", COLOR_ORANGE);
-            out.stopped = walked_before_warp(step);
-            return out;
-        }
+    wait_out_warp(console, context, step, fade, before);
+    static_assert(AFTER_WARP_BATTLE_WATCH >= AFTER_WARP);
+    if (run_from_battle_after_warp(console, context)){
+        console.log("Route: a wild battle, not the warp to " + step.end.map + "; the player is on " + to_string(step) + " before the warp.", COLOR_ORANGE);
+        out.stopped = walked_before_warp(step);
     }
     return out;
 }
@@ -276,6 +274,7 @@ StepWalk walk_step(
     const RouteStep& step, const StepStart& from,
     const OverworldInterruptSet& interrupts, MoveSpeed speed, PlayerGender player
 ){
+    StepWalk out{std::nullopt, current_time(), false, false};
     switch (step.action){
     case RouteAction::WALK:
         return walk_hold_step(console, context, step, from, interrupts, speed, player);
@@ -294,7 +293,7 @@ StepWalk walk_step(
         press_switch(console, context, step.direction, true);
         break;
     }
-    return StepWalk{std::nullopt, current_time()};
+    return out;
 }
 
 //  An open leg's screens, recorded with the interrupts' observer from

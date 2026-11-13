@@ -863,7 +863,8 @@ StepOutcome OverworldSimWalker::walk_ridden(const RouteStep& step, std::optional
     }
     check_overworld(step);
     const MapPosition before = m_sim.state().position;
-    if (counts_step_taps(step) || (m_rules.count_bike_taps && counts_bike_taps(step, m_speed))){
+    const bool tapped = counts_step_taps(step) || (m_rules.count_bike_taps && counts_bike_taps(step, m_speed));
+    if (tapped){
         const StepOutcome outcome = counts_step_taps(step) ? walk_step_taps(step) : walk_bike_taps(step);
         if (outcome.end != StepEnd::DONE){
             return outcome;
@@ -874,9 +875,10 @@ StepOutcome OverworldSimWalker::walk_ridden(const RouteStep& step, std::optional
     if (step.action == RouteAction::FACE || step.action == RouteAction::OPEN_GATE || step.action == RouteAction::PRESS_SWITCH){
         return StepOutcome{};
     }
-    //  What the console reads off the screen: whether the map scrolled.
+    //  What the console reads off the screen: whether a hold's map scrolled.
+    //  Counted taps saw each tap move, and measure nothing more.
     HoldMovement movement = HoldMovement::UNMEASURED;
-    if (step.action == RouteAction::WALK && !step.warps){
+    if (step.action == RouteAction::WALK && !step.warps && !tapped){
         movement = m_sim.state().position == before ? HoldMovement::NONE : HoldMovement::MOVED;
     }
     size_t late = clear_late(interrupts(step), step.wild ? m_rules.after_wild_leg_watch : AFTER_LEG_WATCH, MAX_INTERRUPTIONS_PER_LEG);

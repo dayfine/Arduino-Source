@@ -480,6 +480,39 @@ UnitTestResult test_unmoved_leg(){
     return true;
 }
 
+//  A route of one tile from the caller's start onto the tile before a wall
+//  (20.01's walk up to Lorelei): a scene before it may have left the player
+//  on that tile already, so a hold that moved nothing is a bump there and
+//  ends the route. The same leg with more of the route after it, or longer
+//  than a tile, is still walked again.
+UnitTestResult test_unmoved_one_tile_route_to_wall(){
+    const std::vector<MapData> maps{parse_map(TEST_HALL_JSON, "Hall")};
+    const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = MapPosition{"Hall", {6, 1}}, .label = "Route", .wall_check = WallCheck::SKIP};
+    const RouteStep last = walk(Direction::EAST, 1, {"Hall", {7, 1}});
+    ScriptedRoute bump;
+    bump.ends[0] = no_movement();
+    if (bump.run({last}, &planning) || bump.walked.size() != 1){
+        return "the one-tile route to the wall: expected it walked once, taken as a bump: " + bump.failure + describe(bump.walked);
+    }
+    const UnitTestResult logged = expect_logged(bump.logs, {"as a bump into the wall it may stand at already"});
+    if (logged.result != UnitTestResult::PASSED){
+        return "the one-tile route to the wall: " + logged.message;
+    }
+    const std::vector<RouteStep> longer[] = {
+        {last, walk(Direction::WEST, 1, {"Hall", {6, 1}})},
+        {walk(Direction::EAST, 1, {"Hall", {6, 1}})},
+    };
+    const RoutePlanning from_five{.maps = &maps, .costs = default_route_costs(), .start = MapPosition{"Hall", {5, 1}}, .label = "Route", .wall_check = WallCheck::SKIP};
+    for (size_t c = 0; c < 2; c++){
+        ScriptedRoute again;
+        again.ends[0] = no_movement();
+        if (again.run(longer[c], c == 0 ? &planning : &from_five) || again.walked.size() < 2 || again.walked[1].direction != again.walked[0].direction || !(again.walked[1].end == again.walked[0].end)){
+            return std::format("case {}: expected the leg walked again after it moved nothing: {}{}", c, again.failure, describe(again.walked));
+        }
+    }
+    return true;
+}
+
 //  A hold that finds the player starts from one of a few tiles. If one of
 //  them stands at its wall, a hold that moved nothing may be a bump right
 //  away and is taken as walked; if none does, it never moved, and as the
@@ -749,6 +782,10 @@ const OverworldRecoveryTestCase OVERWORLD_RECOVERY_CASES[] = {
     {
         .input = {.name = "a hold that moved nothing", .body = test_unmoved_leg},
         .expectation = {.description = "a leg whose screen never moved is walked again, then fails; not taken as walked"},
+    },
+    {
+        .input = {.name = "a one-tile route to a wall that moved nothing", .body = test_unmoved_one_tile_route_to_wall},
+        .expectation = {.description = "a bump on the route's last tile ends it; the same leg before more legs is walked again"},
     },
     {
         .input = {.name = "a hold that moved nothing from an unknown tile", .body = test_unmoved_hold_from_unknown_tile},
