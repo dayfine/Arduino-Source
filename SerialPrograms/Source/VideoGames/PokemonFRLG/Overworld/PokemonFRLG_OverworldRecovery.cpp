@@ -128,7 +128,14 @@ public:
         m_calls.log(std::string(ROUTE_LOG_TAG) + Pokemon::route_leg_line(index + 1, steps.size(), {.leg = route_log_leg(step), .after = route_tiles(step.end)}));
     }
     void end(const RouteStep& step, const std::optional<MapPosition>& at, EndBasis basis, const std::string& why) const{
-        m_calls.log(std::string(ROUTE_LOG_TAG) + Pokemon::route_leg_end_line(m_label, route_log_leg(step), route_tiles(at), basis, why));
+        const auto leg = route_log_leg(step);
+        m_calls.log(std::string(ROUTE_LOG_TAG) + Pokemon::route_leg_end_line(m_label, leg, route_tiles(at), basis, why));
+        if (m_calls.leg_ended){
+            const std::string path = m_calls.leg_ended(to_string(leg));
+            if (!path.empty()){
+                m_calls.log(std::string(ROUTE_LOG_TAG) + m_label + ": leg screenshot " + path);
+            }
+        }
     }
     void trainer_stopped(const RouteStep& step, const MapPosition& at) const{
         m_calls.log(std::string(ROUTE_LOG_TAG) + Pokemon::route_replan_line(m_label, route_log_leg(step), "stopped by a trainer who saw the player", route_tiles(at)));

@@ -14,6 +14,7 @@
 #define PokemonAutomation_PokemonFRLG_OverworldRecoveryWalk_H
 
 #include <optional>
+#include <string>
 #include <vector>
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
@@ -70,6 +71,12 @@ double tap_scroll_change(const ImageViewRGB32& before, const ImageViewRGB32& aft
 //  doesn't show, a leg is interrupted too many times, or the player can't
 //  be found again from every tile they may be on. A wild battle that
 //  starts as the last leg ends is cleared before it returns.
+//  Saves the screen to <profile>/Screenshots/AutoStory/route/
+//  <timestamp>-<label>-<text>.png, as BDSP's walker does for each leg, and
+//  returns the path ("" if the frame or the save failed). `label` and `text`
+//  have their spaces and slashes replaced. A frame grab, no waits.
+std::string save_route_screenshot(ConsoleHandle& console, const std::string& label, const std::string& text);
+
 void walk_overworld_route_with_recovery(
     ConsoleHandle& console, ProControllerContext& context,
     const std::vector<RouteStep>& route,
