@@ -323,7 +323,7 @@ void BDSPAutoStory::run_plan(
     if (plan.stop != StoryHandoff::NONE && RUN.VERIFY.policy()){
         throw UserSetupError(env.console, "Verify mode repeats the start's checkpoint, and its extra save at the end of 00.01 would overwrite the Verity Lakefront save: turn off \"Stop for Starter RNG\".");
     }
-    std::set<std::string> saved = saved_before_the_run(plan.rows, first, start);
+    std::set<std::string> saved = saved_before_the_run(plan.rows, 0, start);
     Pokemon::Segment segment = make_story_segment(plan.rows, executor, saved, RUN.policy().save_mode);
     Pokemon::StoryGameHooks game = story_game(env, context);
     Pokemon::RunState state;
