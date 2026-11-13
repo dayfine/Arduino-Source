@@ -336,10 +336,13 @@ std::optional<size_t> find_party_species(const MemberReader& reader, std::string
     return std::nullopt;
 }
 
-TeachResult run_teach(Logger& logger, TeachActions& actions, const MemberReader& reader, const TeachPlan& plan){
+TeachResult run_teach(
+    Logger& logger, TeachActions& actions, const MemberReader& reader, const TeachPlan& plan,
+    const SpeciesFinder& find_species
+){
     TeachPlan found = plan;
     if (!plan.species.empty()){
-        const std::optional<size_t> slot = find_party_species(reader, plan.species);
+        const std::optional<size_t> slot = find_species ? find_species(plan.species) : find_party_species(reader, plan.species);
         if (!slot){
             const TeachResult result{.end = TeachEnd::UNREAD, .detail = std::format("no {} read in the party", plan.species)};
             logger.log(std::format("Teach {} ({}) to the {}: {}.", plan.move, plan.item, plan.species, result.detail), COLOR_RED);

@@ -36,6 +36,8 @@ struct StoryAbilities{
     TeachActions& teach;
     GrindActions& grind;
     ChoiceActions& choice;
+    //  Where a TEACH naming a species finds it; empty reads the members in turn.
+    SpeciesFinder species = {};
 };
 
 //  A MART, TEACH, LEVEL, GRIND or fossil step with `abilities`: nothing for

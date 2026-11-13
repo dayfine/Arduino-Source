@@ -228,6 +228,8 @@ Pokemon::StoryGameHooks story_game(SingleSwitchProgramEnvironment& env, StoryEnv
     };
     game.after_load = [&story](Pokemon::RunState&){
         story.supplies = story.saved_supplies;
+        //  The save's party, which a catch or a gift since then changed.
+        story.party.invalidate();
         //  Until read in full, so each verify run starts from the bag as
         //  the save holds it, not from a count once read wrong or not at
         //  all (console B, 2026-11-03: 0 Potions in all 3 runs). Once

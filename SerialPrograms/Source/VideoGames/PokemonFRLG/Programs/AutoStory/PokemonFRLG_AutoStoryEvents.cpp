@@ -575,12 +575,10 @@ std::optional<Outcome> run_abilities(StoryEnv& env, RunState& state, const Story
         [&](const GrindSpot& spot){
             return grind_heal_trip(env, state, step, patch, spot);
         },
-        [&]{
-            pace_trainer_battle(env, state, step, patch);
-        }
+        [&]{ pace_trainer_battle(env, state, step, patch); }
     );
     ConsoleChoiceActions choice(env.console, env.context);
-    StoryAbilities abilities{console_member_reader(env.console, env.context, env.language, StartMenu::FULL), mart, teach, grind, choice};
+    StoryAbilities abilities{console_member_reader(env.console, env.context, env.language, StartMenu::FULL), mart, teach, grind, choice, console_species_finder(env.console, env.context, env.language, env.party)};
     if (const std::optional<GrindPlan> plan = step.action == GRIND_CHECK_ACTION ? grind_plan_of(step.args) : std::nullopt){
         if (grind_reached_already(env.console.logger(), grind, abilities.members, *plan)){
             state.flags.insert(step.name);
@@ -698,13 +696,14 @@ Outcome open_gym_door(StoryEnv& env, RunState& state, const StoryStep& step){
 //  withdrawal, a MART, TEACH, LEVEL, GRIND or fossil CHOICE.
 Outcome other_game_step(StoryEnv& env, RunState& state, const StoryStep& step){
     const Pokemon::Pose patch = state.pose;
-    ConsoleCaptureActions capture(env.console, env.context, env.language, env.player_gender, [&]{
-        pace_trainer_battle(env, state, step, patch);
-    });
+    ConsoleCaptureActions capture(env.console, env.context, env.language, env.player_gender, [&]{ pace_trainer_battle(env, state, step, patch); });
     ConsolePcStorageActions pc(env.console, env.context);
-    std::optional<Outcome> done = run_field_game_step(env.console, env.context, env.language, env.player_gender, step);
+    std::optional<Outcome> done = run_field_game_step(env.console, env.context, env.language, env.player_gender, step, env.party);
     if (!done){
         done = run_storage_game_step(env.console.logger(), &env.console, step, capture, pc);
+        if (done){
+            env.party.invalidate();
+        }
     }
     if (!done){
         done = run_healing_step(env, state, step);

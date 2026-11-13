@@ -5,6 +5,7 @@
  */
 
 #include <format>
+#include <memory>
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "Pokemon/AutoStory/Pokemon_StoryInterrupts.h"
@@ -20,6 +21,7 @@
 #include "PokemonFRLG_AutoStoryGameArgs.h"
 #include "PokemonFRLG_AutoStoryQuietOverworld.h"
 #include "PokemonFRLG_AutoStoryStepInterrupts.h"
+#include "PokemonFRLG_AutoStorySummary.h"
 #include "PokemonFRLG_AutoStoryTeach.h"
 
 namespace PokemonAutomation{
@@ -129,6 +131,19 @@ void tap_dpad(ProControllerContext& context, DpadPosition dpad, size_t count, Mi
     }
 }
 
+//  From the Fly user's menu: FLY, to the fly map. Returns the failure, or empty.
+std::string fly_from_member_menu(ConsoleHandle& console, ProControllerContext& context, const FlyPlan& plan){
+    tap_dpad(context, DPAD_DOWN, plan.menu_row, MENU_TAP, MENU_TAP_RELEASE);
+    KantoMapWatcher fly_map(COLOR_RED);
+    context.wait_for_all_requests();
+    pbf_press_button(context, BUTTON_A, 160ms, 0ms);
+    if (wait_until(console, context, FLY_MAP_TIMEOUT, {fly_map}) < 0){
+        return "fly_no_map";
+    }
+    pbf_wait(context, FLY_MAP_SETTLE);
+    return "";
+}
+
 //  From the overworld to the fly map: the party, the Fly user, FLY.
 //  Returns the failure, or empty.
 //  Overlaps open_fly_map_from_overworld() in PokemonFRLG_Navigation.h.
@@ -144,15 +159,7 @@ std::string open_fly_map(ConsoleHandle& console, ProControllerContext& context, 
     if (wait_until(console, context, MON_MENU_TIMEOUT, {mon_menu}) < 0){
         return "fly_no_menu";
     }
-    tap_dpad(context, DPAD_DOWN, plan.menu_row, MENU_TAP, MENU_TAP_RELEASE);
-    KantoMapWatcher fly_map(COLOR_RED);
-    context.wait_for_all_requests();
-    pbf_press_button(context, BUTTON_A, 160ms, 0ms);
-    if (wait_until(console, context, FLY_MAP_TIMEOUT, {fly_map}) < 0){
-        return "fly_no_map";
-    }
-    pbf_wait(context, FLY_MAP_SETTLE);
-    return "";
+    return fly_from_member_menu(console, context, plan);
 }
 
 //  On the fly map: the cursor to the corner, then to the town, and A.
@@ -185,7 +192,7 @@ std::string fly_to_town(ConsoleHandle& console, ProControllerContext& context, c
 } // namespace
 
 std::optional<Pokemon::Outcome> run_field_move_step(
-    ConsoleHandle& console, ProControllerContext& context, Language language, const StoryStep& step
+    ConsoleHandle& console, ProControllerContext& context, Language language, const StoryStep& step, PartyCache& party
 ){
     const auto done = [&step]{
         return step.pose_after ? Pokemon::outcome_ok(Pokemon::pose_of(*step.pose_after)) : Pokemon::outcome_ok();
@@ -200,17 +207,24 @@ std::optional<Pokemon::Outcome> run_field_move_step(
         return std::nullopt;
     }
     const FlyTown& town = kanto_fly_towns()[plan->town];
-    const std::optional<size_t> slot = plan->party_slot(console_member_reader(console, context, language, plan->start_menu));
-    if (!slot){
-        console.log(std::format("Story: no {} read in the party to Fly with.", plan->species), COLOR_RED);
-        return Pokemon::outcome_failed("fly_no_member", plan->species);
+    //  With a species, the party is opened once: the scan (or the cache)
+    //  leaves the Fly user's menu open.
+    bool menu_open = false;
+    if (!plan->species.empty()){
+        const std::unique_ptr<PartyScreens> screens = console_party_screens(console, context, plan->start_menu, language);
+        const std::optional<size_t> slot = open_member_menu_of(console.logger(), *screens, party, plan->species, true);
+        if (!slot){
+            console.log(std::format("Story: no {} read in the party to Fly with.", plan->species), COLOR_RED);
+            return Pokemon::outcome_failed("fly_no_member", plan->species);
+        }
+        plan->slot = *slot;
+        menu_open = true;
     }
-    plan->slot = *slot;
     console.log(std::format(
         "Story: Fly with slot {}, menu row {}, to {} (cell {}, {}).",
         plan->slot + 1, plan->menu_row + 1, town.name, town.cell.x, town.cell.y
     ));
-    std::string failure = open_fly_map(console, context, *plan);
+    std::string failure = menu_open ? fly_from_member_menu(console, context, *plan) : open_fly_map(console, context, *plan);
     if (failure.empty()){
         failure = fly_to_town(console, context, town);
     }

@@ -25,7 +25,7 @@ Outcome mart(Logger& logger, const MartPlan& plan, StoryAbilities& abilities){
 }
 
 Outcome teach(Logger& logger, const TeachPlan& plan, StoryAbilities& abilities){
-    const TeachResult result = run_teach(logger, abilities.teach, abilities.members, plan);
+    const TeachResult result = run_teach(logger, abilities.teach, abilities.members, plan, abilities.species);
     if (result.end == TeachEnd::LEARNED){
         return Pokemon::outcome_ok();
     }

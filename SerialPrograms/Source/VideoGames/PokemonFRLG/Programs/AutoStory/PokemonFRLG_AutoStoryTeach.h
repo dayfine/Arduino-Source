@@ -49,6 +49,7 @@
 #define PokemonAutomation_PokemonFRLG_AutoStoryTeach_H
 
 #include <cstddef>
+#include <functional>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -94,9 +95,15 @@ struct TeachResult{
 //  party).
 std::optional<size_t> find_party_species(const MemberReader& reader, std::string_view species);
 
+//  Finds the party slot of a species; nothing if none reads as it.
+using SpeciesFinder = std::function<std::optional<size_t>(std::string_view species)>;
+
 //  From the overworld: reads the member, teaches as `plan` says, back to
-//  the overworld, and reads the member again to confirm.
-TeachResult run_teach(Logger& logger, TeachActions& actions, const MemberReader& reader, const TeachPlan& plan);
+//  the overworld, and reads the member again to confirm. A plan naming a
+//  species finds its slot with `find_species` if given (the console's opens the
+//  party once, or not at all from its cache), else by reading the members in turn
+//  (find_party_species()).
+TeachResult run_teach(Logger& logger, TeachActions& actions, const MemberReader& reader, const TeachPlan& plan, const SpeciesFinder& find_species = {});
 
 //  Formats a log message summarizing the move teaching result.
 std::string teach_message(const TeachPlan& plan, const TeachResult& result);
