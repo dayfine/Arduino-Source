@@ -163,8 +163,7 @@ constexpr std::string_view MAP_NAMES[] = {
     "SilphCo_9F",
     "SilphCo_10F",
     "SilphCo_11F",
-    //  Cinnabar Island, and the Pokemon Mansion's four floors, for the SECRET KEY.
-    "CinnabarIsland",
+    //  The Pokemon Mansion's four floors, for the SECRET KEY.
     "PokemonMansion_1F",
     "PokemonMansion_2F",
     "PokemonMansion_3F",
