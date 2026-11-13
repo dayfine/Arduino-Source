@@ -63,7 +63,7 @@ private:
     //  The start and end checkpoints, attempts, checks and language.
     Pokemon::StoryRunOptions RUN;
     BattleAIOption BATTLE_AI;
-    //  The new game's choices (01.00): the language is RUN's. The look and
+    //  The new game's choices (00.00): the language is RUN's. The look and
     //  the language list's order are guesses from Scarlet/Violet's screens.
     StringOption PLAYER_NAME;
     SimpleIntegerOption<uint8_t> PLAYER_LOOK;

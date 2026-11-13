@@ -33,8 +33,9 @@ using Pokemon::StoryCheckpoint;
 using Pokemon::StoryStep;
 using Pokemon::StoryStepKind;
 
-//  The table: ids unique and in order, each row but the new game starts
-//  somewhere, and each lints against PLZA's actions in the engine.
+//  The table: ids unique and in order, each row but the new game's (00.00
+//  and 01.00) starts somewhere, and each lints against PLZA's actions in
+//  the engine.
 UnitTestResult test_story_table_lints(Logger&){
     std::string previous;
     for (const StoryCheckpoint& row : story_checkpoints()){
@@ -42,7 +43,7 @@ UnitTestResult test_story_table_lints(Logger&){
             return std::format("{}: repeated or out of order after {}.", row.id, previous);
         }
         previous = row.id;
-        if (!row.start && row.id != "01.00"){
+        if (!row.start && !story_row_starts_without_save(row)){
             return std::format("{}: no start; every row after the new game starts from a save.", row.id);
         }
         const std::vector<std::string> problems = plza_story_lint(row);
@@ -50,8 +51,8 @@ UnitTestResult test_story_table_lints(Logger&){
             return problems[0];
         }
     }
-    if (story_checkpoints().empty() || story_checkpoints().front().id != "01.00"){
-        return "Expected the table to start at 01.00, the new game.";
+    if (story_checkpoints().size() < 2 || story_checkpoints()[0].id != "00.00" || story_checkpoints()[1].id != "01.00"){
+        return "Expected the table to start at 00.00 and 01.00, the new game.";
     }
     return true;
 }
@@ -153,7 +154,7 @@ struct AutoStoryTableExpectation{
 };
 
 //  A black start frame (the previous run stopped in a dark scene) trips the
-//  black border check: a run from 01.00, which launches the game, leaves the
+//  black border check: a run from 00.00, which launches the game, leaves the
 //  check to HOME; a run from any later row still refuses on it.
 UnitTestResult test_black_start_frame(Logger&){
     ImageRGB32 black(1920, 1080);
@@ -164,9 +165,47 @@ UnitTestResult test_black_start_frame(Logger&){
     }
     for (const StoryCheckpoint& row : story_checkpoints()){
         const bool launches = story_row_launches_game(row);
-        if (launches != (row.id == "01.00")){
-            return std::format("{}: launches the game: {}; only 01.00 should.", row.id, launches);
+        if (launches != (row.id == "00.00")){
+            return std::format("{}: launches the game: {}; only 00.00 should.", row.id, launches);
         }
+    }
+    return true;
+}
+
+//  The new game's two starts: 00.00 launches from HOME and plays every
+//  choice, 01.00 starts on "Confirm Choices" after the choices made by hand.
+//  Neither loads a save, every later row does, and a run from 00.00 skips
+//  01.00, which it has played.
+UnitTestResult test_new_game_rows(Logger&){
+    const std::vector<StoryCheckpoint>& rows = story_checkpoints();
+    for (const StoryCheckpoint& row : rows){
+        const bool confirms = story_row_confirms_new_game(row);
+        if (confirms != (row.id == "01.00")){
+            return std::format("{}: starts on Confirm Choices: {}; only 01.00 should.", row.id, confirms);
+        }
+        const bool no_save = story_row_starts_without_save(row);
+        if (no_save != (row.id == "00.00" || row.id == "01.00")){
+            return std::format("{}: starts without a save: {}; only 00.00 and 01.00 should.", row.id, no_save);
+        }
+    }
+    const size_t last = rows.size() - 1;
+    const auto ids = [](const std::vector<StoryCheckpoint>& run){
+        std::string text;
+        for (const StoryCheckpoint& row : run){
+            text += (text.empty() ? "" : " ") + row.id;
+        }
+        return text;
+    };
+    const std::vector<StoryCheckpoint> from_setup = story_run_rows(rows, 0, last);
+    if (from_setup.size() != rows.size() - 1 || from_setup[0].id != "00.00" || (from_setup.size() > 1 && from_setup[1].id == "01.00")){
+        return std::format("A run from 00.00: expected every row but 01.00, got {}.", ids(from_setup));
+    }
+    const std::vector<StoryCheckpoint> from_confirm = story_run_rows(rows, 1, last);
+    if (from_confirm.size() != rows.size() - 1 || from_confirm[0].id != "01.00"){
+        return std::format("A run from 01.00: expected every row from 01.00, got {}.", ids(from_confirm));
+    }
+    if (!story_run_rows(rows, 1, 0).empty() || !story_run_rows(rows, 0, rows.size()).empty()){
+        return "Expected no rows for a start after the end or an end past the table.";
     }
     return true;
 }
@@ -219,7 +258,11 @@ const AutoStoryTableCase AUTO_STORY_TABLE_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"Start checks: a black start frame refuses every row but 01.00", test_black_start_frame},
+        .input = {"Start checks: a black start frame refuses every row but 00.00", test_black_start_frame},
+        .expectation = {},
+    },
+    {
+        .input = {"Start checks: 00.00 and 01.00 start the new game without a save; a run from 00.00 skips 01.00", test_new_game_rows},
         .expectation = {},
     },
 };
