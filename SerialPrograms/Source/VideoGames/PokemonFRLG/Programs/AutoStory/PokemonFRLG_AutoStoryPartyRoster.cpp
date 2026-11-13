@@ -123,9 +123,11 @@ struct MemberMenuCheck{
     enum class Result{
         LISTED,     //  the menu is open and lists the move at `row`
         NOT_LISTED, //  it doesn't; the menu is closed again
-        UNREAD,     //  the menu, or a field move's name on it, wasn't read
+        UNREAD,     //  the menu, or a field move's name on it, wasn't read;
+                    //  the menu is closed again
+        STUCK,      //  the menu didn't open, or didn't close again
     };
-    Result result = Result::UNREAD;
+    Result result = Result::STUCK;
     size_t row = 0;
 };
 
@@ -137,21 +139,17 @@ MemberMenuCheck check_member_menu(Logger& logger, PartyScreens& screens, size_t 
         return {};
     }
     const std::optional<PartyMemberMenu> menu = screens.read_member_menu();
-    if (!menu){
-        return {};
-    }
-    if (const std::optional<size_t> row = menu->row_of(move)){
-        return {.result = Result::LISTED, .row = *row};
-    }
-    //  A name not read may be the move.
-    if (!menu->all_read()){
-        return {};
+    if (menu){
+        if (const std::optional<size_t> row = menu->row_of(move)){
+            return {.result = Result::LISTED, .row = *row};
+        }
     }
     if (!screens.close_member_menu()){
         logger.log(std::format("Party: slot {}'s menu didn't close.", slot + 1), COLOR_RED);
         return {};
     }
-    return {.result = Result::NOT_LISTED};
+    //  A name not read may be the move.
+    return {.result = menu && menu->all_read() ? Result::NOT_LISTED : Result::UNREAD};
 }
 
 } // namespace
@@ -177,11 +175,17 @@ std::string use_field_move(
             order.push_back(slot);
         }
     }
+    //  A menu not read may list the move; the scan goes on to the others.
+    bool unread = false;
     for (const size_t slot : order){
         const MemberMenuCheck check = check_member_menu(logger, screens, slot, move);
-        if (check.result == Result::UNREAD){
+        if (check.result == Result::STUCK){
             screens.close();
             return FIELD_MOVE_MENU_UNREAD;
+        }
+        if (check.result == Result::UNREAD){
+            unread = true;
+            continue;
         }
         if (check.result == Result::LISTED){
             logger.log(std::format("Party: slot {} lists {} on row {}.", slot + 1, move, check.row + 1));
@@ -189,9 +193,13 @@ std::string use_field_move(
             return from_menu(check.row);
         }
     }
+    screens.close();
+    if (unread){
+        logger.log(std::format("Party: no menu read lists {}; one wasn't read.", move), COLOR_RED);
+        return FIELD_MOVE_MENU_UNREAD;
+    }
     logger.log(std::format("Party: no member's menu lists {}.", move), COLOR_RED);
     cache.users().forget(move);
-    screens.close();
     return FIELD_MOVE_NO_MEMBER;
 }
 
