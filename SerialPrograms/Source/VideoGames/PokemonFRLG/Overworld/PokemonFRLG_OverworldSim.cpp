@@ -148,7 +148,6 @@ OverworldSim::OverworldSim(std::vector<MapData> maps, MapPosition start, Directi
     }
     add_coded_field();
     m_state.gates = m_script.gates;
-    m_state.card_key_held = m_script.card_key_held;
     read_gates();
     m_player = PlayerState{start.point, elevation_at(map(), start.point), false};
     m_state.facing = facing;

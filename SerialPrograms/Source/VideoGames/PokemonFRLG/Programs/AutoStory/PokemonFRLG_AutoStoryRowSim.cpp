@@ -490,7 +490,7 @@ std::string OverworldStepSim::walk(const StoryStep& step){
     //  ones the Card Key opens, and the walker's steps open them in the sim.
     const std::vector<MapData>& maps = !m_sim.state().gate_maps.empty() ? m_sim.state().gate_maps : story_maps();
     const Pokemon::GateState& gates = m_sim.state().gates;
-    const std::optional<std::vector<RouteStep>> route = walked_route(m_at, step, maps, gates, Pokemon::GateRules{.card_key_held = m_sim.state().card_key_held});
+    const std::optional<std::vector<RouteStep>> route = walked_route(m_at, step, maps, gates, Pokemon::GateRules{.card_key_held = m_sim.card_key_held()});
     if (route && route->empty()){
         //  Already there.
         return "";
