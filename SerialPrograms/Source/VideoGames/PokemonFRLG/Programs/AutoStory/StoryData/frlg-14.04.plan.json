@@ -30,13 +30,13 @@
           "setup_outspeed": true,
           "setup_guard_accuracy": true,
           "foe_threats": [
-            [45, 24, 9, 54, 30, 0, 0],
-            [33, 18, 5, 36, 20, 0, 0],
-            [34, 24, 9, 54, 30, 0, 0]
+            [45, 0, 1, 60, 30, 0, 0],
+            [33, 18, 8, 42, 20, 0, 0],
+            [34, 0, 2, 60, 30, 0, 0]
           ]
         },
         "declared_after": {"map": "CeladonCity_Gym", "tiles": [[6, 5]], "facing": "north"},
-        "why": "Erika (TRAINER_LEADER_ERIKA), fought by pokeguy's policy C2 (goal-based-setup: Sp. Atk +1, accuracy +2 and outspeed by X items; the doc's erika row, foe_threats from its stats): Victreebel Lv29, Tangela Lv24, Vileplume Lv29; then the RAINBOWBADGE and TM19, read to the overworld with the battle's text (pokeguy 1:26:04 to 1:27:06)"
+        "why": "Erika (TRAINER_LEADER_ERIKA), fought by pokeguy's policy C2 (goal-based-setup: Sp. Atk +1, accuracy +2 and outspeed by X items; the doc's erika row, foe_threats the rows PokemonSimulation's planning_risk() gives for each foe leading against the entry state, 35/137): Victreebel Lv29, Tangela Lv24, Vileplume Lv29; then the RAINBOWBADGE and TM19, read to the overworld with the battle's text (pokeguy 1:26:04 to 1:27:06)"
       },
       {
         "id": "below_lori",
