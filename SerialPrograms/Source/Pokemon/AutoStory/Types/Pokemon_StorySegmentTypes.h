@@ -37,6 +37,19 @@ struct SegmentRange{
 };
 
 
+//  What a story run adds to the program's stats.
+struct StoryRunCounts{
+    size_t segments = 0;
+    //  Checkpoints passed (and saved at).
+    size_t checkpoints = 0;
+    //  Game resets or reloads after failed attempts.
+    size_t resets = 0;
+};
+
+//  Adds `counts` to the shared AutoStory stats.
+void record_story_counts(const StoryRunCounts& counts, AutoStoryStats& stats);
+
+
 // Summary of checkpoint attempts and pass status.
 struct CheckpointRun{
     std::string id;
