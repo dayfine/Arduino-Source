@@ -80,18 +80,24 @@ SimScript script_of(const ConsoleFailure& failure){
 
 struct ReplayInput{
     std::string name;
-    std::string text;
 };
 struct ReplayExpectation{
+    std::string description;
 };
+const std::string& fault_text(const std::string& name){
+    for (const auto& [file, text] : console_failure_json()){
+        if (file == name){
+            return text;
+        }
+    }
+    throw ParseException(name + ": no such file in ConsoleFailures/");
+}
+
 struct ReplayCase{
     ReplayInput input;
     ReplayExpectation expectation;
 };
 
-//  The cases are discovered from the embedded fault JSONs, so a new console
-//  failure needs no C++ edit; the code-health test-case table rule does not
-//  fit a data-driven test.
 class Test_ConsoleFailureReplay : public UnitTest{
 public:
     explicit Test_ConsoleFailureReplay(ReplayCase test_case)
@@ -111,8 +117,9 @@ public:
 private:
     UnitTestResult replay() const{
         const std::string& name = m_case.input.name;
-        const ConsoleFailure failure = Pokemon::parse_console_failure(name, m_case.input.text);
-        const JsonValue json = parse_json(m_case.input.text);
+        const std::string text = fault_text(name);
+        const ConsoleFailure failure = Pokemon::parse_console_failure(name, text);
+        const JsonValue json = parse_json(text);
         const FaultWalk walk = walk_of(json.to_object_throw());
         if (!failure.start || !failure.start_facing){
             return name + ": a fault file for the overworld walk names its start";
@@ -159,11 +166,19 @@ private:
     ReplayCase m_case;
 };
 
+//  One row per file in ConsoleFailures/, named as the file without ".json".
+const ReplayCase CONSOLE_FAILURE_CASES[] = {
+    {
+        .input = {.name = "12.03-22-22-pallet-shore-east-unmoved"},
+        .expectation = {.description = "a hold that moved nothing must not be walked as if it had"},
+    },
+};
+
 } // namespace
 
 void add_tests_AutoStoryConsoleFailure(UnitTestDatabase& database){
-    for (const auto& [name, text] : console_failure_json()){
-        database.add<Test_ConsoleFailureReplay>(ReplayCase{.input = {name, text}, .expectation = {}});
+    for (const auto& scenario : CONSOLE_FAILURE_CASES){
+        database.add<Test_ConsoleFailureReplay>(scenario);
     }
 }
 
