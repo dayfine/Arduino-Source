@@ -78,12 +78,14 @@ public:
     friend std::vector<Pokemon::TilePos> wandering_hazards(const StoryWorld& world);
     friend bool wandering_hazard(const StoryWorld& world, const Pokemon::TilePos& pos);
     friend bool recovery_hazard(const StoryWorld& world, const Pokemon::TilePos& pos);
+    friend bool talks_when_bumped(const StoryWorld& world, const Pokemon::TilePos& pos);
 
 private:
     struct Placed{
         std::string name;
         Pokemon::Grid<Pokemon::TileKind> tiles;
         std::vector<Pokemon::TilePos> occupied;     //  local tiles
+        std::vector<Pokemon::TilePos> talkers;      //  local tiles of occupied people who talk when bumped
         std::vector<Pokemon::TileBox> wander;       //  recovery hazards, not terrain
         std::vector<Pokemon::TilePos> warps;
         Pokemon::TilePos offset;
@@ -93,6 +95,7 @@ private:
         Pokemon::TileKind tile = Pokemon::TileKind::WALL;
         Occupant occupant = NOBODY;
         bool recovery_hazard = false;
+        bool talks = false;
         bool wander_hazard = false;
     };
 
@@ -129,6 +132,9 @@ std::vector<Pokemon::TilePos> wandering_hazards(const StoryWorld& world);
 bool wandering_hazard(const StoryWorld& world, const Pokemon::TilePos& pos);
 //  Whether a world tile is a recovery hazard (wander box or warp).
 bool recovery_hazard(const StoryWorld& world, const Pokemon::TilePos& pos);
+//  Someone who never moves but starts a talk or scene when bumped (Mom in
+//  PlayerHouse1F, r29): no wall to stop against or anchor on.
+bool talks_when_bumped(const StoryWorld& world, const Pokemon::TilePos& pos);
 //  "Route 201 (45, 3)", or "world (x, y)" if no map holds it.
 std::string describe(const StoryWorld& world, const Pokemon::TilePos& pos);
 
