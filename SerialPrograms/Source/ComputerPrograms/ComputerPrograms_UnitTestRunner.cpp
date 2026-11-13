@@ -43,6 +43,7 @@
 #include "Pokemon/Navigation/Pokemon_RouteLog_Tests.h"
 #include "Pokemon/Navigation/Pokemon_RuntimeMap_Tests.h"
 #include "Pokemon/Navigation/Pokemon_WallRecovery_Tests.h"
+#include "Pokemon/Navigation/Simulation/Pokemon_SimFaults_Tests.h"
 #include "Pokemon/Navigation/Simulation/Pokemon_SimGolden_Tests.h"
 #include "VideoGames/PokemonHome/PokemonHome_Tests.h"
 #include "VideoGames/PokemonSwSh/PokemonSwSh_Tests.h"
@@ -90,6 +91,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     Pokemon::add_tests_MoveMechanics(ret);
     Pokemon::add_tests_RuntimeMap(ret);
     Pokemon::add_tests_RouteLog(ret);
+    Pokemon::add_tests_SimFaults(ret);
     Pokemon::add_tests_SimGolden(ret);
     Pokemon::add_tests_AutoStory(ret);
     NintendoSwitch::add_tests_CheckOnlineDetector(ret);
