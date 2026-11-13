@@ -349,26 +349,46 @@ UnitTestResult test_no_member_failure(Logger& logger){
     return check_menus("no member", party, 1, 2, 2, 1);
 }
 
-//  A menu not read stops the scan: the party is closed, nothing picked.
-UnitTestResult test_unread_menu_fails(Logger& logger){
+//  A menu not read is closed with B and the scan goes on: a later member
+//  that lists FLY flies.
+UnitTestResult test_unread_menu_skipped(Logger& logger){
     FakeParty party({"blastoise", "pidgey"}, {std::nullopt, menu_with({"fly"})});
     PartyCache cache;
     size_t calls = 0;
-    if (use_field_move(logger, party, cache, "fly", "pidgey", fly_from(party, 1, 1, calls)) != FIELD_MOVE_MENU_UNREAD || calls != 0){
-        return "an unread menu should fail as unread and not fly.";
+    const std::string failure = use_field_move(logger, party, cache, "fly", "pidgey", fly_from(party, 1, 1, calls));
+    if (!failure.empty() || calls != 1){
+        return std::format("past an unread menu: failure '{}', {} menu uses.", failure, calls);
     }
-    return check_menus("unread menu", party, 1, 1, 0, 1);
+    return check_menus("unread menu", party, 1, 2, 1, 0);
 }
 
-//  A blue row whose name isn't read may be FLY: the scan stops.
-UnitTestResult test_unread_field_move_fails(Logger& logger){
+//  A blue row whose name isn't read may be FLY, but a later member lists
+//  it: that one flies (the console's Oddish, 12.03).
+UnitTestResult test_unread_field_move_skipped(Logger& logger){
     FakeParty party({"oddish", "pidgey"}, {menu_with({"cut", ""}), menu_with({"fly"})});
     PartyCache cache;
     size_t calls = 0;
-    if (use_field_move(logger, party, cache, "fly", "pidgey", fly_from(party, 1, 1, calls)) != FIELD_MOVE_MENU_UNREAD || calls != 0){
-        return "an unread field move name should fail as unread and not fly.";
+    const std::string failure = use_field_move(logger, party, cache, "fly", "pidgey", fly_from(party, 1, 1, calls));
+    if (!failure.empty() || calls != 1){
+        return std::format("past an unread field move: failure '{}', {} menu uses.", failure, calls);
     }
-    return check_menus("unread field move", party, 1, 1, 0, 1);
+    return check_menus("unread field move", party, 1, 2, 1, 0);
+}
+
+//  No menu read lists FLY but one wasn't read: unread, not "no member",
+//  and the record is kept.
+UnitTestResult test_unread_menu_without_fly_fails(Logger& logger){
+    FakeParty party({"blastoise", "oddish"}, {std::nullopt, menu_with({"cut"})});
+    PartyCache cache;
+    cache.users().record("fly", 0, "pidgey");
+    size_t calls = 0;
+    if (use_field_move(logger, party, cache, "fly", "pidgey", fly_from(party, 0, 1, calls)) != FIELD_MOVE_MENU_UNREAD || calls != 0){
+        return "a party with an unread menu and no FLY should fail as unread and not fly.";
+    }
+    if (!cache.users().find("fly")){
+        return "an unread menu dropped the Fly record.";
+    }
+    return check_menus("unread menu without fly", party, 1, 2, 2, 1);
 }
 
 //  A deposit or withdrawal moves members: nothing is recorded after it.
@@ -485,8 +505,9 @@ const AutoStoryPartyRosterCase AUTO_STORY_PARTY_ROSTER_CASES[] = {
     {.input = {"a scan records the user for the next Fly", test_scan_records_for_next_fly}, .expectation = {}},
     {.input = {"invalidate() drops the field move users", test_invalidate_drops_records}, .expectation = {}},
     {.input = {"no menu with FLY fails without flying", test_no_member_failure}, .expectation = {}},
-    {.input = {"an unread member menu fails without flying", test_unread_menu_fails}, .expectation = {}},
-    {.input = {"an unread field move name fails without flying", test_unread_field_move_fails}, .expectation = {}},
+    {.input = {"an unread member menu is skipped for a later Fly user", test_unread_menu_skipped}, .expectation = {}},
+    {.input = {"an unread field move name is skipped for a later Fly user", test_unread_field_move_skipped}, .expectation = {}},
+    {.input = {"an unread menu and no Fly user fails as unread", test_unread_menu_without_fly_fails}, .expectation = {}},
     {.input = {"the field move users' text reads back the same", test_users_text_round_trip}, .expectation = {}},
     {.input = {"unreadable field move users' text is dropped", test_unreadable_users_text_dropped}, .expectation = {}},
     {.input = {"a Fly after a restart opens only the recorded menu", test_restart_fly_reads_no_summary}, .expectation = {}},
