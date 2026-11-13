@@ -105,19 +105,6 @@ void talk_through_map_screen(ConsoleHandle& console, ProControllerContext& conte
 //  (0.6 s), face it (150 ms), A at "A Climb Up", hold up 5 s to the top.
 void climb_ladder(ConsoleHandle& console, ProControllerContext& context);
 
-//  The highlighted row of "Confirm Choices", read from frames over up to
-//  2 s with no press. Throws UserSetupError if the screen does not show.
-size_t require_confirm_choices(ConsoleHandle& console, ProControllerContext& context);
-
-//  01.00's first step: the new game's language, look and name were chosen
-//  by hand and "Confirm Choices" is on screen. Checks that screen first
-//  (require_confirm_choices()): on any other screen throws UserSetupError
-//  and presses nothing. Then moves the highlight to
-//  "Ready!" one DOWN at a time, reading it after each, and presses A there:
-//  the save's only change is this press, on a screen it has read. Throws
-//  OperationFailedException if the highlight is lost on the way.
-void confirm_new_game_choices(ConsoleHandle& console, ProControllerContext& context);
-
 
 
 } // namespace PokemonLZA
