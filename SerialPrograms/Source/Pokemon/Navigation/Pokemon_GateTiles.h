@@ -10,6 +10,7 @@
 #ifndef PokemonAutomation_Pokemon_GateTiles_H
 #define PokemonAutomation_Pokemon_GateTiles_H
 
+#include <string>
 #include "Pokemon_GateState.h"
 #include "Pokemon_Grid.h"
 #include "Pokemon_MapData.h"
@@ -17,6 +18,15 @@
 namespace PokemonAutomation{
 namespace Pokemon{
 
+
+//  The name GateState::switches_on knows `pressed` by: its id when several
+//  maps share it (Pokemon Mansion's floors), and gate_key(its map, its id)
+//  when it is one map's own (each Victory Road floor has a
+//  "floor_switch_1" of its own, with its own flag).
+std::string switch_key(const MapSwitch& pressed);
+
+//  The switch whose boulder button is `pos`, or nullptr if no switch's is.
+const MapSwitch* switch_with_button(const MapData& map, const TilePos& pos);
 
 //  The gate that has `pos`, or nullptr if no gate does.
 const MapGate* gate_at(const MapData& map, const TilePos& pos);

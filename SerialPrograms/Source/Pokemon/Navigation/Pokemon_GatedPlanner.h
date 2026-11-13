@@ -23,6 +23,10 @@
  *      bool held_at(const State&, Direction, const GateState&) const;
  *      MapPlace place_of(const State&) const;
  *
+ *  and may have open_stop_risk(const State&, Direction, const GateState&)
+ *  const and tap_stop_risk() with the same parameters, as plan_legs()'s
+ *  model may have them without the gates.
+ *
  *  press() reads each tile with resolved_tile(), which makes a closed gate a
  *  wall. One-way warps (MapWarp::one_way) are the game's to take as any warp:
  *  the model leads the player to the warp's arrival, and the maps give no way
@@ -33,8 +37,10 @@
 #ifndef PokemonAutomation_Pokemon_GatedPlanner_H
 #define PokemonAutomation_Pokemon_GatedPlanner_H
 
+#include <concepts>
 #include <functional>
 #include <optional>
+#include <string>
 #include <vector>
 #include "Pokemon_ConnectedMaps.h"
 #include "Pokemon_GateTiles.h"
@@ -44,6 +50,19 @@
 namespace PokemonAutomation{
 namespace Pokemon{
 
+
+//  A step model that weighs an open stop (see the top of this file).
+template <typename Inner>
+concept HasOpenStopRisk = requires (const Inner& inner, const typename Inner::State& state, const GateState& gates){
+    { inner.open_stop_risk(state, Direction::NORTH, gates) } -> std::convertible_to<int>;
+};
+
+//  A step model that weighs an open stop after one step (see the top of
+//  this file).
+template <typename Inner>
+concept HasTapStopRisk = requires (const Inner& inner, const typename Inner::State& state, const GateState& gates){
+    { inner.tap_stop_risk(state, Direction::NORTH, gates) } -> std::convertible_to<std::optional<int>>;
+};
 
 //  The game's step model, wrapped: see the top of this file.
 template <typename Inner>
@@ -86,6 +105,15 @@ public:
         return m_inner.held_at(state.inner, direction, state.gates);
     }
 
+    //  The inner model's risk of an open stop (see Pokemon_LegPlanner.h), if
+    //  it has one, read through the gates the stop is made in.
+    int open_stop_risk(const State& state, Direction direction) const requires HasOpenStopRisk<Inner>{
+        return m_inner.open_stop_risk(state.inner, direction, state.gates);
+    }
+    std::optional<int> tap_stop_risk(const State& state, Direction direction) const requires HasTapStopRisk<Inner>{
+        return m_inner.tap_stop_risk(state.inner, direction, state.gates);
+    }
+
 private:
     static Step<State> carry(const Step<InnerState>& walked, const GateState& gates){
         Step<State> step;
@@ -115,11 +143,12 @@ private:
     Step<State> press_switch(const State& state, const MapSwitch& pressed, Direction direction) const{
         Step<State> step;
         step.next = state;
-        const bool now_on = pressed.toggle ? !state.gates.switch_on(pressed.id) : true;
+        const std::string key = switch_key(pressed);
+        const bool now_on = pressed.toggle ? !state.gates.switch_on(key) : true;
         if (now_on){
-            step.next.gates.switches_on.insert(pressed.id);
+            step.next.gates.switches_on.insert(key);
         }else{
-            step.next.gates.switches_on.erase(pressed.id);
+            step.next.gates.switches_on.erase(key);
         }
         step.action = ACTION_PRESS_SWITCH;
         step.ends_leg = true;

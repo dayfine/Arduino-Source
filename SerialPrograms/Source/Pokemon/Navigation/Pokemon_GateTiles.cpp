@@ -10,6 +10,21 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
+std::string switch_key(const MapSwitch& pressed){
+    return pressed.floors.size() == 1 ? gate_key(pressed.floors.front(), pressed.id) : pressed.id;
+}
+
+const MapSwitch* switch_with_button(const MapData& map, const TilePos& pos){
+    for (const auto& [id, result] : map.switches){
+        for (const TilePos& button : result.buttons){
+            if (button == pos){
+                return &result;
+            }
+        }
+    }
+    return nullptr;
+}
+
 const MapGate* gate_at(const MapData& map, const TilePos& pos){
     for (const auto& [id, gate] : map.gates){
         for (const TilePos& tile : gate.tiles){
@@ -23,7 +38,9 @@ const MapGate* gate_at(const MapData& map, const TilePos& pos){
 
 bool gate_is_open(const MapData& map, const MapGate& gate, const GateState& state){
     if (gate.kind == GateKind::SWITCH){
-        return state.switch_on(gate.switch_id) == gate.open_when_on;
+        const auto found = map.switches.find(gate.switch_id);
+        const std::string key = found == map.switches.end() ? gate.switch_id : switch_key(found->second);
+        return state.switch_on(key) == gate.open_when_on;
     }
     return gate.open_at_new_game || state.opened.contains(gate_key(map.name, gate.id));
 }
