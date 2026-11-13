@@ -673,13 +673,15 @@ positions; the decomp is the source of truth.
 | 04 | Route 9/10 → Rock Tunnel → Lavender → Celadon → Erika; Tea | Flash optional |
 | 05 | Rocket Hideout (spin tiles, Lift Key, Silph Scope) → Pokémon Tower → Poké Flute | |
 | 06 | Snorlax (Route 12 or 16) → Fuchsia → Koga → Safari (Surf, Strength) | Safari is a step-limited zone |
-| 07 | Saffron: Silph Co. (Card Key, warp pads, rival, Giovanni) → Sabrina | Card Key doors are gates (§12.2); Lapras is an RNG gift like Eevee; Master Ball is an option (§12.1) |
-| 08 | To Cinnabar (Route 21 by default) → Mansion (Secret Key) → Blaine | Mansion switches and quiz doors are gates, Mansion holes are one-way warps (§12.2); no Seafoam; decline Bill's One Island trip |
+| 07 | To Cinnabar (Route 21 by default) → Mansion (Secret Key) → Blaine | Mansion switches and quiz doors are gates, Mansion holes are one-way warps (§12.2); no Seafoam; decline Bill's One Island trip |
+| 08 | Saffron: Silph Co. (Card Key, warp pads, rival, Giovanni) → Sabrina | Card Key doors are gates (§12.2); Lapras is an RNG gift like Eevee; Master Ball is an option (§12.1) |
 | 09 | Giovanni (Viridian) → Route 22 rival → Victory Road (Strength boulders) | arrow tiles and boulders are scripted (§12.3); Route 23 guards: read the badges on the trainer card |
 | 10 | Elite Four + Champion | reuse `EliteFourFarmer` pieces |
 | 11 | Sevii post-game: Ruby (Mt. Ember), Sapphire (Dotted Hole), Network Machine | added 2026-10-29 (§9.2) |
 | 12 | Mew | method to settle (§9.2); likely needs the naming typer |
 | opt | Money top-up, leveling loop, gift Pokémon, fossils | config-driven, outside the main order |
+
+The story order after Koga follows PokeGuy's run: Fly to Pallet, Surf down Route 21 to Cinnabar, the Mansion and Blaine (TM14 Blizzard taught over Dig), Fly back to Celadon for Erika, then Silph Co., Sabrina's gym and Viridian's gym (STORY_ORDER in PokemonFRLG_AutoStoryTable.cpp is the exact order).
 
 Estimate ~90–110 checkpoints. Hardest: 00 (keyboard, intro), 05 (spin
 tiles), 07 (warp pads), 09 (boulders), and leveling before each gym.
