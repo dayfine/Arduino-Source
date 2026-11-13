@@ -17,6 +17,7 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Filesystem/Filesystem.h"
+#include "Pokemon/AutoStory/Types/Pokemon_BadgeCheck.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
@@ -24,6 +25,8 @@
 #include "NintendoSwitch/Programs/MenuCursor/NintendoSwitch_MenuCursor_Tests.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryMaps.h"
+#include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_BattleMenuReader.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryTrainers.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP/Options/PokemonBDSP_PlayerModelOption.h"
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_IntroMenuDetector.h"
@@ -32,6 +35,7 @@
 #include "PokemonBDSP_AutoStory_BattleMoves.h"
 #include "PokemonBDSP_AutoStory_Center.h"
 #include "PokemonBDSP_AutoStory_Events.h"
+#include "PokemonBDSP_AutoStory_GymOpponent.h"
 #include "PokemonBDSP_AutoStory_IntroProbe.h"
 #include "PokemonBDSP_AutoStory_IntroSteps.h"
 #include "PokemonBDSP_AutoStory_LitDoorway.h"
@@ -687,6 +691,56 @@ UnitTestResult test_asks_someone_else(Logger&){
     return true;
 }
 
+//  01.04 (lab-B, 2026-11-12 22:50): the walk up the gym was blocked by the
+//  second trainer, an A press opened his talk, and it was taken for Roark's.
+//  A talk before every trainer is beaten is a trainer's, however it began.
+UnitTestResult test_gym_opponent_is_roark_only_after_the_trainers(Logger&){
+    GymTrainers gym(oreburgh_gym_trainer_sights().size());
+    if (gym.leader_next() || gym.next_label() != "Gym trainer 1 of 2"){
+        return "At the door the opponent must be the first trainer, not Roark.";
+    }
+    gym.record_win();
+    //  The failing case: one trainer beaten, a blocked walk, a talk.
+    if (gym.leader_next() || gym.next_label() != "Gym trainer 2 of 2"){
+        return "After one trainer a talk must be the second trainer's, not Roark's.";
+    }
+    gym.record_win();
+    if (!gym.leader_next() || gym.next_label() != "Roark"){
+        return "After both trainers the opponent must be Roark.";
+    }
+    gym.record_win();
+    if (!gym.leader_next()){
+        return "A win past the last trainer must not unset Roark.";
+    }
+    return true;
+}
+
+//  The Trainer Card check runs for the levels that check everything, fails
+//  on a missing badge, and lets a card the reader cannot read yet pass.
+UnitTestResult test_badge_check(Logger&){
+    using Pokemon::BadgeReading;
+    using Pokemon::StoryCheckLevel;
+    for (StoryCheckLevel level : {StoryCheckLevel::TESTING, StoryCheckLevel::THOROUGH}){
+        if (!Pokemon::badge_check_wanted(level)){
+            return "A thorough run must check the badge.";
+        }
+    }
+    for (StoryCheckLevel level : {StoryCheckLevel::DEFAULT, StoryCheckLevel::FAST, StoryCheckLevel::SPEEDRUN}){
+        if (Pokemon::badge_check_wanted(level)){
+            return "A run below thorough must not open the Trainer Card.";
+        }
+    }
+    if (Pokemon::badge_check_failure(BadgeReading::MISSING, "Coal Badge").find("Coal Badge") == std::string::npos){
+        return "A missing badge must fail and name the badge.";
+    }
+    if (!Pokemon::badge_check_failure(BadgeReading::PRESENT, "Coal Badge").empty()
+        || !Pokemon::badge_check_failure(BadgeReading::UNREADABLE, "Coal Badge").empty()
+    ){
+        return "A present or unreadable badge must not fail.";
+    }
+    return true;
+}
+
 UnitTestResult test_choose_move(Logger&){
     struct Case{ std::string_view name; std::vector<MoveSlot> slots; size_t best; };
     const Case cases[] = {
@@ -883,6 +937,14 @@ const AutoStoryActionsCase AUTO_STORY_ACTIONS_CASES[] = {
     },
     {
         .input = {"wanderer talk: no ask from a tile that faces a sign (00.05b, the Poketch Company's sign first)", test_asks_someone_else},
+        .expectation = {},
+    },
+    {
+        .input = {"01.04 gym: a talk before both trainers are beaten is not Roark's (lab-B 2026-11-12)", test_gym_opponent_is_roark_only_after_the_trainers},
+        .expectation = {},
+    },
+    {
+        .input = {"badge check: thorough levels open the Trainer Card and a missing badge fails", test_badge_check},
         .expectation = {},
     },
     {

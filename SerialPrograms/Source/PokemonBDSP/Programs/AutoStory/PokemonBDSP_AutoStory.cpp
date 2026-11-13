@@ -253,7 +253,7 @@ void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     //  The reads that use text (Location.h) take the game's language from here.
     set_story_language(RUN.language());
 
-    StoryEnv story{env, context, STARTER, PLAYER_NAME, IntroPicks{RUN.language(), PLAYER_LOOK.index()}};
+    StoryEnv story{env, context, STARTER, PLAYER_NAME, IntroPicks{RUN.language(), PLAYER_LOOK.index()}, RUN.check_level()};
     StoryExecutor executor(story);
     executor.set_stop_rows(rows_that_stop(checkpoints));
     //  A start with a save always loads it first, so the run never walks
