@@ -15,6 +15,7 @@
 #include <functional>
 #include <map>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -444,7 +445,7 @@ UnitTestResult test_mart_stock(){
 //  Every item any Mart sells has one.
 UnitTestResult test_mart_stock_readable(){
     std::string missing;
-    for (const char* map : {
+    for (const std::string_view map : {
         "ViridianCity_Mart", "PewterCity_Mart", "CeruleanCity_Mart", "VermilionCity_Mart",
         "LavenderTown_Mart", "FuchsiaCity_Mart", "SaffronCity_Mart", "CinnabarIsland_Mart",
         "CeladonCity_DepartmentStore_5F",
