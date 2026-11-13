@@ -15,15 +15,9 @@
 #include "CommonFramework/Tools/DebugDumper.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
-<<<<<<< HEAD
-#include "NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h"
-#include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
-#include "NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_KeyboardCodeEntry.h"
-#include "VideoGames/PokemonLZA/Inference/Map/PokemonLZA_MapDetector.h"
-=======
 #include "NintendoSwitch/Inference/NintendoSwitch_SystemKeyboardDetector.h"
 #include "NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_SystemKeyboardTyping.h"
->>>>>>> plza/story-base
+#include "VideoGames/PokemonLZA/Inference/Map/PokemonLZA_MapDetector.h"
 #include "PokemonLZA_AutoStoryIntro.h"
 #include "PokemonLZA_AutoStoryIntroScreens.h"
 #include "PokemonLZA_AutoStoryLanguageList.h"
