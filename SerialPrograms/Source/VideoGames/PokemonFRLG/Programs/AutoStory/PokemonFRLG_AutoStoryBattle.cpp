@@ -593,6 +593,17 @@ private:
         m_last_press = now;
     }
 
+    void log_turn(const PartyStatus& status, const TurnAction& action){
+        m_console.log(std::format(
+            "Battle: turn {}, HP {} ({:.0f}% of the bar), {}, {} Potions, {} Antidotes, {} Parlyz Heals, {} Awakenings.",
+            m_decisions.turns(), status.hp_red ? "red" : status.hp_yellow ? "yellow" : "green", 100 * status.hp_fill,
+            status_name(status.status), m_supplies.potions, m_supplies.antidotes, m_supplies.parlyz_heals, m_supplies.awakenings
+        ));
+        if (!action.heal_reason.empty()){
+            m_console.log("Battle: " + action.heal_reason + ".");
+        }
+    }
+
     void take_turn(const ImageViewRGB32& screen){
         m_faint_polls = 0;
         if (m_kind != BattleKind::TRAINER && m_decisions.turns() == 0){
@@ -608,14 +619,7 @@ private:
         const PartyStatus status = read_party_status(screen);
         const TurnAction action = m_decisions.turn(status);
         m_evolution.turn_taken(action.choice);
-        m_console.log(std::format(
-            "Battle: turn {}, HP {} ({:.0f}% of the bar), {}, {} Potions, {} Antidotes, {} Parlyz Heals, {} Awakenings.",
-            m_decisions.turns(), status.hp_red ? "red" : status.hp_yellow ? "yellow" : "green", 100 * status.hp_fill,
-            status_name(status.status), m_supplies.potions, m_supplies.antidotes, m_supplies.parlyz_heals, m_supplies.awakenings
-        ));
-        if (!action.heal_reason.empty()){
-            m_console.log("Battle: " + action.heal_reason + ".");
-        }
+        log_turn(status, action);
         dump_debug_image(m_console, "AutoStory/battle", std::format("turn{}-menu", m_decisions.turns()), screen);
         switch (action.choice){
         case TurnChoice::RUN:
@@ -630,6 +634,9 @@ private:
             return;
         case TurnChoice::AWAKENING:
             m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, m_supplies, "awakening", ItemTarget::PARTY_MEMBER, m_checks, m_language)));
+            return;
+        case TurnChoice::MEDICINE:
+            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, m_supplies, action.item, ItemTarget::PARTY_MEMBER, m_checks, m_language)));
             return;
         case TurnChoice::BATTLE_ITEM:
             m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, m_supplies, action.item, ItemTarget::POKEMON_OUT, m_checks, m_language)));
