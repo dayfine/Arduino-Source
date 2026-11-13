@@ -192,8 +192,9 @@ std::optional<Pose> measured_ends(const Pose& from, const StoryStep& step){
     return Pokemon::tile_pose(from.map, at, legs_list.back().direction);
 }
 
-void StoryWalkSteps::begin_attempt(const std::string& row, const std::vector<StoryStep>& steps){
+void StoryWalkSteps::begin_attempt(const std::string& row, const std::vector<StoryStep>& steps, Pokemon::StoryPausePoints* pause){
     m_row = row;
+    m_pause = pause;
     //  A row starts from its save: after the shoes' row, the save has them.
     m_can_run = row > std::string(RUNNING_SHOES_ROW);
     m_trainers.clear();
