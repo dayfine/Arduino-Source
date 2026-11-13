@@ -21,9 +21,7 @@
         "action": "mart",
         "args": {
           "map": "CeruleanCity_Mart",
-          "budget": 1400,
-          "items": [{"item": "poke-ball", "quantity": 7}],
-          "floor": 1500
+          "items": [{"item": "poke-ball", "quantity": 7}]
         },
         "why": "7 Poke Balls for the Oddish"
       },

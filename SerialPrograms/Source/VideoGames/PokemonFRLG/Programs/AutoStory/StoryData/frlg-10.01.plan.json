@@ -41,14 +41,12 @@
         "action": "mart",
         "args": {
           "map": "CeladonCity_DepartmentStore_5F",
-          "budget": 15600,
-          "floor": 19862,
           "items": [
             {"item": "x-special", "quantity": 21}, {"item": "x-speed", "quantity": 6}, {"item": "x-accuracy", "quantity": 5},
             {"item": "guard-spec", "quantity": 2}
           ]
         },
-        "why": "pokeguy 1:02:42: 6 X Speeds, 21 X Specials, 5 X Accuracies and 2 Guard Specs (15,600 of his 15,694), X Special first; the floor is the money measured at the Celadon save on console B (19,862 on the trainer card, 2026-11-11), which buys the whole list"
+        "why": "pokeguy 1:02:42: 6 X Speeds, 21 X Specials, 5 X Accuracies and 2 Guard Specs (15,600 of his 15,694), X Special first; the money measured at the Celadon save on console B (19,862 on the trainer card, 2026-11-11), which buys the whole list"
       },
       {
         "id": "below_5f_lift",
