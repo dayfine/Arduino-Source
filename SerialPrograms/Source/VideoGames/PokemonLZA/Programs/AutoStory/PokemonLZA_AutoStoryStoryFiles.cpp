@@ -29,8 +29,10 @@ namespace{
 struct CheckpointExecution{
     //  "save": "autosave": the game autosaves at the checkpoint's end.
     bool autosave = false;
-    //  "reload_when_chained": true (StoryData::reload_when_chained).
+    //  "reload_when_chained": true or "always" (StoryData::reload_when_chained).
     bool reload_when_chained = false;
+    //  "reload_when_chained": "always" (StoryData::reload_always).
+    bool reload_always = false;
 };
 
 //  A checkpoint file's checkpoint and its execution. `source` names the file
@@ -42,8 +44,10 @@ std::pair<StoryCheckpoint, CheckpointExecution> read_checkpoint_file(std::string
         read.reload_when_chained = reload != nullptr;
         if (read.reload_when_chained){
             Pokemon::validate_json_fields(execution, {"save", "reload_when_chained"}, where);
-            if (!reload->is_boolean() || !reload->to_boolean_default()){
-                throw ParseException(std::format("{}: reload_when_chained is true or left out", where));
+            const std::string* text = reload->to_string();
+            read.reload_always = text != nullptr && *text == "always";
+            if (!read.reload_always && (!reload->is_boolean() || !reload->to_boolean_default())){
+                throw ParseException(std::format("{}: reload_when_chained is true, \"always\" or left out", where));
             }
         }else{
             Pokemon::validate_json_fields(execution, {"save"}, where);
@@ -137,6 +141,9 @@ StoryData load_story_data(std::span<const StoryDevFile> dev_files){
         if (execution.reload_when_chained){
             check_reload_when_chained(data, checkpoint, dev == nullptr ? file_name : dev->path);
             data.reload_when_chained.insert(checkpoint.id);
+            if (execution.reload_always){
+                data.reload_always.insert(checkpoint.id);
+            }
         }
         if (execution.autosave){
             data.autosaves.insert(checkpoint.id);

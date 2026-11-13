@@ -701,6 +701,9 @@ Outcome reload_at_boundary(const Pokemon::StoryGame<ZonePose>& game, Pokemon::St
 //  Whether a run reloads the save before `row` when it reaches it from the
 //  row before.
 bool reloads_before(const StoryData& story, StoryRunPolicy::BoundaryReload boundary_reload, std::string_view row){
+    if (story.reload_always.contains(row)){
+        return true;
+    }
     return boundary_reload == StoryRunPolicy::BoundaryReload::AT_PLAN_BOUNDARIES && story.reload_when_chained.contains(row);
 }
 

@@ -214,7 +214,7 @@ std::string load_problem(const StoryDevFile& dev){
     return "";
 }
 
-//  "reload_when_chained" in a checkpoint's execution: only true, and only on
+//  "reload_when_chained" in a checkpoint's execution: only true or "always", and only on
 //  a row with a save to reload after a row that ends on the autosave.
 UnitTestResult test_reload_when_chained_field(Logger&){
     struct Case{
@@ -222,9 +222,10 @@ UnitTestResult test_reload_when_chained_field(Logger&){
         std::string_view problem;
     };
     const Case cases[] = {
-        {R"("save": "autosave", "reload_when_chained": "yes")", "true or left out"},
-        {R"("save": "autosave", "reload_when_chained": false)", "true or left out"},
+        {R"("save": "autosave", "reload_when_chained": "yes")", "true, \"always\" or left out"},
+        {R"("save": "autosave", "reload_when_chained": false)", "true, \"always\" or left out"},
         {R"("save": "autosave", "reload_when_chained": true)", "no save to reload"},
+        {R"("save": "autosave", "reload_when_chained": "always")", "no save to reload"},
     };
     for (const Case& item : cases){
         const std::string problem = load_problem(dev_with_execution("01.00", item.execution));
@@ -249,6 +250,17 @@ UnitTestResult test_mm1_reload_when_chained(Logger&){
     const std::string problem = load_problem(dev_with_execution("01.01", R"("save": "menu")"));
     if (problem.find("does not end on the game's autosave") == std::string::npos){
         return std::format("01.01 saving through the menu: expected 01.02's reload refused, got \"{}\".", problem);
+    }
+    return true;
+}
+
+//  03.04 reloads even in a run straight through: its walk to the nurse
+//  starts from 03.03's autosave, not from where 03.03's scene leaves the
+//  player (console B, 2026-11-13).
+UnitTestResult test_0304_reloads_always(Logger&){
+    const StoryData& data = builtin_story_data();
+    if (!data.reload_always.contains("03.04") || !data.autosaves.contains("03.03")){
+        return "Expected 03.04 to always reload, after 03.03's autosave.";
     }
     return true;
 }
@@ -549,6 +561,10 @@ const AutoStoryTableCase AUTO_STORY_TABLE_CASES[] = {
     },
     {
         .input = {"reload_when_chained: 01.02 after 01.01's autosave", test_mm1_reload_when_chained},
+        .expectation = {},
+    },
+    {
+        .input = {"reload_when_chained: \"always\" on 03.04, after 03.03's autosave", test_0304_reloads_always},
         .expectation = {},
     },
     {
