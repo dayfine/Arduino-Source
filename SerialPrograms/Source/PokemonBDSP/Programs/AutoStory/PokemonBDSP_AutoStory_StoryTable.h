@@ -61,7 +61,7 @@ struct StoryRunPlan{
     StoryHandoff stop = StoryHandoff::NONE;
 };
 
-//  The rows of `checkpoints` from `first` to `last`, both inclusive, as a
+//  The rows of `table` from `first` to `last`, both inclusive, as a
 //  run with `handoffs` takes them: a run that reaches 00.01 with
 //  `handoffs.starter_rng` on saves at the Verity Lakefront at the end of
 //  00.01 and stops there for Starter RNG.
