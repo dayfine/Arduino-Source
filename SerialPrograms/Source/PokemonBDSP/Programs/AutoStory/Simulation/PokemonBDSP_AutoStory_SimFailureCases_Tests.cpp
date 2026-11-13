@@ -75,7 +75,7 @@ const std::set<std::string> ONE_SIGNAL_STEPS{
 };
 
 //  The table's step `name` in row `row`.
-const StoryStep& table_step(const std::string& row, const std::string& name){
+const StoryStep& table_step(std::string_view row, std::string_view name){
     for (const StoryCheckpoint& checkpoint : story_checkpoints()){
         for (const StoryStep& step : checkpoint.steps){
             if (checkpoint.id == row && step.name == name){
@@ -83,7 +83,7 @@ const StoryStep& table_step(const std::string& row, const std::string& name){
             }
         }
     }
-    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No step " + name + " in " + row);
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No step " + std::string(name) + " in " + std::string(row));
 }
 
 //  Runs rows `from` to `to` of `rows` with `misses` and `knobs`: "" if they
