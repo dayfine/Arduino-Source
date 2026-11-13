@@ -323,11 +323,11 @@ PokemonBDSP::AutoStory - Fault sweep: 01.03, start off its declared tile: passed
   Fault sweep 01.03 start off its declared tile: 8 variants, 3 fail.
   | 01.03 |  | start off its declared tile | starts on (47, 23) | stopped in 01.03 above_the_mine: 01.03 sim_mismatch: above_the_mine: ended at (46, 58) (Oreburgh City (46, 58)), not on OreburghCity (46, 57) facing south (tile). |
   | 01.03 |  | start off its declared tile | starts on (47, 24) | stopped in 01.03 above_the_mine: 01.03 sim_mismatch: above_the_mine: ended at (46, 59) (Oreburgh City (46, 59)), not on OreburghCity (46, 39) facing south (tile). |
-  | 01.03 |  | start off its declared tile | starts on (48, 21) | stopped in 01.03 above_the_mine: 01.03 sim_mismatch: above_the_mine: ended at (48, 59) (Oreburgh City (48, 59)), not on OreburghCity (46, 41) facing south (tile). |
+  | 01.03 |  | start off its declared tile | starts on (48, 21) | stopped in 01.03 above_the_mine: 01.03 sim_mismatch: above_the_mine: ended at (46, 59) (Oreburgh City (46, 59)), not on OreburghCity (46, 36) facing south (tile). |
   Known failing until a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center): 3 of 8 variants fail 01.03:
      starts on (47, 23): stopped in 01.03 above_the_mine: 01.03 sim_mismatch: above_the_mine: ended at (46, 58) (Oreburgh City (46, 58)), not on OreburghCity (46, 57) facing south (tile).
      starts on (47, 24): stopped in 01.03 above_the_mine: 01.03 sim_mismatch: above_the_mine: ended at (46, 59) (Oreburgh City (46, 59)), not on OreburghCity (46, 39) facing south (tile).
-     starts on (48, 21): stopped in 01.03 above_the_mine: 01.03 sim_mismatch: above_the_mine: ended at (48, 59) (Oreburgh City (48, 59)), not on OreburghCity (46, 41) facing south (tile).
+     starts on (48, 21): stopped in 01.03 above_the_mine: 01.03 sim_mismatch: above_the_mine: ended at (46, 59) (Oreburgh City (46, 59)), not on OreburghCity (46, 36) facing south (tile).
 PokemonBDSP::AutoStory - Fault sweep: 01.03, wild battles on every grass pass: passed
   Fault sweep 01.03 wild battles on every grass pass: 1 variants, 0 fail.
 PokemonBDSP::AutoStory - Fault sweep: 01.04, battle opening at step start: passed
@@ -472,14 +472,10 @@ PokemonBDSP::AutoStory - Fault sweep: 01.10, scene starts during the walk before
 PokemonBDSP::AutoStory - Fault sweep: 01.10, slow fade-in after every warp: passed
   Fault sweep 01.10 slow fade-in after every warp: 1 variants, 0 fail.
 PokemonBDSP::AutoStory - Fault sweep: 01.10, start off its declared tile: passed
-  Fault sweep 01.10 start off its declared tile: 3 variants, 3 fail.
-  | 01.10 |  | start off its declared tile | starts on (20, 27) | stopped in 01.10 line_1: 01.10 sim_mismatch: line_1: ended at (20, 60) (Route 204 (20, 28)), not on Route204North (20, 27) (tile). |
-  | 01.10 |  | start off its declared tile | starts on (20, 28) | stopped in 01.10 line_1: 01.10 sim_mismatch: line_1: ended at (20, 61) (Route 204 (20, 29)), not on Route204North (20, 27) (tile). |
-  | 01.10 |  | start off its declared tile | starts on (20, 29) | stopped in 01.10 line_1: 01.10 sim_mismatch: line_1: ended at (20, 62) (Route 204 (20, 30)), not on Route204North (20, 27) (tile). |
-  Known failing until a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center): 3 of 3 variants fail 01.10:
-     starts on (20, 27): stopped in 01.10 line_1: 01.10 sim_mismatch: line_1: ended at (20, 60) (Route 204 (20, 28)), not on Route204North (20, 27) (tile).
-     starts on (20, 28): stopped in 01.10 line_1: 01.10 sim_mismatch: line_1: ended at (20, 61) (Route 204 (20, 29)), not on Route204North (20, 27) (tile).
-     starts on (20, 29): stopped in 01.10 line_1: 01.10 sim_mismatch: line_1: ended at (20, 62) (Route 204 (20, 30)), not on Route204North (20, 27) (tile).
+  Fault sweep 01.10 start off its declared tile: 3 variants, 1 fail.
+  | 01.10 |  | start off its declared tile | starts on (20, 29) | stopped in 01.10 line_1: 01.10 sim_failure: line 1: too many plans. |
+  Known failing until a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center): 1 of 3 variants fail 01.10:
+     starts on (20, 29): stopped in 01.10 line_1: 01.10 sim_failure: line 1: too many plans.
 PokemonBDSP::AutoStory - Fault sweep: 01.10, wild battles on every grass pass: passed
   Fault sweep 01.10 wild battles on every grass pass: 1 variants, 0 fail.
 PokemonBDSP::AutoStory - Fault sweep: 01.11, battle opening at step start: passed

@@ -1315,26 +1315,26 @@
   stubbed save_here
   looked for 0 fades, 1 banners, 0 doors, 0 tap steps
   | line 1: 1 legs planned
-  | [Route] line 1: plan from Route 204 (20, 26): south 1 (open) to Route 204 (20, 27)
-  | Leg 1/1: south 1 (open) to Route 204 (20, 27)
-  | [Route] Turning south.
-  | [Sim] line 1: south 1 (open): 1 taps south, 1 moved, limit at (20, 59).
-  | [Route] line 1: south 1 (open): ended at Route 204 (20, 27) (walked).
-  | [Leg] {"checkpoint":"01.10","chunks":1,"dir":"south","end":[["Route 204",20,27]],"end_kind":"open","event":"line_1","interrupts":[],"known":"dead_reckoned","leg":1,"moved":1,"ms":800,"planned_end":[["Route 204",20,27]],"tiles":1}
-  | [Route] line 1: arrived at Route 204 (20, 27).
+  | [Route] line 1: plan from Route 204 (20, 26), Route 204 (20, 27): south 4 (to wall) to Route 204 (20, 30)
+  | Leg 1/1: south 4 (to wall) to Route 204 (20, 30)
+  | [Sim] line 1: south 4 (to wall): held south to blocked at (20, 62).
+  | [Route] line 1: south 4 (to wall): facing unknown; the first moved chunk may be the turn, not counted.
+  | [Speed] run south: 3 tiles in 1650 ms to the wall.
+  | [Route] line 1: south 4 (to wall): ended at Route 204 (20, 30) (walked).
+  | [Leg] {"checkpoint":"01.10","chunks":4,"dir":"south","end":[["Route 204",20,30]],"end_kind":"wall","event":"line_1","interrupts":[],"known":"wall","leg":1,"ms":1650,"planned_end":[["Route 204",20,30]],"tiles":4}
+  | [Route] line 1: arrived at Route 204 (20, 30).
   | line 2: 2 legs planned
-  | [Route] line 2: plan from Route 204 (20, 27): west 10 (to wall) to Route 204 (10, 27); east 1 (open) to Route 204 (11, 27)
-  | Leg 1/2: west 10 (to wall) to Route 204 (10, 27)
-  | [Sim] line 2: west 10 (to wall): held west to blocked at (10, 59).
-  | [Route] line 2: west 10 (to wall): facing unknown; the first moved chunk may be the turn, not counted.
-  | [Speed] run west: 10 tiles in 2050 ms to the wall.
-  | [Route] line 2: west 10 (to wall): ended at Route 204 (10, 27) (walked).
-  | [Leg] {"checkpoint":"01.10","chunks":10,"dir":"west","end":[["Route 204",10,27]],"end_kind":"wall","event":"line_2","interrupts":[],"known":"wall","leg":1,"ms":2050,"planned_end":[["Route 204",10,27]],"tiles":10}
-  | Leg 2/2: east 1 (open) to Route 204 (11, 27)
-  | [Route] Turning east.
-  | [Sim] line 2: east 1 (open): 1 taps east, 1 moved, limit at (11, 59).
-  | [Route] line 2: east 1 (open): ended at Route 204 (11, 27) (walked).
-  | [Leg] {"checkpoint":"01.10","chunks":1,"dir":"east","end":[["Route 204",11,27]],"end_kind":"open","event":"line_2","interrupts":[],"known":"dead_reckoned","leg":2,"moved":1,"ms":800,"planned_end":[["Route 204",11,27]],"tiles":1}
+  | [Route] line 2: plan from Route 204 (20, 30): north 3 (open) to Route 204 (20, 27); west 9 (open) to Route 204 (11, 27)
+  | Leg 1/2: north 3 (open) to Route 204 (20, 27)
+  | [Route] Turning north.
+  | [Sim] line 2: north 3 (open): 3 taps north, 3 moved, limit at (20, 59).
+  | [Route] line 2: north 3 (open): ended at Route 204 (20, 27) (walked).
+  | [Leg] {"checkpoint":"01.10","chunks":3,"dir":"north","end":[["Route 204",20,27]],"end_kind":"open","event":"line_2","interrupts":[],"known":"dead_reckoned","leg":1,"moved":3,"ms":2400,"planned_end":[["Route 204",20,27]],"tiles":3}
+  | Leg 2/2: west 9 (open) to Route 204 (11, 27)
+  | [Route] Turning west.
+  | [Sim] line 2: west 9 (open): 9 taps west, 9 moved, limit at (11, 59).
+  | [Route] line 2: west 9 (open): ended at Route 204 (11, 27) (walked).
+  | [Leg] {"checkpoint":"01.10","chunks":9,"dir":"west","end":[["Route 204",11,27]],"end_kind":"open","event":"line_2","interrupts":[],"known":"dead_reckoned","leg":2,"moved":9,"ms":7200,"planned_end":[["Route 204",11,27]],"tiles":9}
   | [Route] line 2: arrived at Route 204 (11, 27).
   | line 3: 1 legs planned
   | [Route] line 3: plan from Route 204 (11, 27): north 5 (open) to Route 204 (11, 22)
