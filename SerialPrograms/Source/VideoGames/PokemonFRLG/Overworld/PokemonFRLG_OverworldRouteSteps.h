@@ -57,6 +57,17 @@ struct RouteStep{
     bool warps = false;
     //  WALK: on the water, where the player moves twice as fast.
     bool surfing = false;
+    //  WALK, surfing: the leg lands the player on its tile this many steps
+    //  in (a sand bar, an island, the shore), and the steps after it are
+    //  walked on foot, at walking pace, the same direction held. 0 if it
+    //  doesn't land. The landing tile is the first land tile on the line,
+    //  so a leg that lands finds the player again as a wall does: held on
+    //  to the bank (`to_wall`), where the water stops a player on foot, it
+    //  ends on its tile however long it is held. The walker checks that the
+    //  player is on foot after it (console B, 2026-11-13, 12.03: open legs
+    //  on Route 21's water stopped part-way and the player couldn't be
+    //  found again).
+    int lands_after = 0;
     //  WALK: on a map where the game doesn't let the player run (indoors,
     //  MapData::allow_running): B held there still walks.
     bool walk_only = false;

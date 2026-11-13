@@ -267,6 +267,9 @@ public:
                 continue;
             }
             if (outcome.end == StepEnd::DONE){
+                if (!check_landed(step)){
+                    return;
+                }
                 const std::optional<MapPosition> start = m_next >= m_unchecked ? m_at : std::nullopt;
                 remember_walked(step);
                 m_at = step.end;
@@ -295,6 +298,19 @@ public:
     }
 
 private:
+    //  After `step` ended as planned: false, the route failed, if it lands
+    //  the player and they are still on the water.
+    bool check_landed(const RouteStep& step){
+        if (step.lands_after <= 0 || !m_calls.on_foot || m_calls.on_foot()){
+            return true;
+        }
+        m_calls.fail(std::format(
+            "walk_overworld_route(): still surfing after {}: the player didn't land on {}.",
+            to_string(step), to_string(step.end)
+        ));
+        return false;
+    }
+
     static bool is_gate_step(const RouteStep& step){
         return step.action == RouteAction::OPEN_GATE || step.action == RouteAction::PRESS_SWITCH;
     }

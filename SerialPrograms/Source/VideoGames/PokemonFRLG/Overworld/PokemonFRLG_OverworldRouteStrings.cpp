@@ -24,6 +24,9 @@ std::string to_string(const RouteStep& step){
         if (step.spin_tiles){
             text += std::format(" (spins {})", *step.spin_tiles);
         }
+        if (step.lands_after > 0){
+            text += std::format(" (lands after {})", step.lands_after);
+        }
         break;
     case RouteAction::SURF:
         text = "surf " + std::string(direction_name(step.direction));

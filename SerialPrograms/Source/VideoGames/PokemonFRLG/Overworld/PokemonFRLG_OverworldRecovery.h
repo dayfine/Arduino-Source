@@ -88,6 +88,10 @@ struct RouteCalls{
     //  caller's interrupts fight the trainer), and returns LATE if anything
     //  showed, DONE if not. Not set: not watched.
     std::function<StepEnd(const RouteStep& step, int approach_tiles)> watch_for_trainer;
+    //  Whether the player stands on foot, off the water: checked after a
+    //  leg that lands (RouteStep::lands_after), which fails if they are
+    //  still surfing. Not set: not checked.
+    std::function<bool()> on_foot;
 };
 
 

@@ -37,6 +37,8 @@ void add_tests_AutoStorySlope(UnitTestDatabase& database);
 void add_tests_AutoStorySafari(UnitTestDatabase& database);
 //  Rows 14.03, 14.04 and 14.04b, Celadon Gym, on the overworld sim (PokemonFRLG_AutoStoryCeladonGym_Tests.cpp).
 void add_tests_AutoStoryCeladonGym(UnitTestDatabase& database);
+//  12.03's legs on Route 21's water, with the faults seen there.
+void add_tests_AutoStorySurf(UnitTestDatabase& database);
 
 } // namespace PokemonFRLG
 } // namespace NintendoSwitch
