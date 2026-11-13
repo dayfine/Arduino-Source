@@ -1590,6 +1590,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_StoryRun_Tests.h
     Source/Pokemon/AutoStory/Pokemon_StoryPreflight.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryPreflight.h
+    Source/Pokemon/AutoStory/Pokemon_StoryRngHandoff.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryRngHandoff.h
+    Source/Pokemon/AutoStory/Pokemon_StoryRngHandoff_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryRngHandoff_Tests.h
     Source/Pokemon/AutoStory/Pokemon_AutoStoryStats.cpp
     Source/Pokemon/AutoStory/Pokemon_AutoStoryStats.h
     Source/Pokemon/AutoStory/Pokemon_AutoStoryStats_Tests.cpp
@@ -1663,6 +1667,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Types/Pokemon_StoryActionArg_Tests.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.cpp
     Source/Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryBreakpoints.cpp
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryBreakpoints.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.cpp
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h
