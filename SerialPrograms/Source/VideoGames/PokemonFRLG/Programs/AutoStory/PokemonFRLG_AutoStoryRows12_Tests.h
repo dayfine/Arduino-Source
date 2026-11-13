@@ -17,7 +17,7 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-//  Rows 12.01 and 12.02, Fuchsia Gym, on the overworld sim (PokemonFRLG_AutoStoryFuchsiaGym_Tests.cpp).
+//  Rows 12.01, 12.02 and 12.02b, Fuchsia Gym, on the overworld sim (PokemonFRLG_AutoStoryFuchsiaGym_Tests.cpp).
 void add_tests_AutoStoryFuchsiaGym(UnitTestDatabase& database);
 
 
