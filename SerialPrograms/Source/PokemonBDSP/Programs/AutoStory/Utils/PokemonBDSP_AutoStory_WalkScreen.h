@@ -36,6 +36,7 @@ constexpr double WALK_TAP_BLOCKED_CHANGE = 16.0;
 //  More than walking changes in 400ms: a new scene, such as a battle opening.
 constexpr double WALK_SCENE_CHANGE = 120.0;
 
+namespace detail{
 //  What a change of the whole screen walking cannot make turns out to be.
 enum class WholeScreenChange{
     BATTLE,         //  the battle's menu or text box showed
@@ -44,12 +45,22 @@ enum class WholeScreenChange{
                     //  this (lab-B 2026-11-12 21:58, a Geodude in 01.03's mine); wait
                     //  for the battle detector, never end the walk on it
 };
-inline WholeScreenChange classify_whole_screen_change(bool battle_showed, bool fade_or_banner_read){
-    if (battle_showed){
+//  What the watchers read after the change.
+struct WholeScreenEvidence{
+    bool battle_showed = false;
+    bool fade_or_banner_read = false;
+};
+//  Classifies a whole-screen change from what was read after it.
+inline WholeScreenChange classify_whole_screen_change(const WholeScreenEvidence& evidence){
+    if (evidence.battle_showed){
         return WholeScreenChange::BATTLE;
     }
-    return fade_or_banner_read ? WholeScreenChange::WARP : WholeScreenChange::UNCLASSIFIED;
+    return evidence.fade_or_banner_read ? WholeScreenChange::WARP : WholeScreenChange::UNCLASSIFIED;
 }
+} // namespace detail
+using detail::WholeScreenChange;
+using detail::WholeScreenEvidence;
+using detail::classify_whole_screen_change;
 
 //  Whether two frames show different scenes: a change walking cannot make
 //  (WALK_SCENE_CHANGE). UNKNOWN without both frames.

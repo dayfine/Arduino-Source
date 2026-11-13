@@ -370,7 +370,7 @@ UnitTestResult test_whole_screen_change(Logger&){
         {"a battle that opens from a fade", true, true, WholeScreenChange::BATTLE},
     };
     for (const Case& c : cases){
-        if (classify_whole_screen_change(c.battle, c.evidence) != c.want){
+        if (classify_whole_screen_change({.battle_showed = c.battle, .fade_or_banner_read = c.evidence}) != c.want){
             return std::string(c.name) + ": wrong class.";
         }
     }

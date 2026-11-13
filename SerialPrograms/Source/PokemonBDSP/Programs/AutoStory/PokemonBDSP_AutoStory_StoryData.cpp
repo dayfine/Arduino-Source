@@ -96,6 +96,17 @@ Pokemon::StoryArgSpec leave_arg(){
         .why = "the room's way on is a door this way"};
 }
 
+//  The steps that end on a door or a banner: to_banner and door (the way to
+//  step), or_legs (a step, or legs if it did not move).
+void add_door_steps(
+    std::vector<Pokemon::StoryActionSpec>& actions,
+    const Pokemon::StoryArgSpec& direction_arg, const Pokemon::StoryArgSpec& legs_arg
+){
+    actions.push_back({.kind = Pokemon::StoryStepKind::STEP, .name = "to_banner", .args = {direction_arg}, .console_only = false, .certainty = PINS});
+    actions.push_back({.kind = Pokemon::StoryStepKind::STEP, .name = "door", .args = {direction_arg}});
+    actions.push_back({.kind = Pokemon::StoryStepKind::STEP, .name = "or_legs", .args = {direction_arg, legs_arg}});
+}
+
 std::vector<Pokemon::StoryActionSpec> make_bdsp_actions(){
     std::vector<Pokemon::StoryActionSpec> actions(
         Pokemon::builtin_story_actions().begin(), Pokemon::builtin_story_actions().end()
@@ -136,9 +147,7 @@ std::vector<Pokemon::StoryActionSpec> make_bdsp_actions(){
     }
     actions.push_back({.kind = Pokemon::StoryStepKind::ROUTE, .name = "into_scene", .args = {route_target, fight_wild, legs_arg}});
     add_legs_actions(actions, legs_arg, fight_wild);
-    actions.push_back({.kind = Pokemon::StoryStepKind::STEP, .name = "to_banner", .args = {direction_arg}, .console_only = false, .certainty = PINS});
-    actions.push_back({.kind = Pokemon::StoryStepKind::STEP, .name = "door", .args = {direction_arg}});
-    actions.push_back({.kind = Pokemon::StoryStepKind::STEP, .name = "or_legs", .args = {direction_arg, legs_arg}});
+    add_door_steps(actions, direction_arg, legs_arg);
     add_wanderer_talks(actions);
     actions.push_back({.kind = Pokemon::StoryStepKind::MASH, .name = "a", .args = {}});
     actions.push_back({.kind = Pokemon::StoryStepKind::BATTLE, .name = "starter", .args = {may_lose}});
