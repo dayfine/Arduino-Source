@@ -75,9 +75,14 @@ const StoryCheckpoint& checkpoint(std::string_view id){
 }
 
 //  Runs the walking steps of `row` on the sim from its start, up to (not
-//  including) the step named `until`; the steps that are not walks (the
-//  Mart, the level check, the battle) are the console's.
-std::string walk_row_until(OverworldSim& sim, StoryPose& at, const StoryCheckpoint& row, std::string_view until){
+//  including) the step named `until`, or all of them if `until` is empty;
+//  the steps that are not walks (the Mart, the level check, a scene, the
+//  battle) are the console's. `marked` is where the sim stood after the
+//  step named `mark`.
+std::string walk_row(
+    OverworldSim& sim, StoryPose& at, const StoryCheckpoint& row,
+    std::string_view until, std::string_view mark = {}, MapPosition* marked = nullptr
+){
     for (const StoryStep& step : row.steps){
         if (step.name == until){
             return "";
@@ -88,8 +93,11 @@ std::string walk_row_until(OverworldSim& sim, StoryPose& at, const StoryCheckpoi
         if (const std::string failure = row_step_on_sim(sim, at, step, row.id); !failure.empty()){
             return failure;
         }
+        if (marked != nullptr && step.name == mark){
+            *marked = sim.state().position;
+        }
     }
-    return std::format("{}: no step {}.", row.id, until);
+    return until.empty() ? "" : std::format("{}: no step {}.", row.id, until);
 }
 
 //  19.01: the street to Route 22 and along it to the rival's trigger column,
@@ -99,7 +107,7 @@ UnitTestResult test_route22_rival_trigger(){
     const StoryCheckpoint& row = checkpoint("19.01");
     StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
     OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
-    if (const std::string failure = walk_row_until(sim, at, row, "rival_route22"); !failure.empty()){
+    if (const std::string failure = walk_row(sim, at, row, "rival_route22"); !failure.empty()){
         return failure;
     }
     const MapPosition trigger{"Route22", {33, 5}};
@@ -112,10 +120,39 @@ UnitTestResult test_route22_rival_trigger(){
     return true;
 }
 
+//  19.02: Route 22's ledge and the way round to the north gate; the step
+//  onto the guard's trigger tile (7, 2) must land on it (the scene after it
+//  is the console's), and the door beyond leads to Route 23's south end.
+UnitTestResult test_gate_guard_trigger_and_route23(){
+    const StoryCheckpoint& row = checkpoint("19.02");
+    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
+    MapPosition at_trigger;
+    if (const std::string failure = walk_row(sim, at, row, "", "gate_guard_trigger", &at_trigger); !failure.empty()){
+        return failure;
+    }
+    const MapPosition trigger{"Route22_NorthEntrance", {7, 2}};
+    if (!(at_trigger == trigger)){
+        return std::format("19.02: the guard's step ended on {}, not the trigger {}.", to_string(at_trigger), to_string(trigger));
+    }
+    const MapPosition route23{"Route23", {8, 153}};
+    if (!(sim.state().position == route23)){
+        return std::format("19.02: ended on {}, not Route 23's south end {}.", to_string(sim.state().position), to_string(route23));
+    }
+    if (!sim.state().trainers_beaten.empty() || !sim.state().violations.empty()){
+        return "19.02: met a trainer or broke a rule on the way.";
+    }
+    return true;
+}
+
 const AutoStoryVictoryRoadCase AUTO_STORY_VICTORY_ROAD_CASES[] = {
     {
         .input = {.name = "19.01 Viridian to the Route 22 rival's trigger", .body = test_route22_rival_trigger},
         .expectation = {.description = "Route 22 (33, 5), no trainer met"},
+    },
+    {
+        .input = {.name = "19.02 Route 22's gate guard trigger, onto Route 23", .body = test_gate_guard_trigger_and_route23},
+        .expectation = {.description = "the trigger (7, 2) stepped onto, Route 23 (8, 153), no trainer met"},
     },
 };
 

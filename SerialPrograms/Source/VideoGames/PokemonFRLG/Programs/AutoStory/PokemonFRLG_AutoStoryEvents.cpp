@@ -363,6 +363,7 @@ std::string save_card_place(const std::string& map){
         {"CeruleanCity", "cerulean-city"},
         {"Route24", "route-24"},
         {"Route25", "route-25"},
+        {"Route22", "route-22"},
         {"VermilionCity", "vermilion-city"},
         {"Route10", "route-10"},
         {"LavenderTown", "lavender-town"},

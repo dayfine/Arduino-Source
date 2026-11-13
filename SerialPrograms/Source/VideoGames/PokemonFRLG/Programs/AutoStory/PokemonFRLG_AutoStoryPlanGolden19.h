@@ -35,6 +35,22 @@ inline constexpr std::string_view FRLG_PLAN_GOLDEN_19[] = {
     "19.01   walk west 6 -> Route22 (36, 14)",
     "19.01   walk north 9 -> Route22 (36, 5) [wild]",
     "19.01   walk west 2 -> Route22 (34, 5)",
+    "19.02 above_route22_ledge from Route22 (33, 5) facing west to Route22 (18, 7) facing south",
+    "19.02   walk west 15 -> Route22 (18, 5)",
+    "19.02   walk south 2 -> Route22 (18, 7)",
+    "19.02 below_gate_guard_trigger from Route22 (18, 9) facing south to Route22_NorthEntrance (7, 3) facing north",
+    "19.02   walk east 3 (to wall) -> Route22 (21, 9) [wild]",
+    "19.02   surf east -> Route22 (22, 9) [wild]",
+    "19.02   walk south 2 -> Route22 (22, 11) [surfing] [wild]",
+    "19.02   walk south 1 -> Route22 (22, 12) [surfing] [wild]",
+    "19.02   walk south 2 -> Route22 (22, 14)",
+    "19.02   walk west 18 (to wall) -> Route22 (4, 14)",
+    "19.02   walk north 4 -> Route22 (4, 10)",
+    "19.02   walk east 6 -> Route22 (10, 10)",
+    "19.02   walk north 4 (to wall) -> Route22 (10, 6)",
+    "19.02   walk west 2 -> Route22 (8, 6)",
+    "19.02   walk north 1 (warp) -> Route22_NorthEntrance (7, 10)",
+    "19.02   walk north 7 -> Route22_NorthEntrance (7, 3) [walk only]",
 };
 
 } // namespace PokemonFRLG
