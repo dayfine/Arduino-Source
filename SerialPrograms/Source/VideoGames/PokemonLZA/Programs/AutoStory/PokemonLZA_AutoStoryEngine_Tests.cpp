@@ -643,6 +643,49 @@ UnitTestResult test_reload_lands_on_older_save(CancellableScope& scope){
 }
 
 
+//  A walk_to_prompt step alone in a checkpoint.
+StoryCheckpoint prompt_walk_row(){
+    StoryCheckpoint row;
+    row.id = "02.02";
+    row.steps.push_back(StoryStep{
+        .kind = Pokemon::StoryStepKind::GAME, .name = "to_battle_zone_gate", .why = "test", .action = "walk_to_prompt",
+        .args = {{"timeout_ms", int64_t(1000)}},
+    });
+    return row;
+}
+
+//  walk_to_prompt: no walk when the A prompt shows already; slices of walk
+//  until it shows; a failure after its timeout without one.
+UnitTestResult test_walk_to_prompt(CancellableScope& scope){
+    const auto prompt = [](Milliseconds at){
+        return look_at(at, {EngineEvent::INTERACT_PROMPT});
+    };
+    const std::string slice = "hold north 250ms walk";
+    {
+        FakeBackend backend = fake_plza({prompt(0ms)}, scope);
+        if (run_plza(backend, prompt_walk_row()).verdict != Pokemon::CheckpointVerdict::PASSED || !backend.inputs().empty()){
+            return std::format("At the prompt: expected no walk, got [{}].", joined(backend.inputs()));
+        }
+    }
+    {
+        FakeBackend backend = fake_plza({look_at(0ms), look_at(250ms), prompt(500ms)}, scope);
+        if (run_plza(backend, prompt_walk_row()).verdict != Pokemon::CheckpointVerdict::PASSED){
+            return "Expected a pass once the prompt shows.";
+        }
+        UnitTestResult inputs = expect_inputs(backend, {slice, slice});
+        if (inputs.result != UnitTestResult::PASSED){
+            return inputs;
+        }
+    }
+    FakeBackend backend = fake_plza({look_at(0ms)}, scope);
+    const Pokemon::StoryEngineReport report = run_plza(backend, prompt_walk_row());
+    if (report.verdict == Pokemon::CheckpointVerdict::PASSED || to_string(report.run.failure).find("no A prompt") == std::string::npos){
+        return std::format("Expected no_prompt after the timeout: {}", to_string(report.run.failure));
+    }
+    return expect_inputs(backend, std::vector<std::string>(4, slice));
+}
+
+
 struct EngineTestInput{
     std::string name;
     std::function<UnitTestResult(CancellableScope&)> body;
@@ -698,6 +741,7 @@ const EngineTestCase ENGINE_TEST_CASES[] = {
     {.input = {"reload_when_chained: reload between the rows, as its own event", test_reload_when_chained}, .expectation = {}},
     {.input = {"reload_when_chained: no reload from the row's save or for other rows", test_no_reload_unless_chained}, .expectation = {}},
     {.input = {"reload_when_chained: a reload onto the platform fails", test_reload_lands_on_older_save}, .expectation = {}},
+    {.input = {"walk_to_prompt: walks until the A prompt, none when it shows", test_walk_to_prompt}, .expectation = {}},
 };
 
 void add_tests_AutoStoryEngine(UnitTestDatabase& database){
