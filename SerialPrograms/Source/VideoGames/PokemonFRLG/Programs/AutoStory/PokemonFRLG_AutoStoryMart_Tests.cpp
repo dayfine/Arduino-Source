@@ -19,6 +19,8 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "PokemonFRLG_AutoStoryMart.h"
+#include "PokemonFRLG_AutoStoryMartPlan.h"
+#include "PokemonFRLG_AutoStoryTable.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -455,6 +457,23 @@ UnitTestResult test_count_supplies(){
     return true;
 }
 
+//  ConsoleMartActions::read_money() reads nothing yet, so a Mart step with no
+//  "floor" buys nothing (MartEnd::NO_MONEY_READ): every one carries a floor.
+UnitTestResult test_mart_steps_have_floor(){
+    std::string missing;
+    for (const StoryCheckpoint& data : story_checkpoints()){
+        for (const StoryStep& step : data.steps){
+            if (step.kind == Pokemon::StoryStepKind::GAME && step.action == MART_ACTION && !step.args.contains("floor")){
+                missing += " " + data.id + "/" + step.name;
+            }
+        }
+    }
+    if (!missing.empty()){
+        return "Mart steps with no floor:" + missing;
+    }
+    return true;
+}
+
 } // namespace
 
 
@@ -477,6 +496,10 @@ const AutoStoryMartCase AUTO_STORY_MART_CASES[] = {
     },
     {
         .input = {"bought supplies counted", test_count_supplies},
+        .expectation = {},
+    },
+    {
+        .input = {"every Mart step has a floor", test_mart_steps_have_floor},
         .expectation = {},
     },
 };
