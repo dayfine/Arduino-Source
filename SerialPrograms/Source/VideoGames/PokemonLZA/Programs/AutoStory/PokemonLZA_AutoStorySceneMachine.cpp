@@ -47,6 +47,8 @@ constexpr Milliseconds BANNER_GONE_WAIT = 10000ms;
 //  (console B, 2026-11-10), where "MAIN MISSION 01" went in ~3 s.
 constexpr size_t BANNER_PRESSES = 3;
 constexpr Milliseconds BANNER_PRESS_EVERY = 1000ms;
+//  The autosave badge, then nothing busy this long, is control.
+constexpr Milliseconds AUTOSAVE_QUIET = 5000ms;
 
 //  Text to press on: a box (or choice), or the advance chevron without one.
 bool text_shows(const ScreenObservation& look){
@@ -79,7 +81,8 @@ constexpr SceneScreen ALL_SCREENS[] = {
     SceneScreen::CHOICE, SceneScreen::DIALOG, SceneScreen::MISSION_COMPLETE,
     SceneScreen::MISSION_BANNER, SceneScreen::BANNER_SHOWING,
     SceneScreen::CAN_MOVE, SceneScreen::PARTY_BAR,
-    SceneScreen::CONTROLS_HINT, SceneScreen::HINT_SHOWING, SceneScreen::QUIET_END, SceneScreen::BLIND_PRESS,
+    SceneScreen::CONTROLS_HINT, SceneScreen::HINT_SHOWING, SceneScreen::QUIET_END, SceneScreen::AUTOSAVE_QUIET,
+    SceneScreen::BLIND_PRESS,
     SceneScreen::SCENE_MOVING, SceneScreen::SCENE_STILL,
 };
 
@@ -116,6 +119,8 @@ std::string_view scene_screen_name(SceneScreen screen){
         return "hint_showing";
     case SceneScreen::QUIET_END:
         return "quiet_end";
+    case SceneScreen::AUTOSAVE_QUIET:
+        return "autosave_quiet";
     case SceneScreen::BLIND_PRESS:
         return "blind_press";
     case SceneScreen::SCENE_MOVING:
@@ -129,7 +134,8 @@ std::string_view scene_screen_name(SceneScreen screen){
 bool scene_screen_terminal(SceneScreen screen){
     return screen == SceneScreen::GOAL_CHOICE || screen == SceneScreen::GOAL_BATTLE ||
         screen == SceneScreen::MISSION_BANNER || screen == SceneScreen::CAN_MOVE ||
-        screen == SceneScreen::CONTROLS_HINT || screen == SceneScreen::QUIET_END;
+        screen == SceneScreen::CONTROLS_HINT || screen == SceneScreen::QUIET_END ||
+        screen == SceneScreen::AUTOSAVE_QUIET;
 }
 
 SceneMashAction scene_screen_action(SceneScreen screen, const SceneMachineConfig& config){
@@ -167,6 +173,13 @@ std::optional<WallClock> SceneTimeline::quiet_end_due() const{
         return std::nullopt;
     }
     return std::max(m_quiet_from, m_last_busy + *m_config.quiet);
+}
+
+std::optional<WallClock> SceneTimeline::autosave_quiet_due() const{
+    if (m_config.goal != SceneMashGoal::OVERWORLD || !m_last_autosave){
+        return std::nullopt;
+    }
+    return std::max(m_last_busy, *m_last_autosave) + AUTOSAVE_QUIET;
 }
 
 bool SceneTimeline::blind_press_due(WallClock now) const{
@@ -225,6 +238,10 @@ SceneScreen SceneTimeline::classify_open(const ScreenObservation& look) const{
     if (due && look.when >= *due && !busy(look)){
         return SceneScreen::QUIET_END;
     }
+    const std::optional<WallClock> autosave_due = autosave_quiet_due();
+    if (autosave_due && look.when >= *autosave_due && !busy(look)){
+        return SceneScreen::AUTOSAVE_QUIET;
+    }
     //  Not at an interact prompt: A would talk to whoever it names.
     if (blind_press_due(look.when) && !look.events.has(EngineEvent::INTERACT_PROMPT)){
         return SceneScreen::BLIND_PRESS;
@@ -256,7 +273,11 @@ void SceneTimeline::record(const ScreenObservation& look){
     track_since(look.events.has(EngineEvent::CAN_MOVE) && !box, look.when, m_party_bar_since);
     track_since(control_shows(look) && !box, look.when, m_hint_since);
     m_banner_looks = banner_shows(look) && !box ? m_banner_looks + 1 : 0;
-    if (busy(look) || m_party_bar_since || m_hint_since || m_banner_looks > 0){
+    const bool autosave = look.readings.contains(AUTOSAVE_READING);
+    if (autosave){
+        m_last_autosave = look.when;
+    }
+    if (busy(look) || autosave || m_party_bar_since || m_hint_since || m_banner_looks > 0){
         m_last_cue = look.when;
     }
 }
@@ -291,6 +312,9 @@ std::string describe_look(const ScreenObservation& look){
     }
     if (look.readings.contains(MISSION_COMPLETE_READING)){
         text += text.empty() ? "mission complete" : ", mission complete";
+    }
+    if (look.readings.contains(AUTOSAVE_READING)){
+        text += text.empty() ? "autosave" : ", autosave";
     }
     return text.empty() ? "nothing" : text;
 }
@@ -347,8 +371,9 @@ private:
         case SceneScreen::SCENE_STILL:
             wait_until(STILL_WAIT, [this](const ScreenObservation& look){
                 const std::optional<WallClock> due = m_timeline.quiet_end_due();
-                return (due && look.when >= *due) || m_timeline.blind_press_due(look.when) ||
-                    !look.events.has(EngineEvent::STILL);
+                const std::optional<WallClock> autosave_due = m_timeline.autosave_quiet_due();
+                return (due && look.when >= *due) || (autosave_due && look.when >= *autosave_due) ||
+                    m_timeline.blind_press_due(look.when) || !look.events.has(EngineEvent::STILL);
             });
             return;
         case SceneScreen::PARTY_BAR:

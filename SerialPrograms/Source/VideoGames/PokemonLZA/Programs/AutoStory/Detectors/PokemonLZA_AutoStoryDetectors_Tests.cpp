@@ -149,6 +149,34 @@ UnitTestResult test_synthetic_arrow(Logger&){
     return true;
 }
 
+//  The autosave badge's pencil, 48 px right of the Chinese badge's (where
+//  the shorter Japanese text puts it), over `background`: a white stroke 4 px
+//  wide in a `glow` band 12 px wide.
+ImageRGB32 autosave_badge_frame(uint32_t background, uint32_t glow){
+    ImageRGB32 image(WIDTH, HEIGHT);
+    image.fill(background);
+    fill_box(1655, 73, 1667, 104, glow, image);
+    fill_box(1659, 73, 1663, 104, 0xffffffff, image);
+    return image;
+}
+
+//  The badge's glow is bright over a dark sky and dim over a lamp-lit wall
+//  (about 28, 70, 85: 02.04's check-in, console B 2026-11-13, frame 0075,
+//  which the badge detector missed).
+UnitTestResult test_synthetic_autosave(Logger&){
+    AutosaveDetector autosave;
+    if (!autosave.detect(autosave_badge_frame(0xff101418, 0xff28c8e6))){
+        return "Expected the badge with a bright glow to be the autosave badge.";
+    }
+    if (!autosave.detect(autosave_badge_frame(0xff252722, 0xff1c4655))){
+        return "Expected the badge with a dim glow over a dark wall to be the autosave badge.";
+    }
+    if (autosave.detect(autosave_badge_frame(0xff252722, 0xff252722))){
+        return "Expected a white stroke with no glow not to be the autosave badge.";
+    }
+    return true;
+}
+
 UnitTestResult test_synthetic_badges(Logger&){
     SkipPromptDetector detector;
     if (!detector.detect(skip_badge_frame())){
@@ -517,6 +545,7 @@ private:
 const OpeningTestCase OPENING_TEST_CASES[] = {
     {.input = {"platform: synthetic frames", test_synthetic_platform}, .expectation = {}},
     {.input = {"skip prompt, autosave and controls hint: synthetic frames", test_synthetic_badges}, .expectation = {}},
+    {.input = {"autosave badge, bright or dim glow: synthetic frames", test_synthetic_autosave}, .expectation = {}},
     {.input = {"advance arrow: synthetic frames", test_synthetic_arrow}, .expectation = {}},
     {.input = {"mission banner: synthetic frames", test_synthetic_mission_banner}, .expectation = {}},
     {.input = {"mission complete card: synthetic frames", test_synthetic_mission_complete}, .expectation = {}},
