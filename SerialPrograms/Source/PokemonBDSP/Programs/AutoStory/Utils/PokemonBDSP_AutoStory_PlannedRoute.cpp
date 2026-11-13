@@ -212,6 +212,7 @@ public:
 private:
     std::optional<std::vector<PlannedLeg>> plan_legs(bool first) const;
     bool find_again();
+    void fail_if_unknown(const WalkResult& walk, const std::string& label, size_t farthest, Milliseconds per_tile) const;
     LegNext walk_leg(const PlannedLeg& planned, size_t number, size_t count);
     std::vector<TilePos> arrive() const;
 
@@ -353,6 +354,7 @@ bool RouteWalker::find_again(){
         if (walk.stop != WalkStop::BLOCKED && walk.stop != WalkStop::LIMIT){
             fail(m_io, label + ": " + walk_stop_name(walk.stop) + " instead of a wall.");
         }
+        fail_if_unknown(walk, label, farthest, route_ms_per_tile(direction, m_plan.speed));
         const size_t walked = tiles_moved(walk, route_ms_per_tile(direction, m_plan.speed));
         std::vector<TilePos> found;
         for (const WallHit& hit : hits){
@@ -371,6 +373,22 @@ bool RouteWalker::find_again(){
         return true;
     }
     return false;
+}
+
+//  A walk that went through a warp unseen (the banner of another map shows
+//  on it) or kept moving well past the farthest wall the map has did not stop
+//  where the plan has us: its tiles are no longer known, and nothing walks on
+//  from them.
+void RouteWalker::fail_if_unknown(const WalkResult& walk, const std::string& label, size_t farthest, Milliseconds per_tile) const{
+    const std::string map = map_of(m_maps, m_from);
+    if (location_banner_is_another(walk.warp.banner, map)){
+        fail(m_io, label + ": the location banner \"" + walk.warp.banner + "\" shows on a walk of " + map +
+            ": through a warp onto another map, position unknown.");
+    }
+    if (ran_past_the_wall(walk, farthest, per_tile)){
+        fail(m_io, label + ": still moving after " + std::to_string(tiles_moved(walk, per_tile)) + " tiles, past the wall " +
+            std::to_string(farthest) + " tiles away at most: position unknown.");
+    }
 }
 
 LegNext RouteWalker::walk_leg(const PlannedLeg& planned, size_t number, size_t count){
@@ -467,8 +485,11 @@ LegNext RouteWalker::wall_leg(LegWalk& walk){
     //  does not know is in the way. Work out where we stopped from the time
     //  walked, put it on our map and plan again from there.
     size_t nearest = SIZE_MAX;
+    size_t farthest = 0;
     for (const TilePos& pos : m_from){
-        nearest = std::min(nearest, slide_to_wall(m_grid, pos, leg.direction).tiles);
+        const size_t tiles = slide_to_wall(m_grid, pos, leg.direction).tiles;
+        nearest = std::min(nearest, tiles);
+        farthest = std::max(farthest, tiles);
     }
     size_t walked_tiles = tiles_moved(walk.result, route_ms_per_tile(leg.direction, m_plan.speed));
     //  Every leg that reaches its wall measures the pace: the tiles are known.
@@ -501,6 +522,8 @@ LegNext RouteWalker::wall_leg(LegWalk& walk){
     //  into the lab). Out of tall grass a stop reads, so walk on: a player
     //  still moving is not where the plan has him.
     if (walk.result.stop == WalkStop::LIMIT && route_wall_readable(m_grid, walk.planned.after)){
+        //  Still moving past every wall the map has: not a slow start.
+        fail_if_unknown(walk.result, walk.label, farthest, route_ms_per_tile(leg.direction, m_plan.speed));
         //  A short leg a tile short stopped against someone in the way.
         if (nearest <= EXACT_WALL_LEG_TILES && walked_tiles < nearest){
             return stopped_short_of_wall(walk, walked_tiles);
@@ -721,6 +744,10 @@ LegNext RouteWalker::check_at_wall(LegWalk& walk, size_t walked_tiles, size_t ex
         //  stopped the check (r54: at the wall after Route 202's second
         //  trainer, and failed on the "dialog").
         check = walk.result;
+    }
+    //  A probe that kept moving, or showed another map's banner, is not at a wall.
+    if (walk.planned.leg.ends_at_wall){
+        fail_if_unknown(check, walk.label + ": at the wall?", 0, route_ms_per_tile(walk.planned.leg.direction, m_plan.speed));
     }
     if (check.stop != WalkStop::BLOCKED &&
         !(check.stop == WalkStop::LIMIT && m_io.holding_against_wall(walk.planned.leg.direction, walk.label + ": at the wall?"))

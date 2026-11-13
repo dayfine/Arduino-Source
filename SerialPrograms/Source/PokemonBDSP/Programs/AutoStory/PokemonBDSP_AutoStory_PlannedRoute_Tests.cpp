@@ -757,6 +757,125 @@ UnitTestResult test_wall_leg_one_chunk_is_a_turn_when_facing_is_unknown(Logger&)
     return never_moved ? UnitTestResult(true) : UnitTestResult(std::format("the turn counted as a moved chunk (step {}, {} notes): {}{}", script.next, script.notes.size(), walk.failure, joined_notes(script)));
 }
 
+//  lab-B 2026-11-12 20:22, 01.02 "east 4 (to wall)": the player had left the
+//  Gate unseen and ran on in Oreburgh City; the leg hit its time limit still
+//  moving (6 moved chunks), and the "at the wall?" probe walked on 4 chunks
+//  more. A leg that is still moving past the farthest wall the map has is
+//  not where the plan has us: the walk stops, and nothing walks further.
+UnitTestResult test_wall_leg_still_moving_at_limit_is_unknown(Logger&){
+    Script script{.steps = {walk_step("wall: T: east 4 (to wall)", WalkStop::LIMIT, 2050ms, 6)}};
+    ScriptedWalk walk;
+    try{
+        walk = walk_script(make_world({"#.....#"}), {1, 0}, {5, 0}, {}, script);
+    }catch (const ScriptMismatch& e){
+        return e.message;
+    }
+    if (walk.failure.find("position unknown") == std::string::npos){
+        return "did not stop with the position unknown: \"" + walk.failure + "\"";
+    }
+    const std::string left = script_left(script);
+    return left.empty() ? UnitTestResult(true) : UnitTestResult(left);
+}
+
+//  The probe after a leg that ran out of time: one that is still moving
+//  (4 moved chunks in 2000 ms) is not at a wall, so nothing asks the
+//  holding check and nothing walks on.
+UnitTestResult test_wall_check_still_moving_is_unknown(Logger&){
+    Script script{.steps = {
+        walk_step("wall: T: east 4 (to wall)", WalkStop::LIMIT, 2050ms, 0),
+        walk_step("wall: T: east 4 (to wall): at the wall?", WalkStop::LIMIT, 2000ms, 4),
+    }};
+    ScriptedWalk walk;
+    try{
+        walk = walk_script(make_world({"#.....#"}), {1, 0}, {5, 0}, {}, script);
+    }catch (const ScriptMismatch& e){
+        return e.message;
+    }
+    if (walk.failure.find("position unknown") == std::string::npos){
+        return "did not stop with the position unknown: \"" + walk.failure + "\"";
+    }
+    const std::string left = script_left(script);
+    return left.empty() ? UnitTestResult(true) : UnitTestResult(left);
+}
+
+//  A walk the banner of another map shows on, whatever its stop, went
+//  through a warp unseen.
+ScriptStep through_a_warp_step(std::string call, WalkStop stop, Milliseconds walked, size_t moved){
+    ScriptStep step = walk_step(std::move(call), stop, walked, moved);
+    step.walk.warp.banner = "Oreburgh City";
+    return step;
+}
+
+UnitTestResult test_wall_check_on_another_map_is_unknown(Logger&){
+    Script script{.steps = {
+        walk_step("wall: T: east 4 (to wall)", WalkStop::LIMIT, 2050ms, 0),
+        through_a_warp_step("wall: T: east 4 (to wall): at the wall?", WalkStop::BLOCKED, 1200ms, 0),
+    }};
+    ScriptedWalk walk;
+    try{
+        walk = walk_script(make_world({"#.....#"}), {1, 0}, {5, 0}, {}, script);
+    }catch (const ScriptMismatch& e){
+        return e.message;
+    }
+    if (walk.failure.find("another map") == std::string::npos){
+        return "did not stop on the other map's banner: \"" + walk.failure + "\"";
+    }
+    const std::string left = script_left(script);
+    return left.empty() ? UnitTestResult(true) : UnitTestResult(left);
+}
+
+//  lab-B 2026-11-12 20:20, 01.02 past_curtis: no plan from the tiles left
+//  after a battle, so the walk held east "to find us again", ran through the
+//  Gate's east door unseen (5 moved chunks, 1850 ms against a wall 2 tiles
+//  away) and took itself for found at the wall. It is not found.
+UnitTestResult test_find_again_still_moving_is_unknown(Logger&){
+    Script script{.steps = {walk_step("wall: T: east 2 (to wall) to find us again", WalkStop::LIMIT, 1850ms, 5)}};
+    ScriptedWalk walk;
+    try{
+        walk = walk_script(make_world({"#...#...#"}), {1, 0}, {7, 0}, {}, script);
+    }catch (const ScriptMismatch& e){
+        return e.message;
+    }
+    if (walk.failure.find("position unknown") == std::string::npos){
+        return "did not stop with the position unknown: \"" + walk.failure + "\"";
+    }
+    const std::string left = script_left(script);
+    return left.empty() ? UnitTestResult(true) : UnitTestResult(left);
+}
+
+UnitTestResult test_find_again_on_another_map_is_unknown(Logger&){
+    Script script{.steps = {through_a_warp_step("wall: T: east 2 (to wall) to find us again", WalkStop::BLOCKED, 1200ms, 1)}};
+    ScriptedWalk walk;
+    try{
+        walk = walk_script(make_world({"#...#...#"}), {1, 0}, {7, 0}, {}, script);
+    }catch (const ScriptMismatch& e){
+        return e.message;
+    }
+    if (walk.failure.find("another map") == std::string::npos){
+        return "did not stop on the other map's banner: \"" + walk.failure + "\"";
+    }
+    const std::string left = script_left(script);
+    return left.empty() ? UnitTestResult(true) : UnitTestResult(left);
+}
+
+//  The same hold when the walk does see the fade: a recovery hold toward a
+//  door ends in the next map, and the route does not go on as if it were
+//  still in the old one.
+UnitTestResult test_find_again_through_a_door_is_unknown(Logger&){
+    Script script{.steps = {walk_step("wall: T: east 2 (to wall) to find us again", WalkStop::TRANSITION, 1200ms, 3)}};
+    ScriptedWalk walk;
+    try{
+        walk = walk_script(make_world({"#...#...#"}), {1, 0}, {7, 0}, {}, script);
+    }catch (const ScriptMismatch& e){
+        return e.message;
+    }
+    if (walk.failure.find("transition") == std::string::npos){
+        return "did not stop on the transition: \"" + walk.failure + "\"";
+    }
+    const std::string left = script_left(script);
+    return left.empty() ? UnitTestResult(true) : UnitTestResult(left);
+}
+
 struct PlannedRouteInput{
     std::string name;
     std::function<UnitTestResult(Logger&)> body;
@@ -842,6 +961,30 @@ const PlannedRouteCase PLANNED_ROUTE_CASES[] = {
     },
     {
         .input = {"a wall leg that stood at its wall among the start tiles does not fail (lab-B 2026-11-12 14:50)", test_wall_leg_at_its_wall_among_the_start_tiles},
+        .expectation = {},
+    },
+    {
+        .input = {"a wall leg still moving at its time limit is not where the plan has us (lab-B 2026-11-12 20:22)", test_wall_leg_still_moving_at_limit_is_unknown},
+        .expectation = {},
+    },
+    {
+        .input = {"the at-the-wall check still moving is not at a wall (lab-B 2026-11-12 20:22)", test_wall_check_still_moving_is_unknown},
+        .expectation = {},
+    },
+    {
+        .input = {"the at-the-wall check on another map's banner went through a warp (lab-B 2026-11-12 20:22)", test_wall_check_on_another_map_is_unknown},
+        .expectation = {},
+    },
+    {
+        .input = {"finding us again still moving is not found (lab-B 2026-11-12 20:20)", test_find_again_still_moving_is_unknown},
+        .expectation = {},
+    },
+    {
+        .input = {"finding us again on another map's banner went through a warp (lab-B 2026-11-12 20:20)", test_find_again_on_another_map_is_unknown},
+        .expectation = {},
+    },
+    {
+        .input = {"finding us again through a door ends in the next map (lab-B 2026-11-12 20:20)", test_find_again_through_a_door_is_unknown},
         .expectation = {},
     },
 };

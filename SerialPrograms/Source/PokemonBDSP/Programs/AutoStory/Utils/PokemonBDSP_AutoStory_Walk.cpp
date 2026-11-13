@@ -161,9 +161,14 @@ bool black_screen_was_battle(VideoStream& stream, ProControllerContext& context)
 //  A grass encounter opens with a leaf animation, neither white nor black, and
 //  shows the battle's text box a few seconds later. After a change of the
 //  whole screen that walking cannot make, wait for the battle to show.
-bool battle_follows(VideoStream& stream, ProControllerContext& context, Milliseconds wait = 5000ms){
+//  `banner`, if given, keeps reading location banners through the wait: the
+//  banner of a map a fade took us to shows in it (lab-B 2026-11-12 20:20).
+bool battle_follows(VideoStream& stream, ProControllerContext& context, Milliseconds wait = 5000ms, LocationBannerWatcher* banner = nullptr){
     BattleMenuWatcher battle_menu(BattleType::STANDARD, COLOR_YELLOW);
     BattleDialogWatcher battle_dialog(COLOR_YELLOW);
+    if (banner != nullptr){
+        return wait_until(stream, context, wait, {{battle_menu}, {battle_dialog}, {*banner}}) >= 0;
+    }
     return wait_until(stream, context, wait, {{battle_menu}, {battle_dialog}}) >= 0;
 }
 
@@ -423,13 +428,23 @@ private:
         const double change = walk_screen_change(*m_before.frame, *after.frame);
         m_stream.log("[Walk] " + m_spec.label + ": " + std::to_string(m_result.walked.count()) +
             "ms, screen change " + std::to_string(change) + ".");
-        if (change > WALK_SCENE_CHANGE && m_spec.wild == WildPolicy::STOP_AT && battle_follows(m_stream, m_context)){
-            m_stream.log("[Walk] " + m_spec.label + ": a battle started; a trainer's here.");
-            return {ChunkNext::STOP, WalkStop::DIALOG};
-        }
-        if (change > WALK_SCENE_CHANGE && battle_follows(m_stream, m_context)){
-            escape_battle("wild battle (leaf opening); running.", BattleMovement::STEP_MOVED);
-            return {ChunkNext::NEXT_CHUNK, WalkStop::LIMIT};
+        if (change > WALK_SCENE_CHANGE){
+            const bool battle = battle_follows(m_stream, m_context, 5000ms, &m_banner);
+            m_result.warp.banner = m_banner.seen();
+            if (battle){
+                if (m_spec.wild == WildPolicy::STOP_AT){
+                    m_stream.log("[Walk] " + m_spec.label + ": a battle started; a trainer's here.");
+                    return {ChunkNext::STOP, WalkStop::DIALOG};
+                }
+                escape_battle("wild battle (leaf opening); running.", BattleMovement::STEP_MOVED);
+                return {ChunkNext::NEXT_CHUNK, WalkStop::LIMIT};
+            }
+            //  A change walking cannot make and no battle after it: a warp whose
+            //  fade fell between two frames (lab-B 2026-11-12 20:20, a hold east
+            //  through the Gate's door into Oreburgh City, screen change 267).
+            //  The walk is over; the map it ran on is no longer the map it began on.
+            m_stream.log("[Walk] " + m_spec.label + ": the scene changed and no battle followed: through a warp, its fade unseen.");
+            return {ChunkNext::STOP, WalkStop::TRANSITION};
         }
         //  Two still chunks in a row, so one dropped frame does not stop us. A
         //  frame exactly the same is a stalled video or a game hitch, not a wall:
