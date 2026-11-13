@@ -115,7 +115,7 @@ namespace{
 //  calibration builds up across them.
 struct StarterRngHookState{
     StarterRngHookState(const StoryStarterRngOptions& options, const StoryStarterRngConfig& config)
-        : filters(options.FILTERS.make_snapshot())
+        : filters(options.filters().make_snapshot())
         , settings(make_starter_rng_settings(config, filters))
     {}
 
@@ -132,7 +132,7 @@ std::function<Pokemon::Outcome()> make_starter_rng_hook(
     StoryStarterRngOptions& options, const StoryStarterRngConfig& config,
     EventNotificationOption& error_notification
 ){
-    if (options.FILTERS.current_rows() == 0){
+    if (options.filters().current_rows() == 0){
         throw UserSetupError(
             env.console,
             "Starter RNG Stop Conditions is empty, so no starter would ever match: add a row, such as a shiny of any nature."
@@ -142,7 +142,7 @@ std::function<Pokemon::Outcome()> make_starter_rng_hook(
     return [&env, &context, &options, &error_notification, state]() -> Pokemon::Outcome{
         uint64_t resets_logged = 0;
         StarterRngAttemptIO io;
-        io.notification_shiny = &options.NOTIFICATION_SHINY;
+        io.notification_shiny = &options.notification_shiny();
         io.notification_error = &error_notification;
         io.on_reset = [&]{
             resets_logged++;
@@ -165,6 +165,6 @@ std::function<Pokemon::Outcome()> make_starter_rng_hook(
 }
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

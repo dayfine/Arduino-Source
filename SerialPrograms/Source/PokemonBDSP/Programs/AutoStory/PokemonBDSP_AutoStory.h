@@ -52,7 +52,7 @@ private:
     //  Starts the plan's story and runs it to its end or its stop.
     void run_plan(
         SingleSwitchProgramEnvironment& env, ProControllerContext& context,
-        StoryExecutor& executor, const StoryRunPlan& plan, bool new_game
+        const StoryRunPlan& plan, bool new_game, StoryExecutor& executor
     );
 
     //  The start and end checkpoints, attempts, checks and language.

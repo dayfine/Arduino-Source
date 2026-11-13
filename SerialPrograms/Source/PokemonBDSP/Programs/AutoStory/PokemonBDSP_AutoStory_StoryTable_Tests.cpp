@@ -278,6 +278,14 @@ UnitTestResult test_plan_story_run_starter_rng(Logger&){
     if (from_0002.stop != StoryHandoff::NONE || from_0002.rows.size() != 3 || from_0002.rows.front().id != "00.02"){
         return "Expected a run starting at 00.02 to pass through without stopping for 00.01's handoff.";
     }
+    return true;
+}
+
+//  plan_story_run() with Run Starter RNG in AutoStory: 00.02 runs the
+//  starter_rng event after its Verity Lakefront start save and ends where
+//  00.03 starts; the handoff stop is not taken.
+UnitTestResult test_plan_story_run_in_program(Logger&){
+    const std::vector<StoryCheckpoint>& table = story_checkpoints();
     const StoryRunPlan in_program = plan_story_run(
         table, 0, table.size() - 1, StoryHandoffs{.starter_rng = true, .run_starter_rng = true}
     );
@@ -287,10 +295,10 @@ UnitTestResult test_plan_story_run_starter_rng(Logger&){
     const StoryCheckpoint& rng_row = in_program.rows[2];
     const std::vector<std::string> rng_problems = Pokemon::lint_story_checkpoint(rng_row);
     if (!rng_problems.empty()){
-        return "00.02 with Run Starter RNG in AutoStory: " + rng_problems[0];
+        return std::format("00.02 with Run Starter RNG in AutoStory: {}", rng_problems[0]);
     }
     if (rng_row.id != "00.02" || rng_row.saves_in != "Verity Lakefront" || rng_row.steps.size() != 1 ||
-        rng_row.steps[0].kind != StoryStepKind::GAME || rng_row.steps[0].action != STARTER_RNG_ACTION ||
+        rng_row.steps[0].kind != StoryStepKind::GAME || rng_row.steps[0].action != "starter_rng" ||
         !story_events().contains(rng_row.steps[0].action)
     ){
         return "Expected 00.02 with Run Starter RNG in AutoStory to run the starter_rng game event after its Verity Lakefront start save.";
@@ -437,6 +445,10 @@ const AutoStoryStoryTableCase AUTO_STORY_STORY_TABLE_CASES[] = {
     },
     {
         .input = {"Starter RNG handoff: stops after 00.01 saved at the Verity Lakefront", test_plan_story_run_starter_rng},
+        .expectation = {},
+    },
+    {
+        .input = {"Run Starter RNG: 00.02 runs the starter_rng event", test_plan_story_run_in_program},
         .expectation = {},
     },
     {

@@ -306,6 +306,28 @@ bool resolve_starter_rng_step(
 }
 
 
+//  Leaves the game as the settings ask after a shiny: battle finished and, if
+//  asked, the starter summary read and the menu closed. False if a step failed.
+static bool settle_after_shiny(
+    SingleSwitchProgramEnvironment& env, ProControllerContext& context, const StarterRngSettings& settings
+){
+    if (!settings.finish_battle_on_shiny){
+        return true;
+    }
+    if (!clear_starter_battle(env, context)){
+        return false;
+    }
+    if (settings.close_summary_after_read){
+        if (!open_menu(env, context)){
+            return false;
+        }
+        pbf_press_button(context, BUTTON_X, 160ms, 1000ms);
+        context.wait_for_all_requests();
+        env.log("Closed the menu.");
+    }
+    return true;
+}
+
 BdspStarterAttemptResult run_starter_rng_attempt(
     SingleSwitchProgramEnvironment& env,
     ProControllerContext& context,
@@ -567,21 +589,9 @@ BdspStarterAttemptResult run_starter_rng_attempt(
             pbf_press_button(context, BUTTON_CAPTURE, 2000ms, 5000ms);
             context.wait_for_all_requests();
         }
-        bool settled = true;
-        if (settings.finish_battle_on_shiny){
-            if (!clear_starter_battle(env, context)){
-                record_error();
-                settled = false;
-            }else if (settings.close_summary_after_read){
-                if (!open_menu(env, context)){
-                    record_error();
-                    settled = false;
-                }else{
-                    pbf_press_button(context, BUTTON_X, 160ms, 1000ms);
-                    context.wait_for_all_requests();
-                    env.log("Closed the menu.");
-                }
-            }
+        const bool settled = settle_after_shiny(env, context, settings);
+        if (!settled){
+            record_error();
         }
         return BdspStarterAttemptResult{
             .outcome = BdspAttemptOutcome::Hit,

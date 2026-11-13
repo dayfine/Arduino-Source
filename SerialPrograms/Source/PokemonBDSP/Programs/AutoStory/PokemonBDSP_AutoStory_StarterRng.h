@@ -53,7 +53,13 @@ public:
     //  The options' values, for a story in `language` with `starter`.
     StoryStarterRngConfig config(Language language, StarterChoice starter) const;
 
-public:
+    BooleanCheckBoxOption& run(){ return RUN; }
+    PlayerModelOption& player_model(){ return PLAYER_MODEL; }
+    SimpleIntegerOption<uint16_t>& max_resets(){ return MAX_RESETS; }
+    BdspRngFilterTable& filters(){ return FILTERS; }
+    EventNotificationOption& notification_shiny(){ return NOTIFICATION_SHINY; }
+
+private:
     BooleanCheckBoxOption RUN;
     PlayerModelOption PLAYER_MODEL;
     SimpleIntegerOption<uint16_t> MAX_RESETS;
@@ -81,7 +87,7 @@ std::function<Pokemon::Outcome()> make_starter_rng_hook(
 );
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

@@ -464,8 +464,14 @@ UnitTestResult test_start_and_end(Logger&){
     ){
         return std::format("Expected Starter RNG handoff to stop after 00.01 saved at VerityLakefront (17, 14), checking the Verity Lakefront card:{}", joined(handoff_sim.trace));
     }
-    //  With Run Starter RNG in AutoStory on, 00.02 saves at the Verity
-    //  Lakefront, runs 00.02/starter_rng, and chains into 00.03 and on.
+    return true;
+}
+
+//  With Run Starter RNG in AutoStory on, 00.02 saves at the Verity
+//  Lakefront, runs 00.02/starter_rng, and chains into 00.03.
+UnitTestResult test_run_starter_rng_in_story(Logger&){
+    Pokemon::SegmentHooks hooks;
+    hooks.reload = [&](RunState&){ return Pokemon::outcome_ok(); };
     Simulation in_program_sim;
     const StoryRunPlan in_program_plan = plan_story_run(
         story_checkpoints(), 0, 3, StoryHandoffs{.starter_rng = true, .run_starter_rng = true}
@@ -482,8 +488,10 @@ UnitTestResult test_start_and_end(Logger&){
         in_program_sim.count("00.02/starter_rng") != 1 ||
         in_program_sim.count("00.02/choose_starter") != 0
     ){
-        return "Expected 00.02 with Run Starter RNG in AutoStory to save at Verity Lakefront, run 00.02/starter_rng, and continue to 00.03:" +
-            joined(in_program_sim.trace);
+        return std::format(
+            "Expected 00.02 with Run Starter RNG in AutoStory to save at Verity Lakefront, run 00.02/starter_rng, and continue to 00.03:{}",
+            joined(in_program_sim.trace)
+        );
     }
     return true;
 }
@@ -685,6 +693,10 @@ const AutoStoryStorySimulationCase AUTO_STORY_STORY_SIMULATION_CASES[] = {
     },
     {
         .input = {"start and end checkpoints", test_start_and_end},
+        .expectation = {},
+    },
+    {
+        .input = {"Run Starter RNG in AutoStory chains 00.02 into 00.03", test_run_starter_rng_in_story},
         .expectation = {},
     },
     {

@@ -136,7 +136,7 @@ std::string verify_story_checkpoint(
 
 
 BDSPAutoStory::~BDSPAutoStory(){
-    STARTER_RNG.RUN.remove_listener(*this);
+    STARTER_RNG.run().remove_listener(*this);
 }
 
 BDSPAutoStory::BDSPAutoStory()
@@ -167,7 +167,7 @@ BDSPAutoStory::BDSPAutoStory()
         false
     )
     , NOTIFICATIONS({
-        &STARTER_RNG.NOTIFICATION_SHINY,
+        &STARTER_RNG.notification_shiny(),
         &NOTIFICATION_PROGRAM_FINISH,
         &NOTIFICATION_ERROR_RECOVERABLE,
         &NOTIFICATION_ERROR_FATAL,
@@ -178,20 +178,20 @@ BDSPAutoStory::BDSPAutoStory()
     PA_ADD_OPTION(PLAYER_NAME);
     PA_ADD_OPTION(STARTER);
     PA_ADD_OPTION(STOP_FOR_STARTER_RNG);
-    PA_ADD_OPTION(STARTER_RNG.RUN);
-    PA_ADD_OPTION(STARTER_RNG.PLAYER_MODEL);
-    PA_ADD_OPTION(STARTER_RNG.MAX_RESETS);
-    PA_ADD_OPTION(STARTER_RNG.FILTERS);
+    add_option(STARTER_RNG.run(), "RUN_STARTER_RNG");
+    add_option(STARTER_RNG.player_model(), "STARTER_RNG_PLAYER_MODEL");
+    add_option(STARTER_RNG.max_resets(), "MAX_RESETS");
+    add_option(STARTER_RNG.filters(), "STARTER_RNG_FILTERS");
     PA_ADD_OPTION(NOTIFICATIONS);
 
     BDSPAutoStory::on_config_value_changed(this);
-    STARTER_RNG.RUN.add_listener(*this);
+    STARTER_RNG.run().add_listener(*this);
 }
 
 //  Run Starter RNG takes precedence over Stop for Starter RNG: the stop
 //  option is greyed out while it is on, and the plan ignores it.
 void BDSPAutoStory::on_config_value_changed(void*){
-    const bool run_in_story = STARTER_RNG.RUN;
+    const bool run_in_story = STARTER_RNG.run();
     STARTER_RNG.set_details_visible(run_in_story);
     STOP_FOR_STARTER_RNG.set_visibility(run_in_story ? ConfigOptionState::DISABLED : ConfigOptionState::ENABLED);
 }
@@ -288,7 +288,7 @@ void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     set_story_language(RUN.language());
 
     StoryEnv story{env, context, STARTER, PLAYER_NAME, {}};
-    if (STARTER_RNG.RUN){
+    if (STARTER_RNG.run()){
         story.run_starter_rng = make_starter_rng_hook(
             env, context, STARTER_RNG, STARTER_RNG.config(RUN.language(), STARTER), NOTIFICATION_ERROR_RECOVERABLE
         );
@@ -296,15 +296,15 @@ void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     StoryExecutor executor(story);
     const StoryRunPlan plan = plan_story_run(
         checkpoints, first, last,
-        StoryHandoffs{.starter_rng = STOP_FOR_STARTER_RNG, .run_starter_rng = STARTER_RNG.RUN}
+        StoryHandoffs{.starter_rng = STOP_FOR_STARTER_RNG, .run_starter_rng = STARTER_RNG.run()}
     );
     executor.set_stop_rows(rows_that_stop(plan));
-    run_plan(env, context, executor, plan, first == 0 && NEW_GAME_INTRO);
+    run_plan(env, context, plan, first == 0 && NEW_GAME_INTRO, executor);
 }
 
 void BDSPAutoStory::run_plan(
     SingleSwitchProgramEnvironment& env, ProControllerContext& context,
-    StoryExecutor& executor, const StoryRunPlan& plan, bool new_game
+    const StoryRunPlan& plan, bool new_game, StoryExecutor& executor
 ){
     //  A start with a save always loads it first, so the run never walks
     //  from wherever the game was left (console B, 2026-11-11: a run from

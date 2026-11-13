@@ -38,10 +38,6 @@ inline constexpr std::string_view RUNNING_SHOES_STEP = "rowan_and_dawn";
 //  00.01 ends at the Verity Lakefront (17, 14) facing north, where 00.02 and
 //  Starter RNG (Start point: Verity Lakefront) start.
 inline constexpr std::string_view STARTER_RNG_HANDOFF_ROW = "00.01";
-//  00.02 is the Lake Verity starter and Starly battle checkpoint, which
-//  Run Starter RNG in AutoStory replaces with STARTER_RNG_ACTION.
-inline constexpr std::string_view STARTER_RNG_CHECKPOINT_ROW = "00.02";
-inline constexpr std::string_view STARTER_RNG_ACTION = "starter_rng";
 
 //  An upstream RNG program the user may run part-way through the story.
 enum class StoryHandoff{

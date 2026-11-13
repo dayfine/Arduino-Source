@@ -19,6 +19,11 @@ namespace PokemonBDSP{
 
 namespace{
 
+//  00.02 is the Lake Verity starter and Starly battle checkpoint, which Run
+//  Starter RNG in AutoStory replaces with the game event STARTER_RNG_ACTION.
+constexpr std::string_view STARTER_RNG_CHECKPOINT_ROW = "00.02";
+constexpr std::string_view STARTER_RNG_ACTION = "starter_rng";
+
 //  `row` with a save appended at its end, where the next checkpoint starts:
 //  in BDSP rows normally save at their start, so a run that stops after
 //  00.01 for Starter RNG makes 00.02's Lakefront save before stopping. As
