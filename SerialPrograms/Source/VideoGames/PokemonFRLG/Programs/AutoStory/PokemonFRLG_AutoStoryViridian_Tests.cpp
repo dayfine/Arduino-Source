@@ -2,7 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Rows 17.01 to 17.04 (StoryData/frlg-17.0N.plan.json) on the overworld
+ *  Rows 17.01 to 17.04b (StoryData/frlg-17.0N.plan.json) on the overworld
  *  sim: Saffron's Center to Cinnabar's by Fly and Surf, and from Cinnabar's
  *  Center by Fly to Viridian City and through its Gym to Giovanni.
  *
