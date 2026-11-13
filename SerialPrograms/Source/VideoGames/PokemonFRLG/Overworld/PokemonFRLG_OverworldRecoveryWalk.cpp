@@ -88,49 +88,56 @@ HoldMovement measure_movement(
     return change > HOLD_UNMOVED_RMSD ? HoldMovement::MOVED : HoldMovement::NONE;
 }
 
+//  A WALK step, for a player facing `facing`: its hold, and for a hold not
+//  onto a warp whether the screen moved during it.
+StepWalk walk_hold(
+    ConsoleHandle& console, ProControllerContext& context,
+    const RouteStep& step, std::optional<Direction> facing,
+    const OverworldInterruptSet& interrupts, MoveSpeed speed
+){
+    StepWalk out{std::nullopt, current_time()};
+    //  Turning first, with a tap, makes the hold start from a standstill
+    //  facing the right way: holding through a turn lost a tile on the
+    //  console, while holds from a standstill were exact over 15 tiles.
+    if (facing != step.direction){
+        pbf_press_dpad(context, dpad(step.direction), TURN_TAP, TURN_SETTLE);
+    }
+    if (const std::string note = speed_note(step, speed); !note.empty()){
+        console.log(note);
+    }
+    context.wait_for_all_requests();
+    const VideoSnapshot before = step.warps ? VideoSnapshot() : console.video().snapshot();
+    out.hold_start = current_time();
+    const Pokemon::LegResult result = Pokemon::walk_leg(
+        console, context, leg_mover(step, speed), step.wild ? interrupts.wild : interrupts.other,
+        leg_spec(step, speed), MAX_INTERRUPTIONS_PER_LEG
+    );
+    if (result.stopped){
+        out.stopped = walked_near(step, result.tiles, tile_time(step, speed));
+        return out;
+    }
+    if (!step.warps){
+        out.movement = measure_movement(console, context, before, tile_time(step, speed), out.hold_start);
+        return out;
+    }
+    wait_out_warp(console, context, step);
+    static_assert(AFTER_WARP_BATTLE_WATCH >= AFTER_WARP);
+    if (run_from_battle_after_warp(console, context)){
+        console.log("Route: a wild battle, not the warp to " + step.end.map + "; the player is on " + to_string(step) + " before the warp.", COLOR_ORANGE);
+        out.stopped = walked_before_warp(step);
+    }
+    return out;
+}
+
 //  One step of a route, for a player facing `facing`.
 StepWalk walk_step(
     ConsoleHandle& console, ProControllerContext& context,
     const RouteStep& step, std::optional<Direction> facing,
     const OverworldInterruptSet& interrupts, MoveSpeed speed
 ){
-    StepWalk out{std::nullopt, current_time()};
     switch (step.action){
-    case RouteAction::WALK:{
-        //  Turning first, with a tap, makes the hold start from a standstill
-        //  facing the right way: holding through a turn lost a tile on the
-        //  console, while holds from a standstill were exact over 15 tiles.
-        if (facing != step.direction){
-            pbf_press_dpad(context, dpad(step.direction), TURN_TAP, TURN_SETTLE);
-        }
-        if (const std::string note = speed_note(step, speed); !note.empty()){
-            console.log(note);
-        }
-        context.wait_for_all_requests();
-        const VideoSnapshot before = step.warps ? VideoSnapshot() : console.video().snapshot();
-        out.hold_start = current_time();
-        const Pokemon::LegResult result = Pokemon::walk_leg(
-            console, context, leg_mover(step, speed), step.wild ? interrupts.wild : interrupts.other,
-            leg_spec(step, speed), MAX_INTERRUPTIONS_PER_LEG
-        );
-        if (result.stopped){
-            out.stopped = walked_near(step, result.tiles, tile_time(step, speed));
-            return out;
-        }
-        if (!step.warps){
-            out.movement = measure_movement(console, context, before, tile_time(step, speed), out.hold_start);
-        }
-        if (step.warps){
-            wait_out_warp(console, context, step);
-            static_assert(AFTER_WARP_BATTLE_WATCH >= AFTER_WARP);
-            if (run_from_battle_after_warp(console, context)){
-                console.log("Route: a wild battle, not the warp to " + step.end.map + "; the player is on " + to_string(step) + " before the warp.", COLOR_ORANGE);
-                out.stopped = walked_before_warp(step);
-                return out;
-            }
-        }
-        break;
-    }
+    case RouteAction::WALK:
+        return walk_hold(console, context, step, facing, interrupts, speed);
     case RouteAction::SURF:
         start_surf(console, context, step.direction, facing == step.direction);
         break;
@@ -138,7 +145,7 @@ StepWalk walk_step(
         pbf_press_dpad(context, dpad(step.direction), FACE_HOLD, STEP_RELEASE);
         break;
     }
-    return out;
+    return StepWalk{std::nullopt, current_time()};
 }
 
 //  An open leg's screens, recorded with the interrupts' observer from
