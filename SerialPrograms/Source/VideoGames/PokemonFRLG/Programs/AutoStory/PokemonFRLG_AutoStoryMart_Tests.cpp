@@ -15,10 +15,14 @@
 #include <functional>
 #include <map>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_ItemListReader.h"
 #include "PokemonFRLG_AutoStoryMart.h"
+#include "PokemonFRLG_AutoStoryMartPlan.h"
+#include "PokemonFRLG_AutoStoryTable.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -436,6 +440,29 @@ UnitTestResult test_mart_stock(){
 }
 
 
+//  12.01's Fuchsia Mart read its ULTRA BALL row as PARLYZ HEAL and bought
+//  nothing (console B, 2026-11-12): the item list reader had no name for it.
+//  Every item any Mart sells has one.
+UnitTestResult test_mart_stock_readable(){
+    std::string missing;
+    for (const std::string_view map : {
+        "ViridianCity_Mart", "PewterCity_Mart", "CeruleanCity_Mart", "VermilionCity_Mart",
+        "LavenderTown_Mart", "FuchsiaCity_Mart", "SaffronCity_Mart", "CinnabarIsland_Mart",
+        "CeladonCity_DepartmentStore_5F",
+    }){
+        for (const MartStockItem& stock : mart_stock(map)){
+            if (!item_list_reader_knows(stock.item)){
+                missing += std::format("\n    {}: {}", map, stock.item);
+            }
+        }
+    }
+    if (!missing.empty()){
+        return std::format("The item list reader has no name for:{}", missing);
+    }
+    return true;
+}
+
+
 //  Potions, Antidotes, Parlyz Heals and Awakenings bought go into the
 //  battles' supplies.
 UnitTestResult test_count_supplies(){
@@ -451,6 +478,23 @@ UnitTestResult test_count_supplies(){
     if (supplies.potions != 3 || supplies.antidotes != 3 || supplies.awakenings != 3 || supplies.pocket != pocket){
         return std::format("Supplies {} potions, {} antidotes, {} awakenings, {} pocket rows.",
             supplies.potions, supplies.antidotes, supplies.awakenings, supplies.pocket.size());
+    }
+    return true;
+}
+
+//  ConsoleMartActions::read_money() reads nothing yet, so a Mart step with no
+//  "floor" buys nothing (MartEnd::NO_MONEY_READ): every one carries a floor.
+UnitTestResult test_mart_steps_have_floor(){
+    std::string missing;
+    for (const StoryCheckpoint& data : story_checkpoints()){
+        for (const StoryStep& step : data.steps){
+            if (step.kind == Pokemon::StoryStepKind::GAME && step.action == MART_ACTION && !step.args.contains("floor")){
+                missing += " " + data.id + "/" + step.name;
+            }
+        }
+    }
+    if (!missing.empty()){
+        return "Mart steps with no floor:" + missing;
     }
     return true;
 }
@@ -476,7 +520,15 @@ const AutoStoryMartCase AUTO_STORY_MART_CASES[] = {
         .expectation = {},
     },
     {
+        .input = {"every Mart item has a reader name", test_mart_stock_readable},
+        .expectation = {},
+    },
+    {
         .input = {"bought supplies counted", test_count_supplies},
+        .expectation = {},
+    },
+    {
+        .input = {"every Mart step has a floor", test_mart_steps_have_floor},
         .expectation = {},
     },
 };

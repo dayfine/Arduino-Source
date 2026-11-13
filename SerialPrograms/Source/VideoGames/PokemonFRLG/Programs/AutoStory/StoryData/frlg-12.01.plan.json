@@ -44,9 +44,9 @@
           "item": "hm03",
           "move": "surf",
           "slot": 1,
-          "forget": "water-gun"
+          "keep": ["bite", "water-pulse", "dig", "mega-kick"]
         },
-        "why": "HM03 Surf in place of Water Gun, as pokeguy (1:14:55 to 1:15:13: Surf, Water Pulse, Bite, Mega Kick after it), unless the lead knows it; an HM, so not a one-shot TM"
+        "why": "HM03 Surf in place of Water Gun, as pokeguy (1:14:55 to 1:15:13: Surf, Water Pulse, Bite, Mega Kick after it), unless the lead knows it; an HM, so not a one-shot TM; keep list: Bite, Water Pulse, Dig and Mega Kick stay and the one other move (Bubble or Water Gun) goes; fails if none or several are outside the list"
       },
       {
         "id": "center_northwest_corner",
@@ -119,10 +119,11 @@
         "args": {
           "map": "FuchsiaCity_Mart",
           "budget": 2100,
+          "floor": 3762,
           "items": [{"item": "super-potion", "quantity": 3}],
           "cover_hp": 122
         },
-        "why": "Super Potions for what the bag's Potions and Super Potions lack to heal 122 HP, the lead's whole bar at Lv39 (3 with none): Kayden's and Kirk's damage is healed to full before Koga. Skipped when the bag covers it"
+        "why": "Super Potions for what the bag's Potions and Super Potions lack to heal 122 HP, the lead's whole bar at Lv39 (3 with none): Kayden's and Kirk's damage is healed to full before Koga. Skipped when the bag covers it. The floor is 10.01's 19,862 less its 15,600 of X items and the Safari Zone's 500 (11.03), 3,762, prize money not counted: a lower bound while the money box is unread"
       },
       {
         "id": "above_mart_tree",
