@@ -156,11 +156,19 @@ struct ScriptedWalk{
     std::vector<std::string> fights;
 };
 
-ScriptedWalk walk_script(const StoryWorld& maps, const TilePos& from, const TilePos& goal, std::vector<TrainerSight> sights, Script& script){
+//  What follows each talk that is fought.
+enum class AfterTalk{
+    BATTLE,
+    NO_BATTLE,
+};
+
+ScriptedWalk walk_script(const StoryWorld& maps, const TilePos& from, const TilePos& goal, std::vector<TrainerSight> sights, Script& script,
+    AfterTalk after_talk = AfterTalk::BATTLE
+){
     ScriptedWalk out;
     RouteTrainers trainers{
         .sights = std::move(sights),
-        .fight = [&out](const std::string& trainer){ out.fights.push_back(trainer); },
+        .fight = [&out, after_talk](const std::string& trainer){ out.fights.push_back(trainer); return after_talk == AfterTalk::BATTLE; },
     };
     ScriptedRouteIO io(script);
     try{
@@ -207,6 +215,7 @@ UnitTestResult test_wall_leg_trainer_on_the_way(Logger&){
         Script script{.steps = {
             walk_step("wall: T: east 4 (to wall)", WalkStop::LIMIT, 2050ms, 0),
             walk_step("wall: T: east 4 (to wall): at the wall?", WalkStop::DIALOG, 400ms, 0),
+            answer_step("dialog within 5000 ms", false),
             walk_step("wall: T: east 4 (to wall): on to the wall", WalkStop::BLOCKED, 1200ms, 0),
             answer_step("dialog within 500 ms", false),
         }};
@@ -220,6 +229,34 @@ UnitTestResult test_wall_leg_trainer_on_the_way(Logger&){
             }
             if (walk.at != std::vector<TilePos>{{5, 0}}){
                 return "did not arrive at (5, 0).";
+            }
+        }catch (const ScriptMismatch& e){
+            return e.message;
+        }
+        const std::string left = script_left(script);
+        return left.empty() ? UnitTestResult(true) : UnitTestResult(left);
+}
+
+
+//  lab-B 2026-11-12 06:12 (00.05c below_the_company_clown, the 6th failure
+//  there): the Wonder Station's woman stopped the check walk of "west 1 (to
+//  wall)", the fight saw no battle follow and pressed her talk to its end,
+//  so nothing showed when we looked again; the walk on to the wall then
+//  started her talk again and ran out of time. A talk the fight saw end
+//  with no battle plans again from where it stopped, never walks on.
+UnitTestResult test_wall_leg_talk_no_battle(Logger&){
+        Script script{.steps = {
+            walk_step("wall: T: east 4 (to wall)", WalkStop::LIMIT, 2050ms, 0),
+            walk_step("wall: T: east 4 (to wall): at the wall?", WalkStop::DIALOG, 400ms, 0),
+            answer_step("dialog within 5000 ms", false),
+        }};
+        try{
+            const ScriptedWalk walk = walk_script(make_world({"#.....#"}), {1, 0}, {5, 0}, {}, script, AfterTalk::NO_BATTLE);
+            if (!walk.failure.empty()){
+                return "failed after a talk no battle followed: " + walk.failure;
+            }
+            if (walk.at != std::vector<TilePos>{{5, 0}}){
+                return "did not plan again from the wall it stopped at, (5, 0).";
             }
         }catch (const ScriptMismatch& e){
             return e.message;
@@ -669,6 +706,10 @@ private:
 const PlannedRouteCase PLANNED_ROUTE_CASES[] = {
     {
         .input = {"a trainer on a wall leg, then on to the wall", test_wall_leg_trainer_on_the_way},
+        .expectation = {},
+    },
+    {
+        .input = {"a talk no battle followed on a wall leg plans again (lab-B 2026-11-12 06:12)", test_wall_leg_talk_no_battle},
         .expectation = {},
     },
     {

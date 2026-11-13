@@ -152,15 +152,15 @@ TappedEnd tapped_end(const StoryWorld& world, const std::string& map, const Tile
     return tapped;
 }
 
-std::vector<TilePos> story_route_avoid(const StoryWorld& world, const StoryStep& step){
-    if (!step.args.contains("avoid")){
+std::vector<TilePos> story_route_tiles(const StoryWorld& world, const StoryStep& step, std::string_view key){
+    if (!step.args.contains(std::string(key))){
         return {};
     }
     const std::string& map = story_arg<GridPose>(step.args, "target").map;
     std::vector<TilePos> tiles;
-    for (const std::vector<int64_t>& row : story_arg<std::vector<std::vector<int64_t>>>(step.args, "avoid")){
+    for (const std::vector<int64_t>& row : story_arg<std::vector<std::vector<int64_t>>>(step.args, std::string(key))){
         if (row.size() != 2 && row.size() != 4){
-            throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("{}: an avoid row is [x, y] or [x0, y0, x1, y1].", step.name));
+            throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("{}: a {} row is [x, y] or [x0, y0, x1, y1].", step.name, key));
         }
         const size_t last = row.size() - 2;
         for (int64_t y = row[1]; y <= row[last + 1]; y++){
@@ -251,12 +251,12 @@ Pose StoryWalkSteps::walk_to(const Pose& from, const Pose& goal, const StoryStep
     std::vector<TrainerSight>& sights = m_trainers.try_emplace(maps, row_trainers(*maps, m_row)).first->second;
     RouteTrainers trainers{
         sights,
-        [this](const std::string& trainer){ m_io.fight(trainer); }
+        [this](const std::string& trainer){ return m_io.fight(trainer); }
     };
     const RouteWalkPlan plan{
         [&](const TilePos& pos){ return std::find(targets.begin(), targets.end(), pos) != targets.end(); },
-        label_of(step), story_route_avoid(*maps, step), *costs, m_can_run ? MoveSpeed::RUN : MoveSpeed::WALK, m_scene_next.contains(step.name),
-        step.action == ROUTE_ONTO_TRIGGER,
+        label_of(step), story_route_tiles(*maps, step, "avoid"), *costs, m_can_run ? MoveSpeed::RUN : MoveSpeed::WALK, m_scene_next.contains(step.name),
+        step.action == ROUTE_ONTO_TRIGGER, story_route_tiles(*maps, step, "greeter"),
     };
     RouteEnd end = walk_route_to_warp(m_route, *maps, start, trainers, plan);
     sights = std::move(trainers.sights);

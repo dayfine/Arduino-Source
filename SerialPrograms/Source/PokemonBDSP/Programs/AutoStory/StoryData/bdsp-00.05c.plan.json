@@ -12,13 +12,27 @@
         "args": {
           "avoid": [
             [
-              44,
+              40,
               20,
               52,
-              24
+              25
+            ],
+            [
+              40,
+              26,
+              43,
+              27
             ]
           ],
           "fight_wild": false,
+          "greeter": [
+            [
+              30,
+              22,
+              48,
+              34
+            ]
+          ],
           "target": {
             "facing": "north",
             "map": "JubilifeCity",
@@ -57,6 +71,14 @@
         "action": "town",
         "args": {
           "fight_wild": false,
+          "greeter": [
+            [
+              30,
+              22,
+              48,
+              34
+            ]
+          ],
           "target": {
             "facing": "north",
             "map": "JubilifeCity",
@@ -95,6 +117,14 @@
         "action": "town",
         "args": {
           "fight_wild": false,
+          "greeter": [
+            [
+              30,
+              22,
+              48,
+              34
+            ]
+          ],
           "target": {
             "facing": "south",
             "map": "JubilifeCity",
@@ -151,6 +181,14 @@
         "action": "town",
         "args": {
           "fight_wild": false,
+          "greeter": [
+            [
+              30,
+              22,
+              48,
+              34
+            ]
+          ],
           "target": {
             "facing": "east",
             "map": "JubilifeCity",

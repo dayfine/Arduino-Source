@@ -222,7 +222,7 @@ void mart_lady(VideoStream& stream, ProControllerContext& context){
     walk_until_stopped(stream, context, Direction::EAST, 40, "East along the path");
     walk_until_stopped(stream, context, Direction::NORTH, 2, "North to the front row");
     const StoryWorld& maps = story_maps();
-    RouteTrainers trainers{story_trainer_sights(), [&](const std::string& name){ fight_route_trainer(stream, context, name); }};
+    RouteTrainers trainers{story_trainer_sights(), [&](const std::string& name){ return fight_route_trainer(stream, context, name); }};
     walk_to_route_202_save_spot(stream, context, maps, {maps.to_world(MAP_SANDGEM_TOWN, map_point("SandgemTown", "front_row_east_end"))}, trainers);
 }
 

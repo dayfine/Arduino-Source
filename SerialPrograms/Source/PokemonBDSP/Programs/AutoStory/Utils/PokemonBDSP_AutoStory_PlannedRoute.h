@@ -11,6 +11,7 @@
 #ifndef PokemonAutomation_PokemonBDSP_AutoStory_PlannedRoute_H
 #define PokemonAutomation_PokemonBDSP_AutoStory_PlannedRoute_H
 
+#include <algorithm>
 #include <functional>
 #include <string>
 #include <vector>
@@ -33,8 +34,9 @@ namespace PokemonBDSP{
 
 //  Called when a trainer's dialogue has opened, or when someone standing in
 //  the way was talked to. Fights the battle if one starts, and returns to the
-//  overworld either way.
-using RouteTrainerFight = std::function<void(const std::string& trainer)>;
+//  overworld either way. Returns whether a battle followed: a talk with
+//  none is someone who only talks, and may stand in the way.
+using RouteTrainerFight = std::function<bool(const std::string& trainer)>;
 
 //  The trainers a route walk may meet, and how to fight them. A trainer who
 //  is fought is taken off `sights`.
@@ -61,6 +63,19 @@ struct RouteWalkPlan{
     //  `goal` is that scene's trigger (ROUTE_ONTO_TRIGGER): a walk stops on
     //  it when the scene starts, as at a wall.
     bool goal_is_trigger = false;
+    //  Ground where someone walks up and talks whenever we come near, then
+    //  walks off (00.05c: the Wonder Station's greeter in Jubilife's plaza,
+    //  lab-B 2026-11-12, again on every unsaved run). A dialogue no trainer
+    //  explains while we may stand here is theirs: played out and walked on
+    //  from, not counted against the walk as a scene the map lacks.
+    std::vector<Pokemon::TilePos> greeter = {};
+
+    //  Whether any of `tiles` is the greeter's ground.
+    bool greeter_near(const std::vector<Pokemon::TilePos>& tiles) const{
+        return std::ranges::any_of(tiles, [this](const Pokemon::TilePos& pos){
+            return std::ranges::find(greeter, pos) != greeter.end();
+        });
+    }
 };
 
 //  Walks from any of the world tiles `from` of `maps` until every tile the

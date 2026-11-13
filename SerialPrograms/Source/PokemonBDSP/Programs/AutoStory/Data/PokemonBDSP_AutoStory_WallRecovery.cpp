@@ -72,6 +72,42 @@ public:
 
 };
 
+//  One D-pad tap, a whole tile for every possible position: safe when each
+//  next tile is open ground on the same map with no one on it.
+bool safe_tap(const StoryWorld& world, const TilePos& from, Direction direction){
+    const auto map = world.to_local(from);
+    const auto next = step(world, from, direction);
+    const auto local = next ? world.to_local(*next) : std::nullopt;
+    return map && next && *next == from.next(direction) && local && local->map == map->map && standable(world, *next)
+        && !recovery_hazard(world, *next);
+}
+
+//  WallPolicy, with a tap where a hold has no wall for every position: a
+//  tile with no safe wall any way (someone beside it, a door, the map's
+//  edge) moves on a tile to where one is.
+class WallOrTapPolicy : public WallPolicy{
+public:
+    static std::optional<Pokemon::WallRecoveryStep<Hypothesis, Hold>> hold(
+        const StoryWorld& world, const std::vector<Hypothesis>& from, Direction direction
+    ){
+        std::optional<Pokemon::WallRecoveryStep<Hypothesis, Hold>> wall = WallPolicy::hold(world, from, direction);
+        if (wall){
+            return wall;
+        }
+        std::vector<Hypothesis> ends;
+        for (const auto& start : from){
+            if (!safe_tap(world, start, direction)){
+                return std::nullopt;
+            }
+            ends.push_back(start.next(direction));
+        }
+        return Pokemon::WallRecoveryStep<Hypothesis, Hold>{
+            .positions = std::move(ends),
+            .hold = {.direction = direction, .tiles = 1, .ends_at_wall = false, .held = false},
+        };
+    }
+};
+
 } // namespace
 
 std::vector<Pokemon::WallAnchor<Pokemon::TilePos, TileLeg>> wall_recovery_candidates(
@@ -106,6 +142,21 @@ std::vector<TilePos> interrupted_leg_positions(
 }
 
 namespace{
+//  The most holds, taps among them, plan_recovered_route() tries when walls
+//  alone bring several tiles to no one wall.
+constexpr size_t MAX_TAP_RECOVERY_HOLDS = 4;
+
+std::vector<Pokemon::WallAnchor<TilePos, TileLeg>> tap_recovery_candidates(
+    const StoryWorld& world, const std::vector<TilePos>& from
+){
+    for (const auto& tile : from){
+        if (!standable(world, tile)){
+            return {};
+        }
+    }
+    return Pokemon::find_wall_anchors<WallOrTapPolicy>(from, world, {.max_holds = MAX_TAP_RECOVERY_HOLDS});
+}
+
 std::vector<PlannedLeg> recovery_legs(
     const StoryWorld& world, std::vector<TilePos> from, const std::vector<TileLeg>& holds
 ){
@@ -113,7 +164,7 @@ std::vector<PlannedLeg> recovery_legs(
     for (const auto& hold : holds){
         std::vector<TilePos> after;
         for (const auto& at : from){
-            const TilePos end = slide_to_wall(world, at, hold.direction).stop;
+            const TilePos end = hold.ends_at_wall ? slide_to_wall(world, at, hold.direction).stop : at.next(hold.direction);
             if (std::find(after.begin(), after.end(), end) == after.end()){
                 after.push_back(end);
             }
@@ -142,19 +193,34 @@ std::optional<std::vector<PlannedLeg>> plan_recovered_route(
     //  fewest held tiles alone chose "south 12 (to wall), north 12 (open)"
     //  over "north 13 (to wall), south 5 (open)" for 01.10's line 5 (lab-B
     //  2026-11-08 18:15:47). Ties keep find_wall_anchors()' order.
+    //  Walls alone first; only when they bring the tiles to no one wall,
+    //  D-pad taps where a hold has no wall, and a fourth hold. On lab-B
+    //  (2026-11-12 02:52, 00.05c) a talk on Jubilife's row 24 left (35, 24)
+    //  and (36, 24): from (36, 24) every way ends at no wall (the TV
+    //  station's clown north, a man south, the woman's tile west, the map's
+    //  edge east), and the walk failed with "no plan". Two taps east bring
+    //  both tiles under the TV station's wall.
     std::optional<std::vector<PlannedLeg>> best;
-    long long best_cost = 0;
-    for (const auto& anchor : wall_recovery_candidates(world, from)){
-        const auto back = plan_robust_route(world, std::vector<TilePos>{anchor.at}, goal, costs);
-        if (!back){
-            continue;
+    for (const bool taps : {false, true}){
+        if (best){
+            break;
         }
-        auto route = recovery_legs(world, from, anchor.holds);
-        route.insert(route.end(), back->begin(), back->end());
-        const long long cost = robust_route_cost(world, from, route, costs);
-        if (!best || cost < best_cost){
-            best = std::move(route);
-            best_cost = cost;
+        long long best_cost = 0;
+        const std::vector<Pokemon::WallAnchor<TilePos, TileLeg>> anchors = taps
+            ? tap_recovery_candidates(world, from)
+            : wall_recovery_candidates(world, from);
+        for (const auto& anchor : anchors){
+            const auto back = plan_robust_route(world, std::vector<TilePos>{anchor.at}, goal, costs);
+            if (!back){
+                continue;
+            }
+            auto route = recovery_legs(world, from, anchor.holds);
+            route.insert(route.end(), back->begin(), back->end());
+            const long long cost = robust_route_cost(world, from, route, costs);
+            if (!best || cost < best_cost){
+                best = std::move(route);
+                best_cost = cost;
+            }
         }
     }
     return best;

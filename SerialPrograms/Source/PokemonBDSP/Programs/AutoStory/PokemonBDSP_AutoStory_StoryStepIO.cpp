@@ -243,12 +243,12 @@ ConsoleStoryStepIO::ConsoleStoryStepIO(VideoStream& stream, ProControllerContext
     , m_route(stream, context, m_escape)
 {}
 
-void ConsoleStoryStepIO::fight(const std::string& trainer){
+bool ConsoleStoryStepIO::fight(const std::string& trainer){
     if (trainer.find("Twins") != std::string::npos){
         talk_or_fight(m_stream, m_context, trainer, TalkExpect::BATTLE, BattleFormat::DOUBLES);
-        return;
+        return true;
     }
-    fight_route_trainer(m_stream, m_context, trainer);
+    return fight_route_trainer(m_stream, m_context, trainer);
 }
 
 void ConsoleStoryStepIO::walk_until_stopped(Direction direction, size_t tiles, const std::string& label){

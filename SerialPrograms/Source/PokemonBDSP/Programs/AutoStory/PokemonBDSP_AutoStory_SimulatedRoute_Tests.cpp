@@ -197,7 +197,7 @@ UnitTestResult test_blocked_from_several_tiles(Logger&){
     const TilePos goal{52, 41};
     std::vector<std::string> notes;
     SimulatedRouteIO io(world, {53, 41}, {{54, 41}}, notes);
-    RouteTrainers trainers{.sights = {}, .fight = [](const std::string&){}};
+    RouteTrainers trainers{.sights = {}, .fight = [](const std::string&){ return true; }};
     try{
         walk_route(io, world, from, trainers, {
             .goal = [goal](const TilePos& pos){ return pos == goal; },
@@ -245,7 +245,7 @@ UnitTestResult test_jubilife_center_held_overshoot(Logger&){
         std::vector<std::string> notes;
         SimulatedRouteIO io(world, from, {}, notes);
         io.overshoot_timed_holds(true);
-        RouteTrainers trainers{.sights = {}, .fight = [](const std::string&){}};
+        RouteTrainers trainers{.sights = {}, .fight = [](const std::string&){ return true; }};
         try{
             walk_route(io, world, {from}, trainers, {
                 .goal = [goal](const TilePos& pos){ return pos == goal; },
@@ -273,7 +273,7 @@ UnitTestResult test_jubilife_center_kids(Logger&){
     const TilePos goal{52, 41};
     std::vector<std::string> notes;
     SimulatedRouteIO io(world, from, {{52, 46}, {54, 46}}, notes);
-    RouteTrainers trainers{.sights = {}, .fight = [](const std::string&){}};
+    RouteTrainers trainers{.sights = {}, .fight = [](const std::string&){ return true; }};
     try{
         walk_route(io, world, {from}, trainers, {
             .goal = [goal](const TilePos& pos){ return pos == goal; },
@@ -358,7 +358,7 @@ std::string sweep_story_route(const StoryRoute& route, bool overshoot, std::vect
         SimulatedRouteIO io(*world, from, {}, notes);
         io.overshoot_timed_holds(overshoot);
         io.set_can_run(route.speed == MoveSpeed::RUN);
-        RouteTrainers trainers{.sights = story_trainers(*world), .fight = [](const std::string&){}};
+        RouteTrainers trainers{.sights = story_trainers(*world), .fight = [](const std::string&){ return true; }};
         try{
             walk_route(io, *world, start, trainers, {
                 .goal = [&](const TilePos& pos){ return std::find(targets.begin(), targets.end(), pos) != targets.end(); },
