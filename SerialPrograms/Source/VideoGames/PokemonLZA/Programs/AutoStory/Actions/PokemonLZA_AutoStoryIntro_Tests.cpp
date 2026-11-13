@@ -325,19 +325,12 @@ UnitTestResult test_look_moves(Logger&){
     return true;
 }
 
-//  How a highlighted face is drawn in look_picker_frame().
-enum class LookHighlight{
-    //  A white frame round the tile.
-    FRAME,
-    //  A light tile.
-    TILE,
-};
-
 //  The look picker drawn as console B shows it (1920 x 1080): dark blue,
 //  8 slate tiles 240 x 240, the columns' left edges at x 373, 685, 997 and
-//  1309, the rows' tops at y 324 and 609; look `highlighted` (if any) drawn
-//  as `style`.
-ImageRGB32 look_picker_frame(std::optional<size_t> highlighted, LookHighlight style = LookHighlight::FRAME){
+//  1309, the rows' tops at y 324 and 609, each with a face (a checkerboard)
+//  in its middle; looks in `highlighted` drawn on a white card 12 larger on
+//  every side.
+ImageRGB32 look_picker_frame(std::initializer_list<size_t> highlighted){
     const size_t lefts[] = {373, 685, 997, 1309};
     const size_t tops[] = {324, 609};
     ImageRGB32 image(1920, 1080);
@@ -345,18 +338,19 @@ ImageRGB32 look_picker_frame(std::optional<size_t> highlighted, LookHighlight st
     for (size_t look = 1; look <= LOOK_COUNT; look++){
         const size_t left = lefts[(look - 1) % 4];
         const size_t top = tops[(look - 1) / 4];
-        const bool lit = highlighted == look;
-        if (lit && style == LookHighlight::FRAME){
-            for (size_t y = top - 10; y < top + 250; y++){
-                for (size_t x = left - 10; x < left + 250; x++){
-                    image.pixel(x, y) = 0xffffffff;
-                }
+        bool lit = false;
+        for (const size_t item : highlighted){
+            lit = lit || item == look;
+        }
+        const size_t grow = lit ? 12 : 0;
+        for (size_t y = top - grow; y < top + 240 + grow; y++){
+            for (size_t x = left - grow; x < left + 240 + grow; x++){
+                image.pixel(x, y) = lit ? 0xffffffff : 0xff202f50;
             }
         }
-        const uint32_t tile = lit && style == LookHighlight::TILE ? 0xffc8d2dc : 0xff202f50;
-        for (size_t y = top; y < top + 240; y++){
-            for (size_t x = left; x < left + 240; x++){
-                image.pixel(x, y) = tile;
+        for (size_t y = top + 80; y < top + 180; y++){
+            for (size_t x = left + 70; x < left + 170; x++){
+                image.pixel(x, y) = ((x / 10 + y / 10) % 2 == 0) ? 0xffe0b090 : 0xff302020;
             }
         }
     }
@@ -364,26 +358,19 @@ ImageRGB32 look_picker_frame(std::optional<size_t> highlighted, LookHighlight st
 }
 
 UnitTestResult test_look_picker_synthetic(Logger&){
-    const ImageRGB32 none = look_picker_frame(std::nullopt);
+    const ImageRGB32 none = look_picker_frame({});
     if (!is_look_picker(none) || read_look_picker_cursor(none)){
         return "Expected the picker with no highlight.";
     }
-    for (const LookHighlight style : {LookHighlight::FRAME, LookHighlight::TILE}){
-        for (size_t look = 1; look <= LOOK_COUNT; look++){
-            const ImageRGB32 frame = look_picker_frame(look, style);
-            if (!is_look_picker(frame) || read_look_picker_cursor(frame) != look){
-                return std::format("Expected the highlight read on look {} (style {}).", look, (int)style);
-            }
+    for (size_t look = 1; look <= LOOK_COUNT; look++){
+        const ImageRGB32 frame = look_picker_frame({look});
+        if (!is_look_picker(frame) || read_look_picker_cursor(frame) != look){
+            return std::format("Expected the highlight read on look {}.", look);
         }
     }
-    ImageRGB32 two = look_picker_frame(1, LookHighlight::TILE);
-    for (size_t y = 609; y < 849; y++){
-        for (size_t x = 1309; x < 1549; x++){
-            two.pixel(x, y) = 0xffc8d2dc;
-        }
-    }
-    if (is_look_picker(two) || read_look_picker_cursor(two)){
-        return "Expected no picker with two highlights.";
+    const ImageRGB32 two = look_picker_frame({1, 8});
+    if (!is_look_picker(two) || read_look_picker_cursor(two)){
+        return "Expected the picker with no highlight read while two looks have the card.";
     }
     if (is_look_picker(language_list_frame(0))){
         return "Expected the language list not to be the picker.";
@@ -711,6 +698,37 @@ public:
     }
 };
 
+//  The look picker on console B (2026-11-13), as the 00.00 runs saved it in
+//  English, German and Japanese. The file name ends in the highlighted
+//  look, 0 for none: PokemonLZA/AutoStoryLookPicker/<language>_<n>_<look>.png.
+class Test_LookPickerFrame : public ImageUnitTest{
+public:
+    explicit Test_LookPickerFrame(const std::string& image)
+        : ImageUnitTest("PokemonLZA::AutoStory - Look picker - " + image, {image})
+    {}
+    virtual UnitTestResult run_on_images(
+        Logger&, CancellableScope&, const std::vector<ImageRGB32>& images
+    ) const override{
+        const std::string& path = image_paths()[0];
+        const size_t underscore = path.rfind('_');
+        if (underscore == std::string::npos || underscore + 1 >= path.size()){
+            return "Error: the file name does not end in _<look>.";
+        }
+        const size_t expected = (size_t)(path[underscore + 1] - '0');
+        if (!is_look_picker(images[0])){
+            return "Expected the look picker, read another screen.";
+        }
+        const std::optional<size_t> cursor = read_look_picker_cursor(images[0]);
+        if (expected == 0 && cursor){
+            return std::format("Expected no highlight, read look {}.", *cursor);
+        }
+        if (expected != 0 && cursor != expected){
+            return std::format("Expected look {} highlighted, read {}.", expected, cursor ? std::to_string(*cursor) : "none");
+        }
+        return true;
+    }
+};
+
 class Test_AutoStoryIntro : public UnitTest{
 public:
     explicit Test_AutoStoryIntro(const IntroCase& test_case)
@@ -739,6 +757,13 @@ void add_tests_AutoStoryIntro(UnitTestDatabase& database){
         for (size_t row = 0; row <= CONFIRM_CHOICES_READY_ROW; row++){
             database.add<Test_ConfirmChoicesFrame>(std::format("PokemonLZA/AutoStoryConfirmChoices/{}_{}.png", language, row));
         }
+    }
+    for (const std::string_view name : {
+        "English_1_0", "English_2_3", "English_3_7", "English_4_2", "English_5_6", "English_6_1", "English_7_5",
+        "German_1_0", "German_2_7", "German_3_3", "German_4_2", "German_5_6",
+        "Japanese_1_0", "Japanese_2_6", "Japanese_3_2", "Japanese_4_2", "Japanese_5_3", "Japanese_6_7",
+    }){
+        database.add<Test_LookPickerFrame>(std::format("PokemonLZA/AutoStoryLookPicker/{}.png", name));
     }
 }
 

@@ -361,23 +361,42 @@ void wait_for_look_picker(ConsoleHandle& console, ProControllerContext& context,
     );
 }
 
+//  The look picker's highlight once it has settled: frames 150 ms apart
+//  until two reads in a row agree on a look, over at most 2 s. The card
+//  grows and moves for a moment after a press, so one read can catch it
+//  between looks. Nullopt (the last frame saved to DebugDumps) if no two
+//  reads agree.
+std::optional<size_t> read_settled_look(ConsoleHandle& console, ProControllerContext& context){
+    std::optional<size_t> previous;
+    VideoSnapshot frame;
+    for (size_t read = 0; read < 14; read++){
+        context.wait_for_all_requests();
+        frame = console.video().snapshot();
+        const std::optional<size_t> cursor = frame ? read_look_picker_cursor(frame) : std::nullopt;
+        if (cursor && cursor == previous){
+            return cursor;
+        }
+        previous = cursor;
+        context.wait_for(150ms);
+    }
+    if (frame){
+        dump_debug_image(console, "PokemonLZA/AutoStory/Intro", "look-picker-unread", frame);
+    }
+    return std::nullopt;
+}
+
 //  On the look picker: one press at a time towards look `target`, reading
-//  the highlight after each, until it is on `target`. The picker opens with
+//  the settled highlight (read_settled_look()) after each, until it is on
+//  `target`. The picker opens with
 //  no face highlighted, so while none is, UP (harmless on any face of the
-//  top row) to bring the highlight up. Each frame read with no highlight is
-//  saved to DebugDumps. Throws OperationFailedException if the highlight is
+//  top row) to bring the highlight up. Throws OperationFailedException if the highlight is
 //  not read or does not reach `target`.
 void move_look_cursor(ConsoleHandle& console, ProControllerContext& context, size_t target){
     size_t unread = 0;
     for (size_t attempt = 0; attempt < 24; attempt++){
-        context.wait_for_all_requests();
-        const VideoSnapshot frame = console.video().snapshot();
-        const std::optional<size_t> cursor = frame ? read_look_picker_cursor(frame) : std::nullopt;
+        const std::optional<size_t> cursor = read_settled_look(console, context);
         if (!cursor){
             unread++;
-            if (frame){
-                dump_debug_image(console, "PokemonLZA/AutoStory/Intro", "look-picker-unread", frame);
-            }
             if (unread > 6){
                 break;
             }
