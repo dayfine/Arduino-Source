@@ -876,6 +876,9 @@ UnitTestResult test_route_plans_golden(Logger& logger){
 //  north, where 00.02 and Starter RNG start; starting past 00.01 runs on.
 UnitTestResult test_plan_story_run_starter_rng(Logger&){
     const std::vector<StoryCheckpoint>& table = story_checkpoints();
+    if (table.size() < 3){
+        return std::format("Expected the story table to reach 00.02, got {} rows.", table.size());
+    }
     const StoryRunPlan full = plan_story_run(table, 0, table.size() - 1, StoryHandoffs{.starter_rng = Pokemon::RngHandoffMode::OFF});
     if (full.stop != StoryHandoff::NONE || full.rows.size() != table.size()){
         return "With Starter RNG handoff off, expected the full table with no stop.";
