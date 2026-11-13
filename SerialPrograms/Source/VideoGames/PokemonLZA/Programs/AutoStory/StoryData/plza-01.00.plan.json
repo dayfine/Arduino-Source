@@ -6,9 +6,15 @@
     "title": "New game to the station platform",
     "events": [
       {
+        "id": "launch_from_home",
+        "kind": "game_action",
+        "why": "step 0: with PLZA in front (any screen, mid-scene too) or on the HOME screen with its tile selected: HOME once if HOME is not showing (the game in front stays the selected tile), close it if it is running (X, A), launch the selected tile without moving the cursor, user select / license check, wait for the language list (no save: a new game opens on it)",
+        "action": "launch_game_from_home"
+      },
+      {
         "id": "language",
         "kind": "game_action",
-        "why": "step 1: start a new game in English",
+        "why": "step 1: on the language list, move the highlight to the run's language (English) and press A",
         "action": "new_game_language"
       },
       {

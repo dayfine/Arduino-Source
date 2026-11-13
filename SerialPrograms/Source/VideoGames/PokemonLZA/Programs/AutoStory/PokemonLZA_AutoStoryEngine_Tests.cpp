@@ -222,6 +222,36 @@ UnitTestResult test_walk_fails_at_bound(CancellableScope& scope){
     return true;
 }
 
+//  The opening ends on "Your train has arrived in Lumiose City!", a text box
+//  with the advance arrow that waits for A (console B, 2026-11-13: the run
+//  waited 100 s on it and failed platform_not_seen; one A by hand went on to
+//  the platform). One A per text, none while it is still up, then the platform.
+UnitTestResult test_opening_presses_through_arrival_text(CancellableScope& scope){
+    const auto arrival = [](Milliseconds at){
+        return with_reading(look_at(at, {EngineEvent::TEXT_BOX}), ADVANCE_ARROW_READING);
+    };
+    FakeBackend backend = fake_plza({
+        look_at(0ms, {EngineEvent::FADE_BLACK}),
+        with_reading(look_at(300ms), AUTOSAVE_READING),
+        arrival(600ms),
+        arrival(900ms),
+        with_reading(look_at(1200ms), PLATFORM_READING),
+        with_reading(look_at(1500ms), PLATFORM_READING),
+    }, scope);
+    const Pokemon::StoryEngineReport report = run_plza(backend, step_of("01.00", "opening"));
+    if (report.verdict != Pokemon::CheckpointVerdict::PASSED){
+        return std::format("Expected the opening to end at the platform: {}", to_string(report.run.failure));
+    }
+    std::vector<std::string> presses;
+    std::copy_if(backend.inputs().begin(), backend.inputs().end(), std::back_inserter(presses), [](const std::string& input){
+        return input.starts_with("press");
+    });
+    if (presses != std::vector<std::string>{"press A"}){
+        return std::format("Expected one A at the arrival text, got [{}].", joined(backend.inputs()));
+    }
+    return true;
+}
+
 //  A look at `at` facing `heading`, as the minimap reads it.
 Observation<ZonePose> facing(Milliseconds at, int heading){
     Observation<ZonePose> look = look_at(at);
@@ -543,6 +573,7 @@ private:
 
 const EngineTestCase ENGINE_TEST_CASES[] = {
     {.input = {"01.00 opening: no presses, done on two looks at the platform after the autosave", test_opening_waits_for_platform}, .expectation = {}},
+    {.input = {"01.00 opening: one A at the arrival text with the advance arrow", test_opening_presses_through_arrival_text}, .expectation = {}},
     {.input = {"01.01 start check: fails without the platform", test_start_check_needs_platform}, .expectation = {}},
     {.input = {"01.01 text_to_choice: B through the text, done at the choice", test_text_to_choice}, .expectation = {}},
     {.input = {"01.01 arrival_scenes: A through text and choice, done on the controls hint", test_arrival_ends_on_controls_hint}, .expectation = {}},

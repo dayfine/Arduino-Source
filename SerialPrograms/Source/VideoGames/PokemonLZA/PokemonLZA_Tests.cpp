@@ -20,6 +20,7 @@
 #include "Inference/PokemonLZA_OverworldPartySelectionDetector.h"
 #include "Inference/PokemonLZA_SelectionArrowDetector.h"
 #include "Programs/AutoStory/PokemonLZA_AutoStoryEngine_Tests.h"
+#include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryIntro_Tests.h"
 #include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDetectors_Tests.h"
 #include "Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.h"
 #include "Programs/AutoStory/PokemonLZA_AutoStoryScreenEvents.h"
@@ -49,6 +50,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_AutoStory_StoryTable(database);
     add_tests_AutoStoryScreenEvents(database);
     add_tests_AutoStoryDetectors(database);
+    add_tests_AutoStoryIntro(database);
     add_tests_AutoStorySceneMachine(database);
     add_tests_AutoStoryEngine(database);
 
