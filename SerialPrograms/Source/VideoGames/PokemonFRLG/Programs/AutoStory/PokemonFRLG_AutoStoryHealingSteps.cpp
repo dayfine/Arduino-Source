@@ -105,29 +105,19 @@ std::optional<Outcome> run_healing_step(StoryEnv& env, Pokemon::RunState& state,
     return step.action == HEAL_TO_FULL_ACTION ? heal(env, step, (int)*max_hp) : check(env, step, (int)*max_hp);
 }
 
-std::optional<Outcome> cover_hp_in_mart(Logger& logger, const Supplies& supplies, StoryStep& step){
+std::optional<Outcome> fill_mart_to(Logger& logger, const Supplies& supplies, StoryStep& step){
     const bool mart = step.action == MART_ACTION;
-    const int64_t* cover = mart ? game_arg<int64_t>(step.args, "cover_hp") : nullptr;
     const int64_t* fill = mart ? game_arg<int64_t>(step.args, "fill_to") : nullptr;
     const std::vector<Pokemon::StoryItem>* items = game_arg<std::vector<Pokemon::StoryItem>>(step.args, "items");
-    if ((cover == nullptr && fill == nullptr) || items == nullptr || items->empty()){
+    if (fill == nullptr || items == nullptr || items->empty()){
         return std::nullopt;
     }
     std::vector<Pokemon::StoryItem> lines = *items;
-    int shortfall;
-    if (fill != nullptr){
-        shortfall = fill_shortfall(supplies, (int)*fill, lines[0].item);
-        logger.log(std::format(
-            "Story: {}: {} Potions and {} Super Potions against {} {}: {} short.",
-            step.name, supplies.potions, supplies.super_potions, *fill, lines[0].item, shortfall
-        ));
-    }else{
-        shortfall = hp_cover_shortfall(supplies, (int)*cover, lines[0].item);
-        logger.log(std::format(
-            "Story: {}: {} Potions and {} Super Potions against {} HP: {} {} short.",
-            step.name, supplies.potions, supplies.super_potions, *cover, shortfall, lines[0].item
-        ));
-    }
+    const int shortfall = fill_shortfall(supplies, (int)*fill, lines[0].item);
+    logger.log(std::format(
+        "Story: {}: {} Potions and {} Super Potions against {} {}: {} short.",
+        step.name, supplies.potions, supplies.super_potions, *fill, lines[0].item, shortfall
+    ));
     if (shortfall <= 0){
         return Pokemon::outcome_unchanged();
     }

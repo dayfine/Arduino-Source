@@ -31,6 +31,7 @@
 #include "PokemonFRLG_AutoStoryRooms.h"
 #include "PokemonFRLG_AutoStoryMember.h"
 #include "PokemonFRLG_AutoStoryMartPlan.h"
+#include "PokemonFRLG_AutoStoryMoveData.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryRows12_Tests.h"
 #include "PokemonFRLG_AutoStoryTable.h"
@@ -214,6 +215,51 @@ UnitTestResult test_lead_moves_in_gym(){
     return true;
 }
 
+//  The lead of the 2026-11-12 console failure (12.02): Bite, Water Pulse,
+//  Surf, Dig (slot 4). Dig was picked 8 turns against Koffing, whose
+//  Levitate makes Ground do nothing. Surf instead, over Koga's party.
+UnitTestResult test_dig_not_picked_against_levitate(){
+    PartyMember lead;
+    lead.species = "blastoise";
+    lead.moves_read = true;
+    lead.level = 39;
+    lead.moves = {{"bite", 25}, {"water-pulse", 20}, {"surf", 15}, {"dig", 10}};
+    constexpr size_t SURF = 2;
+    constexpr size_t WATER_PULSE = 1;
+    for (std::string_view foe : {"koffing", "weezing"}){
+        if (attack_slot_against(lead, {std::string(foe)}) != SURF){
+            return std::format("Against {}: expected Surf, not Dig.", foe);
+        }
+    }
+    const std::optional<size_t> muk = attack_slot_against(lead, {"muk"});
+    if (muk != SURF && muk != WATER_PULSE){
+        return "Against Muk: expected Surf or Water Pulse, not Dig.";
+    }
+    if (attack_slot_against(lead, {"koffing", "muk", "weezing"}) != SURF){
+        return "Against Koga's whole party: expected Surf.";
+    }
+    return true;
+}
+
+//  A foe's ability blocks only the type it names, and a single ability only.
+UnitTestResult test_ability_immunities(){
+    if (ability_immunity("koffing") != PokemonType::GROUND || ability_immunity("weezing") != PokemonType::GROUND){
+        return "Expected Koffing and Weezing: Levitate, Ground.";
+    }
+    if (ability_immunity("vulpix") != PokemonType::FIRE || ability_immunity("jolteon") != PokemonType::ELECTRIC ||
+        ability_immunity("vaporeon") != PokemonType::WATER
+    ){
+        return "Expected Flash Fire, Volt Absorb and Water Absorb immunities.";
+    }
+    if (ability_immunity("muk") != PokemonType::NONE || ability_immunity("growlithe") != PokemonType::NONE){
+        return "Expected no immunity for Muk, or for Growlithe (two possible abilities).";
+    }
+    if (!takes_two_turns("dig") || !takes_two_turns("fly") || takes_two_turns("surf")){
+        return "Expected Dig and Fly to take two turns, and Surf not.";
+    }
+    return true;
+}
+
 class QuietLogger : public Logger{
 public:
     using Logger::log;
@@ -255,7 +301,7 @@ UnitTestResult check_lead_level_precondition(Logger& logger, std::string_view id
 
 //  pokeguy's bag at Koga holds 5 Super Potions (PokemonSimulation
 //  docs/battles/pokeguy-conditions.md, ### koga): 12.01's Mart step buys up
-//  to 5, whatever the Potions cover, within its budget.
+//  to 5, whatever the Potions cover.
 UnitTestResult test_mart_fills_super_potions(){
     const std::optional<Pokemon::StoryCheckpoint> row = checkpoint("12.01");
     if (!row){
@@ -279,17 +325,12 @@ UnitTestResult test_mart_fills_super_potions(){
         supplies.potions = test.potions;
         supplies.super_potions = test.super_potions;
         Pokemon::StoryStep step = *step_it;
-        const std::optional<Pokemon::Outcome> done = cover_hp_in_mart(logger, supplies, step);
+        const std::optional<Pokemon::Outcome> done = fill_mart_to(logger, supplies, step);
         const std::vector<Pokemon::StoryItem>* items = game_arg<std::vector<Pokemon::StoryItem>>(step.args, "items");
         const size_t buys = done ? 0 : (items == nullptr || items->empty() ? 0 : items->at(0).quantity);
         if (buys != test.expected){
             return std::format("{} Potions, {} Super Potions: buys {}, expected {}.", test.potions, test.super_potions, buys, test.expected);
         }
-    }
-    const int64_t* budget = game_arg<int64_t>(step_it->args, "budget");
-    const int64_t* floor = game_arg<int64_t>(step_it->args, "floor");
-    if (budget == nullptr || *budget < 5 * 700 || floor == nullptr || *floor != 3762){
-        return "The step's budget doesn't cover 5 Super Potions, or its floor moved off 3762.";
     }
     return true;
 }
@@ -416,7 +457,7 @@ UnitTestResult test_koga_bag_detour_buys(){
     for (const Case& test : cases){
         const Supplies supplies = koga_supplies(test.super_potions, 0, test.full_heals);
         Pokemon::StoryStep step = step_named(row, test.name);
-        const std::optional<Pokemon::Outcome> done = cover_hp_in_mart(logger, supplies, step);
+        const std::optional<Pokemon::Outcome> done = fill_mart_to(logger, supplies, step);
         const std::vector<Pokemon::StoryItem>* items = game_arg<std::vector<Pokemon::StoryItem>>(step.args, "items");
         const size_t buys = done ? 0 : (items == nullptr || items->empty() ? 0 : items->at(0).quantity);
         if (buys != test.expected){
@@ -450,6 +491,14 @@ const AutoStoryFuchsiaGymCase AUTO_STORY_FUCHSIA_GYM_CASES[] = {
     {
         .input = {.name = "the lead's attacks in Fuchsia Gym", .body = test_lead_moves_in_gym},
         .expectation = {.description = "Surf against Koga's Pokemon, Surf or Bite against the Jugglers'"},
+    },
+    {
+        .input = {.name = "Dig is not picked against Levitate", .body = test_dig_not_picked_against_levitate},
+        .expectation = {.description = "Surf, not Dig, against Koffing and Weezing; Surf or Water Pulse against Muk"},
+    },
+    {
+        .input = {.name = "foe abilities that grant immunity", .body = test_ability_immunities},
+        .expectation = {.description = "Levitate, Flash Fire, Volt Absorb and Water Absorb species; Dig and Fly take two turns"},
     },
     {
         .input = {.name = "12.02 stops before Koga unless the lead is at least pokeguy's Lv39", .body = []{

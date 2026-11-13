@@ -211,16 +211,24 @@ size_t effectiveness(const MoveData& move, const SpeciesData& defender){
     return tenths;
 }
 
-//  `move`'s type multiplier, in tenths, summed over `foes`; 0 for a move
-//  that does no damage. Each foe must be in species_data().
-size_t matchup(std::string_view move, const std::vector<std::string>& foes){
+//  `move`'s expected damage by `attacker`, in tenths of a plain hit, summed
+//  over `foes`: the type multiplier, 0 against a foe whose ability makes it
+//  immune, 1.5x for the attacker's own type, halved for a two-turn move;
+//  0 for a move that does no damage. Each foe must be in species_data().
+size_t matchup(const SpeciesData& attacker, std::string_view move, const std::vector<std::string>& foes){
     const MoveData* data = move_data(move);
     if (data == nullptr || !data->damaging){
         return 0;
     }
+    const bool stab = data->type == attacker.first || data->type == attacker.second;
     size_t total = 0;
     for (const std::string& foe : foes){
-        total += effectiveness(*data, *species_data(foe));
+        if (ability_immunity(foe) == data->type){
+            continue;
+        }
+        size_t tenths = effectiveness(*data, *species_data(foe));
+        tenths = stab ? tenths * 3 / 2 : tenths;
+        total += takes_two_turns(move) ? tenths / 2 : tenths;
     }
     return total;
 }
@@ -384,10 +392,14 @@ std::optional<size_t> attack_slot_against(const PartyMember& member, const std::
     if (known.empty() || !plan){
         return plan;
     }
+    const SpeciesData* attacker = species_data(member.species);
+    if (attacker == nullptr){
+        return plan;
+    }
     std::optional<size_t> best;
     size_t best_matchup = 0;
     for (size_t slot : attack_order(member)){
-        const size_t tenths = matchup(member.moves[slot].move, known);
+        const size_t tenths = matchup(*attacker, member.moves[slot].move, known);
         if (member.moves[slot].pp > 0 && tenths > best_matchup){
             best = slot;
             best_matchup = tenths;

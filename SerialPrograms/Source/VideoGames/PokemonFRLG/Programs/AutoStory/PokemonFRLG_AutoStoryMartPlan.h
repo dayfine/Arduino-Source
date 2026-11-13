@@ -46,21 +46,16 @@ struct MartLine{
     size_t quantity = 1;
 };
 
-//  What a Mart step buys.
+//  What a Mart step buys: each line's quantity, blind (the money can't be
+//  read).
 struct MartPlan{
     //  The Mart's map, for its stock.
     std::string map = {};
     //  In priority order.
     std::vector<MartLine> lines = {};
-    //  The most the step spends.
-    size_t budget = 0;
-    //  The least money the player has here, from the money plan: used
-    //  when the money box can't be read.
-    std::optional<size_t> money_floor = std::nullopt;
 };
 
 //  The GAME action of a Mart step: map WORD (required), the Mart's map;
-//  budget INTEGER (required); floor INTEGER (optional), the money floor;
 //  items ITEMS (required), the lines in order.
 inline const std::string MART_ACTION = "mart";
 //  `plan` as its action's args.

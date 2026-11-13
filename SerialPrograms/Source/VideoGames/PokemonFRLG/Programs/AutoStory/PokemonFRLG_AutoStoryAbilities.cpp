@@ -21,9 +21,6 @@ Outcome mart(Logger& logger, const MartPlan& plan, StoryAbilities& abilities){
     const MartResult result = run_mart(logger, abilities.mart, plan);
     const std::string message = mart_message(plan, result);
     logger.log(message, result.end == MartEnd::DONE ? COLOR_BLACK : COLOR_RED);
-    if (result.end == MartEnd::NOTHING_TO_BUY){
-        return Pokemon::outcome_unchanged();
-    }
     return result.end == MartEnd::DONE ? Pokemon::outcome_ok() : Pokemon::outcome_failed(std::format("mart_{}", mart_end_name(result.end)), message);
 }
 
