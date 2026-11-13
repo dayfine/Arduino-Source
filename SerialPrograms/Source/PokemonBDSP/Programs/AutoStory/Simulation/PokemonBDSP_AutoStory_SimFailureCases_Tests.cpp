@@ -378,6 +378,32 @@ std::string boy_below_the_mart(Logger& logger, int row){
     return run_case(logger, "00.05b", "00.05b", {.fade = {}, .banner = {}}, std::move(knobs));
 }
 
+//  01.10 on lab-B (2026-11-13 02:35 and 02:37): the player walked Route
+//  204's row 28, not the plan's row 27, and "west 10 (to wall)" stopped
+//  against the youngster (youngster_4, who wanders x 14..16 on row 28)
+//  about 5 tiles in. The push read as stopped late (2400 and 2800 ms), the
+//  time counted 13 tiles and more, and the stop passed as the wall at
+//  (10, 27): every later leg ran 5 columns off, and "west 1 (to wall)" ran
+//  on 6 tiles to "position unknown". Which way the row went wrong is open:
+//  `cave_exit_low`, the cave leaves us on (20, 27) and the old line 1's
+//  "south 1" goes on to row 28, on today's table; else, on the old line 1,
+//  that south 1 moved two tiles, and the walker must tell the youngster
+//  from the wall. The youngster stands on (14, 28), as on the console's
+//  run 1.
+std::string youngster_on_route_204(Logger& logger, bool cave_exit_low){
+    SimWorldKnobs knobs;
+    knobs.standing = {{"youngster_4", TilePos{14, 28}}};
+    knobs.pushing_someone = 1200ms;
+    if (cave_exit_low){
+        knobs.start_at = Pokemon::tile_pose("Route204North", {TilePos{20, 27}}, Direction::SOUTH);
+        return run_case(logger, "01.10", "01.10", {.fade = {}, .banner = {}}, std::move(knobs));
+    }
+    StoryStep old_line_1 = table_step("01.10", "line_1");
+    old_line_1.args["target"] = GridPose{"Route204North", {{20, 27}}, std::nullopt};
+    knobs.lands["line_1"] = Pokemon::tile_pose("Route204North", {TilePos{20, 28}}, Direction::SOUTH);
+    return run_case(logger, "01.10", "01.10", {.fade = {}, .banner = {}}, std::move(knobs), table_with("01.10", old_line_1));
+}
+
 //  01.07: after the tag battle the screen fades back from the battle and
 //  the grunts run off before anyone speaks: a scene that opens with no box,
 //  6 s of people moving (Rowan's cutscene shape), then Rowan's and Dawn's
@@ -805,6 +831,12 @@ const FailureCase AUTO_STORY_FAILURE_CASES[] = {
         const std::string stopped = boy_below_the_mart(logger, 36);
         return stopped.find("sim_mismatch") == std::string::npos ? UnitTestResult(true)
             : UnitTestResult("the program went on from a tile the player is not on: " + stopped);
+    }}, .expectation = {}},
+    {.input = {"01.10 the cave exit leaves us a row low, on (20, 27): the youngster on row 28 stops west 10 (to wall), not its wall (lab-B 2026-11-13 02:35)", [](Logger& logger){
+        return passes(youngster_on_route_204(logger, true));
+    }}, .expectation = {}},
+    {.input = {"01.10 the old line 1's south 1 moves two tiles, to (20, 28): the youngster on row 28 stops west 10 (to wall), not its wall (lab-B 2026-11-13 02:35)", [](Logger& logger){
+        return passes(youngster_on_route_204(logger, false));
     }}, .expectation = {}},
     {.input = {"00.05c a coupon missing (the sign read for the Poketch Company clown): no Poketch, 00.05c fails (lab-B 2026-11-11)", no_poketch_fails_00_05c}, .expectation = {}},
     {.input = {"00.05b a coupon missing at its end: the row fails at its coupon check, before the save", missing_coupon_fails_00_05b}, .expectation = {}},
