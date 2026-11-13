@@ -132,7 +132,6 @@ const std::map<std::string, std::string> KNOWN_FAILING{
     {"PokemonBDSP::AutoStory - Fault sweep: 01.07, start off its declared tile", "a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center)"},
     {"PokemonBDSP::AutoStory - Fault sweep: 01.08, start off its declared tile", "a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center)"},
     {"PokemonBDSP::AutoStory - Fault sweep: 01.09, start off its declared tile", "a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center)"},
-    {"PokemonBDSP::AutoStory - Fault sweep: 01.10, start off its declared tile", "a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center)"},
     {"PokemonBDSP::AutoStory - Fault sweep: 01.11, start off its declared tile", "a first leg to a wall or funnel that pins the start (as 00.05's walk to the Center)"},
 };
 
