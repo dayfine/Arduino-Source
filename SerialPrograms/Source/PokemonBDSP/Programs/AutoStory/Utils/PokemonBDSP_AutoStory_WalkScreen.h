@@ -36,6 +36,21 @@ constexpr double WALK_TAP_BLOCKED_CHANGE = 16.0;
 //  More than walking changes in 400ms: a new scene, such as a battle opening.
 constexpr double WALK_SCENE_CHANGE = 120.0;
 
+//  What a change of the whole screen walking cannot make turns out to be.
+enum class WholeScreenChange{
+    BATTLE,         //  the battle's menu or text box showed
+    WARP,           //  positive evidence of a map change: a fade or a banner first read
+    UNCLASSIFIED,   //  neither yet: an encounter's swirl before its menu looks like
+                    //  this (lab-B 2026-11-12 21:58, a Geodude in 01.03's mine); wait
+                    //  for the battle detector, never end the walk on it
+};
+inline WholeScreenChange classify_whole_screen_change(bool battle_showed, bool fade_or_banner_read){
+    if (battle_showed){
+        return WholeScreenChange::BATTLE;
+    }
+    return fade_or_banner_read ? WholeScreenChange::WARP : WholeScreenChange::UNCLASSIFIED;
+}
+
 //  Whether two frames show different scenes: a change walking cannot make
 //  (WALK_SCENE_CHANGE). UNKNOWN without both frames.
 Pokemon::SceneChange walk_scenes_differ(const Pokemon::TransitionSample& before, const Pokemon::TransitionSample& after);

@@ -357,6 +357,26 @@ UnitTestResult test_row_trainers(Logger&){
     return true;
 }
 
+//  A change of the whole screen is a warp only on a fade or a banner read; a
+//  battle's swirl before its menu is not one, and waits for the battle
+//  (lab-B 2026-11-12 21:58, 01.03's mine: a Geodude on west 7 ended the leg).
+UnitTestResult test_whole_screen_change(Logger&){
+    struct Case{ std::string_view name; bool battle; bool evidence; WholeScreenChange want; };
+    const Case cases[] = {
+        {"a cave encounter's swirl, no menu yet, no fade, no banner", false, false, WholeScreenChange::UNCLASSIFIED},
+        {"the swirl, then the battle's menu", true, false, WholeScreenChange::BATTLE},
+        {"a door's fade", false, true, WholeScreenChange::WARP},
+        {"a door's banner", false, true, WholeScreenChange::WARP},
+        {"a battle that opens from a fade", true, true, WholeScreenChange::BATTLE},
+    };
+    for (const Case& c : cases){
+        if (classify_whole_screen_change(c.battle, c.evidence) != c.want){
+            return std::string(c.name) + ": wrong class.";
+        }
+    }
+    return true;
+}
+
 struct AutoStoryWalkInput{
     std::string name;
     std::function<UnitTestResult(Logger&)> body;
@@ -431,6 +451,10 @@ private:
 
 
 const AutoStoryWalkCase AUTO_STORY_WALK_CASES[] = {
+    {
+        .input = {"a whole-screen change ends a walk as a warp only on a fade or a banner; a swirl waits for the battle", test_whole_screen_change},
+        .expectation = {},
+    },
     {
         .input = {"a turn is a D-pad tap too short to step", test_route_turn_tap},
         .expectation = {},

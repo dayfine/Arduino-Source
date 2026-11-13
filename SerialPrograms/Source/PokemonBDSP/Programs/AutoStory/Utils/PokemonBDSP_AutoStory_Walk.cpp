@@ -172,6 +172,10 @@ bool battle_follows(VideoStream& stream, ProControllerContext& context, Millisec
     return wait_until(stream, context, wait, {{battle_menu}, {battle_dialog}}) >= 0;
 }
 
+//  How long a change of the whole screen with no fade and no banner waits for
+//  a battle's menu, after the first 5 s (a cave's swirl can run past them).
+constexpr Milliseconds UNCLASSIFIED_CHANGE_BATTLE_WAIT = 10000ms;
+
 //  After a white flash: an encounter's, if its battle shows; else a cave
 //  exit's white fade (#268 slice 3), which the walk once fled as a battle.
 constexpr Milliseconds WHITE_FLASH_BATTLE_WAIT = 8000ms;
@@ -429,8 +433,21 @@ private:
         m_stream.log("[Walk] " + m_spec.label + ": " + std::to_string(m_result.walked.count()) +
             "ms, screen change " + std::to_string(change) + ".");
         if (change > WALK_SCENE_CHANGE){
-            const bool battle = battle_follows(m_stream, m_context, 5000ms, &m_banner);
+            //  Only a banner first read now is evidence of a warp.
+            const std::string banner_before = m_banner.seen();
+            const auto new_banner = [&]{
+                return !m_banner.seen().empty() && m_banner.seen() != banner_before;
+            };
+            bool battle = battle_follows(m_stream, m_context, 5000ms, &m_banner);
             m_result.warp.banner = m_banner.seen();
+            //  Not yet a battle and not a warp: a cave's encounter opens with a
+            //  swirl whose menu came after more than 5 s (lab-B 2026-11-12 21:58,
+            //  01.03's mine, a wild Geodude on west 7). Only a banner is the
+            //  evidence of a warp; anything else waits on the battle detector.
+            if (classify_whole_screen_change(battle, new_banner()) == WholeScreenChange::UNCLASSIFIED){
+                battle = battle_follows(m_stream, m_context, UNCLASSIFIED_CHANGE_BATTLE_WAIT, &m_banner);
+                m_result.warp.banner = m_banner.seen();
+            }
             if (battle){
                 if (m_spec.wild == WildPolicy::STOP_AT){
                     m_stream.log("[Walk] " + m_spec.label + ": a battle started; a trainer's here.");
@@ -439,12 +456,16 @@ private:
                 escape_battle("wild battle (leaf opening); running.", BattleMovement::STEP_MOVED);
                 return {ChunkNext::NEXT_CHUNK, WalkStop::LIMIT};
             }
-            //  A change walking cannot make and no battle after it: a warp whose
-            //  fade fell between two frames (lab-B 2026-11-12 20:20, a hold east
-            //  through the Gate's door into Oreburgh City, screen change 267).
-            //  The walk is over; the map it ran on is no longer the map it began on.
-            m_stream.log("[Walk] " + m_spec.label + ": the scene changed and no battle followed: through a warp, its fade unseen.");
-            return {ChunkNext::STOP, WalkStop::TRANSITION};
+            //  A change walking cannot make, no battle after it and the banner of
+            //  a map: a warp whose fade fell between two frames (lab-B 2026-11-12
+            //  20:20, a hold east through the Gate's door into Oreburgh City,
+            //  screen change 267). The walk is over; the map it ran on is no
+            //  longer the map it began on.
+            if (classify_whole_screen_change(false, new_banner()) == WholeScreenChange::WARP){
+                m_stream.log("[Walk] " + m_spec.label + ": the scene changed and the banner \"" + m_result.warp.banner + "\" read: through a warp, its fade unseen.");
+                return {ChunkNext::STOP, WalkStop::TRANSITION};
+            }
+            m_stream.log("[Walk] " + m_spec.label + ": the scene changed, no fade, banner or battle read; walking on.", COLOR_ORANGE);
         }
         //  Two still chunks in a row, so one dropped frame does not stop us. A
         //  frame exactly the same is a stalled video or a game hitch, not a wall:
