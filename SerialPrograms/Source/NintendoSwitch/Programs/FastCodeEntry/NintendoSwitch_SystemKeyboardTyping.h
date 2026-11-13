@@ -9,8 +9,9 @@
  *
  *  Supported keyboards are those of NintendoSwitch_SystemKeyboardDetector.h: the
  *  Latin keyboard, QWERTY or AZERTY. Console-tested on Switch 1 (2026-11-13):
- *  the player's name in Legends: Z-A in English, Spanish, German, Italian, French
- *  and Japanese, and earlier the player's and rival's names in BDSP. Not
+ *  the player's name in Legends: Z-A with the game in English, Spanish, German,
+ *  Italian, French and Japanese (QWERTY, English system language), and earlier
+ *  the player's and rival's names in BDSP. AZERTY is not tested. Not
  *  supported: the Korean and Chinese keyboards. Switch 2 is not tested.
  *
  */

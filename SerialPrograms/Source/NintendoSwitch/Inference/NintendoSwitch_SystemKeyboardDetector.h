@@ -8,9 +8,11 @@
  *  Programs/FastCodeEntry/NintendoSwitch_SystemKeyboardTyping.h.
  *
  *  Supported: the Latin keyboard (QWERTY; AZERTY shares the key grid but has no
- *  test screenshot yet). Measured on 1920x1080 Switch 1 captures of BDSP's and
- *  Legends: Z-A's name entry, the latter in English, Spanish, German, Italian,
- *  French and Japanese. Not supported: the Korean keyboard, whose candidate strip
+ *  test screenshot yet). Its layout follows the console's system language, not
+ *  the game's. Measured on 1920x1080 Switch 1 captures of BDSP's and Legends:
+ *  Z-A's name entry, the latter with the game in English, Spanish, German,
+ *  Italian, French and Japanese (all QWERTY on an English console). Not
+ *  supported: the Korean keyboard, whose candidate strip
  *  moves the keys down (the detector returns false on it), and probably the
  *  Chinese ones (not tested). Switch 2 is not tested.
  *

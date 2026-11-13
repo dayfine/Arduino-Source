@@ -8,6 +8,7 @@
 #include <format>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "CommonFramework/GlobalAutoPaths.h"
@@ -38,12 +39,14 @@ constexpr double RIGHT_COLUMN_OK_TOP = 0.725;
 //  digit row to the bottom of the bottom row.
 const ImageFloatBox KEYS_AREA(0.0, 0.43, 1.0, 0.49);
 
-//  The cursor border is cyan (about 80, 230, 210).
+//  The cursor border pulses between bright cyan (about 50, 240, 220) and a darker
+//  teal (about 0, 185, 210), measured on Legends: Z-A. The blue of the OK button
+//  and of the ABC underline (40, 90, 250) is not green enough to match.
 bool is_cursor_pixel(uint32_t pixel){
     const int red = (pixel >> 16) & 0xff;
     const int green = (pixel >> 8) & 0xff;
     const int blue = pixel & 0xff;
-    return red < 150 && green > 200 && blue > 190;
+    return red < 130 && green > 160 && blue > 170 && green - red > 60;
 }
 
 uint8_t nearest_row(double y){
@@ -222,22 +225,36 @@ void add_tests_SystemKeyboardDetector(UnitTestDatabase& database){
         database.add<Test_SystemKeyboardDetector>(path(image), std::nullopt, false);
     }
 
-    //  Screens still to be captured. Each test is added once its image is in the
-    //  test repo.
+    //  The cursor on other keys (Legends: Z-A, English and Spanish prompts). The
+    //  border pulses between bright cyan and a darker teal; T, / and ! are dark.
+    const std::pair<std::string_view, SystemKeyboardKey> cursors[] = {
+        {"PLZA-Cursor-T.png",           {1, 4}},
+        {"PLZA-Cursor-Slash.png",       {1, 10}},
+        {"PLZA-Cursor-Exclamation.png", {3, 10}},
+        {"PLZA-Cursor-0.png",           {0, 9}},
+        {"PLZA-Cursor-Minus.png",       {0, 10}},
+        {"PLZA-Cursor-Backspace.png",   {0, 11}},
+        {"PLZA-Cursor-Return.png",      {1, 11}},
+        {"PLZA-Cursor-OK.png",          {3, 11}},
+        {"PLZA-Cursor-Globe.png",       {4, 0}},
+        {"PLZA-Cursor-NTilde.png",      {4, 5}},
+        {"PLZA-Cursor-Space.png",       {4, 8}},
+    };
+    for (const auto& [image, cursor] : cursors){
+        database.add<Test_SystemKeyboardDetector>(path(image), cursor, false);
+    }
+
+    //  Screens still to be captured: AZERTY needs a console whose system language
+    //  uses it (the layout follows the system, not the game). Each test is added
+    //  once its image is in the test repo.
     struct Planned{
         std::string_view image;
         std::optional<SystemKeyboardKey> cursor;
         bool has_text;
     };
     const Planned planned[] = {
-        {"PLZA-Cursor-3.png",           SystemKeyboardKey{0, 2},  false},
-        {"PLZA-Cursor-T.png",           SystemKeyboardKey{1, 4},  false},
-        {"PLZA-Cursor-Minus.png",       SystemKeyboardKey{0, 10}, false},
-        {"PLZA-Cursor-Backspace.png",   SystemKeyboardKey{0, 11}, true},
-        {"PLZA-Cursor-OK.png",          SystemKeyboardKey{3, 11}, true},
-        {"PLZA-Cursor-Space.png",       SystemKeyboardKey{4, 8},  false},
-        {"AZERTY-Empty.png",            key_1,                    false},
-        {"PLZA-Korean.png",             std::nullopt,             false},
+        {"AZERTY-Empty.png",    key_1,          false},
+        {"PLZA-Korean.png",     std::nullopt,   false},
     };
     for (const Planned& test : planned){
         const std::string image = path(test.image);
