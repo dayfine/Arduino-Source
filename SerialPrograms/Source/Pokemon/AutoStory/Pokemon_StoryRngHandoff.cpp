@@ -48,6 +48,13 @@ Outcome run_rng_handoff(Logger& logger, const std::string& program, const RngHan
     return outcome_ok();
 }
 
+std::string report_rng_handoff_stop(
+    Logger& logger, const std::string& message, const std::vector<std::string>& lines,
+    const std::function<void(const std::string&)>& show
+){
+    return std::string();
+}
+
 
 } // namespace Pokemon
 } // namespace PokemonAutomation
