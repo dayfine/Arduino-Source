@@ -1621,6 +1621,12 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_AutoStory_Tests.h
     Source/Pokemon/AutoStory/Pokemon_BuiltinStoryActions.cpp
     Source/Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h
+    Source/Pokemon/AutoStory/Pokemon_CheckpointAttempts.cpp
+    Source/Pokemon/AutoStory/Pokemon_CheckpointAttempts.h
+    Source/Pokemon/AutoStory/Pokemon_CheckpointRetry.cpp
+    Source/Pokemon/AutoStory/Pokemon_CheckpointRetry.h
+    Source/Pokemon/AutoStory/Pokemon_CheckpointRetry_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_CheckpointRetry_Tests.h
     Source/Pokemon/AutoStory/Pokemon_FadeProfiles.h
     Source/Pokemon/AutoStory/Pokemon_InterruptHandlers.h
     Source/Pokemon/AutoStory/Pokemon_Interrupts.cpp

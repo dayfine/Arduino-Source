@@ -56,7 +56,7 @@ struct StoryMove{
     //  so a held walk starts without one.
     bool held = false;
     //  A wait before the walk looks for free control: for the NPCs to move
-    //  off (02.01), or for a ride's fade to start (02.04's elevator). The
+    //  off (02.01), or for a ride's fade to start (02.05's elevator). The
     //  walk's caller waits it; run_story_move() does not.
     Milliseconds wait_first = Milliseconds(0);
 };

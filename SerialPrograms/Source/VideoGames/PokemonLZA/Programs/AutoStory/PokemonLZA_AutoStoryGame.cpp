@@ -282,7 +282,7 @@ public:
 
     //  B advances text by default. "advance_with_a" is for a talk that B
     //  cancels: Hotel Z's elevator closes on B before "Which floor?"
-    //  (02.04, console B 2026-11-10).
+    //  (02.05, console B 2026-11-10).
     static Handler text_to_choice(){
         return [](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
             SceneMachineConfig config;

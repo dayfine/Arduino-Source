@@ -86,7 +86,7 @@ SceneMashAction scene_mash_action(const Pokemon::ScreenEvents& events, SceneMash
 
 //  How long a scene step's mash waits for its scene to show. 02.02's street
 //  scene shows its first box ~10 s in from the save (console B, 2026-11-10);
-//  02.06's first evening holds a ~25 s black screen first.
+//  02.07's first evening holds a ~25 s black screen first.
 constexpr Milliseconds SCENE_START_WINDOW(45000);
 
 //  Whether a scene mash's scene has started, from its frames: a box, a
