@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <format>
+#include <string_view>
 #include <utility>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Filesystem/Filesystem.h"
@@ -91,23 +92,35 @@ std::string label_of(const StoryStep& step){
     return label;
 }
 
-//  The screen at a failed step, kept: the retry resets the game.
-void save_failure_screenshot(VideoStream& stream, size_t attempt){
+//  The screen now, kept in AutoStory/`folder`/ as "<time>-`name`.png".
+void save_screenshot(VideoStream& stream, std::string_view folder, std::string_view name, std::string_view what){
     VideoSnapshot screen = stream.video().snapshot();
     if (!screen){
         return;
     }
-    const std::string folder = SCREENSHOTS_PATH() + "AutoStory/failures/";
-    Filesystem::create_directories(Filesystem::Path(folder));
-    const std::string path = std::format("{}{}-attempt{}.png", folder, now_to_filestring(), attempt);
+    const std::string dir = std::format("{}AutoStory/{}/", SCREENSHOTS_PATH(), folder);
+    Filesystem::create_directories(Filesystem::Path(dir));
+    const std::string path = std::format("{}{}-{}.png", dir, now_to_filestring(), name);
     screen.frame->save(path);
-    stream.log("Failure screenshot: " + path);
+    stream.log(std::format("{} screenshot: {}", what, path));
+}
+
+//  The screen at a failed step, kept: the retry resets the game.
+void save_failure_screenshot(VideoStream& stream, size_t attempt){
+    save_screenshot(stream, "failures", std::format("attempt{}", attempt), "Failure");
 }
 
 } // namespace
 
 
 void ConsoleStepGuard::before_step(const StoryStep& step){
+    //  Where a row's save really puts us, before its first step moves us:
+    //  01.10's start row (cave exit on row 26 or 27) was guessed from leg
+    //  shots after the fact (lab-B 2026-11-13 02:35).
+    if (m_started != m_checkpoint){
+        m_started = m_checkpoint;
+        save_screenshot(m_stream, "starts", m_checkpoint, std::format("[{}] Start pose", m_checkpoint));
+    }
     m_stream.log(std::format("[{}] {} {}: {}", m_checkpoint, Pokemon::story_step_kind_name(step.kind), step.name, step.why), COLOR_BLUE);
 }
 
@@ -119,6 +132,7 @@ void ConsoleStepGuard::on_failure(const StoryStep&, const OperationFailedExcepti
     //  Attempts are the segment's policy; this only counts them for the
     //  log line the lab's run watcher reads.
     const size_t attempt = m_failures[m_checkpoint]++;
+    m_started.clear();
     m_stream.log(std::format("checkpoint_reattempt_loop: attempt {} failed: {}: {}", attempt, m_checkpoint, error.message()), COLOR_RED);
     save_failure_screenshot(m_stream, attempt);
 }
