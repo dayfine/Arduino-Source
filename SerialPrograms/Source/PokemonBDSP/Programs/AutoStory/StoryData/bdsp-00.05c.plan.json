@@ -2,37 +2,75 @@
   "checkpoint": {
     "events": [
       {
-        "action": "town",
+        "action": "line",
         "args": {
           "fight_wild": false,
           "target": {
-            "facing": "north",
+            "facing": "south",
             "map": "JubilifeCity",
             "tiles": [
               [
-                46,
-                36
+                15,
+                22
               ]
             ]
           }
         },
-        "id": "below_the_president",
+        "id": "to_main_boulevard",
         "kind": "route",
-        "why": "east along the long road, down the main road"
+        "why": "south to the main boulevard"
+      },
+      {
+        "action": "line",
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "south",
+            "map": "JubilifeCity",
+            "tiles": [
+              [
+                45,
+                22
+              ]
+            ]
+          }
+        },
+        "id": "along_main_boulevard",
+        "kind": "route",
+        "why": "east along the main boulevard"
+      },
+      {
+        "action": "line",
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "east",
+            "map": "JubilifeCity",
+            "tiles": [
+              [
+                45,
+                35
+              ]
+            ]
+          }
+        },
+        "id": "beside_the_president",
+        "kind": "route",
+        "why": "south down column 45 to the Poketch president"
       },
       {
         "id": "president",
         "kind": "talk",
-        "why": "the Poketch Company's president at (46, 35)"
+        "why": "the Poketch Company's president at (46, 36)"
       },
       {
         "declared_after": {
-          "facing": "north",
+          "facing": "east",
           "map": "JubilifeCity",
           "tiles": [
             [
-              46,
-              36
+              45,
+              35
             ]
           ]
         },
@@ -41,7 +79,7 @@
         "why": "the coupons for the Poketch; he walks off north"
       },
       {
-        "action": "town",
+        "action": "line",
         "args": {
           "fight_wild": false,
           "target": {

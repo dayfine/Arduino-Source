@@ -4,8 +4,8 @@
  *
  *  Walking and running times per tile, and the stick for a direction.
  *
+// code-health: allow header_symbols -- walking and running times per tile, the stick for a direction, and the run limits
  */
-// code-health: allow header_symbols -- one table of measured walking and running times per tile; split, the walk and run rows lose their pairing
 
 #ifndef PokemonAutomation_PokemonBDSP_AutoStory_RouteTiming_H
 #define PokemonAutomation_PokemonBDSP_AutoStory_RouteTiming_H
@@ -47,6 +47,9 @@ constexpr Milliseconds ROUTE_RUN_MS_PER_TILE_UP_DOWN = Pokemon::BDSP_MOVE_MECHAN
 
 //  Time per tile in `direction` at `speed`.
 Milliseconds route_ms_per_tile(Pokemon::Direction direction, MoveSpeed speed = MoveSpeed::WALK);
+//  The longest `tiles` tiles at `speed` take to hold, from standing: a
+//  limit for a run that something on the way ends (a scene's dialogue).
+Milliseconds route_limit_for_tiles(MoveSpeed speed, size_t tiles);
 //  The left stick for a direction. Row 0 is the top of a map, and the
 //  stick's y is positive upward.
 JoystickPosition route_stick(Pokemon::Direction direction);

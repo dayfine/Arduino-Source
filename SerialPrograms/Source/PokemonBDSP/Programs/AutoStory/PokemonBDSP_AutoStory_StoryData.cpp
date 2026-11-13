@@ -29,6 +29,12 @@ Pokemon::StoryArgSpec optional(std::string key, Pokemon::StoryArgType type, Poke
     return Pokemon::StoryArgSpec{.key = std::move(key), .type = type, .required = false, .fallback = std::move(fallback), .why = std::move(why)};
 }
 
+void add_event_actions(std::vector<Pokemon::StoryActionSpec>& actions){
+    for (const auto& [name, unused] : story_events()){
+        actions.push_back({.kind = Pokemon::StoryStepKind::GAME, .name = name, .args = {}});
+    }
+}
+
 std::vector<Pokemon::StoryActionSpec> make_bdsp_actions(){
     std::vector<Pokemon::StoryActionSpec> actions(
         Pokemon::builtin_story_actions().begin(), Pokemon::builtin_story_actions().end()
@@ -52,22 +58,30 @@ std::vector<Pokemon::StoryActionSpec> make_bdsp_actions(){
         "items", Pokemon::StoryArgType::ITEMS, "the items and how many of each"
     );
 
-    for (std::string_view cost : {"town", "overworld", "indoors", "caves", "robust", "line"}){
-        actions.push_back({.kind = Pokemon::StoryStepKind::ROUTE, .name = std::string(cost), .args = {route_target, fight_wild}});
+    //  No fallback: a ROUTE step without legs then fits the built-in "route".
+    const Pokemon::StoryArgSpec opt_legs{.key = "legs", .type = Pokemon::StoryArgType::LEGS, .required = false,
+        .fallback = std::nullopt, .why = "after the route, run its one leg until a dialogue starts"};
+    for (auto& action : actions){
+        if (action.kind == Pokemon::StoryStepKind::ROUTE){
+            action.args.push_back(opt_legs);
+        }
     }
-    for (std::string_view act : {"to_wall", "to_dialogue", "to_map", "one_short_ok"}){
+    for (std::string_view cost : {"town", "overworld", "indoors", "caves", "robust", "line", "trigger"}){
+        actions.push_back({.kind = Pokemon::StoryStepKind::ROUTE, .name = std::string(cost), .args = {route_target, fight_wild, opt_legs}});
+    }
+    actions.push_back({.kind = Pokemon::StoryStepKind::ROUTE, .name = "into_scene", .args = {route_target, fight_wild, legs_arg}});
+    for (std::string_view act : {"to_wall", "to_dialogue", "to_map", "one_short_ok", "counted_wall"}){
         actions.push_back({.kind = Pokemon::StoryStepKind::LEGS, .name = std::string(act), .args = {legs_arg, fight_wild}});
     }
     actions.push_back({.kind = Pokemon::StoryStepKind::STEP, .name = "to_banner", .args = {direction_arg}});
+    actions.push_back({.kind = Pokemon::StoryStepKind::STEP, .name = "or_legs", .args = {direction_arg, legs_arg}});
     actions.push_back({.kind = Pokemon::StoryStepKind::TALK, .name = "talk_to_wanderer", .args = {}});
     actions.push_back({.kind = Pokemon::StoryStepKind::MASH, .name = "a", .args = {}});
     actions.push_back({.kind = Pokemon::StoryStepKind::BATTLE, .name = "starter", .args = {may_lose}});
     actions.push_back({.kind = Pokemon::StoryStepKind::BATTLE, .name = "doubles", .args = {may_lose}});
     actions.push_back({.kind = Pokemon::StoryStepKind::SHOP, .name = "sandgem_potions", .args = {items}});
 
-    for (const auto& [name, unused] : story_events()){
-        actions.push_back({.kind = Pokemon::StoryStepKind::GAME, .name = name, .args = {}});
-    }
+    add_event_actions(actions);
 
     return actions;
 }

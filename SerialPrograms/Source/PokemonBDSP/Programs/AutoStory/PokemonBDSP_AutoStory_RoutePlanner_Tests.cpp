@@ -20,6 +20,7 @@
 #include "Data/PokemonBDSP_AutoStory_WalkRules.h"
 #include "Data/PokemonBDSP_AutoStory_WallRecovery.h"
 #include "Data/PokemonBDSP_AutoStory_Maps.h"
+#include "Simulation/PokemonBDSP_AutoStory_GridSim.h"
 #include "PokemonBDSP_AutoStory_RoutePlanner_Tests.h"
 
 namespace PokemonAutomation{
@@ -32,7 +33,8 @@ namespace{
 using Pokemon::Direction;
 using Pokemon::TilePos;
 
-StoryWorld make_world(const std::vector<std::string>& rows){
+//  A map of `rows`, with someone wandering `wander` if given.
+StoryWorld make_world(const std::vector<std::string>& rows, const std::optional<Pokemon::TileBox>& wander = std::nullopt){
     Pokemon::MapData map;
     map.name = "Test";
     map.tiles = Pokemon::Grid<Pokemon::TileKind>{(int)rows[0].size(), (int)rows.size(), {}};
@@ -40,6 +42,10 @@ StoryWorld make_world(const std::vector<std::string>& rows){
         for (char glyph : row){
             map.tiles.cells.push_back(*Pokemon::tile_from_glyph(glyph));
         }
+    }
+    if (wander){
+        map.objects.push_back({.name = "wanderer", .x = wander->x0, .y = wander->y0, .facing = std::nullopt,
+            .wander = wander, .trainer = std::nullopt, .hide_flag = std::nullopt});
     }
     StoryWorld world;
     world.add("Test", map, {0, 0});
@@ -139,6 +145,86 @@ UnitTestResult test_plan_robust_route(Logger&){
         return true;
 }
 
+//  Someone wanders a row, (2..4, 2): a leg may cross the row through one of
+//  their tiles, but not run along it through two, the leg's start among
+//  them. On lab-B (2026-11-08, 01.08) Route 204's youngster stopped a leg
+//  west along his row twice. With no other way there is no plan.
+UnitTestResult test_plan_robust_route_wander_zone(Logger&){
+        const Pokemon::TileBox row_zone{.x0 = 2, .y0 = 2, .x1 = 4, .y1 = 2};
+        const StoryWorld room = make_world({"#######", "#.....#", "#.....#", "#.....#", "#######"}, row_zone);
+        const StoryWorld corridor = make_world({"#######", "#.....#", "#######"}, Pokemon::TileBox{.x0 = 2, .y0 = 1, .x1 = 4, .y1 = 1});
+        RobustPlanCosts exact;
+        exact.exact_open_tiles = exact.max_open_tiles;
+        struct ZoneCase{
+            std::string name;
+            const StoryWorld& world;
+            TilePos from;
+            TilePos goal;
+            std::string legs;
+        };
+        const std::vector<ZoneCase> cases{
+            {.name = "south across the row", .world = room, .from = {3, 1}, .goal = {3, 3}, .legs = "south 2 (to wall) to (3, 3)"},
+            {.name = "north across the row", .world = room, .from = {3, 3}, .goal = {3, 1}, .legs = "north 2 (to wall) to (3, 1)"},
+            {.name = "east into the row's first tile", .world = room, .from = {1, 2}, .goal = {2, 2}, .legs = "east 1 (open) to (2, 2)"},
+            {.name = "east along the row goes round it", .world = room, .from = {1, 2}, .goal = {5, 2},
+                .legs = "north 1 (to wall) to (1, 1); east 4 (to wall) to (5, 1); south 1 (open) to (5, 2)"},
+            {.name = "west along the row from inside it goes round", .world = room, .from = {3, 2}, .goal = {1, 2},
+                .legs = "north 1 (to wall) to (3, 1); west 2 (to wall) to (1, 1); south 1 (open) to (1, 2)"},
+            {.name = "east along the row from inside it goes round, north first", .world = room, .from = {3, 2}, .goal = {5, 2},
+                .legs = "north 1 (to wall) to (3, 1); east 2 (to wall) to (5, 1); south 1 (open) to (5, 2)"},
+            {.name = "no plan when the row is the only way", .world = corridor, .from = {1, 1}, .goal = {5, 1}, .legs = ""},
+        };
+        for (const ZoneCase& item : cases){
+            const auto legs = plan_robust_route(item.world, {item.from}, [&](const TilePos& pos){ return pos == item.goal; }, exact);
+            const std::string read = legs ? describe(*legs) : "";
+            if (read != item.legs){
+                return std::format("{}: planned \"{}\", expected \"{}\".", item.name, read, item.legs);
+            }
+        }
+        return true;
+}
+
+
+//  November 5 mine report: credited taps need not establish physical pose.
+//  The two phases are explicit diagnostics, not inferred console timing.
+struct EncounterInput{
+    std::string name;
+    SimEncounterPhase phase;
+};
+struct EncounterExpectation{
+    TilePos end;
+    size_t battles = 1;
+    size_t credited = 5;
+};
+struct EncounterCase{
+    EncounterInput input;
+    EncounterExpectation expectation;
+};
+class Test_InterruptedMineTaps : public UnitTest{
+public:
+    explicit Test_InterruptedMineTaps(EncounterCase scenario)
+        : UnitTest("PokemonBDSP::AutoStory - Encounter credits: " + scenario.input.name), m_case(std::move(scenario))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        StoryWorld mine;
+        mine.add("OreburghMine", story_map("OreburghMine"), {0, 0});
+        GridSim sim({.world = &mine}, {15, 12}, Direction::SOUTH, /*can_run=*/false);
+        std::vector<std::string> notes;
+        GridSimRouteIO io(sim, notes, {{.label = "south", .direction = Direction::SOUTH,
+            .requested_tiles = 5, .tap = 5, .phase = m_case.input.phase}});
+        const auto result = io.walk_taps(Direction::SOUTH, 5, "south");
+        const auto& expected = m_case.expectation;
+        const TilePos actual = nearest_tile(sim.player().pos);
+        if (result.wild_battles != expected.battles || result.moved_chunks != expected.credited || actual != expected.end){
+            return std::format("Expected {} battles, {} credits, tile {}; got {}, {}, {}.",
+                expected.battles, expected.credited, Pokemon::to_string(expected.end),
+                result.wild_battles, result.moved_chunks, Pokemon::to_string(actual));
+        }
+        return true;
+    }
+private:
+    EncounterCase m_case;
+};
 
 //  Empty map name selects a synthetic corridor: ####### / #.....# / #######.
 //  Both possible starts (1,1)/(5,1) must share a safe wall ray. NPCs and
@@ -271,6 +357,27 @@ private:
     RoutePlannerCase m_case;
 };
 
+const EncounterCase ENCOUNTER_CASES[] = {
+    {.input = {.name = "before movement", .phase = SimEncounterPhase::BEFORE_MOVEMENT},
+        .expectation = {.end = {.x = 15, .y = 16}}},
+    {.input = {.name = "after movement", .phase = SimEncounterPhase::AFTER_MOVEMENT},
+        .expectation = {.end = {.x = 15, .y = 17}}},
+};
+
+const RecoveryGeometryCase GEOMETRY_CASES[] = {
+    {.input = {.name = "mine rows converge south", .map = "OreburghMine", .from = {{15, 15}, {15, 16}, {15, 17}}},
+        .expectation = {.anchor = TilePos{.x = 15, .y = 17}}},
+    {.input = {.name = "r55 tiles converge east", .map = "Route202", .from = {{27, 5}, {26, 5}}},
+        .expectation = {.anchor = TilePos{.x = 30, .y = 5}, .direction = Direction::EAST}},
+    {.input = {.name = "wandering area is unsafe", .from = {{1, 1}, {5, 1}},
+            .wander = Pokemon::TileBox{.x0 = 2, .y0 = 1, .x1 = 4, .y1 = 1}},
+        .expectation = {.anchor = std::nullopt, .free_tile = TilePos{.x = 3, .y = 1}}},
+    {.input = {.name = "warp crossings are unsafe", .from = {{1, 1}, {5, 1}}, .warps = {{3, 1}}},
+        .expectation = {.anchor = std::nullopt}},
+    {.input = {.name = "warps on blocked glyphs are unsafe", .from = {{1, 1}, {5, 1}}, .warps = {{0, 1}, {6, 1}}},
+        .expectation = {.anchor = std::nullopt}},
+};
+
 } // namespace
 
 
@@ -288,28 +395,21 @@ const RoutePlannerCase ROUTE_PLANNER_CASES[] = {
         .expectation = {},
     },
     {
+        .input = {"robust plans cross a wander zone, never along it", test_plan_robust_route_wander_zone},
+        .expectation = {},
+    },
+    {
         .input = {"trainers' sight lines", test_trainer_sight},
         .expectation = {},
     },
 };
 
-const RecoveryGeometryCase GEOMETRY_CASES[] = {
-    {.input = {.name = "mine rows converge south", .map = "OreburghMine", .from = {{15, 15}, {15, 16}, {15, 17}}},
-        .expectation = {.anchor = TilePos{.x = 15, .y = 17}}},
-    {.input = {.name = "r55 tiles converge east", .map = "Route202", .from = {{27, 5}, {26, 5}}},
-        .expectation = {.anchor = TilePos{.x = 30, .y = 5}, .direction = Direction::EAST}},
-    {.input = {.name = "wandering area is unsafe", .from = {{1, 1}, {5, 1}},
-            .wander = Pokemon::TileBox{.x0 = 2, .y0 = 1, .x1 = 4, .y1 = 1}},
-        .expectation = {.anchor = std::nullopt, .free_tile = TilePos{.x = 3, .y = 1}}},
-    {.input = {.name = "warp crossings are unsafe", .from = {{1, 1}, {5, 1}}, .warps = {{3, 1}}},
-        .expectation = {.anchor = std::nullopt}},
-    {.input = {.name = "warps on blocked glyphs are unsafe", .from = {{1, 1}, {5, 1}}, .warps = {{0, 1}, {6, 1}}},
-        .expectation = {.anchor = std::nullopt}},
-};
-
 void add_tests_AutoStory_RoutePlanner(UnitTestDatabase& database){
     for (const auto& item : ROUTE_PLANNER_CASES){
         database.add<Test_RoutePlanner>(item);
+    }
+    for (const auto& scenario : ENCOUNTER_CASES){
+        database.add<Test_InterruptedMineTaps>(scenario);
     }
     for (const auto& scenario : GEOMETRY_CASES){
         database.add<Test_RecoveryGeometry>(scenario);

@@ -39,6 +39,7 @@
 #include "Pokemon/Navigation/Pokemon_MapData_Tests.h"
 #include "Pokemon/Navigation/Pokemon_MoveMechanics_Tests.h"
 #include "Pokemon/Navigation/Pokemon_RouteLog_Tests.h"
+#include "Pokemon/Navigation/Pokemon_RouteScorer_Tests.h"
 #include "Pokemon/Navigation/Pokemon_RuntimeMap_Tests.h"
 #include "Pokemon/Navigation/Pokemon_WallRecovery_Tests.h"
 #include "PokemonBDSP/PokemonBDSP_Tests.h"
@@ -62,7 +63,6 @@ namespace ComputerPrograms{
 
 UnitTestDatabase make_UNIT_TESTS_ALL(){
     UnitTestDatabase ret;
-
     add_tests_QtEventThreadPool(ret, GlobalThreadPools::computation_normal());
     add_tests_Sockets(ret, GlobalThreadPools::unlimited_normal());
     add_tests_BlackBorderDetector(ret);
@@ -88,6 +88,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     Pokemon::add_tests_MoveMechanics(ret);
     Pokemon::add_tests_RuntimeMap(ret);
     Pokemon::add_tests_RouteLog(ret);
+    Pokemon::add_tests_RouteScorer(ret);
     Pokemon::add_tests_AutoStory(ret);
     NintendoSwitch::add_tests_CheckOnlineDetector(ret);
     NintendoSwitch::add_tests_FailedToConnectDetector(ret);

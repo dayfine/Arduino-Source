@@ -40,6 +40,16 @@ Milliseconds route_ms_per_tile(Direction direction, MoveSpeed speed){
     return (speed == MoveSpeed::RUN ? game.run : game.walk).tile.along(direction);
 }
 
+namespace{
+constexpr Milliseconds ROUTE_WALK_MS_PER_TILE_SLOWEST = Milliseconds(270);
+constexpr Milliseconds ROUTE_RUN_MS_PER_TILE_SLOWEST = Milliseconds(170);
+} // namespace
+
+Milliseconds route_limit_for_tiles(MoveSpeed speed, size_t tiles){
+    const Milliseconds per_tile = speed == MoveSpeed::RUN ? ROUTE_RUN_MS_PER_TILE_SLOWEST : ROUTE_WALK_MS_PER_TILE_SLOWEST;
+    return ROUTE_START_DELAY + per_tile * tiles;
+}
+
 JoystickPosition route_stick(Direction direction){
     switch (direction){
     case Direction::NORTH:

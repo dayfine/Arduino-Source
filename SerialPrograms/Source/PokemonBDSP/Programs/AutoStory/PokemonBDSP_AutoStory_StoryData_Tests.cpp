@@ -78,7 +78,7 @@ UnitTestResult check_all_checkpoints_load(){
     const std::vector<std::string> expected_ids{
         "00.00", "00.01", "00.02", "00.03", "00.04", "00.04b", "00.04c", "00.04d",
         "00.05", "00.05b", "00.05c",
-        "01.01", "01.02", "01.03", "01.04", "01.05", "01.06", "01.07", "01.08", "01.09", "01.10", "01.11"
+        "01.01", "01.02", "01.02b", "01.03", "01.04", "01.05", "01.06", "01.07", "01.08", "01.09", "01.10", "01.11"
     };
 
     for (size_t i = 0; i < expected_ids.size(); i++){
@@ -104,6 +104,35 @@ UnitTestResult check_all_checkpoints_load(){
         return "Failed to load bdsp-mine-01.03.plan correctly";
     }
 
+    return true;
+}
+
+UnitTestResult check_parity_01_02b(){
+    const auto& table = story_checkpoints();
+    auto it = std::find_if(table.begin(), table.end(), [](const StoryCheckpoint& cp){
+        return cp.id == "01.02b";
+    });
+    if (it == table.end()){
+        return "01.02b checkpoint not found in table";
+    }
+    const StoryCheckpoint& cp = *it;
+    if (cp.title != "Oreburgh Center heal"){
+        return "01.02b title mismatch";
+    }
+    if (cp.on_failure != StoryFailure::RELOAD_AND_RETRY || cp.saves_in != "Oreburgh City"){
+        return "01.02b policy mismatch";
+    }
+    if (cp.steps.size() != 5){
+        return std::format("01.02b expected 5 steps, got {}", cp.steps.size());
+    }
+    const std::vector<std::string> expected_step_names{
+        "below_barry", "barry", "barrys_lines", "below_the_centers_door", "heal_oreburgh_first"
+    };
+    for (size_t i = 0; i < expected_step_names.size(); i++){
+        if (cp.steps[i].name != expected_step_names[i]){
+            return std::format("01.02b step {} name mismatch: expected {}, got {}", i, expected_step_names[i], cp.steps[i].name);
+        }
+    }
     return true;
 }
 
@@ -149,7 +178,11 @@ private:
 
 const StoryDataCase STORY_DATA_CASES[] = {
     {
-        .input = {.name = "All 22 authored checkpoints load"},
+        .input = {.name = "All 23 authored checkpoints load"},
+        .expectation = {.rejected = false},
+    },
+    {
+        .input = {.name = "Parity: 01.02b checkpoint"},
         .expectation = {.rejected = false},
     },
     {

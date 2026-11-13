@@ -18,6 +18,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -26,15 +27,17 @@
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
-#include "Data/PokemonBDSP_AutoStory_RobustRoute.h"
-#include "PokemonBDSP_AutoStory_PlanGolden.h"
-#include "Data/PokemonBDSP_AutoStory_WalkRules.h"
-#include "Utils/PokemonBDSP_AutoStory_Location.h"
-#include "Data/PokemonBDSP_AutoStory_PlanCosts.h"
-#include "PokemonBDSP_AutoStory_StoryPlaces.h"
-#include "PokemonBDSP_AutoStory_StoryTable.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RobustRoute.h"
+#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_PlanGolden.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_WalkRules.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_PlanCosts.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_WallRecovery.h"
+#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h"
+#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryTable.h"
+#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryWalkSteps.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_StoryLanguage.h"
 #include "PokemonBDSP_AutoStory_StorySimulation_Tests.h"
-#include "Utils/PokemonBDSP_AutoStory_StoryLanguage.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -74,11 +77,13 @@ bool contains(const std::vector<TilePos>& tiles, const TilePos& pos){
     return std::find(tiles.begin(), tiles.end(), pos) != tiles.end();
 }
 
-//  Where a step ends, or why it does not plan.
+//  Where a step ends, or why it does not plan. A "measured" step ends on
+//  one of `at`'s tiles and the program knows which (`measured`).
 struct Walked{
     std::optional<Pose> at;
     std::string error;
     std::string plan;
+    bool measured = false;
     std::vector<std::string> golden = {};
 };
 
@@ -107,6 +112,23 @@ std::string detour_error(const StoryWorld& world, const std::vector<TilePos>& st
 }
 
 
+//  The golden test's lines for one planned ROUTE: a header, then each leg
+//  with the tiles it may end on.
+void add_golden_lines(
+    const StoryWorld& world, const Pose& from, const Pose& goal, const StoryStep& step,
+    const std::vector<PlannedLeg>& plan, std::vector<std::string>& golden
+){
+    golden.push_back(std::format("{} costs={} from{} to{}", step.name, step.action.empty() ? "default" : step.action,
+        describe(from.map, Pokemon::tiles_of(from)), describe(goal.map, Pokemon::tiles_of(goal))));
+    for (const PlannedLeg& leg : plan){
+        std::string line = std::format("  {} ->", to_string(leg.leg));
+        for (const TilePos& pos : leg.after){
+            line += std::format(" {}", describe(world, pos));
+        }
+        golden.push_back(line);
+    }
+}
+
 //  A ROUTE step from `from`, planned as StoryExecutor::walk_to() walks it.
 Walked plan_route(const Pose& from, const StoryStep& step){
     const GridPose& target = story_arg<GridPose>(step.args, "target");
@@ -125,7 +147,14 @@ Walked plan_route(const Pose& from, const StoryStep& step){
         targets.push_back(story_to_world(*world, goal.map, pos));
     }
     const std::function<bool(const TilePos&)> at_goal = [&](const TilePos& pos){ return contains(targets, pos); };
-    const auto plan = plan_robust_route(*world, start, at_goal, *costs);
+    //  As walk_route() plans: from a wall when the start is one of a few
+    //  tiles, then with the default costs if the step's find nothing. From
+    //  01.03's two start tiles a search over both found no plan within its
+    //  budget once routes kept off the hiker's zone.
+    std::optional<std::vector<PlannedLeg>> plan = plan_recovered_route(*world, start, at_goal, *costs);
+    if (!plan){
+        plan = plan_recovered_route(*world, start, at_goal, RobustPlanCosts());
+    }
     if (!plan){
         return {std::nullopt, step.name + ": no plan from" + describe(from.map, Pokemon::tiles_of(from)) + ".", ""};
     }
@@ -134,15 +163,7 @@ Walked plan_route(const Pose& from, const StoryStep& step){
     for (const PlannedLeg& leg : *plan){
         walked.plan += " " + to_string(leg.leg);
     }
-    walked.golden.push_back(std::format("{} costs={} from{} to{}", step.name, step.action.empty() ? "default" : step.action,
-        describe(from.map, Pokemon::tiles_of(from)), describe(goal.map, Pokemon::tiles_of(goal))));
-    for (const PlannedLeg& leg : *plan){
-        std::string line = std::format("  {} ->", to_string(leg.leg));
-        for (const TilePos& pos : leg.after){
-            line += std::format(" {}", describe(*world, pos));
-        }
-        walked.golden.push_back(line);
-    }
+    add_golden_lines(*world, from, goal, step, *plan, walked.golden);
     const std::string detour = detour_error(*world, start, at_goal, *plan);
     if (!detour.empty()){
         return {std::nullopt, step.name + ": " + detour, walked.plan};
@@ -155,6 +176,27 @@ Walked plan_route(const Pose& from, const StoryStep& step){
         local.push_back(*tile);
     }
     walked.at = Pokemon::tile_pose(goal.map, local, Pokemon::facing_of(goal));
+    return walked;
+}
+
+//  A ROUTE step after a "measured" one: the program plans from the one
+//  tile it measured, so each tile of `from` must plan on its own.
+Walked plan_route_from_each(const Pose& from, const StoryStep& step){
+    Walked walked;
+    std::vector<TilePos> ends;
+    for (const TilePos& pos : Pokemon::tiles_of(from)){
+        const Walked one = plan_route(Pokemon::tile_pose(from.map, {pos}, Pokemon::facing_of(from)), step);
+        if (!one.error.empty() || !one.at){
+            return one;
+        }
+        walked.plan += (walked.plan.empty() ? "" : "; ") + one.plan;
+        for (const TilePos& end : Pokemon::tiles_of(*one.at)){
+            if (!contains(ends, end)){
+                ends.push_back(end);
+            }
+        }
+        walked.at = Pokemon::tile_pose(one.at->map, ends, Pokemon::facing_of(*one.at));
+    }
     return walked;
 }
 
@@ -179,10 +221,19 @@ std::string walk_leg_from(
 }
 
 //  A LEGS step from `from`, walked tile by tile on its map, a tile short too
-//  where the step allows it. Walks to walls end where nothing is known.
+//  where the step allows it. Walks to walls, and walks that end on another
+//  map (into Sandgem until Dawn's scene starts), end where nothing is known.
 Walked walk_legs(const Pose& from, const StoryStep& step){
     if (step.action == "to_wall"){
         return {std::nullopt, "", ""};
+    }
+    //  A run until a map's banner ends where the banner reads.
+    if (step.action == "to_map"){
+        return {step.pose_after ? std::optional<Pose>(Pokemon::pose_of(*step.pose_after)) : std::nullopt, "", ""};
+    }
+    if (step.action == "measured"){
+        const std::optional<Pose> ends = measured_ends(from, step);
+        return {ends, ends ? "" : step.name + ": no world holds " + from.map + ".", "", true};
     }
     const StoryWorld* world = story_plan_world(from.map, from.map);
     if (world == nullptr){
@@ -281,8 +332,12 @@ protected:
         return moved(plan_route(state.pose, step), "no_plan");
     }
     Outcome legs(RunState& state, const StoryStep& step){
-        return moved(walk_legs(state.pose, step), "blocked");
-    }
+        Walked walked = walk_legs(state.pose, step);
+        //  The fake player stands on the first tile a measured step may end on.
+        if (walked.measured && walked.at && !Pokemon::tiles_of(*walked.at).empty()){
+            walked.at = Pokemon::tile_pose(walked.at->map, {Pokemon::tiles_of(*walked.at).front()}, Pokemon::facing_of(*walked.at));
+        }
+        return moved(walked, "blocked");    }
     Outcome step(RunState& state, const StoryStep& step){
         return moved(step_on(state.pose, step), "blocked");
     }
@@ -492,6 +547,7 @@ UnitTestResult test_gives_up_after_attempts(Logger&){
 //  the player, by the same planning and walking the fake run does.
 UnitTestResult test_poses_chain(Logger&){
     std::optional<Pose> at;
+    bool measured = false;
     std::string last;
     for (const StoryCheckpoint& row : story_checkpoints()){
         if (row.start){
@@ -512,12 +568,15 @@ UnitTestResult test_poses_chain(Logger&){
                 if (!at && step.action != "to_wall" && step.action != "jubilife_stairs"){
                     return row.id + " " + step.name + ": walks from an unknown pose.";
                 }
-                const Walked walked = !at ? Walked{} : step.kind == StoryStepKind::ROUTE ? plan_route(*at, step)
+                const bool known = std::exchange(measured, false);
+                const Walked walked = !at ? Walked{} : step.kind == StoryStepKind::ROUTE
+                    ? (known ? plan_route_from_each(*at, step) : plan_route(*at, step))
                     : step.kind == StoryStepKind::LEGS ? walk_legs(*at, step) : step_on(*at, step);
                 if (!walked.error.empty()){
                     return row.id + " " + walked.error;
                 }
                 at = walked.at;
+                measured = walked.measured;
             }else if (step.kind == StoryStepKind::GAME || step.kind == StoryStepKind::SHOP || step.kind == StoryStepKind::MASH){
                 //  A scene or an event: where it ends is the table's to say.
                 at.reset();
@@ -532,36 +591,15 @@ UnitTestResult test_poses_chain(Logger&){
 }
 
 //  Walks are planned on the maps: a LEGS step ("east 6, north 18") is
-//  left only where no route can do its job, each with its reason.
+//  left only where no route can do its job, and says why in its own "why"
+//  (a wall that pins the column, a door's mat no route starts on).
 UnitTestResult test_no_hand_written_legs(Logger&){
-    const std::map<std::string, std::string> exceptions = {
-        {"00.01/off_barrys_mat", "steps off a door's mat, where no route starts"},
-        {"00.03/into_sandgem", "walks until Dawn's scene starts, wherever it starts"},
-        {"00.04/to_route_201", "runs until Route 201's banner, wherever it shows"},
-        {"00.04/to_moms_call", "walks until Mom calls, wherever she calls"},
-        {"00.05/up_to_barry", "starts inside the School's door, from no known tile"},
-        {"01.03/down_the_hall", "steps off the hall's warp tile, where no route starts"},
-        {"01.03/down_to_the_boulder", "steps off the coal room's warp tile, where no route starts"},
-        {"01.03/up_the_hall", "steps off the hall's warp tile, where no route starts"},
-        {"01.03/up_to_the_mines_sign", "steps off the mine's exit, where no route starts"},
-        {"01.11/up_to_the_old_woman", "walks until the old woman stops us"},
-    };
-    std::set<std::string> seen;
     for (const StoryCheckpoint& row : story_checkpoints()){
         for (const StoryStep& step : row.steps){
-            if (step.kind != StoryStepKind::LEGS){
-                continue;
+            if (step.kind == StoryStepKind::LEGS && step.why.empty()){
+                return std::format("{}/{}: hand-written legs with no why; plan a route to where they end, or say why none can.",
+                    row.id, step.name);
             }
-            const std::string key = std::format("{}/{}", row.id, step.name);
-            if (!exceptions.contains(key)){
-                return std::format("{}: hand-written legs; plan a route to where they end.", key);
-            }
-            seen.insert(key);
-        }
-    }
-    for (const auto& item : exceptions){
-        if (!seen.contains(item.first)){
-            return std::format("{}: listed as an exception, but no such LEGS step.", item.first);
         }
     }
     return true;
@@ -635,7 +673,32 @@ private:
 } // namespace
 
 
+//  Execute the authored mine resource through the actual table and shared engine.
+UnitTestResult test_authored_mine(Logger&){
+    Simulation sim;
+    const auto report = sim.run({.from = "01.03", .to = "01.03"});
+    if (!report.completed || sim.begun() != std::vector<std::string>{"01.03"}
+        || sim.count("save in 01.03") != 1 || sim.count("card for 01.03: Oreburgh City") != 1
+        || sim.count("01.03/heal_oreburgh") != 1 || sim.count("01.03/roark") != 1){
+        return "Expected the JSON-authored mine checkpoint to save once, talk to Roark, heal and finish:" + joined(sim.trace) + joined(sim.lines);
+    }
+    return true;
+}
+
+UnitTestResult test_authored_mine_stops(Logger&){
+    Simulation sim;
+    sim.game.failures["01.03/out_of_the_mine"] = {.failure = "unconfirmed_transition", .times = 3};
+    const auto report = sim.run({.from = "01.03", .to = "01.03"});
+    if (report.completed || report.reloads != 2 || report.failed_event != "out_of_the_mine"
+        || sim.count("01.03/heal_oreburgh") != 0){
+        return "Expected failed mine transition to exhaust retries before healing:" + joined(sim.trace) + joined(sim.lines);
+    }
+    return true;
+}
+
 const AutoStoryStorySimulationCase AUTO_STORY_STORY_SIMULATION_CASES[] = {
+    {.input = {.name = "01.03 authored mine executes through the real table", .body = test_authored_mine}, .expectation = {}},
+    {.input = {.name = "01.03 unconfirmed mine exit stops before healing", .body = test_authored_mine_stops}, .expectation = {}},
     {
         .input = {"00.00 to Floaroma, in order, each row saved first, English and Japanese", test_whole_table},
         .expectation = {},
@@ -665,7 +728,7 @@ const AutoStoryStorySimulationCase AUTO_STORY_STORY_SIMULATION_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"no hand-written legs but the listed ones", test_no_hand_written_legs},
+        .input = {"no hand-written legs without a why", test_no_hand_written_legs},
         .expectation = {},
     },
     {

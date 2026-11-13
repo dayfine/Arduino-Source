@@ -5,13 +5,17 @@
  */
 
 #include <algorithm>
+#include <cstdlib>
 #include <format>
+#include <functional>
 #include <map>
 #include <optional>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
+#include "Common/Cpp/Filesystem/FileIO.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
 #include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
@@ -22,10 +26,15 @@
 #include "Data/PokemonBDSP_AutoStory_RobustRoute.h"
 #include "Data/PokemonBDSP_AutoStory_RoutePlanner.h"
 #include "Data/PokemonBDSP_AutoStory_StoryMaps.h"
+#include "Data/PokemonBDSP_AutoStory_WallRecovery.h"
 #include "Actions/PokemonBDSP_AutoStory_Events.h"
 #include "Data/PokemonBDSP_AutoStory_WalkRules.h"
+#include "PokemonBDSP_AutoStory_StoryExecutor.h"
+#include "PokemonBDSP_AutoStory_StoryPlaces.h"
+#include "PokemonBDSP_AutoStory_TableRoutes.h"
 #include "PokemonBDSP_AutoStory_StoryTable.h"
 #include "PokemonBDSP_AutoStory_StoryTable_Tests.h"
+#include "PokemonBDSP_AutoStory_StoryWalkSteps.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -42,10 +51,9 @@ using Pokemon::story_arg;
 //  The actions each kind does itself, besides the story's events.
 const std::map<StoryStepKind, std::set<std::string>>& built_in_actions(){
     static const std::map<StoryStepKind, std::set<std::string>> actions{
-        {StoryStepKind::ROUTE, {"", "route", "town", "robust", "line"}},
-        {StoryStepKind::LEGS, {"", "legs", "one_short_ok", "to_wall", "to_dialogue", "to_map", "counted_wall"}},
-        {StoryStepKind::STEP, {"", "face", "to_banner", "tap"}},
-        {StoryStepKind::MASH, {"", "a"}},
+        {StoryStepKind::ROUTE, {"", "route", "town", "robust", "line", std::string(ROUTE_ONTO_TRIGGER), std::string(ROUTE_INTO_SCENE)}},
+        {StoryStepKind::LEGS, {"", "legs", "one_short_ok", "to_wall", "to_dialogue", "to_map", "counted_wall", "measured"}},
+        {StoryStepKind::STEP, {"", "face", "to_banner", "tap", "or_legs"}},        {StoryStepKind::MASH, {"", "a"}},
         {StoryStepKind::BATTLE, {"", "fight", "doubles", "starter"}},
         {StoryStepKind::TALK, {"", "talk_to_wanderer"}},
         {StoryStepKind::SHOP, {"", "sandgem_potions"}},
@@ -231,6 +239,376 @@ UnitTestResult test_route204_north_line(Logger& logger){
     return true;
 }
 
+//  01.10's line 5, "north 10 (open)" to (19, 12), after Aroma Lady Taylor's
+//  battle (lab-B 2026-11-08 18:15:47): we may stand anywhere on (19, 12..20).
+//  Column 19 is open floor from row 7 to 13 below the wall on row 6, so north
+//  to that wall and 5 south reach the goal; the console's plan, "south 12 (to
+//  wall) to (19, 24), north 12 (open) to (19, 12)", pinned the wall with the
+//  fewest held tiles and walked back twice as far.
+UnitTestResult test_line_5_recovery_pins_the_wall_nearest_the_goal(Logger& logger){
+    const StoryWorld& world = *story_plan_world("Route204North", "Route204North");
+    std::vector<TilePos> from;
+    for (int y = 12; y <= 20; y++){
+        from.push_back(story_to_world(world, "Route204North", {19, y}));
+    }
+    const TilePos goal = story_to_world(world, "Route204North", {19, 12});
+    const auto legs = plan_recovered_route(world, from, [&](const TilePos& pos){ return pos == goal; }, *story_route_costs("line"));
+    if (!legs || legs->empty()){
+        return "no plan from (19, 12..20).";
+    }
+    for (const PlannedLeg& planned : *legs){
+        logger.log("01.10 line 5 recovery: " + to_string(planned));
+    }
+    const PlannedLeg& first = legs->front();
+    const TilePos wall = story_to_world(world, "Route204North", {19, 7});
+    if (first.leg.direction != Direction::NORTH || !first.leg.ends_at_wall || first.after != std::vector<TilePos>{wall}){
+        return "the recovery starts " + to_string(first) + ", not north to the wall at (19, 7).";
+    }
+    return true;
+}
+
+//  Why `planned` may slide into a door or a warp, or "": an open leg (not to
+//  a wall) that may end on the tile before one, walking toward it. A part of
+//  a tile too far takes the warp (lab-B 2026-11-08 15:31 to 15:54: 01.05's
+//  open walk west to (2, 13), beside the Oreburgh Gate's mouth, slid into
+//  the Gate, and the tap after it waited for a banner already gone). The
+//  maps draw every warp as a door tile, cave mouths too.
+std::string slides_into_door(const StoryWorld& world, const PlannedLeg& planned){
+    if (planned.leg.ends_at_wall){
+        return "";
+    }
+    for (const TilePos& pos : planned.after){
+        const TilePos ahead = pos.next(planned.leg.direction);
+        if (world.tile(ahead) == Pokemon::TileKind::DOOR){
+            return std::format("the open leg {} may end on {}, the tile before the door {}",
+                to_string(planned.leg), describe(world, pos), describe(world, ahead));
+        }
+    }
+    return "";
+}
+
+//  A ROUTE step of the table from a known place: the world it plans on and
+//  its plan, or nothing if it finds none.
+struct PlannedStoryRoute{
+    std::string name;       //  "<row id> <step name>"
+    const StoryWorld* world;
+    std::vector<TilePos> from;
+    std::optional<std::vector<PlannedLeg>> legs;
+};
+
+//  Every ROUTE step of the table that starts from a known place, planned as
+//  walk_route() plans it. Where a row's steps leave the player is followed
+//  from its start through each step's target or pose_after; a route from an
+//  unknown place is logged, not planned.
+std::vector<PlannedStoryRoute> plan_story_routes(Logger& logger){
+    std::vector<PlannedStoryRoute> routes;
+    for (const TableRoute& route : table_routes()){
+        if (route.world == nullptr){
+            logger.log(std::format("{} {}: not checked, from {}.", route.row, route.step->name,
+                route.from ? Pokemon::to_string(*route.from) : "nowhere known"));
+            continue;
+        }
+        RouteStepPlan plan = plan_table_route(route);
+        routes.push_back({route.row + " " + route.step->name, route.world, std::move(plan.start), std::move(plan.legs)});
+    }
+    return routes;
+}
+
+//  No ROUTE step of the table plans an open leg that ends before a door it
+//  walks toward: a door is gone through by a step that runs or taps into it
+//  from where the route ends on a wall or off its line.
+UnitTestResult test_story_routes_stop_short_of_doors(Logger& logger){
+    std::vector<std::string> found;
+    size_t checked = 0;
+    for (const PlannedStoryRoute& route : plan_story_routes(logger)){
+        checked += route.legs ? 1 : 0;
+        for (const PlannedLeg& planned : route.legs ? *route.legs : std::vector<PlannedLeg>{}){
+            const std::string why = slides_into_door(*route.world, planned);
+            if (!why.empty()){
+                found.push_back(std::format("{}: {}.", route.name, why));
+            }
+        }
+    }
+    logger.log(std::format("{} routes planned.", checked));
+    std::string out;
+    for (const std::string& line : found){
+        out += "\n  " + line;
+    }
+    return found.empty() ? UnitTestResult(true) : UnitTestResult("Open legs that end before a door they walk toward:" + out);
+}
+
+//  The tiles a planned leg walks over from `from`, `from` first: to the wall,
+//  or its tiles' worth of steps.
+std::vector<TilePos> walked_tiles(const StoryWorld& world, const TilePos& from, const TileLeg& leg){
+    std::vector<TilePos> tiles{from};
+    size_t walked = 0;
+    while (leg.ends_at_wall || walked < leg.tiles){
+        const std::optional<TilePos> next = step(world, tiles.back(), leg.direction);
+        if (!next){
+            break;
+        }
+        walked += (size_t)(std::abs(next->x - tiles.back().x) + std::abs(next->y - tiles.back().y));
+        tiles.push_back(*next);
+    }
+    return tiles;
+}
+
+//  The most tiles of `zone` one leg of `legs` walks over, from any tile the
+//  player may be on, and that leg.
+std::pair<size_t, std::string> most_zone_tiles(
+    const StoryWorld& world, std::vector<TilePos> from, const std::vector<PlannedLeg>& legs,
+    const std::function<bool(const TilePos&)>& zone
+){
+    std::pair<size_t, std::string> most{0, ""};
+    for (const PlannedLeg& planned : legs){
+        for (const TilePos& pos : from){
+            const std::vector<TilePos> tiles = walked_tiles(world, pos, planned.leg);
+            const size_t in_zone = (size_t)std::count_if(tiles.begin(), tiles.end(), zone);
+            if (in_zone > most.first){
+                most = {in_zone, to_string(planned.leg) + " from " + describe(world, pos)};
+            }
+        }
+        from = planned.after;
+    }
+    return most;
+}
+
+//  Where a planned leg from `from` runs along a zone where someone wanders,
+//  or "": two zone tiles in a row on a straight leg are tiles of one zone.
+std::string along_wander_zone(const StoryWorld& world, const TilePos& from, const TileLeg& leg){
+    const std::vector<TilePos> tiles = walked_tiles(world, from, leg);
+    for (size_t i = 1; i < tiles.size(); i++){
+        if (wandering_hazard(world, tiles[i - 1]) && wandering_hazard(world, tiles[i])){
+            return std::format("{} from {} runs along a wander zone at {}", to_string(leg), describe(world, from), describe(world, tiles[i]));
+        }
+    }
+    return "";
+}
+
+//  Every ROUTE step of the table from a known place has a plan, and no leg
+//  of it runs along a zone where someone wanders: plan_robust_route() never
+//  plans one, so a step with no other way finds no plan here.
+UnitTestResult test_story_routes_keep_off_wander_zones(Logger& logger){
+    std::string out;
+    for (const PlannedStoryRoute& route : plan_story_routes(logger)){
+        if (!route.legs){
+            out += "\n  " + route.name + ": no plan.";
+            continue;
+        }
+        std::vector<TilePos> from = route.from;
+        for (const PlannedLeg& planned : *route.legs){
+            for (const TilePos& pos : from){
+                const std::string along = along_wander_zone(*route.world, pos, planned.leg);
+                out += along.empty() ? "" : "\n  " + route.name + ": " + along + ".";
+            }
+            from = planned.after;
+        }
+    }
+    return out.empty() ? UnitTestResult(true) : UnitTestResult("ROUTE steps:" + out);
+}
+
+//  01.08's walk below the Ravaged Path keeps off the row Route 204 South's
+//  youngster_3 wanders, (12, 2) to (14, 2): on lab-B (2026-11-08) the plan
+//  "north 35 (to wall) to (13, 2), west 2 (to wall) to (11, 2)" walked along
+//  it, and he stopped the leg west twice. A leg may cross his row through
+//  one of his tiles, not walk two of them.
+UnitTestResult test_ravaged_path_keeps_off_the_youngster(Logger& logger){
+    for (const PlannedStoryRoute& route : plan_story_routes(logger)){
+        if (route.name != "01.08 below_the_ravaged_path"){
+            continue;
+        }
+        if (!route.legs){
+            return "01.08 below_the_ravaged_path: no plan.";
+        }
+        const StoryWorld& world = *route.world;
+        for (const PlannedLeg& planned : *route.legs){
+            logger.log("01.08 below_the_ravaged_path: " + to_string(planned));
+        }
+        const auto youngster_row = [&](const TilePos& pos){
+            const std::optional<TilePos> local = story_to_local(world, "Route204South", pos);
+            return local && local->y == 2 && local->x >= 12 && local->x <= 14;
+        };
+        const auto [most, leg] = most_zone_tiles(world, route.from, *route.legs, youngster_row);
+        if (most >= 2){
+            return std::format("the leg {} walks {} tiles of the youngster's row (12..14, 2).", leg, most);
+        }
+        return true;
+    }
+    return "01.08 below_the_ravaged_path is not a ROUTE step from a known place.";
+}
+
+
+//  The route plan dump: every table ROUTE step's legs, in a golden file
+//  beside the story data, so a planner or table change shows its plans' diff
+//  in review.
+
+constexpr std::string_view ROUTE_PLANS_HEADER =
+    "BDSP AutoStory: the legs each ROUTE step of the story table plans.\n"
+    "Planned as the console's RouteWalker plans them: plan_recovered_route() on\n"
+    "story_plan_world(), from the tiles the row's steps before it leave the\n"
+    "player on, with the step's costs, then the default costs if those find none.\n"
+    "Written by the StoryTable test \"every ROUTE step plans as\n"
+    "Data/route_plans.golden.txt says\". After a planner or table change, run\n"
+    "that test with PA_UPDATE_ROUTE_PLANS=1 to rewrite this file\n"
+    "(PA_ROUTE_PLANS_GOLDEN=<path> reads or writes another copy), and review\n"
+    "its diff.\n"
+    "turns: direction changes between legs. open: legs that stop in the open\n"
+    "(tapped, not held to a wall). localization: the wall holds at the start\n"
+    "that only bring several start tiles to one (plan_recovered_route()'s\n"
+    "anchor); 0 from one start tile.\n";
+
+std::string tile_list(const StoryWorld& world, const std::vector<TilePos>& tiles){
+    std::string out;
+    for (const TilePos& pos : tiles){
+        out += (out.empty() ? "" : ", ") + describe(world, pos);
+    }
+    return out;
+}
+
+//  plan_recovered_route()'s wall holds from several start tiles: the legs up
+//  to where the tiles the player may be on first become one.
+size_t localization_legs(const std::vector<TilePos>& start, const std::vector<PlannedLeg>& legs){
+    if (start.size() < 2){
+        return 0;
+    }
+    for (size_t i = 0; i < legs.size(); i++){
+        if (legs[i].after.size() == 1){
+            return i + 1;
+        }
+    }
+    return 0;
+}
+
+std::string plan_totals(const RouteStepPlan& plan){
+    const std::vector<PlannedLeg>& legs = *plan.legs;
+    size_t turns = 0;
+    size_t open = 0;
+    for (size_t i = 0; i < legs.size(); i++){
+        turns += i > 0 && legs[i].leg.direction != legs[i - 1].leg.direction ? 1 : 0;
+        open += legs[i].leg.ends_at_wall ? 0 : 1;
+    }
+    return std::format("  totals: {} legs, {} turns, {} open, {} localization\n",
+        legs.size(), turns, open, localization_legs(plan.start, legs));
+}
+
+std::string dump_plan(const StoryWorld& world, const RouteStepPlan& plan){
+    std::string out = "  start candidates: " + tile_list(world, plan.start) + "\n";
+    if (!plan.legs){
+        return out + "  NO PLAN\n";
+    }
+    if (plan.default_costs){
+        out += "  the step's costs found no plan; planned with the default costs\n";
+    }
+    for (size_t i = 0; i < plan.legs->size(); i++){
+        const PlannedLeg& planned = (*plan.legs)[i];
+        out += std::format("  {}. {} -> {}\n", i + 1, to_string(planned.leg), tile_list(world, planned.after));
+    }
+    return out + plan_totals(plan);
+}
+
+std::string dump_route(const TableRoute& route){
+    const Pokemon::StoryStep& step = *route.step;
+    std::string out = std::format("== {} {} (costs: {})\n", route.row, step.name, step.action.empty() ? "route" : step.action);
+    out += "  from: " + (route.from ? Pokemon::to_string(*route.from) : std::string("unknown")) + "\n";
+    const Pokemon::Pose target = Pokemon::pose_of(story_arg<Pokemon::GridPose>(step.args, "target"));
+    out += "  target: " + Pokemon::to_string(target) + "\n";
+    if (route.world == nullptr){
+        return out + (route.from && !Pokemon::tiles_of(*route.from).empty()
+            ? "  not planned: no story world joins the two maps\n"
+            : "  not planned: the start is unknown (a LEGS or STEP step before it does not say where it ends)\n");
+    }
+    return out + dump_plan(*route.world, plan_table_route(route));
+}
+
+std::string route_plans_text(){
+    std::string out = std::string(ROUTE_PLANS_HEADER);
+    for (const TableRoute& route : table_routes()){
+        out += "\n" + dump_route(route);
+    }
+    return out;
+}
+
+//  The golden file, in the Data folder beside this file's.
+std::string route_plans_golden_path(){
+    // code-health: allow char_pointer -- std::getenv returns a const char pointer
+    const char* path = std::getenv("PA_ROUTE_PLANS_GOLDEN");
+    if (path != nullptr && path[0] != '\0'){
+        return path;
+    }
+    const std::string self = __FILE__;
+    const size_t slash = self.find_last_of("/\\");
+    return (slash == std::string::npos ? std::string() : self.substr(0, slash + 1)) + "Data/route_plans.golden.txt";
+}
+
+//  `text` without carriage returns or a byte order mark.
+std::string plain_lines(const std::string& text){
+    std::string out = text.starts_with("\xef\xbb\xbf") ? text.substr(3) : text;
+    std::erase(out, '\r');
+    return out;
+}
+
+//  `text` split into the header and one block per "== " step line.
+std::vector<std::string> plan_blocks(const std::string& text){
+    std::vector<std::string> blocks{""};
+    size_t begin = 0;
+    while (begin < text.size()){
+        const size_t end = std::min(text.find('\n', begin), text.size() - 1) + 1;
+        const std::string line = text.substr(begin, end - begin);
+        if (line.starts_with("== ")){
+            blocks.push_back("");
+        }
+        blocks.back() += line;
+        begin = end;
+    }
+    return blocks;
+}
+
+//  Each step whose block changed, as "-" (golden) and "+" (planned) blocks.
+std::string plan_differences(const std::string& golden, const std::string& planned){
+    const std::vector<std::string> expected = plan_blocks(golden);
+    const std::vector<std::string> actual = plan_blocks(planned);
+    std::string out;
+    size_t changed = 0;
+    for (size_t i = 0; i < std::max(expected.size(), actual.size()); i++){
+        const std::string& was = i < expected.size() ? expected[i] : "";
+        const std::string& now = i < actual.size() ? actual[i] : "";
+        if (was != now && changed++ < 5){
+            out += "\n--- golden:\n" + was + "+++ planned:\n" + now;
+        }
+    }
+    return changed == 0 ? "" : std::format("{} block(s) differ, the first ones:{}", changed, out);
+}
+
+//  Every table ROUTE step plans the legs the golden file lists.
+UnitTestResult test_route_plans_golden(Logger& logger){
+    const std::string path = route_plans_golden_path();
+    const std::string planned = route_plans_text();
+    // code-health: allow char_pointer -- std::getenv returns a const char pointer
+    const char* update = std::getenv("PA_UPDATE_ROUTE_PLANS");
+    if (update != nullptr && update[0] != '\0' && update[0] != '0'){
+        std::string crlf;
+        for (char ch : planned){
+            crlf += ch == '\n' ? std::string("\r\n") : std::string(1, ch);
+        }
+        FileIO file;
+        if (!file.open(path, FileMode::WRITE | FileMode::BINARY) || file.write(crlf) != crlf.size()){
+            return "Could not write " + path + ".";
+        }
+        logger.log("Wrote " + path + ".");
+        return true;
+    }
+    std::string golden;
+    if (!file_to_string(path, golden)){
+        return "Could not read " + path + " (set PA_ROUTE_PLANS_GOLDEN to its path).";
+    }
+    const std::string differences = plan_differences(plain_lines(golden), planned);
+    if (differences.empty()){
+        return true;
+    }
+    return "The route plans differ from " + path + ". If the change is meant, rerun with PA_UPDATE_ROUTE_PLANS=1 "
+        "and review the file's diff. " + differences;
+}
+
 
 struct AutoStoryStoryTableInput{
     std::string name;
@@ -281,6 +659,26 @@ const AutoStoryStoryTableCase AUTO_STORY_STORY_TABLE_CASES[] = {
     },
     {
         .input = {"Route 204 North: the line into Floaroma", test_route204_north_line},
+        .expectation = {},
+    },
+    {
+        .input = {"01.10: line 5's recovery pins the wall nearest its goal (lab-B, 2026-11-08)", test_line_5_recovery_pins_the_wall_nearest_the_goal},
+        .expectation = {},
+    },
+    {
+        .input = {"Story table: no open leg ends before a door it walks toward (lab-B, 2026-11-08)", test_story_routes_stop_short_of_doors},
+        .expectation = {},
+    },
+    {
+        .input = {"Story table: every ROUTE step plans as Data/route_plans.golden.txt says", test_route_plans_golden},
+        .expectation = {},
+    },
+    {
+        .input = {"Story table: every route plans, and none runs along a wander zone", test_story_routes_keep_off_wander_zones},
+        .expectation = {},
+    },
+    {
+        .input = {"01.08: the walk below the Ravaged Path keeps off the youngster's row (lab-B, 2026-11-08)", test_ravaged_path_keeps_off_the_youngster},
         .expectation = {},
     },
 };

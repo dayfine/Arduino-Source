@@ -10,6 +10,25 @@
             "map": "JubilifeCity",
             "tiles": [
               [
+                41,
+                8
+              ]
+            ]
+          }
+        },
+        "id": "up_jubilifes_road",
+        "kind": "route",
+        "why": "down Route 203 (its ledges only south), west along it into Jubilife's street, north up the road's west column"
+      },
+      {
+        "action": "town",
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "north",
+            "map": "JubilifeCity",
+            "tiles": [
+              [
                 47,
                 8
               ]
@@ -18,7 +37,7 @@
         },
         "id": "below_rowans_trigger",
         "kind": "route",
-        "why": "down Route 203 (its ledges only south), west along it into Jubilife's street, north up the road"
+        "why": "east along row 8 to the sign's wall"
       }
     ],
     "id": "01.06",

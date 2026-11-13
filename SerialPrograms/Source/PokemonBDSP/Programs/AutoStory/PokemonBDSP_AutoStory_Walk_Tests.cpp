@@ -4,6 +4,7 @@
  *
  */
 
+#include <algorithm>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -12,12 +13,16 @@
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_TrainerSight.h"
 #include "Utils/PokemonBDSP_AutoStory_Indoors.h"
 #include "Utils/PokemonBDSP_AutoStory_LegBattle.h"
 #include "Utils/PokemonBDSP_AutoStory_Location.h"
 #include "Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "Utils/PokemonBDSP_AutoStory_Walk.h"
 #include "Actions/PokemonBDSP_AutoStory_Talks.h"
+#include "PokemonBDSP_AutoStory_StoryPlaces.h"
+#include "PokemonBDSP_AutoStory_StoryStepIO.h"
+#include "PokemonBDSP_AutoStory_StoryWalkSteps.h"
 #include "PokemonBDSP_AutoStory_Walk_Tests.h"
 #include "Utils/PokemonBDSP_AutoStory_WalkResult.h"
 #include "Utils/PokemonBDSP_AutoStory_WalkScreen.h"
@@ -181,6 +186,38 @@ UnitTestResult test_door_fade(Logger&){
         return true;
 }
 
+//  A fade is uniform (fade_of(): the shared watchers' stddev test), dark or
+//  white; a floor is textured. The Oreburgh Gate's floor, about 46, is no
+//  fade: read as one, the tap into the Gate from Oreburgh, already
+//  through, waited 8 s for a banner gone (lab-B, 2026-11-08 15:31 to
+//  15:54). A cave mouth's dim fade (45 to 64 measured) is one. The stddevs
+//  are a model; the Gate's frames on the console are to check them.
+UnitTestResult test_fade_of(Logger&){
+    struct Case{
+        std::string name;
+        double brightness;
+        double stddev;
+        WarpFade fade;
+    };
+    const std::vector<Case> cases{
+        {.name = "inside the Gate, its floor", .brightness = 46, .stddev = 20, .fade = WarpFade::NONE},
+        {.name = "Oreburgh's street at night", .brightness = 88, .stddev = 20, .fade = WarpFade::NONE},
+        {.name = "a door's black", .brightness = 7, .stddev = 1, .fade = WarpFade::BLACK},
+        {.name = "a cave mouth's dim fade", .brightness = 64, .stddev = 2, .fade = WarpFade::BLACK},
+        {.name = "a grey screen, neither dark nor white", .brightness = 120, .stddev = 1, .fade = WarpFade::NONE},
+        {.name = "a cave exit's white", .brightness = 250, .stddev = 1, .fade = WarpFade::WHITE},
+        {.name = "a bright textured screen", .brightness = 250, .stddev = 20, .fade = WarpFade::NONE},
+    };
+    for (const Case& item : cases){
+        const ImageStats stats(FloatPixel(item.brightness, item.brightness, item.brightness), FloatPixel(item.stddev, item.stddev, item.stddev), 1);
+        const WarpFade fade = fade_of(stats);
+        if (fade != item.fade){
+            return item.name + ": " + warp_fade_name(fade) + ", expected " + warp_fade_name(item.fade) + ".";
+        }
+    }
+    return true;
+}
+
 
 UnitTestResult test_location_banner(Logger&){
         struct Case{
@@ -298,6 +335,27 @@ UnitTestResult test_pokemon_center_on_screen(Logger&){
     return true;
 }
 
+//  01.02's walk east beats the Youngster above Route 203's row 18; the rows
+//  after it, from saves made since, do not meet him again.
+UnitTestResult test_row_trainers(Logger&){
+    const StoryWorld* world = story_plan_world("Route203", "JubilifeCity");
+    if (world == nullptr){
+        return std::string("no world joins Route 203 and Jubilife");
+    }
+    const auto has_youngster = [world](const std::string& row){
+        const std::vector<TrainerSight> sights = row_trainers(*world, row);
+        return std::any_of(sights.begin(), sights.end(), [](const TrainerSight& sight){
+            return sight.name == "Youngster (above row 18)";
+        });
+    };
+    if (!has_youngster("01.02")){
+        return std::string("01.02 fights the Youngster: he must be on its trainers");
+    }
+    if (has_youngster("01.06")){
+        return std::string("01.06 starts from a save after 01.02 beat the Youngster");
+    }
+    return true;
+}
 
 struct AutoStoryWalkInput{
     std::string name;
@@ -386,6 +444,10 @@ const AutoStoryWalkCase AUTO_STORY_WALK_CASES[] = {
         .expectation = {},
     },
     {
+        .input = {"a fade is uniform, dark or white; a dim floor is none (lab-B, 2026-11-08)", test_fade_of},
+        .expectation = {},
+    },
+    {
         .input = {"a warp's fade, followed frame by frame, its hold seen or not", test_warp_fade_watch},
         .expectation = {},
     },
@@ -407,6 +469,10 @@ const AutoStoryWalkCase AUTO_STORY_WALK_CASES[] = {
     },
     {
         .input = {"a wild battle on an open leg's taps, placed by its screen events", test_leg_battle_place},
+        .expectation = {},
+    },
+    {
+        .input = {"a row's trainers leave out those an earlier row beat", test_row_trainers},
         .expectation = {},
     },
 };

@@ -37,9 +37,9 @@ bool dialogue_opens(VideoStream& stream, ProControllerContext& context, Millisec
 //  followed by a Potion if HP is under half. Anyone else's ends back in the
 //  overworld. Returns whether there was a battle. Between a trainer's last
 //  line and the battle the overworld shows with no dialogue for a moment,
-//  so "only talked" needs 4 s of it, and never comes when `expect` is
-//  BATTLE. `format` DOUBLES for tag and twin battles. A lost battle ends in
-//  the last Pokemon Center; see in_pokemon_center().
+//  so "only talked" is talk_over()'s quiet, and never comes when `expect`
+//  is BATTLE. `format` DOUBLES for tag and twin battles. A lost battle ends
+//  in the last Pokemon Center; see in_pokemon_center().
 enum class TalkExpect{
     TALK_OR_BATTLE,
     BATTLE,
