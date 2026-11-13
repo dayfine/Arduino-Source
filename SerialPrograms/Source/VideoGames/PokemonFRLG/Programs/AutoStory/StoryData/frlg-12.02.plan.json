@@ -98,13 +98,11 @@
         "action": "mart",
         "args": {
           "map": "FuchsiaCity_Mart",
-          "budget": 3500,
-          "floor": 3762,
           "items": [{"item": "super-potion", "quantity": 5}],
           "fill_to": 5
         },
         "skip_if": ["bag_super_potions"],
-        "why": "Super Potions up to 5 in the bag, as 12.01's buy_super_potions (the same budget and floor): the floor is 12.01's, 3,762, which is not a proven lower bound here (12.01 spends up to 3,500 of it, Kayden's and Kirk's prizes are not counted) until the money box is read: if the money is short the Mart refuses and the step fails, stopping the run before Koga"
+        "why": "Super Potions up to 5 in the bag, as 12.01's buy_super_potions bought blind: 12.01 spends up to 3,500 of its 3,762, Kayden's and Kirk's prizes are not counted; if the money is short the Mart refuses and the step fails, stopping the run before Koga"
       },
       {
         "id": "buy_full_heal",
@@ -112,13 +110,11 @@
         "action": "mart",
         "args": {
           "map": "FuchsiaCity_Mart",
-          "budget": 600,
-          "floor": 3762,
           "items": [{"item": "full-heal", "quantity": 1}],
           "fill_to": 1
         },
         "skip_if": ["bag_status_cure"],
-        "why": "one Full Heal when the bag has none: it cures poison, and the Fuchsia Mart sells no Antidote (PokeGuy's bag holds one). 600 on top of the Super Potions' 3,500, under the same floor"
+        "why": "one Full Heal when the bag has none: it cures poison, and the Fuchsia Mart sells no Antidote (PokeGuy's bag holds one). 600 on top of the Super Potions' 3,500, bought blind too"
       },
       {
         "id": "above_mart_tree_again",

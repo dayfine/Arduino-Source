@@ -255,7 +255,7 @@ UnitTestResult check_lead_level_precondition(Logger& logger, std::string_view id
 
 //  pokeguy's bag at Koga holds 5 Super Potions (PokemonSimulation
 //  docs/battles/pokeguy-conditions.md, ### koga): 12.01's Mart step buys up
-//  to 5, whatever the Potions cover, within its budget.
+//  to 5, whatever the Potions cover.
 UnitTestResult test_mart_fills_super_potions(){
     const std::optional<Pokemon::StoryCheckpoint> row = checkpoint("12.01");
     if (!row){
@@ -279,17 +279,12 @@ UnitTestResult test_mart_fills_super_potions(){
         supplies.potions = test.potions;
         supplies.super_potions = test.super_potions;
         Pokemon::StoryStep step = *step_it;
-        const std::optional<Pokemon::Outcome> done = cover_hp_in_mart(logger, supplies, step);
+        const std::optional<Pokemon::Outcome> done = fill_mart_to(logger, supplies, step);
         const std::vector<Pokemon::StoryItem>* items = game_arg<std::vector<Pokemon::StoryItem>>(step.args, "items");
         const size_t buys = done ? 0 : (items == nullptr || items->empty() ? 0 : items->at(0).quantity);
         if (buys != test.expected){
             return std::format("{} Potions, {} Super Potions: buys {}, expected {}.", test.potions, test.super_potions, buys, test.expected);
         }
-    }
-    const int64_t* budget = game_arg<int64_t>(step_it->args, "budget");
-    const int64_t* floor = game_arg<int64_t>(step_it->args, "floor");
-    if (budget == nullptr || *budget < 5 * 700 || floor == nullptr || *floor != 3762){
-        return "The step's budget doesn't cover 5 Super Potions, or its floor moved off 3762.";
     }
     return true;
 }
@@ -416,7 +411,7 @@ UnitTestResult test_koga_bag_detour_buys(){
     for (const Case& test : cases){
         const Supplies supplies = koga_supplies(test.super_potions, 0, test.full_heals);
         Pokemon::StoryStep step = step_named(row, test.name);
-        const std::optional<Pokemon::Outcome> done = cover_hp_in_mart(logger, supplies, step);
+        const std::optional<Pokemon::Outcome> done = fill_mart_to(logger, supplies, step);
         const std::vector<Pokemon::StoryItem>* items = game_arg<std::vector<Pokemon::StoryItem>>(step.args, "items");
         const size_t buys = done ? 0 : (items == nullptr || items->empty() ? 0 : items->at(0).quantity);
         if (buys != test.expected){
