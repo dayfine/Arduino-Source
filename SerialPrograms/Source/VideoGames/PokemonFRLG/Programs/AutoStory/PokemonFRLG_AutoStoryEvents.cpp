@@ -674,7 +674,7 @@ Outcome other_game_step(StoryEnv& env, RunState& state, const StoryStep& step){
         done = run_storage_game_step(env.console.logger(), &env.console, step, capture, pc);
     }
     if (!done){
-        done = run_healing_step(env, step);
+        done = run_healing_step(env, state, step);
     }
     if (!done){
         done = run_abilities(env, state, step);
