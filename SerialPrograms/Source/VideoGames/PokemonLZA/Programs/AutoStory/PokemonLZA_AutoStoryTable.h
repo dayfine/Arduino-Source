@@ -56,10 +56,27 @@ bool story_row_saves(const StoryData& story, const Pokemon::StoryCheckpoint& row
 size_t story_rows_ready(const std::vector<Pokemon::StoryCheckpoint>& checkpoints);
 
 //  Whether `row` starts by launching the game from HOME (its first step is
-//  the GAME action "launch_game_from_home"): the game may be in front on any
+//  the GAME action "launch_game_from_home"): 00.00. The game may be in front on any
 //  screen, a dark scene too, so the frame at the program's start says nothing
 //  about the screen size and the black border check waits for HOME.
 bool story_row_launches_game(const Pokemon::StoryCheckpoint& row);
+
+//  Whether `row` starts on the new game's "Confirm Choices" screen, the
+//  language, look and name chosen by hand (its first step is the GAME action
+//  "confirm_new_game"): 01.00. It plays what 00.00 plays after the name.
+bool story_row_confirms_new_game(const Pokemon::StoryCheckpoint& row);
+
+//  Whether `row` starts with no save to load: it launches the game or
+//  confirms a new game.
+bool story_row_starts_without_save(const Pokemon::StoryCheckpoint& row);
+
+//  The rows a run from `first` to `last` of `checkpoints` plays, in order:
+//  all of them but a row that confirms a new game after the run's first
+//  row, which played it already. Empty if `first` comes after `last` or
+//  `last` is past the end.
+std::vector<Pokemon::StoryCheckpoint> story_run_rows(
+    const std::vector<Pokemon::StoryCheckpoint>& checkpoints, size_t first, size_t last
+);
 
 
 
