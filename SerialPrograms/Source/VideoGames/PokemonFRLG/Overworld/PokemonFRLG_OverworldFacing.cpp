@@ -4,6 +4,7 @@
  *
  */
 
+#include <algorithm>
 #include <format>
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
@@ -69,14 +70,17 @@ std::optional<Direction> read_facing_after_tap(ConsoleHandle& console, ProContro
     return facing;
 }
 
-//  Whether `at` is known and on its map's edge. Any unknown map or tile is
-//  not.
+//  Whether `at` is known and on its map's edge, on the maps the routes
+//  are planned on (overworld_maps(), with the coded Center rooms). Any
+//  unknown map or tile is not.
 bool known_on_map_edge(const std::optional<MapPosition>& at){
     if (!at){
         return false;
     }
     try{
-        return on_map_edge(load_map(at->map), at->point);
+        const std::vector<MapData> maps = overworld_maps();
+        const auto map = std::find_if(maps.begin(), maps.end(), [&](const MapData& item){ return item.name == at->map; });
+        return map != maps.end() && on_map_edge(*map, at->point);
     }catch (const Exception&){
         return false;
     }
