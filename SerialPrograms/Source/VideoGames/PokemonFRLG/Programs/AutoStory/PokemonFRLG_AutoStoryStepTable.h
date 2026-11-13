@@ -47,6 +47,8 @@ enum class StoryActionId{
     LEAVE_GIFT_SUMMARY,
     //  CUT_TREE_VARIANT: the tree ahead cut, and a step onto its tile.
     CUT_TREE,
+    //  PUSH_BOULDER_VARIANT: Strength, and the boulder ahead pushed on.
+    PUSH_BOULDER,
     //  TRASH_CANS_VARIANT: the search for Vermilion Gym's switches.
     TRASH_CANS,
     //  Any other GAME step: a capture or a PC deposit or withdrawal

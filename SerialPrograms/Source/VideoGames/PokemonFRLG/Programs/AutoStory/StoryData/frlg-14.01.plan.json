@@ -1,0 +1,390 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "14.01",
+    "title": "Cinnabar: heal, the gym's six quiz machines (YES, NO, NO, NO, YES, NO) to below Blaine",
+    "start": {"map": "CinnabarIsland", "tiles": [[8, 4]], "facing": "south"},
+    "events": [
+      {
+        "id": "below_center_door",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CinnabarIsland", "tiles": [[14, 12]], "facing": "north"}
+        },
+        "why": "from outside the Mansion's door (8, 3), where the Escape Rope out of the Mansion leaves the player, east and down to below the Center's door (14, 11)"
+      },
+      {
+        "id": "cinnabar_nurse",
+        "kind": "game_action",
+        "action": "center_enter",
+        "declared_after": {"map": "CinnabarIsland_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
+        "why": "the Center script in: through the door and up to the nurse; no map of the Center"
+      },
+      {
+        "id": "heal_cinnabar",
+        "kind": "heal",
+        "why": "full HP and PP before the gym (pokeguy skips the Center; healing is the safe side)"
+      },
+      {
+        "id": "below_quiz_1",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CinnabarIsland_Gym", "tiles": [[23, 11]], "facing": "north"}
+        },
+        "why": "out of the Center, up to the gym's door (20, 4), unlocked by the SECRET KEY (CinnabarIsland_EventScript_CheckUnlockGym), and in the gym (no running) from the mat (25, 23) up the east rooms to below quiz machine 1 (22..23, 10), west of Burglar Quinn (25, 11)"
+      },
+      {
+        "id": "quiz_1",
+        "kind": "talk",
+        "why": "quiz machine 1 (23, 10) and its neighbour, read facing north (CinnabarIsland_Gym_EventScript_Quiz1Left/Right)"
+      },
+      {
+        "id": "answer_quiz_1",
+        "kind": "answer",
+        "args": {
+          "yes": true
+        },
+        "why": "\"CATERPIE evolves into METAPOD?\" YES (pokeguy 1:20:37; Quiz1Correct on YES)"
+      },
+      {
+        "id": "door_1_opens",
+        "kind": "scene",
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[23, 11]], "facing": "north"},
+        "why": "\"Correct! Go on through!\"; door 1 opens (CinnabarIsland_Gym_EventScript_OpenDoor1); the player doesn't move"
+      },
+      {
+        "id": "below_door_1",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CinnabarIsland_Gym", "tiles": [[26, 10]], "facing": "north"}
+        },
+        "why": "east along row 10 to below door 1 (26..27, 8..9)"
+      },
+      {
+        "id": "into_door_1",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[26, 9]], "facing": "north"},
+        "why": "a step onto door 1's floor (26, 9): the map still has the barrier there, so no planned route over it"
+      },
+      {
+        "id": "through_door_1",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[26, 8]], "facing": "north"},
+        "why": "a step through door 1 onto (26, 8)"
+      },
+      {
+        "id": "below_quiz_2",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CinnabarIsland_Gym", "tiles": [[16, 3]], "facing": "north"}
+        },
+        "why": "west through the top room, above Super Nerd Erik (25, 4) and Avery (17, 5), to below quiz machine 2 (15..16, 2)"
+      },
+      {
+        "id": "quiz_2",
+        "kind": "talk",
+        "why": "quiz machine 2 (16, 2) and its neighbour, read facing north (CinnabarIsland_Gym_EventScript_Quiz2Left/Right)"
+      },
+      {
+        "id": "answer_quiz_2",
+        "kind": "answer",
+        "args": {
+          "yes": false
+        },
+        "why": "\"There are nine certified POKeMON LEAGUE BADGES?\" NO (Quiz2Correct on NO)"
+      },
+      {
+        "id": "door_2_opens",
+        "kind": "scene",
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[16, 3]], "facing": "north"},
+        "why": "\"Correct! Go on through!\"; door 2 opens (CinnabarIsland_Gym_EventScript_OpenDoor2); the player doesn't move"
+      },
+      {
+        "id": "above_door_2",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CinnabarIsland_Gym", "tiles": [[17, 8]], "facing": "south"}
+        },
+        "why": "down to above door 2 (17..18, 8..9), west of Avery"
+      },
+      {
+        "id": "into_door_2",
+        "kind": "step",
+        "args": {
+          "direction": "south"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[17, 9]], "facing": "south"},
+        "why": "a step onto door 2's floor (17, 9), a barrier on the map"
+      },
+      {
+        "id": "through_door_2",
+        "kind": "step",
+        "args": {
+          "direction": "south"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[17, 10]], "facing": "south"},
+        "why": "a step through door 2 onto (17, 10)"
+      },
+      {
+        "id": "below_quiz_3",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CinnabarIsland_Gym", "tiles": [[14, 11]], "facing": "north"}
+        },
+        "why": "west along row 11 past Burglar Ramon (16, 11) to below quiz machine 3 (13..14, 10)"
+      },
+      {
+        "id": "quiz_3",
+        "kind": "talk",
+        "why": "quiz machine 3 (14, 10) and its neighbour, read facing north (CinnabarIsland_Gym_EventScript_Quiz3Left/Right)"
+      },
+      {
+        "id": "answer_quiz_3",
+        "kind": "answer",
+        "args": {
+          "yes": false
+        },
+        "why": "\"POLIWAG evolves 3 times?\" NO (Quiz3Correct on NO)"
+      },
+      {
+        "id": "door_3_opens",
+        "kind": "scene",
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[14, 11]], "facing": "north"},
+        "why": "\"Correct! Go on through!\"; door 3 opens (CinnabarIsland_Gym_EventScript_OpenDoor3); the player doesn't move"
+      },
+      {
+        "id": "above_door_3",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CinnabarIsland_Gym", "tiles": [[17, 15]], "facing": "south"}
+        },
+        "why": "east and down to above door 3 (17..18, 15..16)"
+      },
+      {
+        "id": "into_door_3",
+        "kind": "step",
+        "args": {
+          "direction": "south"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[17, 16]], "facing": "south"},
+        "why": "a step onto door 3's floor (17, 16), a barrier on the map"
+      },
+      {
+        "id": "through_door_3",
+        "kind": "step",
+        "args": {
+          "direction": "south"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[17, 17]], "facing": "south"},
+        "why": "a step through door 3 onto (17, 17)"
+      },
+      {
+        "id": "below_quiz_4",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CinnabarIsland_Gym", "tiles": [[14, 18]], "facing": "north"}
+        },
+        "why": "west along row 18, past Super Nerd Derek (16, 18), to below quiz machine 4 (13..14, 17)"
+      },
+      {
+        "id": "quiz_4",
+        "kind": "talk",
+        "why": "quiz machine 4 (14, 17) and its neighbour, read facing north (CinnabarIsland_Gym_EventScript_Quiz4Left/Right)"
+      },
+      {
+        "id": "answer_quiz_4",
+        "kind": "answer",
+        "args": {
+          "yes": false
+        },
+        "why": "\"Are thunder moves effective against ground element-type POKeMON?\" NO (Quiz4Correct on NO)"
+      },
+      {
+        "id": "door_4_opens",
+        "kind": "scene",
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[14, 18]], "facing": "north"},
+        "why": "\"Correct! Go on through!\"; door 4 opens (CinnabarIsland_Gym_EventScript_OpenDoor4); the player doesn't move"
+      },
+      {
+        "id": "east_of_door_4",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CinnabarIsland_Gym", "tiles": [[12, 22]], "facing": "west"}
+        },
+        "why": "down column 12 to east of door 4 (11, 21..23)"
+      },
+      {
+        "id": "into_door_4",
+        "kind": "step",
+        "args": {
+          "direction": "west"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[11, 22]], "facing": "west"},
+        "why": "a step onto door 4's floor (11, 22), a barrier on the map"
+      },
+      {
+        "id": "through_door_4",
+        "kind": "step",
+        "args": {
+          "direction": "west"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[10, 22]], "facing": "west"},
+        "why": "a step through door 4 onto (10, 22)"
+      },
+      {
+        "id": "below_quiz_5",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CinnabarIsland_Gym", "tiles": [[2, 19]], "facing": "north"}
+        },
+        "why": "west through the bottom-left room, past Burglar Dusty (4, 19), to below quiz machine 5 (1..2, 18)"
+      },
+      {
+        "id": "quiz_5",
+        "kind": "talk",
+        "why": "quiz machine 5 (2, 18) and its neighbour, read facing north (CinnabarIsland_Gym_EventScript_Quiz5Left/Right)"
+      },
+      {
+        "id": "answer_quiz_5",
+        "kind": "answer",
+        "args": {
+          "yes": true
+        },
+        "why": "\"POKeMON of the same kind and level are not identical?\" YES (Quiz5Correct on YES)"
+      },
+      {
+        "id": "door_5_opens",
+        "kind": "scene",
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[2, 19]], "facing": "north"},
+        "why": "\"Correct! Go on through!\"; door 5 opens (CinnabarIsland_Gym_EventScript_OpenDoor5); the player doesn't move"
+      },
+      {
+        "id": "below_door_5",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CinnabarIsland_Gym", "tiles": [[5, 18]], "facing": "north"}
+        },
+        "why": "east along row 18 to below door 5 (5..6, 16..17)"
+      },
+      {
+        "id": "into_door_5",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[5, 17]], "facing": "north"},
+        "why": "a step onto door 5's floor (5, 17), a barrier on the map"
+      },
+      {
+        "id": "through_door_5",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[5, 16]], "facing": "north"},
+        "why": "a step through door 5 onto (5, 16)"
+      },
+      {
+        "id": "below_quiz_6",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CinnabarIsland_Gym", "tiles": [[2, 11]], "facing": "north"}
+        },
+        "why": "up and west to below quiz machine 6 (1..2, 10), west of Super Nerd Zac (4, 11)"
+      },
+      {
+        "id": "quiz_6",
+        "kind": "talk",
+        "why": "quiz machine 6 (2, 10) and its neighbour, read facing north (CinnabarIsland_Gym_EventScript_Quiz6Left/Right)"
+      },
+      {
+        "id": "answer_quiz_6",
+        "kind": "answer",
+        "args": {
+          "yes": false
+        },
+        "why": "\"TM28 contains TOMBSTONY?\" NO (Quiz6Correct on NO)"
+      },
+      {
+        "id": "door_6_opens",
+        "kind": "scene",
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[2, 11]], "facing": "north"},
+        "why": "\"Correct! Go on through!\"; door 6 opens (CinnabarIsland_Gym_EventScript_OpenDoor6); the player doesn't move"
+      },
+      {
+        "id": "below_door_6",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CinnabarIsland_Gym", "tiles": [[5, 10]], "facing": "north"}
+        },
+        "why": "east to below door 6 (5..6, 8..9)"
+      },
+      {
+        "id": "into_door_6",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[5, 9]], "facing": "north"},
+        "why": "a step onto door 6's floor (5, 9), a barrier on the map"
+      },
+      {
+        "id": "through_door_6",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[5, 8]], "facing": "north"},
+        "why": "a step through door 6 onto (5, 8)"
+      },
+      {
+        "id": "below_blaine",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CinnabarIsland_Gym", "tiles": [[5, 5]], "facing": "north"}
+        },
+        "why": "up to below Blaine (5, 4), facing him"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "notes": {
+      "checkpoint": [
+        "Starts outside the Pokemon Mansion's door (8, 3) on (8, 4) facing south, where the Escape Rope out of the Mansion (13.04, pokeguy 1:20:24) leaves the player. 13.04 is authored separately; until it is in, this row's start is its own (starts_after_unauthored_rows()).",
+        "PokeGuy's way (1:20:37 to 1:21:43): all six quiz machines answered right, each opening the next door, so none of the gym's eight trainers is fought. Answers (pokefirered CinnabarIsland_Gym scripts.inc): 1 YES, 2 NO, 3 NO, 4 NO, 5 YES, 6 NO. A wrong answer starts the room's trainer instead; the table has no branch for that.",
+        "Every gym trainer has sight 0 (map.json trainer_sight_or_berry_tree_id): they fight only after a wrong answer or a talk, so no trainer lines here.",
+        "The doors are metatiles the quiz scripts swap (setmetatile in OpenDoorN); the map has them shut, one barrier tile each. Each is crossed by two plain steps with their ends declared, not a planned route. On the sim they need the door opened (no sim support yet: the test moves the player over them).",
+        "We heal at Cinnabar's Center first; pokeguy doesn't (he fights Blaine at 24/126 HP with one Surf each).",
+        "Ends in front of Blaine and saves there: his own pre-battle checkpoint (battle-checkpoint-retry), 14.02."
+      ]
+    }
+  },
+  "metadata": {
+    "phase": "testing",
+    "postconditions": {
+      "position": {"map": "CinnabarIsland_Gym", "tiles": [[5, 5]], "facing": "north"}
+    }
+  }
+}

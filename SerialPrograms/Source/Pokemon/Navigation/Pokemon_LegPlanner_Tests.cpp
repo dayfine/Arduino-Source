@@ -329,18 +329,18 @@ UnitTestResult test_unreachable(){
 }
 
 
-struct LegPlannerInput{
-    std::string name;
-    UnitTestResult (*test)();
-};
-
-struct LegPlannerExpectation{
-    std::string_view description;
-};
-
 struct LegPlannerTestCase{
-    LegPlannerInput input;
-    LegPlannerExpectation expectation;
+    struct Input{
+        std::string name;
+        UnitTestResult (*test)();
+    };
+
+    struct Expectation{
+        std::string_view description;
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 class Test_LegPlanner : public UnitTest{

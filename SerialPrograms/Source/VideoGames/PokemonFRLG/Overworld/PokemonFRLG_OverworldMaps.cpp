@@ -93,6 +93,8 @@ constexpr std::string_view MAP_NAMES[] = {
     "UndergroundPath_WestEntrance",
     "Route7",
     "CeladonCity",
+    //  Celadon Gym, past the tree Cut fells.
+    "CeladonCity_Gym",
     //  The Game Corner's poster and the Rocket Hideout down to B4F.
     "CeladonCity_GameCorner",
     "RocketHideout_B1F",
@@ -141,9 +143,48 @@ constexpr std::string_view MAP_NAMES[] = {
     //  Koga's gym, and the Warden's house (GOLD TEETH for HM04).
     "FuchsiaCity_Gym",
     "FuchsiaCity_WardensHouse",
+    //  Route 7's east gate, where the guard takes the TEA, and Saffron City.
+    "Route7_EastEntrance",
+    "SaffronCity",
+    //  Cinnabar Island's Center and Blaine's gym, through its quiz doors, and
+    //  Route 21 north of it to Pallet Town (12.03).
+    "CinnabarIsland",
+    "CinnabarIsland_Gym",
+    //  Route 21 from Pallet Town south to Cinnabar (12.03), and Viridian Gym with its
+    //  spinner tiles (the map file's glyphs: PokemonFRLG_OverworldSpin.h).
+    "Route21_North",
+    "Route21_South",
+    "ViridianCity_Gym",
+    //  Silph Co.'s floors, 1F to 11F (the lift's map, SilphCo_Elevator, is
+    //  not built in).
+    "SilphCo_1F",
+    "SilphCo_2F",
+    "SilphCo_3F",
+    "SilphCo_4F",
+    "SilphCo_5F",
+    "SilphCo_6F",
+    "SilphCo_7F",
+    "SilphCo_8F",
+    "SilphCo_9F",
+    "SilphCo_10F",
+    "SilphCo_11F",
+    //  The Pokemon Mansion's four floors, for the SECRET KEY.
+    "PokemonMansion_1F",
+    "PokemonMansion_2F",
+    "PokemonMansion_3F",
+    "PokemonMansion_B1F",
     "CeruleanCave_1F",
     "CeruleanCave_2F",
     "CeruleanCave_B1F",
+    //  Route 22's east end to Indigo Plateau: its north gate, Route 23 with
+    //  its badge guards, Victory Road's three floors and the Plateau's Center.
+    "Route22_NorthEntrance",
+    "Route23",
+    "VictoryRoad_1F",
+    "VictoryRoad_2F",
+    "VictoryRoad_3F",
+    "IndigoPlateau_Exterior",
+    "IndigoPlateau_PokemonCenter_1F",
 };
 
 
@@ -167,11 +208,28 @@ void add_unmapped_centers(std::vector<MapData>& maps){
     }
 }
 
+//  Pallet Town's fat man wanders over (7..19, 15..19), which holds the whole
+//  shore (7..10, 16) the way onto Route 21's water goes by. A planned route
+//  never crosses a wanderer's box, so none would reach the water. He stands on
+//  his own tile (13, 17) in the planner's model: east of the shore, off the
+//  way; a person in the way on the console is waited out (12.03).
+void waive_pallet_fat_man_box(MapData& map){
+    if (map.name != "PalletTown"){
+        return;
+    }
+    for (MapObject& object : map.objects){
+        if (object.name == "fat_man"){
+            object.wander.reset();
+        }
+    }
+}
+
 const std::vector<MapData>& all_maps(){
     static const std::vector<MapData> MAPS = []{
         std::vector<MapData> maps;
         for (std::string_view name : MAP_NAMES){
             maps.push_back(load_map(std::string(name)));
+            waive_pallet_fat_man_box(maps.back());
         }
         add_unmapped_centers(maps);
         return maps;

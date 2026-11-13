@@ -36,28 +36,28 @@ enum class Record{
     CHECKPOINT,
 };
 
-//  A record to read, and which kind it is.
-struct WireInput{
-    std::string_view name;
-    Record record = Record::STEP;
-    std::string_view json;
-};
-
 //  What a read gives.
 using ReadRecord = std::variant<GridPose, DeclaredPose, StoryStep, StoryCheckpoint>;
 
 //  "" when the record read is as expected, else what differs.
 using ReadCheck = std::string (*)(const ReadRecord& record);
 
-//  What reading it gives: a record the check accepts, or a rejection.
-struct WireExpectation{
-    ReadCheck check = nullptr;
-    bool rejected = false;
-};
-
 struct WireCase{
-    WireInput input;
-    WireExpectation expectation;
+    //  A record to read, and which kind it is.
+    struct Input{
+        std::string_view name;
+        Record record = Record::STEP;
+        std::string_view json;
+    };
+
+    //  What reading it gives: a record the check accepts, or a rejection.
+    struct Expectation{
+        ReadCheck check = nullptr;
+        bool rejected = false;
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 std::string expect(bool ok, std::string_view what){
@@ -134,6 +134,47 @@ const WireCase CASES[] = {
         const DeclaredPose start = ZoneDeclared{.place = "HotelZ", .spot = std::nullopt, .heading = std::nullopt};
         return expect(checkpoint.start == start && checkpoint.steps.size() == 1 && checkpoint.steps[0].kind == StoryStepKind::MASH, "a zone start and one scene");
     }}},
+    {.input = {.name = "step opens gates", .json = R"({"id":"unlock","kind":"talk","gates_after":{"opened":["SilphCo_5F/door_1"],"switches":{"mansion":true}}})"}, .expectation = {.check = [](const ReadRecord& record){
+        const StoryStep& step = step_of(record);
+        GateChange expected;
+        expected.opened.insert("SilphCo_5F/door_1");
+        expected.switches["mansion"] = true;
+        return expect(step.gates_after && *step.gates_after == expected, "door_1 opened and the mansion switch on");
+    }}},
+    {.input = {.name = "step with no gates", .json = R"({"id":"plain","kind":"talk"})"}, .expectation = {.check = [](const ReadRecord& record){
+        return expect(!step_of(record).gates_after, "no gate change");
+    }}},
+    {.input = {.name = "flags: given after a step, held at the start", .record = Record::CHECKPOINT, .json = R"({"id":"16.02","title":"Silph","start_flags":["has_pass"],"events":[{"id":"a","kind":"talk","flags_after":["card_key_held"]},{"id":"b","kind":"talk"}]})"}, .expectation = {.check = [](const ReadRecord& record){
+        const StoryCheckpoint& checkpoint = std::get<StoryCheckpoint>(record);
+        return expect(
+            checkpoint.start_flags == std::vector<std::string>{"has_pass"}
+                && checkpoint.steps[0].flags_after == std::vector<std::string>{"card_key_held"}
+                && checkpoint.steps[1].flags_after.empty(),
+            "start_flags and flags_after"
+        );
+    }}},
+    {.input = {.name = "gate change with an unknown field", .json = R"({"id":"x","kind":"talk","gates_after":{"closed":["a/b"]}})"}, .expectation = {.rejected = true}},
+    {.input = {.name = "checkpoint gate state", .record = Record::CHECKPOINT, .json = R"({"id":"16.02","title":"Silph","start_gates":{"opened":["SilphCo_5F/door_1"]},"events":[{"id":"a","kind":"talk","gates_after":{"opened":["SilphCo_5F/door_2"]}},{"id":"b","kind":"talk","gates_after":{"switches":{"mansion":true}}},{"id":"c","kind":"talk"}]})"}, .expectation = {.check = [](const ReadRecord& record){
+        const StoryCheckpoint& checkpoint = std::get<StoryCheckpoint>(record);
+        if (!checkpoint.start_gates || checkpoint.start_gates->opened.size() != 1){
+            return std::string("Expected start_gates with door_1 open.");
+        }
+        const GateState none = checkpoint_gates(checkpoint, 0);
+        const GateState first = checkpoint_gates(checkpoint, 1);
+        const GateState all = checkpoint_gates(checkpoint, 3);
+        if (!(none == *checkpoint.start_gates) || first.opened.size() != 2 || first.switch_on("mansion")){
+            return std::string("Expected the start, then door_2 as well after one step.");
+        }
+        if (!all.switch_on("mansion") || !(checkpoint_gates(checkpoint, 99) == all)){
+            return std::string("Expected the switch on after the steps, and past the end the same.");
+        }
+        const JsonValue written = write_gate_state(all);
+        return expect(read_gate_state(written, "round trip") == all, "the gate state to read back as written");
+    }}},
+    {.input = {.name = "checkpoint without gates", .record = Record::CHECKPOINT, .json = R"({"id":"x","title":"X","events":[{"id":"a","kind":"talk"}]})"}, .expectation = {.check = [](const ReadRecord& record){
+        const StoryCheckpoint& checkpoint = std::get<StoryCheckpoint>(record);
+        return expect(!checkpoint.start_gates && checkpoint_gates(checkpoint, 1) == GateState(), "no start gates and nothing open");
+    }}},
     {.input = {.name = "ordered checkpoint", .record = Record::CHECKPOINT, .json = R"({"id":"00.05","title":"Parcel","events":[ {"id":"first","kind":"talk"}, {"id":"second","kind":"scene"} ]})"}, .expectation = {.check = [](const ReadRecord& record){
         const StoryCheckpoint& checkpoint = std::get<StoryCheckpoint>(record);
         return expect(checkpoint.id == "00.05" && checkpoint.title == "Parcel" && !checkpoint.start && checkpoint.steps.size() == 2
@@ -201,7 +242,7 @@ std::vector<StoryActionSpec> test_actions(){
 
 
 //  `input` read.
-ReadRecord read_record(const WireInput& input){
+ReadRecord read_record(const WireCase::Input& input){
     static const std::vector<StoryActionSpec> actions = test_actions();
     const JsonValue value = parse_json(std::string(input.json));
     switch (input.record){

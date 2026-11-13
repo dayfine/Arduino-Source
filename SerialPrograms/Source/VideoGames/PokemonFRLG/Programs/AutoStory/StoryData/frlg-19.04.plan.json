@@ -1,0 +1,45 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "19.04",
+    "title": "Victory Road: HM04 Strength over Water Pulse, into the cave",
+    "start": {"map": "Route23", "tiles": [[5, 29]], "facing": "north"},
+    "events": [
+      {
+        "id": "teach_strength",
+        "kind": "game_action",
+        "action": "teach",
+        "args": {
+          "item": "hm04",
+          "move": "strength",
+          "slot": 1,
+          "keep": ["surf", "bite", "blizzard"]
+        },
+        "why": "HM04 Strength in place of Water Pulse, as pokeguy at Victory Road (PokemonSimulation docs/progression/pokeguy-moves.md: Strength, Surf, Bite, Blizzard; docs/battles/pokeguy-conditions.md, the move-learning table: STRENGTH replaces WATER_PULSE); an HM, so not a one-shot TM; keep list: Surf, Bite and Blizzard stay and the one other move (Water Pulse) goes; fails if none or several are outside the list. The Rainbow Badge it needs is 14.04's"
+      },
+      {
+        "id": "cave_mouth",
+        "kind": "step",
+        "args": {"direction": "north"},
+        "declared_after": {"map": "VictoryRoad_1F", "tiles": [[11, 20]], "facing": "north"},
+        "why": "north onto the cave mouth (5, 28), the warp into Victory Road 1F's south end (11, 20)"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "notes": {
+      "checkpoint": [
+        "Starts below Victory Road's mouth, where 19.03 ends. Strength is taught here, at the cave's start, because every floor's boulders need it (pokeguy teaches it over Water Pulse at Victory Road, 1:43:24 on his video: the 12.02 note that pointed at 19.02, D3 meant this row).",
+        "Ends on Victory Road 1F's south end (11, 20). The boulder puzzles of the three floors are not authored: the maps have the boulders as objects but not the switches' barriers (1F (12, 14) and (12, 15); 2F (13, 10) and (13, 11), (33, 16) and (33, 17); 3F (12, 12) and (12, 13)) nor which tiles the switches press (1F (20, 16); 2F (2, 19), (14, 19); 3F (7, 7)), so the planner would walk through them. Pokemon_BoulderSolver in PokemonFRLG_AutoStoryBoulders_Tests.cpp holds the data and the search; the barriers need the user's map edit (TODO)."
+      ]
+    }
+  },
+  "metadata": {
+    "phase": "testing",
+    "postconditions": {
+      "position": {"map": "VictoryRoad_1F", "tiles": [[11, 20]], "facing": "north"}
+    }
+  }
+}

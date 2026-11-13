@@ -391,21 +391,21 @@ UnitTestResult test_end_pose_from_the_plan(){
 }
 
 
-//  The scenario to run.
-struct SavePolicyInput{
-    std::string name;
-    UnitTestResult (*test)() = nullptr;
-};
-
-//  What the scenario checks; it returns its own failure.
-struct SavePolicyExpectation{
-    std::string_view description;
-};
-
 // A save-policy scenario and its expected result.
 struct SavePolicyCase{
-    SavePolicyInput input;
-    SavePolicyExpectation expectation;
+    //  The scenario to run.
+    struct Input{
+        std::string name;
+        UnitTestResult (*test)() = nullptr;
+    };
+
+    //  What the scenario checks; it returns its own failure.
+    struct Expectation{
+        std::string_view description;
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 class Test_StorySavePolicy : public UnitTest{

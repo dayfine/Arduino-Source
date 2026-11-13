@@ -108,7 +108,7 @@ AutoStory::AutoStory()
     )
     , PLAYER_GENDER(
         "<b>Player:</b><br>Who a new game plays as, picked at \"Are you a boy or a girl?\". "
-        "A save of either player runs whatever this says.",
+        "The player's sprite is read as this one's, so a save must be of the same player.",
         {
             {PlayerGender::BOY, "boy", "Boy"},
             {PlayerGender::GIRL, "girl", "Girl"},

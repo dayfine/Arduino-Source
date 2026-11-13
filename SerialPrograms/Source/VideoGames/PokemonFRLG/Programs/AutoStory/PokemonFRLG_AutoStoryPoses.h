@@ -70,6 +70,14 @@ inline const std::string LEAVE_GIFT_SUMMARY = "leave_gift_summary";
 //  FLAG_TEMP), so the walk back cuts it again.
 inline const std::string CUT_TREE_VARIANT = "cut_tree";
 
+//  The GAME step that pushes the boulder the player faces, `direction`,
+//  `tiles` tiles on (pokefirered EventScript_StrengthBoulder): with
+//  `activate`, A and YES to "Would you like to use STRENGTH?" first (the
+//  game keeps Strength on until the player leaves the map); then `tiles`
+//  steps, each of which moves the boulder a tile and the player into the
+//  tile it left. The boulder stops at a wall or another object.
+inline const std::string PUSH_BOULDER_VARIANT = "push_boulder";
+
 //  How `step`, a ROUTE or LEGS, moves the player: RUN_VARIANT runs,
 //  BIKE_VARIANT rides.
 MoveSpeed move_speed(const StoryStep& step);

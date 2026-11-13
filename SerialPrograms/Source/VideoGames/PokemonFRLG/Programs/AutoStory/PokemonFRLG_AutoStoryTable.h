@@ -65,7 +65,8 @@ const std::vector<std::pair<std::string, std::string>>& autostory_checkpoint_jso
 //  action args it doesn't take, or has notes for a step it doesn't have.
 StoryCheckpoint read_story_checkpoint_file(const JsonValue& value, std::string_view source);
 
-//  Checkpoints 01.01 to 07.02, in order: every file in StoryData/. With
+//  Every file in StoryData/ in the order the story plays them (STORY_ORDER in
+//  PokemonFRLG_AutoStoryTable.cpp), not in id order. Checkpoints 01.01 to 07.02 with
 //  01.02, the way back in after SID Helper, after 01.01, 01.05 split in two at Squirtle's ball for
 //  Starter RNG: 01.05 and 01.06, 04.03, the way back in after Gift RNG,
 //  after 04.02, 04.04, the Magikarp put in BOX 1, after it, 05.01 and

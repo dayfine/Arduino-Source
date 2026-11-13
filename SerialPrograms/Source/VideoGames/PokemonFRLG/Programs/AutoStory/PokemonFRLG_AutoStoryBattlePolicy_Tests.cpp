@@ -464,6 +464,23 @@ UnitTestResult test_plan_tower_rival(){
     return check_policy_step("10.03", "rival_tower", {.spa = 2, .outspeed = true, .guard_accuracy = true, .torrent_power = true});
 }
 
+UnitTestResult test_plan_erika(){
+    return check_policy_step("14.04", "erika", {.spa = 1, .accuracy = 2, .outspeed = true, .guard_accuracy = true});
+}
+
+UnitTestResult test_plan_blaine(){
+    const StoryStep& step = battle_step("14.02", "blaine");
+    const auto foes = arg_of<std::vector<std::string>>(step, "foes");
+    const auto rows = arg_of<std::vector<std::vector<int64_t>>>(step, "foe_threats");
+    if (arg_of<std::string>(step, "policy") != "solo-recovery"){
+        return "14.02 blaine: expected policy solo-recovery.";
+    }
+    if (!foes || !rows || !foe_threats_of(*rows) || rows->size() != foes->size()){
+        return "14.02 blaine: expected one valid foe_threats row per foe.";
+    }
+    return true;
+}
+
 
 struct AutoStoryBattlePolicyInput{
     std::string name;
@@ -561,6 +578,14 @@ const std::vector<AutoStoryBattlePolicyCase> AUTO_STORY_BATTLE_POLICY_CASES = {
     {
         .input = {.name = "plan: 12.02 koga names the policy, goals and foes", .body = test_plan_koga},
         .expectation = {.description = "the policy, goals and 4 foe rows"},
+    },
+    {
+        .input = {.name = "plan: 14.04 erika names the policy, goals and foes", .body = test_plan_erika},
+        .expectation = {.description = "the policy, goals and 3 foe rows"},
+    },
+    {
+        .input = {.name = "plan: 14.02 blaine names solo-recovery and its foes", .body = test_plan_blaine},
+        .expectation = {.description = "the policy and 4 foe rows"},
     },
     {
         .input = {.name = "plan: 10.03 rival_tower names the policy, goals and foes", .body = test_plan_tower_rival},

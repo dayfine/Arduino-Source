@@ -10,6 +10,7 @@
 #ifndef PokemonAutomation_PokemonFRLG_AutoStoryRows_Tests_H
 #define PokemonAutomation_PokemonFRLG_AutoStoryRows_Tests_H
 
+#include <string_view>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 
 namespace PokemonAutomation{
@@ -34,7 +35,8 @@ void add_tests_AutoStorySnorlax(UnitTestDatabase& database);
 void add_tests_AutoStorySlope(UnitTestDatabase& database);
 //  Row 11.03 on the sims (PokemonFRLG_AutoStorySafari_Tests.cpp).
 void add_tests_AutoStorySafari(UnitTestDatabase& database);
-
+//  Rows 14.03, 14.04 and 14.04b, Celadon Gym, on the overworld sim (PokemonFRLG_AutoStoryCeladonGym_Tests.cpp).
+void add_tests_AutoStoryCeladonGym(UnitTestDatabase& database);
 
 } // namespace PokemonFRLG
 } // namespace NintendoSwitch

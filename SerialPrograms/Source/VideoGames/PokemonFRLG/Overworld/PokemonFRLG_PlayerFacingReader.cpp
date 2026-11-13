@@ -108,24 +108,9 @@ const PlayerSprites& player_sprites(PlayerGender gender){
     return BOY;
 }
 
-
-namespace{
-
-std::optional<Direction> match_either_player_facing(const ImageViewRGB32& game){
-    for (PlayerGender gender : {PlayerGender::BOY, PlayerGender::GIRL}){
-        const std::optional<Direction> facing = match_player_facing(game, player_sprites(gender));
-        if (facing){
-            return facing;
-        }
-    }
-    return std::nullopt;
-}
-
-} // namespace
-
-std::optional<Direction> read_player_facing(const ImageViewRGB32& screen){
+std::optional<Direction> read_player_facing(const ImageViewRGB32& screen, PlayerGender gender){
     const ImageViewRGB32 game = extract_box_reference(screen, GameSettings::instance().GAME_BOX);
-    return match_either_player_facing(game);
+    return match_player_facing(game, player_sprites(gender));
 }
 
 std::optional<Direction> match_player_facing(const ImageViewRGB32& game, const PlayerSprites& sprites){
@@ -187,7 +172,7 @@ public:
 
         std::optional<Direction> facing;
         try{
-            facing = read_player_facing(ImageRGB32(m_image));
+            facing = read_player_facing(ImageRGB32(m_image), PlayerGender::BOY);
         }catch (FileException& e){
             //  The screenshots and the sprite sheet aren't in CI's resources yet.
             return UnitTestResult(UnitTestResult::SKIPPED, "File not found: " + e.message());
@@ -276,8 +261,7 @@ public:
 };
 
 //  The real sheets, the boy's then the girl's, drawn on a grey screen: each
-//  reads with its own sheet, and either reads without being told which
-//  player it is. The boy's sheet alone doesn't read the girl.
+//  reads with its own sheet, and neither reads with the other's.
 class Test_PlayerFacingGenders : public UnitTest{
 public:
     Test_PlayerFacingGenders()
@@ -316,15 +300,14 @@ private:
         for (const Case& test : cases){
             const ImageRGB32 screen = fixture_screen(test.sprite, test.mirror);
             const std::optional<Direction> own = match_player_facing(screen, sprites);
-            const std::optional<Direction> either = match_either_player_facing(screen);
-            if (own != test.expected || either != test.expected){
-                return std::format("The {} facing {}: read {} with its own sheet, {} with either.",
-                    name, direction_name(test.expected),
-                    own ? direction_name(*own) : "nothing", either ? direction_name(*either) : "nothing"
+            if (own != test.expected){
+                return std::format("The {} facing {}: read {} with its own sheet.",
+                    name, direction_name(test.expected), own ? direction_name(*own) : "nothing"
                 );
             }
-            if (gender == PlayerGender::GIRL && match_player_facing(screen, player_sprites(PlayerGender::BOY)) == test.expected){
-                return std::format("The girl facing {} read with the boy's sheet.", direction_name(test.expected));
+            const PlayerGender other = gender == PlayerGender::BOY ? PlayerGender::GIRL : PlayerGender::BOY;
+            if (match_player_facing(screen, player_sprites(other)) == test.expected){
+                return std::format("The {} facing {} read with the other player's sheet.", name, direction_name(test.expected));
             }
         }
         return "";

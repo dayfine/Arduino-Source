@@ -66,10 +66,13 @@ std::vector<MapPosition> leg_tiles(
 
 //  Replays `route` from `start` with the game's step rules and returns where
 //  it ends. Throws InternalProgramError if a step can't be taken as planned.
+//  A route with gates (plan_overworld_route_gated()) starts with `gates`; its
+//  OPEN_GATE and PRESS_SWITCH steps change them.
 MapPosition follow_overworld_route(
     const std::vector<MapData>& maps,
     const MapPosition& start,
-    const std::vector<RouteStep>& route
+    const std::vector<RouteStep>& route,
+    const Pokemon::GateState& gates = {}
 );
 
 

@@ -83,6 +83,10 @@ private:
             {"pokemon-tower", "Pokemon Tower"},
             {"route-16", "Route 16"},
             {"fuchsia-city", "Fuchsia City"},
+            {"saffron-city", "Saffron City"},
+            {"cinnabar-island", "Cinnabar Island"},
+            {"silph-co", "Silph Co"},
+            {"pokemon-mansion", "Pokemon Mansion"},
         }){
             JsonArray names;
             names.push_back(std::string(name));

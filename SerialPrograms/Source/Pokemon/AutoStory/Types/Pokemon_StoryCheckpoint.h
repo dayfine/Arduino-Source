@@ -14,6 +14,7 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include "Pokemon/Navigation/Pokemon_GateState.h"
 #include "Pokemon_DeclaredPose.h"
 #include "Pokemon_StoryCheckpointMetadata.h"
 #include "Pokemon_StoryPostconditions.h"
@@ -39,7 +40,22 @@ struct StoryCheckpoint{
     //  Its phase and verification (JSON "metadata"), which decide when a
     //  run of it may save.
     StoryCheckpointMetadata metadata = {};
+    //  Which gates are open and which switches are on at the start, where the
+    //  save has any of the story's gates (Silph Co., Pokemon Mansion); none
+    //  where the checkpoint does not say, which the run infers from the
+    //  story so far, or else observes. JSON: "start_gates".
+    std::optional<GateState> start_gates = {};
+    //  The run flags that hold at the start, as flags_after would have set
+    //  them in the story so far, which a reload loses ("card_key_held" in a
+    //  save made after the Card Key). JSON: "start_flags".
+    std::vector<std::string> start_flags = {};
 };
+
+//  The gate state of `checkpoint` once its first `steps_done` steps are done:
+//  its start_gates (nothing open, no switch on if it has none) with the
+//  steps' gates_after applied in order. `steps_done` past the last step is
+//  the end.
+GateState checkpoint_gates(const StoryCheckpoint& checkpoint, size_t steps_done);
 
 
 

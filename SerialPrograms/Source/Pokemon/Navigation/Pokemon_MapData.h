@@ -26,8 +26,18 @@
  *          "triggers": [{"name": "mom_warning", "box": {"x0": 1, "y0": 2, "x1": 1, "y1": 2}, "when": "00.01"}, ...],
  *          "flag_sets": {"after_00.01": ["FLAG_HIDE_MOM", ...], ...},
  *          "connections": [{"side": "east", "to_map": "Route 1", "offset": 0}, ...],
- *          "patches": [{"x": 2, "y": 1, "glyph": "#", "measured_by": "run 3, 2026-10-30"}, ...]
+ *          "patches": [{"x": 2, "y": 1, "glyph": "#", "measured_by": "run 3, 2026-10-30"}, ...],
+ *          "gates": {"door_1": {"tiles": [[7, 9], [7, 10]], "open_glyph": ".", "new_game": "closed",
+ *                               "opens_by": "card_key_face_a", "flag": "FLAG_SILPH_5F_DOOR_1"},
+ *                    "barrier_1": {"tiles": [[22, 10]], "open_glyph": "~", "new_game": "closed",
+ *                                  "switch": "mansion", "open_when": "on"}, ...},
+ *          "switches": {"mansion": {"flag": "FLAG_POKEMON_MANSION_SWITCH_STATE", "toggle": true,
+ *                                   "floors": ["PokemonMansion_1F", ...],
+ *                                   "statues": [{"coord": [5, 5], "face_from": [5, 6], "facing": "north"}]}}
  *      }
+ *
+ *  A warp may carry "one_way": true (a drop). A map's tiles show each gate
+ *  tile as 'G', and every 'G' tile is in a gate.
  *
  *  `name`, `source` and `tiles` are required; everything else may be left
  *  out. Which game's planner reads these maps, and how, is the game's
@@ -47,6 +57,7 @@
 #include "Common/Cpp/Json/JsonValue.h"
 #include "Pokemon_Grid.h"
 #include "Pokemon_MapFeatures.h"
+#include "Pokemon_MapGates.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -76,6 +87,12 @@ struct MapData{
     std::map<std::string, std::set<std::string>> flag_sets;
     std::vector<MapConnection> connections;
     std::vector<MapPatch> patches;
+    //  The barriers the story opens, by id. Every GATE tile of `tiles` is in
+    //  exactly one gate.
+    std::map<std::string, MapGate> gates;
+    //  The switches (by id) that gates of this map follow or that have a
+    //  statue on it.
+    std::map<std::string, MapSwitch> switches;
 };
 
 //  Reads legacy/unmarked v1 or compact pokesim-runtime-map/2 JSON.

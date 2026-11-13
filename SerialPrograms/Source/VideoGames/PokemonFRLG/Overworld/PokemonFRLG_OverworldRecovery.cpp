@@ -35,6 +35,10 @@ Pokemon::RouteLogLeg route_log_leg(const RouteStep& step){
         leg.action = Pokemon::RouteLegAction::SURF;
     }else if (step.action == RouteAction::FACE){
         leg.action = Pokemon::RouteLegAction::FACE;
+    }else if (step.action == RouteAction::OPEN_GATE){
+        leg.action = Pokemon::RouteLegAction::OPEN_GATE;
+    }else if (step.action == RouteAction::PRESS_SWITCH){
+        leg.action = Pokemon::RouteLegAction::PRESS_SWITCH;
     }else if (step.warps){
         leg.end = Pokemon::RouteLegEnd::WARP;
     }else if (step.to_wall){
@@ -220,7 +224,12 @@ public:
         , m_plan(with_warp_slack(route))
         , m_at(planning != nullptr ? planning->start : std::nullopt)
         , m_facing(facing)
-    {}
+    {
+        if (planning != nullptr && planning->maps != nullptr){
+            m_gates = planning->gates;
+            read_gates();
+        }
+    }
 
     void run(){
         m_lines.plan(m_at, m_plan);
@@ -230,6 +239,20 @@ public:
             //  Where a hold that finds the player starts isn't known.
             const std::optional<TrainerCrossing> crossing = m_next >= m_holds ? crossing_here(step) : std::nullopt;
             const StepOutcome outcome = m_steps.walk(step, m_facing, crossing);
+            if (is_gate_step(step)){
+                //  The player stays on their tile: nothing to find again if
+                //  the gate didn't open, so the route fails.
+                if (outcome.end != StepEnd::DONE){
+                    m_calls.fail("walk_overworld_route(): " + to_string(step) + " did not finish.");
+                    return;
+                }
+                m_walked.reset();
+                Pokemon::apply_gate_change(m_gates, step.gate_change);
+                read_gates();
+                m_facing = step.facing_after;
+                m_lines.done(step, ++m_next, m_holds);
+                continue;
+            }
             if (outcome.end == StepEnd::DONE){
                 const std::optional<MapPosition> start = m_next >= m_unchecked ? m_at : std::nullopt;
                 remember_walked(step);
@@ -259,8 +282,21 @@ public:
     }
 
 private:
+    static bool is_gate_step(const RouteStep& step){
+        return step.action == RouteAction::OPEN_GATE || step.action == RouteAction::PRESS_SWITCH;
+    }
+
+    //  The maps through the gates as they are now. The planning's own maps
+    //  while none of them has a gate.
     const std::vector<MapData>* maps() const{
-        return m_planning != nullptr ? m_planning->maps : nullptr;
+        if (m_planning == nullptr || m_planning->maps == nullptr){
+            return nullptr;
+        }
+        return m_resolved ? &*m_resolved : m_planning->maps;
+    }
+
+    void read_gates(){
+        m_resolved = has_gates(*m_planning->maps) ? std::optional(resolve_maps(*m_planning->maps, m_gates)) : std::nullopt;
     }
 
     std::optional<TrainerCrossing> crossing_here(const RouteStep& step) const{
@@ -569,6 +605,8 @@ private:
     std::vector<RouteStep> m_plan;
     std::optional<MapPosition> m_at;
     std::optional<Direction> m_facing;
+    Pokemon::GateState m_gates;
+    std::optional<std::vector<MapData>> m_resolved;
     size_t m_next = 0;
     size_t m_stops = 0;
     size_t m_holds = 0;     //  of the plan, holds to walls that find the player

@@ -13,6 +13,7 @@
 #ifndef PokemonAutomation_Pokemon_SceneJudges_H
 #define PokemonAutomation_Pokemon_SceneJudges_H
 
+#include <optional>
 #include <string>
 #include "Common/Cpp/Time.h"
 #include "Pokemon_ScreenEvents.h"
@@ -51,18 +52,17 @@ enum class SceneMove{
 //  What ends a talk-over, besides the quiet.
 struct TalkOverRule{
     //  A map change must come first: a fade or the banner. Only the quiet
-    //  after it counts: r30's scene went quiet for 5 s before the fade home.
+    //  after it counts: a scene can go quiet for 5 s before the fade home.
     bool warp = false;
     //  False when a battle is to follow (a trainer's lines pause for more
-    //  than 4 s before it, r210d): no quiet ends the talk then.
+    //  than 4 s before it): no quiet ends the talk then.
     bool end_on_quiet = true;
 };
 
 //  The overworld with no box and a still screen this long ends it: a scene
-//  pauses while someone walks off (Dawn and Barry after Rowan leaves, r23),
-//  a scripted walk-in ran 5 s with no text before Mom spoke (r31), and
-//  Roark's badge speech pauses for the fanfare (lab-B 2026-10-31 09:45 and
-//  2026-11-08 15:06). The clock is the last look that was not quiet.
+//  pauses while someone walks off, a scripted walk-in can run 5 s with no
+//  text before someone speaks, and a speech pauses for a fanfare. The clock
+//  is the last look that was not quiet.
 constexpr Milliseconds TALK_OVER_QUIET = Milliseconds(5000);
 //  The overworld with no box this long ends it, still or not: wanderers or
 //  grass can keep the screen from ever being still.
@@ -80,7 +80,7 @@ public:
         : m_rule(rule)
     {}
 
-    SceneMove look(const ScreenEvents& look, WallClock now);
+    SceneMove look(const ScreenEvents& events, WallClock now);
 
     //  Whether the warp the rule asks for has shown (true without one).
     bool warped() const;
@@ -93,8 +93,9 @@ private:
     WarpFade m_fade = WarpFade::NONE;
     WarpFade m_fade_showing = WarpFade::NONE;
     bool m_banner = false;
-    WallClock m_quiet_since = WallClock::max();
-    WallClock m_calm_since = WallClock::max();
+    //  Since when the screen has been quiet, and calm; none when it is not.
+    std::optional<WallClock> m_quiet_since;
+    std::optional<WallClock> m_calm_since;
 };
 
 

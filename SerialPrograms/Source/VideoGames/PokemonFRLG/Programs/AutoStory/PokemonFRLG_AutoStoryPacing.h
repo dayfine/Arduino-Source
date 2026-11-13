@@ -37,7 +37,7 @@ bool find_paced_encounter(Logger& logger, const OverworldWalkSteps::BikeSelectCa
 
 //  select_off_bike()'s calls on the console: SELECT is the Switch's MINUS,
 //  and the player rides while no standing sprite shows (OverworldWalkSteps::screen_shows_riding()).
-OverworldWalkSteps::BikeSelectCalls console_bike_select(ConsoleHandle& console, ProControllerContext& context);
+OverworldWalkSteps::BikeSelectCalls console_bike_select(ConsoleHandle& console, ProControllerContext& context, PlayerGender player);
 
 
 

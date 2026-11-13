@@ -37,8 +37,10 @@
 #include "PokemonFRLG_AutoStoryPaceSim.h"
 #include "PokemonFRLG_AutoStoryRngLoop.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
+#include "PokemonFRLG_AutoStoryRows_Tests.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
 #include "PokemonFRLG_AutoStoryTable.h"
+#include "PokemonFRLG_AutoStoryUnauthoredStarts_Tests.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -225,9 +227,13 @@ UnitTestResult test_whole_story(){
     if (sim.begun() != ids || sim.saves.size() != ids.size()){
         return "Expected each checkpoint once, in order, each saving at its end:" + joined(sim.game.trace);
     }
-    //  Each checkpoint starts where the save before it stands.
+    //  Each checkpoint starts where the save before it stands, but one
+    //  authored before the rows that lead up to it.
     for (size_t c = 1; c < sim.rows.size(); c++){
         const StoryCheckpoint& data = sim.rows[c];
+        if (starts_after_unauthored_rows(data.id)){
+            continue;
+        }
         const std::optional<StoryPose> start = story_pose(*start_pose(data));
         const std::optional<StoryPose> saved = story_pose(sim.saves[c - 1].second);
         const bool same = start && saved && start->map == saved->map && start->tile == saved->tile

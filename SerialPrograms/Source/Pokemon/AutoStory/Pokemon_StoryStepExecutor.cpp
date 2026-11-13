@@ -52,7 +52,15 @@ Event story_event(const StoryStep& step, StoryStepExecutor& executor){
         }));
     }
     event.act = [&executor, &step](RunState& state){
-        return executor.run(step, state);
+        Outcome outcome = executor.run(step, state);
+        //  What a step that failed did to the game is not known to the run.
+        if (outcome.succeeded()){
+            if (step.gates_after){
+                apply_gate_change(state.gates, *step.gates_after);
+            }
+            state.flags.insert(step.flags_after.begin(), step.flags_after.end());
+        }
+        return outcome;
     };
     if (step.pose_after){
         event.pose_learned = pose_of(*step.pose_after);
@@ -63,13 +71,24 @@ Event story_event(const StoryStep& step, StoryStepExecutor& executor){
 namespace{
 
 //  The first event of a checkpoint that starts from a save: where the save
-//  leaves the player, for a run that reloaded it.
-Event from_save_event(const Pose& start){
+//  leaves the player, and the gates and flags it has, for a run that
+//  reloaded it.
+Event from_save_event(const StoryCheckpoint& data){
     Event event;
     event.name = "from_save";
     event.why = "where the checkpoint's save leaves the player";
-    event.act = [](RunState&){ return outcome_ok(); };
-    event.pose_learned = start;
+    //  A checkpoint that does not say what its save has leaves the run's
+    //  gates as the steps before it made them.
+    event.act = [gates = data.start_gates, flags = data.start_flags](RunState& state){
+        if (gates){
+            state.gates = *gates;
+        }
+        state.flags.insert(flags.begin(), flags.end());
+        return outcome_ok();
+    };
+    if (data.start){
+        event.pose_learned = pose_of(*data.start);
+    }
     return event;
 }
 
@@ -99,8 +118,8 @@ Checkpoint build_story_checkpoint(const StoryCheckpoint& data, StoryStepExecutor
     executor.begin_attempt(data);
     Checkpoint checkpoint;
     checkpoint.id = data.id;
-    if (data.start){
-        checkpoint.events.push_back(from_save_event(pose_of(*data.start)));
+    if (data.start || data.start_gates || !data.start_flags.empty()){
+        checkpoint.events.push_back(from_save_event(data));
     }
     for (const StoryStep& step : data.steps){
         checkpoint.events.push_back(story_event(step, executor));

@@ -48,6 +48,7 @@ std::string_view story_action_name(StoryActionId id){
     case StoryActionId::CLOSE_TRAINER_CARD: return "close_trainer_card";
     case StoryActionId::LEAVE_GIFT_SUMMARY: return "leave_gift_summary";
     case StoryActionId::CUT_TREE:   return "cut_tree";
+    case StoryActionId::PUSH_BOULDER: return "push_boulder";
     case StoryActionId::TRASH_CANS: return "trash_cans";
     case StoryActionId::GAME:       return "game";
     }
@@ -71,6 +72,7 @@ const std::vector<StoryActionRow>& story_action_rows(){
         {StoryStepKind::GAME,       CLOSE_TRAINER_CARD, StoryActionId::CLOSE_TRAINER_CARD},
         {StoryStepKind::GAME,       LEAVE_GIFT_SUMMARY, StoryActionId::LEAVE_GIFT_SUMMARY},
         {StoryStepKind::GAME,       CUT_TREE_VARIANT,   StoryActionId::CUT_TREE},
+        {StoryStepKind::GAME,       PUSH_BOULDER_VARIANT, StoryActionId::PUSH_BOULDER},
         {StoryStepKind::GAME,       TRASH_CANS_VARIANT, StoryActionId::TRASH_CANS},
         {StoryStepKind::GAME,       "", StoryActionId::GAME},
     };
@@ -257,6 +259,11 @@ std::span<const Pokemon::StoryActionSpec> story_action_specs(){
         specs.push_back({.kind = StoryStepKind::GAME, .name = LEAVE_GIFT_SUMMARY, .args = {}});
         specs.push_back({.kind = StoryStepKind::GAME, .name = CUT_TREE_VARIANT, .args = {
             required_arg("direction", StoryArgType::DIRECTION, "the way to the tree, which the step then walks onto"),
+        }});
+        specs.push_back({.kind = StoryStepKind::GAME, .name = PUSH_BOULDER_VARIANT, .args = {
+            required_arg("direction", StoryArgType::DIRECTION, "the way to the boulder, which the step then pushes"),
+            optional_arg("tiles", StoryArgType::INTEGER, int64_t(1), "how many tiles to push it"),
+            optional_arg("activate", StoryArgType::BOOLEAN, false, "use Strength first: A and YES at the boulder"),
         }});
         specs.push_back({.kind = StoryStepKind::GAME, .name = TRASH_CANS_VARIANT, .args = {}});
         for (Pokemon::StoryActionSpec spec : {

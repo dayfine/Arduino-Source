@@ -1,0 +1,83 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "17.04",
+    "title": "Viridian Gym: Giovanni and the EARTHBADGE",
+    "start": {
+      "map": "ViridianCity_Gym",
+      "tiles": [
+        [
+          2,
+          3
+        ]
+      ],
+      "facing": "north"
+    },
+    "events": [
+      {
+        "id": "lead_lv50_for_giovanni",
+        "kind": "game_action",
+        "action": "level",
+        "args": {
+          "slot": 1,
+          "min": 50
+        },
+        "why": "the precondition for Giovanni (Rhyhorn Lv50): below it the run stops before the fight"
+      },
+      {
+        "id": "challenge_giovanni",
+        "kind": "talk",
+        "why": "Giovanni (2, 2)"
+      },
+      {
+        "id": "giovanni",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_LEADER_GIOVANNI",
+          "foes": [
+            "rhyhorn",
+            "dugtrio",
+            "nidoqueen",
+            "nidoking",
+            "rhydon"
+          ]
+        },
+        "declared_after": {
+          "map": "ViridianCity_Gym",
+          "tiles": [
+            [
+              2,
+              3
+            ]
+          ],
+          "facing": "north"
+        },
+        "why": "Giovanni: Rhyhorn Lv45, Dugtrio Lv42, Nidoqueen Lv44, Nidoking Lv45, Rhydon Lv50; then the EARTHBADGE and TM26 Earthquake"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "notes": {
+      "checkpoint": [
+        "A boss battle is its own checkpoint (user, 2026-11-12): Giovanni's fight is all this row does. It ends in front of him after the EARTHBADGE and TM26 text, and saves there; 17.04b goes on out of the gym."
+      ]
+    }
+  },
+  "metadata": {
+    "phase": "testing",
+    "postconditions": {
+      "position": {
+        "map": "ViridianCity_Gym",
+        "tiles": [
+          [
+            2,
+            3
+          ]
+        ],
+        "facing": "north"
+      }
+    }
+  }
+}

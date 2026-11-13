@@ -1,0 +1,82 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "19.01",
+    "title": "The rival on Route 22, at the road's east end",
+    "start": {"map": "ViridianCity_Mart", "tiles": [[4, 3]], "facing": "west"},
+    "events": [
+      {
+        "id": "lead_lv49_for_rival_route22",
+        "kind": "game_action",
+        "action": "level",
+        "args": {
+          "slot": 1,
+          "min": 49
+        },
+        "why": "the precondition for the Route 22 rival: the lead at least Lv49, pokeguy's Blastoise here (docs/battles/pokeguy-conditions.md route22-rival); 17.04's Giovanni needs Lv50"
+      },
+      {
+        "id": "route22_east_of_trigger",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "Route22", "tiles": [[34, 5]], "facing": "west"}
+        },
+        "why": "out of the Mart and west out of Viridian City onto Route 22, along row 5 to (34, 5), a tile short of the rival's trigger column (33, 4..6)"
+      },
+      {
+        "id": "rival_trigger",
+        "kind": "step",
+        "args": {"direction": "west"},
+        "declared_after": {"map": "Route22", "tiles": [[33, 5]], "facing": "west"},
+        "why": "onto (33, 5): Route22_EventScript_LateRivalTriggerMid (VAR_MAP_SCENE_ROUTE22 is 3 once Giovanni is beaten, 17.04) puts the rival at (25, 5) and walks him seven tiles east to face the player"
+      },
+      {
+        "id": "rival_route22",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_RIVAL_ROUTE22_LATE_BULBASAUR",
+          "foes": [
+            "pidgeot",
+            "rhyhorn",
+            "gyarados",
+            "growlithe",
+            "alakazam",
+            "venusaur"
+          ],
+          "policy": "goal-based-setup",
+          "setup_spa": 2,
+          "setup_accuracy": 2,
+          "setup_outspeed": true,
+          "setup_guard_accuracy": true,
+          "foe_threats": [
+            [99, 29, 27, 60, 30, 0, 0],
+            [35, 46, 30, 126, 59, 0, 0],
+            [86, 15, 4, 36, 18, 0, 0],
+            [67, 0, 1, 50, 25, 0, 0],
+            [126, 55, 20, 120, 60, 0, 0],
+            [105, 69, 20, 156, 78, 0, 0]
+          ]
+        },
+        "declared_after": {"map": "Route22", "tiles": [[33, 5]], "facing": "west"},
+        "why": "the rival (TRAINER_RIVAL_ROUTE22_LATE_BULBASAUR for a player who took Squirtle): Pidgeot Lv47, Rhyhorn Lv45, Gyarados Lv45, Growlithe Lv45, Alakazam Lv47, Venusaur Lv53; fought by pokeguy's policy C2 (goal-based-setup: Sp. Atk +2 and Accuracy +2 by X Specials and X Accuracies, X Speed until faster, the doc's route22-rival row); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against the entry state (153/153, the doc's route22-rival case: the 80th percentile of the foe's move choice, its mean, its worst case, and its worst normal hit), one row per foe: Venusaur's worst case (crit Razor Leaf) is 156 of 153 HP, Rhyhorn's 126. Then he walks off and the player stays facing west"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "notes": {
+      "checkpoint": [
+        "Starts in the Viridian Mart where 19.01a ends, with the potions bought. The rival's trigger needs VAR_MAP_SCENE_ROUTE22 at 3, which Giovanni's defeat sets (ViridianCity_Gym scripts), so the row can not be reached by hand before the Earth Badge. PokeGuy has this fight at 1:46 (docs/battles/pokeguy-conditions.md, route22-rival) at 153/153 HP; the Center heal in 17.04b is that entry.",
+        "Ends on Route 22 at (33, 5) facing west, saved there (the battle saves after it): 19.02 walks on to the north gate (8, 5) and Route 23."
+      ]
+    }
+  },
+  "metadata": {
+    "phase": "testing",
+    "postconditions": {
+      "position": {"map": "Route22", "tiles": [[33, 5]], "facing": "west"}
+    }
+  }
+}

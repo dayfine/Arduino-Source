@@ -1,0 +1,86 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "12.03",
+    "title": "Fuchsia to Cinnabar: Fly to Pallet Town, Surf down Route 21, heal at Cinnabar's Center",
+    "start": {"map": "FuchsiaCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
+    "events": [
+      {
+        "id": "center_northwest_corner",
+        "kind": "legs",
+        "action": "run",
+        "args": {"legs": [{"direction": "west", "tiles": 7}, {"direction": "north", "tiles": 2}]},
+        "why": "from the nurse to the Center's wall west (0, 4) and up to the wall (0, 2), as 12.01 does: legs to walls, so the walk out starts from a known tile even if the Center script left the player a tile off the nurse"
+      },
+      {
+        "id": "outside_fuchsia_center",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "FuchsiaCity", "tiles": [[25, 32]], "facing": "south"}},
+        "why": "out of the Center's door onto Fuchsia City, where Fly works"
+      },
+      {
+        "id": "fly_pallet",
+        "kind": "game_action",
+        "action": "fly",
+        "args": {"town": "PalletTown", "species": "pidgey"},
+        "declared_after": {"map": "PalletTown", "tiles": [[6, 8]], "facing": "south"},
+        "why": "the Pidgey (Fly, 10.01), found in the party by its summary's species, flies to Pallet Town, landing below the player's house door (6, 7) (pokeguy 1:18:59, from Fuchsia)"
+      },
+      {
+        "id": "pallet_shore",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "PalletTown", "tiles": [[8, 16]], "facing": "south"}},
+        "why": "south through the town to the shore (7..10, 17..19), a tile above the water, facing it (pokeguy bikes to Pallet's water edge, 1:19:00)"
+      },
+      {
+        "id": "repel_pallet",
+        "kind": "game_action",
+        "action": "use_item",
+        "args": {"item": "repel"},
+        "why": "a Repel at the shore before the Surf: Route 21's water has wild Tentacool and Tentacruel on every tile (pokeguy uses one at Pallet Town before surfing to Cinnabar, user's check of the video 2026-11-12); one of 07.01's 5 Repels, which nothing else uses"
+      },
+      {
+        "id": "surf_off_pallet",
+        "kind": "game_action",
+        "action": "surf",
+        "args": {"direction": "south"},
+        "declared_after": {"map": "PalletTown", "tiles": [[8, 17]], "facing": "south"},
+        "why": "the lead's Surf (taught in 12.01): A at the water, YES, onto (8, 17)"
+      },
+      {
+        "id": "surf_route_21",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "CinnabarIsland", "tiles": [[14, 12]], "facing": "north"}},
+        "why": "south over Route 21's water (Pallet Town, Route21_North, Route21_South) to Cinnabar's north shore, off the water onto land and down to below the Center's door (14, 11); round the swimmers' and tuber's lines (pokeguy avoids them, 1:19:00 to 1:19:23)"
+      },
+      {
+        "id": "cinnabar_nurse",
+        "kind": "game_action",
+        "action": "center_enter",
+        "declared_after": {"map": "CinnabarIsland_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
+        "why": "the Center script in: through the door and up to the nurse; no map of the Center"
+      },
+      {"id": "heal_cinnabar", "kind": "heal", "why": "full HP and PP before the Mansion's trainers"}
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "notes": {
+      "checkpoint": [
+        "Starts at Fuchsia's nurse, facing her, where 12.02b ends healed. Out of the Center on foot (Fly works outdoors only), Fly to Pallet Town, then Surf (HM03, taught to the lead in 12.01) down Route 21 to Cinnabar's Center and its nurse: pokeguy's way after Koga (1:18:59 to 1:19:23), with the Mansion (13.01) next and Blaine after it. No Seafoam Islands (user, 2026-11-12, design section 12). Route 21 is two maps (Route21_North, Route21_South) between Pallet Town and Cinnabar.",
+        "Route 21's water has wild encounters (Tentacool, Tentacruel) and its swimmers and tuber see one or four ways a tile or more: the planner keeps off their lines where the water allows. A trainer that does see the player is fought with the normal battle code, and the Center's nurse at the end heals.",
+        "Ends at Cinnabar's nurse, facing her: 13.01's start."
+      ]
+    }
+  },
+  "metadata": {
+    "phase": "testing",
+    "postconditions": {
+      "position": {"map": "CinnabarIsland_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
+    }
+  }
+}
