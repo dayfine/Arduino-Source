@@ -324,51 +324,6 @@ UnitTestResult test_line_5_recovery_pins_the_wall_nearest_the_goal(Logger& logge
     const TilePos wall = story_to_world(world, "Route204North", {19, 7});
     if (first.leg.direction != Direction::NORTH || !first.leg.ends_at_wall || first.after != std::vector<TilePos>{wall}){
         return "the recovery starts " + to_string(first) + ", not north to the wall at (19, 7).";
-//  plan_story_run() with Starter RNG handoff: off leaves the range unchanged;
-//  on stops after 00.01 with a save at the Verity Lakefront (17, 14) facing
-//  north, where 00.02 and Starter RNG start; starting past 00.01 runs on.
-UnitTestResult test_plan_story_run_starter_rng(Logger&){
-    const std::vector<StoryCheckpoint>& table = story_checkpoints();
-    const StoryRunPlan full = plan_story_run(table, 0, table.size() - 1, StoryHandoffs{.starter_rng = false});
-    if (full.stop != StoryHandoff::NONE || full.rows.size() != table.size()){
-        return "With Starter RNG handoff off, expected the full table with no stop.";
-    }
-    const StoryRunPlan handoff = plan_story_run(table, 0, table.size() - 1, StoryHandoffs{.starter_rng = true});
-    if (handoff.stop != StoryHandoff::STARTER_RNG || handoff.rows.size() != 2 ||
-        handoff.rows[0].id != "00.00" || handoff.rows[1].id != "00.01"
-    ){
-        return "Expected a 00.00..01.11 run with Starter RNG handoff to stop after 00.01.";
-    }
-    const StoryCheckpoint& lakefront_row = handoff.rows.back();
-    const std::vector<std::string> problems = Pokemon::lint_story_checkpoint(lakefront_row);
-    if (!problems.empty()){
-        return std::format("00.01 with Starter RNG handoff save: {}", problems[0]);
-    }
-    if (lakefront_row.steps.empty() || lakefront_row.steps.back().kind != StoryStepKind::SAVE ||
-        lakefront_row.steps.back().name != "save_for_starter_rng"
-    ){
-        return "Expected 00.01 with Starter RNG handoff to end with save_for_starter_rng.";
-    }
-    //  The save card is checked as every other start save is: it must name
-    //  00.02's map.
-    if (lakefront_row.steps.back().action != table[2].saves_in || table[2].saves_in.empty()){
-        return std::format(
-            "Expected the handoff save to check the card for \"{}\", got \"{}\".",
-            table[2].saves_in, lakefront_row.steps.back().action
-        );
-    }
-    const std::optional<Pokemon::Pose> end = end_pose(lakefront_row);
-    const std::optional<Pokemon::Pose> next_start = table[2].start
-        ? std::make_optional(Pokemon::pose_of(*table[2].start))
-        : std::nullopt;
-    if (!end || !next_start || end->map != "VerityLakefront" ||
-        Pokemon::to_string(*end) != Pokemon::to_string(*next_start)
-    ){
-        return "Expected 00.01's Starter RNG handoff save to end at 00.02's VerityLakefront (17, 14) start pose.";
-    }
-    const StoryRunPlan from_0002 = plan_story_run(table, 2, 4, StoryHandoffs{.starter_rng = true});
-    if (from_0002.stop != StoryHandoff::NONE || from_0002.rows.size() != 3 || from_0002.rows.front().id != "00.02"){
-        return "Expected a run starting at 00.02 to pass through without stopping for 00.01's handoff.";
     }
     return true;
 }
@@ -913,6 +868,58 @@ UnitTestResult test_route_plans_golden(Logger& logger){
     }
     return "The route plans differ from " + path + ". If the change is meant, rerun with PA_UPDATE_ROUTE_PLANS=1 "
         "and review the file's diff. " + differences;
+}
+
+
+//  plan_story_run() with Starter RNG handoff: off leaves the range unchanged;
+//  on stops after 00.01 with a save at the Verity Lakefront (17, 14) facing
+//  north, where 00.02 and Starter RNG start; starting past 00.01 runs on.
+UnitTestResult test_plan_story_run_starter_rng(Logger&){
+    const std::vector<StoryCheckpoint>& table = story_checkpoints();
+    const StoryRunPlan full = plan_story_run(table, 0, table.size() - 1, StoryHandoffs{.starter_rng = false});
+    if (full.stop != StoryHandoff::NONE || full.rows.size() != table.size()){
+        return "With Starter RNG handoff off, expected the full table with no stop.";
+    }
+    const StoryRunPlan handoff = plan_story_run(table, 0, table.size() - 1, StoryHandoffs{.starter_rng = true});
+    if (handoff.stop != StoryHandoff::STARTER_RNG || handoff.rows.size() != 2 ||
+        handoff.rows[0].id != "00.00" || handoff.rows[1].id != "00.01"
+    ){
+        return "Expected a 00.00..01.11 run with Starter RNG handoff to stop after 00.01.";
+    }
+    const StoryCheckpoint& lakefront_row = handoff.rows.back();
+    const std::vector<std::string> problems = Pokemon::lint_story_checkpoint(lakefront_row);
+    if (!problems.empty()){
+        return std::format("00.01 with Starter RNG handoff save: {}", problems[0]);
+    }
+    if (lakefront_row.steps.empty() || lakefront_row.steps.back().kind != StoryStepKind::SAVE ||
+        lakefront_row.steps.back().name != "save_for_starter_rng"
+    ){
+        return "Expected 00.01 with Starter RNG handoff to end with save_for_starter_rng.";
+    }
+    //  The save card is checked as every other start save is: it must name
+    //  00.02's map.
+    if (lakefront_row.steps.back().action != table[2].saves_in || table[2].saves_in.empty()){
+        return std::format(
+            "Expected the handoff save to check the card for \"{}\", got \"{}\".",
+            table[2].saves_in, lakefront_row.steps.back().action
+        );
+    }
+    const std::optional<Pokemon::Pose> end = end_pose(lakefront_row);
+    const std::optional<Pokemon::Pose> next_start = table[2].start
+        ? std::make_optional(Pokemon::pose_of(*table[2].start))
+        : std::nullopt;
+    if (!end || !next_start || end->map != "VerityLakefront" ||
+        Pokemon::to_string(*end) != Pokemon::to_string(*next_start)
+    ){
+        return "Expected 00.01's Starter RNG handoff save to end at 00.02's VerityLakefront (17, 14) start pose.";
+    }
+    const StoryRunPlan from_0002 = plan_story_run(table, 2, 4, StoryHandoffs{.starter_rng = true});
+    if (from_0002.stop != StoryHandoff::NONE || from_0002.rows.size() != 3 || from_0002.rows.front().id != "00.02"){
+        return "Expected a run starting at 00.02 to pass through without stopping for 00.01's handoff.";
+    }
+    return true;
+}
+
 //  plan_story_run() with Run Starter RNG in AutoStory: 00.02 runs the
 //  starter_rng event after its Verity Lakefront start save and ends where
 //  00.03 starts; the handoff stop is not taken.
@@ -1125,6 +1132,9 @@ const AutoStoryStoryTableCase AUTO_STORY_STORY_TABLE_CASES[] = {
     },
     {
         .input = {"01.03: the mine's doors are \"door\" steps, settled as doors (lab-B 2026-11-12 21:57)", test_mine_doors_settle_as_doors},
+        .expectation = {},
+    },
+    {
         .input = {"Starter RNG handoff: stops after 00.01 saved at the Verity Lakefront", test_plan_story_run_starter_rng},
         .expectation = {},
     },
