@@ -23,9 +23,9 @@
           "item": "tutor",
           "move": "mega-kick",
           "slot": 1,
-          "forget": "withdraw"
+          "keep": ["tackle", "tail-whip", "water-gun", "bubble", "bite", "water-pulse", "dig", "surf"]
         },
-        "why": "the tutor's Mega Kick in place of Withdraw, unless the lead knows it"
+        "why": "the tutor's Mega Kick in place of Withdraw, unless the lead knows it; keep list: every move the lead can know but Withdraw, which goes; fails if it knows none or several outside the list"
       },
       {
         "id": "above_ledge",
