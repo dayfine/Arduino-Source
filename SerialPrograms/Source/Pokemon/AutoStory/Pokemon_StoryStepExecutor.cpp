@@ -127,7 +127,7 @@ Checkpoint build_story_checkpoint(const StoryCheckpoint& data, StoryStepExecutor
         if (StoryPausePoints* pause = executor.pause_points()){
             checkpoint.events.back().act = [
                 act = std::move(checkpoint.events.back().act), pause, label = story_step_pause_label(data.id, index, step.name)
-            ](RunState& state){
+            ](RunState& state) mutable{
                 pause->before_step(label);
                 return act(state);
             };
