@@ -231,11 +231,21 @@ public:
         }
     }
 
+    //  Breakpoint before leg `index` of the plan (a leg walked again after a
+    //  stop pauses again): "leg 2/5 east 4 -> (10, 10)", after the step's label.
+    void pause_before_leg(size_t index, const RouteStep& step) const{
+        if (m_planning == nullptr || m_planning->pause == nullptr){
+            return;
+        }
+        m_planning->pause->before_leg(Pokemon::story_leg_pause_label(index, m_plan.size(), step.direction, step.tiles, step.end.point));
+    }
+
     void run(){
         m_lines.plan(m_at, m_plan);
         while (m_next < m_plan.size()){
             const RouteStep step = m_plan[m_next];
             m_lines.leg(m_next, m_plan);
+            pause_before_leg(m_next, step);
             //  Where a hold that finds the player starts isn't known.
             const std::optional<TrainerCrossing> crossing = m_next >= m_holds ? crossing_here(step) : std::nullopt;
             const StepOutcome outcome = m_steps.walk(step, m_facing, crossing);
