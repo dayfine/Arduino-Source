@@ -241,14 +241,21 @@ const ItemUseCase ITEM_USE_CASES[] = {
     },
 };
 
+//  "use_item rare-candy" with its count, an integer as the plans give it.
+StoryStep candy_step(int64_t count){
+    StoryStep step = game_step_of("use_item rare-candy", ITEM);
+    step.args["count"] = count;
+    return step;
+}
+
 UnitTestResult test_variants_and_bike(){
     if (parse_use_item_step(game_step_of("use_item potion", ITEM)) || parse_use_item_step(game_step_of("use_item", ITEM))
         || parse_use_item_step(game_step_of("use_item repel slot=1", ITEM))
         || !parse_use_item_step(game_step_of("use_item super-repel", ITEM))
         || parse_use_item_step(game_step_of("use_item rare-candy slot=1", ITEM))
-        || parse_use_item_step(game_step_of("use_item rare-candy count=0", ITEM))
-        || !parse_use_item_step(game_step_of("use_item rare-candy count=2", ITEM))
-        || use_item_count(game_step_of("use_item rare-candy count=2", ITEM)) != 2
+        || parse_use_item_step(candy_step(0))
+        || !parse_use_item_step(candy_step(2))
+        || use_item_count(candy_step(2)) != 2
         || use_item_count(game_step_of("use_item rare-candy", ITEM)) != 1
     ){
         return "Expected only the story's bag items as use_item steps.";
