@@ -7,6 +7,7 @@
 #ifndef PokemonAutomation_PokemonSV_AutoStoryTools_H
 #define PokemonAutomation_PokemonSV_AutoStoryTools_H
 
+#include <format>
 #include <functional>
 #include "CommonFramework/Language.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
@@ -108,7 +109,7 @@ public:
         AutoStoryStats& stats) const = 0;
 
     std::string checkpoint_text() const { 
-        return "Checkpoint:: " + name() + ". Start point: " + start_text(); 
+        return std::format("{}. Start point: {}", name(), start_text());
     }
 };
 

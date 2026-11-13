@@ -28,6 +28,7 @@
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "Pokemon/Pokemon_Strings.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStorySelect.h"
+#include "Pokemon/AutoStory/Pokemon_StoryLog.h"
 #include "VideoGames/PokemonSwSh/Inference/PokemonSwSh_IvJudgeReader.h"
 #include "VideoGames/PokemonSV/PokemonSV_Settings.h"
 #include "VideoGames/PokemonSV/Inference/Overworld/PokemonSV_DirectionDetector.h"
@@ -1230,7 +1231,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     require_player(env.console, context, BUTTON_L);
 
     if (ENABLE_ADVANCED_MODE){
-        env.console.log("Start Checkpoint " + ALL_AUTO_STORY_CHECKPOINT_LIST()[get_start_checkpoint_index()]->name(), COLOR_ORANGE);        
+        env.console.log(Pokemon::checkpoint_start_line(ALL_AUTO_STORY_CHECKPOINT_LIST()[get_start_checkpoint_index()]->name()), COLOR_ORANGE);
     }else{
         env.console.log("Start Segment " + ALL_AUTO_STORY_SEGMENT_LIST()[get_start_segment_index()]->name(), COLOR_ORANGE);
     }
