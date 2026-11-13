@@ -1367,6 +1367,8 @@ file(GLOB LIBRARY_SOURCES
     Source/NintendoSwitch/Inference/NintendoSwitch_SelectedSettingDetector.h
     Source/NintendoSwitch/Inference/NintendoSwitch_StartGameUserSelectDetector.cpp
     Source/NintendoSwitch/Inference/NintendoSwitch_StartGameUserSelectDetector.h
+    Source/NintendoSwitch/Inference/NintendoSwitch_SystemKeyboardDetector.cpp
+    Source/NintendoSwitch/Inference/NintendoSwitch_SystemKeyboardDetector.h
     Source/NintendoSwitch/Inference/NintendoSwitch_UpdatePopupDetector.cpp
     Source/NintendoSwitch/Inference/NintendoSwitch_UpdatePopupDetector.h
     Source/NintendoSwitch/NintendoSwitch_ConsoleHandle.cpp
@@ -1418,6 +1420,8 @@ file(GLOB LIBRARY_SOURCES
     Source/NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_KeyboardCodeEntry.h
     Source/NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_NumberCodeEntry.cpp
     Source/NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_NumberCodeEntry.h
+    Source/NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_SystemKeyboardTyping.cpp
+    Source/NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_SystemKeyboardTyping.h
     Source/NintendoSwitch/Programs/NintendoSwitch_FriendCodeAdder.cpp
     Source/NintendoSwitch/Programs/NintendoSwitch_FriendCodeAdder.h
     Source/NintendoSwitch/Programs/NintendoSwitch_FriendDelete.cpp
@@ -1584,16 +1588,16 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect.h
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_StoryRngHandoff.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryRngHandoff.h
+    Source/Pokemon/AutoStory/Pokemon_StoryRngHandoff_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryRngHandoff_Tests.h
     Source/Pokemon/AutoStory/Pokemon_StoryRun.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryRun.h
     Source/Pokemon/AutoStory/Pokemon_StoryRun_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryRun_Tests.h
     Source/Pokemon/AutoStory/Pokemon_StoryPreflight.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryPreflight.h
-    Source/Pokemon/AutoStory/Pokemon_StoryRngHandoff.cpp
-    Source/Pokemon/AutoStory/Pokemon_StoryRngHandoff.h
-    Source/Pokemon/AutoStory/Pokemon_StoryRngHandoff_Tests.cpp
-    Source/Pokemon/AutoStory/Pokemon_StoryRngHandoff_Tests.h
     Source/Pokemon/AutoStory/Pokemon_AutoStoryStats.cpp
     Source/Pokemon/AutoStory/Pokemon_AutoStoryStats.h
     Source/Pokemon/AutoStory/Pokemon_AutoStoryStats_Tests.cpp
@@ -1601,6 +1605,12 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_AutoStory_Tests.h
     Source/Pokemon/AutoStory/Pokemon_BuiltinStoryActions.cpp
     Source/Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h
+    Source/Pokemon/AutoStory/Pokemon_CheckpointAttempts.cpp
+    Source/Pokemon/AutoStory/Pokemon_CheckpointAttempts.h
+    Source/Pokemon/AutoStory/Pokemon_CheckpointRetry.cpp
+    Source/Pokemon/AutoStory/Pokemon_CheckpointRetry.h
+    Source/Pokemon/AutoStory/Pokemon_CheckpointRetry_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_CheckpointRetry_Tests.h
     Source/Pokemon/AutoStory/Pokemon_FadeProfiles.h
     Source/Pokemon/AutoStory/Pokemon_InterruptHandlers.h
     Source/Pokemon/AutoStory/Pokemon_Interrupts.cpp
