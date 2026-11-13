@@ -21,8 +21,10 @@
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryEngine.h"
 #include "Pokemon/Options/Pokemon_GameLanguages.h"
 #include "Pokemon/Pokemon_Strings.h"
+#include "Actions/PokemonLZA_AutoStoryIntro.h"
 #include "PokemonLZA_AutoStoryGame.h"
 #include "PokemonLZA_AutoStoryStoryFiles.h"
+#include "PokemonLZA_AutoStoryTable.h"
 #include "PokemonLZA_AutoStory.h"
 
 namespace PokemonAutomation{
@@ -37,7 +39,7 @@ AutoStory_Descriptor::AutoStory_Descriptor()
         "PokemonLZA:AutoStory",
         std::format("{} LZA", STRING_POKEMON), "Auto Story",
         "Programs/PokemonLZA/AutoStory.html",
-        "Play the main story of Pokemon Legends: Z-A. Prototype: Main Missions 01-03 as recorded on a console; plays from a new game to Mable's Rock Smash TM.",
+        "Play the main story of Pokemon Legends: Z-A. Prototype: Main Missions 01-03 as recorded on a console; plays from a new game to Mable's Rock Smash TM. Checkpoint 01.00 (a new game) starts on the Switch HOME screen with PLZA's tile selected and no save: it launches the selected tile without moving the cursor (closing it first if it is running) and waits for the language list. Go Home When Done leaves HOME with PLZA's tile selected, ready for the next new game.",
         PanelQualityStanding::DEVELOPER,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
@@ -79,6 +81,23 @@ AutoStory::AutoStory()
         LockMode::LOCK_WHILE_RUNNING,
         StarterChoice::CHIKORITA
     )
+    , PLAYER_NAME(
+        false,
+        "<b>Player Name:</b><br>New game only. Letters and digits; a capital only as the first letter.",
+        LockMode::LOCK_WHILE_RUNNING,
+        "Kosmos",
+        "Kosmos"
+    )
+    , PLAYER_LOOK(
+        "<b>Player Look:</b><br>New game only. 1 to 8: left to right along the top row, then the bottom row.",
+        LockMode::LOCK_WHILE_RUNNING,
+        1, 1, (uint8_t)LOOK_COUNT
+    )
+    , NAME_FIRST_LETTER_AUTO_CAPS(
+        "<b>Keyboard Capitalizes the First Letter:</b><br>New game only. Tick if the name comes out in lower case: the name keyboard capitalizes by itself and Shift would undo it.",
+        LockMode::LOCK_WHILE_RUNNING,
+        false
+    )
     , GO_HOME_WHEN_DONE(false)
     , NOTIFICATIONS({
         &NOTIFICATION_PROGRAM_FINISH,
@@ -89,6 +108,9 @@ AutoStory::AutoStory()
     PA_ADD_OPTION(RUN);
     PA_ADD_OPTION(STARTER);
     PA_ADD_OPTION(BATTLE_AI);
+    PA_ADD_OPTION(PLAYER_NAME);
+    PA_ADD_OPTION(PLAYER_LOOK);
+    PA_ADD_OPTION(NAME_FIRST_LETTER_AUTO_CAPS);
     PA_ADD_OPTION(GO_HOME_WHEN_DONE);
     PA_ADD_OPTION(NOTIFICATIONS);
 }
@@ -134,6 +156,25 @@ StoryData load_run_story(ConsoleHandle& console){
 
 } // namespace
 
+NewGameChoices AutoStory::new_game_choices(ConsoleHandle& console, bool check) const{
+    NewGameChoices choices{.name = PLAYER_NAME, .look = PLAYER_LOOK, .name_first_letter_auto_caps = NAME_FIRST_LETTER_AUTO_CAPS};
+    const std::string problem = check ? new_game_problem(RUN.language(), choices) : std::string();
+    if (!problem.empty()){
+        throw UserSetupError(console, problem);
+    }
+    return choices;
+}
+
+void AutoStory::start_program_border_check(VideoStream& stream, FeedbackType feedback_type){
+    const std::vector<StoryCheckpoint>& rows = story_checkpoints();
+    const size_t first = RUN.start_index();
+    if (first < rows.size() && story_row_launches_game(rows[first])){
+        stream.log(std::format("AutoStory: {} launches the game; the black border check waits for HOME.", rows[first].id));
+        return;
+    }
+    SingleSwitchProgramInstance::start_program_border_check(stream, feedback_type);
+}
+
 void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
     const StoryData story_data = load_run_story(env.console);
     const std::vector<StoryCheckpoint>& rows = story_data.checkpoints;
@@ -144,7 +185,10 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     }
     require_player(env.console, context, BUTTON_L);
 
-    StoryEnv story{.env = env, .context = context, .language = RUN.language(), .battle_ai = BATTLE_AI};
+    StoryEnv story{
+        .env = env, .context = context, .new_game = new_game_choices(env.console, first == 0),
+        .language = RUN.language(), .battle_ai = BATTLE_AI
+    };
     PlzaConsoleBackend backend(story);
     const StoryGame<ZonePose> game = make_plza_story_game(story, STARTER, story_data.autosaves);
     StoryEngine<ZonePose> engine(game, backend);

@@ -15,6 +15,7 @@
 #include <optional>
 #include <string>
 #include "Common/Cpp/Time.h"
+#include "CommonFramework/Language.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "NintendoSwitch/Controllers/NintendoSwitch_ControllerButtons.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
@@ -50,21 +51,48 @@ void mash_scene(
 bool tutorial_card_shows(const ImageViewRGB32& frame);
 
 
-//  The new game's opening, as recorded 2026-11-08 on console B. None of it
-//  reads the screen: each waits a fixed time for its screen.
+//  The new game's opening, as recorded 2026-11-08 on console B, with the
+//  player's choices (PokemonLZA_AutoStoryIntro.h has each one's presses).
+//  Each logs every press and saves its screen's frame (DebugDumps) for the
+//  detectors to be built from. The language list and the name keyboard (the
+//  Switch system keyboard) are detected; the look picker is not checked and
+//  waits a fixed time.
 
-//  At the title screen with no save: A into the language list, A on its
-//  first entry (English, the default).
-void new_game_language(ConsoleHandle& console, ProControllerContext& context);
+//  01.00's first step. It starts on the Switch HOME menu with PLZA's tile
+//  selected and no save: launches that tile without moving the cursor,
+//  closing the game first if it is running, through the user select and
+//  the license check to the language list (launch_selected_game_from_home(),
+//  up to 90 s; a new game has no title screen). Throws UserSetupError on
+//  any other starting screen, OperationFailedException if the list does not
+//  show (the selected game may not be PLZA, or it has a save).
+void launch_game_from_home(ConsoleHandle& console, ProControllerContext& context);
 
-//  On the look picker, whose highlight starts at random: UP, then LEFT x3
-//  to the first look (the edges clamp), A.
-void pick_first_look(ConsoleHandle& console, ProControllerContext& context);
+//  On the language list: moves its highlight to `language`'s entry,
+//  reading it after each press, and presses A. Throws UserSetupError for a
+//  language the list lacks, OperationFailedException if the list is not on
+//  screen or the highlight does not get there.
+void new_game_language(ConsoleHandle& console, ProControllerContext& context, Language language);
 
-//  On the name screen: types `name` on the Switch keyboard (upper case
-//  letters and digits only, keyboard_enter_code()), + to finish, then
-//  DOWN x2 and A on "Ready!".
-void type_player_name(ConsoleHandle& console, ProControllerContext& context, const std::string& name);
+//  On the look picker: waits up to 10 s for it, moves its highlight to look
+//  `look` (1 to 8, a 2 x 4 grid) one left-stick press at a time, reading it
+//  after each, and presses A only on `look`. Throws UserSetupError for a
+//  look outside 1 to 8, OperationFailedException if the picker does not
+//  show or its highlight is not read on `look`.
+void pick_player_look(ConsoleHandle& console, ProControllerContext& context, size_t look);
+
+//  On the name screen, the Switch system keyboard: waits up to 20 s for it,
+//  deletes any text left in its field, types `name` reading the cursor
+//  before each key (type_on_system_keyboard(); letters and digits, a
+//  capital only as the first letter; name_keys()), PLUS to finish and waits
+//  for the keyboard to close, then on "Confirm Choices" DOWN x2 and A on
+//  "Ready!". `first_letter_auto_caps`: the keyboard starts with a capital
+//  by itself, so Shift is for a lower case first letter instead (to be
+//  confirmed). Throws OperationFailedException if the keyboard does not
+//  show or close.
+void type_player_name(
+    ConsoleHandle& console, ProControllerContext& context,
+    const std::string& name, bool first_letter_auto_caps
+);
 
 //  Taunie's talk after her battle (03.02): A through it and the "Map &
 //  Missions" card (A turns its pages, B turns back) until the map shows,

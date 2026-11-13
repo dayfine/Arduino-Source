@@ -33,6 +33,14 @@ size_t story_rows_ready(const std::vector<StoryCheckpoint>& checkpoints){
     return ready;
 }
 
+bool story_row_launches_game(const StoryCheckpoint& row){
+    if (row.steps.empty()){
+        return false;
+    }
+    const StoryStep& first = row.steps.front();
+    return first.kind == StoryStepKind::GAME && first.action == "launch_game_from_home";
+}
+
 
 
 } // namespace PokemonLZA

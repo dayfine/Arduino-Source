@@ -47,7 +47,7 @@ const StoryData& builtin_story_data();
 //  of the Battle Zone to Hotel Z, the first night), 03.xx Main Mission 03
 //  (Taunie's battle, the Pokemon Center, Wild Zone 1, Mable's Rock Smash
 //  TM). Only 01.00, a new game, starts without a save; it starts on the
-//  title screen.
+//  HOME screen with PLZA's tile selected.
 const std::vector<Pokemon::StoryCheckpoint>& story_checkpoints();
 
 //  The built-in rows that end on one of the game's autosaves. Each ends
