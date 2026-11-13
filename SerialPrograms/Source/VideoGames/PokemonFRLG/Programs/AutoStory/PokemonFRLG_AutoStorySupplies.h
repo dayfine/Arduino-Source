@@ -24,6 +24,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryBattleData.h"
+#include "PokemonFRLG_AutoStoryBattlePolicyData.h"
 #include "PokemonFRLG_AutoStoryParty.h"
 
 namespace PokemonAutomation{
@@ -97,6 +98,9 @@ struct Supplies{
     //  X Specials against the Tower rival), each once its pocket row is
     //  known; a quantity counts down as they are used. Empty otherwise.
     std::vector<Pokemon::StoryItem> battle_items = {};
+    //  How that battle is fought by PokeGuy's policy, if its step names one
+    //  (BattlePolicyKind::NONE otherwise: the story's own recovery).
+    BattlePolicy policy = {};
     //  How carefully that battle is fought (default_battle_risk()).
     BattleRisk risk = BattleRisk::LOW;
     //  The species of the trainer's Pokemon out, as read at the last battle
