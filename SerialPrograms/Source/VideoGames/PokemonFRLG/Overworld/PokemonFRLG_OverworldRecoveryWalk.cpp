@@ -53,20 +53,6 @@ struct StepWalk{
     HoldMovement movement = HoldMovement::UNMEASURED;
 };
 
-//  How much the game screen's top quarter, clear of the player in the
-//  middle, may differ between two shots of a player who stood still (an
-//  animated tile, water). A hold that walked even one tile scrolls the
-//  whole map by it. Not yet measured on the console: a guess, set low so
-//  that only a screen that did not move at all reads as not moved.
-constexpr double HOLD_UNMOVED_RMSD = 6.0;
-
-//  The game screen's top quarter, for comparing shots of the map.
-ImageViewRGB32 map_band(const VideoSnapshot& shot){
-    const ImageFloatBox game = GameSettings::instance().GAME_BOX;
-    const ImageFloatBox band(game.x, game.y, game.width, game.height * 0.25);
-    return extract_box_reference(shot, band);
-}
-
 //  Whether the map scrolled between the shot before a hold and now, once
 //  the hold's first tile has had its time (`since_start`: how long ago the
 //  hold started; a one-tile open leg is let go half-way through its step).
@@ -83,7 +69,7 @@ HoldMovement measure_movement(
     if (!before || !after){
         return HoldMovement::UNMEASURED;
     }
-    const double change = ImageMatch::pixel_RMSD(map_band(before), map_band(after));
+    const double change = hold_scroll_change(*before.frame, *after.frame, GameSettings::instance().GAME_BOX);
     console.log(std::format("Position check: the screen changed by {:.1f} over the hold.", change));
     return change > HOLD_UNMOVED_RMSD ? HoldMovement::MOVED : HoldMovement::NONE;
 }
@@ -331,6 +317,11 @@ bool moved_past_wall(ConsoleHandle& console, ProControllerContext& context, cons
 
 } // namespace
 
+
+double hold_scroll_change(const ImageViewRGB32& before, const ImageViewRGB32& after, const ImageFloatBox& game){
+    const ImageFloatBox top(game.x, game.y, game.width, game.height * 0.25);
+    return ImageMatch::pixel_RMSD(extract_box_reference(before, top), extract_box_reference(after, top));
+}
 
 void walk_overworld_route_with_recovery(
     ConsoleHandle& console, ProControllerContext& context,

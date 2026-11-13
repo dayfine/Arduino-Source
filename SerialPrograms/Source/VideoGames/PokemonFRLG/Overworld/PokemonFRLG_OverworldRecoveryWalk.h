@@ -19,11 +19,23 @@
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "PokemonFRLG_OverworldRecovery.h"
 #include "PokemonFRLG_OverworldRoute.h"
+#include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "PokemonFRLG_OverworldWalk.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
+
+
+//  How far the map in the game screen (`game`) moved between the shots
+//  before and after a hold, as an RMSD: a hold that walked even one tile
+//  scrolls the whole map by it.
+double hold_scroll_change(const ImageViewRGB32& before, const ImageViewRGB32& after, const ImageFloatBox& game);
+
+//  How much hold_scroll_change() may read for a player who stood still (an
+//  animated tile, water). Not yet measured on the console: a guess, set low
+//  so that only a screen that did not move at all reads as not moved.
+constexpr double HOLD_UNMOVED_RMSD = 6.0;
 
 
 //  Walks `route`, planned with `planning`, at `speed`, as
