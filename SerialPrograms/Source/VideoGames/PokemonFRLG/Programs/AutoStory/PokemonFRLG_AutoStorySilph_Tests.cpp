@@ -211,7 +211,7 @@ RowResult walk_row(std::string_view id, const std::vector<MapData>& maps){
     out.trainers = walk.sim().state().trainers_beaten;
     out.floors = walk.floors();
     out.end = walk.sim().state().position;
-    out.card_key = walk.sim().card_key_held();
+    out.card_key = walk.sim().state().card_key_held;
     return out;
 }
 
