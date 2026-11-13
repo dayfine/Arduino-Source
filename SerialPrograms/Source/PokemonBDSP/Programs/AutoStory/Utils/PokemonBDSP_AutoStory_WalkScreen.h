@@ -58,8 +58,11 @@ inline WholeScreenChange classify_whole_screen_change(const WholeScreenEvidence&
     return evidence.fade_or_banner_read ? WholeScreenChange::WARP : WholeScreenChange::UNCLASSIFIED;
 }
 } // namespace detail
+//  The whole-screen classification, for walks and their tests.
 using detail::WholeScreenChange;
+//  The evidence it is made from.
 using detail::WholeScreenEvidence;
+//  The classifying function.
 using detail::classify_whole_screen_change;
 
 //  Whether two frames show different scenes: a change walking cannot make
