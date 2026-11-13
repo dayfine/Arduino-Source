@@ -98,6 +98,9 @@ private:
     //  and 09.03 (the Eevee).
     BooleanCheckBoxOption RUN_GIFT_RNG;
     StarterRngPlanOptions RNG_PLAN;
+    //  Who uses each field move as the last save holds it (FieldMoveUsers'
+    //  text), kept as the SID is, so a restart skips the party scan.
+    StringOption FIELD_MOVE_USERS;
     EventNotificationOption NOTIFICATION_SHINY;
     EventNotificationOption NOTIFICATION_STATUS_UPDATE;
     //  The save loaded was made by hand: keep the screen as its start frame.

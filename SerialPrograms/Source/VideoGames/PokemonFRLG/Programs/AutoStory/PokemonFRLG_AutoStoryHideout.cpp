@@ -183,7 +183,7 @@ void push_poster_switch(ConsoleHandle& console, ProControllerContext& context){
 
 std::optional<Pokemon::Outcome> run_field_game_step(
     ConsoleHandle& console, ProControllerContext& context, Language language, PlayerGender player,
-    const Pokemon::StoryStep& step
+    const Pokemon::StoryStep& step, PartyCache& party
 ){
     const auto done = [&step]{
         return step.pose_after ? Pokemon::outcome_ok(Pokemon::pose_of(*step.pose_after)) : Pokemon::outcome_ok();
@@ -192,7 +192,7 @@ std::optional<Pokemon::Outcome> run_field_game_step(
         ride_lift(console, context, *ride, player);
         return done();
     }
-    if (std::optional<Pokemon::Outcome> moved = run_field_move_step(console, context, language, step)){
+    if (std::optional<Pokemon::Outcome> moved = run_field_move_step(console, context, language, step, party)){
         return moved;
     }
     if (is_center_variant(step.action)){

@@ -12,6 +12,7 @@
 #define PokemonAutomation_PokemonFRLG_AutoStorySummary_H
 
 #include <cstddef>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -20,6 +21,8 @@
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_SummaryMovesReader.h"
 #include "PokemonFRLG_AutoStoryActions.h"
+#include "PokemonFRLG_AutoStoryPartyRoster.h"
+#include "PokemonFRLG_AutoStoryTeach.h"
 #include "PokemonFRLG_AutoStoryStats.h"
 
 namespace PokemonAutomation{
@@ -49,6 +52,21 @@ std::optional<SummaryRead> read_party_summary(
     ConsoleHandle& console, ProControllerContext& context, StartMenu menu, Language language, size_t slot
 );
 
+
+//  The console's screens for a PartyRoster scan, from the overworld with
+//  START menu `menu`: the party opened once, the summaries paged with DOWN,
+//  the member's menu left open (see PokemonFRLG_AutoStoryPartyRoster.h).
+//  The summary's member switch (DOWN) is waited out with a fixed settle,
+//  not measured on the console.
+std::unique_ptr<PartyScreens> console_party_screens(
+    ConsoleHandle& console, ProControllerContext& context, StartMenu menu, Language language
+);
+
+//  Where a TEACH finds a species' slot from the full START menu: from
+//  `party` if it knows it; else a scan, with the party closed after.
+SpeciesFinder console_species_finder(
+    ConsoleHandle& console, ProControllerContext& context, Language language, PartyCache& party
+);
 
 
 } // namespace PokemonFRLG
