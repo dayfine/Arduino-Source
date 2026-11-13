@@ -94,6 +94,12 @@ public:
 };
 
 
+//  Makes the table's default, and its current content, one row: a shiny of
+//  any nature, gender and IVs. An empty table matches nothing, so a program
+//  that stops on a match must seed its table with this.
+void set_default_shiny_row(BdspRngFilterTable& table);
+
+
 }
 }
 }

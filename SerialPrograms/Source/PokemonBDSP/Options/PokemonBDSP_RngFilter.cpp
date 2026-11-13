@@ -157,6 +157,14 @@ std::vector<std::string> BdspRngFilterTable::make_header() const{
 BdspRngFilterSnapshot BdspRngFilterTable::make_snapshot() const{
     return BdspRngFilterSnapshot(copy_snapshot());
 }
+void set_default_shiny_row(BdspRngFilterTable& table){
+    std::vector<std::unique_ptr<EditableTableRow>> defaults;
+    auto row = std::make_unique<BdspRngFilterRow>(table);
+    row->misc.shiny.set(StatsHuntShinyFilter::Shiny);
+    defaults.emplace_back(std::move(row));
+    table.set_default(std::move(defaults));
+    table.restore_defaults();
+}
 StatsHuntAction BdspRngFilterTable::get_action(
     bool shiny,
     StatsHuntGenderFilter gender,

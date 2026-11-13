@@ -127,14 +127,7 @@ StarterRng::StarterRng()
         &NOTIFICATION_ERROR_FATAL,
     })
 {
-    {
-        std::vector<std::unique_ptr<EditableTableRow>> defaults;
-        auto row = std::make_unique<BdspRngFilterRow>(FILTERS);
-        row->misc.shiny.set(StatsHuntShinyFilter::Shiny);
-        defaults.emplace_back(std::move(row));
-        FILTERS.set_default(std::move(defaults));
-        FILTERS.restore_defaults();
-    }
+    set_default_shiny_row(FILTERS);
 
     PA_ADD_OPTION(LANGUAGE);
     PA_ADD_OPTION(PLAYER_MODEL);
