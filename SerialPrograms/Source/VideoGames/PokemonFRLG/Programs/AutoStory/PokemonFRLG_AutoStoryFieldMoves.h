@@ -35,7 +35,8 @@ namespace PokemonFRLG{
 
 
 //  The GAME step that flies to a town, outdoors: START, POKEMON, the Fly
-//  user (`slot`, from 1, or the first member read as `species`), FLY on its menu (`menu_row`, from 1: SUMMARY,
+//  user (`slot`, from 1; or, with `species`, the first member whose menu
+//  lists FLY, FLY's row read there), FLY on its menu (`menu_row`, from 1: SUMMARY,
 //  then its field moves in move order, so 2 when Fly is its only one;
 //  pokefirered SetPartyMonFieldSelectionActions()), and `town` on the fly
 //  map (kanto_fly_towns()). It ends on the town's landing tile. With
@@ -76,10 +77,10 @@ std::vector<Pokemon::StoryActionSpec> field_move_specs();
 
 //  On the console, a step of this file's; nothing for another step. The
 //  step ends on its pose_after, if it has one. A Fly naming a species opens
-//  the party once and goes to the Fly user's menu from there; `party`
-//  keeps the species read, so a later Fly reads no summary. A Fly ends
-//  once the player has landed (judge_fly_landing()), or fails as
-//  fly_no_takeoff or fly_no_landing.
+//  the party once and the members' menus down to the first that lists FLY
+//  (use_field_move()); `party` records that slot, so a later Fly opens
+//  only its menu. A Fly ends once the player has landed
+//  (judge_fly_landing()), or fails as fly_no_takeoff or fly_no_landing.
 std::optional<Pokemon::Outcome> run_field_move_step(
     ConsoleHandle& console, ProControllerContext& context, Language language, PlayerGender player,
     const Pokemon::StoryStep& step, PartyCache& party

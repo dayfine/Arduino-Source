@@ -2,11 +2,13 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Counts the screens a species lookup goes through, on a fake party.
+ *  Counts the screens a species lookup and a field move's user scan go
+ *  through, on a fake party.
  *
  */
 
 #include <format>
+#include <optional>
 #include <functional>
 #include <string>
 #include <utility>
@@ -27,6 +29,12 @@ class FakeParty : public PartyScreens{
 public:
     explicit FakeParty(std::vector<std::string> species)
         : m_species(std::move(species))
+        , m_menus(m_species.size())
+    {}
+    //  Each member's menu: the field moves it lists, nothing if unread.
+    FakeParty(std::vector<std::string> species, std::vector<std::optional<PartyMemberMenu>> menus)
+        : m_species(std::move(species))
+        , m_menus(std::move(menus))
     {}
 
     virtual bool open_party(size_t& members) override{
@@ -56,6 +64,15 @@ public:
     }
     virtual bool open_member_menu(size_t slot) override{
         m_menu_slot = slot;
+        m_menu_opens++;
+        return true;
+    }
+    virtual std::optional<PartyMemberMenu> read_member_menu() override{
+        m_menu_reads++;
+        return m_menu_slot < m_menus.size() ? m_menus[m_menu_slot] : std::nullopt;
+    }
+    virtual bool close_member_menu() override{
+        m_menu_closes++;
         return true;
     }
     virtual void close() override{
@@ -70,7 +87,43 @@ public:
     size_t m_summary_opens = 0;
     size_t m_reads = 0;
     size_t m_closes = 0;
+    std::vector<std::optional<PartyMemberMenu>> m_menus;
+    size_t m_menu_opens = 0;
+    size_t m_menu_reads = 0;
+    size_t m_menu_closes = 0;
 };
+
+//  A menu listing `moves` in blue.
+PartyMemberMenu menu_with(std::vector<std::string> moves){
+    return PartyMemberMenu{.field_moves = std::move(moves)};
+}
+const PartyMemberMenu NO_FIELD_MOVES = {};
+
+//  The story's party: the Pidgey third, with Fly; the Oddish with Cut.
+FakeParty fly_party(){
+    return FakeParty(
+        {"blastoise", "oddish", "pidgey", "eevee"},
+        {NO_FIELD_MOVES, menu_with({"cut", "flash"}), menu_with({"fly"}), NO_FIELD_MOVES}
+    );
+}
+
+//  Party opens, members' menus opened and closed (B), summaries entered.
+UnitTestResult check_menus(
+    const std::string& what, const FakeParty& party,
+    size_t party_opens, size_t menu_opens, size_t menu_closes, size_t closes
+){
+    if (party.m_party_opens != party_opens || party.m_menu_opens != menu_opens
+        || party.m_menu_closes != menu_closes || party.m_closes != closes || party.m_summary_opens != 0
+    ){
+        return std::format(
+            "{}: {} party opens, {} member menus opened, {} closed with B, {} party closes, {} summaries; "
+            "expected {}, {}, {}, {}, 0.",
+            what, party.m_party_opens, party.m_menu_opens, party.m_menu_closes, party.m_closes,
+            party.m_summary_opens, party_opens, menu_opens, menu_closes, closes
+        );
+    }
+    return true;
+}
 
 UnitTestResult check_counts(
     const std::string& what, const FakeParty& party,
@@ -188,71 +241,134 @@ UnitTestResult test_cached_slot_opens_nothing(Logger& logger){
     return check_counts("cached slot only", again, 0, 0, 0, 0);
 }
 
-//  A Fly from the member's menu: it works on the slot that holds `holder`.
-FieldMoveFromMenu fly_from(const FakeParty& party, size_t holder, size_t& calls){
-    return [&party, holder, &calls]() -> std::string{
+//  A Fly from the member's menu: it works on the slot that holds `holder`,
+//  from FLY's row `row`.
+FieldMoveFromMenu fly_from(const FakeParty& party, size_t holder, size_t row, size_t& calls){
+    return [&party, holder, row, &calls](size_t picked) -> std::string{
         calls++;
-        return party.m_menu_slot == holder ? "" : "fly_no_map";
+        return party.m_menu_slot == holder && picked == row ? "" : "fly_no_map";
     };
 }
 
-//  A recorded Fly user: the party opens once and no summary is read.
-UnitTestResult test_recorded_user_reads_no_summary(Logger& logger){
-    FakeParty party({"blastoise", "pidgey", "oddish"});
+//  The first Fly: the party opened once, the menus down to the Pidgey's,
+//  FLY picked there; no summary.
+UnitTestResult test_scan_stops_at_first_user(Logger& logger){
+    FakeParty party = fly_party();
     PartyCache cache;
-    cache.users().record("fly", 1, "pidgey");
     size_t calls = 0;
-    const std::string failure = use_field_move(logger, party, cache, "fly", "pidgey", fly_from(party, 1, calls));
+    const std::string failure = use_field_move(logger, party, cache, "fly", "pidgey", fly_from(party, 2, 1, calls));
+    if (!failure.empty() || calls != 1){
+        return std::format("the first Fly: failure '{}', {} menu uses.", failure, calls);
+    }
+    const std::optional<FieldMoveUser> user = cache.users().find("fly");
+    if (!user || user->slot != 2 || user->species != "pidgey"){
+        return "the scan didn't record the Pidgey at slot 3.";
+    }
+    return check_menus("first fly", party, 1, 3, 2, 0);
+}
+
+//  FLY under another field move is picked from its own row.
+UnitTestResult test_fly_row_from_menu(Logger& logger){
+    FakeParty party({"pidgeot"}, {menu_with({"teleport", "fly"})});
+    PartyCache cache;
+    size_t calls = 0;
+    const std::string failure = use_field_move(logger, party, cache, "fly", "pidgeot", fly_from(party, 0, 2, calls));
+    if (!failure.empty() || calls != 1){
+        return std::format("FLY on the menu's third row: failure '{}', {} menu uses.", failure, calls);
+    }
+    return true;
+}
+
+//  A recorded Fly user: one party open, its menu only.
+UnitTestResult test_recorded_user_reads_no_summary(Logger& logger){
+    FakeParty party = fly_party();
+    PartyCache cache;
+    cache.users().record("fly", 2, "pidgey");
+    size_t calls = 0;
+    const std::string failure = use_field_move(logger, party, cache, "fly", "pidgey", fly_from(party, 2, 1, calls));
     if (!failure.empty() || calls != 1){
         return std::format("a recorded Fly: failure '{}', {} menu uses.", failure, calls);
     }
-    return check_counts("recorded user", party, 1, 0, 0, 0);
+    return check_menus("recorded user", party, 1, 1, 0, 0);
 }
 
-//  The record names a slot another member holds now: the menu fails, the
-//  party is closed, the scan finds the right slot and the record is updated.
+//  The record names a slot whose menu has no FLY now: B, and the scan runs
+//  in the same party menu; the record is updated.
 UnitTestResult test_stale_record_scans_and_updates(Logger& logger){
-    FakeParty party({"blastoise", "oddish", "pidgey"});
+    FakeParty party = fly_party();
     PartyCache cache;
     cache.users().record("fly", 0, "pidgey");
     size_t calls = 0;
-    const std::string failure = use_field_move(logger, party, cache, "fly", "pidgey", fly_from(party, 2, calls));
-    if (!failure.empty() || calls != 2){
+    const std::string failure = use_field_move(logger, party, cache, "fly", "pidgey", fly_from(party, 2, 1, calls));
+    if (!failure.empty() || calls != 1){
         return std::format("a stale Fly record: failure '{}', {} menu uses.", failure, calls);
     }
     const std::optional<FieldMoveUser> user = cache.users().find("fly");
     if (!user || user->slot != 2){
         return "the stale record isn't replaced by the slot the scan found.";
     }
-    return check_counts("stale record", party, 2, 1, 3, 1);
+    //  Slot 1 (the record), then 2 and 3; slot 1 isn't opened twice.
+    return check_menus("stale record", party, 1, 3, 2, 0);
 }
 
-//  A record for another species isn't trusted: the scan runs.
-UnitTestResult test_other_species_record_scans(Logger& logger){
-    FakeParty party({"blastoise", "pidgeot"});
+//  A record of another species (the Pidgey evolved) is checked by its menu.
+UnitTestResult test_other_species_record_checked_by_menu(Logger& logger){
+    FakeParty party({"blastoise", "pidgeot"}, {NO_FIELD_MOVES, menu_with({"fly"})});
     PartyCache cache;
-    cache.users().record("fly", 0, "pidgey");
+    cache.users().record("fly", 1, "pidgey");
     size_t calls = 0;
-    const std::string failure = use_field_move(logger, party, cache, "fly", "pidgeot", fly_from(party, 1, calls));
+    const std::string failure = use_field_move(logger, party, cache, "fly", "pidgeot", fly_from(party, 1, 1, calls));
     if (!failure.empty() || calls != 1){
         return std::format("a record of another species: failure '{}', {} menu uses.", failure, calls);
     }
-    return check_counts("other species", party, 1, 1, 2, 0);
+    return check_menus("other species", party, 1, 1, 0, 0);
 }
 
-//  No record: the scan runs once and records, so the next Fly reads nothing.
+//  No record: the scan runs once and records, so the next Fly opens one menu.
 UnitTestResult test_scan_records_for_next_fly(Logger& logger){
-    FakeParty party({"blastoise", "pidgey"});
+    FakeParty party = fly_party();
     PartyCache cache;
     size_t calls = 0;
-    use_field_move(logger, party, cache, "fly", "pidgey", fly_from(party, 1, calls));
-    FakeParty again({"blastoise", "pidgey"});
-    cache.invalidate_species();
-    const std::string failure = use_field_move(logger, again, cache, "fly", "pidgey", fly_from(again, 1, calls));
+    use_field_move(logger, party, cache, "fly", "pidgey", fly_from(party, 2, 1, calls));
+    FakeParty again = fly_party();
+    const std::string failure = use_field_move(logger, again, cache, "fly", "pidgey", fly_from(again, 2, 1, calls));
     if (!failure.empty()){
         return std::format("the second Fly: {}", failure);
     }
-    return check_counts("second fly", again, 1, 0, 0, 0);
+    return check_menus("second fly", again, 1, 1, 0, 0);
+}
+
+//  No menu lists FLY: every member's menu opened once, the party closed.
+UnitTestResult test_no_member_failure(Logger& logger){
+    FakeParty party({"blastoise", "oddish"}, {NO_FIELD_MOVES, menu_with({"cut"})});
+    PartyCache cache;
+    size_t calls = 0;
+    if (use_field_move(logger, party, cache, "fly", "pidgey", fly_from(party, 0, 1, calls)) != FIELD_MOVE_NO_MEMBER || calls != 0){
+        return "a party without a Fly user should fail with no member and not fly.";
+    }
+    return check_menus("no member", party, 1, 2, 2, 1);
+}
+
+//  A menu not read stops the scan: the party is closed, nothing picked.
+UnitTestResult test_unread_menu_fails(Logger& logger){
+    FakeParty party({"blastoise", "pidgey"}, {std::nullopt, menu_with({"fly"})});
+    PartyCache cache;
+    size_t calls = 0;
+    if (use_field_move(logger, party, cache, "fly", "pidgey", fly_from(party, 1, 1, calls)) != FIELD_MOVE_MENU_UNREAD || calls != 0){
+        return "an unread menu should fail as unread and not fly.";
+    }
+    return check_menus("unread menu", party, 1, 1, 0, 1);
+}
+
+//  A blue row whose name isn't read may be FLY: the scan stops.
+UnitTestResult test_unread_field_move_fails(Logger& logger){
+    FakeParty party({"oddish", "pidgey"}, {menu_with({"cut", ""}), menu_with({"fly"})});
+    PartyCache cache;
+    size_t calls = 0;
+    if (use_field_move(logger, party, cache, "fly", "pidgey", fly_from(party, 1, 1, calls)) != FIELD_MOVE_MENU_UNREAD || calls != 0){
+        return "an unread field move name should fail as unread and not fly.";
+    }
+    return check_menus("unread field move", party, 1, 1, 0, 1);
 }
 
 //  A deposit or withdrawal moves members: nothing is recorded after it.
@@ -264,17 +380,6 @@ UnitTestResult test_invalidate_drops_records(Logger&){
         return "invalidate() kept a field move user.";
     }
     return true;
-}
-
-//  No member of the species: its failure, the party closed.
-UnitTestResult test_no_member_failure(Logger& logger){
-    FakeParty party({"blastoise"});
-    PartyCache cache;
-    size_t calls = 0;
-    if (use_field_move(logger, party, cache, "fly", "pidgey", fly_from(party, 0, calls)) != FIELD_MOVE_NO_MEMBER || calls != 0){
-        return "a party without the species should fail with no member and not fly.";
-    }
-    return check_counts("no member", party, 1, 1, 1, 1);
 }
 
 //  The users as the settings keep them read back the same, slots from 1.
@@ -317,19 +422,19 @@ UnitTestResult test_unreadable_users_text_dropped(Logger&){
 }
 
 //  After a restart, the users read from the settings: the first Fly opens
-//  the party once and reads no summary.
+//  the party once and only the recorded user's menu.
 UnitTestResult test_restart_fly_reads_no_summary(Logger& logger){
     FieldMoveUsers before;
     before.record("fly", 2, "pidgey");
     PartyCache cache;
     cache.users() = parse_field_move_users(before.to_text()).users;
-    FakeParty party({"blastoise", "oddish", "pidgey"});
+    FakeParty party = fly_party();
     size_t calls = 0;
-    const std::string failure = use_field_move(logger, party, cache, "fly", "pidgey", fly_from(party, 2, calls));
+    const std::string failure = use_field_move(logger, party, cache, "fly", "pidgey", fly_from(party, 2, 1, calls));
     if (!failure.empty() || calls != 1){
         return std::format("the Fly after a restart: failure '{}', {} menu uses.", failure, calls);
     }
-    return check_counts("restart", party, 1, 0, 0, 0);
+    return check_menus("restart", party, 1, 1, 0, 0);
 }
 
 struct AutoStoryPartyRosterInput{
@@ -372,15 +477,19 @@ const AutoStoryPartyRosterCase AUTO_STORY_PARTY_ROSTER_CASES[] = {
     {.input = {"the first of two of a species wins", test_first_duplicate_wins}, .expectation = {}},
     {.input = {"a lookup that doesn't keep the menu closes it", test_closes_when_not_kept}, .expectation = {}},
     {.input = {"a cached slot for a TEACH opens nothing", test_cached_slot_opens_nothing}, .expectation = {}},
-    {.input = {"a recorded field move user reads no summary", test_recorded_user_reads_no_summary}, .expectation = {}},
+    {.input = {"a Fly scan stops at the first menu with FLY", test_scan_stops_at_first_user}, .expectation = {}},
+    {.input = {"FLY is picked from its row on the menu", test_fly_row_from_menu}, .expectation = {}},
+    {.input = {"a recorded field move user opens only its menu", test_recorded_user_reads_no_summary}, .expectation = {}},
     {.input = {"a stale record falls back to the scan and is updated", test_stale_record_scans_and_updates}, .expectation = {}},
-    {.input = {"a record of another species is not trusted", test_other_species_record_scans}, .expectation = {}},
+    {.input = {"a record of another species is checked by its menu", test_other_species_record_checked_by_menu}, .expectation = {}},
     {.input = {"a scan records the user for the next Fly", test_scan_records_for_next_fly}, .expectation = {}},
     {.input = {"invalidate() drops the field move users", test_invalidate_drops_records}, .expectation = {}},
-    {.input = {"no member of the species fails without flying", test_no_member_failure}, .expectation = {}},
+    {.input = {"no menu with FLY fails without flying", test_no_member_failure}, .expectation = {}},
+    {.input = {"an unread member menu fails without flying", test_unread_menu_fails}, .expectation = {}},
+    {.input = {"an unread field move name fails without flying", test_unread_field_move_fails}, .expectation = {}},
     {.input = {"the field move users' text reads back the same", test_users_text_round_trip}, .expectation = {}},
     {.input = {"unreadable field move users' text is dropped", test_unreadable_users_text_dropped}, .expectation = {}},
-    {.input = {"a Fly after a restart reads no summary", test_restart_fly_reads_no_summary}, .expectation = {}},
+    {.input = {"a Fly after a restart opens only the recorded menu", test_restart_fly_reads_no_summary}, .expectation = {}},
 };
 
 } // namespace
