@@ -346,6 +346,32 @@ UnitTestResult test_12_02_goes_straight_to_koga(){
     return "12.02 has no challenge_koga step.";
 }
 
+//  Koga's rows are PokemonSimulation's planning_risk() for each foe leading
+//  against the entry state of its koga case (34/122): speed, the 80th
+//  percentile loss, the mean, the worst case, the worst normal hit, then
+//  whether it lowers accuracy and whether it explodes.
+UnitTestResult test_koga_foe_threats_are_the_generators(){
+    const StoryCheckpoint& row = checkpoint("12.02");
+    for (const StoryStep& step : row.steps){
+        if (step.name != "koga"){
+            continue;
+        }
+        const auto found = step.args.find("foe_threats");
+        const auto* rows = found == step.args.end() ? nullptr : std::get_if<std::vector<std::vector<int64_t>>>(&found->second);
+        const std::vector<std::vector<int64_t>> expected = {
+            {30, 21, 18, 168, 84, 1, 1},    //  Koffing
+            {48, 0, 4, 66, 33, 0, 0},       //  Muk
+            {30, 21, 18, 168, 84, 1, 1},    //  Koffing
+            {56, 38, 37, 78, 39, 1, 0},     //  Weezing
+        };
+        if (rows == nullptr || *rows != expected){
+            return "12.02 koga: foe_threats are not the generator's rows for the koga case.";
+        }
+        return true;
+    }
+    return "12.02 has no koga battle step.";
+}
+
 const AutoStoryFuchsiaGymCase AUTO_STORY_FUCHSIA_GYM_CASES[] = {
     {
         .input = {.name = "12.01's Mart fills the bag to pokeguy's 5 Super Potions", .body = test_mart_fills_super_potions},
@@ -377,6 +403,10 @@ const AutoStoryFuchsiaGymCase AUTO_STORY_FUCHSIA_GYM_CASES[] = {
             return check_lead_level_precondition(logger, "12.02", "koga", 39);
         }},
         .expectation = {.description = "a Lv39 lead passes the LEVEL step, a Lv38 one stops there"},
+    },
+    {
+        .input = {.name = "12.02 Koga's foe rows are the generator's", .body = test_koga_foe_threats_are_the_generators},
+        .expectation = {.description = "PokemonSimulation planning_risk() rows"},
     },
 };
 
