@@ -1812,6 +1812,8 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RoutePlanner.h
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RouteRecords.cpp
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RouteRecords.h
+    Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Segment00Lines.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Segment00Lines.h
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryMapNames.h
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryMaps.cpp
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryMaps.h
@@ -1849,6 +1851,8 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_RouteBench_Tests.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_RoutePlanner_Tests.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_RoutePlanner_Tests.h
+    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Segment00_Tests.cpp
+    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Segment00_Tests.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_SimulatedRoute_Tests.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_SimulatedRoute_Tests.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryActions.cpp
@@ -1883,6 +1887,8 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Walks.h
     Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_GridSim.cpp
     Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_GridSim.h
+    Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_FrozenTrainer_Tests.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_FrozenTrainer_Tests.h
     Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_LegTrace_Tests.cpp
     Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_LegTrace_Tests.h
     Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_OldStorySteps.cpp
@@ -1898,6 +1904,8 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_StorySim.h
     Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_WallBattleSim_Tests.cpp
     Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_WallBattleSim_Tests.h
+    Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_WanderWait_Tests.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_WanderWait_Tests.h
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_CountedWallLeg.h
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Indoors.cpp
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Indoors.h
