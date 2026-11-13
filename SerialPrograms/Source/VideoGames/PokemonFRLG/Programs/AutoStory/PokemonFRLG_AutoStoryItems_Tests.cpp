@@ -36,6 +36,7 @@
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
+#include "PokemonFRLG_AutoStoryBattlePolicy.h"
 #include "PokemonFRLG_AutoStoryItemUse.h"
 #include "PokemonFRLG_AutoStoryMartPlan.h"
 #include "PokemonFRLG_AutoStoryNewMembers.h"
@@ -753,6 +754,7 @@ void add_tests_AutoStoryItems(UnitTestDatabase& database){
     database.add<Test_FoeHp>("PokemonFRLG/AutoStoryBattle/SSAnneRival_Raticate_FoeHp_7of48.png");
     //  The battle's choices, registered here to keep add_tests() within its size.
     add_tests_AutoStoryParty(database);
+    add_tests_AutoStoryBattlePolicy(database);
 }
 
 
