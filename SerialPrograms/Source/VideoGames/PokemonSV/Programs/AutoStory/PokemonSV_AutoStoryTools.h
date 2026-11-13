@@ -16,7 +16,6 @@
 #include "ML/Inference/ML_YOLONavigation.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
-#include "Pokemon/AutoStory/Pokemon_StoryLog.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_WorldNavigation.h"
 
 namespace PokemonAutomation{
