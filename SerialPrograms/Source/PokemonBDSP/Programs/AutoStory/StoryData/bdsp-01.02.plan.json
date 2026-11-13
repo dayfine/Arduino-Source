@@ -71,30 +71,33 @@
         "why": "the Gate's west mouth (56, 9)"
       },
       {
+        "action": "into_scene",
         "args": {
           "fight_wild": false,
+          "legs": [
+            {
+              "direction": "east",
+              "tiles": 6
+            }
+          ],
           "target": {
             "facing": "east",
             "map": "OreburghGate",
             "tiles": [
               [
-                6,
+                4,
+                22
+              ],
+              [
+                5,
                 22
               ]
             ]
           }
         },
-        "id": "west_of_the_hikers_trigger",
+        "id": "into_the_hikers_scene",
         "kind": "route",
-        "why": "east along row 22"
-      },
-      {
-        "args": {
-          "direction": "east"
-        },
-        "id": "hikers_trigger",
-        "kind": "step",
-        "why": "the trigger (7, 22): the Hiker walks down to us"
+        "why": "east along row 22 until the hikers' scene starts (trigger (7, 22))"
       },
       {
         "declared_after": {
@@ -175,30 +178,33 @@
         "why": "the Gate's east mouth (28, 22)"
       },
       {
+        "action": "into_scene",
         "args": {
           "fight_wild": false,
+          "legs": [
+            {
+              "direction": "east",
+              "tiles": 12
+            }
+          ],
           "target": {
             "facing": "east",
             "map": "OreburghCity",
             "tiles": [
               [
-                9,
+                2,
+                13
+              ],
+              [
+                3,
                 13
               ]
             ]
           }
         },
-        "id": "west_of_the_welcome",
+        "id": "into_the_welcome_scene",
         "kind": "route",
-        "why": "east along row 13"
-      },
-      {
-        "args": {
-          "direction": "east"
-        },
-        "id": "welcome_trigger",
-        "kind": "step",
-        "why": "the trigger (10, 12..15): the man walks over"
+        "why": "east along row 13 until the welcome guide's scene starts (trigger (10, 12..15))"
       },
       {
         "declared_after": {

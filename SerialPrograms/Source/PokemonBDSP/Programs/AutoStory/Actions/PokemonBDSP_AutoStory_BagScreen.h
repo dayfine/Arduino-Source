@@ -41,6 +41,19 @@ struct BagPocketMovePlan{
 BagPocketMovePlan plan_bag_pocket_move(int current, int target);
 
 
+//  What a first look at the lead's HP says about a Potion.
+enum class PotionNeed{
+    FULL,       //  nothing to heal
+    ENOUGH,     //  on the first dose, at or above `heal_below`: no Potion needed
+    FAINTED,    //  a Potion cannot revive it
+    NEEDED,
+};
+//  Whether the lead at `hp` (a fraction of full) needs dose number `dose`
+//  (0 first) of a Potion. Read before the Bag's pocket is walked for the
+//  Potion: no search when none is needed.
+PotionNeed potion_need(double hp, size_t dose, double heal_below);
+
+
 } // namespace PokemonBDSP
 } // namespace NintendoSwitch
 } // namespace PokemonAutomation
