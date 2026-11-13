@@ -101,8 +101,7 @@ int hp_cover_shortfall(const Supplies& supplies, int cover_hp, const std::string
 }
 
 int fill_shortfall(const Supplies& supplies, int target, const std::string& item){
-    const int held = item == "potion" ? supplies.potions : item == "super-potion" ? supplies.super_potions : 0;
-    return std::max(0, target - held);
+    return std::max(0, target - item_count(supplies, item));
 }
 
 

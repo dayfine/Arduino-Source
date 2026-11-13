@@ -266,7 +266,7 @@ std::optional<PolicyItem> PolicyState::setup(const Supplies& supplies, const Pol
 }
 
 std::optional<PolicyItem> PolicyState::planning_heal(
-    const Supplies& supplies, const PolicyView& view, const Danger& danger, int turns
+    const Supplies& supplies, const PolicyView& view, const Danger& danger, int turns, std::string_view waiting_on
 ) const{
     //  An HP reserve for the setup turns ahead.
     const double reserve = std::min(view.max_hp * 0.75, danger.normal_max + std::max(0, turns - 1) * danger.mean);
@@ -286,8 +286,10 @@ std::optional<PolicyItem> PolicyState::planning_heal(
         if (bag_count(supplies, medicine.item) <= 0 || restored <= 0 || after <= danger.normal_max){
             continue;
         }
+        //  A heal that the mean hit and poison take back is futile (Koga,
+        //  2026-11-12: Potions of 20 against 42 a turn): attack instead.
         const double expected = after - danger.mean;
-        if (expected <= view.hp && view.hp > danger.normal_max){
+        if (expected <= view.hp){
             continue;
         }
         options.push_back({expected >= reserve, expected, restored, medicine.item});
@@ -309,8 +311,8 @@ std::optional<PolicyItem> PolicyState::planning_heal(
         return std::nullopt;
     }
     return medicine_item(std::string(chosen->item), std::format(
-        "{}: HP {:.0f}/{:.0f} against a hit of {:.0f}, {} setup turn(s) ahead",
-        chosen->item, view.hp, view.max_hp, danger.normal_max, turns
+        "{}: HP {:.0f}/{:.0f} against a hit of {:.0f}, {} setup turn(s) ahead ({})",
+        chosen->item, view.hp, view.max_hp, danger.normal_max, turns, waiting_on
     ));
 }
 
@@ -331,7 +333,9 @@ std::optional<PolicyItem> PolicyState::choose(const Supplies& supplies, const Po
     }
     const std::optional<PolicyItem> planned = setup(supplies, view);
     const int turns = planned ? setup_turns(supplies, view, planned->item == "guard-spec") : 1;
-    if (std::optional<PolicyItem> item = planning_heal(supplies, view, risk, turns)){
+    //  With no setup pending the one turn is the attack's own, not a setup's.
+    const std::string waiting_on = planned ? std::format("waiting on {}", planned->item) : std::string("no setup pending");
+    if (std::optional<PolicyItem> item = planning_heal(supplies, view, risk, turns, waiting_on)){
         return item;
     }
     if (view.hp <= risk.normal_max){
