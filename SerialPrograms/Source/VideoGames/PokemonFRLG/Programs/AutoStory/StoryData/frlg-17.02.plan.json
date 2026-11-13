@@ -108,6 +108,16 @@
         "why": "north and west through the gym's open floor (no arrow tile on this way) to (15, 8), below Warren's line (14..16, 7)"
       },
       {
+        "id": "lead_lv47_for_the_gym",
+        "kind": "game_action",
+        "action": "level",
+        "args": {
+          "slot": 1,
+          "min": 47
+        },
+        "why": "the lead at least Lv47 before the gym's fights (Giovanni's Rhyhorn is Lv50), checked before the first trainer's line; below it the run stops"
+      },
+      {
         "id": "warren_line",
         "kind": "step",
         "action": "trainer_line",
@@ -115,16 +125,6 @@
           "direction": "north"
         },
         "why": "onto (15, 7), the end of Warren's line (sight 3, facing east): he walks over"
-      },
-      {
-        "id": "lead_lv47_for_giovanni",
-        "kind": "game_action",
-        "action": "level",
-        "args": {
-          "slot": 1,
-          "min": 47
-        },
-        "why": "the lead at least Lv47 before the gym's fights (Giovanni's Rhyhorn is Lv50); below it the run stops"
       },
       {
         "id": "warren",

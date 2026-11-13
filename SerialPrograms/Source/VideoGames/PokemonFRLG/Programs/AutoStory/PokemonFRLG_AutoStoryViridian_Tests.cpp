@@ -103,10 +103,58 @@ UnitTestResult test_surf_to_cinnabar(){
     return true;
 }
 
+//  Viridian Gym's arrow tiles (the map file's glyphs): stepped onto, the
+//  player slides until a stop tile or a wall, turned by each arrow met.
+UnitTestResult check_gym_slide(const TilePos& from, const TilePos& end, Direction facing, int tiles){
+    const MapData* gym = nullptr;
+    for (const MapData& map : story_maps()){
+        if (map.name == "ViridianCity_Gym"){
+            gym = &map;
+        }
+    }
+    if (gym == nullptr){
+        return "No ViridianCity_Gym map.";
+    }
+    const std::optional<SpinSlide> slide = spin_slide(*gym, PlayerState{from, ELEVATION_GROUND, false});
+    if (!slide){
+        return "No slide from " + to_string(from) + ".";
+    }
+    if (!(slide->end.position == end) || slide->facing != facing || slide->tiles != tiles){
+        return std::format(
+            "From {}: slid {} tile(s) to {} facing {}; expected {} to {} facing {}.",
+            to_string(from), slide->tiles, to_string(slide->end.position), direction_name(slide->facing),
+            tiles, to_string(end), direction_name(facing)
+        );
+    }
+    return true;
+}
+
+UnitTestResult test_gym_east_arrow(){
+    return check_gym_slide({11, 3}, {17, 3}, Direction::EAST, 6);
+}
+UnitTestResult test_gym_south_arrow_chain(){
+    return check_gym_slide({18, 3}, {18, 14}, Direction::SOUTH, 11);
+}
+UnitTestResult test_gym_north_arrow(){
+    return check_gym_slide({0, 20}, {0, 11}, Direction::NORTH, 9);
+}
+
 const AutoStoryViridianCase AUTO_STORY_VIRIDIAN_CASES[] = {
     {
         .input = {.name = "17.01 Saffron to Cinnabar by Fly and Surf", .body = test_surf_to_cinnabar},
         .expectation = {.description = "Pallet Town's shore, Route 21 surfed, below Cinnabar's Center door, nobody met"},
+    },
+    {
+        .input = {.name = "Viridian Gym: the east arrow at (11, 3) slides to its stop", .body = test_gym_east_arrow},
+        .expectation = {.description = "6 tiles east to (17, 3)"},
+    },
+    {
+        .input = {.name = "Viridian Gym: the south arrows at (18, 3) slide to the stop below", .body = test_gym_south_arrow_chain},
+        .expectation = {.description = "11 tiles south to (18, 14)"},
+    },
+    {
+        .input = {.name = "Viridian Gym: the north arrow at (0, 20) slides to its stop", .body = test_gym_north_arrow},
+        .expectation = {.description = "9 tiles north to (0, 11)"},
     },
 };
 

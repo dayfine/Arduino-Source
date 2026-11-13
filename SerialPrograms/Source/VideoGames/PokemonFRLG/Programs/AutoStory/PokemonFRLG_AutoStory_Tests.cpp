@@ -41,6 +41,7 @@
 #include "PokemonFRLG_AutoStoryPlanGolden14.h"
 #include "PokemonFRLG_AutoStoryPlanGolden15.h"
 #include "PokemonFRLG_AutoStoryPlanGolden16.h"
+#include "PokemonFRLG_AutoStoryPlanGolden17.h"
 #include "PokemonFRLG_AutoStoryPlanGolden13.h"
 #include "PokemonFRLG_AutoStoryRows_Tests.h"
 #include "PokemonFRLG_AutoStoryMoveData.h"
@@ -291,8 +292,8 @@ UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& po
 //  start: starts_after_unauthored_rows()), and adds the plans to `golden`.
 UnitTestResult chain_story_routes(std::vector<std::string>& golden){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
-    if (checkpoints.size() != 63 || checkpoints[0].start){
-        return "Expected 63 checkpoints, the first from a new game.";
+    if (checkpoints.size() != 67 || checkpoints[0].start){
+        return "Expected 67 checkpoints, the first from a new game.";
     }
     StoryPose pose;
     for (size_t c = 0; c < checkpoints.size(); c++){
@@ -338,8 +339,10 @@ UnitTestResult test_golden_plans(){
     golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_12), std::end(FRLG_PLAN_GOLDEN_12));
     golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_15), std::end(FRLG_PLAN_GOLDEN_15));
     golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_16), std::end(FRLG_PLAN_GOLDEN_16));
+    golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_17_SURF), std::end(FRLG_PLAN_GOLDEN_17_SURF));
     golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_13), std::end(FRLG_PLAN_GOLDEN_13));
     golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_14), std::end(FRLG_PLAN_GOLDEN_14));
+    golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_17_GYM), std::end(FRLG_PLAN_GOLDEN_17_GYM));
     const size_t stored = golden.size();
     size_t first_diff = 0;
     while (first_diff < actual.size() && first_diff < stored && actual[first_diff] == golden[first_diff]){
@@ -924,10 +927,10 @@ UnitTestResult test_trainer_lines(){
         }
         has_shoes = has_shoes || checkpoint.id == "03.03";
     }
-    if (beaten.size() != 41){
+    if (beaten.size() != 43){
         return "Expected to fight Colton, Greg and James on Route 3, the Grunt at (12, 20) in Mt. Moon, Nugget Bridge's five"
             ", Franklin, Kelsey, Nob and Haley on Route 25, Jeff on Route 6, Dwayne, Baily and Tucker in Vermilion Gym, Alicia, Jeremy and Conner on Route 9"
-            ", Ashton, Winston, Martha, Allen, Lenny, Sofia, Dudley and Dana in Rock Tunnel, Rich on Route 8, the Lift Key Grunt on B4F, Ruth, Tammy, Jennifer and Emilia and the three Grunts in the Pokemon Tower, and Kayden , Kirk in Fuchsia Gym, and Tamia and Lori in Celadon Gym; the table fights "
+            ", Ashton, Winston, Martha, Allen, Lenny, Sofia, Dudley and Dana in Rock Tunnel, Rich on Route 8, the Lift Key Grunt on B4F, Ruth, Tammy, Jennifer and Emilia and the three Grunts in the Pokemon Tower, and Kayden , Kirk in Fuchsia Gym, and Tamia and Lori in Celadon Gym, and Warren and Takashi in Viridian Gym; the table fights "
             + std::to_string(beaten.size()) + " trainers.";
     }
     return true;
