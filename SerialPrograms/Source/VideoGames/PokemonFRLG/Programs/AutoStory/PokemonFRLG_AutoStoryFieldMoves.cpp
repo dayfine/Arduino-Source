@@ -15,6 +15,7 @@
 #include "VideoGames/PokemonFRLG/Inference/Map/PokemonFRLG_MapDetector.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_FlyMap.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_MovementMechanics.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecoveryWalk.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
 #include "PokemonFRLG_AutoStoryFieldMoves.h"
 #include "PokemonFRLG_AutoStoryGameArgs.h"
@@ -179,6 +180,10 @@ std::string fly_to_town(ConsoleHandle& console, ProControllerContext& context, c
         MovementMechanics::AFTER_BATTLE_QUIET, LANDING_TIMEOUT
     );
     console.log(std::format("Story: landed in {}, {}", town.name, Pokemon::describe(settle)));
+    const std::string shot = save_route_screenshot(console, "fly", std::format("landed in {}", town.name));
+    if (!shot.empty()){
+        console.log("Story: landing screenshot " + shot);
+    }
     return quiet_overworld(settle, MovementMechanics::AFTER_BATTLE_QUIET) ? "" : "fly_no_landing";
 }
 

@@ -9,7 +9,10 @@
 #include <memory>
 #include <optional>
 #include <vector>
+#include "Common/Cpp/Filesystem/Filesystem.h"
+#include "Common/Cpp/PrettyPrint.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
+#include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTools/ImageDiff.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
@@ -455,6 +458,34 @@ bool moved_past_wall(ConsoleHandle& console, ProControllerContext& context, cons
 } // namespace
 
 
+namespace{
+std::string file_part(const std::string& text){
+    std::string out;
+    for (char c : text){
+        const bool keep = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '.' || c == '_' || c == '-';
+        if (keep){
+            out += c;
+        }else if (c == '/'){
+            out += '-';
+        }else if (!out.empty() && out.back() != '_'){
+            out += '_';
+        }
+    }
+    return out;
+}
+}
+
+std::string save_route_screenshot(ConsoleHandle& console, const std::string& label, const std::string& text){
+    VideoSnapshot screen = console.video().snapshot();
+    if (!screen){
+        return "";
+    }
+    const std::string folder = SCREENSHOTS_PATH() + "AutoStory/route/";
+    Filesystem::create_directories(Filesystem::Path(folder));
+    const std::string path = folder + now_to_filestring() + "-" + file_part(label) + "-" + file_part(text) + ".png";
+    return screen->save(path) ? path : "";
+}
+
 void walk_overworld_route_with_recovery(
     ConsoleHandle& console, ProControllerContext& context,
     const std::vector<RouteStep>& route,
@@ -500,6 +531,10 @@ void walk_overworld_route_with_recovery(
     };
     calls.watch_for_trainer = [&](const RouteStep& step, int approach_tiles){
         return watch_for_trainer(console, context, step, approach_tiles, interrupts);
+    };
+    calls.leg_ended = [&](const std::string& leg_text){
+        const bool stepped = planning.pause != nullptr && !planning.pause->step_label().empty();
+        return save_route_screenshot(console, stepped ? planning.pause->step_label() : planning.label, leg_text);
     };
     run_route(route, facing, &planning, calls);
     context.wait_for_all_requests();

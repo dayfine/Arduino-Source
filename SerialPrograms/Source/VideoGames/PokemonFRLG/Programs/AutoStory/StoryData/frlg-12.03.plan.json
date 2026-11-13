@@ -32,8 +32,8 @@
         "id": "pallet_shore",
         "kind": "route",
         "action": "run",
-        "args": {"target": {"map": "PalletTown", "tiles": [[8, 16]], "facing": "south"}},
-        "why": "south through the town to the shore (7..10, 17..19), a tile above the water, facing it (pokeguy bikes to Pallet's water edge, 1:19:00)"
+        "args": {"target": {"map": "PalletTown", "tiles": [[10, 16]], "facing": "south"}},
+        "why": "south, east, south through the town to the shore (water x7-10, y17-19), onto (10, 16) a tile above the water, facing it (pokeguy bikes to Pallet's water edge, 1:19:00)"
       },
       {
         "id": "repel_pallet",
@@ -47,8 +47,8 @@
         "kind": "game_action",
         "action": "surf",
         "args": {"direction": "south"},
-        "declared_after": {"map": "PalletTown", "tiles": [[8, 17]], "facing": "south"},
-        "why": "the lead's Surf (taught in 12.01): A at the water, YES, onto (8, 17)"
+        "declared_after": {"map": "PalletTown", "tiles": [[10, 17]], "facing": "south"},
+        "why": "the lead's Surf (taught in 12.01): A at the water, YES, onto (10, 17)"
       },
       {
         "id": "surf_route_21",

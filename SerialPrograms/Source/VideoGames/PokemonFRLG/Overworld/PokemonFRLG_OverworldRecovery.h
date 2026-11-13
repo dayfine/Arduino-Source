@@ -92,6 +92,10 @@ struct RouteCalls{
     //  caller's interrupts fight the trainer), and returns LATE if anything
     //  showed, DONE if not. Not set: not watched.
     std::function<StepEnd(const RouteStep& step, int approach_tiles)> watch_for_trainer;
+    //  A leg's "ended at" line was logged for the leg with this text (also a
+    //  leg walked again after a stop). Returns the file the caller saved
+    //  the screen to, which is logged on the next line; empty: none.
+    std::function<std::string(const std::string& leg_text)> leg_ended;
 };
 
 
