@@ -182,6 +182,104 @@ const CheckpointRetryCase CHECKPOINT_RETRY_CASES[] = {
 };
 
 
+//  A checkpoint whose attempts end as `results` says, in order, and whose
+//  resets fail from `reset_fails_at` on (0: never).
+struct CheckpointAttemptsInput{
+    std::string name;
+    size_t max_attempts;
+    std::vector<AttemptResult> results;
+    size_t reset_fails_at = 0;
+};
+
+struct CheckpointAttemptsExpectation{
+    bool passed;
+    size_t attempts;
+    //  The attempt each reset was for.
+    std::vector<size_t> resets;
+    std::vector<std::string> log;
+};
+
+// One run of the shared loop and what it must do.
+struct CheckpointAttemptsCase{
+    CheckpointAttemptsInput input;
+    CheckpointAttemptsExpectation expectation;
+};
+
+class Test_CheckpointAttempts : public UnitTest{
+public:
+    Test_CheckpointAttempts(CheckpointAttemptsCase test_case)
+        : UnitTest(std::format("Pokemon::CheckpointRetry - attempts: {}", test_case.input.name))
+        , m_case(std::move(test_case))
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const CheckpointAttemptsInput& input = m_case.input;
+        std::vector<size_t> resets;
+        std::vector<std::string> log;
+        const CheckpointAttempts attempts{
+            .max_attempts = input.max_attempts,
+            .run = [&](size_t attempt){
+                return attempt <= input.results.size() ? input.results[attempt - 1] : AttemptResult::FINAL;
+            },
+            .reset = [&](size_t next_attempt){
+                resets.push_back(next_attempt);
+                return input.reset_fails_at == 0 || next_attempt < input.reset_fails_at;
+            },
+            .log = [&](const std::string& line){
+                log.push_back(line);
+            },
+        };
+        const CheckpointAttemptsResult result = run_checkpoint_attempts("01", attempts);
+        const CheckpointAttemptsExpectation& expected = m_case.expectation;
+        if (result.passed != expected.passed || result.attempts != expected.attempts){
+            return std::format(
+                "Expected passed {} after {} attempts, got {} after {}",
+                expected.passed, expected.attempts, result.passed, result.attempts
+            );
+        }
+        if (resets != expected.resets){
+            return std::format("Expected {} resets, got {}", expected.resets.size(), resets.size());
+        }
+        if (log != expected.log){
+            return std::format("Expected {} log lines, got {}", expected.log.size(), log.size());
+        }
+        return true;
+    }
+
+private:
+    const CheckpointAttemptsCase m_case;
+};
+
+const CheckpointAttemptsCase CHECKPOINT_ATTEMPTS_CASES[] = {
+    {
+        .input = {.name = "pass after a reset", .max_attempts = 3, .results = {AttemptResult::FAILED, AttemptResult::PASSED}},
+        .expectation = {
+            .passed = true,
+            .attempts = 2,
+            .resets = {2},
+            .log = {"[Checkpoint] 01: passed on attempt 2 (1 reset)"},
+        },
+    },
+    {
+        .input = {.name = "a final failure stops without a reset", .max_attempts = 3, .results = {AttemptResult::FINAL}},
+        .expectation = {.passed = false, .attempts = 1, .resets = {}, .log = {}},
+    },
+    {
+        .input = {.name = "no reset after the last attempt", .max_attempts = 2, .results = {AttemptResult::FAILED, AttemptResult::FAILED}},
+        .expectation = {.passed = false, .attempts = 2, .resets = {2}, .log = {}},
+    },
+    {
+        .input = {
+            .name = "a failed reset stops",
+            .max_attempts = 3,
+            .results = {AttemptResult::FAILED, AttemptResult::FAILED},
+            .reset_fails_at = 3,
+        },
+        .expectation = {.passed = false, .attempts = 2, .resets = {2, 3}, .log = {}},
+    },
+};
+
+
 //  `saves` checkpoint saves in a row.
 struct CheckpointSavedInput{
     std::string name;
@@ -251,6 +349,9 @@ const CheckpointSavedCase CHECKPOINT_SAVED_CASES[] = {
 
 
 void add_tests_CheckpointRetry(UnitTestDatabase& database){
+    for (const CheckpointAttemptsCase& test_case : CHECKPOINT_ATTEMPTS_CASES){
+        database.add<Test_CheckpointAttempts>(test_case);
+    }
     for (const CheckpointRetryCase& test_case : CHECKPOINT_RETRY_CASES){
         database.add<Test_CheckpointRetry>(test_case);
     }

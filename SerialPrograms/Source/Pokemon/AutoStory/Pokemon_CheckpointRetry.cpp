@@ -18,26 +18,34 @@ size_t run_checkpoint_with_retries(
     AutoStoryStats& stats
 ){
     actions.log(checkpoint_start_line(checkpoint));
-    for (size_t attempt = 1;; attempt++){
-        try{
+    const CheckpointAttempts attempts{
+        .max_attempts = policy.max_attempts,
+        .run = [&](size_t attempt){
             actions.log(checkpoint_attempt_line(checkpoint, attempt, policy.max_attempts));
-            actions.run(attempt);
-            actions.log(checkpoint_pass_line(checkpoint, attempt));
-            return attempt;
-        }catch (OperationFailedException& e){
-            if (attempt == policy.report_at_failure){
-                actions.report(e);
+            try{
+                actions.run(attempt);
+                return AttemptResult::PASSED;
+            }catch (OperationFailedException& e){
+                if (attempt == policy.report_at_failure){
+                    actions.report(e);
+                }
+                if (attempt >= policy.max_attempts){
+                    actions.give_up(e);
+                    throw;
+                }
+                return AttemptResult::FAILED;
             }
-            if (attempt >= policy.max_attempts){
-                actions.give_up(e);
-                throw;
-            }
-            actions.log(checkpoint_reset_line(checkpoint, attempt + 1));
+        },
+        .reset = [&](size_t next_attempt){
+            actions.log(checkpoint_reset_line(checkpoint, next_attempt));
             actions.reset();
             stats.m_reset++;
             actions.update_stats();
-        }
-    }
+            return true;
+        },
+        .log = actions.log,
+    };
+    return run_checkpoint_attempts(checkpoint, attempts).attempts;
 }
 
 

@@ -2,10 +2,10 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The retry policy of a game whose AutoStory runs each checkpoint in its
- *  own loop (SV's): run the checkpoint, and on an operation failure reset
- *  the game to the checkpoint's save and try again, report once for
- *  debugging after some failures, and give up after the last attempt.
+ *  SV's checkpoint retry policy on the shared loop (Pokemon_CheckpointAttempts.h):
+ *  an attempt fails by throwing OperationFailedException; on a failure SV
+ *  resets the game to the checkpoint's save and tries again, reports once
+ *  for debugging after some failures, and gives up after the last attempt.
  *  The game supplies what it does at each step; the policy, the counters
  *  and the log lines (Pokemon_StoryLog.h) live here.
  *
@@ -20,12 +20,13 @@
 #include <string_view>
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "Pokemon_AutoStoryStats.h"
+#include "Pokemon_CheckpointAttempts.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
 
 
-//  How often a checkpoint retries and when it reports.
+//  SV's policy: how often a checkpoint retries and when it reports.
 struct CheckpointRetryPolicy{
     //  Attempts before the checkpoint gives up.
     size_t max_attempts;
@@ -37,10 +38,8 @@ struct CheckpointRetryPolicy{
 using CheckpointStep = std::function<void()>;
 //  A game step on the failure that reached a policy count.
 using CheckpointFailureStep = std::function<void(const OperationFailedException& error)>;
-//  Writes one log line.
-using CheckpointLogger = std::function<void(const std::string& line)>;
 
-//  What the game does at each step of the loop.
+//  What SV does at each step of the loop, where a failed attempt throws.
 struct CheckpointRetryActions{
     //  Runs attempt `attempt`, counting from 1. Throws
     //  OperationFailedException when the attempt fails.
@@ -57,8 +56,10 @@ struct CheckpointRetryActions{
     CheckpointLogger log;
 };
 
-//  Runs `checkpoint` until an attempt passes, and returns that attempt's
-//  number. Each reset adds to `stats.m_reset`.
+//  Runs `checkpoint` through run_checkpoint_attempts() with the start,
+//  attempt and reset lines, until an attempt passes, and returns that
+//  attempt's number. After the last attempt fails it calls `give_up` and
+//  rethrows. Each reset adds to `stats.m_reset`.
 size_t run_checkpoint_with_retries(
     std::string_view checkpoint,
     const CheckpointRetryPolicy& policy,
