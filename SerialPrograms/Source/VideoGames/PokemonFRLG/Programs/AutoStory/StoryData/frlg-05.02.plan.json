@@ -61,9 +61,9 @@
           "item": "tm03",
           "move": "water-pulse",
           "slot": 1,
-          "forget": "tail-whip"
+          "keep": ["tackle", "withdraw", "water-gun", "bubble", "bite", "mega-kick", "dig", "surf"]
         },
-        "why": "TM03 Water Pulse in place of Tail Whip"
+        "why": "TM03 Water Pulse in place of Tail Whip; keep list: the damaging moves, Bite, Withdraw and Mega Kick, so the one other move (Tail Whip) goes; fails if none or several are outside the list"
       }
     ]
   },
