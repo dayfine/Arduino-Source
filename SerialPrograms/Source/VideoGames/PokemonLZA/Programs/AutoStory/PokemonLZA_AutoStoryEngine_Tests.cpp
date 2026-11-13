@@ -8,6 +8,7 @@
  */
 
 #include <algorithm>
+#include <cstdint>
 #include <format>
 #include <functional>
 #include <iterator>
@@ -279,6 +280,112 @@ UnitTestResult test_every_checkpoint_runs(CancellableScope& scope){
 }
 
 
+//  A row `id` whose one step is the platform start check (wait_for_platform).
+StoryCheckpoint platform_row(std::string id){
+    StoryCheckpoint row;
+    row.id = std::move(id);
+    row.steps.push_back(StoryStep{
+        .kind = Pokemon::StoryStepKind::GAME, .name = "on_platform", .why = "test", .action = "wait_for_platform",
+        .args = {{"timeout_ms", int64_t(1000)}},
+    });
+    return row;
+}
+
+//  How a run of `ids` (platform rows) went, B reloading when chained.
+struct BoundaryRun{
+    Pokemon::SegmentReport report;
+    std::vector<std::string> lines;
+    size_t reloads = 0;
+};
+
+//  `ids` through run_plza_segment() over looks with the platform on
+//  `platform` (by look index; the last look repeats); the game's reload
+//  counts itself.
+BoundaryRun run_boundary(std::vector<std::string> ids, std::vector<bool> platform, CancellableScope& scope){
+    std::vector<Observation<ZonePose>> looks;
+    for (size_t i = 0; i < platform.size(); i++){
+        const Observation<ZonePose> look = look_at(Milliseconds(300 * (int64_t)i));
+        looks.push_back(platform[i] ? with_reading(look, PLATFORM_READING) : look);
+    }
+    FakeBackend backend = fake_plza(std::move(looks), scope);
+    Pokemon::StoryGame<ZonePose> game = make_offline_plza_story_game();
+    BoundaryRun run;
+    game.reload = [&run](Pokemon::StoryBackend<ZonePose>& backend){
+        run.reloads++;
+        backend.log("[Test] reload");
+        return Pokemon::outcome_ok();
+    };
+    StoryData story;
+    story.reload_when_chained = {"B"};
+    std::vector<StoryCheckpoint> rows;
+    for (std::string& id : ids){
+        rows.push_back(platform_row(std::move(id)));
+    }
+    Pokemon::StoryEngine<ZonePose> engine(game, backend);
+    Pokemon::RunState state;
+    run.report = run_plza_segment(game, story, rows, 1, engine, backend, state);
+    run.lines = backend.lines();
+    return run;
+}
+
+//  The index of the first line of `lines` that holds `text`; the size when
+//  none does.
+size_t line_index(const std::vector<std::string>& lines, std::string_view text){
+    return std::find_if(lines.begin(), lines.end(), [text](const std::string& line){
+        return line.find(text) != std::string::npos;
+    }) - lines.begin();
+}
+
+//  Run straight after A, B starts with the reload, logged as its own event
+//  between A's pass and B's start; then no platform on the looks after it.
+UnitTestResult test_reload_when_chained(CancellableScope& scope){
+    const BoundaryRun run = run_boundary({"A", "B"}, {true, true, false, false, false, false, true, true}, scope);
+    if (!run.report.completed || run.reloads != 1){
+        return std::format("Expected A and B with one reload, got {} reloads: {}", run.reloads, joined(run.lines));
+    }
+    const size_t a_passed = line_index(run.lines, "[Checkpoint] A: passed");
+    const size_t reload = line_index(run.lines, "[Event] B/0 reload_at_boundary: start");
+    const size_t reloaded = line_index(run.lines, "[Test] reload");
+    const size_t done = line_index(run.lines, "[Event] B/0 reload_at_boundary: done");
+    const size_t b_start = line_index(run.lines, "[Checkpoint] B: start");
+    if (!(a_passed < reload && reload < reloaded && reloaded < done && done < b_start && b_start < run.lines.size())){
+        return std::format("Expected A, the reload event, then B: {}", joined(run.lines));
+    }
+    if (run.report.runs.size() != 2 || run.report.checkpoints_run != 2){
+        return std::format("Expected both rows in one report, got {} runs.", run.report.runs.size());
+    }
+    return true;
+}
+
+//  A run that starts at B (from B's save), or a row with no
+//  reload_when_chained after A, has no reload.
+UnitTestResult test_no_reload_unless_chained(CancellableScope& scope){
+    for (const std::vector<std::string>& ids : {std::vector<std::string>{"B"}, std::vector<std::string>{"A", "C"}}){
+        const BoundaryRun run = run_boundary(ids, {true}, scope);
+        if (!run.report.completed || run.reloads != 0 || line_index(run.lines, "reload_at_boundary") != run.lines.size()){
+            return std::format("Expected no reload for {}: {}", joined(ids), joined(run.lines));
+        }
+    }
+    return true;
+}
+
+//  A reload that lands on the station platform loaded an older save: the
+//  run fails at the boundary, before any step of B.
+UnitTestResult test_reload_lands_on_older_save(CancellableScope& scope){
+    const BoundaryRun run = run_boundary({"A", "B"}, {true}, scope);
+    if (run.report.completed || run.report.failed_checkpoint != "B" || run.report.failed_event != "reload_at_boundary"){
+        return std::format("Expected a failure at B's reload: {}", joined(run.lines));
+    }
+    if (to_string(run.report.failure).find("did not land at B's start") == std::string::npos){
+        return std::format("Expected the failure to say where it did not land: {}", to_string(run.report.failure));
+    }
+    if (line_index(run.lines, "[Checkpoint] B: start") != run.lines.size()){
+        return "Expected no step of B after the failed reload.";
+    }
+    return true;
+}
+
+
 struct EngineTestInput{
     std::string name;
     std::function<UnitTestResult(CancellableScope&)> body;
@@ -319,6 +426,9 @@ const EngineTestCase ENGINE_TEST_CASES[] = {
     {.input = {"face_heading: turns by the minimap's heading", test_face_heading}, .expectation = {}},
     {.input = {"refused: console actions off a console, tile walks, unknown actions", test_refused_steps}, .expectation = {}},
     {.input = {"every checkpoint runs in step order, testing never saves", test_every_checkpoint_runs}, .expectation = {}},
+    {.input = {"reload_when_chained: reload between the rows, as its own event", test_reload_when_chained}, .expectation = {}},
+    {.input = {"reload_when_chained: no reload from the row's save or for other rows", test_no_reload_unless_chained}, .expectation = {}},
+    {.input = {"reload_when_chained: a reload onto the platform fails", test_reload_lands_on_older_save}, .expectation = {}},
 };
 
 void add_tests_AutoStoryEngine(UnitTestDatabase& database){

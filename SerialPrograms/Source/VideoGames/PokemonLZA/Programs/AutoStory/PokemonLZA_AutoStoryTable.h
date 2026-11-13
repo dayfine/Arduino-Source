@@ -40,6 +40,11 @@ namespace PokemonLZA{
 struct StoryData{
     std::vector<Pokemon::StoryCheckpoint> checkpoints;
     std::set<std::string, std::less<>> autosaves;
+    //  The ids of the rows a run reloads the save before when it played the
+    //  row before them too ("execution": {"reload_when_chained": true}), so
+    //  they start as from their save. Each comes after an autosave row,
+    //  whose autosave is its start save.
+    std::set<std::string, std::less<>> reload_when_chained;
     //  The dev files that replaced a built-in checkpoint, as (file name,
     //  path).
     std::vector<std::pair<std::string, std::string>> dev_files;
