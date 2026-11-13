@@ -25,8 +25,8 @@ using namespace std::chrono_literals;
 using namespace Pokemon;
 
 
-void RouteIO::leg_started(size_t number, size_t count, const PlannedRouteLeg& leg, StoryPausePoints* pause){
-    note(route_leg_line(number, count, leg), RouteNote::STATUS);
+void leg_started(RouteIO& io, size_t number, size_t count, const PlannedRouteLeg& leg, StoryPausePoints* pause){
+    io.note(route_leg_line(number, count, leg), RouteNote::STATUS);
     if (pause == nullptr){
         return;
     }
