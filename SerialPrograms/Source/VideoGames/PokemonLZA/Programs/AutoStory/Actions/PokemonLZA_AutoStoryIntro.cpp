@@ -7,6 +7,7 @@
 #include <cctype>
 #include <format>
 #include "PokemonLZA_AutoStoryIntro.h"
+#include "PokemonLZA_AutoStoryLanguageList.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -17,33 +18,7 @@ namespace{
 
 constexpr size_t LOOK_COLUMNS = 4;
 
-std::optional<size_t> language_list_index(Language language){
-    switch (language){
-    case Language::English:             return 0;
-    case Language::Spanish:             return 1;
-    case Language::French:              return 2;
-    case Language::German:              return 3;
-    case Language::Italian:             return 4;
-    case Language::Japanese:            return 5;
-    case Language::Korean:              return 6;
-    case Language::ChineseSimplified:   return 7;
-    case Language::ChineseTraditional:  return 8;
-    default:                            return std::nullopt;
-    }
-}
-
 } // namespace
-
-
-std::optional<std::vector<IntroKey>> language_list_presses(Language language){
-    const std::optional<size_t> index = language_list_index(language);
-    if (!index){
-        return std::nullopt;
-    }
-    std::vector<IntroKey> presses(*index, IntroKey::DOWN);
-    presses.push_back(IntroKey::A);
-    return presses;
-}
 
 
 std::optional<std::vector<IntroKey>> look_picker_presses(size_t look){
@@ -86,7 +61,7 @@ std::optional<NameKeys> name_keys(std::string_view name, bool first_letter_auto_
 
 
 std::string new_game_problem(Language language, const NewGameChoices& choices){
-    if (!language_list_presses(language)){
+    if (!language_list_index(language)){
         return "The new game's language list has no such language.";
     }
     if (!look_picker_presses(choices.look)){

@@ -8,7 +8,7 @@
       {
         "id": "language",
         "kind": "game_action",
-        "why": "step 1: start a new game in English",
+        "why": "step 1: from the HOME screen with the game highlighted, launch it (no save: it opens on the language list) and pick English",
         "action": "new_game_language"
       },
       {

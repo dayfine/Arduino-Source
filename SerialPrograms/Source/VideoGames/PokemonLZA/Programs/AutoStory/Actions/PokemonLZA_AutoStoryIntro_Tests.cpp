@@ -4,12 +4,18 @@
  *
  */
 
+#include <cstdlib>
 #include <format>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
+#include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "PokemonLZA_AutoStoryIntro.h"
+#include "PokemonLZA_AutoStoryIntroScreens.h"
+#include "PokemonLZA_AutoStoryLanguageList.h"
 #include "PokemonLZA_AutoStoryIntro_Tests.h"
 
 namespace PokemonAutomation{
@@ -33,31 +39,135 @@ Keys joined(std::initializer_list<Keys> parts){
     return all;
 }
 
-UnitTestResult test_language_presses(Logger&){
+UnitTestResult test_language_index(Logger&){
     struct Row{
         Language language;
-        size_t downs;
+        size_t index;
     };
+    //  Down the left column, then the right; entry 2 is Latin American
+    //  Spanish, which Language lacks.
     const Row rows[] = {
         {Language::English, 0},
         {Language::Spanish, 1},
-        {Language::French, 2},
-        {Language::German, 3},
-        {Language::Italian, 4},
-        {Language::Japanese, 5},
-        {Language::Korean, 6},
-        {Language::ChineseSimplified, 7},
-        {Language::ChineseTraditional, 8},
+        {Language::French, 3},
+        {Language::German, 4},
+        {Language::Italian, 5},
+        {Language::Japanese, 6},
+        {Language::Korean, 7},
+        {Language::ChineseSimplified, 8},
+        {Language::ChineseTraditional, 9},
     };
     for (const Row& row : rows){
-        const auto presses = language_list_presses(row.language);
-        const Keys expected = joined({repeated(IntroKey::DOWN, row.downs), {IntroKey::A}});
-        if (!presses || *presses != expected){
-            return std::format("{}: expected {} DOWN then A.", language_data(row.language).code, row.downs);
+        if (language_list_index(row.language) != row.index){
+            return std::format("{}: expected entry {}.", language_data(row.language).code, row.index);
         }
     }
-    if (language_list_presses(Language::None)){
+    if (language_list_index(Language::None)){
         return "Language::None has no entry in the list.";
+    }
+    return true;
+}
+
+UnitTestResult test_language_moves(Logger&){
+    struct Row{
+        size_t from;
+        size_t to;
+        Keys expected;
+    };
+    const Row rows[] = {
+        {0, 0, {}},
+        //  English to Deutsch: down the left column.
+        {0, 4, repeated(IntroKey::DOWN, 4)},
+        //  English to Italiano: across.
+        {0, 5, {IntroKey::RIGHT}},
+        //  English to Traditional Chinese: across, then down.
+        {0, 9, joined({{IntroKey::RIGHT}, repeated(IntroKey::DOWN, 4)})},
+        //  Korean to Espanol (Espana): across, then up.
+        {7, 1, joined({{IntroKey::LEFT}, repeated(IntroKey::UP, 1)})},
+        //  Deutsch to Italiano: no wrap round the bottom edge.
+        {4, 5, joined({{IntroKey::RIGHT}, repeated(IntroKey::UP, 4)})},
+    };
+    for (const Row& row : rows){
+        const auto moves = language_list_moves(row.from, row.to);
+        if (!moves || *moves != row.expected){
+            return std::format("Entry {} to {}: expected {} presses.", row.from, row.to, row.expected.size());
+        }
+    }
+    if (language_list_moves(0, LANGUAGE_LIST_SIZE) || language_list_moves(LANGUAGE_LIST_SIZE, 0)){
+        return "Entries outside the list have no moves.";
+    }
+    return true;
+}
+
+//  The language list drawn as console B shows it (1920 x 1080): dark blue,
+//  10 slate boxes 576 x 84, the columns at x 347 and 996, the rows from
+//  y 342, 108 apart, entry `highlighted` (if any) white.
+ImageRGB32 language_list_frame(std::optional<size_t> highlighted){
+    ImageRGB32 image(1920, 1080);
+    image.fill(0xff091838);
+    for (size_t index = 0; index < LANGUAGE_LIST_SIZE; index++){
+        const size_t left = index < LANGUAGE_LIST_ROWS ? 347 : 996;
+        const size_t top = 342 + 108 * (index % LANGUAGE_LIST_ROWS);
+        const uint32_t color = highlighted == index ? 0xffffffff : 0xff363c53;
+        for (size_t y = top; y < top + 84; y++){
+            for (size_t x = left; x < left + 576; x++){
+                image.pixel(x, y) = color;
+            }
+        }
+    }
+    return image;
+}
+
+UnitTestResult test_language_list_synthetic(Logger&){
+    for (size_t index = 0; index < LANGUAGE_LIST_SIZE; index++){
+        if (read_language_list_cursor(language_list_frame(index)) != index){
+            return std::format("Expected the highlight read on entry {}.", index);
+        }
+    }
+    if (is_language_list(language_list_frame(std::nullopt))){
+        return "Expected no list without a highlight.";
+    }
+    ImageRGB32 two = language_list_frame(0);
+    for (size_t y = 450; y < 534; y++){
+        for (size_t x = 347; x < 923; x++){
+            two.pixel(x, y) = 0xffffffff;
+        }
+    }
+    if (is_language_list(two)){
+        return "Expected no list with two highlights.";
+    }
+    for (const uint32_t fill : {0xff000000u, 0xffffffffu, 0xff363c53u}){
+        ImageRGB32 flat(1920, 1080);
+        flat.fill(fill);
+        if (is_language_list(flat)){
+            return std::format("Expected a flat {:08x} frame not to be the list.", fill);
+        }
+    }
+    return true;
+}
+
+UnitTestResult test_language_list_empty(Logger&){
+    if (is_language_list(ImageRGB32()) || is_language_list(ImageRGB32(1, 1)) || is_language_list(ImageRGB32(40, 20))){
+        return "Expected empty and tiny frames not to be the list.";
+    }
+    return true;
+}
+
+//  The console's frame, from the folder in PLZA_INTRO_SCREENS
+//  (~/BDSPLab/intro-screens/plza on the lab Mac): language-list.png, the
+//  list as a new game opens it, English highlighted.
+UnitTestResult test_language_list_capture(Logger&){
+    const auto* folder = std::getenv("PLZA_INTRO_SCREENS");
+    if (folder == nullptr || !Filesystem::is_directory(Filesystem::Path(folder))){
+        return UnitTestResult(UnitTestResult::SKIPPED, "PLZA_INTRO_SCREENS is not a folder.");
+    }
+    const ImageRGB32 frame(std::format("{}/language-list.png", folder));
+    const std::optional<size_t> cursor = read_language_list_cursor(frame);
+    if (!cursor){
+        return "language-list.png: expected the language list, read none.";
+    }
+    if (*cursor != 0){
+        return std::format("language-list.png: expected English (entry 0) highlighted, read entry {}.", *cursor);
     }
     return true;
 }
@@ -162,7 +272,23 @@ struct IntroCase{
 
 const IntroCase INTRO_CASES[] = {
     {
-        .input = {"Intro: the language list's presses", test_language_presses},
+        .input = {"Intro: the language list's entries", test_language_index},
+        .expectation = {},
+    },
+    {
+        .input = {"Intro: the language list's cursor moves", test_language_moves},
+        .expectation = {},
+    },
+    {
+        .input = {"Intro: the language list's highlight, synthetic frames", test_language_list_synthetic},
+        .expectation = {},
+    },
+    {
+        .input = {"Intro: empty frames are not the language list", test_language_list_empty},
+        .expectation = {},
+    },
+    {
+        .input = {"Intro: the language list on console B (PLZA_INTRO_SCREENS)", test_language_list_capture},
         .expectation = {},
     },
     {

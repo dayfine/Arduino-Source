@@ -3,12 +3,14 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  The new game's opening screens (language list, look picker, name
- *  keyboard): the presses each choice takes as pure functions. The screens'
+ *  keyboard): the presses each choice takes as pure functions; the language
+ *  list's are in PokemonLZA_AutoStoryLanguageList.h. The screens'
  *  detectors are in PokemonLZA_AutoStoryIntroScreens.h.
  *
- *  Everything about the screens' layout is a guess from Scarlet/Violet's,
- *  to be confirmed on a console (see the TODOs): the language list's order,
- *  the look picker's 2 x 4 grid, and what the name keyboard does with Shift.
+ *  The language list is as seen on console B (2026-11-13). The rest is a
+ *  guess from Scarlet/Violet's, to be confirmed on a console (see the
+ *  TODOs): the look picker's 2 x 4 grid, and what the name keyboard does
+ *  with Shift.
  *
  */
 
@@ -34,15 +36,6 @@ enum class IntroKey{
     RIGHT,
     A,
 };
-
-
-//  The language list's entries, top to bottom, as Scarlet/Violet shows them
-//  (English, Espanol, Francais, Deutsch, Italiano, Japanese, Korean,
-//  Chinese Simplified, Chinese Traditional). TODO: confirm LZA's order on a
-//  console.
-//  From the top entry: DOWN to the language's entry, then A. Nullopt for a
-//  language the list lacks.
-std::optional<std::vector<IntroKey>> language_list_presses(Language language);
 
 
 //  The number of looks on the picker: a grid of 2 rows of 4 faces, as

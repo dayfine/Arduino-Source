@@ -38,7 +38,7 @@ AutoStory_Descriptor::AutoStory_Descriptor()
         "PokemonLZA:AutoStory",
         std::format("{} LZA", STRING_POKEMON), "Auto Story",
         "Programs/PokemonLZA/AutoStory.html",
-        "Play the main story of Pokemon Legends: Z-A. Prototype: Main Missions 01-03 as recorded on a console; plays from a new game to Mable's Rock Smash TM.",
+        "Play the main story of Pokemon Legends: Z-A. Prototype: Main Missions 01-03 as recorded on a console; plays from a new game to Mable's Rock Smash TM. Checkpoint 01.00 (a new game) starts on the Switch HOME screen with the game's tile highlighted and no save, or on the game's language list; it fails on any other screen.",
         PanelQualityStanding::DEVELOPER,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,

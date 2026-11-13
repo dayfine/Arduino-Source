@@ -14,10 +14,13 @@
 #include "CommonFramework/Tools/DebugDumper.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h"
+#include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_KeyboardCodeEntry.h"
 #include "VideoGames/PokemonLZA/Inference/Map/PokemonLZA_MapDetector.h"
 #include "PokemonLZA_AutoStoryIntro.h"
 #include "PokemonLZA_AutoStoryIntroScreens.h"
+#include "PokemonLZA_AutoStoryLanguageList.h"
 #include "PokemonLZA_AutoStoryScenes.h"
 
 namespace PokemonAutomation{
@@ -225,19 +228,98 @@ void press_intro_keys(
     context.wait_for_all_requests();
 }
 
+//  After the launch: the license check, the logos, until the language list
+//  shows. Saves its first frame to DebugDumps.
+void wait_for_language_list(ConsoleHandle& console, ProControllerContext& context, Milliseconds timeout){
+    const WallClock deadline = current_time() + timeout;
+    while (current_time() < deadline){
+        context.wait_for_all_requests();
+        const VideoSnapshot frame = console.video().snapshot();
+        if (frame && is_language_list(frame)){
+            console.log("AutoStory intro: language-list: detected.");
+            dump_debug_image(console, "PokemonLZA/AutoStory/Intro", "language-list", frame);
+            return;
+        }
+        context.wait_for(250ms);
+    }
+    OperationFailedExceptionWithScreenshot::fire(
+        ErrorReportMode::SEND_ERROR_REPORT,
+        std::format("AutoStory intro: the language list did not show within {} ms of the launch.", timeout.count()),
+        console
+    );
+}
+
+//  On the language list: one press at a time towards entry `target`,
+//  reading the highlight after each, until it is on `target`. A dropped
+//  press or a frame caught mid-move is read again on the next turn.
+void move_language_cursor(ConsoleHandle& console, ProControllerContext& context, size_t target){
+    for (size_t attempt = 0; attempt < 20; attempt++){
+        context.wait_for_all_requests();
+        const VideoSnapshot frame = console.video().snapshot();
+        const std::optional<size_t> cursor = frame ? read_language_list_cursor(frame) : std::nullopt;
+        if (!cursor){
+            console.log("AutoStory intro: language-list: no highlight read; reading again.");
+            context.wait_for(250ms);
+            continue;
+        }
+        if (*cursor == target){
+            console.log(std::format("AutoStory intro: language-list: the highlight is on entry {}.", target));
+            return;
+        }
+        const std::optional<std::vector<IntroKey>> moves = language_list_moves(*cursor, target);
+        if (!moves || moves->empty()){
+            break;
+        }
+        console.log(std::format("AutoStory intro: language-list: the highlight is on entry {}.", *cursor));
+        press_intro_keys(console, context, {moves->front()}, 400ms);
+    }
+    OperationFailedExceptionWithScreenshot::fire(
+        ErrorReportMode::SEND_ERROR_REPORT,
+        std::format("AutoStory intro: the language list's highlight did not reach entry {}.", target),
+        console
+    );
+}
+
+//  01.00's start: the language list already on screen, or the Switch HOME
+//  screen with the game's tile highlighted (the game open or closed). From
+//  HOME: closes the game, so the launch is always fresh, starts it
+//  (start_game_from_home(): the user select and the online license check)
+//  and waits for the list: a new game has no title screen. Anything else
+//  on screen is a setup mistake.
+void launch_to_language_list(ConsoleHandle& console, ProControllerContext& context){
+    context.wait_for_all_requests();
+    const VideoSnapshot frame = console.video().snapshot();
+    if (frame && is_language_list(frame)){
+        console.log("AutoStory intro: start: the language list is on screen; no launch.");
+        return;
+    }
+    HomeMenuDetector home(console, COLOR_RED);
+    if (!frame || !home.detect_only(frame)){
+        throw UserSetupError(console,
+            "AutoStory 01.00: start on the Switch HOME screen with the game's tile highlighted and no save, "
+            "or on the game's language list. The screen is neither."
+        );
+    }
+    console.log("AutoStory intro: start: the HOME screen; closing the game, then launching it.");
+    close_game_from_home(console, context);
+    start_game_from_home(console, context, true, 0, 0);
+    //  The launch's logos: the user saw the list come no sooner than this.
+    context.wait_for(5000ms);
+    wait_for_language_list(console, context, 90s);
+}
+
 } // namespace
 
 
 void new_game_language(ConsoleHandle& console, ProControllerContext& context, Language language){
-    const std::optional<std::vector<IntroKey>> presses = language_list_presses(language);
-    if (!presses){
+    const std::optional<size_t> target = language_list_index(language);
+    if (!target){
         throw UserSetupError(console, "AutoStory: the new game's language list has no such language.");
     }
-    console.log(std::format("AutoStory intro: language {}: {} presses.", language_data(language).code, presses->size()));
-    //  TODO: a title screen detector; the wait is a guess.
-    pbf_press_button(context, BUTTON_A, 160ms, 500ms);
-    wait_for_intro_screen(console, context, "language-list", is_language_list, 5000ms);
-    press_intro_keys(console, context, *presses, 5000ms);
+    console.log(std::format("AutoStory intro: language {}: entry {} of the list.", language_data(language).code, *target));
+    launch_to_language_list(console, context);
+    move_language_cursor(console, context, *target);
+    press_intro_keys(console, context, {IntroKey::A}, 5000ms);
 }
 
 void pick_player_look(ConsoleHandle& console, ProControllerContext& context, size_t look){
