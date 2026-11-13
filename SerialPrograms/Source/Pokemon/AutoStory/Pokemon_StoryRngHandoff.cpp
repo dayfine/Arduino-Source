@@ -52,7 +52,15 @@ std::string report_rng_handoff_stop(
     Logger& logger, const std::string& message, const std::vector<std::string>& lines,
     const std::function<void(const std::string&)>& show
 ){
-    return std::string();
+    std::string text = message;
+    logger.log(message, COLOR_BLUE);
+    show(message);
+    for (const std::string& line : lines){
+        logger.log(line, COLOR_BLUE);
+        show(line);
+        text += "\n" + line;
+    }
+    return text;
 }
 
 
