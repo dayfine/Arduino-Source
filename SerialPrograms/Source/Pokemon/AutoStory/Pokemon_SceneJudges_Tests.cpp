@@ -7,13 +7,13 @@
  */
 
 #include <format>
-#include <functional>
 #include <string>
 #include <utility>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon_SceneJudges.h"
 #include "Pokemon_SceneJudges_Tests.h"
+#include "Pokemon_TestExpect.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -21,13 +21,6 @@ namespace Pokemon{
 namespace{
 
 using namespace std::chrono_literals;
-
-UnitTestResult expect_equal(const std::string& what, const std::string& got, const std::string& expected){
-    if (got == expected){
-        return true;
-    }
-    return std::format("{}: expected \"{}\", got \"{}\"", what, expected, got);
-}
 
 
 UnitTestResult test_warp_seen(){
@@ -93,9 +86,8 @@ UnitTestResult test_talk_over(){
             SceneMove::DONE, 6},
         {"no quiet ends a talk before a battle", {.end_on_quiet = false}, repeat(QUIET, 30), SceneMove::DONE, -1},
         {"a battle", {.end_on_quiet = false}, concat(repeat(QUIET, 6), {ScreenEvents{ScreenEvent::BATTLE_STARTED}}), SceneMove::BATTLE, 6},
-        //  Mom's Running Shoes scene (lab-B 2026-11-09 14:33): quiet, then
-        //  the scene's closing fade. It ended at the fade's start and the
-        //  next step's input landed in the fade.
+        //  Quiet, then the scene's closing fade: the scene must not end at
+        //  the fade's start, or the next step's input lands in the fade.
         {"a closing fade starts the quiet over", {},
             concat(concat(repeat(QUIET, 4), repeat(FADED, 3)), repeat(QUIET, 8)),
             SceneMove::DONE, 12},
@@ -113,17 +105,17 @@ UnitTestResult test_talk_over(){
 }
 
 
-struct SceneJudgesInput{
-    std::string name;
-    std::function<UnitTestResult()> body;
-};
-
-struct SceneJudgesExpectation{
-};
-
 struct SceneJudgesCase{
-    SceneJudgesInput input;
-    SceneJudgesExpectation expectation;
+    struct Input{
+        std::string name;
+        UnitTestResult (*body)();
+    };
+
+    struct Expectation{
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 class Test_SceneJudges : public UnitTest{

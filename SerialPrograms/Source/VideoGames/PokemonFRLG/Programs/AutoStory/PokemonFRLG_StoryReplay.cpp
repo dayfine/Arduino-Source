@@ -26,6 +26,12 @@ JsonValue replay_story_checkpoint(std::string_view capture, std::string_view bin
     const auto entry = StoryReplayInternal::read_pose(scenario.to_object_throw().get_object_throw("entry").get_value_throw("pose"), data.maps);
     Pokemon::RunState state;
     state.pose = Pokemon::tile_pose(entry.position.map, {entry.position.point}, entry.facing);
+    //  The run flags the checkpoint starts with (card_key_held opens card-key doors).
+    if (const JsonArray* flags = scenario.to_object_throw().get_array("start_flags")){
+        for (const JsonValue& flag : *flags){
+            state.flags.insert(flag.to_string_throw());
+        }
+    }
     JsonArray logs;
     Pokemon::EventLogger logger = [&](const std::string& line){ logs.push_back(line); };
     const Pokemon::CheckpointReport result = Pokemon::run_checkpoint(state, checkpoint, logger);

@@ -45,6 +45,12 @@ enum class SimField{
     //  kanto_fly_towns(), outdoors: the fade, then the player on its landing
     //  tile facing south, still for SimTiming::fly.
     FLY,
+    //  The card-key gate the player faces (a `G` tile of a map's `gates`),
+    //  with SimScript::card_key_held: its message, and the gate is open.
+    OPEN_GATE,
+    //  The statue the player faces (a map's `switches`): the prompt, YES, and
+    //  the switch flips, with every gate that follows it on every map.
+    PRESS_SWITCH,
 };
 
 //  Register the tests of the Bicycle's taps and SELECT on a made-up map.

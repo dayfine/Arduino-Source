@@ -31,6 +31,12 @@ std::string to_string(const RouteStep& step){
     case RouteAction::FACE:
         text = "face " + std::string(direction_name(step.direction));
         break;
+    case RouteAction::OPEN_GATE:
+        text = "open gate " + std::string(direction_name(step.direction));
+        break;
+    case RouteAction::PRESS_SWITCH:
+        text = "press switch " + std::string(direction_name(step.direction));
+        break;
     }
     return text + " -> " + to_string(step.end);
 }
