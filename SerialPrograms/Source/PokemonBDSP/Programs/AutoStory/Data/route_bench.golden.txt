@@ -28,7 +28,7 @@ walk run with no stops) | verdict (why). A ratio above 1.5 is flagged "!".
 00.04 into_twinleaf | 10200 | 10200 | 10200 | 1 | 0 | 0 | 1.00 | 1.00 | 1.00 | 10200 ms (user's route) | PASS
 00.04 to_moms_doorstep | 4100 | 4100 | 4100 | 0 | 0 | 0 | 5.47! | 1.00 | 1.00 | 750 ms (stand-in) | PASS
 00.04 beside_mom | 900 | 900 | 900 | 0 | 0 | 0 | 2.25! | 1.00 | 1.00 | 400 ms (stand-in) | PASS
-00.04 into_moms_call | 2550 | 2550 | 2550 | 1 | 0 | 0 | 1.00 | 1.00 | 1.00 | 2550 ms (user's route) | PASS
+00.04 into_moms_call | 3100 | 3100 | 3100 | 2 | 0 | 0 | 1.22 | 1.00 | 1.00 | 2550 ms (user's route) | PASS
 00.04 short_of_the_catch_tutorial | 84001 | 81950 | 49900 | 6 | 19 | 7 | 4.73! | 1.00 | 57.00! | 17750 ms (stand-in) | PASS
 00.04b to_catch_grass | 11689 | 38550 | 6300 | 2 | 34 | 1 | 17.98! | 17.50! | 2.00! | 650 ms (stand-in) | PASS
 00.04b into_sandgem | 9520 | 19400 | 7050 | 3 | 12 | 0 | 2.93! | 4.33! | 1.00 | 3250 ms (stand-in) | PASS
@@ -36,12 +36,12 @@ walk run with no stops) | verdict (why). A ratio above 1.5 is flagged "!".
 00.05b below_the_presidents_trigger | 4900 | 4900 | 4900 | 0 | 0 | 0 | 5.76! | 1.00 | 1.00 | 850 ms (stand-in) | PASS
 00.05b past_the_president | 1700 | 1700 | 1700 | 0 | 0 | 0 | 3.78! | 1.00 | 1.00 | 450 ms (stand-in) | PASS
 00.05b below_the_mart_clown | 5450 | 5450 | 5450 | 1 | 0 | 0 | 3.30! | 1.00 | 1.00 | 1650 ms (stand-in) | PASS
-00.05b below_the_tv_clown | 27350 | 27350 | 27350 | 1 | 0 | 0 | 6.29! | 1.00 | 1.00 | 4350 ms (stand-in) | PASS
+00.05b below_the_tv_clown | 24300 | 24300 | 24300 | 1 | 0 | 0 | 5.59! | 1.00 | 1.00 | 4350 ms (stand-in) | PASS
 00.05b below_the_company_clown | 21900 | 21900 | 21900 | 0 | 0 | 0 | 6.74! | 1.00 | 3.00! | 3250 ms (stand-in) | PASS
 00.05b beside_the_company_sign | 1450 | 1450 | 1450 | 1 | 0 | 0 | 4.14! | 1.00 | 1.00 | 350 ms (stand-in) | PASS
 00.05c below_the_company_clown | 900 | 900 | 900 | 0 | 0 | 0 | 2.57! | 1.00 | 1.00 | 350 ms (stand-in) | PASS
-00.05c below_the_tv_clown | 21900 | 21900 | 21900 | 0 | 0 | 0 | 6.74! | 1.00 | 5.00! | 3250 ms (stand-in) | PASS
-00.05c below_the_mart_clown | 20350 | 20350 | 20350 | 1 | 0 | 0 | 4.68! | 1.00 | 1.00 | 4350 ms (stand-in) | PASS
+00.05c below_the_tv_clown | 20550 | 20550 | 20550 | 1 | 0 | 0 | 6.32! | 1.00 | 5.00! | 3250 ms (stand-in) | PASS
+00.05c below_the_mart_clown | 17150 | 17150 | 17150 | 2 | 0 | 0 | 3.94! | 1.00 | 1.00 | 4350 ms (stand-in) | PASS
 00.05c beside_the_president | 12200 | 12200 | 12200 | 0 | 0 | 0 | 6.26! | 1.00 | 1.00 | 1950 ms (stand-in) | PASS
 00.05c to_the_route_203_street | 21000 | 21000 | 21000 | 0 | 0 | 0 | 6.00! | 1.00 | 1.00 | 3500 ms (stand-in) | PASS
 01.01 west_of_barrys_trigger | 7300 | 7300 | 7300 | 0 | 0 | 0 | 6.35! | 1.00 | 1.00 | 1150 ms (stand-in) | PASS
@@ -53,9 +53,9 @@ walk run with no stops) | verdict (why). A ratio above 1.5 is flagged "!".
 01.02 west_of_the_welcome | 8550 | 8550 | 8550 | 2 | 0 | 0 | 9.00! | 1.00 | 4.00! | 950 ms (stand-in) | PASS
 01.02b below_the_centers_door | 6663 | 8800 | 5950 | 2 | 1 | 0 | 2.38! | 2.00! | 2.00! | 2800 ms (stand-in) | PASS
 01.03 above_the_mine | 16350 | 16350 | 16350 | 3 | 0 | 0 | 2.75! | 1.00 | 5.00! | 5950 ms (stand-in) | PASS
-01.05 east_of_barrys_trigger | 26050 | 26050 | 26050 | 3 | 0 | 0 | 7.44! | 1.00 | 14.00! | 3500 ms (stand-in) | PASS
+01.05 east_of_barrys_trigger | 19550 | 19550 | 19550 | 2 | 0 | 0 | 5.59! | 1.00 | 13.00! | 3500 ms (stand-in) | PASS
 01.05 through_the_gate | 12050 | 12050 | 12050 | 5 | 0 | 0 | 4.92! | 1.00 | 27.00! | 2450 ms (stand-in) | PASS
-01.06 up_jubilifes_road | 87286 | 119950 | 58350 | 3 | 10 | 4 | 7.66! | 2.20! | 20.00! | 11400 ms (stand-in) | PASS
+01.06 up_jubilifes_road | 82607 | 94600 | 58350 | 3 | 10 | 4 | 7.25! | 2.20! | 20.00! | 11400 ms (stand-in) | PASS
 01.06 below_rowans_trigger | 1950 | 1950 | 1950 | 1 | 0 | 0 | 2.29! | 1.00 | 1.00 | 850 ms (stand-in) | PASS
 01.08 west_to_the_wall | 1650 | 1650 | 1650 | 1 | 0 | 0 | 3.00! | 1.00 | 1.00 | 550 ms (stand-in) | PASS
 01.08 below_the_ravaged_path | 24815 | 26050 | 13700 | 2 | 9 | 0 | 4.24! | 1.00 | 6.00! | 5850 ms (stand-in) | PASS

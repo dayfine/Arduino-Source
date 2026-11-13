@@ -138,10 +138,10 @@ anchor); 0 from one start tile.
   from: PlayerHouse1F (11, 8) facing south (tile)
   target: PlayerHouse1F (6, 9) facing west (tile)
   start candidates: PlayerHouse1F (11, 8)
-  1. west 1 (open) -> PlayerHouse1F (10, 8)
-  2. south 1 (open) -> PlayerHouse1F (10, 9)
-  3. west 4 (to wall) -> PlayerHouse1F (6, 9)
-  totals: 3 legs, 2 turns, 2 open, 0 localization
+  1. west 3 (to wall) -> PlayerHouse1F (8, 8)
+  2. south 1 (open) -> PlayerHouse1F (8, 9)
+  3. west 2 (to wall) -> PlayerHouse1F (6, 9)
+  totals: 3 legs, 2 turns, 1 open, 0 localization
 
 == 00.04 short_of_the_catch_tutorial (costs: route)
   from: TwinleafTown (6, 22) (6, 23) facing west (set)
@@ -228,9 +228,9 @@ anchor); 0 from one start tile.
   target: JubilifeCity (36, 17) facing north (tile)
   start candidates: Jubilife City (56, 31)
   1. west 8 (open) -> Jubilife City (48, 31)
-  2. north 22 (to wall) -> Jubilife City (48, 9)
-  3. south 8 (open) -> Jubilife City (48, 17)
-  4. west 12 (open) -> Jubilife City (36, 17)
+  2. north 7 (open) -> Jubilife City (48, 24)
+  3. west 12 (open) -> Jubilife City (36, 24)
+  4. north 7 (to wall) -> Jubilife City (36, 17)
   totals: 4 legs, 3 turns, 3 open, 0 localization
 
 == 00.05b below_the_company_clown (costs: town)
@@ -262,17 +262,18 @@ anchor); 0 from one start tile.
   start candidates: Jubilife City (15, 19)
   1. south 2 (open) -> Jubilife City (15, 21)
   2. east 21 (open) -> Jubilife City (36, 21)
-  3. north 4 (open) -> Jubilife City (36, 17)
-  totals: 3 legs, 2 turns, 3 open, 0 localization
+  3. north 4 (to wall) -> Jubilife City (36, 17)
+  totals: 3 legs, 2 turns, 2 open, 0 localization
 
 == 00.05c below_the_mart_clown (costs: town)
   from: JubilifeCity (36, 17) facing north (tile)
   target: JubilifeCity (56, 31) facing south (tile)
   start candidates: Jubilife City (36, 17)
-  1. east 8 (open) -> Jubilife City (44, 17)
-  2. south 14 (open) -> Jubilife City (44, 31)
-  3. east 12 (to wall) -> Jubilife City (56, 31)
-  totals: 3 legs, 2 turns, 2 open, 0 localization
+  1. south 7 (to wall) -> Jubilife City (36, 24)
+  2. east 8 (open) -> Jubilife City (44, 24)
+  3. south 7 (open) -> Jubilife City (44, 31)
+  4. east 12 (to wall) -> Jubilife City (56, 31)
+  totals: 4 legs, 3 turns, 2 open, 0 localization
 
 == 00.05c beside_the_president (costs: town)
   from: JubilifeCity (56, 31) facing north (tile)
@@ -373,12 +374,11 @@ anchor); 0 from one start tile.
   target: OreburghCity (7, 13) facing west (tile)
   start candidates: Oreburgh City (26, 21), Oreburgh City (26, 22)
   1. south 5 (to wall) -> Oreburgh City (26, 26)
-  2. west 2 (to wall) -> Oreburgh City (24, 26)
-  3. north 5 (to wall) -> Oreburgh City (24, 21)
-  4. west 9 (open) -> Oreburgh City (15, 21)
-  5. north 8 (open) -> Oreburgh City (15, 13)
-  6. west 8 (open) -> Oreburgh City (7, 13)
-  totals: 6 legs, 5 turns, 3 open, 1 localization
+  2. north 1 (open) -> Oreburgh City (26, 25)
+  3. west 14 (to wall) -> Oreburgh City (12, 25)
+  4. north 12 (open) -> Oreburgh City (12, 13)
+  5. west 5 (open) -> Oreburgh City (7, 13)
+  totals: 5 legs, 4 turns, 3 open, 1 localization
 
 == 01.05 through_the_gate (costs: route)
   from: OreburghGate (27, 22) (26, 22) facing west (set)

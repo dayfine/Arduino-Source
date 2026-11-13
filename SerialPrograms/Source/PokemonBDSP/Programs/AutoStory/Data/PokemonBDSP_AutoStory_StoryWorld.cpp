@@ -188,11 +188,8 @@ std::optional<TileKind> StoryWorld::tile(const TilePos& pos) const{
     return found->tile;
 }
 
-StoryWorld::Occupant StoryWorld::occupied(const TilePos& pos, OccupancyUse use) const{
+StoryWorld::Occupant StoryWorld::occupied(const TilePos& pos) const{
     const Cell* found = cell(pos);
-    if (found && use == OccupancyUse::WALL_RECOVERY && found->recovery_hazard){
-        return PERSON;
-    }
     return found == nullptr ? NOBODY : found->occupant;
 }
 
@@ -336,12 +333,12 @@ bool warp_within(const StoryWorld& world, const std::vector<TilePos>& from, Dire
     return false;
 }
 
-//  Someone standing in the way stops us too, but is no wall to stop against:
-//  they may turn and talk, or walk off (r29 ran east into Mom, who talked).
+//  Someone who never moves (a person or item with no wander box) is a wall
+//  like any other (the user's rule, 2026-11-12). A wanderer is none: it is
+//  not in the cells' occupants, and the walker waits for it.
 bool at_wall(const StoryWorld& world, const TilePos& pos, Direction direction){
     const std::optional<TileKind> next = world.tile(pos.next(direction));
-    return next && *next != TileKind::DOOR && world.occupied(pos.next(direction)) != StoryWorld::PERSON &&
-        !step(world, pos, direction).has_value();
+    return next && *next != TileKind::DOOR && !step(world, pos, direction).has_value();
 }
 
 std::string describe(const StoryWorld& world, const TilePos& pos){

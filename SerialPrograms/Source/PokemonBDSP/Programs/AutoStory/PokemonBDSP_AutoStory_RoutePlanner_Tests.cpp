@@ -233,6 +233,7 @@ struct RecoveryGeometryInput{
     std::vector<TilePos> from;
     std::optional<Pokemon::TileBox> wander = {};
     std::vector<TilePos> warps = {};
+    std::optional<TilePos> still = {};          //  someone who never moves
 };
 struct RecoveryGeometryExpectation{
     std::optional<TilePos> anchor;
@@ -260,6 +261,10 @@ Pokemon::MapData recovery_map(const RecoveryGeometryInput& input){
     if (input.wander){
         map.objects.push_back({.name = "wanderer", .x = 3, .y = 1, .facing = std::nullopt,
             .wander = input.wander, .trainer = std::nullopt, .hide_flag = std::nullopt});
+    }
+    if (input.still){
+        map.objects.push_back({.name = "still", .x = input.still->x, .y = input.still->y, .facing = std::nullopt,
+            .wander = std::nullopt, .trainer = std::nullopt, .hide_flag = std::nullopt});
     }
     for (const auto& warp : input.warps){
         map.warps.push_back({.x = warp.x, .y = warp.y, .to = std::nullopt});
@@ -372,6 +377,9 @@ const RecoveryGeometryCase GEOMETRY_CASES[] = {
         .expectation = {.anchor = std::nullopt, .free_tile = TilePos{.x = 3, .y = 1}}},
     {.input = {.name = "warp crossings are unsafe", .from = {{1, 1}, {5, 1}}, .warps = {{3, 1}}},
         .expectation = {.anchor = std::nullopt}},
+    {.input = {.name = "a still person is a wall to anchor on", .from = {{2, 1}, {3, 1}},
+            .warps = {{5, 1}}, .still = TilePos{.x = 1, .y = 1}},
+        .expectation = {.anchor = TilePos{.x = 2, .y = 1}, .direction = Direction::WEST}},
     {.input = {.name = "warps on blocked glyphs are unsafe", .from = {{1, 1}, {5, 1}}, .warps = {{0, 1}, {6, 1}}},
         .expectation = {.anchor = std::nullopt}},
 };
