@@ -100,6 +100,10 @@ int hp_cover_shortfall(const Supplies& supplies, int cover_hp, const std::string
     return (cover_hp - held + each - 1) / each;
 }
 
+int fill_shortfall(const Supplies& supplies, int target, const std::string& item){
+    return std::max(0, target - item_count(supplies, item));
+}
+
 
 namespace{
 

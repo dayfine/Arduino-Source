@@ -28,10 +28,22 @@
         "args": {
           "trainer": "TRAINER_RIVAL_POKEMON_TOWER_BULBASAUR",
           "foes": ["pidgeotto", "gyarados", "growlithe", "kadabra", "ivysaur"],
-          "use_items": [{"item": "x-special", "quantity": 2}]
+          "policy": "goal-based-setup",
+          "setup_spa": 2,
+          "setup_accuracy": 0,
+          "setup_outspeed": true,
+          "setup_guard_accuracy": true,
+          "setup_torrent_power": true,
+          "foe_threats": [
+            [38, 7, 4, 15, 9, 1, 0],
+            [45, 17, 12, 34, 18, 0, 0],
+            [34, 3, 1, 6, 3, 0, 0],
+            [49, 10, 3, 21, 12, 1, 0],
+            [34, 24, 10, 48, 26, 0, 0]
+          ]
         },
         "declared_after": {"map": "PokemonTower_2F", "tiles": [[16, 6]], "facing": "north"},
-        "why": "the rival (TRAINER_RIVAL_POKEMON_TOWER_BULBASAUR, sParty_RivalPokemonTowerBulbasaur): Pidgeotto Lv25, Gyarados Lv23, Growlithe Lv22, Kadabra Lv20, Ivysaur Lv25; then he walks off and the player stays facing north. Two X Specials (10.01's Department Store) on the first turns, against Pidgeotto, as PokeGuy did"
+        "why": "the rival (TRAINER_RIVAL_POKEMON_TOWER_BULBASAUR, sParty_RivalPokemonTowerBulbasaur): Pidgeotto Lv25, Gyarados Lv23, Growlithe Lv22, Kadabra Lv20, Ivysaur Lv25; then he walks off and the player stays facing north. Fought by pokeguy's policy C2 (goal-based-setup: Sp. Atk +2 with X Specials from 10.01's Department Store, X Speed until faster, Guard Spec against Pidgeotto's Sand Attack and Kadabra's Kinesis, Torrent power; the doc's rival-tower row, foe_threats from its stats)"
       }
     ]
   },

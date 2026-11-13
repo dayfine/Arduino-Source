@@ -213,9 +213,11 @@ StoryCheckpoint read_story_checkpoint_file(const JsonValue& value, std::string_v
         }
     }
     //  A Mart spends money, a TEACH a TM, and the Bicycle's registration is
-    //  saved with the game: once per save.
+    //  saved with the game: once per save. A step with a skip_if is already
+    //  conditional (the two together are refused).
     for (StoryStep& step : checkpoint.steps){
-        step.once_per_save = step.action == MART_ACTION || step.action == TEACH_ACTION || step.action == REGISTER_BIKE_VARIANT;
+        const bool spends = step.action == MART_ACTION || step.action == TEACH_ACTION || step.action == REGISTER_BIKE_VARIANT;
+        step.once_per_save = spends && step.skip_if.empty();
     }
     return checkpoint;
 }
@@ -232,7 +234,7 @@ constexpr std::string_view STORY_ORDER[] = {
     "05.03", "05.04", "05.05", "05.06", "05.07", "05.08", "05.09", "05.10", "06.01", "06.02",
     "06.03", "06.04", "07.01", "07.02", "08.01", "08.02", "08.03", "09.01", "09.02", "09.03",
     "09.04", "10.01", "10.02", "10.03", "10.04", "10.05", "10.06", "11.01", "11.02", "11.03",
-    "12.01", "12.02", "12.03", "14.03", "14.04", "15.01", "16.01", "17.01", "13.01", "13.02", "13.03", "13.04", "14.01", "14.02",
+    "12.01", "12.02", "12.02b", "12.03", "14.03", "14.04", "15.01", "16.01", "17.01", "13.01", "13.02", "13.03", "13.04", "14.01", "14.02", "14.02b",
     "17.02", "17.03", "17.04",
 };
 

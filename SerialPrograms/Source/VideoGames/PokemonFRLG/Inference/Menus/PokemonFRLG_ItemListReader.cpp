@@ -70,6 +70,20 @@ constexpr std::pair<std::string_view, std::string_view> ENGLISH_ITEM_NAMES[] = {
     //  Mt. Moon's, which top the pocket above the story's items.
     {"moon-stone", "Moon Stone"},
     {"nugget", "Nugget"},
+    //  The rest of the Marts' stock. The Fuchsia Mart's ULTRA BALL row read
+    //  as PARLYZ HEAL, the nearest name there was, and 12.01 bought
+    //  nothing (console B, 2026-11-12).
+    {"great-ball", "Great Ball"},
+    {"ultra-ball", "Ultra Ball"},
+    {"hyper-potion", "Hyper Potion"},
+    {"max-potion", "Max Potion"},
+    {"revive", "Revive"},
+    {"burn-heal", "Burn Heal"},
+    {"ice-heal", "Ice Heal"},
+    {"full-heal", "Full Heal"},
+    {"x-attack", "X Attack"},
+    {"x-defend", "X Defend"},
+    {"dire-hit", "Dire Hit"},
     {"cancel", "Cancel"},
 };
 
@@ -337,6 +351,9 @@ void add_tests_ItemListReader(UnitTestDatabase& database){
     database.add<Test_BagPocket>("PokemonFRLG/ItemListReader/ItemsPocketMoonStone_eng.png");
     //  The Viridian Mart's BUY list, the same day, the cursor on POTION.
     database.add<Test_MartList>("PokemonFRLG/ItemListReader/MartBuyList_eng.png");
+    //  The Fuchsia Mart's, the cursor on ULTRA BALL (console B, 2026-11-12): six
+    //  rows, none of them in the reader's dictionary yet.
+    database.add<Test_MartList>("PokemonFRLG/ItemListReader/FuchsiaMartBuyList_eng.png");
     database.add<Test_Route17ItemNames>();
     database.add<Test_StoryItemNames>();
 }
