@@ -65,6 +65,11 @@ ReplayFault fault_of(const std::string& name, const JsonObject& json){
         fault.tiles = (size_t)json.get_integer_default("tiles", 1);
         fault.fade = fade_of(name, json.get_string_default("fade", "unseen"));
         fault.far_pose_of = json.get_string_default("far_pose_of", "");
+    }else if (kind == "moved_less"){
+        fault.kind = ReplayFaultKind::MOVED_LESS;
+        fault.step = json.get_string_throw("step");
+        fault.index = (size_t)json.get_integer_throw("index");
+        fault.tiles = (size_t)json.get_integer_throw("tiles");
     }else if (kind == "person_stands"){
         fault.kind = ReplayFaultKind::PERSON_STANDS;
         fault.name = json.get_string_throw("name");
@@ -92,6 +97,8 @@ std::string replay_fault_kind_name(ReplayFaultKind kind){
         return "scene_ends_further";
     case ReplayFaultKind::PERSON_STANDS:
         return "person_stands";
+    case ReplayFaultKind::MOVED_LESS:
+        return "moved_less";
     }
     return "";
 }

@@ -46,8 +46,11 @@ enum class ReplayFaultKind{
     HOLD_THROUGH_WARP,  //  the step's hold toward `direction` ran on through a warp (`far_pose_of`)
     SCENE_ENDS_FURTHER, //  the player stood `tiles` toward `direction` past where the scene step leaves them
     PERSON_STANDS,      //  `name`, a person of the map (who wanders or stays put), stood on `tile`
+    MOVED_LESS,         //  the `index`th hold of `step`'s walk (from 1) moved `tiles` fewer than it was held for, with
+                        //  nothing on screen: the walker took the move as seen
 };
-//  "fade_missed", "banner_missed", "moved_further", "hold_through_warp", "scene_ends_further", "person_stands".
+//  "fade_missed", "banner_missed", "moved_further", "hold_through_warp", "scene_ends_further", "person_stands",
+//  "moved_less".
 std::string replay_fault_kind_name(ReplayFaultKind kind);
 
 //  How the walk saw the fade of a warp it went through.
@@ -62,8 +65,9 @@ enum class ReplayFade{
 struct ReplayFault{
     ReplayFaultKind kind = ReplayFaultKind::FADE_MISSED;
     //  FADE_MISSED, BANNER_MISSED: counted within the checkpoint, from 0.
+    //  MOVED_LESS: counted within the step's walk, from 1.
     size_t index = 0;
-    //  MOVED_FURTHER, HOLD_THROUGH_WARP, SCENE_ENDS_FURTHER.
+    //  MOVED_FURTHER, HOLD_THROUGH_WARP, SCENE_ENDS_FURTHER, MOVED_LESS.
     std::string step;
     Direction direction = Direction::EAST;
     size_t tiles = 1;

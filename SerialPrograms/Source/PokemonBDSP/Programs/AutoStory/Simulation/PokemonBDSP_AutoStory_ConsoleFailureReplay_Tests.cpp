@@ -107,6 +107,12 @@ void inject(const ConsoleFailure& failure, const std::vector<StoryCheckpoint>& r
         case ReplayFaultKind::PERSON_STANDS:
             knobs.standing[fault.name] = fault.tile;
             break;
+        case ReplayFaultKind::MOVED_LESS:
+            //  The BDSP story sim takes each hold as walked; only the FRLG overworld sim shortens holds.
+            throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format(
+                "{}: the fault \"{}\" is not one the BDSP story simulation injects",
+                failure.name, Pokemon::replay_fault_kind_name(fault.kind)
+            ));
         }
     }
 }
