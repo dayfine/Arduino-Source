@@ -602,7 +602,7 @@ std::optional<size_t> talk_and_count_pages(ConsoleHandle& console, ProController
 
 void step_once(ConsoleHandle& console, ProControllerContext& context, Direction direction, std::optional<Direction> facing, PlayerGender player){
     if (facing != direction){
-        OverworldWalkSteps::turn_to(console, context, direction, player);
+        OverworldWalkSteps::turn_to(console, context, direction, player, OverworldWalkSteps::TurnSprite::WALKING, std::nullopt);
     }
     //  A step, once started, finishes on its own. The release waits out the
     //  lockout before a next step tap (MovementMechanics::STEP_TAP_LOCKOUT).
@@ -657,7 +657,7 @@ std::optional<int> step_into_line(
 }
 
 void face_wall(ConsoleHandle& console, ProControllerContext& context, Direction direction, PlayerGender player){
-    OverworldWalkSteps::turn_to(console, context, direction, player);
+    OverworldWalkSteps::turn_to(console, context, direction, player, OverworldWalkSteps::TurnSprite::WALKING, std::nullopt);
 }
 
 SaveAction SaveDialog::next(SaveScreen screen){
