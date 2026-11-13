@@ -41,6 +41,7 @@
 
 #include "Programs/RngManipulation/PokemonBDSP_BedroomSeedFinder.h"
 #include "Programs/RngManipulation/PokemonBDSP_IntroSeedFinder.h"
+#include "Programs/RngManipulation/PokemonBDSP_StarterRng.h"
 
 #include "Programs/TestPrograms/PokemonBDSP_ShinyEncounterTester.h"
 #include "Programs/TestPrograms/PokemonBDSP_SoundListener.h"
@@ -67,6 +68,7 @@ void add_beta_and_developer_panels(std::vector<PanelEntry>& ret){
         ret.emplace_back("---- Untested/Beta/WIP ----");
         ret.emplace_back(make_SingleSwitchProgram<IntroSeedFinder>());
         ret.emplace_back(make_SingleSwitchProgram<BedroomSeedFinder>());
+        ret.emplace_back(make_SingleSwitchProgram<StarterRng>());
     }
     if (STATIC_GLOBALS.DEVELOPER_MODE){
         ret.emplace_back("---- Developer Tools ----");

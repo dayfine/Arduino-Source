@@ -9,11 +9,13 @@
 #include <format>
 #include <optional>
 #include <set>
+#include <string_view>
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "Pokemon/AutoStory/Pokemon_StoryPreflight.h"
+#include "Pokemon/AutoStory/Pokemon_StoryRngHandoff.h"
 #include "Pokemon/AutoStory/Pokemon_StoryRun.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStorySelect.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
@@ -22,6 +24,7 @@
 #include "Pokemon/Options/Pokemon_GameLanguages.h"
 #include "Pokemon/Options/Pokemon_StoryRunOptions.h"
 #include "PokemonBDSP/Programs/PokemonBDSP_GameEntry.h"
+#include "PokemonBDSP/Programs/RngManipulation/PokemonBDSP_StarterRngAttempts.h"
 #include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Actions.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_StoryLanguage.h"
@@ -56,6 +59,14 @@ std::unique_ptr<StatsTracker> BDSPAutoStory_Descriptor::make_stats() const{
 
 namespace{
 
+//  What the user does around Starter RNG when the run stops for it: the
+//  option's help and the run's closing message.
+constexpr std::string_view STARTER_RNG_HANDOFF_TEXT =
+    "At the end of 00.01 save at the Verity Lakefront (17, 14), facing Lake Verity's entrance, and stop. "
+    "Run the Starter RNG program from that save (Start point: Verity Lakefront). "
+    "When it is done, close the Summary page and the menu, let Rowan's scene finish so the player stands "
+    "on the Verity Lakefront overworld, save, and start AutoStory at 00.03.";
+
 //  The start and end dropdowns' entries: segments 00 and 01 joined, 00.00
 //  to 01.11. The options hold a reference to it.
 const StringSelectDatabase& checkpoint_database(){
@@ -69,9 +80,11 @@ const StringSelectDatabase& checkpoint_database(){
     return database;
 }
 
-std::set<std::string> rows_that_stop(const std::vector<StoryCheckpoint>& rows){
-    std::set<std::string> ids;
-    for (const StoryCheckpoint& row : rows){
+//  The rows whose failure ends the program: the rows that save nothing and
+//  retry nothing, and the plan's own (Starter RNG's, which resets by itself).
+std::set<std::string> rows_that_stop(const StoryRunPlan& plan){
+    std::set<std::string> ids = plan.fatal_rows;
+    for (const StoryCheckpoint& row : plan.rows){
         if (row.on_failure == StoryFailure::STOP){
             ids.insert(row.id);
         }
@@ -123,6 +136,10 @@ std::string verify_story_checkpoint(
 } // namespace
 
 
+BDSPAutoStory::~BDSPAutoStory(){
+    STARTER_RNG.run().remove_listener(*this);
+}
+
 BDSPAutoStory::BDSPAutoStory()
     : RUN(checkpoint_database(), Pokemon::Gen8ToGen9Languages_Database())
     , NEW_GAME_INTRO(
@@ -142,7 +159,16 @@ BDSPAutoStory::BDSPAutoStory()
         LockMode::LOCK_WHILE_RUNNING,
         StarterChoice::CHIMCHAR
     )
+    , STOP_FOR_STARTER_RNG(
+        std::format(
+            "<b>Stop for Starter RNG:</b><br>Off by default. Ignored while Run Starter RNG in AutoStory is on. {}",
+            STARTER_RNG_HANDOFF_TEXT
+        ),
+        LockMode::LOCK_WHILE_RUNNING,
+        false
+    )
     , NOTIFICATIONS({
+        &STARTER_RNG.notification_shiny(),
         &NOTIFICATION_PROGRAM_FINISH,
         &NOTIFICATION_ERROR_RECOVERABLE,
         &NOTIFICATION_ERROR_FATAL,
@@ -152,7 +178,23 @@ BDSPAutoStory::BDSPAutoStory()
     PA_ADD_OPTION(NEW_GAME_INTRO);
     PA_ADD_OPTION(PLAYER_NAME);
     PA_ADD_OPTION(STARTER);
+    PA_ADD_OPTION(STOP_FOR_STARTER_RNG);
+    add_option(STARTER_RNG.run(), "RUN_STARTER_RNG");
+    add_option(STARTER_RNG.player_model(), "STARTER_RNG_PLAYER_MODEL");
+    add_option(STARTER_RNG.max_resets(), "MAX_RESETS");
+    add_option(STARTER_RNG.filters(), "STARTER_RNG_FILTERS");
     PA_ADD_OPTION(NOTIFICATIONS);
+
+    BDSPAutoStory::on_config_value_changed(this);
+    STARTER_RNG.run().add_listener(*this);
+}
+
+//  Run Starter RNG takes precedence over Stop for Starter RNG: the stop
+//  option is greyed out while it is on, and the plan ignores it.
+void BDSPAutoStory::on_config_value_changed(void*){
+    const bool run_in_story = STARTER_RNG.run();
+    STARTER_RNG.set_details_visible(run_in_story);
+    STOP_FOR_STARTER_RNG.set_visibility(run_in_story ? ConfigOptionState::DISABLED : ConfigOptionState::ENABLED);
 }
 
 namespace{
@@ -246,30 +288,56 @@ void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     //  The reads that use text (Location.h) take the game's language from here.
     set_story_language(RUN.language());
 
-    StoryEnv story{env, context, STARTER, PLAYER_NAME};
+    StoryEnv story{env, context, STARTER, PLAYER_NAME, {}};
+    if (STARTER_RNG.run()){
+        story.run_starter_rng = make_starter_rng_hook(
+            env, context, STARTER_RNG, STARTER_RNG.config(RUN.language(), STARTER), NOTIFICATION_ERROR_RECOVERABLE
+        );
+    }
     StoryExecutor executor(story);
-    executor.set_stop_rows(rows_that_stop(checkpoints));
+    const StoryRunPlan plan = plan_story_run(
+        checkpoints, first, last,
+        StoryHandoffs{.starter_rng = Pokemon::rng_handoff_mode({.stop = STOP_FOR_STARTER_RNG, .run = STARTER_RNG.run()})}
+    );
+    executor.set_stop_rows(rows_that_stop(plan));
+    run_plan(env, context, plan, first == 0 && NEW_GAME_INTRO, executor);
+}
+
+void BDSPAutoStory::run_plan(
+    SingleSwitchProgramEnvironment& env, ProControllerContext& context,
+    const StoryRunPlan& plan, bool new_game, StoryExecutor& executor
+){
     //  A start with a save always loads it first, so the run never walks
     //  from wherever the game was left (console B, 2026-11-11: a run from
     //  00.04b walked from 00.04d's position).
-    const bool new_game = first == 0 && NEW_GAME_INTRO;
     const Pokemon::StoryStart start = new_game ? Pokemon::StoryStart::NEW_GAME : Pokemon::StoryStart::FROM_SAVE;
     if (new_game && RUN.VERIFY.policy()){
         throw UserSetupError(env.console, "Verify mode reloads the start's save between runs: turn off \"Start a new game first\".");
     }
-    std::set<std::string> saved = saved_before_the_run(checkpoints, first, start);
-    Pokemon::Segment segment = make_story_segment(checkpoints, executor, saved);
+    if (plan.stop != StoryHandoff::NONE && RUN.VERIFY.policy()){
+        throw UserSetupError(env.console, "Verify mode repeats the start's checkpoint, and its extra save at the end of 00.01 would overwrite the Verity Lakefront save: turn off \"Stop for Starter RNG\".");
+    }
+    std::set<std::string> saved = saved_before_the_run(plan.rows, 0, start);
+    Pokemon::Segment segment = make_story_segment(plan.rows, executor, saved);
     Pokemon::StoryGameHooks game = story_game(env, context);
     Pokemon::RunState state;
-    start_story(env, context, checkpoints[first], start, game, state);
+    start_story(env, context, plan.rows.front(), start, game, state);
     if (const std::optional<Pokemon::VerifyPolicy> verify = RUN.VERIFY.policy()){
-        const std::string summary = verify_story_checkpoint(checkpoints[first].id, *verify, segment, game, state);
+        const std::string summary = verify_story_checkpoint(plan.rows.front().id, *verify, segment, game, state);
         send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH, summary);
         return;
     }
     const std::string done = run_story(
-        Pokemon::SegmentRange{checkpoints[first].id, checkpoints[last].id}, RUN.policy(), segment, game, state, env
+        Pokemon::SegmentRange{plan.rows.front().id, plan.rows.back().id}, RUN.policy(), segment, game, state, env
     );
+    if (plan.stop == StoryHandoff::STARTER_RNG){
+        const std::string handoff = Pokemon::report_rng_handoff_stop(
+            env.console, std::format("Stopped for Starter RNG. {}", STARTER_RNG_HANDOFF_TEXT), {},
+            [&](const std::string& line){ env.console.overlay().add_log(line); }
+        );
+        send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH, handoff);
+        return;
+    }
     send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH, done);
 }
 
