@@ -283,13 +283,6 @@ anchor); 0 from one start tile.
   1. south 3 (to wall) -> Route 203 (5, 20)
   totals: 1 legs, 0 turns, 0 open, 1 localization
 
-== 01.02 south_to_the_cliff (costs: route)
-  from: Route203 (5, 17) (5, 18) (5, 19) (5, 20) facing east (set)
-  target: Route203 (5, 20) facing south (tile)
-  start candidates: Route 203 (5, 17), Route 203 (5, 18), Route 203 (5, 19), Route 203 (5, 20)
-  1. south 3 (to wall) -> Route 203 (5, 20)
-  totals: 1 legs, 0 turns, 0 open, 1 localization
-
 == 01.02 by_the_gate (costs: route)
   from: Route203 (5, 20) facing south (tile)
   target: Route203 (55, 9) facing east (tile)
