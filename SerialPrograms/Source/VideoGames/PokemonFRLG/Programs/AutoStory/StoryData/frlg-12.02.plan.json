@@ -14,6 +14,184 @@
         "why": "the precondition for Koga: the lead at least Lv39, pokeguy's Blastoise here (PokemonSimulation docs/battles/pokeguy-conditions.md, koga: C2 setup to Sp. Atk +1 and outspeed with X items, from 34/122 HP: 1191/1700 wins, 70.1%, 64.5% to 75.2%); at his level or above, those sims stand for this fight and no new one is needed; below it, the run stops here, before the fight"
       },
       {
+        "id": "count_bag_for_koga",
+        "kind": "game_action",
+        "action": "count_items",
+        "args": {
+          "items": ["super-potion", "antidote", "full-heal"]
+        },
+        "why": "the Items pocket as the save leaves it, read into the bag's counts: the Mart steps below buy against them. 12.01's heals after Kayden and Kirk spent Super Potions, and a blackout reloads this save with the bag as it was"
+      },
+      {
+        "id": "bag_super_potions",
+        "kind": "game_action",
+        "action": "bag_check",
+        "args": {
+          "items": [{"item": "super-potion", "quantity": 5}]
+        },
+        "why": "the flag is set when the bag holds PokeGuy's 5 Super Potions (PokemonSimulation docs/battles/pokeguy-conditions.md, koga: potion x5, superpotion x5, antidote x1, fullrestore x1): the 2026-11-12 loss had 1, and four Potions of 20 HP could not outheal Koffing and the poison"
+      },
+      {
+        "id": "bag_status_cure",
+        "kind": "game_action",
+        "action": "bag_check",
+        "args": {
+          "items": [{"item": "antidote", "quantity": 1}, {"item": "full-heal", "quantity": 1}],
+          "any": true
+        },
+        "why": "the flag is set when the bag holds a cure for poison, the Antidote of PokeGuy's bag or a Full Heal (the policy's cure order: Antidote, Full Heal, Full Restore). The Fuchsia Mart sells no Antidote, so a Full Heal stands in"
+      },
+      {
+        "id": "leave_gym_by_top_edge",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [{"direction": "north", "tiles": 1}, {"direction": "west", "tiles": 4}, {"direction": "north", "tiles": 2}, {"direction": "east", "tiles": 7}, {"direction": "north", "tiles": 8}, {"direction": "west", "tiles": 9}, {"direction": "east", "tiles": 14}, {"direction": "south", "tiles": 19}]
+        },
+        "skip_if": ["bag_super_potions", "bag_status_cure"],
+        "why": "with the bag short of either flag: 12.01's way to Koga backwards, from west of him up and round the gym's top edge (pokeguy's invisible-wall corridor) and down column 14 to (14, 21): the same legs to walls past Tamer Edgar's, Phil's and Shawn's lines, Koga unbeaten so every trainer but Kayden and Kirk (beaten by 12.01) still sees"
+      },
+      {
+        "id": "mart_tree_from_gym",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "FuchsiaCity", "tiles": [[24, 23]], "facing": "north"}
+        },
+        "skip_if": ["bag_super_potions", "bag_status_cure"],
+        "why": "out of the gym and round the city's west edge to below the Cut tree (24, 22), 12.01's way to the Mart backwards"
+      },
+      {
+        "id": "cut_mart_tree_again",
+        "kind": "game_action",
+        "action": "cut_tree",
+        "args": {
+          "direction": "north"
+        },
+        "skip_if": ["bag_super_potions", "bag_status_cure"],
+        "declared_after": {"map": "FuchsiaCity", "tiles": [[24, 22]], "facing": "north"},
+        "why": "the tree (FuchsiaCity map.json object 13), grown back when the city loaded; a step onto its tile"
+      },
+      {
+        "id": "fuchsia_mart_wall_again",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "FuchsiaCity_Mart", "tiles": [[4, 2]], "facing": "north"}
+        },
+        "skip_if": ["bag_super_potions", "bag_status_cure"],
+        "why": "as 12.01's fuchsia_mart_wall: up column 24, west to the Mart's door (11, 15) and in, up column 4 to the wall (4, 1)"
+      },
+      {
+        "id": "fuchsia_mart_clerk_again",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "FuchsiaCity_Mart", "tiles": [[4, 3]], "facing": "west"}
+        },
+        "skip_if": ["bag_super_potions", "bag_status_cure"],
+        "why": "a tile back down, facing the clerk (2, 3) over the counter (3, 3)"
+      },
+      {
+        "id": "buy_super_potions_again",
+        "kind": "game_action",
+        "action": "mart",
+        "args": {
+          "map": "FuchsiaCity_Mart",
+          "budget": 3500,
+          "floor": 3762,
+          "items": [{"item": "super-potion", "quantity": 5}],
+          "fill_to": 5
+        },
+        "skip_if": ["bag_super_potions"],
+        "why": "Super Potions up to 5 in the bag, as 12.01's buy_super_potions (the same budget and floor): the floor is 12.01's, 3,762, which is not a proven lower bound here (12.01 spends up to 3,500 of it, Kayden's and Kirk's prizes are not counted) until the money box is read: if the money is short the Mart refuses and the step fails, stopping the run before Koga"
+      },
+      {
+        "id": "buy_full_heal",
+        "kind": "game_action",
+        "action": "mart",
+        "args": {
+          "map": "FuchsiaCity_Mart",
+          "budget": 600,
+          "floor": 3762,
+          "items": [{"item": "full-heal", "quantity": 1}],
+          "fill_to": 1
+        },
+        "skip_if": ["bag_status_cure"],
+        "why": "one Full Heal when the bag has none: it cures poison, and the Fuchsia Mart sells no Antidote (PokeGuy's bag holds one). 600 on top of the Super Potions' 3,500, under the same floor"
+      },
+      {
+        "id": "above_mart_tree_again",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "FuchsiaCity", "tiles": [[24, 21]], "facing": "south"}
+        },
+        "skip_if": ["bag_super_potions", "bag_status_cure"],
+        "why": "out of the Mart's door (11, 15), east along row 17 and down column 24 to above the Cut tree (24, 22), grown back when the city loaded"
+      },
+      {
+        "id": "cut_mart_tree_back_again",
+        "kind": "game_action",
+        "action": "cut_tree",
+        "args": {
+          "direction": "south"
+        },
+        "skip_if": ["bag_super_potions", "bag_status_cure"],
+        "declared_after": {"map": "FuchsiaCity", "tiles": [[24, 22]], "facing": "south"},
+        "why": "the tree again; a step onto its tile"
+      },
+      {
+        "id": "gym_east_wall_again",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "FuchsiaCity_Gym", "tiles": [[14, 21]], "facing": "north"}
+        },
+        "skip_if": ["bag_super_potions", "bag_status_cure"],
+        "why": "as 12.01's gym_east_wall: from the tree down to row 25, west and down the city's west edge to the gym's door, in and east along row 21 to the east wall"
+      },
+      {
+        "id": "east_column_to_top",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [{"direction": "north", "tiles": 19}]
+        },
+        "skip_if": ["bag_super_potions", "bag_status_cure"],
+        "why": "up column 14 from (14, 21) to the wall at (14, 2), past Kayden's and Kirk's lines (both beaten, 12.01) and Edgar's east line (14, 4) on a leg the wall stops, as 12.01's legs"
+      },
+      {
+        "id": "top_row_again",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [{"direction": "west", "tiles": 14}]
+        },
+        "skip_if": ["bag_super_potions", "bag_status_cure"],
+        "why": "west along row 2 to the wall at (0, 2), the gym's top edge, as 12.01's top_row_to_wall"
+      },
+      {
+        "id": "down_to_koga_again",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [{"direction": "east", "tiles": 9}, {"direction": "south", "tiles": 8}, {"direction": "west", "tiles": 7}, {"direction": "south", "tiles": 2}, {"direction": "east", "tiles": 4}, {"direction": "south", "tiles": 1}]
+        },
+        "skip_if": ["bag_super_potions", "bag_status_cure"],
+        "why": "12.01's down_to_koga: east to (9, 2), down column 9, west along row 10 below Rocker Shawn, into the middle box along row 12 to west of Koga"
+      },
+      {
+        "id": "west_of_koga_again",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "FuchsiaCity_Gym", "tiles": [[6, 13]], "facing": "east"}
+        },
+        "skip_if": ["bag_super_potions", "bag_status_cure"],
+        "why": "turn to Koga (7, 13), as 12.01's west_of_koga"
+      },
+      {
         "id": "challenge_koga",
         "kind": "talk",
         "why": "Koga (7, 13)"
@@ -105,6 +283,7 @@
     "notes": {
       "checkpoint": [
         "Koga (7, 13), talked to from the west, from the save beside him (12.01): Koffing, Muk, Koffing, Weezing; his NPC medicine is two Hyper Potions and a Full Heal. The lead picks Surf (2x nothing here, the strongest move); pokeguy's Weezing took him to 4/126 HP with Sludge while Koga healed it.",
+        "Bag for a retry: a blackout or a lost fight reloads this save with the bag as 12.01 left it, and 12.01's heals after Kayden and Kirk spend Super Potions. count_bag_for_koga reads the Items pocket; unless it holds PokeGuy's 5 Super Potions and a cure for poison (an Antidote, or a Full Heal: the Fuchsia Mart sells no Antidote), the row walks out of the gym by 12.01's legs backwards, to the Mart and back (the Mart's trip and the gym's legs as in 12.01; Kayden and Kirk are beaten, Koga is not, so every other trainer's line is still live and the legs are the same ones to walls), buys the shortfall, and ends west of Koga again. Console B lost to Koga on 2026-11-12 with 6 Potions, 1 Super Potion and no cure.",
         "Strength is not taught here: pokeguy teaches it over Water Pulse at Victory Road (19.02, D3).",
         "Ends at Fuchsia's nurse, where 13.01 starts (Fly to Pallet Town, Surf down Route 21)."
       ]
