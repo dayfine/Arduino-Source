@@ -84,8 +84,10 @@ jobs:
       - name: Checkout Packages
         uses: actions/checkout@v7
         with:
-          repository: 'PokemonAutomation/Packages'
-          ref: 'master'
+          # Upstream master plus the BDSP AutoStory option-screen templates (22 PNGs the
+          # AutoStoryResources test requires); drop this once they are merged upstream.
+          repository: 'dayfine/Packages'
+          ref: '7d108a255bfbd4923af1fb0cf49245f2c2483594'
           path: 'Arduino-Source/Packages'
 
       - name: Prepare pinned BDSP map resources
