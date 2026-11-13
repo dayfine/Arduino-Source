@@ -29,6 +29,8 @@ namespace{
 
 //  The questions, "<MON> used CUT!" and the tree falling.
 constexpr Milliseconds CUT_TIME(4000);
+//  The boulder's slide, one tile. Not measured on the console.
+constexpr Milliseconds PUSH_TIME(500);
 
 } // namespace
 
@@ -39,6 +41,8 @@ bool OverworldSim::use_field(SimField field, size_t floor){
         return cut_tree();
     case SimField::POSTER_SWITCH:
         return push_poster_switch();
+    case SimField::PUSH_BOULDER:
+        return push_boulder();
     case SimField::LIFT_FLOOR:
         return choose_lift_floor(floor);
     case SimField::BIKE_SELECT:
@@ -113,6 +117,30 @@ bool OverworldSim::cut_tree(){
     }
     violation("no tree to cut " + std::string(direction_name(m_state.facing)) + " of " + to_string(m_state.position) + ".");
     return false;
+}
+
+bool OverworldSim::push_boulder(){
+    std::vector<MapObject>& objects = m_maps[m_map].objects;
+    const TilePos ahead = m_player.position.next(m_state.facing);
+    const auto boulder = std::find_if(objects.begin(), objects.end(), [&](const MapObject& object){
+        return object.name == "pushable_boulder" && object.x == ahead.x && object.y == ahead.y;
+    });
+    if (boulder == objects.end() || m_state.screen != SimScreen::OVERWORLD || m_frozen){
+        violation("no boulder " + std::string(direction_name(m_state.facing)) + " of " + to_string(m_state.position) + ".");
+        return false;
+    }
+    //  The boulder moves where a player on its tile could step.
+    const PlayerState on_boulder{ahead, elevation_at(map(), ahead), false};
+    if (classify_step(map(), on_boulder, m_state.facing) != StepKind::WALK){
+        violation("the boulder on " + to_string(MapPosition{map().name, ahead}) + " does not move " + std::string(direction_name(m_state.facing)) + ".");
+        return false;
+    }
+    const TilePos beyond = ahead.next(m_state.facing);
+    boulder->x = beyond.x;
+    boulder->y = beyond.y;
+    advance_to(m_now + PUSH_TIME);
+    note("pushed the boulder to " + to_string(MapPosition{map().name, beyond}) + ".");
+    return true;
 }
 
 bool OverworldSim::choose_lift_floor(size_t floor){

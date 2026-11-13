@@ -111,6 +111,11 @@ public:
     //  A on what the player faces, as `field` says (`floor`: the lift's).
     //  Returns whether it was there. (PokemonFRLG_OverworldSimField.cpp)
     bool use_field(SimField field, size_t floor = 0);
+    //  What stands on the current map now: a pushed boulder is where it was
+    //  pushed to, a cut tree is gone.
+    const std::vector<MapObject>& objects() const{
+        return m_maps[m_map].objects;
+    }
 
 private:
     //  A screen that shows at `at`; `unfreeze`: the player can move again.
@@ -169,6 +174,8 @@ private:
     bool cut_tree();
     bool choose_lift_floor(size_t floor);
     bool push_poster_switch();
+    //  SimField::PUSH_BOULDER. (PokemonFRLG_OverworldSimField.cpp)
+    bool push_boulder();
     bool start_surf();
     //  A on the gate or the statue the player faces; false, as a violation,
     //  if there is none or the Card Key is missing.

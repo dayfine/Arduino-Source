@@ -347,6 +347,7 @@ static void add_tests_AutoStoryRows(UnitTestDatabase& database){
     add_tests_AutoStoryMansion(database);
     add_tests_AutoStoryViridian(database);
     add_tests_AutoStoryVictoryRoad(database);
+    add_tests_AutoStoryBoulders(database);
 }
 
 void add_tests(UnitTestDatabase& database){

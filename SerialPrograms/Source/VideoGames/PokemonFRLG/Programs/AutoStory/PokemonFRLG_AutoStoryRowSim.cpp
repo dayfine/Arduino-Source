@@ -226,6 +226,7 @@ Pokemon::StoryAction StoryMapsSim::action(StoryActionId id){
     case StoryActionId::CLOSE_TRAINER_CARD:
     case StoryActionId::LEAVE_GIFT_SUMMARY:
     case StoryActionId::CUT_TREE:
+    case StoryActionId::PUSH_BOULDER:
     case StoryActionId::TRASH_CANS:
     case StoryActionId::GAME:
         return m_stubs.stub([](const StoryStep& step, RunState& state){
@@ -380,6 +381,9 @@ Pokemon::StoryAction OverworldStepSim::action(StoryActionId id){
         break;
     case StoryActionId::CUT_TREE:
         body = &OverworldStepSim::cut;
+        break;
+    case StoryActionId::PUSH_BOULDER:
+        body = &OverworldStepSim::push_boulder;
         break;
     case StoryActionId::BATTLE:
         body = &OverworldStepSim::battle;
@@ -560,6 +564,27 @@ std::string OverworldStepSim::cut(const StoryStep& step){
     m_at = StoryPose{m_at.map, m_at.tile.next(direction), direction};
     if (!(m_sim.state().position == MapPosition{m_at.map, m_at.tile})){
         return "expected to step onto the tree's tile " + to_string(MapPosition{m_at.map, m_at.tile}) + ".";
+    }
+    return "";
+}
+
+//  A PUSH_BOULDER_VARIANT step: turned to the boulder, and `tiles` pushes,
+//  each followed by the step onto the tile the boulder left.
+std::string OverworldStepSim::push_boulder(const StoryStep& step){
+    const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
+    const int64_t tiles = Pokemon::story_arg<int64_t>(step.args, "tiles");
+    if (m_sim.state().facing != direction){
+        sim_turn_to(m_sim, direction);
+    }
+    for (int64_t c = 0; c < tiles; c++){
+        if (!m_sim.use_field(SimField::PUSH_BOULDER)){
+            return "no boulder to push.";
+        }
+        sim_step_once(m_sim, direction);
+        m_at = StoryPose{m_at.map, m_at.tile.next(direction), direction};
+        if (!(m_sim.state().position == MapPosition{m_at.map, m_at.tile})){
+            return "expected to step onto the boulder's tile " + to_string(MapPosition{m_at.map, m_at.tile}) + ".";
+        }
     }
     return "";
 }

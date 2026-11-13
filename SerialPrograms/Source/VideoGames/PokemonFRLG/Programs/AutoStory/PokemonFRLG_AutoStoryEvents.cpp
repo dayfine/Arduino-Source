@@ -613,6 +613,33 @@ Outcome cut_tree(StoryEnv& env, RunState& state, const StoryStep& step){
     return Pokemon::outcome_ok(to_pose(StoryPose{here->map, here->tile.next(direction), direction}));
 }
 
+//  PUSH_BOULDER_VARIANT: the boulder in the step's direction, Strength
+//  used if the step says so, and `tiles` steps pushing it on. Not yet
+//  checked on the console.
+Outcome push_boulder(StoryEnv& env, RunState& state, const StoryStep& step){
+    const std::optional<StoryPose> here = story_pose(state.pose);
+    if (!here){
+        return Pokemon::outcome_failed("no_pose", Pokemon::to_string(state.pose));
+    }
+    const Direction direction = arg<Direction>(step, "direction");
+    const int64_t tiles = arg<int64_t>(step, "tiles");
+    if (here->facing != direction){
+        //  The boulder is in the way: a tap only turns the player to it.
+        face_wall(env.console, env.context, direction, env.player_gender);
+    }
+    if (arg<bool>(step, "activate")){
+        pbf_press_button(env.context, BUTTON_A, 160ms, 800ms);
+        answer_yes_no(env.console, env.context, true, BUTTON_B, YES_NO_TIMEOUT);
+        mash_until_overworld(env.console, env.context, SCENE_TIMEOUT);
+    }
+    StoryPose at = *here;
+    for (int64_t c = 0; c < tiles; c++){
+        step_once(env.console, env.context, direction, direction, env.player_gender);
+        at = StoryPose{at.map, at.tile.next(direction), direction};
+    }
+    return Pokemon::outcome_ok(to_pose(at));
+}
+
 //  Vermilion Gym's trash cans on the console: a walk to each can's stand
 //  (a ROUTE planned on trash_can_maps()), A, and its pages counted.
 class ConsoleTrashCans{
@@ -717,6 +744,8 @@ ConsoleAction game_console_action(StoryActionId id){
         };
     case StoryActionId::CUT_TREE:
         return cut_tree;
+    case StoryActionId::PUSH_BOULDER:
+        return push_boulder;
     case StoryActionId::TRASH_CANS:
         return open_gym_door;
     case StoryActionId::GAME:
