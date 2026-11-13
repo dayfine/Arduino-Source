@@ -20,9 +20,10 @@
         "kind": "game_action",
         "action": "heal_to_full",
         "args": {
-          "max_hp": 168
+          "max_hp": 168,
+          "full_restore": true
         },
-        "why": "full HP into Lance, as PokeGuy enters him (168/168, docs/battles/pokeguy-conditions.md lance) after Agatha's fight: Super Potions and Potions until the HP the fight left missing (from the battle's last HP bar) is healed. PokeGuy spends a Full Restore here (his bag's 12 to 11); heal_to_full uses the potions instead and keeps the Full Restores for the policy's in-battle heals"
+        "why": "full HP into Lance, as PokeGuy enters him (168/168, docs/battles/pokeguy-conditions.md lance) after Agatha's fight: a Full Restore if any HP is missing (from the battle's last HP bar), as PokeGuy spends one here (his bag's 12 to 11), then Super Potions and Potions for what is left (none, or all of it when the bag has no Full Restore)"
       },
       {
         "id": "lead_lv54_for_lance",

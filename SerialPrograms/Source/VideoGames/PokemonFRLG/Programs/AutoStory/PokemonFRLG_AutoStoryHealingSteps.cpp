@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <format>
 #include "Common/Cpp/Color.h"
+#include "PokemonFRLG_AutoStoryBag.h"
+#include "PokemonFRLG_AutoStoryBagUse.h"
 #include "PokemonFRLG_AutoStoryBattlePolicy.h"
 #include "PokemonFRLG_AutoStoryGameArgs.h"
 #include "PokemonFRLG_AutoStoryHealing.h"
@@ -23,20 +25,55 @@ using Pokemon::StoryStep;
 
 namespace{
 
+//  The GAME step that uses a PP item on the lead (the header's restore_pp).
+const std::string RESTORE_PP_ACTION = "restore_pp";
+
 std::string hp_text(const std::optional<int>& missing){
     return missing ? std::format("{} HP missing", *missing) : std::string("HP unknown (no bar measured since the load)");
 }
 
+//  `item` (is_lead_recovery_item()) on the lead from the bag, found by
+//  reading the pocket: taken into the supplies if used.
+ItemUseEnd use_lead_item_from_bag(StoryEnv& env, const StoryStep& step, const std::string& item){
+    ConsoleItemUseActions bag(env.console, env.context, env.language, step_start_menu(step.args));
+    const ItemUseEnd end = use_item_from_bag(env.console.logger(), bag, item);
+    if (end == ItemUseEnd::USED){
+        took_recovery_item(env.supplies, item);
+    }
+    return end;
+}
+
 Outcome heal(StoryEnv& env, const StoryStep& step, int max_hp){
     const std::optional<int> before = missing_hp(env.supplies, max_hp);
-    const std::optional<int> after = heal_to_full(env.supplies, max_hp, [&](const std::string& item){
+    const auto use = [&](const std::string& item){
+        if (is_lead_recovery_item(item)){
+            return use_lead_item_from_bag(env, step, item) == ItemUseEnd::USED;
+        }
         return use_recovery_item(env.console, env.context, item, env.checks, env.language, env.supplies);
-    });
+    };
+    const bool* full_restore = game_arg<bool>(step.args, "full_restore");
+    const std::optional<int> after = heal_to_full(
+        env.supplies, max_hp, use, full_restore != nullptr && *full_restore ? "full-restore" : ""
+    );
     const bool full = after && *after <= 0;
     env.console.log(std::format(
-        "Story: {}: {} before, {} after; {} Potions, {} Super Potions left.",
-        step.name, hp_text(before), hp_text(after), env.supplies.potions, env.supplies.super_potions
+        "Story: {}: {} before, {} after; {} Potions, {} Super Potions, {} Full Restores left.",
+        step.name, hp_text(before), hp_text(after), env.supplies.potions, env.supplies.super_potions,
+        bag_count(env.supplies, "full-restore")
     ), full ? COLOR_BLACK : COLOR_RED);
+    return Pokemon::outcome_ok();
+}
+
+Outcome restore_pp_step(StoryEnv& env, const StoryStep& step){
+    const std::string* item = game_arg<std::string>(step.args, "item");
+    if (item == nullptr || *item != "elixir"){
+        return Pokemon::outcome_failed("bad_args", step.action);
+    }
+    const ItemUseEnd end = use_lead_item_from_bag(env, step, *item);
+    if (end != ItemUseEnd::USED){
+        return Pokemon::outcome_failed(std::format("use_item_{}", item_use_end_name(end)), std::format("{}: {}", step.name, *item));
+    }
+    env.console.log(std::format("Story: {}: the {} on the lead.", step.name, *item));
     return Pokemon::outcome_ok();
 }
 
@@ -72,7 +109,13 @@ Outcome bag_check(StoryEnv& env, Pokemon::RunState& state, const StoryStep& step
 std::vector<Pokemon::StoryActionSpec> healing_action_specs(){
     const Pokemon::StoryArgSpec max_hp = required_arg("max_hp", Pokemon::StoryArgType::INTEGER, "the lead's maximum HP when its summary wasn't read");
     return {
-        {.kind = Pokemon::StoryStepKind::GAME, .name = HEAL_TO_FULL_ACTION, .args = {max_hp}},
+        {.kind = Pokemon::StoryStepKind::GAME, .name = HEAL_TO_FULL_ACTION, .args = {
+            max_hp,
+            optional_arg("full_restore", Pokemon::StoryArgType::BOOLEAN, false, "a Full Restore first if the bag holds one"),
+        }},
+        {.kind = Pokemon::StoryStepKind::GAME, .name = RESTORE_PP_ACTION, .args = {
+            required_arg("item", Pokemon::StoryArgType::WORD, "the PP item used on the lead: elixir"),
+        }},
         {.kind = Pokemon::StoryStepKind::GAME, .name = CHECK_FULL_HP_ACTION, .args = {max_hp}},
         {.kind = Pokemon::StoryStepKind::GAME, .name = BAG_CHECK_ACTION, .args = {
             required_arg("items", Pokemon::StoryArgType::ITEMS, "what the bag must hold, a quantity each"),
@@ -94,6 +137,9 @@ bool bag_holds(const Supplies& supplies, const std::vector<Pokemon::StoryItem>& 
 std::optional<Outcome> run_healing_step(StoryEnv& env, Pokemon::RunState& state, const StoryStep& step){
     if (step.action == BAG_CHECK_ACTION){
         return bag_check(env, state, step);
+    }
+    if (step.action == RESTORE_PP_ACTION){
+        return restore_pp_step(env, step);
     }
     if (step.action != HEAL_TO_FULL_ACTION && step.action != CHECK_FULL_HP_ACTION){
         return std::nullopt;

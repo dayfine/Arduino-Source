@@ -17,6 +17,7 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_StoryPostconditionCheck.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
@@ -237,6 +238,33 @@ UnitTestResult test_foe_threats_are_the_generators(){
     return true;
 }
 
+//  The index of the step `name` in `row`, or the step count if none.
+size_t step_index(const StoryCheckpoint& row, std::string_view name){
+    size_t index = 0;
+    while (index < row.steps.size() && row.steps[index].name != name){
+        index++;
+    }
+    return index;
+}
+
+//  PokeGuy's items between the fights: a Full Restore after Agatha (the
+//  heal into Lance), one Elixir after Lance, before the Champion's door.
+UnitTestResult test_pokeguy_items_between_fights(){
+    const StoryCheckpoint& lance = league_row("20.04");
+    const size_t heal = step_index(lance, "heal_after_agatha");
+    if (heal == lance.steps.size() || !Pokemon::story_arg<bool>(lance.steps[heal].args, "full_restore")){
+        return "20.04 heal_after_agatha: expected a Full Restore first.";
+    }
+    const StoryCheckpoint& champion = league_row("20.05");
+    const size_t elixir = step_index(champion, "elixir_after_lance");
+    if (elixir >= step_index(champion, "champions_door") || champion.steps[elixir].action != "restore_pp"
+        || Pokemon::story_arg<std::string>(champion.steps[elixir].args, "item") != "elixir"
+    ){
+        return "20.05: expected restore_pp elixir before the Champion's door.";
+    }
+    return true;
+}
+
 const AutoStoryLeagueCase AUTO_STORY_LEAGUE_CASES[] = {
     {
         .input = {.name = "20.01a Indigo Plateau's Mart counter", .body = test_indigo_mart_counter},
@@ -275,6 +303,10 @@ const AutoStoryLeagueCase AUTO_STORY_LEAGUE_CASES[] = {
     {
         .input = {.name = "20.01 to 20.05 the League's foe rows are the generator's", .body = test_foe_threats_are_the_generators},
         .expectation = {.description = "PokemonSimulation planning_risk() rows"},
+    },
+    {
+        .input = {.name = "20.04 and 20.05 PokeGuy's Full Restore after Agatha and Elixir after Lance", .body = test_pokeguy_items_between_fights},
+        .expectation = {.description = "heal_after_agatha full_restore; restore_pp elixir before the Champion's door"},
     },
 };
 

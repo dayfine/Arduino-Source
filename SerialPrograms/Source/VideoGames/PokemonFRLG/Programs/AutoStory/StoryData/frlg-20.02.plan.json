@@ -106,6 +106,7 @@
           "setup_accuracy": 0,
           "setup_outspeed": true,
           "setup_guard_accuracy": true,
+          "setup_target_torrent": true,
           "foe_threats": [
             [
               81,
@@ -164,7 +165,7 @@
           ],
           "facing": "north"
         },
-        "why": "Bruno (TRAINER_ELITE_FOUR_BRUNO): Onix Lv51, Hitmonchan Lv53, Hitmonlee Lv53, Onix Lv54, Machamp Lv56, two Full Restores; fought by pokeguy's policy C2 (goal-based-setup: Sp. Atk +2 by X Specials, X Speed until faster, Guard Spec first against an accuracy drop; the doc's bruno row, 95.9% at 130/162. The doc's target_torrent (stalling to Torrent in the opening) is not modelled by the C++ policy (PokemonFRLG_AutoStoryBattlePolicy.h)); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against the doc's bruno entry state (130/162), as 19.01's: Machamp's worst case (crit Cross Chop) is 183, Hitmonlee's 136. Then the door north (6, 2) opens"
+        "why": "Bruno (TRAINER_ELITE_FOUR_BRUNO): Onix Lv51, Hitmonchan Lv53, Hitmonlee Lv53, Onix Lv54, Machamp Lv56, two Full Restores; fought by pokeguy's policy C2 (goal-based-setup: Sp. Atk +2 by X Specials, X Speed until faster, Guard Spec first against an accuracy drop; the doc's bruno row, 95.9% at 130/162. The doc's target_torrent (stalling to Torrent in the opening) is the C++ policy's extra X Specials against the first Onix, up to +4 while Torrent is off; its weaker-move stall needs the foe's HP and is not modelled (PokemonFRLG_AutoStoryBattlePolicy.h)); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against the doc's bruno entry state (130/162), as 19.01's: Machamp's worst case (crit Cross Chop) is 183, Hitmonlee's 136. Then the door north (6, 2) opens"
       }
     ]
   },

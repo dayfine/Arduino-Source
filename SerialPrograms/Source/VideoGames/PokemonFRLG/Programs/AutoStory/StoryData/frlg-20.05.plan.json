@@ -16,6 +16,15 @@
         "why": "full HP into the Champion, as PokeGuy enters him (171/171, docs/battles/pokeguy-conditions.md champion) after Lance's fight: Super Potions and Potions until the HP the fight left missing (from the battle's last HP bar) is healed"
       },
       {
+        "id": "elixir_after_lance",
+        "kind": "game_action",
+        "action": "restore_pp",
+        "args": {
+          "item": "elixir"
+        },
+        "why": "PokeGuy's one Elixir after Lance (league-pp-requirements.md: Surf 3 to 13, Blizzard 0 to 5): FRLG's Elixir restores 10 PP to every move, with no move to pick"
+      },
+      {
         "id": "lead_lv55_for_champion",
         "kind": "game_action",
         "action": "level",
@@ -83,7 +92,7 @@
     "notes": {
       "checkpoint": [
         "Starts in front of Lance at (6, 9) facing north, where 20.04 ends. A boss battle is its own checkpoint: the heal after Lance, the Champion's fight and what the game plays after it, which the player can not stop or save in. PokeGuy has this fight at 1:55:44 (docs/battles/pokeguy-conditions.md, champion).",
-        "PokeGuy uses one Elixir after Lance (Surf 3 to 13, Blizzard 0 to 5; league-pp-requirements.md); use_item has no Elixir yet (a party item with its own screens, PokemonFRLG_AutoStoryItemUse.h), so this row does not, and the Champion is fought with the PP Lance's fight left.",
+        "PokeGuy uses one Elixir after Lance (Surf 3 to 13, Blizzard 0 to 5; league-pp-requirements.md); so does this row (restore_pp), which fails if the bag has none.",
         "Ends in the Hall of Fame (5, 4) facing north. The Hall of Fame saves the game itself (respawn at Pallet Town) and the credits follow: the row's own save at its end is not one the game offers there."
       ]
     }

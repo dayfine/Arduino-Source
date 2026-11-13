@@ -30,8 +30,8 @@ enum class BagPocket{
 };
 
 //  The pocket of an item the story uses from the bag: repel, super-repel,
-//  max-repel, escape-rope, rare-candy (Items) or bicycle (Key Items); nothing for
-//  another.
+//  max-repel, escape-rope, rare-candy, elixir, full-restore (Items) or bicycle
+//  (Key Items); nothing for another.
 std::optional<BagPocket> usable_item_pocket(std::string_view item);
 
 //  Whether `item` is a Repel of any kind.
@@ -59,6 +59,10 @@ public:
     //  (the stats window; a new move declined) back to the bag. False if
     //  the party list or the level-up never showed.
     virtual bool use_row_on_lead(size_t row) = 0;
+    //  Moves to row `row`, USE, the lead, and through the item's message
+    //  back to the bag (is_lead_recovery_item()). False if the bag never
+    //  came back.
+    virtual bool use_row_on_lead_to_bag(size_t row) = 0;
     //  Moves to row `row` and REGISTERs it for SELECT.
     virtual void register_row(size_t row) = 0;
     //  Back to the overworld (nothing to do if the item closed the bag).

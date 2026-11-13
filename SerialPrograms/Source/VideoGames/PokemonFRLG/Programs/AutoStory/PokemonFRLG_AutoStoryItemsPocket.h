@@ -32,7 +32,9 @@ namespace PokemonFRLG{
 
 //  How many of `item` (a slug) the bag holds, as far as known.
 int item_count(const Supplies& supplies, const std::string& item);
-//  One of `item` used: the count the story keeps for it goes down.
+//  One of `item` used: the count the story keeps for it goes down; an item
+//  it doesn't count goes down in other_counts, if read there, and takes
+//  its row with the last one.
 void spend_item(Supplies& supplies, const std::string& item);
 
 //  The row (from 0) of `item` in the Items pocket, or -1 if none is left.

@@ -12,9 +12,11 @@
  *  step carries; nothing here reads a screen. The lead's attack is
  *  chosen elsewhere (BattleDecisions::move_turn).
  *
- *  Not modelled: the foe's HP (so the doc's safe finishing hit is never
- *  taken early), Oran Berries and PP medicine, and Torrent activation
- *  stalls (target_torrent). Stage drops and evasion rises of the foe are
+ *  The Torrent stall (target_torrent) is its extra X Specials only: the
+ *  doc's other stall, the weakest damaging move that can't KO the setup
+ *  foe, needs the foe's HP. Not modelled: the foe's HP (so the doc's safe
+ *  finishing hit is never taken early), Oran Berries and PP medicine in
+ *  battle. Stage drops and evasion rises of the foe are
  *  not read off the battle text yet: foe_evasion_raised() and the like
  *  take them once something does.
  *

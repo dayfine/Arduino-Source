@@ -115,6 +115,7 @@ BattlePolicy battle_policy_of(const Pokemon::StoryActionArgs& args){
         .outspeed = Pokemon::story_arg<bool>(args, "setup_outspeed"),
         .guard_accuracy = Pokemon::story_arg<bool>(args, "setup_guard_accuracy"),
         .torrent_power = Pokemon::story_arg<bool>(args, "setup_torrent_power"),
+        .target_torrent = Pokemon::story_arg<bool>(args, "setup_target_torrent"),
     };
     if (std::optional<std::vector<FoeThreat>> foes = foe_threats_of(Pokemon::story_arg<std::vector<std::vector<int64_t>>>(args, "foe_threats"))){
         policy.foes = std::move(*foes);
@@ -184,7 +185,9 @@ bool PolicyState::outsped(const PolicyView& view) const{
 int PolicyState::spa_goal(const PolicyView& view) const{
     const int target = m_policy.goals.spa;
     const bool torrent = view.hp * 3 <= view.max_hp;
-    if (!m_policy.goals.torrent_power || torrent){
+    const bool opening = view.foe_index == 0 && m_policy.foes.size() > 1;
+    const bool make_up = m_policy.goals.torrent_power || (m_policy.goals.target_torrent && opening);
+    if (!make_up || torrent){
         return target;
     }
     //  The stage whose multiplier makes up for Torrent's 1.5.

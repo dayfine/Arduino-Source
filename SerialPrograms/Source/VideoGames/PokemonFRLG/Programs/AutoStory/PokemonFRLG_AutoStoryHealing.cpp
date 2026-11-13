@@ -4,11 +4,14 @@
  *
  */
 
+#include <algorithm>
 #include <cmath>
 #include <format>
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "PokemonFRLG_AutoStoryBattlePolicy.h"
 #include "PokemonFRLG_AutoStoryHealing.h"
 #include "PokemonFRLG_AutoStoryItemsPocket.h"
+#include "PokemonFRLG_AutoStoryParty.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -22,6 +25,8 @@ constexpr int SUPER_POTION_HP = 50;
 constexpr int HP_BAR_PIXELS = 48;
 //  The most items heal_to_full() uses: more than a full bar takes.
 constexpr int MAX_HEAL_ITEMS = 12;
+//  The PP an Elixir restores to each move (pokefirered items.json).
+constexpr uint8_t ELIXIR_PP = 10;
 
 } // namespace
 
@@ -43,6 +48,18 @@ void measured_hp(Supplies& supplies, double fill){
 
 void took_recovery_item(Supplies& supplies, const std::string& item){
     spend_item(supplies, item);
+    if (item == "full-restore"){
+        supplies.hurt = false;
+        supplies.hp_red = false;
+        supplies.hp_fill = 1.0;
+        supplies.status = StatusCondition::NONE;
+        measured_hp(supplies, 1.0);
+        return;
+    }
+    if (item == "elixir"){
+        add_pp(supplies.lead, ELIXIR_PP);
+        return;
+    }
     if (const int healed = healing_hp(item); healed > 0){
         //  One Potion (20 HP) takes a starter of the early levels from red
         //  to green; the bar can't be read again on the overworld. The HP
@@ -67,8 +84,13 @@ std::optional<int> missing_hp(const Supplies& supplies, int fallback_max_hp){
 }
 
 std::optional<int> heal_to_full(
-    Supplies& supplies, int fallback_max_hp, const std::function<bool(const std::string& item)>& use
+    Supplies& supplies, int fallback_max_hp, const std::function<bool(const std::string& item)>& use,
+    std::string_view first_item
 ){
+    const std::optional<int> before = missing_hp(supplies, fallback_max_hp);
+    if (!first_item.empty() && before && *before > 0 && bag_count(supplies, first_item) > 0){
+        use(std::string(first_item));
+    }
     for (int c = 0; c < MAX_HEAL_ITEMS; c++){
         const std::optional<int> missing = missing_hp(supplies, fallback_max_hp);
         if (!missing || *missing <= 0){
@@ -198,6 +220,72 @@ UnitTestResult test_missing_hp_edges(){
     return true;
 }
 
+//  PokeGuy's bag after Agatha (docs/battles/pokeguy-conditions.md lance:
+//  Full Restores 12 to 11), read at the checkpoint's start.
+Supplies league_bag(int full_restores){
+    Supplies supplies = bag(4, 4);
+    supplies.pocket = {"potion", "super-potion", "full-restore", "elixir"};
+    supplies.other_counts = {{"elixir", 1}};
+    if (full_restores > 0){
+        supplies.other_counts["full-restore"] = full_restores;
+    }
+    return supplies;
+}
+
+//  After Agatha, at 98 of 168: one Full Restore heals it all, no Potion.
+//  With none in the bag, the Potions as before.
+UnitTestResult test_full_restore_after_agatha(){
+    constexpr int LANCE_MAX_HP = 168;
+    Supplies supplies = league_bag(12);
+    measured_hp(supplies, 98.0 / LANCE_MAX_HP);
+    supplies.status = StatusCondition::POISON;
+    const std::optional<int> after = heal_to_full(supplies, LANCE_MAX_HP, [&](const std::string& item){
+        return use_from_bag(supplies, item);
+    }, "full-restore");
+    if (after != 0 || supplies.other_counts["full-restore"] != 11 || supplies.potions != 4 || supplies.super_potions != 4){
+        return std::format(
+            "{} HP missing, {} Full Restores, {} Potions, {} Super Potions; expected 0, 11, 4, 4.",
+            after.value_or(-1), supplies.other_counts["full-restore"], supplies.potions, supplies.super_potions
+        );
+    }
+    if (supplies.status != StatusCondition::NONE){
+        return "The Full Restore left the poison.";
+    }
+    Supplies none = league_bag(0);
+    measured_hp(none, 98.0 / LANCE_MAX_HP);
+    const std::optional<int> potions = heal_to_full(none, LANCE_MAX_HP, [&](const std::string& item){
+        return use_from_bag(none, item);
+    }, "full-restore");
+    if (!potions || *potions > 0 || none.super_potions != 2){
+        return std::format("No Full Restore: {} HP missing, {} Super Potions used; expected 0 and 2.", potions.value_or(-1), 4 - none.super_potions);
+    }
+    Supplies full = league_bag(12);
+    measured_hp(full, 1.0);
+    heal_to_full(full, LANCE_MAX_HP, [&](const std::string& item){
+        return use_from_bag(full, item);
+    }, "full-restore");
+    return full.other_counts["full-restore"] == 12 ? UnitTestResult(true) : UnitTestResult("A Full Restore spent on full HP.");
+}
+
+//  PokeGuy's Elixir after Lance (league-pp-requirements.md): Surf 3 to 13,
+//  Blizzard 0 to 5 (its full PP), Bite 19 to 25; the bag's last Elixir
+//  takes its row.
+UnitTestResult test_elixir_after_lance(){
+    Supplies supplies = league_bag(11);
+    supplies.lead.moves = {{"bite", 19}, {"surf", 3}, {"blizzard", 0}, {"strength", 15}};
+    took_recovery_item(supplies, "elixir");
+    const std::vector<uint8_t> expected = {25, 13, 5, 15};
+    for (size_t slot = 0; slot < expected.size(); slot++){
+        if (supplies.lead.moves[slot].pp != expected[slot]){
+            return std::format("{} at {} PP after the Elixir, expected {}.", supplies.lead.moves[slot].move, supplies.lead.moves[slot].pp, expected[slot]);
+        }
+    }
+    if (supplies.other_counts.contains("elixir") || std::ranges::find(supplies.pocket, "elixir") != supplies.pocket.end()){
+        return "The last Elixir still has its count or its row.";
+    }
+    return true;
+}
+
 //  The Fuchsia Mart buys Super Potions so the bag covers a full bar.
 UnitTestResult test_cover_shortfall(){
     struct Case{
@@ -227,6 +315,8 @@ void add_tests_AutoStoryHealing(UnitTestDatabase& database){
     database.add<Test_AutoStoryHealing>(HealingCase{"out of Potions: the HP stays missing", test_out_of_potions});
     database.add<Test_AutoStoryHealing>(HealingCase{"missing HP: unknown, full, the summary's maximum", test_missing_hp_edges});
     database.add<Test_AutoStoryHealing>(HealingCase{"the Mart buys the shortfall for a full bar", test_cover_shortfall});
+    database.add<Test_AutoStoryHealing>(HealingCase{"a Full Restore after Agatha, Potions without one", test_full_restore_after_agatha});
+    database.add<Test_AutoStoryHealing>(HealingCase{"an Elixir after Lance: 10 PP each, at most full", test_elixir_after_lance});
 }
 
 
