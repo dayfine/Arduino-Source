@@ -82,6 +82,11 @@ Pokemon::Observation<Pokemon::ZonePose> PlzaConsoleBackend::observe(){
         }
     }
     look.when = current_time();
+    const std::optional<std::string> autosave_line =
+        m_autosave_spots.on_look(look.readings.contains(AUTOSAVE_READING), look.when);
+    if (autosave_line){
+        log(*autosave_line);
+    }
     m_previous = frame;
     look.frame = std::move(frame);
     capture(look);
@@ -155,7 +160,36 @@ Pokemon::Outcome PlzaConsoleBackend::battle(const Pokemon::StoryActionArgs&){
     return Pokemon::outcome_ok();
 }
 
+namespace{
+
+//  A look without the badge shorter than this is the same appearance.
+constexpr Milliseconds AUTOSAVE_GAP(4000);
+
+} // namespace
+
+void AutosaveSpots::on_log(std::string_view line){
+    constexpr std::string_view EVENT = "[Event] ";
+    constexpr std::string_view STARTED = ": start";
+    if (!line.starts_with(EVENT) || !line.ends_with(STARTED)){
+        return;
+    }
+    m_event = std::string(line.substr(EVENT.size(), line.size() - EVENT.size() - STARTED.size()));
+}
+
+std::optional<std::string> AutosaveSpots::on_look(bool badge, WallClock when){
+    if (!badge){
+        return std::nullopt;
+    }
+    const bool same = m_last_badge && when - *m_last_badge < AUTOSAVE_GAP;
+    m_last_badge = when;
+    if (same){
+        return std::nullopt;
+    }
+    return std::format("[Autosave] {}", m_event);
+}
+
 void PlzaConsoleBackend::log(std::string_view line){
+    m_autosave_spots.on_log(line);
     m_env.env.console.log(std::string(line), COLOR_BLUE);
 }
 
