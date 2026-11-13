@@ -133,6 +133,13 @@ bool is_blue_text(uint32_t pixel){
     const int b = pixel & 0xff;
     return b > 176 && r < 96 && g < 136;
 }
+//  The light blue shadow of a field move's name, (160, 192, 240).
+bool is_blue_shadow(uint32_t pixel){
+    const int r = (pixel >> 16) & 0xff;
+    const int g = (pixel >> 8) & 0xff;
+    const int b = pixel & 0xff;
+    return r >= 128 && r <= 192 && g >= 160 && g <= 224 && b > 208;
+}
 
 RowKind classify_row(const ImageViewRGB32& row){
     const size_t area = row.width() * row.height();
@@ -142,18 +149,22 @@ RowKind classify_row(const ImageViewRGB32& row){
     size_t white = 0;
     size_t gray = 0;
     size_t blue = 0;
+    size_t blue_shadow = 0;
     for (size_t y = 0; y < row.height(); y++){
         for (size_t x = 0; x < row.width(); x++){
             const uint32_t pixel = row.pixel(x, y);
             white += is_white(pixel) ? 1 : 0;
             gray += is_gray_text(pixel) ? 1 : 0;
             blue += is_blue_text(pixel) ? 1 : 0;
+            blue_shadow += is_blue_shadow(pixel) ? 1 : 0;
         }
     }
     //  Measured: a name covers 5% to 25% of its row, the window's white
     //  the most of the rest; the party's slots behind the window are teal
-    //  and blue.
-    if (white * 2 < area){
+    //  and blue. A long blue name and its shadow cover about half its row
+    //  (SWEET SCENT: 20% blue, 27% shadow, 47% white), so the shadow
+    //  counts as the window's.
+    if ((white + blue_shadow) * 2 < area){
         return RowKind::NONE;
     }
     if (blue * 50 >= area && gray * 4 < blue){

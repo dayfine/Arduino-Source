@@ -112,16 +112,18 @@ std::optional<size_t> open_member_menu_of(
 
 //  What use_field_move() returns when no member's menu lists the move.
 inline const std::string FIELD_MOVE_NO_MEMBER = "no_member";
-//  What it returns when a member's menu isn't read, or lists a field move
-//  whose name isn't read: the move may be there, so nothing is picked.
+//  What it returns when no menu read lists the move but a member's menu
+//  isn't read, or lists a field move whose name isn't read (the move may
+//  be there), or a menu didn't open or close.
 inline const std::string FIELD_MOVE_MENU_UNREAD = "menu_unread";
 //  Runs the move from the member's menu, its row there (SUMMARY is 0)
 //  given; its failure, or empty.
 using FieldMoveFromMenu = std::function<std::string(size_t row)>;
 //  The field move `move` (a slug, "fly") used by the first member whose
 //  menu lists it: the party is opened once, the members' menus are opened
-//  down the party until one lists `move`, and `from_menu` (the console's
-//  FLY row and map) runs from that menu. No summary is read. Returns its
+//  down the party until one lists `move` (a menu not read is closed again
+//  and passed), and `from_menu` (the console's FLY row and map) runs from
+//  that menu. No summary is read. Returns its
 //  failure, empty on success, FIELD_MOVE_NO_MEMBER if no menu lists the
 //  move, or FIELD_MOVE_MENU_UNREAD. With a record in the cache's users for
 //  `move`, that slot's menu is opened first and the scan runs only if it
