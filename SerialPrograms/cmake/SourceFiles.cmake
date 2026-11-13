@@ -816,6 +816,8 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/Windows/LabChannel.h
     Source/CommonFramework/Windows/LabChannel_Tests.cpp
     Source/CommonFramework/Windows/LabChannel_Tests.h
+    Source/CommonFramework/Windows/LabPause.cpp
+    Source/CommonFramework/Windows/LabPause.h
     Source/CommonFramework/Windows/LabRequest.cpp
     Source/CommonFramework/Windows/LabRequest.h
     Source/CommonFramework/Windows/MainWindow.cpp
@@ -1699,6 +1701,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Types/Pokemon_StoryActionArg_Tests.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.cpp
     Source/Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h
+    Source/Pokemon/AutoStory/Types/Pokemon_BadgeCheck.cpp
+    Source/Pokemon/AutoStory/Types/Pokemon_BadgeCheck.h
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryBreakpoints.cpp
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryBreakpoints.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.cpp
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h
@@ -1772,6 +1778,8 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_MenuCursorDetector.h
     Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.cpp
     Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h
+    Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_TrainerCardReader.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_TrainerCardReader.h
     Source/PokemonBDSP/Inference/Battles/PokemonBDSP_BattleBallReader.cpp
     Source/PokemonBDSP/Inference/Battles/PokemonBDSP_BattleBallReader.h
     Source/PokemonBDSP/Inference/Battles/PokemonBDSP_BattleMenuDetector.cpp
