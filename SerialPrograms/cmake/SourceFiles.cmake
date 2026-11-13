@@ -2060,6 +2060,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWildTiles.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PlayerFacingReader.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PlayerFacingReader.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PokemonCenterFloorReader.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PokemonCenterFloorReader.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PokemonCenterRoom.h
     Source/VideoGames/PokemonFRLG/PokemonFRLG_Navigation.cpp
     Source/VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h

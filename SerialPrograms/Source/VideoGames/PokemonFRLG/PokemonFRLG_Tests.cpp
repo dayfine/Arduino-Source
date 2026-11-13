@@ -44,6 +44,7 @@
 #include "Overworld/PokemonFRLG_OverworldSim.h"
 #include "Overworld/PokemonFRLG_OverworldWalk.h"
 #include "Overworld/PokemonFRLG_PlayerFacingReader.h"
+#include "Overworld/PokemonFRLG_PokemonCenterFloorReader.h"
 #include "Programs/PokemonFRLG_NamingScreenKeyboard_Tests.h"
 #include "PokemonFRLG_Navigation.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryAbilities.h"
@@ -386,6 +387,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_OverworldRecovery(database);
     add_tests_OverworldSim(database);
     add_tests_PlayerFacingReader(database);
+    add_tests_PokemonCenterFloorReader(database);
     add_tests_AutoStory(database);
     add_tests_AutoStoryJson(database);
     add_tests_AutoStorySimulation(database);
