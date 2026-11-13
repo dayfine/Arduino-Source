@@ -2,6 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
+// code-health: allow file_lines -- the sim executor, its knobs and the faults the console failures need share one translation unit
  */
 
 #include <algorithm>
@@ -297,7 +298,15 @@ WalkResult SimKnobRouteIO::walk_to_wall(const RouteWallWalk& walk){
             if (item.step == m_step && item.direction == walk.direction){
                 m_misses.slid = true;
                 note("[Sim] held through a warp to " + Pokemon::to_string(item.far) + ".", RouteNote::LOG);
-                return through_warp(item, result);
+                result = through_warp(item, result);
+                //  A hold's walk stops on a change of the whole screen that walking cannot
+                //  make when no battle follows (a warp whose fade fell between two frames,
+                //  "its fade unseen", 8a570a642; the console's 21:54 hold), where the
+                //  taps of a slide read the time out.
+                if (item.fade == SimFade::UNSEEN){
+                    result.stop = WalkStop::TRANSITION;
+                }
+                return result;
             }
         }
     }
@@ -487,13 +496,14 @@ std::vector<SimWanderer> SimExecutor::wanderers(const StoryWorld& world) const{
         }
         for (const auto& object : story_map(map).objects){
             const auto stands = m_knobs.standing.find(object.name);
-            if (!object.wander || (!m_knobs.wander_seed && stands == m_knobs.standing.end())){
+            const bool still = stands != m_knobs.standing.end();
+            //  A person who stays put on the map (a trainer) and stood elsewhere on the console.
+            if ((!object.wander && !still) || (!m_knobs.wander_seed && !still)){
                 continue;
             }
             const uint64_t seed = m_knobs.wander_seed.value_or(0) * 1000003 + out.size() * 7919 + (uint64_t)(object.x * 31 + object.y);
-            const TilePos low = story_to_world(world, map, {object.wander->x0, object.wander->y0});
-            const TilePos high = story_to_world(world, map, {object.wander->x1, object.wander->y1});
-            const bool still = stands != m_knobs.standing.end();
+            const TilePos low = story_to_world(world, map, object.wander ? TilePos{object.wander->x0, object.wander->y0} : stands->second);
+            const TilePos high = story_to_world(world, map, object.wander ? TilePos{object.wander->x1, object.wander->y1} : stands->second);
             out.push_back({
                 .name = object.name,
                 .box = {.x0 = low.x, .y0 = low.y, .x1 = high.x, .y1 = high.y},
@@ -502,6 +512,7 @@ std::vector<SimWanderer> SimExecutor::wanderers(const StoryWorld& world) const{
                 .step_interval = still ? Milliseconds(0) : Milliseconds(2000),
                 .elapsed = Milliseconds(0),
                 .time_offset = still ? Milliseconds(0) : Milliseconds((int64_t)(seed % 2000)),
+                .goes_home = object.wander ? std::nullopt : std::optional<TilePos>(story_to_world(world, map, {object.x, object.y})),
             });
         }
     }
@@ -598,6 +609,7 @@ void SimExecutor::start_scene_at_end(const StoryStep& step){
 
 void SimExecutor::land(const std::string& step){
     count_coupons(step);
+    slide_after_scene(step);
     const auto lands = m_knobs.lands.find(step);
     if (lands == m_knobs.lands.end()){
         return;
@@ -608,6 +620,22 @@ void SimExecutor::land(const std::string& step){
     if (sync(pose)){
         m_misplaced = true;
         m_logger.log(std::format("[{}] {}: the player lands on {}, off the table's pose.", m_row, step, to_string(player.pos)));
+    }
+}
+
+//  The step's scene ran on: the player stands further along than the table's
+//  pose says (SimWorldKnobs::scene_slides), and stays there like a slide on (the next walks are not checked against the table).
+void SimExecutor::slide_after_scene(const std::string& step){
+    for (const SimSlide& item : m_knobs.scene_slides){
+        if (item.step != step || !m_placed){
+            continue;
+        }
+        for (size_t tile = 0; tile < item.tiles; tile++){
+            m_sim.tap(item.direction, ROUTE_MS_PER_TILE_ACROSS, false);
+        }
+        m_sim.end_dialogue();
+        m_astray = true;
+        m_notes.push_back(std::format("[Sim] scene ended {} tile(s) further, at {}.", item.tiles, to_string(m_sim.player().pos)));
     }
 }
 

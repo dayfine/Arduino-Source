@@ -101,6 +101,9 @@ void inject(const ConsoleFailure& failure, const std::vector<StoryCheckpoint>& r
         case ReplayFaultKind::HOLD_THROUGH_WARP:
             knobs.hold_slides.push_back(slide_of(failure, rows, fault));
             break;
+        case ReplayFaultKind::SCENE_ENDS_FURTHER:
+            knobs.scene_slides.push_back(slide_of(failure, rows, fault));
+            break;
         case ReplayFaultKind::PERSON_STANDS:
             knobs.standing[fault.name] = fault.tile;
             break;
@@ -119,6 +122,18 @@ struct ReplayCase{
     ReplayExpectation expectation;
 };
 
+//  The note the sim leaves when a fault really happened; empty for kinds with no note.
+std::string fault_marker(ReplayFaultKind kind){
+    switch (kind){
+    case ReplayFaultKind::MOVED_FURTHER: return "[Sim] slid";
+    case ReplayFaultKind::HOLD_THROUGH_WARP: return "[Sim] held through a warp";
+    case ReplayFaultKind::SCENE_ENDS_FURTHER: return "[Sim] scene ended";
+    default: return "";
+    }
+}
+
+//  The cases are discovered from the embedded fault JSONs, so a new console failure needs no
+//  C++ edit; the code-health test-case table rule does not fit a data-driven test.
 class Test_ConsoleFailureReplay : public UnitTest{
 public:
     explicit Test_ConsoleFailureReplay(ReplayCase test_case)
@@ -139,8 +154,7 @@ public:
             const Pokemon::SegmentReport report = run_rows_on(executor, logger, {.from = failure.checkpoint, .to = failure.checkpoint}, rows);
             //  A fault that never happened on the sim replays nothing.
             for (const ReplayFault& fault : failure.faults){
-                const std::string marker = fault.kind == ReplayFaultKind::MOVED_FURTHER ? "[Sim] slid"
-                    : fault.kind == ReplayFaultKind::HOLD_THROUGH_WARP ? "[Sim] held through a warp" : "";
+                const std::string marker = fault_marker(fault.kind);
                 if (marker.empty()){
                     continue;
                 }

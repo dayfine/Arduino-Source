@@ -104,6 +104,7 @@ struct SimWanderer{
     Milliseconds step_interval = Milliseconds(2000);   //  how often the NPC attempts a move
     Milliseconds elapsed = Milliseconds(0);            //  time accumulated towards next step
     Milliseconds time_offset = Milliseconds(0);        //  initial start time offset
+    std::optional<Pokemon::TilePos> goes_home = std::nullopt;   //  where they walk back to once talked to
 };
 
 //  Simulated grid environment.

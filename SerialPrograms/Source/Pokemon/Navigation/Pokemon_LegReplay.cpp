@@ -57,8 +57,9 @@ ReplayFault fault_of(const std::string& name, const JsonObject& json){
     if (kind == "fade_missed" || kind == "banner_missed"){
         fault.kind = kind == "fade_missed" ? ReplayFaultKind::FADE_MISSED : ReplayFaultKind::BANNER_MISSED;
         fault.index = (size_t)json.get_integer_throw("index");
-    }else if (kind == "moved_further" || kind == "hold_through_warp"){
-        fault.kind = kind == "moved_further" ? ReplayFaultKind::MOVED_FURTHER : ReplayFaultKind::HOLD_THROUGH_WARP;
+    }else if (kind == "moved_further" || kind == "hold_through_warp" || kind == "scene_ends_further"){
+        fault.kind = kind == "moved_further" ? ReplayFaultKind::MOVED_FURTHER
+            : kind == "hold_through_warp" ? ReplayFaultKind::HOLD_THROUGH_WARP : ReplayFaultKind::SCENE_ENDS_FURTHER;
         fault.step = json.get_string_throw("step");
         fault.direction = direction_of(name, json.get_string_throw("direction"));
         fault.tiles = (size_t)json.get_integer_default("tiles", 1);
@@ -87,6 +88,8 @@ std::string replay_fault_kind_name(ReplayFaultKind kind){
         return "moved_further";
     case ReplayFaultKind::HOLD_THROUGH_WARP:
         return "hold_through_warp";
+    case ReplayFaultKind::SCENE_ENDS_FURTHER:
+        return "scene_ends_further";
     case ReplayFaultKind::PERSON_STANDS:
         return "person_stands";
     }
