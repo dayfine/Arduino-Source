@@ -14,7 +14,7 @@
 #     a whole worktree is removed only if it is clean, its HEAD is on a remote branch, and git has not
 #     touched it for 3 days. Never touches a build whose app is running.
 #  4. Lab deployments (start_dev.py stages one per build in ~/Projects/dev-deployments/<slot>/): keep
-#     the newest $DEPLOY_KEEP (default 5) per slot folder by mtime; never one a running SerialPrograms
+#     the newest $DEPLOY_KEEP (default 3) per slot folder by mtime; never one a running SerialPrograms
 #     process loads from; never a symlink. Build folders (~/Projects/dev-builds) are not touched.
 #  5. Media in every profile's Screenshots, ErrorReportsLocal, DebugDumps, CommandFiles/outbox: PNG older
 #     than 6 h -> same-name JPEG q80; mp4/mkv older than 1 day re-encoded (ffmpeg crf 30, <=720p, once);
@@ -30,7 +30,7 @@ case "$1" in
   --dry-run|"") ;;
   *) echo "usage: disk_gc.sh [--dry-run|--apply]" >&2; exit 2 ;;
 esac
-AGE=${AGE:-7}; MIN_FREE_GB=${MIN_FREE_GB:-30}; DEPLOY_KEEP=${DEPLOY_KEEP:-5}
+AGE=${AGE:-7}; MIN_FREE_GB=${MIN_FREE_GB:-30}; DEPLOY_KEEP=${DEPLOY_KEEP:-3}
 # Short on space: keep 3 days of lab output instead of 7.
 # Worktrees: a clean, pushed tree is cheap to recreate, so it goes after 12 h idle (6 h when
 # short on space); in-tree build folders after 6 h. User 2026-11-11 (twice): 3 d, then 1 d, too slow.

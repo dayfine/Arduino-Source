@@ -168,3 +168,29 @@ shell lock, failure ordering, runtime data staging and interruption with delayed
 child teardown. They use temporary repositories/processes and injected build/
 signing/GUI operations. They do not build the app, launch a live profile, sign
 with the real certificate or validate physical capture/controller behavior.
+
+## Three ready builds per game, switch in seconds
+
+`start_dev.py B --build-only [--config <cfg>]` builds and stages the current clean tree and stops: no
+launch and no console lock (only the machine-wide build lock), so it can run while another game's app is
+open. All safety checks stay (clean tree, fast-forward only, receipt matches revision). If a commit lands
+during the build ("Source revision changed during build") it retries once at the new revision.
+`--plan --build-only` prints the setup and mode only.
+
+Scripts (sources in `lab/scripts/`, live copies in `~/BDSPLab/`; they call `start_dev.py` from
+`~/Projects/Arduino-Source-agents`, override with `START_DEV`):
+
+- `labbuild.sh bdsp|frlg|plza [--plan]` runs `--build-only` in the background with the game's config
+  (`dev-labs.json`, `dev-labs-frlg.json`, `dev-labs-plza.json`), logs to `~/BDSPLab/build-<game>.log`
+  (last line `rc=N`). Waits while any ninja runs and while another launcher holds the build lock.
+- `labrun.sh bdsp|frlg|plza [N] [--plan] [--panel "Category" "Panel"]` launches the Nth newest staged
+  deployment (default 1; order by `lab-deployment.json` time) with `--profile lab-B` by direct nohup exec
+  (not `open`, which loses the camera permission), under the console lock (`lablock.sh -c B run`, so it
+  refuses if another train holds B). It first quits the running lab-B app only if `Lab/state` says
+  `state=STOPPED`; otherwise `REFUSED` (`FORCE_PANEL=1` overrides, as in lab_panel). Panel and
+  `RUN_KEY`/`RUN_SET` edits are applied while the app is closed. Prints the commit and deployment.
+  `--plan` changes nothing. Self-test (plan only): `sh lab/scripts/labrun_test.sh`.
+- Retention: `disk_gc.sh` keeps the newest `DEPLOY_KEEP` (default 3) deployments per slot folder and never
+  one a running SerialPrograms loads from.
+
+Typical: `labbuild.sh frlg` while BDSP runs; later `labrun.sh frlg` once BDSP is STOPPED.
