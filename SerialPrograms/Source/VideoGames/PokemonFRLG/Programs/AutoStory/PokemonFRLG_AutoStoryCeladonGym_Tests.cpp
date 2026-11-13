@@ -252,6 +252,30 @@ UnitTestResult check_lead_level_precondition(Logger& logger, std::string_view id
     return true;
 }
 
+//  Erika's rows are PokemonSimulation's planning_risk() for each foe leading
+//  against the entry state of its erika case (35/137): speed, the 80th
+//  percentile loss, the mean, the worst case, the worst normal hit, then
+//  whether it lowers accuracy and whether it explodes.
+UnitTestResult test_erika_foe_threats_are_the_generators(){
+    for (const StoryStep& step : checkpoint("14.04").steps){
+        if (step.name != "erika"){
+            continue;
+        }
+        const auto found = step.args.find("foe_threats");
+        const auto* rows = found == step.args.end() ? nullptr : std::get_if<std::vector<std::vector<int64_t>>>(&found->second);
+        const std::vector<std::vector<int64_t>> expected = {
+            {45, 0, 1, 60, 30, 0, 0},       //  Victreebel
+            {33, 18, 8, 42, 20, 0, 0},      //  Tangela
+            {34, 0, 2, 60, 30, 0, 0},       //  Vileplume
+        };
+        if (rows == nullptr || *rows != expected){
+            return "14.04 erika: foe_threats are not the generator's rows for the erika case.";
+        }
+        return true;
+    }
+    return "14.04 has no erika battle step.";
+}
+
 const AutoStoryCeladonGymCase AUTO_STORY_CELADON_GYM_CASES[] = {
     {
         .input = {.name = "12.03 out of Fuchsia's Center and Fly to Celadon", .body = test_fly_to_celadon},
@@ -271,6 +295,10 @@ const AutoStoryCeladonGymCase AUTO_STORY_CELADON_GYM_CASES[] = {
             return check_lead_level_precondition(logger, "14.04", "erika", 44);
         }},
         .expectation = {.description = "a Lv44 lead passes the LEVEL step, a Lv43 one stops there"},
+    },
+    {
+        .input = {.name = "14.04 Erika's foe rows are the generator's", .body = test_erika_foe_threats_are_the_generators},
+        .expectation = {.description = "PokemonSimulation planning_risk() rows"},
     },
 };
 
