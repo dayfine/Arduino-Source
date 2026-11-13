@@ -9,6 +9,7 @@
  *
  */
 
+#include <algorithm>
 #include <chrono>
 #include <format>
 #include <functional>
@@ -28,10 +29,12 @@
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_BattleMenuReader.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryTrainers.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteTiming.h"
 #include "PokemonBDSP/Options/PokemonBDSP_PlayerModelOption.h"
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_IntroMenuDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_StoryLanguage.h"
 #include "PokemonBDSP_AutoStory_BagScreen.h"
+#include "PokemonBDSP_AutoStory_Battle.h"
 #include "PokemonBDSP_AutoStory_BattleMoves.h"
 #include "PokemonBDSP_AutoStory_Center.h"
 #include "PokemonBDSP_AutoStory_Events.h"
@@ -691,26 +694,88 @@ UnitTestResult test_asks_someone_else(Logger&){
     return true;
 }
 
-//  01.04 (lab-B, 2026-11-12 22:50): the walk up the gym was blocked by the
-//  second trainer, an A press opened his talk, and it was taken for Roark's.
-//  A talk before every trainer is beaten is a trainer's, however it began.
-UnitTestResult test_gym_opponent_is_roark_only_after_the_trainers(Logger&){
-    GymTrainers gym(oreburgh_gym_trainer_sights().size());
-    if (gym.leader_next() || gym.next_label() != "Gym trainer 1 of 2"){
-        return "At the door the opponent must be the first trainer, not Roark.";
+//  01.04 (lab-B, 2026-11-12 22:50 and 23:49): the opponent is told by where
+//  we stand up the column, not by a count that a reload loses. Roark was
+//  "Gym trainer 1 of 2" after a reload; the second trainer was Roark when a
+//  blocked walk ended in a talk.
+UnitTestResult test_gym_opponent_is_told_by_position(Logger&){
+    const Pokemon::TilePos entrance = map_point("OreburghGym", "entrance");
+    const Pokemon::TilePos roark = map_point("OreburghGym", "roark");
+    int last_trainer = 0;
+    for (const TrainerSight& trainer : oreburgh_gym_trainer_sights()){
+        last_trainer = std::max(last_trainer, entrance.y - trainer.pos.y);
     }
-    gym.record_win();
-    //  The failing case: one trainer beaten, a blocked walk, a talk.
-    if (gym.leader_next() || gym.next_label() != "Gym trainer 2 of 2"){
-        return "After one trainer a talk must be the second trainer's, not Roark's.";
+    const int leader = entrance.y - roark.y - 1;
+    GymColumn column(last_trainer, leader, ROUTE_MS_PER_TILE_UP_DOWN);
+    if (column.leader_here() || column.label() != "Gym trainer"){
+        return "At the entrance the opponent must be a trainer, not Roark.";
     }
-    gym.record_win();
-    if (!gym.leader_next() || gym.next_label() != "Roark"){
-        return "After both trainers the opponent must be Roark.";
+    for (const int tiles : {0, 5, last_trainer}){
+        column.restart();
+        column.walked_north(ROUTE_MS_PER_TILE_UP_DOWN * tiles);
+        if (column.leader_here()){
+            return std::format("{} tiles up the opponent is a trainer, not Roark.", tiles);
+        }
     }
-    gym.record_win();
-    if (!gym.leader_next()){
-        return "A win past the last trainer must not unset Roark.";
+    //  Roark's stop, walked in several legs with a battle between.
+    column.restart();
+    column.walked_north(ROUTE_MS_PER_TILE_UP_DOWN * 5);
+    column.walked_north(ROUTE_MS_PER_TILE_UP_DOWN * (leader - 5));
+    if (!column.leader_here() || column.label() != "Roark"){
+        return "In front of Roark's tile the opponent must be Roark, whatever was beaten before.";
+    }
+    //  A whiteout restarts at the entrance.
+    column.restart();
+    if (column.leader_here()){
+        return "After a restart the opponent must be a trainer again.";
+    }
+    //  A negative or empty walk adds nothing.
+    column.walked_north(-100ms);
+    if (column.tiles() != 0){
+        return "A negative walk must not move us.";
+    }
+    return true;
+}
+
+//  Roark, lab-B 2026-11-12 23:49: four Potions at 26%, 26%, 29%, 29%. A Potion
+//  that gained nothing ends the Potions of the battle.
+UnitTestResult test_potion_ledger_stops_without_gain(Logger&){
+    PotionLedger potions;
+    potions.observe(0.26);
+    if (!potions.may_use()){
+        return "The first Potion must be allowed.";
+    }
+    potions.used(0.26);
+    if (!potions.pending()){
+        return "A Potion waits for its HP read.";
+    }
+    potions.observe(-1);
+    if (!potions.pending() || potions.stalled()){
+        return "An unread bar must not settle a Potion.";
+    }
+    potions.observe(0.26);
+    if (!potions.stalled() || potions.may_use()){
+        return "No gain (26% then 26%) must stop the Potions.";
+    }
+    //  The gain case: a Potion that raised HP allows the next while it is low.
+    PotionLedger gaining;
+    gaining.used(0.20);
+    gaining.observe(0.45);
+    if (gaining.stalled() || !gaining.may_use()){
+        return "A Potion that gained HP must not stop the Potions.";
+    }
+    //  At most the cap, and none after the Bag runs out.
+    for (size_t n = 1; n < PotionLedger::MAX_POTIONS; n++){
+        gaining.used(0.20);
+        gaining.observe(0.20 + 0.01 * (double)n);
+    }
+    if (gaining.may_use()){
+        return "No more than the cap of Potions in a battle.";
+    }
+    PotionLedger empty;
+    empty.out_of_potions();
+    if (empty.may_use()){
+        return "No Potion once the Bag has none.";
     }
     return true;
 }
@@ -965,7 +1030,11 @@ const AutoStoryActionsCase AUTO_STORY_ACTIONS_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"01.04 gym: a talk before both trainers are beaten is not Roark's (lab-B 2026-11-12)", test_gym_opponent_is_roark_only_after_the_trainers},
+        .input = {"01.04 gym: the opponent is Roark by the tiles walked up the column, not a count (lab-B 2026-11-12)", test_gym_opponent_is_told_by_position},
+        .expectation = {},
+    },
+    {
+        .input = {"Battle: a Potion that gained no HP ends the Potions of the battle (Roark, lab-B 2026-11-12 23:49)", test_potion_ledger_stops_without_gain},
         .expectation = {},
     },
     {
