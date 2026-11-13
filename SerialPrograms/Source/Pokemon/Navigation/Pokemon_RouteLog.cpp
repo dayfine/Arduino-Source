@@ -33,6 +33,10 @@ std::string to_string(const RouteLogLeg& leg){
         return std::format("surf {}", direction);
     case RouteLegAction::FACE:
         return std::format("face {}", direction);
+    case RouteLegAction::OPEN_GATE:
+        return std::format("open gate {}", direction);
+    case RouteLegAction::PRESS_SWITCH:
+        return std::format("press switch {}", direction);
     case RouteLegAction::WALK:
         break;
     }

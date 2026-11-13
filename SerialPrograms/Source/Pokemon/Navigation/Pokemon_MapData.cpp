@@ -43,6 +43,7 @@ constexpr std::pair<char, TileKind> GLYPHS[] = {
     {'o', TileKind::STOP_SPIN},
     {'H', TileKind::FALL_HOLE},
     {'B', TileKind::STRENGTH_BUTTON},
+    {'G', TileKind::GATE},
 };
 
 constexpr std::pair<std::string_view, WarpEntry> WARP_ENTRIES[] = {
@@ -368,6 +369,7 @@ MapWarp read_warp(const JsonObject& object, const std::string& where){
     warp.x = pos.x;
     warp.y = pos.y;
     warp.enter = read_warp_entry(object, where);
+    warp.one_way = optional_bool(object, "one_way", false, where);
     const bool has_map = object.get_value("to_map") != nullptr;
     const bool has_point = object.get_value("to_point") != nullptr;
     if (has_map != has_point){
@@ -487,6 +489,126 @@ MapPatch read_patch(const JsonObject& object, const std::string& where){
     return patch;
 }
 
+//  The tiles of a gate or a coordinate pair, `[x, y]` each.
+std::vector<TilePos> read_pair_list(const JsonObject& object, const std::string& key, const std::string& where){
+    const JsonArray* array = optional_array(object, key, where);
+    if (array == nullptr || array->empty()){
+        throw ParseException(std::format("{}{} is not a non-empty list of [x, y].", where, key));
+    }
+    std::vector<TilePos> pairs;
+    for (size_t c = 0; c < array->size(); c++){
+        pairs.push_back(read_pair((*array)[c], std::format("{}{}[{}]", where, key, c)));
+    }
+    return pairs;
+}
+
+TilePos read_pair_field(const JsonObject& object, const std::string& key, const std::string& where){
+    return read_pair(read_field(object, key, where), std::format("{}{}", where, key));
+}
+
+bool read_on_off(const JsonObject& object, const std::string& key, const std::string& where){
+    const std::string text = read_string(object, key, where);
+    if (text != "on" && text != "off"){
+        throw ParseException(std::format("{}{} \"{}\" is not on or off.", where, key, text));
+    }
+    return text == "on";
+}
+
+//  A gate is a card-key door (opens_by and flag) or follows a switch (switch
+//  and open_when); never both.
+MapGate read_gate(const std::string& id, const JsonObject& object, const std::string& where){
+    MapGate gate;
+    gate.id = id;
+    gate.tiles = read_pair_list(object, "tiles", where);
+    const std::string glyph = read_string(object, "open_glyph", where);
+    const std::optional<TileKind> open = glyph.size() == 1 ? tile_from_glyph(glyph[0]) : std::nullopt;
+    if (!open || *open == TileKind::GATE){
+        throw ParseException(std::format("{}open_glyph \"{}\" is not a tile glyph other than G.", where, glyph));
+    }
+    gate.open_tile = *open;
+    const std::string new_game = read_string(object, "new_game", where);
+    if (new_game != "open" && new_game != "closed"){
+        throw ParseException(std::format("{}new_game \"{}\" is not open or closed.", where, new_game));
+    }
+    gate.open_at_new_game = new_game == "open";
+    const bool by_key = object.get_value("opens_by") != nullptr || object.get_value("flag") != nullptr;
+    const bool by_switch = object.get_value("switch") != nullptr || object.get_value("open_when") != nullptr;
+    if (by_key == by_switch){
+        throw ParseException(std::format("{}needs opens_by and flag, or switch and open_when, and not both.", where));
+    }
+    if (by_key){
+        const std::string opens_by = read_string(object, "opens_by", where);
+        if (opens_by != "card_key_face_a"){
+            throw ParseException(std::format("{}opens_by \"{}\" is not card_key_face_a.", where, opens_by));
+        }
+        gate.kind = GateKind::CARD_KEY;
+        gate.flag = read_string(object, "flag", where);
+    }else{
+        gate.kind = GateKind::SWITCH;
+        gate.switch_id = read_string(object, "switch", where);
+        gate.open_when_on = read_on_off(object, "open_when", where);
+    }
+    return gate;
+}
+
+std::map<std::string, MapGate> read_gates(const JsonObject& root, const std::string& where){
+    std::map<std::string, MapGate> gates;
+    const JsonObject* object = optional_object(root, "gates", where);
+    if (object == nullptr){
+        return gates;
+    }
+    for (const auto& [id, value] : *object){
+        const std::string gate_where = std::format("{}gates.{}", where, id);
+        gates[id] = read_gate(id, as_object(value, gate_where), gate_where + ".");
+    }
+    return gates;
+}
+
+MapStatue read_statue(const JsonObject& object, const std::string& where){
+    MapStatue statue;
+    statue.tile = read_pair_field(object, "coord", where);
+    statue.face_from = read_pair_field(object, "face_from", where);
+    statue.facing = read_direction(object, "facing", where);
+    return statue;
+}
+
+MapSwitch read_switch(const std::string& id, const JsonObject& object, const std::string& where){
+    MapSwitch result;
+    result.id = id;
+    result.flag = read_string(object, "flag", where);
+    const JsonValue* toggle = object.get_value("toggle");
+    if (toggle != nullptr && !toggle->is_boolean()){
+        throw ParseException(std::format("{}toggle is not true or false.", where));
+    }
+    result.toggle = toggle == nullptr || toggle->to_boolean_default(true);
+    const JsonArray* floors = optional_array(object, "floors", where);
+    if (floors == nullptr || floors->empty()){
+        throw ParseException(std::format("{}floors is not a non-empty list of map names.", where));
+    }
+    for (size_t c = 0; c < floors->size(); c++){
+        const std::string* floor = (*floors)[c].to_string();
+        if (floor == nullptr){
+            throw ParseException(std::format("{}floors[{}] is not a string.", where, c));
+        }
+        result.floors.push_back(*floor);
+    }
+    result.statues = read_list<MapStatue>(object, "statues", where, read_statue);
+    return result;
+}
+
+std::map<std::string, MapSwitch> read_switches(const JsonObject& root, const std::string& where){
+    std::map<std::string, MapSwitch> switches;
+    const JsonObject* object = optional_object(root, "switches", where);
+    if (object == nullptr){
+        return switches;
+    }
+    for (const auto& [id, value] : *object){
+        const std::string switch_where = std::format("{}switches.{}", where, id);
+        switches[id] = read_switch(id, as_object(value, switch_where), switch_where + ".");
+    }
+    return switches;
+}
+
 
 void check_inside(const Grid<TileKind>& tiles, const TilePos& pos, const std::string& where){
     if (!tiles.contains(pos)){
@@ -527,6 +649,42 @@ void check_places(const MapData& map, const std::string& where){
     }
 }
 
+//  Every gate tile is a G tile, in one gate only; every G tile is in a
+//  gate; a gate follows a switch the map lists; a statue stands on a wall
+//  and is faced from a tile inside the map.
+void check_gates(const MapData& map, const std::string& where){
+    std::set<TilePos> in_gate;
+    for (const auto& [id, gate] : map.gates){
+        for (size_t c = 0; c < gate.tiles.size(); c++){
+            const std::string tile_where = std::format("{}gates.{}.tiles[{}]", where, id, c);
+            check_inside(map.tiles, gate.tiles[c], tile_where);
+            if (map.tiles.at(gate.tiles[c]) != TileKind::GATE){
+                throw ParseException(std::format("{} {} is not a G tile.", tile_where, to_string(gate.tiles[c])));
+            }
+            if (!in_gate.insert(gate.tiles[c]).second){
+                throw ParseException(std::format("{} {} is in another gate too.", tile_where, to_string(gate.tiles[c])));
+            }
+        }
+        if (gate.kind == GateKind::SWITCH && !map.switches.contains(gate.switch_id)){
+            throw ParseException(std::format("{}gates.{}.switch \"{}\" is not in switches.", where, id, gate.switch_id));
+        }
+    }
+    for (int y = 0; y < map.tiles.height; y++){
+        for (int x = 0; x < map.tiles.width; x++){
+            if (map.tiles.at({x, y}) == TileKind::GATE && !in_gate.contains(TilePos{x, y})){
+                throw ParseException(std::format("{}tiles has a G at {} that no gate lists.", where, to_string(TilePos{x, y})));
+            }
+        }
+    }
+    for (const auto& [id, result] : map.switches){
+        for (size_t c = 0; c < result.statues.size(); c++){
+            const std::string statue_where = std::format("{}switches.{}.statues[{}]", where, id, c);
+            check_inside(map.tiles, result.statues[c].tile, statue_where);
+            check_inside(map.tiles, result.statues[c].face_from, statue_where);
+        }
+    }
+}
+
 } // namespace
 
 
@@ -549,10 +707,13 @@ MapData parse_map(const JsonValue& json, const std::string& source_name){
     map.flag_sets = read_flag_sets(root, where);
     map.connections = read_list<MapConnection>(root, "connections", where, read_connection);
     map.patches = read_list<MapPatch>(root, "patches", where, read_patch);
+    map.gates = read_gates(root, where);
+    map.switches = read_switches(root, where);
     check_places(map, where);
     for (const MapPatch& patch : map.patches){
         cell_at(TilePos{patch.x, patch.y}, map.tiles) = patch.glyph;
     }
+    check_gates(map, where);
     return map;
 }
 

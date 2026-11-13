@@ -2,7 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Split out of Pokemon_RouteLog.h, unchanged; it includes this header.
+ *  The types of a route log's lines. Pokemon_RouteLog.h builds on it.
  *
  */
 
@@ -38,6 +38,10 @@ enum class RouteLegAction{
     WALK,
     SURF,
     FACE,
+    //  Face a gate and press A: a card-key gate opens.
+    OPEN_GATE,
+    //  Face a statue and press A, then Yes: a switch flips.
+    PRESS_SWITCH,
 };
 
 //  How a leg ends: at a wall, on a warp, or where it is timed to.

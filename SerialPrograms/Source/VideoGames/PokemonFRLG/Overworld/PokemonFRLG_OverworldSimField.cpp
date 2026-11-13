@@ -10,10 +10,13 @@
 
 #include <algorithm>
 #include <format>
+#include "Pokemon/Navigation/Pokemon_GateTiles.h"
 #include "PokemonFRLG_CodedRooms.h"
 #include "PokemonFRLG_FlyMap.h"
+#include "PokemonFRLG_OverworldGatedRoute.h"
 #include "PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_OverworldSimField.h"
+#include "PokemonFRLG_OverworldWalk.h"
 #include "PokemonFRLG_BikeSpinMechanics.h"
 #include "PokemonFRLG_OverworldSpin.h"
 
@@ -44,6 +47,10 @@ bool OverworldSim::use_field(SimField field, size_t floor){
         return start_surf();
     case SimField::FLY:
         return fly_to_town(floor);
+    case SimField::OPEN_GATE:
+        return open_gate();
+    case SimField::PRESS_SWITCH:
+        return press_switch();
     }
     return false;
 }
@@ -137,6 +144,62 @@ bool OverworldSim::start_surf(){
     return true;
 }
 
+void OverworldSim::read_gates(){
+    //  Only the tiles: the objects the sim has changed stay as they are.
+    //  Maps without a gate were not copied.
+    if (m_source_maps.empty() && has_gates(m_maps)){
+        m_source_maps = m_maps;
+    }
+    for (size_t c = 0; c < m_source_maps.size(); c++){
+        if (!m_source_maps[c].gates.empty()){
+            m_maps[c].tiles = Pokemon::resolve_tiles(m_source_maps[c], m_state.gates);
+        }
+    }
+}
+
+bool OverworldSim::open_gate(){
+    if (m_source_maps.empty()){
+        violation("no gates on the maps.");
+        return false;
+    }
+    const MapData& source = m_source_maps[m_map];
+    const Pokemon::MapGate* gate = Pokemon::closed_card_key_gate_faced(source, m_player.position, m_state.facing, m_state.gates);
+    if (gate == nullptr || !m_script.card_key_held || m_state.screen != SimScreen::OVERWORLD || m_frozen){
+        violation(std::format(
+            "no card-key gate to open {} of {}{}.",
+            direction_name(m_state.facing), to_string(m_state.position), m_script.card_key_held ? "" : " (no Card Key)"
+        ));
+        return false;
+    }
+    //  "Opened the door with the CARD KEY!", then the door.
+    advance_to(m_now + m_script.timing.message);
+    m_state.gates.opened.insert(Pokemon::gate_key(source.name, gate->id));
+    read_gates();
+    note("opened " + Pokemon::gate_key(source.name, gate->id) + ".");
+    return true;
+}
+
+bool OverworldSim::press_switch(){
+    const Pokemon::MapSwitch* pressed = m_source_maps.empty()
+        ? nullptr
+        : Pokemon::switch_pressed(m_source_maps[m_map], m_player.position, m_state.facing);
+    if (pressed == nullptr || m_state.screen != SimScreen::OVERWORLD || m_frozen){
+        violation(std::format("no statue to press {} of {}.", direction_name(m_state.facing), to_string(m_state.position)));
+        return false;
+    }
+    //  The prompt, YES, and the text after it.
+    advance_to(m_now + m_script.timing.message);
+    const bool now_on = pressed->toggle ? !m_state.gates.switch_on(pressed->id) : true;
+    if (now_on){
+        m_state.gates.switches_on.insert(pressed->id);
+    }else{
+        m_state.gates.switches_on.erase(pressed->id);
+    }
+    read_gates();
+    note(std::format("switch {} is {}.", pressed->id, now_on ? "on" : "off"));
+    return true;
+}
+
 bool OverworldSim::fly_to_town(size_t town){
     const std::vector<FlyTown>& towns = kanto_fly_towns();
     const MapPosition* landing = town < towns.size() ? &towns[town].landing : nullptr;
@@ -160,6 +223,31 @@ bool OverworldSim::fly_to_town(size_t town){
     schedule(m_now + m_script.timing.fly, SimScreen::OVERWORLD, true);
     note("flew to " + to_string(m_state.position) + ".");
     return true;
+}
+
+Pokemon::LegSpec OverworldSimWalker::leg_spec(const RouteStep& step) const{
+    Pokemon::LegSpec leg;
+    leg.direction = step.direction;
+    leg.tiles = step.tiles + step.warp_slack;
+    leg.to_wall = step.to_wall;
+    leg.tile_time = OverworldWalkSteps::tile_time(step, m_speed);
+    leg.stop_on_interrupt = !step.to_wall;
+    leg.stop_if_blocked = step.to_wall && m_rules.stop_if_blocked;
+    if (m_rules.hold_over_connections){
+        leg.stalled_steps = step.connection_steps;
+    }
+    return leg;
+}
+
+std::optional<WalkedTiles> OverworldSimWalker::use_gate(const RouteStep& step){
+    if (m_sim.state().facing != step.direction){
+        sim_turn_to(m_sim, step.direction, m_rules.confirm_turn);
+    }
+    const bool opens = step.action == RouteAction::OPEN_GATE;
+    if (!m_sim.use_field(opens ? SimField::OPEN_GATE : SimField::PRESS_SWITCH)){
+        fail("walk_overworld_route(): " + to_string(step) + " did not open anything.");
+    }
+    return std::nullopt;
 }
 
 std::optional<WalkedTiles> OverworldSimWalker::surf(const RouteStep& step){
