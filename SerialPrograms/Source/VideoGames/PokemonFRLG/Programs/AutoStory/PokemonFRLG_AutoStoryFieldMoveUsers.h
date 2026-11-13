@@ -31,6 +31,7 @@ struct FieldMoveUser{
     std::string species = {};
 };
 
+//  The user of each field move, by the move's slug ("fly", "surf").
 class FieldMoveUsers{
 public:
     void record(std::string move, size_t slot, std::string species);
