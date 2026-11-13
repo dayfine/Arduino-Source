@@ -31,13 +31,14 @@ std::optional<size_t> read_language_list_cursor(const ImageViewRGB32& frame);
 bool is_language_list(const ImageViewRGB32& frame);
 
 //  On the "APPEARANCE" look picker, the look (1 to LOOK_COUNT) whose face is
-//  highlighted: the one face whose tile or the strip above it is brighter
-//  than the others' slate tiles. Nullopt while no face is highlighted (the
-//  screen opens so), and for any other frame.
+//  highlighted: the one tile whose 4 corners are on the white card while
+//  the other 7 tiles' corners are slate. Nullopt while no face is
+//  highlighted (the screen opens so), while the card moves between looks,
+//  and for any other frame.
 std::optional<size_t> read_look_picker_cursor(const ImageViewRGB32& frame);
 
-//  The look picker's 2 x 4 grid of slate face tiles on dark blue, with at
-//  most one face highlighted.
+//  The look picker's 2 x 4 grid of face tiles on dark blue, each tile's
+//  corners white (the highlight's card) or slate.
 bool is_look_picker(const ImageViewRGB32& frame);
 
 //  "Confirm Choices", the screen after the name keyboard, has three rows:
