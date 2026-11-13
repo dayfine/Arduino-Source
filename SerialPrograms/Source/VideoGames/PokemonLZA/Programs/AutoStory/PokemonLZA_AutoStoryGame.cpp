@@ -669,6 +669,12 @@ Outcome reload_at_boundary(const Pokemon::StoryGame<ZonePose>& game, Pokemon::St
     return Pokemon::outcome_ok();
 }
 
+//  Whether a run reloads the save before `row` when it reaches it from the
+//  row before.
+bool reloads_before(const StoryData& story, BoundaryReload boundary_reload, std::string_view row){
+    return boundary_reload == BoundaryReload::AT_PLAN_BOUNDARIES && story.reload_when_chained.contains(row);
+}
+
 void add_segment(const Pokemon::SegmentReport& part, Pokemon::SegmentReport& total){
     total.checkpoints_run += part.checkpoints_run;
     total.reloads += part.reloads;
@@ -682,14 +688,14 @@ void add_segment(const Pokemon::SegmentReport& part, Pokemon::SegmentReport& tot
 
 Pokemon::SegmentReport run_plza_segment(
     const Pokemon::StoryGame<ZonePose>& game, const StoryData& story,
-    std::span<const Pokemon::StoryCheckpoint> rows, size_t attempts_per_checkpoint,
+    std::span<const Pokemon::StoryCheckpoint> rows, size_t attempts_per_checkpoint, BoundaryReload boundary_reload,
     Pokemon::StoryEngine<ZonePose>& engine, Pokemon::StoryBackend<ZonePose>& backend, Pokemon::RunState& state
 ){
     Pokemon::SegmentReport total;
     size_t begin = 0;
     while (begin < rows.size()){
         size_t end = begin + 1;
-        while (end < rows.size() && !story.reload_when_chained.contains(rows[end].id)){
+        while (end < rows.size() && !reloads_before(story, boundary_reload, rows[end].id)){
             end++;
         }
         if (begin > 0){

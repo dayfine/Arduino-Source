@@ -555,10 +555,13 @@ struct BoundaryRun{
     size_t reloads = 0;
 };
 
-//  `ids` through run_plza_segment() over looks with the platform on
-//  `platform` (by look index; the last look repeats); the game's reload
-//  counts itself.
-BoundaryRun run_boundary(std::vector<std::string> ids, std::vector<bool> platform, CancellableScope& scope){
+//  `ids` through run_plza_segment() with `boundary_reload` over looks with
+//  the platform on `platform` (by look index; the last look repeats); the
+//  game's reload counts itself.
+BoundaryRun run_boundary(
+    std::vector<std::string> ids, std::vector<bool> platform, CancellableScope& scope,
+    BoundaryReload boundary_reload = BoundaryReload::AT_PLAN_BOUNDARIES
+){
     std::vector<Observation<ZonePose>> looks;
     for (size_t i = 0; i < platform.size(); i++){
         const Observation<ZonePose> look = look_at(Milliseconds(300 * (int64_t)i));
@@ -580,7 +583,7 @@ BoundaryRun run_boundary(std::vector<std::string> ids, std::vector<bool> platfor
     }
     Pokemon::StoryEngine<ZonePose> engine(game, backend);
     Pokemon::RunState state;
-    run.report = run_plza_segment(game, story, rows, 1, engine, backend, state);
+    run.report = run_plza_segment(game, story, rows, 1, boundary_reload, engine, backend, state);
     run.lines = backend.lines();
     return run;
 }
@@ -622,6 +625,19 @@ UnitTestResult test_no_reload_unless_chained(CancellableScope& scope){
         if (!run.report.completed || run.reloads != 0 || line_index(run.lines, "reload_at_boundary") != run.lines.size()){
             return std::format("Expected no reload for {}: {}", joined(ids), joined(run.lines));
         }
+    }
+    return true;
+}
+
+//  Run straight through, B runs on after A with no reload, though it is in
+//  reload_when_chained; both rows run in one segment.
+UnitTestResult test_straight_through_has_no_reload(CancellableScope& scope){
+    const BoundaryRun run = run_boundary({"A", "B", "C"}, {true}, scope, BoundaryReload::STRAIGHT_THROUGH);
+    if (!run.report.completed || run.reloads != 0 || line_index(run.lines, "reload_at_boundary") != run.lines.size()){
+        return std::format("Expected A, B and C with no reload, got {} reloads: {}", run.reloads, joined(run.lines));
+    }
+    if (run.report.runs.size() != 3 || run.report.checkpoints_run != 3){
+        return std::format("Expected all three rows in one report, got {} runs.", run.report.runs.size());
     }
     return true;
 }
@@ -771,6 +787,7 @@ const EngineTestCase ENGINE_TEST_CASES[] = {
     {.input = {"reload_when_chained: reload between the rows, as its own event", test_reload_when_chained}, .expectation = {}},
     {.input = {"reload_when_chained: no reload from the row's save or for other rows", test_no_reload_unless_chained}, .expectation = {}},
     {.input = {"reload_when_chained: a reload onto the platform fails", test_reload_lands_on_older_save}, .expectation = {}},
+    {.input = {"reload_when_chained: straight through, no reload at a boundary", test_straight_through_has_no_reload}, .expectation = {}},
     {.input = {"walk_to_prompt: walks until the A prompt, none when it shows", test_walk_to_prompt}, .expectation = {}},
     {.input = {"breakpoints: a walk pauses before each leg", test_walk_pauses_before_each_leg}, .expectation = {}},
 };
