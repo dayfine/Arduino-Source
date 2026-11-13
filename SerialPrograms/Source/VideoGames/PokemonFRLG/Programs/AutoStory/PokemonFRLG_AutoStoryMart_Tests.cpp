@@ -18,6 +18,7 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_ItemListReader.h"
 #include "PokemonFRLG_AutoStoryMart.h"
 #include "PokemonFRLG_AutoStoryMartPlan.h"
 #include "PokemonFRLG_AutoStoryTable.h"
@@ -438,6 +439,29 @@ UnitTestResult test_mart_stock(){
 }
 
 
+//  12.01's Fuchsia Mart read its ULTRA BALL row as PARLYZ HEAL and bought
+//  nothing (console B, 2026-11-12): the item list reader had no name for it.
+//  Every item any Mart sells has one.
+UnitTestResult test_mart_stock_readable(){
+    std::string missing;
+    for (const char* map : {
+        "ViridianCity_Mart", "PewterCity_Mart", "CeruleanCity_Mart", "VermilionCity_Mart",
+        "LavenderTown_Mart", "FuchsiaCity_Mart", "SaffronCity_Mart", "CinnabarIsland_Mart",
+        "CeladonCity_DepartmentStore_5F",
+    }){
+        for (const MartStockItem& stock : mart_stock(map)){
+            if (!item_list_reader_knows(stock.item)){
+                missing += std::format("\n    {}: {}", map, stock.item);
+            }
+        }
+    }
+    if (!missing.empty()){
+        return std::format("The item list reader has no name for:{}", missing);
+    }
+    return true;
+}
+
+
 //  Potions, Antidotes, Parlyz Heals and Awakenings bought go into the
 //  battles' supplies.
 UnitTestResult test_count_supplies(){
@@ -492,6 +516,10 @@ const AutoStoryMartCase AUTO_STORY_MART_CASES[] = {
     },
     {
         .input = {"Mart stocks", test_mart_stock},
+        .expectation = {},
+    },
+    {
+        .input = {"every Mart item has a reader name", test_mart_stock_readable},
         .expectation = {},
     },
     {
