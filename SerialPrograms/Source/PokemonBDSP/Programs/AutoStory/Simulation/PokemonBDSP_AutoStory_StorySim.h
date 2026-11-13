@@ -7,6 +7,9 @@
  *  (StoryWalkSteps) on the grid simulation; see StorySim_Tests.cpp for
  *  what is simulated and what is stubbed. Moved out of the tests so the
  *  console failure cases (SimFailureCases_Tests) run on the same executor.
+ *  With a SimDisturbance the run is disturbed as the console disturbs it
+ *  (wild battles, drift off the grid, people wandering): the story's Monte
+ *  Carlo tests.
  *
 // code-health: allow header_symbols -- story simulation executor, scenario runners and mock IO
  */
@@ -40,6 +43,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkResult.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkScreen.h"
 #include "PokemonBDSP_AutoStory_GridSim.h"
+#include "PokemonBDSP_AutoStory_SimDisturbance.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -171,6 +175,10 @@ struct SimWorldKnobs{
     //  Whether the executor clears what came up between steps
     //  (story_interrupts()), as the console does; off, as before it did.
     bool clear_interrupts = true;
+    //  A seed's disturbances (wild battles, drift off the grid, people
+    //  wandering), which must outlive the run: the story's Monte Carlo tests.
+    //  Within half a tile of where a step should end counts as there.
+    SimDisturbance* noise = nullptr;
     //  Where a step really leaves the player, by step name, when that is
     //  not the table's pose_after or the walk's end: the program goes on
     //  from the table's pose, the player from here (00.03's scene a row
@@ -193,15 +201,15 @@ struct SimWorldKnobs{
 namespace detail{
 
 //  The walker's RouteIO on the story simulation, with SimWorldKnobs' slides
-//  and late first lines. `step` names the step running now; `cross` puts
-//  the player on a pose past a warp.
-class SimKnobRouteIO : public GridSimRouteIO{
+//  and late first lines, disturbed by SimWorldKnobs::noise if set. `step`
+//  names the step running now; `cross` puts the player on a pose past a warp.
+class SimKnobRouteIO : public DisturbedRouteIO{
 public:
     SimKnobRouteIO(
         GridSim& sim, std::vector<std::string>& notes, SimMisses& misses, const SimWorldKnobs& knobs,
         const std::string& step, std::function<void(const Pokemon::Pose&)> cross
     )
-        : GridSimRouteIO(sim, notes, {}, {}, knobs.grass)
+        : DisturbedRouteIO(sim, notes, knobs.noise, knobs.grass)
         , m_grid(sim)
         , m_misses(misses)
         , m_knobs(knobs)
@@ -286,6 +294,12 @@ struct SimRun{
     //  Where the player stood after the last step, if placed.
     const StoryWorld* world = nullptr;
     Pokemon::TilePos end;
+    //  Wild battles in the run, and in the step it failed in.
+    size_t battles = 0;
+    size_t failed_step_battles = 0;
+    //  How the run failed: the failure and its message.
+    std::string failure;
+    std::string failure_detail;
     //  Scenes a walk took for a trainer's and pressed through, as
     //  "row step: scene" (the console's unknown-trainer handler, lab-B
     //  2026-11-09 17:29: Mom's call, then her scene's fade missed).
@@ -303,6 +317,7 @@ public:
         const std::string& step, std::function<bool()> far_side, std::function<void(const Pokemon::Pose&)> cross
     )
         : m_sim(sim)
+        , m_noise(knobs.noise)
         , m_route(sim, notes, misses, knobs, step, std::move(cross))
         , m_misses(misses)
         , m_knobs(knobs)
@@ -328,10 +343,10 @@ public:
         m_route.check_fade_in(std::format("{}: run into the door", m_step));
         const SimPace pace = run ? SimPace::RUN : SimPace::WALK;
         if (false_dark() && dark_from <= detail::SIM_FALSE_DARK && detail::SIM_FALSE_DARK < timeout){
-            m_sim.hold(direction, detail::SIM_FALSE_DARK, pace);
+            disturbed_hold(m_sim, m_noise, direction, detail::SIM_FALSE_DARK, pace);
             return {.fade = WarpFade::BLACK};
         }
-        if (m_sim.hold(direction, timeout, pace).stop != SimStop::WARP){
+        if (disturbed_hold(m_sim, m_noise, direction, timeout, pace).move.stop != SimStop::WARP){
             return {};
         }
         const WarpSeen seen = door_fade(banner);
@@ -381,6 +396,7 @@ private:
     double floor_here() const;
 
     GridSim& m_sim;
+    SimDisturbance* m_noise;
     detail::SimKnobRouteIO m_route;
     SimMisses& m_misses;
     const SimWorldKnobs& m_knobs;
@@ -429,6 +445,7 @@ public:
         , m_logger(logger)
         , m_misses(misses)
         , m_knobs(std::move(knobs))
+        , m_noise(m_knobs.noise)
         , m_sim({}, {0, 0}, Pokemon::Direction::NORTH, false)
         , m_io(m_sim, m_notes, m_misses, m_knobs, m_step, [this]{ return cross(); }, [this](const Pokemon::Pose& far){ cross_to(far); })
         , m_walks(m_io)
@@ -515,11 +532,15 @@ private:
     std::string off_pose(const Pokemon::Pose& pose) const;
     std::string check(const Pokemon::StoryStep& step, const Pokemon::Outcome& outcome);
     Pokemon::Outcome run_step(const Pokemon::StoryStep& step, Pokemon::RunState& state);
+    void place(const StoryWorld* world, const Pokemon::TilePos& start, std::optional<Pokemon::Direction> facing);
+    bool settled() const;
+    void record_failure(const Pokemon::Outcome& outcome, const Pokemon::StoryStep& step, size_t battles_before);
 
     Logger& m_logger;
     std::vector<std::string> m_notes;
     SimMisses m_misses;
     SimWorldKnobs m_knobs;
+    SimDisturbance* m_noise;
     //  The step running now.
     std::string m_step;
     GridSim m_sim;
