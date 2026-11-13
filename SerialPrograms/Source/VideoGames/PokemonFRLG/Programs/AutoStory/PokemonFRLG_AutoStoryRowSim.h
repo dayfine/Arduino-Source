@@ -19,6 +19,7 @@
 #include <string>
 #include <vector>
 #include "Pokemon/AutoStory/Pokemon_StoryActions.h"
+#include "Pokemon/Navigation/Pokemon_GatedTypes.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
@@ -40,6 +41,9 @@ struct StorySimKnobs{
     //  Whether the executor clears what came up between steps
     //  (step_interrupts()), as the console does; off, as before it did.
     bool clear_interrupts = true;
+    //  The maps the story is planned and walked on, with the gates of the
+    //  run state; the story's (story_maps()) if null.
+    const std::vector<MapData>* maps = nullptr;
 };
 
 //  The whole story on the story maps, without a walker: each ROUTE planned
@@ -84,7 +88,9 @@ protected:
 
 private:
     Pokemon::StoryAction action(StoryActionId id);
-    Pokemon::Outcome walk_to(const Pokemon::Pose& pose, const StoryStep& step) const;
+    const std::vector<MapData>& maps() const;
+    //  Plans the route and moves the run's pose and gates to its end.
+    Pokemon::Outcome walk_to(Pokemon::RunState& state, const StoryStep& step) const;
     Pokemon::Outcome legs(const Pokemon::Pose& pose, const StoryStep& step) const;
     Pokemon::Outcome step_ahead(const Pokemon::Pose& pose, const StoryStep& step) const;
     Pokemon::Outcome shop(const StoryStep& step);
@@ -108,7 +114,13 @@ private:
 
 
 //  The route the program walks for `step`, a ROUTE or LEGS, from `at`:
-//  planned, or the legs laid out.
+//  planned, or the legs laid out. A route is planned over `maps` through
+//  `gates`, and may open a card-key gate if `rules` say the player holds
+//  the Card Key.
+std::optional<std::vector<RouteStep>> walked_route(
+    const StoryPose& at, const StoryStep& step,
+    const std::vector<MapData>& maps, const Pokemon::GateState& gates, const Pokemon::GateRules& rules
+);
 std::optional<std::vector<RouteStep>> walked_route(const StoryPose& at, const StoryStep& step);
 
 //  A row's steps on the OverworldSim as the program does them: routes and

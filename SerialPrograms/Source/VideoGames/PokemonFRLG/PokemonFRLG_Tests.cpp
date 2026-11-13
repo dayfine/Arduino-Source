@@ -57,6 +57,7 @@
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows12_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows14_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows15_Tests.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryGates_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows13_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows16_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryTable.h"
@@ -343,6 +344,7 @@ static void add_tests_AutoStoryRows(UnitTestDatabase& database){
     add_tests_AutoStoryCinnabarGym(database);
     add_tests_AutoStorySilph(database);
     add_tests_AutoStoryMansion(database);
+    add_tests_AutoStoryGates(database);
 }
 
 void add_tests(UnitTestDatabase& database){
