@@ -21,6 +21,7 @@
 #include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
 #include "Pokemon/AutoStory/Pokemon_StoryPose.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryBreakpoints.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RoutePlanner.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_TrainerSight.h"
@@ -91,6 +92,10 @@ public:
     //  the scene's trigger, hands a dialogue that starts on the way to that
     //  scene (RouteWalkPlan::scene_next).
     void begin_attempt(const std::string& row, const std::vector<Pokemon::StoryStep>& steps = {});
+    //  The run's breakpoints: a pause before each leg of a walk (LEGS mode).
+    void set_pause_points(Pokemon::StoryPausePoints* pause){
+        m_pause = pause;
+    }
     //  Whether the player has the Running Shoes: the pace routes are timed at.
     bool can_run() const{
         return m_can_run;
@@ -127,6 +132,8 @@ private:
     bool through_already(const Pokemon::StoryStep& step);
     WarpSeen door_from_beside(const Pokemon::StoryStep& step, const WarpSeen& seen, Milliseconds timeout, const std::string& banner);
     void turn(Pokemon::Direction direction);
+    //  The breakpoint before leg `index` of `count` of `step`, from the one tile `at`.
+    void pause_leg(size_t index, size_t count, const Pokemon::StoryLeg& leg, const std::vector<Pokemon::TilePos>& at);
     void log(const std::string& text);
 
     StoryStepIO& m_io;
@@ -134,6 +141,7 @@ private:
     Pokemon::LegTracer m_legs;
     //  m_io's route walker console, telling m_legs of each leg walked.
     LegTraceRouteIO m_route;
+    Pokemon::StoryPausePoints* m_pause = nullptr;
     std::string m_row;
     bool m_can_run = false;
     //  The trainers who can still see us on each story_plan_world() world,
