@@ -204,6 +204,7 @@ class DiffTest(unittest.TestCase):
 
 
 class GoldenTest(unittest.TestCase):
+    @unittest.skipUnless(os.path.exists(GOLDEN), 'the BDSP golden trace is not on this branch')
     def test_golden_trace_against_itself(self):
         with open(GOLDEN, encoding='utf-8') as f:
             sim = json.load(f)
