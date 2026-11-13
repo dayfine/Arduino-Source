@@ -38,7 +38,10 @@ class SimBag : public ItemUseActions{
 public:
     std::map<BagPocket, std::vector<BagRow>> pockets;
     bool opens = true;
+    //  The lead's level-up text never shows.
+    bool no_level_up = false;
     std::vector<std::string> used;
+    std::vector<std::string> used_on_lead;
     std::vector<std::string> registered;
     bool open = false;
 
@@ -56,6 +59,14 @@ public:
         if (item.count > 0){
             item.count--;
         }
+    }
+    virtual bool use_row_on_lead(size_t row) override{
+        if (no_level_up){
+            return false;
+        }
+        use_row(row);
+        used_on_lead.push_back(pockets[m_pocket][row].item);
+        return true;
     }
     virtual void register_row(size_t row) override{
         registered.push_back(pockets[m_pocket][row].item);
@@ -76,6 +87,9 @@ struct ItemUseInput{
     bool opens = true;
     //  renew_repel() instead of use_item_from_bag().
     bool renew = false;
+    //  The step's count (use_items_from_bag()).
+    size_t count = 1;
+    bool no_level_up = false;
 };
 struct ItemUseExpectation{
     ItemUseEnd end;
@@ -97,10 +111,14 @@ public:
         bag.pockets[BagPocket::ITEMS] = m_case.input.items;
         bag.pockets[BagPocket::KEY_ITEMS] = m_case.input.key_items;
         bag.opens = m_case.input.opens;
+        bag.no_level_up = m_case.input.no_level_up;
         const std::string variant = m_case.input.variant;
         const std::string item = variant == RIDE_BIKE_VARIANT ? "bicycle" : parse_use_item_step(game_step_of(variant, ITEM)).value_or(variant);
-        const ItemUseEnd end = m_case.input.renew ? renew_repel(logger, bag, item) : use_item_from_bag(logger, bag, item);
-        if (end != m_case.expectation.end || bag.used != m_case.expectation.used || bag.open){
+        const ItemUseEnd end = m_case.input.renew
+            ? renew_repel(logger, bag, item)
+            : use_items_from_bag(logger, bag, item, m_case.input.count).end;
+        const bool lead_ok = is_party_item(item) ? bag.used_on_lead == bag.used : bag.used_on_lead.empty();
+        if (end != m_case.expectation.end || bag.used != m_case.expectation.used || bag.open || !lead_ok){
             return std::format(
                 "\"{}\": {} using {} item(s), bag {}; expected {} using {}.", variant,
                 item_use_end_name(end), bag.used.size(), bag.open ? "open" : "closed",
@@ -177,6 +195,43 @@ const ItemUseCase ITEM_USE_CASES[] = {
     },
     {
         .input = {
+            .name = "two Rare Candies on the lead, the bag holding five",
+            .variant = "use_item rare-candy",
+            .items = {{"potion", 3}, {"rare-candy", 5}},
+            .count = 2,
+        },
+        .expectation = {.end = ItemUseEnd::USED, .used = {"rare-candy", "rare-candy"}},
+    },
+    {
+        .input = {
+            .name = "two Rare Candies asked, one in the bag: the one is used",
+            .variant = "use_item rare-candy",
+            .items = {{"rare-candy", 1}},
+            .count = 2,
+        },
+        .expectation = {.end = ItemUseEnd::USED, .used = {"rare-candy"}},
+    },
+    {
+        .input = {
+            .name = "no Rare Candy in the bag",
+            .variant = "use_item rare-candy",
+            .items = {{"potion", 3}},
+            .count = 2,
+        },
+        .expectation = {.end = ItemUseEnd::NONE_LEFT, .used = {}},
+    },
+    {
+        .input = {
+            .name = "a Rare Candy whose level-up never shows",
+            .variant = "use_item rare-candy",
+            .items = {{"rare-candy", 2}},
+            .count = 2,
+            .no_level_up = true,
+        },
+        .expectation = {.end = ItemUseEnd::NOT_USED, .used = {}},
+    },
+    {
+        .input = {
             .name = "an Escape Rope is no Repel to renew",
             .variant = "use_item escape-rope",
             .items = {{"escape-rope", 2}},
@@ -190,6 +245,11 @@ UnitTestResult test_variants_and_bike(){
     if (parse_use_item_step(game_step_of("use_item potion", ITEM)) || parse_use_item_step(game_step_of("use_item", ITEM))
         || parse_use_item_step(game_step_of("use_item repel slot=1", ITEM))
         || !parse_use_item_step(game_step_of("use_item super-repel", ITEM))
+        || parse_use_item_step(game_step_of("use_item rare-candy slot=1", ITEM))
+        || parse_use_item_step(game_step_of("use_item rare-candy count=0", ITEM))
+        || !parse_use_item_step(game_step_of("use_item rare-candy count=2", ITEM))
+        || use_item_count(game_step_of("use_item rare-candy count=2", ITEM)) != 2
+        || use_item_count(game_step_of("use_item rare-candy", ITEM)) != 1
     ){
         return "Expected only the story's bag items as use_item steps.";
     }
