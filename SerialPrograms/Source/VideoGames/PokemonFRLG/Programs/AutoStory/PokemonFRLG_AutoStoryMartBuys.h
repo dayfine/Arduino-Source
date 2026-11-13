@@ -39,12 +39,9 @@ struct MartBuy{
     size_t cost = 0;
 };
 
-//  What `plan` buys at a Mart with `stock` and `money`: each line as many
-//  as fit in the budget and the money left, in order, at most 99; lines
-//  that buy none are left out. Nothing if a line's item isn't stocked.
-std::optional<std::vector<MartBuy>> plan_mart_buys(
-    const std::vector<MartStockItem>& stock, const MartPlan& plan, size_t money
-);
+//  What `plan` buys at a Mart with `stock`: each line's quantity, in order.
+//  Nothing if a line's item isn't stocked.
+std::optional<std::vector<MartBuy>> plan_mart_buys(const std::vector<MartStockItem>& stock, const MartPlan& plan);
 
 //  The presses that turn the quantity box from 1 into `quantity` without
 //  passing its most: RIGHT adds ten, then UP one at a time.
@@ -76,8 +73,6 @@ public:
     //  Facing the clerk: talk, BUY, to the list with the cursor on its top
     //  row. False if the list didn't show.
     virtual bool open_buy_list() = 0;
-    //  On the list: the money box; nothing if it can't be read.
-    virtual std::optional<size_t> read_money() = 0;
     //  On the list: one DOWN (`down`) or UP.
     virtual void press_cursor(bool down) = 0;
     //  On the list: the item slug on row `row` of its window, from the
