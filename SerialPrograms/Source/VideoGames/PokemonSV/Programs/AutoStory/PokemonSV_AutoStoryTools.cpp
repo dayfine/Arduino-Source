@@ -44,7 +44,6 @@ namespace PokemonSV{
 
 
 
-
 void clear_tutorial(VideoStream& stream, ProControllerContext& context, uint16_t seconds_timeout){
     bool seen_tutorial = false;
     while (true){
