@@ -123,9 +123,7 @@ StoryRunOptions::StoryRunOptions(const StringSelectDatabase& checkpoints, const 
     , BREAKPOINTS(
         "<b>Breakpoints:</b><br>Pause before each step, or before each leg of a walk too, so you can look at the console "
         "and then continue. Only lab builds wait; elsewhere the run goes on.",
-        StoryBreakpoints_Database(),
-        LockMode::LOCK_WHILE_RUNNING,
-        StoryBreakpoints::OFF
+        StoryBreakpoints_Database(), LockMode::LOCK_WHILE_RUNNING, StoryBreakpoints::OFF
     )
 {
     PA_ADD_OPTION(ATTEMPTS_PER_CHECKPOINT);
