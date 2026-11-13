@@ -15,6 +15,7 @@
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
+namespace detail{
 
 
 //  When X opens nothing the menu detector knows, the player is still in
@@ -39,6 +40,7 @@ struct XProbe{
 bool intro_in_control_without_menu(const XProbe& probe);
 
 
+} // namespace detail
 } // namespace PokemonBDSP
 } // namespace NintendoSwitch
 } // namespace PokemonAutomation

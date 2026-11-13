@@ -36,6 +36,7 @@
 #include <vector>
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
+#include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_NewGame.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RobustRoute.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryWorld.h"
 #include "Pokemon/AutoStory/Pokemon_StoryActions.h"
@@ -88,6 +89,8 @@ struct StoryEnv{
     ProControllerContext& context;
     StarterChoice starter = StarterChoice::CHIMCHAR;
     std::string player_name;
+    //  The new game's language and look.
+    IntroPicks intro_picks = {};
 };
 
 

@@ -1435,6 +1435,10 @@ file(GLOB LIBRARY_SOURCES
     Source/NintendoSwitch/Programs/NintendoSwitch_TurboButton.h
     Source/NintendoSwitch/Programs/NintendoSwitch_TurboMacro.cpp
     Source/NintendoSwitch/Programs/NintendoSwitch_TurboMacro.h
+    Source/NintendoSwitch/Programs/MenuCursor/NintendoSwitch_MenuCursor.cpp
+    Source/NintendoSwitch/Programs/MenuCursor/NintendoSwitch_MenuCursor.h
+    Source/NintendoSwitch/Programs/MenuCursor/NintendoSwitch_MenuCursor_Tests.cpp
+    Source/NintendoSwitch/Programs/MenuCursor/NintendoSwitch_MenuCursor_Tests.h
     Source/NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter.cpp
     Source/NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter.h
     Source/NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter_Tests.cpp
@@ -1775,6 +1779,8 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_WallRecovery.h
     Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_BattleMenuReader.cpp
     Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_BattleMenuReader.h
+    Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_IntroMenuDetector.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_IntroMenuDetector.h
     Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_MenuCursorDetector.cpp
     Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_MenuCursorDetector.h
     Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.cpp

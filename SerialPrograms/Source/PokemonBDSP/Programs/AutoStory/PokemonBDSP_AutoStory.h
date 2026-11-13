@@ -19,6 +19,7 @@
 #include "CommonFramework/Notifications/EventNotificationsTable.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 #include "Pokemon/Options/Pokemon_StoryRunOptions.h"
+#include "PokemonBDSP/Options/PokemonBDSP_PlayerModelOption.h"
 #include "PokemonBDSP_AutoStory_StoryExecutor.h"
 
 namespace PokemonAutomation{
@@ -48,6 +49,7 @@ private:
     Pokemon::StoryRunOptions RUN;
     BooleanCheckBoxOption NEW_GAME_INTRO;
     StringOption PLAYER_NAME;
+    PlayerModelOption PLAYER_LOOK;
     EnumDropdownOption<StarterChoice> STARTER;
 
     EventNotificationsOption NOTIFICATIONS;

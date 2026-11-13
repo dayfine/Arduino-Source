@@ -22,6 +22,7 @@
 #include "Pokemon/Options/Pokemon_GameLanguages.h"
 #include "Pokemon/Options/Pokemon_StoryRunOptions.h"
 #include "PokemonBDSP/Programs/PokemonBDSP_GameEntry.h"
+#include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_NewGame.h"
 #include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Actions.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_StoryLanguage.h"
@@ -132,6 +133,11 @@ BDSPAutoStory::BDSPAutoStory()
         LockMode::LOCK_WHILE_RUNNING, false
     )
     , PLAYER_NAME(false, "<b>Player name:</b><br>For a new game. Letters and digits.", LockMode::LOCK_WHILE_RUNNING, "Kosmos", "Kosmos")
+    , PLAYER_LOOK(
+        "<b>Player's look:</b><br>For a new game: the look picked on the appearance grid. "
+        "The portraits row by row: 1 Lucas light, 2 Lucas dark, 3 Dawn dark-haired, 4 Dawn dark; "
+        "5 Lucas blond, 6 Lucas brown, 7 Dawn blond, 8 Dawn brown-haired."
+    )
     , STARTER(
         "<b>Starter Pokemon:</b>",
         {
@@ -151,6 +157,7 @@ BDSPAutoStory::BDSPAutoStory()
     PA_ADD_OPTION(RUN);
     PA_ADD_OPTION(NEW_GAME_INTRO);
     PA_ADD_OPTION(PLAYER_NAME);
+    PA_ADD_OPTION(PLAYER_LOOK);
     PA_ADD_OPTION(STARTER);
     PA_ADD_OPTION(NOTIFICATIONS);
 }
@@ -246,7 +253,7 @@ void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     //  The reads that use text (Location.h) take the game's language from here.
     set_story_language(RUN.language());
 
-    StoryEnv story{env, context, STARTER, PLAYER_NAME};
+    StoryEnv story{env, context, STARTER, PLAYER_NAME, IntroPicks{RUN.language(), PLAYER_LOOK.index()}};
     StoryExecutor executor(story);
     executor.set_stop_rows(rows_that_stop(checkpoints));
     //  A start with a save always loads it first, so the run never walks
