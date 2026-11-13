@@ -656,10 +656,118 @@ const OpenLegTalkCase OPEN_LEG_TALK_SIM_CASES[] = {
     {.input = {.name = "with no tap counted, then again a tap on (lab-B, 2026-11-12 07:44)", .talks = {{46, 29}, {45, 30}}}, .expectation = {.arrives = true}},
 };
 
+//  lab-B 2026-11-12 21:01, 01.02 past_curtis: camper_1's sight on column 17
+//  stopped the taps on (17, 22), and the count read "blocked after 9 of 13"
+//  with the dialogue on the next tap: the walk placed us a tile or two back,
+//  marked the beaten camper's tile, and planned a loop round it. In the Gate
+//  the only way on is the east door along row 22, so any fight on the way
+//  ends in a hold east to the door's fade, fighting what stops us on the way
+//  (picnicker_0 on column 24).
+class DialogOnNextTapIO : public GridSimRouteIO{
+public:
+    using GridSimRouteIO::GridSimRouteIO;
+    virtual WalkResult walk_taps(Direction direction, size_t tiles, const std::string& label) override{
+        if (m_dialog_next){
+            m_dialog_next = false;
+            return {.stop = WalkStop::DIALOG, .walked = 800ms, .wild_battles = 0, .moved_chunks = 0};
+        }
+        WalkResult result = GridSimRouteIO::walk_taps(direction, tiles, label);
+        if (result.stop == WalkStop::DIALOG){
+            result.stop = WalkStop::BLOCKED;
+            result.moved_chunks = result.moved_chunks > 0 ? result.moved_chunks - 1 : 0;
+            m_dialog_next = true;
+        }
+        return result;
+    }
+
+private:
+    bool m_dialog_next = false;
+};
+
+std::string leave_the_gate_by_the_east_door(Logger& logger, bool leave){
+    const StoryWorld* world = story_plan_world("OreburghGate", "OreburghGate");
+    if (world == nullptr){
+        return "no OreburghGate world.";
+    }
+    //  The Gate's trainers, as the game has them; the walk's map lists none
+    //  of them (map_trainers() has no OreburghGate), so they are people it lacks.
+    const std::vector<TrainerSight> gate_trainers{
+        {.name = "camper_1", .pos = story_to_world(*world, "OreburghGate", {17, 25}), .facing = Direction::NORTH, .range = 4},
+        {.name = "picnicker_0", .pos = story_to_world(*world, "OreburghGate", {24, 21}), .facing = Direction::SOUTH, .range = 2},
+    };
+    const TilePos start = story_to_world(*world, "OreburghGate", {7, 22});
+    const TilePos target = story_to_world(*world, "OreburghGate", {20, 22});
+    GridSim sim({.world = world, .trainers = gate_trainers, .triggers = {}}, start, Direction::EAST, true);
+    std::vector<std::string> notes;
+    DialogOnNextTapIO io(sim, notes);
+    std::vector<std::string> fought;
+    RouteTrainers trainers{{}, [&](const std::string& name){
+        fought.push_back(name);
+        sim.end_dialogue();
+        return true;
+    }};
+    RouteEnd end;
+    std::string error;
+    try{
+        end = walk_route_to_warp(io, *world, {start}, trainers, {.goal = [&](const TilePos& pos){ return pos == target; },
+            .label = "past curtis", .costs = *story_route_costs("town"), .speed = MoveSpeed::RUN,
+            .leave_toward = leave ? std::optional<Direction>(Direction::EAST) : std::nullopt});
+    }catch (const GridSimFailure& e){
+        error = e.message;
+    }
+    for (const std::string& note : notes){
+        logger.log(note);
+    }
+    if (!error.empty()){
+        return error;
+    }
+    if (!end.warp.any() || !sim.player().warped){
+        return std::format("did not leave by the east door: ended on {} after {} fight(s).",
+            describe(*world, nearest_tile(sim.player().pos)), fought.size());
+    }
+    return fought.size() >= 2 ? "" : std::format("left after {} fight(s), not camper_1 and picnicker_0.", fought.size());
+}
+
+struct GateEastOutInput{
+    std::string name;
+};
+struct GateEastOutExpectation{
+    bool leaves;
+};
+struct GateEastOutCase{
+    GateEastOutInput input;
+    GateEastOutExpectation expectation;
+};
+
+class Test_GateEastOut : public UnitTest{
+public:
+    explicit Test_GateEastOut(GateEastOutCase test_case)
+        : UnitTest("PokemonBDSP::AutoStory - Grid sim: 01.02 past_curtis, " + test_case.input.name)
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        const std::string error = leave_the_gate_by_the_east_door(logger, true);
+        if (error.empty() != m_case.expectation.leaves){
+            return error.empty() ? "left" : error;
+        }
+        return true;
+    }
+
+private:
+    GateEastOutCase m_case;
+};
+
+const GateEastOutCase GATE_EAST_OUT_CASES[] = {
+    {.input = {.name = "a fight in the Gate ends in a hold east through the door (lab-B 2026-11-12 21:01)"}, .expectation = {.leaves = true}},
+};
+
 } // namespace
 
 
 void add_tests_AutoStory_WallBattleSim(UnitTestDatabase& database){
+    for (const GateEastOutCase& item : GATE_EAST_OUT_CASES){
+        database.add<Test_GateEastOut>(item);
+    }
     for (const OpenLegTalkCase& item : OPEN_LEG_TALK_SIM_CASES){
         database.add<Test_OpenLegTalkSim>(item);
     }

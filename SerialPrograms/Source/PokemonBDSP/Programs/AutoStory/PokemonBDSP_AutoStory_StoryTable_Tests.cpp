@@ -51,7 +51,7 @@ using Pokemon::story_arg;
 //  The actions each kind does itself, besides the story's events.
 const std::map<StoryStepKind, std::set<std::string>>& built_in_actions(){
     static const std::map<StoryStepKind, std::set<std::string>> actions{
-        {StoryStepKind::ROUTE, {"", "route", "town", "robust", "line", std::string(ROUTE_ONTO_TRIGGER), std::string(ROUTE_INTO_SCENE)}},
+        {StoryStepKind::ROUTE, {"", "route", "town", "robust", "line", "exit", std::string(ROUTE_ONTO_TRIGGER), std::string(ROUTE_INTO_SCENE)}},
         {StoryStepKind::LEGS, {"", "legs", "one_short_ok", "to_wall", "to_dialogue", "to_map", "counted_wall", "measured"}},
         {StoryStepKind::STEP, {"", "face", "to_banner", "tap", "or_legs"}},        {StoryStepKind::MASH, {"", "a"}},
         {StoryStepKind::BATTLE, {"", "fight", "doubles", "starter"}},

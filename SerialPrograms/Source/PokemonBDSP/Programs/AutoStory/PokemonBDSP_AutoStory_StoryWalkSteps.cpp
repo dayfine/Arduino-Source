@@ -257,6 +257,7 @@ Pose StoryWalkSteps::walk_to(const Pose& from, const Pose& goal, const StoryStep
         [&](const TilePos& pos){ return std::find(targets.begin(), targets.end(), pos) != targets.end(); },
         label_of(step), story_route_tiles(*maps, step, "avoid"), *costs, m_can_run ? MoveSpeed::RUN : MoveSpeed::WALK, m_scene_next.contains(step.name),
         step.action == ROUTE_ONTO_TRIGGER, story_route_tiles(*maps, step, "greeter"),
+        step.args.contains("leave") ? std::optional<Direction>(story_arg<Direction>(step.args, "leave")) : std::nullopt,
     };
     RouteEnd end = walk_route_to_warp(m_route, *maps, start, trainers, plan);
     sights = std::move(trainers.sights);
@@ -275,6 +276,13 @@ Pose StoryWalkSteps::walk_to(const Pose& from, const Pose& goal, const StoryStep
 
 Outcome StoryWalkSteps::route(RunState& state, const StoryStep& step){
     const EventTrace trace(m_legs, m_row, step.name);
+    //  A route before this one left the room through its door (RouteWalkPlan::
+    //  leave_toward): the way here is walked, and the step after the routes
+    //  takes the warp as done.
+    if (step.args.contains("leave") && m_warp.any()){
+        log(std::format("[{}] {}: already through the door the walk before left by.", m_row, step.name));
+        return Pokemon::outcome_ok(state.pose);
+    }
     m_warp = {};
     if (Pokemon::tiles_of(state.pose).empty()){
         return Pokemon::outcome_failed("no_pose", Pokemon::to_string(state.pose));

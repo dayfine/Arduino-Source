@@ -158,6 +158,12 @@ constexpr size_t WARP_SLIDE_TILES = 2;
 //  banner of the map beyond: it shows about 1.5 s after the fade.
 constexpr Milliseconds BANNER_AFTER_SLIDE = 2500ms;
 
+//  The way out (RouteWalkPlan::leave_toward): a hold timed for this many
+//  tiles (a room's width), and at most this many holds, each ended by a
+//  fight or a wall stepped round.
+constexpr size_t LEAVE_TILES = 30;
+constexpr size_t LEAVE_HOLDS = 8;
+
 //  One planned leg as it is walked: where it goes, and the location
 //  banners read on the way.
 struct LegWalk{
@@ -212,6 +218,7 @@ public:
 private:
     std::optional<std::vector<PlannedLeg>> plan_legs(bool first) const;
     bool find_again();
+    bool leave_toward_the_door();
     void fail_if_unknown(const WalkResult& walk, const std::string& label, size_t farthest, Milliseconds per_tile) const;
     LegNext walk_leg(const PlannedLeg& planned, size_t number, size_t count);
     std::vector<TilePos> arrive() const;
@@ -286,6 +293,12 @@ RouteEnd RouteWalker::run(std::vector<TilePos> from){
     for (size_t plans = 0; plans < 8; plans++){
         const std::optional<std::vector<PlannedLeg>> planned = plan_legs(plans == 0);
         if (!planned){
+            if (m_plan.leave_toward){
+                if (!leave_toward_the_door()){
+                    fail(m_io, m_plan.label + ": no plan from " + describe(m_maps, m_from) + ".");
+                }
+                return {m_from, m_warp, false};
+            }
             if (!find_again()){
                 fail(m_io, m_plan.label + ": no plan from " + describe(m_maps, m_from) + ".");
             }
@@ -300,6 +313,9 @@ RouteEnd RouteWalker::run(std::vector<TilePos> from){
         }
         if (next != LegNext::REPLAN){
             return {next == LegNext::NEXT_LEG ? arrive() : m_from, m_warp, next == LegNext::SCENE};
+        }
+        if (m_plan.leave_toward && leave_toward_the_door()){
+            return {m_from, m_warp, false};
         }
     }
     fail(m_io, m_plan.label + ": too many plans.");
@@ -373,6 +389,45 @@ bool RouteWalker::find_again(){
         return true;
     }
     return false;
+}
+
+//  The way out for a plan with RouteWalkPlan::leave_toward: hold that way
+//  to the door, from wherever we are. A fight on the way (a trainer's sight
+//  line crosses the row) is fought and the hold goes on; a wall in the way
+//  is stepped round, a tile north or south, and the hold goes on. The end
+//  is the door's fade (or the next map's banner); the time running out with
+//  neither fails. Returns true once through (m_warp has what was seen).
+bool RouteWalker::leave_toward_the_door(){
+    const Direction toward = *m_plan.leave_toward;
+    const std::string map = map_of(m_maps, m_from);
+    const TileLeg leg{.direction = toward, .tiles = LEAVE_TILES, .ends_at_wall = true, .held = false};
+    Direction sidestep = Direction::NORTH;
+    for (size_t hold = 0; hold < LEAVE_HOLDS; hold++){
+        const std::string label = m_plan.label + ": " + direction_name(toward) + " out of " + map;
+        m_io.note("[Route] " + label + ": holding to the door; position not replanned.", RouteNote::WARNING);
+        const WalkResult walk = m_io.walk_to_wall({.direction = toward, .limit = wall_limit(leg), .label = label,
+            .options = {.arrived = nullptr, .pace = DpadPace::RUN}});
+        if (walk.stop == WalkStop::TRANSITION || location_banner_is_another(walk.warp.banner, map)){
+            m_warp = walk.warp;
+            if (m_warp.banner.empty()){
+                m_warp.banner = banner_within(m_io, BANNER_AFTER_SLIDE);
+            }
+            m_io.note("[Route] " + label + ": through the door (" + describe(m_warp) + "); handing over.", RouteNote::WARNING);
+            return true;
+        }
+        if (walk.stop == WalkStop::DIALOG){
+            m_io.note(m_plan.label + ": a trainer stopped us on the way out; fighting.", RouteNote::STATUS);
+            m_trainers.fight("trainer on the way out");
+            continue;
+        }
+        if (walk.stop == WalkStop::BLOCKED){
+            m_io.walk_taps(sidestep, 1, label + ": round");
+            sidestep = sidestep == Direction::NORTH ? Direction::SOUTH : Direction::NORTH;
+            continue;
+        }
+        fail(m_io, label + ": " + walk_stop_name(walk.stop) + " with no door's fade seen.");
+    }
+    fail(m_io, m_plan.label + ": held " + direction_name(toward) + " " + std::to_string(LEAVE_HOLDS) + " times and never got through the door.");
 }
 
 //  A walk that went through a warp unseen (the banner of another map shows

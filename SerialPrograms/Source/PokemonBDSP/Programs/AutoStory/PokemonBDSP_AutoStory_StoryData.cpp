@@ -89,6 +89,13 @@ void add_wanderer_talks(std::vector<Pokemon::StoryActionSpec>& actions){
         .console_only = false, .certainty = certainty});
 }
 
+//  ROUTE "exit": the room's way on is a door this way; a fight or a lost
+//  count on the way ends in a hold to the door, not a replan.
+Pokemon::StoryArgSpec leave_arg(){
+    return {.key = "leave", .type = Pokemon::StoryArgType::DIRECTION, .required = false, .fallback = std::nullopt,
+        .why = "the room's way on is a door this way"};
+}
+
 std::vector<Pokemon::StoryActionSpec> make_bdsp_actions(){
     std::vector<Pokemon::StoryActionSpec> actions(
         Pokemon::builtin_story_actions().begin(), Pokemon::builtin_story_actions().end()
@@ -124,8 +131,8 @@ std::vector<Pokemon::StoryActionSpec> make_bdsp_actions(){
         .fallback = std::nullopt, .why = "ground on the target's map to keep off: [x, y] tiles, [x0, y0, x1, y1] boxes"};
     const Pokemon::StoryArgSpec opt_greeter{.key = "greeter", .type = Pokemon::StoryArgType::INTEGER_ROWS, .required = false,
         .fallback = std::nullopt, .why = "ground on the target's map where someone walks up and talks, then walks off: [x, y] tiles, [x0, y0, x1, y1] boxes"};
-    for (std::string_view cost : {"town", "overworld", "indoors", "caves", "robust", "line", "trigger"}){
-        actions.push_back({.kind = Pokemon::StoryStepKind::ROUTE, .name = std::string(cost), .args = {route_target, fight_wild, opt_legs, opt_avoid, opt_greeter}});
+    for (std::string_view cost : {"town", "overworld", "indoors", "caves", "robust", "line", "trigger", "exit"}){
+        actions.push_back({.kind = Pokemon::StoryStepKind::ROUTE, .name = std::string(cost), .args = {route_target, fight_wild, opt_legs, opt_avoid, opt_greeter, leave_arg()}});
     }
     actions.push_back({.kind = Pokemon::StoryStepKind::ROUTE, .name = "into_scene", .args = {route_target, fight_wild, legs_arg}});
     add_legs_actions(actions, legs_arg, fight_wild);
