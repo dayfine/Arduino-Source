@@ -28,16 +28,22 @@ namespace PokemonLZA{
 //  (0.5 s only aims). A break-out brings two or three lines from Taunie and
 //  control back; the catch brings her lines and then the "Battling wild
 //  Pokemon" cards (console B, 2026-11-10). So: lock, throw, A through her
-//  lines, again until a card shows, then A through the cards. Throws
+//  lines, again until a card shows, then A through the cards. When a
+//  break-out starts a wild battle, the rest of the throws go after
+//  `battle_ai`'s attacks (weaken_then_throw). Throws
 //  OperationFailedException after `max_throws` throws with no card.
-void catch_tutorial(ConsoleHandle& console, ProControllerContext& context, int max_throws);
+void catch_tutorial(
+    ProgramEnvironment& env, ConsoleHandle& console, ProControllerContext& context,
+    BattleAIOption& battle_ai, int max_throws
+);
 
 //  03.07's second catch (Bunnelby), after the cards: A past its "weaken
 //  it" banner (D-pad up is ignored while it shows), D-pad up sends the
 //  partner out (again, twice at most per round, after two lock-ons with no
 //  move symbols), then rounds of TrainerBattleState attacks (3 that land),
-//  a throw and A through any lines, until no target locks on for a round:
-//  caught. Throws OperationFailedException after `max_rounds`.
+//  a throw and A through any lines (weaken_then_throw), until no target
+//  locks on for a round: caught. Throws OperationFailedException after
+//  `max_rounds`.
 void battle_then_catch(
     ProgramEnvironment& env, ConsoleHandle& console, ProControllerContext& context,
     BattleAIOption& battle_ai, int max_rounds
@@ -67,11 +73,16 @@ std::optional<int> walk_to_objective(ConsoleHandle& console, ProControllerContex
 //  the grass right of the road, then steps right 1 s at a time (3 at most)
 //  and throws at what locks on in front, or after small camera turns right,
 //  counting the Pokedex's "Registered!" banners; then steps back onto the
-//  road. When only species already caught lock on there (a rerun from a
-//  save after the catch), the quest is taken as done. Otherwise throws
+//  road. A break-out that starts a wild battle (Mareep turns on the player,
+//  console B 2026-11-13) gets `battle_ai`'s attacks before the next throws.
+//  When only species already caught lock on there (a rerun from a save
+//  after the catch), the quest is taken as done. Otherwise throws
 //  OperationFailedException with fewer than `new_species_wanted` new
 //  species after the steps or `max_throws`.
-void catch_in_zone(ConsoleHandle& console, ProControllerContext& context, int new_species_wanted, int max_throws);
+void catch_in_zone(
+    ProgramEnvironment& env, ConsoleHandle& console, ProControllerContext& context,
+    BattleAIOption& battle_ai, int new_species_wanted, int max_throws
+);
 
 //  On to the objective marker until an A prompt (a gate's "Leave", a door's
 //  "Enter") or a dialog (a scene that starts on arriving) shows. Where a

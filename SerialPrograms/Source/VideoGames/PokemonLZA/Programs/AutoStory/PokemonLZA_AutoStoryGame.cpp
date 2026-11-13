@@ -94,11 +94,11 @@ const std::map<std::string, ConsoleStep, std::less<>>& console_game_actions(){
             mash_scene(env.env.console, env.context, SceneMashGoal::OVERWORLD, BUTTON_B, 90s);
         }},
         {"climb_ladder", [](StoryEnv& env){ climb_ladder(env.env.console, env.context); }},
-        {"catch_tutorial", [](StoryEnv& env){ catch_tutorial(env.env.console, env.context, 6); }},
+        {"catch_tutorial", [](StoryEnv& env){ catch_tutorial(env.env, env.env.console, env.context, env.battle_ai, 6); }},
         {"battle_then_catch", [](StoryEnv& env){
             battle_then_catch(env.env, env.env.console, env.context, env.battle_ai, 6);
         }},
-        {"catch_in_zone", [](StoryEnv& env){ catch_in_zone(env.env.console, env.context, 1, 6); }},
+        {"catch_in_zone", [](StoryEnv& env){ catch_in_zone(env.env, env.env.console, env.context, env.battle_ai, 1, 6); }},
         {"walk_to_marker", [](StoryEnv& env){ walk_to_marker(env.env.console, env.context); }},
         {"claim_mable_research_reward", [](StoryEnv& env){ claim_mable_research_reward(env.env.console, env.context); }},
         //  For reruns in the lab: the title screen's Up + B + X loads the save
