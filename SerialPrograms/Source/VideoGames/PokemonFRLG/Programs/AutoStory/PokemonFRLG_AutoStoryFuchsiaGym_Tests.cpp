@@ -31,6 +31,7 @@
 #include "PokemonFRLG_AutoStoryRooms.h"
 #include "PokemonFRLG_AutoStoryMember.h"
 #include "PokemonFRLG_AutoStoryMartPlan.h"
+#include "PokemonFRLG_AutoStoryMoveData.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryRows12_Tests.h"
 #include "PokemonFRLG_AutoStoryTable.h"
@@ -210,6 +211,51 @@ UnitTestResult test_lead_moves_in_gym(){
         if (slot != SURF && slot != BITE){
             return std::format("Against {}: expected Surf or Bite.", foe);
         }
+    }
+    return true;
+}
+
+//  The lead of the 2026-11-12 console failure (12.02): Bite, Water Pulse,
+//  Surf, Dig (slot 4). Dig was picked 8 turns against Koffing, whose
+//  Levitate makes Ground do nothing. Surf instead, over Koga's party.
+UnitTestResult test_dig_not_picked_against_levitate(){
+    PartyMember lead;
+    lead.species = "blastoise";
+    lead.moves_read = true;
+    lead.level = 39;
+    lead.moves = {{"bite", 25}, {"water-pulse", 20}, {"surf", 15}, {"dig", 10}};
+    constexpr size_t SURF = 2;
+    constexpr size_t WATER_PULSE = 1;
+    for (std::string_view foe : {"koffing", "weezing"}){
+        if (attack_slot_against(lead, {std::string(foe)}) != SURF){
+            return std::format("Against {}: expected Surf, not Dig.", foe);
+        }
+    }
+    const std::optional<size_t> muk = attack_slot_against(lead, {"muk"});
+    if (muk != SURF && muk != WATER_PULSE){
+        return "Against Muk: expected Surf or Water Pulse, not Dig.";
+    }
+    if (attack_slot_against(lead, {"koffing", "muk", "weezing"}) != SURF){
+        return "Against Koga's whole party: expected Surf.";
+    }
+    return true;
+}
+
+//  A foe's ability blocks only the type it names, and a single ability only.
+UnitTestResult test_ability_immunities(){
+    if (ability_immunity("koffing") != PokemonType::GROUND || ability_immunity("weezing") != PokemonType::GROUND){
+        return "Expected Koffing and Weezing: Levitate, Ground.";
+    }
+    if (ability_immunity("vulpix") != PokemonType::FIRE || ability_immunity("jolteon") != PokemonType::ELECTRIC ||
+        ability_immunity("vaporeon") != PokemonType::WATER
+    ){
+        return "Expected Flash Fire, Volt Absorb and Water Absorb immunities.";
+    }
+    if (ability_immunity("muk") != PokemonType::NONE || ability_immunity("growlithe") != PokemonType::NONE){
+        return "Expected no immunity for Muk, or for Growlithe (two possible abilities).";
+    }
+    if (!takes_two_turns("dig") || !takes_two_turns("fly") || takes_two_turns("surf")){
+        return "Expected Dig and Fly to take two turns, and Surf not.";
     }
     return true;
 }
@@ -445,6 +491,14 @@ const AutoStoryFuchsiaGymCase AUTO_STORY_FUCHSIA_GYM_CASES[] = {
     {
         .input = {.name = "the lead's attacks in Fuchsia Gym", .body = test_lead_moves_in_gym},
         .expectation = {.description = "Surf against Koga's Pokemon, Surf or Bite against the Jugglers'"},
+    },
+    {
+        .input = {.name = "Dig is not picked against Levitate", .body = test_dig_not_picked_against_levitate},
+        .expectation = {.description = "Surf, not Dig, against Koffing and Weezing; Surf or Water Pulse against Muk"},
+    },
+    {
+        .input = {.name = "foe abilities that grant immunity", .body = test_ability_immunities},
+        .expectation = {.description = "Levitate, Flash Fire, Volt Absorb and Water Absorb species; Dig and Fly take two turns"},
     },
     {
         .input = {.name = "12.02 stops before Koga unless the lead is at least pokeguy's Lv39", .body = []{

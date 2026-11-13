@@ -48,8 +48,9 @@ namespace PokemonFRLG{
 std::optional<size_t> attack_slot(const PartyMember& member);
 
 //  The slot to attack `foes` with, any of them as likely to be out: the
-//  damaging move with PP left whose type multiplier, summed over the foes,
-//  is best; ties go to the plan's attacks, then slot order. A foe the data
+//  damaging move with PP left whose expected damage, summed over the foes,
+//  is best (type multiplier, 0 against a foe immune through its ability,
+//  1.5x for the member's own type, halved for a two-turn move); ties go to the plan's attacks, then slot order. A foe the data
 //  doesn't have is left out; with none left, or while the story doesn't
 //  know all the lead's moves, attack_slot() itself.
 std::optional<size_t> attack_slot_against(const PartyMember& member, const std::vector<std::string>& foes);
