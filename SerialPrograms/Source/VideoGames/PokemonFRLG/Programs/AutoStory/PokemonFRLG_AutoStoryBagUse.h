@@ -10,6 +10,7 @@
 #ifndef PokemonAutomation_PokemonFRLG_AutoStoryBagUse_H
 #define PokemonAutomation_PokemonFRLG_AutoStoryBagUse_H
 
+#include <optional>
 #include <string_view>
 #include <vector>
 #include "Common/Cpp/Logging/AbstractLogger.h"
@@ -48,9 +49,10 @@ ItemUses use_items_from_bag(Logger& logger, ItemUseActions& actions, std::string
 ItemUseEnd register_item_in_bag(Logger& logger, ItemUseActions& actions, std::string_view item);
 
 //  After "REPEL's effect wore off..." has closed: FRLG asks nothing, so
-//  another of the same Repel is used if the bag has one. NONE_LEFT is no
-//  failure: the walk goes on without.
-ItemUseEnd renew_repel(Logger& logger, ItemUseActions& actions, std::string_view item);
+//  another Repel is used if the bag has one, the first in
+//  repel_renew_order(`used`, `remaining_steps`). NONE_LEFT is no failure:
+//  the walk goes on without.
+ItemUseEnd renew_repel(Logger& logger, ItemUseActions& actions, std::string_view used, std::optional<int> remaining_steps = std::nullopt);
 
 //  The console's bag, opened from `menu`'s BAG.
 class ConsoleItemUseActions : public ItemUseActions{
@@ -60,6 +62,7 @@ public:
     virtual bool open_pocket(BagPocket pocket) override;
     virtual std::vector<BagRow> read_pocket() override;
     virtual void use_row(size_t row) override;
+    virtual RepelUse repel_use() override;
     virtual bool use_row_on_lead(size_t row) override;
     virtual bool use_row_on_lead_to_bag(size_t row) override;
     virtual void register_row(size_t row) override;

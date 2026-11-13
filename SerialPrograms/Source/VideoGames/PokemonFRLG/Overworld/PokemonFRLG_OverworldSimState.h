@@ -65,6 +65,11 @@ struct SimScript{
     //  (SimWalkerRules::confirm_turn) after 08.01 run 2 (console B,
     //  2026-11-09), where a one-tile leg only turned the player.
     std::set<int> dropped_turn_taps;
+    //  Fault injection: the reads of the facing after each turn tap that
+    //  show no player, as when a roof's eave, a tree or a wanderer is drawn
+    //  over the sprite (Cinnabar, north of the Center: console B,
+    //  2026-11-13 11:06, 12.03 surf_route_21); SIZE_MAX: none shows.
+    size_t hidden_facing_reads = 0;
     //  Fault injection: walker step taps that moved the player, by number
     //  from 1 among those that moved, which the walker's screen check reads
     //  as not moved. On Rocket Hideout B2F's floor a real step read so, and

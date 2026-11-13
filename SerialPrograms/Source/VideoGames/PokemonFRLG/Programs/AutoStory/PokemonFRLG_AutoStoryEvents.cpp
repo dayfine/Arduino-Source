@@ -22,7 +22,10 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "PokemonFRLG_AutoStoryAbilities.h"
+#include "PokemonFRLG_AutoStoryBag.h"
 #include "PokemonFRLG_AutoStoryBattleData.h"
+#include "PokemonFRLG_AutoStoryItemUse.h"
+#include "PokemonFRLG_AutoStoryStartMenu.h"
 #include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryCenterHeal.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
@@ -682,6 +685,12 @@ Outcome other_game_step(StoryEnv& env, RunState& state, const StoryStep& step){
     ConsoleCaptureActions capture(env.console, env.context, env.language, env.player_gender, [&]{ pace_trainer_battle(env, state, step, patch); });
     ConsolePcStorageActions pc(env.console, env.context);
     std::optional<Outcome> done = run_field_game_step(env.console, env.context, env.language, env.player_gender, step, env.party);
+    if (done && done->succeeded()){
+        if (const std::optional<std::string> item = parse_use_item_step(step); item && is_repel(*item)){
+            env.supplies.repel = *item;
+            env.supplies.repel_menu = step_start_menu(step.args);
+        }
+    }
     if (!done){
         done = run_storage_game_step(env.console.logger(), &env.console, step, capture, pc);
         if (done){

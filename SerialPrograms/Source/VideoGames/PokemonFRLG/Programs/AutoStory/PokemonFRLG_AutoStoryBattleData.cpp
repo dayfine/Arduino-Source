@@ -34,6 +34,30 @@ using JsonTable = std::map<std::string, JsonValue, std::less<>>;
 //  The battle text box's first line, as a fraction of the game screen:
 //  "No! There's no running" (console B, 2026-11-13, Route 21).
 const ImageFloatBox TEXT_FIRST_LINE_BOX(0.04, 0.755, 0.62, 0.075);
+//  A message box's two lines, for the bag's answer to a Repel's USE.
+const ImageFloatBox TEXT_TWO_LINES_BOX(0.04, 0.755, 0.9, 0.2);
+
+//  The letters of the text in `box` of the game screen, lower case: the
+//  first of `filters` that reads at least 5 decides, as each read takes
+//  time. Empty if none does.
+std::string text_letters(
+    Language language, const ImageViewRGB32& screen, const ImageFloatBox& box,
+    const std::vector<OCR::TextColorRange>& filters, OCR::PageSegMode mode
+){
+    const ImageViewRGB32 game = extract_box_reference(screen, GameSettings::instance().GAME_BOX);
+    const ImageRGB32 text_image = preprocess_for_ocr(extract_box_reference(game, box), 3, 1);
+    for (const OCR::TextColorRange& filter : filters){
+        size_t text_pixels = 0;
+        const ImageRGB32 filtered = to_blackwhite_rgb32_range(text_pixels, text_image, true, filter.mins, filter.maxs);
+        std::string text = text_pixels == 0 ? "" : OCR::ocr_read(language, filtered, mode);
+        std::erase_if(text, [](char c){ return !std::isalpha(static_cast<unsigned char>(c)); });
+        if (text.size() >= 5){
+            std::ranges::transform(text, text.begin(), [](char c){ return static_cast<char>(std::tolower(static_cast<unsigned char>(c))); });
+            return text;
+        }
+    }
+    return "";
+}
 
 const JsonValue& file_json(std::string_view name){
     static const JsonTable FILES = []{
@@ -195,21 +219,32 @@ bool run_refused_shows(Language language, const ImageViewRGB32& screen){
     if (language != Language::English){
         return false;
     }
-    const ImageViewRGB32 game = extract_box_reference(screen, GameSettings::instance().GAME_BOX);
-    const ImageRGB32 line = preprocess_for_ocr(extract_box_reference(game, TEXT_FIRST_LINE_BOX), 3, 1);
-    //  The first filter that reads any words decides: each read takes time,
-    //  and the loop looks at every poll after RUN.
-    for (const OCR::TextColorRange& filter : BRIGHT_TEXT_FILTERS()){
-        size_t text_pixels = 0;
-        const ImageRGB32 filtered = to_blackwhite_rgb32_range(text_pixels, line, true, filter.mins, filter.maxs);
-        std::string text = text_pixels == 0 ? "" : OCR::ocr_read(language, filtered, OCR::PageSegMode::SINGLE_LINE);
-        std::erase_if(text, [](char c){ return !std::isalpha(static_cast<unsigned char>(c)); });
-        if (text.size() >= 5){
-            std::ranges::transform(text, text.begin(), [](char c){ return static_cast<char>(std::tolower(static_cast<unsigned char>(c))); });
-            return text.find("running") != std::string::npos;
-        }
+    const std::string text = text_letters(language, screen, TEXT_FIRST_LINE_BOX, BRIGHT_TEXT_FILTERS(), OCR::PageSegMode::SINGLE_LINE);
+    return text.find("running") != std::string::npos;
+}
+
+bool repel_wore_off_shows(Language language, const ImageViewRGB32& screen){
+    if (language != Language::English){
+        return false;
     }
-    return false;
+    //  "REPEL's effect wore off..." reads "repelseffectworeoff", or less of
+    //  it while the text is still being typed.
+    const std::string text = text_letters(language, screen, TEXT_FIRST_LINE_BOX, DARK_TEXT_FILTERS(), OCR::PageSegMode::SINGLE_LINE);
+    return text.find("repel") != std::string::npos && text.find("eff") != std::string::npos;
+}
+
+RepelUse read_repel_use(Language language, const ImageViewRGB32& screen){
+    if (language != Language::English){
+        return RepelUse::UNREAD;
+    }
+    const std::string text = text_letters(language, screen, TEXT_TWO_LINES_BOX, DARK_TEXT_FILTERS(), OCR::PageSegMode::SINGLE_BLOCK);
+    if (text.find("linger") != std::string::npos || text.find("effects") != std::string::npos){
+        return RepelUse::LINGERED;
+    }
+    if (text.find("used") != std::string::npos){
+        return RepelUse::USED;
+    }
+    return RepelUse::UNREAD;
 }
 
 std::string_view battle_risk_name(BattleRisk risk){

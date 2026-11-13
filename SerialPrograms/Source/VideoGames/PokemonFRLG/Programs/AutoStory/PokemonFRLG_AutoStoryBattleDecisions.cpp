@@ -126,6 +126,7 @@ void healed_by_nurse(Supplies& supplies){
     measured_hp(supplies, 1.0);
     supplies.status = StatusCondition::NONE;
     restore_pp(supplies.lead);
+    supplies.repel.clear();
 }
 
 bool attacks_low_on_pp(const Supplies& supplies){

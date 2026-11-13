@@ -800,13 +800,19 @@ bool OverworldSimWalker::after_warp(const RouteStep& step, int warps_before, Mil
     return false;
 }
 
+void OverworldSimWalker::turn_or_fail(const RouteStep& step){
+    if (!sim_turn_to(m_sim, step.direction, m_rules.confirm_turn)){
+        fail("walk_overworld_route(): after a turn tap " + std::string(Pokemon::direction_name(step.direction)) + ", the facing can't be read.");
+    }
+}
+
 void OverworldSimWalker::fail_off_route(const RouteStep& step){
     fail("walk_overworld_route(): a wild battle, not the warp to " + step.end.map + ": the player is off the route.");
 }
 
 std::optional<WalkedTiles> OverworldSimWalker::walk_step(const RouteStep& step, std::optional<Direction> facing){
     if (step.action == RouteAction::FACE){
-        sim_turn_to(m_sim, step.direction, m_rules.confirm_turn);
+        turn_or_fail(step);
         return std::nullopt;
     }
     if (step.action == RouteAction::SURF){
@@ -816,7 +822,7 @@ std::optional<WalkedTiles> OverworldSimWalker::walk_step(const RouteStep& step, 
         return use_gate(step);
     }
     if (turns_first(step, m_speed, facing)){
-        sim_turn_to(m_sim, step.direction, m_rules.confirm_turn);
+        turn_or_fail(step);
     }
     const int warps_before = m_sim.state().warps;
     const std::vector<Interrupt>& ints = interrupts(step);

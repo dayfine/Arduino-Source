@@ -24,6 +24,7 @@
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/Language.h"
+#include "PokemonFRLG_AutoStoryBag.h"
 #include "PokemonFRLG_AutoStoryBattleRisk.h"
 #include "PokemonFRLG_AutoStoryMoveData.h"
 
@@ -55,6 +56,16 @@ std::string read_trainer_foe(Logger& logger, Language language, const ImageViewR
 //  its first line. English only: in another language it reads false, and
 //  BattleDecisions stops running after a few tries anyway.
 bool run_refused_shows(Language language, const ImageViewRGB32& screen);
+
+//  Whether the overworld's message box reads "REPEL's effect wore off...",
+//  by its first line, the text still being typed or not (console B,
+//  2026-11-13, Route 21). English only: false in another language.
+bool repel_wore_off_shows(Language language, const ImageViewRGB32& screen);
+
+//  The bag's answer to USE on a Repel on `screen`, by its message box's
+//  two lines. English only: UNREAD in another language. The box is the
+//  overworld's; not checked on a bag frame yet.
+RepelUse read_repel_use(Language language, const ImageViewRGB32& screen);
 
 
 

@@ -5,12 +5,14 @@
  */
 
 #include <algorithm>
+#include <cstdint>
 #include <format>
 #include <functional>
 #include <set>
 #include <string>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "PokemonFRLG_OverworldFacing.h"
 #include "PokemonFRLG_OverworldMaps.h"
 #include "PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_OverworldWalk.h"
@@ -143,6 +145,8 @@ struct TurnTapInput{
     bool on_bike = false;
     //  The leg: WALK west 1, or FACE west.
     RouteAction action = RouteAction::WALK;
+    //  SimScript::hidden_facing_reads.
+    size_t hidden_facing_reads = 0;
 };
 
 struct TurnTapExpectation{
@@ -179,6 +183,7 @@ public:
         west.end = m_case.input.action == RouteAction::FACE ? TURN_START : TURN_END;
         SimScript script;
         script.dropped_turn_taps = m_case.input.dropped_turn_taps;
+        script.hidden_facing_reads = m_case.input.hidden_facing_reads;
         SimWalkerRules rules;
         rules.confirm_turn = m_case.input.confirm_turn;
         if (m_case.input.on_bike){
@@ -219,6 +224,52 @@ const TurnTapCase TURN_TAP_CASES[] = {
     //  A found nothing to pick up.
     {.input = {.name = "face, taken", .action = RouteAction::FACE}, .expectation = {.end = TURN_START}},
     {.input = {.name = "face, dropped, tapped again", .dropped_turn_taps = {1}, .action = RouteAction::FACE}, .expectation = {.end = TURN_START}},
+    //  Console B, 2026-11-13 11:06 (12.03 surf_route_21): north of
+    //  Cinnabar's Center the roof's eave hid all but the player's head, the
+    //  facing never read after the turn tap west, and the leg failed. A
+    //  wanderer over the sprite steps off within the reads.
+    {.input = {.name = "facing hidden for 5 reads, then read", .hidden_facing_reads = 5}, .expectation = {.end = TURN_END}},
+    {.input = {.name = "facing never shows: taken as turned", .hidden_facing_reads = SIZE_MAX}, .expectation = {.end = TURN_END}},
+    {.input = {.name = "face, facing never shows: taken as turned", .action = RouteAction::FACE, .hidden_facing_reads = SIZE_MAX}, .expectation = {.end = TURN_START}},
+};
+
+struct UnreadTurnInput{
+    std::string name;
+    OverworldWalkSteps::TurnSprite sprite = OverworldWalkSteps::TurnSprite::WALKING;
+    bool at_known = true;
+    bool overworld_clear = true;
+};
+struct UnreadTurnCase{
+    UnreadTurnInput input;
+    bool taken;
+};
+
+//  OverworldWalkSteps::unread_turn_taken(): a turn whose facing never read
+//  is taken where the route knows the tile and nothing covers the
+//  overworld; else the leg fails for a re-anchor.
+class Test_OverworldUnreadTurn : public UnitTest{
+public:
+    explicit Test_OverworldUnreadTurn(UnreadTurnCase test_case)
+        : UnitTest("PokemonFRLG::OverworldWalk - unread turn: " + test_case.input.name)
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const UnreadTurnInput& in = m_case.input;
+        if (OverworldWalkSteps::unread_turn_taken(in.sprite, in.at_known, in.overworld_clear) == m_case.taken){
+            return true;
+        }
+        return std::format("Expected {}.", m_case.taken ? "taken as turned" : "the leg to fail");
+    }
+
+private:
+    UnreadTurnCase m_case;
+};
+
+const UnreadTurnCase UNREAD_TURN_CASES[] = {
+    {.input = {.name = "tile known, overworld clear (a roof's eave)"}, .taken = true},
+    {.input = {.name = "tile unknown", .at_known = false}, .taken = false},
+    {.input = {.name = "a box or a fade over the overworld", .overworld_clear = false}, .taken = false},
+    {.input = {.name = "surfing, tile unknown", .sprite = OverworldWalkSteps::TurnSprite::NOT_READ, .at_known = false, .overworld_clear = false}, .taken = true},
 };
 
 
@@ -417,6 +468,9 @@ void add_tests_OverworldWalk(UnitTestDatabase& database){
         database.add<Test_OverworldTapMechanics>(item);
     }
     database.add<Test_OverworldUnseenStepTap>();
+    for (const UnreadTurnCase& item : UNREAD_TURN_CASES){
+        database.add<Test_OverworldUnreadTurn>(item);
+    }
     for (const MapEdgeCase& item : MAP_EDGE_CASES){
         database.add<Test_OverworldTurnOnMapEdge>(item);
     }
