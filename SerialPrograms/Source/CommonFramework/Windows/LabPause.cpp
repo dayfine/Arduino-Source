@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include "Common/Cpp/Concurrency/Mutex.h"
 #include "Common/Cpp/Filesystem/FileIO.h"
+#include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/Filesystem/FilePath.h"
 #include "Common/Cpp/ScopeExit.h"
 #include "CommonFramework/GlobalAutoPaths.h"
@@ -93,7 +94,7 @@ void lab_pause_wait(std::string_view label, CancellableScope& scope){
     LabPauseIO io;
     io.take_continue = [&]() -> std::optional<std::string>{
         const Filesystem::Path file(path);
-        if (!Filesystem::exists(file)){
+        if (!Filesystem::is_regular_file(file)){
             return std::nullopt;
         }
         std::string text;
