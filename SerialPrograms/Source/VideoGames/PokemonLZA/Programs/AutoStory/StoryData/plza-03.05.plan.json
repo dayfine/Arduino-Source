@@ -12,10 +12,10 @@
       {
         "id": "back_to_nurse",
         "kind": "game_action",
-        "why": "UNVERIFIED, NEEDS CONSOLE: back to the nurse's \"A Talk\" after 03.04's scene. Where that scene leaves the player (\"Taunie outside\") was not recorded; the legs turn around and retrace the inside part of 03.04's into_pokemon_center (a guess, not measured).",
+        "why": "back to the nurse after 03.04's scene: turn right and walk into the counter, which faces her (user, console B, 2026-11-13); the counter stops the walk, so 2 s is safe.",
         "action": "walk",
         "args": {
-          "legs": [[180, 0], [0, 2000], [-90, 2000], [90, 0]]
+          "legs": [[90, 2000]]
         }
       },
       {
