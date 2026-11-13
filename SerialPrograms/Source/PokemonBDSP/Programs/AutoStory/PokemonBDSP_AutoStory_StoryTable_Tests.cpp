@@ -249,12 +249,20 @@ UnitTestResult test_plan_story_run_starter_rng(Logger&){
     const StoryCheckpoint& lakefront_row = handoff.rows.back();
     const std::vector<std::string> problems = Pokemon::lint_story_checkpoint(lakefront_row);
     if (!problems.empty()){
-        return "00.01 with Starter RNG handoff save: " + problems[0];
+        return std::format("00.01 with Starter RNG handoff save: {}", problems[0]);
     }
     if (lakefront_row.steps.empty() || lakefront_row.steps.back().kind != StoryStepKind::SAVE ||
         lakefront_row.steps.back().name != "save_for_starter_rng"
     ){
         return "Expected 00.01 with Starter RNG handoff to end with save_for_starter_rng.";
+    }
+    //  The save card is checked as every other start save is: it must name
+    //  00.02's map.
+    if (lakefront_row.steps.back().action != table[2].saves_in || table[2].saves_in.empty()){
+        return std::format(
+            "Expected the handoff save to check the card for \"{}\", got \"{}\".",
+            table[2].saves_in, lakefront_row.steps.back().action
+        );
     }
     const std::optional<Pokemon::Pose> end = end_pose(lakefront_row);
     const std::optional<Pokemon::Pose> next_start = table[2].start
