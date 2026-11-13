@@ -4,8 +4,9 @@
  *
  *  Rows 13.01 to 13.04 (StoryData/frlg-13.0N.plan.json) on the overworld
  *  sim: Cinnabar's Center to the Pokemon Mansion's statue switches, the
- *  SECRET KEY and the Escape Rope out. The sim has the map's switch state
- *  (flag clear), so a step through a barrier the switches open is declared.
+ *  SECRET KEY and the Escape Rope out. The sim reads the real maps through
+ *  the switch's state, from the checkpoint's start_gates, and the routes
+ *  press the statues themselves.
  *
  */
 
@@ -90,71 +91,26 @@ struct MansionRow{
     std::vector<std::string> floors;
 };
 
-//  A step over a tile the switches open: the pack's maps are the clear
-//  state, where it is a wall, so the sim cannot walk it and the step's
-//  declared pose stands. `wall` is whether the tile it lands on is such a
-//  barrier on the map; the step after it, onto floor, is declared too.
-struct SwitchStep{
-    std::string_view row;
-    std::string_view step;
-    bool wall;
-};
-
-const SwitchStep SWITCH_STEPS[] = {
-    {"13.02", "into_opening_1", true},
-    {"13.02", "into_opening_2", true},
-    {"13.02", "through_opening", false},
-    {"13.03", "into_room_2", true},
-    {"13.03", "into_room_3", true},
-    {"13.04", "into_opening", true},
-    {"13.04", "through_opening", false},
-};
-
-const SwitchStep* switch_step(std::string_view row, std::string_view step){
-    for (const SwitchStep& item : SWITCH_STEPS){
-        if (item.row == row && item.step == step){
-            return &item;
-        }
-    }
-    return nullptr;
-}
-
-bool map_wall(const MapPosition& at){
-    for (const MapData& map : story_maps()){
-        if (map.name == at.map){
-            return map.tiles.at(at.point) == TileKind::WALL;
-        }
-    }
-    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("No map {}.", at.map));
-}
-
-//  A row on the sim from its start: every step lands (a switch step on its
-//  declared pose, on a barrier that is a wall on the map), the row ends on
-//  its postcondition's tile after the floors it should cross, and nobody but Lewis is met and no rule is broken on the way (checked
-//  after each step).
+//  A row on the sim from its start, through the gates it has on a save
+//  (start_gates): every step lands (a route presses the statues it needs),
+//  the row ends on its postcondition's tile after the floors it should
+//  cross, the switch is as its last step says, and nobody but Lewis is met
+//  and no rule is broken on the way (checked after each step).
 UnitTestResult test_row(const MansionRow& expected){
     const StoryCheckpoint& row = checkpoint(expected.id);
     StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    SimScript script;
+    script.gates = row.start_gates.value_or(Pokemon::GateState());
     std::optional<OverworldSim> sim;
-    sim.emplace(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
+    sim.emplace(story_maps(), MapPosition{at.map, at.tile}, *at.facing, script);
     std::vector<std::string> floors;
     for (const StoryStep& step : row.steps){
-        if (const SwitchStep* barrier = switch_step(row.id, step.name)){
-            at = *story_pose(Pokemon::pose_of(*step.pose_after));
-            if (map_wall(MapPosition{at.map, at.tile}) != barrier->wall){
-                return std::format("{}/{}: expected {} on {}.", row.id, step.name, barrier->wall ? "a barrier" : "floor", to_string(MapPosition{at.map, at.tile}));
-            }
-            sim.emplace(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
-        }else if (step.name == "escape_rope"){
+        if (step.name == "escape_rope"){
             //  The rope's script has no map: the player stands where it says.
             at = *story_pose(Pokemon::pose_of(*step.pose_after));
-            sim.emplace(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
+            sim.emplace(story_maps(), MapPosition{at.map, at.tile}, *at.facing, script);
         }else if (const std::string failure = row_step_on_sim(*sim, at, step, row.id); !failure.empty()){
             return std::format("{}: ended on {}; {}", row.id, to_string(sim->state().position), failure);
-        }
-        if (step.name == "down_the_hole"){
-            //  The hole's fade: a declared step does not wait it out, a walk does.
-            sim->watch({}, OverworldWalkSteps::AFTER_WARP);
         }
         if (!sim->state().violations.empty()){
             return std::format("{}/{}: broke a rule on the way, on {}: {}.", row.id, step.name, to_string(sim->state().position), sim->state().violations.front());
@@ -166,6 +122,9 @@ UnitTestResult test_row(const MansionRow& expected){
         }
         if (floors.empty() || floors.back() != at.map){
             floors.push_back(at.map);
+        }
+        if (step.name != "escape_rope"){
+            script.gates = sim->state().gates;
         }
     }
     if (!(MapPosition{at.map, at.tile} == expected.end)){
@@ -181,31 +140,31 @@ UnitTestResult test_row(const MansionRow& expected){
     return true;
 }
 
-const MansionRow ROW_13_01{"13.01", {"PokemonMansion_3F", {12, 6}},
+const MansionRow ROW_13_01{"13.01", {"PokemonMansion_3F", {19, 13}},
     {"PokemonMansion_3F"}};
 const MansionRow ROW_13_02{"13.02", {"PokemonMansion_B1F", {34, 29}},
-    {"PokemonMansion_3F", "PokemonMansion_1F", "PokemonMansion_B1F"}};
-const MansionRow ROW_13_03{"13.03", {"PokemonMansion_B1F", {27, 6}},
+    {"PokemonMansion_1F", "PokemonMansion_B1F"}};
+const MansionRow ROW_13_03{"13.03", {"PokemonMansion_B1F", {23, 5}},
     {"PokemonMansion_B1F"}};
 const MansionRow ROW_13_04{"13.04", {"CinnabarIsland", {8, 4}},
     {"PokemonMansion_B1F", "CinnabarIsland"}};
 
 const AutoStoryMansionCase AUTO_STORY_MANSION_CASES[] = {
     {
-        .input = {.name = "13.01 Cinnabar to the Mansion's 3F statue", .body = []{ return test_row(ROW_13_01); }},
-        .expectation = {.description = "through 1F and 2F to 3F's (12, 6), nobody met"},
+        .input = {.name = "13.01 Cinnabar to the Mansion's 3F room of holes", .body = []{ return test_row(ROW_13_01); }},
+        .expectation = {.description = "through 1F and 2F to 3F's (19, 13) by a statue press, nobody met"},
     },
     {
-        .input = {.name = "13.02 3F's opening, the hole, 1F's stairs", .body = []{ return test_row(ROW_13_02); }},
-        .expectation = {.description = "through the declared opening and the hole to B1F's (34, 29)"},
+        .input = {.name = "13.02 3F's hole, 1F's stairs", .body = []{ return test_row(ROW_13_02); }},
+        .expectation = {.description = "through the hole and the stairs to B1F's (34, 29)"},
     },
     {
-        .input = {.name = "13.03 B1F's two statues, the Elixir and TM14", .body = []{ return test_row(ROW_13_03); }},
-        .expectation = {.description = "through the declared opening to (27, 6), nobody but Lewis met"},
+        .input = {.name = "13.03 B1F's Elixir and TM14", .body = []{ return test_row(ROW_13_03); }},
+        .expectation = {.description = "by a statue press to the Elixir and TM14, nobody but Lewis met"},
     },
     {
         .input = {.name = "13.04 the SECRET KEY and the Escape Rope", .body = []{ return test_row(ROW_13_04); }},
-        .expectation = {.description = "through the declared opening to the key, out by the rope to (8, 4)"},
+        .expectation = {.description = "by a statue press to the key, out by the rope to (8, 4)"},
     },
 };
 

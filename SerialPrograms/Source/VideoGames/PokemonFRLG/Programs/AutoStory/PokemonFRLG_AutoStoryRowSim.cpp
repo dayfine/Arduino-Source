@@ -486,9 +486,10 @@ void sim_wait_out_battle_exit(OverworldSim& sim){
 //  A ROUTE or LEGS by the sim's walker, fighting a trainer who sees the
 //  player on the way.
 std::string OverworldStepSim::walk(const StoryStep& step){
-    //  The sim's own maps and gates, if it has gates: the route opens the
-    //  ones the Card Key opens, and the walker's steps open them in the sim.
-    const std::vector<MapData>& maps = !m_sim.state().gate_maps.empty() ? m_sim.state().gate_maps : story_maps();
+    //  The story's maps, as the planner and the program have them (the grunt the sim has
+    //  hidden stands on them, and the stairs a switch opens are open); the gates are the sim's,
+    //  which the walker's steps open.
+    const std::vector<MapData>& maps = story_maps();
     const Pokemon::GateState& gates = m_sim.state().gates;
     const std::optional<std::vector<RouteStep>> route = walked_route(m_at, step, maps, gates, Pokemon::GateRules{.card_key_held = m_sim.state().card_key_held});
     if (route && route->empty()){

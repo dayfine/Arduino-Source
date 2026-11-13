@@ -1,10 +1,9 @@
-/*  Gates Tests
+/*  Overworld Gate Maps Tests
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Fixtures: GateTestMaps/, trimmed from PokemonSimulation's runtime maps
- *  (SilphCo_5F: card-key doors; PokemonMansion_1F and _3F: statue switch,
- *  barriers, holes).
+ *  The real maps, pinned PokemonSimulation resources: SilphCo_5F (card-key
+ *  doors) and PokemonMansion_1F and _3F (statue switch, barriers, holes).
  *
  */
 
@@ -16,30 +15,25 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonValue.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon_GatedPlanner.h"
-#include "Pokemon_Gates_Tests.h"
-#include "Pokemon_NavigationGateTestMaps.h"
+#include "Pokemon/Navigation/Pokemon_GatedPlanner.h"
+#include "PokemonFRLG_OverworldGateMaps_Tests.h"
+#include "PokemonFRLG_OverworldMaps.h"
 
 namespace PokemonAutomation{
-namespace Pokemon{
+namespace NintendoSwitch{
+namespace PokemonFRLG{
+
+using namespace Pokemon;
+
 namespace{
 
-
-MapData load(const std::string& name){
-    for (const auto& [file, text] : navigation_gate_test_map_json()){
-        if (file == name){
-            return parse_map(parse_json(text), name + ".json");
-        }
-    }
-    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No gate test map " + name);
-}
 
 //  Silph 5F, Mansion 1F and 3F, in that order.
 const std::vector<MapData>& maps(){
     static const std::vector<MapData> loaded{
-        load("SilphCo_5F"),
-        load("PokemonMansion_1F"),
-        load("PokemonMansion_3F"),
+        load_map("SilphCo_5F"),
+        load_map("PokemonMansion_1F"),
+        load_map("PokemonMansion_3F"),
     };
     return loaded;
 }
@@ -94,7 +88,7 @@ public:
 
 private:
     static bool walkable(TileKind tile){
-        return tile == TileKind::OPEN || tile == TileKind::TALL_GRASS;
+        return tile == TileKind::OPEN || tile == TileKind::TALL_GRASS || tile == TileKind::FALL_HOLE;
     }
 };
 
@@ -194,7 +188,7 @@ std::string parse_error(const std::string& rows, const std::string& gates, const
         "gates": {}, "switches": {}
     }})", rows, gates, switches);
     try{
-        parse_map(parse_json(text), "T.json");
+        Pokemon::parse_map(parse_json(text), "T.json");
     }catch (ParseException& e){
         return e.message();
     }
@@ -417,7 +411,7 @@ struct GatesTestCase{
 class Test_Gates : public UnitTest{
 public:
     explicit Test_Gates(GatesTestCase scenario)
-        : UnitTest(std::format("Pokemon::Gates - {}", scenario.input.name))
+        : UnitTest(std::format("PokemonFRLG::OverworldGateMaps - {}", scenario.input.name))
         , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -482,7 +476,7 @@ const GatesTestCase GATES_CASES[] = {
 } // namespace
 
 
-void add_tests_Gates(UnitTestDatabase& database){
+void add_tests_OverworldGateMaps(UnitTestDatabase& database){
     for (const auto& scenario : GATES_CASES){
         database.add<Test_Gates>(scenario);
     }
@@ -490,5 +484,6 @@ void add_tests_Gates(UnitTestDatabase& database){
 
 
 
-} // namespace Pokemon
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
 } // namespace PokemonAutomation

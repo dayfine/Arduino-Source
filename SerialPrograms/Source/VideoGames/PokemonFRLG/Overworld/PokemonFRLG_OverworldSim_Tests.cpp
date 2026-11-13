@@ -21,6 +21,7 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "PokemonFRLG_OverworldGateMaps_Tests.h"
 #include "PokemonFRLG_OverworldLateBattle.h"
 #include "PokemonFRLG_OverworldMaps.h"
 #include "PokemonFRLG_OverworldSim.h"
@@ -1039,6 +1040,7 @@ void add_tests_OverworldSim(UnitTestDatabase& database){
     add_tests_OverworldWarpFade(database);
     add_tests_OverworldStairs(database);
     add_tests_OverworldGates(database);
+    add_tests_OverworldGateMaps(database);
     add_tests_OverworldSpin(database);
     add_tests_OverworldBike(database);
 }

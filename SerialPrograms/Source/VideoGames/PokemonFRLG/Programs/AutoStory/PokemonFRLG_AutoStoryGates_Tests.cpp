@@ -58,26 +58,18 @@ private:
     GatesCase m_case;
 };
 
-//  Silph Co. 5F's corridor, shortened: a card-key door at (4, 1).
-const std::vector<MapData>& door_maps(){
-    static const std::vector<MapData> MAPS{parse_map(R"({
-        "format": "pokesim-runtime-map/2", "name": "SilphHall", "points": {}, "warps": [], "connections": [], "source": {"decomp_file": "", "revision": "test", "date": "2026-11-12"},
-        "tiles": ["#########", "#...G...#", "#########"],
-        "gates": {"door_1": {"tiles": [[4, 1]], "open_glyph": ".", "new_game": "closed", "opens_by": "card_key_face_a", "flag": "FLAG_TEST"}}
-    })", "SilphHall")};
-    return MAPS;
-}
+//  A walk across a gate on the real maps: Silph Co. 5F's card-key door, and
+//  the Pokemon Mansion 1F's barrier behind its statue's switch.
+struct Scene{
+    const char* map;
+    TilePos start;
+    TilePos goal;
+};
+constexpr Scene DOOR{"SilphCo_5F", {10, 9}, {5, 9}};
+constexpr Scene STATUE{"PokemonMansion_1F", {5, 8}, {19, 13}};
 
-//  The Mansion's 1F, shortened: a statue at (1, 0) and a barrier at (4, 1)
-//  that its switch opens.
-const std::vector<MapData>& statue_maps(){
-    static const std::vector<MapData> MAPS{parse_map(R"({
-        "format": "pokesim-runtime-map/2", "name": "MansionHall", "points": {}, "warps": [], "connections": [], "source": {"decomp_file": "", "revision": "test", "date": "2026-11-12"},
-        "tiles": ["#########", "#...G...#", "#########"],
-        "gates": {"barrier_1": {"tiles": [[4, 1]], "open_glyph": ".", "new_game": "closed", "switch": "mansion", "open_when": "on"}},
-        "switches": {"mansion": {"flag": "FLAG_TEST_SWITCH", "toggle": true, "floors": ["MansionHall"],
-            "statues": [{"coord": [1, 0], "face_from": [1, 1], "facing": "north"}]}}
-    })", "MansionHall")};
+const std::vector<MapData>& scene_maps(){
+    static const std::vector<MapData> MAPS = overworld_maps();
     return MAPS;
 }
 
@@ -89,9 +81,9 @@ StoryStep route_step(const std::string& map, TilePos goal){
     return step;
 }
 
-Pokemon::RunState run_state(const std::string& map, bool card_key){
+Pokemon::RunState run_state(const Scene& scene, bool card_key){
     Pokemon::RunState state;
-    state.pose = to_pose(StoryPose{map, TilePos{1, 1}, Direction::EAST});
+    state.pose = to_pose(StoryPose{scene.map, scene.start, Direction::EAST});
     if (card_key){
         state.flags.insert("card_key_held");
     }
@@ -99,12 +91,12 @@ Pokemon::RunState run_state(const std::string& map, bool card_key){
 }
 
 //  The step on StoryMapsSim over `maps`, from the start of the corridor.
-Pokemon::Outcome on_maps(const std::vector<MapData>& maps, const std::string& map, bool card_key, Pokemon::RunState& state){
+Pokemon::Outcome on_maps(const Scene& scene, bool card_key, Pokemon::RunState& state){
     StorySimKnobs knobs;
-    knobs.maps = &maps;
+    knobs.maps = &scene_maps();
     StoryMapsSim sim(knobs);
-    state = run_state(map, card_key);
-    return sim.run(route_step(map, TilePos{6, 1}), state);
+    state = run_state(scene, card_key);
+    return sim.run(route_step(scene.map, scene.goal), state);
 }
 
 
@@ -112,7 +104,7 @@ Pokemon::Outcome on_maps(const std::vector<MapData>& maps, const std::string& ma
 //  not walk through gates the run has not opened.
 UnitTestResult test_maps_sim_door_blocks(){
     Pokemon::RunState state;
-    const Pokemon::Outcome outcome = on_maps(door_maps(), "SilphHall", false, state);
+    const Pokemon::Outcome outcome = on_maps(DOOR, false, state);
     if (outcome.succeeded()){
         return "The row sim walked through a closed card-key door without the Card Key.";
     }
@@ -121,11 +113,11 @@ UnitTestResult test_maps_sim_door_blocks(){
 
 UnitTestResult test_maps_sim_door_opens(){
     Pokemon::RunState state;
-    const Pokemon::Outcome outcome = on_maps(door_maps(), "SilphHall", true, state);
+    const Pokemon::Outcome outcome = on_maps(DOOR, true, state);
     if (!outcome.succeeded()){
         return "The row sim did not open the door for a player with the Card Key: " + Pokemon::to_string(outcome);
     }
-    if (!state.gates.opened.contains("SilphHall/door_1")){
+    if (!state.gates.opened.contains("SilphCo_5F/door_1")){
         return "The run's gates do not have the door open after the step.";
     }
     return true;
@@ -133,7 +125,7 @@ UnitTestResult test_maps_sim_door_opens(){
 
 UnitTestResult test_maps_sim_statue_switch(){
     Pokemon::RunState state;
-    const Pokemon::Outcome outcome = on_maps(statue_maps(), "MansionHall", false, state);
+    const Pokemon::Outcome outcome = on_maps(STATUE, false, state);
     if (!outcome.succeeded()){
         return "The row sim did not press the statue for the barrier: " + Pokemon::to_string(outcome);
     }
@@ -149,12 +141,12 @@ struct GateStateOut{
 };
 
 //  The step on OverworldStepSim and its OverworldSim, with the Card Key as `card_key`.
-std::string on_overworld_sim(const std::vector<MapData>& maps, const std::string& map, bool card_key, GateStateOut& out){
+std::string on_overworld_sim(const Scene& scene, bool card_key, GateStateOut& out){
     SimScript script;
     script.card_key_held = card_key;
-    OverworldSim sim(maps, MapPosition{map, TilePos{1, 1}}, Direction::EAST, script);
-    StoryPose at{map, TilePos{1, 1}, Direction::EAST};
-    const std::string failure = row_step_on_sim(sim, at, route_step(map, TilePos{6, 1}), "test");
+    OverworldSim sim(scene_maps(), MapPosition{scene.map, scene.start}, Direction::EAST, script);
+    StoryPose at{scene.map, scene.start, Direction::EAST};
+    const std::string failure = row_step_on_sim(sim, at, route_step(scene.map, scene.goal), "test");
     out.gates = sim.state().gates;
     out.position = sim.state().position;
     return failure;
@@ -162,7 +154,7 @@ std::string on_overworld_sim(const std::vector<MapData>& maps, const std::string
 
 UnitTestResult test_step_sim_door_blocks(){
     GateStateOut out;
-    if (on_overworld_sim(door_maps(), "SilphHall", false, out).empty()){
+    if (on_overworld_sim(DOOR, false, out).empty()){
         return "The step walked through a closed card-key door without the Card Key.";
     }
     return true;
@@ -170,11 +162,11 @@ UnitTestResult test_step_sim_door_blocks(){
 
 UnitTestResult test_step_sim_door_opens(){
     GateStateOut out;
-    const std::string failure = on_overworld_sim(door_maps(), "SilphHall", true, out);
+    const std::string failure = on_overworld_sim(DOOR, true, out);
     if (!failure.empty()){
         return "The step did not open the door for a player with the Card Key: " + failure;
     }
-    if (!out.gates.opened.contains("SilphHall/door_1") || !(out.position == MapPosition{"SilphHall", TilePos{6, 1}})){
+    if (!out.gates.opened.contains("SilphCo_5F/door_1") || !(out.position == MapPosition{DOOR.map, DOOR.goal})){
         return "Expected the door open and the player at the goal, ended at " + to_string(out.position);
     }
     return true;
@@ -182,11 +174,11 @@ UnitTestResult test_step_sim_door_opens(){
 
 UnitTestResult test_step_sim_statue_switch(){
     GateStateOut out;
-    const std::string failure = on_overworld_sim(statue_maps(), "MansionHall", false, out);
+    const std::string failure = on_overworld_sim(STATUE, false, out);
     if (!failure.empty()){
         return "The step did not press the statue: " + failure;
     }
-    if (!out.gates.switch_on("mansion") || !(out.position == MapPosition{"MansionHall", TilePos{6, 1}})){
+    if (!out.gates.switch_on("mansion") || !(out.position == MapPosition{STATUE.map, STATUE.goal})){
         return "Expected the switch on and the player at the goal, ended at " + to_string(out.position);
     }
     return true;
