@@ -3,7 +3,7 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  The scene machine's states on sequences of events, as PLZA's backend
- *  observes them (plza_observation()): no frames needed.
+ *  observes them (Pokemon::screen_observation()): no frames needed.
  *
  */
 
@@ -13,8 +13,9 @@
 #include <utility>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.h"
 #include "PokemonLZA_AutoStoryGame.h"
-#include "PokemonLZA_AutoStoryObservation.h"
+#include "PokemonLZA_AutoStoryReadings.h"
 #include "PokemonLZA_AutoStorySceneMachine.h"
 #include "PokemonLZA_AutoStoryStoryFiles.h"
 
@@ -50,7 +51,7 @@ UnitTestResult check_reads(const SceneMachineConfig& config, const std::vector<R
     const WallClock start = current_time();
     SceneTimeline timeline(config, start);
     for (const Read& read : reads){
-        ScreenObservation look = plza_observation(read.events);
+        ScreenObservation look = Pokemon::screen_observation(read.events);
         look.when = start + read.at;
         if (read.still){
             look.events.add(PokemonAutomation::ScreenEvent::STILL);

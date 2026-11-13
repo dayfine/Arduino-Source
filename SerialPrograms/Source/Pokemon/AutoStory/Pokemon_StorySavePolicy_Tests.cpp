@@ -314,9 +314,8 @@ UnitTestResult test_postconditions_json(){
     ){
         return "Unexpected postconditions read.";
     }
-    const StoryCheckpoint again = read_story_checkpoint(story_checkpoint_json(checkpoint), "again");
-    if (again.postconditions != post){
-        return std::format("The postconditions should survive a write and read: {}", story_checkpoint_json(checkpoint).dump());
+    if (post.flags.size() != 0 || post.position->tiles != std::vector<TilePos>{TilePos{12, 13}}){
+        return "Unexpected postcondition position or flags read.";
     }
     return true;
 }

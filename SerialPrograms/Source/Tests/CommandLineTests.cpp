@@ -18,8 +18,12 @@ using std::endl;
 namespace PokemonAutomation{
 
 
-int run_command_line_tests(bool augment_color_distortions){
-    return run_unit_tests(augment_color_distortions, {}) == 0 ? 0 : 1;
+int run_command_line_tests(bool augment_color_distortions, const std::string& test_substring){
+    if (test_substring.empty()){
+        return run_unit_tests(augment_color_distortions, {}) == 0 ? 0 : 1;
+    }
+    const std::string_view filters[] = {test_substring};
+    return run_unit_tests(augment_color_distortions, filters) == 0 ? 0 : 1;
 }
 
 size_t run_unit_tests(bool augment_color_distortions, std::span<const std::string_view> filters){
@@ -30,7 +34,11 @@ size_t run_unit_tests(bool augment_color_distortions, std::span<const std::strin
     //  explicit buffer size is required: with 0, MSVC's ucrt can end up with
     //  a zero-size buffer, which corrupts the next stdout write.
     setvbuf(stdout, nullptr, _IOLBF, 8192);
-    cout << "Running parallel unit tests..." << endl;
+    if (filters.empty()){
+        cout << "Running parallel unit tests..." << endl;
+    }else{
+        cout << "Running parallel unit tests matching " << filters.size() << " filter(s)..." << endl;
+    }
     ComputerPrograms::CommandLineUnitTestRunner runner(global_logger_command_line());
     size_t failed = runner.run(augment_color_distortions, filters);
     if (failed > 0){

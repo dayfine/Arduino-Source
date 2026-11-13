@@ -25,6 +25,7 @@ struct StartupPlan{
     StartupMode mode = StartupMode::REJECTED;
     std::optional<std::string> profile = std::nullopt;
     bool augment_color_distortions = false;
+    std::string test_substring = {};
     std::string error = {};
     std::vector<std::string> qt_arguments = {};
 };

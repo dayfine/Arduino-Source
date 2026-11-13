@@ -29,6 +29,9 @@
 #include "CommonTools/OCR/OCR_Routines.h"
 #include "Tests/CommandLineTests.h"
 #include "ControllerInput/ControllerInput.h"
+#ifdef PA_SDL
+#include "ControllerInput/Gamepad/GlobalGamepadTracker.h"
+#endif
 #include "Controllers/SerialPort/SerialPortPollerQt.h"
 #include "Integrations/DiscordSettingsOption.h"
 #include "Integrations/DiscordSocial/DiscordSocial.h"
@@ -179,6 +182,14 @@ int run_program(int argc, char *argv[]){
 
 
 
+    ScopeExit cleanup([]{
+#ifdef PA_SDL
+        global_gamepad_tracker().stop();
+#endif
+        SerialPortPoller::instance().stop();
+        GlobalMediaServices::instance().stop();
+    });
+
     //  Several novice developers struggled to build and run the program due to missing Resources folder.
     //  Add this check to pop a message box when Resources folder is missing.
     if (!check_resource_folder(logger)){
@@ -198,13 +209,8 @@ int run_program(int argc, char *argv[]){
     GlobalThreadPools::qt_worker_threadpool();
     GlobalThreadPools::qt_event_threadpool();
     if (GlobalSettings::instance().COMMAND_LINE_TEST_MODE){
-        return run_command_line_tests(false);
+        return run_command_line_tests(false, "");
     }
-
-    ScopeExit cleanup([]{
-        SerialPortPoller::instance().stop();
-        GlobalMediaServices::instance().stop();
-    });
 
     OptionsPanelWrapper<NintendoSwitch::ConsoleSettingsPanel>().make_panel()->load_json_from_global();
     SerialPortPoller::instance().ports();
@@ -239,6 +245,9 @@ int run_program(int argc, char *argv[]){
 #endif
 
 
+#ifdef PA_SDL
+    global_gamepad_tracker().start();
+#endif
     MainWindow w;
     w.show();
     w.raise(); // bring the window to front on macOS
@@ -347,7 +356,7 @@ int run_test_application(int argc, char* argv[], const StartupPlan& plan){
     register_all_statics();
     GlobalThreadPools::qt_worker_threadpool();
     GlobalThreadPools::qt_event_threadpool();
-    const int ret = run_command_line_tests(plan.augment_color_distortions);
+    const int ret = run_command_line_tests(plan.augment_color_distortions, plan.test_substring);
     OCR::clear_ocr_cache();
     global_periodic_runner().stop();
     global_watchdog().stop();

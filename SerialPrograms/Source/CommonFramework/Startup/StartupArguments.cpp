@@ -66,6 +66,11 @@ StartupPlan parse_startup_arguments(std::span<const std::string_view> arguments)
             plan.mode = StartupMode::TESTS;
         }else if (arg == "--augment-color-distortions"){
             plan.augment_color_distortions = true;
+        }else if (arg == "--test-substring"){
+            if (i + 1 == arguments.size()){
+                return {.error = "--test-substring requires a value."};
+            }
+            plan.test_substring = arguments[++i];
         }else{
             const QtArgument result = consume_qt_argument(arguments, i, plan);
             if (result != QtArgument::ACCEPTED){
@@ -75,6 +80,9 @@ StartupPlan parse_startup_arguments(std::span<const std::string_view> arguments)
     }
     if (plan.augment_color_distortions && plan.mode != StartupMode::TESTS){
         return {.error = "--augment-color-distortions requires --command-line-test-mode."};
+    }
+    if (!plan.test_substring.empty() && plan.mode != StartupMode::TESTS){
+        return {.error = "--test-substring requires --command-line-test-mode."};
     }
     if (plan.mode == StartupMode::TESTS && plan.profile){
         return {.error = "Test launches cannot select a console profile."};

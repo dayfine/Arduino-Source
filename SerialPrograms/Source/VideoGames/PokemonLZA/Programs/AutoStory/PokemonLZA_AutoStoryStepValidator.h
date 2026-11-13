@@ -15,7 +15,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
-#include "Pokemon/AutoStory/Pokemon_ScreenEventTypes.h"
+#include "CommonTools/ScreenMachine/ScreenObservation.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
 #include "PokemonLZA_AutoStoryBackend.h"
 
@@ -32,7 +32,7 @@ std::string_view starter_key(StarterChoice starter);
 
 //  A walk's "end" arg as the event it ends on: "fade_white" or
 //  "fade_black"; nothing for any other name.
-std::optional<Pokemon::ScreenEvent> walk_end_event(std::string_view end);
+std::optional<PokemonAutomation::ScreenEvent> walk_end_event(std::string_view end);
 
 //  What is wrong with the args of a "walk" or "approach_starter" step:
 //  each leg a [turn, ms] pair, turning -180 to 180 degrees and walking 0 ms

@@ -41,8 +41,8 @@ const std::map<std::string, std::string, std::less<>>& story_actions_not_impleme
 //  PLZA's own actions and its replacements of built-in ones (same kind and
 //  name), in the order the game registers them:
 //
-//      ROUTE   "fly"       fly to the target, whose map is a fast travel
-//                          place's slug ("vert-pokemon-center")
+//      ROUTE   "fly"       fly to "place", a fast travel place's slug
+//                          ("vert-pokemon-center")
 //      TALK    "talk"      A at what the player faces
 //      ANSWER  "answer"    the first choice for yes, the second for no
 //      MASH    "mash"      B through the text until the overworld is back

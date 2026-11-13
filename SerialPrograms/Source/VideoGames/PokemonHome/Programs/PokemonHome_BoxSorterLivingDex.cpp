@@ -552,7 +552,8 @@ void BoxSorterLivingDex::program(SingleSwitchProgramEnvironment& env, ProControl
         );
     }
 
-    exit_menus(env, context, VIDEO_DELAY.get());
+    exit_menus(env, context);
+    switch_selection_mode(env, context, BoxSelectionMode::Normal);
 
     nav_cursor = populate_box_data(env, context, sort_preferences, living_dex_boxes_data, living_dex_box_count, nav_cursor, OT_NAME_LANGUAGE);
 
@@ -737,7 +738,7 @@ void BoxSorterLivingDex::program(SingleSwitchProgramEnvironment& env, ProControl
             break;
         }
 
-        BoxCursor pokemon_cursor = BoxCursor(LIVING_DEX_START_BOX - 1 + i / 30, i % 5, i % 6);
+        BoxCursor pokemon_cursor = BoxCursor(LIVING_DEX_START_BOX - 1 + i / 30, (i / 6) % 5, i % 6);
         BoxCursor destination_cursor = BoxCursor(REJECT_BOX_START - 1 + empty_reject_slot / 30, (empty_reject_slot / 6) % 5, empty_reject_slot % 6);
 
         if (!DRY_RUN){

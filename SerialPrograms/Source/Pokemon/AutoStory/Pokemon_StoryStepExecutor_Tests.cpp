@@ -140,6 +140,11 @@ GridPose grid(std::string map, TilePos tile, Direction facing){
     return GridPose{.map = std::move(map), .tiles = {tile}, .facing = facing};
 }
 
+//  A declared pose on one tile.
+TileDeclared declared(std::string map, TilePos tile, Direction facing){
+    return TileDeclared{.map = std::move(map), .tiles = {tile}, .facing = facing};
+}
+
 StoryStep route_to(std::string name, GridPose target){
     StoryStep step = make(StoryStepKind::ROUTE, std::move(name));
     step.args = {{"target", std::move(target)}, {"fight_wild", false}};
@@ -152,7 +157,7 @@ StoryStep step_into(std::string name, Direction direction){
     return step;
 }
 
-StoryStep scene(std::string name, std::optional<GridPose> pose_after){
+StoryStep scene(std::string name, std::optional<DeclaredPose> pose_after){
     StoryStep step = make(StoryStepKind::MASH, std::move(name));
     step.pose_after = std::move(pose_after);
     return step;
@@ -168,11 +173,11 @@ StoryCheckpoint lab_checkpoint(){
     return StoryCheckpoint{
         .id = "00.03",
         .title = "to the lab",
-        .start = grid("Town", {6, 8}, Direction::SOUTH),
+        .start = declared("Town", {6, 8}, Direction::SOUTH),
         .steps = {
             route_to("below_trigger", grid("Town", {12, 2}, Direction::NORTH)),
             step_into("trigger", Direction::NORTH),
-            scene("to_the_lab", grid("Lab", {6, 4}, Direction::NORTH)),
+            scene("to_the_lab", declared("Lab", {6, 4}, Direction::NORTH)),
             make(StoryStepKind::TALK, "talk_oak"),
             shop,
             game,
@@ -361,7 +366,7 @@ UnitTestResult test_segment_of_tables(){
         StoryCheckpoint{
             .id = "00.04",
             .title = "the parcel",
-            .start = grid("Lab", {6, 4}, Direction::NORTH),
+            .start = declared("Lab", {6, 4}, Direction::NORTH),
             .steps = {make(StoryStepKind::TALK, "give_parcel")},
         },
     };
@@ -406,7 +411,7 @@ struct PolicyLab{
         StoryCheckpoint{
             .id = "00.04",
             .title = "the parcel",
-            .start = grid("Lab", {6, 4}, Direction::NORTH),
+            .start = declared("Lab", {6, 4}, Direction::NORTH),
             .steps = {make(StoryStepKind::TALK, "give_parcel")},
         },
     };
@@ -476,7 +481,7 @@ struct BossLab{
     StoryCheckpoint table{
         .id = "00.15b",
         .title = "the rival",
-        .start = grid("Cerulean", {23, 7}, Direction::NORTH),
+        .start = declared("Cerulean", {23, 7}, Direction::NORTH),
         .steps = {once("teach_known"), once("teach_new"), make(StoryStepKind::BATTLE, "rival")},
     };
     FakeExecutor executor;

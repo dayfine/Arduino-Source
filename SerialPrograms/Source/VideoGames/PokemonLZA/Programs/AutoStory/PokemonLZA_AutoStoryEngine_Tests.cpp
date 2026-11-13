@@ -22,7 +22,7 @@
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.h"
 #include "PokemonLZA_AutoStoryGame.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMoves.h"
-#include "PokemonLZA_AutoStoryObservation.h"
+#include "PokemonLZA_AutoStoryReadings.h"
 #include "PokemonLZA_AutoStoryStoryFiles.h"
 #include "PokemonLZA_AutoStoryEngine_Tests.h"
 

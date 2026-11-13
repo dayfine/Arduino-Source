@@ -11,9 +11,9 @@
 #ifndef PokemonAutomation_Pokemon_ZonePose_H
 #define PokemonAutomation_Pokemon_ZonePose_H
 
-#include <optional>
 #include <string>
-#include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
+#include "Pokemon/AutoStory/Types/Pokemon_DeclaredPose.h"
+#include "Pokemon/Navigation/Pokemon_Grid.h"
 #include "Pokemon_StoryPoseConcept.h"
 
 namespace PokemonAutomation{
@@ -33,16 +33,17 @@ bool pose_matches(const ZonePose& actual, const ZonePose& target);
 //  "zone LumioseCity".
 std::string pose_text(const ZonePose& pose);
 
-//  No tiles: no built-in tile walks. A declared pose names its zone as its
-//  map, with no tiles and no facing.
+//  `direction` as degrees clockwise of straight on (0, 90, 180, -90).
+double direction_degrees(Direction direction);
+
+//  No tiles: no built-in tile walks. It declares a place, whose name is the
+//  zone; the spot and heading wait for a position reader.
 template <>
 struct StoryPoseTraits<ZonePose>{
     static constexpr bool TILE_MOVES = false;
-    static std::optional<ZonePose> from_declared(const GridPose& declared){
-        if (!declared.tiles.empty() || declared.facing){
-            return std::nullopt;
-        }
-        return ZonePose{.zone = declared.map};
+    using Declared = ZoneDeclared;
+    static ZonePose from_declared(const ZoneDeclared& declared){
+        return ZonePose{.zone = declared.place};
     }
 };
 
