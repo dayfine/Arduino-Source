@@ -377,14 +377,10 @@ static void stop_for_handoff(
     SingleSwitchProgramEnvironment& env, EventNotificationOption& notification,
     const std::string& message, const std::vector<std::string>& lines = {}
 ){
-    env.console.log(message, COLOR_BLUE);
-    env.console.overlay().add_log(message);
-    std::string full = message;
-    for (const std::string& line : lines){
-        env.console.log(line, COLOR_BLUE);
-        env.console.overlay().add_log(line);
-        full += "\n" + line;
-    }
+    const std::string full = Pokemon::report_rng_handoff_stop(
+        env.console, message, lines,
+        [&](const std::string& line){ env.console.overlay().add_log(line); }
+    );
     send_program_finished_notification(env, notification, full);
 }
 
@@ -690,12 +686,16 @@ static void send_story_finished(
     send_program_finished_notification(env, finished, message);
 }
 
+Pokemon::RngHandoffMode AutoStory::starter_rng_mode() const{
+    return Pokemon::rng_handoff_mode({.stop = STOP_FOR_STARTER_RNG, .run = RUN_STARTER_RNG});
+}
+
 StoryHandoffs AutoStory::story_handoffs() const{
     //  Running Starter RNG here splits 01.05 at the ball as its stop does,
     //  and sets the SID at 01.01 when it isn't known.
     return StoryHandoffs{
         .sid_helper = RUN_STARTER_RNG ? static_cast<std::string>(RNG_PLAN.SID).empty() : bool(STOP_FOR_SID_HELPER),
-        .starter_rng = Pokemon::rng_handoff_mode({.stop = STOP_FOR_STARTER_RNG, .run = RUN_STARTER_RNG}) != Pokemon::RngHandoffMode::OFF,
+        .starter_rng = starter_rng_mode() != Pokemon::RngHandoffMode::OFF,
         .gift_rng = RUN_GIFT_RNG,
     };
 }
@@ -798,7 +798,7 @@ std::optional<StoryRunPlan> AutoStory::after_starter_ball(
     SingleSwitchProgramEnvironment& env, ProControllerContext& context,
     StoryEnv& story, const StarterRngPlanned& planned, size_t ball_row
 ){
-    if (Pokemon::rng_handoff_mode({.stop = STOP_FOR_STARTER_RNG, .run = RUN_STARTER_RNG}) != Pokemon::RngHandoffMode::RUN){
+    if (starter_rng_mode() != Pokemon::RngHandoffMode::RUN){
         stop_for_starter_rng(env, NOTIFICATION_PROGRAM_FINISH, RNG_PLAN.sound_name(), rng_attempt_lines(planned.attempts));
         return std::nullopt;
     }

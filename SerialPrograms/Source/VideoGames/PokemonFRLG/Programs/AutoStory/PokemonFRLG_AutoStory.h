@@ -19,6 +19,7 @@
 #include "Common/Cpp/Options/StringOption.h"
 #include "CommonFramework/Notifications/EventNotificationsTable.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
+#include "Pokemon/AutoStory/Pokemon_StoryRngHandoff.h"
 #include "Pokemon/Options/Pokemon_StoryRunOptions.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
@@ -49,6 +50,8 @@ public:
     ) override{}
 
 private:
+    //  The mode of Stop for Starter RNG and Run Starter RNG in AutoStory.
+    Pokemon::RngHandoffMode starter_rng_mode() const;
     //  The RNG programs' handoffs the run takes, from the options.
     StoryHandoffs story_handoffs() const;
     //  Runs `plan`'s rows, then the RNG handoff they stop at and, for a
