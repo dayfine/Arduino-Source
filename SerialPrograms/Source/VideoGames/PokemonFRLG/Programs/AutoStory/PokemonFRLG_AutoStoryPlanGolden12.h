@@ -17,7 +17,7 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
 
-//  The stored plan lines from segment 12 on, after FRLG_PLAN_GOLDEN_11's.
+//  The stored plan lines of segment 12 (12.01 to 12.03, Fuchsia to Cinnabar), after FRLG_PLAN_GOLDEN_11's.
 inline constexpr std::string_view FRLG_PLAN_GOLDEN_12[] = {
     "12.01 face_center_door from FuchsiaCity (25, 32) facing south to FuchsiaCity (25, 32) facing north",
     "12.01   face north -> FuchsiaCity (25, 32)",
@@ -111,6 +111,11 @@ inline constexpr std::string_view FRLG_PLAN_GOLDEN_12[] = {
     "12.03   walk south 7 -> CinnabarIsland (21, 12)",
     "12.03   walk west 7 -> CinnabarIsland (14, 12)",
     "12.03   face north -> CinnabarIsland (14, 12)",
+};
+
+//  The stored plan lines of Erika's rows, 14.03 to 14.04b, after the rows of Blaine's
+//  (14.01 to 14.02b) in the story's order.
+inline constexpr std::string_view FRLG_PLAN_GOLDEN_12_CELADON[] = {
     "14.03 cinnabar_outside from CinnabarIsland_PokemonCenter_1F (7, 4) facing north to CinnabarIsland (14, 12) facing south",
     "14.03   walk south 5 (warp) -> CinnabarIsland (14, 12) [walk only]",
     "14.03 above_gym_tree from CeladonCity (48, 12) facing south to CeladonCity (40, 34) facing south",
