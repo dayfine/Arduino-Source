@@ -228,7 +228,9 @@ private:
     std::optional<LegNext> finish_interrupted_wall(LegWalk& walk, Milliseconds limit);
     size_t unstick_wall_leg(LegWalk& walk, size_t walked_tiles, size_t nearest);
     std::vector<TilePos> wanderers_by_the_way(Direction direction) const;
-    std::optional<LegNext> wall_or_wanderer(LegWalk& walk, const std::vector<TilePos>& zone);
+    void note_pace(const LegWalk& walk, size_t walked_tiles, size_t nearest);
+    std::optional<LegNext> wall_or_wanderer(LegWalk& walk, size_t walked_tiles, size_t nearest);
+    std::optional<LegNext> wait_for_wanderer(LegWalk& walk, const std::vector<TilePos>& zone);
     LegNext stopped_short_of_wall(LegWalk& walk, size_t walked_tiles);
     LegNext stopped_near_count(LegWalk& walk, size_t walked_tiles, Blocker blocker);
     LegNext stopped_well_short(LegWalk& walk, size_t walked_tiles, bool first_moved);
@@ -549,25 +551,13 @@ LegNext RouteWalker::wall_leg(LegWalk& walk){
         farthest = std::max(farthest, tiles);
     }
     size_t walked_tiles = tiles_moved(walk.result, route_ms_per_tile(leg.direction, m_plan.speed));
-    //  Every leg that reaches its wall measures the pace: the tiles are known.
-    if (walk.result.stop == WalkStop::BLOCKED && nearest != SIZE_MAX && walked_tiles >= nearest){
-        m_io.note("[Speed] " + std::string(m_plan.speed == MoveSpeed::RUN ? "run" : "walk") + " " +
-            direction_name(leg.direction) + ": " + std::to_string(nearest) + " tiles in " +
-            std::to_string(walk.result.walked.count()) + " ms to the wall.", RouteNote::LOG);
-    }
+    note_pace(walk, walked_tiles, nearest);
     //  Checked on the first walk only: one after a wait starts part way.
     if (nearest != SIZE_MAX && walked_tiles >= nearest && held_up(walk.result, nearest, route_ms_per_tile(leg.direction, m_plan.speed))){
         return held_up_on_the_way(walk, nearest);
     }
-    //  A stop the time counts as the wall, on a leg by ground where someone
-    //  wanders, may be them (wall_or_wanderer()).
-    if (walk.result.stop == WalkStop::BLOCKED && nearest != SIZE_MAX && walked_tiles >= nearest){
-        const std::vector<TilePos> zone = wanderers_by_the_way(leg.direction);
-        if (!zone.empty()){
-            if (const std::optional<LegNext> next = wall_or_wanderer(walk, zone)){
-                return *next;
-            }
-        }
+    if (const std::optional<LegNext> next = wall_or_wanderer(walk, walked_tiles, nearest)){
+        return *next;
     }
     const bool well_short = walked_tiles + 2 < nearest && !never_moved(walk.result, walked_tiles);
     const bool first_moved = walk.result.moved_chunks > 0;
@@ -598,6 +588,14 @@ LegNext RouteWalker::wall_leg(LegWalk& walk){
         return check_at_wall(walk, walked_tiles, nearest);
     }
     return LegNext::NEXT_LEG;
+}
+
+//  Every leg that reaches its wall measures the pace: the tiles are known.
+void RouteWalker::note_pace(const LegWalk& walk, size_t walked_tiles, size_t nearest){
+    if (walk.result.stop == WalkStop::BLOCKED && nearest != SIZE_MAX && walked_tiles >= nearest){
+        m_io.note(std::format("[Speed] {} {}: {} tiles in {} ms to the wall.", m_plan.speed == MoveSpeed::RUN ? "run" : "walk",
+            direction_name(walk.planned.leg.direction), nearest, walk.result.walked.count()), RouteNote::LOG);
+    }
 }
 
 //  Nothing without a wild battle on the walk; else how the leg goes on.
@@ -676,6 +674,16 @@ std::vector<TilePos> RouteWalker::wanderers_by_the_way(Direction direction) cons
     return sorted_unique(std::move(zone));
 }
 
+//  A stop the time counts as the wall, `walked_tiles` of `nearest`, on a
+//  leg by ground where someone wanders, may be them: wait_for_wanderer().
+std::optional<LegNext> RouteWalker::wall_or_wanderer(LegWalk& walk, size_t walked_tiles, size_t nearest){
+    if (walk.result.stop != WalkStop::BLOCKED || nearest == SIZE_MAX || walked_tiles < nearest){
+        return std::nullopt;
+    }
+    const std::vector<TilePos> zone = wanderers_by_the_way(walk.planned.leg.direction);
+    return zone.empty() ? std::nullopt : wait_for_wanderer(walk, zone);
+}
+
 //  A walk to the wall by someone's wander zone that stopped where its time
 //  counts the wall: A tells the wall from them. On lab-B (2026-11-13 02:35,
 //  01.10) "west 10 (to wall)" ran Route 204's row 28, a row off the plan's,
@@ -685,7 +693,7 @@ std::vector<TilePos> RouteWalker::wanderers_by_the_way(Direction direction) cons
 //  goes on to the wall. Someone still there after that stands on a zone
 //  tile ahead of us: the walk plans again from the tiles before the zone,
 //  and marks nothing, since they move on. Nothing if it is the wall.
-std::optional<LegNext> RouteWalker::wall_or_wanderer(LegWalk& walk, const std::vector<TilePos>& zone){
+std::optional<LegNext> RouteWalker::wait_for_wanderer(LegWalk& walk, const std::vector<TilePos>& zone){
     constexpr size_t WAITS = 2;
     const Direction ahead = walk.planned.leg.direction;
     for (size_t waits = 0; talk_to_blocker(walk.label) == Blocker::PERSON; waits++){
