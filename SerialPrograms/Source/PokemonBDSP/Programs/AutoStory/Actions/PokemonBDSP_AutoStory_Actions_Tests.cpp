@@ -38,6 +38,7 @@
 #include "PokemonBDSP_AutoStory_LitDoorway.h"
 #include "PokemonBDSP_AutoStory_NewGame.h"
 #include "PokemonBDSP_AutoStory_Settings.h"
+#include "PokemonBDSP_AutoStory_BattleActions_Tests.h"
 #include "PokemonBDSP_AutoStory_Actions_Tests.h"
 
 namespace PokemonAutomation{
@@ -684,6 +685,19 @@ UnitTestResult test_asks_someone_else(Logger&){
     return true;
 }
 
+struct AutoStoryActionsInput{
+    std::string name;
+    std::function<UnitTestResult(Logger&)> body;
+};
+
+struct AutoStoryActionsExpectation{
+};
+
+struct AutoStoryActionsCase{
+    AutoStoryActionsInput input;
+    AutoStoryActionsExpectation expectation;
+};
+
 class Test_AutoStoryActions : public UnitTest{
 public:
     explicit Test_AutoStoryActions(AutoStoryActionsCase test_case)
@@ -776,9 +790,8 @@ void add_tests_AutoStory_Actions(UnitTestDatabase& database){
     for (const auto& item : AUTO_STORY_ACTIONS_CASES){
         database.add<Test_AutoStoryActions>(item);
     }
-    for (const auto& item : battle_action_cases()){
-        database.add<Test_AutoStoryActions>(item);
-    }
+    //  The battle actions' own tests.
+    add_tests_AutoStory_BattleActions(database);
     //  The menu cursor's own tests, with those of the intro, its first user.
     add_tests_MenuCursor(database);
 }

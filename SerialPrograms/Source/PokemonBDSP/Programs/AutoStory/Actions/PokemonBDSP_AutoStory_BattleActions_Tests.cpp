@@ -11,10 +11,13 @@
 
 #include <chrono>
 #include <format>
+#include <functional>
 #include <string>
 #include <string_view>
 #include <vector>
+#include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Filesystem/Filesystem.h"
+#include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/Logging/Logger.h"
@@ -26,7 +29,7 @@
 #include "PokemonBDSP_AutoStory_BattleMoves.h"
 #include "PokemonBDSP_AutoStory_GymOpponent.h"
 #include "PokemonBDSP_AutoStory_TalkOver.h"
-#include "PokemonBDSP_AutoStory_Actions_Tests.h"
+#include "PokemonBDSP_AutoStory_BattleActions_Tests.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -297,44 +300,79 @@ UnitTestResult test_potion_need(Logger&){
     return true;
 }
 
+struct BattleActionsInput{
+    std::string name;
+    std::function<UnitTestResult(Logger&)> body;
+};
+
+struct BattleActionsExpectation{
+};
+
+struct BattleActionsCase{
+    BattleActionsInput input;
+    BattleActionsExpectation expectation;
+};
+
+class Test_AutoStoryBattleActions : public UnitTest{
+public:
+    explicit Test_AutoStoryBattleActions(BattleActionsCase test_case)
+        : UnitTest("PokemonBDSP::AutoStory - " + test_case.input.name)
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        try{
+            return m_case.input.body(logger);
+        }catch (Exception& e){
+            return std::string(e.name()) + ": " + e.message();
+        }
+    }
+
+private:
+    BattleActionsCase m_case;
+};
+
 } // namespace
 
 
-std::vector<AutoStoryActionsCase> battle_action_cases(){
-    return {
-        {
-            .input = {"Potion after a fight: the lead's HP decides before the Bag is searched", test_potion_need},
-            .expectation = {},
-        },
-        {
-            .input = {"battle moves: the pick from names and PP", test_choose_move},
-            .expectation = {},
-        },
-        {
-            .input = {"battle moves: unreadable menu reads nothing", test_move_menu_unreadable},
-            .expectation = {},
-        },
-        {
-            .input = {"01.04 gym: Roark is told by the talk on the overworld after the battle, in any language (lab-B 2026-11-13)", test_gym_opponent_from_the_talk_after},
-            .expectation = {},
-        },
-        {
-            .input = {"01.04 gym: the column's tile estimate is a hint only", test_gym_column_is_a_hint},
-            .expectation = {},
-        },
-        {
-            .input = {"Battle: a Potion that gained no HP ends the Potions of the battle (Roark, lab-B 2026-11-12 23:49)", test_potion_ledger_stops_without_gain},
-            .expectation = {},
-        },
-        {
-            .input = {"badge check: thorough levels open the Trainer Card and a missing badge fails", test_badge_check},
-            .expectation = {},
-        },
-        {
-            .input = {"battle moves: move menu screenshots in each language", test_move_menu_screenshots},
-            .expectation = {},
-        },
-    };
+const BattleActionsCase BATTLE_ACTIONS_CASES[] = {
+    {
+        .input = {"Potion after a fight: the lead's HP decides before the Bag is searched", test_potion_need},
+        .expectation = {},
+    },
+    {
+        .input = {"battle moves: the pick from names and PP", test_choose_move},
+        .expectation = {},
+    },
+    {
+        .input = {"battle moves: unreadable menu reads nothing", test_move_menu_unreadable},
+        .expectation = {},
+    },
+    {
+        .input = {"01.04 gym: Roark is told by the talk on the overworld after the battle, in any language (lab-B 2026-11-13)", test_gym_opponent_from_the_talk_after},
+        .expectation = {},
+    },
+    {
+        .input = {"01.04 gym: the column's tile estimate is a hint only", test_gym_column_is_a_hint},
+        .expectation = {},
+    },
+    {
+        .input = {"Battle: a Potion that gained no HP ends the Potions of the battle (Roark, lab-B 2026-11-12 23:49)", test_potion_ledger_stops_without_gain},
+        .expectation = {},
+    },
+    {
+        .input = {"badge check: thorough levels open the Trainer Card and a missing badge fails", test_badge_check},
+        .expectation = {},
+    },
+    {
+        .input = {"battle moves: move menu screenshots in each language", test_move_menu_screenshots},
+        .expectation = {},
+    },
+};
+
+void add_tests_AutoStory_BattleActions(UnitTestDatabase& database){
+    for (const auto& item : BATTLE_ACTIONS_CASES){
+        database.add<Test_AutoStoryBattleActions>(item);
+    }
 }
 
 
