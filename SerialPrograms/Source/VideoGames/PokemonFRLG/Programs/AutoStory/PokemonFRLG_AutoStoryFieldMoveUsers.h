@@ -11,6 +11,7 @@
 #define PokemonAutomation_PokemonFRLG_AutoStoryFieldMoveUsers_H
 
 #include <cstddef>
+#include <functional>
 #include <map>
 #include <optional>
 #include <string>
@@ -54,6 +55,23 @@ private:
     std::map<std::string, FieldMoveUser, std::less<>> m_users;
 };
 
+//  The users as the last save holds them, and where they are kept beyond
+//  the program (AutoStory's settings), called at each save.
+class SavedFieldMoveUsers{
+public:
+    using Keep = std::function<void(const FieldMoveUsers&)>;
+    SavedFieldMoveUsers() = default;
+    SavedFieldMoveUsers(FieldMoveUsers users, Keep keep);
+
+    //  A save holds `users`: kept here, and by `keep` if there is one.
+    void save(const FieldMoveUsers& users);
+    const FieldMoveUsers& users() const;
+
+private:
+    FieldMoveUsers m_users;
+    Keep m_keep;
+};
+
 //  The users read back from to_text()'s text, and the entries that weren't
 //  readable (a slot outside 1-6, a move or species that isn't a slug, no
 //  "="): those are dropped, so their moves are found by a party scan.
@@ -61,6 +79,7 @@ struct ParsedFieldMoveUsers{
     FieldMoveUsers users = {};
     std::vector<std::string> rejected = {};
 };
+//  `text` read as ParsedFieldMoveUsers says; never throws.
 ParsedFieldMoveUsers parse_field_move_users(std::string_view text);
 
 

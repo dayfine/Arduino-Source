@@ -49,6 +49,22 @@ std::string FieldMoveUsers::to_text() const{
     return text;
 }
 
+SavedFieldMoveUsers::SavedFieldMoveUsers(FieldMoveUsers users, Keep keep)
+    : m_users(std::move(users))
+    , m_keep(std::move(keep))
+{}
+
+void SavedFieldMoveUsers::save(const FieldMoveUsers& users){
+    m_users = users;
+    if (m_keep){
+        m_keep(users);
+    }
+}
+
+const FieldMoveUsers& SavedFieldMoveUsers::users() const{
+    return m_users;
+}
+
 
 namespace{
 
