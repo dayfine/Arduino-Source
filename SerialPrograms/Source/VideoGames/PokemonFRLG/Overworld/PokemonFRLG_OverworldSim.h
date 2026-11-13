@@ -248,6 +248,9 @@ private:
     //  (SimScript::black_without_warp): its black without the warp.
     int m_warp_steps = 0;
     bool black_without_warp(Milliseconds pressed);
+    //  A message after the step on the water just taken
+    //  (SimScript::messages_at_surf_steps).
+    bool message_on_water(Milliseconds pressed);
     //  The last tap, until a hold.
     std::optional<TapPress> m_last_tap;
     //  When the last Bicycle tap started, and how many came too soon.

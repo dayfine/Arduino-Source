@@ -29,6 +29,7 @@
 #include "PokemonFRLG_BikeSpinPresses.h"
 #include "PokemonFRLG_OverworldBike.h"
 #include "PokemonFRLG_OverworldMaps.h"
+#include "PokemonFRLG_PlayerFacingReader.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -456,6 +457,26 @@ bool moved_past_wall(ConsoleHandle& console, ProControllerContext& context, cons
     return change > WALL_TAP_MOVED_RMSD;
 }
 
+//  Whether the player's walking sprite shows, read up to LANDED_READS
+//  times LANDED_REREAD apart: the hop off the water and the steps after
+//  it may still be on. Surfing, the sprite isn't read (PlayerFacingReader).
+constexpr size_t LANDED_READS = 4;
+constexpr Milliseconds LANDED_REREAD(150);
+bool stands_on_foot(ConsoleHandle& console, ProControllerContext& context, PlayerGender player){
+    for (size_t read = 1; read <= LANDED_READS; read++){
+        if (read > 1){
+            pbf_wait(context, LANDED_REREAD);
+        }
+        context.wait_for_all_requests();
+        const VideoSnapshot screen = console.video().snapshot();
+        if (screen && read_player_facing(screen, player)){
+            return true;
+        }
+    }
+    console.log("Route: the player's walking sprite doesn't show: still surfing?", COLOR_ORANGE);
+    return false;
+}
+
 } // namespace
 
 
@@ -556,6 +577,7 @@ void walk_overworld_route_with_recovery(
         riding = riding && warp_keeps_bike(step.end.map);
         at = step.end;
     };
+    calls.landed_on = [&](const MapPosition&){ return stands_on_foot(console, context, player); };
     run_route(route, facing, &planning, calls);
     context.wait_for_all_requests();
 }

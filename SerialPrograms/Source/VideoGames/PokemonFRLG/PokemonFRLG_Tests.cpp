@@ -56,6 +56,7 @@
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRngLoop.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryPartyRoster.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows_Tests.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStorySurf_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryHealing.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows12_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows14_Tests.h"
@@ -350,6 +351,7 @@ static void add_tests_AutoStoryRows(UnitTestDatabase& database){
     add_tests_AutoStoryFuchsiaGym(database);
     add_tests_AutoStoryHealing(database);
     add_tests_AutoStoryCeladonGym(database);
+    add_tests_AutoStorySurf(database);
     add_tests_AutoStorySaffron(database);
     add_tests_AutoStoryCinnabarGym(database);
     add_tests_AutoStorySilph(database);
