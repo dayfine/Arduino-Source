@@ -6,7 +6,7 @@
  *  (ScreenEventLog), the same way for every game: a wild encounter, a
  *  trainer's sight, a dialog, a warp. One frame cannot tell them apart; the
  *  order can. A white flash then a battle is an encounter, a white fade with
- *  no battle after it a cave exit (BDSP's walk fled one as a battle, #268);
+ *  no battle after it a cave exit (BDSP's walk once fled one as a battle);
  *  a box then a flash then a battle is a trainer's lines; a flash then a box
  *  then a battle is a wild battle's opening text.
  *
