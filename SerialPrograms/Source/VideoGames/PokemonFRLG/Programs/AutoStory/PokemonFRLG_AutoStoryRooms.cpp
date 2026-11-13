@@ -69,7 +69,7 @@ void walk_room_legs(
 ){
     for (const RoomLeg& leg : legs){
         if (leg.tiles == 0){
-            OverworldWalkSteps::turn_to(console, context, leg.direction, player);
+            OverworldWalkSteps::turn_to(console, context, leg.direction, player, OverworldWalkSteps::TurnSprite::WALKING, std::nullopt);
             facing = leg.direction;
             continue;
         }

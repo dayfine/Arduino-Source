@@ -9,7 +9,10 @@
 #include <memory>
 #include <optional>
 #include <vector>
+#include "Common/Cpp/Filesystem/Filesystem.h"
+#include "Common/Cpp/PrettyPrint.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
+#include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTools/ImageDiff.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
@@ -201,14 +204,15 @@ bool on_dark_cave(ConsoleHandle& console){
 //  One WALK step: turned first when it should, then its hold, and the warp it ends on.
 StepWalk walk_hold_step(
     ConsoleHandle& console, ProControllerContext& context,
-    const RouteStep& step, std::optional<Direction> facing,
+    const RouteStep& step, const StepStart& from,
     const OverworldInterruptSet& interrupts, MoveSpeed speed, PlayerGender player
 ){
     StepWalk out{std::nullopt, current_time(), false, false};
     //  Turning first, with a tap, starts the hold from a standstill facing
     //  the right way: exact over 15 tiles, where a turn lost one.
-    if (turns_first(step, speed, facing)){
-        turn_to(console, context, step.direction, player);
+    if (turns_first(step, speed, from.facing)){
+        const bool walking = !step.surfing && step_speed(step, speed) != MoveSpeed::BIKE;
+        turn_to(console, context, step.direction, player, walking ? TurnSprite::WALKING : TurnSprite::NOT_READ, from.at);
     }
     if (const std::string note = speed_note(step, speed); !note.empty()){
         console.log(note);
@@ -239,28 +243,28 @@ StepWalk walk_hold_step(
     return out;
 }
 
-//  One step of a route, for a player facing `facing`.
+//  One step of a route, from `from`.
 StepWalk walk_step(
     ConsoleHandle& console, ProControllerContext& context,
-    const RouteStep& step, std::optional<Direction> facing,
+    const RouteStep& step, const StepStart& from,
     const OverworldInterruptSet& interrupts, MoveSpeed speed, PlayerGender player
 ){
     StepWalk out{std::nullopt, current_time(), false, false};
     switch (step.action){
     case RouteAction::WALK:
-        return walk_hold_step(console, context, step, facing, interrupts, speed, player);
+        return walk_hold_step(console, context, step, from, interrupts, speed, player);
     case RouteAction::SURF:
-        start_surf(console, context, step.direction, facing == step.direction);
+        start_surf(console, context, step.direction, from.facing == step.direction);
         break;
     case RouteAction::FACE:
-        turn_to(console, context, step.direction, player);
+        turn_to(console, context, step.direction, player, TurnSprite::WALKING, from.at);
         break;
     case RouteAction::OPEN_GATE:
-        turn_to(console, context, step.direction, player);
+        turn_to(console, context, step.direction, player, TurnSprite::WALKING, from.at);
         open_gate(console, context, step.direction, true);
         break;
     case RouteAction::PRESS_SWITCH:
-        turn_to(console, context, step.direction, player);
+        turn_to(console, context, step.direction, player, TurnSprite::WALKING, from.at);
         press_switch(console, context, step.direction, true);
         break;
     }
@@ -322,7 +326,7 @@ private:
 //  BATTLE_BEFORE (clear_battle_before()).
 StepOutcome walk_and_watch(
     ConsoleHandle& console, ProControllerContext& context,
-    const RouteStep& step, std::optional<Direction> facing,
+    const RouteStep& step, const StepStart& from,
     const OverworldInterruptSet& interrupts, MoveSpeed speed, PlayerGender player
 ){
     if (clear_battle_before(console, context, interrupts.wild, step) > 0){
@@ -337,7 +341,7 @@ StepOutcome walk_and_watch(
     }else if (counts_bike_taps(step, speed)){
         walked = walk_bike_taps(console, context, step, interrupts, player);
     }else{
-        walked = walk_step(console, context, step, facing, interrupts, speed, player);
+        walked = walk_step(console, context, step, from, interrupts, speed, player);
     }
     if (walked.stopped){
         return StepOutcome{.end = StepEnd::STOPPED, .walked = walked.stopped, .blocked = walked.blocked};
@@ -455,6 +459,62 @@ bool moved_past_wall(ConsoleHandle& console, ProControllerContext& context, cons
 } // namespace
 
 
+namespace{
+std::string file_part(const std::string& text){
+    std::string out;
+    for (char c : text){
+        const bool keep = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '.' || c == '_' || c == '-';
+        if (keep){
+            out += c;
+        }else if (c == '/'){
+            out += '-';
+        }else if (!out.empty() && out.back() != '_'){
+            out += '_';
+        }
+    }
+    return out;
+}
+} // namespace
+
+std::string save_route_screenshot(ConsoleHandle& console, const std::string& label, const std::string& text){
+    VideoSnapshot screen = console.video().snapshot();
+    if (!screen){
+        return "";
+    }
+    const std::string folder = SCREENSHOTS_PATH() + "AutoStory/route/";
+    Filesystem::create_directories(Filesystem::Path(folder));
+    const std::string path = folder + now_to_filestring() + "-" + file_part(label) + "-" + file_part(text) + ".png";
+    return screen->save(path) ? path : "";
+}
+
+namespace{
+
+//  The calls of a console route that don't walk: log, fail, the wall
+//  check, the trainer watch and the leg-end screenshot.
+RouteCalls console_route_calls(
+    ConsoleHandle& console, ProControllerContext& context,
+    const RoutePlanning& planning, const OverworldInterruptSet& interrupts
+){
+    RouteCalls calls;
+    calls.log = [&console](const std::string& message){ console.log(message, COLOR_ORANGE); };
+    calls.fail = [&console](const std::string& message){
+        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT, message, console);
+    };
+    calls.moved_past_wall = [&console, &context](const RouteStep& step){
+        return moved_past_wall(console, context, step);
+    };
+    calls.watch_for_trainer = [&console, &context, &interrupts](const RouteStep& step, int approach_tiles){
+        return watch_for_trainer(console, context, step, approach_tiles, interrupts);
+    };
+    calls.leg_ended = [&console, &planning](const std::string& leg_text){
+        const bool stepped = planning.pause != nullptr && !planning.pause->step_label().empty();
+        return save_route_screenshot(console, stepped ? planning.pause->step_label() : planning.label, leg_text);
+    };
+    return calls;
+}
+
+} // namespace
+
 void walk_overworld_route_with_recovery(
     ConsoleHandle& console, ProControllerContext& context,
     const std::vector<RouteStep>& route,
@@ -473,14 +533,18 @@ void walk_overworld_route_with_recovery(
     //  A door takes the player off the Bicycle; the next leg where it may
     //  be ridden gets on again with SELECT. A battle leaves them on.
     bool riding = speed == MoveSpeed::BIKE;
-    RouteCalls calls;
+    //  Where the next step starts, while known: the planned start, then the
+    //  end of each step that ended as planned. Unknown after a stop.
+    std::optional<MapPosition> at = planning.start;
+    RouteCalls calls = console_route_calls(console, context, planning, interrupts);
     calls.walk = [&](const RouteStep& step, std::optional<Direction> from_facing){
         if (gets_on_bike(step, speed, riding)){
             get_on_bike(console, context, player);
             riding = true;
             from_facing = std::nullopt;
         }
-        const StepOutcome outcome = walk_and_watch(console, context, step, from_facing, interrupts, riding ? speed : on_foot(speed), player);
+        const StepOutcome outcome = walk_and_watch(console, context, step, StepStart{from_facing, at}, interrupts, riding ? speed : on_foot(speed), player);
+        at = outcome.end == StepEnd::DONE ? std::optional<MapPosition>(step.end) : std::nullopt;
         if (riding && step.warps && !warp_keeps_bike(step.end.map)){
             console.log("Bike: through the warp to " + step.end.map + ", off the Bicycle.");
             riding = false;
@@ -490,16 +554,7 @@ void walk_overworld_route_with_recovery(
     calls.hold_to_warp = [&](const RouteStep& step){
         hold_to_warp(console, context, step, step.wild ? interrupts.wild : interrupts.other, riding ? speed : on_foot(speed));
         riding = riding && warp_keeps_bike(step.end.map);
-    };
-    calls.log = [&](const std::string& message){ console.log(message, COLOR_ORANGE); };
-    calls.fail = [&](const std::string& message){
-        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT, message, console);
-    };
-    calls.moved_past_wall = [&](const RouteStep& step){
-        return moved_past_wall(console, context, step);
-    };
-    calls.watch_for_trainer = [&](const RouteStep& step, int approach_tiles){
-        return watch_for_trainer(console, context, step, approach_tiles, interrupts);
+        at = step.end;
     };
     run_route(route, facing, &planning, calls);
     context.wait_for_all_requests();

@@ -222,6 +222,15 @@ void keep_field_move_users(ConsoleHandle& console, StoryEnv& story, StringOption
     });
 }
 
+//  The run's breakpoints (the BREAKPOINTS option): the story pauses before
+//  each step, or each leg too, where a lab build waits for the user.
+void set_breakpoints(SingleSwitchProgramEnvironment& env, ProControllerContext& context, StoryEnv& story, Pokemon::StoryBreakpoints mode){
+    story.pause = Pokemon::StoryPausePoints(mode, Pokemon::make_story_pause_hook(context));
+    story.pause.set_log([&env](std::string_view line){
+        env.console.log(std::string(line));
+    });
+}
+
 //  The start gate's preflight failed: the console's setup, nothing pressed.
 void throw_if_not_started(ConsoleHandle& console, const Pokemon::Outcome& outcome){
     if (outcome.failure == Pokemon::StoryPreflight::FAILURE){
@@ -343,10 +352,12 @@ void verify_story_checkpoint(
     const StoryCheckpoint& checkpoint = checkpoints[run.start_index()];
     StoryEnv story = story_env(env, context, checkpoint, run.check_level(), false);
     story.language = run.language();
+    set_breakpoints(env, context, story, run.breakpoints());
     Pokemon::StoryGameHooks game = story_game(env, story);
     Pokemon::RunState state;
     load_verify_save(env, story, game, state, checkpoint);
     StoryExecutor executor(story);
+    executor.set_pause_points(&story.pause);
     Pokemon::Segment segment = make_story_segment(checkpoints, executor);
     Pokemon::SegmentHooks hooks = Pokemon::story_segment_hooks(game);
 
@@ -764,7 +775,9 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     const bool at_gift_rng = plan.stop == StoryHandoff::GIFT_RNG && plan.rows.empty();
     prepare_start(env, checkpoints, first, story, at_gift_rng);
     story.language = RUN.language();
+    set_breakpoints(env, context, story, RUN.breakpoints());
     StoryExecutor executor(story);
+    executor.set_pause_points(&story.pause);
 
     const std::optional<std::string> done_through = at_gift_rng
         ? run_from_gift_rng_save(env, context, story, executor, first)

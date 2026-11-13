@@ -4,6 +4,7 @@
  *
  */
 
+#include <algorithm>
 #include <format>
 #include <functional>
 #include <set>
@@ -346,6 +347,65 @@ public:
     }
 };
 
+struct MapEdgeInput{
+    std::string name;
+    //  On Fuchsia's Center, FuchsiaCity_PokemonCenter_1F; -1 counts from
+    //  the far side: the last column or row.
+    TilePos tile;
+};
+struct MapEdgeExpectation{
+    bool edge;
+};
+struct MapEdgeCase{
+    MapEdgeInput input;
+    MapEdgeExpectation expectation;
+};
+
+//  Console B, 2026-11-13 00:39 (12.03): on Fuchsia's Center (0, 5) the
+//  escalator's rail hides the player's legs, the facing can't be read after
+//  the turn tap east, and the leg failed. turn_to() takes the tap as turned
+//  on a map's edge tile, where the route knows the player stands, and fails
+//  the leg elsewhere.
+class Test_OverworldTurnOnMapEdge : public UnitTest{
+public:
+    explicit Test_OverworldTurnOnMapEdge(MapEdgeCase test_case)
+        : UnitTest("PokemonFRLG::OverworldWalk - turn tap unread on a map's edge: " + test_case.input.name)
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        static const std::vector<MapData> MAPS = overworld_maps();
+        const auto center = std::find_if(MAPS.begin(), MAPS.end(), [](const MapData& map){ return map.name == "FuchsiaCity_PokemonCenter_1F"; });
+        if (center == MAPS.end()){
+            return "FuchsiaCity_PokemonCenter_1F isn't on the maps.";
+        }
+        const MapData& CENTER = *center;
+        TilePos tile = m_case.input.tile;
+        if (tile.x == -1){
+            tile.x = CENTER.tiles.width - 1;
+        }
+        if (tile.y == -1){
+            tile.y = CENTER.tiles.height - 1;
+        }
+        if (on_map_edge(CENTER, tile) == m_case.expectation.edge){
+            return true;
+        }
+        return std::format("({}, {}): expected {}.", tile.x, tile.y, m_case.expectation.edge ? "an edge tile" : "not an edge tile");
+    }
+
+private:
+    MapEdgeCase m_case;
+};
+
+const MapEdgeCase MAP_EDGE_CASES[] = {
+    {.input = {.name = "west column, beside the escalator (0, 5)", .tile = {0, 5}}, .expectation = {.edge = true}},
+    {.input = {.name = "north-west corner tile (0, 2)", .tile = {0, 2}}, .expectation = {.edge = true}},
+    {.input = {.name = "east column", .tile = {-1, 5}}, .expectation = {.edge = true}},
+    {.input = {.name = "south row", .tile = {7, -1}}, .expectation = {.edge = true}},
+    {.input = {.name = "the nurse's tile (7, 4)", .tile = {7, 4}}, .expectation = {.edge = false}},
+    {.input = {.name = "a column in (1, 5)", .tile = {1, 5}}, .expectation = {.edge = false}},
+    {.input = {.name = "off the map (-2, 5)", .tile = {-2, 5}}, .expectation = {.edge = false}},
+};
+
 void add_tests_OverworldWalk(UnitTestDatabase& database){
     for (const auto& scenario : OVERWORLD_WALK_CASES){
         database.add<Test_OverworldWalk>(scenario);
@@ -357,6 +417,9 @@ void add_tests_OverworldWalk(UnitTestDatabase& database){
         database.add<Test_OverworldTapMechanics>(item);
     }
     database.add<Test_OverworldUnseenStepTap>();
+    for (const MapEdgeCase& item : MAP_EDGE_CASES){
+        database.add<Test_OverworldTurnOnMapEdge>(item);
+    }
 }
 
 

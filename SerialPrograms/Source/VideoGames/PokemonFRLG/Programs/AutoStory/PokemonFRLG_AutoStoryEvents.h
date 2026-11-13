@@ -31,6 +31,7 @@
 #include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryBreakpoints.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMap.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
@@ -107,6 +108,9 @@ struct StoryEnv{
     //  The program's "Take the Master Ball" option: 16.05's talk with Silph
     //  Co.'s president (skip_if master_ball_skipped).
     bool take_master_ball = true;
+    //  The run's breakpoints (the BREAKPOINTS option): StoryExecutor pauses
+    //  before each step, the walks before each leg.
+    Pokemon::StoryPausePoints pause = {};
 };
 
 //  After a save is loaded for a checkpoint that starts on `start_map`: the
