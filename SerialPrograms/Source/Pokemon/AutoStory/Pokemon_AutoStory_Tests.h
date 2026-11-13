@@ -19,8 +19,10 @@
 #include "Engine/Pokemon_StoryEngine_Tests.h"
 #include "Pokemon/Options/Pokemon_StoryRangeOptions_Tests.h"
 #include "Pokemon_AutoStorySelect_Tests.h"
+#include "Pokemon_FrameReplay_Tests.h"
 #include "Pokemon_StoryRun_Tests.h"
 #include "Pokemon_AutoStoryStats_Tests.h"
+#include "Pokemon_FrameReplay_Tests.h"
 #include "Pokemon_Interrupts_Tests.h"
 #include "Pokemon_SceneJudges_Tests.h"
 #include "Pokemon_ScreenEvents_Tests.h"
@@ -59,6 +61,7 @@ inline void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_SceneJudges(database);
     add_tests_Interrupts(database);
     add_tests_Transitions(database);
+    add_tests_FrameReplay(database);
     add_tests_StoryActions(database);
     add_tests_StoryInterrupts(database);
 }
