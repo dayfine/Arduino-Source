@@ -154,6 +154,74 @@ UnitTestResult test_autosave_rows(Logger&){
     return true;
 }
 
+//  The built-in file of checkpoint `id` with its execution's save line
+//  replaced by `execution` (the fields after "execution": {), as a dev file.
+StoryDevFile dev_with_execution(std::string_view id, std::string_view execution){
+    for (const auto& [name, text] : autostory_checkpoint_json()){
+        if (name != std::format("plza-{}.plan", id)){
+            continue;
+        }
+        std::string edited = text;
+        const size_t at = edited.find("\"save\": \"autosave\"");
+        if (at != std::string::npos){
+            edited.replace(at, std::string_view("\"save\": \"autosave\"").size(), execution);
+        }
+        return StoryDevFile{.name = std::format("{}.json", name), .path = std::format("dev/{}.json", name), .text = edited};
+    }
+    return StoryDevFile{};
+}
+
+//  The ParseException load_story_data() throws for `dev`; empty when it
+//  loads.
+std::string load_problem(const StoryDevFile& dev){
+    try{
+        load_story_data(std::vector<StoryDevFile>{dev});
+    }catch (ParseException& e){
+        return e.message();
+    }
+    return "";
+}
+
+//  "reload_when_chained" in a checkpoint's execution: only true, and only on
+//  a row with a save to reload after a row that ends on the autosave.
+UnitTestResult test_reload_when_chained_field(Logger&){
+    struct Case{
+        std::string_view execution;
+        std::string_view problem;
+    };
+    const Case cases[] = {
+        {R"("save": "autosave", "reload_when_chained": "yes")", "reload_when_chained"},
+        {R"("save": "autosave", "reload_when_chained": false)", "true or left out"},
+        {R"("save": "autosave", "reload_when_chained": true)", "no save to reload"},
+    };
+    for (const Case& item : cases){
+        const std::string problem = load_problem(dev_with_execution("01.00", item.execution));
+        if (problem.find(item.problem) == std::string::npos){
+            return std::format("01.00 with {}: expected a problem with \"{}\", got \"{}\".", item.execution, item.problem, problem);
+        }
+    }
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        if (story_row_starts_without_save(row) && builtin_story_data().reload_when_chained.contains(row.id)){
+            return std::format("{} starts without a save but reloads when chained.", row.id);
+        }
+    }
+    return true;
+}
+
+//  01.02 reloads when run after 01.01, whose autosave is 01.02's start;
+//  with 01.01 saving through the menu instead, 01.02's reload is refused.
+UnitTestResult test_mm1_reload_when_chained(Logger&){
+    const std::set<std::string, std::less<>> expected{"01.02"};
+    if (builtin_story_data().reload_when_chained != expected){
+        return "Expected 01.02, and only 01.02, to reload when chained.";
+    }
+    const std::string problem = load_problem(dev_with_execution("01.01", R"("save": "menu")"));
+    if (problem.find("does not end on the game's autosave") == std::string::npos){
+        return std::format("01.01 saving through the menu: expected 01.02's reload refused, got \"{}\".", problem);
+    }
+    return true;
+}
+
 //  A run can play every row: none names an action that is not implemented.
 UnitTestResult test_every_row_ready(Logger&){
     const size_t ready = story_rows_ready(story_checkpoints());
@@ -411,6 +479,14 @@ const AutoStoryTableCase AUTO_STORY_TABLE_CASES[] = {
     },
     {
         .input = {"Story table: every row is ready", test_every_row_ready},
+        .expectation = {},
+    },
+    {
+        .input = {"reload_when_chained: only true, only after an autosave row, never on a new game row", test_reload_when_chained_field},
+        .expectation = {},
+    },
+    {
+        .input = {"reload_when_chained: 01.02 after 01.01's autosave", test_mm1_reload_when_chained},
         .expectation = {},
     },
     {
