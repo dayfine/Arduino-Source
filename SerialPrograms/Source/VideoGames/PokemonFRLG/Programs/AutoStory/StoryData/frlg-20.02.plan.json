@@ -68,21 +68,21 @@
       },
       {
         "id": "before_bruno",
-        "kind": "step",
+        "kind": "route",
+        "action": "run",
         "args": {
-          "direction": "north"
+          "target": {
+            "map": "PokemonLeague_BrunosRoom",
+            "tiles": [
+              [
+                6,
+                6
+              ]
+            ],
+            "facing": "north"
+          }
         },
-        "declared_after": {
-          "map": "PokemonLeague_BrunosRoom",
-          "tiles": [
-            [
-              6,
-              6
-            ]
-          ],
-          "facing": "north"
-        },
-        "why": "a tile north to (6, 6), facing Bruno (6, 5)"
+        "why": "to (6, 6) facing Bruno (6, 5), planned from where the room's walk left the player: a tile north, or a step round if the walk ended a tile off"
       },
       {
         "id": "challenge_bruno",

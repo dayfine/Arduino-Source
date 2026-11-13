@@ -94,8 +94,8 @@ std::string walk_league_row(OverworldSim& sim, StoryPose& at, const StoryCheckpo
 }
 
 //  Walks row `id` from its start to the step `until` (the room's entry
-//  scene, or the Champion's battle) and checks the door before it took the
-//  player into `room`, with no trainer met on the way.
+//  scene) and checks the door before it took the player into `room`, with
+//  no trainer met on the way.
 UnitTestResult walk_to_room(std::string_view id, std::string_view until, std::string_view room){
     const StoryCheckpoint& row = league_row(id);
     StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
@@ -105,6 +105,27 @@ UnitTestResult walk_to_room(std::string_view id, std::string_view until, std::st
     }
     if (sim.state().position.map != room){
         return std::format("{}: the door led to {}, not {}.", id, to_string(sim.state().position), room);
+    }
+    if (!sim.state().trainers_beaten.empty() || !sim.state().violations.empty()){
+        return std::format("{}: met a trainer or broke a rule on the way.", id);
+    }
+    return true;
+}
+
+//  Walks row `id` from in front of the beaten trainer round them to below
+//  their door, up to the step `door` into it. The map pack draws the door
+//  closed (a wall: the game opens it with setmetatile when the trainer is
+//  beaten, PokemonLeague_EventScript_OpenDoor), so the step through it and
+//  the next room's walk are the console's.
+UnitTestResult walk_to_door(std::string_view id, std::string_view door, const MapPosition& below){
+    const StoryCheckpoint& row = league_row(id);
+    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
+    if (const std::string failure = walk_league_row(sim, at, row, door); !failure.empty()){
+        return failure;
+    }
+    if (!(sim.state().position == below) || sim.state().facing != Direction::NORTH){
+        return std::format("{}: ended on {}, not below the door {} facing north.", id, to_string(sim.state().position), to_string(below));
     }
     if (!sim.state().trainers_beaten.empty() || !sim.state().violations.empty()){
         return std::format("{}: met a trainer or broke a rule on the way.", id);
@@ -222,28 +243,28 @@ const AutoStoryLeagueCase AUTO_STORY_LEAGUE_CASES[] = {
         .expectation = {.description = "Lorelei's room, no trainer met"},
     },
     {
-        .input = {.name = "20.02 around Lorelei, into Bruno's room", .body = []{
-            return walk_to_room("20.02", "enter_brunos_room", "PokemonLeague_BrunosRoom");
+        .input = {.name = "20.02 around Lorelei to below her door", .body = []{
+            return walk_to_door("20.02", "loreleis_door", MapPosition{"PokemonLeague_LoreleisRoom", {6, 3}});
         }},
-        .expectation = {.description = "Bruno's room"},
+        .expectation = {.description = "Lorelei's room (6, 3) facing north"},
     },
     {
-        .input = {.name = "20.03 around Bruno, into Agatha's room", .body = []{
-            return walk_to_room("20.03", "enter_agathas_room", "PokemonLeague_AgathasRoom");
+        .input = {.name = "20.03 around Bruno to below his door", .body = []{
+            return walk_to_door("20.03", "brunos_door", MapPosition{"PokemonLeague_BrunosRoom", {6, 3}});
         }},
-        .expectation = {.description = "Agatha's room"},
+        .expectation = {.description = "Bruno's room (6, 3) facing north"},
     },
     {
-        .input = {.name = "20.04 around Agatha, into Lance's corridor", .body = []{
-            return walk_to_room("20.04", "lances_corridor", "PokemonLeague_LancesRoom");
+        .input = {.name = "20.04 around Agatha to below her door", .body = []{
+            return walk_to_door("20.04", "agathas_door", MapPosition{"PokemonLeague_AgathasRoom", {6, 3}});
         }},
-        .expectation = {.description = "Lance's room"},
+        .expectation = {.description = "Agatha's room (6, 3) facing north"},
     },
     {
-        .input = {.name = "20.05 around Lance, into the Champion's room", .body = []{
-            return walk_to_room("20.05", "champion", "PokemonLeague_ChampionsRoom");
+        .input = {.name = "20.05 around Lance to below the Champion's door", .body = []{
+            return walk_to_door("20.05", "champions_door", MapPosition{"PokemonLeague_LancesRoom", {6, 6}});
         }},
-        .expectation = {.description = "the Champion's room"},
+        .expectation = {.description = "Lance's room (6, 6) facing north"},
     },
     {
         .input = {.name = "20.01 to 20.05 the League's foe rows are the generator's", .body = test_foe_threats_are_the_generators},

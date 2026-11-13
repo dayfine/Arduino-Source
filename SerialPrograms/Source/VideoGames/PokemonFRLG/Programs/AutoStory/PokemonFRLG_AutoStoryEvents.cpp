@@ -367,6 +367,9 @@ std::string save_card_place(const std::string& map){
         {"Route22", "route-22"},
         {"Route23", "route-23"},
         {"VictoryRoad", "victory-road"},
+        {"IndigoPlateau", "indigo-plateau"},
+        //  The League's rooms are in Indigo Plateau's map section.
+        {"PokemonLeague", "indigo-plateau"},
         {"VermilionCity", "vermilion-city"},
         {"Route10", "route-10"},
         {"LavenderTown", "lavender-town"},
