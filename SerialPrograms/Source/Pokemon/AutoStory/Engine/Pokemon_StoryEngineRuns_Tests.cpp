@@ -675,6 +675,143 @@ std::string verify_saves_after_all_passed(CancellableScope& scope){
 }
 
 
+//  A game whose "mark" action records "run <step>" and whose pause hook
+//  records "pause <label>", in `events`, in `mode`.
+StoryGame<GridPose> breakpoint_game(StoryBreakpoints mode, const std::shared_ptr<std::vector<std::string>>& events){
+    StoryGame<GridPose> game;
+    game.id = "test";
+    game.actions.push_back(game_action<GridPose>("mark", [events](StoryBackend<GridPose>&, const StoryActionCall& call, RunState&){
+        events->push_back(std::format("run {}", call.step.name));
+        return outcome_ok();
+    }));
+    game.breakpoints = mode;
+    game.pause_point = [events](std::string_view label){
+        events->push_back(std::format("pause {}", label));
+    };
+    return game;
+}
+
+StoryStep legs_step(std::string name){
+    StoryStep step;
+    step.kind = StoryStepKind::LEGS;
+    step.name = std::move(name);
+    step.args = {{"legs", std::vector<StoryLeg>{{Direction::NORTH, 2}, {Direction::EAST, 3}}}};
+    return step;
+}
+
+//  What `events` should be, as one line each, or what differs.
+std::string expect_events(const std::vector<std::string>& events, const std::vector<std::string>& expected){
+    return events == expected ? "" : std::format("expected [{}], got [{}]", joined(expected), joined(events));
+}
+
+//  Breakpoints in STEPS mode: the hook runs before each step, in order,
+//  labelled with the checkpoint, the step's place and its name; a walk's
+//  legs do not pause.
+std::string pauses_before_each_step(CancellableScope& scope){
+    const auto events = std::make_shared<std::vector<std::string>>();
+    const StoryGame<GridPose> game = breakpoint_game(StoryBreakpoints::STEPS, events);
+    FakeStoryBackend<GridPose> backend({.looks = {look<GridPose>({ScreenEvent::CAN_MOVE})}}, scope);
+    StoryEngine<GridPose> engine(game, backend);
+    const StoryCheckpoint checkpoint = checkpoint_of("12.03", {game_step("first", "mark"), legs_step("shore"), game_step("last", "mark")});
+    RunState state;
+    state.pose = tile_pose("Shore", {TilePos{5, 5}}, Direction::NORTH);
+    if (!engine.run_checkpoint(checkpoint, SavePoint::RUN_END, state).run.completed){
+        return joined(backend.lines());
+    }
+    const std::string error = expect_events(*events, {
+        "pause 12.03/1 first", "run first", "pause 12.03/2 shore", "pause 12.03/3 last", "run last",
+    });
+    if (!error.empty()){
+        return error;
+    }
+    return has_line(backend, "[Break] 12.03/1 first: paused") && has_line(backend, "[Break] 12.03/1 first: continued")
+        ? "" : "expected the [Break] paused and continued lines";
+}
+
+//  LEGS mode adds a pause before each leg, labelled with the step, the leg's
+//  place, direction, tiles and the tile it ends on.
+std::string pauses_before_each_leg(CancellableScope& scope){
+    const auto events = std::make_shared<std::vector<std::string>>();
+    const StoryGame<GridPose> game = breakpoint_game(StoryBreakpoints::LEGS, events);
+    FakeStoryBackend<GridPose> backend({.looks = {look<GridPose>({ScreenEvent::CAN_MOVE})}}, scope);
+    StoryEngine<GridPose> engine(game, backend);
+    const StoryCheckpoint checkpoint = checkpoint_of("12.03", {game_step("first", "mark"), legs_step("shore")});
+    RunState state;
+    state.pose = tile_pose("Shore", {TilePos{5, 5}}, Direction::NORTH);
+    if (!engine.run_checkpoint(checkpoint, SavePoint::RUN_END, state).run.completed){
+        return joined(backend.lines());
+    }
+    const std::string error = expect_events(*events, {
+        "pause 12.03/1 first", "run first", "pause 12.03/2 shore",
+        "pause 12.03/2 shore leg 1/2 north 2 -> (5, 3)", "pause 12.03/2 shore leg 2/2 east 3 -> (8, 3)",
+    });
+    if (!error.empty()){
+        return error;
+    }
+    //  The pause is before the leg's input.
+    return expect_inputs(backend, "tap north, tap north, tap east, tap east, tap east");
+}
+
+//  A leg's label has no destination when the walk starts on no single tile.
+std::string leg_label_without_a_known_tile(CancellableScope& scope){
+    const auto events = std::make_shared<std::vector<std::string>>();
+    const StoryGame<GridPose> game = breakpoint_game(StoryBreakpoints::LEGS, events);
+    FakeStoryBackend<GridPose> backend({.looks = {look<GridPose>({ScreenEvent::CAN_MOVE})}}, scope);
+    StoryEngine<GridPose> engine(game, backend);
+    const StoryCheckpoint checkpoint = checkpoint_of("12.03", {legs_step("shore")});
+    RunState state;
+    engine.run_checkpoint(checkpoint, SavePoint::RUN_END, state);
+    return expect_events(*events, {
+        "pause 12.03/1 shore", "pause 12.03/1 shore leg 1/2 north 2", "pause 12.03/1 shore leg 2/2 east 3",
+    });
+}
+
+//  OFF, and a hook-less game, never pause or log.
+std::string off_never_pauses(CancellableScope& scope){
+    const auto events = std::make_shared<std::vector<std::string>>();
+    StoryGame<GridPose> game = breakpoint_game(StoryBreakpoints::OFF, events);
+    FakeStoryBackend<GridPose> backend({.looks = {look<GridPose>({ScreenEvent::CAN_MOVE})}}, scope);
+    StoryEngine<GridPose> engine(game, backend);
+    const StoryCheckpoint checkpoint = checkpoint_of("12.03", {game_step("first", "mark"), legs_step("shore")});
+    RunState state;
+    engine.run_checkpoint(checkpoint, SavePoint::RUN_END, state);
+    const std::string error = expect_events(*events, {"run first"});
+    if (!error.empty()){
+        return error;
+    }
+    StoryGame<GridPose> no_hook = breakpoint_game(StoryBreakpoints::LEGS, events);
+    no_hook.pause_point = {};
+    FakeStoryBackend<GridPose> quiet({.looks = {look<GridPose>({ScreenEvent::CAN_MOVE})}}, scope);
+    StoryEngine<GridPose> quiet_engine(no_hook, quiet);
+    state = RunState();
+    quiet_engine.run_checkpoint(checkpoint, SavePoint::RUN_END, state);
+    for (const std::string& line : quiet.lines()){
+        if (line.starts_with("[Break]")){
+            return std::format("a game with no hook logged {}", line);
+        }
+    }
+    return "";
+}
+
+//  A lab wait is called with the label and the run's scope; none installed,
+//  no hook.
+std::string pause_hook_from_the_installed_wait(CancellableScope& scope){
+    if (make_story_pause_hook(scope)){
+        return "expected no hook while no wait is installed";
+    }
+    std::vector<std::string> waited;
+    set_story_pause_wait([&](std::string_view label, CancellableScope& with){
+        waited.push_back(std::format("{} {}", label, &with == &scope));
+    });
+    const StoryPauseHook hook = make_story_pause_hook(scope);
+    if (hook){
+        hook("12.03/1 first");
+    }
+    set_story_pause_wait({});
+    return waited == std::vector<std::string>{"12.03/1 first true"} ? "" : std::format("expected the wait to get the label and the scope: {}", joined(waited));
+}
+
+
 struct RunsCase{
     //  One check above, by name.
     struct Input{
@@ -708,6 +845,11 @@ const RunsCase RUNS_CASES[] = {
     {.input = {.name = "console_only refused off console", .check = &console_only_refused}, .expectation = {}},
     {.input = {.name = "no reload for console_only", .check = &segment_no_reload_for_console_only}, .expectation = {}},
     {.input = {.name = "verify saves after all passed", .check = &verify_saves_after_all_passed}, .expectation = {}},
+    {.input = {.name = "breakpoints pause before each step", .check = &pauses_before_each_step}, .expectation = {}},
+    {.input = {.name = "breakpoints pause before each leg", .check = &pauses_before_each_leg}, .expectation = {}},
+    {.input = {.name = "breakpoints leg label needs a known tile", .check = &leg_label_without_a_known_tile}, .expectation = {}},
+    {.input = {.name = "breakpoints off never pauses", .check = &off_never_pauses}, .expectation = {}},
+    {.input = {.name = "breakpoints hook uses the installed wait", .check = &pause_hook_from_the_installed_wait}, .expectation = {}},
 };
 
 class StoryEngineRunsTest : public UnitTest{
