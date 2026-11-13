@@ -3,7 +3,7 @@
   "game": "plza",
   "checkpoint": {
     "id": "02.03",
-    "title": "Main Mission 02: Hotel Z check-in",
+    "title": "Main Mission 02: into the Hotel Z lobby",
     "start": {
       "place": "LumioseCity"
     },
@@ -18,33 +18,14 @@
       {
         "id": "hotel_z_lobby",
         "kind": "game_action",
-        "why": "steps 24-25: A Enter at the door, the loading screen, the lobby scene with Taunie (a plain scene step ends at once on the door's prompt; console B, 2026-11-10)",
-        "action": "mash_to_move_hints",
-        "args": {"press_a_first": true}
-      },
-      {
-        "id": "to_front_counter",
-        "kind": "game_action",
-        "why": "step 26: along the counter to the clerk's \"A Talk\". 2.25 s was one step short. Measured 2026-11-08 on console B, walk not run.",
-        "action": "walk",
-        "args": {"legs": [[-5, 2500], [-85, 0]]}
-      },
-      {
-        "id": "talk_to_clerk",
-        "kind": "talk",
-        "why": "step 26: A at the clerk (\"A Talk ???\")"
-      },
-      {
-        "id": "check_in",
-        "kind": "game_action",
-        "why": "steps 26-27: from the clerk's talk straight through Taunie, AZ, the check-in scene and the Key to Room 202, until control facing the elevator. There is no free control between the clerk and the elevator: AZ was already talking when the clerk's talk ended (console B, 2026-11-13), so the old turn to AZ is gone",
+        "why": "steps 24-25: A Enter at the door, the loading screen, the lobby scene with Taunie (a plain scene step ends at once on the door's prompt; console B, 2026-11-10). The game autosaves in the lobby here: loading this stretch's save puts you inside, before the clerk (console B, 2026-11-13)",
         "action": "mash_to_move_hints",
         "args": {"press_a_first": true}
       }
     ],
     "metadata": {
       "phase": "testing",
-      "source": "console B recording, 2026-11-08/09: played step by step from a new game; split from 02.02 at the autosave in front of Hotel Z (2026-11-10)"
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game; split from 02.02 at the autosave in front of Hotel Z (2026-11-10); ends at the lobby autosave, the check-in moved to 02.04 (2026-11-13)"
     }
   },
   "execution": {
