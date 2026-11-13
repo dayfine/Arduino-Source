@@ -7,6 +7,7 @@
 #ifndef PokemonAutomation_PokemonSV_AutoStoryTools_H
 #define PokemonAutomation_PokemonSV_AutoStoryTools_H
 
+#include <format>
 #include <functional>
 #include "CommonFramework/Language.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
@@ -15,6 +16,7 @@
 #include "ML/Inference/ML_YOLONavigation.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
+#include "Pokemon/AutoStory/Pokemon_StoryLog.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_WorldNavigation.h"
 
 namespace PokemonAutomation{
@@ -108,7 +110,7 @@ public:
         AutoStoryStats& stats) const = 0;
 
     std::string checkpoint_text() const { 
-        return "Checkpoint:: " + name() + ". Start point: " + start_text(); 
+        return std::format("{}. Start point: {}", name(), start_text());
     }
 };
 

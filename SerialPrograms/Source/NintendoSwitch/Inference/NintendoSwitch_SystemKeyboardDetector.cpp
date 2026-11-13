@@ -4,25 +4,19 @@
  *
  */
 
-#include <cctype>
 #include <cmath>
-#include <cstring>
-#include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
+#include "CommonFramework/GlobalAutoPaths.h"
+#include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/ImageTools/ImageStats.h"
-#include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
 #include "CommonTools/Images/SolidColorTest.h"
-#include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch_SystemKeyboardDetector.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 
-using namespace std::chrono_literals;
-
-
-//  Key grid of the QWERTY layout and where each key sits: rows "1".."z", columns "1".."-".
-static const std::string KEY_ROWS[] = {"1234567890-", "qwertyuiop/", "asdfghjkl:'", "zxcvbnm,.?!"};
+//  Centres of the four rows of character keys, and of the first column and the
+//  spacing between columns, as fractions of the screen.
 static constexpr double KEY_ROW_Y[] = {0.500, 0.593, 0.681, 0.770};
 static constexpr double KEY_COL_X0 = 0.077;
 static constexpr double KEY_COL_STEP = 0.075;
@@ -93,79 +87,55 @@ bool system_keyboard_field_has_text(const ImageViewRGB32& screen){
 }
 
 
-namespace{
+//  One screenshot and what each function should read from it.
+class Test_SystemKeyboardDetector : public UnitTest{
+public:
+    //  cursor_row/col: -1 for a screen without the keyboard.
+    Test_SystemKeyboardDetector(const std::string& image, bool keyboard, int cursor_row, int cursor_col, bool has_text)
+        : UnitTest("NintendoSwitch::SystemKeyboardDetector - " + image)
+        , m_image(UNIT_TEST_RESOURCE_PATH() + image)
+        , m_keyboard(keyboard)
+        , m_cursor_row(cursor_row)
+        , m_cursor_col(cursor_col)
+        , m_has_text(has_text)
+    {}
 
-//  Moves the keyboard's cursor onto (target_row, target_col). A button
-//  pressed while the keyboard slides in is ignored, so read the cursor again
-//  after each move until it is on the target. Whether it got there.
-bool move_keyboard_cursor(VideoStream& stream, ProControllerContext& context, int target_row, int target_col){
-    for (size_t attempt = 0; attempt < 10; attempt++){
-        context.wait_for_all_requests();
-        int row = -1;
-        int col = -1;
-        VideoSnapshot screen = stream.video().snapshot();
-        if (!screen || !find_system_keyboard_cursor(screen, row, col)){
-            pbf_wait(context, 300ms);
-            continue;
+    virtual UnitTestResult run(Logger& logger, CancellableScope& scope) const override{
+        ImageRGB32 image(m_image);
+        if (SystemKeyboardDetector().detect(image) != m_keyboard){
+            return false;
         }
-        if (row == target_row && col == target_col){
+        if (!m_keyboard){
             return true;
         }
-        for (; row < target_row; row++){
-            pbf_press_dpad(context, DPAD_DOWN, 100ms, 200ms);
-        }
-        for (; row > target_row; row--){
-            pbf_press_dpad(context, DPAD_UP, 100ms, 200ms);
-        }
-        for (; col < target_col; col++){
-            pbf_press_dpad(context, DPAD_RIGHT, 100ms, 200ms);
-        }
-        for (; col > target_col; col--){
-            pbf_press_dpad(context, DPAD_LEFT, 100ms, 200ms);
-        }
-        pbf_wait(context, 300ms);
+        int row = -1;
+        int col = -1;
+        return find_system_keyboard_cursor(image, row, col)
+            && row == m_cursor_row && col == m_cursor_col
+            && system_keyboard_field_has_text(image) == m_has_text;
     }
-    return false;
-}
 
-} // namespace
+private:
+    std::string m_image;
+    bool m_keyboard;
+    int m_cursor_row;
+    int m_cursor_col;
+    bool m_has_text;
+};
 
 
-void type_on_system_keyboard(VideoStream& stream, ProControllerContext& context, const std::string& text){
-    for (char ch : text){
-        const char key = (char)std::tolower((unsigned char)ch);
-        int target_row = -1;
-        int target_col = -1;
-        for (int r = 0; r < 4 && target_row < 0; r++){
-            const size_t p = KEY_ROWS[r].find(key);
-            if (p != std::string::npos && key != '\0'){
-                target_row = r;
-                target_col = (int)p;
-            }
-        }
-        if (target_row < 0){
-            OperationFailedExceptionWithScreenshot::fire(
-                ErrorReportMode::SEND_ERROR_REPORT,
-                std::string("System keyboard: no key for '") + ch + "'.",
-                stream
-            );
-        }
-        if (!move_keyboard_cursor(stream, context, target_row, target_col)){
-            OperationFailedExceptionWithScreenshot::fire(
-                ErrorReportMode::SEND_ERROR_REPORT,
-                std::string("System keyboard: the cursor did not reach '") + key + "'.",
-                stream
-            );
-        }
-        if (std::isupper((unsigned char)ch)){
-            pbf_press_button(context, BUTTON_LCLICK, 100ms, 250ms);
-        }
-        pbf_press_button(context, BUTTON_A, 80ms, 300ms);
-    }
-    context.wait_for_all_requests();
+void add_tests_SystemKeyboardDetector(UnitTestDatabase& database){
+    const std::string folder = "NintendoSwitch/SystemKeyboardDetector/";
+    //  The OK button is blue with text in the field and grey without.
+    database.add<Test_SystemKeyboardDetector>(folder + "BDSP-PlayerName-Empty.png", true, 0, 0, false);
+    database.add<Test_SystemKeyboardDetector>(folder + "BDSP-FriendName-Typed.png", true, 0, 0, true);
+    database.add<Test_SystemKeyboardDetector>(folder + "BDSP-Dialog.png", false, -1, -1, false);
+    database.add<Test_SystemKeyboardDetector>(folder + "HomeMenu.png", false, -1, -1, false);
+    database.add<Test_SystemKeyboardDetector>(folder + "HomeMenu-OnlineLicensePopup.png", false, -1, -1, false);
+    database.add<Test_SystemKeyboardDetector>(folder + "UserSelect.png", false, -1, -1, false);
 }
 
 
 
-} // namespace NintendoSwitch
-} // namespace PokemonAutomation
+}
+}
