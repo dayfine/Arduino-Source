@@ -354,6 +354,28 @@ Outcome wait_for_platform(Pokemon::StoryBackend<ZonePose>& backend, Milliseconds
     ));
 }
 
+//  One slice of walk_to_prompt()'s walk between looks.
+constexpr Milliseconds PROMPT_WALK_SLICE(250);
+
+//  "walk_to_prompt": straight on until an A prompt shows (INTERACT_PROMPT:
+//  "A Leave" at the Battle Zone's gate), a slice at a time, nothing if it
+//  shows already. Fails after `timeout` of walking without one.
+Outcome walk_to_prompt(Pokemon::StoryBackend<ZonePose>& backend, Milliseconds timeout){
+    Milliseconds walked(0);
+    while (true){
+        backend.scope().throw_if_cancelled();
+        if (backend.observe().events.has(PokemonAutomation::ScreenEvent::INTERACT_PROMPT)){
+            backend.log(std::format("[PLZA] walk_to_prompt: the A prompt shows after {} ms of walking", walked.count()));
+            return Pokemon::outcome_ok();
+        }
+        if (walked >= timeout){
+            return Pokemon::outcome_failed("no_prompt", std::format("walk_to_prompt: no A prompt in {} ms of walking", timeout.count()));
+        }
+        backend.hold(Pokemon::Direction::NORTH, PROMPT_WALK_SLICE, Pokemon::StoryPace::WALK);
+        walked += PROMPT_WALK_SLICE;
+    }
+}
+
 //  The handler of "wait_for_platform" or "opening_to_platform".
 Handler platform_handler(PlatformWait wait){
     return [wait](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
@@ -372,6 +394,11 @@ const std::map<std::string, HandlerOf, std::less<>>& story_game_actions(){
         {"text_to_choice", [](const PlzaHandlers&){ return PlzaHandlers::text_to_choice(); }},
         {"wait_for_platform", [](const PlzaHandlers&){ return platform_handler(PlatformWait::PLATFORM_ONLY); }},
         {"opening_to_platform", [](const PlzaHandlers&){ return platform_handler(PlatformWait::AFTER_AUTOSAVE); }},
+        {"walk_to_prompt", [](const PlzaHandlers&){
+            return Handler([](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
+                return walk_to_prompt(backend, Milliseconds(Pokemon::story_arg<int64_t>(call.args, "timeout_ms")));
+            });
+        }},
     };
     return actions;
 }
@@ -483,6 +510,9 @@ std::vector<StoryActionSpec> plza_story_action_specs(){
         game_spec("text_to_choice"),
         game_spec("wait_for_platform", {
             optional_ms("timeout_ms", 180000, "no platform this long fails the step"),
+        }),
+        game_spec("walk_to_prompt", {
+            optional_ms("timeout_ms", 10000, "walking this long with no A prompt fails the step"),
         }),
         game_spec("opening_to_platform", {
             optional_ms("timeout_ms", 240000, "no autosave and platform this long fails the step"),
