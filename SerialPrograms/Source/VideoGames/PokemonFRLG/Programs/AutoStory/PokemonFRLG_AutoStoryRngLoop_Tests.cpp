@@ -225,10 +225,10 @@ UnitTestResult test_handoff_results(){
     };
     for (const Case& item : cases){
         const StarterRngLoopResult loop{.end = item.end, .attempts_run = 2, .remaining_sids = {300}, .sid = std::nullopt};
-        const Pokemon::RngHandoffResult starter = starter_rng_handoff_result(loop);
-        const Pokemon::RngHandoffResult gift = gift_rng_handoff_result(loop, PokemonFRLG_RngTarget::eevee, "09.04");
         const std::string starter_message = starter_rng_loop_message(loop);
         const std::string gift_message = gift_rng_loop_message(loop, PokemonFRLG_RngTarget::eevee, "09.04");
+        const Pokemon::RngHandoffResult starter = rng_handoff_result(loop, starter_message);
+        const Pokemon::RngHandoffResult gift = rng_handoff_result(loop, gift_message);
         const std::string& starter_text = item.shiny ? starter.summary : starter.user_turn;
         const std::string& gift_text = item.shiny ? gift.summary : gift.user_turn;
         const std::string& starter_other = item.shiny ? starter.user_turn : starter.summary;

@@ -110,26 +110,13 @@ std::string gift_rng_loop_message(const StarterRngLoopResult& result, PokemonFRL
 }
 
 
-namespace{
-
-Pokemon::RngHandoffResult handoff_result(const StarterRngLoopResult& result, std::string message){
+Pokemon::RngHandoffResult rng_handoff_result(const StarterRngLoopResult& result, std::string message){
     if (result.end == StarterRngLoopEnd::SHINY || result.end == StarterRngLoopEnd::SHINY_OFF_TARGET){
         return Pokemon::RngHandoffResult{.summary = std::move(message)};
     }
     return Pokemon::RngHandoffResult{.user_turn = std::move(message)};
 }
 
-} // namespace
-
-Pokemon::RngHandoffResult starter_rng_handoff_result(const StarterRngLoopResult& result){
-    return handoff_result(result, starter_rng_loop_message(result));
-}
-
-Pokemon::RngHandoffResult gift_rng_handoff_result(
-    const StarterRngLoopResult& result, PokemonFRLG_RngTarget gift, std::string_view row
-){
-    return handoff_result(result, gift_rng_loop_message(result, gift, row));
-}
 
 
 CalibrationSavingSteps::CalibrationSavingSteps(

@@ -621,18 +621,18 @@ static bool run_starter_rng_in_program(
     }, notifications);
     CalibrationSavingSteps steps(console_steps, calibration, calibration.STARTER_INGAME);
     return run_handoff_to_shiny(env, finished, "Starter RNG", [&]{
-        return starter_rng_handoff_result(run_rng_plan_in_program(env, steps, planned, options));
+        const StarterRngLoopResult result = run_rng_plan_in_program(env, steps, planned, options);
+        return rng_handoff_result(result, starter_rng_loop_message(result));
     });
 }
 
 //  Gift RNG's attempts in the program for the language and gift of
 //  `settings`, from the save where the gift is taken; the sound and
-//  calibration come from `options`. Returns true for a shiny, which leaves the
-//  game on its summary (`saving_row` saves it); otherwise the run has stopped.
-static bool run_gift_rng_in_program(
+//  calibration come from `options`. A shiny leaves the game on its summary.
+static StarterRngLoopResult run_gift_rng_in_program(
     SingleSwitchProgramEnvironment& env, ProControllerContext& context,
     const StarterRngPlanned& planned, StarterRngPlanOptions& options, GiftRngConsoleSettings settings,
-    const GiftRngNotifications& notifications, EventNotificationOption& finished, std::string_view saving_row
+    const GiftRngNotifications& notifications
 ){
     //  The console's seed and CSF offsets, from Starter RNG too, and Gift
     //  RNG's own in-game offset, saved as Starter RNG's are.
@@ -641,9 +641,7 @@ static bool run_gift_rng_in_program(
     settings.calibration = calibration.calibration(calibration.GIFT_INGAME);
     ConsoleGiftRngSteps console_steps(env, context, settings, notifications);
     CalibrationSavingSteps steps(console_steps, calibration, calibration.GIFT_INGAME);
-    return run_handoff_to_shiny(env, finished, "Gift RNG", [&]{
-        return gift_rng_handoff_result(run_rng_plan_in_program(env, steps, planned, options), settings.target, saving_row);
-    });
+    return run_rng_plan_in_program(env, steps, planned, options);
 }
 
 //  After a shiny Squirtle: off its summary, and the rows to run next: the
@@ -697,7 +695,7 @@ StoryHandoffs AutoStory::story_handoffs() const{
     //  and sets the SID at 01.01 when it isn't known.
     return StoryHandoffs{
         .sid_helper = RUN_STARTER_RNG ? static_cast<std::string>(RNG_PLAN.SID).empty() : bool(STOP_FOR_SID_HELPER),
-        .starter_rng = Pokemon::rng_handoff_mode(STOP_FOR_STARTER_RNG, RUN_STARTER_RNG) != Pokemon::RngHandoffMode::OFF,
+        .starter_rng = Pokemon::rng_handoff_mode({.stop = STOP_FOR_STARTER_RNG, .run = RUN_STARTER_RNG}) != Pokemon::RngHandoffMode::OFF,
         .gift_rng = RUN_GIFT_RNG,
     };
 }
@@ -800,7 +798,7 @@ std::optional<StoryRunPlan> AutoStory::after_starter_ball(
     SingleSwitchProgramEnvironment& env, ProControllerContext& context,
     StoryEnv& story, const StarterRngPlanned& planned, size_t ball_row
 ){
-    if (Pokemon::rng_handoff_mode(STOP_FOR_STARTER_RNG, RUN_STARTER_RNG) != Pokemon::RngHandoffMode::RUN){
+    if (Pokemon::rng_handoff_mode({.stop = STOP_FOR_STARTER_RNG, .run = RUN_STARTER_RNG}) != Pokemon::RngHandoffMode::RUN){
         stop_for_starter_rng(env, NOTIFICATION_PROGRAM_FINISH, RNG_PLAN.sound_name(), rng_attempt_lines(planned.attempts));
         return std::nullopt;
     }
@@ -825,7 +823,11 @@ std::optional<StoryRunPlan> AutoStory::after_gift_row(
     };
     //  The live-start row after the gift's, which saves it (04.03, 09.04).
     const std::string& saving_row = story_checkpoints().at(gift_row + 1).id;
-    if (!run_gift_rng_in_program(env, context, planned, RNG_PLAN, settings, notifications, NOTIFICATION_PROGRAM_FINISH, saving_row)){
+    const bool shiny = run_handoff_to_shiny(env, NOTIFICATION_PROGRAM_FINISH, "Gift RNG", [&]{
+        const StarterRngLoopResult result = run_gift_rng_in_program(env, context, planned, RNG_PLAN, settings, notifications);
+        return rng_handoff_result(result, gift_rng_loop_message(result, settings.target, saving_row));
+    });
+    if (!shiny){
         return std::nullopt;
     }
     return after_shiny_gift(env, story, gift_row, RUN.end_index(), story_handoffs());

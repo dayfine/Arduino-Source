@@ -46,10 +46,8 @@ std::string gift_rng_loop_message(const StarterRngLoopResult& result, PokemonFRL
 //  A shiny, on the target or not, is a success: the game is on its summary and the
 //  run goes on, with the rows rows_after_*_rng() give, which the caller runs. Every other
 //  end is the user's turn, with the message, not a failure: nothing here is an error.
-Pokemon::RngHandoffResult starter_rng_handoff_result(const StarterRngLoopResult& result);
-Pokemon::RngHandoffResult gift_rng_handoff_result(
-    const StarterRngLoopResult& result, PokemonFRLG_RngTarget gift, std::string_view row
-);
+//  `message` is starter_rng_loop_message() or gift_rng_loop_message() for `result`.
+Pokemon::RngHandoffResult rng_handoff_result(const StarterRngLoopResult& result, std::string message);
 
 
 //  `steps`, with the calibration of each reset also kept in the RNG plan's
