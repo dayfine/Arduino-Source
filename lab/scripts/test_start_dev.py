@@ -231,6 +231,47 @@ class PipelineTests(unittest.TestCase):
             self.execute(changed)
         self.assertFalse(any('stage' in cmd for cmd, _ in self.calls))
 
+    def test_build_only_stages_without_console_lock_or_launch(self):
+        def checking(command, **kwargs):
+            self.assertFalse((self.root / 'locks/A').exists(), 'build-only must not take the console lock')
+            self.assertNotIn('LABLOCK_TOKEN', kwargs.get('env', {}))
+            return self.runner(command, **kwargs)
+        with patch.object(dev, 'prepare_source', return_value=self.revision), \
+             patch.object(dev, 'validate_profile', return_value=self.root / 'profile'), \
+             patch.object(dev, 'copy_runtime_data'), \
+             redirect_stdout(io.StringIO()):
+            stage = dev.build_only(self.slot, self.root, checking)
+        commands = [command for command, _ in self.calls]
+        self.assertEqual('stage', commands[4][2])
+        self.assertEqual('verify', commands[5][2])
+        self.assertFalse(any(cmd[0].endswith('/SerialPrograms') for cmd in commands))
+        self.assertTrue(str(stage).startswith(self.slot['stage_root']))
+
+    def test_build_only_keeps_the_build_lock_exclusive(self):
+        with dev.build_lock(self.root), self.assertRaisesRegex(ValueError, 'Another dev launcher'):
+            dev.build_only(self.slot, self.root, self.runner)
+
+    def test_revision_change_is_retried_once_then_refused(self):
+        heads = iter(['b' * 40, 'c' * 40, 'c' * 40])
+        revisions = iter(['a' * 40, 'c' * 40])
+        def moving(command, **kwargs):
+            if command[-2:] == ['rev-parse', 'HEAD']:
+                return next(heads)
+            return self.runner(command, **kwargs)
+        receipt = Path(self.slot['build_dir']) / 'SerialPrograms.app/Contents/MacOS/SerialPrograms.lab-build.json'
+        receipt.write_text(json.dumps({'source_revision': 'c' * 40}))
+        with patch.object(dev, 'prepare_source', side_effect=lambda *a, **k: next(revisions)), \
+             patch.object(dev, 'validate_profile', return_value=self.root / 'profile'), \
+             patch.object(dev, 'copy_runtime_data'), redirect_stdout(io.StringIO()):
+            revision, _ = dev.build_with_retry(self.slot, {}, moving)
+        self.assertEqual('c' * 40, revision)
+        # A second change in the retry is final.
+        with patch.object(dev, 'prepare_source', return_value='a' * 40), \
+             patch.object(dev, 'validate_profile', return_value=self.root / 'profile'), \
+             patch.object(dev, 'copy_runtime_data'), redirect_stdout(io.StringIO()), \
+             self.assertRaisesRegex(ValueError, 'revision changed'):
+            dev.build_with_retry(self.slot, {}, lambda c, **k: 'b' * 40 if c[-2:] == ['rev-parse', 'HEAD'] else self.runner(c, **k))
+
     def test_runtime_directories_are_copied_beside_app_and_missing_data_is_refused(self):
         build, stage = self.root / 'data-build', self.root / 'data-stage'
         for name in ['Resources', 'Firmware', 'Scripts']:
