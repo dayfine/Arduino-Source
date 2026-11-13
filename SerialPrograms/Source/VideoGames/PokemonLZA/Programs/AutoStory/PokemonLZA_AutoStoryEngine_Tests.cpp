@@ -560,7 +560,8 @@ struct BoundaryRun{
 //  game's reload counts itself.
 BoundaryRun run_boundary(
     std::vector<std::string> ids, std::vector<bool> platform, CancellableScope& scope,
-    StoryRunPolicy::BoundaryReload boundary_reload = StoryRunPolicy::BoundaryReload::AT_PLAN_BOUNDARIES
+    StoryRunPolicy::BoundaryReload boundary_reload = StoryRunPolicy::BoundaryReload::AT_PLAN_BOUNDARIES,
+    std::set<std::string, std::less<>> reload_always = {}
 ){
     std::vector<Observation<ZonePose>> looks;
     for (size_t i = 0; i < platform.size(); i++){
@@ -577,6 +578,7 @@ BoundaryRun run_boundary(
     };
     StoryData story;
     story.reload_when_chained = {"B"};
+    story.reload_always = std::move(reload_always);
     std::vector<StoryCheckpoint> rows;
     for (std::string& id : ids){
         rows.push_back(platform_row(std::move(id)));
@@ -625,6 +627,19 @@ UnitTestResult test_no_reload_unless_chained(CancellableScope& scope){
         if (!run.report.completed || run.reloads != 0 || line_index(run.lines, "reload_at_boundary") != run.lines.size()){
             return std::format("Expected no reload for {}: {}", joined(ids), joined(run.lines));
         }
+    }
+    return true;
+}
+
+//  Run straight through, a row that always reloads still reloads after the
+//  row before.
+UnitTestResult test_straight_through_reloads_always(CancellableScope& scope){
+    const BoundaryRun run = run_boundary(
+        {"A", "B"}, {true, true, false, false, false, false, true, true}, scope,
+        StoryRunPolicy::BoundaryReload::STRAIGHT_THROUGH, {"B"}
+    );
+    if (!run.report.completed || run.reloads != 1){
+        return std::format("Expected A and B with one reload, got {} reloads: {}", run.reloads, joined(run.lines));
     }
     return true;
 }
@@ -788,6 +803,7 @@ const EngineTestCase ENGINE_TEST_CASES[] = {
     {.input = {"reload_when_chained: no reload from the row's save or for other rows", test_no_reload_unless_chained}, .expectation = {}},
     {.input = {"reload_when_chained: a reload onto the platform fails", test_reload_lands_on_older_save}, .expectation = {}},
     {.input = {"reload_when_chained: straight through, no reload at a boundary", test_straight_through_has_no_reload}, .expectation = {}},
+    {.input = {"reload_when_chained: \"always\" reloads straight through too", test_straight_through_reloads_always}, .expectation = {}},
     {.input = {"walk_to_prompt: walks until the A prompt, none when it shows", test_walk_to_prompt}, .expectation = {}},
     {.input = {"breakpoints: a walk pauses before each leg", test_walk_pauses_before_each_leg}, .expectation = {}},
 };

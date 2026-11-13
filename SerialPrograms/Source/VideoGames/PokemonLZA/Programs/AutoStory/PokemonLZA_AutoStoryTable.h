@@ -46,6 +46,10 @@ struct StoryData{
     //  they start as from their save. Each comes after an autosave row,
     //  whose autosave is its start save.
     std::set<std::string, std::less<>> reload_when_chained;
+    //  The rows of reload_when_chained that reload even in a run straight
+    //  through ("reload_when_chained": "always"): the row before leaves the
+    //  player where the row's walk cannot start, only its save can.
+    std::set<std::string, std::less<>> reload_always;
     //  The dev files that replaced a built-in checkpoint, as (file name,
     //  path).
     std::vector<std::pair<std::string, std::string>> dev_files;
