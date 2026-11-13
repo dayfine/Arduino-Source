@@ -51,6 +51,6 @@ const std::vector<MapData>& story_maps(const std::set<std::string>& run_flags){
 }
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

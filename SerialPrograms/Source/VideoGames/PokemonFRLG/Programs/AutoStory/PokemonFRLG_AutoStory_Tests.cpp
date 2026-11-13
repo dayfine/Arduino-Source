@@ -902,7 +902,9 @@ std::string approach_off_tile(const std::vector<RouteStep>& legs){
 //  tile west and met a gravestone (console B, 2026-11-12 04:39).
 //  PASSED_ON_CONSOLE: approaches before 10.05 that passed their console
 //  runs as held legs (a follow-up to tap them). 13.03 and 13.04 plan their statue
-//  approaches (PRESS_SWITCH) and have not run on a console.
+//  approaches (PRESS_SWITCH) and have not run on a console, nor has 16.05's walk to the
+//  president: it ends at (9, 10) facing north, the only tile that faces him, with no wall to
+//  end a leg against (tap it once Silph Co. has run).
 UnitTestResult test_approaches_end_on_their_tile(){
     const std::set<std::string> PASSED_ON_CONSOLE{
         "02.02/below_oak", "03.02/before_brock", "05.07/below_bill_clefairy", "05.07/pc_front",
@@ -911,10 +913,7 @@ UnitTestResult test_approaches_end_on_their_tile(){
         //  Not run on a console: 14.01 (#410) predates this rule. Its quiz machine approaches are held
         //  open routes; tap them (follow-up) and drop these.
         "14.01/below_quiz_1", "14.01/below_quiz_2", "14.01/below_quiz_3", "14.01/below_quiz_4",
-        "14.01/below_quiz_5", "14.01/below_quiz_6",
-        //  Not run on a console: 16.05's walk to the president ends at (9, 10) facing north, the
-        //  only tile that faces him; no leg ends there against a wall. Tap it once Silph Co. has run.
-        "16.05/below_president",
+        "14.01/below_quiz_5", "14.01/below_quiz_6", "16.05/below_president",
     };
     std::string wrong;
     size_t count = 0;
