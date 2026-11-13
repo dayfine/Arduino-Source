@@ -270,6 +270,17 @@ two-line `state`) is gone. `start` and `stop` are lines in a request, and
 `state` has the six lines above. Scripts move from
 `printf '' > LabControl/start` to a request file containing `start`.
 
+## Breakpoints (AutoStory)
+
+With the AutoStory option BREAKPOINTS set to "steps" or "legs", the program stops
+before each step (or each walker leg) and logs `[Break] <label>: paused`. While it
+waits, the state file has `paused=<label>`. Drop `Lab/continue` to go on
+(`[Break] <label>: continued`); the file may hold `continue N` (or `N`) to also pass
+the next N pause points. `~/BDSPLab/labcont.sh PROFILE [N]` writes it. Stop Program
+ends the wait. A normal build never waits: the app has to install the wait with
+`set_story_pause_wait(lab_pause_wait)` (LabPause.h) once, where it starts the Lab
+channel, in a build that has the story engine.
+
 ## Tests
 
 `add_tests_LabChannel()` covers the request format, the journal lines, the
