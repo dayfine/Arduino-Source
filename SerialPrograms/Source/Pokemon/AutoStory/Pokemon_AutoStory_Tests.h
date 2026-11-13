@@ -23,6 +23,7 @@
 #include "Pokemon_ScreenEvents_Tests.h"
 #include "Pokemon_StoryEvents_Tests.h"
 #include "Pokemon_StoryLog_Tests.h"
+#include "Pokemon_StoryRngHandoff_Tests.h"
 #include "Pokemon_StorySavePolicy_Tests.h"
 #include "Pokemon_StorySegments_Tests.h"
 #include "Pokemon_StoryStepExecutor_Tests.h"
@@ -37,6 +38,7 @@ inline void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_AutoStorySelect(database);
     add_tests_AutoStoryStats(database);
     add_tests_StoryLog(database);
+    add_tests_StoryRngHandoff(database);
     add_tests_StoryRangeOptions(database);
     add_tests_StoryEvents(database);
     add_tests_StorySegments(database);
