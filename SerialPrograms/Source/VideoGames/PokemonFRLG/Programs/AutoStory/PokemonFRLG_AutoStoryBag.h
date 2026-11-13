@@ -30,12 +30,16 @@ enum class BagPocket{
 };
 
 //  The pocket of an item the story uses from the bag: repel, super-repel,
-//  max-repel, escape-rope (Items) or bicycle (Key Items); nothing for
+//  max-repel, escape-rope, rare-candy (Items) or bicycle (Key Items); nothing for
 //  another.
 std::optional<BagPocket> usable_item_pocket(std::string_view item);
 
 //  Whether `item` is a Repel of any kind.
 bool is_repel(std::string_view item);
+
+//  Whether `item` is used on a Pokemon, the lead (the party list opens on
+//  it, as for a Potion in battle): the Rare Candy.
+bool is_party_item(std::string_view item);
 
 //  The row of `item` in `rows` (read_bag_pocket()'s, from the top), if it
 //  has one left: a count of -1 (unread) counts as some.
@@ -51,6 +55,10 @@ public:
     virtual std::vector<BagRow> read_pocket() = 0;
     //  Moves to row `row`, USE, and through what the item says.
     virtual void use_row(size_t row) = 0;
+    //  Moves to row `row`, USE, the lead, and through the level-up text
+    //  (the stats window; a new move declined) back to the bag. False if
+    //  the party list or the level-up never showed.
+    virtual bool use_row_on_lead(size_t row) = 0;
     //  Moves to row `row` and REGISTERs it for SELECT.
     virtual void register_row(size_t row) = 0;
     //  Back to the overworld (nothing to do if the item closed the bag).
@@ -66,6 +74,8 @@ enum class ItemUseEnd{
     NO_BAG,
     //  Not an item the story uses from the bag.
     UNKNOWN_ITEM,
+    //  The item was chosen but its use on the lead never showed its text.
+    NOT_USED,
 };
 
 //  "used", "none_left": the end's name in logs and failures.
