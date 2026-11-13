@@ -165,6 +165,18 @@ void connect_controller(ConsoleHandle& console, ProControllerContext& context, c
     require_player(console, context, BUTTON_L);
 }
 
+//  PLZA's game for a run on `story` with `starter`, pausing at `breakpoints` (the
+//  BREAKPOINTS option): before each step, or each leg too, where a lab build
+//  waits for the user (Pokemon_StoryBreakpoints.h).
+StoryGame<ZonePose> run_game(
+    StoryEnv& story, StarterChoice starter, const StoryData& data, StoryBreakpoints breakpoints, CancellableScope& scope
+){
+    StoryGame<ZonePose> game = make_plza_story_game(story, starter, data.autosaves);
+    game.breakpoints = breakpoints;
+    game.pause_point = make_story_pause_hook(scope);
+    return game;
+}
+
 } // namespace
 
 NewGameChoices AutoStory::new_game_choices(ConsoleHandle& console, bool check) const{
@@ -201,7 +213,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         .language = RUN.language(), .battle_ai = BATTLE_AI
     };
     PlzaConsoleBackend backend(story);
-    const StoryGame<ZonePose> game = make_plza_story_game(story, STARTER, story_data.autosaves);
+    const StoryGame<ZonePose> game = run_game(story, STARTER, story_data, RUN.breakpoints(), context);
     StoryEngine<ZonePose> engine(game, backend);
     RunState state;
     load_start_save(env.console, game, backend, rows, first);
