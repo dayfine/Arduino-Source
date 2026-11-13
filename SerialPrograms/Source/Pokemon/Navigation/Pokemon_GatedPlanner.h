@@ -24,7 +24,8 @@
  *      MapPlace place_of(const State&) const;
  *
  *  and may have open_stop_risk(const State&, Direction, const GateState&)
- *  const, as plan_legs()'s model may have it without the gates.
+ *  const and tap_stop_risk() with the same parameters, as plan_legs()'s
+ *  model may have them without the gates.
  *
  *  press() reads each tile with resolved_tile(), which makes a closed gate a
  *  wall. One-way warps (MapWarp::one_way) are the game's to take as any warp:
@@ -54,6 +55,13 @@ namespace Pokemon{
 template <typename Inner>
 concept HasOpenStopRisk = requires (const Inner& inner, const typename Inner::State& state, const GateState& gates){
     { inner.open_stop_risk(state, Direction::NORTH, gates) } -> std::convertible_to<int>;
+};
+
+//  A step model that weighs an open stop after one step (see the top of
+//  this file).
+template <typename Inner>
+concept HasTapStopRisk = requires (const Inner& inner, const typename Inner::State& state, const GateState& gates){
+    { inner.tap_stop_risk(state, Direction::NORTH, gates) } -> std::convertible_to<std::optional<int>>;
 };
 
 //  The game's step model, wrapped: see the top of this file.
@@ -101,6 +109,9 @@ public:
     //  it has one, read through the gates the stop is made in.
     int open_stop_risk(const State& state, Direction direction) const requires HasOpenStopRisk<Inner>{
         return m_inner.open_stop_risk(state.inner, direction, state.gates);
+    }
+    std::optional<int> tap_stop_risk(const State& state, Direction direction) const requires HasTapStopRisk<Inner>{
+        return m_inner.tap_stop_risk(state.inner, direction, state.gates);
     }
 
 private:
