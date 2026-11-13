@@ -8,6 +8,7 @@
 #include "Inference/PokemonBDSP_DialogDetector.h"
 #include "Inference/PokemonBDSP_MenuDetector.h"
 #include "Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Actions_Tests.h"
+#include "Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_FrozenTrainer_Tests.h"
 #include "Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_GridSim_Tests.h"
 #include "Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_FaultSweep_Tests.h"
 #include "Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_SimFailureCases_Tests.h"
@@ -55,6 +56,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_AutoStory_PlannedRoute(database);
     add_tests_AutoStory_SimulatedRoute(database);
     add_tests_AutoStory_GridSim(database);
+    add_tests_AutoStory_FrozenTrainer(database);
     add_tests_AutoStory_WallBattleSim(database);
     add_tests_AutoStory_RecoveryWalk(database);
     add_tests_AutoStory_StorySim(database);
