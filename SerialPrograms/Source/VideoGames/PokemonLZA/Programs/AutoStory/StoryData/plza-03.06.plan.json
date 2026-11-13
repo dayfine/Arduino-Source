@@ -12,10 +12,10 @@
       {
         "id": "out_of_pokemon_center",
         "kind": "game_action",
-        "why": "UNVERIFIED, NEEDS CONSOLE: from the nurse's counter after 03.05's heal back to where 03.04's scene left the player, facing as it did, so the legs below (measured from there) still hold. Reverses 03.05's back_to_nurse; a guess, not measured.",
+        "why": "UNVERIFIED, NEEDS CONSOLE: from the nurse's counter after 03.05's heal back to where 03.04's scene left the player, facing as it did, so the legs below (measured from there) still hold. Reverses 03.05's back_to_nurse (right, then into the counter): turn around, walk back 1.5 s (that walk is under 2 s; the time back is a guess), then right to face as the scene left the player.",
         "action": "walk",
         "args": {
-          "legs": [[90, 2000], [90, 2000]]
+          "legs": [[180, 1500], [90, 0]]
         }
       },
       {
