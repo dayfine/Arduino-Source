@@ -680,82 +680,6 @@ void check_warp_was_no_battle(ConsoleHandle& console, ProControllerContext& cont
     );
 }
 
-//  Each leg starts with a turn tap unless it goes the way the player faces.
-//  A tap while already facing that way takes a step, so a facing not given
-//  is read from the screen. If that fails too it taps anyway.
-std::optional<Direction> read_facing(ConsoleHandle& console, ProControllerContext& context, PlayerGender player){
-    context.wait_for_all_requests();
-    VideoSnapshot screen = console.video().snapshot();
-    std::optional<Direction> facing;
-    if (screen){
-        facing = read_player_facing(screen, player);
-    }
-    console.log(std::string("Route: the player faces ") + (facing ? Pokemon::direction_name(*facing) : "an unknown way") + ".");
-    return facing;
-}
-
-//  Reads of the facing after a turn tap, TURN_FACING_REREAD apart (about
-//  2 s), before the leg fails: a facing that can't be read means the player
-//  isn't on screen at rest (a fade, a box, a scene), and a tap again while
-//  facing that way already would take a step.
-constexpr size_t TURN_FACING_READS = 20;
-//  Surfing and biking draw other sprites, which read_player_facing() doesn't
-//  know: a few reads, then the old way, taken as turned.
-constexpr size_t TURN_FACING_READS_UNKNOWN_SPRITE = 3;
-constexpr Milliseconds TURN_FACING_REREAD(100);
-
-void turn_to(ConsoleHandle& console, ProControllerContext& context, Direction direction, PlayerGender player, bool walking){
-    //  A tap while the player faces `direction` already takes a step, so the
-    //  screen is read first. A trainer's battle leaves the player facing the
-    //  way they stepped into the line, not the trainer (pokefirered
-    //  trainer_see.c, TrainerSeeFunc_PrepareToEngage): 10.05's turn tap west
-    //  after Emilia stepped, and "west 4 (open)" ended on Pokemon Tower 6F
-    //  (4, 8), a tile long (console B, 2026-11-12 04:39).
-    context.wait_for_all_requests();
-    if (const VideoSnapshot screen = console.video().snapshot(); screen && read_player_facing(screen, player) == direction){
-        console.log(std::format("Route: the player faces {} already: no turn tap.", Pokemon::direction_name(direction)));
-        return;
-    }
-    for (size_t tap = 1; tap <= MAX_TURN_TAPS; tap++){
-        pbf_press_dpad(context, dpad(direction), TURN_TAP, TURN_SETTLE);
-        std::optional<Direction> facing;
-        const size_t reads = walking ? TURN_FACING_READS : TURN_FACING_READS_UNKNOWN_SPRITE;
-        for (size_t read = 1; read <= reads && !facing; read++){
-            if (read > 1){
-                pbf_wait(context, TURN_FACING_REREAD);
-            }
-            context.wait_for_all_requests();
-            VideoSnapshot screen = console.video().snapshot();
-            facing = screen ? read_player_facing(screen, player) : std::nullopt;
-        }
-        if (!facing && !walking){
-            console.log(std::format(
-                "Route: after turn tap {} {}, the facing can't be read (surfing or biking): taken as turned.",
-                tap, Pokemon::direction_name(direction)
-            ), COLOR_ORANGE);
-            return;
-        }
-        if (!facing){
-            //  Not taken as turned: nothing has settled, so the player's
-            //  place is unknown. The leg fails, and the re-anchor finds it.
-            OperationFailedExceptionWithScreenshot::fire(
-                ErrorReportMode::SEND_ERROR_REPORT,
-                std::format(
-                    "walk_overworld_route(): after turn tap {} {}, the facing can't be read for {} reads: the player is not settled on screen.",
-                    tap, Pokemon::direction_name(direction), TURN_FACING_READS
-                ),
-                console
-            );
-        }
-        if (*facing == direction){
-            return;
-        }
-        console.log(std::format(
-            "Route: after turn tap {} {}, the player faces {}.",
-            tap, Pokemon::direction_name(direction), Pokemon::direction_name(*facing)
-        ), COLOR_ORANGE);
-    }
-}
 
 void start_surf(ConsoleHandle& console, ProControllerContext& context, Direction direction, bool facing_water){
     //  "The water is a deep blue... Would you like to SURF?", with YES selected.
@@ -934,10 +858,10 @@ void walk_step_leg(
     check_warp_was_no_battle(console, context, step);
 }
 
-//  A WALK step: turned first, then its leg.
+//  A WALK step from `at` (if known): turned first, then its leg.
 void walk_hold(
     ConsoleHandle& console, ProControllerContext& context,
-    const RouteStep& step, std::optional<Direction> facing,
+    const RouteStep& step, std::optional<Direction> facing, const std::optional<MapPosition>& at,
     const OverworldInterruptSet& interrupts, MoveSpeed speed, PlayerGender player
 ){
     //  Turning first, with a tap, makes the hold start from a standstill
@@ -945,7 +869,8 @@ void walk_hold(
     //  console, while holds from a standstill were exact over 15 tiles.
     //  Not on the Bicycle, where the tap is a step.
     if (turns_first(step, speed, facing)){
-        turn_to(console, context, step.direction, player, !step.surfing && step_speed(step, speed) != MoveSpeed::BIKE);
+        const bool walking = !step.surfing && step_speed(step, speed) != MoveSpeed::BIKE;
+        turn_to(console, context, step.direction, player, walking ? TurnSprite::WALKING : TurnSprite::NOT_READ, at);
     }
     if (const std::string note = speed_note(step, speed); !note.empty()){
         console.log(note);
@@ -967,13 +892,16 @@ void walk_overworld_route(
     if (!facing){
         facing = read_facing(console, context, player);
     }
+    //  Where the next step starts: unknown for the first (this walker isn't
+    //  given the route's start), then each step's planned end.
+    std::optional<MapPosition> at;
     for (const RouteStep& step : route){
         console.log("Route: " + to_string(step));
         clear_open_message(console, context, step.wild ? interrupts.wild : interrupts.other, step);
         check_overworld(console, context, step);
         switch (step.action){
         case RouteAction::WALK:
-            walk_hold(console, context, step, facing, interrupts, speed, player);
+            walk_hold(console, context, step, facing, at, interrupts, speed, player);
             break;
         case RouteAction::SURF:
             start_surf(console, context, step.direction, facing == step.direction);
@@ -982,11 +910,11 @@ void walk_overworld_route(
             //  Checked by the facing on screen, like a leg's turn: the game
             //  missed a single tap of "face south" and A found nothing
             //  (console B, 2026-11-11, 09.02 moon_stone).
-            turn_to(console, context, step.direction, player);
+            turn_to(console, context, step.direction, player, TurnSprite::WALKING, at);
             break;
         case RouteAction::OPEN_GATE:
         case RouteAction::PRESS_SWITCH:
-            turn_to(console, context, step.direction, player);
+            turn_to(console, context, step.direction, player, TurnSprite::WALKING, at);
             if (step.action == RouteAction::OPEN_GATE){
                 open_gate(console, context, step.direction, true);
             }else{
@@ -1001,6 +929,7 @@ void walk_overworld_route(
             }
         }
         facing = step.facing_after;
+        at = step.end;
     }
     context.wait_for_all_requests();
 }
