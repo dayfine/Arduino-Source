@@ -17,6 +17,13 @@ namespace NintendoSwitch{
 namespace PokemonBDSP{
 
 
+//  Legs to a wall this many tiles or shorter must walk every tile: a tile
+//  short is someone in the way, not the time count's slack. On lab-B
+//  (2026-11-08, 01.08) Route 204's youngster stopped "west 2 (to wall)"
+//  after 1 tile; a tile short passed as at the wall, the route logged
+//  arriving at (11, 2) from (13, 2), and the taps north hit the cliff.
+constexpr size_t EXACT_WALL_LEG_TILES = 3;
+
 //  Tiles a walk to the wall moved, from the time it walked.
 size_t tiles_moved(const WalkResult& walk, Milliseconds per_tile);
 
