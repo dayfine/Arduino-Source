@@ -221,7 +221,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         return;
     }
     const std::vector<StoryCheckpoint> checkpoints = story_run_rows(rows, first, last);
-    const SegmentReport report = engine.run_segment("plza", checkpoints, RUN.policy().attempts_per_checkpoint, state);
+    const SegmentReport report = run_plza_segment(game, story_data, checkpoints, RUN.policy().attempts_per_checkpoint, engine, backend, state);
     record_story_counts(report.story_counts(), env.current_stats<AutoStoryStats>());
     env.update_stats();
     if (!report.completed){

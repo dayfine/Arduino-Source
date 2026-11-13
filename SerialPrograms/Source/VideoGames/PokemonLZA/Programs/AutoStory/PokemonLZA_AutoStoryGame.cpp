@@ -10,6 +10,7 @@
 #include <map>
 #include <optional>
 #include <set>
+#include <span>
 #include <string_view>
 #include <string>
 #include <utility>
@@ -569,6 +570,89 @@ Pokemon::StoryGame<ZonePose> make_plza_story_game(
 
 Pokemon::StoryGame<ZonePose> make_plza_story_game(StarterChoice starter){
     return plza_game_actions(nullptr, starter);
+}
+
+
+namespace{
+
+//  Looks a reload at a boundary takes, PLATFORM_POLL apart, to tell 01.01's
+//  start from a later one: right after a load the platform reads on the
+//  first two (console B, 2026-11-10).
+constexpr size_t BOUNDARY_LOOKS = 4;
+
+//  The reload before `row`, which a run reached from the row before it: the
+//  game's reload, then BOUNDARY_LOOKS looks, which fail if the station
+//  platform holds PLATFORM_LOOKS of them in a row. A save on the platform is
+//  01.01's start: the reload did not bring back the autosave `row` starts
+//  from, which a reload_when_chained row comes after, but an older one.
+Outcome reload_at_boundary(const Pokemon::StoryGame<ZonePose>& game, Pokemon::StoryBackend<ZonePose>& backend, std::string_view row){
+    if (!game.reload){
+        return Pokemon::outcome_failed("no_reload", "this game has no reload");
+    }
+    const Outcome reloaded = game.reload(backend);
+    if (!reloaded.succeeded()){
+        return reloaded;
+    }
+    size_t streak = 0;
+    for (size_t looks = 0; looks < BOUNDARY_LOOKS; looks++){
+        backend.scope().throw_if_cancelled();
+        streak = backend.observe().readings.contains(PLATFORM_READING) ? streak + 1 : 0;
+        if (streak >= PLATFORM_LOOKS){
+            return Pokemon::outcome_failed("older_save", std::format(
+                "the reload did not land at {}'s start: the station platform shows, so it loaded an older save", row
+            ));
+        }
+        backend.wait(PLATFORM_POLL);
+    }
+    return Pokemon::outcome_ok();
+}
+
+void add_segment(const Pokemon::SegmentReport& part, Pokemon::SegmentReport& total){
+    total.checkpoints_run += part.checkpoints_run;
+    total.reloads += part.reloads;
+    total.runs.insert(total.runs.end(), part.runs.begin(), part.runs.end());
+    total.failed_checkpoint = part.failed_checkpoint;
+    total.failed_event = part.failed_event;
+    total.failure = part.failure;
+}
+
+} // namespace
+
+Pokemon::SegmentReport run_plza_segment(
+    const Pokemon::StoryGame<ZonePose>& game, const StoryData& story,
+    std::span<const Pokemon::StoryCheckpoint> rows, size_t attempts_per_checkpoint,
+    Pokemon::StoryEngine<ZonePose>& engine, Pokemon::StoryBackend<ZonePose>& backend, Pokemon::RunState& state
+){
+    Pokemon::SegmentReport total;
+    size_t begin = 0;
+    while (begin < rows.size()){
+        size_t end = begin + 1;
+        while (end < rows.size() && !story.reload_when_chained.contains(rows[end].id)){
+            end++;
+        }
+        if (begin > 0){
+            const std::string& id = rows[begin].id;
+            backend.log(std::format("[Event] {}/0 reload_at_boundary: start", id));
+            const Outcome reloaded = reload_at_boundary(game, backend, id);
+            if (!reloaded.succeeded()){
+                backend.log(std::format("[Event] {}/0 reload_at_boundary: failed: {}", id, to_string(reloaded)));
+                total.failed_checkpoint = id;
+                total.failed_event = "reload_at_boundary";
+                total.failure = reloaded;
+                return total;
+            }
+            backend.log(std::format("[Event] {}/0 reload_at_boundary: done", id));
+            state = Pokemon::RunState{};
+        }
+        const Pokemon::SegmentReport part = engine.run_segment("plza", rows.subspan(begin, end - begin), attempts_per_checkpoint, state);
+        add_segment(part, total);
+        if (!part.completed){
+            return total;
+        }
+        begin = end;
+    }
+    total.completed = true;
+    return total;
 }
 
 
