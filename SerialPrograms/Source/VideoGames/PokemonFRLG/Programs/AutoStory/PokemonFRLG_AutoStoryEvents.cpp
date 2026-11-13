@@ -1003,6 +1003,9 @@ Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor&
             env.has_save = true;
             env.saved_supplies = env.supplies;
             env.saved_field_moves = env.party.users();
+            if (env.keep_saved_field_moves){
+                env.keep_saved_field_moves(env.saved_field_moves);
+            }
             env.prepared.clear();
             env.bag_read = false;
             return Pokemon::outcome_ok();

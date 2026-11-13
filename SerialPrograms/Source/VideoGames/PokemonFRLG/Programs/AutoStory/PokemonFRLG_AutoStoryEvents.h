@@ -101,8 +101,11 @@ struct StoryEnv{
     //  or a gift adds a member at the end, so the slots stay right.
     PartyCache party = {};
     //  Who uses the field moves as the last save holds it, which a load
-    //  restores into `party.users`.
+    //  restores into `party.users`. The program starts it from its settings.
     FieldMoveUsers saved_field_moves = {};
+    //  Called with `saved_field_moves` after each save, to keep them in the
+    //  program's settings for the next run; empty: nothing kept.
+    std::function<void(const FieldMoveUsers&)> keep_saved_field_moves = {};
 };
 
 //  After a save is loaded for a checkpoint that starts on `start_map`: the
