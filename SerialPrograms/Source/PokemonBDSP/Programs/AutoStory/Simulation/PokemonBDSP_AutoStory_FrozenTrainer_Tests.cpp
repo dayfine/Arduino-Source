@@ -23,6 +23,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryWorld.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_TrainerSight.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_PlannedRoute.h"
+#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryExecutor.h"
 #include "PokemonBDSP_AutoStory_FrozenTrainer_Tests.h"
 #include "PokemonBDSP_AutoStory_GridSim.h"
 
@@ -92,10 +93,20 @@ private:
     bool m_frozen = false;
 };
 
-struct FrozenTrainerCase{
+struct FrozenTrainerInput{
     std::string name;
     //  Whether a look right after the frozen stop finds the dialogue open.
     bool seen;
+};
+
+struct FrozenTrainerExpectation{
+    //  Where the route must end, by the wall at x = 12.
+    TilePos end;
+};
+
+struct FrozenTrainerCase{
+    FrozenTrainerInput input;
+    FrozenTrainerExpectation expectation;
 };
 
 //  East along row 16 meets a known trainer at (6, 14), whose sight covers
@@ -106,12 +117,12 @@ struct FrozenTrainerCase{
 UnitTestResult run_frozen_trainer(Logger& logger, const FrozenTrainerCase& item){
     const StoryWorld room = make_room();
     const TilePos start{1, 16};
-    const TilePos target{12, 4};
+    const TilePos target = item.expectation.end;
     const TrainerSight known{.name = "known", .pos = {6, 14}, .facing = Direction::SOUTH, .range = 2};
     const TrainerSight hidden{.name = "hidden", .pos = {11, 13}, .facing = Direction::SOUTH, .range = 3};
     GridSim sim({.world = &room, .trainers = {known, hidden}}, start, Direction::NORTH, true);
     std::vector<std::string> notes;
-    FrozenTrainerRouteIO sim_io(sim, notes, "hidden", item.seen);
+    FrozenTrainerRouteIO sim_io(sim, notes, "hidden", item.input.seen);
     RouteTrainers trainers{{known}, [&sim](const std::string&){ sim.end_dialogue(); return true; }};
     std::vector<TilePos> believed;
     std::string failure;
@@ -134,7 +145,7 @@ UnitTestResult run_frozen_trainer(Logger& logger, const FrozenTrainerCase& item)
         return failure;
     }
     if (at != target || believed != std::vector<TilePos>{target}){
-        return std::format("ended on ({}, {}), believed {} tile(s), not on (12, 4).", at.x, at.y, believed.size());
+        return std::format("ended on ({}, {}), believed {} tile(s), not on ({}, {}).", at.x, at.y, believed.size(), target.x, target.y);
     }
     return true;
 }
@@ -142,7 +153,7 @@ UnitTestResult run_frozen_trainer(Logger& logger, const FrozenTrainerCase& item)
 class Test_FrozenTrainer : public UnitTest{
 public:
     explicit Test_FrozenTrainer(FrozenTrainerCase item)
-        : UnitTest("PokemonBDSP::AutoStory - Frozen trainer: " + item.name)
+        : UnitTest("PokemonBDSP::AutoStory - Frozen trainer: " + item.input.name)
         , m_case(std::move(item))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
@@ -158,8 +169,8 @@ private:
 };
 
 const FrozenTrainerCase FROZEN_TRAINER_CASES[] = {
-    {.name = "01.02, a trainer the map lacks freezes us a tile short of the wall, found on the stop (lab-B, 2026-11-12 17:45)", .seen = true},
-    {.name = "01.02, a trainer the map lacks freezes us a tile short of the wall, talks on the next leg (lab-B, 2026-11-12 17:45)", .seen = false},
+    {.input = {.name = "01.02, a trainer the map lacks freezes us a tile short of the wall, found on the stop (lab-B, 2026-11-12 17:45)", .seen = true}, .expectation = {.end = {12, 4}}},
+    {.input = {.name = "01.02, a trainer the map lacks freezes us a tile short of the wall, talks on the next leg (lab-B, 2026-11-12 17:45)", .seen = false}, .expectation = {.end = {12, 4}}},
 };
 
 } // namespace

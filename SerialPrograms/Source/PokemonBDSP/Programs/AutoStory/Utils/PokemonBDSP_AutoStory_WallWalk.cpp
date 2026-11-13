@@ -12,6 +12,8 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
 
+using namespace std::chrono_literals;
+
 
 namespace{
 
