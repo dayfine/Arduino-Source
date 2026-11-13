@@ -14,12 +14,12 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-//  The departure town with the Fly animation over it (the bird, its
-//  shadow, the player gone) differs from the shot before the Fly by
-//  FLY_OFF_RMSD; another town by LANDED_RMSD or more (console B,
-//  2026-11-13 02:46 and 2026-11-12 23:59, Fuchsia to Pallet Town:
-//  Test_AutoStoryFlyLandingFlyOff). The bar sits between them.
-constexpr double FLY_LEFT_RMSD = 40.0;
+//  Measured on Fuchsia to Pallet Town (console B, 2026-11-12 23:59 and
+//  2026-11-13 02:46; Test_AutoStoryFlyLandingFlyOff): Fuchsia with the
+//  Fly's bird over it differs from Fuchsia before the Fly by 32, Pallet
+//  fading in by 173 and Pallet with the player standing by 149. The bar
+//  sits between them.
+constexpr double FLY_LEFT_RMSD = 80.0;
 
 double departure_change(const ImageViewRGB32& departure, const ImageViewRGB32& now, const ImageFloatBox& game){
     return ImageMatch::pixel_RMSD(extract_box_reference(departure, game), extract_box_reference(now, game));

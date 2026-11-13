@@ -46,7 +46,7 @@ bool fly_faded(const Pokemon::ScreenLook& look);
 double departure_change(const ImageViewRGB32& departure, const ImageViewRGB32& now, const ImageFloatBox& game);
 
 //  Whether `now` shows another town than `departure`: more change than the
-//  departure town with its Fly animation over it (FLY_LEFT_RMSD).
+//  departure town with its Fly animation over it.
 bool left_departure(const ImageViewRGB32& departure, const ImageViewRGB32& now, const ImageFloatBox& game);
 
 //  What a look found of the landing.
