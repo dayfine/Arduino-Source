@@ -222,7 +222,7 @@ public:
     //  until its end event if it has one.
     Handler walk() const{
         return [heading = m_heading](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
-            return walk_legs(backend, call.step.name, story_walk_move(call.args, "legs"), call.args, heading);
+            return walk_legs(backend, call, story_walk_move(call.args, "legs"), heading);
         };
     }
 
@@ -238,7 +238,7 @@ public:
                     "the walk to {}: only Chikorita's was recorded (console B, 2026-11-08).", key
                 ))(backend, call, state);
             }
-            return walk_legs(backend, call.step.name, story_walk_move(call.args, key), call.args, heading);
+            return walk_legs(backend, call, story_walk_move(call.args, key), heading);
         };
     }
 
@@ -294,11 +294,13 @@ public:
 
 private:
     //  `move`, once the screen shows free control; held until the fade of
-    //  `args`' "end", if it names one.
+    //  `call`'s "end" arg, if it names one. Each leg is a breakpoint.
     static Outcome walk_legs(
-        Pokemon::StoryBackend<ZonePose>& backend, std::string_view name, const StoryMove& move,
-        const StoryActionArgs& args, const PlzaReader& heading
+        Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, const StoryMove& move,
+        const PlzaReader& heading
     ){
+        const std::string_view name = call.step.name;
+        const StoryActionArgs& args = call.args;
         if (move.wait_first > Milliseconds(0)){
             backend.wait(move.wait_first);
         }
@@ -311,7 +313,7 @@ private:
         if (end != args.end()){
             fade = walk_end_event(std::get<std::string>(end->second));
         }
-        return fade ? walk_until(backend, name, move, heading, *fade) : run_story_move(backend, move, heading);
+        return fade ? walk_until(backend, name, move, heading, *fade, &call.pause) : run_story_move(backend, move, heading, &call.pause);
     }
 
     StoryEnv* m_env;

@@ -12,12 +12,14 @@
 #define PokemonAutomation_PokemonLZA_AutoStoryMoves_H
 
 #include <optional>
+#include <string>
 #include <vector>
 #include "Common/Cpp/Time.h"
 #include "CommonFramework/Language.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryBreakpoints.h"
 #include "VideoGames/PokemonLZA/Resources/PokemonLZA_Locations.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBackend.h"
 
@@ -72,8 +74,16 @@ Pokemon::Outcome face_heading(PlzaBackend& backend, const PlzaReader& reader, do
 //  walk goes where it looks) and walk. Nothing is read on the way: a leg
 //  that is cut short or blocked goes unnoticed, and a step that needs a
 //  prompt after the walk fails there instead. `heading` reads the compass
-//  (face_heading()).
-Pokemon::Outcome run_story_move(PlzaBackend& backend, const StoryMove& move, const PlzaReader& heading);
+//  (face_heading()). `pause`, if given, is the run's pause points: each leg
+//  is a breakpoint (StoryPausePoints::before_leg(), story_walk_leg_label()).
+Pokemon::Outcome run_story_move(
+    PlzaBackend& backend, const StoryMove& move, const PlzaReader& heading,
+    Pokemon::StoryPausePoints* pause = nullptr
+);
+
+//  "leg 2/5 turn 90 walk 1200 ms": leg `index` (from 0) of `count`, as a
+//  breakpoint's label. A leg with no walk leaves it out.
+std::string story_walk_leg_label(size_t index, size_t count, const StoryWalkLeg& leg);
 
 //  From the overworld, opens the map and fast travels to `location`
 //  (open_map_and_fly_to()). Returns in the overworld there; throws

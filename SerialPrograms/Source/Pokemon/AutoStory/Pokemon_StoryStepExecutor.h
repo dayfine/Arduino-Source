@@ -40,6 +40,7 @@
 #include "Pokemon_TilePose.h"
 #include "Types/Pokemon_DeclaredPose.h"
 #include "Types/Pokemon_GridPose.h"
+#include "Types/Pokemon_StoryBreakpoints.h"
 #include "Types/Pokemon_StoryCheckpoint.h"
 #include "Types/Pokemon_StoryStep.h"
 #include "Types/Pokemon_StoryStepKind.h"
@@ -67,6 +68,20 @@ public:
     //  Whether the condition named in a step's skip_if holds: by default,
     //  whether the run has the flag (set by an earlier step's action).
     virtual bool holds(std::string_view condition, RunState& state);
+
+    //  The game's pause points (Pokemon_StoryBreakpoints.h), which the
+    //  checkpoints built for this executor call before each of their steps.
+    //  The game owns them and sets them before it builds a checkpoint; it
+    //  calls before_leg() from its own leg loops. None by default: no pauses.
+    void set_pause_points(StoryPausePoints* pause){
+        m_pause = pause;
+    }
+    StoryPausePoints* pause_points() const{
+        return m_pause;
+    }
+
+private:
+    StoryPausePoints* m_pause = nullptr;
 };
 
 //  `pose` as the engine's Pose: a TilePose, TILE for one tile, SET for several.

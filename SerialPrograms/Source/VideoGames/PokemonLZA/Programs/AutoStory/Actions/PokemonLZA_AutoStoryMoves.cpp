@@ -30,6 +30,16 @@ std::optional<int> read_heading(PlzaBackend& backend, const PlzaReader& reader){
     return Pokemon::story_heading(look);
 }
 
+//  Leg `index` of `move` is about to start: a breakpoint, when `pause` is
+//  given (StoryPausePoints::before_leg()).
+void pause_before_leg(PlzaBackend& backend, Pokemon::StoryPausePoints* pause, const StoryMove& move, size_t index){
+    if (pause == nullptr){
+        return;
+    }
+    pause->before_leg(story_walk_leg_label(index, move.legs.size(), move.legs[index]));
+    backend.scope().throw_if_cancelled();
+}
+
 } // namespace
 
 
@@ -51,7 +61,18 @@ Pokemon::Outcome face_heading(PlzaBackend& backend, const PlzaReader& reader, do
     return Pokemon::outcome_ok();
 }
 
-Pokemon::Outcome run_story_move(PlzaBackend& backend, const StoryMove& move, const PlzaReader& heading){
+std::string story_walk_leg_label(size_t index, size_t count, const StoryWalkLeg& leg){
+    std::string label = std::format("leg {}/{} turn {:g}", index + 1, count, leg.turn);
+    if (leg.walk > Milliseconds(0)){
+        label += std::format(" walk {} ms", leg.walk.count());
+    }
+    return label;
+}
+
+Pokemon::Outcome run_story_move(
+    PlzaBackend& backend, const StoryMove& move, const PlzaReader& heading,
+    Pokemon::StoryPausePoints* pause
+){
     if (move.heading){
         const Pokemon::Outcome faced = face_heading(backend, heading, *move.heading, 10.0);
         if (!faced.succeeded()){
@@ -61,6 +82,7 @@ Pokemon::Outcome run_story_move(PlzaBackend& backend, const StoryMove& move, con
     if (move.held){
         for (size_t i = 0; i < move.legs.size(); i++){
             const StoryWalkLeg& leg = move.legs[i];
+            pause_before_leg(backend, pause, move, i);
             if (i > 0 && leg.turn != 0){
                 backend.press(BUTTON_L, 100ms, 150ms);
             }
@@ -72,7 +94,9 @@ Pokemon::Outcome run_story_move(PlzaBackend& backend, const StoryMove& move, con
         }
         return Pokemon::outcome_ok();
     }
-    for (const StoryWalkLeg& leg : move.legs){
+    for (size_t index = 0; index < move.legs.size(); index++){
+        const StoryWalkLeg& leg = move.legs[index];
+        pause_before_leg(backend, pause, move, index);
         if (leg.turn != 0){
             //  The walk goes where the camera looks: recenter it after the turn.
             story_turn(backend, leg.turn);
