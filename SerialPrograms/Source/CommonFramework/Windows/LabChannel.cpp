@@ -21,6 +21,7 @@
 #include "CommonFramework/ProgramSession.h"
 #include "CommonFramework/Tools/GlobalThreadPools.h"
 #include "LabChannel.h"
+#include "LabPause.h"
 
 namespace PokemonAutomation{
 
@@ -595,6 +596,7 @@ void LabChannel::write_state(){
         m_state.controller = read_controller_status();
     }
     m_state.owner = m_owner.token();
+    m_state.paused = lab_paused_label();
     std::string text = lab_state_text(m_state);
     const Filesystem::Path path(folder() + "state");
     if (text != m_written_state || !Filesystem::exists(path)){

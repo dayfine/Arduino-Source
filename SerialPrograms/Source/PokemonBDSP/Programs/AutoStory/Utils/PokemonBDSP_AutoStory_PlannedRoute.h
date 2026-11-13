@@ -18,6 +18,7 @@
 #include <vector>
 #include "CommonFramework/Tools/VideoStream.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryBreakpoints.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_PlanCosts.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RobustRoute.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RoutePlanner.h"
@@ -76,6 +77,8 @@ struct RouteWalkPlan{
     //  fits the map) ends it by holding this way to the door's fade and
     //  banner, with no plan around what stopped us (lab-B 2026-11-12 21:02).
     std::optional<Pokemon::Direction> leave_toward = std::nullopt;
+    //  The run's breakpoints: a pause before each leg (LEGS mode). None: never.
+    Pokemon::StoryPausePoints* pause = nullptr;
 
     //  Whether any of `tiles` is the greeter's ground.
     bool greeter_near(const std::vector<Pokemon::TilePos>& tiles) const{

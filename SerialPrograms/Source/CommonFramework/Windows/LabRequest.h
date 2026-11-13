@@ -70,6 +70,7 @@ struct LabState{
     std::string controller; //  "ready", "none", or "" for a panel without a console.
     std::string owner;      //  The owner token, or "".
     std::string error;      //  The last error; "" once a request succeeds.
+    std::string paused = {};    //  The breakpoint the program waits at (LabPause.h), or "".
 };
 std::string lab_state_text(const LabState& state);
 
