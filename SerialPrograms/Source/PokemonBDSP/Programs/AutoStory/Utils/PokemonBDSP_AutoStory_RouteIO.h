@@ -19,7 +19,9 @@
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/Tools/VideoStream.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryBreakpoints.h"
 #include "Pokemon/Navigation/Pokemon_Grid.h"
+#include "Pokemon/Navigation/Pokemon_RouteLogLegs.h"
 #include "PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP_AutoStory_Walk.h"
 #include "PokemonBDSP_AutoStory_WalkDpad.h"
@@ -72,6 +74,10 @@ public:
 
     //  Writes `text` to the log; a FAILURE fails the program.
     virtual void note(const std::string& text, RouteNote kind) = 0;
+
+    //  A leg is about to be walked: its line to the log (note(), STATUS),
+    //  then the breakpoint before it, if the run has `pause`.
+    void leg_started(size_t number, size_t count, const Pokemon::PlannedRouteLeg& leg, Pokemon::StoryPausePoints* pause);
 };
 
 

@@ -35,6 +35,7 @@
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryBreakpoints.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RoutePlanner.h"
@@ -78,6 +79,9 @@ struct StoryEnv{
     ProControllerContext& context;
     StarterChoice starter = StarterChoice::CHIMCHAR;
     std::string player_name;
+    //  The run's breakpoints (the BREAKPOINTS option): the executor's
+    //  checkpoints pause before each step, its walks before each leg.
+    Pokemon::StoryPausePoints pause = {};
 };
 
 
