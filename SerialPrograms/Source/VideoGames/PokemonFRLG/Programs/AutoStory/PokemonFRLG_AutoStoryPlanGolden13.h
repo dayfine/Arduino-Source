@@ -18,12 +18,10 @@ namespace PokemonFRLG{
 
 //  The stored plan lines of segment 13, after FRLG_PLAN_GOLDEN_16's.
 inline constexpr std::string_view FRLG_PLAN_GOLDEN_13[] = {
-    "13.01 mansion_holes from CinnabarIsland_PokemonCenter_1F (7, 4) facing north to PokemonMansion_3F (19, 13) facing south",
-    "13.01   walk south 5 (warp) -> CinnabarIsland (14, 12) [walk only]",
-    "13.01   walk east 7 -> CinnabarIsland (21, 12)",
-    "13.01   walk north 7 (to wall) -> CinnabarIsland (21, 5)",
-    "13.01   walk west 13 -> CinnabarIsland (8, 5)",
-    "13.01   walk north 2 (warp) -> PokemonMansion_1F (8, 33)",
+    "13.01 mansion_holes from CinnabarIsland (16, 7) facing south to PokemonMansion_3F (19, 13) facing south",
+    "13.01   walk north 3 -> CinnabarIsland (16, 4)",
+    "13.01   walk west 8 -> CinnabarIsland (8, 4)",
+    "13.01   walk north 1 (warp) -> PokemonMansion_1F (8, 33)",
     "13.01   walk north 20 (to wall) -> PokemonMansion_1F (8, 13) [wild]",
     "13.01   walk east 3 (warp) -> PokemonMansion_2F (6, 14) [wild]",
     "13.01   walk south 4 (to wall) -> PokemonMansion_2F (6, 18) [wild]",

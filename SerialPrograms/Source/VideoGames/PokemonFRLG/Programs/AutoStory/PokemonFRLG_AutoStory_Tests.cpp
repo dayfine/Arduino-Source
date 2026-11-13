@@ -101,6 +101,9 @@ struct WalkGates{
     bool card_key_held = false;
     //  The run flags the walk has set (silph_cleared takes the Rockets off the maps).
     std::set<std::string> run_flags;
+    //  Whether Cinnabar's Gym is still locked: it opens with the SECRET KEY,
+    //  taken in 13.04, so from 14.01 on.
+    bool cinnabar_gym_locked = false;
 };
 WalkGates& walk_state(){
     thread_local WalkGates walk;
@@ -115,6 +118,7 @@ void begin_walk(const StoryCheckpoint& checkpoint){
     }
     walk_state().card_key_held = std::ranges::find(checkpoint.start_flags, "card_key_held") != checkpoint.start_flags.end();
     walk_state().run_flags.insert(checkpoint.start_flags.begin(), checkpoint.start_flags.end());
+    walk_state().cinnabar_gym_locked = checkpoint.id < "14";
 }
 
 //  A walk through the checkpoint that follows the one before: only what its
@@ -127,6 +131,7 @@ void continue_walk(const StoryCheckpoint& checkpoint){
         walk_state().card_key_held = true;
     }
     walk_state().run_flags.insert(checkpoint.start_flags.begin(), checkpoint.start_flags.end());
+    walk_state().cinnabar_gym_locked = checkpoint.id < "14";
 }
 
 //  What `step` does to the walk's gates once done, besides a route's own.
@@ -222,6 +227,37 @@ std::vector<TilePos> tiles_walked_on(const std::vector<RouteStep>& route, const 
     return tiles;
 }
 
+//  The triggers `step`'s route must keep off: the old man's in Viridian
+//  City, and while Cinnabar's Gym is locked, (20, 5) below its door
+//  (pokefirered CinnabarIsland coord_events): "The door is locked..." and
+//  the player is walked a tile south, off the route (console B, 2026-11-13
+//  13:06, 12.03: the hold east along row 5 to (21, 5)).
+UnitTestResult check_triggers_avoided(const StoryStep& step, const std::vector<RouteStep>& route){
+    struct Trigger{
+        std::string_view map;
+        TilePos tile;
+        std::string_view what;
+        bool live;
+    };
+    const bool old_man = step.name == "below_old_man_trigger";
+    const Trigger TRIGGERS[] = {
+        {"ViridianCity", {20, 8}, "the old man's trigger", old_man},
+        {"ViridianCity", {22, 8}, "the old man's trigger", old_man},
+        {"CinnabarIsland", {20, 5}, "the locked Gym door's trigger", walk_state().cinnabar_gym_locked},
+    };
+    for (const Trigger& trigger : TRIGGERS){
+        if (!trigger.live){
+            continue;
+        }
+        for (const TilePos& tile : tiles_walked_on(route, std::string(trigger.map))){
+            if (tile == trigger.tile){
+                return std::format("{}: walks over {} {}:{}", step.name, trigger.what, to_string(tile), describe(route));
+            }
+        }
+    }
+    return true;
+}
+
 //  Steps that must reach Viridian Forest's gate by legs the walker can hold
 //  again after a battle: each ends on a wall or a warp, or is one step.
 bool held_legs_only(const std::string& name){
@@ -311,12 +347,8 @@ UnitTestResult check_route(StoryPose& pose, const StoryStep& step, std::vector<s
             return result;
         }
     }
-    if (step.name == "below_old_man_trigger"){
-        for (const TilePos& tile : tiles_walked_on(*route, "ViridianCity")){
-            if (tile == TilePos{20, 8} || tile == TilePos{22, 8}){
-                return step.name + ": walks over the old man's trigger " + to_string(tile) + ":" + describe(*route);
-            }
-        }
+    if (UnitTestResult result = check_triggers_avoided(step, *route); result.result != UnitTestResult::PASSED){
+        return result;
     }
     walk_state().gates = gates_after_route(walk_state().gates, *route);
     pose = StoryPose{target.map, target.tile, route->empty() ? facing : route->back().facing_after};
@@ -1223,7 +1255,7 @@ UnitTestResult test_save_place_error(){
     return true;
 }
 
-//  A checkpoint saves only where it ends. 12.03 ends in Cinnabar's Center,
+//  A checkpoint saves only where it ends. 12.03 ends on Cinnabar Island,
 //  where 13.01 starts; on console B (2026-11-13 04:16) it stopped surfing
 //  on Route 21 and saved there, its card reading "ROUTE 21": that save is
 //  refused, and so is one whose card can't be read.
@@ -1271,8 +1303,8 @@ UnitTestResult test_route21_water_legs(){
 
 UnitTestResult test_save_end_error(){
     const std::string end = checkpoint_end_map("12.03");
-    if (end != "CinnabarIsland_PokemonCenter_1F"){
-        return "12.03 ends on \"" + end + "\", not CinnabarIsland_PokemonCenter_1F.";
+    if (end != "CinnabarIsland"){
+        return std::format("12.03 ends on \"{}\", not CinnabarIsland.", end);
     }
     if (!checkpoint_end_map("no-such-row").empty()){
         return "A row that isn't in the table has an end map.";
