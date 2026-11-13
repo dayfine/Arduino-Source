@@ -245,6 +245,66 @@ def copy_runtime_data(build, stage):
         shutil.copytree(source, Path(stage) / name)
 
 
+class RevisionChanged(ValueError):
+    """The worktree moved to another commit while it was being built."""
+
+
+def build_and_stage(slot, env, runner=run):
+    """Prepare, build, verify and stage the current clean tree; return (revision, stage).
+
+    The caller holds the build lock. Every refusal of the old launcher still applies.
+    """
+    revision = prepare_source(slot, runner)
+    profile = validate_profile(slot)
+    env['LAB_PROFILE'] = str(profile)
+    check_build_cache(slot)
+    source = Path(slot['worktree']) / 'SerialPrograms'
+    build = Path(slot['build_dir'])
+    runner(['cmake', '-S', str(source), '-B', str(build),
+            *slot.get('cmake_args', []), '-DPA_LAB_PROFILE=' + slot['profile']], env=env)
+    runner(['cmake', '--build', str(build), '--parallel', '4'], env=env)
+    if git(slot, 'status', '--porcelain', '--untracked-files=all', runner=runner):
+        raise ValueError('Source changed during build; refusing deployment.')
+    if git(slot, 'rev-parse', 'HEAD', runner=runner) != revision:
+        raise RevisionChanged('Source revision changed during build; refusing deployment.')
+    app = build / 'SerialPrograms.app'
+    receipt = json.loads((app / 'Contents/MacOS/SerialPrograms.lab-build.json').read_text())
+    if receipt.get('source_revision') != revision:
+        raise ValueError('Linked receipt is stale for this source revision; relink through the normal build before retrying.')
+    tool = Path(slot['worktree']) / 'devtools/lab/lab_instance.py'
+    stage = Path(slot['stage_root']) / (revision[:12] + '-' + secrets.token_hex(4))
+    stage.parent.mkdir(parents=True, exist_ok=True)
+    runner([sys.executable, str(tool), 'stage', '--app', str(app), '--out', str(stage),
+            '--profile', slot['profile'], '--console', slot['console'],
+            '--bundle-id', slot['bundle_id'], '--signing-identity', slot['signing_identity']], env=env)
+    copy_runtime_data(build, stage)
+    runner([sys.executable, str(tool), 'verify', '--manifest', str(stage / 'lab-deployment.json'),
+            '--profile', slot['profile']], env=env)
+    return revision, stage
+
+
+def build_with_retry(slot, env, runner=run):
+    """build_and_stage, once more at the new revision if a commit landed mid-build."""
+    try:
+        return build_and_stage(slot, env, runner)
+    except RevisionChanged as error:
+        print(str(error) + '; retrying once at the new revision.', flush=True)
+        return build_and_stage(slot, env, runner)
+
+
+def build_only(slot, lock_root, runner=run):
+    """Build and stage without a launch and without the console lock.
+
+    Safe beside another game's running app: it takes only the machine-wide build lock.
+    """
+    env = os.environ.copy()
+    env.update(LAB_CONSOLE=slot['console'], LAB_PROFILE_NAME=slot['profile'], LAB_DIR=str(lock_root))
+    with build_lock(lock_root):
+        revision, stage = build_with_retry(slot, env, runner)
+    print(f'Staged console {slot["console"]}, profile {slot["profile"]}, source {revision}: {stage}', flush=True)
+    return stage
+
+
 def start(slot, lock_root, runner=run):
     """Build, sign, verify and run; all failures stop before the next stage."""
     env = os.environ.copy()
@@ -252,32 +312,7 @@ def start(slot, lock_root, runner=run):
         env.update(LAB_CONSOLE=slot['console'], LAB_PROFILE_NAME=slot['profile'],
                    LABLOCK_TOKEN=token, LAB_DIR=str(lock_root))
         with build_lock(lock_root):
-            revision = prepare_source(slot, runner)
-            profile = validate_profile(slot)
-            env['LAB_PROFILE'] = str(profile)
-            check_build_cache(slot)
-            source = Path(slot['worktree']) / 'SerialPrograms'
-            build = Path(slot['build_dir'])
-            runner(['cmake', '-S', str(source), '-B', str(build),
-                    *slot.get('cmake_args', []), '-DPA_LAB_PROFILE=' + slot['profile']], env=env)
-            runner(['cmake', '--build', str(build), '--parallel', '4'], env=env)
-            if git(slot, 'status', '--porcelain', '--untracked-files=all', runner=runner):
-                raise ValueError('Source changed during build; refusing deployment.')
-            if git(slot, 'rev-parse', 'HEAD', runner=runner) != revision:
-                raise ValueError('Source revision changed during build; refusing deployment.')
-            app = build / 'SerialPrograms.app'
-            receipt = json.loads((app / 'Contents/MacOS/SerialPrograms.lab-build.json').read_text())
-            if receipt.get('source_revision') != revision:
-                raise ValueError('Linked receipt is stale for this source revision; relink through the normal build before retrying.')
-            tool = Path(slot['worktree']) / 'devtools/lab/lab_instance.py'
-            stage = Path(slot['stage_root']) / (revision[:12] + '-' + secrets.token_hex(4))
-            stage.parent.mkdir(parents=True, exist_ok=True)
-            runner([sys.executable, str(tool), 'stage', '--app', str(app), '--out', str(stage),
-                    '--profile', slot['profile'], '--console', slot['console'],
-                    '--bundle-id', slot['bundle_id'], '--signing-identity', slot['signing_identity']], env=env)
-            copy_runtime_data(build, stage)
-            runner([sys.executable, str(tool), 'verify', '--manifest', str(stage / 'lab-deployment.json'),
-                    '--profile', slot['profile']], env=env)
+            revision, stage = build_with_retry(slot, env, runner)
         executable = stage / 'SerialPrograms.app/Contents/MacOS/SerialPrograms'
         print(f'Running console {slot["console"]}, profile {slot["profile"]}, source {revision}. '
               'Quit the GUI to release the console lock.', flush=True)
@@ -290,15 +325,22 @@ def main():
     parser.add_argument('console', choices=['A', 'B'])
     parser.add_argument('--config', type=Path, default=DEFAULT_CONFIG)
     parser.add_argument('--plan', action='store_true', help='Print resolved setup without locks, fetch/build or launch')
+    parser.add_argument('--build-only', action='store_true',
+                        help='Build and stage the clean tree; no launch, no console lock (runs beside another game\'s app)')
     args = parser.parse_args()
     try:
         slot = load_config(args.config, args.console)
         if args.plan:
             print(json.dumps(slot, indent=2))
+            print('mode: ' + ('build-only (no console lock, no launch)' if args.build_only else 'build, stage, launch'))
             return 0
         if sys.platform != 'darwin':
             raise ValueError('GUI development launching is supported only on macOS.')
-        start(slot, Path(os.environ.get('LAB_DIR', str(Path.home() / '.lab'))))
+        lock_root = Path(os.environ.get('LAB_DIR', str(Path.home() / '.lab')))
+        if args.build_only:
+            build_only(slot, lock_root)
+        else:
+            start(slot, lock_root)
     except KeyboardInterrupt:
         print('Development instance stopped; its child exited before locks were released.', file=sys.stderr)
         return 130
