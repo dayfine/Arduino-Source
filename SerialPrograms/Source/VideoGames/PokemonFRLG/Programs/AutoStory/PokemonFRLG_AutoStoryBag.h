@@ -37,6 +37,26 @@ std::optional<BagPocket> usable_item_pocket(std::string_view item);
 //  Whether `item` is a Repel of any kind.
 bool is_repel(std::string_view item);
 
+//  What the game said after USE on a Repel (pokefirered item_use.c,
+//  ItemUseOutOfBattle_Repel): "<player> used the REPEL.", or "But the
+//  effects of a REPEL lingered from earlier." while one is still on, when
+//  none is used (console B, 2026-11-13 10:06, 12.03 repel_pallet: the
+//  Repel lingering from before the save wore off 10 s after the step).
+enum class RepelUse{
+    USED,
+    LINGERED,
+    //  Neither read: another language, or the box not found.
+    UNREAD,
+};
+
+//  The Repels the story renews one with after "REPEL's effect wore
+//  off...", in the order tried: with `remaining_steps` known, the smallest
+//  that lasts them, then the larger ones, then the rest; else `used` (the
+//  one the story used last) first, then the larger ones, then the smaller.
+//  A Repel lasts 100 steps, a Super Repel 200, a Max Repel 250
+//  (pokefirered src/data/items.json, holdEffectParam).
+std::vector<std::string> repel_renew_order(std::string_view used, std::optional<int> remaining_steps);
+
 //  Whether `item` is used on a Pokemon, the lead (the party list opens on
 //  it, as for a Potion in battle): the Rare Candy.
 bool is_party_item(std::string_view item);
@@ -55,6 +75,8 @@ public:
     virtual std::vector<BagRow> read_pocket() = 0;
     //  Moves to row `row`, USE, and through what the item says.
     virtual void use_row(size_t row) = 0;
+    //  After use_row() on a Repel, before close_bag(): what the game said.
+    virtual RepelUse repel_use() = 0;
     //  Moves to row `row`, USE, the lead, and through the level-up text
     //  (the stats window; a new move declined) back to the bag. False if
     //  the party list or the level-up never showed.
@@ -80,6 +102,8 @@ enum class ItemUseEnd{
     UNKNOWN_ITEM,
     //  The item was chosen but its use on the lead never showed its text.
     NOT_USED,
+    //  A Repel: one used before is still on, so none was used (RepelUse).
+    LINGERED,
 };
 
 //  "used", "none_left": the end's name in logs and failures.

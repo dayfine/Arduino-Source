@@ -215,7 +215,8 @@ std::optional<Pokemon::Outcome> run_field_game_step(
     const ItemUseEnd end = step.action == REGISTER_BIKE_VARIANT
         ? register_item_in_bag(console.logger(), bag, "bicycle")
         : use_items_from_bag(console.logger(), bag, *parse_use_item_step(step), use_item_count(step)).end;
-    if (end != ItemUseEnd::USED){
+    //  A Repel that lingered from before leaves one on: the step's purpose.
+    if (end != ItemUseEnd::USED && end != ItemUseEnd::LINGERED){
         return Pokemon::outcome_failed(std::string("use_item_") + item_use_end_name(end), step.action);
     }
     return done();

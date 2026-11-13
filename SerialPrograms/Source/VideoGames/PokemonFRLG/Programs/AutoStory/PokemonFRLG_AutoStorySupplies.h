@@ -26,6 +26,7 @@
 #include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryBattlePolicyData.h"
 #include "PokemonFRLG_AutoStoryParty.h"
+#include "PokemonFRLG_AutoStoryStartMenu.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -111,6 +112,12 @@ struct Supplies{
     //  menu (read_wild_foes()): the lead's attacks are chosen against it.
     //  Empty when it wasn't read; trainer battles never use it.
     std::vector<std::string> wild_foes = {};
+    //  The Repel a use_item step used last, or found still on, and the
+    //  START menu it was used from: when "REPEL's effect wore off..."
+    //  stops a leg, another is used (renew_repel()). "" before any, and
+    //  after the nurse, where the walk it was for ends.
+    std::string repel = {};
+    StartMenu repel_menu = StartMenu::FULL;
 };
 
 //  The nurse healed the party: HP, status and PP.

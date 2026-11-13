@@ -42,6 +42,8 @@ public:
     bool no_level_up = false;
     //  The bag never comes back after an item's message on the lead.
     bool no_bag_back = false;
+    //  What a Repel's USE says; one that lingers isn't used.
+    RepelUse repel_says = RepelUse::USED;
     std::vector<std::string> used;
     std::vector<std::string> used_on_lead;
     std::vector<std::string> registered;
@@ -57,10 +59,16 @@ public:
     }
     virtual void use_row(size_t row) override{
         BagRow& item = pockets[m_pocket][row];
+        if (is_repel(item.item) && repel_says == RepelUse::LINGERED){
+            return;
+        }
         used.push_back(item.item);
         if (item.count > 0){
             item.count--;
         }
+    }
+    virtual RepelUse repel_use() override{
+        return repel_says;
     }
     virtual bool use_row_on_lead(size_t row) override{
         if (no_level_up){
@@ -101,6 +109,7 @@ struct ItemUseInput{
     size_t count = 1;
     bool no_level_up = false;
     bool no_bag_back = false;
+    RepelUse repel_says = RepelUse::USED;
 };
 struct ItemUseExpectation{
     ItemUseEnd end;
@@ -124,6 +133,7 @@ public:
         bag.opens = m_case.input.opens;
         bag.no_level_up = m_case.input.no_level_up;
         bag.no_bag_back = m_case.input.no_bag_back;
+        bag.repel_says = m_case.input.repel_says;
         const std::string variant = m_case.input.variant;
         const std::string item = variant == RIDE_BIKE_VARIANT ? "bicycle" : parse_use_item_step(game_step_of(variant, ITEM)).value_or(variant);
         const ItemUseEnd end = m_case.input.renew
@@ -204,6 +214,45 @@ const ItemUseCase ITEM_USE_CASES[] = {
             .renew = true,
         },
         .expectation = {.end = ItemUseEnd::NONE_LEFT, .used = {}},
+    },
+    //  Console B, 2026-11-13 (12.03 repel_pallet): the step's Repel
+    //  lingered from before the save and wore off on Route 21, with none
+    //  used after it.
+    {
+        .input = {
+            .name = "a Repel still on: lingered, none used",
+            .variant = "use_item repel",
+            .items = {{"repel", 4}},
+            .repel_says = RepelUse::LINGERED,
+        },
+        .expectation = {.end = ItemUseEnd::LINGERED, .used = {}},
+    },
+    {
+        .input = {
+            .name = "a Repel's message unread: taken as used",
+            .variant = "use_item repel",
+            .items = {{"repel", 4}},
+            .repel_says = RepelUse::UNREAD,
+        },
+        .expectation = {.end = ItemUseEnd::USED, .used = {"repel"}},
+    },
+    {
+        .input = {
+            .name = "the last Repel wore off: a Super Repel instead",
+            .variant = "use_item repel",
+            .items = {{"potion", 3}, {"repel", 0}, {"super-repel", 5}},
+            .renew = true,
+        },
+        .expectation = {.end = ItemUseEnd::USED, .used = {"super-repel"}},
+    },
+    {
+        .input = {
+            .name = "two Repels asked: one, as a second would linger",
+            .variant = "use_item repel",
+            .items = {{"repel", 4}},
+            .count = 2,
+        },
+        .expectation = {.end = ItemUseEnd::USED, .used = {"repel"}},
     },
     {
         .input = {
@@ -294,6 +343,30 @@ StoryStep candy_step(int64_t count){
     return step;
 }
 
+//  repel_renew_order(): the smallest Repel that lasts the steps left, or
+//  the one used, then larger, then smaller.
+UnitTestResult test_repel_renew_order(){
+    struct Case{
+        std::string_view used;
+        std::optional<int> remaining;
+        std::vector<std::string> order;
+    };
+    const Case cases[] = {
+        {"repel", std::nullopt, {"repel", "super-repel", "max-repel"}},
+        {"super-repel", std::nullopt, {"super-repel", "max-repel", "repel"}},
+        {"max-repel", std::nullopt, {"max-repel", "super-repel", "repel"}},
+        {"repel", 60, {"repel", "super-repel", "max-repel"}},
+        {"repel", 150, {"super-repel", "max-repel", "repel"}},
+        {"repel", 400, {"max-repel", "super-repel", "repel"}},
+    };
+    for (const Case& test : cases){
+        if (repel_renew_order(test.used, test.remaining) != test.order){
+            return std::format("{} with {} steps left: wrong order.", test.used, test.remaining.value_or(-1));
+        }
+    }
+    return true;
+}
+
 UnitTestResult test_variants_and_bike(){
     if (parse_use_item_step(game_step_of("use_item potion", ITEM)) || parse_use_item_step(game_step_of("use_item", ITEM))
         || parse_use_item_step(game_step_of("use_item repel slot=1", ITEM))
@@ -359,6 +432,10 @@ const AutoStoryItemUseBodyCase ITEM_USE_BODY_CASES[] = {
     {
         .input = {.name = "variants and the bike's pace", .body = test_variants_and_bike},
         .expectation = {.description = "the story's bag items, ride_bike, and the bike's pace outdoors only"},
+    },
+    {
+        .input = {.name = "the Repels tried after one wore off", .body = test_repel_renew_order},
+        .expectation = {.description = "the smallest that lasts the steps left, or the one used, then larger, then smaller"},
     },
 };
 

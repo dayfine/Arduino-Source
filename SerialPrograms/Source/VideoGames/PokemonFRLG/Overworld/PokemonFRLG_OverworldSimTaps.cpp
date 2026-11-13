@@ -14,6 +14,7 @@
 #include "PokemonFRLG_BikeSpinMechanics.h"
 #include "PokemonFRLG_BikeSpinPresses.h"
 #include "PokemonFRLG_OverworldBike.h"
+#include "PokemonFRLG_OverworldFacing.h"
 #include "PokemonFRLG_OverworldMaps.h"
 
 namespace PokemonAutomation{
@@ -217,14 +218,27 @@ StepOutcome OverworldSimWalker::walk(const RouteStep& step, std::optional<Direct
     return outcome;
 }
 
-void sim_turn_to(OverworldSim& sim, Direction direction, bool confirm){
-    for (size_t tap = 1; tap <= MAX_TURN_TAPS; tap++){
+bool sim_turn_to(OverworldSim& sim, Direction direction, bool confirm, bool at_known){
+    if (!confirm){
         sim.tap(direction);
-        const SimState& state = sim.state();
-        if (!confirm || state.screen != SimScreen::OVERWORLD || state.facing == direction){
-            return;
-        }
+        return true;
     }
+    const OverworldWalkSteps::TurnTaps turned = OverworldWalkSteps::tap_until_facing(
+        direction, OverworldWalkSteps::TURN_FACING_READS,
+        [&]{ sim.tap(direction); },
+        [&](size_t read) -> std::optional<Direction>{
+            //  Off the overworld (a message, a battle) the tap is taken as
+            //  turned: what stopped it is the walker's to clear.
+            if (sim.state().screen != SimScreen::OVERWORLD){
+                return direction;
+            }
+            if (read <= sim.hidden_facing_reads()){
+                return std::nullopt;
+            }
+            return sim.state().facing;
+        }
+    );
+    return turned.facing || OverworldWalkSteps::unread_turn_taken(OverworldWalkSteps::TurnSprite::WALKING, at_known, true);
 }
 
 void sim_step_once(OverworldSim& sim, Direction direction){

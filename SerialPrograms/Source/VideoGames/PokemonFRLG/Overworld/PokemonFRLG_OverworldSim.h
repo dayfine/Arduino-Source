@@ -68,6 +68,9 @@ public:
 
     const SimState& state() const{ return m_state; }
 
+    //  SimScript::hidden_facing_reads.
+    size_t hidden_facing_reads() const{ return m_script.hidden_facing_reads; }
+
     //  Whether the player holds the Card Key (SimScript::card_key_held).
     bool card_key_held() const{ return m_script.card_key_held; }
     //  The player picks up the Card Key: A on a card-key gate opens it from now on.
@@ -396,8 +399,10 @@ struct SimWalkerRules{
 };
 
 //  OverworldWalkSteps::turn_to() on `sim`, which reads the facing on the
-//  overworld only; with `confirm` false, the one tap before it.
-void sim_turn_to(OverworldSim& sim, Direction direction, bool confirm = SimWalkerRules{}.confirm_turn);
+//  overworld only, but for SimScript::hidden_facing_reads; with `confirm`
+//  false, the one tap before it. Returns false where turn_to() fails the
+//  leg: the facing never read and `at_known` false.
+bool sim_turn_to(OverworldSim& sim, Direction direction, bool confirm = SimWalkerRules{}.confirm_turn, bool at_known = true);
 
 //  AutoStory's step_once() on `sim`: turns the player if they face another
 //  way, then one step tap.
@@ -470,6 +475,8 @@ private:
     //  SimWalkerRules::confirm_warp_destination off, takes it as the warp.
     bool black_without_warp(const RouteStep& step, int warps_before, Milliseconds watched_from);
     [[noreturn]] void fail_off_route(const RouteStep& step);
+    //  sim_turn_to() for `step`, failing as turn_to() would.
+    void turn_or_fail(const RouteStep& step);
     std::optional<SimSeen> hold_watching(const RouteStep& step, Milliseconds hold, const std::vector<Interrupt>& interrupts);
     size_t clear_late(const std::vector<Interrupt>& interrupts, Milliseconds watch, size_t max);
     size_t clear_unseen_battle(const RouteStep& step);

@@ -514,6 +514,27 @@ public:
     }
 };
 
+//  repel_wore_off_shows() on console B's captures named
+//  <anything>_<True or False>.png, in English.
+class Test_RepelWoreOff : public ImageUnitTest{
+public:
+    Test_RepelWoreOff(const std::string& image)
+        : ImageUnitTest("PokemonFRLG::AutoStoryBattle - " + image, {image})
+    {}
+
+    virtual UnitTestResult run_on_images(
+        Logger& logger, CancellableScope& scope,
+        const std::vector<ImageRGB32>& images
+    ) const override{
+        bool expected = false;
+        const std::vector<std::string> words = parse_words(Filesystem::Path(image_paths()[0]).stem().string());
+        if (words.empty() || !parse_bool(words.back(), expected)){
+            return "Error: filename must be <anything>_<True or False>.";
+        }
+        return repel_wore_off_shows(Language::English, images[0]) == expected;
+    }
+};
+
 //  read_opponent_hp_fill() on console B's captures named
 //  <anything>_FoeHp_<pixels>of48.png: the bar's filled share within a pixel.
 class Test_FoeHp : public ImageUnitTest{
@@ -849,6 +870,11 @@ void add_tests_AutoStoryItems(UnitTestDatabase& database){
     //  which the loop sent for 10 minutes; and the battle menu a turn before.
     database.add<Test_RunRefused>("PokemonFRLG/AutoStoryBattle/Route21_SpencerNoRunning_True.png");
     database.add<Test_RunRefused>("PokemonFRLG/AutoStoryBattle/Route21_SpencerMenu_False.png");
+    //  12.03 on Route 21 (console B, 2026-11-13 10:06 and 11:02): "REPEL's
+    //  effect wore off..." still being typed; Spencer's battle text isn't it.
+    database.add<Test_RepelWoreOff>("PokemonFRLG/AutoStoryRepel/Route21_RepelWoreOff_True.png");
+    database.add<Test_RepelWoreOff>("PokemonFRLG/AutoStoryRepel/Route21_RepelWoreOffLater_True.png");
+    database.add<Test_RepelWoreOff>("PokemonFRLG/AutoStoryRepel/Route21_SpencerNoRunning_False.png");
     //  The S.S. Anne rival's Pidgeotto at full HP, its Raticate low.
     database.add<Test_FoeHp>("PokemonFRLG/AutoStoryBattle/SSAnneRival_Pidgeotto_FoeHp_48of48.png");
     database.add<Test_FoeHp>("PokemonFRLG/AutoStoryBattle/SSAnneRival_Raticate_FoeHp_7of48.png");

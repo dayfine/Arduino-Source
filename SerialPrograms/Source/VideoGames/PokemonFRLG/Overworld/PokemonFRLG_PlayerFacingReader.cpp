@@ -341,6 +341,11 @@ void add_tests_PlayerFacingReader(UnitTestDatabase& database){
     database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/Route21SandBar_North.png");
     database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/Route21Surfing_None.png");
     database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/Route21ChannelSurfing_None.png");
+    //  Cinnabar (13, 7), north of the Center, after the turn tap west
+    //  (console B, 2026-11-13 11:06, 12.03 surf_route_21): the roof's eave
+    //  is drawn over all but the head. It must read nothing, never a wrong
+    //  way.
+    database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/CinnabarCenterRoofWest_None.png");
 }
 
 

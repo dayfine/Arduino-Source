@@ -29,6 +29,7 @@
 #include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
+#include "PokemonFRLG_AutoStoryBagUse.h"
 #include "PokemonFRLG_AutoStoryHealing.h"
 #include "PokemonFRLG_AutoStoryHealingSteps.h"
 
@@ -816,12 +817,24 @@ public:
     virtual Milliseconds detection_delay() const override{
         return 400ms;
     }
-    //  The message's frame is saved first, to check a false stop by.
+    //  The message's frame is saved first, to check a false stop by. After
+    //  "REPEL's effect wore off..." another Repel is used while the player
+    //  stands where the message stopped them, if a use_item step used one
+    //  (Supplies::repel): on 12.03 the one used at Pallet Town lingered
+    //  from before the save and wore off on Route 21 (console B, 2026-11-13
+    //  10:06 and 11:02), and three wild Tentacool followed.
     virtual void clear(ConsoleHandle& console, ProControllerContext& context) const override{
+        bool wore_off = false;
         if (const VideoSnapshot frame = console.video().snapshot()){
             save_leg_interrupt_frame(console.logger(), frame, name());
+            wore_off = !m_supplies.repel.empty() && repel_wore_off_shows(m_language, frame);
         }
         clear_overworld_message(console, context, m_supplies, m_checks, m_language);
+        if (wore_off){
+            ConsoleItemUseActions bag(console, context, m_language, m_supplies.repel_menu);
+            const ItemUseEnd end = renew_repel(console.logger(), bag, m_supplies.repel);
+            console.log("Story: another Repel after the last wore off: " + item_use_end_name(end) + ".");
+        }
     }
 
 private:

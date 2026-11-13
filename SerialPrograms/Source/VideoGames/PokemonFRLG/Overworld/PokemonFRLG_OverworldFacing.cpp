@@ -7,8 +7,13 @@
 #include <algorithm>
 #include <format>
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
+#include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
+#include "CommonTools/Images/SolidColorTest.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
+#include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_StartMenuDetector.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "Pokemon/Navigation/Pokemon_Direction.h"
 #include "PokemonFRLG_MovementTurnPresses.h"
 #include "PokemonFRLG_OverworldMaps.h"
@@ -44,30 +49,49 @@ bool on_map_edge(const MapData& map, const TilePos& tile){
     return tile.x == 0 || tile.y == 0 || tile.x == map.tiles.width - 1 || tile.y == map.tiles.height - 1;
 }
 
+TurnTaps tap_until_facing(
+    Direction direction, size_t reads,
+    const std::function<void()>& tap,
+    const std::function<std::optional<Direction>(size_t read)>& read
+){
+    TurnTaps out;
+    while (out.taps < MAX_TURN_TAPS){
+        tap();
+        out.taps++;
+        out.facing.reset();
+        for (size_t index = 1; index <= reads && !out.facing; index++){
+            out.facing = read(index);
+        }
+        if (!out.facing || *out.facing == direction){
+            return out;
+        }
+    }
+    return out;
+}
+
+bool unread_turn_taken(TurnSprite sprite, bool at_known, bool overworld_clear){
+    return sprite == TurnSprite::NOT_READ || (at_known && overworld_clear);
+}
+
 namespace{
 
-//  Reads of the facing after a turn tap, TURN_FACING_REREAD apart (about
-//  2 s), before the leg fails: a facing that can't be read means the player
-//  isn't on screen at rest (a fade, a box, a scene), and a tap again while
-//  facing that way already would take a step.
-constexpr size_t TURN_FACING_READS = 20;
 //  Surfing and biking draw other sprites, which read_player_facing() doesn't
 //  know: a few reads, then the old way, taken as turned.
 constexpr size_t TURN_FACING_READS_UNKNOWN_SPRITE = 3;
 constexpr Milliseconds TURN_FACING_REREAD(100);
 
-//  The facing after a turn tap, read up to `reads` times.
-std::optional<Direction> read_facing_after_tap(ConsoleHandle& console, ProControllerContext& context, PlayerGender player, size_t reads){
-    std::optional<Direction> facing;
-    for (size_t read = 1; read <= reads && !facing; read++){
-        if (read > 1){
-            pbf_wait(context, TURN_FACING_REREAD);
-        }
-        context.wait_for_all_requests();
-        VideoSnapshot screen = console.video().snapshot();
-        facing = screen ? read_player_facing(screen, player) : std::nullopt;
+//  Whether `screen` shows the overworld with nothing over it: no START
+//  menu, menu or message, and not the black of a fade.
+bool overworld_clear(const VideoSnapshot& screen){
+    if (!screen){
+        return false;
     }
-    return facing;
+    if (is_black(extract_box_reference(screen, GameSettings::instance().GAME_BOX))){
+        return false;
+    }
+    return !StartMenuDetector(COLOR_RED).detect(screen)
+        && !SelectionDialogDetector(COLOR_RED).detect(screen)
+        && !WhiteDialogDetector(COLOR_RED).detect(screen);
 }
 
 //  Whether `at` is known and on its map's edge, on the maps the routes
@@ -86,10 +110,10 @@ bool known_on_map_edge(const std::optional<MapPosition>& at){
     }
 }
 
-//  After turn tap `tap`, the facing couldn't be read: taken as turned for
-//  a sprite that isn't read or on a map's edge tile, else the leg fails.
+//  After turn tap `tap`, the facing couldn't be read: taken as turned as
+//  unread_turn_taken() says, else the leg fails.
 void handle_unread_facing(
-    ConsoleHandle& console, Direction direction, size_t tap,
+    ConsoleHandle& console, ProControllerContext& context, Direction direction, size_t tap,
     TurnSprite sprite, const std::optional<MapPosition>& at
 ){
     const std::string turn = std::format("after turn tap {} {}", tap, Pokemon::direction_name(direction));
@@ -97,20 +121,25 @@ void handle_unread_facing(
         console.log(std::format("Route: {}, the facing can't be read (surfing or biking): taken as turned.", turn), COLOR_ORANGE);
         return;
     }
-    if (known_on_map_edge(at)){
+    context.wait_for_all_requests();
+    const VideoSnapshot screen = console.video().snapshot();
+    const bool clear = overworld_clear(screen);
+    if (unread_turn_taken(sprite, at.has_value(), clear)){
         console.log(std::format(
-            "Route: {} on {}, facing not checked: on the map's edge tile, where a tile can hide the sprite.",
-            turn, to_string(*at)
+            "Route: {} on {}, facing not read{}: taken as turned, the leg's walk checks it.",
+            turn, to_string(*at),
+            known_on_map_edge(at) ? " (the map's edge tile, where a tile can hide the sprite)" : " (a roof, a tree or a wanderer drawn over the sprite)"
         ), COLOR_ORANGE);
         return;
     }
-    //  Not taken as turned: nothing has settled, so the player's place is
-    //  unknown. The leg fails, and the re-anchor finds it.
+    //  Not taken as turned: the route doesn't know where the player is, or
+    //  something is over the overworld (a fade, a box, a scene). The leg
+    //  fails, and the re-anchor finds the player.
     OperationFailedExceptionWithScreenshot::fire(
         ErrorReportMode::SEND_ERROR_REPORT,
         std::format(
-            "walk_overworld_route(): {}, the facing can't be read for {} reads: the player is not settled on screen.",
-            turn, TURN_FACING_READS
+            "walk_overworld_route(): {}, the facing can't be read for {} reads: {}.",
+            turn, TURN_FACING_READS, at ? "the overworld isn't clear" : "the player's tile isn't known"
         ),
         console
     );
@@ -134,20 +163,32 @@ void turn_to(
         return;
     }
     const size_t reads = sprite == TurnSprite::WALKING ? TURN_FACING_READS : TURN_FACING_READS_UNKNOWN_SPRITE;
-    for (size_t tap = 1; tap <= MAX_TURN_TAPS; tap++){
-        pbf_press_dpad(context, dpad(direction), TURN_TAP, TURN_SETTLE);
-        const std::optional<Direction> facing = read_facing_after_tap(console, context, player, reads);
-        if (!facing){
-            handle_unread_facing(console, direction, tap, sprite, at);
-            return;
+    size_t taps = 0;
+    std::optional<Direction> last;
+    const TurnTaps turned = tap_until_facing(
+        direction, reads,
+        [&]{
+            if (taps > 0 && last){
+                console.log(std::format(
+                    "Route: after turn tap {} {}, the player faces {}.",
+                    taps, Pokemon::direction_name(direction), Pokemon::direction_name(*last)
+                ), COLOR_ORANGE);
+            }
+            taps++;
+            pbf_press_dpad(context, dpad(direction), TURN_TAP, TURN_SETTLE);
+        },
+        [&](size_t read){
+            if (read > 1){
+                pbf_wait(context, TURN_FACING_REREAD);
+            }
+            context.wait_for_all_requests();
+            const VideoSnapshot screen = console.video().snapshot();
+            last = screen ? read_player_facing(screen, player) : std::nullopt;
+            return last;
         }
-        if (*facing == direction){
-            return;
-        }
-        console.log(std::format(
-            "Route: after turn tap {} {}, the player faces {}.",
-            tap, Pokemon::direction_name(direction), Pokemon::direction_name(*facing)
-        ), COLOR_ORANGE);
+    );
+    if (!turned.facing){
+        handle_unread_facing(console, context, direction, turned.taps, sprite, at);
     }
 }
 

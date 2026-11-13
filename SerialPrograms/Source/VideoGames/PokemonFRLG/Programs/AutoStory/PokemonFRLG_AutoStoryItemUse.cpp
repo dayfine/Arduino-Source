@@ -18,6 +18,7 @@
 #include "PokemonFRLG_AutoStoryItemUse.h"
 #include "PokemonFRLG_AutoStoryBagUse.h"
 #include "PokemonFRLG_AutoStoryBag.h"
+#include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryGameArgs.h"
 
 namespace PokemonAutomation{
@@ -60,6 +61,34 @@ bool is_repel(std::string_view item){
     return item == "repel" || item == "super-repel" || item == "max-repel";
 }
 
+std::vector<std::string> repel_renew_order(std::string_view used, std::optional<int> remaining_steps){
+    struct Repel{
+        std::string_view item;
+        int steps;
+    };
+    static constexpr Repel REPELS[] = {{"repel", 100}, {"super-repel", 200}, {"max-repel", 250}};
+    //  Where the order starts: the smallest that lasts the steps (the
+    //  largest if none does), or the one used.
+    size_t start = std::size(REPELS) - 1;
+    for (size_t c = 0; c < std::size(REPELS); c++){
+        if (remaining_steps ? REPELS[c].steps >= *remaining_steps : REPELS[c].item == used){
+            start = c;
+            break;
+        }
+    }
+    if (!remaining_steps && !is_repel(used)){
+        start = 0;
+    }
+    std::vector<std::string> order;
+    for (size_t c = start; c < std::size(REPELS); c++){
+        order.emplace_back(REPELS[c].item);
+    }
+    for (size_t c = start; c-- > 0;){
+        order.emplace_back(REPELS[c].item);
+    }
+    return order;
+}
+
 std::optional<std::string> parse_use_item_step(const Pokemon::StoryStep& step){
     const std::string* item = step.action == USE_ITEM_VARIANT ? game_arg<std::string>(step.args, "item") : nullptr;
     if (item == nullptr || step.args.contains("slot") || !usable_item_pocket(*item) || is_lead_recovery_item(*item)){
@@ -99,18 +128,37 @@ std::string item_use_end_name(ItemUseEnd end){
         return "unknown_item";
     case ItemUseEnd::NOT_USED:
         return "not_used";
+    case ItemUseEnd::LINGERED:
+        return "lingered";
     }
     return "?";
 }
 
 namespace{
 
-//  Opens the item's pocket, finds it and `uses` it, then back to the
-//  overworld.
+//  After USE on the Repel `item`: what the game said, LINGERED if one
+//  was still on. A message not read is taken as used, as before it was
+//  read.
+ItemUseEnd repel_end(Logger& logger, ItemUseActions& actions, std::string_view item){
+    switch (actions.repel_use()){
+    case RepelUse::LINGERED:
+        logger.log(std::format("Bag: the {} wasn't used: a Repel used before is still on.", item));
+        return ItemUseEnd::LINGERED;
+    case RepelUse::UNREAD:
+        logger.log(std::format("Bag: what the {} said wasn't read: taken as used.", item));
+        return ItemUseEnd::USED;
+    case RepelUse::USED:
+        break;
+    }
+    return ItemUseEnd::USED;
+}
+
+//  Opens the pocket of `items` (all in one), finds the first of them it
+//  holds and `uses` it, then back to the overworld.
 ItemUseEnd with_bag_row(
-    Logger& logger, ItemUseActions& actions, std::string_view item, bool registers
+    Logger& logger, ItemUseActions& actions, const std::vector<std::string>& items, bool registers
 ){
-    const std::optional<BagPocket> pocket = usable_item_pocket(item);
+    const std::optional<BagPocket> pocket = items.empty() ? std::nullopt : usable_item_pocket(items[0]);
     if (!pocket){
         return ItemUseEnd::UNKNOWN_ITEM;
     }
@@ -118,7 +166,16 @@ ItemUseEnd with_bag_row(
         logger.log("Bag: the bag didn't open.");
         return ItemUseEnd::NO_BAG;
     }
-    const std::optional<size_t> row = bag_row_of(actions.read_pocket(), item);
+    const std::vector<BagRow> rows = actions.read_pocket();
+    std::optional<size_t> row;
+    std::string_view item = items[0];
+    for (const std::string& candidate : items){
+        row = bag_row_of(rows, candidate);
+        if (row){
+            item = candidate;
+            break;
+        }
+    }
     if (!row){
         logger.log("Bag: no " + std::string(item) + " left.");
         actions.close_bag();
@@ -142,14 +199,15 @@ ItemUseEnd with_bag_row(
     }else{
         actions.use_row(*row);
     }
+    const ItemUseEnd end = !registers && is_repel(item) ? repel_end(logger, actions, item) : ItemUseEnd::USED;
     actions.close_bag();
-    return ItemUseEnd::USED;
+    return end;
 }
 
 } // namespace
 
 ItemUseEnd use_item_from_bag(Logger& logger, ItemUseActions& actions, std::string_view item){
-    return with_bag_row(logger, actions, item, false);
+    return with_bag_row(logger, actions, {std::string(item)}, false);
 }
 ItemUses use_items_from_bag(Logger& logger, ItemUseActions& actions, std::string_view item, size_t count){
     size_t used = 0;
@@ -163,19 +221,23 @@ ItemUses use_items_from_bag(Logger& logger, ItemUseActions& actions, std::string
             return {end, used};
         }
         used++;
+        if (is_repel(item)){
+            //  A second while the first is on would only linger.
+            break;
+        }
     }
     return {ItemUseEnd::USED, used};
 }
 ItemUseEnd register_item_in_bag(Logger& logger, ItemUseActions& actions, std::string_view item){
-    return with_bag_row(logger, actions, item, true);
+    return with_bag_row(logger, actions, {std::string(item)}, true);
 }
 
-ItemUseEnd renew_repel(Logger& logger, ItemUseActions& actions, std::string_view item){
-    if (!is_repel(item)){
+ItemUseEnd renew_repel(Logger& logger, ItemUseActions& actions, std::string_view used, std::optional<int> remaining_steps){
+    if (!is_repel(used)){
         return ItemUseEnd::UNKNOWN_ITEM;
     }
-    logger.log("Bag: the " + std::string(item) + " wore off.");
-    return use_item_from_bag(logger, actions, item);
+    logger.log("Bag: the " + std::string(used) + " wore off: another Repel.");
+    return with_bag_row(logger, actions, repel_renew_order(used, remaining_steps), false);
 }
 
 
@@ -342,6 +404,12 @@ bool ConsoleItemUseActions::use_row_on_lead_to_bag(size_t row){
         m_console.log("Bag: no bag after the item's message on the lead.", COLOR_RED);
     }
     return seen >= 0;
+}
+
+RepelUse ConsoleItemUseActions::repel_use(){
+    m_context.wait_for_all_requests();
+    const VideoSnapshot screen = m_console.video().snapshot();
+    return screen ? read_repel_use(m_language, screen) : RepelUse::UNREAD;
 }
 
 void ConsoleItemUseActions::register_row(size_t row){
