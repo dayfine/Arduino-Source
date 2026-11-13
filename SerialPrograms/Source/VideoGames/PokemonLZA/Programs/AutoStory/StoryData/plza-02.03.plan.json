@@ -35,16 +35,9 @@
         "why": "step 26: A at the clerk (\"A Talk ???\")"
       },
       {
-        "id": "face_az",
-        "kind": "game_action",
-        "why": "step 26: the first A talks to Taunie (\"This is Hotel Z's owner, come say hello\"); a short stick tap up-right turns to AZ (console B, 2026-11-10)",
-        "action": "walk",
-        "args": {"legs": [[45, 200]], "held": true}
-      },
-      {
         "id": "check_in",
         "kind": "game_action",
-        "why": "step 27: A at AZ, the check-in scene with Taunie and the Key to Room 202, until control facing the elevator (console B, 2026-11-10)",
+        "why": "steps 26-27: from the clerk's talk straight through Taunie, AZ, the check-in scene and the Key to Room 202, until control facing the elevator. There is no free control between the clerk and the elevator: AZ was already talking when the clerk's talk ended (console B, 2026-11-13), so the old turn to AZ is gone",
         "action": "mash_to_move_hints",
         "args": {"press_a_first": true}
       }
