@@ -13,6 +13,7 @@
   | [Route] below the flute: plan from PlayerHouse2F (4, 6): north 1 (to wall) to PlayerHouse2F (4, 5); east 3 (open) to PlayerHouse2F (7, 5)
   | Leg 1/2: north 1 (to wall) to PlayerHouse2F (4, 5)
   | [Sim] below the flute: north 1 (to wall): held north to blocked at (4, 5).
+  | [Route] below the flute: north 1 (to wall): facing unknown; the first moved chunk may be the turn, not counted.
   | [Speed] walk north: 1 tiles in 1290 ms to the wall.
   | [Route] below the flute: north 1 (to wall): ended at PlayerHouse2F (4, 5) (walked).
   | [Leg] {"checkpoint":"00.01","chunks":1,"dir":"north","end":[["PlayerHouse2F",4,5]],"end_kind":"wall","event":"below_the_flute","interrupts":[],"known":"wall","leg":1,"ms":1290,"planned_end":[["PlayerHouse2F",4,5]],"tiles":1}
@@ -36,6 +37,7 @@
   | [Route] above the door: plan from PlayerHouse1F (10, 3), PlayerHouse1F (10, 4): south 7 (to wall) to PlayerHouse1F (10, 10); north 1 (open) to PlayerHouse1F (10, 9); west 4 (open) to PlayerHouse1F (6, 9)
   | Leg 1/3: south 7 (to wall) to PlayerHouse1F (10, 10)
   | [Sim] above the door: south 7 (to wall): held south to blocked at (10, 10).
+  | [Route] above the door: south 7 (to wall): facing unknown; the first moved chunk may be the turn, not counted.
   | [Speed] walk south: 6 tiles in 2730 ms to the wall.
   | [Route] above the door: south 7 (to wall): ended at PlayerHouse1F (10, 10) (walked).
   | [Leg] {"checkpoint":"00.01","chunks":7,"dir":"south","end":[["PlayerHouse1F",10,10]],"end_kind":"wall","event":"above_the_door","interrupts":[],"known":"wall","leg":1,"ms":2730,"planned_end":[["PlayerHouse1F",10,10]],"tiles":7}
@@ -59,6 +61,7 @@
   | [Route] short of barrys door: west 7 (open): ended at Twinleaf Town (13, 22) (walked).
   | [Leg] {"checkpoint":"00.01","chunks":7,"dir":"west","end":[["Twinleaf Town",13,22]],"end_kind":"open","event":"short_of_barrys_door","interrupts":[],"known":"dead_reckoned","leg":1,"moved":7,"ms":5600,"planned_end":[["Twinleaf Town",13,22]],"tiles":7}
   | Leg 2/3: north 10 (to wall) to Twinleaf Town (13, 12)
+  | [Route] Turning north.
   | [Sim] short of barrys door: north 10 (to wall): held north to blocked at (45, 76).
   | [Speed] walk north: 10 tiles in 3450 ms to the wall.
   | [Route] short of barrys door: north 10 (to wall): ended at Twinleaf Town (13, 12) (walked).
@@ -82,10 +85,12 @@
   | [Route] below barrys stairs: plan from RivalHouse1F (6, 9): west 4 (to wall) to RivalHouse1F (2, 9); north 6 (to wall) to RivalHouse1F (2, 3)
   | Leg 1/2: west 4 (to wall) to RivalHouse1F (2, 9)
   | [Sim] below barrys stairs: west 4 (to wall): held west to blocked at (2, 9).
+  | [Route] below barrys stairs: west 4 (to wall): facing unknown; the first moved chunk may be the turn, not counted.
   | [Speed] walk west: 4 tiles in 1850 ms to the wall.
   | [Route] below barrys stairs: west 4 (to wall): ended at RivalHouse1F (2, 9) (walked).
   | [Leg] {"checkpoint":"00.01","chunks":4,"dir":"west","end":[["RivalHouse1F",2,9]],"end_kind":"wall","event":"below_barrys_stairs","interrupts":[],"known":"wall","leg":1,"ms":1850,"planned_end":[["RivalHouse1F",2,9]],"tiles":4}
   | Leg 2/2: north 6 (to wall) to RivalHouse1F (2, 3)
+  | [Route] Turning north.
   | [Sim] below barrys stairs: north 6 (to wall): held north to blocked at (2, 3).
   | [Speed] walk north: 6 tiles in 2490 ms to the wall.
   | [Route] below barrys stairs: north 6 (to wall): ended at RivalHouse1F (2, 3) (walked).
@@ -103,6 +108,7 @@
   | [Route] above barrys door: plan from RivalHouse1F (2, 3): south 7 (to wall) to RivalHouse1F (2, 10); north 1 (open) to RivalHouse1F (2, 9); east 4 (open) to RivalHouse1F (6, 9)
   | Leg 1/3: south 7 (to wall) to RivalHouse1F (2, 10)
   | [Sim] above barrys door: south 7 (to wall): held south to blocked at (2, 10).
+  | [Route] above barrys door: south 7 (to wall): facing unknown; the first moved chunk may be the turn, not counted.
   | [Speed] walk south: 7 tiles in 2730 ms to the wall.
   | [Route] above barrys door: south 7 (to wall): ended at RivalHouse1F (2, 10) (walked).
   | [Leg] {"checkpoint":"00.01","chunks":7,"dir":"south","end":[["RivalHouse1F",2,10]],"end_kind":"wall","event":"above_barrys_door","interrupts":[],"known":"wall","leg":1,"ms":2730,"planned_end":[["RivalHouse1F",2,10]],"tiles":7}
@@ -141,11 +147,13 @@
   | [Route] below the lake entrance: plan from Route 201 (14, 16): west 28 (to wall) to Verity Lakefront (18, 23); north 9 (to wall) to Verity Lakefront (18, 14); west 1 (open) to Verity Lakefront (17, 14)
   | Leg 1/3: west 28 (to wall) to Verity Lakefront (18, 23)
   | [Sim] below the lake entrance: west 28 (to wall): held west to blocked at (18, 55).
+  | [Route] below the lake entrance: west 28 (to wall): facing unknown; the first moved chunk may be the turn, not counted.
   | [Speed] walk west: 28 tiles in 6650 ms to the wall.
   | [Route] below the lake entrance: west 28 (to wall): no banner read for Verity Lakefront; going on.
   | [Route] below the lake entrance: west 28 (to wall): ended at Verity Lakefront (18, 23) (walked).
   | [Leg] {"checkpoint":"00.01","chunks":28,"dir":"west","end":[["Verity Lakefront",18,23]],"end_kind":"wall","event":"below_the_lake_entrance","interrupts":[],"known":"wall","leg":1,"ms":6650,"planned_end":[["Verity Lakefront",18,23]],"tiles":28}
   | Leg 2/3: north 9 (to wall) to Verity Lakefront (18, 14)
+  | [Route] Turning north.
   | [Sim] below the lake entrance: north 9 (to wall): held north to blocked at (18, 46).
   | [Speed] walk north: 9 tiles in 3210 ms to the wall.
   | [Route] below the lake entrance: north 9 (to wall): ended at Verity Lakefront (18, 14) (walked).
@@ -186,6 +194,7 @@
   | [Route] into rowans scene: plan from Verity Lakefront (17, 14), Verity Lakefront (17, 15): south 7 (to wall) to Verity Lakefront (17, 21)
   | Leg 1/1: south 7 (to wall) to Verity Lakefront (17, 21)
   | [Sim] into rowans scene: south 7 (to wall): held south to blocked at (17, 53).
+  | [Route] into rowans scene: south 7 (to wall): facing unknown; the first moved chunk may be the turn, not counted.
   | [Speed] walk south: 6 tiles in 2730 ms to the wall.
   | [Route] into rowans scene: south 7 (to wall): ended at Verity Lakefront (17, 21) (walked).
   | [Leg] {"checkpoint":"00.03","chunks":7,"dir":"south","end":[["Verity Lakefront",17,21]],"end_kind":"wall","event":"into_rowans_scene","interrupts":[],"known":"wall","leg":1,"ms":2730,"planned_end":[["Verity Lakefront",17,21]],"tiles":7}
@@ -202,12 +211,14 @@
   | [Route] into dawns scene: west 3 (open): ended at Twinleaf Town (17, 22) (walked).
   | [Leg] {"checkpoint":"00.03","chunks":3,"dir":"west","end":[["Twinleaf Town",17,22]],"end_kind":"open","event":"into_dawns_scene","interrupts":[],"known":"dead_reckoned","leg":1,"moved":3,"ms":2400,"planned_end":[["Twinleaf Town",17,22]],"tiles":3}
   | Leg 2/7: north 34 (to wall) to Route 201 (17, 13)
+  | [Route] Turning north.
   | [Sim] into dawns scene: north 34 (to wall): held north to blocked at (49, 52).
   | [Speed] run north: 34 tiles in 6150 ms to the wall.
   | [Route] into dawns scene: north 34 (to wall): no banner read for Route 201; going on.
   | [Route] into dawns scene: north 34 (to wall): ended at Route 201 (17, 13) (walked).
   | [Leg] {"checkpoint":"00.03","chunks":34,"dir":"north","end":[["Route 201",17,13]],"end_kind":"wall","event":"into_dawns_scene","interrupts":[],"known":"wall","leg":2,"ms":6150,"planned_end":[["Route 201",17,13]],"tiles":34}
   | Leg 3/7: east 40 (to wall) to Route 201 (57, 13)
+  | [Route] Turning east.
   | [Sim] into dawns scene: east 40 (to wall): held east to blocked at (89, 52).
   | [Speed] run east: 40 tiles in 5050 ms to the wall.
   | [Route] into dawns scene: east 40 (to wall): ended at Route 201 (57, 13) (walked).
@@ -218,11 +229,13 @@
   | [Route] into dawns scene: west 7 (open): ended at Route 201 (50, 13) (walked).
   | [Leg] {"checkpoint":"00.03","chunks":7,"dir":"west","end":[["Route 201",50,13]],"end_kind":"open","event":"into_dawns_scene","interrupts":[],"known":"dead_reckoned","leg":4,"moved":7,"ms":5600,"planned_end":[["Route 201",50,13]],"tiles":7}
   | Leg 5/7: north 10 (to wall) to Route 201 (50, 3)
+  | [Route] Turning north.
   | [Sim] into dawns scene: north 10 (to wall): held north to blocked at (82, 42).
   | [Speed] run north: 10 tiles in 2550 ms to the wall.
   | [Route] into dawns scene: north 10 (to wall): ended at Route 201 (50, 3) (walked).
   | [Leg] {"checkpoint":"00.03","chunks":10,"dir":"north","end":[["Route 201",50,3]],"end_kind":"wall","event":"into_dawns_scene","interrupts":[],"known":"wall","leg":5,"ms":2550,"planned_end":[["Route 201",50,3]],"tiles":10}
   | Leg 6/7: east 13 (to wall) to Route 201 (63, 3)
+  | [Route] Turning east.
   | [Sim] into dawns scene: east 13 (to wall): held east to blocked at (95, 42).
   | [Speed] run east: 13 tiles in 2350 ms to the wall.
   | [Route] into dawns scene: east 13 (to wall): ended at Route 201 (63, 3) (walked).
@@ -248,10 +261,12 @@
   | [Route] onto the path: plan from Sandgem Town (26, 11), Sandgem Town (27, 11), Sandgem Town (28, 11), Sandgem Town (26, 12), Sandgem Town (27, 12), Sandgem Town (28, 12): east 3 (to wall) to Sandgem Town (29, 11), Sandgem Town (29, 12); north 1 (to wall) to Sandgem Town (29, 11); south 1 (open) to Sandgem Town (29, 12)
   | Leg 1/3: east 3 (to wall) to Sandgem Town (29, 11), Sandgem Town (29, 12)
   | [Sim] onto the path: east 3 (to wall): held east to blocked at (125, 43).
+  | [Route] onto the path: east 3 (to wall): facing unknown; the first moved chunk may be the turn, not counted.
   | [Speed] run east: 1 tiles in 1350 ms to the wall.
   | [Route] onto the path: east 3 (to wall): ended at Sandgem Town (29, 11), Sandgem Town (29, 12) (walked).
   | [Leg] {"checkpoint":"00.04","chunks":3,"dir":"east","end":[["Sandgem Town",29,11],["Sandgem Town",29,12]],"end_kind":"wall","event":"onto_the_path","interrupts":[],"known":"wall","leg":1,"ms":1350,"planned_end":[["Sandgem Town",29,11],["Sandgem Town",29,12]],"tiles":3}
   | Leg 2/3: north 1 (to wall) to Sandgem Town (29, 11)
+  | [Route] Turning north.
   | [Sim] onto the path: north 1 (to wall): held north to blocked at (125, 43).
   | [Speed] run north: 0 tiles in 1050 ms to the wall.
   | [Route] onto the path: north 1 (to wall): ended at Sandgem Town (29, 11) (walked).
@@ -271,6 +286,7 @@
   | [Route] to ledge column: plan from Route 201 (57, 4), Route 201 (58, 4), Route 201 (59, 4), Route 201 (60, 4), Route 201 (61, 4), Route 201 (62, 4), Route 201 (63, 4): west 7 (to wall) to Route 201 (56, 4); south 1 (open) to Route 201 (56, 5); west 1 (open) to Route 201 (55, 5)
   | Leg 1/3: west 7 (to wall) to Route 201 (56, 4)
   | [Sim] to ledge column: west 7 (to wall): held west to blocked at (88, 43).
+  | [Route] to ledge column: west 7 (to wall): facing unknown; the first moved chunk may be the turn, not counted.
   | [Speed] run west: 1 tiles in 1450 ms to the wall.
   | [Route] to ledge column: west 7 (to wall): ended at Route 201 (56, 4) (walked).
   | [Leg] {"checkpoint":"00.04","chunks":4,"dir":"west","end":[["Route 201",56,4]],"end_kind":"wall","event":"to_ledge_column","interrupts":[],"known":"wall","leg":1,"ms":1450,"planned_end":[["Route 201",56,4]],"tiles":7}
@@ -316,6 +332,7 @@
   | [Route] into twinleaf: plan from Route 201 (15, 14): south 37 (to wall) to Twinleaf Town (15, 26); north 4 (open) to Twinleaf Town (15, 22)
   | Leg 1/2: south 37 (to wall) to Twinleaf Town (15, 26)
   | [Sim] into twinleaf: south 37 (to wall): held south to blocked at (47, 90).
+  | [Route] into twinleaf: south 37 (to wall): facing unknown; the first moved chunk may be the turn, not counted.
   | [Speed] run south: 37 tiles in 6600 ms to the wall.
   | [Route] into twinleaf: south 37 (to wall): no banner read for Twinleaf Town; going on.
   | [Route] into twinleaf: south 37 (to wall): ended at Twinleaf Town (15, 26) (walked).
@@ -361,70 +378,83 @@
   | [Route] into moms call: south 1 (open): ended at PlayerHouse1F (10, 9) (walked).
   | [Leg] {"checkpoint":"00.04","chunks":1,"dir":"south","end":[["PlayerHouse1F",10,9]],"end_kind":"open","event":"into_moms_call","interrupts":[],"known":"dead_reckoned","leg":2,"moved":1,"ms":800,"planned_end":[["PlayerHouse1F",10,9]],"tiles":1}
   | Leg 3/3: west 4 (to wall) to PlayerHouse1F (6, 9)
+  | [Route] Turning west.
   | [Sim] into moms call: west 4 (to wall): held west to dialog at (6, 9).
   | into moms call: west 4 (to wall): the next step's scene started on the way; handing it over.
   | [Leg] {"checkpoint":"00.04","chunks":4,"dir":"west","end":[],"end_kind":"wall","event":"into_moms_call","interrupts":["scene"],"known":"dialogue","leg":3,"ms":650,"note":"scene","planned_end":[["PlayerHouse1F",6,9]],"tiles":4}
   | [Leg] {"checkpoint":"00.04","chunks":0,"dir":"west","end":[],"end_kind":"wall","event":"to_twinleafs_west_wall","interrupts":[],"known":"wall","leg":1,"ms":0,"planned_end":[],"tiles":16}
-  | short of the catch tutorial: 11 legs planned
-  | [Route] short of the catch tutorial: plan from Twinleaf Town (6, 22), Twinleaf Town (6, 23): north 19 (to wall) to Twinleaf Town (6, 4); east 8 (open) to Twinleaf Town (14, 4); north 16 (to wall) to Route 201 (14, 13); east 43 (to wall) to Route 201 (57, 13); west 7 (open) to Route 201 (50, 13); north 7 (open) to Route 201 (50, 6); east 43 (to wall) to Sandgem Town (29, 13); west 5 (open) to Sandgem Town (24, 13); north 21 (to wall) to Route 202 (25, 24); west 3 (to wall) to Route 202 (22, 24); south 3 (open) to Route 202 (22, 27)
-  | Leg 1/11: north 19 (to wall) to Twinleaf Town (6, 4)
+  | short of the catch tutorial: 12 legs planned
+  | [Route] short of the catch tutorial: plan from Twinleaf Town (6, 22), Twinleaf Town (6, 23): north 19 (to wall) to Twinleaf Town (6, 4); east 8 (open) to Twinleaf Town (14, 4); north 16 (to wall) to Route 201 (14, 13); east 43 (to wall) to Route 201 (57, 13); west 7 (open) to Route 201 (50, 13); north 7 (open) to Route 201 (50, 6); east 43 (to wall) to Sandgem Town (29, 13); north 2 (to wall) to Sandgem Town (29, 11); west 5 (open) to Sandgem Town (24, 11); north 19 (to wall) to Route 202 (25, 24); west 3 (to wall) to Route 202 (22, 24); south 3 (open) to Route 202 (22, 27)
+  | Leg 1/12: north 19 (to wall) to Twinleaf Town (6, 4)
   | [Sim] short of the catch tutorial: north 19 (to wall): held north to blocked at (38, 68).
+  | [Route] short of the catch tutorial: north 19 (to wall): facing unknown; the first moved chunk may be the turn, not counted.
   | [Speed] run north: 18 tiles in 3750 ms to the wall.
   | [Route] short of the catch tutorial: north 19 (to wall): ended at Twinleaf Town (6, 4) (walked).
   | [Leg] {"checkpoint":"00.04","chunks":18,"dir":"north","end":[["Twinleaf Town",6,4]],"end_kind":"wall","event":"short_of_the_catch_tutorial","interrupts":[],"known":"wall","leg":1,"ms":3750,"planned_end":[["Twinleaf Town",6,4]],"tiles":19}
-  | Leg 2/11: east 8 (open) to Twinleaf Town (14, 4)
+  | Leg 2/12: east 8 (open) to Twinleaf Town (14, 4)
   | [Route] Turning east.
   | [Sim] short of the catch tutorial: east 8 (open): 8 taps east, 8 moved, limit at (46, 68).
   | [Route] short of the catch tutorial: east 8 (open): ended at Twinleaf Town (14, 4) (walked).
   | [Leg] {"checkpoint":"00.04","chunks":8,"dir":"east","end":[["Twinleaf Town",14,4]],"end_kind":"open","event":"short_of_the_catch_tutorial","interrupts":[],"known":"dead_reckoned","leg":2,"moved":8,"ms":6400,"planned_end":[["Twinleaf Town",14,4]],"tiles":8}
-  | Leg 3/11: north 16 (to wall) to Route 201 (14, 13)
+  | Leg 3/12: north 16 (to wall) to Route 201 (14, 13)
+  | [Route] Turning north.
   | [Sim] short of the catch tutorial: north 16 (to wall): held north to blocked at (46, 52).
   | [Speed] run north: 16 tiles in 3450 ms to the wall.
   | [Route] short of the catch tutorial: north 16 (to wall): no banner read for Route 201; going on.
   | [Route] short of the catch tutorial: north 16 (to wall): ended at Route 201 (14, 13) (walked).
   | [Leg] {"checkpoint":"00.04","chunks":16,"dir":"north","end":[["Route 201",14,13]],"end_kind":"wall","event":"short_of_the_catch_tutorial","interrupts":[],"known":"wall","leg":3,"ms":3450,"planned_end":[["Route 201",14,13]],"tiles":16}
-  | Leg 4/11: east 43 (to wall) to Route 201 (57, 13)
+  | Leg 4/12: east 43 (to wall) to Route 201 (57, 13)
+  | [Route] Turning east.
   | [Sim] short of the catch tutorial: east 43 (to wall): held east to blocked at (89, 52).
   | [Speed] run east: 43 tiles in 5350 ms to the wall.
   | [Route] short of the catch tutorial: east 43 (to wall): ended at Route 201 (57, 13) (walked).
   | [Leg] {"checkpoint":"00.04","chunks":43,"dir":"east","end":[["Route 201",57,13]],"end_kind":"wall","event":"short_of_the_catch_tutorial","interrupts":[],"known":"wall","leg":4,"ms":5350,"planned_end":[["Route 201",57,13]],"tiles":43}
-  | Leg 5/11: west 7 (open) to Route 201 (50, 13)
+  | Leg 5/12: west 7 (open) to Route 201 (50, 13)
   | [Route] Turning west.
   | [Sim] short of the catch tutorial: west 7 (open): 7 taps west, 7 moved, limit at (82, 52).
   | [Route] short of the catch tutorial: west 7 (open): ended at Route 201 (50, 13) (walked).
   | [Leg] {"checkpoint":"00.04","chunks":7,"dir":"west","end":[["Route 201",50,13]],"end_kind":"open","event":"short_of_the_catch_tutorial","interrupts":[],"known":"dead_reckoned","leg":5,"moved":7,"ms":5600,"planned_end":[["Route 201",50,13]],"tiles":7}
-  | Leg 6/11: north 7 (open) to Route 201 (50, 6)
+  | Leg 6/12: north 7 (open) to Route 201 (50, 6)
   | [Route] Turning north.
   | [Sim] short of the catch tutorial: north 7 (open): 7 taps north, 7 moved, limit at (82, 45).
   | [Route] short of the catch tutorial: north 7 (open): ended at Route 201 (50, 6) (walked).
   | [Leg] {"checkpoint":"00.04","chunks":7,"dir":"north","end":[["Route 201",50,6]],"end_kind":"open","event":"short_of_the_catch_tutorial","interrupts":[],"known":"dead_reckoned","leg":6,"moved":7,"ms":5600,"planned_end":[["Route 201",50,6]],"tiles":7}
-  | Leg 7/11: east 43 (to wall) to Sandgem Town (29, 13)
+  | Leg 7/12: east 43 (to wall) to Sandgem Town (29, 13)
+  | [Route] Turning east.
   | [Sim] short of the catch tutorial: east 43 (to wall): held east to blocked at (125, 45).
   | [Speed] run east: 43 tiles in 5350 ms to the wall.
   | [Route] short of the catch tutorial: east 43 (to wall): no banner read for Sandgem Town; going on.
   | [Route] short of the catch tutorial: east 43 (to wall): ended at Sandgem Town (29, 13) (walked).
   | [Leg] {"checkpoint":"00.04","chunks":43,"dir":"east","end":[["Sandgem Town",29,13]],"end_kind":"wall","event":"short_of_the_catch_tutorial","interrupts":[],"known":"wall","leg":7,"ms":5350,"planned_end":[["Sandgem Town",29,13]],"tiles":43}
-  | Leg 8/11: west 5 (open) to Sandgem Town (24, 13)
+  | Leg 8/12: north 2 (to wall) to Sandgem Town (29, 11)
+  | [Route] Turning north.
+  | [Sim] short of the catch tutorial: north 2 (to wall): held north to blocked at (125, 43).
+  | [Speed] run north: 2 tiles in 1350 ms to the wall.
+  | [Route] short of the catch tutorial: north 2 (to wall): ended at Sandgem Town (29, 11) (walked).
+  | [Leg] {"checkpoint":"00.04","chunks":2,"dir":"north","end":[["Sandgem Town",29,11]],"end_kind":"wall","event":"short_of_the_catch_tutorial","interrupts":[],"known":"wall","leg":8,"ms":1350,"planned_end":[["Sandgem Town",29,11]],"tiles":2}
+  | Leg 9/12: west 5 (open) to Sandgem Town (24, 11)
   | [Route] Turning west.
-  | [Sim] short of the catch tutorial: west 5 (open): 5 taps west, 5 moved, limit at (120, 45).
-  | [Route] short of the catch tutorial: west 5 (open): ended at Sandgem Town (24, 13) (walked).
-  | [Leg] {"checkpoint":"00.04","chunks":5,"dir":"west","end":[["Sandgem Town",24,13]],"end_kind":"open","event":"short_of_the_catch_tutorial","interrupts":[],"known":"dead_reckoned","leg":8,"moved":5,"ms":4000,"planned_end":[["Sandgem Town",24,13]],"tiles":5}
-  | Leg 9/11: north 21 (to wall) to Route 202 (25, 24)
-  | [Sim] short of the catch tutorial: north 21 (to wall): held north to blocked at (120, 24).
-  | [Speed] run north: 21 tiles in 4200 ms to the wall.
-  | [Route] short of the catch tutorial: north 21 (to wall): no banner read for Route 202; going on.
-  | [Route] short of the catch tutorial: north 21 (to wall): ended at Route 202 (25, 24) (walked).
-  | [Leg] {"checkpoint":"00.04","chunks":21,"dir":"north","end":[["Route 202",25,24]],"end_kind":"wall","event":"short_of_the_catch_tutorial","interrupts":[],"known":"wall","leg":9,"ms":4200,"planned_end":[["Route 202",25,24]],"tiles":21}
-  | Leg 10/11: west 3 (to wall) to Route 202 (22, 24)
+  | [Sim] short of the catch tutorial: west 5 (open): 5 taps west, 5 moved, limit at (120, 43).
+  | [Route] short of the catch tutorial: west 5 (open): ended at Sandgem Town (24, 11) (walked).
+  | [Leg] {"checkpoint":"00.04","chunks":5,"dir":"west","end":[["Sandgem Town",24,11]],"end_kind":"open","event":"short_of_the_catch_tutorial","interrupts":[],"known":"dead_reckoned","leg":9,"moved":5,"ms":4000,"planned_end":[["Sandgem Town",24,11]],"tiles":5}
+  | Leg 10/12: north 19 (to wall) to Route 202 (25, 24)
+  | [Route] Turning north.
+  | [Sim] short of the catch tutorial: north 19 (to wall): held north to blocked at (120, 24).
+  | [Speed] run north: 19 tiles in 3900 ms to the wall.
+  | [Route] short of the catch tutorial: north 19 (to wall): no banner read for Route 202; going on.
+  | [Route] short of the catch tutorial: north 19 (to wall): ended at Route 202 (25, 24) (walked).
+  | [Leg] {"checkpoint":"00.04","chunks":19,"dir":"north","end":[["Route 202",25,24]],"end_kind":"wall","event":"short_of_the_catch_tutorial","interrupts":[],"known":"wall","leg":10,"ms":3900,"planned_end":[["Route 202",25,24]],"tiles":19}
+  | Leg 11/12: west 3 (to wall) to Route 202 (22, 24)
+  | [Route] Turning west.
   | [Sim] short of the catch tutorial: west 3 (to wall): held west to blocked at (117, 24).
   | [Speed] run west: 3 tiles in 1350 ms to the wall.
   | [Route] short of the catch tutorial: west 3 (to wall): ended at Route 202 (22, 24) (walked).
-  | [Leg] {"checkpoint":"00.04","chunks":3,"dir":"west","end":[["Route 202",22,24]],"end_kind":"wall","event":"short_of_the_catch_tutorial","interrupts":[],"known":"wall","leg":10,"ms":1350,"planned_end":[["Route 202",22,24]],"tiles":3}
-  | Leg 11/11: south 3 (open) to Route 202 (22, 27)
+  | [Leg] {"checkpoint":"00.04","chunks":3,"dir":"west","end":[["Route 202",22,24]],"end_kind":"wall","event":"short_of_the_catch_tutorial","interrupts":[],"known":"wall","leg":11,"ms":1350,"planned_end":[["Route 202",22,24]],"tiles":3}
+  | Leg 12/12: south 3 (open) to Route 202 (22, 27)
   | [Route] Turning south.
   | [Sim] short of the catch tutorial: south 3 (open): 3 taps south, 3 moved, limit at (117, 27).
   | [Route] short of the catch tutorial: south 3 (open): ended at Route 202 (22, 27) (walked).
-  | [Leg] {"checkpoint":"00.04","chunks":3,"dir":"south","end":[["Route 202",22,27]],"end_kind":"open","event":"short_of_the_catch_tutorial","interrupts":[],"known":"dead_reckoned","leg":11,"moved":3,"ms":2400,"planned_end":[["Route 202",22,27]],"tiles":3}
+  | [Leg] {"checkpoint":"00.04","chunks":3,"dir":"south","end":[["Route 202",22,27]],"end_kind":"open","event":"short_of_the_catch_tutorial","interrupts":[],"known":"dead_reckoned","leg":12,"moved":3,"ms":2400,"planned_end":[["Route 202",22,27]],"tiles":3}
   | [Route] short of the catch tutorial: no banner read for Route 202; going on.
   | [Route] short of the catch tutorial: arrived at Route 202 (22, 27).
   | [Route] Turning west.
@@ -443,6 +473,7 @@
   | [Route] to catch grass: north 4 (to wall): ended at Route 202 (15, 25), Route 202 (16, 25), Route 202 (17, 25), Route 202 (18, 25), Route 202 (19, 25), Route 202 (20, 25), Route 202 (21, 25) (walked).
   | [Leg] {"checkpoint":"00.04b","chunks":0,"dir":"north","end":[["Route 202",15,25],["Route 202",16,25],["Route 202",17,25],["Route 202",18,25],["Route 202",19,25],["Route 202",20,25],["Route 202",21,25]],"end_kind":"wall","event":"to_catch_grass","interrupts":[],"known":"wall","leg":1,"ms":1050,"planned_end":[["Route 202",15,25],["Route 202",16,25],["Route 202",17,25],["Route 202",18,25],["Route 202",19,25],["Route 202",20,25],["Route 202",21,25]],"tiles":4}
   | Leg 2/3: east 8 (to wall) to Route 202 (23, 25)
+  | [Route] Turning east.
   | [Sim] to catch grass: east 8 (to wall): held east to blocked at (118, 25).
   | [Speed] run east: 2 tiles in 1850 ms to the wall.
   | [Route] to catch grass: east 8 (to wall): ended at Route 202 (23, 25) (walked).
@@ -457,15 +488,18 @@
   | [Route] into sandgem: plan from Route 202 (18, 25), Route 202 (19, 25), Route 202 (20, 25), Route 202 (18, 26), Route 202 (19, 26), Route 202 (20, 26), Route 202 (18, 27), Route 202 (19, 27), Route 202 (20, 27): south 2 (to wall) to Route 202 (18, 27), Route 202 (19, 27), Route 202 (20, 27); east 12 (to wall) to Route 202 (30, 27); south 10 (to wall) to Sandgem Town (29, 5)
   | Leg 1/3: south 2 (to wall) to Route 202 (18, 27), Route 202 (19, 27), Route 202 (20, 27)
   | [Sim] into sandgem: south 2 (to wall): held south to blocked at (115, 27).
+  | [Route] into sandgem: south 2 (to wall): facing unknown; the first moved chunk may be the turn, not counted.
   | [Speed] run south: 0 tiles in 1350 ms to the wall.
   | [Route] into sandgem: south 2 (to wall): ended at Route 202 (18, 27), Route 202 (19, 27), Route 202 (20, 27) (walked).
   | [Leg] {"checkpoint":"00.04b","chunks":2,"dir":"south","end":[["Route 202",18,27],["Route 202",19,27],["Route 202",20,27]],"end_kind":"wall","event":"into_sandgem","interrupts":[],"known":"wall","leg":1,"ms":1350,"planned_end":[["Route 202",18,27],["Route 202",19,27],["Route 202",20,27]],"tiles":2}
   | Leg 2/3: east 12 (to wall) to Route 202 (30, 27)
+  | [Route] Turning east.
   | [Sim] into sandgem: east 12 (to wall): held east to blocked at (125, 27).
   | [Speed] run east: 10 tiles in 2050 ms to the wall.
   | [Route] into sandgem: east 12 (to wall): ended at Route 202 (30, 27) (walked).
   | [Leg] {"checkpoint":"00.04b","chunks":10,"dir":"east","end":[["Route 202",30,27]],"end_kind":"wall","event":"into_sandgem","interrupts":[],"known":"wall","leg":2,"ms":2050,"planned_end":[["Route 202",30,27]],"tiles":12}
   | Leg 3/3: south 10 (to wall) to Sandgem Town (29, 5)
+  | [Route] Turning south.
   | [Sim] into sandgem: south 10 (to wall): held south to blocked at (125, 37).
   | [Speed] run south: 10 tiles in 2550 ms to the wall.
   | [Route] into sandgem: south 10 (to wall): no banner read for Sandgem Town; going on.
@@ -493,7 +527,7 @@
   stubbed potions
   looked for 0 fades, 0 banners, 0 doors, 0 tap steps
 00.04d: completed
-  ends on Jubilife City (48, 62)
+  ends on Jubilife City (46, 58)
   stubbed save
   stubbed jubilife_stairs
   looked for 0 fades, 0 banners, 0 doors, 0 tap steps
@@ -505,37 +539,45 @@
   | [Route] north to jubilife: south 2 (open): ended at Route 202 (30, 26) (walked).
   | [Leg] {"checkpoint":"00.04d","chunks":2,"dir":"south","end":[["Route 202",30,26]],"end_kind":"open","event":"north_to_jubilife","interrupts":[],"known":"dead_reckoned","leg":1,"moved":2,"ms":1600,"planned_end":[["Route 202",30,26]],"tiles":2}
   | Leg 2/12: west 27 (to wall) to Route 202 (3, 26)
+  | [Route] Turning west.
   | [Sim] north to jubilife: west 27 (to wall): held west to blocked at (98, 26).
   | [Speed] run west: 27 tiles in 3750 ms to the wall.
   | [Route] north to jubilife: west 27 (to wall): ended at Route 202 (3, 26) (walked).
   | [Leg] {"checkpoint":"00.04d","chunks":27,"dir":"west","end":[["Route 202",3,26]],"end_kind":"wall","event":"north_to_jubilife","interrupts":[],"known":"wall","leg":2,"ms":3750,"planned_end":[["Route 202",3,26]],"tiles":27}
   | Leg 3/12: north 12 (to wall) to Route 202 (3, 14)
+  | [Route] Turning north.
   | [Sim] north to jubilife: north 12 (to wall): held north to blocked at (98, 14).
   | [Speed] run north: 12 tiles in 2850 ms to the wall.
   | [Route] north to jubilife: north 12 (to wall): ended at Route 202 (3, 14) (walked).
   | [Leg] {"checkpoint":"00.04d","chunks":12,"dir":"north","end":[["Route 202",3,14]],"end_kind":"wall","event":"north_to_jubilife","interrupts":[],"known":"wall","leg":3,"ms":2850,"planned_end":[["Route 202",3,14]],"tiles":12}
   | Leg 4/12: east 14 (to wall) to Route 202 (17, 14)
+  | [Route] Turning east.
   | [Sim] north to jubilife: east 14 (to wall): held east to dialog at (102, 14).
   | [Route] north to jubilife: tristan stopped us about Route 202 (7, 14).
   | Fighting tristan.
-  | [Route] north to jubilife: east 14 (to wall): on to the wall after the battle.
+  | [Route] north to jubilife: east 14 (to wall): on to the wall: on to the wall after the battle.
   | [Sim] north to jubilife: east 14 (to wall): on to the wall: held east to blocked at (112, 14).
+  | [Route] north to jubilife: east 14 (to wall): on to the wall: facing unknown; the first moved chunk may be the turn, not counted.
   | [Route] north to jubilife: east 14 (to wall): ended at Route 202 (17, 14) (walked).
   | [Leg] {"checkpoint":"00.04d","chunks":14,"dir":"east","end":[["Route 202",17,14]],"end_kind":"wall","event":"north_to_jubilife","interrupts":["trainer"],"known":"wall","leg":4,"ms":2700,"planned_end":[["Route 202",17,14]],"tiles":14}
   | Leg 5/12: south 8 (to wall) to Route 202 (17, 22)
+  | [Route] Turning south.
   | [Sim] north to jubilife: south 8 (to wall): held south to blocked at (112, 22).
   | [Speed] run south: 8 tiles in 2250 ms to the wall.
   | [Route] north to jubilife: south 8 (to wall): ended at Route 202 (17, 22) (walked).
   | [Leg] {"checkpoint":"00.04d","chunks":8,"dir":"south","end":[["Route 202",17,22]],"end_kind":"wall","event":"north_to_jubilife","interrupts":[],"known":"wall","leg":5,"ms":2250,"planned_end":[["Route 202",17,22]],"tiles":8}
   | Leg 6/12: east 13 (to wall) to Route 202 (30, 22)
+  | [Route] Turning east.
   | [Sim] north to jubilife: east 13 (to wall): held east to dialog at (117, 22).
   | [Route] north to jubilife: natalie stopped us about Route 202 (22, 22).
   | Fighting natalie.
-  | [Route] north to jubilife: east 13 (to wall): on to the wall after the battle.
+  | [Route] north to jubilife: east 13 (to wall): on to the wall: on to the wall after the battle.
   | [Sim] north to jubilife: east 13 (to wall): on to the wall: held east to blocked at (125, 22).
+  | [Route] north to jubilife: east 13 (to wall): on to the wall: facing unknown; the first moved chunk may be the turn, not counted.
   | [Route] north to jubilife: east 13 (to wall): ended at Route 202 (30, 22) (walked).
   | [Leg] {"checkpoint":"00.04d","chunks":13,"dir":"east","end":[["Route 202",30,22]],"end_kind":"wall","event":"north_to_jubilife","interrupts":["trainer"],"known":"wall","leg":6,"ms":2600,"planned_end":[["Route 202",30,22]],"tiles":13}
   | Leg 7/12: north 18 (to wall) to Route 202 (30, 4)
+  | [Route] Turning north.
   | [Sim] north to jubilife: north 18 (to wall): held north to blocked at (125, 4).
   | [Speed] run north: 18 tiles in 3750 ms to the wall.
   | [Route] north to jubilife: north 18 (to wall): ended at Route 202 (30, 4) (walked).
@@ -559,11 +601,13 @@
   | [Route] north to jubilife: west 1 (open): ended at Route 202 (25, 5) (walked).
   | [Leg] {"checkpoint":"00.04d","chunks":1,"dir":"west","end":[["Route 202",25,5]],"end_kind":"open","event":"north_to_jubilife","interrupts":[],"known":"dead_reckoned","leg":10,"moved":1,"ms":800,"planned_end":[["Route 202",25,5]],"tiles":1}
   | Leg 2/4: north 1 (to wall) to Route 202 (25, 4)
+  | [Route] Turning north.
   | [Sim] north to jubilife: north 1 (to wall): held north to blocked at (120, 4).
   | [Speed] run north: 1 tiles in 1200 ms to the wall.
   | [Route] north to jubilife: north 1 (to wall): ended at Route 202 (25, 4) (walked).
   | [Leg] {"checkpoint":"00.04d","chunks":1,"dir":"north","end":[["Route 202",25,4]],"end_kind":"wall","event":"north_to_jubilife","interrupts":[],"known":"wall","leg":11,"ms":1200,"planned_end":[["Route 202",25,4]],"tiles":1}
   | Leg 3/4: west 7 (to wall) to Route 202 (18, 4)
+  | [Route] Turning west.
   | [Sim] north to jubilife: west 7 (to wall): held west to blocked at (113, 4).
   | [Speed] run west: 7 tiles in 1750 ms to the wall.
   | [Route] north to jubilife: west 7 (to wall): ended at Route 202 (18, 4) (walked).
@@ -580,24 +624,20 @@
   stubbed save
   no end to check after 00.05 into_the_school
   looked for 2 fades, 0 banners, 2 doors, 0 tap steps
-  | to the center: 3 legs planned
-  | [Route] to the center: plan from Jubilife City (48, 62): west 1 (open) to Jubilife City (47, 62); north 21 (open) to Jubilife City (47, 41); east 5 (open) to Jubilife City (52, 41)
-  | Leg 1/3: west 1 (open) to Jubilife City (47, 62)
-  | [Route] Turning west.
-  | [Sim] to the center: west 1 (open): 1 taps west, 1 moved, limit at (47, 62).
-  | [Route] to the center: west 1 (open): ended at Jubilife City (47, 62) (walked).
-  | [Leg] {"checkpoint":"00.05","chunks":1,"dir":"west","end":[["Jubilife City",47,62]],"end_kind":"open","event":"to_the_center","interrupts":[],"known":"dead_reckoned","leg":1,"moved":1,"ms":800,"planned_end":[["Jubilife City",47,62]],"tiles":1}
-  | Leg 2/3: north 21 (open) to Jubilife City (47, 41)
   | [Route] Turning north.
-  | [Sim] to the center: north 21 (open): 21 taps north, 21 moved, limit at (47, 41).
-  | [Route] to the center: north 21 (open): ended at Jubilife City (47, 41) (walked).
-  | [Leg] {"checkpoint":"00.05","chunks":21,"dir":"north","end":[["Jubilife City",47,41]],"end_kind":"open","event":"to_the_center","interrupts":[],"known":"dead_reckoned","leg":2,"moved":21,"ms":16800,"planned_end":[["Jubilife City",47,41]],"tiles":21}
-  | Leg 3/3: east 5 (open) to Jubilife City (52, 41)
+  | [Sim] north_onto_the_plaza: 4 taps north, 4 moved, limit at (46, 54).
+  | [00.05] north_onto_the_plaza: taps north moved 4 of 4 tiles.
+  | [Leg] {"checkpoint":"00.05","chunks":4,"dir":"north","end":[["Jubilife City",46,54]],"end_kind":"tile","event":"north_onto_the_plaza","interrupts":[],"known":"counted","leg":1,"moved":4,"ms":3200,"planned_end":[["Jubilife City",46,54]],"tiles":4}
+  | [Leg] {"checkpoint":"00.05","chunks":0,"dir":"east","end":[],"end_kind":"wall","event":"east_to_the_wall","interrupts":[],"known":"wall","leg":1,"ms":0,"planned_end":[],"tiles":10}
+  | [Route] Turning west.
+  | [Sim] off_the_wall: 1 taps west, 1 moved, limit at (51, 54).
+  | [00.05] off_the_wall: taps west moved 1 of 1 tiles.
+  | [Leg] {"checkpoint":"00.05","chunks":1,"dir":"west","end":[["Jubilife City",51,51],["Jubilife City",51,52],["Jubilife City",51,53],["Jubilife City",51,54],["Jubilife City",51,55],["Jubilife City",51,56],["Jubilife City",51,57]],"end_kind":"tile","event":"off_the_wall","interrupts":[],"known":"counted","leg":1,"moved":1,"ms":800,"planned_end":[["Jubilife City",51,51],["Jubilife City",51,52],["Jubilife City",51,53],["Jubilife City",51,54],["Jubilife City",51,55],["Jubilife City",51,56],["Jubilife City",51,57]],"tiles":1}
+  | [Leg] {"checkpoint":"00.05","chunks":0,"dir":"north","end":[],"end_kind":"wall","event":"north_to_the_center","interrupts":[],"known":"wall","leg":1,"ms":0,"planned_end":[],"tiles":20}
   | [Route] Turning east.
-  | [Sim] to the center: east 5 (open): 5 taps east, 5 moved, limit at (52, 41).
-  | [Route] to the center: east 5 (open): ended at Jubilife City (52, 41) (walked).
-  | [Leg] {"checkpoint":"00.05","chunks":5,"dir":"east","end":[["Jubilife City",52,41]],"end_kind":"open","event":"to_the_center","interrupts":[],"known":"dead_reckoned","leg":3,"moved":5,"ms":4000,"planned_end":[["Jubilife City",52,41]],"tiles":5}
-  | [Route] to the center: arrived at Jubilife City (52, 41).
+  | [Sim] below_the_centers_door: 1 taps east, 1 moved, limit at (52, 41).
+  | [00.05] below_the_centers_door: taps east moved 1 of 1 tiles.
+  | [Leg] {"checkpoint":"00.05","chunks":1,"dir":"east","end":[["Jubilife City",52,41]],"end_kind":"tile","event":"below_the_centers_door","interrupts":[],"known":"counted","leg":1,"moved":1,"ms":800,"planned_end":[["Jubilife City",52,41]],"tiles":1}
   | to the school: 1 legs planned
   | [Route] to the school: plan from Jubilife City (52, 41): west 12 (open) to Jubilife City (40, 41)
   | Leg 1/1: west 12 (open) to Jubilife City (40, 41)
@@ -609,10 +649,8 @@
   | [00.05] into_the_school: north through the door (timeout 4500 ms, dark from 340 ms): black fade.
   | barry town map: no line within 15 s; the step before played it.
 00.05b: completed
-  ends on Jubilife City (15, 19)
+  ends on Jubilife City (14, 19)
   stubbed save
-  stubbed mart_clown
-  stubbed company_clown
   looked for 0 fades, 0 banners, 0 doors, 0 tap steps
   | below the presidents trigger: 1 legs planned
   | [Route] below the presidents trigger: plan from Jubilife City (40, 41): east 6 (open) to Jubilife City (46, 41)
@@ -633,46 +671,43 @@
   | [Route] past the president: east 2 (open): ended at Jubilife City (48, 40) (walked).
   | [Leg] {"checkpoint":"00.05b","chunks":2,"dir":"east","end":[["Jubilife City",48,40]],"end_kind":"open","event":"past_the_president","interrupts":[],"known":"dead_reckoned","leg":1,"moved":2,"ms":1600,"planned_end":[["Jubilife City",48,40]],"tiles":2}
   | [Route] past the president: arrived at Jubilife City (48, 40).
-  | below the mart clown: 3 legs planned
-  | [Route] below the mart clown: plan from Jubilife City (48, 40): north 6 (open) to Jubilife City (48, 34); east 8 (to wall) to Jubilife City (56, 34); west 1 (open) to Jubilife City (55, 34)
-  | Leg 1/3: north 6 (open) to Jubilife City (48, 34)
+  | below the mart clown: 2 legs planned
+  | [Route] below the mart clown: plan from Jubilife City (48, 40): north 4 (open) to Jubilife City (48, 36); east 8 (to wall) to Jubilife City (56, 36)
+  | Leg 1/2: north 4 (open) to Jubilife City (48, 36)
   | [Route] Turning north.
-  | [Sim] below the mart clown: north 6 (open): 6 taps north, 6 moved, limit at (48, 34).
-  | [Route] below the mart clown: north 6 (open): ended at Jubilife City (48, 34) (walked).
-  | [Leg] {"checkpoint":"00.05b","chunks":6,"dir":"north","end":[["Jubilife City",48,34]],"end_kind":"open","event":"below_the_mart_clown","interrupts":[],"known":"dead_reckoned","leg":1,"moved":6,"ms":4800,"planned_end":[["Jubilife City",48,34]],"tiles":6}
-  | Leg 2/3: east 8 (to wall) to Jubilife City (56, 34)
-  | [Sim] below the mart clown: east 8 (to wall): held east to blocked at (56, 34).
-  | [Speed] run east: 8 tiles in 1850 ms to the wall.
-  | [Route] below the mart clown: east 8 (to wall): ended at Jubilife City (56, 34) (walked).
-  | [Leg] {"checkpoint":"00.05b","chunks":8,"dir":"east","end":[["Jubilife City",56,34]],"end_kind":"wall","event":"below_the_mart_clown","interrupts":[],"known":"wall","leg":2,"ms":1850,"planned_end":[["Jubilife City",56,34]],"tiles":8}
-  | Leg 3/3: west 1 (open) to Jubilife City (55, 34)
-  | [Route] Turning west.
-  | [Sim] below the mart clown: west 1 (open): 1 taps west, 1 moved, limit at (55, 34).
-  | [Route] below the mart clown: west 1 (open): ended at Jubilife City (55, 34) (walked).
-  | [Leg] {"checkpoint":"00.05b","chunks":1,"dir":"west","end":[["Jubilife City",55,34]],"end_kind":"open","event":"below_the_mart_clown","interrupts":[],"known":"dead_reckoned","leg":3,"moved":1,"ms":800,"planned_end":[["Jubilife City",55,34]],"tiles":1}
-  | [Route] below the mart clown: arrived at Jubilife City (55, 34).
-  | below the tv clown: 4 legs planned
-  | [Route] below the tv clown: plan from Jubilife City (55, 34): west 23 (to wall) to Jubilife City (32, 34); north 10 (open) to Jubilife City (32, 24); east 4 (open) to Jubilife City (36, 24); north 7 (open) to Jubilife City (36, 17)
-  | Leg 1/4: west 23 (to wall) to Jubilife City (32, 34)
-  | [Sim] below the tv clown: west 23 (to wall): held west to blocked at (32, 34).
-  | [Speed] run west: 23 tiles in 3350 ms to the wall.
-  | [Route] below the tv clown: west 23 (to wall): ended at Jubilife City (32, 34) (walked).
-  | [Leg] {"checkpoint":"00.05b","chunks":23,"dir":"west","end":[["Jubilife City",32,34]],"end_kind":"wall","event":"below_the_tv_clown","interrupts":[],"known":"wall","leg":1,"ms":3350,"planned_end":[["Jubilife City",32,34]],"tiles":23}
-  | Leg 2/4: north 10 (open) to Jubilife City (32, 24)
-  | [Route] Turning north.
-  | [Sim] below the tv clown: north 10 (open): 10 taps north, 10 moved, limit at (32, 24).
-  | [Route] below the tv clown: north 10 (open): ended at Jubilife City (32, 24) (walked).
-  | [Leg] {"checkpoint":"00.05b","chunks":10,"dir":"north","end":[["Jubilife City",32,24]],"end_kind":"open","event":"below_the_tv_clown","interrupts":[],"known":"dead_reckoned","leg":2,"moved":10,"ms":8000,"planned_end":[["Jubilife City",32,24]],"tiles":10}
-  | Leg 3/4: east 4 (open) to Jubilife City (36, 24)
+  | [Sim] below the mart clown: north 4 (open): 4 taps north, 4 moved, limit at (48, 36).
+  | [Route] below the mart clown: north 4 (open): ended at Jubilife City (48, 36) (walked).
+  | [Leg] {"checkpoint":"00.05b","chunks":4,"dir":"north","end":[["Jubilife City",48,36]],"end_kind":"open","event":"below_the_mart_clown","interrupts":[],"known":"dead_reckoned","leg":1,"moved":4,"ms":3200,"planned_end":[["Jubilife City",48,36]],"tiles":4}
+  | Leg 2/2: east 8 (to wall) to Jubilife City (56, 36)
   | [Route] Turning east.
-  | [Sim] below the tv clown: east 4 (open): 4 taps east, 4 moved, limit at (36, 24).
-  | [Route] below the tv clown: east 4 (open): ended at Jubilife City (36, 24) (walked).
-  | [Leg] {"checkpoint":"00.05b","chunks":4,"dir":"east","end":[["Jubilife City",36,24]],"end_kind":"open","event":"below_the_tv_clown","interrupts":[],"known":"dead_reckoned","leg":3,"moved":4,"ms":3200,"planned_end":[["Jubilife City",36,24]],"tiles":4}
-  | Leg 4/4: north 7 (open) to Jubilife City (36, 17)
+  | [Sim] below the mart clown: east 8 (to wall): held east to blocked at (56, 36).
+  | [Speed] run east: 8 tiles in 1850 ms to the wall.
+  | [Route] below the mart clown: east 8 (to wall): ended at Jubilife City (56, 36) (walked).
+  | [Leg] {"checkpoint":"00.05b","chunks":8,"dir":"east","end":[["Jubilife City",56,36]],"end_kind":"wall","event":"below_the_mart_clown","interrupts":[],"known":"wall","leg":2,"ms":1850,"planned_end":[["Jubilife City",56,36]],"tiles":8}
+  | [Route] below the mart clown: arrived at Jubilife City (56, 36).
+  | below the tv clown: 4 legs planned
+  | [Route] below the tv clown: plan from Jubilife City (56, 31): west 8 (open) to Jubilife City (48, 31); north 7 (open) to Jubilife City (48, 24); west 12 (open) to Jubilife City (36, 24); north 7 (to wall) to Jubilife City (36, 17)
+  | Leg 1/4: west 8 (open) to Jubilife City (48, 31)
+  | [Route] Turning west.
+  | [Sim] below the tv clown: west 8 (open): 8 taps west, 8 moved, limit at (48, 31).
+  | [Route] below the tv clown: west 8 (open): ended at Jubilife City (48, 31) (walked).
+  | [Leg] {"checkpoint":"00.05b","chunks":8,"dir":"west","end":[["Jubilife City",48,31]],"end_kind":"open","event":"below_the_tv_clown","interrupts":[],"known":"dead_reckoned","leg":1,"moved":8,"ms":6400,"planned_end":[["Jubilife City",48,31]],"tiles":8}
+  | Leg 2/4: north 7 (open) to Jubilife City (48, 24)
   | [Route] Turning north.
-  | [Sim] below the tv clown: north 7 (open): 7 taps north, 7 moved, limit at (36, 17).
-  | [Route] below the tv clown: north 7 (open): ended at Jubilife City (36, 17) (walked).
-  | [Leg] {"checkpoint":"00.05b","chunks":7,"dir":"north","end":[["Jubilife City",36,17]],"end_kind":"open","event":"below_the_tv_clown","interrupts":[],"known":"dead_reckoned","leg":4,"moved":7,"ms":5600,"planned_end":[["Jubilife City",36,17]],"tiles":7}
+  | [Sim] below the tv clown: north 7 (open): 7 taps north, 7 moved, limit at (48, 24).
+  | [Route] below the tv clown: north 7 (open): ended at Jubilife City (48, 24) (walked).
+  | [Leg] {"checkpoint":"00.05b","chunks":7,"dir":"north","end":[["Jubilife City",48,24]],"end_kind":"open","event":"below_the_tv_clown","interrupts":[],"known":"dead_reckoned","leg":2,"moved":7,"ms":5600,"planned_end":[["Jubilife City",48,24]],"tiles":7}
+  | Leg 3/4: west 12 (open) to Jubilife City (36, 24)
+  | [Route] Turning west.
+  | [Sim] below the tv clown: west 12 (open): 12 taps west, 12 moved, limit at (36, 24).
+  | [Route] below the tv clown: west 12 (open): ended at Jubilife City (36, 24) (walked).
+  | [Leg] {"checkpoint":"00.05b","chunks":12,"dir":"west","end":[["Jubilife City",36,24]],"end_kind":"open","event":"below_the_tv_clown","interrupts":[],"known":"dead_reckoned","leg":3,"moved":12,"ms":9600,"planned_end":[["Jubilife City",36,24]],"tiles":12}
+  | Leg 4/4: north 7 (to wall) to Jubilife City (36, 17)
+  | [Route] Turning north.
+  | [Sim] below the tv clown: north 7 (to wall): held north to blocked at (36, 17).
+  | [Speed] run north: 7 tiles in 2100 ms to the wall.
+  | [Route] below the tv clown: north 7 (to wall): ended at Jubilife City (36, 17) (walked).
+  | [Leg] {"checkpoint":"00.05b","chunks":7,"dir":"north","end":[["Jubilife City",36,17]],"end_kind":"wall","event":"below_the_tv_clown","interrupts":[],"known":"wall","leg":4,"ms":2100,"planned_end":[["Jubilife City",36,17]],"tiles":7}
   | [Route] below the tv clown: arrived at Jubilife City (36, 17).
   | [Route] Turning north.
   | below the company clown: 3 legs planned
@@ -693,61 +728,77 @@
   | [Route] below the company clown: north 2 (open): ended at Jubilife City (15, 19) (walked).
   | [Leg] {"checkpoint":"00.05b","chunks":2,"dir":"north","end":[["Jubilife City",15,19]],"end_kind":"open","event":"below_the_company_clown","interrupts":[],"known":"dead_reckoned","leg":3,"moved":2,"ms":1600,"planned_end":[["Jubilife City",15,19]],"tiles":2}
   | [Route] below the company clown: arrived at Jubilife City (15, 19).
+  | beside the company sign: 0 legs planned
+  | [Route] beside the company sign: plan from Jubilife City (14, 19):
+  | [Route] beside the company sign: arrived at Jubilife City (14, 19).
 00.05c: completed
-  ends on Jubilife City (58, 22)
+  ends on Jubilife City (59, 21)
   stubbed save
+  stubbed where_we_start
   looked for 0 fades, 0 banners, 0 doors, 0 tap steps
-  | to main boulevard: 1 legs planned
-  | [Route] to main boulevard: plan from Jubilife City (15, 19): south 3 (open) to Jubilife City (15, 22)
-  | Leg 1/1: south 3 (open) to Jubilife City (15, 22)
+  | beside the president: 4 legs planned
+  | [Route] beside the president: plan from Jubilife City (14, 19): south 4 (open) to Jubilife City (14, 23); east 18 (open) to Jubilife City (32, 23); south 12 (open) to Jubilife City (32, 35); east 13 (to wall) to Jubilife City (45, 35)
+  | Leg 1/4: south 4 (open) to Jubilife City (14, 23)
   | [Route] Turning south.
-  | [Sim] to main boulevard: south 3 (open): 3 taps south, 3 moved, limit at (15, 22).
-  | [Route] to main boulevard: south 3 (open): ended at Jubilife City (15, 22) (walked).
-  | [Leg] {"checkpoint":"00.05c","chunks":3,"dir":"south","end":[["Jubilife City",15,22]],"end_kind":"open","event":"to_main_boulevard","interrupts":[],"known":"dead_reckoned","leg":1,"moved":3,"ms":2400,"planned_end":[["Jubilife City",15,22]],"tiles":3}
-  | [Route] to main boulevard: arrived at Jubilife City (15, 22).
-  | along main boulevard: 1 legs planned
-  | [Route] along main boulevard: plan from Jubilife City (15, 22): east 30 (open) to Jubilife City (45, 22)
-  | Leg 1/1: east 30 (open) to Jubilife City (45, 22)
+  | [Sim] beside the president: south 4 (open): 4 taps south, 4 moved, limit at (14, 23).
+  | [Route] beside the president: south 4 (open): ended at Jubilife City (14, 23) (walked).
+  | [Leg] {"checkpoint":"00.05c","chunks":4,"dir":"south","end":[["Jubilife City",14,23]],"end_kind":"open","event":"beside_the_president","interrupts":[],"known":"dead_reckoned","leg":1,"moved":4,"ms":3200,"planned_end":[["Jubilife City",14,23]],"tiles":4}
+  | Leg 2/4: east 18 (open) to Jubilife City (32, 23)
   | [Route] Turning east.
-  | [Sim] along main boulevard: east 30 (open): 30 taps east, 30 moved, limit at (45, 22).
-  | [Route] along main boulevard: east 30 (open): ended at Jubilife City (45, 22) (walked).
-  | [Leg] {"checkpoint":"00.05c","chunks":30,"dir":"east","end":[["Jubilife City",45,22]],"end_kind":"open","event":"along_main_boulevard","interrupts":[],"known":"dead_reckoned","leg":1,"moved":30,"ms":24000,"planned_end":[["Jubilife City",45,22]],"tiles":30}
-  | [Route] along main boulevard: arrived at Jubilife City (45, 22).
-  | beside the president: 1 legs planned
-  | [Route] beside the president: plan from Jubilife City (45, 22): south 13 (open) to Jubilife City (45, 35)
-  | Leg 1/1: south 13 (open) to Jubilife City (45, 35)
+  | [Sim] beside the president: east 18 (open): 18 taps east, 18 moved, limit at (32, 23).
+  | [Route] beside the president: east 18 (open): ended at Jubilife City (32, 23) (walked).
+  | [Leg] {"checkpoint":"00.05c","chunks":18,"dir":"east","end":[["Jubilife City",32,23]],"end_kind":"open","event":"beside_the_president","interrupts":[],"known":"dead_reckoned","leg":2,"moved":18,"ms":14400,"planned_end":[["Jubilife City",32,23]],"tiles":18}
+  | Leg 3/4: south 12 (open) to Jubilife City (32, 35)
   | [Route] Turning south.
-  | [Sim] beside the president: south 13 (open): 13 taps south, 13 moved, limit at (45, 35).
-  | [Route] beside the president: south 13 (open): ended at Jubilife City (45, 35) (walked).
-  | [Leg] {"checkpoint":"00.05c","chunks":13,"dir":"south","end":[["Jubilife City",45,35]],"end_kind":"open","event":"beside_the_president","interrupts":[],"known":"dead_reckoned","leg":1,"moved":13,"ms":10400,"planned_end":[["Jubilife City",45,35]],"tiles":13}
+  | [Sim] beside the president: south 12 (open): 12 taps south, 12 moved, limit at (32, 35).
+  | [Route] beside the president: south 12 (open): ended at Jubilife City (32, 35) (walked).
+  | [Leg] {"checkpoint":"00.05c","chunks":12,"dir":"south","end":[["Jubilife City",32,35]],"end_kind":"open","event":"beside_the_president","interrupts":[],"known":"dead_reckoned","leg":3,"moved":12,"ms":9600,"planned_end":[["Jubilife City",32,35]],"tiles":12}
+  | Leg 4/4: east 13 (to wall) to Jubilife City (45, 35)
+  | [Route] Turning east.
+  | [Sim] beside the president: east 13 (to wall): held east to blocked at (45, 35).
+  | [Speed] run east: 13 tiles in 2350 ms to the wall.
+  | [Route] beside the president: east 13 (to wall): ended at Jubilife City (45, 35) (walked).
+  | [Leg] {"checkpoint":"00.05c","chunks":13,"dir":"east","end":[["Jubilife City",45,35]],"end_kind":"wall","event":"beside_the_president","interrupts":[],"known":"wall","leg":4,"ms":2350,"planned_end":[["Jubilife City",45,35]],"tiles":13}
   | [Route] beside the president: arrived at Jubilife City (45, 35).
   | [Route] Turning east.
-  | to the route 203 street: 2 legs planned
-  | [Route] to the route 203 street: plan from Jubilife City (45, 35): north 13 (open) to Jubilife City (45, 22); east 13 (open) to Jubilife City (58, 22)
-  | Leg 1/2: north 13 (open) to Jubilife City (45, 22)
+  | below the east exit sign: 3 legs planned
+  | [Route] below the east exit sign: plan from Jubilife City (45, 35): north 9 (open) to Jubilife City (45, 26); east 14 (to wall) to Jubilife City (59, 26); north 5 (to wall) to Jubilife City (59, 21)
+  | Leg 1/3: north 9 (open) to Jubilife City (45, 26)
   | [Route] Turning north.
-  | [Sim] to the route 203 street: north 13 (open): 13 taps north, 13 moved, limit at (45, 22).
-  | [Route] to the route 203 street: north 13 (open): ended at Jubilife City (45, 22) (walked).
-  | [Leg] {"checkpoint":"00.05c","chunks":13,"dir":"north","end":[["Jubilife City",45,22]],"end_kind":"open","event":"to_the_route_203_street","interrupts":[],"known":"dead_reckoned","leg":1,"moved":13,"ms":10400,"planned_end":[["Jubilife City",45,22]],"tiles":13}
-  | Leg 2/2: east 13 (open) to Jubilife City (58, 22)
+  | [Sim] below the east exit sign: north 9 (open): 9 taps north, 9 moved, limit at (45, 26).
+  | [Route] below the east exit sign: north 9 (open): ended at Jubilife City (45, 26) (walked).
+  | [Leg] {"checkpoint":"00.05c","chunks":9,"dir":"north","end":[["Jubilife City",45,26]],"end_kind":"open","event":"below_the_east_exit_sign","interrupts":[],"known":"dead_reckoned","leg":1,"moved":9,"ms":7200,"planned_end":[["Jubilife City",45,26]],"tiles":9}
+  | Leg 2/3: east 14 (to wall) to Jubilife City (59, 26)
   | [Route] Turning east.
-  | [Sim] to the route 203 street: east 13 (open): 13 taps east, 13 moved, limit at (58, 22).
-  | [Route] to the route 203 street: east 13 (open): ended at Jubilife City (58, 22) (walked).
-  | [Leg] {"checkpoint":"00.05c","chunks":13,"dir":"east","end":[["Jubilife City",58,22]],"end_kind":"open","event":"to_the_route_203_street","interrupts":[],"known":"dead_reckoned","leg":2,"moved":13,"ms":10400,"planned_end":[["Jubilife City",58,22]],"tiles":13}
-  | [Route] to the route 203 street: arrived at Jubilife City (58, 22).
+  | [Sim] below the east exit sign: east 14 (to wall): held east to blocked at (59, 26).
+  | [Speed] run east: 14 tiles in 2450 ms to the wall.
+  | [Route] below the east exit sign: east 14 (to wall): ended at Jubilife City (59, 26) (walked).
+  | [Leg] {"checkpoint":"00.05c","chunks":14,"dir":"east","end":[["Jubilife City",59,26]],"end_kind":"wall","event":"below_the_east_exit_sign","interrupts":[],"known":"wall","leg":2,"ms":2450,"planned_end":[["Jubilife City",59,26]],"tiles":14}
+  | Leg 3/3: north 5 (to wall) to Jubilife City (59, 21)
+  | [Route] Turning north.
+  | [Sim] below the east exit sign: north 5 (to wall): held north to blocked at (59, 21).
+  | [Speed] run north: 5 tiles in 1800 ms to the wall.
+  | [Route] below the east exit sign: north 5 (to wall): ended at Jubilife City (59, 21) (walked).
+  | [Leg] {"checkpoint":"00.05c","chunks":5,"dir":"north","end":[["Jubilife City",59,21]],"end_kind":"wall","event":"below_the_east_exit_sign","interrupts":[],"known":"wall","leg":3,"ms":1800,"planned_end":[["Jubilife City",59,21]],"tiles":5}
+  | [Route] below the east exit sign: arrived at Jubilife City (59, 21).
 01.01: completed
   ends on Route 203 (5, 18)
   stubbed save
   stubbed barry
   looked for 0 fades, 0 banners, 0 doors, 0 tap steps
-  | west of barrys trigger: 1 legs planned
-  | [Route] west of barrys trigger: plan from Jubilife City (58, 22): east 9 (open) to Route 203 (4, 18)
-  | Leg 1/1: east 9 (open) to Route 203 (4, 18)
+  | west of barrys trigger: 2 legs planned
+  | [Route] west of barrys trigger: plan from Jubilife City (59, 21): south 1 (open) to Jubilife City (59, 22); east 8 (open) to Route 203 (4, 18)
+  | Leg 1/2: south 1 (open) to Jubilife City (59, 22)
+  | [Route] Turning south.
+  | [Sim] west of barrys trigger: south 1 (open): 1 taps south, 1 moved, limit at (59, 22).
+  | [Route] west of barrys trigger: south 1 (open): ended at Jubilife City (59, 22) (walked).
+  | [Leg] {"checkpoint":"01.01","chunks":1,"dir":"south","end":[["Jubilife City",59,22]],"end_kind":"open","event":"west_of_barrys_trigger","interrupts":[],"known":"dead_reckoned","leg":1,"moved":1,"ms":800,"planned_end":[["Jubilife City",59,22]],"tiles":1}
+  | Leg 2/2: east 8 (open) to Route 203 (4, 18)
   | [Route] Turning east.
-  | [Sim] west of barrys trigger: east 9 (open): 9 taps east, 9 moved, limit at (67, 22).
-  | [Route] west of barrys trigger: east 9 (open): no banner read for Route 203; going on.
-  | [Route] west of barrys trigger: east 9 (open): ended at Route 203 (4, 18) (walked).
-  | [Leg] {"checkpoint":"01.01","chunks":9,"dir":"east","end":[["Route 203",4,18]],"end_kind":"open","event":"west_of_barrys_trigger","interrupts":[],"known":"dead_reckoned","leg":1,"moved":9,"ms":7200,"planned_end":[["Route 203",4,18]],"tiles":9}
+  | [Sim] west of barrys trigger: east 8 (open): 8 taps east, 8 moved, limit at (67, 22).
+  | [Route] west of barrys trigger: east 8 (open): no banner read for Route 203; going on.
+  | [Route] west of barrys trigger: east 8 (open): ended at Route 203 (4, 18) (walked).
+  | [Leg] {"checkpoint":"01.01","chunks":8,"dir":"east","end":[["Route 203",4,18]],"end_kind":"open","event":"west_of_barrys_trigger","interrupts":[],"known":"dead_reckoned","leg":2,"moved":8,"ms":6400,"planned_end":[["Route 203",4,18]],"tiles":8}
   | [Route] west of barrys trigger: no banner read for Route 203; going on.
   | [Route] west of barrys trigger: arrived at Route 203 (4, 18).
   | [Route] Turning east.
@@ -756,11 +807,14 @@
 01.02: completed
   ends on Oreburgh City (23, 23)
   stubbed save
+  no end to check after 01.02 into_the_hikers_scene
+  no end to check after 01.02 into_the_welcome_scene
   looked for 2 fades, 2 banners, 0 doors, 2 tap steps
   | south to the cliff: 1 legs planned
   | [Route] south to the cliff: plan from Route 203 (5, 17), Route 203 (5, 18), Route 203 (5, 19), Route 203 (5, 20): south 3 (to wall) to Route 203 (5, 20)
   | Leg 1/1: south 3 (to wall) to Route 203 (5, 20)
   | [Sim] south to the cliff: south 3 (to wall): held south to blocked at (68, 24).
+  | [Route] south to the cliff: south 3 (to wall): facing unknown; the first moved chunk may be the turn, not counted.
   | [Speed] run south: 0 tiles in 1500 ms to the wall.
   | [Route] south to the cliff: south 3 (to wall): ended at Route 203 (5, 20) (walked).
   | [Leg] {"checkpoint":"01.02","chunks":3,"dir":"south","end":[["Route 203",5,20]],"end_kind":"wall","event":"south_to_the_cliff","interrupts":[],"known":"wall","leg":1,"ms":1500,"planned_end":[["Route 203",5,20]],"tiles":3}
@@ -773,14 +827,17 @@
   | [Route] by the gate: north 2 (open): ended at Route 203 (5, 18) (walked).
   | [Leg] {"checkpoint":"01.02","chunks":2,"dir":"north","end":[["Route 203",5,18]],"end_kind":"open","event":"by_the_gate","interrupts":[],"known":"dead_reckoned","leg":1,"moved":2,"ms":1600,"planned_end":[["Route 203",5,18]],"tiles":2}
   | Leg 2/4: east 50 (to wall) to Route 203 (55, 18)
+  | [Route] Turning east.
   | [Sim] by the gate: east 50 (to wall): held east to dialog at (94, 22).
   | [Route] by the gate: Youngster (above row 18) stopped us about Route 203 (31, 18).
   | Fighting Youngster (above row 18).
-  | [Route] by the gate: east 50 (to wall): on to the wall after the battle.
+  | [Route] by the gate: east 50 (to wall): on to the wall: on to the wall after the battle.
   | [Sim] by the gate: east 50 (to wall): on to the wall: held east to blocked at (118, 22).
+  | [Route] by the gate: east 50 (to wall): on to the wall: facing unknown; the first moved chunk may be the turn, not counted.
   | [Route] by the gate: east 50 (to wall): ended at Route 203 (55, 18) (walked).
   | [Leg] {"checkpoint":"01.02","chunks":50,"dir":"east","end":[["Route 203",55,18]],"end_kind":"wall","event":"by_the_gate","interrupts":["trainer"],"known":"wall","leg":2,"ms":6300,"planned_end":[["Route 203",55,18]],"tiles":50}
   | Leg 3/4: north 12 (to wall) to Route 203 (55, 6)
+  | [Route] Turning north.
   | [Sim] by the gate: north 12 (to wall): held north to blocked at (118, 10).
   | [Speed] run north: 12 tiles in 2850 ms to the wall.
   | [Route] by the gate: north 12 (to wall): ended at Route 203 (55, 6) (walked).
@@ -793,27 +850,12 @@
   | [Route] by the gate: arrived at Route 203 (55, 9).
   | [Route] Turning east.
   | [01.02] into_oreburgh_gate: through to OreburghGate after 1 taps east.
-  | west of the hikers trigger: 3 legs planned
-  | [Route] west of the hikers trigger: plan from OreburghGate (4, 22), OreburghGate (5, 22): south 1 (to wall) to OreburghGate (4, 23), OreburghGate (5, 23); east 2 (to wall) to OreburghGate (6, 23); north 1 (open) to OreburghGate (6, 22)
-  | Leg 1/3: south 1 (to wall) to OreburghGate (4, 23), OreburghGate (5, 23)
-  | [Sim] west of the hikers trigger: south 1 (to wall): held south to blocked at (4, 23).
-  | [Speed] run south: 1 tiles in 1200 ms to the wall.
-  | [Route] west of the hikers trigger: south 1 (to wall): ended at OreburghGate (4, 23), OreburghGate (5, 23) (walked).
-  | [Leg] {"checkpoint":"01.02","chunks":1,"dir":"south","end":[["OreburghGate",4,23],["OreburghGate",5,23]],"end_kind":"wall","event":"west_of_the_hikers_trigger","interrupts":[],"known":"wall","leg":1,"ms":1200,"planned_end":[["OreburghGate",4,23],["OreburghGate",5,23]],"tiles":1}
-  | Leg 2/3: east 2 (to wall) to OreburghGate (6, 23)
-  | [Sim] west of the hikers trigger: east 2 (to wall): held east to blocked at (6, 23).
-  | [Speed] run east: 1 tiles in 1250 ms to the wall.
-  | [Route] west of the hikers trigger: east 2 (to wall): ended at OreburghGate (6, 23) (walked).
-  | [Leg] {"checkpoint":"01.02","chunks":2,"dir":"east","end":[["OreburghGate",6,23]],"end_kind":"wall","event":"west_of_the_hikers_trigger","interrupts":[],"known":"wall","leg":2,"ms":1250,"planned_end":[["OreburghGate",6,23]],"tiles":2}
-  | Leg 3/3: north 1 (open) to OreburghGate (6, 22)
-  | [Route] Turning north.
-  | [Sim] west of the hikers trigger: north 1 (open): 1 taps north, 1 moved, limit at (6, 22).
-  | [Route] west of the hikers trigger: north 1 (open): ended at OreburghGate (6, 22) (walked).
-  | [Leg] {"checkpoint":"01.02","chunks":1,"dir":"north","end":[["OreburghGate",6,22]],"end_kind":"open","event":"west_of_the_hikers_trigger","interrupts":[],"known":"dead_reckoned","leg":3,"moved":1,"ms":800,"planned_end":[["OreburghGate",6,22]],"tiles":1}
-  | [Route] west of the hikers trigger: arrived at OreburghGate (6, 22).
-  | [Route] Turning east.
-  | [Sim] hikers_trigger: 1 taps east, 1 moved, dialog at (7, 22).
-  | [01.02] hikers_trigger: a step east, dialog.
+  | into the hikers scene: 0 legs planned
+  | [Route] into the hikers scene: plan from OreburghGate (4, 22), OreburghGate (5, 22):
+  | [Route] into the hikers scene: arrived at OreburghGate (4, 22), OreburghGate (5, 22).
+  | [Sim] into the hikers scene: held east to dialog at (7, 22).
+  | [01.02] into_the_hikers_scene: ran east to a dialogue: 3 moved chunks, 6 tiles at most, dialog, 0 wild battle(s).
+  | [Leg] {"checkpoint":"01.02","chunks":3,"dir":"east","end":[],"end_kind":"open","event":"into_the_hikers_scene","interrupts":[],"known":"dialogue","leg":1,"ms":550,"planned_end":[],"tiles":6}
   | past curtis: 1 legs planned
   | [Route] past curtis: plan from OreburghGate (7, 22): east 13 (open) to OreburghGate (20, 22)
   | Leg 1/1: east 13 (open) to OreburghGate (20, 22)
@@ -832,33 +874,12 @@
   | [Route] by the east mouth: arrived at OreburghGate (26, 22).
   | [Route] Turning east.
   | [01.02] into_oreburgh: through to OreburghCity after 2 taps east.
-  | west of the welcome: 4 legs planned
-  | [Route] west of the welcome: plan from Oreburgh City (2, 13), Oreburgh City (3, 13): north 3 (to wall) to Oreburgh City (2, 10), Oreburgh City (3, 10); east 4 (to wall) to Oreburgh City (6, 10); south 3 (open) to Oreburgh City (6, 13); east 3 (open) to Oreburgh City (9, 13)
-  | Leg 1/4: north 3 (to wall) to Oreburgh City (2, 10), Oreburgh City (3, 10)
-  | [Sim] west of the welcome: north 3 (to wall): held north to blocked at (2, 10).
-  | [Speed] run north: 3 tiles in 1500 ms to the wall.
-  | [Route] west of the welcome: north 3 (to wall): ended at Oreburgh City (2, 10), Oreburgh City (3, 10) (walked).
-  | [Leg] {"checkpoint":"01.02","chunks":3,"dir":"north","end":[["Oreburgh City",2,10],["Oreburgh City",3,10]],"end_kind":"wall","event":"west_of_the_welcome","interrupts":[],"known":"wall","leg":1,"ms":1500,"planned_end":[["Oreburgh City",2,10],["Oreburgh City",3,10]],"tiles":3}
-  | Leg 2/4: east 4 (to wall) to Oreburgh City (6, 10)
-  | [Sim] west of the welcome: east 4 (to wall): held east to blocked at (6, 10).
-  | [Speed] run east: 3 tiles in 1450 ms to the wall.
-  | [Route] west of the welcome: east 4 (to wall): ended at Oreburgh City (6, 10) (walked).
-  | [Leg] {"checkpoint":"01.02","chunks":4,"dir":"east","end":[["Oreburgh City",6,10]],"end_kind":"wall","event":"west_of_the_welcome","interrupts":[],"known":"wall","leg":2,"ms":1450,"planned_end":[["Oreburgh City",6,10]],"tiles":4}
-  | Leg 3/4: south 3 (open) to Oreburgh City (6, 13)
-  | [Route] Turning south.
-  | [Sim] west of the welcome: south 3 (open): 3 taps south, 3 moved, limit at (6, 13).
-  | [Route] west of the welcome: south 3 (open): ended at Oreburgh City (6, 13) (walked).
-  | [Leg] {"checkpoint":"01.02","chunks":3,"dir":"south","end":[["Oreburgh City",6,13]],"end_kind":"open","event":"west_of_the_welcome","interrupts":[],"known":"dead_reckoned","leg":3,"moved":3,"ms":2400,"planned_end":[["Oreburgh City",6,13]],"tiles":3}
-  | Leg 4/4: east 3 (open) to Oreburgh City (9, 13)
-  | [Route] Turning east.
-  | [Sim] west of the welcome: east 3 (open): 3 taps east, 3 moved, limit at (9, 13).
-  | [Route] west of the welcome: east 3 (open): ended at Oreburgh City (9, 13) (walked).
-  | [Leg] {"checkpoint":"01.02","chunks":3,"dir":"east","end":[["Oreburgh City",9,13]],"end_kind":"open","event":"west_of_the_welcome","interrupts":[],"known":"dead_reckoned","leg":4,"moved":3,"ms":2400,"planned_end":[["Oreburgh City",9,13]],"tiles":3}
-  | [Route] west of the welcome: arrived at Oreburgh City (9, 13).
-  | [Route] Turning east.
-  | [Sim] welcome_trigger: 1 taps east, 1 moved, limit at (10, 13).
-  | [01.02] welcome_trigger: a step east, limit.
-  | oreburgh welcome: no line within 15 s; the step before played it.
+  | into the welcome scene: 0 legs planned
+  | [Route] into the welcome scene: plan from Oreburgh City (2, 13), Oreburgh City (3, 13):
+  | [Route] into the welcome scene: arrived at Oreburgh City (2, 13), Oreburgh City (3, 13).
+  | [Sim] into the welcome scene: held east to dialog at (10, 13).
+  | [01.02] into_the_welcome_scene: ran east to a dialogue: 8 moved chunks, 12 tiles at most, dialog, 0 wild battle(s).
+  | [Leg] {"checkpoint":"01.02","chunks":8,"dir":"east","end":[],"end_kind":"open","event":"into_the_welcome_scene","interrupts":[],"known":"dialogue","leg":1,"ms":1050,"planned_end":[],"tiles":12}
 01.02b: completed
   ends on Oreburgh City (47, 21)
   stubbed save
@@ -880,10 +901,12 @@
   | [Route] below the centers door: plan from Oreburgh City (26, 22): east 22 (to wall) to Oreburgh City (48, 22); north 1 (to wall) to Oreburgh City (48, 21); west 1 (open) to Oreburgh City (47, 21)
   | Leg 1/3: east 22 (to wall) to Oreburgh City (48, 22)
   | [Sim] below the centers door: east 22 (to wall): held east to blocked at (48, 22).
+  | [Route] below the centers door: east 22 (to wall): facing unknown; the first moved chunk may be the turn, not counted.
   | [Speed] run east: 22 tiles in 3250 ms to the wall.
   | [Route] below the centers door: east 22 (to wall): ended at Oreburgh City (48, 22) (walked).
   | [Leg] {"checkpoint":"01.02b","chunks":22,"dir":"east","end":[["Oreburgh City",48,22]],"end_kind":"wall","event":"below_the_centers_door","interrupts":[],"known":"wall","leg":1,"ms":3250,"planned_end":[["Oreburgh City",48,22]],"tiles":22}
   | Leg 2/3: north 1 (to wall) to Oreburgh City (48, 21)
+  | [Route] Turning north.
   | [Sim] below the centers door: north 1 (to wall): held north to blocked at (48, 21).
   | [Speed] run north: 1 tiles in 1200 ms to the wall.
   | [Route] below the centers door: north 1 (to wall): ended at Oreburgh City (48, 21) (walked).
@@ -902,6 +925,7 @@
   | [Route] above the mine: plan from Oreburgh City (47, 21), Oreburgh City (46, 21): east 2 (to wall) to Oreburgh City (48, 21); west 4 (open) to Oreburgh City (44, 21); south 20 (to wall) to Oreburgh City (44, 41); west 1 (open) to Oreburgh City (43, 41); south 16 (to wall) to Oreburgh City (43, 57); east 3 (open) to Oreburgh City (46, 57)
   | Leg 1/6: east 2 (to wall) to Oreburgh City (48, 21)
   | [Sim] above the mine: east 2 (to wall): held east to blocked at (48, 21).
+  | [Route] above the mine: east 2 (to wall): facing unknown; the first moved chunk may be the turn, not counted.
   | [Speed] run east: 1 tiles in 1150 ms to the wall.
   | [Route] above the mine: east 2 (to wall): ended at Oreburgh City (48, 21) (walked).
   | [Leg] {"checkpoint":"01.03","chunks":1,"dir":"east","end":[["Oreburgh City",48,21]],"end_kind":"wall","event":"above_the_mine","interrupts":[],"known":"wall","leg":1,"ms":1150,"planned_end":[["Oreburgh City",48,21]],"tiles":2}
@@ -911,6 +935,7 @@
   | [Route] above the mine: west 4 (open): ended at Oreburgh City (44, 21) (walked).
   | [Leg] {"checkpoint":"01.03","chunks":4,"dir":"west","end":[["Oreburgh City",44,21]],"end_kind":"open","event":"above_the_mine","interrupts":[],"known":"dead_reckoned","leg":2,"moved":4,"ms":3200,"planned_end":[["Oreburgh City",44,21]],"tiles":4}
   | Leg 3/6: south 20 (to wall) to Oreburgh City (44, 41)
+  | [Route] Turning south.
   | [Sim] above the mine: south 20 (to wall): held south to blocked at (44, 41).
   | [Speed] run south: 20 tiles in 4050 ms to the wall.
   | [Route] above the mine: south 20 (to wall): ended at Oreburgh City (44, 41) (walked).
@@ -921,6 +946,7 @@
   | [Route] above the mine: west 1 (open): ended at Oreburgh City (43, 41) (walked).
   | [Leg] {"checkpoint":"01.03","chunks":1,"dir":"west","end":[["Oreburgh City",43,41]],"end_kind":"open","event":"above_the_mine","interrupts":[],"known":"dead_reckoned","leg":4,"moved":1,"ms":800,"planned_end":[["Oreburgh City",43,41]],"tiles":1}
   | Leg 5/6: south 16 (to wall) to Oreburgh City (43, 57)
+  | [Route] Turning south.
   | [Sim] above the mine: south 16 (to wall): held south to blocked at (43, 57).
   | [Speed] run south: 16 tiles in 3450 ms to the wall.
   | [Route] above the mine: south 16 (to wall): ended at Oreburgh City (43, 57) (walked).
@@ -1037,38 +1063,35 @@
   looked for 3 fades, 2 banners, 1 doors, 2 tap steps
   | [Route] Turning south.
   | [01.05] out_of_the_gym: through to OreburghCity after 20 taps south.
-  | east of barrys trigger: 6 legs planned
-  | [Route] east of barrys trigger: plan from Oreburgh City (26, 21), Oreburgh City (26, 22): south 5 (to wall) to Oreburgh City (26, 26); west 2 (to wall) to Oreburgh City (24, 26); north 5 (to wall) to Oreburgh City (24, 21); west 9 (open) to Oreburgh City (15, 21); north 8 (open) to Oreburgh City (15, 13); west 8 (open) to Oreburgh City (7, 13)
-  | Leg 1/6: south 5 (to wall) to Oreburgh City (26, 26)
+  | east of barrys trigger: 5 legs planned
+  | [Route] east of barrys trigger: plan from Oreburgh City (26, 21), Oreburgh City (26, 22): south 5 (to wall) to Oreburgh City (26, 26); north 1 (open) to Oreburgh City (26, 25); west 14 (to wall) to Oreburgh City (12, 25); north 12 (open) to Oreburgh City (12, 13); west 5 (open) to Oreburgh City (7, 13)
+  | Leg 1/5: south 5 (to wall) to Oreburgh City (26, 26)
   | [Sim] east of barrys trigger: south 5 (to wall): held south to blocked at (26, 26).
+  | [Route] east of barrys trigger: south 5 (to wall): facing unknown; the first moved chunk may be the turn, not counted.
   | [Speed] run south: 4 tiles in 1800 ms to the wall.
   | [Route] east of barrys trigger: south 5 (to wall): ended at Oreburgh City (26, 26) (walked).
   | [Leg] {"checkpoint":"01.05","chunks":5,"dir":"south","end":[["Oreburgh City",26,26]],"end_kind":"wall","event":"east_of_barrys_trigger","interrupts":[],"known":"wall","leg":1,"ms":1800,"planned_end":[["Oreburgh City",26,26]],"tiles":5}
-  | Leg 2/6: west 2 (to wall) to Oreburgh City (24, 26)
-  | [Sim] east of barrys trigger: west 2 (to wall): held west to blocked at (24, 26).
-  | [Speed] run west: 2 tiles in 1250 ms to the wall.
-  | [Route] east of barrys trigger: west 2 (to wall): ended at Oreburgh City (24, 26) (walked).
-  | [Leg] {"checkpoint":"01.05","chunks":2,"dir":"west","end":[["Oreburgh City",24,26]],"end_kind":"wall","event":"east_of_barrys_trigger","interrupts":[],"known":"wall","leg":2,"ms":1250,"planned_end":[["Oreburgh City",24,26]],"tiles":2}
-  | Leg 3/6: north 5 (to wall) to Oreburgh City (24, 21)
-  | [Sim] east of barrys trigger: north 5 (to wall): held north to blocked at (24, 21).
-  | [Speed] run north: 5 tiles in 1800 ms to the wall.
-  | [Route] east of barrys trigger: north 5 (to wall): ended at Oreburgh City (24, 21) (walked).
-  | [Leg] {"checkpoint":"01.05","chunks":5,"dir":"north","end":[["Oreburgh City",24,21]],"end_kind":"wall","event":"east_of_barrys_trigger","interrupts":[],"known":"wall","leg":3,"ms":1800,"planned_end":[["Oreburgh City",24,21]],"tiles":5}
-  | Leg 4/6: west 9 (open) to Oreburgh City (15, 21)
-  | [Route] Turning west.
-  | [Sim] east of barrys trigger: west 9 (open): 9 taps west, 9 moved, limit at (15, 21).
-  | [Route] east of barrys trigger: west 9 (open): ended at Oreburgh City (15, 21) (walked).
-  | [Leg] {"checkpoint":"01.05","chunks":9,"dir":"west","end":[["Oreburgh City",15,21]],"end_kind":"open","event":"east_of_barrys_trigger","interrupts":[],"known":"dead_reckoned","leg":4,"moved":9,"ms":7200,"planned_end":[["Oreburgh City",15,21]],"tiles":9}
-  | Leg 5/6: north 8 (open) to Oreburgh City (15, 13)
+  | Leg 2/5: north 1 (open) to Oreburgh City (26, 25)
   | [Route] Turning north.
-  | [Sim] east of barrys trigger: north 8 (open): 8 taps north, 8 moved, limit at (15, 13).
-  | [Route] east of barrys trigger: north 8 (open): ended at Oreburgh City (15, 13) (walked).
-  | [Leg] {"checkpoint":"01.05","chunks":8,"dir":"north","end":[["Oreburgh City",15,13]],"end_kind":"open","event":"east_of_barrys_trigger","interrupts":[],"known":"dead_reckoned","leg":5,"moved":8,"ms":6400,"planned_end":[["Oreburgh City",15,13]],"tiles":8}
-  | Leg 6/6: west 8 (open) to Oreburgh City (7, 13)
+  | [Sim] east of barrys trigger: north 1 (open): 1 taps north, 1 moved, limit at (26, 25).
+  | [Route] east of barrys trigger: north 1 (open): ended at Oreburgh City (26, 25) (walked).
+  | [Leg] {"checkpoint":"01.05","chunks":1,"dir":"north","end":[["Oreburgh City",26,25]],"end_kind":"open","event":"east_of_barrys_trigger","interrupts":[],"known":"dead_reckoned","leg":2,"moved":1,"ms":800,"planned_end":[["Oreburgh City",26,25]],"tiles":1}
+  | Leg 3/5: west 14 (to wall) to Oreburgh City (12, 25)
   | [Route] Turning west.
-  | [Sim] east of barrys trigger: west 8 (open): 8 taps west, 8 moved, limit at (7, 13).
-  | [Route] east of barrys trigger: west 8 (open): ended at Oreburgh City (7, 13) (walked).
-  | [Leg] {"checkpoint":"01.05","chunks":8,"dir":"west","end":[["Oreburgh City",7,13]],"end_kind":"open","event":"east_of_barrys_trigger","interrupts":[],"known":"dead_reckoned","leg":6,"moved":8,"ms":6400,"planned_end":[["Oreburgh City",7,13]],"tiles":8}
+  | [Sim] east of barrys trigger: west 14 (to wall): held west to blocked at (12, 25).
+  | [Speed] run west: 14 tiles in 2450 ms to the wall.
+  | [Route] east of barrys trigger: west 14 (to wall): ended at Oreburgh City (12, 25) (walked).
+  | [Leg] {"checkpoint":"01.05","chunks":14,"dir":"west","end":[["Oreburgh City",12,25]],"end_kind":"wall","event":"east_of_barrys_trigger","interrupts":[],"known":"wall","leg":3,"ms":2450,"planned_end":[["Oreburgh City",12,25]],"tiles":14}
+  | Leg 4/5: north 12 (open) to Oreburgh City (12, 13)
+  | [Route] Turning north.
+  | [Sim] east of barrys trigger: north 12 (open): 12 taps north, 12 moved, limit at (12, 13).
+  | [Route] east of barrys trigger: north 12 (open): ended at Oreburgh City (12, 13) (walked).
+  | [Leg] {"checkpoint":"01.05","chunks":12,"dir":"north","end":[["Oreburgh City",12,13]],"end_kind":"open","event":"east_of_barrys_trigger","interrupts":[],"known":"dead_reckoned","leg":4,"moved":12,"ms":9600,"planned_end":[["Oreburgh City",12,13]],"tiles":12}
+  | Leg 5/5: west 5 (open) to Oreburgh City (7, 13)
+  | [Route] Turning west.
+  | [Sim] east of barrys trigger: west 5 (open): 5 taps west, 5 moved, limit at (7, 13).
+  | [Route] east of barrys trigger: west 5 (open): ended at Oreburgh City (7, 13) (walked).
+  | [Leg] {"checkpoint":"01.05","chunks":5,"dir":"west","end":[["Oreburgh City",7,13]],"end_kind":"open","event":"east_of_barrys_trigger","interrupts":[],"known":"dead_reckoned","leg":5,"moved":5,"ms":4000,"planned_end":[["Oreburgh City",7,13]],"tiles":5}
   | [Route] east of barrys trigger: arrived at Oreburgh City (7, 13).
   | [Route] Turning west.
   | [Sim] barrys_trigger: 1 taps west, 1 moved, dialog at (6, 13).
@@ -1084,25 +1107,30 @@
   | [Route] through the gate: plan from OreburghGate (27, 22), OreburghGate (26, 22): north 2 (to wall) to OreburghGate (27, 20), OreburghGate (26, 21); east 1 (to wall) to OreburghGate (27, 20), OreburghGate (27, 21); south 3 (to wall) to OreburghGate (27, 23); west 19 (to wall) to OreburghGate (8, 23); north 1 (to wall) to OreburghGate (8, 22); west 3 (open) to OreburghGate (5, 22)
   | Leg 1/6: north 2 (to wall) to OreburghGate (27, 20), OreburghGate (26, 21)
   | [Sim] through the gate: north 2 (to wall): held north to blocked at (27, 20).
+  | [Route] through the gate: north 2 (to wall): facing unknown; the first moved chunk may be the turn, not counted.
   | [Speed] run north: 1 tiles in 1350 ms to the wall.
   | [Route] through the gate: north 2 (to wall): ended at OreburghGate (27, 20), OreburghGate (26, 21) (walked).
   | [Leg] {"checkpoint":"01.05","chunks":2,"dir":"north","end":[["OreburghGate",27,20],["OreburghGate",26,21]],"end_kind":"wall","event":"through_the_gate","interrupts":[],"known":"wall","leg":1,"ms":1350,"planned_end":[["OreburghGate",27,20],["OreburghGate",26,21]],"tiles":2}
   | Leg 2/6: east 1 (to wall) to OreburghGate (27, 20), OreburghGate (27, 21)
+  | [Route] Turning east.
   | [Sim] through the gate: east 1 (to wall): held east to blocked at (27, 20).
   | [Speed] run east: 0 tiles in 1050 ms to the wall.
   | [Route] through the gate: east 1 (to wall): ended at OreburghGate (27, 20), OreburghGate (27, 21) (walked).
   | [Leg] {"checkpoint":"01.05","chunks":0,"dir":"east","end":[["OreburghGate",27,20],["OreburghGate",27,21]],"end_kind":"wall","event":"through_the_gate","interrupts":[],"known":"wall","leg":2,"ms":1050,"planned_end":[["OreburghGate",27,20],["OreburghGate",27,21]],"tiles":1}
   | Leg 3/6: south 3 (to wall) to OreburghGate (27, 23)
+  | [Route] Turning south.
   | [Sim] through the gate: south 3 (to wall): held south to blocked at (27, 23).
   | [Speed] run south: 2 tiles in 1500 ms to the wall.
   | [Route] through the gate: south 3 (to wall): ended at OreburghGate (27, 23) (walked).
   | [Leg] {"checkpoint":"01.05","chunks":3,"dir":"south","end":[["OreburghGate",27,23]],"end_kind":"wall","event":"through_the_gate","interrupts":[],"known":"wall","leg":3,"ms":1500,"planned_end":[["OreburghGate",27,23]],"tiles":3}
   | Leg 4/6: west 19 (to wall) to OreburghGate (8, 23)
+  | [Route] Turning west.
   | [Sim] through the gate: west 19 (to wall): held west to blocked at (8, 23).
   | [Speed] run west: 19 tiles in 2950 ms to the wall.
   | [Route] through the gate: west 19 (to wall): ended at OreburghGate (8, 23) (walked).
   | [Leg] {"checkpoint":"01.05","chunks":19,"dir":"west","end":[["OreburghGate",8,23]],"end_kind":"wall","event":"through_the_gate","interrupts":[],"known":"wall","leg":4,"ms":2950,"planned_end":[["OreburghGate",8,23]],"tiles":19}
   | Leg 5/6: north 1 (to wall) to OreburghGate (8, 22)
+  | [Route] Turning north.
   | [Sim] through the gate: north 1 (to wall): held north to blocked at (8, 22).
   | [Speed] run north: 1 tiles in 1200 ms to the wall.
   | [Route] through the gate: north 1 (to wall): ended at OreburghGate (8, 22) (walked).
@@ -1123,10 +1151,12 @@
   | [Route] up jubilifes road: plan from Route 203 (55, 9): south 10 (to wall) to Route 203 (55, 19); west 17 (to wall) to Route 203 (38, 19); north 1 (open) to Route 203 (38, 18); west 60 (open) to Jubilife City (41, 22); north 14 (to wall) to Jubilife City (41, 8)
   | Leg 1/5: south 10 (to wall) to Route 203 (55, 19)
   | [Sim] up jubilifes road: south 10 (to wall): held south to blocked at (118, 23).
+  | [Route] up jubilifes road: south 10 (to wall): facing unknown; the first moved chunk may be the turn, not counted.
   | [Speed] run south: 10 tiles in 2550 ms to the wall.
   | [Route] up jubilifes road: south 10 (to wall): ended at Route 203 (55, 19) (walked).
   | [Leg] {"checkpoint":"01.06","chunks":10,"dir":"south","end":[["Route 203",55,19]],"end_kind":"wall","event":"up_jubilifes_road","interrupts":[],"known":"wall","leg":1,"ms":2550,"planned_end":[["Route 203",55,19]],"tiles":10}
   | Leg 2/5: west 17 (to wall) to Route 203 (38, 19)
+  | [Route] Turning west.
   | [Sim] up jubilifes road: west 17 (to wall): held west to blocked at (101, 23).
   | [Speed] run west: 17 tiles in 2750 ms to the wall.
   | [Route] up jubilifes road: west 17 (to wall): ended at Route 203 (38, 19) (walked).
@@ -1143,6 +1173,7 @@
   | [Route] up jubilifes road: west 60 (open): ended at Jubilife City (41, 22) (walked).
   | [Leg] {"checkpoint":"01.06","chunks":60,"dir":"west","end":[["Jubilife City",41,22]],"end_kind":"open","event":"up_jubilifes_road","interrupts":[],"known":"dead_reckoned","leg":4,"moved":60,"ms":48000,"planned_end":[["Jubilife City",41,22]],"tiles":60}
   | Leg 5/5: north 14 (to wall) to Jubilife City (41, 8)
+  | [Route] Turning north.
   | [Sim] up jubilifes road: north 14 (to wall): held north to blocked at (41, 8).
   | [Speed] run north: 14 tiles in 3150 ms to the wall.
   | [Route] up jubilifes road: north 14 (to wall): ended at Jubilife City (41, 8) (walked).
@@ -1153,6 +1184,7 @@
   | [Route] below rowans trigger: plan from Jubilife City (41, 8): east 6 (to wall) to Jubilife City (47, 8)
   | Leg 1/1: east 6 (to wall) to Jubilife City (47, 8)
   | [Sim] below rowans trigger: east 6 (to wall): held east to blocked at (47, 8).
+  | [Route] below rowans trigger: east 6 (to wall): facing unknown; the first moved chunk may be the turn, not counted.
   | [Speed] run east: 6 tiles in 1650 ms to the wall.
   | [Route] below rowans trigger: east 6 (to wall): ended at Jubilife City (47, 8) (walked).
   | [Leg] {"checkpoint":"01.06","chunks":6,"dir":"east","end":[["Jubilife City",47,8]],"end_kind":"wall","event":"below_rowans_trigger","interrupts":[],"known":"wall","leg":1,"ms":1650,"planned_end":[["Jubilife City",47,8]],"tiles":6}
@@ -1174,45 +1206,63 @@
   | [Route] west to the wall: plan from Jubilife City (46, 5), Jubilife City (47, 5): west 3 (to wall) to Jubilife City (44, 5)
   | Leg 1/1: west 3 (to wall) to Jubilife City (44, 5)
   | [Sim] west to the wall: west 3 (to wall): held west to blocked at (44, 5).
+  | [Route] west to the wall: west 3 (to wall): facing unknown; the first moved chunk may be the turn, not counted.
   | [Speed] run west: 2 tiles in 1250 ms to the wall.
   | [Route] west to the wall: west 3 (to wall): ended at Jubilife City (44, 5) (walked).
   | [Leg] {"checkpoint":"01.08","chunks":2,"dir":"west","end":[["Jubilife City",44,5]],"end_kind":"wall","event":"west_to_the_wall","interrupts":[],"known":"wall","leg":1,"ms":1250,"planned_end":[["Jubilife City",44,5]],"tiles":3}
   | [Route] west to the wall: arrived at Jubilife City (44, 5).
   | below the ravaged path: 5 legs planned
-  | [Route] below the ravaged path: plan from Jubilife City (44, 5): east 2 (open) to Jubilife City (46, 5); north 19 (to wall) to Route 204 (14, 18); west 2 (open) to Route 204 (12, 18); north 16 (to wall) to Route 204 (12, 2); west 1 (to wall) to Route 204 (11, 2)
+  | [Route] below the ravaged path: plan from Jubilife City (44, 5): east 2 (open) to Jubilife City (46, 5); north 19 (to wall) to Route 204 (14, 18); west 4 (open) to Route 204 (10, 18); north 15 (to wall) to Route 204 (10, 3); east 1 (open) to Route 204 (11, 3)
   | Leg 1/5: east 2 (open) to Jubilife City (46, 5)
   | [Route] Turning east.
   | [Sim] below the ravaged path: east 2 (open): 2 taps east, 2 moved, limit at (46, 37).
   | [Route] below the ravaged path: east 2 (open): ended at Jubilife City (46, 5) (walked).
   | [Leg] {"checkpoint":"01.08","chunks":2,"dir":"east","end":[["Jubilife City",46,5]],"end_kind":"open","event":"below_the_ravaged_path","interrupts":[],"known":"dead_reckoned","leg":1,"moved":2,"ms":1600,"planned_end":[["Jubilife City",46,5]],"tiles":2}
   | Leg 2/5: north 19 (to wall) to Route 204 (14, 18)
+  | [Route] Turning north.
   | [Sim] below the ravaged path: north 19 (to wall): held north to dialog at (46, 21).
   | [Route] below the ravaged path: north 19 (to wall): no banner read for Route 204; going on.
   | [Route] below the ravaged path: Lass Sarah stopped us about Route 204 (14, 21).
   | Fighting Lass Sarah.
-  | [Route] below the ravaged path: north 19 (to wall): on to the wall after the battle.
+  | [Route] below the ravaged path: north 19 (to wall): on to the wall: on to the wall after the battle.
   | [Sim] below the ravaged path: north 19 (to wall): on to the wall: held north to blocked at (46, 18).
+  | [Route] below the ravaged path: north 19 (to wall): on to the wall: facing unknown; the first moved chunk may be the turn, not counted.
   | [Route] below the ravaged path: north 19 (to wall): ended at Route 204 (14, 18) (walked).
   | [Leg] {"checkpoint":"01.08","chunks":19,"dir":"north","end":[["Route 204",14,18]],"end_kind":"wall","event":"below_the_ravaged_path","interrupts":["trainer"],"known":"wall","leg":2,"ms":4150,"planned_end":[["Route 204",14,18]],"tiles":19}
-  | Leg 3/5: west 2 (open) to Route 204 (12, 18)
+  | Leg 3/5: west 4 (open) to Route 204 (10, 18)
   | [Route] Turning west.
-  | [Sim] below the ravaged path: west 2 (open): 2 taps west, 2 moved, limit at (44, 18).
-  | [Route] below the ravaged path: west 2 (open): ended at Route 204 (12, 18) (walked).
-  | [Leg] {"checkpoint":"01.08","chunks":2,"dir":"west","end":[["Route 204",12,18]],"end_kind":"open","event":"below_the_ravaged_path","interrupts":[],"known":"dead_reckoned","leg":3,"moved":2,"ms":1600,"planned_end":[["Route 204",12,18]],"tiles":2}
-  | Leg 4/5: north 16 (to wall) to Route 204 (12, 2)
-  | [Sim] below the ravaged path: north 16 (to wall): held north to blocked at (44, 2).
-  | [Speed] run north: 16 tiles in 3450 ms to the wall.
-  | [Route] below the ravaged path: north 16 (to wall): ended at Route 204 (12, 2) (walked).
-  | [Leg] {"checkpoint":"01.08","chunks":16,"dir":"north","end":[["Route 204",12,2]],"end_kind":"wall","event":"below_the_ravaged_path","interrupts":[],"known":"wall","leg":4,"ms":3450,"planned_end":[["Route 204",12,2]],"tiles":16}
-  | Leg 5/5: west 1 (to wall) to Route 204 (11, 2)
-  | [Sim] below the ravaged path: west 1 (to wall): held west to blocked at (43, 2).
-  | [Speed] run west: 1 tiles in 1150 ms to the wall.
-  | [Route] below the ravaged path: west 1 (to wall): ended at Route 204 (11, 2) (walked).
-  | [Leg] {"checkpoint":"01.08","chunks":1,"dir":"west","end":[["Route 204",11,2]],"end_kind":"wall","event":"below_the_ravaged_path","interrupts":[],"known":"wall","leg":5,"ms":1150,"planned_end":[["Route 204",11,2]],"tiles":1}
-  | [Route] below the ravaged path: no banner read for Route 204; going on.
-  | [Route] below the ravaged path: arrived at Route 204 (11, 2).
+  | [Sim] below the ravaged path: west 4 (open): 4 taps west, 3 moved, dialog at (43, 18).
+  | [Route] below the ravaged path: Lass Sarah stopped us about Route 204 (12, 18).
+  | Fighting Lass Sarah.
+  | [Route] below the ravaged path: west 4 (open): 3 taps before the battle, or where they saw us, at Route 204 (11, 18), Route 204 (12, 18); planning again.
+  | [Leg] {"checkpoint":"01.08","chunks":3,"dir":"west","end":[["Route 204",11,18],["Route 204",12,18]],"end_kind":"open","event":"below_the_ravaged_path","interrupts":["trainer"],"known":"seen","leg":3,"moved":3,"ms":2400,"note":"replan","planned_end":[["Route 204",10,18]],"tiles":4}
+  | below the ravaged path: 4 legs planned
+  | [Route] below the ravaged path: plan from Route 204 (11, 18), Route 204 (12, 18): west 4 (to wall) to Route 204 (8, 18); east 2 (open) to Route 204 (10, 18); north 15 (to wall) to Route 204 (10, 3); east 1 (open) to Route 204 (11, 3)
+  | Leg 1/4: west 4 (to wall) to Route 204 (8, 18)
+  | [Sim] below the ravaged path: west 4 (to wall): held west to blocked at (40, 18).
+  | [Speed] run west: 3 tiles in 1350 ms to the wall.
+  | [Route] below the ravaged path: west 4 (to wall): ended at Route 204 (8, 18) (walked).
+  | [Leg] {"checkpoint":"01.08","chunks":3,"dir":"west","end":[["Route 204",8,18]],"end_kind":"wall","event":"below_the_ravaged_path","interrupts":[],"known":"wall","leg":4,"ms":1350,"planned_end":[["Route 204",8,18]],"tiles":4}
+  | Leg 2/4: east 2 (open) to Route 204 (10, 18)
+  | [Route] Turning east.
+  | [Sim] below the ravaged path: east 2 (open): 2 taps east, 2 moved, limit at (42, 18).
+  | [Route] below the ravaged path: east 2 (open): ended at Route 204 (10, 18) (walked).
+  | [Leg] {"checkpoint":"01.08","chunks":2,"dir":"east","end":[["Route 204",10,18]],"end_kind":"open","event":"below_the_ravaged_path","interrupts":[],"known":"dead_reckoned","leg":5,"moved":2,"ms":1600,"planned_end":[["Route 204",10,18]],"tiles":2}
+  | Leg 3/4: north 15 (to wall) to Route 204 (10, 3)
   | [Route] Turning north.
-  | [01.08] into_the_ravaged_path: through to RavagedPath after 1 taps north.
+  | [Sim] below the ravaged path: north 15 (to wall): held north to blocked at (42, 3).
+  | [Speed] run north: 15 tiles in 3300 ms to the wall.
+  | [Route] below the ravaged path: north 15 (to wall): ended at Route 204 (10, 3) (walked).
+  | [Leg] {"checkpoint":"01.08","chunks":15,"dir":"north","end":[["Route 204",10,3]],"end_kind":"wall","event":"below_the_ravaged_path","interrupts":[],"known":"wall","leg":6,"ms":3300,"planned_end":[["Route 204",10,3]],"tiles":15}
+  | Leg 4/4: east 1 (open) to Route 204 (11, 3)
+  | [Route] Turning east.
+  | [Sim] below the ravaged path: east 1 (open): 1 taps east, 1 moved, limit at (43, 3).
+  | [Route] below the ravaged path: east 1 (open): ended at Route 204 (11, 3) (walked).
+  | [Leg] {"checkpoint":"01.08","chunks":1,"dir":"east","end":[["Route 204",11,3]],"end_kind":"open","event":"below_the_ravaged_path","interrupts":[],"known":"dead_reckoned","leg":7,"moved":1,"ms":800,"planned_end":[["Route 204",11,3]],"tiles":1}
+  | [Route] below the ravaged path: no banner read for Route 204; going on.
+  | [Route] below the ravaged path: arrived at Route 204 (11, 3).
+  | [Route] Turning north.
+  | [01.08] into_the_ravaged_path: through to RavagedPath after 2 taps north.
 01.09: completed
   ends on Route 204 (20, 26)
   stubbed save
@@ -1222,6 +1272,7 @@
   | [Route] west of the rock: plan from RavagedPath (19, 50): north 10 (to wall) to RavagedPath (19, 40); south 3 (open) to RavagedPath (19, 43); east 2 (open) to RavagedPath (21, 43)
   | Leg 1/3: north 10 (to wall) to RavagedPath (19, 40)
   | [Sim] west of the rock: north 10 (to wall): held north to blocked at (19, 40).
+  | [Route] west of the rock: north 10 (to wall): facing unknown; the first moved chunk may be the turn, not counted.
   | [Speed] run north: 10 tiles in 2550 ms to the wall.
   | [Route] west of the rock: north 10 (to wall): ended at RavagedPath (19, 40) (walked).
   | [Leg] {"checkpoint":"01.09","chunks":10,"dir":"north","end":[["RavagedPath",19,40]],"end_kind":"wall","event":"west_of_the_rock","interrupts":[],"known":"wall","leg":1,"ms":2550,"planned_end":[["RavagedPath",19,40]],"tiles":10}
@@ -1240,10 +1291,12 @@
   | [Route] above the way out: plan from RavagedPath (21, 43): east 8 (to wall) to RavagedPath (29, 43); south 1 (to wall) to RavagedPath (29, 44); west 1 (open) to RavagedPath (28, 44)
   | Leg 1/3: east 8 (to wall) to RavagedPath (29, 43)
   | [Sim] above the way out: east 8 (to wall): held east to blocked at (29, 43).
+  | [Route] above the way out: east 8 (to wall): facing unknown; the first moved chunk may be the turn, not counted.
   | [Speed] run east: 8 tiles in 1850 ms to the wall.
   | [Route] above the way out: east 8 (to wall): ended at RavagedPath (29, 43) (walked).
   | [Leg] {"checkpoint":"01.09","chunks":8,"dir":"east","end":[["RavagedPath",29,43]],"end_kind":"wall","event":"above_the_way_out","interrupts":[],"known":"wall","leg":1,"ms":1850,"planned_end":[["RavagedPath",29,43]],"tiles":8}
   | Leg 2/3: south 1 (to wall) to RavagedPath (29, 44)
+  | [Route] Turning south.
   | [Sim] above the way out: south 1 (to wall): held south to blocked at (29, 44).
   | [Speed] run south: 1 tiles in 1200 ms to the wall.
   | [Route] above the way out: south 1 (to wall): ended at RavagedPath (29, 44) (walked).
@@ -1273,6 +1326,7 @@
   | [Route] line 2: plan from Route 204 (20, 27): west 10 (to wall) to Route 204 (10, 27); east 1 (open) to Route 204 (11, 27)
   | Leg 1/2: west 10 (to wall) to Route 204 (10, 27)
   | [Sim] line 2: west 10 (to wall): held west to blocked at (10, 59).
+  | [Route] line 2: west 10 (to wall): facing unknown; the first moved chunk may be the turn, not counted.
   | [Speed] run west: 10 tiles in 2050 ms to the wall.
   | [Route] line 2: west 10 (to wall): ended at Route 204 (10, 27) (walked).
   | [Leg] {"checkpoint":"01.10","chunks":10,"dir":"west","end":[["Route 204",10,27]],"end_kind":"wall","event":"line_2","interrupts":[],"known":"wall","leg":1,"ms":2050,"planned_end":[["Route 204",10,27]],"tiles":10}
@@ -1296,8 +1350,9 @@
   | [Sim] line 4: east 10 (to wall): held east to dialog at (17, 54).
   | [Route] line 4: Aroma Lady Taylor stopped us about Route 204 (17, 22).
   | Fighting Aroma Lady Taylor.
-  | [Route] line 4: east 10 (to wall): on to the wall after the battle.
+  | [Route] line 4: east 10 (to wall): on to the wall: on to the wall after the battle.
   | [Sim] line 4: east 10 (to wall): on to the wall: held east to blocked at (21, 54).
+  | [Route] line 4: east 10 (to wall): on to the wall: facing unknown; the first moved chunk may be the turn, not counted.
   | [Route] line 4: east 10 (to wall): ended at Route 204 (21, 22) (walked).
   | [Leg] {"checkpoint":"01.10","chunks":10,"dir":"east","end":[["Route 204",21,22]],"end_kind":"wall","event":"line_4","interrupts":["trainer"],"known":"wall","leg":1,"ms":2300,"planned_end":[["Route 204",21,22]],"tiles":10}
   | Leg 2/2: west 2 (open) to Route 204 (19, 22)
@@ -1312,8 +1367,9 @@
   | [Sim] line 5: north 15 (to wall): held north to dialog at (19, 44).
   | [Route] line 5: Aroma Lady Taylor stopped us about Route 204 (19, 20).
   | Fighting Aroma Lady Taylor.
-  | [Route] line 5: north 15 (to wall): on to the wall after the battle.
+  | [Route] line 5: north 15 (to wall): on to the wall: on to the wall after the battle.
   | [Sim] line 5: north 15 (to wall): on to the wall: held north to blocked at (19, 39).
+  | [Route] line 5: north 15 (to wall): on to the wall: facing unknown; the first moved chunk may be the turn, not counted.
   | [Route] line 5: north 15 (to wall): ended at Route 204 (19, 7) (walked).
   | [Leg] {"checkpoint":"01.10","chunks":15,"dir":"north","end":[["Route 204",19,7]],"end_kind":"wall","event":"line_5","interrupts":["trainer"],"known":"wall","leg":1,"ms":3550,"planned_end":[["Route 204",19,7]],"tiles":15}
   | Leg 2/2: south 5 (open) to Route 204 (19, 12)
@@ -1326,6 +1382,7 @@
   | [Route] line 6: plan from Route 204 (19, 12): west 9 (to wall) to Route 204 (10, 12); east 1 (open) to Route 204 (11, 12)
   | Leg 1/2: west 9 (to wall) to Route 204 (10, 12)
   | [Sim] line 6: west 9 (to wall): held west to blocked at (10, 44).
+  | [Route] line 6: west 9 (to wall): facing unknown; the first moved chunk may be the turn, not counted.
   | [Speed] run west: 9 tiles in 1950 ms to the wall.
   | [Route] line 6: west 9 (to wall): ended at Route 204 (10, 12) (walked).
   | [Leg] {"checkpoint":"01.10","chunks":9,"dir":"west","end":[["Route 204",10,12]],"end_kind":"wall","event":"line_6","interrupts":[],"known":"wall","leg":1,"ms":1950,"planned_end":[["Route 204",10,12]],"tiles":9}
