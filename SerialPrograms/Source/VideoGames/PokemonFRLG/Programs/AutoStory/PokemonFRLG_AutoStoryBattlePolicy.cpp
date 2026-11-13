@@ -202,9 +202,9 @@ std::optional<PolicyItem> PolicyState::cure(const Supplies& supplies, const Poli
     const std::string_view own_cure = cure_of(view.status);
     std::vector<std::string_view> candidates;
     if (!own_cure.empty()){
-        candidates = {own_cure, "full-heal", "full-restore"};
+        candidates = {own_cure, "full-heal"};
     }else if (view.status == StatusCondition::OTHER){
-        candidates = {"full-heal", "full-restore"};
+        candidates = {"full-heal"};
     }
     for (const std::string_view item : candidates){
         if (bag_count(supplies, item) > 0){
@@ -215,6 +215,14 @@ std::optional<PolicyItem> PolicyState::cure(const Supplies& supplies, const Poli
 }
 
 std::optional<PolicyItem> PolicyState::heal(const Supplies& supplies, const PolicyView& view, const Danger& danger) const{
+    //  A Full Restore is a big heal and a cure in one: kept for the last foe,
+    //  the strongest, when HP isn't full, not spent curing a status.
+    const bool last_foe = m_policy.foes.size() > 1 && view.foe_index + 1 == m_policy.foes.size();
+    if (last_foe && view.hp < view.max_hp && bag_count(supplies, "full-restore") > 0){
+        return medicine_item("full-restore", std::format(
+            "full-restore: the last foe, HP {:.0f}/{:.0f}", view.hp, view.max_hp
+        ));
+    }
     if (view.hp > std::max(view.max_hp / 2, danger.max)){
         return std::nullopt;
     }

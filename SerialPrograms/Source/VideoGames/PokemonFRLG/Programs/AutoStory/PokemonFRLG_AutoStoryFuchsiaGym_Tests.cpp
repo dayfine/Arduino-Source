@@ -225,15 +225,11 @@ UnitTestResult test_dig_not_picked_against_levitate(){
     lead.level = 39;
     lead.moves = {{"bite", 25}, {"water-pulse", 20}, {"surf", 15}, {"dig", 10}};
     constexpr size_t SURF = 2;
-    constexpr size_t WATER_PULSE = 1;
-    for (std::string_view foe : {"koffing", "weezing"}){
+    //  Koga's four, in order; the user won by hand with Surf every turn.
+    for (std::string_view foe : {"koffing", "muk", "koffing", "weezing"}){
         if (attack_slot_against(lead, {std::string(foe)}) != SURF){
-            return std::format("Against {}: expected Surf, not Dig.", foe);
+            return std::format("Against {}: expected Surf.", foe);
         }
-    }
-    const std::optional<size_t> muk = attack_slot_against(lead, {"muk"});
-    if (muk != SURF && muk != WATER_PULSE){
-        return "Against Muk: expected Surf or Water Pulse, not Dig.";
     }
     if (attack_slot_against(lead, {"koffing", "muk", "weezing"}) != SURF){
         return "Against Koga's whole party: expected Surf.";
@@ -494,7 +490,7 @@ const AutoStoryFuchsiaGymCase AUTO_STORY_FUCHSIA_GYM_CASES[] = {
     },
     {
         .input = {.name = "Dig is not picked against Levitate", .body = test_dig_not_picked_against_levitate},
-        .expectation = {.description = "Surf, not Dig, against Koffing and Weezing; Surf or Water Pulse against Muk"},
+        .expectation = {.description = "Surf, not Dig, against all four of Koga's Pokemon"},
     },
     {
         .input = {.name = "foe abilities that grant immunity", .body = test_ability_immunities},

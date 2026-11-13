@@ -140,6 +140,40 @@ UnitTestResult test_poison_antidote(){
     return true;
 }
 
+//  The 2026-11-12 run spent the only Full Restore on turn 7 to cure poison.
+//  A status takes the cheap cure (Full Heal, Antidote) and never the Full
+//  Restore; the Full Restore goes to the last foe, Weezing, at less than
+//  full HP, and not to an earlier one.
+UnitTestResult test_full_restore_kept_for_last_foe(){
+    Supplies bag;
+    set_from_bag(bag, {{"full-restore", 1}, {"full-heal", 1}, {"x-special", 19}});
+    PolicyState state(koga_policy());
+    const std::string cured = use(state, bag, koga_view(100, 0, StatusCondition::POISON));
+    if (cured == "full-restore"){
+        return "Expected a Full Heal for poison, not the Full Restore.";
+    }
+    Supplies only_restore;
+    set_from_bag(only_restore, {{"full-restore", 1}, {"x-special", 19}});
+    PolicyState lone(koga_policy());
+    if (use(lone, only_restore, koga_view(100, 0, StatusCondition::POISON)) == "full-restore"){
+        return "Expected the Full Restore kept when it would only cure poison.";
+    }
+    PolicyState weezing(koga_policy());
+    weezing.item_used("x-special");
+    const std::string last = use(weezing, only_restore, koga_view(100, 3));
+    if (last != "full-restore"){
+        return std::format("Expected the Full Restore at 100/122 against Weezing, got \"{}\".", last);
+    }
+    PolicyState full(koga_policy());
+    full.item_used("x-special");
+    Supplies again;
+    set_from_bag(again, {{"full-restore", 1}, {"x-special", 19}});
+    if (use(full, again, koga_view(122, 3)) == "full-restore"){
+        return "Expected no Full Restore at full HP.";
+    }
+    return true;
+}
+
 UnitTestResult test_heal_before_self_destruct(){
     PolicyState state(koga_policy());
     state.item_used("x-special");
@@ -484,6 +518,10 @@ const std::vector<AutoStoryBattlePolicyCase> AUTO_STORY_BATTLE_POLICY_CASES = {
     {
         .input = {.name = "poison: the Antidote while the HP outlasts a turn", .body = test_poison_antidote},
         .expectation = {.description = "the Antidote, none from an empty bag"},
+    },
+    {
+        .input = {.name = "the Full Restore is kept for the last foe", .body = test_full_restore_kept_for_last_foe},
+        .expectation = {.description = "poison takes a Full Heal; the Full Restore heals at Weezing below full HP"},
     },
     {
         .input = {.name = "a heal before Self-Destruct, not against Muk", .body = test_heal_before_self_destruct},
