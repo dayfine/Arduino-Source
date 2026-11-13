@@ -111,7 +111,10 @@ private:
     std::optional<PolicyItem> cure(const Supplies& supplies, const PolicyView& view, const Danger& danger) const;
     std::optional<PolicyItem> heal(const Supplies& supplies, const PolicyView& view, const Danger& danger) const;
     std::optional<PolicyItem> setup(const Supplies& supplies, const PolicyView& view) const;
-    std::optional<PolicyItem> planning_heal(const Supplies& supplies, const PolicyView& view, const Danger& danger, int turns) const;
+    //  `waiting_on` is for the log: the setup the HP reserve is for, or that none is pending.
+    std::optional<PolicyItem> planning_heal(
+        const Supplies& supplies, const PolicyView& view, const Danger& danger, int turns, std::string_view waiting_on
+    ) const;
     int setup_turns(const Supplies& supplies, const PolicyView& view, bool guard) const;
 
     const BattlePolicy m_policy;
