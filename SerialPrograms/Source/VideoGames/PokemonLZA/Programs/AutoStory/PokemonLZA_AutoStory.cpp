@@ -72,6 +72,12 @@ const StringSelectDatabase& checkpoint_database(){
 
 AutoStory::AutoStory()
     : RUN(checkpoint_database(), Gen8ToGen9Languages_Database())
+    , RELOAD_AT_BOUNDARIES(
+        "<b>Reload at Checkpoint Boundaries:</b><br>Reload the save before a checkpoint whose plan asks for it "
+        "when the run comes from the checkpoint before. Off: run straight on. A failed checkpoint's retry reloads either way.",
+        LockMode::LOCK_WHILE_RUNNING,
+        false
+    )
     , PLAYER_NAME(
         false,
         "<b>Player Name:</b><br>New game only. Letters and digits; a capital only as the first letter.",
@@ -98,6 +104,7 @@ AutoStory::AutoStory()
 {
     PA_ADD_OPTION(RUN);
     PA_ADD_OPTION(BATTLE_AI);
+    PA_ADD_OPTION(RELOAD_AT_BOUNDARIES);
     PA_ADD_OPTION(PLAYER_NAME);
     PA_ADD_OPTION(PLAYER_LOOK);
     PA_ADD_OPTION(NAME_FIRST_LETTER_AUTO_CAPS);
@@ -220,7 +227,15 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         return;
     }
     const std::vector<StoryCheckpoint> checkpoints = story_run_rows(rows, first, last);
-    const SegmentReport report = run_plza_segment(game, story_data, checkpoints, RUN.policy().attempts_per_checkpoint, engine, backend, state);
+    const BoundaryReload boundary_reload = RELOAD_AT_BOUNDARIES ? BoundaryReload::AT_PLAN_BOUNDARIES : BoundaryReload::STRAIGHT_THROUGH;
+    env.console.log(
+        boundary_reload == BoundaryReload::AT_PLAN_BOUNDARIES
+            ? "AutoStory: reloads the save at checkpoint boundaries whose plan asks for it."
+            : "AutoStory: runs straight through checkpoint boundaries, no reload."
+    );
+    const SegmentReport report = run_plza_segment(
+        game, story_data, checkpoints, RUN.policy().attempts_per_checkpoint, boundary_reload, engine, backend, state
+    );
     record_story_counts(report.story_counts(), env.current_stats<AutoStoryStats>());
     env.update_stats();
     if (!report.completed){
