@@ -23,10 +23,17 @@
         "kind": "battle",
         "args": {
           "trainer": "TRAINER_LEADER_BLAINE",
-          "foes": ["growlithe", "ponyta", "rapidash", "arcanine"]
+          "foes": ["growlithe", "ponyta", "rapidash", "arcanine"],
+          "policy": "solo-recovery",
+          "foe_threats": [
+            [60, 21, 14, 44, 23, 0, 0],
+            [69, 23, 17, 50, 26, 0, 0],
+            [93, 25, 19, 54, 28, 0, 0],
+            [84, 39, 27, 84, 43, 0, 0]
+          ]
         },
         "declared_after": {"map": "CinnabarIsland_Gym", "tiles": [[5, 5]], "facing": "north"},
-        "why": "Blaine (TRAINER_LEADER_BLAINE): Growlithe Lv42, Ponyta Lv40, Rapidash Lv42, Arcanine Lv47 (pokeguy: one Surf each, 1:21:44 to 1:23:09); then the VOLCANOBADGE and TM38 Fire Blast, read to the overworld with the battle's text"
+        "why": "Blaine (TRAINER_LEADER_BLAINE), fought by pokeguy's policy B (solo-recovery: cure and heal by safety, no setup; the doc's blaine row, foe_threats from its stats): Growlithe Lv42, Ponyta Lv40, Rapidash Lv42, Arcanine Lv47 (pokeguy: one Surf each, 1:21:44 to 1:23:09); then the VOLCANOBADGE and TM38 Fire Blast, read to the overworld with the battle's text"
       },
       {
         "id": "above_door_6",
