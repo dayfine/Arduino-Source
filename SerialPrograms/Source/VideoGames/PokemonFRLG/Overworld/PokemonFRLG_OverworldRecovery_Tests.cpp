@@ -327,9 +327,22 @@ UnitTestResult test_route_logged(){
         "[Route] Leg 2/2: west 1 (open) to Corridor (3, 1)",
         "[Route] test walk: west 1 (open): ended at Corridor (3, 1) (walked).",
     };
+    //  The [Leg] records are the replay's; they are checked apart.
+    std::vector<std::string> logs;
+    size_t leg_records = 0;
+    for (const std::string& line : script.logs){
+        if (line.starts_with("[Leg] ")){
+            leg_records++;
+        }else{
+            logs.push_back(line);
+        }
+    }
+    if (leg_records != route.size()){
+        return "Expected one [Leg] record per leg, got " + std::to_string(leg_records) + ".";
+    }
     for (size_t c = 0; c < expected.size(); c++){
-        const std::string got = c < script.logs.size() ? "\"" + script.logs[c] + "\"" : std::string("nothing");
-        if (c >= script.logs.size() || script.logs[c] != expected[c]){
+        const std::string got = c < logs.size() ? "\"" + logs[c] + "\"" : std::string("nothing");
+        if (c >= logs.size() || logs[c] != expected[c]){
             return "Log line " + std::to_string(c) + ": expected \"" + expected[c] + "\", got " + got + ".";
         }
     }

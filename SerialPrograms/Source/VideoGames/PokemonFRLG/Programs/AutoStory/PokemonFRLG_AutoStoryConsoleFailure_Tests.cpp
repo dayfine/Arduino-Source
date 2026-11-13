@@ -120,6 +120,12 @@ private:
         const MapPosition start{failure.start->map, failure.start->tile};
         const std::optional<std::vector<RouteStep>> route = fixed_route(story_maps(), start, walk.legs);
         if (!route || route->empty()){
+            for (size_t n = 1; n <= walk.legs.size(); n++){
+                const std::vector<Pokemon::StoryLeg> prefix(walk.legs.begin(), walk.legs.begin() + n);
+                if (!fixed_route(story_maps(), start, prefix)){
+                    return name + ": leg " + std::to_string(n) + " is blocked";
+                }
+            }
             return name + ": the walk's legs are not a route from " + to_string(start);
         }
         OverworldSim sim(story_maps(), start, *failure.start_facing, script_of(failure));
