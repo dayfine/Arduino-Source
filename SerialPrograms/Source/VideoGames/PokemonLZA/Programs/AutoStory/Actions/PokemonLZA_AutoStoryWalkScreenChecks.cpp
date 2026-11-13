@@ -73,7 +73,8 @@ Pokemon::Outcome check_can_walk(PlzaBackend& backend, std::string_view walk){
 }
 
 Pokemon::Outcome walk_until(
-    PlzaBackend& backend, std::string_view walk, const StoryMove& move, const PlzaReader& heading, EngineEvent end
+    PlzaBackend& backend, std::string_view walk, const StoryMove& move, const PlzaReader& heading, EngineEvent end,
+    Pokemon::StoryPausePoints* pause
 ){
     StoryMove head = move;
     Milliseconds hold = 0ms;
@@ -81,7 +82,7 @@ Pokemon::Outcome walk_until(
         hold = head.legs.back().walk;
         head.legs.back().walk = 0ms;
     }
-    const Pokemon::Outcome walked = run_story_move(backend, head, heading);
+    const Pokemon::Outcome walked = run_story_move(backend, head, heading, pause);
     if (!walked.succeeded()){
         return walked;
     }
