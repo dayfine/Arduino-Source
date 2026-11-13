@@ -22,7 +22,7 @@
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartyMenuDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_SummaryMovesReader.h"
-#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalkWatches.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "PokemonFRLG_AutoStoryActions.h"
@@ -795,7 +795,11 @@ public:
     virtual Milliseconds detection_delay() const override{
         return 400ms;
     }
+    //  The message's frame is saved first, to check a false stop by.
     virtual void clear(ConsoleHandle& console, ProControllerContext& context) const override{
+        if (const VideoSnapshot frame = console.video().snapshot()){
+            save_leg_interrupt_frame(console.logger(), frame, name());
+        }
         clear_overworld_message(console, context, m_supplies, m_checks, m_language);
     }
 

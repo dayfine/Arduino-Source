@@ -89,6 +89,107 @@ double tap_scroll_change(const ImageViewRGB32& before, const ImageViewRGB32& aft
 
 namespace{
 
+//  The game screen's map in pixels: 15 tiles across, 10 down.
+struct ScreenTiles{
+    size_t x;
+    size_t y;
+    size_t width;
+    size_t height;
+    size_t tile_width;
+    size_t tile_height;
+};
+ScreenTiles screen_tiles(const ImageViewRGB32& screen, const ImageFloatBox& game){
+    ScreenTiles out;
+    out.x = (size_t)(screen.width() * game.x + 0.5);
+    out.y = (size_t)(screen.height() * game.y + 0.5);
+    out.width = (size_t)(screen.width() * game.width + 0.5);
+    out.height = (size_t)(screen.height() * game.height + 0.5);
+    out.tile_width = out.width / 15;
+    out.tile_height = out.height / 10;
+    return out;
+}
+
+//  How closely the RMSD over the map moved a tile must beat the one over
+//  the map as it was for a tap to read as a step.
+constexpr double WATER_STEP_RATIO = 0.8;
+
+} // namespace
+
+bool tap_moved_on_water(const ImageViewRGB32& before, const ImageViewRGB32& after, const ImageFloatBox& game, Direction direction){
+    if (before.width() != after.width() || before.height() != after.height()){
+        return tap_scroll_change(before, after, game) > WALL_TAP_MOVED_RMSD;
+    }
+    const ScreenTiles s = screen_tiles(before, game);
+    //  A step `direction` moves the map a tile the other way: `after`'s
+    //  part of the screen, and where it was in `before`.
+    size_t x = s.x;
+    size_t y = s.y;
+    size_t from_x = s.x;
+    size_t from_y = s.y;
+    size_t width = s.width;
+    size_t height = s.height;
+    switch (direction){
+    case Direction::NORTH:
+        y += s.tile_height;
+        height -= s.tile_height;
+        break;
+    case Direction::SOUTH:
+        from_y += s.tile_height;
+        height -= s.tile_height;
+        break;
+    case Direction::WEST:
+        x += s.tile_width;
+        width -= s.tile_width;
+        break;
+    case Direction::EAST:
+        from_x += s.tile_width;
+        width -= s.tile_width;
+        break;
+    }
+    const ImageViewRGB32 now = after.sub_image(x, y, width, height);
+    const double still = ImageMatch::pixel_RMSD(before.sub_image(x, y, width, height), now);
+    const double stepped = ImageMatch::pixel_RMSD(before.sub_image(from_x, from_y, width, height), now);
+    return stepped < still * WATER_STEP_RATIO;
+}
+
+namespace{
+
+//  Over this share of water on the player's tile, they are surfing.
+constexpr double SURFING_WATER_SHARE = 0.25;
+
+double water_on_player_tile(const ImageViewRGB32& screen, const ImageFloatBox& game){
+    const ScreenTiles s = screen_tiles(screen, game);
+    if (s.tile_width == 0 || s.tile_height == 0 || s.x + s.width > screen.width() || s.y + s.height > screen.height()){
+        return 0;
+    }
+    //  The player stands on column 7 and row 4 of the 15 by 10 tiles.
+    const size_t x0 = s.x + 7 * s.tile_width;
+    const size_t y0 = s.y + 4 * s.tile_height;
+    size_t water = 0;
+    size_t total = 0;
+    for (size_t y = y0; y < y0 + s.tile_height; y++){
+        for (size_t x = x0; x < x0 + s.tile_width; x++){
+            const Color pixel(screen.pixel(x, y));
+            const int r = pixel.red();
+            const int g = pixel.green();
+            const int b = pixel.blue();
+            total++;
+            if (b > 150 && b > r + 60 && b > g + 20){
+                water++;
+            }
+        }
+    }
+    return total == 0 ? 0 : (double)water / total;
+}
+
+} // namespace
+
+bool surfing_on_screen(const ImageViewRGB32& screen, const ImageFloatBox& game){
+    return water_on_player_tile(screen, game) > SURFING_WATER_SHARE;
+}
+
+namespace{
+
 //  A counted tap's press, its release and the wait after it for the
 //  screen to show the step.
 struct TapTiming{
@@ -477,7 +578,17 @@ bool moved_past_wall(ConsoleHandle& console, ProControllerContext& context, cons
     if (!before || !after){
         return false;
     }
-    const double change = tap_scroll_change(before, after, GameSettings::instance().GAME_BOX);
+    const ImageFloatBox game = GameSettings::instance().GAME_BOX;
+    const double change = tap_scroll_change(before, after, game);
+    if (step.surfing){
+        //  The water's animation changes the edge bands as much as a step.
+        const bool moved = tap_moved_on_water(before, after, game, step.direction);
+        console.log(std::format(
+            "Position check: a tap toward the wall of {} on the water changed the screen by {:.1f}; the map {}.",
+            to_string(step), change, moved ? "moved a tile" : "stayed put"
+        ));
+        return moved;
+    }
     console.log(std::format("Position check: a tap toward the wall of {} changed the screen by {:.1f}.", to_string(step), change));
     return change > WALL_TAP_MOVED_RMSD;
 }
@@ -485,20 +596,33 @@ bool moved_past_wall(ConsoleHandle& console, ProControllerContext& context, cons
 //  Whether the player's walking sprite shows, read up to LANDED_READS
 //  times LANDED_REREAD apart: the hop off the water and the steps after
 //  it may still be on. Surfing, the sprite isn't read (PlayerFacingReader).
+//  A sprite that never shows may be hidden: drawn behind a roof or a tree
+//  (Cinnabar's beach, console B, 2026-11-13 09:46, 12.03 land_beach, only
+//  the head showing). Then the player's own tile tells: water around them
+//  while surfing, none on land (water_on_player_tile()).
 constexpr size_t LANDED_READS = 4;
 constexpr Milliseconds LANDED_REREAD(150);
 bool stands_on_foot(ConsoleHandle& console, ProControllerContext& context, PlayerGender player){
+    VideoSnapshot screen;
     for (size_t read = 1; read <= LANDED_READS; read++){
         if (read > 1){
             pbf_wait(context, LANDED_REREAD);
         }
         context.wait_for_all_requests();
-        const VideoSnapshot screen = console.video().snapshot();
+        screen = console.video().snapshot();
         if (screen && read_player_facing(screen, player)){
             return true;
         }
     }
-    console.log("Route: the player's walking sprite doesn't show: still surfing?", COLOR_ORANGE);
+    if (!screen){
+        console.log("Route: no frame to tell whether the player landed.", COLOR_ORANGE);
+        return false;
+    }
+    if (!surfing_on_screen(screen, GameSettings::instance().GAME_BOX)){
+        console.log("Route: the player's walking sprite doesn't show, but no water shows on their tile: landed, drawn behind something.", COLOR_ORANGE);
+        return true;
+    }
+    console.log("Route: the player's walking sprite doesn't show, and water shows on their tile: still surfing.", COLOR_ORANGE);
     return false;
 }
 

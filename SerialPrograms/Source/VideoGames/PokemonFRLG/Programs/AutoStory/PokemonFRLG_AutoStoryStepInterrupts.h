@@ -23,9 +23,12 @@
 #define PokemonAutomation_PokemonFRLG_AutoStoryStepInterrupts_H
 
 #include <functional>
+#include <string>
+#include <utility>
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/Time.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/Tools/VideoStream.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
@@ -95,20 +98,27 @@ private:
     WallClock m_start;
 };
 
-//  The console's guard: a failed step fails it, as before; each interrupt
-//  found between steps is logged, cleared or not, and how the screen looked
-//  before every step.
+//  The console's guard: a failed step fails it, as before, and the frame
+//  its exception carries (OperationFailedExceptionWithScreenshot: every
+//  route failure) is saved to `failures_folder`, <timestamp>-<step>.png
+//  (console B, 2026-11-13 08:53, 12.03: "still surfing ... didn't land"
+//  left no frame, as the step's failure is a failed Outcome, not the
+//  program's exception). Each interrupt found between steps is logged,
+//  cleared or not, and how the screen looked before every step.
 class InterruptLogGuard : public Pokemon::StepGuard{
 public:
-    explicit InterruptLogGuard(Logger& logger)
+    explicit InterruptLogGuard(Logger& logger, std::string failures_folder = SCREENSHOTS_PATH() + "AutoStory/failures/")
         : m_logger(logger)
+        , m_failures_folder(std::move(failures_folder))
     {}
 
+    virtual void on_failure(const Pokemon::StoryStep& step, const OperationFailedException& error) override;
     virtual void on_interrupt(const Pokemon::StoryStep& step, const Pokemon::InterruptCheck& check) override;
     virtual void on_screen(const Pokemon::StoryStep& step, const Pokemon::ScreenSettle& screen) override;
 
 private:
     Logger& m_logger;
+    std::string m_failures_folder;
 };
 
 
