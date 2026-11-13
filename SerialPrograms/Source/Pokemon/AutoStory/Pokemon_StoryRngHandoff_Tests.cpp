@@ -8,6 +8,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "Pokemon_StoryRngHandoff.h"
@@ -130,10 +131,35 @@ UnitTestResult test_user_turn(Logger& logger){
     return "A failure must throw even with a user's turn";
 }
 
+//  A stop reports its message, then each line, to the log and to `show`;
+//  the notification text is one line each.
+UnitTestResult test_stop_report(Logger& logger){
+    std::vector<std::string> shown;
+    const auto show = [&](const std::string& line){
+        shown.push_back(line);
+    };
+    const std::string text = report_rng_handoff_stop(logger, "Stopped for RNG.", {"Attempt 1", "Attempt 2"}, show);
+    if (text != "Stopped for RNG.\nAttempt 1\nAttempt 2"){
+        return std::format("Wrong notification text: {}", text);
+    }
+    if (shown != std::vector<std::string>{"Stopped for RNG.", "Attempt 1", "Attempt 2"}){
+        return "The overlay must get the message and then each line";
+    }
+    shown.clear();
+    if (report_rng_handoff_stop(logger, "Stopped.", {}, show) != "Stopped." || shown.size() != 1){
+        return "A stop without lines is its message alone";
+    }
+    return true;
+}
+
 const RngHandoffTestCase RNG_HANDOFF_CASES[] = {
     {
         .input = {.name = "RUN takes precedence over STOP", .body = test_mode},
         .expectation = {.description = "RUN wins when both options are on"},
+    },
+    {
+        .input = {.name = "a stop reports its message and lines", .body = test_stop_report},
+        .expectation = {.description = "log, overlay and notification text agree"},
     },
     {
         .input = {.name = "a success is ok", .body = test_success},

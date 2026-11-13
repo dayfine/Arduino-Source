@@ -9,6 +9,8 @@
  */
 
 #include <algorithm>
+#include <cctype>
+#include <charconv>
 #include <format>
 #include <string>
 #include <utility>
@@ -48,6 +50,8 @@ const ImageStats FALLING_DARK = stats(60, 60, 60, 10);
 const ImageStats DARK = stats(5, 5, 5, 1);
 const ImageStats FALLING_WHITE = stats(160, 160, 160, 10);
 const ImageStats WHITE = stats(250, 250, 250, 1);
+//  An empty or dropped frame: no stats at all.
+const ImageStats EMPTY;
 
 SceneChange compare_means(const TransitionSample& before, const TransitionSample& after){
     const FloatPixel& a = before.middle.average;
@@ -78,25 +82,25 @@ std::string run_tracker(const std::vector<Span>& spans, TransitionTracker& track
 }
 
 
-//  A synthetic stream of frames, through one game's profile.
-struct TrackInput{
-    std::string name;
-    std::vector<Span> spans;
-    const FadeProfile* profile = &BDSP_FADE_PROFILE;
-    bool compare = true;
-};
-
-struct TrackExpectation{
-    //  The transitions completed, as run_tracker() puts them.
-    std::string transitions;
-    //  What judge_warp() makes of the tracker's current() at the end; empty
-    //  for none.
-    std::string warp = "";
-};
-
 struct TrackCase{
-    TrackInput input;
-    TrackExpectation expectation;
+    //  A synthetic stream of frames, through one game's profile.
+    struct Input{
+        std::string name;
+        std::vector<Span> spans;
+        const FadeProfile* profile = &BDSP_FADE_PROFILE;
+        bool compare = true;
+    };
+
+    struct Expectation{
+        //  The transitions completed, as run_tracker() puts them.
+        std::string transitions;
+        //  What judge_warp() makes of the tracker's current() at the end; empty
+        //  for none.
+        std::string warp = "";
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 class Test_TransitionTracker : public UnitTest{
@@ -106,7 +110,7 @@ public:
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const TrackInput& input = m_case.input;
+        const TrackCase::Input& input = m_case.input;
         TransitionTracker tracker(*input.profile, input.compare ? compare_means : TransitionTracker::CompareScenes());
         const std::string got = run_tracker(input.spans, tracker);
         if (got != m_case.expectation.transitions){
@@ -161,29 +165,40 @@ UnitTestResult test_sample_of_frame(){
 }
 
 
-//  Captured frames: CommandLineTests/<game>/Transitions/<case>/ holds
-//  frames named by their time in ms ("0.png", "250.png"), and expected.txt
-//  with the transitions run_tracker() should report (no scene comparison).
-struct CapturedInput{
-    std::string game;
-    const FadeProfile* profile;
-};
-
-//  Each case folder's expected.txt holds its expectation.
-struct CapturedExpectation{
-};
-
 struct CapturedCase{
-    CapturedInput input;
-    CapturedExpectation expectation;
+    //  Captured frames: CommandLineTests/<game>/Transitions/<case>/ holds
+    //  frames named by their time in ms ("0.png", "250.png"), and expected.txt
+    //  with the transitions run_tracker() should report (no scene comparison).
+    struct Input{
+        std::string game;
+        const FadeProfile* profile;
+    };
+
+    //  Each case folder's expected.txt holds its expectation.
+    struct Expectation{
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 std::string track_captured_case(const Filesystem::Path& folder, const FadeProfile& profile){
     std::vector<std::pair<int, Filesystem::Path>> frames;
     for (const Filesystem::Path& file : Filesystem::list_directory(folder)){
-        if (file.extension().string() == ".png"){
-            frames.emplace_back(std::stoi(file.stem().string()), file);
+        std::string extension = file.extension().string();
+        std::transform(extension.begin(), extension.end(), extension.begin(), [](unsigned char c){
+            return static_cast<char>(std::tolower(c));
+        });
+        if (extension != ".png"){
+            continue;
         }
+        const std::string stem = file.stem().string();
+        int ms = 0;
+        const auto parsed = std::from_chars(stem.data(), stem.data() + stem.size(), ms);
+        if (parsed.ec != std::errc() || parsed.ptr != stem.data() + stem.size()){
+            return std::format("frame {} is not named by its time in ms", file.filename().string());
+        }
+        frames.emplace_back(ms, file);
     }
     std::sort(frames.begin(), frames.end(), [](const auto& a, const auto& b){
         return a.first < b.first;
@@ -226,22 +241,22 @@ public:
     }
 
 private:
-    CapturedInput m_input;
+    CapturedCase::Input m_input;
 };
 
-
-struct TransitionsInput{
-    std::string name;
-    UnitTestResult (*body)();
-};
-
-//  The body checks its own expectations.
-struct TransitionsExpectation{
-};
 
 struct TransitionsCase{
-    TransitionsInput input;
-    TransitionsExpectation expectation;
+    struct Input{
+        std::string name;
+        UnitTestResult (*body)();
+    };
+
+    //  The body checks its own expectations.
+    struct Expectation{
+    };
+
+    Input input;
+    Expectation expectation;
 };
 
 class Test_Transitions : public UnitTest{
@@ -255,7 +270,7 @@ public:
     }
 
 private:
-    TransitionsInput m_input;
+    TransitionsCase::Input m_input;
 };
 
 } // namespace
@@ -330,6 +345,22 @@ const TrackCase TRACK_CASES[] = {
         .input = {"a cave mouth's fade rises into a dim cave",
             {{0, 100, ROUTE}, {200, 500, DARK}, {600, 2500, DIM_FLOOR}}},
         .expectation = {"black fade +200 ms, peak +200 ms, rise +600 ms, end +1700 ms, other scene", "warped"},
+    },
+    {
+        .input = {"empty frames in a scene start no fade",
+            {{0, 100, ROUTE}, {200, 300, EMPTY}, {400, 500, ROUTE}}},
+        .expectation = {"none"},
+    },
+    {
+        .input = {"an empty frame in a fall is skipped",
+            {{0, 100, ROUTE}, {200, 200, EMPTY}, {300, 300, FALLING_DARK}, {400, 600, DARK}}},
+        .expectation = {"none", "fade still showing"},
+    },
+    {
+        .input = {"an empty frame in the rise does not move the rise",
+            {{0, 100, ROUTE}, {200, 200, FALLING_DARK}, {300, 500, DARK}, {600, 600, FALLING_DARK},
+             {700, 700, EMPTY}, {800, 900, HOUSE}}},
+        .expectation = {"black fade +200 ms, peak +300 ms, rise +600 ms, end +800 ms, other scene", "warped"},
     },
     {
         .input = {"a fade in progress is still showing",
