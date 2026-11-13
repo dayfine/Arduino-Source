@@ -140,6 +140,31 @@ UnitTestResult test_poison_antidote(){
     return true;
 }
 
+//  The 2026-11-12 run spent the only Full Restore on turn 7 to cure poison.
+//  A Full Restore is used only when it also heals at least half of max HP
+//  (missing >= 64 of 128); below that poison takes the Full Heal.
+UnitTestResult test_full_restore_needs_half_hp_missing(){
+    constexpr StatusCondition PSN = StatusCondition::POISON;
+    Supplies both;
+    set_from_bag(both, {{"full-restore", 1}, {"full-heal", 1}, {"x-special", 19}});
+    PolicyState state(koga_policy());
+    //  Muk is out (index 1); 70/122 is 52 missing, under half of 122.
+    if (use(state, both, PolicyView{.hp = 70, .max_hp = 122, .status = PSN, .speed = 81, .foe_index = 1}) != "full-heal"){
+        return "Expected a Full Heal for poison with 52/122 missing.";
+    }
+    Supplies only_restore;
+    set_from_bag(only_restore, {{"full-restore", 1}, {"x-special", 19}});
+    PolicyState lone(koga_policy());
+    if (use(lone, only_restore, PolicyView{.hp = 70, .max_hp = 122, .status = PSN, .speed = 81, .foe_index = 1}) == "full-restore"){
+        return "Expected the Full Restore kept at 52/122 missing.";
+    }
+    PolicyState half(koga_policy());
+    if (use(half, only_restore, PolicyView{.hp = 58, .max_hp = 122, .status = PSN, .speed = 81, .foe_index = 1}) != "full-restore"){
+        return "Expected the Full Restore at 64/122 missing, poisoned.";
+    }
+    return true;
+}
+
 UnitTestResult test_heal_before_self_destruct(){
     PolicyState state(koga_policy());
     state.item_used("x-special");
@@ -501,6 +526,10 @@ const std::vector<AutoStoryBattlePolicyCase> AUTO_STORY_BATTLE_POLICY_CASES = {
     {
         .input = {.name = "poison: the Antidote while the HP outlasts a turn", .body = test_poison_antidote},
         .expectation = {.description = "the Antidote, none from an empty bag"},
+    },
+    {
+        .input = {.name = "the Full Restore needs half the HP missing", .body = test_full_restore_needs_half_hp_missing},
+        .expectation = {.description = "at 52/122 missing poison takes the Full Heal; at 64/122 the Full Restore"},
     },
     {
         .input = {.name = "a heal before Self-Destruct, not against Muk", .body = test_heal_before_self_destruct},
