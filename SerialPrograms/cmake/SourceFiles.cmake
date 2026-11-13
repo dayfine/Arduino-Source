@@ -816,6 +816,8 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/Windows/LabChannel.h
     Source/CommonFramework/Windows/LabChannel_Tests.cpp
     Source/CommonFramework/Windows/LabChannel_Tests.h
+    Source/CommonFramework/Windows/LabPause.cpp
+    Source/CommonFramework/Windows/LabPause.h
     Source/CommonFramework/Windows/LabRequest.cpp
     Source/CommonFramework/Windows/LabRequest.h
     Source/CommonFramework/Windows/MainWindow.cpp
