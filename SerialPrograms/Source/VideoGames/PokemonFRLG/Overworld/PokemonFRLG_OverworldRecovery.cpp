@@ -271,6 +271,7 @@ public:
         , m_at(planning != nullptr ? planning->start : std::nullopt)
         , m_facing(facing)
         , m_known(m_at.has_value())
+        , m_on_caller_start(m_at.has_value())
     {
         if (planning != nullptr && planning->maps != nullptr){
             m_gates = planning->gates;
@@ -296,6 +297,7 @@ public:
             //  Where a hold that finds the player starts isn't known.
             const std::optional<TrainerCrossing> crossing = m_next >= m_holds ? crossing_here(step) : std::nullopt;
             const StepOutcome outcome = judge_movement(step, m_steps.walk(step, m_facing, crossing));
+            m_on_caller_start = false;
             if (is_gate_step(step)){
                 //  The player stays on their tile: nothing to find again if
                 //  the gate didn't open, so the route fails.
@@ -430,7 +432,19 @@ private:
     //  with no start, whose first holds are from tiles it doesn't name), or
     //  if one of those tiles stands at the wall already (a bump right away
     //  moves nothing).
+    //  A route of one tile from the caller's start onto a tile with a wall
+    //  or a person straight ahead may find the player on that tile already:
+    //  the scene before it can leave them a tile on from the table's pose
+    //  (the scene end pose sweep: 20.01's walk into Lorelei's room ending
+    //  on (6, 6), not (6, 7)), and the hold only bumps. Then the route is
+    //  over either way, and the step after it (a talk) checks its own end.
     int expected_tiles(const RouteStep& step) const{
+        if (m_on_caller_start && step.tiles == 1 && m_next + 1 == m_plan.size() && maps() != nullptr){
+            const std::optional<WallHold> ahead = hold_to_wall(*maps(), step.end, step.surfing, step.direction);
+            if (!ahead || ahead->tiles == 0){
+                return 0;
+            }
+        }
         if (m_holds > 0 ? m_next >= m_holds : m_known){
             return step.tiles;
         }
@@ -778,6 +792,9 @@ private:
     //  Whether the player's tile is known when a plan without holds starts:
     //  from the caller's start, or since a wall or a warp.
     bool m_known = false;
+    //  Nothing walked yet: the player is on the caller's start, as far as
+    //  the caller knows.
+    bool m_on_caller_start = false;
     size_t m_next = 0;
     size_t m_stops = 0;
     size_t m_holds = 0;     //  of the plan, holds to walls that find the player
