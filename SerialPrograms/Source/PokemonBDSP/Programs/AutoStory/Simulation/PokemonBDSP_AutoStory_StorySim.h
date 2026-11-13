@@ -170,6 +170,17 @@ std::string play_scene(const SimScene& scene, const TalkOverRule& rule);
 //  unless set. All of it is deterministic: wanderers walk from `wander_seed`.
 struct SimWorldKnobs{
     std::vector<SimSlide> slides = {};
+    //  A hold of the step `step` toward `direction` (a recovery's hold to a
+    //  wall, a walk to a wall) that runs on through a warp its watchers
+    //  miss: the player lands on `far` (lab-B 2026-11-12 20:20:50, 01.02's
+    //  past_curtis, a hold east along row 22 that went out the Gate's east
+    //  door). `tiles` is not used.
+    std::vector<SimSlide> hold_slides = {};
+    //  A scene or trigger step `step` that leaves the player `tiles` toward
+    //  `direction` past the pose the table gives it (lab-B 2026-11-12 21:02,
+    //  01.02's the_hiker: the walk east after it met Curtis a tile sooner than
+    //  counted). The program goes on believing the table's pose. `far` is not used.
+    std::vector<SimSlide> scene_slides = {};
     //  The mean brightness (0 to 255) of a map's floor, by JSON map name, and
     //  of the fade into a map; a tap step judges its fade from these with the
     //  program's fade_of(), a floor textured, a fade uniform (SIM_FLOOR_STDDEV,
@@ -268,6 +279,7 @@ public:
 
 private:
     WalkResult slide_on(const SimSlide& slide, WalkResult result);
+    WalkResult through_warp(const SimSlide& slide, WalkResult result);
 
     GridSim& m_grid;
     SimMisses& m_misses;
@@ -579,6 +591,7 @@ private:
     //  Puts the player where SimWorldKnobs::lands says `step` leaves them, if
     //  it says, and counts its coupon or Poketch (count_coupons()).
     void land(const std::string& step);
+    void slide_after_scene(const std::string& step);
     bool cross();
     bool cross_to(const Pokemon::Pose& far);
     std::vector<SimWanderer> wanderers(const StoryWorld& world) const;

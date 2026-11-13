@@ -31,6 +31,7 @@
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_Walk_Tests.h"
 #include "Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WildBattlePolicy_Tests.h"
 #include "Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_WallBattleSim_Tests.h"
+#include "Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_ConsoleFailureReplay_Tests.h"
 #include "Programs/RngManipulation/PokemonBDSP_StarterRng_Tests.h"
 #include "PokemonBDSP_Tests.h"
 
@@ -64,6 +65,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_AutoStory_StorySim(database);
     add_tests_AutoStory_StoryMonteCarlo(database);
     add_tests_AutoStory_SimFailureCases(database);
+    add_tests_AutoStory_ConsoleFailureReplay(database);
     add_tests_AutoStory_FaultSweep(database);
     add_tests_AutoStory_SimGolden(database);
     add_tests_AutoStory_StoryActions(database);

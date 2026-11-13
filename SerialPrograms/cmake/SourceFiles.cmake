@@ -1912,6 +1912,9 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Walk_Tests.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Walks.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Walks.h
+    Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_ConsoleFailureData.h
+    Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_ConsoleFailureReplay_Tests.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_ConsoleFailureReplay_Tests.h
     Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_FaultSweep_Tests.cpp
     Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_FaultSweep_Tests.h
     Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_GridSim.cpp
