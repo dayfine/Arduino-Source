@@ -13,6 +13,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <optional>
 #include <string>
 #include <vector>
 #include "CommonFramework/Tools/VideoStream.h"
@@ -69,6 +70,12 @@ struct RouteWalkPlan{
     //  explains while we may stand here is theirs: played out and walked on
     //  from, not counted against the walk as a scene the map lacks.
     std::vector<Pokemon::TilePos> greeter = {};
+    //  The way out of a room whose one way on is a door in this direction
+    //  (01.02's Oreburgh Gate: row 22 runs open to the east door). Anything
+    //  that interrupts the walk (a fight, a talk, a count that no longer
+    //  fits the map) ends it by holding this way to the door's fade and
+    //  banner, with no plan around what stopped us (lab-B 2026-11-12 21:02).
+    std::optional<Pokemon::Direction> leave_toward = std::nullopt;
 
     //  Whether any of `tiles` is the greeter's ground.
     bool greeter_near(const std::vector<Pokemon::TilePos>& tiles) const{

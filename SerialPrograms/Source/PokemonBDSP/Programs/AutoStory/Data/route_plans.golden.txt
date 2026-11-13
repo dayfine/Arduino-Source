@@ -302,14 +302,14 @@ anchor); 0 from one start tile.
   3. north 1 (open) -> OreburghGate (6, 22)
   totals: 3 legs, 2 turns, 1 open, 2 localization
 
-== 01.02 past_curtis (costs: route)
+== 01.02 past_curtis (costs: exit)
   from: OreburghGate (7, 22) facing east (tile)
   target: OreburghGate (20, 22) facing east (tile)
   start candidates: OreburghGate (7, 22)
   1. east 13 (open) -> OreburghGate (20, 22)
   totals: 1 legs, 0 turns, 1 open, 0 localization
 
-== 01.02 by_the_east_mouth (costs: route)
+== 01.02 by_the_east_mouth (costs: exit)
   from: OreburghGate (20, 22) facing east (tile)
   target: OreburghGate (26, 22) facing east (tile)
   start candidates: OreburghGate (20, 22)
