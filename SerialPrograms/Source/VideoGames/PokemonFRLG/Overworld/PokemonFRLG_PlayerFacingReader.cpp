@@ -333,6 +333,14 @@ void add_tests_PlayerFacingReader(UnitTestDatabase& database){
     //  nothing; they must never read a wrong way.
     database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/FuchsiaCenterEscalatorEast_None.png");
     database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/FuchsiaCenterEscalatorSouth_None.png");
+    //  FireRed on console B, 2026-11-13 (12.03): on foot on Route 21's sand
+    //  bars after a leg that landed, and surfing down Route21_North, where
+    //  a leg that lands is checked to have (RouteCalls::landed_on).
+    database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/Route21SandBar_South.png");
+    database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/Route21SandBar_East.png");
+    database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/Route21SandBar_North.png");
+    database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/Route21Surfing_None.png");
+    database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/Route21ChannelSurfing_None.png");
 }
 
 

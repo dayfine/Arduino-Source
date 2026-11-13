@@ -25,8 +25,8 @@
         "id": "pallet_shore",
         "kind": "route",
         "action": "run",
-        "args": {"target": {"map": "PalletTown", "tiles": [[10, 16]], "facing": "south"}},
-        "why": "south, east, south through the town to the shore (water x7-10, y17-19), onto (10, 16) a tile above the water, facing it (pokeguy bikes to Pallet's water edge, 1:19:00)"
+        "args": {"target": {"map": "PalletTown", "tiles": [[8, 16]], "facing": "south"}},
+        "why": "south through the town to the shore (7..10, 17..19), a tile above the water, facing it (pokeguy bikes to Pallet's water edge, 1:19:00)"
       },
       {
         "id": "repel_pallet",
@@ -40,43 +40,52 @@
         "kind": "game_action",
         "action": "surf",
         "args": {"direction": "south"},
-        "declared_after": {"map": "PalletTown", "tiles": [[10, 17]], "facing": "south"},
-        "why": "the lead's Surf (taught in 12.01): A at the water, YES, onto (10, 17)"
+        "declared_after": {"map": "PalletTown", "tiles": [[8, 17]], "facing": "south"},
+        "why": "the lead's Surf (taught in 12.01): A at the water, YES, onto (8, 17)"
       },
       {
-        "id": "surf_channel_wall",
+        "id": "land_north_sand_bar",
         "kind": "route",
         "action": "run",
-        "args": {"target": {"map": "Route21_North", "tiles": [[7, 0]], "facing": "west"}},
-        "why": "off Pallet Town's shore into the channel and west to its cliff (6, 0..14): a short leg south, then a leg to a wall (route scoring: legs to walls)"
+        "args": {"target": {"map": "Route21_North", "tiles": [[5, 31]], "facing": "south"}},
+        "why": "south down column 8 until the player lands on Route21_North's sand bar (4..10, 27..32), then over it to its south bank on column 5 (5, 31), where the water stops a player on foot: the leg on the water lands, and the walk on the sand bar ends at walls, so each finds the player again (user's design 2026-11-13: surf until landed, walk to the bank, Surf again; console B 06:55 and 07:02, an open leg on the water stopped by a message couldn't be placed)"
       },
       {
-        "id": "surf_route_21_west_edge",
+        "id": "surf_off_north_sand_bar",
+        "kind": "game_action",
+        "action": "surf",
+        "args": {"direction": "south"},
+        "declared_after": {"map": "Route21_North", "tiles": [[5, 32]], "facing": "south"},
+        "why": "Surf from the bank onto (5, 32)"
+      },
+      {
+        "id": "land_middle_sand_bar",
         "kind": "route",
         "action": "run",
-        "args": {"target": {"map": "Route21_North", "tiles": [[0, 15]], "facing": "west"}},
-        "why": "down the channel past the cliff and west to Route 21's west edge under it (0..6, 11..14); Route 21's open water has no other walls"
+        "args": {"target": {"map": "Route21_South", "tiles": [[5, 23]], "facing": "south"}},
+        "why": "south down column 5 until the player lands on Route21_South's sand bar (5..11, 21..25) at (5, 21), and on to its bank (5, 23): column 5 keeps off the swimmers' lines ((12, 44), (14, 35) and (15, 35) see a tile; (10, 29) sees 4 tiles each way; (15, 24) looks along row 24, which the bank is above)"
       },
       {
-        "id": "surf_route_21_west_corner",
-        "kind": "route",
-        "action": "run",
-        "args": {"target": {"map": "CinnabarIsland", "tiles": [[0, 19]], "facing": "south"}},
-        "why": "south along the west edge, past Route21_South, to Cinnabar Island's bottom-left corner: the map's south edge stops the hold, so a leg cut short by a wild battle or a swimmer is walked on to it (the one localization on the water)"
+        "id": "surf_off_middle_sand_bar",
+        "kind": "game_action",
+        "action": "surf",
+        "args": {"direction": "south"},
+        "declared_after": {"map": "Route21_South", "tiles": [[5, 24]], "facing": "south"},
+        "why": "Surf from the bank onto (5, 24)"
       },
       {
-        "id": "surf_route_21_beach",
+        "id": "land_beach",
         "kind": "route",
         "action": "run",
         "args": {"target": {"map": "Route21_South", "tiles": [[5, 49]], "facing": "east"}},
-        "why": "20 tiles back north to the beach row (5..13, 48..49) and east onto it: the island's west side can't be landed on, the beach is the way onto Cinnabar"
+        "why": "south down column 5 until the player lands on the beach (5..13, 48..49) at (5, 48), and on to (5, 49), where Cinnabar Island's wall below stops the player"
       },
       {
         "id": "surf_route_21",
         "kind": "route",
         "action": "run",
         "args": {"target": {"map": "CinnabarIsland", "tiles": [[14, 12]], "facing": "north"}},
-        "why": "east along the beach to the water (14, 49), then south onto the island and over to below the Center's door (14, 11)"
+        "why": "east along the beach to its east end (13, 49), where the water stops the player, then south onto the island and over to below the Center's door (14, 11)"
       },
       {
         "id": "cinnabar_nurse",

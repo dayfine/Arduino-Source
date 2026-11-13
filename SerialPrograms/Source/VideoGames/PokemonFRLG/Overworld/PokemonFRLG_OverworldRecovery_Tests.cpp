@@ -215,11 +215,22 @@ UnitTestResult test_stop_recover_resume(){
 UnitTestResult test_open_water_legs(){
     const std::vector<MapData> maps = overworld_maps();
     const MapPosition start{"PalletTown", {10, 17}};
-    const std::optional<std::vector<RouteStep>> route = plan_overworld_route(
-        maps, start, RouteGoal{{"CinnabarIsland", {14, 12}}, Direction::NORTH}
+    std::optional<std::vector<RouteStep>> route = plan_overworld_route(
+        maps, start, RouteGoal{{"CinnabarIsland", {14, 12}}, Direction::NORTH}, default_route_costs()
     );
     if (!route){
         return "No route.";
+    }
+    //  Routes now land on the sand bars and the shore instead of stopping
+    //  on the water (RouteCost::OPEN_WATER_STOP). The leg to the
+    //  first sand bar is made an open stop on the water, as legs were then,
+    //  to keep the check covered.
+    for (RouteStep& step : *route){
+        if (step.surfing && step.action == RouteAction::WALK && !step.warps){
+            step.to_wall = false;
+            step.lands_after = 0;
+            break;
+        }
     }
     size_t chained = 0;
     while (chained + 1 < route->size() && !(

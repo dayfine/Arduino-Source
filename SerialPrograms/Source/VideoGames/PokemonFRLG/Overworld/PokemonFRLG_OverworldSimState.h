@@ -96,6 +96,12 @@ struct SimScript{
     //  SELECT took the player off, and every bike tap after only turned
     //  them (console B, 2026-11-12 05:42).
     std::set<int> off_bike_at_legs;
+    //  Fault injection: steps on the water, by number from 1 among all the
+    //  steps surfed, after which a message shows and stops the player, as
+    //  "a message" did on 12.03's "south 15 (open)" down Route 21 (console
+    //  B, 2026-11-13 06:55 and 07:02, 8 tiles in both times; no box was on
+    //  the leg's screenshot after it was closed).
+    std::set<int> messages_at_surf_steps;
     //  The player rides the Bicycle: a tap facing another way takes a step
     //  too, a hold through a turn loses no tile
     //  (MovementMechanics::BIKE_TAP_ONLY_TURNS), and no step tap is
@@ -157,6 +163,11 @@ struct SimState{
     //  From each wild battle's step to the overworld after it, together.
     Milliseconds in_wild_battles{0};
     int signs_read = 0;
+    //  Steps taken on the water (SimScript::messages_at_surf_steps).
+    int surf_steps = 0;
+    //  The holds, by number from 1 as SimScript::short_holds counts them,
+    //  that started on the water.
+    std::vector<int> surf_holds;
     int turn_taps_dropped = 0;
     //  Taps that only turned the player, or were dropped turning them.
     int turn_taps = 0;

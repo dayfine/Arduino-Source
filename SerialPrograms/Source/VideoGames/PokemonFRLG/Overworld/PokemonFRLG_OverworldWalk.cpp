@@ -202,6 +202,14 @@ MoveSpeed step_speed(const RouteStep& step, MoveSpeed speed){
 }
 
 Milliseconds tile_time(const RouteStep& step, MoveSpeed speed){
+    if (step.surfing && step.lands_after > 0 && step.tiles > 0){
+        //  The surfed tiles, then the hop onto land and the walked ones
+        //  (B isn't held on a leg that starts on the water), each hop or
+        //  walked tile taken at walking pace, averaged and rounded up.
+        const int walked = step.tiles - step.lands_after + 1;
+        const Milliseconds total = SURF_TILE_TIME * (step.lands_after - 1) + TILE_TIME * walked;
+        return (total + Milliseconds(step.tiles - 1)) / step.tiles;
+    }
     if (step.surfing){
         return SURF_TILE_TIME;
     }

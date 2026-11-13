@@ -97,7 +97,7 @@ std::vector<Pokemon::StoryActionSpec> field_move_specs(){
         {.kind = StoryStepKind::GAME, .name = FLY_VARIANT, .args = {
             required_arg("town", StoryArgType::WORD, "the town's map, as kanto_fly_towns() names it (CeladonCity, Route4)"),
             absent_arg("slot", StoryArgType::INTEGER, "the Fly user's party slot, from 1, when no species is named"),
-            absent_arg("species", StoryArgType::WORD, "the Fly user by its species, e.g. \"pidgey\": the first slot whose summary reads it"),
+            absent_arg("species", StoryArgType::WORD, "the Fly user by its species, e.g. \"pidgey\": the first member whose menu lists FLY flies, recorded under this name"),
             optional_arg("menu_row", StoryArgType::INTEGER, int64_t(2), "FLY's row on its menu, from 1: SUMMARY, then field moves in move order"),
             optional_arg("safari", StoryArgType::BOOLEAN, false, "in the Safari Zone, whose START menu has RETIRE on top"),
         }},
@@ -138,9 +138,10 @@ void tap_dpad(ProControllerContext& context, DpadPosition dpad, size_t count, Mi
     }
 }
 
-//  From the Fly user's menu: FLY, to the fly map. Returns the failure, or empty.
-std::string fly_from_member_menu(ConsoleHandle& console, ProControllerContext& context, const FlyPlan& plan){
-    tap_dpad(context, DPAD_DOWN, plan.menu_row, MENU_TAP, MENU_TAP_RELEASE);
+//  From the Fly user's menu, the cursor on SUMMARY: FLY on row `row`, to
+//  the fly map. Returns the failure, or empty.
+std::string fly_from_member_menu(ConsoleHandle& console, ProControllerContext& context, size_t row){
+    tap_dpad(context, DPAD_DOWN, row, MENU_TAP, MENU_TAP_RELEASE);
     KantoMapWatcher fly_map(COLOR_RED);
     context.wait_for_all_requests();
     pbf_press_button(context, BUTTON_A, 160ms, 0ms);
@@ -166,7 +167,7 @@ std::string open_fly_map(ConsoleHandle& console, ProControllerContext& context, 
     if (wait_until(console, context, MON_MENU_TIMEOUT, {mon_menu}) < 0){
         return "fly_no_menu";
     }
-    return fly_from_member_menu(console, context, plan);
+    return fly_from_member_menu(console, context, plan.menu_row);
 }
 
 //  On the fly map: the cursor to the corner, then to the town, and A.
@@ -248,19 +249,22 @@ std::optional<Pokemon::Outcome> run_field_move_step(
     const VideoSnapshot departure = console.video().snapshot();
     std::string failure;
     if (!plan->species.empty()){
-        //  The party is opened once, at the recorded Fly user's slot if the
-        //  TEACH or an earlier Fly left one, else at the scan's find.
+        //  The party is opened once: the recorded Fly user's menu if the
+        //  TEACH or an earlier Fly left one, else the members' menus down
+        //  the party to the first that lists FLY.
         console.log(std::format(
-            "Story: Fly with the {}, menu row {}, to {} (cell {}, {}).",
-            plan->species, plan->menu_row + 1, town.name, town.cell.x, town.cell.y
+            "Story: Fly with the {}, to {} (cell {}, {}).", plan->species, town.name, town.cell.x, town.cell.y
         ));
         const std::unique_ptr<PartyScreens> screens = console_party_screens(console, context, plan->start_menu, language);
-        failure = use_field_move(console.logger(), *screens, party, FLY_MOVE, plan->species, [&]{
-            return fly_from_member_menu(console, context, *plan);
+        failure = use_field_move(console.logger(), *screens, party, FLY_MOVE, plan->species, [&](size_t row){
+            return fly_from_member_menu(console, context, row);
         });
         if (failure == FIELD_MOVE_NO_MEMBER){
-            console.log(std::format("Story: no {} read in the party to Fly with.", plan->species), COLOR_RED);
+            console.log("Story: no member's menu lists FLY.", COLOR_RED);
             return Pokemon::outcome_failed("fly_no_member", plan->species);
+        }
+        if (failure == FIELD_MOVE_MENU_UNREAD){
+            return Pokemon::outcome_failed("fly_menu_unread", plan->species);
         }
     }else{
         console.log(std::format(

@@ -26,6 +26,7 @@
 #include "Inference/Menus/PokemonFRLG_PartyHeldItemDetector.h"
 #include "Inference/Menus/PokemonFRLG_PartyMenuDetector.h"
 #include "Inference/Menus/PokemonFRLG_SaveCardReader.h"
+#include "Inference/Menus/PokemonFRLG_PartyMemberMenuReader.h"
 #include "Inference/Menus/PokemonFRLG_SummaryMovesReader.h"
 #include "Inference/Menus/PokemonFRLG_TeachScreenReader.h"
 #include "Inference/PokemonFRLG_BattleLevelUpReader.h"
@@ -55,6 +56,7 @@
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRngLoop.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryPartyRoster.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows_Tests.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStorySurf_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryHealing.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows12_Tests.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRows14_Tests.h"
@@ -319,6 +321,7 @@ static void add_tests_AutoStoryReaders(UnitTestDatabase& database){
     add_tests_ItemListReader(database);
     add_tests_OptionMenuReader(database);
     add_tests_SaveCardReader(database);
+    add_tests_PartyMemberMenuReader(database);
     add_tests_SummaryMovesReader(database);
     add_tests_TeachScreenReader(database);
     add_tests_AutoStoryScreenEvents(database);
@@ -348,6 +351,7 @@ static void add_tests_AutoStoryRows(UnitTestDatabase& database){
     add_tests_AutoStoryFuchsiaGym(database);
     add_tests_AutoStoryHealing(database);
     add_tests_AutoStoryCeladonGym(database);
+    add_tests_AutoStorySurf(database);
     add_tests_AutoStorySaffron(database);
     add_tests_AutoStoryCinnabarGym(database);
     add_tests_AutoStorySilph(database);

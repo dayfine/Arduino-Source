@@ -122,6 +122,9 @@ std::optional<SummaryRead> read_open_summary(ConsoleHandle& console, ProControll
 //  text are redrawn over a few frames.
 constexpr Milliseconds MEMBER_SWITCH_SETTLE = 900ms;
 constexpr size_t SPECIES_READ_TRIES = 3;
+//  B on a member's menu: it is gone the next frames; checked for 3 s.
+constexpr Milliseconds MENU_CLOSE_CHECK = 100ms;
+constexpr size_t MENU_CLOSE_CHECKS = 30;
 
 class ConsolePartyScreens : public PartyScreens{
 public:
@@ -142,6 +145,8 @@ public:
         tap(m_context, DPAD_LEFT);
         m_context.wait_for_all_requests();
         members = size_t(detect_last_occupied_party_slot(m_console)) + 1;
+        m_members = members;
+        m_cursor = 0;
         return true;
     }
 
@@ -165,6 +170,10 @@ public:
     }
 
     virtual bool next_member() override{
+        //  DOWN on the last member does nothing.
+        if (m_cursor + 1 < m_members){
+            m_cursor++;
+        }
         tap(m_context, DPAD_DOWN, 0ms);
         pbf_wait(m_context, MEMBER_SWITCH_SETTLE);
         m_context.wait_for_all_requests();
@@ -180,10 +189,43 @@ public:
     }
 
     virtual bool open_member_menu(size_t slot) override{
-        for (size_t c = 0; c < slot; c++){
+        //  The party menu's UP and DOWN step one member, through CANCEL
+        //  past the ends; the scans never go past them.
+        for (; m_cursor < slot; m_cursor++){
             tap(m_context, DPAD_DOWN);
         }
+        for (; m_cursor > slot; m_cursor--){
+            tap(m_context, DPAD_UP);
+        }
         return open_menu_on_cursor();
+    }
+
+    virtual std::optional<PartyMemberMenu> read_member_menu() override{
+        VideoSnapshot screen = m_console.video().snapshot();
+        if (!screen){
+            return std::nullopt;
+        }
+        std::optional<PartyMemberMenu> menu = read_party_member_menu(m_console.logger(), m_language, screen);
+        if (!menu || !menu->all_read()){
+            m_console.log(std::format("Party: slot {}'s menu isn't read.", m_cursor + 1), COLOR_RED);
+            dump_debug_image(m_console, "AutoStory/party", "member_menu", screen);
+        }
+        return menu;
+    }
+
+    virtual bool close_member_menu() override{
+        press(m_context, BUTTON_B);
+        m_context.wait_for_all_requests();
+        PartySelectionDetector menu(COLOR_RED);
+        for (size_t c = 0; c < MENU_CLOSE_CHECKS; c++){
+            pbf_wait(m_context, MENU_CLOSE_CHECK);
+            m_context.wait_for_all_requests();
+            VideoSnapshot screen = m_console.video().snapshot();
+            if (screen && !menu.detect(screen)){
+                return true;
+            }
+        }
+        return false;
     }
 
     virtual void close() override{
@@ -201,6 +243,9 @@ private:
     ProControllerContext& m_context;
     StartMenu m_menu;
     Language m_language;
+    size_t m_members = 0;
+    //  The member the party menu's cursor is on.
+    size_t m_cursor = 0;
 };
 
 } // namespace

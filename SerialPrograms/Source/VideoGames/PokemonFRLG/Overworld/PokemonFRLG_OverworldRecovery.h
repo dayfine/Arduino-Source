@@ -98,6 +98,11 @@ struct RouteCalls{
     //  leg walked again after a stop). Returns the file the caller saved
     //  the screen to, which is logged on the next line; empty: none.
     std::function<std::string(const std::string& leg_text)> leg_ended;
+    //  Whether the player stands on foot on `tile`, off the water: checked
+    //  after a leg that lands there (RouteStep::lands_after), which fails
+    //  if not. The console reads only whether they surf. Not set: not
+    //  checked.
+    std::function<bool(const MapPosition& tile)> landed_on;
 };
 
 
