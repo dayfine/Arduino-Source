@@ -114,12 +114,6 @@ void read_lead_moves(StoryEnv& env, StartMenu menu);
 //  was read.
 void read_bag_supplies(StoryEnv& env, StartMenu menu);
 
-//  The nurse's heal (heal_at_pokecenter()), defined in
-//  PokemonFRLG_AutoStoryHealingSteps.cpp, with the party's HP and PP
-//  counted full in env.supplies; only where a Pokemon Center's floor shows
-//  on screen, else it fails with the screen.
-void heal_in_center(StoryEnv& env);
-
 //  Does FRLG's kinds of story step on the console, each with its row of
 //  story_action_rows() (PokemonFRLG_AutoStoryStepTable.h). A console step
 //  that fails is a failed Outcome, which the segment answers by reloading.

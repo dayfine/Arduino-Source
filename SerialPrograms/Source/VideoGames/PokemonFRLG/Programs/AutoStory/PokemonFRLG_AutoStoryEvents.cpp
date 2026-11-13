@@ -24,6 +24,7 @@
 #include "PokemonFRLG_AutoStoryAbilities.h"
 #include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryCapture.h"
+#include "PokemonFRLG_AutoStoryCenterHeal.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
 #include "PokemonFRLG_AutoStoryBattlePolicy.h"
@@ -1022,7 +1023,6 @@ Pokemon::Segment make_story_segment(const std::vector<StoryCheckpoint>& checkpoi
     }
     return segment;
 }
-
 
 
 } // namespace PokemonFRLG
