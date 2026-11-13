@@ -60,11 +60,11 @@ std::vector<Pokemon::StoryActionSpec> healing_action_specs();
 //  BAG_CHECK_ACTION step (its flag set in `state`); nothing for another.
 std::optional<Pokemon::Outcome> run_healing_step(StoryEnv& env, Pokemon::RunState& state, const Pokemon::StoryStep& step);
 
-//  A MART_ACTION step with "cover_hp" or "fill_to": its first line cut to the
-//  hp_cover_shortfall() or fill_shortfall() of `supplies` (at most the plan's quantity), in
+//  A MART_ACTION step with "fill_to": its first line cut to the
+//  fill_shortfall() of `supplies` (at most the plan's quantity), in
 //  `step`. Nothing to buy: the step's Outcome, unchanged, logged. Nothing
 //  for another step, left as it was.
-std::optional<Pokemon::Outcome> cover_hp_in_mart(Logger& logger, const Supplies& supplies, Pokemon::StoryStep& step);
+std::optional<Pokemon::Outcome> fill_mart_to(Logger& logger, const Supplies& supplies, Pokemon::StoryStep& step);
 
 
 

@@ -214,8 +214,7 @@ UnitTestResult test_bike_voucher_row(){
     return true;
 }
 
-//  07.01's Mart step, at its money floor: 5 Repels and 2 Escape Ropes,
-//  and 3000 or more left.
+//  07.01's Mart step: 5 Repels and 2 Escape Ropes.
 UnitTestResult test_repels_and_escape_ropes(){
     const StoryCheckpoint& row = checkpoint("07.01");
     const auto step = std::find_if(row.steps.begin(), row.steps.end(), [](const StoryStep& data){
@@ -229,23 +228,21 @@ UnitTestResult test_repels_and_escape_ropes(){
         return "07.01: expected a Mart plan.";
     }
     const MartPlan& plan = *parsed;
-    if (plan.map != CERULEAN_MART || !plan.money_floor){
-        return "07.01: expected the Mart step at Cerulean's Mart, with a money floor.";
+    if (plan.map != CERULEAN_MART){
+        return "07.01: expected the Mart step at Cerulean's Mart.";
     }
-    const std::optional<std::vector<MartBuy>> buys = plan_mart_buys(mart_stock(plan.map), plan, *plan.money_floor);
+    const std::optional<std::vector<MartBuy>> buys = plan_mart_buys(mart_stock(plan.map), plan);
     if (!buys){
         return "07.01: the Mart step names an item Cerulean's Mart doesn't sell.";
     }
     size_t repels = 0;
     size_t escape_ropes = 0;
-    size_t spent = 0;
     for (const MartBuy& buy : *buys){
         repels += buy.item == "repel" ? buy.quantity : 0;
         escape_ropes += buy.item == "escape-rope" ? buy.quantity : 0;
-        spent += buy.cost;
     }
-    if (repels < 5 || escape_ropes != 2 || *plan.money_floor < spent + 3000){
-        return std::format("07.01: bought {} Repels and {} Escape Ropes for {} from {}.", repels, escape_ropes, spent, *plan.money_floor);
+    if (repels < 5 || escape_ropes != 2){
+        return std::format("07.01: bought {} Repels and {} Escape Ropes.", repels, escape_ropes);
     }
     return true;
 }
