@@ -26,6 +26,9 @@ constexpr size_t PARTY_SLOTS = 6;
 constexpr int MIN_POTIONS_TO_FIGHT = 2;
 //  RUN this many times ("Can't escape!") before fighting instead.
 constexpr int RUN_TRIES = 4;
+//  The lead's box gone with the foe's there this many polls in a row: the
+//  lead fainted.
+constexpr int FAINT_POLLS = 3;
 //  PSN read at this many turns in a row before an Antidote.
 constexpr int PSN_READS = 2;
 //  An evolution screen held this long was an evolution, not a text box
@@ -352,7 +355,7 @@ void BattleDecisions::move_refused(){
 
 void BattleDecisions::turn_done(TurnChoice choice, TurnResult result){
     if (result == TurnResult::REFUSED){
-        move_refused();
+        refused(choice);
         return;
     }
     const bool done = result == TurnResult::DONE;
@@ -453,6 +456,33 @@ std::optional<size_t> BattleDecisions::next_member_slot(){
 
 void BattleDecisions::lead_fainted(){
     m_lost = true;
+}
+
+void BattleDecisions::refused(TurnChoice choice){
+    if (choice != TurnChoice::RUN){
+        move_refused();
+        return;
+    }
+    if (m_kind == BattleKind::TRAINER){
+        return;
+    }
+    m_kind = BattleKind::TRAINER;
+    //  The wild Pokemon read at the start is gone; the trainer's is unknown.
+    m_supplies.wild_foes.clear();
+    if (m_supplies.policy.kind != BattlePolicyKind::NONE && m_supplies.lead.stats){
+        m_policy.emplace(m_supplies.policy);
+    }
+}
+
+void LeadFaintWatch::no_battle_screen(){
+    m_lead_seen = false;
+    m_polls = 0;
+}
+
+bool LeadFaintWatch::seen(BattleBoxes boxes){
+    m_lead_seen |= boxes.lead;
+    m_polls = m_lead_seen && !boxes.lead && boxes.foe ? m_polls + 1 : 0;
+    return m_polls == FAINT_POLLS;
 }
 
 EvolutionHold::EvolutionHold(PartyMember& lead)

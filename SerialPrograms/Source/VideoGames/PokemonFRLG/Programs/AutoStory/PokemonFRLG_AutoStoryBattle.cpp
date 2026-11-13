@@ -50,8 +50,6 @@ constexpr Milliseconds BATTLE_GONE = 2000ms;
 //  A battle screen with neither an arrow nor a menu for this long: B, for
 //  a prompt the detectors miss.
 constexpr Milliseconds STUCK = 8000ms;
-//  Seen this many polls in a row: the starter fainted.
-constexpr int FAINT_POLLS = 3;
 //  No battle menu for this long: A and B in turn, for a prompt nothing reads.
 //  Only near battle screens: A on the overworld after a gym leader's speech
 //  would talk to them again.
@@ -388,12 +386,14 @@ private:
         }
         if (seen == BattleScreen::NONE){
             m_refusal.no_battle_screen();
+            m_faint.no_battle_screen();
             return no_battle_screen(screen, now);
         }
         m_seen_battle = true;
         m_last_battle = now;
         read_hp(screen);
         watch_for_faint(screen);
+        check_run_refused(seen, screen);
         act(seen, screen, now);
         return false;
     }
@@ -605,11 +605,11 @@ private:
     }
 
     void take_turn(const ImageViewRGB32& screen){
-        m_faint_polls = 0;
-        if (m_kind != BattleKind::TRAINER && m_decisions.turns() == 0){
+        const bool trainer = m_kind == BattleKind::TRAINER;
+        if (!trainer && m_decisions.turns() == 0){
             m_supplies.wild_foes = read_wild_foes(m_console.logger(), m_language, screen);
         }
-        if (m_kind == BattleKind::TRAINER && !m_supplies.foes.empty()){
+        if (trainer && !m_supplies.foes.empty()){
             m_supplies.foe_out = read_trainer_foe(m_console.logger(), m_language, screen, m_supplies.foes);
         }
         if (m_refusal.refused(current_time())){
@@ -619,6 +619,7 @@ private:
         const PartyStatus status = read_party_status(screen);
         const TurnAction action = m_decisions.turn(status);
         m_evolution.turn_taken(action.choice);
+        m_ran = action.choice == TurnChoice::RUN;
         log_turn(status, action);
         dump_debug_image(m_console, "AutoStory/battle", std::format("turn{}-menu", m_decisions.turns()), screen);
         switch (action.choice){
@@ -654,11 +655,28 @@ private:
         if (m_decisions.turns() == 0 || m_decisions.lost()){
             return;
         }
-        m_faint_polls = starter_fainted(screen) ? m_faint_polls + 1 : 0;
-        if (m_faint_polls >= FAINT_POLLS){
+        const BattleBoxes boxes{
+            .lead = BattlePokemonDetector(COLOR_RED).detect(screen),
+            .foe = BattleOpponentDetector(COLOR_RED).detect(screen),
+        };
+        if (m_faint.seen(boxes)){
             m_console.log("Battle: the starter fainted.", COLOR_RED);
             m_decisions.lead_fainted();
         }
+    }
+
+    //  After RUN, until the next battle menu: the game's "No! There's no
+    //  running from a trainer battle!" makes the battle a trainer's.
+    void check_run_refused(BattleScreen seen, const ImageViewRGB32& screen){
+        const bool text = seen == BattleScreen::ADVANCE || seen == BattleScreen::OTHER;
+        if (!m_ran || !text || m_kind == BattleKind::TRAINER || !run_refused_shows(m_language, screen)){
+            return;
+        }
+        m_console.log("Battle: \"No! There's no running from a trainer battle!\": fighting it as a trainer's.", COLOR_ORANGE);
+        dump_debug_image(m_console, "AutoStory/battle", std::format("turn{}-run-refused", m_decisions.turns()), screen);
+        m_ran = false;
+        m_kind = BattleKind::TRAINER;
+        m_decisions.turn_done(TurnChoice::RUN, TurnResult::REFUSED);
     }
 
     ConsoleHandle& m_console;
@@ -668,7 +686,9 @@ private:
     EvolutionHold m_evolution;
     BattleEndWatch m_end;
     MoveRefusalWatch m_refusal;
-    const BattleKind m_kind;
+    LeadFaintWatch m_faint;
+    //  As the battle was taken at its start, until RUN is refused.
+    BattleKind m_kind;
     const Pokemon::StoryCheckLevel m_checks;
     const Language m_language;
     const WallClock m_start;
@@ -682,7 +702,8 @@ private:
     bool m_press_a = true;
     //  A move was chosen and no battle menu has shown since.
     bool m_move_chosen = false;
-    int m_faint_polls = 0;
+    //  RUN was chosen and no battle menu has shown since.
+    bool m_ran = false;
 };
 
 

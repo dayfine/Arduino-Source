@@ -493,6 +493,27 @@ public:
     }
 };
 
+//  run_refused_shows() on console B's captures named
+//  <anything>_<True or False>.png, in English.
+class Test_RunRefused : public ImageUnitTest{
+public:
+    Test_RunRefused(const std::string& image)
+        : ImageUnitTest("PokemonFRLG::AutoStoryBattle - " + image, {image})
+    {}
+
+    virtual UnitTestResult run_on_images(
+        Logger& logger, CancellableScope& scope,
+        const std::vector<ImageRGB32>& images
+    ) const override{
+        bool expected = false;
+        const std::vector<std::string> words = parse_words(Filesystem::Path(image_paths()[0]).stem().string());
+        if (words.empty() || !parse_bool(words.back(), expected)){
+            return "Error: filename must be <anything>_<True or False>.";
+        }
+        return run_refused_shows(Language::English, images[0]) == expected;
+    }
+};
+
 //  read_opponent_hp_fill() on console B's captures named
 //  <anything>_FoeHp_<pixels>of48.png: the bar's filled share within a pixel.
 class Test_FoeHp : public ImageUnitTest{
@@ -659,7 +680,81 @@ UnitTestResult test_planned_battle_items(Logger&){
 }
 
 
+//  The lead's box at full HP, no status.
+const PartyStatus FULL_GREEN{.hp_seen = true, .hp_yellow = false, .hp_red = false, .status = StatusCondition::NONE};
+
+//  Regression: console B, 2026-11-13 10:07, 12.03 on Route21_North: RUN
+//  from a wild Tentacool, then Swimmer Spencer saw the player before the
+//  loop found the overworld. His Seadra's box showed before the lead's and
+//  read as a faint, and from then on RUN was sent every turn for 10
+//  minutes, the game answering "No! There's no running from a trainer
+//  battle!". The trainer's opening is no faint, and once the game refuses
+//  RUN the battle is fought.
+UnitTestResult test_trainer_after_run(Logger&){
+    Supplies supplies;
+    BattleDecisions decisions(supplies, BattleKind::WILD_RUN);
+    LeadFaintWatch faint;
+    if (decisions.turn(FULL_GREEN).choice != TurnChoice::RUN){
+        return "Expected RUN from the wild Tentacool.";
+    }
+    for (int poll = 0; poll < 5; poll++){
+        faint.seen({.lead = true, .foe = true});
+    }
+    //  "Got away safely!", the overworld, Spencer's walk up and his words.
+    for (int poll = 0; poll < 20; poll++){
+        faint.no_battle_screen();
+    }
+    for (int poll = 0; poll < 10; poll++){
+        if (faint.seen({.lead = false, .foe = true})){
+            decisions.lead_fainted();
+            return std::format("Took the trainer's opening (the foe's box before the lead's) for a faint at poll {}.", poll + 1);
+        }
+    }
+    faint.seen({.lead = true, .foe = true});
+    if (decisions.turn(FULL_GREEN).choice != TurnChoice::RUN){
+        return "Expected RUN at the trainer's first turn, the battle still taken for wild.";
+    }
+    decisions.turn_done(TurnChoice::RUN, TurnResult::REFUSED);
+    for (int turn = 0; turn < 20; turn++){
+        if (decisions.turn(FULL_GREEN).choice == TurnChoice::RUN){
+            return std::format("RUN again {} turns after the game refused it.", turn + 1);
+        }
+    }
+    //  A faint in the trainer's battle still counts.
+    bool fainted = false;
+    for (int poll = 0; poll < 3; poll++){
+        fainted = faint.seen({.lead = false, .foe = true});
+    }
+    if (!fainted){
+        return "A faint after the lead's box showed wasn't seen.";
+    }
+    return true;
+}
+
+//  The refusal unread (a language the reader doesn't know): RUN at most
+//  RUN_TRIES times, then the battle is fought.
+UnitTestResult test_run_refusal_unread(Logger&){
+    Supplies supplies;
+    BattleDecisions decisions(supplies, BattleKind::WILD_RUN);
+    int runs = 0;
+    for (int turn = 0; turn < 20; turn++){
+        runs += decisions.turn(FULL_GREEN).choice == TurnChoice::RUN ? 1 : 0;
+    }
+    if (runs > 4){
+        return std::format("RUN {} times in 20 turns.", runs);
+    }
+    return true;
+}
+
 const AutoStoryItemsTestCase AUTO_STORY_ITEMS_CASES[] = {
+    {
+        .input = {.name = "12.03 RUN, then a trainer: no faint at his opening, fought once RUN is refused", .body = test_trainer_after_run},
+        .expectation = {.description = "fights a trainer whose battle followed a wild one run from"},
+    },
+    {
+        .input = {.name = "RUN refusal unread: RUN at most 4 times, then fight", .body = test_run_refusal_unread},
+        .expectation = {.description = "bounds RUN in a battle taken for wild"},
+    },
     {
         .input = {.name = "Mart cursor stays on the row bought", .body = test_mart_cursor},
         .expectation = {.description = "verifies mart cursor remains on purchased item index"},
@@ -749,6 +844,11 @@ void add_tests_AutoStoryItems(UnitTestDatabase& database){
     }){
         database.add<Test_BattleYesNo>(std::format("PokemonFRLG/AutoStoryBattle/{}", image));
     }
+    //  12.03 on Route 21 (console B, 2026-11-13 10:07): Swimmer Spencer's
+    //  Seadra and "No! There's no running from a trainer battle!" after RUN,
+    //  which the loop sent for 10 minutes; and the battle menu a turn before.
+    database.add<Test_RunRefused>("PokemonFRLG/AutoStoryBattle/Route21_SpencerNoRunning_True.png");
+    database.add<Test_RunRefused>("PokemonFRLG/AutoStoryBattle/Route21_SpencerMenu_False.png");
     //  The S.S. Anne rival's Pidgeotto at full HP, its Raticate low.
     database.add<Test_FoeHp>("PokemonFRLG/AutoStoryBattle/SSAnneRival_Pidgeotto_FoeHp_48of48.png");
     database.add<Test_FoeHp>("PokemonFRLG/AutoStoryBattle/SSAnneRival_Raticate_FoeHp_7of48.png");

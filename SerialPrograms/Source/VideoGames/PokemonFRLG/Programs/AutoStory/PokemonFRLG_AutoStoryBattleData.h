@@ -50,6 +50,12 @@ std::vector<std::string> read_wild_foes(Logger& logger, Language language, const
 //  Empty if not read. Logs what it read.
 std::string read_trainer_foe(Logger& logger, Language language, const ImageViewRGB32& screen, const std::vector<std::string>& party);
 
+//  Whether the battle's text box reads the game's answer to RUN in a
+//  trainer's battle, "No! There's no running from a trainer battle!", by
+//  its first line. English only: in another language it reads false, and
+//  BattleDecisions stops running after a few tries anyway.
+bool run_refused_shows(Language language, const ImageViewRGB32& screen);
+
 
 
 //  (name, JSON text) of each file in BattleData/, sorted by name.

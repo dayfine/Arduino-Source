@@ -19,6 +19,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldObjects.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
@@ -203,6 +204,40 @@ UnitTestResult test_short_hold_never_goes_on_from_a_guess(){
     return true;
 }
 
+//  Swimmer Spencer goes round Route21_North's (8..16, 42..46), looking a
+//  tile ahead (pokefirered: a walk sequence from (12, 44), range 4 by 2):
+//  column 10 crosses his line, which the map pack, with him on (12, 44)
+//  alone, left out. 12.03's hold down column 10 met him after a wild
+//  Tentacool (console B, 2026-11-13 10:07).
+UnitTestResult test_spencer_walks(){
+    for (const MapData& map : story_maps()){
+        if (map.name != "Route21_North"){
+            continue;
+        }
+        for (const MapObject& object : map.objects){
+            if (object.name != "swimmer_m_water" || object.x != 12 || object.y != 44){
+                continue;
+            }
+            const bool box = object.wander && object.wander->x0 == 8 && object.wander->y0 == 42
+                && object.wander->x1 == 16 && object.wander->y1 == 46;
+            if (!box){
+                return "Swimmer Spencer stands on (12, 44) alone; he walks (8..16, 42..46).";
+            }
+            for (const TilePos& tile : {TilePos{10, 41}, TilePos{10, 47}, TilePos{7, 44}}){
+                if (!trainer_may_see(map, object, tile)){
+                    return std::format("Swimmer Spencer doesn't see {}.", to_string(tile));
+                }
+            }
+            if (trainer_may_see(map, object, TilePos{10, 40})){
+                return "Swimmer Spencer sees (10, 40), two tiles from his walk.";
+            }
+            return true;
+        }
+        return "No Swimmer Spencer on Route21_North.";
+    }
+    return "No Route21_North.";
+}
+
 struct SurfInput{
     std::string_view name;
     UnitTestResult (*body)();
@@ -236,6 +271,10 @@ private:
 };
 
 const SurfCase SURF_CASES[] = {
+    {
+        .input = {.name = "Swimmer Spencer walks (8..16, 42..46) on Route21_North", .body = test_spencer_walks},
+        .expectation = {.description = "his walk and line are in the trainer data the planner reads"},
+    },
     {
         .input = {.name = "12.03's legs on the water land or end at a wall", .body = test_no_open_water_legs},
         .expectation = {.description = "no leg on Route 21's water ends in the open"},

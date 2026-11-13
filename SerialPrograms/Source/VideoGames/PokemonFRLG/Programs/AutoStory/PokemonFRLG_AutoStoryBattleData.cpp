@@ -5,6 +5,7 @@
  */
 
 #include <algorithm>
+#include <cctype>
 #include <format>
 #include <functional>
 #include <initializer_list>
@@ -13,6 +14,11 @@
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
 #include "Common/Cpp/Json/JsonValue.h"
+#include "CommonFramework/ImageTools/ImageBoxes.h"
+#include "CommonTools/Images/ImageFilter.h"
+#include "CommonTools/OCR/OCR_Routines.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
+#include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_OcrPreprocessing.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_WildEncounterReader.h"
 #include "PokemonFRLG_AutoStoryBattleData.h"
 
@@ -24,6 +30,10 @@ namespace PokemonFRLG{
 namespace{
 
 using JsonTable = std::map<std::string, JsonValue, std::less<>>;
+
+//  The battle text box's first line, as a fraction of the game screen:
+//  "No! There's no running" (console B, 2026-11-13, Route 21).
+const ImageFloatBox TEXT_FIRST_LINE_BOX(0.04, 0.755, 0.62, 0.075);
 
 const JsonValue& file_json(std::string_view name){
     static const JsonTable FILES = []{
@@ -179,6 +189,27 @@ std::string read_trainer_foe(Logger& logger, Language language, const ImageViewR
     }
     logger.log(read.empty() ? "Battle: the trainer's Pokemon wasn't read." : std::format("Battle: the trainer's {} is out.", read));
     return read;
+}
+
+bool run_refused_shows(Language language, const ImageViewRGB32& screen){
+    if (language != Language::English){
+        return false;
+    }
+    const ImageViewRGB32 game = extract_box_reference(screen, GameSettings::instance().GAME_BOX);
+    const ImageRGB32 line = preprocess_for_ocr(extract_box_reference(game, TEXT_FIRST_LINE_BOX), 3, 1);
+    //  The first filter that reads any words decides: each read takes time,
+    //  and the loop looks at every poll after RUN.
+    for (const OCR::TextColorRange& filter : BRIGHT_TEXT_FILTERS()){
+        size_t text_pixels = 0;
+        const ImageRGB32 filtered = to_blackwhite_rgb32_range(text_pixels, line, true, filter.mins, filter.maxs);
+        std::string text = text_pixels == 0 ? "" : OCR::ocr_read(language, filtered, OCR::PageSegMode::SINGLE_LINE);
+        std::erase_if(text, [](char c){ return !std::isalpha(static_cast<unsigned char>(c)); });
+        if (text.size() >= 5){
+            std::ranges::transform(text, text.begin(), [](char c){ return static_cast<char>(std::tolower(static_cast<unsigned char>(c))); });
+            return text.find("running") != std::string::npos;
+        }
+    }
+    return false;
 }
 
 std::string_view battle_risk_name(BattleRisk risk){
