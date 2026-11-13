@@ -65,9 +65,7 @@ struct StoryRunPlan{
 //  run with `handoffs` takes them: a run that reaches 00.01 with
 //  `handoffs.starter_rng` on saves at the Verity Lakefront at the end of
 //  00.01 and stops there for Starter RNG.
-StoryRunPlan plan_story_run(
-    const std::vector<StoryCheckpoint>& checkpoints, size_t first, size_t last, const StoryHandoffs& handoffs = {}
-);
+StoryRunPlan plan_story_run(const std::vector<StoryCheckpoint>& table, size_t first, size_t last, const StoryHandoffs& handoffs = {});
 
 
 
