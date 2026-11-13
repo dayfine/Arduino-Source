@@ -823,7 +823,6 @@ StoryExecutor::StoryExecutor(StoryEnv& env)
     ))
 {
     m_executor.set_interrupts(&m_interrupts);
-    set_pause_points(&env.pause);
 }
 
 Outcome StoryExecutor::run(const StoryStep& step, RunState& state){

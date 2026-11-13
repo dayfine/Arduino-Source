@@ -319,6 +319,7 @@ void verify_story_checkpoint(
     Pokemon::RunState state;
     load_verify_save(env, story, game, state, checkpoint);
     StoryExecutor executor(story);
+    executor.set_pause_points(&story.pause);
     Pokemon::Segment segment = make_story_segment(checkpoints, executor);
     Pokemon::SegmentHooks hooks = Pokemon::story_segment_hooks(game);
 
@@ -726,6 +727,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     story.language = RUN.language();
     set_breakpoints(env, context, story, RUN.breakpoints());
     StoryExecutor executor(story);
+    executor.set_pause_points(&story.pause);
 
     const std::optional<std::string> done_through = at_gift_rng
         ? run_from_gift_rng_save(env, context, story, executor, first)
