@@ -2,9 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Rows 17.01 to 17.04b (StoryData/frlg-17.0N.plan.json) on the overworld
- *  sim: Saffron's Center to Cinnabar's by Fly and Surf, and from Cinnabar's
- *  Center by Fly to Viridian City and through its Gym to Giovanni.
+ *  Viridian Gym's spinner tiles (rows 17.02 to 17.04b,
+ *  StoryData/frlg-17.0N.plan.json) on the overworld sim.
  *
  */
 
@@ -67,42 +66,6 @@ private:
     AutoStoryViridianCase m_case;
 };
 
-const StoryCheckpoint& checkpoint(std::string_view id){
-    for (const StoryCheckpoint& row : story_checkpoints()){
-        if (row.id == id){
-            return row;
-        }
-    }
-    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("No checkpoint {}.", id));
-}
-
-//  17.01 on the sim from Saffron's nurse: out of the Center, the Fly to
-//  Pallet Town, the shore, the Surf onto Route 21 and the way south over it
-//  to Cinnabar's Center door. No trainer is met and no rule is broken.
-UnitTestResult test_surf_to_cinnabar(){
-    const StoryCheckpoint& row = checkpoint("17.01");
-    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
-    OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
-    std::vector<std::string> maps;
-    for (const StoryStep& step : row.steps){
-        if (step.action == CENTER_ENTER_VARIANT){
-            break;
-        }
-        if (const std::string failure = row_step_on_sim(sim, at, step, row.id); !failure.empty()){
-            return std::format("17.01: ended on {}; {}", to_string(sim.state().position), failure);
-        }
-        maps.push_back(sim.state().position.map);
-    }
-    const MapPosition below_center{"CinnabarIsland", {14, 12}};
-    if (!(sim.state().position == below_center)){
-        return std::format("17.01: ended on {}, not below Cinnabar's Center door {}.", to_string(sim.state().position), to_string(below_center));
-    }
-    if (!sim.state().trainers_beaten.empty() || !sim.state().violations.empty()){
-        return "17.01: met a trainer or broke a rule on the way.";
-    }
-    return true;
-}
-
 //  Viridian Gym's arrow tiles (the map file's glyphs): stepped onto, the
 //  player slides until a stop tile or a wall, turned by each arrow met.
 UnitTestResult check_gym_slide(const TilePos& from, const TilePos& end, Direction facing, int tiles){
@@ -140,10 +103,6 @@ UnitTestResult test_gym_north_arrow(){
 }
 
 const AutoStoryViridianCase AUTO_STORY_VIRIDIAN_CASES[] = {
-    {
-        .input = {.name = "17.01 Saffron to Cinnabar by Fly and Surf", .body = test_surf_to_cinnabar},
-        .expectation = {.description = "Pallet Town's shore, Route 21 surfed, below Cinnabar's Center door, nobody met"},
-    },
     {
         .input = {.name = "Viridian Gym: the east arrow at (11, 3) slides to its stop", .body = test_gym_east_arrow},
         .expectation = {.description = "6 tiles east to (17, 3)"},

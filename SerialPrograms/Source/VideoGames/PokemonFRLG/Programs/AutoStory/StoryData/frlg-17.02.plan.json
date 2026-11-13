@@ -3,9 +3,9 @@
   "game": "frlg",
   "checkpoint": {
     "id": "17.02",
-    "title": "Cinnabar to Viridian Gym: Fly, Warren",
+    "title": "Saffron to Viridian Gym: Fly, Warren",
     "start": {
-      "map": "CinnabarIsland_PokemonCenter_1F",
+      "map": "SaffronCity_PokemonCenter_1F",
       "tiles": [
         [
           7,
@@ -16,22 +16,22 @@
     },
     "events": [
       {
-        "id": "cinnabar_outside",
+        "id": "saffron_outside",
         "kind": "route",
         "action": "run",
         "args": {
           "target": {
-            "map": "CinnabarIsland",
+            "map": "SaffronCity",
             "tiles": [
               [
-                14,
-                12
+                24,
+                39
               ]
             ],
             "facing": "south"
           }
         },
-        "why": "out of Cinnabar's Center onto the street below its door: Fly works outdoors only"
+        "why": "out of Saffron's Center onto the street below its door (24, 38): Fly works outdoors only"
       },
       {
         "id": "fly_viridian",
@@ -157,7 +157,7 @@
     "menu": "full",
     "notes": {
       "checkpoint": [
-        "Starts at Cinnabar's nurse, where 14.02 ends (Bill declined there; nothing later needs the One Island trip: its Sevii quest flags are optional, the Ruby/Sapphire stone and Network Machine are post-game).",
+        "Starts at Saffron's nurse: it follows the Silph Co. and Sabrina rows, which are not all authored in this stack, so its start is its own (starts_after_unauthored_rows()). Nothing later needs the One Island trip (Bill is declined in 14.02): its Sevii quest flags are optional, the Ruby/Sapphire stone and Network Machine are post-game.",
         "Fly to Viridian City, then in through the Gym's door. The route keeps off the arrow tiles on purpose (design section 12 scripts them; the planned way never meets one), and ends on (15, 7) after Warren's battle."
       ]
     }
