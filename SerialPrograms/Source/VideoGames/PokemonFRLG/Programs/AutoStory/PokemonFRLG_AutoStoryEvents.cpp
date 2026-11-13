@@ -584,7 +584,7 @@ std::optional<Outcome> run_abilities(StoryEnv& env, RunState& state, const Story
         return Pokemon::outcome_unchanged();
     }
     StoryStep covered = step;
-    if (const std::optional<Outcome> nothing_to_buy = cover_hp_in_mart(env.console.logger(), env.supplies, covered)){
+    if (const std::optional<Outcome> nothing_to_buy = fill_mart_to(env.console.logger(), env.supplies, covered)){
         return nothing_to_buy;
     }
     return run_ability_game_step(env.console.logger(), &env.console, covered, abilities);
