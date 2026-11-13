@@ -224,12 +224,12 @@ UnitTestResult test_gate_errors(){
 //  statue to press, only its flag, which the game sets for good.
 UnitTestResult test_victory_road_barriers(){
     struct Floor{
-        const char* name;
+        std::string_view name;
         size_t gates;
         size_t switches;
-        const char* switch_id;
-        const char* barrier;
-        const char* flag;
+        std::string_view switch_id;
+        std::string_view barrier;
+        std::string_view flag;
         TilePos top;
     };
     const Floor floors[] = {
@@ -238,22 +238,22 @@ UnitTestResult test_victory_road_barriers(){
         {"VictoryRoad_3F", 2, 1, "floor_switch_1", "barrier_1_top", "VAR_MAP_SCENE_VICTORY_ROAD_3F", {12, 12}},
     };
     for (const Floor& floor : floors){
-        const MapData map = load_map(floor.name);
+        const MapData map = load_map(std::string(floor.name));
         if (map.gates.size() != floor.gates || map.switches.size() != floor.switches){
             return std::format("{}: expected {} gates and {} switches, got {} and {}.",
                 floor.name, floor.gates, floor.switches, map.gates.size(), map.switches.size());
         }
-        const auto found = map.switches.find(floor.switch_id);
+        const auto found = map.switches.find(std::string(floor.switch_id));
         if (found == map.switches.end() || found->second.toggle || found->second.flag != floor.flag || !found->second.statues.empty()){
             return std::format("{}: {} should be a one-way flag switch with no statue.", floor.name, floor.switch_id);
         }
-        const MapGate& top = map.gates.at(floor.barrier);
+        const MapGate& top = map.gates.at(std::string(floor.barrier));
         if (top.kind != GateKind::SWITCH || top.switch_id != floor.switch_id || !top.open_when_on || top.open_at_new_game){
             return std::format("{}: the barrier should be closed at new game and open with {}.", floor.name, floor.switch_id);
         }
         GateState off;
         GateState on;
-        on.switches_on.insert(floor.switch_id);
+        on.switches_on.insert(std::string(floor.switch_id));
         if (resolved_tile(map, floor.top, off) != TileKind::WALL || resolved_tile(map, floor.top, on) == TileKind::WALL){
             return std::format("{}: the barrier at ({}, {}) should be a wall until {} is on.", floor.name, floor.top.x, floor.top.y, floor.switch_id);
         }
