@@ -58,8 +58,8 @@ walk run with no stops) | verdict (why). A ratio above 1.5 is flagged "!".
 01.08 below_the_ravaged_path | 24815 | 26050 | 13700 | 2 | 9 | 0 | 4.24! | 1.00 | 6.00! | 5850 ms (stand-in) | PASS
 01.09 west_of_the_rock | 7050 | 7050 | 7050 | 1 | 0 | 0 | 4.70! | 1.00 | 1.00 | 1500 ms (stand-in) | PASS
 01.09 above_the_way_out | 4550 | 4550 | 4550 | 2 | 0 | 0 | 4.14! | 1.00 | 2.00! | 1100 ms (stand-in) | PASS
-01.10 line_1 | 900 | 900 | 900 | 0 | 0 | 0 | 2.25! | 1.00 | 1.00 | 400 ms (stand-in) | PASS
-01.10 line_2 | 3250 | 3250 | 3250 | 1 | 0 | 0 | 2.83! | 1.00 | 1.00 | 1150 ms (stand-in) | PASS
+01.10 line_1 | 1950 | 1950 | 1950 | 1 | 0 | 0 | 2.29! | 1.00 | 1.00 | 850 ms (stand-in) | PASS
+01.10 line_2 | 9800 | 9800 | 9800 | 0 | 0 | 0 | 6.12! | 1.00 | 1.00 | 1600 ms (stand-in) | PASS
 01.10 line_3 | 4100 | 4100 | 4100 | 0 | 0 | 0 | 4.10! | 1.00 | 1.00 | 1000 ms (stand-in) | PASS
 01.10 line_4 | 4050 | 4050 | 4050 | 1 | 0 | 0 | 3.86! | 1.00 | 1.00 | 1050 ms (stand-in) | PASS
 01.10 line_5 | 15110 | 20050 | 7700 | 1 | 6 | 0 | 7.75! | 1.17 | 1.00 | 1950 ms (stand-in) | PASS
