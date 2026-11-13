@@ -241,9 +241,9 @@ UnitTestResult test_pause_before_leg(Logger&){
     };
     Pokemon::PlannedRouteLeg several = one;
     several.after.push_back({.map = "Test", .pos = {11, 10}});
-    io.leg_started(2, 5, one, &pause);
-    io.leg_started(3, 5, several, &pause);
-    io.leg_started(4, 5, one, nullptr);
+    leg_started(io, 2, 5, one, &pause);
+    leg_started(io, 3, 5, several, &pause);
+    leg_started(io, 4, 5, one, nullptr);
     const std::vector<std::string> expected{
         "01.04/3 gym", "01.04/3 gym leg 2/5 east 4 -> (10, 10)", "01.04/3 gym leg 3/5 east 4",
     };
