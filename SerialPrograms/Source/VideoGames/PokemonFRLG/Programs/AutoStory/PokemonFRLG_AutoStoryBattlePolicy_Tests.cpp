@@ -185,10 +185,11 @@ UnitTestResult test_low_hp_heals(){
 //  down and no attack was made.
 Supplies thin_bag(int super_potions){
     Supplies supplies;
-    set_from_bag(supplies, {
-        {"potion", 6}, {"super-potion", super_potions},
-        {"x-special", 19}, {"x-speed", 6}, {"x-accuracy", 5}, {"guard-spec", 2},
-    });
+    std::vector<BagRow> rows = {{"potion", 6}, {"x-special", 19}, {"x-speed", 6}, {"x-accuracy", 5}, {"guard-spec", 2}};
+    if (super_potions > 0){
+        rows.push_back({"super-potion", super_potions});
+    }
+    set_from_bag(supplies, rows);
     return supplies;
 }
 
