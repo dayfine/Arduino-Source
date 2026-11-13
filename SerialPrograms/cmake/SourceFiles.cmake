@@ -346,6 +346,8 @@ file(GLOB CORE_LIBRARY_SOURCES
     Source/NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController_from_Keyboard.h
     Source/NintendoSwitch/Controllers/Procon/NintendoSwitch_ProControllerState.cpp
     Source/NintendoSwitch/Controllers/Procon/NintendoSwitch_ProControllerState.h
+    Source/NintendoSwitch/Inference/NintendoSwitch_SystemKeyboardDetector.cpp
+    Source/NintendoSwitch/Inference/NintendoSwitch_SystemKeyboardDetector.h
     Source/NintendoSwitch/NintendoSwitch_Settings.cpp
     Source/NintendoSwitch/NintendoSwitch_Settings.h
     Source/NintendoSwitch/Options/NintendoSwitch_CodeEntrySettingsOption.cpp
@@ -722,6 +724,20 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/Startup/NewVersionCheck.h
     Source/CommonFramework/Startup/SetupSettings.cpp
     Source/CommonFramework/Startup/SetupSettings.h
+    Source/CommonFramework/Startup/StartupArguments.cpp
+    Source/CommonFramework/Startup/StartupArguments.h
+    Source/CommonFramework/Devices/LabDeviceAccessQt.cpp
+    Source/CommonFramework/Devices/LabDeviceAccessQt.h
+    Source/CommonFramework/Devices/LabDeviceRuntime.cpp
+    Source/CommonFramework/Devices/LabDeviceRuntime.h
+    Source/CommonFramework/Devices/LabDeviceAccessQt_Tests.cpp
+    Source/CommonFramework/Devices/LabDeviceAccessQt_Tests.h
+    Source/CommonFramework/Startup/LabStartupPolicy.cpp
+    Source/CommonFramework/Startup/LabStartupPolicy.h
+    Source/CommonFramework/Startup/LabStartupPolicy_Tests.cpp
+    Source/CommonFramework/Startup/LabStartupPolicy_Tests.h
+    Source/CommonFramework/Startup/StartupArguments_Tests.cpp
+    Source/CommonFramework/Startup/StartupArguments_Tests.h
     Source/CommonFramework/Tools/DebugDumper.cpp
     Source/CommonFramework/Tools/DebugDumper.h
     Source/CommonFramework/Tools/ErrorDumper.cpp
@@ -738,8 +754,6 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/VideoPipeline/Backends/CameraWidgetQt6.5.h
     Source/CommonFramework/VideoPipeline/Backends/CameraWidgetQt6.cpp
     Source/CommonFramework/VideoPipeline/Backends/CameraWidgetQt6.h
-    Source/CommonFramework/VideoPipeline/Backends/CameraWidgetQt6_QQuickView.cpp
-    Source/CommonFramework/VideoPipeline/Backends/CameraWidgetQt6_QQuickView.h
     Source/CommonFramework/VideoPipeline/Backends/CameraWidgetQt6_QQuickWidget.cpp
     Source/CommonFramework/VideoPipeline/Backends/CameraWidgetQt6_QQuickWidget.h
     Source/CommonFramework/VideoPipeline/Backends/MediaServicesQt6.cpp
@@ -798,8 +812,12 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/Windows/ButtonDiagram.h
     Source/CommonFramework/Windows/DpiScaler.cpp
     Source/CommonFramework/Windows/DpiScaler.h
-    Source/CommonFramework/Windows/LabControl.cpp
-    Source/CommonFramework/Windows/LabControl.h
+    Source/CommonFramework/Windows/LabChannel.cpp
+    Source/CommonFramework/Windows/LabChannel.h
+    Source/CommonFramework/Windows/LabChannel_Tests.cpp
+    Source/CommonFramework/Windows/LabChannel_Tests.h
+    Source/CommonFramework/Windows/LabRequest.cpp
+    Source/CommonFramework/Windows/LabRequest.h
     Source/CommonFramework/Windows/MainWindow.cpp
     Source/CommonFramework/Windows/MainWindow.h
     Source/CommonFramework/Windows/WindowTracker.cpp
@@ -962,7 +980,6 @@ file(GLOB LIBRARY_SOURCES
     Source/Controllers/NullControllerWidget.h
     Source/Controllers/PABotBase2/SerialPABotBase2_SelectorWidget.cpp
     Source/Controllers/PABotBase2/SerialPABotBase2_SelectorWidget.h
-    Source/Controllers/PABotBase2/SerialPABotBase_StatusThread.h
     Source/Controllers/SerialPort/SerialPortPollerQt.cpp
     Source/Controllers/SerialPort/SerialPortPollerQt.h
     Source/Integrations/DiscordIntegrationSettings.cpp
@@ -1141,7 +1158,6 @@ file(GLOB LIBRARY_SOURCES
     Source/Kernels/BinaryMatrix/Kernels_BinaryMatrix.h
     Source/Kernels/BinaryMatrix/Kernels_BinaryMatrix_Arch_64x16_x64_AVX2.h
     Source/Kernels/BinaryMatrix/Kernels_BinaryMatrix_Arch_64x32_x64_AVX512.h
-    Source/Kernels/BinaryMatrix/Kernels_BinaryMatrix_Arch_64x4_Default.h
     Source/Kernels/BinaryMatrix/Kernels_BinaryMatrix_Arch_64x64_x64_AVX512.h
     Source/Kernels/BinaryMatrix/Kernels_BinaryMatrix_Arch_64x8_arm64_NEON.h
     Source/Kernels/BinaryMatrix/Kernels_BinaryMatrix_Arch_64x8_x64_SSE42.h
@@ -1163,7 +1179,6 @@ file(GLOB LIBRARY_SOURCES
     Source/Kernels/BinaryMatrix/Kernels_BinaryMatrixTile_64x8_x64_SSE42.h
     Source/Kernels/BinaryMatrix/Kernels_BinaryMatrixTile_64xH_Default.h
     Source/Kernels/BinaryMatrix/Kernels_BinaryMatrixTile_Debugging.h
-    Source/Kernels/BinaryMatrix/Kernels_PackedBinaryMatrix.h
     Source/Kernels/BinaryMatrix/Kernels_PackedBinaryMatrixCore.h
     Source/Kernels/BinaryMatrix/Kernels_PackedBinaryMatrixCore.tpp
     Source/Kernels/BinaryMatrix/Kernels_SparseBinaryMatrixCore.h
@@ -1390,6 +1405,14 @@ file(GLOB LIBRARY_SOURCES
     Source/NintendoSwitch/Options/NintendoSwitch_StartInGripMenuOption.h
     Source/NintendoSwitch/Options/TurboMacroTable.cpp
     Source/NintendoSwitch/Options/TurboMacroTable.h
+    Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileParsing.cpp
+    Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileParsing.h
+    Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileRunner.cpp
+    Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileRunner.h
+    Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileRunner_Tests.cpp
+    Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileRunner_Tests.h
+    Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_LabCommands.cpp
+    Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_LabCommands.h
     Source/NintendoSwitch/Programs/DateManip/NintendoSwitch2_DateSkippers.cpp
     Source/NintendoSwitch/Programs/DateManip/NintendoSwitch_DateManip.cpp
     Source/NintendoSwitch/Programs/DateManip/NintendoSwitch_DateManip.h
@@ -1438,6 +1461,10 @@ file(GLOB LIBRARY_SOURCES
     Source/NintendoSwitch/Programs/NintendoSwitch_TurboButton.h
     Source/NintendoSwitch/Programs/NintendoSwitch_TurboMacro.cpp
     Source/NintendoSwitch/Programs/NintendoSwitch_TurboMacro.h
+    Source/NintendoSwitch/Programs/MenuCursor/NintendoSwitch_MenuCursor.cpp
+    Source/NintendoSwitch/Programs/MenuCursor/NintendoSwitch_MenuCursor.h
+    Source/NintendoSwitch/Programs/MenuCursor/NintendoSwitch_MenuCursor_Tests.cpp
+    Source/NintendoSwitch/Programs/MenuCursor/NintendoSwitch_MenuCursor_Tests.h
     Source/NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter.cpp
     Source/NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter.h
     Source/NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter_Tests.cpp
@@ -1487,6 +1514,13 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Navigation/Pokemon_LegPlanner.h
     Source/Pokemon/Navigation/Pokemon_LegPlanner_Tests.cpp
     Source/Pokemon/Navigation/Pokemon_LegPlanner_Tests.h
+    Source/Pokemon/Navigation/Pokemon_LegTrace.cpp
+    Source/Pokemon/Navigation/Pokemon_LegTrace.h
+    Source/Pokemon/Navigation/Pokemon_LegTrace_Tests.cpp
+    Source/Pokemon/Navigation/Pokemon_LegTrace_Tests.h
+    Source/Pokemon/Navigation/Pokemon_RobustLegPlanner.h
+    Source/Pokemon/Navigation/Pokemon_RobustLegPlanner_Tests.cpp
+    Source/Pokemon/Navigation/Pokemon_RobustLegPlanner_Tests.h
     Source/Pokemon/Navigation/Pokemon_LegWalker.cpp
     Source/Pokemon/Navigation/Pokemon_LegWalker.h
     Source/Pokemon/Navigation/Pokemon_LegWalker_Tests.cpp
@@ -1507,6 +1541,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Navigation/Pokemon_RouteLog.h
     Source/Pokemon/Navigation/Pokemon_RouteLog_Tests.cpp
     Source/Pokemon/Navigation/Pokemon_RouteLog_Tests.h
+    Source/Pokemon/Navigation/Pokemon_RouteScorer.cpp
+    Source/Pokemon/Navigation/Pokemon_RouteScorer.h
+    Source/Pokemon/Navigation/Pokemon_RouteScorer_Tests.cpp
+    Source/Pokemon/Navigation/Pokemon_RouteScorer_Tests.h
     Source/Pokemon/Navigation/Simulation/Pokemon_SimFaults.cpp
     Source/Pokemon/Navigation/Simulation/Pokemon_SimFaults.h
     Source/Pokemon/Navigation/Simulation/Pokemon_SimFaults_Tests.cpp
@@ -1614,6 +1652,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_StoryActions_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryActions_Tests.h
     Source/Pokemon/AutoStory/Pokemon_StoryCheckpointTypes.h
+    Source/Pokemon/AutoStory/Pokemon_StoryCertainty.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryCertainty.h
     Source/Pokemon/AutoStory/Pokemon_StoryEvent.h
     Source/Pokemon/AutoStory/Pokemon_StoryEvents.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryEvents.h
@@ -1627,6 +1667,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_StoryLog.h
     Source/Pokemon/AutoStory/Pokemon_StoryLog_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryLog_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_StoryMonteCarlo.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryMonteCarlo.h
     Source/Pokemon/AutoStory/Pokemon_StoryOutcome.h
     Source/Pokemon/AutoStory/Pokemon_StoryPose.h
     Source/Pokemon/AutoStory/Pokemon_StoryPostconditionCheck.cpp
@@ -1790,8 +1832,6 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Options/PokemonBDSP_PlayerModelOption.h
     Source/PokemonBDSP/Options/PokemonBDSP_ShortcutDirection.cpp
     Source/PokemonBDSP/Options/PokemonBDSP_ShortcutDirection.h
-    Source/PokemonBDSP/Panels_PokemonBDSP.cpp
-    Source/PokemonBDSP/Panels_PokemonBDSP.h
     Source/PokemonBDSP/PokemonBDSP_Panels.cpp
     Source/PokemonBDSP/PokemonBDSP_Panels.h
     Source/PokemonBDSP/PokemonBDSP_Settings.cpp
@@ -2215,8 +2255,6 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonLA/Options/PokemonLA_TravelLocation.h
     Source/VideoGames/PokemonLA/Options/QtWidgets/PokemonLA_CustomPathTableWidget.cpp
     Source/VideoGames/PokemonLA/Options/QtWidgets/PokemonLA_CustomPathTableWidget.h
-    Source/VideoGames/PokemonLA/Panels_PokemonLA.cpp
-    Source/VideoGames/PokemonLA/Panels_PokemonLA.h
     Source/VideoGames/PokemonLA/PokemonLA_Locations.cpp
     Source/VideoGames/PokemonLA/PokemonLA_Locations.h
     Source/VideoGames/PokemonLA/PokemonLA_Panels.cpp
@@ -2445,8 +2483,6 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonLZA/Programs/PokemonLZA_GameEntry.h
     Source/VideoGames/PokemonLZA/Programs/PokemonLZA_HyperspaceNavigation.cpp
     Source/VideoGames/PokemonLZA/Programs/PokemonLZA_HyperspaceNavigation.h
-    Source/VideoGames/PokemonLZA/Programs/PokemonLZA_MegaShardFarmer.cpp
-    Source/VideoGames/PokemonLZA/Programs/PokemonLZA_MegaShardFarmer.h
     Source/VideoGames/PokemonLZA/Programs/PokemonLZA_MenuNavigation.cpp
     Source/VideoGames/PokemonLZA/Programs/PokemonLZA_MenuNavigation.h
     Source/VideoGames/PokemonLZA/Programs/PokemonLZA_PostKillCatcher.cpp

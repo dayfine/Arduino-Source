@@ -23,28 +23,33 @@
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonFramework/Tools/GlobalThreadPools.h"
-#include "CommonFramework/Windows/LabControl.h"
+#include "CommonFramework/Windows/LabChannel_Tests.h"
+#include "CommonFramework/Startup/StartupArguments_Tests.h"
+#include "CommonFramework/Startup/LabStartupPolicy_Tests.h"
+#include "CommonFramework/Devices/LabDeviceAccessQt_Tests.h"
 #include "CommonTools/VisualDetectors/BlackBorderDetector.h"
 #include "CommonTools/OCR/OCR_Tests.h"
 
 #include "NintendoSwitch/Inference/NintendoSwitch_CheckOnlineDetector.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_FailedToConnectDetector.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_UpdatePopupDetector.h"
+#include "NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileRunner_Tests.h"
 #include "NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter_Tests.h"
 #include "NintendoSwitch/Controllers/SysbotBase/SysbotBase_Connection.h"
-#include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
-#include "PokemonBDSP/Inference/PokemonBDSP_MenuDetector.h"
 
 #include "Pokemon/Navigation/Pokemon_ConnectedMaps_Tests.h"
 #include "Pokemon/Navigation/Pokemon_LegPlanner_Tests.h"
+#include "Pokemon/Navigation/Pokemon_RobustLegPlanner_Tests.h"
 #include "Pokemon/Navigation/Pokemon_LegWalker_Tests.h"
 #include "Pokemon/Navigation/Pokemon_MapData_Tests.h"
 #include "Pokemon/Navigation/Pokemon_MoveMechanics_Tests.h"
 #include "Pokemon/Navigation/Pokemon_RouteLog_Tests.h"
+#include "Pokemon/Navigation/Pokemon_RouteScorer_Tests.h"
 #include "Pokemon/Navigation/Pokemon_RuntimeMap_Tests.h"
 #include "Pokemon/Navigation/Pokemon_WallRecovery_Tests.h"
 #include "Pokemon/Navigation/Simulation/Pokemon_SimFaults_Tests.h"
 #include "Pokemon/Navigation/Simulation/Pokemon_SimGolden_Tests.h"
+#include "PokemonBDSP/PokemonBDSP_Tests.h"
 #include "VideoGames/PokemonHome/PokemonHome_Tests.h"
 #include "VideoGames/PokemonSwSh/PokemonSwSh_Tests.h"
 #include "VideoGames/PokemonLA/PokemonLA_Tests.h"
@@ -59,13 +64,29 @@ namespace PokemonAutomation{
 namespace ComputerPrograms{
 
 
+namespace{
+
+bool matches_any(std::string_view test_name, std::span<const std::string_view> filters){
+    if (filters.empty()){
+        return true;
+    }
+    for (std::string_view filter : filters){
+        if (test_name.contains(filter)){
+            return true;
+        }
+    }
+    return false;
+}
+
+} // namespace
+
+
 
 
 
 
 UnitTestDatabase make_UNIT_TESTS_ALL(){
     UnitTestDatabase ret;
-
     add_tests_QtEventThreadPool(ret, GlobalThreadPools::computation_normal());
     add_tests_Sockets(ret, GlobalThreadPools::unlimited_normal());
     add_tests_BlackBorderDetector(ret);
@@ -80,10 +101,14 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     add_tests_FFTStreamer(ret);
     add_tests_SinkPipeline(ret);
     add_tests_AudioFileLoader(ret);
-    add_tests_LabControl(ret);
+    add_tests_LabChannel(ret);
+    add_tests_StartupArguments(ret);
+    add_tests_LabStartupPolicy(ret);
+    add_tests_LabDeviceAccess(ret);
     OCR::add_tests(ret);
     Kernels::add_tests(ret);
     Pokemon::add_tests_LegPlanner(ret);
+    Pokemon::add_tests_RobustLegPlanner(ret);
     Pokemon::add_tests_LegWalker(ret);
     Pokemon::add_tests_WallRecovery(ret);
     Pokemon::add_tests_MapData(ret);
@@ -91,15 +116,16 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     Pokemon::add_tests_MoveMechanics(ret);
     Pokemon::add_tests_RuntimeMap(ret);
     Pokemon::add_tests_RouteLog(ret);
+    Pokemon::add_tests_RouteScorer(ret);
     Pokemon::add_tests_SimFaults(ret);
     Pokemon::add_tests_SimGolden(ret);
     Pokemon::add_tests_AutoStory(ret);
     NintendoSwitch::add_tests_CheckOnlineDetector(ret);
     NintendoSwitch::add_tests_FailedToConnectDetector(ret);
     NintendoSwitch::add_tests_UpdatePopupDetector(ret);
+    NintendoSwitch::add_tests_CommandFileRunner(ret);
     NintendoSwitch::Typewriter::add_tests_TypewriterTextMapping(ret);
-    NintendoSwitch::PokemonBDSP::add_tests_DialogDetector(ret);
-    NintendoSwitch::PokemonBDSP::add_tests_MenuDetector(ret);
+    NintendoSwitch::PokemonBDSP::add_tests(ret);
     NintendoSwitch::PokemonFRLG::add_tests(ret);
     NintendoSwitch::PokemonRSE::add_tests(ret);
     NintendoSwitch::PokemonHome::add_tests(ret);
@@ -118,6 +144,17 @@ const UnitTestDatabase& UNIT_TESTS_ALL(){
     static UnitTestDatabase database = make_UNIT_TESTS_ALL();
     return database;
 }
+
+std::vector<std::string> unit_test_names(std::span<const std::string_view> filters){
+    std::vector<std::string> ret;
+    for (const auto& [test_name, test] : UNIT_TESTS_ALL()){
+        if (matches_any(test_name, filters)){
+            ret.emplace_back(test_name);
+        }
+    }
+    return ret;
+}
+
 StringSelectDatabase make_TEST_DATABASE(){
     StringSelectDatabase database;
     for (auto& test : UNIT_TESTS_ALL()){
@@ -130,25 +167,6 @@ const StringSelectDatabase& TEST_DATABASE(){
     return DATABASE;
 }
 
-
-namespace{
-
-//  For each test in `UNIT_TESTS_ALL()` whose name contains `filter`, in name order, call
-//  `add_test(test)`. An empty `filter` matches all the tests. Return the number of tests
-//  visited.
-template <class AddTest>
-size_t add_tests_matching(const std::string& filter, AddTest&& add_test){
-    size_t count = 0;
-    for (const auto& test : UNIT_TESTS_ALL()){
-        if (filter.empty() || test.first.contains(filter)){
-            count++;
-            add_test(test.second);
-        }
-    }
-    return count;
-}
-
-}
 
 
 
@@ -280,12 +298,15 @@ void UnitTestRunner::on_config_value_changed(void* object){
     if (object == &SUBSTRING_TEST){
         std::string name = SUBSTRING_TEST;
         TESTS_TO_RUN.set("");
-        size_t num_shown = 0;
-        size_t count = add_tests_matching(name, [&](std::shared_ptr<const UnitTest> test){
-            if (++num_shown <= 1000){
-                TESTS_TO_RUN.append(test->name() + "\n");
+        size_t count = 0;
+        for (const auto& test : UNIT_TESTS_ALL()){
+            if (test.first.contains(name)){
+                count++;
+                if (count <= 1000){
+                    TESTS_TO_RUN.append(test.first + "\n");
+                }
             }
-        });
+        }
         if (count > 1000){
             TESTS_TO_RUN.append("<" + tostr_u_commas(count - 1000) + " more...>\n");
         }
@@ -316,12 +337,6 @@ void UnitTestRunner::program(ProgramEnvironment& env, CancellableScope& scope){
 
     const UnitTestDatabase& all_tests = UNIT_TESTS_ALL();
 
-    auto add_matching = [&](const std::string& filter){
-        add_tests_matching(filter, [&](std::shared_ptr<const UnitTest> test){
-            runner.add_test(test);
-        });
-    };
-
     switch ((RunMode)RUN_MODE){
     case RunMode::RUN_ONE:{
         auto iter = all_tests.find(SINGLE_TEST.slug());
@@ -335,12 +350,21 @@ void UnitTestRunner::program(ProgramEnvironment& env, CancellableScope& scope){
         runner.add_test(iter->second);
         break;
     }
-    case RunMode::RUN_SUBSTRING_MATCH:
-        add_matching(SUBSTRING_TEST);
+    case RunMode::RUN_SUBSTRING_MATCH:{
+        std::string name = SUBSTRING_TEST;
+        for (const auto& test : all_tests){
+            if (test.first.contains(name)){
+                runner.add_test(test.second);
+            }
+        }
         break;
-    case RunMode::RUN_ALL:
-        add_matching("");
+    }
+    case RunMode::RUN_ALL:{
+        for (const auto& test : all_tests){
+            runner.add_test(test.second);
+        }
         break;
+    }
     }
 
     runner.run();
@@ -402,7 +426,7 @@ void UnitTestRunner::on_test_finished(
 
 
 
-bool CommandLineUnitTestRunner::run(bool augment_color_distortions, const std::string& test_substring){
+size_t CommandLineUnitTestRunner::run(bool augment_color_distortions, std::span<const std::string_view> filters){
     if (augment_color_distortions){
         //  Load the distortion data before any test runs. Each `ImageUnitTest` checks the global
         //  manager when it runs, and only runs with distortions if it is loaded.
@@ -410,7 +434,7 @@ bool CommandLineUnitTestRunner::run(bool augment_color_distortions, const std::s
             initialize_test_image_distortions(UNIT_TEST_RESOURCE_PATH());
         }catch (Exception& e){
             m_logger.log("Unable to load the test image distortions: " + e.to_str(), COLOR_RED);
-            return true;
+            return 1;
         }
         const TestImageDistortionManager& manager = *test_image_distortion_manager();
         std::string labels;
@@ -428,14 +452,9 @@ bool CommandLineUnitTestRunner::run(bool augment_color_distortions, const std::s
         GlobalThreadPools::unlimited_normal()
     );
     runner.add_listener(*this);
-    size_t num_matching = add_tests_matching(test_substring, [&](std::shared_ptr<const UnitTest> test){
-        runner.add_test(test);
-    });
-    if (!test_substring.empty()){
-        if (num_matching == 0){
-            m_logger.log("No test name contains \"" + test_substring + "\". No tests will be run.", COLOR_ORANGE);
-        }else{
-            m_logger.log("Running the " + tostr_u_commas(num_matching) + " tests whose name contains \"" + test_substring + "\"");
+    for (const auto& [test_name, test] : UNIT_TESTS_ALL()){
+        if (matches_any(test_name, filters)){
+            runner.add_test(test);
         }
     }
     runner.run();
@@ -446,7 +465,7 @@ bool CommandLineUnitTestRunner::run(bool augment_color_distortions, const std::s
         "\n    Failed:  " + tostr_u_commas(m_failed_tests.load(std::memory_order_acquire)) +
         "\n    Skipped: " + tostr_u_commas(m_skipped_tests.load(std::memory_order_acquire))
     );
-    return m_failed_tests.load(std::memory_order_acquire) > 0;
+    return m_failed_tests.load(std::memory_order_acquire);
 }
 void CommandLineUnitTestRunner::on_test_finished(
     std::shared_ptr<const UnitTest> test,
