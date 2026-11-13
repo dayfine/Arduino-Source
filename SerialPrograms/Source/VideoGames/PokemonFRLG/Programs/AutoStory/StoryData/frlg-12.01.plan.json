@@ -118,12 +118,12 @@
         "action": "mart",
         "args": {
           "map": "FuchsiaCity_Mart",
-          "budget": 2100,
+          "budget": 3500,
           "floor": 3762,
-          "items": [{"item": "super-potion", "quantity": 3}],
-          "cover_hp": 122
+          "items": [{"item": "super-potion", "quantity": 5}],
+          "fill_to": 5
         },
-        "why": "Super Potions for what the bag's Potions and Super Potions lack to heal 122 HP, the lead's whole bar at Lv39 (3 with none): Kayden's and Kirk's damage is healed to full before Koga. Skipped when the bag covers it. The floor is 10.01's 19,862 less its 15,600 of X items and the Safari Zone's 500 (11.03), 3,762, prize money not counted: a lower bound while the money box is unread"
+        "why": "Super Potions up to 5 in the bag, as in PokeGuy's bag at Koga (potion x5, superpotion x5, fullrestore x1, xspecial x19, xspeed x6, xaccuracy x5; PokemonSimulation docs/battles/pokeguy-conditions.md): Kayden's and Kirk's damage is healed to full before Koga. Buys 5 less what the bag holds, skipped at 5. The floor is 10.01's 19,862 less its 15,600 of X items and the Safari Zone's 500 (11.03), 3,762, prize money not counted: a lower bound while the money box is unread"
       },
       {
         "id": "above_mart_tree",
