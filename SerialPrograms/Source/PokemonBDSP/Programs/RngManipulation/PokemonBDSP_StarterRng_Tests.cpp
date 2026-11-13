@@ -259,6 +259,40 @@ UnitTestResult test_attempt_loop_transitions(Logger&){
 }
 
 
+//  The default filter row: a table that has it stops for a shiny of any
+//  nature and gender, and no other starter; an empty table never stops, which
+//  is why a caller must seed it.
+UnitTestResult test_default_shiny_row(Logger&){
+    BdspRngFilterTable empty("Filters", Pokemon::StatsHuntMiscFeatureFlags{false, true, true, true});
+    BdspPokemonResult shiny{};
+    shiny.shiny = BdspShiny::Star;
+    shiny.nature = 7;
+    BdspPokemonResult plain{};
+    plain.nature = 7;
+    if (starter_wanted(empty.make_snapshot(), shiny)){
+        return "an empty filter table must not match a shiny";
+    }
+
+    BdspRngFilterTable table("Filters", Pokemon::StatsHuntMiscFeatureFlags{false, true, true, true});
+    set_default_shiny_row(table);
+    if (table.current_rows() != 1){
+        return std::format("expected one default row, got {}", table.current_rows());
+    }
+    const BdspRngFilterSnapshot snapshot = table.make_snapshot();
+    if (!starter_wanted(snapshot, shiny)){
+        return "the default row must match a shiny of any nature";
+    }
+    shiny.nature = 20;
+    if (!starter_wanted(snapshot, shiny)){
+        return "the default row must match a shiny of another nature";
+    }
+    if (starter_wanted(snapshot, plain)){
+        return "the default row must not match a non-shiny";
+    }
+    return true;
+}
+
+
 struct StarterRngTestCase{
     std::string name;
     std::function<UnitTestResult(Logger&)> body;
@@ -288,6 +322,7 @@ const StarterRngTestCase STARTER_RNG_CASES[] = {
     {"bedroom skip buffer and landing math", test_skip_buffer_and_landing_math},
     {"aim offset and calibration bias", test_aim_and_calibration},
     {"attempt loop outcome resolution", test_attempt_loop_transitions},
+    {"default filter row is shiny of any nature", test_default_shiny_row},
 };
 
 } // namespace
