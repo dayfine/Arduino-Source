@@ -144,7 +144,7 @@ const FlyLandingCase CASES[] = {
 //  Fixtures: PokemonFRLG/AutoStoryFlyLanding/ in CommandLineTests.
 constexpr std::string_view BAND_FRAME = "PokemonFRLG/AutoStoryFlyLanding/Fuchsia_FlightBand.png";
 constexpr std::string_view FUCHSIA_FRAME = "PokemonFRLG/AutoStoryFlyLanding/Fuchsia_BeforeFade.png";
-constexpr std::string_view PALLET_FRAME = "PokemonFRLG/AutoStoryFlyLanding/PalletTown_Landed.png";
+constexpr std::string_view PALLET_FRAME = "PokemonFRLG/AutoStoryFlyLanding/PalletTown_Standing.png";
 
 //  The look FlyLanding judges for `screen` shown for `frames` frames after
 //  `before` frames of black, as the observer reads it.
@@ -164,7 +164,7 @@ protected:
             return observer.observe(VideoSnapshot(image.copy(), WallClock()), WallClock());
         };
         const auto facing_of = [&](const ImageRGB32& image){
-            return read_player_facing(image, PlayerGender::BOY);
+            return read_player_facing(image, PlayerGender::GIRL);
         };
 
         //  Each frame is quiet; only the Pallet frame, after a fade, has a player to read.
