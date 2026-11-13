@@ -288,7 +288,6 @@ StepWalk walk_step(
     const RouteStep& step, std::optional<Direction> facing,
     const OverworldInterruptSet& interrupts, MoveSpeed speed, PlayerGender player
 ){
-    StepWalk out{std::nullopt, current_time(), false, false};
     switch (step.action){
     case RouteAction::WALK:
         return walk_hold_step(console, context, step, facing, interrupts, speed, player);

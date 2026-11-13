@@ -26,6 +26,7 @@
 #include "PokemonFRLG_AutoStoryCheckpoints.h"
 #include "PokemonFRLG_AutoStoryConsoleFailureData.h"
 #include "PokemonFRLG_AutoStoryConsoleFailure_Tests.h"
+#include "PokemonFRLG_AutoStoryLegs.h"
 #include "PokemonFRLG_AutoStoryPacedRoute.h"
 
 namespace PokemonAutomation{
