@@ -101,6 +101,9 @@ struct WalkGates{
     bool card_key_held = false;
     //  The run flags the walk has set (silph_cleared takes the Rockets off the maps).
     std::set<std::string> run_flags;
+    //  Whether Cinnabar's Gym is still locked: it opens with the SECRET KEY,
+    //  taken in 13.04, so from 14.01 on.
+    bool cinnabar_gym_locked = false;
 };
 WalkGates& walk_state(){
     thread_local WalkGates walk;
@@ -115,6 +118,7 @@ void begin_walk(const StoryCheckpoint& checkpoint){
     }
     walk_state().card_key_held = std::ranges::find(checkpoint.start_flags, "card_key_held") != checkpoint.start_flags.end();
     walk_state().run_flags.insert(checkpoint.start_flags.begin(), checkpoint.start_flags.end());
+    walk_state().cinnabar_gym_locked = checkpoint.id < "14";
 }
 
 //  A walk through the checkpoint that follows the one before: only what its
@@ -127,6 +131,7 @@ void continue_walk(const StoryCheckpoint& checkpoint){
         walk_state().card_key_held = true;
     }
     walk_state().run_flags.insert(checkpoint.start_flags.begin(), checkpoint.start_flags.end());
+    walk_state().cinnabar_gym_locked = checkpoint.id < "14";
 }
 
 //  What `step` does to the walk's gates once done, besides a route's own.
@@ -315,6 +320,17 @@ UnitTestResult check_route(StoryPose& pose, const StoryStep& step, std::vector<s
         for (const TilePos& tile : tiles_walked_on(*route, "ViridianCity")){
             if (tile == TilePos{20, 8} || tile == TilePos{22, 8}){
                 return step.name + ": walks over the old man's trigger " + to_string(tile) + ":" + describe(*route);
+            }
+        }
+    }
+    //  While the Gym is locked, (20, 5) below its door is a trigger
+    //  (pokefirered CinnabarIsland coord_events): "The door is locked..."
+    //  and the player is walked a tile south, off the route (console B,
+    //  2026-11-13 13:06, 12.03: the hold east along row 5 to (21, 5)).
+    if (walk_state().cinnabar_gym_locked){
+        for (const TilePos& tile : tiles_walked_on(*route, "CinnabarIsland")){
+            if (tile == TilePos{20, 5}){
+                return step.name + ": walks over the locked Gym door's trigger " + to_string(tile) + ":" + describe(*route);
             }
         }
     }
