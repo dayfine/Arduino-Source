@@ -26,6 +26,7 @@
 #include "Data/PokemonBDSP_AutoStory_WallRecovery.h"
 #include "Utils/PokemonBDSP_AutoStory_PlannedRoute.h"
 #include "Utils/PokemonBDSP_AutoStory_RouteIO.h"
+#include "Utils/PokemonBDSP_AutoStory_RouteLegStart.h"
 #include "PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"

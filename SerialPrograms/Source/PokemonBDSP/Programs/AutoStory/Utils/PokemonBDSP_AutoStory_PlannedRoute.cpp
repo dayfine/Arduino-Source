@@ -17,6 +17,7 @@
 #include "PokemonBDSP_AutoStory_LegBattle.h"
 #include "PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP_AutoStory_RouteChoice.h"
+#include "PokemonBDSP_AutoStory_RouteLegStart.h"
 #include "PokemonBDSP_AutoStory_CountedWallLeg.h"
 #include "PokemonBDSP_AutoStory_PlannedRoute.h"
 #include "PokemonBDSP_AutoStory_RouteSteps.h"
@@ -225,6 +226,7 @@ private:
 
     //  Legs to a wall.
     LegNext wall_leg(LegWalk& walk);
+    LegNext out_of_time_to_wall(LegWalk& walk, size_t walked_tiles, size_t nearest, size_t farthest);
     std::optional<LegNext> finish_interrupted_wall(LegWalk& walk, Milliseconds limit);
     size_t unstick_wall_leg(LegWalk& walk, size_t walked_tiles, size_t nearest);
     std::vector<TilePos> wanderers_by_the_way(Direction direction) const;
@@ -573,21 +575,25 @@ LegNext RouteWalker::wall_leg(LegWalk& walk){
     if (walk.result.stop == WalkStop::BLOCKED && walked_tiles < nearest){
         return stopped_short_of_wall(walk, walked_tiles);
     }
-    //  A leg to the wall that ran out of time is not at its wall: the open
-    //  leg before it stopped short, and it ran along another row (r127a went
-    //  west along Sandgem's row 13 for row 14, and the next leg north walked
-    //  into the lab). Out of tall grass a stop reads, so walk on: a player
-    //  still moving is not where the plan has him.
     if (walk.result.stop == WalkStop::LIMIT && route_wall_readable(m_grid, walk.planned.after)){
-        //  Still moving past every wall the map has: not a slow start.
-        fail_if_unknown(walk.result, walk.label, farthest, route_ms_per_tile(leg.direction, m_plan.speed));
-        //  A short leg a tile short stopped against someone in the way.
-        if (nearest <= EXACT_WALL_LEG_TILES && walked_tiles < nearest){
-            return stopped_short_of_wall(walk, walked_tiles);
-        }
-        return check_at_wall(walk, walked_tiles, nearest);
+        return out_of_time_to_wall(walk, walked_tiles, nearest, farthest);
     }
     return LegNext::NEXT_LEG;
+}
+
+//  A leg to the wall that ran out of time is not at its wall: the open
+//  leg before it stopped short, and it ran along another row (r127a went
+//  west along Sandgem's row 13 for row 14, and the next leg north walked
+//  into the lab). Out of tall grass a stop reads, so walk on: a player
+//  still moving is not where the plan has him.
+LegNext RouteWalker::out_of_time_to_wall(LegWalk& walk, size_t walked_tiles, size_t nearest, size_t farthest){
+    //  Still moving past every wall the map has: not a slow start.
+    fail_if_unknown(walk.result, walk.label, farthest, route_ms_per_tile(walk.planned.leg.direction, m_plan.speed));
+    //  A short leg a tile short stopped against someone in the way.
+    if (nearest <= EXACT_WALL_LEG_TILES && walked_tiles < nearest){
+        return stopped_short_of_wall(walk, walked_tiles);
+    }
+    return check_at_wall(walk, walked_tiles, nearest);
 }
 
 //  Every leg that reaches its wall measures the pace: the tiles are known.
