@@ -164,6 +164,33 @@ UnitTestResult test_every_row_ready(Logger&){
 }
 
 //  scene_mash_action() on each kind of frame.
+//  A scene step's start window: a box, a choice or a battle within it
+//  starts the scene; fades and quiet frames alone (02.02's street missed
+//  after the Brigitte battle, console B, 2026-11-13) fail at its end, not
+//  before.
+UnitTestResult test_scene_start_window(Logger&){
+    using Pokemon::ScreenEvent;
+    using Pokemon::ScreenEvents;
+    const WallClock start = current_time();
+    const auto at = [start](int64_t seconds){
+        return start + Milliseconds(seconds * 1000);
+    };
+    SceneStart missed(start, SCENE_START_WINDOW);
+    if (missed.never_started({ScreenEvent::FADE_BLACK}, at(10)) || missed.never_started({}, at(44))){
+        return "Expected no failure inside the window.";
+    }
+    if (!missed.never_started({ScreenEvent::PLAYER_CAN_MOVE}, at(45))){
+        return "Expected a scene with only a fade and quiet frames to fail at the window's end.";
+    }
+    for (const ScreenEvent event : {ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX, ScreenEvent::BATTLE_STARTED}){
+        SceneStart started(start, SCENE_START_WINDOW);
+        if (started.never_started({event}, at(10)) || started.never_started({}, at(100))){
+            return "Expected a box, a choice or a battle to start the scene.";
+        }
+    }
+    return true;
+}
+
 UnitTestResult test_scene_mash_rule(Logger&){
     using Pokemon::ScreenEvent;
     using Pokemon::ScreenEvents;
@@ -309,6 +336,10 @@ const AutoStoryTableCase AUTO_STORY_TABLE_CASES[] = {
     },
     {
         .input = {"reload_when_chained: only true, only after an autosave row, never on a new game row", test_reload_when_chained_field},
+        .expectation = {},
+    },
+    {
+        .input = {"Scene mash: a scene that never starts fails at its start window", test_scene_start_window},
         .expectation = {},
     },
     {

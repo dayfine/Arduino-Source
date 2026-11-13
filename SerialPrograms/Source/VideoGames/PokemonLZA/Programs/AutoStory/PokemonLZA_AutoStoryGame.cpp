@@ -392,10 +392,9 @@ Handler plza_handler(const PlzaHandlers& handlers, const StoryActionSpec& spec){
             choose_dialog_option(env.env.console, env.context, Pokemon::story_arg<bool>(args, "yes") ? 0 : 1);
         });
     case StoryStepKind::MASH:{
-        //  120 s: a scene can hold a long black screen.
         const Button button = name == "a" ? BUTTON_A : BUTTON_B;
         return handlers.console(name, [button](StoryEnv& env, const StoryActionArgs&){
-            mash_scene(env.env.console, env.context, SceneMashGoal::OVERWORLD, button, 120s);
+            mash_story_scene(env.env.console, env.context, button);
         });
     }
     default:
