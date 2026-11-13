@@ -1,0 +1,180 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "17.02",
+    "title": "Cinnabar to Viridian Gym: Fly, Warren",
+    "start": {
+      "map": "CinnabarIsland_PokemonCenter_1F",
+      "tiles": [
+        [
+          7,
+          4
+        ]
+      ],
+      "facing": "north"
+    },
+    "events": [
+      {
+        "id": "cinnabar_outside",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "CinnabarIsland",
+            "tiles": [
+              [
+                14,
+                12
+              ]
+            ],
+            "facing": "south"
+          }
+        },
+        "why": "out of Cinnabar's Center onto the street below its door: Fly works outdoors only"
+      },
+      {
+        "id": "fly_viridian",
+        "kind": "game_action",
+        "action": "fly",
+        "args": {
+          "town": "ViridianCity",
+          "species": "pidgey"
+        },
+        "declared_after": {
+          "map": "ViridianCity",
+          "tiles": [
+            [
+              26,
+              27
+            ]
+          ],
+          "facing": "south"
+        },
+        "why": "Fly to Viridian City (the badge-8 gym is the last before the Elite Four); lands below the Center's door (26, 26)"
+      },
+      {
+        "id": "below_gym_door",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "ViridianCity",
+            "tiles": [
+              [
+                36,
+                11
+              ]
+            ],
+            "facing": "north"
+          }
+        },
+        "why": "east along the city to below the Gym's door (36, 10)"
+      },
+      {
+        "id": "into_gym",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "declared_after": {
+          "map": "ViridianCity_Gym",
+          "tiles": [
+            [
+              17,
+              22
+            ]
+          ],
+          "facing": "north"
+        },
+        "why": "through the Gym's door (36, 10) onto the mat (17, 22) inside"
+      },
+      {
+        "id": "below_warren_line",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "ViridianCity_Gym",
+            "tiles": [
+              [
+                15,
+                8
+              ]
+            ],
+            "facing": "north"
+          }
+        },
+        "why": "north and west through the gym's open floor (no arrow tile on this way) to (15, 8), below Warren's line (14..16, 7)"
+      },
+      {
+        "id": "warren_line",
+        "kind": "step",
+        "action": "trainer_line",
+        "args": {
+          "direction": "north"
+        },
+        "why": "onto (15, 7), the end of Warren's line (sight 3, facing east): he walks over"
+      },
+      {
+        "id": "lead_lv47_for_giovanni",
+        "kind": "game_action",
+        "action": "level",
+        "args": {
+          "slot": 1,
+          "min": 47
+        },
+        "why": "the lead at least Lv47 before the gym's fights (Giovanni's Rhyhorn is Lv50); below it the run stops"
+      },
+      {
+        "id": "warren",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_COOLTRAINER_WARREN",
+          "foes": [
+            "marowak",
+            "marowak",
+            "rhyhorn",
+            "nidorina",
+            "nidoqueen"
+          ]
+        },
+        "declared_after": {
+          "map": "ViridianCity_Gym",
+          "tiles": [
+            [
+              15,
+              7
+            ]
+          ],
+          "facing": "north"
+        },
+        "why": "Warren (TRAINER_COOLTRAINER_WARREN): Marowak Lv37, Marowak Lv37, Rhyhorn Lv38, Nidorina Lv39, Nidoqueen Lv39"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "notes": {
+      "checkpoint": [
+        "Starts at Cinnabar's nurse, where 14.02 ends (Bill declined there; nothing later needs the One Island trip: its Sevii quest flags are optional, the Ruby/Sapphire stone and Network Machine are post-game).",
+        "Fly to Viridian City, then in through the Gym's door. The route keeps off the arrow tiles on purpose (design section 12 scripts them; the planned way never meets one), and ends on (15, 7) after Warren's battle."
+      ]
+    }
+  },
+  "metadata": {
+    "phase": "testing",
+    "postconditions": {
+      "position": {
+        "map": "ViridianCity_Gym",
+        "tiles": [
+          [
+            15,
+            7
+          ]
+        ],
+        "facing": "north"
+      }
+    }
+  }
+}

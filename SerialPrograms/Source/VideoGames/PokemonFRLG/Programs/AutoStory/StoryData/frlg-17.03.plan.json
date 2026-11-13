@@ -1,0 +1,112 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "17.03",
+    "title": "Viridian Gym: Takashi, to Giovanni",
+    "start": {
+      "map": "ViridianCity_Gym",
+      "tiles": [
+        [
+          15,
+          7
+        ]
+      ],
+      "facing": "north"
+    },
+    "events": [
+      {
+        "id": "below_takashi_line",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "ViridianCity_Gym",
+            "tiles": [
+              [
+                10,
+                6
+              ]
+            ],
+            "facing": "north"
+          }
+        },
+        "why": "back up column 15, west along row 6 to (10, 6), below Takashi's line (10, 3..5)"
+      },
+      {
+        "id": "takashi_line",
+        "kind": "step",
+        "action": "trainer_line",
+        "args": {
+          "direction": "north"
+        },
+        "why": "onto (10, 5), the end of Takashi's line (sight 3, facing south)"
+      },
+      {
+        "id": "takashi",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_BLACK_BELT_TAKASHI",
+          "foes": [
+            "machoke",
+            "machop",
+            "machoke",
+            "machoke"
+          ]
+        },
+        "declared_after": {
+          "map": "ViridianCity_Gym",
+          "tiles": [
+            [
+              10,
+              5
+            ]
+          ],
+          "facing": "north"
+        },
+        "why": "Takashi (TRAINER_BLACK_BELT_TAKASHI): Machoke Lv38, Machop Lv38, Machoke Lv38, Machoke Lv43"
+      },
+      {
+        "id": "below_giovanni",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "ViridianCity_Gym",
+            "tiles": [
+              [
+                2,
+                3
+              ]
+            ],
+            "facing": "north"
+          }
+        },
+        "why": "west along row 3 and down to (2, 3), facing Giovanni (2, 2)"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "notes": {
+      "checkpoint": [
+        "Ends at (2, 3) facing Giovanni (2, 2): the save in front of him, as for the other leaders."
+      ]
+    }
+  },
+  "metadata": {
+    "phase": "testing",
+    "postconditions": {
+      "position": {
+        "map": "ViridianCity_Gym",
+        "tiles": [
+          [
+            2,
+            3
+          ]
+        ],
+        "facing": "north"
+      }
+    }
+  }
+}

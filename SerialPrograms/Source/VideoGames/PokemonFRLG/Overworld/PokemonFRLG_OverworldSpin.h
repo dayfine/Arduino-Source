@@ -21,9 +21,10 @@ namespace PokemonFRLG{
 
 //  Spinner tiles (Rocket Hideout B2F and B3F, Viridian Gym): pokefirered's
 //  MB_SPIN_UP, MB_SPIN_DOWN, MB_SPIN_LEFT, MB_SPIN_RIGHT and
-//  MB_STOP_SPINNING. The tile glyphs can't say so: the hideout's floors
-//  have them coded (coded_spin_direction(), PokemonFRLG_CodedRooms.h);
-//  another map may list them in these regions, as it does WILD_REGION.
+//  MB_STOP_SPINNING. The hideout's floors have them coded
+//  (coded_spin_direction(), PokemonFRLG_CodedRooms.h); Viridian Gym's map
+//  file writes them as glyphs ('u', 'd', 'l', 'r' and the stop 'o'); another
+//  map may list them in these regions, as it does WILD_REGION.
 //  "spin_north": MB_SPIN_UP.
 //  "spin_south": MB_SPIN_DOWN.
 //  "spin_west": MB_SPIN_LEFT.
