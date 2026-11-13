@@ -173,7 +173,9 @@ ImageFloatBox confirm_row_strip(size_t row){
 }
 
 //  A "Confirm Choices" row's strip: the highlighted row white, flat, as the
-//  language list's; the others a darker slate than its boxes.
+//  language list's; the others a darker slate than its boxes. The
+//  highlight's glow pulses over the row next to it: on console B's frames
+//  in ten languages (2026-11-13) that row's spread went up to 20.
 ListBox classify_confirm_row(const ImageStats& stats){
     if (stats.count == 0){
         return ListBox::OTHER;
@@ -188,14 +190,19 @@ ListBox classify_confirm_row(const ImageStats& stats){
         average.g >= 40 && average.g <= 80 &&
         average.b >= 65 && average.b <= 115 &&
         average.b >= average.r + 25;
-    if (slate && spread <= 20){
+    if (slate && spread <= 30){
         return ListBox::PLAIN;
     }
     return ListBox::OTHER;
 }
 
 //  The dark blue, dotted background round the rows: between the choices and
-//  "Ready!", and right of all three.
+//  "Ready!", and right of all three. The highlight's blue glow reaches 40
+//  pixels out and fills the gap under "Change looks" when that row is
+//  highlighted: (12-13, 56-59, 102-106), spread up to 51, against the plain
+//  background's (10-11, 29-37, 63-75), spread up to 31 (console B, ten
+//  languages, 2026-11-13). Both are dark and blue with little red; the
+//  intro's other screens are not.
 bool confirm_background_dark(const ImageViewRGB32& frame){
     const ImageFloatBox boxes[] = {
         ImageFloatBox(620.0 / 1920, 742.0 / 1080, 100.0 / 1920, 40.0 / 1080),
@@ -203,7 +210,10 @@ bool confirm_background_dark(const ImageViewRGB32& frame){
     };
     for (const ImageFloatBox& box : boxes){
         const ImageStats stats = image_stats(extract_box_reference(frame, box));
-        if (stats.count == 0 || brightness(stats) >= 50 || stats.stddev.sum() > 35){
+        if (stats.count == 0 || brightness(stats) >= 90 || stats.stddev.sum() > 80){
+            return false;
+        }
+        if (stats.average.r > 30 || stats.average.b < stats.average.r + 40){
             return false;
         }
     }

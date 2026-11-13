@@ -13,6 +13,7 @@
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
+#include "Tests/ImageUnitTest.h"
 #include "PokemonLZA_AutoStoryIntro.h"
 #include "PokemonLZA_AutoStoryIntroScreens.h"
 #include "PokemonLZA_AutoStoryLanguageList.h"
@@ -682,6 +683,34 @@ const IntroCase INTRO_CASES[] = {
     },
 };
 
+//  "Confirm Choices" on console B in each game language, one frame per
+//  highlighted row (2026-11-13). The file name ends in that row:
+//  PokemonLZA/AutoStoryConfirmChoices/<language>_<row>.png.
+class Test_ConfirmChoicesFrame : public ImageUnitTest{
+public:
+    explicit Test_ConfirmChoicesFrame(const std::string& image)
+        : ImageUnitTest("PokemonLZA::AutoStory - Confirm Choices - " + image, {image})
+    {}
+    virtual UnitTestResult run_on_images(
+        Logger&, CancellableScope&, const std::vector<ImageRGB32>& images
+    ) const override{
+        const std::string& path = image_paths()[0];
+        const size_t underscore = path.rfind('_');
+        if (underscore == std::string::npos || underscore + 1 >= path.size()){
+            return "Error: the file name does not end in _<row>.";
+        }
+        const size_t expected = (size_t)(path[underscore + 1] - '0');
+        const std::optional<size_t> cursor = read_confirm_choices_cursor(images[0]);
+        if (!cursor){
+            return std::format("Expected Confirm Choices with row {} highlighted, read no Confirm Choices.", expected);
+        }
+        if (*cursor != expected){
+            return std::format("Expected row {} highlighted, read row {}.", expected, *cursor);
+        }
+        return true;
+    }
+};
+
 class Test_AutoStoryIntro : public UnitTest{
 public:
     explicit Test_AutoStoryIntro(const IntroCase& test_case)
@@ -702,6 +731,14 @@ private:
 void add_tests_AutoStoryIntro(UnitTestDatabase& database){
     for (const IntroCase& item : INTRO_CASES){
         database.add<Test_AutoStoryIntro>(item);
+    }
+    for (const std::string_view language : {
+        "English", "Spanish", "SpanishLatAm", "French", "German",
+        "Italian", "Japanese", "Korean", "ChineseSimplified", "ChineseTraditional",
+    }){
+        for (size_t row = 0; row <= CONFIRM_CHOICES_READY_ROW; row++){
+            database.add<Test_ConfirmChoicesFrame>(std::format("PokemonLZA/AutoStoryConfirmChoices/{}_{}.png", language, row));
+        }
     }
 }
 
