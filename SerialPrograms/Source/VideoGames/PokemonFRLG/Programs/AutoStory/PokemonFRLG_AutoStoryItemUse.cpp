@@ -232,16 +232,8 @@ void ConsoleItemUseActions::use_row(size_t row){
     pbf_press_button(m_context, BUTTON_A, 160ms, 1500ms);
 }
 
-bool ConsoleItemUseActions::use_row_on_lead(size_t row){
-    for (size_t c = 0; c < row; c++){
-        pbf_press_dpad(m_context, DPAD_DOWN, CURSOR_TAP, CURSOR_WAIT);
-    }
-    //  The item's menu, USE, then the party list, whose cursor is on the
-    //  lead, as for a Potion in battle.
-    pbf_press_button(m_context, BUTTON_A, 160ms, 800ms);
-    pbf_press_button(m_context, BUTTON_A, 160ms, 1500ms);
-    pbf_press_button(m_context, BUTTON_A, 160ms, 1000ms);
-
+//  Past the party list to the stats window of a Rare Candy.
+bool ConsoleItemUseActions::wait_for_level_up_stats(){
     //  "<name> grew to Lv. N!", then the stats window (the RNG loop's
     //  waits, console-proven there).
     PartyLevelUpWatcher level_up(COLOR_RED, PartyLevelUpDialog::stats, m_language);
@@ -257,11 +249,14 @@ bool ConsoleItemUseActions::use_row_on_lead(size_t row){
     );
     if (stats < 0){
         m_console.log("Bag: no level-up stats window after the Rare Candy.", COLOR_RED);
-        return false;
     }
-    //  Out of the stats window and the party list back to the bag. A new
-    //  move is declined: B on "Delete a move?" asks "Stop learning?", A
-    //  answers YES. An evolution is stopped with B.
+    return stats >= 0;
+}
+
+//  Out of the stats window and the party list back to the bag. A new move
+//  is declined: B on "Delete a move?" asks "Stop learning?", A answers YES.
+//  An evolution is stopped with B.
+bool ConsoleItemUseActions::back_to_bag_declining_moves(){
     for (int attempt = 0; attempt < BACK_TO_BAG_ATTEMPTS; attempt++){
         BagWatcher bag(COLOR_RED);
         PartyMoveLearnWatcher move_learn(COLOR_RED);
@@ -293,6 +288,18 @@ bool ConsoleItemUseActions::use_row_on_lead(size_t row){
     }
     m_console.log("Bag: never back at the bag after the Rare Candy.", COLOR_RED);
     return false;
+}
+
+bool ConsoleItemUseActions::use_row_on_lead(size_t row){
+    for (size_t c = 0; c < row; c++){
+        pbf_press_dpad(m_context, DPAD_DOWN, CURSOR_TAP, CURSOR_WAIT);
+    }
+    //  The item's menu, USE, then the party list, whose cursor is on the
+    //  lead, as for a Potion in battle.
+    pbf_press_button(m_context, BUTTON_A, 160ms, 800ms);
+    pbf_press_button(m_context, BUTTON_A, 160ms, 1500ms);
+    pbf_press_button(m_context, BUTTON_A, 160ms, 1000ms);
+    return wait_for_level_up_stats() && back_to_bag_declining_moves();
 }
 
 void ConsoleItemUseActions::register_row(size_t row){
