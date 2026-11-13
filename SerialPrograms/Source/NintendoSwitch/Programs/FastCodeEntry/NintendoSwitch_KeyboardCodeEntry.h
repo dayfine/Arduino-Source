@@ -13,7 +13,7 @@
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_KeyboardEntryMappings.h"
-#include "NintendoSwitch_CodeEntryTools.h"
+#include "NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_CodeEntryTools.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
