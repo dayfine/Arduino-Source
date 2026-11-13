@@ -52,9 +52,10 @@ const SpeciesData* species_data(std::string_view species);
 //  How well `attack` hits `defend`, in tenths: 20 is 2x, 5 is 0.5x.
 size_t type_effectiveness(PokemonType attack, PokemonType defend);
 
-//  The type `species` is immune to through its ability (Levitate: Ground;
-//  Flash Fire: Fire; Volt Absorb: Electric; Water Absorb: Water), for the
-//  species whose only Gen 3 ability it is; NONE for any other species.
+//  The type `species` may be immune to through its ability (Levitate:
+//  Ground; Flash Fire: Fire; Volt Absorb: Electric; Water Absorb: Water),
+//  for the species that can have one in Gen 3, as its only ability or
+//  either of two; NONE for any other species.
 PokemonType ability_immunity(std::string_view species);
 
 //  `move` takes a turn to charge or to dig or fly up (Dig, Fly, Solar Beam,

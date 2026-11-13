@@ -194,6 +194,52 @@ UnitTestResult test_water_pulse_ties(){
     return true;
 }
 
+//  Route 21 (console B, 2026-11-13, 12.03): Swimmer Roland's Poliwhirl,
+//  Water Absorb, healed off every Surf for 15 turns. No Water move against
+//  a Water foe, and no move a foe's ability may make useless (Water Absorb,
+//  Volt Absorb, Flash Fire, Levitate), even where it hits 1x (Quagsire)
+//  or the foe has another ability too (Growlithe, Lanturn).
+UnitTestResult test_useless_moves(){
+    struct Case{
+        std::string lead;
+        std::vector<KnownMove> moves;
+        std::string foe;
+        size_t expected;
+    };
+    const std::vector<Case> cases = {
+        {"wartortle", {{"tackle", 35}, {"bite", 25}, {"surf", 15}, {"water-gun", 25}}, "poliwhirl", 1},
+        {"wartortle", {{"surf", 15}, {"bite", 25}, {"tackle", 35}, {"withdraw", 40}}, "quagsire", 1},
+        {"wartortle", {{"surf", 15}, {"water-gun", 25}, {"tackle", 35}, {"withdraw", 40}}, "lapras", 2},
+        {"raichu", {{"thunder-shock", 30}, {"tackle", 35}, {"growl", 40}, {"leer", 30}}, "lanturn", 1},
+        {"raichu", {{"earthquake", 10}, {"tackle", 35}, {"growl", 40}, {"leer", 30}}, "claydol", 1},
+        {"arcanine", {{"ember", 25}, {"tackle", 35}, {"growl", 40}, {"leer", 30}}, "growlithe", 1},
+    };
+    for (const Case& test : cases){
+        const PartyMember lead{.species = test.lead, .moves = test.moves, .moves_through_level = 32, .moves_read = true, .level = 32};
+        const std::optional<size_t> slot = attack_slot_against(lead, {test.foe});
+        if (slot != test.expected){
+            return std::format("{} against {}: expected slot {}, got slot {}.", test.lead, test.foe, test.expected, slot_name(slot));
+        }
+    }
+    return true;
+}
+
+//  A trainer the plan doesn't name (Roland, fought on a leg): his Pokemon
+//  as read off the HP box is what the attack is chosen against.
+UnitTestResult test_unplanned_trainer_foe(){
+    Supplies supplies;
+    supplies.lead = grown_to(new_member("squirtle", 5), 32);
+    supplies.lead.moves = {{"tackle", 35}, {"bite", 25}, {"surf", 15}, {"water-gun", 25}};
+    supplies.potions = 5;
+    supplies.foe_out = "poliwhirl";
+    BattleDecisions trainer(supplies, BattleKind::TRAINER);
+    const size_t slot = trainer.turn(GREEN).slot;
+    if (slot != 1){
+        return std::format("Expected Bite against Roland's Poliwhirl, got slot {}.", slot);
+    }
+    return true;
+}
+
 //  A wild Pokemon that wasn't read, or a name the data doesn't have, gets
 //  the plan's order: Water Gun first.
 UnitTestResult test_wild_fallback(){
@@ -230,6 +276,14 @@ const AutoStoryBattleDataTestCase AUTO_STORY_BATTLE_DATA_CASES[] = {
     {
         .input = {.name = "a wild Pokemon not read: the plan's order", .body = test_wild_fallback},
         .expectation = {.description = "falls back to default move preference when unread"},
+    },
+    {
+        .input = {.name = "no Water move on a Water foe, none an ability makes useless", .body = test_useless_moves},
+        .expectation = {.description = "Roland's Poliwhirl (Water Absorb) takes Bite, not Surf"},
+    },
+    {
+        .input = {.name = "an unplanned trainer's Pokemon as read", .body = test_unplanned_trainer_foe},
+        .expectation = {.description = "attacks the read foe out without a plan party"},
     },
     {
         .input = {.name = "battle risks by trainer", .body = test_risks},
