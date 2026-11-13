@@ -23,10 +23,21 @@
         "kind": "battle",
         "args": {
           "trainer": "TRAINER_LEADER_KOGA",
-          "foes": ["koffing", "muk", "koffing", "weezing"]
+          "foes": ["koffing", "muk", "koffing", "weezing"],
+          "policy": "goal-based-setup",
+          "setup_spa": 1,
+          "setup_accuracy": 0,
+          "setup_outspeed": true,
+          "setup_guard_accuracy": false,
+          "foe_threats": [
+            [30, 73, 26, 166, 84, 1, 1],
+            [48, 28, 8, 63, 33, 0, 0],
+            [30, 73, 26, 166, 84, 1, 1],
+            [56, 33, 13, 75, 39, 1, 0]
+          ]
         },
         "declared_after": {"map": "FuchsiaCity_Gym", "tiles": [[6, 13]], "facing": "east"},
-        "why": "Koga (TRAINER_LEADER_KOGA): Koffing Lv37, Muk Lv39, Koffing Lv37, Weezing Lv43 (pokeguy: Surf, two on Muk through Minimize, Weezing at 4 HP, 1:16:34 to 1:18:03); then the SOULBADGE and TM06 Toxic, read to the overworld with the battle's text"
+        "why": "Koga (TRAINER_LEADER_KOGA), fought by pokeguy's policy C2 (goal-based-setup: Sp. Atk +1 and outspeed by X items, medicine and cures by safety; the doc's koga row, foe_threats from its stats): Koffing Lv37, Muk Lv39, Koffing Lv37, Weezing Lv43 (pokeguy: Surf, two on Muk through Minimize, Weezing at 4 HP, 1:16:34 to 1:18:03); then the SOULBADGE and TM06 Toxic, read to the overworld with the battle's text"
       },
       {
         "id": "below_warden",
