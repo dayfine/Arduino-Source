@@ -50,6 +50,8 @@ const ImageStats FALLING_DARK = stats(60, 60, 60, 10);
 const ImageStats DARK = stats(5, 5, 5, 1);
 const ImageStats FALLING_WHITE = stats(160, 160, 160, 10);
 const ImageStats WHITE = stats(250, 250, 250, 1);
+//  An empty or dropped frame: no stats at all.
+const ImageStats EMPTY;
 
 SceneChange compare_means(const TransitionSample& before, const TransitionSample& after){
     const FloatPixel& a = before.middle.average;
@@ -343,6 +345,22 @@ const TrackCase TRACK_CASES[] = {
         .input = {"a cave mouth's fade rises into a dim cave",
             {{0, 100, ROUTE}, {200, 500, DARK}, {600, 2500, DIM_FLOOR}}},
         .expectation = {"black fade +200 ms, peak +200 ms, rise +600 ms, end +1700 ms, other scene", "warped"},
+    },
+    {
+        .input = {"empty frames in a scene start no fade",
+            {{0, 100, ROUTE}, {200, 300, EMPTY}, {400, 500, ROUTE}}},
+        .expectation = {"none"},
+    },
+    {
+        .input = {"an empty frame in a fall is skipped",
+            {{0, 100, ROUTE}, {200, 200, EMPTY}, {300, 300, FALLING_DARK}, {400, 600, DARK}}},
+        .expectation = {"none", "fade still showing"},
+    },
+    {
+        .input = {"an empty frame in the rise does not move the rise",
+            {{0, 100, ROUTE}, {200, 200, FALLING_DARK}, {300, 500, DARK}, {600, 600, FALLING_DARK},
+             {700, 700, EMPTY}, {800, 900, HOUSE}}},
+        .expectation = {"black fade +200 ms, peak +300 ms, rise +600 ms, end +800 ms, other scene", "warped"},
     },
     {
         .input = {"a fade in progress is still showing",
