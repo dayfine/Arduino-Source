@@ -15,6 +15,7 @@
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "Pokemon/AutoStory/Pokemon_StoryPreflight.h"
+#include "Pokemon/AutoStory/Pokemon_StoryRngHandoff.h"
 #include "Pokemon/AutoStory/Pokemon_StoryRun.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStorySelect.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
@@ -296,7 +297,7 @@ void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     StoryExecutor executor(story);
     const StoryRunPlan plan = plan_story_run(
         checkpoints, first, last,
-        StoryHandoffs{.starter_rng = STOP_FOR_STARTER_RNG, .run_starter_rng = STARTER_RNG.run()}
+        StoryHandoffs{.starter_rng = Pokemon::rng_handoff_mode({.stop = STOP_FOR_STARTER_RNG, .run = STARTER_RNG.run()})}
     );
     executor.set_stop_rows(rows_that_stop(plan));
     run_plan(env, context, plan, first == 0 && NEW_GAME_INTRO, executor);
@@ -330,8 +331,10 @@ void BDSPAutoStory::run_plan(
         Pokemon::SegmentRange{plan.rows.front().id, plan.rows.back().id}, RUN.policy(), segment, game, state, env
     );
     if (plan.stop == StoryHandoff::STARTER_RNG){
-        const std::string handoff = std::format("Stopped for Starter RNG. {}", STARTER_RNG_HANDOFF_TEXT);
-        env.log(handoff, COLOR_BLUE);
+        const std::string handoff = Pokemon::report_rng_handoff_stop(
+            env.console, std::format("Stopped for Starter RNG. {}", STARTER_RNG_HANDOFF_TEXT), {},
+            [&](const std::string& line){ env.console.overlay().add_log(line); }
+        );
         send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH, handoff);
         return;
     }

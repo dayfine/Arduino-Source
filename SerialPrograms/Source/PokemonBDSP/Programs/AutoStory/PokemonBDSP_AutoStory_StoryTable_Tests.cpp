@@ -237,11 +237,11 @@ UnitTestResult test_route204_north_line(Logger& logger){
 //  north, where 00.02 and Starter RNG start; starting past 00.01 runs on.
 UnitTestResult test_plan_story_run_starter_rng(Logger&){
     const std::vector<StoryCheckpoint>& table = story_checkpoints();
-    const StoryRunPlan full = plan_story_run(table, 0, table.size() - 1, StoryHandoffs{.starter_rng = false});
+    const StoryRunPlan full = plan_story_run(table, 0, table.size() - 1, StoryHandoffs{.starter_rng = Pokemon::RngHandoffMode::OFF});
     if (full.stop != StoryHandoff::NONE || full.rows.size() != table.size()){
         return "With Starter RNG handoff off, expected the full table with no stop.";
     }
-    const StoryRunPlan handoff = plan_story_run(table, 0, table.size() - 1, StoryHandoffs{.starter_rng = true});
+    const StoryRunPlan handoff = plan_story_run(table, 0, table.size() - 1, StoryHandoffs{.starter_rng = Pokemon::RngHandoffMode::STOP});
     if (handoff.stop != StoryHandoff::STARTER_RNG || handoff.rows.size() != 2 ||
         handoff.rows[0].id != "00.00" || handoff.rows[1].id != "00.01"
     ){
@@ -274,7 +274,7 @@ UnitTestResult test_plan_story_run_starter_rng(Logger&){
     ){
         return "Expected 00.01's Starter RNG handoff save to end at 00.02's VerityLakefront (17, 14) start pose.";
     }
-    const StoryRunPlan from_0002 = plan_story_run(table, 2, 4, StoryHandoffs{.starter_rng = true});
+    const StoryRunPlan from_0002 = plan_story_run(table, 2, 4, StoryHandoffs{.starter_rng = Pokemon::RngHandoffMode::STOP});
     if (from_0002.stop != StoryHandoff::NONE || from_0002.rows.size() != 3 || from_0002.rows.front().id != "00.02"){
         return "Expected a run starting at 00.02 to pass through without stopping for 00.01's handoff.";
     }
@@ -287,7 +287,7 @@ UnitTestResult test_plan_story_run_starter_rng(Logger&){
 UnitTestResult test_plan_story_run_in_program(Logger&){
     const std::vector<StoryCheckpoint>& table = story_checkpoints();
     const StoryRunPlan in_program = plan_story_run(
-        table, 0, table.size() - 1, StoryHandoffs{.starter_rng = true, .run_starter_rng = true}
+        table, 0, table.size() - 1, StoryHandoffs{.starter_rng = Pokemon::RngHandoffMode::RUN}
     );
     if (in_program.stop != StoryHandoff::NONE || in_program.rows.size() != table.size()){
         return "With Run Starter RNG in AutoStory on, expected the full table with no handoff stop.";
@@ -378,12 +378,12 @@ UnitTestResult test_starter_rng_failure(Logger&){
 UnitTestResult test_starter_rng_row_is_fatal(Logger&){
     const std::vector<StoryCheckpoint>& table = story_checkpoints();
     const StoryRunPlan in_program = plan_story_run(
-        table, 0, 3, StoryHandoffs{.starter_rng = true, .run_starter_rng = true}
+        table, 0, 3, StoryHandoffs{.starter_rng = Pokemon::RngHandoffMode::RUN}
     );
     if (in_program.fatal_rows != std::set<std::string>{"00.02"}){
         return "Expected 00.02 to be fatal when Run Starter RNG in AutoStory is on.";
     }
-    const StoryRunPlan plain = plan_story_run(table, 0, 3, StoryHandoffs{.starter_rng = true});
+    const StoryRunPlan plain = plan_story_run(table, 0, 3, StoryHandoffs{.starter_rng = Pokemon::RngHandoffMode::STOP});
     const StoryRunPlan off = plan_story_run(table, 0, 3);
     if (!plain.fatal_rows.empty() || !off.fatal_rows.empty()){
         return "Expected no fatal rows unless Run Starter RNG in AutoStory is on.";

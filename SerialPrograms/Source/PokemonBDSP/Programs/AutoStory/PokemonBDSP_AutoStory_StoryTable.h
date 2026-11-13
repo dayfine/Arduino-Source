@@ -18,6 +18,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include "Pokemon/AutoStory/Pokemon_StoryRngHandoff.h"
 #include "PokemonBDSP_AutoStory_StoryExecutor.h"
 
 namespace PokemonAutomation{
@@ -49,8 +50,9 @@ enum class StoryHandoff{
 
 //  The handoffs a run stops for or runs in-program (AutoStory's options).
 struct StoryHandoffs{
-    bool starter_rng = false;
-    bool run_starter_rng = false;
+    //  STOP: the run stops after 00.01 for the user's Starter RNG. RUN: 00.02
+    //  runs it in the program. The mode of the options: Pokemon::rng_handoff_mode().
+    Pokemon::RngHandoffMode starter_rng = Pokemon::RngHandoffMode::OFF;
 };
 
 //  What a run from table row `first` to `last` does.
@@ -69,7 +71,7 @@ struct StoryRunPlan{
 
 //  The rows of `table` from `first` to `last`, both inclusive, as a
 //  run with `handoffs` takes them: a run that reaches 00.01 with
-//  `handoffs.starter_rng` on saves at the Verity Lakefront at the end of
+//  `handoffs.starter_rng` STOP saves at the Verity Lakefront at the end of
 //  00.01 and stops there for Starter RNG.
 StoryRunPlan plan_story_run(const std::vector<StoryCheckpoint>& table, size_t first, size_t last, const StoryHandoffs& handoffs = {});
 

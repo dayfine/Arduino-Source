@@ -446,7 +446,7 @@ UnitTestResult test_start_and_end(Logger&){
     //  saves at the Verity Lakefront (17, 14) facing north.
     Simulation handoff_sim;
     const StoryRunPlan plan = plan_story_run(
-        story_checkpoints(), 0, story_checkpoints().size() - 1, StoryHandoffs{.starter_rng = true}
+        story_checkpoints(), 0, story_checkpoints().size() - 1, StoryHandoffs{.starter_rng = Pokemon::RngHandoffMode::STOP}
     );
     Pokemon::Segment handoff_segment = make_story_segment(plan.rows, handoff_sim.game, handoff_sim.saved);
     Pokemon::SegmentHooks hooks;
@@ -474,7 +474,7 @@ UnitTestResult test_run_starter_rng_in_story(Logger&){
     hooks.reload = [&](RunState&){ return Pokemon::outcome_ok(); };
     Simulation in_program_sim;
     const StoryRunPlan in_program_plan = plan_story_run(
-        story_checkpoints(), 0, 3, StoryHandoffs{.starter_rng = true, .run_starter_rng = true}
+        story_checkpoints(), 0, 3, StoryHandoffs{.starter_rng = Pokemon::RngHandoffMode::RUN}
     );
     Pokemon::Segment in_program_segment = make_story_segment(in_program_plan.rows, in_program_sim.game, in_program_sim.saved);
     RunState in_program_state;
