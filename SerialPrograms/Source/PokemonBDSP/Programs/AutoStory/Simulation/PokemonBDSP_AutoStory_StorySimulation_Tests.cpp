@@ -504,7 +504,7 @@ UnitTestResult test_start_and_end(Logger&){
     const StoryRunPlan plan = plan_story_run(
         story_checkpoints(), 0, story_checkpoints().size() - 1, StoryHandoffs{.starter_rng = true}
     );
-    Pokemon::Segment handoff_segment = make_story_segment(plan.rows, handoff_sim.game, handoff_sim.saved);
+    Pokemon::Segment handoff_segment = make_story_segment(plan.rows, handoff_sim.game, handoff_sim.saved, handoff_sim.policy.save_mode);
     Pokemon::SegmentHooks hooks;
     hooks.reload = [&](RunState&){ return Pokemon::outcome_ok(); };
     RunState handoff_state;
@@ -532,7 +532,7 @@ UnitTestResult test_run_starter_rng_in_story(Logger&){
     const StoryRunPlan in_program_plan = plan_story_run(
         story_checkpoints(), 0, 3, StoryHandoffs{.starter_rng = true, .run_starter_rng = true}
     );
-    Pokemon::Segment in_program_segment = make_story_segment(in_program_plan.rows, in_program_sim.game, in_program_sim.saved);
+    Pokemon::Segment in_program_segment = make_story_segment(in_program_plan.rows, in_program_sim.game, in_program_sim.saved, in_program_sim.policy.save_mode);
     RunState in_program_state;
     const Pokemon::SegmentReport in_program_report = Pokemon::run_segment(
         {.from = "00.00", .to = "00.03"}, in_program_sim.policy, in_program_segment, hooks, in_program_state
@@ -785,6 +785,9 @@ const AutoStoryStorySimulationCase AUTO_STORY_STORY_SIMULATION_CASES[] = {
     },
     {
         .input = {"save mode none saves at no row's start, 00.04b to 00.05c (lab-B, 2026-11-11)", test_save_mode_none_saves_nowhere},
+        .expectation = {},
+    },
+    {
         .input = {"Run Starter RNG in AutoStory chains 00.02 into 00.03", test_run_starter_rng_in_story},
         .expectation = {},
     },
