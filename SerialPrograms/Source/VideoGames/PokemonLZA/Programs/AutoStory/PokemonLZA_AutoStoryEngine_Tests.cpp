@@ -8,6 +8,8 @@
  */
 
 #include <algorithm>
+#include <cmath>
+#include <cstdint>
 #include <format>
 #include <functional>
 #include <iterator>
@@ -262,6 +264,77 @@ UnitTestResult test_face_heading(CancellableScope& scope){
         return std::format("Expected heading_unread with no heading read, got {}", to_string(unread));
     }
     return expect_inputs(blind, {});
+}
+
+//  A forward hold of a walk: the way it went, clockwise from north, and
+//  for how long.
+struct WalkedLeg{
+    int heading;
+    int64_t ms;
+
+    bool operator==(const WalkedLeg&) const = default;
+};
+
+std::string walked_text(const std::vector<WalkedLeg>& path){
+    std::string text;
+    for (const WalkedLeg& leg : path){
+        text += std::format("{}[{} deg, {} ms]", text.empty() ? "" : ", ", leg.heading, leg.ms);
+    }
+    return text;
+}
+
+int normalized_heading(double degrees){
+    return (((int)std::lround(degrees) % 360) + 360) % 360;
+}
+
+//  Where a walk's inputs take the player who starts facing `player` with
+//  the camera looking `camera` (clockwise from north): L puts the camera
+//  behind the player, a stick tap turns the player that far from where the
+//  camera looks, and a forward hold walks where the camera looks. Other
+//  inputs move nobody.
+std::vector<WalkedLeg> walked_path(const std::vector<std::string>& inputs, double player, double camera){
+    constexpr std::string_view STICK = "stick ";
+    constexpr std::string_view HOLD = "hold north ";
+    std::vector<WalkedLeg> path;
+    for (const std::string& input : inputs){
+        if (input == "press L"){
+            camera = player;
+        }else if (input.starts_with(STICK)){
+            player = camera + std::stod(input.substr(STICK.size()));
+        }else if (input.starts_with(HOLD)){
+            player = camera;
+            path.push_back({.heading = normalized_heading(camera), .ms = std::stoll(input.substr(HOLD.size()))});
+        }
+    }
+    return path;
+}
+
+//  01.02's chase walks the same way from its save and after 01.01's
+//  arrival scenes. A save load puts the camera behind the player; the
+//  scenes end with the camera looking the same way but the player turned
+//  to the right, to the boy (console B, 2026-11-13: the chained run set
+//  off the wrong way). The walk's first turn is taken from the camera, so
+//  the player's facing at the start does not rotate the walk. From the
+//  save it walks as recorded.
+UnitTestResult test_chase_starts_from_camera(CancellableScope& scope){
+    FakeBackend backend = fake_plza({look_at(0ms)}, scope);
+    const Pokemon::StoryEngineReport report = run_plza(backend, step_of("01.02", "chase_pancham"));
+    if (report.verdict != Pokemon::CheckpointVerdict::PASSED){
+        return std::format("Expected the chase to walk: {}", to_string(report.run.failure));
+    }
+    const std::vector<WalkedLeg> from_save = walked_path(backend.inputs(), 0, 0);
+    const std::vector<WalkedLeg> recorded = {{345, 4000}, {270, 3500}, {0, 9000}, {0, 1000}, {270, 4000}};
+    if (from_save != recorded){
+        return std::format("From the save, expected [{}], walked [{}].", walked_text(recorded), walked_text(from_save));
+    }
+    const std::vector<WalkedLeg> after_scenes = walked_path(backend.inputs(), 90, 0);
+    if (after_scenes != from_save){
+        return std::format(
+            "After the scenes, expected the save's path [{}], walked [{}].",
+            walked_text(from_save), walked_text(after_scenes)
+        );
+    }
+    return true;
 }
 
 //  Pancham cornered (text_to_choice): B through the text, done at the
@@ -567,6 +640,7 @@ const EngineTestCase ENGINE_TEST_CASES[] = {
     {.input = {"01.01 arrival_scenes: a quiet minute without the hint fails", test_arrival_quiet_fails}, .expectation = {}},
     {.input = {"01.02 battle_area: done on the \"A: Talk\" prompt", test_battle_area_ends_on_interact_prompt}, .expectation = {}},
     {.input = {"face_heading: turns by the minimap's heading", test_face_heading}, .expectation = {}},
+    {.input = {"01.02 chase_pancham: the same path from the save and after 01.01's scenes", test_chase_starts_from_camera}, .expectation = {}},
     {.input = {"01.01 platform_to_plaza: no walk without free control", test_walk_needs_free_control}, .expectation = {}},
     {.input = {"01.01 platform_to_plaza: ends on the white fade", test_walk_ends_on_white_fade}, .expectation = {}},
     {.input = {"01.01 platform_to_plaza: fails at its bound", test_walk_fails_at_bound}, .expectation = {}},
