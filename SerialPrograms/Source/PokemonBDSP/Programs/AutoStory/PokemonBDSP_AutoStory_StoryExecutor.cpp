@@ -212,7 +212,7 @@ StoryInterruptActions StoryExecutor::console_interrupt_actions(){
 
 void StoryExecutor::begin_attempt(const Pokemon::StoryCheckpoint& data){
     m_checkpoint = data.id;
-    m_walks.begin_attempt(data.id, data.steps);
+    m_walks.begin_attempt(data.id, data.steps, pause_points());
 }
 
 
