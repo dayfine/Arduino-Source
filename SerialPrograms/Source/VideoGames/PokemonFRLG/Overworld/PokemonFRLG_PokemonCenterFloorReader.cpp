@@ -37,7 +37,7 @@ bool is_floor_colour(uint32_t pixel){
 //  below the nurse. Water, sand and town frames read under 2%.
 constexpr double MIN_FLOOR_SHARE = 0.08;
 
-}   //  namespace
+} // namespace
 
 
 double pokemon_center_floor_share(const ImageViewRGB32& game){
@@ -135,7 +135,7 @@ public:
     }
 };
 
-}   //  namespace
+} // namespace
 
 
 void add_tests_PokemonCenterFloorReader(UnitTestDatabase& database){
