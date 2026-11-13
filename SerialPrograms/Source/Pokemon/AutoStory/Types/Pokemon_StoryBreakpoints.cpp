@@ -12,18 +12,6 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-std::string story_breakpoints_name(StoryBreakpoints mode){
-    switch (mode){
-    case StoryBreakpoints::OFF:
-        return "off";
-    case StoryBreakpoints::STEPS:
-        return "steps";
-    case StoryBreakpoints::LEGS:
-        return "legs";
-    }
-    return "off";
-}
-
 std::string story_step_pause_label(std::string_view checkpoint_id, size_t step_index, std::string_view step_name){
     return std::format("{}/{} {}", checkpoint_id, step_index + 1, step_name);
 }

@@ -787,7 +787,7 @@ std::string off_never_pauses(CancellableScope& scope){
     quiet_engine.run_checkpoint(checkpoint, SavePoint::RUN_END, state);
     for (const std::string& line : quiet.lines()){
         if (line.starts_with("[Break]")){
-            return "a game with no hook logged " + line;
+            return std::format("a game with no hook logged {}", line);
         }
     }
     return "";
@@ -808,7 +808,7 @@ std::string pause_hook_from_the_installed_wait(CancellableScope& scope){
         hook("12.03/1 first");
     }
     set_story_pause_wait({});
-    return waited == std::vector<std::string>{"12.03/1 first true"} ? "" : "expected the wait to get the label and the scope: " + joined(waited);
+    return waited == std::vector<std::string>{"12.03/1 first true"} ? "" : std::format("expected the wait to get the label and the scope: {}", joined(waited));
 }
 
 

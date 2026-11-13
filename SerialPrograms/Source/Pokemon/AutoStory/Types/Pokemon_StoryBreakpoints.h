@@ -36,9 +36,6 @@ enum class StoryBreakpoints{
     LEGS,
 };
 
-// Returns the wire and log name of a mode: "off", "steps", "legs".
-std::string story_breakpoints_name(StoryBreakpoints mode);
-
 //  "12.03/5 pallet_shore": the checkpoint, the step's place in it (from 1)
 //  and its name.
 std::string story_step_pause_label(std::string_view checkpoint_id, size_t step_index, std::string_view step_name);
@@ -84,6 +81,7 @@ private:
 //  It returns when the user continues or `scope` is cancelled. Set once,
 //  before any program runs. Not installed: pause points do not block.
 using StoryPauseWait = std::function<void(std::string_view label, CancellableScope& scope)>;
+//  Installs it; an empty wait removes it.
 void set_story_pause_wait(StoryPauseWait wait);
 
 //  The hook for StoryGame::pause_point: the installed wait on `scope`, or
