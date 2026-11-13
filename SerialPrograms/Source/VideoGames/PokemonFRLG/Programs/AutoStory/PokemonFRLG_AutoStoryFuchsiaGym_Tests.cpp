@@ -2,8 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Rows 12.01 and 12.02 (StoryData/frlg-12.01.plan.json, 12.02) on the
- *  overworld sim: from Fuchsia's nurse into the gym past Jugglers Kayden
+ *  Rows 12.01, 12.02 and 12.02b (StoryData/frlg-12.01.plan.json, 12.02,
+ *  12.02b) on the overworld sim: from Fuchsia's nurse into the gym past Jugglers Kayden
  *  and Kirk and round its top edge to west of Koga; and from Koga out to
  *  the Warden and back to the nurse. And the lead's attacks against the
  *  gym's parties.
@@ -156,8 +156,9 @@ std::string row_on_sim(std::string_view id, GymWalk& walk){
 }
 
 //  12.01 from the nurse: the gym, Kayden fought from (14, 16) and Kirk from
-//  (14, 11), round the top edge to west of Koga, where 12.02 starts; then
-//  12.02 from there to the Warden and the nurse, meeting no one else. The
+//  (14, 11), round the top edge to west of Koga, where 12.02 starts; 12.02,
+//  Koga's battle, which ends where it starts; then 12.02b from there to the
+//  Warden and the nurse, meeting no one else. The
 //  sim's lookers see every way at once, so Edgar, whose lines the legs to
 //  the walls cross, always stops the walk there: the worst case, which
 //  the console meets only when he looks that way.
@@ -180,11 +181,21 @@ UnitTestResult test_gym_rows(){
     if (const std::string failure = row_on_sim("12.02", walk); !failure.empty()){
         return failure;
     }
+    if (!(walk.sim->state().position == west_of_koga)){
+        return std::format("12.02: ended on {}, not west of Koga where 12.02b starts.", to_string(walk.sim->state().position));
+    }
+    const StoryPose after_koga = *story_pose(Pokemon::pose_of(*checkpoint("12.02b").start));
+    if (after_koga.map != GYM || !(after_koga.tile == west_of_koga.point)){
+        return "12.02b doesn't start where 12.02 ends.";
+    }
+    if (const std::string failure = row_on_sim("12.02b", walk); !failure.empty()){
+        return failure;
+    }
     if (walk.all_fought().size() != 3){
-        return "12.02: fought a trainer after Koga.";
+        return "12.02b: fought a trainer after Koga.";
     }
     if (walk.at.map != "FuchsiaCity_PokemonCenter_1F"){
-        return std::format("12.02: ended on {}, not at Fuchsia's nurse.", walk.at.map);
+        return std::format("12.02b: ended on {}, not at Fuchsia's nurse.", walk.at.map);
     }
     return true;
 }
@@ -382,7 +393,7 @@ const AutoStoryFuchsiaGymCase AUTO_STORY_FUCHSIA_GYM_CASES[] = {
         .expectation = {.description = "no Mart, skipped or walking step before challenge_koga"},
     },
     {
-        .input = {.name = "12.01 past Kayden and Kirk to west of Koga and 12.02 to the Warden and the nurse", .body = test_gym_rows},
+        .input = {.name = "12.01 past Kayden and Kirk to west of Koga, 12.02 on the spot and 12.02b to the Warden and the nurse", .body = test_gym_rows},
         .expectation = {.description = "Kayden and Kirk fought where the table steps into their lines, no one else; ends at Fuchsia's nurse"},
     },
     {
