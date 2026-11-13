@@ -506,7 +506,7 @@ UnitTestResult test_unmoved_one_tile_route_to_wall(){
     for (size_t c = 0; c < 2; c++){
         ScriptedRoute again;
         again.ends[0] = no_movement();
-        if (again.run(longer[c], c == 0 ? &planning : &from_five) || again.walked.size() < 2 || to_string(again.walked[1]) != to_string(again.walked[0])){
+        if (again.run(longer[c], c == 0 ? &planning : &from_five) || again.walked.size() < 2 || again.walked[1].direction != again.walked[0].direction || !(again.walked[1].end == again.walked[0].end)){
             return std::format("case {}: expected the leg walked again after it moved nothing: {}{}", c, again.failure, describe(again.walked));
         }
     }
