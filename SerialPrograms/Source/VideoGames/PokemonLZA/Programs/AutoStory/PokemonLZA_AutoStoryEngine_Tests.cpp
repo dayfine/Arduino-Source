@@ -168,13 +168,6 @@ UnitTestResult test_opening_presses_through_arrival_text(CancellableScope& scope
     return true;
 }
 
-//  A look at `at` facing `heading`, as the minimap reads it.
-Observation<ZonePose> facing(Milliseconds at, int heading){
-    Observation<ZonePose> look = look_at(at);
-    look.readings[std::string(Pokemon::STORY_HEADING)] = heading;
-    return look;
-}
-
 //  01.01's start check: one look at the platform is not enough, and with
 //  no platform it fails within its 10 s, pressing nothing.
 UnitTestResult test_start_check_needs_platform(CancellableScope& scope){
