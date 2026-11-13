@@ -57,6 +57,13 @@ anchor); 0 from one start tile.
   target: VerityLakefront (17, 14) facing north (tile)
   not planned: the start is unknown (a LEGS or STEP step before it does not say where it ends)
 
+== 00.02 to_the_lake_entrance (costs: route)
+  from: VerityLakefront (17, 14) facing north (tile)
+  target: VerityLakefront (17, 13) facing north (tile)
+  start candidates: Verity Lakefront (17, 14)
+  1. north 1 (open) -> Verity Lakefront (17, 13)
+  totals: 1 legs, 0 turns, 1 open, 0 localization
+
 == 00.03 into_rowans_scene (costs: into_scene)
   from: VerityLakefront (17, 14) (17, 15) (set)
   target: VerityLakefront (17, 21) (tile)
@@ -190,9 +197,13 @@ anchor); 0 from one start tile.
   totals: 12 legs, 11 turns, 4 open, 0 localization
 
 == 00.05 to_the_center (costs: town)
-  from: unknown
+  from: JubilifeCity (48, 62) (tile)
   target: JubilifeCity (52, 41) facing north (tile)
-  not planned: the start is unknown (a LEGS or STEP step before it does not say where it ends)
+  start candidates: Jubilife City (48, 62)
+  1. west 1 (open) -> Jubilife City (47, 62)
+  2. north 21 (open) -> Jubilife City (47, 41)
+  3. east 5 (open) -> Jubilife City (52, 41)
+  totals: 3 legs, 2 turns, 3 open, 0 localization
 
 == 00.05 to_the_school (costs: town)
   from: JubilifeCity (52, 41) facing north (tile)
@@ -208,10 +219,21 @@ anchor); 0 from one start tile.
   1. east 6 (open) -> Jubilife City (46, 41)
   totals: 1 legs, 0 turns, 1 open, 0 localization
 
+== 00.05b past_the_president (costs: route)
+  from: JubilifeCity (46, 40) facing north (tile)
+  target: JubilifeCity (48, 40) facing east (tile)
+  start candidates: Jubilife City (46, 40)
+  1. east 2 (open) -> Jubilife City (48, 40)
+  totals: 1 legs, 0 turns, 1 open, 0 localization
+
 == 00.05b below_the_mart_clown (costs: town)
-  from: unknown
+  from: JubilifeCity (48, 40) facing east (tile)
   target: JubilifeCity (55, 34) facing north (tile)
-  not planned: the start is unknown (a LEGS or STEP step before it does not say where it ends)
+  start candidates: Jubilife City (48, 40)
+  1. north 6 (open) -> Jubilife City (48, 34)
+  2. east 8 (to wall) -> Jubilife City (56, 34)
+  3. west 1 (open) -> Jubilife City (55, 34)
+  totals: 3 legs, 2 turns, 2 open, 0 localization
 
 == 00.05b below_the_tv_clown (costs: town)
   from: JubilifeCity (55, 34) facing north (tile)
@@ -267,6 +289,13 @@ anchor); 0 from one start tile.
   start candidates: Jubilife City (58, 22)
   1. east 9 (open) -> Route 203 (4, 18)
   totals: 1 legs, 0 turns, 1 open, 0 localization
+
+== 01.02 south_to_the_cliff (costs: route)
+  from: Route203 (5, 17) (5, 18) (5, 19) (5, 20) facing east (set)
+  target: Route203 (5, 20) facing south (tile)
+  start candidates: Route 203 (5, 17), Route 203 (5, 18), Route 203 (5, 19), Route 203 (5, 20)
+  1. south 3 (to wall) -> Route 203 (5, 20)
+  totals: 1 legs, 0 turns, 0 open, 1 localization
 
 == 01.02 by_the_gate (costs: route)
   from: Route203 (5, 20) facing south (tile)
@@ -373,6 +402,13 @@ anchor); 0 from one start tile.
   start candidates: Jubilife City (41, 8)
   1. east 6 (to wall) -> Jubilife City (47, 8)
   totals: 1 legs, 0 turns, 0 open, 0 localization
+
+== 01.08 west_to_the_wall (costs: route)
+  from: JubilifeCity (46, 5) (47, 5) (set)
+  target: JubilifeCity (44, 5) facing west (tile)
+  start candidates: Jubilife City (46, 5), Jubilife City (47, 5)
+  1. west 3 (to wall) -> Jubilife City (44, 5)
+  totals: 1 legs, 0 turns, 0 open, 1 localization
 
 == 01.08 below_the_ravaged_path (costs: town)
   from: JubilifeCity (44, 5) facing west (tile)
