@@ -79,7 +79,7 @@ bool safe_tap(const StoryWorld& world, const TilePos& from, Direction direction)
     const auto next = step(world, from, direction);
     const auto local = next ? world.to_local(*next) : std::nullopt;
     return map && next && *next == from.next(direction) && local && local->map == map->map && standable(world, *next)
-        && world.occupied(*next, StoryWorld::OccupancyUse::WALL_RECOVERY) != StoryWorld::PERSON;
+        && !recovery_hazard(world, *next);
 }
 
 //  WallPolicy, with a tap where a hold has no wall for every position: a
