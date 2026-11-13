@@ -353,7 +353,7 @@ UnitTestResult test_12_02_goes_straight_to_koga(){
 UnitTestResult test_koga_foe_threats_are_the_generators(){
     const StoryCheckpoint& row = checkpoint("12.02");
     for (const StoryStep& step : row.steps){
-        if (step.name != "challenge_koga"){
+        if (step.name != "koga"){
             continue;
         }
         const auto found = step.args.find("foe_threats");
@@ -365,11 +365,11 @@ UnitTestResult test_koga_foe_threats_are_the_generators(){
             {56, 38, 37, 78, 39, 1, 0},     //  Weezing
         };
         if (rows == nullptr || *rows != expected){
-            return "12.02 challenge_koga: foe_threats are not the generator's rows for the koga case.";
+            return "12.02 koga: foe_threats are not the generator's rows for the koga case.";
         }
         return true;
     }
-    return "12.02 has no challenge_koga step.";
+    return "12.02 has no koga battle step.";
 }
 
 const AutoStoryFuchsiaGymCase AUTO_STORY_FUCHSIA_GYM_CASES[] = {
