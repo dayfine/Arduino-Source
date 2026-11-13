@@ -229,8 +229,9 @@ Pokemon::StoryAction StoryMapsSim::action(StoryActionId id){
     //  Pacing leaves the player on either of its tiles, as on the console.
     case StoryActionId::CLOSE_TRAINER_CARD:
     case StoryActionId::LEAVE_GIFT_SUMMARY:
-    case StoryActionId::CUT_TREE:
     case StoryActionId::PUSH_BOULDER:
+        return played([this](const StoryStep& step, RunState& state){ return boulder_pushed(state, step, maps()); });
+    case StoryActionId::CUT_TREE:
     case StoryActionId::TRASH_CANS:
     case StoryActionId::GAME:
         return m_stubs.stub([](const StoryStep& step, RunState& state){

@@ -54,13 +54,16 @@ struct MapStatue{
 //  A switch the map's gates follow. One state is shared by every map in
 //  `floors` (Pokemon Mansion's statue switch, an event flag): pressing a
 //  statue flips it, and each floor redraws its gates when it loads.
-//  `statues` are the statues on this map only.
+//  `statues` are the statues on this map only. `buttons` are the tiles a
+//  Strength boulder turns it on from (Victory Road's floor switches, which
+//  stay on).
 struct MapSwitch{
     std::string id;
     std::string flag;
     bool toggle = true;
     std::vector<std::string> floors;
     std::vector<MapStatue> statues;
+    std::vector<TilePos> buttons = {};
 };
 
 

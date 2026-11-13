@@ -140,6 +140,16 @@ bool OverworldSim::push_boulder(){
     boulder->y = beyond.y;
     advance_to(m_now + PUSH_TIME);
     note("pushed the boulder to " + to_string(MapPosition{map().name, beyond}) + ".");
+    //  A boulder on a floor switch's button turns it on for good (Victory
+    //  Road's floors: the switch's flag, then the barrier redrawn).
+    const Pokemon::MapSwitch* pressed = m_state.gate_maps.empty()
+        ? nullptr
+        : Pokemon::switch_with_button(m_state.gate_maps[m_map], beyond);
+    if (pressed != nullptr){
+        m_state.gates.switches_on.insert(Pokemon::switch_key(*pressed));
+        read_gates();
+        note(std::format("switch {} is on.", Pokemon::switch_key(*pressed)));
+    }
     return true;
 }
 
@@ -217,11 +227,12 @@ bool OverworldSim::press_switch(){
     }
     //  The prompt, YES, and the text after it.
     advance_to(m_now + m_script.timing.message);
-    const bool now_on = pressed->toggle ? !m_state.gates.switch_on(pressed->id) : true;
+    const std::string key = Pokemon::switch_key(*pressed);
+    const bool now_on = pressed->toggle ? !m_state.gates.switch_on(key) : true;
     if (now_on){
-        m_state.gates.switches_on.insert(pressed->id);
+        m_state.gates.switches_on.insert(key);
     }else{
-        m_state.gates.switches_on.erase(pressed->id);
+        m_state.gates.switches_on.erase(key);
     }
     read_gates();
     note(std::format("switch {} is {}.", pressed->id, now_on ? "on" : "off"));

@@ -4,6 +4,7 @@
  *
  */
 
+#include <algorithm>
 #include <format>
 #include <memory>
 #include <set>
@@ -12,6 +13,7 @@
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
+#include "Pokemon/Navigation/Pokemon_GateTiles.h"
 #include "Pokemon/Navigation/Pokemon_RouteLog.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldGatedRoute.h"
@@ -422,6 +424,29 @@ void add_start_pose_check(
     add_start_check(checkpoint, start, std::move(reader), std::move(log));
 }
 
+Outcome boulder_pushed(RunState& state, const StoryStep& step, const std::vector<MapData>& maps){
+    const std::optional<StoryPose> here = story_pose(state.pose);
+    if (!here){
+        return Pokemon::outcome_failed("no_pose", Pokemon::to_string(state.pose));
+    }
+    const Direction direction = arg<Direction>(step, "direction");
+    const int64_t tiles = arg<int64_t>(step, "tiles");
+    StoryPose at{here->map, here->tile, direction};
+    for (int64_t c = 0; c < tiles; c++){
+        at.tile = at.tile.next(direction);
+    }
+    //  The boulder stands a tile ahead; on a floor switch's button, the
+    //  switch is on for good and its barrier open.
+    const auto map = std::find_if(maps.begin(), maps.end(), [&](const MapData& item){
+        return item.name == at.map;
+    });
+    const Pokemon::MapSwitch* pressed = map == maps.end() ? nullptr : Pokemon::switch_with_button(*map, at.tile.next(direction));
+    if (pressed != nullptr){
+        state.gates.switches_on.insert(Pokemon::switch_key(*pressed));
+    }
+    return Pokemon::outcome_ok(to_pose(at));
+}
+
 Pokemon::Pose paced_pose(const Pokemon::Pose& patch, const StoryStep& step){
     std::optional<Direction> pace;
     if (const std::optional<GrindPlan> grind = step.action == GRIND_ACTION ? grind_plan_of(step.args) : std::nullopt){
@@ -632,12 +657,10 @@ Outcome push_boulder(StoryEnv& env, RunState& state, const StoryStep& step){
         answer_yes_no(env.console, env.context, true, BUTTON_B, YES_NO_TIMEOUT);
         mash_until_overworld(env.console, env.context, SCENE_TIMEOUT);
     }
-    StoryPose at = *here;
     for (int64_t c = 0; c < tiles; c++){
         step_once(env.console, env.context, direction, direction, env.player_gender);
-        at = StoryPose{at.map, at.tile.next(direction), direction};
     }
-    return Pokemon::outcome_ok(to_pose(at));
+    return boulder_pushed(state, step, story_maps());
 }
 
 //  Vermilion Gym's trash cans on the console: a walk to each can's stand

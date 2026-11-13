@@ -220,8 +220,9 @@ UnitTestResult test_gate_errors(){
 
 
 //  Victory Road: each floor's boulder-fed floor switch opens its barrier, a
-//  top and a bottom tile. The boulder is not modelled: the switch has no
-//  statue to press, only its flag, which the game sets for good.
+//  top and a bottom tile. The switch has no statue to press, only its flag,
+//  which the game sets for good, and its button, the tile a boulder turns it
+//  on from. Each floor's switch is its own: on, it opens no other floor's.
 UnitTestResult test_victory_road_barriers(){
     struct Floor{
         std::string_view name;
@@ -231,11 +232,12 @@ UnitTestResult test_victory_road_barriers(){
         std::string_view barrier;
         std::string_view flag;
         TilePos top;
+        TilePos button;
     };
     const Floor floors[] = {
-        {"VictoryRoad_1F", 2, 1, "floor_switch_1", "barrier_1_top", "VAR_MAP_SCENE_VICTORY_ROAD_1F", {12, 14}},
-        {"VictoryRoad_2F", 4, 2, "floor_switch_2", "barrier_2_top", "VAR_MAP_SCENE_VICTORY_ROAD_2F_BOULDER2", {33, 16}},
-        {"VictoryRoad_3F", 2, 1, "floor_switch_1", "barrier_1_top", "VAR_MAP_SCENE_VICTORY_ROAD_3F", {12, 12}},
+        {"VictoryRoad_1F", 2, 1, "floor_switch_1", "barrier_1_top", "VAR_MAP_SCENE_VICTORY_ROAD_1F", {12, 14}, {20, 16}},
+        {"VictoryRoad_2F", 4, 2, "floor_switch_2", "barrier_2_top", "VAR_MAP_SCENE_VICTORY_ROAD_2F_BOULDER2", {33, 16}, {14, 19}},
+        {"VictoryRoad_3F", 2, 1, "floor_switch_1", "barrier_1_top", "VAR_MAP_SCENE_VICTORY_ROAD_3F", {12, 12}, {7, 7}},
     };
     for (const Floor& floor : floors){
         const MapData map = load_map(std::string(floor.name));
@@ -251,9 +253,19 @@ UnitTestResult test_victory_road_barriers(){
         if (top.kind != GateKind::SWITCH || top.switch_id != floor.switch_id || !top.open_when_on || top.open_at_new_game){
             return std::format("{}: the barrier should be closed at new game and open with {}.", floor.name, floor.switch_id);
         }
+        const MapSwitch* pressed = switch_with_button(map, floor.button);
+        if (pressed == nullptr || pressed->id != floor.switch_id){
+            return std::format("{}: no {} button at ({}, {}).", floor.name, floor.switch_id, floor.button.x, floor.button.y);
+        }
         GateState off;
         GateState on;
-        on.switches_on.insert(std::string(floor.switch_id));
+        on.switches_on.insert(switch_key(*pressed));
+        //  Another floor's switch of the same id leaves this barrier shut.
+        GateState elsewhere;
+        elsewhere.switches_on.insert(std::format("VictoryRoad_XF/{}", floor.switch_id));
+        if (resolved_tile(map, floor.top, elsewhere) != TileKind::WALL){
+            return std::format("{}: another floor's {} opened the barrier.", floor.name, floor.switch_id);
+        }
         if (resolved_tile(map, floor.top, off) != TileKind::WALL || resolved_tile(map, floor.top, on) == TileKind::WALL){
             return std::format("{}: the barrier at ({}, {}) should be a wall until {} is on.", floor.name, floor.top.x, floor.top.y, floor.switch_id);
         }

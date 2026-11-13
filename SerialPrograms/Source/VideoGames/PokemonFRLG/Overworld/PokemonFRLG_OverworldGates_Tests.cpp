@@ -159,7 +159,7 @@ UnitTestResult test_route_presses_statue(){
     if (count_steps(*route, RouteAction::PRESS_SWITCH) != 1 || !(route->back().end == STATUE_GOAL)){
         return "Expected one press-switch step and the goal reached:" + describe(*route);
     }
-    if (!gates_after_route(GateState(), *route).switch_on("mansion")){
+    if (!gates_after_route(GateState(), *route).switch_on("GateStatue/mansion")){
         return "gates_after_route() does not have the switch on.";
     }
     return true;
@@ -257,7 +257,7 @@ UnitTestResult test_sim_presses_statue(){
         return "No route.";
     }
     const SimRun run = walk_in_sim(statue_maps(), STATUE_START, *route, false);
-    if (!run.failure.empty() || !(run.position == STATUE_GOAL) || !run.gates.switch_on("mansion")){
+    if (!run.failure.empty() || !(run.position == STATUE_GOAL) || !run.gates.switch_on("GateStatue/mansion")){
         return std::format("Expected the switch on and the goal reached, ended at {}: \"{}\"", to_string(run.position), run.failure)
             + describe(*route) + joined(run.log);
     }

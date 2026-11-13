@@ -39,6 +39,7 @@
 #include <concepts>
 #include <functional>
 #include <optional>
+#include <string>
 #include <vector>
 #include "Pokemon_ConnectedMaps.h"
 #include "Pokemon_GateTiles.h"
@@ -131,11 +132,12 @@ private:
     Step<State> press_switch(const State& state, const MapSwitch& pressed, Direction direction) const{
         Step<State> step;
         step.next = state;
-        const bool now_on = pressed.toggle ? !state.gates.switch_on(pressed.id) : true;
+        const std::string key = switch_key(pressed);
+        const bool now_on = pressed.toggle ? !state.gates.switch_on(key) : true;
         if (now_on){
-            step.next.gates.switches_on.insert(pressed.id);
+            step.next.gates.switches_on.insert(key);
         }else{
-            step.next.gates.switches_on.erase(pressed.id);
+            step.next.gates.switches_on.erase(key);
         }
         step.action = ACTION_PRESS_SWITCH;
         step.ends_leg = true;

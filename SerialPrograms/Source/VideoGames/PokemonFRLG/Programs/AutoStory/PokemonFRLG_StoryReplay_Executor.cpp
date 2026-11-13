@@ -192,10 +192,11 @@ ReplayLeg ReplayExecutor::prepare_gate_leg(const JsonValue& value, const Overwor
         if (pressed == nullptr){
             throw ParseException("story replay: no statue to press");
         }
-        if (pressed->toggle && gates.switch_on(pressed->id)){
-            after.switches_on.erase(pressed->id);
+        const std::string key = Pokemon::switch_key(*pressed);
+        if (pressed->toggle && gates.switch_on(key)){
+            after.switches_on.erase(key);
         }else{
-            after.switches_on.insert(pressed->id);
+            after.switches_on.insert(key);
         }
     }
     RouteStep step{.action = opens ? RouteAction::OPEN_GATE : RouteAction::PRESS_SWITCH, .direction = facing, .tiles = 0};

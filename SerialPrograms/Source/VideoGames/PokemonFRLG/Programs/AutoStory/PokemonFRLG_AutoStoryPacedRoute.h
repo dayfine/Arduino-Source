@@ -12,6 +12,8 @@
 
 #include <optional>
 #include <vector>
+#include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
+#include "Pokemon/AutoStory/Pokemon_StoryPose.h"
 #include "Pokemon/Navigation/Pokemon_GatedTypes.h"
 #include "Pokemon/Navigation/Pokemon_Grid.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMap.h"
@@ -28,6 +30,11 @@ namespace PokemonFRLG{
 //  leads to, as the last battle came, facing unknown. `patch` for any
 //  other step, or a `patch` not on one tile.
 Pokemon::Pose paced_pose(const Pokemon::Pose& patch, const StoryStep& step);
+
+//  Where a PUSH_BOULDER_VARIANT step leaves the player: `tiles` tiles on in
+//  its direction, behind the boulder. A boulder that ends on a floor
+//  switch's button turns that switch on in `state.gates`.
+Pokemon::Outcome boulder_pushed(Pokemon::RunState& state, const StoryStep& step, const std::vector<MapData>& maps);
 
 //  The maps the story plans on: every map to Route 4's Pokemon Center, with
 //  the objects the game hides after the Hall of Fame removed, as the lab's
