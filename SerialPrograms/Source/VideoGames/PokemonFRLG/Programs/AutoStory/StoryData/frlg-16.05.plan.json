@@ -159,7 +159,7 @@
         "menu": "full",
         "notes": {
             "checkpoint": [
-                "Starts on 7F beside the employee, where 16.04 saves (16.03 without Gift RNG). Ends facing the president, with the MASTER BALL if taken; the save after it is the retry point before the walk back (16.06). Giovanni is a boss fight (pokeguy: C, TRAINER_BOSS_GIOVANNI_2)."
+                "Starts on 7F beside the employee, where 16.04 saves (16.03b without Gift RNG). Ends facing the president, with the MASTER BALL if taken; the save after it is the retry point before the walk back (16.06). Giovanni is a boss fight (pokeguy: C, TRAINER_BOSS_GIOVANNI_2)."
             ]
         }
     },

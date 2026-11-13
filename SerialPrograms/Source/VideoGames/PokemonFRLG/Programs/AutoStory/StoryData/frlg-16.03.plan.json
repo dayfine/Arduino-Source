@@ -3,7 +3,7 @@
     "game": "frlg",
     "checkpoint": {
         "id": "16.03",
-        "title": "Silph Co. 7F: the rival, to the employee with the Lapras",
+        "title": "Silph Co. 7F: the rival",
         "start": {
             "map": "SilphCo_5F",
             "tiles": [
@@ -137,35 +137,16 @@
                     "facing": "south"
                 },
                 "why": "the rival (TRAINER_RIVAL_SILPH_BULBASAUR, for a Squirtle): Pidgeot Lv37, Gyarados Lv38, Growlithe Lv35, Alakazam Lv35, Venusaur Lv40; then he leaves (VAR_MAP_SCENE_SILPH_CO_7F 1)"
-            },
-            {
-                "id": "to_lapras_guy",
-                "kind": "route",
-                "action": "run",
-                "args": {
-                    "target": {
-                        "map": "SilphCo_7F",
-                        "tiles": [
-                            [
-                                1,
-                                7
-                            ]
-                        ],
-                        "facing": "west"
-                    }
-                },
-                "why": "down column 1, past the rival's tile (2, 6), to (1, 7), beside the employee (0, 7) who gives the LAPRAS (SilphCo_7F_EventScript_LaprasGuy)"
             }
         ]
     },
     "execution": {
         "menu": "full",
         "lead": "after_brock",
-        "handoff": "gift_rng",
-        "gift": "lapras",
         "notes": {
             "checkpoint": [
-                "Starts beside 16.02's CARD KEY (the doors open to it from now on). The rival's fight is the same wherever the player crosses the trigger columns (2, 4) or (2, 5). Gift RNG starts from a save facing the employee, who gives a LAPRAS Lv25 for a free party slot (pokeguy skips it, 1:32:51; a user-approved RNG gift)."
+                "Starts beside 16.02's CARD KEY (the doors open to it from now on). The rival's fight is the same wherever the player crosses the trigger columns (2, 4) or (2, 5).",
+                "A boss battle is its own checkpoint (user, 2026-11-12): the rival's fight is all this row does beyond the walk up to him. It ends where his battle leaves the player, and saves there; 16.03b walks to the employee."
             ]
         }
     },
@@ -176,11 +157,11 @@
                 "map": "SilphCo_7F",
                 "tiles": [
                     [
-                        1,
-                        7
+                        2,
+                        4
                     ]
                 ],
-                "facing": "west"
+                "facing": "south"
             }
         }
     }

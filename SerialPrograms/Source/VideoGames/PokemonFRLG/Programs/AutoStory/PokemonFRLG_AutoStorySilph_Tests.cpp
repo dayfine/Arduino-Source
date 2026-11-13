@@ -2,7 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Row 16.01 (StoryData/frlg-16.01.plan.json) on the overworld sim: from
+ *  Rows 16.01 to 16.06 (StoryData/frlg-16.01.plan.json ...) on the overworld sim: from
  *  Saffron's nurse into Silph Co., up to 3F and through its pad to 5F.
  *
  */
@@ -242,10 +242,19 @@ UnitTestResult test_card_key_row(){
 }
 
 //  16.03: up to 7F by 3F's Card Key door (opened with the key), the rival on
-//  his trigger, then to the employee with the Lapras.
+//  his trigger, where his battle leaves the player; then 16.03b to the
+//  employee with the Lapras.
 UnitTestResult test_rival_row(){
     const RowResult result = walk_row("16.03", maps_after_16_02());
-    if (const std::string wrong = wrong_end("16.03", result, MapPosition{"SilphCo_7F", {1, 7}}); !wrong.empty()){
+    if (const std::string wrong = wrong_end("16.03", result, MapPosition{"SilphCo_7F", {2, 4}}); !wrong.empty()){
+        return wrong;
+    }
+    const StoryPose after_rival = *story_pose(Pokemon::pose_of(*checkpoint("16.03b").start));
+    if (after_rival.map != "SilphCo_7F" || !(after_rival.tile == MapPosition{"SilphCo_7F", {2, 4}}.point)){
+        return "16.03b doesn't start where 16.03 ends.";
+    }
+    const RowResult to_employee = walk_row("16.03b", maps_after_16_02());
+    if (const std::string wrong = wrong_end("16.03b", to_employee, MapPosition{"SilphCo_7F", {1, 7}}); !wrong.empty()){
         return wrong;
     }
     const std::vector<std::string> floors_have = {"SilphCo_3F", "SilphCo_7F"};
@@ -257,11 +266,14 @@ UnitTestResult test_rival_row(){
     return true;
 }
 
-//  16.03's checkpoint: Gift RNG's Lapras, on 7F beside the employee.
+//  16.03b's checkpoint: Gift RNG's Lapras, on 7F beside the employee.
 UnitTestResult test_lapras_handoff(){
-    const StoryCheckpoint& gift = checkpoint("16.03");
+    const StoryCheckpoint& gift = checkpoint("16.03b");
     if (gift.handoff != StoryHandoff::GIFT_RNG || gift.gift != PokemonFRLG_RngTarget::lapras){
-        return "16.03 does not hand off to Gift RNG for the Lapras.";
+        return "16.03b does not hand off to Gift RNG for the Lapras.";
+    }
+    if (checkpoint("16.03").handoff != StoryHandoff::NONE){
+        return "16.03 hands off to Gift RNG; only 16.03b, beside the employee, does.";
     }
     const StoryCheckpoint& live = checkpoint("16.04");
     if (!live.live_start || live.handoff != StoryHandoff::NONE){
@@ -336,7 +348,7 @@ UnitTestResult test_saffron_rocket_removed(){
 
 //  silph_cleared is set by the Giovanni step, nothing earlier.
 UnitTestResult test_silph_cleared_flag(){
-    for (const std::string_view id : {"16.01", "16.02", "16.03", "16.04"}){
+    for (const std::string_view id : {"16.01", "16.02", "16.03", "16.03b", "16.04"}){
         for (const StoryStep& step : checkpoint(id).steps){
             if (std::find(step.flags_after.begin(), step.flags_after.end(), SILPH_CLEARED_FLAG) != step.flags_after.end()){
                 return std::format("{} sets silph_cleared.", id);
@@ -389,12 +401,12 @@ const AutoStorySilphCase AUTO_STORY_SILPH_CASES[] = {
         .expectation = {.description = "ends at (21, 21) with the key, the scientist and a Rocket fought"},
     },
     {
-        .input = {.name = "16.03 3F's Card Key door, the pad to 7F and the rival", .body = test_rival_row},
+        .input = {.name = "16.03 3F's Card Key door, the pad to 7F and the rival; 16.03b to the employee", .body = test_rival_row},
         .expectation = {.description = "opens 3F's door_2, ends by the employee on 7F"},
     },
     {
-        .input = {.name = "16.03/16.04 the Lapras by Gift RNG", .body = test_lapras_handoff},
-        .expectation = {.description = "16.03 hands off to Gift RNG for a Lapras; 16.04 is the live save"},
+        .input = {.name = "16.03b/16.04 the Lapras by Gift RNG", .body = test_lapras_handoff},
+        .expectation = {.description = "16.03b hands off to Gift RNG for a Lapras; 16.04 is the live save"},
     },
     {
         .input = {.name = "16.04 the save after Gift RNG", .body = test_after_gift_row},

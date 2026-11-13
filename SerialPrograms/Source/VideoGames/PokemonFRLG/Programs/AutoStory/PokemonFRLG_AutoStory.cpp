@@ -94,7 +94,7 @@ const std::string RUN_GIFT_RNG_TEXT =
     "Pokemon Center, run Gift RNG's attempts for the Magikarp from that save, as the RNG plan lists them for its TID and "
     "SID (set by Run Starter RNG in AutoStory, or typed in). A shiny Magikarp is saved there (04.03) and the run goes "
     "on; otherwise the run stops with the save beside the salesman. Likewise for the Eevee: 09.03 saves facing its ball "
-    "in Celadon Mansion's roof room, and 09.04 saves the shiny; and for the Lapras: 16.03 saves facing the employee "
+    "in Celadon Mansion's roof room, and 09.04 saves the shiny; and for the Lapras: 16.03b saves facing the employee "
     "on Silph Co.'s 7F, and 16.04 saves the shiny.<br>"
     "To try again from that save, start at 04.03 (09.04, 16.04) with this on: it loads the save and runs the attempts first. "
     "After Gift RNG run by hand, start at 04.03 (09.04, 16.04) with this off.<br>"
