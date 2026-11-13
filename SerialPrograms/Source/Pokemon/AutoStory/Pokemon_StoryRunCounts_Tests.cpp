@@ -1,4 +1,4 @@
-/*  AutoStory Stats Tests
+/*  Story Run Counts Tests
  *
  *  From: https://github.com/PokemonAutomation/
  *
@@ -10,8 +10,9 @@
 #include <utility>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon_AutoStoryStats.h"
-#include "Pokemon_AutoStoryStats_Tests.h"
+#include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StorySegmentTypes.h"
+#include "Pokemon_StoryRunCounts_Tests.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -40,7 +41,7 @@ struct StoryCountsTestCase{
 class Test_StoryCounts : public UnitTest{
 public:
     Test_StoryCounts(StoryCountsTestCase test_case)
-        : UnitTest(std::format("Pokemon::AutoStoryStats - {}", test_case.input.name))
+        : UnitTest(std::format("Pokemon::StoryRunCounts - {}", test_case.input.name))
         , m_case(std::move(test_case))
     {}
 
@@ -81,7 +82,7 @@ const StoryCountsTestCase STORY_COUNTS_CASES[] = {
 } // namespace
 
 
-void add_tests_AutoStoryStats(UnitTestDatabase& database){
+void add_tests_StoryRunCounts(UnitTestDatabase& database){
     for (const StoryCountsTestCase& test_case : STORY_COUNTS_CASES){
         database.add<Test_StoryCounts>(test_case);
     }
