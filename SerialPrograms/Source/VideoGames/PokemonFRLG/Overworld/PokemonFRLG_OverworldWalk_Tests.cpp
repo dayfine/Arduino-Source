@@ -235,9 +235,7 @@ const TurnTapCase TURN_TAP_CASES[] = {
 
 struct UnreadTurnInput{
     std::string name;
-    OverworldWalkSteps::TurnSprite sprite = OverworldWalkSteps::TurnSprite::WALKING;
-    bool at_known = true;
-    bool overworld_clear = true;
+    OverworldWalkSteps::UnreadTurn turn = {.at_known = true, .overworld_clear = true};
 };
 struct UnreadTurnCase{
     UnreadTurnInput input;
@@ -254,8 +252,7 @@ public:
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const UnreadTurnInput& in = m_case.input;
-        if (OverworldWalkSteps::unread_turn_taken(in.sprite, in.at_known, in.overworld_clear) == m_case.taken){
+        if (OverworldWalkSteps::unread_turn_taken(m_case.input.turn) == m_case.taken){
             return true;
         }
         return std::format("Expected {}.", m_case.taken ? "taken as turned" : "the leg to fail");
@@ -267,9 +264,9 @@ private:
 
 const UnreadTurnCase UNREAD_TURN_CASES[] = {
     {.input = {.name = "tile known, overworld clear (a roof's eave)"}, .taken = true},
-    {.input = {.name = "tile unknown", .at_known = false}, .taken = false},
-    {.input = {.name = "a box or a fade over the overworld", .overworld_clear = false}, .taken = false},
-    {.input = {.name = "surfing, tile unknown", .sprite = OverworldWalkSteps::TurnSprite::NOT_READ, .at_known = false, .overworld_clear = false}, .taken = true},
+    {.input = {.name = "tile unknown", .turn = {.at_known = false, .overworld_clear = true}}, .taken = false},
+    {.input = {.name = "a box or a fade over the overworld", .turn = {.at_known = true, .overworld_clear = false}}, .taken = false},
+    {.input = {.name = "surfing, tile unknown", .turn = {.sprite = OverworldWalkSteps::TurnSprite::NOT_READ}}, .taken = true},
 };
 
 

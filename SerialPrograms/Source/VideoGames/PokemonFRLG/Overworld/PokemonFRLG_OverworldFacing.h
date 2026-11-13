@@ -66,15 +66,23 @@ TurnTaps tap_until_facing(
     const std::function<std::optional<Direction>(size_t read)>& read
 );
 
-//  Whether a turn tap whose facing never read is taken as turned: always
-//  for a NOT_READ sprite; for the walking one when the route knows the
-//  player's tile (`at_known`) and the overworld shows with nothing over it
-//  (`overworld_clear`: no box, menu or fade). The sprite is hidden there
+//  What turn_to() knows of a turn tap whose facing never read.
+struct UnreadTurn{
+    TurnSprite sprite = TurnSprite::WALKING;
+    //  The route knows the player's tile.
+    bool at_known = false;
+    //  The overworld shows with nothing over it: no box, menu or fade.
+    bool overworld_clear = false;
+};
+
+//  Whether such a turn tap is taken as turned: always for a NOT_READ
+//  sprite; for the walking one when the tile is known and the overworld
+//  clear. The sprite is hidden there
 //  by what the game draws over it: an escalator's rail, a roof's eave
 //  (Cinnabar, north of the Center: console B, 2026-11-13 11:06, 12.03
 //  surf_route_21, only the head showing), a tree or a wanderer. The leg's
 //  walk then checks the turn: a hold from the old facing turns first.
-bool unread_turn_taken(TurnSprite sprite, bool at_known, bool overworld_clear);
+bool unread_turn_taken(const UnreadTurn& turn);
 
 //  Turns `player` to `direction` with a tap (TURN_TAP), then reads the
 //  facing from the screen and taps again while it shows another way, up to

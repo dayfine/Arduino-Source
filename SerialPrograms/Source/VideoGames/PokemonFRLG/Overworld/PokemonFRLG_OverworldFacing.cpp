@@ -69,8 +69,8 @@ TurnTaps tap_until_facing(
     return out;
 }
 
-bool unread_turn_taken(TurnSprite sprite, bool at_known, bool overworld_clear){
-    return sprite == TurnSprite::NOT_READ || (at_known && overworld_clear);
+bool unread_turn_taken(const UnreadTurn& turn){
+    return turn.sprite == TurnSprite::NOT_READ || (turn.at_known && turn.overworld_clear);
 }
 
 namespace{
@@ -124,7 +124,7 @@ void handle_unread_facing(
     context.wait_for_all_requests();
     const VideoSnapshot screen = console.video().snapshot();
     const bool clear = overworld_clear(screen);
-    if (unread_turn_taken(sprite, at.has_value(), clear)){
+    if (unread_turn_taken({.sprite = sprite, .at_known = at.has_value(), .overworld_clear = clear})){
         console.log(std::format(
             "Route: {} on {}, facing not read{}: taken as turned, the leg's walk checks it.",
             turn, to_string(*at),

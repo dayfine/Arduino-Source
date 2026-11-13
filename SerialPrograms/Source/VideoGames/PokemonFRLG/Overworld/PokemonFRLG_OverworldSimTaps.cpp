@@ -218,7 +218,7 @@ StepOutcome OverworldSimWalker::walk(const RouteStep& step, std::optional<Direct
     return outcome;
 }
 
-bool sim_turn_to(OverworldSim& sim, Direction direction, bool confirm, bool at_known){
+bool sim_turn_to(OverworldSim& sim, Direction direction, bool confirm){
     if (!confirm){
         sim.tap(direction);
         return true;
@@ -238,7 +238,8 @@ bool sim_turn_to(OverworldSim& sim, Direction direction, bool confirm, bool at_k
             return sim.state().facing;
         }
     );
-    return turned.facing || OverworldWalkSteps::unread_turn_taken(OverworldWalkSteps::TurnSprite::WALKING, at_known, true);
+    //  The sim's walker knows the tile it turns on.
+    return turned.facing || OverworldWalkSteps::unread_turn_taken({.at_known = true, .overworld_clear = true});
 }
 
 void sim_step_once(OverworldSim& sim, Direction direction){
