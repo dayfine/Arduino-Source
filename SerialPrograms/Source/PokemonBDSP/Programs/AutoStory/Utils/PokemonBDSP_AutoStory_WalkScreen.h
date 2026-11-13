@@ -57,6 +57,36 @@ inline WholeScreenChange classify_whole_screen_change(const WholeScreenEvidence&
     }
     return evidence.fade_or_banner_read ? WholeScreenChange::WARP : WholeScreenChange::UNCLASSIFIED;
 }
+
+//  How the view scrolled between two frames, on 192x108 copies: the shift
+//  (dx, dy) of `before` that best lines up with `after`, leaving out the
+//  middle where the player stands, and the mean difference per colour
+//  channel (0 to 255) with and without it. Outside, the camera follows the
+//  player, so a step scrolls everything one way; a TV, a conveyor, a
+//  passer-by or a cloud shadow changes part of the view with no common
+//  scroll. In r83's and r84's Floaroma video, frames 300 ms apart while
+//  standing (screen changes up to 57, cloud shadows, text boxes) never read
+//  as scrolled; walking read a shift 2 to 6 times better than none.
+struct ViewShift{
+    int dx = 0;
+    int dy = 0;
+    double unshifted = 0;
+    double shifted = 0;
+
+    //  A shift lines up at least twice as well as none, and none leaves a
+    //  real difference.
+    bool scrolled() const;
+};
+
+//  Calculates the view scroll shift between before and after images.
+ViewShift walk_view_shift(const ImageViewRGB32& before, const ImageViewRGB32& after);
+
+//  Whether the player moved between `before` and `after`, frames around a
+//  D-pad tap. Outside: only if the view scrolled. Inside, the camera can
+//  stay put while the player crosses a room (the house's 1F), so there a
+//  screen change of at least `line` counts, as it did before.
+bool tap_moved(const ImageViewRGB32& before, const ImageViewRGB32& after, double line);
+
 } // namespace detail
 //  The whole-screen classification, for walks and their tests.
 using detail::WholeScreenChange;
@@ -64,6 +94,14 @@ using detail::WholeScreenChange;
 using detail::WholeScreenEvidence;
 //  The classifying function.
 using detail::classify_whole_screen_change;
+
+//  View scroll shift calculation.
+using detail::ViewShift;
+//  Calculates the view scroll shift between before and after images.
+using detail::walk_view_shift;
+//  Whether the player moved between before and after frames.
+using detail::tap_moved;
+
 
 //  Whether two frames show different scenes: a change walking cannot make
 //  (WALK_SCENE_CHANGE). UNKNOWN without both frames.

@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <format>
 #include <optional>
 #include <string>
 #include <vector>
@@ -23,6 +24,7 @@
 #include "PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP_AutoStory_StoryStepIO.h"
 #include "PokemonBDSP_AutoStory_StoryWalkSteps.h"
+#include "Utils/PokemonBDSP_AutoStory_Walk.h"
 #include "PokemonBDSP_AutoStory_Walk_Tests.h"
 #include "Utils/PokemonBDSP_AutoStory_WalkResult.h"
 #include "Utils/PokemonBDSP_AutoStory_WalkScreen.h"
@@ -301,6 +303,86 @@ UnitTestResult test_location_banner_showing(Logger& logger){
 
 
 
+//  walk_view_shift(): a step scrolls the whole view; scenery that moves on
+//  its own does not. Synthetic 384x216 screens of 8-pixel blocks in mixed
+//  colours, as grass and flowers are, with one change each.
+uint32_t scenery_at(int x, int y){
+    const uint32_t block = (uint32_t)((x >> 3) * 73856093u) ^ (uint32_t)((y >> 3) * 19349663u);
+    const uint32_t hashed = block * 2654435761u;
+    return 0xff000000 | (hashed & 0x00ffffff);
+}
+ImageRGB32 scenery(int shift_x, int shift_y){
+    ImageRGB32 screen(384, 216);
+    for (int y = 0; y < 216; y++){
+        for (int x = 0; x < 384; x++){
+            screen.pixel(x, y) = scenery_at(x + shift_x + 1000, y + shift_y + 1000);
+        }
+    }
+    return screen;
+}
+//  Each colour channel of the pixels in [x0, x1) x [y0, y1) times `scale`,
+//  or set to `fill` if given.
+void paint(ImageRGB32& screen, int x0, int y0, int x1, int y1, double scale, uint32_t fill = 0){
+    for (int y = y0; y < y1; y++){
+        for (int x = x0; x < x1; x++){
+            uint32_t p = screen.pixel(x, y);
+            if (fill != 0){
+                screen.pixel(x, y) = fill;
+                continue;
+            }
+            uint32_t out = 0xff000000;
+            for (int shift = 0; shift < 24; shift += 8){
+                out |= (uint32_t)(((p >> shift) & 0xff) * scale) << shift;
+            }
+            screen.pixel(x, y) = out;
+        }
+    }
+}
+
+UnitTestResult test_view_shift(Logger&){
+        const ImageRGB32 before = scenery(0, 0);
+        struct Case{
+            std::string name;
+            ImageRGB32 after;
+            bool scrolled;
+        };
+        std::vector<Case> cases;
+        cases.push_back({"the same view", scenery(0, 0), false});
+        cases.push_back({"a step east: the view scrolls 16 pixels west", scenery(16, 0), true});
+        cases.push_back({"a step south", scenery(0, 12), true});
+        {
+            //  r83, r84: a cloud's shadow over the top of the view.
+            ImageRGB32 shadow = scenery(0, 0);
+            paint(shadow, 0, 0, 384, 90, 0.6);
+            cases.push_back({"a cloud shadow over the top third", std::move(shadow), false});
+        }
+        {
+            //  Jubilife's TV screens, the mine's conveyors.
+            ImageRGB32 tv = scenery(0, 0);
+            paint(tv, 20, 20, 110, 80, 0, 0xffffffff);
+            cases.push_back({"a TV lights up in a corner", std::move(tv), false});
+        }
+        {
+            //  A turn changes only the player's sprite.
+            ImageRGB32 turned = scenery(0, 0);
+            paint(turned, 175, 75, 210, 150, 0, 0xffff4040);
+            cases.push_back({"the player turns", std::move(turned), false});
+        }
+        for (const Case& item : cases){
+            const ViewShift shift = walk_view_shift(before, item.after);
+            if (shift.scrolled() != item.scrolled){
+                return std::format("{}: {} (shift {}, {}; difference {:.1f} unshifted, {:.1f} shifted).",
+                    item.name, item.scrolled ? "did not read as a scroll" : "read as a scroll",
+                    shift.dx, shift.dy, shift.unshifted, shift.shifted);
+            }
+        }
+        const ViewShift east = walk_view_shift(before, scenery(16, 0));
+        if (east.dx != -8 || east.dy != 0){
+            return std::format("A 16-pixel scroll west read as ({}, {}) on the half-size copy, expected (-8, 0).", east.dx, east.dy);
+        }
+        return true;
+}
+
 //  pokemon_center_on_screen(): the Center's warm floor in a room. r79 read
 //  Jubilife's yellow plaza as a Center and called a won battle lost.
 UnitTestResult test_pokemon_center_on_screen(Logger&){
@@ -489,6 +571,10 @@ const AutoStoryWalkCase AUTO_STORY_WALK_CASES[] = {
     },
     {
         .input = {"a Pokemon Center is its floor in a room, not a yellow plaza", test_pokemon_center_on_screen},
+        .expectation = {},
+    },
+    {
+        .input = {"a step scrolls the view; moving scenery does not", test_view_shift},
         .expectation = {},
     },
     {
