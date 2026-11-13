@@ -38,10 +38,11 @@ struct CheckpointExecution{
 std::pair<StoryCheckpoint, CheckpointExecution> read_checkpoint_file(std::string_view text, std::string_view source){
     CheckpointExecution read;
     const Pokemon::ExecutionReader read_execution = [&read](const JsonObject& execution, std::string_view where){
-        read.reload_when_chained = execution.get_value("reload_when_chained") != nullptr;
+        const JsonValue* reload = execution.get_value("reload_when_chained");
+        read.reload_when_chained = reload != nullptr;
         if (read.reload_when_chained){
             Pokemon::validate_json_fields(execution, {"save", "reload_when_chained"}, where);
-            if (!execution.get_boolean_throw("reload_when_chained", std::string(where))){
+            if (!reload->is_boolean() || !reload->to_boolean_default()){
                 throw ParseException(std::format("{}: reload_when_chained is true or left out", where));
             }
         }else{

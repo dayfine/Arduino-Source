@@ -136,7 +136,7 @@ UnitTestResult test_reload_when_chained_field(Logger&){
         std::string_view problem;
     };
     const Case cases[] = {
-        {R"("save": "autosave", "reload_when_chained": "yes")", "reload_when_chained"},
+        {R"("save": "autosave", "reload_when_chained": "yes")", "true or left out"},
         {R"("save": "autosave", "reload_when_chained": false)", "true or left out"},
         {R"("save": "autosave", "reload_when_chained": true)", "no save to reload"},
     };
