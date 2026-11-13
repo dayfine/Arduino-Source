@@ -22,6 +22,7 @@
 #ifndef PokemonAutomation_PokemonBDSP_AutoStory_StoryExecutor_H
 #define PokemonAutomation_PokemonBDSP_AutoStory_StoryExecutor_H
 
+#include <functional>
 #include <map>
 #include <optional>
 #include <set>
@@ -78,6 +79,7 @@ struct StoryEnv{
     ProControllerContext& context;
     StarterChoice starter = StarterChoice::CHIMCHAR;
     std::string player_name;
+    std::function<Pokemon::Outcome()> run_starter_rng;
 };
 
 

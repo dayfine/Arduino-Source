@@ -155,6 +155,27 @@ UnitTestResult test_aim_and_calibration(Logger& logger){
 }
 
 
+//  A shiny whose post-battle scene did not finish still ends the loop (the
+//  shiny must not be reset away), and says so.
+UnitTestResult test_shiny_unsettled(Logger&){
+    BdspStarterAttemptResult shiny{
+        .outcome = BdspAttemptOutcome::Hit, .shiny = true, .target_advance = 9, .settled = false
+    };
+    StarterRngRunResult result;
+    if (!resolve_starter_rng_step(shiny, 1, 3, result) || result.outcome != StarterRngOutcome::SHINY){
+        return "expected a shiny to end the loop";
+    }
+    if (result.settled){
+        return "expected the unsettled shiny to say that the game is not settled";
+    }
+    shiny.settled = true;
+    StarterRngRunResult settled;
+    if (!resolve_starter_rng_step(shiny, 1, 3, settled) || !settled.settled){
+        return "expected a settled shiny to be settled";
+    }
+    return true;
+}
+
 UnitTestResult test_attempt_loop_transitions(Logger&){
     BdspPokemonResult sample_target{};
     sample_target.ec = 0x12345678;
@@ -323,6 +344,7 @@ const StarterRngTestCase STARTER_RNG_CASES[] = {
     {"aim offset and calibration bias", test_aim_and_calibration},
     {"attempt loop outcome resolution", test_attempt_loop_transitions},
     {"default filter row is shiny of any nature", test_default_shiny_row},
+    {"a shiny that did not settle ends the loop unsettled", test_shiny_unsettled},
 };
 
 } // namespace
