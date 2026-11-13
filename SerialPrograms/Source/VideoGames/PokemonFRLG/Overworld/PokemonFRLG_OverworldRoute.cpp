@@ -357,6 +357,20 @@ public:
         }
         return route_cost(m_costs, RouteCost::SIGHT_OVERSHOOT);
     }
+    //  A tile on the water from a wall is placed for certain, so it
+    //  pays neither OPEN_WILD_STOP nor OPEN_WATER_STOP: the way to start a
+    //  hold down a column with no wall of its own is a wall and a tile on
+    //  (12.03 run 7, console B 2026-11-13 13:31: south 5, west 1, north 3
+    //  and east 2 round Route21_South's rocks to a wall on column 6
+    //  instead). Only the water: on land and in caves, plans then took runs
+    //  of single tiles over longer holds to walls (Mt. Moon, Victory Road).
+    std::optional<int> tap_stop_risk(const State& state, Direction direction) const{
+        if (!state.state.surfing){
+            return std::nullopt;
+        }
+        const std::optional<Transition> past = PokemonFRLG::press(m_maps, state, direction);
+        return past && seen_by_trainer(past->next) ? route_cost(m_costs, RouteCost::SIGHT_OVERSHOOT) : 0;
+    }
 
     static constexpr int ACTION_SURF = 1;
 
@@ -419,6 +433,9 @@ public:
     }
     int open_stop_risk(const State& state, Direction direction, const Pokemon::GateState& gates) const{
         return StepModel(m_maps.at(gates), m_costs).open_stop_risk(state, direction);
+    }
+    std::optional<int> tap_stop_risk(const State& state, Direction direction, const Pokemon::GateState& gates) const{
+        return StepModel(m_maps.at(gates), m_costs).tap_stop_risk(state, direction);
     }
     Pokemon::MapPlace place_of(const State& state) const{
         return Pokemon::MapPlace{(size_t)state.map, state.state.position};

@@ -8,11 +8,11 @@
             "map": "CinnabarIsland",
             "tiles": [
                 [
-                    16,
-                    7
+                    8,
+                    4
                 ]
             ],
-            "facing": "south"
+            "facing": "north"
         },
         "events": [
             {
@@ -31,7 +31,7 @@
                         "facing": "south"
                     }
                 },
-                "why": "from the Center's wall (16, 7), where 12.03 ends, up to the Mansion door (8, 3), off (20, 5), the locked Gym door's trigger, 1F up its stairs, 2F's northern rooms to the stairs (9, 3), and on 3F through the barrier (17-19, 11-12) that a statue press opens: the route presses the statue the cheapest way and walks on to (19, 13), the room of holes",
+                "why": "from below the Mansion door (8, 3), where 12.03 ends, north into it, then 1F up its stairs, 2F's northern rooms to the stairs (9, 3), and on 3F through the barrier (17-19, 11-12) that a statue press opens: the route presses the statue the cheapest way and walks on to (19, 13), the room of holes",
                 "gates_after": {
                     "switches": {
                         "mansion": true
@@ -44,7 +44,7 @@
         "menu": "full",
         "notes": {
             "checkpoint": [
-                "Starts on Cinnabar Island at the Center's wall (16, 7), facing south, where 12.03 ends (Fly to Pallet Town and Surf down Route 21, as PokeGuy goes after Koga; no heal at the Center, user 2026-11-13). Ends on 3F (19, 13) facing south, in the room of holes, with the switch on.",
+                "Starts on Cinnabar Island below the Mansion door, (8, 4) facing north, where 12.03 ends (Fly to Pallet Town and Surf down Route 21, as PokeGuy goes after Koga; no heal at the Center, user 2026-11-13). Ends on 3F (19, 13) facing south, in the room of holes, with the switch on.",
                 "The Mansion's statue switches: one flag for all four floors (pokefirered data/scripts/pokemon_mansion.inc, PokemonMansion_*F scripts.inc), a toggle each press flips and each floor applies on load. The pinned maps (PokemonSimulation 4b886bb) carry it as gates: barriers that open when the switch is on or off, and the statues that press it. A route plans the presses itself (PRESS_SWITCH: face the statue, A, Yes, B through the text) wherever a barrier is in the way, and the step's gates_after says the switch it leaves; a checkpoint that starts from a save says the switch in start_gates."
             ]
         }
