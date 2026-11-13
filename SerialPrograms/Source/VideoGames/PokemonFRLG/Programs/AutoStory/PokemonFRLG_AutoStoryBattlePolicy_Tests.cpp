@@ -19,6 +19,7 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "PokemonFRLG_AutoStoryBattlePolicy.h"
+#include "PokemonFRLG_AutoStoryHealing.h"
 #include "PokemonFRLG_AutoStoryItemsPocket.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 
@@ -172,6 +173,85 @@ UnitTestResult test_low_hp_heals(){
     dry.item_used("x-special");
     if (!use(dry, empty, koga_view(34)).empty()){
         return "Expected an attack with no medicine in the bag.";
+    }
+    return true;
+}
+
+//  The 2026-11-12 loss to Koga (console B, 12.02 from the save in front of
+//  him): Blastoise at 128 HP, a thin bag (6 Potions, 1 Super Potion, no
+//  Antidote, the Full Restore used on the first poisoning), Sp. Atk +1.
+//  Turns 10 to 13 spent four Potions healing 20 HP a turn against a hit of
+//  84 (100 poisoned) and 26 a turn on average (42 poisoned): HP drifted
+//  down and no attack was made.
+Supplies thin_bag(int super_potions){
+    Supplies supplies;
+    std::vector<BagRow> rows = {{"potion", 6}, {"x-special", 19}, {"x-speed", 6}, {"x-accuracy", 5}, {"guard-spec", 2}};
+    if (super_potions > 0){
+        rows.push_back({"super-potion", super_potions});
+    }
+    set_from_bag(supplies, rows);
+    return supplies;
+}
+
+PolicyView lost_view(double hp, StatusCondition status){
+    return PolicyView{.hp = hp, .max_hp = 128, .status = status, .speed = 81, .foe_index = 0};
+}
+
+UnitTestResult test_futile_potions_attack(){
+    PolicyState state(koga_policy());
+    state.item_used("x-special");
+    Supplies supplies = thin_bag(0);
+    //  72/128 against Koffing's hit of 84: a Potion (+20) lifts it over the
+    //  hit by 8, but the foe's mean 26 takes that back and more: attack.
+    const std::string first = use(state, supplies, lost_view(72, StatusCondition::NONE));
+    if (!first.empty()){
+        return std::format("Expected an attack at 72/128 with only Potions (net loss), got \"{}\".", first);
+    }
+    //  85/128 poisoned against a hit of 100 (84 + 16 of poison): the Potion
+    //  does not lift it over the hit, and loses 22 net a turn: attack, every turn.
+    for (int turn = 10; turn <= 13; turn++){
+        const std::string item = use(state, supplies, lost_view(85, StatusCondition::POISON));
+        if (!item.empty()){
+            return std::format("Turn {}: expected an attack at 85/128 poisoned with only Potions, got \"{}\".", turn, item);
+        }
+    }
+    if (bag_count(supplies, "potion") != 6){
+        return "Expected no Potion spent on a futile heal.";
+    }
+    return true;
+}
+
+UnitTestResult test_super_potion_clears_the_hit(){
+    PolicyState state(koga_policy());
+    state.item_used("x-special");
+    //  The one Super Potion lifts 85 to 128, over the hit of 100 and net
+    //  of the 42 a poisoned turn costs: used once, then (none left) an attack.
+    Supplies supplies = thin_bag(1);
+    const std::string heal = use(state, supplies, lost_view(85, StatusCondition::POISON));
+    if (heal != "super-potion"){
+        return std::format("Expected the Super Potion at 85/128 poisoned, got \"{}\".", heal);
+    }
+    took_recovery_item(supplies, "super-potion");
+    const std::string next = use(state, supplies, lost_view(85, StatusCondition::POISON));
+    if (!next.empty()){
+        return std::format("Expected an attack once only Potions are left, got \"{}\".", next);
+    }
+    return true;
+}
+
+UnitTestResult test_heal_log_names_the_setup(){
+    PolicyState state(koga_policy());
+    Supplies supplies = thin_bag(1);
+    //  Setup still pending (X Special): the heal's reason says what it waits on.
+    const std::optional<PolicyItem> heal = state.choose(supplies, lost_view(85, StatusCondition::POISON));
+    if (!heal || heal->why.find("x-special") == std::string::npos){
+        return std::format("Expected the heal's reason to name the pending X Special, got \"{}\".", heal ? heal->why : "an attack");
+    }
+    //  Goals met: no setup is waited on, and the reason says so.
+    state.item_used("x-special");
+    const std::optional<PolicyItem> later = state.choose(supplies, lost_view(85, StatusCondition::POISON));
+    if (!later || later->why.find("no setup pending") == std::string::npos){
+        return std::format("Expected \"no setup pending\" once the goals are met, got \"{}\".", later ? later->why : "an attack");
     }
     return true;
 }
@@ -429,6 +509,18 @@ const std::vector<AutoStoryBattlePolicyCase> AUTO_STORY_BATTLE_POLICY_CASES = {
     {
         .input = {.name = "low HP heals; no medicine attacks", .body = test_low_hp_heals},
         .expectation = {.description = "a heal at low HP, an attack with none"},
+    },
+    {
+        .input = {.name = "a heal that loses ground to poison and the foe's hits is not repeated", .body = test_futile_potions_attack},
+        .expectation = {.description = "Potions against a hit of 100 are skipped for an attack"},
+    },
+    {
+        .input = {.name = "a Super Potion that clears the hit is used, Potions that don't are not", .body = test_super_potion_clears_the_hit},
+        .expectation = {.description = "the Super Potion once, then an attack"},
+    },
+    {
+        .input = {.name = "a heal's reason names the setup it waits on", .body = test_heal_log_names_the_setup},
+        .expectation = {.description = "the pending item, or no setup pending"},
     },
     {
         .input = {.name = "Guard Spec, then X Accuracy; none against a foe without the move", .body = test_guard_spec_then_accuracy},

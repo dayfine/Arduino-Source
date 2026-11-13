@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <format>
 #include "Common/Cpp/Color.h"
+#include "PokemonFRLG_AutoStoryBattlePolicy.h"
 #include "PokemonFRLG_AutoStoryGameArgs.h"
 #include "PokemonFRLG_AutoStoryHealing.h"
 #include "PokemonFRLG_AutoStoryHealingSteps.h"
@@ -51,6 +52,20 @@ Outcome check(StoryEnv& env, const StoryStep& step, int max_hp){
     return Pokemon::outcome_ok();
 }
 
+Outcome bag_check(StoryEnv& env, Pokemon::RunState& state, const StoryStep& step){
+    const std::vector<Pokemon::StoryItem>* items = game_arg<std::vector<Pokemon::StoryItem>>(step.args, "items");
+    const bool* any = game_arg<bool>(step.args, "any");
+    if (items == nullptr){
+        return Pokemon::outcome_failed("bad_args", step.action);
+    }
+    const bool holds = bag_holds(env.supplies, *items, any != nullptr && *any);
+    env.console.log(std::format("Story: {}: the bag {} what the step lists.", step.name, holds ? "holds" : "lacks"));
+    if (holds){
+        state.flags.insert(step.name);
+    }
+    return Pokemon::outcome_unchanged();
+}
+
 } // namespace
 
 
@@ -59,10 +74,27 @@ std::vector<Pokemon::StoryActionSpec> healing_action_specs(){
     return {
         {.kind = Pokemon::StoryStepKind::GAME, .name = HEAL_TO_FULL_ACTION, .args = {max_hp}},
         {.kind = Pokemon::StoryStepKind::GAME, .name = CHECK_FULL_HP_ACTION, .args = {max_hp}},
+        {.kind = Pokemon::StoryStepKind::GAME, .name = BAG_CHECK_ACTION, .args = {
+            required_arg("items", Pokemon::StoryArgType::ITEMS, "what the bag must hold, a quantity each"),
+            optional_arg("any", Pokemon::StoryArgType::BOOLEAN, false, "at least one of the items, not all"),
+        }},
     };
 }
 
-std::optional<Outcome> run_healing_step(StoryEnv& env, const StoryStep& step){
+bool bag_holds(const Supplies& supplies, const std::vector<Pokemon::StoryItem>& needs, bool any){
+    for (const Pokemon::StoryItem& need : needs){
+        const bool held = bag_count(supplies, need.item) >= static_cast<int>(need.quantity);
+        if (held == any){
+            return held;
+        }
+    }
+    return !any;
+}
+
+std::optional<Outcome> run_healing_step(StoryEnv& env, Pokemon::RunState& state, const StoryStep& step){
+    if (step.action == BAG_CHECK_ACTION){
+        return bag_check(env, state, step);
+    }
     if (step.action != HEAL_TO_FULL_ACTION && step.action != CHECK_FULL_HP_ACTION){
         return std::nullopt;
     }
